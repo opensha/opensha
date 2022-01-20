@@ -101,7 +101,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.CompoundFaultSystemSolution;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
 import scratch.UCERF3.U3FaultSystemRupSet;
 import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultBasedMapGen;

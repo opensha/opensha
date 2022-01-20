@@ -70,7 +70,7 @@ import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.SlipEnabledSolution;
+import scratch.UCERF3.U3SlipEnabledSolution;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class SegmentationCalculator {

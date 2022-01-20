@@ -33,7 +33,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
-import scratch.UCERF3.SlipAlongRuptureModelRupSet;
+import scratch.UCERF3.U3SlipAlongRuptureModelRupSet;
 import scratch.UCERF3.analysis.DeformationModelsCalc;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -77,7 +77,7 @@ import scratch.UCERF3.utils.U3SectionMFD_constraint;
  * @author Field, Milner, Page, & Powers
  *
  */
-public class InversionFaultSystemRupSet extends SlipAlongRuptureModelRupSet {
+public class InversionFaultSystemRupSet extends U3SlipAlongRuptureModelRupSet {
 
 	protected final static boolean D = false;  // for debugging
 	//	static boolean applySubSeismoMomentReduction = true; // set to false to turn off reductions to slip rate from subseismogenic-rup moment

@@ -68,12 +68,12 @@ import com.google.common.collect.Maps;
  * @author kevin
  *
  */
-public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
+public class U3CompoundFaultSystemSolution extends U3FaultSystemSolutionFetcher {
 	
 	private ZipFile zip;
 	private List<U3LogicTreeBranch> branches;
 	
-	public CompoundFaultSystemSolution(ZipFile zip) {
+	public U3CompoundFaultSystemSolution(ZipFile zip) {
 		this.zip = zip;
 		branches = Lists.newArrayList();
 		
@@ -269,7 +269,7 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 		toZipFile(file, this);
 	}
 	
-	public static void toZipFile(File file, FaultSystemSolutionFetcher fetcher) throws IOException {
+	public static void toZipFile(File file, U3FaultSystemSolutionFetcher fetcher) throws IOException {
 		System.out.println("Making compound zip file: "+file.getName());
 		File tempDir = FileUtils.createTempDir();
 		
@@ -318,9 +318,9 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 		return nodeStr+name;
 	}
 	
-	public static CompoundFaultSystemSolution fromZipFile(File file) throws ZipException, IOException {
+	public static U3CompoundFaultSystemSolution fromZipFile(File file) throws ZipException, IOException {
 		ZipFile zip = new ZipFile(file);
-		return new CompoundFaultSystemSolution(zip);
+		return new U3CompoundFaultSystemSolution(zip);
 	}
 	
 	public static void main(String[] args) throws IOException {
@@ -347,7 +347,7 @@ public class CompoundFaultSystemSolution extends FaultSystemSolutionFetcher {
 //		watch.stop();
 //		System.out.println("Took "+(watch.elapsedMillis() / 1000d)+" seconds to save");
 		
-		CompoundFaultSystemSolution compoundSol = fromZipFile(compoundFile);
+		U3CompoundFaultSystemSolution compoundSol = fromZipFile(compoundFile);
 //		System.exit(0);
 		
 		for (U3LogicTreeBranch branch : compoundSol.getBranches()) {

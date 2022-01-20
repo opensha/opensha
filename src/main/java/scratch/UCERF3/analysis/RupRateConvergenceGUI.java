@@ -36,7 +36,7 @@ import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.faultSurface.FaultSection;
 
-import scratch.UCERF3.AverageFaultSystemSolution;
+import scratch.UCERF3.U3AverageFaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.UCERF3InversionConfiguration;
 import scratch.UCERF3.utils.U3FaultSystemIO;
@@ -52,7 +52,7 @@ public class RupRateConvergenceGUI extends JFrame implements ParameterChangeList
 	
 	private static final int DEFAULT_PLOT_WIDTH = 100;
 	
-	private AverageFaultSystemSolution sol;
+	private U3AverageFaultSystemSolution sol;
 	
 	private static final String BROWSE_PARAM_NAME = "Browse";
 	private FileParameter browseParam = new FileParameter(BROWSE_PARAM_NAME);
@@ -78,7 +78,7 @@ public class RupRateConvergenceGUI extends JFrame implements ParameterChangeList
 	private enum SortTypes {
 		INDEX("Rupture Index") {
 			@Override
-			public Comparator<Integer> getComparator(AverageFaultSystemSolution sol, int n) {
+			public Comparator<Integer> getComparator(U3AverageFaultSystemSolution sol, int n) {
 				return new Comparator<Integer>() {
 
 					@Override
@@ -90,7 +90,7 @@ public class RupRateConvergenceGUI extends JFrame implements ParameterChangeList
 		},
 		MAG_INCREASING("Mag (Increasing)") {
 			@Override
-			public Comparator<Integer> getComparator(final AverageFaultSystemSolution sol, int n) {
+			public Comparator<Integer> getComparator(final U3AverageFaultSystemSolution sol, int n) {
 				return new Comparator<Integer>() {
 
 					@Override
@@ -105,7 +105,7 @@ public class RupRateConvergenceGUI extends JFrame implements ParameterChangeList
 		},
 		MAG_DECREASING("Mag (Decreasing)") {
 			@Override
-			public Comparator<Integer> getComparator(final AverageFaultSystemSolution sol, int n) {
+			public Comparator<Integer> getComparator(final U3AverageFaultSystemSolution sol, int n) {
 				return new Comparator<Integer>() {
 
 					@Override
@@ -120,7 +120,7 @@ public class RupRateConvergenceGUI extends JFrame implements ParameterChangeList
 		},
 		STD_DEV_OVER_MEAN("Std Dev / Mean") {
 			@Override
-			public Comparator<Integer> getComparator(final AverageFaultSystemSolution sol, int n) {
+			public Comparator<Integer> getComparator(final U3AverageFaultSystemSolution sol, int n) {
 				return new Comparator<Integer>() {
 
 					@Override
@@ -135,7 +135,7 @@ public class RupRateConvergenceGUI extends JFrame implements ParameterChangeList
 		},
 		STD_DEV_OF_MEAN_OVER_MEAN("SDOM / Mean") {
 			@Override
-			public Comparator<Integer> getComparator(final AverageFaultSystemSolution sol, final int n) {
+			public Comparator<Integer> getComparator(final U3AverageFaultSystemSolution sol, final int n) {
 				return new Comparator<Integer>() {
 
 					@Override
@@ -165,7 +165,7 @@ public class RupRateConvergenceGUI extends JFrame implements ParameterChangeList
 			return name;
 		}
 		
-		public abstract Comparator<Integer> getComparator(AverageFaultSystemSolution sol, int n);
+		public abstract Comparator<Integer> getComparator(U3AverageFaultSystemSolution sol, int n);
 	}
 	private EnumParameter<SortTypes> sortParam = new EnumParameter<RupRateConvergenceGUI.SortTypes>(
 			SORT_PARAM_NAME, EnumSet.allOf(SortTypes.class), SortTypes.INDEX, null);
@@ -282,7 +282,7 @@ public class RupRateConvergenceGUI extends JFrame implements ParameterChangeList
 		setSize(1400, 800);
 	}
 	
-	private void setSol(AverageFaultSystemSolution sol) {
+	private void setSol(U3AverageFaultSystemSolution sol) {
 		this.sol = sol;
 		ucerf2Rups = null;
 		if (sol == null) {
@@ -634,7 +634,7 @@ public class RupRateConvergenceGUI extends JFrame implements ParameterChangeList
 		int num = max - min;
 		
 		if (param == browseParam) {
-			AverageFaultSystemSolution sol = null;
+			U3AverageFaultSystemSolution sol = null;
 			try {
 				sol = U3FaultSystemIO.loadAvgInvSol(browseParam.getValue());
 			} catch (Exception e) {

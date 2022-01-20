@@ -37,7 +37,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.commons.gui.plot.GraphWindow;
 
-import scratch.UCERF3.AverageFaultSystemSolution;
+import scratch.UCERF3.U3AverageFaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
@@ -472,8 +472,8 @@ public class PaleoSiteCorrelationData implements Serializable {
 		for (PaleoSiteCorrelationData corr : corrs) {
 			double myRate = getRateCorrelated(
 					paleoProb, sol, corr.getSite1SubSect(), corr.getSite2SubSect());
-			if (sol instanceof AverageFaultSystemSolution) {
-				AverageFaultSystemSolution avgSol = (AverageFaultSystemSolution)sol;
+			if (sol instanceof U3AverageFaultSystemSolution) {
+				U3AverageFaultSystemSolution avgSol = (U3AverageFaultSystemSolution)sol;
 				double minAvgRate = Double.MAX_VALUE;
 				double maxAvgRate = 0d;
 				for (FaultSystemSolution subSol : avgSol) {

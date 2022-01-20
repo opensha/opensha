@@ -20,7 +20,7 @@ import com.google.common.collect.Maps;
  * @author kevin
  *
  */
-public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFaultSystemSolution> {
+public abstract class U3FaultSystemSolutionFetcher implements Iterable<InversionFaultSystemSolution> {
 	
 	private boolean cacheCopying = true;
 	// this is for copying caches from previous rup sets of the same fault model
@@ -99,8 +99,8 @@ public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFa
 		return scaledAvg;
 	}
 	
-	public static FaultSystemSolutionFetcher getRandomSample(
-			final FaultSystemSolutionFetcher fetch, int num, U3LogicTreeBranchNode<?>... branchNodes) {
+	public static U3FaultSystemSolutionFetcher getRandomSample(
+			final U3FaultSystemSolutionFetcher fetch, int num, U3LogicTreeBranchNode<?>... branchNodes) {
 		List<U3LogicTreeBranch> origBranches = Lists.newArrayList();
 		origBranches.addAll(fetch.getBranches());
 		final List<U3LogicTreeBranch> branches = Lists.newArrayList();
@@ -118,7 +118,7 @@ public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFa
 				branches.add(branch);
 			}
 		}
-		return new FaultSystemSolutionFetcher() {
+		return new U3FaultSystemSolutionFetcher() {
 			
 			@Override
 			public Collection<U3LogicTreeBranch> getBranches() {
@@ -132,8 +132,8 @@ public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFa
 		};
 	}
 	
-	public static FaultSystemSolutionFetcher getSubset(
-			final FaultSystemSolutionFetcher fetch, final U3LogicTreeBranchNode<?>... nodes) {
+	public static U3FaultSystemSolutionFetcher getSubset(
+			final U3FaultSystemSolutionFetcher fetch, final U3LogicTreeBranchNode<?>... nodes) {
 		final List<U3LogicTreeBranch> branches = Lists.newArrayList();
 		U3LogicTreeBranch testBranch = U3LogicTreeBranch.fromValues(false, nodes);
 		for (U3LogicTreeBranch branch : fetch.getBranches()) {
@@ -143,9 +143,9 @@ public abstract class FaultSystemSolutionFetcher implements Iterable<InversionFa
 		return getSubsetSample(fetch, branches);
 	}
 	
-	public static FaultSystemSolutionFetcher getSubsetSample(
-			final FaultSystemSolutionFetcher fetch, final List<U3LogicTreeBranch> branches) {
-		return new FaultSystemSolutionFetcher() {
+	public static U3FaultSystemSolutionFetcher getSubsetSample(
+			final U3FaultSystemSolutionFetcher fetch, final List<U3LogicTreeBranch> branches) {
+		return new U3FaultSystemSolutionFetcher() {
 			
 			@Override
 			public Collection<U3LogicTreeBranch> getBranches() {

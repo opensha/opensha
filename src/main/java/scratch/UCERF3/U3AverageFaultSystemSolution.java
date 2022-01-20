@@ -50,7 +50,7 @@ import com.google.common.collect.Lists;
  * @author kevin
  *
  */
-public class AverageFaultSystemSolution extends InversionFaultSystemSolution implements Iterable<InversionFaultSystemSolution> {
+public class U3AverageFaultSystemSolution extends InversionFaultSystemSolution implements Iterable<InversionFaultSystemSolution> {
 	
 	private int numSols;
 	private double[][] ratesByRup;
@@ -89,12 +89,12 @@ public class AverageFaultSystemSolution extends InversionFaultSystemSolution imp
 		return mean;
 	}
 	
-	public AverageFaultSystemSolution(InversionFaultSystemRupSet rupSet,
+	public U3AverageFaultSystemSolution(InversionFaultSystemRupSet rupSet,
 			List<double[]> ratesList) {
 		this(rupSet, ratesList, null, null);
 	}
 
-	public AverageFaultSystemSolution(InversionFaultSystemRupSet rupSet,
+	public U3AverageFaultSystemSolution(InversionFaultSystemRupSet rupSet,
 			List<double[]> ratesList, UCERF3InversionConfiguration config, Map<String, Double> energies) {
 		this(rupSet, toArrays(ratesList), config, energies);
 	}
@@ -103,7 +103,7 @@ public class AverageFaultSystemSolution extends InversionFaultSystemSolution imp
 	 * @param rupSet
 	 * @param rates 2 dimensional array of rates ordered by rupture index [numRups][numSols]
 	 */
-	public AverageFaultSystemSolution(InversionFaultSystemRupSet rupSet,
+	public U3AverageFaultSystemSolution(InversionFaultSystemRupSet rupSet,
 			double[][] rates, UCERF3InversionConfiguration config, Map<String, Double> energies) {
 		super(rupSet, getMeanRates(rates), config, energies);
 		
@@ -239,10 +239,10 @@ public class AverageFaultSystemSolution extends InversionFaultSystemSolution imp
 	
 	public static void calcThreaded(double[][] rates, double[][] output, boolean partic, double magLow, double magHigh,
 			InversionFaultSystemRupSet rupSet) throws InterruptedException {
-		ArrayList<AverageFaultSystemSolution.ParticipationComputeTask> tasks =
-				new ArrayList<AverageFaultSystemSolution.ParticipationComputeTask>();
+		ArrayList<U3AverageFaultSystemSolution.ParticipationComputeTask> tasks =
+				new ArrayList<U3AverageFaultSystemSolution.ParticipationComputeTask>();
 		for (int i=0; i<output[0].length; i++)
-			tasks.add(new AverageFaultSystemSolution.ParticipationComputeTask(rates, output, i, partic, magLow, magHigh, rupSet));
+			tasks.add(new U3AverageFaultSystemSolution.ParticipationComputeTask(rates, output, i, partic, magLow, magHigh, rupSet));
 		
 		ThreadedTaskComputer comp = new ThreadedTaskComputer(tasks);
 		comp.computeThreaded();
@@ -410,7 +410,7 @@ public class AverageFaultSystemSolution extends InversionFaultSystemSolution imp
 		writePaleoBoundsPlot(dir, this);
 	}
 	
-	public static void writePaleoBoundsPlot(File dir, AverageFaultSystemSolution avgSol) throws IOException {
+	public static void writePaleoBoundsPlot(File dir, U3AverageFaultSystemSolution avgSol) throws IOException {
 		String prefix = avgSol.getRupSet().getLogicTreeBranch().buildFileName();
 		writePaleoBoundsPlot(dir, prefix, avgSol);
 	}
@@ -575,7 +575,7 @@ public class AverageFaultSystemSolution extends InversionFaultSystemSolution imp
 		
 	}
 
-	public static AverageFaultSystemSolution fromDirectory(InversionFaultSystemRupSet rupSet, File dir, String prefix) throws IOException {
+	public static U3AverageFaultSystemSolution fromDirectory(InversionFaultSystemRupSet rupSet, File dir, String prefix) throws IOException {
 		ArrayList<File> files = new ArrayList<File>();
 		
 		System.out.println("Loading average solution from: "+dir.getAbsolutePath());
@@ -619,14 +619,14 @@ public class AverageFaultSystemSolution extends InversionFaultSystemSolution imp
 			rates.add(runRates);
 		}
 		
-		return new AverageFaultSystemSolution(rupSet, rates, null, null);
+		return new U3AverageFaultSystemSolution(rupSet, rates, null, null);
 	}
 	
 	public static void main(String[] args) throws IOException, DocumentException {
 //		File file = new File("/tmp/FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate8.7_MMaxOff7.6_NoFix_SpatSeisU3_mean_sol.zip");
 		File file = new File("/tmp/asdf/file.zip");
 		
-		AverageFaultSystemSolution avg = U3FaultSystemIO.loadAvgInvSol(file);
+		U3AverageFaultSystemSolution avg = U3FaultSystemIO.loadAvgInvSol(file);
 //		File dir = new File("/home/kevin/OpenSHA/UCERF3/inversions/2012_07_21-zeng-ref-lowpaleo-100runs/paleo");
 //		File dir = new File("/home/kevin/OpenSHA/UCERF3/inversions/2012_07_31-zeng-ref-char-unconst-lowpaleo-100runs/results");
 //		FaultSystemRupSet rupSet = SimpleFaultSystemRupSet.fromFile(new File(dir,

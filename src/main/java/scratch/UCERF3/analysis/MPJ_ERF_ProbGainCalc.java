@@ -29,7 +29,7 @@ import org.opensha.sha.earthquake.param.MagDependentAperiodicityParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 
-import scratch.UCERF3.CompoundFaultSystemSolution;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
@@ -46,7 +46,7 @@ import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
 
 public class MPJ_ERF_ProbGainCalc extends MPJTaskCalculator {
 	
-	private CompoundFaultSystemSolution cfss;
+	private U3CompoundFaultSystemSolution cfss;
 	private List<U3LogicTreeBranch> branches;
 	private FaultSystemSolutionERF[] erfs;
 	
@@ -64,7 +64,7 @@ public class MPJ_ERF_ProbGainCalc extends MPJTaskCalculator {
 		File compoundFile = new File(cmd.getOptionValue("cfss"));
 		Preconditions.checkArgument(compoundFile.exists(),
 				"Compound file doesn't exist: "+compoundFile.getAbsolutePath());
-		cfss = CompoundFaultSystemSolution.fromZipFile(compoundFile);
+		cfss = U3CompoundFaultSystemSolution.fromZipFile(compoundFile);
 		branches = Lists.newArrayList(cfss.getBranches());
 		Collections.sort(branches);
 		

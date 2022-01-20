@@ -69,8 +69,8 @@ import org.opensha.sha.util.NEHRP_TestCity;
 import org.opensha.sra.rtgm.RTGM;
 import org.opensha.sra.rtgm.RTGM.Frequency;
 
-import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.CompoundFaultSystemSolution;
+import scratch.UCERF3.U3AverageFaultSystemSolution;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
@@ -1291,7 +1291,7 @@ public class CurveUtilsUC33 {
 	private static void listAllBranches() {
 		try {
 			String path1440 = "/Users/pmpowers/projects/OpenSHA/tmp/invSols/tree/2012_10_29-tree-fm31_x7-fm32_x1_COMPOUND_SOL.zip";
-			CompoundFaultSystemSolution cfss = UC3_CalcUtils
+			U3CompoundFaultSystemSolution cfss = UC3_CalcUtils
 				.getCompoundSolution(path1440);
 			List<U3LogicTreeBranch> branches = Lists.newArrayList(cfss
 				.getBranches());
@@ -1321,7 +1321,7 @@ public class CurveUtilsUC33 {
 		
 		// load conv fss
 		String convSolPath = "/Users/pmpowers/projects/OpenSHA/tmp/invSols/conv/FM3_1_ZENG_Shaw09Mod_DsrTap_CharConst_M5Rate8.7_MMaxOff7.6_NoFix_SpatSeisU3_mean_sol.zip";
-		AverageFaultSystemSolution afss = UC3_CalcUtils.getAvgSolution(convSolPath);
+		U3AverageFaultSystemSolution afss = UC3_CalcUtils.getAvgSolution(convSolPath);
 		for (int i=0; i<maxIdx; i++) {
 			InversionFaultSystemSolution fss = afss.getSolution(i);
 			double fssRupRate = fss.getRateForRup(fssRupIdx);

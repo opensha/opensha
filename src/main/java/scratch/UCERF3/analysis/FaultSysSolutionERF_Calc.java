@@ -131,7 +131,7 @@ import com.google.common.collect.Table.Cell;
 import com.google.common.io.Files;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.FaultSystemSolutionFetcher;
+import scratch.UCERF3.U3FaultSystemSolutionFetcher;
 import scratch.UCERF3.analysis.CompoundFSSPlots.MapBasedPlot;
 import scratch.UCERF3.analysis.CompoundFSSPlots.MapPlotData;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -3203,7 +3203,7 @@ public class FaultSysSolutionERF_Calc {
 					fmMeanTimeDep = new double[fmSubSectIndexMap.row(fm).size()];
 					fmMeanTimeDepVals.put(fm, fmMeanTimeDep);
 				}
-				fmMeanTimeDep[subSectIndex] = FaultSystemSolutionFetcher.calcScaledAverage(
+				fmMeanTimeDep[subSectIndex] = U3FaultSystemSolutionFetcher.calcScaledAverage(
 						fmTimeDepValsArray, fmWeightsArray);
 			}
 			double[] poisValsArray = Doubles.toArray(poisVals);
@@ -3236,11 +3236,11 @@ public class FaultSysSolutionERF_Calc {
 //			double minBPT = minNonZero(bptVals);
 //			double maxBPT = maxNonZero(bptVals);
 //			double meanPois = weightedAvgNonZero(poisVals, weights);
-			double meanTimeDep = FaultSystemSolutionFetcher.calcScaledAverage(
+			double meanTimeDep = U3FaultSystemSolutionFetcher.calcScaledAverage(
 					timeDepValsArray, weightsArray);
 			double minTimeDep = StatUtils.min(timeDepAllValsArray);
 			double maxTimeDep = StatUtils.max(timeDepAllValsArray);
-			double meanPois = FaultSystemSolutionFetcher.calcScaledAverage(
+			double meanPois = U3FaultSystemSolutionFetcher.calcScaledAverage(
 					poisValsArray, weightsArray);
 			double gainU3 = weightedAvgNonZero(gainVals, weights);
 			
@@ -3308,7 +3308,7 @@ public class FaultSysSolutionERF_Calc {
 						if (cell.getRowKey() != theCOV)
 							continue;
 						double[] bptCOV_ValsArray = Doubles.toArray(cell.getValue());
-						avgVals.add(FaultSystemSolutionFetcher.calcScaledAverage(
+						avgVals.add(U3FaultSystemSolutionFetcher.calcScaledAverage(
 							bptCOV_ValsArray, weightsArray));
 					}
 					Preconditions.checkState(!avgVals.isEmpty());
@@ -3326,7 +3326,7 @@ public class FaultSysSolutionERF_Calc {
 						branchPoisVals.add(val.pPois);
 					}
 					
-					meanBPT_COVVals.get(null)[i] = FaultSystemSolutionFetcher.calcScaledAverage(
+					meanBPT_COVVals.get(null)[i] = U3FaultSystemSolutionFetcher.calcScaledAverage(
 							Doubles.toArray(branchPoisVals), weightsArray);
 				}
 			}
@@ -3340,7 +3340,7 @@ public class FaultSysSolutionERF_Calc {
 						if (cell.getColumnKey() != theAve)
 							continue;
 						double[] bptCOV_ValsArray = Doubles.toArray(cell.getValue());
-						avgVals.add(FaultSystemSolutionFetcher.calcScaledAverage(
+						avgVals.add(U3FaultSystemSolutionFetcher.calcScaledAverage(
 							bptCOV_ValsArray, weightsArray));
 						if (isWeightedMultiCOV)
 							cellWeights.add(FaultSystemSolutionERF.getWeightForCOV(cell.getRowKey()));
@@ -3355,7 +3355,7 @@ public class FaultSysSolutionERF_Calc {
 						Preconditions.checkState(cellWeights.size() == 4);
 					}
 					
-					double mean = FaultSystemSolutionFetcher.calcScaledAverage(
+					double mean = U3FaultSystemSolutionFetcher.calcScaledAverage(
 							Doubles.toArray(avgVals), Doubles.toArray(cellWeights));
 					Preconditions.checkState(!avgVals.isEmpty());
 					meanBPT_CalcVals.get(theAve)[i] = mean;
@@ -3921,11 +3921,11 @@ public class FaultSysSolutionERF_Calc {
 //			double minBPT = minNonZero(bptVals);
 //			double maxBPT = maxNonZero(bptVals);
 //			double meanPois = weightedAvgNonZero(poisVals, weights);
-			double meanBPT = FaultSystemSolutionFetcher.calcScaledAverage(
+			double meanBPT = U3FaultSystemSolutionFetcher.calcScaledAverage(
 					bptValsArray, weightsArray);
 			double minBPT = StatUtils.min(timeDepAllValsArray);
 			double maxBPT = StatUtils.max(timeDepAllValsArray);
-			double meanPois = FaultSystemSolutionFetcher.calcScaledAverage(
+			double meanPois = U3FaultSystemSolutionFetcher.calcScaledAverage(
 					poisValsArray, weightsArray);
 			double gainU3 = weightedAvgNonZero(gainVals, weights);
 			

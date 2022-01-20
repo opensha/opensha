@@ -39,8 +39,8 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolutionFetcher;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemSolutionFetcher;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
@@ -148,7 +148,7 @@ public class FaultSystemSolutionCalc {
 	 * @param outputDir
 	 */
 	public static void writePaleoObsSlipCOV_ForScalingRels(
-			FaultSystemSolutionFetcher fetcher, File outputDir) {
+			U3FaultSystemSolutionFetcher fetcher, File outputDir) {
 		U3LogicTreeBranch ref = U3LogicTreeBranch.DEFAULT;
 		
 		for (ScalingRelationships scale : ScalingRelationships.values()) {

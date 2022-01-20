@@ -47,7 +47,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.AverageFaultSystemSolution;
+import scratch.UCERF3.U3AverageFaultSystemSolution;
 import scratch.UCERF3.U3FaultSystemRupSet;
 import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -157,11 +157,11 @@ public class U3FaultSystemIO {
 	 * @throws DocumentException 
 	 * @throws IOException 
 	 */
-	public static AverageFaultSystemSolution loadAvgInvSol(File file) throws IOException, DocumentException {
+	public static U3AverageFaultSystemSolution loadAvgInvSol(File file) throws IOException, DocumentException {
 		U3FaultSystemSolution sol = loadSolAsApplicable(file);
-		Preconditions.checkArgument(sol instanceof AverageFaultSystemSolution,
+		Preconditions.checkArgument(sol instanceof U3AverageFaultSystemSolution,
 				"Solution cannot be loaded as an AverageFaultSystemSolution");
-		return (AverageFaultSystemSolution)sol;
+		return (U3AverageFaultSystemSolution)sol;
 	}
 	
 	/*	******************************************
@@ -653,7 +653,7 @@ public class U3FaultSystemIO {
 				ratesList = loadIndSolRates("sol_rates", zip, nameRemappings);
 			if (ratesList != null)
 				// it's an AverageFSS
-				sol =  new AverageFaultSystemSolution(invRupSet, ratesList, conf, energies);
+				sol =  new U3AverageFaultSystemSolution(invRupSet, ratesList, conf, energies);
 			else
 				// it's a regular IFSS
 				sol = new InversionFaultSystemSolution(invRupSet, rates, conf, energies);
@@ -1068,8 +1068,8 @@ public class U3FaultSystemIO {
 				zipFileNames.add(invFile.getName());
 			}
 			
-			if (sol instanceof AverageFaultSystemSolution) {
-				AverageFaultSystemSolution avgSol = (AverageFaultSystemSolution)sol;
+			if (sol instanceof U3AverageFaultSystemSolution) {
+				U3AverageFaultSystemSolution avgSol = (U3AverageFaultSystemSolution)sol;
 				int numSols = avgSol.getNumSolutions();
 				
 				if (D) System.out.println("Saving AverageFaultSystemSolution specific data for "+numSols+" solutions");

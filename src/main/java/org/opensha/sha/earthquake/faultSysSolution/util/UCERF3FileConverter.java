@@ -29,8 +29,8 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolutionFetcher;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemSolutionFetcher;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
@@ -56,7 +56,7 @@ class UCERF3FileConverter {
 		File outputDir = new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular");
 		File comoundFile = new File(inputDir, "full_ucerf3_compound_sol.zip");
 		
-		FaultSystemSolutionFetcher cfss = CompoundFaultSystemSolution.fromZipFile(comoundFile);
+		U3FaultSystemSolutionFetcher cfss = U3CompoundFaultSystemSolution.fromZipFile(comoundFile);
 		
 		FaultModels[] fms = {FaultModels.FM3_1, FaultModels.FM3_2};
 		
@@ -116,7 +116,7 @@ class UCERF3FileConverter {
 		
 		System.out.println("Writing branch averaged files");
 		for (FaultModels fm : fms) {
-			FaultSystemSolutionFetcher fmFetcher = FaultSystemSolutionFetcher.getSubset(cfss, fm);
+			U3FaultSystemSolutionFetcher fmFetcher = U3FaultSystemSolutionFetcher.getSubset(cfss, fm);
 			
 			FaultSystemSolution sol = calcBranchAveraged(fmFetcher);
 			
@@ -129,7 +129,7 @@ class UCERF3FileConverter {
 			sol.write(new File(outputDir, prefix+"_with_logic_tree.zip"));
 			
 			for (SpatialSeisPDF spatSeis : new SpatialSeisPDF[] {SpatialSeisPDF.UCERF2, SpatialSeisPDF.UCERF3}) {
-				FaultSystemSolutionFetcher ssFetcher = FaultSystemSolutionFetcher.getSubset(fmFetcher, spatSeis);
+				U3FaultSystemSolutionFetcher ssFetcher = U3FaultSystemSolutionFetcher.getSubset(fmFetcher, spatSeis);
 				
 				sol = calcBranchAveraged(ssFetcher);
 				
@@ -139,7 +139,7 @@ class UCERF3FileConverter {
 		}
 	}
 
-	public static FaultSystemSolution calcBranchAveraged(FaultSystemSolutionFetcher fetcher) {
+	public static FaultSystemSolution calcBranchAveraged(U3FaultSystemSolutionFetcher fetcher) {
 		double totWeight = 0d; 
 		double[] avgRates = null;
 		double[] avgMags = null;

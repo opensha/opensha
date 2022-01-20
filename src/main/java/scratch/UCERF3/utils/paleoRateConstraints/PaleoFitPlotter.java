@@ -47,9 +47,9 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.FaultSystemSolutionFetcher;
-import scratch.UCERF3.SlipEnabledRupSet;
-import scratch.UCERF3.SlipEnabledSolution;
+import scratch.UCERF3.U3FaultSystemSolutionFetcher;
+import scratch.UCERF3.U3SlipEnabledRupSet;
+import scratch.UCERF3.U3SlipEnabledSolution;
 import scratch.UCERF3.inversion.CommandLineInversionRunner;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
@@ -91,9 +91,9 @@ public class PaleoFitPlotter {
 //					StatUtils.min(slipRates)/aveSlip.getWeightedMean(),
 //					StatUtils.max(slipRates)/aveSlip.getWeightedMean());
 			super(aveSlip.name, sectIndex, aveSlip.sectionName, aveSlip.dataLocation,
-					FaultSystemSolutionFetcher.calcScaledAverage(slipRates, weights)/aveSlip.getWeightedMean(),
+					U3FaultSystemSolutionFetcher.calcScaledAverage(slipRates, weights)/aveSlip.getWeightedMean(),
 					new Uncertainty(UncertaintyBoundType.TWO_SIGMA.estimateStdDev(
-							FaultSystemSolutionFetcher.calcScaledAverage(slipRates, weights)/aveSlip.getWeightedMean(),
+							U3FaultSystemSolutionFetcher.calcScaledAverage(slipRates, weights)/aveSlip.getWeightedMean(),
 							StatUtils.min(slipRates)/aveSlip.estimateUncertaintyBounds(UncertaintyBoundType.TWO_SIGMA).upperBound,
 							StatUtils.max(slipRates)/aveSlip.estimateUncertaintyBounds(UncertaintyBoundType.TWO_SIGMA).lowerBound)));
 			isMultiple = true;
@@ -336,8 +336,8 @@ public class PaleoFitPlotter {
 		return rate;
 	}
 	
-	static double getAveSlipProbRateForSect(SlipEnabledSolution sol, int sectIndex) {
-		SlipEnabledRupSet rupSet = sol.getRupSet();
+	static double getAveSlipProbRateForSect(U3SlipEnabledSolution sol, int sectIndex) {
+		U3SlipEnabledRupSet rupSet = sol.getRupSet();
 		double rate = 0;
 		for (int rupID : rupSet.getRupturesForSection(sectIndex)) {
 			int sectIndexInRup = rupSet.getSectionsIndicesForRup(rupID).indexOf(sectIndex);
@@ -396,7 +396,7 @@ public class PaleoFitPlotter {
 		}
 		
 		public static DataForPaleoFaultPlots build(
-				SlipEnabledSolution sol,
+				U3SlipEnabledSolution sol,
 				Map<String, List<Integer>> namedFaultsMap,
 				Map<String, List<U3PaleoRateConstraint>> namedFaultConstraintsMap,
 				Map<Integer, List<FaultSection>> allParentsMap,
@@ -414,7 +414,7 @@ public class PaleoFitPlotter {
 		}
 		
 		public static DataForPaleoFaultPlots build(
-				SlipEnabledSolution sol,
+				U3SlipEnabledSolution sol,
 				Map<String, List<Integer>> namedFaultsMap,
 				Map<String, List<U3PaleoRateConstraint>> namedFaultConstraintsMap,
 				Map<Integer, List<FaultSection>> allParentsMap,
@@ -509,8 +509,8 @@ public class PaleoFitPlotter {
 			List<U3PaleoRateConstraint> paleoRateConstraint,
 			List<U3AveSlipConstraint> aveSlipConstraints,
 			Map<String, List<Integer>> namedFaultsMap,
-			SlipEnabledSolution sol) {
-		SlipEnabledRupSet rupSet = sol.getRupSet();
+			U3SlipEnabledSolution sol) {
+		U3SlipEnabledRupSet rupSet = sol.getRupSet();
 		
 		// create new list since we might modify it
 		paleoRateConstraint = Lists.newArrayList(paleoRateConstraint);
@@ -660,7 +660,7 @@ public class PaleoFitPlotter {
 				double[] myXvals = xvals[s];
 				double[] array = arrayVals[s];
 				
-				double mean = FaultSystemSolutionFetcher.calcScaledAverage(array, weights);
+				double mean = U3FaultSystemSolutionFetcher.calcScaledAverage(array, weights);
 				if (Double.isInfinite(mean))
 					System.out.println("INFINITE! array=["+Joiner.on(",").join(Doubles.asList(array))
 							+"], weights=["+Joiner.on(",").join(Doubles.asList(weights)));

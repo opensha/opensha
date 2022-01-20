@@ -25,26 +25,26 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-public class FileBasedFSSIterator extends FaultSystemSolutionFetcher {
+public class U3FileBasedFSSIterator extends U3FaultSystemSolutionFetcher {
 	
 	public static final String TAG_BUILD_MEAN = "BUILD_MEAN";
 	
 	private Map<U3LogicTreeBranch, File[]> filesMap;
 	
-	public FileBasedFSSIterator(Map<U3LogicTreeBranch, File[]> filesMap) {
+	public U3FileBasedFSSIterator(Map<U3LogicTreeBranch, File[]> filesMap) {
 		this.filesMap = filesMap;
 	}
 	
-	public static FileBasedFSSIterator forDirectory(File dir) {
+	public static U3FileBasedFSSIterator forDirectory(File dir) {
 		return forDirectory(dir, Integer.MAX_VALUE);
 	}
 	
-	public static FileBasedFSSIterator forDirectory(File dir, int maxDepth) {
+	public static U3FileBasedFSSIterator forDirectory(File dir, int maxDepth) {
 		return forDirectory(dir, Integer.MAX_VALUE, null);
 	}
 	
-	public static FileBasedFSSIterator forDirectory(File dir, int maxDepth, List<String> nameGreps) {
-		return new FileBasedFSSIterator(solFilesForDirectory(dir, maxDepth, nameGreps));
+	public static U3FileBasedFSSIterator forDirectory(File dir, int maxDepth, List<String> nameGreps) {
+		return new U3FileBasedFSSIterator(solFilesForDirectory(dir, maxDepth, nameGreps));
 	}
 	
 	private static Map<U3LogicTreeBranch, File[]> solFilesForDirectory(
@@ -170,7 +170,7 @@ public class FileBasedFSSIterator extends FaultSystemSolutionFetcher {
 						throw new RuntimeException("Wrong file type for solution: "+files[i].getName());
 					ratesList.add(rates);
 				}
-				sol = new AverageFaultSystemSolution(sol.getRupSet(), ratesList,
+				sol = new U3AverageFaultSystemSolution(sol.getRupSet(), ratesList,
 						sol.getInversionConfiguration(), sol.getMisfits());
 				sol.setInfoString(sol.getInfoString());
 				System.out.println("Built mean with "+ratesList.size()+" sols");

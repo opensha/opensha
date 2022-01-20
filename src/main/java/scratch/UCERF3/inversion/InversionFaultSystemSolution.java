@@ -36,7 +36,7 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import scratch.UCERF3.U3FaultSystemRupSet;
 import scratch.UCERF3.U3FaultSystemSolution;
-import scratch.UCERF3.SlipEnabledSolution;
+import scratch.UCERF3.U3SlipEnabledSolution;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
@@ -67,7 +67,7 @@ import com.google.common.collect.Maps;
  * @author kevin
  *
  */
-public class InversionFaultSystemSolution extends SlipEnabledSolution {
+public class InversionFaultSystemSolution extends U3SlipEnabledSolution {
 	
 	private InversionFaultSystemRupSet rupSet;
 	

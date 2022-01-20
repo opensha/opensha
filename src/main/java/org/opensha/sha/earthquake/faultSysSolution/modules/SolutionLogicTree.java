@@ -45,8 +45,8 @@ import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolutionFetcher;
+import scratch.UCERF3.U3AverageFaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemSolutionFetcher;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
@@ -138,7 +138,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	
 	public static class UCERF3 extends AbstractExternalFetcher {
 
-		private FaultSystemSolutionFetcher oldFetcher;
+		private U3FaultSystemSolutionFetcher oldFetcher;
 
 		private UCERF3() {
 			super(new UCERF3_SolutionProcessor(), null);
@@ -148,7 +148,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			super(new UCERF3_SolutionProcessor(), logicTree);
 		}
 		
-		public UCERF3(FaultSystemSolutionFetcher oldFetcher) {
+		public UCERF3(U3FaultSystemSolutionFetcher oldFetcher) {
 			super(new UCERF3_SolutionProcessor(),
 					LogicTree.fromExisting(U3LogicTreeBranch.getLogicTreeLevels(), oldFetcher.getBranches()));
 			this.oldFetcher = oldFetcher;
