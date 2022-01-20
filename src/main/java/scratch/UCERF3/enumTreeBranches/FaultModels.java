@@ -23,6 +23,9 @@ import org.opensha.refFaultParamDb.dao.db.PrefFaultSectionDataDB_DAO;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -38,12 +41,12 @@ import scratch.UCERF3.utils.UCERF3_DataUtils;
 @Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum FaultModels implements U3LogicTreeBranchNode<FaultModels> {
+public enum FaultModels implements U3LogicTreeBranchNode<FaultModels>, RupSetFaultModel {
 
 	FM2_1(	"Fault Model 2.1",	41,		0d),
 	FM3_1(	"Fault Model 3.1",	101,	0.5d),
 	FM3_2(	"Fault Model 3.2",	102,	0.5d);
-	
+
 	public static final String XML_ELEMENT_NAME = "FaultModel";
 	public static final String FAULT_MODEL_STORE_PROPERTY_NAME = "FaultModelStore";
 	private static final String FAULT_MODEL_STORE_DIR_NAME = "FaultModels";
@@ -119,16 +122,17 @@ public enum FaultModels implements U3LogicTreeBranchNode<FaultModels> {
 		return U3FaultSystemIO.fsDataFromXML(root.element("FaultModel"));
 	}
 	
-	public Map<Integer, FaultSection> fetchFaultSectionsMap() {
+	public Map<Integer, FaultSection> getFaultSectionIDMap() {
 		Map<Integer, FaultSection> map = Maps.newHashMap();
 		
-		for (FaultSection sect : fetchFaultSections())
+		for (FaultSection sect : getFaultSections())
 			map.put(sect.getSectionId(), sect);
 		
 		return map;
 	}
 	
-	public ArrayList<FaultSection> fetchFaultSections() {
+	@Override
+	public List<FaultSection> getFaultSections() {
 		return fetchFaultSections(false);
 	}
 	
@@ -314,6 +318,16 @@ public enum FaultModels implements U3LogicTreeBranchNode<FaultModels> {
 	@Override
 	public String getShortBranchLevelName() {
 		return "FM";
+	}
+
+	@Override
+	public RupSetDeformationModel getDefaultDeformationModel() {
+		return getFilterBasis();
+	}
+	
+	@Override
+	public NamedFaults getNamedFaults(FaultSystemRupSet rupSet) {
+		return new NamedFaults(rupSet, getNamedFaultsMapAlt());
 	}
 	
 }

@@ -368,7 +368,7 @@ public abstract class ClusterConnectionStrategy implements Named {
 		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, dm,
 				null, 0.1);
 		
-		List<FaultSection> parentSects = fm.fetchFaultSections();
+		List<FaultSection> parentSects = fm.getFaultSections();
 		List<? extends FaultSection> subSects = dmFetch.getSubSectionList();
 		
 		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(subSects);

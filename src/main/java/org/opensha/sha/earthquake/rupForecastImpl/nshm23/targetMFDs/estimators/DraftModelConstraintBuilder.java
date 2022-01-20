@@ -167,6 +167,8 @@ public class DraftModelConstraintBuilder {
 		return this;
 	}
 	
+	// TODO better detect parkfield rups
+	
 	private static UncertainDataConstraint parkfieldRate = 
 		new UncertainDataConstraint("Parkfield", 1d/25d, new Uncertainty(0.1d/25d));
 	

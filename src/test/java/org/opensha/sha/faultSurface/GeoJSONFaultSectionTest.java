@@ -38,7 +38,7 @@ public class GeoJSONFaultSectionTest {
 		builder.setPrettyPrinting();
 		gson = builder.create();
 		
-		faultModel = FaultModels.FM3_1.fetchFaultSections();
+		faultModel = FaultModels.FM3_1.getFaultSections();
 		LastEventData.populateSubSects(faultModel, LastEventData.load());
 	}
 	

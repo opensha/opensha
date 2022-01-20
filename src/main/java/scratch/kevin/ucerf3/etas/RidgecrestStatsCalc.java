@@ -762,7 +762,7 @@ public class RidgecrestStatsCalc {
 		FaultSystemSolution fss = initialConfig.loadFSS();
 		ETAS_Config sevenDayConfig = ETAS_Config.readJSON(
 				new File(gitDir, "2019_09_12-ComCatM7p1_ci38457511_7DaysAfter_ShakeMapSurfaces/config.json"));
-		List<? extends FaultSection> sects = FaultModels.FM3_1.fetchFaultSections();
+		List<? extends FaultSection> sects = FaultModels.FM3_1.getFaultSections();
 		for (int i=0; i<sects.size(); i++) {
 			FaultSection sect = sects.get(i);
 			// hack needed to make it work with parent sections

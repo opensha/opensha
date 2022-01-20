@@ -7067,7 +7067,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				Map<Integer, int[]> sectsByParents = sectsByParentsMap.get(fm);
 
 				Map<Integer, FaultSection> parentSectsMap = fm
-						.fetchFaultSectionsMap();
+						.getFaultSectionIDMap();
 
 				for (Integer parentID : ratesList.get(0).keySet()) {
 					if (!parentSectsMap.containsKey(parentID))

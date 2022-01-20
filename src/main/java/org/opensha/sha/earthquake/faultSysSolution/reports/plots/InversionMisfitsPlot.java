@@ -292,7 +292,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 		if (max <= min)
 			max = 1d;
 		double span = max - min;
-		Preconditions.checkState(span > 0d);
+		Preconditions.checkState(span > 0d, "Bad span=%s for min=%s, max=%s", span, min, max);
 		double histDelta = Math.max(1e-6, Math.pow(10, Math.floor(Math.log10(span))-1)/2);
 		if ((float)max < (float)(min+histDelta))
 			max = min+histDelta*1.1;

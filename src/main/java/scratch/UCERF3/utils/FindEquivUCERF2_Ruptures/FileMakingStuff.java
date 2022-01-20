@@ -12,6 +12,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Hashtable;
+import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.opensha.commons.util.ExceptionUtils;
@@ -174,8 +175,8 @@ class FileMakingStuff {
 		File dataFile = new File("dev/scratch/UCERF3/utils/FindEquivUCERF2_Ruptures/scratchFiles/AllFM3_sectNames.txt");
 		ArrayList<String> names = new ArrayList<String>();
 		
-		ArrayList<FaultSection> faultMod3_1_sects =  FaultModels.FM3_1.fetchFaultSections();
-		ArrayList<FaultSection> faultMod3_2_sects =  FaultModels.FM3_2.fetchFaultSections();
+		List<FaultSection> faultMod3_1_sects =  FaultModels.FM3_1.getFaultSections();
+		List<FaultSection> faultMod3_2_sects =  FaultModels.FM3_2.getFaultSections();
 		
 		for(FaultSection data: faultMod3_1_sects)
 			if(!names.contains(data.getSectionName()))

@@ -3050,7 +3050,7 @@ public class FaultSysSolutionERF_Calc {
 					subSectsForParent.add(sect);
 				}
 				
-				List<? extends FaultSection> parentSects = fm.fetchFaultSections();
+				List<? extends FaultSection> parentSects = fm.getFaultSections();
 				Collections.sort(parentSects, new NamedComparator());
 				for (int i = 0; i < parentSects.size(); i++) {
 					FaultSection sect = parentSects.get(i);

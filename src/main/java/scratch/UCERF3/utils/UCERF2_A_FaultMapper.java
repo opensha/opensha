@@ -63,7 +63,7 @@ public class UCERF2_A_FaultMapper {
 		List<String> segLines = FileUtils.readLines(segFile);
 		
 		for (FaultModels fm : FaultModels.values()) {
-			Map<Integer, FaultSection> sects = fm.fetchFaultSectionsMap();
+			Map<Integer, FaultSection> sects = fm.getFaultSectionIDMap();
 			
 			Map<String, Integer> sectsByName = Maps.newHashMap();
 			for (FaultSection sect : sects.values())

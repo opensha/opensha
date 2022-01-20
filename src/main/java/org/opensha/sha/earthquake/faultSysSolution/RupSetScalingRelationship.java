@@ -3,6 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution;
 import org.opensha.commons.calc.magScalingRelations.MagAreaRelationship;
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.data.Named;
+import org.opensha.commons.logicTree.LogicTreeNode;
 
 /**
  * Interface for the scaling relationships needed to construct a {@link FaultSystemRupSet}. Implementations will likely
@@ -11,7 +12,7 @@ import org.opensha.commons.data.Named;
  * @author kevin
  *
  */
-public interface RupSetScalingRelationship extends Named {
+public interface RupSetScalingRelationship extends LogicTreeNode {
 
 	/**
 	 * This returns the slip (m) for the given rupture area (m-sq) or rupture length (m)
