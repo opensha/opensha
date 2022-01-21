@@ -6,13 +6,12 @@ import java.util.List;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel.SolSlipRatesCache;
-import org.opensha.sha.gui.infoTools.CalcProgressBar;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 
-public abstract class SlipEnabledSolution extends U3FaultSystemSolution {
+public abstract class U3SlipEnabledSolution extends U3FaultSystemSolution {
 	
 	private HashMap<Integer, ArbDiscrEmpiricalDistFunc> slipPDFMap =
 			new HashMap<Integer, ArbDiscrEmpiricalDistFunc>();
@@ -20,15 +19,15 @@ public abstract class SlipEnabledSolution extends U3FaultSystemSolution {
 	private HashMap<Integer, ArbDiscrEmpiricalDistFunc> slipPaleoObsPDFMap =
 			new HashMap<Integer, ArbDiscrEmpiricalDistFunc>();
 	
-	protected SlipEnabledSolution() {
+	protected U3SlipEnabledSolution() {
 		super();
 	}
 	
-	public SlipEnabledSolution(SlipEnabledRupSet rupSet, double[] rates) {
+	public U3SlipEnabledSolution(U3SlipEnabledRupSet rupSet, double[] rates) {
 		super(rupSet, rates);
 	}
 	
-	public SlipEnabledSolution(SlipEnabledRupSet rupSet, double[] rates,
+	public U3SlipEnabledSolution(U3SlipEnabledRupSet rupSet, double[] rates,
 			List<? extends IncrementalMagFreqDist> subSeismoOnFaultMFDs) {
 		super(rupSet, rates, subSeismoOnFaultMFDs);
 	}
@@ -36,7 +35,7 @@ public abstract class SlipEnabledSolution extends U3FaultSystemSolution {
 	@Override
 	public void clearCache() {
 		super.clearCache();
-		rupSet.removeModuleInstances(SolSlipRatesCache.class);
+		rupSet.removeModuleInstances(SolutionSlipRates.class);
 		slipPDFMap.clear();
 		slipPaleoObsPDFMap.clear();
 	}
@@ -61,7 +60,7 @@ public abstract class SlipEnabledSolution extends U3FaultSystemSolution {
 				this, rupSet.requireModule(AveSlipModule.class));
 	}
 	
-	public abstract SlipEnabledRupSet getRupSet();
+	public abstract U3SlipEnabledRupSet getRupSet();
 	
 	/**
 	 * This creates an empirical PDF (ArbDiscrEmpiricalDistFunc) of slips for the 

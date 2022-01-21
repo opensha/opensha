@@ -68,9 +68,9 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
-import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.SlipEnabledRupSet;
-import scratch.UCERF3.SlipEnabledSolution;
+import scratch.UCERF3.U3AverageFaultSystemSolution;
+import scratch.UCERF3.U3SlipEnabledRupSet;
+import scratch.UCERF3.U3SlipEnabledSolution;
 import scratch.UCERF3.analysis.CompoundFSSPlots;
 import scratch.UCERF3.analysis.FaultSpecificSegmentationPlotGen;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
@@ -1092,10 +1092,10 @@ public class CommandLineInversionRunner {
 		return new File(dir, getSAFSegPrefix(prefix, 7.5, false)+".png").exists();
 	}
 
-	public static ArrayList<ParentMomentRecord> getSectionMoments(SlipEnabledSolution sol) {
+	public static ArrayList<ParentMomentRecord> getSectionMoments(U3SlipEnabledSolution sol) {
 		HashMap<Integer, ParentMomentRecord> map = Maps.newHashMap();
 		
-		SlipEnabledRupSet rupSet = sol.getRupSet();
+		U3SlipEnabledRupSet rupSet = sol.getRupSet();
 
 		for (int sectIndex=0; sectIndex<rupSet.getNumSections(); sectIndex++) {
 			FaultSection sect = rupSet.getFaultSectionData(sectIndex);
@@ -1186,7 +1186,7 @@ public class CommandLineInversionRunner {
 		CSVFile<String> meanIncrParticCSV = null;
 		CSVFile<String> meanCmlParticCSV = null;
 		
-		boolean isAVG = sol instanceof AverageFaultSystemSolution;
+		boolean isAVG = sol instanceof U3AverageFaultSystemSolution;
 
 		for (int parentSectionID : parentSects.keySet()) {
 			String parentSectName = parentSects.get(parentSectionID);
@@ -1209,7 +1209,7 @@ public class CommandLineInversionRunner {
 			
 			if (isAVG) {
 				// average fault system solution stuff (Std Dev, SDOM, Min/Max)
-				AverageFaultSystemSolution avgSol = (AverageFaultSystemSolution)sol;
+				U3AverageFaultSystemSolution avgSol = (U3AverageFaultSystemSolution)sol;
 				double[] sdom_over_means = calcAveSolMFDs(avgSol, true, false, true, partMFDs, parentSectionID, minMag, maxMag, numMag);
 				calcAveSolMFDs(avgSol, false, false, false, nuclMFDs, parentSectionID, minMag, maxMag, numMag);
 				double[] std_dev_over_means = calcAveSolMFDs(avgSol, true, true, false, partCmlMFDs, parentSectionID, minMag, maxMag, numMag);
@@ -1409,7 +1409,7 @@ public class CommandLineInversionRunner {
 	 * @param numMag
 	 * @returnist of SDOM/mean values for each mag bin.
 	 */
-	private static double[] calcAveSolMFDs(AverageFaultSystemSolution avgSol, boolean participation,
+	private static double[] calcAveSolMFDs(U3AverageFaultSystemSolution avgSol, boolean participation,
 			boolean cumulative, boolean ret_sdom,
 			List<EvenlyDiscretizedFunc> mfds, int parentSectionID, double minMag, double maxMag, int numMag) {
 		EvenlyDiscretizedFunc meanMFD = mfds.get(0);
@@ -1684,7 +1684,7 @@ public class CommandLineInversionRunner {
 	public static void writePaleoFaultPlots(
 			List<U3PaleoRateConstraint> paleoRateConstraints,
 			List<U3AveSlipConstraint> aveSlipConstraints,
-			Map<String, List<Integer>> namedFaultsMap, SlipEnabledSolution sol, File dir)
+			Map<String, List<Integer>> namedFaultsMap, U3SlipEnabledSolution sol, File dir)
 					throws IOException {
 		Map<String, PlotSpec[]> specs = PaleoFitPlotter.getFaultSpecificPaleoPlotSpec(
 				paleoRateConstraints, aveSlipConstraints, namedFaultsMap, sol);

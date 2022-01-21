@@ -355,7 +355,16 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				double supraMoRate, subMoRate, fractSupra;
 				
 				// actual method for determining the MFDs depends on our sub-seismogenic moment rate reduction method
-				if (subSeisMoRateReduction == SubSeisMoRateReduction.FROM_INPUT_SLIP_RATES) {
+				if (targetMoRate == 0d) {
+					supraMoRate = 0d;
+					subMoRate = 0d;
+					fractSupra = 1d;
+					supraSeisMFD = new IncrementalMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
+					subSeisMFD = new IncrementalMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
+					
+					slipRates[s] = creepReducedSlipRate;
+					slipRateStdDevs[s] = creepReducedSlipRateStdDev;
+				} else if (subSeisMoRateReduction == SubSeisMoRateReduction.FROM_INPUT_SLIP_RATES) {
 					// this one just uses the input target slip rates asd the supra-seismogenic
 					// anything leftover from the fault section's slip rate is given to sub-seismogenic
 					SectSlipRates inputSlipRates = rupSet.requireModule(SectSlipRates.class);
@@ -534,16 +543,28 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				for (int s=0; s<numSects; s++) {
 					EvenlyDiscretizedFunc defModStdDevs = null;
 					if (slipRateStdDevs[s]  > 0d) {
-						IncrementalMagFreqDist supraSeisMFD = sectSupraSeisMFDs.get(s);
-						
-						double relDefModStdDev = slipRateStdDevs[s]/slipRates[s];
-						
-						// use the slip rate standard deviation. this simple treatment is confirmed to be the exact same as if
-						// we were to construct new GR distributions plus and minus one standard deviation and then calculate
-						// a standard deviation from those bounds
-						defModStdDevs = new EvenlyDiscretizedFunc(MIN_MAG, NUM_MAG, DELTA_MAG);
-						for (int i=0; i<supraSeisMFD.size(); i++)
-							defModStdDevs.set(i, supraSeisMFD.getY(i)*relDefModStdDev);
+						if (slipRates[s] > 0d) {
+							// simple case for nonzero slip rates
+							IncrementalMagFreqDist supraSeisMFD = sectSupraSeisMFDs.get(s);
+							
+							double relDefModStdDev = slipRateStdDevs[s]/slipRates[s];
+							
+							// use the slip rate standard deviation. this simple treatment is confirmed to be the exact same as if
+							// we were to construct new GR distributions plus and minus one standard deviation and then calculate
+							// a standard deviation from those bounds
+							defModStdDevs = new EvenlyDiscretizedFunc(MIN_MAG, NUM_MAG, DELTA_MAG);
+							for (int i=0; i<supraSeisMFD.size(); i++)
+								defModStdDevs.set(i, supraSeisMFD.getY(i)*relDefModStdDev);
+						} else {
+							// slip rate is zero, more complicated, calculate a GR at + 1 sigma and set that as
+							// the standard deviation. can just do the supra-seismogenic portion
+							double area = rupSet.getAreaForSection(s); // m
+							
+							// convert it to a moment rate
+							double targetMoRate = FaultMomentCalc.getMoment(area, slipRateStdDevs[s]);
+							defModStdDevs = SparseGutenbergRichterSolver.getEquivGR(refMFD, sectMags.get(s),
+									targetMoRate, supraSeisBValue);
+						}
 					}
 					defModMFDStdDevs.add(defModStdDevs);
 				}

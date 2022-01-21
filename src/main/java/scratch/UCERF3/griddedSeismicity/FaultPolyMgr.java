@@ -183,7 +183,7 @@ public class FaultPolyMgr implements Iterable<Area>, PolygonFaultGridAssociation
 		FaultPolyMgr mgr = new FaultPolyMgr();
 		if (log) System.out.println("Building poly mgr...");
 		if (log) System.out.println("   getting faults from model");
-		List<FaultSection> faults = fm.fetchFaultSections();
+		List<FaultSection> faults = fm.getFaultSections();
 		if (log) System.out.println("   subsection polygons");
 		mgr.region = region;
 		mgr.polys = SectionPolygons.create(faults, buf, len);

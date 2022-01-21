@@ -33,10 +33,10 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.CompoundFaultSystemSolution;
+import scratch.UCERF3.U3AverageFaultSystemSolution;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
 import scratch.UCERF3.U3FaultSystemRupSet;
-import scratch.UCERF3.FileBasedFSSIterator;
+import scratch.UCERF3.U3FileBasedFSSIterator;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -219,7 +219,7 @@ public class BatchPlotGen {
 			boolean buildMean = false;
 			String grepsStr = "";
 			for (String nameGrep : nameGreps) {
-				if (nameGrep.equals(FileBasedFSSIterator.TAG_BUILD_MEAN))
+				if (nameGrep.equals(U3FileBasedFSSIterator.TAG_BUILD_MEAN))
 					buildMean = true;
 				else {
 					grepsStr += "_"+nameGrep;
@@ -239,9 +239,9 @@ public class BatchPlotGen {
 		if (compoundFile.exists()) {
 			System.out.println("Compound solution already exists: "+compoundFile.getName());
 		} else {
-			FileBasedFSSIterator it = FileBasedFSSIterator.forDirectory(dir, 1, nameGreps);
+			U3FileBasedFSSIterator it = U3FileBasedFSSIterator.forDirectory(dir, 1, nameGreps);
 			if (it.getBranches().size() > 1)
-				CompoundFaultSystemSolution.toZipFile(compoundFile, it);
+				U3CompoundFaultSystemSolution.toZipFile(compoundFile, it);
 			else
 				System.out.println("Skipping compound solution, only 1 unique branch!");
 		}
@@ -348,7 +348,7 @@ public class BatchPlotGen {
 				}
 				// this is an average of many runs
 				InversionFaultSystemRupSet rupSet = U3FaultSystemIO.loadInvRupSet(file);
-				AverageFaultSystemSolution avgSol = AverageFaultSystemSolution.fromDirectory(rupSet, myDir, prefix);
+				U3AverageFaultSystemSolution avgSol = U3AverageFaultSystemSolution.fromDirectory(rupSet, myDir, prefix);
 				if (!doAvgPlotsExist(meanSolDir, meanPrefix))
 					try {
 						writeAvgSolPlots(avgSol, meanSolDir, meanPrefix);
@@ -535,7 +535,7 @@ public class BatchPlotGen {
 		return new File(dir, prefix+"_partic_rates_8.0+.png").exists() || new File(dir, prefix+"_rate_dist.png").exists();
 	}
 	
-	public static void writeAvgSolPlots(AverageFaultSystemSolution avgSol, File dir, String prefix) throws GMT_MapException, RuntimeException, IOException, InterruptedException {
+	public static void writeAvgSolPlots(U3AverageFaultSystemSolution avgSol, File dir, String prefix) throws GMT_MapException, RuntimeException, IOException, InterruptedException {
 		CommandLineInversionRunner.writeParentSectionMFDPlots(avgSol, new File(dir, "parent_sect_mfds"));
 //		CommandLineInversionRunner.writePaleoCorrelationPlots(
 //				avgSol, new File(dir, "paleo_correlation"), UCERF3_PaleoProbabilityModel.load());

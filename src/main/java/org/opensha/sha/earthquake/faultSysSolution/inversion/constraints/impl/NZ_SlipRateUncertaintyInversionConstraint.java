@@ -11,7 +11,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.SlipEnabledRupSet;
+import scratch.UCERF3.U3SlipEnabledRupSet;
 //import scratch.UCERF3.inversion.UCERF3InversionConfiguration.SlipRateConstraintWeightingType;
 import org.opensha.commons.data.CSVFile;
 
@@ -55,7 +55,7 @@ public class NZ_SlipRateUncertaintyInversionConstraint extends InversionConstrai
 	 * @param targetSlipRateStdDevs from deformation model
 	 */
 	public NZ_SlipRateUncertaintyInversionConstraint(int weight, int weightScalingOrderOfMagnitude,
-			SlipEnabledRupSet rupSet, double[] targetSlipRates, double[] targetSlipRateStdDevs) {
+			U3SlipEnabledRupSet rupSet, double[] targetSlipRates, double[] targetSlipRateStdDevs) {
 		super(NAME, SHORT_NAME, weight, false, null); // unclear what the actual weighting typ is of this constraint
 		this.rupSet = rupSet;
 		this.targetSlipRates = targetSlipRates;

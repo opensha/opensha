@@ -22,7 +22,6 @@ import javax.annotation.Nullable;
 import org.apache.commons.math3.stat.StatUtils;
 import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
-import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
@@ -42,12 +41,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.BuildInfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
-import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
-import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
-import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
-import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
-import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectAreas;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
@@ -67,18 +61,9 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 
-import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
-import scratch.UCERF3.enumTreeBranches.DeformationModels;
-import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.enumTreeBranches.InversionModels;
-import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
-import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
-import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
-import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
-import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
@@ -1467,150 +1452,10 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			return this;
 		}
 		
-		public Builder forU3Branch(U3LogicTreeBranch branch) {
-			FaultModels fm = branch.getValue(FaultModels.class);
-			DeformationModels dm = branch.getValue(DeformationModels.class);
-			if (fm != null && dm != null) {
-				// override slip rates to the correct deformation model
-				replaceFaultSections(RuptureSets.getU3SubSects(fm, dm));
-			} else if (dm != null && fm == null) {
-				System.err.println("WARNING: can't override deformation model in rupture set because fault model is null");
-			}
-			
-			// build magnitudes from the scaling relationship and add ave slip module
-			forScalingRelationship(branch.getValue(ScalingRelationships.class));
-			return u3BranchModules(branch);
-		}
-		
 		public Builder replaceFaultSections(List<? extends FaultSection> newSects) {
 			Preconditions.checkState(newSects.size() == faultSectionData.size());
 			this.faultSectionData = newSects;
 			this.rupAreas = null;
-			return this;
-		}
-		
-		public Builder u3BranchModules(U3LogicTreeBranch branch) {
-			// set logic tree branch
-			addModule(branch);
-			// add slip along rupture model information
-			slipAlongRupture(branch.getValue(SlipAlongRuptureModels.class));
-			// add modified section minimum magnitudes
-			FaultModels fm = branch.getValue(FaultModels.class);
-			if (fm == FaultModels.FM2_1 || fm == FaultModels.FM3_1 || fm == FaultModels.FM3_2) {
-				// include the parkfield hack for modified section min mags
-				addModule(new ModuleBuilder() {
-					
-					@Override
-					public OpenSHA_Module build(FaultSystemRupSet rupSet) {
-						return ModSectMinMags.instance(rupSet, FaultSystemRupSetCalc.computeMinSeismoMagForSections(
-								rupSet, InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS));
-					}
-
-					@Override
-					public Class<? extends OpenSHA_Module> getType() {
-						return ModSectMinMags.class;
-					}
-				});
-				addModule(new ModuleBuilder() {
-					
-					@Override
-					public Class<? extends OpenSHA_Module> getType() {
-						return RegionsOfInterest.class;
-					}
-					
-					@Override
-					public OpenSHA_Module build(FaultSystemRupSet rupSet) {
-						return new RegionsOfInterest(
-								new CaliforniaRegions.RELM_NOCAL(),
-								new CaliforniaRegions.RELM_SOCAL(),
-								new CaliforniaRegions.SF_BOX(),
-								new CaliforniaRegions.LA_BOX());
-					}
-				});
-			} else {
-				// regular system-wide minimum magnitudes
-				modSectMinMagsAbove(InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS, true);
-			}
-			addModule(new ModuleBuilder() {
-				
-				@Override
-				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
-					if (fm == FaultModels.FM3_1 || fm == FaultModels.FM3_2) {
-						try {
-							return FaultPolyMgr.loadSerializedUCERF3(fm);
-						} catch (IOException e) {
-							throw ExceptionUtils.asRuntimeException(e);
-						}
-					}
-					return FaultPolyMgr.create(rupSet.getFaultSectionDataList(), U3InversionTargetMFDs.FAULT_BUFFER);
-				}
-
-				@Override
-				public Class<? extends OpenSHA_Module> getType() {
-					return PolygonFaultGridAssociations.class;
-				}
-			});
-			// add inversion target MFDs
-			addModule(new ModuleBuilder() {
-				
-				@Override
-				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
-					return new U3InversionTargetMFDs(rupSet, branch, rupSet.requireModule(ModSectMinMags.class),
-							rupSet.requireModule(PolygonFaultGridAssociations.class));
-				}
-
-				@Override
-				public Class<? extends OpenSHA_Module> getType() {
-					return U3InversionTargetMFDs.class;
-				}
-			});
-			// add target slip rates (modified for sub-seismogenic ruptures)
-			addModule(new ModuleBuilder() {
-				
-				@Override
-				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
-					InversionTargetMFDs invMFDs = rupSet.requireModule(InversionTargetMFDs.class);
-					return InversionFaultSystemRupSet.computeTargetSlipRates(rupSet,
-							branch.getValue(InversionModels.class), branch.getValue(MomentRateFixes.class), invMFDs);
-				}
-
-				@Override
-				public Class<? extends OpenSHA_Module> getType() {
-					return SectSlipRates.class;
-				}
-			});
-			// add named fault mappings
-			if (fm != null) {
-				addModule(new ModuleBuilder() {
-					
-					@Override
-					public Class<? extends OpenSHA_Module> getType() {
-						return NamedFaults.class;
-					}
-					
-					@Override
-					public OpenSHA_Module build(FaultSystemRupSet rupSet) {
-						return new NamedFaults(rupSet, fm.getNamedFaultsMapAlt());
-					}
-				});
-			}
-			// add paleoseismic data
-			addModule(new ModuleBuilder() {
-				
-				@Override
-				public Class<? extends OpenSHA_Module> getType() {
-					return PaleoseismicConstraintData.class;
-				}
-				
-				@Override
-				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
-					try {
-						return PaleoseismicConstraintData.loadUCERF3(rupSet);
-					} catch (IOException e) {
-						throw ExceptionUtils.asRuntimeException(e);
-					}
-				}
-			});
 			return this;
 		}
 		

@@ -25,6 +25,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.commons.gui.plot.GraphWindow;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
@@ -202,31 +203,36 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 	
 	MEAN_UCERF3("Mean UCERF3 Scaling Relationship", "MeanU3Scale") {
 		
-		private List<Double> meanWeights;
-		private List<ScalingRelationships> scales;
+		private ScalingRelationships[] scales;
+		private double[] weights;
 		
-		private List<Double> getNormalizedMeanWeights() {
-			if (meanWeights == null) {
+		private void checkInit() {
+			if (weights == null) {
 				synchronized (this) {
-					List<Double> weights = Lists.newArrayList();
-					List<ScalingRelationships> scales = Lists.newArrayList();
-					double sum = 0;
-					for (ScalingRelationships s : ScalingRelationships.values()) {
-						double weight = s.getRelativeWeight(null);
-						if (weight > 0) {
-							weights.add(weight);
+					if (weights == null) {
+						ScalingRelationships[] scales = {
+							SHAW_2009_MOD,
+							HANKS_BAKUN_08,
+							ELLSWORTH_B,
+							ELLB_SQRT_LENGTH,
+							SHAW_CONST_STRESS_DROP
+						};
+						double[] weights = new double[scales.length];
+						double sum = 0d;
+						for (int i=0; i<scales.length; i++) {
+							double weight = scales[i].getRelativeWeight(null);
+							Preconditions.checkState(weight > 0d);
+							weights[i] = weight;
 							sum += weight;
-							scales.add(s);
 						}
+						if (sum != 1d)
+							for (int i=0; i<weights.length; i++)
+								weights[i] /= sum;
+						this.scales = scales;
+						this.weights = weights;
 					}
-					if (sum != 0)
-						for (int i=0; i<weights.size(); i++)
-							weights.set(i, weights.get(i)/sum);
-					meanWeights = weights;
-					this.scales = scales;
 				}
 			}
-			return meanWeights;
 		}
 		
 		@Override
@@ -236,31 +242,31 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 
 		@Override
 		public double getAveSlip(double area, double length, double origWidth, double aveRake) {
-			List<Double> weights = getNormalizedMeanWeights();
+			checkInit();
 			double slip = 0;
-			for (int i=0; i<weights.size(); i++) {
-				slip += weights.get(i)*scales.get(i).getAveSlip(area, length, origWidth, aveRake);
+			for (int i=0; i<weights.length; i++) {
+				slip += weights[i]*scales[i].getAveSlip(area, length, origWidth, aveRake);
 			}
 			return slip;
 		}
 
 		@Override
 		public double getMag(double area, double origWidth, double aveRake) {
-			List<Double> weights = getNormalizedMeanWeights();
-			double map = 0;
-			for (int i=0; i<weights.size(); i++) {
-				map += weights.get(i)*scales.get(i).getMag(area, origWidth, aveRake);
+			checkInit();
+			double mag = 0;
+			for (int i=0; i<weights.length; i++) {
+				mag += weights[i]*scales[i].getMag(area, origWidth, aveRake);
 			}
-			return map;
+			return mag;
 		}
 		
 		public double getArea(double mag, double origWidth) {
-			List<Double> weights = getNormalizedMeanWeights();
-			double map = 0;
-			for (int i=0; i<weights.size(); i++) {
-				map += weights.get(i)*scales.get(i).getArea(mag, origWidth);
+			checkInit();
+			double area = 0;
+			for (int i=0; i<weights.length; i++) {
+				area += weights[i]*scales[i].getArea(mag, origWidth);
 			}
-			return map;
+			return area;
 		}
 
 	},

@@ -171,7 +171,9 @@ public class GeoJSONFaultReader {
 			double highRate = props.getDouble("HighRate", Double.NaN);
 			String treatment = props.get("Treat", null);
 			String rateType = props.get("RateType", null);
-			double stdDev = props.getDouble("Stdev", Double.NaN);
+			double stdDev = props.getDouble("StdMinus", Double.NaN);
+			if (Double.isNaN(stdDev))
+				stdDev = props.getDouble("Stdev", Double.NaN);
 			
 			processed.add(id);
 			GeoJSONFaultSection sect = idMapped.get(id);
@@ -205,7 +207,15 @@ public class GeoJSONFaultReader {
 			else
 				sect.setProperty("RateType", rateType);
 			
-			if (!Double.isFinite(stdDev)) {
+			if (Double.isFinite(stdDev)) {
+				if (stdDev == 0d) {
+					Preconditions.checkState(prefRate == 0d,
+							"Slip rate is nonzero but standard deviation is zero for %s", sect.getName());
+					System.err.println("WARNING: setting fake slip rate standard deviation of 0.01 mm/yr for "
+							+sect.getName()+" that has a zero slip rate and zero slip rate standard deviation.");
+					stdDev = 0.01d;
+				}
+			} else {
 				numInferred++;
 				// infer std dev from bounds
 				// assume bounds are +/- 2 sigma (95% CI), and thus std dev is (high-low)/4
@@ -506,8 +516,8 @@ public class GeoJSONFaultReader {
 		// add slip rates
 		Map<Integer, List<GeoDBSlipRateRecord>> slipRates = GeoJSONFaultReader.readGeoDB(geoDBReader);
 		List<FaultSection> fallbacks = new ArrayList<>();
-		fallbacks.addAll(FaultModels.FM3_1.fetchFaultSections());
-		fallbacks.addAll(FaultModels.FM3_2.fetchFaultSections());
+		fallbacks.addAll(FaultModels.FM3_1.getFaultSections());
+		fallbacks.addAll(FaultModels.FM3_2.getFaultSections());
 		GeoJSONFaultReader.testMapSlipRates(sects, slipRates, 1d, fallbacks);
 		return buildSubSects(sects);
 	}

@@ -93,7 +93,7 @@ class SubSectionBuilder {
 				String fmStr = cmd.getOptionValue("fault-model");
 				FaultModels fm = FaultModels.valueOf(fmStr);
 				Preconditions.checkNotNull(fm, "Unknown fault model: %s", fmStr);
-				sects = fm.fetchFaultSections();
+				sects = fm.getFaultSections();
 			}
 			System.out.println("Loaded "+sects.size()+" fault sections.");
 			Preconditions.checkState(!sects.isEmpty(), "Loaded fault sections are empty");

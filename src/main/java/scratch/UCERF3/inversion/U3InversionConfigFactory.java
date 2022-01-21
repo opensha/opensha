@@ -9,9 +9,12 @@ import java.util.concurrent.Callable;
 
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration.Builder;
@@ -26,19 +29,37 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
+import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
+import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
+import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
+import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
+import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
+import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
-import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 
@@ -50,36 +71,60 @@ import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
  */
 public class U3InversionConfigFactory implements InversionConfigurationFactory {
 	
-	protected FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
+	protected FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) throws IOException {
 		return new RuptureSets.U3RupSetConfig(branch.requireValue(FaultModels.class),
 					branch.requireValue(ScalingRelationships.class)).build(threads);
 	}
 
 	@Override
-	public FaultSystemRupSet buildRuptureSet(LogicTreeBranch<?> branch, int threads) {
-		// build empty-ish rup set without modules attached
+	public FaultSystemRupSet buildRuptureSet(LogicTreeBranch<?> branch, int threads) throws IOException {
 		FaultSystemRupSet rupSet = buildGenericRupSet(branch, threads);
 		
-		U3LogicTreeBranch u3Branch;
-		if (branch instanceof U3LogicTreeBranch) {
-			u3Branch = (U3LogicTreeBranch)branch;
+		return updateRuptureSetForBranch(rupSet, branch);
+	}
+	
+	@Override
+	public FaultSystemRupSet updateRuptureSetForBranch(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch)
+			throws IOException {
+		// we don't trust any modules attached to this rupture set as it could have been used for another calculation
+		// that could have attached anything. Instead, lets only keep the ruptures themselves
+
+		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
+		RupSetDeformationModel dm = branch.requireValue(RupSetDeformationModel.class);
+		Preconditions.checkState(dm.isApplicableTo(fm),
+				"Fault and deformation models are compatible: %s, %s", fm.getName(), dm.getName());
+		// override slip rates for the given deformation model
+		List<? extends FaultSection> subSects;
+		try {
+			subSects = dm.build(fm);
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
+		Preconditions.checkState(subSects.size() == rupSet.getNumSections());
+
+		ClusterRuptures cRups = rupSet.getModule(ClusterRuptures.class);
+		PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
+		RupSetScalingRelationship scale = branch.requireValue(RupSetScalingRelationship.class);
+
+		if (cRups == null) {
+			rupSet = FaultSystemRupSet.builder(subSects, rupSet.getSectionIndicesForAllRups())
+					.forScalingRelationship(scale).build();
+			if (plausibility != null)
+				rupSet.addModule(plausibility);
 		} else {
-			List<U3LogicTreeBranchNode<?>> nodes = new ArrayList<>();
-			for (LogicTreeNode node : branch) {
-				Preconditions.checkState(node instanceof U3LogicTreeBranchNode<?>);
-				nodes.add((U3LogicTreeBranchNode<?>) node);
-			}
-			u3Branch = U3LogicTreeBranch.fromValues(nodes);
+			rupSet = ClusterRuptureBuilder.buildClusterRupSet(scale, subSects, plausibility, cRups.getAll());
 		}
 		
-		return FaultSystemRupSet.buildFromExisting(rupSet).forU3Branch(u3Branch).build();
+		// attach U3 modules
+		getSolutionLogicTreeProcessor().processRupSet(rupSet, branch);
+		
+		return rupSet;
 	}
 
 	@Override
 	public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
 			int threads) {
-		org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs targetMFDs =
-				rupSet.requireModule(org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs.class);
+		InversionTargetMFDs targetMFDs = rupSet.requireModule(InversionTargetMFDs.class);
 		FaultModels fm = branch.getValue(FaultModels.class);
 		UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(
 				branch.getValue(InversionModels.class), rupSet, fm, targetMFDs);
@@ -117,7 +162,133 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 
 	@Override
 	public SolutionProcessor getSolutionLogicTreeProcessor() {
-		return new SolutionLogicTree.UCERF3_SolutionProcessor();
+		return new UCERF3_SolutionProcessor();
+	}
+	
+	public static class UCERF3_SolutionProcessor implements SolutionProcessor {
+
+		@Override
+		public FaultSystemRupSet processRupSet(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+			RupSetFaultModel fm = branch.getValue(RupSetFaultModel.class);
+			
+			// set logic tree branch
+			rupSet.addModule(branch);
+			
+			// add slip along rupture model information
+			if (branch.hasValue(SlipAlongRuptureModels.class))
+				rupSet.addModule(branch.requireValue(SlipAlongRuptureModels.class).getModel());
+			
+			if (branch.hasValue(RupSetScalingRelationship.class)) {
+				rupSet.offerAvailableModule(new Callable<AveSlipModule>() {
+
+					@Override
+					public AveSlipModule call() throws Exception {
+						return AveSlipModule.forModel(rupSet, branch.requireValue(RupSetScalingRelationship.class));
+					}
+				}, AveSlipModule.class);
+			}
+			
+			if (fm != null)
+				// named faults, regions, polygons
+				fm.attachDefaultModules(rupSet);
+			
+			// min mags are model specific, add them here
+			if (fm == FaultModels.FM2_1 || fm == FaultModels.FM3_1 || fm == FaultModels.FM3_2) {
+				// include the parkfield hack for modified section min mags
+				rupSet.offerAvailableModule(new Callable<ModSectMinMags>() {
+
+					@Override
+					public ModSectMinMags call() throws Exception {
+						return ModSectMinMags.instance(rupSet, FaultSystemRupSetCalc.computeMinSeismoMagForSections(
+								rupSet, InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS));
+					}
+				}, ModSectMinMags.class);
+			} else {
+				// regular system-wide minimum magnitudes
+				rupSet.offerAvailableModule(new Callable<ModSectMinMags>() {
+
+					@Override
+					public ModSectMinMags call() {
+						return ModSectMinMags.above(rupSet, InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS, true);
+					}
+				}, ModSectMinMags.class);
+			}
+			
+			// add inversion target MFDs
+			rupSet.offerAvailableModule(new Callable<U3InversionTargetMFDs>() {
+
+				@Override
+				public U3InversionTargetMFDs call() throws Exception {
+					return new U3InversionTargetMFDs(rupSet, branch, rupSet.requireModule(ModSectMinMags.class),
+							rupSet.requireModule(PolygonFaultGridAssociations.class));
+				}
+			}, U3InversionTargetMFDs.class);
+			
+			// add target slip rates (modified for sub-seismogenic ruptures)
+			// force replacement as there's a default implementation of this module
+			rupSet.addAvailableModule(new Callable<SectSlipRates>() {
+
+				@Override
+				public SectSlipRates call() throws Exception {
+					InversionTargetMFDs invMFDs = rupSet.requireModule(InversionTargetMFDs.class);
+					return InversionFaultSystemRupSet.computeTargetSlipRates(rupSet,
+							branch.getValue(InversionModels.class), branch.getValue(MomentRateFixes.class), invMFDs);
+				}
+			}, SectSlipRates.class);
+			
+			// add paleoseismic data
+			rupSet.offerAvailableModule(new Callable<PaleoseismicConstraintData>() {
+
+				@Override
+				public PaleoseismicConstraintData call() throws Exception {
+					try {
+						return PaleoseismicConstraintData.loadUCERF3(rupSet);
+					} catch (IOException e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
+				}
+			}, PaleoseismicConstraintData.class);
+			
+			return rupSet;
+		}
+
+		@Override
+		public FaultSystemSolution processSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
+			FaultSystemRupSet rupSet = sol.getRupSet();
+			sol.offerAvailableModule(new Callable<SubSeismoOnFaultMFDs>() {
+
+				@Override
+				public SubSeismoOnFaultMFDs call() throws Exception {
+					return new SubSeismoOnFaultMFDs(
+							rupSet.requireModule(InversionTargetMFDs.class).getOnFaultSubSeisMFDs().getAll());
+				}
+			}, SubSeismoOnFaultMFDs.class);
+			sol.offerAvailableModule(new Callable<GridSourceProvider>() {
+
+				@Override
+				public GridSourceProvider call() throws Exception {
+					return new UCERF3_GridSourceGenerator(sol, branch.getValue(SpatialSeisPDF.class),
+							branch.getValue(MomentRateFixes.class),
+							rupSet.requireModule(InversionTargetMFDs.class),
+							sol.requireModule(SubSeismoOnFaultMFDs.class),
+							branch.getValue(MaxMagOffFault.class).getMaxMagOffFault(),
+							rupSet.requireModule(FaultGridAssociations.class));
+				}
+			}, GridSourceProvider.class);
+			if (!sol.hasAvailableModule(SolutionSlipRates.class) && rupSet.hasAvailableModule(AveSlipModule.class)
+					&& rupSet.hasAvailableModule(SlipAlongRuptureModel.class)) {
+				sol.addAvailableModule(new Callable<SolutionSlipRates>() {
+
+					@Override
+					public SolutionSlipRates call() throws Exception {
+						return SolutionSlipRates.calc(sol, rupSet.requireModule(AveSlipModule.class),
+								rupSet.requireModule(SlipAlongRuptureModel.class));
+					}
+				}, SolutionSlipRates.class);
+			}
+			return sol;
+		}
+		
 	}
 	
 	public static class NoPaleoParkfieldSingleReg extends U3InversionConfigFactory {
@@ -159,7 +330,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 		Map<FaultModels, FaultSystemRupSet> rupSetCache = new HashMap<>();
 
 		@Override
-		protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
+		protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) throws IOException {
 			FaultModels fm = branch.requireValue(FaultModels.class);
 			// check cache
 			FaultSystemRupSet rupSet = rupSetCache.get(fm);
@@ -180,7 +351,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 		
 	}
 	
-	private static class CoulombU3SolProcessor extends SolutionLogicTree.UCERF3_SolutionProcessor {
+	private static class CoulombU3SolProcessor extends UCERF3_SolutionProcessor {
 
 		@Override
 		public FaultSystemRupSet processRupSet(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
@@ -203,7 +374,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 		
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		InversionConfigurationFactory factory;
 		try {
 			@SuppressWarnings("unchecked")

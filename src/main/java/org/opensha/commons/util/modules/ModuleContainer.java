@@ -1,5 +1,6 @@
 package org.opensha.commons.util.modules;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -9,15 +10,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.lang3.ClassUtils;
 import org.opensha.commons.data.Named;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 
 /**
  * Container of {@link OpenSHA_Module} instances. Modules are added via {@link #addModule(OpenSHA_Module)}
- * and retrieved by their classes via {@link #getModule(Class)}.
+ * and retrieved by their classes via {@link #getModule(Class)}. Modules can be registered as 'available' for
+ * lazy-initialization via the {@link #addAvailableModule(Callable, Class)} method.
  * <p>
  * When you add a module, all super-classes and super-interfaces of your module that also implement
  * {@link OpenSHA_Module} will be registered, so if you have the following classes:
@@ -33,11 +37,17 @@ import com.google.common.base.Preconditions;
  * </pre>
  * 
  * ...and you add a module that is an instance of {@code CustomModuleImpl}, you can retrieve it via either
- * {@code getModule(CustomModuleImpl.class)} or {@code getModule(AbstractCustomModule.class)}. Helper classes or
- * interfaces that should never be mapped to a concrete module implementation should be marked with the
- * {@link ModuleHelper} annotation, and will be excluded from any mappings. 
+ * {@code getModule(CustomModuleImpl.class)} or {@code getModule(AbstractCustomModule.class)}.
  * <p>
- * TODO: consider synchronization
+ * In the case of multiple implementations of a module, only one can be loaded at a time. If modules A and B both
+ * implement module interface C, then either can be retrieved via {@code getModule(C.class)}, and adding either will
+ * evict any modules that implement C. That means that if you add A and then later add B, A will be evicted and only
+ * B will remain loaded.
+ *<p>
+ * Helper classes or interfaces that should never be mapped to a concrete module implementation should be marked with the
+ * {@link ModuleHelper} annotation, and will be excluded from any mappings.
+ * <p>
+ * Get and add methods are thread safe
  * 
  * @author kevin
  *
@@ -143,6 +153,9 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 						return getModule(clazz);
 				}
 			}
+			// if we're here, we failed to load it, but it's possible that it was loaded above in another thread
+			// while we were waiting for the synchronized block. try again
+			return (M)mappings.get(clazz);
 		}
 		return (M)module;
 	}
@@ -428,13 +441,17 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	public synchronized boolean loadAvailableModule(Callable<? extends E> call) {
 		Preconditions.checkState(availableModules.remove(call));
 		E module = null;
+		Stopwatch watch = Stopwatch.createStarted();
 		try {
 			debug("Lazily loading available module...");
 			module = call.call();
+			double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+			debug("Took "+secsDF.format(secs)+" s to load "+(module == null ? "null" : module.getName()));
 		} catch (Exception e) {
 			e.printStackTrace();
 			debug("WARNING: failed to lazily load a module (see exception above)", true);
 		}
+		watch.stop();
 		
 		// remove mappings to this available module, whether or not it was successful
 		List<Class<? extends E>> oldMappings = new ArrayList<>();
@@ -452,6 +469,8 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 		// failed
 		return false;
 	}
+	
+	private static DecimalFormat secsDF = new DecimalFormat("0.##"); 
 	
 	@SuppressWarnings("unchecked")
 	private void mapAvailableModule(Callable<? extends OpenSHA_Module> call, Class<? extends OpenSHA_Module> clazz) {

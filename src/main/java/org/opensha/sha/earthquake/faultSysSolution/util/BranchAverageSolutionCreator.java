@@ -32,6 +32,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
@@ -78,6 +79,8 @@ public class BranchAverageSolutionCreator {
 	
 	private boolean skipRupturesBelowSectMin = true;
 	
+	private boolean accumulatingSlipRates = true;
+	
 	private List<AveragingAccumulator<? extends BranchAverageableModule<?>>> rupSetAvgAccumulators;
 	private List<AveragingAccumulator<? extends BranchAverageableModule<?>>> solAvgAccumulators;
 	
@@ -95,6 +98,8 @@ public class BranchAverageSolutionCreator {
 	
 	public void skipModule(Class<? extends BranchAverageableModule<?>> clazz) {
 		skipModules.add(clazz);
+		if (SolutionSlipRates.class.isAssignableFrom(clazz))
+			accumulatingSlipRates = false;
 	}
 
 	public void addSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
@@ -104,6 +109,18 @@ public class BranchAverageSolutionCreator {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		
 		ModSectMinMags modMinMags = rupSet.getModule(ModSectMinMags.class);
+		
+		if (accumulatingSlipRates && !sol.hasModule(SolutionSlipRates.class)) {
+			if (rupSet.hasModule(AveSlipModule.class) && rupSet.hasModule(SlipAlongRuptureModel.class))
+				// add a slip rate module so that actual branch-averaged slip rates are calculated
+				// do this because averaged solutions & averaged slip modules won't result in the same solution
+				// slip rates as averaging the solution slip rates themselves
+				sol.addModule(SolutionSlipRates.calc(sol, rupSet.requireModule(AveSlipModule.class),
+						rupSet.requireModule(SlipAlongRuptureModel.class)));
+			else
+				// don't bother trying to calculate any other slip rates, we don't have them for every branch
+				accumulatingSlipRates = false;
+		}
 		
 		if (avgRates == null) {
 			// first time
@@ -193,7 +210,7 @@ public class BranchAverageSolutionCreator {
 		return accumulators;
 	}
 	
-	private static void processAccumulators(List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators, 
+	private void processAccumulators(List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators, 
 			ModuleContainer<OpenSHA_Module> container, double weight) {
 		for (int i=accumulators.size(); --i>=0;) {
 			AveragingAccumulator<? extends BranchAverageableModule<?>> accumulator = accumulators.get(i);
@@ -204,6 +221,9 @@ public class BranchAverageSolutionCreator {
 				System.err.println("Error processing accumulator, will no longer average "+accumulator.getType().getName());
 				System.err.flush();
 				accumulators.remove(i);
+				if (accumulatingSlipRates && SolutionSlipRates.class.isAssignableFrom(accumulator.getType()))
+					// stop calculating slip rates
+					accumulatingSlipRates = false;
 			}
 		}
 	}

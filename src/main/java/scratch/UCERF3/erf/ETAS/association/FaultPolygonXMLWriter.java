@@ -48,7 +48,7 @@ public class FaultPolygonXMLWriter {
 			}
 			
 			// now do geologic polygons
-			sects = fm.fetchFaultSections();
+			sects = fm.getFaultSections();
 			Document doc = XMLUtils.createDocumentWithRoot();
 			Element root = doc.getRootElement();
 			

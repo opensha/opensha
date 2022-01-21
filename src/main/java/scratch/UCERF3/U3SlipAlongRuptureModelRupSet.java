@@ -12,7 +12,7 @@ import com.google.common.collect.Lists;
 
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 
-public abstract class SlipAlongRuptureModelRupSet extends SlipEnabledRupSet {
+public abstract class U3SlipAlongRuptureModelRupSet extends U3SlipEnabledRupSet {
 	
 	private SlipAlongRuptureModels slipAlongModel;
 	private double[] rupAveSlips;
@@ -32,7 +32,7 @@ public abstract class SlipAlongRuptureModelRupSet extends SlipEnabledRupSet {
 	 * @param slipAlongModel Slip Along Rupture model (CANNOT be null)
 	 * @param info metadata string
 	 */
-	public SlipAlongRuptureModelRupSet(
+	public U3SlipAlongRuptureModelRupSet(
 			List<? extends FaultSection> faultSectionData,
 			double[] sectSlipRates,
 			double[] sectSlipRateStdDevs,
@@ -54,7 +54,7 @@ public abstract class SlipAlongRuptureModelRupSet extends SlipEnabledRupSet {
 	 * 
 	 * Protected so it can only be invoked by subclasses.
 	 */
-	protected SlipAlongRuptureModelRupSet(SlipAlongRuptureModels slipAlongModel) {
+	protected U3SlipAlongRuptureModelRupSet(SlipAlongRuptureModels slipAlongModel) {
 		// do nothing, it's up to subclass to call init
 		this.slipAlongModel = slipAlongModel;
 		addModule(SlipAlongRuptureModel.forModel(slipAlongModel));

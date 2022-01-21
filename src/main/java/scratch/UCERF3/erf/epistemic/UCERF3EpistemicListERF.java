@@ -46,7 +46,7 @@ import org.opensha.sha.util.TectonicRegionType;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 
-import scratch.UCERF3.CompoundFaultSystemSolution;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;

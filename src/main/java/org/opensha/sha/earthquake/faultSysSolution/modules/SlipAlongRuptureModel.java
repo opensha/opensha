@@ -47,13 +47,11 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantA
 
 		// compute rupture area
 		double[] sectArea = new double[numSects];
-		double[] sectMoRate = new double[numSects];
 		int index=0;
 		for(Integer sectID: sectionIndices) {	
 			//				FaultSectionPrefData sectData = getFaultSectionData(sectID);
 			//				sectArea[index] = sectData.getTraceLength()*sectData.getReducedDownDipWidth()*1e6;	// aseismicity reduces area; 1e6 for sq-km --> sq-m
 			sectArea[index] = rupSet.getAreaForSection(sectID);
-			sectMoRate[index] = FaultMomentCalc.getMoment(sectArea[index], rupSet.getSlipRateForSection(sectID));
 			index += 1;
 		}
 		
@@ -75,38 +73,19 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantA
 	 * @return
 	 */
 	public double[] calcSlipRateForSects(FaultSystemSolution sol, AveSlipModule aveSlips) {
-		SolSlipRatesCache cached;
+		SolutionSlipRates cached = sol.getModule(SolutionSlipRates.class);
 		
-		synchronized (sol) {
-			cached = sol.getModule(SolSlipRatesCache.class);
-			if (cached == null) {
-				FaultSystemRupSet rupSet = sol.getRupSet();
-				double[] slipRates = new double[rupSet.getNumSections()];
-				for (int r=0; r<rupSet.getNumRuptures(); r++) {
-					List<Integer> indices = rupSet.getSectionsIndicesForRup(r);
-					double[] rupSlips = calcSlipOnSectionsForRup(rupSet, aveSlips, r);
-					double rate = sol.getRateForRup(r);
-					for (int s=0; s<rupSlips.length; s++)
-						slipRates[indices.get(s)] += rate*rupSlips[s];
+		if (cached == null) {
+			synchronized (sol) {
+				cached = sol.getModule(SolutionSlipRates.class);
+				if (cached == null) {
+					cached = SolutionSlipRates.calc(sol, aveSlips, this);
+					sol.addModule(cached);
 				}
-				cached = new SolSlipRatesCache(slipRates);
-				sol.addModule(cached);
 			}
 		}
-		return cached.slipRates;
-	}
-	
-	public static class SolSlipRatesCache implements OpenSHA_Module {
-		private final double[] slipRates;
 		
-		public SolSlipRatesCache(double[] slipRates) {
-			this.slipRates = slipRates;
-		}
-
-		@Override
-		public String getName() {
-			return "Cached Solution Slip Rates";
-		}
+		return cached.get();
 	}
 	
 	/**
@@ -340,6 +319,11 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantA
 			return slipsForRup;
 		}
 		
+	}
+
+	@Override
+	public boolean isIdentical(SlipAlongRuptureModel module) {
+		return this.getClass().equals(module.getClass());
 	}
 
 }

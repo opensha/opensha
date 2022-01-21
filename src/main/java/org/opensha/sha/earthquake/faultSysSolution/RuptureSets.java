@@ -76,30 +76,6 @@ import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RuptureSets {
 	
-	public static List<? extends FaultSection> getU3SubSects(FaultModels fm) {
-		return getU3SubSects(fm, fm.getFilterBasis());
-	}
-	
-	public static List<? extends FaultSection> getU3SubSects(FaultModels fm, DeformationModels dm) {
-		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, dm, null, 0.1);
-		List<? extends FaultSection> sects = dmFetch.getSubSectionList();
-		
-		// infer standard deviations from geologic bounds so we can use newer slip rate constraints
-		// assume bounds are +/- 2 sigma
-		System.out.println("Inferring slip-rate standard deviations from geologic bounds...");
-		List<? extends FaultSection> lowerSects = new DeformationModelFetcher(
-				fm, DeformationModels.GEOLOGIC_LOWER, null, 0.1).getSubSectionList();
-		List<? extends FaultSection> upperSects = new DeformationModelFetcher(
-				fm, DeformationModels.GEOLOGIC_UPPER, null, 0.1).getSubSectionList();
-		for (int s=0; s<sects.size(); s++) {
-			double upper = upperSects.get(s).getOrigAveSlipRate();
-			double lower = lowerSects.get(s).getOrigAveSlipRate();
-			sects.get(s).setSlipRateStdDev((upper-lower)/4d);
-		}
-		
-		return sects;
-	}
-	
 	public static List<? extends FaultSection> getNSHM23SubSects(String state) throws IOException {
 		return GeoJSONFaultReader.buildNSHM23SubSects(state);
 	}
@@ -129,9 +105,9 @@ public class RuptureSets {
 			}
 		}
 
-		public U3RupSetConfig(FaultModels fm, RupSetScalingRelationship scale) {
+		public U3RupSetConfig(FaultModels fm, RupSetScalingRelationship scale) throws IOException {
 			this.fm = fm;
-			this.subSects = getU3SubSects(fm);
+			this.subSects = fm.getDefaultDeformationModel().build(fm);
 			this.scale = scale;
 		}
 
@@ -343,8 +319,8 @@ public class RuptureSets {
 		// coefficient of friction for coulomb calculations
 		@Expose	private double coeffOfFriction = 0.5;
 
-		public CoulombRupSetConfig(FaultModels fm, RupSetScalingRelationship scale) {
-			this(getU3SubSects(fm), fm.encodeChoiceString().toLowerCase(), scale);
+		public CoulombRupSetConfig(RupSetFaultModel fm, RupSetScalingRelationship scale) throws IOException {
+			this(fm.getDefaultDeformationModel().build(fm), fm.getFilePrefix().toLowerCase(), scale);
 		}
 
 		public CoulombRupSetConfig(List<? extends FaultSection> subSects, String fmPrefix, RupSetScalingRelationship scale) {
@@ -387,24 +363,6 @@ public class RuptureSets {
 		@Override
 		public RupSetScalingRelationship getScalingRelationship() {
 			return scale;
-		}
-		
-		@Override
-		public FaultSystemRupSet build(int numThreads) {
-			FaultSystemRupSet rupSet = super.build(numThreads);
-			
-			if (stiffnessCache != null && stiffnessCacheFile != null
-					&& stiffnessCacheSize < stiffnessCache.calcCacheSize()) {
-				System.out.println("Writing stiffness cache to "+stiffnessCacheFile.getAbsolutePath());
-				try {
-					stiffnessCache.writeCacheFile(stiffnessCacheFile);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				System.out.println("DONE writing stiffness cache");
-			}
-			
-			return rupSet;
 		}
 
 		public void setMinSectsPerParent(int minSectsPerParent) {
@@ -510,6 +468,21 @@ public class RuptureSets {
 			stiffnessCacheFile = null;
 			stiffnessCacheSize = -1;
 		}
+		
+		@Override
+		public void updateCache() {
+			if (stiffnessCache != null && stiffnessCacheFile != null
+					&& stiffnessCacheSize < stiffnessCache.calcCacheSize()) {
+				System.out.println("Writing stiffness cache to "+stiffnessCacheFile.getAbsolutePath());
+				try {
+					stiffnessCache.writeCacheFile(stiffnessCacheFile);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+				System.out.println("DONE writing stiffness cache");
+			}
+			super.updateCache();
+		}
 
 		private PlausibilityConfiguration config;
 		private RuptureGrowingStrategy growingStrat;
@@ -517,6 +490,7 @@ public class RuptureSets {
 		private File stiffnessCacheFile;
 		private AggregatedStiffnessCache stiffnessCache; 
 		private int stiffnessCacheSize;
+		
 		private synchronized void update() {
 			// build stiffness calculator (used for new Coulomb)
 			SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
@@ -858,6 +832,7 @@ public class RuptureSets {
 		private transient int numAzCached = 0;
 		private transient int numDistCached = 0;
 		private transient SectionDistanceAzimuthCalculator distAzCalc;
+		private boolean autoCache = true;
 		public synchronized SectionDistanceAzimuthCalculator getDistAzCalc() {
 			if (distAzCalc == null) {
 				List<? extends FaultSection> sects = getSubSects();
@@ -886,8 +861,30 @@ public class RuptureSets {
 			return cacheDir;
 		}
 		
-		protected void setCacheDir(File cacheDir) {
+		public void setCacheDir(File cacheDir) {
 			this.cacheDir = cacheDir;
+		}
+		
+		public void setAutoCache(boolean autoCache) {
+			this.autoCache = autoCache;
+		}
+		
+		public boolean isAutoCache() {
+			return autoCache;
+		}
+		
+		public void updateCache() {
+			if (distAzCacheFile != null && (numAzCached < distAzCalc.getNumCachedAzimuths()
+					|| numDistCached < distAzCalc.getNumCachedDistances())) {
+				System.out.println("Writing dist/az cache to "+distAzCacheFile.getAbsolutePath());
+				try {
+					distAzCalc.writeCacheFile(distAzCacheFile);
+					numAzCached = distAzCalc.getNumCachedAzimuths();
+					numDistCached = distAzCalc.getNumCachedDistances();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
 		}
 		
 		private transient int numThreads = 1;
@@ -907,17 +904,6 @@ public class RuptureSets {
 				config.getConnectionStrategy().checkBuildThreaded(numThreads);
 			else
 				config.getConnectionStrategy().getClusters();
-			if (distAzCacheFile != null && (numAzCached < distAzCalc.getNumCachedAzimuths()
-					|| numDistCached < distAzCalc.getNumCachedDistances())) {
-				System.out.println("Writing dist/az cache to "+distAzCacheFile.getAbsolutePath());
-				try {
-					distAzCalc.writeCacheFile(distAzCacheFile);
-					numAzCached = distAzCalc.getNumCachedAzimuths();
-					numDistCached = distAzCalc.getNumCachedDistances();
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
 			ClusterRuptureBuilder builder = new ClusterRuptureBuilder(config);
 			System.out.println("Building ruptures with "+numThreads+" threads...");
 			Stopwatch watch = Stopwatch.createStarted();
@@ -930,16 +916,8 @@ public class RuptureSets {
 			System.out.println("Built "+ClusterRuptureBuilder.countDF.format(rups.size())+" ruptures in "+timeDF.format(secs)
 				+" secs = "+timeDF.format(mins)+" mins. Total rate: "+ClusterRuptureBuilder.rupRateStr(rups.size(), millis));
 			
-			if (distAzCacheFile != null && (numAzCached < distAzCalc.getNumCachedAzimuths()
-					|| numDistCached < distAzCalc.getNumCachedDistances())) {
-				System.out.println("Writing dist/az cache to "+distAzCacheFile.getAbsolutePath());
-				try {
-					distAzCalc.writeCacheFile(distAzCacheFile);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-				System.out.println("DONE writing dist/az cache");
-			}
+			if (isAutoCache())
+				updateCache();
 			
 			return ClusterRuptureBuilder.buildClusterRupSet(getScalingRelationship(),
 					getSubSects(), getPlausibilityConfig(), rups); 
@@ -1126,7 +1104,7 @@ public class RuptureSets {
 				String fmStr = cmd.getOptionValue("fault-model");
 				FaultModels fm = FaultModels.valueOf(fmStr.trim().toUpperCase());
 				Preconditions.checkNotNull(fm, "Unknown fault model: %s", fmStr);
-				sects = getU3SubSects(fm);
+				sects = fm.getDefaultDeformationModel().build(fm);
 			}
 			System.out.println("Loaded "+sects.size()+" sub-sections");
 			for (int i=0; i<sects.size(); i++) {

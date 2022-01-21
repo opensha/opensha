@@ -448,9 +448,12 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 			long count = 0l;
 			
 			double weight = this.weight;
-			if (rateEst != null)
+			if (rateEst != null) {
 				// scale weight by that estimated total event rate for this section
-				weight /= rateEst.estimateSectParticRate(jump.fromSection.getSectionId());
+				double estRate = rateEst.estimateSectParticRate(jump.fromSection.getSectionId());
+				if (estRate > 0d)
+					weight /= estRate;
+			}
 			// weight by the target fractional rate (large misfits of small conditional rates should still be fit)
 			weight /= jumpCondProb;
 			
@@ -458,6 +461,13 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 			
 			double scalarIn = weight*(1d-jumpCondProb);
 			double scalarOut = -weight*jumpCondProb;
+			
+			Preconditions.checkState(Double.isFinite(scalarIn),
+					"Bad scalarIn=%s for jump %s with jumpCondProb=%s and weight=%s",
+					scalarIn, jump, jumpCondProb, weight);
+			Preconditions.checkState(Double.isFinite(scalarOut),
+					"Bad scalarOut=%s for jump %s with jumpCondProb=%s and weight=%s",
+					scalarOut, jump, jumpCondProb, weight);
 			
 			for (int r : allJumpsForDepartingSect) {
 				if (setUsingJump.contains(r)) {

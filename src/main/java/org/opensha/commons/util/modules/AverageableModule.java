@@ -94,7 +94,18 @@ public interface AverageableModule<E extends AverageableModule<E>> extends OpenS
 	@ModuleHelper
 	public interface ConstantAverageable<E extends AverageableModule<E>> extends AverageableModule<E> {
 		
+		/**
+		 * @return the type of the returned constant averageable value
+		 */
 		public Class<E> getAveragingType();
+		
+		/**
+		 * Used as a check when averaging to ensure that this really is constant
+		 * 
+		 * @param module
+		 * @return true if identical, false otherwise
+		 */
+		public boolean isIdentical(E module);
 
 		@Override
 		default AveragingAccumulator<E> averagingAccumulator() {
@@ -104,6 +115,9 @@ public interface AverageableModule<E extends AverageableModule<E>> extends OpenS
 
 				@Override
 				public void process(E module, double relWeight) {
+					Preconditions.checkState(ConstantAverageable.this.isIdentical(module),
+							"Averaging a ConstantAverageable instance but encountered a version (%s) that is not"
+							+ " identical to the original instance (%s).", module, ConstantAverageable.this);
 					if (this.module == null)
 						this.module = module;
 				}

@@ -984,8 +984,10 @@ public class ClusterRuptureBuilder {
 			PlausibilityConfiguration config, List<ClusterRupture> rups) {
 		FaultSystemRupSet.Builder builder = FaultSystemRupSet.builderForClusterRups(subSects, rups);
 		builder.forScalingRelationship(scale);
-		builder.addModule(config.getDistAzCalc());
-		builder.addModule(config);
+		if (config != null) {
+			builder.addModule(config.getDistAzCalc());
+			builder.addModule(config);
+		}
 		return builder.build();
 	}
 

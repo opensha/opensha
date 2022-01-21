@@ -5,7 +5,7 @@ import java.io.IOException;
 
 import org.opensha.commons.util.ClassUtils;
 
-import scratch.UCERF3.CompoundFaultSystemSolution;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
 import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
@@ -28,9 +28,9 @@ public class CompoundSolBranchExtractor {
 		File compoundFile = new File(args[0]);
 		Preconditions.checkState(compoundFile.exists(),
 				"Compound fault system solution file does not exist: "+compoundFile.getAbsolutePath());
-		CompoundFaultSystemSolution cfss;
+		U3CompoundFaultSystemSolution cfss;
 		try {
-			cfss = CompoundFaultSystemSolution.fromZipFile(compoundFile);
+			cfss = U3CompoundFaultSystemSolution.fromZipFile(compoundFile);
 		} catch (Exception e) {
 			throw new IllegalStateException("Could not parse compound fault system solution file, ensure correct file type", e);
 		}

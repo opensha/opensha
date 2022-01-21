@@ -252,9 +252,6 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		System.out.println("\tSampled "+indexCounts.size()+" unique branches. The most any single "
 				+ "branch was sampled is "+mostSamples+" time(s).");
 		System.out.println("Sampled Logic Tree:");
-		for (LogicTreeBranch<?> branch : ret.branches) {
-			
-		}
 		Map<LogicTreeNode, Integer> origNodeCounts = new HashMap<>();
 		Map<LogicTreeNode, Double> origNodeWeights = new HashMap<>();
 		double totWeight = 0d;

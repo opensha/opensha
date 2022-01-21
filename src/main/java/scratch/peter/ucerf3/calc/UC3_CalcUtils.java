@@ -26,8 +26,8 @@ import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 import com.google.common.io.Resources;
 
-import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.CompoundFaultSystemSolution;
+import scratch.UCERF3.U3AverageFaultSystemSolution;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.mean.MeanUCERF3;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
@@ -111,7 +111,7 @@ public class UC3_CalcUtils {
 			boolean filterAftShk,
 			double duration) {
 		
-		AverageFaultSystemSolution afss = getAvgSolution(solPath);
+		U3AverageFaultSystemSolution afss = getAvgSolution(solPath);
 		InversionFaultSystemSolution fss = (idx == -1) ? afss : afss.getSolution(idx);
 		String erfName = nameFromPath(solPath) + "_" + idx;
 		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(fss);
@@ -143,7 +143,7 @@ public class UC3_CalcUtils {
 			double duration) {
 		
 		checkArgument(idx != -1, "Index cannot be -1 for compound sol.");
-		CompoundFaultSystemSolution cfss = getCompoundSolution(solPath);
+		U3CompoundFaultSystemSolution cfss = getCompoundSolution(solPath);
 		List<U3LogicTreeBranch> branches = Lists.newArrayList(cfss
 			.getBranches());
 		U3LogicTreeBranch branch = branches.get(idx);
@@ -177,7 +177,7 @@ public class UC3_CalcUtils {
 			boolean filterAftShk,
 			double duration) {
 		
-		CompoundFaultSystemSolution cfss = getCompoundSolution(solPath);
+		U3CompoundFaultSystemSolution cfss = getCompoundSolution(solPath);
 		InversionFaultSystemSolution fss = null;
 		U3LogicTreeBranch branch = null;
 		try {
@@ -259,7 +259,7 @@ public class UC3_CalcUtils {
 	 * @param path
 	 * @return an AFSS
 	 */
-	public static AverageFaultSystemSolution getAvgSolution(String path) {
+	public static U3AverageFaultSystemSolution getAvgSolution(String path) {
 		try {
 			File file = new File(path);
 			return U3FaultSystemIO.loadAvgInvSol(file);
@@ -274,10 +274,10 @@ public class UC3_CalcUtils {
 	 * @param path
 	 * @return a CFSS
 	 */
-	public static CompoundFaultSystemSolution getCompoundSolution(String path) {
+	public static U3CompoundFaultSystemSolution getCompoundSolution(String path) {
 		try {
 			File file = new File(path);
-			return CompoundFaultSystemSolution.fromZipFile(file);
+			return U3CompoundFaultSystemSolution.fromZipFile(file);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return null;

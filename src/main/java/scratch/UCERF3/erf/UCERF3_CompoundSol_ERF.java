@@ -9,8 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipException;
 
-import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolutionFetcher;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemSolutionFetcher;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
@@ -65,13 +65,13 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	
 	private Map<Class<? extends U3LogicTreeBranchNode<?>>, EnumParameter<?>> enumParamsMap;
 	
-	private FaultSystemSolutionFetcher fetch;
+	private U3FaultSystemSolutionFetcher fetch;
 	
 	private boolean solutionStale = true;
 	
 	private static final String COMPOUND_FILE_NAME = "full_ucerf3_compound_sol.zip";
 	
-	private static FaultSystemSolutionFetcher loadFetcher() throws ZipException, IOException {
+	private static U3FaultSystemSolutionFetcher loadFetcher() throws ZipException, IOException {
 		File storeDir = MeanUCERF3.getStoreDir();
 		
 		File compoundFile = new File(storeDir, COMPOUND_FILE_NAME);
@@ -82,7 +82,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		if (!compoundFile.exists())
 			return null;
 		
-		return CompoundFaultSystemSolution.fromZipFile(compoundFile);
+		return U3CompoundFaultSystemSolution.fromZipFile(compoundFile);
 	}
 	
 	/**
@@ -101,7 +101,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	 * @param fetch
 	 * @param initial
 	 */
-	public UCERF3_CompoundSol_ERF(FaultSystemSolutionFetcher fetch, U3LogicTreeBranch initial) {
+	public UCERF3_CompoundSol_ERF(U3FaultSystemSolutionFetcher fetch, U3LogicTreeBranch initial) {
 		
 		this.fetch = fetch;
 		

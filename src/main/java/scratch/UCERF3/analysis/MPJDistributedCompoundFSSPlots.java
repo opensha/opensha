@@ -16,8 +16,8 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.threads.Task;
 import org.opensha.commons.util.threads.ThreadedTaskComputer;
 
-import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolutionFetcher;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemSolutionFetcher;
 import scratch.UCERF3.analysis.CompoundFSSPlots.AveSlipMapPlot;
 import scratch.UCERF3.analysis.CompoundFSSPlots.BranchAvgFSSBuilder;
 import scratch.UCERF3.analysis.CompoundFSSPlots.ERFBasedRegionalMFDPlot;
@@ -56,7 +56,7 @@ import com.google.common.primitives.Doubles;
 
 public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 	
-	private FaultSystemSolutionFetcher fetcher;
+	private U3FaultSystemSolutionFetcher fetcher;
 	private List<U3LogicTreeBranch> branches;
 	private List<CompoundFSSPlots> plots;
 	
@@ -66,7 +66,7 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 	
 	private MPJDistributedCompoundFSSPlots parentMFDCompare;
 
-	public MPJDistributedCompoundFSSPlots(CommandLine cmd, FaultSystemSolutionFetcher fetcher,
+	public MPJDistributedCompoundFSSPlots(CommandLine cmd, U3FaultSystemSolutionFetcher fetcher,
 			List<CompoundFSSPlots> plots) {
 		super(cmd);
 		Preconditions.checkState(!plots.isEmpty(), "No plots specified!");
@@ -125,10 +125,10 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 				// TODO don't hardcode?
 				subPlots.add(new ParentSectMFDsPlot(new UCERF3p2BranchWeightProvider()));
 				try {
-					FaultSystemSolutionFetcher subFetch = CompoundFaultSystemSolution.fromZipFile(compFile);
+					U3FaultSystemSolutionFetcher subFetch = U3CompoundFaultSystemSolution.fromZipFile(compFile);
 					if (cmd.hasOption("rand")) {
 						int num = Integer.parseInt(cmd.getOptionValue("rand"));
-						subFetch = FaultSystemSolutionFetcher.getRandomSample(subFetch, num);
+						subFetch = U3FaultSystemSolutionFetcher.getRandomSample(subFetch, num);
 					}
 					parentMFDCompare = new MPJDistributedCompoundFSSPlots(cmd, subFetch, subPlots);
 				} catch (Exception e) {
@@ -464,16 +464,16 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 
 			Preconditions.checkArgument(inputFile.exists(), "Input file doesn't exist!: "+inputFile);
 			
-			FaultSystemSolutionFetcher fetcher = CompoundFaultSystemSolution.fromZipFile(inputFile);
+			U3FaultSystemSolutionFetcher fetcher = U3CompoundFaultSystemSolution.fromZipFile(inputFile);
 			if (cmd.hasOption("rand")) {
 				int num = Integer.parseInt(cmd.getOptionValue("rand"));
 				if (cmd.hasOption("mean")) {
 					final InversionFaultSystemSolution meanSol =
 							U3FaultSystemIO.loadInvSol(new File(cmd.getOptionValue("mean")));
-					fetcher = FaultSystemSolutionFetcher.getRandomSample(fetcher, num,
+					fetcher = U3FaultSystemSolutionFetcher.getRandomSample(fetcher, num,
 							meanSol.getLogicTreeBranch().getValue(FaultModels.class));
 					final Collection<U3LogicTreeBranch> branches = fetcher.getBranches();
-					fetcher = new FaultSystemSolutionFetcher() {
+					fetcher = new U3FaultSystemSolutionFetcher() {
 						
 						@Override
 						public Collection<U3LogicTreeBranch> getBranches() {
@@ -486,7 +486,7 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 						}
 					};
 				} else {
-					fetcher = FaultSystemSolutionFetcher.getRandomSample(fetcher, num);
+					fetcher = U3FaultSystemSolutionFetcher.getRandomSample(fetcher, num);
 				}
 			}
 			

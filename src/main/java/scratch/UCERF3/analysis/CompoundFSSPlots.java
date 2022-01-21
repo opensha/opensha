@@ -120,9 +120,9 @@ import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
-import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolutionFetcher;
+import scratch.UCERF3.U3AverageFaultSystemSolution;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemSolutionFetcher;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
@@ -225,7 +225,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	 * @param prefix
 	 * @throws IOException
 	 */
-	public static void writeRegionalMFDPlots(FaultSystemSolutionFetcher fetch,
+	public static void writeRegionalMFDPlots(U3FaultSystemSolutionFetcher fetch,
 			U3BranchWeightProvider weightProvider, List<Region> regions,
 			File dir, String prefix) throws IOException {
 		
@@ -587,7 +587,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	 */
 	
 	public static List<PlotSpec> getERFBasedRegionalMFDPlotSpecs(
-			FaultSystemSolutionFetcher fetch,
+			U3FaultSystemSolutionFetcher fetch,
 			U3BranchWeightProvider weightProvider, List<Region> regions) {
 		ERFBasedRegionalMFDPlot plot = new ERFBasedRegionalMFDPlot(
 				weightProvider, regions,
@@ -599,7 +599,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	}
 	
 	public static void writeERFBasedRegionalMFDPlots(
-			FaultSystemSolutionFetcher fetch,
+			U3FaultSystemSolutionFetcher fetch,
 			U3BranchWeightProvider weightProvider, List<Region> regions,
 			File dir, String prefix) throws IOException {
 		List<PlotSpec> specs = getERFBasedRegionalMFDPlotSpecs(fetch,
@@ -3963,7 +3963,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	 * Paleo fault based plots
 	 */
 	
-	public static void writePaleoFaultPlots(FaultSystemSolutionFetcher fetch,
+	public static void writePaleoFaultPlots(U3FaultSystemSolutionFetcher fetch,
 			U3BranchWeightProvider weightProvider, File dir) throws IOException {
 		PaleoFaultPlot plot = new PaleoFaultPlot(weightProvider);
 		plot.buildPlot(fetch);
@@ -4238,7 +4238,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	}
 
 	public static void writePaleoCorrelationPlots(
-			FaultSystemSolutionFetcher fetch,
+			U3FaultSystemSolutionFetcher fetch,
 			U3BranchWeightProvider weightProvider, File dir) throws IOException {
 		PaleoSiteCorrelationPlot plot = new PaleoSiteCorrelationPlot(
 				weightProvider);
@@ -4406,7 +4406,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 						vals[s] = solValsForFault.get(s)[i];
 					double min = StatUtils.min(vals);
 					double max = StatUtils.max(vals);
-					double mean = FaultSystemSolutionFetcher.calcScaledAverage(
+					double mean = U3FaultSystemSolutionFetcher.calcScaledAverage(
 							vals, weights);
 
 					double[] ret = { min, max, mean };
@@ -4430,7 +4430,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	}
 
 	public static void writeParentSectionMFDPlots(
-			FaultSystemSolutionFetcher fetch,
+			U3FaultSystemSolutionFetcher fetch,
 			U3BranchWeightProvider weightProvider, File dir) throws IOException {
 		ParentSectMFDsPlot plot = new ParentSectMFDsPlot(weightProvider);
 		plot.buildPlot(fetch);
@@ -4957,7 +4957,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		}
 	}
 
-	public static void writeJumpPlots(FaultSystemSolutionFetcher fetch,
+	public static void writeJumpPlots(U3FaultSystemSolutionFetcher fetch,
 			U3BranchWeightProvider weightProvider, File dir, String prefix)
 			throws IOException {
 		RupJumpPlot plot = new RupJumpPlot(weightProvider);
@@ -5116,7 +5116,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 	}
 	
-	public static void writeSubSectRITables(FaultSystemSolutionFetcher fetch,
+	public static void writeSubSectRITables(U3FaultSystemSolutionFetcher fetch,
 			U3BranchWeightProvider weightProvider, File dir, String prefix)
 			throws IOException {
 		SubSectRITable plot = new SubSectRITable(weightProvider);
@@ -5332,7 +5332,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		
 	}
 
-	public static void writeMiniSectRITables(FaultSystemSolutionFetcher fetch,
+	public static void writeMiniSectRITables(U3FaultSystemSolutionFetcher fetch,
 			U3BranchWeightProvider weightProvider, File dir, String prefix)
 			throws IOException {
 		MiniSectRIPlot plot = new MiniSectRIPlot(weightProvider);
@@ -5506,7 +5506,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 						List<Double> avgRates = Lists.newArrayList();
 
 						for (int m = 0; m < numMinis; m++) {
-							double avgRate = FaultSystemSolutionFetcher
+							double avgRate = U3FaultSystemSolutionFetcher
 									.calcScaledAverage(solRatesList.get(m),
 											weights);
 							double ri = 1d / avgRate;
@@ -5521,7 +5521,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 	}
 
-	public static void writeMisfitTables(FaultSystemSolutionFetcher fetch,
+	public static void writeMisfitTables(U3FaultSystemSolutionFetcher fetch,
 			U3BranchWeightProvider weightProvider, File dir, String prefix)
 			throws IOException {
 		MisfitTable plot = new MisfitTable();
@@ -5586,7 +5586,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 	}
 
-	public static void writePaleoRatesTables(FaultSystemSolutionFetcher fetch,
+	public static void writePaleoRatesTables(U3FaultSystemSolutionFetcher fetch,
 			U3BranchWeightProvider weightProvider, File dir, String prefix)
 			throws IOException {
 		PaleoRatesTable plot = new PaleoRatesTable(weightProvider);
@@ -5902,11 +5902,11 @@ public abstract class CompoundFSSPlots implements Serializable {
 						rates[j] = obsRatesList.get(j)[i];
 					}
 
-					line.add(FaultSystemSolutionFetcher.calcScaledAverage(
+					line.add(U3FaultSystemSolutionFetcher.calcScaledAverage(
 							slips, weigths) + "");
-					line.add(FaultSystemSolutionFetcher.calcScaledAverage(
+					line.add(U3FaultSystemSolutionFetcher.calcScaledAverage(
 							proxyRates, weigths) + "");
-					line.add(FaultSystemSolutionFetcher.calcScaledAverage(
+					line.add(U3FaultSystemSolutionFetcher.calcScaledAverage(
 							rates, weigths) + "");
 					line.add(StatUtils.min(rates) + "");
 					line.add(StatUtils.max(rates) + "");
@@ -5972,7 +5972,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 					for (int j = 0; j < numSols; j++)
 						rates[j] = obsRatesList.get(j)[i];
 
-					line.add(FaultSystemSolutionFetcher.calcScaledAverage(
+					line.add(U3FaultSystemSolutionFetcher.calcScaledAverage(
 							rates, weigths) + "");
 					line.add(StatUtils.min(rates) + "");
 					line.add(StatUtils.max(rates) + "");
@@ -6017,7 +6017,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 
 	}
 
-	public static void writeMeanSolutions(FaultSystemSolutionFetcher fetch,
+	public static void writeMeanSolutions(U3FaultSystemSolutionFetcher fetch,
 			U3BranchWeightProvider weightProvider, File dir, String prefix)
 			throws IOException {
 		BranchAvgFSSBuilder plot = new BranchAvgFSSBuilder(weightProvider);
@@ -6173,9 +6173,9 @@ public abstract class CompoundFSSPlots implements Serializable {
 			if (this.solIndex >= 0) {
 				// we can build means from individual runs if specified
 				
-				Preconditions.checkState(sol instanceof AverageFaultSystemSolution,
+				Preconditions.checkState(sol instanceof U3AverageFaultSystemSolution,
 						"Sol index supplied but branch isn't an average!");
-				AverageFaultSystemSolution avgSol = (AverageFaultSystemSolution)sol;
+				U3AverageFaultSystemSolution avgSol = (U3AverageFaultSystemSolution)sol;
 				Preconditions.checkState(avgSol.getNumSolutions() > this.solIndex,
 						"Sol index="+this.solIndex+" but avg sol has "+avgSol.getNumSolutions()+" sols");
 				sol = avgSol.getSolution(this.solIndex);
@@ -7067,7 +7067,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				Map<Integer, int[]> sectsByParents = sectsByParentsMap.get(fm);
 
 				Map<Integer, FaultSection> parentSectsMap = fm
-						.fetchFaultSectionsMap();
+						.getFaultSectionIDMap();
 
 				for (Integer parentID : ratesList.get(0).keySet()) {
 					if (!parentSectsMap.containsKey(parentID))
@@ -7781,7 +7781,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 						double[] vals = new double[depDatas.size()];
 						for (int j = 0; j < depDatas.size(); j++)
 							vals[j] = depDatas.get(j).get(r).get(i);
-						data.set(i, FaultSystemSolutionFetcher.calcScaledAverage(
+						data.set(i, U3FaultSystemSolutionFetcher.calcScaledAverage(
 								vals, weightsArray));
 					}
 
@@ -8279,7 +8279,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 					double[] vals = new double[datas.size()];
 					for (int j = 0; j < datas.size(); j++)
 						vals[j] = datas.get(j).get(r).get(i);
-					data.set(i, FaultSystemSolutionFetcher.calcScaledAverage(
+					data.set(i, U3FaultSystemSolutionFetcher.calcScaledAverage(
 							vals, weightsArray));
 				}
 
@@ -8745,7 +8745,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 				double[] faultVals = new double[weights.length];
 				for (int s = 0; s < weights.length; s++)
 					faultVals[s] = valuesList.get(s)[i];
-				values[i] = FaultSystemSolutionFetcher.calcScaledAverage(
+				values[i] = U3FaultSystemSolutionFetcher.calcScaledAverage(
 						faultVals, weights);
 			}
 
@@ -9084,7 +9084,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	 * 
 	 * @param fetcher
 	 */
-	public void buildPlot(FaultSystemSolutionFetcher fetcher) {
+	public void buildPlot(U3FaultSystemSolutionFetcher fetcher) {
 		ArrayList<CompoundFSSPlots> plots = new ArrayList<CompoundFSSPlots>();
 		plots.add(this);
 		batchPlot(plots, fetcher);
@@ -9098,7 +9098,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	 * @param fetcher
 	 */
 	public static void batchPlot(Collection<CompoundFSSPlots> plots,
-			FaultSystemSolutionFetcher fetcher) {
+			U3FaultSystemSolutionFetcher fetcher) {
 		int threads = Runtime.getRuntime().availableProcessors();
 		threads *= 3;
 		threads /= 4;
@@ -9153,7 +9153,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	protected static class PlotSolComputeTask implements Task {
 
 		private Collection<CompoundFSSPlots> plots;
-		private FaultSystemSolutionFetcher fetcher;
+		private U3FaultSystemSolutionFetcher fetcher;
 		private U3LogicTreeBranch branch;
 		private boolean mpj;
 		private FaultSystemSolutionERF erf;
@@ -9162,13 +9162,13 @@ public abstract class CompoundFSSPlots implements Serializable {
 		private long overheadMillis;
 
 		public PlotSolComputeTask(Collection<CompoundFSSPlots> plots,
-				FaultSystemSolutionFetcher fetcher, U3LogicTreeBranch branch,
+				U3FaultSystemSolutionFetcher fetcher, U3LogicTreeBranch branch,
 				int index) {
 			this(plots, fetcher, branch, false, index);
 		}
 
 		public PlotSolComputeTask(Collection<CompoundFSSPlots> plots,
-				FaultSystemSolutionFetcher fetcher, U3LogicTreeBranch branch,
+				U3FaultSystemSolutionFetcher fetcher, U3LogicTreeBranch branch,
 				boolean mpj, int index) {
 			this.plots = plots;
 			this.fetcher = fetcher;
@@ -9265,7 +9265,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 	 * @param threads
 	 */
 	public static void batchPlot(Collection<CompoundFSSPlots> plots,
-			FaultSystemSolutionFetcher fetcher, int threads) {
+			U3FaultSystemSolutionFetcher fetcher, int threads) {
 
 		List<Task> tasks = Lists.newArrayList();
 		int index = 0;
@@ -9443,13 +9443,13 @@ public abstract class CompoundFSSPlots implements Serializable {
 		
 		ERFBasedRegionalMagProbPlot.NUCLEATION_PROBS = nucleation;
 		
-		FaultSystemSolutionFetcher fetch = CompoundFaultSystemSolution
+		U3FaultSystemSolutionFetcher fetch = U3CompoundFaultSystemSolution
 				.fromZipFile(compoundFile);
 		U3BranchWeightProvider weightProvider = new U3APrioriBranchWeightProvider();
 		int threads = 3;
 		
 		// we only need UCERF3 to get the ball rolling, won't be using it
-		fetch = FaultSystemSolutionFetcher.getRandomSample(fetch, threads,
+		fetch = U3FaultSystemSolutionFetcher.getRandomSample(fetch, threads,
 				FaultModels.FM3_1);
 		
 		List<CompoundFSSPlots> plots = Lists.newArrayList();
@@ -9510,7 +9510,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		csv.writeToFile(csvFile);
 	}
 	
-	private static boolean hasBothFMs(FaultSystemSolutionFetcher fetch) {
+	private static boolean hasBothFMs(U3FaultSystemSolutionFetcher fetch) {
 		boolean has31 = false;
 		boolean has32 = false;
 		for (U3LogicTreeBranch branch : fetch.getBranches()) {
@@ -9578,7 +9578,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		// File file = new File(dir, "zeng_convergence_compound.zip");
 		// File file = new
 		// File("/tmp/2012_10_10-fm3-logic-tree-sample_COMPOUND_SOL.zip");
-		FaultSystemSolutionFetcher fetch = CompoundFaultSystemSolution.fromZipFile(file);
+		U3FaultSystemSolutionFetcher fetch = U3CompoundFaultSystemSolution.fromZipFile(file);
 		double wts = 0;
 		for (U3LogicTreeBranch branch : fetch.getBranches())
 			wts += weightProvider.getWeight(branch);
@@ -9590,7 +9590,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 		
 		if (sols > 0) {
 			// For one FM
-			fetch = FaultSystemSolutionFetcher.getRandomSample(fetch, sols,
+			fetch = U3FaultSystemSolutionFetcher.getRandomSample(fetch, sols,
 					FaultModels.FM3_1);
 			
 			// For both FMs
@@ -9609,7 +9609,7 @@ public abstract class CompoundFSSPlots implements Serializable {
 					new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 							"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 			
-			fetch = new FaultSystemSolutionFetcher() {
+			fetch = new U3FaultSystemSolutionFetcher() {
 				
 				@Override
 				public Collection<U3LogicTreeBranch> getBranches() {

@@ -29,7 +29,7 @@ public class FaultModelsCalc {
 	 */
 	public static void writeSectionsForEachNamedFault(FaultModels fm) {
 		Map<Integer, List<Integer>> namedMap = fm.getNamedFaultsMap();
-		ArrayList<FaultSection> sects = fm.fetchFaultSections();
+		List<FaultSection> sects = fm.getFaultSections();
 
 		HashMap<Integer,String> idNameMap = new HashMap<Integer,String>();
 
@@ -63,7 +63,7 @@ public class FaultModelsCalc {
 	 */
 	public static void writeSectionsForEachNamedFaultAlt(FaultModels fm) {
 		Map<String, List<Integer>> namedMap = fm.getNamedFaultsMapAlt();
-		ArrayList<FaultSection> sects = fm.fetchFaultSections();
+		List<FaultSection> sects = fm.getFaultSections();
 
 		HashMap<Integer,String> idNameMap = new HashMap<Integer,String>();
 
@@ -85,8 +85,8 @@ public class FaultModelsCalc {
 	 * @param fm
 	 */
 	public static void writeSectionsNamesAndSomeAttributes(FaultModels fm, boolean includeTrace) {
-		ArrayList<FaultSection> sects = fm.fetchFaultSections();
-		for(FaultSection data : fm.fetchFaultSections()) {
+		List<FaultSection> sects = fm.getFaultSections();
+		for(FaultSection data : fm.getFaultSections()) {
 			System.out.print(data.getName()+"\t"+(float)data.getOrigDownDipWidth()+"\t"+(float)data.getReducedDownDipWidth()+
 					"\t"+(float)data.getFaultTrace().getTraceLength()+"\t"+(float)data.getAseismicSlipFactor()+"\t"+
 					data.getAveLowerDepth()+"\t"+data.getOrigAveUpperDepth());
@@ -115,8 +115,8 @@ public class FaultModelsCalc {
 		HashMap<Integer,Boolean> inFM3pt1 = new HashMap<Integer,Boolean>();
 		HashMap<Integer,Boolean> inFM3pt2 = new HashMap<Integer,Boolean>();
 
-		ArrayList<FaultSection> fm1_data = FaultModels.FM3_1.fetchFaultSections();
-		ArrayList<FaultSection> fm2_data = FaultModels.FM3_2.fetchFaultSections();
+		List<FaultSection> fm1_data = FaultModels.FM3_1.getFaultSections();
+		List<FaultSection> fm2_data = FaultModels.FM3_2.getFaultSections();
 
 		for(FaultSection data:fm1_data) {
 			nameList.put(data.getSectionId(),data.getName());
@@ -175,7 +175,7 @@ public class FaultModelsCalc {
 	 * @param fm
 	 */
 	public static void writeSectionOutlineForGMT(FaultModels fm, String fileName) {
-		ArrayList<FaultSection> fm_data = fm.fetchFaultSections();
+		List<FaultSection> fm_data = fm.getFaultSections();
 		ArrayList<String> lineList = new ArrayList<String>();
 		for(FaultSection data:fm_data) {
 			lineList.add("> "+data.getName());

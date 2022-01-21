@@ -1,10 +1,8 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -14,8 +12,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -31,7 +27,6 @@ import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
-import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet.RuptureProperties;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -45,14 +40,10 @@ import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolutionFetcher;
+import scratch.UCERF3.U3FaultSystemSolutionFetcher;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
-import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
-import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
-import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
+import scratch.UCERF3.inversion.U3InversionConfigFactory;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 
@@ -85,45 +76,6 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		public FaultSystemSolution processSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch);
 	}
 	
-	public static class UCERF3_SolutionProcessor implements SolutionProcessor {
-
-		@Override
-		public FaultSystemRupSet processRupSet(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-//			System.out.println("Start process");
-			rupSet = FaultSystemRupSet.buildFromExisting(rupSet).u3BranchModules(asU3Branch(branch)).build();
-//			System.out.println("End process");
-			return rupSet;
-		}
-
-		@Override
-		public FaultSystemSolution processSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
-			sol.addAvailableModule(new Callable<SubSeismoOnFaultMFDs>() {
-
-				@Override
-				public SubSeismoOnFaultMFDs call() throws Exception {
-					FaultSystemRupSet rupSet = sol.getRupSet();
-					return new SubSeismoOnFaultMFDs(
-							rupSet.requireModule(InversionTargetMFDs.class).getOnFaultSubSeisMFDs().getAll());
-				}
-			}, SubSeismoOnFaultMFDs.class);
-			sol.addAvailableModule(new Callable<GridSourceProvider>() {
-
-				@Override
-				public GridSourceProvider call() throws Exception {
-					FaultSystemRupSet rupSet = sol.getRupSet();
-					return new UCERF3_GridSourceGenerator(sol, branch.getValue(SpatialSeisPDF.class),
-							branch.getValue(MomentRateFixes.class),
-							rupSet.requireModule(InversionTargetMFDs.class),
-							sol.requireModule(SubSeismoOnFaultMFDs.class),
-							branch.getValue(MaxMagOffFault.class).getMaxMagOffFault(),
-							rupSet.requireModule(FaultGridAssociations.class));
-				}
-			}, GridSourceProvider.class);
-			return sol;
-		}
-		
-	}
-	
 	private static U3LogicTreeBranch asU3Branch(LogicTreeBranch<?> branch) {
 		if (branch instanceof U3LogicTreeBranch)
 			return (U3LogicTreeBranch)branch;
@@ -138,18 +90,18 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	
 	public static class UCERF3 extends AbstractExternalFetcher {
 
-		private FaultSystemSolutionFetcher oldFetcher;
+		private U3FaultSystemSolutionFetcher oldFetcher;
 
 		private UCERF3() {
-			super(new UCERF3_SolutionProcessor(), null);
+			super(new U3InversionConfigFactory.UCERF3_SolutionProcessor(), null);
 		}
 		
 		public UCERF3(LogicTree<?> logicTree) {
-			super(new UCERF3_SolutionProcessor(), logicTree);
+			super(new U3InversionConfigFactory.UCERF3_SolutionProcessor(), logicTree);
 		}
 		
-		public UCERF3(FaultSystemSolutionFetcher oldFetcher) {
-			super(new UCERF3_SolutionProcessor(),
+		public UCERF3(U3FaultSystemSolutionFetcher oldFetcher) {
+			super(new U3InversionConfigFactory.UCERF3_SolutionProcessor(),
 					LogicTree.fromExisting(U3LogicTreeBranch.getLogicTreeLevels(), oldFetcher.getBranches()));
 			this.oldFetcher = oldFetcher;
 		}
@@ -733,6 +685,11 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			try {
 				clazz = Class.forName(className);
 			} catch(Exception e) {
+				if (className.endsWith("$UCERF3_SolutionProcessor")) {
+					System.err.println("WARNING: found reference to previous oudated solution processor, changing to new class");
+					processor = new U3InversionConfigFactory.UCERF3_SolutionProcessor();
+					return;
+				}
 				System.err.println("WARNING: Skipping solution processor', couldn't locate class: "+className);
 				return;
 			}

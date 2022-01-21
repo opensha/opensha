@@ -45,8 +45,8 @@ import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.faultSurface.FaultSection;
 
-import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.CompoundFaultSystemSolution;
+import scratch.UCERF3.U3AverageFaultSystemSolution;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
 import scratch.UCERF3.analysis.CompoundFSSPlots.MapBasedPlot;
 import scratch.UCERF3.analysis.CompoundFSSPlots.MapPlotData;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -216,7 +216,7 @@ public class TablesAndPlotsGen {
 	
 	
 	public static void makeParentSectConvergenceTable(
-			File csvOutputFile, AverageFaultSystemSolution aveSol, int parentSectionID) throws IOException {
+			File csvOutputFile, U3AverageFaultSystemSolution aveSol, int parentSectionID) throws IOException {
 		List<Integer> rups = aveSol.getRupSet().getRupturesForParentSection(parentSectionID);
 		
 		CSVFile<String> csv = new CSVFile<String>(true);
@@ -277,7 +277,7 @@ public class TablesAndPlotsGen {
 	 * @param csvFile
 	 * @throws IOException
 	 */
-	public static void makeCompoundFSSMomentRatesTable(CompoundFaultSystemSolution cfss, File csvFile)
+	public static void makeCompoundFSSMomentRatesTable(U3CompoundFaultSystemSolution cfss, File csvFile)
 			throws IOException {
 		
 		CSVFile<String> csv = new CSVFile<String>(true);
@@ -611,7 +611,7 @@ public class TablesAndPlotsGen {
 		return new HistogramFunction(25, 25, 50d);
 	}
 	
-	public static void buildRupLengthComparisonPlot(CompoundFaultSystemSolution cfss, File dir, String prefix) throws IOException {
+	public static void buildRupLengthComparisonPlot(U3CompoundFaultSystemSolution cfss, File dir, String prefix) throws IOException {
 		List<HistogramFunction> hists = Lists.newArrayList();
 		
 		for (U3LogicTreeBranch branch : cfss.getBranches()) {
@@ -665,7 +665,7 @@ public class TablesAndPlotsGen {
 	}
 	
 	public static void makeNumRunsForRateWithin10Plot(
-			AverageFaultSystemSolution avgSol, File outputDir, String prefix) throws IOException {
+			U3AverageFaultSystemSolution avgSol, File outputDir, String prefix) throws IOException {
 		DefaultXY_DataSet scatter = new DefaultXY_DataSet();
 		
 		for (int r=0; r<avgSol.getRupSet().getNumRuptures(); r++) {

@@ -154,7 +154,7 @@ public class DeformationModelFetcher {
 				
 				// load in the parent fault section
 				if (D) System.out.println("Loading fault model: "+faultModel);
-				faultSectPrefDataList = faultModel.fetchFaultSections();
+				faultSectPrefDataList = faultModel.getFaultSections();
 				
 				// if non null, will use rakes from this model. currently unused, see note below
 				if (D) System.out.println("Combining model with sections...");

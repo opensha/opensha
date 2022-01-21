@@ -921,9 +921,9 @@ public class UCERF2_Section_MFDsCalc {
 			
 			// now get UCERF3 IDs for mapping
 			HashMap<String, Integer> ucerf3SectNamesToIDsMap = Maps.newHashMap();
-			for (FaultSection sect : FaultModels.FM3_1.fetchFaultSections())
+			for (FaultSection sect : FaultModels.FM3_1.getFaultSections())
 				ucerf3SectNamesToIDsMap.put(sect.getName(), sect.getSectionId());
-			for (FaultSection sect : FaultModels.FM3_2.fetchFaultSections())
+			for (FaultSection sect : FaultModels.FM3_2.getFaultSections())
 				if (!ucerf3SectNamesToIDsMap.containsKey(sect.getSectionName()))
 					ucerf3SectNamesToIDsMap.put(sect.getName(), sect.getSectionId());
 			

@@ -25,10 +25,6 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurat
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration.Builder;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SectionTotalRateConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationsPerVariableCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
@@ -39,13 +35,12 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.Quantity;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23InvConfigFactory;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23LogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_U3_HybridLogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSeisMoRateReductions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.DraftModelConstraintBuilder;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -57,7 +52,6 @@ import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
-import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 /**
  * Extension of {@link ThreadedSimulatedAnnealing} that dynamically re-weights uncertainty-weighted inversion
@@ -736,8 +730,8 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 
 		String dirName = new SimpleDateFormat("yyyy_MM_dd").format(new Date());
 
-		NSHM23InvConfigFactory factory = new NSHM23InvConfigFactory();
-		LogicTreeBranch<LogicTreeNode> branch = new NSHM23LogicTreeBranch();
+		NSHM23_InvConfigFactory factory = new NSHM23_InvConfigFactory();
+		LogicTreeBranch<LogicTreeNode> branch = new NSHM23_U3_HybridLogicTreeBranch();
 		branch.setValue(FaultModels.FM3_1);
 //		branch.setValue(RupturePlausibilityModels.COULOMB);
 		branch.setValue(RupturePlausibilityModels.UCERF3);
@@ -767,7 +761,12 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		dirName += "-"+branch.getValue(SupraSeisBValues.class).getFilePrefix();
 		dirName += "-"+branch.getValue(SubSectConstraintModels.class).getFilePrefix();
 		
-		FaultSystemRupSet rupSet = factory.buildRuptureSet(branch, 32);
+		FaultSystemRupSet rupSet;
+		try {
+			rupSet = factory.buildRuptureSet(branch, 32);
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
 		
 		System.out.println("Slip along: "+rupSet.getModule(SlipAlongRuptureModel.class).getName());
 		

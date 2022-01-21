@@ -320,7 +320,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 					
 					for (int s=0; s<misfits.length; s++) {
 						double target = slips.getSlipRate(s);
-						double solSlip = solSlips[s]*1e-3;
+						double solSlip = solSlips[s]*1e-3; // to m/yr
 						double stdDev = stdDevs[s];
 						
 						misfits[s] = (solSlip - target)/stdDev;

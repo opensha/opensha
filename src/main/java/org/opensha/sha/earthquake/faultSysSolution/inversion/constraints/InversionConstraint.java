@@ -154,6 +154,8 @@ public abstract class InversionConstraint implements ShortNamed {
 	 * @param val
 	 */
 	protected void setA(DoubleMatrix2D A, int row, int col, double val) {
+		Preconditions.checkState(Double.isFinite(val),
+				"Setting non-finite value in A matrix at [%s, %s]: %s", row, col, val);
 		if (quickGetsSets)
 			A.setQuick(row, col, val);
 		else
