@@ -34,6 +34,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstrain
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
@@ -322,7 +323,18 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 
 		@Override
 		public FaultSystemSolution processSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
-			// TODO
+			FaultSystemRupSet rupSet = sol.getRupSet();
+			if (!sol.hasAvailableModule(SolutionSlipRates.class) && rupSet.hasAvailableModule(AveSlipModule.class)
+					&& rupSet.hasAvailableModule(SlipAlongRuptureModel.class)) {
+				sol.addAvailableModule(new Callable<SolutionSlipRates>() {
+
+					@Override
+					public SolutionSlipRates call() throws Exception {
+						return SolutionSlipRates.calc(sol, rupSet.requireModule(AveSlipModule.class),
+								rupSet.requireModule(SlipAlongRuptureModel.class));
+					}
+				}, SolutionSlipRates.class);
+			}
 			
 			return sol;
 		}

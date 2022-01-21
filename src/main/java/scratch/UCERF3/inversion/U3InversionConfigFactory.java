@@ -38,6 +38,8 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
@@ -252,11 +254,11 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 
 		@Override
 		public FaultSystemSolution processSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
+			FaultSystemRupSet rupSet = sol.getRupSet();
 			sol.offerAvailableModule(new Callable<SubSeismoOnFaultMFDs>() {
 
 				@Override
 				public SubSeismoOnFaultMFDs call() throws Exception {
-					FaultSystemRupSet rupSet = sol.getRupSet();
 					return new SubSeismoOnFaultMFDs(
 							rupSet.requireModule(InversionTargetMFDs.class).getOnFaultSubSeisMFDs().getAll());
 				}
@@ -265,7 +267,6 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 
 				@Override
 				public GridSourceProvider call() throws Exception {
-					FaultSystemRupSet rupSet = sol.getRupSet();
 					return new UCERF3_GridSourceGenerator(sol, branch.getValue(SpatialSeisPDF.class),
 							branch.getValue(MomentRateFixes.class),
 							rupSet.requireModule(InversionTargetMFDs.class),
@@ -274,6 +275,17 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 							rupSet.requireModule(FaultGridAssociations.class));
 				}
 			}, GridSourceProvider.class);
+			if (!sol.hasAvailableModule(SolutionSlipRates.class) && rupSet.hasAvailableModule(AveSlipModule.class)
+					&& rupSet.hasAvailableModule(SlipAlongRuptureModel.class)) {
+				sol.addAvailableModule(new Callable<SolutionSlipRates>() {
+
+					@Override
+					public SolutionSlipRates call() throws Exception {
+						return SolutionSlipRates.calc(sol, rupSet.requireModule(AveSlipModule.class),
+								rupSet.requireModule(SlipAlongRuptureModel.class));
+					}
+				}, SolutionSlipRates.class);
+			}
 			return sol;
 		}
 		

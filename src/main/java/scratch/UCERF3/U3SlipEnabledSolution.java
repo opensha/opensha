@@ -6,8 +6,7 @@ import java.util.List;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel.SolSlipRatesCache;
-import org.opensha.sha.gui.infoTools.CalcProgressBar;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
@@ -36,7 +35,7 @@ public abstract class U3SlipEnabledSolution extends U3FaultSystemSolution {
 	@Override
 	public void clearCache() {
 		super.clearCache();
-		rupSet.removeModuleInstances(SolSlipRatesCache.class);
+		rupSet.removeModuleInstances(SolutionSlipRates.class);
 		slipPDFMap.clear();
 		slipPaleoObsPDFMap.clear();
 	}
