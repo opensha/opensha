@@ -41,7 +41,7 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Bra
 	 */
 	public abstract double getAveSlip(int rupIndex);
 
-	public static class ModelBased extends AveSlipModule implements ArchivableModule, ConstantAverageable<AveSlipModule> {
+	public static class ModelBased extends AveSlipModule implements ArchivableModule {
 
 		private RupSetScalingRelationship scale;
 
@@ -87,8 +87,53 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Bra
 		}
 
 		@Override
-		public Class<AveSlipModule> getAveragingType() {
-			return AveSlipModule.class;
+		public String getName() {
+			return scale.getShortName()+" Average Slips";
+		}
+
+		@Override
+		public AveragingAccumulator<AveSlipModule> averagingAccumulator() {
+			return new AveragingAccumulator<AveSlipModule>() {
+
+				private RupSetScalingRelationship constScale = ModelBased.this.scale;
+				private double sumWeight = 0d;
+				private AveragingAccumulator<AveSlipModule> baAccumulator;
+				
+				@Override
+				public void process(AveSlipModule module, double relWeight) {
+					if (constScale != null) {
+						// everything has been model based and with the same model so far
+						RupSetScalingRelationship oScale =
+								module instanceof ModelBased ? ((ModelBased)module).scale : null;
+						if (oScale != constScale) {
+							// we have encountered multiple modules, need to switch to branch averaged
+							baAccumulator = new Precomputed(module).averagingAccumulator();
+							if (sumWeight != 0d)
+								// add in all prior weight already processed for the original scaling relationship
+								baAccumulator.process(new ModelBased(rupSet, constScale), sumWeight);
+							constScale = null;
+						} // else we can do nothing
+					} else {
+						// we have mixed models or some precomputed versions, need average
+						baAccumulator.process(module, relWeight);
+					}
+					sumWeight += relWeight;
+				}
+				
+				@Override
+				public Class<AveSlipModule> getType() {
+					return AveSlipModule.class;
+				}
+				
+				@Override
+				public AveSlipModule getAverage() {
+					if (constScale != null)
+						// they're all constant
+						return ModelBased.this;
+					// they're precomputed
+					return baAccumulator.getAverage();
+				}
+			};
 		}
 
 	}
@@ -204,11 +249,11 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Bra
 			};
 		}
 
-	}
+		@Override
+		public String getName() {
+			return "Precomputed Average Slips";
+		}
 
-	@Override
-	public String getName() {
-		return "Rupture Average Slips";
 	}
 
 	@Override
