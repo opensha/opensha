@@ -35,7 +35,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.Quantity;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23InvConfigFactory;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_U3_HybridLogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
@@ -730,7 +730,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 
 		String dirName = new SimpleDateFormat("yyyy_MM_dd").format(new Date());
 
-		NSHM23InvConfigFactory factory = new NSHM23InvConfigFactory();
+		NSHM23_InvConfigFactory factory = new NSHM23_InvConfigFactory();
 		LogicTreeBranch<LogicTreeNode> branch = new NSHM23_U3_HybridLogicTreeBranch();
 		branch.setValue(FaultModels.FM3_1);
 //		branch.setValue(RupturePlausibilityModels.COULOMB);

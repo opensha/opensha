@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
+package org.opensha.sha.earthquake.rupForecastImpl.nshm23;
 
 import java.io.File;
 import java.io.IOException;
@@ -7,10 +7,7 @@ import java.util.List;
 import java.util.concurrent.Callable;
 
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
-import org.opensha.commons.data.region.CaliforniaRegions;
-import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -33,19 +30,23 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Nonnegati
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
-import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
-import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSeisMoRateReductions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.DraftModelConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -60,7 +61,7 @@ import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 
-public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
+public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 
 	private transient Table<RupSetFaultModel, RupturePlausibilityModels, FaultSystemRupSet> rupSetCache = HashBasedTable.create();
 	private transient File cacheDir;
@@ -176,31 +177,37 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 		return new NSHM23SolProcessor();
 	}
 	
-	private static class NSHM23SolProcessor implements SolutionProcessor {
+	public static class NSHM23SolProcessor implements SolutionProcessor {
 		
 		private Table<RupSetFaultModel, RupturePlausibilityModels, PlausibilityConfiguration> configCache = HashBasedTable.create();
 
 		@Override
 		public synchronized FaultSystemRupSet processRupSet(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+			// here we do trust the incoming rupture set to not be wholly incompatible (e.g., average slips)
+			// so we generally offer modules instead of forcing them
+			
 			rupSet.addModule(branch);
 			
-			// replace branch-specific modules
-			rupSet.addAvailableModule(new Callable<AveSlipModule>() {
+			// offer average slips, don't force replacement
+			if (branch.hasValue(RupSetScalingRelationship.class)) {
+				rupSet.offerAvailableModule(new Callable<AveSlipModule>() {
 
-				@Override
-				public AveSlipModule call() throws Exception {
-					return AveSlipModule.forModel(rupSet, branch.requireValue(RupSetScalingRelationship.class));
-				}
-			}, AveSlipModule.class);
-			rupSet.addAvailableModule(new Callable<SlipAlongRuptureModel>() {
-
-				@Override
-				public SlipAlongRuptureModel call() throws Exception {
-					return branch.requireValue(SlipAlongRuptureModels.class).getModel();
-				}
-			}, SlipAlongRuptureModel.class);
+					@Override
+					public AveSlipModule call() throws Exception {
+						return AveSlipModule.forModel(rupSet, branch.requireValue(RupSetScalingRelationship.class));
+					}
+				}, AveSlipModule.class);
+			}
 			
-			// add modified section minimum magnitudes
+			// slip along rupture model
+			if (branch.hasValue(SlipAlongRuptureModels.class)) {
+				// force replacement as rupture sets can have a default slip along rupture model attached, which we
+				// need to make sure to override
+				SlipAlongRuptureModel model = branch.getValue(SlipAlongRuptureModels.class).getModel();
+				if (rupSet.getModule(SlipAlongRuptureModel.class) != model)
+					rupSet.addModule(model);
+			}
+			
 			RupSetFaultModel fm = branch.getValue(RupSetFaultModel.class);
 			
 			// named faults, regions of interest
@@ -210,7 +217,7 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 			if (fm == FaultModels.FM2_1 || fm == FaultModels.FM3_1 || fm == FaultModels.FM3_2) {
 				// include the UERF3 parkfield hack for modified section min mags
 				// TODO will need a similar parkfield hack for NSHM23 fault models?
-				rupSet.addAvailableModule(new Callable<ModSectMinMags>() {
+				rupSet.offerAvailableModule(new Callable<ModSectMinMags>() {
 
 					@Override
 					public ModSectMinMags call() throws Exception {
@@ -218,7 +225,7 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 								rupSet, InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS));
 					}
 				}, ModSectMinMags.class);
-				rupSet.addAvailableModule(new Callable<PolygonFaultGridAssociations>() {
+				rupSet.offerAvailableModule(new Callable<PolygonFaultGridAssociations>() {
 
 					@Override
 					public PolygonFaultGridAssociations call() throws Exception {
@@ -233,7 +240,7 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 					}
 				}, PolygonFaultGridAssociations.class);
 				// add paleoseismic data TODO: U3 for now
-				rupSet.addAvailableModule(new Callable<PaleoseismicConstraintData>() {
+				rupSet.offerAvailableModule(new Callable<PaleoseismicConstraintData>() {
 
 					@Override
 					public PaleoseismicConstraintData call() throws Exception {
@@ -242,16 +249,17 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 				}, PaleoseismicConstraintData.class);
 			} else {
 				// regular system-wide minimum magnitudes
-				rupSet.addAvailableModule(new Callable<ModSectMinMags>() {
+				rupSet.offerAvailableModule(new Callable<ModSectMinMags>() {
 
 					@Override
 					public ModSectMinMags call() throws Exception {
+						// TODO revisit
 						return ModSectMinMags.above(rupSet, InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS, true);
 					}
 				}, ModSectMinMags.class);
 			}
 			// add inversion target MFDs
-			rupSet.addAvailableModule(new Callable<SupraSeisBValInversionTargetMFDs>() {
+			rupSet.offerAvailableModule(new Callable<SupraSeisBValInversionTargetMFDs>() {
 
 				@Override
 				public SupraSeisBValInversionTargetMFDs call() throws Exception {
@@ -259,6 +267,7 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 				}
 			}, SupraSeisBValInversionTargetMFDs.class);
 			// add target slip rates (modified for sub-seismogenic ruptures)
+			// don't offer as a default implementation could have been attached
 			rupSet.addAvailableModule(new Callable<SectSlipRates>() {
 
 				@Override
@@ -313,14 +322,16 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 
 		@Override
 		public FaultSystemSolution processSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
+			// TODO
+			
 			return sol;
 		}
 		
 	}
 	
-	private static DraftModelConstraintBuilder getConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+	private static NSHM23_ConstraintBuilder getConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
-		DraftModelConstraintBuilder constrBuilder = new DraftModelConstraintBuilder(rupSet, bVal,
+		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal,
 				true, false, true);
 		
 		SubSeisMoRateReduction reduction = SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
@@ -337,7 +348,7 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 	@Override
 	public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
 			int threads) {
-		DraftModelConstraintBuilder constrBuilder = getConstraintBuilder(rupSet, branch);
+		NSHM23_ConstraintBuilder constrBuilder = getConstraintBuilder(rupSet, branch);
 		
 		SubSectConstraintModels constrModel = branch.requireValue(SubSectConstraintModels.class);
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
@@ -436,7 +447,7 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 		return builder.build();
 	}
 	
-	public static class NoPaleoParkfield extends NSHM23InvConfigFactory {
+	public static class NoPaleoParkfield extends NSHM23_InvConfigFactory {
 
 		@Override
 		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
@@ -449,7 +460,7 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 		
 	}
 	
-	public static class ReweightedEvenFit extends NSHM23InvConfigFactory {
+	public static class ReweightedEvenFit extends NSHM23_InvConfigFactory {
 
 		@Override
 		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
@@ -482,7 +493,7 @@ public class NSHM23InvConfigFactory implements InversionConfigurationFactory {
 		
 		LogicTreeBranch<?> branch = NSHM23_LogicTreeBranch.DEFAULT;
 		
-		NSHM23InvConfigFactory factory = new NSHM23InvConfigFactory();
+		NSHM23_InvConfigFactory factory = new NSHM23_InvConfigFactory();
 		
 		FaultSystemRupSet rupSet = factory.buildRuptureSet(branch, 32);
 		

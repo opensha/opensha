@@ -29,6 +29,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
@@ -175,6 +176,16 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 			if (branch.hasValue(SlipAlongRuptureModels.class))
 				rupSet.addModule(branch.requireValue(SlipAlongRuptureModels.class).getModel());
 			
+			if (branch.hasValue(RupSetScalingRelationship.class)) {
+				rupSet.offerAvailableModule(new Callable<AveSlipModule>() {
+
+					@Override
+					public AveSlipModule call() throws Exception {
+						return AveSlipModule.forModel(rupSet, branch.requireValue(RupSetScalingRelationship.class));
+					}
+				}, AveSlipModule.class);
+			}
+			
 			if (fm != null)
 				// named faults, regions, polygons
 				fm.attachDefaultModules(rupSet);
@@ -182,7 +193,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 			// min mags are model specific, add them here
 			if (fm == FaultModels.FM2_1 || fm == FaultModels.FM3_1 || fm == FaultModels.FM3_2) {
 				// include the parkfield hack for modified section min mags
-				rupSet.addAvailableModule(new Callable<ModSectMinMags>() {
+				rupSet.offerAvailableModule(new Callable<ModSectMinMags>() {
 
 					@Override
 					public ModSectMinMags call() throws Exception {
@@ -192,7 +203,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 				}, ModSectMinMags.class);
 			} else {
 				// regular system-wide minimum magnitudes
-				rupSet.addAvailableModule(new Callable<ModSectMinMags>() {
+				rupSet.offerAvailableModule(new Callable<ModSectMinMags>() {
 
 					@Override
 					public ModSectMinMags call() {
@@ -202,7 +213,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 			}
 			
 			// add inversion target MFDs
-			rupSet.addAvailableModule(new Callable<U3InversionTargetMFDs>() {
+			rupSet.offerAvailableModule(new Callable<U3InversionTargetMFDs>() {
 
 				@Override
 				public U3InversionTargetMFDs call() throws Exception {
@@ -212,6 +223,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 			}, U3InversionTargetMFDs.class);
 			
 			// add target slip rates (modified for sub-seismogenic ruptures)
+			// force replacement as there's a default implementation of this module
 			rupSet.addAvailableModule(new Callable<SectSlipRates>() {
 
 				@Override
@@ -223,7 +235,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 			}, SectSlipRates.class);
 			
 			// add paleoseismic data
-			rupSet.addAvailableModule(new Callable<PaleoseismicConstraintData>() {
+			rupSet.offerAvailableModule(new Callable<PaleoseismicConstraintData>() {
 
 				@Override
 				public PaleoseismicConstraintData call() throws Exception {
@@ -240,7 +252,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 
 		@Override
 		public FaultSystemSolution processSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
-			sol.addAvailableModule(new Callable<SubSeismoOnFaultMFDs>() {
+			sol.offerAvailableModule(new Callable<SubSeismoOnFaultMFDs>() {
 
 				@Override
 				public SubSeismoOnFaultMFDs call() throws Exception {
@@ -249,7 +261,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 							rupSet.requireModule(InversionTargetMFDs.class).getOnFaultSubSeisMFDs().getAll());
 				}
 			}, SubSeismoOnFaultMFDs.class);
-			sol.addAvailableModule(new Callable<GridSourceProvider>() {
+			sol.offerAvailableModule(new Callable<GridSourceProvider>() {
 
 				@Override
 				public GridSourceProvider call() throws Exception {

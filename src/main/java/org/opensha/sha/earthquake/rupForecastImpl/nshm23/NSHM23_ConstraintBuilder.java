@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators;
+package org.opensha.sha.earthquake.rupForecastImpl.nshm23;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -45,6 +45,9 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstr
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.Builder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.APrioriSectNuclEstimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.DataSectNucleationRateEstimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.PaleoSectNuclEstimator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -61,7 +64,7 @@ import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.U3SectionMFD_constraint;
 import scratch.UCERF3.utils.UCERF2_A_FaultMapper;
 
-public class DraftModelConstraintBuilder {
+public class NSHM23_ConstraintBuilder {
 	
 	private List<InversionConstraint> constraints;
 	private FaultSystemRupSet rupSet;
@@ -76,12 +79,12 @@ public class DraftModelConstraintBuilder {
 	
 	private DoubleUnaryOperator magDepRelStdDev = M->DEFAULT_REL_STD_DEV;
 	
-	public DraftModelConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB) {
+	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB) {
 		this(rupSet, supraSeisB, SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT,
 				SupraSeisBValInversionTargetMFDs.ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT, false);
 	}
 	
-	public DraftModelConstraintBuilder(FaultSystemRupSet rupSet, double supraBVal,
+	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraBVal,
 			boolean applyDefModelUncertaintiesToNucl, boolean addSectCountUncertaintiesToMFD,
 			boolean adjustForIncompatibleData) {
 		this.rupSet = rupSet;
@@ -96,31 +99,31 @@ public class DraftModelConstraintBuilder {
 		return constraints;
 	}
 	
-	public DraftModelConstraintBuilder defaultConstraints() {
+	public NSHM23_ConstraintBuilder defaultConstraints() {
 		return defaultConstraints(SubSectConstraintModels.TOT_NUCL_RATE);
 	}
 	
-	public DraftModelConstraintBuilder defaultConstraints(SubSectConstraintModels subSectConstrModel) {
+	public NSHM23_ConstraintBuilder defaultConstraints(SubSectConstraintModels subSectConstrModel) {
 		return defaultDataConstraints(subSectConstrModel).defaultMetaConstraints();
 	}
 	
-	public DraftModelConstraintBuilder except(Class<? extends InversionConstraint> clazz) {
+	public NSHM23_ConstraintBuilder except(Class<? extends InversionConstraint> clazz) {
 		for (int i=constraints.size(); --i>=0;)
 			if (clazz.isAssignableFrom(constraints.get(i).getClass()))
 				constraints.remove(i);
 		return this;
 	}
 	
-	public DraftModelConstraintBuilder add(InversionConstraint constraint) {
+	public NSHM23_ConstraintBuilder add(InversionConstraint constraint) {
 		constraints.add(constraint);
 		return this;
 	}
 	
-	public DraftModelConstraintBuilder defaultDataConstraints() {
+	public NSHM23_ConstraintBuilder defaultDataConstraints() {
 		return defaultDataConstraints(SubSectConstraintModels.TOT_NUCL_RATE);
 	}
 	
-	public DraftModelConstraintBuilder defaultDataConstraints(SubSectConstraintModels subSectConstrModel) {
+	public NSHM23_ConstraintBuilder defaultDataConstraints(SubSectConstraintModels subSectConstrModel) {
 		magDepRelStdDev(M->0.1*Math.pow(10, supraBVal*0.5*(M-6)))
 				.slipRates().weight(1d)
 				.paleoRates().weight(5d).paleoSlips().weight(5d)
@@ -136,33 +139,33 @@ public class DraftModelConstraintBuilder {
 		return this;
 	}
 	
-	public DraftModelConstraintBuilder slipRates() {
+	public NSHM23_ConstraintBuilder slipRates() {
 		constraints.add(new SlipRateInversionConstraint(1d, ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY, rupSet));
 		return this;
 	}
 	
-	public DraftModelConstraintBuilder paleo() {
+	public NSHM23_ConstraintBuilder paleo() {
 		return paleoRates().paleoSlips();
 	}
 	
-	public DraftModelConstraintBuilder paleoRates() {
+	public NSHM23_ConstraintBuilder paleoRates() {
 		PaleoseismicConstraintData data = rupSet.requireModule(PaleoseismicConstraintData.class);
 		constraints.add(new PaleoRateInversionConstraint(rupSet, 1d, data.getPaleoRateConstraints(), data.getPaleoProbModel()));
 		return this;
 	}
 	
-	public DraftModelConstraintBuilder paleoSlips() {
+	public NSHM23_ConstraintBuilder paleoSlips() {
 		PaleoseismicConstraintData data = rupSet.requireModule(PaleoseismicConstraintData.class);
 		constraints.add(new PaleoSlipInversionConstraint(rupSet, 1d, data.getPaleoSlipConstraints(), data.getPaleoSlipProbModel(), true));
 		return this;
 	}
 	
-	public DraftModelConstraintBuilder subSeisMoRateReduction(SubSeisMoRateReduction subSeisMoRateReduction) {
+	public NSHM23_ConstraintBuilder subSeisMoRateReduction(SubSeisMoRateReduction subSeisMoRateReduction) {
 		this.subSeisMoRateReduction = subSeisMoRateReduction;
 		return this;
 	}
 	
-	public DraftModelConstraintBuilder magDepRelStdDev(DoubleUnaryOperator magDepRelStdDev) {
+	public NSHM23_ConstraintBuilder magDepRelStdDev(DoubleUnaryOperator magDepRelStdDev) {
 		this.magDepRelStdDev = magDepRelStdDev;
 		return this;
 	}
@@ -206,7 +209,7 @@ public class DraftModelConstraintBuilder {
 		return target;
 	}
 	
-	public DraftModelConstraintBuilder supraBValMFDs() {
+	public NSHM23_ConstraintBuilder supraBValMFDs() {
 		SupraSeisBValInversionTargetMFDs target = getTargetMFDs(supraBVal);
 		
 		List<? extends IncrementalMagFreqDist> origMFDs = target.getMFD_Constraints();
@@ -229,7 +232,7 @@ public class DraftModelConstraintBuilder {
 		return this;
 	}
 	
-	public DraftModelConstraintBuilder sectSupraRates() {
+	public NSHM23_ConstraintBuilder sectSupraRates() {
 		SupraSeisBValInversionTargetMFDs target = getTargetMFDs(supraBVal);
 		
 		double[] targetRates = new double[rupSet.getNumSections()];
@@ -252,7 +255,7 @@ public class DraftModelConstraintBuilder {
 		return this;
 	}
 	
-	public DraftModelConstraintBuilder sectSupraNuclMFDs() {
+	public NSHM23_ConstraintBuilder sectSupraNuclMFDs() {
 		SupraSeisBValInversionTargetMFDs target = getTargetMFDs(supraBVal);
 		
 		List<UncertainIncrMagFreqDist> sectSupraMFDs = target.getSectSupraSeisNuclMFDs();
@@ -262,7 +265,7 @@ public class DraftModelConstraintBuilder {
 		return this;
 	}
 	
-	public DraftModelConstraintBuilder parkfield() {
+	public NSHM23_ConstraintBuilder parkfield() {
 		double parkfieldMeanRate = 1.0/25.0; // Bakun et al. (2005)
 		System.err.println("WARNING: temporary relative standard deviation of "
 				+(float)DEFAULT_REL_STD_DEV+" set for parkfield constraint"); // TODO
@@ -275,7 +278,7 @@ public class DraftModelConstraintBuilder {
 		return this;
 	}
 	
-	public DraftModelConstraintBuilder defaultMetaConstraints() {
+	public NSHM23_ConstraintBuilder defaultMetaConstraints() {
 		return supraPaleoSmooth().weight(10000);
 	}
 	
@@ -307,18 +310,18 @@ public class DraftModelConstraintBuilder {
 		return new IntegerPDF_FunctionSampler(vals);
 	}
 	
-	public DraftModelConstraintBuilder minimizeBelowSectMinMag() {
+	public NSHM23_ConstraintBuilder minimizeBelowSectMinMag() {
 		List<Integer> belowMinIndexes = getRupIndexesBelowMinMag();
 		constraints.add(new RupRateMinimizationConstraint(100000, belowMinIndexes));
 		return this;
 	}
 	
-	public DraftModelConstraintBuilder supraSmooth() {
+	public NSHM23_ConstraintBuilder supraSmooth() {
 		constraints.add(new LaplacianSmoothingInversionConstraint(rupSet, 1000));
 		return this;
 	}
 	
-	public DraftModelConstraintBuilder supraPaleoSmooth() {
+	public NSHM23_ConstraintBuilder supraPaleoSmooth() {
 		HashSet<Integer> paleoParentIDs = new HashSet<>();
 		
 		PaleoseismicConstraintData paleoData = rupSet.requireModule(PaleoseismicConstraintData.class);
@@ -340,7 +343,7 @@ public class DraftModelConstraintBuilder {
 	 * @param weight
 	 * @return
 	 */
-	public DraftModelConstraintBuilder weight(Class<? extends InversionConstraint> clazz, double weight) {
+	public NSHM23_ConstraintBuilder weight(Class<? extends InversionConstraint> clazz, double weight) {
 		for (int i=constraints.size(); --i>=0;) {
 			InversionConstraint constraint = constraints.get(i);
 			if (clazz.isAssignableFrom(constraint.getClass()))
@@ -355,13 +358,13 @@ public class DraftModelConstraintBuilder {
 	 * @param weight
 	 * @return
 	 */
-	public DraftModelConstraintBuilder weight(double weight) {
+	public NSHM23_ConstraintBuilder weight(double weight) {
 		Preconditions.checkState(!constraints.isEmpty());
 		constraints.get(constraints.size()-1).setWeight(weight);
 		return this;
 	}
 	
-	public DraftModelConstraintBuilder testFlipBVals(FaultSystemSolution prevSol, double targetBVal) {
+	public NSHM23_ConstraintBuilder testFlipBVals(FaultSystemSolution prevSol, double targetBVal) {
 		Preconditions.checkState(rupSet.isEquivalentTo(prevSol.getRupSet()));
 		SupraSeisBValInversionTargetMFDs targetMFDs = getTargetMFDs(targetBVal);
 		
@@ -430,7 +433,7 @@ public class DraftModelConstraintBuilder {
 		return this;
 	}
 	
-	public DraftModelConstraintBuilder testSameBVals(FaultSystemSolution prevSol) {
+	public NSHM23_ConstraintBuilder testSameBVals(FaultSystemSolution prevSol) {
 		Preconditions.checkState(rupSet.isEquivalentTo(prevSol.getRupSet()));
 		double[] targetNuclRates = new double[rupSet.getNumSections()];
 		double[] targetNuclRateStdDevs = new double[rupSet.getNumSections()];
@@ -461,7 +464,7 @@ public class DraftModelConstraintBuilder {
 		return new IntegerPDF_FunctionSampler(weights);
 	}
 	
-	public DraftModelConstraintBuilder u2NuclBVals(boolean aFaults, boolean reproduce) {
+	public NSHM23_ConstraintBuilder u2NuclBVals(boolean aFaults, boolean reproduce) {
 		U3LogicTreeBranch branch = rupSet.requireModule(U3LogicTreeBranch.class);
 		AveSlipModule aveSlipModule = rupSet.requireModule(AveSlipModule.class);
 		ScalingRelationships scalingRel = branch.getValue(ScalingRelationships.class);
@@ -727,7 +730,7 @@ public class DraftModelConstraintBuilder {
 		return new IntegerPDF_FunctionSampler(sampleRates);
 	}
 	
-	public DraftModelConstraintBuilder parkfieldHackSectSupraRates(double parkfieldRelStdDev) {
+	public NSHM23_ConstraintBuilder parkfieldHackSectSupraRates(double parkfieldRelStdDev) {
 		SupraSeisBValInversionTargetMFDs target = getTargetMFDs(supraBVal);
 		
 		double[] targetRates = new double[rupSet.getNumSections()];

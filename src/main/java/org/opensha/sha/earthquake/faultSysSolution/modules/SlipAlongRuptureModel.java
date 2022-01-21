@@ -47,13 +47,11 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantA
 
 		// compute rupture area
 		double[] sectArea = new double[numSects];
-		double[] sectMoRate = new double[numSects];
 		int index=0;
 		for(Integer sectID: sectionIndices) {	
 			//				FaultSectionPrefData sectData = getFaultSectionData(sectID);
 			//				sectArea[index] = sectData.getTraceLength()*sectData.getReducedDownDipWidth()*1e6;	// aseismicity reduces area; 1e6 for sq-km --> sq-m
 			sectArea[index] = rupSet.getAreaForSection(sectID);
-			sectMoRate[index] = FaultMomentCalc.getMoment(sectArea[index], rupSet.getSlipRateForSection(sectID));
 			index += 1;
 		}
 		
@@ -79,7 +77,7 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantA
 		
 		synchronized (sol) {
 			cached = sol.getModule(SolSlipRatesCache.class);
-			if (cached == null) {
+			if (cached == null || cached.aveSlips != aveSlips) {
 				FaultSystemRupSet rupSet = sol.getRupSet();
 				double[] slipRates = new double[rupSet.getNumSections()];
 				for (int r=0; r<rupSet.getNumRuptures(); r++) {
@@ -89,7 +87,7 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantA
 					for (int s=0; s<rupSlips.length; s++)
 						slipRates[indices.get(s)] += rate*rupSlips[s];
 				}
-				cached = new SolSlipRatesCache(slipRates);
+				cached = new SolSlipRatesCache(slipRates, aveSlips);
 				sol.addModule(cached);
 			}
 		}
@@ -98,9 +96,11 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantA
 	
 	public static class SolSlipRatesCache implements OpenSHA_Module {
 		private final double[] slipRates;
+		private final AveSlipModule aveSlips;
 		
-		public SolSlipRatesCache(double[] slipRates) {
+		public SolSlipRatesCache(double[] slipRates, AveSlipModule aveSlips) {
 			this.slipRates = slipRates;
+			this.aveSlips = aveSlips;
 		}
 
 		@Override
