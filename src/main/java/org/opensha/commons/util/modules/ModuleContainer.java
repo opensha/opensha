@@ -143,6 +143,9 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 						return getModule(clazz);
 				}
 			}
+			// if we're here, we failed to load it, but it's possible that it was loaded above in another thread
+			// while we were waiting for the synchronized block. try again
+			return (M)mappings.get(clazz);
 		}
 		return (M)module;
 	}
