@@ -286,11 +286,9 @@ public class ReportPageGen {
 		
 		replot = cmd.hasOption("replot");
 		
-		int threads = FaultSysTools.getNumThreads(cmd);
-		for (AbstractRupSetPlot plot : plots)
-			plot.setNumThreads(threads);
-		
 		init(meta, outputDir, plots);
+		
+		setNumThreads(FaultSysTools.getNumThreads(cmd));
 		
 		if (cmd.hasOption("skip-plausibility")) {
 			skipPlausibility();
@@ -309,6 +307,11 @@ public class ReportPageGen {
 			
 			setAltPlausibility(altFilters, null, false);
 		}
+	}
+	
+	public void setNumThreads(int threads) {
+		for (AbstractRupSetPlot plot : plots)
+			plot.setNumThreads(threads);
 	}
 	
 	public void setAltPlausibility(List<PlausibilityFilter> altFilters, String altName, boolean applyToComparison) {
