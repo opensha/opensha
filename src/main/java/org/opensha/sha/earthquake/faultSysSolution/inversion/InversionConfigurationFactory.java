@@ -28,7 +28,11 @@ public interface InversionConfigurationFactory {
 	
 	/**
 	 * Updates a {@link FaultSystemRupSet} for the given {@link LogicTreeBranch}, which may involve swapping out
-	 * modules and/or updating fault section data/slip rates. The passed in rupture set should not be modified.
+	 * modules and/or updating fault section data/slip rates.
+	 * <p>
+	 * The passed in rupture set should not be modified, and this method should not assume that anything beyond the
+	 * rupture list is correct for the given branch (just that it is generally  compatible). If you simply want to
+	 * attach modules related to a given branch without rebuilding it, see {@link #getSolutionLogicTreeProcessor()}.
 	 * 
 	 * @param branch
 	 * @return
@@ -50,6 +54,9 @@ public interface InversionConfigurationFactory {
 	/**
 	 * This can be used to supply a custom {@link SolutionProcessor} instance that will be used when building
 	 * and loading solutions from a {@link SolutionLogicTree}. Default implementation returns null.
+	 * 
+	 * Unlike {@link #updateRuptureSetForBranch(FaultSystemRupSet, LogicTreeBranch)}, this processor should just attach
+	 * extra modules related to a branch, not swapping out any already existing data
 	 * 
 	 * @return
 	 */
