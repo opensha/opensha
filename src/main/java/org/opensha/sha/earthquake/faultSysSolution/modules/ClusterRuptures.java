@@ -317,4 +317,9 @@ BranchAverageableModule<ClusterRuptures>, AverageableModule.ConstantAverageable<
 		}
 	}
 
+	@Override
+	public boolean isIdentical(ClusterRuptures module) {
+		return this.rupSet.isEquivalentTo(module.rupSet);
+	}
+
 }

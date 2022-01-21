@@ -685,6 +685,11 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			try {
 				clazz = Class.forName(className);
 			} catch(Exception e) {
+				if (className.endsWith("$UCERF3_SolutionProcessor")) {
+					System.err.println("WARNING: found reference to previous oudated solution processor, changing to new class");
+					processor = new U3InversionConfigFactory.UCERF3_SolutionProcessor();
+					return;
+				}
 				System.err.println("WARNING: Skipping solution processor', couldn't locate class: "+className);
 				return;
 			}

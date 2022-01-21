@@ -73,40 +73,19 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantA
 	 * @return
 	 */
 	public double[] calcSlipRateForSects(FaultSystemSolution sol, AveSlipModule aveSlips) {
-		SolSlipRatesCache cached;
+		SolutionSlipRates cached = sol.getModule(SolutionSlipRates.class);
 		
-		synchronized (sol) {
-			cached = sol.getModule(SolSlipRatesCache.class);
-			if (cached == null || cached.aveSlips != aveSlips) {
-				FaultSystemRupSet rupSet = sol.getRupSet();
-				double[] slipRates = new double[rupSet.getNumSections()];
-				for (int r=0; r<rupSet.getNumRuptures(); r++) {
-					List<Integer> indices = rupSet.getSectionsIndicesForRup(r);
-					double[] rupSlips = calcSlipOnSectionsForRup(rupSet, aveSlips, r);
-					double rate = sol.getRateForRup(r);
-					for (int s=0; s<rupSlips.length; s++)
-						slipRates[indices.get(s)] += rate*rupSlips[s];
+		if (cached == null) {
+			synchronized (sol) {
+				cached = sol.getModule(SolutionSlipRates.class);
+				if (cached == null) {
+					cached = SolutionSlipRates.calc(sol, aveSlips, this);
+					sol.addModule(cached);
 				}
-				cached = new SolSlipRatesCache(slipRates, aveSlips);
-				sol.addModule(cached);
 			}
 		}
-		return cached.slipRates;
-	}
-	
-	public static class SolSlipRatesCache implements OpenSHA_Module {
-		private final double[] slipRates;
-		private final AveSlipModule aveSlips;
 		
-		public SolSlipRatesCache(double[] slipRates, AveSlipModule aveSlips) {
-			this.slipRates = slipRates;
-			this.aveSlips = aveSlips;
-		}
-
-		@Override
-		public String getName() {
-			return "Cached Solution Slip Rates";
-		}
+		return cached.get();
 	}
 	
 	/**
@@ -340,6 +319,11 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantA
 			return slipsForRup;
 		}
 		
+	}
+
+	@Override
+	public boolean isIdentical(SlipAlongRuptureModel module) {
+		return this.getClass().equals(module.getClass());
 	}
 
 }

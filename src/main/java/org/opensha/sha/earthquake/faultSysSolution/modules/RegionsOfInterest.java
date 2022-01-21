@@ -87,4 +87,14 @@ AverageableModule.ConstantAverageable<RegionsOfInterest>, BranchAverageableModul
 		return RegionsOfInterest.class;
 	}
 
+	@Override
+	public boolean isIdentical(RegionsOfInterest module) {
+		if (regions.size() != module.regions.size())
+			return false;
+		for (int r=0; r<regions.size(); r++)
+			if (!regions.get(r).equalsRegion(module.regions.get(r)))
+				return false;
+		return true;
+	}
+
 }
