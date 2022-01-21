@@ -302,6 +302,22 @@ public class StandardFaultSysModulesTest {
 		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, RegionsOfInterest.class);
 	}
 	
+	@Test
+	public void testSolutionSlipRates() throws IOException {
+		SolutionSlipRates module = SolutionSlipRates.calc(demoSol,
+				AveSlipModule.forModel(demoSol.getRupSet(), ScalingRelationships.ELLSWORTH_B),
+				new SlipAlongRuptureModel.Default());
+		
+		testModuleSerialization(demoSol.getArchive(), demoSol, module, SolutionSlipRates.class);
+	}
+	
+	@Test
+	public void testConnectivityClusters() throws IOException {
+		ConnectivityClusters module = ConnectivityClusters.build(demoRupSet);
+		
+		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, ConnectivityClusters.class);
+	}
+	
 	private static double[] randArray(int len) {
 		double[] ret = new double[len];
 		for (int i=0; i<len; i++)

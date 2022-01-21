@@ -41,6 +41,7 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata.RupSetOverlap;
@@ -48,6 +49,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
@@ -265,14 +267,15 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 				+ MAX_PLOT_CLUSTERS+" clusters are plotted, with smaller clusters plotted in gray, and fully isolated "
 				+ "faults plotted in black.");
 		lines.add("");
+		TableBuilder clustersTable = MarkdownUtils.tableBuilder();
 		if (meta.comparison != null) {
 			table = MarkdownUtils.tableBuilder();
 			table.addLine(meta.primary.name, meta.comparison.name);
 			
 			File primaryClusters = plotConnectedClusters(rupSet, meta.region, resourcesDir, "conn_clusters",
-					getTruncatedTitle(meta.primary.name)+" Clusters");
+					getTruncatedTitle(meta.primary.name)+" Clusters", clustersTable);
 			File compClusters = plotConnectedClusters(meta.comparison.rupSet, meta.region, resourcesDir,
-					"conn_clusters_comp", getTruncatedTitle(meta.comparison.name)+" Clusters");
+					"conn_clusters_comp", getTruncatedTitle(meta.comparison.name)+" Clusters", null);
 			
 			table.addLine("![Primary clusters]("+relPathToResources+"/"+primaryClusters.getName()+")",
 					"![Comparison clusters]("+relPathToResources+"/"+compClusters.getName()+")");
@@ -285,13 +288,15 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			table = MarkdownUtils.tableBuilder();
 			
 			File primaryClusters = plotConnectedClusters(rupSet, meta.region, resourcesDir, "conn_clusters",
-					"Connected Section Clusters");
+					"Connected Section Clusters", clustersTable);
 			
 			table.addLine("![Primary clusters]("+relPathToResources+"/"+primaryClusters.getName()+")");
 			table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/conn_clusters.geojson")
 					+" [Download GeoJSON]("+relPathToResources+"/conn_clusters.geojson)");
 			lines.addAll(table.build());
 		}
+		lines.add("");
+		lines.addAll(clustersTable.build());
 		return lines;
 	}
 
@@ -660,27 +665,24 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 	private static int MAX_PLOT_CLUSTERS = 10;
 	
 	public static File plotConnectedClusters(FaultSystemRupSet rupSet, Region region, File outputDir, String prefix,
-			String title) throws IOException {
-		System.out.println("Calculating connection clusters");
+			String title, TableBuilder table) throws IOException {
 		
-		Stopwatch watch = Stopwatch.createStarted();
-		
-		List<HashSet<Integer>> clusters = calcClusters(rupSet);
-		
-		watch.stop();
-		
-		System.out.println("Found "+clusters.size()+" connectivity clusters in "+optionalDigitDF.format(
-				watch.elapsed(TimeUnit.MILLISECONDS)/1000)+" s");
-		
-		// sort by size, decreasing
-		clusters.sort(new Comparator<HashSet<Integer>>() {
-
-			@Override
-			public int compare(HashSet<Integer> o1, HashSet<Integer> o2) {
-				return Integer.compare(o2.size(), o1.size());
-			}
-		});
-		System.out.println("Largest has "+clusters.get(0).size()+" sections");
+		if (!rupSet.hasModule(ConnectivityClusters.class)) {
+			System.out.println("Calculating connection clusters");
+			Stopwatch watch = Stopwatch.createStarted();
+			ConnectivityClusters clusters = ConnectivityClusters.build(rupSet);
+			watch.stop();
+			System.out.println("Found "+clusters.size()+" connectivity clusters in "+optionalDigitDF.format(
+					watch.elapsed(TimeUnit.MILLISECONDS)/1000)+" s");
+			rupSet.addModule(clusters);
+		}
+		// get clusters, sorted by number of sections
+		List<ConnectivityCluster> clusters = rupSet.requireModule(ConnectivityClusters.class)
+				.getSorted(ConnectivityCluster.sectCountComparator);
+		// reverse it (decreasing)
+		Collections.reverse(clusters);
+		System.out.println("Largest has "+clusters.get(0).getNumSections()+" sections, "
+				+clusters.get(0).getNumRuptures()+" ruptures");
 		
 		Color isolatedColor = Color.BLACK;
 		Color otherClusterColor = Color.GRAY;
@@ -690,33 +692,73 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		for (int s=0; s<rupSet.getNumSections(); s++)
 			sectColors.add(null);
 		
-		for (int i=0; i<clusters.size(); i++) {
-			HashSet<Integer> cluster = clusters.get(i);
-			
-			boolean allSameParent = true;
-			Integer commonParent = null;
-			for (int s : cluster) {
-				int parent = rupSet.getFaultSectionData(s).getParentSectionId();
-				if (commonParent == null) {
-					commonParent = parent;
-				} else if (parent != commonParent) {
-					allSameParent = false;
-					commonParent = null;
-					break;
-				}
-			}
+		if (table != null)
+			table.addLine("Rank", "Sections", "Parent Sections", "Ruptures");
+		
+		int numSections = rupSet.getNumSections();
+		HashSet<Integer> allParents = new HashSet<>();
+		for (FaultSection sect : rupSet.getFaultSectionDataList())
+			allParents.add(sect.getParentSectionId());
+		int numParents = allParents.size();
+		int numRuptures = rupSet.getNumRuptures();
+		
+		int numOther = 0;
+		int sectsOther = 0;
+		int parentsOther = 0;
+		int rupturesOther = 0;
+		
+		int numIsolated = 0;
+		int sectsIsolated = 0;
+		int rupturesIsolated = 0;
+		
+		int tableIndex = 0;
+		
+		for (ConnectivityCluster cluster : clusters) {
+			boolean allSameParent = cluster.getParentSectIDs().size() == 1;
 			
 			Color color;
-			if (allSameParent)
+			if (allSameParent) {
 				color = isolatedColor;
-			else if (i < MAX_PLOT_CLUSTERS)
-				color = clusterCPT.getColor((float)i);
-			else
+				
+				numIsolated++;
+				sectsIsolated += cluster.getNumSections();
+				rupturesIsolated += cluster.getNumRuptures();
+			} else if (tableIndex < MAX_PLOT_CLUSTERS) {
+				color = clusterCPT.getColor((float)tableIndex);
+				
+				tableIndex++;
+				if (table != null)
+					table.addLine(tableIndex,
+							countStr(cluster.getNumSections(), numSections),
+							countStr(cluster.getParentSectIDs().size(), numParents),
+							countStr(cluster.getNumRuptures(), numRuptures));
+			} else {
 				color = otherClusterColor;
+				
+				numOther++;
+				sectsOther += cluster.getNumSections();
+				parentsOther += cluster.getParentSectIDs().size();
+				rupturesOther += cluster.getNumRuptures();
+			}
 			
-			for (int s : cluster) {
+			for (int s : cluster.getSectIDs()) {
 				Preconditions.checkState(sectColors.get(s) == null);
 				sectColors.set(s, color);
+			}
+		}
+		
+		if (table != null) {
+			if (numOther > 0) {
+				table.addLine((tableIndex+1)+"->"+(tableIndex+1+numOther),
+						countStr(sectsOther, numSections),
+						countStr(parentsOther, numParents),
+						countStr(rupturesOther, numRuptures));
+			}
+			if (numIsolated > 0) {
+				table.addLine(numIsolated+" isolated",
+						countStr(sectsIsolated, numSections),
+						countStr(numIsolated, numParents),
+						countStr(rupturesIsolated, numRuptures));
 			}
 		}
 		
@@ -730,44 +772,9 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		return new File(outputDir, prefix+".png");
 	}
 	
-	private static List<HashSet<Integer>> calcClusters(FaultSystemRupSet rupSet) {
-		List<HashSet<Integer>> clusters = new ArrayList<>();
-		boolean[] sectsAssigned = new boolean[rupSet.getNumSections()];
-		
-		boolean[][] sectCorups = new boolean[rupSet.getNumSections()][rupSet.getNumSections()];
-		
-		for (int r=0; r<rupSet.getNumRuptures(); r++) {
-			List<Integer> sects = rupSet.getSectionsIndicesForRup(r);
-			for (int i=0; i<sects.size(); i++) {
-				int s1 = sects.get(i);
-				for (int j=i; j<sects.size(); j++) {
-					int s2 = sects.get(j);
-					sectCorups[s1][s2] = true;
-					sectCorups[s2][s1] = true;
-				}
-			}
-		}
-		
-		for (int s=0; s<sectCorups.length; s++)
-			if (!sectsAssigned[s])
-				processClusterRecursive(rupSet, s, clusters.size(), clusters, sectsAssigned, sectCorups);
-		
-		return clusters;
-	}
-	
-	private static void processClusterRecursive(FaultSystemRupSet rupSet, int sect, int clusterIndex,
-			List<HashSet<Integer>> clusters, boolean[] sectsAssigned, boolean[][] sectCorups) {
-		if (sectsAssigned[sect])
-			// we've already done this one
-			return;
-		if (clusters.size() == clusterIndex)
-			clusters.add(new HashSet<>());
-		clusters.get(clusterIndex).add(sect);
-		sectsAssigned[sect] = true;
-
-		for (int sect2=0; sect2<sectCorups.length; sect2++)
-			if (sectCorups[sect][sect2])
-				processClusterRecursive(rupSet, sect2, clusterIndex, clusters, sectsAssigned, sectCorups);
+	private static String countStr(int num, int tot) {
+		double fract = (double)num/(double)tot;
+		return countDF.format(num)+" ("+percentDF.format(fract)+")";
 	}
 	
 	public static void main(String[] args) throws IOException {
@@ -775,7 +782,10 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 //				+ "nshm23_geo_dm_v1p1_all_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_"
 //				+ "slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip"));
 		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_reproduce_ucerf3.zip"));
-		plotConnectedClusters(rupSet, new CaliforniaRegions.RELM_TESTING(), new File("/tmp"), "conn_cluster_test", " ");
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		plotConnectedClusters(rupSet, new CaliforniaRegions.RELM_TESTING(), new File("/tmp"), "conn_cluster_test", " ", table);
+		for (String line : table.build())
+			System.out.println(line);
 	}
 
 }
