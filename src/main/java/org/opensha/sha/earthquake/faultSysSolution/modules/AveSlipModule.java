@@ -44,6 +44,7 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Bra
 	public static class ModelBased extends AveSlipModule implements ArchivableModule {
 
 		private RupSetScalingRelationship scale;
+		private transient double[] cache;
 
 		protected ModelBased(FaultSystemRupSet rupSet, RupSetScalingRelationship scale) {
 			super(rupSet);
@@ -67,6 +68,17 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Bra
 
 		@Override
 		public double getAveSlip(int rupIndex) {
+			if (cache == null) {
+				synchronized (this) {
+					if (cache == null) {
+
+						Preconditions.checkNotNull(rupSet, "Parent rupture set not set");
+						cache = new double[rupSet.getNumRuptures()];
+					}
+				}
+			}
+			if (cache[rupIndex] != 0d)
+				return cache[rupIndex];
 			Preconditions.checkNotNull(rupSet, "Parent rupture set not set");
 			double totArea = rupSet.getAreaForRup(rupIndex);
 			double length = rupSet.getLengthForRup(rupIndex);
@@ -76,6 +88,7 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Bra
 			double origDDW = totOrigArea/rupSet.getLengthForRup(rupIndex);
 			double aveRake = rupSet.getAveRakeForRup(rupIndex);
 			double aveSlip = scale.getAveSlip(totArea, length, origDDW, aveRake);
+			cache[rupIndex] = aveSlip;
 			return aveSlip;
 		}
 		
