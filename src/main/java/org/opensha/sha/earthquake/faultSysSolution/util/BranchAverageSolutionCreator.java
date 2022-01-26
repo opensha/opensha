@@ -205,7 +205,13 @@ public class BranchAverageSolutionCreator {
 		for (OpenSHA_Module module : container.getModulesAssignableTo(BranchAverageableModule.class, true, skipModules)) {
 			Preconditions.checkState(module instanceof BranchAverageableModule<?>);
 			System.out.println("Building branch-averaging accumulator for: "+module.getName());
-			accumulators.add(((BranchAverageableModule<?>)module).averagingAccumulator());
+			AveragingAccumulator<? extends BranchAverageableModule<?>> accumulator =
+					((BranchAverageableModule<?>)module).averagingAccumulator();
+			if (accumulator == null) {
+				System.err.println("WARNING: accumulator is null for module "+module.getName()+", skipping averaging");
+				continue;
+			}
+			accumulators.add(accumulator);
 		}
 		return accumulators;
 	}
