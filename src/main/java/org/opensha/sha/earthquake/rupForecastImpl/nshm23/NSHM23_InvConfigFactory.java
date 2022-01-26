@@ -3,9 +3,12 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.opensha.commons.data.IntegerSampler;
+import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.ExceptionUtils;
@@ -39,6 +42,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.Sol
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
@@ -67,6 +71,10 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 	private transient Table<RupSetFaultModel, RupturePlausibilityModels, FaultSystemRupSet> rupSetCache = HashBasedTable.create();
 	private transient File cacheDir;
 	private boolean autoCache = true;
+	
+	private boolean adjustTargetsForSegmentation = true;
+	private boolean adjustForActualRupSlips = SupraSeisBValInversionTargetMFDs.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
+	private boolean adjustForSlipAlong = SupraSeisBValInversionTargetMFDs.ADJ_FOR_SLIP_ALONG_DEFAULT;
 	
 	protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
@@ -124,6 +132,15 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		if (cacheDir != null) {
 			
 		}
+	}
+
+	public void setAdjustTargetsForSegmentation(boolean adjustTargetsForSegmentation) {
+		this.adjustTargetsForSegmentation = adjustTargetsForSegmentation;
+	}
+	
+	public void adjustForActualRupSlips(boolean adjustForActualRupSlips, boolean adjustForSlipAlong) {
+		this.adjustForActualRupSlips = adjustForActualRupSlips;
+		this.adjustForSlipAlong = adjustForSlipAlong;
 	}
 
 	@Override
@@ -361,6 +378,7 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 	public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
 			int threads) {
 		NSHM23_ConstraintBuilder constrBuilder = getConstraintBuilder(rupSet, branch);
+		constrBuilder.adjustForActualRupSlips(adjustForActualRupSlips, adjustForSlipAlong);
 		
 		SubSectConstraintModels constrModel = branch.requireValue(SubSectConstraintModels.class);
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
@@ -372,6 +390,21 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		double nuclWeight = constrModel == SubSectConstraintModels.TOT_NUCL_RATE ? 0.5 : 0d;
 		double nuclMFDWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 0.5 : 0d;
 		double paleoSmoothWeight = paleoWeight > 0 ? 10000 : 0;
+
+		SegmentationModels segModel = branch.getValue(SegmentationModels.class);
+		System.out.println("Segmentation model: "+segModel);
+		MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
+		System.out.println("Max distance model: "+distModel);
+		if (adjustTargetsForSegmentation) {
+			RuptureProbabilityCalc targetSegModel = segModel == null ? null : segModel.getModel(rupSet);
+			if (distModel != null) {
+				if (targetSegModel == null)
+					targetSegModel = distModel.getModel(rupSet);
+				else
+					targetSegModel = new RuptureProbabilityCalc.MultiProduct(targetSegModel, distModel.getModel(rupSet));
+			}
+			constrBuilder.adjustForSegmentationModel(targetSegModel);
+		}
 		
 		if (slipWeight > 0d)
 			constrBuilder.slipRates().weight(slipWeight);
@@ -396,7 +429,7 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		if (paleoSmoothWeight > 0d)
 			constrBuilder.supraPaleoSmooth().weight(paleoSmoothWeight);
 		
-		IntegerPDF_FunctionSampler sampler = constrBuilder.getSkipBelowMinSampler();
+		ExclusionIntegerSampler sampler = constrBuilder.getSkipBelowMinSampler();
 		
 		List<InversionConstraint> constraints = constrBuilder.build();
 		
@@ -404,8 +437,6 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		
 		GRParticRateEstimator rateEst = new GRParticRateEstimator(rupSet, bVal);
 		
-		SegmentationModels segModel = branch.getValue(SegmentationModels.class);
-		System.out.println("Segmentation model: "+segModel);
 		if (segModel != null && segModel != SegmentationModels.NONE) {
 			constraints = new ArrayList<>(constraints);
 			
@@ -414,29 +445,32 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 
 //			double weight = 0.5d;
 //			boolean ineq = false;
-			double weight = 1d;
+			double weight = 10d;
 			boolean ineq = true;
 			
 			constraints.add(new JumpProbabilityConstraint.RelativeRate(
 					weight, ineq, rupSet, segModel.getModel(rupSet), rateEst));
 		}
 		
-		MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
-		System.out.println("Max distance model: "+distModel);
 		if (distModel != null) {
 			JumpProbabilityCalc model = distModel.getModel(rupSet);
-			int numSkipped = 0;
 			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
 			System.out.println("Zeroing out sampler probabilities for "+model);
+			HashSet<Integer> distSkips = new HashSet<>();
 			for (int r=0; r<cRups.size(); r++) {
 //				if (r % 1000 == 0)
 //					System.out.println("Prob for r="+r+": "+model.calcRuptureProb(cRups.get(r), false));
-				if ((float)model.calcRuptureProb(cRups.get(r), false) == 0f) {
-					sampler.set(r, 0d);
-					numSkipped++;
-				}
+				if ((float)model.calcRuptureProb(cRups.get(r), false) == 0f)
+					distSkips.add(r);
 			}
-			System.out.println("\tSkipped "+numSkipped+" ruptures");
+			System.out.println("\tSkipped "+distSkips.size()+" ruptures");
+			if (!distSkips.isEmpty()) {
+				ExclusionIntegerSampler distSkipSampler = new ExclusionIntegerSampler(0, rupSet.getNumRuptures(), distSkips);
+				if (sampler == null)
+					sampler = distSkipSampler;
+				else
+					sampler = sampler.getCombinedWith(distSkipSampler);
+			}
 		}
 		
 		int avgThreads = threads / 4;
@@ -451,6 +485,7 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 				.perturbation(GenerationFunctionType.VARIABLE_EXPONENTIAL_SCALE)
 				.nonNegativity(NonnegativityConstraintType.TRY_ZERO_RATES_OFTEN)
 				.sampler(sampler)
+				.reweight()
 				.variablePertubationBasis(rateEst.estimateRuptureRates());
 		
 		if (parkWeight > 0d)
@@ -472,13 +507,26 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		
 	}
 	
-	public static class ReweightedEvenFit extends NSHM23_InvConfigFactory {
+	public static class NoSegAdjust extends NSHM23_InvConfigFactory {
+		
+		public NoSegAdjust() {
+			this.setAdjustTargetsForSegmentation(false);
+		}
+		
+	}
+	
+	public static class NoMFDScaleAdjust extends NSHM23_InvConfigFactory {
 
-		@Override
-		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
-				int threads) {
-			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
-			return InversionConfiguration.builder(config).reweight().build();
+		public NoMFDScaleAdjust() {
+			this.adjustForActualRupSlips(false, false);
+		}
+		
+	}
+	
+	public static class MFDSlipAlongAdjust extends NSHM23_InvConfigFactory {
+
+		public MFDSlipAlongAdjust() {
+			this.adjustForActualRupSlips(true, true);
 		}
 		
 	}

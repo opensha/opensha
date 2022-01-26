@@ -10,6 +10,8 @@ import java.util.function.DoubleUnaryOperator;
 import java.util.stream.Collectors;
 
 import org.apache.commons.math3.stat.StatUtils;
+import org.opensha.commons.data.IntegerSampler;
+import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
@@ -41,6 +43,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBValuePlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.Builder;
@@ -72,12 +75,15 @@ public class NSHM23_ConstraintBuilder {
 	private boolean applyDefModelUncertaintiesToNucl;
 	private boolean addSectCountUncertaintiesToMFD;
 	private boolean adjustForIncompatibleData;
+	private boolean adjustForActualRupSlips = SupraSeisBValInversionTargetMFDs.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
+	private boolean adjustForSlipAlong = SupraSeisBValInversionTargetMFDs.ADJ_FOR_SLIP_ALONG_DEFAULT;
 	
 	private SubSeisMoRateReduction subSeisMoRateReduction = SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
 	
 	private static final double DEFAULT_REL_STD_DEV = 0.1;
 	
 	private DoubleUnaryOperator magDepRelStdDev = M->DEFAULT_REL_STD_DEV;
+	private RuptureProbabilityCalc segModel;
 	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB) {
 		this(rupSet, supraSeisB, SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT,
@@ -162,15 +168,36 @@ public class NSHM23_ConstraintBuilder {
 	
 	public NSHM23_ConstraintBuilder subSeisMoRateReduction(SubSeisMoRateReduction subSeisMoRateReduction) {
 		this.subSeisMoRateReduction = subSeisMoRateReduction;
+		targetCache = null;
 		return this;
 	}
 	
 	public NSHM23_ConstraintBuilder magDepRelStdDev(DoubleUnaryOperator magDepRelStdDev) {
 		this.magDepRelStdDev = magDepRelStdDev;
+		targetCache = null;
 		return this;
 	}
 	
-	// TODO better detect parkfield rups
+	public NSHM23_ConstraintBuilder adjustForSegmentationModel(RuptureProbabilityCalc segModel) {
+		this.segModel = segModel;
+		targetCache = null;
+		return this;
+	}
+	
+	/**
+	 * Some scaling relationships are not be consistent with the way we calculate the total moment required to
+	 * satisfy the target slip rate. If enabled, the target MFDs will be modified to account for any discrepancy
+	 * between calculated slip rates and the G-R targets 
+	 * 
+	 * @return
+	 */
+	public NSHM23_ConstraintBuilder adjustForActualRupSlips(boolean adjustForActualRupSlips, boolean adjustForSlipAlong) {
+		this.adjustForActualRupSlips = adjustForActualRupSlips;
+		this.adjustForSlipAlong = adjustForSlipAlong;
+		return this;
+	}
+	
+	// TODO detect parkfield rups for non-U3 implementations
 	
 	private static UncertainDataConstraint parkfieldRate = 
 		new UncertainDataConstraint("Parkfield", 1d/25d, new Uncertainty(0.1d/25d));
@@ -179,33 +206,37 @@ public class NSHM23_ConstraintBuilder {
 		return getTargetMFDs(supraBVal);
 	}
 	
+	private SupraSeisBValInversionTargetMFDs targetCache;
+	
 	private SupraSeisBValInversionTargetMFDs getTargetMFDs(double supraBVal) {
-		SupraSeisBValInversionTargetMFDs target = rupSet.getModule(SupraSeisBValInversionTargetMFDs.class, false);
-		if (target == null || target.getSupraSeisBValue() != supraBVal) {
-			SupraSeisBValInversionTargetMFDs.Builder builder = new SupraSeisBValInversionTargetMFDs.Builder(
-					rupSet, supraBVal);
-			builder.applyDefModelUncertainties(applyDefModelUncertaintiesToNucl);
-			builder.magDepDefaultRelStdDev(magDepRelStdDev);
-			builder.addSectCountUncertainties(addSectCountUncertaintiesToMFD);
-			builder.subSeisMoRateReduction(subSeisMoRateReduction);
-			if (adjustForIncompatibleData) {
-				UncertaintyBoundType dataWithinType = UncertaintyBoundType.ONE_SIGMA;
-				List<DataSectNucleationRateEstimator> dataConstraints = new ArrayList<>();
-				dataConstraints.add(new APrioriSectNuclEstimator(rupSet,
-						UCERF3InversionInputGenerator.findParkfieldRups(rupSet), parkfieldRate));
-				if (rupSet.hasModule(PaleoseismicConstraintData.class)) {
-					PaleoseismicConstraintData paleoData = rupSet.requireModule(PaleoseismicConstraintData.class);
-					if (paleoData.getPaleoSlipConstraints() != null) {
-						// use updated slip rate
-						rupSet.addModule(builder.buildSlipRatesOnly());
-					}
-					dataConstraints.addAll(PaleoSectNuclEstimator.buildPaleoEstimates(rupSet, true));
+		if (targetCache != null && targetCache.getSupraSeisBValue() == supraBVal)
+			return targetCache;
+		
+		SupraSeisBValInversionTargetMFDs.Builder builder = new SupraSeisBValInversionTargetMFDs.Builder(
+				rupSet, supraBVal);
+		builder.applyDefModelUncertainties(applyDefModelUncertaintiesToNucl);
+		builder.magDepDefaultRelStdDev(magDepRelStdDev);
+		builder.addSectCountUncertainties(addSectCountUncertaintiesToMFD);
+		builder.subSeisMoRateReduction(subSeisMoRateReduction);
+		builder.forImprobModel(segModel);
+		builder.adjustForActualRupSlips(adjustForActualRupSlips, adjustForSlipAlong);
+		if (adjustForIncompatibleData) {
+			UncertaintyBoundType dataWithinType = UncertaintyBoundType.ONE_SIGMA;
+			List<DataSectNucleationRateEstimator> dataConstraints = new ArrayList<>();
+			dataConstraints.add(new APrioriSectNuclEstimator(rupSet,
+					UCERF3InversionInputGenerator.findParkfieldRups(rupSet), parkfieldRate));
+			if (rupSet.hasModule(PaleoseismicConstraintData.class)) {
+				PaleoseismicConstraintData paleoData = rupSet.requireModule(PaleoseismicConstraintData.class);
+				if (paleoData.getPaleoSlipConstraints() != null) {
+					// use updated slip rate
+					rupSet.addModule(builder.buildSlipRatesOnly());
 				}
-				builder.expandUncertaintiesForData(dataConstraints, dataWithinType);
+				dataConstraints.addAll(PaleoSectNuclEstimator.buildPaleoEstimates(rupSet, true));
 			}
-			target = builder.build();
-			rupSet.addModule(target);
+			builder.expandUncertaintiesForData(dataConstraints, dataWithinType);
 		}
+		SupraSeisBValInversionTargetMFDs target = builder.build();
+		rupSet.addModule(target);
 		return target;
 	}
 	
@@ -302,12 +333,8 @@ public class NSHM23_ConstraintBuilder {
 		return belowMinIndexes;
 	}
 	
-	public IntegerPDF_FunctionSampler getSkipBelowMinSampler() {
-		double[] vals = new double[rupSet.getNumRuptures()];
-		Arrays.fill(vals, 1d);
-		for (int index : getRupIndexesBelowMinMag())
-			vals[index] = 0d;
-		return new IntegerPDF_FunctionSampler(vals);
+	public ExclusionIntegerSampler getSkipBelowMinSampler() {
+		return new ExclusionIntegerSampler(0, rupSet.getNumRuptures(), getRupIndexesBelowMinMag());
 	}
 	
 	public NSHM23_ConstraintBuilder minimizeBelowSectMinMag() {
