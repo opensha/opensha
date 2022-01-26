@@ -5,6 +5,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 
+import com.google.common.base.Preconditions;
+
 /**
  * Inteface for a rupture probability calculator
  * 
@@ -28,4 +30,36 @@ public interface RuptureProbabilityCalc extends Named {
 	}
 	
 	public boolean isDirectional(boolean splayed);
+	
+	public class MultiProduct implements RuptureProbabilityCalc {
+		
+		private RuptureProbabilityCalc[] calcs;
+
+		public MultiProduct(RuptureProbabilityCalc... calcs) {
+			Preconditions.checkState(calcs.length > 1);
+			this.calcs = calcs;
+		}
+
+		@Override
+		public String getName() {
+			return "Product of "+calcs.length+" models";
+		}
+
+		@Override
+		public double calcRuptureProb(ClusterRupture rupture, boolean verbose) {
+			double product = 1;
+			for (RuptureProbabilityCalc calc : calcs)
+				product *= calc.calcRuptureProb(rupture, verbose);
+			return product;
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			for (RuptureProbabilityCalc calc : calcs)
+				if (calc.isDirectional(splayed))
+					return true;
+			return false;
+		}
+		
+	}
 }
