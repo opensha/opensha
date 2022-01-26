@@ -19,8 +19,9 @@ import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
  *
  */
 public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
-	
+
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levels;
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsMaxDist;
 
 	// TODO move most of these to a real NSHM23 logic tree branch, only keep U3-related ones here 
 	public static LogicTreeLevel<NSHM23_FaultModels> U3_FM =
@@ -43,10 +44,13 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			LogicTreeLevel.forEnum(SubSeisMoRateReductions.class, "Sub-Sect Moment Rate Reduction", "SectMoRed");
 	public static LogicTreeLevel<SegmentationModels> SEG =
 			LogicTreeLevel.forEnum(SegmentationModels.class, "Segmentation Model", "SegModel");
+	public static LogicTreeLevel<MaxJumpDistModels> MAX_DIST =
+			LogicTreeLevel.forEnum(MaxJumpDistModels.class, "Maximum Jump Distance", "MaxJumpDist");
 	
 	static {
 		// exhaustive for now, can trim down later
 		levels = List.of(U3_FM, PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG, SUPRA_B, SUB_SECT_CONSTR, SUB_SEIS_MO, SEG);
+		levelsMaxDist = List.of(U3_FM, PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG, SUPRA_B, SUB_SECT_CONSTR, SUB_SEIS_MO, MAX_DIST);
 	}
 	
 	/**

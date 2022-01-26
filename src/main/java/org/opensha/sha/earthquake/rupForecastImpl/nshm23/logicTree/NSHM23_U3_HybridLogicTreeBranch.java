@@ -21,8 +21,9 @@ import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
  *
  */
 public class NSHM23_U3_HybridLogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
-	
+
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levels;
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsMaxDist;
 
 	// only U3-related ones here 
 	public static LogicTreeLevel<FaultModels> U3_FM =
@@ -39,6 +40,9 @@ public class NSHM23_U3_HybridLogicTreeBranch extends LogicTreeBranch<LogicTreeNo
 		levels = List.of(U3_FM, NSHM23_LogicTreeBranch.PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG,
 				NSHM23_LogicTreeBranch.SUPRA_B, NSHM23_LogicTreeBranch.SUB_SECT_CONSTR,
 				NSHM23_LogicTreeBranch.SUB_SEIS_MO, NSHM23_LogicTreeBranch.SEG);
+		levelsMaxDist = List.of(U3_FM, NSHM23_LogicTreeBranch.PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG,
+				NSHM23_LogicTreeBranch.SUPRA_B, NSHM23_LogicTreeBranch.SUB_SECT_CONSTR,
+				NSHM23_LogicTreeBranch.SUB_SEIS_MO, NSHM23_LogicTreeBranch.MAX_DIST);
 	}
 	
 	/**
