@@ -4,7 +4,9 @@ import java.awt.geom.Point2D;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
+import org.opensha.commons.data.IntegerSampler;
 import org.opensha.commons.util.ComparablePairing;
 
 import com.google.common.base.Joiner;
@@ -24,7 +26,7 @@ import com.google.gson.annotations.JsonAdapter;
  *
  */
 @JsonAdapter(IntegerPDF_FunctionSampler.Adapter.class)
-public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
+public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc implements IntegerSampler {
 	
 	/**
 	 * 
@@ -105,15 +107,6 @@ public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
 		return sumOfYvals;
 	}
 	
-	
-	/**
-	 * This returns a random integer based on the probabilities of each
-	 * @return
-	 */
-	public int getRandomInt() {
-		return getInt(Math.random());
-	}
-	
 	/**
 	 * This returns a random integer based on the probabilities of each, and
 	 * using the supplied random number (supplied in cases where reproducibility is important)
@@ -123,8 +116,6 @@ public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
 	public int getRandomInt(double randDouble) {
 		return getInt(randDouble);
 	}
-
-	
 	
 	/**
 	 * This returns the integer value corresponding to the given probability (between 0 and 1).
