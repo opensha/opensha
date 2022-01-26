@@ -22,12 +22,14 @@ import com.google.common.primitives.Ints;
  */
 public class SparseGutenbergRichterSolver {
 	
-	private enum SpreadingMethod {
+	public enum SpreadingMethod {
 		PREV,
 		NEAREST,
 		ALL,
 		NEAREST_GROUP
 	}
+	
+	public static SpreadingMethod METHOD_DEFAULT = SpreadingMethod.NEAREST;
 	
 	/**
 	 * Calculates a G-R distribution for the given total moment rate and target b-value, only using magnitude bins
@@ -41,7 +43,7 @@ public class SparseGutenbergRichterSolver {
 	 */
 	public static IncrementalMagFreqDist getEquivGR(EvenlyDiscretizedFunc refFunc, Collection<Double> mags,
 			double totMoRate, double targetBValue) {
-		return getEquivGR(refFunc, mags, totMoRate, targetBValue, 0d, SpreadingMethod.NEAREST, false);
+		return getEquivGR(refFunc, mags, totMoRate, targetBValue, 0d, METHOD_DEFAULT, false);
 	}
 	
 	/**
