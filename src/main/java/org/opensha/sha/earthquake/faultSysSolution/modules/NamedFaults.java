@@ -187,12 +187,6 @@ ConstantAverageable<NamedFaults>, JSON_TypeAdapterBackedModule<Map<String, List<
 	}
 
 	@Override
-	public AveragingAccumulator<NamedFaults> averagingAccumulator() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	@Override
 	public boolean isIdentical(NamedFaults module) {
 		if (namedFaults.size() != module.namedFaults.size())
 			return false;
