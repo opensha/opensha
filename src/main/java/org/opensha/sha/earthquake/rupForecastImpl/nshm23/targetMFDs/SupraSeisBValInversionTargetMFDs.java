@@ -123,7 +123,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	
 	public static final boolean APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT = true;
 	
-	public static final boolean SPARSE_GR_DEFAULT = true;
+	public static boolean SPARSE_GR_DEFAULT = true;
 	
 	public static final boolean ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT = false;
 	
@@ -516,8 +516,18 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 								 * average rupture area in each bin and the section area.
 								 */
 								
+								// TODO this todo is here to make it easy to jump back to this part of the code while
+								// it's still in progress
+								
 								// in each iteration we will rescale the total moment to match the original
 								double origMomRate = supraGR_shape.getTotalMomentRate();
+								
+								// store the original rates as a fraction of total nucleation rate. we'll keep the
+								// lesser this original fractional rate and the calculated rate
+								double[] origFractRates = new double[supraGR_shape.size()];
+								double origTotRate = supraGR_shape.calcSumOfY_Vals();
+								for (int i=0; i<origFractRates.length; i++)
+									origFractRates[i] = supraGR_shape.getY(i)/origTotRate;
 								
 								// we'll compare original rates to the total participation rate across all magnitude
 								// bins, thus we need to calculate the bin-specific scalars to convert from nuclation
@@ -547,16 +557,28 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 								for (int i=0; i<20; i++) {
 									// rescale to match the original moment rate
 									modSupraShape.scaleToTotalMomentRate(origMomRate);
-									double curParticRate = 0d;
+									double curTotParticRate = 0d;
 									for (int m=0; m<maxBinnedProbs.length; m++)
-										curParticRate += nuclToParticScalars[m]*modSupraShape.getY(m);
+										curTotParticRate += nuclToParticScalars[m]*modSupraShape.getY(m);
+									double curTotNuclRate = modSupraShape.calcSumOfY_Vals();
+									boolean changed = false;
 									for (int m=0; m<maxBinnedProbs.length; m++) {
 										double prob = maxBinnedProbs[m];
-										double origRate = supraGR_shape.getY(m);
+										if (prob == 0d || origFractRates[m] == 0)
+											continue;
+//										double origRate = supraGR_shape.getY(m);
+										double origRate = origFractRates[m]*curTotNuclRate;
 										
-										double modRate = Math.min(origRate, prob*curParticRate);
+										double probImpliedParticRate = prob*curTotParticRate;
+										double probImpliedNuclRate = probImpliedParticRate/nuclToParticScalars[m];
+										
+										double modRate = Math.min(origRate, probImpliedNuclRate);
+										if (!changed)
+											changed = modRate == modSupraShape.getY(m);
 										modSupraShape.set(m, modRate);
 									}
+									if (!changed)
+										break;
 								}
 //								if (s == 1330) {
 //									System.out.println("Final modified:");
@@ -1428,7 +1450,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		builder.addSectCountUncertainties(false);
 		builder.totalTargetMFD(rupSet.requireModule(InversionTargetMFDs.class).getTotalRegionalMFD());
 		builder.subSeisMoRateReduction(SubSeisMoRateReduction.SUB_SEIS_B_1);
-		builder.forImprobModel(new Shaw07JumpDistProb(1, 3));
+		builder.forImprobModel(new Shaw07JumpDistProb(1, 4));
 //		builder.forImprobModel(MaxJumpDistModels.ONE.getModel(rupSet));
 //		builder.adjustForActualRupSlips(true, false);
 		builder.adjustForActualRupSlips(false, false);
