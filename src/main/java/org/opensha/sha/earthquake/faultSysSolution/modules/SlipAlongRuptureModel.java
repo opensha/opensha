@@ -38,6 +38,13 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantA
 	}
 	
 	/**
+	 * @return true if this is a uniform model (all returned slip values will be identical for a given rupture), otherwise false
+	 */
+	public boolean isUniform() {
+		return false;
+	}
+	
+	/**
 	 * This gives the slip (SI units: m) on each section for the rth rupture
 	 * @return slip (SI units: m) on each section for the rth rupture
 	 */
@@ -126,6 +133,11 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantA
 		}
 
 		@Override
+		public boolean isUniform() {
+			return true;
+		}
+
+		@Override
 		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup, double aveSlip) {
 			return calcUniformSlipAlong(rupSet.getSectionsIndicesForRup(rthRup).size(), aveSlip);
 		}
@@ -159,6 +171,11 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantA
 		@Override
 		public String getName() {
 			return "Default (Uniform) Slip Along Rupture";
+		}
+
+		@Override
+		public boolean isUniform() {
+			return true;
 		}
 
 		@Override
