@@ -261,12 +261,12 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	private void mapModule(E module, Class<? extends OpenSHA_Module> clazz) {
 		Preconditions.checkState(clazz.getAnnotation(ModuleHelper.class) == null,
 				"Cannot map a class that implements @ModuleHelper: %s", clazz.getName());
-		if (mappings.containsKey(clazz))
-			debug("Overriding module type '"+clazz.getName()+"' with: "+module.getName());
+		Preconditions.checkState(OpenSHA_Module.class.isAssignableFrom(clazz), "%s is not an OpenSHA_Module", clazz);
+		boolean override = mappings.put((Class<E>)clazz, module) != null;
+		if (override)
+			debug("Overrode module type '"+clazz.getName()+"' with: "+module.getName());
 		else
-			debug("Mapping module type '"+clazz.getName()+"' to: "+module.getName());
-		Preconditions.checkState(OpenSHA_Module.class.isAssignableFrom(clazz));
-		mappings.put((Class<E>)clazz, module);
+			debug("Mapped module type '"+clazz.getName()+"' to: "+module.getName());
 	}
 	
 	/**
@@ -476,12 +476,12 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	private void mapAvailableModule(Callable<? extends OpenSHA_Module> call, Class<? extends OpenSHA_Module> clazz) {
 		Preconditions.checkState(clazz.getAnnotation(ModuleHelper.class) == null,
 				"Cannot map a class that implements @ModuleHelper: %s", clazz.getName());
-		if (availableMappings.containsKey(clazz))
-			debug("Overriding available module with type: "+clazz.getName());
+		Preconditions.checkState(OpenSHA_Module.class.isAssignableFrom(clazz), "%s is not an OpenSHA_Module", clazz);
+		boolean override = availableMappings.put((Class<E>)clazz, (Callable<E>)call) != null;
+		if (override)
+			debug("Overrode available module with type: "+clazz.getName());
 		else
-			debug("Mapping available module with type: "+clazz.getName());
-		Preconditions.checkState(OpenSHA_Module.class.isAssignableFrom(clazz));
-		availableMappings.put((Class<E>)clazz, (Callable<E>)call);
+			debug("Mapped available module with type: "+clazz.getName());
 	}
 	
 	/**
