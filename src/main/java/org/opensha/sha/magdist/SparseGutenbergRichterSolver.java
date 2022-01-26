@@ -1,5 +1,6 @@
 package org.opensha.sha.magdist;
 
+import java.util.ArrayList;
 import java.util.Collection;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -7,6 +8,7 @@ import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.eq.MagUtils;
 
 import com.google.common.base.Preconditions;
+import com.google.common.primitives.Ints;
 
 /**
  * Utility class that solves for a G-R equivalent MFD accounting for holes in available ruptures. Input is a
@@ -23,7 +25,8 @@ public class SparseGutenbergRichterSolver {
 	private enum SpreadingMethod {
 		PREV,
 		NEAREST,
-		ALL
+		ALL,
+		NEAREST_GROUP
 	}
 	
 	/**
@@ -104,12 +107,10 @@ public class SparseGutenbergRichterSolver {
 				Preconditions.checkState(i > 0 && i < superSampledGR.size()-1,
 						"First and last bins of super-sampled should always have a rupture");
 				int[] assignedBins;
-				switch (method) {
-				case PREV:
+				
+				if (method == SpreadingMethod.PREV) {
 					assignedBins = new int[] {prevNonEmptyIndex};
-					break;
-				case NEAREST:
-					// snap to closest
+				} else if (method == SpreadingMethod.NEAREST || method == SpreadingMethod.NEAREST_GROUP) {
 					int numAway = 1;
 					while (true) {
 						int upperIndex = i+numAway;
@@ -127,14 +128,26 @@ public class SparseGutenbergRichterSolver {
 						}
 						numAway++;
 					}
-					break;
-				case ALL:
+					if (method == SpreadingMethod.NEAREST_GROUP) {
+						// expand to include the full contiguous group(s) of nonzero bins
+						ArrayList<Integer> netAssignedBins = new ArrayList<>();
+						for (int startBin : assignedBins) {
+							int direction = startBin > i ? 1 : -1;
+							for (int bin=startBin;
+									bin>=0 && bin <superSampledParticipation.length && superSampledParticipation[bin];
+									bin+=direction) {
+								netAssignedBins.add(bin);
+							}
+						}
+						assignedBins = Ints.toArray(netAssignedBins);
+					}
+				} else if (method == SpreadingMethod.ALL) {
+					// dealt with externally
 					assignedBins = new int[0];
-					break;
-
-				default:
-					throw new IllegalStateException();
+				} else {
+					throw new IllegalStateException("Unsupported method: "+method);
 				}
+				
 				
 				double moRatePerAssignment = superSampledGR.getMomentRate(i)/(double)assignedBins.length;
 				double ratePerAssignment = superSampledGR.getIncrRate(i)/(double)assignedBins.length;
