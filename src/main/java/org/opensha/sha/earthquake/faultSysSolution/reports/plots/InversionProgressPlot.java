@@ -92,7 +92,6 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 		if (worseKept >= 0l)
 			table.addColumn(countDF.format(worseKept));
 		table.addColumn(ipp > 100d ? countDF.format((int)(ipp+0.5)) : twoDigits.format(ipp));
-		
 		table.addColumn((float)totalEnergy);
 		table.finalizeLine();
 		
@@ -103,6 +102,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 			cperturbs = compProgress.getNumPerturbations(compProgress.size()-1);
 			long citers = compProgress.getIterations(compProgress.size()-1);
 			double ctotalEnergy = compProgress.getEnergies(compProgress.size()-1)[0];
+			long cworseKept = compProgress.hasWorseKepts() ? compProgress.getNumWorseKept(compProgress.size()-1) : -1l;
 
 			int cips = (int)((double)citers/csecs + 0.5);
 			int cipp = (int)((double)citers/(double)cperturbs + 0.5);
@@ -112,6 +112,8 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 			table.addColumn(ThreadedSimulatedAnnealing.timeStr(cmillis));
 			table.addColumn(countDF.format(cips));
 			table.addColumn(countDF.format(cperturbs));
+			if (worseKept >= 0l)
+				table.addColumn(countDF.format(cworseKept));
 			table.addColumn(ipp > 100d ? countDF.format((int)(cipp+0.5)) : twoDigits.format(cipp));
 			table.addColumn((float)ctotalEnergy);
 			table.finalizeLine();
