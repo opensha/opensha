@@ -23,6 +23,30 @@ public interface CompletionCriteria {
 	 */
 	public boolean isSatisfied(InversionState state);
 	
+	public static interface EstimationCompletionCriteria extends CompletionCriteria {
+		
+		/**
+		 * Estimates the time left until this constraint is satisfied
+		 * 
+		 * @param state
+		 * @return time left in milliseconds
+		 */
+		public default long estimateTimeLeft(InversionState state) {
+			double fractDone = estimateFractCompleted(state);
+			long ellapsed = state.elapsedTimeMillis;
+			long expected = (long)(ellapsed/fractDone);
+			return expected - ellapsed;
+		}
+		
+		/**
+		 * Estimates the the fraction completed
+		 * 
+		 * @param state
+		 * @return fraction completed, with 0 being just started and 1 being done
+		 */
+		public double estimateFractCompleted(InversionState state);
+	}
+	
 	public static class Adapter extends TypeAdapter<CompletionCriteria> {
 		
 		Gson gson = new Gson();

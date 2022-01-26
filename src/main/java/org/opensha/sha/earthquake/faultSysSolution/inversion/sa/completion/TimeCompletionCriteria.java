@@ -1,8 +1,9 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion;
 
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.InversionState;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria.EstimationCompletionCriteria;
 
-public class TimeCompletionCriteria implements CompletionCriteria {
+public class TimeCompletionCriteria implements EstimationCompletionCriteria {
 	
 	private long millis;
 	
@@ -77,6 +78,16 @@ public class TimeCompletionCriteria implements CompletionCriteria {
 		if (str.endsWith("mi"))
 			str = str.substring(0, str.length()-2);
 		return Long.parseLong(str);
+	}
+
+	@Override
+	public double estimateFractCompleted(InversionState state) {
+		return Math.min(1d, (double)state.elapsedTimeMillis/(double)millis);
+	}
+
+	@Override
+	public long estimateTimeLeft(InversionState state) {
+		return Long.max(0, millis-state.elapsedTimeMillis);
 	}
 
 }

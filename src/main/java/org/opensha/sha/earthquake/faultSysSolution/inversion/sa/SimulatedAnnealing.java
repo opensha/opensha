@@ -10,10 +10,10 @@ import java.util.Random;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.jfree.data.Range;
+import org.opensha.commons.data.IntegerSampler;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -54,7 +54,7 @@ public interface SimulatedAnnealing {
 	
 	public void setVariablePerturbationBasis(double[] variablePerturbBasis);
 	
-	public void setRuptureSampler(IntegerPDF_FunctionSampler rupSampler);
+	public void setRuptureSampler(IntegerSampler rupSampler);
 
 	public double[] getBestSolution();
 

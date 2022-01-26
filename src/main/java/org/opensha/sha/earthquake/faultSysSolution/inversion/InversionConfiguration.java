@@ -15,6 +15,7 @@ import java.util.Objects;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
+import org.opensha.commons.data.IntegerSampler;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.SubModule;
@@ -46,6 +47,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.annotations.JsonAdapter;
 
 /**
  * This class contains the constraints and inversion parameters needed to configure and run an inversion.
@@ -70,7 +72,8 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 	
 	// annealing params
 	private double[] variablePertubationBasis;
-	private IntegerPDF_FunctionSampler sampler;
+	@JsonAdapter(IntegerSampler.Adapter.class)
+	private IntegerSampler sampler;
 	private GenerationFunctionType perturb = PERTURB_DEFAULT;
 	private NonnegativityConstraintType nonneg = NON_NEG_DEFAULT;
 	private CoolingScheduleType cool = COOL_DEFAULT;
@@ -229,7 +232,7 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			return sampler(new IntegerPDF_FunctionSampler(samplerBasis));
 		}
 		
-		public Builder sampler(IntegerPDF_FunctionSampler sampler) {
+		public Builder sampler(IntegerSampler sampler) {
 			config.sampler = sampler;
 			return this;
 		}
@@ -540,7 +543,7 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 		return variablePertubationBasis;
 	}
 
-	public IntegerPDF_FunctionSampler getSampler() {
+	public IntegerSampler getSampler() {
 		return sampler;
 	}
 

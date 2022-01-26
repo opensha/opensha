@@ -1,8 +1,9 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion;
 
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.InversionState;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria.EstimationCompletionCriteria;
 
-public class IterationsPerVariableCompletionCriteria implements CompletionCriteria {
+public class IterationsPerVariableCompletionCriteria implements EstimationCompletionCriteria {
 	
 	private double itersPerVariable;
 	private transient long offset = 0l;
@@ -30,6 +31,13 @@ public class IterationsPerVariableCompletionCriteria implements CompletionCriter
 	@Override
 	public String toString() {
 		return "IterationsPerVariableCompletionCriteria(itersPerVar: "+(float)itersPerVariable+")";
+	}
+	
+	@Override
+	public double estimateFractCompleted(InversionState state) {
+		long iters = state.iterations - offset;
+		double itersPer = (double)iters/state.bestSolution.length;
+		return Math.min(1d, itersPer/itersPerVariable);
 	}
 
 }

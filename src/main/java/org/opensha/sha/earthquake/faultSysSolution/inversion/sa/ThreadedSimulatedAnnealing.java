@@ -30,12 +30,13 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.time.StopWatch;
 import org.opensha.commons.data.CSVFile;
-import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
+import org.opensha.commons.data.IntegerSampler;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.AnnealingProgress;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria.EstimationCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompoundCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.EnergyChangeCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.EnergyCompletionCriteria;
@@ -274,7 +275,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	}
 
 	@Override
-	public void setRuptureSampler(IntegerPDF_FunctionSampler rupSampler) {
+	public void setRuptureSampler(IntegerSampler rupSampler) {
 		for (SimulatedAnnealing sa : sas)
 			sa.setRuptureSampler(rupSampler);
 	}
@@ -371,16 +372,25 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			criteria = ((ProgressTrackingCompletionCriteria)criteria).getCriteria();
 		}
 		
+		EstimationCompletionCriteria estCriteria = null;
+		if (criteria instanceof EstimationCompletionCriteria) {
+			estCriteria = (EstimationCompletionCriteria)criteria;
+		} else if (criteria instanceof ProgressTrackingCompletionCriteria) {
+			CompletionCriteria wrapped = ((ProgressTrackingCompletionCriteria)criteria).getCriteria();
+			if (wrapped instanceof EstimationCompletionCriteria)
+				estCriteria = (EstimationCompletionCriteria)wrapped;
+		}
+		
 		if (exec == null)
 			exec = Executors.newFixedThreadPool(numThreads, new DaemonThreadFactory(average));
 		
 		int rounds = 0;
 		long iter = startIter;
 		double[] prevBestE = null;
-		InversionState state = null;
+		InversionState state = new InversionState(watch.getTime(), iter, Ebest, perturbs, worseKept,
+				numNonZero, xbest, misfit, misfit_ineq, constraintRanges);
 //		while (!criteria.isSatisfied(watch, iter, Ebest, perturbs, numNonZero, misfit, misfit_ineq, constraintRanges)) {
-		while (!criteria.isSatisfied(state = new InversionState(watch.getTime(), iter, Ebest, perturbs, worseKept,
-				numNonZero, xbest, misfit, misfit_ineq, constraintRanges))) {
+		while (!criteria.isSatisfied(state)) {
 			beforeRound(state, rounds);
 			
 			if (subCompletionCriteria instanceof VariableSubTimeCompletionCriteria)
@@ -511,14 +521,24 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 				Ebest = sas.get(0).calculateEnergy(xbest, misfit, misfit_ineq, constraintRanges);
 			}
 			
+			// update state
+			state = new InversionState(watch.getTime(), iter, Ebest, perturbs, worseKept,
+					numNonZero, xbest, misfit, misfit_ineq, constraintRanges);
+			
 			if (verbose) {
 				double secs = watch.getTime() / 1000d;
 				int ips = (int)((double)iter/secs + 0.5);
-				System.out.println("Threaded total round "+rounds+" DONE after "+timeStr(watch.getTime())
-						+", "+cDF.format(iter)+" total iterations ("+cDF.format(ips)+" /sec).\t"
-						+cDF.format(numNonZero)+"/"+cDF.format(xbest.length)
-						+" = "+pDF.format((double)numNonZero/(double)xbest.length)+" non-zero rates.");
-				System.out.println("Best energy after "+cDF.format(perturbs)+" total perturbations:");
+				String timeStr = "Threaded total round "+rounds+" DONE after "+timeStr(watch.getTime())
+						+", "+cDF.format(iter)+" total iterations ("+cDF.format(ips)+" /sec).";
+				if (estCriteria != null) {
+					double fractDone = estCriteria.estimateFractCompleted(state);
+					long timeEst = estCriteria.estimateTimeLeft(state);
+					timeStr += "\t"+pDF.format(fractDone)+" done ("+timeStr(timeEst)+" left).";
+				}
+				System.out.println(timeStr);
+				System.out.println(cDF.format(numNonZero)+"/"+cDF.format(xbest.length)+" = "
+						+pDF.format((double)numNonZero/(double)xbest.length)+" non-zero rates.\t"
+								+ "Best energy after "+cDF.format(perturbs)+" total perturbations:");
 				printEnergies(Ebest, prevBestE, constraintRanges);
 				prevBestE = Ebest;
 //						+Doubles.join(", ", Ebest));

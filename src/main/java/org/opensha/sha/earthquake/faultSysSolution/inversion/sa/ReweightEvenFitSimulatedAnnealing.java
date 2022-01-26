@@ -38,9 +38,11 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_U3_HybridLogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSeisMoRateReductions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.U3_UncertAddDeformationModels;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -737,16 +739,16 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		branch.setValue(RupturePlausibilityModels.UCERF3);
 		
 		// good fitting
-//		branch.setValue(DeformationModels.ZENGBB);
-//		branch.setValue(ScalingRelationships.SHAW_2009_MOD);
-//		branch.setValue(SupraSeisBValues.B_1p0);
-//		branch.setValue(SlipAlongRuptureModels.UNIFORM);
+		branch.setValue(U3_UncertAddDeformationModels.U3_ZENG);
+		branch.setValue(ScalingRelationships.SHAW_2009_MOD);
+		branch.setValue(SupraSeisBValues.B_0p8);
+		branch.setValue(SlipAlongRuptureModels.UNIFORM);
 		
 		// poor fitting
-		branch.setValue(DeformationModels.NEOKINEMA);
-		branch.setValue(ScalingRelationships.HANKS_BAKUN_08);
-		branch.setValue(SupraSeisBValues.B_0p0);
-		branch.setValue(SlipAlongRuptureModels.TAPERED);
+//		branch.setValue(U3_UncertAddDeformationModels.U3_NEOK);
+//		branch.setValue(ScalingRelationships.HANKS_BAKUN_08);
+//		branch.setValue(SupraSeisBValues.B_0p0);
+//		branch.setValue(SlipAlongRuptureModels.TAPERED);
 		
 		// constant
 		branch.setValue(SubSeisMoRateReductions.SUB_B_1);
@@ -755,11 +757,15 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //		branch.setValue(SubSectConstraintModels.TOT_NUCL_RATE);
 		branch.setValue(SubSectConstraintModels.NUCL_MFD);
 		
-		dirName += "-"+branch.getValue(DeformationModels.class).getFilePrefix();
+		branch.setValue(SegmentationModels.SHAW_R0_3);
+		
+		dirName += "-"+branch.getValue(U3_UncertAddDeformationModels.class).getFilePrefix();
 		dirName += "-"+branch.getValue(ScalingRelationships.class).getFilePrefix();
 		dirName += "-"+branch.getValue(SlipAlongRuptureModels.class).getFilePrefix();
 		dirName += "-"+branch.getValue(SupraSeisBValues.class).getFilePrefix();
 		dirName += "-"+branch.getValue(SubSectConstraintModels.class).getFilePrefix();
+		if (branch.hasValue(SegmentationModels.class))
+			dirName += "-"+branch.getValue(SegmentationModels.class).getFilePrefix();
 		
 		FaultSystemRupSet rupSet;
 		try {
@@ -769,9 +775,6 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		}
 		
 		System.out.println("Slip along: "+rupSet.getModule(SlipAlongRuptureModel.class).getName());
-		
-		double supraBVal = 0.0;
-//		dirName += "-nshm23_draft-supra_b_"+oDF.format(supraBVal);
 		
 		InversionConfiguration config = factory.buildInversionConfig(rupSet, branch, 16);
 		
@@ -790,7 +793,8 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(5); dirName += "-5m";
 //		CompletionCriteria completion = TimeCompletionCriteria.getInHours(2); dirName += "-2h";
-		CompletionCriteria completion = TimeCompletionCriteria.getInHours(1); dirName += "-1h";
+//		CompletionCriteria completion = TimeCompletionCriteria.getInHours(1); dirName += "-1h";
+		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(20); dirName += "-20m";
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30); dirName += "-30m";
 //		CompletionCriteria avgCompletion = new IterationsPerVariableCompletionCriteria(20);
 		CompletionCriteria avgCompletion = new IterationsPerVariableCompletionCriteria(50);

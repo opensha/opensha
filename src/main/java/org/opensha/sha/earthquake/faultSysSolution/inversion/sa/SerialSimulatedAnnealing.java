@@ -8,7 +8,7 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.lang3.time.StopWatch;
-import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
+import org.opensha.commons.data.IntegerSampler;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
@@ -64,8 +64,9 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	private static GenerationFunctionType PERTURB_FUNC_DEFAULT = GenerationFunctionType.UNIFORM_0p0001;
 	private GenerationFunctionType perturbationFunc = PERTURB_FUNC_DEFAULT;
 	
-	// this provides and alternative way of random sampling ruptures to perturb (i.e., for a non-uniform districtuion)
-	private IntegerPDF_FunctionSampler rupSampler = null;
+	// sampler that is used to pick random variables for perturbation. default implementation is uniform sampling,
+	// but there are alternatives for non-uniform sampling as well
+	private IntegerSampler rupSampler = null;
 	
 	/*
 	 * This effectively makes changes in energies smaller (increasing the prob a jump will be taken to higher E).
@@ -172,6 +173,8 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		}
 		
 		Ebest = calculateEnergy(xbest, misfit_best, misfit_ineq_best);
+		
+		rupSampler = new IntegerSampler.ContiguousIntegerSampler(initialState.length);
 	}
 	
 	/**
@@ -223,7 +226,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	}
 	
 	@Override
-	public void setRuptureSampler(IntegerPDF_FunctionSampler rupSampler) {
+	public void setRuptureSampler(IntegerSampler rupSampler) {
 		this.rupSampler = rupSampler;
 	}
 	
@@ -344,7 +347,6 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		// make sure that our scratch array is big enough
 		Preconditions.checkState(scratch.length >= NUM);
 		// fill the scratch array with misfit values before this perturbation
-		// it's more efficient to calculate 
 		for (int i=0; i<NUM; i++)
 			scratch[i] = misfits[rows[i]];
 		
@@ -358,7 +360,10 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		
 		// now update the misfits array with the purturbation
 		// this also stores the updated misfits in the scratch array
-		updateMisfits(misfits, perturbation, scratch, As, rows, NUM);
+//		if (UNROLL_ENERGY_CALCS)
+//			updateMisfitsUnrolled(misfits, perturbation, scratch, As, rows, NUM);
+//		else
+			updateMisfits(misfits, perturbation, scratch, As, rows, NUM);
 		
 		// calculate energy change due to this perturbation
 		if (ineq)
@@ -371,7 +376,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 	private static void updateMisfits(final double[] misfits, final double perturbation, final double[] scratch,
 			final double[] As, final int[] rows, final int NUM) {
 		for (int i=0; i<NUM; i++) {
-			misfits[rows[i]] += As[i] * perturbation;
+			misfits[rows[i]] = Math.fma(As[i], perturbation, misfits[rows[i]]);
 			scratch[i] = misfits[rows[i]];
 		}
 	}
@@ -680,11 +685,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			}
 
 			// Index of model to randomly perturb
-			if(rupSampler == null)
-				index = (int)(r.nextDouble() * (double)nCol); // casting as int takes the floor
-			else
-				index = rupSampler.getRandomInt(r.nextDouble());
-
+			index = rupSampler.getRandomInt(r);
 
 			// How much to perturb index (some perturbation functions are a function of T)	
 			perturb = perturbationFunc.getPerturbation(r, T, index, variablePerturbBasis);
