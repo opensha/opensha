@@ -58,7 +58,17 @@ public class SectionTotalRateConstraint extends InversionConstraint {
 		for (int s=0; s<sectRates.length; s++) {
 			if (Double.isNaN(sectRates[s]))
 				continue;
-			double stdDev = sectRateStdDevs == null ? 0d : sectRateStdDevs[s];
+			double stdDev = 0d;
+			if (sectRateStdDevs != null) {
+				stdDev = sectRateStdDevs[s];
+				if (stdDev == 0d || !Double.isFinite(stdDev)) {
+					Preconditions.checkState(sectRates[s] == 0d,
+							"Zero standard deviations are only supported when the target rate is zero: "
+							+ "sectRates[%s]=%s, sectRateStdDevs[%s]=%s",
+							s, sectRates[s], s, sectRateStdDevs[s]);
+					continue;
+				}
+			}
 			
 			double scale = weightingType.getA_Scalar(sectRates[s], stdDev);
 			double target = weightingType.getD(sectRates[s], stdDev);
