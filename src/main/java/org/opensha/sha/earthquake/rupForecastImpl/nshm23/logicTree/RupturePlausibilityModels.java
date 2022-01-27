@@ -23,6 +23,14 @@ public enum RupturePlausibilityModels implements LogicTreeNode {
 			return new U3RupSetConfig(subSects, scale);
 		}
 	},
+	UCERF3_REDUCED("UCERF3 Reduced", "U3Red", 1d) { // for now
+		@Override
+		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			U3RupSetConfig config = new U3RupSetConfig(subSects, scale);
+			config.setAdaptiveSectFract(0.1f);
+			return config;
+		}
+	},
 	COULOMB("Coulomb", "Coulomb", 1d) {
 		@Override
 		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
