@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.logicTree.BranchWeightProvider.OriginalWeights;
@@ -207,6 +208,19 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	 * use a {@link BranchWeightProvider} instance modified to reflect the even (post-sampling) weights.
 	 */
 	public final LogicTree<E> sample(int numSamples, boolean redrawDuplicates) {
+		return sample(numSamples, redrawDuplicates, new Random());
+	}
+	
+	/**
+	 * @param numSamples number of random samples
+	 * @param redrawDuplicates if true, each branch will be unique, redrawing a branch if an already sampled branch
+	 * has been selected, otherwise duplicate branches will be given additional weight and the returned branch count
+	 * may be less than the input number of samples
+	 * @param rand random number generator
+	 * @return a randomly sampled subset of this logic tree, according to their weights. The returned logic tree will
+	 * use a {@link BranchWeightProvider} instance modified to reflect the even (post-sampling) weights.
+	 */
+	public final LogicTree<E> sample(int numSamples, boolean redrawDuplicates, Random rand) {
 		System.out.println("Resampling logic tree of size="+size()+" to "+numSamples+" samples...");
 		Preconditions.checkArgument(numSamples > 0);
 		Preconditions.checkState(!redrawDuplicates || numSamples <= size(),
@@ -217,10 +231,10 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		IntegerPDF_FunctionSampler sampler = new IntegerPDF_FunctionSampler(weights);
 		HashMap<Integer, Integer> indexCounts = new HashMap<>();
 		for (int i=0; i<numSamples; i++) {
-			int index = sampler.getRandomInt();
+			int index = sampler.getRandomInt(rand);
 			int prevCount = indexCounts.containsKey(index) ? indexCounts.get(index) : 0;
 			while (redrawDuplicates && prevCount > 0)
-				index = sampler.getRandomInt();
+				index = sampler.getRandomInt(rand);
 			indexCounts.put(index, prevCount+1);
 		}
 		double weightEach = 1d/numSamples;
