@@ -786,6 +786,7 @@ public class SegmentationCalculator {
 		if (!multipleJumpsPerParent)
 			return this;
 		
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		Table<IDPairing, Jump, JumpRates> combinedTable = HashBasedTable.create();
 		for (IDPairing pair : parentJumpRateTable.rowKeySet()) {
 			Map<Jump, JumpRates> jumpMap = parentJumpRateTable.row(pair);
@@ -797,6 +798,8 @@ public class SegmentationCalculator {
 				Jump bestJump = null;
 				JumpRates bestJumpRates = null;
 				double[] totRates = new double[minMags.length];
+				HashSet<Integer> fromRups = new HashSet<>();
+				HashSet<Integer> toRups = new HashSet<>();
 				for (Jump jump : jumpMap.keySet()) {
 					JumpRates rate = jumpMap.get(jump);
 					boolean newBest = bestJump == null
@@ -808,10 +811,17 @@ public class SegmentationCalculator {
 					}
 					for (int m=0; m<minMags.length; m++)
 						totRates[m] += rate.magJumpRates[m];
+					fromRups.addAll(rupSet.getRupturesForSection(jump.fromSection.getSectionId()));
+					toRups.addAll(rupSet.getRupturesForSection(jump.toSection.getSectionId()));
 				}
 				double totMaxRate = StatUtils.max(totRates);
 				double[] combFromSectRates = new double[minMags.length];
 				double[] combToSectRates = new double[minMags.length];
+				// to/from rates should be the sum of all ruptures that touch any of the from/to sections
+				for (int rup : fromRups)
+					addMagRate(combFromSectRates, rupSet.getMagForRup(rup), sol.getRateForRup(rup));
+				for (int rup : toRups)
+					addMagRate(combToSectRates, rupSet.getMagForRup(rup), sol.getRateForRup(rup));
 				double combFromRupSetSlipRate = 0d;
 				double combToRupSetSlipRate = 0d;
 				double combFromSolSlipRate = 0d;
@@ -821,12 +831,6 @@ public class SegmentationCalculator {
 				for (Jump jump : jumpMap.keySet()) {
 					// average everything, weighted by the rate that jump is used
 					JumpRates jumpRates = jumpMap.get(jump);
-					for (int m=0; m<minMags.length; m++) {
-						// mag-specific weight
-						double weight = jumpRates.magJumpRates[m]/totRates[m];
-						combFromSectRates[m] += jumpRates.fromRates.sectRates[m]*weight;
-						combToSectRates[m] += jumpRates.toRates.sectRates[m]*weight;
-					}
 					// total weight
 					double weight = StatUtils.max(jumpRates.magJumpRates)/totMaxRate;
 					combFromRupSetSlipRate += jumpRates.fromRates.rupSetSlipRate*weight;
@@ -1548,6 +1552,15 @@ public class SegmentationCalculator {
 //					Preconditions.checkState(Double.isFinite(toVal));
 					double rate = combiner.combine(fromVal, toVal);
 					fract = jumpRate/rate;
+					
+					Preconditions.checkState(fract < 1.001, "Passthrough fraction is >1: %s\n"
+							+ "\tjump=%s, fromVal=%s, toVal=%s, jumpRate=%s, combRate[%s]=%s",
+							fract, jump, fromVal, toVal, jumpRate, combiner, rate);
+//					if (fract > 1) {
+//						System.out.println("ABOVE 1!! jump="+jump+" with rate="+jumpRate+" and combiner: "+combiner.name());
+//						System.out.println("\tfromVal="+fromVal+"\ttoVal="+toVal+"\trate="+rate);
+//						System.out.println("\tfract = "+jumpRate+" / "+rate+" = "+fract);
+//					}
 					Color c = rateCPT.getColor((float)Math.log10(rate));
 					c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 200);
 					
@@ -1687,14 +1700,17 @@ public class SegmentationCalculator {
 //			calc.plotFractVsScalars(outputDir, "conn_passthrough_scalars_"+scalar.name()+"_log", scalar, true, RateCombiner.values());
 //		}
 		File inputFile = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
-				+ "2021_12_16-nshm23_draft_branches-max_dist-FM3_1-CoulombRupSet-ZENGBB-Shaw09Mod-DsrUni-TotNuclRate-SubB1/"
-				+ "node_branch_averaged/MaxDist_MaxDist3km.zip");
+				+ "2022_01_26-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-U3_ZENG-Shaw09Mod-DsrUni-SubB1-2000ip/"
+				+ "results_FM3_1_CoulombRupSet_branch_averaged.zip");
+//				+ "2022_01_18-nshm23_draft_branches-no_seg-reweighted_even_fit-FM3_1-U3RupSet-SubB1-5000ip/"
+//				+ "results_FM3_1_U3RupSet_branch_averaged.zip");
+//				+ "node_branch_averaged/MaxDist_MaxDist3km.zip");
 		FaultSystemSolution sol = FaultSystemSolution.load(inputFile);
 		ClusterRuptures cRups = ClusterRuptures.singleStranged(sol.getRupSet());
 		PlausibilityConfiguration config = sol.getRupSet().getModule(PlausibilityConfiguration.class);
 		ClusterConnectionStrategy connStrat = config.getConnectionStrategy();
 		SegmentationCalculator calc = new SegmentationCalculator(sol, cRups.getAll(),
-				connStrat, config.getDistAzCalc(), new double[] {6.5d, 7.5d});
+				connStrat, config.getDistAzCalc(), new double[] { 0d });
 		calc = calc.combineMultiJumps(true);
 		
 		File outputDir = new File("/tmp/");
