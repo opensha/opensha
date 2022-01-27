@@ -67,21 +67,29 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 		String compName = meta.comparison == null ? null : meta.comparison.name;
 		if (inputSegCalc.areMultipleJumpsPerParent() || compSegCalc != null && compSegCalc.areMultipleJumpsPerParent()) {
 			String names = null;
-			if (inputSegCalc.areMultipleJumpsPerParent()) {
+			if (inputSegCalc.areMultipleJumpsPerParent() &&
+					// only combine jumps if this was an externally generated rupture set
+					(inputConfig.getFilters() == null || inputConfig.getFilters().isEmpty())) {
 				names = meta.primary.name;
 				inputSegCalc = inputSegCalc.combineMultiJumps(true);
 			}
 			if (compSegCalc != null && compSegCalc.areMultipleJumpsPerParent()) {
-				if (names == null)
-					names = compName;
-				else
-					names = "both "+names+" and "+compName;
-				compSegCalc = compSegCalc.combineMultiJumps(true);
+				PlausibilityConfiguration compConfig = meta.comparison.rupSet.requireModule(PlausibilityConfiguration.class);
+				if (compConfig.getFilters() == null || compConfig.getFilters().isEmpty()) {
+					// only combine jumps if this was an externally generated rupture set
+					if (names == null)
+						names = compName;
+					else
+						names = "both "+names+" and "+compName;
+					compSegCalc = compSegCalc.combineMultiJumps(true);
+				}
 			}
-			lines.add("NOTE: "+names+" has multiple jumping points between parent sections. We consolidate "
-					+ "all jumps to occur at a single jumping point (with the highest jumping rate) and average "
-					+ "quantities on either side of the jump (participation/slip rates)");
-			lines.add("");
+			if (names != null) {
+				lines.add("NOTE: "+names+" has multiple jumping points between parent sections. We consolidate "
+						+ "all jumps to occur at a single jumping point (with the highest jumping rate) and average "
+						+ "quantities on either side of the jump (participation/slip rates)");
+				lines.add("");
+			}
 		}
 		
 //		RateCombiner[] combiners = RateCombiner.values();
