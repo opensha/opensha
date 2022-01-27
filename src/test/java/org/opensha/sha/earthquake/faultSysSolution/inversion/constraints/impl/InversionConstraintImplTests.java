@@ -93,56 +93,6 @@ public class InversionConstraintImplTests {
 	}
 
 	@Test
-	public void test_MFDUncertaintyWeightedInversionConstraint() {
-				
-		Location a = new Location(34,-120);
-		Location b = new Location(45,-100);
-		Region region = new Region(a,b);
-		
-		int numBins = 10;
-		GutenbergRichterMagFreqDist mfd = new GutenbergRichterMagFreqDist(4.5d, 7.5d, numBins);
-		mfd.setAllButTotMoRate(4.5, 7.5, 10, 1.0);
-
-		EvenlyDiscretizedFunc weight = new EvenlyDiscretizedFunc(4.5d, 7.5d, numBins);
-
-		//CBC: using a lambda function, and new map method setXofY on EvenlyDiscretizedFunc
-		double weightPower = 0.5;
-		double firstWeightPower = Math.pow(mfd.getClosestYtoX(4.5d), weightPower);
-		weight.setYofX(mag -> {
-			double rate = mfd.getClosestYtoX(mag);
-			return Math.pow(rate, weightPower)/firstWeightPower;
-		});
-        
-		List<MFD_WeightedInversionConstraint> mfdConstraints = new ArrayList<>();
-		mfdConstraints.add(new MFD_WeightedInversionConstraint(mfd, region, weight));
-		
-		NZ_MFDUncertaintyWeightedInversionConstraint constr = new NZ_MFDUncertaintyWeightedInversionConstraint(rupSet, 1000, mfdConstraints);
-	
-		testConstraint(constr);
-	}
-	
-	
-	@Test 
-	public void testCreate_SlipRateUncertaintyAdjustedConstraint() {
-		
-		double[] slipRates = rupSet.getSlipRateForAllSections();
-		double[] stdDevs = rupSet.getSlipRateStdDevForAllSections();
-		
-		int weight = 100;
-		int weightScalingOrderOfMagnitude = 2;
-		
-		NZ_SlipRateUncertaintyInversionConstraint constr = new NZ_SlipRateUncertaintyInversionConstraint(
-				weight, weightScalingOrderOfMagnitude, rupSet, slipRates, stdDevs);
-		
-		testConstraint(constr);
-
-		//This constraint can produce a CSV for inspection
-		assertEquals("Counts inconsistent for CSV data "+constr.getName(), 
-				constr.getSubSectionWeightingsCSV().getNumRows(), 
-				rupSet.getFaultSectionDataList().size() +1 ); // there's a header row
-	}
-	
-	@Test
 	public void testAPriori() {
 		double[] aPrioriRates = new double[numRuptures];
 		for (int r=0; r<numRuptures; r++)
