@@ -371,6 +371,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			
 			ClusterRuptures cRups = improbabilityModel == null ? null : rupSet.requireModule(ClusterRuptures.class);
 			int improbBins = 0;
+			int improbBinsAvail = 0;
 			int improbSects = 0;
 			
 			int[][] sectRupInBinCounts = new int[numSects][refMFD.size()];
@@ -495,6 +496,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 							for (int m=0; m<maxBinnedProbs.length; m++) {
 								double prob = maxBinnedProbs[m];
 								double origRate = supraGR_shape.getY(m);
+								if (origRate > 0)
+									improbBinsAvail++;
 								modSupraShape.set(m, origRate*prob);
 							}
 							
@@ -508,12 +511,19 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 								 * relative to all others is <0.001, then we shouldn't further penalize that bin (G-R
 								 * controls here, not the improbability constraint).
 								 * 
+								 * Instead, for each bin affected by a segmentation constraint, we keep the lesser of
+								 * the original share of the total section nucleation rate, and the segmentation
+								 * constraint implied share of the total participation rate (after conversion back to
+								 * nucleation). 
+								 * 
 								 * Things get a little complicated because if we change the rate in one bin, that
 								 * effects the relative G-R share in each other bin, so we do this adjustment
 								 * iteratively 20 times, which was tested to be virtually identical to >100 iterations
 								 * for the most pathological cases. We also need to calculate an estimated total
 								 * participation rate from the nucleation MFD, for which we use the ratio between the
 								 * average rupture area in each bin and the section area.
+								 * 
+								 * The 
 								 */
 								
 								// TODO this todo is here to make it easy to jump back to this part of the code while
@@ -813,7 +823,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			}
 			
 			if (improbabilityModel != null)
-				System.out.println("Improbability constraint affected "+improbSects+" sections and "+improbBins+" bins");
+				System.out.println("Improbability constraint affected "+improbSects+"/"+numSects
+						+" sections and "+improbBins+"/"+improbBinsAvail+" bins");
 			
 			System.out.println("Fraction supra-seismogenic stats: "+fractSuprasTrack);
 			
@@ -1437,10 +1448,10 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, new CaliforniaRegions.RELM_TESTING());
 		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
 		
-//		rupSet = FaultSystemRupSet.buildFromExisting(rupSet).forScalingRelationship(
-//				ScalingRelationships.ELLB_SQRT_LENGTH).build();
+		rupSet = FaultSystemRupSet.buildFromExisting(rupSet).forScalingRelationship(
+				ScalingRelationships.SHAW_2009_MOD).build();
 		
-		double b = 0.8d;
+		double b = 1.0d;
 		Builder builder = new Builder(rupSet, b);
 		
 		builder.sparseGR(true);
@@ -1450,17 +1461,17 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		builder.addSectCountUncertainties(false);
 		builder.totalTargetMFD(rupSet.requireModule(InversionTargetMFDs.class).getTotalRegionalMFD());
 		builder.subSeisMoRateReduction(SubSeisMoRateReduction.SUB_SEIS_B_1);
-		builder.forImprobModel(new Shaw07JumpDistProb(1, 4));
+		builder.forImprobModel(new Shaw07JumpDistProb(1, 3));
 //		builder.forImprobModel(MaxJumpDistModels.ONE.getModel(rupSet));
 //		builder.adjustForActualRupSlips(true, false);
 		builder.adjustForActualRupSlips(false, false);
 		
-//		List<DataSectNucleationRateEstimator> dataConstraints = new ArrayList<>();
-//		dataConstraints.add(new APrioriSectNuclEstimator(
-//				rupSet, UCERF3InversionInputGenerator.findParkfieldRups(rupSet), 1d/25d, 0.1d/25d));
-//		dataConstraints.addAll(PaleoSectNuclEstimator.buildPaleoEstimates(rupSet, true));
-//		UncertaintyBoundType expandUncertToDataBound = UncertaintyBoundType.ONE_SIGMA;
-//		builder.expandUncertaintiesForData(dataConstraints, expandUncertToDataBound);
+		List<DataSectNucleationRateEstimator> dataConstraints = new ArrayList<>();
+		dataConstraints.add(new APrioriSectNuclEstimator(
+				rupSet, UCERF3InversionInputGenerator.findParkfieldRups(rupSet), 1d/25d, 0.1d/25d));
+		dataConstraints.addAll(PaleoSectNuclEstimator.buildPaleoEstimates(rupSet, true));
+		UncertaintyBoundType expandUncertToDataBound = UncertaintyBoundType.ONE_SIGMA;
+		builder.expandUncertaintiesForData(dataConstraints, expandUncertToDataBound);
 		
 		SupraSeisBValInversionTargetMFDs target = builder.build();
 		rupSet.addModule(target);
