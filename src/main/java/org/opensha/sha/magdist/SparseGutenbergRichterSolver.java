@@ -29,7 +29,7 @@ public class SparseGutenbergRichterSolver {
 		NEAREST_GROUP
 	}
 	
-	public static SpreadingMethod METHOD_DEFAULT = SpreadingMethod.NEAREST_GROUP;
+	public static SpreadingMethod METHOD_DEFAULT = SpreadingMethod.NEAREST;
 	
 	/**
 	 * Calculates a G-R distribution for the given total moment rate and target b-value, only using magnitude bins
