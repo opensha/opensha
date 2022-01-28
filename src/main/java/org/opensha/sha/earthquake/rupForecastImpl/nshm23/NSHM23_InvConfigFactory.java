@@ -396,12 +396,12 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
 		System.out.println("Max distance model: "+distModel);
 		if (adjustTargetsForSegmentation) {
-			RuptureProbabilityCalc targetSegModel = segModel == null ? null : segModel.getModel(rupSet);
+			JumpProbabilityCalc targetSegModel = segModel == null ? null : segModel.getModel(rupSet);
 			if (distModel != null) {
 				if (targetSegModel == null)
 					targetSegModel = distModel.getModel(rupSet);
 				else
-					targetSegModel = new RuptureProbabilityCalc.MultiProduct(targetSegModel, distModel.getModel(rupSet));
+					targetSegModel = new JumpProbabilityCalc.MultiProduct(targetSegModel, distModel.getModel(rupSet));
 			}
 			constrBuilder.adjustForSegmentationModel(targetSegModel);
 		}

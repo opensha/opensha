@@ -3,6 +3,8 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.p
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 
+import com.google.common.base.Preconditions;
+
 /**
  * Probability calculator that occurs independently at each jump
  * 
@@ -75,6 +77,38 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 				return 1d;
 			return 0d;
 		}
+	}
+	
+	public class MultiProduct implements JumpProbabilityCalc {
+		
+		private JumpProbabilityCalc[] calcs;
+
+		public MultiProduct(JumpProbabilityCalc... calcs) {
+			Preconditions.checkState(calcs.length > 1);
+			this.calcs = calcs;
+		}
+
+		@Override
+		public String getName() {
+			return "Product of "+calcs.length+" models";
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			for (RuptureProbabilityCalc calc : calcs)
+				if (calc.isDirectional(splayed))
+					return true;
+			return false;
+		}
+
+		@Override
+		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
+			double product = 1;
+			for (JumpProbabilityCalc calc : calcs)
+				product *= calc.calcJumpProbability(fullRupture, jump, verbose);
+			return product;
+		}
+		
 	}
 	
 }

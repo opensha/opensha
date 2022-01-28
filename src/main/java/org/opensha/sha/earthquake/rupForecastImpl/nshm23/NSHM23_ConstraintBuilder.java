@@ -43,6 +43,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBValuePlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
@@ -83,7 +84,7 @@ public class NSHM23_ConstraintBuilder {
 	private static final double DEFAULT_REL_STD_DEV = 0.1;
 	
 	private DoubleUnaryOperator magDepRelStdDev = M->DEFAULT_REL_STD_DEV;
-	private RuptureProbabilityCalc segModel;
+	private JumpProbabilityCalc segModel;
 	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB) {
 		this(rupSet, supraSeisB, SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT,
@@ -178,7 +179,7 @@ public class NSHM23_ConstraintBuilder {
 		return this;
 	}
 	
-	public NSHM23_ConstraintBuilder adjustForSegmentationModel(RuptureProbabilityCalc segModel) {
+	public NSHM23_ConstraintBuilder adjustForSegmentationModel(JumpProbabilityCalc segModel) {
 		this.segModel = segModel;
 		targetCache = null;
 		return this;
@@ -218,7 +219,7 @@ public class NSHM23_ConstraintBuilder {
 		builder.magDepDefaultRelStdDev(magDepRelStdDev);
 		builder.addSectCountUncertainties(addSectCountUncertaintiesToMFD);
 		builder.subSeisMoRateReduction(subSeisMoRateReduction);
-		builder.forImprobModel(segModel);
+		builder.forSegmentationModel(segModel);
 		builder.adjustForActualRupSlips(adjustForActualRupSlips, adjustForSlipAlong);
 		if (adjustForIncompatibleData) {
 			UncertaintyBoundType dataWithinType = UncertaintyBoundType.ONE_SIGMA;
