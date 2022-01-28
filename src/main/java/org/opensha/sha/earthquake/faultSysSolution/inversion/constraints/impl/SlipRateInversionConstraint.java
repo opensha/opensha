@@ -46,6 +46,16 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 				rupSet.requireModule(SlipAlongRuptureModel.class), rupSet.requireModule(SectSlipRates.class));
 	}
 
+	/**
+	 * Note: do not use this constructor if you rely on serialization / deserialization of the constraint. The three
+	 * modules will not be serialized by the constraint and will be taken from the rupture set after deserialization.
+	 * @param weight
+	 * @param weightingType
+	 * @param rupSet
+	 * @param aveSlipModule
+	 * @param slipAlongModule
+	 * @param targetSlipRates
+	 */
 	public SlipRateInversionConstraint(double weight, ConstraintWeightingType weightingType,
 			FaultSystemRupSet rupSet, AveSlipModule aveSlipModule, SlipAlongRuptureModel slipAlongModule,
 			SectSlipRates targetSlipRates) {
@@ -53,6 +63,9 @@ public class SlipRateInversionConstraint extends InversionConstraint {
 				weight, false, weightingType);
 		this.weightingType = weightingType;
 		setRuptureSet(rupSet);
+		this.aveSlipModule = aveSlipModule;
+		this.slipAlongModule = slipAlongModule;
+		this.targetSlipRates = targetSlipRates;
 	}
 
 	@Override
