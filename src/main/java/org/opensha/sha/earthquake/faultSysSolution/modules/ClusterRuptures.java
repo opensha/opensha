@@ -215,18 +215,28 @@ BranchAverageableModule<ClusterRuptures>, AverageableModule.ConstantAverageable<
 					if (clusterRuptures == null) {
 						// build them
 						SectionDistanceAzimuthCalculator distAzCalc = null;
-						// try to get plausibility config, but don't load if available but not loaded as that could potentially
-						// take a long time
+						// try to get plausibility config, but don't load if available but not loaded as that could
+						// potentially take a long time
 						PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class, false);
 						if (plausibility != null)
 							distAzCalc = plausibility.getDistAzCalc();
 						else if (rupSet.hasModule(SectionDistanceAzimuthCalculator.class))
 							distAzCalc = rupSet.getModule(SectionDistanceAzimuthCalculator.class);
-						if (distAzCalc == null)
+						if (distAzCalc == null) {
 							distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
+							rupSet.addModule(distAzCalc);
+						}
+						int numCached = distAzCalc.getNumCachedDistances();
+						if (numCached > 0)
+							System.out.println("Building single-stranded ClusterRupture representations and "
+									+ "with "+numCached+" already-cached distances");
+						else
+							System.out.println("Building single-stranded ClusterRupture representations and "
+									+ "calculating necessary distances");
 						List<ClusterRupture> rups = new ArrayList<>(rupSet.getNumRuptures());
 						for (int r=0; r<rupSet.getNumRuptures(); r++)
-							rups.add(ClusterRupture.forOrderedSingleStrandRupture(rupSet.getFaultSectionDataForRupture(r), distAzCalc));
+							rups.add(ClusterRupture.forOrderedSingleStrandRupture(
+									rupSet.getFaultSectionDataForRupture(r), distAzCalc));
 						this.clusterRuptures = rups;
 					}
 				}
