@@ -13,13 +13,17 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum SupraSeisBValues implements LogicTreeNode {
 	
-	B_0p0(0d, 0.05),
-	B_0p3(0.3, 0.1),
-	B_0p5(0.5, 0.15),
-	B_0p7(0.7, 0.2),
-	B_0p8(0.8, 0.25),
-	B_0p9(0.9, 0.15),
-	B_1p0(1d, 0.1);
+	B_0p0(0d,	0.04),
+	B_0p2(0.2,	0.06),
+	B_0p4(0.4,	0.1),
+	B_0p6(0.6,	0.3),
+	B_0p8(0.8,	0.3),
+	B_1p0(1d,	0.2);
+//	B_0p0(0d, 0.05),
+//	B_0p25(0.25, 0.1),
+//	B_0p5(0.5, 0.20),
+//	B_0p75(0.75, 0.5),
+//	B_1p0(1.0, 0.15);
 	
 	public final double bValue;
 	public final double weight;
@@ -51,8 +55,13 @@ public enum SupraSeisBValues implements LogicTreeNode {
 	
 	public static void main(String[] args) {
 		double totWeight = 0d;
-		for (SupraSeisBValues b : values())
+		double avg = 0d;
+		for (SupraSeisBValues b : values()) {
+			avg += b.weight*b.bValue;
 			totWeight += b.weight;
+		}
+		avg /= totWeight;
+		System.out.println("weight average b: "+(float)avg);
 		System.out.println("tot weight: "+(float)totWeight);
 	}
 

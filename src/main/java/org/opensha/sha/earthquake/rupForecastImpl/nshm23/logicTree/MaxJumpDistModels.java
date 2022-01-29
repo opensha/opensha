@@ -20,48 +20,14 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum MaxJumpDistModels implements LogicTreeNode {
-	ONE(1d, 1d) {
-		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
-			return new HardDistCutoffJumpProbCalc(1d);
-		}
-	},
-	TWO(2d, 1d) {
-		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
-			return new HardDistCutoffJumpProbCalc(2d);
-		}
-	},
-	THREE(3d, 1d) {
-		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
-			return new HardDistCutoffJumpProbCalc(3d);
-		}
-	},
-	FIVE(5d, 01d) {
-		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
-			return new HardDistCutoffJumpProbCalc(5d);
-		}
-	},
-	EIGHT(8d, 1d) {
-		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
-			return new HardDistCutoffJumpProbCalc(8d);
-		}
-	},
-	TWELVE(12d, 1d) {
-		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
-			return new HardDistCutoffJumpProbCalc(12d);
-		}
-	},
-	FIFTEEN(15d, 1d) {
-		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
-			return new HardDistCutoffJumpProbCalc(15d);
-		}
-	};
+	ONE(		1d,	1d),
+	THREE(		3d, 1d),
+	FIVE(		5d, 1d),
+	SEVEN(		7d, 1d),
+	NINE(		9d, 1d),
+	ELEVEN(		11d, 1d),
+	THIRTEEN(	13d, 1d),
+	FIFTEEN(	15d, 1d);
 	
 	private double weight;
 	private double maxDist;
@@ -71,7 +37,9 @@ public enum MaxJumpDistModels implements LogicTreeNode {
 		this.weight = weight;
 	}
 	
-	public abstract JumpProbabilityCalc getModel(FaultSystemRupSet rupSet);
+	public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
+		return new HardDistCutoffJumpProbCalc(getMaxDist());
+	};
 
 	@Override
 	public String getShortName() {
@@ -81,6 +49,10 @@ public enum MaxJumpDistModels implements LogicTreeNode {
 	@Override
 	public String getName() {
 		return "MaxDist="+oDF.format(maxDist)+"km";
+	}
+	
+	public double getMaxDist() {
+		return maxDist;
 	}
 
 	@Override
