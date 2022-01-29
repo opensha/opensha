@@ -2,7 +2,9 @@ package org.opensha.sha.magdist;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 
+import org.apache.commons.math3.stat.StatUtils;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.eq.MagUtils;
@@ -16,20 +18,34 @@ import com.google.common.primitives.Ints;
  * only available magnitude bins.
  * <p>
  * The {@link SpreadingMethod} can be specified in order to control how rates are spread from bins without magnitudes
- * to bins with them, but NEAREST seems to work best. 
+ * to bins with them, but NEAREST_GROUP seems to work well. 
  * @author kevin
  *
  */
 public class SparseGutenbergRichterSolver {
 	
 	public enum SpreadingMethod {
+		/**
+		 * Rates for all empty bins are assigned to the nearest non-empty bin of lesser magnitude
+		 */
 		PREV,
+		/**
+		 * Rates for all empty bins are assigned to the nearest non-empty bin(s) on either side. If two bins are
+		 * equally near (as would be the case for a single empty bin), rates are distributed equally above and below.
+		 */
 		NEAREST,
+		/**
+		 * Rates for all empty bins are evenly distributed to all non-empty bins
+		 */
 		ALL,
+		/**
+		 * Rates for all empty bins are assigned to the nearest contiguous group(s) of non-empty bins on either side.
+		 * This conserves G-R behavior within groups of non-zero bins
+		 */
 		NEAREST_GROUP
 	}
 	
-	public static SpreadingMethod METHOD_DEFAULT = SpreadingMethod.NEAREST;
+	public static SpreadingMethod METHOD_DEFAULT = SpreadingMethod.NEAREST_GROUP;
 	
 	/**
 	 * Calculates a G-R distribution for the given total moment rate and target b-value, only using magnitude bins
@@ -98,74 +114,120 @@ public class SparseGutenbergRichterSolver {
 				superSampledDiscretization.getMinX(), superSampledDiscretization.size(),
 				superSampledDiscretization.getDelta(), totMoRate, targetBValue);
 		
+		// first fill in all bins that have participation
+		boolean allFilled = true;
+		for (int i=0; i<superSampledGR.size(); i++) {
+			if (superSampledParticipation[i])
+				ret.add(ret.getClosestXIndex(superSampledGR.getX(i)), superSampledGR.getY(i));
+			else
+				allFilled = false;
+		}
+		
 		double targetRate = superSampledGR.calcSumOfY_Vals();
 		
-		int prevNonEmptyIndex = -1;
-		for (int i=0; i<superSampledGR.size(); i++) {
-			if (superSampledParticipation[i]) {
-				ret.add(ret.getClosestXIndex(superSampledGR.getX(i)), superSampledGR.getY(i));
-				prevNonEmptyIndex = i;
-			} else {
-				Preconditions.checkState(i > 0 && i < superSampledGR.size()-1,
-						"First and last bins of super-sampled should always have a rupture");
-				int[] assignedBins;
-				
-				if (method == SpreadingMethod.PREV) {
-					assignedBins = new int[] {prevNonEmptyIndex};
-				} else if (method == SpreadingMethod.NEAREST || method == SpreadingMethod.NEAREST_GROUP) {
-					int numAway = 1;
-					while (true) {
-						int upperIndex = i+numAway;
-						int lowerIndex = i-numAway;
-						boolean upper = upperIndex < superSampledParticipation.length && superSampledParticipation[upperIndex];
-						boolean lower = lowerIndex >= 0 && superSampledParticipation[lowerIndex];
-						if (upper || lower) {
-							if (upper && lower)
-								assignedBins = new int[] { lowerIndex, upperIndex};
-							else if (upper)
-								assignedBins = new int[] { upperIndex};
-							else
-								assignedBins = new int[] { lowerIndex};
-							break;
+		if (!allFilled) {
+			// need to fill in the holes
+			int prevNonEmptyIndex = -1;
+			for (int i=0; i<superSampledGR.size(); i++) {
+				if (superSampledParticipation[i]) {
+					prevNonEmptyIndex = i;
+				} else {
+					Preconditions.checkState(i > 0 && i < superSampledGR.size()-1,
+							"First and last bins of super-sampled should always have a rupture");
+					List<int[]> assignmentGroups;
+					
+					if (method == SpreadingMethod.PREV) {
+						assignmentGroups = List.of(new int[] {prevNonEmptyIndex});
+					} else if (method == SpreadingMethod.NEAREST || method == SpreadingMethod.NEAREST_GROUP) {
+						int numAway = 1;
+						int[] assignedBins;
+						while (true) {
+							int upperIndex = i+numAway;
+							int lowerIndex = i-numAway;
+							boolean upper = upperIndex < superSampledParticipation.length && superSampledParticipation[upperIndex];
+							boolean lower = lowerIndex >= 0 && superSampledParticipation[lowerIndex];
+							if (upper || lower) {
+								if (upper && lower)
+									assignedBins = new int[] { lowerIndex, upperIndex};
+								else if (upper)
+									assignedBins = new int[] { upperIndex};
+								else
+									assignedBins = new int[] { lowerIndex};
+								break;
+							}
+							numAway++;
 						}
-						numAway++;
+						if (method == SpreadingMethod.NEAREST_GROUP) {
+							// expand to include the full contiguous group(s) of nonzero bins
+							assignmentGroups = new ArrayList<>();
+							for (int startBin : assignedBins) {
+								int direction = startBin > i ? 1 : -1;
+								List<Integer> group = new ArrayList<>();
+								for (int bin=startBin;
+										bin>=0 && bin <superSampledParticipation.length && superSampledParticipation[bin];
+										bin+=direction) {
+									group.add(bin);
+								}
+								assignmentGroups.add(Ints.toArray(group));
+							}
+						} else {
+							assignmentGroups = List.of(assignedBins);
+						}
+					} else if (method == SpreadingMethod.ALL) {
+						// dealt with externally
+						assignmentGroups = List.of();
+					} else {
+						throw new IllegalStateException("Unsupported method: "+method);
 					}
-					if (method == SpreadingMethod.NEAREST_GROUP) {
-						// expand to include the full contiguous group(s) of nonzero bins
-						ArrayList<Integer> netAssignedBins = new ArrayList<>();
-						for (int startBin : assignedBins) {
-							int direction = startBin > i ? 1 : -1;
-							for (int bin=startBin;
-									bin>=0 && bin <superSampledParticipation.length && superSampledParticipation[bin];
-									bin+=direction) {
-								netAssignedBins.add(bin);
+					
+					double valPerGroup = preserveRates ? superSampledGR.getIncrRate(i) : superSampledGR.getMomentRate(i);
+					valPerGroup /= (double)assignmentGroups.size();
+					for (int[] assignedBins : assignmentGroups) {
+						if (preserveRates) {
+							// simple
+							double rateEachBin = valPerGroup/assignedBins.length;
+							for (int assignedBin : assignedBins)
+								ret.add(ret.getClosestXIndex(superSampledGR.getX(assignedBin)), rateEachBin);
+						} else {
+							if (assignedBins.length == 1) {
+								// still simple, single bin
+								int retIndex = ret.getClosestXIndex(superSampledGR.getX(assignedBins[0]));
+								double targetMag = ret.getX(retIndex);
+								double targetMo = MagUtils.magToMoment(targetMag);
+								double myTargetRate = valPerGroup/targetMo;
+								ret.add(retIndex, myTargetRate);
+							} else {
+								// more complicated, we want to shift the whole group up, preserving the slope
+								int[] binIndexes = new int[assignedBins.length];
+								double curMomentRateInBins = 0d;
+								for (int j=0; j<assignedBins.length; j++) {
+									binIndexes[j] = ret.getClosestXIndex(superSampledGR.getX(assignedBins[j]));
+									double binMoment = ret.getMomentRate(binIndexes[j]);
+									Preconditions.checkState(binMoment > 0d,
+											"Bin %s has zero moment but should have had matching ruptures", j);
+									curMomentRateInBins += binMoment;
+								}
+								double newMomentRate = curMomentRateInBins + valPerGroup;
+								double scalar = newMomentRate / curMomentRateInBins;
+								for (int index : binIndexes)
+									ret.set(index, ret.getY(index)*scalar);
 							}
 						}
-						assignedBins = Ints.toArray(netAssignedBins);
-					}
-				} else if (method == SpreadingMethod.ALL) {
-					// dealt with externally
-					assignedBins = new int[0];
-				} else {
-					throw new IllegalStateException("Unsupported method: "+method);
-				}
-				
-				
-				double moRatePerAssignment = superSampledGR.getMomentRate(i)/(double)assignedBins.length;
-				double ratePerAssignment = superSampledGR.getIncrRate(i)/(double)assignedBins.length;
-				for (int assignedBin : assignedBins) {
-					if (preserveRates) {
-						// assign the rate to the given
-						double myTargetRate = ratePerAssignment;
-						ret.add(ret.getClosestXIndex(superSampledGR.getX(assignedBin)), myTargetRate);
-					} else {
-						// assign the moment to the given bin
-//						double targetMag = superSampledGR.getX(assignedBin);
-						int retIndex = ret.getClosestXIndex(superSampledGR.getX(assignedBin));
-						double targetMag = ret.getX(retIndex);
-						double targetMo = MagUtils.magToMoment(targetMag);
-						double myTargetRate = moRatePerAssignment/targetMo;
-						ret.add(retIndex, myTargetRate);
+//						for (int assignedBin : assignedBins) {
+//							if (preserveRates) {
+//								// assign the rate to the given
+//								double myTargetRate = ratePerAssignment;
+//								ret.add(ret.getClosestXIndex(superSampledGR.getX(assignedBin)), myTargetRate);
+//							} else {
+//								// assign the moment to the given bin
+////								double targetMag = superSampledGR.getX(assignedBin);
+//								int retIndex = ret.getClosestXIndex(superSampledGR.getX(assignedBin));
+//								double targetMag = ret.getX(retIndex);
+//								double targetMo = MagUtils.magToMoment(targetMag);
+//								double myTargetRate = moRatePerAssignment/targetMo;
+//								ret.add(retIndex, myTargetRate);
+//							}
+//						}
 					}
 				}
 			}
@@ -191,211 +253,5 @@ public class SparseGutenbergRichterSolver {
 		
 		return ret;
 	}
-
-//	public static void main(String[] args) throws IOException {
-////		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/tmp/rupture_set.zip"));
-//		FaultSystemRupSet rupSet = FaultSystemRupSet.load(
-//				new File("/home/kevin/markdown/inversions/fm3_1_u3ref_uniform_reproduce_ucerf3.zip"));
-//		
-//		boolean preserveRates = false;
-//		SpreadingMethod method = SpreadingMethod.NEAREST;
-////		double sampleDiscr = 0.0;
-//		double sampleDiscr = 0.01;
-//
-//		DefaultXY_DataSet scatter1 = new DefaultXY_DataSet();
-//		DefaultXY_DataSet scatter2 = new DefaultXY_DataSet();
-//		
-//		DefaultXY_DataSet totRateScatter = new DefaultXY_DataSet();
-//		DefaultXY_DataSet totMoRateScatter = new DefaultXY_DataSet();
-//		
-//		DefaultXY_DataSet scatter1Avg = new DefaultXY_DataSet();
-//		DefaultXY_DataSet scatter2Avg = new DefaultXY_DataSet();
-//		
-//		int debugIndex = 100;
-//		
-////		for (double bValue : new double[] {0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4}) {
-//		for (double bValue : new double[] {0.0, 0.4, 0.8, 1.2}) {
-//			System.out.println("Doing b="+bValue);
-//			SupraSeisBValInversionTargetMFDs targets = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, bValue).sparseGR(false).build();
-//
-//			MinMaxAveTracker equivBTrack = new MinMaxAveTracker();
-//			MinMaxAveTracker equivBTrack2 = new MinMaxAveTracker();
-//			
-//			for (int s=0; s<rupSet.getNumSections(); s++) {
-//				IncrementalMagFreqDist orig = targets.getSectSupraSeisNuclMFDs().get(s);
-//				
-//				int minNonZero = -1;
-//				int maxNonZero = 0;
-//				for (int i=0; i<orig.size(); i++) {
-//					if (orig.getY(i) > 0d) {
-//						if (minNonZero < 0)
-//							minNonZero = i;
-//						maxNonZero = i;
-//					}
-//				}
-//				if (minNonZero == maxNonZero)
-//					continue;
-//				GutenbergRichterMagFreqDist gr = new GutenbergRichterMagFreqDist(
-//						orig.getX(minNonZero), 1+maxNonZero-minNonZero, orig.getDelta(), orig.getTotalMomentRate(), bValue);
-//				
-//				if ((float)gr.getTotalIncrRate() != (float)orig.getTotalIncrRate()) {
-//					System.err.println("WARNING: rate mismatch on input for "+s+": "
-//							+(float)gr.getTotalIncrRate()+" != "+(float)orig.getTotalIncrRate());
-//					for (int i=0; i<orig.size(); i++) {
-//						double x = orig.getX(i);
-//						double y1 = orig.getY(i);
-//						if (gr.hasX(x)) {
-//							double y2 = gr.getY(i);
-//							System.out.println(x+"\t"+y1+"\t"+y2);
-//						} else {
-//							Preconditions.checkState(y1 == 0d);
-//						}
-//					}
-//				}
-//				
-//				double minMag = gr.getMinX() - 0.5*gr.getDelta();
-//				
-//				double minEncounter = Double.POSITIVE_INFINITY;
-//				double minAdded = Double.POSITIVE_INFINITY;
-//				double maxAdded = 0d;
-//				List<Double> mags = new ArrayList<>();
-//				for (int r : rupSet.getRupturesForSection(s)) {
-//					double mag = rupSet.getMagForRup(r);
-//					minEncounter = Math.min(minEncounter, mag);
-//					if ((float)mag >= (float)minMag) {
-//						mags.add(mag);
-//						minAdded = Math.min(minAdded, mag);
-//					}
-//					maxAdded = Math.max(maxAdded, mag);
-//				}
-////				System.out.println(s+". minEncountered="+(float)minEncounter+"\tminAdded="
-////						+(float)minAdded+"\tfirstBin="+(float)gr.getMinX()+"\tlowerEdge="+(float)minMag);
-//				
-//				IncrementalMagFreqDist sparseGR = getEquivGR(orig, mags, orig.getTotalMomentRate(),
-//						bValue, sampleDiscr, method, preserveRates);
-////				IncrementalMagFreqDist sparseGR = invertEquivGR(orig, mags, orig.getTotalMomentRate(), bValue);
-//				
-//				double equivB = SectBValuePlot.estBValue(gr.getMinX(), gr.getMaxX(),
-//						sparseGR.getTotalIncrRate(), sparseGR.getTotalMomentRate());
-//				scatter1.set(bValue, equivB);
-//				equivBTrack.addValue(equivB);
-//				
-////				equivB = SectBValuePlot.estBValue(minAdded, maxAdded,
-////						sparseGR.getTotalIncrRate(), sparseGR.getTotalMomentRate());
-//				GutenbergRichterMagFreqDist testGR = new GutenbergRichterMagFreqDist(minAdded, maxAdded, 100);
-//				testGR.setAllButBvalue(minAdded, maxAdded, sparseGR.getTotalMomentRate(), sparseGR.getTotalIncrRate());
-////				GutenbergRichterMagFreqDist testGR = new GutenbergRichterMagFreqDist(gr.getMinX(), gr.getMaxX(), gr.size());
-////				testGR.setAllButBvalue(gr.getMinX(), gr.getMaxX(), gr.getTotalMomentRate(), gr.getTotalIncrRate());
-//				
-//				double equivB2 = testGR.get_bValue();
-//				scatter2.set(bValue, equivB2);
-//				equivBTrack2.addValue(equivB2);
-//				
-//				totRateScatter.set(orig.getTotalIncrRate(), sparseGR.getTotalIncrRate());
-//				totMoRateScatter.set(orig.getTotalMomentRate(), sparseGR.getTotalMomentRate());
-//				
-//				if (s == debugIndex) {
-//					List<XY_DataSet> funcs = new ArrayList<>();
-//					List<PlotCurveCharacterstics> chars = new ArrayList<>();
-//					
-//					funcs.add(gr);
-//					chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, Color.BLACK));
-//					
-//					funcs.add(sparseGR);
-//					chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_SQUARE, 5f, Color.RED));
-//					
-//					MinMaxAveTracker nonZeroTrack = new MinMaxAveTracker();
-//					for (XY_DataSet func : funcs)
-//						for (Point2D pt : func)
-//							if (pt.getY() > 0)
-//								nonZeroTrack.addValue(pt.getY());
-//					
-//					Range yRange = new Range(Math.min(1e-8, nonZeroTrack.getMin()*0.9), nonZeroTrack.getMax()*1.1);
-//					
-//					DefaultXY_DataSet magFunc = new DefaultXY_DataSet();
-//					for (double mag : mags)
-//						magFunc.set(mag, yRange.getLowerBound());
-//					funcs.add(magFunc);
-//					chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_SQUARE, 5f, Color.GREEN.darker()));
-//					
-//					double origRate = sampleDiscr == 0d ? gr.calcSumOfY_Vals() : testGR.calcSumOfY_Vals();
-//					
-//					String title = rupSet.getFaultSectionData(s).getSectionName()+" , b="+(float)bValue
-//							+" , bEst="+(float)equivB+", GR rate="+(float)origRate
-//							+", new rate="+(float)sparseGR.calcSumOfY_Vals();
-//					GraphWindow gw = new GraphWindow(funcs, title, chars);
-//					gw.setYLog(true);
-//					gw.setX_AxisRange(gr.getMinX()-0.5*gr.getDelta(), gr.getMaxX()+0.5*gr.getDelta());
-//					gw.setY_AxisRange(yRange);
-//					gw.setDefaultCloseOperation(GraphWindow.EXIT_ON_CLOSE);
-//				}
-//			}
-//			System.out.println("Equivalent b-value distributions (w/ snapped min/max) for b="+(float)bValue+": "+equivBTrack);
-//			System.out.println("Equivalent b-value distributions (w/ actual min/max) for b="+(float)bValue+": "+equivBTrack2);
-//			
-//			scatter1Avg.set(bValue, equivBTrack.getAverage());
-//			scatter2Avg.set(bValue, equivBTrack2.getAverage());
-//		}
-//		List<XY_DataSet> funcs = new ArrayList<>();
-//		List<PlotCurveCharacterstics> chars = new ArrayList<>();
-//		
-//		funcs.add(scatter1);
-//		chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 3f, Color.BLACK));
-//		funcs.add(scatter1Avg);
-//		chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 4f, Color.GREEN.darker()));
-//		GraphWindow gw = new GraphWindow(funcs, "B-Value Scatter 1", chars);
-//		gw.setDefaultCloseOperation(GraphWindow.EXIT_ON_CLOSE);
-//		
-//		funcs.clear();
-//		chars.clear();
-//		funcs.add(scatter2);
-//		chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 3f, Color.BLUE));
-//		funcs.add(scatter2Avg);
-//		chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 4f, Color.GREEN.darker()));
-//		gw = new GraphWindow(funcs, "B-Value Scatter 2", chars);
-//		gw.setDefaultCloseOperation(GraphWindow.EXIT_ON_CLOSE);
-//		
-//		funcs.clear();
-//		chars.clear();
-//		funcs.add(totRateScatter);
-//		chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 3f, Color.GREEN.darker()));
-//		Range range = calcBoundedLogRange(totRateScatter);
-//		funcs.add(oneToOne(range));
-//		chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.GRAY));
-//		gw = new GraphWindow(funcs, "Total Rate Scatter", chars);
-//		gw.setXLog(true);
-//		gw.setYLog(true);
-//		gw.setAxisRange(range, range);
-//		gw.setDefaultCloseOperation(GraphWindow.EXIT_ON_CLOSE);
-//		
-//		funcs.clear();
-//		chars.clear();
-//		funcs.add(totMoRateScatter);
-//		chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 3f, Color.RED.darker()));
-//		range = calcBoundedLogRange(totMoRateScatter);
-//		funcs.add(oneToOne(range));
-//		chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.GRAY));
-//		gw = new GraphWindow(funcs, "Moment Rate Scatter", chars);
-//		gw.setXLog(true);
-//		gw.setYLog(true);
-//		gw.setAxisRange(range, range);
-//		gw.setDefaultCloseOperation(GraphWindow.EXIT_ON_CLOSE);
-//	}
-//	
-//	private static Range calcBoundedLogRange(XY_DataSet scatter) {
-//		double min = Math.min(scatter.getMinX(), scatter.getMinY());
-//		Preconditions.checkState(min > 0);
-//		double max = Math.max(scatter.getMaxX(), scatter.getMaxY());
-//		Preconditions.checkState(max > 0);
-//		
-//		return new Range(Math.pow(10, Math.floor(Math.log10(min))), Math.pow(10, Math.ceil(Math.log10(max))));
-//	}
-//	
-//	private static XY_DataSet oneToOne(Range range) {
-//		DefaultXY_DataSet line = new DefaultXY_DataSet();
-//		line.set(range.getLowerBound(), range.getLowerBound());
-//		line.set(range.getUpperBound(), range.getUpperBound());
-//		return line;
-//	}
 
 }
