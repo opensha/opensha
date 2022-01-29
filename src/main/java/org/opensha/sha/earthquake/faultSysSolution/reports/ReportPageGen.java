@@ -332,6 +332,12 @@ public class ReportPageGen {
 				plots.remove(i);
 	}
 	
+	public void skipSectBySect() {
+		for (int i=plots.size(); --i>=0;)
+			if (plots.get(i) instanceof SectBySectDetailPlots)
+				plots.remove(i);
+	}
+	
 	private void init(ReportMetadata meta, File outputDir, List<AbstractRupSetPlot> plots) {
 		this.meta = meta;
 		this.outputDir = outputDir;
