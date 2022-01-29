@@ -4,8 +4,8 @@ import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.HashMap;
@@ -20,7 +20,6 @@ import java.util.concurrent.Future;
 import java.util.function.DoubleUnaryOperator;
 
 import org.apache.commons.math3.stat.StatUtils;
-import org.checkerframework.checker.units.qual.min;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.region.CaliforniaRegions;
@@ -39,7 +38,6 @@ import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
-import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
@@ -54,7 +52,6 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.BinaryJumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
@@ -70,7 +67,6 @@ import org.opensha.sha.magdist.SparseGutenbergRichterSolver;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
-import com.google.common.primitives.Ints;
 
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
@@ -272,10 +268,11 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		 * subsection supra-seismogenic MFDs that aren't perfectly G-R, but are more consistent with the imposed
 		 * segmentation constraint.
 		 * <p>
-		 * We make a couple assumptions when adjusting for a segmentation constraint. First, we assume that a given
-		 * section will use the least-penalized rupture in any magnitude bin, so we only make adjustments to the target
-		 * MFD when all ruptures in that magnitude bin for that section are penalized. Second, we adjust for the natural
-		 * fall off with magnitude for a G-R, and don't penalize for probabilities below that natural falloff amount.
+		 * We make a couple assumptions when adjusting for a segmentation constraint. First, we assume that the inversion
+		 * will use the lease-penalized ruptures in any magnitude bin, so we only make adjustments to the target MFD
+		 * when all ruptures in that magnitude bin for that section are subject to segmentation. Second, we adjust for
+		 * the natural fall off with magnitude for a G-R, and don't penalize for probabilities below that natural
+		 * fall off amount.
 		 * 
 		 * @param segModel
 		 * @return
@@ -391,7 +388,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			if (segModel != null) {
 				ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
 
-				System.out.println("Pre-processing ruptures for segmentation calculation");
+				System.out.println("Pre-processing "+cRups.size()+" ruptures for segmentation calculation");
 				if (segModel instanceof BinaryJumpProbabilityCalc) {
 					// simple case, hard cutoff
 					BinaryJumpProbabilityCalc binary = (BinaryJumpProbabilityCalc)segModel;
@@ -408,58 +405,55 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					// complex case that can have probabilities between 0 and 1
 					segJumpProbsMap = new HashMap<>();
 					
-					int overallMinIndex = refMFD.getClosestXIndex(rupSet.getMinMag());
-					int overallMaxIndex = refMFD.getClosestXIndex(rupSet.getMaxMag());
 					sectSegTrackers = new SectSegmentationJumpTracker[numSects];
 					for (int s=0; s<numSects; s++)
 						sectSegTrackers[s] = new SectSegmentationJumpTracker(refMFD.size());
-					
 					rupLoop:
-					for (int r=0; r<cRups.size(); r++) {
-						ClusterRupture rup = cRups.get(r);
-						
-						// within a single rupture, the worst jump will control
-						Jump worstJump = null;
-						double worstProb = 1d;
-						for (Jump origJump : rup.getJumpsIterable()) {
-							Jump jump;
-							if (origJump.toSection.getSectionId() < origJump.fromSection.getSectionId())
-								// always store jumps with fromID < toID
-								jump = origJump.reverse();
-							else
-								jump = origJump;
-							double jumpProb;
-							if (segJumpProbsMap.containsKey(jump)) {
-								jumpProb = segJumpProbsMap.get(jump);
-							} else {
-								jumpProb = segModel.calcJumpProbability(rup, origJump, false);
-								Preconditions.checkState(jumpProb >= 0d && jumpProb <= 1d);
-								segJumpProbsMap.put(jump, jumpProb);
+						for (int r=0; r<cRups.size(); r++) {
+							ClusterRupture rup = cRups.get(r);
+							
+							// within a single rupture, the worst jump will control
+							Jump worstJump = null;
+							double worstProb = 1d;
+							for (Jump origJump : rup.getJumpsIterable()) {
+								Jump jump;
+								if (origJump.toSection.getSectionId() < origJump.fromSection.getSectionId())
+									// always store jumps with fromID < toID
+									jump = origJump.reverse();
+								else
+									jump = origJump;
+								double jumpProb;
+								if (segJumpProbsMap.containsKey(jump)) {
+									jumpProb = segJumpProbsMap.get(jump);
+								} else {
+									jumpProb = segModel.calcJumpProbability(rup, origJump, false);
+									Preconditions.checkState(jumpProb >= 0d && jumpProb <= 1d);
+									segJumpProbsMap.put(jump, jumpProb);
+								}
+								if (jumpProb == 1d) {
+									// ignore it
+									continue;
+								} else if (jumpProb == 0d) {
+									// zero probability, can skip this rupture entirely
+									zeroProbRups.set(r);
+									continue rupLoop;
+								}
+								// we'll need to track this jump, it's between 0 and 1
+								if (jumpProb < worstProb) {
+									// new worst
+									worstProb = jumpProb;
+									worstJump = jump;
+								}
 							}
-							if (jumpProb == 1d) {
-								// ignore it
-								continue;
-							} else if (jumpProb == 0d) {
-								// zero probability, can skip this rupture entirely
-								zeroProbRups.set(r);
-								continue rupLoop;
-							}
-							// we'll need to track this jump, it's between 0 and 1
-							if (jumpProb < worstProb) {
-								// new worst
-								worstProb = jumpProb;
-								worstJump = jump;
-							}
-						}
 
-						double mag = rupSet.getMagForRup(r);
-						int magIndex = refMFD.getClosestXIndex(mag);
-						
-						// tell each section about this rupture
-						for (FaultSubsectionCluster cluster : rup.getClustersIterable())
-							for (FaultSection sect : cluster.subSects)
-								sectSegTrackers[sect.getSectionId()].processRupture(worstJump, worstProb, magIndex);
-					}
+							double mag = rupSet.getMagForRup(r);
+							int magIndex = refMFD.getClosestXIndex(mag);
+							
+							// tell each section about this rupture
+							for (FaultSubsectionCluster cluster : rup.getClustersIterable())
+								for (FaultSection sect : cluster.subSects)
+									sectSegTrackers[sect.getSectionId()].processRupture(worstJump, worstProb, magIndex);
+						}
 				}
 			}
 			
@@ -531,9 +525,10 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					// * chosen b-value
 					// * if sparseGR == true, deals with intermediate bins with no ruptures
 					// 1e16 below is a placeholder moment and doesn't matter, we're only using the shape
-					// the first bin in the MFD is the min supra-seis mag
-					supraGR_shape = new GutenbergRichterMagFreqDist(
-							refMFD.getX(minMagIndex), 1+maxMagIndex-minMagIndex, refMFD.getDelta(), 1e16, supraSeisBValue);
+					// 
+					// the first bin in the MFD is the min section supra-seis mag
+					supraGR_shape = new GutenbergRichterMagFreqDist(refMFD.getX(minMagIndex),
+							1+maxMagIndex-minMagIndex, refMFD.getDelta(), 1e16, supraSeisBValue);
 					
 					if (sparseGR) {
 						// re-distribute to only bins that actually have ruptures available
@@ -704,7 +699,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				double targetMoRateTest = supraMoRate + subMoRate;
 				
 				Preconditions.checkState((float)targetMoRateTest == (float)targetMoRate,
-						"Partitioned moment rate doesn't equal input: %s != %s", (float)targetMoRate, (float)targetMoRateTest);
+						"Partitioned moment rate doesn't equal input: %s != %s",
+						(float)targetMoRate, (float)targetMoRateTest);
 				
 				targetMoRates[s] = targetMoRate;
 				targetSupraMoRates[s] = supraMoRate;
@@ -718,16 +714,46 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			
 			if (segModel != null) {
 				if (segModel instanceof BinaryJumpProbabilityCalc) {
-					System.out.println("Segmentation model is simple (hard cutoff) and was already applie at MFD creation.");
+					System.out.println("Segmentation model is simple (hard cutoff) and was"
+							+ " already applied at MFD creation.");
 				} else {
 					System.out.println("Adjusting section mfds for segmentation");
+					
+					/*
+					 * Segmentation constraints are applied in the inversion as a fraction of the total participation
+					 * rate on either side of a jump. The segmentation model will often imply rates less than the G-R
+					 * budget for those ruptures, in which case we adjust the targets to account for the segmentation
+					 * model. We make the simplifying assumption that the inversion will use the most-available rupture
+					 * in each magnitude bin, so if a bin contains ruptures not affected by segmentation, we assume
+					 * that bin is not affected by segmentation.
+					 * 
+					 * For bins that are affected by segmentation, we first compute the model-implied participation
+					 * rate for each jump in that magnitude bin. That participation rate is the segmentation probability
+					 * times the lesser of the participation rate on either side of that jump. This is an upper bound:
+					 * the participation rate of ruptures on our section in this magnitude bin cannot exceed the
+					 * segmentation rate. We then convert that target participation rate to a nucleation rate,
+					 * and set the bin-specific rate to the lesser of the segmentation-implied target nucleation rate
+					 * and the original nucleation rate before adjustment.
+					 * 
+					 * There are a couple complications:
+					 * 
+					 * First of all, setting the rate on one section relies on the rate of other sections, which could
+					 * subsequently be updated with their own adjustments. We mitigate this by does the corrections
+					 * iteratively; 20 iterations is plenty for MFD stability to 4-byte precision.
+					 * 
+					 * Second, multiple jumps can affect a single magnitude bin. In that case, we first compute the
+					 * target nucleation rate for each bin implied by each jump, and then choose the greatest one
+					 * as our actual target (again assuming that the inversion will use the most-available ruptures).
+					 */
 
 					int segBins = 0;
 					int segBinsAvail = 0;
 					int segSects = 0; 
 					
-					// we're going to need section participation rates, figure out section-dependent scalars
-					// to convert bin-specific nucleation rates to participation
+					// we're going to need section participation rates, which we will determine by multiplying
+					// bin rates by the average rupture area in that bin, and then dividing by the section area.
+					// 
+					// these are section-sepecific scale factors
 					double[][] sectNuclToParticScalars = new double[numSects][];
 					for (int s=0; s<numSects; s++) {
 						int minMagIndex = sectMinMagIndexes[s];
@@ -759,8 +785,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					// also keep track of the original fraction that each bin contributes to the total nucleation rate
 					List<double[]> origBinContributions = new ArrayList<>();
 					for (int s=0; s<numSects; s++) {
-						if (sectSegTrackers[s].notConntrolled()) {
-							// section is not controlled by any seg-affected ruptures
+						if (sectSegTrackers[s].notConntrolled() || targetMoRates[s] == 0d || slipRates[s] == 0d) {
+							// section is not controlled by any seg-affected ruptures, or is zero rate
 							modSupraSeisMFDs.add(null);
 							origBinContributions.add(null);
 						} else {
@@ -776,9 +802,11 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					
 					Map<Jump, Double> curJumpMaxParticipationRates = new HashMap<>();
 					
-					// TODO handle zero rate sections
+					// iteratively solve for modified MFDs. 20 iterations is plenty to match nucleation rates with high
+					// iteration counts (e.g., 200) to floating point precision, and is still nearly instantaneous
 					for (int i=0; i<20; i++) {
-						// calculate current nucleation and participation rates for each section
+						// calculate current nucleation and participation rates for each section at the start of
+						// each iteration
 						double[] curNuclRates = new double[numSects];
 						double[] curParticRates = new double[numSects];
 						for (int s=0; s<numSects; s++) {
@@ -811,14 +839,18 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 						// now apply segmentation adjustments
 						for (int s=0; s<numSects; s++) {
 							SectSegmentationJumpTracker tracker = sectSegTrackers[s];
-							if (tracker.notConntrolled())
+							if (tracker.notConntrolled() || targetMoRates[s] == 0d || slipRates[s] == 0d)
 								// section is not controlled by any seg-affected ruptures
 								continue;
 							
-							boolean debug = s == 1832;
+//							boolean debug = s == 1832;
+							boolean debug = false;
 							
+							// our woking copy of the supra-seis MFD
 							IncrementalMagFreqDist modMFD = modSupraSeisMFDs.get(s);
+							// original bin rates expressed as a fraction of total nucleation rate
 							double[] origBinContribution = origBinContributions.get(s);
+							// bin-specific scalars to go from nucleation rates to participation rates
 							double[] nuclToParticScalars = sectNuclToParticScalars[s];
 							
 							if (debug) {
@@ -835,17 +867,27 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 							Map<Jump, List<Integer>> fullJumpBins = tracker.getJumpBinsMap(sectMinMagIndexes[s]);
 							Map<Jump, List<Integer>> jumpBinAssignments = null;
 							
+							/*
+							 * Loop through the calculation twice. The first time, we're deciding which jump is the
+							 * bottleneck for each bin for the case of multiple jumps affecting a single bin. In the
+							 * second time through, we actually modify the rates. 
+							 */
 							for (boolean assignment : new boolean[] { true, false } ) {
-								// in the assignment stage we're just figuring out which jumps control each bin
-								// otherwise we're assuming they're set and we're actually making the adjustments
-								
+								// map of jumps to affected bins
 								Map<Jump, List<Integer>> jumpBins = assignment ? fullJumpBins : jumpBinAssignments;
 								
 								for (Jump jump : jumpBins.keySet()) {
 									List<Integer> bins = jumpBins.get(jump);
 									Preconditions.checkState(bins.size() > 0);
 									
-									// first calculate the current nucleation and participation rates for these bins
+									// this is our target segmentation implied participation rate for this jump, which
+									// we can't exceed
+									double segParticTarget = curJumpMaxParticipationRates.get(jump);
+									if (segParticTarget == 0d)
+										// this jump uses zero-rates sections and can be ignored
+										continue;
+									
+									// calculate the current nucleation and participation rates for these bins
 									double curJumpNuclRate = 0d;
 									double curJumpParticRate = 0d;
 									for (int bin : bins) {
@@ -861,15 +903,9 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 									Preconditions.checkState(curJumpNuclRate > 0,
 											"Jump nucleation rate is 0! bins=%s,\n\t%s", bins, modMFD);
 									
-									// this is our target segmentation implied participation rates for this jump, which
-									// we can't exceed
-									double segParticTarget = curJumpMaxParticipationRates.get(jump);
-									
 									// convert that participation target to a nucleation rate on this section
-//									double[] particShares = new double[bins.length];
-//									for (int b=0; b<particShares.length; b++)
-//										particSha
 									double segNuclTarget = 0d;
+									// also keep track of the bin-specific nucleation rate target for this constraint
 									List<Double> binnedSegTargetNuclRates = new ArrayList<>();
 									for (int bin : bins) {
 										double binRate = modMFD.getY(bin);
@@ -887,18 +923,21 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 											s, jump, segParticTarget, modMFD);
 									
 									if (assignment) {
-										// we're still figuring out what controls what
+										// we're still figuring out what controls what, just note the target nucleation
+										// rate for this jump on each involved section
 										
 										for (int b=0; b<bins.size(); b++) {
 											double binTargetNuclRate = binnedSegTargetNuclRates.get(b);
 											int index = bins.get(b) - sectMinMagIndexes[s];
 											if (binTargetNuclRate > assignedJumpRates[index]) {
+												// this jump provides more available nucleation rate to this bin than
+												// anything we have encountered thus far
 												assignedJumpRates[index] = binTargetNuclRate;
 												assignedJumps[index] = jump;
 											}
 										}
 									} else {
-										// apply it
+										// 2nd round, we're applying it to assigned bins
 										
 										// calculate the nucleation rate for these sections according to the original G-R,
 										// but scaled to match our current nucleation rate
@@ -944,7 +983,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 								}
 								
 								if (assignment) {
-									// process final assignments
+									// process final assignments: jump with the most available rate in each bin
 									jumpBinAssignments = new HashMap<>();
 									for (int b=0; b<assignedJumps.length; b++) {
 										if (assignedJumps[b] != null) {
@@ -965,13 +1004,14 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 									System.out.println("Post-loop MFD");
 									for (int j=sectMinMagIndexes[s]; j<=sectMaxMagIndexes[s]; j++)
 										System.out.println("\t"+(float)modMFD.getX(j)+"\t"+(float)modMFD.getY(j));
-									System.out.println("\tWill scale mooment to match "+targetSupraMoRates[s]+" (cur="+modMFD.getTotalMomentRate()+")");
+									System.out.println("\tWill scale mooment to match "+targetSupraMoRates[s]
+											+" (cur="+modMFD.getTotalMomentRate()+")");
 								}
 								// now rescale the MFD to match the original target moment rate
 								modMFD.scaleToTotalMomentRate(targetSupraMoRates[s]);
 							}
-						}
-					}
+						} // end section loop
+					} // end iteration loop
 
 					double sumOrigRate = 0d;
 					double sumModRate = 0d;
@@ -993,12 +1033,18 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 //							for (int[] bins : sectSegTrackers[s].getControllingJumpBinsMap(sectMinMagIndexes[s]).values())
 //								segBinsAvail += bins.length;
 							sectSupraSeisMFDs.set(s, modMFD);
+							segBinsAvail += sectSegTrackers[s].numControlledBins;
 						}
 					}
 					
 					System.out.println("Segmentation constraint affected "+segSects+"/"+numSects
 							+" sections and "+segBins+"/"+segBinsAvail+" bins");
-					System.out.println("\tTotal supra-seis rate change: "+(float)sumOrigRate+" -> "+sumModRate);
+					double fractDiff = (sumModRate-sumOrigRate)/sumOrigRate;
+					String pDiffStr = new DecimalFormat("0.00%").format(fractDiff);
+					if (fractDiff > 0)
+						pDiffStr = "+"+pDiffStr;
+					System.out.println("\tTotal supra-seis rate change: "
+							+(float)sumOrigRate+" -> "+(float)sumModRate+" ("+pDiffStr+")");
 				}
 			}
 			
@@ -1707,7 +1753,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		builder.addSectCountUncertainties(false);
 		builder.totalTargetMFD(rupSet.requireModule(InversionTargetMFDs.class).getTotalRegionalMFD());
 		builder.subSeisMoRateReduction(SubSeisMoRateReduction.SUB_SEIS_B_1);
-		builder.forSegmentationModel(new Shaw07JumpDistProb(1, 2));
+		builder.forSegmentationModel(new Shaw07JumpDistProb(1, 3));
 //		builder.forSegmentationModel(new JumpProbabilityCalc() {
 //			
 //			@Override
@@ -1771,6 +1817,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		if (builder.segModel != null) {
 			// debug
 			int[] debugSects = {
+					100, // Bicycle Lake
 					1330, // Mono Lake
 					1832, // Mojave S
 					2063, // San Diego Trough
