@@ -395,14 +395,14 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		System.out.println("Segmentation model: "+segModel);
 		MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
 		System.out.println("Max distance model: "+distModel);
+		JumpProbabilityCalc targetSegModel = segModel == null ? null : segModel.getModel(rupSet);
+		if (distModel != null) {
+			if (targetSegModel == null)
+				targetSegModel = distModel.getModel(rupSet);
+			else
+				targetSegModel = new JumpProbabilityCalc.MultiProduct(targetSegModel, distModel.getModel(rupSet));
+		}
 		if (adjustTargetsForSegmentation) {
-			JumpProbabilityCalc targetSegModel = segModel == null ? null : segModel.getModel(rupSet);
-			if (distModel != null) {
-				if (targetSegModel == null)
-					targetSegModel = distModel.getModel(rupSet);
-				else
-					targetSegModel = new JumpProbabilityCalc.MultiProduct(targetSegModel, distModel.getModel(rupSet));
-			}
 			constrBuilder.adjustForSegmentationModel(targetSegModel);
 		}
 		
@@ -435,7 +435,7 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		
 		double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
 		
-		GRParticRateEstimator rateEst = new GRParticRateEstimator(rupSet, bVal);
+		GRParticRateEstimator rateEst = new GRParticRateEstimator(rupSet, bVal, targetSegModel);
 		
 		if (segModel != null && segModel != SegmentationModels.NONE) {
 			constraints = new ArrayList<>(constraints);

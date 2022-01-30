@@ -204,7 +204,7 @@ public class SparseGutenbergRichterSolver {
 									binIndexes[j] = ret.getClosestXIndex(superSampledGR.getX(assignedBins[j]));
 									double binMoment = ret.getMomentRate(binIndexes[j]);
 									Preconditions.checkState(binMoment > 0d,
-											"Bin %s has zero moment but should have had matching ruptures", j);
+											"Bin %s has zero moment but should have had matching ruptures", assignedBins[j]);
 									curMomentRateInBins += binMoment;
 								}
 								double newMomentRate = curMomentRateInBins + valPerGroup;

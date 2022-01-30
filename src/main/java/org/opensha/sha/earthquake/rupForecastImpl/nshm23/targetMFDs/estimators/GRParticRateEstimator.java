@@ -22,8 +22,10 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.Inversions;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint.SectParticipationRateEstimator;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -46,6 +48,10 @@ public class GRParticRateEstimator implements SectParticipationRateEstimator {
 	private double[] estRupRates;
 
 	public GRParticRateEstimator(FaultSystemRupSet rupSet, double supraSeisB) {
+		this(rupSet, supraSeisB, null);
+	}
+
+	public GRParticRateEstimator(FaultSystemRupSet rupSet, double supraSeisB, RuptureProbabilityCalc segModel) {
 		this.rupSet = rupSet;
 		this.supraSeisB = supraSeisB;
 		
@@ -64,9 +70,12 @@ public class GRParticRateEstimator implements SectParticipationRateEstimator {
 			List<Integer> rups = new ArrayList<>();
 			List<Double> rupMags = new ArrayList<>();
 			int[] rupsPerBin = new int[refFunc.size()];
+			ClusterRuptures cRups = segModel == null ? null : rupSet.requireModule(ClusterRuptures.class);
 			for (int r : rupSet.getRupturesForSection(s)) {
 				double mag = rupSet.getMagForRup(r);
 				if (modMinMags != null && modMinMags.isBelowSectMinMag(s, mag))
+					continue;
+				if (segModel != null && segModel.calcRuptureProb(cRups.get(r), false) == 0d)
 					continue;
 				rups.add(r);
 				rupMags.add(mag);
