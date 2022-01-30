@@ -974,7 +974,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 //				else
 //					minMag = 6d;
 				double maxMag;
-				if (scalarTrack.getMax() > 9d)
+				if (scalarTrack.getMax() > 8.5)
 					maxMag = 0.5*Math.ceil(scalarTrack.getMax()*2);
 				else if (scalarTrack.getMax() > 7.5)
 					maxMag = 8.5d;
