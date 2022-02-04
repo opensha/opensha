@@ -609,7 +609,8 @@ public class BranchAverageSolutionCreator {
 				+ "their short name or file prefix. If such a name is ambiguous (applies to multiple branch levels), "
 				+ "excplicitly set the level as <level-short-name>=<value>. Repeat this argument to specify multiple "
 				+ "values (within a single level and/or across multiple levels).");
-		
+		ops.addOption("rw", "reweight", false, "Flag to use current branch weights rather than those when the "
+				+ "simulation was originally run");
 		
 		return ops;
 	}
@@ -623,7 +624,12 @@ public class BranchAverageSolutionCreator {
 		SolutionLogicTree slt = SolutionLogicTree.load(inputFile);
 		LogicTree<?> tree = slt.getLogicTree();
 		
-		BranchAverageSolutionCreator ba = new BranchAverageSolutionCreator(tree.getWeightProvider());
+		BranchWeightProvider weightProv;
+		if (cmd.hasOption("reweight"))
+			weightProv = new BranchWeightProvider.CurrentWeights();
+		else
+			weightProv = tree.getWeightProvider();
+		BranchAverageSolutionCreator ba = new BranchAverageSolutionCreator(weightProv);
 		
 //		List<LogicTreeNode> restrictTo = new ArrayList<>();
 		List<List<LogicTreeNode>> restrictTos = null;
