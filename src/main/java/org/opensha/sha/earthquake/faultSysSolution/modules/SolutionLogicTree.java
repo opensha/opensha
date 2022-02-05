@@ -286,6 +286,10 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		super(zip, prefix, logicTree);
 		this.processor = processor;
 	}
+	
+	public SolutionProcessor getProcessor() {
+		return processor;
+	}
 
 	@Override
 	public String getName() {
@@ -456,7 +460,23 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	private CSVFile<String> prevGridMechs;
 	private String prevGridMechFile;
 	
+	/**
+	 * @param branch
+	 * @return solution for the given branch
+	 * @throws IOException
+	 */
 	public synchronized FaultSystemSolution forBranch(LogicTreeBranch<?> branch) throws IOException {
+		return forBranch(branch, true);
+	}
+	
+	/**
+	 * 
+	 * @param branch
+	 * @param process enables/disables solution/rupture set processing if a {@link SolutionProcessor} is present
+	 * @return solution for the given branch
+	 * @throws IOException
+	 */
+	public synchronized FaultSystemSolution forBranch(LogicTreeBranch<?> branch, boolean process) throws IOException {
 		System.out.println("Loading rupture set for logic tree branch: "+branch);
 		ZipFile zip = getZipFile();
 		String entryPrefix = null; // prefixes will be encoded in the results of getBranchFileName(...) calls
@@ -505,7 +525,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		FaultSystemRupSet rupSet = new FaultSystemRupSet(subSects, rupIndices,
 				props.mags, props.rakes, props.areas, props.lengths);
-		if (processor != null)
+		if (process && processor != null)
 			rupSet = processor.processRupSet(rupSet, branch);
 		
 		String ratesFile = getBranchFileName(branch, FaultSystemSolution.RATES_FILE_NAME, true);
@@ -517,7 +537,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		rupSet.addModule(branch);
 		
 		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
-		if (processor != null)
+		if (process && processor != null)
 			sol = processor.processSolution(sol, branch);
 		
 		sol.addModule(branch);
