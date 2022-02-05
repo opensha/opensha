@@ -138,8 +138,8 @@ Named,java.io.Serializable{
 		double x2 = getX(x1Ind+1);
 
 		//finding the y values for the coressponding x values
-		double y1=getY(x1);
-		double y2=getY(x2);
+		double y1 = getY(x1Ind);
+		double y2 = getY(x1Ind+1);
 		
 		if(y1==0 && y2==0)
 			return 0;
