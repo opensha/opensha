@@ -84,7 +84,7 @@ ParameterChangeWarningListener, ParameterChangeFailListener {
 	 * @param classNames
 	 */
 	public IMR_GuiBean(IMR_GuiBeanAPI api) {
-		this(api, AttenRelRef.get());
+		this(api, AttenRelRef.getAll());
 	}
 
 	/**
@@ -105,7 +105,7 @@ ParameterChangeWarningListener, ParameterChangeFailListener {
 	 */
 	public IMR_GuiBean(IMR_GuiBeanAPI api,String currentIMT,
 			String retroIMT,double currentPeriod,double retroPeriod) {
-		init(api, AttenRelRef.get());
+		init(api, AttenRelRef.getAll());
 		setIMRParamListAndEditor(currentIMT ,retroIMT, currentPeriod,retroPeriod);
 	}
 	
