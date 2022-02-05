@@ -100,7 +100,7 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
       if(fraction < 0 || fraction > 1)
         throw new InvalidRangeException("fraction value must be between 0 and 1");
 
-      ArbitrarilyDiscretizedFunc tempCumDist = getNormalizedCumDist();
+      DiscretizedFunc tempCumDist = getNormalizedCumDist();
 
       // if desired fraction is below minimum x value, give minimum x value
       if(fraction < tempCumDist.getMinY())
@@ -122,7 +122,7 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
       if(fraction < 0 || fraction > 1)
         throw new InvalidRangeException("fraction value must be between 0 and 1");
 
-      ArbitrarilyDiscretizedFunc tempCumDist = getNormalizedCumDist();
+      DiscretizedFunc tempCumDist = getNormalizedCumDist();
 
       for(int i = 0; i<tempCumDist.size();i++) {
         if(fraction <= tempCumDist.getY(i))
@@ -143,7 +143,7 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
      * distribution normalized (so that the last value is equal to one)
      * @return
      */
-    public ArbitrarilyDiscretizedFunc getNormalizedCumDist() {
+    public DiscretizedFunc getNormalizedCumDist() {
       return getCumDist(getSumOfAllY_Values());
     }
     
@@ -303,29 +303,39 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
      * by the value (totSum) passed in
      * @return
      */
-    private ArbitrarilyDiscretizedFunc getCumDist(double totSum) {
-
-      ArbitrarilyDiscretizedFunc cumDist = new ArbitrarilyDiscretizedFunc();
-      Point2D dp;
-      double sum = 0;
-      Iterator<Point2D> it = iterator();
-      while (it.hasNext()) {
-        dp = it.next();
-        sum += dp.getY();
-        Point2D dpNew = new Point2D.Double(dp.getX(),sum/totSum);
-        cumDist.set(dpNew);
-      }
-      return cumDist;
+    private DiscretizedFunc getCumDist(double totSum) {
+    	double[] xVals = new double[size()];
+    	double[] yVals = new double[xVals.length];
+    	
+    	double sum = 0d;
+    	for (int i=0; i<xVals.length; i++) {
+    		xVals[i] = getX(i);
+    		sum += getY(i);
+    		yVals[i] = sum/totSum;
+    	}
+    	
+    	return new LightFixedXFunc(xVals, yVals);
+//      ArbitrarilyDiscretizedFunc cumDist = new ArbitrarilyDiscretizedFunc();
+//      Point2D dp;
+//      double sum = 0;
+//      Iterator<Point2D> it = iterator();
+//      while (it.hasNext()) {
+//        dp = it.next();
+//        sum += dp.getY();
+//        Point2D dpNew = new Point2D.Double(dp.getX(),sum/totSum);
+//        cumDist.set(dpNew);
+//      }
+//      return cumDist;
     }
     
     
 
     /**
-     * This returns an ArbitrarilyDiscretizedFunc representing the cumulative
+     * This returns an DiscretizedFunc representing the cumulative
      * distribution (sum of Y values less than and equal te each X value).
      * @return
      */
-    public ArbitrarilyDiscretizedFunc getCumDist() {
+    public DiscretizedFunc getCumDist() {
       return getCumDist(1.0);
     }
     

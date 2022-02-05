@@ -5328,7 +5328,7 @@ public class FaultSysSolutionERF_Calc {
 				dist.set(1.0/sectPartRates[i], 1.0);
 		}
 		
-		ArbitrarilyDiscretizedFunc cumDist = dist.getNormalizedCumDist();
+		DiscretizedFunc cumDist = dist.getNormalizedCumDist();
 		cumDist.setName("Cumulative Distribution of Section Recurrence Intervals");
 		cumDist.setInfo("Num Sections = "+erf.getSolution().getRupSet().getNumSections()+
 				"\nFraction at RI=1600 years = "+cumDist.getInterpolatedY(1600)+

@@ -145,9 +145,9 @@ public class TestFractileCurveCalculator {
 		
 		// test case for fraction of 0
 		fractal = calc.getFractile(0);
-		assertEquals(fractal.getY(0), 0.0, 0.0);
+		assertEquals(0.0, fractal.getY(0), 0.0);
 		for (int x=1; x<20; x++) {
-			assertEquals(fractal.getY(x), 1.0, 0.0);
+			assertEquals(1.0, fractal.getY(x), 0.0);
 		}
 		
 		// test case for fraction of 0.3
@@ -159,7 +159,7 @@ public class TestFractileCurveCalculator {
 				expectedY = (x % 10);
 			else
 				expectedY = 10 - (x % 10);
-			assertEquals(actualY, expectedY, 0.0);
+			assertEquals(expectedY, actualY, 0.0);
 		}
 		
 		// test case for fraction of 0.5
@@ -173,7 +173,7 @@ public class TestFractileCurveCalculator {
 				expectedY = (x % 10);
 			else
 				expectedY = 10 - (x % 10);
-			assertEquals(actualY, expectedY, 0.0);
+			assertEquals(expectedY, actualY, 0.0);
 		}
 		
 		// test case for fraction of 1.0
@@ -185,7 +185,7 @@ public class TestFractileCurveCalculator {
 				expectedY = 20 - x;
 			else
 				expectedY = x;
-			assertEquals(actualY, expectedY, 0.0);
+			assertEquals(expectedY, actualY, 0.0);
 		}
 	}
 

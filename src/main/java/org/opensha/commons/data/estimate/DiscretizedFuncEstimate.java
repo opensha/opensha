@@ -1,6 +1,7 @@
 package org.opensha.commons.data.estimate;
 
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
+import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.AbstractDiscretizedFunc;
 /**
  * <p>Title: DiscreteValueEstimate.java </p>
@@ -18,7 +19,7 @@ import org.opensha.commons.data.function.AbstractDiscretizedFunc;
 
 public abstract class DiscretizedFuncEstimate extends Estimate {
   protected ArbDiscrEmpiricalDistFunc func=null;
-  protected AbstractDiscretizedFunc cumDistFunc = null;
+  protected DiscretizedFunc cumDistFunc = null;
 
   // tolerance for checking normalization
   protected double tol = 1e-6;
