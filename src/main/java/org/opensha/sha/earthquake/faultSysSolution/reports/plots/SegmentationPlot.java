@@ -22,9 +22,19 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistance
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCalculator.Scalars;
 
+import com.google.common.base.Preconditions;
+
 public class SegmentationPlot extends AbstractSolutionPlot {
 	
-	private boolean skipCoulomb = true;
+	private boolean skipCoulomb;
+	
+	public SegmentationPlot() {
+		this(true);
+	}
+	
+	public SegmentationPlot(boolean skipCoulomb) {
+		this.skipCoulomb = skipCoulomb;
+	}
 
 	@Override
 	public String getName() {
@@ -234,6 +244,23 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 			}
 			lines.addAll(table.build());
 			lines.add("");
+			
+			if (combiners.length == 1) {
+				File csvFile = shawComps.get(combiners[0])[m];
+				csvFile = new File(csvFile.getParentFile(), csvFile.getName().replaceAll(".png", ".csv"));
+				Preconditions.checkState(csvFile.exists());
+				
+				if (compSegCalc == null) {
+					lines.add("Download CSV file: ["+csvFile.getName()+"]("+relPathToResources+"/"+csvFile.getName()+")");
+				} else {
+					File csvCompFile = shawCompComps[m];
+					csvCompFile = new File(csvCompFile.getParentFile(), csvCompFile.getName().replaceAll(".png", ".csv"));
+					Preconditions.checkState(csvCompFile.exists());
+					lines.add("Download CSV files: ["+meta.primary.name+"]("+relPathToResources+"/"+csvFile.getName()
+						+") ["+meta.comparison.name+"]("+relPathToResources+"/"+csvCompFile.getName()+")");
+				}
+				lines.add("");
+			}
 			
 			lines.add("**Connection Passthrough Rates vs Scalars**");
 			lines.add(""); lines.add(topLink); lines.add("");
