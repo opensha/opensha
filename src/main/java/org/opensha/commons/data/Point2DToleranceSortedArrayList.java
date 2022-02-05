@@ -50,6 +50,14 @@ public class Point2DToleranceSortedArrayList implements Point2DToleranceSortedLi
 			list.add(-ind-1, e);
 		return true;
 	}
+	
+	protected void add(int index, Point2D pt) {
+		list.add(index, pt);
+	}
+	
+	protected void set(int index, Point2D pt) {
+		list.set(index, pt);
+	}
 
 	@Override
 	public boolean addAll(Collection<? extends Point2D> c) {
