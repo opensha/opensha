@@ -22,6 +22,7 @@ import org.dom4j.DocumentException;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.Range;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -608,7 +609,7 @@ public class SegmentationCalculator {
 					parentJumpRateTable.put(pair, fullJump, jumpRates);
 				}
 				jumpRates.addAzimuiths(jump, fullFrom, fullTo, rates[r]);
-				jumpRates.addRate(mags[r], rates[r], jump.distance);
+				jumpRates.addRate(r, jump.distance);
 			}
 		}
 		System.out.println("Processed "+ruptures.size()+" ruptures. Found "+parentJumpRateTable.size()
@@ -705,6 +706,7 @@ public class SegmentationCalculator {
 		
 		private double sumRate;
 		private double sumRateDist;
+		private HashSet<Integer> rupIndexes;
 		
 		public final AzTracker fromAzTrack;
 		public final AzTracker toAzTrack;
@@ -721,12 +723,16 @@ public class SegmentationCalculator {
 			this.toRates = toRates;
 			this.toAzTrack = toAzTrack;
 			this.magJumpRates = magJumpRates;
+			rupIndexes = new HashSet<>();
 		}
 		
-		public void addRate(double mag, double rate, double distance) {
+		public void addRate(int rupIndex, double distance) {
+			double rate = sol.getRateForRup(rupIndex);
+			double mag = sol.getRupSet().getMagForRup(rupIndex);
 			sumRate += rate;
 			sumRateDist += rate*distance;
 			addMagRate(magJumpRates, mag, rate);
+			rupIndexes.add(rupIndex);
 		}
 		
 		public double getRateWeightedDistance() {
@@ -800,6 +806,7 @@ public class SegmentationCalculator {
 				double[] totRates = new double[minMags.length];
 				HashSet<Integer> fromRups = new HashSet<>();
 				HashSet<Integer> toRups = new HashSet<>();
+				HashSet<Integer> jumpRups = new HashSet<>();
 				for (Jump jump : jumpMap.keySet()) {
 					JumpRates rate = jumpMap.get(jump);
 					boolean newBest = bestJump == null
@@ -809,11 +816,12 @@ public class SegmentationCalculator {
 						bestJump = jump;
 						bestJumpRates = rate;
 					}
-					for (int m=0; m<minMags.length; m++)
-						totRates[m] += rate.magJumpRates[m];
+					jumpRups.addAll(rate.rupIndexes);
 					fromRups.addAll(rupSet.getRupturesForSection(jump.fromSection.getSectionId()));
 					toRups.addAll(rupSet.getRupturesForSection(jump.toSection.getSectionId()));
 				}
+				for (int rupIndex : jumpRups)
+					addMagRate(totRates, rupSet.getMagForRup(rupIndex), sol.getRateForRup(rupIndex));
 				double totMaxRate = StatUtils.max(totRates);
 				double[] combFromSectRates = new double[minMags.length];
 				double[] combToSectRates = new double[minMags.length];
@@ -1155,6 +1163,7 @@ public class SegmentationCalculator {
 					JumpRates rates = cell.getValue();
 					double jumpRate = rates.magJumpRates[m];
 					double scalarVal = scalarJumpVals.get(jump);
+					double detrendFract = 0d;
 					double fract;
 					if (jumpRate == 0d) {
 						fract = 0d;
@@ -1178,13 +1187,15 @@ public class SegmentationCalculator {
 						chars.add(new PlotCurveCharacterstics(PlotSymbol.CIRCLE, scatterWidth, outlineColor));
 						if (detrendProb != null) {
 							double refProb = detrendProb.calcJumpProbability(null, jump, false);
-							detrendFracts.add(Math.min(1d, fract/refProb));
+							detrendFract = Math.min(1d, fract/refProb);
 						}
 					}
 					
 					scalarTrack.addValue(scalarVal);
 					scalarVals.add(scalarVal);
 					fracts.add(fract);
+					if (detrendProb != null)
+						detrendFracts.add(detrendFract);
 				}
 				
 				if (m == 0) {
@@ -1616,15 +1627,28 @@ public class SegmentationCalculator {
 			binnedMedians.setName("Median");
 //			XY_DataSet probTaken = new DefaultXY_DataSet();
 //			probTaken.setName("P(>0)");
+			
+			CSVFile<String> csv = new CSVFile<>(true);
+			csv.addLine("Distance Bin Center (km)", "Mean Passthrough Rate", "Median Passthrough Rate");
+			
 			for (int i=0; i<valLists.size(); i++) {
 				List<Double> binnedVals = valLists.get(i);
 				if (binnedVals.isEmpty())
 					continue;
 				double[] values = Doubles.toArray(binnedVals);
-				binnedMeans.set(histXVals.getX(i), StatUtils.mean(values));
-				binnedMedians.set(histXVals.getX(i), DataUtils.median(values));
+				double mean = StatUtils.mean(values);
+				double median = DataUtils.median(values);
+				binnedMeans.set(histXVals.getX(i), mean);
+				binnedMedians.set(histXVals.getX(i), median);
+				
+				List<String> line = new ArrayList<>();
+				line.add((float)histXVals.getX(i)+"");
+				line.add(mean+"");
+				line.add(median+"");
+				csv.addLine(line);
 //				probTaken.set(marginalTakenHist.getX(i), marginalTakenHist.getY(i)/marginalAllHist.getY(i));
 			}
+			
 			// add fake values so that the legend works
 			if (binnedMeans.size() == 0) {
 				binnedMeans.set(0d, -1d);
@@ -1665,6 +1689,8 @@ public class SegmentationCalculator {
 			ret[m] = new File(outputDir, myPrefix+".png");
 			gp.getChartPanel().setSize(width, height);
 			gp.saveAsPNG(ret[m].getAbsolutePath());
+			if (!logY)
+				csv.writeToFile(new File(outputDir, myPrefix+".csv"));
 		}
 		
 		return ret;
