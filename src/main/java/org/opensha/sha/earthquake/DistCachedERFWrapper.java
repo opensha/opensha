@@ -18,7 +18,7 @@ import org.opensha.sha.util.TectonicRegionType;
 /**
  * Utility class that wraps an ERF such that each source/rupture surface has it's own single-valued distance cache.
  * This can be useful to avoid thread contention in multhreaded hazard calculations that reuse the same ERF across
- * threads.
+ * threads. This optimization only applies to {@link FaultRuptureSource} source implementations.
  * 
  * The simplest method would be to instantiate a different ERF for each thread, but sometimes that isn't practical
  * due to memory constraints. Use this if re-instantiating ERFs is not practical.
@@ -61,7 +61,8 @@ public class DistCachedERFWrapper extends AbstractERF {
 				}
 				sources.add(new CustomSource(source, sourceSurf, rups));
 			} else {
-				sources.add(source);
+				// will retrieve directly from ERF when queried
+				sources.add(null);
 			}
 		}
 		this.sources = sources;
@@ -107,7 +108,10 @@ public class DistCachedERFWrapper extends AbstractERF {
 					initSources();
 			}
 		}
-		return sources.get(idx);
+		ProbEqkSource source = sources.get(idx);
+		if (source == null)
+			source = erf.getSource(idx);
+		return source;
 	}
 
 	@Override
