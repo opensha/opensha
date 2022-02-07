@@ -67,7 +67,7 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 		public abstract double calcJumpProbability(double distance);
 	}
 	
-	public static interface BinaryJumpProbabilityCalc extends JumpProbabilityCalc {
+	public static interface BinaryJumpProbabilityCalc extends BinaryRuptureProbabilityCalc, JumpProbabilityCalc {
 		
 		public boolean isJumpAllowed(ClusterRupture fullRupture, Jump jump, boolean verbose);
 
@@ -76,6 +76,19 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 			if (isJumpAllowed(fullRupture, jump, verbose))
 				return 1d;
 			return 0d;
+		}
+
+		@Override
+		default boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
+			for (Jump jump : fullRupture.getJumpsIterable())
+				if (!isJumpAllowed(fullRupture, jump, verbose))
+					return false;
+			return true;
+		}
+
+		@Override
+		default double calcRuptureProb(ClusterRupture rupture, boolean verbose) {
+			return BinaryRuptureProbabilityCalc.super.calcRuptureProb(rupture, verbose);
 		}
 	}
 	

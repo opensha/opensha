@@ -31,6 +31,18 @@ public interface RuptureProbabilityCalc extends Named {
 	
 	public boolean isDirectional(boolean splayed);
 	
+	public static interface BinaryRuptureProbabilityCalc extends RuptureProbabilityCalc {
+		
+		public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose);
+
+		@Override
+		default double calcRuptureProb(ClusterRupture rupture, boolean verbose) {
+			if (isRupAllowed(rupture, verbose))
+				return 1d;
+			return 0d;
+		}
+	}
+	
 	public class MultiProduct implements RuptureProbabilityCalc {
 		
 		private RuptureProbabilityCalc[] calcs;
