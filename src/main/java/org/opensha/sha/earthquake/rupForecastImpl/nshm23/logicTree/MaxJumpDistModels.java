@@ -20,6 +20,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.BinaryJumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.DistDependentJumpProbabilityCalc;
 
+import com.google.common.base.Preconditions;
+
 @DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
@@ -60,6 +62,13 @@ public enum MaxJumpDistModels implements LogicTreeNode {
 	
 	public double getMaxDist() {
 		return maxDist;
+	}
+	
+	public static void setWeights(double[] weights) {
+		MaxJumpDistModels[] values = values();
+		Preconditions.checkState(weights.length == values.length);
+		for (int i=0; i<values.length; i++)
+			values[i].weight = weights[i];
 	}
 
 	@Override

@@ -30,7 +30,7 @@ import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
  * @author kevin
  *
  */
-public class APrioriSectNuclEstimator extends DataSectNucleationRateEstimator {
+public class APrioriSectNuclEstimator extends SectNucleationMFD_Estimator {
 	
 	private FaultSystemRupSet rupSet;
 	private HashSet<Integer> rupIndexes;

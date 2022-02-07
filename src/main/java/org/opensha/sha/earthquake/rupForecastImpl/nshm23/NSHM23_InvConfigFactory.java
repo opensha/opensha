@@ -73,8 +73,8 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 	private boolean autoCache = true;
 	
 	private boolean adjustTargetsForSegmentation = true;
-	private boolean adjustForActualRupSlips = SupraSeisBValInversionTargetMFDs.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
-	private boolean adjustForSlipAlong = SupraSeisBValInversionTargetMFDs.ADJ_FOR_SLIP_ALONG_DEFAULT;
+	private boolean adjustForActualRupSlips = NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
+	private boolean adjustForSlipAlong = NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT;
 	
 	protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);

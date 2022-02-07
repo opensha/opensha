@@ -26,7 +26,7 @@ import com.google.common.base.Preconditions;
  * @author kevin
  *
  */
-public abstract class PaleoSectNuclEstimator extends DataSectNucleationRateEstimator {
+public abstract class PaleoSectNuclEstimator extends SectNucleationMFD_Estimator {
 	
 	protected FaultSystemRupSet rupSet;
 	private SectMappedUncertainDataConstraint paleoConstraint;

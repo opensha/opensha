@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators;
 
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.List;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -8,6 +9,7 @@ import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.util.DataUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -16,14 +18,14 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SparseGutenbergRichterSolver;
 
 /**
- * Abstract class for a data-constraint that affects section nucleation MFDs. This can be used to adjust uncertainties
- * in {@link SupraSeisBValInversionTargetMFDs} for sections where data constraitns might imply different MFDs than
- * the assumed b-value. 
+ * Abstract class for a data-constraint that affects section nucleation MFDs. This can be used to adjust targets and/or
+ * uncertainties in {@link SupraSeisBValInversionTargetMFDs} for sections where data constraints might imply different
+ * MFDs than the assumed b-value. 
  * 
  * @author kevin
  *
  */
-public abstract class DataSectNucleationRateEstimator {
+public abstract class SectNucleationMFD_Estimator {
 	
 	/**
 	 * 
@@ -31,6 +33,13 @@ public abstract class DataSectNucleationRateEstimator {
 	 * @return true if this data constraint applies to the given section
 	 */
 	public abstract boolean appliesTo(FaultSection sect);
+	
+	public void init(FaultSystemRupSet rupSet, List<IncrementalMagFreqDist> origSectSupraSeisMFDs,
+			double[] targetSectSupraMoRates, double[] targetSectSupraSlipRates, double[] sectSupraSlipRateStdDevs,
+			List<BitSet> sectRupUtilizations, int[] sectMinMagIndexes, int[] sectMaxMagIndexes,
+			int[][] sectRupInBinCounts, EvenlyDiscretizedFunc refMFD) {
+		
+	}
 	
 	/**
 	 * Estimate a section nucleation MFD for the given fault section that is consistent with this data constraint

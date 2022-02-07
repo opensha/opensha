@@ -45,13 +45,16 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionClust
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.Builder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.APrioriSectNuclEstimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.DataSectNucleationRateEstimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SectNucleationMFD_Estimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.PaleoSectNuclEstimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ScalingRelSlipRateMFD_Estimator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -76,8 +79,11 @@ public class NSHM23_ConstraintBuilder {
 	private boolean applyDefModelUncertaintiesToNucl;
 	private boolean addSectCountUncertaintiesToMFD;
 	private boolean adjustForIncompatibleData;
-	private boolean adjustForActualRupSlips = SupraSeisBValInversionTargetMFDs.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
-	private boolean adjustForSlipAlong = SupraSeisBValInversionTargetMFDs.ADJ_FOR_SLIP_ALONG_DEFAULT;
+	
+	public static boolean ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT = true;
+	public static boolean ADJ_FOR_SLIP_ALONG_DEFAULT = false;
+	private boolean adjustForActualRupSlips = ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
+	private boolean adjustForSlipAlong = ADJ_FOR_SLIP_ALONG_DEFAULT;
 	
 	private SubSeisMoRateReduction subSeisMoRateReduction = SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
 	
@@ -219,11 +225,17 @@ public class NSHM23_ConstraintBuilder {
 		builder.magDepDefaultRelStdDev(magDepRelStdDev);
 		builder.addSectCountUncertainties(addSectCountUncertaintiesToMFD);
 		builder.subSeisMoRateReduction(subSeisMoRateReduction);
-		builder.forSegmentationModel(segModel);
-		builder.adjustForActualRupSlips(adjustForActualRupSlips, adjustForSlipAlong);
+		if (segModel != null) {
+			if (segModel instanceof BinaryRuptureProbabilityCalc)
+				builder.forBinaryRupProbModel((BinaryRuptureProbabilityCalc)segModel);
+			else
+				builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(segModel));
+		}
+		if (adjustForActualRupSlips)
+			builder.adjustTargetsForData(new ScalingRelSlipRateMFD_Estimator(adjustForSlipAlong));
 		if (adjustForIncompatibleData) {
 			UncertaintyBoundType dataWithinType = UncertaintyBoundType.ONE_SIGMA;
-			List<DataSectNucleationRateEstimator> dataConstraints = new ArrayList<>();
+			List<SectNucleationMFD_Estimator> dataConstraints = new ArrayList<>();
 			dataConstraints.add(new APrioriSectNuclEstimator(rupSet,
 					UCERF3InversionInputGenerator.findParkfieldRups(rupSet), parkfieldRate));
 			if (rupSet.hasModule(PaleoseismicConstraintData.class)) {

@@ -4,14 +4,9 @@ import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -33,33 +28,29 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
-import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SolMFDPlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.BinaryJumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.APrioriSectNuclEstimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.DataSectNucleationRateEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.PaleoSectNuclEstimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ScalingRelSlipRateMFD_Estimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SectNucleationMFD_Estimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -68,7 +59,6 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 
 /**
@@ -133,9 +123,6 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	
 	public static final boolean ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT = false;
 	
-	public static final boolean ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT = true;
-	public static final boolean ADJ_FOR_SLIP_ALONG_DEFAULT = false;
-	
 	// discretization parameters for MFDs
 	public final static double MIN_MAG = 0.05;
 	public final static double DELTA_MAG = 0.1;
@@ -176,15 +163,18 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		private boolean applyDefModelUncertainties = APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT;
 		private boolean sparseGR = SPARSE_GR_DEFAULT;
 		private boolean addSectCountUncertainties = ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT;
-		private boolean adjustForActualRupSlips = ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
-		private boolean adjustForSlipAlong = ADJ_FOR_SLIP_ALONG_DEFAULT;
 		
-		private List<? extends DataSectNucleationRateEstimator> dataConstraints;
-		private UncertaintyBoundType dataConstraintExpandToBound;
+		// if non-null, subset of ruptures that we're allowed to use
+		private BitSet rupSubSet;
+		
+		// adjustments that affect the actual target MFD values themselves
+		private List<SectNucleationMFD_Estimator> targetAdjDataConstraints;
+		
+		// adjustments that affect the target MFD uncertainties
+		private List<? extends SectNucleationMFD_Estimator> uncertAdjDataConstraints;
+		private UncertaintyBoundType uncertAdjDataTargetBound;
 		
 		private List<Region> constrainedRegions;
-		
-		private JumpProbabilityCalc segModel;
 
 		public Builder(FaultSystemRupSet rupSet, double supraSeisBValue) {
 			this.rupSet = rupSet;
@@ -257,46 +247,48 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		 * @return
 		 */
 		public Builder sparseGR(boolean sparseGR) {
-			if (segModel != null && !sparseGR)
-				System.err.println("WARNING: Segmentation models will be matched best if sparseGR == true");
 			this.sparseGR = sparseGR;
 			return this;
 		}
 		
+		public Builder forBinaryRupProbModel(BinaryRuptureProbabilityCalc binaryRupProb) {
+			BitSet rupSubSet = new BitSet(rupSet.getNumRuptures());
+			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+			System.out.println("Processing "+rupSet.getNumRuptures()+" ruptures for binary rupture probability calculation");
+			for (int r=0; r<rupSet.getNumRuptures(); r++) {
+				ClusterRupture rup = cRups.get(r);
+				if (binaryRupProb.isRupAllowed(rup, false))
+					rupSubSet.set(r);
+			}
+			return forRupSubSet(rupSubSet);
+		}
+		
 		/**
-		 * Adds a segmentation model, for which the target MFD will modified to accommodate. This will result in
-		 * subsection supra-seismogenic MFDs that aren't perfectly G-R, but are more consistent with the imposed
-		 * segmentation constraint.
-		 * <p>
-		 * We make a couple assumptions when adjusting for a segmentation constraint. First, we assume that the inversion
-		 * will use the lease-penalized ruptures in any magnitude bin, so we only make adjustments to the target MFD
-		 * when all ruptures in that magnitude bin for that section are subject to segmentation. Second, we adjust for
-		 * the natural fall off with magnitude for a G-R, and don't penalize for probabilities below that natural
-		 * fall off amount.
+		 * It non-null, specifies a subset of ruptures that we are allowed to use when determining MFD targets
 		 * 
-		 * @param segModel
+		 * @param rupSubSet
 		 * @return
 		 */
-		public Builder forSegmentationModel(JumpProbabilityCalc segModel) {
-			if (segModel != null && !sparseGR)
-				System.err.println("WARNING: Segmentation models will be matched best if sparseGR == true");
-			this.segModel = segModel;
+		public Builder forRupSubSet(BitSet rupSubSet) {
+			this.rupSubSet = rupSubSet;
 			return this;
 		}
 		
 		/**
-		 * Some scaling relationships are not be consistent with the way we calculate the total moment required to
-		 * satisfy the target slip rate. If enabled, the target MFDs will be modified to account for any discrepancy
-		 * between calculated slip rates and the G-R targets 
+		 * Adjust target subsection nucleation MFDs to for the given data constraints.
 		 * 
+		 * @param dataConstraint
 		 * @return
 		 */
-		public Builder adjustForActualRupSlips(boolean adjustForActualRupSlips, boolean adjustForSlipAlong) {
-			if (adjustForSlipAlong)
-				Preconditions.checkState(adjustForActualRupSlips,
-						"Cannot adjust for slip along without adjusting for average slips as well");
-			this.adjustForActualRupSlips = adjustForActualRupSlips;
-			this.adjustForSlipAlong = adjustForSlipAlong;
+		public Builder adjustTargetsForData(SectNucleationMFD_Estimator dataConstraint) {
+			if (this.targetAdjDataConstraints == null)
+				this.targetAdjDataConstraints = new ArrayList<>();
+			targetAdjDataConstraints.add(dataConstraint);
+			return this;
+		}
+		
+		public Builder clearTargetAdjustments() {
+			this.targetAdjDataConstraints = null;
 			return this;
 		}
 		
@@ -308,10 +300,10 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		 * @param boundType
 		 * @return
 		 */
-		public Builder expandUncertaintiesForData(List<? extends DataSectNucleationRateEstimator> dataConstraints,
+		public Builder expandUncertaintiesForData(List<? extends SectNucleationMFD_Estimator> dataConstraints,
 				UncertaintyBoundType boundType) {
-			this.dataConstraints = dataConstraints;
-			this.dataConstraintExpandToBound = boundType;
+			this.uncertAdjDataConstraints = dataConstraints;
+			this.uncertAdjDataTargetBound = boundType;
 			return this;
 		}
 		
@@ -376,87 +368,6 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			// supra-seismogenic MFDs for the given b-value
 			List<IncrementalMagFreqDist> sectSupraSeisMFDs = new ArrayList<>();
 			
-			/*
-			 * these are used if we have a segmentation model
-			 */
-			// map from unique jumps to their segmentation probabilities
-			Map<Jump, Double> segJumpProbsMap = null;
-			// set of ruptures that can be ignored when building MFDs because they have a zero rate
-			BitSet zeroProbRups = new BitSet(rupSet.getNumRuptures());
-			// this will track what jumps control what magnitude bins on each section
-			SectSegmentationJumpTracker[] sectSegTrackers = null;
-			if (segModel != null) {
-				ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
-
-				System.out.println("Pre-processing "+cRups.size()+" ruptures for segmentation calculation");
-				if (segModel instanceof BinaryJumpProbabilityCalc) {
-					// simple case, hard cutoff
-					BinaryJumpProbabilityCalc binary = (BinaryJumpProbabilityCalc)segModel;
-					for (int r=0; r<cRups.size(); r++) {
-						ClusterRupture rup = cRups.get(r);
-						for (Jump jump : rup.getJumpsIterable()) {
-							if (!binary.isJumpAllowed(rup, jump, false)) {
-								zeroProbRups.set(r);
-								break;
-							}
-						}
-					}
-				} else {
-					// complex case that can have probabilities between 0 and 1
-					segJumpProbsMap = new HashMap<>();
-					
-					sectSegTrackers = new SectSegmentationJumpTracker[numSects];
-					for (int s=0; s<numSects; s++)
-						sectSegTrackers[s] = new SectSegmentationJumpTracker(refMFD.size());
-					rupLoop:
-						for (int r=0; r<cRups.size(); r++) {
-							ClusterRupture rup = cRups.get(r);
-							
-							// within a single rupture, the worst jump will control
-							Jump worstJump = null;
-							double worstProb = 1d;
-							for (Jump origJump : rup.getJumpsIterable()) {
-								Jump jump;
-								if (origJump.toSection.getSectionId() < origJump.fromSection.getSectionId())
-									// always store jumps with fromID < toID
-									jump = origJump.reverse();
-								else
-									jump = origJump;
-								double jumpProb;
-								if (segJumpProbsMap.containsKey(jump)) {
-									jumpProb = segJumpProbsMap.get(jump);
-								} else {
-									jumpProb = segModel.calcJumpProbability(rup, origJump, false);
-									Preconditions.checkState(jumpProb >= 0d && jumpProb <= 1d);
-									segJumpProbsMap.put(jump, jumpProb);
-								}
-								if (jumpProb == 1d) {
-									// ignore it
-									continue;
-								} else if (jumpProb == 0d) {
-									// zero probability, can skip this rupture entirely
-									zeroProbRups.set(r);
-									continue rupLoop;
-								}
-								// we'll need to track this jump, it's between 0 and 1
-								if (jumpProb < worstProb) {
-									// new worst
-									worstProb = jumpProb;
-									worstJump = jump;
-								}
-							}
-
-							double mag = rupSet.getMagForRup(r);
-							int magIndex = refMFD.getClosestXIndex(mag);
-							
-							// tell each section about this rupture
-							for (FaultSubsectionCluster cluster : rup.getClustersIterable())
-								for (FaultSection sect : cluster.subSects)
-									sectSegTrackers[sect.getSectionId()].processRupture(worstJump, worstProb, magIndex);
-						}
-				}
-			}
-			
 			int[][] sectRupInBinCounts = new int[numSects][refMFD.size()];
 			int[] sectMinMagIndexes = new int[numSects];
 			int[] sectMaxMagIndexes = new int[numSects];
@@ -491,8 +402,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				for (int r : rupSet.getRupturesForSection(s)) {
 					double mag = rupSet.getMagForRup(r);
 					if ((float)mag >= (float)sectMinMag) {
-						if (zeroProbRups != null && zeroProbRups.get(r))
-							// segmentation model precludes this rupture from ever occurring, ignore
+						if (rupSubSet != null && !rupSubSet.get(r))
+							// not allowed to use this rupture, skip
 							continue;
 						minAbove = Math.min(mag, minAbove);
 						sectMaxMag = Math.max(sectMaxMag, mag);
@@ -712,395 +623,34 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				sectSupraSeisMFDs.add(supraSeisMFD);
 			}
 			
-			if (segModel != null) {
-				if (segModel instanceof BinaryJumpProbabilityCalc) {
-					System.out.println("Segmentation model is simple (hard cutoff) and was"
-							+ " already applied at MFD creation.");
-				} else {
-					System.out.println("Adjusting section mfds for segmentation");
+			ExecutorService exec = null;
+			if (targetAdjDataConstraints != null || uncertAdjDataConstraints != null)
+				exec = Executors.newFixedThreadPool(FaultSysTools.defaultNumThreads());
+			
+			if (targetAdjDataConstraints != null && !targetAdjDataConstraints.isEmpty()) {
+				System.out.println("Adjusting target MFDs with "+targetAdjDataConstraints.size()+" estimators");
+				
+				// do these 1 at a time as each one adjusts the actual targets
+				for (SectNucleationMFD_Estimator estimator : targetAdjDataConstraints) {
+					estimator.init(rupSet, sectSupraSeisMFDs, targetSupraMoRates, slipRates, slipRateStdDevs,
+							sectRupUtilizations, sectMinMagIndexes, sectMaxMagIndexes, sectRupInBinCounts, refMFD);
 					
-					/*
-					 * Segmentation constraints are applied in the inversion as a fraction of the total participation
-					 * rate on either side of a jump. The segmentation model will often imply rates less than the G-R
-					 * budget for those ruptures, in which case we adjust the targets to account for the segmentation
-					 * model. We make the simplifying assumption that the inversion will use the most-available rupture
-					 * in each magnitude bin, so if a bin contains ruptures not affected by segmentation, we assume
-					 * that bin is not affected by segmentation.
-					 * 
-					 * For bins that are affected by segmentation, we first compute the model-implied participation
-					 * rate for each jump in that magnitude bin. That participation rate is the segmentation probability
-					 * times the lesser of the participation rate on either side of that jump. This is an upper bound:
-					 * the participation rate of ruptures on our section in this magnitude bin cannot exceed the
-					 * segmentation rate. We then convert that target participation rate to a nucleation rate,
-					 * and set the bin-specific rate to the lesser of the segmentation-implied target nucleation rate
-					 * and the original nucleation rate before adjustment.
-					 * 
-					 * There are a couple complications:
-					 * 
-					 * First of all, setting the rate on one section relies on the rate of other sections, which could
-					 * subsequently be updated with their own adjustments. We mitigate this by does the corrections
-					 * iteratively; 20 iterations is plenty for MFD stability to 4-byte precision.
-					 * 
-					 * Second, multiple jumps can affect a single magnitude bin. In that case, we first compute the
-					 * target nucleation rate for each bin implied by each jump, and then choose the greatest one
-					 * as our actual target (again assuming that the inversion will use the most-available ruptures).
-					 */
-
-					int segBins = 0;
-					int segBinsAvail = 0;
-					int segSects = 0; 
+					List<Future<DataEstCallable>> futures = estimateSectNuclMFDs(List.of(estimator), slipRates,
+							slipRateStdDevs, targetSupraMoRates, sectRupUtilizations, sectSupraSeisMFDs, exec);
 					
-					// we're going to need section participation rates, which we will determine by multiplying
-					// bin rates by the average rupture area in that bin, and then dividing by the section area.
-					// 
-					// these are section-sepecific scale factors
-					double[][] sectNuclToParticScalars = new double[numSects][];
-					for (int s=0; s<numSects; s++) {
-						int minMagIndex = sectMinMagIndexes[s];
-						int maxMagIndex = sectMaxMagIndexes[s];
-						
-						double[] nuclToParticScalars = new double[1+maxMagIndex-minMagIndex];
-						double[] avgBinAreas = new double[nuclToParticScalars.length];
-						int[] avgCounts = new int[avgBinAreas.length];
-						
-						BitSet utilization = sectRupUtilizations.get(s);
-						// loop over ruptures for which this section participates
-						for (int r = utilization.nextSetBit(0); r >= 0; r = utilization.nextSetBit(r+1)) {
-							int index = refMFD.getClosestXIndex(rupSet.getMagForRup(r))-minMagIndex;
-							avgCounts[index]++;
-							avgBinAreas[index] += rupSet.getAreaForRup(r);
+					for (Future<DataEstCallable> future : futures) {
+						DataEstCallable call;
+						try {
+							call = future.get();
+						} catch (InterruptedException | ExecutionException e) {
+							throw ExceptionUtils.asRuntimeException(e);
 						}
-						double sectArea = rupSet.getAreaForSection(s);
-						for (int m=0; m<nuclToParticScalars.length; m++) {
-							if (avgCounts[m] > 0) {
-								avgBinAreas[m] /= avgCounts[m];
-								nuclToParticScalars[m] = avgBinAreas[m]/sectArea;
-							}
-						}
-						sectNuclToParticScalars[s] = nuclToParticScalars;
+						sectSupraSeisMFDs.set(call.sect.getSectionId(), call.impliedMFD);
 					}
-					
-					// create working copy of supra-seis mfds
-					List<IncrementalMagFreqDist> modSupraSeisMFDs = new ArrayList<>();
-					// also keep track of the original fraction that each bin contributes to the total nucleation rate
-					List<double[]> origBinContributions = new ArrayList<>();
-					for (int s=0; s<numSects; s++) {
-						if (sectSegTrackers[s].notConntrolled() || targetMoRates[s] == 0d || slipRates[s] == 0d) {
-							// section is not controlled by any seg-affected ruptures, or is zero rate
-							modSupraSeisMFDs.add(null);
-							origBinContributions.add(null);
-						} else {
-							IncrementalMagFreqDist mfd = sectSupraSeisMFDs.get(s).deepClone();
-							modSupraSeisMFDs.add(mfd);
-							double[] contribFracts = new double[mfd.size()];
-							double totRate = mfd.calcSumOfY_Vals();
-							for (int i=0; i<contribFracts.length; i++)
-								contribFracts[i] = mfd.getY(i)/totRate;
-							origBinContributions.add(contribFracts);
-						}
-					}
-					
-					Map<Jump, Double> curJumpMaxParticipationRates = new HashMap<>();
-					
-					// iteratively solve for modified MFDs. 20 iterations is plenty to match nucleation rates with high
-					// iteration counts (e.g., 200) to floating point precision, and is still nearly instantaneous
-					for (int i=0; i<20; i++) {
-						// calculate current nucleation and participation rates for each section at the start of
-						// each iteration
-						double[] curNuclRates = new double[numSects];
-						double[] curParticRates = new double[numSects];
-						for (int s=0; s<numSects; s++) {
-							double[] nuclToParticScalars = sectNuclToParticScalars[s];
-							IncrementalMagFreqDist supraMFD = sectSupraSeisMFDs.get(s);
-							for (int m=0; m<nuclToParticScalars.length; m++) {
-								double binRate = supraMFD.getY(m + sectMinMagIndexes[s]);
-								curNuclRates[s] += binRate;
-								curParticRates[s] += binRate*nuclToParticScalars[m];
-							}
-							Preconditions.checkState(curNuclRates[s] > 0,
-									"Bad curNuclRate=%s, iteration %s, s=%s, curParticRate=%s",
-									curNuclRates[s], i, s, curParticRates[s]);
-							Preconditions.checkState(curNuclRates[s] > 0,
-									"Bad curParticRates=%s, iteration %s, s=%s, curNuclRates=%s",
-									curParticRates[s], i, s, curNuclRates[s]);
-						}
-						
-						// calculate the current jump participation rate, which is it's probability times the lower of
-						// the participation rates on either side of the jump
-						for (Jump jump : segJumpProbsMap.keySet()) {
-							double jumpProb = segJumpProbsMap.get(jump);
-							Preconditions.checkState(jumpProb > 0d);
-							// lesser of the participation rate on either side of the jump
-							double sectRate = Math.min(curParticRates[jump.fromSection.getSectionId()],
-									curParticRates[jump.toSection.getSectionId()]);
-							curJumpMaxParticipationRates.put(jump, jumpProb*sectRate);
-						}
-						
-						// now apply segmentation adjustments
-						for (int s=0; s<numSects; s++) {
-							SectSegmentationJumpTracker tracker = sectSegTrackers[s];
-							if (tracker.notConntrolled() || targetMoRates[s] == 0d || slipRates[s] == 0d)
-								// section is not controlled by any seg-affected ruptures
-								continue;
-							
-//							boolean debug = s == 1832;
-							boolean debug = false;
-							
-							// our woking copy of the supra-seis MFD
-							IncrementalMagFreqDist modMFD = modSupraSeisMFDs.get(s);
-							// original bin rates expressed as a fraction of total nucleation rate
-							double[] origBinContribution = origBinContributions.get(s);
-							// bin-specific scalars to go from nucleation rates to participation rates
-							double[] nuclToParticScalars = sectNuclToParticScalars[s];
-							
-							if (debug) {
-								System.out.println("Debug "+s+" iteration "+i);
-								System.out.println("Pre-loop MFD");
-								for (int j=sectMinMagIndexes[s]; j<=sectMaxMagIndexes[s]; j++)
-									System.out.println("\t"+(float)modMFD.getX(j)+"\t"+(float)modMFD.getY(j));
-							}
-							
-							boolean changed = false;
-							
-							Jump[] assignedJumps = new Jump[1+sectMaxMagIndexes[s]-sectMinMagIndexes[s]];
-							double[] assignedJumpRates = new double[assignedJumps.length];
-							Map<Jump, List<Integer>> fullJumpBins = tracker.getJumpBinsMap(sectMinMagIndexes[s]);
-							Map<Jump, List<Integer>> jumpBinAssignments = null;
-							
-							/*
-							 * Loop through the calculation twice. The first time, we're deciding which jump is the
-							 * bottleneck for each bin for the case of multiple jumps affecting a single bin. In the
-							 * second time through, we actually modify the rates. 
-							 */
-							for (boolean assignment : new boolean[] { true, false } ) {
-								// map of jumps to affected bins
-								Map<Jump, List<Integer>> jumpBins = assignment ? fullJumpBins : jumpBinAssignments;
-								
-								for (Jump jump : jumpBins.keySet()) {
-									List<Integer> bins = jumpBins.get(jump);
-									Preconditions.checkState(bins.size() > 0);
-									
-									// this is our target segmentation implied participation rate for this jump, which
-									// we can't exceed
-									double segParticTarget = curJumpMaxParticipationRates.get(jump);
-									if (segParticTarget == 0d)
-										// this jump uses zero-rates sections and can be ignored
-										continue;
-									
-									// calculate the current nucleation and participation rates for these bins
-									double curJumpNuclRate = 0d;
-									double curJumpParticRate = 0d;
-									for (int bin : bins) {
-										double binRate = modMFD.getY(bin);
-										curJumpNuclRate += binRate;
-//										System.out.println("bin="+bin+", minMag="+sectMinMagIndexes[s]+", refMFD.size()="
-//												+refMFD.size()+", tracker.binOffset="+tracker.binOffset);
-										curJumpParticRate += binRate*nuclToParticScalars[bin-sectMinMagIndexes[s]];
-									}
-									
-//									System.out.println(i+". s="+s+", jump="+jump);
-									
-									Preconditions.checkState(curJumpNuclRate > 0,
-											"Jump nucleation rate is 0! bins=%s,\n\t%s", bins, modMFD);
-									
-									// convert that participation target to a nucleation rate on this section
-									double segNuclTarget = 0d;
-									// also keep track of the bin-specific nucleation rate target for this constraint
-									List<Double> binnedSegTargetNuclRates = new ArrayList<>();
-									for (int bin : bins) {
-										double binRate = modMFD.getY(bin);
-										double particScalar = nuclToParticScalars[bin-sectMinMagIndexes[s]];
-										// fraction of the participation rate this bin is responsible for
-										double binParticFract = binRate*particScalar/curJumpParticRate;
-										double binTargetParticRate = segParticTarget*binParticFract;
-										double binTargetNuclRate = binTargetParticRate/particScalar;
-										segNuclTarget += binTargetNuclRate;
-										binnedSegTargetNuclRates.add(binTargetNuclRate);
-									}
-									Preconditions.checkState(segNuclTarget > 0d,
-											"Segmentation implied nucleation rate is zero for s=%s, jump=%s, "
-											+ "segParticTarget=%s\n\tmodMFD: %s",
-											s, jump, segParticTarget, modMFD);
-									
-									if (assignment) {
-										// we're still figuring out what controls what, just note the target nucleation
-										// rate for this jump on each involved section
-										
-										for (int b=0; b<bins.size(); b++) {
-											double binTargetNuclRate = binnedSegTargetNuclRates.get(b);
-											int index = bins.get(b) - sectMinMagIndexes[s];
-											if (binTargetNuclRate > assignedJumpRates[index]) {
-												// this jump provides more available nucleation rate to this bin than
-												// anything we have encountered thus far
-												assignedJumpRates[index] = binTargetNuclRate;
-												assignedJumps[index] = jump;
-											}
-										}
-									} else {
-										// 2nd round, we're applying it to assigned bins
-										
-										// calculate the nucleation rate for these sections according to the original G-R,
-										// but scaled to match our current nucleation rate
-										double origNuclTarget = 0d;
-										for (int bin : bins)
-											origNuclTarget += origBinContribution[bin]*curNuclRates[s];
-										
-										Preconditions.checkState(origNuclTarget > 0d,
-												"Segmentation implied nucleation rate is zero for s=%s, jump=%s, "
-												+ "\n\tmodMFD: %s",
-												s, jump,  modMFD);
-										
-										// segmentation rate for these bins on this section should be the lesser of those two
-										double targetNuclRate = Math.min(segNuclTarget, origNuclTarget);
-										
-										if (debug) {
-											List<Integer> sorted = new ArrayList<>(bins);
-											Collections.sort(sorted);
-											System.out.println("Jump: "+jump+", prob="+segJumpProbsMap.get(jump));
-											System.out.print("\t"+sorted.size()+" bins:");
-											for (int bin : sorted)
-												System.out.print(" "+(float)refMFD.getX(bin));
-											System.out.println();
-											System.out.println("\tTargets: partic="+segParticTarget+", nucl="+segNuclTarget);
-											System.out.println("\tCur jump rate: partic="+curJumpParticRate+", nucl="+curJumpNuclRate);
-											System.out.println("\tOrig nucl target="+origNuclTarget);
-										}
-										
-										if ((float)targetNuclRate != (float)curJumpNuclRate) {
-											changed = true;
-											// now rescale these bins to match
-											double scalar = targetNuclRate/curJumpNuclRate;
-											if (debug) {
-												System.out.println("\tscalar = "+targetNuclRate+" / "+curJumpNuclRate+" = "+scalar);
-											}
-											Preconditions.checkState(Double.isFinite(scalar),
-													"Bad scalar=%s for segNuclTarget=%s, origNuclTarget=%s, curJumpJuclRate=%s",
-													scalar, segNuclTarget, origNuclTarget, curJumpNuclRate);
-											for (int bin : bins)
-												modMFD.set(bin, modMFD.getY(bin)*scalar);
-										}
-									}
-								}
-								
-								if (assignment) {
-									// process final assignments: jump with the most available rate in each bin
-									jumpBinAssignments = new HashMap<>();
-									for (int b=0; b<assignedJumps.length; b++) {
-										if (assignedJumps[b] != null) {
-											int index = sectMinMagIndexes[s]+b;
-											List<Integer> jumpMapped = jumpBinAssignments.get(assignedJumps[b]);
-											if (jumpMapped == null) {
-												jumpMapped = new ArrayList<>();
-												jumpBinAssignments.put(assignedJumps[b], jumpMapped);
-											}
-											jumpMapped.add(index);
-										}
-									}
-								}
-							}
-							
-							if (changed) {
-								if (debug) {
-									System.out.println("Post-loop MFD");
-									for (int j=sectMinMagIndexes[s]; j<=sectMaxMagIndexes[s]; j++)
-										System.out.println("\t"+(float)modMFD.getX(j)+"\t"+(float)modMFD.getY(j));
-									System.out.println("\tWill scale mooment to match "+targetSupraMoRates[s]
-											+" (cur="+modMFD.getTotalMomentRate()+")");
-								}
-								// now rescale the MFD to match the original target moment rate
-								modMFD.scaleToTotalMomentRate(targetSupraMoRates[s]);
-							}
-						} // end section loop
-					} // end iteration loop
-
-					double sumOrigRate = 0d;
-					double sumModRate = 0d;
-					for (int s=0; s<numSects; s++) {
-						IncrementalMagFreqDist origMFD = sectSupraSeisMFDs.get(s);
-						sumOrigRate += origMFD.calcSumOfY_Vals();
-						IncrementalMagFreqDist modMFD = modSupraSeisMFDs.get(s);
-						if (modMFD == null) {
-							sumModRate += origMFD.calcSumOfY_Vals();
-						} else {
-							sumModRate += modMFD.calcSumOfY_Vals();
-							int numChanged = 0;
-							for (int i=0; i<modMFD.size(); i++)
-								if ((float)modMFD.getY(i) != (float)origMFD.getY(i))
-									numChanged++;
-							segBins += numChanged;
-							if (numChanged > 0)
-								segSects++;
-//							for (int[] bins : sectSegTrackers[s].getControllingJumpBinsMap(sectMinMagIndexes[s]).values())
-//								segBinsAvail += bins.length;
-							sectSupraSeisMFDs.set(s, modMFD);
-							segBinsAvail += sectSegTrackers[s].numControlledBins;
-						}
-					}
-					
-					System.out.println("Segmentation constraint affected "+segSects+"/"+numSects
-							+" sections and "+segBins+"/"+segBinsAvail+" bins");
-					double fractDiff = (sumModRate-sumOrigRate)/sumOrigRate;
-					String pDiffStr = new DecimalFormat("0.00%").format(fractDiff);
-					if (fractDiff > 0)
-						pDiffStr = "+"+pDiffStr;
-					System.out.println("\tTotal supra-seis rate change: "
-							+(float)sumOrigRate+" -> "+(float)sumModRate+" ("+pDiffStr+")");
 				}
 			}
 			
 			System.out.println("Fraction supra-seismogenic stats: "+fractSuprasTrack);
-			
-			if (adjustForActualRupSlips) {
-				System.out.println("Adjusting targets to match actual rupture slips");
-				Preconditions.checkState(sparseGR, "Scaling relationship adjustments only work with sparseGR=true");
-				AveSlipModule aveSlips = rupSet.requireModule(AveSlipModule.class);
-				SlipAlongRuptureModel slipAlong = adjustForSlipAlong ? rupSet.requireModule(SlipAlongRuptureModel.class) : null;
-				if (slipAlong != null && slipAlong.isUniform())
-					// it's a uniform model, don't bother calculating slip along
-					slipAlong = null;
-				
-				double[] calcSectSlips = new double[numSects];
-				for (int r=0; r<rupSet.getNumRuptures(); r++) {
-					List<Integer> sectIDs = rupSet.getSectionsIndicesForRup(r);
-					double[] slips;
-					if (slipAlong == null) {
-						slips = new double[sectIDs.size()];
-						double aveSlip = aveSlips.getAveSlip(r);
-						for (int i=0; i<slips.length; i++)
-							slips[i] = aveSlip;
-					} else {
-						slips = slipAlong.calcSlipOnSectionsForRup(rupSet, aveSlips, r);
-						Preconditions.checkState(slips.length == sectIDs.size());
-					}
-					int magIndex = refMFD.getClosestXIndex(rupSet.getMagForRup(r));
-					double rupArea = rupSet.getAreaForRup(r);
-					for (int i=0; i<slips.length; i++) {
-						int s = sectIDs.get(i);
-						if (sectRupUtilizations.get(s).get(r)) {
-							// this section did end up using this rupture
-							double sectBinNuclRate = sectSupraSeisMFDs.get(s).getY(magIndex);
-							if (sectBinNuclRate > 0d) {
-								double particRate = sectBinNuclRate*rupArea/rupSet.getAreaForSection(s);
-								calcSectSlips[s] += slips[i]*particRate/(double)sectRupInBinCounts[s][magIndex];
-							}
-						}
-					}
-				}
-				MinMaxAveTracker slipAdjustTrack = new MinMaxAveTracker();
-				for (int s=0; s<calcSectSlips.length; s++) {
-					if (slipRates[s] > 0 && targetMoRates[s] > 0) {
-						double slipRatio = slipRates[s] / calcSectSlips[s];
-						slipAdjustTrack.addValue(slipRatio);
-						
-						sectSupraSeisMFDs.get(s).scale(slipRatio);
-						double origSubMoRate = targetMoRates[s] - targetSupraMoRates[s];
-						targetSupraMoRates[s] *= slipRatio;
-						targetSupraMoRates[s] = origSubMoRate + targetSupraMoRates[s];
-						sectFractSupras[s] = targetSupraMoRates[s]/targetSupraMoRates[s];
-					}
-				}
-				System.out.println("Actual slip model adjustment stats: "+slipAdjustTrack);
-			}
 			
 			if (subSeisMoRateReduction == SubSeisMoRateReduction.SYSTEM_AVG_IMPLIED_FROM_SUPRA_B) {
 				// need to re-balance to use average supra-seis fract
@@ -1174,51 +724,20 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			}
 			
 			List<IncrementalMagFreqDist> dataImpliedSectSupraSeisMFDs = null;
-			if (dataConstraints != null) {
-				Preconditions.checkNotNull(dataConstraintExpandToBound);
+			if (uncertAdjDataConstraints != null) {
+				Preconditions.checkNotNull(uncertAdjDataTargetBound);
 				
 				dataImpliedSectSupraSeisMFDs = new ArrayList<>();
 				
-				ExecutorService exec = Executors.newFixedThreadPool(FaultSysTools.defaultNumThreads());
-				
-				List<Future<DataEstCallable>> futures = new ArrayList<>();
-				
-				for (int s=0; s<numSects; s++) {
-					FaultSection sect = rupSet.getFaultSectionData(s);
-					
+				for (int s=0; s<numSects; s++)
 					dataImpliedSectSupraSeisMFDs.add(null);
-					
-					if (targetSupraMoRates[s] == 0d || slipRates[s] == 0d)
-						continue;
-					
-					// see if we have any data constraints that imply a different MFD for this section,
-					// we will later adjust uncertainties accordingly
-					List<DataSectNucleationRateEstimator> constraints = new ArrayList<>();
-					for (DataSectNucleationRateEstimator constraint : dataConstraints)
-						if (constraint.appliesTo(sect))
-							constraints.add(constraint);
-					
-					if (!constraints.isEmpty()) {
-						System.out.println("\tCalculating MFDs implied by "+constraints.size()
-							+" data constraints for sect "+s+". "+sect.getSectionName());
-						
-						double relDefModStdDev = slipRateStdDevs[s]/slipRates[s];
-						double supraMoRate = targetSupraMoRates[s];
-						
-						IncrementalMagFreqDist supraSeisMFD = sectSupraSeisMFDs.get(s);
-						
-						List<Integer> rups = new ArrayList<>();
-						List<Double> mags = new ArrayList<>();
-						fillInRupsAndMags(sectRupUtilizations.get(s), rups, mags);
-						
-						UncertainDataConstraint moRateBounds = new UncertainDataConstraint(null, supraMoRate,
-								new Uncertainty(supraMoRate*relDefModStdDev));
-						
-						futures.add(exec.submit(new DataEstCallable(sect, constraints, supraSeisMFD, mags, rups, moRateBounds)));
-					}
-				}
 				
-				System.out.println("Waiting on "+futures.size()+" data estimation futures...");
+				for (SectNucleationMFD_Estimator estimator : uncertAdjDataConstraints)
+					estimator.init(rupSet, sectSupraSeisMFDs, targetSupraMoRates, slipRates, slipRateStdDevs,
+							sectRupUtilizations, sectMinMagIndexes, sectMaxMagIndexes, sectRupInBinCounts, refMFD);
+				
+				List<Future<DataEstCallable>> futures = estimateSectNuclMFDs(uncertAdjDataConstraints, slipRates,
+						slipRateStdDevs, targetSupraMoRates, sectRupUtilizations, sectSupraSeisMFDs, exec);
 				
 				for (Future<DataEstCallable> future : futures) {
 					DataEstCallable call;
@@ -1231,8 +750,6 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				}
 				
 				System.out.println("Done with data estimation.");
-				
-				exec.shutdown();
 			}
 			
 			UncertainIncrMagFreqDist totalOnFaultSupra = calcRegionalSupraTarget(refMFD, null, sectSupraSeisMFDs,
@@ -1302,78 +819,53 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			SubSeismoOnFaultMFDs subSeismoOnFaultMFDs, List<UncertainIncrMagFreqDist> supraSeismoOnFaultMFDs) {
 			 */
 			
+			if (exec != null)
+				exec.shutdown();
+			
 			return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, totalTargetMFD, totalOnFaultSupra,
 					totalOnFaultSub, mfdConstraints, subSeismoMFDs, uncertSectSupraSeisMFDs, sectSlipRates);
 		}
-		
-		private static class SectSegmentationJumpTracker {
+
+		public List<Future<DataEstCallable>> estimateSectNuclMFDs(List<? extends SectNucleationMFD_Estimator> estimators,
+				double[] slipRates, double[] slipRateStdDevs, double[] targetSupraMoRates, List<BitSet> sectRupUtilizations,
+				List<IncrementalMagFreqDist> sectSupraSeisMFDs,ExecutorService exec) {
+			List<Future<DataEstCallable>> futures = new ArrayList<>();
 			
-			private BitSet unityProbBins;
-			private Map<Integer, HashSet<Jump>> binJumps;
-			private int numControlledBins = 0;
-			private Map<Jump, List<Integer>> jumpBinsMap;
-			
-			public SectSegmentationJumpTracker(int numBins) {
-				this.unityProbBins = new BitSet(numBins);
-				binJumps = new HashMap<>();
-			}
-			
-			public boolean controlled() {
-				return numControlledBins > 0;
-			}
-			
-			public boolean notConntrolled() {
-				return numControlledBins == 0;
-			}
-			
-			public void processRupture(Jump worstJump, double worstJumpProb, int magIndex) {
-				if (unityProbBins.get(magIndex))
-					// this bin already has a rupture without segmentation
-					return;
-				if (worstJumpProb == 1d) {
-					// not controlled by segmentation
-					HashSet<Jump> prev = binJumps.remove(magIndex);
-					if (prev != null)
-						// was controlled, now isn't
-						numControlledBins--;
-					unityProbBins.set(magIndex);
-				} else {
-					Preconditions.checkNotNull(worstJump);
-					HashSet<Jump> myBinJumps = binJumps.get(magIndex);
-					if (myBinJumps == null) {
-						// under control for the first time
-						numControlledBins++;
-						myBinJumps = new HashSet<>();
-						binJumps.put(magIndex, myBinJumps);
-					}
-					myBinJumps.add(worstJump);
+			for (int s=0; s<slipRates.length; s++) {
+				FaultSection sect = rupSet.getFaultSectionData(s);
+				
+				if (targetSupraMoRates[s] == 0d || slipRates[s] == 0d)
+					continue;
+				
+				// see if we have any data constraints that imply a different MFD for this section,
+				// we will later adjust uncertainties accordingly
+				List<SectNucleationMFD_Estimator> constraints = new ArrayList<>();
+				for (SectNucleationMFD_Estimator constraint : estimators)
+					if (constraint.appliesTo(sect))
+						constraints.add(constraint);
+				
+				if (!constraints.isEmpty()) {
+//					System.out.println("\tCalculating MFDs implied by "+constraints.size()
+//						+" data constraints for sect "+s+". "+sect.getSectionName());
+					
+					double relDefModStdDev = slipRateStdDevs[s]/slipRates[s];
+					double supraMoRate = targetSupraMoRates[s];
+					
+					IncrementalMagFreqDist supraSeisMFD = sectSupraSeisMFDs.get(s);
+					
+					List<Integer> rups = new ArrayList<>();
+					List<Double> mags = new ArrayList<>();
+					fillInRupsAndMags(sectRupUtilizations.get(s), rups, mags);
+					
+					UncertainDataConstraint moRateBounds = new UncertainDataConstraint(null, supraMoRate,
+							new Uncertainty(supraMoRate*relDefModStdDev));
+					
+					futures.add(exec.submit(new DataEstCallable(sect, constraints, supraSeisMFD, mags, rups, moRateBounds)));
 				}
 			}
 			
-			public Map<Integer, HashSet<Jump>> getBinJumpMappings() {
-				return binJumps;
-			}
-			
-			public Map<Jump, List<Integer>> getJumpBinsMap(int sectMinIndex) {
-				if (jumpBinsMap != null)
-					return jumpBinsMap;
-				Preconditions.checkState(controlled());
-				Map<Jump, List<Integer>> map = new HashMap<>();
-				for (int index : binJumps.keySet()) {
-					for (Jump jump : binJumps.get(index)) {
-						if (index >= sectMinIndex) {
-							List<Integer> list = map.get(jump);
-							if (list == null) {
-								list = new ArrayList<>();
-								map.put(jump, list);
-							}
-							list.add(index);
-						}
-					}
-				}
-				jumpBinsMap = map;
-				return jumpBinsMap;
-			}
+			System.out.println("Waiting on "+futures.size()+" data estimation futures...");
+			return futures;
 		}
 		
 		/**
@@ -1395,7 +887,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		private class DataEstCallable implements Callable<DataEstCallable> {
 			
 			private FaultSection sect;
-			private List<DataSectNucleationRateEstimator> constraints;
+			private List<SectNucleationMFD_Estimator> constraints;
 			private IncrementalMagFreqDist supraSeisMFD;
 			private List<Double> mags;
 			private List<Integer> rups;
@@ -1403,7 +895,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			
 			private IncrementalMagFreqDist impliedMFD;
 
-			public DataEstCallable(FaultSection sect, List<DataSectNucleationRateEstimator> constraints,
+			public DataEstCallable(FaultSection sect, List<SectNucleationMFD_Estimator> constraints,
 					IncrementalMagFreqDist supraSeisMFD, List<Double> mags, List<Integer> rups,
 					UncertainDataConstraint moRateBounds) {
 				this.sect = sect;
@@ -1418,7 +910,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			public DataEstCallable call() throws Exception {
 				List<IncrementalMagFreqDist> impliedMFDs = new ArrayList<>();
 				
-				for (DataSectNucleationRateEstimator constraint : constraints) {
+				for (SectNucleationMFD_Estimator constraint : constraints) {
 					// nucleation mfd implied by this constraint
 					IncrementalMagFreqDist implied = constraint.estimateNuclMFD(
 							sect, supraSeisMFD, rups, mags, moRateBounds, sparseGR);
@@ -1610,7 +1102,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				}
 				
 				UncertainBoundedIncrMagFreqDist impliedMFD = new UncertainBoundedIncrMagFreqDist(
-						sumImpliedMFD, sumLowerMFD, sumUpperMFD, dataConstraintExpandToBound);
+						sumImpliedMFD, sumLowerMFD, sumUpperMFD, uncertAdjDataTargetBound);
 				
 				// adjust the standard deviations of the regional mfd to reach the implied MFD
 				System.out.println("Adjusting regional MFD to match data bounds");
@@ -1641,7 +1133,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			if (impliedMFD instanceof UncertainBoundedIncrMagFreqDist)
 				boundedImplied = (UncertainBoundedIncrMagFreqDist)impliedMFD;
 			else if (impliedMFD instanceof UncertainIncrMagFreqDist)
-				boundedImplied = ((UncertainIncrMagFreqDist)impliedMFD).estimateBounds(dataConstraintExpandToBound);
+				boundedImplied = ((UncertainIncrMagFreqDist)impliedMFD).estimateBounds(uncertAdjDataTargetBound);
 
 			
 			EvenlyDiscretizedFunc stdDevs = new EvenlyDiscretizedFunc(mfd.getMinX(), mfd.size(), mfd.getDelta());
@@ -1667,7 +1159,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				double closestData = Double.NaN;
 				for (double dataRate : dataRates) {
 					double diff = Math.abs(dataRate - rate);
-					double impliedStdDev = dataConstraintExpandToBound.estimateStdDev(rate, rate-diff, rate+diff);
+					double impliedStdDev = uncertAdjDataTargetBound.estimateStdDev(rate, rate-diff, rate+diff);
 					if (impliedStdDev < minImpliedStdDev) {
 						minImpliedStdDev = impliedStdDev;
 						closestData = dataRate;
@@ -1753,7 +1245,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		builder.addSectCountUncertainties(false);
 		builder.totalTargetMFD(rupSet.requireModule(InversionTargetMFDs.class).getTotalRegionalMFD());
 		builder.subSeisMoRateReduction(SubSeisMoRateReduction.SUB_SEIS_B_1);
-		builder.forSegmentationModel(new Shaw07JumpDistProb(1, 3));
+		builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(new Shaw07JumpDistProb(1, 3)));
+//		builder.forSegmentationModel(new Shaw07JumpDistProb(1, 3));
 //		builder.forSegmentationModel(new JumpProbabilityCalc() {
 //			
 //			@Override
@@ -1773,9 +1266,10 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 //		});
 //		builder.forImprobModel(MaxJumpDistModels.ONE.getModel(rupSet));
 //		builder.adjustForActualRupSlips(true, false);
-		builder.adjustForActualRupSlips(false, false);
+//		builder.adjustForActualRupSlips(false, false);
+		builder.adjustTargetsForData(new ScalingRelSlipRateMFD_Estimator(false));
 		
-		List<DataSectNucleationRateEstimator> dataConstraints = new ArrayList<>();
+		List<SectNucleationMFD_Estimator> dataConstraints = new ArrayList<>();
 		dataConstraints.add(new APrioriSectNuclEstimator(
 				rupSet, UCERF3InversionInputGenerator.findParkfieldRups(rupSet), 1d/25d, 0.1d/25d));
 		dataConstraints.addAll(PaleoSectNuclEstimator.buildPaleoEstimates(rupSet, true));
@@ -1814,7 +1308,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		Preconditions.checkState(mfdOutput.exists() || mfdOutput.mkdir());
 		plot.writePlot(rupSet, null, "Test Model", mfdOutput);
 		
-		if (builder.segModel != null) {
+		if (builder.targetAdjDataConstraints != null && !builder.targetAdjDataConstraints.isEmpty()
+				&& builder.targetAdjDataConstraints.get(0) instanceof SegmentationImpliedSectNuclMFD_Estimator) {
 			// debug
 			int[] debugSects = {
 					100, // Bicycle Lake
@@ -1823,11 +1318,11 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					2063, // San Diego Trough
 			};
 
-			builder.forSegmentationModel(null);
+			builder.clearTargetAdjustments();
 			SupraSeisBValInversionTargetMFDs targetNoSeg = builder.build();
 			
 			SupraSeisBValInversionTargetMFDs targetOrigGR = null;
-			if (builder.sparseGR && !builder.adjustForActualRupSlips) {
+			if (builder.sparseGR) {
 				// rebuild without sparse GR
 				builder.sparseGR(false);
 				targetOrigGR = builder.build();

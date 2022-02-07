@@ -82,7 +82,7 @@ public class GRParticRateEstimator implements SectParticipationRateEstimator {
 				rupsPerBin[refFunc.getClosestXIndex(mag)]++;
 			}
 			// nulceation GR
-			IncrementalMagFreqDist nuclGR = DataSectNucleationRateEstimator.buildGRFromBVal(
+			IncrementalMagFreqDist nuclGR = SectNucleationMFD_Estimator.buildGRFromBVal(
 					refFunc, rupMags, supraSeisB, moRate, true);
 			
 			// spread to all ruptures evenly to get partic rate
