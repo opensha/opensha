@@ -3,7 +3,9 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -59,6 +61,30 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 
 	private double[] targetSectSupraMoRates;
 	private double[] targetSectSupraSlipRates;
+	
+	private MultiBinDistributionMethod binDistMethod = MultiBinDistributionMethod.CAPPED_DISTRIBUTED;
+	
+	private static final int DEBUG_SECT = 1832; // Mojave N
+//	private static final int DEBUG_SECT = 100; // Bicycle Lake
+	private static final DecimalFormat eDF = new DecimalFormat("0.000E0");
+	
+	// how should we handle jumps that use multiple bins?
+	public enum MultiBinDistributionMethod {
+		/**
+		 * Simplest method where each bin assumes that it has access to the entire segmentation constraint implied rate
+		 */
+		GREEDY,
+		/**
+		 * Most conservative (probably overly so) approach where the rate associated with each jump is distributed
+		 * across all bins utilizing that jump according to the original G-R proportions
+		 */
+		FULLY_DISTRIBUTED,
+		/**
+		 * Same as {@link #FULLY_DISTRIBUTED}, but smarter in that it saves any leftover segmentation implied rate
+		 * that is above the G-R ceiling and redistributes it to larger magnitude bins that are deficient
+		 */
+		CAPPED_DISTRIBUTED,
+	}
 
 	public SegmentationImpliedSectNuclMFD_Estimator(JumpProbabilityCalc segModel) {
 		this.segModel = segModel;
@@ -91,8 +117,7 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 			for (int r=0; r<cRups.size(); r++) {
 				ClusterRupture rup = cRups.get(r);
 				
-				// within a single rupture, the worst jump will control
-				Jump worstJump = null;
+				HashSet<Jump> jumps = new HashSet<>();
 				double worstProb = 1d;
 				for (Jump origJump : rup.getJumpsIterable()) {
 					Jump jump;
@@ -117,11 +142,8 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 						continue rupLoop;
 					}
 					// we'll need to track this jump, it's between 0 and 1
-					if (jumpProb < worstProb) {
-						// new worst
-						worstProb = jumpProb;
-						worstJump = jump;
-					}
+					jumps.add(jump);
+					worstProb = Math.min(worstProb, jumpProb);
 				}
 
 				double mag = rupSet.getMagForRup(r);
@@ -130,7 +152,7 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 				// tell each section about this rupture
 				for (FaultSubsectionCluster cluster : rup.getClustersIterable())
 					for (FaultSection sect : cluster.subSects)
-						sectSegTrackers[sect.getSectionId()].processRupture(worstJump, worstProb, magIndex);
+						sectSegTrackers[sect.getSectionId()].processRupture(jumps, worstProb, magIndex);
 			}
 		
 		System.out.println("Estimating section nucleation MFDs implied by "+segModel.getName());
@@ -231,10 +253,11 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 					// section is not controlled by any seg-affected ruptures
 					continue;
 				
-//				boolean debug = s == 1832;
-				boolean debug = false;
+				boolean debug = s == DEBUG_SECT;
 				
-				// our woking copy of the supra-seis MFD
+				// the original (unmodified) supra-seis MFD for this section
+				IncrementalMagFreqDist origMFD = origSectSupraSeisMFDs.get(s);
+				// our working copy of the supra-seis MFD
 				IncrementalMagFreqDist modMFD = modSupraSeisMFDs.get(s);
 				// original bin rates expressed as a fraction of total nucleation rate
 				double[] origBinContribution = origBinContributions.get(s);
@@ -247,144 +270,163 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 					for (int j=sectMinMagIndexes[s]; j<=sectMaxMagIndexes[s]; j++)
 						System.out.println("\t"+(float)modMFD.getX(j)+"\t"+(float)modMFD.getY(j));
 				}
+
+				Map<Jump, List<Integer>> fullJumpBins = tracker.getIndependentJumpBinsMapping(
+						curJumpMaxParticipationRates, sectMinMagIndexes[s]);
+				
+				// don't allow the rate in any bin to exceed its original G-R share of the total nucleation rate
+				double[] ceilRates = new double[modMFD.size()];
+				for (int m=0; m<modMFD.size(); m++)
+					ceilRates[m] = origBinContribution[m]*curNuclRates[s];
+				
+				if (debug) {
+					System.out.println("Ceiling rates:");
+					for (int m=sectMinMagIndexes[s]; m<=sectMaxMagIndexes[s]; m++)
+						System.out.print("\t"+(float)refMFD.getX(m)+"="+eDF.format(ceilRates[m]));
+					System.out.println();
+				}
+				
+				// available segmentation rate in each bin, summed over independent jumps operating in that bin
+				double[] availSegRates = new double[ceilRates.length];
+				
+				Collection<Jump> jumps = fullJumpBins.keySet();
+				
+				if (binDistMethod == MultiBinDistributionMethod.CAPPED_DISTRIBUTED) {
+					// need to sort them such that jumps using larger magnitude bins are processed later
+					jumps = new ArrayList<>(jumps);
+					Collections.sort((List<Jump>)jumps, new Comparator<Jump>() {
+
+						@Override
+						public int compare(Jump o1, Jump o2) {
+							List<Integer> bins1 = fullJumpBins.get(o1);
+							List<Integer> bins2 = fullJumpBins.get(o2);
+							int cmp = Integer.compare(bins1.get(bins1.size()-1), bins2.get(bins2.size()-1));
+							if (cmp == 0)
+								cmp = Integer.compare(bins1.get(0), bins2.get(0));
+							return cmp;
+						}
+					});
+				}
+				
+				boolean[] affectedBins = new boolean[ceilRates.length];
+				
+				for (Jump jump : jumps) {
+					List<Integer> bins = fullJumpBins.get(jump);
+					Preconditions.checkState(bins.size() > 0);
+					for (int bin : bins)
+						affectedBins[bin] = true;
+					
+					// this is our target segmentation implied participation rate for this jump, which we can't exceed
+					double segParticTarget = curJumpMaxParticipationRates.get(jump);
+					if (segParticTarget == 0d)
+						// this jump uses zero-rates sections and can be ignored
+						continue;
+					
+					if (debug)
+						System.out.println("Jump: "+jump+"\tsegParticTarget="+segParticTarget);
+					
+					if (binDistMethod == MultiBinDistributionMethod.GREEDY) {
+						// simplest method, but may not actually be consistent with the segmentation constraint
+						
+						// for each bin calculation, assume the best case scenario in which that bin is allowed to use
+						// the entire segmentation rate (in order to make the minimum viable adjustment)
+						for (int bin : bins)
+							availSegRates[bin] += segParticTarget/nuclToParticScalars[bin-sectMinMagIndexes[s]];
+					} else if (binDistMethod == MultiBinDistributionMethod.FULLY_DISTRIBUTED
+							|| binDistMethod == MultiBinDistributionMethod.CAPPED_DISTRIBUTED) {
+						// according to the original GR, figure out the fraction of the participation rate associated
+						// with each bin for this jump
+						double origTotJumpPartic = 0d;
+						double[] origJumpBinPartics = new double[bins.size()];
+						for (int b=0; b<origJumpBinPartics.length; b++) {
+							int bin = bins.get(b);
+							double origBinNuclRate = origMFD.getY(bin);
+							double origBinParticRate = origBinNuclRate*nuclToParticScalars[bin-sectMinMagIndexes[s]];
+							origTotJumpPartic += origBinParticRate;
+							origJumpBinPartics[b] = origBinParticRate;
+						}
+						
+						double excessPartic = 0d;
+						for (int b=0; b<origJumpBinPartics.length; b++) {
+							int bin = bins.get(b);
+							// original bin fraction of the participation rate associated with this jump
+							double origJumpBinParticFract = origJumpBinPartics[b]/origTotJumpPartic;
+							// use that as a proportion to divide up the segmentation implied participation rate:
+							// 		current fraction * total budget = budgeted amount in this bin
+							double binTargetParticRate = segParticTarget*origJumpBinParticFract;
+							// convert that budget back to a nucleation rate
+							double binTargetNuclRate = binTargetParticRate/nuclToParticScalars[bin-sectMinMagIndexes[s]];
+							
+							if (binDistMethod == MultiBinDistributionMethod.CAPPED_DISTRIBUTED) {
+								// check cap
+								double newRate = availSegRates[bin] + binTargetNuclRate;
+								if (newRate > ceilRates[bin]) {
+									// we have some excess that we can redistribute at the end
+									double excessNucl = newRate - ceilRates[bin];
+									excessPartic += excessNucl * nuclToParticScalars[bin-sectMinMagIndexes[s]];
+									newRate = ceilRates[bin];
+								}
+								availSegRates[bin] = newRate;
+							} else {
+								availSegRates[bin] += binTargetNuclRate;
+							}
+						}
+						
+						if (binDistMethod == MultiBinDistributionMethod.CAPPED_DISTRIBUTED && excessPartic > 0) {
+							// we have excess rate to redistribute
+							for (int bin : bins) {
+								if (availSegRates[bin] < ceilRates[bin]) {
+									// this bin has not yet hit the ceiling, fill it
+									// the amount of nucleation rate to be filled
+									double binAvailNucl = ceilRates[bin] - availSegRates[bin];
+									// convert that to a participation rate
+									double particScalar = nuclToParticScalars[bin-sectMinMagIndexes[s]];
+									double binAvailPartic = binAvailNucl * particScalar;
+									// take the lesser of the needed participation rate and that which we have available
+									double utilizedPartic = Math.min(excessPartic, binAvailPartic);
+									// convert back to a nucleation rate
+									double utilizedNucl = utilizedPartic / particScalar;
+									// apply it
+									availSegRates[bin] += utilizedNucl;
+									excessPartic -= utilizedPartic;
+									if (excessPartic <= 0d)
+										// <= here in case we end up with a tiny negative floating point error, e.g., -1e16
+										break;
+								}
+							}
+						}
+					} else {
+						throw new IllegalStateException("Unsupported bin distribution method: "+binDistMethod);
+					}
+					
+					if (debug) {
+						System.out.print("Avail mag bins:");
+						for (int bin : bins)
+							System.out.print(" "+(float)refMFD.getX(bin));
+						System.out.println();
+						System.out.println("Avail seg rates after jump:");
+						for (int m=sectMinMagIndexes[s]; m<=sectMaxMagIndexes[s]; m++)
+							System.out.print("\t"+(float)refMFD.getX(m)+"="+eDF.format(availSegRates[m])
+									+(bins.contains(m) ? "*" : ""));
+						System.out.println();
+					}
+				}
 				
 				boolean changed = false;
 				
-				Jump[] assignedJumps = new Jump[1+sectMaxMagIndexes[s]-sectMinMagIndexes[s]];
-				double[] assignedJumpRates = new double[assignedJumps.length];
-				Map<Jump, List<Integer>> fullJumpBins = tracker.getJumpBinsMap(sectMinMagIndexes[s]);
-				Map<Jump, List<Integer>> jumpBinAssignments = null;
-				
-				/*
-				 * Loop through the calculation twice. The first time, we're deciding which jump is the
-				 * bottleneck for each bin for the case of multiple jumps affecting a single bin. In the
-				 * second time through, we actually modify the rates. 
-				 */
-				for (boolean assignment : new boolean[] { true, false } ) {
-					// map of jumps to affected bins
-					Map<Jump, List<Integer>> jumpBins = assignment ? fullJumpBins : jumpBinAssignments;
+				for (int m=0; m<modMFD.size(); m++) {
+					double prevRate = modMFD.getY(m);
+					if (prevRate == 0d || !affectedBins[m])
+						// empty or non-affected bin
+						continue;
 					
-					for (Jump jump : jumpBins.keySet()) {
-						List<Integer> bins = jumpBins.get(jump);
-						Preconditions.checkState(bins.size() > 0);
-						
-						// this is our target segmentation implied participation rate for this jump, which
-						// we can't exceed
-						double segParticTarget = curJumpMaxParticipationRates.get(jump);
-						if (segParticTarget == 0d)
-							// this jump uses zero-rates sections and can be ignored
-							continue;
-						
-						// calculate the current nucleation and participation rates for these bins
-						double curJumpNuclRate = 0d;
-						double curJumpParticRate = 0d;
-						for (int bin : bins) {
-							double binRate = modMFD.getY(bin);
-							curJumpNuclRate += binRate;
-//							System.out.println("bin="+bin+", minMag="+sectMinMagIndexes[s]+", refMFD.size()="
-//									+refMFD.size()+", tracker.binOffset="+tracker.binOffset);
-							curJumpParticRate += binRate*nuclToParticScalars[bin-sectMinMagIndexes[s]];
-						}
-						
-//						System.out.println(i+". s="+s+", jump="+jump);
-						
-						Preconditions.checkState(curJumpNuclRate > 0,
-								"Jump nucleation rate is 0! bins=%s,\n\t%s", bins, modMFD);
-						
-						// convert that participation target to a nucleation rate on this section
-						double segNuclTarget = 0d;
-						// also keep track of the bin-specific nucleation rate target for this constraint
-						List<Double> binnedSegTargetNuclRates = new ArrayList<>();
-						for (int bin : bins) {
-							double binRate = modMFD.getY(bin);
-							double particScalar = nuclToParticScalars[bin-sectMinMagIndexes[s]];
-							// fraction of the participation rate this bin is responsible for
-							double binParticFract = binRate*particScalar/curJumpParticRate;
-							double binTargetParticRate = segParticTarget*binParticFract;
-							double binTargetNuclRate = binTargetParticRate/particScalar;
-							segNuclTarget += binTargetNuclRate;
-							binnedSegTargetNuclRates.add(binTargetNuclRate);
-						}
-						Preconditions.checkState(segNuclTarget > 0d,
-								"Segmentation implied nucleation rate is zero for s=%s, jump=%s, "
-								+ "segParticTarget=%s\n\tmodMFD: %s",
-								s, jump, segParticTarget, modMFD);
-						
-						if (assignment) {
-							// we're still figuring out what controls what, just note the target nucleation
-							// rate for this jump on each involved section
-							
-							for (int b=0; b<bins.size(); b++) {
-								double binTargetNuclRate = binnedSegTargetNuclRates.get(b);
-								int index = bins.get(b) - sectMinMagIndexes[s];
-								if (binTargetNuclRate > assignedJumpRates[index]) {
-									// this jump provides more available nucleation rate to this bin than
-									// anything we have encountered thus far
-									assignedJumpRates[index] = binTargetNuclRate;
-									assignedJumps[index] = jump;
-								}
-							}
-						} else {
-							// 2nd round, we're applying it to assigned bins
-							
-							// calculate the nucleation rate for these sections according to the original G-R,
-							// but scaled to match our current nucleation rate
-							double origNuclTarget = 0d;
-							for (int bin : bins)
-								origNuclTarget += origBinContribution[bin]*curNuclRates[s];
-							
-							Preconditions.checkState(origNuclTarget > 0d,
-									"Segmentation implied nucleation rate is zero for s=%s, jump=%s, "
-									+ "\n\tmodMFD: %s",
-									s, jump,  modMFD);
-							
-							// segmentation rate for these bins on this section should be the lesser of those two
-							double targetNuclRate = Math.min(segNuclTarget, origNuclTarget);
-							
-							if (debug) {
-								List<Integer> sorted = new ArrayList<>(bins);
-								Collections.sort(sorted);
-								System.out.println("Jump: "+jump+", prob="+segJumpProbsMap.get(jump));
-								System.out.print("\t"+sorted.size()+" bins:");
-								for (int bin : sorted)
-									System.out.print(" "+(float)refMFD.getX(bin));
-								System.out.println();
-								System.out.println("\tTargets: partic="+segParticTarget+", nucl="+segNuclTarget);
-								System.out.println("\tCur jump rate: partic="+curJumpParticRate+", nucl="+curJumpNuclRate);
-								System.out.println("\tOrig nucl target="+origNuclTarget);
-							}
-							
-							if ((float)targetNuclRate != (float)curJumpNuclRate) {
-								changed = true;
-								// now rescale these bins to match
-								double scalar = targetNuclRate/curJumpNuclRate;
-								if (debug) {
-									System.out.println("\tscalar = "+targetNuclRate+" / "+curJumpNuclRate+" = "+scalar);
-								}
-								Preconditions.checkState(Double.isFinite(scalar),
-										"Bad scalar=%s for segNuclTarget=%s, origNuclTarget=%s, curJumpJuclRate=%s",
-										scalar, segNuclTarget, origNuclTarget, curJumpNuclRate);
-								for (int bin : bins)
-									modMFD.set(bin, modMFD.getY(bin)*scalar);
-							}
-						}
-					}
+					double modRate = Math.min(ceilRates[m], availSegRates[m]);
 					
-					if (assignment) {
-						// process final assignments: jump with the most available rate in each bin
-						jumpBinAssignments = new HashMap<>();
-						for (int b=0; b<assignedJumps.length; b++) {
-							if (assignedJumps[b] != null) {
-								int index = sectMinMagIndexes[s]+b;
-								List<Integer> jumpMapped = jumpBinAssignments.get(assignedJumps[b]);
-								if (jumpMapped == null) {
-									jumpMapped = new ArrayList<>();
-									jumpBinAssignments.put(assignedJumps[b], jumpMapped);
-								}
-								jumpMapped.add(index);
-							}
-						}
-					}
+//					Preconditions.checkState(modRate > 0, "Bad modRate=%s for bin %s, ceilRate=%s, sumImpliedRate=%s",
+//							modRate, m, ceilRates[m], availSegRates[m]);
+					
+					changed = changed || modRate != prevRate;
+					modMFD.set(m, modRate);
 				}
 				
 				if (changed) {
@@ -440,9 +482,8 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 	private static class SectSegmentationJumpTracker {
 		
 		private BitSet unityProbBins;
-		private Map<Integer, HashSet<Jump>> binJumps;
+		private Map<Integer, HashSet<HashSet<Jump>>> binJumps;
 		private int numControlledBins = 0;
-		private Map<Jump, List<Integer>> jumpBinsMap;
 		
 		public SectSegmentationJumpTracker(int numBins) {
 			this.unityProbBins = new BitSet(numBins);
@@ -457,53 +498,98 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 			return numControlledBins == 0;
 		}
 		
-		public void processRupture(Jump worstJump, double worstJumpProb, int magIndex) {
+		public void processRupture(HashSet<Jump> jumps, double worstJumpProb, int magIndex) {
 			if (unityProbBins.get(magIndex))
 				// this bin already has a rupture without segmentation
 				return;
 			if (worstJumpProb == 1d) {
 				// not controlled by segmentation
-				HashSet<Jump> prev = binJumps.remove(magIndex);
+				HashSet<HashSet<Jump>> prev = binJumps.remove(magIndex);
 				if (prev != null)
 					// was controlled, now isn't
 					numControlledBins--;
 				unityProbBins.set(magIndex);
 			} else {
-				Preconditions.checkNotNull(worstJump);
-				HashSet<Jump> myBinJumps = binJumps.get(magIndex);
+				Preconditions.checkState(jumps != null && !jumps.isEmpty());
+				HashSet<HashSet<Jump>> myBinJumps = binJumps.get(magIndex);
 				if (myBinJumps == null) {
 					// under control for the first time
 					numControlledBins++;
 					myBinJumps = new HashSet<>();
 					binJumps.put(magIndex, myBinJumps);
 				}
-				myBinJumps.add(worstJump);
+				myBinJumps.add(jumps);
 			}
 		}
 		
-		public Map<Integer, HashSet<Jump>> getBinJumpMappings() {
-			return binJumps;
-		}
-		
-		public Map<Jump, List<Integer>> getJumpBinsMap(int sectMinIndex) {
-			if (jumpBinsMap != null)
-				return jumpBinsMap;
+		public Map<Jump, List<Integer>> getIndependentJumpBinsMapping(
+				Map<Jump, Double> curJumpMaxParticipationRates, int sectMinIndex) {
 			Preconditions.checkState(controlled());
 			Map<Jump, List<Integer>> map = new HashMap<>();
 			for (int index : binJumps.keySet()) {
-				for (Jump jump : binJumps.get(index)) {
-					if (index >= sectMinIndex) {
-						List<Integer> list = map.get(jump);
-						if (list == null) {
-							list = new ArrayList<>();
-							map.put(jump, list);
+				if (index < sectMinIndex)
+					continue;
+				HashSet<HashSet<Jump>> myBinJumps = binJumps.get(index);
+				
+				// reduce each set to the worst jump based on the current participation rates, keeping a set of
+				// independent jumps that control this bin
+				
+				// this is where we'll keep a set of truly independent jumps that control segmentation for this section
+				HashMap<Jump, HashSet<Jump>> indepControllingJumps = new HashMap<>();
+				// keep track of jumps that are shadowed by another jump, in that they are only accessible in ruptures
+				// that include a worse (shadowing) jump. if one of these shadowed jumps comes up later, we assume that
+				// the inversion will take the easier path and use the higher rate jump
+				HashMap<Jump, Jump> shadowedJumps = new HashMap<>();
+				
+				for (HashSet<Jump> jumps : myBinJumps) {
+					// each set here represents a unique path: ruptures that use this particular set of jumps and lie 
+					// in this mag bin
+					Preconditions.checkState(!jumps.isEmpty());
+					
+					// jump with the lowest available rate controls within any path
+					Jump controllingJump = null;
+					double minRate = Double.POSITIVE_INFINITY;
+					for (Jump jump : jumps) {
+						double rate = curJumpMaxParticipationRates.get(jump);
+						if (rate < minRate) {
+							minRate = rate;
+							controllingJump = jump;
 						}
-						list.add(index);
+					}
+					
+					if (indepControllingJumps.containsKey(controllingJump)) {
+						// we have already processed this controlling jump, add additional jumps that are
+						// shadowed by this controlling jump
+						for (Jump jump : jumps)
+							if (jump != controllingJump)
+								shadowedJumps.put(jump, controllingJump);
+						indepControllingJumps.get(controllingJump).addAll(jumps);
+					} else {
+						// this is a new controlling jump. see if it was previously shadowed by another (worse) jump
+						if (shadowedJumps.containsKey(controllingJump)) {
+							// it was previously shadowed by a worse jump, but is available without it, so we assume
+							// that the inversion will always choose this easier path and remove the old one
+							Jump prevControl = shadowedJumps.get(controllingJump);
+							for (Jump otherShadowed : indepControllingJumps.get(prevControl))
+								shadowedJumps.remove(otherShadowed);
+							Preconditions.checkNotNull(indepControllingJumps.remove(prevControl));
+						}
+						indepControllingJumps.put(controllingJump, new HashSet<>(jumps));
 					}
 				}
+				
+				for (Jump jump : indepControllingJumps.keySet()) {
+					List<Integer> list = map.get(jump);
+					if (list == null) {
+						list = new ArrayList<>();
+						map.put(jump, list);
+					}
+					list.add(index);
+				}
 			}
-			jumpBinsMap = map;
-			return jumpBinsMap;
+			for (List<Integer> list : map.values())
+				Collections.sort(list);
+			return map;
 		}
 	}
 
