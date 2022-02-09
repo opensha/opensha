@@ -1,22 +1,22 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 
+import java.io.IOException;
 import java.text.DecimalFormat;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.commons.math3.stat.StatUtils;
+import org.opensha.commons.calc.nnls.NNLSWrapper;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.BinaryJumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.DistDependentJumpProbabilityCalc;
 
@@ -80,8 +80,13 @@ public enum MaxJumpDistModels implements LogicTreeNode {
 		}
 		if (weight < 0) {
 			synchronized (this) {
-				if (weight < 0)
-					updateWeights(WEIGHT_TARGET_R0);
+				if (weight < 0) {
+					try {
+						invertForWeights();
+					} catch (IOException e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
+				}
 			}
 		}
 		return weight;
@@ -92,29 +97,103 @@ public enum MaxJumpDistModels implements LogicTreeNode {
 		return getShortName();
 	}
 	
-	private static void updateWeights(double r0) {
-		MaxJumpDistModels[] models = MaxJumpDistModels.values();
-		// sort by distance, decreasing
-		Arrays.sort(models, new Comparator<MaxJumpDistModels>() {
+	/**
+	 * 
+	 * @param cutoffDistanceArray - the set of distance cutoffs applied in the fault-system-solution inversions
+	 * @param dataList - the cutoff rate data (in same order as above)
+	 * @param target_ro - the target decay rate parameter (typically 3 km).
+	 * @throws IOException 
+	 */
+	private static void invertForWeights() throws IOException {
+		MaxJumpDistModels[] values = MaxJumpDistModels.values();
+		List<CSVFile<String>> dataCSVs = new ArrayList<>();
+		
+		for (MaxJumpDistModels value : values) {
+			String name = "/data/erf/nshm23/constraints/segmentation/hard_cutoff_csvs/"
+					+ "passthrough_rates_"+oDF.format(value.maxDist)+"km.csv";
+					
+			dataCSVs.add(CSVFile.readStream(MaxJumpDistModels.class.getResourceAsStream(name), true));
+		}
+		
+		invertForWeights(values, dataCSVs, WEIGHT_TARGET_R0);
+	}
+	
+	/**
+	 * 
+	 * @param cutoffDistanceArray - the set of distance cutoffs applied in the fault-system-solution inversions
+	 * @param dataList - the cutoff rate data (in same order as above)
+	 * @param target_ro - the target decay rate parameter (typically 3 km).
+	 */
+	public static void invertForWeights(MaxJumpDistModels[] values, List<CSVFile<String>> dataCSVs, double target_ro) {
+		Preconditions.checkState(values.length == dataCSVs.size());
+		// one column for each hard cutoff value, plus 1 for A
+		int numCols = values.length+1;
+		
+		// there's a header row, but we count that as we're adding an extra row for -exp(-r/ro) values
+		int numRows = dataCSVs.get(0).getNumRows();
 
-			@Override
-			public int compare(MaxJumpDistModels o1, MaxJumpDistModels o2) {
-				return Double.compare(o2.maxDist, o1.maxDist);
+		double[] d = new double[numRows];
+		d[d.length-1] = 1.0;  // sum of weights must equal 1.0; all other array elements are zero
+		
+		// matrix is [row][col]	
+		double[][] C = new double[numRows][numCols];
+		
+		for(int col=0; col<values.length; col++) {
+			CSVFile<String> csv = dataCSVs.get(col);
+			for (int row=0; row<numRows-1; row++)
+				C[row][col] = csv.getDouble(row+1, 1);
+			// put "1.0 in last row (sum of wts must equal 1.0)
+			C[numRows-1][col] = 1.0;
+		}
+
+		for(int row=0; row<numRows-1; row++) {
+			double r = dataCSVs.get(0).getDouble(row+1, 0);	// get distance from first column of any of the data objects
+			C[row][numCols-1] = -Math.exp(-r/target_ro);
+		}
+		C[numRows-1][numCols-1] = 0;
+		
+//		// write out matrices
+//		for(int r=0;r<numRows;r++) {
+//			System.out.print("\n");
+//			for(int c=0;c<numCols;c++) {
+//				System.out.print(C[r][c]+"\t");
+//			}
+//		}
+//		System.out.print("\n");
+//
+//		for(int r=0;r<numRows;r++) {
+//			System.out.println(d[r]);
+//		}
+		
+		// NNLS inversion:
+		NNLSWrapper nnls = new NNLSWrapper();
+
+		int nRow = C.length;
+		int nCol = C[0].length;
+		
+//		System.out.println("NNLS: nRow="+nRow+"; nCol="+nCol);
+		
+		double[] A = new double[nRow*nCol];
+		double[] x = new double[nCol];
+		
+		int i,j,k=0;
+			
+		for(j=0;j<nCol;j++) 
+			for(i=0; i<nRow;i++)	{
+				A[k]=C[i][j];
+				k+=1;
 			}
-		});
-		double[] jumpProbs = new double[models.length];
-		for (int i=0; i<jumpProbs.length; i++)
-			jumpProbs[i] = Shaw07JumpDistProb.calcJumpProbability(models[i].maxDist, 1, r0);
-		double[] probDeltas = new double[jumpProbs.length];
-		probDeltas[0] = jumpProbs[0];
-		for (int i=1; i<probDeltas.length; i++)
-			probDeltas[i] = jumpProbs[i]-probDeltas[i-1];
+		nnls.update(A,nRow,nCol);
 		
-		double sumDeltas = StatUtils.sum(probDeltas);
+		boolean converged = nnls.solve(d,x);
+		if(!converged)
+			throw new RuntimeException("ERROR:  NNLS Inversion Failed");
 		
-		for (int i=0; i<probDeltas.length; i++) {
-			double weight = probDeltas[i]/sumDeltas;
-			models[i].weight = weight;
+//		System.out.println("A value: "+x[x.length-1]);
+		
+		for (i=0; i<values.length; i++) {
+			values[i].weight = x[i];
+//			System.out.println(values[i].getShortName()+", weight="+(float)x[i]);
 		}
 	}
 	
