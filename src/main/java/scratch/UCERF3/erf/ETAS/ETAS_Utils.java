@@ -2548,7 +2548,7 @@ System.out.println(sectID+"\t"+primaryFromSupraArray[sectID]+"\t"+resultArray[se
 		SummedMagFreqDist trulyOffMFD = new SummedMagFreqDist(2.55, 8.45, 60);
 		GridSourceProvider gridProvider = erf.getGridSourceProvider();
 		for(int n=0;n<gridProvider.getGriddedRegion().getNodeCount();n++) {
-			ProbEqkSource src = erf.getGridSourceProvider().getSourceTrulyOffOnly(n, 1.0, false, BackgroundRupType.POINT);
+			ProbEqkSource src = erf.getGridSourceProvider().getSourceUnassociated(n, 1.0, false, BackgroundRupType.POINT);
 			if(src != null) {
 				for(ProbEqkRupture rup : src) {
 					trulyOffMFD.add(rup.getMag(), rup.getMeanAnnualRate(1.0));

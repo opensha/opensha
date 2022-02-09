@@ -6198,8 +6198,8 @@ public abstract class CompoundFSSPlots implements Serializable {
 				region = gridSources.getGriddedRegion();
 			
 			for (int i=0; i<region.getNumLocations(); i++) {
-				nodeSubSeisMFDs.put(i, gridSources.getNodeSubSeisMFD(i));
-				nodeUnassociatedMFDs.put(i, gridSources.getNodeUnassociatedMFD(i));
+				nodeSubSeisMFDs.put(i, gridSources.getMFD_SubSeisOnFault(i));
+				nodeUnassociatedMFDs.put(i, gridSources.getMFD_Unassociated(i));
 			}
 			List<? extends IncrementalMagFreqDist> subSeisMFDs = sol.getFinalSubSeismoOnFaultMFD_List();
 			

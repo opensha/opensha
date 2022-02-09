@@ -414,7 +414,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		if (gridProv != null) {
 			double minMag = 5d;
 			for (int i=0; i<gridProv.size(); i++) {
-				IncrementalMagFreqDist nodeMFD = gridProv.getNodeMFD(i);
+				IncrementalMagFreqDist nodeMFD = gridProv.getMFD(i);
 				for (int j=0; j<nodeMFD.size(); j++) {
 					double x = nodeMFD.getX(j);
 					if (x >= minMag)

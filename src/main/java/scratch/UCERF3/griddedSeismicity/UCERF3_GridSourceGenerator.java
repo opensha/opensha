@@ -217,12 +217,12 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	}
 
 	@Override
-	public IncrementalMagFreqDist getNodeSubSeisMFD(int idx) {
+	public IncrementalMagFreqDist getMFD_SubSeisOnFault(int idx) {
 		return nodeSubSeisMFDs.get(idx);
 	}
 
 	@Override
-	public IncrementalMagFreqDist getNodeUnassociatedMFD(int idx) {
+	public IncrementalMagFreqDist getMFD_Unassociated(int idx) {
 		IncrementalMagFreqDist mfd = realOffFaultMFD.deepClone();
 		mfd.scale(revisedSpatialPDF[idx]);
 		return mfd;

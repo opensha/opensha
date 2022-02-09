@@ -5384,7 +5384,7 @@ public class FaultSysSolutionERF_Calc {
 		GridSourceProvider gridSrcProvider = erf.getGridSourceProvider();
 		SummedMagFreqDist mfd1 = new SummedMagFreqDist(2.05,8.95,70);
 		for(int i=0;i<gridSrcProvider.getGriddedRegion().getNumLocations(); i++) {
-			IncrementalMagFreqDist mfd = gridSrcProvider.getNodeSubSeisMFD(i);
+			IncrementalMagFreqDist mfd = gridSrcProvider.getMFD_SubSeisOnFault(i);
 			if(mfd != null)
 				mfd1.addIncrementalMagFreqDist(mfd);
 //			else {

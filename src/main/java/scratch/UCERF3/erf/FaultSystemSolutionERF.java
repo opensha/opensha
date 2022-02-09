@@ -775,7 +775,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 			if (gridSources == null)
 				return null;
 			else
-				return gridSources.getSourceSubseismoOnly(iSource, timeSpan.getDuration(),
+				return gridSources.getSourceSubSeisOnFault(iSource, timeSpan.getDuration(),
 						applyAftershockFilter, bgRupType);
 		} else if(bgInclude.equals(EXCLUDE)) {
 			return null;
@@ -785,7 +785,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 			if (gridSources == null)
 				return null;
 			else
-				return gridSources.getSourceSubseismoOnly(iSource - numNonZeroFaultSystemSources, timeSpan.getDuration(),
+				return gridSources.getSourceSubSeisOnFault(iSource - numNonZeroFaultSystemSources, timeSpan.getDuration(),
 						applyAftershockFilter, bgRupType);
 		}
 	}
@@ -805,7 +805,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 			if (gridSources == null)
 				return null;
 			else
-				return gridSources.getSourceTrulyOffOnly(iSource, timeSpan.getDuration(),
+				return gridSources.getSourceUnassociated(iSource, timeSpan.getDuration(),
 						applyAftershockFilter, bgRupType);
 		} else if(bgInclude.equals(EXCLUDE)) {
 			return null;
@@ -815,7 +815,7 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 			if (gridSources == null)
 				return null;
 			else
-				return gridSources.getSourceTrulyOffOnly(iSource - numNonZeroFaultSystemSources, timeSpan.getDuration(),
+				return gridSources.getSourceUnassociated(iSource - numNonZeroFaultSystemSources, timeSpan.getDuration(),
 						applyAftershockFilter, bgRupType);
 		}
 	}

@@ -750,8 +750,8 @@ public class TrueMeanBuilder {
 				Preconditions.checkState(region.equals(prov.getGriddedRegion()));
 			}
 			for (int index=0; index<region.getNodeCount(); index++) {
-				addToMFD(nodeSubSeisMFDs, index, prov.getNodeSubSeisMFD(index), weight);
-				addToMFD(nodeUnassociatedMFDs, index, prov.getNodeUnassociatedMFD(index), weight);
+				addToMFD(nodeSubSeisMFDs, index, prov.getMFD_SubSeisOnFault(index), weight);
+				addToMFD(nodeUnassociatedMFDs, index, prov.getMFD_Unassociated(index), weight);
 			}
 		}
 		
