@@ -16,11 +16,20 @@ import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
 
 /**
- * Interface implemented by providers of gridded (sometimes referred to as
- * 'other') seismicity sources.
+ * Interface implemented by providers of gridded (sometimes referred to as 'other') seismicity sources. Each
+ * {@link GridSourceProvider} supplies a {@link GriddedRegion}, accessible via {@link #getGriddedRegion()}. Then, at
+ * each location in the {@link GriddedRegion}, a magnitude-frequency distribution (MFD) is supplied via
+ * {@link #getMFD(int)}. That MFD may be comprised of multiple components that are also available individually:
+ * sub-seismogenic ruptures associated with a modeled faults (see {@link #getMFD_SubSeisOnFault(int)}), and/or ruptures
+ * that are unassociated with any modeled fault (see {@link #getMFD_Unassociated(int)}).
+ * <p>
+ * Focal mechanisms at each grid location are available via the {@link #getFracStrikeSlip(int)},
+ * {@link #getFracReverse(int)}, and {@link #getFracNormal(int)} methods. {@link ProbEqkSource} implementations for are
+ * available via the {@link #getSource(int, double, boolean, BackgroundRupType)} method, and also via related methods
+ * for sub-seismogenic and/or unassociated sources only.
  * 
  * @author Peter Powers
- * @version $Id:$
+ * @see AbstractGridSourceProvider
  */
 public interface GridSourceProvider extends BranchAverageableModule<GridSourceProvider> {
 
