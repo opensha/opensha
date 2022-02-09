@@ -51,6 +51,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.P
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ScalingRelSlipRateMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SectNucleationMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator.MultiBinDistributionMethod;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -1245,7 +1246,9 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		builder.addSectCountUncertainties(false);
 		builder.totalTargetMFD(rupSet.requireModule(InversionTargetMFDs.class).getTotalRegionalMFD());
 		builder.subSeisMoRateReduction(SubSeisMoRateReduction.SUB_SEIS_B_1);
-		builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(new Shaw07JumpDistProb(1, 3)));
+		builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(new Shaw07JumpDistProb(1, 3),
+				MultiBinDistributionMethod.GREEDY));
+//				MultiBinDistributionMethod.CAPPED_DISTRIBUTED));
 //		builder.forSegmentationModel(new Shaw07JumpDistProb(1, 3));
 //		builder.forSegmentationModel(new JumpProbabilityCalc() {
 //			
@@ -1267,7 +1270,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 //		builder.forImprobModel(MaxJumpDistModels.ONE.getModel(rupSet));
 //		builder.adjustForActualRupSlips(true, false);
 //		builder.adjustForActualRupSlips(false, false);
-		builder.adjustTargetsForData(new ScalingRelSlipRateMFD_Estimator(false));
+//		builder.adjustTargetsForData(new ScalingRelSlipRateMFD_Estimator(false));
 		
 		List<SectNucleationMFD_Estimator> dataConstraints = new ArrayList<>();
 		dataConstraints.add(new APrioriSectNuclEstimator(
@@ -1314,7 +1317,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			int[] debugSects = {
 					100, // Bicycle Lake
 					1330, // Mono Lake
-					1832, // Mojave S
+					1832, // Mojave N
 					2063, // San Diego Trough
 			};
 

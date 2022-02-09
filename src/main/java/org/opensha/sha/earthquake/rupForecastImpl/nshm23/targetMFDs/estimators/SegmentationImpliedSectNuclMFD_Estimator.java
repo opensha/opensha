@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -29,26 +30,36 @@ import com.google.common.base.Preconditions;
  * rate on either side of a jump. The segmentation model will often imply rates less than the G-R
  * budget for those ruptures, in which case we adjust the targets to account for the segmentation
  * model. We make the simplifying assumption that the inversion will use the most-available rupture
- * in each magnitude bin, so if a bin contains ruptures not affected by segmentation, we assume
- * that bin is not affected by segmentation.
- * 
+ * in each magnitude bin, so if a bin contains even a single rupture not affected by segmentation,
+ * we assume that bin is not affected by segmentation.
+ * <p>
  * For bins that are affected by segmentation, we first compute the model-implied participation
  * rate for each jump in that magnitude bin. That participation rate is the segmentation probability
  * times the lesser of the participation rate on either side of that jump. This is an upper bound:
  * the participation rate of ruptures on our section in this magnitude bin cannot exceed the
  * segmentation rate. We then convert that target participation rate to a nucleation rate,
  * and set the bin-specific rate to the lesser of the segmentation-implied target nucleation rate
- * and the original nucleation rate before adjustment.
+ * and the original G-R nucleation rate before adjustment.
+ * <p>
+ * There are a few complications:
+ * <p>
+ * First of all, setting the rate on one segmentation-constrained section is dependent on the rate
+ * of the sections on either side of the controlling jump, which could subsequently be updated with
+ * their own adjustments. We mitigate this by does the corrections iteratively; 20 iterations is
+ * plenty for MFD stability to 4-byte precision.
+ * <p>
+ * Second, multiple jumps often affect a single magnitude bin. In that case, we determine each
+ * independent rupture path for that bin, such that there exist ruptures that use each path
+ * and use no jumps from any other independent path. By maintaining independence, we can sum
+ * the implied segmentation rate across independent paths.
+ * <p>
+ * Finally, individual jumps are often used by multiple magnitude bins. We have multiple ways
+ * of dealing with this, see {@link MultiBinDistributionMethod}. The simplest method is
+ * {@link MultiBinDistributionMethod#GREEDY}, in which each magnitude bin assumes that it can
+ * fully utilize the available segmentation rate. Other methods are probably more plausible,
+ * but also more complicated, so for now the greedy approach might be a good balance between
+ * simplicity and complexity in order to the the minimum viable segmentation adjustment.
  * 
- * There are a couple complications:
- * 
- * First of all, setting the rate on one section relies on the rate of other sections, which could
- * subsequently be updated with their own adjustments. We mitigate this by does the corrections
- * iteratively; 20 iterations is plenty for MFD stability to 4-byte precision.
- * 
- * Second, multiple jumps can affect a single magnitude bin. In that case, we first compute the
- * target nucleation rate for each bin implied by each jump, and then choose the greatest one
- * as our actual target (again assuming that the inversion will use the most-available ruptures).
  * @author kevin
  *
  */
@@ -61,17 +72,20 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 
 	private double[] targetSectSupraMoRates;
 	private double[] targetSectSupraSlipRates;
+
+	private static MultiBinDistributionMethod BIN_DIST_METHOD_DEFAULT = MultiBinDistributionMethod.GREEDY;
+	private MultiBinDistributionMethod binDistMethod;
 	
-	private MultiBinDistributionMethod binDistMethod = MultiBinDistributionMethod.CAPPED_DISTRIBUTED;
-	
-	private static final int DEBUG_SECT = 1832; // Mojave N
+	private static final int DEBUG_SECT = -1; // disabled
+//	private static final int DEBUG_SECT = 1832; // Mojave N
 //	private static final int DEBUG_SECT = 100; // Bicycle Lake
 	private static final DecimalFormat eDF = new DecimalFormat("0.000E0");
 	
 	// how should we handle jumps that use multiple bins?
 	public enum MultiBinDistributionMethod {
 		/**
-		 * Simplest method where each bin assumes that it has access to the entire segmentation constraint implied rate
+		 * Simplest method where each magnitude bin assumes that it has access to the entire segmentation constraint
+		 * implied rate, even when multiple bins use the same jump
 		 */
 		GREEDY,
 		/**
@@ -80,14 +94,20 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 		 */
 		FULLY_DISTRIBUTED,
 		/**
-		 * Same as {@link #FULLY_DISTRIBUTED}, but smarter in that it saves any leftover segmentation implied rate
+		 * Same as {@link #FULLY_DISTRIBUTED}, but fancier in that it saves any leftover segmentation implied rate
 		 * that is above the G-R ceiling and redistributes it to larger magnitude bins that are deficient
 		 */
 		CAPPED_DISTRIBUTED,
 	}
 
 	public SegmentationImpliedSectNuclMFD_Estimator(JumpProbabilityCalc segModel) {
+		this(segModel, BIN_DIST_METHOD_DEFAULT);
+	}
+
+	public SegmentationImpliedSectNuclMFD_Estimator(JumpProbabilityCalc segModel,
+			MultiBinDistributionMethod binDistMethod) {
 		this.segModel = segModel;
+		this.binDistMethod = binDistMethod;
 	}
 
 	@Override
@@ -271,7 +291,7 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 						System.out.println("\t"+(float)modMFD.getX(j)+"\t"+(float)modMFD.getY(j));
 				}
 
-				Map<Jump, List<Integer>> fullJumpBins = tracker.getIndependentJumpBinsMapping(
+				Map<Jump, List<Integer>> fullJumpBins = tracker.getIndependentControllingJumpBinsMapping(
 						curJumpMaxParticipationRates, sectMinMagIndexes[s]);
 				
 				// don't allow the rate in any bin to exceed its original G-R share of the total nucleation rate
@@ -291,7 +311,7 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 				
 				Collection<Jump> jumps = fullJumpBins.keySet();
 				
-				if (binDistMethod == MultiBinDistributionMethod.CAPPED_DISTRIBUTED) {
+				if (binDistMethod == MultiBinDistributionMethod.CAPPED_DISTRIBUTED || debug) {
 					// need to sort them such that jumps using larger magnitude bins are processed later
 					jumps = new ArrayList<>(jumps);
 					Collections.sort((List<Jump>)jumps, new Comparator<Jump>() {
@@ -482,7 +502,7 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 	private static class SectSegmentationJumpTracker {
 		
 		private BitSet unityProbBins;
-		private Map<Integer, HashSet<HashSet<Jump>>> binJumps;
+		private Map<Integer, Set<Set<Jump>>> binJumps;
 		private int numControlledBins = 0;
 		
 		public SectSegmentationJumpTracker(int numBins) {
@@ -498,50 +518,103 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 			return numControlledBins == 0;
 		}
 		
+		/**
+		 * Process the given rupture. If this bin already has segmentation-free ruptures, we can simply ignore it.
+		 * If this is a segmentation-free rupture, we can discard anything else we were tracking for this magnitude
+		 * bin. Otherwise, we want to keep track of the simplest paths in each magnitude bin. So if, for example,
+		 * we have multiple paths in a bin but one is a subset of the other, keep the smaller one only.
+		 * 
+		 * @param jumps
+		 * @param worstJumpProb
+		 * @param magIndex
+		 */
 		public void processRupture(HashSet<Jump> jumps, double worstJumpProb, int magIndex) {
 			if (unityProbBins.get(magIndex))
 				// this bin already has a rupture without segmentation
 				return;
 			if (worstJumpProb == 1d) {
-				// not controlled by segmentation
-				HashSet<HashSet<Jump>> prev = binJumps.remove(magIndex);
+				// this rupture is not controlled by segmentation
+				Set<Set<Jump>> prev = binJumps.remove(magIndex);
 				if (prev != null)
-					// was controlled, now isn't
+					// this bin was controlled, now isn't
 					numControlledBins--;
 				unityProbBins.set(magIndex);
 			} else {
 				Preconditions.checkState(jumps != null && !jumps.isEmpty());
-				HashSet<HashSet<Jump>> myBinJumps = binJumps.get(magIndex);
+				Set<Set<Jump>> myBinJumps = binJumps.get(magIndex);
 				if (myBinJumps == null) {
-					// under control for the first time
+					// this bin is under control for the first time
 					numControlledBins++;
 					myBinJumps = new HashSet<>();
 					binJumps.put(magIndex, myBinJumps);
+				} else {
+					// see if we can eliminate any at this stage that we know we will never use
+					
+					if (myBinJumps.contains(jumps))
+						// duplicate, can skip
+						return;
+					
+					// if this is a superset of any already existing path, then we can ignore it as we assume that the
+					// inversion will always use the easier (smaller) set
+					
+					int mySize = jumps.size();
+					for (Set<Jump> otherPath : myBinJumps) {
+						if (mySize > otherPath.size() && jumps.containsAll(otherPath)) {
+							// this is a superset of a previous path in this magnitude bin, skip it and keep the old one
+							return;
+						}
+					}
+					
+					// if this is a subset of any other already existing path, then we should keep this one and evict
+					// the more complicated longer path, again assuming that the inversion will always use the easier
+					// path (with fewer jumps)
+					
+					List<Set<Jump>> supersets = new ArrayList<>();
+					for (Set<Jump> otherPath : myBinJumps) {
+						if (otherPath.size() > mySize && otherPath.containsAll(jumps))
+							// we are a new easier subset of this previous path, remove that path
+							supersets.add(otherPath);
+					}
+					for (Set<Jump> superset : supersets)
+						myBinJumps.remove(superset);
 				}
+				
 				myBinJumps.add(jumps);
 			}
 		}
 		
-		public Map<Jump, List<Integer>> getIndependentJumpBinsMapping(
+		/**
+		 * This calculates, for each magnitude bin, the set of independent jumps that control segmentation.
+		 * 
+		 * Independent here means that there are ruptures in a given magnitude bin that utilize a given jump, and those
+		 * ruptures don't utilize the same jumps as those from any other independent jump.
+		 * 
+		 * Controlling here means the jump with the lowest available rate that can be consumed for a given rupture.
+		 * 
+		 * @param curJumpMaxParticipationRates
+		 * @param sectMinIndex
+		 * @return
+		 */
+		public Map<Jump, List<Integer>> getIndependentControllingJumpBinsMapping(
 				Map<Jump, Double> curJumpMaxParticipationRates, int sectMinIndex) {
 			Preconditions.checkState(controlled());
 			Map<Jump, List<Integer>> map = new HashMap<>();
 			for (int index : binJumps.keySet()) {
 				if (index < sectMinIndex)
 					continue;
-				HashSet<HashSet<Jump>> myBinJumps = binJumps.get(index);
+				Set<Set<Jump>> myBinJumps = binJumps.get(index);
 				
 				// reduce each set to the worst jump based on the current participation rates, keeping a set of
 				// independent jumps that control this bin
 				
 				// this is where we'll keep a set of truly independent jumps that control segmentation for this section
-				HashMap<Jump, HashSet<Jump>> indepControllingJumps = new HashMap<>();
-				// keep track of jumps that are shadowed by another jump, in that they are only accessible in ruptures
-				// that include a worse (shadowing) jump. if one of these shadowed jumps comes up later, we assume that
-				// the inversion will take the easier path and use the higher rate jump
-				HashMap<Jump, Jump> shadowedJumps = new HashMap<>();
+				Map<Jump, Set<Jump>> indepControllingJumps = new HashMap<>();
 				
-				for (HashSet<Jump> jumps : myBinJumps) {
+				// process them in increasing size order, which will ensure that we keep any smaller isolated paths
+				List<Set<Jump>> sortedBinJumps = new ArrayList<>(myBinJumps);
+				Collections.sort(sortedBinJumps, collectionSizeComparator);
+				
+				for (Set<Jump> jumps : sortedBinJumps) {
 					// each set here represents a unique path: ruptures that use this particular set of jumps and lie 
 					// in this mag bin
 					Preconditions.checkState(!jumps.isEmpty());
@@ -558,23 +631,45 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 					}
 					
 					if (indepControllingJumps.containsKey(controllingJump)) {
-						// we have already processed this controlling jump, add additional jumps that are
-						// shadowed by this controlling jump
-						for (Jump jump : jumps)
-							if (jump != controllingJump)
-								shadowedJumps.put(jump, controllingJump);
-						indepControllingJumps.get(controllingJump).addAll(jumps);
+						// we have already processed this jump, and can skip it as these paths are sorted and we only
+						// want to keep the smallest one (in hopes that we might later find another independent path)
+						
+						// do nothing
 					} else {
-						// this is a new controlling jump. see if it was previously shadowed by another (worse) jump
-						if (shadowedJumps.containsKey(controllingJump)) {
-							// it was previously shadowed by a worse jump, but is available without it, so we assume
-							// that the inversion will always choose this easier path and remove the old one
-							Jump prevControl = shadowedJumps.get(controllingJump);
-							for (Jump otherShadowed : indepControllingJumps.get(prevControl))
-								shadowedJumps.remove(otherShadowed);
-							Preconditions.checkNotNull(indepControllingJumps.remove(prevControl));
+						// this is a new one, see if it intersects any previous ones
+						List<Jump> evictions = new ArrayList<>();
+						boolean superceded = false;
+						for (Jump prevControlling : indepControllingJumps.keySet()) {
+							Set<Jump> prevDependent = indepControllingJumps.get(prevControlling);
+							boolean intersects = false;
+							for (Jump jump : jumps) {
+								if (prevDependent.contains(jump)) {
+									// these paths intersect
+									intersects = true;
+									break;
+								}
+							}
+							if (intersects) {
+								// we intersect a previous path
+								if (minRate > curJumpMaxParticipationRates.get(prevControlling)) {
+									// our new path is better, evict this one
+									evictions.add(prevControlling);
+								} else {
+									// the old path was better, skip this one
+									superceded = true;
+									break;
+								}
+							}
 						}
-						indepControllingJumps.put(controllingJump, new HashSet<>(jumps));
+						if (superceded) {
+							// we're superseded by a prior path, skip this one. also don't process any of the planned
+							// evictions, as those paths are independent to the one that supersedes us.
+							continue;
+						}
+						for (Jump jump : evictions)
+							Preconditions.checkNotNull(indepControllingJumps.remove(jump));
+						// we're independent or a new best path
+						indepControllingJumps.put(controllingJump, jumps);
 					}
 				}
 				
@@ -592,6 +687,15 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 			return map;
 		}
 	}
+	
+	private static final Comparator<Collection<?>> collectionSizeComparator = new Comparator<>() {
+
+		@Override
+		public int compare(Collection<?> o1, Collection<?> o2) {
+			return Integer.compare(o1.size(), o2.size());
+		}
+		
+	};
 
 	@Override
 	public boolean appliesTo(FaultSection sect) {
