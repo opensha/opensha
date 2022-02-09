@@ -149,8 +149,8 @@ public class CacheFileGen {
 		FaultGridAssociations faultPolyMgr = FaultPolyMgr.create(subSects, U3InversionTargetMFDs.FAULT_BUFFER);
 		for (int index=0; index<region.getNodeCount(); index++) {
 			Location loc = region.getLocation(index);
-			IncrementalMagFreqDist subSeisMFD = origGridProv.getNodeSubSeisMFD(index);
-			IncrementalMagFreqDist offMFD = origGridProv.getNodeUnassociatedMFD(index);
+			IncrementalMagFreqDist subSeisMFD = origGridProv.getMFD_SubSeisOnFault(index);
+			IncrementalMagFreqDist offMFD = origGridProv.getMFD_Unassociated(index);
 			Preconditions.checkState(subSeisMFD != null || offMFD != null);
 			IncrementalMagFreqDist zeroMFD; // give things outside a very, very tiny G-R MFD, otherwise bad things happen
 			if (subSeisMFD != null)

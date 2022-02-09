@@ -58,12 +58,12 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 	}
 	
 	@Override
-	public IncrementalMagFreqDist getNodeUnassociatedMFD(int idx) {
+	public IncrementalMagFreqDist getMFD_Unassociated(int idx) {
 		return nodeUnassociatedMFDs.get(idx);
 	}
 
 	@Override
-	public IncrementalMagFreqDist getNodeSubSeisMFD(int idx) {
+	public IncrementalMagFreqDist getMFD_SubSeisOnFault(int idx) {
 		return nodeSubSeisMFDs.get(idx);
 	}
 
@@ -140,11 +140,11 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 			File binFile, File regXMLFile, GridSourceProvider gridProv, double minMag) throws IOException {
 		DiscretizedFunc refFunc = null;
 		for (int i=0; i<gridProv.size(); i++) {
-			if (gridProv.getNodeUnassociatedMFD(i) != null) {
-				refFunc = gridProv.getNodeUnassociatedMFD(i);
+			if (gridProv.getMFD_Unassociated(i) != null) {
+				refFunc = gridProv.getMFD_Unassociated(i);
 				break;
-			} else if (gridProv.getNodeSubSeisMFD(i) != null) {
-				refFunc = gridProv.getNodeSubSeisMFD(i);
+			} else if (gridProv.getMFD_SubSeisOnFault(i) != null) {
+				refFunc = gridProv.getMFD_SubSeisOnFault(i);
 				break;
 			}
 		}
@@ -155,7 +155,7 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 		arrays.add(funcToArray(true, refFunc, minMag));
 		
 		for (int i=0; i<gridProv.size(); i++) {
-			DiscretizedFunc unMFD = gridProv.getNodeUnassociatedMFD(i);
+			DiscretizedFunc unMFD = gridProv.getMFD_Unassociated(i);
 			if (unMFD != null && unMFD.getMaxY()>0) {
 				Preconditions.checkState(unMFD.getMinX() == refFunc.getMinX()
 						&& unMFD.getMaxX() == refFunc.getMaxX());
@@ -163,7 +163,7 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 			} else {
 				arrays.add(new double[0]);
 			}
-			DiscretizedFunc subSeisMFD = gridProv.getNodeSubSeisMFD(i);
+			DiscretizedFunc subSeisMFD = gridProv.getMFD_SubSeisOnFault(i);
 			if (subSeisMFD != null && subSeisMFD.getMaxY()>0) {
 				Preconditions.checkState(subSeisMFD.getMinX() == refFunc.getMinX()
 						&& subSeisMFD.getMaxX() == refFunc.getMaxX());
@@ -248,8 +248,8 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 			Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = Maps.newHashMap();
 			
 			for (int i=0; i<region.getNumLocations(); i++) {
-				nodeSubSeisMFDs.put(i, gridProv.getNodeSubSeisMFD(i));
-				nodeUnassociatedMFDs.put(i, gridProv.getNodeUnassociatedMFD(i));
+				nodeSubSeisMFDs.put(i, gridProv.getMFD_SubSeisOnFault(i));
+				nodeUnassociatedMFDs.put(i, gridProv.getMFD_Unassociated(i));
 			}
 			
 			fileBased = new GridSourceFileReader(region, nodeSubSeisMFDs, nodeUnassociatedMFDs);

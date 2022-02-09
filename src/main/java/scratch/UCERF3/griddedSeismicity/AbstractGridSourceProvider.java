@@ -71,7 +71,7 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 	public ProbEqkSource getSource(int idx, double duration,
 			boolean filterAftershocks, BackgroundRupType bgRupType) {
 		Location loc = getGriddedRegion().locationForIndex(idx);
-		IncrementalMagFreqDist mfd = getNodeMFD(idx, SOURCE_MIN_MAG_CUTOFF);
+		IncrementalMagFreqDist mfd = getMFD(idx, SOURCE_MIN_MAG_CUTOFF);
 		if (filterAftershocks) scaleMFD(mfd);
 		
 		double fracStrikeSlip = getFracStrikeSlip(idx);
@@ -103,10 +103,10 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 	
 	
 	
-	public ProbEqkSource getSourceSubseismoOnly(int idx, double duration,
+	public ProbEqkSource getSourceSubSeisOnFault(int idx, double duration,
 			boolean filterAftershocks, BackgroundRupType bgRupType) {
 		Location loc = getGriddedRegion().locationForIndex(idx);
-		IncrementalMagFreqDist origMFD = getNodeSubSeisMFD(idx);
+		IncrementalMagFreqDist origMFD = getMFD_SubSeisOnFault(idx);
 		if(origMFD == null)
 			return null;
 		IncrementalMagFreqDist mfd = trimMFD(origMFD, SOURCE_MIN_MAG_CUTOFF);
@@ -138,10 +138,10 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 		
 	}
 
-	public ProbEqkSource getSourceTrulyOffOnly(int idx, double duration,
+	public ProbEqkSource getSourceUnassociated(int idx, double duration,
 			boolean filterAftershocks, BackgroundRupType bgRupType) {
 		Location loc = getGriddedRegion().locationForIndex(idx);
-		IncrementalMagFreqDist origMFD = getNodeUnassociatedMFD(idx);
+		IncrementalMagFreqDist origMFD = getMFD_Unassociated(idx);
 		if(origMFD == null)
 			return null;
 		IncrementalMagFreqDist mfd = trimMFD(origMFD, SOURCE_MIN_MAG_CUTOFF);
@@ -181,19 +181,19 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 
 
 	@Override
-	public IncrementalMagFreqDist getNodeMFD(int idx, double minMag) {
-		return trimMFD(getNodeMFD(idx), minMag);
+	public IncrementalMagFreqDist getMFD(int idx, double minMag) {
+		return trimMFD(getMFD(idx), minMag);
 		
-		// NOTE trimMFD clones the MFD returned by getNodeMFD so its safe for
+		// NOTE trimMFD clones the MFD returned by getMFD so its safe for
 		// subsequent modification; if this changes, then we need to review if
 		// MFD is safe from alteration.
 	}
 	
 	@Override
-	public IncrementalMagFreqDist getNodeMFD(int idx) {
+	public IncrementalMagFreqDist getMFD(int idx) {
 		
-		IncrementalMagFreqDist nodeIndMFD = getNodeUnassociatedMFD(idx);
-		IncrementalMagFreqDist nodeSubMFD = getNodeSubSeisMFD(idx);
+		IncrementalMagFreqDist nodeIndMFD = getMFD_Unassociated(idx);
+		IncrementalMagFreqDist nodeSubMFD = getMFD_SubSeisOnFault(idx);
 		if (nodeIndMFD == null) return nodeSubMFD;
 		if (nodeSubMFD == null) return nodeIndMFD;
 		
@@ -293,15 +293,15 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 	}
 	
 	@Override
-	public void scaleAllNodeMFDs(double[] valuesArray) {
+	public void scaleAllMFDs(double[] valuesArray) {
 		if(valuesArray.length != getGriddedRegion().getNodeCount())
 			throw new RuntimeException("Error: valuesArray must have same length as getGriddedRegion().getNodeCount()");
 		for(int i=0;i<valuesArray.length;i++) {
 			if(valuesArray[i] != 1.0) {
-				IncrementalMagFreqDist mfd = getNodeUnassociatedMFD(i);
+				IncrementalMagFreqDist mfd = getMFD_Unassociated(i);
 				if(mfd != null)
 					mfd.scale(valuesArray[i]);;
-				mfd = getNodeSubSeisMFD(i);				
+				mfd = getMFD_SubSeisOnFault(i);				
 				if(mfd != null)
 					mfd.scale(valuesArray[i]);;
 			}
@@ -356,10 +356,10 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 			fracNormal = new double[nodeCount];
 			fracReverse = new double[nodeCount];
 			for (int i=0; i<nodeCount; i++) {
-				IncrementalMagFreqDist subSeis = prov.getNodeSubSeisMFD(i);
+				IncrementalMagFreqDist subSeis = prov.getMFD_SubSeisOnFault(i);
 				if (subSeis != null)
 					subSeisBuilder.put(i, subSeis);
-				IncrementalMagFreqDist unassociated = prov.getNodeUnassociatedMFD(i);
+				IncrementalMagFreqDist unassociated = prov.getMFD_Unassociated(i);
 				if (unassociated != null)
 					unassociatedBuilder.put(i, unassociated);
 				fracStrikeSlip[i] = prov.getFracStrikeSlip(i);
@@ -375,12 +375,12 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 		}
 
 		@Override
-		public final IncrementalMagFreqDist getNodeUnassociatedMFD(int idx) {
+		public final IncrementalMagFreqDist getMFD_Unassociated(int idx) {
 			return nodeUnassociatedMFDs.get(idx);
 		}
 
 		@Override
-		public final IncrementalMagFreqDist getNodeSubSeisMFD(int idx) {
+		public final IncrementalMagFreqDist getMFD_SubSeisOnFault(int idx) {
 			return nodeSubSeisMFDs.get(idx);
 		}
 

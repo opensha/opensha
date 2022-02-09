@@ -319,7 +319,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			GriddedRegion gridReg = prov.getGriddedRegion();
 			boolean regionTest = region != null && region != gridReg && !region.getBorder().equals(gridReg.getBorder());
 			for (int i=0; i<gridReg.getNodeCount(); i++) {
-				IncrementalMagFreqDist nodeMFD = prov.getNodeMFD(i);
+				IncrementalMagFreqDist nodeMFD = prov.getMFD(i);
 				if (nodeMFD == null)
 					continue;
 				if (regionTest && !region.contains(gridReg.getLocation(i)))

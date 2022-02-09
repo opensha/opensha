@@ -130,7 +130,7 @@ public class HaywiredSRL_PaperCalc {
 		System.out.println("Calculating gridded");
 		for (int lowResIndex=0; lowResIndex<gridProv.size(); lowResIndex++) {
 			List<Integer> indexes = lowToHighResIndexMap.get(lowResIndex);
-			IncrementalMagFreqDist mfd = gridProv.getNodeMFD(lowResIndex);
+			IncrementalMagFreqDist mfd = gridProv.getMFD(lowResIndex);
 			double rateAbove = 0d;
 			for (Point2D pt : mfd)
 				if (pt.getX() >= minMag)

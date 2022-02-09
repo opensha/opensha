@@ -1069,8 +1069,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		
 		int num0=0,num1=0,num2=0;
 		for(int i=0;i<numGridLocs; i++) {
-			IncrementalMagFreqDist subSeisMFD = gridSrcProvider.getNodeSubSeisMFD(i);
-			IncrementalMagFreqDist trulyOffMFD = gridSrcProvider.getNodeUnassociatedMFD(i);
+			IncrementalMagFreqDist subSeisMFD = gridSrcProvider.getMFD_SubSeisOnFault(i);
+			IncrementalMagFreqDist trulyOffMFD = gridSrcProvider.getMFD_Unassociated(i);
 			double frac = faultPolyMgr.getNodeFraction(i);
 			if(subSeisMFD == null && trulyOffMFD != null) {
 				gridSeisStatus[i] = 0;	// no cubes are inside; all are truly off
@@ -4271,7 +4271,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 					// check whether hypLoc is now out of region, and return false if so
 					if(testIndex == -1)
 						return false;
-					IncrementalMagFreqDist mfd = fssERF.getSolution().getGridSourceProvider().getNodeMFD(testIndex);
+					IncrementalMagFreqDist mfd = fssERF.getSolution().getGridSourceProvider().getMFD(testIndex);
 //					if(mfd==null) {
 //						throw new RuntimeException("testIndex="+testIndex+"\thypLoc= "+hypLoc+"\tgridLoc= "+tempERF.getSolution().getGridSourceProvider().getGriddedRegion().getLocation(testIndex));
 //					}
