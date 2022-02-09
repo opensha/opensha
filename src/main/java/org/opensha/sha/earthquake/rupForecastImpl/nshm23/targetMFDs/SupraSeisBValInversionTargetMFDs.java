@@ -60,6 +60,9 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
+import scratch.UCERF3.enumTreeBranches.DeformationModels;
+import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 
 /**
@@ -402,7 +405,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				BitSet utilization = new BitSet();
 				for (int r : rupSet.getRupturesForSection(s)) {
 					double mag = rupSet.getMagForRup(r);
-					if ((float)mag >= (float)sectMinMag) {
+					if (minMags == null || !minMags.isBelowSectMinMag(s, mag, refMFD)) {
 						if (rupSubSet != null && !rupSubSet.get(r))
 							// not allowed to use this rupture, skip
 							continue;
@@ -624,33 +627,6 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				sectSupraSeisMFDs.add(supraSeisMFD);
 			}
 			
-			ExecutorService exec = null;
-			if (targetAdjDataConstraints != null || uncertAdjDataConstraints != null)
-				exec = Executors.newFixedThreadPool(FaultSysTools.defaultNumThreads());
-			
-			if (targetAdjDataConstraints != null && !targetAdjDataConstraints.isEmpty()) {
-				System.out.println("Adjusting target MFDs with "+targetAdjDataConstraints.size()+" estimators");
-				
-				// do these 1 at a time as each one adjusts the actual targets
-				for (SectNucleationMFD_Estimator estimator : targetAdjDataConstraints) {
-					estimator.init(rupSet, sectSupraSeisMFDs, targetSupraMoRates, slipRates, slipRateStdDevs,
-							sectRupUtilizations, sectMinMagIndexes, sectMaxMagIndexes, sectRupInBinCounts, refMFD);
-					
-					List<Future<DataEstCallable>> futures = estimateSectNuclMFDs(List.of(estimator), slipRates,
-							slipRateStdDevs, targetSupraMoRates, sectRupUtilizations, sectSupraSeisMFDs, exec);
-					
-					for (Future<DataEstCallable> future : futures) {
-						DataEstCallable call;
-						try {
-							call = future.get();
-						} catch (InterruptedException | ExecutionException e) {
-							throw ExceptionUtils.asRuntimeException(e);
-						}
-						sectSupraSeisMFDs.set(call.sect.getSectionId(), call.impliedMFD);
-					}
-				}
-			}
-			
 			System.out.println("Fraction supra-seismogenic stats: "+fractSuprasTrack);
 			
 			if (subSeisMoRateReduction == SubSeisMoRateReduction.SYSTEM_AVG_IMPLIED_FROM_SUPRA_B) {
@@ -688,6 +664,33 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				// shortcut for if we only need slip rates
 				return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, totalTargetMFD, null,
 						null, null, null, null, sectSlipRates);
+			
+			ExecutorService exec = null;
+			if (targetAdjDataConstraints != null || uncertAdjDataConstraints != null)
+				exec = Executors.newFixedThreadPool(FaultSysTools.defaultNumThreads());
+			
+			if (targetAdjDataConstraints != null && !targetAdjDataConstraints.isEmpty()) {
+				System.out.println("Adjusting target MFDs with "+targetAdjDataConstraints.size()+" estimators");
+				
+				// do these 1 at a time as each one adjusts the actual targets
+				for (SectNucleationMFD_Estimator estimator : targetAdjDataConstraints) {
+					estimator.init(rupSet, sectSupraSeisMFDs, targetSupraMoRates, slipRates, slipRateStdDevs,
+							sectRupUtilizations, sectMinMagIndexes, sectMaxMagIndexes, sectRupInBinCounts, refMFD);
+					
+					List<Future<DataEstCallable>> futures = estimateSectNuclMFDs(List.of(estimator), slipRates,
+							slipRateStdDevs, targetSupraMoRates, sectRupUtilizations, sectSupraSeisMFDs, exec);
+					
+					for (Future<DataEstCallable> future : futures) {
+						DataEstCallable call;
+						try {
+							call = future.get();
+						} catch (InterruptedException | ExecutionException e) {
+							throw ExceptionUtils.asRuntimeException(e);
+						}
+						sectSupraSeisMFDs.set(call.sect.getSectionId(), call.impliedMFD);
+					}
+				}
+			}
 			
 			List<EvenlyDiscretizedFunc> defModMFDStdDevs = null;
 			if (applyDefModelUncertainties) {
@@ -1233,8 +1236,10 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, new CaliforniaRegions.RELM_TESTING());
 		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
 		
-//		rupSet = FaultSystemRupSet.buildFromExisting(rupSet).forScalingRelationship(
-//				ScalingRelationships.SHAW_2009_MOD).build();
+		rupSet = FaultSystemRupSet.buildFromExisting(rupSet)
+//				.replaceFaultSections(DeformationModels.ABM.build(FaultModels.FM3_1))
+//				.forScalingRelationship(ScalingRelationships.ELLB_SQRT_LENGTH)
+				.build();
 		
 		double b = 0.8d;
 		Builder builder = new Builder(rupSet, b);
@@ -1246,8 +1251,9 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		builder.addSectCountUncertainties(false);
 		builder.totalTargetMFD(rupSet.requireModule(InversionTargetMFDs.class).getTotalRegionalMFD());
 		builder.subSeisMoRateReduction(SubSeisMoRateReduction.SUB_SEIS_B_1);
-		builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(new Shaw07JumpDistProb(1, 3),
-				MultiBinDistributionMethod.GREEDY));
+		builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(new Shaw07JumpDistProb(1, 2),
+//				MultiBinDistributionMethod.GREEDY));
+				MultiBinDistributionMethod.GREEDY_SELF_CONTAINED));
 //				MultiBinDistributionMethod.CAPPED_DISTRIBUTED));
 //		builder.forSegmentationModel(new Shaw07JumpDistProb(1, 3));
 //		builder.forSegmentationModel(new JumpProbabilityCalc() {
@@ -1319,6 +1325,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					1330, // Mono Lake
 					1832, // Mojave N
 					2063, // San Diego Trough
+					129, // Big Pine (East)
 			};
 
 			builder.clearTargetAdjustments();
