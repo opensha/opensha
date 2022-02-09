@@ -71,6 +71,7 @@ public class DeformationModelFetcher {
 	private final static double[] parkfield_mo_reds = {0.5000,    0.5571,    0.6143,    0.6714,    0.7286,    0.7857,    0.8429,    0.9000};
 	// coupling coefficient for each mini ection
 	private final static double[] custom_mendocino_couplings = { 1.0, 1.0, 0.15, 0.15, 0.15 };
+	// these special cases are mentioned (but barely described) in U3-TI appendix D
 	private final static double brawley_aseis = 0.9;
 	private final static double quien_sabe_aseis = 0.9;
 
