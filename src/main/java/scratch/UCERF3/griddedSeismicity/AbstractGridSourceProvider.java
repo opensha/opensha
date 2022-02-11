@@ -72,7 +72,7 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 			boolean filterAftershocks, BackgroundRupType bgRupType) {
 		Location loc = getGriddedRegion().locationForIndex(idx);
 		IncrementalMagFreqDist mfd = getMFD(idx, SOURCE_MIN_MAG_CUTOFF);
-		if (filterAftershocks) scaleMFD(mfd);
+		if (filterAftershocks) applyGK_AftershockFilter(mfd);
 		
 		double fracStrikeSlip = getFracStrikeSlip(idx);
 		double fracNormal = getFracNormal(idx);
@@ -110,7 +110,7 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 		if(origMFD == null)
 			return null;
 		IncrementalMagFreqDist mfd = trimMFD(origMFD, SOURCE_MIN_MAG_CUTOFF);
-		if (filterAftershocks) scaleMFD(mfd);
+		if (filterAftershocks) applyGK_AftershockFilter(mfd);
 		
 		double fracStrikeSlip = getFracStrikeSlip(idx);
 		double fracNormal = getFracNormal(idx);
@@ -145,7 +145,7 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 		if(origMFD == null)
 			return null;
 		IncrementalMagFreqDist mfd = trimMFD(origMFD, SOURCE_MIN_MAG_CUTOFF);
-		if (filterAftershocks) scaleMFD(mfd);
+		if (filterAftershocks) applyGK_AftershockFilter(mfd);
 		
 		double fracStrikeSlip = getFracStrikeSlip(idx);
 		double fracNormal = getFracNormal(idx);
@@ -212,7 +212,7 @@ public abstract class AbstractGridSourceProvider implements GridSourceProvider, 
 	/*
 	 * Applies gardner Knopoff aftershock filter scaling to MFD in place.
 	 */
-	private static void scaleMFD(IncrementalMagFreqDist mfd) {
+	private static void applyGK_AftershockFilter(IncrementalMagFreqDist mfd) {
 		double scale;
 		for (int i=0; i<mfd.size(); i++) {
 			scale = GardnerKnopoffAftershockFilter.scaleForMagnitude(mfd.getX(i));
