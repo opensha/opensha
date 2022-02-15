@@ -46,6 +46,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.APrioriSectNuclEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.PaleoSectNuclEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ScalingRelSlipRateMFD_Estimator;
@@ -139,20 +140,39 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	 * @return
 	 */
 	public static EvenlyDiscretizedFunc buildRefXValues(FaultSystemRupSet rupSet) {
+		return buildRefXValues(rupSet.getMaxMag());
+	}
+	
+	/**
+	 * Figures out MFD bounds for the given rupture set maximum magnitude. It will start at 0.05 and and include at
+	 * least the rupture set maximum magnitude, expanded to the ceiling of that rupture set maximum magnitude.
+	 * 
+	 * @param rupSet
+	 * @return
+	 */
+	public static EvenlyDiscretizedFunc buildRefXValues(double maxRupSetMag) {
 		// figure out MFD bounds
 		// go up to at least ceil(maxMag)
-		double maxRupSetMag = Math.ceil(rupSet.getMaxMag());
 		int NUM_MAG = 0;
+		
 		while (true) {
 			double nextMag = MIN_MAG + (NUM_MAG+1)*DELTA_MAG;
 			double nextMagLower = nextMag - 0.5*DELTA_MAG;
+			NUM_MAG++;
+//			System.out.println("nextMag="+nextMag+", nextMagLower="+nextMagLower);
 			if ((float)nextMagLower > (float)maxRupSetMag)
 				// done
 				break;
-			NUM_MAG++;
 		}
 		
-		return new EvenlyDiscretizedFunc(MIN_MAG, NUM_MAG, DELTA_MAG);
+		EvenlyDiscretizedFunc ret = new EvenlyDiscretizedFunc(MIN_MAG, NUM_MAG, DELTA_MAG);
+		
+		double upperBin = ret.getMaxX() + 0.5*DELTA_MAG;
+		Preconditions.checkState((float)maxRupSetMag <= (float)upperBin,
+				"Bad MFD gridding with maxMag=%s, upperBinCenter=%s, upperBinEdge=%s",
+				maxRupSetMag, ret.get(NUM_MAG-1).getX(), upperBin);
+		
+		return ret;
 	}
 	
 	public static class Builder {
@@ -350,7 +370,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			EvenlyDiscretizedFunc refMFD = buildRefXValues(rupSet);
 			int NUM_MAG = refMFD.size();
 			System.out.println("SupraSeisBValInversionTargetMFDs total MFD range: ["
-					+(float)MIN_MAG+","+(float)refMFD.getMaxX()+"]");
+					+(float)MIN_MAG+","+(float)refMFD.getMaxX()+"] for maxMag="+rupSet.getMaxMag());
 			
 			ModSectMinMags minMags = rupSet.getModule(ModSectMinMags.class);
 			
@@ -1009,8 +1029,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				if (scale > 0d) {
 					IncrementalMagFreqDist supraMFD = sectSupraSeisMFDs.get(s);
 					// make sure we have the same gridding
-					Preconditions.checkState(supraMFD.getMinX() == MIN_MAG);
-					Preconditions.checkState(supraMFD.getDelta() == DELTA_MAG);
+					Preconditions.checkState((float)supraMFD.getMinX() == (float)MIN_MAG);
+					Preconditions.checkState((float)supraMFD.getDelta() == (float)DELTA_MAG);
 					for (int i=0; i<supraMFD.size(); i++) {
 						double rate = supraMFD.getY(i);
 						if (rate > 0d) {
@@ -1085,8 +1105,10 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 							// no data constraint for this section, use the regular MFD
 							impliedMFD = sectSupraSeisMFDs.get(s);
 						// make sure we have the same gridding
-						Preconditions.checkState(impliedMFD.getMinX() == MIN_MAG);
-						Preconditions.checkState(impliedMFD.getDelta() == DELTA_MAG);
+						Preconditions.checkState((float)impliedMFD.getMinX() == (float)MIN_MAG,
+								"Min mag mismatch: %s != %s", (float)impliedMFD.getMinX(), (float)MIN_MAG);
+						Preconditions.checkState((float)impliedMFD.getDelta() == (float)DELTA_MAG,
+								"Delta mismatch: %s != %s", (float)impliedMFD.getDelta(), (float)DELTA_MAG);
 						for (int i=0; i<impliedMFD.size(); i++)
 							sumImpliedMFD.add(i, impliedMFD.getY(i));
 						if (impliedMFD instanceof UncertainBoundedIncrMagFreqDist) {
@@ -1201,7 +1223,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			SubSeismoOnFaultMFDs subSeismoOnFaultMFDs, List<UncertainIncrMagFreqDist> supraSeismoOnFaultMFDs,
 			SectSlipRates sectSlipRates) {
 		super(rupSet, totalRegionalMFD, onFaultSupraSeisMFD, onFaultSubSeisMFD, null, mfdConstraints,
-				subSeismoOnFaultMFDs);
+				subSeismoOnFaultMFDs, supraSeismoOnFaultMFDs);
 		this.supraSeisBValue = supraSeisBValue;
 		this.supraSeismoOnFaultMFDs = supraSeismoOnFaultMFDs;
 		this.sectSlipRates = sectSlipRates;
@@ -1215,7 +1237,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		return supraSeisBValue;
 	}
 
-	public List<UncertainIncrMagFreqDist> getSectSupraSeisNuclMFDs() {
+	@Override
+	public List<UncertainIncrMagFreqDist> getOnFaultSupraSeisNucleationMFDs() {
 		return supraSeismoOnFaultMFDs;
 	}
 
@@ -1251,10 +1274,14 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		builder.addSectCountUncertainties(false);
 		builder.totalTargetMFD(rupSet.requireModule(InversionTargetMFDs.class).getTotalRegionalMFD());
 		builder.subSeisMoRateReduction(SubSeisMoRateReduction.SUB_SEIS_B_1);
-		builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(new Shaw07JumpDistProb(1, 2),
-//				MultiBinDistributionMethod.GREEDY));
-				MultiBinDistributionMethod.GREEDY_SELF_CONTAINED));
-//				MultiBinDistributionMethod.CAPPED_DISTRIBUTED));
+		builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(new Shaw07JumpDistProb(1, 3),
+//				MultiBinDistributionMethod.GREEDY, false));
+//				MultiBinDistributionMethod.GREEDY, true));
+//				MultiBinDistributionMethod.FULLY_DISTRIBUTED, false));
+//				MultiBinDistributionMethod.FULLY_DISTRIBUTED, true));
+//				MultiBinDistributionMethod.CAPPED_DISTRIBUTED, false));
+				MultiBinDistributionMethod.CAPPED_DISTRIBUTED, true));
+//		builder.forBinaryRupProbModel(MaxJumpDistModels.FIVE.getModel(rupSet));
 //		builder.forSegmentationModel(new Shaw07JumpDistProb(1, 3));
 //		builder.forSegmentationModel(new JumpProbabilityCalc() {
 //			
@@ -1318,7 +1345,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		plot.writePlot(rupSet, null, "Test Model", mfdOutput);
 		
 		if (builder.targetAdjDataConstraints != null && !builder.targetAdjDataConstraints.isEmpty()
-				&& builder.targetAdjDataConstraints.get(0) instanceof SegmentationImpliedSectNuclMFD_Estimator) {
+				&& builder.targetAdjDataConstraints.get(0) instanceof SegmentationImpliedSectNuclMFD_Estimator
+				|| builder.rupSubSet != null) {
 			// debug
 			int[] debugSects = {
 					100, // Bicycle Lake
@@ -1326,6 +1354,9 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					1832, // Mojave N
 					2063, // San Diego Trough
 					129, // Big Pine (East)
+					639, // Gillem - Big Crack
+					315, // Chino alt 1
+					159, // Brawley
 			};
 
 			builder.clearTargetAdjustments();

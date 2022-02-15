@@ -338,7 +338,7 @@ public class Inversions {
 				
 				List<IncrementalMagFreqDist> mfdConstraints = List.of(targetMFD);
 				
-				targetMFDs = new InversionTargetMFDs.Precomputed(rupSet, null, targetMFD, null, null, mfdConstraints, null);
+				targetMFDs = new InversionTargetMFDs.Precomputed(rupSet, null, targetMFD, null, null, mfdConstraints, null, null);
 			} else if (cmd.hasOption("mfd-total-rate")) {
 				double minX = 0.1*Math.floor(getMinMagForMFD(rupSet)*10d);
 				double minTargetMag = minX;
@@ -358,7 +358,7 @@ public class Inversions {
 				
 				List<IncrementalMagFreqDist> mfdConstraints = List.of(targetGR);
 				
-				targetMFDs = new InversionTargetMFDs.Precomputed(rupSet, null, targetGR, null, null, mfdConstraints, null);
+				targetMFDs = new InversionTargetMFDs.Precomputed(rupSet, null, targetGR, null, null, mfdConstraints, null, null);
 			} else {
 				Preconditions.checkState(rupSet.hasModule(InversionTargetMFDs.class),
 						"MFD Constraint enabled, but no target MFD specified. Rupture Set must either already have "
