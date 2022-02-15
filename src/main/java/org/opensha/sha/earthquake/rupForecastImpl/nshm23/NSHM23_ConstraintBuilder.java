@@ -53,6 +53,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBVa
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.APrioriSectNuclEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SectNucleationMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator.MultiBinDistributionMethod;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.PaleoSectNuclEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ScalingRelSlipRateMFD_Estimator;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -90,7 +91,10 @@ public class NSHM23_ConstraintBuilder {
 	private static final double DEFAULT_REL_STD_DEV = 0.1;
 	
 	private DoubleUnaryOperator magDepRelStdDev = M->DEFAULT_REL_STD_DEV;
+	
 	private JumpProbabilityCalc segModel;
+	private boolean segSelfContained = SegmentationImpliedSectNuclMFD_Estimator.SELF_CONTAINED_DEFAULT;
+	private MultiBinDistributionMethod segBinDistMethod = SegmentationImpliedSectNuclMFD_Estimator.BIN_DIST_METHOD_DEFAULT;
 	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB) {
 		this(rupSet, supraSeisB, SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT,
@@ -191,6 +195,15 @@ public class NSHM23_ConstraintBuilder {
 		return this;
 	}
 	
+	public NSHM23_ConstraintBuilder adjustForSegmentationModel(JumpProbabilityCalc segModel,
+			MultiBinDistributionMethod binDistMethod, boolean selfContained) {
+		this.segModel = segModel;
+		this.segBinDistMethod = binDistMethod;
+		this.segSelfContained = selfContained;
+		targetCache = null;
+		return this;
+	}
+	
 	/**
 	 * Some scaling relationships are not be consistent with the way we calculate the total moment required to
 	 * satisfy the target slip rate. If enabled, the target MFDs will be modified to account for any discrepancy
@@ -229,7 +242,8 @@ public class NSHM23_ConstraintBuilder {
 			if (segModel instanceof BinaryRuptureProbabilityCalc)
 				builder.forBinaryRupProbModel((BinaryRuptureProbabilityCalc)segModel);
 			else
-				builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(segModel));
+				builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(
+						segModel, segBinDistMethod, segSelfContained));
 		}
 		if (adjustForActualRupSlips)
 			builder.adjustTargetsForData(new ScalingRelSlipRateMFD_Estimator(adjustForSlipAlong));
@@ -282,7 +296,7 @@ public class NSHM23_ConstraintBuilder {
 		double[] targetRates = new double[rupSet.getNumSections()];
 		double[] targetRateStdDevs = new double[rupSet.getNumSections()];
 		
-		List<UncertainIncrMagFreqDist> sectSupraMFDs = target.getSectSupraSeisNuclMFDs();
+		List<UncertainIncrMagFreqDist> sectSupraMFDs = target.getOnFaultSupraSeisNucleationMFDs();
 		for (int s=0; s<targetRates.length; s++) {
 			UncertainIncrMagFreqDist sectSupraMFD = sectSupraMFDs.get(s);
 			targetRates[s] = sectSupraMFD.calcSumOfY_Vals();
@@ -302,7 +316,7 @@ public class NSHM23_ConstraintBuilder {
 	public NSHM23_ConstraintBuilder sectSupraNuclMFDs() {
 		SupraSeisBValInversionTargetMFDs target = getTargetMFDs(supraBVal);
 		
-		List<UncertainIncrMagFreqDist> sectSupraMFDs = target.getSectSupraSeisNuclMFDs();
+		List<UncertainIncrMagFreqDist> sectSupraMFDs = target.getOnFaultSupraSeisNucleationMFDs();
 		
 		constraints.add(new SubSectMFDInversionConstraint(rupSet, 1d,
 				ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY, sectSupraMFDs, true));
@@ -408,7 +422,7 @@ public class NSHM23_ConstraintBuilder {
 		Preconditions.checkState(rupSet.isEquivalentTo(prevSol.getRupSet()));
 		SupraSeisBValInversionTargetMFDs targetMFDs = getTargetMFDs(targetBVal);
 		
-		List<UncertainIncrMagFreqDist> origSupraNuclMFDs = targetMFDs.getSectSupraSeisNuclMFDs();
+		List<UncertainIncrMagFreqDist> origSupraNuclMFDs = targetMFDs.getOnFaultSupraSeisNucleationMFDs();
 		
 		double[] solRupMoRates = SectBValuePlot.calcRupMomentRates(prevSol);
 
@@ -558,7 +572,7 @@ public class NSHM23_ConstraintBuilder {
 		
 		for (int s=0;s <rupSet.getNumSections(); s++) {
 			FaultSection data = rupSet.getFaultSectionData(s);
-			IncrementalMagFreqDist sectNuclB1 = targetB1.getSectSupraSeisNuclMFDs().get(s);
+			IncrementalMagFreqDist sectNuclB1 = targetB1.getOnFaultSupraSeisNucleationMFDs().get(s);
 			int minIndex = -1;
 			int maxIndex = 0;
 			for (int i=0; i<sectNuclB1.size(); i++) {
@@ -779,7 +793,7 @@ public class NSHM23_ConstraintBuilder {
 		System.err.println("WARNING: temporary relative standard deviation of "+(float)DEFAULT_REL_STD_DEV
 				+" set for all section target rates"); // TODO
 		
-		List<UncertainIncrMagFreqDist> sectSupraMFDs = target.getSectSupraSeisNuclMFDs();
+		List<UncertainIncrMagFreqDist> sectSupraMFDs = target.getOnFaultSupraSeisNucleationMFDs();
 		int numPark = 0;
 		for (int s=0; s<targetRates.length; s++) {
 			targetRates[s] = sectSupraMFDs.get(s).calcSumOfY_Vals();

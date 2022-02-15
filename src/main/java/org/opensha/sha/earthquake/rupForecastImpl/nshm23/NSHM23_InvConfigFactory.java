@@ -6,11 +6,15 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.Callable;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.IntegerSampler;
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -20,6 +24,7 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurationFactory;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.LaplacianSmoothingInversionConstraint;
@@ -32,12 +37,14 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Generatio
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
@@ -53,6 +60,8 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBVal
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator.MultiBinDistributionMethod;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -72,7 +81,10 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 	private transient File cacheDir;
 	private boolean autoCache = true;
 	
-	private boolean adjustTargetsForSegmentation = true;
+	protected boolean adjustTargetsForSegmentation = true;
+	protected boolean segSelfContained = SegmentationImpliedSectNuclMFD_Estimator.SELF_CONTAINED_DEFAULT;
+	protected MultiBinDistributionMethod segBinDistMethod = SegmentationImpliedSectNuclMFD_Estimator.BIN_DIST_METHOD_DEFAULT;
+	
 	private boolean adjustForActualRupSlips = NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
 	private boolean adjustForSlipAlong = NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT;
 	
@@ -136,6 +148,13 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 
 	public void setAdjustTargetsForSegmentation(boolean adjustTargetsForSegmentation) {
 		this.adjustTargetsForSegmentation = adjustTargetsForSegmentation;
+	}
+	
+	public void setAdjustTargetsForSegmentation(boolean adjustTargetsForSegmentation,
+			MultiBinDistributionMethod binDistMethod, boolean selfContained) {
+		this.adjustTargetsForSegmentation = adjustTargetsForSegmentation;
+		this.segBinDistMethod = binDistMethod;
+		this.segSelfContained = selfContained;
 	}
 	
 	public void adjustForActualRupSlips(boolean adjustForActualRupSlips, boolean adjustForSlipAlong) {
@@ -371,6 +390,9 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		
 		constrBuilder.magDepRelStdDev(M->0.1*Math.pow(10, bVal*0.5*(M-6)));
 		
+		constrBuilder.adjustForActualRupSlips(NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT,
+				NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT);
+		
 		return constrBuilder;
 	}
 
@@ -403,7 +425,7 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 				targetSegModel = new JumpProbabilityCalc.MultiProduct(targetSegModel, distModel.getModel(rupSet));
 		}
 		if (adjustTargetsForSegmentation) {
-			constrBuilder.adjustForSegmentationModel(targetSegModel);
+			constrBuilder.adjustForSegmentationModel(targetSegModel, segBinDistMethod, segSelfContained);
 		}
 		
 		if (slipWeight > 0d)
@@ -523,10 +545,113 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		
 	}
 	
+	public static class SegGreedySelfContained extends NSHM23_InvConfigFactory {
+
+		public SegGreedySelfContained() {
+			adjustTargetsForSegmentation = true;
+			segSelfContained = true;
+			segBinDistMethod = MultiBinDistributionMethod.GREEDY;
+		}
+		
+	}
+	
+	public static class SegGreedy extends NSHM23_InvConfigFactory {
+
+		public SegGreedy() {
+			adjustTargetsForSegmentation = true;
+			segSelfContained = false;
+			segBinDistMethod = MultiBinDistributionMethod.GREEDY;
+		}
+		
+	}
+	
+	public static class SegCappedSelfContained extends NSHM23_InvConfigFactory {
+
+		public SegCappedSelfContained() {
+			adjustTargetsForSegmentation = true;
+			segSelfContained = true;
+			segBinDistMethod = MultiBinDistributionMethod.CAPPED_DISTRIBUTED;
+		}
+		
+	}
+	
+	public static class SegCapped extends NSHM23_InvConfigFactory {
+
+		public SegCapped() {
+			adjustTargetsForSegmentation = true;
+			segSelfContained = false;
+			segBinDistMethod = MultiBinDistributionMethod.CAPPED_DISTRIBUTED;
+		}
+		
+	}
+	
 	public static class MFDSlipAlongAdjust extends NSHM23_InvConfigFactory {
 
 		public MFDSlipAlongAdjust() {
 			this.adjustForActualRupSlips(true, true);
+		}
+		
+	}
+	
+	public static class HardcodedPrevWeightAdjust extends NSHM23_InvConfigFactory {
+		
+		private ZipFile zip;
+
+		public HardcodedPrevWeightAdjust() {
+			try {
+				zip = new ZipFile(new File("/project/scec_608/kmilner/nshm23/batch_inversions/"
+						+ "2022_02_10-nshm23_u3_hybrid_branches-seg-capped-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip/results.zip"));
+			} catch (Exception e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
+			
+			// disable reweighting
+			config = InversionConfiguration.builder(config).reweight(null).build();
+			
+			// get previous weights
+			String entryName = "solution_logic_tree/";
+			for (int i=0; i<branch.size(); i++) {
+				LogicTreeLevel<?> level = branch.getLevel(i);
+				if (level.affects(InversionMisfitStats.MISFIT_STATS_FILE_NAME, true))
+					entryName += branch.getValue(i).getFilePrefix()+"/";
+			}
+			entryName += InversionMisfitStats.MISFIT_STATS_FILE_NAME;
+			System.out.println("Loading "+entryName);
+			ZipEntry entry = zip.getEntry(entryName);
+			Preconditions.checkNotNull(entry, "Entry not found: %s", entryName);
+			
+			CSVFile<String> csv;
+			try {
+				csv = CSVFile.readStream(zip.getInputStream(entry), true);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			InversionMisfitStats stats = new InversionMisfitStats(null);
+			stats.initFromCSV(csv);
+			
+			for (InversionConstraint constraint : config.getConstraints()) {
+				if (constraint.getWeightingType() == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY) {
+					// find prev final weight
+					boolean found = false;
+					for (MisfitStats misfits : stats.getStats()) {
+						if (misfits.range.name.equals(constraint.getName())) {
+							constraint.setWeight(misfits.range.weight);
+							System.out.println(misfits.range.name+" prevWeight="+misfits.range.weight);
+							found = true;
+						}
+					}
+					Preconditions.checkState(found, "Previous weight not found for constraint %s, branch %s",
+							constraint.getName(), branch);
+				}
+			}
+			
+			return config;
 		}
 		
 	}

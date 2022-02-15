@@ -151,7 +151,11 @@ public class StandardFaultSysModulesTest {
 			constrs.add(mfd);
 		}
 		InversionTargetMFDs.Precomputed module = new InversionTargetMFDs.Precomputed(demoRupSet, fakeMFD(), fakeMFD(),
-				fakeMFD(), fakeMFD(), constrs, fakeSubSeismoMFDs());
+				fakeMFD(), fakeMFD(), constrs, fakeSubSeismoMFDs(), null);
+		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, InversionTargetMFDs.class);
+		// now add supra-seis (just use sub seis as supra, doesn't matter since it's fake anyway)
+		module = new InversionTargetMFDs.Precomputed(demoRupSet, fakeMFD(), fakeMFD(),
+				fakeMFD(), fakeMFD(), constrs, fakeSubSeismoMFDs(), fakeSubSeismoMFDs().getAll());
 		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, InversionTargetMFDs.class);
 	}
 	

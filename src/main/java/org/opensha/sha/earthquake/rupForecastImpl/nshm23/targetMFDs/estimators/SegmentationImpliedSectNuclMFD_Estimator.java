@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.text.WordUtils;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -20,6 +21,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump.UniqueDistJump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -70,12 +72,26 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 	
 	private List<IncrementalMagFreqDist> estSectSupraSeisMFDs;
 	private SectSegmentationJumpTracker[] sectSegTrackers;
+	
+	private boolean trackIndepJumpTargets = false;
+	private List<List<IncrementalMagFreqDist>> indepJumpTargetSupraSeisMFDs;
 
 	private double[] targetSectSupraMoRates;
 	private double[] targetSectSupraSlipRates;
 
-	private static MultiBinDistributionMethod BIN_DIST_METHOD_DEFAULT = MultiBinDistributionMethod.GREEDY;
+	public static MultiBinDistributionMethod BIN_DIST_METHOD_DEFAULT = MultiBinDistributionMethod.CAPPED_DISTRIBUTED;
 	private MultiBinDistributionMethod binDistMethod;
+	
+	public static boolean SELF_CONTAINED_DEFAULT = false;
+	/**
+	 * If true, make the further simplifying assumption that every section has the same total participation and slip
+	 * rate. This decouples each section adjustment calculation from all other sections, but is also more in that it
+	 * does not directly relate to how the segmentation constraint is applied, which is relative to the total rates on
+	 * either side of the jump
+	 */
+	private boolean selfContained = SELF_CONTAINED_DEFAULT;
+	
+	private boolean allowExceedInitialGR = false;
 	
 	/**
 	 * Slip rate floor used when estimating participation rates. This is necessary if a model has near-zero slip rates,
@@ -85,8 +101,9 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 	 */
 //	private static final double MIN_SLIP_RATE = 1e-5; // in m/yr, equal to 0.01 mm/yr
 	private static final double MIN_SLIP_RATE = 0; // in m/yr, equal to 0.01 mm/yr
-	
+
 	private static final int DEBUG_SECT = -1; // disabled
+//	private static final int DEBUG_SECT = 315; // Chino alt 1
 //	private static final int DEBUG_SECT = 1832; // Mojave N
 //	private static final int DEBUG_SECT = 100; // Bicycle Lake
 //	private static final int DEBUG_SECT = 129; // Big Pine (East)
@@ -100,13 +117,6 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 		 */
 		GREEDY,
 		/**
-		 * Same as {@link #GREEDY}, but make the further simplifying assumption that every section has the same total
-		 * participation and slip rate. This is even simpler as it decouples each section adjustment calculation
-		 * from all other sections, but is also most wrong in that it does not directly relate to how the segmentation
-		 * constraint is applied, which is relative to the total rates on either side of the jump
-		 */
-		GREEDY_SELF_CONTAINED,
-		/**
 		 * Most conservative (probably overly so) approach where the rate associated with each jump is distributed
 		 * across all bins utilizing that jump according to the original G-R proportions
 		 */
@@ -115,17 +125,65 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 		 * Same as {@link #FULLY_DISTRIBUTED}, but fancier in that it saves any leftover segmentation implied rate
 		 * that is above the G-R ceiling and redistributes it to larger magnitude bins that are deficient
 		 */
-		CAPPED_DISTRIBUTED,
+		CAPPED_DISTRIBUTED;
+		
+		@Override
+		public String toString() {
+			return WordUtils.capitalizeFully(name().replace("_", " "));
+		}
 	}
 
 	public SegmentationImpliedSectNuclMFD_Estimator(JumpProbabilityCalc segModel) {
-		this(segModel, BIN_DIST_METHOD_DEFAULT);
+		this(segModel, BIN_DIST_METHOD_DEFAULT, SELF_CONTAINED_DEFAULT);
 	}
 
 	public SegmentationImpliedSectNuclMFD_Estimator(JumpProbabilityCalc segModel,
-			MultiBinDistributionMethod binDistMethod) {
+			MultiBinDistributionMethod binDistMethod, boolean selfContained) {
 		this.segModel = segModel;
 		this.binDistMethod = binDistMethod;
+		this.selfContained = selfContained;
+	}
+
+	public MultiBinDistributionMethod getBinDistMethod() {
+		return binDistMethod;
+	}
+
+	public void setBinDistMethod(MultiBinDistributionMethod binDistMethod) {
+		this.binDistMethod = binDistMethod;
+	}
+
+	public boolean isSelfContained() {
+		return selfContained;
+	}
+
+	public void setSelfContained(boolean selfContained) {
+		this.selfContained = selfContained;
+	}
+
+	public boolean isAllowExceedInitialGR() {
+		return allowExceedInitialGR;
+	}
+
+	/**
+	 * Allows the segmentation implied rate to exceed the original GR fractional rate in a given magnitude bin. This
+	 * should never be used in practice, but can be useful for plot generation to show how the algorithm works.
+	 * 
+	 * @param allowExceedInitialGR
+	 */
+	public void setAllowExceedInitialGR(boolean allowExceedInitialGR) {
+		this.allowExceedInitialGR = allowExceedInitialGR;
+	}
+
+	public boolean isTrackIndepJumpTargets() {
+		return trackIndepJumpTargets;
+	}
+
+	public void setTrackIndepJumpTargets(boolean trackIndepJumpTargets) {
+		this.trackIndepJumpTargets = trackIndepJumpTargets;
+	}
+
+	public List<List<IncrementalMagFreqDist>> getIndepJumpTargetSupraSeisMFDs() {
+		return indepJumpTargetSupraSeisMFDs;
 	}
 
 	@Override
@@ -145,7 +203,7 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 		System.out.println("Pre-processing "+cRups.size()+" ruptures for segmentation calculation");
 		
 		// map from unique jumps to their segmentation probabilities
-		Map<Jump, Double> segJumpProbsMap = new HashMap<>();
+		Map<UniqueDistJump, Double> segJumpProbsMap = new HashMap<>();
 		
 		// this will track what jumps control what magnitude bins on each section
 		sectSegTrackers = new SectSegmentationJumpTracker[numSects];
@@ -155,15 +213,15 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 			for (int r=0; r<cRups.size(); r++) {
 				ClusterRupture rup = cRups.get(r);
 				
-				HashSet<Jump> jumps = new HashSet<>();
+				HashSet<UniqueDistJump> jumps = new HashSet<>();
 				double worstProb = 1d;
 				for (Jump origJump : rup.getJumpsIterable()) {
-					Jump jump;
+					UniqueDistJump jump;
 					if (origJump.toSection.getSectionId() < origJump.fromSection.getSectionId())
 						// always store jumps with fromID < toID
-						jump = origJump.reverse();
+						jump = new UniqueDistJump(origJump.reverse());
 					else
-						jump = origJump;
+						jump = new UniqueDistJump(origJump);
 					double jumpProb;
 					if (segJumpProbsMap.containsKey(jump)) {
 						jumpProb = segJumpProbsMap.get(jump);
@@ -248,11 +306,23 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 			}
 		}
 		
-		Map<Jump, Double> curJumpMaxParticipationRates = new HashMap<>();
+		Map<UniqueDistJump, Double> curJumpMaxParticipationRates = new HashMap<>();
+		
+		if (allowExceedInitialGR)
+			System.err.println("WARNING: allowExceedInitialGR = true, should only be used for debugging or plot generation");
+		
+		if (trackIndepJumpTargets) {
+			indepJumpTargetSupraSeisMFDs = new ArrayList<>();
+			for (int s=0; s<numSects; s++)
+				indepJumpTargetSupraSeisMFDs.add(null);
+		}
 		
 		int minIters = 10;
 		// stop when we reach maxIters, or if no section bins changed more than targetMaxFractChange
-		int maxIters = 100;
+		int maxIters = 1000;
+		// if we reach this many iterations and selfContained == false, we're probably in a feedback loop.
+		// start averaging in the prior model with increasingly high weight to stabilize the model
+		int convergeBasisIters = 50;
 		double targetMaxFractChange = 0.01; // 1%
 		int iterations = 0;
 		
@@ -299,7 +369,7 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 			
 			// calculate the current jump participation rate, which is it's probability times the lower of
 			// the participation rates on either side of the jump
-			for (Jump jump : segJumpProbsMap.keySet()) {
+			for (UniqueDistJump jump : segJumpProbsMap.keySet()) {
 				double jumpProb = segJumpProbsMap.get(jump);
 				Preconditions.checkState(jumpProb > 0d);
 				// lesser of the participation rate on either side of the jump
@@ -331,11 +401,12 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 					System.out.println("Pre-loop MFD");
 					for (int j=sectMinMagIndexes[s]; j<=sectMaxMagIndexes[s]; j++)
 						System.out.println("\t"+(float)modMFD.getX(j)+"\t"+(float)modMFD.getY(j));
+					System.out.println("Pre-loop participation rate: "+curParticRates[s]);
 				}
 				
-				if (binDistMethod == MultiBinDistributionMethod.GREEDY_SELF_CONTAINED) {
+				if (selfContained) {
 					// recalculate jump participation rates in the world of this section
-					for (Jump jump : segJumpProbsMap.keySet()) {
+					for (UniqueDistJump jump : segJumpProbsMap.keySet()) {
 						if (tracker.usesJump(jump)) {
 							double jumpProb = segJumpProbsMap.get(jump);
 							Preconditions.checkState(jumpProb > 0d);
@@ -344,7 +415,7 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 					}
 				}
 
-				Map<Jump, List<Integer>> fullJumpBins = tracker.getIndependentControllingJumpBinsMapping(
+				Map<UniqueDistJump, List<Integer>> fullJumpBins = tracker.getIndependentControllingJumpBinsMapping(
 						curJumpMaxParticipationRates, sectMinMagIndexes[s]);
 				
 				// don't allow the rate in any bin to exceed its original G-R share of the total nucleation rate
@@ -363,20 +434,24 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 				// available segmentation rate in each bin, summed over independent jumps operating in that bin
 				double[] availSegRates = new double[ceilRates.length];
 				
-				Collection<Jump> jumps = fullJumpBins.keySet();
+				Collection<UniqueDistJump> jumps = fullJumpBins.keySet();
 				
 				if (binDistMethod == MultiBinDistributionMethod.CAPPED_DISTRIBUTED || debug) {
 					// need to sort them such that jumps using larger magnitude bins are processed later
 					jumps = new ArrayList<>(jumps);
-					Collections.sort((List<Jump>)jumps, new Comparator<Jump>() {
+					Collections.sort((List<UniqueDistJump>)jumps, new Comparator<UniqueDistJump>() {
 
 						@Override
-						public int compare(Jump o1, Jump o2) {
+						public int compare(UniqueDistJump o1, UniqueDistJump o2) {
 							List<Integer> bins1 = fullJumpBins.get(o1);
 							List<Integer> bins2 = fullJumpBins.get(o2);
 							int cmp = Integer.compare(bins1.get(bins1.size()-1), bins2.get(bins2.size()-1));
 							if (cmp == 0)
+								// defer to location of the first bin, lower first
 								cmp = Integer.compare(bins1.get(0), bins2.get(0));
+							if (cmp == 0)
+								// uses the exact same bins, use up the smaller one first
+								cmp = Double.compare(segJumpProbsMap.get(o1), segJumpProbsMap.get(o2));
 							return cmp;
 						}
 					});
@@ -384,7 +459,13 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 				
 				boolean[] affectedBins = new boolean[ceilRates.length];
 				
-				for (Jump jump : jumps) {
+				List<IncrementalMagFreqDist> jumpTargets = null;
+				if (trackIndepJumpTargets) {
+					jumpTargets = new ArrayList<>();
+					indepJumpTargetSupraSeisMFDs.set(s, jumpTargets);
+				}
+				
+				for (UniqueDistJump jump : jumps) {
 					List<Integer> bins = fullJumpBins.get(jump);
 					Preconditions.checkState(bins.size() > 0);
 					for (int bin : bins)
@@ -400,14 +481,22 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 						System.out.println("Jump: "+jump+"\tsegParticTarget="+segParticTarget
 								+"\t"+jump.fromSection.getName()+" -> "+jump.toSection.getName());
 					
-					if (binDistMethod == MultiBinDistributionMethod.GREEDY
-							|| binDistMethod == MultiBinDistributionMethod.GREEDY_SELF_CONTAINED) {
+					IncrementalMagFreqDist jumpTarget = null;
+					if (trackIndepJumpTargets) {
+						jumpTarget = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+						jumpTargets.add(jumpTarget);
+					}
+					if (binDistMethod == MultiBinDistributionMethod.GREEDY) {
 						// simplest method, but may not actually be consistent with the segmentation constraint
 						
 						// for each bin calculation, assume the best case scenario in which that bin is allowed to use
 						// the entire segmentation rate (in order to make the minimum viable adjustment)
-						for (int bin : bins)
-							availSegRates[bin] += segParticTarget/nuclToParticScalars[bin-sectMinMagIndexes[s]];
+						for (int bin : bins) {
+							double rate = segParticTarget/nuclToParticScalars[bin-sectMinMagIndexes[s]];
+							availSegRates[bin] += rate;
+							if (jumpTarget != null)
+								jumpTarget.set(bin, rate);
+						}
 					} else if (binDistMethod == MultiBinDistributionMethod.FULLY_DISTRIBUTED
 							|| binDistMethod == MultiBinDistributionMethod.CAPPED_DISTRIBUTED) {
 						// according to the original GR, figure out the fraction of the participation rate associated
@@ -433,10 +522,13 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 							// convert that budget back to a nucleation rate
 							double binTargetNuclRate = binTargetParticRate/nuclToParticScalars[bin-sectMinMagIndexes[s]];
 							
+							if (jumpTarget != null)
+								jumpTarget.set(bin, binTargetNuclRate);
+							
 							if (binDistMethod == MultiBinDistributionMethod.CAPPED_DISTRIBUTED) {
 								// check cap
 								double newRate = availSegRates[bin] + binTargetNuclRate;
-								if (newRate > ceilRates[bin]) {
+								if (newRate > ceilRates[bin] && !allowExceedInitialGR) {
 									// we have some excess that we can redistribute at the end
 									double excessNucl = newRate - ceilRates[bin];
 									excessPartic += excessNucl * nuclToParticScalars[bin-sectMinMagIndexes[s]];
@@ -450,25 +542,46 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 						
 						if (binDistMethod == MultiBinDistributionMethod.CAPPED_DISTRIBUTED && excessPartic > 0) {
 							// we have excess rate to redistribute
-							for (int bin : bins) {
-								if (availSegRates[bin] < ceilRates[bin]) {
-									// this bin has not yet hit the ceiling, fill it
-									// the amount of nucleation rate to be filled
-									double binAvailNucl = ceilRates[bin] - availSegRates[bin];
-									// convert that to a participation rate
-									double particScalar = nuclToParticScalars[bin-sectMinMagIndexes[s]];
-									double binAvailPartic = binAvailNucl * particScalar;
-									// take the lesser of the needed participation rate and that which we have available
-									double utilizedPartic = Math.min(excessPartic, binAvailPartic);
-									// convert back to a nucleation rate
-									double utilizedNucl = utilizedPartic / particScalar;
-									// apply it
-									availSegRates[bin] += utilizedNucl;
-									excessPartic -= utilizedPartic;
-									if (excessPartic <= 0d)
-										// <= here in case we end up with a tiny negative floating point error, e.g., -1e16
-										break;
+							boolean[] hasRooms = new boolean[bins.size()];
+							boolean hasRoom = false;
+							for (int b=0; b<hasRooms.length; b++) {
+								int bin = bins.get(b);
+								hasRooms[b] = availSegRates[bin] < ceilRates[bin];
+								hasRoom = hasRoom || hasRooms[b];
+							}
+							
+							while (hasRoom && (float)excessPartic > 0f) {
+								double totFract = 0d;
+								for (int b=0; b<hasRooms.length; b++)
+									if (hasRooms[b])
+										totFract += origJumpBinPartics[b];
+								
+								double distributedPartic = 0d;
+								hasRoom = false;
+								for (int b=0; b<hasRooms.length; b++) {
+									if (hasRooms[b]) {
+										int bin = bins.get(b);
+										double myFract = origJumpBinPartics[b]/totFract;
+										
+										// this bin has not yet hit the ceiling, fill it
+										// the amount of nucleation rate to be filled
+										double binAvailNucl = ceilRates[bin] - availSegRates[bin];
+										// convert that to a participation rate
+										double particScalar = nuclToParticScalars[bin-sectMinMagIndexes[s]];
+										double binAvailPartic = binAvailNucl * particScalar;
+										// take the lesser of the needed participation rate and that which we have available
+										double utilizedPartic = Math.min(excessPartic*myFract, binAvailPartic);
+										// convert back to a nucleation rate
+										double utilizedNucl = utilizedPartic / particScalar;
+										// apply it
+										availSegRates[bin] += utilizedNucl;
+										distributedPartic += utilizedPartic;
+										
+										hasRooms[b] = (float)availSegRates[bin] < (float)ceilRates[bin];
+										hasRoom = hasRoom || hasRooms[b];
+									}
 								}
+								excessPartic -= distributedPartic;
 							}
 						}
 					} else {
@@ -493,14 +606,21 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 				double prevRateSum = modMFD.calcSumOfY_Vals();
 				
 				double[] prevRates = new double[modMFD.size()];
+				IncrementalMagFreqDist prevMFD = !selfContained && i > convergeBasisIters ? modMFD.deepClone() : null;
 				for (int m=0; m<modMFD.size(); m++) {
 					double prevRate = modMFD.getY(m);
 					prevRates[m] = prevRate;
-					if (prevRate == 0d || !affectedBins[m])
+					if (prevRate == 0d || !affectedBins[m]) {
 						// empty or non-affected bin
 						continue;
+					}
 					
-					double modRate = Math.min(ceilRates[m], availSegRates[m]);
+					double modRate;
+					if (allowExceedInitialGR)
+						// don't cap it
+						modRate = availSegRates[m];
+					else
+						modRate = Math.min(ceilRates[m], availSegRates[m]);
 					
 //					Preconditions.checkState(modRate > 0, "Bad modRate=%s for bin %s, ceilRate=%s, sumImpliedRate=%s",
 //							modRate, m, ceilRates[m], availSegRates[m]);
@@ -517,8 +637,31 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 						System.out.println("\tWill scale mooment to match "+targetSectSupraMoRates[s]
 								+" (cur="+modMFD.getTotalMomentRate()+")");
 					}
+					if (trackIndepJumpTargets && !jumpTargets.isEmpty()) {
+						// scale those first
+						double scaleRate = targetSectSupraMoRates[s]/modMFD.getTotalMomentRate();
+						for (IncrementalMagFreqDist target : jumpTargets)
+							target.scale(scaleRate);
+					}
 					// now rescale the MFD to match the original target moment rate
 					modMFD.scaleToTotalMomentRate(targetSectSupraMoRates[s]);
+					
+					if (prevMFD != null) {
+						// This means that we're not converged, which can happen in non-self contained mode when
+						// 2 sections are fully coupled: a change on one affects, the other, which affects the
+						// previous section. Afer convergeBasisIters iterations, start to average out changes with
+						// an increasingly highly weighted prior to slow down fluctuations and settle on a final model
+						double weightPrev = (i-convergeBasisIters);
+						double weightCur = 1;
+						double sum = weightPrev + weightCur;
+						weightPrev /= sum;
+						weightCur /= sum;
+						IncrementalMagFreqDist avgMFD = new IncrementalMagFreqDist(
+								modMFD.getMinX(), modMFD.size(), modMFD.getDelta());
+						for (int m=0; m<avgMFD.size(); m++)
+							avgMFD.set(m, weightCur*modMFD.getY(m) + weightPrev*prevMFD.getY(m));
+						modMFD = avgMFD;
+					}
 					
 					for (int m=sectMinMagIndexes[s]; m<=sectMaxMagIndexes[s]; m++) {
 						if (prevRates[m] == 0d)
@@ -527,8 +670,11 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 						if (Math.abs(change) > Math.abs(prevIterMaxRateChange))
 							prevIterMaxRateChange = change;
 						double fract = change/prevRates[m];
-						if (Math.abs(fract) > Math.abs(prevIterMaxFractRateChange))
+						if (Math.abs(fract) > Math.abs(prevIterMaxFractRateChange)) {
+//							System.out.println("New max fract="+fract+" for change="+modMFD.getY(m)
+//								+" - "+prevRates[m]+" = "+change+", s="+s+" "+rupSet.getFaultSectionData(s).getName());
 							prevIterMaxFractRateChange = fract;
+						}
 					}
 					prevIterTotRateChange += modMFD.calcSumOfY_Vals() - prevRateSum;
 				}
@@ -589,9 +735,9 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 	private static class SectSegmentationJumpTracker {
 		
 		private BitSet unityProbBins;
-		private Map<Integer, Set<Set<Jump>>> binJumps;
+		private Map<Integer, Set<Set<UniqueDistJump>>> binJumps;
 		private int numControlledBins = 0;
-		private Set<Jump> allJumps;
+		private Set<UniqueDistJump> allJumps;
 		
 		public SectSegmentationJumpTracker(int numBins) {
 			this.unityProbBins = new BitSet(numBins);
@@ -607,7 +753,7 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 			return numControlledBins == 0;
 		}
 		
-		public boolean usesJump(Jump jump) {
+		public boolean usesJump(UniqueDistJump jump) {
 			return allJumps.contains(jump);
 		}
 		
@@ -621,13 +767,13 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 		 * @param worstJumpProb
 		 * @param magIndex
 		 */
-		public void processRupture(HashSet<Jump> jumps, double worstJumpProb, int magIndex) {
+		public void processRupture(HashSet<UniqueDistJump> jumps, double worstJumpProb, int magIndex) {
 			if (unityProbBins.get(magIndex))
 				// this bin already has a rupture without segmentation
 				return;
 			if (worstJumpProb == 1d) {
 				// this rupture is not controlled by segmentation
-				Set<Set<Jump>> prev = binJumps.remove(magIndex);
+				Set<Set<UniqueDistJump>> prev = binJumps.remove(magIndex);
 				if (prev != null)
 					// this bin was controlled, now isn't
 					numControlledBins--;
@@ -635,7 +781,7 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 			} else {
 				Preconditions.checkState(jumps != null && !jumps.isEmpty());
 				allJumps.addAll(jumps);
-				Set<Set<Jump>> myBinJumps = binJumps.get(magIndex);
+				Set<Set<UniqueDistJump>> myBinJumps = binJumps.get(magIndex);
 				if (myBinJumps == null) {
 					// this bin is under control for the first time
 					numControlledBins++;
@@ -652,7 +798,7 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 					// inversion will always use the easier (smaller) set
 					
 					int mySize = jumps.size();
-					for (Set<Jump> otherPath : myBinJumps) {
+					for (Set<UniqueDistJump> otherPath : myBinJumps) {
 						if (mySize > otherPath.size() && jumps.containsAll(otherPath)) {
 							// this is a superset of a previous path in this magnitude bin, skip it and keep the old one
 							return;
@@ -663,13 +809,13 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 					// the more complicated longer path, again assuming that the inversion will always use the easier
 					// path (with fewer jumps)
 					
-					List<Set<Jump>> supersets = new ArrayList<>();
-					for (Set<Jump> otherPath : myBinJumps) {
+					List<Set<UniqueDistJump>> supersets = new ArrayList<>();
+					for (Set<UniqueDistJump> otherPath : myBinJumps) {
 						if (otherPath.size() > mySize && otherPath.containsAll(jumps))
 							// we are a new easier subset of this previous path, remove that path
 							supersets.add(otherPath);
 					}
-					for (Set<Jump> superset : supersets)
+					for (Set<UniqueDistJump> superset : supersets)
 						myBinJumps.remove(superset);
 				}
 				
@@ -689,34 +835,34 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 		 * @param sectMinIndex
 		 * @return
 		 */
-		public Map<Jump, List<Integer>> getIndependentControllingJumpBinsMapping(
-				Map<Jump, Double> curJumpMaxParticipationRates, int sectMinIndex) {
+		public Map<UniqueDistJump, List<Integer>> getIndependentControllingJumpBinsMapping(
+				Map<UniqueDistJump, Double> curJumpMaxParticipationRates, int sectMinIndex) {
 			Preconditions.checkState(controlled());
-			Map<Jump, List<Integer>> map = new HashMap<>();
+			Map<UniqueDistJump, List<Integer>> map = new HashMap<>();
 			for (int index : binJumps.keySet()) {
 				if (index < sectMinIndex)
 					continue;
-				Set<Set<Jump>> myBinJumps = binJumps.get(index);
+				Set<Set<UniqueDistJump>> myBinJumps = binJumps.get(index);
 				
 				// reduce each set to the worst jump based on the current participation rates, keeping a set of
 				// independent jumps that control this bin
 				
 				// this is where we'll keep a set of truly independent jumps that control segmentation for this section
-				Map<Jump, Set<Jump>> indepControllingJumps = new HashMap<>();
+				Map<UniqueDistJump, Set<UniqueDistJump>> indepControllingJumps = new HashMap<>();
 				
 				// process them in increasing size order, which will ensure that we keep any smaller isolated paths
-				List<Set<Jump>> sortedBinJumps = new ArrayList<>(myBinJumps);
+				List<Set<UniqueDistJump>> sortedBinJumps = new ArrayList<>(myBinJumps);
 				Collections.sort(sortedBinJumps, collectionSizeComparator);
 				
-				for (Set<Jump> jumps : sortedBinJumps) {
+				for (Set<UniqueDistJump> jumps : sortedBinJumps) {
 					// each set here represents a unique path: ruptures that use this particular set of jumps and lie 
 					// in this mag bin
 					Preconditions.checkState(!jumps.isEmpty());
 					
 					// jump with the lowest available rate controls within any path
-					Jump controllingJump = null;
+					UniqueDistJump controllingJump = null;
 					double minRate = Double.POSITIVE_INFINITY;
-					for (Jump jump : jumps) {
+					for (UniqueDistJump jump : jumps) {
 						double rate = curJumpMaxParticipationRates.get(jump);
 						if (rate < minRate) {
 							minRate = rate;
@@ -731,12 +877,12 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 						// do nothing
 					} else {
 						// this is a new one, see if it intersects any previous ones
-						List<Jump> evictions = new ArrayList<>();
+						List<UniqueDistJump> evictions = new ArrayList<>();
 						boolean superceded = false;
-						for (Jump prevControlling : indepControllingJumps.keySet()) {
-							Set<Jump> prevDependent = indepControllingJumps.get(prevControlling);
+						for (UniqueDistJump prevControlling : indepControllingJumps.keySet()) {
+							Set<UniqueDistJump> prevDependent = indepControllingJumps.get(prevControlling);
 							boolean intersects = false;
-							for (Jump jump : jumps) {
+							for (UniqueDistJump jump : jumps) {
 								if (prevDependent.contains(jump)) {
 									// these paths intersect
 									intersects = true;
@@ -760,14 +906,14 @@ public class SegmentationImpliedSectNuclMFD_Estimator extends SectNucleationMFD_
 							// evictions, as those paths are independent to the one that supersedes us.
 							continue;
 						}
-						for (Jump jump : evictions)
+						for (UniqueDistJump jump : evictions)
 							Preconditions.checkNotNull(indepControllingJumps.remove(jump));
 						// we're independent or a new best path
 						indepControllingJumps.put(controllingJump, jumps);
 					}
 				}
 				
-				for (Jump jump : indepControllingJumps.keySet()) {
+				for (UniqueDistJump jump : indepControllingJumps.keySet()) {
 					List<Integer> list = map.get(jump);
 					if (list == null) {
 						list = new ArrayList<>();

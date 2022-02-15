@@ -21,6 +21,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump.UniqueDistJump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
@@ -79,7 +80,7 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
 public abstract class JumpProbabilityConstraint extends InversionConstraint {
 
 	protected transient FaultSystemRupSet rupSet;
-	private transient Map<Jump, List<Integer>> jumpRupsMap;
+	private transient Map<UniqueDistJump, List<Integer>> jumpRupsMap;
 	
 	@JsonAdapter(ProbCalcAdapter.class)
 	private JumpProbabilityCalc jumpProbCalc;
@@ -103,7 +104,7 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 					List<Integer> jumpRups = jumpRupsMap.get(jump);
 					if (jumpRups == null) {
 						jumpRups = new ArrayList<>();
-						jumpRupsMap.put(jump, jumpRups);
+						jumpRupsMap.put(new UniqueDistJump(jump), jumpRups);
 					}
 					jumpRups.add(r);
 					// now add it reversed
@@ -111,7 +112,7 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 					jumpRups = jumpRupsMap.get(jump);
 					if (jumpRups == null) {
 						jumpRups = new ArrayList<>();
-						jumpRupsMap.put(jump, jumpRups);
+						jumpRupsMap.put(new UniqueDistJump(jump), jumpRups);
 					}
 					jumpRups.add(r);
 				}
@@ -128,7 +129,7 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 	@Override
 	public long encode(DoubleMatrix2D A, double[] d, int startRow) {
 		checkInitJumpRups();
-		List<Jump> allJumps = new ArrayList<>(jumpRupsMap.keySet());
+		List<UniqueDistJump> allJumps = new ArrayList<>(jumpRupsMap.keySet());
 		allJumps.sort(Jump.id_comparator); // sort for consistent row ordering
 		
 		long count = 0l;
@@ -144,7 +145,7 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 		
 		// first find the prob of taking each jump, not considering alternatives
 		Table<Integer, Jump, Double> departingSectJumpProbs = HashBasedTable.create();
-		for (Jump jump : allJumps) {
+		for (UniqueDistJump jump : allJumps) {
 			List<Integer> rupsUsingJump = jumpRupsMap.get(jump);
 			Preconditions.checkNotNull(rupsUsingJump != null);
 			Preconditions.checkState(!rupsUsingJump.isEmpty());
@@ -176,7 +177,7 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 		Map<Integer, List<FaultSection>> parentSectsMap = rupSet.getFaultSectionDataList().stream().collect(
 				Collectors.groupingBy(S -> S.getParentSectionId()));
 		
-		for (Jump jump : allJumps) {
+		for (UniqueDistJump jump : allJumps) {
 			List<Integer> rupsUsingJump = jumpRupsMap.get(jump);
 			Preconditions.checkNotNull(rupsUsingJump != null);
 			Preconditions.checkState(!rupsUsingJump.isEmpty());

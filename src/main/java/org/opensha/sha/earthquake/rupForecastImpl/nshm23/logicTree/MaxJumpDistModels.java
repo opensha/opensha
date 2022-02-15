@@ -46,7 +46,7 @@ public enum MaxJumpDistModels implements LogicTreeNode {
 		this.weight = -1d;
 	}
 	
-	public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
+	public HardDistCutoffJumpProbCalc getModel(FaultSystemRupSet rupSet) {
 		return new HardDistCutoffJumpProbCalc(getMaxDist());
 	};
 
@@ -102,9 +102,10 @@ public enum MaxJumpDistModels implements LogicTreeNode {
 	 * @param cutoffDistanceArray - the set of distance cutoffs applied in the fault-system-solution inversions
 	 * @param dataList - the cutoff rate data (in same order as above)
 	 * @param target_ro - the target decay rate parameter (typically 3 km).
+	 * @return calculated A value
 	 * @throws IOException 
 	 */
-	private static void invertForWeights() throws IOException {
+	public static double invertForWeights() throws IOException {
 		MaxJumpDistModels[] values = MaxJumpDistModels.values();
 		List<CSVFile<String>> dataCSVs = new ArrayList<>();
 		
@@ -115,7 +116,7 @@ public enum MaxJumpDistModels implements LogicTreeNode {
 			dataCSVs.add(CSVFile.readStream(MaxJumpDistModels.class.getResourceAsStream(name), true));
 		}
 		
-		invertForWeights(values, dataCSVs, WEIGHT_TARGET_R0);
+		return invertForWeights(values, dataCSVs, WEIGHT_TARGET_R0);
 	}
 	
 	/**
@@ -123,8 +124,9 @@ public enum MaxJumpDistModels implements LogicTreeNode {
 	 * @param cutoffDistanceArray - the set of distance cutoffs applied in the fault-system-solution inversions
 	 * @param dataList - the cutoff rate data (in same order as above)
 	 * @param target_ro - the target decay rate parameter (typically 3 km).
+	 * @return calculated A value
 	 */
-	public static void invertForWeights(MaxJumpDistModels[] values, List<CSVFile<String>> dataCSVs, double target_ro) {
+	public static double invertForWeights(MaxJumpDistModels[] values, List<CSVFile<String>> dataCSVs, double target_ro) {
 		Preconditions.checkState(values.length == dataCSVs.size());
 		// one column for each hard cutoff value, plus 1 for A
 		int numCols = values.length+1;
@@ -195,6 +197,8 @@ public enum MaxJumpDistModels implements LogicTreeNode {
 			values[i].weight = x[i];
 //			System.out.println(values[i].getShortName()+", weight="+(float)x[i]);
 		}
+		// return A
+		return x[values.length];
 	}
 	
 	private static final DecimalFormat oDF = new DecimalFormat("0.#");
@@ -237,8 +241,9 @@ public enum MaxJumpDistModels implements LogicTreeNode {
 		
 	}
 	
-	public static void main(String[] args) {
-//		updateWeights(3);
+	public static void main(String[] args) throws IOException {
+		double a = invertForWeights();
+		System.out.println("a: "+a);
 		for (MaxJumpDistModels model : values())
 			System.out.println(model.getName()+", weight="+(float)model.getNodeWeight(null));
 	}

@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures;
 
 import java.text.DecimalFormat;
 import java.util.Comparator;
+import java.util.Objects;
 
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -9,8 +10,15 @@ import org.opensha.sha.faultSurface.FaultSection;
  * Jump from one FaultSubsectionCluster to another. This is used both when defining all possible jumps
  * between clusters, and to enumerate the individual jumps taken within a ClusterRupture.
  * 
- * hashCode() and equals() only take into account the IDs of the jumping sections, the parent section IDs
- * of the clusters involved, and the direction of the jump
+ * hashCode() and equals() are both directional, but only take into account the IDs of the jumping sections and the
+ * parent section IDs of the clusters involved. This means that equals() will return true for jumps that are part
+ * of different ruptures that may use more sections on the clusters on either side of the jump, so long as the departing
+ * and landing subsections are the same.
+ * 
+ * Note that some jumps between the same sections may have different listed distances, as the distance is defined as
+ * the minimum distance between fromCluster and toCluster, and different ruptures may use different combinations of
+ * sections on those clusters. If you need to distinguish between jumps between the same sections but different
+ * cluster-to-cluster differences, use {@link UniqueDistJump} instead.
  * 
  * @author kevin
  *
@@ -34,7 +42,7 @@ public class Jump {
 	 */
 	public final FaultSubsectionCluster toCluster;
 	/**
-	 * Distance in km between fromSection and toSection
+	 * Minimum distance in km between fromCluster and toCluster
 	 */
 	public final double distance;
 	
@@ -45,7 +53,7 @@ public class Jump {
 	 * @param fromCluster The cluster which we are jumping from
 	 * @param toSection Section on toCluster which is the jumping point
 	 * @param toCluster The cluster which we are jumping to
-	 * @param distance Distance in km between fromSection and toSection
+	 * @param distance Minimum distance in km between fromCluster and toCluster
 	 */
 	public Jump(FaultSection fromSection, FaultSubsectionCluster fromCluster, FaultSection toSection,
 			FaultSubsectionCluster toCluster, double distance) {
@@ -138,5 +146,49 @@ public class Jump {
 			return Double.compare(o1.distance, o2.distance);
 		}
 	};
+	
+	/**
+	 * Extension of {@link Jump} that also includes distance in hashCode() and equals() implementations.
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public static class UniqueDistJump extends Jump {
+		
+		public UniqueDistJump(Jump jump) {
+			this(jump.fromSection, jump.fromCluster, jump.toSection, jump.toCluster, jump.distance);;
+		}
+
+		public UniqueDistJump(FaultSection fromSection, FaultSubsectionCluster fromCluster, FaultSection toSection,
+				FaultSubsectionCluster toCluster, double distance) {
+			super(fromSection, fromCluster, toSection, toCluster, distance);
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = super.hashCode();
+			result = prime * result + Objects.hash((float)distance);
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (!super.equals(obj))
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			UniqueDistJump other = (UniqueDistJump) obj;
+			return Float.floatToIntBits((float)distance) == Float.floatToIntBits((float)other.distance);
+		}
+		
+		@Override
+		public UniqueDistJump reverse() {
+			return new UniqueDistJump(toSection, toCluster, fromSection, fromCluster, distance);
+		}
+		
+	}
 
 }
