@@ -37,6 +37,8 @@ import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.uncertainty.BoundedUncertainty;
 import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedDiscretizedFunc;
+import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
+import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
@@ -64,6 +66,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Se
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
@@ -76,6 +79,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlo
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
@@ -680,31 +684,97 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			
 			parentDists.put(name, minDist);
 			
-			boolean connected = rupData.parentCoruptureCounts.containsKey(parentID);
+			boolean connected = rupData.parentCoruptures.containsKey(parentID);
 			
 			table.initNewLine();
 			table.addColumn("**Connected?**");
 			table.addColumn(connected);
 			if (meta.comparison != null)
-				table.addColumn(compRupData.parentCoruptureCounts.containsKey(parentID));
+				table.addColumn(compRupData.parentCoruptures.containsKey(parentID));
 			table.finalizeLine();
 			
 			table.initNewLine();
 			table.addColumn("**Directly Connected?**");
-			table.addColumn(rupData.directlyConnectedParents.contains(parentID));
+			boolean directly = rupData.directlyConnectedParents.contains(parentID);
+			table.addColumn(directly);
 			if (meta.comparison != null)
 				table.addColumn(compRupData.directlyConnectedParents.contains(parentID));
 			table.finalizeLine();
 			
+			if (directly) {
+				double minRupDist = Double.POSITIVE_INFINITY;
+				double rateWeightDist = 0d;
+				double sumRate = 0d;
+				for (int rupIndex : rupData.parentCoruptures.get(parentID)) {
+					ClusterRupture rup = clusterRups.get(rupIndex);
+					for (Jump jump : rup.getJumpsIterable()) {
+						if (jump.fromCluster.parentSectionID == parentID && jump.toCluster.parentSectionID == parentSectIndex
+								|| jump.fromCluster.parentSectionID == parentSectIndex && jump.toCluster.parentSectionID == parentID) {
+							minRupDist = Math.min(minRupDist, jump.distance);
+							if (meta.primary.sol != null) {
+								double rate = meta.primary.sol.getRateForRup(rupIndex);
+								rateWeightDist += rate*jump.distance;
+								sumRate += rate;
+							}
+							break;
+						}
+					}
+				}
+				if (sumRate > 0)
+					rateWeightDist /= sumRate;
+				
+				table.initNewLine().addColumn("**Min Co-Rupture Dist**").addColumn(optionalDigitDF.format(minRupDist)+" km");
+				if (meta.comparison != null) {
+					double cminRupDist = Double.POSITIVE_INFINITY;
+					double crateWeightDist = 0d;
+					double csumRate = 0d;
+					for (int rupIndex : compRupData.parentCoruptures.get(parentID)) {
+						ClusterRupture rup = clusterRups.get(rupIndex);
+						for (Jump jump : rup.getJumpsIterable()) {
+							if (jump.fromCluster.parentSectionID == parentID && jump.toCluster.parentSectionID == parentSectIndex
+									|| jump.fromCluster.parentSectionID == parentSectIndex && jump.toCluster.parentSectionID == parentID) {
+								cminRupDist = Math.min(cminRupDist, jump.distance);
+								if (meta.comparison.sol != null) {
+									double rate = meta.comparison.sol.getRateForRup(rupIndex);
+									crateWeightDist += rate*jump.distance;
+									csumRate += rate;
+								}
+								break;
+							}
+						}
+					}
+					if (csumRate > 0)
+						crateWeightDist /= csumRate;
+					
+					table.addColumn(optionalDigitDF.format(cminRupDist)+" km");
+					table.finalizeLine();
+					if (sumRate > 0) {
+						table.initNewLine().addColumn("**Min Rate-Weighted Dist**").addColumn(optionalDigitDF.format(rateWeightDist)+" km");
+						if (csumRate > 0)
+							table.addColumn(optionalDigitDF.format(crateWeightDist)+" km");
+						else
+							table.addColumn("_N/A_");
+						table.finalizeLine();
+					}
+				} else {
+					table.finalizeLine();
+					if (sumRate > 0) {
+						table.initNewLine();
+						table.addColumn("**Min Rate-Weighted Dist**").addColumn(optionalDigitDF.format(rateWeightDist)+" km");
+						table.finalizeLine();
+					}
+				}
+			}
+			
 			table.initNewLine();
 			table.addColumn("**Co-rupture Count**");
-			if (rupData.parentCoruptureCounts.containsKey(parentID))
-				table.addColumn(countDF.format(rupData.parentCoruptureCounts.get(parentID)));
+			if (rupData.parentCoruptures.containsKey(parentID))
+				table.addColumn(countDF.format(rupData.parentCoruptures.get(parentID).size()));
 			else
 				table.addColumn("0");
 			if (meta.comparison != null) {
-				if (compRupData.parentCoruptureCounts.containsKey(parentID))
-					table.addColumn(countDF.format(compRupData.parentCoruptureCounts.get(parentID)));
+				if (compRupData.parentCoruptures.containsKey(parentID))
+					table.addColumn(countDF.format(compRupData.parentCoruptures.get(parentID).size()));
 				else
 					table.addColumn("0");
 			}
@@ -872,7 +942,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 	
 	private static class RupConnectionsData {
 		
-		private Map<Integer, Integer> parentCoruptureCounts;
+		private Map<Integer, List<Integer>> parentCoruptures;
 		private HashSet<Integer> directlyConnectedParents;
 		private Map<Integer, Double> parentCoruptureRates;
 		private Map<Integer, Integer> sectCoruptureCounts;
@@ -880,7 +950,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		public RupConnectionsData(int parentSectIndex, ClusterRuptures clusterRups,
 				FaultSystemRupSet rupSet, FaultSystemSolution sol) {
-			parentCoruptureCounts = new HashMap<>();
+			parentCoruptures = new HashMap<>();
 			directlyConnectedParents = new HashSet<>();
 			parentCoruptureRates = sol == null ? null : new HashMap<>();
 			sectCoruptureCounts = new HashMap<>();
@@ -899,15 +969,16 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 							directlyConnectedParents.add(desc.parentSectionID);
 						continue;
 					}
-					if (parentCoruptureCounts.containsKey(cluster.parentSectionID)) {
-						parentCoruptureCounts.put(cluster.parentSectionID, parentCoruptureCounts.get(cluster.parentSectionID)+1);
-						if (parentCoruptureRates != null)
-							parentCoruptureRates.put(cluster.parentSectionID, parentCoruptureRates.get(cluster.parentSectionID)+rate);
-					} else {
-						parentCoruptureCounts.put(cluster.parentSectionID, 1);
+					List<Integer> coruptures = parentCoruptures.get(cluster.parentSectionID);
+					if (coruptures == null) {
+						coruptures = new ArrayList<>();
+						parentCoruptures.put(cluster.parentSectionID, coruptures);
 						if (parentCoruptureRates != null)
 							parentCoruptureRates.put(cluster.parentSectionID, rate);
+					} else if (parentCoruptureRates != null) {
+						parentCoruptureRates.put(cluster.parentSectionID, parentCoruptureRates.get(cluster.parentSectionID)+rate);
 					}
+					coruptures.add(rupIndex);
 					for (FaultSection sect : cluster.subSects) {
 						Integer id = sect.getSectionId();
 						if (sectCoruptureCounts.containsKey(id)) {
@@ -947,6 +1018,26 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		IncrementalMagFreqDist defaultMFD = SolMFDPlot.initDefaultMFD(minMag, maxMag);
 		
+		SummedMagFreqDist nuclTargetMFD = null;
+		if (meta.primary.rupSet.hasModule(InversionTargetMFDs.class)) {
+			// see if we have section nucleation MFDs
+			InversionTargetMFDs targetMFDs = meta.primary.rupSet.requireModule(InversionTargetMFDs.class);
+			List<? extends IncrementalMagFreqDist> sectNuclMFDs = targetMFDs.getOnFaultSupraSeisNucleationMFDs();
+			if (sectNuclMFDs != null) {
+				for (FaultSection sect : faultSects) {
+					IncrementalMagFreqDist sectTarget = sectNuclMFDs.get(sect.getSectionId());
+					if (sectTarget == null) {
+						nuclTargetMFD = null;
+						break;
+					}
+					if (nuclTargetMFD == null)
+						// first one
+						nuclTargetMFD = new SummedMagFreqDist(sectTarget.getMinX(), sectTarget.size(), sectTarget.getDelta());
+					nuclTargetMFD.addIncrementalMagFreqDist(sectTarget);
+				}
+			}
+		}
+		
 		Range xRange = SolMFDPlot.xRange(defaultMFD);
 		List<XY_DataSet> incrFuncs = new ArrayList<>();
 		List<PlotCurveCharacterstics> incrChars = new ArrayList<>();
@@ -966,6 +1057,18 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 
 		List<EvenlyDiscretizedFunc> cmlFuncs = new ArrayList<>();
 		List<PlotCurveCharacterstics> cmlChars = new ArrayList<>();
+		
+		if (nuclTargetMFD != null) {
+			nuclTargetMFD.setName("Target Nucleation");
+			
+			Color targetColor = Color.GREEN.darker();
+			
+			addFakeHistFromFunc(nuclTargetMFD, incrFuncs, incrChars,
+					new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, targetColor));
+			
+			cmlFuncs.add(nuclTargetMFD.getCumRateDistWithOffset());
+			cmlChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, targetColor));
+		}
 		
 		if (meta.comparison != null && meta.comparison.sol != null) {
 			HashSet<Integer> compRups = new HashSet<>();
@@ -1186,16 +1289,44 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		double[] targetSectRates = null;
 		double[] targetSectRateStdDevs = null;
 		boolean targetNucleation = false;
-		InversionConfiguration invConfig = meta.primary.sol.getModule(InversionConfiguration.class);
-		if (invConfig != null && invConfig.getConstraints() != null) {
-			// see if we constrained this with target section rates
-			for (InversionConstraint constraint : invConfig.getConstraints()) {
-				if (constraint instanceof SectionTotalRateConstraint) {
-					SectionTotalRateConstraint sectConstr = (SectionTotalRateConstraint)constraint;
-					targetSectRates = sectConstr.getSectRates();
-					targetSectRateStdDevs = sectConstr.getSectRateStdDevs();
-					targetNucleation = sectConstr.isNucleation();
-					break;
+		InversionTargetMFDs targetMFDs = meta.primary.rupSet.getModule(InversionTargetMFDs.class);
+		if (targetMFDs != null && targetMFDs.getOnFaultSupraSeisNucleationMFDs() != null) {
+			targetNucleation = true;
+			targetSectRates = new double[rupSet.getNumSections()];
+			targetSectRateStdDevs = new double[rupSet.getNumSections()];
+			// only need to fill in the ones we'll use
+			List<? extends IncrementalMagFreqDist> targets = targetMFDs.getOnFaultSupraSeisNucleationMFDs();
+			for (FaultSection sect : faultSects) {
+				int sectID = sect.getSectionId();
+				IncrementalMagFreqDist target = targets.get(sectID);
+				targetSectRates[sectID] = target.calcSumOfY_Vals();
+				if (targetSectRateStdDevs != null) {
+					if (target instanceof UncertainIncrMagFreqDist) {
+						UncertainIncrMagFreqDist uncertTarget = (UncertainIncrMagFreqDist)target;
+						UncertainBoundedIncrMagFreqDist oneSigmaBoundedMFD =
+								uncertTarget.estimateBounds(UncertaintyBoundType.ONE_SIGMA);
+						double upperVal = oneSigmaBoundedMFD.getUpper().calcSumOfY_Vals();
+						double lowerVal = oneSigmaBoundedMFD.getLower().calcSumOfY_Vals();
+						targetSectRateStdDevs[sectID] = UncertaintyBoundType.ONE_SIGMA.estimateStdDev(
+								targetSectRates[sectID], lowerVal, upperVal);
+					} else {
+						targetSectRateStdDevs = null;
+					}
+				}
+			}
+		} else {
+			// we didn't use to store them explicitly, fall back to inversion configuration
+			InversionConfiguration invConfig = meta.primary.sol.getModule(InversionConfiguration.class);
+			if (invConfig != null && invConfig.getConstraints() != null) {
+				// see if we constrained this with target section rates
+				for (InversionConstraint constraint : invConfig.getConstraints()) {
+					if (constraint instanceof SectionTotalRateConstraint) {
+						SectionTotalRateConstraint sectConstr = (SectionTotalRateConstraint)constraint;
+						targetSectRates = sectConstr.getSectRates();
+						targetSectRateStdDevs = sectConstr.getSectRateStdDevs();
+						targetNucleation = sectConstr.isNucleation();
+						break;
+					}
 				}
 			}
 		}
@@ -2093,7 +2224,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 //		File inputFile = new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/"
 //				+ "FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip");
 		File inputFile = new File("/data/kevin/markdown/inversions/"
-				+ "2021_08_08-coulomb-u3_ref-perturb_exp_scale_1e-2_to_1e-12-avg_anneal_20m-noWL-tryZeroRates-24hr/solution.zip");
+				+ "2022_02_14-U3_ZENG-Shaw09Mod-DsrUni-SupraB0.8-NuclMFD-ShawR0_3-reweight_MAD-conserve-10m//solution.zip");
 //		File inputFile = new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_plausibleMulti15km_adaptive6km_direct_"
 //				+ "cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01"
 //				+ "_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
