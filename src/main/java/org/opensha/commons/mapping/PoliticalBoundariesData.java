@@ -14,15 +14,17 @@ import java.util.Map;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.PrimitiveArrayXY_Dataset;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 
 import com.google.common.base.Preconditions;
 
 public class PoliticalBoundariesData {
 
 	private static Map<String, XY_DataSet[]> usOutlines;
-	private static Map<String, Location> usCenters;
+	private static Map<String, GriddedRegion> usBounds;
 	private static XY_DataSet[] caOutlines;
 	private static XY_DataSet[] nzOutlines;
 	
@@ -34,19 +36,35 @@ public class PoliticalBoundariesData {
 	public static XY_DataSet[] loadDefaultOutlines(Region region) {
 		// political boundary special cases
 		
+		if (region.getName().startsWith("RELM") && region.getMinLat() < 42 && region.getMaxLat() > 32
+				&& region.getMinLon() < -114 && region.getMaxLon() > -125) {
+			// it's one of the hardcoded California regions
+			try {
+//				System.out.println("Hardcoded CA RELM");
+				return loadCAOutlines();
+			} catch (IOException e) {
+				System.err.println("WARNING: couldn't load NZ outline data: "+e.getMessage());
+			}
+		}
 		if (region.getMaxLat() > 18d && region.getMinLon() < -55d) {
 			// could be in the US, load US data
 			try {
 				initUSOutlines();
 				XY_DataSet[] ret = null;
 				for (String state : usOutlines.keySet()) {
-					Location center = usCenters.get(state);
-					boolean match = region.contains(center);
-					if (!match && state.equals("California") &&
-							(region.contains(new Location(34, -118)) || region.contains(new Location(38, -122))))
-						// special case to capture northern/southern CA
-						match = true;
-					if (region.contains(center)) {
+					GriddedRegion stateReg = usBounds.get(state);
+					
+					boolean match = false;
+					// see if it even could be a match
+					if (potentiallyOverlaps(region, stateReg)) {
+						for (Location loc : stateReg.getNodeList()) {
+							if (region.contains(loc)) {
+								match = true;
+								break;
+							}
+						}
+					}
+					if (match) {
 						if (ret == null) {
 							ret = usOutlines.get(state);
 						} else {
@@ -75,6 +93,11 @@ public class PoliticalBoundariesData {
 		return null;
 	}
 	
+	private static boolean potentiallyOverlaps(Region region1, Region region2) {
+		return region1.getMinLat() < region2.getMaxLat() && region1.getMaxLat() > region2.getMinLat()
+				&& region1.getMinLon() < region2.getMaxLon() && region1.getMaxLon() > region2.getMinLon();
+	}
+	
 	/**
 	 * @return array of XY_DataSets that represent California boundaries (plural/array because of islands). X values are longitude
 	 * and Y values are latitude.
@@ -95,24 +118,25 @@ public class PoliticalBoundariesData {
 		if (usOutlines == null) {
 			Map<String, XY_DataSet[]> usData = loadOutlinesFile(
 					PoliticalBoundariesData.class.getResourceAsStream("/data/boundaries/us_complete.txt"));
-			Map<String, Location> usCenters = new HashMap<>();
+			Map<String, GriddedRegion> usBounds = new HashMap<>();
 			for (String state : usData.keySet()) {
-				double avgLat = 0d;
-				double avgLon = 0d;
-				int num = 0;
+				MinMaxAveTracker lonTrack = new MinMaxAveTracker();
+				MinMaxAveTracker latTrack = new MinMaxAveTracker();
 				for (XY_DataSet xy : usData.get(state)) {
 					for (Point2D pt : xy) {
-						avgLat += pt.getY();
-						avgLon += pt.getX();
-						num++;
+						lonTrack.addValue(pt.getX());
+						latTrack.addValue(pt.getY());
 					}
 				}
-				avgLat /= (double)num;
-				avgLon /= (double)num;
-				usCenters.put(state, new Location(avgLat, avgLon));
+				double minSpan = Math.min(latTrack.getMax() - latTrack.getMin(), lonTrack.getMax() - lonTrack.getMin());
+				double spacing = minSpan / 10d;
+				GriddedRegion bounds = new GriddedRegion(new Location(latTrack.getMin(), lonTrack.getMin()),
+						new Location(latTrack.getMax(), lonTrack.getMax()), spacing, GriddedRegion.ANCHOR_0_0);
+				Preconditions.checkState(bounds.getNodeCount() > 0);
+				usBounds.put(state, bounds);
 			}
 			PoliticalBoundariesData.usOutlines = usData;
-			PoliticalBoundariesData.usCenters = usCenters;
+			PoliticalBoundariesData.usBounds = usBounds;
 		}
 	}
 	
