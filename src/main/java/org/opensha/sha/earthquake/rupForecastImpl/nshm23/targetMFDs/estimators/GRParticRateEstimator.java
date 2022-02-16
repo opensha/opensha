@@ -8,10 +8,9 @@ import java.util.List;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.jfree.data.Range;
-import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
-import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotSpec;
@@ -22,12 +21,11 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.Inversions;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint.SectParticipationRateEstimator;
-import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
-import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.BinaryJumpProbabilityCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
-import org.opensha.sha.magdist.IncrementalMagFreqDist;
+
+import com.google.common.base.Preconditions;
 
 /**
  * A priori estimation of section participation rates and rupture rates consistent with
@@ -39,11 +37,6 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
  */
 public class GRParticRateEstimator implements SectParticipationRateEstimator {
 	
-	private EvenlyDiscretizedFunc refFunc;
-	
-	private FaultSystemRupSet rupSet;
-	private double supraSeisB;
-	
 	private double[] estParticRates;
 	private double[] estRupRates;
 
@@ -51,39 +44,45 @@ public class GRParticRateEstimator implements SectParticipationRateEstimator {
 		this(rupSet, supraSeisB, null);
 	}
 
-	public GRParticRateEstimator(FaultSystemRupSet rupSet, double supraSeisB, RuptureProbabilityCalc segModel) {
-		this.rupSet = rupSet;
-		this.supraSeisB = supraSeisB;
-		
-		refFunc = SupraSeisBValInversionTargetMFDs.buildRefXValues(rupSet);
+	public GRParticRateEstimator(FaultSystemRupSet rupSet, double supraSeisB, JumpProbabilityCalc segModel) {
+		SupraSeisBValInversionTargetMFDs.Builder builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, supraSeisB);
+		if (segModel != null) {
+			if (segModel instanceof BinaryJumpProbabilityCalc)
+				builder.forBinaryRupProbModel((BinaryJumpProbabilityCalc)segModel);
+			else
+				builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(segModel));
+		}
+		init(rupSet, builder.build());
+	}
+
+	public GRParticRateEstimator(FaultSystemRupSet rupSet, SupraSeisBValInversionTargetMFDs targetMFDs) {
+		init(rupSet, targetMFDs);
+	}
+	
+	private void init(FaultSystemRupSet rupSet, SupraSeisBValInversionTargetMFDs targetMFDs) {
+		List<UncertainIncrMagFreqDist> sectSupraMFDs = targetMFDs.getOnFaultSupraSeisNucleationMFDs();
 		
 		estParticRates = new double[rupSet.getNumSections()];
 		estRupRates = new double[rupSet.getNumRuptures()];
 		
-		SectSlipRates slipRates = rupSet.requireModule(SectSlipRates.class);
-		
 		for (int s=0; s<estParticRates.length; s++) {
-			double slipRate = slipRates.getSlipRate(s);
-			double sectArea = rupSet.getAreaForSection(s);
-			double moRate = FaultMomentCalc.getMoment(sectArea, slipRate);
-			ModSectMinMags modMinMags = rupSet.getModule(ModSectMinMags.class);
-			List<Integer> rups = new ArrayList<>();
+			UncertainIncrMagFreqDist nuclGR = sectSupraMFDs.get(s);
+			
+			List<Integer> rups = targetMFDs.getRupturesForSect(s);
 			List<Double> rupMags = new ArrayList<>();
-			int[] rupsPerBin = new int[refFunc.size()];
-			ClusterRuptures cRups = segModel == null ? null : rupSet.requireModule(ClusterRuptures.class);
-			for (int r : rupSet.getRupturesForSection(s)) {
-				double mag = rupSet.getMagForRup(r);
-				if (modMinMags != null && modMinMags.isBelowSectMinMag(s, mag))
-					continue;
-				if (segModel != null && segModel.calcRuptureProb(cRups.get(r), false) == 0d)
-					continue;
-				rups.add(r);
-				rupMags.add(mag);
-				rupsPerBin[refFunc.getClosestXIndex(mag)]++;
+			int[] rupsPerBin = new int[nuclGR.size()];
+			for (int r : rups) {
+				double rupMag = rupSet.getMagForRup(r);
+				rupMags.add(rupMag);
+				rupsPerBin[nuclGR.getClosestXIndex(rupMag)]++;
 			}
-			// nulceation GR
-			IncrementalMagFreqDist nuclGR = SectNucleationMFD_Estimator.buildGRFromBVal(
-					refFunc, rupMags, supraSeisB, moRate, true);
+			
+			if (rups.isEmpty()) {
+				Preconditions.checkState(nuclGR.calcSumOfY_Vals() == 0d);
+				continue;
+			}
+			
+			double sectArea = rupSet.getAreaForSection(s);
 			
 			// spread to all ruptures evenly to get partic rate
 			double calcRate = 0d;
