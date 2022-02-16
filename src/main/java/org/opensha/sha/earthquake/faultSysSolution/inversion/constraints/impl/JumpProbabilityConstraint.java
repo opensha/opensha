@@ -101,18 +101,19 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 			for (int r=0; r<cRups.size(); r++) {
 				ClusterRupture rup = cRups.get(r);
 				for (Jump jump : rup.getJumpsIterable()) {
-					List<Integer> jumpRups = jumpRupsMap.get(jump);
+					UniqueDistJump udJump = new UniqueDistJump(jump);
+					List<Integer> jumpRups = jumpRupsMap.get(udJump);
 					if (jumpRups == null) {
 						jumpRups = new ArrayList<>();
-						jumpRupsMap.put(new UniqueDistJump(jump), jumpRups);
+						jumpRupsMap.put(udJump, jumpRups);
 					}
 					jumpRups.add(r);
 					// now add it reversed
-					jump = jump.reverse();
-					jumpRups = jumpRupsMap.get(jump);
+					udJump = udJump.reverse();
+					jumpRups = jumpRupsMap.get(udJump);
 					if (jumpRups == null) {
 						jumpRups = new ArrayList<>();
-						jumpRupsMap.put(new UniqueDistJump(jump), jumpRups);
+						jumpRupsMap.put(udJump, jumpRups);
 					}
 					jumpRups.add(r);
 				}
@@ -167,7 +168,11 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 							myJump.toSection, myJump.toCluster.reversed(), myJump.distance);
 				Preconditions.checkState(myJump.toCluster.startSect.equals(myJump.toSection));
 				
-				probTrack.addValue(jumpProbCalc.calcJumpProbability(rup, myJump, false));
+				double prob = jumpProbCalc.calcJumpProbability(rup, myJump, false);
+//				if (probTrack.getNum() > 0)
+//					Preconditions.checkState((float)prob == (float)probTrack.getAverage(),
+//							"%s != %s for jump %s", prob, probTrack.getAverage(), jump);
+				probTrack.addValue(prob);
 			}
 			
 			double avgRupProbUsing = probTrack.getAverage();
@@ -455,6 +460,8 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 				if (estRate > 0d)
 					weight /= estRate;
 			}
+			System.out.println("Building constraint for jump: "+jump+" with "+rupsUsingJump.size()
+				+" rups, prob="+jumpCondProb+" with weight="+weight);
 			// weight by the target fractional rate (large misfits of small conditional rates should still be fit)
 			weight /= jumpCondProb;
 			
