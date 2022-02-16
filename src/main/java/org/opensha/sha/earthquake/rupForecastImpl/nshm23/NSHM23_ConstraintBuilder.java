@@ -46,6 +46,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.Builder;
@@ -93,8 +94,7 @@ public class NSHM23_ConstraintBuilder {
 	private DoubleUnaryOperator magDepRelStdDev = M->DEFAULT_REL_STD_DEV;
 	
 	private JumpProbabilityCalc segModel;
-	private boolean segSelfContained = SegmentationImpliedSectNuclMFD_Estimator.SELF_CONTAINED_DEFAULT;
-	private MultiBinDistributionMethod segBinDistMethod = SegmentationImpliedSectNuclMFD_Estimator.BIN_DIST_METHOD_DEFAULT;
+	private SegmentationMFD_Adjustment segAdjMethod = SegmentationMFD_Adjustment.FRACT_JUMP_PROB;
 	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB) {
 		this(rupSet, supraSeisB, SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT,
@@ -196,10 +196,9 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public NSHM23_ConstraintBuilder adjustForSegmentationModel(JumpProbabilityCalc segModel,
-			MultiBinDistributionMethod binDistMethod, boolean selfContained) {
+			SegmentationMFD_Adjustment segAdjMethod) {
 		this.segModel = segModel;
-		this.segBinDistMethod = binDistMethod;
-		this.segSelfContained = selfContained;
+		this.segAdjMethod = segAdjMethod;
 		targetCache = null;
 		return this;
 	}
@@ -239,11 +238,13 @@ public class NSHM23_ConstraintBuilder {
 		builder.addSectCountUncertainties(addSectCountUncertaintiesToMFD);
 		builder.subSeisMoRateReduction(subSeisMoRateReduction);
 		if (segModel != null) {
-			if (segModel instanceof BinaryRuptureProbabilityCalc)
+			if (segModel instanceof BinaryRuptureProbabilityCalc) {
 				builder.forBinaryRupProbModel((BinaryRuptureProbabilityCalc)segModel);
-			else
-				builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(
-						segModel, segBinDistMethod, segSelfContained));
+			} else {
+				SectNucleationMFD_Estimator adjustment = segAdjMethod.getAdjustment(segModel);
+				if (adjustment != null)
+					builder.adjustTargetsForData(adjustment);
+			}
 		}
 		if (adjustForActualRupSlips)
 			builder.adjustTargetsForData(new ScalingRelSlipRateMFD_Estimator(adjustForSlipAlong));
@@ -263,6 +264,7 @@ public class NSHM23_ConstraintBuilder {
 			builder.expandUncertaintiesForData(dataConstraints, dataWithinType);
 		}
 		SupraSeisBValInversionTargetMFDs target = builder.build();
+		targetCache = target;
 		rupSet.addModule(target);
 		return target;
 	}

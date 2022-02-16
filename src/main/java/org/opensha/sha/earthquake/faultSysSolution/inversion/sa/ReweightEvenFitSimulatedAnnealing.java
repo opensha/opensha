@@ -735,8 +735,8 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		NSHM23_InvConfigFactory factory = new NSHM23_InvConfigFactory();
 		LogicTreeBranch<LogicTreeNode> branch = new NSHM23_U3_HybridLogicTreeBranch();
 		branch.setValue(FaultModels.FM3_1);
-//		branch.setValue(RupturePlausibilityModels.COULOMB);
-		branch.setValue(RupturePlausibilityModels.UCERF3);
+		branch.setValue(RupturePlausibilityModels.COULOMB);
+//		branch.setValue(RupturePlausibilityModels.UCERF3);
 		
 		// good fitting
 		branch.setValue(U3_UncertAddDeformationModels.U3_ZENG);
@@ -754,8 +754,8 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		branch.setValue(SubSeisMoRateReductions.SUB_B_1);
 		
 		// inv model
-//		branch.setValue(SubSectConstraintModels.TOT_NUCL_RATE);
-		branch.setValue(SubSectConstraintModels.NUCL_MFD);
+		branch.setValue(SubSectConstraintModels.TOT_NUCL_RATE);
+//		branch.setValue(SubSectConstraintModels.NUCL_MFD);
 		
 		branch.setValue(SegmentationModels.SHAW_R0_3);
 		
@@ -794,8 +794,10 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(5); dirName += "-5m";
 //		CompletionCriteria completion = TimeCompletionCriteria.getInHours(2); dirName += "-2h";
 //		CompletionCriteria completion = TimeCompletionCriteria.getInHours(1); dirName += "-1h";
-		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(20); dirName += "-20m";
+//		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(10); dirName += "-10m";
+//		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(20); dirName += "-20m";
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30); dirName += "-30m";
+		CompletionCriteria completion = new IterationsPerVariableCompletionCriteria(2000); dirName += "-2000ip";
 //		CompletionCriteria avgCompletion = new IterationsPerVariableCompletionCriteria(20);
 		CompletionCriteria avgCompletion = new IterationsPerVariableCompletionCriteria(50);
 
@@ -831,6 +833,22 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //		builder.subCompletion(new IterationsPerVariableCompletionCriteria(1d));
 		
 		config = builder.build();
+		
+		if ("asdf".length() > 1) {
+			dirName += "-serialized";
+			File outputDir = new File(parentDir, dirName);
+			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+			File tmpRS = new File(outputDir, "temprs.zip");
+			try {
+				rupSet.write(tmpRS);
+				rupSet = FaultSystemRupSet.load(tmpRS);
+				File tmpConfig = new File(outputDir, "tempconfig.json");
+				InversionConfiguration.writeJSON(config, tmpConfig);
+				config = InversionConfiguration.readJSON(tmpConfig, rupSet);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 		
 		InversionInputGenerator inputs = new InversionInputGenerator(rupSet, config);
 		inputs.generateInputs(true);

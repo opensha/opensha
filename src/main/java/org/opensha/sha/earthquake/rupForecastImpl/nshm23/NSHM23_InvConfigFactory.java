@@ -53,6 +53,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSeisMoRateReductions;
@@ -80,10 +81,6 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 	private transient Table<RupSetFaultModel, RupturePlausibilityModels, FaultSystemRupSet> rupSetCache = HashBasedTable.create();
 	private transient File cacheDir;
 	private boolean autoCache = true;
-	
-	protected boolean adjustTargetsForSegmentation = true;
-	protected boolean segSelfContained = SegmentationImpliedSectNuclMFD_Estimator.SELF_CONTAINED_DEFAULT;
-	protected MultiBinDistributionMethod segBinDistMethod = SegmentationImpliedSectNuclMFD_Estimator.BIN_DIST_METHOD_DEFAULT;
 	
 	private boolean adjustForActualRupSlips = NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
 	private boolean adjustForSlipAlong = NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT;
@@ -144,17 +141,6 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		if (cacheDir != null) {
 			
 		}
-	}
-
-	public void setAdjustTargetsForSegmentation(boolean adjustTargetsForSegmentation) {
-		this.adjustTargetsForSegmentation = adjustTargetsForSegmentation;
-	}
-	
-	public void setAdjustTargetsForSegmentation(boolean adjustTargetsForSegmentation,
-			MultiBinDistributionMethod binDistMethod, boolean selfContained) {
-		this.adjustTargetsForSegmentation = adjustTargetsForSegmentation;
-		this.segBinDistMethod = binDistMethod;
-		this.segSelfContained = selfContained;
 	}
 	
 	public void adjustForActualRupSlips(boolean adjustForActualRupSlips, boolean adjustForSlipAlong) {
@@ -424,8 +410,14 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 			else
 				targetSegModel = new JumpProbabilityCalc.MultiProduct(targetSegModel, distModel.getModel(rupSet));
 		}
-		if (adjustTargetsForSegmentation) {
-			constrBuilder.adjustForSegmentationModel(targetSegModel, segBinDistMethod, segSelfContained);
+		
+		if (targetSegModel != null) {
+			SegmentationMFD_Adjustment segAdj = branch.getValue(SegmentationMFD_Adjustment.class);
+			if (segAdj == null)
+				// use default adjustment
+				constrBuilder.adjustForSegmentationModel(targetSegModel);
+			else
+				constrBuilder.adjustForSegmentationModel(targetSegModel, segAdj);
 		}
 		
 		if (slipWeight > 0d)
@@ -455,9 +447,9 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		
 		List<InversionConstraint> constraints = constrBuilder.build();
 		
-		double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
+		SupraSeisBValInversionTargetMFDs targetMFDs = rupSet.requireModule(SupraSeisBValInversionTargetMFDs.class);
 		
-		GRParticRateEstimator rateEst = new GRParticRateEstimator(rupSet, bVal, targetSegModel);
+		GRParticRateEstimator rateEst = new GRParticRateEstimator(rupSet, targetMFDs);
 		
 		if (segModel != null && segModel != SegmentationModels.NONE) {
 			constraints = new ArrayList<>(constraints);
@@ -529,58 +521,10 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		
 	}
 	
-	public static class NoSegAdjust extends NSHM23_InvConfigFactory {
-		
-		public NoSegAdjust() {
-			this.setAdjustTargetsForSegmentation(false);
-		}
-		
-	}
-	
 	public static class NoMFDScaleAdjust extends NSHM23_InvConfigFactory {
 
 		public NoMFDScaleAdjust() {
 			this.adjustForActualRupSlips(false, false);
-		}
-		
-	}
-	
-	public static class SegGreedySelfContained extends NSHM23_InvConfigFactory {
-
-		public SegGreedySelfContained() {
-			adjustTargetsForSegmentation = true;
-			segSelfContained = true;
-			segBinDistMethod = MultiBinDistributionMethod.GREEDY;
-		}
-		
-	}
-	
-	public static class SegGreedy extends NSHM23_InvConfigFactory {
-
-		public SegGreedy() {
-			adjustTargetsForSegmentation = true;
-			segSelfContained = false;
-			segBinDistMethod = MultiBinDistributionMethod.GREEDY;
-		}
-		
-	}
-	
-	public static class SegCappedSelfContained extends NSHM23_InvConfigFactory {
-
-		public SegCappedSelfContained() {
-			adjustTargetsForSegmentation = true;
-			segSelfContained = true;
-			segBinDistMethod = MultiBinDistributionMethod.CAPPED_DISTRIBUTED;
-		}
-		
-	}
-	
-	public static class SegCapped extends NSHM23_InvConfigFactory {
-
-		public SegCapped() {
-			adjustTargetsForSegmentation = true;
-			segSelfContained = false;
-			segBinDistMethod = MultiBinDistributionMethod.CAPPED_DISTRIBUTED;
 		}
 		
 	}

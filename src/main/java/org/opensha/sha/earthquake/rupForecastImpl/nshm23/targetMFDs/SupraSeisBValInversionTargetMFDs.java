@@ -48,6 +48,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.APrioriSectNuclEstimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ImprobabilityImpliedSectNuclMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.PaleoSectNuclEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ScalingRelSlipRateMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SectNucleationMFD_Estimator;
@@ -165,6 +166,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				break;
 		}
 		
+		NUM_MAG++; // pad by a bin, it makes plots prettier
 		EvenlyDiscretizedFunc ret = new EvenlyDiscretizedFunc(MIN_MAG, NUM_MAG, DELTA_MAG);
 		
 		double upperBin = ret.getMaxX() + 0.5*DELTA_MAG;
@@ -683,7 +685,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			if (slipOnly)
 				// shortcut for if we only need slip rates
 				return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, totalTargetMFD, null,
-						null, null, null, null, sectSlipRates);
+						null, null, null, null, sectSlipRates, sectRupUtilizations);
 			
 			ExecutorService exec = null;
 			if (targetAdjDataConstraints != null || uncertAdjDataConstraints != null)
@@ -705,10 +707,13 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 						try {
 							call = future.get();
 						} catch (InterruptedException | ExecutionException e) {
+							e.printStackTrace();
 							throw ExceptionUtils.asRuntimeException(e);
 						}
 						sectSupraSeisMFDs.set(call.sect.getSectionId(), call.impliedMFD);
+//						System.out.println("Done with future for sect "+call.sect.getSectionId());
 					}
+//					System.out.println("Done with "+futures.size()+" futures");
 				}
 			}
 			
@@ -847,7 +852,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				exec.shutdown();
 			
 			return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, totalTargetMFD, totalOnFaultSupra,
-					totalOnFaultSub, mfdConstraints, subSeismoMFDs, uncertSectSupraSeisMFDs, sectSlipRates);
+					totalOnFaultSub, mfdConstraints, subSeismoMFDs, uncertSectSupraSeisMFDs, sectSlipRates, sectRupUtilizations);
 		}
 
 		public List<Future<DataEstCallable>> estimateSectNuclMFDs(List<? extends SectNucleationMFD_Estimator> estimators,
@@ -1217,16 +1222,19 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 
 	private SectSlipRates sectSlipRates;
 
+	private List<BitSet> sectRupUtilizations;
+
 	private SupraSeisBValInversionTargetMFDs(FaultSystemRupSet rupSet, double supraSeisBValue,
 			IncrementalMagFreqDist totalRegionalMFD, UncertainIncrMagFreqDist onFaultSupraSeisMFD,
 			IncrementalMagFreqDist onFaultSubSeisMFD, List<UncertainIncrMagFreqDist> mfdConstraints,
 			SubSeismoOnFaultMFDs subSeismoOnFaultMFDs, List<UncertainIncrMagFreqDist> supraSeismoOnFaultMFDs,
-			SectSlipRates sectSlipRates) {
+			SectSlipRates sectSlipRates, List<BitSet> sectRupUtilizations) {
 		super(rupSet, totalRegionalMFD, onFaultSupraSeisMFD, onFaultSubSeisMFD, null, mfdConstraints,
 				subSeismoOnFaultMFDs, supraSeismoOnFaultMFDs);
 		this.supraSeisBValue = supraSeisBValue;
 		this.supraSeismoOnFaultMFDs = supraSeismoOnFaultMFDs;
 		this.sectSlipRates = sectSlipRates;
+		this.sectRupUtilizations = sectRupUtilizations;
 	}
 
 	public SectSlipRates getSectSlipRates() {
@@ -1246,6 +1254,14 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	public Class<? extends ArchivableModule> getLoadingClass() {
 		// load this back in as simple Precomputed
 		return InversionTargetMFDs.Precomputed.class;
+	}
+	
+	public List<Integer> getRupturesForSect(int sectIndex) {
+		BitSet utilization = sectRupUtilizations.get(sectIndex);
+		List<Integer> rups = new ArrayList<>();
+		for (int r = utilization.nextSetBit(0); r >= 0; r = utilization.nextSetBit(r+1))
+		   rups.add(r);
+		return rups;
 	}
 	
 	public static void main(String[] args) throws IOException {
@@ -1274,13 +1290,15 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		builder.addSectCountUncertainties(false);
 		builder.totalTargetMFD(rupSet.requireModule(InversionTargetMFDs.class).getTotalRegionalMFD());
 		builder.subSeisMoRateReduction(SubSeisMoRateReduction.SUB_SEIS_B_1);
-		builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(new Shaw07JumpDistProb(1, 3),
-//				MultiBinDistributionMethod.GREEDY, false));
-//				MultiBinDistributionMethod.GREEDY, true));
-//				MultiBinDistributionMethod.FULLY_DISTRIBUTED, false));
-//				MultiBinDistributionMethod.FULLY_DISTRIBUTED, true));
-//				MultiBinDistributionMethod.CAPPED_DISTRIBUTED, false));
-				MultiBinDistributionMethod.CAPPED_DISTRIBUTED, true));
+//		builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(new Shaw07JumpDistProb(1, 3),
+////				MultiBinDistributionMethod.GREEDY, false));
+////				MultiBinDistributionMethod.GREEDY, true));
+////				MultiBinDistributionMethod.FULLY_DISTRIBUTED, false));
+////				MultiBinDistributionMethod.FULLY_DISTRIBUTED, true));
+////				MultiBinDistributionMethod.CAPPED_DISTRIBUTED, false));
+//				MultiBinDistributionMethod.CAPPED_DISTRIBUTED, true));
+//		builder.adjustTargetsForData(new ImprobabilityImpliedSectNuclMFD_Estimator(new Shaw07JumpDistProb(1, 3)));
+		builder.adjustTargetsForData(new ImprobabilityImpliedSectNuclMFD_Estimator.WorstJumpProb(new Shaw07JumpDistProb(1, 3)));
 //		builder.forBinaryRupProbModel(MaxJumpDistModels.FIVE.getModel(rupSet));
 //		builder.forSegmentationModel(new Shaw07JumpDistProb(1, 3));
 //		builder.forSegmentationModel(new JumpProbabilityCalc() {
@@ -1345,7 +1363,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		plot.writePlot(rupSet, null, "Test Model", mfdOutput);
 		
 		if (builder.targetAdjDataConstraints != null && !builder.targetAdjDataConstraints.isEmpty()
-				&& builder.targetAdjDataConstraints.get(0) instanceof SegmentationImpliedSectNuclMFD_Estimator
+				&& (builder.targetAdjDataConstraints.get(0) instanceof SegmentationImpliedSectNuclMFD_Estimator
+						|| builder.targetAdjDataConstraints.get(0) instanceof ImprobabilityImpliedSectNuclMFD_Estimator)
 				|| builder.rupSubSet != null) {
 			// debug
 			int[] debugSects = {
