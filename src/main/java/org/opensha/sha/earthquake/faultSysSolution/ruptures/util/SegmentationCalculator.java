@@ -98,6 +98,8 @@ public class SegmentationCalculator {
 	
 	private JumpProbabilityCalc detrendProb = new Shaw07JumpDistProb(1d, 3d);
 	
+	private boolean uniqueDists = true;
+	
 	/*
 	 * Calculations
 	 */
@@ -561,6 +563,8 @@ public class SegmentationCalculator {
 		// add all possible jumps from the connection strategy
 		for (FaultSubsectionCluster cluster : clusters) {
 			for (Jump jump : cluster.getConnections()) {
+				if (uniqueDists)
+					jump = new Jump.UniqueDistJump(jump);
 				IDPairing pair = pair(jump.fromCluster.parentSectionID, jump.toCluster.parentSectionID);
 				if (!parentJumpRateTable.containsRow(pair)) {
 					if (jump.fromCluster.parentSectionID == pair.getID2())
@@ -605,6 +609,10 @@ public class SegmentationCalculator {
 				FaultSubsectionCluster fullFrom = fullClustersMap.get(fromParentID);
 				FaultSubsectionCluster fullTo = fullClustersMap.get(toParentID);
 				Jump fullJump = new Jump(fromSect, fullFrom, toSect, fullTo, jump.distance);
+				if (uniqueDists) {
+					jump = new Jump.UniqueDistJump(jump);
+					fullJump = new Jump.UniqueDistJump(fullJump);
+				}
 				IDPairing pair = pair(fromParentID, toParentID);
 				JumpRates jumpRates = parentJumpRateTable.get(pair, fullJump);
 				if (jumpRates == null) {
@@ -2222,13 +2230,15 @@ public class SegmentationCalculator {
 //			calc.plotFractVsScalars(outputDir, "conn_passthrough_scalars_"+scalar.name(), scalar, false, RateCombiner.values());
 //			calc.plotFractVsScalars(outputDir, "conn_passthrough_scalars_"+scalar.name()+"_log", scalar, true, RateCombiner.values());
 //		}
-		File inputFile = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
-//				+ "2022_02_08-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-SubB1-2000ip/"
-//				+ "node_branch_averaged/SegModel_ShawR0_3.zip");
-//				+ "results_FM3_1_CoulombRupSet_branch_averaged.zip");
-				+ "2022_01_28-nshm23_u3_hybrid_branches-max_dist-FM3_1-CoulombRupSet-DsrUni-SubB1-2000ip/"
-				+ "results_FM3_1_CoulombRupSet_branch_averaged_reweight_r0_3.0.zip");
-//				+ "node_branch_averaged/MaxDist_MaxDist3km.zip");
+		File inputFile = new File("/tmp/solution.zip");
+//		File inputFile = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+////				+ "2022_02_08-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-SubB1-2000ip/"
+////				+ "node_branch_averaged/SegModel_ShawR0_3.zip");
+////				+ "results_FM3_1_CoulombRupSet_branch_averaged.zip");
+////				+ "2022_01_28-nshm23_u3_hybrid_branches-max_dist-FM3_1-CoulombRupSet-DsrUni-SubB1-2000ip/"
+////				+ "results_FM3_1_CoulombRupSet_branch_averaged_reweight_r0_3.0.zip");
+////				+ "node_branch_averaged/MaxDist_MaxDist3km.zip");
+//				+ "2022_02_15-coulomb-fm31-ref_branch-seg_model_adjustments-U3_ZENG-Shaw09Mod-DsrUni-SupraB0.8-TotNuclRate-ShawR0_3/GREEDY/solution.zip");
 		FaultSystemSolution sol = FaultSystemSolution.load(inputFile);
 		ClusterRuptures cRups = ClusterRuptures.singleStranged(sol.getRupSet());
 		PlausibilityConfiguration config = sol.getRupSet().getModule(PlausibilityConfiguration.class);
