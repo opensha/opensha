@@ -51,7 +51,7 @@ public class NSHM23_U3_HybridLogicTreeBranch extends LogicTreeBranch<LogicTreeNo
 	public static final NSHM23_U3_HybridLogicTreeBranch DEFAULT = fromValues(FaultModels.FM3_1,
 			RupturePlausibilityModels.COULOMB, U3_UncertAddDeformationModels.U3_ZENG, ScalingRelationships.SHAW_2009_MOD,
 			SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p8, SubSectConstraintModels.TOT_NUCL_RATE,
-			SubSeisMoRateReductions.SUB_B_1, SegmentationModels.SHAW_R0_3, SegmentationMFD_Adjustment.FRACT_JUMP_PROB);
+			SubSeisMoRateReductions.SUB_B_1, SegmentationModels.SHAW_R0_3, SegmentationMFD_Adjustment.JUMP_PROB_THRESHOLD_AVG);
 	
 	/**
 	 * Creates a NSHM23LogicTreeBranch instance from given set of node values. Null or missing values

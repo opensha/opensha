@@ -48,7 +48,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.APrioriSectNuclEstimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ImprobabilityImpliedSectNuclMFD_Estimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ImprobModelThresholdAveragingSectNuclMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.PaleoSectNuclEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ScalingRelSlipRateMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SectNucleationMFD_Estimator;
@@ -1298,7 +1298,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 ////				MultiBinDistributionMethod.CAPPED_DISTRIBUTED, false));
 //				MultiBinDistributionMethod.CAPPED_DISTRIBUTED, true));
 //		builder.adjustTargetsForData(new ImprobabilityImpliedSectNuclMFD_Estimator(new Shaw07JumpDistProb(1, 3)));
-		builder.adjustTargetsForData(new ImprobabilityImpliedSectNuclMFD_Estimator.WorstJumpProb(new Shaw07JumpDistProb(1, 3)));
+		builder.adjustTargetsForData(new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(new Shaw07JumpDistProb(1, 3)));
 //		builder.forBinaryRupProbModel(MaxJumpDistModels.FIVE.getModel(rupSet));
 //		builder.forSegmentationModel(new Shaw07JumpDistProb(1, 3));
 //		builder.forSegmentationModel(new JumpProbabilityCalc() {
@@ -1364,7 +1364,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		
 		if (builder.targetAdjDataConstraints != null && !builder.targetAdjDataConstraints.isEmpty()
 				&& (builder.targetAdjDataConstraints.get(0) instanceof SegmentationImpliedSectNuclMFD_Estimator
-						|| builder.targetAdjDataConstraints.get(0) instanceof ImprobabilityImpliedSectNuclMFD_Estimator)
+						|| builder.targetAdjDataConstraints.get(0) instanceof ImprobModelThresholdAveragingSectNuclMFD_Estimator)
 				|| builder.rupSubSet != null) {
 			// debug
 			int[] debugSects = {

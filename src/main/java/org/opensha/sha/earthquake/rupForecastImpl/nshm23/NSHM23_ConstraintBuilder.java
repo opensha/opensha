@@ -94,7 +94,7 @@ public class NSHM23_ConstraintBuilder {
 	private DoubleUnaryOperator magDepRelStdDev = M->DEFAULT_REL_STD_DEV;
 	
 	private JumpProbabilityCalc segModel;
-	private SegmentationMFD_Adjustment segAdjMethod = SegmentationMFD_Adjustment.FRACT_JUMP_PROB;
+	private SegmentationMFD_Adjustment segAdjMethod = SegmentationMFD_Adjustment.JUMP_PROB_THRESHOLD_AVG;
 	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB) {
 		this(rupSet, supraSeisB, SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT,
