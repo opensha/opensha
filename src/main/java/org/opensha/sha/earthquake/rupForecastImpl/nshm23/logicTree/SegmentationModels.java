@@ -32,6 +32,12 @@ public enum SegmentationModels implements LogicTreeNode {
 			return new Shaw07JumpDistProb(1, 3);
 		}
 	},
+	SHAW_R0_3_SHIFT_1km("Shaw & Dieterich (2007) R₀=3, Shift 1km", "ShawR₀=3_Shift1km", 0.0d) {
+		@Override
+		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
+			return Shaw07JumpDistProb.forHorzOffset(1, 3, 1);
+		}
+	},
 	SHAW_R0_4("Shaw & Dieterich (2007) R₀=4", "ShawR₀=4", 0.15d) {
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {

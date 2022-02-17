@@ -18,6 +18,19 @@ public class Shaw07JumpDistProb implements DistDependentJumpProbabilityCalc {
 	private double r0;
 	
 	public static final double R0_DEFAULT = 3d;
+	
+	/**
+	 * This calculates an a value that would shift the model to the right by the given horizontal offset
+	 * 
+	 * @param a
+	 * @param r0
+	 * @param horzOffset
+	 * @return
+	 */
+	public static Shaw07JumpDistProb forHorzOffset(double a, double r0, double horzOffset) {
+		double a0 = Math.exp(horzOffset/r0);
+		return new Shaw07JumpDistProb(a*a0, r0);
+	}
 
 	public Shaw07JumpDistProb(double a, double r0) {
 		this.a = a;
@@ -43,7 +56,11 @@ public class Shaw07JumpDistProb implements DistDependentJumpProbabilityCalc {
 	}
 	
 	public static double calcJumpProbability(double distance, double a, double r0) {
-		return a*Math.exp(-distance/r0);
+		double prob = a*Math.exp(-distance/r0);
+		if (a > 1)
+			// apply minimum as raw probabilities can be >1 with a>1
+			prob = Math.min(1d, prob);
+		return prob;
 	}
 	
 	public double calcJumpDistance(double probability) {
@@ -51,7 +68,7 @@ public class Shaw07JumpDistProb implements DistDependentJumpProbabilityCalc {
 	}
 	
 	public static double calcJumpDistance(double probability, double a, double r0) {
-		Preconditions.checkState(probability > 0 && probability <= 1, "Bat probability: %s", probability);
+		Preconditions.checkState(probability > 0 && probability <= 1, "Bad probability: %s", probability);
 		return r0*Math.log(a/probability);
 	}
 	
