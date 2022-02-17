@@ -15,6 +15,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -85,6 +86,8 @@ public class UCERF2_ComparisonSolutionFetcher {
 		double[] rates = new double[ucerf2_magsAndRates.size()];
 //		double[] aveSlips = Arrays.copyOf(rupSet.getAveSlipForAllRups(), rupSet.getNumRuptures());
 		double[] aveSlips = new double[rupSet.getNumRuptures()];
+		double sumU2Rate = 0d;
+		double avgU2Mag = 0d;
 		for (int i=0; i<ucerf2_magsAndRates.size(); i++) {
 			double[] ucerf2_vals = ucerf2_magsAndRates.get(i);
 			if (ucerf2_vals == null) {
@@ -93,13 +96,20 @@ public class UCERF2_ComparisonSolutionFetcher {
 			} else {
 				mags[i] = ucerf2_vals[0];
 				rates[i] = ucerf2_vals[1];
+				Preconditions.checkState(Double.isFinite(mags[i]), "Bad U2 mag for r=%s: %s", i, (Double)mags[i]);
+				Preconditions.checkState(Double.isFinite(rates[i]), "Bad U2 rate for r=%s: %s", i, (Double)rates[i]);
 				// Dr = Dr * Mo(M)/Mo(M(A))
 				// to account for assumptions made in Dr calculation (which uses mag from
 				// area and not the actual UCERF2 mag
 				aveSlips[i] = aveSlipModule.getAveSlip(i) * MagUtils.magToMoment(mags[i])/
 						MagUtils.magToMoment(rupSet.getMagForRup(i));
+				sumU2Rate += rates[i];
+
+				avgU2Mag += rates[i]*mags[i];
 			}
 		}
+		avgU2Mag /= sumU2Rate;
+		System.out.println("UCERF2 sum rate: "+sumU2Rate+"\tavg mag: "+avgU2Mag);
 
 //		InversionFaultSystemRupSet modRupSet = new InversionFaultSystemRupSet(rupSet, rupSet.getLogicTreeBranch(),
 //				rupSet.getOldPlausibilityConfiguration(), aveSlips, rupSet.getCloseSectionsListList(),

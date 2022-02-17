@@ -30,7 +30,7 @@ public class UCERF2_A_FaultMapper {
 	private static final String A_FAULT_FILE_NAME = "a_faults.txt";
 	private static HashSet<Integer> typeAFaults;
 	
-	private static HashSet<Integer> getTypeAFaults() {
+	private static synchronized HashSet<Integer> getTypeAFaults() {
 		if (typeAFaults == null) {
 			try {
 				typeAFaults = new HashSet<Integer>();

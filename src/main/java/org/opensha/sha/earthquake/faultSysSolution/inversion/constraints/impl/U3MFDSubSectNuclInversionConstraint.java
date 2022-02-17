@@ -32,6 +32,10 @@ public class U3MFDSubSectNuclInversionConstraint extends InversionConstraint {
 		this.rupSet = rupSet;
 		this.constraints = constraints;
 	}
+	
+	public List<U3SectionMFD_constraint> getConstraints() {
+		return constraints;
+	}
 
 	@Override
 	public int getNumRows() {

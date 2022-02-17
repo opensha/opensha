@@ -2115,10 +2115,12 @@ public class FaultSystemRupSetCalc {
 	 * Note that some bins will still have zero rates on fault sections that were type A in UCERF2.
 	 * This is null SectionMFD_constraint for any sections where the maximum magnitude falls below
 	 * the lower edge of the constraint.
+	 * 
+	 * NOTE added synchronized keyword as I'm not sure that it actually is perfectly synchronized
 	 * @param fltSystRupSet
 	 * @return
 	 */
-	public static ArrayList<U3SectionMFD_constraint> getCharInversionSectMFD_Constraints(FaultSystemRupSet fltSystRupSet) {
+	public static synchronized ArrayList<U3SectionMFD_constraint> getCharInversionSectMFD_Constraints(FaultSystemRupSet fltSystRupSet) {
 		LogicTreeBranch<?> branch = fltSystRupSet.requireModule(LogicTreeBranch.class);
 		AveSlipModule aveSlipModule = fltSystRupSet.requireModule(AveSlipModule.class);
 		ModSectMinMags finalMinMags = fltSystRupSet.requireModule(ModSectMinMags.class);

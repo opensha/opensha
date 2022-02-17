@@ -786,7 +786,9 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		return getUCERF2MagsAndrates(faultSystemRupSet, faultSystemRupSet.getFaultModel());
 	}
 	
-	public static ArrayList<double[]> getUCERF2MagsAndrates(FaultSystemRupSet faultSystemRupSet, FaultModels fm) {
+	public synchronized static ArrayList<double[]> getUCERF2MagsAndrates(FaultSystemRupSet faultSystemRupSet, FaultModels fm) {
+		// Something in FindEquivUCERF2_Ruptures, likely within ModUCERF2, is not synchronized and can (rarely) result
+		// in garbage rates if may threads call this method at the same time. The synchronize tag here prevents this. 
 		Preconditions.checkNotNull(faultSystemRupSet, "No rupture set supplied!");
 		Preconditions.checkNotNull(fm, "A fault model must be specified by the rupture set in order" +
 				" to get a UCERF2 solution. It's possible that you're using an old rupture set that doesn't have this data" +
