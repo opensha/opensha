@@ -530,14 +530,19 @@ BranchAverageableModule<PlausibilityConfiguration> {
 			out.name("connectionStrategy");
 			connStratAdapter.write(out, config.getConnectionStrategy());
 			out.name("maxNumSplays").value(config.getMaxNumSplays());
-			out.name("filters").beginArray(); // [
-			PlausibilityFilterAdapter adapter = new PlausibilityFilterAdapter(
-					gson, config.getConnectionStrategy(), config.getDistAzCalc());
-			
-			for (PlausibilityFilter filter : config.filters)
-				adapter.write(out, new PlausibilityFilterRecord(filter));
-			
-			out.endArray(); // ]
+			out.name("filters");
+			if (config.filters == null) {
+				out.nullValue();
+			} else {
+				out.beginArray(); // [
+				PlausibilityFilterAdapter adapter = new PlausibilityFilterAdapter(
+						gson, config.getConnectionStrategy(), config.getDistAzCalc());
+				
+				for (PlausibilityFilter filter : config.filters)
+					adapter.write(out, new PlausibilityFilterRecord(filter));
+				
+				out.endArray(); // ]
+			}
 			
 			out.endObject();
 		}
@@ -559,6 +564,10 @@ BranchAverageableModule<PlausibilityConfiguration> {
 					maxNumSplays = in.nextInt();
 					break;
 				case "filters":
+					if (in.peek() == JsonToken.NULL) {
+						in.nextNull();
+						continue;
+					}
 					Preconditions.checkNotNull(connectionStrategy,
 							"Connection strategy must be before filters in JSON");
 					PlausibilityFilterAdapter adapter = new PlausibilityFilterAdapter(
