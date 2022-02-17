@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 
+import org.opensha.commons.data.IntegerSampler;
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.ExceptionUtils;
@@ -26,7 +27,11 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationsPerVariableCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.CoolingScheduleType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
@@ -71,9 +76,20 @@ import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
  */
 public class U3InversionConfigFactory implements InversionConfigurationFactory {
 	
-	protected FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) throws IOException {
-		return new RuptureSets.U3RupSetConfig(branch.requireValue(FaultModels.class),
-					branch.requireValue(ScalingRelationships.class)).build(threads);
+	transient Map<FaultModels, FaultSystemRupSet> rupSetCache = new HashMap<>();
+	
+	protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) throws IOException {
+		FaultModels fm = branch.requireValue(FaultModels.class);
+		// check cache
+		FaultSystemRupSet rupSet = rupSetCache.get(fm);
+		if (rupSet != null)
+			return rupSet;
+		
+		rupSet = new RuptureSets.U3RupSetConfig(fm, branch.requireValue(ScalingRelationships.class)).build(threads);
+
+		rupSetCache.put(fm, rupSet);
+		
+		return rupSet;
 	}
 
 	@Override
@@ -147,17 +163,25 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
 
-		List<InversionConstraint> constraints =  new UCERF3InversionInputGenerator(rupSet, config, paleoRateConstraints,
-				aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel).getConstraints();
+		UCERF3InversionInputGenerator inputGen = new UCERF3InversionInputGenerator(rupSet, config, paleoRateConstraints,
+				aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel);
+		
+		List<InversionConstraint> constraints = inputGen.getConstraints();
 		
 		int avgThreads = threads / 4;
 		
-		return InversionConfiguration.builder(constraints, TimeCompletionCriteria.getInHours(5l))
+		CompletionCriteria completion = new IterationsPerVariableCompletionCriteria(5000d);
+		
+		InversionConfiguration.Builder builder = InversionConfiguration.builder(constraints, completion)
 				.threads(threads)
-				.avgThreads(avgThreads, TimeCompletionCriteria.getInMinutes(5l))
+				.subCompletion(new IterationsPerVariableCompletionCriteria(1d))
+				.avgThreads(avgThreads, new IterationsPerVariableCompletionCriteria(50d))
 				.perturbation(GenerationFunctionType.VARIABLE_EXPONENTIAL_SCALE)
 				.nonNegativity(NonnegativityConstraintType.TRY_ZERO_RATES_OFTEN)
-				.build();
+				.sampler(new IntegerSampler.ContiguousIntegerSampler(rupSet.getNumRuptures()))
+				.variablePertubationBasis(inputGen.getWaterLevelRates());
+		
+		return builder.build();
 	}
 
 	@Override
@@ -325,9 +349,29 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 		
 	}
 	
-	public static class CoulombRupSet extends U3InversionConfigFactory {
+	public static class ThinnedRupSet extends U3InversionConfigFactory {
+
+		@Override
+		protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) throws IOException {
+			FaultModels fm = branch.requireValue(FaultModels.class);
+			// check cache
+			FaultSystemRupSet rupSet = rupSetCache.get(fm);
+			if (rupSet != null)
+				return rupSet;
+			
+			RuptureSets.U3RupSetConfig config = new RuptureSets.U3RupSetConfig(fm, branch.requireValue(ScalingRelationships.class));
+			config.setAdaptiveSectFract(0.1f);
+			
+			rupSet = config.build(threads);
+
+			rupSetCache.put(fm, rupSet);
+			
+			return rupSet;
+		}
 		
-		Map<FaultModels, FaultSystemRupSet> rupSetCache = new HashMap<>();
+	}
+	
+	public static class CoulombRupSet extends U3InversionConfigFactory {
 
 		@Override
 		protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) throws IOException {
@@ -347,6 +391,97 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 		@Override
 		public SolutionProcessor getSolutionLogicTreeProcessor() {
 			return new CoulombU3SolProcessor();
+		}
+		
+	}
+	
+	/**
+	 * As close as we can get to UCERF3 exactly as was
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public static class OriginalCalcParams extends U3InversionConfigFactory {
+
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			threads = 5;
+			
+			InversionTargetMFDs targetMFDs = rupSet.requireModule(InversionTargetMFDs.class);
+			FaultModels fm = branch.getValue(FaultModels.class);
+			UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(
+					branch.getValue(InversionModels.class), rupSet, fm, targetMFDs);
+			
+			// get the improbability constraints
+			double[] improbabilityConstraint = null; // not used
+			// get the paleo rate constraints
+			List<U3PaleoRateConstraint> paleoRateConstraints;
+			// paleo probability model
+			PaleoProbabilityModel paleoProbabilityModel;
+			List<U3AveSlipConstraint> aveSlipConstraints;
+			try {
+				paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
+						fm, rupSet);
+
+				paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
+
+				aveSlipConstraints = U3AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			
+			UCERF3InversionInputGenerator u3Gen = new UCERF3InversionInputGenerator(rupSet, config, paleoRateConstraints,
+					aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel);
+			
+			long totalIters = 25000000l;
+			double totSecs = 5*60*60;
+			long itersPerSec = (long)((double)totalIters/totSecs + 0.5);
+			
+			InversionConfiguration.Builder builder = InversionConfiguration.builder(u3Gen.getConstraints(),
+					new IterationCompletionCriteria(totalIters))
+					.threads(threads)
+					// include a fake averaging layer just to reduce STDOUT, will do nothing as only 1 thread
+					.avgThreads(1, new IterationCompletionCriteria(100l*itersPerSec))
+					.subCompletion(new IterationCompletionCriteria(itersPerSec))
+					.threads(5)
+					.cooling(CoolingScheduleType.FAST_SA)
+					.initialSolution(null)
+					.sampler(new IntegerSampler.ContiguousIntegerSampler(rupSet.getNumRuptures()))
+					.nonNegativity(NonnegativityConstraintType.LIMIT_ZERO_RATES)
+					.perturbation(GenerationFunctionType.UNIFORM_0p001)
+					.reweight(null)
+					.waterLevel(u3Gen.getWaterLevelRates());
+			
+			return builder.build();
+		}
+		
+	}
+	
+	/**
+	 * Same calculation params as UCERF3, but with the new threading/averaging scheme & longer anneal time
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public static class OriginalCalcParamsNewAvg extends U3InversionConfigFactory {
+		
+		private OriginalCalcParams origFactory = new OriginalCalcParams();
+
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = origFactory.buildInversionConfig(rupSet, branch, threads);
+			
+			InversionConfiguration.Builder builder = InversionConfiguration.builder(config);
+			
+			builder.completion(new IterationsPerVariableCompletionCriteria(5000d));
+			builder.threads(threads);
+			int avgThreads = threads / 4;
+			builder.subCompletion(new IterationsPerVariableCompletionCriteria(1d));
+			builder.avgThreads(avgThreads, new IterationsPerVariableCompletionCriteria(50d));
+			
+			return builder.build();
 		}
 		
 	}
