@@ -224,6 +224,7 @@ public class AnnealingProgress implements CSV_BackedModule, AverageableModule<An
 			avgPerturbs.add(0d);
 			avgNonZeros.add(0d);
 			avgEnergies.add(new double[types.size()]);
+			avgWorseKepts.add(0d);
 		}
 		
 		for (AnnealingProgress progress : progresses) {
