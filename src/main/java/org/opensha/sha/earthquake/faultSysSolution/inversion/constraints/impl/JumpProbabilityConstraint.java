@@ -331,6 +331,11 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 			ConstraintWeightingType weightType = getWeightingType();
 			
 			double aScalar = this.weight*weightType.getA_Scalar(relTargetSlip, Double.NaN);
+			double maxWeight = this.weight*MAX_WEIGHT_SCALAR;
+			if (aScalar > maxWeight) {
+				System.err.println("WARNING: capping weight at max="+maxWeight+", would have been "+aScalar);
+				aScalar = maxWeight;
+			}
 			
 			// encode this as a proxy relative slip constraint
 			for (int rup : rupsUsingJump) {
@@ -431,6 +436,9 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 		
 	}
 	
+	// never let a weight exceed this value, happens if rupture probability or section rate estimate is exceedingly low 
+	private static final double MAX_WEIGHT_SCALAR = 1e5;
+	
 	public static class RelativeRate extends JumpProbabilityConstraint {
 
 		@JsonAdapter(RateEstAdapter.class)
@@ -464,6 +472,12 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 				+" rups, prob="+jumpCondProb+" with weight="+weight);
 			// weight by the target fractional rate (large misfits of small conditional rates should still be fit)
 			weight /= jumpCondProb;
+			
+			double maxWeight = this.weight*MAX_WEIGHT_SCALAR;
+			if (weight > maxWeight) {
+				System.err.println("WARNING: capping weight at max="+maxWeight+", would have been "+weight);
+				weight = maxWeight;
+			}
 			
 			HashSet<Integer> setUsingJump = new HashSet<>(rupsUsingJump);
 			
