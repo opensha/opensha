@@ -428,7 +428,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			for (int i=0; i<numThreads; i++)
 				futures.add(exec.submit(new SACall(sas.get(i), threadStartState, subCompletionCriteria)));
 			
-			if (average) {
+			if (average && numThreads > 1) {
 				// average best solution from each
 				double rateMult = 1d/(double)numThreads;
 				double[] newE = null;

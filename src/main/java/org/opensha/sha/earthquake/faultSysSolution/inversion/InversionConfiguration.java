@@ -330,8 +330,8 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 				config.subCompletion = SUB_COMPLETION_DEFAULT;
 			
 			if (config.avgThreads != null) {
-				Preconditions.checkState(config.avgThreads > 1,
-						"Averaging threads (if enabled) must be >1: %s", config.avgThreads);
+				Preconditions.checkState(config.avgThreads >= 1,
+						"Averaging threads (if enabled) must be >=1: %s", config.avgThreads);
 				Preconditions.checkState(config.avgThreads < config.threads,
 						"The number of averaging threads (%s) must be less than the number of total threads (%s)",
 						config.avgThreads, config.threads);
@@ -451,7 +451,7 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 		if (threads > 1) {
 			if (avgThreads != null && avgThreads > 0) {
 				int threadsPerAvg = (int)Math.ceil((double)threads/(double)avgThreads);
-				Preconditions.checkState(threadsPerAvg < threads);
+				Preconditions.checkState(threadsPerAvg <= threads);
 				Preconditions.checkState(threadsPerAvg > 0);
 				
 				int threadsLeft = threads;
