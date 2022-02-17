@@ -563,6 +563,10 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 		return avgCompletion;
 	}
 
+	public Quantity getReweightTargetQuantity() {
+		return reweightTargetQuantity;
+	}
+
 	@Override
 	public void setParent(ModuleContainer<?> parent) throws IllegalStateException {
 		this.parent = parent;

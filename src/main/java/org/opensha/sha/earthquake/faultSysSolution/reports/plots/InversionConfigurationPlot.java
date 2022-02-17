@@ -22,6 +22,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeC
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitProgress;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.Quantity;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 
@@ -107,6 +108,17 @@ public class InversionConfigurationPlot extends AbstractSolutionPlot {
 				table.addColumn(critStr(config.getAvgCompletionCriteria()));
 				if (compConfig != null)
 					table.addColumn(critStr(compConfig.getAvgCompletionCriteria()));
+				table.finalizeLine();
+			}
+			
+			Quantity reweightQuantity = config.getReweightTargetQuantity();
+			Quantity compReweightQuantity = compConfig == null ? null : compConfig.getReweightTargetQuantity();
+			
+			if (reweightQuantity != null || compReweightQuantity != null) {
+				table.initNewLine().addColumn("**Re-weighting Target Quantity**");
+				table.addColumn(reweightQuantity == null ? "_N/A_" : reweightQuantity);
+				if (compConfig != null)
+					table.addColumn(compReweightQuantity == null ? "_N/A_" : compReweightQuantity);
 				table.finalizeLine();
 			}
 		}
