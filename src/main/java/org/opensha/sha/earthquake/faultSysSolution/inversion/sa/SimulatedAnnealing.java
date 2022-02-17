@@ -512,8 +512,15 @@ public interface SimulatedAnnealing {
 		if (compTrack != null) {
 			perturbFuncs.add(compPerturb);
 			perturbChars.add(compChar);
-			nzFuncs.add(compNonZero);
-			nzChars.add(compChar);
+			if (numRuptures > 0) {
+				if (compPercentNonZeros != null) {
+					nzFuncs.add(compPercentNonZeros);
+					nzChars.add(compChar);
+				}
+			} else {
+				nzFuncs.add(compNonZero);
+				nzChars.add(compChar);
+			}
 		}
 		gp.setAutoRange();
 		String combTitle = "Perturbations & Non-Zero Rates Vs Iters";
