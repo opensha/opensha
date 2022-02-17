@@ -260,10 +260,14 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 		@Override
 		public void process(InversionMisfits module, double relWeight) {
 			if (numEQ > 0) {
+				Preconditions.checkState(module.misfits.length == numEQ,
+						"Expected %s EQ misfits, have %s", numEQ, module.misfits.length);
 				averageIn(relWeight, misfits, module.misfits);
 				averageIn(relWeight, data, module.data);
 			}
 			if (numINEQ > 0) {
+				Preconditions.checkState(module.misfits_ineq.length == numINEQ,
+						"Expected %s INEQ misfits, have %s", numINEQ, module.misfits_ineq.length);
 				averageIn(relWeight, misfits_ineq, module.misfits_ineq);
 				averageIn(relWeight, data_ineq, module.data_ineq);
 			}
