@@ -179,7 +179,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 				.perturbation(GenerationFunctionType.VARIABLE_EXPONENTIAL_SCALE)
 				.nonNegativity(NonnegativityConstraintType.TRY_ZERO_RATES_OFTEN)
 				.sampler(new IntegerSampler.ContiguousIntegerSampler(rupSet.getNumRuptures()))
-				.variablePertubationBasis(inputGen.getWaterLevelRates());
+				.variablePertubationBasis(config.getMinimumRuptureRateBasis());
 		
 		return builder.build();
 	}
@@ -480,6 +480,36 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 			int avgThreads = threads / 4;
 			builder.subCompletion(new IterationsPerVariableCompletionCriteria(1d));
 			builder.avgThreads(avgThreads, new IterationsPerVariableCompletionCriteria(50d));
+			
+			return builder.build();
+		}
+		
+	}
+	
+	/**
+	 * Same calculation params as UCERF3, but with the new threading/averaging scheme & longer anneal time and the water
+	 * level removed
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public static class OriginalCalcParamsNewAvgNoWaterLevel extends U3InversionConfigFactory {
+		
+		private OriginalCalcParams origFactory = new OriginalCalcParams();
+
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = origFactory.buildInversionConfig(rupSet, branch, threads);
+			
+			InversionConfiguration.Builder builder = InversionConfiguration.builder(config);
+			
+			builder.completion(new IterationsPerVariableCompletionCriteria(5000d));
+			builder.threads(threads);
+			int avgThreads = threads / 4;
+			builder.subCompletion(new IterationsPerVariableCompletionCriteria(1d));
+			builder.avgThreads(avgThreads, new IterationsPerVariableCompletionCriteria(50d));
+			builder.waterLevel(null);
 			
 			return builder.build();
 		}
