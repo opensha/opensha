@@ -25,9 +25,11 @@ implements BranchAverageableModule<WaterLevelRates> {
 			// deal with floating point precision issues
 			if (ret[i] < 0) {
 				// can happen if post-water-level rates are averaged
-				Preconditions.checkState(ret[i] > -1e-20);
+				Preconditions.checkState(ret[i] > -1e-10,
+						"encounted negative rate after adjusting for waterlevl: %s - %s = %s",
+						rates[i], values[i], ret[i]);
 				ret[i] = 0d;
-			} else if (ret[i] < 1e-20 || (float)rates[i] == (float)values[i]) {
+			} else if (ret[i] < 1e-16 || (float)rates[i] == (float)values[i]) {
 				ret[i] = 0d;
 			}
 		}
