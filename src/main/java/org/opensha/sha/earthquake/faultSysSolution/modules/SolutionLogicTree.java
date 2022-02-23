@@ -290,6 +290,10 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	public SolutionProcessor getProcessor() {
 		return processor;
 	}
+	
+	public void setProcessor(SolutionProcessor processor) {
+		this.processor = processor;
+	}
 
 	@Override
 	public String getName() {
