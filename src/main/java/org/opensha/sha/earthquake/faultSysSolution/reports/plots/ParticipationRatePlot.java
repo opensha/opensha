@@ -194,6 +194,12 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 				File scatter = compScatterPlot(resourcesDir, compPrefix+"_scatter", rates, compRates, myLabel);
 				table.addColumn("![Map]("+relPathToResources+"/"+scatter.getName()+")");
 				
+				table.finalizeLine().initNewLine();
+				
+				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+compPrefix+".geojson")
+						+" "+"[Download GeoJSON]("+relPathToResources+"/"+compPrefix+".geojson)");
+				table.addColumn("");
+				
 				table.finalizeLine();
 			}
 		}
