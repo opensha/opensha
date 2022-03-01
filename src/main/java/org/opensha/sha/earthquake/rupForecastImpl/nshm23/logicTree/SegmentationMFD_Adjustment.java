@@ -95,7 +95,7 @@ public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 			return new SegmentationImpliedSectNuclMFD_Estimator(segModel, MultiBinDistributionMethod.CAPPED_DISTRIBUTED, true);
 		}
 	},
-	NONE("None", "None", 0.0d) {
+	NONE("No Adjustment", "NoAdj", 1.0d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return null;
