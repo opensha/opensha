@@ -102,7 +102,7 @@ public class BranchAverageSolutionCreator {
 			accumulatingSlipRates = false;
 	}
 
-	public void addSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
+	public synchronized void addSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
 		double weight = weightProv.getWeight(branch);
 		weights.add(weight);
 		totWeight += weight;
