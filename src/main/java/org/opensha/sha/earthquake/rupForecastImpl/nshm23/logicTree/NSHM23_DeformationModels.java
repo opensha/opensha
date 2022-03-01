@@ -26,10 +26,17 @@ import com.google.common.base.Preconditions;
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum NSHM23_DeformationModels implements RupSetDeformationModel {
-	GEOL_V1p2("NSHM23 Geologic Deformation Model v1.2", "Geologic V1.2", 1d) {
+	@Deprecated
+	GEOL_V1p2("NSHM23 Geologic Deformation Model v1.2", "Geologic V1.2", 0d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeol(faultModel, "v1p2");
+		}
+	},
+	GEOL_V1p3("NSHM23 Geologic Deformation Model v1.3", "Geologic V1.3", 1d) {
+		@Override
+		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
+			return buildGeol(faultModel, "v1p3");
 		}
 	};
 	

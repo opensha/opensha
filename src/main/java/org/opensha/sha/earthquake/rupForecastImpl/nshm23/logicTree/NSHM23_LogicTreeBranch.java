@@ -59,7 +59,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	 * This is the default reference branch
 	 */
 	public static final NSHM23_LogicTreeBranch DEFAULT = fromValues(NSHM23_FaultModels.NSHM23_v1p4,
-			RupturePlausibilityModels.COULOMB, NSHM23_DeformationModels.GEOL_V1p2, ScalingRelationships.SHAW_2009_MOD,
+			RupturePlausibilityModels.COULOMB, NSHM23_DeformationModels.GEOL_V1p3, ScalingRelationships.SHAW_2009_MOD,
 			SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p8, SubSectConstraintModels.TOT_NUCL_RATE,
 			SubSeisMoRateReductions.SUB_B_1, SegmentationModels.SHAW_R0_3, SegmentationMFD_Adjustment.JUMP_PROB_THRESHOLD_AVG);
 	
