@@ -20,19 +20,19 @@ public enum SegmentationModels implements LogicTreeNode {
 			return new Shaw07JumpDistProb(1, 1);
 		}
 	},
-	SHAW_R0_2("Shaw & Dieterich (2007) R₀=2", "ShawR₀=2", 0.25d) {
+	SHAW_R0_2("Shaw & Dieterich (2007) R₀=2", "ShawR₀=2", 0.0d) { // was 0.25
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
 			return new Shaw07JumpDistProb(1, 2);
 		}
 	},
-	SHAW_R0_3("Shaw & Dieterich (2007) R₀=3", "ShawR₀=3", 0.6d) {
+	SHAW_R0_3("Shaw & Dieterich (2007) R₀=3", "ShawR₀=3", 0.0d) { // was 0.6
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
 			return new Shaw07JumpDistProb(1, 3);
 		}
 	},
-	SHAW_R0_4("Shaw & Dieterich (2007) R₀=4", "ShawR₀=4", 0.15d) {
+	SHAW_R0_4("Shaw & Dieterich (2007) R₀=4", "ShawR₀=4", 0.0d) { // was 0.15
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
 			return new Shaw07JumpDistProb(1, 4);
@@ -56,19 +56,19 @@ public enum SegmentationModels implements LogicTreeNode {
 			return null;
 		}
 	},
-	SHAW_R0_2_SHIFT_1km("Shaw & Dieterich (2007) R₀=2, Shift 1km", "ShawR₀=2_Shift1km", 0.0d) {
+	SHAW_R0_2_SHIFT_1km("Shaw & Dieterich (2007) R₀=2, Shift 1km", "ShawR₀=2_Shift1km", 0.25d) {
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
 			return Shaw07JumpDistProb.forHorzOffset(1, 2, 1);
 		}
 	},
-	SHAW_R0_3_SHIFT_1km("Shaw & Dieterich (2007) R₀=3, Shift 1km", "ShawR₀=3_Shift1km", 0.0d) {
+	SHAW_R0_3_SHIFT_1km("Shaw & Dieterich (2007) R₀=3, Shift 1km", "ShawR₀=3_Shift1km", 0.6d) {
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
 			return Shaw07JumpDistProb.forHorzOffset(1, 3, 1);
 		}
 	},
-	SHAW_R0_4_SHIFT_1km("Shaw & Dieterich (2007) R₀=4, Shift 1km", "ShawR₀=4_Shift1km", 0.0d) {
+	SHAW_R0_4_SHIFT_1km("Shaw & Dieterich (2007) R₀=4, Shift 1km", "ShawR₀=4_Shift1km", 0.15d) {
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet) {
 			return Shaw07JumpDistProb.forHorzOffset(1, 4, 1);
