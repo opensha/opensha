@@ -80,6 +80,7 @@ public class GeoJSONFaultReader {
 		HashSet<Integer> prevIDs = new HashSet<>();
 		
 		HashMap<String, Integer> nameCounts = new HashMap<>();
+		HashMap<String, GeoJSONFaultSection> nameSectMap = new HashMap<>();
 		
 		for (Feature feature : features.features) {
 			GeoJSONFaultSection sect = GeoJSONFaultSection.fromFeature(feature);
@@ -92,11 +93,27 @@ public class GeoJSONFaultReader {
 			} else {
 				// duplicate name!
 				nameCount++;
-				String newSectName = sectName+" ("+nameCount+")";
+				String state = sect.getProperty("PrimState", "");
+				Preconditions.checkState(!state.isBlank(), "State cannot be blank in the case of duplicate fault names");
+				String newSectName = sectName+" ("+state+")";
 				System.err.println("WARNING: duplicate fault section name detected, changing '"+sectName+"' to '"+newSectName+"'");
 				sect.setSectionName(newSectName);
+				if (nameSectMap.containsKey(sectName)) {
+					// rename the first one as well
+					GeoJSONFaultSection prevSect = nameSectMap.remove(sectName);
+					String prevState = prevSect.getProperty("PrimState", "");
+					Preconditions.checkState(!prevState.isBlank(), "State cannot be blank in the case of duplicate fault names");
+					String newPrevSectName = sectName+" ("+prevState+")";
+					prevSect.setSectionName(newPrevSectName);
+					nameSectMap.put(newPrevSectName, prevSect);
+					System.err.println("\tretroactively changing previous '"+sectName+"' to '"+newPrevSectName+"'");
+				}
 			}
-			nameCounts.put(sectName, nameCount);
+			nameCounts.put(sectName, nameCount); // this is the original section name
+			
+			sectName = sect.getSectionName();
+			Preconditions.checkState(!nameSectMap.containsKey(sectName), "Duplicate name should have been caught: %s", sectName);
+			nameSectMap.put(sectName, sect);
 			
 			ret.add(sect);
 			prevIDs.add(id);
@@ -177,6 +194,17 @@ public class GeoJSONFaultReader {
 			
 			processed.add(id);
 			GeoJSONFaultSection sect = idMapped.get(id);
+			String sectName = sect.getName();
+			String dmFaultName = props.get("FaultName", "");
+			if (!sectName.startsWith(dmFaultName))
+				System.err.println("WARNING: name mismatch for "+id+": '"+sectName+"' != '"+dmFaultName+"'");
+			// use startsWith as we might attach a suffix
+			// also strip all whitespace
+			
+			String compSectName = sectName.replaceAll("\\W+", "");
+			String compDMName = dmFaultName.replaceAll("\\W+", "");
+			Preconditions.checkState(compSectName.startsWith(compDMName) || compDMName.startsWith(compSectName),
+					"DM/FM name mismatch for %s: '%s' != '%s'", id, sect.getName(), dmFaultName);
 			
 			if (prefRate < 0d || !Double.isFinite(prefRate)) {
 				System.err.println("No rate available (setting to zero) for "+id+". "+sect.getSectionName());
@@ -227,8 +255,21 @@ public class GeoJSONFaultReader {
 		System.out.println("Attached deformation model rates for "+processed.size()+" sections");
 		if (numInferred > 0)
 			System.err.println("WARNING: inferred "+numInferred+" slip rate values from bounds, assuming bounds are 2-sigma");
-		Preconditions.checkState(sects.size() == processed.size(),
-				"No mappings for %s sections", sects.size()-processed.size());
+		if (sects.size() != processed.size()) {
+			// find the missing section(s)
+			String missingStr = null;
+			for (GeoJSONFaultSection sect : sects) {
+				if (!processed.contains(sect.getSectionId())) {
+					if (missingStr == null)
+						missingStr = "";
+					else
+						missingStr += "; ";
+					missingStr += sect.getSectionId()+". "+sect.getSectionName();
+				}
+			}
+			int num = sects.size()-processed.size();
+			throw new IllegalStateException("No mappings found for "+num+" section(s): "+missingStr);
+		}
 	}
 	
 	/*
