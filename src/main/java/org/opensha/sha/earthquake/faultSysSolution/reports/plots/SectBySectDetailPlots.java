@@ -725,36 +725,47 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				
 				table.initNewLine().addColumn("**Min Co-Rupture Dist**").addColumn(optionalDigitDF.format(minRupDist)+" km");
 				if (meta.comparison != null) {
-					double cminRupDist = Double.POSITIVE_INFINITY;
-					double crateWeightDist = 0d;
-					double csumRate = 0d;
-					for (int rupIndex : compRupData.parentCoruptures.get(parentID)) {
-						ClusterRupture rup = clusterRups.get(rupIndex);
-						for (Jump jump : rup.getJumpsIterable()) {
-							if (jump.fromCluster.parentSectionID == parentID && jump.toCluster.parentSectionID == parentSectIndex
-									|| jump.fromCluster.parentSectionID == parentSectIndex && jump.toCluster.parentSectionID == parentID) {
-								cminRupDist = Math.min(cminRupDist, jump.distance);
-								if (meta.comparison.sol != null) {
-									double rate = meta.comparison.sol.getRateForRup(rupIndex);
-									crateWeightDist += rate*jump.distance;
-									csumRate += rate;
+					List<Integer> compCorups = compRupData.parentCoruptures.get(parentID);
+					if (compCorups ==  null) {
+						table.addColumn("_N/A_");
+						table.finalizeLine();
+						if (sumRate > 0) {
+							table.initNewLine().addColumn("**Min Rate-Weighted Dist**").addColumn(optionalDigitDF.format(rateWeightDist)+" km");
+							table.addColumn("_N/A_");
+							table.finalizeLine();
+						}
+					} else {
+						double cminRupDist = Double.POSITIVE_INFINITY;
+						double crateWeightDist = 0d;
+						double csumRate = 0d;
+						for (int rupIndex : compCorups) {
+							ClusterRupture rup = clusterRups.get(rupIndex);
+							for (Jump jump : rup.getJumpsIterable()) {
+								if (jump.fromCluster.parentSectionID == parentID && jump.toCluster.parentSectionID == parentSectIndex
+										|| jump.fromCluster.parentSectionID == parentSectIndex && jump.toCluster.parentSectionID == parentID) {
+									cminRupDist = Math.min(cminRupDist, jump.distance);
+									if (meta.comparison.sol != null) {
+										double rate = meta.comparison.sol.getRateForRup(rupIndex);
+										crateWeightDist += rate*jump.distance;
+										csumRate += rate;
+									}
+									break;
 								}
-								break;
 							}
 						}
-					}
-					if (csumRate > 0)
-						crateWeightDist /= csumRate;
-					
-					table.addColumn(optionalDigitDF.format(cminRupDist)+" km");
-					table.finalizeLine();
-					if (sumRate > 0) {
-						table.initNewLine().addColumn("**Min Rate-Weighted Dist**").addColumn(optionalDigitDF.format(rateWeightDist)+" km");
 						if (csumRate > 0)
-							table.addColumn(optionalDigitDF.format(crateWeightDist)+" km");
-						else
-							table.addColumn("_N/A_");
+							crateWeightDist /= csumRate;
+						
+						table.addColumn(optionalDigitDF.format(cminRupDist)+" km");
 						table.finalizeLine();
+						if (sumRate > 0) {
+							table.initNewLine().addColumn("**Min Rate-Weighted Dist**").addColumn(optionalDigitDF.format(rateWeightDist)+" km");
+							if (csumRate > 0)
+								table.addColumn(optionalDigitDF.format(crateWeightDist)+" km");
+							else
+								table.addColumn("_N/A_");
+							table.finalizeLine();
+						}
 					}
 				} else {
 					table.finalizeLine();
@@ -2004,7 +2015,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				double targetNucl = FaultMomentCalc.getMoment(rupSet.getAreaForSection(sectIndex), slipRates.getSlipRate(sectIndex));
 				XY_DataSet targetFunc = copyAtY(emptyFunc, targetNucl);
 				if (s == 0)
-					targetFunc.setName("Slip-Rate Target Nucleation");
+					targetFunc.setName("Target Nucleation");
 				
 				funcs.add(targetFunc);
 				chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 3f, TARGET_COLOR));
