@@ -80,7 +80,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	@Override
 	public abstract List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException;
 
-	public List<? extends FaultSection> buildGeol(RupSetFaultModel faultModel, String version) throws IOException {
+	public List<? extends FaultSection> buildGeolFullSects(RupSetFaultModel faultModel, String version) throws IOException {
 		Preconditions.checkState(isApplicableTo(faultModel), "DM/FM mismatch");
 		String dmPath = NSHM23_DM_PATH_PREFIX+"geologic/"+version+"/NSHM23_GeolDefMod_"+version+".geojson";
 		Reader dmReader = new BufferedReader(new InputStreamReader(
@@ -96,6 +96,12 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 				geoSects.add(new GeoJSONFaultSection(sect));
 		}
 		GeoJSONFaultReader.attachGeoDefModel(geoSects, defModel);
+		
+		return geoSects;
+	}
+
+	public List<? extends FaultSection> buildGeol(RupSetFaultModel faultModel, String version) throws IOException {
+		List<? extends FaultSection> geoSects = buildGeolFullSects(faultModel, version);
 		
 		return GeoJSONFaultReader.buildSubSects(geoSects);
 	}
