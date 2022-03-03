@@ -123,7 +123,10 @@ public class InversionMisfitStats implements CSV_BackedModule, BranchAverageable
 			double energy = 0d;
 			
 			StandardDeviation std = new StandardDeviation();
+			int included = 0;
 			for (double val : misfits) {
+				if (val == -1) // deal with edge cse MFD bins where we're setting artificial rate/stddev values
+					continue;
 				if (range.inequality && val < 0d)
 					val = 0d;
 				mean += val;
@@ -133,9 +136,10 @@ public class InversionMisfitStats implements CSV_BackedModule, BranchAverageable
 				l2Norm += val*val;
 				energy += (val*range.weight)*(val*range.weight);
 				std.increment(val);
+				included+=1;
 			}
-			mean /= (double)numRows;
-			absMean /= (double)numRows;
+			mean /= (double)included;
+			absMean /= (double)included;
 			
 			this.mean = mean;
 			this.absMean = absMean;
@@ -149,7 +153,7 @@ public class InversionMisfitStats implements CSV_BackedModule, BranchAverageable
 				this.std = Math.abs(misfits[0]);
 			else
 				this.std = std.getResult();
-			double mse = l2Norm/(double)numRows;
+			double mse = l2Norm/(double)included;
 			this.rmse = Math.sqrt(mse);
 		}
 		
