@@ -11,10 +11,12 @@ import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 
+import cern.colt.function.tdouble.DoubleComparator;
+
 import com.google.common.base.Preconditions;
 
 /**
- * Summary statistics for inversion misfits
+ * Summary statistics for inversion misfit
  * 
  * @author kevin
  *
@@ -103,10 +105,16 @@ public class InversionMisfitStats implements CSV_BackedModule, BranchAverageable
 		public final double energy;
 		public final double std;
 		public final double rmse;
+
+		private final static double epsilon = 1.0e-10;
 		
 		public MisfitStats(double[] misfits, boolean inequality, double weight) {
 			this(misfits, new ConstraintRange(inequality ? "Inequality" : "Equality",
 					inequality ? "Ineq" : "Eq", 0, misfits.length, inequality, weight, null));
+		}
+
+		private boolean doubleEquals(double u, double v) {
+			return (Math.abs(u - v) <= MisfitStats.epsilon * Math.abs(u) && Math.abs(u - v) <= MisfitStats.epsilon * Math.abs(v));
 		}
 		
 		public MisfitStats(double[] misfits, ConstraintRange range) {
@@ -125,7 +133,7 @@ public class InversionMisfitStats implements CSV_BackedModule, BranchAverageable
 			StandardDeviation std = new StandardDeviation();
 			int included = 0;
 			for (double val : misfits) {
-				if (val == -1) // deal with edge cse MFD bins where we're setting artificial rate/stddev values
+				if (doubleEquals(val,-1d)) // deal with edge cse MFD bins where we're setting artificial rate/stddev values
 					continue;
 				if (range.inequality && val < 0d)
 					val = 0d;
@@ -155,6 +163,22 @@ public class InversionMisfitStats implements CSV_BackedModule, BranchAverageable
 				this.std = std.getResult();
 			double mse = l2Norm/(double)included;
 			this.rmse = Math.sqrt(mse);
+
+			/*
+			if (range.shortName.equals("UncertMFDEquality")) {
+				System.out.println("MFD misfit array:");
+				System.out.println("number included: " + included);
+				for (double val : misfits) {
+					System.out.println(val);
+				}
+			}
+			else {
+				System.out.println(range.shortName);
+				System.out.println("numRows = " + numRows + " included = " + included);
+			}
+			*/
+			
+
 		}
 		
 		MisfitStats(List<String> csvLine) {
