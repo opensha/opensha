@@ -37,6 +37,14 @@ public class Shaw07JumpDistProb implements DistDependentJumpProbabilityCalc {
 		this.r0 = r0;
 	}
 
+	public double getA() {
+		return a;
+	}
+
+	public double getR0() {
+		return r0;
+	}
+
 	@Override
 	public boolean isDirectional(boolean splayed) {
 		return false;
