@@ -32,9 +32,12 @@ public class SectCoulombPathEvaluator extends ScalarCoulombPathEvaluator {
 			Range<Float> acceptableRange, AggregatedStiffnessCalculator aggCalc, SectionDistanceAzimuthCalculator distAzCalc,
 			boolean verbose) {
 		if (verbose)
-			System.out.println("Finding most favorable jump to "+jump.toCluster+", origJump="+jump);
+			System.out.println("Finding most favorable jump to "+jump.toCluster+", origJump="+jump+", maxSearchDist="+maxSearchDist);
 		List<FaultSection> allowedJumps = new ArrayList<>();
 		for (FaultSection sect : jump.toCluster.subSects) {
+			if (sources.contains(sect))
+				// can't jump to a section already contained
+				continue;
 			for (FaultSection source : jump.fromCluster.subSects) {
 				if (sect == jump.toSection || (float)distAzCalc.getDistance(sect, source) <= maxSearchDist) {
 					allowedJumps.add(sect);
