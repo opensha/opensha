@@ -483,6 +483,11 @@ public class ClusterRupture {
 									jump.toSection, nextCluster, jump.distance);
 						}
 
+						if (jump.toCluster.startSect != jump.toSection) {
+							FaultSubsectionCluster modToCluster = new FaultSubsectionCluster(
+									jump.toCluster.subSects, jump.toSection, jump.toCluster.endSects);
+							jump = new Jump(jump.fromSection, jump.fromCluster, jump.toSection, modToCluster, jump.distance);
+						}
 						ClusterRupture nextRupture = curRupture.take(jump);
 						if (inv_d) System.out.println("\t\tNew curRupture: "+nextRupture);
 						if (maxNumSplays >= 0 && nextRupture.getTotalNumSplays() > maxNumSplays) {
