@@ -70,7 +70,19 @@ public class AverageSolutionCreator {
 	}
 	
 	public static FaultSystemSolution buildAverage(FaultSystemSolution... inputs) {
+		return buildAverage(inputs, null);
+	}
+	
+	public static FaultSystemSolution buildAverage(FaultSystemSolution[] inputs, double[] weights) {
 		Preconditions.checkState(inputs.length > 1);
+		if (weights == null) {
+			weights = new double[inputs.length];
+			double scale = 1d/inputs.length;
+			for (int i=0; i<inputs.length; i++)
+				weights[i] = scale;
+		} else {
+			Preconditions.checkState(weights.length == inputs.length);
+		}
 		FaultSystemRupSet refRupSet = null;
 		for (int i=0; i<inputs.length; i++) {
 			if (i == 0) {
@@ -85,13 +97,19 @@ public class AverageSolutionCreator {
 		for (FaultSystemSolution sol : inputs)
 			ratesList.add(sol.getRateForAllRups());
 		
-		double scale = 1d/inputs.length;
+		double totWeight = 0d;
+		boolean allWeightsSame = true;
+		for (double weight : weights) {
+			totWeight += weight;
+			allWeightsSame = allWeightsSame && (float)weight == (float)weights[0];
+		}
+		
 		int numRups = refRupSet.getNumRuptures();
 		double[] rates = new double[numRups];
 		for (int r=0; r<numRups; r++) {
 			for (int i=0; i<inputs.length; i++)
-				rates[r] += inputs[i].getRateForRup(r);
-			rates[r] *= scale;
+				rates[r] += inputs[i].getRateForRup(r)*weights[i];
+			rates[r] /= totWeight;
 		}
 		
 		FaultSystemSolution avgSol = new FaultSystemSolution(refRupSet, rates);
@@ -103,8 +121,10 @@ public class AverageSolutionCreator {
 			try {
 				AveragingAccumulator<?> accumulator = ((AverageableModule<?>)module).averagingAccumulator();
 				
-				for (FaultSystemSolution sol : inputs)
-					accumulator.processContainer(sol, scale);
+				for (int i=0; i<inputs.length; i++) {
+					FaultSystemSolution sol = inputs[i];
+					accumulator.processContainer(sol, weights[i]);
+				}
 				
 				OpenSHA_Module avgModule = accumulator.getAverage();
 				
@@ -139,7 +159,8 @@ public class AverageSolutionCreator {
 				avgSol.addModule(config);
 		}
 		
-		avgSol.addModule(new IndividualSolutionRates(avgSol, ratesList));
+		if (allWeightsSame)
+			avgSol.addModule(new IndividualSolutionRates(avgSol, ratesList));
 		
 		String info = "Average of "+inputs.length+" solutions, generated with 'fst_solution_averager.sh'";
 		if (inputs[0].hasModule(InfoModule.class))
