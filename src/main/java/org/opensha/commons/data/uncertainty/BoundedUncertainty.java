@@ -37,4 +37,8 @@ public class BoundedUncertainty extends Uncertainty {
 	public String toString() {
 		return "type="+type.name()+"\tbounds=["+(float)lowerBound+", "+(float)upperBound+"]\tstdDev="+(float)stdDev;
 	}
+	
+	public boolean contains(double value) {
+		return value >= lowerBound && value <= upperBound;
+	}
 }

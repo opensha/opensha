@@ -93,6 +93,12 @@ public class MarkdownUtils {
 			return addColumn(val.toString());
 		}
 		
+		public TableBuilder addColumns(Object... vals) {
+			for (Object val : vals)
+				addColumn(val);
+			return this;
+		}
+		
 		public TableBuilder addColumn(String val) {
 			if (curLine == null)
 				initNewLine();
@@ -184,6 +190,34 @@ public class MarkdownUtils {
 			}
 			
 			return strings;
+		}
+		
+		public CSVFile<String> toCSV() {
+			return toCSV(false);
+		}
+		
+		public CSVFile<String> toCSV(boolean stripFormatting) {
+			boolean sameSize = true;
+			int len = lines.get(0).length;
+			for (String[] line : lines)
+				sameSize = sameSize && line.length == len;
+			CSVFile<String> csv = new CSVFile<>(sameSize);
+			for (String[] line : lines) {
+				List<String> csvLine = new ArrayList<>(line.length);
+				for (String val : line) {
+					if (stripFormatting) {
+						if (val.startsWith("_") && val.endsWith("_"))
+							val = val.substring(1, val.length()-1);
+						if (val.startsWith("**") && val.endsWith("**"))
+							val = val.substring(2, val.length()-2);
+						else if (val.startsWith("*") && val.endsWith("*"))
+							val = val.substring(1, val.length()-1);
+					}
+					csvLine.add(val);
+				}
+				csv.addLine(csvLine);
+			}
+			return csv;
 		}
 	}
 	

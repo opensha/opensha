@@ -7,10 +7,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.jfree.data.Range;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
@@ -35,6 +37,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
+import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
@@ -53,6 +56,11 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 		PaleoseismicConstraintData data = sol.getRupSet().requireModule(PaleoseismicConstraintData.class);
 		
 		FaultSystemSolution compSol = meta.hasComparisonSol() ? meta.comparison.sol : null;
+		if (compSol != null) {
+			// make sure they use the same sections
+			if (!sol.getRupSet().areSectionsEquivalentTo(compSol.getRupSet()))
+				compSol = null;
+		}
 		
 		boolean hasRateData = data.hasPaleoRateConstraints();
 		boolean hasSlipData = data.hasPaleoSlipConstraints();
@@ -73,7 +81,7 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 			
 			String title = "Paleo-Rate Data Fits";
 			
-			lines.addAll(compTable(resourcesDir, "paleo_rate", relPathToResources, title, meta, paleoRates, compPaleoRates).build());
+			lines.addAll(paleoLines(resourcesDir, "paleo_rate", relPathToResources, title, meta, paleoRates, compPaleoRates));
 			lines.add("");
 		}
 		
@@ -90,15 +98,16 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 				lines.add(topLink); lines.add("");
 			}
 			
-			lines.addAll(compTable(resourcesDir, "paleo_slip", relPathToResources, title, meta, paleoSlips, compPaleoSlips).build());
+			lines.addAll(paleoLines(resourcesDir, "paleo_slip", relPathToResources, title, meta, paleoSlips, compPaleoSlips));
 			lines.add("");
 		}
 		
 		return lines;
 	}
 	
-	private static TableBuilder compTable(File resourcesDir, String prefix, String relPathToResources, String title, ReportMetadata meta,
-			Map<SectMappedUncertainDataConstraint, Double> data, Map<SectMappedUncertainDataConstraint, Double> compData) throws IOException {
+	private static List<String> paleoLines(File resourcesDir, String prefix, String relPathToResources, String title,
+			ReportMetadata meta, Map<SectMappedUncertainDataConstraint, Double> data,
+			Map<SectMappedUncertainDataConstraint, Double> compData) throws IOException {
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		
 		if (compData == null) {
@@ -118,14 +127,94 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 							compData, title, COMP_COLOR).getName()+")");
 		}
 		
-		return table;
+		List<String> lines = new ArrayList<>();
+		lines.addAll(table.build());
+		lines.add("");
 		
+		table = MarkdownUtils.tableBuilder();;
+		table.initNewLine();
+		table.addColumns("Site Name", "Mapped Subsection ID", "Mapped Parent Section", "Constraint Mean Rate",
+				"68% Bounds", "Constraint 95% Bounds",
+				"Std. Dev", "Solution Rate", "z-score");
+		if (compData != null)
+			table.addColumns("Comparison Solution Rate", "Comparison z-score");
+		table.finalizeLine();
+		
+		for (SectMappedUncertainDataConstraint val : data.keySet()) {
+			table.initNewLine();
+			table.addColumn(val.name);
+			if (val.sectionIndex >= 0)
+				table.addColumn(val.sectionIndex).addColumn(meta.primary.rupSet.getFaultSectionData(val.sectionIndex).getParentSectionName());
+			else
+				table.addColumn("_N/A_").addColumn("_N/A_");
+			table.addColumn((float)val.bestEstimate);
+			BoundedUncertainty bounds68 = val.estimateUncertaintyBounds(UncertaintyBoundType.CONF_68);
+			BoundedUncertainty bounds95 = val.estimateUncertaintyBounds(UncertaintyBoundType.CONF_95);
+			table.addColumn("["+(float)bounds68.lowerBound+", "+(float)bounds68.upperBound+"]");
+			table.addColumn("["+(float)bounds95.lowerBound+", "+(float)bounds95.upperBound+"]");
+			table.addColumn((float)val.getPreferredStdDev());
+			Double solVal = data.get(val);
+			if (solVal == null) {
+				table.addColumn("_N/A_").addColumn("_N/A_");
+			} else {
+				if (bounds68.contains(solVal))
+					table.addColumn("**"+solVal.floatValue()+"**");
+				else if (bounds95.contains(solVal))
+					table.addColumn("_"+solVal.floatValue()+"_");
+				else
+					table.addColumn(solVal.floatValue());
+				double z = (solVal - val.bestEstimate)/val.getPreferredStdDev();
+				table.addColumn((float)z);
+			}
+			if (compData != null) {
+				Double compVal = compData.get(val);
+				if (compVal == null) {
+					// slip ones may be different, see if we have a match
+					for (SectMappedUncertainDataConstraint oData : compData.keySet()) {
+						if (oData.name.equals(val.name) && oData.sectionIndex == val.sectionIndex) {
+							compVal = compData.get(oData);
+							break;
+						}
+					}
+				}
+				if (compVal == null) {
+					table.addColumn("_N/A_").addColumn("_N/A_");
+				} else {
+					if (bounds68.contains(compVal))
+						table.addColumn("**"+compVal.floatValue()+"**");
+					else if (bounds95.contains(compVal))
+						table.addColumn("_"+compVal.floatValue()+"_");
+					else
+						table.addColumn(compVal.floatValue());
+					double z = (compVal - val.bestEstimate)/val.getPreferredStdDev();
+					table.addColumn((float)z);
+				}
+			}
+			table.finalizeLine();
+		}
+		
+		File csvFile = new File(resourcesDir, prefix+".csv");
+		CSVFile<String> csv = table.toCSV(true);
+		csv.writeToFile(csvFile);
+		
+		String line = "Paleo data comparison table. For the solution";
+		if (compData == null)
+			line += " column";
+		else
+			line += " and comparison columns";
+		line += ", text is **bold if within 68% bounds**, _italicized if within 95% bounds_, and otherwise plain text.";
+		line += " [Download CSV here]("+resourcesDir.getName()+"/"+csvFile.getName()+").";
+		lines.add(line);
+		lines.add("");
+		lines.addAll(table.build());
+		
+		return lines;
 	}
 	
 	private static Map<SectMappedUncertainDataConstraint, Double> calcSolPaleoRates(
 			List<? extends SectMappedUncertainDataConstraint> paleoRateData, PaleoProbabilityModel paleoProbModel,
 			FaultSystemSolution sol) {
-		Map<SectMappedUncertainDataConstraint, Double> ret = new HashMap<>();
+		Map<SectMappedUncertainDataConstraint, Double> ret = new LinkedHashMap<>(); // use linked implementation to maintain iteration order
 		
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		
@@ -145,7 +234,7 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 			List<? extends SectMappedUncertainDataConstraint> paleoSlipData, PaleoSlipProbabilityModel paleoSlipProbModel,
 			FaultSystemSolution sol) {
 		
-		Map<SectMappedUncertainDataConstraint, Double> ret = new HashMap<>();
+		Map<SectMappedUncertainDataConstraint, Double> ret = new LinkedHashMap<>(); // use linked implementation to maintain iteration order
 		
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		List<SectMappedUncertainDataConstraint> rateData = PaleoseismicConstraintData.inferRatesFromSlipConstraints(
@@ -379,11 +468,14 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 		File outputDir = new File("/tmp/temp_report");
 		
 		PaleoDataComparisonPlot plot = new PaleoDataComparisonPlot();
+
+		List<AbstractRupSetPlot> plots = List.of(plot);
+//		List<AbstractRupSetPlot> plots = List.of(plot, new ModulesPlot(), new NamedFaultPlot());
 		
-//		ReportPageGen report = new ReportPageGen(sol.getRupSet(), sol, "Solution", outputDir, List.of(plot));
-		ReportMetadata meta = new ReportMetadata(new RupSetMetadata("Sol 1", sol1),
-				sol2 == null ? null : new RupSetMetadata("Sol 2", sol2));
-		ReportPageGen report = new ReportPageGen(meta, outputDir, List.of(plot, new ModulesPlot(), new NamedFaultPlot()));
+		ReportPageGen report = new ReportPageGen(sol1.getRupSet(), sol1, "Solution", outputDir, List.of(plot));
+//		ReportMetadata meta = new ReportMetadata(new RupSetMetadata("Sol 1", sol1),
+//				sol2 == null ? null : new RupSetMetadata("Sol 2", sol2));
+//		ReportPageGen report = new ReportPageGen(meta, outputDir, plots);
 		
 		report.setReplot(true);
 		report.generatePage();
