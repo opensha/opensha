@@ -18,6 +18,7 @@ import java.util.zip.ZipOutputStream;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
@@ -148,6 +149,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		private SolutionLogicTree solTree;
 		private HashSet<String> writtenFiles = new HashSet<>();
 		
+		private BranchWeightProvider weightProv;
+		
 		private List<LogicTreeBranch<LogicTreeNode>> branches = new ArrayList<>();
 		private List<LogicTreeLevel<? extends LogicTreeNode>> levels = null;
 		
@@ -234,10 +237,16 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			solTree.writeBranchFilesToArchive(zout, outPrefix, branch, writtenFiles, sol);
 		}
 		
+		public void setWeightProv(BranchWeightProvider weightProv) {
+			this.weightProv = weightProv;
+		}
+
 		public synchronized void close() throws IOException {
 			if (zout != null) {
 				// write logic tree
 				LogicTree<?> tree = LogicTree.fromExisting(levels, branches);
+				if (weightProv != null)
+					tree.setWeightProvider(weightProv);
 				solTree.writeLogicTreeToArchive(zout, solTree.buildPrefix(entryPrefix), tree);
 				
 				if (processor != null)
