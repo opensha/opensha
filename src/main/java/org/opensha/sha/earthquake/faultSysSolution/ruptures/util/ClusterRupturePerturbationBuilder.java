@@ -64,7 +64,6 @@ import com.google.common.base.Preconditions;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
-import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class ClusterRupturePerturbationBuilder {
 
@@ -106,7 +105,7 @@ public class ClusterRupturePerturbationBuilder {
 			primaryGrowingStrat = new SectCountAdaptiveRuptureGrowingStrategy(sectGrowFract, true, 2);
 		else
 			primaryGrowingStrat = new ExhaustiveUnilateralRuptureGrowingStrategy();
-		FaultSystemRupSet rupSet = U3FaultSystemIO.loadRupSet(primaryFile);
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(primaryFile);
 		PlausibilityConfiguration primaryConfig = rupSet.getModule(PlausibilityConfiguration.class);
 		Preconditions.checkNotNull(primaryConfig);
 		
@@ -408,7 +407,7 @@ public class ClusterRupturePerturbationBuilder {
 			Preconditions.checkState(plotDir.exists() || plotDir.mkdir());
 			
 			if (replot || !new File(plotDir, "README.md").exists()) {
-				FaultSystemSolution u3 = U3FaultSystemIO.loadSol(new File(rupSetsDir, "fm3_1_ucerf3.zip"));
+				FaultSystemSolution u3 = FaultSystemSolution.load(new File(rupSetsDir, "fm3_1_ucerf3.zip"));
 				System.out.println("Plotting UCERF3");
 				ReportPageGen pageGen = new ReportPageGen(rupSet, null, primaryName, plotDir, ReportPageGen.getDefaultRupSetPlots(PlotLevel.FULL));
 				
@@ -464,7 +463,7 @@ public class ClusterRupturePerturbationBuilder {
 			if (replot || !new File(plotDir, "README.md").exists() || altRupSet != null) { // last check is true if we just rebuilt
 				if (altRupSet == null) {
 					System.out.println("Loading already built "+name+" from "+outputFile.getAbsolutePath());
-					altRupSet = U3FaultSystemIO.loadRupSet(outputFile);
+					altRupSet = FaultSystemRupSet.load(outputFile);
 				}
 				System.out.println("Plotting "+name);
 				
