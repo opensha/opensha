@@ -89,6 +89,10 @@ public abstract class PathEvaluator implements NucleationClusterEvaluator {
 				Collection<? extends FaultSection> toSects, FaultSubsectionCluster toCluster, double distance) {
 			this.fromSect = fromSect;
 			this.fromCluster = fromCluster;
+			for (FaultSection toSect : toSects)
+				Preconditions.checkState(toSect.getParentSectionId() == toCluster.parentSectionID,
+						"toSect[%s:%s] has different parent than toCluster=%s",
+						toSect.getParentSectionId(), toSect.getSectionId(), toCluster);
 			this.toSects = toSects;
 			this.toCluster = toCluster;
 			this.distance = distance;
@@ -98,6 +102,9 @@ public abstract class PathEvaluator implements NucleationClusterEvaluator {
 				FaultSection toSect, FaultSubsectionCluster toCluster, double distance) {
 			this.fromSect = fromSect;
 			this.fromCluster = fromCluster;
+			Preconditions.checkState(toSect.getParentSectionId() == toCluster.parentSectionID,
+					"toSect[%s:%s] has different parent than toCluster=%s",
+					toSect.getParentSectionId(), toSect.getSectionId(), toCluster);
 			this.toSects = Collections.singleton(toSect);
 			this.toCluster = toCluster;
 			this.distance = distance;
@@ -135,7 +142,7 @@ public abstract class PathEvaluator implements NucleationClusterEvaluator {
 			else
 				ret = "?->[";
 			return ret+toSects.stream().map(S -> S.getSectionId()).map(S -> S.toString())
-					.collect(Collectors.joining(","))+"]";
+					.collect(Collectors.joining(","))+"], "+(float)distance+"km";
 		}
 	}
 	
