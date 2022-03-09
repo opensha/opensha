@@ -44,6 +44,14 @@ public final class GeoJSONFaultSection implements FaultSection {
 	private Region zonePolygon;
 	private FeatureProperties properties;
 	
+	// common data to cache locally (to avoid more expensive FetureProperties queries)
+	private double aveLongTermSlipRate;
+	private double slipRateStdDev;
+	private String parentSectionName;
+	private int parentSectionId = -1;
+	private long dateOfLastEventMillis = Long.MIN_VALUE;
+	private int hashCode;
+	
 	// helpers
 	private StirlingSurfaceCache stirlingCache;
 	
@@ -123,6 +131,15 @@ public final class GeoJSONFaultSection implements FaultSection {
 		
 		if (!Double.isFinite(dipDirection))
 			setDipDirection((float)(trace.getAveStrike()+90d));
+		
+		// cache common values
+		this.aveLongTermSlipRate = properties.getDouble(SLIP_RATE, Double.NaN);
+		this.slipRateStdDev = properties.getDouble(SLIP_STD_DEV, Double.NaN);
+		this.parentSectionName = properties.get(PARENT_NAME, null);
+		this.parentSectionId = properties.getInt(PARENT_ID, -1);
+		this.dateOfLastEventMillis = properties.getLong(DATE_LAST, Long.MIN_VALUE);
+		
+		updateHashCode();
 	}
 	
 	private void setGeometry(Geometry geometry) {
@@ -305,11 +322,12 @@ public final class GeoJSONFaultSection implements FaultSection {
 	
 	@Override
 	public long getDateOfLastEvent() {
-		return properties.getLong(DATE_LAST, Long.MIN_VALUE);
+		return dateOfLastEventMillis;
 	}
 
 	@Override
 	public void setDateOfLastEvent(long dateOfLastEventMillis) {
+		this.dateOfLastEventMillis = dateOfLastEventMillis;
 		properties.setConditional(DATE_LAST, dateOfLastEventMillis, dateOfLastEventMillis > Long.MIN_VALUE);
 	}
 	
@@ -355,11 +373,12 @@ public final class GeoJSONFaultSection implements FaultSection {
 
 	@Override
 	public double getOrigAveSlipRate() {
-		return properties.getDouble(SLIP_RATE, Double.NaN);
+		return aveLongTermSlipRate;
 	}
 
 	@Override
 	public void setAveSlipRate(double aveLongTermSlipRate) {
+		this.aveLongTermSlipRate = aveLongTermSlipRate;
 		properties.setConditional(SLIP_RATE, aveLongTermSlipRate, Double.isFinite(aveLongTermSlipRate));
 	}
 
@@ -409,6 +428,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public void setSectionId(int sectID) {
 		this.id = sectID;
 		properties.set(FAULT_ID, id);
+		updateHashCode();
 	}
 
 	@Override
@@ -419,22 +439,25 @@ public final class GeoJSONFaultSection implements FaultSection {
 
 	@Override
 	public int getParentSectionId() {
-		return properties.getInt(PARENT_ID, -1);
+		return parentSectionId;
 	}
 
 	@Override
 	public void setParentSectionId(int parentSectionId) {
+		this.parentSectionId = parentSectionId;
 		properties.setConditional(PARENT_ID, parentSectionId, parentSectionId >= 0);
+		updateHashCode();
 	}
 	
 
 	@Override
 	public String getParentSectionName() {
-		return properties.get(PARENT_NAME, null);
+		return parentSectionName;
 	}
 
 	@Override
 	public void setParentSectionName(String parentSectionName) {
+		this.parentSectionName = parentSectionName;
 		properties.set(PARENT_NAME, parentSectionName);
 	}
 
@@ -467,11 +490,12 @@ public final class GeoJSONFaultSection implements FaultSection {
 
 	@Override
 	public double getOrigSlipRateStdDev() {
-		return properties.getDouble(SLIP_STD_DEV, Double.NaN);
+		return slipRateStdDev;
 	}
 
 	@Override
 	public void setSlipRateStdDev(double slipRateStdDev) {
+		this.slipRateStdDev = slipRateStdDev;
 		properties.setConditional(SLIP_STD_DEV, slipRateStdDev, Double.isFinite(slipRateStdDev));
 	}
 
@@ -558,10 +582,14 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public static GeoJSONFaultSection fromXMLMetadata(Element el) {
 		return new GeoJSONFaultSection(FaultSectionPrefData.fromXMLMetadata(el));
 	}
+	
+	private void updateHashCode() {
+		this.hashCode = FaultSection.hashCode(this);
+	}
 
 	@Override
 	public int hashCode() {
-		return FaultSection.hashCode(this);
+		return hashCode;
 	}
 
 	@Override
