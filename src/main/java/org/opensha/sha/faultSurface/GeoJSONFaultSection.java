@@ -131,17 +131,21 @@ public final class GeoJSONFaultSection implements FaultSection {
 		
 		if (!Double.isFinite(dipDirection))
 			setDipDirection((float)(trace.getAveStrike()+90d));
-		
+
+		cacheCommonValues();
+	}
+
+	private void cacheCommonValues() {
 		// cache common values
 		this.aveLongTermSlipRate = properties.getDouble(SLIP_RATE, Double.NaN);
 		this.slipRateStdDev = properties.getDouble(SLIP_STD_DEV, Double.NaN);
 		this.parentSectionName = properties.get(PARENT_NAME, null);
 		this.parentSectionId = properties.getInt(PARENT_ID, -1);
 		this.dateOfLastEventMillis = properties.getLong(DATE_LAST, Long.MIN_VALUE);
-		
+
 		updateHashCode();
 	}
-	
+
 	private void setGeometry(Geometry geometry) {
 		if (geometry instanceof GeometryCollection) {
 			for (Geometry subGeom : ((GeometryCollection)geometry).geometries) {
@@ -272,6 +276,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 				properties.set(CONNECTOR, true);
 			setZonePolygon(sect.getZonePolygon());
 		}
+		cacheCommonValues();
 	}
 
 	GeoJSONFaultSection(int id, String name, double dip, double rake, double upperDepth,
@@ -285,6 +290,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 		this.dipDirection = dipDirection;
 		this.trace = trace;
 		this.properties = properties;
+		cacheCommonValues();
 	}
 	
 	public static GeoJSONFaultSection fromFeature(Feature feature) {
