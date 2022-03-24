@@ -142,7 +142,6 @@ public class Inversions {
 		normSlipWeight.setRequired(false);
 		ops.addOption(normSlipWeight);
 
-		// TODO: add to docs
 		Option uncertSlipWeight = new Option("usw", "uncertain-slip-weight", true,
 				"Sets weight for the uncertaintly-normalized slip-rate constraint.");
 		uncertSlipWeight.setRequired(false);
@@ -261,28 +260,24 @@ public class Inversions {
 
 		// smooth constraint
 
-		// TODO add to docs
 		Option smooth = new Option("sm", "smooth", false,
 				"Flag to enable the Laplacian smoothness constraint that smooths supra-seismogenic participation rates "
 				+ "along adjacent subsections on a parent section.");
 		smooth.setRequired(false);
 		ops.addOption(smooth);
 
-		// TODO add to docs
 		Option smoothWeight = new Option("smw", "smooth-weight", true, "Sets weight for the smoothness constraint.");
 		smoothWeight.setRequired(false);
 		ops.addOption(smoothWeight);
 		
 		// external configuration
 		
-		// TODO add to docs
 		Option configOp = new Option("cfg", "config-json", true,
 				"Path to a JSON file containing a full inversion configuration, as an alternative to using "
 				+ "command line options.");
 		configOp.setRequired(false);
 		ops.addOption(configOp);
 		
-		// TODO add to docs
 		Option constraintsOp = new Option("cnstr", "constraints-json", true,
 				"Path to a JSON file containing inversion constraints that should be included.");
 		constraintsOp.setRequired(false);
