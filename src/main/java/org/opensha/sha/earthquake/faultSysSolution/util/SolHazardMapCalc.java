@@ -66,6 +66,8 @@ import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
 public class SolHazardMapCalc {
 	
+	public static final double SPACING_DEFAULT = 0.25;
+	
 	private FaultSystemSolution sol;
 	private Supplier<ScalarIMR> gmpeRef;
 	private GriddedRegion region;
@@ -614,7 +616,7 @@ public class SolHazardMapCalc {
 		outputOption.setRequired(true);
 		ops.addOption(outputOption);
 		
-		Option gridSpacingOption = new Option("gs", "grid-spacing", true, "Grid spacing in degrees");
+		Option gridSpacingOption = new Option("gs", "grid-spacing", true, "Grid spacing in degrees. Default: "+(float)SPACING_DEFAULT);
 		gridSpacingOption.setRequired(false);
 		ops.addOption(gridSpacingOption);
 		
@@ -623,7 +625,7 @@ public class SolHazardMapCalc {
 		ops.addOption(recalcOption);
 		
 		Option periodsOption = new Option("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
-		periodsOption.setRequired(false);
+		periodsOption.setRequired(true);
 		ops.addOption(periodsOption);
 		
 		Option gmpeOption = new Option("g", "gmpe", true, "GMPE name. Default is "+AttenRelRef.ASK_2014.name());
@@ -648,13 +650,15 @@ public class SolHazardMapCalc {
 		
 		Region region = new ReportMetadata(new RupSetMetadata(null, sol)).region;
 		
-		double gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
+		double gridSpacing = SPACING_DEFAULT;
+		if (cmd.hasOption("grid-spacing"))
+			gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
 		
 		GriddedRegion gridReg = new GriddedRegion(region, gridSpacing, GriddedRegion.ANCHOR_0_0);
 		
 		AttenRelRef gmpe = AttenRelRef.ASK_2014;
 		if (cmd.hasOption("gmpe"))
-			gmpe = AttenRelRef.valueOf(cmd.getOptionValue("gmp"));
+			gmpe = AttenRelRef.valueOf(cmd.getOptionValue("gmpe"));
 		
 		List<Double> periodsList = new ArrayList<>();
 		String periodsStr = cmd.getOptionValue("periods");
@@ -680,12 +684,17 @@ public class SolHazardMapCalc {
 //				e.printStackTrace();
 			}
 		}
+		
+		Double maxDistance = null;
+		if (cmd.hasOption("max-distance"))
+			maxDistance = Double.parseDouble(cmd.getOptionValue("max-distance"));
+		
 		if (calc == null) {
 			// need to calculate
 			calc = new SolHazardMapCalc(sol, gmpe, gridReg, periods);
 			
-			if (cmd.hasOption("max-distance"))
-				calc.setMaxSourceSiteDist(Double.parseDouble(cmd.getOptionValue("max-distance")));
+			if (maxDistance != null)
+				calc.setMaxSourceSiteDist(maxDistance);
 			
 			calc.calcHazardCurves(FaultSysTools.getNumThreads(cmd));
 			
@@ -708,8 +717,8 @@ public class SolHazardMapCalc {
 				// need to calculate
 				compCalc = new SolHazardMapCalc(compSol, gmpe, gridReg, periods);
 				
-				if (cmd.hasOption("max-distance"))
-					compCalc.setMaxSourceSiteDist(Double.parseDouble(cmd.getOptionValue("max-distance")));
+				if (maxDistance != null)
+					compCalc.setMaxSourceSiteDist(maxDistance);
 				
 				compCalc.calcHazardCurves(FaultSysTools.getNumThreads(cmd));
 				
