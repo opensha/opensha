@@ -66,7 +66,19 @@ import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
 public class SolHazardMapCalc {
 	
-	public static final double SPACING_DEFAULT = 0.25;
+	public static double SPACING_DEFAULT = 0.25;
+	
+	static {
+		String spacingEnv = System.getenv("FST_HAZARD_SPACING");
+		if (spacingEnv != null && !spacingEnv.isBlank()) {
+			try {
+				SPACING_DEFAULT = Double.parseDouble(spacingEnv);
+			} catch (NumberFormatException e) {
+				System.err.println("Couldn't parse FST_HAZARD_SPACING environmental variable as a double: "+spacingEnv);
+				e.printStackTrace();
+			}
+		}
+	}
 	
 	private FaultSystemSolution sol;
 	private Supplier<ScalarIMR> gmpeRef;
