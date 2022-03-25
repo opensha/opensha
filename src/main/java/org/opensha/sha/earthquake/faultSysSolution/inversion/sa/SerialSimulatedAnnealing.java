@@ -23,6 +23,7 @@ import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix1D;
 
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
+import com.google.common.primitives.Ints;
 
 /**
  * 
@@ -645,7 +646,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 		// indexes of each perturbation that has not yet been accepted and copied over to xbest
 		// once we find a new best, we will copy over x for each of these indexes
 		int curPerturbChainSize = 0;
-		int[] curPertubChain = new int[xbest.length];
+		int[] curPertubChain = new int[1000];
 		
 		// this will keep track of 'worse' perturbations that we kept, but have not yet led to a new 'best' solution
 		long worseValsNotYetSaved = 0l;
@@ -890,7 +891,9 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 					}
 				}
 				
+				
 				// keep track that we have now changed the value at this index
+				Ints.ensureCapacity(curPertubChain, curPerturbChainSize+1, 1000);
 				curPertubChain[curPerturbChainSize++] = index;
 				
 				// Is this a new best?
