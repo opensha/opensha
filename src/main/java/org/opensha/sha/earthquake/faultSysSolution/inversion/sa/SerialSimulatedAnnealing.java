@@ -642,6 +642,11 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 			scratch = new double[equalityData.maxRowsPerCol];
 		}
 		
+		// indexes of each perturbation that has not yet been accepted and copied over to xbest
+		// once we find a new best, we will copy over x for each of these indexes
+		int curPerturbChainSize = 0;
+		int[] curPertubChain = new int[xbest.length];
+		
 		// this will keep track of 'worse' perturbations that we kept, but have not yet led to a new 'best' solution
 		long worseValsNotYetSaved = 0l;
 		
@@ -732,6 +737,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 				E = calculateEnergy(x, misfit_working, misfit_working_ineq);
 			}
 			
+			double prevX = x[index];
 			x[index] += perturb;
 			
 			// calculate new misfit vectors
@@ -850,15 +856,6 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 				}
 			}
 			
-			int newNonZero = curNumNonZero;
-			if (wasZero) {
-				if (x[index] != 0)
-					newNonZero++;
-			} else {
-				if (x[index] == 0)
-					newNonZero--;
-			}
-			
 			// Use transition probability to determine (via random number draw) if solution is kept
 			if (P == 1 || P > r.nextDouble()) {
 				if (energyChange > 0d)
@@ -867,7 +864,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 				
 				/* 
 				 * The buffers are a bit confusing, let me explain. Arrays.copyOf(...) calls are costly in this inner
-				 * loop, so we avoid them by reusing 3 misfit buffers. With 3 buffers, there's always one availbe to
+				 * loop, so we avoid them by reusing 3 misfit buffers. With 3 buffers, there's always one available to
 				 * store the current best misfit, the current solution misfit, and the misfit to be perturbed in the
 				 * next round, without ever doing an array copy.
 				 */
@@ -879,13 +876,30 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 					for (int row : inequalityData.colRows[index])
 						misfit_working_ineq[row] = misfit_perturbed_ineq[row];
 				perturbs++;
-				curNumNonZero = newNonZero;
+				Preconditions.checkState(x[index] >= 0, "bad x[%s]=%s", (Integer)index, (Double)x[index]);
+				if (wasZero) {
+					if (x[index] != 0) {
+						Preconditions.checkState(curNumNonZero < xbest.length,
+								"Non-zero count (%s) already at 100% (%s). new x[%s]=%s, prev=%s",
+								curNumNonZero, xbest.length, index, x[index], x[index]-perturb);
+						curNumNonZero++;
+					}
+				} else {
+					if (x[index] == 0) {
+						curNumNonZero--;
+					}
+				}
+				
+				// keep track that we have now changed the value at this index
+				curPertubChain[curPerturbChainSize++] = index;
 				
 				// Is this a new best?
 				if (Enew[0] < Ebest[0] || keepCurrentAsBest) {
-					// update xbest with this perturbation
+					// update xbest with all perturbations since the last new best
 					// we now keep xbest isolated so we never have to do an array copy
-					xbest[index] = x[index];
+					for (int i=0; i<curPerturbChainSize; i++)
+						xbest[curPertubChain[i]] = x[curPertubChain[i]];
+					curPerturbChainSize = 0;
 					if (XBEST_ACCURACY_CHECK) xbest_check_storage = Arrays.copyOf(x, x.length);
 					// keep these misfits permanently
 					for (int row : equalityData.colRows[index])
@@ -908,7 +922,7 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 				}
 			} else {
 				// undo the perturbation
-				x[index] -= perturb;
+				x[index] = prevX;
 				for (int row : equalityData.colRows[index])
 					misfit_perturbed[row] = misfit_working[row];
 				if (hasInequalityConstraint)
