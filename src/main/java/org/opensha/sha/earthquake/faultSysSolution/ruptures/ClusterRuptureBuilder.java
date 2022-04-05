@@ -45,6 +45,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.Exhaustiv
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.FilterDataClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader.GeoDBSlipRateRecord;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -963,13 +965,38 @@ public class ClusterRuptureBuilder {
 		int threads = Integer.max(1, Integer.min(31, Runtime.getRuntime().availableProcessors()-2));
 //		int threads = 62;
 		
+		// Coulomb w/ UCERF3
 //		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3);
-//		String state = "CA";
-		String state = null;
-		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(RuptureSets.getNSHM23SubSects(state),
-				"nshm23_geo_dm_"+GeoJSONFaultReader.NSHM23_DM_CUR_VERSION+"_"
-						+(state == null ? "all" : state.toLowerCase()), ScalingRelationships.MEAN_UCERF3);
+		// NSHM23
+		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v1p4;
+		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(fm.getDefaultDeformationModel().build(fm),
+				fm.getFilePrefix(), ScalingRelationships.MEAN_UCERF3);
+		// UCERF3
 //		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3);
+//		((U3RupSetConfig)rsConfig).setAdaptiveSectFract(0.1f);
+		// UCERF3 w/o Coulomb, adaptive 6-15 km rupture set
+//		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3) {
+//
+//			@Override
+//			public PlausibilityConfiguration getPlausibilityConfig() {
+//				PlausibilityConfiguration config = super.getPlausibilityConfig();
+//				List<PlausibilityFilter> newFilters = new ArrayList<>();
+//				for (PlausibilityFilter filter : config.getFilters())
+//					if (!(filter instanceof U3CoulombJunctionFilter))
+//						newFilters.add(filter);
+//				System.out.println("Retaining "+newFilters.size()+"/"+config.getFilters().size()+" filters");
+//				ClusterConnectionStrategy connStrat = new PlausibleClusterConnectionStrategy(getSubSects(), getDistAzCalc(), 15d,
+//						PlausibleClusterConnectionStrategy.JUMP_SELECTOR_DEFAULT, newFilters);
+//				connStrat = new AdaptiveClusterConnectionStrategy(connStrat, 6d, 1);
+//				return new PlausibilityConfiguration(newFilters, 0, connStrat, getDistAzCalc());
+//			}
+//
+//			@Override
+//			public String getRupSetFileName() {
+//				return FaultModels.FM3_1.encodeChoiceString()+"_ucerf3_sans_coulomb-adaptive6_15";
+//			}
+//			
+//		};
 //		((U3RupSetConfig)rsConfig).setAdaptiveSectFract(0.1f);
 		
 		FaultSystemRupSet rupSet = rsConfig.build(threads);

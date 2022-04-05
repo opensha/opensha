@@ -619,6 +619,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	@Override
 	public void setIntensityMeasure(Parameter intensityMeasure)
 			throws ParameterException, ConstraintException {
+		Preconditions.checkNotNull(intensityMeasure, "IM cannot be null");
 		super.setIntensityMeasure(intensityMeasure);
 		for (ScalarIMR imr : imrs) {
 			imr.setIntensityMeasure(intensityMeasure);

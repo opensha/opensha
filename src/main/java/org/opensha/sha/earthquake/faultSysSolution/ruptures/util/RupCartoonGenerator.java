@@ -2859,12 +2859,17 @@ public class RupCartoonGenerator {
 	}
 
 	public static void main(String[] args) throws IOException, DocumentException {
-		File mainDir = new File("/home/kevin/workspace/opensha/src/main/java/org/opensha/sha/"
-				+ "earthquake/faultSysSolution/ruptures");
-//		File mainDir = new File("/tmp/cartoons");
+//		File mainDir = new File("/home/kevin/workspace/opensha/src/main/java/org/opensha/sha/"
+//				+ "earthquake/faultSysSolution/ruptures");
+		File mainDir = new File("/tmp/cartoons");
+		write_pdfs = true;
+		
+		Preconditions.checkState(mainDir.exists() || mainDir.mkdir());
 		File rupDocsDir = new File(mainDir, "doc");
 		File stratDocsDir = new File(mainDir, "strategies/doc");
+		Preconditions.checkState(stratDocsDir.getParentFile().exists() || stratDocsDir.getParentFile().mkdir());
 		File plausiblityDocsDir = new File(mainDir, "plausibility/doc");
+		Preconditions.checkState(plausiblityDocsDir.getParentFile().exists() || plausiblityDocsDir.getParentFile().mkdir());
 		
 //		buildStandardDemos(rupDocsDir);
 //		buildThinningDemo(stratDocsDir);

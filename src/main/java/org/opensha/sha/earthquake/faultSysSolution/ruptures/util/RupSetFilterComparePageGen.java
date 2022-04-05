@@ -84,16 +84,16 @@ public class RupSetFilterComparePageGen {
 	public static void main(String[] args) throws IOException, DocumentException {
 		File rupSetsDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
 
-//		String inputName = "RSQSim 4983, SectArea=0.5";
-//		File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
+		String inputName = "RSQSim 4983, SectArea=0.5";
+		File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
 ////		File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5_unique.zip");
-//		File distAzCache = new File(rupSetsDir, "fm3_1_dist_az_cache.csv");
+		File distAzCache = new File(rupSetsDir, "fm3_1_dist_az_cache.csv");
 //		String inputName = "RSQSim 5133, SectArea=0.5";
 //		File inputFile = new File(rupSetsDir, "rsqsim_5133_m6_skip50000_sectArea0.5.zip");
 //		File distAzCache = null;
-		String inputName = "RSQSim 5212, SectArea=0.5";
-		File inputFile = new File(rupSetsDir, "rsqsim_5212_m6.5_skip50000_sectArea0.5.zip");
-		File distAzCache = new File(rupSetsDir, "fm3_1_dist_az_cache.csv");
+//		String inputName = "RSQSim 5212, SectArea=0.5";
+//		File inputFile = new File(rupSetsDir, "rsqsim_5212_m6.5_skip50000_sectArea0.5.zip");
+//		File distAzCache = new File(rupSetsDir, "fm3_1_dist_az_cache.csv");
 		
 		File altFiltersFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
 		String altName = "UCERF3";
@@ -126,6 +126,10 @@ public class RupSetFilterComparePageGen {
 		
 		FaultSystemRupSet rupSet = FaultSystemRupSet.load(inputFile);
 		
+		// TODO
+		rupSet.removeModuleInstances(PlausibilityConfiguration.class);
+		rupSet.removeModuleInstances(ClusterRuptures.class);
+		
 		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
 		if (distAzCache != null && distAzCache.exists()) {
 			System.out.println("Loading dist/az cache from "+distAzCache.getAbsolutePath());
@@ -138,7 +142,7 @@ public class RupSetFilterComparePageGen {
 					rupSet.getModule(PlausibilityConfiguration.class).getConnectionStrategy().getMaxJumpDist(), false);
 		else
 			connSearch = new RuptureConnectionSearch(rupSet, distAzCalc, 100d, false);
-		if (!rupSet.hasModule(ClusterRuptures.class))
+		if (!rupSet.hasModule(ClusterRuptures.class)) // TODO
 			rupSet.addModule(ClusterRuptures.instance(rupSet, connSearch));
 		List<ClusterRupture> rups = rupSet.requireModule(ClusterRuptures.class).getAll();
 		HashSet<Jump> allJumps = new HashSet<>();
@@ -302,7 +306,7 @@ public class RupSetFilterComparePageGen {
 		
 		List<DiscretizedFunc> xValsList = new ArrayList<>();
 		
-		int threads = Integer.max(1, Integer.min(31, Runtime.getRuntime().availableProcessors()-2));
+		int threads = Integer.max(1, Integer.min(16, Runtime.getRuntime().availableProcessors()-2));
 		
 		ExecutorService exec = Executors.newFixedThreadPool(threads);
 		List<List<Future<PlausibilityResult[]>>> futures = new ArrayList<>();
@@ -344,6 +348,20 @@ public class RupSetFilterComparePageGen {
 			futures.add(myFutures);
 		}
 		
+		System.out.println("Waiting on param sweep futgures");
+		for (List<Future<PlausibilityResult[]>> subFutures : futures) {
+			for (Future<PlausibilityResult[]> future : subFutures) {
+				try {
+					future.get();
+				} catch (InterruptedException | ExecutionException e) {
+					e.printStackTrace();
+					System.err.flush();
+					System.exit(1);
+				}
+			}
+		}
+		System.out.println("Done with sweep futures");
+		
 		List<RupSetPlausibilityResult> combResults = new ArrayList<>();
 		List<String> combNames = new ArrayList<>();
 		
@@ -381,6 +399,7 @@ public class RupSetFilterComparePageGen {
 				}
 				if (!pathEvals.isEmpty())
 					finalFilters.add(new PathPlausibilityFilter(pathEvals.toArray(new NucleationClusterEvaluator[0])));
+				System.out.println("Testing "+names.get(i)+", isMax="+isMax);
 				combResults.add(PlausibilityFilterPlot.testRupSetPlausibility(
 						rups, finalFilters, rupSet.getModule(PlausibilityConfiguration.class), connSearch, exec));
 				if (isMax == null) {

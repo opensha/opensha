@@ -544,7 +544,7 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		public HardcodedPrevWeightAdjust() {
 			try {
 				zip = new ZipFile(new File("/project/scec_608/kmilner/nshm23/batch_inversions/"
-						+ "2022_02_15-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-JumpProb-2000ip/results.zip"));
+						+ "2022_03_24-nshm23_u3_hybrid_branches-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-JumpProb-2000ip/results.zip"));
 			} catch (Exception e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
