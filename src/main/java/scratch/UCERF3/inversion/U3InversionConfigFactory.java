@@ -371,30 +371,6 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 		
 	}
 	
-	public static class CoulombRupSet extends U3InversionConfigFactory {
-
-		@Override
-		protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) throws IOException {
-			FaultModels fm = branch.requireValue(FaultModels.class);
-			// check cache
-			FaultSystemRupSet rupSet = rupSetCache.get(fm);
-			if (rupSet != null)
-				return rupSet;
-			// need to build one
-			rupSet = new RuptureSets.CoulombRupSetConfig(fm,
-					branch.requireValue(ScalingRelationships.class)).build(threads);
-			// cache it
-			rupSetCache.put(fm, rupSet);
-			return rupSet;
-		}
-
-		@Override
-		public SolutionProcessor getSolutionLogicTreeProcessor() {
-			return new CoulombU3SolProcessor();
-		}
-		
-	}
-	
 	/**
 	 * As close as we can get to UCERF3 exactly as was
 	 * 
@@ -459,12 +435,37 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 	}
 	
 	/**
-	 * Same calculation params as UCERF3, but with the new threading/averaging scheme & longer anneal time
+	 * Same calculation params as UCERF3, but with the new threading/averaging scheme
 	 * 
 	 * @author kevin
 	 *
 	 */
 	public static class OriginalCalcParamsNewAvg extends U3InversionConfigFactory {
+		
+		private OriginalCalcParams origFactory = new OriginalCalcParams();
+
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = origFactory.buildInversionConfig(rupSet, branch, threads);
+			
+			InversionConfiguration.Builder builder = InversionConfiguration.builder(config);
+			builder.threads(threads);
+			int avgThreads = threads / 4;
+			builder.avgThreads(avgThreads, new IterationsPerVariableCompletionCriteria(50d));
+			
+			return builder.build();
+		}
+		
+	}
+	
+	/**
+	 * Same calculation params as UCERF3, but with the new threading/averaging scheme & longer anneal time
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public static class OriginalCalcParamsNewAvgConverged extends U3InversionConfigFactory {
 		
 		private OriginalCalcParams origFactory = new OriginalCalcParams();
 
@@ -516,7 +517,68 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 		
 	}
 	
+	public static class CoulombRupSet extends U3InversionConfigFactory {
+
+		@Override
+		protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) throws IOException {
+			FaultModels fm = branch.requireValue(FaultModels.class);
+			// check cache
+			FaultSystemRupSet rupSet = rupSetCache.get(fm);
+			if (rupSet != null)
+				return rupSet;
+			// need to build one
+			RuptureSets.CoulombRupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(fm,
+					branch.requireValue(ScalingRelationships.class));
+			rupSet = rsConfig.build(threads);
+			// cache it
+			rupSetCache.put(fm, rupSet);
+			return rupSet;
+		}
+
+		@Override
+		public SolutionProcessor getSolutionLogicTreeProcessor() {
+			return new CoulombU3SolProcessor();
+		}
+		
+	}
+	
+	public static class CoulombBilateralRupSet extends U3InversionConfigFactory {
+
+		@Override
+		protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) throws IOException {
+			FaultModels fm = branch.requireValue(FaultModels.class);
+			// check cache
+			FaultSystemRupSet rupSet = rupSetCache.get(fm);
+			if (rupSet != null)
+				return rupSet;
+			// need to build one
+			RuptureSets.CoulombRupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(fm,
+					branch.requireValue(ScalingRelationships.class));
+			rsConfig.setBilateral(true);
+			rupSet = rsConfig.build(threads);
+			// cache it
+			rupSetCache.put(fm, rupSet);
+			return rupSet;
+		}
+
+		@Override
+		public SolutionProcessor getSolutionLogicTreeProcessor() {
+			return new CoulombU3SolProcessor(true);
+		}
+		
+	}
+	
 	private static class CoulombU3SolProcessor extends UCERF3_SolutionProcessor {
+		
+		private boolean bilateral;
+
+		public CoulombU3SolProcessor() {
+			this(false);
+		}
+		
+		public CoulombU3SolProcessor(boolean bilateral) {
+			this.bilateral = bilateral;
+		}
 
 		@Override
 		public FaultSystemRupSet processRupSet(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
@@ -528,8 +590,10 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 					@Override
 					public PlausibilityConfiguration call() throws Exception {
 						FaultModels fm = branch.requireValue(FaultModels.class);
-						return new RuptureSets.CoulombRupSetConfig(fm,
-								branch.requireValue(ScalingRelationships.class)).getPlausibilityConfig();
+						RuptureSets.CoulombRupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(fm,
+								branch.requireValue(ScalingRelationships.class));
+						rsConfig.setBilateral(bilateral);
+						return rsConfig.getPlausibilityConfig();
 					}
 				}, PlausibilityConfiguration.class);
 				
