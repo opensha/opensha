@@ -23,7 +23,6 @@ import cern.colt.matrix.tdouble.impl.DenseDoubleMatrix1D;
 
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
-import com.google.common.primitives.Ints;
 
 /**
  * 
@@ -893,8 +892,10 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 				
 				
 				// keep track that we have now changed the value at this index
-				Ints.ensureCapacity(curPertubChain, curPerturbChainSize+1, 1000);
-				curPertubChain[curPerturbChainSize++] = index;
+				curPerturbChainSize++;
+				if (curPerturbChainSize >= curPertubChain.length)
+					curPertubChain = Arrays.copyOf(curPertubChain, curPerturbChainSize + 1000);
+				curPertubChain[curPerturbChainSize] = index;
 				
 				// Is this a new best?
 				if (Enew[0] < Ebest[0] || keepCurrentAsBest) {
