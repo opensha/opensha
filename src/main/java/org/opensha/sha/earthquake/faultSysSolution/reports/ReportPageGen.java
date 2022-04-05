@@ -1184,8 +1184,8 @@ public class ReportPageGen {
 			
 //			String inputName = "RSQSim 4983, SectArea=0.5";
 //			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
-			String inputName = "RSQSim 4983, SectArea=0.5, +Plausible Conns";
-			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5_plus_coulomb_conns.zip");
+//			String inputName = "RSQSim 4983, SectArea=0.5, +Plausible Conns";
+//			File inputFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5_plus_coulomb_conns.zip");
 //			String inputName = "RSQSim 5212, SectArea=0.5";
 //			File inputFile = new File(rupSetsDir, "rsqsim_5212_m6.5_skip50000_sectArea0.5.zip");
 //			String inputName = "RSQSim 498a3, SectArea=0.5, Uniques";
@@ -1193,22 +1193,28 @@ public class ReportPageGen {
 //			String inputName = "RSQSim 5133, SectArea=0.5";
 //			File inputFile = new File(rupSetsDir, "rsqsim_5133_m6_skip50000_sectArea0.5.zip");
 			
-//			String inputName = "UCERF4 Proposed (U3 Faults)";
-//			File inputFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
+			String inputName = "UCERF4 Proposed (U3 Faults)";
+			File inputFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
 			
 //			String inputName = "FM3.1 MeanUCERF3";
 //			File inputFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
 //			String inputName = "FM3.1 U3 Ref Branch";
 //			File inputFile = new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate7.9_MMaxOff7.6_NoFix_SpatSeisU3.zip");
 			
-//			String inputName = "UCERF4 Proposed (NSHM23 1.2 Faults)";
-//			File inputFile = new File(rupSetsDir, "nshm23_geo_dm_v1p1_all_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
+//			String inputName = "NSHM23 Draft (FM v1.3)";
+//			File inputFile = new File(rupSetsDir, "NSHM23_v1p4_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
 			
 			// common comparisons
 //			boolean skipPlausibility = false;
 			boolean skipPlausibility = true;
 //			String compName = "UCERF3";
 //			File compareFile = new File(rupSetsDir, "fm3_1_ucerf3.zip");
+//			File altPlausibilityCompareFile = null;
+			String compName = "RSQSim 4983, SectArea=0.5";
+			File compareFile = new File(rupSetsDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip");
+			File altPlausibilityCompareFile = null;
+//			String compName = "Draft As Submitted";
+//			File compareFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip.bak");
 //			File altPlausibilityCompareFile = null;
 //			File altPlausibilityCompareFile = new File(rupSetsDir, "u3_az_cff_cmls.json");
 //			String compName = null;
@@ -1217,9 +1223,9 @@ public class ReportPageGen {
 //			String compName = "Current Preferred";
 //			File compareFile = new File(rupSetsDir, "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip");
 //			File altPlausibilityCompareFile = null;
-			String compName = "Draft Model With Seg";
-			File compareFile = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/2022_02_15-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-JumpProb-2000ip/results_FM3_1_CoulombRupSet_branch_averaged.zip");
-			File altPlausibilityCompareFile = null;
+//			String compName = "Draft Model With Seg";
+//			File compareFile = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/2022_02_15-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-JumpProb-2000ip/results_FM3_1_CoulombRupSet_branch_averaged.zip");
+//			File altPlausibilityCompareFile = null;
 
 			List<String> argz = new ArrayList<>();
 			argz.add("--reports-dir"); argz.add("/home/kevin/markdown/rupture-sets");
@@ -1241,7 +1247,7 @@ public class ReportPageGen {
 				argz.add("--plot-level"); argz.add(level.name());
 			}
 			argz.add("--default-max-dist"); argz.add("15");
-//			argz.add("--skip-sect-by-sect");
+			argz.add("--skip-sect-by-sect");
 			argz.add("--replot");
 			args = argz.toArray(new String[0]);
 		}

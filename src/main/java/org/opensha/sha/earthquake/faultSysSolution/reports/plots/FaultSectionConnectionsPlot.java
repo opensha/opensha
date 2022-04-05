@@ -28,6 +28,7 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -781,11 +782,36 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 //		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/"
 //				+ "nshm23_geo_dm_v1p1_all_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_"
 //				+ "slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip"));
-		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_reproduce_ucerf3.zip"));
-		TableBuilder table = MarkdownUtils.tableBuilder();
-		plotConnectedClusters(rupSet, new CaliforniaRegions.RELM_TESTING(), new File("/tmp"), "conn_cluster_test", " ", table);
-		for (String line : table.build())
-			System.out.println(line);
+//		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_reproduce_ucerf3.zip"));
+//		TableBuilder table = MarkdownUtils.tableBuilder();
+//		plotConnectedClusters(rupSet, new CaliforniaRegions.RELM_TESTING(), new File("/tmp"), "conn_cluster_test", " ", table);
+//		for (String line : table.build())
+//			System.out.println(line);
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/"
+				+ "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_"
+				+ "cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip"));
+		File outputDir = new File("/home/kevin/Documents/papers/2021_UCERF4_Plausibility/figures/figure_16_raw");
+		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+		
+		Region fullReg = new CaliforniaRegions.RELM_TESTING();
+		Region zoom1 = new Region(new Location(33.6, -121), new Location(35.6, -115.6));
+		Region zoom2 = new Region(new Location(36.6, -123.1), new Location(39, -120.9));
+		
+		FaultSectionConnectionsPlot plot = new FaultSectionConnectionsPlot();
+		
+		RupSetMetadata primayMeta = new RupSetMetadata("Primary", rupSet);
+		RupSetMetadata compMeta = new RupSetMetadata("Primary",
+				FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_reproduce_ucerf3.zip")));
+
+		File fullRegDir = new File(outputDir, "full_reg");
+		Preconditions.checkState(fullRegDir.exists() || fullRegDir.mkdir());
+		plot.plot(rupSet, null, new ReportMetadata(primayMeta, compMeta, fullReg), fullRegDir, "", "");
+		File zoom1Dir = new File(outputDir, "zoom1");
+		Preconditions.checkState(zoom1Dir.exists() || zoom1Dir.mkdir());
+		plot.plot(rupSet, null, new ReportMetadata(primayMeta, compMeta, zoom1), zoom1Dir, "", "");
+		File zoom2Dir = new File(outputDir, "zoom2");
+		Preconditions.checkState(zoom2Dir.exists() || zoom2Dir.mkdir());
+		plot.plot(rupSet, null, new ReportMetadata(primayMeta, compMeta, zoom2), zoom2Dir, "", "");
 	}
 
 }

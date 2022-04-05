@@ -269,9 +269,11 @@ public class JumpAzimuthsPlot extends AbstractRupSetPlot {
 		gp.drawGraphPanel(specs, false, false, xRanges, yRanges);
 		
 		File pngFile = new File(outputDir, prefix+".png");
+		File pdfFile = new File(outputDir, prefix+".pdf");
 		File txtFile = new File(outputDir, prefix+".txt");
 		gp.getChartPanel().setSize(700, 1000);
 		gp.saveAsPNG(pngFile.getAbsolutePath());
+		gp.saveAsPDF(pdfFile.getAbsolutePath());
 		gp.saveAsTXT(txtFile.getAbsolutePath());
 		return pngFile;
 	}

@@ -28,6 +28,10 @@ public class ReportMetadata {
 	}
 	
 	public ReportMetadata(RupSetMetadata primary, RupSetMetadata comparison) {
+		this(primary, comparison, null);
+	}
+	
+	public ReportMetadata(RupSetMetadata primary, RupSetMetadata comparison, Region region) {
 		Preconditions.checkNotNull(primary);
 		this.primary = primary;
 		this.comparison = comparison;
@@ -40,12 +44,14 @@ public class ReportMetadata {
 		}
 		
 		// look for a reagion
-		Region region = detectRegion(primary);
-		if (region == null && comparison != null)
-			region = detectRegion(comparison);
-		if (region == null)
-			// just use bounding box
-			region = RupSetMapMaker.buildBufferedRegion(primary.rupSet.getFaultSectionDataList());
+		if (region == null) {
+			region = detectRegion(primary);
+			if (region == null && comparison != null)
+				region = detectRegion(comparison);
+			if (region == null)
+				// just use bounding box
+				region = RupSetMapMaker.buildBufferedRegion(primary.rupSet.getFaultSectionDataList());
+		}
 		this.region = region;
 	}
 	

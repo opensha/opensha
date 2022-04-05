@@ -738,8 +738,9 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 						double cminRupDist = Double.POSITIVE_INFINITY;
 						double crateWeightDist = 0d;
 						double csumRate = 0d;
+						ClusterRuptures compClusterRuprs = meta.comparison.rupSet.requireModule(ClusterRuptures.class);
 						for (int rupIndex : compCorups) {
-							ClusterRupture rup = clusterRups.get(rupIndex);
+							ClusterRupture rup = compClusterRuprs.get(rupIndex);
 							for (Jump jump : rup.getJumpsIterable()) {
 								if (jump.fromCluster.parentSectionID == parentID && jump.toCluster.parentSectionID == parentSectIndex
 										|| jump.fromCluster.parentSectionID == parentSectIndex && jump.toCluster.parentSectionID == parentID) {
