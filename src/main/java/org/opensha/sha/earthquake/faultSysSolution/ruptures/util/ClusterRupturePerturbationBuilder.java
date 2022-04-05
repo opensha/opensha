@@ -97,7 +97,7 @@ public class ClusterRupturePerturbationBuilder {
 		// END plausibility params
 		ScalingRelationships scale = ScalingRelationships.MEAN_UCERF3;
 		boolean rebuild = false;
-		boolean replot = false;
+		boolean replot = true;
 		boolean skipPlausibility = true; // in plots
 		
 		RuptureGrowingStrategy primaryGrowingStrat;
@@ -409,7 +409,8 @@ public class ClusterRupturePerturbationBuilder {
 			if (replot || !new File(plotDir, "README.md").exists()) {
 				FaultSystemSolution u3 = FaultSystemSolution.load(new File(rupSetsDir, "fm3_1_ucerf3.zip"));
 				System.out.println("Plotting UCERF3");
-				ReportPageGen pageGen = new ReportPageGen(rupSet, null, primaryName, plotDir, ReportPageGen.getDefaultRupSetPlots(PlotLevel.FULL));
+				ReportMetadata meta = new ReportMetadata(new RupSetMetadata(primaryName, rupSet), new RupSetMetadata("UCERF3", u3));
+				ReportPageGen pageGen = new ReportPageGen(meta, plotDir, ReportPageGen.getDefaultRupSetPlots(PlotLevel.FULL));
 				
 				// now add "alt" filters to test how many UCERF3 ruptures pass our filters (even if they use different connection points
 				// or growing strategies)
@@ -424,6 +425,7 @@ public class ClusterRupturePerturbationBuilder {
 						altFilters.remove(i);
 				ReportPageGen.checkLoadCoulombCache(altFilters, rupSetsDir, loadedCoulombCaches);
 				pageGen.setAltPlausibility(altFilters, null, true); // we want to apply these alt filters to UCERF3, which is comparison
+				pageGen.setReplot(true);
 				pageGen.generatePage();
 			}
 		}
@@ -474,6 +476,7 @@ public class ClusterRupturePerturbationBuilder {
 				if (skipPlausibility)
 					pageGen.skipPlausibility();
 				pageGen.setIndexDir(indexDir);
+				pageGen.setReplot(true);
 				pageGen.generatePage();
 			}
 		}
