@@ -232,6 +232,11 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			return sampler(new IntegerPDF_FunctionSampler(samplerBasis));
 		}
 		
+		public Builder clearSampler() {
+			config.sampler = null;
+			return this;
+		}
+		
 		public Builder sampler(IntegerSampler sampler) {
 			config.sampler = sampler;
 			return this;
