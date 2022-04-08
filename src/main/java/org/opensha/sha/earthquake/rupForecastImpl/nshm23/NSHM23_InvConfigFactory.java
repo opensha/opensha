@@ -600,6 +600,21 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		
 	}
 	
+	public static class HardcodedOrigWeights extends NSHM23_InvConfigFactory {
+		
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
+			
+			// disable reweighting
+			config = InversionConfiguration.builder(config).reweight(null).build();
+			
+			return config;
+		}
+		
+	}
+	
 	public static void main(String[] args) throws IOException {
 //		File dir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
 //				+ "2021_11_24-nshm23_draft_branches-FM3_1/");

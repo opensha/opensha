@@ -17,6 +17,18 @@ import org.opensha.sha.faultSurface.FaultSection;
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum RupturePlausibilityModels implements LogicTreeNode {
+	AZIMUTHAL("Simple Azimuthal", "Azimuthal", 0d) { // for now
+		@Override
+		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			return new SimpleAzimuthalRupSetConfig(subSects, scale);
+		}
+	},
+	SEGMENTED("Fully Segmented", "FullSeg", 0d) { // for now
+		@Override
+		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			return new FullySegmentedRupSetConfig(subSects, scale);
+		}
+	},
 	UCERF3("UCERF3", "U3", 1d) { // for now
 		@Override
 		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {

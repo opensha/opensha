@@ -363,7 +363,10 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public ExclusionIntegerSampler getSkipBelowMinSampler() {
-		return new ExclusionIntegerSampler(0, rupSet.getNumRuptures(), getRupIndexesBelowMinMag());
+		List<Integer> indexesBelow = getRupIndexesBelowMinMag();
+		if (indexesBelow.isEmpty())
+			return null;
+		return new ExclusionIntegerSampler(0, rupSet.getNumRuptures(), indexesBelow);
 	}
 	
 	public NSHM23_ConstraintBuilder minimizeBelowSectMinMag() {
