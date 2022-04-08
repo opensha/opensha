@@ -107,7 +107,7 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 	}
 	
 	public MisfitStats getMisfitStats(ConstraintRange range) {
-		double[] misfits = getMisfits(range, true);
+		double[] misfits = getMisfits(range, range.weight > 0d);
 		
 		return new MisfitStats(misfits, range);
 	}
