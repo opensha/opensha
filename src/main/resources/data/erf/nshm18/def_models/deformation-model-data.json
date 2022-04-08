@@ -1,0 +1,7834 @@
+[
+  {
+    "id": 2000,
+    "name": "Algodones",
+    "state": "AZ",
+    "length": 26.5885,
+    "magnitude": 6.73,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.15,
+        "rake": -90.0,
+        "gr-a-value": 1.5021,
+        "single-rate": 2.19E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.10724622203665693,
+        "rake": -95.6,
+        "gr-a-value": 1.35639,
+        "single-rate": 1.566E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.1838506663485547,
+        "rake": -120.0,
+        "gr-a-value": 1.59047,
+        "single-rate": 2.685E-4
+      }
+    }
+  },
+  {
+    "id": 2001,
+    "name": "Aubrey",
+    "state": "AZ",
+    "length": 64.54477,
+    "magnitude": 7.18,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.018,
+        "rake": -90.0,
+        "gr-a-value": 0.31277,
+        "single-rate": 1.35E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.02298133329356934,
+        "rake": -94.2,
+        "gr-a-value": 0.41799,
+        "single-rate": 1.72E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.030641777724759123,
+        "rake": -124.0,
+        "gr-a-value": 0.54293,
+        "single-rate": 2.29E-5
+      }
+    }
+  },
+  {
+    "id": 2002,
+    "name": "Big Chino - Little Chino",
+    "state": "AZ",
+    "length": 64.63371,
+    "magnitude": 7.18,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.083,
+        "rake": -90.0,
+        "gr-a-value": 0.97717,
+        "single-rate": 6.23E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.0766044443118978,
+        "rake": -90.0,
+        "gr-a-value": 0.94235,
+        "single-rate": 5.75E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.10724622203665693,
+        "rake": -129.0,
+        "gr-a-value": 1.08847,
+        "single-rate": 8.05E-5
+      }
+    }
+  },
+  {
+    "id": 2003,
+    "name": "Dutchman Draw",
+    "state": "AZ",
+    "length": 16.45904,
+    "magnitude": 6.49,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.075,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 1.5529983E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.0766044443118978,
+        "rake": -91.1,
+        "gr-a-value": null,
+        "single-rate": 1.58622E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.09958577760546715,
+        "rake": -129.0,
+        "gr-a-value": null,
+        "single-rate": 2.062086E-4
+      }
+    }
+  },
+  {
+    "id": 2004,
+    "name": "Hurricane (center)",
+    "state": "AZ",
+    "length": 107.9609,
+    "magnitude": 7.44,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.34679,
+        "single-rate": 1.021E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.2298133329356934,
+        "rake": -90.2,
+        "gr-a-value": 1.40713,
+        "single-rate": 1.173E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.27577599952283205,
+        "rake": -129.0,
+        "gr-a-value": 1.48631,
+        "single-rate": 1.408E-4
+      }
+    }
+  },
+  {
+    "id": 2005,
+    "name": "Hurricane (south)",
+    "state": "AZ",
+    "length": 99.9222,
+    "magnitude": 7.4,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.081,
+        "rake": -90.0,
+        "gr-a-value": 0.93792,
+        "single-rate": 4.39E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.0766044443118978,
+        "rake": -87.3,
+        "gr-a-value": 0.91369,
+        "single-rate": 4.16E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -50.0,
+        "gr-a-value": 1.11781,
+        "single-rate": 6.65E-5
+      }
+    }
+  },
+  {
+    "id": 2006,
+    "name": "Sevier - Toroweap (south)",
+    "state": "AZ",
+    "length": 170.607,
+    "magnitude": 7.5,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.11,
+        "rake": -90.0,
+        "gr-a-value": 1.25971,
+        "single-rate": 7.21274E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.09192533317427735,
+        "rake": -89.5,
+        "gr-a-value": 1.18175,
+        "single-rate": 6.02754E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.14554844419260582,
+        "rake": -59.0,
+        "gr-a-value": 1.38132,
+        "single-rate": 9.54355E-5
+      }
+    }
+  },
+  {
+    "id": 2100,
+    "name": "Gore Range Frontal",
+    "state": "CO",
+    "length": 45.38862,
+    "magnitude": 7.0,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.04,
+        "rake": -90.0,
+        "gr-a-value": 0.7557,
+        "single-rate": 3.92E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -89.4,
+        "gr-a-value": 1.29316,
+        "single-rate": 1.353E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.04596266658713868,
+        "rake": -129.0,
+        "gr-a-value": 0.81604,
+        "single-rate": 4.51E-5
+      }
+    }
+  },
+  {
+    "id": 2101,
+    "name": "Sangre de Cristo (north)",
+    "state": "CO",
+    "length": 185.4597,
+    "magnitude": 7.5,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.18,
+        "rake": -90.0,
+        "gr-a-value": 1.50984,
+        "single-rate": 1.28301E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.451966221440197,
+        "rake": -90.2,
+        "gr-a-value": 1.90705,
+        "single-rate": 3.20214E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.2527946662292628,
+        "rake": -130.0,
+        "gr-a-value": 1.65471,
+        "single-rate": 1.79102E-4
+      }
+    }
+  },
+  {
+    "id": 2102,
+    "name": "Sawatch (south)",
+    "state": "CO",
+    "length": 44.66171,
+    "magnitude": 6.99,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.062,
+        "rake": -90.0,
+        "gr-a-value": 0.94295,
+        "single-rate": 6.19E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.1532088886237956,
+        "rake": -88.9,
+        "gr-a-value": 1.33584,
+        "single-rate": 1.531E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.06894399988070801,
+        "rake": -69.0,
+        "gr-a-value": 0.98905,
+        "single-rate": 6.89E-5
+      }
+    }
+  },
+  {
+    "id": 2103,
+    "name": "Williams Fork Mountains",
+    "state": "CO",
+    "length": 18.24062,
+    "magnitude": 6.54,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.53174,
+        "single-rate": 1.931E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.16852977748617518,
+        "rake": -90.0,
+        "gr-a-value": 1.75842,
+        "single-rate": 3.254E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.09192533317427735,
+        "rake": -114.0,
+        "gr-a-value": 1.49518,
+        "single-rate": 1.775E-4
+      }
+    }
+  },
+  {
+    "id": 2200,
+    "name": "Beaverhead",
+    "state": "ID",
+    "length": 134.2464,
+    "magnitude": 7.0,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.12,
+        "rake": -90.0,
+        "gr-a-value": 1.70377,
+        "single-rate": 3.48169E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.2374737773668832,
+        "rake": -90.4,
+        "gr-a-value": 2.00021,
+        "single-rate": 6.89001E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.16086933305498538,
+        "rake": -131.0,
+        "gr-a-value": 1.83107,
+        "single-rate": 4.66745E-4
+      }
+    }
+  },
+  {
+    "id": 2201,
+    "name": "Big Flat - Jakes Creek",
+    "state": "ID",
+    "length": 30.77623,
+    "magnitude": 6.81,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.04,
+        "rake": -90.0,
+        "gr-a-value": 0.66019,
+        "single-rate": 5.13E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.02298133329356934,
+        "rake": -69.9,
+        "gr-a-value": 0.41951,
+        "single-rate": 2.95E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.04596266658713868,
+        "rake": -51.0,
+        "gr-a-value": 0.72054,
+        "single-rate": 5.89E-5
+      }
+    }
+  },
+  {
+    "id": 2202,
+    "name": "Cuddy Mountain - Lick Creek",
+    "state": "ID",
+    "length": 29.86447,
+    "magnitude": 6.79,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.05,
+        "rake": -90.0,
+        "gr-a-value": 1.05334,
+        "single-rate": 6.67E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.04596266658713868,
+        "rake": -85.1,
+        "gr-a-value": 1.01678,
+        "single-rate": 6.13E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.06894399988070801,
+        "rake": -131.0,
+        "gr-a-value": 1.19287,
+        "single-rate": 9.19E-5
+      }
+    }
+  },
+  {
+    "id": 2203,
+    "name": "Eastern Bear Lake",
+    "state": "ID",
+    "length": 80.79507,
+    "magnitude": 7.29,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.6,
+        "rake": -90.0,
+        "gr-a-value": 1.76216,
+        "single-rate": 3.848E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.5132497768897153,
+        "rake": -91.1,
+        "gr-a-value": 1.69433,
+        "single-rate": 3.292E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.4979288880273357,
+        "rake": -100.0,
+        "gr-a-value": 1.68117,
+        "single-rate": 3.193E-4
+      }
+    }
+  },
+  {
+    "id": 2204,
+    "name": "Lemhi",
+    "state": "ID",
+    "length": 147.3372,
+    "magnitude": 7.0,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.22,
+        "rake": -90.0,
+        "gr-a-value": 2.00743,
+        "single-rate": 7.00551E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.2374737773668832,
+        "rake": -90.9,
+        "gr-a-value": 2.04062,
+        "single-rate": 7.56188E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.29109688838521164,
+        "rake": -131.0,
+        "gr-a-value": 2.12904,
+        "single-rate": 9.26958E-4
+      }
+    }
+  },
+  {
+    "id": 2205,
+    "name": "Lost River",
+    "state": "ID",
+    "length": 140.8176,
+    "magnitude": 7.0,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.15,
+        "rake": -90.0,
+        "gr-a-value": 1.82144,
+        "single-rate": 4.5650969E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1149066664678467,
+        "rake": -89.3,
+        "gr-a-value": 1.70569,
+        "single-rate": 3.4971157E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.20683199964212406,
+        "rake": -129.0,
+        "gr-a-value": 1.96096,
+        "single-rate": 6.2947719E-4
+      }
+    }
+  },
+  {
+    "id": 2206,
+    "name": "Rush Peak",
+    "state": "ID",
+    "length": 28.95134,
+    "magnitude": 6.78,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.05,
+        "rake": -90.0,
+        "gr-a-value": 1.04355,
+        "single-rate": 6.69E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.04596266658713868,
+        "rake": -91.0,
+        "gr-a-value": 1.00699,
+        "single-rate": 6.15E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.06894399988070801,
+        "rake": -131.0,
+        "gr-a-value": 1.18308,
+        "single-rate": 9.22E-5
+      }
+    }
+  },
+  {
+    "id": 2207,
+    "name": "Sawtooth",
+    "state": "ID",
+    "length": 61.97876,
+    "magnitude": 7.16,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.4,
+        "rake": -90.0,
+        "gr-a-value": 1.65014,
+        "single-rate": 3.083E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.16852977748617518,
+        "rake": -89.2,
+        "gr-a-value": 1.27475,
+        "single-rate": 1.299E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.4443057770090072,
+        "rake": -103.0,
+        "gr-a-value": 1.69576,
+        "single-rate": 3.425E-4
+      }
+    }
+  },
+  {
+    "id": 2208,
+    "name": "Squaw Creek",
+    "state": "ID",
+    "length": 48.42027,
+    "magnitude": 7.03,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 0.99332,
+        "single-rate": 9.43E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.030641777724759123,
+        "rake": -87.0,
+        "gr-a-value": 0.53319,
+        "single-rate": 2.42E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.09958577760546715,
+        "rake": -94.0,
+        "gr-a-value": 1.04507,
+        "single-rate": 7.85E-5
+      }
+    }
+  },
+  {
+    "id": 2300,
+    "name": "Blacktail",
+    "state": "MT",
+    "length": 39.78926,
+    "magnitude": 6.94,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.03,
+        "rake": -90.0,
+        "gr-a-value": 0.59704,
+        "single-rate": 3.17E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.02298133329356934,
+        "rake": -87.8,
+        "gr-a-value": 0.48129,
+        "single-rate": 2.43E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.0383022221559489,
+        "rake": -127.0,
+        "gr-a-value": 0.70314,
+        "single-rate": 4.05E-5
+      }
+    }
+  },
+  {
+    "id": 2301,
+    "name": "Canyon Ferry",
+    "state": "MT",
+    "length": 38.67716,
+    "magnitude": 6.92,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.13,
+        "rake": -90.0,
+        "gr-a-value": 1.2293,
+        "single-rate": 1.433E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.053623111018328465,
+        "rake": -94.2,
+        "gr-a-value": 0.84471,
+        "single-rate": 5.91E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.16852977748617518,
+        "rake": -129.0,
+        "gr-a-value": 1.34203,
+        "single-rate": 1.857E-4
+      }
+    }
+  },
+  {
+    "id": 2302,
+    "name": "Centennial",
+    "state": "MT",
+    "length": 63.85537,
+    "magnitude": 7.17,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.7,
+        "rake": -90.0,
+        "gr-a-value": 1.90203,
+        "single-rate": 5.37E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.69710044323827,
+        "rake": -89.4,
+        "gr-a-value": 1.90023,
+        "single-rate": 5.348E-4
+      },
+      "ZENG": {
+        "slip-rate": 1.0648017759353794,
+        "rake": -125.0,
+        "gr-a-value": 2.0842,
+        "single-rate": 8.169E-4
+      }
+    }
+  },
+  {
+    "id": 2303,
+    "name": "Emigrant",
+    "state": "MT",
+    "length": 56.80293,
+    "magnitude": 7.12,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.25,
+        "rake": -90.0,
+        "gr-a-value": 1.42444,
+        "single-rate": 2.028E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -92.0,
+        "gr-a-value": 1.13928,
+        "single-rate": 1.078E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.32173866610997076,
+        "rake": -130.0,
+        "gr-a-value": 1.53208,
+        "single-rate": 2.664E-4
+      }
+    }
+  },
+  {
+    "id": 2304,
+    "name": "Georgia Gulch",
+    "state": "MT",
+    "length": 14.37637,
+    "magnitude": 6.42,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.031,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 7.1402872E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.27577599952283205,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 6.3519966E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.0383022221559489,
+        "rake": -53.0,
+        "gr-a-value": null,
+        "single-rate": 8.8222179E-5
+      }
+    }
+  },
+  {
+    "id": 2305,
+    "name": "Hebgen - Red Canyon",
+    "state": "MT",
+    "length": 25.31725,
+    "magnitude": 7.3,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.5,
+        "rake": -90.0,
+        "gr-a-value": 1.17479,
+        "single-rate": 9.71E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.9575555538987225,
+        "rake": -79.9,
+        "gr-a-value": 1.45698,
+        "single-rate": 1.859E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.559212443476854,
+        "rake": -102.0,
+        "gr-a-value": 1.2234,
+        "single-rate": 1.086E-4
+      }
+    }
+  },
+  {
+    "id": 2306,
+    "name": "Helena Valley",
+    "state": "MT",
+    "length": 20.3344,
+    "magnitude": 6.6,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": 0.55794,
+        "single-rate": 1.75E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.0383022221559489,
+        "rake": -109.5,
+        "gr-a-value": 1.14116,
+        "single-rate": 6.7E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -135.0,
+        "gr-a-value": 0.44219,
+        "single-rate": 1.34E-5
+      }
+    }
+  },
+  {
+    "id": 2307,
+    "name": "Jocko",
+    "state": "MT",
+    "length": 15.90746,
+    "magnitude": 6.47,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.08,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 1.7155163E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.16852977748617518,
+        "rake": -85.8,
+        "gr-a-value": null,
+        "single-rate": 3.6139428E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.0766044443118978,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 1.6427014E-4
+      }
+    }
+  },
+  {
+    "id": 2308,
+    "name": "Madison",
+    "state": "MT",
+    "length": 110.6685,
+    "magnitude": 7.45,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.4,
+        "rake": -90.0,
+        "gr-a-value": 1.65423,
+        "single-rate": 2.022E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.3906826659906788,
+        "rake": -89.6,
+        "gr-a-value": 1.644,
+        "single-rate": 1.975E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.3677013326971094,
+        "rake": -77.0,
+        "gr-a-value": 1.61767,
+        "single-rate": 1.859E-4
+      }
+    }
+  },
+  {
+    "id": 2309,
+    "name": "Mission",
+    "state": "MT",
+    "length": 92.38155,
+    "magnitude": 7.36,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.32,
+        "rake": -90.0,
+        "gr-a-value": 1.51766,
+        "single-rate": 1.843E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.21449244407331386,
+        "rake": -89.0,
+        "gr-a-value": 1.34393,
+        "single-rate": 1.235E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.32939911054116056,
+        "rake": -50.0,
+        "gr-a-value": 1.53024,
+        "single-rate": 1.897E-4
+      }
+    }
+  },
+  {
+    "id": 2310,
+    "name": "Red Rock",
+    "state": "MT",
+    "length": 26.5544,
+    "magnitude": 6.73,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.5,
+        "rake": -90.0,
+        "gr-a-value": 2.02442,
+        "single-rate": 7.291E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.0766044443118978,
+        "rake": -82.3,
+        "gr-a-value": 1.2097,
+        "single-rate": 1.117E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.6281564433575619,
+        "rake": -93.0,
+        "gr-a-value": 2.12352,
+        "single-rate": 9.16E-4
+      }
+    }
+  },
+  {
+    "id": 2311,
+    "name": "Red Rock Hills",
+    "state": "MT",
+    "length": 10.71093,
+    "magnitude": 6.27,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.17,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 4.8975786E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -88.8,
+        "gr-a-value": null,
+        "single-rate": 3.9724528E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.16852977748617518,
+        "rake": -129.0,
+        "gr-a-value": null,
+        "single-rate": 4.85522E-4
+      }
+    }
+  },
+  {
+    "id": 2312,
+    "name": "Sweetwater",
+    "state": "MT",
+    "length": 13.09519,
+    "magnitude": 6.38,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.04,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 9.6355805E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.0766044443118978,
+        "rake": -92.3,
+        "gr-a-value": null,
+        "single-rate": 1.8453199E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.04596266658713868,
+        "rake": -129.0,
+        "gr-a-value": null,
+        "single-rate": 1.1071918E-4
+      }
+    }
+  },
+  {
+    "id": 2313,
+    "name": "Thompson Valley",
+    "state": "MT",
+    "length": 9.573047,
+    "magnitude": 6.22,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.08,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.4481845E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.053623111018328465,
+        "rake": -91.7,
+        "gr-a-value": null,
+        "single-rate": 1.6409901E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.09958577760546715,
+        "rake": -51.0,
+        "gr-a-value": null,
+        "single-rate": 3.0475529E-4
+      }
+    }
+  },
+  {
+    "id": 2400,
+    "name": "Alamogordo",
+    "state": "NM",
+    "length": 120.8297,
+    "magnitude": 7.5,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.11,
+        "rake": -90.0,
+        "gr-a-value": 1.10988,
+        "single-rate": 5.11E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.04596266658713868,
+        "rake": -90.0,
+        "gr-a-value": 0.7309,
+        "single-rate": 2.13E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.1532088886237956,
+        "rake": -131.0,
+        "gr-a-value": 1.25377,
+        "single-rate": 7.11E-5
+      }
+    }
+  },
+  {
+    "id": 2401,
+    "name": "Black Mesa",
+    "state": "NM",
+    "length": 18.01698,
+    "magnitude": 6.54,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.02,
+        "rake": -90.0,
+        "gr-a-value": 0.82742,
+        "single-rate": 3.81E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -90.3,
+        "gr-a-value": 1.64109,
+        "single-rate": 2.484E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.030641777724759123,
+        "rake": -124.0,
+        "gr-a-value": 1.0127,
+        "single-rate": 5.84E-5
+      }
+    }
+  },
+  {
+    "id": 2402,
+    "name": "Caballo",
+    "state": "NM",
+    "length": 22.24395,
+    "magnitude": 6.64,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.025,
+        "rake": -90.0,
+        "gr-a-value": 1.32259,
+        "single-rate": 1.834E-4
+      },
+      "BIRD": null,
+      "ZENG": null
+    }
+  },
+  {
+    "id": 2403,
+    "name": "Calabacillas",
+    "state": "NM",
+    "length": 32.5455,
+    "magnitude": 6.83,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.0069,
+        "rake": -90.0,
+        "gr-a-value": -0.0863,
+        "single-rate": 8.7E-6
+      },
+      "BIRD": {
+        "slip-rate": 0.16852977748617518,
+        "rake": -90.5,
+        "gr-a-value": 1.30152,
+        "single-rate": 2.132E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -45.0,
+        "gr-a-value": -0.0409,
+        "single-rate": 9.7E-6
+      }
+    }
+  },
+  {
+    "id": 2404,
+    "name": "Canones",
+    "state": "NM",
+    "length": 30.69832,
+    "magnitude": 6.81,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.02,
+        "rake": -90.0,
+        "gr-a-value": 0.35806,
+        "single-rate": 2.56E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.04596266658713868,
+        "rake": -89.1,
+        "gr-a-value": 0.71944,
+        "single-rate": 5.88E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.030641777724759123,
+        "rake": -45.0,
+        "gr-a-value": 0.54335,
+        "single-rate": 3.92E-5
+      }
+    }
+  },
+  {
+    "id": 2405,
+    "name": "County Dump",
+    "state": "NM",
+    "length": 36.64471,
+    "magnitude": 6.89,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.038,
+        "rake": -90.0,
+        "gr-a-value": 0.68326,
+        "single-rate": 4.4E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.0383022221559489,
+        "rake": -90.0,
+        "gr-a-value": 0.6867,
+        "single-rate": 4.44E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.04596266658713868,
+        "rake": -51.0,
+        "gr-a-value": 0.76588,
+        "single-rate": 5.32E-5
+      }
+    }
+  },
+  {
+    "id": 2406,
+    "name": "East Paradise",
+    "state": "NM",
+    "length": 13.1829,
+    "magnitude": 6.38,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.0096,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.3280281E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -80.3,
+        "gr-a-value": null,
+        "single-rate": 1.8576791E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -45.0,
+        "gr-a-value": null,
+        "single-rate": 1.8576791E-5
+      }
+    }
+  },
+  {
+    "id": 2407,
+    "name": "Embudo",
+    "state": "NM",
+    "length": 65.89917,
+    "magnitude": 7.19,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.13,
+        "rake": 0.0,
+        "gr-a-value": 0.94485,
+        "single-rate": 5.64E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.2,
+        "rake": 34.0,
+        "gr-a-value": 1.13194,
+        "single-rate": 8.67E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.11,
+        "rake": 0.0,
+        "gr-a-value": 0.8723,
+        "single-rate": 4.77E-5
+      }
+    }
+  },
+  {
+    "id": 2408,
+    "name": "Gallina",
+    "state": "NM",
+    "length": 39.34729,
+    "magnitude": 6.93,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.02,
+        "rake": -90.0,
+        "gr-a-value": 0.41997,
+        "single-rate": 2.17E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -89.3,
+        "gr-a-value": 1.23365,
+        "single-rate": 1.41E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.030641777724759123,
+        "rake": -45.0,
+        "gr-a-value": 0.60526,
+        "single-rate": 3.32E-5
+      }
+    }
+  },
+  {
+    "id": 2409,
+    "name": "Hubbell Spring",
+    "state": "NM",
+    "length": 45.33335,
+    "magnitude": 7.0,
+    "rates": {
+      "GEO": {
+        "slip-rate": null,
+        "rake": -90.0,
+        "gr-a-value": 0.86095,
+        "single-rate": 5.0E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -88.2,
+        "gr-a-value": 0.86095,
+        "single-rate": 5.0E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.09958577760546715,
+        "rake": -90.0,
+        "gr-a-value": 0.86095,
+        "single-rate": 5.0E-5
+      }
+    }
+  },
+  {
+    "id": 2410,
+    "name": "Jemez - San Ysidro",
+    "state": "NM",
+    "length": 53.65592,
+    "magnitude": 7.09,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.02,
+        "rake": -90.0,
+        "gr-a-value": 0.31491,
+        "single-rate": 1.7E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.02298133329356934,
+        "rake": -87.7,
+        "gr-a-value": 0.37526,
+        "single-rate": 1.95E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.030641777724759123,
+        "rake": -45.0,
+        "gr-a-value": 0.5002,
+        "single-rate": 2.6E-5
+      }
+    }
+  },
+  {
+    "id": 2411,
+    "name": "La Bajada",
+    "state": "NM",
+    "length": 41.83863,
+    "magnitude": 6.96,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.078,
+        "rake": -90.0,
+        "gr-a-value": 1.02604,
+        "single-rate": 8.1E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.09192533317427735,
+        "rake": -89.5,
+        "gr-a-value": 1.09738,
+        "single-rate": 9.54E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.09958577760546715,
+        "rake": -132.0,
+        "gr-a-value": 1.13214,
+        "single-rate": 1.034E-4
+      }
+    }
+  },
+  {
+    "id": 2412,
+    "name": "La Canada del Amagre",
+    "state": "NM",
+    "length": 16.7387,
+    "magnitude": 6.5,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.012,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.4412309E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.061283555449518246,
+        "rake": -89.3,
+        "gr-a-value": null,
+        "single-rate": 1.2467269E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.02298133329356934,
+        "rake": -45.0,
+        "gr-a-value": null,
+        "single-rate": 4.6752251E-5
+      }
+    }
+  },
+  {
+    "id": 2413,
+    "name": "La Jencia",
+    "state": "NM",
+    "length": 32.64402,
+    "magnitude": 6.84,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.021,
+        "rake": -90.0,
+        "gr-a-value": 0.39459,
+        "single-rate": 2.57E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.16086933305498538,
+        "rake": -90.3,
+        "gr-a-value": 1.27884,
+        "single-rate": 1.972E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.02298133329356934,
+        "rake": -108.0,
+        "gr-a-value": 0.43374,
+        "single-rate": 2.82E-5
+      }
+    }
+  },
+  {
+    "id": 2414,
+    "name": "Lobato Mesa",
+    "state": "NM",
+    "length": 18.83734,
+    "magnitude": 6.56,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.0054,
+        "rake": -90.0,
+        "gr-a-value": 0.27112,
+        "single-rate": 1.0E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -81.3,
+        "gr-a-value": 0.42298,
+        "single-rate": 1.43E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -45.0,
+        "gr-a-value": 0.42298,
+        "single-rate": 1.43E-5
+      }
+    }
+  },
+  {
+    "id": 2415,
+    "name": "Nacimiento",
+    "state": "NM",
+    "length": 82.80671,
+    "magnitude": 7.3,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.02,
+        "rake": -90.0,
+        "gr-a-value": 0.2915,
+        "single-rate": 1.27E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.17619022191736494,
+        "rake": -90.0,
+        "gr-a-value": 1.23645,
+        "single-rate": 1.119E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.030641777724759123,
+        "rake": -45.0,
+        "gr-a-value": 0.47678,
+        "single-rate": 1.95E-5
+      }
+    }
+  },
+  {
+    "id": 2416,
+    "name": "Nambe",
+    "state": "NM",
+    "length": 49.63022,
+    "magnitude": 7.05,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.02,
+        "rake": -90.0,
+        "gr-a-value": 0.2971,
+        "single-rate": 1.81E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.1532088886237956,
+        "rake": -90.3,
+        "gr-a-value": 1.18135,
+        "single-rate": 1.383E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.030641777724759123,
+        "rake": -135.0,
+        "gr-a-value": 0.48238,
+        "single-rate": 2.77E-5
+      }
+    }
+  },
+  {
+    "id": 2417,
+    "name": "Organ Mountains",
+    "state": "NM",
+    "length": 29.59349,
+    "magnitude": 6.79,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.15,
+        "rake": -90.0,
+        "gr-a-value": 1.5265,
+        "single-rate": 1.981E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.14554844419260582,
+        "rake": -89.1,
+        "gr-a-value": 1.51342,
+        "single-rate": 1.923E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.1532088886237956,
+        "rake": -90.0,
+        "gr-a-value": 1.5357,
+        "single-rate": 2.024E-4
+      }
+    }
+  },
+  {
+    "id": 2418,
+    "name": "Pajarito",
+    "state": "NM",
+    "length": 49.89656,
+    "magnitude": 7.05,
+    "rates": {
+      "GEO": {
+        "slip-rate": null,
+        "rake": -90.0,
+        "gr-a-value": 1.03629,
+        "single-rate": 9.9E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.06894399988070801,
+        "rake": -88.7,
+        "gr-a-value": 1.03629,
+        "single-rate": 9.9E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -60.0,
+        "gr-a-value": 1.03629,
+        "single-rate": 9.9E-5
+      }
+    }
+  },
+  {
+    "id": 2419,
+    "name": "Picuris - Pecos",
+    "state": "NM",
+    "length": 99.00079,
+    "magnitude": 7.39,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.05,
+        "rake": -90.0,
+        "gr-a-value": 0.72869,
+        "single-rate": 2.78E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.1532088886237956,
+        "rake": -90.3,
+        "gr-a-value": 1.215,
+        "single-rate": 8.52E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.06894399988070801,
+        "rake": -49.0,
+        "gr-a-value": 0.86821,
+        "single-rate": 3.84E-5
+      }
+    }
+  },
+  {
+    "id": 2420,
+    "name": "Pojoaque",
+    "state": "NM",
+    "length": 48.08376,
+    "magnitude": 7.03,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.02,
+        "rake": -90.0,
+        "gr-a-value": 0.29132,
+        "single-rate": 1.87E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.02298133329356934,
+        "rake": -88.1,
+        "gr-a-value": 0.35167,
+        "single-rate": 2.15E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.030641777724759123,
+        "rake": -45.0,
+        "gr-a-value": 0.47661,
+        "single-rate": 2.87E-5
+      }
+    }
+  },
+  {
+    "id": 2421,
+    "name": "Puye",
+    "state": "NM",
+    "length": 19.87221,
+    "magnitude": 6.59,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.03,
+        "rake": -90.0,
+        "gr-a-value": 1.02857,
+        "single-rate": 5.31E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -89.4,
+        "gr-a-value": 1.69098,
+        "single-rate": 2.44E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.030641777724759123,
+        "rake": -63.0,
+        "gr-a-value": 1.03776,
+        "single-rate": 5.42E-5
+      }
+    }
+  },
+  {
+    "id": 2422,
+    "name": "San Andres Mountains",
+    "state": "NM",
+    "length": 130.0806,
+    "magnitude": 7.5,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.10053,
+        "single-rate": 4.99942E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.06894399988070801,
+        "rake": -90.0,
+        "gr-a-value": 0.93842,
+        "single-rate": 3.44199E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -55.0,
+        "gr-a-value": 1.18829,
+        "single-rate": 6.11899E-5
+      }
+    }
+  },
+  {
+    "id": 2423,
+    "name": "San Felipe",
+    "state": "NM",
+    "length": 42.87407,
+    "magnitude": 6.97,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.043,
+        "rake": -90.0,
+        "gr-a-value": 0.77412,
+        "single-rate": 4.42E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.0383022221559489,
+        "rake": -90.0,
+        "gr-a-value": 0.72388,
+        "single-rate": 3.94E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.061283555449518246,
+        "rake": -50.0,
+        "gr-a-value": 0.928,
+        "single-rate": 6.3E-5
+      }
+    }
+  },
+  {
+    "id": 2424,
+    "name": "San Francisco",
+    "state": "NM",
+    "length": 28.11067,
+    "magnitude": 6.76,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.063,
+        "rake": -90.0,
+        "gr-a-value": 1.13851,
+        "single-rate": 8.77E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.16852977748617518,
+        "rake": -89.7,
+        "gr-a-value": 1.56584,
+        "single-rate": 2.346E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.08426488874308759,
+        "rake": -49.0,
+        "gr-a-value": 1.26481,
+        "single-rate": 1.173E-4
+      }
+    }
+  },
+  {
+    "id": 2427,
+    "name": "Sangre de Cristo (south)",
+    "state": "NM",
+    "length": 103.6334,
+    "magnitude": 7.42,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.13,
+        "rake": -90.0,
+        "gr-a-value": 1.15059,
+        "single-rate": 6.83E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.20683199964212406,
+        "rake": -90.0,
+        "gr-a-value": 1.35227,
+        "single-rate": 1.086E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.17619022191736494,
+        "rake": -50.0,
+        "gr-a-value": 1.28263,
+        "single-rate": 9.25E-5
+      }
+    }
+  },
+  {
+    "id": 2425,
+    "name": "Sawyer Canyon",
+    "state": "NM",
+    "length": 8.435931,
+    "magnitude": 6.15,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.024,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 8.2422899E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.030641777724759123,
+        "rake": -91.6,
+        "gr-a-value": null,
+        "single-rate": 1.0523261E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.02298133329356934,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 7.8924444E-5
+      }
+    }
+  },
+  {
+    "id": 2426,
+    "name": "Socorro Canyon",
+    "state": "NM",
+    "length": 49.21831,
+    "magnitude": 7.04,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.027,
+        "rake": -90.0,
+        "gr-a-value": 0.4278,
+        "single-rate": 2.5E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.02298133329356934,
+        "rake": -102.3,
+        "gr-a-value": 0.35781,
+        "single-rate": 2.13E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.0383022221559489,
+        "rake": -53.0,
+        "gr-a-value": 0.57966,
+        "single-rate": 3.55E-5
+      }
+    }
+  },
+  {
+    "id": 2428,
+    "name": "Tijeras - Canoncito",
+    "state": "NM",
+    "length": 81.0482,
+    "magnitude": 7.29,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.09,
+        "rake": 0.0,
+        "gr-a-value": 0.70811,
+        "single-rate": 3.4E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.1,
+        "rake": 0.0,
+        "gr-a-value": 0.75387,
+        "single-rate": 3.78E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.11,
+        "rake": 34.0,
+        "gr-a-value": 0.79526,
+        "single-rate": 4.15E-5
+      }
+    }
+  },
+  {
+    "id": 2429,
+    "name": "Zia",
+    "state": "NM",
+    "length": 32.76184,
+    "magnitude": 6.84,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.038,
+        "rake": -90.0,
+        "gr-a-value": 0.65372,
+        "single-rate": 4.68E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.0383022221559489,
+        "rake": -91.2,
+        "gr-a-value": 0.65716,
+        "single-rate": 4.71E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.04596266658713868,
+        "rake": -51.0,
+        "gr-a-value": 0.73634,
+        "single-rate": 5.66E-5
+      }
+    }
+  },
+  {
+    "id": 1003,
+    "name": "Antelope Range - Kingsley Mountains",
+    "state": "NV",
+    "length": 70.66071,
+    "magnitude": 7.23,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": -0.04909,
+        "single-rate": 6.9E-6
+      },
+      "BIRD": {
+        "slip-rate": 0.2298133329356934,
+        "rake": -91.0,
+        "gr-a-value": 1.31229,
+        "single-rate": 1.586E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.015320888862379561,
+        "rake": -117.0,
+        "gr-a-value": 0.1362,
+        "single-rate": 1.06E-5
+      }
+    }
+  },
+  {
+    "id": 1004,
+    "name": "Bare Mountain",
+    "state": "NV",
+    "length": 19.24263,
+    "magnitude": 6.57,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.008,
+        "rake": -90.0,
+        "gr-a-value": 0.44756,
+        "single-rate": 1.47E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.08426488874308759,
+        "rake": -96.0,
+        "gr-a-value": 1.47012,
+        "single-rate": 1.547E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -135.0,
+        "gr-a-value": 0.42872,
+        "single-rate": 1.41E-5
+      }
+    }
+  },
+  {
+    "id": 1005,
+    "name": "Battle Mountain",
+    "state": "NV",
+    "length": 25.87878,
+    "magnitude": 6.72,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.31791,
+        "single-rate": 1.471E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.2221528885045036,
+        "rake": -92.3,
+        "gr-a-value": 1.66457,
+        "single-rate": 3.268E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -50.0,
+        "gr-a-value": 1.43262,
+        "single-rate": 1.916E-4
+      }
+    }
+  },
+  {
+    "id": 1006,
+    "name": "Benton Spring (south)",
+    "state": "NV",
+    "length": 85.41166,
+    "magnitude": 7.32,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.5,
+        "rake": 180.0,
+        "gr-a-value": 1.46294,
+        "single-rate": 1.793E-4
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.35,
+        "rake": -149.0,
+        "gr-a-value": 1.30804,
+        "single-rate": 1.255E-4
+      }
+    }
+  },
+  {
+    "id": 1007,
+    "name": "Beowawe",
+    "state": "NV",
+    "length": 48.08831,
+    "magnitude": 7.03,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 0.99033,
+        "single-rate": 9.37E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.14554844419260582,
+        "rake": -90.3,
+        "gr-a-value": 1.15334,
+        "single-rate": 1.364E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.10724622203665693,
+        "rake": -124.0,
+        "gr-a-value": 1.02072,
+        "single-rate": 1.005E-4
+      }
+    }
+  },
+  {
+    "id": 1008,
+    "name": "Bettles Well - Petrified Springs",
+    "state": "NV",
+    "length": 71.04255,
+    "magnitude": 7.23,
+    "rates": {
+      "GEO": {
+        "slip-rate": 1.3,
+        "rake": 180.0,
+        "gr-a-value": 1.83571,
+        "single-rate": 5.293E-4
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.12,
+        "rake": -145.0,
+        "gr-a-value": 0.80094,
+        "single-rate": 4.89E-5
+      }
+    }
+  },
+  {
+    "id": 1009,
+    "name": "Black Hills",
+    "state": "NV",
+    "length": 8.795383,
+    "magnitude": 6.18,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 3.2281983E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 4.2040015E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.08426488874308759,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.7202361E-4
+      }
+    }
+  },
+  {
+    "id": 1010,
+    "name": "Black Rock",
+    "state": "NV",
+    "length": 79.87918,
+    "magnitude": 7.29,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.19,
+        "rake": -90.0,
+        "gr-a-value": 1.25781,
+        "single-rate": 1.205E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.2374737773668832,
+        "rake": -89.1,
+        "gr-a-value": 1.35467,
+        "single-rate": 1.506E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.1915111107797445,
+        "rake": -90.0,
+        "gr-a-value": 1.26125,
+        "single-rate": 1.214E-4
+      }
+    }
+  },
+  {
+    "id": 1011,
+    "name": "Bloody Run Hills",
+    "state": "NV",
+    "length": 27.13573,
+    "magnitude": 6.74,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": 0.33119,
+        "single-rate": 1.44E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.16086933305498538,
+        "rake": -90.8,
+        "gr-a-value": 1.53766,
+        "single-rate": 2.316E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -90.0,
+        "gr-a-value": 0.21544,
+        "single-rate": 1.1E-5
+      }
+    }
+  },
+  {
+    "id": 1012,
+    "name": "Bonham Ranch",
+    "state": "NV",
+    "length": 56.11423,
+    "magnitude": 7.11,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.32629,
+        "single-rate": 1.659E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.3523804438347299,
+        "rake": -91.1,
+        "gr-a-value": 1.57227,
+        "single-rate": 2.923E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.3064177772475912,
+        "rake": -129.0,
+        "gr-a-value": 1.51157,
+        "single-rate": 2.542E-4
+      }
+    }
+  },
+  {
+    "id": 1013,
+    "name": "Buena Vista Valley",
+    "state": "NV",
+    "length": 91.57656,
+    "magnitude": 7.36,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.00871,
+        "single-rate": 5.71E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.1915111107797445,
+        "rake": -90.2,
+        "gr-a-value": 1.29091,
+        "single-rate": 1.093E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -50.0,
+        "gr-a-value": 1.09709,
+        "single-rate": 7.0E-5
+      }
+    }
+  },
+  {
+    "id": 1014,
+    "name": "Buffalo Creek",
+    "state": "NV",
+    "length": 28.4169,
+    "magnitude": 6.77,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.34019,
+        "single-rate": 1.359E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1991715552109343,
+        "rake": -95.9,
+        "gr-a-value": 1.63941,
+        "single-rate": 2.707E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -130.0,
+        "gr-a-value": 1.45489,
+        "single-rate": 1.77E-4
+      }
+    }
+  },
+  {
+    "id": 1015,
+    "name": "Buffalo Mountain",
+    "state": "NV",
+    "length": 18.07421,
+    "magnitude": 6.54,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.52776,
+        "single-rate": 1.913E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.2527946662292628,
+        "rake": -88.6,
+        "gr-a-value": 1.93053,
+        "single-rate": 4.837E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -125.0,
+        "gr-a-value": 1.61614,
+        "single-rate": 2.345E-4
+      }
+    }
+  },
+  {
+    "id": 1016,
+    "name": "Buffalo Valley",
+    "state": "NV",
+    "length": 40.89857,
+    "magnitude": 6.95,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.12797,
+        "single-rate": 1.051E-4
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -49.0,
+        "gr-a-value": 1.2675,
+        "single-rate": 1.449E-4
+      }
+    }
+  },
+  {
+    "id": 1017,
+    "name": "Butte Mountains",
+    "state": "NV",
+    "length": 61.37484,
+    "magnitude": 7.15,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": 0.04791,
+        "single-rate": 7.9E-6
+      },
+      "BIRD": {
+        "slip-rate": 0.16852977748617518,
+        "rake": -91.6,
+        "gr-a-value": 1.27459,
+        "single-rate": 1.332E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -90.0,
+        "gr-a-value": -0.06783,
+        "single-rate": 6.1E-6
+      }
+    }
+  },
+  {
+    "id": 1018,
+    "name": "California Wash",
+    "state": "NV",
+    "length": 34.97192,
+    "magnitude": 6.87,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.28,
+        "rake": -90.0,
+        "gr-a-value": 1.53801,
+        "single-rate": 3.316E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1532088886237956,
+        "rake": -89.4,
+        "gr-a-value": 1.27613,
+        "single-rate": 1.814E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.3677013326971094,
+        "rake": -50.0,
+        "gr-a-value": 1.65634,
+        "single-rate": 4.354E-4
+      }
+    }
+  },
+  {
+    "id": 1019,
+    "name": "Carico Lake Valley",
+    "state": "NV",
+    "length": 41.80984,
+    "magnitude": 6.96,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.13364,
+        "single-rate": 1.037E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1532088886237956,
+        "rake": -87.2,
+        "gr-a-value": 1.31893,
+        "single-rate": 1.59E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -130.0,
+        "gr-a-value": 1.24834,
+        "single-rate": 1.351E-4
+      }
+    }
+  },
+  {
+    "id": 1020,
+    "name": "Carson City",
+    "state": "NV",
+    "length": 16.22096,
+    "magnitude": 6.48,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.1124246E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.1124246E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.1124246E-4
+      }
+    }
+  },
+  {
+    "id": 1021,
+    "name": "Carson Range",
+    "state": "NV",
+    "length": 53.22266,
+    "magnitude": 7.08,
+    "rates": {
+      "GEO": {
+        "slip-rate": 2.0,
+        "rake": -90.0,
+        "gr-a-value": 2.31542,
+        "single-rate": 0.0017451
+      },
+      "BIRD": {
+        "slip-rate": 2.0,
+        "rake": -90.0,
+        "gr-a-value": 2.31542,
+        "single-rate": 0.0017451
+      },
+      "ZENG": {
+        "slip-rate": 2.0,
+        "rake": -90.0,
+        "gr-a-value": 2.31542,
+        "single-rate": 0.0017451
+      }
+    }
+  },
+  {
+    "id": 1022,
+    "name": "Carson Range - Kings Canyon",
+    "state": "NV",
+    "length": 70.72832,
+    "magnitude": 7.23,
+    "rates": {
+      "GEO": {
+        "slip-rate": 2.0,
+        "rake": -90.0,
+        "gr-a-value": 2.25236,
+        "single-rate": 0.0013814
+      },
+      "BIRD": {
+        "slip-rate": 1.2563128867151239,
+        "rake": -82.9,
+        "gr-a-value": 2.05043,
+        "single-rate": 8.678E-4
+      },
+      "ZENG": {
+        "slip-rate": 1.6240142194122336,
+        "rake": -117.0,
+        "gr-a-value": 2.16192,
+        "single-rate": 0.0011217
+      }
+    }
+  },
+  {
+    "id": 1023,
+    "name": "Clan Alpine",
+    "state": "NV",
+    "length": 35.10554,
+    "magnitude": 6.87,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.15,
+        "rake": -90.0,
+        "gr-a-value": 1.2686,
+        "single-rate": 1.783E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.2221528885045036,
+        "rake": -90.6,
+        "gr-a-value": 1.43916,
+        "single-rate": 2.641E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.20683199964212406,
+        "rake": -129.0,
+        "gr-a-value": 1.40812,
+        "single-rate": 2.459E-4
+      }
+    }
+  },
+  {
+    "id": 1024,
+    "name": "Coaldale 1",
+    "state": "NV",
+    "length": 65.41802,
+    "magnitude": 7.19,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": 0.0,
+        "gr-a-value": 0.82772,
+        "single-rate": 4.3E-5
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.12,
+        "rake": 35.0,
+        "gr-a-value": 0.90691,
+        "single-rate": 5.17E-5
+      }
+    }
+  },
+  {
+    "id": 1025,
+    "name": "Coaldale 2",
+    "state": "NV",
+    "length": 17.17629,
+    "magnitude": 6.51,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": 0.0,
+        "gr-a-value": 1.28464,
+        "single-rate": 1.183E-4
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.1,
+        "rake": 11.0,
+        "gr-a-value": 1.28464,
+        "single-rate": 1.183E-4
+      }
+    }
+  },
+  {
+    "id": 1026,
+    "name": "Cortez Mountains",
+    "state": "NV",
+    "length": 66.72549,
+    "magnitude": 7.2,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.06369,
+        "single-rate": 7.23E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.1915111107797445,
+        "rake": -90.0,
+        "gr-a-value": 1.34588,
+        "single-rate": 1.384E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.1149066664678467,
+        "rake": -132.0,
+        "gr-a-value": 1.12403,
+        "single-rate": 8.31E-5
+      }
+    }
+  },
+  {
+    "id": 1027,
+    "name": "Coyote Spring",
+    "state": "NV",
+    "length": 15.17402,
+    "magnitude": 6.45,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.1918326E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.17619022191736494,
+        "rake": -90.5,
+        "gr-a-value": null,
+        "single-rate": 3.8617928E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -135.0,
+        "gr-a-value": null,
+        "single-rate": 1.6790402E-5
+      }
+    }
+  },
+  {
+    "id": 1028,
+    "name": "Crescent Dunes",
+    "state": "NV",
+    "length": 45.10741,
+    "magnitude": 7.0,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": 0.15094,
+        "single-rate": 9.7E-6
+      },
+      "BIRD": {
+        "slip-rate": 0.1838506663485547,
+        "rake": -93.1,
+        "gr-a-value": 1.4154,
+        "single-rate": 1.792E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -135.0,
+        "gr-a-value": 0.03519,
+        "single-rate": 7.5E-6
+      }
+    }
+  },
+  {
+    "id": 1029,
+    "name": "Desatoya Mountains",
+    "state": "NV",
+    "length": 47.44395,
+    "magnitude": 7.02,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.04,
+        "rake": -90.0,
+        "gr-a-value": 0.59051,
+        "single-rate": 3.83E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.14554844419260582,
+        "rake": -91.8,
+        "gr-a-value": 1.15146,
+        "single-rate": 1.393E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.04596266658713868,
+        "rake": -129.0,
+        "gr-a-value": 0.65085,
+        "single-rate": 4.4E-5
+      }
+    }
+  },
+  {
+    "id": 1030,
+    "name": "Diamond Mountains",
+    "state": "NV",
+    "length": 85.43391,
+    "magnitude": 7.32,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 0.99558,
+        "single-rate": 6.11E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.08426488874308759,
+        "rake": -91.0,
+        "gr-a-value": 0.92122,
+        "single-rate": 5.15E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -130.0,
+        "gr-a-value": 1.11028,
+        "single-rate": 7.96E-5
+      }
+    }
+  },
+  {
+    "id": 1031,
+    "name": "Diamond Valley",
+    "state": "NV",
+    "length": 23.40941,
+    "magnitude": 6.67,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.29255,
+        "single-rate": 1.582E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.08426488874308759,
+        "rake": -94.2,
+        "gr-a-value": 1.21819,
+        "single-rate": 1.333E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -130.0,
+        "gr-a-value": 1.40725,
+        "single-rate": 2.06E-4
+      }
+    }
+  },
+  {
+    "id": 1032,
+    "name": "Dixie Valley",
+    "state": "NV",
+    "length": 119.2373,
+    "magnitude": 7.0,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.3,
+        "rake": -90.0,
+        "gr-a-value": 2.05022,
+        "single-rate": 7.73108E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.29875733281640143,
+        "rake": -90.0,
+        "gr-a-value": 2.04842,
+        "single-rate": 0.00106586
+      },
+      "ZENG": {
+        "slip-rate": 0.41366399928424813,
+        "rake": -129.0,
+        "gr-a-value": 2.18975,
+        "single-rate": 7.6991E-4
+      }
+    }
+  },
+  {
+    "id": 1033,
+    "name": "Dry Lake",
+    "state": "NV",
+    "length": 48.73625,
+    "magnitude": 7.04,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.008,
+        "rake": -90.0,
+        "gr-a-value": -0.10475,
+        "single-rate": 7.3E-6
+      },
+      "BIRD": {
+        "slip-rate": 0.061283555449518246,
+        "rake": -93.5,
+        "gr-a-value": 0.77951,
+        "single-rate": 5.62E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -135.0,
+        "gr-a-value": -0.12358,
+        "single-rate": 7.0E-6
+      }
+    }
+  },
+  {
+    "id": 1034,
+    "name": "Dry Valley - Smoke Creek Ranch",
+    "state": "NV",
+    "length": 50.16144,
+    "magnitude": 7.05,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.00069,
+        "single-rate": 9.12E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.31407822167878097,
+        "rake": -92.2,
+        "gr-a-value": 1.49773,
+        "single-rate": 2.865E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -128.0,
+        "gr-a-value": 1.14022,
+        "single-rate": 1.258E-4
+      }
+    }
+  },
+  {
+    "id": 1035,
+    "name": "Duck Flat",
+    "state": "NV",
+    "length": 16.2993,
+    "magnitude": 6.49,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.0505686E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.28343644395402184,
+        "rake": -88.3,
+        "gr-a-value": null,
+        "single-rate": 5.8120553E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.8274863E-4
+      }
+    }
+  },
+  {
+    "id": 1036,
+    "name": "Dunn Glenn",
+    "state": "NV",
+    "length": 16.11568,
+    "magnitude": 6.48,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.0987136E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1838506663485547,
+        "rake": -89.5,
+        "gr-a-value": null,
+        "single-rate": 3.8584965E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.09958577760546715,
+        "rake": -94.0,
+        "gr-a-value": null,
+        "single-rate": 2.0900191E-4
+      }
+    }
+  },
+  {
+    "id": 1037,
+    "name": "Eastern Bilk Creek Mountains",
+    "state": "NV",
+    "length": 30.31738,
+    "magnitude": 6.8,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": 0.05538,
+        "single-rate": 1.31E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.1532088886237956,
+        "rake": -89.7,
+        "gr-a-value": 1.24066,
+        "single-rate": 2.003E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -135.0,
+        "gr-a-value": -0.06037,
+        "single-rate": 1.0E-5
+      }
+    }
+  },
+  {
+    "id": 1038,
+    "name": "Eastern Edwards Creek Valley",
+    "state": "NV",
+    "length": 38.52061,
+    "magnitude": 6.92,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.1136,
+        "single-rate": 1.097E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.2527946662292628,
+        "rake": -88.1,
+        "gr-a-value": 1.51636,
+        "single-rate": 2.774E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.1149066664678467,
+        "rake": -53.0,
+        "gr-a-value": 1.17394,
+        "single-rate": 1.261E-4
+      }
+    }
+  },
+  {
+    "id": 1039,
+    "name": "Eastern Granite Range",
+    "state": "NV",
+    "length": 33.61407,
+    "magnitude": 6.85,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.08128,
+        "single-rate": 1.22E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.3064177772475912,
+        "rake": -91.8,
+        "gr-a-value": 1.5676,
+        "single-rate": 3.737E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -130.0,
+        "gr-a-value": 1.19599,
+        "single-rate": 1.588E-4
+      }
+    }
+  },
+  {
+    "id": 1040,
+    "name": "Eastern Independence Valley",
+    "state": "NV",
+    "length": 45.83292,
+    "magnitude": 7.01,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 0.97741,
+        "single-rate": 9.57E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.14554844419260582,
+        "rake": -89.7,
+        "gr-a-value": 1.14042,
+        "single-rate": 1.393E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -47.0,
+        "gr-a-value": 1.06578,
+        "single-rate": 1.173E-4
+      }
+    }
+  },
+  {
+    "id": 1041,
+    "name": "Eastern Monitor Range",
+    "state": "NV",
+    "length": 105.3415,
+    "magnitude": 7.43,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.03943,
+        "single-rate": 5.16E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.015320888862379561,
+        "rake": -140.8,
+        "gr-a-value": 0.22471,
+        "single-rate": 7.9E-6
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -130.0,
+        "gr-a-value": 1.15413,
+        "single-rate": 6.71E-5
+      }
+    }
+  },
+  {
+    "id": 1042,
+    "name": "Eastern Osgood Mountains",
+    "state": "NV",
+    "length": 32.95612,
+    "magnitude": 6.84,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": 0.0765,
+        "single-rate": 1.24E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.1915111107797445,
+        "rake": -90.0,
+        "gr-a-value": 1.35869,
+        "single-rate": 2.37E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -45.0,
+        "gr-a-value": -0.03925,
+        "single-rate": 9.5E-6
+      }
+    }
+  },
+  {
+    "id": 1043,
+    "name": "Eastern Osgood Mountains (Piedmont)",
+    "state": "NV",
+    "length": 29.81576,
+    "magnitude": 6.79,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": 0.35366,
+        "single-rate": 1.33E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -90.0,
+        "gr-a-value": 1.44204,
+        "single-rate": 1.631E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -135.0,
+        "gr-a-value": 0.23792,
+        "single-rate": 1.02E-5
+      }
+    }
+  },
+  {
+    "id": 1044,
+    "name": "Eastern Pine Forest Range",
+    "state": "NV",
+    "length": 10.20066,
+    "magnitude": 6.25,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.9399098E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -90.7,
+        "gr-a-value": null,
+        "single-rate": 3.6033607E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.10724622203665693,
+        "rake": -111.0,
+        "gr-a-value": null,
+        "single-rate": 3.1529405E-4
+      }
+    }
+  },
+  {
+    "id": 1045,
+    "name": "Eastern Pyramid Lake",
+    "state": "NV",
+    "length": 44.03866,
+    "magnitude": 6.99,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.14445,
+        "single-rate": 9.85E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.32939911054116056,
+        "rake": -90.9,
+        "gr-a-value": 1.66218,
+        "single-rate": 3.245E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -130.0,
+        "gr-a-value": 1.25916,
+        "single-rate": 1.283E-4
+      }
+    }
+  },
+  {
+    "id": 1046,
+    "name": "Eastern Tuscarora Mountains",
+    "state": "NV",
+    "length": 51.92915,
+    "magnitude": 7.07,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": 0.00772,
+        "single-rate": 8.8E-6
+      },
+      "BIRD": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -90.6,
+        "gr-a-value": 1.14725,
+        "single-rate": 1.215E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -45.0,
+        "gr-a-value": -0.10803,
+        "single-rate": 6.8E-6
+      }
+    }
+  },
+  {
+    "id": 1047,
+    "name": "Edna Mountain",
+    "state": "NV",
+    "length": 35.27512,
+    "magnitude": 6.88,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.09077,
+        "single-rate": 1.154E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.2374737773668832,
+        "rake": -89.8,
+        "gr-a-value": 1.46639,
+        "single-rate": 2.74E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -52.0,
+        "gr-a-value": 1.2303,
+        "single-rate": 1.591E-4
+      }
+    }
+  },
+  {
+    "id": 1048,
+    "name": "Eglington",
+    "state": "NV",
+    "length": 10.99656,
+    "magnitude": 6.29,
+    "rates": {
+      "GEO": {
+        "slip-rate": null,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 4.6499999E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -90.4,
+        "gr-a-value": null,
+        "single-rate": 7.1000002E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.02298133329356934,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 7.1000002E-5
+      }
+    }
+  },
+  {
+    "id": 1049,
+    "name": "Emigrant Peak",
+    "state": "NV",
+    "length": 29.44307,
+    "magnitude": 6.78,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.76,
+        "rake": -90.0,
+        "gr-a-value": 2.23271,
+        "single-rate": 0.001034
+      },
+      "BIRD": {
+        "slip-rate": 0.31407822167878097,
+        "rake": -91.1,
+        "gr-a-value": 1.84894,
+        "single-rate": 4.273E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.8886115540180144,
+        "rake": -128.0,
+        "gr-a-value": 2.30061,
+        "single-rate": 0.0012089
+      }
+    }
+  },
+  {
+    "id": 1050,
+    "name": "Eugene Mountains",
+    "state": "NV",
+    "length": 10.06124,
+    "magnitude": 6.24,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 3.0016276E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1991715552109343,
+        "rake": -89.6,
+        "gr-a-value": null,
+        "single-rate": 5.9783855E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.09958577760546715,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.9891927E-4
+      }
+    }
+  },
+  {
+    "id": 1052,
+    "name": "Excelsior Mountains (unnamed)",
+    "state": "NV",
+    "length": 26.74903,
+    "magnitude": 6.74,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": 0.0,
+        "gr-a-value": 1.09346,
+        "single-rate": 8.33E-5
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.12,
+        "rake": 31.0,
+        "gr-a-value": 1.17264,
+        "single-rate": 9.99E-5
+      }
+    }
+  },
+  {
+    "id": 1051,
+    "name": "Fairview",
+    "state": "NV",
+    "length": 34.18235,
+    "magnitude": 7.2,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 0.7732,
+        "single-rate": 3.7E-5
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -130.0,
+        "gr-a-value": 0.8879,
+        "single-rate": 4.82E-5
+      }
+    }
+  },
+  {
+    "id": 1053,
+    "name": "Fox Range",
+    "state": "NV",
+    "length": 34.54189,
+    "magnitude": 6.86,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.0893,
+        "single-rate": 1.211E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.32939911054116056,
+        "rake": -90.5,
+        "gr-a-value": 1.60702,
+        "single-rate": 3.988E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.10724622203665693,
+        "rake": -69.0,
+        "gr-a-value": 1.11968,
+        "single-rate": 1.298E-4
+      }
+    }
+  },
+  {
+    "id": 1054,
+    "name": "Freds Mountain",
+    "state": "NV",
+    "length": 29.43089,
+    "magnitude": 6.78,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.35172,
+        "single-rate": 1.36E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.3600408882659196,
+        "rake": -89.2,
+        "gr-a-value": 1.90807,
+        "single-rate": 4.896E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -128.0,
+        "gr-a-value": 1.49125,
+        "single-rate": 1.875E-4
+      }
+    }
+  },
+  {
+    "id": 1055,
+    "name": "Frenchman Mountain",
+    "state": "NV",
+    "length": 19.88449,
+    "magnitude": 6.59,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.015,
+        "rake": -90.0,
+        "gr-a-value": 0.72781,
+        "single-rate": 2.66E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.09192533317427735,
+        "rake": -90.5,
+        "gr-a-value": 1.51515,
+        "single-rate": 1.628E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.02298133329356934,
+        "rake": -45.0,
+        "gr-a-value": 0.91309,
+        "single-rate": 4.07E-5
+      }
+    }
+  },
+  {
+    "id": 1056,
+    "name": "Golden Gate",
+    "state": "NV",
+    "length": 35.98992,
+    "magnitude": 6.89,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": 0.09565,
+        "single-rate": 1.14E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.09958577760546715,
+        "rake": -93.6,
+        "gr-a-value": 1.09384,
+        "single-rate": 1.133E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -135.0,
+        "gr-a-value": -0.0201,
+        "single-rate": 8.7E-6
+      }
+    }
+  },
+  {
+    "id": 1057,
+    "name": "Granite Springs Valley",
+    "state": "NV",
+    "length": 49.47762,
+    "magnitude": 7.05,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.29576,
+        "single-rate": 1.799E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.3983431104218686,
+        "rake": -89.2,
+        "gr-a-value": 1.59499,
+        "single-rate": 3.584E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.29109688838521164,
+        "rake": -129.0,
+        "gr-a-value": 1.45877,
+        "single-rate": 2.619E-4
+      }
+    }
+  },
+  {
+    "id": 1058,
+    "name": "Grass Valley",
+    "state": "NV",
+    "length": 54.04449,
+    "magnitude": 7.09,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.01702,
+        "single-rate": 8.56E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -91.0,
+        "gr-a-value": 1.13172,
+        "single-rate": 1.115E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -47.0,
+        "gr-a-value": 1.10539,
+        "single-rate": 1.049E-4
+      }
+    }
+  },
+  {
+    "id": 1059,
+    "name": "Hiko",
+    "state": "NV",
+    "length": 15.40383,
+    "magnitude": 6.46,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.149473E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.0766044443118978,
+        "rake": -91.7,
+        "gr-a-value": null,
+        "single-rate": 1.646591E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -135.0,
+        "gr-a-value": null,
+        "single-rate": 1.6465909E-5
+      }
+    }
+  },
+  {
+    "id": 1060,
+    "name": "Hoppin Peaks",
+    "state": "NV",
+    "length": 102.8695,
+    "magnitude": 7.41,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.03775,
+        "single-rate": 5.39E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -88.6,
+        "gr-a-value": 1.15246,
+        "single-rate": 7.03E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -130.0,
+        "gr-a-value": 1.15246,
+        "single-rate": 7.03E-5
+      }
+    }
+  },
+  {
+    "id": 1061,
+    "name": "Hot Springs",
+    "state": "NV",
+    "length": 24.15817,
+    "magnitude": 6.68,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.3026,
+        "single-rate": 1.577E-4
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.10724622203665693,
+        "rake": -111.0,
+        "gr-a-value": 1.33298,
+        "single-rate": 1.691E-4
+      }
+    }
+  },
+  {
+    "id": 1062,
+    "name": "Huntoon Valley",
+    "state": "NV",
+    "length": 38.30296,
+    "magnitude": 6.92,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": 0.0,
+        "gr-a-value": 0.87964,
+        "single-rate": 6.4E-5
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.12,
+        "rake": -31.0,
+        "gr-a-value": 0.95882,
+        "single-rate": 7.68E-5
+      }
+    }
+  },
+  {
+    "id": 1063,
+    "name": "Independence Valley",
+    "state": "NV",
+    "length": 66.03065,
+    "magnitude": 7.19,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.06327,
+        "single-rate": 7.4E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.09192533317427735,
+        "rake": -92.9,
+        "gr-a-value": 1.0267,
+        "single-rate": 6.81E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -50.0,
+        "gr-a-value": 1.15164,
+        "single-rate": 9.07E-5
+      }
+    }
+  },
+  {
+    "id": 1064,
+    "name": "Indian Head",
+    "state": "NV",
+    "length": 15.21712,
+    "magnitude": 6.45,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": 180.0,
+        "gr-a-value": null,
+        "single-rate": 1.2898716E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.05,
+        "rake": 180.0,
+        "gr-a-value": null,
+        "single-rate": 6.4493579E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.12,
+        "rake": -149.0,
+        "gr-a-value": null,
+        "single-rate": 1.5478457E-4
+      }
+    }
+  },
+  {
+    "id": 1065,
+    "name": "Indian Hill",
+    "state": "NV",
+    "length": 8.082262,
+    "magnitude": 6.13,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 3.5256494E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 3.5256494E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 3.5256494E-4
+      }
+    }
+  },
+  {
+    "id": 1066,
+    "name": "Ione Valley",
+    "state": "NV",
+    "length": 79.07526,
+    "magnitude": 7.28,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 0.97887,
+        "single-rate": 6.5E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.2604551106604525,
+        "rake": -90.9,
+        "gr-a-value": 1.3946,
+        "single-rate": 1.692E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -131.0,
+        "gr-a-value": 1.11839,
+        "single-rate": 8.96E-5
+      }
+    }
+  },
+  {
+    "id": 1067,
+    "name": "Jackson Mountains",
+    "state": "NV",
+    "length": 74.59104,
+    "magnitude": 7.25,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 0.96609,
+        "single-rate": 6.8E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.3753617771282992,
+        "rake": -89.2,
+        "gr-a-value": 1.54054,
+        "single-rate": 2.552E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.14554844419260582,
+        "rake": -129.0,
+        "gr-a-value": 1.12909,
+        "single-rate": 9.89E-5
+      }
+    }
+  },
+  {
+    "id": 1068,
+    "name": "Jakes Valley",
+    "state": "NV",
+    "length": 35.45474,
+    "magnitude": 6.88,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": 0.09298,
+        "single-rate": 1.16E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.06894399988070801,
+        "rake": -97.2,
+        "gr-a-value": 0.93147,
+        "single-rate": 8.0E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -135.0,
+        "gr-a-value": -0.02277,
+        "single-rate": 8.9E-6
+      }
+    }
+  },
+  {
+    "id": 1069,
+    "name": "Jersey Valley",
+    "state": "NV",
+    "length": 34.12436,
+    "magnitude": 6.86,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.08401,
+        "single-rate": 1.196E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.31407822167878097,
+        "rake": -89.7,
+        "gr-a-value": 1.58105,
+        "single-rate": 3.757E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -50.0,
+        "gr-a-value": 1.17239,
+        "single-rate": 1.466E-4
+      }
+    }
+  },
+  {
+    "id": 1070,
+    "name": "Kane Spring Wash",
+    "state": "NV",
+    "length": 42.62223,
+    "magnitude": 6.97,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": 0.0,
+        "gr-a-value": -0.0934,
+        "single-rate": 6.0E-6
+      },
+      "BIRD": {
+        "slip-rate": 0.05,
+        "rake": 0.0,
+        "gr-a-value": 0.60557,
+        "single-rate": 3.0E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.01,
+        "rake": 45.0,
+        "gr-a-value": -0.0934,
+        "single-rate": 6.0E-6
+      }
+    }
+  },
+  {
+    "id": 1071,
+    "name": "Kawich Range - Hot Creek Range",
+    "state": "NV",
+    "length": 120.7323,
+    "magnitude": 7.49,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.37355,
+        "single-rate": 9.61E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.030641777724759123,
+        "rake": -113.8,
+        "gr-a-value": 0.55804,
+        "single-rate": 1.47E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.28343644395402184,
+        "rake": -128.0,
+        "gr-a-value": 1.52418,
+        "single-rate": 1.359E-4
+      }
+    }
+  },
+  {
+    "id": 1072,
+    "name": "Kings Canyon",
+    "state": "NV",
+    "length": 17.5103,
+    "magnitude": 6.52,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.82203,
+        "single-rate": 3.972E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.82203,
+        "single-rate": 3.972E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.82203,
+        "single-rate": 3.972E-4
+      }
+    }
+  },
+  {
+    "id": 1073,
+    "name": "Little Fish Lake Valley",
+    "state": "NV",
+    "length": 43.35618,
+    "magnitude": 6.98,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.1416,
+        "single-rate": 1.004E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -93.5,
+        "gr-a-value": 1.2563,
+        "single-rate": 1.308E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -50.0,
+        "gr-a-value": 1.2563,
+        "single-rate": 1.308E-4
+      }
+    }
+  },
+  {
+    "id": 1074,
+    "name": "Little Valley",
+    "state": "NV",
+    "length": 18.11815,
+    "magnitude": 6.54,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.82985,
+        "single-rate": 3.836E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.82985,
+        "single-rate": 3.836E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.82985,
+        "single-rate": 3.836E-4
+      }
+    }
+  },
+  {
+    "id": 1075,
+    "name": "Lone Mountain",
+    "state": "NV",
+    "length": 40.99224,
+    "magnitude": 6.95,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.42999,
+        "single-rate": 2.106E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.21449244407331386,
+        "rake": -92.2,
+        "gr-a-value": 1.46038,
+        "single-rate": 2.258E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.16852977748617518,
+        "rake": -51.0,
+        "gr-a-value": 1.35564,
+        "single-rate": 1.775E-4
+      }
+    }
+  },
+  {
+    "id": 1076,
+    "name": "Marys Mountain",
+    "state": "NV",
+    "length": 19.60877,
+    "magnitude": 6.58,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.001,
+        "rake": -90.0,
+        "gr-a-value": -0.45085,
+        "single-rate": 1.8E-6
+      },
+      "BIRD": {
+        "slip-rate": 0.10724622203665693,
+        "rake": -91.6,
+        "gr-a-value": 1.57954,
+        "single-rate": 1.939E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -90.0,
+        "gr-a-value": 0.43341,
+        "single-rate": 1.38E-5
+      }
+    }
+  },
+  {
+    "id": 1077,
+    "name": "McGee Mountain",
+    "state": "NV",
+    "length": 41.54241,
+    "magnitude": 6.96,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": 0.13086,
+        "single-rate": 1.03E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.09958577760546715,
+        "rake": -86.5,
+        "gr-a-value": 1.12905,
+        "single-rate": 1.027E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -135.0,
+        "gr-a-value": 0.01511,
+        "single-rate": 7.9E-6
+      }
+    }
+  },
+  {
+    "id": 1078,
+    "name": "Middlegate",
+    "state": "NV",
+    "length": 38.45053,
+    "magnitude": 6.92,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.1128,
+        "single-rate": 1.095E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.31407822167878097,
+        "rake": -93.0,
+        "gr-a-value": 1.60984,
+        "single-rate": 3.441E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -130.0,
+        "gr-a-value": 1.22751,
+        "single-rate": 1.427E-4
+      }
+    }
+  },
+  {
+    "id": 1079,
+    "name": "Montana Mountains - Desert Valley",
+    "state": "NV",
+    "length": 102.3357,
+    "magnitude": 7.41,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.0355,
+        "single-rate": 5.37E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.10724622203665693,
+        "rake": -90.4,
+        "gr-a-value": 1.06588,
+        "single-rate": 5.76E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -50.0,
+        "gr-a-value": 1.1502,
+        "single-rate": 6.99E-5
+      }
+    }
+  },
+  {
+    "id": 1080,
+    "name": "Monte Cristo Valley",
+    "state": "NV",
+    "length": 29.21262,
+    "magnitude": 6.78,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.4,
+        "rake": 180.0,
+        "gr-a-value": 1.71905,
+        "single-rate": 3.168E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.28,
+        "rake": 180.0,
+        "gr-a-value": 1.56415,
+        "single-rate": 2.218E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.49,
+        "rake": -148.0,
+        "gr-a-value": 1.80719,
+        "single-rate": 3.881E-4
+      }
+    }
+  },
+  {
+    "id": 1081,
+    "name": "Mount Irish Range",
+    "state": "NV",
+    "length": 11.79291,
+    "magnitude": 6.32,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.6688565E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.030641777724759123,
+        "rake": -121.5,
+        "gr-a-value": null,
+        "single-rate": 8.1778468E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -45.0,
+        "gr-a-value": null,
+        "single-rate": 2.0444617E-5
+      }
+    }
+  },
+  {
+    "id": 1082,
+    "name": "Mount Rose",
+    "state": "NV",
+    "length": 36.00628,
+    "magnitude": 6.89,
+    "rates": {
+      "GEO": {
+        "slip-rate": 1.5,
+        "rake": -90.0,
+        "gr-a-value": 2.27193,
+        "single-rate": 0.0017068
+      },
+      "BIRD": {
+        "slip-rate": 2.6505137731916637,
+        "rake": -105.8,
+        "gr-a-value": 2.51917,
+        "single-rate": 0.0030159
+      },
+      "ZENG": {
+        "slip-rate": 2.298133329356934,
+        "rake": -111.0,
+        "gr-a-value": 2.45722,
+        "single-rate": 0.0026149
+      }
+    }
+  },
+  {
+    "id": 1083,
+    "name": "Nightingale Mountains",
+    "state": "NV",
+    "length": 35.92585,
+    "magnitude": 6.88,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.09871,
+        "single-rate": 1.175E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.2681155550916423,
+        "rake": -88.4,
+        "gr-a-value": 1.52703,
+        "single-rate": 3.151E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -50.0,
+        "gr-a-value": 1.21341,
+        "single-rate": 1.53E-4
+      }
+    }
+  },
+  {
+    "id": 1084,
+    "name": "Northern Butte Valley",
+    "state": "NV",
+    "length": 16.56951,
+    "magnitude": 6.49,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.084562E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.0766044443118978,
+        "rake": -88.9,
+        "gr-a-value": null,
+        "single-rate": 1.5968664E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.09958577760546715,
+        "rake": -94.0,
+        "gr-a-value": null,
+        "single-rate": 2.0759262E-4
+      }
+    }
+  },
+  {
+    "id": 1085,
+    "name": "Northern Huntington Valley",
+    "state": "NV",
+    "length": 39.08757,
+    "magnitude": 6.93,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.11607,
+        "single-rate": 1.076E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -93.7,
+        "gr-a-value": 1.23077,
+        "single-rate": 1.401E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.09192533317427735,
+        "rake": -90.0,
+        "gr-a-value": 1.0795,
+        "single-rate": 9.89E-5
+      }
+    }
+  },
+  {
+    "id": 1086,
+    "name": "Northern Roberts Mountains",
+    "state": "NV",
+    "length": 22.52656,
+    "magnitude": 6.65,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.28308,
+        "single-rate": 1.631E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.09192533317427735,
+        "rake": -93.4,
+        "gr-a-value": 1.24651,
+        "single-rate": 1.499E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -130.0,
+        "gr-a-value": 1.37145,
+        "single-rate": 1.999E-4
+      }
+    }
+  },
+  {
+    "id": 1087,
+    "name": "Northern Simpson Park Mountains",
+    "state": "NV",
+    "length": 12.9249,
+    "magnitude": 6.37,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 2.4611203E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.061283555449518246,
+        "rake": -96.9,
+        "gr-a-value": null,
+        "single-rate": 1.5082612E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -130.0,
+        "gr-a-value": null,
+        "single-rate": 3.2050547E-4
+      }
+    }
+  },
+  {
+    "id": 1088,
+    "name": "Paradise Range",
+    "state": "NV",
+    "length": 42.56359,
+    "magnitude": 6.97,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.1375,
+        "single-rate": 1.02E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.383022221559489,
+        "rake": -89.9,
+        "gr-a-value": 1.72072,
+        "single-rate": 3.908E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.09958577760546715,
+        "rake": -90.0,
+        "gr-a-value": 1.13569,
+        "single-rate": 1.016E-4
+      }
+    }
+  },
+  {
+    "id": 1089,
+    "name": "Peavine Peak",
+    "state": "NV",
+    "length": 12.67924,
+    "magnitude": 6.36,
+    "rates": {
+      "GEO": {
+        "slip-rate": null,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 8.333E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.6817795543758904,
+        "rake": -100.3,
+        "gr-a-value": null,
+        "single-rate": 8.333E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.32173866610997076,
+        "rake": -123.0,
+        "gr-a-value": null,
+        "single-rate": 8.333E-4
+      }
+    }
+  },
+  {
+    "id": 1090,
+    "name": "Penoyer",
+    "state": "NV",
+    "length": 56.48219,
+    "magnitude": 7.11,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.016,
+        "rake": -90.0,
+        "gr-a-value": 0.23222,
+        "single-rate": 1.34E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.02298133329356934,
+        "rake": -102.6,
+        "gr-a-value": 0.38947,
+        "single-rate": 1.92E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.02298133329356934,
+        "rake": -45.0,
+        "gr-a-value": 0.38947,
+        "single-rate": 1.92E-5
+      }
+    }
+  },
+  {
+    "id": 1092,
+    "name": "Petersen Mountain (east)",
+    "state": "NV",
+    "length": 16.29659,
+    "magnitude": 6.49,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.05,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 1.0251132E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.3600408882659196,
+        "rake": -90.1,
+        "gr-a-value": null,
+        "single-rate": 7.3816488E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.06894399988070801,
+        "rake": -131.0,
+        "gr-a-value": null,
+        "single-rate": 1.4135073E-4
+      }
+    }
+  },
+  {
+    "id": 1091,
+    "name": "Petersen Mountain (west)",
+    "state": "NV",
+    "length": 25.8704,
+    "magnitude": 6.72,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.31777,
+        "single-rate": 1.471E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.3600408882659196,
+        "rake": -89.1,
+        "gr-a-value": 1.87413,
+        "single-rate": 5.295E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -128.0,
+        "gr-a-value": 1.4573,
+        "single-rate": 2.028E-4
+      }
+    }
+  },
+  {
+    "id": 1093,
+    "name": "Pleasant Valley",
+    "state": "NV",
+    "length": 68.04219,
+    "magnitude": 7.21,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 0.94282,
+        "single-rate": 7.12E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.33705955497235035,
+        "rake": -89.5,
+        "gr-a-value": 1.47052,
+        "single-rate": 2.4E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.09192533317427735,
+        "rake": -90.0,
+        "gr-a-value": 0.90625,
+        "single-rate": 6.55E-5
+      }
+    }
+  },
+  {
+    "id": 1094,
+    "name": "Pyramid Lake",
+    "state": "NV",
+    "length": 77.23122,
+    "magnitude": 7.27,
+    "rates": {
+      "GEO": {
+        "slip-rate": 2.0,
+        "rake": 180.0,
+        "gr-a-value": 2.04236,
+        "single-rate": 7.71E-4
+      },
+      "BIRD": {
+        "slip-rate": 2.11,
+        "rake": 180.0,
+        "gr-a-value": 2.06561,
+        "single-rate": 8.134E-4
+      },
+      "ZENG": {
+        "slip-rate": 3.01,
+        "rake": -167.0,
+        "gr-a-value": 2.21989,
+        "single-rate": 0.0011603
+      }
+    }
+  },
+  {
+    "id": 1095,
+    "name": "Railroad Valley",
+    "state": "NV",
+    "length": 158.5148,
+    "magnitude": 7.5,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.07,
+        "rake": -90.0,
+        "gr-a-value": 1.03148,
+        "single-rate": 4.26452E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.09192533317427735,
+        "rake": -94.7,
+        "gr-a-value": 1.14884,
+        "single-rate": 5.58766E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.09192533317427735,
+        "rake": -132.0,
+        "gr-a-value": 1.14884,
+        "single-rate": 5.58766E-5
+      }
+    }
+  },
+  {
+    "id": 1096,
+    "name": "Rainbow Mountain",
+    "state": "NV",
+    "length": 71.88306,
+    "magnitude": 7.23,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": 180.0,
+        "gr-a-value": 1.0279,
+        "single-rate": 8.24E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.25,
+        "rake": 180.0,
+        "gr-a-value": 1.12481,
+        "single-rate": 1.03E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.17,
+        "rake": -149.0,
+        "gr-a-value": 0.95732,
+        "single-rate": 7.0E-5
+      }
+    }
+  },
+  {
+    "id": 1097,
+    "name": "Rattlesnake Flat",
+    "state": "NV",
+    "length": 15.45384,
+    "magnitude": 6.46,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": 0.0,
+        "gr-a-value": null,
+        "single-rate": 1.2654565E-4
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.12,
+        "rake": 31.0,
+        "gr-a-value": null,
+        "single-rate": 1.5185478E-4
+      }
+    }
+  },
+  {
+    "id": 1098,
+    "name": "Ruby Mountains (north)",
+    "state": "NV",
+    "length": 37.25782,
+    "magnitude": 6.9,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.28,
+        "rake": -90.0,
+        "gr-a-value": 1.55399,
+        "single-rate": 3.185E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -89.3,
+        "gr-a-value": 1.24636,
+        "single-rate": 1.568E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.2604551106604525,
+        "rake": -105.0,
+        "gr-a-value": 1.52257,
+        "single-rate": 2.962E-4
+      }
+    }
+  },
+  {
+    "id": 1099,
+    "name": "Ruby Mountains (south)",
+    "state": "NV",
+    "length": 53.36132,
+    "magnitude": 7.08,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.28,
+        "rake": -90.0,
+        "gr-a-value": 1.46268,
+        "single-rate": 2.45E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -89.0,
+        "gr-a-value": 1.15505,
+        "single-rate": 1.206E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.2527946662292628,
+        "rake": -110.0,
+        "gr-a-value": 1.41829,
+        "single-rate": 2.212E-4
+      }
+    }
+  },
+  {
+    "id": 1100,
+    "name": "Ruby Valley",
+    "state": "NV",
+    "length": 81.19989,
+    "magnitude": 7.3,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 0.98196,
+        "single-rate": 6.23E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.14554844419260582,
+        "rake": -91.8,
+        "gr-a-value": 1.14497,
+        "single-rate": 9.06E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.14554844419260582,
+        "rake": -51.0,
+        "gr-a-value": 1.14497,
+        "single-rate": 9.06E-5
+      }
+    }
+  },
+  {
+    "id": 1102,
+    "name": "San Emidio",
+    "state": "NV",
+    "length": 33.90564,
+    "magnitude": 6.86,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.38225,
+        "single-rate": 2.377E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.2221528885045036,
+        "rake": -88.0,
+        "gr-a-value": 1.42787,
+        "single-rate": 2.64E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.1915111107797445,
+        "rake": -90.0,
+        "gr-a-value": 1.36342,
+        "single-rate": 2.276E-4
+      }
+    }
+  },
+  {
+    "id": 1101,
+    "name": "Sand Springs Range",
+    "state": "NV",
+    "length": 41.6146,
+    "magnitude": 6.96,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.43264,
+        "single-rate": 2.065E-4
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -128.0,
+        "gr-a-value": 1.27114,
+        "single-rate": 1.424E-4
+      }
+    }
+  },
+  {
+    "id": 1103,
+    "name": "Schell Creek Range",
+    "state": "NV",
+    "length": 105.104,
+    "magnitude": 7.43,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.03844,
+        "single-rate": 5.14E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.21449244407331386,
+        "rake": -90.2,
+        "gr-a-value": 1.36986,
+        "single-rate": 1.103E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.14554844419260582,
+        "rake": -129.0,
+        "gr-a-value": 1.20145,
+        "single-rate": 7.49E-5
+      }
+    }
+  },
+  {
+    "id": 1104,
+    "name": "Selenite Range",
+    "state": "NV",
+    "length": 17.91947,
+    "magnitude": 6.53,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.52753,
+        "single-rate": 1.963E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1991715552109343,
+        "rake": -87.8,
+        "gr-a-value": 1.82676,
+        "single-rate": 3.911E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -50.0,
+        "gr-a-value": 1.64223,
+        "single-rate": 2.557E-4
+      }
+    }
+  },
+  {
+    "id": 1105,
+    "name": "Seven Troughs Range",
+    "state": "NV",
+    "length": 39.3443,
+    "magnitude": 6.93,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.11891,
+        "single-rate": 1.083E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -87.5,
+        "gr-a-value": 1.25844,
+        "single-rate": 1.493E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -128.0,
+        "gr-a-value": 1.25844,
+        "single-rate": 1.493E-4
+      }
+    }
+  },
+  {
+    "id": 1106,
+    "name": "Sheep Basin",
+    "state": "NV",
+    "length": 22.41908,
+    "magnitude": 6.65,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.044,
+        "rake": -90.0,
+        "gr-a-value": 0.92445,
+        "single-rate": 7.14E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.053623111018328465,
+        "rake": -90.0,
+        "gr-a-value": 1.01035,
+        "single-rate": 8.7E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.061283555449518246,
+        "rake": -130.0,
+        "gr-a-value": 1.06834,
+        "single-rate": 9.95E-5
+      }
+    }
+  },
+  {
+    "id": 1107,
+    "name": "Sheep Creek Range",
+    "state": "NV",
+    "length": 38.48552,
+    "magnitude": 6.92,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.1132,
+        "single-rate": 1.096E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1532088886237956,
+        "rake": -90.6,
+        "gr-a-value": 1.29848,
+        "single-rate": 1.68E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -50.0,
+        "gr-a-value": 1.2279,
+        "single-rate": 1.428E-4
+      }
+    }
+  },
+  {
+    "id": 1108,
+    "name": "Shoshone Range",
+    "state": "NV",
+    "length": 121.4258,
+    "magnitude": 7.5,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.07063,
+        "single-rate": 4.67E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.1915111107797445,
+        "rake": -90.5,
+        "gr-a-value": 1.35282,
+        "single-rate": 8.94E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.10724622203665693,
+        "rake": -129.0,
+        "gr-a-value": 1.10101,
+        "single-rate": 5.0E-5
+      }
+    }
+  },
+  {
+    "id": 1109,
+    "name": "Simpson Park Mountains",
+    "state": "NV",
+    "length": 72.60036,
+    "magnitude": 7.24,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.22,
+        "rake": -90.0,
+        "gr-a-value": 1.30093,
+        "single-rate": 1.507E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1838506663485547,
+        "rake": -92.4,
+        "gr-a-value": 1.22298,
+        "single-rate": 1.259E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.24513422179807298,
+        "rake": -51.0,
+        "gr-a-value": 1.34791,
+        "single-rate": 1.679E-4
+      }
+    }
+  },
+  {
+    "id": 1110,
+    "name": "Singatse Range",
+    "state": "NV",
+    "length": 33.62371,
+    "magnitude": 6.85,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.08141,
+        "single-rate": 1.22E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.32939911054116056,
+        "rake": -92.7,
+        "gr-a-value": 1.59913,
+        "single-rate": 4.019E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -130.0,
+        "gr-a-value": 1.19611,
+        "single-rate": 1.589E-4
+      }
+    }
+  },
+  {
+    "id": 1111,
+    "name": "Smith Valley",
+    "state": "NV",
+    "length": 94.3106,
+    "magnitude": 7.37,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.25,
+        "rake": -90.0,
+        "gr-a-value": 1.41515,
+        "single-rate": 1.42E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.4213244437154379,
+        "rake": -90.4,
+        "gr-a-value": 1.64183,
+        "single-rate": 2.393E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.559212443476854,
+        "rake": -128.0,
+        "gr-a-value": 1.76479,
+        "single-rate": 3.176E-4
+      }
+    }
+  },
+  {
+    "id": 1112,
+    "name": "Southwest Reese River Valley",
+    "state": "NV",
+    "length": 80.00368,
+    "magnitude": 7.29,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 0.97973,
+        "single-rate": 6.35E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.09192533317427735,
+        "rake": -92.4,
+        "gr-a-value": 0.94316,
+        "single-rate": 5.84E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -128.0,
+        "gr-a-value": 1.11926,
+        "single-rate": 8.76E-5
+      }
+    }
+  },
+  {
+    "id": 1113,
+    "name": "Spanish Springs Peak",
+    "state": "NV",
+    "length": 4.911732,
+    "magnitude": 6.0,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": 0.0,
+        "gr-a-value": null,
+        "single-rate": 1.9699172E-4
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.12,
+        "rake": 31.0,
+        "gr-a-value": null,
+        "single-rate": 2.3639004E-4
+      }
+    }
+  },
+  {
+    "id": 1114,
+    "name": "Spanish Springs Valley",
+    "state": "NV",
+    "length": 21.38962,
+    "magnitude": 6.62,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.27137,
+        "single-rate": 1.718E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.4596266658713868,
+        "rake": -87.7,
+        "gr-a-value": 1.93378,
+        "single-rate": 7.894E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -130.0,
+        "gr-a-value": 1.38607,
+        "single-rate": 2.237E-4
+      }
+    }
+  },
+  {
+    "id": 1115,
+    "name": "Spruce Mountain Ridge",
+    "state": "NV",
+    "length": 32.56256,
+    "magnitude": 6.83,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.07508,
+        "single-rate": 1.266E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.0383022221559489,
+        "rake": -92.5,
+        "gr-a-value": 0.6583,
+        "single-rate": 4.85E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -50.0,
+        "gr-a-value": 1.16345,
+        "single-rate": 1.552E-4
+      }
+    }
+  },
+  {
+    "id": 1118,
+    "name": "Teels Marsh (unnamed)",
+    "state": "NV",
+    "length": 39.52692,
+    "magnitude": 6.93,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 0.88943,
+        "single-rate": 6.38E-5
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.12,
+        "rake": -31.0,
+        "gr-a-value": 0.96861,
+        "single-rate": 7.66E-5
+      }
+    }
+  },
+  {
+    "id": 1116,
+    "name": "The Lava Beds",
+    "state": "NV",
+    "length": 26.26252,
+    "magnitude": 6.73,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.32065,
+        "single-rate": 1.442E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.14554844419260582,
+        "rake": -88.8,
+        "gr-a-value": 1.48366,
+        "single-rate": 2.099E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -128.0,
+        "gr-a-value": 1.46018,
+        "single-rate": 1.989E-4
+      }
+    }
+  },
+  {
+    "id": 1117,
+    "name": "Toiyabe Range",
+    "state": "NV",
+    "length": 126.9061,
+    "magnitude": 7.5,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.06,
+        "rake": -90.0,
+        "gr-a-value": 0.86795,
+        "single-rate": 2.92644E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.061283555449518246,
+        "rake": -103.0,
+        "gr-a-value": 0.87714,
+        "single-rate": 2.98903E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.08426488874308759,
+        "rake": -131.0,
+        "gr-a-value": 1.01545,
+        "single-rate": 4.10989E-5
+      }
+    }
+  },
+  {
+    "id": 1119,
+    "name": "Warm Springs Valley",
+    "state": "NV",
+    "length": 38.26159,
+    "magnitude": 6.92,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.5,
+        "rake": 180.0,
+        "gr-a-value": 1.57814,
+        "single-rate": 3.198E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.57,
+        "rake": -163.8,
+        "gr-a-value": 1.63505,
+        "single-rate": 3.646E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.56,
+        "rake": 180.0,
+        "gr-a-value": 1.62736,
+        "single-rate": 3.582E-4
+      }
+    }
+  },
+  {
+    "id": 1120,
+    "name": "Wassuk Range",
+    "state": "NV",
+    "length": 119.44,
+    "magnitude": 7.49,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.7,
+        "rake": -90.0,
+        "gr-a-value": 1.91295,
+        "single-rate": 3.326E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.7200817765318392,
+        "rake": -95.0,
+        "gr-a-value": 1.92397,
+        "single-rate": 3.412E-4
+      },
+      "ZENG": {
+        "slip-rate": 1.0954435536601386,
+        "rake": -128.0,
+        "gr-a-value": 2.10618,
+        "single-rate": 5.19E-4
+      }
+    }
+  },
+  {
+    "id": 1126,
+    "name": "West Gate",
+    "state": "NV",
+    "length": 24.6277,
+    "magnitude": 6.69,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.30733,
+        "single-rate": 1.553E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.28343644395402184,
+        "rake": -92.6,
+        "gr-a-value": 1.75978,
+        "single-rate": 4.401E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -130.0,
+        "gr-a-value": 1.42203,
+        "single-rate": 2.022E-4
+      }
+    }
+  },
+  {
+    "id": 1127,
+    "name": "West Spring Mountains",
+    "state": "NV",
+    "length": 52.8885,
+    "magnitude": 7.08,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.045,
+        "rake": -90.0,
+        "gr-a-value": 0.66487,
+        "single-rate": 3.9E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.06894399988070801,
+        "rake": -90.6,
+        "gr-a-value": 0.85015,
+        "single-rate": 5.98E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.06894399988070801,
+        "rake": -126.0,
+        "gr-a-value": 0.85015,
+        "single-rate": 5.98E-5
+      }
+    }
+  },
+  {
+    "id": 1121,
+    "name": "Western Diamond Mountains",
+    "state": "NV",
+    "length": 64.54154,
+    "magnitude": 7.18,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.05747,
+        "single-rate": 7.49E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.061283555449518246,
+        "rake": -88.6,
+        "gr-a-value": 0.84482,
+        "single-rate": 4.59E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -50.0,
+        "gr-a-value": 1.14585,
+        "single-rate": 9.18E-5
+      }
+    }
+  },
+  {
+    "id": 1122,
+    "name": "Western Granite Range",
+    "state": "NV",
+    "length": 27.95212,
+    "magnitude": 6.76,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.63774,
+        "single-rate": 2.768E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.31407822167878097,
+        "rake": -91.1,
+        "gr-a-value": 1.83375,
+        "single-rate": 4.347E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.2527946662292628,
+        "rake": -130.0,
+        "gr-a-value": 1.73948,
+        "single-rate": 3.499E-4
+      }
+    }
+  },
+  {
+    "id": 1123,
+    "name": "Western Humboldt Range",
+    "state": "NV",
+    "length": 78.32083,
+    "magnitude": 7.28,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 0.97471,
+        "single-rate": 6.44E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.14554844419260582,
+        "rake": -92.9,
+        "gr-a-value": 1.13771,
+        "single-rate": 9.37E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -50.0,
+        "gr-a-value": 1.06308,
+        "single-rate": 7.89E-5
+      }
+    }
+  },
+  {
+    "id": 1124,
+    "name": "Western Smoke Creek Desert",
+    "state": "NV",
+    "length": 19.41534,
+    "magnitude": 6.57,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.54835,
+        "single-rate": 1.853E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.29875733281640143,
+        "rake": -89.4,
+        "gr-a-value": 2.02367,
+        "single-rate": 5.536E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -130.0,
+        "gr-a-value": 1.66305,
+        "single-rate": 2.413E-4
+      }
+    }
+  },
+  {
+    "id": 1125,
+    "name": "Western Toiyabe Range",
+    "state": "NV",
+    "length": 139.4496,
+    "magnitude": 7.5,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.07,
+        "rake": -90.0,
+        "gr-a-value": 0.97583,
+        "single-rate": 3.75163E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.27577599952283205,
+        "rake": -89.7,
+        "gr-a-value": 1.57129,
+        "single-rate": 1.47802E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.08426488874308759,
+        "rake": -49.0,
+        "gr-a-value": 1.05638,
+        "single-rate": 4.51617E-5
+      }
+    }
+  },
+  {
+    "id": 1128,
+    "name": "White River Valley",
+    "state": "NV",
+    "length": 104.6538,
+    "magnitude": 7.42,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.045,
+        "rake": -90.0,
+        "gr-a-value": 0.69412,
+        "single-rate": 2.39E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.015320888862379561,
+        "rake": -112.7,
+        "gr-a-value": 0.22512,
+        "single-rate": 8.1E-6
+      },
+      "ZENG": {
+        "slip-rate": 0.061283555449518246,
+        "rake": -130.0,
+        "gr-a-value": 0.82718,
+        "single-rate": 3.24E-5
+      }
+    }
+  },
+  {
+    "id": 2503,
+    "name": "Abert Rim",
+    "state": "OR",
+    "length": 45.49925,
+    "magnitude": 7.0,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.5,
+        "rake": -90.0,
+        "gr-a-value": 1.85366,
+        "single-rate": 4.917E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.48260799916495617,
+        "rake": -88.0,
+        "gr-a-value": 1.83829,
+        "single-rate": 4.746E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.43664533257781746,
+        "rake": -105.0,
+        "gr-a-value": 1.79482,
+        "single-rate": 4.294E-4
+      }
+    }
+  },
+  {
+    "id": 2504,
+    "name": "Alvin Canyon",
+    "state": "OR",
+    "length": 71.23322,
+    "magnitude": 7.23,
+    "rates": {
+      "GEO": {
+        "slip-rate": 6.4,
+        "rake": 0.0,
+        "gr-a-value": 2.52911,
+        "single-rate": 0.0026126
+      },
+      "BIRD": null,
+      "ZENG": null
+    }
+  },
+  {
+    "id": 2505,
+    "name": "Battle Rock",
+    "state": "OR",
+    "length": 45.0438,
+    "magnitude": 7.0,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.15033,
+        "single-rate": 9.74E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.053623111018328465,
+        "rake": -113.1,
+        "gr-a-value": 0.87968,
+        "single-rate": 5.22E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -128.0,
+        "gr-a-value": 1.28985,
+        "single-rate": 1.342E-4
+      }
+    }
+  },
+  {
+    "id": 2506,
+    "name": "Beaver Creek",
+    "state": "OR",
+    "length": 17.45503,
+    "magnitude": 6.52,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.82066,
+        "single-rate": 3.96E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.061283555449518246,
+        "rake": -72.2,
+        "gr-a-value": 1.30697,
+        "single-rate": 1.213E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.1838506663485547,
+        "rake": -90.0,
+        "gr-a-value": 1.78409,
+        "single-rate": 3.64E-4
+      }
+    }
+  },
+  {
+    "id": 2507,
+    "name": "Bolton",
+    "state": "OR",
+    "length": 9.08917,
+    "magnitude": 6.19,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.013,
+        "rake": 90.0,
+        "gr-a-value": null,
+        "single-rate": 3.2780845E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.025980762113533156,
+        "rake": 92.1,
+        "gr-a-value": null,
+        "single-rate": 6.5513144E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.025980762113533156,
+        "rake": 45.0,
+        "gr-a-value": null,
+        "single-rate": 6.5513144E-5
+      }
+    }
+  },
+  {
+    "id": 2508,
+    "name": "Cape Blanco Anticline",
+    "state": "OR",
+    "length": 47.21467,
+    "magnitude": 7.02,
+    "rates": {
+      "GEO": {
+        "slip-rate": 1.4,
+        "rake": 90.0,
+        "gr-a-value": 2.20201,
+        "single-rate": 0.0015648
+      },
+      "BIRD": null,
+      "ZENG": null
+    }
+  },
+  {
+    "id": 2509,
+    "name": "Chemult Graben (east)",
+    "state": "OR",
+    "length": 61.61573,
+    "magnitude": 7.16,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.052,
+        "rake": -90.0,
+        "gr-a-value": 0.76153,
+        "single-rate": 3.98E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.061283555449518246,
+        "rake": -90.0,
+        "gr-a-value": 0.83287,
+        "single-rate": 4.7E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.06894399988070801,
+        "rake": -131.0,
+        "gr-a-value": 0.88402,
+        "single-rate": 5.28E-5
+      }
+    }
+  },
+  {
+    "id": 2510,
+    "name": "Chemult Graben (west)",
+    "state": "OR",
+    "length": 67.94707,
+    "magnitude": 7.21,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.44,
+        "rake": -90.0,
+        "gr-a-value": 1.58566,
+        "single-rate": 3.128E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.3064177772475912,
+        "rake": -87.4,
+        "gr-a-value": 1.42852,
+        "single-rate": 2.179E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.5821937767704233,
+        "rake": -130.0,
+        "gr-a-value": 1.70728,
+        "single-rate": 4.139E-4
+      }
+    }
+  },
+  {
+    "id": 2511,
+    "name": "Coquille Anticline",
+    "state": "OR",
+    "length": 29.24076,
+    "magnitude": 6.78,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.24,
+        "rake": 90.0,
+        "gr-a-value": 1.62256,
+        "single-rate": 2.537E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.45899346400575247,
+        "rake": 92.5,
+        "gr-a-value": 1.90416,
+        "single-rate": 4.852E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.25980762113533157,
+        "rake": 113.0,
+        "gr-a-value": 1.657,
+        "single-rate": 2.747E-4
+      }
+    }
+  },
+  {
+    "id": 2512,
+    "name": "Cottonwood Mountain",
+    "state": "OR",
+    "length": 42.45026,
+    "magnitude": 6.97,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.09,
+        "rake": -90.0,
+        "gr-a-value": 1.09058,
+        "single-rate": 9.16E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.10724622203665693,
+        "rake": -89.6,
+        "gr-a-value": 1.16672,
+        "single-rate": 1.091E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.09192533317427735,
+        "rake": -76.0,
+        "gr-a-value": 1.09977,
+        "single-rate": 9.35E-5
+      }
+    }
+  },
+  {
+    "id": 2513,
+    "name": "Daisy Bank",
+    "state": "OR",
+    "length": 81.20971,
+    "magnitude": 7.3,
+    "rates": {
+      "GEO": {
+        "slip-rate": 5.7,
+        "rake": 0.0,
+        "gr-a-value": 2.50639,
+        "single-rate": 0.002083
+      },
+      "BIRD": null,
+      "ZENG": null
+    }
+  },
+  {
+    "id": 2514,
+    "name": "Gales Creek",
+    "state": "OR",
+    "length": 27.27874,
+    "magnitude": 6.75,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.016,
+        "rake": 180.0,
+        "gr-a-value": 0.30243,
+        "single-rate": 1.31E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.29,
+        "rake": 180.0,
+        "gr-a-value": 1.56071,
+        "single-rate": 2.379E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.02,
+        "rake": 153.0,
+        "gr-a-value": 0.39934,
+        "single-rate": 1.64E-5
+      }
+    }
+  },
+  {
+    "id": 2515,
+    "name": "Grant Butte",
+    "state": "OR",
+    "length": 9.381696,
+    "magnitude": 6.21,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.11,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 3.4148953E-4
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -131.0,
+        "gr-a-value": null,
+        "single-rate": 4.2806621E-4
+      }
+    }
+  },
+  {
+    "id": 2516,
+    "name": "Happy Camp",
+    "state": "OR",
+    "length": 19.69763,
+    "magnitude": 6.58,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.025,
+        "rake": 90.0,
+        "gr-a-value": 0.8425,
+        "single-rate": 3.55E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.008660254037844387,
+        "rake": 73.9,
+        "gr-a-value": 0.3821,
+        "single-rate": 1.23E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.034641016151377546,
+        "rake": 135.0,
+        "gr-a-value": 0.98416,
+        "single-rate": 4.92E-5
+      }
+    }
+  },
+  {
+    "id": 2517,
+    "name": "Helvetia",
+    "state": "OR",
+    "length": 13.63451,
+    "magnitude": 6.4,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.014,
+        "rake": 90.0,
+        "gr-a-value": null,
+        "single-rate": 2.5639974E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.04330127018922193,
+        "rake": 101.0,
+        "gr-a-value": null,
+        "single-rate": 7.9303078E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.025980762113533156,
+        "rake": 135.0,
+        "gr-a-value": null,
+        "single-rate": 4.7581841E-5
+      }
+    }
+  },
+  {
+    "id": 2518,
+    "name": "Juniper Mountain",
+    "state": "OR",
+    "length": 17.71874,
+    "magnitude": 6.53,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.01,
+        "rake": -90.0,
+        "gr-a-value": 0.52264,
+        "single-rate": 1.94E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.1149066664678467,
+        "rake": -89.6,
+        "gr-a-value": 1.58298,
+        "single-rate": 2.231E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -90.0,
+        "gr-a-value": 0.40689,
+        "single-rate": 1.49E-5
+      }
+    }
+  },
+  {
+    "id": 2519,
+    "name": "Klamath Graben (east)",
+    "state": "OR",
+    "length": 92.32883,
+    "magnitude": 7.36,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.3133,
+        "single-rate": 1.151E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.29875733281640143,
+        "rake": -87.4,
+        "gr-a-value": 1.48758,
+        "single-rate": 1.719E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.24513422179807298,
+        "rake": -129.0,
+        "gr-a-value": 1.40167,
+        "single-rate": 1.411E-4
+      }
+    }
+  },
+  {
+    "id": 2520,
+    "name": "Klamath Graben (west)",
+    "state": "OR",
+    "length": 50.66303,
+    "magnitude": 7.06,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.16,
+        "rake": -90.0,
+        "gr-a-value": 1.20513,
+        "single-rate": 1.424E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.32173866610997076,
+        "rake": -87.6,
+        "gr-a-value": 1.50851,
+        "single-rate": 2.864E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.21449244407331386,
+        "rake": -131.0,
+        "gr-a-value": 1.33242,
+        "single-rate": 1.909E-4
+      }
+    }
+  },
+  {
+    "id": 2521,
+    "name": "Lacamas Lake",
+    "state": "OR",
+    "length": 23.65342,
+    "magnitude": 6.67,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.026,
+        "rake": 180.0,
+        "gr-a-value": 0.48053,
+        "single-rate": 2.44E-5
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.04,
+        "rake": 146.0,
+        "gr-a-value": 0.66762,
+        "single-rate": 3.75E-5
+      }
+    }
+  },
+  {
+    "id": 2522,
+    "name": "Metolius",
+    "state": "OR",
+    "length": 91.98575,
+    "magnitude": 7.36,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.038,
+        "rake": -90.0,
+        "gr-a-value": 0.59043,
+        "single-rate": 2.18E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.1149066664678467,
+        "rake": -88.5,
+        "gr-a-value": 1.07099,
+        "single-rate": 6.59E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.04596266658713868,
+        "rake": -51.0,
+        "gr-a-value": 0.67305,
+        "single-rate": 2.64E-5
+      }
+    }
+  },
+  {
+    "id": 2523,
+    "name": "Mount Angel",
+    "state": "OR",
+    "length": 30.30835,
+    "magnitude": 6.8,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.067,
+        "rake": 90.0,
+        "gr-a-value": 0.77477,
+        "single-rate": 6.85E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.025980762113533156,
+        "rake": 103.1,
+        "gr-a-value": 0.36335,
+        "single-rate": 2.66E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.09526279441628825,
+        "rake": 135.0,
+        "gr-a-value": 0.92762,
+        "single-rate": 9.74E-5
+      }
+    }
+  },
+  {
+    "id": 2524,
+    "name": "Mount Hood",
+    "state": "OR",
+    "length": 11.06647,
+    "magnitude": 6.29,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.16,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 4.4446075E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.030641777724759123,
+        "rake": -82.7,
+        "gr-a-value": null,
+        "single-rate": 8.5119129E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.21449244407331386,
+        "rake": -111.0,
+        "gr-a-value": null,
+        "single-rate": 5.9583387E-4
+      }
+    }
+  },
+  {
+    "id": 2525,
+    "name": "Newberg",
+    "state": "OR",
+    "length": 33.56677,
+    "magnitude": 6.85,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.016,
+        "rake": 0.0,
+        "gr-a-value": 0.0533,
+        "single-rate": 1.14E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.04,
+        "rake": 180.0,
+        "gr-a-value": 0.45124,
+        "single-rate": 2.86E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.02,
+        "rake": 180.0,
+        "gr-a-value": 0.15021,
+        "single-rate": 1.43E-5
+      }
+    }
+  },
+  {
+    "id": 2526,
+    "name": "Paulina Marsh",
+    "state": "OR",
+    "length": 10.41728,
+    "magnitude": 6.26,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.29,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 8.4111799E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.04596266658713868,
+        "rake": -88.2,
+        "gr-a-value": null,
+        "single-rate": 1.3331037E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.28343644395402184,
+        "rake": -92.0,
+        "gr-a-value": null,
+        "single-rate": 8.2208071E-4
+      }
+    }
+  },
+  {
+    "id": 2527,
+    "name": "Pine Valley Graben (Brownlee)",
+    "state": "OR",
+    "length": 18.99062,
+    "magnitude": 6.56,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.008,
+        "rake": -90.0,
+        "gr-a-value": 0.44533,
+        "single-rate": 1.5E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.0383022221559489,
+        "rake": -93.2,
+        "gr-a-value": 1.12547,
+        "single-rate": 7.19E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -135.0,
+        "gr-a-value": 0.4265,
+        "single-rate": 1.44E-5
+      }
+    }
+  },
+  {
+    "id": 2528,
+    "name": "Pine Valley Graben (Halfway - Posey Valley)",
+    "state": "OR",
+    "length": 37.96342,
+    "magnitude": 6.91,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.008,
+        "rake": -90.0,
+        "gr-a-value": 0.01422,
+        "single-rate": 9.0E-6
+      },
+      "BIRD": {
+        "slip-rate": 0.061283555449518246,
+        "rake": -92.1,
+        "gr-a-value": 0.89847,
+        "single-rate": 6.86E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -135.0,
+        "gr-a-value": -0.00462,
+        "single-rate": 8.6E-6
+      }
+    }
+  },
+  {
+    "id": 2529,
+    "name": "Portland Hills",
+    "state": "OR",
+    "length": 49.72484,
+    "magnitude": 7.05,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": 90.0,
+        "gr-a-value": 0.89034,
+        "single-rate": 7.07E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.06928203230275509,
+        "rake": 92.9,
+        "gr-a-value": 0.73096,
+        "single-rate": 4.9E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.14722431864335458,
+        "rake": 45.0,
+        "gr-a-value": 1.05832,
+        "single-rate": 1.042E-4
+      }
+    }
+  },
+  {
+    "id": 2530,
+    "name": "Sandy River",
+    "state": "OR",
+    "length": 16.60058,
+    "magnitude": 6.5,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.016,
+        "rake": 180.0,
+        "gr-a-value": null,
+        "single-rate": 1.8943343E-5
+      },
+      "BIRD": null,
+      "ZENG": {
+        "slip-rate": 0.02,
+        "rake": 153.0,
+        "gr-a-value": null,
+        "single-rate": 2.3679178E-5
+      }
+    }
+  },
+  {
+    "id": 2531,
+    "name": "Santa Rosa Range",
+    "state": "OR",
+    "length": 170.7889,
+    "magnitude": 7.5,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.13,
+        "rake": -90.0,
+        "gr-a-value": 1.33272,
+        "single-rate": 8.53316E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.007660444431189781,
+        "rake": -73.0,
+        "gr-a-value": 0.10228,
+        "single-rate": 5.01961E-6
+      },
+      "ZENG": {
+        "slip-rate": 0.14554844419260582,
+        "rake": -51.0,
+        "gr-a-value": 1.38104,
+        "single-rate": 9.53718E-5
+      }
+    }
+  },
+  {
+    "id": 2532,
+    "name": "Sky Lakes",
+    "state": "OR",
+    "length": 53.43209,
+    "magnitude": 7.08,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.28,
+        "rake": -90.0,
+        "gr-a-value": 1.46325,
+        "single-rate": 2.453E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.16852977748617518,
+        "rake": -90.0,
+        "gr-a-value": 1.24277,
+        "single-rate": 1.476E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.3753617771282992,
+        "rake": -129.0,
+        "gr-a-value": 1.59054,
+        "single-rate": 3.288E-4
+      }
+    }
+  },
+  {
+    "id": 2534,
+    "name": "South Slough",
+    "state": "OR",
+    "length": 10.96146,
+    "magnitude": 6.29,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.62,
+        "rake": 90.0,
+        "gr-a-value": null,
+        "single-rate": 0.0013347843
+      },
+      "BIRD": {
+        "slip-rate": 0.25980762113533157,
+        "rake": 88.5,
+        "gr-a-value": null,
+        "single-rate": 5.5933389E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.44167295593006367,
+        "rake": 89.0,
+        "gr-a-value": null,
+        "single-rate": 9.5086754E-4
+      }
+    }
+  },
+  {
+    "id": 2533,
+    "name": "Southeast Newberry",
+    "state": "OR",
+    "length": 67.73103,
+    "magnitude": 7.2,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.51,
+        "rake": -90.0,
+        "gr-a-value": 1.77775,
+        "single-rate": 3.742E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.09958577760546715,
+        "rake": -90.0,
+        "gr-a-value": 1.06838,
+        "single-rate": 7.31E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.4443057770090072,
+        "rake": -79.0,
+        "gr-a-value": 1.71787,
+        "single-rate": 3.26E-4
+      }
+    }
+  },
+  {
+    "id": 2535,
+    "name": "Steens",
+    "state": "OR",
+    "length": 213.8683,
+    "magnitude": 7.5,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.27,
+        "rake": -90.0,
+        "gr-a-value": 1.79358,
+        "single-rate": 2.46587E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -88.7,
+        "gr-a-value": 1.43117,
+        "single-rate": 1.07041E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.4596266658713868,
+        "rake": -130.0,
+        "gr-a-value": 1.97887,
+        "single-rate": 3.77798E-4
+      }
+    }
+  },
+  {
+    "id": 2536,
+    "name": "Tule Springs Rims",
+    "state": "OR",
+    "length": 36.84005,
+    "magnitude": 6.9,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.10194,
+        "single-rate": 1.125E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.06894399988070801,
+        "rake": -88.8,
+        "gr-a-value": 0.94044,
+        "single-rate": 7.75E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -47.0,
+        "gr-a-value": 1.19031,
+        "single-rate": 1.378E-4
+      }
+    }
+  },
+  {
+    "id": 2537,
+    "name": "Turner - Mill Creek",
+    "state": "OR",
+    "length": 20.06061,
+    "magnitude": 6.59,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.007,
+        "rake": 90.0,
+        "gr-a-value": 0.29409,
+        "single-rate": 9.8E-6
+      },
+      "BIRD": {
+        "slip-rate": 0.025980762113533156,
+        "rake": 19.6,
+        "gr-a-value": 0.86365,
+        "single-rate": 3.63E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.008660254037844387,
+        "rake": 90.0,
+        "gr-a-value": 0.38653,
+        "single-rate": 1.21E-5
+      }
+    }
+  },
+  {
+    "id": 2538,
+    "name": "Waldport",
+    "state": "OR",
+    "length": 14.5682,
+    "magnitude": 6.43,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.14,
+        "rake": 90.0,
+        "gr-a-value": null,
+        "single-rate": 2.469937E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.2511473670974872,
+        "rake": 98.0,
+        "gr-a-value": null,
+        "single-rate": 4.4308414E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.1905255888325765,
+        "rake": 137.0,
+        "gr-a-value": null,
+        "single-rate": 3.361328E-4
+      }
+    }
+  },
+  {
+    "id": 2539,
+    "name": "Wallowa",
+    "state": "OR",
+    "length": 52.59314,
+    "magnitude": 7.08,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.14,
+        "rake": -90.0,
+        "gr-a-value": 1.15535,
+        "single-rate": 1.207E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.21449244407331386,
+        "rake": -90.8,
+        "gr-a-value": 1.34063,
+        "single-rate": 1.849E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.17619022191736494,
+        "rake": -130.0,
+        "gr-a-value": 1.2552,
+        "single-rate": 1.519E-4
+      }
+    }
+  },
+  {
+    "id": 2540,
+    "name": "Warner Valley (east)",
+    "state": "OR",
+    "length": 147.4447,
+    "magnitude": 7.5,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.11,
+        "rake": -90.0,
+        "gr-a-value": 1.19634,
+        "single-rate": 6.23347E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.09192533317427735,
+        "rake": -86.7,
+        "gr-a-value": 1.11838,
+        "single-rate": 5.20919E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.13022755533022626,
+        "rake": -50.0,
+        "gr-a-value": 1.26965,
+        "single-rate": 7.37972E-5
+      }
+    }
+  },
+  {
+    "id": 2541,
+    "name": "Warner Valley (west)",
+    "state": "OR",
+    "length": 43.88081,
+    "magnitude": 6.99,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.11,
+        "rake": -90.0,
+        "gr-a-value": 1.18429,
+        "single-rate": 1.08E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.17619022191736494,
+        "rake": -87.0,
+        "gr-a-value": 1.38888,
+        "single-rate": 1.73E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.14554844419260582,
+        "rake": -129.0,
+        "gr-a-value": 1.3059,
+        "single-rate": 1.429E-4
+      }
+    }
+  },
+  {
+    "id": 2542,
+    "name": "Wecoma",
+    "state": "OR",
+    "length": 88.44572,
+    "magnitude": 7.34,
+    "rates": {
+      "GEO": {
+        "slip-rate": 8.5,
+        "rake": 0.0,
+        "gr-a-value": 2.70006,
+        "single-rate": 0.0029465
+      },
+      "BIRD": null,
+      "ZENG": null
+    }
+  },
+  {
+    "id": 2543,
+    "name": "Whaleshead",
+    "state": "OR",
+    "length": 46.34967,
+    "magnitude": 7.01,
+    "rates": {
+      "GEO": {
+        "slip-rate": 2.55,
+        "rake": 180.0,
+        "gr-a-value": 2.15733,
+        "single-rate": 0.0014481
+      },
+      "BIRD": {
+        "slip-rate": 1.41,
+        "rake": 180.0,
+        "gr-a-value": 1.90001,
+        "single-rate": 8.007E-4
+      },
+      "ZENG": {
+        "slip-rate": 1.87,
+        "rake": -152.0,
+        "gr-a-value": 2.02263,
+        "single-rate": 0.0010619
+      }
+    }
+  },
+  {
+    "id": 2544,
+    "name": "Winter Rim",
+    "state": "OR",
+    "length": 65.92747,
+    "magnitude": 7.19,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.43,
+        "rake": -90.0,
+        "gr-a-value": 1.69605,
+        "single-rate": 3.179E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.3600408882659196,
+        "rake": -89.1,
+        "gr-a-value": 1.61552,
+        "single-rate": 2.641E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.5515519990456641,
+        "rake": -130.0,
+        "gr-a-value": 1.80075,
+        "single-rate": 4.045E-4
+      }
+    }
+  },
+  {
+    "id": 2545,
+    "name": "Yaquina",
+    "state": "OR",
+    "length": 8.183013,
+    "magnitude": 6.14,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.6,
+        "rake": 90.0,
+        "gr-a-value": null,
+        "single-rate": 0.0016188847
+      },
+      "BIRD": null,
+      "ZENG": null
+    }
+  },
+  {
+    "id": 2600,
+    "name": "Acala",
+    "state": "TX",
+    "length": 7.428555,
+    "magnitude": 6.09,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.088,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 3.274091E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.088,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 3.274091E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.088,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 3.274091E-4
+      }
+    }
+  },
+  {
+    "id": 2601,
+    "name": "Amargosa",
+    "state": "TX",
+    "length": 69.91642,
+    "magnitude": 7.22,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.11,
+        "rake": -90.0,
+        "gr-a-value": 0.99186,
+        "single-rate": 7.77E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.08426488874308759,
+        "rake": null,
+        "gr-a-value": 0.87612,
+        "single-rate": 5.96E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.08426488874308759,
+        "rake": null,
+        "gr-a-value": 0.87612,
+        "single-rate": 5.96E-5
+      }
+    }
+  },
+  {
+    "id": 2602,
+    "name": "Arroyo Diablo",
+    "state": "TX",
+    "length": 14.05195,
+    "magnitude": 6.41,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.013,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 3.0295925E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.013,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 3.0295925E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.013,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 3.0295925E-5
+      }
+    }
+  },
+  {
+    "id": 2603,
+    "name": "Caballo",
+    "state": "TX",
+    "length": 42.35434,
+    "magnitude": 6.97,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1375,
+        "rake": -90.0,
+        "gr-a-value": 0.666625,
+        "single-rate": 3.175E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.053623111018328465,
+        "rake": null,
+        "gr-a-value": 0.86471,
+        "single-rate": 5.44E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.030641777724759123,
+        "rake": null,
+        "gr-a-value": 0.62167,
+        "single-rate": 3.11E-5
+      }
+    }
+  },
+  {
+    "id": 2604,
+    "name": "Campo Grande",
+    "state": "TX",
+    "length": 45.00735,
+    "magnitude": 7.0,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.048,
+        "rake": -90.0,
+        "gr-a-value": 0.83122,
+        "single-rate": 4.67E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.048,
+        "rake": -90.0,
+        "gr-a-value": 0.83122,
+        "single-rate": 4.67E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.048,
+        "rake": -90.0,
+        "gr-a-value": 0.83122,
+        "single-rate": 4.67E-5
+      }
+    }
+  },
+  {
+    "id": 2605,
+    "name": "East Baylor Mountain - Carizzo Mountain",
+    "state": "TX",
+    "length": 41.39165,
+    "magnitude": 6.96,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.008,
+        "rake": -90.0,
+        "gr-a-value": 0.03237,
+        "single-rate": 8.2E-6
+      },
+      "BIRD": {
+        "slip-rate": 0.008,
+        "rake": -90.0,
+        "gr-a-value": 0.03237,
+        "single-rate": 8.2E-6
+      },
+      "ZENG": {
+        "slip-rate": 0.008,
+        "rake": -90.0,
+        "gr-a-value": 0.03237,
+        "single-rate": 8.2E-6
+      }
+    }
+  },
+  {
+    "id": 2606,
+    "name": "East Franklin Mountains",
+    "state": "TX",
+    "length": 48.22367,
+    "magnitude": 7.03,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 0.99155,
+        "single-rate": 9.4E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 0.99155,
+        "single-rate": 9.4E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 0.99155,
+        "single-rate": 9.4E-5
+      }
+    }
+  },
+  {
+    "id": 2607,
+    "name": "East Sierra Diablo",
+    "state": "TX",
+    "length": 34.56035,
+    "magnitude": 6.86,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.02,
+        "rake": -90.0,
+        "gr-a-value": 0.39056,
+        "single-rate": 2.42E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.02,
+        "rake": -90.0,
+        "gr-a-value": 0.39056,
+        "single-rate": 2.42E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.02,
+        "rake": -90.0,
+        "gr-a-value": 0.39056,
+        "single-rate": 2.42E-5
+      }
+    }
+  },
+  {
+    "id": 2608,
+    "name": "West Delaware Mountains",
+    "state": "TX",
+    "length": 24.98816,
+    "magnitude": 6.7,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.024,
+        "rake": -90.0,
+        "gr-a-value": 0.69021,
+        "single-rate": 3.65E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.024,
+        "rake": -90.0,
+        "gr-a-value": 0.69021,
+        "single-rate": 3.65E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.024,
+        "rake": -90.0,
+        "gr-a-value": 0.69021,
+        "single-rate": 3.65E-5
+      }
+    }
+  },
+  {
+    "id": 2609,
+    "name": "West Eagle Mountains - Red Hills",
+    "state": "TX",
+    "length": 24.43695,
+    "magnitude": 6.69,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.013,
+        "rake": -90.0,
+        "gr-a-value": 0.41789,
+        "single-rate": 2.0E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.013,
+        "rake": -90.0,
+        "gr-a-value": 0.41789,
+        "single-rate": 2.0E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.013,
+        "rake": -90.0,
+        "gr-a-value": 0.41789,
+        "single-rate": 2.0E-5
+      }
+    }
+  },
+  {
+    "id": 2610,
+    "name": "West Indio Mountains",
+    "state": "TX",
+    "length": 23.18034,
+    "magnitude": 6.66,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.044,
+        "rake": -90.0,
+        "gr-a-value": 0.93535,
+        "single-rate": 7.13E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.044,
+        "rake": -90.0,
+        "gr-a-value": 0.93535,
+        "single-rate": 7.13E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.044,
+        "rake": -90.0,
+        "gr-a-value": 0.93535,
+        "single-rate": 7.13E-5
+      }
+    }
+  },
+  {
+    "id": 2611,
+    "name": "West Lobo Valley",
+    "state": "TX",
+    "length": 61.41423,
+    "magnitude": 7.15,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.034,
+        "rake": -90.0,
+        "gr-a-value": 0.57967,
+        "single-rate": 2.69E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.034,
+        "rake": -90.0,
+        "gr-a-value": 0.57967,
+        "single-rate": 2.69E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.034,
+        "rake": -90.0,
+        "gr-a-value": 0.57967,
+        "single-rate": 2.69E-5
+      }
+    }
+  },
+  {
+    "id": 2700,
+    "name": "East Cache",
+    "state": "UT",
+    "length": 83.09881,
+    "magnitude": 7.31,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.2888,
+        "single-rate": 1.231E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.2681155550916423,
+        "rake": -91.2,
+        "gr-a-value": 1.4161,
+        "single-rate": 1.651E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.21449244407331386,
+        "rake": -117.0,
+        "gr-a-value": 1.31919,
+        "single-rate": 1.32E-4
+      }
+    }
+  },
+  {
+    "id": 2701,
+    "name": "Great Salt Lake (Antelope Island)",
+    "state": "UT",
+    "length": 39.45502,
+    "magnitude": 6.93,
+    "rates": {
+      "GEO": {
+        "slip-rate": null,
+        "rake": -90.0,
+        "gr-a-value": 1.4609,
+        "single-rate": 2.38E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.4213244437154379,
+        "rake": -90.1,
+        "gr-a-value": 1.4609,
+        "single-rate": 2.38E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.6128355544951825,
+        "rake": -109.0,
+        "gr-a-value": 1.4609,
+        "single-rate": 2.38E-4
+      }
+    }
+  },
+  {
+    "id": 2702,
+    "name": "Great Salt Lake (Fremont Island)",
+    "state": "UT",
+    "length": 31.99558,
+    "magnitude": 6.83,
+    "rates": {
+      "GEO": {
+        "slip-rate": null,
+        "rake": -90.0,
+        "gr-a-value": 1.34923,
+        "single-rate": 2.38E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.3523804438347299,
+        "rake": -92.6,
+        "gr-a-value": 1.34923,
+        "single-rate": 2.38E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.8273279985684963,
+        "rake": -130.0,
+        "gr-a-value": 1.34923,
+        "single-rate": 2.38E-4
+      }
+    }
+  },
+  {
+    "id": 2703,
+    "name": "Great Salt Lake (Promontory)",
+    "state": "UT",
+    "length": 53.80378,
+    "magnitude": 7.09,
+    "rates": {
+      "GEO": {
+        "slip-rate": null,
+        "rake": -90.0,
+        "gr-a-value": 1.46114,
+        "single-rate": 2.38E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1991715552109343,
+        "rake": -92.0,
+        "gr-a-value": 1.46114,
+        "single-rate": 2.38E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.9115928873115838,
+        "rake": -128.0,
+        "gr-a-value": 1.46114,
+        "single-rate": 2.38E-4
+      }
+    }
+  },
+  {
+    "id": 2704,
+    "name": "Hansel Valley",
+    "state": "UT",
+    "length": 13.13228,
+    "magnitude": 6.6,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.12,
+        "rake": -90.0,
+        "gr-a-value": 1.44723,
+        "single-rate": 1.356E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.13788799976141602,
+        "rake": -91.0,
+        "gr-a-value": 1.50757,
+        "single-rate": 1.558E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.12256711089903649,
+        "rake": -75.0,
+        "gr-a-value": 1.45642,
+        "single-rate": 1.385E-4
+      }
+    }
+  },
+  {
+    "id": 2705,
+    "name": "Hurricane (north)",
+    "state": "UT",
+    "length": 46.78428,
+    "magnitude": 7.02,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.2834,
+        "single-rate": 1.887E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.4749475547337664,
+        "rake": -89.6,
+        "gr-a-value": 1.65901,
+        "single-rate": 4.482E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.2527946662292628,
+        "rake": -50.0,
+        "gr-a-value": 1.38514,
+        "single-rate": 2.385E-4
+      }
+    }
+  },
+  {
+    "id": 2706,
+    "name": "Joes Valley",
+    "state": "UT",
+    "length": 46.78987,
+    "magnitude": 7.02,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.00756,
+        "single-rate": 1.0E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.17619022191736494,
+        "rake": -87.0,
+        "gr-a-value": 1.00756,
+        "single-rate": 1.0E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.2221528885045036,
+        "rake": -119.0,
+        "gr-a-value": 1.00756,
+        "single-rate": 1.0E-4
+      }
+    }
+  },
+  {
+    "id": 2707,
+    "name": "Morgan",
+    "state": "UT",
+    "length": 17.33688,
+    "magnitude": 6.52,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.02,
+        "rake": -90.0,
+        "gr-a-value": 0.81771,
+        "single-rate": 3.93E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.02298133329356934,
+        "rake": -93.7,
+        "gr-a-value": 0.87805,
+        "single-rate": 4.52E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.030641777724759123,
+        "rake": -135.0,
+        "gr-a-value": 1.00299,
+        "single-rate": 6.03E-5
+      }
+    }
+  },
+  {
+    "id": 2708,
+    "name": "North Promontory",
+    "state": "UT",
+    "length": 26.57005,
+    "magnitude": 6.73,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.62673,
+        "single-rate": 2.918E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.3983431104218686,
+        "rake": -90.4,
+        "gr-a-value": 1.92596,
+        "single-rate": 5.812E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.1915111107797445,
+        "rake": -90.0,
+        "gr-a-value": 1.6079,
+        "single-rate": 2.794E-4
+      }
+    }
+  },
+  {
+    "id": 2709,
+    "name": "Oquirrh - Southern Oquirrh Mountains",
+    "state": "UT",
+    "length": 63.4758,
+    "magnitude": 7.17,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.35538,
+        "single-rate": 1.525E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1991715552109343,
+        "rake": -89.1,
+        "gr-a-value": 1.35357,
+        "single-rate": 1.519E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.2527946662292628,
+        "rake": -130.0,
+        "gr-a-value": 1.45711,
+        "single-rate": 1.928E-4
+      }
+    }
+  },
+  {
+    "id": 2710,
+    "name": "Paragonah",
+    "state": "UT",
+    "length": 27.45295,
+    "magnitude": 6.75,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.46,
+        "rake": -90.0,
+        "gr-a-value": 1.99532,
+        "single-rate": 6.472E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.4213244437154379,
+        "rake": -88.3,
+        "gr-a-value": 1.95718,
+        "single-rate": 5.928E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.4213244437154379,
+        "rake": -65.0,
+        "gr-a-value": 1.95718,
+        "single-rate": 5.928E-4
+      }
+    }
+  },
+  {
+    "id": 2711,
+    "name": "Sevier - Toroweap (north)",
+    "state": "UT",
+    "length": 87.40258,
+    "magnitude": 7.33,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.04,
+        "rake": -90.0,
+        "gr-a-value": 0.60329,
+        "single-rate": 2.42E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.33705955497235035,
+        "rake": -89.5,
+        "gr-a-value": 1.52894,
+        "single-rate": 2.037E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.383022221559489,
+        "rake": -59.0,
+        "gr-a-value": 1.58445,
+        "single-rate": 2.314E-4
+      }
+    }
+  },
+  {
+    "id": 2712,
+    "name": "Stansbury",
+    "state": "UT",
+    "length": 54.07771,
+    "magnitude": 7.09,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.4,
+        "rake": -90.0,
+        "gr-a-value": 1.61934,
+        "single-rate": 3.426E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.3906826659906788,
+        "rake": -90.0,
+        "gr-a-value": 1.60911,
+        "single-rate": 3.346E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.451966221440197,
+        "rake": -99.0,
+        "gr-a-value": 1.67239,
+        "single-rate": 3.871E-4
+      }
+    }
+  },
+  {
+    "id": 2713,
+    "name": "Strawberry",
+    "state": "UT",
+    "length": 38.86077,
+    "magnitude": 6.92,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.11741,
+        "single-rate": 1.107E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.17619022191736494,
+        "rake": -90.5,
+        "gr-a-value": 1.3634,
+        "single-rate": 1.951E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.09958577760546715,
+        "rake": -77.0,
+        "gr-a-value": 1.11561,
+        "single-rate": 1.103E-4
+      }
+    }
+  },
+  {
+    "id": 2780,
+    "name": "Wasatch (Brigham City)",
+    "state": "UT",
+    "length": 40.81434,
+    "magnitude": 6.95,
+    "rates": {
+      "GEO": {
+        "slip-rate": 1.6,
+        "rake": -90.0,
+        "gr-a-value": 2.06512,
+        "single-rate": 9.09E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.5362311101832846,
+        "rake": -93.4,
+        "gr-a-value": 2.06512,
+        "single-rate": 9.09E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.9115928873115838,
+        "rake": -118.0,
+        "gr-a-value": 2.06512,
+        "single-rate": 9.09E-4
+      }
+    }
+  },
+  {
+    "id": 2785,
+    "name": "Wasatch (Levan)",
+    "state": "UT",
+    "length": 32.49228,
+    "magnitude": 6.83,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.3,
+        "rake": -90.0,
+        "gr-a-value": 1.55126,
+        "single-rate": 3.79E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.41366399928424813,
+        "rake": -87.8,
+        "gr-a-value": 1.69078,
+        "single-rate": 5.226E-4
+      },
+      "ZENG": {
+        "slip-rate": 1.2026897756967956,
+        "rake": -95.0,
+        "gr-a-value": 2.15429,
+        "single-rate": 0.0015193
+      }
+    }
+  },
+  {
+    "id": 2784,
+    "name": "Wasatch (Nephi)",
+    "state": "UT",
+    "length": 46.46653,
+    "magnitude": 7.01,
+    "rates": {
+      "GEO": {
+        "slip-rate": 1.7,
+        "rake": -90.0,
+        "gr-a-value": 2.04185,
+        "single-rate": 0.00111
+      },
+      "BIRD": {
+        "slip-rate": 1.1720479979720364,
+        "rake": -87.7,
+        "gr-a-value": 2.04185,
+        "single-rate": 0.00111
+      },
+      "ZENG": {
+        "slip-rate": 0.4672871103025766,
+        "rake": -90.0,
+        "gr-a-value": 2.04185,
+        "single-rate": 0.00111
+      }
+    }
+  },
+  {
+    "id": 2783,
+    "name": "Wasatch (Provo)",
+    "state": "UT",
+    "length": 77.1314,
+    "magnitude": 7.27,
+    "rates": {
+      "GEO": {
+        "slip-rate": 2.0,
+        "rake": -90.0,
+        "gr-a-value": 2.04125,
+        "single-rate": 7.69E-4
+      },
+      "BIRD": {
+        "slip-rate": 1.0877831092289487,
+        "rake": -91.5,
+        "gr-a-value": 2.04125,
+        "single-rate": 7.69E-4
+      },
+      "ZENG": {
+        "slip-rate": 1.2792942200086932,
+        "rake": -99.0,
+        "gr-a-value": 2.04125,
+        "single-rate": 7.69E-4
+      }
+    }
+  },
+  {
+    "id": 2782,
+    "name": "Wasatch (Salt Lake City)",
+    "state": "UT",
+    "length": 51.653892,
+    "magnitude": 7.07,
+    "rates": {
+      "GEO": {
+        "slip-rate": 1.3,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 7.69E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.7890257764125473,
+        "rake": -84.1,
+        "gr-a-value": 1.90452,
+        "single-rate": 7.69E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.8273279985684963,
+        "rake": -118.0,
+        "gr-a-value": 1.90452,
+        "single-rate": 7.69E-4
+      }
+    }
+  },
+  {
+    "id": 2781,
+    "name": "Wasatch (Weber)",
+    "state": "UT",
+    "length": 62.61081,
+    "magnitude": 7.16,
+    "rates": {
+      "GEO": {
+        "slip-rate": 1.9,
+        "rake": -90.0,
+        "gr-a-value": 2.04706,
+        "single-rate": 7.69E-4
+      },
+      "BIRD": {
+        "slip-rate": 1.110764442522518,
+        "rake": -90.4,
+        "gr-a-value": 2.03614,
+        "single-rate": 7.69E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.9728764427611021,
+        "rake": -129.0,
+        "gr-a-value": 2.03614,
+        "single-rate": 7.69E-4
+      }
+    }
+  },
+  {
+    "id": 2714,
+    "name": "West Cache (Clarkston)",
+    "state": "UT",
+    "length": 23.18025,
+    "magnitude": 6.66,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.4,
+        "rake": -90.0,
+        "gr-a-value": 1.89395,
+        "single-rate": 6.485E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.24513422179807298,
+        "rake": -94.3,
+        "gr-a-value": 1.68129,
+        "single-rate": 3.974E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.383022221559489,
+        "rake": -87.0,
+        "gr-a-value": 1.87511,
+        "single-rate": 6.209E-4
+      }
+    }
+  },
+  {
+    "id": 2716,
+    "name": "West Cache (Junction Hills)",
+    "state": "UT",
+    "length": 24.90743,
+    "magnitude": 6.7,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": -90.0,
+        "gr-a-value": 1.60962,
+        "single-rate": 3.034E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1532088886237956,
+        "rake": -92.3,
+        "gr-a-value": 1.49388,
+        "single-rate": 2.324E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.1991715552109343,
+        "rake": -97.0,
+        "gr-a-value": 1.60782,
+        "single-rate": 3.022E-4
+      }
+    }
+  },
+  {
+    "id": 2715,
+    "name": "West Cache (Wellsville)",
+    "state": "UT",
+    "length": 20.42393,
+    "magnitude": 6.6,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.1,
+        "rake": -90.0,
+        "gr-a-value": 1.55984,
+        "single-rate": 1.757E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.5438915546144744,
+        "rake": -89.9,
+        "gr-a-value": 2.29536,
+        "single-rate": 9.558E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.1149066664678467,
+        "rake": -118.0,
+        "gr-a-value": 1.62019,
+        "single-rate": 2.019E-4
+      }
+    }
+  },
+  {
+    "id": 2717,
+    "name": "West Valley",
+    "state": "UT",
+    "length": 16.67761,
+    "magnitude": 6.5,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.4,
+        "rake": -90.0,
+        "gr-a-value": null,
+        "single-rate": 3.8646886E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.24130399958247808,
+        "rake": -90.4,
+        "gr-a-value": null,
+        "single-rate": 4.814874E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.33705955497235035,
+        "rake": -89.0,
+        "gr-a-value": null,
+        "single-rate": 6.8340148E-4
+      }
+    }
+  },
+  {
+    "id": 2800,
+    "name": "Boulder Creek - Kendall Scarp",
+    "state": "WA",
+    "length": 10.84858,
+    "magnitude": 6.8,
+    "rates": {
+      "GEO": {
+        "slip-rate": null,
+        "rake": 90.0,
+        "gr-a-value": 1.44953,
+        "single-rate": 3.24E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1818653347947321,
+        "rake": 90.0,
+        "gr-a-value": 1.44953,
+        "single-rate": 3.24E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.6581793068761733,
+        "rake": 88.0,
+        "gr-a-value": 1.44953,
+        "single-rate": 3.24E-4
+      }
+    }
+  },
+  {
+    "id": 2801,
+    "name": "Devils Mountain",
+    "state": "WA",
+    "length": 125.1037,
+    "magnitude": 7.5,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.15,
+        "rake": 90.0,
+        "gr-a-value": 1.15312,
+        "single-rate": 5.643E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.4330127018922193,
+        "rake": 89.2,
+        "gr-a-value": 1.61353,
+        "single-rate": 1.6289959E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.20784609690826525,
+        "rake": 45.0,
+        "gr-a-value": 1.29478,
+        "single-rate": 7.8191582E-05
+      }
+    }
+  },
+  {
+    "id": 2802,
+    "name": "Hite",
+    "state": "WA",
+    "length": 88.24693,
+    "magnitude": 7.34,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.02,
+        "rake": 0.0,
+        "gr-a-value": 0.07069,
+        "single-rate": 6.9E-6
+      },
+      "BIRD": {
+        "slip-rate": 0.19,
+        "rake": 0.0,
+        "gr-a-value": 1.04842,
+        "single-rate": 6.57E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.02,
+        "rake": 153.0,
+        "gr-a-value": 0.07069,
+        "single-rate": 6.9E-6
+      }
+    }
+  },
+  {
+    "id": 2803,
+    "name": "Horse Heaven Hills",
+    "state": "WA",
+    "length": 59.40533,
+    "magnitude": 7.14,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.031,
+        "rake": 90.0,
+        "gr-a-value": 0.42263,
+        "single-rate": 1.92E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.034641016151377546,
+        "rake": 85.5,
+        "gr-a-value": 0.47086,
+        "single-rate": 2.15E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.05196152422706631,
+        "rake": 45.0,
+        "gr-a-value": 0.64695,
+        "single-rate": 3.22E-5
+      }
+    }
+  },
+  {
+    "id": 2804,
+    "name": "Lake Creek - Boundary Creek",
+    "state": "WA",
+    "length": 29.68525,
+    "magnitude": 6.79,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.43,
+        "rake": 90.0,
+        "gr-a-value": 1.87867,
+        "single-rate": 4.458E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.4503332099679081,
+        "rake": 91.0,
+        "gr-a-value": 1.89874,
+        "single-rate": 4.669E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.5888972745734183,
+        "rake": 128.0,
+        "gr-a-value": 2.01524,
+        "single-rate": 6.106E-4
+      }
+    }
+  },
+  {
+    "id": 2805,
+    "name": "Mill Creek",
+    "state": "WA",
+    "length": 56.47699,
+    "magnitude": 7.11,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.038,
+        "rake": 90.0,
+        "gr-a-value": 0.50129,
+        "single-rate": 2.48E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.12124355652982141,
+        "rake": 87.5,
+        "gr-a-value": 1.00516,
+        "single-rate": 7.92E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.05196152422706631,
+        "rake": 45.0,
+        "gr-a-value": 0.63718,
+        "single-rate": 3.39E-5
+      }
+    }
+  },
+  {
+    "id": 2806,
+    "name": "Rattlesnake - Wallula",
+    "state": "WA",
+    "length": 108.6552,
+    "magnitude": 7.44,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.043,
+        "rake": 90.0,
+        "gr-a-value": 0.57546,
+        "single-rate": 1.73E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.10392304845413262,
+        "rake": 111.1,
+        "gr-a-value": 0.9587,
+        "single-rate": 4.18E-5
+      },
+      "ZENG": {
+        "slip-rate": 0.060621778264910706,
+        "rake": 45.0,
+        "gr-a-value": 0.72462,
+        "single-rate": 2.44E-5
+      }
+    }
+  },
+  {
+    "id": 2807,
+    "name": "Saddle Mountains",
+    "state": "WA",
+    "length": 90.94239,
+    "magnitude": 7.35,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.052,
+        "rake": 90.0,
+        "gr-a-value": 0.6192611,
+        "single-rate": 2.39E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.25980762113533157,
+        "rake": 87.5,
+        "gr-a-value": 1.31806,
+        "single-rate": 1.193E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.06928203230275509,
+        "rake": 135.0,
+        "gr-a-value": 0.74403,
+        "single-rate": 3.18E-5
+      }
+    }
+  },
+  {
+    "id": 2881,
+    "name": "Seattle (middle)",
+    "state": "WA",
+    "length": 64.29441,
+    "magnitude": 7.2,
+    "rates": {
+      "GEO": {
+        "slip-rate": null,
+        "rake": 90.0,
+        "gr-a-value": 1.11,
+        "single-rate": 1.0E-7
+      },
+      "BIRD": {
+        "slip-rate": null,
+        "rake": 90.0,
+        "gr-a-value": 1.11,
+        "single-rate": 1.0E-7
+      },
+      "ZENG": {
+        "slip-rate": null,
+        "rake": 90.0,
+        "gr-a-value": 1.11,
+        "single-rate": 1.0E-7
+      }
+    }
+  },
+  {
+    "id": 2882,
+    "name": "Seattle (north)",
+    "state": "WA",
+    "length": 70.8791,
+    "magnitude": 7.23,
+    "rates": {
+      "GEO": {
+        "slip-rate": null,
+        "rake": 90.0,
+        "gr-a-value": 1.15,
+        "single-rate": 2.0E-4
+      },
+      "BIRD": {
+        "slip-rate": null,
+        "rake": 90.0,
+        "gr-a-value": 1.15,
+        "single-rate": 2.0E-4
+      },
+      "ZENG": {
+        "slip-rate": null,
+        "rake": 90.0,
+        "gr-a-value": 1.15,
+        "single-rate": 2.0E-4
+      }
+    }
+  },
+  {
+    "id": 2880,
+    "name": "Seattle (south)",
+    "state": "WA",
+    "length": 55.65915,
+    "magnitude": 7.2,
+    "rates": {
+      "GEO": {
+        "slip-rate": null,
+        "rake": 90.0,
+        "gr-a-value": 1.16,
+        "single-rate": 1.0E-7
+      },
+      "BIRD": {
+        "slip-rate": null,
+        "rake": 90.0,
+        "gr-a-value": 1.16,
+        "single-rate": 1.0E-7
+      },
+      "ZENG": {
+        "slip-rate": null,
+        "rake": 90.0,
+        "gr-a-value": 1.16,
+        "single-rate": 1.0E-7
+      }
+    }
+  },
+  {
+    "id": 2891,
+    "name": "Southern Whidbey Island (middle)",
+    "state": "WA",
+    "length": 91.46448,
+    "magnitude": 7.44,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": 90.0,
+        "gr-a-value": 1.1683331,
+        "single-rate": 6.77E-5
+      },
+      "BIRD": {
+        "slip-rate": 0.5888972745734183,
+        "rake": 91.1,
+        "gr-a-value": 1.63723,
+        "single-rate": 1.993E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.5975575286112625,
+        "rake": 90.0,
+        "gr-a-value": 1.6435702,
+        "single-rate": 2.022E-4
+      }
+    }
+  },
+  {
+    "id": 2892,
+    "name": "Southern Whidbey Island (north)",
+    "state": "WA",
+    "length": 86.44016,
+    "magnitude": 7.42,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": 90.0,
+        "gr-a-value": 1.15234,
+        "single-rate": 6.85E-5
+      },
+      "BIRD": null,
+      "ZENG": null
+    }
+  },
+  {
+    "id": 2890,
+    "name": "Southern Whidbey Island (south)",
+    "state": "WA",
+    "length": 89.60448,
+    "magnitude": 7.42,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.2,
+        "rake": 90.0,
+        "gr-a-value": 1.16796,
+        "single-rate": 7.1E-5
+      },
+      "BIRD": null,
+      "ZENG": null
+    }
+  },
+  {
+    "id": 2808,
+    "name": "Stonewall Anticline",
+    "state": "WA",
+    "length": 30.3591,
+    "magnitude": 6.8,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.5,
+        "rake": 90.0,
+        "gr-a-value": 1.64839,
+        "single-rate": 5.122E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.521347293078232,
+        "rake": 92.2,
+        "gr-a-value": 1.6651,
+        "single-rate": 5.323E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.5542562584220407,
+        "rake": 132.0,
+        "gr-a-value": 1.69313,
+        "single-rate": 5.677E-4
+      }
+    }
+  },
+  {
+    "id": 2809,
+    "name": "Strawberry Point",
+    "state": "WA",
+    "length": 26.21421,
+    "magnitude": 6.73,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.25,
+        "rake": 0.0,
+        "gr-a-value": 1.4863,
+        "single-rate": 2.112E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.43,
+        "rake": 0.0,
+        "gr-a-value": 1.72183,
+        "single-rate": 3.633E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.27,
+        "rake": -156.0,
+        "gr-a-value": 1.51972,
+        "single-rate": 2.281E-4
+      }
+    }
+  },
+  {
+    "id": 2810,
+    "name": "Tacoma",
+    "state": "WA",
+    "length": 34.61671,
+    "magnitude": 6.87,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.25,
+        "rake": 90.0,
+        "gr-a-value": 1.3778,
+        "single-rate": 2.293E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.19918584287042088,
+        "rake": 89.8,
+        "gr-a-value": 1.27912,
+        "single-rate": 1.827E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.3637306695894642,
+        "rake": 135.0,
+        "gr-a-value": 1.54064,
+        "single-rate": 3.336E-4
+      }
+    }
+  },
+  {
+    "id": 2811,
+    "name": "Utsalady Point",
+    "state": "WA",
+    "length": 24.5655,
+    "magnitude": 6.69,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.15,
+        "rake": 0.0,
+        "gr-a-value": 1.25083,
+        "single-rate": 1.363E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.14,
+        "rake": 0.0,
+        "gr-a-value": 1.22086,
+        "single-rate": 1.273E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.17,
+        "rake": -155.0,
+        "gr-a-value": 1.30519,
+        "single-rate": 1.545E-4
+      }
+    }
+  },
+  {
+    "id": 2900,
+    "name": "Bear River",
+    "state": "WY",
+    "length": 37.30161,
+    "magnitude": 6.9,
+    "rates": {
+      "GEO": {
+        "slip-rate": 1.5,
+        "rake": -90.0,
+        "gr-a-value": 1.6894,
+        "single-rate": 4.35E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.4443057770090072,
+        "rake": -89.1,
+        "gr-a-value": 1.6894,
+        "single-rate": 4.35E-4
+      },
+      "ZENG": {
+        "slip-rate": 1.286954664439883,
+        "rake": -98.0,
+        "gr-a-value": 1.6894,
+        "single-rate": 4.35E-4
+      }
+    }
+  },
+  {
+    "id": 2901,
+    "name": "Eagle Bay",
+    "state": "WY",
+    "length": 31.74049,
+    "magnitude": 6.82,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.48,
+        "rake": -90.0,
+        "gr-a-value": 1.749,
+        "single-rate": 6.131E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.559212443476854,
+        "rake": -84.1,
+        "gr-a-value": 1.81533,
+        "single-rate": 7.143E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.5055893324585256,
+        "rake": -90.0,
+        "gr-a-value": 1.77155,
+        "single-rate": 6.458E-4
+      }
+    }
+  },
+  {
+    "id": 2902,
+    "name": "East Mount Sheridan",
+    "state": "WY",
+    "length": 22.11338,
+    "magnitude": 6.64,
+    "rates": {
+      "GEO": {
+        "slip-rate": 1.4,
+        "rake": -90.0,
+        "gr-a-value": 2.42477,
+        "single-rate": 0.00232
+      },
+      "BIRD": {
+        "slip-rate": 1.1260853313848977,
+        "rake": -84.4,
+        "gr-a-value": 2.33021,
+        "single-rate": 0.0018661
+      },
+      "ZENG": {
+        "slip-rate": 1.1797084424032263,
+        "rake": -87.0,
+        "gr-a-value": 2.35041,
+        "single-rate": 0.0019549
+      }
+    }
+  },
+  {
+    "id": 2903,
+    "name": "Grand Valley",
+    "state": "WY",
+    "length": 55.33062,
+    "magnitude": 7.1,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.8,
+        "rake": -90.0,
+        "gr-a-value": 1.92629,
+        "single-rate": 6.773E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.1838506663485547,
+        "rake": -89.3,
+        "gr-a-value": 1.28766,
+        "single-rate": 1.556E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.6664586655135109,
+        "rake": -89.0,
+        "gr-a-value": 1.84697,
+        "single-rate": 5.642E-4
+      }
+    }
+  },
+  {
+    "id": 2904,
+    "name": "Greys River",
+    "state": "WY",
+    "length": 49.99867,
+    "magnitude": 7.05,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.62,
+        "rake": -90.0,
+        "gr-a-value": 1.79167,
+        "single-rate": 5.637E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.6664586655135109,
+        "rake": -89.1,
+        "gr-a-value": 1.82305,
+        "single-rate": 6.059E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.5362311101832846,
+        "rake": -86.0,
+        "gr-a-value": 1.72863,
+        "single-rate": 4.875E-4
+      }
+    }
+  },
+  {
+    "id": 2905,
+    "name": "Hoback",
+    "state": "WY",
+    "length": 18.91577,
+    "magnitude": 6.56,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.071,
+        "rake": -90.0,
+        "gr-a-value": 1.39179,
+        "single-rate": 1.327E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.6587982210823211,
+        "rake": -94.7,
+        "gr-a-value": 2.35928,
+        "single-rate": 0.0012311
+      },
+      "ZENG": {
+        "slip-rate": 0.14554844419260582,
+        "rake": -126.0,
+        "gr-a-value": 1.70354,
+        "single-rate": 2.72E-4
+      }
+    }
+  },
+  {
+    "id": 2906,
+    "name": "Rock Creek",
+    "state": "WY",
+    "length": 41.04386,
+    "magnitude": 6.95,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.62,
+        "rake": -90.0,
+        "gr-a-value": 1.9219,
+        "single-rate": 6.537E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.3983431104218686,
+        "rake": -89.6,
+        "gr-a-value": 1.72977,
+        "single-rate": 4.2E-4
+      },
+      "ZENG": {
+        "slip-rate": 1.4248426642012992,
+        "rake": -93.0,
+        "gr-a-value": 2.28328,
+        "single-rate": 0.0015022
+      }
+    }
+  },
+  {
+    "id": 2907,
+    "name": "Teton",
+    "state": "WY",
+    "length": 61.60333,
+    "magnitude": 7.16,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.7,
+        "rake": -90.0,
+        "gr-a-value": 1.89054,
+        "single-rate": 5.363E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.6664586655135109,
+        "rake": -81.6,
+        "gr-a-value": 1.77665,
+        "single-rate": 4.737E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.69710044323827,
+        "rake": -81.0,
+        "gr-a-value": 1.79617,
+        "single-rate": 4.954E-4
+      }
+    }
+  },
+  {
+    "id": 2908,
+    "name": "Upper Yellowstone Valley",
+    "state": "WY",
+    "length": 18.03641,
+    "magnitude": 6.54,
+    "rates": {
+      "GEO": {
+        "slip-rate": 0.37,
+        "rake": -90.0,
+        "gr-a-value": 2.09506,
+        "single-rate": 7.064E-4
+      },
+      "BIRD": {
+        "slip-rate": 0.4213244437154379,
+        "rake": -85.5,
+        "gr-a-value": 2.15147,
+        "single-rate": 8.044E-4
+      },
+      "ZENG": {
+        "slip-rate": 0.32173866610997076,
+        "rake": -87.0,
+        "gr-a-value": 2.03436,
+        "single-rate": 6.143E-4
+      }
+    }
+  }
+]

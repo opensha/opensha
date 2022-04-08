@@ -56,24 +56,24 @@ public final class GeoJSONFaultSection implements FaultSection {
 	private StirlingSurfaceCache stirlingCache;
 	
 	// core property names
-	static final String FAULT_ID = "FaultID";
-	static final String FAULT_NAME = "FaultName";
-	static final String DIP = "DipDeg";
-	static final String DIP_DIR = "DipDir";
-	static final String RAKE = "Rake";
-	static final String LOW_DEPTH = "LowDepth";
-	static final String UPPER_DEPTH = "UpDepth";
+	public static final String FAULT_ID = "FaultID";
+	public static final String FAULT_NAME = "FaultName";
+	public static final String DIP = "DipDeg";
+	public static final String DIP_DIR = "DipDir";
+	public static final String RAKE = "Rake";
+	public static final String LOW_DEPTH = "LowDepth";
+	public static final String UPPER_DEPTH = "UpDepth";
 	
 	// optional property names
-	static final String DATE_LAST = "DateLastEvent";
-	static final String SLIP_LAST = "SlipLastEvent";
-	static final String ASEIS = "AseismicSlipFactor";
-	static final String COUPLING = "CouplingCoeff";
-	static final String SLIP_RATE = "SlipRate";
-	static final String PARENT_ID = "ParentID";
-	static final String PARENT_NAME = "ParentName";
-	static final String SLIP_STD_DEV = "SlipRateStdDev";
-	static final String CONNECTOR = "Connector";
+	public static final String DATE_LAST = "DateLastEvent";
+	public static final String SLIP_LAST = "SlipLastEvent";
+	public static final String ASEIS = "AseismicSlipFactor";
+	public static final String COUPLING = "CouplingCoeff";
+	public static final String SLIP_RATE = "SlipRate";
+	public static final String PARENT_ID = "ParentID";
+	public static final String PARENT_NAME = "ParentName";
+	public static final String SLIP_STD_DEV = "SlipRateStdDev";
+	public static final String CONNECTOR = "Connector";
 
 	private GeoJSONFaultSection(Feature feature) {
 		Preconditions.checkNotNull(feature, "feature cannot be null");
