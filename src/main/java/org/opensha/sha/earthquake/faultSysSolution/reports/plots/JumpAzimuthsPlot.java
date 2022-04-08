@@ -188,7 +188,7 @@ public class JumpAzimuthsPlot extends AbstractRupSetPlot {
 		return ret;
 	}
 	
-	private static Map<RakeType, List<Double>> getAzimuthsFrom (RakeType sourceRake,
+	public static Map<RakeType, List<Double>> getAzimuthsFrom (RakeType sourceRake,
 			Table<RakeType, RakeType, List<Double>> azTable) {
 		Map<RakeType, List<Double>> azMap;
 		if (sourceRake == null) {

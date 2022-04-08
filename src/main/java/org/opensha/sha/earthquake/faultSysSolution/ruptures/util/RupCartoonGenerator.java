@@ -1061,7 +1061,8 @@ public class RupCartoonGenerator {
 				List<XY_DataSet> funcs = new ArrayList<>();
 				List<PlotCurveCharacterstics> chars = new ArrayList<>();
 				
-				titles.add("Rupture "+(titles.size()+1)+", "+rup.getTotalNumSects()+" Sections");
+//				titles.add("Rupture "+(titles.size()+1)+", "+rup.getTotalNumSects()+" Sections");
+				titles.add(" ");
 				
 				boolean firstRup = true;
 				boolean firstNoRup = true;
@@ -1198,7 +1199,8 @@ public class RupCartoonGenerator {
 				List<XY_DataSet> funcs = new ArrayList<>();
 				List<PlotCurveCharacterstics> chars = new ArrayList<>();
 				
-				titles.add("Rupture "+(titles.size()+1)+", "+rup.getTotalNumSects()+" Sections");
+//				titles.add("Rupture "+(titles.size()+1)+", "+rup.getTotalNumSects()+" Sections");
+				titles.add(" ");
 				
 				boolean firstRup = true;
 				boolean firstNoRup = true;
@@ -1244,7 +1246,8 @@ public class RupCartoonGenerator {
 				specs.add(spec);
 			}
 			
-			plotTileMulti(outputDir, prefixes.get(p), specs, title, titles, 0.01, 16, 0);
+//			plotTileMulti(outputDir, prefixes.get(p), specs, title, titles, 0.01, 16, 0);
+			plotTileMulti(outputDir, prefixes.get(p), specs, title, titles, 0.0, 16, 0);
 		}
 	}
 	
@@ -1395,6 +1398,9 @@ public class RupCartoonGenerator {
 		combSpec.setPlotAnnotations(anns);
 		
 		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		
+		if (titles != null && titles.size() >= 10)
+			gp.setLegendFontSize(26);
 		
 		gp.drawGraphPanel(combSpec, false, false, xRange, yRange);
 		PlotUtils.setAxisVisible(gp, false, false);

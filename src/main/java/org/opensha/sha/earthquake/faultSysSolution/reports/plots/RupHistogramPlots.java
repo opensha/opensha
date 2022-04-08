@@ -27,6 +27,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
@@ -327,7 +328,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 				
 				PlotSpec spec = new PlotSpec(funcs, chars, scalar.getName()+" vs Rupture Rate", xAxisLabel, "Rupture Rate (/yr)");
 				
-				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				HeadlessGraphPanel gp = new HeadlessGraphPanel(PLOT_PREFS_DEFAULT);
 				
 				gp.drawGraphPanel(spec, false, true, xRange, yRange);
 				
@@ -627,7 +628,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			}
 		}
 		
-		String title = histScalar.getName()+" Histogram";
+		String title = TITLES ? histScalar.getName()+" Histogram" : " ";
 		String xAxisLabel = histScalar.getxAxisLabel();
 		String yAxisLabel = rateWeighted ? "Annual Rate" : "Count";
 		
@@ -642,12 +643,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			xRange = new Range(hist.getMinX() - 0.5*hist.getDelta(),
 					hist.getMaxX() + 0.5*hist.getDelta());
 		
-		HeadlessGraphPanel gp = new HeadlessGraphPanel();
-		gp.setBackgroundColor(Color.WHITE);
-		gp.setTickLabelFontSize(18);
-		gp.setAxisLabelFontSize(20);
-		gp.setPlotLabelFontSize(21);
-		gp.setLegendFontSize(22);
+		HeadlessGraphPanel gp = new HeadlessGraphPanel(PLOT_PREFS_DEFAULT);
 		
 		Range yRange;
 		if (logY) {
@@ -690,6 +686,9 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 		gp.saveAsTXT(txtFile.getAbsolutePath());
 		return pngFile;
 	}
+	
+	public static PlotPreferences PLOT_PREFS_DEFAULT = PlotUtils.getDefaultFigurePrefs();
+	public static boolean TITLES = true;
 	
 	private static HistogramFunction getCumulativeFractionalHist(HistogramFunction hist) {
 		HistogramFunction ret = new HistogramFunction(hist.getMinX(), hist.getMaxX(), hist.size());
@@ -829,7 +828,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			}
 		}
 		
-		String title = histScalar.getName()+" Cumulative Distribution";
+		String title = TITLES ? histScalar.getName()+" Cumulative Distribution" : " ";
 		String xAxisLabel = histScalar.getxAxisLabel();
 		String yAxisLabel = "Cumulative Fraction";
 		
@@ -844,12 +843,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			xRange = new Range(hist.getMinX() - 0.5*hist.getDelta(),
 					hist.getMaxX() + 0.5*hist.getDelta());
 		
-		HeadlessGraphPanel gp = new HeadlessGraphPanel();
-		gp.setBackgroundColor(Color.WHITE);
-		gp.setTickLabelFontSize(18);
-		gp.setAxisLabelFontSize(20);
-		gp.setPlotLabelFontSize(21);
-		gp.setLegendFontSize(22);
+		HeadlessGraphPanel gp = new HeadlessGraphPanel(PLOT_PREFS_DEFAULT);
 		
 		Range yRange;
 		if (logY)

@@ -32,6 +32,7 @@ import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
@@ -585,8 +586,10 @@ public class RupSetMapMaker {
 		double cptTick;
 		if (cptLen > 5000)
 			cptTick = 1000;
-		else if (cptLen > 1000)
+		else if (cptLen > 2500)
 			cptTick = 500;
+		else if (cptLen > 1000)
+			cptTick = 250;
 		else if (cptLen > 500)
 			cptTick = 100;
 		else if (cptLen > 100)
@@ -603,7 +606,8 @@ public class RupSetMapMaker {
 			cptTick = .1;
 		else
 			cptTick = cptLen / 10d;
-		return GraphPanel.getLegendForCPT(cpt, label, 24, 18, cptTick, RectangleEdge.BOTTOM);
+		return GraphPanel.getLegendForCPT(cpt, label, PLOT_PREFS_DEFAULT.getAxisLabelFontSize(),
+				PLOT_PREFS_DEFAULT.getTickLabelFontSize(), cptTick, RectangleEdge.BOTTOM);
 	}
 	
 	public void plot(File outputDir, String prefix, String title) throws IOException {
@@ -618,8 +622,10 @@ public class RupSetMapMaker {
 		plot(outputDir, prefix, spec, 800);
 	}
 	
+	public static PlotPreferences PLOT_PREFS_DEFAULT = PlotUtils.getDefaultFigurePrefs();
+	
 	public void plot(File outputDir, String prefix, PlotSpec spec, int width) throws IOException {
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		HeadlessGraphPanel gp = new HeadlessGraphPanel(PLOT_PREFS_DEFAULT);
 		
 		Range xRange = getXRange();
 		Range yRange = getYRange();
