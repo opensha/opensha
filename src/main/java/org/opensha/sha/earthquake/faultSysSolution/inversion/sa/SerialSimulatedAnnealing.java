@@ -877,11 +877,12 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 						misfit_working_ineq[row] = misfit_perturbed_ineq[row];
 				perturbs++;
 				Preconditions.checkState(x[index] >= 0, "bad x[%s]=%s", (Integer)index, (Double)x[index]);
+				int prevNonZero = curNumNonZero;
 				if (wasZero) {
 					if (x[index] != 0) {
 						Preconditions.checkState(curNumNonZero < xbest.length,
 								"Non-zero count (%s) already at 100% (%s). new x[%s]=%s, prev=%s",
-								curNumNonZero, xbest.length, index, x[index], x[index]-perturb);
+								curNumNonZero, xbest.length, index, x[index], prevX);
 						curNumNonZero++;
 					}
 				} else {
@@ -890,12 +891,11 @@ public class SerialSimulatedAnnealing implements SimulatedAnnealing {
 					}
 				}
 				
-				
 				// keep track that we have now changed the value at this index
-				curPerturbChainSize++;
 				if (curPerturbChainSize >= curPertubChain.length)
 					curPertubChain = Arrays.copyOf(curPertubChain, curPerturbChainSize + 1000);
 				curPertubChain[curPerturbChainSize] = index;
+				curPerturbChainSize++;
 				
 				// Is this a new best?
 				if (Enew[0] < Ebest[0] || keepCurrentAsBest) {
