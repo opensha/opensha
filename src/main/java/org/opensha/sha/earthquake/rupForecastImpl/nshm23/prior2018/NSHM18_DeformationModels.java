@@ -195,12 +195,18 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 //			Preconditions.checkNotNull(rec, "No matching deformation model record for id=%s, name=%s",
 //					sect.getSectionId(), sect.getSectionName());
 			DefModelSlipRecord slipRec = rec.rates.get(shortName);
+			
+			double rake = sect.getAveRake();
+			Preconditions.checkState((float)rake == -180f || (float)rake == -90f || (float)rake == 0f
+					|| (float)rake == 90f || (float)rake == 180f,
+					"Unexpected geologic rake: %s", rake);
+			boolean slipIsVertical = (float)rake == -90f || (float)rake == 90f;
 
 //			Preconditions.checkNotNull(slipRec, "No matching deformation model %s rate for id=%s, name=%s",
 			//					shortName, sect.getSectionId(), sect.getSectionName());
+			double slipRate;
 			if (slipRec == null || slipRec.slip_rate == null) {
 				if (rec.name.startsWith("Seattle")) {
-					double slipRate;
 					if (rec.name.contains("east") || rec.name.contains("middle"))
 						slipRate = 0.08;
 					else if (rec.name.contains("north") || rec.name.contains("south"))
@@ -208,13 +214,11 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 					else
 						throw new IllegalStateException("Unexpected Seattle: "+rec.name);
 					System.err.println("WARNING: applying hardcoded NSHM23 draft slip rate for "+rec.name+": "+(float)slipRate);
-					modSect.setAveSlipRate(slipRate);
+					slipIsVertical = false;
 				} else {
 					// use other slip rates
 					double sumOtherWeights = 0d;
 					double rateWeightSum = 0d;
-					List<Double> oRakes = new ArrayList<>();
-					List<Double> oWeights = new ArrayList<>();
 					for (NSHM18_DeformationModels dm : values()) {
 						DefModelSlipRecord oSlipRec = rec.rates.get(dm.shortName);
 						if (oSlipRec != null && oSlipRec.slip_rate != null && oSlipRec.slip_rate > 0d) {
@@ -226,28 +230,31 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 						rateWeightSum /= sumOtherWeights;
 					System.err.println("WARNING: no "+shortName+" slip rate for id="+sect.getSectionId()+", name="
 							+sect.getSectionName()+", setting to weight average of other branch choices: "+(float)rateWeightSum);
-					modSect.setAveSlipRate(rateWeightSum);
+					slipRate = rateWeightSum;
 					
-					if (oRakes.size() == 1) {
-						modSect.setAveRake(oRakes.get(1));
-					} else if (oRakes.size() > 1) {
-						double avgRake = FaultUtils.getScaledAngleAverage(oWeights, oRakes);
-						modSect.setAveRake(FaultUtils.getInRakeRange(avgRake));
-					}
+					// TODO: don't use DM rake
+					// TODO: if rake is -90 or 90, they are vertical slip rates
 				}
 			} else {
 				//				Preconditions.checkNotNull(slipRec.slip_rate, "No %s slip rate for id=%s, name=%s",
 				//				shortName, sect.getSectionId(), sect.getSectionName());
 				//		Preconditions.checkNotNull(slipRec.rake, "No %s rake for id=%s, name=%s",
 				//				shortName, sect.getSectionId(), sect.getSectionName());
-				modSect.setAveSlipRate(slipRec.slip_rate);
-				if (slipRec.rake == null) {
-					System.err.println("WARNING: no "+shortName+" rake for id="
-							+sect.getSectionId()+", name="+sect.getSectionName()+", leaving at "+(float)sect.getAveRake());
-				} else {
-					modSect.setAveRake(slipRec.rake);
-				}
+				slipRate = slipRec.slip_rate;
+				// Peter says DM rakes were never actually used
+//				if (slipRec.rake == null) {
+//					System.err.println("WARNING: no "+shortName+" rake for id="
+//							+sect.getSectionId()+", name="+sect.getSectionName()+", leaving at "+(float)sect.getAveRake());
+//				} else {
+//					modSect.setAveRake(slipRec.rake);
+//				}
 			}
+			
+			if (slipIsVertical) {
+				// need to convert form vertical slip rate to on-plane slip rate
+				slipRate = slipRate / Math.sin(Math.toRadians(sect.getAveDip()));
+			}
+			modSect.setAveSlipRate(slipRate);
 			
 			if (modSect.getOrigAveSlipRate() > 0d) {
 				numNonZero++;

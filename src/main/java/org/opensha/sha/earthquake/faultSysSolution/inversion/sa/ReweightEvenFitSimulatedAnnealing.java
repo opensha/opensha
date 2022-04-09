@@ -25,15 +25,21 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurat
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration.Builder;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SectionTotalRateConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationsPerVariableCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitProgress;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.Quantity;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_U3_HybridLogicTreeBranch;
@@ -43,6 +49,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstr
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSeisMoRateReductions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.U3_UncertAddDeformationModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.prior2018.NSHM18_LogicTreeBranch;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -733,39 +740,47 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		String dirName = new SimpleDateFormat("yyyy_MM_dd").format(new Date());
 
 		NSHM23_InvConfigFactory factory = new NSHM23_InvConfigFactory();
-		LogicTreeBranch<LogicTreeNode> branch = new NSHM23_U3_HybridLogicTreeBranch();
-		branch.setValue(FaultModels.FM3_1);
-		branch.setValue(RupturePlausibilityModels.COULOMB);
-//		branch.setValue(RupturePlausibilityModels.UCERF3);
 		
-		// good fitting
-		branch.setValue(U3_UncertAddDeformationModels.U3_ZENG);
-		branch.setValue(ScalingRelationships.SHAW_2009_MOD);
-		branch.setValue(SupraSeisBValues.B_0p8);
-		branch.setValue(SlipAlongRuptureModels.UNIFORM);
+//		LogicTreeBranch<LogicTreeNode> branch = new NSHM23_U3_HybridLogicTreeBranch();
+//		branch.setValue(FaultModels.FM3_1);
+//		branch.setValue(RupturePlausibilityModels.COULOMB);
+////		branch.setValue(RupturePlausibilityModels.UCERF3);
+//		
+//		// good fitting
+//		branch.setValue(U3_UncertAddDeformationModels.U3_ZENG);
+//		branch.setValue(ScalingRelationships.SHAW_2009_MOD);
+//		branch.setValue(SupraSeisBValues.B_0p8);
+//		branch.setValue(SlipAlongRuptureModels.UNIFORM);
+//		
+//		// poor fitting
+////		branch.setValue(U3_UncertAddDeformationModels.U3_NEOK);
+////		branch.setValue(ScalingRelationships.HANKS_BAKUN_08);
+////		branch.setValue(SupraSeisBValues.B_0p0);
+////		branch.setValue(SlipAlongRuptureModels.TAPERED);
+//		
+//		// constant
+//		branch.setValue(SubSeisMoRateReductions.SUB_B_1);
+//		
+//		// inv model
+//		branch.setValue(SubSectConstraintModels.TOT_NUCL_RATE);
+////		branch.setValue(SubSectConstraintModels.NUCL_MFD);
+//		
+//		branch.setValue(SegmentationModels.SHAW_R0_3);
+//		
+//		dirName += "-"+branch.getValue(U3_UncertAddDeformationModels.class).getFilePrefix();
+//		dirName += "-"+branch.getValue(ScalingRelationships.class).getFilePrefix();
+//		dirName += "-"+branch.getValue(SlipAlongRuptureModels.class).getFilePrefix();
+//		dirName += "-"+branch.getValue(SupraSeisBValues.class).getFilePrefix();
+//		dirName += "-"+branch.getValue(SubSectConstraintModels.class).getFilePrefix();
+//		if (branch.hasValue(SegmentationModels.class))
+//			dirName += "-"+branch.getValue(SegmentationModels.class).getFilePrefix();
 		
-		// poor fitting
-//		branch.setValue(U3_UncertAddDeformationModels.U3_NEOK);
-//		branch.setValue(ScalingRelationships.HANKS_BAKUN_08);
-//		branch.setValue(SupraSeisBValues.B_0p0);
-//		branch.setValue(SlipAlongRuptureModels.TAPERED);
+		LogicTreeBranch<LogicTreeNode> branch = NSHM18_LogicTreeBranch.DEFAULT;
 		
-		// constant
-		branch.setValue(SubSeisMoRateReductions.SUB_B_1);
-		
-		// inv model
-		branch.setValue(SubSectConstraintModels.TOT_NUCL_RATE);
-//		branch.setValue(SubSectConstraintModels.NUCL_MFD);
-		
-		branch.setValue(SegmentationModels.SHAW_R0_3);
-		
-		dirName += "-"+branch.getValue(U3_UncertAddDeformationModels.class).getFilePrefix();
-		dirName += "-"+branch.getValue(ScalingRelationships.class).getFilePrefix();
-		dirName += "-"+branch.getValue(SlipAlongRuptureModels.class).getFilePrefix();
-		dirName += "-"+branch.getValue(SupraSeisBValues.class).getFilePrefix();
-		dirName += "-"+branch.getValue(SubSectConstraintModels.class).getFilePrefix();
-		if (branch.hasValue(SegmentationModels.class))
-			dirName += "-"+branch.getValue(SegmentationModels.class).getFilePrefix();
+//		branch = branch.copy();
+//		branch.setValue(SegmentationModels.NONE);
+//		branch.setValue(SubSeisMoRateReductions.NONE);
+//		branch.setValue(RupturePlausibilityModels.SEGMENTED);
 		
 		FaultSystemRupSet rupSet;
 		try {
@@ -825,30 +840,48 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //			.except(ParkfieldInversionConstraint.class);
 //		dirName += "-no_paleo_parkfield";
 		
+//		builder.except(SlipRateInversionConstraint.class);
+//		builder.add(new SlipRateInversionConstraint(1d, ConstraintWeightingType.NORMALIZED, rupSet,
+//				rupSet.requireModule(AveSlipModule.class), rupSet.requireModule(SlipAlongRuptureModel.class),
+//				rupSet.requireModule(SectSlipRates.class)));
+		
+//		builder.except(MFDInversionConstraint.class);
+		
 //		builder.except(SectionTotalRateConstraint.class);
 //		dirName += "-no_sect";
 		
+//		builder.perturbation(GenerationFunctionType.EXPONENTIAL_SCALE);
+		
+//		builder.clearSampler();
+		
 //		builder.threads(6).noAvg();
+		
+//		builder.threads(2).noAvg();
 
 //		builder.subCompletion(new IterationsPerVariableCompletionCriteria(1d));
 		
+		if (!reweight)
+			builder.reweight(null);
+		else
+			builder.reweight();
+		
 		config = builder.build();
 		
-		if ("asdf".length() > 1) {
-			dirName += "-serialized";
-			File outputDir = new File(parentDir, dirName);
-			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
-			File tmpRS = new File(outputDir, "temprs.zip");
-			try {
-				rupSet.write(tmpRS);
-				rupSet = FaultSystemRupSet.load(tmpRS);
-				File tmpConfig = new File(outputDir, "tempconfig.json");
-				InversionConfiguration.writeJSON(config, tmpConfig);
-				config = InversionConfiguration.readJSON(tmpConfig, rupSet);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-		}
+//		if ("asdf".length() > 1) {
+//			dirName += "-serialized";
+//			File outputDir = new File(parentDir, dirName);
+//			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+//			File tmpRS = new File(outputDir, "temprs.zip");
+//			try {
+//				rupSet.write(tmpRS);
+//				rupSet = FaultSystemRupSet.load(tmpRS);
+//				File tmpConfig = new File(outputDir, "tempconfig.json");
+//				InversionConfiguration.writeJSON(config, tmpConfig);
+//				config = InversionConfiguration.readJSON(tmpConfig, rupSet);
+//			} catch (IOException e) {
+//				e.printStackTrace();
+//			}
+//		}
 		
 		InversionInputGenerator inputs = new InversionInputGenerator(rupSet, config);
 		inputs.generateInputs(true);
@@ -857,12 +890,8 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		ProgressTrackingCompletionCriteria progress = new ProgressTrackingCompletionCriteria(completion);
 		
 		SimulatedAnnealing sa = config.buildSA(inputs);
-		if (reweight) {
-			Preconditions.checkState(sa instanceof ThreadedSimulatedAnnealing);
-			sa = new ReweightEvenFitSimulatedAnnealing((ThreadedSimulatedAnnealing)sa);
-		} else if (sa instanceof SerialSimulatedAnnealing) {
+		if (sa instanceof SerialSimulatedAnnealing)
 			sa.setConstraintRanges(null);
-		}
 		sa.setRandom(new Random(1234l));
 		
 		System.out.println("SA Parameters:");

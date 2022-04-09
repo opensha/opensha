@@ -13,9 +13,9 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBVa
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum SubSeisMoRateReductions implements LogicTreeNode {
-	FAULT_SPECIFIC("Fault-Specific", "FaultSpec", 0d, SubSeisMoRateReduction.FAULT_SPECIFIC_IMPLIED_FROM_SUPRA_B),
-	SYSTEM_AVG("System-Average", "SysAvg", 0d, SubSeisMoRateReduction.SYSTEM_AVG_IMPLIED_FROM_SUPRA_B),
-	NONE("None", "NoRed", 0d, SubSeisMoRateReduction.NONE),
+	FAULT_SPECIFIC("Fault-Specific", "FaultSpec", 1d, SubSeisMoRateReduction.FAULT_SPECIFIC_IMPLIED_FROM_SUPRA_B),
+	SYSTEM_AVG("System-Average", "SysAvg", 1d, SubSeisMoRateReduction.SYSTEM_AVG_IMPLIED_FROM_SUPRA_B),
+	NONE("None", "NoRed", 1d, SubSeisMoRateReduction.NONE),
 	SUB_B_1("Sub-Seis b=1", "SubB1", 1d, SubSeisMoRateReduction.SUB_SEIS_B_1);
 	
 	private String name;

@@ -21,22 +21,22 @@ public enum NSHM18_ScalingRels implements LogicTreeNode, RupSetScalingRelationsh
 	WC94_ML("Wells & Coppersmith (1994) M-L", "WC94 W-L", 1d) {
 		@Override
 		public double getAveSlip(double area, double length, double origWidth, double aveRake) {
-//			double mag;
-//			synchronized (wc94) {
-//				mag = wc94.getMedianMag(length*1e-3); // convert to km
-//			}
-//			double moment = MagUtils.magToMoment(mag);
-//			return FaultMomentCalc.getSlip(area, moment);
-			return ScalingRelationships.ELLSWORTH_B.getAveSlip(area, length, origWidth, aveRake);
+			double mag;
+			synchronized (wc94) {
+				mag = wc94.getMedianMag(length*1e-3); // convert to km
+			}
+			double moment = MagUtils.magToMoment(mag);
+			return FaultMomentCalc.getSlip(area, moment);
+//			return ScalingRelationships.ELLSWORTH_B.getAveSlip(area, length, origWidth, aveRake);
 		}
 
 		@Override
 		public double getMag(double area, double origWidth, double aveRake) {
-//			double len = area/origWidth;
-//			synchronized (wc94) {
-//				return wc94.getMedianMag(len*1e-3); // convert to km
-//			}
-			return ScalingRelationships.ELLSWORTH_B.getMag(area, origWidth, aveRake);
+			double len = area/origWidth;
+			synchronized (wc94) {
+				return wc94.getMedianMag(len*1e-3); // convert to km
+			}
+//			return ScalingRelationships.ELLSWORTH_B.getMag(area, origWidth, aveRake);
 		}
 	};
 	
