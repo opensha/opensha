@@ -765,9 +765,15 @@ public class RuptureSets {
 		
 		private List<? extends FaultSection> subSects;
 		private RupSetScalingRelationship scale;
+		
+		@Expose	private int minSectsPerParent = 1;
 
 		public FullySegmentedRupSetConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			init(subSects, scale);
+		}
+		
+		public void setMinSectsPerParent(int minSectsPerParent) {
+			this.minSectsPerParent = minSectsPerParent;
 		}
 
 		@Override
@@ -786,6 +792,8 @@ public class RuptureSets {
 			ClusterConnectionStrategy connStrat = new NoConnectivityStrategy(getSubSects(), getDistAzCalc());
 			Builder builder = PlausibilityConfiguration.builder(connStrat, subSects);
 			builder.add(new NoJumpsFilter());
+			if (minSectsPerParent > 1)
+				builder.minSectsPerParent(minSectsPerParent, false, false);
 			return builder.build();
 		}
 
@@ -976,7 +984,9 @@ public class RuptureSets {
 		SEGMENTED(FullySegmentedRupSetConfig.class) {
 			@Override
 			public RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
-				return new FullySegmentedRupSetConfig(subSects, scale);
+				FullySegmentedRupSetConfig config = new FullySegmentedRupSetConfig(subSects, scale);
+				config.setMinSectsPerParent(2);
+				return config;
 			}
 		};
 		
