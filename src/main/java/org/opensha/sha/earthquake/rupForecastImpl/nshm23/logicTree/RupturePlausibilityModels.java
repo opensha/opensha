@@ -26,7 +26,9 @@ public enum RupturePlausibilityModels implements LogicTreeNode {
 	SEGMENTED("Fully Segmented", "FullSeg", 1d) { // for now
 		@Override
 		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
-			return new FullySegmentedRupSetConfig(subSects, scale);
+			FullySegmentedRupSetConfig config = new FullySegmentedRupSetConfig(subSects, scale);
+			config.setMinSectsPerParent(2);
+			return config;
 		}
 	},
 	UCERF3("UCERF3", "U3", 1d) { // for now

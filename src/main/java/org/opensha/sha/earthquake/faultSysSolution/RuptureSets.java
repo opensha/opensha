@@ -984,9 +984,7 @@ public class RuptureSets {
 		SEGMENTED(FullySegmentedRupSetConfig.class) {
 			@Override
 			public RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
-				FullySegmentedRupSetConfig config = new FullySegmentedRupSetConfig(subSects, scale);
-				config.setMinSectsPerParent(2);
-				return config;
+				return new FullySegmentedRupSetConfig(subSects, scale);
 			}
 		};
 		
