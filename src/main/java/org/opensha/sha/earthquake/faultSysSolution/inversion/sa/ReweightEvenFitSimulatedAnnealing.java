@@ -61,6 +61,9 @@ import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
+import scratch.UCERF3.inversion.U3InversionConfigFactory;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 
 /**
  * Extension of {@link ThreadedSimulatedAnnealing} that dynamically re-weights uncertainty-weighted inversion
@@ -739,48 +742,53 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 
 		String dirName = new SimpleDateFormat("yyyy_MM_dd").format(new Date());
 
-		NSHM23_InvConfigFactory factory = new NSHM23_InvConfigFactory();
+		U3InversionConfigFactory factory = new U3InversionConfigFactory.OriginalCalcParams();
+		dirName += "-u3_orig_params";
 		
-//		LogicTreeBranch<LogicTreeNode> branch = new NSHM23_U3_HybridLogicTreeBranch();
-//		branch.setValue(FaultModels.FM3_1);
-//		branch.setValue(RupturePlausibilityModels.COULOMB);
-////		branch.setValue(RupturePlausibilityModels.UCERF3);
+		LogicTreeBranch<U3LogicTreeBranchNode<?>> branch = U3LogicTreeBranch.DEFAULT;
+
+//		NSHM23_InvConfigFactory factory = new NSHM23_InvConfigFactory();
 //		
-//		// good fitting
-//		branch.setValue(U3_UncertAddDeformationModels.U3_ZENG);
-//		branch.setValue(ScalingRelationships.SHAW_2009_MOD);
-//		branch.setValue(SupraSeisBValues.B_0p8);
-//		branch.setValue(SlipAlongRuptureModels.UNIFORM);
+//		LogicTreeBranch<LogicTreeNode> branch = NSHM18_LogicTreeBranch.DEFAULT;
 //		
-//		// poor fitting
-////		branch.setValue(U3_UncertAddDeformationModels.U3_NEOK);
-////		branch.setValue(ScalingRelationships.HANKS_BAKUN_08);
-////		branch.setValue(SupraSeisBValues.B_0p0);
-////		branch.setValue(SlipAlongRuptureModels.TAPERED);
+////		LogicTreeBranch<LogicTreeNode> branch = new NSHM23_U3_HybridLogicTreeBranch();
+////		branch.setValue(FaultModels.FM3_1);
+////		branch.setValue(RupturePlausibilityModels.COULOMB);
+//////		branch.setValue(RupturePlausibilityModels.UCERF3);
+////		
+////		// good fitting
+////		branch.setValue(U3_UncertAddDeformationModels.U3_ZENG);
+////		branch.setValue(ScalingRelationships.SHAW_2009_MOD);
+////		branch.setValue(SupraSeisBValues.B_0p8);
+////		branch.setValue(SlipAlongRuptureModels.UNIFORM);
+////		
+////		// poor fitting
+//////		branch.setValue(U3_UncertAddDeformationModels.U3_NEOK);
+//////		branch.setValue(ScalingRelationships.HANKS_BAKUN_08);
+//////		branch.setValue(SupraSeisBValues.B_0p0);
+//////		branch.setValue(SlipAlongRuptureModels.TAPERED);
+////		
+////		// constant
+////		branch.setValue(SubSeisMoRateReductions.SUB_B_1);
+////		
+////		// inv model
+////		branch.setValue(SubSectConstraintModels.TOT_NUCL_RATE);
+//////		branch.setValue(SubSectConstraintModels.NUCL_MFD);
+////		
+////		branch.setValue(SegmentationModels.SHAW_R0_3);
+////		
+////		dirName += "-"+branch.getValue(U3_UncertAddDeformationModels.class).getFilePrefix();
+////		dirName += "-"+branch.getValue(ScalingRelationships.class).getFilePrefix();
+////		dirName += "-"+branch.getValue(SlipAlongRuptureModels.class).getFilePrefix();
+////		dirName += "-"+branch.getValue(SupraSeisBValues.class).getFilePrefix();
+////		dirName += "-"+branch.getValue(SubSectConstraintModels.class).getFilePrefix();
+////		if (branch.hasValue(SegmentationModels.class))
+////			dirName += "-"+branch.getValue(SegmentationModels.class).getFilePrefix();
 //		
-//		// constant
-//		branch.setValue(SubSeisMoRateReductions.SUB_B_1);
-//		
-//		// inv model
-//		branch.setValue(SubSectConstraintModels.TOT_NUCL_RATE);
-////		branch.setValue(SubSectConstraintModels.NUCL_MFD);
-//		
-//		branch.setValue(SegmentationModels.SHAW_R0_3);
-//		
-//		dirName += "-"+branch.getValue(U3_UncertAddDeformationModels.class).getFilePrefix();
-//		dirName += "-"+branch.getValue(ScalingRelationships.class).getFilePrefix();
-//		dirName += "-"+branch.getValue(SlipAlongRuptureModels.class).getFilePrefix();
-//		dirName += "-"+branch.getValue(SupraSeisBValues.class).getFilePrefix();
-//		dirName += "-"+branch.getValue(SubSectConstraintModels.class).getFilePrefix();
-//		if (branch.hasValue(SegmentationModels.class))
-//			dirName += "-"+branch.getValue(SegmentationModels.class).getFilePrefix();
-		
-		LogicTreeBranch<LogicTreeNode> branch = NSHM18_LogicTreeBranch.DEFAULT;
-		
-//		branch = branch.copy();
-//		branch.setValue(SegmentationModels.NONE);
-//		branch.setValue(SubSeisMoRateReductions.NONE);
-//		branch.setValue(RupturePlausibilityModels.SEGMENTED);
+////		branch = branch.copy();
+////		branch.setValue(SegmentationModels.NONE);
+////		branch.setValue(SubSeisMoRateReductions.NONE);
+////		branch.setValue(RupturePlausibilityModels.SEGMENTED);
 		
 		FaultSystemRupSet rupSet;
 		try {
@@ -793,10 +801,10 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 		
 		InversionConfiguration config = factory.buildInversionConfig(rupSet, branch, 16);
 		
-//		boolean reweight = false;
+		boolean reweight = false;
 		
-		boolean reweight = true;
-		dirName += "-reweight_"+QUANTITY_DEFAULT.name();
+//		boolean reweight = true;
+//		dirName += "-reweight_"+QUANTITY_DEFAULT.name();
 		
 		if (reweight && CONSERVE_TOT_WEIGHT_DEFAULT)
 			dirName += "-conserve";
@@ -812,9 +820,12 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(10); dirName += "-10m";
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(20); dirName += "-20m";
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30); dirName += "-30m";
-		CompletionCriteria completion = new IterationsPerVariableCompletionCriteria(2000); dirName += "-2000ip";
+//		CompletionCriteria completion = new IterationsPerVariableCompletionCriteria(2000); dirName += "-2000ip";
 //		CompletionCriteria avgCompletion = new IterationsPerVariableCompletionCriteria(20);
-		CompletionCriteria avgCompletion = new IterationsPerVariableCompletionCriteria(50);
+//		CompletionCriteria avgCompletion = new IterationsPerVariableCompletionCriteria(50);
+		
+		CompletionCriteria completion = null;
+		CompletionCriteria avgCompletion = null;
 
 //		CompletionCriteria completion = TimeCompletionCriteria.getInMinutes(30); dirName += "-30m-x5m";
 //		CompletionCriteria avgCompletion = TimeCompletionCriteria.getInMinutes(5);
@@ -832,7 +843,8 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //		CompletionCriteria avgCompletion = TimeCompletionCriteria.getInMinutes(5);
 		
 		Builder builder = InversionConfiguration.builder(config);
-		builder.completion(completion);
+		if (completion != null)
+			builder.completion(completion);
 		if (avgCompletion != null)
 			builder.avgThreads(4, avgCompletion);
 		
@@ -882,6 +894,9 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 //				e.printStackTrace();
 //			}
 //		}
+		
+		if (completion == null)
+			completion = config.getCompletionCriteria();
 		
 		InversionInputGenerator inputs = new InversionInputGenerator(rupSet, config);
 		inputs.generateInputs(true);
