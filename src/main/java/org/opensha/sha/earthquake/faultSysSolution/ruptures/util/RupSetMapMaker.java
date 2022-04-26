@@ -34,6 +34,7 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.util.ComparablePairing;
@@ -89,6 +90,8 @@ public class RupSetMapMaker {
 	
 	// section colors
 	private List<Color> sectColors = null;
+	private CPT colorsCPT;
+	private String colorsLabel;
 	
 	// jumps (solid color)
 	private List<Collection<Jump>> jumpLists;
@@ -100,6 +103,16 @@ public class RupSetMapMaker {
 	private List<Double> scalarJumpValues;
 	private CPT scalarJumpsCPT;
 	private String scalarJumpsLabel;
+	
+	// scatters
+	private List<Location> scatterLocs;
+	private List<Double> scatterScalars;
+	private CPT scatterScalarCPT;
+	private String scatterScalarLabel;
+	private PlotSymbol scatterSymbol = PlotSymbol.FILLED_TRIANGLE;
+	private float scatterSymbolWidth = 5f;
+	private PlotSymbol scatterOutline = PlotSymbol.TRIANGLE;
+	private Color scatterOutlineColor = new Color(0, 0, 0, 127);
 	
 	private Collection<FaultSection> highlightSections;
 	private PlotCurveCharacterstics highlightTraceChar;
@@ -208,18 +221,30 @@ public class RupSetMapMaker {
 		this.sectColors = null;
 	}
 	
+	public void clearSectScalars() {
+		this.scalars = null;
+		this.scalarCPT = null;
+		this.scalarLabel = null;
+	}
+	
 	public void plotSectColors(List<Color> sectColors) {
+		plotSectColors(sectColors, null, null);
+	}
+	
+	public void plotSectColors(List<Color> sectColors, CPT colorsCPT, String colorsLabel) {
 		if (sectColors != null) {
 			clearSectScalars();
 			Preconditions.checkState(sectColors.size() == subSects.size());
 		}
 		this.sectColors = sectColors;
+		this.colorsCPT = colorsCPT;
+		this.colorsLabel = colorsLabel;
 	}
 	
-	public void clearSectScalars() {
-		this.scalars = null;
-		this.scalarCPT = null;
-		this.scalarLabel = null;
+	public void clearSectColors() {
+		this.sectColors = null;
+		this.colorsCPT = null;
+		this.colorsLabel = null;
 	}
 	
 	public void plotJumps(Collection<Jump> jumps, Color color, String label) {
@@ -263,6 +288,33 @@ public class RupSetMapMaker {
 		this.scalarJumpValues = null;
 		this.scalarJumpsCPT = null;
 		this.scalarJumpsLabel = null;
+	}
+	
+	public void plotScatterScalars(List<Location> locs, List<Double> values, CPT cpt, String label) {
+		Preconditions.checkState(locs.size() == values.size());
+		Preconditions.checkNotNull(cpt);
+		this.scatterLocs = locs;
+		this.scatterScalars = values;
+		this.scatterScalarCPT = cpt;
+		this.scatterScalarLabel = label;
+	}
+	
+	public void clearScatterScalars() {
+		this.scatterLocs = null;
+		this.scatterScalars = null;
+		this.scatterScalarCPT = null;
+		this.scatterScalarLabel = null;
+	}
+	
+	public void setScatterSymbol(PlotSymbol symbol, float width) {
+		setScatterSymbol(symbol, width, null, null);
+	}
+	
+	public void setScatterSymbol(PlotSymbol symbol, float width, PlotSymbol outline, Color outlineColor) {
+		this.scatterSymbol = symbol;
+		this.scatterSymbolWidth = width;
+		this.scatterOutline = outline;
+		this.scatterOutlineColor = outlineColor;
 	}
 	
 	private RuptureSurface getSectSurface(FaultSection sect) {
@@ -366,7 +418,8 @@ public class RupSetMapMaker {
 			
 			// we'll plot fault traces if we don't have scalar values
 			boolean doTraces = scalars == null && sectColors == null;
-			if (!doTraces && skipNaNs && Double.isNaN(scalars[s]))
+			if (!doTraces && skipNaNs &&
+					(scalars != null && Double.isNaN(scalars[s]) || sectColors != null && sectColors.get(s) == null))
 				doTraces = true;
 			
 			if (sectOutlineChar != null && (sect.getAveDip() != 90d)) {
@@ -471,6 +524,9 @@ public class RupSetMapMaker {
 					sectFeatures.add(feature);
 				}
 			}
+			
+			if (colorsCPT != null)
+				cptLegend.add(buildCPTLegend(colorsCPT, colorsLabel));
 		}
 		
 		if (highlightSections != null && highlightTraceChar != null) {
@@ -562,6 +618,40 @@ public class RupSetMapMaker {
 			}
 			
 			cptLegend.add(buildCPTLegend(scalarJumpsCPT, scalarJumpsLabel));
+		}
+		
+		// plot scatter scalars
+		if (scatterLocs != null) {
+			List<ComparablePairing<Double, XY_DataSet>> sortables = new ArrayList<>();
+			XY_DataSet outlines = scatterOutline == null ? null : new DefaultXY_DataSet();
+			for (int j=0; j<scatterLocs.size(); j++) {
+				double scalar = scatterScalars.get(j);
+				if (skipNaNs && Double.isNaN(scalar))
+					continue;
+				Location loc = scatterLocs.get(j);
+				XY_DataSet xy = new DefaultXY_DataSet();
+				xy.set(loc.getLongitude(), loc.getLatitude());
+				sortables.add(new ComparablePairing<>(scalar, xy));
+				
+				if (outlines != null)
+					outlines.set(xy.get(0));
+				
+				// TODO GeoJSON?
+			}
+			Collections.sort(sortables);
+			for (ComparablePairing<Double, XY_DataSet> val : sortables) {
+				float scalar = val.getComparable().floatValue();
+				Color color = scatterScalarCPT.getColor(scalar);
+				
+				funcs.add(val.getData());
+				chars.add(new PlotCurveCharacterstics(scatterSymbol, scatterSymbolWidth, color));
+			}
+			if (outlines != null ) {
+				funcs.add(outlines);
+				chars.add(new PlotCurveCharacterstics(scatterOutline, scatterSymbolWidth, scatterOutlineColor));
+			}
+			
+			cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel));
 		}
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");

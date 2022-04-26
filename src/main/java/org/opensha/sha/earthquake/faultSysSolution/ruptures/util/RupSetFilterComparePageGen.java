@@ -728,6 +728,11 @@ public class RupSetFilterComparePageGen {
 			if (funcs.get(0).getMaxY() > maxY)
 				maxY = 100d;
 			
+			gp.setTickLabelFontSize(24);
+			gp.setAxisLabelFontSize(28);
+			gp.setPlotLabelFontSize(24);
+			gp.setLegendFontSize(24);
+			
 			gp.drawGraphPanel(spec, false, false, new Range(magFunc.getMinX(), magFunc.getMaxX()), new Range(0d, maxY));
 			gp.getChartPanel().setSize(1000, 800);
 			
@@ -739,6 +744,14 @@ public class RupSetFilterComparePageGen {
 			
 			lines.add("![plot](resources/"+pngFile.getName()+")");
 			lines.add("");
+			
+			// draw narrow ones as well
+			gp.drawGraphPanel(spec, false, false, new Range(magFunc.getMinX(), magFunc.getMaxX()), new Range(0d, 40d));
+			gp.getChartPanel().setSize(1000, 450);
+			pngFile = new File(resourcesDir, prefix+"_narrow.png");
+			pdfFile = new File(resourcesDir, prefix+"_narrow.pdf");
+			gp.saveAsPNG(pngFile.getAbsolutePath());
+			gp.saveAsPDF(pdfFile.getAbsolutePath());
 			
 			if (r == 0) {
 				// now try section removal
@@ -799,11 +812,6 @@ public class RupSetFilterComparePageGen {
 				spec = new PlotSpec(funcs, chars, " ", "Minimum Magnitude", "% Failed");
 				spec.setLegendVisible(false);
 				spec.setLegendInset(RectangleAnchor.TOP_LEFT, 0.05, 0.95, 0.3, true);
-				
-				gp.setTickLabelFontSize(24);
-				gp.setAxisLabelFontSize(28);
-				gp.setPlotLabelFontSize(24);
-				gp.setLegendFontSize(24);
 				
 				gp.drawGraphPanel(spec, false, false, new Range(magFunc.getMinX(), magFunc.getMaxX()), new Range(0d, maxY));
 				gp.getChartPanel().setSize(1000, 800);
