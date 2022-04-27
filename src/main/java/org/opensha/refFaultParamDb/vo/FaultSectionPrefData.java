@@ -26,6 +26,11 @@ import org.opensha.sha.faultSurface.SimpleFaultData;
  * This class contains preferred fault section data (rather than the estimates) from  FaultSectionData. It
  * is the default implementation of the FaultSection interface.
  * 
+ * Important Note: Due to chaching, getStirlingGriddedSurface(*) won't reflect changes to several 
+ * attributes that can be set here (a previously computed surface will be returned; the only attribute
+ * changes check for here, or actually in FaultSection, are: gridSpacing, preserveGridSpacingExactly, 
+ * aseisReducesArea).
+ * 
  * Note: equals and hashCode implementations only check section/parentIDs, not fault properties themselves.
  * 
  *
@@ -59,7 +64,7 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	 */
 	private double couplingCoeff=1;
 	private FaultTrace faultTrace;
-	private float dipDirection;
+	private float dipDirection = Float.NaN;
 	private String parentSectionName;
 	private int parentSectionId=-1;
 	private long dateOfLastEventMillis = Long.MIN_VALUE;
