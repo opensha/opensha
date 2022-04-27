@@ -68,6 +68,7 @@ public class RupSetMapMaker {
 	private float scalarThickness = 3f;
 	private float jumpLineThickness = 3f;
 	private boolean legendVisible = true;
+	private boolean legendInset = false;
 	private boolean fillSurfaces = false;
 	
 	private boolean writePDFs = true;
@@ -185,6 +186,10 @@ public class RupSetMapMaker {
 	
 	public void setLegendVisible(boolean legendVisible) {
 		this.legendVisible = legendVisible;
+	}
+	
+	public void setLegendInset(boolean legendInset) {
+		this.legendInset = legendInset;
 	}
 	
 	public void setSkipNaNs(boolean skipNaNs) {
@@ -656,6 +661,7 @@ public class RupSetMapMaker {
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");
 		spec.setLegendVisible(legendVisible && hasLegend);
+		spec.setLegendInset(legendInset && hasLegend);
 		
 		for (PaintScaleLegend legend : cptLegend)
 			spec.addSubtitle(legend);
@@ -671,7 +677,7 @@ public class RupSetMapMaker {
 		return new Range(region.getMinLat(), region.getMaxLat());
 	}
 	
-	static PaintScaleLegend buildCPTLegend(CPT cpt, String label) {
+	public static PaintScaleLegend buildCPTLegend(CPT cpt, String label) {
 		double cptLen = cpt.getMaxValue() - cpt.getMinValue();
 		double cptTick;
 		if (cptLen > 5000)

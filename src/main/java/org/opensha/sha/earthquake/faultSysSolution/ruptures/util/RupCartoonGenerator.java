@@ -1127,7 +1127,7 @@ public class RupCartoonGenerator {
 		float fract = 0.1f;
 		
 		FaultSection s1 = buildSect(parentID++, dip, upperDepth, lowerDepth,
-				loc(0d, -2.5d), loc(45d, -0.5d));
+				loc(20d, -2.5d), loc(45d, -0.5d));
 		s1.setAveRake(180d);
 		FaultSection s2 = buildSect(parentID++, dip, upperDepth, lowerDepth,
 				loc(33d, 1d), loc(60d, -2.5d));

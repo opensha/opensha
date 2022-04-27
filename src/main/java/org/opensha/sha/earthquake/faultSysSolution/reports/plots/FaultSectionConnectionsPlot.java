@@ -65,33 +65,37 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 	public String getName() {
 		return "Fault Section Connections";
 	}
+	
+	private static boolean TITLES = true;
+	private static boolean LEGENDS = true;
+	private static boolean LEGENDS_INSET = false;
 
 	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
 			String relPathToResources, String topLink) throws IOException {
 		System.out.println("Plotting section connections");
 		plotConnectivityLines(rupSet, resourcesDir, "sect_connectivity",
-				getTruncatedTitle(meta.primary.name)+" Connectivity", meta.primary.jumps, MAIN_COLOR, meta.region, 800);
+				TITLES ? getTruncatedTitle(meta.primary.name)+" Connectivity" : " ", meta.primary.jumps, MAIN_COLOR, meta.region, 800);
 		plotConnectivityLines(rupSet, resourcesDir, "sect_connectivity_hires",
-				getTruncatedTitle(meta.primary.name)+" Connectivity", meta.primary.jumps, MAIN_COLOR, meta.region, 3000);
+				TITLES ? getTruncatedTitle(meta.primary.name)+" Connectivity" : " ", meta.primary.jumps, MAIN_COLOR, meta.region, 3000);
 		if (meta.comparison != null) {
 			plotConnectivityLines(meta.comparison.rupSet, resourcesDir, "sect_connectivity_comp",
-					getTruncatedTitle(meta.comparison.name)+" Connectivity", meta.comparison.jumps,
+					TITLES ? getTruncatedTitle(meta.comparison.name)+" Connectivity" : " ", meta.comparison.jumps,
 					COMP_COLOR, meta.region, 800);
 			plotConnectivityLines(meta.comparison.rupSet, resourcesDir, "sect_connectivity_comp_hires",
-					getTruncatedTitle(meta.comparison.name)+" Connectivity", meta.comparison.jumps,
+					TITLES ? getTruncatedTitle(meta.comparison.name)+" Connectivity" : " ", meta.comparison.jumps,
 					COMP_COLOR, meta.region, 3000);
 			plotConnectivityLines(rupSet, resourcesDir, "sect_connectivity_unique",
-					getTruncatedTitle(meta.primary.name)+" Unique Connectivity", meta.primaryOverlap.uniqueJumps,
+					TITLES ? getTruncatedTitle(meta.primary.name)+" Unique Connectivity" : " ", meta.primaryOverlap.uniqueJumps,
 					MAIN_COLOR, meta.region, 800);
 			plotConnectivityLines(rupSet, resourcesDir, "sect_connectivity_unique_hires",
-					getTruncatedTitle(meta.primary.name)+" Unique Connectivity", meta.primaryOverlap.uniqueJumps,
+					TITLES ? getTruncatedTitle(meta.primary.name)+" Unique Connectivity" : " ", meta.primaryOverlap.uniqueJumps,
 					MAIN_COLOR, meta.region, 3000);
 			plotConnectivityLines(meta.comparison.rupSet, resourcesDir, "sect_connectivity_unique_comp",
-					getTruncatedTitle(meta.comparison.name)+" Unique Connectivity", meta.comparisonOverlap.uniqueJumps,
+					TITLES ? getTruncatedTitle(meta.comparison.name)+" Unique Connectivity" : " ", meta.comparisonOverlap.uniqueJumps,
 					COMP_COLOR, meta.region, 800);
 			plotConnectivityLines(meta.comparison.rupSet, resourcesDir, "sect_connectivity_unique_comp_hires",
-					getTruncatedTitle(meta.comparison.name)+" Unique Connectivity", meta.comparisonOverlap.uniqueJumps,
+					TITLES ? getTruncatedTitle(meta.comparison.name)+" Unique Connectivity" : " ", meta.comparisonOverlap.uniqueJumps,
 					COMP_COLOR, meta.region, 3000);
 		}
 		
@@ -102,26 +106,26 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			for (Jump jump : meta.comparison.jumps)
 				maxConnDist = Math.max(maxConnDist, jump.distance);
 		plotConnectivityHistogram(resourcesDir, "sect_connectivity_hist",
-				getTruncatedTitle(meta.primary.name)+" Connectivity", meta.primary, meta.primaryOverlap, maxConnDist,
+				TITLES ? getTruncatedTitle(meta.primary.name)+" Connectivity" : " ", meta.primary, meta.primaryOverlap, maxConnDist,
 				MAIN_COLOR, false, false);
 		if (sol != null) {
 			plotConnectivityHistogram(resourcesDir, "sect_connectivity_hist_rates",
-					getTruncatedTitle(meta.primary.name)+" Connectivity", meta.primary, meta.primaryOverlap, maxConnDist,
+					TITLES ? getTruncatedTitle(meta.primary.name)+" Connectivity" : " ", meta.primary, meta.primaryOverlap, maxConnDist,
 					MAIN_COLOR, true, false);
 			plotConnectivityHistogram(resourcesDir, "sect_connectivity_hist_rates_log",
-					getTruncatedTitle(meta.primary.name)+" Connectivity", meta.primary, meta.primaryOverlap, maxConnDist,
+					TITLES ? getTruncatedTitle(meta.primary.name)+" Connectivity" : " ", meta.primary, meta.primaryOverlap, maxConnDist,
 					MAIN_COLOR, true, true);
 		}
 		if (meta.comparison != null) {
 			plotConnectivityHistogram(resourcesDir, "sect_connectivity_hist_comp",
-					getTruncatedTitle(meta.comparison.name)+" Connectivity", meta.comparison, meta.comparisonOverlap, maxConnDist,
+					TITLES ? getTruncatedTitle(meta.comparison.name)+" Connectivity" : " ", meta.comparison, meta.comparisonOverlap, maxConnDist,
 					COMP_COLOR, false, false);
 			if (meta.comparison.sol != null) {
 				plotConnectivityHistogram(resourcesDir, "sect_connectivity_hist_rates_comp",
-						getTruncatedTitle(meta.comparison.name)+" Connectivity", meta.comparison, meta.comparisonOverlap, maxConnDist,
+						TITLES ? getTruncatedTitle(meta.comparison.name)+" Connectivity" : " ", meta.comparison, meta.comparisonOverlap, maxConnDist,
 						COMP_COLOR, true, false);
 				plotConnectivityHistogram(resourcesDir, "sect_connectivity_hist_rates_comp_log",
-						getTruncatedTitle(meta.comparison.name)+" Connectivity", meta.comparison, meta.comparisonOverlap, maxConnDist,
+						TITLES ? getTruncatedTitle(meta.comparison.name)+" Connectivity" : " ", meta.comparison, meta.comparisonOverlap, maxConnDist,
 						COMP_COLOR, true, true);
 			}
 		}
@@ -147,9 +151,9 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			connNames.add("Common Connections");
 			
 			String combConnPrefix = "sect_connectivity_combined";
-			plotConnectivityLines(rupSet, resourcesDir, combConnPrefix, "Combined Connectivity",
+			plotConnectivityLines(rupSet, resourcesDir, combConnPrefix, TITLES ? "Combined Connectivity" : " ",
 					connectionsList, connectedColors, connNames, meta.region, 800);
-			plotConnectivityLines(rupSet, resourcesDir, combConnPrefix+"_hires", "Combined Connectivity",
+			plotConnectivityLines(rupSet, resourcesDir, combConnPrefix+"_hires", TITLES ? "Combined Connectivity" : " ",
 					connectionsList, connectedColors, connNames, meta.region, 3000);
 			lines.add("![Combined]("+relPathToResources+"/"+combConnPrefix+".png)");
 			lines.add("");
@@ -274,9 +278,9 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			table.addLine(meta.primary.name, meta.comparison.name);
 			
 			File primaryClusters = plotConnectedClusters(rupSet, meta.region, resourcesDir, "conn_clusters",
-					getTruncatedTitle(meta.primary.name)+" Clusters", clustersTable);
+					TITLES ? getTruncatedTitle(meta.primary.name)+" Clusters" : " ", clustersTable);
 			File compClusters = plotConnectedClusters(meta.comparison.rupSet, meta.region, resourcesDir,
-					"conn_clusters_comp", getTruncatedTitle(meta.comparison.name)+" Clusters", null);
+					"conn_clusters_comp", TITLES ? getTruncatedTitle(meta.comparison.name)+" Clusters" : " ", null);
 			
 			table.addLine("![Primary clusters]("+relPathToResources+"/"+primaryClusters.getName()+")",
 					"![Comparison clusters]("+relPathToResources+"/"+compClusters.getName()+")");
@@ -289,7 +293,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			table = MarkdownUtils.tableBuilder();
 			
 			File primaryClusters = plotConnectedClusters(rupSet, meta.region, resourcesDir, "conn_clusters",
-					"Connected Section Clusters", clustersTable);
+					TITLES ? "Connected Section Clusters" : " ", clustersTable);
 			
 			table.addLine("![Primary clusters]("+relPathToResources+"/"+primaryClusters.getName()+")");
 			table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/conn_clusters.geojson")
@@ -391,6 +395,8 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			List<Set<Jump>> connectionsList, List<Color> connectedColors, List<String> connNames,
 			Region reg, int width) throws IOException {
 		RupSetMapMaker plotter = new RupSetMapMaker(rupSet, reg);
+		plotter.setLegendVisible(LEGENDS);
+		plotter.setLegendInset(LEGENDS_INSET);
 		plotter.setWriteGeoJSON(!prefix.endsWith("_hires"));
 		
 		for (int i=0; i<connectionsList.size(); i++) {
@@ -471,7 +477,8 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		String yAxisLabel = rateWeighted ? "Annual Rate" : "Count";
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, title, "Jump Distance (km)", yAxisLabel);
-		spec.setLegendVisible(true);
+		spec.setLegendVisible(LEGENDS);
+		spec.setLegendInset(LEGENDS_INSET);
 		
 		Range xRange = new Range(0d, maxDist);
 		Range yRange;
@@ -764,6 +771,8 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		}
 		
 		RupSetMapMaker plotter = new RupSetMapMaker(rupSet, region);
+		plotter.setLegendVisible(LEGENDS);
+		plotter.setLegendInset(LEGENDS_INSET);
 		plotter.setWriteGeoJSON(true);
 		
 		plotter.plotSectColors(sectColors);
@@ -787,6 +796,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 //		plotConnectedClusters(rupSet, new CaliforniaRegions.RELM_TESTING(), new File("/tmp"), "conn_cluster_test", " ", table);
 //		for (String line : table.build())
 //			System.out.println(line);
+		TITLES = false;
 		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/"
 				+ "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_"
 				+ "cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip"));
@@ -799,13 +809,17 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		
 		FaultSectionConnectionsPlot plot = new FaultSectionConnectionsPlot();
 		
-		RupSetMetadata primayMeta = new RupSetMetadata("Primary", rupSet);
-		RupSetMetadata compMeta = new RupSetMetadata("Primary",
+		RupSetMetadata primayMeta = new RupSetMetadata("Proposed Model", rupSet);
+		RupSetMetadata compMeta = new RupSetMetadata("UCERF3",
 				FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_reproduce_ucerf3.zip")));
 
+		LEGENDS = true;
+		LEGENDS_INSET = true;
 		File fullRegDir = new File(outputDir, "full_reg");
 		Preconditions.checkState(fullRegDir.exists() || fullRegDir.mkdir());
 		plot.plot(rupSet, null, new ReportMetadata(primayMeta, compMeta, fullReg), fullRegDir, "", "");
+		LEGENDS = false;
+		LEGENDS_INSET = false;
 		File zoom1Dir = new File(outputDir, "zoom1");
 		Preconditions.checkState(zoom1Dir.exists() || zoom1Dir.mkdir());
 		plot.plot(rupSet, null, new ReportMetadata(primayMeta, compMeta, zoom1), zoom1Dir, "", "");

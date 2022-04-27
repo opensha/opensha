@@ -67,6 +67,7 @@ import scratch.UCERF3.erf.FaultSystemSolutionERF;
 public class SolHazardMapCalc {
 	
 	public static double SPACING_DEFAULT = 0.25;
+	public static boolean PDFS = false;
 	
 	static {
 		String spacingEnv = System.getenv("FST_HAZARD_SPACING");
@@ -512,6 +513,8 @@ public class SolHazardMapCalc {
 		
 		File ret = new File(outputDir, prefix+".png");
 		gp.saveAsPNG(ret.getAbsolutePath());
+		if (PDFS)
+			gp.saveAsPDF(ret.getAbsolutePath().replace(".png", ".pdf"));
 		
 		return ret;
 	}
