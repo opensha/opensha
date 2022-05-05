@@ -526,6 +526,11 @@ public class DoubleParameter extends AbstractParameter<Double> {
 		}
 		return paramEdit;
 	}
+
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
 	
 //	public static void main(String[] args) {
 //		DoubleParameter dp = new DoubleParameter("tmpD", 1d);

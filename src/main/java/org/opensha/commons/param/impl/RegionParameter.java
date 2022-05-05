@@ -370,6 +370,11 @@ public class RegionParameter extends AbstractParameter<Region> {
 		return paramEdit;
 	}
 
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
+
 
 }
 

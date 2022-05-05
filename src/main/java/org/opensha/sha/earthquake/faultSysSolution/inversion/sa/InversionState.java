@@ -5,7 +5,7 @@ import java.util.List;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
 
 /**
- * Class that tracks the state of a in inversion. Primarily used by {@link CompletionCriteria} to determine if an
+ * Class that tracks the state of an inversion. Primarily used by {@link CompletionCriteria} to determine if an
  * inversion is finished, and for tracking progress.
  * 
  * @author kevin
@@ -46,7 +46,7 @@ public class InversionState {
 	 */
 	public final double[] misfits;
 	/**
-	 * current misfits for any inequalty constraints
+	 * current misfits for any inequality constraints
 	 */
 	public final double[] misfits_ineq;
 	/**

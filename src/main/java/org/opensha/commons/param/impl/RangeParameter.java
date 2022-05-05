@@ -33,6 +33,11 @@ public class RangeParameter extends AbstractParameter<Range> {
 	}
 
 	@Override
+	public boolean isEditorBuilt() {
+		return editor != null;
+	}
+
+	@Override
 	public Object clone() {
 		RangeParameter param = new RangeParameter(getName(), getValue());
 		param.setUnits(getUnits());

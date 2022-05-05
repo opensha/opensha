@@ -112,9 +112,8 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 		} else {
 			weights.setWeights(newWeights);
 		}
-		if (weightsParam != null && weightsParam.isParameterEditorBuilt()) {
-			weightsParam.getEditor().refreshParamEditor();
-		}
+		if (weightsParam != null)
+			weightsParam.refreshEditor();
 	}
 	
 	@Override
@@ -658,8 +657,8 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	private double getWeightedValue(double[] vals) {
 		if (!weights.isNormalized()) {
 			weights.normalize();
-			if (weightsParam != null && weightsParam.isParameterEditorBuilt())
-				weightsParam.getEditor().refreshParamEditor();
+			if (weightsParam != null)
+				weightsParam.refreshEditor();
 		}
 		double weighted = weights.getWeightedAverage(vals);
 		if (D && Double.isNaN(weighted)) {

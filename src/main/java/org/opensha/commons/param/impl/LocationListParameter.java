@@ -225,6 +225,11 @@ public class LocationListParameter extends AbstractParameter<LocationList> {
 		return null;
 	}
 
+	@Override
+	public boolean isEditorBuilt() {
+		return false;
+	}
+
 
 }
 

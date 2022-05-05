@@ -235,6 +235,11 @@ public class EvenlyDiscretizedFuncParameter extends
 		return paramEdit;
 	}
 
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
+
 
 }
 

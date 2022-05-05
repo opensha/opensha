@@ -96,4 +96,9 @@ public class BooleanParameter extends AbstractParameter<Boolean> {
 		return paramEdit;
 	}
 
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
+
 }

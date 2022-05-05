@@ -31,6 +31,11 @@ public class ButtonParameter extends AbstractParameter<Integer> {
 			editor = new ButtonParameterEditor(this);
 		return editor;
 	}
+
+	@Override
+	public boolean isEditorBuilt() {
+		return editor != null;
+	}
 	
 	public String getButtonText() {
 		return buttonText;

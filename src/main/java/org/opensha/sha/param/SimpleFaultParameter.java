@@ -856,5 +856,10 @@ java.io.Serializable{
 			paramEdit = new SimpleFaultParameterEditor(this);
 		return paramEdit;
 	}
+
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
 }
 

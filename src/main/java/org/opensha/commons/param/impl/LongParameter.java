@@ -30,6 +30,11 @@ public class LongParameter extends AbstractParameter<Long> {
 	}
 
 	@Override
+	public boolean isEditorBuilt() {
+		return editor != null;
+	}
+
+	@Override
 	public Object clone() {
 		LongParameter o = new LongParameter(getName());
 		o.setConstraint(getConstraint());

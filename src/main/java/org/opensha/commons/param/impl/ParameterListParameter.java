@@ -203,6 +203,11 @@ public class ParameterListParameter extends AbstractParameter<ParameterList> {
 		return paramEdit;
 	}
 
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
+
 
 }
 

@@ -33,7 +33,7 @@ public class WeightedListParameter<E> extends AbstractParameter<WeightedList<E>>
 		return paramEdit;
 	}
 	
-	public boolean isParameterEditorBuilt() {
+	public boolean isEditorBuilt() {
 		return paramEdit != null;
 	}
 

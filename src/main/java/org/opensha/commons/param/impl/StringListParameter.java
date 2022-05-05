@@ -274,6 +274,11 @@ public class StringListParameter extends AbstractParameter<List<String>> {
 		return paramEdit;
 	}
 
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
+
 
 	public boolean setIndividualParamValueFromXML(Element el) {
 		return false;

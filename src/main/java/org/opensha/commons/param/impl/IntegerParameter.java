@@ -471,4 +471,9 @@ implements Parameter<Integer>
 		return paramEdit;
 	}
 
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
+
 }

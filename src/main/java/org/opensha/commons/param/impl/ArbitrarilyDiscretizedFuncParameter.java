@@ -214,6 +214,11 @@ implements java.io.Serializable{
 		return paramEdit;
 	}
 
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
+
 }
 
 

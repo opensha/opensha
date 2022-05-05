@@ -374,4 +374,9 @@ implements Parameter<Double>
 		return paramEdit;
 	}
 
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
+
 }

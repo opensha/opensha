@@ -47,6 +47,11 @@ public class CPTParameter extends AbstractParameter<CPT> {
 		return null;
 	}
 
+	@Override
+	public boolean isEditorBuilt() {
+		return editor != null;
+	}
+
 //	@Override
 //	public int compareTo(Parameter<CPT> o) {
 //		// TODO Auto-generated method stub

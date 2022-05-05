@@ -350,6 +350,20 @@ public interface Parameter<E> extends
 	 * @return the <code>Editor</code>
 	 */
 	public ParameterEditor getEditor();
+	
+	/**
+	 * 
+	 * @return true if getEditor() has been called, false otherwise
+	 */
+	public boolean isEditorBuilt();
+
+    /**
+     * Refreshes the {@link ParameterEditor} if {@link #isEditorBuilt()} is true.
+     */
+    public default void refreshEditor() {
+    	if (isEditorBuilt())
+    		getEditor().refreshParamEditor();
+    }
     
     public static final String XML_INDEPENDENT_PARAMS_NAME = "IndependentParameters";
 	

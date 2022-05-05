@@ -1187,4 +1187,9 @@ implements java.io.Serializable
 			paramEdit = new MagFreqDistParameterEditor(this);
 		return paramEdit;
 	}
+
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
 }

@@ -201,4 +201,9 @@ public class EstimateParameter extends AbstractParameter<Estimate> {
 		return paramEdit;
 	}
 
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
+
 }

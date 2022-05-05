@@ -46,6 +46,11 @@ public class LocationParameter extends AbstractParameter<Location> {
 	}
 
 	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
+
+	@Override
 	public Object clone() {
 		return new LocationParameter(getName(), getConstraint(), getValue());
 	}

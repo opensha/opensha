@@ -330,4 +330,9 @@ public class StringParameter extends AbstractParameter<String> {
 		return paramEdit;
 	}
 
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
+
 }

@@ -21,6 +21,11 @@ public class PeriodDependentParamSetParam<E extends Enum<E>> extends
 	}
 
 	@Override
+	public boolean isEditorBuilt() {
+		return editor != null;
+	}
+
+	@Override
 	public Object clone() {
 		// TODO Auto-generated method stub
 		return null;
