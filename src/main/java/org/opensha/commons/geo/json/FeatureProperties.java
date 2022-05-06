@@ -287,6 +287,7 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		if (val == null)
 			return defaultValue;
 		try {
+//			System.out.println(val+"\t"+val.getClass());
 			return (E)val;
 		} catch (ClassCastException e) {
 			System.err.println("Feature property with name '"+name+"' is of an unexpected type: "+e.getMessage());
