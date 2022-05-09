@@ -64,7 +64,7 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 			magPrefixes.add("m6");
 		}
 		
-		if (maxMag > 7d && minMag <= 7d) {
+		if (maxMag > 7d) {
 			minMags.add(7d);
 			magLabels.add("M≥7");
 			magPrefixes.add("m7");
