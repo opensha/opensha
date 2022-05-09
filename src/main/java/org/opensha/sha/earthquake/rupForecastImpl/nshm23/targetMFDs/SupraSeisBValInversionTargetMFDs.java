@@ -557,12 +557,12 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					slipRates[s] = creepReducedSlipRate*fractSupra;
 					slipRateStdDevs[s] = creepReducedSlipRateStdDev*fractSupra;
 				} else if (subSeisMoRateReduction == SubSeisMoRateReduction.SUB_SEIS_B_1) {
-					// start with a full G-R with the supra b-value
+					// start with a full G-R with the supra b-value up to the maximum magnitude
 					GutenbergRichterMagFreqDist fullSupraB = new GutenbergRichterMagFreqDist(
-							MIN_MAG, NUM_MAG, DELTA_MAG, targetMoRate, supraSeisBValue);
+							MIN_MAG, maxMagIndex+1, DELTA_MAG, targetMoRate, supraSeisBValue);
 					
 					// copy it to a regular MFD:
-					IncrementalMagFreqDist sectFullMFD = new IncrementalMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
+					IncrementalMagFreqDist sectFullMFD = new IncrementalMagFreqDist(MIN_MAG, maxMagIndex+1, DELTA_MAG);
 					for (int i=0; i<fullSupraB.size(); i++)
 						sectFullMFD.set(i, fullSupraB.getY(i));
 					
@@ -570,7 +570,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					
 					// first create a full MFD with the sub b-value. this will only be used in a relative sense
 					GutenbergRichterMagFreqDist fullSubB = new GutenbergRichterMagFreqDist(
-							MIN_MAG, NUM_MAG, DELTA_MAG, targetMoRate, 1d); // b=1
+							MIN_MAG, maxMagIndex+1, DELTA_MAG, targetMoRate, 1d); // b=1
 					
 					double targetFirstSupra = fullSupraB.getY(minMagIndex);
 					double subFirstSupra = fullSubB.getY(minMagIndex);
@@ -588,7 +588,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 						subSeisMFD.set(i, sectFullMFD.getY(i));
 					
 					subMoRate = subSeisMFD.getTotalMomentRate();
-					supraMoRate = sectFullMFD.getTotalMomentRate() - subMoRate;
+					supraMoRate = targetMoRate - subMoRate;
 					
 					// use supra-seis MFD shape from above
 					supraGR_shape.scaleToTotalMomentRate(supraMoRate);
