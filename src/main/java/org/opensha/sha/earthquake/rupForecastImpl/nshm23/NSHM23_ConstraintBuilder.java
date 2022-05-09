@@ -251,8 +251,7 @@ public class NSHM23_ConstraintBuilder {
 		if (adjustForIncompatibleData) {
 			UncertaintyBoundType dataWithinType = UncertaintyBoundType.ONE_SIGMA;
 			List<SectNucleationMFD_Estimator> dataConstraints = new ArrayList<>();
-			dataConstraints.add(new APrioriSectNuclEstimator(rupSet,
-					UCERF3InversionInputGenerator.findParkfieldRups(rupSet), parkfieldRate));
+			dataConstraints.add(new APrioriSectNuclEstimator(rupSet, findParkfieldRups(), parkfieldRate));
 			if (rupSet.hasModule(PaleoseismicConstraintData.class)) {
 				PaleoseismicConstraintData paleoData = rupSet.requireModule(PaleoseismicConstraintData.class);
 				if (paleoData.getPaleoSlipConstraints() != null) {
@@ -325,14 +324,24 @@ public class NSHM23_ConstraintBuilder {
 		return this;
 	}
 	
+	public List<Integer> findParkfieldRups() {
+		// TODO hack
+		return UCERF3InversionInputGenerator.findParkfieldRups(rupSet);
+	}
+	
+	public boolean rupSetHasParkfield() {
+		List<Integer> parkfieldRups = findParkfieldRups();
+		return !parkfieldRups.isEmpty();
+	}
+	
 	public NSHM23_ConstraintBuilder parkfield() {
 		double parkfieldMeanRate = 1.0/25.0; // Bakun et al. (2005)
 		System.err.println("WARNING: temporary relative standard deviation of "
 				+(float)DEFAULT_REL_STD_DEV+" set for parkfield constraint"); // TODO
 		double parkfieldStdDev = DEFAULT_REL_STD_DEV*parkfieldMeanRate;
 		
-		// Find Parkfield M~6 ruptures
-		List<Integer> parkfieldRups = UCERF3InversionInputGenerator.findParkfieldRups(rupSet);
+		// Find Parkfield M~6 ruptures TODO HACK
+		List<Integer> parkfieldRups = findParkfieldRups();
 		constraints.add(new ParkfieldInversionConstraint(1d, parkfieldMeanRate, parkfieldRups,
 				ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY, parkfieldStdDev));
 		return this;
@@ -835,7 +844,7 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public double[] getParkfieldInitial(boolean ensureNotSkipped) {
-		List<Integer> parkRups = new ArrayList<>(UCERF3InversionInputGenerator.findParkfieldRups(rupSet));
+		List<Integer> parkRups = new ArrayList<>(findParkfieldRups());
 		double[] initial = new double[rupSet.getNumRuptures()];
 		if (ensureNotSkipped) {
 			HashSet<Integer> skips = new HashSet<Integer>(getRupIndexesBelowMinMag());

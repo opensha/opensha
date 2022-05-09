@@ -342,26 +342,10 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 			}
 			rupSet.addModule(branch);
 			
-			InversionConfiguration config;
-			try {
-				config = factory.buildInversionConfig(rupSet, branch, annealingThreads);
-			} catch (IOException e) {
-				throw ExceptionUtils.asRuntimeException(e);
-			}
-			rupSet.addModule(branch);
-			// apply any command line overrides
-			config = InversionConfiguration.builder(config).forCommandLine(cmd).build();
-			
-			memoryDebug("Running inversion for task "+index+" with "+config.getConstraints().size()+" constraints");
-			FaultSystemSolution sol = Inversions.run(rupSet, config);
-			
-			// attach any relevant modules before writing out
-			SolutionProcessor processor = factory.getSolutionLogicTreeProcessor();
-			
-			if (processor != null)
-				processor.processSolution(sol, branch);
+			FaultSystemSolution sol;
 			
 			try {
+				sol = Inversions.run(rupSet, factory, branch, annealingThreads, cmd);
 				sol.write(solFile);
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);

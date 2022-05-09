@@ -264,6 +264,10 @@ public class RuptureSets {
 			this.maxJumpDist = maxJumpDist;
 		}
 		
+		public void setMinSectsPerParent(int minSectsPerParent) {
+			this.minSectsPerParent = minSectsPerParent;
+		}
+		
 	}
 	
 	public static class CoulombRupSetConfig extends RupSetConfig {

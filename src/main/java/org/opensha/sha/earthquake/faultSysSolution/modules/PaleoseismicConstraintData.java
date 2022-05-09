@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.checkerframework.checker.units.qual.m;
 import org.opensha.commons.data.uncertainty.BoundedUncertainty;
 import org.opensha.commons.data.uncertainty.Uncertainty;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
@@ -19,6 +20,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Sl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.BiMap;
 import com.google.gson.GsonBuilder;
 
 import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
@@ -34,7 +36,8 @@ import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoRateConstraintFetch
  *
  */
 public class PaleoseismicConstraintData implements SubModule<FaultSystemRupSet>,
-JSON_TypeAdapterBackedModule<PaleoseismicConstraintData>, BranchAverageableModule<PaleoseismicConstraintData> {
+JSON_TypeAdapterBackedModule<PaleoseismicConstraintData>, BranchAverageableModule<PaleoseismicConstraintData>,
+SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
 	
 	private transient FaultSystemRupSet rupSet;
 	private List<? extends SectMappedUncertainDataConstraint> paleoRateConstraints;
@@ -292,6 +295,29 @@ JSON_TypeAdapterBackedModule<PaleoseismicConstraintData>, BranchAverageableModul
 				return false;
 		}
 		return true;
+	}
+
+	@Override
+	public PaleoseismicConstraintData getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
+		List<SectMappedUncertainDataConstraint> filteredRateConstraints = getRemapped(paleoRateConstraints, mappings);
+		List<SectMappedUncertainDataConstraint> filteredSlipConstraints = getRemapped(paleoSlipConstraints, mappings);
+		if (filteredRateConstraints == null && filteredSlipConstraints == null)
+			return null;
+		return new PaleoseismicConstraintData(rupSubSet, filteredRateConstraints, paleoProbModel,
+				filteredSlipConstraints, paleoSlipProbModel);
+	}
+	
+	private static List<SectMappedUncertainDataConstraint> getRemapped(
+			List<? extends SectMappedUncertainDataConstraint> constraints, RuptureSubSetMappings mappings) {
+		if (constraints == null || constraints.isEmpty())
+			return null;
+		List<SectMappedUncertainDataConstraint> remapped = new ArrayList<>();
+		for (SectMappedUncertainDataConstraint constraint : constraints)
+			if (mappings.isSectRetained(constraint.sectionIndex))
+				remapped.add(constraint.forRemappedSectionIndex(mappings.getNewSectID(constraint.sectionIndex)));
+		if (remapped.isEmpty())
+			return null;
+		return remapped;
 	}
 
 }

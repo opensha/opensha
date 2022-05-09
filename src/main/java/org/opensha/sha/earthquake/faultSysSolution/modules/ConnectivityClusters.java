@@ -4,6 +4,7 @@ import java.lang.reflect.Type;
 import java.util.Collections;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 
 import org.opensha.commons.util.modules.SubModule;
@@ -16,7 +17,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
 public class ConnectivityClusters implements SubModule<FaultSystemRupSet>,
-JSON_TypeAdapterBackedModule<List<ConnectivityCluster>> {
+JSON_TypeAdapterBackedModule<List<ConnectivityCluster>>, Iterable<ConnectivityCluster> {
 	
 	private FaultSystemRupSet rupSet;
 	private List<ConnectivityCluster> clusters;
@@ -95,6 +96,11 @@ JSON_TypeAdapterBackedModule<List<ConnectivityCluster>> {
 	@Override
 	public void registerTypeAdapters(GsonBuilder builder) {
 		// do nothing, default serialization will work
+	}
+
+	@Override
+	public Iterator<ConnectivityCluster> iterator() {
+		return clusters.iterator();
 	}
 
 }

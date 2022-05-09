@@ -33,7 +33,8 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
 public abstract class ClusterRuptures implements SubModule<FaultSystemRupSet>, Iterable<ClusterRupture>,
-BranchAverageableModule<ClusterRuptures>, AverageableModule.ConstantAverageable<ClusterRuptures> {
+BranchAverageableModule<ClusterRuptures>, AverageableModule.ConstantAverageable<ClusterRuptures>,
+SplittableRuptureSubSetModule<ClusterRuptures> {
 	
 	protected FaultSystemRupSet rupSet;
 
@@ -260,6 +261,18 @@ BranchAverageableModule<ClusterRuptures>, AverageableModule.ConstantAverageable<
 				Preconditions.checkState(rupSet.isEquivalentTo(parent));
 			this.rupSet = parent;
 		}
+
+		@Override
+		public AveragingAccumulator<ClusterRuptures> averagingAccumulator() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public SingleStranded getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
+			// don't keep cache, new ruptures will have new IDs and FaultSection indexes
+			return new SingleStranded(rupSubSet, null);
+		}
 		
 	}
 	
@@ -324,6 +337,24 @@ BranchAverageableModule<ClusterRuptures>, AverageableModule.ConstantAverageable<
 			if (this.clusterRuptures != null)
 				Preconditions.checkState(rupSet.isEquivalentTo(parent));
 			this.rupSet = parent;
+		}
+
+		@Override
+		public AveragingAccumulator<ClusterRuptures> averagingAccumulator() {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public ClusterRuptures getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
+			throw new UnsupportedOperationException("Not yet supported");
+//			List<ClusterRupture> subSet = new ArrayList<>();
+//			for (int r=0; r<mappings.getNumRetainedRuptures(); r++) {
+//				ClusterRupture origRup = clusterRuptures.get(mappings.getOrigRupID(r));
+//				
+//				
+//			}
+//			return subSet;
 		}
 	}
 

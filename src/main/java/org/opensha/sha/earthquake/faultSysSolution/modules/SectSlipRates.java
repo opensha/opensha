@@ -9,7 +9,8 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 
 import com.google.common.base.Preconditions;
 
-public abstract class SectSlipRates implements SubModule<FaultSystemRupSet>, BranchAverageableModule<SectSlipRates> {
+public abstract class SectSlipRates implements SubModule<FaultSystemRupSet>, BranchAverageableModule<SectSlipRates>,
+SplittableRuptureSubSetModule<SectSlipRates>{
 	
 	protected FaultSystemRupSet parent;
 
@@ -114,7 +115,7 @@ public abstract class SectSlipRates implements SubModule<FaultSystemRupSet>, Bra
 		}
 
 		@Override
-		public SubModule<FaultSystemRupSet> copy(FaultSystemRupSet newParent) throws IllegalStateException {
+		public SectSlipRates copy(FaultSystemRupSet newParent) throws IllegalStateException {
 			Preconditions.checkNotNull(newParent);
 			Preconditions.checkState(parent == null || newParent.getNumSections() == parent.getNumSections());
 			return new Default(newParent);
@@ -133,6 +134,11 @@ public abstract class SectSlipRates implements SubModule<FaultSystemRupSet>, Bra
 		@Override
 		public AveragingAccumulator<SectSlipRates> averagingAccumulator() {
 			return new Precomputed(parent, getSlipRates(), getSlipRateStdDevs()).averagingAccumulator();
+		}
+
+		@Override
+		public SectSlipRates getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
+			return this.copy(rupSubSet);
 		}
 		
 	}
@@ -263,6 +269,22 @@ public abstract class SectSlipRates implements SubModule<FaultSystemRupSet>, Bra
 					return SectSlipRates.class;
 				}
 			};
+		}
+
+		@Override
+		public Precomputed getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
+			double[] filteredSlipRates = slipRates == null ? null : new double[rupSubSet.getNumSections()];
+			double[] filteredSlipRateStdDevs = slipRateStdDevs == null ? null : new double[rupSubSet.getNumSections()];
+			if (filteredSlipRates == null && filteredSlipRateStdDevs == null)
+				return null;
+			for (int s=0; s<rupSubSet.getNumSections(); s++) {
+				int origID = mappings.getOrigSectID(s);
+				if (filteredSlipRates != null)
+					filteredSlipRates[s] = this.slipRates[origID];
+				if (filteredSlipRateStdDevs != null)
+					filteredSlipRateStdDevs[s] = this.slipRateStdDevs[origID];
+			}
+			return new Precomputed(rupSubSet, filteredSlipRates, filteredSlipRateStdDevs);
 		}
 
 	}

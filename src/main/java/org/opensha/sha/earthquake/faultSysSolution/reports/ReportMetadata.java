@@ -8,6 +8,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
@@ -68,6 +69,8 @@ public class ReportMetadata {
 	}
 	
 	private static Region detectRegion(FaultSystemRupSet rupSet, FaultSystemSolution sol) {
+		if (rupSet.hasModule(ModelRegion.class))
+			return rupSet.requireModule(ModelRegion.class).getRegion();
 		if (ReportPageGen.getUCERF3FM(rupSet) != null)
 			return new CaliforniaRegions.RELM_TESTING();
 		if (rupSet.hasModule(FaultGridAssociations.class))

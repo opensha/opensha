@@ -110,6 +110,7 @@ public class RupSetMapMaker {
 	private List<Double> scatterScalars;
 	private CPT scatterScalarCPT;
 	private String scatterScalarLabel;
+	private Color scatterColor;
 	private PlotSymbol scatterSymbol = PlotSymbol.FILLED_TRIANGLE;
 	private float scatterSymbolWidth = 5f;
 	private PlotSymbol scatterOutline = PlotSymbol.TRIANGLE;
@@ -295,7 +296,14 @@ public class RupSetMapMaker {
 		this.scalarJumpsLabel = null;
 	}
 	
+	public void plotScatters(List<Location> locs, Color color) {
+		clearScatters();
+		this.scatterLocs = locs;
+		this.scatterColor = color;
+	}
+	
 	public void plotScatterScalars(List<Location> locs, List<Double> values, CPT cpt, String label) {
+		clearScatters();
 		Preconditions.checkState(locs.size() == values.size());
 		Preconditions.checkNotNull(cpt);
 		this.scatterLocs = locs;
@@ -304,11 +312,12 @@ public class RupSetMapMaker {
 		this.scatterScalarLabel = label;
 	}
 	
-	public void clearScatterScalars() {
+	public void clearScatters() {
 		this.scatterLocs = null;
 		this.scatterScalars = null;
 		this.scatterScalarCPT = null;
 		this.scatterScalarLabel = null;
+		this.scatterColor = null;
 	}
 	
 	public void setScatterSymbol(PlotSymbol symbol, float width) {
@@ -627,36 +636,53 @@ public class RupSetMapMaker {
 		
 		// plot scatter scalars
 		if (scatterLocs != null) {
-			List<ComparablePairing<Double, XY_DataSet>> sortables = new ArrayList<>();
+			// TODO GeoJSON?
 			XY_DataSet outlines = scatterOutline == null ? null : new DefaultXY_DataSet();
-			for (int j=0; j<scatterLocs.size(); j++) {
-				double scalar = scatterScalars.get(j);
-				if (skipNaNs && Double.isNaN(scalar))
-					continue;
-				Location loc = scatterLocs.get(j);
+			if (scatterScalars != null) {
+				List<ComparablePairing<Double, XY_DataSet>> sortables = new ArrayList<>();
+				for (int j=0; j<scatterLocs.size(); j++) {
+					double scalar = scatterScalars.get(j);
+					if (skipNaNs && Double.isNaN(scalar))
+						continue;
+					Location loc = scatterLocs.get(j);
+					XY_DataSet xy = new DefaultXY_DataSet();
+					xy.set(loc.getLongitude(), loc.getLatitude());
+					sortables.add(new ComparablePairing<>(scalar, xy));
+					
+					if (outlines != null)
+						outlines.set(xy.get(0));
+				}
+				Collections.sort(sortables);
+				for (ComparablePairing<Double, XY_DataSet> val : sortables) {
+					float scalar = val.getComparable().floatValue();
+					Color color = scatterScalarCPT.getColor(scalar);
+					
+					funcs.add(val.getData());
+					chars.add(new PlotCurveCharacterstics(scatterSymbol, scatterSymbolWidth, color));
+				}
+				if (outlines != null ) {
+					funcs.add(outlines);
+					chars.add(new PlotCurveCharacterstics(scatterOutline, scatterSymbolWidth, scatterOutlineColor));
+				}
+				
+				cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel));
+			} else {
+				Preconditions.checkNotNull(scatterColor);
 				XY_DataSet xy = new DefaultXY_DataSet();
-				xy.set(loc.getLongitude(), loc.getLatitude());
-				sortables.add(new ComparablePairing<>(scalar, xy));
-				
-				if (outlines != null)
-					outlines.set(xy.get(0));
-				
-				// TODO GeoJSON?
+				for (int j=0; j<scatterLocs.size(); j++) {
+					Location loc = scatterLocs.get(j);
+					xy.set(loc.getLongitude(), loc.getLatitude());
+					
+					if (outlines != null)
+						outlines.set(loc.getLongitude(), loc.getLatitude());
+				}
+				funcs.add(xy);
+				chars.add(new PlotCurveCharacterstics(scatterSymbol, scatterSymbolWidth, scatterColor));
+				if (outlines != null ) {
+					funcs.add(outlines);
+					chars.add(new PlotCurveCharacterstics(scatterOutline, scatterSymbolWidth, scatterOutlineColor));
+				}
 			}
-			Collections.sort(sortables);
-			for (ComparablePairing<Double, XY_DataSet> val : sortables) {
-				float scalar = val.getComparable().floatValue();
-				Color color = scatterScalarCPT.getColor(scalar);
-				
-				funcs.add(val.getData());
-				chars.add(new PlotCurveCharacterstics(scatterSymbol, scatterSymbolWidth, color));
-			}
-			if (outlines != null ) {
-				funcs.add(outlines);
-				chars.add(new PlotCurveCharacterstics(scatterOutline, scatterSymbolWidth, scatterOutlineColor));
-			}
-			
-			cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel));
 		}
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");

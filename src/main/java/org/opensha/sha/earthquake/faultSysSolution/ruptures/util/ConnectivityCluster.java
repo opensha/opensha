@@ -55,6 +55,22 @@ public class ConnectivityCluster implements Comparable<ConnectivityCluster> {
 	public int getNumRuptures() {
 		return numRuptures;
 	}
+	
+	/**
+	 * @param sect
+	 * @return true if the given section is part of this cluster, false otherwise
+	 */
+	public boolean containsSect(FaultSection sect) {
+		return containsSect(sect.getSectionId());
+	}
+	
+	/**
+	 * @param sectID
+	 * @return true if the given section ID is part of this cluster, false otherwise
+	 */
+	public boolean containsSect(int sectID) {
+		return sectIDs.contains(sectID);
+	}
 
 	/**
 	 * @return unmodifiable view of the sections IDs associated with this cluster
@@ -138,6 +154,11 @@ public class ConnectivityCluster implements Comparable<ConnectivityCluster> {
 		return sectCountComparator.compare(this, o);
 	}
 	
+	@Override
+	public String toString() {
+		return "ConnectivityCluster["+numSections+" sects, "+numRuptures+" rups]";
+	}
+
 	public static final Comparator<ConnectivityCluster> sectCountComparator = new Comparator<ConnectivityCluster>() {
 		
 		@Override
