@@ -600,8 +600,8 @@ public class Inversions {
 			
 			List<FaultSystemSolution> solutions = new ArrayList<>(clusters.size());
 			
-			File tmpDir = new File("/tmp/inv_debug");
-			Preconditions.checkState(tmpDir.exists() || tmpDir.mkdir());
+//			File tmpDir = new File("/tmp/inv_debug");
+//			Preconditions.checkState(tmpDir.exists() || tmpDir.mkdir());
 			for (ConnectivityCluster cluster : sorted) {
 				System.out.println("Handling cluster: "+cluster);
 				System.out.println("Building subset rupture set for "+cluster);
@@ -613,11 +613,11 @@ public class Inversions {
 					config = InversionConfiguration.builder(config).forCommandLine(cmd).build();
 				solutions.add(run(clusterRupSet, config));
 				
-				String name = "sol_"+(solutions.size()-1)+"_"+cluster.getNumSections()+"sects_"+cluster.getNumRuptures()+"rups";
-				if (cluster.getParentSectIDs().size() == 1)
-					name += "_"+clusterRupSet.getFaultSectionData(0).getParentSectionName().replaceAll("\\W+", "_");
-				File tmpFile = new File(tmpDir, name+".zip");
-				solutions.get(solutions.size()-1).write(tmpFile);
+//				String name = "sol_"+(solutions.size()-1)+"_"+cluster.getNumSections()+"sects_"+cluster.getNumRuptures()+"rups";
+//				if (cluster.getParentSectIDs().size() == 1)
+//					name += "_"+clusterRupSet.getFaultSectionData(0).getParentSectionName().replaceAll("\\W+", "_");
+//				File tmpFile = new File(tmpDir, name+".zip");
+//				solutions.get(solutions.size()-1).write(tmpFile);
 			}
 			
 			System.out.println("Finished "+solutions.size()+" cluster-specific inversions, combining");
