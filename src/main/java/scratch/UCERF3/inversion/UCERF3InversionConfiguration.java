@@ -894,14 +894,15 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		// Can't just add up all the mag bins to normalize because some bins don't have ruptures.
 		// Instead let's choose one mag bin (that we know has rups) that has rups and normalize
 		// all bins by the amount it's off:
+		double magNorm = 8.1;
 		double totalEventRate=0;
 		for (int rup=0; rup<numRup; rup++) {
-			if (rupMeanMag[rup]>7.0 && rupMeanMag[rup]<=7.1)
+			if (rupMeanMag[rup]>magNorm && rupMeanMag[rup]<=magNorm+0.1)
 				totalEventRate += initial_state[rup];
 		}
-		double normalization = targetMagFreqDist.getClosestYtoX(7.0)/totalEventRate;	
-		if (targetMagFreqDist.getClosestYtoX(7.0)==0)
-			throw new IllegalStateException("targetMagFreqDist.getClosestY(7.0) = 0.  Check rupSet.getInversionMFDs().getTargetOnFaultSupraSeisMFD()");
+		double normalization = targetMagFreqDist.getClosestYtoX(magNorm)/totalEventRate;	
+		if (targetMagFreqDist.getClosestYtoX(magNorm)==0)
+			throw new IllegalStateException("targetMagFreqDist.getClosestY(magNorm) = 0.  Check rupSet.getInversionMFDs().getTargetOnFaultSupraSeisMFD()");
 		// Adjust rates by normalization to match target MFD total event rates
 		for (int rup=0; rup<numRup; rup++) {
 			initial_state[rup]=initial_state[rup]*normalization;
