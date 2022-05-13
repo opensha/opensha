@@ -576,9 +576,17 @@ public class Inversions {
 		return sol;
 	}
 	
-	public static FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfigurationFactory factory,
-			LogicTreeBranch<?> branch, int threads) throws IOException {
-		return run(rupSet, factory, branch, threads, null);
+	public static FaultSystemSolution run(InversionConfigurationFactory factory, LogicTreeBranch<?> branch, int threads)
+			throws IOException {
+		return run(factory, branch, threads, null);
+	}
+	
+	public static FaultSystemSolution run(InversionConfigurationFactory factory, LogicTreeBranch<?> branch, int threads,
+			CommandLine cmd) throws IOException {
+		FaultSystemRupSet rupSet = factory.buildRuptureSet(branch, threads);
+		rupSet.addModule(branch);
+		
+		return run(rupSet, factory, branch, threads, cmd);
 	}
 	
 	public static FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfigurationFactory factory,
@@ -627,13 +635,14 @@ public class Inversions {
 			double[] initialRates = null;
 			List<InversionMisfits> solMisfits = new ArrayList<>();
 			
-			for (FaultSystemSolution sol : solutions) {
-				FaultSystemRupSet clusterRupSet = sol.getRupSet();
+			for (FaultSystemSolution clusterSol : solutions) {
+				// merge each one back in
+				FaultSystemRupSet clusterRupSet = clusterSol.getRupSet();
 				RuptureSubSetMappings mappings = clusterRupSet.requireModule(RuptureSubSetMappings.class);
-				WaterLevelRates subsetWL = sol.getModule(WaterLevelRates.class);
+				WaterLevelRates subsetWL = clusterSol.getModule(WaterLevelRates.class);
 				if (subsetWL != null && waterLevelRates == null)
 					waterLevelRates = new double[rates.length];
-				InitialSolution subsetInitial = sol.getModule(InitialSolution.class);
+				InitialSolution subsetInitial = clusterSol.getModule(InitialSolution.class);
 				if (subsetInitial != null && initialRates == null)
 					initialRates = new double[rates.length];
 				for (int subsetID=0; subsetID<clusterRupSet.getNumRuptures(); subsetID++) {
@@ -641,13 +650,13 @@ public class Inversions {
 					Preconditions.checkState(rates[fullID] == 0d,
 							"Rupture %s (%s in the subset solution) was already non-zero (%s), used in multiple clusters?",
 							fullID, subsetID, rates[fullID]);
-					rates[fullID] = sol.getRateForRup(subsetID);
+					rates[fullID] = clusterSol.getRateForRup(subsetID);
 					if (subsetWL != null)
 						waterLevelRates[fullID] = subsetWL.get(subsetID);
 					if (subsetInitial != null)
 						initialRates[fullID] = subsetInitial.get(subsetID);
 				}
-				solMisfits.add(sol.requireModule(InversionMisfits.class));
+				solMisfits.add(clusterSol.requireModule(InversionMisfits.class));
 			}
 			FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
 			if (waterLevelRates != null)
@@ -711,6 +720,9 @@ public class Inversions {
 		
 		System.out.println("Annealing!");
 		sa.iterate(progress);
+		
+		if (sa instanceof ThreadedSimulatedAnnealing)
+			((ThreadedSimulatedAnnealing)sa).shutdown();
 		
 		System.out.println("DONE. Building solution...");
 		double[] rawSol = sa.getBestSolution();

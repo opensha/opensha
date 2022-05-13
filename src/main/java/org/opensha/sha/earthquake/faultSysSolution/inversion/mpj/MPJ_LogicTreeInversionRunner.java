@@ -334,18 +334,10 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 			
 			memoryDebug("Beginning config for "+index);
 			
-			FaultSystemRupSet rupSet;
-			try {
-				rupSet = factory.buildRuptureSet(branch, annealingThreads);
-			} catch (IOException e) {
-				throw ExceptionUtils.asRuntimeException(e);
-			}
-			rupSet.addModule(branch);
-			
 			FaultSystemSolution sol;
 			
 			try {
-				sol = Inversions.run(rupSet, factory, branch, annealingThreads, cmd);
+				sol = Inversions.run(factory, branch, annealingThreads, cmd);
 				sol.write(solFile);
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
