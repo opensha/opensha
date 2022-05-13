@@ -80,7 +80,8 @@ public class NSHM23_ConstraintBuilder {
 	private double supraBVal;
 	private boolean applyDefModelUncertaintiesToNucl;
 	private boolean addSectCountUncertaintiesToMFD;
-	private boolean adjustForIncompatibleData;
+	public static boolean ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT = true;
+	private boolean adjustForIncompatibleData = ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT;
 	
 	public static boolean ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT = true;
 	public static boolean ADJ_FOR_SLIP_ALONG_DEFAULT = false;
@@ -98,7 +99,7 @@ public class NSHM23_ConstraintBuilder {
 	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB) {
 		this(rupSet, supraSeisB, SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT,
-				SupraSeisBValInversionTargetMFDs.ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT, false);
+				SupraSeisBValInversionTargetMFDs.ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT, ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT);
 	}
 	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraBVal,
