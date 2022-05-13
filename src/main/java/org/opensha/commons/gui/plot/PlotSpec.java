@@ -25,6 +25,7 @@ import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.DiscretizedFunc;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 /**
@@ -258,6 +259,33 @@ public class PlotSpec implements Serializable {
 		if (insetLegend)
 			this.legend = true;
 		this.insetLegend = insetLegend;
+	}
+	
+	/**
+	 * Creates an inset legend with the given anchor and otherwise default settings (0.975 relative x/y, single column,
+	 * max 35% width).
+	 * 
+	 * @param anchor
+	 */
+	public void setLegendInset(RectangleAnchor anchor) {
+		Preconditions.checkNotNull(anchor);
+		this.legend = true;
+		this.insetLegend = true;
+		this.insetLegendLocation = anchor;
+		if (anchor == RectangleAnchor.TOP || anchor == RectangleAnchor.TOP_LEFT || anchor == RectangleAnchor.TOP_RIGHT) {
+			insetLegendRelY = 0.975;
+		} else if (anchor == RectangleAnchor.BOTTOM || anchor == RectangleAnchor.BOTTOM_LEFT || anchor == RectangleAnchor.BOTTOM_RIGHT) {
+			insetLegendRelY = 0.025;
+		} else {
+			insetLegendRelY = 0.5;
+		}
+		if (anchor == RectangleAnchor.LEFT || anchor == RectangleAnchor.TOP_LEFT || anchor == RectangleAnchor.BOTTOM_LEFT) {
+			insetLegendRelX = 0.055;
+		} else if (anchor == RectangleAnchor.RIGHT || anchor == RectangleAnchor.TOP_RIGHT || anchor == RectangleAnchor.BOTTOM_RIGHT) {
+			insetLegendRelX = 0.975;
+		} else {
+			insetLegendRelX = 0.5;
+		}
 	}
 	
 	/**
