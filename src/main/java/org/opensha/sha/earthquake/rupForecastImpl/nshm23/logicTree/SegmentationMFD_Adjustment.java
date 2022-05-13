@@ -25,13 +25,13 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum SegmentationMFD_Adjustment implements LogicTreeNode {
-	JUMP_PROB_THRESHOLD_AVG("Jump Prob Threshold Averaging", "JumpProb", 1d) {
+	JUMP_PROB_THRESHOLD_AVG("Threshold Averaging", "ThreshAvg", 1d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel);
 		}
 	},
-	JUMP_PROB_THRESHOLD_AVG_MATCH_STRICT("Strict-Seg Equiv Fractional Jump Prob", "StrictEquivJumpProb", 1d) {
+	JUMP_PROB_THRESHOLD_AVG_MATCH_STRICT("Strict-Seg Equiv Threshold Averaging", "StrictEquivThreshAvg", 1d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			Preconditions.checkState(segModel instanceof DistDependentJumpProbabilityCalc,
@@ -43,7 +43,7 @@ public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 			return new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel, probs);
 		}
 	},
-	JUMP_PROB_THRESHOLD_AVG_ABOVE_1KM("Fractional Jump Prob >1km", "JumpProbGt1km", 1d) {
+	JUMP_PROB_THRESHOLD_AVG_ABOVE_1KM("Threshold Averaging >1km", "JumpProbGt1km", 1d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			Preconditions.checkState(segModel instanceof DistDependentJumpProbabilityCalc,
