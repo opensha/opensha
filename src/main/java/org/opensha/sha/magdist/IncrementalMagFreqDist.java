@@ -39,6 +39,7 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 
 	protected String defaultInfo;
 	protected String defaultName;
+	private boolean nameOverride = false;
 	
 	protected Region region;
 
@@ -52,7 +53,8 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 	public IncrementalMagFreqDist (IncrementalMagFreqDist other) {
 		super(other.minX, other.maxX, other.size());
 		region = other.region;
-		setName(other.getName());
+		if (other.nameOverride)
+			setName(other.getName());
 		setInfo(other.getInfo());
 		setTolerance(other.getTolerance());
 		for (int i=0; i<other.size(); i++)
@@ -404,11 +406,17 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 	 * @return String
 	 */
 	public String getName(){
-		if(name !=null && !(name.trim().equals("")))
+		if(name !=null && !(name.trim().equals("")) || nameOverride)
 			return super.getName();
 		return getDefaultName();
 	}
 
+
+	@Override
+	public void setName(String name) {
+		this.nameOverride = true;
+		super.setName(name);
+	}
 
 	/**
 	 * Returns the info of the distribution that user has set from outside,
