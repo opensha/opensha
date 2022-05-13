@@ -371,8 +371,9 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		private SupraSeisBValInversionTargetMFDs build(boolean slipOnly) {
 			EvenlyDiscretizedFunc refMFD = buildRefXValues(rupSet);
 			int NUM_MAG = refMFD.size();
-			System.out.println("SupraSeisBValInversionTargetMFDs total MFD range: ["
-					+(float)MIN_MAG+","+(float)refMFD.getMaxX()+"] for maxMag="+rupSet.getMaxMag());
+			System.out.println("Building SupraSeisBValInversionTargetMFDs with b="+supraSeisBValue
+					+", slipOnly="+slipOnly+", total MFD range: ["+(float)MIN_MAG+","+(float)refMFD.getMaxX()
+					+"] for maxMag="+rupSet.getMaxMag());
 			
 			ModSectMinMags minMags = rupSet.getModule(ModSectMinMags.class);
 			
@@ -650,6 +651,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			}
 			
 			System.out.println("Fraction supra-seismogenic stats: "+fractSuprasTrack);
+			System.out.println("Fault moments: total="+(float)StatUtils.sum(targetMoRates)
+				+"\tsupra="+(float)StatUtils.sum(targetSupraMoRates));
 			
 			if (subSeisMoRateReduction == SubSeisMoRateReduction.SYSTEM_AVG_IMPLIED_FROM_SUPRA_B) {
 				// need to re-balance to use average supra-seis fract
@@ -684,7 +687,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			}
 			if (slipOnly)
 				// shortcut for if we only need slip rates
-				return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, totalTargetMFD, null,
+				return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, null, null,
 						null, null, null, null, sectSlipRates, sectRupUtilizations);
 			
 			ExecutorService exec = null;
