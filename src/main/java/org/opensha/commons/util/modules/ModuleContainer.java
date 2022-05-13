@@ -443,7 +443,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 		E module = null;
 		Stopwatch watch = Stopwatch.createStarted();
 		try {
-			debug("Lazily loading available module...");
+			debug("Lazily loading available module from "+call.getClass()+"...");
 			module = call.call();
 			double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
 			debug("Took "+secsDF.format(secs)+" s to load "+(module == null ? "null" : module.getName()));
