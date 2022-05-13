@@ -371,8 +371,7 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 	
 	private static NSHM23_ConstraintBuilder getConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
-		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal,
-				true, false, true);
+		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal);
 		
 		SubSeisMoRateReduction reduction = SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
 		if (branch.hasValue(SubSeisMoRateReductions.class))
@@ -384,6 +383,41 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		
 		constrBuilder.adjustForActualRupSlips(NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT,
 				NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT);
+		
+		// apply any segmentation adjustments
+		SegmentationModels segModel = branch.getValue(SegmentationModels.class);
+		MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
+		// make sure we actually have jumps
+		if (segModel != null || distModel != null) {
+			boolean jumpFound = false;
+			for (ClusterRupture cRup : rupSet.requireModule(ClusterRuptures.class)) {
+				if (cRup.getTotalNumJumps() > 0) {
+					jumpFound = true;
+					break;
+				}
+			}
+			if (!jumpFound) {
+				System.out.println("Rupture set has no jumps, disabling segmentation");
+				segModel = null;
+				distModel = null;
+			}
+		}
+		JumpProbabilityCalc targetSegModel = segModel == null ? null : segModel.getModel(rupSet);
+		if (distModel != null) {
+			if (targetSegModel == null)
+				targetSegModel = distModel.getModel(rupSet);
+			else
+				targetSegModel = new JumpProbabilityCalc.MultiProduct(targetSegModel, distModel.getModel(rupSet));
+		}
+		
+		if (targetSegModel != null) {
+			SegmentationMFD_Adjustment segAdj = branch.getValue(SegmentationMFD_Adjustment.class);
+			if (segAdj == null)
+				// use default adjustment
+				constrBuilder.adjustForSegmentationModel(targetSegModel);
+			else
+				constrBuilder.adjustForSegmentationModel(targetSegModel, segAdj);
+		}
 		
 		return constrBuilder;
 	}
@@ -424,22 +458,6 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 				segModel = null;
 				distModel = null;
 			}
-		}
-		JumpProbabilityCalc targetSegModel = segModel == null ? null : segModel.getModel(rupSet);
-		if (distModel != null) {
-			if (targetSegModel == null)
-				targetSegModel = distModel.getModel(rupSet);
-			else
-				targetSegModel = new JumpProbabilityCalc.MultiProduct(targetSegModel, distModel.getModel(rupSet));
-		}
-		
-		if (targetSegModel != null) {
-			SegmentationMFD_Adjustment segAdj = branch.getValue(SegmentationMFD_Adjustment.class);
-			if (segAdj == null)
-				// use default adjustment
-				constrBuilder.adjustForSegmentationModel(targetSegModel);
-			else
-				constrBuilder.adjustForSegmentationModel(targetSegModel, segAdj);
 		}
 		
 		if (slipWeight > 0d)
@@ -553,6 +571,14 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 
 		public NoMFDScaleAdjust() {
 			this.adjustForActualRupSlips(false, false);
+		}
+		
+	}
+	
+	public static class NoIncompatibleDataAdjust extends NSHM23_InvConfigFactory {
+
+		public NoIncompatibleDataAdjust() {
+			NSHM23_ConstraintBuilder.ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT = false;
 		}
 		
 	}
