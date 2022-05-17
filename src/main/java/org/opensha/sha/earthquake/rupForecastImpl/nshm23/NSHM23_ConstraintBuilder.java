@@ -90,7 +90,7 @@ public class NSHM23_ConstraintBuilder {
 	
 	private SubSeisMoRateReduction subSeisMoRateReduction = SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
 	
-	private static final double DEFAULT_REL_STD_DEV = 0.1;
+	public static double DEFAULT_REL_STD_DEV = 0.1;
 	
 	private DoubleUnaryOperator magDepRelStdDev = M->DEFAULT_REL_STD_DEV;
 	
@@ -142,7 +142,7 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public NSHM23_ConstraintBuilder defaultDataConstraints(SubSectConstraintModels subSectConstrModel) {
-		magDepRelStdDev(M->0.1*Math.pow(10, supraBVal*0.5*(M-6)))
+		magDepRelStdDev(M->DEFAULT_REL_STD_DEV*Math.pow(10, supraBVal*0.5*(M-6)))
 				.slipRates().weight(1d)
 				.paleoRates().weight(5d).paleoSlips().weight(5d)
 				.parkfield().weight(10d);

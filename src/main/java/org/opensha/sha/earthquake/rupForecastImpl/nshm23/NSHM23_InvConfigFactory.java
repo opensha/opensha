@@ -530,9 +530,9 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		int avgThreads = threads / 4;
 		
 //		CompletionCriteria completion = new IterationsPerVariableCompletionCriteria(5000d);
-		// the greater of 2,000 iterations per rupture and 500,000 iterations per section
+		// the greater of 2,000 iterations per rupture and 200,000 iterations per section
 		long rupIters = rupSet.getNumRuptures()*2000l;
-		long sectIters = rupSet.getNumSections()*500000l;
+		long sectIters = rupSet.getNumSections()*200000l;
 //		long rupIters = rupSet.getNumRuptures()*1000l;
 //		long sectIters = rupSet.getNumSections()*100000l;
 		CompletionCriteria completion = new IterationCompletionCriteria(Long.max(rupIters, sectIters));
@@ -671,6 +671,13 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 	
 	public static class ClusterSpecific extends NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory {
 		
+	}
+	
+	public static class DefaultUncert0p05 extends NSHM23_InvConfigFactory {
+		
+		public DefaultUncert0p05() {
+			NSHM23_ConstraintBuilder.DEFAULT_REL_STD_DEV = 0.05;
+		}
 	}
 	
 	/**
