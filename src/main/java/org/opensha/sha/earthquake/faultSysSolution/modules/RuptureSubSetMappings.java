@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Set;
 
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
@@ -12,6 +13,14 @@ import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
+/**
+ * This class gives mappings between original and subset rupture and section IDs. This is created by
+ * {@link FaultSystemRupSet#getForSectionSubSet(java.util.Collection)}, and used by {@link SplittableRuptureSubSetModule}
+ * instances to build module subsets.
+ * 
+ * @author kevin
+ *
+ */
 public class RuptureSubSetMappings implements JSON_BackedModule {
 
 	private BiMap<Integer, Integer> sectIDs_newToOld;

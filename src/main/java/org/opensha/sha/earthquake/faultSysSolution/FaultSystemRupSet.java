@@ -1294,7 +1294,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 	
 	/**
-	 * Builds a rupture subset for only the given section IDs. Fault section instances will be duplicated and assigned
+	 * Builds a rupture subset using only the given section IDs. Fault section instances will be duplicated and assigned
 	 * new section IDs in the returned rupture set, and only ruptures involving those sections will be retained. If any
 	 * ruptures utilize both retained and non-retained section IDs, an {@link IllegalStateException} will be thrown.
 	 * <br>
