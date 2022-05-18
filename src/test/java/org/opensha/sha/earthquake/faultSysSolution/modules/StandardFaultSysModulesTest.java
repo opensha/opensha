@@ -48,6 +48,8 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
+import com.google.common.collect.BiMap;
+import com.google.common.collect.HashBiMap;
 import com.google.common.io.Files;
 
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
@@ -320,6 +322,23 @@ public class StandardFaultSysModulesTest {
 		ConnectivityClusters module = ConnectivityClusters.build(demoRupSet);
 		
 		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, ConnectivityClusters.class);
+	}
+	
+	@Test
+	public void testRupSubSet() throws IOException {
+		BiMap<Integer, Integer> sectIDs_newToOld = HashBiMap.create();
+		int newSectID = 0;
+		for (int origSectID=0; origSectID<500; origSectID++)
+			if (Math.random() < 0.1)
+				sectIDs_newToOld.put(origSectID, newSectID++);
+		BiMap<Integer, Integer> rupIDs_newToOld = HashBiMap.create();
+		int newRupID = 0;
+		for (int origRupID=0; origRupID<1000; origRupID++)
+			if (Math.random() < 0.05)
+				rupIDs_newToOld.put(origRupID, newRupID++);
+		RuptureSubSetMappings module = new RuptureSubSetMappings(sectIDs_newToOld, rupIDs_newToOld);
+		
+		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, RuptureSubSetMappings.class);
 	}
 	
 	private static double[] randArray(int len) {

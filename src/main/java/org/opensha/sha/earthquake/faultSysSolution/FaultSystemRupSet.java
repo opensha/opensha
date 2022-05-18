@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,9 +43,11 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectAreas;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SplittableRuptureSubSetModule;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.faultSurface.CompoundSurface;
@@ -55,7 +58,9 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.HashBiMap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
@@ -512,6 +517,15 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		private short[] vals;
 		
+		private ShortListWrapper(List<Integer> ints) {
+			vals = new short[ints.size()];
+			for (int i=0; i<vals.length; i++) {
+				int val = ints.get(i);
+				Preconditions.checkState(val < Short.MAX_VALUE);
+				vals[i] = (short)val;
+			}
+		}
+		
 		public ShortListWrapper(short[] vals) {
 			this.vals = vals;
 		}
@@ -556,6 +570,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	private static class IntListWrapper extends AbstractList<Integer> {
 		
 		private int[] vals;
+		
+		private IntListWrapper(List<Integer> ints) {
+			vals = new int[ints.size()];
+			for (int i=0; i<vals.length; i++)
+				vals[i] = ints.get(i);
+		}
 		
 		public IntListWrapper(int[] vals) {
 			this.vals = vals;
@@ -1271,6 +1291,101 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		}
 		
 		return true;
+	}
+	
+	/**
+	 * Builds a rupture subset using only the given section IDs. Fault section instances will be duplicated and assigned
+	 * new section IDs in the returned rupture set, and only ruptures involving those sections will be retained. If any
+	 * ruptures utilize both retained and non-retained section IDs, an {@link IllegalStateException} will be thrown.
+	 * <br>
+	 * All modules that implement {@link SplittableRuptureSubSetModule} will be copied over to the returned rupture set.
+	 * <br>
+	 * Mappings between original and new section/rupture IDs can be retrieved via the {@link RuptureSubSetMappings} module
+	 * that will be attached to the rupture subset.
+	 * 
+	 * @param retainedSectIDs
+	 * @return rupture subset containing only the given sections and their corresponding ruptures
+	 * @throws IllegalStateException if there are ruptures that utilize both retained and non-retained sections
+	 */
+	public FaultSystemRupSet getForSectionSubSet(Collection<Integer> retainedSectIDs) throws IllegalStateException {
+		List<FaultSection> remappedSects = new ArrayList<>();
+		int sectIndex = 0;
+		BiMap<Integer, Integer> sectIDs_newToOld = HashBiMap.create(retainedSectIDs.size());
+		for (int origID=0; origID<this.faultSectionData.size(); origID++) {
+			if (retainedSectIDs.contains(origID)) {
+				FaultSection remappedSect = this.faultSectionData.get(origID).clone();
+				remappedSect.setSectionId(sectIndex);
+				remappedSects.add(remappedSect);
+				sectIDs_newToOld.put(sectIndex, origID);
+				sectIndex++;
+			}
+		}
+		
+		System.out.println("Building rupture sub-set, retaining "+sectIDs_newToOld.size()+"/"+getNumSections()+" sections");
+		
+		int rupIndex = 0;
+		BiMap<Integer, Integer> rupIDs_newToOld = HashBiMap.create(retainedSectIDs.size());
+		for (int origID=0; origID<this.getNumRuptures(); origID++) {
+			boolean allRetained = true;
+			boolean anyRetained = false;
+			for (int s : this.sectionForRups.get(origID)) {
+				boolean sectRetained = retainedSectIDs.contains(s);
+				allRetained = allRetained && sectRetained;
+				anyRetained = anyRetained || sectRetained;
+			}
+			Preconditions.checkState(anyRetained == allRetained,
+					"Rupture %s involves sections that are retained and excluded in the rupture subset, can only build "
+					+ "subsets for independent clusters of sections.", origID);
+			if (anyRetained)
+				rupIDs_newToOld.put(rupIndex++, origID);
+		}
+		System.out.println("Retaining "+rupIDs_newToOld.size()+"/"+getNumRuptures()+" ruptures");
+		
+		boolean shortSafe = sectIDs_newToOld.size() < Short.MAX_VALUE;
+		
+		double[] modMags = new double[rupIndex];
+		double[] modRakes = new double[rupIndex];
+		double[] modRupAreas = new double[rupIndex];
+		double[] modRupLengths = rupLengths == null ? null : new double[rupIndex];
+		List<List<Integer>> modSectionForRups = new ArrayList<>();
+		BiMap<Integer, Integer> sectIDs_oldToNew = sectIDs_newToOld.inverse();
+		for (rupIndex=0; rupIndex<rupIDs_newToOld.size(); rupIndex++) {
+			int origID = rupIDs_newToOld.get(rupIndex);
+			modMags[rupIndex] = mags[origID];
+			modRakes[rupIndex] = rakes[origID];
+			modRupAreas[rupIndex] = rupAreas[origID];
+			if (modRupLengths != null)
+				modRupLengths[rupIndex] = rupLengths[origID];
+			List<Integer> sectForRup = new ArrayList<>();
+			for (int origSectIndex : sectionForRups.get(origID)) {
+				Integer newSectID = sectIDs_oldToNew.get(origSectIndex);
+				Preconditions.checkNotNull(newSectID,
+						"Rupture (newID=%s, oldID=%s) uses origSectID=%s which is not retained",
+						rupIndex, origID, origID);
+				sectForRup.add(newSectID);
+			}
+			if (shortSafe)
+				modSectionForRups.add(new ShortListWrapper(sectForRup));
+			else
+				modSectionForRups.add(new IntListWrapper(sectForRup));
+		}
+		
+		FaultSystemRupSet modRupSet = new FaultSystemRupSet(remappedSects, modSectionForRups,
+				modMags, modRakes, modRupAreas, modRupLengths);
+		
+		// add mappings module
+		RuptureSubSetMappings mappings = new RuptureSubSetMappings(sectIDs_newToOld, rupIDs_newToOld);
+		modRupSet.addModule(mappings);
+		
+		// now copy over any modules we can
+		for (OpenSHA_Module module : getModulesAssignableTo(SplittableRuptureSubSetModule.class, true)) {
+			OpenSHA_Module modModule = ((SplittableRuptureSubSetModule<?>)module).getForRuptureSubSet(
+					modRupSet, mappings);
+			if (modModule != null)
+				modRupSet.addModule(modModule);
+		}
+		
+		return modRupSet;
 	}
 	
 	/*

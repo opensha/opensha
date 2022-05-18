@@ -95,6 +95,10 @@ public class UncertainDataConstraint implements Named {
 			this.sectionName = sectionName;
 			this.dataLocation = dataLocation;
 		}
+		
+		public SectMappedUncertainDataConstraint forRemappedSectionIndex(int newSectIndex) {
+			return new SectMappedUncertainDataConstraint(name, newSectIndex, sectionName, dataLocation, bestEstimate, uncertainties);
+		}
 	}
 	
 	@Override

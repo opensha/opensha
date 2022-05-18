@@ -17,7 +17,8 @@ import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 
-public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, BranchAverageableModule<AveSlipModule> {
+public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, BranchAverageableModule<AveSlipModule>,
+SplittableRuptureSubSetModule<AveSlipModule> {
 	
 	FaultSystemRupSet rupSet;
 
@@ -149,6 +150,11 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Bra
 			};
 		}
 
+		@Override
+		public ModelBased getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
+			return new ModelBased(rupSubSet, scale);
+		}
+
 	}
 
 	public static class Precomputed extends AveSlipModule implements CSV_BackedModule {
@@ -265,6 +271,16 @@ public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, Bra
 		@Override
 		public String getName() {
 			return "Precomputed Average Slips";
+		}
+
+		@Override
+		public Precomputed getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
+			double[] filteredAveSlips = new double[rupSubSet.getNumSections()];
+			for (int s=0; s<rupSubSet.getNumSections(); s++) {
+				int origID = mappings.getOrigSectID(s);
+				filteredAveSlips[s] = aveSlips[origID];
+			}
+			return new Precomputed(rupSubSet, filteredAveSlips);
 		}
 
 	}

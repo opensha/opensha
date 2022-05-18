@@ -18,7 +18,8 @@ import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 
-public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantAverageable<SlipAlongRuptureModel> {
+public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantAverageable<SlipAlongRuptureModel>,
+SplittableRuptureSubSetModule<SlipAlongRuptureModel> {
 
 	public static SlipAlongRuptureModel forModel(SlipAlongRuptureModels slipAlong) {
 		return slipAlong.getModel();
@@ -341,6 +342,11 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantA
 	@Override
 	public boolean isIdentical(SlipAlongRuptureModel module) {
 		return this.getClass().equals(module.getClass());
+	}
+
+	@Override
+	public SlipAlongRuptureModel getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
+		return this;
 	}
 
 }

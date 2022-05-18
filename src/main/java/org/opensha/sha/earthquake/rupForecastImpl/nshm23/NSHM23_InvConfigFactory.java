@@ -13,6 +13,8 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.IntegerSampler;
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
+import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.util.ExceptionUtils;
@@ -22,6 +24,7 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
@@ -32,6 +35,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationsPerVariableCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
@@ -46,6 +50,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
@@ -64,6 +69,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.G
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator.MultiBinDistributionMethod;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
@@ -365,8 +371,7 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 	
 	private static NSHM23_ConstraintBuilder getConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
-		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal,
-				true, false, true);
+		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal);
 		
 		SubSeisMoRateReduction reduction = SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
 		if (branch.hasValue(SubSeisMoRateReductions.class))
@@ -379,30 +384,24 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		constrBuilder.adjustForActualRupSlips(NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT,
 				NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT);
 		
-		return constrBuilder;
-	}
-
-	@Override
-	public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
-			int threads) {
-		NSHM23_ConstraintBuilder constrBuilder = getConstraintBuilder(rupSet, branch);
-		constrBuilder.adjustForActualRupSlips(adjustForActualRupSlips, adjustForSlipAlong);
-		
-		SubSectConstraintModels constrModel = branch.requireValue(SubSectConstraintModels.class);
-		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
-		
-		double slipWeight = 1d;
-		double paleoWeight = fm instanceof FaultModels ? 5 : 0; // TODO
-		double parkWeight = fm instanceof FaultModels ? 10 : 0; // TODO
-		double mfdWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 1 : 10;
-		double nuclWeight = constrModel == SubSectConstraintModels.TOT_NUCL_RATE ? 0.5 : 0d;
-		double nuclMFDWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 0.5 : 0d;
-		double paleoSmoothWeight = paleoWeight > 0 ? 10000 : 0;
-
+		// apply any segmentation adjustments
 		SegmentationModels segModel = branch.getValue(SegmentationModels.class);
-		System.out.println("Segmentation model: "+segModel);
 		MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
-		System.out.println("Max distance model: "+distModel);
+		// make sure we actually have jumps
+		if (segModel != null || distModel != null) {
+			boolean jumpFound = false;
+			for (ClusterRupture cRup : rupSet.requireModule(ClusterRuptures.class)) {
+				if (cRup.getTotalNumJumps() > 0) {
+					jumpFound = true;
+					break;
+				}
+			}
+			if (!jumpFound) {
+				System.out.println("Rupture set has no jumps, disabling segmentation");
+				segModel = null;
+				distModel = null;
+			}
+		}
 		JumpProbabilityCalc targetSegModel = segModel == null ? null : segModel.getModel(rupSet);
 		if (distModel != null) {
 			if (targetSegModel == null)
@@ -418,6 +417,47 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 				constrBuilder.adjustForSegmentationModel(targetSegModel);
 			else
 				constrBuilder.adjustForSegmentationModel(targetSegModel, segAdj);
+		}
+		
+		return constrBuilder;
+	}
+
+	@Override
+	public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+			int threads) {
+		NSHM23_ConstraintBuilder constrBuilder = getConstraintBuilder(rupSet, branch);
+		constrBuilder.adjustForActualRupSlips(adjustForActualRupSlips, adjustForSlipAlong);
+		
+		SubSectConstraintModels constrModel = branch.requireValue(SubSectConstraintModels.class);
+		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
+		boolean hasPaleoData = rupSet.hasModule(PaleoseismicConstraintData.class);
+		
+		double slipWeight = 1d;
+		double paleoWeight = fm instanceof FaultModels && hasPaleoData ? 5 : 0; // TODO
+		double parkWeight = fm instanceof FaultModels && constrBuilder.rupSetHasParkfield() ? 10 : 0; // TODO
+		double mfdWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 1 : 10;
+		double nuclWeight = constrModel == SubSectConstraintModels.TOT_NUCL_RATE ? 0.5 : 0d;
+		double nuclMFDWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 0.5 : 0d;
+		double paleoSmoothWeight = paleoWeight > 0 ? 10000 : 0;
+
+		SegmentationModels segModel = branch.getValue(SegmentationModels.class);
+		System.out.println("Segmentation model: "+segModel);
+		MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
+		System.out.println("Max distance model: "+distModel);
+		// make sure we actually have jumps
+		if (segModel != null || distModel != null) {
+			boolean jumpFound = false;
+			for (ClusterRupture cRup : rupSet.requireModule(ClusterRuptures.class)) {
+				if (cRup.getTotalNumJumps() > 0) {
+					jumpFound = true;
+					break;
+				}
+			}
+			if (!jumpFound) {
+				System.out.println("Rupture set has no jumps, disabling segmentation");
+				segModel = null;
+				distModel = null;
+			}
 		}
 		
 		if (slipWeight > 0d)
@@ -489,7 +529,13 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		
 		int avgThreads = threads / 4;
 		
-		CompletionCriteria completion = new IterationsPerVariableCompletionCriteria(5000d);
+//		CompletionCriteria completion = new IterationsPerVariableCompletionCriteria(5000d);
+		// the greater of 2,000 iterations per rupture and 200,000 iterations per section
+		long rupIters = rupSet.getNumRuptures()*2000l;
+		long sectIters = rupSet.getNumSections()*200000l;
+//		long rupIters = rupSet.getNumRuptures()*1000l;
+//		long sectIters = rupSet.getNumSections()*100000l;
+		CompletionCriteria completion = new IterationCompletionCriteria(Long.max(rupIters, sectIters));
 		
 		InversionConfiguration.Builder builder = InversionConfiguration.builder(constraints, completion)
 				.threads(threads)
@@ -525,6 +571,14 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 
 		public NoMFDScaleAdjust() {
 			this.adjustForActualRupSlips(false, false);
+		}
+		
+	}
+	
+	public static class NoIncompatibleDataAdjust extends NSHM23_InvConfigFactory {
+
+		public NoIncompatibleDataAdjust() {
+			NSHM23_ConstraintBuilder.ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT = false;
 		}
 		
 	}
@@ -611,6 +665,73 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 			config = InversionConfiguration.builder(config).reweight(null).build();
 			
 			return config;
+		}
+		
+	}
+	
+	public static class ClusterSpecific extends NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory {
+		
+	}
+	
+	public static class DefaultUncert0p05 extends NSHM23_InvConfigFactory {
+		
+		public DefaultUncert0p05() {
+			NSHM23_ConstraintBuilder.DEFAULT_REL_STD_DEV = 0.05;
+		}
+	}
+	
+	/**
+	 * Extend down-dip width of all faults
+	 * 
+	 * @author kevin
+	 *
+	 */
+	private static class AbstractScaleLowerDepth extends NSHM23_InvConfigFactory {
+		
+		private double scalar;
+
+		private AbstractScaleLowerDepth(double scalar) {
+			this.scalar = scalar;
+		}
+
+		@Override
+		public FaultSystemRupSet buildRuptureSet(LogicTreeBranch<?> branch, int threads) throws IOException {
+			FaultSystemRupSet rupSet = super.buildRuptureSet(branch, threads);
+			
+			List<FaultSection> modSects = new ArrayList<>();
+			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
+				GeoJSONFaultSection geoSect;
+				if (sect instanceof GeoJSONFaultSection)
+					geoSect = (GeoJSONFaultSection)sect;
+				else
+					geoSect = new GeoJSONFaultSection(sect);
+				Feature feature = geoSect.toFeature();
+				FeatureProperties props = feature.properties;
+				double curLowDepth = props.getDouble(GeoJSONFaultSection.LOW_DEPTH, Double.NaN);
+				Preconditions.checkState(curLowDepth > 0);
+				props.set(GeoJSONFaultSection.LOW_DEPTH, curLowDepth*scalar);
+				FaultSection modSect = GeoJSONFaultSection.fromFeature(feature);
+				modSects.add(modSect);
+			}
+			
+			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+			PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
+			RupSetScalingRelationship scale = branch.requireValue(RupSetScalingRelationship.class);
+
+			rupSet = ClusterRuptureBuilder.buildClusterRupSet(scale, modSects, plausibility, cRups.getAll());
+			
+			// attach modules
+			getSolutionLogicTreeProcessor().processRupSet(rupSet, branch);
+			
+			return rupSet;
+		}
+		
+	}
+	
+	public static class ScaleLowerDepth1p3 extends AbstractScaleLowerDepth {
+		
+		public ScaleLowerDepth1p3() {
+			super(1.3);
 		}
 		
 	}

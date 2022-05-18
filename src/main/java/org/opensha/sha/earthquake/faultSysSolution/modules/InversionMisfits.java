@@ -2,7 +2,9 @@ package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -17,6 +19,8 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnneali
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
 
 public class InversionMisfits implements ArchivableModule, AverageableModule<InversionMisfits> {
 	
@@ -82,6 +86,31 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 		} else {
 			Preconditions.checkNotNull(misfits, "Equality range supplied but not equality misfits found");
 			ret = getInRange(range, misfits);
+		}
+		if (removeWeighting) {
+			Preconditions.checkState(Double.isFinite(range.weight) && range.weight > 0,
+					"Bad weight for constraint %s: %s", range.name, range.weight);
+			for (int i=0; i<ret.length; i++)
+				ret[i] /= range.weight;
+		}
+		return ret;
+	}
+	
+	/**
+	 * Returns the data for the given {@link ConstraintRange}, optionally with weighting removed
+	 * 
+	 * @param range the constraint range to extract from the full data array
+	 * @param removeWeighting if true, data will be divided by the constraint weight to remove weighting
+	 * @return data for the given constraint range
+	 */
+	public double[] getData(ConstraintRange range, boolean removeWeighting) {
+		double[] ret;
+		if (range.inequality) {
+			Preconditions.checkNotNull(data_ineq, "Inequality range supplied but not inequality misfits found");
+			ret = getInRange(range, data_ineq);
+		} else {
+			Preconditions.checkNotNull(data, "Equality range supplied but not equality misfits found");
+			ret = getInRange(range, data);
 		}
 		if (removeWeighting) {
 			Preconditions.checkState(Double.isFinite(range.weight) && range.weight > 0,
@@ -297,6 +326,127 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 	@Override
 	public AveragingAccumulator<InversionMisfits> averagingAccumulator() {
 		return new MisfitsAccumulator(this);
+	}
+	
+	public static InversionMisfits appendSeparate(List<InversionMisfits> misfitsList) {
+		Table<String, Boolean, List<double[]>> constraintMisfits = HashBasedTable.create();
+		Table<String, Boolean, List<double[]>> constraintDatas = HashBasedTable.create();
+		Table<String, Boolean, List<Double>> constraintWeights = HashBasedTable.create();
+		
+		List<ConstraintRange> uniqueEqualityRanges = new ArrayList<>();
+		List<ConstraintRange> uniqueInequalityRanges = new ArrayList<>();
+		
+		int rowsEQ = 0, rowsINEQ = 0;
+		
+		for (InversionMisfits subMisfits : misfitsList) {
+			Preconditions.checkNotNull(subMisfits.constraintRanges, "Must have constraint ranges attached");
+			for (ConstraintRange range : subMisfits.constraintRanges) {
+				Preconditions.checkState(range.weight > 0, "Bad weight for %s: %s", range.name, range.weight);
+				if (!constraintMisfits.contains(range.name, range.inequality)) {
+					constraintMisfits.put(range.name, range.inequality, new ArrayList<>());
+					constraintDatas.put(range.name, range.inequality, new ArrayList<>());
+					constraintWeights.put(range.name, range.inequality, new ArrayList<>());
+					if (range.inequality)
+						uniqueInequalityRanges.add(range);
+					else
+						uniqueEqualityRanges.add(range);
+				}
+				constraintMisfits.get(range.name, range.inequality).add(subMisfits.getMisfits(range, false));
+				constraintDatas.get(range.name, range.inequality).add(subMisfits.getData(range, false));
+				constraintWeights.get(range.name, range.inequality).add(range.weight);
+				if (range.inequality)
+					rowsINEQ += range.endRow-range.startRow;
+				else
+					rowsEQ += range.endRow-range.startRow;
+			}
+		}
+		
+		double[] misfits = null;
+		double[] data = null;
+		if (rowsEQ > 0) {
+			misfits = new double[rowsEQ];
+			data = new double[rowsEQ];
+		}
+		double[] misfits_ineq = null;
+		double[] data_ineq = null;
+		if (rowsINEQ > 0) {
+			misfits_ineq = new double[rowsINEQ];
+			data_ineq = new double[rowsINEQ];
+		}
+		List<ConstraintRange> allRanges = new ArrayList<>();
+		
+		int indexEQ = 0, indexINEQ = 0;
+		for (boolean ineq : new boolean[] {false, true}) {
+			List<ConstraintRange> rawRanges = ineq ? uniqueInequalityRanges : uniqueEqualityRanges;
+			if (rawRanges.isEmpty())
+				continue;
+			int index = ineq ? indexINEQ : indexEQ;
+			double[] destMisfits = ineq ? misfits_ineq : misfits;
+			double[] destData = ineq ? data_ineq : data;
+			
+			for (ConstraintRange range : rawRanges) {
+				List<double[]> rangeMisfits = constraintMisfits.get(range.name, ineq);
+				List<double[]> rangeDatas = constraintDatas.get(range.name, ineq);
+				List<Double> rangeWeights = constraintWeights.get(range.name, ineq);
+				boolean weightsEqual = true;
+				double prevWeight = rangeWeights.get(0);
+				for (int i=1; weightsEqual && i<rangeWeights.size(); i++) {
+					double weight = rangeWeights.get(i);
+					weightsEqual = weightsEqual && (float)weight == (float)prevWeight;
+					prevWeight = weight;
+				}
+				int startRow = index;
+				double avgWeight;
+				if (weightsEqual) {
+					// easy
+					avgWeight = prevWeight;
+					for (int i=0; i<rangeMisfits.size(); i++) {
+						double[] myMisfits = rangeMisfits.get(i);
+						double[] myData = rangeDatas.get(i);
+						Preconditions.checkState(myMisfits.length == myData.length);
+						System.arraycopy(myMisfits, 0, destMisfits, index, myMisfits.length);
+						System.arraycopy(myData, 0, destData, index, myData.length);
+						index += myMisfits.length;
+					}
+				} else {
+					avgWeight = 0d;
+					int totRows = 0;
+					for (int i=0; i<rangeMisfits.size(); i++) {
+						int myRows = rangeMisfits.get(i).length;
+						double weight = rangeWeights.get(i);
+						avgWeight += weight*(double)myRows;
+						totRows += myRows;
+					}
+					avgWeight /= (double)totRows;
+					for (int i=0; i<rangeMisfits.size(); i++) {
+						double[] myMisfits = rangeMisfits.get(i);
+						double[] myData = rangeDatas.get(i);
+						double weight = rangeWeights.get(i);
+						Preconditions.checkState(myMisfits.length == myData.length);
+						
+						double scalar = avgWeight/weight;
+						for (int j=0; j<myMisfits.length; j++) {
+							destMisfits[index] = myMisfits[j]*scalar;
+							destData[index] = myData[j]*scalar;
+							index++;
+						}
+					}
+				}
+				int endRow = index;
+				allRanges.add(new ConstraintRange(range.name, range.shortName, startRow, endRow,
+						ineq, avgWeight, range.weightingType));
+			}
+			
+			if (ineq)
+				indexINEQ = index;
+			else
+				indexEQ = index;
+		}
+		Preconditions.checkState(indexEQ == rowsEQ,
+				"Expected to process %s EQ rows, processed %s", rowsEQ, indexEQ);
+		Preconditions.checkState(indexEQ == rowsEQ,
+				"Expected to process %s INEQ rows, processed %s", rowsINEQ, indexINEQ);
+		return new InversionMisfits(allRanges, misfits, data, misfits_ineq, data_ineq);
 	}
 
 }

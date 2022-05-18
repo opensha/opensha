@@ -46,7 +46,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		return "Solution MFDs";
 	}
 	
-	private static final Color SUPRA_SEIS_TARGET_COLOR = Color.CYAN.darker();
+	public static final Color SUPRA_SEIS_TARGET_COLOR = Color.CYAN.darker();
 
 	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta,

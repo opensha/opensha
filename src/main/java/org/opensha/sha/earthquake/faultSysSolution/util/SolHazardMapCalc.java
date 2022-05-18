@@ -478,9 +478,9 @@ public class SolHazardMapCalc {
 			if (yDiff > 10)
 				yDiff /= 30d;
 			else if (yDiff > 5d)
-				yDiff /= 15d;
+				yDiff /= 20d;
 			else
-				yDiff /= 10d;
+				yDiff /= 15d;
 			double y = latRange.getUpperBound() - 0.5*yDiff;
 			for (String label : labels) {
 				double x = lonRange.getUpperBound();

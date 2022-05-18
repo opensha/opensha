@@ -42,6 +42,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_U3_HybridLogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModels;
@@ -742,14 +743,18 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 
 		String dirName = new SimpleDateFormat("yyyy_MM_dd").format(new Date());
 
-		U3InversionConfigFactory factory = new U3InversionConfigFactory.OriginalCalcParams();
-		dirName += "-u3_orig_params";
-		
-		LogicTreeBranch<U3LogicTreeBranchNode<?>> branch = U3LogicTreeBranch.DEFAULT;
+//		U3InversionConfigFactory factory = new U3InversionConfigFactory.OriginalCalcParams();
+//		dirName += "-u3_orig_params";
+//		
+//		LogicTreeBranch<U3LogicTreeBranchNode<?>> branch = U3LogicTreeBranch.DEFAULT;
 
 //		NSHM23_InvConfigFactory factory = new NSHM23_InvConfigFactory();
-//		
+//		dirName += "-nshm23";
+		NSHM23_InvConfigFactory factory = new NSHM23_InvConfigFactory.ClusterSpecific();
+		dirName += "-nshm23-cluster_specific";
+		
 //		LogicTreeBranch<LogicTreeNode> branch = NSHM18_LogicTreeBranch.DEFAULT;
+		LogicTreeBranch<LogicTreeNode> branch = NSHM23_U3_HybridLogicTreeBranch.DEFAULT;
 //		
 ////		LogicTreeBranch<LogicTreeNode> branch = new NSHM23_U3_HybridLogicTreeBranch();
 ////		branch.setValue(FaultModels.FM3_1);

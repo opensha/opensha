@@ -80,7 +80,8 @@ public class NSHM23_ConstraintBuilder {
 	private double supraBVal;
 	private boolean applyDefModelUncertaintiesToNucl;
 	private boolean addSectCountUncertaintiesToMFD;
-	private boolean adjustForIncompatibleData;
+	public static boolean ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT = true;
+	private boolean adjustForIncompatibleData = ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT;
 	
 	public static boolean ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT = true;
 	public static boolean ADJ_FOR_SLIP_ALONG_DEFAULT = false;
@@ -89,7 +90,7 @@ public class NSHM23_ConstraintBuilder {
 	
 	private SubSeisMoRateReduction subSeisMoRateReduction = SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
 	
-	private static final double DEFAULT_REL_STD_DEV = 0.1;
+	public static double DEFAULT_REL_STD_DEV = 0.1;
 	
 	private DoubleUnaryOperator magDepRelStdDev = M->DEFAULT_REL_STD_DEV;
 	
@@ -98,7 +99,7 @@ public class NSHM23_ConstraintBuilder {
 	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB) {
 		this(rupSet, supraSeisB, SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT,
-				SupraSeisBValInversionTargetMFDs.ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT, false);
+				SupraSeisBValInversionTargetMFDs.ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT, ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT);
 	}
 	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraBVal,
@@ -141,7 +142,7 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public NSHM23_ConstraintBuilder defaultDataConstraints(SubSectConstraintModels subSectConstrModel) {
-		magDepRelStdDev(M->0.1*Math.pow(10, supraBVal*0.5*(M-6)))
+		magDepRelStdDev(M->DEFAULT_REL_STD_DEV*Math.pow(10, supraBVal*0.5*(M-6)))
 				.slipRates().weight(1d)
 				.paleoRates().weight(5d).paleoSlips().weight(5d)
 				.parkfield().weight(10d);
@@ -251,8 +252,7 @@ public class NSHM23_ConstraintBuilder {
 		if (adjustForIncompatibleData) {
 			UncertaintyBoundType dataWithinType = UncertaintyBoundType.ONE_SIGMA;
 			List<SectNucleationMFD_Estimator> dataConstraints = new ArrayList<>();
-			dataConstraints.add(new APrioriSectNuclEstimator(rupSet,
-					UCERF3InversionInputGenerator.findParkfieldRups(rupSet), parkfieldRate));
+			dataConstraints.add(new APrioriSectNuclEstimator(rupSet, findParkfieldRups(), parkfieldRate));
 			if (rupSet.hasModule(PaleoseismicConstraintData.class)) {
 				PaleoseismicConstraintData paleoData = rupSet.requireModule(PaleoseismicConstraintData.class);
 				if (paleoData.getPaleoSlipConstraints() != null) {
@@ -325,14 +325,24 @@ public class NSHM23_ConstraintBuilder {
 		return this;
 	}
 	
+	public List<Integer> findParkfieldRups() {
+		// TODO hack
+		return UCERF3InversionInputGenerator.findParkfieldRups(rupSet);
+	}
+	
+	public boolean rupSetHasParkfield() {
+		List<Integer> parkfieldRups = findParkfieldRups();
+		return !parkfieldRups.isEmpty();
+	}
+	
 	public NSHM23_ConstraintBuilder parkfield() {
 		double parkfieldMeanRate = 1.0/25.0; // Bakun et al. (2005)
 		System.err.println("WARNING: temporary relative standard deviation of "
 				+(float)DEFAULT_REL_STD_DEV+" set for parkfield constraint"); // TODO
 		double parkfieldStdDev = DEFAULT_REL_STD_DEV*parkfieldMeanRate;
 		
-		// Find Parkfield M~6 ruptures
-		List<Integer> parkfieldRups = UCERF3InversionInputGenerator.findParkfieldRups(rupSet);
+		// Find Parkfield M~6 ruptures TODO HACK
+		List<Integer> parkfieldRups = findParkfieldRups();
 		constraints.add(new ParkfieldInversionConstraint(1d, parkfieldMeanRate, parkfieldRups,
 				ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY, parkfieldStdDev));
 		return this;
@@ -835,7 +845,7 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public double[] getParkfieldInitial(boolean ensureNotSkipped) {
-		List<Integer> parkRups = new ArrayList<>(UCERF3InversionInputGenerator.findParkfieldRups(rupSet));
+		List<Integer> parkRups = new ArrayList<>(findParkfieldRups());
 		double[] initial = new double[rupSet.getNumRuptures()];
 		if (ensureNotSkipped) {
 			HashSet<Integer> skips = new HashSet<Integer>(getRupIndexesBelowMinMag());

@@ -9,6 +9,8 @@ import java.util.concurrent.Callable;
 
 import org.opensha.commons.data.IntegerSampler;
 import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -50,6 +52,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
@@ -599,6 +602,62 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 				
 			}
 			return rupSet;
+		}
+		
+	}
+	
+	/**
+	 * Extend down-dip width of all faults
+	 * 
+	 * @author kevin
+	 *
+	 */
+	private static class AbstractScaleLowerDepth extends U3InversionConfigFactory {
+		
+		private double scalar;
+
+		private AbstractScaleLowerDepth(double scalar) {
+			this.scalar = scalar;
+		}
+
+		@Override
+		public FaultSystemRupSet buildRuptureSet(LogicTreeBranch<?> branch, int threads) throws IOException {
+			FaultSystemRupSet rupSet = super.buildRuptureSet(branch, threads);
+			
+			List<FaultSection> modSects = new ArrayList<>();
+			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
+				GeoJSONFaultSection geoSect;
+				if (sect instanceof GeoJSONFaultSection)
+					geoSect = (GeoJSONFaultSection)sect;
+				else
+					geoSect = new GeoJSONFaultSection(sect);
+				Feature feature = geoSect.toFeature();
+				FeatureProperties props = feature.properties;
+				double curLowDepth = props.getDouble(GeoJSONFaultSection.LOW_DEPTH, Double.NaN);
+				Preconditions.checkState(curLowDepth > 0);
+				props.set(GeoJSONFaultSection.LOW_DEPTH, curLowDepth*scalar);
+				FaultSection modSect = GeoJSONFaultSection.fromFeature(feature);
+				modSects.add(modSect);
+			}
+			
+			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+			PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
+			RupSetScalingRelationship scale = branch.requireValue(RupSetScalingRelationship.class);
+
+			rupSet = ClusterRuptureBuilder.buildClusterRupSet(scale, modSects, plausibility, cRups.getAll());
+			
+			// attach U3 modules
+			getSolutionLogicTreeProcessor().processRupSet(rupSet, branch);
+			
+			return rupSet;
+		}
+		
+	}
+	
+	public static class ScaleLowerDepth1p3 extends AbstractScaleLowerDepth {
+		
+		public ScaleLowerDepth1p3() {
+			super(1.3);
 		}
 		
 	}
