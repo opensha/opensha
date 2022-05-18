@@ -5,6 +5,7 @@ import java.awt.geom.Point2D;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -21,7 +22,7 @@ import com.google.common.base.Preconditions;
  * @author kevin
  *
  */
-public class RupMFDsModule implements CSV_BackedModule, SubModule<FaultSystemSolution> {
+public class RupMFDsModule implements CSV_BackedModule, SubModule<FaultSystemSolution>, AverageableModule<RupMFDsModule> {
 	
 	private DiscretizedFunc[] rupMFDs;
 	
@@ -109,6 +110,57 @@ public class RupMFDsModule implements CSV_BackedModule, SubModule<FaultSystemSol
 		if (parent != null)
 			Preconditions.checkState(this.parent.getRupSet().isEquivalentTo(newParent.getRupSet()));
 		return new RupMFDsModule(newParent, rupMFDs);
+	}
+
+	@Override
+	public AveragingAccumulator<RupMFDsModule> averagingAccumulator() {
+		return new AveragingAccumulator<RupMFDsModule>() {
+			
+			private double sumWeight = 0d;
+			
+			private DiscretizedFunc[] rupMFDs = null;
+			
+			@Override
+			public void process(RupMFDsModule module, double relWeight) {
+				if (rupMFDs == null)
+					rupMFDs = new DiscretizedFunc[parent.getRupSet().getNumRuptures()];
+				
+				sumWeight += relWeight;
+				
+				for (int r=0; r<rupMFDs.length; r++) {
+					DiscretizedFunc mfd = module.rupMFDs[r];
+					if (mfd != null && mfd.calcSumOfY_Vals() > 0d) {
+						if (rupMFDs[r] == null)
+							rupMFDs[r] = new ArbitrarilyDiscretizedFunc();
+						for (Point2D pt : mfd) {
+							double x = pt.getX();
+							double y = pt.getY()*relWeight;
+							if (rupMFDs[r].hasX(x))
+								y += rupMFDs[r].getY(x);
+							rupMFDs[r].set(x, y);
+						}
+					}
+				}
+			}
+			
+			@Override
+			public Class<RupMFDsModule> getType() {
+				return RupMFDsModule.class;
+			}
+			
+			@Override
+			public RupMFDsModule getAverage() {
+				double scale = 1d/sumWeight;
+				for (DiscretizedFunc mfd : rupMFDs) {
+					if (mfd != null)
+						mfd.scale(scale);
+				}
+				RupMFDsModule avg = new RupMFDsModule();
+				// do it this way to bypass setting the solution, which will be set later
+				avg.rupMFDs = rupMFDs;
+				return avg;
+			}
+		};
 	}
 
 }
