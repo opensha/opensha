@@ -602,6 +602,9 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			exec.shutdown();
 			exec = null;
 		}
+		for (SimulatedAnnealing sa : sas)
+			if (sa instanceof ThreadedSimulatedAnnealing)
+				((ThreadedSimulatedAnnealing)sa).shutdown();
 	}
 	
 	public static String timeStr(long millis) {
