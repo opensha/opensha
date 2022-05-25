@@ -530,6 +530,15 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				try {
 					Class<?> rawClass = Class.forName(enumClassName);
 					level = (LogicTreeLevel<E>) LogicTreeLevel.forEnumUnchecked(rawClass, name, shortName);
+					// make sure all of the listed nodes still exist
+					for (LogicTreeNode node : nodes) {
+						if (!level.isMember(node)) {
+							System.err.println("WARNING: Node "+node.getName()+" not found in enum "+enumClassName
+									+", reverting to file backed level");
+							level = null;
+							break;
+						}
+					}
 				} catch (ClassNotFoundException e) {
 					System.err.println("WARNING: couldn't locate logic tree branch node enum class '"+enumClassName+"', "
 							+ "loading plain/hardcoded version instead");
