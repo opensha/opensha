@@ -339,7 +339,7 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 		System.out.println("Building BIRD");
 		BIRD.build(NSHM18_FaultModels.NSHM18_WUS_NoCA);
 		
-//		plotML_Comparison(NSHM18_FaultModels.NSHM18_WUS_NoCA, new WC1994_MagLengthRelationship());
+		plotML_Comparison(NSHM18_FaultModels.NSHM18_WUS_NoCA, new WC1994_MagLengthRelationship());
 	}
 
 }
