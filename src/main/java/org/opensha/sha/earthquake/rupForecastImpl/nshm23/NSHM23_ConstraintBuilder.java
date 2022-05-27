@@ -90,7 +90,7 @@ public class NSHM23_ConstraintBuilder {
 	
 	private SubSeisMoRateReduction subSeisMoRateReduction = SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
 	
-	public static double DEFAULT_REL_STD_DEV = 0.1;
+	private static final double DEFAULT_REL_STD_DEV = 0.1;
 	
 	private DoubleUnaryOperator magDepRelStdDev = M->DEFAULT_REL_STD_DEV;
 	
@@ -336,10 +336,20 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public NSHM23_ConstraintBuilder parkfield() {
-		double parkfieldMeanRate = 1.0/25.0; // Bakun et al. (2005)
-		System.err.println("WARNING: temporary relative standard deviation of "
-				+(float)DEFAULT_REL_STD_DEV+" set for parkfield constraint"); // TODO
-		double parkfieldStdDev = DEFAULT_REL_STD_DEV*parkfieldMeanRate;
+//		double parkfieldMeanRate = 1.0/25.0; // U3 value, references Bakun et al. (2005)
+//		System.err.println("WARNING: temporary relative standard deviation of "
+//				+(float)DEFAULT_REL_STD_DEV+" set for parkfield constraint");
+//		double parkfieldStdDev = DEFAULT_REL_STD_DEV*parkfieldMeanRate;
+		
+		// these are derived from Baken et al. (2005), supplementary figure S2
+		// values are calculated from the "basic sequence" of recurrence intervals:
+		// Parkfield event years: 1857,1881,1901,1922,1934,1966,2004
+		// Parkfield event RIs: 24,20,21,12,32,38
+		// mean=24.5	SD=9.2	SDOM=3.8 (15.4%)
+		double parkfieldMeanRate = 1.0/25d; // convert to rate
+		// when raising an uncertain value to the power of -1 (ri -> rate), propagated uncertainty is the same fractional
+		// value: fractRateSD = |-1|*fractRISD
+		double parkfieldStdDev = parkfieldMeanRate*0.15;
 		
 		// Find Parkfield M~6 ruptures TODO HACK
 		List<Integer> parkfieldRups = findParkfieldRups();

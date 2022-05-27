@@ -91,6 +91,9 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 	private boolean adjustForActualRupSlips = NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
 	private boolean adjustForSlipAlong = NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT;
 	
+	// minimum MFD uncertainty
+	public static double MFD_MIN_FRACT_UNCERT = 0.05;
+	
 	protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
 		RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
@@ -379,7 +382,7 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		
 		constrBuilder.subSeisMoRateReduction(reduction);
 		
-		constrBuilder.magDepRelStdDev(M->0.1*Math.pow(10, bVal*0.5*(M-6)));
+		constrBuilder.magDepRelStdDev(M->MFD_MIN_FRACT_UNCERT*Math.max(1, Math.pow(10, bVal*0.5*(M-6))));
 		
 		constrBuilder.adjustForActualRupSlips(NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT,
 				NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT);
@@ -402,7 +405,7 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 				distModel = null;
 			}
 		}
-		JumpProbabilityCalc targetSegModel = segModel == null ? null : segModel.getModel(rupSet);
+		JumpProbabilityCalc targetSegModel = segModel == null ? null : segModel.getModel(rupSet, branch);
 		if (distModel != null) {
 			if (targetSegModel == null)
 				targetSegModel = distModel.getModel(rupSet);
@@ -503,7 +506,7 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 			boolean ineq = true;
 			
 			constraints.add(new JumpProbabilityConstraint.RelativeRate(
-					weight, ineq, rupSet, segModel.getModel(rupSet), rateEst));
+					weight, ineq, rupSet, segModel.getModel(rupSet, branch), rateEst));
 		}
 		
 		if (distModel != null) {
@@ -673,10 +676,10 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		
 	}
 	
-	public static class DefaultUncert0p05 extends NSHM23_InvConfigFactory {
+	public static class MFDUncert0p1 extends NSHM23_InvConfigFactory {
 		
-		public DefaultUncert0p05() {
-			NSHM23_ConstraintBuilder.DEFAULT_REL_STD_DEV = 0.05;
+		public MFDUncert0p1() {
+			MFD_MIN_FRACT_UNCERT = 0.1;
 		}
 	}
 	
