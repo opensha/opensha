@@ -47,6 +47,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_U3_HybridLogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.U3_UncertAddDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.APrioriSectNuclEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ImprobModelThresholdAveragingSectNuclMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.PaleoSectNuclEstimator;
@@ -320,7 +322,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		
 		/**
 		 * Expand uncertainties (both on individual sections and on regional targets) such that the given data constraints
-		 * are at least boundType away from the assumed supra-seismogenic MFD.
+		 * are no more than boundType away from the assumed supra-seismogenic MFD.
 		 * 
 		 * @param dataConstraints
 		 * @param boundType
@@ -1015,7 +1017,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		 *  faults should cancel each other out. Just straight adding standard deviations would allow for a systematic
 		 *  bias.
 		 *  
-		 *  Set this to true to sum deformation model uncertainties in variance space, or false to sum stanard deviations
+		 *  Set this to true to sum deformation model uncertainties in variance space, or false to sum standard deviations
 		 */
 		private static final boolean DEF_MOD_SUM_VARIANCES = true;
 		
@@ -1157,6 +1159,17 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			return uncertainMFD;
 		}
 		
+		/**
+		 * This adjusts (expanding, if necessary) the uncertainties on the given MFD such that the implied MFD is at
+		 * least within {@link #uncertAdjDataTargetBound}. If the implied data MFD is an {@link UncertainIncrMagFreqDist},
+		 * then the adjustment will instead ensure that the nearer bound of the implied MFD is within
+		 * {@link #uncertAdjDataTargetBound} of the given MFD.
+		 * 
+		 * @param mfd
+		 * @param impliedMFD
+		 * @param verbose
+		 * @return
+		 */
 		private UncertainBoundedIncrMagFreqDist adjustForDataImpliedBounds(UncertainIncrMagFreqDist mfd,
 				IncrementalMagFreqDist impliedMFD, boolean verbose) {
 			Preconditions.checkState(mfd.size() == impliedMFD.size());
@@ -1279,16 +1292,23 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
 		
 		rupSet = FaultSystemRupSet.buildFromExisting(rupSet)
-//				.replaceFaultSections(DeformationModels.ABM.build(FaultModels.FM3_1))
-//				.forScalingRelationship(ScalingRelationships.ELLB_SQRT_LENGTH)
+//				.replaceFaultSections(DeformationModels.MEAN_UCERF3.build(FaultModels.FM3_1))
+				.replaceFaultSections(U3_UncertAddDeformationModels.U3_MEAN.build(FaultModels.FM3_1))
+				.forScalingRelationship(ScalingRelationships.MEAN_UCERF3)
 				.build();
 		
-		double b = 0.8d;
+//		double b = 0.5d;
+		double b = 0d;
+//		double b = -1d;
 		Builder builder = new Builder(rupSet, b);
 		
 		builder.sparseGR(true);
 //		builder.magDepDefaultRelStdDev(M->0.1);
-		builder.magDepDefaultRelStdDev(M->0.1*Math.pow(10, b*0.5*(M-6)));
+//		builder.magDepDefaultRelStdDev(M->0.1*Math.pow(10, b*0.5*(M-6)));
+//		builder.magDepDefaultRelStdDev(M->0.001);
+//		builder.magDepDefaultRelStdDev(M->0.05);
+		builder.magDepDefaultRelStdDev(M->0.05*Math.max(1d, Math.pow(10, b*0.5*(M-6))));
+//		builder.magDepDefaultRelStdDev(M->0.05*Math.max(1d, Math.pow(10, 0.5*(M-6))));
 		builder.applyDefModelUncertainties(true);
 		builder.addSectCountUncertainties(false);
 		builder.totalTargetMFD(rupSet.requireModule(InversionTargetMFDs.class).getTotalRegionalMFD());
