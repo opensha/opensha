@@ -27,7 +27,7 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum MaxJumpDistModels implements LogicTreeNode {
-	ONE(		1d),
+//	OzNE(		1d),
 	THREE(		3d),
 	FIVE(		5d),
 	SEVEN(		7d),
