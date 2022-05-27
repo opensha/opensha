@@ -39,6 +39,7 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils;
@@ -64,6 +65,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.InputJumpsOrDistClusterConnectionStrategy;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.DistDependSegShift;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
@@ -1535,6 +1537,17 @@ public class SegmentationCalculator {
 		
 		Scalars scalar = Scalars.JUMP_DIST;
 		
+		// see if we have a segmentation model horizontal shift
+		double shift = 0d;
+		LogicTreeBranch<?> branch = sol.getModule(LogicTreeBranch.class);
+		if (branch == null)
+			branch = sol.getRupSet().getModule(LogicTreeBranch.class);
+		if (branch != null) {
+			DistDependSegShift shiftChoice = branch.getValue(DistDependSegShift.class);
+			if (shiftChoice != null)
+				shift = shiftChoice.getShiftKM();
+		}
+		
 		double[] r0s = { 1d, 2d, 3d, 4d, 6d };
 		Color[] r0cs = new Color[r0s.length];
 		CPT r0cpt = new CPT(0d, r0s.length-1, Color.RED, Color.BLUE);
@@ -1616,14 +1629,19 @@ public class SegmentationCalculator {
 				xRange = scalar.getPlotRange(scalarTrack.getMin(), scalarTrack.getMax());
 				shawCurves = new ArrayList<>();
 				for (int i=0; i<r0s.length; i++) {
-					Shaw07JumpDistProb prob = new Shaw07JumpDistProb(1d, r0s[i]);
+					Shaw07JumpDistProb prob = shift > 0 ?
+							Shaw07JumpDistProb.forHorzOffset(1d, r0s[i], shift) : new Shaw07JumpDistProb(1d, r0s[i]);
 					EvenlyDiscretizedFunc func = new EvenlyDiscretizedFunc(xRange.getLowerBound(), xRange.getUpperBound(), 1000);
 					for (int j=0; j<func.size(); j++)
 						func.set(j, prob.calcJumpProbability(func.getX(j)));
-					if (i == 0)
-						func.setName("Shaw07 R₀="+optionalDigitDF.format(r0s[i]));
-					else
+					if (i == 0) {
+						if (shift > 0d)
+							func.setName("Shaw07, Shift "+optionalDigitDF.format(shift)+"km, R₀="+optionalDigitDF.format(r0s[i]));
+						else
+							func.setName("Shaw07 R₀="+optionalDigitDF.format(r0s[i]));
+					} else {
 						func.setName("R₀="+optionalDigitDF.format(r0s[i]));
+					}
 					shawCurves.add(func);
 				}
 				histXVals = scalar.initHistogram(scalarTrack.getMin(), scalarTrack.getMax());

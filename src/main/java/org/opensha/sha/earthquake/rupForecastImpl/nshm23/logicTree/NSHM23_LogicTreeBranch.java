@@ -44,6 +44,8 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			LogicTreeLevel.forEnum(SubSeisMoRateReductions.class, "Sub-Sect Moment Rate Reduction", "SectMoRed");
 	public static LogicTreeLevel<SegmentationModels> SEG =
 			LogicTreeLevel.forEnum(SegmentationModels.class, "Segmentation Model", "SegModel");
+	public static LogicTreeLevel<DistDependSegShift> SEG_SHIFT =
+			LogicTreeLevel.forEnum(DistDependSegShift.class, "Dist-Dependent Seg Model Shift", "SegShift");
 	public static LogicTreeLevel<SegmentationMFD_Adjustment> SEG_ADJ =
 			LogicTreeLevel.forEnum(SegmentationMFD_Adjustment.class, "Segmentation MFD Adjustment", "SegAdj");
 	public static LogicTreeLevel<MaxJumpDistModels> MAX_DIST =
@@ -51,7 +53,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	
 	static {
 		// exhaustive for now, can trim down later
-		levels = List.of(U3_FM, PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG, SUPRA_B, SUB_SECT_CONSTR, SUB_SEIS_MO, SEG, SEG_ADJ);
+		levels = List.of(U3_FM, PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG, SUPRA_B, SUB_SECT_CONSTR, SUB_SEIS_MO, SEG, SEG_SHIFT, SEG_ADJ);
 		levelsMaxDist = List.of(U3_FM, PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG, SUPRA_B, SUB_SECT_CONSTR, SUB_SEIS_MO, MAX_DIST);
 	}
 	
@@ -60,8 +62,9 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	 */
 	public static final NSHM23_LogicTreeBranch DEFAULT = fromValues(NSHM23_FaultModels.NSHM23_v1p4,
 			RupturePlausibilityModels.COULOMB, NSHM23_DeformationModels.GEOL_V1p3, ScalingRelationships.SHAW_2009_MOD,
-			SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p8, SubSectConstraintModels.TOT_NUCL_RATE,
-			SubSeisMoRateReductions.SUB_B_1, SegmentationModels.SHAW_R0_3, SegmentationMFD_Adjustment.JUMP_PROB_THRESHOLD_AVG);
+			SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p5, SubSectConstraintModels.TOT_NUCL_RATE,
+			SubSeisMoRateReductions.SUB_B_1, SegmentationModels.SHAW_R0_3, DistDependSegShift.ONE_KM,
+			SegmentationMFD_Adjustment.JUMP_PROB_THRESHOLD_AVG);
 	
 	/**
 	 * Creates a NSHM23LogicTreeBranch instance from given set of node values. Null or missing values
