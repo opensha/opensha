@@ -33,7 +33,8 @@ public enum U3_UncertAddDeformationModels implements LogicTreeNode, RupSetDeform
 	U3_ABM("UCERF3 Average Block Deformation Model", "U3 ABM", DeformationModels.ABM),
 	U3_GEOL("UCERF3 Geologic Deformation Model", "U3 Geol", DeformationModels.GEOLOGIC),
 	U3_NEOK("UCERF3 Neokinema Deformation Model", "U3 Neok", DeformationModels.NEOKINEMA),
-	U3_ZENG("UCERF3 Zeng Deformation Model", "U3 Zeng", DeformationModels.ZENGBB);
+	U3_ZENG("UCERF3 Zeng Deformation Model", "U3 Zeng", DeformationModels.ZENGBB),
+	U3_MEAN("UCERF3 Mean Deformation Model", "U3 Mean", DeformationModels.MEAN_UCERF3);
 	
 	private String name;
 	private String shortName;
