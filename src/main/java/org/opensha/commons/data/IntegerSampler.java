@@ -59,6 +59,12 @@ public interface IntegerSampler {
 	public int getRandomInt(double randDouble);
 	
 	/**
+	 * 
+	 * @return the number of unique integers we are sampling from
+	 */
+	public int size();
+	
+	/**
 	 * Uniformly samples integers in the given contiguous range
 	 * 
 	 * @author kevin
@@ -95,6 +101,11 @@ public interface IntegerSampler {
 			return start + (int)(randDouble * (double)num); // casting as int takes the floor
 		}
 
+		@Override
+		public int size() {
+			return num;
+		}
+
 	}
 	
 	/**
@@ -123,6 +134,11 @@ public interface IntegerSampler {
 		@Override
 		public int getRandomInt(double randDouble) {
 			return ints[(int)(randDouble * (double)ints.length)]; // casting as int takes the floor
+		}
+
+		@Override
+		public int size() {
+			return ints.length;
 		}
 
 	}
@@ -192,6 +208,12 @@ public interface IntegerSampler {
 			HashSet<Integer> combExcepts = new HashSet<>(except);
 			combExcepts.addAll(other.except);
 			return new ExclusionIntegerSampler(start, num, combExcepts);
+		}
+
+		@Override
+		public int size() {
+			checkInitSampler();
+			return sampler.size();
 		}
 
 	}
