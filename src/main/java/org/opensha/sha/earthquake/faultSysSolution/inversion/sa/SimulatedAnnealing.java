@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion.sa;
 
 import java.awt.Color;
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -180,6 +181,11 @@ public interface SimulatedAnnealing {
 	
 	public static void writeRateVsRankPlot(File outputDir, String prefix, double[] ratesNoMin, double[] rates,
 			double[] initialState, double[] compRates, double[] compRatesNoMin) throws IOException {
+		writeRateVsRankPlot(outputDir, prefix, ratesNoMin, rates, initialState, null, null, "Rupture Rate Distribution");
+	}
+	
+	public static void writeRateVsRankPlot(File outputDir, String prefix, double[] ratesNoMin, double[] rates,
+			double[] initialState, double[] compRates, double[] compRatesNoMin, String title) throws IOException {
 		if (compRatesNoMin != null && compRates == compRatesNoMin)
 			compRatesNoMin = null;
 		// rates without waterlevel
@@ -247,9 +253,31 @@ public interface SimulatedAnnealing {
 		
 		HeadlessGraphPanel gp = PlotUtils.initHeadless();
 		gp.setYLog(true);
-		PlotSpec spec = new PlotSpec(funcs, chars, "Rupture Rate Distribution", "Rank", "Rate (per year)");
+		PlotSpec spec = new PlotSpec(funcs, chars, title, "Rank", "Rate (per year)");
 		spec.setLegendInset(true);
 		gp.drawGraphPanel(spec);
+		// see if we can set a y-range
+		double maxVal = 0d;
+		double minVal = Double.POSITIVE_INFINITY;
+		for (DiscretizedFunc f : funcs) {
+			double myMinNonZero = Double.POSITIVE_INFINITY;
+			double myMax = 0d;
+			for (Point2D pt : f) {
+				if (pt.getY() > 0d) {
+					myMax = Math.max(myMax, pt.getY());
+					myMinNonZero = Math.min(myMinNonZero, pt.getY());
+				}
+			}
+			if (myMax > 0d) {
+				maxVal = Math.max(maxVal, myMax);
+				minVal = Math.min(minVal, myMinNonZero);
+			}
+		}
+		if (Double.isFinite(minVal) && minVal > 1e-16d && minVal < maxVal) {
+			maxVal = Math.pow(10, Math.ceil(Math.log10(maxVal)));
+			minVal = Math.pow(10, Math.floor(Math.log10(minVal)));
+			gp.getYAxis().setRange(new Range(minVal, maxVal));
+		}
 		File file = new File(outputDir, prefix);
 		gp.saveAsPNG(file.getAbsolutePath()+".png", plot_width, plot_height);
 		gp.saveAsPDF(file.getAbsolutePath()+".pdf", plot_width, plot_height);
@@ -282,7 +310,7 @@ public interface SimulatedAnnealing {
 			}
 		}
 		
-		spec = new PlotSpec(funcs, chars, "Cumulative Rate Distribution", "Rank", "Cumulative Rate (per year)");
+		spec = new PlotSpec(funcs, chars, "Cumulative "+title, "Rank", "Cumulative Rate (per year)");
 		spec.setLegendInset(true);
 		gp.drawGraphPanel(spec);
 		gp.setAutoRange();
