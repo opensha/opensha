@@ -591,7 +591,7 @@ public class Inversions {
 	
 	public static FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfigurationFactory factory,
 			LogicTreeBranch<?> branch, int threads, CommandLine cmd) throws IOException {
-		FaultSystemSolution ret;
+		FaultSystemSolution ret = null;
 		if (factory instanceof ClusterSpecificInversionConfigurationFactory &&
 				((ClusterSpecificInversionConfigurationFactory)factory).isSolveClustersIndividually()) {
 			// cluster-specific inversions
@@ -606,69 +606,82 @@ public class Inversions {
 			Collections.sort(sorted, ConnectivityCluster.rupCountComparator);
 			Collections.reverse(sorted);
 			
-			List<FaultSystemSolution> solutions = new ArrayList<>(clusters.size());
-			
-//			File tmpDir = new File("/tmp/inv_debug");
-//			Preconditions.checkState(tmpDir.exists() || tmpDir.mkdir());
-			for (ConnectivityCluster cluster : sorted) {
-				System.out.println("Handling cluster: "+cluster);
-				System.out.println("Building subset rupture set for "+cluster);
-				FaultSystemRupSet clusterRupSet = rupSet.getForSectionSubSet(cluster.getSectIDs());
-				System.out.println("Building subset inversion configuration for "+cluster);
-				InversionConfiguration config = factory.buildInversionConfig(clusterRupSet, branch, threads);
-				if (cmd != null)
-					// apply any command line overrides
-					config = InversionConfiguration.builder(config).forCommandLine(cmd).build();
-				solutions.add(run(clusterRupSet, config));
+			if (sorted.size() > 1) {
+				System.out.println("Will invert for "+sorted.size()+" separate connectivity clusters");
+				List<FaultSystemSolution> solutions = new ArrayList<>(clusters.size());
 				
-//				String name = "sol_"+(solutions.size()-1)+"_"+cluster.getNumSections()+"sects_"+cluster.getNumRuptures()+"rups";
-//				if (cluster.getParentSectIDs().size() == 1)
-//					name += "_"+clusterRupSet.getFaultSectionData(0).getParentSectionName().replaceAll("\\W+", "_");
-//				File tmpFile = new File(tmpDir, name+".zip");
-//				solutions.get(solutions.size()-1).write(tmpFile);
-			}
-			
-			System.out.println("Finished "+solutions.size()+" cluster-specific inversions, combining");
-			double[] rates = new double[rupSet.getNumRuptures()];
-			
-			double[] waterLevelRates = null;
-			double[] initialRates = null;
-			List<InversionMisfits> solMisfits = new ArrayList<>();
-			
-			for (FaultSystemSolution clusterSol : solutions) {
-				// merge each one back in
-				FaultSystemRupSet clusterRupSet = clusterSol.getRupSet();
-				RuptureSubSetMappings mappings = clusterRupSet.requireModule(RuptureSubSetMappings.class);
-				WaterLevelRates subsetWL = clusterSol.getModule(WaterLevelRates.class);
-				if (subsetWL != null && waterLevelRates == null)
-					waterLevelRates = new double[rates.length];
-				InitialSolution subsetInitial = clusterSol.getModule(InitialSolution.class);
-				if (subsetInitial != null && initialRates == null)
-					initialRates = new double[rates.length];
-				for (int subsetID=0; subsetID<clusterRupSet.getNumRuptures(); subsetID++) {
-					int fullID = mappings.getOrigRupID(subsetID);
-					Preconditions.checkState(rates[fullID] == 0d,
-							"Rupture %s (%s in the subset solution) was already non-zero (%s), used in multiple clusters?",
-							fullID, subsetID, rates[fullID]);
-					rates[fullID] = clusterSol.getRateForRup(subsetID);
-					if (subsetWL != null)
-						waterLevelRates[fullID] = subsetWL.get(subsetID);
-					if (subsetInitial != null)
-						initialRates[fullID] = subsetInitial.get(subsetID);
+//				File tmpDir = new File("/tmp/inv_debug");
+//				Preconditions.checkState(tmpDir.exists() || tmpDir.mkdir());
+				for (ConnectivityCluster cluster : sorted) {
+					System.out.println("Handling cluster: "+cluster);
+					System.out.println("Building subset rupture set for "+cluster);
+					FaultSystemRupSet clusterRupSet = rupSet.getForSectionSubSet(cluster.getSectIDs());
+					System.out.println("Building subset inversion configuration for "+cluster);
+					InversionConfiguration config = factory.buildInversionConfig(clusterRupSet, branch, threads);
+					if (config == null) {
+						// assume that we're not supposed to invert for this cluster, skip
+						solutions.add(null);
+						continue;
+					}
+					if (cmd != null)
+						// apply any command line overrides
+						config = InversionConfiguration.builder(config).forCommandLine(cmd).build();
+					solutions.add(run(clusterRupSet, config));
+					
+//					String name = "sol_"+(solutions.size()-1)+"_"+cluster.getNumSections()+"sects_"+cluster.getNumRuptures()+"rups";
+//					if (cluster.getParentSectIDs().size() == 1)
+//						name += "_"+clusterRupSet.getFaultSectionData(0).getParentSectionName().replaceAll("\\W+", "_");
+//					File tmpFile = new File(tmpDir, name+".zip");
+//					solutions.get(solutions.size()-1).write(tmpFile);
 				}
-				solMisfits.add(clusterSol.requireModule(InversionMisfits.class));
+				
+				System.out.println("Finished "+solutions.size()+" cluster-specific inversions, combining");
+				double[] rates = new double[rupSet.getNumRuptures()];
+				
+				double[] waterLevelRates = null;
+				double[] initialRates = null;
+				List<InversionMisfits> solMisfits = new ArrayList<>();
+				
+				for (FaultSystemSolution clusterSol : solutions) {
+					// merge each one back in
+					if (clusterSol == null)
+						continue;
+					FaultSystemRupSet clusterRupSet = clusterSol.getRupSet();
+					RuptureSubSetMappings mappings = clusterRupSet.requireModule(RuptureSubSetMappings.class);
+					WaterLevelRates subsetWL = clusterSol.getModule(WaterLevelRates.class);
+					if (subsetWL != null && waterLevelRates == null)
+						waterLevelRates = new double[rates.length];
+					InitialSolution subsetInitial = clusterSol.getModule(InitialSolution.class);
+					if (subsetInitial != null && initialRates == null)
+						initialRates = new double[rates.length];
+					for (int subsetID=0; subsetID<clusterRupSet.getNumRuptures(); subsetID++) {
+						int fullID = mappings.getOrigRupID(subsetID);
+						Preconditions.checkState(rates[fullID] == 0d,
+								"Rupture %s (%s in the subset solution) was already non-zero (%s), used in multiple clusters?",
+								fullID, subsetID, rates[fullID]);
+						rates[fullID] = clusterSol.getRateForRup(subsetID);
+						if (subsetWL != null)
+							waterLevelRates[fullID] = subsetWL.get(subsetID);
+						if (subsetInitial != null)
+							initialRates[fullID] = subsetInitial.get(subsetID);
+					}
+					solMisfits.add(clusterSol.requireModule(InversionMisfits.class));
+				}
+				FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
+				if (waterLevelRates != null)
+					sol.addModule(new WaterLevelRates(waterLevelRates));
+				if (initialRates != null)
+					sol.addModule(new InitialSolution(initialRates));
+				InversionMisfits misfits = InversionMisfits.appendSeparate(solMisfits);
+				sol.addModule(misfits);
+				sol.addModule(misfits.getMisfitStats());
+				
+				ret = sol;
+			} else {
+				System.out.println("Only 1 connectivity cluster, will run regular inversion");
 			}
-			FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
-			if (waterLevelRates != null)
-				sol.addModule(new WaterLevelRates(waterLevelRates));
-			if (initialRates != null)
-				sol.addModule(new InitialSolution(initialRates));
-			InversionMisfits misfits = InversionMisfits.appendSeparate(solMisfits);
-			sol.addModule(misfits);
-			sol.addModule(misfits.getMisfitStats());
-			
-			ret = sol;
-		} else {
+		}
+		if (ret == null) {
 			// full rupture set inversion
 			InversionConfiguration config = factory.buildInversionConfig(rupSet, branch, threads);
 			rupSet.addModule(branch);
