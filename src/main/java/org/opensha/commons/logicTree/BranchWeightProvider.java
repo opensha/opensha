@@ -1,6 +1,7 @@
 package org.opensha.commons.logicTree;
 
 import java.io.IOException;
+import java.util.Map;
 
 import org.opensha.commons.util.ExceptionUtils;
 
@@ -75,6 +76,27 @@ public interface BranchWeightProvider {
 		@Override
 		public double getWeight(LogicTreeBranch<?> branch) {
 			return weightEach;
+		}
+		
+	}
+	
+	/**
+	 * This weight provider assigns constant weights to each logic tree branch
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public static class HardcodedWeights implements BranchWeightProvider {
+		
+		private Map<LogicTreeBranch<?>, Double> weights;
+
+		public HardcodedWeights(Map<LogicTreeBranch<?>, Double> weights) {
+			this.weights = weights;
+		}
+
+		@Override
+		public double getWeight(LogicTreeBranch<?> branch) {
+			return weights.get(branch);
 		}
 		
 	}
