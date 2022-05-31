@@ -24,7 +24,7 @@ import com.google.common.base.Preconditions;
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 	
-	NSHM23_v1p4("NSHM23 WUS Fault Model v1.4", "NSHM23 WUS v1.4", NSHM23_DeformationModels.GEOL_V1p3, 1d) {
+	NSHM23_v1p4("NSHM23 WUS Fault Model v1.4", "NSHM23 WUS v1.4", NSHM23_DeformationModels.GEOL_V1p4, 1d) { // TODO update
 		@Override
 		public List<? extends FaultSection> getFaultSections() throws IOException {
 			String sectPath = NSHM23_SECTS_PATH_PREFIX+"v1p4/NSHM23_FaultSections_v1p4.geojson";

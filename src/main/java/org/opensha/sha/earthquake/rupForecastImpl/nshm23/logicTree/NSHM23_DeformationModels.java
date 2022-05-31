@@ -33,10 +33,17 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			return buildGeol(faultModel, "v1p2");
 		}
 	},
-	GEOL_V1p3("NSHM23 Geologic Deformation Model v1.3", "Geologic V1.3", 1d) {
+	@Deprecated
+	GEOL_V1p3("NSHM23 Geologic Deformation Model v1.3", "Geologic V1.3", 0d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeol(faultModel, "v1p3");
+		}
+	},
+	GEOL_V1p4("NSHM23 Geologic Deformation Model v1.4", "Geologic V1.4", 1d) {
+		@Override
+		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
+			return buildGeol(faultModel, "v1p4");
 		}
 	};
 	
