@@ -45,6 +45,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
@@ -429,6 +430,19 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 	public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
 			int threads) {
 		NSHM23_ConstraintBuilder constrBuilder = getConstraintBuilder(rupSet, branch);
+		
+		if (rupSet.hasModule(ModSectMinMags.class) && rupSet.hasModule(RuptureSubSetMappings.class)) {
+			// this is a cluster-specific inversion, make sure that we actually have ruptures above the minimum magnitude
+			int numBelowMinMag = constrBuilder.getRupIndexesBelowMinMag().size();
+			Preconditions.checkState(numBelowMinMag >= 0 && numBelowMinMag <= rupSet.getNumRuptures());
+			if (numBelowMinMag == rupSet.getNumRuptures()) {
+				System.out.println("Warning: skipping cluster specific inversion for cluster with "
+						+rupSet.getNumSections()+" sections and "+rupSet.getNumRuptures()
+						+" ruptures, all below minimum mag");
+				return null;
+			}
+		}
+		
 		constrBuilder.adjustForActualRupSlips(adjustForActualRupSlips, adjustForSlipAlong);
 		
 		SubSectConstraintModels constrModel = branch.requireValue(SubSectConstraintModels.class);
@@ -533,18 +547,21 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		int avgThreads = threads / 4;
 		
 //		CompletionCriteria completion = new IterationsPerVariableCompletionCriteria(5000d);
-		// the greater of 2,000 iterations per rupture and 200,000 iterations per section
-		long rupIters = rupSet.getNumRuptures()*2000l;
-		long sectIters = rupSet.getNumSections()*200000l;
-//		long rupIters = rupSet.getNumRuptures()*1000l;
-//		long sectIters = rupSet.getNumSections()*100000l;
-		CompletionCriteria completion = new IterationCompletionCriteria(Long.max(rupIters, sectIters));
+		// the greater of 2,000 iterations per rupture, but floor the rupture count to be at least 100 times the number
+		// of sections, which comes out to a minimum of 200,000 iterations per section
+		int numRups = rupSet.getNumRuptures();
+		if (sampler != null)
+			// only count ruptures we can actually sample
+			numRups = sampler.size();
+		long equivNumVars = Long.max(numRups, rupSet.getNumSections()*100l);
+		CompletionCriteria completion = new IterationCompletionCriteria(equivNumVars*2000l);
+		CompletionCriteria subCompletion = new IterationCompletionCriteria(equivNumVars);
+		CompletionCriteria avgCompletion = new IterationCompletionCriteria(equivNumVars*50l);
 		
 		InversionConfiguration.Builder builder = InversionConfiguration.builder(constraints, completion)
 				.threads(threads)
-				.subCompletion(new IterationsPerVariableCompletionCriteria(1d))
-//				.avgThreads(avgThreads, new IterationsPerVariableCompletionCriteria(100d))
-				.avgThreads(avgThreads, new IterationsPerVariableCompletionCriteria(50d))
+				.subCompletion(subCompletion)
+				.avgThreads(avgThreads, avgCompletion)
 				.perturbation(GenerationFunctionType.VARIABLE_EXPONENTIAL_SCALE)
 				.nonNegativity(NonnegativityConstraintType.TRY_ZERO_RATES_OFTEN)
 				.sampler(sampler)
