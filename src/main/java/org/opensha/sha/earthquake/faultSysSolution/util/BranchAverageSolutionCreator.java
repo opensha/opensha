@@ -104,6 +104,7 @@ public class BranchAverageSolutionCreator {
 
 	public synchronized void addSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
 		double weight = weightProv.getWeight(branch);
+		Preconditions.checkState(weight > 0d, "Can't average in branch with weight=%s: %s", weight, branch);
 		weights.add(weight);
 		totWeight += weight;
 		FaultSystemRupSet rupSet = sol.getRupSet();
@@ -167,6 +168,7 @@ public class BranchAverageSolutionCreator {
 		for (int r=0; r<avgRates.length; r++) {
 			avgRakes.get(r).add(rupSet.getAveRakeForRup(r), weight);
 			double rate = sol.getRateForRup(r);
+			Preconditions.checkState(rate >= 0d, "bad rate: %s", rate);
 			if (rate == 0d)
 				continue;
 			double mag = rupSet.getMagForRup(r);
@@ -269,7 +271,8 @@ public class BranchAverageSolutionCreator {
 			avgLengths[r] /= totWeight;
 			if (avgRates[r] == 0d) {
 				// clear the empty MFD
-				Preconditions.checkState(rupMFDs.get(r).size() == 0);
+				int size = rupMFDs.get(r).size();
+				Preconditions.checkState(size == 0, "rate=0 but mfd has %s values?", size);
 				rupMFDs.set(r, null);
 			} else {
 				DiscretizedFunc rupMFD = rupMFDs.get(r);
