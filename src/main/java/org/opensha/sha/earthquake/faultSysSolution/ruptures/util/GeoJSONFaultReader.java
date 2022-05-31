@@ -183,14 +183,13 @@ public class GeoJSONFaultReader {
 			if (!idMapped.containsKey(id))
 				// no fault for this ID, might be filtered (e.g., by state)
 				continue;
-			double prefRate = props.getDouble("PrefRate", Double.NaN);
+//			System.out.println("SlipRate prop: "+props.get("SlipRate"));
+			double prefRate = props.getDouble("SlipRate", Double.NaN);
 			double lowRate = props.getDouble("LowRate", Double.NaN);
 			double highRate = props.getDouble("HighRate", Double.NaN);
 			String treatment = props.get("Treat", null);
 			String rateType = props.get("RateType", null);
-			double stdDev = props.getDouble("StdMinus", Double.NaN);
-			if (Double.isNaN(stdDev))
-				stdDev = props.getDouble("Stdev", Double.NaN);
+			double stdDev = props.getDouble("SlipRateStdDev", Double.NaN);
 			
 			processed.add(id);
 			GeoJSONFaultSection sect = idMapped.get(id);
@@ -217,11 +216,20 @@ public class GeoJSONFaultReader {
 				sect.setAveSlipRate(0d);
 				continue;
 			}
+
+			if (lowRate > prefRate) {
+				System.err.println("WARNING: LowRate is > PrefRate for "+id+". "+sectName+": low="+(float)lowRate+", pref="+(float)prefRate);
+				lowRate = prefRate;
+			}
+			if (highRate < prefRate) {
+				System.err.println("WARNING: HighRate is < PrefRate for "+id+". "+sectName+": high="+(float)highRate+", pref="+(float)prefRate);
+				highRate = prefRate;
+			}
 			
 			Preconditions.checkState(Double.isFinite(highRate) && highRate >= 0d && highRate >= prefRate,
-					"Bad HighRate for %s: %s", id, (Double)highRate);
+					"Bad HighRate for %s. %s: %s", id, sectName, (Double)highRate);
 			Preconditions.checkState(Double.isFinite(lowRate) && lowRate >= 0d && lowRate <= prefRate,
-					"Bad LowRate for %s: %s", id, (Double)lowRate);
+					"Bad LowRate for %s. %s: %s", id, sectName, (Double)lowRate);
 			
 			sect.setAveSlipRate(prefRate);
 			sect.setProperty("HighRate", highRate);
