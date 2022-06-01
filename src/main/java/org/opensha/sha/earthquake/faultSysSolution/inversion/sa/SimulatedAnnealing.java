@@ -181,7 +181,8 @@ public interface SimulatedAnnealing {
 	
 	public static void writeRateVsRankPlot(File outputDir, String prefix, double[] ratesNoMin, double[] rates,
 			double[] initialState, double[] compRates, double[] compRatesNoMin) throws IOException {
-		writeRateVsRankPlot(outputDir, prefix, ratesNoMin, rates, initialState, null, null, "Rupture Rate Distribution");
+		writeRateVsRankPlot(outputDir, prefix, ratesNoMin, rates, initialState, compRates, compRatesNoMin,
+				"Rupture Rate Distribution");
 	}
 	
 	public static void writeRateVsRankPlot(File outputDir, String prefix, double[] ratesNoMin, double[] rates,
