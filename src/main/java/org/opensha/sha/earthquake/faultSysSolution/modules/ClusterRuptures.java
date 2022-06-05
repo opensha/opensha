@@ -263,12 +263,6 @@ SplittableRuptureSubSetModule<ClusterRuptures> {
 		}
 
 		@Override
-		public AveragingAccumulator<ClusterRuptures> averagingAccumulator() {
-			// TODO Auto-generated method stub
-			return null;
-		}
-
-		@Override
 		public SingleStranded getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
 			// don't keep cache, new ruptures will have new IDs and FaultSection indexes
 			return new SingleStranded(rupSubSet, null);
