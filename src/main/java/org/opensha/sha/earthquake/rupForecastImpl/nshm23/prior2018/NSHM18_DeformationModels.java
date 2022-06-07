@@ -53,9 +53,10 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 	// TODO somehow honor slip-weight-exceptions.json?
 	GEOL("Geologic", "GEO", 0.8d),
 	BIRD("Bird", "BIRD", 0.1d),
-	ZENG("Zeng", "ZENG", 0.1d);
+	ZENG("Zeng", "ZENG", 0.1d),
+	BRANCH_AVERAGED("Branch Averaged", "BrAvg", 0d);
 	
-	static final String NSHM23_DM_PATH = "/data/erf/nshm18/def_models/deformation-model-data.json";
+	static final String NSHM18_DM_PATH = "/data/erf/nshm18/def_models/deformation-model-data.json";
 
 	private String name;
 	private String shortName;
@@ -166,8 +167,8 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 	public List<? extends FaultSection> buildSects(RupSetFaultModel faultModel) throws IOException {
 		Preconditions.checkState(isApplicableTo(faultModel), "DM/FM mismatch");
 		Reader dmReader = new BufferedReader(new InputStreamReader(
-				NSHM18_DeformationModels.class.getResourceAsStream(NSHM23_DM_PATH)));
-		Preconditions.checkNotNull(dmReader, "Deformation model file not found: %s", NSHM23_DM_PATH);
+				NSHM18_DeformationModels.class.getResourceAsStream(NSHM18_DM_PATH)));
+		Preconditions.checkNotNull(dmReader, "Deformation model file not found: %s", NSHM18_DM_PATH);
 		
 		Gson gson = new GsonBuilder().create();
 		
@@ -195,6 +196,7 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 //			Preconditions.checkNotNull(rec, "No matching deformation model record for id=%s, name=%s",
 //					sect.getSectionId(), sect.getSectionName());
 			DefModelSlipRecord slipRec = rec.rates.get(shortName);
+			// if it's branch averaged, this is null and the averaging will be applied
 			
 			double rake = sect.getAveRake();
 			Preconditions.checkState((float)rake == -180f || (float)rake == -90f || (float)rake == 0f
@@ -228,8 +230,9 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 					}
 					if (sumOtherWeights > 0d)
 						rateWeightSum /= sumOtherWeights;
-					System.err.println("WARNING: no "+shortName+" slip rate for id="+sect.getSectionId()+", name="
-							+sect.getSectionName()+", setting to weight average of other branch choices: "+(float)rateWeightSum);
+					if (this != BRANCH_AVERAGED)
+						System.err.println("WARNING: no "+shortName+" slip rate for id="+sect.getSectionId()+", name="
+								+sect.getSectionName()+", setting to weight average of other branch choices: "+(float)rateWeightSum);
 					slipRate = rateWeightSum;
 					
 					// TODO: don't use DM rake
@@ -273,8 +276,8 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 		Map<Integer, FaultSection> sects = fm.getFaultSectionIDMap();
 		
 		Reader dmReader = new BufferedReader(new InputStreamReader(
-				NSHM18_DeformationModels.class.getResourceAsStream(NSHM23_DM_PATH)));
-		Preconditions.checkNotNull(dmReader, "Deformation model file not found: %s", NSHM23_DM_PATH);
+				NSHM18_DeformationModels.class.getResourceAsStream(NSHM18_DM_PATH)));
+		Preconditions.checkNotNull(dmReader, "Deformation model file not found: %s", NSHM18_DM_PATH);
 		
 		Gson gson = new GsonBuilder().create();
 		
@@ -332,14 +335,16 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 	}
 	
 	public static void main(String[] args) throws IOException {
-//		System.out.println("Building GEOLOGIC");
-//		GEOL.build(NSHM18_FaultModels.NSHM18_WUS_NoCA);
-//		System.out.println("Building ZENG");
-//		ZENG.build(NSHM18_FaultModels.NSHM18_WUS_NoCA);
+		System.out.println("Building GEOLOGIC");
+		GEOL.build(NSHM18_FaultModels.NSHM18_WUS_NoCA);
+		System.out.println("Building ZENG");
+		ZENG.build(NSHM18_FaultModels.NSHM18_WUS_NoCA);
 		System.out.println("Building BIRD");
 		BIRD.build(NSHM18_FaultModels.NSHM18_WUS_NoCA);
+		System.out.println("Building BA");
+		BRANCH_AVERAGED.build(NSHM18_FaultModels.NSHM18_WUS_NoCA);
 		
-		plotML_Comparison(NSHM18_FaultModels.NSHM18_WUS_NoCA, new WC1994_MagLengthRelationship());
+//		plotML_Comparison(NSHM18_FaultModels.NSHM18_WUS_NoCA, new WC1994_MagLengthRelationship());
 	}
 
 }
