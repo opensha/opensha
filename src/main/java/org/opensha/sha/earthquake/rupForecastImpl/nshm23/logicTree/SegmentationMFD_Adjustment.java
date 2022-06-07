@@ -38,6 +38,12 @@ public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 			return new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel);
 		}
 	},
+	REL_GR_THRESHOLD_AVG_ITERATIVE("Threshold Averaging, Iterative Rel G-R", "ThreshAvgIterRelGR", 1d) {
+		@Override
+		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
+			return new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 50);
+		}
+	},
 	JUMP_PROB_THRESHOLD_AVG_MATCH_STRICT("Strict-Seg Equiv Threshold Averaging", "StrictEquivThreshAvg", 1d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {

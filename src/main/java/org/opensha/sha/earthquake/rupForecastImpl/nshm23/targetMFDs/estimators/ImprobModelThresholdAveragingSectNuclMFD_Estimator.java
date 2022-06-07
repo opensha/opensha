@@ -11,17 +11,29 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
+import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
+import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
@@ -30,6 +42,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.U3_UncertAddDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
@@ -120,16 +134,22 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 	public static class RelGRWorstJumpProb extends ImprobModelThresholdAveragingSectNuclMFD_Estimator {
 		
 		private JumpProbabilityCalc jumpModel;
+		private int iterations;
 		
 		private Map<Jump, Double> jumpProbs;
 
 		public RelGRWorstJumpProb(JumpProbabilityCalc improbModel) {
-			this(improbModel, null);
+			this(improbModel, 1);
 		}
 
-		public RelGRWorstJumpProb(JumpProbabilityCalc improbModel, List<? extends Number> fixedBinEdges) {
+		public RelGRWorstJumpProb(JumpProbabilityCalc improbModel, int iterations) {
+			this(improbModel, iterations, null);
+		}
+
+		public RelGRWorstJumpProb(JumpProbabilityCalc improbModel, int iterations, List<? extends Number> fixedBinEdges) {
 			super(improbModel, fixedBinEdges);
 			this.jumpModel = improbModel;
+			this.iterations = iterations;
 		}
 		
 		@Override
@@ -162,6 +182,8 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 			// these are section-sepecific scale factors
 			int numSects = rupSet.getNumSections();
 			double[][] sectNuclToParticScalars = new double[numSects][];
+			List<List<Integer>> sectRupIndexes = new ArrayList<>();
+			List<List<Double>> sectMags = new ArrayList<>();
 			for (int s=0; s<numSects; s++) {
 				int minMagIndex = sectMinMagIndexes[s];
 				int maxMagIndex = sectMaxMagIndexes[s];
@@ -170,12 +192,19 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 				double[] avgBinAreas = new double[nuclToParticScalars.length];
 				int[] avgCounts = new int[avgBinAreas.length];
 				
+				List<Integer> myRupIndexes = new ArrayList<>();
+				sectRupIndexes.add(myRupIndexes);
+				List<Double> myMags = new ArrayList<>();
+				sectMags.add(myMags);
+				
 				BitSet utilization = sectRupUtilizations.get(s);
 				// loop over ruptures for which this section participates
 				for (int r = utilization.nextSetBit(0); r >= 0; r = utilization.nextSetBit(r+1)) {
 					int index = refMFD.getClosestXIndex(rupSet.getMagForRup(r))-minMagIndex;
 					avgCounts[index]++;
 					avgBinAreas[index] += rupSet.getAreaForRup(r);
+					myRupIndexes.add(r);
+					myMags.add(rupSet.getMagForRup(r));
 				}
 				double sectArea = rupSet.getAreaForSection(s);
 				for (int m=0; m<nuclToParticScalars.length; m++) {
@@ -187,40 +216,88 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 				sectNuclToParticScalars[s] = nuclToParticScalars;
 			}
 			
-			jumpProbs = new HashMap<>();
-			for (Jump jump : jumpMagBins.keySet()) {
-				double minProb = 1d;
-				BitSet jumpBitSet = jumpMagBins.get(jump);
-				double jumpProb = jumpModel.calcJumpProbability(null, jump, false);
-				for (int sectIndex : new int[] {jump.fromSection.getSectionId(), jump.toSection.getSectionId()}) {
-					IncrementalMagFreqDist sectMFD = origSectSupraSeisMFDs.get(sectIndex);
-					if (sectMFD == null || sectMFD.calcSumOfY_Vals() == 0d) {
-						minProb = 0d;
-						break;
+			Preconditions.checkState(iterations >= 1);
+			boolean iterate = iterations > 1;
+			ExecutorService exec = null;
+			if (iterate)
+				exec = Executors.newFixedThreadPool(FaultSysTools.defaultNumThreads());
+			List<IncrementalMagFreqDist> workingSectSupraSeisMFDs = new ArrayList<>(origSectSupraSeisMFDs);
+			for (int iter=0; iter<iterations; iter++) {
+				jumpProbs = new HashMap<>();
+				for (Jump jump : jumpMagBins.keySet()) {
+					double minProb = 1d;
+					BitSet jumpBitSet = jumpMagBins.get(jump);
+					double jumpProb = jumpModel.calcJumpProbability(null, jump, false);
+					for (int sectIndex : new int[] {jump.fromSection.getSectionId(), jump.toSection.getSectionId()}) {
+						IncrementalMagFreqDist sectMFD = workingSectSupraSeisMFDs.get(sectIndex);
+						if (sectMFD == null || sectMFD.calcSumOfY_Vals() == 0d) {
+							minProb = 0d;
+							break;
+						}
+						// total participation rate for this section assuming the original supra-seis MFD is honored
+						double totParticRate = 0d;
+						// total participation rate for magnitudes bins that use this jump
+						double jumpParticRate = 0d;
+						double[] nuclToParticScalars = sectNuclToParticScalars[sectIndex];
+						for (int m=0; m<nuclToParticScalars.length; m++) {
+							double binRate = sectMFD.getY(m + sectMinMagIndexes[sectIndex]);
+							double particRate = binRate*nuclToParticScalars[m];
+							totParticRate += particRate;
+							if (jumpBitSet.get(m + sectMinMagIndexes[sectIndex]))
+								jumpParticRate += particRate;
+						}
+						// this is the segmentation-implied participation rate allotment for this jump
+						double segJumpParticRate = totParticRate*jumpProb;
+						// what fraction of the jump participation rate is allowed by the segmentation model?
+						// this will be >1 if the segmentation constraint is more permissive than the input G-R
+						double segFractOfAllotment = segJumpParticRate/jumpParticRate;
+						// minProb starts at 1, so don't need to ensure that it's <1 here
+						minProb = Math.min(minProb, segFractOfAllotment);
 					}
-					// total participation rate for this section assuming the original supra-seis MFD is honored
-					double totParticRate = 0d;
-					// total participation rate for magnitudes bins that use this jump
-					double jumpParticRate = 0d;
-					double[] nuclToParticScalars = sectNuclToParticScalars[sectIndex];
-					for (int m=0; m<nuclToParticScalars.length; m++) {
-						double binRate = sectMFD.getY(m + sectMinMagIndexes[sectIndex]);
-						double particRate = binRate*nuclToParticScalars[m];
-						totParticRate += particRate;
-						if (jumpBitSet.get(m + sectMinMagIndexes[sectIndex]))
-							jumpParticRate += particRate;
-					}
-					// this is the segmentation-implied participation rate allotment for this jump
-					double segJumpParticRate = totParticRate*jumpProb;
-					// what fraction of the jump participation rate is allowed by the segmentation model?
-					// this will be >1 if the segmentation constraint is more permissive than the input G-R
-					double segFractOfAllotment = segJumpParticRate/jumpParticRate;
-					// minProb starts at 1, so don't need to ensure that it's <1 here
-					minProb = Math.min(minProb, segFractOfAllotment);
+					jumpProbs.put(jump, minProb);
+					jumpProbs.put(jump.reverse(), minProb);
 				}
-				jumpProbs.put(jump, minProb);
-				jumpProbs.put(jump.reverse(), minProb);
+				
+				if (iterate) {
+					// need to update the working supra-seis MFDs
+					super.init(rupSet, origSectSupraSeisMFDs, targetSectSupraMoRates, targetSectSupraSlipRates, sectSupraSlipRateStdDevs,
+							sectRupUtilizations, sectMinMagIndexes, sectMaxMagIndexes, sectRupInBinCounts, refMFD);
+					List<Future<Double>> mfdEstFutures = new ArrayList<>();
+					for (int s=0; s<workingSectSupraSeisMFDs.size(); s++) {
+						final int sectIndex = s;
+						mfdEstFutures.add(exec.submit(new Callable<Double>() {
+
+							@Override
+							public Double call() throws Exception {
+
+								IncrementalMagFreqDist origMFD = workingSectSupraSeisMFDs.get(sectIndex);
+								IncrementalMagFreqDist modMFD = estimateNuclMFD(rupSet.getFaultSectionData(sectIndex),
+										origMFD, sectRupIndexes.get(sectIndex), sectMags.get(sectIndex), null, true);
+								workingSectSupraSeisMFDs.set(sectIndex, modMFD);
+								double gain = modMFD.calcSumOfY_Vals()/origMFD.calcSumOfY_Vals();
+								return gain;
+							}
+						}));
+					}
+					MinMaxAveTracker gainTrack = new MinMaxAveTracker();
+					for (Future<Double> future : mfdEstFutures) {
+						double gain;
+						try {
+							gain = future.get();
+						} catch (InterruptedException | ExecutionException e) {
+							exec.shutdown();
+							throw ExceptionUtils.asRuntimeException(e);
+						}
+						if (Double.isFinite(gain))
+							gainTrack.addValue(gain);
+					}
+					System.out.println("Done with rel-GR threshold averaging iteration "+iter+"/"+iterations);
+					System.out.println("\tsect rate gains: "+gainTrack);
+				}
 			}
+			
+			if (exec != null)
+				exec.shutdown();
 			super.init(rupSet, origSectSupraSeisMFDs, targetSectSupraMoRates, targetSectSupraSlipRates, sectSupraSlipRateStdDevs,
 					sectRupUtilizations, sectMinMagIndexes, sectMaxMagIndexes, sectRupInBinCounts, refMFD);
 		}
@@ -299,7 +376,8 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 	public IncrementalMagFreqDist estimateNuclMFD(FaultSection sect, IncrementalMagFreqDist curSectSupraSeisMFD,
 			List<Integer> availableRupIndexes, List<Double> availableRupMags, UncertainDataConstraint sectMomentRate,
 			boolean sparseGR) {
-		if (sectMomentRate.bestEstimate == 00d || availableRupIndexes.isEmpty() || curSectSupraSeisMFD.calcSumOfY_Vals() == 0d)
+		if ((sectMomentRate != null && sectMomentRate.bestEstimate == 0d) || availableRupIndexes.isEmpty()
+				|| curSectSupraSeisMFD.calcSumOfY_Vals() == 0d)
 			// this is a zero rate section, do nothing
 			return curSectSupraSeisMFD;
 		
@@ -485,6 +563,7 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 		FaultSystemRupSet rupSet = FaultSystemRupSet.load(
 //				new File("/data/kevin/markdown/inversions/fm3_1_u3ref_uniform_reproduce_ucerf3.zip"));
 				new File("/data/kevin/markdown/inversions/fm3_1_u3ref_uniform_coulomb.zip"));
+		Region reg = new CaliforniaRegions.RELM_TESTING();
 		
 		rupSet = FaultSystemRupSet.buildFromExisting(rupSet)
 //				.replaceFaultSections(DeformationModels.MEAN_UCERF3.build(FaultModels.FM3_1))
@@ -494,19 +573,36 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 		
 		double bVal = 0.5d;
 		Shaw07JumpDistProb segModel = Shaw07JumpDistProb.forHorzOffset(1d, 3d, 2d);
+		
+		File outputDir = new File("/tmp");
 
 		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb1 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel);
 		String name1 = "Seg-Prob";
 		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb2 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel);
 		String name2 = "Rel-GR";
+		String prefix = "thresh_avg_vs_rel_gr";
+
+//		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb1 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel);
+//		String name1 = "Seg-Prob";
+//		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb2 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 100);
+//		String name2 = "Rel-GR-100-Iters";
+//		String prefix = "thresh_avg_vs_rel_gr_iter";
+		
+//		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb1 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 1);
+//		String name1 = "Rel-GR-1-Iter";
+//		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb2 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 100);
+//		String name2 = "Rel-GR-100-Iters";
+//		String prefix = "thresh_avg_rel_gr_iters";
 		
 		SupraSeisBValInversionTargetMFDs.Builder builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, bVal);
 		builder.subSeisMoRateReduction(SubSeisMoRateReduction.SUB_SEIS_B_1);
 		builder.adjustTargetsForData(improb1);
+		List<UncertainIncrMagFreqDist> mfds1 = builder.build().getOnFaultSupraSeisNucleationMFDs();
 		
-		builder.build();
+		builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, bVal);
+		builder.subSeisMoRateReduction(SubSeisMoRateReduction.SUB_SEIS_B_1);
 		builder.adjustTargetsForData(improb2);
-		builder.build();
+		List<UncertainIncrMagFreqDist> mfds2 = builder.build().getOnFaultSupraSeisNucleationMFDs();
 		
 		DefaultXY_DataSet probScatter = new DefaultXY_DataSet();
 		
@@ -545,7 +641,68 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 		
 		gp.drawGraphPanel(spec, true, true, range, range);
 		
-		PlotUtils.writePlots(new File("/tmp"), "thresh_avg_seg_provs", gp, 1000, false, true, false, false);
+		PlotUtils.writePlots(outputDir, prefix+"_probs", gp, 1000, false, true, false, false);
+		
+		// now seg rates
+		double[] rates1 = new double[rupSet.getNumSections()];
+		double[] rates2 = new double[rupSet.getNumSections()];
+		
+		DefaultXY_DataSet rateScatter = new DefaultXY_DataSet();
+		minNonZero = 1d;
+		for (int s=0; s<rates1.length; s++) {
+			rates1[s] = mfds1.get(s).calcSumOfY_Vals();
+			rates2[s] = mfds2.get(s).calcSumOfY_Vals();
+			if ((rates1[s] != 1d || rates2[s] != 1d) && (rates1[s] != 0d || rates2[s] != 0d)) {
+				rateScatter.set(rates1[s], rates2[s]);
+				if (rates1[s] > 0d)
+					minNonZero = Math.min(minNonZero, rates1[s]);
+				if (rates2[s] > 0d)
+					minNonZero = Math.min(minNonZero, rates2[s]);
+			}
+		}
+		
+		range = new Range(Math.pow(10, Math.floor(Math.log10(minNonZero))), 1d);
+		
+		oneToOne = new DefaultXY_DataSet();
+		oneToOne.set(range.getLowerBound(), range.getLowerBound());
+		oneToOne.set(range.getUpperBound(), range.getUpperBound());
+		
+		funcs.add(oneToOne);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.GRAY));
+		
+		funcs.add(rateScatter);
+		chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 3f, Color.BLACK));
+		
+		spec = new PlotSpec(funcs, chars, "Thresh-Avg Sect Nuclation Rates", name1, name2);
+		
+		gp.drawGraphPanel(spec, true, true, range, range);
+		
+		PlotUtils.writePlots(outputDir, prefix+"_rates_scatter", gp, 1000, false, true, false, false);
+		
+		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, reg);
+		
+		CPT pDiffCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-100d, 100d);
+		
+		mapMaker.plotSectScalars(pDiff(rates2, rates1), pDiffCPT, "Nucleation Rate % Difference: "+name2+" - "+name1);
+		
+		mapMaker.plot(outputDir, prefix+"_rates", "Section Nucleation Rates");
+	}
+	
+	private static double[] pDiff(double[] primary, double[] comparison) {
+		double[] ret = new double[primary.length];
+		for (int i=0; i<ret.length; i++) {
+			double z1 = primary[i];
+			double z2 = comparison[i];
+			double val;
+			if (z1 == 0d && z2 == 0d)
+				val = 0d;
+			else if (z2 == 0d)
+				val = Double.POSITIVE_INFINITY;
+			else
+				val = 100d*(z1-z2)/z2;
+			ret[i] = val;
+		}
+		return ret;
 	}
 
 }
