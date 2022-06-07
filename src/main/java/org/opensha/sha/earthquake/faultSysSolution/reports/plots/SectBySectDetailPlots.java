@@ -779,16 +779,21 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			}
 			
 			table.initNewLine();
+			boolean coruptures = false;
 			table.addColumn("**Co-rupture Count**");
-			if (rupData.parentCoruptures.containsKey(parentID))
+			if (rupData.parentCoruptures.containsKey(parentID)) {
 				table.addColumn(countDF.format(rupData.parentCoruptures.get(parentID).size()));
-			else
+				coruptures = true;
+			} else {
 				table.addColumn("0");
+			}
 			if (meta.comparison != null) {
-				if (compRupData.parentCoruptures.containsKey(parentID))
+				if (compRupData.parentCoruptures.containsKey(parentID)) {
 					table.addColumn(countDF.format(compRupData.parentCoruptures.get(parentID).size()));
-				else
+					coruptures = true;
+				} else {
 					table.addColumn("0");
+				}
 			}
 			table.finalizeLine();
 			
@@ -805,6 +810,26 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 					table.addColumn("_N/A_");
 			}
 			table.finalizeLine();
+			
+			if (coruptures) {
+				table.initNewLine();
+				table.addColumn("**Co-rupture Mag Range**");
+				if (rupData.parentCoruptureMags.containsKey(parentID)) {
+					MinMaxAveTracker minMax = rupData.parentCoruptureMags.get(parentID);
+					table.addColumn("["+twoDigits.format(minMax.getMin())+", "+twoDigits.format(minMax.getMax())+"]");
+				} else {
+					table.addColumn("_N/A_");
+				}
+				if (meta.comparison != null) {
+					if (compRupData.parentCoruptureMags.containsKey(parentID)) {
+						MinMaxAveTracker minMax = compRupData.parentCoruptureMags.get(parentID);
+						table.addColumn("["+twoDigits.format(minMax.getMin())+", "+twoDigits.format(minMax.getMax())+"]");
+					} else {
+						table.addColumn("_N/A_");
+					}
+				}
+				table.finalizeLine();
+			}
 			
 			connLines.addAll(table.build());
 			
@@ -957,6 +982,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		private Map<Integer, List<Integer>> parentCoruptures;
 		private HashSet<Integer> directlyConnectedParents;
 		private Map<Integer, Double> parentCoruptureRates;
+		private Map<Integer, MinMaxAveTracker> parentCoruptureMags;
 		private Map<Integer, Integer> sectCoruptureCounts;
 		private Map<Integer, Double> sectCoruptureRates;
 		
@@ -966,11 +992,13 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			directlyConnectedParents = new HashSet<>();
 			parentCoruptureRates = sol == null ? null : new HashMap<>();
 			sectCoruptureCounts = new HashMap<>();
+			parentCoruptureMags = new HashMap<>();
 			sectCoruptureRates = sol == null ? null : new HashMap<>();
 			
 			for (int rupIndex : rupSet.getRupturesForParentSection(parentSectIndex)) {
 				ClusterRupture rup = clusterRups.get(rupIndex);
 				double rate = sectCoruptureRates == null ? Double.NaN : sol.getRateForRup(rupIndex);
+				double mag = rupSet.getMagForRup(rupIndex);
 				RuptureTreeNavigator nav = rup.getTreeNavigator();
 				for (FaultSubsectionCluster cluster : rup.getClustersIterable()) {
 					if (cluster.parentSectionID == parentSectIndex) {
@@ -987,9 +1015,11 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 						parentCoruptures.put(cluster.parentSectionID, coruptures);
 						if (parentCoruptureRates != null)
 							parentCoruptureRates.put(cluster.parentSectionID, rate);
+						parentCoruptureMags.put(cluster.parentSectionID, new MinMaxAveTracker());
 					} else if (parentCoruptureRates != null) {
 						parentCoruptureRates.put(cluster.parentSectionID, parentCoruptureRates.get(cluster.parentSectionID)+rate);
 					}
+					parentCoruptureMags.get(cluster.parentSectionID).addValue(mag);
 					coruptures.add(rupIndex);
 					for (FaultSection sect : cluster.subSects) {
 						Integer id = sect.getSectionId();
