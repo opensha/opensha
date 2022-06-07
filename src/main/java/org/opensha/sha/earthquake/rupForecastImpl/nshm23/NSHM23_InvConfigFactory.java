@@ -56,8 +56,11 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilde
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels.HardDistCutoffJumpProbCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSect;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModels;
@@ -389,41 +392,45 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 				NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT);
 		
 		// apply any segmentation adjustments
-		SegmentationModels segModel = branch.getValue(SegmentationModels.class);
-		MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
-		// make sure we actually have jumps
-		if (segModel != null || distModel != null) {
-			boolean jumpFound = false;
-			for (ClusterRupture cRup : rupSet.requireModule(ClusterRuptures.class)) {
-				if (cRup.getTotalNumJumps() > 0) {
-					jumpFound = true;
-					break;
-				}
+		if (hasJumps(rupSet)) {
+			JumpProbabilityCalc targetSegModel = buildSegModel(rupSet, branch);
+			MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
+			if (distModel != null) {
+				if (targetSegModel == null)
+					targetSegModel = distModel.getModel(rupSet);
+				else
+					targetSegModel = new JumpProbabilityCalc.MultiProduct(targetSegModel, distModel.getModel(rupSet));
 			}
-			if (!jumpFound) {
-				System.out.println("Rupture set has no jumps, disabling segmentation");
-				segModel = null;
-				distModel = null;
+			
+			if (targetSegModel != null) {
+				SegmentationMFD_Adjustment segAdj = branch.getValue(SegmentationMFD_Adjustment.class);
+				if (segAdj == null)
+					// use default adjustment
+					constrBuilder.adjustForSegmentationModel(targetSegModel);
+				else
+					constrBuilder.adjustForSegmentationModel(targetSegModel, segAdj);
 			}
-		}
-		JumpProbabilityCalc targetSegModel = segModel == null ? null : segModel.getModel(rupSet, branch);
-		if (distModel != null) {
-			if (targetSegModel == null)
-				targetSegModel = distModel.getModel(rupSet);
-			else
-				targetSegModel = new JumpProbabilityCalc.MultiProduct(targetSegModel, distModel.getModel(rupSet));
-		}
-		
-		if (targetSegModel != null) {
-			SegmentationMFD_Adjustment segAdj = branch.getValue(SegmentationMFD_Adjustment.class);
-			if (segAdj == null)
-				// use default adjustment
-				constrBuilder.adjustForSegmentationModel(targetSegModel);
-			else
-				constrBuilder.adjustForSegmentationModel(targetSegModel, segAdj);
+			
+			RupsThroughCreepingSect rupsThroughCreep = branch.getValue(RupsThroughCreepingSect.class);
+			if (rupsThroughCreep != null && rupsThroughCreep.isExclude() && constrBuilder.rupSetHasCreepingSection())
+				constrBuilder.excludeRupturesThroughCreeping();
 		}
 		
 		return constrBuilder;
+	}
+	
+	private static boolean hasJumps(FaultSystemRupSet rupSet) {
+		for (ClusterRupture cRup : rupSet.requireModule(ClusterRuptures.class))
+			if (cRup.getTotalNumJumps() > 0)
+				return true;
+		return false;
+	}
+	
+	private static JumpProbabilityCalc buildSegModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		SegmentationModels segModel = branch.getValue(SegmentationModels.class);
+		JumpProbabilityCalc jumpProb = segModel == null ? null : segModel.getModel(rupSet, branch);
+		// TODO creeping section
+		return jumpProb;
 	}
 
 	@Override
@@ -456,26 +463,6 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		double nuclWeight = constrModel == SubSectConstraintModels.TOT_NUCL_RATE ? 0.5 : 0d;
 		double nuclMFDWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 0.5 : 0d;
 		double paleoSmoothWeight = paleoWeight > 0 ? 10000 : 0;
-
-		SegmentationModels segModel = branch.getValue(SegmentationModels.class);
-		System.out.println("Segmentation model: "+segModel);
-		MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
-		System.out.println("Max distance model: "+distModel);
-		// make sure we actually have jumps
-		if (segModel != null || distModel != null) {
-			boolean jumpFound = false;
-			for (ClusterRupture cRup : rupSet.requireModule(ClusterRuptures.class)) {
-				if (cRup.getTotalNumJumps() > 0) {
-					jumpFound = true;
-					break;
-				}
-			}
-			if (!jumpFound) {
-				System.out.println("Rupture set has no jumps, disabling segmentation");
-				segModel = null;
-				distModel = null;
-			}
-		}
 		
 		if (slipWeight > 0d)
 			constrBuilder.slipRates().weight(slipWeight);
@@ -502,45 +489,40 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		
 		ExclusionIntegerSampler sampler = constrBuilder.getSkipBelowMinSampler();
 		
+		BinaryRuptureProbabilityCalc rupExcludeModel = constrBuilder.getRupExclusionModel();
+		if (rupExcludeModel != null)
+			sampler = getExcludeSampler(rupSet.requireModule(ClusterRuptures.class), sampler, rupExcludeModel);
+		
 		List<InversionConstraint> constraints = constrBuilder.build();
 		
 		SupraSeisBValInversionTargetMFDs targetMFDs = rupSet.requireModule(SupraSeisBValInversionTargetMFDs.class);
 		
 		GRParticRateEstimator rateEst = new GRParticRateEstimator(rupSet, targetMFDs);
 		
-		if (segModel != null && segModel != SegmentationModels.NONE) {
-			constraints = new ArrayList<>(constraints);
-			
-//			InitialModelParticipationRateEstimator rateEst = new InitialModelParticipationRateEstimator(
-//					rupSet, Inversions.getDefaultVariablePerturbationBasis(rupSet));
+		if (hasJumps(rupSet)) {
+			JumpProbabilityCalc segModel = buildSegModel(rupSet, branch);
+			if (segModel != null) {
+				constraints = new ArrayList<>(constraints);
+				
+//				InitialModelParticipationRateEstimator rateEst = new InitialModelParticipationRateEstimator(
+//						rupSet, Inversions.getDefaultVariablePerturbationBasis(rupSet));
 
-//			double weight = 0.5d;
-//			boolean ineq = false;
-			double weight = 10d;
-			boolean ineq = true;
-			
-			constraints.add(new JumpProbabilityConstraint.RelativeRate(
-					weight, ineq, rupSet, segModel.getModel(rupSet, branch), rateEst));
-		}
-		
-		if (distModel != null) {
-			JumpProbabilityCalc model = distModel.getModel(rupSet);
-			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
-			System.out.println("Zeroing out sampler probabilities for "+model);
-			HashSet<Integer> distSkips = new HashSet<>();
-			for (int r=0; r<cRups.size(); r++) {
-//				if (r % 1000 == 0)
-//					System.out.println("Prob for r="+r+": "+model.calcRuptureProb(cRups.get(r), false));
-				if ((float)model.calcRuptureProb(cRups.get(r), false) == 0f)
-					distSkips.add(r);
+//				double weight = 0.5d;
+//				boolean ineq = false;
+				double weight = 10d;
+				boolean ineq = true;
+				
+				constraints.add(new JumpProbabilityConstraint.RelativeRate(
+						weight, ineq, rupSet, buildSegModel(rupSet, branch), rateEst));
 			}
-			System.out.println("\tSkipped "+distSkips.size()+" ruptures");
-			if (!distSkips.isEmpty()) {
-				ExclusionIntegerSampler distSkipSampler = new ExclusionIntegerSampler(0, rupSet.getNumRuptures(), distSkips);
-				if (sampler == null)
-					sampler = distSkipSampler;
-				else
-					sampler = sampler.getCombinedWith(distSkipSampler);
+			
+			MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
+			System.out.println("Max distance model: "+distModel);
+			if (distModel != null) {
+				HardDistCutoffJumpProbCalc model = distModel.getModel(rupSet);
+				ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+				System.out.println("Zeroing out sampler probabilities for "+model);
+				sampler = getExcludeSampler(cRups, sampler, model);
 			}
 		}
 		
@@ -572,6 +554,25 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 			builder.initialSolution(constrBuilder.getParkfieldInitial(true));
 		
 		return builder.build();
+	}
+	
+	private static ExclusionIntegerSampler getExcludeSampler(ClusterRuptures cRups,
+			ExclusionIntegerSampler currentSampler, BinaryRuptureProbabilityCalc excludeCalc) {
+		HashSet<Integer> skips = new HashSet<>();
+		for (int r=0; r<cRups.size(); r++) {
+//			if (r % 1000 == 0)
+//				System.out.println("Prob for r="+r+": "+model.calcRuptureProb(cRups.get(r), false));
+			if (!excludeCalc.isRupAllowed(cRups.get(r), false))
+				skips.add(r);
+		}
+		System.out.println("\tSkipped "+skips.size()+" ruptures");
+		if (skips.isEmpty())
+			return currentSampler;
+		ExclusionIntegerSampler skipSampler = new ExclusionIntegerSampler(0, cRups.size(), skips);
+		if (currentSampler == null)
+			return skipSampler;
+		else
+			return currentSampler.getCombinedWith(skipSampler);
 	}
 	
 	public static class NoPaleoParkfield extends NSHM23_InvConfigFactory {

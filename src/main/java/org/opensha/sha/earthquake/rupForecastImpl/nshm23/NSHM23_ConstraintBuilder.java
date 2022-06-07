@@ -46,6 +46,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
@@ -93,6 +94,8 @@ public class NSHM23_ConstraintBuilder {
 	private static final double DEFAULT_REL_STD_DEV = 0.1;
 	
 	private DoubleUnaryOperator magDepRelStdDev = M->DEFAULT_REL_STD_DEV;
+	
+	private BinaryRuptureProbabilityCalc rupExclusionModel;
 	
 	private JumpProbabilityCalc segModel;
 	private SegmentationMFD_Adjustment segAdjMethod = SegmentationMFD_Adjustment.JUMP_PROB_THRESHOLD_AVG;
@@ -204,6 +207,24 @@ public class NSHM23_ConstraintBuilder {
 		return this;
 	}
 	
+	public JumpProbabilityCalc getSegmentationModel() {
+		return segModel;
+	}
+	
+	public SegmentationMFD_Adjustment getSegmentationAdjustmentMethod() {
+		return segAdjMethod;
+	}
+	
+	public NSHM23_ConstraintBuilder excludeRuptures(BinaryRuptureProbabilityCalc rupExclusionModel) {
+		this.rupExclusionModel = rupExclusionModel;
+		targetCache = null;
+		return this;
+	}
+	
+	public BinaryRuptureProbabilityCalc getRupExclusionModel() {
+		return rupExclusionModel;
+	}
+	
 	/**
 	 * Some scaling relationships are not be consistent with the way we calculate the total moment required to
 	 * satisfy the target slip rate. If enabled, the target MFDs will be modified to account for any discrepancy
@@ -247,6 +268,8 @@ public class NSHM23_ConstraintBuilder {
 					builder.adjustTargetsForData(adjustment);
 			}
 		}
+		if (rupExclusionModel != null)
+			builder.forBinaryRupProbModel(rupExclusionModel);
 		if (adjustForActualRupSlips)
 			builder.adjustTargetsForData(new ScalingRelSlipRateMFD_Estimator(adjustForSlipAlong));
 		if (adjustForIncompatibleData) {
@@ -325,9 +348,121 @@ public class NSHM23_ConstraintBuilder {
 		return this;
 	}
 	
+	/**
+	 * Excludes any ruptures through the creeping section. This will overwrite any previously set rupture exclusion model.
+	 * 
+	 * @return
+	 */
+	public NSHM23_ConstraintBuilder excludeRupturesThroughCreeping() {
+		// find the creeping section
+		int creepingParentID = findParentSectionID("San", "Andreas", "Creeping");
+		Preconditions.checkState(creepingParentID >= 0, "Creeping section not found");
+		List<FaultSection> creepingSects = new ArrayList<>();
+		for (FaultSection sect : rupSet.getFaultSectionDataList())
+			if (sect.getParentSectionId() == creepingParentID)
+				creepingSects.add(sect);
+		Preconditions.checkState(!creepingSects.isEmpty());
+		return excludeRuptures(new BinaryRuptureProbabilityCalc() {
+			
+			@Override
+			public String getName() {
+				return "Exclude Ruptures Through Creeping";
+			}
+			
+			@Override
+			public boolean isDirectional(boolean splayed) {
+				return splayed;
+			}
+			
+			@Override
+			public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
+				FaultSubsectionCluster creepingCluster = null;
+				for (FaultSubsectionCluster cluster : fullRupture.getClustersIterable()) {
+					if (cluster.parentSectionID == creepingParentID) {
+						Preconditions.checkState(creepingCluster == null, "Don't yet support 2 creeping section clusters");
+						creepingCluster = cluster;
+					}
+				}
+				if (creepingCluster == null)
+					return true;
+				// has the creeping section, check it
+				RuptureTreeNavigator nav = fullRupture.getTreeNavigator();
+				// allowed if there is nothing immediately before or after the creeping section
+				return nav.getPredecessor(creepingCluster) == null || nav.getDescendants(creepingCluster).isEmpty();
+			}
+		});
+	}
+	
+	public boolean rupSetHasCreepingSection() {
+		return findParentSectionID("San", "Andreas", "Creeping") >= 0;
+	}
+	
 	public List<Integer> findParkfieldRups() {
-		// TODO hack
-		return UCERF3InversionInputGenerator.findParkfieldRups(rupSet);
+		int parkfieldID = findParentSectionID("San", "Andreas", "Parkfield");
+		if (parkfieldID < 0) {
+			System.out.println("Warning: parkfield not found...removed?");
+			return new ArrayList<>();
+		}
+		// Find Parkfield M~6 ruptures
+		List<Integer> potentialRups = rupSet.getRupturesForParentSection(parkfieldID);
+		List<Integer> parkfieldRups = new ArrayList<Integer>();
+		if (potentialRups == null) {
+			System.out.println("Warning: parkfield not found...removed?");
+			return parkfieldRups;
+		}
+		rupLoop:
+			for (int i=0; i<potentialRups.size(); i++) {
+				List<Integer> sects = rupSet.getSectionsIndicesForRup(potentialRups.get(i));
+				// Make sure there are 6-8 subsections
+				if (sects.size()<6 || sects.size()>8)
+					continue rupLoop;
+				// Make sure each section in rup is in Parkfield parent section
+				for (int s=0; s<sects.size(); s++) {
+					int parent = rupSet.getFaultSectionData(sects.get(s)).getParentSectionId();
+					if (parent != parkfieldID)
+						continue rupLoop;
+				}
+				parkfieldRups.add(potentialRups.get(i));
+//				if (D) System.out.println("Parkfield rup: "+potentialRups.get(i));
+			}
+//		if (D) System.out.println("Number of M~6 Parkfield rups = "+parkfieldRups.size());
+		return parkfieldRups;
+	}
+	
+	private int findParentSectionID(String... nameParts) {
+		Preconditions.checkState(nameParts.length > 0);
+		String prevMatch = null;
+		int matchingID = -1;
+		String partDebugStr = "[";
+		for (int i=0; i<nameParts.length; i++) {
+			String part = nameParts[i];
+			if (i > 0)
+				partDebugStr += ", ";
+			partDebugStr += "'"+part+"'";
+			nameParts[i] = part.toLowerCase();
+		}
+		partDebugStr += "]";
+		for (FaultSection sect : rupSet.getFaultSectionDataList()) {
+			String parentName = sect.getParentSectionName();
+			Preconditions.checkNotNull(parentName, "Parent section names not set");
+			parentName = parentName.toLowerCase();
+			if (sect.getParentSectionId() == matchingID)
+				continue;
+			boolean match = true;
+			for (String part : nameParts) {
+				if (!parentName.contains(part)) {
+					match = false;
+					break;
+				}
+			}
+			if (match) {
+				Preconditions.checkState(prevMatch == null, "Multiple matches for %s: %s='%s' and %s='%s'",
+						partDebugStr, matchingID, prevMatch, sect.getParentSectionId(), sect.getParentSectionName());
+				matchingID = sect.getParentSectionId();
+				prevMatch = sect.getParentSectionName();
+			}
+		}
+		return matchingID;
 	}
 	
 	public boolean rupSetHasParkfield() {

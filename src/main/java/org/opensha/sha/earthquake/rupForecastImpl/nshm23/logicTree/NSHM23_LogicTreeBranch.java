@@ -50,21 +50,25 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			LogicTreeLevel.forEnum(SegmentationMFD_Adjustment.class, "Segmentation MFD Adjustment", "SegAdj");
 	public static LogicTreeLevel<MaxJumpDistModels> MAX_DIST =
 			LogicTreeLevel.forEnum(MaxJumpDistModels.class, "Maximum Jump Distance", "MaxJumpDist");
+	public static LogicTreeLevel<RupsThroughCreepingSect> RUPS_THROUGH_CREEPING =
+			LogicTreeLevel.forEnum(RupsThroughCreepingSect.class, "Ruptures Through Creeping Section", "RupsThruCreep");
 	
 	static {
 		// exhaustive for now, can trim down later
-		levels = List.of(U3_FM, PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG, SUPRA_B, SUB_SECT_CONSTR, SUB_SEIS_MO, SEG, SEG_SHIFT, SEG_ADJ);
-		levelsMaxDist = List.of(U3_FM, PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG, SUPRA_B, SUB_SECT_CONSTR, SUB_SEIS_MO, MAX_DIST);
+		levels = List.of(U3_FM, PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG, SUPRA_B,
+				SUB_SECT_CONSTR, SUB_SEIS_MO, SEG, SEG_SHIFT, SEG_ADJ, RUPS_THROUGH_CREEPING);
+		levelsMaxDist = List.of(U3_FM, PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG, SUPRA_B,
+				SUB_SECT_CONSTR, SUB_SEIS_MO, MAX_DIST, RUPS_THROUGH_CREEPING);
 	}
 	
 	/**
 	 * This is the default reference branch
 	 */
 	public static final NSHM23_LogicTreeBranch DEFAULT = fromValues(NSHM23_FaultModels.NSHM23_v1p4,
-			RupturePlausibilityModels.COULOMB, NSHM23_DeformationModels.GEOL_V1p3, ScalingRelationships.SHAW_2009_MOD,
+			RupturePlausibilityModels.COULOMB, NSHM23_DeformationModels.GEOL_V1p4, ScalingRelationships.SHAW_2009_MOD,
 			SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p5, SubSectConstraintModels.TOT_NUCL_RATE,
 			SubSeisMoRateReductions.SUB_B_1, SegmentationModels.SHAW_R0_3, DistDependSegShift.ONE_KM,
-			SegmentationMFD_Adjustment.JUMP_PROB_THRESHOLD_AVG);
+			SegmentationMFD_Adjustment.JUMP_PROB_THRESHOLD_AVG, RupsThroughCreepingSect.INCLUDE);
 	
 	/**
 	 * Creates a NSHM23LogicTreeBranch instance from given set of node values. Null or missing values

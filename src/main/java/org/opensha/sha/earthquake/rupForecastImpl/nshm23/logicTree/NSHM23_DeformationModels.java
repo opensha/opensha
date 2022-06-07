@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -111,6 +112,20 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		List<? extends FaultSection> geoSects = buildGeolFullSects(faultModel, version);
 		
 		return GeoJSONFaultReader.buildSubSects(geoSects);
+	}
+	
+	public static void main(String[] args) throws IOException {
+		// write geo gson
+		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v1p4;
+		for (NSHM23_DeformationModels dm : values()) {
+			if (dm.weight > 0d && dm.isApplicableTo(fm)) {
+				List<? extends FaultSection> subSects = dm.build(fm);
+				GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+dm.getFilePrefix()+"_sub_sects.geojson"), subSects);
+			}
+		}
+		
+		List<? extends FaultSection> geoFull = NSHM23_DeformationModels.GEOL_V1p4.buildGeolFullSects(fm, "v1p4");
+		GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+NSHM23_DeformationModels.GEOL_V1p4.getFilePrefix()+"_sects.geojson"), geoFull);
 	}
 
 }
