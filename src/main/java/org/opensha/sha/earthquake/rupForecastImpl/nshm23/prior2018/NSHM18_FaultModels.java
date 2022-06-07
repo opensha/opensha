@@ -363,8 +363,8 @@ public enum NSHM18_FaultModels implements LogicTreeNode, RupSetFaultModel {
 		
 		// now load the deformation model data to see what we're missing and what we want to retain
 		Reader dmReader = new BufferedReader(new InputStreamReader(
-				NSHM18_DeformationModels.class.getResourceAsStream(NSHM18_DeformationModels.NSHM23_DM_PATH)));
-		Preconditions.checkNotNull(dmReader, "Deformation model file not found: %s", NSHM18_DeformationModels.NSHM23_DM_PATH);
+				NSHM18_DeformationModels.class.getResourceAsStream(NSHM18_DeformationModels.NSHM18_DM_PATH)));
+		Preconditions.checkNotNull(dmReader, "Deformation model file not found: %s", NSHM18_DeformationModels.NSHM18_DM_PATH);
 		
 		Gson gson = new GsonBuilder().create();
 		
