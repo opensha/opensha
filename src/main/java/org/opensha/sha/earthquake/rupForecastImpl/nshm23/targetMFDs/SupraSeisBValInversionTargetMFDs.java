@@ -40,12 +40,14 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBValuePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SolMFDPlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_U3_HybridLogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.U3_UncertAddDeformationModels;
@@ -1297,8 +1299,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				.forScalingRelationship(ScalingRelationships.MEAN_UCERF3)
 				.build();
 		
-//		double b = 0.5d;
-		double b = 0d;
+		double b = 0.5d;
+//		double b = 0d;
 //		double b = -1d;
 		Builder builder = new Builder(rupSet, b);
 		
@@ -1313,17 +1315,19 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		builder.addSectCountUncertainties(false);
 		builder.totalTargetMFD(rupSet.requireModule(InversionTargetMFDs.class).getTotalRegionalMFD());
 		builder.subSeisMoRateReduction(SubSeisMoRateReduction.SUB_SEIS_B_1);
-//		builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(new Shaw07JumpDistProb(1, 3),
+		Shaw07JumpDistProb segModel = Shaw07JumpDistProb.forHorzOffset(1d, 3d, 2d);
+//		builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(segModel,
 ////				MultiBinDistributionMethod.GREEDY, false));
 ////				MultiBinDistributionMethod.GREEDY, true));
 ////				MultiBinDistributionMethod.FULLY_DISTRIBUTED, false));
 ////				MultiBinDistributionMethod.FULLY_DISTRIBUTED, true));
 ////				MultiBinDistributionMethod.CAPPED_DISTRIBUTED, false));
 //				MultiBinDistributionMethod.CAPPED_DISTRIBUTED, true));
-//		builder.adjustTargetsForData(new ImprobabilityImpliedSectNuclMFD_Estimator(new Shaw07JumpDistProb(1, 3)));
-		builder.adjustTargetsForData(new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(new Shaw07JumpDistProb(1, 3)));
+//		builder.adjustTargetsForData(new ImprobabilityImpliedSectNuclMFD_Estimator(segModel));
+//		builder.adjustTargetsForData(new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel));
+		builder.adjustTargetsForData(new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel));
 //		builder.forBinaryRupProbModel(MaxJumpDistModels.FIVE.getModel(rupSet));
-//		builder.forSegmentationModel(new Shaw07JumpDistProb(1, 3));
+//		builder.forSegmentationModel(segModel);
 //		builder.forSegmentationModel(new JumpProbabilityCalc() {
 //			
 //			@Override
@@ -1345,6 +1349,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 //		builder.adjustForActualRupSlips(true, false);
 //		builder.adjustForActualRupSlips(false, false);
 //		builder.adjustTargetsForData(new ScalingRelSlipRateMFD_Estimator(false));
+		
+//		builder.forBinaryRupProbModel(new NSHM23_ConstraintBuilder(rupSet, b).excludeRupturesThroughCreeping().getRupExclusionModel());
 		
 		List<SectNucleationMFD_Estimator> dataConstraints = new ArrayList<>();
 		dataConstraints.add(new APrioriSectNuclEstimator(
@@ -1426,9 +1432,11 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.GREEN));
 				}
 				
+				annotateNuclMFD(origSupraMFD, debugSect, "Original Supra-Seis", rupSet);
 				funcs.add(origSupraMFD);
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
 				
+				annotateNuclMFD(improbSupraMFD, debugSect, "Modified Supra-Seis", rupSet);
 				funcs.add(improbSupraMFD);
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLUE));
 				
@@ -1458,6 +1466,52 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				gw.setDefaultCloseOperation(GraphWindow.EXIT_ON_CLOSE);
 			}
 		}
+	}
+	
+	private static void annotateNuclMFD(IncrementalMagFreqDist mfd, int sectIndex, String name, FaultSystemRupSet rupSet) {
+		mfd.setName(name);
+		
+		double totRate = mfd.calcSumOfY_Vals();
+		double minMag = Double.POSITIVE_INFINITY;
+		double maxMag = Double.NEGATIVE_INFINITY;
+		for (Point2D pt : mfd) {
+			if (pt.getY() > 0) {
+				minMag = Math.min(minMag, pt.getX());
+				maxMag = Math.max(maxMag, pt.getX());
+			}
+		}
+		double equivB = SectBValuePlot.estBValue(minMag, maxMag, totRate, mfd.getTotalMomentRate());
+		String info = "Total Nucleation Rate: "+(float)totRate+"\n\tb-value: "+(float)equivB;
+		// estimate participation
+		int[] rupCounts = new int[mfd.size()];
+		double[] avgBinAreas = new double[mfd.size()];
+		for (int rupIndex : rupSet.getRupturesForSection(sectIndex)) {
+			int magIndex = mfd.getClosestXIndex(rupSet.getMagForRup(rupIndex));
+			if (mfd.getY(magIndex) > 0d) {
+				rupCounts[magIndex]++;
+				avgBinAreas[magIndex] += rupSet.getAreaForRup(rupIndex);
+			}
+		}
+		int minMagIndex = mfd.getClosestXIndex(minMag);
+		int maxMagIndex = mfd.getClosestXIndex(maxMag);
+		double[] nuclToParticScalars = new double[mfd.size()];
+		
+		double sectArea = rupSet.getAreaForSection(sectIndex);
+		for (int m=0; m<rupCounts.length; m++) {
+			if (rupCounts[m] > 0) {
+				avgBinAreas[m] /= rupCounts[m];
+				nuclToParticScalars[m] = avgBinAreas[m]/sectArea;
+			}
+		}
+		
+		IncrementalMagFreqDist particMFD = new IncrementalMagFreqDist(mfd.getMinX(), mfd.size(), mfd.getDelta());
+		for (int m=0; m<rupCounts.length; m++)
+			if (rupCounts[m] > 0)
+				particMFD.set(m, mfd.getY(m)*nuclToParticScalars[m]);
+		totRate = particMFD.calcSumOfY_Vals();
+		equivB = SectBValuePlot.estBValue(minMag, maxMag, totRate, particMFD.getTotalMomentRate());
+		info += "\nTotal Participation Rate: "+(float)totRate+"\n\tb-value: "+(float)equivB;
+		mfd.setInfo(info);
 	}
 
 }
