@@ -159,12 +159,12 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 	
 	@Override
 	public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
-		List<? extends FaultSection> sectsSects = buildSects(faultModel);
+		List<? extends FaultSection> sectsSects = buildFullSects(faultModel);
 		
 		return GeoJSONFaultReader.buildSubSects(sectsSects);
 	}
 	
-	public List<? extends FaultSection> buildSects(RupSetFaultModel faultModel) throws IOException {
+	public List<? extends FaultSection> buildFullSects(RupSetFaultModel faultModel) throws IOException {
 		Preconditions.checkState(isApplicableTo(faultModel), "DM/FM mismatch");
 		Reader dmReader = new BufferedReader(new InputStreamReader(
 				NSHM18_DeformationModels.class.getResourceAsStream(NSHM18_DM_PATH)));
