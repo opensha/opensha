@@ -384,20 +384,27 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 		boolean debug = sect.getSectionId() == DEBUG_SECT;
 		
 		// figure out each unique probability level, do so at slightly coarser floating-point resolution
-		HashSet<Float> uniqueProbs = new HashSet<>();
+		 
+		// initially sorted in increasing order
+		List<Float> sortedProbs = new ArrayList<>();
 		double minNonZeroProb = 1d;
 		double maxProb = 0d;
 		for (int rupIndex : availableRupIndexes) {
-			if ((float)rupProbs[rupIndex] > 0f) {
-				uniqueProbs.add((float)rupProbs[rupIndex]);
-				minNonZeroProb = Math.min(rupProbs[rupIndex], minNonZeroProb);
-				maxProb = Math.max(rupProbs[rupIndex], maxProb);
+			Float rupProb = (float)rupProbs[rupIndex];
+			if (rupProb > 0f) {
+				int insIndex = Collections.binarySearch(sortedProbs, rupProb);
+				if (insIndex < 0) {
+					// it's a new unique probability level
+					insIndex = -(insIndex + 1);
+					sortedProbs.add(insIndex, rupProb);
+					minNonZeroProb = Math.min(rupProbs[rupIndex], minNonZeroProb);
+					maxProb = Math.max(rupProbs[rupIndex], maxProb);
+				}
 			}
 		}
 		if (debug) {
 			System.out.println("Debug for "+sect.getSectionId()+". "+sect.getSectionName());
 			System.out.println("Rupture prob range: ["+(float)minNonZeroProb+", "+(float)maxProb+"]");
-			int s = sect.getSectionId();
 			HashSet<Float> singleFaultMags = new HashSet<>();
 			int numAvailSingles = 0;
 			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
@@ -418,16 +425,12 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 		if (maxProb == 0d)
 			// all zero probability
 			return curSectSupraSeisMFD;
-		Preconditions.checkState(uniqueProbs.size() >= 1);
+		Preconditions.checkState(sortedProbs.size() >= 1);
 		
-		List<Float> sortedProbs;
 		if (fixedBinEdges == null) {
 			// make sure our first bin starts at 1
-			if (!uniqueProbs.contains(1f))
-				uniqueProbs.add(1f);
-			// sort by increasing probability
-			sortedProbs = new ArrayList<>(uniqueProbs);
-			Collections.sort(sortedProbs);
+			if (sortedProbs.get(sortedProbs.size()-1) != 1f)
+				sortedProbs.add(1f);
 			
 			if (debug) {
 				System.out.print("Unique probs:");
@@ -477,7 +480,12 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 		
 		// keeps track of magnitude bins with at least one rupture available at or above the current probability level
 		boolean[] availBins = new boolean[ret.size()];
-		List<Integer> unusedRups = new ArrayList<>(availableRupIndexes);
+//		List<Integer> unusedRups = new ArrayList<>(availableRupIndexes);
+		// keeps track of which ruptures have yet to be processed
+		BitSet stillAvailableIndexes = new BitSet(availableRupIndexes.size());
+		// initialize to all available
+		for (int i=0; i<availableRupIndexes.size(); i++)
+			stillAvailableIndexes.set(i);
 		
 		// we'll rescale to match this
 		double origMoRate = curSectSupraSeisMFD.getTotalMomentRate();
@@ -506,19 +514,34 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 			
 			// see if we have any new magnitude bins available
 			boolean changed = false;
-			for (int j=unusedRups.size(); --j>=0;) {
-				int rupIndex = unusedRups.get(j);
-				if ((float)rupProbs[rupIndex] > nextProb) {
-					// this rupture lies within the current probability bin
-					if (!availBins[rupMagIndexes[rupIndex]]) {
-						// first one available for this magnitude
-						availBins[rupMagIndexes[rupIndex]] = true;
-						changed = true;
+			if (stillAvailableIndexes.cardinality() > 0) {
+				for (int j=stillAvailableIndexes.nextSetBit(0); j>=0; j=stillAvailableIndexes.nextSetBit(j+1)) {
+					int rupIndex = availableRupIndexes.get(j);
+					if ((float)rupProbs[rupIndex] > nextProb) {
+						// this rupture lies within the current probability bin
+						if (!availBins[rupMagIndexes[rupIndex]]) {
+							// first one available for this magnitude
+							availBins[rupMagIndexes[rupIndex]] = true;
+							changed = true;
+						}
+						// this rupture has now been processed, can remove from further processing
+						stillAvailableIndexes.clear(j);
 					}
-					// this rupture has now been processed, can remove from further processing
-					unusedRups.remove(j);
 				}
 			}
+//			for (int j=unusedRups.size(); --j>=0;) {
+//				int rupIndex = unusedRups.get(j);
+//				if ((float)rupProbs[rupIndex] > nextProb) {
+//					// this rupture lies within the current probability bin
+//					if (!availBins[rupMagIndexes[rupIndex]]) {
+//						// first one available for this magnitude
+//						availBins[rupMagIndexes[rupIndex]] = true;
+//						changed = true;
+//					}
+//					// this rupture has now been processed, can remove from further processing
+//					unusedRups.remove(j);
+//				}
+//			}
 			
 			IncrementalMagFreqDist myMFD;
 			if (prevMFD != null && !changed) {
@@ -576,17 +599,17 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 		
 		File outputDir = new File("/tmp");
 
-		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb1 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel);
-		String name1 = "Seg-Prob";
-		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb2 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel);
-		String name2 = "Rel-GR";
-		String prefix = "thresh_avg_vs_rel_gr";
-
 //		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb1 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel);
 //		String name1 = "Seg-Prob";
-//		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb2 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 100);
-//		String name2 = "Rel-GR-100-Iters";
-//		String prefix = "thresh_avg_vs_rel_gr_iter";
+//		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb2 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel);
+//		String name2 = "Rel-GR";
+//		String prefix = "thresh_avg_vs_rel_gr";
+
+		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb1 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel);
+		String name1 = "Seg-Prob";
+		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb2 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 100);
+		String name2 = "Rel-GR-100-Iters";
+		String prefix = "thresh_avg_vs_rel_gr_iter";
 		
 //		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb1 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 1);
 //		String name1 = "Rel-GR-1-Iter";
