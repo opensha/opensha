@@ -750,7 +750,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 
 //		NSHM23_InvConfigFactory factory = new NSHM23_InvConfigFactory();
 //		dirName += "-nshm23";
-		NSHM23_InvConfigFactory factory = new NSHM23_InvConfigFactory.ClusterSpecific();
+		NSHM23_InvConfigFactory factory = new NSHM23_InvConfigFactory();
 		dirName += "-nshm23-cluster_specific";
 		
 //		LogicTreeBranch<LogicTreeNode> branch = NSHM18_LogicTreeBranch.DEFAULT;

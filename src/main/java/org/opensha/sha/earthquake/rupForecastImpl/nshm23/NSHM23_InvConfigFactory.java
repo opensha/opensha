@@ -3,8 +3,10 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -86,7 +88,7 @@ import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 
-public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
+public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory {
 
 	private transient Table<RupSetFaultModel, RupturePlausibilityModels, FaultSystemRupSet> rupSetCache = HashBasedTable.create();
 	private transient File cacheDir;
@@ -509,7 +511,7 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 
 //				double weight = 0.5d;
 //				boolean ineq = false;
-				double weight = 10d;
+				double weight = 100d;
 				boolean ineq = true;
 				
 				constraints.add(new JumpProbabilityConstraint.RelativeRate(
@@ -619,7 +621,7 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		public HardcodedPrevWeightAdjust() {
 			try {
 				zip = new ZipFile(new File("/project/scec_608/kmilner/nshm23/batch_inversions/"
-						+ "2022_03_24-nshm23_u3_hybrid_branches-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-JumpProb-2000ip/results.zip"));
+						+ "2022_06_10-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-Shift2km-ThreshAvgIterRelGR-IncludeThruCreep/results.zip"));
 			} catch (Exception e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
@@ -690,7 +692,77 @@ public class NSHM23_InvConfigFactory implements InversionConfigurationFactory {
 		
 	}
 	
-	public static class ClusterSpecific extends NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory {
+	public static class HardcodedPrevAvgWeights extends NSHM23_InvConfigFactory {
+		
+		private Map<String, Double> nameWeightMap;
+		
+		public HardcodedPrevAvgWeights() {
+			try {
+				FaultSystemSolution prevBA = FaultSystemSolution.load(new File("/project/scec_608/kmilner/nshm23/batch_inversions/"
+						+ "2022_06_10-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-Shift2km-ThreshAvgIterRelGR-IncludeThruCreep/results.zip"));
+				InversionMisfitStats avgStats = prevBA.requireModule(InversionMisfitStats.class);
+				nameWeightMap = new HashMap<>();
+				for (MisfitStats stats : avgStats.getStats()) {
+					if (stats.range.weightingType == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY)
+						nameWeightMap.put(stats.range.name, stats.range.weight);
+				}
+			} catch (Exception e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+		
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
+			
+			// disable reweighting
+			config = InversionConfiguration.builder(config).reweight(null).build();
+			
+			for (InversionConstraint constraint : config.getConstraints()) {
+				if (constraint.getWeightingType() == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY) {
+					// find prev final weight
+					Double prevWeight = nameWeightMap.get(constraint.getName());
+					Preconditions.checkNotNull(prevWeight, "Previous weight not found for constraint %s, branch %s",
+							constraint.getName(), branch);
+					constraint.setWeight(prevWeight);
+				}
+			}
+			
+			return config;
+		}
+		
+	}
+	
+//	public static class ClusterSpecific extends NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory {
+//		
+//	}
+	
+	public static class SegWeight100 extends NSHM23_InvConfigFactory {
+		
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
+			
+			if (config == null)
+				return null;
+			
+			for (InversionConstraint constraint : config.getConstraints())
+				if (constraint instanceof JumpProbabilityConstraint)
+					constraint.setWeight(100);
+			
+			return config;
+		}
+		
+	}
+	
+	public static class FullSysInv extends NSHM23_InvConfigFactory {
+
+		@Override
+		public boolean isSolveClustersIndividually() {
+			return false;
+		}
 		
 	}
 	
