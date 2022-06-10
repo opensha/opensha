@@ -12,6 +12,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.DoubleUnaryOperator;
 
 import org.apache.commons.math3.stat.StatUtils;
@@ -65,6 +66,7 @@ import org.opensha.sha.magdist.SparseGutenbergRichterSolver;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -108,6 +110,12 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		 * Target section slip rates in the rupture set will be overridden with these new targets.
 		 */
 		SYSTEM_AVG_IMPLIED_FROM_SUPRA_B,
+		/**
+		 * Computes a system-wide average implied sub-seismogenic moment rate reduction assuming sub-seis b=1, and applies it to each fault.
+		 * 
+		 * Target section slip rates in the rupture set will be overridden with these new targets.
+		 */
+		SYSTEM_AVG_SUB_B_1,
 		/**
 		 * Uses the target slip rates already attached to the rupture set as the final supra-seismogenic target
 		 * slip rates.
@@ -561,7 +569,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					// scale target slip rates by the fraction that is supra-seismognic
 					slipRates[s] = creepReducedSlipRate*fractSupra;
 					slipRateStdDevs[s] = creepReducedSlipRateStdDev*fractSupra;
-				} else if (subSeisMoRateReduction == SubSeisMoRateReduction.SUB_SEIS_B_1) {
+				} else if (subSeisMoRateReduction == SubSeisMoRateReduction.SUB_SEIS_B_1
+						|| subSeisMoRateReduction == SubSeisMoRateReduction.SYSTEM_AVG_SUB_B_1) {
 					// start with a full G-R with the supra b-value up to the maximum magnitude
 					GutenbergRichterMagFreqDist fullSupraB = new GutenbergRichterMagFreqDist(
 							MIN_MAG, maxMagIndex+1, DELTA_MAG, targetMoRate, supraSeisBValue);
@@ -658,7 +667,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			System.out.println("Fault moments: total="+(float)StatUtils.sum(targetMoRates)
 				+"\tsupra="+(float)StatUtils.sum(targetSupraMoRates));
 			
-			if (subSeisMoRateReduction == SubSeisMoRateReduction.SYSTEM_AVG_IMPLIED_FROM_SUPRA_B) {
+			if (subSeisMoRateReduction == SubSeisMoRateReduction.SYSTEM_AVG_IMPLIED_FROM_SUPRA_B
+					|| subSeisMoRateReduction == SubSeisMoRateReduction.SYSTEM_AVG_SUB_B_1) {
 				// need to re-balance to use average supra-seis fract
 				double sumSupraMo = StatUtils.sum(targetSupraMoRates);
 				double sumTotMo = StatUtils.sum(targetMoRates);
@@ -703,6 +713,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				
 				// do these 1 at a time as each one adjusts the actual targets
 				for (SectNucleationMFD_Estimator estimator : targetAdjDataConstraints) {
+					Stopwatch watch = Stopwatch.createStarted();
 					estimator.init(rupSet, sectSupraSeisMFDs, targetSupraMoRates, slipRates, slipRateStdDevs,
 							sectRupUtilizations, sectMinMagIndexes, sectMaxMagIndexes, sectRupInBinCounts, refMFD);
 					
@@ -720,7 +731,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 						sectSupraSeisMFDs.set(call.sect.getSectionId(), call.impliedMFD);
 //						System.out.println("Done with future for sect "+call.sect.getSectionId());
 					}
-//					System.out.println("Done with "+futures.size()+" futures");
+					System.out.println("Done with "+futures.size()+" estimation futures in "+
+							(float)(watch.elapsed(TimeUnit.MILLISECONDS)/1000d)+" s");
 				}
 			}
 			

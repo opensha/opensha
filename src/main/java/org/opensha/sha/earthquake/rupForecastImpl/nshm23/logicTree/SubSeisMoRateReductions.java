@@ -16,7 +16,8 @@ public enum SubSeisMoRateReductions implements LogicTreeNode {
 	FAULT_SPECIFIC("Fault-Specific", "FaultSpec", 1d, SubSeisMoRateReduction.FAULT_SPECIFIC_IMPLIED_FROM_SUPRA_B),
 	SYSTEM_AVG("System-Average", "SysAvg", 1d, SubSeisMoRateReduction.SYSTEM_AVG_IMPLIED_FROM_SUPRA_B),
 	NONE("None", "NoRed", 1d, SubSeisMoRateReduction.NONE),
-	SUB_B_1("Sub-Seis b=1", "SubB1", 1d, SubSeisMoRateReduction.SUB_SEIS_B_1);
+	SUB_B_1("Sub-Seis b=1", "SubB1", 1d, SubSeisMoRateReduction.SUB_SEIS_B_1),
+	SYSTEM_AVG_SUB_B_1("System-Average Sub-Seis b=1", "SysAvgSubB1", 1d, SubSeisMoRateReduction.SYSTEM_AVG_SUB_B_1);
 	
 	private String name;
 	private String shortName;
