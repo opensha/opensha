@@ -50,6 +50,14 @@ public enum RupturePlausibilityModels implements LogicTreeNode {
 		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			return new CoulombRupSetConfig(subSects, null, scale);
 		}
+	},
+	COULOMB_5km("Coulomb 5km", "Coulomb5km", 1d) {
+		@Override
+		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			CoulombRupSetConfig config = new CoulombRupSetConfig(subSects, null, scale);
+			config.setMaxJumpDist(5d);;
+			return config;
+		}
 	};
 	
 	private String name;
