@@ -308,12 +308,16 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 		}
 		
 		public Builder except(Class<? extends InversionConstraint> type) {
+			return except(type, true);
+		}
+		
+		public Builder except(Class<? extends InversionConstraint> type, boolean failIfNotFound) {
 			List<InversionConstraint> constraints = new ArrayList<>(config.constraints);
 			for (int i=constraints.size(); --i>=0;)
 				if (type.isAssignableFrom(constraints.get(i).getClass()))
 					constraints.remove(i);
 			Preconditions.checkState(!constraints.isEmpty(), "No constraints left!");
-			Preconditions.checkState(constraints.size() < config.constraints.size(), "No constraints removed!");
+			Preconditions.checkState(!failIfNotFound || constraints.size() < config.constraints.size(), "No constraints removed!");
 			config.constraints = constraints;
 			return this;
 		}
