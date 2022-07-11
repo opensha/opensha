@@ -98,6 +98,7 @@ public class SparseGutenbergRichterSolver {
 		// gridding for super-sampled function from min to max actual magnitude
 		EvenlyDiscretizedFunc superSampledDiscretization;
 		if (sampleDiscr >= refFunc.getDelta() || sampleDiscr == 0d)
+			// don't super sample
 			superSampledDiscretization = new EvenlyDiscretizedFunc(
 					refFunc.getX(minIndex), 1+maxIndex-minIndex, refFunc.getDelta());
 		else
@@ -240,16 +241,20 @@ public class SparseGutenbergRichterSolver {
 				ret.scaleToTotalMomentRate(totMoRate);
 		}
 		
-		if (preserveRates)
+		if (preserveRates) {
 			Preconditions.checkState((float)targetRate == (float)ret.calcSumOfY_Vals(), "Target rate mismatch: %s != %s",
 				(float)targetRate, (float)ret.calcSumOfY_Vals());
-		// TODO: moment here is calculated using the bin center, but ours (if super-sampled) is integrated
-		// across the bin and thus more accurate, so they shouldn't match
-		else
-			Preconditions.checkState((sampleDiscr < refFunc.getDelta() && sampleDiscr > 0d) ||
-				(float)totMoRate == (float)ret.getTotalMomentRate(),
-				"Target moment rate mismatch: %s != %s",
-				(float)totMoRate, (float)ret.getTotalMomentRate());
+		} else if (sampleDiscr >= refFunc.getDelta() || sampleDiscr == 0d) {
+			// we didn't super-sample, so we can compare moment
+			// we don't do this comparison if super-sampling is enabled because it integrates across the bin and is
+			// thus more accurate, so they shouldn't match
+			double retMoRate = ret.getTotalMomentRate();
+			double pDiff = 100d*Math.abs(retMoRate - totMoRate)/totMoRate;
+			// pass if either equal to floating point precision, or differences less than 0.001 % 
+			Preconditions.checkState(pDiff < 0.001 || (float)targetRate == (float)retMoRate,
+				"Target moment rate mismatch: %s != %s, pDiff=%s %, sampleDiscr=%s, refDelta=%s",
+				(float)totMoRate, (float)retMoRate, (float)pDiff, sampleDiscr, refFunc.getDelta());
+		}
 		
 		return ret;
 	}
