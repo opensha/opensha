@@ -171,13 +171,15 @@ public class NSHM23_ConstraintBuilder {
 	
 	public NSHM23_ConstraintBuilder paleoRates() {
 		PaleoseismicConstraintData data = rupSet.requireModule(PaleoseismicConstraintData.class);
-		constraints.add(new PaleoRateInversionConstraint(rupSet, 1d, data.getPaleoRateConstraints(), data.getPaleoProbModel()));
+		if (data.hasPaleoRateConstraints())
+			constraints.add(new PaleoRateInversionConstraint(rupSet, 1d, data.getPaleoRateConstraints(), data.getPaleoProbModel()));
 		return this;
 	}
 	
 	public NSHM23_ConstraintBuilder paleoSlips() {
 		PaleoseismicConstraintData data = rupSet.requireModule(PaleoseismicConstraintData.class);
-		constraints.add(new PaleoSlipInversionConstraint(rupSet, 1d, data.getPaleoSlipConstraints(), data.getPaleoSlipProbModel(), true));
+		if (data.hasPaleoSlipConstraints())
+			constraints.add(new PaleoSlipInversionConstraint(rupSet, 1d, data.getPaleoSlipConstraints(), data.getPaleoSlipProbModel(), true));
 		return this;
 	}
 	
