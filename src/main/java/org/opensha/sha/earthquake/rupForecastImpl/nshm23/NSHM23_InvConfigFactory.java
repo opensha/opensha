@@ -583,9 +583,9 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
 				int threads) {
 			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
-			return InversionConfiguration.builder(config).except(PaleoRateInversionConstraint.class)
-				.except(PaleoSlipInversionConstraint.class).except(ParkfieldInversionConstraint.class)
-				.except(LaplacianSmoothingInversionConstraint.class).build();
+			return InversionConfiguration.builder(config).except(PaleoRateInversionConstraint.class, false)
+				.except(PaleoSlipInversionConstraint.class, false).except(ParkfieldInversionConstraint.class, false)
+				.except(LaplacianSmoothingInversionConstraint.class, false).build();
 		}
 		
 	}
@@ -617,11 +617,15 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	public static class HardcodedPrevWeightAdjust extends NSHM23_InvConfigFactory {
 		
 		private ZipFile zip;
-
+		
 		public HardcodedPrevWeightAdjust() {
-			try {
-				zip = new ZipFile(new File("/project/scec_608/kmilner/nshm23/batch_inversions/"
+			this(new File("/project/scec_608/kmilner/nshm23/batch_inversions/"
 						+ "2022_06_10-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-Shift2km-ThreshAvgIterRelGR-IncludeThruCreep/results.zip"));
+		}
+
+		public HardcodedPrevWeightAdjust(File resultsFile) {
+			try {
+				zip = new ZipFile(resultsFile);
 			} catch (Exception e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
@@ -677,6 +681,19 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 	}
 	
+	public static class HardcodedPrevWeightAdjustFullSys extends HardcodedPrevWeightAdjust {
+		
+		public HardcodedPrevWeightAdjustFullSys() {
+			super(new File("/project/scec_608/kmilner/nshm23/batch_inversions/"
+					+ "2022_06_10-nshm23_u3_hybrid_branches-full_sys_inv-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-Shift2km-ThreshAvgIterRelGR-IncludeThruCreep/results.zip"));
+		}
+
+		@Override
+		public boolean isSolveClustersIndividually() {
+			return false;
+		}
+	}
+	
 	public static class HardcodedOrigWeights extends NSHM23_InvConfigFactory {
 		
 		@Override
@@ -692,14 +709,27 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 	}
 	
+	public static class HardcodedOrigWeightsFullSys extends HardcodedOrigWeights {
+
+		@Override
+		public boolean isSolveClustersIndividually() {
+			return false;
+		}
+		
+	}
+	
 	public static class HardcodedPrevAvgWeights extends NSHM23_InvConfigFactory {
 		
 		private Map<String, Double> nameWeightMap;
 		
 		public HardcodedPrevAvgWeights() {
+			this(new File("/project/scec_608/kmilner/nshm23/batch_inversions/"
+						+ "2022_06_10-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-Shift2km-ThreshAvgIterRelGR-IncludeThruCreep/results_FM3_1_CoulombRupSet_branch_averaged.zip"));
+		}
+		
+		public HardcodedPrevAvgWeights(File baFile) {
 			try {
-				FaultSystemSolution prevBA = FaultSystemSolution.load(new File("/project/scec_608/kmilner/nshm23/batch_inversions/"
-						+ "2022_06_10-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-Shift2km-ThreshAvgIterRelGR-IncludeThruCreep/results.zip"));
+				FaultSystemSolution prevBA = FaultSystemSolution.load(baFile);
 				InversionMisfitStats avgStats = prevBA.requireModule(InversionMisfitStats.class);
 				nameWeightMap = new HashMap<>();
 				for (MisfitStats stats : avgStats.getStats()) {
@@ -732,6 +762,19 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			return config;
 		}
 		
+	}
+	
+	public static class HardcodedPrevAvgWeightsFullSys extends HardcodedPrevAvgWeights {
+		
+		public HardcodedPrevAvgWeightsFullSys() {
+			super(new File("/project/scec_608/kmilner/nshm23/batch_inversions/"
+						+ "2022_06_10-nshm23_u3_hybrid_branches-full_sys_inv-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-Shift2km-ThreshAvgIterRelGR-IncludeThruCreep/results_FM3_1_CoulombRupSet_branch_averaged.zip"));
+		}
+
+		@Override
+		public boolean isSolveClustersIndividually() {
+			return false;
+		}
 	}
 	
 //	public static class ClusterSpecific extends NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory {
