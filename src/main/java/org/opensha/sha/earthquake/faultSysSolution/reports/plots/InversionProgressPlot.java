@@ -338,6 +338,49 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 						chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, colorCPT.getColor((float)i)));
 					}
 					
+					if (quantity != null && meta.hasComparisonSol() && meta.comparison.sol.hasModule(InversionMisfitProgress.class)) {
+						// add comparison
+						InversionMisfitProgress compMisfitProgress = meta.comparison.sol.getModule(InversionMisfitProgress.class);
+						List<InversionMisfitStats> compStatsList = compMisfitProgress.getStats();
+						
+						ArbitrarilyDiscretizedFunc compAvgFunc = new ArbitrarilyDiscretizedFunc();
+						ArbitrarilyDiscretizedFunc compTargetFunc = quantity == targetQuantity ? new ArbitrarilyDiscretizedFunc() : null;
+						boolean targetDiffers = false;
+						
+						List<Long> compIters = compMisfitProgress.getIterations();
+						for (int i=0; i<compIters.size(); i++) {
+							long iter = compIters.get(i);
+							InversionMisfitStats stats = compStatsList.get(i);
+							
+							double avgVal = 0d;
+							List<Double> vals = new ArrayList<>();
+							
+							for (MisfitStats misfits : stats.getStats()) {
+								double val = misfits.get(quantity);
+								avgVal += val;
+								vals.add(val);
+							}
+							
+							avgVal /= stats.getStats().size();
+							compAvgFunc.set((double)iter, avgVal);
+							if (compTargetFunc != null) {
+								double targetVal = targetVals.get(i);
+								compTargetFunc.set((double)iter, targetVal);
+								targetDiffers = targetDiffers || (float)targetVal != (float)avgVal;
+							}
+						}
+						
+						compAvgFunc.setName(meta.comparison.name+" Average");
+						funcs.add(compAvgFunc);
+						chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.DARK_GRAY));
+						
+						if (targetDiffers && compTargetFunc != null) {
+							compTargetFunc.setName(meta.comparison.name+" Target");
+							funcs.add(compTargetFunc);
+							chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 3f, Color.DARK_GRAY));
+						}
+					}
+					
 					PlotSpec spec = new PlotSpec(funcs, chars, "Misfit Progress", "Iterations", yAxisLabel);
 					spec.setLegendInset(true);
 					
