@@ -50,6 +50,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssoc
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
@@ -90,7 +91,7 @@ import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 
 public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory {
 
-	private transient Table<RupSetFaultModel, RupturePlausibilityModels, FaultSystemRupSet> rupSetCache = HashBasedTable.create();
+	protected transient Table<RupSetFaultModel, RupturePlausibilityModels, FaultSystemRupSet> rupSetCache = HashBasedTable.create();
 	private transient File cacheDir;
 	private boolean autoCache = true;
 	
@@ -777,6 +778,74 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		}
 	}
 	
+	public static class HardcodedPrevAsInitial extends NSHM23_InvConfigFactory {
+		
+		private SolutionLogicTree slt;
+		
+		public HardcodedPrevAsInitial() {
+			this(new File("/project/scec_608/kmilner/nshm23/batch_inversions/"
+						+ "2022_06_10-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-Shift2km-ThreshAvgIterRelGR-IncludeThruCreep/results.zip"));
+		}
+
+		public HardcodedPrevAsInitial(File resultsFile) {
+			try {
+				slt = SolutionLogicTree.load(resultsFile);
+			} catch (Exception e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+
+		@Override
+		protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
+			RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
+			RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
+			if (model == null) {
+				if (fm instanceof FaultModels) // UCERF3 FM
+					model = RupturePlausibilityModels.UCERF3; // for now
+				else
+					model = RupturePlausibilityModels.COULOMB;
+			}
+			
+			// check cache
+			FaultSystemRupSet rupSet = rupSetCache.get(fm, model);
+			if (rupSet != null)
+				return rupSet;
+			
+			// load from previous
+			try {
+				return slt.forBranch(branch, false).getRupSet();
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
+			
+			double[] prevRates;
+			try {
+				prevRates = slt.loadRatesForBranch(branch);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			
+			if (rupSet.hasModule(RuptureSubSetMappings.class)) {
+				RuptureSubSetMappings mappings = rupSet.getModule(RuptureSubSetMappings.class);
+				double[] modPrevRates = new double[mappings.getNumRetainedRuptures()];
+				for (int r=0; r<modPrevRates.length; r++)
+					modPrevRates[r] = prevRates[mappings.getOrigRupID(r)];
+				prevRates = modPrevRates;
+			}
+			
+			config = InversionConfiguration.builder(config).initialSolution(prevRates).build();
+			
+			return config;
+		}
+		
+	}
+	
 //	public static class ClusterSpecific extends NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory {
 //		
 //	}
@@ -868,6 +937,20 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		public ScaleLowerDepth1p3() {
 			super(1.3);
+		}
+		
+	}
+	
+	public static class NoAvg extends NSHM23_InvConfigFactory {
+		
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
+			
+			config = InversionConfiguration.builder(config).avgThreads(1, config.getAvgCompletionCriteria()).build();
+			
+			return config;
 		}
 		
 	}
