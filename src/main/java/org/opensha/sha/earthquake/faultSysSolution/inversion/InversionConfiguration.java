@@ -186,6 +186,9 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			if (cmd.hasOption("non-negativity"))
 				config.nonneg = NonnegativityConstraintType.valueOf(cmd.getOptionValue("non-negativity"));
 			
+			if (cmd.hasOption("cooling-schedule"))
+				config.cool = CoolingScheduleType.valueOf(cmd.getOptionValue("cooling-schedule"));
+			
 			if (cmd.hasOption("reweight-quantity"))
 				config.reweightTargetQuantity = Quantity.valueOf(cmd.getOptionValue("reweight-quantity"));
 			else if (cmd.hasOption("reweight"))
@@ -426,6 +429,11 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 				+FaultSysTools.enumOptions(NonnegativityConstraintType.class)+". Default: "+NON_NEG_DEFAULT.name());
 		nonNegOption.setRequired(false);
 		ops.addOption(nonNegOption);
+
+		Option coolOption = new Option("cool", "cooling-schedule", true, "Cooling schedule. One of "
+				+FaultSysTools.enumOptions(CoolingScheduleType.class)+". Default: "+COOL_DEFAULT.name());
+		coolOption.setRequired(false);
+		ops.addOption(coolOption);
 
 		Option reweightQuantity = new Option("rwq", "reweight-quantity", true, "Enables dynamic constraint reweighting, "
 				+ "targeting the given quantity. Note that this only applies to uncertainty-weighted constraints. "
