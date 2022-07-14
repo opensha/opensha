@@ -26,6 +26,7 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.geo.json.FeatureProperties;
+import org.opensha.commons.geo.json.Geometry;
 import org.opensha.commons.geo.json.Geometry.LineString;
 import org.opensha.commons.geo.json.Geometry.Polygon;
 import org.opensha.commons.gui.plot.GraphPanel;
@@ -76,6 +77,7 @@ public class RupSetMapMaker {
 	
 	private List<Feature> sectFeatures = null;
 	private List<Feature> jumpFeatures = null;
+	private List<Feature> scatterFeatures = null;
 	
 	/*
 	 * Things to plot
@@ -388,6 +390,7 @@ public class RupSetMapMaker {
 		if (writeGeoJSON) {
 			sectFeatures = new ArrayList<>();
 			jumpFeatures = new ArrayList<>();
+			scatterFeatures = new ArrayList<>();
 		}
 		
 		// add political boundaries
@@ -636,7 +639,6 @@ public class RupSetMapMaker {
 		
 		// plot scatter scalars
 		if (scatterLocs != null) {
-			// TODO GeoJSON?
 			XY_DataSet outlines = scatterOutline == null ? null : new DefaultXY_DataSet();
 			if (scatterScalars != null) {
 				List<ComparablePairing<Double, XY_DataSet>> sortables = new ArrayList<>();
@@ -648,6 +650,19 @@ public class RupSetMapMaker {
 					XY_DataSet xy = new DefaultXY_DataSet();
 					xy.set(loc.getLongitude(), loc.getLatitude());
 					sortables.add(new ComparablePairing<>(scalar, xy));
+					
+					if (writeGeoJSON) {
+						Color color = scatterScalarCPT.getColor((float)scalar);
+						FeatureProperties props = new FeatureProperties();
+						props.set(FeatureProperties.FILL_OPACITY_PROP, 1d);
+						props.set(FeatureProperties.FILL_COLOR_PROP, color);
+						if (scatterOutline != null)
+							props.set(FeatureProperties.STROKE_OPACITY_PROP, 0.5d);
+						else
+							props.set(FeatureProperties.STROKE_OPACITY_PROP, 0d);
+						props.set(FeatureProperties.STROKE_WIDTH_PROP, scatterSymbolWidth);
+						scatterFeatures.add(new Feature(new Geometry.Point(loc), props));
+					}
 					
 					if (outlines != null)
 						outlines.set(xy.get(0));
@@ -669,8 +684,10 @@ public class RupSetMapMaker {
 			} else {
 				Preconditions.checkNotNull(scatterColor);
 				XY_DataSet xy = new DefaultXY_DataSet();
+				LocationList locs = new LocationList();
 				for (int j=0; j<scatterLocs.size(); j++) {
 					Location loc = scatterLocs.get(j);
+					locs.add(loc);
 					xy.set(loc.getLongitude(), loc.getLatitude());
 					
 					if (outlines != null)
@@ -681,6 +698,17 @@ public class RupSetMapMaker {
 				if (outlines != null ) {
 					funcs.add(outlines);
 					chars.add(new PlotCurveCharacterstics(scatterOutline, scatterSymbolWidth, scatterOutlineColor));
+				}
+				if (writeGeoJSON) {
+					FeatureProperties props = new FeatureProperties();
+					props.set(FeatureProperties.FILL_OPACITY_PROP, 1d);
+					props.set(FeatureProperties.FILL_COLOR_PROP, scatterColor);
+					if (scatterOutline != null)
+						props.set(FeatureProperties.STROKE_OPACITY_PROP, 0.5d);
+					else
+						props.set(FeatureProperties.STROKE_OPACITY_PROP, 0d);
+					props.set(FeatureProperties.STROKE_WIDTH_PROP, scatterSymbolWidth);
+					scatterFeatures.add(new Feature(new Geometry.MultiPoint(locs), props));
 				}
 			}
 		}
@@ -778,6 +806,8 @@ public class RupSetMapMaker {
 				FeatureCollection.write(jumpsOnly, new File(outputDir, prefix+"_jumps_only.geojson"));
 				plotFeatures.addAll(jumpFeatures);
 			}
+			
+			plotFeatures.addAll(scatterFeatures);
 			
 			FeatureCollection features = new FeatureCollection(plotFeatures);
 			FeatureCollection.write(features, new File(outputDir, prefix+".geojson"));
