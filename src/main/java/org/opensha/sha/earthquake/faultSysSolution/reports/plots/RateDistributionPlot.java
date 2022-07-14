@@ -427,7 +427,9 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 					return lines;
 				
 				double[] initialJumpRates = sol.hasModule(InitialSolution.class) ?
-						calcJumpRates(rupSet, initial) : new double[jumpRates.length];
+						calcJumpRates(rupSet, initial) : null;
+				if (initialJumpRates == null)
+					initialJumpRates = new double[jumpRates.length];
 				
 				double[] compJumpRates = null;
 				if (compSol != null)
