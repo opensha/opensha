@@ -474,6 +474,21 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	private String prevGridMechFile;
 	
 	/**
+	 * 
+	 * @param branch
+	 * @return solution rates only for the given branch
+	 * @throws IOException
+	 */
+	public synchronized double[] loadRatesForBranch(LogicTreeBranch<?> branch) throws IOException {
+		String ratesFile = getBranchFileName(branch, FaultSystemSolution.RATES_FILE_NAME, true);
+		System.out.println("\tLoading rate data from "+ratesFile);
+		ZipFile zip = getZipFile();
+		CSVFile<String> ratesCSV = CSV_BackedModule.loadFromArchive(zip, null, ratesFile);
+		double[] rates = FaultSystemSolution.loadRatesCSV(ratesCSV);
+		return rates;
+	}
+	
+	/**
 	 * @param branch
 	 * @return solution for the given branch
 	 * @throws IOException
