@@ -4,8 +4,10 @@ import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.region.CaliforniaRegions;
@@ -33,12 +35,9 @@ public class NSHM23_PaleoDataLoader {
 	}
 
 	// ensure that mappings are within this distance in km
-	private static final double PALEO_LOC_MAPPING_TOLERANCE = 50d; // large for offshore noyo
 	private static final String NSHM23_PALEO_RI_PATH_PREFIX = "/data/erf/nshm23/constraints/paleo_ri/";
 	private static final String CA_PALEO_PATH = NSHM23_PALEO_RI_PATH_PREFIX+"McPhillips_California_RIs_2022_07_13.csv";
 	
-	private static final double PALEO_SLIP_LOC_MAPPING_TOLERANCE = 1d;
-	private static final double PALEO_SLIP_LOC_CONTAINS_MAPPING_TOLERANCE = 20d;
 	private static final String NSHM23_PALEO_SLIP_PATH_PREFIX = "/data/erf/nshm23/constraints/paleo_slip/";
 	private static final String U3_PALEO_SLIP_PATH_1 = NSHM23_PALEO_SLIP_PATH_PREFIX+"Table_R5v4.csv";
 	private static final String U3_PALEO_SLIP_PATH_2 = NSHM23_PALEO_SLIP_PATH_PREFIX+"Table_R6v5.csv";
@@ -89,7 +88,8 @@ public class NSHM23_PaleoDataLoader {
 			
 			FaultSection mappedSect = null;
 			if (subSects != null) {
-				mappedSect = findMatchingSect(loc, subSects, PALEO_LOC_MAPPING_TOLERANCE, 0d);
+				mappedSect = findMatchingSect(loc, subSects,
+						LOC_MAX_DIST_NONE_CONTAINED, LOC_MAX_DIST_OTHER_CONTAINED, LOC_MAX_DIST_CONTAINED);
 				if (mappedSect == null) {
 					System.err.println("WARNING: no matching fault section found for paleo site "+name+" at "+lat+", "+lon);
 					continue;
@@ -147,7 +147,8 @@ public class NSHM23_PaleoDataLoader {
 				
 				FaultSection mappedSect = null;
 				if (subSects != null) {
-					mappedSect = findMatchingSect(loc, subSects, PALEO_SLIP_LOC_MAPPING_TOLERANCE, PALEO_SLIP_LOC_CONTAINS_MAPPING_TOLERANCE);
+					mappedSect = findMatchingSect(loc, subSects,
+							LOC_MAX_DIST_NONE_CONTAINED, LOC_MAX_DIST_OTHER_CONTAINED, LOC_MAX_DIST_CONTAINED);
 					if (mappedSect == null) {
 						System.err.println("WARNING: no matching fault section found for paleo site "+name+" at "+lat+", "+lon);
 						continue;
@@ -170,64 +171,94 @@ public class NSHM23_PaleoDataLoader {
 	private static final double LOC_CHECK_DEGREE_TOLERANCE = 3d;
 	private static final double LOC_CHECK_DEGREE_TOLERANCE_SQ = LOC_CHECK_DEGREE_TOLERANCE*LOC_CHECK_DEGREE_TOLERANCE;
 	
+	private static final double LOC_MAX_DIST_NONE_CONTAINED = 40d; // large for offshore noyo site
+	private static final double LOC_MAX_DIST_OTHER_CONTAINED = 1d; // small, must be really close to override a fault that contains it
+	private static final double LOC_MAX_DIST_CONTAINED = 20d; // allows comptom mapping
+	
+	/**
+	 * 
+	 * @param loc
+	 * @param subSects
+	 * @param maxDistNoneContained maximum distance to search if site not contained in the surface project of any fault
+	 * @param maxDistOtherContained maximum distance to search if site is contained by a fault, but another trace is closer
+	 * @param maxDistContained maximum distance to search to the trace of a fault whose surface projection contains this site
+	 * @return
+	 */
 	private static FaultSection findMatchingSect(Location loc, List<? extends FaultSection> subSects,
-			double maxDist, double containsMaxDist) {
+			double maxDistNoneContained, double maxDistOtherContained, double maxDistContained) {
 		List<FaultSection> candidates = new ArrayList<>();
+		List<FaultSection> containsCandidates = new ArrayList<>();
+		
+		Map<FaultSection, Double> candidateDists = new HashMap<>();
 		
 		for (FaultSection sect : subSects) {
 			// first check cartesian distance
+			boolean candidate = false;
 			for (Location traceLoc : sect.getFaultTrace()) {
 				double latDiff = loc.getLatitude() - traceLoc.getLatitude();
 				double lonDiff = loc.getLongitude() - traceLoc.getLongitude();
 				if (latDiff*latDiff + lonDiff*lonDiff < LOC_CHECK_DEGREE_TOLERANCE_SQ) {
-					candidates.add(sect);
+					candidate = true;
 					break;
 				}
 			}
-		}
-		
-		if (maxDist > 0d) {
-			FaultSection closest = null;
-			double closestDist = Double.POSITIVE_INFINITY;
-			for (FaultSection sect : candidates) {
+			if (candidate) {
+				candidates.add(sect);
 				double dist = sect.getFaultTrace().minDistToLine(loc);
-				if (dist < closestDist) {
-					closestDist = dist;
-					closest = sect;
-				}
-			}
-			if (closestDist < maxDist)
-				return closest;
-//			System.out.println("Closest distance was "+closestDist+" ("+closest.getName()+")");
-		}
-		
-		if (containsMaxDist > 0d) {
-			// try with polygon contains instead
-			FaultSection closest = null;
-			double closestDist = Double.POSITIVE_INFINITY;
-			for (FaultSection sect : candidates) {
-				if (sect.getAveDip() < 90d) {
+				candidateDists.put(sect, dist);
+				// see if this fault contains it
+				if (sect.getAveDip() < 89d) {
 					LocationList perim = new LocationList();
 					perim.addAll(sect.getFaultSurface(1d).getPerimeter());
 					if (!perim.last().equals(perim.first()))
 						perim.add(perim.first());
 					Region region = new Region(perim, BorderType.GREAT_CIRCLE);
-					if (region.contains(loc)) {
-						double dist = sect.getFaultTrace().minDistToLine(loc);
-						if (dist < closestDist) {
-							closestDist = dist;
-							closest = sect;
-						}
-					}
+					if (region.contains(loc))
+						containsCandidates.add(sect);
 				}
 			}
-			
-			if (closestDist < containsMaxDist)
-				return closest;
-			if (closest != null)
-				System.out.println("Closest that contains is "+closest.getName()+", "+closestDist+" km away");
 		}
 		
+		// find the closest of any candidtae section
+		FaultSection closest = null;
+		double closestDist = Double.POSITIVE_INFINITY;
+		for (FaultSection sect : candidates) {
+			double dist = candidateDists.get(sect);
+			if (dist < closestDist) {
+				closestDist = dist;
+				closest = sect;
+			}
+		}
+		
+		if (containsCandidates.isEmpty()) {
+			// this site is not in the surface projection of any faults, return if less than the none-contained threshold
+			// this allows the offshore noyo site to match
+			if (closestDist < maxDistNoneContained)
+				return closest;
+			// no match
+			return null;
+		}
+		
+		// if we're here, then this site is contained in the surface projection of at least 1 fault
+		
+		// first see if it's within the inner threshold of any fault, regardless of if it is contained
+		if (closestDist < maxDistOtherContained)
+			return closest;
+		
+		// see if any of the faults containing it are close enough
+		FaultSection closestContaining = null;
+		double closestContainingDist = Double.POSITIVE_INFINITY;
+		for (FaultSection sect : containsCandidates) {
+			double dist = candidateDists.get(sect);
+			if (dist < closestContainingDist) {
+				closestContainingDist = dist;
+				closestContaining = sect;
+			}
+		}
+		
+		if (closestContainingDist < maxDistContained)
+			return closestContaining;
+		// no match
 		return null;
 	}
 
