@@ -18,3 +18,4 @@ src/main/resources/scratchData/**/*
 db_log.log
 FaultSystemRupSets
 *.swp
+.~lock*
