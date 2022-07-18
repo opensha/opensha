@@ -29,6 +29,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationsPerVariableCompletionCriteria;
@@ -51,6 +52,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.Sol
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_PaleoDataLoader;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -88,7 +90,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 		if (rupSet != null)
 			return rupSet;
 		
-		rupSet = new RuptureSets.U3RupSetConfig(fm, branch.requireValue(ScalingRelationships.class)).build(threads);
+		rupSet = new RuptureSets.U3RupSetConfig(fm, branch.requireValue(RupSetScalingRelationship.class)).build(threads);
 
 		rupSetCache.put(fm, rupSet);
 		
@@ -151,20 +153,21 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 		// get the improbability constraints
 		double[] improbabilityConstraint = null; // not used
 		// get the paleo rate constraints
-		List<U3PaleoRateConstraint> paleoRateConstraints;
+		PaleoseismicConstraintData paleoData = rupSet.requireModule(PaleoseismicConstraintData.class);
+		List<? extends SectMappedUncertainDataConstraint> paleoRateConstraints = paleoData.getPaleoRateConstraints();
 		// paleo probability model
-		PaleoProbabilityModel paleoProbabilityModel;
-		List<U3AveSlipConstraint> aveSlipConstraints;
-		try {
-			paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
-					fm, rupSet);
-
-			paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
-
-			aveSlipConstraints = U3AveSlipConstraint.load(rupSet.getFaultSectionDataList());
-		} catch (IOException e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		}
+		PaleoProbabilityModel paleoProbabilityModel = paleoData.getPaleoProbModel();
+		List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints = paleoData.getPaleoSlipConstraints();
+//		try {
+//			paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
+//					fm, rupSet);
+//
+//			paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
+//
+//			aveSlipConstraints = U3AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+//		} catch (IOException e) {
+//			throw ExceptionUtils.asRuntimeException(e);
+//		}
 
 		UCERF3InversionInputGenerator inputGen = new UCERF3InversionInputGenerator(rupSet, config, paleoRateConstraints,
 				aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel);
@@ -173,7 +176,7 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 		
 		int avgThreads = threads / 4;
 		
-		CompletionCriteria completion = new IterationsPerVariableCompletionCriteria(5000d);
+		CompletionCriteria completion = new IterationsPerVariableCompletionCriteria(2000d);
 		
 		InversionConfiguration.Builder builder = InversionConfiguration.builder(constraints, completion)
 				.threads(threads)
@@ -658,6 +661,30 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 		
 		public ScaleLowerDepth1p3() {
 			super(1.3);
+		}
+		
+	}
+	
+	public static class ForceNewPaleo extends U3InversionConfigFactory {
+
+		@Override
+		public SolutionProcessor getSolutionLogicTreeProcessor() {
+			return new UCERF3_SolutionProcessor() {
+
+				@Override
+				public synchronized FaultSystemRupSet processRupSet(FaultSystemRupSet rupSet,
+						LogicTreeBranch<?> branch) {
+					rupSet = super.processRupSet(rupSet, branch);
+					rupSet.removeModuleInstances(PaleoseismicConstraintData.class);
+					try {
+						rupSet.addModule(NSHM23_PaleoDataLoader.load(rupSet));
+					} catch (IOException e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
+					return rupSet;
+				}
+				
+			};
 		}
 		
 	}

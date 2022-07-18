@@ -1,5 +1,7 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 
 import org.opensha.commons.logicTree.Affects;
@@ -10,6 +12,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -92,6 +95,17 @@ public enum U3_UncertAddDeformationModels implements LogicTreeNode, RupSetDeform
 		}
 		
 		return sects;
+	}
+	
+	public static void main(String[] args) throws IOException {
+		File outputDir = new File("/tmp");
+		FaultModels fm = FaultModels.FM3_1;
+		for (U3_UncertAddDeformationModels dm : values()) {
+			String fileName = fm.getFilePrefix()+"-"+dm.getFilePrefix()+"-sub_sects.geojson";
+			
+			List<? extends FaultSection> subSects = dm.build(fm);
+			GeoJSONFaultReader.writeFaultSections(new File(outputDir, fileName), subSects);
+		}
 	}
 
 }

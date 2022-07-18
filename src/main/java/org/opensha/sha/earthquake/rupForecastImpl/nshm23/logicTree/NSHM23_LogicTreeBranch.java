@@ -24,15 +24,14 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsMaxDist;
 
 	// TODO move most of these to a real NSHM23 logic tree branch, only keep U3-related ones here 
-	public static LogicTreeLevel<NSHM23_FaultModels> U3_FM =
+	public static LogicTreeLevel<NSHM23_FaultModels> FM =
 			LogicTreeLevel.forEnum(NSHM23_FaultModels.class, "Fault Model", "FM");
 	public static LogicTreeLevel<RupturePlausibilityModels> PLAUSIBILITY =
 			LogicTreeLevel.forEnum(RupturePlausibilityModels.class, "Rupture Plausibility Model", "RupSet");
-	public static LogicTreeLevel<NSHM23_DeformationModels> U3_WRAPPED_DM =
+	public static LogicTreeLevel<NSHM23_DeformationModels> DM =
 			LogicTreeLevel.forEnum(NSHM23_DeformationModels.class, "Deformation Model", "DM");
-	// TODO implement new
-	public static LogicTreeLevel<ScalingRelationships> SCALE =
-			LogicTreeLevel.forEnum(ScalingRelationships.class, "Scaling Relationship", "Scale");
+	public static LogicTreeLevel<NSHM23_ScalingRelationships> SCALE =
+			LogicTreeLevel.forEnum(NSHM23_ScalingRelationships.class, "Scaling Relationship", "Scale");
 	// TODO create enum for our options/weights?
 	public static LogicTreeLevel<SlipAlongRuptureModels> SLIP_ALONG =
 			LogicTreeLevel.forEnum(SlipAlongRuptureModels.class, "Slip Along Rupture", "SlipAlong");
@@ -55,9 +54,9 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	
 	static {
 		// exhaustive for now, can trim down later
-		levels = List.of(U3_FM, PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG, SUPRA_B,
+		levels = List.of(FM, PLAUSIBILITY, DM, SCALE, SLIP_ALONG, SUPRA_B,
 				SUB_SECT_CONSTR, SUB_SEIS_MO, SEG, SEG_SHIFT, SEG_ADJ, RUPS_THROUGH_CREEPING);
-		levelsMaxDist = List.of(U3_FM, PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG, SUPRA_B,
+		levelsMaxDist = List.of(FM, PLAUSIBILITY, DM, SCALE, SLIP_ALONG, SUPRA_B,
 				SUB_SECT_CONSTR, SUB_SEIS_MO, MAX_DIST, RUPS_THROUGH_CREEPING);
 	}
 	
@@ -65,7 +64,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	 * This is the default reference branch
 	 */
 	public static final NSHM23_LogicTreeBranch DEFAULT = fromValues(NSHM23_FaultModels.NSHM23_v1p4,
-			RupturePlausibilityModels.COULOMB, NSHM23_DeformationModels.GEOLOGIC, ScalingRelationships.SHAW_2009_MOD,
+			RupturePlausibilityModels.COULOMB, NSHM23_DeformationModels.GEOLOGIC, NSHM23_ScalingRelationships.LOGA_C4p2,
 			SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p5, SubSectConstraintModels.TOT_NUCL_RATE,
 			SubSeisMoRateReductions.SUB_B_1, SegmentationModels.SHAW_R0_3, DistDependSegShift.TWO_KM,
 			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG_ITERATIVE, RupsThroughCreepingSect.INCLUDE);

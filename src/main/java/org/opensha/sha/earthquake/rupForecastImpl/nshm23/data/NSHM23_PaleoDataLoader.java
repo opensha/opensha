@@ -19,6 +19,8 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
@@ -28,10 +30,25 @@ import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
 import com.google.common.base.Preconditions;
 
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
+
 public class NSHM23_PaleoDataLoader {
 	
-	public static PaleoseismicConstraintData load() {
-		return null; // TODO
+	public static PaleoseismicConstraintData load(FaultSystemRupSet rupSet) throws IOException {
+		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+		
+		// paleo event rate
+		List<SectMappedUncertainDataConstraint> paleoRateConstraints = loadCAPaleoRateData(subSects);
+		// TODO add Wasatch
+		UCERF3_PaleoProbabilityModel paleoProbModel = UCERF3_PaleoProbabilityModel.load();
+
+		// paleo slip
+		List<SectMappedUncertainDataConstraint> aveSlipConstraints = loadU3PaleoSlipData(subSects);
+		PaleoSlipProbabilityModel paleoSlipProbModel = U3AveSlipConstraint.slip_prob_model;
+
+		return new PaleoseismicConstraintData(rupSet, paleoRateConstraints, paleoProbModel,
+				aveSlipConstraints, paleoSlipProbModel);
 	}
 
 	// ensure that mappings are within this distance in km
@@ -268,12 +285,12 @@ public class NSHM23_PaleoDataLoader {
 		HashSet<FaultSection> mappedSects = new HashSet<>();
 		List<Location> siteLocs = new ArrayList<>();
 		
-//		String prefix = "nshm23_ca_paleo_mappings";
-//		String title = "NSHM23 CA Paleo RI Mappings";
-//		List<SectMappedUncertainDataConstraint> datas = loadCAPaleoRateData(subSects);
-		String prefix = "nshm23_ca_paleo_slip_mappings";
-		String title = "NSHM23 CA Paleo Slip Mappings";
-		List<SectMappedUncertainDataConstraint> datas = loadU3PaleoSlipData(subSects);
+		String prefix = "nshm23_ca_paleo_mappings";
+		String title = "NSHM23 CA Paleo RI Mappings";
+		List<SectMappedUncertainDataConstraint> datas = loadCAPaleoRateData(subSects);
+//		String prefix = "nshm23_ca_paleo_slip_mappings";
+//		String title = "NSHM23 CA Paleo Slip Mappings";
+//		List<SectMappedUncertainDataConstraint> datas = loadU3PaleoSlipData(subSects);
 		
 		System.out.println("Loaded "+datas.size()+" values");
 		for (SectMappedUncertainDataConstraint constraint : datas) {
@@ -295,6 +312,9 @@ public class NSHM23_PaleoDataLoader {
 		mapMaker.setWriteGeoJSON(true);
 		
 		mapMaker.plot(new File("/tmp"), prefix, title);
+		
+		String urlPrefix = "http://opensha.usc.edu/ftp/kmilner/nshm23/paleo_mappings/";
+		System.out.println("GeoJSON.io URL: "+RupSetMapMaker.getGeoJSONViewerLink(urlPrefix+prefix+".geojson"));
 	}
 
 }

@@ -60,6 +60,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_PaleoDataLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels.HardDistCutoffJumpProbCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
@@ -951,6 +952,30 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			config = InversionConfiguration.builder(config).avgThreads(1, config.getAvgCompletionCriteria()).build();
 			
 			return config;
+		}
+		
+	}
+	
+	public static class ForceNewPaleo extends NSHM23_InvConfigFactory {
+
+		@Override
+		public SolutionProcessor getSolutionLogicTreeProcessor() {
+			return new NSHM23SolProcessor() {
+
+				@Override
+				public synchronized FaultSystemRupSet processRupSet(FaultSystemRupSet rupSet,
+						LogicTreeBranch<?> branch) {
+					rupSet = super.processRupSet(rupSet, branch);
+					rupSet.removeModuleInstances(PaleoseismicConstraintData.class);
+					try {
+						rupSet.addModule(NSHM23_PaleoDataLoader.load(rupSet));
+					} catch (IOException e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
+					return rupSet;
+				}
+				
+			};
 		}
 		
 	}
