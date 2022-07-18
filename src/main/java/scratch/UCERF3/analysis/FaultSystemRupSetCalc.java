@@ -31,6 +31,7 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
@@ -1860,7 +1861,7 @@ public class FaultSystemRupSetCalc {
 				if(areaDiff>0.01)
 					throw new RuntimeException("Areas differ: "+firstArea+"\t"+area+"; widths are:  "+firstWidth+"\t"+width);
 				cumSectArea += area;
-				double mag = scalingRel.getMag(cumSectArea*1e6, width*1e3, sectDataList.get(s).getAveRake());
+				double mag = scalingRel.getMag(cumSectArea*1e6, 1e3*cumSectArea/width, width*1e3, width*1e3, sectDataList.get(s).getAveRake());
 				System.out.print("\t"+(float)mag+"\t"+(float)(cumSectArea*1e6));
 				prevParSectName = parSectName;				
 			}
@@ -2184,7 +2185,7 @@ public class FaultSystemRupSetCalc {
 //		SectionMFD_constraint test = new SectionMFD_constraint(UCERF2_FltSysSol, 76);
 //		test.plotMFDs();
 		
-		ScalingRelationships scalingRel = branch.getValue(ScalingRelationships.class);
+		RupSetScalingRelationship scalingRel = branch.getValue(RupSetScalingRelationship.class);
 		
 		for(int s=0;s <fltSystRupSet.getNumSections(); s++) {
 			FaultSection data = fltSystRupSet.getFaultSectionData(s);
@@ -2204,7 +2205,7 @@ public class FaultSystemRupSetCalc {
 				double area = totAreaMap.get(data.getParentSectionId());	// km-sq
 				double length = totLengthMap.get(data.getParentSectionId());
 				double width = area/length;	// km
-				double maxMag = scalingRel.getMag(area*1e6, width*1e3, data.getAveRake());
+				double maxMag = scalingRel.getMag(area*1e6, 1e3*area/width, width*1e3, width*1e3, data.getAveRake());
 				
 				// check for too low maxMag
 				if(maxMag>lowerEdgeOfFirstBin) {

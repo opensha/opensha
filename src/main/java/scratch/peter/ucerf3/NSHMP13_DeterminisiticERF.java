@@ -341,7 +341,7 @@ public class NSHMP13_DeterminisiticERF extends AbstractERF {
 				if (dm == GEOLOGIC) {
 					for (ScalingRelationships ms : MSs) {
 						Map<Integer, Double> idMagMap = magMap.get(ms);
-						double mag = ms.getMag(totalReducedArea, originalWidth, rake);
+						double mag = ms.getMag(totalReducedArea, totalLength, totalReducedArea/totalLength, originalWidth, rake);
 						idMagMap.put(id, mag);
 					}
 				}

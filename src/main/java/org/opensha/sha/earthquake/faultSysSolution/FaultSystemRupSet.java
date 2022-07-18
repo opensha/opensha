@@ -1632,7 +1632,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					totOrigArea += sect.getArea(false);	// sq-m
 				}
 				double origDDW = totOrigArea / rupLengths[r];
-				mags[r] = scale.getMag(rupAreas[r], origDDW, rakes[r]);
+				mags[r] = scale.getMag(rupAreas[r], rupLengths[r], rupAreas[r]/rupLengths[r], origDDW, rakes[r]);
 			}
 			modules.add(new ModuleBuilder() {
 				

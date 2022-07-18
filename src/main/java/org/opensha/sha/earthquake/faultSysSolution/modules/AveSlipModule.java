@@ -83,12 +83,13 @@ SplittableRuptureSubSetModule<AveSlipModule> {
 			Preconditions.checkNotNull(rupSet, "Parent rupture set not set");
 			double totArea = rupSet.getAreaForRup(rupIndex);
 			double length = rupSet.getLengthForRup(rupIndex);
+			double width = totArea / length;
 			double totOrigArea = 0d;
 			for (FaultSection sect : rupSet.getFaultSectionDataForRupture(rupIndex))
 				totOrigArea += sect.getArea(false);
 			double origDDW = totOrigArea/rupSet.getLengthForRup(rupIndex);
 			double aveRake = rupSet.getAveRakeForRup(rupIndex);
-			double aveSlip = scale.getAveSlip(totArea, length, origDDW, aveRake);
+			double aveSlip = scale.getAveSlip(totArea, length, width, origDDW, aveRake);
 			cache[rupIndex] = aveSlip;
 			return aveSlip;
 		}

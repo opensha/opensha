@@ -20,7 +20,7 @@ import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 public enum NSHM18_ScalingRels implements LogicTreeNode, RupSetScalingRelationship {
 	WC94_ML("Wells & Coppersmith (1994) M-L", "WC94 W-L", 1d) {
 		@Override
-		public double getAveSlip(double area, double length, double origWidth, double aveRake) {
+		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
 			double mag;
 			synchronized (wc94) {
 				mag = wc94.getMedianMag(length*1e-3); // convert to km
@@ -31,7 +31,7 @@ public enum NSHM18_ScalingRels implements LogicTreeNode, RupSetScalingRelationsh
 		}
 
 		@Override
-		public double getMag(double area, double origWidth, double aveRake) {
+		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			double len = area/origWidth;
 			synchronized (wc94) {
 				return wc94.getMedianMag(len*1e-3); // convert to km
@@ -73,9 +73,9 @@ public enum NSHM18_ScalingRels implements LogicTreeNode, RupSetScalingRelationsh
 	}
 
 	@Override
-	public abstract double getAveSlip(double area, double length, double origWidth, double aveRake);
+	public abstract double getAveSlip(double area, double length, double width, double origWidth, double aveRake);
 
 	@Override
-	public abstract double getMag(double area, double origWidth, double aveRake);
+	public abstract double getMag(double area, double length, double width, double origWidth, double aveRake);
 
 }

@@ -43,14 +43,14 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 	
 	AVE_UCERF2("Average UCERF2", "AveU2") {
 		
-		public double getAveSlip(double area, double length, double origWidth, double aveRake) {
+		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
 			double areaKm = area/1e6;
 			double mag = (ellB_magArea.getMedianMag(areaKm) + hb_magArea.getMedianMag(areaKm))/2;
 			double moment = MagUtils.magToMoment(mag);
 			return FaultMomentCalc.getSlip(area, moment);
 		}
 		
-		public double getMag(double area, double origWidth, double aveRake) {
+		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			double areaKm = area/1e6;
 			return (ellB_magArea.getMedianMag(areaKm) + hb_magArea.getMedianMag(areaKm))/2;
 		}		
@@ -69,13 +69,13 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 	
 	SHAW_2009_MOD("Shaw (2009) Modified", "Shaw09Mod") {
 		
-		public double getAveSlip(double area, double length, double origWidth, double aveRake) {
-			double mag = getMag(area, origWidth, aveRake);
+		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
+			double mag = getMag(area, length, width, origWidth, aveRake);
 			double moment = MagUtils.magToMoment(mag);
 			return FaultMomentCalc.getSlip(area, moment);
 		}
 		
-		public double getMag(double area, double origWidth, double aveRake) {
+		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			return sh09_ModMagArea.getWidthDepMedianMag(area*1e-6, origWidth*1e-3);
 		}		
 		
@@ -92,13 +92,13 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 
 	HANKS_BAKUN_08("Hanks & Bakun (2008)", "HB08") {
 		
-		public double getAveSlip(double area, double length, double origWidth, double aveRake) {
+		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
 			double mag = hb_magArea.getMedianMag(area/1e6);
 			double moment = MagUtils.magToMoment(mag);
 			return FaultMomentCalc.getSlip(area, moment);
 		}
 		
-		public double getMag(double area, double origWidth, double aveRake) {
+		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			return hb_magArea.getMedianMag(area*1e-6);
 		}		
 		
@@ -117,13 +117,13 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 
 	ELLSWORTH_B("Ellsworth B", "EllB") {
 		
-		public double getAveSlip(double area, double length, double origWidth, double aveRake) {
+		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
 			double mag = ellB_magArea.getMedianMag(area/1e6);
 			double moment = MagUtils.magToMoment(mag);
 			return FaultMomentCalc.getSlip(area, moment);
 		}
 		
-		public double getMag(double area, double origWidth, double aveRake) {
+		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			return ellB_magArea.getMedianMag(area*1e-6);
 		}		
 		
@@ -141,11 +141,11 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 	
 	ELLB_SQRT_LENGTH("EllB M(A) & Shaw12 Sqrt Length D(L)", "EllBsqrtLen") {
 		
-		public double getAveSlip(double area, double length, double origWidth, double aveRake) {
+		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
 			double impliedAseis = 1.0 - (area/length)/origWidth;
 //System.out.println("impliedAseis="+impliedAseis);
 			if(impliedAseis>=0.2) {
-				double moment = MagUtils.magToMoment(getMag(area, origWidth, aveRake));
+				double moment = MagUtils.magToMoment(getMag(area, length, width, origWidth, aveRake));
 				return FaultMomentCalc.getSlip(area, moment);
 			}
 			double c6 = 5.69e-5;
@@ -155,7 +155,7 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 			return c6*Math.sqrt(length*w);
 		}
 		
-		public double getMag(double area, double origWidth, double aveRake) {
+		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			return ellB_magArea.getMedianMag(area*1e-6);
 		}		
 		
@@ -172,10 +172,10 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 
 	SHAW_CONST_STRESS_DROP("Shaw09 M(A) & Shaw12 Const Stress Drop D(L)", "ShConStrDrp") {
 		
-		public double getAveSlip(double area, double length, double origWidth, double aveRake) {
+		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
 			double impliedAseis = 1.0 - (area/length)/origWidth;
 			if(impliedAseis>=0.2) {
-				double moment = MagUtils.magToMoment(getMag(area, origWidth, aveRake));
+				double moment = MagUtils.magToMoment(getMag(area, length, width, origWidth, aveRake));
 				return FaultMomentCalc.getSlip(area, moment);
 			}
 			double stressDrop = 4.54;  // MPa
@@ -186,7 +186,7 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 			return stressDrop*temp/FaultMomentCalc.SHEAR_MODULUS;
 		}
 		
-		public double getMag(double area, double origWidth, double aveRake) {
+		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			return sh09_ModMagArea.getWidthDepMedianMag(area*1e-6, origWidth*1e-3);
 		}		
 		
@@ -241,21 +241,21 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 		}
 
 		@Override
-		public double getAveSlip(double area, double length, double origWidth, double aveRake) {
+		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
 			checkInit();
 			double slip = 0;
 			for (int i=0; i<weights.length; i++) {
-				slip += weights[i]*scales[i].getAveSlip(area, length, origWidth, aveRake);
+				slip += weights[i]*scales[i].getAveSlip(area, length, width, origWidth, aveRake);
 			}
 			return slip;
 		}
 
 		@Override
-		public double getMag(double area, double origWidth, double aveRake) {
+		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			checkInit();
 			double mag = 0;
 			for (int i=0; i<weights.length; i++) {
-				mag += weights[i]*scales[i].getMag(area, origWidth, aveRake);
+				mag += weights[i]*scales[i].getMag(area, length, width, origWidth, aveRake);
 			}
 			return mag;
 		}
@@ -276,14 +276,14 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 		private TMG2017SubMagAreaRel tmg_sub_magArea = new TMG2017SubMagAreaRel(90); // interface
 
 		// units of the input dimensions are in m or m^2
-		public double getAveSlip(double area, double length, double origWidth, double aveRake) {
+		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
 			tmg_sub_magArea.setRake(aveRake);
 			double mag = tmg_sub_magArea.getMedianMag(area * 1e-6);
 			double moment = MagUtils.magToMoment(mag);
 			return FaultMomentCalc.getSlip(area, moment);
 		}
 
-		public double getMag(double area, double origWidth, double aveRake) {
+		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			tmg_sub_magArea.setRake(aveRake);
 			return tmg_sub_magArea.getMedianMag(area * 1e-6);
 		}
@@ -305,14 +305,14 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 		private TMG2017CruMagAreaRel tmg_cru_magArea = new TMG2017CruMagAreaRel(0);
 
 		// units of the input dimensions are in m or m^2
-		public double getAveSlip(double area, double length, double origWidth, double aveRake) {
+		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
 			tmg_cru_magArea.setRake(aveRake);
 			double mag = tmg_cru_magArea.getMedianMag(area * 1e-6);
 			double moment = MagUtils.magToMoment(mag);
 			return FaultMomentCalc.getSlip(area, moment);
 		}
 
-		public double getMag(double area, double origWidth, double aveRake) {
+		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			tmg_cru_magArea.setRake(aveRake);
 			return tmg_cru_magArea.getMedianMag(area * 1e-6);
 		}
@@ -406,12 +406,12 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
     		double length = lengthKm*1e3;
     		double area = length*downDipWidth*1e3;
     		double rake = Double.NaN;
-    		u2_func.set(lengthKm,u2.getAveSlip(area, length, downDipWidth*1e3, rake));
-    		sh09_funcMod.set(lengthKm,sh09_Mod.getAveSlip(area, length, downDipWidth*1e3, rake));
-    		ellB_func.set(lengthKm,ellB.getAveSlip(area, length, downDipWidth*1e3, rake));
-    		hb_func.set(lengthKm,hb.getAveSlip(area, length, downDipWidth*1e3, rake));
-    		sh12_sqrtL_func.set(lengthKm,sh12_sqrtL.getAveSlip(area, length, downDipWidth*1e3, rake));
-    		sh12_csd_func.set(lengthKm,sh12_csd.getAveSlip(area, length, downDipWidth*1e3, rake));
+    		u2_func.set(lengthKm,u2.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		sh09_funcMod.set(lengthKm,sh09_Mod.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		ellB_func.set(lengthKm,ellB.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		hb_func.set(lengthKm,hb.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		sh12_sqrtL_func.set(lengthKm,sh12_sqrtL.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		sh12_csd_func.set(lengthKm,sh12_csd.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
     	}
     	
     	ArrayList<ArbitrarilyDiscretizedFunc> funcs = new ArrayList<ArbitrarilyDiscretizedFunc>();
@@ -479,12 +479,12 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
     		double area = length*downDipWidth*1e3;
     		double areaKm = area*1e-6;
     		double rake = Double.NaN;
-    		u2_func.set(areaKm,u2.getAveSlip(area, length, downDipWidth*1e3, rake));
-    		sh09_funcMod.set(areaKm,sh09_Mod.getAveSlip(area, length, downDipWidth*1e3, rake));
-    		ellB_func.set(areaKm,ellB.getAveSlip(area, length, downDipWidth*1e3, rake));
-    		hb_func.set(areaKm,hb.getAveSlip(area, length, downDipWidth*1e3, rake));
-    		sh12_sqrtL_func.set(areaKm,sh12_sqrtL.getAveSlip(area, length, downDipWidth*1e3, rake));
-    		sh12_csd_func.set(areaKm,sh12_csd.getAveSlip(area, length, downDipWidth*1e3, rake));
+    		u2_func.set(areaKm,u2.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		sh09_funcMod.set(areaKm,sh09_Mod.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		ellB_func.set(areaKm,ellB.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		hb_func.set(areaKm,hb.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		sh12_sqrtL_func.set(areaKm,sh12_sqrtL.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		sh12_csd_func.set(areaKm,sh12_csd.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
     	}
     	
     	ArrayList<ArbitrarilyDiscretizedFunc> funcs = new ArrayList<ArbitrarilyDiscretizedFunc>();
@@ -550,13 +550,13 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
     		double length = lengthKm*1e3;
     		double area = length*downDipWidth*1e3;
     		double rake = Double.NaN;
-    		sh09_funcMod.set(sh09_Mod.getMag(area, downDipWidth*1e3, rake),sh09_Mod.getAveSlip(area, length, downDipWidth*1e3, rake));
-    		ellB_func.set(ellB.getMag(area, downDipWidth*1e3, rake),ellB.getAveSlip(area, length, downDipWidth*1e3, rake));
-    		hb_func.set(hb.getMag(area, downDipWidth*1e3, rake),hb.getAveSlip(area, length, downDipWidth*1e3, rake));
-    		sh12_sqrtL_func.set(ellB.getMag(area, downDipWidth*1e3, rake),sh12_sqrtL.getAveSlip(area, length, downDipWidth*1e3, rake));
-    		sh12_csd_func.set(sh09_Mod.getMag(area, downDipWidth*1e3, rake),sh12_csd.getAveSlip(area, length, downDipWidth*1e3, rake));
+    		sh09_funcMod.set(sh09_Mod.getMag(area, length, downDipWidth*1e3, downDipWidth*1e3, rake),sh09_Mod.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		ellB_func.set(ellB.getMag(area, length, downDipWidth*1e3, downDipWidth*1e3, rake),ellB.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		hb_func.set(hb.getMag(area, length, downDipWidth*1e3, downDipWidth*1e3, rake),hb.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		sh12_sqrtL_func.set(ellB.getMag(area, length, downDipWidth*1e3, downDipWidth*1e3, rake),sh12_sqrtL.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		sh12_csd_func.set(sh09_Mod.getMag(area, length, downDipWidth*1e3, downDipWidth*1e3, rake),sh12_csd.getAveSlip(area, length, downDipWidth*1e3, downDipWidth*1e3, rake));
     		
-    		double heckerMag = hb.getMag(area, downDipWidth*1e3, rake);
+    		double heckerMag = hb.getMag(area, length, downDipWidth*1e3, downDipWidth*1e3, rake);
 //    		WC1994_MagAreaRelationship wc94 = new WC1994_MagAreaRelationship();
 //    		double heckerMag = wc94.getMedianMag(area*1e-6);
     		double heckerSlip = Math.pow(10.0,0.41*heckerMag-2.79);
@@ -637,8 +637,8 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 		String result = "CREEPING SECTION Mag and AveSlip (assuming length=150, origDDW=11, and DDW=1.2 km):\n";
 		
 		for(ScalingRelationships scale : ScalingRelationships.values()) {
-			double mag = scale.getMag(areaKm*1e6, origWidthKm*1e3, Double.NaN);
-			double slip = scale.getAveSlip(areaKm*1e6, lengthKm*1e3, origWidthKm*1e3, Double.NaN);
+			double mag = scale.getMag(areaKm*1e6, lengthKm*1e3, widthKm*1e3, origWidthKm*1e3, Double.NaN);
+			double slip = scale.getAveSlip(areaKm*1e6, lengthKm*1e3, widthKm*1e3, origWidthKm*1e3, Double.NaN);
 			mag = Math.round(mag*100)/100.;
 			slip = Math.round(slip*100)/100.;
 			result += (float)mag+"\t"+(float)slip+"\tfor\t"+scale.getShortName()+"\n";
@@ -673,9 +673,9 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
     	for(int i=50; i<=20000; i+=10) {
     		double area = (double)i;
     		double rake = Double.NaN;
-     		sh09mod_func.set(area,sh09mod.getMag(area*1e6,downDipWidth*1e3, rake));
-    		ellB_func.set(area,ellB.getMag(area*1e6,downDipWidth*1e3, rake));
-    		hb_func.set(area,hb.getMag(area*1e6,downDipWidth*1e3, rake));
+     		sh09mod_func.set(area,sh09mod.getMag(area*1e6,1e3*area/downDipWidth, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		ellB_func.set(area,ellB.getMag(area*1e6,1e3*area/downDipWidth, downDipWidth*1e3, downDipWidth*1e3, rake));
+    		hb_func.set(area,hb.getMag(area*1e6,1e3*area/downDipWidth, downDipWidth*1e3, downDipWidth*1e3, rake));
     	}
     	
     	ArrayList<ArbitrarilyDiscretizedFunc> funcs = new ArrayList<ArbitrarilyDiscretizedFunc>();
