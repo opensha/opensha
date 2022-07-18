@@ -57,9 +57,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 	LOGA_C4p2_SQRT_LEN("LogA, C=4.2, SqtLen", "LogA_C4p2_SqrtLen", 0d) {
 		@Override
 		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
-			area *= 1e-6; // m^2 -> km^2
-			// eqn 1 with C=4.2
-			return Math.log10(area) + 4.2;
+			return LOGA_C4p2.getMag(area, length, width, origWidth, aveRake);
 		}
 
 		@Override
@@ -73,9 +71,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 	LOGA_C4p1_SQRT_LEN("LogA, C=4.1, SqtLen", "LogA_C4p1_SqrtLen", 0d) {
 		@Override
 		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
-			area *= 1e-6; // m^2 -> km^2
-			// eqn 1 with C=4.1
-			return Math.log10(area) + 4.1;
+			return LOGA_C4p1.getMag(area, length, width, origWidth, aveRake);
 		}
 
 		@Override
@@ -89,14 +85,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 	WIDTH_LIMITED_CSD("Width-Limited Constant-Stress-Drop", "WdthLmtdCSD", 0d) {
 		@Override
 		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
-			area *= 1e-6; // m^2 -> km^2
-			width *= 1e-3; // m -> km
-			double beta = 7.4;
-			double C = 3.98;
-			// eqn 4
-			double upperMiddleTerm = Math.max(1, Math.sqrt(area/(width*width)));
-			double lowerMiddleTerm = 0.5*(1d + Math.max(1, area/(width*width*beta)));
-			return Math.log10(area) + (2d/3d)*Math.log10(upperMiddleTerm/lowerMiddleTerm) + C;
+			return WIDTH_LIMITED.getMag(area, length, width, origWidth, aveRake);
 		}
 
 		@Override
