@@ -18,6 +18,7 @@ import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.FaultUtils.AngleAverager;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
@@ -278,7 +279,8 @@ public class BranchAverageSolutionCreator {
 				DiscretizedFunc rupMFD = rupMFDs.get(r);
 				rupMFD.scale(1d/totWeight);
 				double calcRate = rupMFD.calcSumOfY_Vals();
-				Preconditions.checkState(DoubleMath.fuzzyEquals(calcRate, avgRates[r], 1e-15),
+				Preconditions.checkState(DoubleMath.fuzzyEquals(calcRate, avgRates[r], 1e-12)
+						|| DataUtils.getPercentDiff(calcRate,  avgRates[r]) < 1e-5,
 						"Rupture MFD rate=%s, avgRate=%s", calcRate, avgRates[r]);
 			}
 			rakes[r] = FaultUtils.getInRakeRange(avgRakes.get(r).getAverage());
