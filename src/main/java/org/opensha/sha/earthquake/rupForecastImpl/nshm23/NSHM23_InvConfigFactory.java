@@ -64,6 +64,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_PaleoDataLo
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels.HardDistCutoffJumpProbCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSect;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
@@ -976,6 +977,14 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				}
 				
 			};
+		}
+		
+	}
+	
+	public static class NewScaleUseOrigWidths extends NSHM23_InvConfigFactory {
+
+		public NewScaleUseOrigWidths() {
+			NSHM23_ScalingRelationships.USE_ORIG_WIDTHS = true;
 		}
 		
 	}

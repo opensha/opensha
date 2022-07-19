@@ -44,6 +44,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 	WIDTH_LIMITED("Width-Limited", "WdthLmtd", 1d) {
 		@Override
 		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
+			width = USE_ORIG_WIDTHS ? origWidth : width;
 			area *= 1e-6; // m^2 -> km^2
 			width *= 1e-3; // m -> km
 			double beta = 7.4;
@@ -54,7 +55,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 			return Math.log10(area) + (2d/3d)*Math.log10(upperMiddleTerm/lowerMiddleTerm) + C;
 		}
 	},
-	LOGA_C4p2_SQRT_LEN("LogA, C=4.2, SqtLen", "LogA_C4p2_SqrtLen", 0d) {
+	LOGA_C4p2_SQRT_LEN("LogA, C=4.2, SqtLen", "LogA_C4p2_SqrtLen", 1d) {
 		@Override
 		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			return LOGA_C4p2.getMag(area, length, width, origWidth, aveRake);
@@ -62,13 +63,14 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 
 		@Override
 		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
+			width = USE_ORIG_WIDTHS ? origWidth : width;
 			double C6 = 7.11e-5;
 			// leave in SI units here as FaultMomentCalc.SHEAR_MODULUS is in SI units
 			// eqn 13
 			return C6*Math.sqrt(length*width);
 		}
 	},
-	LOGA_C4p1_SQRT_LEN("LogA, C=4.1, SqtLen", "LogA_C4p1_SqrtLen", 0d) {
+	LOGA_C4p1_SQRT_LEN("LogA, C=4.1, SqtLen", "LogA_C4p1_SqrtLen", 1d) {
 		@Override
 		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			return LOGA_C4p1.getMag(area, length, width, origWidth, aveRake);
@@ -76,13 +78,14 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 
 		@Override
 		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
+			width = USE_ORIG_WIDTHS ? origWidth : width;
 			double C6 = 5.03e-5;
 			// leave in SI units here as FaultMomentCalc.SHEAR_MODULUS is in SI units
 			// eqn 13
 			return C6*Math.sqrt(length*width);
 		}
 	},
-	WIDTH_LIMITED_CSD("Width-Limited Constant-Stress-Drop", "WdthLmtdCSD", 0d) {
+	WIDTH_LIMITED_CSD("Width-Limited Constant-Stress-Drop", "WdthLmtdCSD", 1d) {
 		@Override
 		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			return WIDTH_LIMITED.getMag(area, length, width, origWidth, aveRake);
@@ -90,12 +93,15 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 
 		@Override
 		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
+			width = USE_ORIG_WIDTHS ? origWidth : width;
 			double deltaSigma = 8.01e6; // e6 here converts MPa to Pa
 			// leave in SI units here as FaultMomentCalc.SHEAR_MODULUS is in SI units
 			// eqn 16
 			return (deltaSigma/FaultMomentCalc.SHEAR_MODULUS)*1d/(7d/(3d*length) + 1d/(2d*width));
 		}
 	};
+	
+	public static boolean USE_ORIG_WIDTHS = false;
 	
 	private String name;
 	private String shortName;
