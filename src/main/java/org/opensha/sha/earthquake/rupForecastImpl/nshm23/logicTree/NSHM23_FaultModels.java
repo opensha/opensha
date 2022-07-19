@@ -4,7 +4,10 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.LogicTreeBranch;
@@ -26,7 +29,7 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 	
 	NSHM23_v1p4("NSHM23 WUS Fault Model v1.4", "NSHM23 WUS v1.4", NSHM23_DeformationModels.GEOLOGIC, 1d) { // TODO update
 		@Override
-		public List<? extends FaultSection> getFaultSections() throws IOException {
+		protected List<? extends FaultSection> loadFaultSections() throws IOException {
 			String sectPath = NSHM23_SECTS_PATH_PREFIX+"v1p4/NSHM23_FaultSections_v1p4.geojson";
 			Reader sectsReader = new BufferedReader(new InputStreamReader(
 					GeoJSONFaultReader.class.getResourceAsStream(sectPath)));
@@ -34,6 +37,8 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 			return GeoJSONFaultReader.readFaultSections(sectsReader);
 		}
 	};
+	
+	private static final ConcurrentMap<NSHM23_FaultModels, List<? extends FaultSection>> sectsCache = new ConcurrentHashMap<>();
 	
 	public static final String NSHM23_SECTS_PATH_PREFIX = "/data/erf/nshm23/fault_models/";
 	
@@ -70,7 +75,25 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 	}
 
 	@Override
-	public abstract List<? extends FaultSection> getFaultSections() throws IOException;
+	public final List<? extends FaultSection> getFaultSections() throws IOException {
+		List<? extends FaultSection> sects = sectsCache.get(this);
+		if (sects == null) {
+			synchronized (sectsCache) {
+				sects = sectsCache.get(this);
+				if (sects == null) {
+					sects = loadFaultSections();
+					sectsCache.put(this, sects);
+				}
+			}
+		}
+		// now return a copy
+		List<FaultSection> copy = new ArrayList<>();
+		for (FaultSection sect : sects)
+			copy.add(sect.clone());
+		return copy;
+	}
+	
+	protected abstract List<? extends FaultSection> loadFaultSections() throws IOException;
 
 	@Override
 	public RupSetDeformationModel getDefaultDeformationModel() {
