@@ -243,15 +243,7 @@ public class GeoJSONFaultReader {
 			else
 				sect.setProperty("RateType", rateType);
 			
-			if (Double.isFinite(stdDev)) {
-				if (stdDev == 0d) {
-					Preconditions.checkState(prefRate == 0d,
-							"Slip rate is nonzero but standard deviation is zero for %s", sect.getName());
-					System.err.println("WARNING: setting fake slip rate standard deviation of 0.01 mm/yr for "
-							+sect.getName()+" that has a zero slip rate and zero slip rate standard deviation.");
-					stdDev = 0.01d;
-				}
-			} else {
+			if (!Double.isFinite(stdDev)) {
 				numInferred++;
 				// infer std dev from bounds
 				// assume bounds are +/- 2 sigma (95% CI), and thus std dev is (high-low)/4
