@@ -7,10 +7,8 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
@@ -24,8 +22,9 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.MinisectionMappings;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.MinisectionMappings.MinisectionDataRecord;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
 import com.google.common.base.Preconditions;
@@ -69,6 +68,55 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	private static final String NSHM23_DM_PATH_PREFIX = "/data/erf/nshm23/def_models/";
 	
 	private static final String GEODETIC_DATE = "2022_06_27";
+	private static final String CREEP_DATE = "2022_06_09";
+	
+	/*
+	 * Standard deviation parameters that affect how low, zero, or missing standard deviations are treated.
+	 */
+	
+	/**
+	 * if true, will use geologic slip rates if standard deviations are unspecified or zero
+	 */
+	private static final boolean DEFAULT_STD_DEV_USE_GEOLOGIC = true;
+	/**
+	 * if standard deviation is zero, default to this fraction of the slip rate. if DEFAULT_STD_DEV_USE_GEOLOGIC is
+	 * true, then this will only be used if the geologic slip rate standard deviation is also zero 
+	 */
+	private static final double DEFAULT_FRACT_SLIP_STD_DEV = 0.5;
+	/**
+	 * minimum allowed slip rate standart deviation, in mm/yr
+	 */
+	private static final double STD_DEV_FLOOR = 1e-4;
+	
+	/*
+	 * Creep parameters
+	 */
+	
+	/**
+	 * For a given creep fractional moment reduction, creepRed:
+	 * 
+	 * if (creepRed <= ASEIS_CEILING) {
+	 * 	aseis = creepRed
+	 * 	coupling = 1
+	 * } else {
+	 * 	aseis = ASEIS_CEILING
+	 * 	coupling = 1 - (1/(1-ASEIS_CEILING))*(creepRed - ASEIS_CEILING)
+	 * }
+	 * 
+	 * In UCERF3, this was set to 0.9.
+	 */
+	public static double ASEIS_CEILING = 0.4;
+	
+	/**
+	 * If no creep value is available, use the given default creep reduction value
+	 */
+	public static double CREEP_FRACT_DEFAULT = 0.1;
+	
+	/*
+	 * Other
+	 */
+	
+	private static final Map<RupSetFaultModel, Map<Integer, GeoJSONFaultSection>> geologicSectsCache = new HashMap<>();
 
 	private String name;
 	private String shortName;
@@ -107,6 +155,17 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	
 	@Override
 	public abstract List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException;
+	
+	/*
+	 * Methods for loading the geologic model
+	 */
+	
+	private static synchronized Map<Integer, GeoJSONFaultSection> getGeoCache(RupSetFaultModel faultModel)
+			throws IOException {
+		if (!geologicSectsCache.containsKey(faultModel))
+			GEOLOGIC.build(faultModel);
+		return geologicSectsCache.get(faultModel);
+	}
 
 	public List<? extends FaultSection> buildGeolFullSects(RupSetFaultModel faultModel, String version) throws IOException {
 		Preconditions.checkState(isApplicableTo(faultModel), "DM/FM mismatch");
@@ -125,19 +184,31 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		}
 		GeoJSONFaultReader.attachGeoDefModel(geoSects, defModel);
 		
+		// see if we need to add geologic sections to the cache
+		synchronized (this) {
+			Map<Integer, GeoJSONFaultSection> geoCache = geologicSectsCache.get(faultModel);
+			if (geoCache == null) {
+				geoCache = new HashMap<>();
+				
+				for (GeoJSONFaultSection sect : geoSects)
+					geoCache.put(sect.getSectionId(), sect.clone());
+				
+				geologicSectsCache.put(faultModel, geoCache);
+			}
+		}
+		
 		return geoSects;
 	}
 
 	public List<? extends FaultSection> buildGeol(RupSetFaultModel faultModel, String version) throws IOException {
 		List<? extends FaultSection> geoSects = buildGeolFullSects(faultModel, version);
 		
-		return GeoJSONFaultReader.buildSubSects(geoSects);
+		return applyStdDevDefaults(faultModel, GeoJSONFaultReader.buildSubSects(geoSects));
 	}
-
-//	private static final double GEODETIC_LOC_WARN_TOL = 0.1;
-//	private static final double GEODETIC_LOC_ERR_TOL = 1;
-	private static final double GEODETIC_LOC_WARN_TOL = 0.1;
-	private static final double GEODETIC_LOC_ERR_TOL = 100;
+	
+	/*
+	 * Methods for loading the geodetic models
+	 */
 	
 	public List<? extends FaultSection> buildGeodetic(RupSetFaultModel faultModel, String resourceName) throws IOException {
 		// first load fault model
@@ -153,158 +224,78 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		// build subsections
 		List<FaultSection> subSects = GeoJSONFaultReader.buildSubSects(geoSects);
 		
+		MinisectionMappings mappings = new MinisectionMappings(geoSects, subSects);
+		
 		String dmPath = NSHM23_DM_PATH_PREFIX+"geodetic/"+GEODETIC_DATE+"/"+resourceName;
 		Map<Integer, List<GeodeticSlipRecord>> dmRecords = loadGeodeticModel(dmPath);
 		
-		// will load geologic slip rates if needed
-		List<? extends FaultSection> geoSubSects = null;
+		for (Integer parentID : new ArrayList<>(dmRecords.keySet())) {
+			// validate records
+			if (!mappings.areMinisectionDataForParentValid(parentID, dmRecords.get(parentID), true)) {
+				FaultSection parentSect = sectsByID.get(parentID);
+				if (parentSect == null)
+					System.err.println("WARNING: "+name()+" removing data for unkown fault with ID="+parentID);
+				else
+					System.err.println("WARNING: "+name()+" does not contain valid data for fault "+parentID+". "
+							+sectsByID.get(parentID).getSectionName()+", setting slip rate to 0.");
+				// remove bad data
+				dmRecords.remove(parentID);
+			}
+		}
 		
-		HashSet<Integer> warnedParent = new HashSet<>();
 		// replace slip rates and rakes from deformation model
 		for (FaultSection subSect : subSects) {
+			int subSectID = subSect.getSectionId();
 			int parentID = subSect.getParentSectionId();
-			FaultSection parentSect = sectsByID.get(parentID);
-			String name = parentSect.getSectionName();
 			List<GeodeticSlipRecord> records = dmRecords.get(parentID);
 			if (records == null) {
-				if (!warnedParent.contains(parentID)) {
-					System.err.println("WARNING: "+name()+" does not contain data for fault "+parentID+". "
-							+name+", setting slip rate to 0.");
-					warnedParent.add(parentID);
-				}
 				subSect.setAveSlipRate(0d);
 				subSect.setSlipRateStdDev(0d);
 				continue;
 			}
+
+			List<Double> recSlips = new ArrayList<>(records.size());
+			List<Double> recSlipStdDevs = new ArrayList<>(records.size());
+			List<Double> recRakes = new ArrayList<>(records.size());
 			
-			// subsection tract
-			FaultTrace subTrace = subSect.getFaultTrace();
-			Preconditions.checkState(subTrace.size()>1, "sub section trace only has one point!!!!");
-			Location subStart = subTrace.get(0);
-			Location subEnd = subTrace.get(subTrace.size()-1);
-			
-			FaultTrace trace = parentSect.getFaultTrace();
-			
-			if (trace.size() != records.size()+1) {
-				// TODO remove this temporary continue
-				System.err.println("WARNING: Trace size/minisection count mismatch for "+name()+", fault "+parentID
-						+". "+name+". Have "+trace.size()+" trace points, "+records.size()+" DM minisections");
-				subSect.setAveSlipRate(0d);
-				subSect.setSlipRateStdDev(0d);
-				continue;
-			}
-			Preconditions.checkState(trace.size() == records.size()+1,
-					"Trace size/minisection count mismatch for %s, %s. %s. Have %s trace points, %s DM records",
-					name(), parentID, name, trace.size(), records.size());
-			
-			// this is the index of the trace point that is either before or equal to the start of the sub section
-			int traceIndexBefore = -1;
-			// this is the index of the trace point that is either after or exactly at the end of the sub section
-			int traceIndexAfter = -1;
-
-			// now see if there are any trace points in between the start and end of the sub section
-			for (int i=0; i<trace.size(); i++) {
-				// loop over section trace. we leave out the first and last point because those are
-				// by definition end points and are already equal to sub section start/end points
-				Location tracePt = trace.get(i);
-
-				if (isBefore(subStart, subEnd, tracePt)) {
-//					if (DD) System.out.println("Trace "+i+" is BEFORE");
-					traceIndexBefore = i;
-				} else if (isAfter(subStart, subEnd, tracePt)) {
-					// we want just the first index after, so we break
-//					if (DD) System.out.println("Trace "+i+" is AFTER");
-					traceIndexAfter = i;
-					break;
-				} else {
-//					if (DD) System.out.println("Trace "+i+" must be BETWEEN");
-				}
-			}
-			Preconditions.checkState(traceIndexBefore >= 0, "trace index before not found!");
-			Preconditions.checkState(traceIndexAfter > traceIndexBefore, "trace index after not found!");
-
-			// this is the list of locations on the sub section, including any trace points in between
-			List<Location> subLocs = new ArrayList<Location>();
-			// this is the slip of all spans of the locations above
-			List<Double> subSlips = new ArrayList<Double>();
-			// this is the slip rate standard deviations of all spans of the locations above
-			List<Double> subSlipStdDevs = new ArrayList<Double>();
-			// this is the rake of all spans of the locations above
-			List<Double> subRakes = new ArrayList<Double>();
-
-			subLocs.add(subStart);
-
-			for (int i=traceIndexBefore; i<traceIndexAfter; i++) {
-				GeodeticSlipRecord rec = records.get(i);
-				Location traceLoc1 = trace.get(i);
-				Location traceLoc2 = trace.get(i+1);
-				if (!traceLoc1.equals(rec.startLoc) && !LocationUtils.areSimilar(traceLoc1, rec.startLoc)
-						|| !traceLoc2.equals(rec.endLoc) && !LocationUtils.areSimilar(traceLoc2, rec.endLoc)) {
-					double dist1 = LocationUtils.horzDistanceFast(traceLoc1, rec.startLoc);
-					double dist2 = LocationUtils.horzDistanceFast(traceLoc2, rec.endLoc);
-					if (dist1 > GEODETIC_LOC_WARN_TOL || dist2 > GEODETIC_LOC_WARN_TOL) {
-						String str = "Trace/minisection location mismatch for "+name()+", fault "+parentID+". "+name
-								+", minisection "+rec.minisectionID+":";
-						str += "\n\tStart loc: ["+(float)traceLoc1.getLatitude()+", "+(float)traceLoc1.getLongitude()
-							+"] vs ["+(float)rec.startLoc.getLatitude()+", "+(float)rec.startLoc.getLongitude()
-							+"], dist="+(float)dist1+" km";
-						str += "\n\tEnd loc: ["+(float)traceLoc2.getLatitude()+", "+(float)traceLoc2.getLongitude()
-							+"] vs ["+(float)rec.endLoc.getLatitude()+", "+(float)rec.endLoc.getLongitude()
-							+"], dist="+(float)dist2+" km";
-						if (dist1 > GEODETIC_LOC_ERR_TOL || dist2 > GEODETIC_LOC_ERR_TOL)
-							throw new IllegalStateException(str);
-						else
-							System.err.println("WARNING: "+str);
-					}
-				}
-				Preconditions.checkState(rec.minisectionID == i+1);
-				subSlips.add(rec.slipRate);
-				if (Double.isNaN(rec.slipRateStdDev))
-					subSlipStdDevs = null;
+			for (GeodeticSlipRecord record : records) {
+				recSlips.add(record.slipRate);
+				if (Double.isNaN(record.slipRateStdDev))
+					recSlipStdDevs = null;
 				else 
-					subSlipStdDevs.add(rec.slipRateStdDev);
-				subRakes.add(rec.rake);
-				if (i > traceIndexBefore && i < traceIndexAfter)
-					subLocs.add(trace.get(i));
+					recSlipStdDevs.add(record.slipRateStdDev);
+				recRakes.add(record.rake);
 			}
-			subLocs.add(subEnd);
 
 			// these are length averaged
-			double avgSlip = getLengthBasedAverage(subLocs, subSlips);
+			double avgSlip = mappings.getAssociationScaledAverage(subSectID, recSlips);
 			Preconditions.checkState(Double.isFinite(avgSlip) && avgSlip >= 0d,
 					"Bad slip rate for subSect=%, parentID=%: %s",
 					subSect.getSectionId(), parentID, avgSlip);
 			double avgSlipStdDev;
-			if (subSlipStdDevs == null) {
-				if (geoSubSects == null) {
-					System.err.println("WARNING: "+name()+" doesn't have slip rate std. devs. for at least 1 fault, loading geologic...");
-					geoSubSects = GEOLOGIC.build(faultModel);
-					Preconditions.checkState(geoSubSects.size() == subSects.size());
-					System.err.println("\tdone loading geologic.");
-				}
-				avgSlipStdDev = geoSubSects.get(subSect.getSectionId()).getOrigSlipRateStdDev();
+			if (recSlipStdDevs == null) {
+				// will replace when applying defaults at the end
+				avgSlipStdDev = Double.NaN;
 			} else {
-				avgSlipStdDev = getLengthBasedAverage(subLocs, subSlipStdDevs);
+				avgSlipStdDev = mappings.getAssociationScaledAverage(subSectID, recSlipStdDevs);
+				Preconditions.checkState(Double.isFinite(avgSlipStdDev),
+						"Bad slip rate standard deviation for subSect=%, parentID=%: %s",
+						subSect.getSectionId(), parentID, avgSlipStdDev);
+				if (avgSlipStdDev == 0d && avgSlip > 0d)
+					System.err.println("WARNING: slipRateStdDev=0 for "+subSect.getSectionId()
+						+". "+subSect.getSectionName()+", with slipRate="+avgSlip);
 			}
-			Preconditions.checkState(Double.isFinite(avgSlipStdDev),
-					"Bad slip rate standard deviation for subSect=%, parentID=%: %s",
-					subSect.getSectionId(), parentID, avgSlipStdDev);
-			double avgRake = FaultUtils.getLengthBasedAngleAverage(subLocs, subRakes);
-			if (avgRake > 180)
-				avgRake -= 360;
+			double avgRake = FaultUtils.getInRakeRange(mappings.getAssociationScaledAngleAverage(subSectID, recRakes));
 			Preconditions.checkState(Double.isFinite(avgRake), "Bad rake for subSect=%, parentID=%: %s",
 					subSect.getSectionId(), parentID, avgRake);
-			
-			if (avgSlipStdDev == 0d && avgSlip > 0d)
-				System.err.println("WARNING: slipRateStdDev=0 for "+subSect.getSectionId()
-					+". "+subSect.getSectionName()+", with slipRate="+avgSlip);
 
 			subSect.setAveSlipRate(avgSlip);
 			subSect.setSlipRateStdDev(avgSlipStdDev);
 			subSect.setAveRake(avgRake);
 		}
 		
-		return subSects;
+		// TODO apply creep model here
+		return applyStdDevDefaults(faultModel, subSects);
 	}
 	
 	private static Map<Integer, List<GeodeticSlipRecord>> loadGeodeticModel(String path) throws IOException {
@@ -360,7 +351,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 						parentID, minisectionID);
 			} else {
 				GeodeticSlipRecord prev = parentRecs.get(parentRecs.size()-1);
-				Preconditions.checkState(minisectionID == prev.minisectionID+1,
+				Preconditions.checkState(minisectionID == prev.minisectionID+2, // +2 here as prev is 0-based
 						"Minisections are out of order for fault %s, %s is directly after %s",
 						parentID, minisectionID, prev.minisectionID);
 				Preconditions.checkState(startLoc.equals(prev.endLoc) || LocationUtils.areSimilar(startLoc, prev.endLoc),
@@ -368,126 +359,194 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 						parentID, prev.endLoc, startLoc);
 			}
 			
+			// convert minisections to 0-based
 			parentRecs.add(new GeodeticSlipRecord(
-					parentID, minisectionID, startLoc, endLoc, rake, slipRate, slipRateStdDev));
+					parentID, minisectionID-1, startLoc, endLoc, rake, slipRate, slipRateStdDev));
 		}
 		
 		return ret;
 	}
 	
-	/**
-	 * Determines if the given point, pt, is before or equal to the start point. This is
-	 * done by determining that pt is closer to start than end, and is further from end
-	 * than start is.
-	 * 
-	 * @param start
-	 * @param end
-	 * @param pt
-	 * @return
-	 */
-	private static boolean isBefore(Location start, Location end, Location pt) {
-		if (start.equals(pt) || LocationUtils.areSimilar(start, pt))
-			return true;
-		double pt_start_dist = LocationUtils.horzDistanceFast(pt, start);
-		if (pt_start_dist == 0)
-			return true;
-		double pt_end_dist = LocationUtils.horzDistanceFast(pt, end);
-		double start_end_dist = LocationUtils.horzDistanceFast(start, end);
-
-		return pt_start_dist < pt_end_dist && pt_end_dist > start_end_dist;
-	}
-
-	/**
-	 * Determines if the given point, pt, is after or equal to the end point. This is
-	 * done by determining that pt is closer to end than start, and is further from start
-	 * than end is.
-	 * 
-	 * @param start
-	 * @param end
-	 * @param pt
-	 * @return
-	 */
-	private static boolean isAfter(Location start, Location end, Location pt) {
-		if (end.equals(pt) || LocationUtils.areSimilar(end, pt))
-			return true;
-		double pt_end_dist = LocationUtils.horzDistanceFast(pt, end);
-		if (pt_end_dist == 0)
-			return true;
-		double pt_start_dist = LocationUtils.horzDistanceFast(pt, start);
-		double start_end_dist = LocationUtils.horzDistanceFast(start, end);
-
-		return pt_end_dist < pt_start_dist && pt_start_dist > start_end_dist;
-	}
-	
-	/**
-	 * This averages multiple scalars based on the length of each corresponding span.
-	 * 
-	 * @param locs a list of locations
-	 * @param scalars a list of scalar values to be averaged based on the distance between
-	 * each location in the location list
-	 */
-	public static double getLengthBasedAverage(List<Location> locs, List<Double> scalars) {
-		Preconditions.checkArgument(locs.size() == scalars.size()+1,
-				"there must be exactly one less slip than location!");
-		Preconditions.checkArgument(!scalars.isEmpty(), "there must be at least 2 locations and 1 slip rate");
-
-		if (scalars.size() == 1)
-			return scalars.get(0);
-		if (Double.isNaN(scalars.get(0)))
-			return Double.NaN;
-		boolean equal = true;
-		for (int i=1; i<scalars.size(); i++) {
-			if (Double.isNaN(scalars.get(i)))
-				return Double.NaN;
-			if (scalars.get(i).floatValue() != scalars.get(0).floatValue()) {
-				equal = false;
-				break;
-			}
-		}
-		if (equal)
-			return scalars.get(0);
-
-		List<Double> dists = new ArrayList<Double>();
-
-		for (int i=1; i<locs.size(); i++)
-			dists.add(LocationUtils.linearDistanceFast(locs.get(i-1), locs.get(i)));
-		
-		return calcLengthBasedAverage(dists, scalars);
-	}
-	
-	public static double calcLengthBasedAverage(List<Double> lengths, List<Double> scalars) {
-		double totDist = 0d;
-		for (double len : lengths)
-			totDist += len;
-		
-		double scaledAvg = 0;
-		for (int i=0; i<lengths.size(); i++) {
-			double relative = lengths.get(i) / totDist;
-			scaledAvg += relative * scalars.get(i);
-		}
-
-		return scaledAvg;
-	}
-	
-	private static class GeodeticSlipRecord {
-		private final int parentID;
-		private final int minisectionID;
-		private final Location startLoc;
-		private final Location endLoc;
+	private static class GeodeticSlipRecord extends MinisectionDataRecord {
 		private final double rake;
 		private final double slipRate; // mm/yr
 		private final double slipRateStdDev; // mm/yr
 		
 		public GeodeticSlipRecord(int parentID, int minisectionID, Location startLoc, Location endLoc, double rake,
 				double slipRate, double slipRateStdDev) {
-			super();
-			this.parentID = parentID;
-			this.minisectionID = minisectionID;
-			this.startLoc = startLoc;
-			this.endLoc = endLoc;
+			super(parentID, minisectionID, startLoc, endLoc);
 			this.rake = rake;
 			this.slipRate = slipRate;
 			this.slipRateStdDev = slipRateStdDev;
+		}
+	}
+	
+	/*
+	 * Methods for processing loaded deformation models (standard deviations and creep)
+	 */
+	
+	/**
+	 * Applies default/floor rules for slip rate standard deviations, updating their values in place and returning
+	 * the supplied list
+	 * 
+	 * @param faultModel fault model, used to fetch geologic defaults if needed
+	 * @param subSects subsection list
+	 * @return subsection list that was supplied
+	 * @throws IOException
+	 */
+	private static List<? extends FaultSection> applyStdDevDefaults(RupSetFaultModel faultModel,
+			List<? extends FaultSection> subSects) throws IOException {
+		Map<Integer, GeoJSONFaultSection> geoSects = null; // may be needed if zeros are encountered
+		
+		int numZeroSlips = 0;
+		int numGeoDefault = 0;
+		int numFractDefault = 0;
+		int numFloor = 0;
+		
+		for (FaultSection sect : subSects) {
+			double slipRate = sect.getOrigAveSlipRate();
+			Preconditions.checkState(Double.isFinite(slipRate) && slipRate >= 0d, "Bad slip rate for %s. %s: %s",
+					sect.getSectionId(), sect.getSectionName(), slipRate);
+			if ((float)slipRate == 0f)
+				numZeroSlips++;
+			double stdDev = sect.getOrigSlipRateStdDev();
+			if (!Double.isFinite(stdDev))
+				stdDev = 0d;
+			
+			if ((float)stdDev <= 0f) {
+				// no slip rate std dev specified
+				if (DEFAULT_STD_DEV_USE_GEOLOGIC) {
+					// use geologic
+					if (geoSects == null)
+						geoSects = getGeoCache(faultModel);
+					FaultSection geoSect = geoSects.get(sect.getParentSectionId());
+					Preconditions.checkNotNull(geoSect, "No geologic section found with parent=%s, name=%s",
+							sect.getParentSectionId(), sect.getParentSectionName());
+					double geoStdDev = geoSect.getOrigSlipRateStdDev();
+					if ((float)geoStdDev > 0f) {
+						// use the geologic value
+						stdDev = geoStdDev;
+						sect.setSlipRateStdDev(stdDev);
+						numGeoDefault++;
+					}
+				}
+				if ((float)stdDev <= 0f) {
+					// didn't use geologic (DEFAULT_STD_DEV_USE_GEOLOGIC == false, or no geologic value)
+					// set it to the given default fraction of the slip rate
+					stdDev = slipRate*DEFAULT_FRACT_SLIP_STD_DEV;
+					sect.setSlipRateStdDev(stdDev);
+					numFractDefault++;
+				}
+			}
+			
+			// now apply any floor
+			if ((float)stdDev < (float)STD_DEV_FLOOR) {
+				stdDev = STD_DEV_FLOOR;
+				sect.setSlipRateStdDev(stdDev);
+				numFloor++;
+			}
+		}
+
+		if (numZeroSlips > 0)
+			System.err.println("WARNING: "+numGeoDefault+"/"+subSects.size()
+				+" subsection slip rates are 0");
+		if (numGeoDefault > 0)
+			System.err.println("WARNING: Set "+numGeoDefault+"/"+subSects.size()
+				+" subsection slip rate standard deviations to geologic values");
+		if (numFractDefault > 0)
+			System.err.println("WARNING: Set "+numFractDefault+"/"+subSects.size()
+				+" subsection slip rate standard deviations to the default: "
+					+(float)DEFAULT_FRACT_SLIP_STD_DEV+" x slipRate");
+		if (numFloor > 0)
+			System.err.println("WARNING: Set "+numFloor+"/"+subSects.size()
+				+" subsection slip rate standard deviations to the floor value of "+(float)STD_DEV_FLOOR+" (mm/yr)");
+		
+		return subSects;
+	}
+	
+	private List<? extends FaultSection> applyCreepModel(MinisectionMappings mappings,
+			List<? extends FaultSection> subSects) {
+		String creepPath = NSHM23_DM_PATH_PREFIX+"creep/"+CREEP_DATE+"/"+name()+".txt";
+		
+		Map<Integer, List<CreepRecord>> creepData = loadCreepData(creepPath, mappings);
+		
+		for (Integer parentID : new ArrayList<>(creepData.keySet())) {
+			List<CreepRecord> records = creepData.get(parentID);
+			
+			// make sure it's valid
+			if (!mappings.areMinisectionDataForParentValid(parentID, records, true)) {
+				if (!mappings.hasParent(parentID))
+					System.err.println("WARNING: "+name()+" removing creep data for unkown fault with ID="+parentID);
+				else
+					System.err.println("WARNING: "+name()+" does not contain valid creep data for fault "+parentID
+							+", setting creep to default");
+				// remove bad data
+				creepData.remove(parentID);
+			}
+		}
+		
+		for (int s=0; s<subSects.size(); s++) {
+			FaultSection subSect = subSects.get(s);
+			int parentID = subSect.getParentSectionId();
+			String subSectName = subSect.getSectionName();
+			
+			double creepFract;
+			if (creepData.containsKey(parentID)) {
+				// we have creep data for this fault
+				List<CreepRecord> records = creepData.get(parentID);
+				List<Double> values = new ArrayList<>(records.size());
+				for (CreepRecord record : records)
+					values.add(record == null ? 0d : record.creepRate);
+				
+				double creepRate = mappings.getAssociationScaledAverage(s, values);
+				Preconditions.checkState(creepRate >= 0d, "Bad creep rate for %s. %s", s, subSectName);
+				double slipRate = subSect.getOrigAveSlipRate();
+				if (creepRate > slipRate) {
+					System.err.println("WARNING: creep rate is greater than slip rate for section "
+							+s+". "+subSectName);
+					creepRate = slipRate;
+				}
+				creepFract = creepRate/slipRate;
+			} else {
+				// apply default creep
+				creepFract = CREEP_FRACT_DEFAULT;
+			}
+			
+			double aseis, coupling;
+			if (creepFract < ASEIS_CEILING) {
+				aseis = creepFract;
+				coupling = 1d;
+			} else {
+				aseis = ASEIS_CEILING;
+				coupling = 1 - (1/(1-ASEIS_CEILING))*(creepFract - ASEIS_CEILING);
+			}
+			
+			Preconditions.checkState(aseis >= 0d && aseis <= ASEIS_CEILING,
+					"Bad computed aseismicity value (%s) from creepFract=%s, aseisCeiling=%s",
+					aseis, creepFract, ASEIS_CEILING);
+			Preconditions.checkState(coupling >= 0d && coupling <= 1d,
+					"Bad computed coupling coefficient (%s) from creepFract=%s, aseisCeiling=%s",
+					coupling, creepFract, ASEIS_CEILING);
+			
+			subSect.setAseismicSlipFactor(aseis);
+			subSect.setCouplingCoeff(coupling);
+		}
+		
+		return subSects;
+	}
+	
+	private static Map<Integer, List<CreepRecord>> loadCreepData(String creepPath, MinisectionMappings mappings) {
+		// REMEMBER TO MAKE 0-BASED!!!!
+		// initialize each sublist setting all values to null, replace null records with data when encountered
+		return null; // TODO
+	}
+	
+	private static class CreepRecord extends MinisectionDataRecord {
+		private final double creepRate; // mm/yr
+		
+		public CreepRecord(int parentID, int minisectionID, Location startLoc, Location endLoc, double creepRate) {
+			super(parentID, minisectionID, startLoc, endLoc);
+			this.creepRate = creepRate;
 		}
 	}
 	
@@ -495,14 +554,18 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		// write geo gson
 		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v1p4;
 		
-		List<? extends FaultSection> geoFull = NSHM23_DeformationModels.GEOLOGIC.buildGeolFullSects(fm, "v1p4");
-		GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+NSHM23_DeformationModels.GEOLOGIC.getFilePrefix()+"_sects.geojson"), geoFull);
+//		List<? extends FaultSection> geoFull = NSHM23_DeformationModels.GEOLOGIC.buildGeolFullSects(fm, "v1p4");
+//		GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+NSHM23_DeformationModels.GEOLOGIC.getFilePrefix()+"_sects.geojson"), geoFull);
 		
 		for (NSHM23_DeformationModels dm : values()) {
 			if (dm.weight > 0d && dm.isApplicableTo(fm)) {
+				System.out.println("************************");
 				System.out.println("Building "+dm.name);
 				List<? extends FaultSection> subSects = dm.build(fm);
 				GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+dm.getFilePrefix()+"_sub_sects.geojson"), subSects);
+				System.err.flush();
+				System.out.flush();
+				System.out.println("************************");
 			}
 		}
 	}
