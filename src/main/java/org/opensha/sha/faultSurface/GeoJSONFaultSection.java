@@ -564,7 +564,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 	}
 
 	@Override
-	public FaultSection clone() {
+	public GeoJSONFaultSection clone() {
 		return new GeoJSONFaultSection(this);
 	}
 
