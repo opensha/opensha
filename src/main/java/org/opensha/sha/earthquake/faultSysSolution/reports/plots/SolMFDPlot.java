@@ -32,6 +32,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -45,7 +46,8 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 	public String getName() {
 		return "Solution MFDs";
 	}
-	
+
+	public static final Color SUB_SEIS_TARGET_COLOR = Color.MAGENTA.darker();
 	public static final Color SUPRA_SEIS_TARGET_COLOR = Color.CYAN.darker();
 
 	@Override
@@ -63,13 +65,16 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		
 		double minY = 1e-6;
 		double maxY = 1e1;
-		if (rupSet.hasModule(InversionTargetMFDs.class)) {
-			InversionTargetMFDs targetMFDs = rupSet.getModule(InversionTargetMFDs.class);
-			
+		InversionTargetMFDs targetMFDs = rupSet.getModule(InversionTargetMFDs.class);
+		List<? extends IncrementalMagFreqDist> supraSeisSectNuclMFDs = null;
+		SubSeismoOnFaultMFDs subSeisSectMFDs = null;
+		if (targetMFDs != null) {
+			supraSeisSectNuclMFDs = targetMFDs.getOnFaultSupraSeisNucleationMFDs();
+			subSeisSectMFDs = targetMFDs.getOnFaultSubSeisMFDs();
 			MFD_Plot totalPlot = new MFD_Plot("Total Target MFDs", null);
 			totalPlot.addComp(targetMFDs.getTotalRegionalMFD(), Color.GREEN.darker(), "Total Target");
 			totalPlot.addComp(targetMFDs.getTotalGriddedSeisMFD(), Color.GRAY, "Target Gridded");
-			totalPlot.addComp(targetMFDs.getTotalOnFaultSubSeisMFD(), Color.MAGENTA.darker(), "Target Sub-Seis");
+			totalPlot.addComp(targetMFDs.getTotalOnFaultSubSeisMFD(), SUB_SEIS_TARGET_COLOR, "Target Sub-Seis");
 			totalPlot.addComp(targetMFDs.getTotalOnFaultSupraSeisMFD(), SUPRA_SEIS_TARGET_COLOR, "Target Supra-Seis");
 			plots.add(totalPlot);
 			
@@ -90,7 +95,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					totalPlot.region = region;
 				} else {
 					MFD_Plot plot = new MFD_Plot(name, region);
-					plot.addComp(constraint, SUPRA_SEIS_TARGET_COLOR, "Target");
+					plot.addComp(constraint, SUPRA_SEIS_TARGET_COLOR, "Target Supra-Seis");
 					plots.add(plot);
 				}
 				// make sure to include the whole constraint in the plot
@@ -129,10 +134,28 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 						break;
 					}
 				}
-				if (duplicate)
+				if (duplicate) {
 					System.out.println("Skipping duplicate region from ROI list: "+name);
-				else
-					plots.add(new MFD_Plot(name, region));
+				} else {
+					MFD_Plot plot = new MFD_Plot(name, region);
+					if (subSeisSectMFDs != null && subSeisSectMFDs.size() == rupSet.getNumSections()) {
+						System.out.println("Looking for subsection sub-seis MFDs in region: "+region.getName());
+						SummedMagFreqDist target = sumSectMFDsInRegion(region, rupSet, subSeisSectMFDs.getAll());
+						if (target != null) {
+							System.out.println("Found total sub-seis rate of "+target.calcSumOfY_Vals());
+							plot.addComp(target, SUB_SEIS_TARGET_COLOR, "Implied Target Sub-Seis");
+						}
+					}
+					if (supraSeisSectNuclMFDs != null && supraSeisSectNuclMFDs.size() == rupSet.getNumSections()) {
+						System.out.println("Looking for subsection nucleation MFDs in region: "+region.getName());
+						SummedMagFreqDist target = sumSectMFDsInRegion(region, rupSet, supraSeisSectNuclMFDs);
+						if (target != null) {
+							System.out.println("Found total supra-seis rate of "+target.calcSumOfY_Vals());
+							plot.addComp(target, SUPRA_SEIS_TARGET_COLOR, "Implied Target Supra-Seis");
+						}
+					}
+					plots.add(plot);
+				}
 			}
 		}
 
@@ -261,6 +284,45 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			maxMag = minMag;
 //		System.out.println(num+" "+minMag+" "+maxMag);
 		return new IncrementalMagFreqDist(minMag, maxMag, num);
+	}
+	
+	private static SummedMagFreqDist sumSectMFDsInRegion(Region region, FaultSystemRupSet rupSet,
+			List<? extends IncrementalMagFreqDist> sectMFDs) {
+		// build our own custom target by summing up section nucleation MFDs
+		double[] fracts = rupSet.getFractSectsInsideRegion(region, false);
+		Preconditions.checkState(fracts.length == sectMFDs.size());
+		double minX = Double.NaN;
+		int maxSize = 0;
+		for (IncrementalMagFreqDist sectMFD : sectMFDs) {
+			if (sectMFD != null) {
+				if (Double.isNaN(minX))
+					minX = sectMFD.getMinX();
+				else
+					Preconditions.checkState((float)minX == (float)sectMFD.getMinX());
+				maxSize = Integer.max(maxSize, sectMFD.size());
+			}
+		}
+		if (maxSize > 0) {
+			SummedMagFreqDist target = null;
+			double sectsInReg = 0d;
+			for (int s=0; s<sectMFDs.size(); s++) {
+				IncrementalMagFreqDist sectMFD = sectMFDs.get(s);
+				sectsInReg += fracts[s];
+				if (fracts[s] > 0d && sectMFD != null) {
+					if (target == null)
+						target = new SummedMagFreqDist(minX, maxSize, sectMFD.getDelta());
+					if (fracts[s] != 1d) {
+						sectMFD = sectMFD.deepClone();
+						sectMFD.scale(fracts[s]);
+					}
+					target.addIncrementalMagFreqDist(sectMFD);
+				}
+			}
+			if (target != null && target.calcSumOfY_Vals() > 0d) {
+				return target;
+			}
+		}
+		return null;
 	}
 	
 	static Range xRange(IncrementalMagFreqDist mfd) {

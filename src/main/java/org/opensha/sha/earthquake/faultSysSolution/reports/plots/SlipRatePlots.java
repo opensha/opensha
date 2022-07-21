@@ -34,6 +34,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.SolidFillPlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
+import org.opensha.sha.faultSurface.FaultSection;
 
 public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 
@@ -333,9 +334,9 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 				
 				table.finalizeLine().initNewLine();
 				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+relPrefix+".geojson")
-						+" "+"[Download GeoJSON]("+relPathToResources+"/"+relPrefix+"_sol_diff.geojson)");
+						+" "+"[Download GeoJSON]("+relPathToResources+"/"+relPrefix+".geojson)");
 				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+misfitPrefix+".geojson")
-						+" "+"[Download GeoJSON]("+relPathToResources+"/"+misfitPrefix+"_sol_ratio.geojson)");
+						+" "+"[Download GeoJSON]("+relPathToResources+"/"+misfitPrefix+".geojson)");
 				table.finalizeLine();
 				
 				if (meta.hasComparisonSol() && meta.comparison.rupSet.hasModule(SectSlipRates.class)
@@ -374,9 +375,9 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 					
 					table.finalizeLine().initNewLine();
 					table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+relPrefix+".geojson")
-							+" "+"[Download GeoJSON]("+relPathToResources+"/"+relPrefix+"_sol_diff.geojson)");
+							+" "+"[Download GeoJSON]("+relPathToResources+"/"+relPrefix+".geojson)");
 					table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+misfitPrefix+".geojson")
-							+" "+"[Download GeoJSON]("+relPathToResources+"/"+misfitPrefix+"_sol_ratio.geojson)");
+							+" "+"[Download GeoJSON]("+relPathToResources+"/"+misfitPrefix+".geojson)");
 					table.finalizeLine();
 				}
 				
@@ -386,6 +387,133 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 				lines.addAll(table.build());
 			}
 //			for (Fault)
+		}
+		
+		boolean hasAseis = false;
+		boolean hasCoupling = false;
+		boolean hasSubSeis = false;
+		SectSlipRates slips = rupSet.getModule(SectSlipRates.class);
+		for (int s=0; s<rupSet.getNumSections(); s++) {
+			FaultSection sect = rupSet.getFaultSectionData(s);
+			hasAseis = hasAseis || (float)sect.getAseismicSlipFactor() > 0f;
+			hasCoupling = hasCoupling || (float)sect.getCouplingCoeff() < 1f;
+			if (slips != null)
+				hasSubSeis = hasSubSeis || (float)sect.getReducedAveSlipRate() > (float)slips.getSlipRate(s);
+		}
+		
+		if (hasAseis || hasCoupling || hasSubSeis) {
+			lines.add("");
+			lines.add(getSubHeading()+" Slip Rate & Area Reductions");
+			lines.add(topLink); lines.add("");
+			
+//			TableBuilder table = MarkdownUtils.tableBuilder();
+			
+			List<String> plotHeadings = new ArrayList<>();
+			List<String> plotPrefixes = new ArrayList<>();
+			List<String> compPlotPrefixes = meta.hasComparison() ? new ArrayList<>() : null;
+			
+			if (hasAseis) {
+				CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
+				
+				String prefix = rawPrefix+"_aseis";
+				
+				plotHeadings.add("Aseismic Slip Factors");
+				
+				mapMaker.plotSectScalars(aseis(rupSet), cpt, "Aseismic Slip Factor");
+				mapMaker.plot(resourcesDir, prefix, " ");
+				plotPrefixes.add(prefix);
+				
+				if (meta.hasComparison()) {
+					mapMaker.plotSectScalars(aseis(meta.comparison.rupSet), cpt, "Aseismic Slip Factor");
+					mapMaker.plot(resourcesDir, prefix+"_comp", " ");
+					compPlotPrefixes.add(prefix+"_comp");
+				}
+			}
+			
+			if (hasCoupling) {
+				CPT cpt = GMT_CPT_Files.BLACK_RED_YELLOW_UNIFORM.instance().rescale(0d, 1d);
+				
+				String prefix = rawPrefix+"_coupling";
+				
+				plotHeadings.add("Coupling Coefficients");
+				
+				mapMaker.setReverseSort(true);
+				mapMaker.plotSectScalars(coupling(rupSet), cpt, "Coupling Coefficient");
+				mapMaker.plot(resourcesDir, prefix, " ");
+				plotPrefixes.add(prefix);
+				
+				if (meta.hasComparison()) {
+					mapMaker.plotSectScalars(coupling(meta.comparison.rupSet), cpt, "Coupling Coefficient");
+					mapMaker.plot(resourcesDir, prefix+"_comp", " ");
+					compPlotPrefixes.add(prefix+"_comp");
+				}
+				mapMaker.setReverseSort(false);
+			}
+			
+			if (hasSubSeis) {
+				CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
+				
+				String prefix = rawPrefix+"_sub_seis_red";
+				
+				plotHeadings.add("Subseismogenic Reduction Factors");
+				
+				mapMaker.plotSectScalars(subSeisReduction(rupSet, rupSet.getModule(SectSlipRates.class)),
+						cpt, "Subseismogenic Reduction Factor");
+				mapMaker.plot(resourcesDir, prefix, " ");
+				plotPrefixes.add(prefix);
+				
+				if (meta.hasComparison()) {
+					mapMaker.plotSectScalars(subSeisReduction(meta.comparison.rupSet,
+							meta.comparison.rupSet.getModule(SectSlipRates.class)), cpt, "Subseismogenic Reduction Factor");
+					mapMaker.plot(resourcesDir, prefix+"_comp", " ");
+					compPlotPrefixes.add(prefix+"_comp");
+				}
+			}
+			
+			TableBuilder table = MarkdownUtils.tableBuilder();
+			
+			if (meta.hasComparison()) {
+				// one line for each type
+				for (int i=0; i<plotHeadings.size(); i++) {
+					table.initNewLine();
+					
+					String heading = plotHeadings.get(i);
+					table.addColumn(MarkdownUtils.boldCentered("Primary "+heading));
+					table.addColumn(MarkdownUtils.boldCentered("Comparison "+heading));
+					
+					table.finalizeLine().initNewLine();
+					
+					String prefix = plotPrefixes.get(i);
+					String compPrefix = compPlotPrefixes.get(i);
+					table.addColumn("![Map]("+relPathToResources+"/"+prefix+".png)");
+					table.addColumn("![Map]("+relPathToResources+"/"+compPrefix+".png)");
+					
+					table.finalizeLine().initNewLine();
+					
+					table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+".geojson")
+							+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+".geojson)");
+					table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+compPrefix+".geojson")
+							+" "+"[Download GeoJSON]("+relPathToResources+"/"+compPrefix+".geojson)");
+					
+					table.finalizeLine();
+				}
+			} else {
+				// bundle them
+				table.initNewLine();
+				for (String heading : plotHeadings)
+					table.addColumn(MarkdownUtils.boldCentered(heading));
+				table.finalizeLine().initNewLine();
+				for (String prefix : plotPrefixes)
+					table.addColumn("![Map]("+relPathToResources+"/"+prefix+".png)");
+				table.finalizeLine().initNewLine();
+				for (String prefix : plotPrefixes)
+					table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+".geojson")
+							+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+".geojson)");
+				table.finalizeLine();
+				table = table.wrap(2, 0);
+			}
+			
+			lines.addAll(table.build());
 		}
 		
 		return lines;
@@ -412,7 +540,37 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 		return slips;
 	}
 	
-	private static double[] solution(FaultSystemSolution sol) {
+	private static double[] aseis(FaultSystemRupSet rupSet) {
+		double[] aseis = new double[rupSet.getNumSections()];
+		for (int s=0; s<aseis.length; s++)
+			aseis[s] = rupSet.getFaultSectionData(s).getAseismicSlipFactor();
+		return aseis;
+	}
+	
+	private static double[] coupling(FaultSystemRupSet rupSet) {
+		double[] coupling = new double[rupSet.getNumSections()];
+		for (int s=0; s<coupling.length; s++)
+			coupling[s] = rupSet.getFaultSectionData(s).getCouplingCoeff();
+		return coupling;
+	}
+	
+	private static double[] subSeisReduction(FaultSystemRupSet rupSet, SectSlipRates slipRates) {
+		double[] subSeisRed = new double[rupSet.getNumSections()];
+		if (slipRates == null)
+			// no reductions
+			return subSeisRed;
+		for (int s=0; s<subSeisRed.length; s++) {
+			// 'non' here means not further reduced by sub-seismogenic ruptures, both have coupling coef. applied
+			double nonReduced = rupSet.getFaultSectionData(s).getReducedAveSlipRate();
+			if (nonReduced > 0d) {
+				double subSeisReduced = 1e3*slipRates.getSlipRate(s);
+				subSeisRed[s] = (nonReduced - subSeisReduced)/nonReduced;
+			}
+		}
+		return subSeisRed;
+	}
+	
+	static double[] solution(FaultSystemSolution sol) {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		AveSlipModule aveSlips = rupSet.requireModule(AveSlipModule.class);
 		SlipAlongRuptureModel slipAlongs = rupSet.requireModule(SlipAlongRuptureModel.class);

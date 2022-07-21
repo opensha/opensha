@@ -17,6 +17,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
+import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots.HistScalar;
@@ -27,7 +28,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
-public class NamedFaultPlot extends AbstractSolutionPlot {
+public class NamedFaultPlot extends AbstractRupSetPlot {
 
 	@Override
 	public String getName() {
@@ -35,12 +36,12 @@ public class NamedFaultPlot extends AbstractSolutionPlot {
 	}
 
 	@Override
-	public List<String> plot(FaultSystemSolution sol, ReportMetadata meta, File resourcesDir, String relPathToResources,
-			String topLink) throws IOException {
+	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
+			String relPathToResources, String topLink) throws IOException {
 		File faultsDir = new File(resourcesDir.getParentFile(), "named_fault_pages");
 		Preconditions.checkState(faultsDir.exists() || faultsDir.mkdir());
 		
-		NamedFaults faults = sol.getRupSet().requireModule(NamedFaults.class);
+		NamedFaults faults = rupSet.requireModule(NamedFaults.class);
 		
 		Map<String, String> linksMap = new HashMap<>();
 		for (String faultName : faults.getFaultNames()) {
@@ -113,8 +114,10 @@ public class NamedFaultPlot extends AbstractSolutionPlot {
 		int tocIndex = lines.size();
 		String topLink = "_[(top)](#table-of-contents)_";
 		
-		lines.addAll(SectBySectDetailPlots.getMFDLines(meta, faultName, faultSects, resourcesDir, topLink));
-		lines.add("");
+		if (meta.hasPrimarySol()) {
+			lines.addAll(SectBySectDetailPlots.getMFDLines(meta, faultName, faultSects, resourcesDir, topLink));
+			lines.add("");
+		}
 		
 		lines.addAll(SectBySectDetailPlots.getAlongStrikeLines(meta, faultName, faultSects, resourcesDir, topLink));
 		lines.add("");

@@ -38,6 +38,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata.RupSetOverlap;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.BiasiWesnouskyPlots;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.CreepingAndParkfieldReport;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.FaultSectionConnectionsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InfoStringPlot;
@@ -120,6 +121,8 @@ public class ReportPageGen {
 		plots.add(new SolMFDPlot());
 		plots.add(new PlausibilityConfigurationReport());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
+			plots.add(new SlipRatePlots());
+			plots.add(new CreepingAndParkfieldReport());
 			plots.add(new RupHistogramPlots(RupHistogramPlots.RUP_SET_SCALARS));
 			plots.add(new PlausibilityFilterPlot());
 			plots.add(new ModulesPlot());
@@ -132,9 +135,11 @@ public class ReportPageGen {
 		if (level == PlotLevel.FULL) {
 			plots.add(new JumpAzimuthsPlot());
 			plots.add(new BiasiWesnouskyPlots());
-			plots.add(new SlipRatePlots());
-			plots.add(new SectBySectDetailPlots());
 		}
+		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
+			plots.add(new NamedFaultPlot());
+		if (level == PlotLevel.FULL)
+			plots.add(new SectBySectDetailPlots());
 		
 		return plots;
 	}
@@ -159,6 +164,7 @@ public class ReportPageGen {
 			plots.add(new ModulesPlot());
 			plots.add(new FaultSectionConnectionsPlot());
 			plots.add(new SlipRatePlots());
+			plots.add(new CreepingAndParkfieldReport());
 			plots.add(new PaleoDataComparisonPlot());
 			plots.add(new JumpCountsOverDistancePlot());
 		}

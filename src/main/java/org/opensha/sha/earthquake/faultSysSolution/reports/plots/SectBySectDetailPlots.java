@@ -76,6 +76,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots.HistScalar;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots.HistScalarValues;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectDetailPlots.AlongStrikePlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
@@ -93,6 +94,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectIDRange;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
@@ -1358,7 +1360,9 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			}
 		} else {
 			// we didn't use to store them explicitly, fall back to inversion configuration
-			InversionConfiguration invConfig = meta.primary.sol.getModule(InversionConfiguration.class);
+			InversionConfiguration invConfig = null;
+			if (meta.hasPrimarySol())
+				invConfig = meta.primary.sol.getModule(InversionConfiguration.class);
 			if (invConfig != null && invConfig.getConstraints() != null) {
 				// see if we constrained this with target section rates
 				for (InversionConstraint constraint : invConfig.getConstraints()) {
@@ -1376,8 +1380,9 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<AlongStrikePlot> plots = new ArrayList<>();
 		
 		// mag plot
-		plots.add(buildParticRatePlot(meta, faultSects, faultName, emptySectFuncs, xLabel, legendRelX,
-				!targetNucleation ? targetSectRates : null, !targetNucleation ? targetSectRateStdDevs : null));
+		if (meta.hasPrimarySol() || (!targetNucleation && targetSectRates != null))
+			plots.add(buildParticRatePlot(meta, faultSects, faultName, emptySectFuncs, xLabel, legendRelX,
+					!targetNucleation ? targetSectRates : null, !targetNucleation ? targetSectRateStdDevs : null));
 		
 		List<SectMappedUncertainDataConstraint> paleoConstraints = null;
 		List<SectMappedUncertainDataConstraint> paleoSlipConstraints = null;
@@ -1407,16 +1412,26 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			}
 		}
 		
-		if (paleoConstraints != null || paleoSlipConstraints != null)
+		if (meta.hasPrimarySol() && (paleoConstraints != null || paleoSlipConstraints != null))
 			plots.add(buildPaleoRatePlot(meta, faultSects, faultName, emptySectFuncs, xLabel, legendRelX, xRange, latX,
 					paleoData, paleoConstraints, paleoSlipConstraints));
 		
 		// add nucleation rate plot
-		plots.add(buildNuclRatePlot(meta, faultSects, faultName, emptySectFuncs, xLabel, legendRelX,
-				targetNucleation ? targetSectRates : null, targetNucleation ? targetSectRateStdDevs : null));
+		if (meta.hasPrimarySol() || (targetNucleation && targetSectRates != null))
+			plots.add(buildNuclRatePlot(meta, faultSects, faultName, emptySectFuncs, xLabel, legendRelX,
+					targetNucleation ? targetSectRates : null, targetNucleation ? targetSectRateStdDevs : null));
 		
 		if (rupSet.hasModule(SlipAlongRuptureModel.class) && rupSet.hasModule(AveSlipModule.class))
-			plots.add(buildSlipRatePlot(meta, faultSects, faultName, emptySectFuncs, xLabel, legendRelX));
+			plots.add(buildSlipRatePlot(meta, faultSects, faultName, emptySectFuncs, xLabel, legendRelX, true));
+		
+		boolean doReductions = false;
+		for (FaultSection sect : faultSects) {
+			doReductions = doReductions || sect.getCouplingCoeff() != 1d;
+			// common defaults
+			doReductions = doReductions || (sect.getAseismicSlipFactor() != 0d && sect.getAseismicSlipFactor() != 0.1d);
+		}
+		if (doReductions)
+			plots.add(buildSlipRateReductionPlot(meta, faultSects, faultName, emptySectFuncs, xLabel, legendRelX));
 		
 		List<String> lines = new ArrayList<>();
 		
@@ -1428,7 +1443,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 
 		lines.add("![Along-strike plot]("+outputDir.getName()+"/"+prefix+".png)");
 		
-		if (meta.primary.rupSet.hasModule(AveSlipModule.class)) {
+		if (meta.primary.rupSet.hasModule(AveSlipModule.class) && meta.hasPrimarySol()) {
 			lines.add("### Moment-Rates and b-Values");
 			lines.add(topLink); lines.add("");
 			
@@ -1446,7 +1461,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return lines;
 	}
 	
-	private static void writeAlongStrikePlots(File outputDir, String prefix, List<AlongStrikePlot> plots,
+	static void writeAlongStrikePlots(File outputDir, String prefix, List<AlongStrikePlot> plots,
 			Map<Integer, List<FaultSection>> parentsMap, boolean latX, String xLabel, Range xRange, String faultName)
 					throws IOException {
 		List<PlotSpec> specs = new ArrayList<>();
@@ -1593,7 +1608,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		PlotUtils.writePlots(outputDir, prefix, gp, width, height, true, true, false);
 	}
 	
-	private static class AlongStrikePlot {
+	static class AlongStrikePlot {
 		
 		private PlotSpec spec;
 		private List<XY_DataSet> funcs;
@@ -1693,7 +1708,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, compThickness, TARGET_COLOR));
 				
 				if (targetRateStdDevs != null && targetRateStdDevs[sect.getSectionId()] > 0) {
-					UncertainArbDiscFunc uncertFunc = ucertCopyAtY(emptyFunc, targetRates[sect.getSectionId()],
+					UncertainArbDiscFunc uncertFunc = uncertCopyAtY(emptyFunc, targetRates[sect.getSectionId()],
 							targetRateStdDevs[sect.getSectionId()]);
 
 					if (first)
@@ -1724,22 +1739,24 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				}
 			}
 
-			for (int m=0; m<minMags.size(); m++) {
-				double myMinMag = minMags.get(m);
+			if (meta.hasPrimarySol()) {
+				for (int m=0; m<minMags.size(); m++) {
+					double myMinMag = minMags.get(m);
 
-				double rate = rateAbove(myMinMag, sect.getSectionId(), meta.primary.sol);
-				XY_DataSet rateFunc = copyAtY(emptyFunc, rate);
-				if (first) {
-					if (comp && m == 0)
-						rateFunc.setName("Primary "+magLabels.get(m));
-					else
-						rateFunc.setName(magLabels.get(m));
+					double rate = rateAbove(myMinMag, sect.getSectionId(), meta.primary.sol);
+					XY_DataSet rateFunc = copyAtY(emptyFunc, rate);
+					if (first) {
+						if (comp && m == 0)
+							rateFunc.setName("Primary "+magLabels.get(m));
+						else
+							rateFunc.setName(magLabels.get(m));
+					}
+
+					PlotLineType line = magLines.get(m);
+
+					funcs.add(rateFunc);
+					chars.add(new PlotCurveCharacterstics(line, primaryThickness, MAIN_COLOR));
 				}
-
-				PlotLineType line = magLines.get(m);
-
-				funcs.add(rateFunc);
-				chars.add(new PlotCurveCharacterstics(line, primaryThickness, MAIN_COLOR));
 			}
 
 			first = false;
@@ -1905,7 +1922,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, compThickness, TARGET_COLOR));
 				
 				if (targetRateStdDevs != null && targetRateStdDevs[sect.getSectionId()] > 0) {
-					UncertainArbDiscFunc uncertFunc = ucertCopyAtY(emptyFunc, targetRates[sect.getSectionId()],
+					UncertainArbDiscFunc uncertFunc = uncertCopyAtY(emptyFunc, targetRates[sect.getSectionId()],
 							targetRateStdDevs[sect.getSectionId()]);
 
 					if (first)
@@ -1926,17 +1943,19 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, compThickness, COMP_COLOR));
 			}
 
-			double rate = nuclRateAbove(0d, sect.getSectionId(), meta.primary.sol);
-			XY_DataSet rateFunc = copyAtY(emptyFunc, rate);
-			if (first) {
-				if (comp)
-					rateFunc.setName("Primary Nucleation");
-				else
-					rateFunc.setName("Solution Nucleation");
-			}
+			if (meta.hasPrimarySol()) {
+				double rate = nuclRateAbove(0d, sect.getSectionId(), meta.primary.sol);
+				XY_DataSet rateFunc = copyAtY(emptyFunc, rate);
+				if (first) {
+					if (comp)
+						rateFunc.setName("Primary Nucleation");
+					else
+						rateFunc.setName("Solution Nucleation");
+				}
 
-			funcs.add(rateFunc);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, primaryThickness, MAIN_COLOR));
+				funcs.add(rateFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, primaryThickness, MAIN_COLOR));
+			}
 
 			first = false;
 		}
@@ -1945,8 +1964,58 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return new AlongStrikePlot(nuclRateSpec, funcs, chars, yRange(funcs, new Range(1e-5, 1e-4), new Range(1e-9, 1e0), 5), true);
 	}
 	
-	private static AlongStrikePlot buildSlipRatePlot(ReportMetadata meta, List<FaultSection> faultSects,
+	static AlongStrikePlot buildSlipRateReductionPlot(ReportMetadata meta, List<FaultSection> faultSects,
 			String faultName, List<XY_DataSet> emptySectFuncs, String xLabel, double legendRelX) {
+		List<XY_DataSet> funcs = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		PlotCurveCharacterstics creepRedChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.RED.darker());
+		PlotCurveCharacterstics aseisChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.GREEN.darker());
+		PlotCurveCharacterstics couplingChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLUE.darker());
+		
+		for (int s=0; s<faultSects.size(); s++) {
+			FaultSection sect = faultSects.get(s);
+			boolean first = funcs.isEmpty();
+			
+			double origSlipRate = sect.getOrigAveSlipRate();
+			
+			double creepRed;
+			if (origSlipRate <= 0d || !Double.isFinite(origSlipRate)) {
+				creepRed = 1d;
+			} else {
+				double reducedSlip = sect.getReducedAveSlipRate();
+				creepRed = (origSlipRate - reducedSlip)/origSlipRate;
+			}
+			
+			double aseis = sect.getAseismicSlipFactor();
+			double coupling = sect.getCouplingCoeff();
+			
+			XY_DataSet emptyFunc = emptySectFuncs.get(s);
+			
+			funcs.add(SectBySectDetailPlots.copyAtY(emptyFunc, creepRed));
+			chars.add(creepRedChar);
+			if (first)
+				funcs.get(funcs.size()-1).setName("Fractional Creep Reduction");
+			
+			funcs.add(SectBySectDetailPlots.copyAtY(emptyFunc, aseis));
+			chars.add(aseisChar);
+			if (first)
+				funcs.get(funcs.size()-1).setName("Aseismic Slip Factor");
+			
+			funcs.add(SectBySectDetailPlots.copyAtY(emptyFunc, coupling));
+			chars.add(couplingChar);
+			if (first)
+				funcs.get(funcs.size()-1).setName("Coupling Coefficient");
+		}
+		
+		PlotSpec spec = new PlotSpec(funcs, chars, faultName, xLabel, "Creep Reduction");
+		// legend at bottom
+		spec.setLegendInset(RectangleAnchor.BOTTOM_LEFT, legendRelX, 0.025, 0.95, false);
+		return new AlongStrikePlot(spec, funcs, chars, new Range(0d, 1d), false);
+	}
+	
+	static AlongStrikePlot buildSlipRatePlot(ReportMetadata meta, List<FaultSection> faultSects,
+			String faultName, List<XY_DataSet> emptySectFuncs, String xLabel, double legendRelX, boolean logY) {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
@@ -1957,16 +2026,50 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		SectSlipRates slipRates = rupSet.getModule(SectSlipRates.class);
 		
-		double[] solSlipRates = sectSolSlipRates(meta.primary.sol, faultSects);
+		double[] solSlipRates = null;
+		if (meta.hasPrimarySol() && meta.primary.rupSet.hasModule(AveSlipModule.class) && meta.primary.rupSet.hasModule(SlipAlongRuptureModel.class))
+			solSlipRates = sectSolSlipRates(meta.primary.sol, faultSects);
 		double[] compSolSlipRates = comp ? sectSolSlipRates(meta.comparison.sol, faultSects) : null;
 		
 		double avgTarget = 0d;
 		
+		PlotCurveCharacterstics origSlipChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK.darker());
+		PlotCurveCharacterstics reducedSlipChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.GRAY.darker());
+		PlotCurveCharacterstics creepRateChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.ORANGE.darker());
+		
 		for (int s=0; s<faultSects.size(); s++) {
 			XY_DataSet emptyFunc = emptySectFuncs.get(s);
 			
+			FaultSection sect = faultSects.get(s);
+			
+			if (sect instanceof GeoJSONFaultSection) {
+				GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
+				double creepRate = geoSect.getProperty("CreepRate", Double.NaN);
+				if (Double.isFinite(creepRate)) {
+					XY_DataSet creepFunc = copyAtY(emptyFunc, creepRate);
+					if (s == 0)
+						creepFunc.setName("Creep Rate");
+					funcs.add(creepFunc);
+					chars.add(creepRateChar);
+				}
+			}
+			
+			double origSlip = sect.getOrigAveSlipRate();
+			XY_DataSet origFunc = copyAtY(emptyFunc, origSlip);
+			if (s == 0)
+				origFunc.setName("Original");
+			funcs.add(origFunc);
+			chars.add(origSlipChar);
+			
+			double reducedSlip = sect.getReducedAveSlipRate();
+			XY_DataSet reducedFunc = copyAtY(emptyFunc, reducedSlip);
+			if (s == 0)
+				reducedFunc.setName("Creep Reduced");
+			funcs.add(reducedFunc);
+			chars.add(reducedSlipChar);
+			
 			if (slipRates != null) {
-				double targetSlip = slipRates.getSlipRate(faultSects.get(s).getSectionId())*1e3;
+				double targetSlip = slipRates.getSlipRate(sect.getSectionId())*1e3;
 				XY_DataSet targetFunc = copyAtY(emptyFunc, targetSlip);
 				if (s == 0)
 					targetFunc.setName("Target");
@@ -1974,10 +2077,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				funcs.add(targetFunc);
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, TARGET_COLOR));
 				
-				double stdDev = slipRates.getSlipRateStdDev(faultSects.get(s).getSectionId())*1e3;
+				double stdDev = slipRates.getSlipRateStdDev(sect.getSectionId())*1e3;
 				
 				if (stdDev > 0d) {
-					UncertainArbDiscFunc uncertFunc = ucertCopyAtY(emptyFunc, targetSlip, stdDev);
+					UncertainArbDiscFunc uncertFunc = uncertCopyAtY(emptyFunc, targetSlip, stdDev);
 
 					if (s == 0)
 						uncertFunc.setName("+/- σ");
@@ -1987,8 +2090,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				}
 				
 				avgTarget += targetSlip;
-			} else {
+			} else if (solSlipRates != null) {
 				avgTarget += solSlipRates[s];
+			} else {
+				avgTarget += reducedSlip;
 			}
 			
 			if (comp) {
@@ -2000,27 +2105,51 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, COMP_COLOR.darker()));
 			}
 			
-			XY_DataSet solFunc = copyAtY(emptyFunc, solSlipRates[s]*1e3);
-			if (s == 0)
-				solFunc.setName("Solution");
-			
-			funcs.add(solFunc);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.MAGENTA.darker()));
+			if (solSlipRates != null) {
+				XY_DataSet solFunc = copyAtY(emptyFunc, solSlipRates[s]*1e3);
+				if (s == 0)
+					solFunc.setName("Solution");
+				
+				funcs.add(solFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.MAGENTA.darker()));
+			}
 		}
 		avgTarget /= faultSects.size();
 		
 		PlotSpec slipRateSpec = new PlotSpec(funcs, chars, faultName, xLabel, "Slip Rate (mm/yr)");
 		// legend at bottom
-		if (slipRates != null)
-			slipRateSpec.setLegendInset(RectangleAnchor.BOTTOM_LEFT, legendRelX, 0.025, 0.95, false);
-		Range defaultSlipRange;
-		if (avgTarget > 1d)
-			defaultSlipRange = new Range(1e0, 1e1);
-		else if (avgTarget > 0.1)
-			defaultSlipRange = new Range(1e-1, 1e0);
-		else
-			defaultSlipRange = new Range(1e-2, 1e-1);
-		return new AlongStrikePlot(slipRateSpec, funcs, chars, yRange(funcs, defaultSlipRange, new Range(1e-5, 1e2), 3), true);
+		slipRateSpec.setLegendInset(RectangleAnchor.BOTTOM_LEFT, legendRelX, 0.025, 0.95, false);
+		Range yRange;
+		if (logY) {
+			Range defaultSlipRange;
+			if (avgTarget > 1d)
+				defaultSlipRange = new Range(1e0, 1e1);
+			else if (avgTarget > 0.1)
+				defaultSlipRange = new Range(1e-1, 1e0);
+			else
+				defaultSlipRange = new Range(1e-2, 1e-1);
+			yRange = yRange(funcs, defaultSlipRange, new Range(1e-5, 1e2), 3);
+		} else {
+			double minSlip = Double.POSITIVE_INFINITY;
+			double maxSlip = Double.NEGATIVE_INFINITY;
+			for (XY_DataSet func : funcs) {
+				minSlip = Math.min(minSlip, func.getMinY());
+				maxSlip = Math.max(maxSlip, func.getMaxY());
+			}
+			double delta;
+			if (maxSlip > 20d)
+				delta = 10d;
+			else if (maxSlip > 10d)
+				delta = 5d;
+			else
+				delta = 1d;
+			maxSlip = Math.max(1d, Math.ceil(maxSlip/delta)*delta);
+			minSlip = Math.floor(minSlip/delta)*delta;
+			if (minSlip < 5d)
+				minSlip = 0d;
+			yRange = new Range(minSlip, maxSlip);
+		}
+		return new AlongStrikePlot(slipRateSpec, funcs, chars, yRange, logY);
 	}
 	
 	private static AlongStrikePlot buildMoRatePlot(ReportMetadata meta, List<FaultSection> faultSects,
@@ -2242,14 +2371,14 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return rates;
 	}
 	
-	private static XY_DataSet copyAtY(XY_DataSet func, double y) {
+	static XY_DataSet copyAtY(XY_DataSet func, double y) {
 		DefaultXY_DataSet ret = new DefaultXY_DataSet();
 		for (Point2D pt : func)
 			ret.set(pt.getX(), y);
 		return ret;
 	}
 	
-	private static UncertainArbDiscFunc ucertCopyAtY(XY_DataSet func, double y, double stdDev) {
+	static UncertainArbDiscFunc uncertCopyAtY(XY_DataSet func, double y, double stdDev) {
 		ArbitrarilyDiscretizedFunc middleFunc = new ArbitrarilyDiscretizedFunc();
 		for (Point2D pt : func)
 			middleFunc.set(pt.getX(), y);

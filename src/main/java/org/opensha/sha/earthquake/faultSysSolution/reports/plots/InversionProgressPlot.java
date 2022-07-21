@@ -344,10 +344,12 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 						List<InversionMisfitStats> compStatsList = compMisfitProgress.getStats();
 						
 						ArbitrarilyDiscretizedFunc compAvgFunc = new ArbitrarilyDiscretizedFunc();
-						ArbitrarilyDiscretizedFunc compTargetFunc = quantity == targetQuantity ? new ArbitrarilyDiscretizedFunc() : null;
+						ArbitrarilyDiscretizedFunc compTargetFunc =
+								quantity == compMisfitProgress.getTargetQuantity() ? new ArbitrarilyDiscretizedFunc() : null;
 						boolean targetDiffers = false;
 						
 						List<Long> compIters = compMisfitProgress.getIterations();
+						List<Double> compTargets = compMisfitProgress.getTargetVals();
 						for (int i=0; i<compIters.size(); i++) {
 							long iter = compIters.get(i);
 							InversionMisfitStats stats = compStatsList.get(i);
@@ -364,7 +366,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 							avgVal /= stats.getStats().size();
 							compAvgFunc.set((double)iter, avgVal);
 							if (compTargetFunc != null) {
-								double targetVal = targetVals.get(i);
+								double targetVal = compTargets.get(i);
 								compTargetFunc.set((double)iter, targetVal);
 								targetDiffers = targetDiffers || (float)targetVal != (float)avgVal;
 							}
