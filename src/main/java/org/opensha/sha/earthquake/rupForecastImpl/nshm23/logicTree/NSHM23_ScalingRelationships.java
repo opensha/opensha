@@ -99,6 +99,35 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 			// eqn 16
 			return (deltaSigma/FaultMomentCalc.SHEAR_MODULUS)*1d/(7d/(3d*length) + 1d/(2d*width));
 		}
+	},
+	AVERAGE("NSHM23 Average", "NSHM23_Avg", 0d) {
+		@Override
+		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
+			double sum = 0d;
+			double sumWeights = 0d;
+			for (NSHM23_ScalingRelationships scale : values()) {
+				double weight = scale.weight;
+				if (weight > 0d && scale != this) {
+					sum += scale.getMag(area, length, width, origWidth, aveRake)*weight;
+					sumWeights += weight;
+				}
+			}
+			return sum/sumWeights;
+		}
+
+		@Override
+		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
+			double sum = 0d;
+			double sumWeights = 0d;
+			for (NSHM23_ScalingRelationships scale : values()) {
+				double weight = scale.weight;
+				if (weight > 0d && scale != this) {
+					sum += scale.getAveSlip(area, length, width, origWidth, aveRake)*weight;
+					sumWeights += weight;
+				}
+			}
+			return sum/sumWeights;
+		}
 	};
 	
 	public static boolean USE_ORIG_WIDTHS = false;

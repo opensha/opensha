@@ -160,7 +160,7 @@ public class MinisectionMappings {
 	}
 	
 	public int getNumMinisectionsForParent(int parentID) {
-		return sectsByID.get(parentID).getFaultTrace().size();
+		return sectsByID.get(parentID).getFaultTrace().size()-1;
 	}
 	
 	/**
@@ -387,27 +387,29 @@ public class MinisectionMappings {
 			return false;
 		}
 		
-		Location traceLoc1 = trace.get(record.minisectionID);
-		Location traceLoc2 = trace.get(record.minisectionID+1);
-		
-		double dist1 = LocationUtils.horzDistanceFast(traceLoc1, record.startLoc);
-		double dist2 = LocationUtils.horzDistanceFast(traceLoc2, record.endLoc);
-		if (dist1 > GEODETIC_LOC_WARN_TOL || dist2 > GEODETIC_LOC_WARN_TOL) {
-			String error = id+". "+name+". Trace/minisection location mismatch for minisection "+record.minisectionID+":";
-			error += "\n\tStart loc: ["+(float)traceLoc1.getLatitude()+", "+(float)traceLoc1.getLongitude()
-				+"] vs ["+(float)record.startLoc.getLatitude()+", "+(float)record.startLoc.getLongitude()
-				+"], dist="+(float)dist1+" km";
-			error += "\n\tEnd loc: ["+(float)traceLoc2.getLatitude()+", "+(float)traceLoc2.getLongitude()
-				+"] vs ["+(float)record.endLoc.getLatitude()+", "+(float)record.endLoc.getLongitude()
-				+"], dist="+(float)dist2+" km";
-			if (dist1 > GEODETIC_LOC_ERR_TOL || dist2 > GEODETIC_LOC_ERR_TOL) {
-				if (failOnInvalid)
-					throw new IllegalStateException(error);
-				if (verbose)
+		if (record.startLoc != null || record.endLoc != null) {
+			Location traceLoc1 = trace.get(record.minisectionID);
+			Location traceLoc2 = trace.get(record.minisectionID+1);
+			
+			double dist1 = record.startLoc == null ? Double.NaN : LocationUtils.horzDistanceFast(traceLoc1, record.startLoc);
+			double dist2 = record.endLoc == null ? Double.NaN : LocationUtils.horzDistanceFast(traceLoc2, record.endLoc);
+			if (dist1 > GEODETIC_LOC_WARN_TOL || dist2 > GEODETIC_LOC_WARN_TOL) {
+				String error = id+". "+name+". Trace/minisection location mismatch for minisection "+record.minisectionID+":";
+				error += "\n\tStart loc: ["+(float)traceLoc1.getLatitude()+", "+(float)traceLoc1.getLongitude()
+					+"] vs ["+(float)record.startLoc.getLatitude()+", "+(float)record.startLoc.getLongitude()
+					+"], dist="+(float)dist1+" km";
+				error += "\n\tEnd loc: ["+(float)traceLoc2.getLatitude()+", "+(float)traceLoc2.getLongitude()
+					+"] vs ["+(float)record.endLoc.getLatitude()+", "+(float)record.endLoc.getLongitude()
+					+"], dist="+(float)dist2+" km";
+				if (dist1 > GEODETIC_LOC_ERR_TOL || dist2 > GEODETIC_LOC_ERR_TOL) {
+					if (failOnInvalid)
+						throw new IllegalStateException(error);
+					if (verbose)
+						System.err.println("WARNING: "+error);
+					return false;
+				} else if (verbose) {
 					System.err.println("WARNING: "+error);
-				return false;
-			} else if (verbose) {
-				System.err.println("WARNING: "+error);
+				}
 			}
 		}
 		
