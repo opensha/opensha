@@ -23,6 +23,14 @@ public enum RupturePlausibilityModels implements LogicTreeNode {
 			return new SimpleAzimuthalRupSetConfig(subSects, scale);
 		}
 	},
+	AZIMUTHAL_REDUCED("Simple Azimuthal, Reduced", "AzRed", 1d) { // for now
+		@Override
+		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			SimpleAzimuthalRupSetConfig config = new SimpleAzimuthalRupSetConfig(subSects, scale);
+			config.setAdaptiveSectFract(0.1f);
+			return config;
+		}
+	},
 	SEGMENTED("Fully Segmented", "FullSeg", 1d) { // for now
 		@Override
 		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {

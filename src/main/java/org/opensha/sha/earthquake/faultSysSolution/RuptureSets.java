@@ -267,6 +267,10 @@ public class RuptureSets {
 		public void setMinSectsPerParent(int minSectsPerParent) {
 			this.minSectsPerParent = minSectsPerParent;
 		}
+
+		public void setAdaptiveSectFract(float adaptiveSectFract) {
+			this.adaptiveSectFract = adaptiveSectFract;
+		}
 		
 	}
 	
