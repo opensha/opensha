@@ -511,6 +511,41 @@ public class Geometry {
 	}
 	
 	private static void parseCoordsRecursive(JsonReader in, Coordinates coords) throws IOException {
+		doParseCoordsRecursive(in, coords);
+		
+		// now post process to validate longitudes, shifting if necessary
+
+		// check longitudes
+		LonRange range = new LonRange();
+		lonRangeRecursive(coords, range);
+		double span = range.max - range.min;
+		if (range.min < -180d || range.max > 360d) {
+			if (span > 360d) {
+				System.err.println("WARNING loading GeoJSON coordinates: longitudes range outside of [-180, 360] and can't "
+						+ "correct because span is > 360: ["+(float)range.min+", "+(float)range.max+"]");
+			} else {
+				double delta = 0d;
+				if (range.min < -180d) {
+					double min = range.min;
+					while (min < -180d) {
+						delta += 360;
+						min = range.min + delta;
+					}
+				} else {
+					double max = range.max;
+					while (max > 360d) {
+						delta -= 360;
+						max = range.max + delta;
+					}
+				}
+				System.err.println("WARNING loading GeoJSON coordinates: longitudes range outside of [-180, 360], "
+						+ "shifting by "+(float)delta+" degrees. Original range: ["+(float)range.min+", "+(float)range.max+"]");
+				coordLonShiftRecursive(coords, delta);
+			}
+		}
+	}
+	
+	private static void doParseCoordsRecursive(JsonReader in, Coordinates coords) throws IOException {
 		if (in.peek() == JsonToken.NULL)
 			return;
 		in.beginArray();
@@ -522,13 +557,37 @@ public class Geometry {
 			while (in.hasNext()) {
 				Coordinates subCoords = new Coordinates(coords.depthType);
 				coords.coords.add(subCoords);
-				parseCoordsRecursive(in, subCoords);
+				doParseCoordsRecursive(in, subCoords);
 			}
 		} else {
 			coords.location = deserializeLocWithinArray(in);
 		}
 		
 		in.endArray();
+	}
+	
+	private static void lonRangeRecursive(Coordinates coords, LonRange range) {
+		if (coords.location != null) {
+			double lon = coords.location[0];
+			range.min = Math.min(lon, range.min);
+			range.max = Math.max(lon, range.max);
+		}
+		if (coords.coords != null)
+			for (Coordinates subCoords : coords.coords)
+				lonRangeRecursive(subCoords, range);
+	}
+	
+	private static class LonRange {
+		double min = Double.POSITIVE_INFINITY;
+		double max = Double.NEGATIVE_INFINITY;
+	}
+	
+	private static void coordLonShiftRecursive(Coordinates coords, double delta) {
+		if (coords.location != null)
+			coords.location[0] += delta;
+		if (coords.coords != null)
+			for (Coordinates subCoords : coords.coords)
+				coordLonShiftRecursive(subCoords, delta);
 	}
 	
 	/**
@@ -624,8 +683,9 @@ public class Geometry {
 	
 	private static LocationList deserializePoints(List<Coordinates> coords) {
 		LocationList points = new LocationList();
-		if (coords == null)
+		if (coords == null || coords.isEmpty())
 			return points;
+		
 		for (Coordinates subCoords : coords) {
 			Preconditions.checkState(subCoords.coords == null);
 			points.add(subCoords.toLoc());
