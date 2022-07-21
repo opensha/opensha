@@ -3,6 +3,7 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -14,6 +15,7 @@ import java.util.zip.ZipFile;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.IntegerSampler;
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureProperties;
@@ -60,6 +62,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_PaleoDataLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels.HardDistCutoffJumpProbCalc;
@@ -103,6 +106,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	// minimum MFD uncertainty
 	public static double MFD_MIN_FRACT_UNCERT = 0.05;
 	
+	public static double MIN_MAG_FOR_SEISMOGENIC_RUPS = 6d;
+	
 	protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
 		RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
@@ -130,16 +135,56 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		RupSetConfig config = model.getConfig(subSects, scale);
 		
+		File cachedRupSetFile = null;
 		if (cacheDir != null) {
 			File subDir = new File(cacheDir, "rup_sets_"+fm.getFilePrefix()+"_"+dm.getFilePrefix());
 			if (!subDir.exists())
 				subDir.mkdir();
+			int numLocs = 0;
+			for (FaultSection sect : subSects)
+				numLocs += sect.getFaultTrace().size();
+			String rupSetFileName = "rup_set_"+model.getFilePrefix()+"_"+subSects.size()+"_sects_"+numLocs+"_trace_locs.zip";
+			cachedRupSetFile = new File(subDir, rupSetFileName);
 			config.setCacheDir(subDir);
 		}
 		config.setAutoCache(autoCache);
 		
-		rupSet = config.build(threads);
+		if (cachedRupSetFile != null && cachedRupSetFile.exists()) {
+			try {
+				rupSet = FaultSystemRupSet.load(cachedRupSetFile);
+				if (!rupSet.areSectionsEquivalentTo(subSects))
+					rupSet = null;
+			} catch (Exception e) {
+				e.printStackTrace();
+				rupSet = null;
+			}
+		}
+		
+		if (rupSet == null)
+			rupSet = config.build(threads);
 		rupSetCache.put(fm, model, rupSet);
+		
+		if (!cachedRupSetFile.exists()) {
+			// see if we should write it
+			
+			boolean write = true;
+			try {
+				int mpiRank = mpi.MPI.COMM_WORLD.Rank();
+				// if we made it this far, this is an MPI job. make sure we're rank 0
+				write = mpiRank == 0;
+			} catch (Throwable e) {
+				// will throw if MPI not on classpath, ignore
+			}
+			
+			if (write && !cachedRupSetFile.exists()) {
+				// still doesn't exist, write it
+				try {
+					rupSet.write(cachedRupSetFile);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
 		
 		return rupSet;
 	}
@@ -257,7 +302,6 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				
 			if (fm == FaultModels.FM2_1 || fm == FaultModels.FM3_1 || fm == FaultModels.FM3_2) {
 				// include the UERF3 parkfield hack for modified section min mags
-				// TODO will need a similar parkfield hack for NSHM23 fault models?
 				rupSet.offerAvailableModule(new Callable<ModSectMinMags>() {
 
 					@Override
@@ -280,7 +324,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 						return FaultPolyMgr.create(rupSet.getFaultSectionDataList(), U3InversionTargetMFDs.FAULT_BUFFER);
 					}
 				}, PolygonFaultGridAssociations.class);
-				// add paleoseismic data TODO: U3 for now
+				// add paleoseismic data
 				rupSet.offerAvailableModule(new Callable<PaleoseismicConstraintData>() {
 
 					@Override
@@ -289,13 +333,59 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					}
 				}, PaleoseismicConstraintData.class);
 			} else {
+				// NSHM23 paleo data
+				rupSet.offerAvailableModule(new Callable<PaleoseismicConstraintData>() {
+
+					@Override
+					public PaleoseismicConstraintData call() throws Exception {
+						return NSHM23_PaleoDataLoader.load(rupSet);
+					}
+				}, PaleoseismicConstraintData.class);
+				
 				// regular system-wide minimum magnitudes
 				rupSet.offerAvailableModule(new Callable<ModSectMinMags>() {
 
 					@Override
 					public ModSectMinMags call() throws Exception {
-						// TODO revisit
-						return ModSectMinMags.above(rupSet, InversionFaultSystemRupSet.MIN_MAG_FOR_SEISMOGENIC_RUPS, true);
+						ModSectMinMags minMags = ModSectMinMags.above(rupSet, MIN_MAG_FOR_SEISMOGENIC_RUPS, true);
+						// modify for parkfield if needed
+						List<Integer> parkRups = NSHM23_ConstraintBuilder.findParkfieldRups(rupSet);
+						if (parkRups != null && !parkRups.isEmpty()) {
+							EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(rupSet);
+							int minParkBin = -1;
+							double minParkMag = Double.POSITIVE_INFINITY;
+							for (int parkRup : parkRups) {
+								if (minMags.isRupBelowSectMinMag(parkRup, refMFD)) {
+									double mag = rupSet.getMagForRup(parkRup);
+									int bin = refMFD.getClosestXIndex(mag);
+									if (minParkBin < 0)
+										minParkBin = bin;
+									else
+										minParkBin = Integer.min(minParkBin, bin);
+									minParkMag = Math.min(minParkMag, mag);
+								}
+							}
+							if (minParkBin >= 0) {
+								// we have parkfield ruptures that would have been excluded
+								double[] array = Arrays.copyOf(minMags.getMinMagForSections(), rupSet.getNumSections());
+								int parkfieldID = FaultSectionUtils.findParentSectionID(
+										rupSet.getFaultSectionDataList(), "San", "Andreas", "Parkfield");
+								Preconditions.checkState(parkfieldID >= 0);
+								// position the minimum magnitude at the start of the magnitude bin
+								double parkMinMag = Math.min(minParkMag, refMFD.getX(minParkBin));
+								int numModified = 0;
+								for (int s=0; s<array.length; s++) {
+									if (rupSet.getFaultSectionData(s).getParentSectionId() == parkfieldID) {
+										array[s] = parkMinMag;
+										numModified++;
+									}
+								}
+								System.out.println("Modified SectMinMag for "+numModified+" Parkfield sections to "+(float)parkMinMag);
+								Preconditions.checkState(numModified > 0, "Parkfield sections not found?");
+								minMags = ModSectMinMags.instance(rupSet, array);
+							}
+						}
+						return minMags;
 					}
 				}, ModSectMinMags.class);
 			}
@@ -418,6 +508,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			
 			RupsThroughCreepingSect rupsThroughCreep = branch.getValue(RupsThroughCreepingSect.class);
 			if (rupsThroughCreep != null && rupsThroughCreep.isExclude() && constrBuilder.rupSetHasCreepingSection())
+				// this sets the binary exclusion model, which will remove them from target MFD calculations
 				constrBuilder.excludeRupturesThroughCreeping();
 		}
 		
@@ -434,7 +525,6 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	private static JumpProbabilityCalc buildSegModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		SegmentationModels segModel = branch.getValue(SegmentationModels.class);
 		JumpProbabilityCalc jumpProb = segModel == null ? null : segModel.getModel(rupSet, branch);
-		// TODO creeping section
 		return jumpProb;
 	}
 
@@ -462,8 +552,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		boolean hasPaleoData = rupSet.hasModule(PaleoseismicConstraintData.class);
 		
 		double slipWeight = 1d;
-		double paleoWeight = fm instanceof FaultModels && hasPaleoData ? 5 : 0; // TODO
-		double parkWeight = fm instanceof FaultModels && constrBuilder.rupSetHasParkfield() ? 10 : 0; // TODO
+		double paleoWeight = hasPaleoData ? 5 : 0;
+		double parkWeight = constrBuilder.rupSetHasParkfield() ? 10 : 0;
 		double mfdWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 1 : 10;
 		double nuclWeight = constrModel == SubSectConstraintModels.TOT_NUCL_RATE ? 0.5 : 0d;
 		double nuclMFDWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 0.5 : 0d;
