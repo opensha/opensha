@@ -121,6 +121,8 @@ public class RupSetMapMaker {
 	private Collection<FaultSection> highlightSections;
 	private PlotCurveCharacterstics highlightTraceChar;
 	
+	private boolean reverseSort = false;
+	
 	/*
 	 * Caches
 	 */
@@ -212,8 +214,16 @@ public class RupSetMapMaker {
 		this.writeGeoJSON = writeGeoJSON;
 	}
 
-	public void setFillSurfaces(boolean fillSurfaces){
+	public void setFillSurfaces(boolean fillSurfaces) {
 		this.fillSurfaces = fillSurfaces;
+	}
+	
+	public void setReverseSort(boolean reverseSort) { 
+		this.reverseSort = reverseSort;
+	}
+	
+	public boolean isReverseSort() {
+		return reverseSort;
 	}
 	
 	public void plotSectScalars(List<Double> scalars, CPT cpt, String label) {
@@ -471,6 +481,8 @@ public class RupSetMapMaker {
 			for (int s=0; s<scalars.length; s++)
 				sortables.add(new ComparablePairing<>(scalars[s], subSects.get(s)));
 			Collections.sort(sortables);
+			if (reverseSort)
+				Collections.reverse(sortables);
 			for (ComparablePairing<Double, FaultSection> val : sortables) {
 				float scalar = val.getComparable().floatValue();
 				Color color = scalarCPT.getColor(scalar);
@@ -626,6 +638,8 @@ public class RupSetMapMaker {
 				}
 			}
 			Collections.sort(sortables);
+			if (reverseSort)
+				Collections.reverse(sortables);
 			for (ComparablePairing<Double, XY_DataSet> val : sortables) {
 				float scalar = val.getComparable().floatValue();
 				Color color = scalarJumpsCPT.getColor(scalar);
@@ -668,6 +682,8 @@ public class RupSetMapMaker {
 						outlines.set(xy.get(0));
 				}
 				Collections.sort(sortables);
+				if (reverseSort)
+					Collections.reverse(sortables);
 				for (ComparablePairing<Double, XY_DataSet> val : sortables) {
 					float scalar = val.getComparable().floatValue();
 					Color color = scatterScalarCPT.getColor(scalar);
