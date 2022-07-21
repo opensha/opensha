@@ -344,7 +344,7 @@ public class InversionConfiguration implements SubModule<ModuleContainer<?>>, JS
 			if (config.avgThreads != null) {
 				Preconditions.checkState(config.avgThreads >= 1,
 						"Averaging threads (if enabled) must be >=1: %s", config.avgThreads);
-				Preconditions.checkState(config.avgThreads < config.threads,
+				Preconditions.checkState(config.avgThreads <= config.threads,
 						"The number of averaging threads (%s) must be less than the number of total threads (%s)",
 						config.avgThreads, config.threads);
 				Preconditions.checkNotNull(config.avgCompletion,
