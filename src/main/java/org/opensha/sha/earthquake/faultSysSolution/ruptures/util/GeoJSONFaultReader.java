@@ -184,12 +184,24 @@ public class GeoJSONFaultReader {
 				// no fault for this ID, might be filtered (e.g., by state)
 				continue;
 //			System.out.println("SlipRate prop: "+props.get("SlipRate"));
-			double prefRate = props.getDouble("SlipRate", Double.NaN);
+			double prefRate = props.getDouble("PrefRate", Double.NaN);
 			double lowRate = props.getDouble("LowRate", Double.NaN);
 			double highRate = props.getDouble("HighRate", Double.NaN);
-			String treatment = props.get("Treat", null);
+			String treatment = null;
+			if (props.containsKey("Treat")) {
+				Object treatObj = props.get("Treat");
+				if (treatObj instanceof String)
+					treatment = (String)treatObj;
+			}
 			String rateType = props.get("RateType", null);
-			double stdDev = props.getDouble("SlipRateStdDev", Double.NaN);
+			double stdDev = props.getDouble("StdDev", Double.NaN);
+			
+			String parentName = null;
+			if (props.containsKey("ParentName")) {
+				Object parentObj = props.get("ParentName");
+				if (parentObj instanceof String)
+					parentName = (String)parentObj;
+			}
 			
 			processed.add(id);
 			GeoJSONFaultSection sect = idMapped.get(id);
@@ -235,13 +247,15 @@ public class GeoJSONFaultReader {
 			sect.setProperty("HighRate", highRate);
 			sect.setProperty("LowRate", lowRate);
 			if (treatment == null)
-				sect.setProperty("Treatment", null);
+				sect.getProperties().remove("Treatment");
 			else
 				sect.setProperty("Treatment", treatment);
 			if (rateType == null)
-				sect.setProperty("RateType", null);
+				sect.getProperties().remove("RateType");
 			else
 				sect.setProperty("RateType", rateType);
+			if (parentName != null)
+				sect.setParentSectionName(parentName);
 			
 			if (!Double.isFinite(stdDev)) {
 				numInferred++;
