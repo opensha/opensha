@@ -164,7 +164,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			rupSet = config.build(threads);
 		rupSetCache.put(fm, model, rupSet);
 		
-		if (!cachedRupSetFile.exists()) {
+		if (cachedRupSetFile != null && !cachedRupSetFile.exists()) {
 			// see if we should write it
 			
 			boolean write = true;
