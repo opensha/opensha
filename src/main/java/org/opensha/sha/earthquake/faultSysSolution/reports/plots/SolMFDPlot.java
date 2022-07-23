@@ -47,6 +47,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		return "Solution MFDs";
 	}
 
+	public static final Color OBSERVED_COLOR = Color.PINK.darker();
 	public static final Color SUB_SEIS_TARGET_COLOR = Color.MAGENTA.darker();
 	public static final Color SUPRA_SEIS_TARGET_COLOR = Color.CYAN.darker();
 
@@ -121,6 +122,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		if (rupSet.hasModule(RegionsOfInterest.class)) {
 			RegionsOfInterest roi = rupSet.getModule(RegionsOfInterest.class);
 			List<Region> regions = roi.getRegions();
+			List<IncrementalMagFreqDist> regionMFDs = roi.getMFDs();
 			for (int i=0; i<regions.size(); i++) {
 				Region region = regions.get(i);
 				String name = region.getName();
@@ -138,6 +140,15 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					System.out.println("Skipping duplicate region from ROI list: "+name);
 				} else {
 					MFD_Plot plot = new MFD_Plot(name, region);
+					if (regionMFDs != null) {
+						IncrementalMagFreqDist mfd = regionMFDs.get(i);
+						if (mfd != null) {
+							String mfdName = mfd.getName();
+							if (mfdName == null || mfdName.isBlank() || mfdName.equals(mfd.getDefaultName()))
+								mfdName = "Observed";
+							plot.addComp(mfd, OBSERVED_COLOR, mfdName);
+						}
+					}
 					if (subSeisSectMFDs != null && subSeisSectMFDs.size() == rupSet.getNumSections()) {
 						System.out.println("Looking for subsection sub-seis MFDs in region: "+region.getName());
 						SummedMagFreqDist target = sumSectMFDsInRegion(region, rupSet, subSeisSectMFDs.getAll());
