@@ -104,6 +104,18 @@ public class UncertainIncrMagFreqDist extends IncrementalMagFreqDist implements 
 	}
 
 	@Override
+	public UncertainIncrMagFreqDist deepClone() {
+		return new UncertainIncrMagFreqDist(this, stdDevs.deepClone());
+	}
+
+	@Override
+	public void scale(double val) {
+		super.scale(val);
+		if (stdDevs != null)
+			stdDevs.scale(val);
+	}
+
+	@Override
 	public EvenlyDiscretizedFunc getStdDevs() {
 		return stdDevs;
 	}

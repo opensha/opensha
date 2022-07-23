@@ -94,6 +94,20 @@ public class UncertainBoundedIncrMagFreqDist extends UncertainIncrMagFreqDist im
 		return upperBound;
 	}
 	
+	@Override
+	public UncertainIncrMagFreqDist deepClone() {
+		if (this.stdDevs == null)
+			return new UncertainBoundedIncrMagFreqDist(this, lowerBound.deepClone(), upperBound.deepClone(), boundType);
+		return new UncertainBoundedIncrMagFreqDist(this, lowerBound.deepClone(), upperBound.deepClone(), boundType, stdDevs.deepClone());
+	}
+
+	@Override
+	public void scale(double val) {
+		super.scale(val);
+		lowerBound.scale(val);
+		upperBound.scale(val);
+	}
+
 	public static class Adapter extends GenericAdapter<UncertainBoundedIncrMagFreqDist> {
 
 		@Override
