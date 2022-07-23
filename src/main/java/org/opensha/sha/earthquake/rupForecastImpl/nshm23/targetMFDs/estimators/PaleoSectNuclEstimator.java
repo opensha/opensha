@@ -77,9 +77,13 @@ public abstract class PaleoSectNuclEstimator extends SectNucleationMFD_Estimator
 		for (int i=0; i<3; i++) {
 			IncrementalMagFreqDist testMFD;
 			if (i == 0) {
+				if (moRateBounds.lowerBound <= 0d)
+					continue;
 				testMFD = curSectSupraSeisMFD.deepClone();
 				testMFD.scaleToTotalMomentRate(moRateBounds.lowerBound);
 			} else if (i == 1) {
+				if (sectMomentRate.bestEstimate <= 0d)
+					continue;
 				testMFD = curSectSupraSeisMFD;
 			} else {
 				testMFD = curSectSupraSeisMFD.deepClone();
@@ -92,6 +96,10 @@ public abstract class PaleoSectNuclEstimator extends SectNucleationMFD_Estimator
 				totMoRate = testMFD.getTotalMomentRate();
 			}
 		}
+		
+		Preconditions.checkState(Double.isFinite(totMoRate) && totMoRate > 0d,
+				"Bad moment rate (%s) for sectID=%s with sectMoRate=%s, bounds=%s",
+				totMoRate, sect.getSectionId(), sectMomentRate, moRateBounds);
 		
 		IncrementalMagFreqDist[] closest = new IncrementalMagFreqDist[3];
 		double[] closestDiff = new double[3];
@@ -191,15 +199,31 @@ public abstract class PaleoSectNuclEstimator extends SectNucleationMFD_Estimator
 		
 		List<? extends SectMappedUncertainDataConstraint> rateConstraints = data.getPaleoRateConstraints();
 		
-		if (rateConstraints != null)
-			for (SectMappedUncertainDataConstraint constr : rateConstraints)
-				ret.add(new PaleoRateEstimator(rupSet, constr, applyToParent, data.getPaleoProbModel()));
+		if (rateConstraints != null) {
+			for (SectMappedUncertainDataConstraint constr : rateConstraints) {
+				double slipRate = rupSet.getSlipRateForSection(constr.sectionIndex);
+				double slipRateStdDev = rupSet.getSlipRateStdDevForSection(constr.sectionIndex);
+				if (slipRate > 0d || (slipRate + slipRateStdDev) > 0d)
+					ret.add(new PaleoRateEstimator(rupSet, constr, applyToParent, data.getPaleoProbModel()));
+					else
+						System.err.println("WARNING: skipping paleo rate estimator for section "
+								+constr.sectionIndex+". "+constr.sectionName
+								+", slipRate="+(float)slipRate+", stdDev="+(float)slipRateStdDev);
+			}
+		}
 		
 		List<? extends SectMappedUncertainDataConstraint> slipConstraints = data.getPaleoSlipConstraints();
 		if (slipConstraints != null) {
 			for (SectMappedUncertainDataConstraint constr : PaleoseismicConstraintData.inferRatesFromSlipConstraints(
 					rupSet.requireModule(SectSlipRates.class), slipConstraints, true)) {
-				ret.add(new PaleoSlipRateEstimator(rupSet, constr, applyToParent, data.getPaleoSlipProbModel()));
+				double slipRate = rupSet.getSlipRateForSection(constr.sectionIndex);
+				double slipRateStdDev = rupSet.getSlipRateStdDevForSection(constr.sectionIndex);
+				if (slipRate > 0d || (slipRate + slipRateStdDev) > 0d)
+					ret.add(new PaleoSlipRateEstimator(rupSet, constr, applyToParent, data.getPaleoSlipProbModel()));
+				else
+					System.err.println("WARNING: skipping paleo rate estimator for section "
+							+constr.sectionIndex+". "+constr.sectionName
+							+", slipRate="+(float)slipRate+", stdDev="+(float)slipRateStdDev);
 			}
 		}
 		
