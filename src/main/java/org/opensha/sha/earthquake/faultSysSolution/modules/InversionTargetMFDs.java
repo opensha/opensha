@@ -498,7 +498,7 @@ BranchAverageableModule<InversionTargetMFDs> {
 			};
 		}
 		
-		private static IncrementalMagFreqDist buildSameSize(IncrementalMagFreqDist ref) {
+		static IncrementalMagFreqDist buildSameSize(IncrementalMagFreqDist ref) {
 			IncrementalMagFreqDist ret = new IncrementalMagFreqDist(ref.getMinX(), ref.size(), ref.getDelta());
 			ret.setName(ref.getName());
 			ret.setRegion(ref.getRegion());
@@ -514,7 +514,7 @@ BranchAverageableModule<InversionTargetMFDs> {
 			return ret;
 		}
 		
-		private static IncrementalMagFreqDist averageInWeighted(IncrementalMagFreqDist dest, IncrementalMagFreqDist mfd, String type,
+		static IncrementalMagFreqDist averageInWeighted(IncrementalMagFreqDist dest, IncrementalMagFreqDist mfd, String type,
 				double weight) {
 			if (dest == null || mfd == null) {
 				// make sure both are null
@@ -595,7 +595,7 @@ BranchAverageableModule<InversionTargetMFDs> {
 			return ret;
 		}
 		
-		private static void scaleToTotWeight(EvenlyDiscretizedFunc dest, double totWeight) {
+		static void scaleToTotWeight(EvenlyDiscretizedFunc dest, double totWeight) {
 			if (dest == null)
 				return;
 			double scale = 1d/totWeight;

@@ -306,6 +306,14 @@ public class StandardFaultSysModulesTest {
 		RegionsOfInterest module = new RegionsOfInterest(new CaliforniaRegions.LA_BOX(), new CaliforniaRegions.SF_BOX());
 		
 		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, RegionsOfInterest.class);
+		
+		List<Region> regions = module.getRegions();
+		List<IncrementalMagFreqDist> mfds = new ArrayList<>();
+		for (int i=0; i<regions.size(); i++)
+			mfds.add(fakeMFD());
+		module = new RegionsOfInterest(regions, mfds);
+		
+		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, RegionsOfInterest.class);
 	}
 	
 	@Test
