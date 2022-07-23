@@ -545,10 +545,23 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			}
 		}
 		
+		// make sure that we have at least 1 nonzero slip rate (most likely to happen with cluster-specific inversions)
+		boolean hasNonZeroSlip = false;
+		for (double slipRate : rupSet.requireModule(SectSlipRates.class).getSlipRates()) {
+			if (slipRate > 0d) {
+				hasNonZeroSlip = true;
+				break;
+			}
+		}
+		if (!hasNonZeroSlip) {
+			System.out.println("Warning: skipping inversion for rupture set with "+rupSet.getNumSections()
+					+" sections and "+rupSet.getNumRuptures()+" ruptures, no positive slip rates found");
+			return null;
+		}
+		
 		constrBuilder.adjustForActualRupSlips(adjustForActualRupSlips, adjustForSlipAlong);
 		
 		SubSectConstraintModels constrModel = branch.requireValue(SubSectConstraintModels.class);
-		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
 		boolean hasPaleoData = rupSet.hasModule(PaleoseismicConstraintData.class);
 		
 		double slipWeight = 1d;
