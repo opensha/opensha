@@ -12,6 +12,7 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -53,20 +54,9 @@ public class NSHM23_RegionLoader {
 		List<Region> ret = new ArrayList<>();
 		for (BaseRegion baseReg : regions) {
 			Region region = baseReg.load();
-			if (subSects != null) {
-				boolean contains = false;
-				for (FaultSection sect : subSects) {
-					for (Location loc : sect.getFaultTrace()) {
-						if (region.contains(loc)) {
-							contains = true;
-							break;
-						}
-					}
-				}
-				if (!contains)
-					// skip this region
-					continue;
-			}
+			if (subSects != null && !FaultSectionUtils.anySectInRegion(region, subSects, true))
+				// skip this region
+				continue;
 			ret.add(region);
 		}
 		return ret;
