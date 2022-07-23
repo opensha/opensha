@@ -25,6 +25,8 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Un
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
@@ -280,7 +282,7 @@ public class NSHM23_PaleoDataLoader {
 	}
 
 	public static void main(String[] args) throws IOException {
-		List<GeoJSONFaultSection> subSects = GeoJSONFaultReader.readFaultSections(new File("/tmp/GEOLOGIC_sub_sects.geojson"));
+		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.NSHM23_v1p4);
 		
 		HashSet<FaultSection> mappedSects = new HashSet<>();
 		List<Location> siteLocs = new ArrayList<>();

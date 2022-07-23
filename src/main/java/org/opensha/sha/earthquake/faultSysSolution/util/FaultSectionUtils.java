@@ -2,6 +2,9 @@ package org.opensha.sha.earthquake.faultSysSolution.util;
 
 import java.util.List;
 
+import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.geo.Region;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -78,6 +81,38 @@ public class FaultSectionUtils {
 			}
 		}
 		return matchingID;
+	}
+	
+	/**
+	 * @param region
+	 * @param sects
+	 * @param traceOnly
+	 * @return true if any part of any of the given sections is contained by the given region
+	 */
+	public static boolean anySectInRegion(Region region, List<? extends FaultSection> sects, boolean traceOnly) {
+		for (FaultSection sect : sects)
+			if (sectInRegion(region, sect, traceOnly))
+				return true;
+		return false;
+	}
+	
+	/**
+	 * @param region
+	 * @param sect
+	 * @param traceOnly
+	 * @return true if any part of the given section is contained by the given region
+	 */
+	public static boolean sectInRegion(Region region, FaultSection sect, boolean traceOnly) {
+		for (Location loc : sect.getFaultTrace())
+			if (region.contains(loc))
+				return true;
+		if (!traceOnly) {
+			// check full surface
+			for (Location loc : sect.getFaultSurface(1d).getEvenlyDiscritizedListOfLocsOnSurface())
+				if (region.contains(loc))
+					return true;
+		}
+		return false;
 	}
 
 }
