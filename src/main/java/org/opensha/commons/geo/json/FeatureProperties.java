@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.function.XY_DataSet.XYAdapter;
 import org.opensha.commons.geo.Location;
 
 import com.google.gson.TypeAdapter;
@@ -393,6 +395,8 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		
 	}
 	
+	private static XYAdapter xyAdapter = new XYAdapter();
+	
 	/**
 	 * Serializes the given value to the given JsonWriter, which should already have the name set. Numbers
 	 * are serialized as numbers, nulls as nulls, booleans as booleans, collections as arrays, arrays as arrays,
@@ -413,6 +417,8 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			Geometry.serializeLoc(out, (Location)value, Geometry.DEPTH_SERIALIZATION_DEFAULT, false);
 		} else if (value instanceof Color) {
 			out.value("#"+Integer.toHexString(((Color)value).getRGB()).substring(2));
+		} else if (value instanceof XY_DataSet) {
+			xyAdapter.write(out, (XY_DataSet)value);
 		} else if (value.getClass().isArray()) {
 			Object[] array;
 			if (value.getClass().getComponentType().isPrimitive()) {
@@ -477,9 +483,82 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 				values.add(propDeserializeDefault(in));
 			in.endArray();
 			return values;
+		} else if (token == JsonToken.BEGIN_OBJECT) {
+			// see if it specifies a type first
+			String startPath = in.getPath();
+			
+//			System.out.println("OBJECT at path "+startPath);
+			
+			in.beginObject();
+			
+//			System.out.println("Now inside: "+in.peek()+", "+in.getPath());
+			
+			if (in.hasNext() && in.nextName().equals("type")) {
+				String type = null;
+				try {
+					type = in.nextString();
+					Class<?> typeClass = Class.forName(type);
+					if (XY_DataSet.class.isAssignableFrom(typeClass)) {
+						XY_DataSet ret = new XY_DataSet.XYAdapter().innerReadAsType(in, (Class<? extends XY_DataSet>)typeClass);
+						in.endObject();
+						return ret;
+					}
+				} catch (Throwable t) {
+					System.err.println("WARNING: couldn't deserialize custom FeatureProperties object with type: "
+							+type+", exception: "+t.getMessage());
+				}
+			}
+			skipUntilPastObject(in, startPath);
+			return null;
 		}
 		in.skipValue();
 		return null;
+	}
+	
+	/**
+	 * This will skip all values in the given reader until it reaches END_OBJECT for the given path.
+	 * @param in
+	 * @param startPath
+	 * @throws IOException
+	 */
+	private static void skipUntilPastObject(JsonReader in, String startPath) throws IOException {
+		// this is where it gets tricky. we have descended into the an object
+		// and need to back the reader out
+		final boolean D = false;
+		if (D) System.out.println("Looking to back out to: "+startPath);
+		while (true) {
+			String path = in.getPath();
+			if (D) System.out.println("Path: "+path+"\tequals? "+path.equals(startPath));
+			JsonToken peek = in.peek();
+			if (path.equals(startPath)) {
+				if (peek == JsonToken.BEGIN_OBJECT && path.equals(startPath)) {
+					// phew, we haven't gone in yet. just skip over it
+					if (D) System.out.println("DONE: hadn't yet descended into object, can skip");
+					in.skipValue();
+					break;
+				} else {
+					// we've fully backed out
+					if (D) System.out.println("DONE: exiting with path="+path+" and peek="+peek);
+					break;
+				}
+			}
+			if (peek == JsonToken.END_DOCUMENT) {
+				// we've gone too far, end with an error
+				in.close();
+				throw new IllegalStateException("Failed to skipUnilEndObject to "+startPath+", encountered END_DOCUMENT");
+			}
+//			System.out.println("Still in the thick of it at: "+path);
+			if (peek == JsonToken.END_ARRAY) {
+				if (D) System.out.println("\tending array");
+				in.endArray();
+			} else if (peek == JsonToken.END_OBJECT) {
+				if (D) System.out.println("\tending object");
+				in.endObject();
+			} else {
+				if (D) System.out.println("\tskipping "+peek);
+				in.skipValue();
+			}
+		}
 	}
 	
 	static Number parseNumber(String numStr) {
