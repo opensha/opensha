@@ -166,7 +166,7 @@ public class SubSeismoOnFaultMFDs implements CSV_BackedModule, BranchAverageable
 						avgMFDs.set(i, larger);
 					}
 					for (int j=0; j<mine.size(); j++)
-						avg.add(j, mine.getY(j));
+						avg.add(j, mine.getY(j)*relWeight);
 				}
 				totWeight += relWeight;
 			}
