@@ -345,10 +345,17 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 		
 		@SuppressWarnings("unchecked")
 		private AbstractAdapter<E> getSubclassAdapter(Class<? extends E> clazz) throws Exception {
-			JsonAdapter adapterAnn = clazz.getAnnotation(JsonAdapter.class);
-			Class<?> adapterClass = adapterAnn.value();
-			if (AbstractAdapter.class.isAssignableFrom(adapterClass))
-				return (AbstractAdapter<E>)adapterClass.getConstructor().newInstance();
+			Class<?> testClass = clazz;
+			while (XY_DataSet.class.isAssignableFrom(testClass)) {
+				JsonAdapter adapterAnn = testClass.getAnnotation(JsonAdapter.class);
+				if (adapterAnn != null) {
+					Class<?> adapterClass = adapterAnn.value();
+					if (AbstractAdapter.class.isAssignableFrom(adapterClass))
+						return (AbstractAdapter<E>)adapterClass.getConstructor().newInstance();
+				}
+				// move up the tree
+				testClass = testClass.getSuperclass();
+			}
 			return null;
 		}
 
@@ -367,7 +374,16 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 			return xy;
 		}
 		
-		protected E innerRead(JsonReader in) throws IOException {
+		public E innerReadAsType(JsonReader in, Class<? extends E> clazz) throws IOException {
+			try {
+				AbstractAdapter<? extends E> adapter = getSubclassAdapter(clazz);
+				if (adapter != null)
+					return adapter.innerRead(in);
+			} catch (Exception e) {}
+			return innerRead(in);
+		}
+		
+		public E innerRead(JsonReader in) throws IOException {
 			String xyName = null;
 			String info = null;
 			String xName = null;
