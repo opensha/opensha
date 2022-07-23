@@ -137,16 +137,18 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	
 	public static final boolean APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT = true;
 	
-	public static boolean SPARSE_GR_DEFAULT = true;
+	public static final boolean SPARSE_GR_DEFAULT = true;
 	
 	public static final boolean ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT = false;
+	
+	public static final boolean USE_CREEP_REDUCED_SLIP_STD_DEVS_DEFAULT = false;
 	
 	// discretization parameters for MFDs
 	public final static double MIN_MAG = 0.05;
 	public final static double DELTA_MAG = 0.1;
 	
 	/**
-	 * Figures out MFD bounds for the given rupture set. It will start at 0.05 and and include at least the rupture set
+	 * Figures out MFD bounds for the given rupture set. It will start at 0.05 and include at least the rupture set
 	 * maximum magnitude, expanded to the ceiling of that rupture set maximum magnitude.
 	 * 
 	 * @param rupSet
@@ -157,8 +159,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	}
 	
 	/**
-	 * Figures out MFD bounds for the given rupture set maximum magnitude. It will start at 0.05 and and include at
-	 * least the rupture set maximum magnitude, expanded to the ceiling of that rupture set maximum magnitude.
+	 * Figures out MFD bounds for the given rupture set maximum magnitude. It will start at 0.05 and include at
+	 * least the given maximum magnitude, expanded to the ceiling of that maximum magnitude.
 	 * 
 	 * @param rupSet
 	 * @return
@@ -201,6 +203,9 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		private boolean applyDefModelUncertainties = APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT;
 		private boolean sparseGR = SPARSE_GR_DEFAULT;
 		private boolean addSectCountUncertainties = ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT;
+		private boolean useCreepReducedSlipStdDevs = USE_CREEP_REDUCED_SLIP_STD_DEVS_DEFAULT;
+		
+		private double slipStdDevFloor = 0d;
 		
 		// if non-null, subset of ruptures that we're allowed to use
 		private BitSet rupSubSet;
@@ -286,6 +291,27 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		 */
 		public Builder sparseGR(boolean sparseGR) {
 			this.sparseGR = sparseGR;
+			return this;
+		}
+		
+		/**
+		 * Sets whether or not slip rate standard deviations should be multiplied by the slip rate coupling-coefficient
+		 * to reduce them for creep.
+		 * @param useCreepReducedSlipStdDevs
+		 * @return
+		 */
+		public Builder useCreepReducedSlipStdDevs(boolean useCreepReducedSlipStdDevs) {
+			this.useCreepReducedSlipStdDevs = useCreepReducedSlipStdDevs;
+			return this;
+		}
+		
+		/**
+		 * Sets a minimum (floor) value for slip rate standard deviations in mm/yr
+		 * @param slipStdDevFloor minimum slip rate standard deviation, in mm/yr
+		 * @return
+		 */
+		public Builder slipStdDevFloor(double slipStdDevFloor) {
+			this.slipStdDevFloor = slipStdDevFloor;
 			return this;
 		}
 		
@@ -416,9 +442,13 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				FaultSection sect = rupSet.getFaultSectionData(s);
 				
 				double creepReducedSlipRate = sect.getReducedAveSlipRate()*1e-3; // mm/yr -> m/yr
-				double creepReducedSlipRateStdDev = sect.getReducedSlipRateStdDev()*1e-3; // mm/yr -> m/yr
+				double creepReducedSlipRateStdDev;
+				if (useCreepReducedSlipStdDevs)
+					creepReducedSlipRateStdDev = sect.getReducedSlipRateStdDev()*1e-3; // mm/yr -> m/yr
+				else
+					creepReducedSlipRateStdDev = sect.getOrigSlipRateStdDev()*1e-3; // mm/yr -> m/yr
 				
-				double area = rupSet.getAreaForSection(s); // m
+				double area = rupSet.getAreaForSection(s); // m^2
 				
 				// convert it to a moment rate
 				double targetMoRate = FaultMomentCalc.getMoment(area, creepReducedSlipRate);
@@ -646,6 +676,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					slipRates[s] = creepReducedSlipRate*fractSupra;
 					slipRateStdDevs[s] = creepReducedSlipRateStdDev*fractSupra;
 				}
+				
+				slipRateStdDevs[s] = Math.max(slipRateStdDevs[s], slipStdDevFloor);
 				
 				double targetMoRateTest = supraMoRate + subMoRate;
 				

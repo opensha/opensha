@@ -48,6 +48,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
@@ -287,6 +288,10 @@ public class NSHM23_ConstraintBuilder {
 			}
 			builder.expandUncertaintiesForData(dataConstraints, dataWithinType);
 		}
+		// don't reduce slip std devs by coupling coefficients
+		builder.useCreepReducedSlipStdDevs(false);
+		// don't allow slip rate std devs below the floor value
+		builder.slipStdDevFloor(NSHM23_DeformationModels.STD_DEV_FLOOR);
 		SupraSeisBValInversionTargetMFDs target = builder.build();
 		targetCache = target;
 		rupSet.addModule(target);
