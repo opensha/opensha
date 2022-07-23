@@ -544,6 +544,13 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				return null;
 			}
 		}
+		boolean hasPaleoData = rupSet.hasModule(PaleoseismicConstraintData.class);
+		if (hasPaleoData) {
+			PaleoseismicConstraintData paleoData = rupSet.getModule(PaleoseismicConstraintData.class);
+			hasPaleoData = paleoData.hasPaleoRateConstraints() || paleoData.hasPaleoSlipConstraints();
+		}
+		
+		boolean hasParkfield = constrBuilder.rupSetHasParkfield();
 		
 		// make sure that we have at least 1 nonzero slip rate (most likely to happen with cluster-specific inversions)
 		boolean hasNonZeroSlip = false;
@@ -553,20 +560,19 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				break;
 			}
 		}
-		if (!hasNonZeroSlip) {
+		if (!hasNonZeroSlip && !hasPaleoData && !hasParkfield) {
 			System.out.println("Warning: skipping inversion for rupture set with "+rupSet.getNumSections()
-					+" sections and "+rupSet.getNumRuptures()+" ruptures, no positive slip rates found");
+					+" sections and "+rupSet.getNumRuptures()+" ruptures, no positive slip rates/paleo data/parkfield");
 			return null;
 		}
 		
 		constrBuilder.adjustForActualRupSlips(adjustForActualRupSlips, adjustForSlipAlong);
 		
 		SubSectConstraintModels constrModel = branch.requireValue(SubSectConstraintModels.class);
-		boolean hasPaleoData = rupSet.hasModule(PaleoseismicConstraintData.class);
 		
 		double slipWeight = 1d;
 		double paleoWeight = hasPaleoData ? 5 : 0;
-		double parkWeight = constrBuilder.rupSetHasParkfield() ? 10 : 0;
+		double parkWeight = hasParkfield ? 10 : 0;
 		double mfdWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 1 : 10;
 		double nuclWeight = constrModel == SubSectConstraintModels.TOT_NUCL_RATE ? 0.5 : 0d;
 		double nuclMFDWeight = constrModel == SubSectConstraintModels.NUCL_MFD ? 0.5 : 0d;
