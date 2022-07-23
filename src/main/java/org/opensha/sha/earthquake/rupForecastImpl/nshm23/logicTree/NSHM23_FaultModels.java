@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -13,6 +14,10 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
@@ -23,9 +28,13 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.PrimaryRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
+import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
+import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
@@ -146,9 +155,94 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 
 			@Override
 			public RegionsOfInterest call() throws Exception {
-				return new RegionsOfInterest(NSHM23_RegionLoader.loadAllRegions(rupSet.getFaultSectionDataList()));
+				// TODO get observed MFDs from a better place, don't hardcode here
+				double refMag = 5d;
+				double deltaMag = 0.1;
+				
+				List<Region> regions = new ArrayList<>();
+				List<IncrementalMagFreqDist> regionMFDs = new ArrayList<>();
+				List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+				for (PrimaryRegions pReg : PrimaryRegions.values()) {
+					// preliminary values from Andrea/Ned via e-mail, 7/22/2022, subject "very preliminary b-values"
+					// TODO: are they 95% confidence?
+					
+					Region region = pReg.load();
+					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
+						continue;
+					
+					Double b=null, pref=null, low=null, high=null;
+					
+					if (pReg == PrimaryRegions.CONUS_U3_RELM) {
+						b = 1d;
+						pref = 6.07;
+						low = 3.61;
+						high = 8.53;
+					} else if (pReg == PrimaryRegions.CONUS_PNW) {
+						b = 1.1d;
+						pref = 0.38;
+						low = 0.03;
+						high = 1d;
+					} else if (pReg == PrimaryRegions.CONUS_IMW) {
+						b = 1.2d;
+						pref = 0.73;
+						low = 0.08;
+						high = 1.58;
+					} else if (pReg == PrimaryRegions.CONUS_EAST) {
+						b = 1.2d;
+						pref = 0.18;
+						low = 0.02;
+						high = 0.6;
+					}
+					
+					if (b != null) {
+						// find max mag in region
+						double maxMagInRegion = 7d;
+						double[] rupFracts = rupSet.getFractRupsInsideRegion(region, true);
+						for (int r=0; r<rupFracts.length; r++)
+							if (rupFracts[r] > 0d)
+								maxMagInRegion = Math.max(maxMagInRegion, rupSet.getMagForRup(r));
+						EvenlyDiscretizedFunc refMFD = new EvenlyDiscretizedFunc(
+								refMag+0.5*deltaMag, (int)(5d/deltaMag+0.5), deltaMag);
+						// now trim to size
+						int maxMagIndex = refMFD.getClosestXIndex(maxMagInRegion);
+						refMFD = new EvenlyDiscretizedFunc(refMFD.getMinX(), maxMagIndex+1, deltaMag);
+						regionMFDs.add(getUncertGR(refMFD, b, pref, low, high, UncertaintyBoundType.CONF_95));
+					} else {
+						regionMFDs.add(null);
+					}
+					
+					regions.add(region);
+				}
+				for (Region region : NSHM23_RegionLoader.loadLocalRegions(subSects)) {
+					regions.add(region);
+					regionMFDs.add(null);
+				}
+				return new RegionsOfInterest(regions, regionMFDs);
 			}
 		}, RegionsOfInterest.class);
+	}
+	
+	private static final DecimalFormat oDF = new DecimalFormat("0.##");
+	
+	private static UncertainBoundedIncrMagFreqDist getUncertGR(EvenlyDiscretizedFunc refMFD, double b,
+			double prefRate, double lowerRate, double upperRate, UncertaintyBoundType type) {
+		GutenbergRichterMagFreqDist prefGR = new GutenbergRichterMagFreqDist(
+				refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+		GutenbergRichterMagFreqDist lowGR = new GutenbergRichterMagFreqDist(
+				refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+		GutenbergRichterMagFreqDist highGR = new GutenbergRichterMagFreqDist(
+				refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+		
+		double roundedMinMag = refMFD.getX(0);
+		double roundedMaxMag = refMFD.getX(refMFD.size()-1);
+		
+		prefGR.setAllButTotMoRate(roundedMinMag, roundedMaxMag, prefRate, b);
+		lowGR.setAllButTotMoRate(roundedMinMag, roundedMaxMag, lowerRate, b);
+		highGR.setAllButTotMoRate(roundedMinMag, roundedMaxMag, upperRate, b);
+		
+		UncertainBoundedIncrMagFreqDist ret = new UncertainBoundedIncrMagFreqDist(prefGR, lowGR, highGR, type);
+		ret.setName("Total Observed [b="+oDF.format(b)+", N5="+oDF.format(prefRate)+"]");
+		return ret;
 	}
 
 }
