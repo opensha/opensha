@@ -46,25 +46,25 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	EVANS("NSHM23 Evans Deformation Model", "Evans", 1d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
-			return buildGeodetic(faultModel, "Evans_section_slip_rates-include_ghost_correction_suite.txt");
+			return buildGeodetic(faultModel, true);
 		}
 	},
 	POLLITZ("NSHM23 Pollitz Deformation Model", "Pollitz", 1d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
-			return buildGeodetic(faultModel, "Pollitz_section_slip_rates-no_ghost_correction.txt");
+			return buildGeodetic(faultModel, true);
 		}
 	},
 	SHEN_BIRD("NSHM23 Shen-Bird Deformation Model", "Shen-Bird", 1d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
-			return buildGeodetic(faultModel, "Shen-Bird_section_slip_rates-include_ghost_correction.txt");
+			return buildGeodetic(faultModel, true);
 		}
 	},
 	ZENG("NSHM23 Zeng Deformation Model", "Zeng", 1d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
-			return buildGeodetic(faultModel, "Zeng_section_slip_rates-include_ghost_correction.txt");
+			return buildGeodetic(faultModel, true);
 		}
 	};
 	
@@ -90,7 +90,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	/**
 	 * minimum allowed slip rate standart deviation, in mm/yr
 	 */
-	private static final double STD_DEV_FLOOR = 1e-4;
+	public static final double STD_DEV_FLOOR = 1e-4;
 	
 	/*
 	 * Creep parameters
@@ -220,7 +220,8 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	 * Methods for loading the geodetic models
 	 */
 	
-	public List<? extends FaultSection> buildGeodetic(RupSetFaultModel faultModel, String resourceName) throws IOException {
+	public List<? extends FaultSection> buildGeodetic(RupSetFaultModel faultModel, boolean includeGhostCorrection)
+			throws IOException {
 		// first load fault model
 		List<GeoJSONFaultSection> geoSects = new ArrayList<>();
 		Map<Integer, FaultSection> sectsByID = new HashMap<>();
@@ -236,7 +237,11 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		
 		MinisectionMappings mappings = new MinisectionMappings(geoSects, subSects);
 		
-		String dmPath = NSHM23_DM_PATH_PREFIX+"geodetic/"+GEODETIC_DATE+"/"+resourceName;
+		String dmPath = NSHM23_DM_PATH_PREFIX+"geodetic/"+GEODETIC_DATE+"/"+name();
+		if (includeGhostCorrection)
+			dmPath += "-include_ghost_corr.txt";
+		else
+			dmPath += "-no_ghost_corr.txt";
 		Map<Integer, List<GeodeticSlipRecord>> dmRecords = loadGeodeticModel(dmPath);
 		
 		for (Integer parentID : new ArrayList<>(dmRecords.keySet())) {
@@ -678,7 +683,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		// write geo gson
 		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v1p4;
 		
-//		List<? extends FaultSection> geoFull = NSHM23_DeformationModels.GEOLOGIC.buildGeolFullSects(fm, "v1p4");
+//		List<? extends FaultSection> geoFull = buildGeolFullSects(fm, GEOLOGIC_VERSION);
 //		GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+NSHM23_DeformationModels.GEOLOGIC.getFilePrefix()+"_sects.geojson"), geoFull);
 		
 		for (NSHM23_DeformationModels dm : values()) {
