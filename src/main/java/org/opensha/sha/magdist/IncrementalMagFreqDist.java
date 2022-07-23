@@ -315,7 +315,9 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 		if(D) System.out.println("old Mo. Rate = " + oldTotMoRate);
 		if(D) System.out.println("target Mo. Rate = " + newTotMoRate);
 		double scaleRate=newTotMoRate/oldTotMoRate;
-		scale(scaleRate);
+		for(int i=0;i<num;++i) {
+			super.set(i,scaleRate*getIncrRate(i));
+		}
 		if(D) System.out.println("actual Mo. Rate = " + getTotalMomentRate());
 
 
@@ -346,7 +348,8 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 	public void scaleToCumRate(int index,double rate) {
 		double temp=getCumRate(index);
 		double scaleCumRate=rate/temp;
-		scale(scaleCumRate);
+		for(int i=0;i<num;++i)
+			super.set(i,scaleCumRate*getIncrRate(i));
 	}
 
 
@@ -374,7 +377,8 @@ implements IncrementalMagFreqDistAPI,java.io.Serializable {
 	public void scaleToIncrRate(int index, double newRate) {
 		double temp=getIncrRate(index);
 		double scaleIncrRate=newRate/temp;
-		scale(scaleIncrRate);
+		for(int i=0;i<num;++i)
+			super.set(i,scaleIncrRate*getIncrRate(i));
 	}
 
 	/**
