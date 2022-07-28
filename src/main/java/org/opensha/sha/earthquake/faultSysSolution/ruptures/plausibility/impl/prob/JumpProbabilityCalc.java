@@ -1,5 +1,8 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob;
 
+import java.util.Map;
+
+import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 
@@ -122,6 +125,85 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 			return product;
 		}
 		
+	}
+	
+	public class Minimum implements JumpProbabilityCalc {
+		
+		private JumpProbabilityCalc[] calcs;
+
+		public Minimum(JumpProbabilityCalc... calcs) {
+			Preconditions.checkState(calcs.length > 1);
+			this.calcs = calcs;
+		}
+
+		@Override
+		public String getName() {
+			return "Minimum from "+calcs.length+" models";
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			for (RuptureProbabilityCalc calc : calcs)
+				if (calc.isDirectional(splayed))
+					return true;
+			return false;
+		}
+
+		@Override
+		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
+			double min = 1;
+			for (JumpProbabilityCalc calc : calcs)
+				min = Math.min(min, calc.calcJumpProbability(fullRupture, jump, verbose));
+			return min;
+		}
+		
+	}
+	
+	public class HardcodedJumpProb implements JumpProbabilityCalc {
+		
+		private String name;
+		private Map<IDPairing, Double> idsToProbs;
+		private boolean parentSects;
+		private JumpProbabilityCalc fallback;
+
+		public HardcodedJumpProb(String name, Map<IDPairing, Double> idsToProbs, boolean parentSects) {
+			this(name, idsToProbs, parentSects, null);
+		}
+
+		public HardcodedJumpProb(String name, Map<IDPairing, Double> idsToProbs, boolean parentSects,
+				JumpProbabilityCalc fallback) {
+			this.name = name;
+			this.idsToProbs = idsToProbs;
+			this.parentSects = parentSects;
+			this.fallback = fallback;
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
+			IDPairing pair = parentSects ?
+					new IDPairing(jump.fromSection.getParentSectionId(), jump.toSection.getParentSectionId())
+					: new IDPairing(jump.fromSection.getSectionId(), jump.toSection.getSectionId());
+			Double prob = idsToProbs.get(pair);
+			if (prob == null)
+				prob = idsToProbs.get(pair.getReversed());
+			if (verbose)
+				System.out.println("Hardcoded probability for jump "+jump+": "+prob);
+			if (prob != null)
+				return prob;
+			if (fallback == null)
+				return 1d;
+			return fallback.calcJumpProbability(fullRupture, jump, verbose);
+		}
 	}
 	
 }
