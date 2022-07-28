@@ -386,7 +386,6 @@ BranchAverageableModule<InversionTargetMFDs> {
 
 		@Override
 		public AveragingAccumulator<InversionTargetMFDs> averagingAccumulator() {
-			// TODO Auto-generated method stub
 			return new AveragingAccumulator<InversionTargetMFDs>() {
 				
 				private IncrementalMagFreqDist totalRegionalMFD;
@@ -559,22 +558,40 @@ BranchAverageableModule<InversionTargetMFDs> {
 			for (int i=0; i<mfd.size(); i++)
 				dest.add(i, weight*mfd.getY(i));
 			if (dest instanceof UncertainBoundedIncrMagFreqDist) {
-				Preconditions.checkState(mfd instanceof UncertainBoundedIncrMagFreqDist,
-						"Some branches have uncertainty bounds and others don't for %s", type);
-				UncertainBoundedIncrMagFreqDist boundedDest = (UncertainBoundedIncrMagFreqDist)dest;
-				UncertainBoundedIncrMagFreqDist boundedMFD = (UncertainBoundedIncrMagFreqDist)mfd;
-				Preconditions.checkState(boundedDest.getBoundType() == boundedMFD.getBoundType(),
-						"Bound type mismatch for %s", type);
-				averageInWeighted(boundedDest.getLower(), boundedMFD.getLower(), type+" LOWER", weight);
-				averageInWeighted(boundedDest.getUpper(), boundedMFD.getUpper(), type+" UPPER", weight);
+				if (mfd instanceof UncertainBoundedIncrMagFreqDist) {
+					UncertainBoundedIncrMagFreqDist boundedDest = (UncertainBoundedIncrMagFreqDist)dest;
+					UncertainBoundedIncrMagFreqDist boundedMFD = (UncertainBoundedIncrMagFreqDist)mfd;
+					Preconditions.checkState(boundedDest.getBoundType() == boundedMFD.getBoundType(),
+							"Bound type mismatch for %s", type);
+					averageInWeighted(boundedDest.getLower(), boundedMFD.getLower(), type+" LOWER", weight);
+					averageInWeighted(boundedDest.getUpper(), boundedMFD.getUpper(), type+" UPPER", weight);
+				} else {
+					// don't have bounds on this branch
+					if (mfd instanceof UncertainIncrMagFreqDist) {
+						// still have std devs, set dest to that type
+						System.err.println("WARNING: "+type+" doesn't have bounded uncertainties on all branches, "
+								+ "reverting to UncertainIncrMagFreqDist");
+						dest = new UncertainIncrMagFreqDist(dest, ((UncertainIncrMagFreqDist)dest).getStdDevs());
+					} else {
+						// revert to a regular MFD
+						System.err.println("WARNING: "+type+" doesn't have uncertainties on all branches, "
+								+ "reverting to IncrementalMagFreqDist");
+						dest = new IncrementalMagFreqDist(dest);
+					}
+				}
 			}
 			if (dest instanceof UncertainIncrMagFreqDist) {
-				Preconditions.checkState(mfd instanceof UncertainIncrMagFreqDist,
-						"Some branches have uncertainties and others don't for %s", type);
-				EvenlyDiscretizedFunc destStdDevs = ((UncertainIncrMagFreqDist)dest).getStdDevs();
-				EvenlyDiscretizedFunc mfdStdDevs = ((UncertainIncrMagFreqDist)mfd).getStdDevs();
-				for (int i=0; i<mfdStdDevs.size(); i++)
-					destStdDevs.add(i, mfdStdDevs.getY(i)*weight);
+				if (mfd instanceof UncertainIncrMagFreqDist) {
+					EvenlyDiscretizedFunc destStdDevs = ((UncertainIncrMagFreqDist)dest).getStdDevs();
+					EvenlyDiscretizedFunc mfdStdDevs = ((UncertainIncrMagFreqDist)mfd).getStdDevs();
+					for (int i=0; i<mfdStdDevs.size(); i++)
+						destStdDevs.add(i, mfdStdDevs.getY(i)*weight);
+				} else {
+					// revert to a regular MFD
+					System.err.println("WARNING: "+type+" doesn't have uncertainties on all branches, "
+							+ "reverting to IncrementalMagFreqDist");
+					dest = new IncrementalMagFreqDist(dest);
+				}
 			}
 			return dest;
 		}
