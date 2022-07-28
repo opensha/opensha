@@ -1011,6 +1011,25 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 	}
 	
+	public static class SegWeight100000 extends NSHM23_InvConfigFactory {
+		
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
+			
+			if (config == null)
+				return null;
+			
+			for (InversionConstraint constraint : config.getConstraints())
+				if (constraint instanceof JumpProbabilityConstraint)
+					constraint.setWeight(100000);
+			
+			return config;
+		}
+		
+	}
+	
 	public static class FullSysInv extends NSHM23_InvConfigFactory {
 
 		@Override
