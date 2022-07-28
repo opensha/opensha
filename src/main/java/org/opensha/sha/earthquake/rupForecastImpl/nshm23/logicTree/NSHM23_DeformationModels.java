@@ -20,6 +20,7 @@ import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
+import org.opensha.commons.util.FaultUtils.AngleAverager;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
@@ -66,12 +67,75 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeodetic(faultModel, true);
 		}
+	},
+	AVERAGE("NSHM23 Averaged Deformation Model", "AvgDM", 0d) {
+		@Override
+		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
+			double totWeight = 0d;
+			List<GeoJSONFaultSection> ret = null;
+			double[] slipRates = null;
+			double[] slipRateStdDevs = null;
+			double[] creepRates = null;
+			boolean[] hasCreeps = null;
+			AngleAverager[] rakes = null;
+			for (NSHM23_DeformationModels dm : values()) {
+				if (dm != this && dm.weight > 0d) {
+					totWeight += dm.weight;
+					List<? extends FaultSection> dmSects = dm.build(faultModel);
+					if (ret == null) {
+						ret = new ArrayList<>();
+						for (FaultSection sect : dmSects) {
+							GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
+							ret.add(geoSect.clone());
+						}
+						slipRates = new double[ret.size()];
+						slipRateStdDevs = new double[ret.size()];
+						creepRates = new double[ret.size()];
+						hasCreeps = new boolean[ret.size()];
+						rakes = new AngleAverager[ret.size()];
+						for (int s=0; s<rakes.length; s++)
+							rakes[s] = new AngleAverager();
+					}
+					for (int s=0; s<dmSects.size(); s++) {
+						GeoJSONFaultSection sect = (GeoJSONFaultSection)dmSects.get(s);
+						slipRates[s] += dm.weight*sect.getOrigAveSlipRate();
+						slipRateStdDevs[s] += dm.weight*sect.getOrigSlipRateStdDev();
+						double creepRate = sect.getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
+						if (Double.isFinite(creepRate)) {
+							creepRates[s] += dm.weight*creepRate;
+							hasCreeps[s] = true;
+						}
+						rakes[s].add(sect.getAveRake(), dm.weight);
+					}
+				}
+			}
+			Preconditions.checkState(totWeight > 0d);
+			for (int s=0; s<ret.size(); s++) {
+				GeoJSONFaultSection subSect = ret.get(s);
+				
+				double slipRate = slipRates[s]/totWeight;
+				double slipRateStdDev = slipRateStdDevs[s]/totWeight;
+				double creepRate = hasCreeps[s] ? creepRates[s]/totWeight : Double.NaN;
+				double rake = FaultUtils.getInRakeRange(rakes[s].getAverage());
+				
+				subSect.setAveSlipRate(slipRate);
+				subSect.setSlipRateStdDev(slipRateStdDev);
+				subSect.setAveRake(rake);
+				if (Double.isFinite(creepRate))
+					subSect.setProperty(GeoJSONFaultSection.CREEP_RATE, creepRate);
+				else
+					subSect.getProperties().remove(GeoJSONFaultSection.CREEP_RATE);
+				
+				applyCreepData(subSect, creepRate);
+			}
+			return ret;
+		}
 	};
 	
 	private static final String NSHM23_DM_PATH_PREFIX = "/data/erf/nshm23/def_models/";
 
 	private static final String GEOLOGIC_VERSION = "v1p0";
-	private static final String GEODETIC_DATE = "2022_06_27";
+	private static final String GEODETIC_DATE = "2022_07_23";
 	private static final String CREEP_DATE = "2022_06_09";
 	
 	/*
@@ -243,7 +307,10 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		else
 			dmPath += "-no_ghost_corr.txt";
 		Map<Integer, List<GeodeticSlipRecord>> dmRecords = loadGeodeticModel(dmPath);
-		
+
+		for (Integer sectID : sectsByID.keySet())
+			if (!dmRecords.containsKey(sectID))
+				System.err.println("WARNING: "+name+" is missing data for fault "+sectID+". "+sectsByID.get(sectID).getSectionName());
 		for (Integer parentID : new ArrayList<>(dmRecords.keySet())) {
 			// validate records
 			if (!mappings.areMinisectionDataForParentValid(parentID, dmRecords.get(parentID), true)) {
@@ -530,9 +597,8 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		for (int s=0; s<subSects.size(); s++) {
 			FaultSection subSect = subSects.get(s);
 			int parentID = subSect.getParentSectionId();
-			String subSectName = subSect.getSectionName();
 			
-			double creepFract;
+			double creepRate;
 			if (creepData.containsKey(parentID)) {
 				// we have creep data for this fault
 				List<CreepRecord> records = creepData.get(parentID);
@@ -540,57 +606,20 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 				for (CreepRecord record : records)
 					values.add(record == null ? 0d : record.creepRate);
 				
-				double creepRate = mappings.getAssociationScaledAverage(s, values);
-				if (subSect instanceof GeoJSONFaultSection)
-					((GeoJSONFaultSection)subSect).setProperty("CreepRate", creepRate);
-				if (creepRate < 0d) {
-					creepRate = 0d;
-					System.err.println("WARNING: Setting negative creep rate ("+(float)creepRate+") to 0 for "
-							+name()+", "+subSect.getSectionId()+". "+subSect.getName());
-				}
+				creepRate = mappings.getAssociationScaledAverage(s, values);
+				Preconditions.checkState(subSect instanceof GeoJSONFaultSection);
+				((GeoJSONFaultSection)subSect).setProperty(GeoJSONFaultSection.CREEP_RATE, creepRate);
 				if (creepRate > 0d)
 					numNonzeroData++;
-				Preconditions.checkState(creepRate >= 0d, "Bad creep rate for %s. %s", s, subSectName);
-				double slipRate = subSect.getOrigAveSlipRate();
-				if (slipRate == 0d) {
-					creepFract = 0d;
-				} else {
-					if (creepRate > slipRate) {
-						System.err.println("WARNING: creep rate is greater than slip rate for section "
-								+s+". "+subSectName);
-						creepRate = slipRate;
-					}
-					creepFract = creepRate/slipRate;
-				}
 			} else {
-				// apply default creep
-				creepFract = CREEP_FRACT_DEFAULT;
+				creepRate = Double.NaN;
 				numCreepDefault++;
 			}
 			
-			double aseis, coupling;
-			if (creepFract < ASEIS_CEILING) {
-				aseis = creepFract;
-				coupling = 1d;
-			} else {
-				aseis = ASEIS_CEILING;
-				coupling = 1 - (1/(1-ASEIS_CEILING))*(creepFract - ASEIS_CEILING);
+			applyCreepData(subSect, creepRate, creepFractTrack, aseisTrack, couplingTrack);
+			
+			if (subSect.getCouplingCoeff() < 1d)
 				numAboveCeiling++;
-			}
-			
-			Preconditions.checkState(aseis >= 0d && aseis <= ASEIS_CEILING,
-					"Bad computed aseismicity value (%s) from creepFract=%s, aseisCeiling=%s",
-					aseis, creepFract, ASEIS_CEILING);
-			Preconditions.checkState(coupling >= 0d && coupling <= 1d,
-					"Bad computed coupling coefficient (%s) from creepFract=%s, aseisCeiling=%s",
-					coupling, creepFract, ASEIS_CEILING);
-			
-			creepFractTrack.addValue(creepFract);
-			aseisTrack.addValue(aseis);
-			couplingTrack.addValue(coupling);
-			
-			subSect.setAseismicSlipFactor(aseis);
-			subSect.setCouplingCoeff(coupling);
 		}
 		
 		System.out.println("Done applying creep data, stats:");
@@ -611,6 +640,66 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			+"], avg="+(float)couplingTrack.getAverage());
 		
 		return subSects;
+	}
+	
+	protected void applyCreepData(FaultSection subSect, double creepRate) {
+		applyCreepData(subSect, creepRate, null, null, null);
+	}
+	
+	private void applyCreepData(FaultSection subSect, double creepRate, MinMaxAveTracker creepFractTrack,
+			MinMaxAveTracker aseisTrack, MinMaxAveTracker couplingTrack) {
+		int s = subSect.getSectionId();
+		String subSectName = subSect.getSectionName();
+		
+		double creepFract;
+		if (Double.isFinite(creepRate)) {
+			if (creepRate < 0d) {
+				creepRate = 0d;
+				System.err.println("WARNING: Setting negative creep rate ("+(float)creepRate+") to 0 for "
+						+name()+", "+subSect.getSectionId()+". "+subSect.getName());
+			}
+			Preconditions.checkState(creepRate >= 0d, "Bad creep rate for %s. %s", s, subSectName);
+			double slipRate = subSect.getOrigAveSlipRate();
+			if (slipRate == 0d) {
+				creepFract = 0d;
+			} else {
+				if (creepRate > slipRate) {
+					System.err.println("WARNING: creep rate is greater than slip rate for section "
+							+s+". "+subSectName);
+					creepRate = slipRate;
+				}
+				creepFract = creepRate/slipRate;
+			}
+		} else {
+			// apply default creep
+			creepFract = CREEP_FRACT_DEFAULT;
+		}
+		
+		double aseis, coupling;
+		if (creepFract < ASEIS_CEILING) {
+			aseis = creepFract;
+			coupling = 1d;
+		} else {
+			aseis = ASEIS_CEILING;
+			coupling = 1 - (1/(1-ASEIS_CEILING))*(creepFract - ASEIS_CEILING);
+		}
+		
+		Preconditions.checkState(aseis >= 0d && aseis <= ASEIS_CEILING,
+				"Bad computed aseismicity value (%s) from creepFract=%s, aseisCeiling=%s",
+				aseis, creepFract, ASEIS_CEILING);
+		Preconditions.checkState(coupling >= 0d && coupling <= 1d,
+				"Bad computed coupling coefficient (%s) from creepFract=%s, aseisCeiling=%s",
+				coupling, creepFract, ASEIS_CEILING);
+		
+		if (creepFractTrack != null)
+			creepFractTrack.addValue(creepFract);
+		if (aseisTrack != null)
+			aseisTrack.addValue(aseis);
+		if (couplingTrack != null)
+			couplingTrack.addValue(coupling);
+		
+		subSect.setAseismicSlipFactor(aseis);
+		subSect.setCouplingCoeff(coupling);
 	}
 	
 	private static Map<Integer, List<CreepRecord>> loadCreepData(String creepPath, MinisectionMappings mappings)
@@ -687,7 +776,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 //		GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+NSHM23_DeformationModels.GEOLOGIC.getFilePrefix()+"_sects.geojson"), geoFull);
 		
 		for (NSHM23_DeformationModels dm : values()) {
-			if (dm.weight > 0d && dm.isApplicableTo(fm)) {
+			if (dm.isApplicableTo(fm)) {
 				System.out.println("************************");
 				System.out.println("Building "+dm.name);
 				List<? extends FaultSection> subSects = dm.build(fm);
