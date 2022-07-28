@@ -34,11 +34,6 @@ public class UCERF3_PaleoProbabilityModel extends PaleoProbabilityModel {
 	}
 	
 	@Override
-	public double getProbPaleoVisible(FaultSystemRupSet rupSet, int rupIndex, int sectIndex) {
-		return getProbPaleoVisible(rupSet.getMagForRup(rupIndex), rupSet.getFaultSectionDataForRupture(rupIndex), sectIndex);
-	}
-	
-	@Override
 	public double getProbPaleoVisible(double mag, List<FaultSection> rupSects, int sectIndex) {
 		return getProbPaleoVisible(mag, getDistAlongRup(rupSects, sectIndex));
 	}

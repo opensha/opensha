@@ -30,7 +30,10 @@ public abstract class PaleoProbabilityModel {
 	
 	private transient Map<Integer, Double> traceLengthCache = Maps.newConcurrentMap();
 	
-	public abstract double getProbPaleoVisible(FaultSystemRupSet rupSet, int rupIndex, int sectIndex);
+	public double getProbPaleoVisible(FaultSystemRupSet rupSet, int rupIndex, int sectIndex) {
+		return getProbPaleoVisible(rupSet.getMagForRup(rupIndex),
+				rupSet.getFaultSectionDataForRupture(rupIndex), sectIndex);
+	}
 	
 	public abstract double getProbPaleoVisible(double mag, List<FaultSection> rupSections, int sectIndex);
 	

@@ -20,6 +20,7 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
@@ -41,11 +42,33 @@ public class NSHM23_PaleoDataLoader {
 		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
 		
 		// paleo event rate
-		List<SectMappedUncertainDataConstraint> paleoRateConstraints = loadCAPaleoRateData(subSects);
-		// TODO add Wasatch
-		UCERF3_PaleoProbabilityModel paleoProbModel = UCERF3_PaleoProbabilityModel.load();
+		List<SectMappedUncertainDataConstraint> caRateConstraints = loadCAPaleoRateData(subSects);
+		boolean hasCA = hasMappedConstraints(caRateConstraints);
+		List<SectMappedUncertainDataConstraint> wasatchRateConstraints = loadWasatchPaleoRateData(subSects);
+		boolean hasWasatch = hasMappedConstraints(wasatchRateConstraints);
+		PaleoProbabilityModel paleoProbModel;
+		List<SectMappedUncertainDataConstraint> paleoRateConstraints;
+		if (hasCA && hasWasatch) {
+			// both
+			paleoRateConstraints = new ArrayList<>();
+			paleoRateConstraints.addAll(caRateConstraints);
+			paleoRateConstraints.addAll(wasatchRateConstraints);
+			paleoProbModel = new NSHM23_PaleoProbabilityModel();
+		} else if (hasCA) {
+			// CA only
+			paleoRateConstraints = caRateConstraints;
+			paleoProbModel = UCERF3_PaleoProbabilityModel.load();
+		} else  if (hasWasatch) {
+			// Wasatch only
+			paleoRateConstraints = wasatchRateConstraints;
+			paleoProbModel = new NSHM23_PaleoProbabilityModel.WasatchPaleoProbabilityModel();
+		} else {
+			// neither
+			paleoRateConstraints = null;
+			paleoProbModel = null;
+		}
 
-		// paleo slip
+		// reuse UCERF3 paleo slip
 		List<SectMappedUncertainDataConstraint> aveSlipConstraints = loadU3PaleoSlipData(subSects);
 		PaleoSlipProbabilityModel paleoSlipProbModel = U3AveSlipConstraint.slip_prob_model;
 
@@ -56,6 +79,7 @@ public class NSHM23_PaleoDataLoader {
 	// ensure that mappings are within this distance in km
 	private static final String NSHM23_PALEO_RI_PATH_PREFIX = "/data/erf/nshm23/constraints/paleo_ri/";
 	private static final String CA_PALEO_PATH = NSHM23_PALEO_RI_PATH_PREFIX+"McPhillips_California_RIs_2022_07_13.csv";
+	private static final String WASATCH_PALEO_PATH = NSHM23_PALEO_RI_PATH_PREFIX+"wasatch_legacy_data.csv";
 	
 	private static final String NSHM23_PALEO_SLIP_PATH_PREFIX = "/data/erf/nshm23/constraints/paleo_slip/";
 	private static final String U3_PALEO_SLIP_PATH_1 = NSHM23_PALEO_SLIP_PATH_PREFIX+"Table_R5v4.csv";
@@ -186,6 +210,55 @@ public class NSHM23_PaleoDataLoader {
 		return ret;
 	}
 	
+	public static List<SectMappedUncertainDataConstraint> loadWasatchPaleoRateData(List<? extends FaultSection> subSects)
+			throws IOException {
+		System.err.println("WARNING: loading legacy Wasatch data, Locatios are approximate");
+		
+		CSVFile<String> csv = CSVFile.readStream(NSHM23_PaleoDataLoader.class.getResourceAsStream(WASATCH_PALEO_PATH), true);
+		
+		List<SectMappedUncertainDataConstraint> ret = new ArrayList<>();
+		
+		for (int row=2; row<csv.getNumRows(); row++) {
+			int col = 0;
+			String name = csv.get(row, col++);
+			double lat = csv.getDouble(row, col++);
+			double lon = csv.getDouble(row, col++);
+			double rate = csv.getDouble(row, col++);
+			double stdDev = csv.getDouble(row, col++);
+			double lowerRate = csv.getDouble(row, col++);
+			double upperRate = csv.getDouble(row, col++);
+			
+			Location loc = new Location(lat, lon);
+			// now find mapping
+			
+			FaultSection mappedSect = null;
+			if (subSects != null) {
+				mappedSect = findMatchingSect(loc, subSects,
+						LOC_MAX_DIST_NONE_CONTAINED, LOC_MAX_DIST_OTHER_CONTAINED, LOC_MAX_DIST_CONTAINED);
+				if (mappedSect == null) {
+					System.err.println("WARNING: no matching fault section found for paleo site "+name+" at "+lat+", "+lon);
+					continue;
+				}
+			}
+			BoundedUncertainty uncert = new BoundedUncertainty(
+					UncertaintyBoundType.CONF_95, lowerRate, upperRate, stdDev);
+			if (mappedSect == null)
+				ret.add(new SectMappedUncertainDataConstraint(name, -1, null, loc, rate, uncert));
+			else
+				ret.add(new SectMappedUncertainDataConstraint(name, mappedSect.getSectionId(), mappedSect.getSectionName(),
+						loc, rate, uncert));
+		}
+		
+		return ret;
+	}
+	
+	private static boolean hasMappedConstraints(List<? extends SectMappedUncertainDataConstraint> constraints) {
+		for (SectMappedUncertainDataConstraint constraint : constraints)
+			if (constraint.sectionIndex >= 0)
+				return true;
+		return false;
+	}
+	
 	// filter sections to actually check with cartesian distances in KM
 	private static final double LOC_CHECK_DEGREE_TOLERANCE = 3d;
 	private static final double LOC_CHECK_DEGREE_TOLERANCE_SQ = LOC_CHECK_DEGREE_TOLERANCE*LOC_CHECK_DEGREE_TOLERANCE;
@@ -228,7 +301,8 @@ public class NSHM23_PaleoDataLoader {
 				// see if this fault contains it
 				if (sect.getAveDip() < 89d) {
 					LocationList perim = new LocationList();
-					perim.addAll(sect.getFaultSurface(1d).getPerimeter());
+//					perim.addAll(sect.getFaultSurface(1d).getPerimeter());
+					perim.addAll(sect.getFaultSurface(1d).getEvenlyDiscritizedPerimeter());
 					if (!perim.last().equals(perim.first()))
 						perim.add(perim.first());
 					Region region = new Region(perim, BorderType.GREAT_CIRCLE);
@@ -238,7 +312,7 @@ public class NSHM23_PaleoDataLoader {
 			}
 		}
 		
-		// find the closest of any candidtae section
+		// find the closest of any candidate section
 		FaultSection closest = null;
 		double closestDist = Double.POSITIVE_INFINITY;
 		for (FaultSection sect : candidates) {
@@ -287,12 +361,20 @@ public class NSHM23_PaleoDataLoader {
 		HashSet<FaultSection> mappedSects = new HashSet<>();
 		List<Location> siteLocs = new ArrayList<>();
 		
-		String prefix = "nshm23_ca_paleo_mappings";
-		String title = "NSHM23 CA Paleo RI Mappings";
-		List<SectMappedUncertainDataConstraint> datas = loadCAPaleoRateData(subSects);
+//		String prefix = "nshm23_ca_paleo_mappings";
+//		String title = "NSHM23 CA Paleo RI Mappings";
+//		List<SectMappedUncertainDataConstraint> datas = loadCAPaleoRateData(subSects);
+//		Region reg = new CaliforniaRegions.RELM_TESTING();
+		
 //		String prefix = "nshm23_ca_paleo_slip_mappings";
 //		String title = "NSHM23 CA Paleo Slip Mappings";
 //		List<SectMappedUncertainDataConstraint> datas = loadU3PaleoSlipData(subSects);
+//		Region reg = new CaliforniaRegions.RELM_TESTING();
+		
+		String prefix = "nshm23_wasatch_paleo_mappings";
+		String title = "NSHM23 Wasatch Paleo Mappings";
+		List<SectMappedUncertainDataConstraint> datas = loadWasatchPaleoRateData(subSects);
+		Region reg = new Region(new Location(42.5, -114.5), new Location(36.5, -108));
 		
 		System.out.println("Loaded "+datas.size()+" values");
 		for (SectMappedUncertainDataConstraint constraint : datas) {
@@ -306,7 +388,7 @@ public class NSHM23_PaleoDataLoader {
 			}
 		}
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(subSects, new CaliforniaRegions.RELM_TESTING());
+		RupSetMapMaker mapMaker = new RupSetMapMaker(subSects, reg);
 		mapMaker.highLightSections(mappedSects, new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
 		
 		mapMaker.plotScatters(siteLocs, Color.BLUE);
