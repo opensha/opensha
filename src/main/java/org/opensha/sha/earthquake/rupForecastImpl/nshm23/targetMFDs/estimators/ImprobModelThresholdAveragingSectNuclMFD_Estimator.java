@@ -304,13 +304,14 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 							maxGain = Math.max(gain, maxGain);
 						}
 					}
-					boolean print = iter % ITERATE_PRINT_MOD == 0 || iter == iterations-1 || maxGain < ITERATE_STOP_RATIO_THRESHOLD;
+					boolean print = iter == 0 || (iter+1) % ITERATE_PRINT_MOD == 0
+							|| iter == iterations-1 || maxGain < ITERATE_STOP_RATIO_THRESHOLD;
 					if (print) {
-						System.out.println("Done with rel-GR threshold averaging iteration "+iter+"/"+iterations);
+						System.out.println("Done with rel-GR threshold averaging iteration "+(iter+1)+"/"+iterations);
 						System.out.println("\tsect rate gains: "+gainTrack);
 					}
 					if (maxGain < ITERATE_STOP_RATIO_THRESHOLD) {
-						System.out.println("\tstopping early after "+iter+" iterations (maxGain="+(float)maxGain
+						System.out.println("\tstopping early after "+(iter+1)+" iterations (maxGain="+(float)maxGain
 								+" < "+(float)ITERATE_STOP_RATIO_THRESHOLD+")");
 						break;
 					}
