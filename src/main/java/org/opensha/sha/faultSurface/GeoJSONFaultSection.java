@@ -74,6 +74,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public static final String PARENT_NAME = "ParentName";
 	public static final String SLIP_STD_DEV = "SlipRateStdDev";
 	public static final String CONNECTOR = "Connector";
+	public static final String CREEP_RATE = "CreepRate";
 
 	private GeoJSONFaultSection(Feature feature) {
 		Preconditions.checkNotNull(feature, "feature cannot be null");
@@ -468,7 +469,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 	}
 
 	@Override
-	public List<? extends FaultSection> getSubSectionsList(double maxSubSectionLen, int startId, int minSubSections) {
+	public List<GeoJSONFaultSection> getSubSectionsList(double maxSubSectionLen, int startId, int minSubSections) {
 		ArrayList<FaultTrace> equalLengthSubsTrace =
 				FaultUtils.getEqualLengthSubsectionTraces(this.trace, maxSubSectionLen, minSubSections);
 		ArrayList<GeoJSONFaultSection> subSectionList = new ArrayList<GeoJSONFaultSection>();
