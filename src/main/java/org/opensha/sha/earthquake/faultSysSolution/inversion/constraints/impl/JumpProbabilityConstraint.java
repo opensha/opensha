@@ -78,6 +78,8 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  *
  */
 public abstract class JumpProbabilityConstraint extends InversionConstraint {
+	
+	public static final boolean D = false;
 
 	protected transient FaultSystemRupSet rupSet;
 	private transient Map<UniqueDistJump, List<Integer>> jumpRupsMap;
@@ -202,7 +204,7 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 				// because this in an inequality constraint
 				jumpCondProb = myJumpProb;
 				
-				System.out.println("Jump probability for "+jump+"\tfrom "+jump.fromSection.getName()
+				if (D) System.out.println("Jump probability for "+jump+"\tfrom "+jump.fromSection.getName()
 						+"\tto "+jump.toSection.getName()+"\n\tP <= "+(float)jumpCondProb);
 			} else {
 				double sumAllProbs = 0d;
@@ -228,7 +230,7 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 				
 				jumpCondProb = myJumpProb / sumAllProbs;
 				
-				System.out.println("Jump probability for "+jump+"\tfrom "+jump.fromSection.getName()
+				if (D) System.out.println("Jump probability for "+jump+"\tfrom "+jump.fromSection.getName()
 						+"\tto "+jump.toSection.getName()+"\n\tP = "
 						+(float)myJumpProb+" / "+(float)sumAllProbs+" = "+(float)jumpCondProb);
 			}
@@ -333,7 +335,7 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 			double aScalar = this.weight*weightType.getA_Scalar(relTargetSlip, Double.NaN);
 			double maxWeight = this.weight*MAX_WEIGHT_SCALAR;
 			if (aScalar > maxWeight) {
-				System.err.println("WARNING: capping weight at max="+maxWeight+", would have been "+aScalar);
+				if (D) System.err.println("WARNING: capping weight at max="+maxWeight+", would have been "+aScalar);
 				aScalar = maxWeight;
 			}
 			
@@ -468,14 +470,14 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 				if (estRate > 0d)
 					weight /= estRate;
 			}
-			System.out.println("Building constraint for jump: "+jump+" with "+rupsUsingJump.size()
+			if (D) System.out.println("Building constraint for jump: "+jump+" with "+rupsUsingJump.size()
 				+" rups, prob="+jumpCondProb+" with weight="+weight);
 			// weight by the target fractional rate (large misfits of small conditional rates should still be fit)
 			weight /= jumpCondProb;
 			
 			double maxWeight = this.weight*MAX_WEIGHT_SCALAR;
 			if (weight > maxWeight) {
-				System.err.println("WARNING: capping weight at max="+maxWeight+", would have been "+weight);
+				if (D) System.err.println("WARNING: capping weight at max="+maxWeight+", would have been "+weight);
 				weight = maxWeight;
 			}
 			
