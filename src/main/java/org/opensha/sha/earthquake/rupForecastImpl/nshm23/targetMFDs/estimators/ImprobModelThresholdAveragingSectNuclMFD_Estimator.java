@@ -133,6 +133,10 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 	 */
 	public static class RelGRWorstJumpProb extends ImprobModelThresholdAveragingSectNuclMFD_Estimator {
 		
+		// stop iterating if the maximum gain is less than this
+		private static final double ITERATE_STOP_RATIO_THRESHOLD = 1.0001;
+		private static final int ITERATE_PRINT_MOD = 10;
+		
 		private JumpProbabilityCalc jumpModel;
 		private int iterations;
 		
@@ -228,31 +232,35 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 					double minProb = 1d;
 					BitSet jumpBitSet = jumpMagBins.get(jump);
 					double jumpProb = jumpModel.calcJumpProbability(null, jump, false);
-					for (int sectIndex : new int[] {jump.fromSection.getSectionId(), jump.toSection.getSectionId()}) {
-						IncrementalMagFreqDist sectMFD = workingSectSupraSeisMFDs.get(sectIndex);
-						if (sectMFD == null || sectMFD.calcSumOfY_Vals() == 0d) {
-							minProb = 0d;
-							break;
+					if (jumpProb == 0d) {
+						minProb = 0d;
+					} else {
+						for (int sectIndex : new int[] {jump.fromSection.getSectionId(), jump.toSection.getSectionId()}) {
+							IncrementalMagFreqDist sectMFD = workingSectSupraSeisMFDs.get(sectIndex);
+							if (sectMFD == null || sectMFD.calcSumOfY_Vals() == 0d) {
+								minProb = 0d;
+								break;
+							}
+							// total participation rate for this section assuming the original supra-seis MFD is honored
+							double totParticRate = 0d;
+							// total participation rate for magnitudes bins that use this jump
+							double jumpParticRate = 0d;
+							double[] nuclToParticScalars = sectNuclToParticScalars[sectIndex];
+							for (int m=0; m<nuclToParticScalars.length; m++) {
+								double binRate = sectMFD.getY(m + sectMinMagIndexes[sectIndex]);
+								double particRate = binRate*nuclToParticScalars[m];
+								totParticRate += particRate;
+								if (jumpBitSet.get(m + sectMinMagIndexes[sectIndex]))
+									jumpParticRate += particRate;
+							}
+							// this is the segmentation-implied participation rate allotment for this jump
+							double segJumpParticRate = totParticRate*jumpProb;
+							// what fraction of the jump participation rate is allowed by the segmentation model?
+							// this will be >1 if the segmentation constraint is more permissive than the input G-R
+							double segFractOfAllotment = segJumpParticRate/jumpParticRate;
+							// minProb starts at 1, so don't need to ensure that it's <1 here
+							minProb = Math.min(minProb, segFractOfAllotment);
 						}
-						// total participation rate for this section assuming the original supra-seis MFD is honored
-						double totParticRate = 0d;
-						// total participation rate for magnitudes bins that use this jump
-						double jumpParticRate = 0d;
-						double[] nuclToParticScalars = sectNuclToParticScalars[sectIndex];
-						for (int m=0; m<nuclToParticScalars.length; m++) {
-							double binRate = sectMFD.getY(m + sectMinMagIndexes[sectIndex]);
-							double particRate = binRate*nuclToParticScalars[m];
-							totParticRate += particRate;
-							if (jumpBitSet.get(m + sectMinMagIndexes[sectIndex]))
-								jumpParticRate += particRate;
-						}
-						// this is the segmentation-implied participation rate allotment for this jump
-						double segJumpParticRate = totParticRate*jumpProb;
-						// what fraction of the jump participation rate is allowed by the segmentation model?
-						// this will be >1 if the segmentation constraint is more permissive than the input G-R
-						double segFractOfAllotment = segJumpParticRate/jumpParticRate;
-						// minProb starts at 1, so don't need to ensure that it's <1 here
-						minProb = Math.min(minProb, segFractOfAllotment);
 					}
 					jumpProbs.put(jump, minProb);
 					jumpProbs.put(jump.reverse(), minProb);
@@ -279,6 +287,7 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 							}
 						}));
 					}
+					double maxGain = 1d;
 					MinMaxAveTracker gainTrack = new MinMaxAveTracker();
 					for (Future<Double> future : mfdEstFutures) {
 						double gain;
@@ -288,11 +297,23 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 							exec.shutdown();
 							throw ExceptionUtils.asRuntimeException(e);
 						}
-						if (Double.isFinite(gain))
+						if (Double.isFinite(gain)) {
 							gainTrack.addValue(gain);
+							if (gain < 1d)
+								gain = 1/gain;
+							maxGain = Math.max(gain, maxGain);
+						}
 					}
-					System.out.println("Done with rel-GR threshold averaging iteration "+iter+"/"+iterations);
-					System.out.println("\tsect rate gains: "+gainTrack);
+					boolean print = iter % ITERATE_PRINT_MOD == 0 || iter == iterations-1 || maxGain < ITERATE_STOP_RATIO_THRESHOLD;
+					if (print) {
+						System.out.println("Done with rel-GR threshold averaging iteration "+iter+"/"+iterations);
+						System.out.println("\tsect rate gains: "+gainTrack);
+					}
+					if (maxGain < ITERATE_STOP_RATIO_THRESHOLD) {
+						System.out.println("\tstopping early after "+iter+" iterations (maxGain="+(float)maxGain
+								+" < "+(float)ITERATE_STOP_RATIO_THRESHOLD+")");
+						break;
+					}
 				}
 			}
 			
