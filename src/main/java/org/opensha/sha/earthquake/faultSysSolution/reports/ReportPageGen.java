@@ -171,6 +171,8 @@ public class ReportPageGen {
 		if (level == PlotLevel.FULL) {
 			plots.add(new HazardMapPlot());
 			plots.add(new SegmentationPlot());
+		} else if (level == PlotLevel.DEFAULT) {
+			plots.add(new SegmentationPlot(true, new double[] {0d})); // only supra-seis
 		}
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
 			plots.add(new NamedFaultPlot());
