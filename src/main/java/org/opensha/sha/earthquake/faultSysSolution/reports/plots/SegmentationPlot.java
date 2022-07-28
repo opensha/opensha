@@ -27,13 +27,15 @@ import com.google.common.base.Preconditions;
 public class SegmentationPlot extends AbstractSolutionPlot {
 	
 	private boolean skipCoulomb;
+	private double[] minMags;
 	
 	public SegmentationPlot() {
-		this(true);
+		this(true, null);
 	}
 	
-	public SegmentationPlot(boolean skipCoulomb) {
+	public SegmentationPlot(boolean skipCoulomb, double[] minMags) {
 		this.skipCoulomb = skipCoulomb;
+		this.minMags = minMags;
 	}
 
 	@Override
@@ -47,17 +49,19 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 		List<String> lines = new ArrayList<>();
 		
 		double minMag = sol.getRupSet().getMinMag();
-		double[] minMags;
-		if (minMag >= 7.5)
-			minMags = new double[] { 7.5 };
-		else if (minMag >= 7)
-			minMags = new double[] { 7d, 7.5 };
-		else if (minMag >= 6.5)
-//			minMags = new double[] { 6.5, 7d, 7.5 };
-			minMags = new double[] { 6.5, 7d };
-		else
-//			minMags = new double[] { 0d, 6.5, 7d, 7.5 };
-			minMags = new double[] { 0d, 7d };
+		double[] minMags = this.minMags;
+		if (minMags == null) {
+			if (minMag >= 7.5)
+				minMags = new double[] { 7.5 };
+			else if (minMag >= 7)
+				minMags = new double[] { 7d, 7.5 };
+			else if (minMag >= 6.5)
+//				minMags = new double[] { 6.5, 7d, 7.5 };
+				minMags = new double[] { 6.5, 7d };
+			else
+//				minMags = new double[] { 0d, 6.5, 7d, 7.5 };
+				minMags = new double[] { 0d, 7d };
+		}
 		
 		lines.add("The following plots show implied segmentation from the rates of this fault system solution.");
 		lines.add("");

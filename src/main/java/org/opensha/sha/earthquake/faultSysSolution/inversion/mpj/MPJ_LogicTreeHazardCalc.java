@@ -68,6 +68,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private static final double MAX_DIST_DEFAULT = 500;
 	private double maxDistance = MAX_DIST_DEFAULT;
 	
+	private static final double SKIP_MAX_DIST_DEFAULT = 300;
+	private double skipMaxSiteDist = SKIP_MAX_DIST_DEFAULT;
+	
 	private static AttenRelRef GMPE_DEFAULT = AttenRelRef.ASK_2014;
 	private AttenRelRef gmpeRef = GMPE_DEFAULT;
 	
@@ -101,6 +104,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		
 		if (cmd.hasOption("max-distance"))
 			maxDistance = Double.parseDouble(cmd.getOptionValue("max-distance"));
+		
+		if (cmd.hasOption("skip-max-distance"))
+			skipMaxSiteDist = Double.parseDouble(cmd.getOptionValue("skip-max-distance"));
 		
 		if (cmd.hasOption("gmpe"))
 			gmpeRef = AttenRelRef.valueOf(cmd.getOptionValue("gmpe"));
@@ -283,6 +289,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						+"\n\tGMPE: "+gmpe.getName()+paramStr);
 				calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, gridSeisOp, periods);
 				calc.setMaxSourceSiteDist(maxDistance);
+				calc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
 				
 				calc.calcHazardCurves(getNumThreads());
 				calc.writeCurvesCSVs(runDir, "curves", true);
@@ -307,6 +314,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption("sp", "grid-spacing", true, "Grid spacing in decimal degrees. Default: "+(float)GRID_SPACING_DEFAULT);
 		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default: "+(float)MAX_DIST_DEFAULT);
+		ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
+				+ "Default: "+(float)SKIP_MAX_DIST_DEFAULT);
 		ops.addOption("gs", "gridded-seis", true, "Gridded seismicity option. One of "
 				+FaultSysTools.enumOptions(IncludeBackgroundOption.class)+". Default: "+GRID_SEIS_DEFAULT.name());
 		ops.addOption("gm", "gmpe", true, "Sets GMPE. Note that this will be overriden if the Logic Tree "
