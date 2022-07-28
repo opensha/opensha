@@ -66,6 +66,8 @@ public class BranchAverageSolutionCreator {
 	private FaultSystemRupSet refRupSet = null;
 	private double[] avgSectAseis = null;
 	private double[] avgSectCoupling = null;
+	private boolean[] sectAnyCreeps = null;
+	private double[] avgSectCreep = null;
 	private double[] avgSectSlipRates = null;
 	private double[] avgSectSlipRateStdDevs = null;
 	private List<AngleAverager> avgSectRakes = null;
@@ -137,6 +139,18 @@ public class BranchAverageSolutionCreator {
 			refRupSet = rupSet;
 			
 			avgSectAseis = new double[rupSet.getNumSections()];
+			avgSectCreep = null;
+			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
+				if (sect instanceof GeoJSONFaultSection) {
+					double creepRate = ((GeoJSONFaultSection)sect).getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
+					if (Double.isFinite(creepRate)) {
+						// have creep data
+						avgSectCreep = new double[rupSet.getNumSections()];
+						sectAnyCreeps = new boolean[rupSet.getNumSections()];
+						break;
+					}
+				}
+			}
 			avgSectSlipRates = new double[rupSet.getNumSections()];
 			avgSectSlipRateStdDevs = new double[rupSet.getNumSections()];
 			avgSectCoupling = new double[rupSet.getNumSections()];
@@ -195,11 +209,18 @@ public class BranchAverageSolutionCreator {
 			avgSectSlipRateStdDevs[s] += sect.getOrigSlipRateStdDev()*weight;
 			avgSectCoupling[s] += sect.getCouplingCoeff()*weight;
 			avgSectRakes.get(s).add(sect.getAveRake(), weight);
+			if (avgSectCreep != null && sect instanceof GeoJSONFaultSection) {
+				double creepRate = ((GeoJSONFaultSection)sect).getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
+				if (Double.isFinite(creepRate)) {
+					sectAnyCreeps[s] = true;
+					avgSectCreep[s] += Math.max(0d, creepRate)*weight;
+				}
+			}
 		}
 		
 		// now work on modules
-		processAccumulators(rupSetAvgAccumulators, rupSet, weight);
-		processAccumulators(solAvgAccumulators, sol, weight);
+		processAccumulators(rupSetAvgAccumulators, rupSet, branch, weight);
+		processAccumulators(solAvgAccumulators, sol, branch, weight);
 	}
 	
 	private List<AveragingAccumulator<? extends BranchAverageableModule<?>>> initAccumulators(
@@ -220,14 +241,15 @@ public class BranchAverageSolutionCreator {
 	}
 	
 	private void processAccumulators(List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators, 
-			ModuleContainer<OpenSHA_Module> container, double weight) {
+			ModuleContainer<OpenSHA_Module> container, LogicTreeBranch<?> branch, double weight) {
 		for (int i=accumulators.size(); --i>=0;) {
 			AveragingAccumulator<? extends BranchAverageableModule<?>> accumulator = accumulators.get(i);
 			try {
 				accumulator.processContainer(container, weight);
 			} catch (Exception e) {
 				e.printStackTrace();
-				System.err.println("Error processing accumulator, will no longer average "+accumulator.getType().getName());
+				System.err.println("Error processing accumulator, will no longer average "
+						+accumulator.getType().getName()+". Failed on branch: "+branch);
 				System.err.flush();
 				accumulators.remove(i);
 				if (accumulatingSlipRates && SolutionSlipRates.class.isAssignableFrom(accumulator.getType()))
@@ -298,6 +320,10 @@ public class BranchAverageSolutionCreator {
 			
 			GeoJSONFaultSection avgSect = new GeoJSONFaultSection(new AvgFaultSection(refSect, avgSectAseis[s],
 					avgSectCoupling[s], avgRake, avgSectSlipRates[s], avgSectSlipRateStdDevs[s]));
+			if (avgSectCreep != null && sectAnyCreeps[s]) {
+				avgSectCreep[s] /= totWeight;
+				avgSect.setProperty(GeoJSONFaultSection.CREEP_RATE, avgSectCreep[s]);
+			}
 			subSects.add(avgSect);
 		}
 		
