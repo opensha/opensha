@@ -28,6 +28,7 @@ import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ExceptionUtils;
@@ -44,12 +45,15 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBValuePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SolMFDPlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_U3_HybridLogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.U3_UncertAddDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.APrioriSectNuclEstimator;
@@ -81,6 +85,8 @@ import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
  *
  */
 public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precomputed {
+	
+	public static final boolean D = false;
 	
 	/**
 	 * Method for reduction target slip rates to account for sub-seismogenic ruptures.
@@ -868,7 +874,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				if (dataImpliedSectSupraSeisMFDs != null) {
 					IncrementalMagFreqDist impliedMFD = dataImpliedSectSupraSeisMFDs.get(s);
 					if (impliedMFD != null) {
-						System.out.println("Adjusting MFD for s="+s+" to account for data constraints");
+						if (D) System.out.println("Adjusting MFD for s="+s+" to account for data constraints");
 						uncertainSectSupraMFD = adjustForDataImpliedBounds(uncertainSectSupraMFD, impliedMFD, false);
 					}
 				}
@@ -1137,7 +1143,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					double relStdDev = Math.sqrt(refNum)/Math.sqrt(binCounts[i]);
 					double origStdDev = stdDevs.getY(i);
 					double origRel = origStdDev/rate;
-					System.out.println("\t\tRelative particpation std dev for M="
+					if (D) System.out.println("\t\tRelative particpation std dev for M="
 							+(float)sumMFD.getX(i)+", binCount="+(float)binCounts[i]+": "+(float)relStdDev
 							+"\torigStdDev="+(float)origStdDev+"\torigRelStdDev="+(float)origRel+"\ttotRel="+(float)(origRel*relStdDev));
 					// scale existing std dev
@@ -1188,19 +1194,21 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				
 				// adjust the standard deviations of the regional mfd to reach the implied MFD
 				System.out.println("Adjusting regional MFD to match data bounds");
-				uncertainMFD = adjustForDataImpliedBounds(uncertainMFD, impliedMFD, true);
+				uncertainMFD = adjustForDataImpliedBounds(uncertainMFD, impliedMFD, D);
 			}
 			
-			System.out.println("Final regional MFD:");
-			boolean first = true;
-			for (int i=0; i<uncertainMFD.size(); i++) {
-				double x = uncertainMFD.getX(i);
-				double y = uncertainMFD.getY(i);
-				if (first && y == 0d)
-					continue;
-				first = false;
-				double sd = uncertainMFD.getStdDev(i);
-				System.out.println("\tM="+(float)x+"\tRate="+(float)y+"\tStdDev="+(float)sd+"\tRelStdDev="+(float)(sd/y));
+			if (D) {
+				System.out.println("Final regional MFD:");
+				boolean first = true;
+				for (int i=0; i<uncertainMFD.size(); i++) {
+					double x = uncertainMFD.getX(i);
+					double y = uncertainMFD.getY(i);
+					if (first && y == 0d)
+						continue;
+					first = false;
+					double sd = uncertainMFD.getStdDev(i);
+					System.out.println("\tM="+(float)x+"\tRate="+(float)y+"\tStdDev="+(float)sd+"\tRelStdDev="+(float)(sd/y));
+				}
 			}
 			return uncertainMFD;
 		}
@@ -1272,7 +1280,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				relStdDevTrack.addValue(relStdDev);
 				stdDevs.set(i, Math.max(minImpliedStdDev, inputStdDevs.getY(i)));
 			}
-			System.out.println("\tImplied std dev range:\t["+(float)stdDevTrack.getMin()+","+(float)stdDevTrack.getMax()
+			if (D) System.out.println("\tImplied std dev range:\t["+(float)stdDevTrack.getMin()+","+(float)stdDevTrack.getMax()
 					+"], avg="+(float)stdDevTrack.getAverage()+"\t\trel range:\t["+(float)relStdDevTrack.getMin()
 					+","+(float)relStdDevTrack.getMax()+"], avg="+(float)relStdDevTrack.getAverage());
 			return new UncertainBoundedIncrMagFreqDist(mfd, lower, upper, UncertaintyBoundType.ONE_SIGMA);
@@ -1329,7 +1337,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	public static void main(String[] args) throws IOException {
 		FaultSystemRupSet rupSet = FaultSystemRupSet.load(
 //				new File("/data/kevin/markdown/inversions/fm3_1_u3ref_uniform_reproduce_ucerf3.zip"));
-				new File("/data/kevin/markdown/inversions/fm3_1_u3ref_uniform_coulomb.zip"));
+//				new File("/data/kevin/markdown/inversions/fm3_1_u3ref_uniform_coulomb.zip"));
+				new File("/data/kevin/nshm23/def_models/NSHM23_v1p4/GEOLOGIC.zip"));
 		
 		InversionTargetMFDs origTargets = rupSet.getModule(InversionTargetMFDs.class);
 		SectSlipRates origSlips = rupSet.getModule(SectSlipRates.class);
@@ -1339,8 +1348,9 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		
 		rupSet = FaultSystemRupSet.buildFromExisting(rupSet)
 //				.replaceFaultSections(DeformationModels.MEAN_UCERF3.build(FaultModels.FM3_1))
-				.replaceFaultSections(U3_UncertAddDeformationModels.U3_MEAN.build(FaultModels.FM3_1))
-				.forScalingRelationship(ScalingRelationships.MEAN_UCERF3)
+//				.replaceFaultSections(U3_UncertAddDeformationModels.U3_MEAN.build(FaultModels.FM3_1))
+//				.forScalingRelationship(ScalingRelationships.MEAN_UCERF3)
+				.forScalingRelationship(NSHM23_ScalingRelationships.AVERAGE)
 				.build();
 		
 		double b = 0.5d;
@@ -1359,7 +1369,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		builder.addSectCountUncertainties(false);
 		builder.totalTargetMFD(rupSet.requireModule(InversionTargetMFDs.class).getTotalRegionalMFD());
 		builder.subSeisMoRateReduction(SubSeisMoRateReduction.SUB_SEIS_B_1);
-		Shaw07JumpDistProb segModel = Shaw07JumpDistProb.forHorzOffset(1d, 3d, 2d);
+//		Shaw07JumpDistProb segModel = Shaw07JumpDistProb.forHorzOffset(1d, 3d, 2d);
+		JumpProbabilityCalc segModel = NSHM23_SegmentationModels.HIGH.getModel(rupSet, rupSet.getModule(LogicTreeBranch.class));
 //		builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(segModel,
 ////				MultiBinDistributionMethod.GREEDY, false));
 ////				MultiBinDistributionMethod.GREEDY, true));
@@ -1369,7 +1380,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 //				MultiBinDistributionMethod.CAPPED_DISTRIBUTED, true));
 //		builder.adjustTargetsForData(new ImprobabilityImpliedSectNuclMFD_Estimator(segModel));
 //		builder.adjustTargetsForData(new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel));
-		builder.adjustTargetsForData(new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel));
+		builder.adjustTargetsForData(new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 50));
 //		builder.forBinaryRupProbModel(MaxJumpDistModels.FIVE.getModel(rupSet));
 //		builder.forSegmentationModel(segModel);
 //		builder.forSegmentationModel(new JumpProbabilityCalc() {
@@ -1396,12 +1407,12 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		
 //		builder.forBinaryRupProbModel(new NSHM23_ConstraintBuilder(rupSet, b).excludeRupturesThroughCreeping().getRupExclusionModel());
 		
-		List<SectNucleationMFD_Estimator> dataConstraints = new ArrayList<>();
-		dataConstraints.add(new APrioriSectNuclEstimator(
-				rupSet, UCERF3InversionInputGenerator.findParkfieldRups(rupSet), 1d/25d, 0.1d/25d));
-		dataConstraints.addAll(PaleoSectNuclEstimator.buildPaleoEstimates(rupSet, true));
-		UncertaintyBoundType expandUncertToDataBound = UncertaintyBoundType.ONE_SIGMA;
-		builder.expandUncertaintiesForData(dataConstraints, expandUncertToDataBound);
+//		List<SectNucleationMFD_Estimator> dataConstraints = new ArrayList<>();
+//		dataConstraints.add(new APrioriSectNuclEstimator(
+//				rupSet, UCERF3InversionInputGenerator.findParkfieldRups(rupSet), 1d/25d, 0.1d/25d));
+//		dataConstraints.addAll(PaleoSectNuclEstimator.buildPaleoEstimates(rupSet, true));
+//		UncertaintyBoundType expandUncertToDataBound = UncertaintyBoundType.ONE_SIGMA;
+//		builder.expandUncertaintiesForData(dataConstraints, expandUncertToDataBound);
 		
 		SupraSeisBValInversionTargetMFDs target = builder.build();
 		rupSet.addModule(target);
@@ -1441,14 +1452,19 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				|| builder.rupSubSet != null) {
 			// debug
 			int[] debugSects = {
-					100, // Bicycle Lake
-					1330, // Mono Lake
-					1832, // Mojave N
-					2063, // San Diego Trough
-					129, // Big Pine (East)
-					639, // Gillem - Big Crack
-					315, // Chino alt 1
-					159, // Brawley
+					// U3 FM3.1
+//					100, // Bicycle Lake
+//					1330, // Mono Lake
+//					1832, // Mojave N
+//					2063, // San Diego Trough
+//					129, // Big Pine (East)
+//					639, // Gillem - Big Crack
+//					315, // Chino alt 1
+//					159, // Brawley
+					
+					// NSHM23 FM 1.4
+					
+					4412, // Santa Rita (south)
 			};
 
 			builder.clearTargetAdjustments();
