@@ -1,6 +1,7 @@
 package org.opensha.commons.logicTree;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.Map;
 
 import org.opensha.commons.util.ExceptionUtils;
@@ -155,6 +156,37 @@ public interface BranchWeightProvider {
 			
 			Preconditions.checkNotNull(ret, "Missing 'data' and/or 'type' field, can't deserialize");
 			return ret;
+		}
+		
+	}
+	
+	public static class NodeWeightOverrides implements BranchWeightProvider {
+		
+		private Map<LogicTreeNode, Double> nodeWeights;
+		
+		public NodeWeightOverrides(LogicTreeNode[] nodes, double weight) {
+			nodeWeights = new HashMap<>();
+			for (LogicTreeNode node : nodes)
+				nodeWeights.put(node, weight);
+		}
+
+		public NodeWeightOverrides(Map<LogicTreeNode, Double> nodeWeights) {
+			this.nodeWeights = nodeWeights;
+		}
+
+		@Override
+		public double getWeight(LogicTreeBranch<?> branch) {
+			double wt = 1;
+			for (LogicTreeNode value : branch) {
+				if (value != null) {
+					Double hardcoded = nodeWeights.get(value);
+					if (hardcoded != null)
+						wt *= hardcoded;
+					else
+						wt *= value.getNodeWeight(branch);
+				}
+			}
+			return wt;
 		}
 		
 	}
