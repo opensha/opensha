@@ -114,5 +114,24 @@ public class FaultSectionUtils {
 		}
 		return false;
 	}
+	
+	/**
+	 * 
+	 * @param sects
+	 * @return parent section ID if identical for all of the supplied sections, otherwise null
+	 */
+	public static Integer getCommonParentID(List<? extends FaultSection> sects) {
+		Integer parent = null;
+		for (FaultSection sect : sects) {
+			int parentID = sect.getParentSectionId();
+			Preconditions.checkState(parentID >= 0, "Sect doesn't have parent info: %s. %s",
+					sect.getSectionId(), sect.getSectionName());
+			if (parent == null)
+				parent = parentID;
+			else if (parentID != parent.intValue())
+				return null;
+		}
+		return parent;
+	}
 
 }

@@ -58,9 +58,11 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder.ParkfieldSelectionCriteria;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_PaleoDataLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels.HardDistCutoffJumpProbCalc;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSect;
@@ -250,6 +252,13 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		// add other modules
 		return getSolutionLogicTreeProcessor().processRupSet(rupSet, branch);
 	}
+	
+	public static ParkfieldSelectionCriteria getParkfieldSelectionCriteria(RupSetFaultModel fm) {
+		if (fm instanceof FaultModels)
+			// UCERF3
+			return ParkfieldSelectionCriteria.SECT_COUNT;
+		return NSHM23_ConstraintBuilder.PARKFIELD_SELECT_DEFAULT;
+	}
 
 	@Override
 	public SolutionProcessor getSolutionLogicTreeProcessor() {
@@ -342,7 +351,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					public ModSectMinMags call() throws Exception {
 						ModSectMinMags minMags = ModSectMinMags.above(rupSet, MIN_MAG_FOR_SEISMOGENIC_RUPS, true);
 						// modify for parkfield if needed
-						List<Integer> parkRups = NSHM23_ConstraintBuilder.findParkfieldRups(rupSet);
+						List<Integer> parkRups = NSHM23_ConstraintBuilder.findParkfieldRups(
+								rupSet, getParkfieldSelectionCriteria(fm));
 						if (parkRups != null && !parkRups.isEmpty()) {
 							EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(rupSet);
 							int minParkBin = -1;
@@ -467,6 +477,9 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	private static NSHM23_ConstraintBuilder getConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
 		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal);
+		
+		RupSetFaultModel fm = branch.getValue(RupSetFaultModel.class);
+		constrBuilder.parkfieldSelection(getParkfieldSelectionCriteria(fm));
 		
 		SubSeisMoRateReduction reduction = SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
 		if (branch.hasValue(SubSeisMoRateReductions.class))

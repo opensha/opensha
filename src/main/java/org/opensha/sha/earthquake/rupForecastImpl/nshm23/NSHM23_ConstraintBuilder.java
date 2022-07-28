@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -101,6 +102,9 @@ public class NSHM23_ConstraintBuilder {
 	
 	private JumpProbabilityCalc segModel;
 	private SegmentationMFD_Adjustment segAdjMethod = SegmentationMFD_Adjustment.JUMP_PROB_THRESHOLD_AVG;
+	
+	public static ParkfieldSelectionCriteria PARKFIELD_SELECT_DEFAULT = ParkfieldSelectionCriteria.MAG_6;
+	private ParkfieldSelectionCriteria parkfieldSelect = PARKFIELD_SELECT_DEFAULT;
 	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB) {
 		this(rupSet, supraSeisB, SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT,
@@ -403,40 +407,115 @@ public class NSHM23_ConstraintBuilder {
 		return FaultSectionUtils.findParentSectionID(rupSet.getFaultSectionDataList(), "San", "Andreas", "Creeping") >= 0;
 	}
 	
-	public List<Integer> findParkfieldRups() {
-		return findParkfieldRups(rupSet);
+	public enum ParkfieldSelectionCriteria {
+		SECT_COUNT {
+			@Override
+			List<Integer> select(FaultSystemRupSet rupSet, int parkfieldID) {
+				List<Integer> potentialRups = rupSet.getRupturesForParentSection(parkfieldID);
+				List<Integer> parkfieldRups = new ArrayList<Integer>();
+				if (potentialRups == null) {
+					System.out.println("Warning: parkfield not found...removed?");
+					return parkfieldRups;
+				}
+				for (int i=0; i<potentialRups.size(); i++) {
+					List<FaultSection> rupSects = rupSet.getFaultSectionDataForRupture(potentialRups.get(i));
+					// Make sure there are 6-8 subsections
+					if (rupSects.size()<6 || rupSects.size()>8)
+						continue;
+					// Make sure each section in rup is in Parkfield parent section
+					Integer commonID = FaultSectionUtils.getCommonParentID(rupSects);
+					if (commonID == null || commonID != parkfieldID)
+						continue;
+					parkfieldRups.add(potentialRups.get(i));
+					//						if (D) System.out.println("Parkfield rup: "+potentialRups.get(i));
+				}
+//				if (D) System.out.println("Number of M~6 Parkfield rups = "+parkfieldRups.size());
+				return parkfieldRups;
+			}
+		},
+		MAG_6 {
+			@Override
+			List<Integer> select(FaultSystemRupSet rupSet, int parkfieldID) {
+				// include all ruptures in the range M=[6,6.1] purely on the parkfield section. If none found,
+				// include the closest one to that range, preferably with M>6
+				HashSet<Integer> rupIndexes = new HashSet<>();
+				
+				for (FaultSection sect : rupSet.getFaultSectionDataList()) {
+					if (sect.getParentSectionId() == parkfieldID) {
+						// it's Parkfield section
+						double minAbove6 = Double.POSITIVE_INFINITY;
+						int minAboveIndex = -1;
+						double maxBelow6 = Double.NEGATIVE_INFINITY;
+						int maxBelowIndex = -1;
+						boolean matchFound = false;
+						for (int rupIndex : rupSet.getRupturesForSection(sect.getSectionId())) {
+							Integer commonID = FaultSectionUtils.getCommonParentID(
+									rupSet.getFaultSectionDataForRupture(rupIndex));
+							if (commonID == null || commonID != parkfieldID)
+								continue;
+							double mag = rupSet.getMagForRup(rupIndex);
+							if ((float)mag >= 6f && (float)mag <= 6.1f) {
+								rupIndexes.add(rupIndex);
+								matchFound = true;
+							} else if ((float)mag > 6f) {
+								if (mag < minAbove6) {
+									minAbove6 = mag;
+									minAboveIndex = rupIndex;
+								}
+							} else {
+								if (mag > maxBelow6) {
+									maxBelow6 = mag;
+									maxBelowIndex = rupIndex;
+								}
+							}
+						}
+//						System.out.println("Section "+sect.getSectionName()+". Match found? "+matchFound);
+						if (!matchFound) {
+//							System.out.println("\tClosest above: "+minAboveIndex+", M="+(float)minAbove6);
+//							System.out.println("\tClosest below: "+maxBelowIndex+", M="+(float)maxBelow6);
+							// nothing found for this section, include the closest
+							if (minAboveIndex >= 0)
+								// prefer above
+								rupIndexes.add(minAboveIndex);
+							else if (maxBelowIndex >= 0)
+								// fall back to below
+								rupIndexes.add(maxBelowIndex);
+						}
+					}
+				}
+				
+				List<Integer> ret = new ArrayList<>(rupIndexes);
+				Collections.sort(ret);
+				return ret;
+			}
+		};
+		
+		abstract List<Integer> select(FaultSystemRupSet rupSet, int parkfieldID);
 	}
 	
-	public static List<Integer> findParkfieldRups(FaultSystemRupSet rupSet) {
-		int parkfieldID = FaultSectionUtils.findParentSectionID(rupSet.getFaultSectionDataList(), "San", "Andreas", "Parkfield");
+	public NSHM23_ConstraintBuilder parkfieldSelection(ParkfieldSelectionCriteria parkfieldSelect) {
+		Preconditions.checkNotNull(parkfieldSelect);
+		this.parkfieldSelect = parkfieldSelect;
+		return this;
+	}
+	
+	public ParkfieldSelectionCriteria getParkfieldSelectionCriteria() {
+		return parkfieldSelect;
+	}
+	
+	public List<Integer> findParkfieldRups() {
+		return findParkfieldRups(rupSet, parkfieldSelect);
+	}
+	
+	public static List<Integer> findParkfieldRups(FaultSystemRupSet rupSet,
+			ParkfieldSelectionCriteria parkfieldSelect) {
+		int parkfieldID = FaultSectionUtils.findParentSectionID(
+				rupSet.getFaultSectionDataList(), "San", "Andreas", "Parkfield");
 		if (parkfieldID < 0) {
 			System.out.println("Warning: parkfield not found...removed?");
 			return new ArrayList<>();
 		}
-		// Find Parkfield M~6 ruptures
-		List<Integer> potentialRups = rupSet.getRupturesForParentSection(parkfieldID);
-		List<Integer> parkfieldRups = new ArrayList<Integer>();
-		if (potentialRups == null) {
-			System.out.println("Warning: parkfield not found...removed?");
-			return parkfieldRups;
-		}
-		rupLoop:
-			for (int i=0; i<potentialRups.size(); i++) {
-				List<Integer> sects = rupSet.getSectionsIndicesForRup(potentialRups.get(i));
-				// Make sure there are 6-8 subsections
-				if (sects.size()<6 || sects.size()>8)
-					continue rupLoop;
-				// Make sure each section in rup is in Parkfield parent section
-				for (int s=0; s<sects.size(); s++) {
-					int parent = rupSet.getFaultSectionData(sects.get(s)).getParentSectionId();
-					if (parent != parkfieldID)
-						continue rupLoop;
-				}
-				parkfieldRups.add(potentialRups.get(i));
-//				if (D) System.out.println("Parkfield rup: "+potentialRups.get(i));
-			}
-//		if (D) System.out.println("Number of M~6 Parkfield rups = "+parkfieldRups.size());
-		return parkfieldRups;
+		return parkfieldSelect.select(rupSet, parkfieldID);
 	}
 	
 	public boolean rupSetHasParkfield() {
