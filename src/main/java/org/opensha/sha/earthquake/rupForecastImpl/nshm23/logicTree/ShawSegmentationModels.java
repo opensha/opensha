@@ -13,7 +13,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum SegmentationModels implements LogicTreeNode {
+public enum ShawSegmentationModels implements SegmentationModelBranchNode {
 	SHAW_R0_1("Shaw & Dieterich (2007) R₀=1", "ShawR₀=1", 0.0d) {
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
@@ -61,7 +61,7 @@ public enum SegmentationModels implements LogicTreeNode {
 	private String shortName;
 	private double weight;
 
-	private SegmentationModels(String name, String shortName, double weight) {
+	private ShawSegmentationModels(String name, String shortName, double weight) {
 		this.name = name;
 		this.shortName = shortName;
 		this.weight = weight;

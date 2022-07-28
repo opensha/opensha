@@ -34,12 +34,16 @@ public class NSHM23_U3_HybridLogicTreeBranch extends LogicTreeBranch<LogicTreeNo
 			LogicTreeLevel.forEnum(ScalingRelationships.class, "Scaling Relationship", "Scale");
 	public static LogicTreeLevel<SlipAlongRuptureModels> SLIP_ALONG =
 			LogicTreeLevel.forEnum(SlipAlongRuptureModels.class, "Slip Along Rupture", "SlipAlong");
+	public static LogicTreeLevel<ShawSegmentationModels> SEG =
+			LogicTreeLevel.forEnum(ShawSegmentationModels.class, "Segmentation Model", "SegModel");
+	public static LogicTreeLevel<DistDependSegShift> SEG_SHIFT =
+			LogicTreeLevel.forEnum(DistDependSegShift.class, "Dist-Dependent Seg Model Shift", "SegShift");
 	
 	static {
 		// exhaustive for now, can trim down later
 		levels = List.of(U3_FM, NSHM23_LogicTreeBranch.PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG,
 				NSHM23_LogicTreeBranch.SUPRA_B, NSHM23_LogicTreeBranch.SUB_SECT_CONSTR,
-				NSHM23_LogicTreeBranch.SUB_SEIS_MO, NSHM23_LogicTreeBranch.SEG, NSHM23_LogicTreeBranch.SEG_SHIFT,
+				NSHM23_LogicTreeBranch.SUB_SEIS_MO, SEG, SEG_SHIFT,
 				NSHM23_LogicTreeBranch.SEG_ADJ, NSHM23_LogicTreeBranch.RUPS_THROUGH_CREEPING);
 		levelsMaxDist = List.of(U3_FM, NSHM23_LogicTreeBranch.PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG,
 				NSHM23_LogicTreeBranch.SUPRA_B, NSHM23_LogicTreeBranch.SUB_SECT_CONSTR,
@@ -53,7 +57,7 @@ public class NSHM23_U3_HybridLogicTreeBranch extends LogicTreeBranch<LogicTreeNo
 	public static final NSHM23_U3_HybridLogicTreeBranch DEFAULT = fromValues(FaultModels.FM3_1,
 			RupturePlausibilityModels.COULOMB, U3_UncertAddDeformationModels.U3_ZENG, ScalingRelationships.SHAW_2009_MOD,
 			SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p5, SubSectConstraintModels.TOT_NUCL_RATE,
-			SubSeisMoRateReductions.SUB_B_1, SegmentationModels.SHAW_R0_3, DistDependSegShift.TWO_KM,
+			SubSeisMoRateReductions.SUB_B_1, ShawSegmentationModels.SHAW_R0_3, DistDependSegShift.TWO_KM,
 			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG_ITERATIVE, RupsThroughCreepingSect.INCLUDE);
 	
 	/**

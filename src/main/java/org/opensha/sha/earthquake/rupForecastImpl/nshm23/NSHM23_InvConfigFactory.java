@@ -13,10 +13,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import org.opensha.commons.data.CSVFile;
-import org.opensha.commons.data.IntegerSampler;
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.logicTree.LogicTreeBranch;
@@ -30,7 +28,6 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint;
@@ -40,12 +37,12 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationsPerVariableCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
@@ -53,14 +50,12 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
-import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_PaleoDataLoader;
@@ -71,15 +66,13 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_Scalin
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSect;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModelBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSeisMoRateReductions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator.MultiBinDistributionMethod;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
@@ -523,7 +516,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	}
 	
 	private static JumpProbabilityCalc buildSegModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		SegmentationModels segModel = branch.getValue(SegmentationModels.class);
+		SegmentationModelBranchNode segModel = branch.getValue(SegmentationModelBranchNode.class);
 		JumpProbabilityCalc jumpProb = segModel == null ? null : segModel.getModel(rupSet, branch);
 		return jumpProb;
 	}
@@ -974,6 +967,44 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			for (InversionConstraint constraint : config.getConstraints())
 				if (constraint instanceof JumpProbabilityConstraint)
 					constraint.setWeight(100);
+			
+			return config;
+		}
+		
+	}
+	
+	public static class SegWeight1000 extends NSHM23_InvConfigFactory {
+		
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
+			
+			if (config == null)
+				return null;
+			
+			for (InversionConstraint constraint : config.getConstraints())
+				if (constraint instanceof JumpProbabilityConstraint)
+					constraint.setWeight(1000);
+			
+			return config;
+		}
+		
+	}
+	
+	public static class SegWeight10000 extends NSHM23_InvConfigFactory {
+		
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
+			
+			if (config == null)
+				return null;
+			
+			for (InversionConstraint constraint : config.getConstraints())
+				if (constraint instanceof JumpProbabilityConstraint)
+					constraint.setWeight(10000);
 			
 			return config;
 		}

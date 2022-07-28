@@ -41,10 +41,8 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			LogicTreeLevel.forEnum(SubSectConstraintModels.class, "Sub-Sect Constraint Model", "SectConstr");
 	public static LogicTreeLevel<SubSeisMoRateReductions> SUB_SEIS_MO =
 			LogicTreeLevel.forEnum(SubSeisMoRateReductions.class, "Sub-Sect Moment Rate Reduction", "SectMoRed");
-	public static LogicTreeLevel<SegmentationModels> SEG =
-			LogicTreeLevel.forEnum(SegmentationModels.class, "Segmentation Model", "SegModel");
-	public static LogicTreeLevel<DistDependSegShift> SEG_SHIFT =
-			LogicTreeLevel.forEnum(DistDependSegShift.class, "Dist-Dependent Seg Model Shift", "SegShift");
+	public static LogicTreeLevel<NSHM23_SegmentationModels> SEG =
+			LogicTreeLevel.forEnum(NSHM23_SegmentationModels.class, "Segmentation Model", "SegModel");
 	public static LogicTreeLevel<SegmentationMFD_Adjustment> SEG_ADJ =
 			LogicTreeLevel.forEnum(SegmentationMFD_Adjustment.class, "Segmentation MFD Adjustment", "SegAdj");
 	public static LogicTreeLevel<MaxJumpDistModels> MAX_DIST =
@@ -55,7 +53,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	static {
 		// exhaustive for now, can trim down later
 		levels = List.of(FM, PLAUSIBILITY, DM, SCALE, SLIP_ALONG, SUPRA_B,
-				SUB_SECT_CONSTR, SUB_SEIS_MO, SEG, SEG_SHIFT, SEG_ADJ, RUPS_THROUGH_CREEPING);
+				SUB_SECT_CONSTR, SUB_SEIS_MO, SEG, SEG_ADJ, RUPS_THROUGH_CREEPING);
 		levelsMaxDist = List.of(FM, PLAUSIBILITY, DM, SCALE, SLIP_ALONG, SUPRA_B,
 				SUB_SECT_CONSTR, SUB_SEIS_MO, MAX_DIST, RUPS_THROUGH_CREEPING);
 	}
@@ -66,7 +64,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	public static final NSHM23_LogicTreeBranch DEFAULT = fromValues(NSHM23_FaultModels.NSHM23_v1p4,
 			RupturePlausibilityModels.COULOMB, NSHM23_DeformationModels.GEOLOGIC, NSHM23_ScalingRelationships.LOGA_C4p2,
 			SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p5, SubSectConstraintModels.TOT_NUCL_RATE,
-			SubSeisMoRateReductions.SUB_B_1, SegmentationModels.SHAW_R0_3, DistDependSegShift.TWO_KM,
+			SubSeisMoRateReductions.SUB_B_1, NSHM23_SegmentationModels.MID,
 			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG_ITERATIVE, RupsThroughCreepingSect.INCLUDE);
 	
 	/**
