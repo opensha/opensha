@@ -276,13 +276,16 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 		MinMaxAveTracker valTrack = new MinMaxAveTracker();
 		for (SectMappedUncertainDataConstraint constr : rateMap.keySet()) {
 			double rate = rateMap.get(constr);
-			if (rate != 0d) {
+			if (rate > 0d) {
 				valTrack.addValue(rate);
-				valTrack.addValue(constr.bestEstimate);
+				if (constr.bestEstimate > 0d)
+					valTrack.addValue(constr.bestEstimate);
 				// make sure at least part of the uncertainties are visible
 				BoundedUncertainty halfSigaBounds = constr.estimateUncertaintyBounds(UncertaintyBoundType.HALF_SIGMA);
-				valTrack.addValue(halfSigaBounds.lowerBound);
-				valTrack.addValue(halfSigaBounds.upperBound);
+				if (halfSigaBounds.lowerBound > 0d)
+					valTrack.addValue(halfSigaBounds.lowerBound);
+				if (halfSigaBounds.upperBound > 0d)
+					valTrack.addValue(halfSigaBounds.upperBound);
 			}
 		}
 		
