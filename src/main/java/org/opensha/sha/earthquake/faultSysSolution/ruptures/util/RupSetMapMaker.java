@@ -12,9 +12,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
-import org.jfree.chart.axis.NumberTickUnit;
-import org.jfree.chart.axis.TickUnit;
-import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.data.Range;
@@ -22,6 +19,8 @@ import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
@@ -45,7 +44,9 @@ import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 
 import com.google.common.base.Preconditions;
@@ -60,6 +61,8 @@ import com.google.common.primitives.Doubles;
 public class RupSetMapMaker {
 	
 	private final List<? extends FaultSection> subSects;
+	private List<LocationList> sectUpperEdges;
+	private List<LocationList> sectPerimeters;
 	private Region region;
 	
 	private PlotCurveCharacterstics politicalBoundaryChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.GRAY);
@@ -363,13 +366,75 @@ public class RupSetMapMaker {
 		return surfMiddles.get(sect.getSectionId());
 	}
 	
+	private LocationList getPerimeter(FaultSection sect) {
+		checkInitPerims();
+		return sectPerimeters.get(sect.getSectionId());
+	}
+	
+	private LocationList getUpperEdge(FaultSection sect) {
+		checkInitPerims();
+		return sectUpperEdges.get(sect.getSectionId());
+	}
+	
+	private void checkInitPerims() {
+		if (sectPerimeters == null) {
+			synchronized (this) {
+				if (sectPerimeters == null) {
+					List<LocationList> upperEdges = new ArrayList<>();
+					List<LocationList> perimeters = new ArrayList<>();
+					for (FaultSection subSect : subSects) {
+						// build our own simple perimeters here that have fewer points (not evenly discretized
+						FaultTrace trace = subSect.getFaultTrace();
+						
+						LocationList upperEdge = new LocationList();
+						LocationList lowerEdge = new LocationList();
+						
+						double dipDirDeg = subSect.getDipDirection(); // degrees
+						double aveDipRad = Math.toRadians(subSect.getAveDip()); // radians
+						double upperDepth = subSect.getReducedAveUpperDepth();
+						double ddw = subSect.getReducedDownDipWidth();
+						double horzToBottom = ddw * Math.cos( aveDipRad );
+						double vertToBottom = ddw * Math.sin( aveDipRad );
+						
+						for (Location traceLoc : trace) {
+							Location upperLoc = StirlingGriddedSurface.getTopLocation(
+									traceLoc, upperDepth, aveDipRad, dipDirDeg);
+							upperEdge.add(upperLoc);
+
+							LocationVector dir = new LocationVector(dipDirDeg, horzToBottom, vertToBottom);
+
+							Location lowerLoc = LocationUtils.location(upperLoc, dir);
+							lowerEdge.add(lowerLoc);
+						}
+						
+						LocationList perimeter = new LocationList();
+						perimeter.addAll(upperEdge);
+						Collections.reverse(lowerEdge);
+						perimeter.addAll(lowerEdge);
+						perimeter.add(perimeter.first());
+						
+						RuptureSurface surf = getSectSurface(subSect);
+						LocationList discrUpperEdge = surf.getEvenlyDiscritizedUpperEdge();
+						if (discrUpperEdge.size() < upperEdge.size())
+							upperEdge = discrUpperEdge;
+						LocationList discrPerim = surf.getEvenlyDiscritizedPerimeter();
+						if (discrPerim.size() < perimeter.size()) {
+							if (!discrPerim.first().equals(discrPerim.last()) )
+								discrPerim.add(discrPerim.first());
+							perimeter = discrPerim;
+						}
+						upperEdges.add(upperEdge);
+						perimeters.add(perimeter);
+					}
+					this.sectUpperEdges = upperEdges;
+					this.sectPerimeters = perimeters;
+				}
+			}
+		}
+	}
+	
 	private Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
-		RuptureSurface surf = getSectSurface(sect);
-		LocationList perim = new LocationList();
-		perim.addAll(surf.getPerimeter());
-		if (!perim.first().equals(perim.last()))
-			perim.add(perim.first());
-		Polygon poly = new Polygon(perim);
+		Polygon poly = new Polygon(getPerimeter(sect));
 		FeatureProperties props = new FeatureProperties();
 		props.set("name", sect.getSectionName());
 		props.set("id", sect.getSectionId());
@@ -382,7 +447,7 @@ public class RupSetMapMaker {
 	}
 	
 	private Feature traceFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
-		LineString line = new LineString(getSectSurface(sect).getUpperEdge());
+		LineString line = new LineString(getUpperEdge(sect));
 		FeatureProperties props = new FeatureProperties();
 		props.set("name", sect.getSectionName());
 		props.set("id", sect.getSectionId());
@@ -434,10 +499,9 @@ public class RupSetMapMaker {
 			FaultSection sect = subSects.get(s);
 			if (!plotSects.contains(sect))
 				continue;
-			RuptureSurface surf = getSectSurface(sect);
 			
 			XY_DataSet trace = new DefaultXY_DataSet();
-			for (Location loc : surf.getEvenlyDiscritizedUpperEdge())
+			for (Location loc : getUpperEdge(sect))
 				trace.set(loc.getLongitude(), loc.getLatitude());
 			
 			if (s == 0)
@@ -451,11 +515,8 @@ public class RupSetMapMaker {
 			
 			if (sectOutlineChar != null && (sect.getAveDip() != 90d)) {
 				XY_DataSet outline = new DefaultXY_DataSet();
-				LocationList perimeter = surf.getPerimeter();
-				for (Location loc : perimeter)
+				for (Location loc : getPerimeter(sect))
 					outline.set(loc.getLongitude(), loc.getLatitude());
-				Location first = perimeter.first();
-				outline.set(first.getLongitude(), first.getLatitude());
 				
 				funcs.add(0, outline);
 				chars.add(0, sectOutlineChar);
@@ -489,12 +550,10 @@ public class RupSetMapMaker {
 				FaultSection sect = val.getData();
 				if (!plotSects.contains(sect) || (skipNaNs && Double.isNaN(val.getComparable())))
 					continue;
-				RuptureSurface surf = getSectSurface(sect);
 
 				if (fillSurfaces && sect.getAveDip() != 90d) {
 					XY_DataSet outline = new DefaultXY_DataSet();
-					LocationList perimeter = surf.getPerimeter();
-					for (Location loc : perimeter)
+					for (Location loc : getPerimeter(sect))
 						outline.set(loc.getLongitude(), loc.getLatitude());
 
 					PlotCurveCharacterstics fillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 0.5f, color);
@@ -504,7 +563,7 @@ public class RupSetMapMaker {
 				}
 
 				XY_DataSet trace = new DefaultXY_DataSet();
-				for (Location loc : surf.getEvenlyDiscritizedUpperEdge())
+				for (Location loc : getUpperEdge(sect))
 					trace.set(loc.getLongitude(), loc.getLatitude());
 				
 				funcs.add(trace);
@@ -526,12 +585,10 @@ public class RupSetMapMaker {
 				if (color == null)
 					continue;
 				FaultSection sect = subSects.get(s);
-				
-				RuptureSurface surf = getSectSurface(sect);
 
 				if (fillSurfaces && sect.getAveDip() != 90d) {
 					XY_DataSet outline = new DefaultXY_DataSet();
-					LocationList perimeter = surf.getPerimeter();
+					LocationList perimeter = getPerimeter(sect);
 					for (Location loc : perimeter)
 						outline.set(loc.getLongitude(), loc.getLatitude());
 
@@ -542,7 +599,7 @@ public class RupSetMapMaker {
 				}
 
 				XY_DataSet trace = new DefaultXY_DataSet();
-				for (Location loc : surf.getEvenlyDiscritizedUpperEdge())
+				for (Location loc : getUpperEdge(sect))
 					trace.set(loc.getLongitude(), loc.getLatitude());
 				
 				funcs.add(trace);
@@ -561,7 +618,7 @@ public class RupSetMapMaker {
 		if (highlightSections != null && highlightTraceChar != null) {
 			for (FaultSection hightlight : highlightSections) {
 				XY_DataSet trace = new DefaultXY_DataSet();
-				for (Location loc : getSectSurface(hightlight).getEvenlyDiscritizedUpperEdge())
+				for (Location loc : getUpperEdge(hightlight))
 					trace.set(loc.getLongitude(), loc.getLatitude());
 				funcs.add(trace);
 				chars.add(highlightTraceChar);
