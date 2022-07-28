@@ -263,7 +263,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 			setProperty(RAKE, rake);
 			setProperty(LOW_DEPTH, lowerDepth);
 			setProperty(UPPER_DEPTH, upperDepth);
-			if (dipDirection != (float)(trace.getAveStrike()+90d))
+			if (dipDirection != (float)(trace.getAveStrike()+90d) && Float.isFinite(dipDirection));
 				setProperty(DIP_DIR, dipDirection);
 			setDateOfLastEvent(sect.getDateOfLastEvent());
 			setSlipInLastEvent(sect.getSlipInLastEvent());
