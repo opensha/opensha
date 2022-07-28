@@ -306,31 +306,57 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	
 	public static <E extends LogicTreeNode> LogicTree<E> buildExhaustive(
 			List<LogicTreeLevel<? extends E>> levels, boolean onlyNonZeroWeight) {
+		return buildExhaustive(levels, onlyNonZeroWeight, new BranchWeightProvider.CurrentWeights());
+	}
+	
+	/**
+	 * Builds a complete logic tree from the given levels. If onlyNonZeroWeight == true, then only branches with nonzero
+	 * weight will be included. If a {@link BranchWeightProvider} is supplied, then that is used to determine weights,
+	 * and it's weight will be set as the original weight in each created branch. 
+	 * 
+	 * @param <E>
+	 * @param levels
+	 * @param onlyNonZeroWeight
+	 * @param weightProv
+	 * @return
+	 */
+	public static <E extends LogicTreeNode> LogicTree<E> buildExhaustive(
+			List<LogicTreeLevel<? extends E>> levels, boolean onlyNonZeroWeight, BranchWeightProvider weightProv) {
 		List<LogicTreeBranch<E>> branches = new ArrayList<>();
 		
 		LogicTreeBranch<E> emptyBranch = new LogicTreeBranch<>(levels);
 		
-		buildBranchesRecursive(levels, branches, emptyBranch, 0, onlyNonZeroWeight);
+		buildBranchesRecursive(levels, branches, emptyBranch, 0, onlyNonZeroWeight, weightProv);
 		
 		return new LogicTree<>(levels, branches, DEFAULT_WEIGHTS);
 	}
 	
 	private static <E extends LogicTreeNode> void buildBranchesRecursive(List<LogicTreeLevel<? extends E>> levels,
-			List<LogicTreeBranch<E>> branches, LogicTreeBranch<E> curBranch, int curIndex, boolean onlyNonZeroWeight) {
+			List<LogicTreeBranch<E>> branches, LogicTreeBranch<E> curBranch, int curIndex, boolean onlyNonZeroWeight,
+			BranchWeightProvider weightProv) {
 		for (E node : levels.get(curIndex).getNodes()) {
-			if (onlyNonZeroWeight && node.getNodeWeight(curBranch) == 0d)
+			if (onlyNonZeroWeight && weightProv == null && node.getNodeWeight(curBranch) == 0d)
 				continue;
 			LogicTreeBranch<E> copy = curBranch.copy();
 			copy.setValue(curIndex, node);
+			if (onlyNonZeroWeight && weightProv != null && weightProv.getWeight(copy) == 0d)
+				continue;
 			if (curIndex == levels.size()-1) {
 				// fully specified
 				Preconditions.checkState(copy.isFullySpecified());
-				if (onlyNonZeroWeight)
-					Preconditions.checkState(copy.getBranchWeight() > 0d);
+				if (weightProv != null) {
+					double weight = weightProv.getWeight(copy);
+					copy.setOrigBranchWeight(weight);
+					if (onlyNonZeroWeight)
+						Preconditions.checkState(weight > 0d);
+				} else if (onlyNonZeroWeight) {
+					double weight = copy.getBranchWeight();
+					Preconditions.checkState(weight > 0d);
+				}
 				branches.add(copy);
 			} else {
 				// continue to the next level
-				buildBranchesRecursive(levels, branches, copy, curIndex+1, onlyNonZeroWeight);
+				buildBranchesRecursive(levels, branches, copy, curIndex+1, onlyNonZeroWeight, weightProv);
 			}
 		}
 	}
