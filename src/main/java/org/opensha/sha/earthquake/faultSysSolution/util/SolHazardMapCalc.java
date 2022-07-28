@@ -43,7 +43,9 @@ import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.DistCachedERFWrapper;
+import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
@@ -97,8 +99,9 @@ public class SolHazardMapCalc {
 	
 	private List<XY_DataSet> extraFuncs;
 	private List<PlotCurveCharacterstics> extraChars;
-	
+
 	private double maxSiteDist = 200d;
+	private double skipMaxSiteDist = 300d;
 	
 	public enum ReturnPeriods {
 		TWO_IN_50(0.02, 50d, "2% in 50 year"),
@@ -166,6 +169,10 @@ public class SolHazardMapCalc {
 	
 	public void setMaxSourceSiteDist(double maxDist) {
 		this.maxSiteDist = maxDist;
+	}
+	
+	public void setSkipMaxSourceSiteDist(double skipMaxSiteDist) {
+		this.skipMaxSiteDist = skipMaxSiteDist;
 	}
 	
 	private void checkInitXVals() {
@@ -271,11 +278,17 @@ public class SolHazardMapCalc {
 	private class CalcThread extends Thread {
 		private ConcurrentLinkedDeque<Integer> calcIndexes;
 		private AbstractERF erf;
+		private int numFaultSysSources;
+		private GriddedRegion gridSourceReg;
 		private CalcTracker track;
 		
 		public CalcThread(ConcurrentLinkedDeque<Integer> calcIndexes, FaultSystemSolutionERF erf, CalcTracker track) {
 			this.calcIndexes = calcIndexes;
 			this.track = track;
+			this.numFaultSysSources = erf.getNumFaultSystemSources();
+			IncludeBackgroundOption bgOption = (IncludeBackgroundOption) erf.getParameter(IncludeBackgroundParam.NAME).getValue();
+			if (bgOption == IncludeBackgroundOption.INCLUDE || bgOption == IncludeBackgroundOption.ONLY)
+				gridSourceReg = erf.getSolution().requireModule(GridSourceProvider.class).getGriddedRegion();
 			this.erf = new DistCachedERFWrapper(erf);
 		}
 
@@ -290,6 +303,38 @@ public class SolHazardMapCalc {
 				if (index == null)
 					break;
 				Site site = sites.get(index);
+				
+				if (skipMaxSiteDist > 0d && Double.isFinite(skipMaxSiteDist)) {
+					// see if we should just skip this site
+					
+					boolean hasSourceWithin = false;
+					if (gridSourceReg != null) {
+						Location siteLoc = site.getLocation();
+						hasSourceWithin = gridSourceReg.contains(siteLoc) ||
+								gridSourceReg.distanceToLocation(siteLoc) <= skipMaxSiteDist;
+					}
+					
+					for (int sourceID=0; !hasSourceWithin && sourceID<numFaultSysSources; sourceID++) {
+						ProbEqkSource source = erf.getSource(sourceID);
+						if (source.getMinDistance(site) < skipMaxSiteDist) {
+							hasSourceWithin = true;
+							break;
+						}
+					}
+					
+					if (!hasSourceWithin) {
+						// can skip this site, no sources within skipMaxSiteDist
+						checkInitXVals();
+						for (int p=0; p<periods.length; p++) {
+							DiscretizedFunc curve = xVals[p].deepClone();
+							for (int i=0; i<curve.size(); i++)
+								curve.set(i, 0d);
+							curvesList.get(p)[index] = curve;
+						}
+						track.taskCompleted();
+						continue;
+					}
+				}
 				
 				List<DiscretizedFunc> curves = calcSiteCurves(calc, erf, gmpe, site);
 				
