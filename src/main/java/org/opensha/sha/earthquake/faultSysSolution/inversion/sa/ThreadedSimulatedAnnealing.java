@@ -339,6 +339,10 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	protected void beforeRound(InversionState state, int rounds) {
 		// do nothing (can be extended)
 	}
+	
+	protected void afterRound(InversionState prevState, InversionState newState, int rounds) {
+		// do nothing (can be extended)
+	}
 
 	@Override
 	public InversionState iterate(InversionState startingState, CompletionCriteria criteria) {
@@ -387,6 +391,7 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		int rounds = 0;
 		long iter = startIter;
 		double[] prevBestE = null;
+		InversionState prevState;
 		InversionState state = new InversionState(watch.getTime(), iter, Ebest, perturbs, worseKept,
 				numNonZero, xbest, misfit, misfit_ineq, constraintRanges);
 //		while (!criteria.isSatisfied(watch, iter, Ebest, perturbs, numNonZero, misfit, misfit_ineq, constraintRanges)) {
@@ -522,8 +527,10 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 			}
 			
 			// update state
+			prevState = state;
 			state = new InversionState(watch.getTime(), iter, Ebest, perturbs, worseKept,
 					numNonZero, xbest, misfit, misfit_ineq, constraintRanges);
+			afterRound(prevState, state, rounds);
 			
 			if (verbose) {
 				double secs = watch.getTime() / 1000d;
@@ -728,6 +735,10 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 	
 	public void setVerbose(boolean verbose) {
 		this.verbose = verbose;
+	}
+	
+	public boolean isVerbose() {
+		return verbose;
 	}
 	
 	public int getNumThreads() {
