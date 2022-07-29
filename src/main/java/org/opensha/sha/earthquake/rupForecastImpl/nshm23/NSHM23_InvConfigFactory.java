@@ -629,7 +629,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 //				double weight = 0.5d;
 //				boolean ineq = false;
-				double weight = 100d;
+				double weight = 100000d;
 				boolean ineq = true;
 				
 				constraints.add(new JumpProbabilityConstraint.RelativeRate(
