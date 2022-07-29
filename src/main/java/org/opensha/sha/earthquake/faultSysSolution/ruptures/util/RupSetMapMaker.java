@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
 
 import java.awt.Color;
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -495,6 +496,8 @@ public class RupSetMapMaker {
 		boolean hasLegend = false;
 		
 		// plot section outlines on bottom
+		XY_DataSet prevTrace = null;
+		XY_DataSet prevOutline = null;
 		for (int s=0; s<subSects.size(); s++) {
 			FaultSection sect = subSects.get(s);
 			if (!plotSects.contains(sect))
@@ -518,17 +521,60 @@ public class RupSetMapMaker {
 				for (Location loc : getPerimeter(sect))
 					outline.set(loc.getLongitude(), loc.getLatitude());
 				
-				funcs.add(0, outline);
-				chars.add(0, sectOutlineChar);
-				if (doTraces && sectTraceChar == null && s == 0)
-					outline.setName("Fault Sections");
+				boolean reused = false;
+				if (prevOutline != null && funcs.get(0) == prevOutline) {
+					int matchIndex = -1;
+					Point2D myFirst = outline.get(0);
+					for (int i=0; i<prevOutline.size(); i++) {
+						Point2D pt = prevOutline.get(i);
+						if ((float)pt.getX() == (float)myFirst.getX() && (float)pt.getY() == (float)myFirst.getY()) {
+							matchIndex = i;
+							break;
+						}
+					}
+					if (matchIndex >= 0) {
+						reused = true;
+						// reuse the existing one
+						DefaultXY_DataSet merged = new DefaultXY_DataSet();
+						for (int i=0; i<=matchIndex; i++)
+							merged.set(prevOutline.get(i));
+						for (int i=1; i<outline.size(); i++)
+							merged.set(outline.get(i));
+						for (int i=matchIndex+1; i<prevOutline.size(); i++)
+							merged.set(prevOutline.get(i));
+						funcs.set(0, merged);
+						prevOutline = merged;
+					}
+				}
+				
+				if (!reused) {
+					funcs.add(0, outline);
+					prevOutline = outline;
+					chars.add(0, sectOutlineChar);
+					if (doTraces && sectTraceChar == null && s == 0)
+						outline.setName("Fault Sections");
+				}
 				if (writeGeoJSON)
 					sectFeatures.add(0, surfFeature(sect, sectOutlineChar));
 			}
 			
 			if (doTraces && sectTraceChar != null) {
-				funcs.add(trace);
-				chars.add(sectTraceChar);
+				boolean reused = false;
+				if (prevTrace != null) {
+					Point2D prevLast = prevTrace.get(prevTrace.size()-1);
+					Point2D newFirst = trace.get(0);
+					if ((float)prevLast.getX() == (float)newFirst.getX() && (float)prevLast.getY() == (float)newFirst.getY()) {
+						// reuse
+						for (int i=1; i<trace.size(); i++)
+							prevTrace.set(trace.get(i));
+						reused = true;
+					}
+				}
+				if (!reused) {
+					funcs.add(trace);
+					prevTrace = trace;
+					chars.add(sectTraceChar);
+				}
 				if (writeGeoJSON)
 					sectFeatures.add(traceFeature(sect, sectTraceChar));
 			}
