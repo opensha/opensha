@@ -442,13 +442,28 @@ public class SolHazardMapCalc {
 				
 				PlotCurveCharacterstics traceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, faultColor);
 				
+				DefaultXY_DataSet prevTrace = null;
 				for (FaultSection sect : sol.getRupSet().getFaultSectionDataList()) {
 					DefaultXY_DataSet trace = new DefaultXY_DataSet();
 					for (Location loc : sect.getFaultTrace())
 						trace.set(loc.getLongitude(), loc.getLatitude());
 					
-					extraFuncs.add(trace);
-					extraChars.add(traceChar);
+					boolean reused = false;
+					if (prevTrace != null) {
+						Point2D prevLast = prevTrace.get(prevTrace.size()-1);
+						Point2D newFirst = trace.get(0);
+						if ((float)prevLast.getX() == (float)newFirst.getX() && (float)prevLast.getY() == (float)newFirst.getY()) {
+							// reuse
+							for (int i=1; i<trace.size(); i++)
+								prevTrace.set(trace.get(i));
+							reused = true;
+						}
+					}
+					if (!reused) {
+						extraFuncs.add(trace);
+						prevTrace = trace;
+						extraChars.add(traceChar);
+					}
 				}
 				this.extraChars = extraChars;
 				this.extraFuncs = extraFuncs;
