@@ -18,6 +18,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCalculator.Scalars;
@@ -189,12 +190,24 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 			
 			if (compConnRates == null) {
 				lines.add("![Rates]("+relPathToResources+"/"+inputConnRates[m].getName()+")");
+				String relGeoPath = relPathToResources+"/"+inputConnRates[m].getName().replace(".png", ".geojson");
+				lines.add("");
+				lines.add(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relGeoPath)
+						+" "+"[Download GeoJSON]("+relGeoPath+")");
 			} else {
 				TableBuilder table = MarkdownUtils.tableBuilder();
 				table.addLine(meta.primary.name, compName);
 				table.initNewLine();
 				table.addColumn("![Rates]("+relPathToResources+"/"+inputConnRates[m].getName()+")");
 				table.addColumn("![Rates]("+relPathToResources+"/"+compConnRates[m].getName()+")");
+				table.finalizeLine();
+				table.initNewLine();
+				String relGeoPath = relPathToResources+"/"+inputConnRates[m].getName().replace(".png", ".geojson");
+				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relGeoPath)
+						+" "+"[Download GeoJSON]("+relGeoPath+")");
+				relGeoPath = relPathToResources+"/"+compConnRates[m].getName().replace(".png", ".geojson");
+				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relGeoPath)
+						+" "+"[Download GeoJSON]("+relGeoPath+")");
 				table.finalizeLine();
 				lines.addAll(table.build());
 			}
@@ -213,14 +226,29 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 			for (RateCombiner combiner : combiners) {
 				table.initNewLine();
 				table.addColumn("![Rates]("+relPathToResources+"/"+inputPassthroughRates.get(combiner)[m].getName()+")");
-				if (compSegCalc != null) {
+				if (compSegCalc == null) {
+					table.finalizeLine();
+					table.initNewLine();
+					String relGeoPath = relPathToResources+"/"+inputPassthroughRates.get(combiner)[m].getName().replace(".png", ".geojson");
+					table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relGeoPath)
+							+" "+"[Download GeoJSON]("+relGeoPath+")");
+					table.finalizeLine();
+				} else {
 					table.addColumn("![Rates]("+relPathToResources+"/"+compPassthroughRates.get(combiner)[m].getName()+")");
+					table.finalizeLine();
+					table.initNewLine();
+					String relGeoPath = relPathToResources+"/"+inputPassthroughRates.get(combiner)[m].getName().replace(".png", ".geojson");
+					table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relGeoPath)
+							+" "+"[Download GeoJSON]("+relGeoPath+")");
+					relGeoPath = relPathToResources+"/"+compPassthroughRates.get(combiner)[m].getName().replace(".png", ".geojson");
+					table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relGeoPath)
+							+" "+"[Download GeoJSON]("+relGeoPath+")");
 					table.finalizeLine();
 					table.initNewLine();
 					table.addColumn("![Rates]("+relPathToResources+"/"+compPassthroughRatios.get(combiner)[m].getName()+")");
 					table.addColumn("![Rates]("+relPathToResources+"/"+compPassthroughDiffs.get(combiner)[m].getName()+")");
+					table.finalizeLine();
 				}
-				table.finalizeLine();
 			}
 			lines.addAll(table.build());
 			lines.add("");
