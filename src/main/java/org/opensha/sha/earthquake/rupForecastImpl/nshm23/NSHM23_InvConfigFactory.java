@@ -65,6 +65,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistMo
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSect;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
@@ -512,13 +513,27 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					constrBuilder.adjustForSegmentationModel(targetSegModel, segAdj);
 			}
 			
-			RupsThroughCreepingSect rupsThroughCreep = branch.getValue(RupsThroughCreepingSect.class);
-			if (rupsThroughCreep != null && rupsThroughCreep.isExclude() && constrBuilder.rupSetHasCreepingSection())
+			if (shouldExcludeThroughCreeping(branch) && constrBuilder.rupSetHasCreepingSection())
 				// this sets the binary exclusion model, which will remove them from target MFD calculations
 				constrBuilder.excludeRupturesThroughCreeping();
 		}
 		
 		return constrBuilder;
+	}
+	
+	private static boolean shouldExcludeThroughCreeping(LogicTreeBranch<?> branch) {
+		RupsThroughCreepingSect rupsThroughCreep = branch.getValue(RupsThroughCreepingSect.class);
+		if (rupsThroughCreep != null) {
+			// we have an explicit ruptures-through-creeping branch
+			return rupsThroughCreep.isExclude();
+		} else if (NSHM23_SegmentationModels.INCLUDE_CREEPING_SECT) {
+			// we don't explicitly have a ruptures-through-creeping branch
+			// see if we're on the high-segmentation branch
+			NSHM23_SegmentationModels segModel = branch.getValue(NSHM23_SegmentationModels.class);
+			if (segModel == NSHM23_SegmentationModels.HIGH)
+				return true;
+		}
+		return false;
 	}
 	
 	private static boolean hasJumps(FaultSystemRupSet rupSet) {
@@ -607,8 +622,10 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		if (paleoSmoothWeight > 0d)
 			constrBuilder.supraPaleoSmooth().weight(paleoSmoothWeight);
 		
+		// this will skip any ruptures below the minimim magnitude
 		ExclusionIntegerSampler sampler = constrBuilder.getSkipBelowMinSampler();
 		
+		// this will exclude ruptures through creeping section, if applicable 
 		BinaryRuptureProbabilityCalc rupExcludeModel = constrBuilder.getRupExclusionModel();
 		if (rupExcludeModel != null)
 			sampler = getExcludeSampler(rupSet.requireModule(ClusterRuptures.class), sampler, rupExcludeModel);

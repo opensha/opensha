@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -386,19 +387,7 @@ public class NSHM23_ConstraintBuilder {
 			
 			@Override
 			public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
-				FaultSubsectionCluster creepingCluster = null;
-				for (FaultSubsectionCluster cluster : fullRupture.getClustersIterable()) {
-					if (cluster.parentSectionID == creepingParentID) {
-						Preconditions.checkState(creepingCluster == null, "Don't yet support 2 creeping section clusters");
-						creepingCluster = cluster;
-					}
-				}
-				if (creepingCluster == null)
-					return true;
-				// has the creeping section, check it
-				RuptureTreeNavigator nav = fullRupture.getTreeNavigator();
-				// allowed if there is nothing immediately before or after the creeping section
-				return nav.getPredecessor(creepingCluster) == null || nav.getDescendants(creepingCluster).isEmpty();
+				return !isRupThroughCreeping(creepingParentID, fullRupture);
 			}
 		});
 	}
@@ -406,6 +395,76 @@ public class NSHM23_ConstraintBuilder {
 	public boolean rupSetHasCreepingSection() {
 		return FaultSectionUtils.findParentSectionID(rupSet.getFaultSectionDataList(), "San", "Andreas", "Creeping") >= 0;
 	}
+	
+	public static boolean isRupThroughCreeping(int creepingParentID, ClusterRupture rup) {
+		boolean hasCreeping = false;
+		for (FaultSubsectionCluster cluster : rup.getClustersIterable()) {
+			if (cluster.parentSectionID == creepingParentID) {
+				hasCreeping = true;
+				break;
+			}
+		}
+		if (!hasCreeping)
+			return false;
+		// has the creeping section, check it
+		RuptureTreeNavigator nav = rup.getTreeNavigator();
+		
+		FaultSubsectionCluster firstCluster = rup.clusters[0];
+		if (firstCluster.parentSectionID == creepingParentID)
+			// starts on the creeping section, can't be a rupture through it
+			return false;
+		HashSet<Integer> sectsBefore = new HashSet<>();
+		HashSet<Integer> sectsAfter = new HashSet<>();
+		HashSet<Integer> endSects = new HashSet<>();
+		findSectsBeforeAfterCreeping(nav, firstCluster, sectsBefore, sectsAfter, endSects, false, creepingParentID);
+		if (!sectsBefore.isEmpty() && !sectsAfter.isEmpty()) {
+			// there are sections before and after the creeping section, might be through it
+			// make sure they're not the same section
+			boolean uniqueBefore = false;
+			for (Integer beforeID : sectsBefore)
+				if (!sectsAfter.contains(beforeID))
+					uniqueBefore = true;
+			boolean uniqueAfter = false;
+			for (Integer afterID : sectsAfter)
+				if (!sectsBefore.contains(afterID))
+					uniqueAfter = true;
+			boolean endsOnNonCreeping = false;
+			for (Integer endID : endSects)
+				if (endID != creepingParentID)
+					endsOnNonCreeping = true;
+			if (uniqueBefore && uniqueAfter && endsOnNonCreeping)
+				return true;
+		}
+		return false;
+	}
+	
+	private static void findSectsBeforeAfterCreeping(RuptureTreeNavigator nav, FaultSubsectionCluster curCluster,
+			HashSet<Integer> sectsBefore, HashSet<Integer> sectsAfter, HashSet<Integer> endSects,
+			boolean creepingEncountered, int creepingParentID) {
+		boolean curIsCreeping = curCluster.parentSectionID == creepingParentID;
+		if (curIsCreeping) {
+			creepingEncountered = true;
+		} else {
+			if (creepingEncountered)
+				sectsAfter.add(curCluster.parentSectionID);
+			else
+				sectsBefore.add(curCluster.parentSectionID);
+		}
+		Collection<FaultSubsectionCluster> descendants = nav.getDescendants(curCluster);
+		if (descendants == null || descendants.isEmpty())
+			endSects.add(curCluster.parentSectionID);
+		else
+			for (FaultSubsectionCluster destCluster : descendants)
+				findSectsBeforeAfterCreeping(nav, destCluster, sectsBefore, sectsAfter, endSects, creepingEncountered, creepingParentID);
+	}
+	
+//	private static boolean isRupThroughCreeping(RuptureTreeNavigator nav, FaultSubsectionCluster curCluster,
+//			boolean hasJumpedTo, boolean hasJumpedFrom, int creepingParentID) {
+//		boolean curIsCreeping = curCluster.parentSectionID == creepingParentID;
+//		for (FaultSubsectionCluster destCluster : nav.getDescendants(curCluster)) {
+//			
+//		}
+//	}
 	
 	public enum ParkfieldSelectionCriteria {
 		SECT_COUNT {

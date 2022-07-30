@@ -53,7 +53,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	static {
 		// exhaustive for now, can trim down later
 		levels = List.of(FM, PLAUSIBILITY, DM, SCALE, SLIP_ALONG, SUPRA_B,
-				SUB_SECT_CONSTR, SUB_SEIS_MO, SEG, SEG_ADJ, RUPS_THROUGH_CREEPING);
+				SUB_SECT_CONSTR, SUB_SEIS_MO, SEG, SEG_ADJ);
 		levelsMaxDist = List.of(FM, PLAUSIBILITY, DM, SCALE, SLIP_ALONG, SUPRA_B,
 				SUB_SECT_CONSTR, SUB_SEIS_MO, MAX_DIST, RUPS_THROUGH_CREEPING);
 	}
@@ -65,7 +65,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			RupturePlausibilityModels.COULOMB, NSHM23_DeformationModels.GEOLOGIC, NSHM23_ScalingRelationships.LOGA_C4p2,
 			SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p5, SubSectConstraintModels.TOT_NUCL_RATE,
 			SubSeisMoRateReductions.SUB_B_1, NSHM23_SegmentationModels.MID,
-			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG_ITERATIVE, RupsThroughCreepingSect.INCLUDE);
+			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG_ITERATIVE);
 	
 	/**
 	 * Creates a NSHM23LogicTreeBranch instance from given set of node values. Null or missing values

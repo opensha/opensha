@@ -20,12 +20,15 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectDetailPlots.AlongStrikePlot;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectIDRange;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -244,11 +247,12 @@ public class CreepingAndParkfieldReport extends AbstractRupSetPlot {
 			double rupSetMaxMag = rupSet.getMaxMag();
 			Range rupSetMagRange = new Range(rupSetMinMag, rupSetMaxMag);
 			
+			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+			
 			List<Integer> rupsThroughCreeping = new ArrayList<>();
 			for (int rupIndex : rupSet.getRupturesForParentSection(creepingID)) {
-				List<FaultSection> rupSects = rupSet.getFaultSectionDataForRupture(rupIndex);
-				if (rupSects.get(0).getParentSectionId() != creepingID && rupSects.get(rupSects.size()-1).getParentSectionId() != creepingID)
-					// it goes through the creeping section because it contains it and both starts and ends on non-creeping sects
+				ClusterRupture cRup = cRups.get(rupIndex);
+				if (NSHM23_ConstraintBuilder.isRupThroughCreeping(creepingID, cRup))
 					rupsThroughCreeping.add(rupIndex);
 			}
 			

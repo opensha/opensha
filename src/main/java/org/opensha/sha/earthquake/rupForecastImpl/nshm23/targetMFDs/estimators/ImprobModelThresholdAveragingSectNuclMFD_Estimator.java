@@ -183,7 +183,7 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 			// we're going to need section participation rates, which we will determine by multiplying
 			// bin rates by the average rupture area in that bin, and then dividing by the section area.
 			// 
-			// these are section-sepecific scale factors
+			// these are section-specific scale factors
 			int numSects = rupSet.getNumSections();
 			double[][] sectNuclToParticScalars = new double[numSects][];
 			List<List<Integer>> sectRupIndexes = new ArrayList<>();

@@ -665,7 +665,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			} else {
 				if (creepRate > slipRate) {
 					System.err.println("WARNING: creep rate is greater than slip rate for section "
-							+s+". "+subSectName);
+							+s+". "+subSectName+": "+(float)creepRate+" > "+(float)slipRate);
 					creepRate = slipRate;
 				}
 				creepFract = creepRate/slipRate;
