@@ -9,6 +9,7 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +76,8 @@ public class RupSetMapMaker {
 	private boolean legendVisible = true;
 	private boolean legendInset = false;
 	private boolean fillSurfaces = false;
+	
+	private boolean plotAseisReducedSurfaces = false;
 	
 	private boolean writePDFs = true;
 	private boolean writeGeoJSON = true;
@@ -221,6 +224,10 @@ public class RupSetMapMaker {
 	public void setFillSurfaces(boolean fillSurfaces) {
 		this.fillSurfaces = fillSurfaces;
 	}
+
+	public void setPlotAseisReducedSurfaces(boolean plotAseisReducedSurfaces) {
+		this.plotAseisReducedSurfaces = plotAseisReducedSurfaces;
+	}
 	
 	public void setReverseSort(boolean reverseSort) { 
 		this.reverseSort = reverseSort;
@@ -351,7 +358,7 @@ public class RupSetMapMaker {
 		if (sectSurfs == null) {
 			List<RuptureSurface> surfs = new ArrayList<>();
 			for (FaultSection s : subSects)
-				surfs.add(s.getFaultSurface(1d, false, false));
+				surfs.add(s.getFaultSurface(1d, false, plotAseisReducedSurfaces));
 			this.sectSurfs = surfs;
 		}
 		return sectSurfs.get(sect.getSectionId());
@@ -392,8 +399,14 @@ public class RupSetMapMaker {
 						
 						double dipDirDeg = subSect.getDipDirection(); // degrees
 						double aveDipRad = Math.toRadians(subSect.getAveDip()); // radians
-						double upperDepth = subSect.getReducedAveUpperDepth();
-						double ddw = subSect.getReducedDownDipWidth();
+						double upperDepth, ddw;
+						if (plotAseisReducedSurfaces) {
+							upperDepth = subSect.getReducedAveUpperDepth();
+							ddw = subSect.getReducedDownDipWidth();
+						} else {
+							upperDepth = subSect.getOrigAveUpperDepth();
+							ddw = subSect.getOrigDownDipWidth();
+						}
 						double horzToBottom = ddw * Math.cos( aveDipRad );
 						double vertToBottom = ddw * Math.sin( aveDipRad );
 						
@@ -587,9 +600,25 @@ public class RupSetMapMaker {
 			List<ComparablePairing<Double, FaultSection>> sortables = new ArrayList<>();
 			for (int s=0; s<scalars.length; s++)
 				sortables.add(new ComparablePairing<>(scalars[s], subSects.get(s)));
-			Collections.sort(sortables);
-			if (reverseSort)
-				Collections.reverse(sortables);
+			Collections.sort(sortables, new Comparator<ComparablePairing<Double, FaultSection>>() {
+
+				@Override
+				public int compare(ComparablePairing<Double, FaultSection> o1,
+						ComparablePairing<Double, FaultSection> o2) {
+					Double d1 = o1.getComparable();
+					Double d2 = o2.getComparable();
+					if ((d1 == null || d1 == Double.NaN) && (d2 == null || d2 == Double.NaN)) {
+						return 0;
+					} else if ((d1 == null || d1 == Double.NaN)) {
+						return -1;
+					} else if (d2 == null || d2 == Double.NaN) {
+						return 1;
+					}
+					if (reverseSort)
+						return Double.compare(d2, d1);
+					return Double.compare(d1, d2);
+				}
+			});
 			for (ComparablePairing<Double, FaultSection> val : sortables) {
 				float scalar = val.getComparable().floatValue();
 				Color color = scalarCPT.getColor(scalar);
