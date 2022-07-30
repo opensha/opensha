@@ -35,6 +35,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.SolidFillPlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
 public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 
@@ -85,24 +86,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 				labelPrefix = "Log10 ";
 			} else {
 				lines.add(getSubHeading()+" Linear Slip Rate Plots");
-				slipCPT = new CPT();
-				
-				slipCPT.setBelowMinColor(Color.GRAY);
-				slipCPT.setNanColor(Color.GRAY);
-				
-//				slipCPT.add(new CPTVal(0f, Color.GRAY, 0f, Color.GRAY));
-				slipCPT.add(new CPTVal(Float.MIN_VALUE, Color.BLUE, 10f, Color.MAGENTA));
-				slipCPT.add(new CPTVal(10f, Color.MAGENTA, 20f, Color.RED));
-				slipCPT.add(new CPTVal(20f, Color.RED, 30f, Color.ORANGE));
-				slipCPT.add(new CPTVal(30f, Color.ORANGE, 40f, Color.YELLOW));
-				
-				slipCPT.setAboveMaxColor(Color.YELLOW);
-				if (maxSlip < 10d)
-					slipCPT = slipCPT.rescale(0d, 10d);
-				else if (maxSlip < 20d)
-					slipCPT = slipCPT.rescale(0d, 20d);
-				else if (maxSlip > 60d)
-					slipCPT = slipCPT.rescale(0d, 60d);
+				slipCPT = linearSlipCPT(maxSlip);
 				prefix = rawPrefix;
 			}
 			lines.add(topLink); lines.add("");
@@ -392,6 +376,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 		boolean hasAseis = false;
 		boolean hasCoupling = false;
 		boolean hasSubSeis = false;
+		boolean hasCreep = false;
 		SectSlipRates slips = rupSet.getModule(SectSlipRates.class);
 		for (int s=0; s<rupSet.getNumSections(); s++) {
 			FaultSection sect = rupSet.getFaultSectionData(s);
@@ -399,6 +384,8 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 			hasCoupling = hasCoupling || (float)sect.getCouplingCoeff() < 1f;
 			if (slips != null)
 				hasSubSeis = hasSubSeis || (float)sect.getReducedAveSlipRate() > (float)slips.getSlipRate(s);
+			hasCreep = hasCreep || (sect instanceof GeoJSONFaultSection &&
+					((GeoJSONFaultSection)sect).getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN) >= 0d);
 		}
 		
 		if (hasAseis || hasCoupling || hasSubSeis) {
@@ -411,6 +398,30 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 			List<String> plotHeadings = new ArrayList<>();
 			List<String> plotPrefixes = new ArrayList<>();
 			List<String> compPlotPrefixes = meta.hasComparison() ? new ArrayList<>() : null;
+			
+			if (hasCreep) {
+				double[] creepRates = creep(rupSet);
+				double max = 10d;
+				for (double creepRate : creepRates)
+					if (Double.isFinite(creepRate))
+						max = Math.max(max, creepRate);
+				
+				CPT cpt = linearSlipCPT(max);
+				
+				String prefix = rawPrefix+"_creep";
+				
+				plotHeadings.add("Creep Rates");
+				
+				mapMaker.plotSectScalars(creepRates, cpt, "Creep Rate (mm/yr)");
+				mapMaker.plot(resourcesDir, prefix, " ");
+				plotPrefixes.add(prefix);
+				
+				if (meta.hasComparison()) {
+					mapMaker.plotSectScalars(creep(meta.comparison.rupSet), cpt, "Creep Rate (mm/yr)");
+					mapMaker.plot(resourcesDir, prefix+"_comp", " ");
+					compPlotPrefixes.add(prefix+"_comp");
+				}
+			}
 			
 			if (hasAseis) {
 				CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
@@ -518,6 +529,29 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 		
 		return lines;
 	}
+
+	public CPT linearSlipCPT(double maxSlip) {
+		CPT slipCPT;
+		slipCPT = new CPT();
+		
+		slipCPT.setBelowMinColor(Color.GRAY);
+		slipCPT.setNanColor(Color.GRAY);
+		
+//				slipCPT.add(new CPTVal(0f, Color.GRAY, 0f, Color.GRAY));
+		slipCPT.add(new CPTVal(Float.MIN_VALUE, Color.BLUE, 10f, Color.MAGENTA));
+		slipCPT.add(new CPTVal(10f, Color.MAGENTA, 20f, Color.RED));
+		slipCPT.add(new CPTVal(20f, Color.RED, 30f, Color.ORANGE));
+		slipCPT.add(new CPTVal(30f, Color.ORANGE, 40f, Color.YELLOW));
+		
+		slipCPT.setAboveMaxColor(Color.YELLOW);
+		if (maxSlip < 10d)
+			slipCPT = slipCPT.rescale(0d, 10d);
+		else if (maxSlip < 20d)
+			slipCPT = slipCPT.rescale(0d, 20d);
+		else if (maxSlip > 60d)
+			slipCPT = slipCPT.rescale(0d, 60d);
+		return slipCPT;
+	}
 	
 	private static double[] nonReduced(FaultSystemRupSet rupSet) {
 		double[] slips = new double[rupSet.getNumSections()];
@@ -545,6 +579,18 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 		for (int s=0; s<aseis.length; s++)
 			aseis[s] = rupSet.getFaultSectionData(s).getAseismicSlipFactor();
 		return aseis;
+	}
+	
+	private static double[] creep(FaultSystemRupSet rupSet) {
+		double[] creep = new double[rupSet.getNumSections()];
+		for (int s=0; s<creep.length; s++) {
+			FaultSection sect = rupSet.getFaultSectionData(s);
+			if (sect instanceof GeoJSONFaultSection)
+				creep[s] = ((GeoJSONFaultSection)sect).getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
+			else
+				creep[s] = Double.NaN;
+		}
+		return creep;
 	}
 	
 	private static double[] coupling(FaultSystemRupSet rupSet) {
