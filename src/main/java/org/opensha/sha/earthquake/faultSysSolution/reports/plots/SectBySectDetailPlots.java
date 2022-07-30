@@ -1979,12 +1979,16 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			
 			double origSlipRate = sect.getOrigAveSlipRate();
 			
-			double creepRed;
+			double momentRed;
 			if (origSlipRate <= 0d || !Double.isFinite(origSlipRate)) {
-				creepRed = 1d;
+				momentRed = 1d;
 			} else {
-				double reducedSlip = sect.getReducedAveSlipRate();
-				creepRed = (origSlipRate - reducedSlip)/origSlipRate;
+				double origArea = sect.getArea(false);
+				double reducedArea = sect.getArea(true);
+				double reducedSlipRate = sect.getReducedAveSlipRate();
+				double origMoRate = FaultMomentCalc.getMoment(origArea, origSlipRate*1e-3);
+				double reducedMoRate = FaultMomentCalc.getMoment(reducedArea, reducedSlipRate*1e-3);
+				momentRed = (origMoRate - reducedMoRate)/origMoRate;
 			}
 			
 			double aseis = sect.getAseismicSlipFactor();
@@ -1992,10 +1996,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			
 			XY_DataSet emptyFunc = emptySectFuncs.get(s);
 			
-			funcs.add(SectBySectDetailPlots.copyAtY(emptyFunc, creepRed));
+			funcs.add(SectBySectDetailPlots.copyAtY(emptyFunc, momentRed));
 			chars.add(creepRedChar);
 			if (first)
-				funcs.get(funcs.size()-1).setName("Fractional Creep Reduction");
+				funcs.get(funcs.size()-1).setName("Fractional Moment Reduction");
 			
 			funcs.add(SectBySectDetailPlots.copyAtY(emptyFunc, aseis));
 			chars.add(aseisChar);
