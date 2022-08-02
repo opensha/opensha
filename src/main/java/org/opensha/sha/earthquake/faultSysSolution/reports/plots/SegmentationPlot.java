@@ -74,7 +74,8 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 		SegmentationCalculator inputSegCalc = new SegmentationCalculator(
 				sol, inputRups, inputConfig.getConnectionStrategy(), distAzCalc, minMags);
 		SegmentationCalculator compSegCalc = null;
-		if (meta.comparison != null && meta.comparison.sol != null && meta.comparison.rupSet.hasAllModules(getRequiredModules())) {
+		if (meta.comparison != null && meta.comparison.sol != null && meta.comparisonHasSameSects
+				&& meta.comparison.rupSet.hasAllModules(getRequiredModules())) {
 			List<ClusterRupture> compRups = meta.comparison.rupSet.requireModule(ClusterRuptures.class).getAll();
 			PlausibilityConfiguration compConfig = meta.comparison.rupSet.requireModule(PlausibilityConfiguration.class);
 			compSegCalc = new SegmentationCalculator(meta.comparison.sol, compRups, compConfig.getConnectionStrategy(), distAzCalc, minMags);

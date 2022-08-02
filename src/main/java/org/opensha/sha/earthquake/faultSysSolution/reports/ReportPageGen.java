@@ -602,6 +602,13 @@ public class ReportPageGen {
 			table.addLine("", "Primary", "Comparison: "+comparison.name);
 		
 		table.initNewLine();
+		table.addColumn("**Num Sections**");
+		table.addColumn(countDF.format(primary.rupSet.getFaultSectionDataList().size()));
+		if (comparison != null)
+			table.addColumn(countDF.format(comparison.rupSet.getFaultSectionDataList().size()));
+		table.finalizeLine();
+		
+		table.initNewLine();
 		table.addColumn("**Num Ruptures**");
 		table.addColumn(countDF.format(primary.numRuptures));
 		if (comparison != null)

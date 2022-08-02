@@ -92,7 +92,7 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		CPT ratioCPT = null;
 		
-		if (meta.comparison != null && meta.comparison.sol != null) {
+		if (meta.comparison != null && meta.comparison.sol != null && meta.comparisonHasSameSects) {
 			CPT belowCPT = new CPT(0.5d, 1d,
 					new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
 					Color.WHITE);

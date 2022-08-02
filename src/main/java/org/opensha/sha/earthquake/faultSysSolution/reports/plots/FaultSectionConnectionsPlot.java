@@ -73,12 +73,13 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
 			String relPathToResources, String topLink) throws IOException {
+		boolean hasComp = meta.comparison != null && meta.comparisonHasSameSects;
 		System.out.println("Plotting section connections");
 		plotConnectivityLines(rupSet, resourcesDir, "sect_connectivity",
 				TITLES ? getTruncatedTitle(meta.primary.name)+" Connectivity" : " ", meta.primary.jumps, MAIN_COLOR, meta.region, 800);
 		plotConnectivityLines(rupSet, resourcesDir, "sect_connectivity_hires",
 				TITLES ? getTruncatedTitle(meta.primary.name)+" Connectivity" : " ", meta.primary.jumps, MAIN_COLOR, meta.region, 3000);
-		if (meta.comparison != null) {
+		if (hasComp) {
 			plotConnectivityLines(meta.comparison.rupSet, resourcesDir, "sect_connectivity_comp",
 					TITLES ? getTruncatedTitle(meta.comparison.name)+" Connectivity" : " ", meta.comparison.jumps,
 					COMP_COLOR, meta.region, 800);
@@ -102,7 +103,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		double maxConnDist = 0d;
 		for (Jump jump : meta.primary.jumps)
 			maxConnDist = Math.max(maxConnDist, jump.distance);
-		if (meta.comparison != null)
+		if (hasComp)
 			for (Jump jump : meta.comparison.jumps)
 				maxConnDist = Math.max(maxConnDist, jump.distance);
 		plotConnectivityHistogram(resourcesDir, "sect_connectivity_hist",
@@ -116,7 +117,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 					TITLES ? getTruncatedTitle(meta.primary.name)+" Connectivity" : " ", meta.primary, meta.primaryOverlap, maxConnDist,
 					MAIN_COLOR, true, true);
 		}
-		if (meta.comparison != null) {
+		if (hasComp) {
 			plotConnectivityHistogram(resourcesDir, "sect_connectivity_hist_comp",
 					TITLES ? getTruncatedTitle(meta.comparison.name)+" Connectivity" : " ", meta.comparison, meta.comparisonOverlap, maxConnDist,
 					COMP_COLOR, false, false);
@@ -133,7 +134,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		
 		List<String> lines = new ArrayList<>();
 		
-		if (meta.comparison != null) {
+		if (hasComp) {
 			List<Set<Jump>> connectionsList = new ArrayList<>();
 			List<Color> connectedColors = new ArrayList<>();
 			List<String> connNames = new ArrayList<>();
@@ -208,31 +209,31 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		}
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
-		if (meta.comparison != null)
+		if (hasComp)
 			table.addLine(meta.primary.name, meta.comparison.name);
 		File mainPlot = new File(resourcesDir, "sect_connectivity.png");
 		File compPlot = new File(resourcesDir, "sect_connectivity_comp.png");
-		addTablePlots(table, mainPlot, compPlot, relPathToResources, meta.comparison != null);
-		if (meta.comparison != null) {
+		addTablePlots(table, mainPlot, compPlot, relPathToResources, hasComp);
+		if (hasComp) {
 			mainPlot = new File(resourcesDir, "sect_connectivity_unique.png");
 			compPlot = new File(resourcesDir, "sect_connectivity_unique_comp.png");
-			addTablePlots(table, mainPlot, compPlot, relPathToResources, meta.comparison != null);
+			addTablePlots(table, mainPlot, compPlot, relPathToResources, hasComp);
 		}
 		mainPlot = new File(resourcesDir, "sect_connectivity_hist.png");
 		compPlot = new File(resourcesDir, "sect_connectivity_hist_comp.png");
-		addTablePlots(table, mainPlot, compPlot, relPathToResources, meta.comparison != null);
-		if (sol != null || (meta.comparison != null && meta.comparison.sol != null)) {
+		addTablePlots(table, mainPlot, compPlot, relPathToResources, hasComp);
+		if (sol != null || (hasComp && meta.comparison.sol != null)) {
 			mainPlot = new File(resourcesDir, "sect_connectivity_hist_rates.png");
 			compPlot = new File(resourcesDir, "sect_connectivity_hist_rates_comp.png");
-			addTablePlots(table, mainPlot, compPlot, relPathToResources, meta.comparison != null);
+			addTablePlots(table, mainPlot, compPlot, relPathToResources, hasComp);
 			mainPlot = new File(resourcesDir, "sect_connectivity_hist_rates_log.png");
 			compPlot = new File(resourcesDir, "sect_connectivity_hist_rates_comp_log.png");
-			addTablePlots(table, mainPlot, compPlot, relPathToResources, meta.comparison != null);
+			addTablePlots(table, mainPlot, compPlot, relPathToResources, hasComp);
 		}
 		lines.addAll(table.build());
 		lines.add("");
 		
-		if (meta.comparison != null && rupSet.hasModule(RuptureConnectionSearch.class)
+		if (hasComp && rupSet.hasModule(RuptureConnectionSearch.class)
 				&& meta.comparison.rupSet.hasModule(RuptureConnectionSearch.class)) {
 			RuptureConnectionSearch primarySearch = rupSet.getModule(RuptureConnectionSearch.class);
 			RuptureConnectionSearch compSearch = meta.comparison.rupSet.getModule(RuptureConnectionSearch.class);
@@ -273,7 +274,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 				+ "faults plotted in black.");
 		lines.add("");
 		TableBuilder clustersTable = MarkdownUtils.tableBuilder();
-		if (meta.comparison != null) {
+		if (hasComp) {
 			table = MarkdownUtils.tableBuilder();
 			table.addLine(meta.primary.name, meta.comparison.name);
 			

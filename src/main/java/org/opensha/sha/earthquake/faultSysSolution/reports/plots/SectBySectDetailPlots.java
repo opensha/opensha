@@ -141,7 +141,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		if (!rupSet.hasModule(ClusterRuptures.class))
 			rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
-		if (meta.comparison != null && !meta.comparison.rupSet.hasModule(ClusterRuptures.class))
+		if (meta.comparisonHasSameSects && !meta.comparison.rupSet.hasModule(ClusterRuptures.class))
 			meta.comparison.rupSet.addModule(ClusterRuptures.singleStranged(meta.comparison.rupSet));
 		
 		Map<Integer, List<FaultSection>> sectsByParent = rupSet.getFaultSectionDataList().stream().collect(
@@ -554,7 +554,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 //			+" sects) corupture with this parent");
 		
 		RupConnectionsData compRupData = null;
-		if (meta.comparison != null)
+		if (meta.comparisonHasSameSects)
 			compRupData = new RupConnectionsData(parentSectIndex,
 					meta.comparison.rupSet.requireModule(ClusterRuptures.class),
 					meta.comparison.rupSet, meta.comparison.sol);
@@ -680,7 +680,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			table.initNewLine();
 			table.addColumn("");
 			table.addColumn(meta.primary.name);
-			if (meta.comparison != null)
+			if (meta.comparisonHasSameSects)
 				table.addColumn(meta.comparison.name);
 			table.finalizeLine();
 			
@@ -691,7 +691,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			table.initNewLine();
 			table.addColumn("**Connected?**");
 			table.addColumn(connected);
-			if (meta.comparison != null)
+			if (meta.comparisonHasSameSects)
 				table.addColumn(compRupData.parentCoruptures.containsKey(parentID));
 			table.finalizeLine();
 			
@@ -699,7 +699,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			table.addColumn("**Directly Connected?**");
 			boolean directly = rupData.directlyConnectedParents.contains(parentID);
 			table.addColumn(directly);
-			if (meta.comparison != null)
+			if (meta.comparisonHasSameSects)
 				table.addColumn(compRupData.directlyConnectedParents.contains(parentID));
 			table.finalizeLine();
 			
@@ -726,7 +726,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 					rateWeightDist /= sumRate;
 				
 				table.initNewLine().addColumn("**Min Co-Rupture Dist**").addColumn(optionalDigitDF.format(minRupDist)+" km");
-				if (meta.comparison != null) {
+				if (meta.comparisonHasSameSects) {
 					List<Integer> compCorups = compRupData.parentCoruptures.get(parentID);
 					if (compCorups ==  null) {
 						table.addColumn("_N/A_");
@@ -789,7 +789,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			} else {
 				table.addColumn("0");
 			}
-			if (meta.comparison != null) {
+			if (meta.comparisonHasSameSects) {
 				if (compRupData.parentCoruptures.containsKey(parentID)) {
 					table.addColumn(countDF.format(compRupData.parentCoruptures.get(parentID).size()));
 					coruptures = true;
@@ -805,7 +805,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				table.addColumn(rupData.parentCoruptureRates.get(parentID).floatValue());
 			else
 				table.addColumn("_N/A_");
-			if (meta.comparison != null) {
+			if (meta.comparisonHasSameSects) {
 				if (compRupData.parentCoruptureRates != null && compRupData.parentCoruptureRates.containsKey(parentID))
 					table.addColumn(compRupData.parentCoruptureRates.get(parentID).floatValue());
 				else
@@ -822,7 +822,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				} else {
 					table.addColumn("_N/A_");
 				}
-				if (meta.comparison != null) {
+				if (meta.comparisonHasSameSects) {
 					if (compRupData.parentCoruptureMags.containsKey(parentID)) {
 						MinMaxAveTracker minMax = compRupData.parentCoruptureMags.get(parentID);
 						table.addColumn("["+twoDigits.format(minMax.getMin())+", "+twoDigits.format(minMax.getMax())+"]");
@@ -1114,7 +1114,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			cmlChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, targetColor));
 		}
 		
-		if (meta.comparison != null && meta.comparison.sol != null) {
+		if (meta.comparisonHasSameSects && meta.comparison.sol != null) {
 			HashSet<Integer> compRups = new HashSet<>();
 			for (FaultSection sect : faultSects)
 				compRups.addAll(meta.comparison.rupSet.getRupturesForSection(sect.getSectionId()));
@@ -1691,7 +1691,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				magLabels.add("Supra-Seis");
 		}
 
-		boolean comp = meta.hasComparisonSol();
+		boolean comp = meta.hasComparisonSol() && meta.comparisonHasSameSects;
 		boolean first = true;
 		for (int s=0; s<faultSects.size(); s++) {
 			FaultSection sect = faultSects.get(s);
@@ -1824,7 +1824,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				dataChars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 5f, constrColor));
 			}
 		}
-		boolean comp = meta.hasComparisonSol();
+		boolean comp = meta.hasComparisonSol() && meta.comparisonHasSameSects;
 		double[] slipRates = null, compSlipRates = null;
 		if (paleoSlipProb != null) {
 			slipRates = calcPaleoRates(faultSects, meta.primary.sol, paleoSlipProb);
@@ -1904,7 +1904,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			double[] targetRates, double[] targetRateStdDevs) {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
-		boolean comp = meta.hasComparisonSol();
+		boolean comp = meta.hasComparisonSol() && meta.comparisonHasSameSects;
 		
 		boolean first = true;
 		for (int s=0; s<faultSects.size(); s++) {
@@ -2026,7 +2026,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		FaultSystemRupSet rupSet = meta.primary.rupSet;
 		
 		boolean comp = meta.hasComparisonSol() && meta.comparison.rupSet.hasModule(AveSlipModule.class)
-				&& meta.comparison.rupSet.hasModule(SlipAlongRuptureModel.class);
+				&& meta.comparison.rupSet.hasModule(SlipAlongRuptureModel.class) && meta.comparisonHasSameSects;
 		
 		SectSlipRates slipRates = rupSet.getModule(SectSlipRates.class);
 		
@@ -2163,7 +2163,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		FaultSystemRupSet rupSet = meta.primary.rupSet;
 		
-		boolean comp = meta.hasComparisonSol() && meta.comparison.rupSet.hasModule(AveSlipModule.class);
+		boolean comp = meta.hasComparisonSol() && meta.comparison.rupSet.hasModule(AveSlipModule.class)
+				&& meta.comparisonHasSameSects;
 		
 		SectSlipRates slipRates = rupSet.getModule(SectSlipRates.class);
 		
@@ -2246,7 +2247,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
-		boolean comp = meta.hasComparisonSol() && meta.comparison.rupSet.hasModule(AveSlipModule.class);
+		boolean comp = meta.hasComparisonSol() && meta.comparison.rupSet.hasModule(AveSlipModule.class)
+				&& meta.comparisonHasSameSects;
 		
 		double[] rupMoRates = SectBValuePlot.calcRupMomentRates(meta.primary.sol);
 		double[] compRupMoRates = comp ? SectBValuePlot.calcRupMomentRates(meta.comparison.sol) : null;

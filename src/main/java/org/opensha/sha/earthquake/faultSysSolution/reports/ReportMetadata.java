@@ -22,6 +22,8 @@ public class ReportMetadata {
 	public final RupSetMetadata comparison;
 	public final RupSetOverlap comparisonOverlap;
 	
+	public final boolean comparisonHasSameSects;
+	
 	public final Region region;
 	
 	public ReportMetadata(RupSetMetadata primary) {
@@ -39,9 +41,11 @@ public class ReportMetadata {
 		if (comparison == null) {
 			primaryOverlap = null;
 			comparisonOverlap = null;
+			comparisonHasSameSects = false;
 		} else {
-			primaryOverlap = new RupSetOverlap(primary, comparison);
-			comparisonOverlap = new RupSetOverlap(comparison, primary);
+			comparisonHasSameSects = primary.rupSet.areSectionsEquivalentTo(comparison.rupSet);
+			primaryOverlap = new RupSetOverlap(primary, comparison, comparisonHasSameSects);
+			comparisonOverlap = new RupSetOverlap(comparison, primary, comparisonHasSameSects);
 		}
 		
 		// look for a reagion
@@ -114,52 +118,72 @@ public class ReportMetadata {
 		public final int numUniqueJumps;
 		public final transient HashSet<Jump> uniqueJumps;
 		
-		public RupSetOverlap(RupSetMetadata meta, RupSetMetadata comp) {
-			// ruptures
+		public RupSetOverlap(RupSetMetadata meta, RupSetMetadata comp, boolean sameSects) {
 			commonIndexes = new HashSet<>();
 			uniqueIndexes = new HashSet<>();
 			commonUniques = new HashSet<>();
 			uniqueUniques = new HashSet<>();
-			double commonRuptureRate = Double.NaN;
-			double uniqueRuptureRate = Double.NaN;
-			if (meta.sol != null) {
-				commonRuptureRate = 0d;
-				uniqueRuptureRate = 0d;
-			}
-			
-			HashSet<UniqueRupture> compUniques = new HashSet<>(comp.uniques);
-			
-			for (int r=0; r<meta.numRuptures; r++) {
-				UniqueRupture unique = meta.uniques.get(r);
-				if (compUniques.contains(unique)) {
-					commonUniques.add(unique);
-					commonIndexes.add(r);
-					if (meta.sol != null)
-						commonRuptureRate += meta.sol.getRateForRup(r);
-				} else {
-					uniqueUniques.add(unique);
-					uniqueIndexes.add(r);
-					if (meta.sol != null)
-						uniqueRuptureRate += meta.sol.getRateForRup(r);
+			if (sameSects) {
+				// ruptures
+				double commonRuptureRate = Double.NaN;
+				double uniqueRuptureRate = Double.NaN;
+				if (meta.sol != null) {
+					commonRuptureRate = 0d;
+					uniqueRuptureRate = 0d;
 				}
+				
+				HashSet<UniqueRupture> compUniques = new HashSet<>(comp.uniques);
+				
+				for (int r=0; r<meta.numRuptures; r++) {
+					UniqueRupture unique = meta.uniques.get(r);
+					if (compUniques.contains(unique)) {
+						commonUniques.add(unique);
+						commonIndexes.add(r);
+						if (meta.sol != null)
+							commonRuptureRate += meta.sol.getRateForRup(r);
+					} else {
+						uniqueUniques.add(unique);
+						uniqueIndexes.add(r);
+						if (meta.sol != null)
+							uniqueRuptureRate += meta.sol.getRateForRup(r);
+					}
+				}
+				
+				numCommonRuptures = commonIndexes.size();
+				numUniqueRuptures = uniqueIndexes.size();
+				this.commonRuptureRate = commonRuptureRate;
+				this.uniqueRuptureRate = uniqueRuptureRate;
+				
+				// jumps
+				commonJumps = new HashSet<>();
+				uniqueJumps = new HashSet<>();
+				for (Jump jump : meta.jumps) {
+					if (comp.jumps.contains(jump))
+						commonJumps.add(jump);
+					else
+						uniqueJumps.add(jump);
+				}
+				numCommonJumps = commonJumps.size();
+				numUniqueJumps = uniqueJumps.size();
+			} else {
+				double commonRuptureRate = Double.NaN;
+				double uniqueRuptureRate = Double.NaN;
+				if (meta.sol != null) {
+					commonRuptureRate = 0d;
+					uniqueRuptureRate = meta.sol.getTotalFaultSolutionMomentRate();
+				}
+				
+				numCommonRuptures = 0;
+				numUniqueRuptures = 0;
+				this.commonRuptureRate = commonRuptureRate;
+				this.uniqueRuptureRate = uniqueRuptureRate;
+				
+				// jumps
+				commonJumps = new HashSet<>();
+				uniqueJumps = new HashSet<>();
+				numCommonJumps = 0;
+				numUniqueJumps = 0;
 			}
-			
-			numCommonRuptures = commonIndexes.size();
-			numUniqueRuptures = uniqueIndexes.size();
-			this.commonRuptureRate = commonRuptureRate;
-			this.uniqueRuptureRate = uniqueRuptureRate;
-			
-			// jumps
-			commonJumps = new HashSet<>();
-			uniqueJumps = new HashSet<>();
-			for (Jump jump : meta.jumps) {
-				if (comp.jumps.contains(jump))
-					commonJumps.add(jump);
-				else
-					uniqueJumps.add(jump);
-			}
-			numCommonJumps = commonJumps.size();
-			numUniqueJumps = uniqueJumps.size();
 		}
 		
 	}

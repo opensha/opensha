@@ -323,7 +323,8 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 						+" "+"[Download GeoJSON]("+relPathToResources+"/"+misfitPrefix+".geojson)");
 				table.finalizeLine();
 				
-				if (meta.hasComparisonSol() && meta.comparison.rupSet.hasModule(SectSlipRates.class)
+				if (meta.hasComparisonSol() && meta.comparisonHasSameSects
+						&& meta.comparison.rupSet.hasModule(SectSlipRates.class)
 						&& meta.comparison.rupSet.hasModule(SlipAlongRuptureModel.class)
 						&& meta.comparison.rupSet.hasModule(AveSlipModule.class)) {
 					relPrefix += "_comp";

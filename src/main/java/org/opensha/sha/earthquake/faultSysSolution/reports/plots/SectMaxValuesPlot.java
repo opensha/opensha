@@ -69,7 +69,7 @@ public class SectMaxValuesPlot extends AbstractRupSetPlot {
 		
 		Map<HistScalar, HistScalarValues> imputVals = getInputs(meta.primary);
 		Map<HistScalar, HistScalarValues> compVals = null;
-		if (meta.comparison != null && meta.comparison.rupSet.hasModule(ClusterRuptures.class))
+		if (meta.comparison != null && meta.comparisonHasSameSects && meta.comparison.rupSet.hasModule(ClusterRuptures.class))
 			compVals = getInputs(meta.comparison);
 		for (HistScalar scalar : scalars) {
 			HistScalarValues inputScalars = imputVals.get(scalar);
@@ -161,7 +161,7 @@ public class SectMaxValuesPlot extends AbstractRupSetPlot {
 		List<String> lines = new ArrayList<>();
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
-		if (meta.comparison != null) {
+		if (meta.comparison != null && meta.comparisonHasSameSects) {
 			table.addLine(meta.primary.name, meta.comparison.name);
 			table.addLine("![Primary]("+relPathToResources+"/sect_max_LENGTH.png)", "![Comparison]("+relPathToResources+"/sect_max_LENGTH_comp.png)");
 			table.initNewLine();

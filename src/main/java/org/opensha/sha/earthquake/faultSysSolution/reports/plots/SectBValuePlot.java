@@ -66,7 +66,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		FaultSystemSolution compSol = meta.hasComparisonSol() ? meta.comparison.sol : null;
 		if (compSol != null && !compSol.getRupSet().hasModule(AveSlipModule.class))
 			compSol = null;
-		if (compSol != null && !sol.getRupSet().areSectionsEquivalentTo(compSol.getRupSet()))
+		if (compSol != null && !meta.comparisonHasSameSects)
 			compSol = null;
 		
 		double[] rupMoRates = calcRupMomentRates(sol);
