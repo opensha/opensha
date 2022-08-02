@@ -398,7 +398,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 			
 			List<String> plotHeadings = new ArrayList<>();
 			List<String> plotPrefixes = new ArrayList<>();
-			List<String> compPlotPrefixes = meta.hasComparison() ? new ArrayList<>() : null;
+			List<String> compPlotPrefixes = meta.comparisonHasSameSects ? new ArrayList<>() : null;
 			
 			if (hasCreep) {
 				double[] creepRates = creep(rupSet);
@@ -417,7 +417,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 				mapMaker.plot(resourcesDir, prefix, " ");
 				plotPrefixes.add(prefix);
 				
-				if (meta.hasComparison()) {
+				if (meta.comparisonHasSameSects) {
 					mapMaker.plotSectScalars(creep(meta.comparison.rupSet), cpt, "Creep Rate (mm/yr)");
 					mapMaker.plot(resourcesDir, prefix+"_comp", " ");
 					compPlotPrefixes.add(prefix+"_comp");
@@ -435,7 +435,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 				mapMaker.plot(resourcesDir, prefix, " ");
 				plotPrefixes.add(prefix);
 				
-				if (meta.hasComparison()) {
+				if (meta.comparisonHasSameSects) {
 					mapMaker.plotSectScalars(aseis(meta.comparison.rupSet), cpt, "Aseismic Slip Factor");
 					mapMaker.plot(resourcesDir, prefix+"_comp", " ");
 					compPlotPrefixes.add(prefix+"_comp");
@@ -454,7 +454,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 				mapMaker.plot(resourcesDir, prefix, " ");
 				plotPrefixes.add(prefix);
 				
-				if (meta.hasComparison()) {
+				if (meta.comparisonHasSameSects) {
 					mapMaker.plotSectScalars(coupling(meta.comparison.rupSet), cpt, "Coupling Coefficient");
 					mapMaker.plot(resourcesDir, prefix+"_comp", " ");
 					compPlotPrefixes.add(prefix+"_comp");
@@ -474,7 +474,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 				mapMaker.plot(resourcesDir, prefix, " ");
 				plotPrefixes.add(prefix);
 				
-				if (meta.hasComparison()) {
+				if (meta.comparisonHasSameSects) {
 					mapMaker.plotSectScalars(subSeisReduction(meta.comparison.rupSet,
 							meta.comparison.rupSet.getModule(SectSlipRates.class)), cpt, "Subseismogenic Reduction Factor");
 					mapMaker.plot(resourcesDir, prefix+"_comp", " ");
@@ -484,7 +484,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 			
 			TableBuilder table = MarkdownUtils.tableBuilder();
 			
-			if (meta.hasComparison()) {
+			if (meta.comparisonHasSameSects) {
 				// one line for each type
 				for (int i=0; i<plotHeadings.size(); i++) {
 					table.initNewLine();
