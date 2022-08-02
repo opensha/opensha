@@ -159,17 +159,19 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode {
 		// distance dependent model, possibly with a horizontal shift
 		JumpProbabilityCalc model = shawShift > 0d ?
 				Shaw07JumpDistProb.forHorzOffset(1d, shawR0, shawShift) : new Shaw07JumpDistProb(1d, shawR0);
-		if (creepingProb < 1d) {
-			int creepingParentID = FaultSectionUtils.findParentSectionID(rupSet.getFaultSectionDataList(), "San", "Andreas", "Creeping");
-			if (creepingParentID >= 0)
-				model = new JumpProbabilityCalc.Minimum(model, new CreepingSectionJumpSegModel(creepingParentID, creepingProb));
+		if (rupSet != null) {
+			if (creepingProb < 1d) {
+				int creepingParentID = FaultSectionUtils.findParentSectionID(rupSet.getFaultSectionDataList(), "San", "Andreas", "Creeping");
+				if (creepingParentID >= 0)
+					model = new JumpProbabilityCalc.Minimum(model, new CreepingSectionJumpSegModel(creepingParentID, creepingProb));
+			}
+			// Wasatch model
+			JumpProbabilityCalc wasatch = NSHM23_WasatchSegmentationData.build(
+					rupSet.getFaultSectionDataList(), wasatchProb, model);
+			if (wasatch != null)
+				// this rupture set has Wasatch
+				model = wasatch;
 		}
-		// Wasatch model
-		JumpProbabilityCalc wasatch = NSHM23_WasatchSegmentationData.build(
-				rupSet.getFaultSectionDataList(), wasatchProb, model);
-		if (wasatch != null)
-			// this rupture set has Wasatch
-			return wasatch;
 		return model;
 	}
 	
