@@ -1526,7 +1526,7 @@ public class SegmentationCalculator {
 		return ret;
 	}
 	
-	public File[] plotShaw07Comparison(File outputDir, String prefix, boolean logY, RateCombiner combiner) throws IOException {
+	public File[] plotDistDependComparison(File outputDir, String prefix, boolean logY, RateCombiner combiner) throws IOException {
 		File[] ret = new File[minMags.length];
 		
 		Range xRange = null;
@@ -1544,10 +1544,12 @@ public class SegmentationCalculator {
 		
 		// see if we have a segmentation model
 		List<DistDependentJumpProbabilityCalc> comparisons = new ArrayList<>();
+		List<String> compNames = new ArrayList<>();
 		LogicTreeBranch<?> branch = sol.getModule(LogicTreeBranch.class);
 		if (branch == null)
 			branch = sol.getRupSet().getModule(LogicTreeBranch.class);
 		DistDependentJumpProbabilityCalc chosenSegModel = null;
+		String chosenName = null;
 		if (branch != null) {
 			SegmentationModelBranchNode segChoice = branch.getValue(SegmentationModelBranchNode.class);
 			
@@ -1566,10 +1568,13 @@ public class SegmentationCalculator {
 								}
 								if (model instanceof DistDependentJumpProbabilityCalc) {
 									DistDependentJumpProbabilityCalc distModel = (DistDependentJumpProbabilityCalc)model;
-									if (option == segChoice)
+									if (option == segChoice) {
 										chosenSegModel = distModel;
-									else
+										chosenName = option.getShortName();
+									} else {
 										comparisons.add(distModel);
+										compNames.add(option.getShortName());
+									}
 								}
 							}
 						}
@@ -1683,7 +1688,7 @@ public class SegmentationCalculator {
 					EvenlyDiscretizedFunc func = new EvenlyDiscretizedFunc(xRange.getLowerBound(), xRange.getUpperBound(), 1000);
 					for (int j=0; j<func.size(); j++)
 						func.set(j, prob.calcJumpProbability(func.getX(j)));
-					String name = prob.getName();
+					String name = compNames.get(i);
 					if (i > 0)
 						name = name.replaceAll("Shaw07", "").trim();
 					func.setName(name);
@@ -1693,7 +1698,7 @@ public class SegmentationCalculator {
 					EvenlyDiscretizedFunc func = new EvenlyDiscretizedFunc(xRange.getLowerBound(), xRange.getUpperBound(), 1000);
 					for (int j=0; j<func.size(); j++)
 						func.set(j, chosenSegModel.calcJumpProbability(func.getX(j)));
-					func.setName(chosenSegModel.getName());
+					func.setName(chosenName);
 				}
 				histXVals = scalar.initHistogram(scalarTrack.getMin(), scalarTrack.getMax());
 			}
@@ -2323,7 +2328,7 @@ public class SegmentationCalculator {
 		calc = calc.combineMultiJumps(true);
 		
 		File outputDir = new File("/tmp");
-		calc.plotShaw07Comparison(outputDir, "shaw_test", true, RateCombiner.MIN);
+		calc.plotDistDependComparison(outputDir, "shaw_test", true, RateCombiner.MIN);
 	}
 
 }

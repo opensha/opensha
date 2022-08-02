@@ -27,15 +27,25 @@ import com.google.common.base.Preconditions;
 
 public class SegmentationPlot extends AbstractSolutionPlot {
 	
-	private boolean skipCoulomb;
+	private Scalars[] scalars;
 	private double[] minMags;
 	
-	public SegmentationPlot() {
-		this(true, null);
+	public static Scalars[] noCoulombScalars() {
+		List<Scalars> newScalars = new ArrayList<>();
+		for (Scalars scalar : Scalars.values())
+			if (!scalar.name().contains("CFF"))
+				newScalars.add(scalar);
+		return newScalars.toArray(new Scalars[0]);
 	}
 	
-	public SegmentationPlot(boolean skipCoulomb, double[] minMags) {
-		this.skipCoulomb = skipCoulomb;
+	public SegmentationPlot() {
+		this(noCoulombScalars(), null);
+	}
+	
+	public SegmentationPlot(Scalars[] scalars, double[] minMags) {
+		if (scalars == null)
+			scalars = new Scalars[0];
+		this.scalars = scalars;
 		this.minMags = minMags;
 	}
 
@@ -110,14 +120,6 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 		
 //		RateCombiner[] combiners = RateCombiner.values();
 		RateCombiner[] combiners = { RateCombiner.MIN };
-		Scalars[] scalars = Scalars.values();
-		if (skipCoulomb) {
-			List<Scalars> newScalars = new ArrayList<>();
-			for (Scalars scalar : scalars)
-				if (!scalar.name().contains("CFF"))
-					newScalars.add(scalar);
-			scalars = newScalars.toArray(new Scalars[0]);
-		}
 		
 		File[] inputConnRates = inputSegCalc.plotConnectionRates(resourcesDir, "conn_rates", meta.primary.name);
 		Map<RateCombiner, File[]> inputPassthroughRates = new HashMap<>();
@@ -129,11 +131,11 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 		Map<RateCombiner, File[]> shawLogComps = new HashMap<>();
 		File[] shawCompComps = null, shawLogCompComps = null;
 		for (RateCombiner combiner : combiners) {
-			shawComps.put(combiner, inputSegCalc.plotShaw07Comparison(resourcesDir, "conn_passthrough_shaw07", false, combiner));
-			shawLogComps.put(combiner, inputSegCalc.plotShaw07Comparison(resourcesDir, "conn_passthrough_shaw07_log", true, combiner));
+			shawComps.put(combiner, inputSegCalc.plotDistDependComparison(resourcesDir, "conn_passthrough_dist_depend", false, combiner));
+			shawLogComps.put(combiner, inputSegCalc.plotDistDependComparison(resourcesDir, "conn_passthrough_dist_depend_log", true, combiner));
 			if (combiners.length == 1 && compSegCalc != null) {
-				shawCompComps = compSegCalc.plotShaw07Comparison(resourcesDir, "conn_comp_passthrough_shaw07", false, combiners[0]);
-				shawLogCompComps = compSegCalc.plotShaw07Comparison(resourcesDir, "conn_comp_passthrough_shaw07_log", true, combiners[0]);
+				shawCompComps = compSegCalc.plotDistDependComparison(resourcesDir, "conn_comp_passthrough_dist_depend", false, combiners[0]);
+				shawLogCompComps = compSegCalc.plotDistDependComparison(resourcesDir, "conn_comp_passthrough_dist_depend_log", true, combiners[0]);
 			}
 		}		
 		
@@ -254,9 +256,10 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 			lines.addAll(table.build());
 			lines.add("");
 			
-			lines.add("**Connection Passthrough Rates vs Shaw & Dieterich (2007)**");
+			lines.add("**Connection Passthrough Rates vs Distance**");
 			lines.add(""); lines.add(topLink); lines.add("");
-			lines.add("This plots passthrough rates versus various the distance relationship established in Shaw and Dieterich (2007).");
+			lines.add("This plots passthrough rates versus distance, either comparing with the relationship established in "
+					+ "Shaw and Dieterich (2007), or distance-dependent segmentation models for this model's logic tree.");
 			lines.add("");
 			
 			table = MarkdownUtils.tableBuilder();
@@ -295,35 +298,37 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 				lines.add("");
 			}
 			
-			lines.add("**Connection Passthrough Rates vs Scalars**");
-			lines.add(""); lines.add(topLink); lines.add("");
-			lines.add("This plots passthrough rates versus various scalar values (for each rate combiniation type).");
-			lines.add("");
-			
-			for (Scalars scalar : scalars) {
-				table = MarkdownUtils.tableBuilder();
-				table.initNewLine();
-				if (compSegCalc != null)
-					table.addColumn("");
-				// escape absolute values
-				String scalarName = scalar.toString().replace("|", "\\|");
-				table.addColumn(scalarName).addColumn(scalarName+" (Log10 Rates)");
-				table.finalizeLine();
-				table.initNewLine();
-				if (compSegCalc != null)
-					table.addColumn("**"+meta.primary.name+"**");
-				table.addColumn("![Rates]("+relPathToResources+"/"+inputScalarPassthroughs.get(scalar)[m].getName()+")");
-				table.addColumn("![Rates]("+relPathToResources+"/"+inputScalarLogPassthroughs.get(scalar)[m].getName()+")");
-				table.finalizeLine();
-				if (compSegCalc != null) {
-					table.initNewLine();
-					table.addColumn("**"+compName+"**");
-					table.addColumn("![Rates]("+relPathToResources+"/"+compScalarPassthroughs.get(scalar)[m].getName()+")");
-					table.addColumn("![Rates]("+relPathToResources+"/"+compScalarLogPassthroughs.get(scalar)[m].getName()+")");
-					table.finalizeLine();
-				}
-				lines.addAll(table.build());
+			if (scalars.length > 0) {
+				lines.add("**Connection Passthrough Rates vs Scalars**");
+				lines.add(""); lines.add(topLink); lines.add("");
+				lines.add("This plots passthrough rates versus various scalar values (for each rate combiniation type).");
 				lines.add("");
+				
+				for (Scalars scalar : scalars) {
+					table = MarkdownUtils.tableBuilder();
+					table.initNewLine();
+					if (compSegCalc != null)
+						table.addColumn("");
+					// escape absolute values
+					String scalarName = scalar.toString().replace("|", "\\|");
+					table.addColumn(scalarName).addColumn(scalarName+" (Log10 Rates)");
+					table.finalizeLine();
+					table.initNewLine();
+					if (compSegCalc != null)
+						table.addColumn("**"+meta.primary.name+"**");
+					table.addColumn("![Rates]("+relPathToResources+"/"+inputScalarPassthroughs.get(scalar)[m].getName()+")");
+					table.addColumn("![Rates]("+relPathToResources+"/"+inputScalarLogPassthroughs.get(scalar)[m].getName()+")");
+					table.finalizeLine();
+					if (compSegCalc != null) {
+						table.initNewLine();
+						table.addColumn("**"+compName+"**");
+						table.addColumn("![Rates]("+relPathToResources+"/"+compScalarPassthroughs.get(scalar)[m].getName()+")");
+						table.addColumn("![Rates]("+relPathToResources+"/"+compScalarLogPassthroughs.get(scalar)[m].getName()+")");
+						table.finalizeLine();
+					}
+					lines.addAll(table.build());
+					lines.add("");
+				}
 			}
 			
 //			lines.add("**Connection Passthrough Rates vs Log10 Scalars**");
