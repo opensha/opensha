@@ -40,6 +40,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils;
@@ -1549,6 +1550,32 @@ public class SegmentationCalculator {
 		if (branch != null) {
 			SegmentationModelBranchNode segChoice = branch.getValue(SegmentationModelBranchNode.class);
 			
+			for (LogicTreeLevel<?> level : branch.getLevels()) {
+				if (SegmentationModelBranchNode.class.isAssignableFrom(level.getType())
+						|| level.getType().equals(SegmentationModelBranchNode.class)) {
+					Class<? extends SegmentationModelBranchNode> segClass =
+							(Class<? extends SegmentationModelBranchNode>) level.getType();
+					if (segClass != null && segClass.isEnum() && SegmentationModelBranchNode.class.isAssignableFrom(segClass)) {
+						for (SegmentationModelBranchNode option : segClass.getEnumConstants()) {
+							if (option.getNodeWeight(branch) > 0d) {
+								JumpProbabilityCalc model = option.getModel(sol.getRupSet(), branch);
+								if (!(model instanceof DistDependentJumpProbabilityCalc)) {
+									// try generic
+									model = option.getModel(null, branch);
+								}
+								if (model instanceof DistDependentJumpProbabilityCalc) {
+									DistDependentJumpProbabilityCalc distModel = (DistDependentJumpProbabilityCalc)model;
+									if (option == segChoice)
+										chosenSegModel = distModel;
+									else
+										comparisons.add(distModel);
+								}
+							}
+						}
+					}
+				}
+			}
+			
 			if (segChoice != null) {
 				System.out.println("Detected seg model from logic tree branch: "+segChoice.getName());
 				Class<? extends SegmentationModelBranchNode> segClass = segChoice.getClass();
@@ -1558,24 +1585,7 @@ public class SegmentationCalculator {
 						segClass = (Class<? extends SegmentationModelBranchNode>) temp;
 				}
 				System.out.println("Class: "+segClass.getName());
-				if (segClass != null && segClass.isEnum() && SegmentationModelBranchNode.class.isAssignableFrom(segClass)) {
-					for (SegmentationModelBranchNode option : segClass.getEnumConstants()) {
-						if (option.getNodeWeight(branch) > 0d) {
-							JumpProbabilityCalc model = option.getModel(sol.getRupSet(), branch);
-							if (!(model instanceof DistDependentJumpProbabilityCalc)) {
-								// try generic
-								model = option.getModel(null, branch);
-							}
-							if (model instanceof DistDependentJumpProbabilityCalc) {
-								DistDependentJumpProbabilityCalc distModel = (DistDependentJumpProbabilityCalc)model;
-								if (option == segChoice)
-									chosenSegModel = distModel;
-								else
-									comparisons.add(distModel);
-							}
-						}
-					}
-				}
+				
 			}
 		}
 		
