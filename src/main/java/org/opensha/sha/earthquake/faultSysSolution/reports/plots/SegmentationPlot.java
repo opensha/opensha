@@ -197,6 +197,7 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 				lines.add("");
 				lines.add(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relGeoPath)
 						+" "+"[Download GeoJSON]("+relGeoPath+")");
+				lines.add("");
 			} else {
 				TableBuilder table = MarkdownUtils.tableBuilder();
 				table.addLine(meta.primary.name, compName);
