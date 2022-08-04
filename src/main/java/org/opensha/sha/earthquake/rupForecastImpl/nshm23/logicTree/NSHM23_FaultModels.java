@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.lang.reflect.Type;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,6 +38,9 @@ import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
@@ -68,6 +72,8 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 	private static final ConcurrentMap<NSHM23_FaultModels, List<? extends FaultSection>> sectsCache = new ConcurrentHashMap<>();
 	
 	public static final String NSHM23_SECTS_PATH_PREFIX = "/data/erf/nshm23/fault_models/";
+	
+	public static final String NAMED_FAULTS_FILE = NSHM23_SECTS_PATH_PREFIX+"v2/named_faults.json";
 	
 	private String name;
 	private String shortName;
@@ -133,29 +139,13 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 
 			@Override
 			public NamedFaults call() throws Exception {
-				// load geologic sections that have named fault associations in the parent name field
-				Map<Integer, GeoJSONFaultSection> geoSects =
-						NSHM23_DeformationModels.getGeolFullSects(NSHM23_FaultModels.this);
+				Gson gson = new GsonBuilder().create();
 				
-				// find unique set of parent IDs that we have
-				HashSet<Integer> myParentIDs = new HashSet<>();
-				for (FaultSection sect : rupSet.getFaultSectionDataList())
-					myParentIDs.add(sect.getParentSectionId());
-				
-				Map<String, List<Integer>> namedFaults = new HashMap<>();
-				
-				for (Integer parentID : myParentIDs) {
-					GeoJSONFaultSection sect = geoSects.get(parentID);
-					Preconditions.checkNotNull(sect, "Couldn't find geologic full section for parent=%s", parentID);
-					if (sect.getParentSectionName() != null) {
-						List<Integer> sectIDs = namedFaults.get(sect.getParentSectionName());
-						if (sectIDs == null) {
-							sectIDs = new ArrayList<>();
-							namedFaults.put(sect.getParentSectionName(), sectIDs);
-						}
-						sectIDs.add(parentID);
-					}
-				}
+				BufferedReader reader = new BufferedReader(
+						new InputStreamReader(NSHM23_FaultModels.class.getResourceAsStream(NAMED_FAULTS_FILE)));
+				Type type = TypeToken.getParameterized(Map.class, String.class,
+						TypeToken.getParameterized(List.class, Integer.class).getType()).getType();
+				Map<String, List<Integer>> namedFaults = gson.fromJson(reader, type);
 				
 				Preconditions.checkState(!namedFaults.isEmpty(), "No named faults found");
 				return new NamedFaults(rupSet, namedFaults);
