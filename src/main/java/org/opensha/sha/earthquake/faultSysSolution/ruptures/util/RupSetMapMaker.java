@@ -213,6 +213,11 @@ public class RupSetMapMaker {
 		this.highlightTraceChar = highlightTraceChar;
 	}
 	
+	public void clearHighlights() {
+		this.highlightSections = null;
+		this.highlightTraceChar = null;
+	}
+	
 	public void setWritePDFs(boolean writePDFs) {
 		this.writePDFs = writePDFs;
 	}
@@ -828,7 +833,8 @@ public class RupSetMapMaker {
 					chars.add(new PlotCurveCharacterstics(scatterOutline, scatterSymbolWidth, scatterOutlineColor));
 				}
 				
-				cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel));
+				if (scatterScalarLabel != null)
+					cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel));
 			} else {
 				Preconditions.checkNotNull(scatterColor);
 				XY_DataSet xy = new DefaultXY_DataSet();

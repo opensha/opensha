@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,15 +19,18 @@ import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.uncertainty.BoundedUncertainty;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
+import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
+import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -42,8 +46,10 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
+import org.opensha.sha.faultSurface.FaultSection;
 
-public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
+public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 
 	@Override
 	public String getName() {
@@ -51,9 +57,9 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 	}
 
 	@Override
-	public List<String> plot(FaultSystemSolution sol, ReportMetadata meta, File resourcesDir, String relPathToResources,
-			String topLink) throws IOException {
-		PaleoseismicConstraintData data = sol.getRupSet().requireModule(PaleoseismicConstraintData.class);
+	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
+			String relPathToResources, String topLink) throws IOException {
+		PaleoseismicConstraintData data = rupSet.requireModule(PaleoseismicConstraintData.class);
 		
 		FaultSystemSolution compSol = meta.hasComparisonSol() ? meta.comparison.sol : null;
 		if (compSol != null) {
@@ -65,41 +71,86 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 		boolean hasRateData = data.hasPaleoRateConstraints();
 		boolean hasSlipData = data.hasPaleoSlipConstraints();
 		
-		List<String> lines = new ArrayList<>();
-		
 		Map<SectMappedUncertainDataConstraint, Double> paleoRates = null;
 		Map<SectMappedUncertainDataConstraint, Double> compPaleoRates = null;
-		if (hasRateData) {
-			paleoRates = calcSolPaleoRates(data.getPaleoRateConstraints(), data.getPaleoProbModel(), sol);
-			if (compSol != null)
-				compPaleoRates = calcSolPaleoRates(data.getPaleoRateConstraints(), data.getPaleoProbModel(), compSol);
-			
-			if (hasSlipData) {
-				lines.add(getSubHeading()+" Paleo-Rate Data Comparison");
-				lines.add(topLink); lines.add("");
-			}
-			
-			String title = "Paleo-Rate Data Fits";
-			
-			lines.addAll(paleoLines(resourcesDir, "paleo_rate", relPathToResources, title, meta, paleoRates, compPaleoRates));
-			lines.add("");
-		}
-		
 		Map<SectMappedUncertainDataConstraint, Double> paleoSlips = null;
 		Map<SectMappedUncertainDataConstraint, Double> compPaleoSlips = null;
-		if (hasSlipData) {
-			paleoSlips = calcSolPaleoSlipRates(data.getPaleoSlipConstraints(), data.getPaleoSlipProbModel(), sol);
-			if (compSol != null)
-				compPaleoSlips = calcSolPaleoSlipRates(data.getPaleoSlipConstraints(), data.getPaleoSlipProbModel(), compSol);
-
-			String title = "Paleo-Rate (Implied from Slip) Data Fits";
+		List<SectMappedUncertainDataConstraint> slipToRateData = null;
+		List<SectMappedUncertainDataConstraint> compSlipToRateData = null;
+		
+		if (sol != null) {
 			if (hasRateData) {
-				lines.add(getSubHeading()+" Paleo-Slip Data Comparison");
+				paleoRates = calcSolPaleoRates(data.getPaleoRateConstraints(), data.getPaleoProbModel(), sol);
+				if (compSol != null)
+					compPaleoRates = calcSolPaleoRates(data.getPaleoRateConstraints(), data.getPaleoProbModel(), compSol);
+			}
+			if (hasSlipData) {
+				slipToRateData = PaleoseismicConstraintData.inferRatesFromSlipConstraints(
+						rupSet.requireModule(SectSlipRates.class), data.getPaleoSlipConstraints(), true);
+				paleoSlips = calcSolPaleoSlipRates(slipToRateData, data.getPaleoSlipProbModel(), sol);
+				if (compSol != null) {
+					compSlipToRateData = PaleoseismicConstraintData.inferRatesFromSlipConstraints(
+							rupSet.requireModule(SectSlipRates.class), data.getPaleoSlipConstraints(), true);
+					compPaleoSlips = calcSolPaleoSlipRates(compSlipToRateData, data.getPaleoSlipProbModel(), compSol);
+				}
+			}
+		} else if (hasSlipData) {
+			// still need to convert it
+			slipToRateData = PaleoseismicConstraintData.inferRatesFromSlipConstraints(
+					rupSet.requireModule(SectSlipRates.class), data.getPaleoSlipConstraints(), true);
+		}
+		
+		List<String> lines = new ArrayList<>();
+		
+		// plot mappings
+		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
+		
+		String compMappingStr = sol == null ? "Mappings" : "Comparison";
+		
+		if (hasRateData) {
+			if (hasSlipData) {
+				lines.add(getSubHeading()+" Paleo-Rate Data "+compMappingStr);
 				lines.add(topLink); lines.add("");
 			}
 			
-			lines.addAll(paleoLines(resourcesDir, "paleo_slip", relPathToResources, title, meta, paleoSlips, compPaleoSlips));
+			String prefix = "paleo_rate_mappings";
+			plotMappings(mapMaker, rupSet, resourcesDir, prefix, "Paleo Rate Site/Sect Mappings",
+					data.getPaleoRateConstraints(), paleoRates);
+			TableBuilder table = MarkdownUtils.tableBuilder();
+			table.addLine("![Map]("+relPathToResources+"/"+prefix+".png)");
+			table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+".geojson")
+					+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+".geojson)");
+			lines.addAll(table.build());
 			lines.add("");
+			
+			if (sol != null) {
+				String title = "Paleo-Rate Data Fits";
+				lines.addAll(paleoLines(resourcesDir, "paleo_rate", relPathToResources, title, meta, paleoRates, compPaleoRates));
+				lines.add("");
+			}
+		}
+		
+		if (hasSlipData) {
+			if (hasRateData) {
+				lines.add(getSubHeading()+" Paleo-Slip Data "+compMappingStr);
+				lines.add(topLink); lines.add("");
+			}
+			
+			String prefix = "paleo_slip_mappings";
+			plotMappings(mapMaker, rupSet, resourcesDir, prefix, "Paleo Slip Site/Sect Mappings",
+					slipToRateData, paleoSlips);
+			TableBuilder table = MarkdownUtils.tableBuilder();
+			table.addLine("![Map]("+relPathToResources+"/"+prefix+".png)");
+			table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+".geojson")
+					+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+".geojson)");
+			lines.addAll(table.build());
+			lines.add("");
+			
+			if (sol != null) {
+				String title = "Paleo-Rate (Implied from Slip) Data Fits";
+				lines.addAll(paleoLines(resourcesDir, "paleo_slip", relPathToResources, title, meta, paleoSlips, compPaleoSlips));
+				lines.add("");
+			}
 		}
 		
 		return lines;
@@ -231,14 +282,12 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 	}
 	
 	private static Map<SectMappedUncertainDataConstraint, Double> calcSolPaleoSlipRates(
-			List<? extends SectMappedUncertainDataConstraint> paleoSlipData, PaleoSlipProbabilityModel paleoSlipProbModel,
+			List<SectMappedUncertainDataConstraint> rateData, PaleoSlipProbabilityModel paleoSlipProbModel,
 			FaultSystemSolution sol) {
 		
 		Map<SectMappedUncertainDataConstraint, Double> ret = new LinkedHashMap<>(); // use linked implementation to maintain iteration order
 		
 		FaultSystemRupSet rupSet = sol.getRupSet();
-		List<SectMappedUncertainDataConstraint> rateData = PaleoseismicConstraintData.inferRatesFromSlipConstraints(
-				rupSet.requireModule(SectSlipRates.class), paleoSlipData, true);
 		
 		AveSlipModule aveSlipModule = rupSet.requireModule(AveSlipModule.class);
 		SlipAlongRuptureModel slipAloModel = rupSet.requireModule(SlipAlongRuptureModel.class);
@@ -457,6 +506,69 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 		return new File(outputDir, prefix+".png");
 	}
 	
+	private static void plotMappings(RupSetMapMaker mapMaker, FaultSystemRupSet rupSet, File outputDir, String prefix,
+			String title, List<? extends SectMappedUncertainDataConstraint> datas,
+			Map<SectMappedUncertainDataConstraint, Double> rates) throws IOException {
+		mapMaker.clearScatters();
+		mapMaker.clearSectScalars();
+		mapMaker.clearHighlights();
+		
+		if (rates != null) {
+			// color them
+			CPT zScoreCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-2d, 2d);
+			zScoreCPT.setNanColor(Color.LIGHT_GRAY);
+			
+			int[] mappingCounts = new int[rupSet.getNumSections()];
+			double[] zScores = new double[mappingCounts.length];
+			
+			List<Location> scatterLocs = new ArrayList<>();
+			List<Double> scatterZs = new ArrayList<>();
+			
+			for (SectMappedUncertainDataConstraint data : datas) {
+				scatterLocs.add(data.dataLocation);
+				if (data.sectionIndex < 0) {
+					scatterZs.add(Double.NaN);
+					continue;
+				}
+				Double rate = rates.get(data);
+				if (rate == null)
+					rate = (double)zScoreCPT.getMinValue();
+				
+				double z = (rate - data.bestEstimate)/data.getPreferredStdDev();
+				scatterZs.add(z);
+				mappingCounts[data.sectionIndex]++;
+				zScores[data.sectionIndex] += z;
+			}
+			
+			for (int i=0; i<mappingCounts.length; i++) {
+				if (mappingCounts[i] == 0)
+					zScores[i] = Double.NaN;
+				else if (mappingCounts[i] > 1)
+					zScores[i] /= (double)mappingCounts[i];
+			}
+			
+			mapMaker.plotSectScalars(zScores, zScoreCPT, "Paleo Site z-scores");
+			mapMaker.plotScatterScalars(scatterLocs, scatterZs, zScoreCPT, null);
+			mapMaker.setSkipNaNs(true);
+		} else  {
+			HashSet<FaultSection> highlightSects = new HashSet<>();
+			
+			for (SectMappedUncertainDataConstraint data : datas)
+				if (data.sectionIndex >= 0)
+					highlightSects.add(rupSet.getFaultSectionData(data.sectionIndex));
+			
+			mapMaker.highLightSections(highlightSects, new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
+			List<Location> siteLocs = new ArrayList<>();
+			for (SectMappedUncertainDataConstraint data : datas)
+				siteLocs.add(data.dataLocation);
+			mapMaker.plotScatters(siteLocs, Color.GRAY);
+		}
+		
+		mapMaker.setWriteGeoJSON(true);
+		
+		mapMaker.plot(outputDir, prefix, title);
+	}
+	
 	public static void main(String[] args) throws IOException {
 //		File solFile = new File("/home/kevin/markdown/inversions/2021_10_25-u3rs-u3_std_dev_tests-10m/solution.zip");
 		File solFile = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
@@ -475,7 +587,8 @@ public class PaleoDataComparisonPlot extends AbstractSolutionPlot {
 		List<AbstractRupSetPlot> plots = List.of(plot);
 //		List<AbstractRupSetPlot> plots = List.of(plot, new ModulesPlot(), new NamedFaultPlot());
 		
-		ReportPageGen report = new ReportPageGen(sol1.getRupSet(), sol1, "Solution", outputDir, List.of(plot));
+		ReportPageGen report = new ReportPageGen(sol1.getRupSet(), null, "Solution", outputDir, List.of(plot));
+//		ReportPageGen report = new ReportPageGen(sol1.getRupSet(), sol1, "Solution", outputDir, List.of(plot));
 //		ReportMetadata meta = new ReportMetadata(new RupSetMetadata("Sol 1", sol1),
 //				sol2 == null ? null : new RupSetMetadata("Sol 2", sol2));
 //		ReportPageGen report = new ReportPageGen(meta, outputDir, plots);
