@@ -79,7 +79,7 @@ public class NSHM23_PaleoDataLoader {
 	// ensure that mappings are within this distance in km
 	private static final String NSHM23_PALEO_RI_PATH_PREFIX = "/data/erf/nshm23/constraints/paleo_ri/";
 	private static final String CA_PALEO_PATH = NSHM23_PALEO_RI_PATH_PREFIX+"McPhillips_California_RIs_2022_07_13.csv";
-	private static final String WASATCH_PALEO_PATH = NSHM23_PALEO_RI_PATH_PREFIX+"wasatch_legacy_data.csv";
+	private static final String WASATCH_PALEO_PATH = NSHM23_PALEO_RI_PATH_PREFIX+"wasatch_paleo_data_2022_08_04.csv";
 	
 	private static final String NSHM23_PALEO_SLIP_PATH_PREFIX = "/data/erf/nshm23/constraints/paleo_slip/";
 	private static final String U3_PALEO_SLIP_PATH_1 = NSHM23_PALEO_SLIP_PATH_PREFIX+"Table_R5v4.csv";

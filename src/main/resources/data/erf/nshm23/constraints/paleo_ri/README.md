@@ -13,7 +13,9 @@ Updated on 7/15/2022 by Kevin Milner with the following modifications:
 
 ## Wasatch Paleo Data
 
-File name: wasatch_legacy_data.csv
+File name: wasatch_paleo_data_2022_08_04.csv
 
-This is temporary Wasatch paleo data, taken from the code used for Valentini et al. (2020). We don't have the actual paleo site locations yet, so this data uses the midpoints of the mapped fault sections from that study. TODO: replace with actual site locations.
+Wasatch paleo RI data, taken from the code used for Valentini et al. (2020). Site locations were digitized from relevant paper figures by Alex Hatem on 8/4/2022, delivered via e-mail (subject line "Wasatch Paleo Data"). Alex's notes:
+
+"I used Figure 1 from Valentini et al as a guide, and matched numbered sites in that figure to the site index from Table 2. I digitized the figure axes and the site locations ('digitize2.m), and then snapped those lat, lons to the fault sections geometries (QGIS). The locations may be not precisely where the trench was excavated, but is in a more meaningful location than the mid point of each section (sorry for the detail - these notes are mostly to jog my own mind if and when the time comes!)"
 
