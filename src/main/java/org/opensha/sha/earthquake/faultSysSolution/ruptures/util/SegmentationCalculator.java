@@ -1581,18 +1581,6 @@ public class SegmentationCalculator {
 					}
 				}
 			}
-			
-			if (segChoice != null) {
-				System.out.println("Detected seg model from logic tree branch: "+segChoice.getName());
-				Class<? extends SegmentationModelBranchNode> segClass = segChoice.getClass();
-				if (segClass != null && segClass.getEnclosingClass() != null) {
-					Class<?> temp = segClass.getEnclosingClass();
-					if (temp != null && SegmentationModelBranchNode.class.isAssignableFrom(temp))
-						segClass = (Class<? extends SegmentationModelBranchNode>) temp;
-				}
-				System.out.println("Class: "+segClass.getName());
-				
-			}
 		}
 		
 		if (comparisons.isEmpty()) {
@@ -1699,6 +1687,7 @@ public class SegmentationCalculator {
 					for (int j=0; j<func.size(); j++)
 						func.set(j, chosenSegModel.calcJumpProbability(func.getX(j)));
 					func.setName(chosenName);
+					modelCurve = func;
 				}
 				histXVals = scalar.initHistogram(scalarTrack.getMin(), scalarTrack.getMax());
 			}
