@@ -48,7 +48,8 @@ public class NamedFaultPlot extends AbstractRupSetPlot {
 			try {
 				String subDirName = writeFaultPage(meta, faults, faultName, faultsDir);
 				
-				linksMap.put(faultName, relPathToResources+"/../"+faultsDir.getName()+"/"+subDirName);
+				if (subDirName != null)
+					linksMap.put(faultName, relPathToResources+"/../"+faultsDir.getName()+"/"+subDirName);
 			} catch (RuntimeException e) {
 				System.err.println("Error processing SectBySectDetailPlots plot for fault: " +faultName);
 				e.printStackTrace();
@@ -81,6 +82,9 @@ public class NamedFaultPlot extends AbstractRupSetPlot {
 		lines.add("");
 		
 		List<FaultSection> faultSects = faults.getSectsForFault(faultName);
+		
+		if (faultSects.isEmpty())
+			return null;
 		
 		HashSet<Integer> allRups = new HashSet<>();
 		double minMag = Double.POSITIVE_INFINITY;
