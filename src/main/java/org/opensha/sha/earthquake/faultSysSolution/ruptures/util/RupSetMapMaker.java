@@ -152,7 +152,7 @@ public class RupSetMapMaker {
 		politicalBoundaries = PoliticalBoundariesData.loadDefaultOutlines(region);
 	}
 	
-	public static Region buildBufferedRegion(List<? extends FaultSection> subSects) {
+	public static Region buildBufferedRegion(Collection<? extends FaultSection> subSects) {
 		MinMaxAveTracker latTrack = new MinMaxAveTracker();
 		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
 		for (FaultSection sect : subSects) {
@@ -166,6 +166,33 @@ public class RupSetMapMaker {
 		double minLon = Math.floor(lonTrack.getMin());
 		double maxLon = Math.ceil(lonTrack.getMax());
 		return new Region(new Location(minLat, minLon), new Location(maxLat, maxLon));
+	}
+	
+	public static Region buildBufferedRegion(Collection<? extends FaultSection> subSects, double buffDistKM, boolean fullPerims) {
+		MinMaxAveTracker latTrack = new MinMaxAveTracker();
+		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
+		for (FaultSection sect : subSects) {
+			if (fullPerims) {
+				for (Location loc : sect.getFaultSurface(1d).getPerimeter()) {
+					latTrack.addValue(loc.getLatitude());
+					lonTrack.addValue(loc.getLongitude());
+				}
+			} else {
+				for (Location loc : sect.getFaultTrace()) {
+					latTrack.addValue(loc.getLatitude());
+					lonTrack.addValue(loc.getLongitude());
+				}
+			}
+		}
+		double minLat = latTrack.getMin();
+		double maxLat = latTrack.getMax();
+		double minLon = lonTrack.getMin();
+		double maxLon = lonTrack.getMax();
+		Location lowLeft = new Location(minLat, minLon);
+		Location upRight = new Location(maxLat, maxLon);
+		lowLeft = LocationUtils.location(lowLeft, 5d*Math.PI/4d, buffDistKM);
+		upRight = LocationUtils.location(upRight, 1d*Math.PI/4d, buffDistKM);
+		return new Region(lowLeft, upRight);
 	}
 	
 	public void setRegion(Region region) {
@@ -766,7 +793,7 @@ public class RupSetMapMaker {
 					FeatureProperties props = new FeatureProperties();
 					props.set(FeatureProperties.STROKE_WIDTH_PROP, jumpLineThickness);
 					props.set(FeatureProperties.STROKE_COLOR_PROP, scalarJumpsCPT.getColor((float)scalar));
-					if (Double.isFinite(scalar))
+					if (Double.isFinite(scalar) && scalarJumpsLabel != null)
 						props.set(scalarJumpsLabel, (float)scalar);
 					props.set("fromSection", jump.fromSection.getName());
 					props.set("toSection", jump.toSection.getName());
@@ -785,7 +812,8 @@ public class RupSetMapMaker {
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, jumpLineThickness, color));
 			}
 			
-			cptLegend.add(buildCPTLegend(scalarJumpsCPT, scalarJumpsLabel));
+			if (scalarJumpsLabel != null)
+				cptLegend.add(buildCPTLegend(scalarJumpsCPT, scalarJumpsLabel));
 		}
 		
 		// plot scatter scalars

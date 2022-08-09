@@ -36,7 +36,7 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 			if (verbose)
 				System.out.println(getName()+": "+jump+", P="+jumpProb);
 			prob *= jumpProb;
-			if (prob == 0d)
+			if (prob == 0d && !verbose)
 				// don't bother continuing
 				break;
 		}
