@@ -3,17 +3,22 @@ package org.opensha.sha.earthquake.faultSysSolution.modules;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.SubModule;
@@ -24,9 +29,11 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionClust
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
@@ -234,10 +241,48 @@ SplittableRuptureSubSetModule<ClusterRuptures> {
 						else
 							System.out.println("Building single-stranded ClusterRupture representations and "
 									+ "calculating necessary distances");
+						Stopwatch watch = Stopwatch.createStarted();
+						int threads = FaultSysTools.defaultNumThreads();
+						if (numCached == 0 && threads > 1 && !rupSet.hasModule(RuptureSubSetMappings.class)
+								&& rupSet.getNumSections() > 100) {
+							// first cache distances
+							// find all directly connected sections
+							HashSet<IDPairing> directJumps = new HashSet<>();
+							List<? extends FaultSection> sects = rupSet.getFaultSectionDataList();
+							Map<Integer, List<FaultSection>> parentsToSectsMap = sects.stream().collect(
+									Collectors.groupingBy(S->S.getParentSectionId()));
+							ExecutorService exec = Executors.newFixedThreadPool(threads);
+							for (List<Integer> rup : rupSet.getSectionIndicesForAllRups()) {
+								int prevParentID = -1;
+								for (int sectIndex : rup) {
+									int parentID = sects.get(sectIndex).getParentSectionId();
+									if (prevParentID >= 0 && parentID != prevParentID) {
+										IDPairing parentPair = parentID > prevParentID ?
+												new IDPairing(prevParentID, parentID) : new IDPairing(parentID, prevParentID);
+										if (!directJumps.contains(parentPair)) {
+											directJumps.add(parentPair);
+											exec.submit(new ParentSectsDistCacheRunnable(
+													parentsToSectsMap.get(parentID),
+													parentsToSectsMap.get(prevParentID), distAzCalc));
+										}
+									}
+									prevParentID = parentID;
+								}
+							}
+							
+							System.out.println("Pre-caching distances for "+directJumps.size()+" parent-to-parent jumps with "+threads+" threads");
+							
+							// no need to wait for it to finish
+							exec.shutdown();
+						}
+						
 						List<ClusterRupture> rups = new ArrayList<>(rupSet.getNumRuptures());
 						for (int r=0; r<rupSet.getNumRuptures(); r++)
 							rups.add(ClusterRupture.forOrderedSingleStrandRupture(
 									rupSet.getFaultSectionDataForRupture(r), distAzCalc));
+						watch.stop();
+						double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+						System.out.println("Took "+(float)secs+" secs to build "+rups.size()+" ClusterRupture representations");
 						this.clusterRuptures = rups;
 					}
 				}
@@ -268,6 +313,27 @@ SplittableRuptureSubSetModule<ClusterRuptures> {
 			return new SingleStranded(rupSubSet, null);
 		}
 		
+	}
+	
+	private static class ParentSectsDistCacheRunnable implements Runnable {
+		private final List<FaultSection> sects1;
+		private final List<FaultSection> sects2;
+		private final SectionDistanceAzimuthCalculator distAzCalc;
+		
+		public ParentSectsDistCacheRunnable(List<FaultSection> sects1, List<FaultSection> sects2,
+				SectionDistanceAzimuthCalculator distAzCalc) {
+			super();
+			this.sects1 = sects1;
+			this.sects2 = sects2;
+			this.distAzCalc = distAzCalc;
+		}
+
+		@Override
+		public void run() {
+			for (FaultSection s1 : sects1)
+				for (FaultSection s2 : sects2)
+					distAzCalc.getDistance(s1, s2);
+		}
 	}
 	
 	private static class Precomputed extends ClusterRuptures implements JSON_BackedModule {
