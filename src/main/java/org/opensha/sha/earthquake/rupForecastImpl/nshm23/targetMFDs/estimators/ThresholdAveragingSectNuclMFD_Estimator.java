@@ -73,9 +73,8 @@ import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
  * @author kevin
  *
  */
-public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucleationMFD_Estimator {
+public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNucleationMFD_Estimator {
 	
-	private RuptureProbabilityCalc improbModel;
 	private HashSet<Integer> affectedSects;
 	private double[] rupProbs;
 	private int[] rupMagIndexes;
@@ -90,8 +89,22 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 //	private static final int DEBUG_SECT = 159; // Brawley
 	private int[] sectMinMagIndexes;
 	private int[] sectMaxMagIndexes;
-	private List<Float> fixedBinEdges;
+	protected List<Float> fixedBinEdges;
 	private FaultSystemRupSet rupSet;
+	
+	public static class RupProbModel extends ThresholdAveragingSectNuclMFD_Estimator {
+		
+		private RuptureProbabilityCalc model;
+
+		public RupProbModel(RuptureProbabilityCalc model) {
+			this.model = model;
+		}
+
+		@Override
+		protected double calcRupProb(ClusterRupture rup) {
+			return model.calcRuptureProb(rup, false);
+		}
+	}
 	
 	/**
 	 * This uses the worst probability from any single jump as the "controlling" probability for a rupture, not the
@@ -101,7 +114,37 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 	 * @author kevin
 	 *
 	 */
-	public static class WorstJumpProb extends ImprobModelThresholdAveragingSectNuclMFD_Estimator {
+	public static abstract class AbstractWorstJumpProb extends ThresholdAveragingSectNuclMFD_Estimator {
+		
+		public AbstractWorstJumpProb() {
+			this(null);
+		}
+
+		public AbstractWorstJumpProb(List<? extends Number> fixedBinEdges) {
+			super(fixedBinEdges);
+		}
+		
+		protected abstract double calcJumpProb(ClusterRupture rup, Jump jump);
+
+		@Override
+		protected double calcRupProb(ClusterRupture rup) {
+			double worstProb = 1d;
+			for (Jump jump : rup.getJumpsIterable())
+				worstProb = Math.min(worstProb, calcJumpProb(rup, jump));
+			return worstProb;
+		}
+		
+	}
+	
+	/**
+	 * This uses the worst probability from any single jump as the "controlling" probability for a rupture, not the
+	 * product across all jumps. Might be useful if you only want to penalize individual jumps for a segmentation
+	 * constraint.
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public static class WorstJumpProb extends AbstractWorstJumpProb {
 		
 		private JumpProbabilityCalc jumpModel;
 
@@ -110,18 +153,113 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 		}
 
 		public WorstJumpProb(JumpProbabilityCalc improbModel, List<? extends Number> fixedBinEdges) {
-			super(improbModel, fixedBinEdges);
+			super(fixedBinEdges);
 			this.jumpModel = improbModel;
 		}
 
 		@Override
-		protected double calcRupProb(ClusterRupture rup) {
-			double worstProb = 1d;
-			for (Jump jump : rup.getJumpsIterable())
-				worstProb = Math.min(worstProb, jumpModel.calcJumpProbability(rup, jump, false));
-			return worstProb;
+		protected double calcJumpProb(ClusterRupture rup, Jump jump) {
+			return jumpModel.calcJumpProbability(rup, jump, false);
 		}
 		
+	}
+	
+	/**
+	 * Same as WorstJumpProb, except that the average probability is computed for each jump across all ruptures that
+	 * utilize it
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public static class WorstAvgJumpProb extends AbstractWorstJumpProb {
+		
+		private JumpProbabilityCalc jumpModel;
+		
+		private Map<Jump, Double> avgJumpProbs;
+
+		public WorstAvgJumpProb(JumpProbabilityCalc improbModel) {
+			this(improbModel, null);
+		}
+
+		public WorstAvgJumpProb(JumpProbabilityCalc improbModel, List<? extends Number> fixedBinEdges) {
+			super(fixedBinEdges);
+			this.jumpModel = improbModel;
+		}
+
+		@Override
+		public void init(FaultSystemRupSet rupSet, List<IncrementalMagFreqDist> origSectSupraSeisMFDs,
+				double[] targetSectSupraMoRates, double[] targetSectSupraSlipRates, double[] sectSupraSlipRateStdDevs,
+				List<BitSet> sectRupUtilizations, int[] sectMinMagIndexes, int[] sectMaxMagIndexes,
+				int[][] sectRupInBinCounts, EvenlyDiscretizedFunc refMFD) {
+			avgJumpProbs = calcAverageJumpProbs(rupSet.requireModule(ClusterRuptures.class), jumpModel);
+			
+			super.init(rupSet, origSectSupraSeisMFDs, targetSectSupraMoRates, targetSectSupraSlipRates, sectSupraSlipRateStdDevs,
+					sectRupUtilizations, sectMinMagIndexes, sectMaxMagIndexes, sectRupInBinCounts, refMFD);
+		}
+
+		@Override
+		protected double calcJumpProb(ClusterRupture rup, Jump jump) {
+			Double prob = avgJumpProbs.get(jump);
+			Preconditions.checkNotNull(prob, "No precomputed prob for jump %s in rupture %s", jump, rup);
+			return prob;
+		}
+		
+	}
+	
+	/**
+	 * Same as WorstJumpProb, except that the jump probabilities are passed in
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public static class WorstPrecomputedJumpProb extends AbstractWorstJumpProb {
+		
+		private Map<Jump, Double> jumpProbs;
+
+		public WorstPrecomputedJumpProb(JumpProbabilityCalc improbModel, Map<Jump, Double> jumpProbs) {
+			this(improbModel, jumpProbs, null);
+		}
+
+		public WorstPrecomputedJumpProb(JumpProbabilityCalc improbModel, Map<Jump, Double> jumpProbs, List<? extends Number> fixedBinEdges) {
+			super(fixedBinEdges);
+			this.jumpProbs = jumpProbs;
+		}
+
+		@Override
+		protected double calcJumpProb(ClusterRupture rup, Jump jump) {
+			Double prob = jumpProbs.get(jump);
+			Preconditions.checkNotNull(prob, "No precomputed prob for jump %s in rupture %s", jump, rup);
+			return prob;
+		}
+		
+	}
+	
+	private static Map<Jump, Double> calcAverageJumpProbs(ClusterRuptures cRups, JumpProbabilityCalc jumpModel) {
+		// calculate average probabilities for each jump. jump probabilities can vary by rupture, especially
+		// if one rupture has a difference distance (distance is defined between the departing and landing clusters,
+		// rather than the section, and the clusters can vary)
+		Map<Jump, QuickAvgTrack> origJumpProbsMap = new HashMap<>();
+		for (ClusterRupture rup : cRups) {
+			for (Jump jump : rup.getJumpsIterable()) {
+				if (jump.fromSection.getSectionId() > jump.toSection.getSectionId())
+					jump = jump.reverse();
+				QuickAvgTrack jumpProbs = origJumpProbsMap.get(jump);
+				if (jumpProbs == null) {
+					jumpProbs = new QuickAvgTrack();
+					origJumpProbsMap.put(jump, jumpProbs);
+				}
+				jumpProbs.add(jumpModel.calcJumpProbability(rup, jump, false));
+			}
+		}
+		
+		Map<Jump, Double> avgOrigJumpProbs = new HashMap<>();
+		for (Jump jump : origJumpProbsMap.keySet()) {
+			double prob = origJumpProbsMap.get(jump).getAverage();
+			avgOrigJumpProbs.put(jump, prob);
+			avgOrigJumpProbs.put(jump.reverse(), prob);
+		}
+		
+		return avgOrigJumpProbs;
 	}
 	
 	/**
@@ -131,37 +269,36 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 	 * @author kevin
 	 *
 	 */
-	public static class RelGRWorstJumpProb extends ImprobModelThresholdAveragingSectNuclMFD_Estimator {
+	public static class RelGRWorstJumpProb extends AbstractWorstJumpProb {
 		
-		// stop iterating if the maximum gain is less than this
-		private static final double ITERATE_STOP_RATIO_THRESHOLD = 1.0001;
-		private static final int ITERATE_PRINT_MOD = 10;
+		public static boolean D = false;
 		
 		private JumpProbabilityCalc jumpModel;
 		private int iterations;
 		
 		private Map<Jump, Double> jumpProbs;
+		
+		private boolean applyOrigProbFloor;
 
 		public RelGRWorstJumpProb(JumpProbabilityCalc improbModel) {
-			this(improbModel, 1);
+			this(improbModel, 1, false);
 		}
 
-		public RelGRWorstJumpProb(JumpProbabilityCalc improbModel, int iterations) {
-			this(improbModel, iterations, null);
-		}
-
-		public RelGRWorstJumpProb(JumpProbabilityCalc improbModel, int iterations, List<? extends Number> fixedBinEdges) {
-			super(improbModel, fixedBinEdges);
+		public RelGRWorstJumpProb(JumpProbabilityCalc improbModel, int iterations, boolean applyOrigProbFloor) {
+			super(null);
 			this.jumpModel = improbModel;
 			this.iterations = iterations;
+			this.applyOrigProbFloor = applyOrigProbFloor;
 		}
-		
+
 		@Override
 		public void init(FaultSystemRupSet rupSet, List<IncrementalMagFreqDist> origSectSupraSeisMFDs,
 				double[] targetSectSupraMoRates, double[] targetSectSupraSlipRates, double[] sectSupraSlipRateStdDevs,
 				List<BitSet> sectRupUtilizations, int[] sectMinMagIndexes, int[] sectMaxMagIndexes,
 				int[][] sectRupInBinCounts, EvenlyDiscretizedFunc refMFD) {
 			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+			
+			Map<Jump, Double> avgOrigJumpProbs = calcAverageJumpProbs(cRups, jumpModel);
 			
 			Map<Jump, BitSet> jumpMagBins = new HashMap<>();
 			
@@ -221,130 +358,246 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 			}
 			
 			Preconditions.checkState(iterations >= 1);
-			boolean iterate = iterations > 1;
-			ExecutorService exec = null;
-			if (iterate)
-				exec = Executors.newFixedThreadPool(FaultSysTools.defaultNumThreads());
-			List<IncrementalMagFreqDist> workingSectSupraSeisMFDs = new ArrayList<>(origSectSupraSeisMFDs);
-			for (int iter=0; iter<iterations; iter++) {
-				jumpProbs = new HashMap<>();
-				for (Jump jump : jumpMagBins.keySet()) {
-					double minProb = 1d;
-					BitSet jumpBitSet = jumpMagBins.get(jump);
-					double jumpProb = jumpModel.calcJumpProbability(null, jump, false);
-					if (jumpProb == 0d) {
-						minProb = 0d;
-					} else {
-						for (int sectIndex : new int[] {jump.fromSection.getSectionId(), jump.toSection.getSectionId()}) {
-							IncrementalMagFreqDist sectMFD = workingSectSupraSeisMFDs.get(sectIndex);
-							if (sectMFD == null || sectMFD.calcSumOfY_Vals() == 0d) {
-								minProb = 0d;
-								break;
-							}
-							// total participation rate for this section assuming the original supra-seis MFD is honored
-							double totParticRate = 0d;
-							// total participation rate for magnitudes bins that use this jump
-							double jumpParticRate = 0d;
-							double[] nuclToParticScalars = sectNuclToParticScalars[sectIndex];
-							for (int m=0; m<nuclToParticScalars.length; m++) {
-								double binRate = sectMFD.getY(m + sectMinMagIndexes[sectIndex]);
-								double particRate = binRate*nuclToParticScalars[m];
-								totParticRate += particRate;
-								if (jumpBitSet.get(m + sectMinMagIndexes[sectIndex]))
-									jumpParticRate += particRate;
-							}
-							// this is the segmentation-implied participation rate allotment for this jump
-							double segJumpParticRate = totParticRate*jumpProb;
-							// what fraction of the jump participation rate is allowed by the segmentation model?
-							// this will be >1 if the segmentation constraint is more permissive than the input G-R
-							double segFractOfAllotment = segJumpParticRate/jumpParticRate;
-							// minProb starts at 1, so don't need to ensure that it's <1 here
-							minProb = Math.min(minProb, segFractOfAllotment);
-						}
-					}
-					jumpProbs.put(jump, minProb);
-					jumpProbs.put(jump.reverse(), minProb);
-				}
-				
-				if (iterate) {
-					// need to update the working supra-seis MFDs
-					super.init(rupSet, origSectSupraSeisMFDs, targetSectSupraMoRates, targetSectSupraSlipRates, sectSupraSlipRateStdDevs,
-							sectRupUtilizations, sectMinMagIndexes, sectMaxMagIndexes, sectRupInBinCounts, refMFD);
-					List<Future<Double>> mfdEstFutures = new ArrayList<>();
-					for (int s=0; s<workingSectSupraSeisMFDs.size(); s++) {
-						final int sectIndex = s;
-						mfdEstFutures.add(exec.submit(new Callable<Double>() {
-
-							@Override
-							public Double call() throws Exception {
-
-								IncrementalMagFreqDist origMFD = workingSectSupraSeisMFDs.get(sectIndex);
-								IncrementalMagFreqDist modMFD = estimateNuclMFD(rupSet.getFaultSectionData(sectIndex),
-										origMFD, sectRupIndexes.get(sectIndex), sectMags.get(sectIndex), null, true);
-								workingSectSupraSeisMFDs.set(sectIndex, modMFD);
-								double gain = modMFD.calcSumOfY_Vals()/origMFD.calcSumOfY_Vals();
-								return gain;
-							}
-						}));
-					}
-					double maxGain = 1d;
-					MinMaxAveTracker gainTrack = new MinMaxAveTracker();
-					for (Future<Double> future : mfdEstFutures) {
-						double gain;
-						try {
-							gain = future.get();
-						} catch (InterruptedException | ExecutionException e) {
-							exec.shutdown();
-							throw ExceptionUtils.asRuntimeException(e);
-						}
-						if (Double.isFinite(gain)) {
-							gainTrack.addValue(gain);
-							if (gain < 1d)
-								gain = 1/gain;
-							maxGain = Math.max(gain, maxGain);
-						}
-					}
-					boolean print = iter == 0 || (iter+1) % ITERATE_PRINT_MOD == 0
-							|| iter == iterations-1 || maxGain < ITERATE_STOP_RATIO_THRESHOLD;
-					if (print) {
-						System.out.println("Done with rel-GR threshold averaging iteration "+(iter+1)+"/"+iterations);
-						System.out.println("\tsect rate gains: "+gainTrack);
-					}
-					if (maxGain < ITERATE_STOP_RATIO_THRESHOLD) {
-						System.out.println("\tstopping early after "+(iter+1)+" iterations (maxGain="+(float)maxGain
-								+" < "+(float)ITERATE_STOP_RATIO_THRESHOLD+")");
-						break;
-					}
-				}
+			ExecutorService exec = Executors.newFixedThreadPool(D ? 1 : FaultSysTools.defaultNumThreads());
+			
+			Map<Jump, Future<Double>> jumpFutures = new HashMap<>();
+			for (Jump jump : jumpMagBins.keySet()) {
+				BitSet jumpBitSet = jumpMagBins.get(jump);
+				double jumpProb = avgOrigJumpProbs.get(jump);
+				RelGRJumpProbCalc calc = new RelGRJumpProbCalc(jump, jumpProb, jumpBitSet, refMFD,
+						origSectSupraSeisMFDs, sectNuclToParticScalars, sectMinMagIndexes, iterations);
+				jumpFutures.put(jump, exec.submit(calc));
 			}
 			
-			if (exec != null)
-				exec.shutdown();
+			jumpProbs = new HashMap<>();
+			for (Jump jump : jumpFutures.keySet()) {
+				double relGRProb;
+				try {
+					relGRProb = jumpFutures.get(jump).get();
+				} catch (InterruptedException | ExecutionException e) {
+					exec.shutdown();
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+				if (applyOrigProbFloor)
+					relGRProb = Math.max(relGRProb, avgOrigJumpProbs.get(jump));
+				jumpProbs.put(jump, relGRProb);
+				jumpProbs.put(jump.reverse(), relGRProb);
+			}
+			
+			exec.shutdown();
+			
 			super.init(rupSet, origSectSupraSeisMFDs, targetSectSupraMoRates, targetSectSupraSlipRates, sectSupraSlipRateStdDevs,
 					sectRupUtilizations, sectMinMagIndexes, sectMaxMagIndexes, sectRupInBinCounts, refMFD);
 		}
 
 		@Override
-		protected double calcRupProb(ClusterRupture rup) {
-			double worstProb = 1d;
-			for (Jump jump : rup.getJumpsIterable()) {
-				Double jumpProb = jumpProbs.get(jump);
-				Preconditions.checkNotNull(jumpProb, "No jump probability for %s (have %s in total)", jump, jumpProbs.size());
-				worstProb = Math.min(worstProb, jumpProb);
-			}
-			return worstProb;
+		protected double calcJumpProb(ClusterRupture rup, Jump jump) {
+			Double jumpProb = jumpProbs.get(jump);
+			Preconditions.checkNotNull(jumpProb, "No jump probability for %s (have %s in total)", jump, jumpProbs.size());
+			return jumpProb;
 		}
 		
 	}
+	
+	private static class RelGRJumpProbCalc implements Callable<Double> {
+		
+		private Jump jump;
+		private double jumpProb;
+		private BitSet jumpBitSet;
+		private EvenlyDiscretizedFunc refMFD;
+		private List<? extends IncrementalMagFreqDist> sectMFDs;
+		private double[][] sectNuclToParticScalars;
+		private int[] sectMinMagIndexes;
+		private int iterations;
 
-	public ImprobModelThresholdAveragingSectNuclMFD_Estimator(RuptureProbabilityCalc improbModel) {
-		this(improbModel, null);
+		RelGRJumpProbCalc(Jump jump, double jumpProb, BitSet jumpBitSet, EvenlyDiscretizedFunc refMFD,
+				List<? extends IncrementalMagFreqDist> sectMFDs, double[][] sectNuclToParticScalars,
+				int[] sectMinMagIndexes, int iterations) {
+			this.jump = jump;
+			this.jumpProb = jumpProb;
+			this.jumpBitSet = jumpBitSet;
+			this.refMFD = refMFD;
+			this.sectMFDs = sectMFDs;
+			this.sectNuclToParticScalars = sectNuclToParticScalars;
+			this.sectMinMagIndexes = sectMinMagIndexes;
+			Preconditions.checkState(iterations >= 1);
+			this.iterations = iterations;
+		}
+		
+		public Double call() {
+			final boolean D = RelGRWorstJumpProb.D;
+			
+			double minProb = 1d;
+			if (D) {
+				System.out.println("Jump from "+jump.fromSection.getSectionId()+". "+jump.fromSection.getSectionName()
+					+" to "+jump.toSection.getSectionId()+". "+jump.toSection.getSectionName());
+				System.out.println("\tDist: "+(float)jump.distance);
+				System.out.println("\tProb: "+(float)jumpProb);
+				String magBinStr = null;
+				for (int m=0; m<refMFD.size(); m++) {
+					if (jumpBitSet.get(m)) {
+						if (magBinStr == null)
+							magBinStr = "";
+						else
+							magBinStr += ",";
+						magBinStr += (float)refMFD.getX(m);
+					}
+				}
+				System.out.println("\tMags: "+magBinStr);
+			}
+			
+			boolean hasZeroRate = false;
+			if (jumpProb == 0d) {
+				minProb = 0d;
+			} else {
+				for (int sectIndex : new int[] {jump.fromSection.getSectionId(), jump.toSection.getSectionId()}) {
+					IncrementalMagFreqDist sectMFD = sectMFDs.get(sectIndex);
+					if (sectMFD == null || sectMFD.calcSumOfY_Vals() == 0d) {
+						minProb = 0d;
+						hasZeroRate = true;
+						break;
+					}
+					// total participation rate for this section assuming the original supra-seis MFD is honored
+					double totParticRate = 0d;
+					// total participation rate for magnitudes bins that use this jump
+					double jumpParticRate = 0d;
+					double[] nuclToParticScalars = sectNuclToParticScalars[sectIndex];
+					int binsNotUsing = 0;
+					for (int m=0; m<nuclToParticScalars.length; m++) {
+						int binIndex = m + sectMinMagIndexes[sectIndex];
+						double binRate = sectMFD.getY(binIndex);
+						double particRate = binRate*nuclToParticScalars[m];
+						totParticRate += particRate;
+						if (jumpBitSet.get(binIndex))
+							jumpParticRate += particRate;
+						else if (binRate > 0d)
+							binsNotUsing++;
+					}
+					if (D) {
+						String name = jump.fromSection.getSectionId() == sectIndex ?
+								jump.fromSection.getSectionName() : jump.toSection.getSectionName();
+						System.out.println("\tSection "+sectIndex+". "+name);
+						System.out.println("\t\tTotal participation rate: "+(float)totParticRate);
+						System.out.println("\t\tJump participation rate: "+(float)jumpParticRate);
+						
+					}
+					double myProb;
+					if (binsNotUsing == 0) {
+						// default to just using the jump probability if all bins use this jump
+						if (D) System.out.println("\t\tAll mag bins affected, using jumpProb="+(float)jumpProb);
+						myProb = jumpProb;
+					} else {
+						// this is the segmentation-implied participation rate allotment for this jump
+						double segJumpParticRate = totParticRate*jumpProb;
+						// what fraction of the jump participation rate is allowed by the segmentation model?
+						// this will be >1 if the segmentation constraint is more permissive than the input G-R
+						double segFractOfAllotment = segJumpParticRate/jumpParticRate;
+						if (D) {
+							System.out.println("\t\tSeg-implied participation rate allotment: "+(float)segJumpParticRate);
+							System.out.println("\t\tSeg allotment fract: "+(float)segFractOfAllotment);
+						}
+						if (segFractOfAllotment < 1) {
+							// we need to make an adjustment
+							// figure out the adjustment that results in the final MFD having the given probability
+							// assigned to segmentation-affected bins
+							double otherParticRate = totParticRate - jumpParticRate;
+							Preconditions.checkState(otherParticRate > 0d,
+									"Expected otherParticRate > 0 with %s bins not using this jump, but is %s. "
+									+ "totParticRate=%s, jumpParticRate=%s",
+									binsNotUsing, otherParticRate, totParticRate, jumpParticRate);
+							double origMoRate = sectMFD.getTotalMomentRate();
+							double curCorrProb = segFractOfAllotment;
+							for (int corrIters=0; corrIters<iterations; corrIters++) {
+								// assume that these bins are only affected by this jump
+								// do this iteratively as the first one is likely to be an over-correction
+								IncrementalMagFreqDist ratesWithout = sectMFD.deepClone(); 
+								for (int m=0; m<ratesWithout.size(); m++)
+									if (jumpBitSet.get(m))
+										ratesWithout.set(m, 0d);
+								ratesWithout.scaleToTotalMomentRate(origMoRate);
+								double corrJumpParticRate = 0d;
+								double corrTotalParticRate = 0d;
+								double oneMinus = 1d - curCorrProb;
+								for (int m=0; m<nuclToParticScalars.length; m++) {
+									int binIndex = m + sectMinMagIndexes[sectIndex];
+									double binRate = oneMinus*ratesWithout.getY(binIndex) + curCorrProb*sectMFD.getY(binIndex);
+									double particRate = binRate*nuclToParticScalars[m];
+									corrTotalParticRate += particRate;
+									if (jumpBitSet.get(binIndex))
+										corrJumpParticRate += particRate;
+								}
+								double effectiveProb = corrJumpParticRate/corrTotalParticRate;
+								if (D) System.out.println("\t\t\titer "+corrIters+" curCorProb="+(float)curCorrProb+", eff = "
+										+(float)corrJumpParticRate+" / "+(float)corrTotalParticRate+" = "+(float)effectiveProb);
+								double delta = Math.abs(effectiveProb - jumpProb);
+								double newProb;
+								if (effectiveProb < jumpProb) {
+									// over-correction
+									newProb = Math.min(1d, curCorrProb + 0.5*delta);
+								} else {
+									// under-correction
+									newProb = Math.max(0d, curCorrProb - 0.5*delta);
+								}
+								if ((float)newProb == (float)curCorrProb) {
+									curCorrProb = newProb;
+									break;
+								} else {
+									curCorrProb = newProb;
+								}
+							}
+							myProb = curCorrProb;
+						} else {
+							myProb = 1d;
+						}
+					}
+					if (D) System.out.println("\t\tUpdated jump probability: "+(float)myProb);
+					minProb = Math.min(minProb, myProb);
+				}
+			}
+			if (D) System.out.println("\tRel-GR jumpProb="+(float)minProb+" (was "+(float)jumpProb+")");
+//			Preconditions.checkState(hasZeroRate || (float)minProb >= (float)jumpProb,
+//					"Relative G-R probability (%s) should never be below original jump probability (%s)",
+//					(float)minProb, (float)jumpProb);
+			return minProb;
+		}
+	}
+	
+	private static class QuickAvgTrack {
+		
+		private double sum;
+		private double first;
+		private boolean allSame;
+		private int count;
+		
+		public QuickAvgTrack() {
+			sum = 0d;
+			first = Double.NaN;
+			allSame = true;
+			count = 0;
+		}
+		
+		public void add(double value) {
+			Preconditions.checkState(value >= 0d);
+			sum += value;
+			if (count == 0)
+				first = value;
+			count++;
+			allSame = allSame && value == first;
+		}
+		
+		public double getAverage() {
+			Preconditions.checkState(count > 0);
+			if (allSame)
+				return first;
+			return sum/(double)count;
+		}
 	}
 
-	public ImprobModelThresholdAveragingSectNuclMFD_Estimator(RuptureProbabilityCalc improbModel,
-			List<? extends Number> fixedBinEdges) {
-		this.improbModel = improbModel;
-		
+	public ThresholdAveragingSectNuclMFD_Estimator() {
+		this(null);
+	}
+
+	public ThresholdAveragingSectNuclMFD_Estimator(List<? extends Number> fixedBinEdges) {
 		if (fixedBinEdges != null) {
 			Preconditions.checkState(!fixedBinEdges.isEmpty());
 			// sort descending
@@ -385,9 +638,7 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 		}
 	}
 	
-	protected double calcRupProb(ClusterRupture rup) {
-		return improbModel.calcRuptureProb(rup, false);
-	}
+	protected abstract double calcRupProb(ClusterRupture rup);
 
 	@Override
 	public boolean appliesTo(FaultSection sect) {
@@ -605,37 +856,63 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 	private static final DecimalFormat eDF = new DecimalFormat("0.00E0");
 	
 	public static void main(String[] args) throws IOException {
-		FaultSystemRupSet rupSet = FaultSystemRupSet.load(
-//				new File("/data/kevin/markdown/inversions/fm3_1_u3ref_uniform_reproduce_ucerf3.zip"));
-				new File("/data/kevin/markdown/inversions/fm3_1_u3ref_uniform_coulomb.zip"));
-		Region reg = new CaliforniaRegions.RELM_TESTING();
+//		FaultSystemRupSet rupSet = FaultSystemRupSet.load(
+////				new File("/data/kevin/markdown/inversions/fm3_1_u3ref_uniform_reproduce_ucerf3.zip"));
+//				new File("/data/kevin/markdown/inversions/fm3_1_u3ref_uniform_coulomb.zip"));
+//		Region reg = new CaliforniaRegions.RELM_TESTING();
+//		
+//		rupSet = FaultSystemRupSet.buildFromExisting(rupSet)
+////				.replaceFaultSections(DeformationModels.MEAN_UCERF3.build(FaultModels.FM3_1))
+//				.replaceFaultSections(U3_UncertAddDeformationModels.U3_MEAN.build(FaultModels.FM3_1))
+//				.forScalingRelationship(ScalingRelationships.MEAN_UCERF3)
+//				.build();
 		
-		rupSet = FaultSystemRupSet.buildFromExisting(rupSet)
-//				.replaceFaultSections(DeformationModels.MEAN_UCERF3.build(FaultModels.FM3_1))
-				.replaceFaultSections(U3_UncertAddDeformationModels.U3_MEAN.build(FaultModels.FM3_1))
-				.forScalingRelationship(ScalingRelationships.MEAN_UCERF3)
-				.build();
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+				+ "2022_07_29-nshm23_branches-NSHM23_v1p4-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvgIterRelGR/"
+				+ "results_NSHM23_v1p4_CoulombRupSet_branch_averaged.zip"));
+		Region reg = RupSetMapMaker.buildBufferedRegion(rupSet.getFaultSectionDataList());
 		
 		double bVal = 0.5d;
 		Shaw07JumpDistProb segModel = Shaw07JumpDistProb.forHorzOffset(1d, 3d, 2d);
 		
 		File outputDir = new File("/tmp");
 
-//		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb1 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel);
+//		ThresholdAveragingSectNuclMFD_Estimator improb1 = new ThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel);
 //		String name1 = "Seg-Prob";
-//		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb2 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel);
+//		ThresholdAveragingSectNuclMFD_Estimator improb2 = new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel);
 //		String name2 = "Rel-GR";
 //		String prefix = "thresh_avg_vs_rel_gr";
 
-		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb1 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel);
+		ThresholdAveragingSectNuclMFD_Estimator improb1 =
+//				new ThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel);
+				new ThresholdAveragingSectNuclMFD_Estimator.WorstAvgJumpProb(segModel);
 		String name1 = "Seg-Prob";
-		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb2 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 100);
+		ThresholdAveragingSectNuclMFD_Estimator improb2 =
+				new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 100, true);
 		String name2 = "Rel-GR-100-Iters";
 		String prefix = "thresh_avg_vs_rel_gr_iter";
+
+//		ThresholdAveragingSectNuclMFD_Estimator improb1 =
+//				new ThresholdAveragingSectNuclMFD_Estimator.WorstAvgJumpProb(segModel);
+//		String name1 = "Seg-Avg-Jump-Prob";
+//		ThresholdAveragingSectNuclMFD_Estimator improb2 =
+//				new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 50);
+//		String name2 = "Rel-GR-50-Iters";
+//		String prefix = "thresh_avg_avg_jump_vs_rel_gr_iter";
 		
-//		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb1 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 1);
+		
+//		ThresholdAveragingSectNuclMFD_Estimator improb1 =
+//				new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, false, 50);
+//		String name1 = "Rel-GR-100-Iter";
+//		ThresholdAveragingSectNuclMFD_Estimator improb2 =
+//				new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, true, 50);
+//		String name2 = "Rel-GR-Floored-50-Iters";
+//		String prefix = "thresh_avg_rel_gr_vs_floored";
+		
+		
+//		ThresholdAveragingSectNuclMFD_Estimator improb1 = new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 1, true);
 //		String name1 = "Rel-GR-1-Iter";
-//		ImprobModelThresholdAveragingSectNuclMFD_Estimator improb2 = new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 100);
+//		ThresholdAveragingSectNuclMFD_Estimator improb2 = new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 100, true);
 //		String name2 = "Rel-GR-100-Iters";
 //		String prefix = "thresh_avg_rel_gr_iters";
 		
@@ -688,6 +965,55 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 		
 		PlotUtils.writePlots(outputDir, prefix+"_probs", gp, 1000, false, true, false, false);
 		
+		if (improb1 instanceof AbstractWorstJumpProb && improb2 instanceof AbstractWorstJumpProb) {
+			DefaultXY_DataSet jumpProbScatter = new DefaultXY_DataSet();
+			
+			minNonZero = 1d;
+			HashSet<Jump> prevJumps = new HashSet<>();
+			for (ClusterRupture rup : rupSet.requireModule(ClusterRuptures.class)) {
+				for (Jump jump : rup.getJumpsIterable()) {
+					if (jump.fromSection.getSectionId() > jump.toSection.getSectionId())
+						jump = jump.reverse();
+					if (!prevJumps.contains(jump)) {
+						double prob1 = ((AbstractWorstJumpProb)improb1).calcJumpProb(rup, jump);
+						double prob2 = ((AbstractWorstJumpProb)improb2).calcJumpProb(rup, jump);
+						
+						if ((prob1 != 1d || prob2 != 1d) && (prob1 != 0d || prob2 != 0d)) {
+							probScatter.set(prob1, prob2);
+							if (prob1 > 0d)
+								minNonZero = Math.min(minNonZero, prob1);
+							if (prob2 > 0d)
+								minNonZero = Math.min(minNonZero, prob2);
+						}
+						prevJumps.add(jump);
+					}
+				}
+			}
+			
+			funcs = new ArrayList<>();
+			chars = new ArrayList<>();
+			
+			range = new Range(Math.pow(10, Math.floor(Math.log10(minNonZero))), 1d);
+			
+			oneToOne = new DefaultXY_DataSet();
+			oneToOne.set(range.getLowerBound(), range.getLowerBound());
+			oneToOne.set(range.getUpperBound(), range.getUpperBound());
+			
+			funcs.add(oneToOne);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.GRAY));
+			
+			funcs.add(probScatter);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 3f, Color.BLACK));
+			
+			spec = new PlotSpec(funcs, chars, "Thresh-Avg Jump Probabilities", name1, name2);
+			
+			gp = PlotUtils.initHeadless();
+			
+			gp.drawGraphPanel(spec, true, true, range, range);
+			
+			PlotUtils.writePlots(outputDir, prefix+"_jump_probs", gp, 1000, false, true, false, false);
+		}
+		
 		// now seg rates
 		double[] rates1 = new double[rupSet.getNumSections()];
 		double[] rates2 = new double[rupSet.getNumSections()];
@@ -697,13 +1023,11 @@ public class ImprobModelThresholdAveragingSectNuclMFD_Estimator extends SectNucl
 		for (int s=0; s<rates1.length; s++) {
 			rates1[s] = mfds1.get(s).calcSumOfY_Vals();
 			rates2[s] = mfds2.get(s).calcSumOfY_Vals();
-			if ((rates1[s] != 1d || rates2[s] != 1d) && (rates1[s] != 0d || rates2[s] != 0d)) {
-				rateScatter.set(rates1[s], rates2[s]);
-				if (rates1[s] > 0d)
-					minNonZero = Math.min(minNonZero, rates1[s]);
-				if (rates2[s] > 0d)
-					minNonZero = Math.min(minNonZero, rates2[s]);
-			}
+			rateScatter.set(rates1[s], rates2[s]);
+			if (rates1[s] > 0d)
+				minNonZero = Math.min(minNonZero, rates1[s]);
+			if (rates2[s] > 0d)
+				minNonZero = Math.min(minNonZero, rates2[s]);
 		}
 		
 		range = new Range(Math.pow(10, Math.floor(Math.log10(minNonZero))), 1d);
