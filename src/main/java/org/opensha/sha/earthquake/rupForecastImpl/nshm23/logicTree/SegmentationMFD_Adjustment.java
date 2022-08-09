@@ -12,8 +12,8 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.DistDependentJumpProbabilityCalc;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ImprobModelThresholdAveragingSectNuclMFD_Estimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ThresholdAveragingSectNuclMFD_Estimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ImprobModelRupMultiplyingSectNuclMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SectNucleationMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator;
@@ -29,19 +29,19 @@ public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 	JUMP_PROB_THRESHOLD_AVG("Threshold Averaging", "ThreshAvg", 1d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
-			return new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel);
+			return new ThresholdAveragingSectNuclMFD_Estimator.WorstAvgJumpProb(segModel);
 		}
 	},
 	REL_GR_THRESHOLD_AVG("Threshold Averaging, Rel G-R", "ThreshAvgRelGR", 1d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
-			return new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel);
+			return new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 1, true);
 		}
 	},
 	REL_GR_THRESHOLD_AVG_ITERATIVE("Threshold Averaging, Iterative Rel G-R", "ThreshAvgIterRelGR", 1d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
-			return new ImprobModelThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 50);
+			return new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 100, true);
 		}
 	},
 	JUMP_PROB_THRESHOLD_AVG_MATCH_STRICT("Strict-Seg Equiv Threshold Averaging", "StrictEquivThreshAvg", 1d) {
@@ -53,7 +53,7 @@ public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 			List<Double> probs = new ArrayList<>();
 			for (MaxJumpDistModels model : MaxJumpDistModels.values())
 				probs.add(distModel.calcJumpProbability(model.getMaxDist()));
-			return new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel, probs);
+			return new ThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel, probs);
 		}
 	},
 	JUMP_PROB_THRESHOLD_AVG_ABOVE_1KM("Threshold Averaging >1km", "JumpProbGt1km", 1d) {
@@ -69,13 +69,13 @@ public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 			probs.add(1d);
 			for (int i=lnProbFunc.size(); --i>=0;)
 				probs.add(Math.exp(lnProbFunc.getX(i)));
-			return new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel, probs);
+			return new ThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel, probs);
 		}
 	},
 	RUP_PROB_THRESHOLD_AVG("Rup Prob Threshold Averaging", "RupProb", 1d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
-			return new ImprobModelThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel);
+			return new ThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel);
 		}
 	},
 	RUP_MULTIPLY_WORST_JUMP_PROB("Rup Multyplied By Worst Jump Prob", "RupMultiplyWorstJumpProb", 1d) {
