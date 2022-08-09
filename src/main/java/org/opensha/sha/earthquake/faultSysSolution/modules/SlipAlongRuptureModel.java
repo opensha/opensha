@@ -13,6 +13,7 @@ import org.opensha.commons.util.modules.AverageableModule.ConstantAverageable;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
 
 import com.google.common.base.Preconditions;
 
@@ -21,7 +22,7 @@ import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantAverageable<SlipAlongRuptureModel>,
 SplittableRuptureSubSetModule<SlipAlongRuptureModel> {
 
-	public static SlipAlongRuptureModel forModel(SlipAlongRuptureModels slipAlong) {
+	public static SlipAlongRuptureModel forModel(SlipAlongRuptureModelBranchNode slipAlong) {
 		return slipAlong.getModel();
 	}
 
