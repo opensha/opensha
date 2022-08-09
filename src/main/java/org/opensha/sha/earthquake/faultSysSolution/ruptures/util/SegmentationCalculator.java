@@ -1560,7 +1560,7 @@ public class SegmentationCalculator {
 							(Class<? extends SegmentationModelBranchNode>) level.getType();
 					if (segClass != null && segClass.isEnum() && SegmentationModelBranchNode.class.isAssignableFrom(segClass)) {
 						for (SegmentationModelBranchNode option : segClass.getEnumConstants()) {
-							if (option.getNodeWeight(branch) > 0d) {
+							if (option.getNodeWeight(branch) > 0d || option == segChoice) {
 								JumpProbabilityCalc model = option.getModel(sol.getRupSet(), branch);
 								if (!(model instanceof DistDependentJumpProbabilityCalc)) {
 									// try generic
