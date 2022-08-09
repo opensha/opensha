@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -47,25 +48,25 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	EVANS("NSHM23 Evans Deformation Model", "Evans", 1d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
-			return buildGeodetic(faultModel, true);
+			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
 	},
 	POLLITZ("NSHM23 Pollitz Deformation Model", "Pollitz", 1d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
-			return buildGeodetic(faultModel, true);
+			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
 	},
 	SHEN_BIRD("NSHM23 Shen-Bird Deformation Model", "Shen-Bird", 1d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
-			return buildGeodetic(faultModel, true);
+			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
 	},
 	ZENG("NSHM23 Zeng Deformation Model", "Zeng", 1d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
-			return buildGeodetic(faultModel, true);
+			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
 	},
 	AVERAGE("NSHM23 Averaged Deformation Model", "AvgDM", 0d) {
@@ -135,8 +136,24 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	private static final String NSHM23_DM_PATH_PREFIX = "/data/erf/nshm23/def_models/";
 
 	private static final String GEOLOGIC_VERSION = "v1p0";
-	private static final String GEODETIC_DATE = "2022_07_23";
 	private static final String CREEP_DATE = "2022_06_09";
+	
+	private static String getGeodeticModelDate(RupSetFaultModel faultModel) {
+		if (sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v2)
+				|| sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v2_UTAH))
+			return "2022_08_05";
+		if (sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v1p4))
+			return "2022_07_23";
+		System.err.println("Warning, returning most recent geodetic date for unknown fault model: "
+				+faultModel.getName()+" of type "+faultModel.getClass().getName());
+		return "2022_08_05";
+	}
+	
+	private static boolean sameFaultModel(RupSetFaultModel model1, RupSetFaultModel model2) {
+		return model1 == model2 || model1.getName().equals(model2.getName());
+	}
+	
+	public static boolean GEODETIC_INCLUDE_GHOST_TRANSIENT = true;
 	
 	/*
 	 * Standard deviation parameters that affect how low, zero, or missing standard deviations are treated.
@@ -301,7 +318,11 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		
 		MinisectionMappings mappings = new MinisectionMappings(geoSects, subSects);
 		
-		String dmPath = NSHM23_DM_PATH_PREFIX+"geodetic/"+GEODETIC_DATE+"/"+name();
+		String geodeticDate = getGeodeticModelDate(faultModel);
+		Preconditions.checkNotNull(geodeticDate, "No geodetic files found for fault model %s of type %s",
+				faultModel, faultModel.getClass().getName());
+		
+		String dmPath = NSHM23_DM_PATH_PREFIX+"geodetic/"+geodeticDate+"/"+name();
 		if (includeGhostCorrection)
 			dmPath += "-include_ghost_corr.txt";
 		else
@@ -436,8 +457,8 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 						"Minisections are out of order for fault %s, %s is directly after %s",
 						parentID, minisectionID, prev.minisectionID);
 				Preconditions.checkState(startLoc.equals(prev.endLoc) || LocationUtils.areSimilar(startLoc, prev.endLoc),
-						"Previons endLoc does not match startLoc for %s:\n\t%s\n\t%s",
-						parentID, prev.endLoc, startLoc);
+						"Previons endLoc does not match startLoc for %s %s:\n\t%s\n\t%s",
+						parentID, minisectionID, prev.endLoc, startLoc);
 			}
 			
 			// convert minisections to 0-based
@@ -725,6 +746,10 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			Preconditions.checkState(idStr.contains("."));
 			int periodIndex = idStr.indexOf('.');
 			int parentID = Integer.parseInt(idStr.substring(0, periodIndex));
+			if (!mappings.hasParent(parentID)) {
+				System.err.println("Skipping loading creep data for parent "+parentID+", not in fault model");
+				continue;
+			}
 			String miniStr = idStr.substring(periodIndex+1);
 			int minisectionID = Integer.parseInt(miniStr);
 			if (miniStr.length() < 2)
@@ -770,7 +795,8 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	
 	public static void main(String[] args) throws IOException {
 		// write geo gson
-		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v1p4;
+//		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v1p4;
+		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
 		
 //		List<? extends FaultSection> geoFull = buildGeolFullSects(fm, GEOLOGIC_VERSION);
 //		GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+NSHM23_DeformationModels.GEOLOGIC.getFilePrefix()+"_sects.geojson"), geoFull);
