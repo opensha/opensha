@@ -9,9 +9,6 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
-import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
-
 /**
  * NSHM23 Logic Tree Branch implementation and levels
  * 
@@ -22,8 +19,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levels;
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsMaxDist;
-
-	// TODO move most of these to a real NSHM23 logic tree branch, only keep U3-related ones here 
+	
 	public static LogicTreeLevel<NSHM23_FaultModels> FM =
 			LogicTreeLevel.forEnum(NSHM23_FaultModels.class, "Fault Model", "FM");
 	public static LogicTreeLevel<RupturePlausibilityModels> PLAUSIBILITY =
@@ -32,9 +28,8 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			LogicTreeLevel.forEnum(NSHM23_DeformationModels.class, "Deformation Model", "DM");
 	public static LogicTreeLevel<NSHM23_ScalingRelationships> SCALE =
 			LogicTreeLevel.forEnum(NSHM23_ScalingRelationships.class, "Scaling Relationship", "Scale");
-	// TODO create enum for our options/weights?
-	public static LogicTreeLevel<SlipAlongRuptureModels> SLIP_ALONG =
-			LogicTreeLevel.forEnum(SlipAlongRuptureModels.class, "Slip Along Rupture", "SlipAlong");
+	public static LogicTreeLevel<NSHM23_SlipAlongRuptureModels> SLIP_ALONG =
+			LogicTreeLevel.forEnum(NSHM23_SlipAlongRuptureModels.class, "Slip Along Rupture", "SlipAlong");
 	public static LogicTreeLevel<SupraSeisBValues> SUPRA_B =
 			LogicTreeLevel.forEnum(SupraSeisBValues.class, "Supra-Seis b-value", "SupraB");
 	public static LogicTreeLevel<SubSectConstraintModels> SUB_SECT_CONSTR =
@@ -61,9 +56,9 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	/**
 	 * This is the default reference branch
 	 */
-	public static final NSHM23_LogicTreeBranch DEFAULT = fromValues(NSHM23_FaultModels.NSHM23_v1p4,
+	public static final NSHM23_LogicTreeBranch DEFAULT = fromValues(NSHM23_FaultModels.NSHM23_v2,
 			RupturePlausibilityModels.COULOMB, NSHM23_DeformationModels.GEOLOGIC, NSHM23_ScalingRelationships.LOGA_C4p2,
-			SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p5, SubSectConstraintModels.TOT_NUCL_RATE,
+			NSHM23_SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p5, SubSectConstraintModels.TOT_NUCL_RATE,
 			SubSeisMoRateReductions.SUB_B_1, NSHM23_SegmentationModels.MID,
 			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG_ITERATIVE);
 	
