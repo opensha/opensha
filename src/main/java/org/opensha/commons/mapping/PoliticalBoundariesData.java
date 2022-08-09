@@ -36,7 +36,8 @@ public class PoliticalBoundariesData {
 	public static XY_DataSet[] loadDefaultOutlines(Region region) {
 		// political boundary special cases
 		
-		if (region.getName().startsWith("RELM") && region.getMinLat() < 42 && region.getMaxLat() > 32
+		String name = region.getName();
+		if (name != null && name.startsWith("RELM") && region.getMinLat() < 42 && region.getMaxLat() > 32
 				&& region.getMinLon() < -114 && region.getMaxLon() > -125) {
 			// it's one of the hardcoded California regions
 			try {
