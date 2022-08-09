@@ -165,8 +165,8 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 	@Override
 	public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
 		double mag = getMag(area, length, width, origWidth, aveRake);
-		double moment = MagUtils.magToMoment(mag);
-		return FaultMomentCalc.getSlip(area, moment);
+		double moment = MagUtils.magToMoment(mag);	// this returns: (Math.pow(10, 1.5 * magnitude + 9.05));
+		return FaultMomentCalc.getSlip(area, moment);	// this returns: moment/(area*SHEAR_MODULUS);
 	}
 
 	@Override
