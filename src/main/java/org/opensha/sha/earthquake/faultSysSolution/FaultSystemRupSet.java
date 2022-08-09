@@ -50,6 +50,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel
 import org.opensha.sha.earthquake.faultSysSolution.modules.SplittableRuptureSubSetModule;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -699,8 +700,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				public SlipAlongRuptureModel call() throws Exception {
 					// see if we have a logic tree branch
 					LogicTreeBranch<?> branch = getModule(LogicTreeBranch.class);
-					if (branch != null && branch.hasValue(SlipAlongRuptureModels.class))
-						return branch.getValue(SlipAlongRuptureModels.class).getModel();
+					if (branch != null && branch.hasValue(SlipAlongRuptureModelBranchNode.class))
+						return branch.getValue(SlipAlongRuptureModelBranchNode.class).getModel();
 					// add default (uniform) slip along rupture model
 					return new SlipAlongRuptureModel.Default();
 				}
@@ -1664,7 +1665,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			return this;
 		}
 		
-		public Builder slipAlongRupture(SlipAlongRuptureModels slipAlong) {
+		public Builder slipAlongRupture(SlipAlongRuptureModelBranchNode slipAlong) {
 			return slipAlongRupture(SlipAlongRuptureModel.forModel(slipAlong));
 		}
 		

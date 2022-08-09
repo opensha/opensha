@@ -58,10 +58,11 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder.ParkfieldSelectionCriteria;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_PaleoDataLoader;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.HardDistCutoffJumpProbCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels.HardDistCutoffJumpProbCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
@@ -85,7 +86,6 @@ import com.google.common.collect.Table;
 
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.U3InversionTargetMFDs;
@@ -247,7 +247,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			rupSet = ClusterRuptureBuilder.buildClusterRupSet(scale, subSects, plausibility, cRups.getAll());
 		}
 		
-		SlipAlongRuptureModels slipAlong = branch.requireValue(SlipAlongRuptureModels.class);
+		SlipAlongRuptureModelBranchNode slipAlong = branch.requireValue(SlipAlongRuptureModelBranchNode.class);
 		rupSet.addModule(slipAlong.getModel());
 		
 		// add other modules
@@ -289,10 +289,10 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			}
 			
 			// slip along rupture model
-			if (branch.hasValue(SlipAlongRuptureModels.class)) {
+			if (branch.hasValue(SlipAlongRuptureModelBranchNode.class)) {
 				// force replacement as rupture sets can have a default slip along rupture model attached, which we
 				// need to make sure to override
-				SlipAlongRuptureModel model = branch.getValue(SlipAlongRuptureModels.class).getModel();
+				SlipAlongRuptureModel model = branch.getValue(SlipAlongRuptureModelBranchNode.class).getModel();
 				if (rupSet.getModule(SlipAlongRuptureModel.class) != model)
 					rupSet.addModule(model);
 			}
@@ -526,12 +526,14 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		if (rupsThroughCreep != null) {
 			// we have an explicit ruptures-through-creeping branch
 			return rupsThroughCreep.isExclude();
-		} else if (NSHM23_SegmentationModels.INCLUDE_CREEPING_SECT) {
+		} else if (NSHM23_SegmentationModels.APPLY_TO_CREEPING_SECT) {
 			// we don't explicitly have a ruptures-through-creeping branch
 			// see if we're on the high-segmentation branch
 			NSHM23_SegmentationModels segModel = branch.getValue(NSHM23_SegmentationModels.class);
-			if (segModel == NSHM23_SegmentationModels.HIGH)
-				return true;
+			if (NSHM23_SegmentationModels.WIDE_BRANCHES)
+				return segModel == NSHM23_SegmentationModels.TWO_KM;
+			else
+				return segModel == NSHM23_SegmentationModels.HIGH;
 		}
 		return false;
 	}
@@ -1174,6 +1176,14 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 		public NewScaleUseOrigWidths() {
 			NSHM23_ScalingRelationships.USE_ORIG_WIDTHS = true;
+		}
+		
+	}
+	
+	public static class ForceWideSegBranches extends NSHM23_InvConfigFactory {
+
+		public ForceWideSegBranches() {
+			NSHM23_SegmentationModels.WIDE_BRANCHES = true;
 		}
 		
 	}

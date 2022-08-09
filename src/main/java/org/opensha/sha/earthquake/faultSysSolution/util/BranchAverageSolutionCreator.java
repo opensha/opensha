@@ -346,8 +346,8 @@ public class BranchAverageSolutionCreator {
 				if (value instanceof SlipAlongRuptureModel) {
 					avgRupSet.addModule((SlipAlongRuptureModel)value);
 					haveSlipAlong = true;
-				} else if (value instanceof SlipAlongRuptureModels) {
-					avgRupSet.addModule(((SlipAlongRuptureModels)value).getModel());
+				} else if (value instanceof SlipAlongRuptureModelBranchNode) {
+					avgRupSet.addModule(((SlipAlongRuptureModelBranchNode)value).getModel());
 					haveSlipAlong = true;
 				}
 			}

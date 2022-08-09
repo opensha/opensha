@@ -5,6 +5,7 @@ import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
+import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
 
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 
@@ -12,7 +13,7 @@ import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum SlipAlongRuptureModels implements U3LogicTreeBranchNode<SlipAlongRuptureModels> {
+public enum SlipAlongRuptureModels implements U3LogicTreeBranchNode<SlipAlongRuptureModels>, SlipAlongRuptureModelBranchNode {
 	// DO NOT RENAME THESE - they are used in rupture set files
 	
 	CHAR(		"Characteristic",	"Char",	0d, null), // "Characteristic (Dsr=Ds)"
