@@ -276,10 +276,10 @@ SplittableRuptureSubSetModule<AveSlipModule> {
 
 		@Override
 		public Precomputed getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
-			double[] filteredAveSlips = new double[rupSubSet.getNumSections()];
-			for (int s=0; s<rupSubSet.getNumSections(); s++) {
-				int origID = mappings.getOrigSectID(s);
-				filteredAveSlips[s] = aveSlips[origID];
+			double[] filteredAveSlips = new double[rupSubSet.getNumRuptures()];
+			for (int r=0; r<rupSubSet.getNumRuptures(); r++) {
+				int origID = mappings.getOrigRupID(r);
+				filteredAveSlips[r] = aveSlips[origID];
 			}
 			return new Precomputed(rupSubSet, filteredAveSlips);
 		}
