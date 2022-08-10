@@ -222,196 +222,216 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 			// also do misfit progress
 			
 			InversionMisfitProgress misfitProgress = sol.getModule(InversionMisfitProgress.class);
+			InversionMisfitProgress compMisfitProgress = null;
+			if (meta != null && meta.hasComparisonSol() && meta.comparison.sol.hasModule(InversionMisfitProgress.class))
+				compMisfitProgress = meta.comparison.sol.getModule(InversionMisfitProgress.class);
 			
-			List<Long> iterations = misfitProgress.getIterations();
-			Quantity targetQuantity = misfitProgress.getTargetQuantity();
-			List<Double> targetVals = misfitProgress.getTargetVals();
-			List<InversionMisfitStats> statsList = misfitProgress.getStats();
-			
-			if (!iterations.isEmpty()) {
+			if (!misfitProgress.getIterations().isEmpty()) {
 				lines.add(getSubHeading()+" Constraint Misfit Progress");
 				lines.add(topLink); lines.add("");
-				
-				List<String> constraintNames = new ArrayList<>();
-				for (MisfitStats stats : statsList.get(0).getStats())
-					constraintNames.add(stats.range.name);
-				Preconditions.checkState(!constraintNames.isEmpty());
-				
-				Table<String, Quantity, ArbitrarilyDiscretizedFunc> constrValIterFuncs = HashBasedTable.create();
-				Map<String, ArbitrarilyDiscretizedFunc> constrWeightIterFuncs = new HashMap<>();
-				Map<Quantity, ArbitrarilyDiscretizedFunc> avgValIterFuncs = new HashMap<>();
-				ArbitrarilyDiscretizedFunc targetValIterFunc = targetQuantity != null && targetVals != null ?
-						new ArbitrarilyDiscretizedFunc("Target") : null;
-				
-				Quantity[] quantities = { Quantity.MAD, Quantity.STD_DEV };
-				
-				for (Quantity q : quantities) {
-					avgValIterFuncs.put(q, new ArbitrarilyDiscretizedFunc("Average"));
-				}
-				
-				for (int i=0; i<iterations.size(); i++) {
-					long iter = iterations.get(i);
-					InversionMisfitStats stats = statsList.get(i);
-					
-					for (Quantity q : quantities) {
-						double avgVal = 0d;
-						List<Double> vals = new ArrayList<>();
-						
-						for (MisfitStats misfits : stats.getStats()) {
-							String name = misfits.range.name;
-							if (!constrValIterFuncs.contains(name, q))
-								constrValIterFuncs.put(name, q, new ArbitrarilyDiscretizedFunc(name));
-							
-							double val = misfits.get(q);
-							constrValIterFuncs.get(name, q).set((double)iter, val);
-							avgVal += val;
-							vals.add(val);
-							
-							if (q == quantities[0]) {
-								// track weight
-								if (!constrWeightIterFuncs.containsKey(name))
-									constrWeightIterFuncs.put(name, new ArbitrarilyDiscretizedFunc(name));
-								constrWeightIterFuncs.get(name).set((double)iter, misfits.range.weight);
-							}
-						}
-						
-						avgVal /= stats.getStats().size();
-						avgValIterFuncs.get(q).set((double)iter, avgVal);
-						if (targetValIterFunc != null && q == targetQuantity)
-							targetValIterFunc.set((double)iter, targetVals.get(i));
-					}
-				}
-				
-				// same, but with a null at the end (that will be for weights)
-				Quantity[] plotQ = new Quantity[quantities.length+1];
-				for (int q=0; q<quantities.length; q++)
-					plotQ[q] = quantities[q];
-				
-				CPT colorCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, constraintNames.size()-1d);
-				
-				for (Quantity quantity : plotQ) {
-					Map<String, ArbitrarilyDiscretizedFunc> constrFuncs;
-					ArbitrarilyDiscretizedFunc avgFunc;
-					String myPrefix, yAxisLabel;
-					boolean yLog;
-					if (quantity == null) {
-						yAxisLabel = "Constraint Weight";
-						myPrefix = "misift_progress_weights";
-						constrFuncs = constrWeightIterFuncs;
-						avgFunc = null;
-						yLog = true;
-						
-						// see if we actually have variable weights
-						boolean variable = false;
-						for (ArbitrarilyDiscretizedFunc func : constrFuncs.values()) {
-							if ((float)func.getMinY() != (float)func.getMaxY()) {
-								variable = true;
-								break;
-							}
-						}
-						if (!variable)
-							continue;
-					} else {
-						yAxisLabel = "Misfit "+quantity;
-						myPrefix = "misift_progress_"+quantity.name();
-						constrFuncs = constrValIterFuncs.column(quantity);
-						avgFunc = avgValIterFuncs.get(quantity);
-						yLog = false;
-					}
-					
-					List<DiscretizedFunc> funcs = new ArrayList<>();
-					List<PlotCurveCharacterstics> chars = new ArrayList<>();
-					
-					if (targetValIterFunc != null && quantity == targetQuantity) {
-						funcs.add(targetValIterFunc);
-						chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, Color.GRAY));
-					}
-					
-					if (avgFunc != null) {
-						funcs.add(avgFunc);
-						chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
-					}
-					
-					for (int i=0; i<constraintNames.size(); i++) {
-						String name = constraintNames.get(i);
-						funcs.add(constrFuncs.get(name));
-						chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, colorCPT.getColor((float)i)));
-					}
-					
-					if (quantity != null && meta.hasComparisonSol() && meta.comparison.sol.hasModule(InversionMisfitProgress.class)) {
-						// add comparison
-						InversionMisfitProgress compMisfitProgress = meta.comparison.sol.getModule(InversionMisfitProgress.class);
-						List<InversionMisfitStats> compStatsList = compMisfitProgress.getStats();
-						
-						ArbitrarilyDiscretizedFunc compAvgFunc = new ArbitrarilyDiscretizedFunc();
-						ArbitrarilyDiscretizedFunc compTargetFunc =
-								quantity == compMisfitProgress.getTargetQuantity() ? new ArbitrarilyDiscretizedFunc() : null;
-						boolean targetDiffers = false;
-						
-						List<Long> compIters = compMisfitProgress.getIterations();
-						List<Double> compTargets = compMisfitProgress.getTargetVals();
-						for (int i=0; i<compIters.size(); i++) {
-							long iter = compIters.get(i);
-							InversionMisfitStats stats = compStatsList.get(i);
-							
-							double avgVal = 0d;
-							List<Double> vals = new ArrayList<>();
-							
-							for (MisfitStats misfits : stats.getStats()) {
-								double val = misfits.get(quantity);
-								avgVal += val;
-								vals.add(val);
-							}
-							
-							avgVal /= stats.getStats().size();
-							compAvgFunc.set((double)iter, avgVal);
-							if (compTargetFunc != null) {
-								double targetVal = compTargets.get(i);
-								compTargetFunc.set((double)iter, targetVal);
-								targetDiffers = targetDiffers || (float)targetVal != (float)avgVal;
-							}
-						}
-						
-						compAvgFunc.setName(meta.comparison.name+" Average");
-						funcs.add(compAvgFunc);
-						chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.DARK_GRAY));
-						
-						if (targetDiffers && compTargetFunc != null) {
-							compTargetFunc.setName(meta.comparison.name+" Target");
-							funcs.add(compTargetFunc);
-							chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 3f, Color.DARK_GRAY));
-						}
-					}
-					
-					PlotSpec spec = new PlotSpec(funcs, chars, "Misfit Progress", "Iterations", yAxisLabel);
-					spec.setLegendInset(true);
-					
-					Range xRange = new Range(0d, iterations.get(iterations.size()-1));
-					Range yRange = null;
-					if (yLog) {
-						double maxWeight = 0d;
-						double minWeight = Double.POSITIVE_INFINITY;
-						for (DiscretizedFunc func : funcs) {
-							maxWeight = Math.max(maxWeight, func.getMaxY());
-							minWeight = Math.min(minWeight, func.getMinY());
-						}
-						yRange = new Range(Math.pow(10, Math.floor(Math.log10(minWeight))),
-								Math.pow(10, Math.ceil(Math.log10(maxWeight))));
-					}
-					
-					HeadlessGraphPanel gp = PlotUtils.initHeadless();
-					
-					gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
-					gp.drawGraphPanel(spec, false, yLog, xRange, yRange);
-					
-					PlotUtils.writePlots(resourcesDir, myPrefix, gp, 1000, 700, true, false, false);
-					
-					lines.add("![misfit plot]("+relPathToResources+"/"+myPrefix+".png)");
-				}
+				String compName = compMisfitProgress == null ? null : meta.comparison.name;
+				lines.addAll(plotMisfitProgress(misfitProgress, compMisfitProgress, compName, resourcesDir, relPathToResources));
 			}
 			
 		}
 		
+		return lines;
+	}
+	
+	public static List<String> plotMisfitProgress(InversionMisfitProgress misfitProgress,
+			File resourcesDir, String relPathToResources) throws IOException {
+		return plotMisfitProgress(misfitProgress, null, null, resourcesDir, relPathToResources);
+	}
+	
+	public static List<String> plotMisfitProgress(InversionMisfitProgress misfitProgress,
+			InversionMisfitProgress compMisfitProgress, String compName,
+			File resourcesDir, String relPathToResources) throws IOException {
+		List<String> lines = new ArrayList<>();
+		
+		List<Long> iterations = misfitProgress.getIterations();
+		Quantity targetQuantity = misfitProgress.getTargetQuantity();
+		List<Double> targetVals = misfitProgress.getTargetVals();
+		List<InversionMisfitStats> statsList = misfitProgress.getStats();
+		
+		if (!iterations.isEmpty()) {
+			List<String> constraintNames = new ArrayList<>();
+			for (MisfitStats stats : statsList.get(0).getStats())
+				constraintNames.add(stats.range.name);
+			Preconditions.checkState(!constraintNames.isEmpty());
+			
+			Table<String, Quantity, ArbitrarilyDiscretizedFunc> constrValIterFuncs = HashBasedTable.create();
+			Map<String, ArbitrarilyDiscretizedFunc> constrWeightIterFuncs = new HashMap<>();
+			Map<Quantity, ArbitrarilyDiscretizedFunc> avgValIterFuncs = new HashMap<>();
+			ArbitrarilyDiscretizedFunc targetValIterFunc = targetQuantity != null && targetVals != null ?
+					new ArbitrarilyDiscretizedFunc("Target") : null;
+			
+			Quantity[] quantities = { Quantity.MAD, Quantity.STD_DEV };
+			
+			for (Quantity q : quantities) {
+				avgValIterFuncs.put(q, new ArbitrarilyDiscretizedFunc("Average"));
+			}
+			
+			for (int i=0; i<iterations.size(); i++) {
+				long iter = iterations.get(i);
+				InversionMisfitStats stats = statsList.get(i);
+				
+				for (Quantity q : quantities) {
+					double avgVal = 0d;
+					List<Double> vals = new ArrayList<>();
+					
+					for (MisfitStats misfits : stats.getStats()) {
+						String name = misfits.range.name;
+						if (!constrValIterFuncs.contains(name, q))
+							constrValIterFuncs.put(name, q, new ArbitrarilyDiscretizedFunc(name));
+						
+						double val = misfits.get(q);
+						constrValIterFuncs.get(name, q).set((double)iter, val);
+						avgVal += val;
+						vals.add(val);
+						
+						if (q == quantities[0]) {
+							// track weight
+							if (!constrWeightIterFuncs.containsKey(name))
+								constrWeightIterFuncs.put(name, new ArbitrarilyDiscretizedFunc(name));
+							constrWeightIterFuncs.get(name).set((double)iter, misfits.range.weight);
+						}
+					}
+					
+					avgVal /= stats.getStats().size();
+					avgValIterFuncs.get(q).set((double)iter, avgVal);
+					if (targetValIterFunc != null && q == targetQuantity)
+						targetValIterFunc.set((double)iter, targetVals.get(i));
+				}
+			}
+			
+			// same, but with a null at the end (that will be for weights)
+			Quantity[] plotQ = new Quantity[quantities.length+1];
+			for (int q=0; q<quantities.length; q++)
+				plotQ[q] = quantities[q];
+			
+			CPT colorCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, constraintNames.size()-1d);
+			
+			for (Quantity quantity : plotQ) {
+				Map<String, ArbitrarilyDiscretizedFunc> constrFuncs;
+				ArbitrarilyDiscretizedFunc avgFunc;
+				String myPrefix, yAxisLabel;
+				boolean yLog;
+				if (quantity == null) {
+					yAxisLabel = "Constraint Weight";
+					myPrefix = "misift_progress_weights";
+					constrFuncs = constrWeightIterFuncs;
+					avgFunc = null;
+					yLog = true;
+					
+					// see if we actually have variable weights
+					boolean variable = false;
+					for (ArbitrarilyDiscretizedFunc func : constrFuncs.values()) {
+						if ((float)func.getMinY() != (float)func.getMaxY()) {
+							variable = true;
+							break;
+						}
+					}
+					if (!variable)
+						continue;
+				} else {
+					yAxisLabel = "Misfit "+quantity;
+					myPrefix = "misift_progress_"+quantity.name();
+					constrFuncs = constrValIterFuncs.column(quantity);
+					avgFunc = avgValIterFuncs.get(quantity);
+					yLog = false;
+				}
+				
+				List<DiscretizedFunc> funcs = new ArrayList<>();
+				List<PlotCurveCharacterstics> chars = new ArrayList<>();
+				
+				if (targetValIterFunc != null && quantity == targetQuantity) {
+					funcs.add(targetValIterFunc);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, Color.GRAY));
+				}
+				
+				if (avgFunc != null) {
+					funcs.add(avgFunc);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
+				}
+				
+				for (int i=0; i<constraintNames.size(); i++) {
+					String name = constraintNames.get(i);
+					funcs.add(constrFuncs.get(name));
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, colorCPT.getColor((float)i)));
+				}
+				
+				if (quantity != null && compMisfitProgress != null) {
+					// add comparison
+					List<InversionMisfitStats> compStatsList = compMisfitProgress.getStats();
+					
+					ArbitrarilyDiscretizedFunc compAvgFunc = new ArbitrarilyDiscretizedFunc();
+					ArbitrarilyDiscretizedFunc compTargetFunc =
+							quantity == compMisfitProgress.getTargetQuantity() ? new ArbitrarilyDiscretizedFunc() : null;
+					boolean targetDiffers = false;
+					
+					List<Long> compIters = compMisfitProgress.getIterations();
+					List<Double> compTargets = compMisfitProgress.getTargetVals();
+					for (int i=0; i<compIters.size(); i++) {
+						long iter = compIters.get(i);
+						InversionMisfitStats stats = compStatsList.get(i);
+						
+						double avgVal = 0d;
+						List<Double> vals = new ArrayList<>();
+						
+						for (MisfitStats misfits : stats.getStats()) {
+							double val = misfits.get(quantity);
+							avgVal += val;
+							vals.add(val);
+						}
+						
+						avgVal /= stats.getStats().size();
+						compAvgFunc.set((double)iter, avgVal);
+						if (compTargetFunc != null) {
+							double targetVal = compTargets.get(i);
+							compTargetFunc.set((double)iter, targetVal);
+							targetDiffers = targetDiffers || (float)targetVal != (float)avgVal;
+						}
+					}
+					
+					if (compName == null)
+						compName = "Comparison";
+					compAvgFunc.setName(compName+" Average");
+					funcs.add(compAvgFunc);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.DARK_GRAY));
+					
+					if (targetDiffers && compTargetFunc != null) {
+						compTargetFunc.setName(compName+" Target");
+						funcs.add(compTargetFunc);
+						chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 3f, Color.DARK_GRAY));
+					}
+				}
+				
+				PlotSpec spec = new PlotSpec(funcs, chars, "Misfit Progress", "Iterations", yAxisLabel);
+				spec.setLegendInset(true);
+				
+				Range xRange = new Range(0d, iterations.get(iterations.size()-1));
+				Range yRange = null;
+				if (yLog) {
+					double maxWeight = 0d;
+					double minWeight = Double.POSITIVE_INFINITY;
+					for (DiscretizedFunc func : funcs) {
+						maxWeight = Math.max(maxWeight, func.getMaxY());
+						minWeight = Math.min(minWeight, func.getMinY());
+					}
+					yRange = new Range(Math.pow(10, Math.floor(Math.log10(minWeight))),
+							Math.pow(10, Math.ceil(Math.log10(maxWeight))));
+				}
+				
+				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				
+				gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
+				gp.drawGraphPanel(spec, false, yLog, xRange, yRange);
+				
+				PlotUtils.writePlots(resourcesDir, myPrefix, gp, 1000, 700, true, false, false);
+				
+				lines.add("![misfit plot]("+relPathToResources+"/"+myPrefix+".png)");
+			}
+		}
 		return lines;
 	}
 

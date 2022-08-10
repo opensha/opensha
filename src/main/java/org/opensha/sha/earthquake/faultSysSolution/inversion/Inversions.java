@@ -36,6 +36,8 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.Compl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitProgress;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
@@ -641,8 +643,12 @@ public class Inversions {
 				double[] waterLevelRates = null;
 				double[] initialRates = null;
 				List<InversionMisfits> solMisfits = new ArrayList<>();
+				Map<ConnectivityCluster, InversionMisfitStats> clusterMisfitsMap = new HashMap<>();
+				InversionMisfitProgress largestProgress = null;
 				
-				for (FaultSystemSolution clusterSol : solutions) {
+				for (int i=0; i<solutions.size(); i++) {
+					ConnectivityCluster cluster = clusters.get(i);
+					FaultSystemSolution clusterSol = solutions.get(i);
 					// merge each one back in
 					if (clusterSol == null)
 						continue;
@@ -665,7 +671,11 @@ public class Inversions {
 						if (subsetInitial != null)
 							initialRates[fullID] = subsetInitial.get(subsetID);
 					}
-					solMisfits.add(clusterSol.requireModule(InversionMisfits.class));
+					InversionMisfits misfits = clusterSol.requireModule(InversionMisfits.class);
+					solMisfits.add(misfits);
+					clusterMisfitsMap.put(cluster, misfits.getMisfitStats());
+					if (largestProgress == null)
+						largestProgress = clusterSol.getModule(InversionMisfitProgress.class);
 				}
 				FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
 				if (waterLevelRates != null)
@@ -675,6 +685,8 @@ public class Inversions {
 				InversionMisfits misfits = InversionMisfits.appendSeparate(solMisfits);
 				sol.addModule(misfits);
 				sol.addModule(misfits.getMisfitStats());
+				sol.addModule(new ConnectivityClusters.ConnectivityClusterSolutionMisfits(
+						sol, clusterMisfitsMap, largestProgress));
 				
 				ret = sol;
 			} else {

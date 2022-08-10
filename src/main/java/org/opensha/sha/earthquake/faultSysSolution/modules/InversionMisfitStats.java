@@ -227,6 +227,13 @@ public class InversionMisfitStats implements CSV_BackedModule, BranchAverageable
 		this.misfitStats = misfitStats;
 	}
 	
+	
+	public static InversionMisfitStats fromCSV(CSVFile<String> csv) {
+		InversionMisfitStats stats = new InversionMisfitStats();
+		stats.initFromCSV(csv);
+		return stats;
+	}
+	
 	@SuppressWarnings("unused") // used for deserialization
 	private InversionMisfitStats() {}
 	

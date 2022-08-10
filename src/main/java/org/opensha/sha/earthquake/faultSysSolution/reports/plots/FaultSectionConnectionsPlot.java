@@ -43,6 +43,11 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters.ConnectivityClusterSolutionMisfits;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitProgress;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.Quantity;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata.RupSetOverlap;
@@ -278,9 +283,9 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			table = MarkdownUtils.tableBuilder();
 			table.addLine(meta.primary.name, meta.comparison.name);
 			
-			File primaryClusters = plotConnectedClusters(rupSet, meta.region, resourcesDir, "conn_clusters",
+			File primaryClusters = plotConnectedClusters(rupSet, sol, meta.region, resourcesDir, "conn_clusters",
 					TITLES ? getTruncatedTitle(meta.primary.name)+" Clusters" : " ", clustersTable);
-			File compClusters = plotConnectedClusters(meta.comparison.rupSet, meta.region, resourcesDir,
+			File compClusters = plotConnectedClusters(meta.comparison.rupSet, meta.comparison.sol, meta.region, resourcesDir,
 					"conn_clusters_comp", TITLES ? getTruncatedTitle(meta.comparison.name)+" Clusters" : " ", null);
 			
 			table.addLine("![Primary clusters]("+relPathToResources+"/"+primaryClusters.getName()+")",
@@ -293,7 +298,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		} else {
 			table = MarkdownUtils.tableBuilder();
 			
-			File primaryClusters = plotConnectedClusters(rupSet, meta.region, resourcesDir, "conn_clusters",
+			File primaryClusters = plotConnectedClusters(rupSet, sol, meta.region, resourcesDir, "conn_clusters",
 					TITLES ? "Connected Section Clusters" : " ", clustersTable);
 			
 			table.addLine("![Primary clusters]("+relPathToResources+"/"+primaryClusters.getName()+")");
@@ -303,6 +308,28 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		}
 		lines.add("");
 		lines.addAll(clustersTable.build());
+		
+		if (sol.hasModule(ConnectivityClusterSolutionMisfits.class)) {
+			InversionMisfitProgress largestClusterProgress = sol.requireModule(
+					ConnectivityClusterSolutionMisfits.class).getLargestClusterMisfitProgress();
+			if (largestClusterProgress != null) {
+				InversionMisfitProgress compProgress = null;
+				String compName = null;
+				if (meta.hasComparisonSol() && meta.comparisonHasSameSects &&
+						meta.comparison.sol.hasModule(ConnectivityClusterSolutionMisfits.class)) {
+					compProgress = meta.comparison.sol.requireModule(ConnectivityClusterSolutionMisfits.class).getLargestClusterMisfitProgress();
+					compName = meta.comparison.name;
+				}
+				
+				lines.add("");
+				lines.add(getSubHeading()+" Largest Cluster Misfit Progress");
+				lines.add(topLink); lines.add("");
+				
+				lines.addAll(InversionProgressPlot.plotMisfitProgress(largestClusterProgress, compProgress, compName,
+						resourcesDir, relPathToResources));
+			}
+		}
+		
 		return lines;
 	}
 
@@ -673,8 +700,8 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 	
 	private static int MAX_PLOT_CLUSTERS = 10;
 	
-	public static File plotConnectedClusters(FaultSystemRupSet rupSet, Region region, File outputDir, String prefix,
-			String title, TableBuilder table) throws IOException {
+	public static File plotConnectedClusters(FaultSystemRupSet rupSet, FaultSystemSolution sol, Region region,
+			File outputDir, String prefix, String title, TableBuilder table) throws IOException {
 		
 		if (!rupSet.hasModule(ConnectivityClusters.class)) {
 			System.out.println("Calculating connection clusters");
@@ -701,8 +728,44 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		for (int s=0; s<rupSet.getNumSections(); s++)
 			sectColors.add(null);
 		
-		if (table != null)
-			table.addLine("Rank", "Sections", "Parent Sections", "Ruptures");
+		ConnectivityClusterSolutionMisfits clusterMisfits = null;
+		if (sol != null)
+			clusterMisfits = sol.getModule(ConnectivityClusterSolutionMisfits.class);
+		List<String> clusterMisfitNames = null;
+		Quantity tableQuantity = Quantity.MAD;
+		String quantityAbbrev = "MAD";
+		if (table != null) {
+			table.initNewLine();
+			table.addColumns("Rank", "Sections", "Parent Sections", "Ruptures");
+			if (clusterMisfits != null) {
+				clusterMisfitNames = new ArrayList<>();
+				HashSet<String> misfitNames = new HashSet<>();
+				for (int i=0; i<clusters.size(); i++) {
+					InversionMisfitStats stats = clusterMisfits.getMisfitStats(i);
+					if (stats != null) {
+						for (MisfitStats misfits : stats.getStats()) {
+							String name = misfits.range.name;
+							if (!misfitNames.contains(name)) {
+								misfitNames.add(name);
+								clusterMisfitNames.add(name);
+								table.addColumn(name+" "+quantityAbbrev);
+							}
+						}
+					}
+				}
+			}
+			table.finalizeLine();
+		}
+		double[] isolatedMisfits = null;
+		int[] isolatedMisfitCounts = null;
+		double[] otherMisfits = null;
+		int[] otherMisfitCounts = null;
+		if (clusterMisfitNames != null) {
+			isolatedMisfits = new double[clusterMisfitNames.size()];
+			isolatedMisfitCounts = new int[clusterMisfitNames.size()];
+			otherMisfits = new double[clusterMisfitNames.size()];
+			otherMisfitCounts = new int[clusterMisfitNames.size()];
+		}
 		
 		int numSections = rupSet.getNumSections();
 		HashSet<Integer> allParents = new HashSet<>();
@@ -722,8 +785,28 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		
 		int tableIndex = 0;
 		
-		for (ConnectivityCluster cluster : clusters) {
+		for (int i=0; i<clusters.size(); i++) {
+			ConnectivityCluster cluster = clusters.get(i);
 			boolean allSameParent = cluster.getParentSectIDs().size() == 1;
+			
+			double[] myMisfits = null;
+			if (clusterMisfits != null) {
+				InversionMisfitStats tmp = clusterMisfits.getMisfitStats(i);
+				if (tmp != null) {
+					myMisfits = new double[clusterMisfitNames.size()];
+					List<MisfitStats> myMisfitStats = tmp.getStats();
+					for (int j=0; j<clusterMisfitNames.size(); j++) {
+						myMisfits[j] = Double.NaN;
+						String name = clusterMisfitNames.get(j);
+						for (MisfitStats stats : myMisfitStats) {
+							if (name.equals(stats.range.name)) {
+								myMisfits[j] = stats.get(tableQuantity);
+								break;
+							}
+						}
+					}
+				}
+			}
 			
 			Color color;
 			if (allSameParent) {
@@ -732,15 +815,40 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 				numIsolated++;
 				sectsIsolated += cluster.getNumSections();
 				rupturesIsolated += cluster.getNumRuptures();
+				
+				if (myMisfits != null) {
+					for (int j=0; j<clusterMisfitNames.size(); j++) {
+						if (Double.isFinite(myMisfits[j])) {
+							isolatedMisfitCounts[j]++;
+							isolatedMisfits[j] += myMisfits[j];
+						}
+					}
+				}
 			} else if (tableIndex < MAX_PLOT_CLUSTERS) {
 				color = clusterCPT.getColor((float)tableIndex);
 				
 				tableIndex++;
-				if (table != null)
-					table.addLine(tableIndex,
+				if (table != null) {
+					table.initNewLine();
+					table.addColumns(tableIndex,
 							countStr(cluster.getNumSections(), numSections),
 							countStr(cluster.getParentSectIDs().size(), numParents),
 							countStr(cluster.getNumRuptures(), numRuptures));
+					if (clusterMisfits != null) {
+						if (myMisfits == null) {
+							for (int j=0; j<clusterMisfitNames.size(); j++)
+								table.addColumn("_(N/A)_");
+						} else {
+							for (double val : myMisfits) {
+								if (Double.isFinite(val))
+									table.addColumn((float)val);
+								else
+									table.addColumn("_(N/A)_");
+							}
+						}
+					}
+					table.finalizeLine();
+				}
 			} else {
 				color = otherClusterColor;
 				
@@ -748,6 +856,15 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 				sectsOther += cluster.getNumSections();
 				parentsOther += cluster.getParentSectIDs().size();
 				rupturesOther += cluster.getNumRuptures();
+				
+				if (myMisfits != null) {
+					for (int j=0; j<clusterMisfitNames.size(); j++) {
+						if (Double.isFinite(myMisfits[j])) {
+							otherMisfitCounts[j]++;
+							otherMisfits[j] += myMisfits[j];
+						}
+					}
+				}
 			}
 			
 			for (int s : cluster.getSectIDs()) {
@@ -758,16 +875,40 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		
 		if (table != null) {
 			if (numOther > 0) {
-				table.addLine((tableIndex+1)+"->"+(tableIndex+1+numOther),
+				table.initNewLine();
+				table.addColumns((tableIndex+1)+"->"+(tableIndex+1+numOther),
 						countStr(sectsOther, numSections),
 						countStr(parentsOther, numParents),
 						countStr(rupturesOther, numRuptures));
+				if (clusterMisfits != null) {
+					for (int i=0; i<otherMisfits.length; i++) {
+						double sum = otherMisfits[i];
+						int count = otherMisfitCounts[i];
+						if (count == 0)
+							table.addColumn("_(N/A)_");
+						else
+							table.addColumn((float)(sum/(double)count));
+					}
+				}
+				table.finalizeLine();
 			}
 			if (numIsolated > 0) {
-				table.addLine(numIsolated+" isolated",
+				table.initNewLine();
+				table.addColumns(numIsolated+" isolated",
 						countStr(sectsIsolated, numSections),
 						countStr(numIsolated, numParents),
 						countStr(rupturesIsolated, numRuptures));
+				if (clusterMisfits != null) {
+					for (int i=0; i<isolatedMisfits.length; i++) {
+						double sum = isolatedMisfits[i];
+						int count = isolatedMisfitCounts[i];
+						if (count == 0)
+							table.addColumn("_(N/A)_");
+						else
+							table.addColumn((float)(sum/(double)count));
+					}
+				}
+				table.finalizeLine();
 			}
 		}
 		
