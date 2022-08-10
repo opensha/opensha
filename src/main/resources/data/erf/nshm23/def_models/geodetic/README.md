@@ -1,6 +1,9 @@
 # Geodetic Deformation Models
 
-Geodetic deformation model file history. The current version is retained for each version of the fault model.
+Geodetic deformation model file history. The current version is retained for each version of the fault model:
+
+fm_v1p4: Files for the draft NSHM23 Geologic Fault Model, v1.4 (may be deleted soon if deemed no longer necessary)
+fm_v2: Files for the "final" NSHM23 Geologic Fault Model, V2
 
 ## 2022/08/10
 
@@ -10,7 +13,7 @@ Updated Evans deformation model files based on e-mail from Kaj Johnson on 8/10/2
 
 Used updated Evans files, but had to reapply the following fixes:
 
-* Corrected Zayante - Vergalez ID to match final fault model (was 305, now 304) (see earlier notes)
+* Corrected Zayante - Vergalez ID to match FM v2 (was 305, now 304) (see earlier notes)
 * Applied trace flip fix for FM v2 (see note on 2022/08/05)
  
 ## 2022/08/05
@@ -23,8 +26,8 @@ Received permission to make this change from the deformation modelers as follows
 
 * Pollitz model via e-mail from Fred on 8/2/2022, subject "Re: Changes to a few faults in the final NSHM23 fault model, updates to deformation models needed?"
 * Shen-Bird model via e-mail from Zheng-Kang on 8/2/2022, subject "Re: Changes to a few faults in the final NSHM23 fault model, updates to deformation models needed?"
-* Evans model, have not received a reply as of 8/5/2022
-* Zeng model, have not received a reply as of 8/5/2022
+* Evans model, have not received a reply as of 8/10/2022
+* Zeng model, have not received a reply as of 8/10/2022
 
 It is also noted that the geologic rake was changed from -150 to 180 for faults 64 and 65, north and south Death Valley.
 
