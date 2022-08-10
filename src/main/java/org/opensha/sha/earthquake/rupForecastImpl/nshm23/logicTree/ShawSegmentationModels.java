@@ -14,60 +14,29 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum ShawSegmentationModels implements SegmentationModelBranchNode {
-	SHAW_R0_1("Shaw & Dieterich (2007) R₀=1", "ShawR₀=1", 0.0d) {
-		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			return buildShaw(1, 1, branch);
-		}
-	},
-	SHAW_R0_2("Shaw & Dieterich (2007) R₀=2", "ShawR₀=2", 0.25d) { // was 0.25
-		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			return buildShaw(1, 2, branch);
-		}
-	},
-	SHAW_R0_3("Shaw & Dieterich (2007) R₀=3", "ShawR₀=3", 0.6d) { // was 0.6
-		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			return buildShaw(1, 3, branch);
-		}
-	},
-	SHAW_R0_4("Shaw & Dieterich (2007) R₀=4", "ShawR₀=4", 0.15d) { // was 0.15
-		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			return buildShaw(1, 4, branch);
-		}
-	},
-	SHAW_R0_5("Shaw & Dieterich (2007) R₀=5", "ShawR₀=5", 0.0d) {
-		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			return buildShaw(1, 5, branch);
-		}
-	},
-	SHAW_R0_6("Shaw & Dieterich (2007) R₀=6", "ShawR₀=6", 0.0d) {
-		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			return buildShaw(1, 6, branch);
-		}
-	},
-	NONE("None", "None", 0.0d) {
-		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			return null;
-		}
-	};
+	SHAW_R0_1("Shaw & Dieterich (2007) R₀=1", "ShawR₀=1", 1d, 0.0d),
+	SHAW_R0_2("Shaw & Dieterich (2007) R₀=2", "ShawR₀=2", 2d, 0.25d),
+	SHAW_R0_3("Shaw & Dieterich (2007) R₀=3", "ShawR₀=3", 3d, 0.6d),
+	SHAW_R0_4("Shaw & Dieterich (2007) R₀=4", "ShawR₀=4", 4d, 0.15d),
+	SHAW_R0_5("Shaw & Dieterich (2007) R₀=5", "ShawR₀=5", 5d, 0.0d),
+	SHAW_R0_6("Shaw & Dieterich (2007) R₀=6", "ShawR₀=6", 6d, 0.0d),
+	NONE("None", "None", Double.NaN, 0.0d);
 	
 	private String name;
 	private String shortName;
 	private double weight;
+	private double r0;
 
-	private ShawSegmentationModels(String name, String shortName, double weight) {
+	private ShawSegmentationModels(String name, String shortName, double r0, double weight) {
 		this.name = name;
 		this.shortName = shortName;
+		this.r0 = r0;
 		this.weight = weight;
 	}
 	
-	public abstract JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch);
+	public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		return buildShaw(1d, r0, branch);
+	}
 	
 	private static Shaw07JumpDistProb buildShaw(double a, double r0, LogicTreeBranch<?> branch) {
 		DistDependSegShift shift = branch == null ? null : branch.getValue(DistDependSegShift.class);
@@ -94,6 +63,10 @@ public enum ShawSegmentationModels implements SegmentationModelBranchNode {
 	@Override
 	public String getFilePrefix() {
 		return shortName.replace("R₀=", "R0_");
+	}
+	
+	public double getR0() {
+		return r0;
 	}
 
 }

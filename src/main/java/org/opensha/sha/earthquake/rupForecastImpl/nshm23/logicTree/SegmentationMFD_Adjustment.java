@@ -14,6 +14,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.DistDependentJumpProbabilityCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ThresholdAveragingSectNuclMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.StrictSegReproductionMFDAdjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ImprobModelRupMultiplyingSectNuclMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SectNucleationMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator;
@@ -32,13 +33,13 @@ public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 			return new ThresholdAveragingSectNuclMFD_Estimator.WorstAvgJumpProb(segModel);
 		}
 	},
-	REL_GR_THRESHOLD_AVG("Threshold Averaging, Rel G-R", "ThreshAvgRelGR", 1d) {
+	REL_GR_THRESHOLD_AVG("Threshold Averaging, Single-Iter Rel G-R", "ThreshAvgSingleIterRelGR", 1d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 1, true);
 		}
 	},
-	REL_GR_THRESHOLD_AVG_ITERATIVE("Threshold Averaging, Iterative Rel G-R", "ThreshAvgIterRelGR", 1d) {
+	REL_GR_THRESHOLD_AVG_ITERATIVE("Threshold Averaging, Rel G-R", "ThreshAvgIterRelGR", 1d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 100, true);
@@ -112,6 +113,13 @@ public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return null;
+		}
+	},
+	STRICT_SEG_REPRODUCE_THROUGH_INVERSION("Strict-Segmentation", "StrictSeg", 0d) {
+		@Override
+		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
+			System.err.println("WARNING: using strict-seg reproduction, will be slow and do inversions, only use for small test cases");
+			return new StrictSegReproductionMFDAdjustment(segModel);
 		}
 	};
 	

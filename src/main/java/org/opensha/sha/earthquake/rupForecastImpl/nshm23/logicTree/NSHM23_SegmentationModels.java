@@ -78,13 +78,13 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode {
 			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN);
 		}
 	},
-	NONE("None", "None", 1.0d) {
+	NONE("None", "None", 0.0d) {
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			return null;
 		}
 	},
-	TWO_KM("2km Hard Cutoff", "Max2km", 1.0d) {
+	TWO_KM("2km Hard Cutoff", "Max2km", 0.0d) {
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			// Still restrict creeping section, but the bulk of the through-creeping-section will be handled
