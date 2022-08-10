@@ -165,8 +165,11 @@ public class JavaShellScriptWriter implements XMLSaveable {
 	}
 	
 	public String buildCommand(String className, String args) {
+		String javaPath = javaBin.getPath();
+		if (javaPath.contains(File.pathSeparator) && !javaPath.equals("java"))
+			javaPath = javaBin.getAbsolutePath();
 		
-		String command = javaBin.getAbsolutePath()+getJVMArgs(className);
+		String command = javaPath+getJVMArgs(className);
 		
 		command += getFormattedArgs(args);
 		
