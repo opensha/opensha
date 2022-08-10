@@ -26,6 +26,7 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleArchive;
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -124,11 +125,36 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		protected abstract FaultSystemSolution loadExternalForBranch(LogicTreeBranch<?> branch) throws IOException;
 
 		@Override
-		public synchronized final FaultSystemSolution forBranch(LogicTreeBranch<?> branch) throws IOException {
+		public synchronized FaultSystemSolution forBranch(LogicTreeBranch<?> branch, boolean process)
+				throws IOException {
 			FaultSystemSolution external = loadExternalForBranch(branch);
-			if (external != null)
+			if (external != null) {
+				if (process) {
+					SolutionProcessor processor = getProcessor();
+					if (processor != null) {
+						FaultSystemRupSet origRupSet = external.getRupSet();
+						FaultSystemRupSet rupSet = processor.processRupSet(origRupSet, branch);
+						FaultSystemSolution sol;
+						if (rupSet != origRupSet) {
+							// rupSet is a new instance, create new solution that uses that instance
+							sol = new FaultSystemSolution(rupSet, external.getRateForAllRups());
+							for (OpenSHA_Module module : external.getModules()) {
+								try {
+									sol.addModule(module);
+								} catch (Exception e) {
+									System.err.println("WARNING: couldn't copy module to updated solution with "
+											+ "processed rupture set: "+e.getMessage());
+								}
+							}
+						} else {
+							sol = external;
+						}
+						return processor.processSolution(sol, branch);
+					}
+				}
 				return external;
-			return super.forBranch(branch);
+			}
+			return super.forBranch(branch, process);
 		}
 		
 	}
@@ -280,6 +306,30 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		public abstract void solution(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException;
 		
 		public abstract SolutionLogicTree build() throws IOException;
+	}
+	
+	public static class ResultsDirReader extends AbstractExternalFetcher {
+		
+		private File resultsDir;
+
+		public ResultsDirReader(File resultsDir, LogicTree<?> logicTree) {
+			this(resultsDir, logicTree, null);
+		}
+		
+		public ResultsDirReader(File resultsDir, LogicTree<?> logicTree, SolutionProcessor processor) {
+			super(processor, logicTree);
+			this.resultsDir = resultsDir;
+		}
+
+		@Override
+		protected FaultSystemSolution loadExternalForBranch(LogicTreeBranch<?> branch) throws IOException {
+			File subDir = new File(resultsDir, branch.buildFileName());
+			Preconditions.checkState(subDir.exists(), "Branch directory doesn't exist: %s", subDir.getAbsolutePath());
+			File solFile = new File(subDir, "solution.zip");
+			Preconditions.checkState(solFile.exists(), "Solution file doesn't exist: %s", solFile.getAbsolutePath());
+			return FaultSystemSolution.load(solFile);
+		}
+		
 	}
 	
 	@SuppressWarnings("unused") // used for serialization
