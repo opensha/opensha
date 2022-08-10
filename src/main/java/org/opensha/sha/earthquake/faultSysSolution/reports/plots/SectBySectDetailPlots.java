@@ -1063,24 +1063,9 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		IncrementalMagFreqDist defaultMFD = SolMFDPlot.initDefaultMFD(minMag, maxMag);
 		
 		SummedMagFreqDist nuclTargetMFD = null;
-		if (meta.primary.rupSet.hasModule(InversionTargetMFDs.class)) {
+		if (meta.primary.rupSet.hasModule(InversionTargetMFDs.class))
 			// see if we have section nucleation MFDs
-			InversionTargetMFDs targetMFDs = meta.primary.rupSet.requireModule(InversionTargetMFDs.class);
-			List<? extends IncrementalMagFreqDist> sectNuclMFDs = targetMFDs.getOnFaultSupraSeisNucleationMFDs();
-			if (sectNuclMFDs != null) {
-				for (FaultSection sect : faultSects) {
-					IncrementalMagFreqDist sectTarget = sectNuclMFDs.get(sect.getSectionId());
-					if (sectTarget == null) {
-						nuclTargetMFD = null;
-						break;
-					}
-					if (nuclTargetMFD == null)
-						// first one
-						nuclTargetMFD = new SummedMagFreqDist(sectTarget.getMinX(), sectTarget.size(), sectTarget.getDelta());
-					nuclTargetMFD.addIncrementalMagFreqDist(sectTarget);
-				}
-			}
-		}
+			nuclTargetMFD = calcTargetMFD(faultSects, meta.primary.rupSet.requireModule(InversionTargetMFDs.class));
 		
 		Range xRange = SolMFDPlot.xRange(defaultMFD);
 		List<XY_DataSet> incrFuncs = new ArrayList<>();
@@ -1140,6 +1125,30 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			cmlChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, COMP_COLOR));
 			cmlFuncs.add(compNuclMFD.getCumRateDistWithOffset());
 			cmlChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, COMP_COLOR));
+			
+			SummedMagFreqDist compNuclTargetMFD = null;
+			if (nuclTargetMFD != null && meta.comparison.rupSet.hasModule(InversionTargetMFDs.class))
+				// see if we have section nucleation MFDs
+				compNuclTargetMFD = calcTargetMFD(faultSects, meta.comparison.rupSet.requireModule(InversionTargetMFDs.class));
+			
+			if (compNuclTargetMFD != null) {
+				// if it's identical, skip it
+				boolean identical = compNuclTargetMFD.size() == nuclTargetMFD.size();
+				for (int i=0; identical && i<nuclTargetMFD.size(); i++)
+					identical = identical && (float)nuclTargetMFD.getY(i) == (float)compNuclTargetMFD.getY(i);
+				
+				if (!identical) {
+					compNuclTargetMFD.setName("Comparison Target Nucleation");
+					
+					Color targetColor = Color.CYAN.darker();
+					
+					addFakeHistFromFunc(compNuclTargetMFD, incrFuncs, incrChars,
+							new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, targetColor));
+					
+					cmlFuncs.add(compNuclTargetMFD.getCumRateDistWithOffset());
+					cmlChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, targetColor));
+				}
+			}
 		} else {
 			particMFD.setName("Participation");
 			nuclMFD.setName("Nucleation");
@@ -1216,6 +1225,25 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		lines.addAll(table.build());
 		
 		return lines;
+	}
+
+	public static SummedMagFreqDist calcTargetMFD(List<FaultSection> faultSects, InversionTargetMFDs targetMFDs) {
+		List<? extends IncrementalMagFreqDist> sectNuclMFDs = targetMFDs.getOnFaultSupraSeisNucleationMFDs();
+		SummedMagFreqDist nuclTargetMFD = null;
+		if (sectNuclMFDs != null) {
+			for (FaultSection sect : faultSects) {
+				IncrementalMagFreqDist sectTarget = sectNuclMFDs.get(sect.getSectionId());
+				if (sectTarget == null) {
+					nuclTargetMFD = null;
+					break;
+				}
+				if (nuclTargetMFD == null)
+					// first one
+					nuclTargetMFD = new SummedMagFreqDist(sectTarget.getMinX(), sectTarget.size(), sectTarget.getDelta());
+				nuclTargetMFD.addIncrementalMagFreqDist(sectTarget);
+			}
+		}
+		return nuclTargetMFD;
 	}
 	
 	private static void addFakeHistFromFunc(EvenlyDiscretizedFunc mfd, List<XY_DataSet> funcs,
