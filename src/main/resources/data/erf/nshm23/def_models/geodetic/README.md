@@ -1,7 +1,18 @@
 # Geodetic Deformation Models
 
-Geodetic deformation model file history
+Geodetic deformation model file history. The current version is retained for each version of the fault model.
 
+## 2022/08/10
+
+Updated Evans deformation model files based on e-mail from Kaj Johnson on 8/10/2022, subject "Updated result files for Evans models":
+
+"Kaj and Eileen caught Eileen's rake convention being different from that being assumed by the rest of the group. The new files basically change rake --> 180-rake, so 0 becomes 180, -104 becomes -76, etc."
+
+Used updated Evans files, but had to reapply the following fixes:
+
+* Corrected Zayante - Vergalez ID to match final fault model (was 305, now 304) (see earlier notes)
+* Applied trace flip fix for FM v2 (see note on 2022/08/05)
+ 
 ## 2022/08/05
 
 Kevin noticed that these files don't match minor changes between v1.4 and v2 of the geologic fault model.

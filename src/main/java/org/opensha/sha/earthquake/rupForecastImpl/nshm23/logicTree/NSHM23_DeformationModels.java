@@ -141,9 +141,9 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	private static String getGeodeticModelDate(RupSetFaultModel faultModel) {
 		if (sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v2)
 				|| sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v2_UTAH))
-			return "2022_08_05";
+			return "fm_v2";
 		if (sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v1p4))
-			return "2022_07_23";
+			return "fm_v1p4";
 		System.err.println("Warning, returning most recent geodetic date for unknown fault model: "
 				+faultModel.getName()+" of type "+faultModel.getClass().getName());
 		return "2022_08_05";
@@ -346,6 +346,9 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			}
 		}
 		
+		Map<Integer, GeoJSONFaultSection> geoDMSects = null; // may be needed if zeros are encountered
+		int numRakesSkipped = 0;
+		
 		// replace slip rates and rakes from deformation model
 		for (FaultSection subSect : subSects) {
 			int subSectID = subSect.getSectionId();
@@ -391,11 +394,25 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			double avgRake = FaultUtils.getInRakeRange(mappings.getAssociationScaledAngleAverage(subSectID, recRakes));
 			Preconditions.checkState(Double.isFinite(avgRake), "Bad rake for subSect=%, parentID=%: %s",
 					subSect.getSectionId(), parentID, avgRake);
-
+			
+			if ((float)avgSlip == 0f && (float)avgRake == 0f) {
+				// this is likely a placeholder rake, skip
+				if (geoDMSects == null)
+					geoDMSects = getGeolFullSects(faultModel);
+				avgRake = geoDMSects.get(parentID).getAveRake();
+				if ((float)avgRake != 0f)
+					// it wasn't supposed to be zero
+					numRakesSkipped++;
+			}
 			subSect.setAveSlipRate(avgSlip);
 			subSect.setSlipRateStdDev(avgSlipStdDev);
 			subSect.setAveRake(avgRake);
 		}
+		
+		if (numRakesSkipped > 0)
+			System.err.println("WARNING: Ignored rakes set to zero with zero slip rates for "+numRakesSkipped
+					+"/"+subSects.size()+" ("+pDF.format((double)numRakesSkipped/(double)subSects.size())
+					+") subsections, keeping geologic rakes to avoid placeholder");
 		
 		return applyCreepModel(mappings, applyStdDevDefaults(faultModel, subSects));
 	}
