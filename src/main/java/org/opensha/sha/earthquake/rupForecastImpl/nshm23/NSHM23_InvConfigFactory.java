@@ -639,6 +639,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		GRParticRateEstimator rateEst = new GRParticRateEstimator(rupSet, targetMFDs);
 		
 		if (hasJumps(rupSet)) {
+			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
 			JumpProbabilityCalc segModel = buildSegModel(rupSet, branch);
 			if (segModel != null) {
 				constraints = new ArrayList<>(constraints);
@@ -653,13 +654,29 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				
 				constraints.add(new JumpProbabilityConstraint.RelativeRate(
 						weight, ineq, rupSet, buildSegModel(rupSet, branch), rateEst));
+				
+				// see if this model has any zero probability jumps, and if so exclude ruptures that use them from
+				// being sampled in the inversion
+				HashSet<Integer> zeroRateRups = new HashSet<>();
+				for (int rupIndex=0; rupIndex<rupSet.getNumRuptures(); rupIndex++) {
+					ClusterRupture rup = cRups.get(rupIndex);
+					if (segModel.calcRuptureProb(rup, false) == 0d)
+						zeroRateRups.add(rupIndex);
+				}
+				if (!zeroRateRups.isEmpty()) {
+					// exclude them from the sampler
+					ExclusionIntegerSampler skipSampler = new ExclusionIntegerSampler(0, rupSet.getNumRuptures(), zeroRateRups);
+					if (sampler == null)
+						sampler = skipSampler;
+					else
+						sampler = sampler.getCombinedWith(skipSampler);
+				}
 			}
 			
 			MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
 			System.out.println("Max distance model: "+distModel);
 			if (distModel != null) {
 				HardDistCutoffJumpProbCalc model = distModel.getModel(rupSet);
-				ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
 				System.out.println("Zeroing out sampler probabilities for "+model);
 				sampler = getExcludeSampler(cRups, sampler, model);
 			}
