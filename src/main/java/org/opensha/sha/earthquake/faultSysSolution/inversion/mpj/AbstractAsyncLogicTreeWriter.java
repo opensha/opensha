@@ -2,10 +2,14 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.mpj;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 
 import org.opensha.commons.logicTree.BranchWeightProvider;
+import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -76,21 +80,9 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 					
 					// now add in to branch averaged
 					if (baCreators != null) {
-						String baPrefix = null;
-						boolean allAffect = true;
-						for (int i=0; i<branch.size(); i++) {
-							if (branch.getLevel(i).affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME, true)) {
-								if (baPrefix == null)
-									baPrefix = "";
-								else
-									baPrefix += "_";
-								baPrefix += branch.getValue(i).getFilePrefix();
-							} else {
-								allAffect = false;
-							}
-						}
+						String baPrefix = getBA_prefix(branch);
 						
-						if (allAffect) {
+						if (baPrefix == null) {
 							debug("AsyncLogicTree won't branch average, all levels affect "+FaultSystemRupSet.RUP_PROPS_FILE_NAME);
 						} else {
 							if (!baCreators.containsKey(baPrefix))
@@ -114,6 +106,51 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		
 		memoryDebug("AsyncLogicTree: exiting async process, stats: "+getCountsString());
 	}
+	
+	private static String getBA_prefix(LogicTreeBranch<?> branch) {
+		String baPrefix = null;
+		boolean allAffect = true;
+		for (int i=0; i<branch.size(); i++) {
+			if (branch.getLevel(i).affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME, true)) {
+				if (baPrefix == null)
+					baPrefix = "";
+				else
+					baPrefix += "_";
+				baPrefix += branch.getValue(i).getFilePrefix();
+			} else {
+				allAffect = false;
+			}
+		}
+		if (allAffect)
+			return null;
+		else if (baPrefix == null)
+			return "";
+		return baPrefix;
+	}
+	
+	public static List<File> getBranchAverageSolutionFiles(File resultsDir, LogicTree<?> tree) {
+		HashSet<String> commonPrefixes = new HashSet<>();
+		
+		for (LogicTreeBranch<?> branch : tree) {
+			String prefix = getBA_prefix(branch);
+			if (prefix != null)
+				commonPrefixes.add(prefix);
+		}
+		
+		List<File> ret = new ArrayList<>();
+		for (String prefix : commonPrefixes)
+			ret.add(baFile(resultsDir, prefix));
+		
+		return ret;
+	}
+	
+	private static File baFile(File resultsDir, String baPrefix) {
+		String prefix = resultsDir.getName();
+		if (!baPrefix.isBlank())
+			prefix += "_"+baPrefix;
+		
+		return new File(resultsDir.getParentFile(), prefix+"_branch_averaged.zip");
+	}
 
 	@Override
 	public void shutdown() {
@@ -129,11 +166,7 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		
 		if (baCreators != null && !baCreators.isEmpty()) {
 			for (String baPrefix : baCreators.keySet()) {
-				String prefix = outputDir.getName();
-				if (!baPrefix.isBlank())
-					prefix += "_"+baPrefix;
-				
-				File baFile = new File(outputDir.getParentFile(), prefix+"_branch_averaged.zip");
+				File baFile = baFile(outputDir, baPrefix);
 				memoryDebug("AsyncLogicTree: building "+baFile.getAbsolutePath());
 				try {
 					FaultSystemSolution baSol = baCreators.get(baPrefix).build();
