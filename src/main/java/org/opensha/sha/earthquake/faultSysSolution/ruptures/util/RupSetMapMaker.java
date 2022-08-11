@@ -39,6 +39,7 @@ import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
+import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
@@ -47,6 +48,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
@@ -627,30 +629,31 @@ public class RupSetMapMaker {
 		
 		List<PaintScaleLegend> cptLegend = new ArrayList<>();
 		
+		Comparator<ComparablePairing<Double, ?>> comparator = new Comparator<ComparablePairing<Double,?>>() {
+			
+			@Override
+			public int compare(ComparablePairing<Double, ?> o1, ComparablePairing<Double, ?> o2) {
+				Double d1 = o1.getComparable();
+				Double d2 = o2.getComparable();
+				if ((d1 == null || Double.isNaN(d1)) && (d2 == null || Double.isNaN(d2))) {
+					return 0;
+				} else if ((d1 == null || Double.isNaN(d1))) {
+					return -1;
+				} else if (d2 == null || Double.isNaN(d2)) {
+					return 1;
+				}
+				if (reverseSort)
+					return Double.compare(d2, d1);
+				return Double.compare(d1, d2);
+			}
+		};
+		
 		// plot sect scalars
 		if (scalars != null) {
 			List<ComparablePairing<Double, FaultSection>> sortables = new ArrayList<>();
 			for (int s=0; s<scalars.length; s++)
 				sortables.add(new ComparablePairing<>(scalars[s], subSects.get(s)));
-			Collections.sort(sortables, new Comparator<ComparablePairing<Double, FaultSection>>() {
-
-				@Override
-				public int compare(ComparablePairing<Double, FaultSection> o1,
-						ComparablePairing<Double, FaultSection> o2) {
-					Double d1 = o1.getComparable();
-					Double d2 = o2.getComparable();
-					if ((d1 == null || d1 == Double.NaN) && (d2 == null || d2 == Double.NaN)) {
-						return 0;
-					} else if ((d1 == null || d1 == Double.NaN)) {
-						return -1;
-					} else if (d2 == null || d2 == Double.NaN) {
-						return 1;
-					}
-					if (reverseSort)
-						return Double.compare(d2, d1);
-					return Double.compare(d1, d2);
-				}
-			});
+			Collections.sort(sortables, comparator);
 			for (ComparablePairing<Double, FaultSection> val : sortables) {
 				float scalar = val.getComparable().floatValue();
 				Color color = scalarCPT.getColor(scalar);
@@ -801,9 +804,7 @@ public class RupSetMapMaker {
 					jumpFeatures.add(new Feature(line, props));
 				}
 			}
-			Collections.sort(sortables);
-			if (reverseSort)
-				Collections.reverse(sortables);
+			Collections.sort(sortables, comparator);
 			for (ComparablePairing<Double, XY_DataSet> val : sortables) {
 				float scalar = val.getComparable().floatValue();
 				Color color = scalarJumpsCPT.getColor(scalar);
@@ -846,9 +847,7 @@ public class RupSetMapMaker {
 					if (outlines != null)
 						outlines.set(xy.get(0));
 				}
-				Collections.sort(sortables);
-				if (reverseSort)
-					Collections.reverse(sortables);
+				Collections.sort(sortables, comparator);
 				for (ComparablePairing<Double, XY_DataSet> val : sortables) {
 					float scalar = val.getComparable().floatValue();
 					Color color = scatterScalarCPT.getColor(scalar);
@@ -1020,9 +1019,25 @@ public class RupSetMapMaker {
 		return script;
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 //		System.out.println(getGeoJSONViewerRelativeLink("My Link", "map.geojson"));
-		System.out.println(getGeoJSONViewerLink("http://opensha.usc.edu/ftp/kmilner/markdown/rupture-sets/rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5/comp_fm3_1_ucerf3/resources/conn_rates_m6.5.geojson"));
+//		System.out.println(getGeoJSONViewerLink("http://opensha.usc.edu/ftp/kmilner/mrkdown/rupture-sets/rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5/comp_fm3_1_ucerf3/resources/conn_rates_m6.5.geojson"));
+		
+		List<GeoJSONFaultSection> sects = GeoJSONFaultReader.readFaultSections(new File("/tmp/GEOLOGIC_sub_sects.geojson"));
+		
+		RupSetMapMaker mapMaker = new RupSetMapMaker(sects, buildBufferedRegion(sects));
+		
+		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-1, 1);
+		double[] scalars = new double[sects.size()];
+		for (int s=0; s<scalars.length; s++) {
+			if (Math.random() < 0.3)
+				scalars[s] = Double.NaN;
+			else
+				scalars[s] = 2d*Math.random()-1;
+		}
+		mapMaker.setReverseSort(true);
+		mapMaker.plotSectScalars(scalars, cpt, "Label");
+		mapMaker.plot(new File("/tmp"), "nan_test", " ");
 	}
 
 }
