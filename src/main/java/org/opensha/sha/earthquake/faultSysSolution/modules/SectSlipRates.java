@@ -117,7 +117,6 @@ SplittableRuptureSubSetModule<SectSlipRates>{
 		@Override
 		public SectSlipRates copy(FaultSystemRupSet newParent) throws IllegalStateException {
 			Preconditions.checkNotNull(newParent);
-			Preconditions.checkState(parent == null || newParent.getNumSections() == parent.getNumSections());
 			return new Default(newParent);
 		}
 
