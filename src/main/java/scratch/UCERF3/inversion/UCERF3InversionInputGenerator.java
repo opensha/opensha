@@ -139,8 +139,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 					paleoRateConstraints, paleoProbabilityModel));
 		
 		if (config.getPaleoSlipConstraintWt() > 0d)
-			constraints.add(new PaleoSlipInversionConstraint(rupSet, config.getPaleoSlipConstraintWt(),
-					aveSlipConstraints, U3AveSlipConstraint.slip_prob_model, false));
+			constraints.add(new PaleoSlipInversionConstraint.UCERF3(rupSet, config.getPaleoSlipConstraintWt(),
+					aveSlipConstraints, U3AveSlipConstraint.slip_prob_model));
 		
 		if (config.getRupRateConstraintWt() > 0d) {
 			// This is the RupRateConstraintWt for ruptures not in UCERF2

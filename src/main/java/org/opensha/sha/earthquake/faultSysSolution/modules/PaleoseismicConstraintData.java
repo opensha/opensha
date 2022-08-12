@@ -169,7 +169,7 @@ SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
 	}
 	
 	/**
-	 * Converts paleo slip constraints to rate constraints using the rupture set target slip rates
+	 * Converts paleo slip constraints to rate constraints using the rupture set target slip rates, propagating uncertainties
 	 * 
 	 * @param targetSlipRates target slip rate data
 	 * @param paleoSlipConstraints paleo-slip constraints, to be converted to rate constraints
@@ -189,44 +189,43 @@ SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
 		for (SectMappedUncertainDataConstraint constraint : paleoSlipConstraints) {
 			// this is a constraint on average slip, but we need to convert it to a constraint on rates
 			
+			// slip rate, in m/yr
 			double targetSlipRate = targetSlipRates.getSlipRate(constraint.sectionIndex);
+			// slip rate std dev, in m/yr
+			double targetSlipRateStdDev = applySlipRateUncertainty ? slipRateStdDevs[constraint.sectionIndex] : 0d;;
 			
-			double meanRate = targetSlipRate / constraint.bestEstimate;
-			
-			BoundedUncertainty slipUncertainty;
-			UncertaintyBoundType refType;
-			if (constraint.uncertainties[0] instanceof BoundedUncertainty) {
-				// estimate slip rate bounds in the same units as the original uncertainty estimate
-				slipUncertainty = (BoundedUncertainty)constraint.uncertainties[0];
-				refType = slipUncertainty.type;
-			} else {
-				refType = UncertaintyBoundType.TWO_SIGMA;
-				slipUncertainty = constraint.estimateUncertaintyBounds(refType);
-			}
+			// average slip, in m
+			double aveSlip = constraint.bestEstimate;
+			// average slip std dev, in m
+			double aveSlipStdDev = constraint.getPreferredStdDev();
+
 			
 			System.out.println("Inferring rate constraint from paleo slip constraint on "+constraint.sectionName);
-			System.out.println("\tslip="+(float)constraint.bestEstimate+"\tslipUuncert="+slipUncertainty);
-			System.out.println("\tslip rate="+(float)targetSlipRate);
+			System.out.println("\tslip="+(float)aveSlip+" +/- "+(float)aveSlipStdDev);
+			System.out.println("\tslip rate="+(float)targetSlipRate+" +/- "+(float)targetSlipRateStdDev);
 			
-			double lowerTarget, upperTarget;
+			// rate estimate: r = s / d
+			double meanRate = targetSlipRate / aveSlip;
+			/*
+			 * uncertainty propagation:
+			 * 		r +/- deltaR = (s +/- deltaS)/(d +/- deltaD)
+			 * simplifies to (see https://www.geol.lsu.edu/jlorenzo/geophysics/uncertainties/Uncertaintiespart2.html):
+			 * 		deltaR/r = sqrt((deltaS/s)^2 + (deltaD/d)^2)
+			 * 		deltaR = r*sqrt((deltaS/s)^2 + (deltaD/d)^2)
+			 */
+			double rateSD;
 			if (applySlipRateUncertainty) {
-				BoundedUncertainty slipRateUncertainty = refType.estimate(
-						targetSlipRate, slipRateStdDevs[constraint.sectionIndex]);
-				lowerTarget = slipRateUncertainty.lowerBound;
-				upperTarget = slipRateUncertainty.upperBound;
-				System.out.println("\tSlip Rate Uncertainties: "+slipRateUncertainty);
+				rateSD = meanRate * Math.sqrt(
+						Math.pow(targetSlipRateStdDev/targetSlipRate, 2) + Math.pow(aveSlipStdDev/aveSlip, 2));
 			} else {
-				lowerTarget = targetSlipRate;
-				upperTarget = targetSlipRate;
+				// even simpler: deltaR = r*sqrt((deltaS/s)^2) = r*deltaD/d
+				rateSD = meanRate * aveSlipStdDev/aveSlip;
 			}
-			Uncertainty rateUncertainty = new Uncertainty(refType.estimateStdDev(meanRate,
-					lowerTarget / slipUncertainty.upperBound,
-					upperTarget / slipUncertainty.lowerBound));
 			
-			System.out.println("\trate="+(float)meanRate+"\trateUuncert="+rateUncertainty);
+			System.out.println("\trate="+(float)meanRate+" +/- "+(float)rateSD);
 			
 			inferred.add(new SectMappedUncertainDataConstraint(constraint.name, constraint.sectionIndex,
-					constraint.sectionName, constraint.dataLocation, meanRate, rateUncertainty));
+					constraint.sectionName, constraint.dataLocation, meanRate, new Uncertainty(rateSD)));
 		}
 		
 		return inferred;
