@@ -729,7 +729,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			sectColors.add(null);
 		
 		ConnectivityClusterSolutionMisfits clusterMisfits = null;
-		if (sol != null)
+		if (sol != null && table != null)
 			clusterMisfits = sol.getModule(ConnectivityClusterSolutionMisfits.class);
 		List<String> clusterMisfitNames = null;
 		Quantity tableQuantity = Quantity.MAD;
@@ -760,7 +760,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		int[] isolatedMisfitCounts = null;
 		double[] otherMisfits = null;
 		int[] otherMisfitCounts = null;
-		if (clusterMisfitNames != null) {
+		if (clusterMisfits != null) {
 			isolatedMisfits = new double[clusterMisfitNames.size()];
 			isolatedMisfitCounts = new int[clusterMisfitNames.size()];
 			otherMisfits = new double[clusterMisfitNames.size()];
