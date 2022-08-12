@@ -79,6 +79,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.InputJump
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCache;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
@@ -674,7 +675,7 @@ public class ReportPageGen {
 			table.finalizeLine();
 			
 			table.initNewLine();
-			table.addColumn("**Total Moment Rate**");
+			table.addColumn("**Solution Total Moment Rate**");
 			if (primary.sol == null)
 				table.addColumn("_N/A_");
 			else
@@ -690,10 +691,24 @@ public class ReportPageGen {
 		
 		if (primary.rupSet != null) {
 			table.initNewLine();
-			table.addColumn("**Deformation Model Total Moment Rate**");
+			table.addColumn("**Target Total Moment Rate**");
 			table.addColumn(momentRateStr(primary.rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate()));
 			if (comparison != null)
 				table.addColumn(momentRateStr(comparison.rupSet.requireModule(SectSlipRates.class).calcTotalMomentRate()));
+			table.finalizeLine();
+			
+			table.initNewLine();
+			table.addColumn("**Deformation Model Creep-Reduced Total Moment Rate**");
+			table.addColumn(momentRateStr(dmMomentRate(primary.rupSet.getFaultSectionDataList(), true)));
+			if (comparison != null)
+				table.addColumn(momentRateStr(dmMomentRate(comparison.rupSet.getFaultSectionDataList(), true)));
+			table.finalizeLine();
+			
+			table.initNewLine();
+			table.addColumn("**Deformation Model Original Total Moment Rate**");
+			table.addColumn(momentRateStr(dmMomentRate(primary.rupSet.getFaultSectionDataList(), false)));
+			if (comparison != null)
+				table.addColumn(momentRateStr(dmMomentRate(comparison.rupSet.getFaultSectionDataList(), false)));
 			table.finalizeLine();
 			
 			table.initNewLine();
@@ -718,6 +733,13 @@ public class ReportPageGen {
 			table.finalizeLine();
 		}
 		return table;
+	}
+	
+	private static double dmMomentRate(List<? extends FaultSection> subSects, boolean creepReduced) {
+		double moRate = 0d;
+		for (FaultSection sect : subSects)
+			moRate += sect.calcMomentRate(creepReduced);
+		return moRate;
 	}
 	
 	private static String momentRateStr(double moRate) {
