@@ -22,7 +22,10 @@ import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration.Builder;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurationFactory;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.Inversions;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint.InitialModelParticipationRateEstimator;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDLaplacianSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
@@ -52,7 +55,9 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.Sol
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_PaleoDataLoader;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModelBranchNode;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -173,6 +178,25 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 				aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel);
 		
 		List<InversionConstraint> constraints = inputGen.getConstraints();
+		
+		SegmentationModelBranchNode segModelChoice = branch.getValue(SegmentationModelBranchNode.class);
+		if (segModelChoice != null) {
+			JumpProbabilityCalc segModel = segModelChoice.getModel(rupSet, branch);
+			if (segModel != null) {
+				constraints = new ArrayList<>(constraints);
+				
+				InitialModelParticipationRateEstimator rateEst = new InitialModelParticipationRateEstimator(
+						rupSet, Inversions.getDefaultVariablePerturbationBasis(rupSet));
+
+//				double weight = 0.5d;
+//				boolean ineq = false;
+				double weight = 100000d;
+				boolean ineq = true;
+				
+				constraints.add(new JumpProbabilityConstraint.RelativeRate(
+						weight, ineq, rupSet, segModel, rateEst));
+			}
+		}
 		
 		int avgThreads = threads / 4;
 		
