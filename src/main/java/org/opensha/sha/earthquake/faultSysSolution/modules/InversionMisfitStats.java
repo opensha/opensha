@@ -349,10 +349,14 @@ public class InversionMisfitStats implements CSV_BackedModule, BranchAverageable
 					
 					List<MisfitStats> matchingStats = nameMatchesMap.get(range.name);
 					List<Double> matchingWeights = nameWeightsMap.get(range.name);
+					Preconditions.checkState(matchingStats.size() == matchingWeights.size());
 					
 					double myTotWeight = 0d;
 					for (Double weight : matchingWeights)
 						myTotWeight += weight;
+					
+					Preconditions.checkState(myTotWeight > 0d, "Bad totWeight=%s with %s stats for constraint %s",
+							myTotWeight, matchingStats.size(), range.name);
 					
 					for (int i=0; i<matchingStats.size(); i++) {
 						double weight = matchingWeights.get(i)/myTotWeight;
