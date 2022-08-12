@@ -4,14 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.opensha.commons.data.CSVFile;
-import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.Quantity;
 
 import com.google.common.base.Preconditions;
 
-public class InversionMisfitProgress implements CSV_BackedModule, AverageableModule<InversionMisfitProgress> {
+public class InversionMisfitProgress implements CSV_BackedModule, BranchAverageableModule<InversionMisfitProgress> {
 	
 	private List<Long> iterations;
 	private List<Long> times;
@@ -216,10 +215,25 @@ public class InversionMisfitProgress implements CSV_BackedModule, AverageableMod
 				List<Long> avgTimes = new ArrayList<>(minNumSteps);
 				List<InversionMisfitStats> avgStats = new ArrayList<>(minNumSteps);
 				
+				Quantity targetQuantity = null;
+				for (int p=0; p<progresses.size(); p++) {
+					InversionMisfitProgress progress = progresses.get(p);
+					if (p == 0)
+						targetQuantity = progress.targetQuantity;
+					else if (targetQuantity != progress.targetQuantity)
+						targetQuantity = null;
+					if (targetQuantity == null)
+						break;
+				}
+				List<Double> avgTargetVals = null;
+				if (targetQuantity != null)
+					avgTargetVals = new ArrayList<>(minNumSteps);
+				
 				for (int i=0; i<minNumSteps; i++) {
 					List<Long> iters = new ArrayList<>(progresses.size());
 					List<Long> times = new ArrayList<>(progresses.size());
 					AveragingAccumulator<InversionMisfitStats> statsAccumulator = null;
+					List<Double> targetVals = avgTargetVals == null ? null : new ArrayList<>(progresses.size());
 					for (int p=0; p<progresses.size(); p++) {
 						InversionMisfitProgress progress = progresses.get(p);
 						double weight = weights.get(p);
@@ -229,9 +243,13 @@ public class InversionMisfitProgress implements CSV_BackedModule, AverageableMod
 						if (statsAccumulator == null)
 							statsAccumulator = stats.averagingAccumulator();
 						statsAccumulator.process(stats, weight);
+						if (targetVals != null)
+							targetVals.add(progress.targetVals.get(i));
 					}
 					avgIters.add(longAvg(iters, weights));
 					avgTimes.add(longAvg(times, weights));
+					if (targetVals != null)
+						targetVals.add(doubleAvg(targetVals, weights));
 					avgStats.add(statsAccumulator.getAverage());
 				}
 				return new InversionMisfitProgress(avgIters, avgTimes, avgStats);
@@ -255,6 +273,24 @@ public class InversionMisfitProgress implements CSV_BackedModule, AverageableMod
 		if (allSame)
 			return val1;
 		return (long)(avgSum/weightSum + 0.5);
+	}
+	
+	private static double doubleAvg(List<Double> vals, List<Double> weights) {
+		double val1 = vals.get(0);
+		double avgSum = 0d;
+		double weightSum = 0d;
+		boolean allSame = true;
+		for (int i=0; i<vals.size(); i++) {
+			double val = vals.get(i);
+			double weight = weights.get(i);
+			
+			allSame = allSame && val == val1;
+			avgSum += val*weight;
+			weightSum += weight;
+		}
+		if (allSame)
+			return val1;
+		return (avgSum/weightSum + 0.5);
 	}
 
 }
