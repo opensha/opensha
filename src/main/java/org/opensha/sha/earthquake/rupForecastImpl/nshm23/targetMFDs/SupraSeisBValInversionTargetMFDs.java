@@ -141,13 +141,31 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	 */
 	public static final DoubleUnaryOperator MAG_DEP_REL_STD_DEV_DEFAULT = M->0.1;
 	
+	/**
+	 * Default choice for if we should propagate deformation model uncertainties to MFD uncertainties
+	 */
 	public static final boolean APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT = true;
 	
+	/**
+	 * Default choice for if we should re-assign G-R rates in empty magnitude bins to neighboring bins with ruptures
+	 */
 	public static final boolean SPARSE_GR_DEFAULT = true;
 	
+	/**
+	 * Default choice for if we should artificially inflate uncertainties for magnitude bins for which few sections
+	 * participate
+	 */
 	public static final boolean ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT = false;
 	
+	/**
+	 * Default choice for if we should use creep reduced (otherwise unreduced) slip rate standard deviations
+	 */
 	public static final boolean USE_CREEP_REDUCED_SLIP_STD_DEVS_DEFAULT = false;
+	
+	/**
+	 * Default choice for if we should consider ruptures that use zero-slip-rate sections when building MFDs
+	 */
+	public static final boolean USE_RUPTURES_ON_ZERO_SLIP_SECTIONS = false;
 	
 	// discretization parameters for MFDs
 	public final static double MIN_MAG = 0.05;
@@ -210,6 +228,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		private boolean sparseGR = SPARSE_GR_DEFAULT;
 		private boolean addSectCountUncertainties = ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT;
 		private boolean useCreepReducedSlipStdDevs = USE_CREEP_REDUCED_SLIP_STD_DEVS_DEFAULT;
+		private boolean useRupsOnZeroSlipSects = USE_RUPTURES_ON_ZERO_SLIP_SECTIONS;
 		
 		private double slipStdDevFloor = 0d;
 		
@@ -308,6 +327,16 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		 */
 		public Builder useCreepReducedSlipStdDevs(boolean useCreepReducedSlipStdDevs) {
 			this.useCreepReducedSlipStdDevs = useCreepReducedSlipStdDevs;
+			return this;
+		}
+		
+		/**
+		 * Sets whether or not we should use ruptures that include sections with zero slip rates when determining MFDs
+		 * @param useRupsOnZeroSlipSects
+		 * @return
+		 */
+		public Builder useRupsOnZeroSlipSects(boolean useRupsOnZeroSlipSects) {
+			this.useRupsOnZeroSlipSects = useRupsOnZeroSlipSects;
 			return this;
 		}
 		
@@ -443,6 +472,26 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			int[] sectMinMagIndexes = new int[numSects];
 			int[] sectMaxMagIndexes = new int[numSects];
 			
+			BitSet rupsOnZeroRateSects = null;
+			if (!useRupsOnZeroSlipSects) {
+				rupsOnZeroRateSects = new BitSet(rupSet.getNumRuptures());
+				int numZeroSects = 0;
+				for (int s=0; s<rupSet.getNumSections(); s++) {
+					if (rupSet.getFaultSectionData(s).getReducedAveSlipRate() == 0d) {
+						// it's a zero rate section
+						numZeroSects++;
+						for (int rupIndex : rupSet.getRupturesForSection(s))
+							rupsOnZeroRateSects.set(rupIndex);
+					}
+				}
+				int numZeroRups = rupsOnZeroRateSects.cardinality();
+				if (numZeroRups > 0)
+					// we have some
+					System.out.println("Will skip "+numZeroRups+" on "+numZeroSects+" zero-rate sections");
+				else
+					rupsOnZeroRateSects = null;
+			}
+			
 			// first, calculate sub and supra-seismogenic G-R MFDs
 			for (int s=0; s<numSects; s++) {
 				FaultSection sect = rupSet.getFaultSectionData(s);
@@ -480,6 +529,9 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 						if (rupSubSet != null && !rupSubSet.get(r))
 							// not allowed to use this rupture, skip
 							continue;
+						if (rupsOnZeroRateSects != null && rupsOnZeroRateSects.get(r))
+							// this rupture uses a zero-slip-rate section, and we're skipping them
+							continue;
 						minAbove = Math.min(mag, minAbove);
 						sectMaxMag = Math.max(sectMaxMag, mag);
 						mags.add(mag);
@@ -495,8 +547,10 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				IncrementalMagFreqDist supraGR_shape;
 				int minMagIndex, maxMagIndex;
 				if (rups.isEmpty()) {
-					System.err.println("WARNING: Section "+s+" has no ruptures above the minimum magnitude ("
-							+sectMinMag+"): "+sect.getName());
+					if (creepReducedSlipRate > 0d)
+						// only print warning if we have a slip rate on this section
+						System.err.println("WARNING: Section "+s+" has no ruptures above the minimum magnitude ("
+								+sectMinMag+"): "+sect.getName());
 					minMagIndex = refMFD.getClosestXIndex(sectMinMag);
 					maxMagIndex = minMagIndex;
 					supraGR_shape = new IncrementalMagFreqDist(minMagIndex, 1, refMFD.getDelta());
