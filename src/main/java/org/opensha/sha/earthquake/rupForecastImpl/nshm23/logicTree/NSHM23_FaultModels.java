@@ -67,16 +67,6 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 			Preconditions.checkNotNull(sectsReader, "Fault model file not found: %s", sectPath);
 			return GeoJSONFaultReader.readFaultSections(sectsReader);
 		}
-	},
-	NSHM23_v2_UTAH("NSHM23 Utah Fault Model v2", "NSHM23 UT v2", NSHM23_DeformationModels.GEOLOGIC, 0d) {
-		@Override
-		protected List<? extends FaultSection> loadFaultSections() throws IOException {
-			String sectPath = NSHM23_SECTS_PATH_PREFIX+"v2/NSHM23_FSD_v2.geojson";
-			Reader sectsReader = new BufferedReader(new InputStreamReader(
-					GeoJSONFaultReader.class.getResourceAsStream(sectPath)));
-			Preconditions.checkNotNull(sectsReader, "Fault model file not found: %s", sectPath);
-			return GeoJSONFaultReader.filterByState(GeoJSONFaultReader.readFaultSections(sectsReader), "UT", true);
-		}
 	};
 	
 	private static final ConcurrentMap<NSHM23_FaultModels, List<? extends FaultSection>> sectsCache = new ConcurrentHashMap<>();

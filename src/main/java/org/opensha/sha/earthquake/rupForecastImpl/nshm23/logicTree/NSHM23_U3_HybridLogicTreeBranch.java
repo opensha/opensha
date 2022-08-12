@@ -58,7 +58,7 @@ public class NSHM23_U3_HybridLogicTreeBranch extends LogicTreeBranch<LogicTreeNo
 			RupturePlausibilityModels.COULOMB, U3_UncertAddDeformationModels.U3_ZENG, ScalingRelationships.SHAW_2009_MOD,
 			SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p5, SubSectConstraintModels.TOT_NUCL_RATE,
 			SubSeisMoRateReductions.SUB_B_1, NSHM23_SegmentationModels.MID,
-			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG_ITERATIVE);
+			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG);
 	
 	/**
 	 * Creates a NSHM23LogicTreeBranch instance from given set of node values. Null or missing values

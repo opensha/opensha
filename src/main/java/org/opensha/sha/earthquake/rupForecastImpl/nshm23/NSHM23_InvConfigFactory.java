@@ -63,10 +63,12 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilde
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_PaleoDataLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.HardDistCutoffJumpProbCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SingleStates;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSect;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
@@ -114,10 +116,15 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				model = RupturePlausibilityModels.COULOMB;
 		}
 		
+		NSHM23_SingleStates state = branch.getValue(NSHM23_SingleStates.class);
+		
 		// check cache
 		FaultSystemRupSet rupSet = rupSetCache.get(fm, model);
-		if (rupSet != null)
+		if (rupSet != null) {
+			if (state != null)
+				rupSet = state.getRuptureSubSet(rupSet);
 			return rupSet;
+		}
 		
 		RupSetScalingRelationship scale = branch.requireValue(RupSetScalingRelationship.class);
 		
@@ -181,6 +188,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				}
 			}
 		}
+		if (state != null)
+			rupSet = state.getRuptureSubSet(rupSet);
 		
 		return rupSet;
 	}
@@ -222,13 +231,24 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
 		RupSetDeformationModel dm = branch.requireValue(RupSetDeformationModel.class);
 		Preconditions.checkState(dm.isApplicableTo(fm),
-				"Fault and deformation models are compatible: %s, %s", fm.getName(), dm.getName());
+				"Fault and deformation models are not compatible: %s, %s", fm.getName(), dm.getName());
 		// override slip rates for the given deformation model
 		List<? extends FaultSection> subSects;
 		try {
 			subSects = dm.build(fm);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
+		}
+		if (rupSet.hasModule(RuptureSubSetMappings.class)) {
+			// state specific, remap the DM-specific sections to this subset
+			List<FaultSection> subsetSects = new ArrayList<>();
+			RuptureSubSetMappings mappings = rupSet.getModule(RuptureSubSetMappings.class);
+			for (int s=0; s<rupSet.getNumSections(); s++) {
+				FaultSection sect = subSects.get(mappings.getOrigSectID(s)).clone();
+				sect.setSectionId(s);
+				subsetSects.add(sect);
+			}
+			subSects = subsetSects;
 		}
 		Preconditions.checkState(subSects.size() == rupSet.getNumSections());
 		
@@ -1201,6 +1221,14 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 		public ForceWideSegBranches() {
 			NSHM23_SegmentationModels.WIDE_BRANCHES = true;
+		}
+		
+	}
+	
+	public static class ForceNoGhostTransient extends NSHM23_InvConfigFactory {
+
+		public ForceNoGhostTransient() {
+			NSHM23_DeformationModels.GEODETIC_INCLUDE_GHOST_TRANSIENT = false;
 		}
 		
 	}

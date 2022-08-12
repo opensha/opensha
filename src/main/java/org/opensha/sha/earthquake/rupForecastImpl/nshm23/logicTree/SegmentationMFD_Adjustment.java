@@ -33,13 +33,13 @@ public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 			return new ThresholdAveragingSectNuclMFD_Estimator.WorstAvgJumpProb(segModel);
 		}
 	},
-	REL_GR_THRESHOLD_AVG("Threshold Averaging, Single-Iter Rel G-R", "ThreshAvgSingleIterRelGR", 1d) {
+	REL_GR_THRESHOLD_AVG_SINGLE_ITER("Threshold Averaging, Single-Iter Rel G-R", "ThreshAvgSingleIterRelGR", 1d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 1, true);
 		}
 	},
-	REL_GR_THRESHOLD_AVG_ITERATIVE("Threshold Averaging, Rel G-R", "ThreshAvgIterRelGR", 1d) {
+	REL_GR_THRESHOLD_AVG("Threshold Averaging, Rel G-R", "ThreshAvgIterRelGR", 1d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 100, true);

@@ -44,6 +44,8 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			LogicTreeLevel.forEnum(MaxJumpDistModels.class, "Maximum Jump Distance", "MaxJumpDist");
 	public static LogicTreeLevel<RupsThroughCreepingSect> RUPS_THROUGH_CREEPING =
 			LogicTreeLevel.forEnum(RupsThroughCreepingSect.class, "Ruptures Through Creeping Section", "RupsThruCreep");
+	public static LogicTreeLevel<NSHM23_SingleStates> SINGLE_STATES =
+			LogicTreeLevel.forEnum(NSHM23_SingleStates.class, "Single State Inversion", "SingleState");
 	
 	static {
 		// exhaustive for now, can trim down later
@@ -60,7 +62,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			RupturePlausibilityModels.COULOMB, NSHM23_DeformationModels.GEOLOGIC, NSHM23_ScalingRelationships.LOGA_C4p2,
 			NSHM23_SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p5, SubSectConstraintModels.TOT_NUCL_RATE,
 			SubSeisMoRateReductions.SUB_B_1, NSHM23_SegmentationModels.MID,
-			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG_ITERATIVE);
+			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG);
 	
 	/**
 	 * Creates a NSHM23LogicTreeBranch instance from given set of node values. Null or missing values

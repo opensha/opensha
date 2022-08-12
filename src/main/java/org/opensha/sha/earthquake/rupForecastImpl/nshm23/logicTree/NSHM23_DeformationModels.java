@@ -3,12 +3,15 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.jar.Attributes.Name;
@@ -30,6 +33,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultRea
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.MinisectionMappings;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.MinisectionMappings.MinisectionDataRecord;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
 import com.google.common.base.Preconditions;
@@ -138,9 +142,8 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	private static final String GEOLOGIC_VERSION = "v1p0";
 	private static final String CREEP_DATE = "2022_06_09";
 	
-	private static String getGeodeticModelDate(RupSetFaultModel faultModel) {
-		if (sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v2)
-				|| sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v2_UTAH))
+	private static String getGeodeticDirForFM(RupSetFaultModel faultModel) {
+		if (sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v2))
 			return "fm_v2";
 		if (sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v1p4))
 			return "fm_v1p4";
@@ -318,11 +321,11 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		
 		MinisectionMappings mappings = new MinisectionMappings(geoSects, subSects);
 		
-		String geodeticDate = getGeodeticModelDate(faultModel);
-		Preconditions.checkNotNull(geodeticDate, "No geodetic files found for fault model %s of type %s",
+		String fmDirName = getGeodeticDirForFM(faultModel);
+		Preconditions.checkNotNull(fmDirName, "No geodetic files found for fault model %s of type %s",
 				faultModel, faultModel.getClass().getName());
 		
-		String dmPath = NSHM23_DM_PATH_PREFIX+"geodetic/"+geodeticDate+"/"+name();
+		String dmPath = NSHM23_DM_PATH_PREFIX+"geodetic/"+fmDirName+"/"+name();
 		if (includeGhostCorrection)
 			dmPath += "-include_ghost_corr.txt";
 		else
@@ -418,8 +421,9 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	}
 	
 	private static Map<Integer, List<GeodeticSlipRecord>> loadGeodeticModel(String path) throws IOException {
-		BufferedReader dmReader = new BufferedReader(new InputStreamReader(
-				NSHM23_DeformationModels.class.getResourceAsStream(path)));
+		InputStream stream = NSHM23_DeformationModels.class.getResourceAsStream(path);
+		Preconditions.checkNotNull(stream, "Deformation model file not found: %s", path);
+		BufferedReader dmReader = new BufferedReader(new InputStreamReader(stream));
 		Preconditions.checkNotNull(dmReader, "Deformation model file not found: %s", path);
 		
 		Map<Integer, List<GeodeticSlipRecord>> ret = new HashMap<>();
@@ -807,6 +811,106 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		public CreepRecord(int parentID, int minisectionID, Location startLoc, Location endLoc, double creepRate) {
 			super(parentID, minisectionID, startLoc, endLoc);
 			this.creepRate = creepRate;
+		}
+	}
+	
+	private static void checkForNegativeAndHighCreep(NSHM23_FaultModels fm) throws IOException {
+		// check for creep data > slip rate or < 0
+		Map<NSHM23_DeformationModels, Map<Integer, List<GeodeticSlipRecord>>> dmSlipRecs = new HashMap<>();
+		Map<NSHM23_DeformationModels, Map<Integer, List<CreepRecord>>> dmCreepRecs = new HashMap<>();
+
+		List<? extends FaultSection> geoSects = buildGeolFullSects(fm, GEOLOGIC_VERSION);
+		List<FaultSection> subSects = GeoJSONFaultReader.buildSubSects(geoSects);
+		MinisectionMappings mappings = new MinisectionMappings(geoSects, subSects);
+
+		for (NSHM23_DeformationModels dm : values()) {
+			if (dm.isApplicableTo(fm) && dm.weight > 0) {
+				if (dm == GEOLOGIC) {
+					Map<Integer, List<GeodeticSlipRecord>> fakeRecs = new HashMap<>();
+					for (FaultSection sect : geoSects) {
+						int parentID = sect.getSectionId();
+						FaultTrace trace = sect.getFaultTrace();
+						List<GeodeticSlipRecord> recs = new ArrayList<>(trace.size()-1);
+						for (int i=1; i<trace.size(); i++) {
+							Location loc1 = trace.get(i-1);
+							Location loc2 = trace.get(i);
+							recs.add(new GeodeticSlipRecord(parentID, i, loc1, loc2, sect.getAveRake(),
+									sect.getOrigAveSlipRate(), sect.getOrigSlipRateStdDev()));
+						}
+						fakeRecs.put(parentID, recs);
+					}
+					dmSlipRecs.put(dm, fakeRecs);
+				} else {
+					String dmPath = NSHM23_DM_PATH_PREFIX+"geodetic/"+getGeodeticDirForFM(fm)+"/"+dm.name();
+					if (GEODETIC_INCLUDE_GHOST_TRANSIENT)
+						dmPath += "-include_ghost_corr.txt";
+					else
+						dmPath += "-no_ghost_corr.txt";
+					dmSlipRecs.put(dm, loadGeodeticModel(dmPath));
+				}
+				String creepPath = NSHM23_DM_PATH_PREFIX+"creep/"+CREEP_DATE+"/"+dm.name()+".txt";
+				dmCreepRecs.put(dm, loadCreepData(creepPath, mappings));
+			}
+		}
+
+		Map<String, HashSet<NSHM23_DeformationModels>> creepBelowZeroes = new HashMap<>();
+		Map<String, HashSet<NSHM23_DeformationModels>> creepAboveSlips = new HashMap<>();
+		for (FaultSection sect : geoSects) {
+			String name = sect.getSectionId()+". "+sect.getSectionName();
+
+			for (NSHM23_DeformationModels dm : values()) {
+				if (!dmSlipRecs.containsKey(dm))
+					continue;
+				List<CreepRecord> creepRecs = dmCreepRecs.get(dm).get(sect.getSectionId());
+				if (creepRecs == null)
+					continue;
+				List<GeodeticSlipRecord> slipRecs = dmSlipRecs.get(dm).get(sect.getSectionId());
+				Preconditions.checkState(creepRecs.size() == slipRecs.size());
+				for (int i=0; i<slipRecs.size(); i++) {
+					GeodeticSlipRecord slip = slipRecs.get(i);
+					CreepRecord creep = creepRecs.get(i);
+					if (creep == null)
+						continue;
+					if (creep.creepRate < 0d) {
+						if (!creepBelowZeroes.containsKey(name))
+							creepBelowZeroes.put(name, new HashSet<>());
+						creepBelowZeroes.get(name).add(dm);
+					}
+					if ((float)creep.creepRate > (float)slip.slipRate) {
+						if (!creepAboveSlips.containsKey(name))
+							creepAboveSlips.put(name, new HashSet<>());
+						creepAboveSlips.get(name).add(dm);
+					}
+				}
+			}
+		}
+		if (!creepBelowZeroes.isEmpty()) {
+			System.out.println("Faults with creep rates < 0:");
+			for (String name : creepBelowZeroes.keySet()) {
+				List<NSHM23_DeformationModels> dms = new ArrayList<>(creepBelowZeroes.get(name));
+				Collections.sort(dms);
+				System.out.print("\t"+name+":\t");
+				for (int i=0; i<dms.size(); i++) {
+					if (i > 0)
+						System.out.print(", ");
+					System.out.print(dms.get(i).name());
+				}
+				System.out.println();
+			}
+		}
+		if (!creepAboveSlips.isEmpty()) {
+			System.out.println("Faults with creep rates > slip rates:");
+			for (String name : creepAboveSlips.keySet()) {
+				List<NSHM23_DeformationModels> dms = new ArrayList<>(creepAboveSlips.get(name));
+				Collections.sort(dms);
+				System.out.print("\t"+name+":\t");
+				for (int i=0; i<dms.size(); i++) {
+					if (i > 0)
+						System.out.print(", ");
+					System.out.print(dms.get(i).name());
+				}
+				System.out.println();
+			}
 		}
 	}
 	
