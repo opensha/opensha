@@ -1585,8 +1585,11 @@ public class SegmentationCalculator {
 		
 		if (comparisons.isEmpty()) {
 			double[] r0s = { 1d, 2d, 3d, 4d, 6d };
-			for (double r0 : r0s)
-				comparisons.add(new Shaw07JumpDistProb(1d, r0));
+			for (double r0 : r0s) {
+				Shaw07JumpDistProb comp = new Shaw07JumpDistProb(1d, r0);
+				comparisons.add(comp);
+				compNames.add(comp.getName());
+			}
 		}
 		
 		
