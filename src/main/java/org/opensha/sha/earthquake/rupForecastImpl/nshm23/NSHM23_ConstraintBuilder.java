@@ -51,6 +51,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_PaleoUncertainties;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
@@ -177,16 +178,32 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public NSHM23_ConstraintBuilder paleoRates() {
+		return paleoRates(null);
+	}
+	
+	public NSHM23_ConstraintBuilder paleoRates(NSHM23_PaleoUncertainties paleoUncert) {
 		PaleoseismicConstraintData data = rupSet.requireModule(PaleoseismicConstraintData.class);
-		if (data.hasPaleoRateConstraints())
-			constraints.add(new PaleoRateInversionConstraint(rupSet, 1d, data.getPaleoRateConstraints(), data.getPaleoProbModel()));
+		if (data.hasPaleoRateConstraints()) {
+			List<? extends SectMappedUncertainDataConstraint> datas = data.getPaleoRateConstraints();
+			if (paleoUncert != null)
+				datas = paleoUncert.getScaled(datas);
+			constraints.add(new PaleoRateInversionConstraint(rupSet, 1d, datas, data.getPaleoProbModel()));
+		}
 		return this;
 	}
 	
 	public NSHM23_ConstraintBuilder paleoSlips() {
+		return paleoSlips(null);
+	}
+	
+	public NSHM23_ConstraintBuilder paleoSlips(NSHM23_PaleoUncertainties paleoUncert) {
 		PaleoseismicConstraintData data = rupSet.requireModule(PaleoseismicConstraintData.class);
-		if (data.hasPaleoSlipConstraints())
-			constraints.add(new PaleoSlipInversionConstraint(rupSet, 1d, data.getPaleoSlipConstraints(), data.getPaleoSlipProbModel(), true));
+		if (data.hasPaleoSlipConstraints()) {
+			List<? extends SectMappedUncertainDataConstraint> datas = data.getPaleoSlipConstraints();
+			if (paleoUncert != null)
+				datas = paleoUncert.getScaled(datas);
+			constraints.add(new PaleoSlipInversionConstraint(rupSet, 1d, datas, data.getPaleoSlipProbModel(), true));
+		}
 		return this;
 	}
 	

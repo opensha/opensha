@@ -41,4 +41,10 @@ public class BoundedUncertainty extends Uncertainty {
 	public boolean contains(double value) {
 		return value >= lowerBound && value <= upperBound;
 	}
+
+	@Override
+	public Uncertainty scaled(double bestEstimate, double scalar) {
+		double newSD = stdDev*scalar;
+		return type.estimate(bestEstimate, newSD);
+	}
 }

@@ -57,6 +57,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilde
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_PaleoDataLoader;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_PaleoUncertainties;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModelBranchNode;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
@@ -163,16 +164,14 @@ public class U3InversionConfigFactory implements InversionConfigurationFactory {
 		// paleo probability model
 		PaleoProbabilityModel paleoProbabilityModel = paleoData.getPaleoProbModel();
 		List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints = paleoData.getPaleoSlipConstraints();
-//		try {
-//			paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
-//					fm, rupSet);
-//
-//			paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
-//
-//			aveSlipConstraints = U3AveSlipConstraint.load(rupSet.getFaultSectionDataList());
-//		} catch (IOException e) {
-//			throw ExceptionUtils.asRuntimeException(e);
-//		}
+
+		NSHM23_PaleoUncertainties paleoUncert = branch.getValue(NSHM23_PaleoUncertainties.class);
+		if (paleoUncert != null) {
+			if (paleoRateConstraints != null)
+				paleoRateConstraints = paleoUncert.getScaled(paleoRateConstraints);
+			if (aveSlipConstraints != null)
+				aveSlipConstraints = paleoUncert.getScaled(aveSlipConstraints);
+		}
 
 		UCERF3InversionInputGenerator inputGen = new UCERF3InversionInputGenerator(rupSet, config, paleoRateConstraints,
 				aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel);

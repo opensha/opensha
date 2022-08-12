@@ -66,6 +66,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistMo
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_PaleoUncertainties;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SingleStates;
@@ -625,8 +626,9 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			constrBuilder.slipRates().weight(slipWeight);
 		
 		if (paleoWeight > 0d) {
-			constrBuilder.paleoRates().weight(paleoWeight);
-			constrBuilder.paleoSlips().weight(paleoWeight);
+			NSHM23_PaleoUncertainties paleoUncert = branch.getValue(NSHM23_PaleoUncertainties.class);
+			constrBuilder.paleoRates(paleoUncert).weight(paleoWeight);
+			constrBuilder.paleoSlips(paleoUncert).weight(paleoWeight);
 		}
 		
 		if (parkWeight > 0d)

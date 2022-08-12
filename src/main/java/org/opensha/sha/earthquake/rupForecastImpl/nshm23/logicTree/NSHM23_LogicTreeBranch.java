@@ -20,6 +20,9 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levels;
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsMaxDist;
 	
+	/*
+	 * Core branch levels
+	 */
 	public static LogicTreeLevel<NSHM23_FaultModels> FM =
 			LogicTreeLevel.forEnum(NSHM23_FaultModels.class, "Fault Model", "FM");
 	public static LogicTreeLevel<RupturePlausibilityModels> PLAUSIBILITY =
@@ -40,12 +43,18 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			LogicTreeLevel.forEnum(NSHM23_SegmentationModels.class, "Segmentation Model", "SegModel");
 	public static LogicTreeLevel<SegmentationMFD_Adjustment> SEG_ADJ =
 			LogicTreeLevel.forEnum(SegmentationMFD_Adjustment.class, "Segmentation MFD Adjustment", "SegAdj");
+	
+	/*
+	 * Optional levels
+	 */
 	public static LogicTreeLevel<MaxJumpDistModels> MAX_DIST =
 			LogicTreeLevel.forEnum(MaxJumpDistModels.class, "Maximum Jump Distance", "MaxJumpDist");
 	public static LogicTreeLevel<RupsThroughCreepingSect> RUPS_THROUGH_CREEPING =
 			LogicTreeLevel.forEnum(RupsThroughCreepingSect.class, "Ruptures Through Creeping Section", "RupsThruCreep");
 	public static LogicTreeLevel<NSHM23_SingleStates> SINGLE_STATES =
 			LogicTreeLevel.forEnum(NSHM23_SingleStates.class, "Single State Inversion", "SingleState");
+	public static LogicTreeLevel<NSHM23_PaleoUncertainties> PALEO_UNCERT =
+			LogicTreeLevel.forEnum(NSHM23_PaleoUncertainties.class, "Paleoseismic Data Uncertainties", "PaleoUncert");
 	
 	static {
 		// exhaustive for now, can trim down later

@@ -23,6 +23,10 @@ public class Uncertainty {
 		this.stdDev = stdDev;
 	}
 	
+	public Uncertainty scaled(double bestEstimate, double scalar) {
+		return new Uncertainty(stdDev*scalar);
+	}
+	
 	@Override
 	public String toString() {
 		return "stdDev="+(float)stdDev;
