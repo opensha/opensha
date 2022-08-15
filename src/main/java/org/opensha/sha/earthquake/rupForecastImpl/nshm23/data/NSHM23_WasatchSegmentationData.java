@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -19,8 +20,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.DistDependentJumpProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.HardcodedJumpProb;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
@@ -140,6 +140,7 @@ public class NSHM23_WasatchSegmentationData {
 	public static HardcodedJumpProb build(List<? extends FaultSection> subSects, double passthroughRate) {
 		return build(subSects, passthroughRate);
 	}
+	
 	public static HardcodedJumpProb build(List<? extends FaultSection> subSects, double passthroughRate,
 			JumpProbabilityCalc fallback) {
 		List<WasatchSegLocation> datas;
@@ -162,6 +163,26 @@ public class NSHM23_WasatchSegmentationData {
 			name += ", "+fallback.getName();
 		
 		return new HardcodedJumpProb(name, idsToProbs, true, fallback);
+	}
+	
+	public static BinaryJumpProbabilityCalc buildFullExclusion(List<? extends FaultSection> subSects,
+			BinaryJumpProbabilityCalc fallback) {
+		List<WasatchSegLocation> datas;
+		try {
+			datas = load();
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
+		
+		Map<WasatchSegLocation, IDPairing> mappings = mapToParentSects(datas, subSects, false);
+		if (mappings == null || mappings.isEmpty())
+			return null;
+		
+		String name = "Wastach Exclude";
+		if (fallback != null)
+			name += ", "+fallback.getName();
+		
+		return new HardcodedBinaryJumpProb(name, true, new HashSet<>(mappings.values()), true);
 	}
 	
 	public static void main(String[] args) throws IOException {
