@@ -1074,6 +1074,74 @@ public class SegmentationCalculator {
 		return ret;
 	}
 	
+	public File[] plotConnectionModelDiffs(File outputDir, String prefix, String title, RateCombiner combiner,
+			JumpProbabilityCalc segModel) throws IOException {
+		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+//		plotter.setJumpLineThickness(4f);
+		
+		CPT cpt = getConnectionDiffCPT();
+		
+		File[] ret = new File[minMags.length];
+		
+		for (int m=0; m<minMags.length; m++) {
+			plotter.clearJumpScalars();
+			
+			String label = getMagLabel(minMags[m])+" Passthrough Rate Difference";
+			Map<Jump, Double> primary = calcJumpPassthroughs(m, combiner);
+			List<Jump> jumps = new ArrayList<>();
+			List<Double> values = new ArrayList<>();
+			for (Jump jump : primary.keySet()) {
+				Double val1 = primary.get(jump);
+				double val2 = segModel.calcJumpProbability(null, jump, false);
+				if (val1 == null)
+					val1 = 0d;
+				jumps.add(jump);
+				values.add(val1 - val2);
+			}
+			plotter.plotJumpScalars(jumps, values, cpt, label);
+			
+			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
+			ret[m] = new File(outputDir, myPrefix+".png");
+			plotter.plot(outputDir, myPrefix, title, 800);
+		}
+		
+		return ret;
+	}
+	
+	public File[] plotConnectionModelLogRatios(File outputDir, String prefix, String title, RateCombiner combiner,
+			JumpProbabilityCalc segModel) throws IOException {
+		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+//		plotter.setJumpLineThickness(4f);
+		
+		CPT cpt = getConnectionLogRatioCPT();
+		
+		File[] ret = new File[minMags.length];
+		
+		for (int m=0; m<minMags.length; m++) {
+			plotter.clearJumpScalars();
+			
+			String label = "Log10 "+getMagLabel(minMags[m])+" Passthrough Rate Ratio";
+			Map<Jump, Double> primary = calcJumpPassthroughs(m, combiner);
+			List<Jump> jumps = new ArrayList<>();
+			List<Double> values = new ArrayList<>();
+			for (Jump jump : primary.keySet()) {
+				Double val1 = primary.get(jump);
+				double val2 = segModel.calcJumpProbability(null, jump, false);
+				if (val1 == null)
+					val1 = 0d;
+				jumps.add(jump);
+				values.add(Math.log10(val1/val2));
+			}
+			plotter.plotJumpScalars(jumps, values, cpt, label);
+			
+			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
+			ret[m] = new File(outputDir, myPrefix+".png");
+			plotter.plot(outputDir, myPrefix, title, 800);
+		}
+		
+		return ret;
+	}
+	
 	private SubSectStiffnessCalculator getStiffnessCalc() {
 		if (stiffnessCalc == null)
 			stiffnessCalc = new SubSectStiffnessCalculator(subSects, 2d, 30000, 30000, 0.5, PatchAlignment.FILL_OVERLAP, 1);

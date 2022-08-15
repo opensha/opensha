@@ -8,9 +8,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.modules.OpenSHA_Module;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
@@ -18,10 +20,12 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SegmentationCalculator.Scalars;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModelBranchNode;
 
 import com.google.common.base.Preconditions;
 
@@ -177,6 +181,36 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 			}
 		}
 		
+		JumpProbabilityCalc segModel = getBranchSegModel(sol.getRupSet());
+		String segModelName = segModel == null ? null : getBranchSegModelChoice(sol.getRupSet()).getName();
+		JumpProbabilityCalc compSegModel = compSegCalc != null ? getBranchSegModel(meta.comparison.rupSet) : null;
+		String compSegModelName = compSegModel == null ? null : getBranchSegModelChoice(meta.comparison.rupSet).getName();
+		Map<RateCombiner, File[]> modelCompPassthroughs = null;
+		Map<RateCombiner, File[]> modelCompLogPassthroughs = null;
+		Map<RateCombiner, File[]> compModelCompPassthroughs = null;
+		Map<RateCombiner, File[]> compModelCompLogPassthroughs = null;
+		if (segModel != null) {
+			modelCompPassthroughs = new HashMap<>();
+			modelCompLogPassthroughs = new HashMap<>();
+			if (compSegModel != null) {
+				compModelCompPassthroughs = new HashMap<>();
+				compModelCompLogPassthroughs = new HashMap<>();
+			}
+			
+			for (RateCombiner combiner : combiners) {
+				modelCompPassthroughs.put(combiner, inputSegCalc.plotConnectionModelDiffs(resourcesDir,
+						"conn_passthrough_model_diff_"+combiner.name(), "Solution - "+segModelName, combiner, segModel));
+				modelCompLogPassthroughs.put(combiner, inputSegCalc.plotConnectionModelLogRatios(resourcesDir,
+						"conn_passthrough_model_ratio_"+combiner.name(), "Solution / "+segModelName, combiner, segModel));
+				if (compSegModel != null) {
+					compModelCompPassthroughs.put(combiner, compSegCalc.plotConnectionModelDiffs(resourcesDir,
+							"comp_conn_passthrough_model_diff_"+combiner.name(), "Comparison Solution - "+compSegModelName, combiner, compSegModel));
+					compModelCompLogPassthroughs.put(combiner, compSegCalc.plotConnectionModelLogRatios(resourcesDir,
+							"comp_conn_passthrough_model_ratio_"+combiner.name(), "Comparison Solution / "+compSegModelName, combiner, compSegModel));
+				}
+			}
+		}
+		
 		for (int m=0; m<minMags.length; m++) {
 			if (minMags.length > 1) {
 				if (minMags[m] > 0)
@@ -223,6 +257,13 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 					+ "The denominator of that ratio can be either the minimum, maximum, or average of the subsection "
 					+ "rates on either side of the jump. Each choice of denomiator is plotted separately.");
 			lines.add("");
+			if (segModel != null) {
+				String line = "Results are also plotted relative to the chosen segmentaion model, "+segModel.getName()+".";
+				if (compSegModel != null)
+					line += " The comparison model is shown relative to its own segmentation model, "+compSegModel.getName()+".";
+				lines.add(line);
+				lines.add("");
+			}
 			
 			TableBuilder table = MarkdownUtils.tableBuilder();
 			if (compSegCalc != null)
@@ -252,6 +293,43 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 					table.addColumn("![Rates]("+relPathToResources+"/"+compPassthroughRatios.get(combiner)[m].getName()+")");
 					table.addColumn("![Rates]("+relPathToResources+"/"+compPassthroughDiffs.get(combiner)[m].getName()+")");
 					table.finalizeLine();
+				}
+				if (segModel != null) {
+					
+					File[] diffs = modelCompPassthroughs.get(combiner);
+					File[] ratios = modelCompLogPassthroughs.get(combiner);
+					
+					File[] compDiffs = compSegModel == null ? null : compModelCompPassthroughs.get(combiner);
+					File[] compRatios = compSegModel == null ? null : compModelCompLogPassthroughs.get(combiner);
+
+					for (boolean ratio : new boolean[] {false, true}) {
+						File[] primary = ratio ? ratios : diffs;
+						File[] comp = ratio ? compRatios : compDiffs;
+						
+						table.initNewLine();
+						table.addColumn("![Comparison]("+relPathToResources+"/"+primary[m].getName()+")");
+						if (compSegCalc != null) {
+							if (comp == null)
+								table.addColumn("_(N/A)_");
+							else
+								table.addColumn("![Comparison]("+relPathToResources+"/"+comp[m].getName()+")");
+						}
+						table.finalizeLine();
+						table.initNewLine();
+						String relGeoPath = relPathToResources+"/"+primary[m].getName().replace(".png", ".geojson");
+						table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relGeoPath)
+								+" "+"[Download GeoJSON]("+relGeoPath+")");
+						if (compSegCalc != null) {
+							if (comp == null) {
+								table.addColumn("");
+							} else {
+								relGeoPath = relPathToResources+"/"+comp[m].getName().replace(".png", ".geojson");
+								table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relGeoPath)
+										+" "+"[Download GeoJSON]("+relGeoPath+")");
+							}
+						}
+						table.finalizeLine();
+					}
 				}
 			}
 			lines.addAll(table.build());
@@ -405,6 +483,22 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 		}
 		
 		return lines;
+	}
+	
+	private SegmentationModelBranchNode getBranchSegModelChoice(FaultSystemRupSet rupSet) {
+		LogicTreeBranch<?> branch = rupSet.getModule(LogicTreeBranch.class);
+		return branch.getValue(SegmentationModelBranchNode.class);
+	}
+	
+	private JumpProbabilityCalc getBranchSegModel(FaultSystemRupSet rupSet) {
+		LogicTreeBranch<?> branch = rupSet.getModule(LogicTreeBranch.class);
+		if (branch != null && branch.hasValue(SegmentationModelBranchNode.class)) {
+			SegmentationModelBranchNode segModelChoice = branch.getValue(SegmentationModelBranchNode.class);
+			if (segModelChoice != null) {
+				return segModelChoice.getModel(rupSet, branch);
+			}
+		}
+		return null;
 	}
 
 	@Override
