@@ -127,7 +127,7 @@ public class UncertainIncrMagFreqDist extends IncrementalMagFreqDist implements 
 		
 		for (int i=0; i<size(); i++) {
 			BoundedUncertainty bounds = boundType.estimate(getY(i), getStdDev(i));
-			lowerBounds.set(i, bounds.lowerBound);
+			lowerBounds.set(i, Math.max(0d, bounds.lowerBound));
 			upperBounds.set(i, bounds.upperBound);
 		}
 		return new UncertainBoundedIncrMagFreqDist(this, lowerBounds, upperBounds, boundType, stdDevs);
