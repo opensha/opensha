@@ -212,11 +212,24 @@ SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
 			 * simplifies to (see https://www.geol.lsu.edu/jlorenzo/geophysics/uncertainties/Uncertaintiespart2.html):
 			 * 		deltaR/r = sqrt((deltaS/s)^2 + (deltaD/d)^2)
 			 * 		deltaR = r*sqrt((deltaS/s)^2 + (deltaD/d)^2)
+			 * 
+			 * Note: UCERF3 used a different version:
+			 * 		r_high = s / d_low
+			 * 		r_low = s / d_high
+			 * 		deltaR = = (r_high - r_low)/4
+			 * This worked fine for and is pretty similar to the above values for small-ish uncertainties with
+			 * applySlipRateUncertainty == false, but goes to infinity as d_low approaches 0. These issues were never
+			 * encountered as the UCERF3 slip uncertainties were small, but is not a good general solution. 
 			 */
 			double rateSD;
 			if (applySlipRateUncertainty) {
-				rateSD = meanRate * Math.sqrt(
-						Math.pow(targetSlipRateStdDev/targetSlipRate, 2) + Math.pow(aveSlipStdDev/aveSlip, 2));
+				if (targetSlipRate == 0d)
+					// slip rate is zero, so mean rate is zero, set the uncertainty to the upper bound implied by
+					// taking both high options
+					rateSD = targetSlipRateStdDev / (aveSlip+aveSlipStdDev);
+				else 
+					rateSD = meanRate * Math.sqrt(
+							Math.pow(targetSlipRateStdDev/targetSlipRate, 2) + Math.pow(aveSlipStdDev/aveSlip, 2));
 			} else {
 				// even simpler: deltaR = r*sqrt((deltaS/s)^2) = r*deltaD/d
 				rateSD = meanRate * aveSlipStdDev/aveSlip;
