@@ -221,6 +221,47 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 
 		return table.build();
 	}
+	
+	public void plotSingleParent(File outputDir, ReportMetadata meta, int parentID) throws IOException {
+		FaultSystemRupSet rupSet = meta.primary.rupSet;
+		FaultSystemSolution sol = meta.primary.sol;
+		
+		SectionDistanceAzimuthCalculator distAzCalc = rupSet.getModule(SectionDistanceAzimuthCalculator.class);
+		if (distAzCalc == null) {
+			distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
+			rupSet.addModule(distAzCalc);
+		}
+		
+		if (Double.isNaN(maxNeighborDistance)) {
+			PlausibilityConfiguration config = rupSet.getModule(PlausibilityConfiguration.class);
+			if (config == null || config.getConnectionStrategy() == null) {
+				System.out.println(getName()+": WARNING, no maximum jump distance specified & no connection strategy. "
+						+ "Will include everything up to 20 km.");
+				maxNeighborDistance = 20d;
+			} else {
+				maxNeighborDistance = config.getConnectionStrategy().getMaxJumpDist();
+			}
+		}
+		
+		if (!rupSet.hasModule(ClusterRuptures.class))
+			rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
+		if (meta.comparisonHasSameSects && !meta.comparison.rupSet.hasModule(ClusterRuptures.class))
+			meta.comparison.rupSet.addModule(ClusterRuptures.singleStranged(meta.comparison.rupSet));
+		
+		Map<Integer, List<FaultSection>> sectsByParent = rupSet.getFaultSectionDataList().stream().collect(
+				Collectors.groupingBy(S -> S.getParentSectionId()));
+		Preconditions.checkState(sectsByParent.containsKey(parentID));
+		String parentName = sectsByParent.get(parentID).get(0).getParentSectionName();
+		
+		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+		
+		List<HistScalarValues> scalarVals = new ArrayList<>();
+		List<ClusterRupture> cRups = rupSet.requireModule(ClusterRuptures.class).getAll();
+		for (HistScalar scalar : plotScalars)
+			scalarVals.add(new HistScalarValues(scalar, rupSet, sol, cRups, distAzCalc));
+		
+		buildSectionPage(meta, parentID, parentName, outputDir, distAzCalc, sectsByParent, scalarVals);
+	}
 
 	static TableBuilder buildSectLinksTable(Map<String, String> linksMap, List<String> sortedNames, String header) {
 		return buildSectLinksTable(linksMap, sortedNames, null, header);
@@ -2069,6 +2110,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		PlotCurveCharacterstics reducedSlipChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.GRAY.darker());
 		PlotCurveCharacterstics creepRateChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.ORANGE.darker());
 		
+		boolean firstCreep = true;
 		for (int s=0; s<faultSects.size(); s++) {
 			XY_DataSet emptyFunc = emptySectFuncs.get(s);
 			
@@ -2079,10 +2121,11 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				double creepRate = geoSect.getProperty("CreepRate", Double.NaN);
 				if (Double.isFinite(creepRate)) {
 					XY_DataSet creepFunc = copyAtY(emptyFunc, creepRate);
-					if (s == 0)
+					if (firstCreep)
 						creepFunc.setName("Creep Rate");
-					funcs.add(creepFunc);
-					chars.add(creepRateChar);
+					funcs.add(0, creepFunc);
+					chars.add(0, creepRateChar);
+					firstCreep = false;
 				}
 			}
 			
