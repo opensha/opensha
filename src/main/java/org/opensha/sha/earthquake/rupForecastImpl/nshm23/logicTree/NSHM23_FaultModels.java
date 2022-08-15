@@ -163,8 +163,7 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 				List<IncrementalMagFreqDist> regionMFDs = new ArrayList<>();
 				List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
 				for (PrimaryRegions pReg : PrimaryRegions.values()) {
-					// preliminary values from Andrea/Ned via e-mail, 7/22/2022, subject "very preliminary b-values"
-					// TODO: are they 95% confidence?
+					// preliminary values from Andrea/Ned via e-mail, 8/15/2022, subject "Fwd: earthquake rate model"
 					
 					Region region = pReg.load();
 					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
@@ -173,25 +172,25 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 					Double b=null, pref=null, low=null, high=null;
 					
 					if (pReg == PrimaryRegions.CONUS_U3_RELM) {
-						b = 1d;
-						pref = 6.07;
-						low = 3.61;
-						high = 8.53;
+						b = 0.9;
+						pref = 8.3;
+						low = 3.3;
+						high = 14.3;
 					} else if (pReg == PrimaryRegions.CONUS_PNW) {
-						b = 1.1d;
-						pref = 0.38;
-						low = 0.03;
-						high = 1d;
+						b = 1d;
+						pref = 0.45;
+						low = 0.35;
+						high = 2.5;
 					} else if (pReg == PrimaryRegions.CONUS_IMW) {
-						b = 1.2d;
-						pref = 0.73;
-						low = 0.08;
-						high = 1.58;
+						b = 0.9;
+						pref = 1.7;
+						low = 0.1;
+						high = 4.6;
 					} else if (pReg == PrimaryRegions.CONUS_EAST) {
-						b = 1.2d;
-						pref = 0.18;
-						low = 0.02;
-						high = 0.6;
+						b = 0.94d;
+						pref = 0.49;
+						low = 0.4;
+						high = 2.2;
 					}
 					
 					if (b != null) {
