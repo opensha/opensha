@@ -463,35 +463,40 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 				Collection<Integer> rupsUsingJump, Collection<Integer> allJumpsForDepartingSect) {
 			long count = 0l;
 			
-			double weight = this.weight;
+			double maxWeight = this.weight*MAX_WEIGHT_SCALAR;
+			
+			double rateEstWeight = this.weight;
 			if (rateEst != null) {
 				// scale weight by that estimated total event rate for this section
 				double estRate = rateEst.estimateSectParticRate(jump.fromSection.getSectionId());
+				
 				if (estRate > 0d)
-					weight /= estRate;
+					rateEstWeight /= estRate;
+				else
+					rateEstWeight = maxWeight;
 			}
-			if (D) System.out.println("Building constraint for jump: "+jump+" with "+rupsUsingJump.size()
-				+" rups, prob="+jumpCondProb+" with weight="+weight);
 			// weight by the target fractional rate (large misfits of small conditional rates should still be fit)
-			weight /= jumpCondProb;
+			double probModWeight = rateEstWeight / jumpCondProb;
+			if (D) System.out.println("Building constraint for jump: "+jump+" with "+rupsUsingJump.size()
+				+" rups, prob="+(float)jumpCondProb+" with origWeight="+(float)weight
+				+", rateEstWeight="+(float)rateEstWeight+", probModWeight="+(float)probModWeight);
 			
-			double maxWeight = this.weight*MAX_WEIGHT_SCALAR;
-			if (weight > maxWeight) {
-				if (D) System.err.println("WARNING: capping weight at max="+maxWeight+", would have been "+weight);
-				weight = maxWeight;
+			if (probModWeight > maxWeight) {
+				if (D) System.err.println("WARNING: capping weight at max="+maxWeight+", would have been "+probModWeight);
+				probModWeight = maxWeight;
 			}
 			
 			HashSet<Integer> setUsingJump = new HashSet<>(rupsUsingJump);
 			
-			double scalarIn = weight*(1d-jumpCondProb);
-			double scalarOut = -weight*jumpCondProb;
+			double scalarIn = probModWeight*(1d-jumpCondProb);
+			double scalarOut = -probModWeight*jumpCondProb;
 			
 			Preconditions.checkState(Double.isFinite(scalarIn),
 					"Bad scalarIn=%s for jump %s with jumpCondProb=%s and weight=%s",
-					scalarIn, jump, jumpCondProb, weight);
+					scalarIn, jump, jumpCondProb, probModWeight);
 			Preconditions.checkState(Double.isFinite(scalarOut),
 					"Bad scalarOut=%s for jump %s with jumpCondProb=%s and weight=%s",
-					scalarOut, jump, jumpCondProb, weight);
+					scalarOut, jump, jumpCondProb, probModWeight);
 			
 			for (int r : allJumpsForDepartingSect) {
 				if (setUsingJump.contains(r)) {
