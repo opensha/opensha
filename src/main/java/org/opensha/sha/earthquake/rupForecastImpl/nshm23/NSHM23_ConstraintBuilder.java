@@ -52,6 +52,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavi
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_PaleoUncertainties;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
@@ -389,23 +390,7 @@ public class NSHM23_ConstraintBuilder {
 			if (sect.getParentSectionId() == creepingParentID)
 				creepingSects.add(sect);
 		Preconditions.checkState(!creepingSects.isEmpty());
-		return excludeRuptures(new BinaryRuptureProbabilityCalc() {
-			
-			@Override
-			public String getName() {
-				return "Exclude Ruptures Through Creeping";
-			}
-			
-			@Override
-			public boolean isDirectional(boolean splayed) {
-				return splayed;
-			}
-			
-			@Override
-			public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
-				return !isRupThroughCreeping(creepingParentID, fullRupture);
-			}
-		});
+		return excludeRuptures(new NSHM23_SegmentationModels.ExcludeRupsThroughCreepingSegmentationModel(creepingParentID));
 	}
 	
 	public boolean rupSetHasCreepingSection() {

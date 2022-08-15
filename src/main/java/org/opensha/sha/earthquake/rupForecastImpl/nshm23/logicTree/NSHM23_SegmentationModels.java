@@ -9,11 +9,15 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.BinaryJumpProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_WasatchSegmentationData;
 
 import com.google.common.base.Preconditions;
@@ -266,6 +270,62 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode {
 			if (jump.fromCluster.parentSectionID == creepingParentID || jump.toCluster.parentSectionID == creepingParentID)
 				return prob;
 			return 1;
+		}
+		
+	}
+	
+	public static class NamedFaultSegmentationModel implements BinaryJumpProbabilityCalc {
+		
+		private NamedFaults namedFaults;
+
+		public NamedFaultSegmentationModel(NamedFaults namedFaults) {
+			this.namedFaults = namedFaults;
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+
+		@Override
+		public String getName() {
+			return "Named Fault Segmentation";
+		}
+
+		@Override
+		public boolean isJumpAllowed(ClusterRupture fullRupture, Jump jump, boolean verbose) {
+			String faultName1 = namedFaults.getFaultName(jump.fromCluster.parentSectionID);
+			String faultName2 = namedFaults.getFaultName(jump.toCluster.parentSectionID);
+			if (faultName1 == null || faultName2 == null)
+				// at least one of these sections is not part of a named fault
+				return false;
+			// both sections are part of a named fault, lets see if they're the same one
+			return faultName1.equals(faultName2);
+		}
+		
+	}
+	
+	public static class ExcludeRupsThroughCreepingSegmentationModel implements BinaryRuptureProbabilityCalc {
+		
+		private int creepingParentID;
+
+		public ExcludeRupsThroughCreepingSegmentationModel(int creepingParentID) {
+			this.creepingParentID = creepingParentID;
+		}
+
+		@Override
+		public String getName() {
+			return "Exclude Ruptures Through Creeping";
+		}
+		
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return splayed;
+		}
+		
+		@Override
+		public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
+			return !NSHM23_ConstraintBuilder.isRupThroughCreeping(creepingParentID, fullRupture);
 		}
 		
 	}
