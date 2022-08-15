@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob;
 
 import java.util.Map;
+import java.util.Set;
 
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
@@ -203,6 +204,67 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 			if (fallback == null)
 				return 1d;
 			return fallback.calcJumpProbability(fullRupture, jump, verbose);
+		}
+	}
+	
+	public static class HardcodedBinaryJumpProb implements BinaryJumpProbabilityCalc {
+		
+		private String name;
+		private Set<IDPairing> ids;
+		private boolean excludeMatches;
+		private boolean parentSects;
+
+		/**
+		 * 
+		 * @param name
+		 * @param excludeMatches if true, jumps are not allowed between the given IDs, otherwise they're only allowed between those IDs
+		 * @param ids (parent) section IDs this binary model applies to
+		 * @param parentSects it true, ids are parent section IDs
+		 */
+		public HardcodedBinaryJumpProb(String name, boolean excludeMatches, Set<IDPairing> ids, boolean parentSects) {
+			this.name = name;
+			this.excludeMatches = excludeMatches;
+			this.ids = ids;
+			this.parentSects = parentSects;
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+
+		@Override
+		public String getName() {
+			return name;
+		}
+
+		@Override
+		public boolean isJumpAllowed(ClusterRupture fullRupture, Jump jump, boolean verbose) {
+			IDPairing pair = parentSects ?
+					new IDPairing(jump.fromSection.getParentSectionId(), jump.toSection.getParentSectionId())
+					: new IDPairing(jump.fromSection.getSectionId(), jump.toSection.getSectionId());
+			boolean contains = ids.contains(pair) || ids.contains(pair.getReversed());
+			if (verbose)
+				System.out.println("Hardcoded jump contained "+jump+"? "+contains);
+			if (contains) {
+				// we govern this jump
+				if (excludeMatches) {
+					// we explicitly exclude this jump
+					return false;
+				} else {
+					// else we allow it
+					return true;
+				}
+			} else {
+				// we don't govern this jump
+				if (excludeMatches) {
+					// it's not a match, so we should include it
+					return true;
+				} else {
+					// else we only include jumps that we specified, so exclude this one
+					return false;
+				}
+			}
 		}
 	}
 	
