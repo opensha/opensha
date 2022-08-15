@@ -108,6 +108,8 @@ public class NSHM23_ConstraintBuilder {
 	public static ParkfieldSelectionCriteria PARKFIELD_SELECT_DEFAULT = ParkfieldSelectionCriteria.MAG_6;
 	private ParkfieldSelectionCriteria parkfieldSelect = PARKFIELD_SELECT_DEFAULT;
 	
+	private NSHM23_PaleoUncertainties paleoUncert;
+	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB) {
 		this(rupSet, supraSeisB, SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT,
 				SupraSeisBValInversionTargetMFDs.ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT, ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT);
@@ -168,6 +170,11 @@ public class NSHM23_ConstraintBuilder {
 		return this;
 	}
 	
+	public NSHM23_ConstraintBuilder paleoUncerts(NSHM23_PaleoUncertainties paleoUncert) {
+		this.paleoUncert = paleoUncert;
+		return this;
+	}
+	
 	public NSHM23_ConstraintBuilder slipRates() {
 		constraints.add(new SlipRateInversionConstraint(1d, ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY, rupSet));
 		return this;
@@ -178,10 +185,6 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public NSHM23_ConstraintBuilder paleoRates() {
-		return paleoRates(null);
-	}
-	
-	public NSHM23_ConstraintBuilder paleoRates(NSHM23_PaleoUncertainties paleoUncert) {
 		PaleoseismicConstraintData data = rupSet.requireModule(PaleoseismicConstraintData.class);
 		if (data.hasPaleoRateConstraints()) {
 			List<? extends SectMappedUncertainDataConstraint> datas = data.getPaleoRateConstraints();
@@ -193,10 +196,6 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public NSHM23_ConstraintBuilder paleoSlips() {
-		return paleoSlips(null);
-	}
-	
-	public NSHM23_ConstraintBuilder paleoSlips(NSHM23_PaleoUncertainties paleoUncert) {
 		PaleoseismicConstraintData data = rupSet.requireModule(PaleoseismicConstraintData.class);
 		if (data.hasPaleoSlipConstraints()) {
 			List<? extends SectMappedUncertainDataConstraint> datas = data.getPaleoSlipConstraints();
@@ -306,7 +305,7 @@ public class NSHM23_ConstraintBuilder {
 					// use updated slip rate
 					rupSet.addModule(builder.buildSlipRatesOnly());
 				}
-				dataConstraints.addAll(PaleoSectNuclEstimator.buildPaleoEstimates(rupSet, true));
+				dataConstraints.addAll(PaleoSectNuclEstimator.buildPaleoEstimates(rupSet, true, paleoUncert));
 			}
 			builder.expandUncertaintiesForData(dataConstraints, dataWithinType);
 		}

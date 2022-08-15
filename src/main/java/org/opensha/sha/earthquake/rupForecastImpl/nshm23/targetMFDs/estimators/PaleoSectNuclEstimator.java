@@ -14,6 +14,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_PaleoUncertainties;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -194,12 +195,19 @@ public abstract class PaleoSectNuclEstimator extends SectNucleationMFD_Estimator
 	}
 	
 	public static List<PaleoSectNuclEstimator> buildPaleoEstimates(FaultSystemRupSet rupSet, boolean applyToParent) {
+		return buildPaleoEstimates(rupSet, applyToParent, null);
+	}
+	
+	public static List<PaleoSectNuclEstimator> buildPaleoEstimates(FaultSystemRupSet rupSet, boolean applyToParent,
+			NSHM23_PaleoUncertainties paleoUncert) {
 		PaleoseismicConstraintData data = rupSet.requireModule(PaleoseismicConstraintData.class);
 		List<PaleoSectNuclEstimator> ret = new ArrayList<>();
 		
 		List<? extends SectMappedUncertainDataConstraint> rateConstraints = data.getPaleoRateConstraints();
 		
 		if (rateConstraints != null) {
+			if (paleoUncert != null)
+				rateConstraints = paleoUncert.getScaled(rateConstraints);
 			for (SectMappedUncertainDataConstraint constr : rateConstraints) {
 				double slipRate = rupSet.getSlipRateForSection(constr.sectionIndex);
 				double slipRateStdDev = rupSet.getSlipRateStdDevForSection(constr.sectionIndex);
@@ -214,6 +222,8 @@ public abstract class PaleoSectNuclEstimator extends SectNucleationMFD_Estimator
 		
 		List<? extends SectMappedUncertainDataConstraint> slipConstraints = data.getPaleoSlipConstraints();
 		if (slipConstraints != null) {
+			if (paleoUncert != null)
+				slipConstraints = paleoUncert.getScaled(slipConstraints);
 			for (SectMappedUncertainDataConstraint constr : PaleoseismicConstraintData.inferRatesFromSlipConstraints(
 					rupSet.requireModule(SectSlipRates.class), slipConstraints, true)) {
 				double slipRate = rupSet.getSlipRateForSection(constr.sectionIndex);

@@ -503,6 +503,9 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetFaultModel fm = branch.getValue(RupSetFaultModel.class);
 		constrBuilder.parkfieldSelection(getParkfieldSelectionCriteria(fm));
 		
+		NSHM23_PaleoUncertainties paleoUncert = branch.getValue(NSHM23_PaleoUncertainties.class);
+		constrBuilder.paleoUncerts(paleoUncert);
+		
 		SubSeisMoRateReduction reduction = SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
 		if (branch.hasValue(SubSeisMoRateReductions.class))
 			reduction = branch.getValue(SubSeisMoRateReductions.class).getChoice();
@@ -626,9 +629,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			constrBuilder.slipRates().weight(slipWeight);
 		
 		if (paleoWeight > 0d) {
-			NSHM23_PaleoUncertainties paleoUncert = branch.getValue(NSHM23_PaleoUncertainties.class);
-			constrBuilder.paleoRates(paleoUncert).weight(paleoWeight);
-			constrBuilder.paleoSlips(paleoUncert).weight(paleoWeight);
+			constrBuilder.paleoRates().weight(paleoWeight);
+			constrBuilder.paleoSlips().weight(paleoWeight);
 		}
 		
 		if (parkWeight > 0d)
