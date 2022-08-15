@@ -16,6 +16,8 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
  * 
  * Using pruned recommendations in Table A5 (appendix 3)
  * 
+ * Current coefficient values from Bruce Shaw via e-mail 8/15/2022, subject "Re: Willing to double check scaling relationship implementation?"
+ * 
  * @author kevin
  *
  */
@@ -64,7 +66,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 		@Override
 		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
 			width = USE_ORIG_WIDTHS ? origWidth : width;
-			double C6 = 7.11e-5;
+			double C6 = 4.91e-5;
 			// leave in SI units here as FaultMomentCalc.SHEAR_MODULUS is in SI units
 			// eqn 13
 			return C6*Math.sqrt(length*width);
@@ -79,7 +81,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 		@Override
 		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
 			width = USE_ORIG_WIDTHS ? origWidth : width;
-			double C6 = 5.03e-5;
+			double C6 = 4.91e-5;
 			// leave in SI units here as FaultMomentCalc.SHEAR_MODULUS is in SI units
 			// eqn 13
 			return C6*Math.sqrt(length*width);
@@ -94,7 +96,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 		@Override
 		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
 			width = USE_ORIG_WIDTHS ? origWidth : width;
-			double deltaSigma = 8.01e6; // e6 here converts MPa to Pa
+			double deltaSigma = 3.91e6; // e6 here converts MPa to Pa
 			// leave in SI units here as FaultMomentCalc.SHEAR_MODULUS is in SI units
 			// eqn 16
 			return (deltaSigma/FaultMomentCalc.SHEAR_MODULUS)*1d/(7d/(3d*length) + 1d/(2d*width));
