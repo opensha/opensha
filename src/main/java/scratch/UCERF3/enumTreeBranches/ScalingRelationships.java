@@ -270,7 +270,7 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 		}
 
 	},
-
+	@Deprecated // added by Kiwis, still needed?
 	TMG_SUB_2017("Thingbaijam et al.(2017) Subduction", "TMG_SUB_2017") {
 
 		private TMG2017SubMagAreaRel tmg_sub_magArea = new TMG2017SubMagAreaRel(90); // interface
@@ -299,7 +299,7 @@ public enum ScalingRelationships implements U3LogicTreeBranchNode<ScalingRelatio
 
 		}
 	},
-
+	@Deprecated // added by Kiwis, still needed?
 	TMG_CRU_2017("Thingbaijam et al.(2017) Crustal", "TMG_CRU_2017") {
 
 		private TMG2017CruMagAreaRel tmg_cru_magArea = new TMG2017CruMagAreaRel(0);
