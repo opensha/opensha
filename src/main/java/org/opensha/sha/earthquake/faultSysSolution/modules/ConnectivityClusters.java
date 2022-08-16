@@ -266,7 +266,6 @@ BranchAverageableModule<ConnectivityClusters>, AverageableModule.ConstantAverage
 
 		@Override
 		public AveragingAccumulator<ConnectivityClusterSolutionMisfits> averagingAccumulator() {
-			// TODO Auto-generated method stub
 			return new AveragingAccumulator<>() {
 				
 				private List<AveragingAccumulator<InversionMisfitStats>> statsAccumulators;

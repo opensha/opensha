@@ -47,7 +47,9 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Nonnegati
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters.ConnectivityClusterSolutionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitProgress;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
@@ -855,9 +857,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				FaultSystemRupSet analyticalRupSet = rupSet.getForSectionSubSet(analyticalSects, rupProbCalc);
 				// inversion configuration for it (required for target MFDs, and then to calc misfits)
 				InversionConfiguration config = factory .buildInversionConfig(analyticalRupSet, branch, threads);
-				double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
-				FaultSystemSolution analyticalSol = new AnalyticalSingleFaultInversionSolver(bVal).run(
-						analyticalRupSet, config);
+				FaultSystemSolution analyticalSol = analytical.run(analyticalRupSet, config);
 				double[] analyticalRates = analyticalSol.getRateForAllRups();
 				
 				int origNumRups = rupSet.getNumRuptures();
@@ -890,7 +890,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 								new double[origNumRups] : Arrays.copyOf(inversionWaterLevel.get(), origNumRups);
 						for (int subsetRupIndex=0; subsetRupIndex<analyticalRupSet.getNumRuptures(); subsetRupIndex++) {
 							int origRupIndex = mappings.getOrigRupID(subsetRupIndex);
-							newWaterLevel[origNumRups] = analyticalWaterLevel.get(subsetRupIndex);
+							newWaterLevel[origRupIndex] = analyticalWaterLevel.get(subsetRupIndex);
 						}
 						combinedSol.addModule(new WaterLevelRates(newWaterLevel));
 					}
@@ -899,6 +899,17 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				InversionMisfits combMisfits = InversionMisfits.appendSeparate(List.of(inversionMisfits, analyticalMisfits));
 				combinedSol.addModule(combMisfits);
 				combinedSol.addModule(combMisfits.getMisfitStats());
+				if (inversionSol.hasModule(ConnectivityClusterSolutionMisfits.class)) {
+					ConnectivityClusterSolutionMisfits clusterMisfits = inversionSol.requireModule(ConnectivityClusterSolutionMisfits.class);
+					Map<ConnectivityCluster, InversionMisfitStats> clusterMisfitsMap = new HashMap<>();
+					InversionMisfitProgress largestProgress = clusterMisfits.getLargestClusterMisfitProgress();
+					for (int i=0; i<clusters.size(); i++) {
+						ConnectivityCluster cluster = clusters.get(i);
+						InversionMisfitStats misfits = clusterMisfits.getMisfitStats(i);
+						clusterMisfitsMap.put(cluster, misfits);
+					}
+					combinedSol.addModule(new ConnectivityClusterSolutionMisfits(combinedSol, clusterMisfitsMap, largestProgress));
+				}
 
 				// attach any relevant modules before writing out
 				SolutionProcessor processor = factory.getSolutionLogicTreeProcessor();
