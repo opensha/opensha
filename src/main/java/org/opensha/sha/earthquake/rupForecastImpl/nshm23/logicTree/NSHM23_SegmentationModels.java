@@ -6,24 +6,27 @@ import java.util.List;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.BinaryJumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_WasatchSegmentationData;
 
 import com.google.common.base.Preconditions;
 
 /**
- * TODO: add Wasatch models
+ * NSHM23 segmentation models. Segmentation can be applied at individual jumps via an inversion constraint
+ * (see {@link JumpProbabilityConstraint}), or by filtering out particular ruptures. Constraints are used for things
+ * like distance-dependent segmentation and the Wasatch model, and are returned via
+ * {@link #getModel(FaultSystemRupSet, LogicTreeBranch)}. Filtering is used for ruptures through the creeping
+ * section (if {@link #isExcludeRupturesThroughCreepingSect()}). 
  * 
  * @author kevin
  *
@@ -33,13 +36,16 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, RupsThroughCreepingSectBranchNode {
+	/**
+	 * No segmentation:
+	 * 	* No distance-dependence
+	 * 	* No Wasatch segmentation
+	 * 	* No creeping section segmentation
+	 * 	* Ruptures allowed through creeping section
+	 */
 	NONE("None", "None", 1.0d) {
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			// no segmentation:
-			//	* no distance dependent
-			//	* anything through creeping
-			// 	* anything through wasatch
 			return null;
 		}
 
@@ -48,18 +54,20 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 			return false;
 		}
 	},
+	/**
+	 * Low segmentation:
+	 * 	* Distance-dependent R0=4, horizontal shift of 3km
+	 * 	* Wasatch segmentation P=0.75
+	 * 	* Creeping section segmentation P=0.75 (applies to jumps to/from, not just ruptures that go through it)
+	 * 	* Ruptures allowed through creeping section
+	 */
 	LOW("Low Segmentation", "LowSeg",
 			1d, // weight
 			4d, // R0
 			3d) { // shift
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			// if we don't have a creeping section branch explicitly on the logic tree, include it here
-			double creepingProb = 1d;
-			if (APPLY_TO_CREEPING_SECT && !branch.hasValue(RupsThroughCreepingSect.class))
-				// Creeping P=0.75
-				creepingProb = 0.75;
-			// Wasatch P=0.75
+			double creepingProb = 0.75;
 			double wasatchProb = 0.75;
 			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN);
 		}
@@ -69,18 +77,20 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 			return false;
 		}
 	},
+	/**
+	 * Middle segmentation:
+	 *	* Distance-dependent R0=3, horizontal shift of 2km
+	 * 	* Wasatch segmentation P=0.5
+	 * 	* Creeping section segmentation P=0.5 (applies to jumps to/from, not just ruptures that go through it)
+	 * 	* Ruptures allowed through creeping section
+	 */
 	MID("Middle Segmentation", "MidSeg",
 			1d, // weight
 			3d, // R0
 			2d) { // shift
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			// if we don't have a creeping section branch explicitly on the logic tree, include it here
-			// 50% max passthrough rate for any single jump (not all of those ruptures actually go through)
-			double creepingProb = 1d;
-			if (APPLY_TO_CREEPING_SECT && !branch.hasValue(RupsThroughCreepingSect.class))
-				creepingProb = 0.5d;
-			// Wasatch P=0.5
+			double creepingProb =  0.5d;
 			double wasatchProb = 0.5;
 			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN);
 		}
@@ -90,30 +100,36 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 			return false;
 		}
 	},
+	/**
+	 * High segmentation:
+	 * 	* Distance-dependent R0=2, horizontal shift of 1km
+	 * 	* Wasatch segmentation P=0.25
+	 * 	* Creeping section segmentation P=0.25 (applies to jumps to/from, not just ruptures that go through it)
+	 * 	* Ruptures prohibited through creeping section
+	 */
 	HIGH("High Segmentation", "HighSeg",
 			1d, // weight
 			2d, // R0
 			1d) { // shift
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			// Still restrict creeping section, but the bulk of the through-creeping-section will be handled
-			// externally at the rupture exclusion model stage
-			double creepingProb = 1d;
-			if (APPLY_TO_CREEPING_SECT && !branch.hasValue(RupsThroughCreepingSect.class))
-				// Creeping P=0.25
-				creepingProb = 0.25;
-			// Wasatch P=0.25
+			double creepingProb = 0.25;
 			double wasatchProb = 0.25;
 			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN);
 		}
 
 		@Override
 		public boolean isExcludeRupturesThroughCreepingSect() {
-			// highly limited above, will be excluded in the classic branch
-			// TODO should be limit it here as well?
-			return false;
+			return true;
 		}
 	},
+	/**
+	 * Classic segmentation:
+	 * 	* Named-fault segmentation, all other parents isolated and solved for analytically
+	 * 	* Wasatch segmentation P=0
+	 * 	* Creeping section segmentation P=0 (Creeping section treated as isolated and solved analytically)
+	 * 	* Ruptures prohibited through creeping section
+	 */
 	CLASSIC("Classic ('A' faults)", "Classic", 1d) {
 		@Override
 		public BinaryJumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
@@ -145,6 +161,9 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 			return true;
 		}
 	},
+	/**
+	 * Weighted average of all segmentation branches
+	 */
 	AVERAGE("NSHM23 Average Segmentation", "AvgSeg", 0.0d) {
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
@@ -179,20 +198,25 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 				public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
 					double ret = 0d;
 					boolean allOne = true;
+					boolean allZero = true;
 					for (int i=0; i<models.size(); i++) {
 						JumpProbabilityCalc model = models.get(i);
 						double weight = weights.get(i);
 						if (model == null) {
 							ret += 1*weight;
+							allZero = false;
 						} else {
 							double modelProb = model.calcJumpProbability(fullRupture, jump, false);
 							allOne = allOne && modelProb == 1d;
+							allZero = allZero && modelProb == 0d;
 							ret += modelProb*weight;
 						}
 					}
 					if (allOne)
 						// avoid any floating point issues by summing and dividing
 						return 1d;
+					if (allZero)
+						return 0d;
 					return ret/totWeight;
 				}
 				
@@ -214,8 +238,6 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 			return weightExclude > weightInclude;
 		}
 	};
-	
-	public static boolean APPLY_TO_CREEPING_SECT = true;
 	
 	private String name;
 	private String shortName;
