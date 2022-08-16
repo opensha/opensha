@@ -293,7 +293,7 @@ public class NSHM23_ConstraintBuilder {
 			}
 		}
 		if (rupExclusionModel != null)
-			builder.forBinaryRupProbModel(rupExclusionModel);
+			builder.forBinaryRupProbModel(rupExclusionModel, false);
 		if (adjustForActualRupSlips)
 			builder.adjustTargetsForData(new ScalingRelSlipRateMFD_Estimator(adjustForSlipAlong));
 		if (adjustForIncompatibleData) {
@@ -394,7 +394,11 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public boolean rupSetHasCreepingSection() {
-		return FaultSectionUtils.findParentSectionID(rupSet.getFaultSectionDataList(), "San", "Andreas", "Creeping") >= 0;
+		return findCreepingSection(rupSet) >= 0;
+	}
+	
+	public static int findCreepingSection(FaultSystemRupSet rupSet) {
+		return FaultSectionUtils.findParentSectionID(rupSet.getFaultSectionDataList(), "San", "Andreas", "Creeping");
 	}
 	
 	public static boolean isRupThroughCreeping(int creepingParentID, ClusterRupture rup) {

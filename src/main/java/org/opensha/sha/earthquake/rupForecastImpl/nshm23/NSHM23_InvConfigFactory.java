@@ -12,6 +12,7 @@ import java.util.concurrent.Callable;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
+import org.apache.commons.cli.CommandLine;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -20,6 +21,7 @@ import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
@@ -27,7 +29,10 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionSolver;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurationFactory;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionSolver;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint;
@@ -41,6 +46,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Generatio
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
@@ -54,9 +60,14 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.Sol
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.BinaryJumpProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.HardcodedBinaryJumpProb;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder.ParkfieldSelectionCriteria;
@@ -69,8 +80,10 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicT
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_PaleoUncertainties;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels.ExcludeRupsThroughCreepingSegmentationModel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SingleStates;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSect;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSectBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModelBranchNode;
@@ -80,6 +93,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBVal
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.AnalyticalSingleFaultInversionSolver;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
@@ -519,53 +533,60 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		// apply any segmentation adjustments
 		if (hasJumps(rupSet)) {
+			// this handles creeping section, binary segmentation, and max dist models
+			BinaryRuptureProbabilityCalc rupExclusionModel = getExclusionModel(
+					rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
+			
+			if (rupExclusionModel != null)
+				constrBuilder.excludeRuptures(rupExclusionModel);
+			
 			JumpProbabilityCalc targetSegModel = buildSegModel(rupSet, branch);
-			MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
-			if (distModel != null) {
-				if (targetSegModel == null)
-					targetSegModel = distModel.getModel(rupSet);
-				else
-					targetSegModel = new JumpProbabilityCalc.MultiProduct(targetSegModel, distModel.getModel(rupSet));
-			}
 			
 			if (targetSegModel != null) {
-				SegmentationMFD_Adjustment segAdj = branch.getValue(SegmentationMFD_Adjustment.class);
-				if (segAdj == null)
-					// use default adjustment
-					constrBuilder.adjustForSegmentationModel(targetSegModel);
-				else
-					constrBuilder.adjustForSegmentationModel(targetSegModel, segAdj);
+				if (targetSegModel instanceof BinaryJumpProbabilityCalc) {
+					// already taken care of above
+					Preconditions.checkNotNull(rupExclusionModel);
+				} else {
+					SegmentationMFD_Adjustment segAdj = branch.getValue(SegmentationMFD_Adjustment.class);
+					if (segAdj == null)
+						// use default adjustment
+						constrBuilder.adjustForSegmentationModel(targetSegModel);
+					else
+						constrBuilder.adjustForSegmentationModel(targetSegModel, segAdj);
+				}
 			}
-			
-			if (shouldExcludeThroughCreeping(branch) && constrBuilder.rupSetHasCreepingSection())
-				// this sets the binary exclusion model, which will remove them from target MFD calculations
-				constrBuilder.excludeRupturesThroughCreeping();
 		}
 		
 		return constrBuilder;
 	}
 	
 	private static boolean shouldExcludeThroughCreeping(LogicTreeBranch<?> branch) {
-		RupsThroughCreepingSect rupsThroughCreep = branch.getValue(RupsThroughCreepingSect.class);
-		if (rupsThroughCreep != null) {
-			// we have an explicit ruptures-through-creeping branch
-			return rupsThroughCreep.isExclude();
-		} else if (NSHM23_SegmentationModels.APPLY_TO_CREEPING_SECT) {
-			// we don't explicitly have a ruptures-through-creeping branch
-			// see if we're on the high-segmentation branch
-			NSHM23_SegmentationModels segModel = branch.getValue(NSHM23_SegmentationModels.class);
-			if (NSHM23_SegmentationModels.WIDE_BRANCHES)
-				return segModel == NSHM23_SegmentationModels.TWO_KM;
-			else
-				return segModel == NSHM23_SegmentationModels.HIGH;
-		}
-		return false;
+		RupsThroughCreepingSectBranchNode rupsThroughCreep = branch.getValue(RupsThroughCreepingSectBranchNode.class);
+		return rupsThroughCreep != null && rupsThroughCreep.isExcludeRupturesThroughCreepingSect();
 	}
 	
 	private static boolean hasJumps(FaultSystemRupSet rupSet) {
 		for (ClusterRupture cRup : rupSet.requireModule(ClusterRuptures.class))
 			if (cRup.getTotalNumJumps() > 0)
 				return true;
+		return false;
+	}
+	
+	/**
+	 * @param rupSet
+	 * @param segModel
+	 * @return true if we have any ruptures with jumps with P>0 and P<1
+	 */
+	private static boolean hasConstrainableJumps(FaultSystemRupSet rupSet, JumpProbabilityCalc segModel) {
+		if (segModel instanceof BinaryJumpProbabilityCalc)
+			return false;
+		for (ClusterRupture cRup : rupSet.requireModule(ClusterRuptures.class)) {
+			for (Jump jump : cRup.getJumpsIterable()) {
+				double prob = segModel.calcJumpProbability(cRup, jump, false);
+				if (prob > 0 && prob < 1)
+					return true;
+			}
+		}
 		return false;
 	}
 	
@@ -662,48 +683,20 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		GRParticRateEstimator rateEst = new GRParticRateEstimator(rupSet, targetMFDs);
 		
-		if (hasJumps(rupSet)) {
-			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
-			JumpProbabilityCalc segModel = buildSegModel(rupSet, branch);
-			if (segModel != null) {
-				constraints = new ArrayList<>(constraints);
-				
-//				InitialModelParticipationRateEstimator rateEst = new InitialModelParticipationRateEstimator(
-//						rupSet, Inversions.getDefaultVariablePerturbationBasis(rupSet));
-
-//				double weight = 0.5d;
-//				boolean ineq = false;
-				double weight = 100000d;
-				boolean ineq = true;
-				
-				constraints.add(new JumpProbabilityConstraint.RelativeRate(
-						weight, ineq, rupSet, buildSegModel(rupSet, branch), rateEst));
-				
-				// see if this model has any zero probability jumps, and if so exclude ruptures that use them from
-				// being sampled in the inversion
-				HashSet<Integer> zeroRateRups = new HashSet<>();
-				for (int rupIndex=0; rupIndex<rupSet.getNumRuptures(); rupIndex++) {
-					ClusterRupture rup = cRups.get(rupIndex);
-					if (segModel.calcRuptureProb(rup, false) == 0d)
-						zeroRateRups.add(rupIndex);
-				}
-				if (!zeroRateRups.isEmpty()) {
-					// exclude them from the sampler
-					ExclusionIntegerSampler skipSampler = new ExclusionIntegerSampler(0, rupSet.getNumRuptures(), zeroRateRups);
-					if (sampler == null)
-						sampler = skipSampler;
-					else
-						sampler = sampler.getCombinedWith(skipSampler);
-				}
-			}
+		JumpProbabilityCalc segModel = buildSegModel(rupSet, branch);
+		if (segModel != null && hasConstrainableJumps(rupSet, segModel)) {
+			constraints = new ArrayList<>(constraints);
 			
-			MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
-			System.out.println("Max distance model: "+distModel);
-			if (distModel != null) {
-				HardDistCutoffJumpProbCalc model = distModel.getModel(rupSet);
-				System.out.println("Zeroing out sampler probabilities for "+model);
-				sampler = getExcludeSampler(cRups, sampler, model);
-			}
+//			InitialModelParticipationRateEstimator rateEst = new InitialModelParticipationRateEstimator(
+//					rupSet, Inversions.getDefaultVariablePerturbationBasis(rupSet));
+
+//			double weight = 0.5d;
+//			boolean ineq = false;
+			double weight = 100000d;
+			boolean ineq = true;
+			
+			constraints.add(new JumpProbabilityConstraint.RelativeRate(
+					weight, ineq, rupSet, buildSegModel(rupSet, branch), rateEst));
 		}
 		
 		int avgThreads = threads / 4;
@@ -736,6 +729,62 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		return builder.build();
 	}
 	
+	public static BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+			ClusterRuptures cRups) {
+		// segmentation model
+		JumpProbabilityCalc segModel = buildSegModel(rupSet, branch);
+		List<BinaryRuptureProbabilityCalc> exclusionModels = new ArrayList<>();
+		if (segModel instanceof BinaryJumpProbabilityCalc) {
+			exclusionModels.add((BinaryJumpProbabilityCalc)segModel);
+		} else if (segModel != null) {
+			// see if it has any zeroes, and if so exclude ruptures that use them from being sampled in the inversion
+			HashSet<IDPairing> excluded = new HashSet<>();
+			for (int rupIndex=0; rupIndex<rupSet.getNumRuptures(); rupIndex++) {
+				ClusterRupture rup = cRups.get(rupIndex);
+				for (Jump jump : rup.getJumpsIterable()) {
+					if (segModel.calcJumpProbability(rup, jump, false) == 0d) {
+						IDPairing pair = new IDPairing(jump.fromSection.getSectionId(), jump.toSection.getSectionId());
+						excluded.add(pair);
+						excluded.add(pair.getReversed());
+					}
+				}
+			}
+			if (excluded != null)
+				exclusionModels.add(new HardcodedBinaryJumpProb(segModel.getName(), true, excluded, false));
+		}
+		
+		// creeping section model
+		if (shouldExcludeThroughCreeping(branch)) {
+			int creepingSectID = NSHM23_ConstraintBuilder.findCreepingSection(rupSet);
+			if (creepingSectID >= 0)
+				exclusionModels.add(new ExcludeRupsThroughCreepingSegmentationModel(creepingSectID));
+		}
+		
+		// max dist model
+		MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
+		if (distModel != null)
+			exclusionModels.add(distModel.getModel(rupSet));
+		
+		if (exclusionModels.isEmpty())
+			return null;
+		if (exclusionModels.size() == 1)
+			return exclusionModels.get(0);
+		
+		System.out.println("Combining "+exclusionModels.size()+" exclusion models");
+		
+		return new RuptureProbabilityCalc.LogicalAnd(exclusionModels.toArray(new BinaryRuptureProbabilityCalc[0]));
+	}
+	
+	@Override
+	public InversionSolver getSolver(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		if (isSolveClustersIndividually() && branch.getValue(NSHM23_SegmentationModels.class) == NSHM23_SegmentationModels.CLASSIC) {
+			// classic model
+			System.out.println("Returning classic model solver");
+			return new ClassicModelInversionSolver(rupSet, branch);
+		}
+		return ClusterSpecificInversionConfigurationFactory.super.getSolver(rupSet, branch);
+	}
+
 	private static ExclusionIntegerSampler getExcludeSampler(ClusterRuptures cRups,
 			ExclusionIntegerSampler currentSampler, BinaryRuptureProbabilityCalc excludeCalc) {
 		HashSet<Integer> skips = new HashSet<>();
@@ -753,6 +802,32 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			return skipSampler;
 		else
 			return currentSampler.getCombinedWith(skipSampler);
+	}
+	
+	public static class ClassicModelInversionSolver extends ClusterSpecificInversionSolver {
+		
+		private AnalyticalSingleFaultInversionSolver analytical;
+		private BinaryRuptureProbabilityCalc rupProbCalc;
+		
+		public ClassicModelInversionSolver(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+			analytical = new AnalyticalSingleFaultInversionSolver(branch.requireValue(SupraSeisBValues.class).bValue);
+			rupProbCalc = getExclusionModel(rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
+		}
+
+		@Override
+		protected BinaryRuptureProbabilityCalc getRuptureExclusionModel(FaultSystemRupSet rupSet,
+				LogicTreeBranch<?> branch) {
+			return rupProbCalc;
+		}
+
+		@Override
+		public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config, String info) {
+			// see if it's a single-fault rupture set
+			if (AnalyticalSingleFaultInversionSolver.isSingleFault(rupSet))
+				return analytical.run(rupSet, config, info);
+			return super.run(rupSet, config, info);
+		}
+		
 	}
 	
 	public static class NoPaleoParkfield extends NSHM23_InvConfigFactory {
@@ -1217,14 +1292,6 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 		public NewScaleUseOrigWidths() {
 			NSHM23_ScalingRelationships.USE_ORIG_WIDTHS = true;
-		}
-		
-	}
-	
-	public static class ForceWideSegBranches extends NSHM23_InvConfigFactory {
-
-		public ForceWideSegBranches() {
-			NSHM23_SegmentationModels.WIDE_BRANCHES = true;
 		}
 		
 	}
