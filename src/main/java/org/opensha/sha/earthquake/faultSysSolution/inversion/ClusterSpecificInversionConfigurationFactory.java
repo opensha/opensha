@@ -1,6 +1,6 @@
 package org.opensha.sha.earthquake.faultSysSolution.inversion;
 
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 
 /**
  * Interface for a factory that can build a separate {@link InversionConfiguration} for each {@link ConnectivityCluster},
@@ -17,6 +17,13 @@ public interface ClusterSpecificInversionConfigurationFactory extends InversionC
 	 */
 	public default boolean isSolveClustersIndividually() {
 		return true;
+	}
+
+	@Override
+	public default InversionSolver getSolver(LogicTreeBranch<?> branch) {
+		if (isSolveClustersIndividually())
+			return new ClusterSpecificInversionSolver();
+		return new InversionSolver.Default();
 	}
 
 }

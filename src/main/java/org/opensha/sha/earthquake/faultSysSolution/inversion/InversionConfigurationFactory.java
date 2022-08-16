@@ -81,5 +81,15 @@ public interface InversionConfigurationFactory {
 	 * Writes any relevant cache data for later reuse, default implementation does nothing.
 	 */
 	public default void writeCache() {};
+	
+	/**
+	 * Returns the {@link InversionSolver} that will be used to solve the inversion.
+	 * 
+	 * @param branch
+	 * @return
+	 */
+	public default InversionSolver getSolver(LogicTreeBranch<?> branch) {
+		return new InversionSolver.Default();
+	}
 
 }

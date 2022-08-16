@@ -5,10 +5,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -29,24 +26,10 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Sl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.Shaw07JumpDistSegModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalRateInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ReweightEvenFitSimulatedAnnealing;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
-import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
-import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
-import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitProgress;
-import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
-import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
-import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
-import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -580,197 +563,25 @@ public class Inversions {
 	
 	public static FaultSystemSolution run(InversionConfigurationFactory factory, LogicTreeBranch<?> branch, int threads)
 			throws IOException {
-		return run(factory, branch, threads, null);
+		return factory.getSolver(branch).run(factory, branch, threads);
 	}
 	
 	public static FaultSystemSolution run(InversionConfigurationFactory factory, LogicTreeBranch<?> branch, int threads,
 			CommandLine cmd) throws IOException {
-		FaultSystemRupSet rupSet = factory.buildRuptureSet(branch, threads);
-		rupSet.addModule(branch);
-		
-		return run(rupSet, factory, branch, threads, cmd);
+		return factory.getSolver(branch).run(factory, branch, threads, cmd);
 	}
 	
 	public static FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfigurationFactory factory,
 			LogicTreeBranch<?> branch, int threads, CommandLine cmd) throws IOException {
-		FaultSystemSolution ret = null;
-		if (factory instanceof ClusterSpecificInversionConfigurationFactory &&
-				((ClusterSpecificInversionConfigurationFactory)factory).isSolveClustersIndividually()) {
-			// cluster-specific inversions
-			ConnectivityClusters clusters = rupSet.getModule(ConnectivityClusters.class);
-			if (clusters == null) {
-				clusters = ConnectivityClusters.build(rupSet);
-				rupSet.addModule(clusters);
-			}
-			
-			// sort by number of ruptures, decreasing
-			List<ConnectivityCluster> sorted = new ArrayList<>(clusters.get());
-			Collections.sort(sorted, ConnectivityCluster.rupCountComparator);
-			Collections.reverse(sorted);
-			
-			if (sorted.size() > 1) {
-				System.out.println("Will invert for "+sorted.size()+" separate connectivity clusters");
-				List<FaultSystemSolution> solutions = new ArrayList<>(clusters.size());
-				
-//				File tmpDir = new File("/tmp/inv_debug");
-//				Preconditions.checkState(tmpDir.exists() || tmpDir.mkdir());
-				for (ConnectivityCluster cluster : sorted) {
-					System.out.println("Handling cluster: "+cluster);
-					System.out.println("Building subset rupture set for "+cluster);
-					FaultSystemRupSet clusterRupSet = rupSet.getForSectionSubSet(cluster.getSectIDs());
-					System.out.println("Building subset inversion configuration for "+cluster);
-					InversionConfiguration config = factory.buildInversionConfig(clusterRupSet, branch, threads);
-					if (config == null) {
-						// assume that we're not supposed to invert for this cluster, skip
-						solutions.add(null);
-						continue;
-					}
-					if (cmd != null)
-						// apply any command line overrides
-						config = InversionConfiguration.builder(config).forCommandLine(cmd).build();
-					solutions.add(run(clusterRupSet, config));
-					
-//					String name = "sol_"+(solutions.size()-1)+"_"+cluster.getNumSections()+"sects_"+cluster.getNumRuptures()+"rups";
-//					if (cluster.getParentSectIDs().size() == 1)
-//						name += "_"+clusterRupSet.getFaultSectionData(0).getParentSectionName().replaceAll("\\W+", "_");
-//					File tmpFile = new File(tmpDir, name+".zip");
-//					solutions.get(solutions.size()-1).write(tmpFile);
-				}
-				
-				System.out.println("Finished "+solutions.size()+" cluster-specific inversions, combining");
-				double[] rates = new double[rupSet.getNumRuptures()];
-				
-				double[] waterLevelRates = null;
-				double[] initialRates = null;
-				List<InversionMisfits> solMisfits = new ArrayList<>();
-				Map<ConnectivityCluster, InversionMisfitStats> clusterMisfitsMap = new HashMap<>();
-				InversionMisfitProgress largestProgress = null;
-				
-				for (int i=0; i<solutions.size(); i++) {
-					ConnectivityCluster cluster = clusters.get(i);
-					FaultSystemSolution clusterSol = solutions.get(i);
-					// merge each one back in
-					if (clusterSol == null)
-						continue;
-					FaultSystemRupSet clusterRupSet = clusterSol.getRupSet();
-					RuptureSubSetMappings mappings = clusterRupSet.requireModule(RuptureSubSetMappings.class);
-					WaterLevelRates subsetWL = clusterSol.getModule(WaterLevelRates.class);
-					if (subsetWL != null && waterLevelRates == null)
-						waterLevelRates = new double[rates.length];
-					InitialSolution subsetInitial = clusterSol.getModule(InitialSolution.class);
-					if (subsetInitial != null && initialRates == null)
-						initialRates = new double[rates.length];
-					for (int subsetID=0; subsetID<clusterRupSet.getNumRuptures(); subsetID++) {
-						int fullID = mappings.getOrigRupID(subsetID);
-						Preconditions.checkState(rates[fullID] == 0d,
-								"Rupture %s (%s in the subset solution) was already non-zero (%s), used in multiple clusters?",
-								fullID, subsetID, rates[fullID]);
-						rates[fullID] = clusterSol.getRateForRup(subsetID);
-						if (subsetWL != null)
-							waterLevelRates[fullID] = subsetWL.get(subsetID);
-						if (subsetInitial != null)
-							initialRates[fullID] = subsetInitial.get(subsetID);
-					}
-					InversionMisfits misfits = clusterSol.requireModule(InversionMisfits.class);
-					solMisfits.add(misfits);
-					clusterMisfitsMap.put(cluster, misfits.getMisfitStats());
-					if (largestProgress == null)
-						largestProgress = clusterSol.getModule(InversionMisfitProgress.class);
-				}
-				FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
-				if (waterLevelRates != null)
-					sol.addModule(new WaterLevelRates(waterLevelRates));
-				if (initialRates != null)
-					sol.addModule(new InitialSolution(initialRates));
-				InversionMisfits misfits = InversionMisfits.appendSeparate(solMisfits);
-				sol.addModule(misfits);
-				sol.addModule(misfits.getMisfitStats());
-				sol.addModule(new ConnectivityClusters.ConnectivityClusterSolutionMisfits(
-						sol, clusterMisfitsMap, largestProgress));
-				
-				ret = sol;
-			} else {
-				System.out.println("Only 1 connectivity cluster, will run regular inversion");
-			}
-		}
-		if (ret == null) {
-			// full rupture set inversion
-			InversionConfiguration config = factory.buildInversionConfig(rupSet, branch, threads);
-			rupSet.addModule(branch);
-			if (cmd != null)
-				// apply any command line overrides
-				config = InversionConfiguration.builder(config).forCommandLine(cmd).build();
-			
-			ret = Inversions.run(rupSet, config);
-		}
-		
-		// attach any relevant modules before writing out
-		SolutionProcessor processor = factory.getSolutionLogicTreeProcessor();
-		
-		if (processor != null)
-			processor.processSolution(ret, branch);
-		
-		return ret;
+		return factory.getSolver(branch).run(rupSet, factory, branch, threads, cmd);
 	}
 	
 	public static FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config) {
-		return run(rupSet, config, null);
+		return new InversionSolver.Default().run(rupSet, config, null);
 	}
 	
 	public static FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config, String info) {
-		CompletionCriteria completion = config.getCompletionCriteria();
-		if (completion == null)
-			throw new IllegalArgumentException("Must supply total inversion time or iteration count");
-		
-		InversionInputGenerator inputs = new InversionInputGenerator(rupSet, config);
-		inputs.generateInputs(true);
-		inputs.columnCompress();
-		
-		ProgressTrackingCompletionCriteria progress = new ProgressTrackingCompletionCriteria(completion);
-		
-		SimulatedAnnealing sa = config.buildSA(inputs);
-		
-		System.out.println("SA Parameters:");
-		System.out.println("\tImplementation: "+sa.getClass().getName());
-		System.out.println("\tCompletion Criteria: "+completion);
-		System.out.println("\tPerturbation Function: "+sa.getPerturbationFunc());
-		System.out.println("\tNon-Negativity Constraint: "+sa.getNonnegativeityConstraintAlgorithm());
-		System.out.println("\tCooling Schedule: "+sa.getCoolingFunc());
-		if (sa instanceof ThreadedSimulatedAnnealing) {
-			ThreadedSimulatedAnnealing tsa = (ThreadedSimulatedAnnealing)sa;
-			System.out.println("\tTop-Level Threads: "+tsa.getNumThreads());
-			System.out.println("\tSub-Completion Criteria: "+tsa.getSubCompetionCriteria());
-			System.out.println("\tAveraging? "+tsa.isAverage());
-		}
-		
-		System.out.println("Annealing!");
-		sa.iterate(progress);
-		
-		if (sa instanceof ThreadedSimulatedAnnealing)
-			((ThreadedSimulatedAnnealing)sa).shutdown();
-		
-		System.out.println("DONE. Building solution...");
-		double[] rawSol = sa.getBestSolution();
-		double[] rates = inputs.adjustSolutionForWaterLevel(rawSol);
-		
-		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
-		// add inversion progress
-		sol.addModule(progress.getProgress());
-		// add water level rates
-		if (inputs.getWaterLevelRates() != null)
-			sol.addModule(new WaterLevelRates(inputs.getWaterLevelRates()));
-		if (inputs.hasInitialSolution())
-			sol.addModule(new InitialSolution(inputs.getInitialSolution()));
-		sol.addModule(config);
-		InversionMisfits misfits = new InversionMisfits(sa);
-		sol.addModule(misfits);
-		sol.addModule(misfits.getMisfitStats());
-		if (info != null)
-			sol.setInfoString(info);
-		if (sa instanceof ReweightEvenFitSimulatedAnnealing)
-			sol.addModule(((ReweightEvenFitSimulatedAnnealing)sa).getMisfitProgress());
-		
-		return sol;
+		return new InversionSolver.Default().run(rupSet, config, info);
 	}
 
 }
