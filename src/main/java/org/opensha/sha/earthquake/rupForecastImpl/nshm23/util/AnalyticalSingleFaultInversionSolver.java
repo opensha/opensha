@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.util;
 
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.List;
 
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -10,32 +11,70 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGener
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionSolver;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SerialSimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
+/**
+ * This solves for the rate of each rupture analytically, according to the prescribed section nucleation MFDs. It does
+ * so by first fetching section supra-seismogenic nucleation MFDs from the {@link InversionTargetMFDs} attached to the
+ * rupture set. Then, for each each section, that nucleation MFD is spread across all participating ruptures. If a
+ * b-value is supplied, then rupture rates for different magnitudes within a single MFD bin will be proportioned according
+ * to their relative G-R rate.
+ * 
+ * @author kevin
+ *
+ */
 public class AnalyticalSingleFaultInversionSolver extends InversionSolver.Default {
 	
 	private double bVal;
+	private BinaryRuptureProbabilityCalc rupExclusionModel;
 
+	/**
+	 * 
+	 * @param bVal used to proportion for ruptures of different magniutdes that share an MFD bin
+	 * @param rupExclusionModel optional rupture exclusion model
+	 */
 	public AnalyticalSingleFaultInversionSolver(double bVal) {
+		this(bVal, null);
+	}
+
+	/**
+	 * 
+	 * @param bVal used to proportion for ruptures of different magniutdes that share an MFD bin
+	 * @param rupExclusionModel optional rupture exclusion model
+	 */
+	public AnalyticalSingleFaultInversionSolver(double bVal, BinaryRuptureProbabilityCalc rupExclusionModel) {
 		this.bVal = bVal;
+		this.rupExclusionModel = rupExclusionModel;
 	}
 
 	@Override
 	public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config, String info) {
 		ModSectMinMags minMags = rupSet.getModule(ModSectMinMags.class);
 		
+		// get target MFDs from the rupture set
 		InversionTargetMFDs targets = rupSet.requireModule(InversionTargetMFDs.class);
 		
 		List<? extends IncrementalMagFreqDist> supraNuclMFDs = targets.getOnFaultSupraSeisNucleationMFDs();
 		Preconditions.checkNotNull(supraNuclMFDs,
 				"Must have section supra-seis nucleation MFDs to solve classic model analytically");
+		
+		BitSet excludeRuptures = null;
+		if (rupExclusionModel != null) {
+			excludeRuptures = new BitSet(rupSet.getNumRuptures());
+			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+			for (int rupIndex=0; rupIndex<rupSet.getNumRuptures(); rupIndex++)
+				if (!rupExclusionModel.isRupAllowed(cRups.get(rupIndex), false))
+					excludeRuptures.set(rupIndex);
+		}
 		
 		// if non-null, will subtract from target MFDs
 		double[] waterLevel = config.getWaterLevel();
@@ -59,6 +98,8 @@ public class AnalyticalSingleFaultInversionSolver extends InversionSolver.Defaul
 			
 			// identify ruptures above section minimum magnitude, and figure out how many occupy each input MFD bin
 			for (int rupIndex : rupSet.getRupturesForSection(s)) {
+				if (excludeRuptures != null && excludeRuptures.get(rupIndex))
+					continue;
 				double mag = rupSet.getMagForRup(rupIndex);
 				int magIndex = sectMFD.getClosestXIndex(mag);
 				if (waterLevel != null && waterLevel[rupIndex] > 0d) {
@@ -116,6 +157,7 @@ public class AnalyticalSingleFaultInversionSolver extends InversionSolver.Defaul
 			sol.addModule(new WaterLevelRates(waterLevel));
 		
 		if (config != null) {
+			// calculate inversion misfits
 			sol.addModule(config);
 			List<InversionConstraint> constraints = config.getConstraints();
 			if (constraints != null && !constraints.isEmpty()) {
