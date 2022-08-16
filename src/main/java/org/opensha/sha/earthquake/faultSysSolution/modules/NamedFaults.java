@@ -29,7 +29,8 @@ import com.google.gson.reflect.TypeToken;
  *
  */
 public class NamedFaults implements SubModule<FaultSystemRupSet>, BranchAverageableModule<NamedFaults>,
-ConstantAverageable<NamedFaults>, JSON_TypeAdapterBackedModule<Map<String, List<Integer>>> {
+ConstantAverageable<NamedFaults>, JSON_TypeAdapterBackedModule<Map<String, List<Integer>>>,
+SplittableRuptureSubSetModule<NamedFaults> {
 	
 	private FaultSystemRupSet rupSet;
 	private Map<String, List<Integer>> namedFaults;
@@ -194,6 +195,11 @@ ConstantAverageable<NamedFaults>, JSON_TypeAdapterBackedModule<Map<String, List<
 			if (!module.namedFaults.containsKey(name))
 				return false;
 		return true;
+	}
+
+	@Override
+	public NamedFaults getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
+		return new NamedFaults(rupSubSet, namedFaults);
 	}
 
 }
