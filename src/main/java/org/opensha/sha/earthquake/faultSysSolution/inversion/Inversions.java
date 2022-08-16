@@ -563,17 +563,18 @@ public class Inversions {
 	
 	public static FaultSystemSolution run(InversionConfigurationFactory factory, LogicTreeBranch<?> branch, int threads)
 			throws IOException {
-		return factory.getSolver(branch).run(factory, branch, threads);
+		return run(factory, branch, threads, null);
 	}
 	
 	public static FaultSystemSolution run(InversionConfigurationFactory factory, LogicTreeBranch<?> branch, int threads,
 			CommandLine cmd) throws IOException {
-		return factory.getSolver(branch).run(factory, branch, threads, cmd);
+		FaultSystemRupSet rupSet = factory.buildRuptureSet(branch, threads);;
+		return run(rupSet, factory, branch, threads, cmd);
 	}
 	
 	public static FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfigurationFactory factory,
 			LogicTreeBranch<?> branch, int threads, CommandLine cmd) throws IOException {
-		return factory.getSolver(branch).run(rupSet, factory, branch, threads, cmd);
+		return factory.getSolver(rupSet, branch).run(rupSet, factory, branch, threads, cmd);
 	}
 	
 	public static FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config) {

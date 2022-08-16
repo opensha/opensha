@@ -19,37 +19,53 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
 
 import com.google.common.base.Preconditions;
 
 public class ClusterSpecificInversionSolver extends InversionSolver.Default {
+	
+	protected BinaryRuptureProbabilityCalc getRuptureExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		return null;
+	}
 
 	@Override
 	public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfigurationFactory factory,
 			LogicTreeBranch<?> branch, int threads, CommandLine cmd) throws IOException {
 		// cluster-specific inversions
-		ConnectivityClusters clusters = rupSet.getModule(ConnectivityClusters.class);
-		if (clusters == null) {
-			clusters = ConnectivityClusters.build(rupSet);
-			rupSet.addModule(clusters);
+		
+		// we might have an exclusion model that limits us to only certain ruptures, which can affect the clusters that
+		// we build
+		BinaryRuptureProbabilityCalc rupExclusionModel = getRuptureExclusionModel(rupSet, branch);
+		
+		List<ConnectivityCluster> clusters;
+		if (rupExclusionModel != null) {
+			// build only considering those ruptures
+			clusters = ConnectivityCluster.build(rupSet, rupExclusionModel);
+			rupSet.addModule(new ConnectivityClusters(rupSet, clusters));
+		} else if (rupSet.hasModule(ConnectivityClusters.class)) {
+			clusters = rupSet.requireModule(ConnectivityClusters.class).get();
+		} else {
+			ConnectivityClusters clusterModule = ConnectivityClusters.build(rupSet);
+			rupSet.addModule(clusterModule);
+			clusters = clusterModule.get();
 		}
-
 		// sort by number of ruptures, decreasing
-		List<ConnectivityCluster> sorted = new ArrayList<>(clusters.get());
-		Collections.sort(sorted, ConnectivityCluster.rupCountComparator);
-		Collections.reverse(sorted);
+		clusters = new ArrayList<>(clusters);
+		Collections.sort(clusters, ConnectivityCluster.rupCountComparator);
+		Collections.reverse(clusters);
 
-		if (sorted.size() > 1) {
-			System.out.println("Will invert for "+sorted.size()+" separate connectivity clusters");
+		if (clusters.size() > 1) {
+			System.out.println("Will invert for "+clusters.size()+" separate connectivity clusters");
 			List<FaultSystemSolution> solutions = new ArrayList<>(clusters.size());
 
 //			File tmpDir = new File("/tmp/inv_debug");
 //			Preconditions.checkState(tmpDir.exists() || tmpDir.mkdir());
-			for (ConnectivityCluster cluster : sorted) {
+			for (ConnectivityCluster cluster : clusters) {
 				System.out.println("Handling cluster: "+cluster);
 				System.out.println("Building subset rupture set for "+cluster);
-				FaultSystemRupSet clusterRupSet = rupSet.getForSectionSubSet(cluster.getSectIDs());
+				FaultSystemRupSet clusterRupSet = rupSet.getForSectionSubSet(cluster.getSectIDs(), rupExclusionModel);
 				System.out.println("Building subset inversion configuration for "+cluster);
 				InversionConfiguration config = factory.buildInversionConfig(clusterRupSet, branch, threads);
 				if (config == null) {
