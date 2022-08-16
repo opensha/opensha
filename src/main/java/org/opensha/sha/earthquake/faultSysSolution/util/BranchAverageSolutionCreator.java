@@ -247,9 +247,10 @@ public class BranchAverageSolutionCreator {
 			try {
 				accumulator.processContainer(container, weight);
 			} catch (Exception e) {
-				e.printStackTrace();
-				System.err.println("Error processing accumulator, will no longer average "
-						+accumulator.getType().getName()+". Failed on branch: "+branch);
+//				e.printStackTrace();
+				System.err.println("Error processing accumulator, will no longer average "+accumulator.getType().getName()
+						+".\n\tFailed on branch: "+branch
+						+"\n\tError message: "+e.getMessage());
 				System.err.flush();
 				accumulators.remove(i);
 				if (accumulatingSlipRates && SolutionSlipRates.class.isAssignableFrom(accumulator.getType()))
