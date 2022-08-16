@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -411,17 +412,27 @@ public class FaultPolyMgr implements Iterable<Area>, PolygonFaultGridAssociation
 		return values;
 	}	
 	
-	public static PolygonFaultGridAssociations loadSerializedUCERF3(FaultModels fm) throws IOException {
-		// load in serialized version that is impervious to changes in location class & polygon construction
-		InputStream zipIS = UCERF3_DataUtils.locateResourceAsStream("seismicityGrids",
-				fm.name().toLowerCase()+"_fault_polygon_grid_node_associations.zip");
-		File tmpFile = File.createTempFile("u3_poly_associations", ".zip");
-		FileOutputStream tmpOut = new FileOutputStream(tmpFile);
-		zipIS.transferTo(tmpOut);
-		tmpOut.close();
-		ModuleArchive<PolygonFaultGridAssociations> archive = new ModuleArchive<>(tmpFile);
-		PolygonFaultGridAssociations associations = archive.requireModule(PolygonFaultGridAssociations.class);
-		tmpFile.delete();
+	private static Map<FaultModels, PolygonFaultGridAssociations> serializedCache = null;
+	
+	public synchronized static PolygonFaultGridAssociations loadSerializedUCERF3(FaultModels fm) throws IOException {
+		if (serializedCache == null)
+			serializedCache = new HashMap<>();
+		
+		PolygonFaultGridAssociations associations = serializedCache.get(fm);
+		if (associations == null) {
+			// load in serialized version that is impervious to changes in location class & polygon construction
+			InputStream zipIS = UCERF3_DataUtils.locateResourceAsStream("seismicityGrids",
+					fm.name().toLowerCase()+"_fault_polygon_grid_node_associations.zip");
+			File tmpFile = File.createTempFile("u3_poly_associations", ".zip");
+			FileOutputStream tmpOut = new FileOutputStream(tmpFile);
+			zipIS.transferTo(tmpOut);
+			tmpOut.close();
+			ModuleArchive<PolygonFaultGridAssociations> archive = new ModuleArchive<>(tmpFile);
+			associations = archive.requireModule(PolygonFaultGridAssociations.class);
+			tmpFile.delete();
+			serializedCache.put(fm, associations);
+		}
+		
 		return associations;
 	}
 	
