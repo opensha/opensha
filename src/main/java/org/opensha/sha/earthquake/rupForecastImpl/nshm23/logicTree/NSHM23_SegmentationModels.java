@@ -36,6 +36,10 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	NONE("None", "None", 1.0d) {
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+			// no segmentation:
+			//	* no distance dependent
+			//	* anything through creeping
+			// 	* anything through wasatch
 			return null;
 		}
 
@@ -55,7 +59,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 			if (APPLY_TO_CREEPING_SECT && !branch.hasValue(RupsThroughCreepingSect.class))
 				// Creeping P=0.75
 				creepingProb = 0.75;
-			// Wasatch P=1 unless wide branches, then 0.75
+			// Wasatch P=0.75
 			double wasatchProb = 0.75;
 			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN);
 		}
@@ -105,6 +109,8 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 
 		@Override
 		public boolean isExcludeRupturesThroughCreepingSect() {
+			// highly limited above, will be excluded in the classic branch
+			// TODO should be limit it here as well?
 			return false;
 		}
 	},
@@ -118,8 +124,8 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 			else
 				models.add(new JumpProbabilityCalc.NoJumps());
 			
-			// creeping section. this limints not just through, but anything corupturing with the creeping section
-			int creepingParentID = FaultSectionUtils.findParentSectionID(rupSet.getFaultSectionDataList(), "San", "Andreas", "Creeping");
+			// creeping section. this limits not just through, but anything corupturing with the creeping section
+			int creepingParentID = NSHM23_ConstraintBuilder.findCreepingSection(rupSet);
 			if (creepingParentID >= 0)
 				models.add(new CreepingSectionBinaryJumpExcludeModel(creepingParentID));
 			
@@ -248,7 +254,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		}
 		if (rupSet != null) {
 			if (creepingProb < 1d) {
-				int creepingParentID = FaultSectionUtils.findParentSectionID(rupSet.getFaultSectionDataList(), "San", "Andreas", "Creeping");
+				int creepingParentID = NSHM23_ConstraintBuilder.findCreepingSection(rupSet);
 				if (creepingParentID >= 0) {
 					CreepingSectionJumpSegModel creepModel = new CreepingSectionJumpSegModel(creepingParentID, creepingProb);
 					if (model == null)
