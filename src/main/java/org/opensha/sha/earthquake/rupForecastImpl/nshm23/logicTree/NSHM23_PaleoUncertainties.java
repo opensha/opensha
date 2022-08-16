@@ -17,9 +17,9 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Un
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum NSHM23_PaleoUncertainties implements LogicTreeNode {
-	UNCHANGED("Unchanged", "Unchanged", 1d, 1d),
-	TIGHT("Tight Uncertainties (1/5 x)", "TightUncert", 1d/5d, 1d),
-	LOOSE("Loose Uncertainties (5 x)", "LooseUncert", 5d, 1d);
+	EVEN_FIT("Even-Fit Paleo Data", "EvenFit", 1d, 1d),
+	OVER_FIT("Over-Fit Paleo Data (5x)", "OverFit", 1d/5d, 1d),
+	UNDER_FIT("Under-Fit Paleo Data (10x)", "UnderFit", 10d, 1d);
 
 	private String name;
 	private String shortName;
