@@ -51,7 +51,7 @@ public interface InversionSolver {
 				// apply any command line overrides
 				config = InversionConfiguration.builder(config).forCommandLine(cmd).build();
 			
-			FaultSystemSolution sol = Inversions.run(rupSet, config);
+			FaultSystemSolution sol = run(rupSet, config, null);
 			
 			// attach any relevant modules before writing out
 			SolutionProcessor processor = factory.getSolutionLogicTreeProcessor();

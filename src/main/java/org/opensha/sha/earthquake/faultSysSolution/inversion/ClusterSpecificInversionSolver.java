@@ -29,6 +29,10 @@ public class ClusterSpecificInversionSolver extends InversionSolver.Default {
 	protected BinaryRuptureProbabilityCalc getRuptureExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		return null;
 	}
+	
+	protected boolean shouldInvert(ConnectivityCluster cluster) {
+		return true;
+	}
 
 	@Override
 	public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfigurationFactory factory,
@@ -62,7 +66,13 @@ public class ClusterSpecificInversionSolver extends InversionSolver.Default {
 
 //			File tmpDir = new File("/tmp/inv_debug");
 //			Preconditions.checkState(tmpDir.exists() || tmpDir.mkdir());
+			int numInverted = 0;
 			for (ConnectivityCluster cluster : clusters) {
+				if (!shouldInvert(cluster)) {
+					solutions.add(null);
+					System.out.println("Skipping inversion for cluster: "+cluster);
+					continue;
+				}
 				System.out.println("Handling cluster: "+cluster);
 				System.out.println("Building subset rupture set for "+cluster);
 				FaultSystemRupSet clusterRupSet = rupSet.getForSectionSubSet(cluster.getSectIDs(), rupExclusionModel);
@@ -77,6 +87,7 @@ public class ClusterSpecificInversionSolver extends InversionSolver.Default {
 					// apply any command line overrides
 					config = InversionConfiguration.builder(config).forCommandLine(cmd).build();
 				solutions.add(run(clusterRupSet, config));
+				numInverted++;
 
 //				String name = "sol_"+(solutions.size()-1)+"_"+cluster.getNumSections()+"sects_"+cluster.getNumRuptures()+"rups";
 //				if (cluster.getParentSectIDs().size() == 1)
@@ -85,7 +96,9 @@ public class ClusterSpecificInversionSolver extends InversionSolver.Default {
 //				solutions.get(solutions.size()-1).write(tmpFile);
 			}
 
-			System.out.println("Finished "+solutions.size()+" cluster-specific inversions, combining");
+			System.out.println("Finished "+numInverted+" cluster-specific inversions, combining");
+			if (numInverted == 0)
+				return null;
 			double[] rates = new double[rupSet.getNumRuptures()];
 
 			double[] waterLevelRates = null;
@@ -145,7 +158,22 @@ public class ClusterSpecificInversionSolver extends InversionSolver.Default {
 			return sol;
 		} else {
 			System.out.println("Only 1 connectivity cluster, will run regular inversion");
-			return super.run(rupSet, factory, branch, threads, cmd);
+			InversionConfiguration config = factory.buildInversionConfig(rupSet, branch, threads);
+			if (branch != rupSet.getModule(LogicTreeBranch.class))
+				rupSet.addModule(branch);
+			if (cmd != null)
+				// apply any command line overrides
+				config = InversionConfiguration.builder(config).forCommandLine(cmd).build();
+			
+			FaultSystemSolution sol = run(rupSet, config);
+			
+			// attach any relevant modules before writing out
+			SolutionProcessor processor = factory.getSolutionLogicTreeProcessor();
+			
+			if (processor != null)
+				processor.processSolution(sol, branch);
+			
+			return sol;
 		}
 	}
 

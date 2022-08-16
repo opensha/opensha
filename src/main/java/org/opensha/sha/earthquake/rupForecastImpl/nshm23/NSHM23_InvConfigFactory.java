@@ -47,8 +47,10 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Nonnegati
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
@@ -58,6 +60,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
+import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
@@ -650,8 +653,10 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			constrBuilder.slipRates().weight(slipWeight);
 		
 		if (paleoWeight > 0d) {
-			constrBuilder.paleoRates().weight(paleoWeight);
-			constrBuilder.paleoSlips().weight(paleoWeight);
+			// need to explicitly specify class for weighting as the constraint could be skipped if no paleo (slip)
+			// data exists
+			constrBuilder.paleoRates().weight(PaleoRateInversionConstraint.class, paleoWeight);
+			constrBuilder.paleoSlips().weight(PaleoSlipInversionConstraint.class, paleoWeight);
 		}
 		
 		if (parkWeight > 0d)
@@ -667,7 +672,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			constrBuilder.sectSupraNuclMFDs().weight(nuclMFDWeight);
 		
 		if (paleoSmoothWeight > 0d)
-			constrBuilder.supraPaleoSmooth().weight(paleoSmoothWeight);
+			// need to explicitly specify class for weighting as the constraint could be skipped
+			constrBuilder.supraPaleoSmooth().weight(LaplacianSmoothingInversionConstraint.class, paleoSmoothWeight);
 		
 		// this will skip any ruptures below the minimim magnitude
 		ExclusionIntegerSampler sampler = constrBuilder.getSkipBelowMinSampler();
@@ -821,9 +827,93 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		}
 
 		@Override
+		protected boolean shouldInvert(ConnectivityCluster cluster) {
+			// only run inversions when multiple parent sections are involved
+			return cluster.getParentSectIDs().size() > 1;
+		}
+
+		@Override
+		public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfigurationFactory factory,
+				LogicTreeBranch<?> branch, int threads, CommandLine cmd) throws IOException {
+			// first do inversion-based solutions
+			FaultSystemSolution inversionSol = super.run(rupSet, factory, branch, threads, cmd);
+			if (inversionSol == null) {
+				// simplest case, all analytical
+				return analytical.run(rupSet, factory, branch, threads, cmd);
+			}
+			ConnectivityClusters clusters = rupSet.requireModule(ConnectivityClusters.class);
+			// now add in analytical
+			HashSet<Integer> analyticalSects = new HashSet<>();
+			for (ConnectivityCluster cluster : clusters)
+				if (!shouldInvert(cluster))
+					analyticalSects.addAll(cluster.getSectIDs());
+			System.out.println("Calculating analytical solution for "+analyticalSects.size()+"/"+rupSet.getNumSections()+" sections");
+			if (analyticalSects.isEmpty()) {
+				return inversionSol;
+			} else {
+				// build rupture set only with analytical sections
+				FaultSystemRupSet analyticalRupSet = rupSet.getForSectionSubSet(analyticalSects, rupProbCalc);
+				// inversion configuration for it (required for target MFDs, and then to calc misfits)
+				InversionConfiguration config = factory .buildInversionConfig(analyticalRupSet, branch, threads);
+				double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
+				FaultSystemSolution analyticalSol = new AnalyticalSingleFaultInversionSolver(bVal).run(
+						analyticalRupSet, config);
+				double[] analyticalRates = analyticalSol.getRateForAllRups();
+				
+				int origNumRups = rupSet.getNumRuptures();
+				
+				double[] allInitialRates = inversionSol.hasModule(InitialSolution.class) ?
+						Arrays.copyOf(inversionSol.getModule(InitialSolution.class).get(), origNumRups) : new double[origNumRups];
+				double[] allRates = Arrays.copyOf(inversionSol.getRateForAllRups(), origNumRups);
+				
+				RuptureSubSetMappings mappings = analyticalRupSet.requireModule(RuptureSubSetMappings.class);
+				for (int subsetRupIndex=0; subsetRupIndex<analyticalRupSet.getNumRuptures(); subsetRupIndex++) {
+					int origRupIndex = mappings.getOrigRupID(subsetRupIndex);
+					allRates[origRupIndex] = analyticalRates[subsetRupIndex];
+					allInitialRates[origRupIndex] = analyticalRates[subsetRupIndex];
+				}
+				
+				InversionMisfits inversionMisfits = inversionSol.requireModule(InversionMisfits.class);
+				InversionMisfits analyticalMisfits = analyticalSol.requireModule(InversionMisfits.class);
+				FaultSystemSolution combinedSol = new FaultSystemSolution(rupSet, allRates);
+				
+				if (analyticalSol.hasModule(WaterLevelRates.class) || inversionSol.hasModule(WaterLevelRates.class)) {
+					WaterLevelRates inversionWaterLevel = inversionSol.getModule(WaterLevelRates.class);
+					WaterLevelRates analyticalWaterLevel = analyticalSol.getModule(WaterLevelRates.class);
+					
+					if (analyticalWaterLevel == null) {
+						// simple case
+						combinedSol.addModule(inversionWaterLevel);
+					} else {
+						// need to map
+						double[] newWaterLevel = inversionWaterLevel == null ?
+								new double[origNumRups] : Arrays.copyOf(inversionWaterLevel.get(), origNumRups);
+						for (int subsetRupIndex=0; subsetRupIndex<analyticalRupSet.getNumRuptures(); subsetRupIndex++) {
+							int origRupIndex = mappings.getOrigRupID(subsetRupIndex);
+							newWaterLevel[origNumRups] = analyticalWaterLevel.get(subsetRupIndex);
+						}
+						combinedSol.addModule(new WaterLevelRates(newWaterLevel));
+					}
+				}
+				combinedSol.addModule(new InitialSolution(allInitialRates));
+				InversionMisfits combMisfits = InversionMisfits.appendSeparate(List.of(inversionMisfits, analyticalMisfits));
+				combinedSol.addModule(combMisfits);
+				combinedSol.addModule(combMisfits.getMisfitStats());
+
+				// attach any relevant modules before writing out
+				SolutionProcessor processor = factory.getSolutionLogicTreeProcessor();
+
+				if (processor != null)
+					processor.processSolution(combinedSol, branch);
+				
+				return combinedSol;
+			}
+		}
+
+		@Override
 		public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config, String info) {
 			// see if it's a single-fault rupture set
-			if (AnalyticalSingleFaultInversionSolver.isSingleFault(rupSet))
+			if (!hasJumps(rupSet))
 				return analytical.run(rupSet, config, info);
 			return super.run(rupSet, config, info);
 		}

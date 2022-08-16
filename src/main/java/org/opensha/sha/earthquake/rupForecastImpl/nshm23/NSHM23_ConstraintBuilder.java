@@ -666,7 +666,10 @@ public class NSHM23_ConstraintBuilder {
 		Preconditions.checkState(!paleos.isEmpty());
 		for (SectMappedUncertainDataConstraint paleo : paleos)
 			paleoParentIDs.add(rupSet.getFaultSectionData(paleo.sectionIndex).getParentSectionId());
-		constraints.add(new LaplacianSmoothingInversionConstraint(rupSet, 1000, paleoParentIDs));
+		LaplacianSmoothingInversionConstraint constraint = new LaplacianSmoothingInversionConstraint(rupSet, 1000, paleoParentIDs);
+		if (constraint.getNumRows() > 0)
+			// make sure it actually has rows, can not if only 2-section parents
+			constraints.add(constraint);
 		return this;
 	}
 	

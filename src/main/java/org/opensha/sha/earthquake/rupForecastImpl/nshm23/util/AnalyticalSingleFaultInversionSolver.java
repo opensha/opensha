@@ -14,7 +14,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
-import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
@@ -26,25 +26,9 @@ public class AnalyticalSingleFaultInversionSolver extends InversionSolver.Defaul
 	public AnalyticalSingleFaultInversionSolver(double bVal) {
 		this.bVal = bVal;
 	}
-	
-	public static boolean isSingleFault(FaultSystemRupSet rupSet) {
-		Integer parentID = null;
-		for (FaultSection sect : rupSet.getFaultSectionDataList()) {
-			int myParentID = sect.getParentSectionId();
-			if (parentID == null)
-				parentID = myParentID;
-			else if (myParentID != parentID)
-				return false;
-		}
-		return true;
-	}
 
 	@Override
 	public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config, String info) {
-		// make sure that it's actually a single fault
-		Preconditions.checkState(isSingleFault(rupSet), "Analytical solution only works for a single-fault "
-				+ "rupture set, encountered multiple parents");
-		
 		ModSectMinMags minMags = rupSet.getModule(ModSectMinMags.class);
 		
 		InversionTargetMFDs targets = rupSet.requireModule(InversionTargetMFDs.class);
@@ -52,6 +36,9 @@ public class AnalyticalSingleFaultInversionSolver extends InversionSolver.Defaul
 		List<? extends IncrementalMagFreqDist> supraNuclMFDs = targets.getOnFaultSupraSeisNucleationMFDs();
 		Preconditions.checkNotNull(supraNuclMFDs,
 				"Must have section supra-seis nucleation MFDs to solve classic model analytically");
+		
+		// if non-null, will subtract from target MFDs
+		double[] waterLevel = config.getWaterLevel();
 		
 		double[] rates = new double[rupSet.getNumRuptures()];
 		for (int s=0; s<rupSet.getNumSections(); s++) {
@@ -62,18 +49,25 @@ public class AnalyticalSingleFaultInversionSolver extends InversionSolver.Defaul
 			if (sectMFD.calcSumOfY_Vals() == 0d)
 				continue;
 			
-			// TODO support (and adjust for) waterlevel
-			
 			List<List<Integer>> rupsInBins = new ArrayList<>(sectMFD.size());
 			for (int i=0; i<sectMFD.size(); i++)
 				rupsInBins.add(null);
 			
+			if (waterLevel != null)
+				// we will subtract the waterlevel from the target
+				sectMFD = sectMFD.deepClone();
+			
 			// identify ruptures above section minimum magnitude, and figure out how many occupy each input MFD bin
 			for (int rupIndex : rupSet.getRupturesForSection(s)) {
 				double mag = rupSet.getMagForRup(rupIndex);
+				int magIndex = sectMFD.getClosestXIndex(mag);
+				if (waterLevel != null && waterLevel[rupIndex] > 0d) {
+					// remove waterlevel rate from the target (convert to nucleation rate first)
+					double waterLevelNuclRate = waterLevel[rupIndex]*rupSet.getAreaForSection(s)/rupSet.getAreaForRup(rupIndex);
+					sectMFD.set(magIndex, Math.max(0d, sectMFD.getY(magIndex)-waterLevelNuclRate));
+				}
 				if (minMags != null && minMags.isBelowSectMinMag(s, mag, sectMFD))
 					continue;
-				int magIndex = sectMFD.getClosestXIndex(mag);
 				List<Integer> binRups = rupsInBins.get(magIndex);
 				if (binRups == null) {
 					binRups = new ArrayList<>();
@@ -118,7 +112,8 @@ public class AnalyticalSingleFaultInversionSolver extends InversionSolver.Defaul
 		
 		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
 		
-		// TODO: water level?
+		if (waterLevel != null)
+			sol.addModule(new WaterLevelRates(waterLevel));
 		
 		if (config != null) {
 			sol.addModule(config);
