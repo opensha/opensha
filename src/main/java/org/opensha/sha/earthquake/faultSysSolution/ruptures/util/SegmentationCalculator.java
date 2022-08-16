@@ -1629,20 +1629,25 @@ public class SegmentationCalculator {
 					if (segClass != null && segClass.isEnum() && SegmentationModelBranchNode.class.isAssignableFrom(segClass)) {
 						for (SegmentationModelBranchNode option : segClass.getEnumConstants()) {
 							if (option.getNodeWeight(branch) > 0d || option == segChoice) {
-								JumpProbabilityCalc model = option.getModel(sol.getRupSet(), branch);
-								if (!(model instanceof DistDependentJumpProbabilityCalc)) {
-									// try generic
-									model = option.getModel(null, branch);
-								}
-								if (model instanceof DistDependentJumpProbabilityCalc) {
-									DistDependentJumpProbabilityCalc distModel = (DistDependentJumpProbabilityCalc)model;
-									if (option == segChoice) {
-										chosenSegModel = distModel;
-										chosenName = option.getShortName();
-									} else {
-										comparisons.add(distModel);
-										compNames.add(option.getShortName());
+								try {
+									JumpProbabilityCalc model = option.getModel(sol.getRupSet(), branch);
+									if (!(model instanceof DistDependentJumpProbabilityCalc)) {
+										// try generic
+										model = option.getModel(null, branch);
 									}
+									if (model instanceof DistDependentJumpProbabilityCalc) {
+										DistDependentJumpProbabilityCalc distModel = (DistDependentJumpProbabilityCalc)model;
+										if (option == segChoice) {
+											chosenSegModel = distModel;
+											chosenName = option.getShortName();
+										} else {
+											comparisons.add(distModel);
+											compNames.add(option.getShortName());
+										}
+									}
+								} catch (Exception e) {
+									// error building segmentation model, possibly with our generic (no rupture set)
+									// method call, skip
 								}
 							}
 						}
