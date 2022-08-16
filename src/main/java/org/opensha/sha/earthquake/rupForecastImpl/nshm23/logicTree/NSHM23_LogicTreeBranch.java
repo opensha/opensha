@@ -43,6 +43,8 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			LogicTreeLevel.forEnum(NSHM23_SegmentationModels.class, "Segmentation Model", "SegModel");
 	public static LogicTreeLevel<SegmentationMFD_Adjustment> SEG_ADJ =
 			LogicTreeLevel.forEnum(SegmentationMFD_Adjustment.class, "Segmentation MFD Adjustment", "SegAdj");
+	public static LogicTreeLevel<NSHM23_PaleoUncertainties> PALEO_UNCERT =
+			LogicTreeLevel.forEnum(NSHM23_PaleoUncertainties.class, "Paleoseismic Data Uncertainties", "PaleoUncert");
 	
 	/*
 	 * Optional levels
@@ -53,15 +55,13 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			LogicTreeLevel.forEnum(RupsThroughCreepingSect.class, "Ruptures Through Creeping Section", "RupsThruCreep");
 	public static LogicTreeLevel<NSHM23_SingleStates> SINGLE_STATES =
 			LogicTreeLevel.forEnum(NSHM23_SingleStates.class, "Single State Inversion", "SingleState");
-	public static LogicTreeLevel<NSHM23_PaleoUncertainties> PALEO_UNCERT =
-			LogicTreeLevel.forEnum(NSHM23_PaleoUncertainties.class, "Paleoseismic Data Uncertainties", "PaleoUncert");
 	
 	static {
 		// exhaustive for now, can trim down later
 		levels = List.of(FM, PLAUSIBILITY, DM, SCALE, SLIP_ALONG, SUPRA_B,
-				SUB_SECT_CONSTR, SUB_SEIS_MO, SEG, SEG_ADJ);
+				SUB_SECT_CONSTR, SUB_SEIS_MO, PALEO_UNCERT, SEG, SEG_ADJ);
 		levelsMaxDist = List.of(FM, PLAUSIBILITY, DM, SCALE, SLIP_ALONG, SUPRA_B,
-				SUB_SECT_CONSTR, SUB_SEIS_MO, MAX_DIST, RUPS_THROUGH_CREEPING);
+				SUB_SECT_CONSTR, SUB_SEIS_MO, PALEO_UNCERT, MAX_DIST, RUPS_THROUGH_CREEPING);
 	}
 	
 	/**
@@ -70,7 +70,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	public static final NSHM23_LogicTreeBranch DEFAULT = fromValues(NSHM23_FaultModels.NSHM23_v2,
 			RupturePlausibilityModels.COULOMB, NSHM23_DeformationModels.GEOLOGIC, NSHM23_ScalingRelationships.LOGA_C4p2,
 			NSHM23_SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p5, SubSectConstraintModels.TOT_NUCL_RATE,
-			SubSeisMoRateReductions.SUB_B_1, NSHM23_SegmentationModels.MID,
+			SubSeisMoRateReductions.SUB_B_1, NSHM23_PaleoUncertainties.EVEN_FIT, NSHM23_SegmentationModels.MID,
 			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG);
 	
 	/**
