@@ -252,7 +252,7 @@ public class InversionMisfitProgress implements CSV_BackedModule, BranchAveragea
 						targetVals.add(doubleAvg(targetVals, weights));
 					avgStats.add(statsAccumulator.getAverage());
 				}
-				return new InversionMisfitProgress(avgIters, avgTimes, avgStats);
+				return new InversionMisfitProgress(avgIters, avgTimes, avgStats, targetQuantity, avgTargetVals);
 			}
 		};
 	}
