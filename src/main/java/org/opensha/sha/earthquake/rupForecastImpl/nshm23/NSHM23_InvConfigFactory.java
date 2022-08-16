@@ -12,7 +12,6 @@ import java.util.concurrent.Callable;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
-import org.apache.commons.cli.CommandLine;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -29,9 +28,7 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionSolver;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionSolver;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
@@ -46,13 +43,8 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Generatio
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
-import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
-import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters.ConnectivityClusterSolutionMisfits;
-import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
-import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitProgress;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
-import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
@@ -62,7 +54,6 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
-import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
@@ -72,7 +63,6 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.HardcodedBinaryJumpProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder.ParkfieldSelectionCriteria;
@@ -99,6 +89,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBVa
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.AnalyticalSingleFaultInversionSolver;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.ClassicModelInversionSolver;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
@@ -570,7 +561,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		return rupsThroughCreep != null && rupsThroughCreep.isExcludeRupturesThroughCreepingSect();
 	}
 	
-	private static boolean hasJumps(FaultSystemRupSet rupSet) {
+	public static boolean hasJumps(FaultSystemRupSet rupSet) {
 		for (ClusterRupture cRup : rupSet.requireModule(ClusterRuptures.class))
 			if (cRup.getTotalNumJumps() > 0)
 				return true;
@@ -785,6 +776,34 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	@Override
 	public InversionSolver getSolver(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		if (branch.getValue(NSHM23_SegmentationModels.class) == NSHM23_SegmentationModels.CLASSIC) {
+			// it's a classic model
+			if (isSolveClustersIndividually() || !hasJumps(rupSet)) {
+				// solve clusters individually (or no jumps so it doesn't matter), can handle mixed clusters and single-fault analytical
+				System.out.println("Returning classic model solver");
+				return new ClassicModelInversionSolver(rupSet, branch);
+			} else {
+				// see if we can solve the whole thing analytically (can do if all multifault rups are excluded)
+				ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+				BinaryRuptureProbabilityCalc exclusionModel = getExclusionModel(rupSet, branch, cRups);
+				boolean hasIncludedJump = false;
+				for (ClusterRupture cRup : cRups) {
+					int numJumps = cRup.getTotalNumJumps();
+					if (numJumps > 0 && exclusionModel.isRupAllowed(cRup, false)) {
+						hasIncludedJump = true;
+						break;
+					}
+				}
+				if (hasIncludedJump) {
+					// have to do a full system inversion
+					return new InversionSolver.Default();
+				} else {
+					// can solve analytically
+					double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
+					return new AnalyticalSingleFaultInversionSolver(bVal, exclusionModel);
+				}
+			}
+		}
 		if (isSolveClustersIndividually() && branch.getValue(NSHM23_SegmentationModels.class) == NSHM23_SegmentationModels.CLASSIC) {
 			// classic model
 			System.out.println("Returning classic model solver");
@@ -810,125 +829,6 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			return skipSampler;
 		else
 			return currentSampler.getCombinedWith(skipSampler);
-	}
-	
-	public static class ClassicModelInversionSolver extends ClusterSpecificInversionSolver {
-		
-		private AnalyticalSingleFaultInversionSolver analytical;
-		private BinaryRuptureProbabilityCalc rupProbCalc;
-		
-		public ClassicModelInversionSolver(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			analytical = new AnalyticalSingleFaultInversionSolver(branch.requireValue(SupraSeisBValues.class).bValue);
-			rupProbCalc = getExclusionModel(rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
-		}
-
-		@Override
-		protected BinaryRuptureProbabilityCalc getRuptureExclusionModel(FaultSystemRupSet rupSet,
-				LogicTreeBranch<?> branch) {
-			return rupProbCalc;
-		}
-
-		@Override
-		protected boolean shouldInvert(ConnectivityCluster cluster) {
-			// only run inversions when multiple parent sections are involved
-			return cluster.getParentSectIDs().size() > 1;
-		}
-
-		@Override
-		public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfigurationFactory factory,
-				LogicTreeBranch<?> branch, int threads, CommandLine cmd) throws IOException {
-			// first do inversion-based solutions
-			FaultSystemSolution inversionSol = super.run(rupSet, factory, branch, threads, cmd);
-			if (inversionSol == null) {
-				// simplest case, all analytical
-				return analytical.run(rupSet, factory, branch, threads, cmd);
-			}
-			ConnectivityClusters clusters = rupSet.requireModule(ConnectivityClusters.class);
-			// now add in analytical
-			HashSet<Integer> analyticalSects = new HashSet<>();
-			for (ConnectivityCluster cluster : clusters)
-				if (!shouldInvert(cluster))
-					analyticalSects.addAll(cluster.getSectIDs());
-			System.out.println("Calculating analytical solution for "+analyticalSects.size()+"/"+rupSet.getNumSections()+" sections");
-			if (analyticalSects.isEmpty()) {
-				return inversionSol;
-			} else {
-				// build rupture set only with analytical sections
-				FaultSystemRupSet analyticalRupSet = rupSet.getForSectionSubSet(analyticalSects, rupProbCalc);
-				// inversion configuration for it (required for target MFDs, and then to calc misfits)
-				InversionConfiguration config = factory .buildInversionConfig(analyticalRupSet, branch, threads);
-				FaultSystemSolution analyticalSol = analytical.run(analyticalRupSet, config);
-				double[] analyticalRates = analyticalSol.getRateForAllRups();
-				
-				int origNumRups = rupSet.getNumRuptures();
-				
-				double[] allInitialRates = inversionSol.hasModule(InitialSolution.class) ?
-						Arrays.copyOf(inversionSol.getModule(InitialSolution.class).get(), origNumRups) : new double[origNumRups];
-				double[] allRates = Arrays.copyOf(inversionSol.getRateForAllRups(), origNumRups);
-				
-				RuptureSubSetMappings mappings = analyticalRupSet.requireModule(RuptureSubSetMappings.class);
-				for (int subsetRupIndex=0; subsetRupIndex<analyticalRupSet.getNumRuptures(); subsetRupIndex++) {
-					int origRupIndex = mappings.getOrigRupID(subsetRupIndex);
-					allRates[origRupIndex] = analyticalRates[subsetRupIndex];
-					allInitialRates[origRupIndex] = analyticalRates[subsetRupIndex];
-				}
-				
-				InversionMisfits inversionMisfits = inversionSol.requireModule(InversionMisfits.class);
-				InversionMisfits analyticalMisfits = analyticalSol.requireModule(InversionMisfits.class);
-				FaultSystemSolution combinedSol = new FaultSystemSolution(rupSet, allRates);
-				
-				if (analyticalSol.hasModule(WaterLevelRates.class) || inversionSol.hasModule(WaterLevelRates.class)) {
-					WaterLevelRates inversionWaterLevel = inversionSol.getModule(WaterLevelRates.class);
-					WaterLevelRates analyticalWaterLevel = analyticalSol.getModule(WaterLevelRates.class);
-					
-					if (analyticalWaterLevel == null) {
-						// simple case
-						combinedSol.addModule(inversionWaterLevel);
-					} else {
-						// need to map
-						double[] newWaterLevel = inversionWaterLevel == null ?
-								new double[origNumRups] : Arrays.copyOf(inversionWaterLevel.get(), origNumRups);
-						for (int subsetRupIndex=0; subsetRupIndex<analyticalRupSet.getNumRuptures(); subsetRupIndex++) {
-							int origRupIndex = mappings.getOrigRupID(subsetRupIndex);
-							newWaterLevel[origRupIndex] = analyticalWaterLevel.get(subsetRupIndex);
-						}
-						combinedSol.addModule(new WaterLevelRates(newWaterLevel));
-					}
-				}
-				combinedSol.addModule(new InitialSolution(allInitialRates));
-				InversionMisfits combMisfits = InversionMisfits.appendSeparate(List.of(inversionMisfits, analyticalMisfits));
-				combinedSol.addModule(combMisfits);
-				combinedSol.addModule(combMisfits.getMisfitStats());
-				if (inversionSol.hasModule(ConnectivityClusterSolutionMisfits.class)) {
-					ConnectivityClusterSolutionMisfits clusterMisfits = inversionSol.requireModule(ConnectivityClusterSolutionMisfits.class);
-					Map<ConnectivityCluster, InversionMisfitStats> clusterMisfitsMap = new HashMap<>();
-					InversionMisfitProgress largestProgress = clusterMisfits.getLargestClusterMisfitProgress();
-					for (int i=0; i<clusters.size(); i++) {
-						ConnectivityCluster cluster = clusters.get(i);
-						InversionMisfitStats misfits = clusterMisfits.getMisfitStats(i);
-						clusterMisfitsMap.put(cluster, misfits);
-					}
-					combinedSol.addModule(new ConnectivityClusterSolutionMisfits(combinedSol, clusterMisfitsMap, largestProgress));
-				}
-
-				// attach any relevant modules before writing out
-				SolutionProcessor processor = factory.getSolutionLogicTreeProcessor();
-
-				if (processor != null)
-					processor.processSolution(combinedSol, branch);
-				
-				return combinedSol;
-			}
-		}
-
-		@Override
-		public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config, String info) {
-			// see if it's a single-fault rupture set
-			if (!hasJumps(rupSet))
-				return analytical.run(rupSet, config, info);
-			return super.run(rupSet, config, info);
-		}
-		
 	}
 	
 	public static class NoPaleoParkfield extends NSHM23_InvConfigFactory {
