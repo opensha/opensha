@@ -55,6 +55,7 @@ public class ClusterSpecificInversionSolver extends InversionSolver.Default {
 			rupSet.addModule(clusterModule);
 			clusters = clusterModule.get();
 		}
+		Preconditions.checkState(!clusters.isEmpty(), "No clusters found?");
 		// sort by number of ruptures, decreasing
 		clusters = new ArrayList<>(clusters);
 		Collections.sort(clusters, ConnectivityCluster.rupCountComparator);
@@ -157,6 +158,9 @@ public class ClusterSpecificInversionSolver extends InversionSolver.Default {
 
 			return sol;
 		} else {
+			ConnectivityCluster cluster = clusters.get(0);
+			if (!shouldInvert(cluster))
+				return null;
 			System.out.println("Only 1 connectivity cluster, will run regular inversion");
 			InversionConfiguration config = factory.buildInversionConfig(rupSet, branch, threads);
 			if (branch != rupSet.getModule(LogicTreeBranch.class))
