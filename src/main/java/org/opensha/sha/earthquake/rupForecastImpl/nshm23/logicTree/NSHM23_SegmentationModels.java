@@ -32,7 +32,22 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode {
+public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, RupsThroughCreepingSectBranchNode {
+	NONE("None", "None", 1.0d) {
+		@Override
+		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+			// no segmentation:
+			//	* no distance dependent
+			//	* anything through creeping
+			// 	* anything through wasatch
+			return null;
+		}
+
+		@Override
+		public boolean isExcludeRupturesThroughCreepingSect() {
+			return false;
+		}
+	},
 	LOW("Low Segmentation", "LowSeg",
 			1d, // weight
 			4d, // R0
@@ -42,11 +57,16 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode {
 			// if we don't have a creeping section branch explicitly on the logic tree, include it here
 			double creepingProb = 1d;
 			if (APPLY_TO_CREEPING_SECT && !branch.hasValue(RupsThroughCreepingSect.class))
-				// Creeping P=1 unless wide branches, then 0.75
-				creepingProb = WIDE_BRANCHES ? 0.75 : 1d;
-			// Wasatch P=1 unless wide branches, then 0.75
-			double wasatchProb = WIDE_BRANCHES ? 0.75 : 1d;
+				// Creeping P=0.75
+				creepingProb = 0.75;
+			// Wasatch P=0.75
+			double wasatchProb = 0.75;
 			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN);
+		}
+
+		@Override
+		public boolean isExcludeRupturesThroughCreepingSect() {
+			return false;
 		}
 	},
 	MID("Middle Segmentation", "MidSeg",
@@ -64,6 +84,11 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode {
 			double wasatchProb = 0.5;
 			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN);
 		}
+
+		@Override
+		public boolean isExcludeRupturesThroughCreepingSect() {
+			return false;
+		}
 	},
 	HIGH("High Segmentation", "HighSeg",
 			1d, // weight
@@ -75,30 +100,49 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode {
 			// externally at the rupture exclusion model stage
 			double creepingProb = 1d;
 			if (APPLY_TO_CREEPING_SECT && !branch.hasValue(RupsThroughCreepingSect.class))
-				// Creeping P=0.5 unless wide branches, then 0.25
-				creepingProb = WIDE_BRANCHES ? 0.25 : 0.5d;
-			// Wasatch P=0 unless wide branches, then 0.25
-			double wasatchProb = WIDE_BRANCHES ? 0.25 : 0d;
+				// Creeping P=0.25
+				creepingProb = 0.25;
+			// Wasatch P=0.25
+			double wasatchProb = 0.25;
 			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN);
 		}
-	},
-	NONE("None", "None", 0.0d) {
+
 		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			return null;
+		public boolean isExcludeRupturesThroughCreepingSect() {
+			// highly limited above, will be excluded in the classic branch
+			// TODO should be limit it here as well?
+			return false;
 		}
 	},
-	TWO_KM("2km Hard Cutoff", "Max2km", 0.0d) {
+	CLASSIC("Classic ('A' faults)", "Classic", 1d) {
 		@Override
-		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			// Still restrict creeping section, but the bulk of the through-creeping-section will be handled
-			// externally at the rupture exclusion model stage
-			double creepingProb = 1d;
-			if (APPLY_TO_CREEPING_SECT && !branch.hasValue(RupsThroughCreepingSect.class))
-				creepingProb = 0.25;
-			// Wasatch P=0
-			double wasatchProb = 0d;
-			return buildModel(rupSet, Double.NaN, Double.NaN, wasatchProb, creepingProb, 2d);
+		public BinaryJumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+			// jumps within named faults only
+			List<BinaryJumpProbabilityCalc> models = new ArrayList<>();
+			if (rupSet.hasModule(NamedFaults.class))
+				models.add(new NamedFaultSegmentationModel(rupSet.requireModule(NamedFaults.class)));
+			else
+				models.add(new JumpProbabilityCalc.NoJumps());
+			
+			// creeping section. this limits not just through, but anything corupturing with the creeping section
+			int creepingParentID = NSHM23_ConstraintBuilder.findCreepingSection(rupSet);
+			if (creepingParentID >= 0)
+				models.add(new CreepingSectionBinaryJumpExcludeModel(creepingParentID));
+			
+			// wasatch
+			BinaryJumpProbabilityCalc wasatch = NSHM23_WasatchSegmentationData.buildFullExclusion(rupSet.getFaultSectionDataList(), null);
+			if (wasatch != null)
+				models.add(wasatch);
+			
+			Preconditions.checkState(!models.isEmpty());
+			if (models.size() == 1)
+				return models.get(0);
+			return new JumpProbabilityCalc.LogicalAnd(models.toArray(new BinaryJumpProbabilityCalc[0]));
+		}
+
+		@Override
+		public boolean isExcludeRupturesThroughCreepingSect() {
+			return true;
 		}
 	},
 	AVERAGE("NSHM23 Average Segmentation", "AvgSeg", 0.0d) {
@@ -154,11 +198,24 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode {
 				
 			};
 		}
+
+		@Override
+		public boolean isExcludeRupturesThroughCreepingSect() {
+			double weightInclude = 0d;
+			double weightExclude = 0d;
+			for (NSHM23_SegmentationModels segModel : values()) {
+				if (segModel != this && segModel.weight > 0d) {
+					if (segModel.isExcludeRupturesThroughCreepingSect())
+						weightExclude += segModel.weight;
+					else
+						weightInclude += segModel.weight;
+				}
+			}
+			return weightExclude > weightInclude;
+		}
 	};
 	
 	public static boolean APPLY_TO_CREEPING_SECT = true;
-	
-	public static boolean WIDE_BRANCHES = false;
 	
 	private String name;
 	private String shortName;
@@ -197,9 +254,14 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode {
 		}
 		if (rupSet != null) {
 			if (creepingProb < 1d) {
-				int creepingParentID = FaultSectionUtils.findParentSectionID(rupSet.getFaultSectionDataList(), "San", "Andreas", "Creeping");
-				if (creepingParentID >= 0)
-					model = new JumpProbabilityCalc.Minimum(model, new CreepingSectionJumpSegModel(creepingParentID, creepingProb));
+				int creepingParentID = NSHM23_ConstraintBuilder.findCreepingSection(rupSet);
+				if (creepingParentID >= 0) {
+					CreepingSectionJumpSegModel creepModel = new CreepingSectionJumpSegModel(creepingParentID, creepingProb);
+					if (model == null)
+						model = creepModel;
+					else
+						model = new JumpProbabilityCalc.Minimum(model, creepModel);
+				}
 			}
 			// Wasatch model
 			JumpProbabilityCalc wasatch = NSHM23_WasatchSegmentationData.build(
@@ -270,6 +332,33 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode {
 			if (jump.fromCluster.parentSectionID == creepingParentID || jump.toCluster.parentSectionID == creepingParentID)
 				return prob;
 			return 1;
+		}
+		
+	}
+	
+	public static class CreepingSectionBinaryJumpExcludeModel implements BinaryJumpProbabilityCalc {
+		
+		private int creepingParentID;
+
+		public CreepingSectionBinaryJumpExcludeModel(int creepingParentID) {
+			this.creepingParentID = creepingParentID;
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+
+		@Override
+		public String getName() {
+			return "Exclude Creeping Section Jumps";
+		}
+
+		@Override
+		public boolean isJumpAllowed(ClusterRupture fullRupture, Jump jump, boolean verbose) {
+			if (jump.fromCluster.parentSectionID == creepingParentID || jump.toCluster.parentSectionID == creepingParentID)
+				return false;
+			return true;
 		}
 		
 	}

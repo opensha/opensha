@@ -88,7 +88,7 @@ public interface InversionConfigurationFactory {
 	 * @param branch
 	 * @return
 	 */
-	public default InversionSolver getSolver(LogicTreeBranch<?> branch) {
+	public default InversionSolver getSolver(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		return new InversionSolver.Default();
 	}
 

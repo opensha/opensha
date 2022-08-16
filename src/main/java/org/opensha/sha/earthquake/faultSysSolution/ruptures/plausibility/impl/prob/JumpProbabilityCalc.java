@@ -160,6 +160,56 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 		
 	}
 	
+	public class NoJumps implements BinaryJumpProbabilityCalc {
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+
+		@Override
+		public String getName() {
+			return "No Jumps";
+		}
+
+		@Override
+		public boolean isJumpAllowed(ClusterRupture fullRupture, Jump jump, boolean verbose) {
+			return false;
+		}
+		
+	}
+	
+	public class LogicalAnd implements BinaryJumpProbabilityCalc {
+		
+		private BinaryJumpProbabilityCalc[] calcs;
+
+		public LogicalAnd(BinaryJumpProbabilityCalc... calcs) {
+			Preconditions.checkState(calcs.length > 1);
+			this.calcs = calcs;
+		}
+
+		@Override
+		public String getName() {
+			return "Logical AND of "+calcs.length+" models";
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			for (RuptureProbabilityCalc calc : calcs)
+				if (calc.isDirectional(splayed))
+					return true;
+			return false;
+		}
+
+		@Override
+		public boolean isJumpAllowed(ClusterRupture fullRupture, Jump jump, boolean verbose) {
+			for (BinaryJumpProbabilityCalc calc : calcs)
+				if (!calc.isJumpAllowed(fullRupture, jump, verbose))
+					return false;
+			return true;
+		}
+	}
+	
 	public class HardcodedJumpProb implements JumpProbabilityCalc {
 		
 		private String name;

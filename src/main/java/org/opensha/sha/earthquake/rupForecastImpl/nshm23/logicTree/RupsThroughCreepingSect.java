@@ -12,8 +12,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum RupsThroughCreepingSect implements LogicTreeNode {
-	
+public enum RupsThroughCreepingSect implements RupsThroughCreepingSectBranchNode {
 	INCLUDE(true, 0.5d),
 	EXCLUDE(false, 0.5d);
 	
@@ -44,12 +43,9 @@ public enum RupsThroughCreepingSect implements LogicTreeNode {
 	public String getFilePrefix() {
 		return getShortName()+"ThruCreep";
 	}
-	
-	public boolean isInclude() {
-		return include;
-	}
-	
-	public boolean isExclude() {
+
+	@Override
+	public boolean isExcludeRupturesThroughCreepingSect() {
 		return !include;
 	}
 

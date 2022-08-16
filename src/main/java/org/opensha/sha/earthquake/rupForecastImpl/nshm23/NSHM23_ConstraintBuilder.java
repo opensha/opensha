@@ -293,7 +293,7 @@ public class NSHM23_ConstraintBuilder {
 			}
 		}
 		if (rupExclusionModel != null)
-			builder.forBinaryRupProbModel(rupExclusionModel);
+			builder.forBinaryRupProbModel(rupExclusionModel, false);
 		if (adjustForActualRupSlips)
 			builder.adjustTargetsForData(new ScalingRelSlipRateMFD_Estimator(adjustForSlipAlong));
 		if (adjustForIncompatibleData) {
@@ -394,7 +394,11 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public boolean rupSetHasCreepingSection() {
-		return FaultSectionUtils.findParentSectionID(rupSet.getFaultSectionDataList(), "San", "Andreas", "Creeping") >= 0;
+		return findCreepingSection(rupSet) >= 0;
+	}
+	
+	public static int findCreepingSection(FaultSystemRupSet rupSet) {
+		return FaultSectionUtils.findParentSectionID(rupSet.getFaultSectionDataList(), "San", "Andreas", "Creeping");
 	}
 	
 	public static boolean isRupThroughCreeping(int creepingParentID, ClusterRupture rup) {
@@ -662,7 +666,10 @@ public class NSHM23_ConstraintBuilder {
 		Preconditions.checkState(!paleos.isEmpty());
 		for (SectMappedUncertainDataConstraint paleo : paleos)
 			paleoParentIDs.add(rupSet.getFaultSectionData(paleo.sectionIndex).getParentSectionId());
-		constraints.add(new LaplacianSmoothingInversionConstraint(rupSet, 1000, paleoParentIDs));
+		LaplacianSmoothingInversionConstraint constraint = new LaplacianSmoothingInversionConstraint(rupSet, 1000, paleoParentIDs);
+		if (constraint.getNumRows() > 0)
+			// make sure it actually has rows, can not if only 2-section parents
+			constraints.add(constraint);
 		return this;
 	}
 	

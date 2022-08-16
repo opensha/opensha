@@ -26,7 +26,6 @@ public interface InversionSolver {
 	public default FaultSystemSolution run(InversionConfigurationFactory factory, LogicTreeBranch<?> branch, int threads,
 			CommandLine cmd) throws IOException {
 		FaultSystemRupSet rupSet = factory.buildRuptureSet(branch, threads);
-		rupSet.addModule(branch);
 		
 		return run(rupSet, factory, branch, threads, cmd);
 	}
@@ -46,12 +45,13 @@ public interface InversionSolver {
 		public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfigurationFactory factory,
 				LogicTreeBranch<?> branch, int threads, CommandLine cmd) throws IOException {
 			InversionConfiguration config = factory.buildInversionConfig(rupSet, branch, threads);
-			rupSet.addModule(branch);
+			if (branch != rupSet.getModule(LogicTreeBranch.class))
+				rupSet.addModule(branch);
 			if (cmd != null)
 				// apply any command line overrides
 				config = InversionConfiguration.builder(config).forCommandLine(cmd).build();
 			
-			FaultSystemSolution sol = Inversions.run(rupSet, config);
+			FaultSystemSolution sol = run(rupSet, config, null);
 			
 			// attach any relevant modules before writing out
 			SolutionProcessor processor = factory.getSolutionLogicTreeProcessor();

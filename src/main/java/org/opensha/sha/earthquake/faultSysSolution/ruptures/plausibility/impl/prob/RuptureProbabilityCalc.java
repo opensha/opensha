@@ -43,6 +43,37 @@ public interface RuptureProbabilityCalc extends Named {
 		}
 	}
 	
+	public class LogicalAnd implements BinaryRuptureProbabilityCalc {
+		
+		private BinaryRuptureProbabilityCalc[] calcs;
+
+		public LogicalAnd(BinaryRuptureProbabilityCalc... calcs) {
+			Preconditions.checkState(calcs.length > 1);
+			this.calcs = calcs;
+		}
+
+		@Override
+		public String getName() {
+			return "Logical AND of "+calcs.length+" models";
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			for (RuptureProbabilityCalc calc : calcs)
+				if (calc.isDirectional(splayed))
+					return true;
+			return false;
+		}
+
+		@Override
+		public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
+			for (BinaryRuptureProbabilityCalc calc : calcs)
+				if (!calc.isRupAllowed(fullRupture, verbose))
+					return false;
+			return true;
+		}
+	}
+	
 	public class MultiProduct implements RuptureProbabilityCalc {
 		
 		private RuptureProbabilityCalc[] calcs;

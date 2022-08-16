@@ -351,6 +351,10 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		}
 		
 		public Builder forBinaryRupProbModel(BinaryRuptureProbabilityCalc binaryRupProb) {
+			return forBinaryRupProbModel(binaryRupProb, true);
+		}
+		
+		public Builder forBinaryRupProbModel(BinaryRuptureProbabilityCalc binaryRupProb, boolean replaceExisting) {
 			BitSet rupSubSet = new BitSet(rupSet.getNumRuptures());
 			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
 			System.out.println("Processing "+rupSet.getNumRuptures()+" ruptures for binary rupture probability calculation");
@@ -359,17 +363,33 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				if (binaryRupProb.isRupAllowed(rup, false))
 					rupSubSet.set(r);
 			}
-			return forRupSubSet(rupSubSet);
+			return forRupSubSet(rupSubSet, replaceExisting);
 		}
 		
 		/**
-		 * It non-null, specifies a subset of ruptures that we are allowed to use when determining MFD targets
+		 * It non-null, specifies a subset of ruptures that we are allowed to use when determining MFD targets. Will
+		 * replace any existing rupture subset.
 		 * 
 		 * @param rupSubSet
 		 * @return
 		 */
 		public Builder forRupSubSet(BitSet rupSubSet) {
-			this.rupSubSet = rupSubSet;
+			return forRupSubSet(rupSubSet, true);
+		}
+		
+		/**
+		 * It non-null, specifies a subset of ruptures that we are allowed to use when determining MFD targets.
+		 * 
+		 * @param rupSubSet
+		 * @param replaceExisting if true and a previous rupture subset has been set, then only ruptures common to both
+		 * will be retained, unless the given subset is null in which case everything will be cleared
+		 * @return
+		 */
+		public Builder forRupSubSet(BitSet rupSubSet, boolean replaceExisting) {
+			if (!replaceExisting && rupSubSet != null && this.rupSubSet != null)
+				this.rupSubSet.and(rupSubSet);
+			else
+				this.rupSubSet = rupSubSet;
 			return this;
 		}
 		

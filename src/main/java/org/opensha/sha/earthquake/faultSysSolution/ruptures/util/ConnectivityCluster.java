@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Set;
 
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.faultSurface.FaultSection;
 
 /**
@@ -94,12 +96,34 @@ public class ConnectivityCluster implements Comparable<ConnectivityCluster> {
 	 * @return
 	 */
 	public static List<ConnectivityCluster> build(FaultSystemRupSet rupSet) {
+		return build(rupSet, null);
+	}
+
+	/**
+	 * Builds a list of {@link ConnectivityCluster} instances for the given rupture set. This list will not be
+	 * initially sorted
+	 * @param rupSet
+	 * @param rupExclusionModel if not null, ruptures excluded by this model will be ignored when determining connectivity
+	 * @return
+	 */
+	public static List<ConnectivityCluster> build(FaultSystemRupSet rupSet, BinaryRuptureProbabilityCalc rupExclusionModel) {
 		List<ConnectivityCluster> clusters = new ArrayList<>();
 		boolean[] sectsAssigned = new boolean[rupSet.getNumSections()];
 		
 		boolean[][] sectCorups = new boolean[rupSet.getNumSections()][rupSet.getNumSections()];
 		
+		ClusterRuptures cRups = null;
+		HashSet<Integer> exclusionIndexes = null;
+		if (rupExclusionModel != null) {
+			cRups = rupSet.requireModule(ClusterRuptures.class);
+			exclusionIndexes = new HashSet<>();
+		}
+		
 		for (int r=0; r<rupSet.getNumRuptures(); r++) {
+			if (rupExclusionModel != null && !rupExclusionModel.isRupAllowed(cRups.get(r), false)) {
+				exclusionIndexes.add(r);
+				continue;
+			}
 			List<Integer> sects = rupSet.getSectionsIndicesForRup(r);
 			for (int i=0; i<sects.size(); i++) {
 				int s1 = sects.get(i);
@@ -124,7 +148,8 @@ public class ConnectivityCluster implements Comparable<ConnectivityCluster> {
 				if (parentID >= 0)
 					cluster.parentSectIDs.add(parentID);
 				for (int r : rupSet.getRupturesForSection(sectID))
-					rups.set(r);
+					if (exclusionIndexes == null || !exclusionIndexes.contains(r))
+						rups.set(r);
 			}
 			cluster.numRuptures = rups.cardinality();
 		}

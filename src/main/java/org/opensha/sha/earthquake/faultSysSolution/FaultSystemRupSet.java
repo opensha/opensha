@@ -49,6 +49,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SplittableRuptureSubSetModule;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
 import org.opensha.sha.faultSurface.CompoundSurface;
@@ -1324,6 +1325,27 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @throws IllegalStateException if there are ruptures that utilize both retained and non-retained sections
 	 */
 	public FaultSystemRupSet getForSectionSubSet(Collection<Integer> retainedSectIDs) throws IllegalStateException {
+		return getForSectionSubSet(retainedSectIDs, null);
+	}
+	
+	/**
+	 * Builds a rupture subset using only the given section IDs. Fault section instances will be duplicated and assigned
+	 * new section IDs in the returned rupture set, and only ruptures involving those sections will be retained. If any
+	 * ruptures utilize both retained and non-retained section IDs, an {@link IllegalStateException} will be thrown.
+	 * <br>
+	 * All modules that implement {@link SplittableRuptureSubSetModule} will be copied over to the returned rupture set.
+	 * <br>
+	 * Mappings between original and new section/rupture IDs can be retrieved via the {@link RuptureSubSetMappings} module
+	 * that will be attached to the rupture subset.
+	 * 
+	 * @param retainedSectIDs
+	 * @param rupExclusionModel if non null, only ruptures allowed by the given model will be retained and ruptures that
+	 * don't will not trigger an exception if they utilize sections both within and outside of this subset
+	 * @return rupture subset containing only the given sections and their corresponding ruptures
+	 * @throws IllegalStateException if there are ruptures that utilize both retained and non-retained sections
+	 */
+	public FaultSystemRupSet getForSectionSubSet(Collection<Integer> retainedSectIDs,
+			BinaryRuptureProbabilityCalc rupExclusionModel) throws IllegalStateException {
 		List<FaultSection> remappedSects = new ArrayList<>();
 		int sectIndex = 0;
 		BiMap<Integer, Integer> sectIDs_newToOld = HashBiMap.create(retainedSectIDs.size());
@@ -1341,7 +1363,10 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		int rupIndex = 0;
 		BiMap<Integer, Integer> rupIDs_newToOld = HashBiMap.create(retainedSectIDs.size());
+		ClusterRuptures cRups = rupExclusionModel == null ? null : requireModule(ClusterRuptures.class);
 		for (int origID=0; origID<this.getNumRuptures(); origID++) {
+			if (rupExclusionModel != null && !rupExclusionModel.isRupAllowed(cRups.get(origID), false))
+				continue;
 			boolean allRetained = true;
 			boolean anyRetained = false;
 			for (int s : this.sectionForRups.get(origID)) {
