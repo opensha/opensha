@@ -27,7 +27,7 @@ Received permission to make this change from the deformation modelers as follows
 * Pollitz model via e-mail from Fred on 8/2/2022, subject "Re: Changes to a few faults in the final NSHM23 fault model, updates to deformation models needed?"
 * Shen-Bird model via e-mail from Zheng-Kang on 8/2/2022, subject "Re: Changes to a few faults in the final NSHM23 fault model, updates to deformation models needed?"
 * Evans model, have not received a reply as of 8/17/2022
-* Zeng model, have not received a reply as of 8/17/2022
+* Zeng model via e-mail from Yehua on 8/17/2022, subject "Re: ScienceBase Data Release of deformation model results"
 
 It is also noted that the geologic rake was changed from -150 to 180 for faults 64 and 65, north and south Death Valley.
 
