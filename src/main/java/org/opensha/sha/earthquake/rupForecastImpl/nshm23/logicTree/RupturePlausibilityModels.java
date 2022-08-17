@@ -17,13 +17,13 @@ import org.opensha.sha.faultSurface.FaultSection;
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum RupturePlausibilityModels implements LogicTreeNode {
-	AZIMUTHAL("Simple Azimuthal", "Azimuthal", 1d) { // for now
+	AZIMUTHAL("Simple Azimuthal", "Azimuthal", 0d) {
 		@Override
 		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			return new SimpleAzimuthalRupSetConfig(subSects, scale);
 		}
 	},
-	AZIMUTHAL_REDUCED("Simple Azimuthal, Reduced", "AzRed", 1d) { // for now
+	AZIMUTHAL_REDUCED("Simple Azimuthal, Reduced", "AzRed", 0d) {
 		@Override
 		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			SimpleAzimuthalRupSetConfig config = new SimpleAzimuthalRupSetConfig(subSects, scale);
@@ -31,7 +31,7 @@ public enum RupturePlausibilityModels implements LogicTreeNode {
 			return config;
 		}
 	},
-	SEGMENTED("Fully Segmented", "FullSeg", 1d) { // for now
+	SEGMENTED("Fully Segmented", "FullSeg", 0d) {
 		@Override
 		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			FullySegmentedRupSetConfig config = new FullySegmentedRupSetConfig(subSects, scale);
@@ -39,13 +39,13 @@ public enum RupturePlausibilityModels implements LogicTreeNode {
 			return config;
 		}
 	},
-	UCERF3("UCERF3", "U3", 1d) { // for now
+	UCERF3("UCERF3", "U3", 0d) {
 		@Override
 		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			return new U3RupSetConfig(subSects, scale);
 		}
 	},
-	UCERF3_REDUCED("UCERF3 Reduced", "U3Red", 1d) { // for now
+	UCERF3_REDUCED("UCERF3 Reduced", "U3Red", 0d) {
 		@Override
 		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			U3RupSetConfig config = new U3RupSetConfig(subSects, scale);
@@ -59,7 +59,7 @@ public enum RupturePlausibilityModels implements LogicTreeNode {
 			return new CoulombRupSetConfig(subSects, null, scale);
 		}
 	},
-	COULOMB_5km("Coulomb 5km", "Coulomb5km", 1d) {
+	COULOMB_5km("Coulomb 5km", "Coulomb5km", 0d) {
 		@Override
 		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			CoulombRupSetConfig config = new CoulombRupSetConfig(subSects, null, scale);

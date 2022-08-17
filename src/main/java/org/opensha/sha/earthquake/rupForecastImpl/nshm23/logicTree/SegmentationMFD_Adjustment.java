@@ -27,13 +27,13 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum SegmentationMFD_Adjustment implements LogicTreeNode {
-	JUMP_PROB_THRESHOLD_AVG("Threshold Averaging", "ThreshAvg", 1d) {
+	JUMP_PROB_THRESHOLD_AVG("Threshold Averaging", "ThreshAvg", 0d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return new ThresholdAveragingSectNuclMFD_Estimator.WorstAvgJumpProb(segModel);
 		}
 	},
-	REL_GR_THRESHOLD_AVG_SINGLE_ITER("Threshold Averaging, Single-Iter Rel G-R", "ThreshAvgSingleIterRelGR", 1d) {
+	REL_GR_THRESHOLD_AVG_SINGLE_ITER("Threshold Averaging, Single-Iter Rel G-R", "ThreshAvgSingleIterRelGR", 0d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 1, true);
@@ -45,7 +45,7 @@ public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 			return new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 100, true);
 		}
 	},
-	JUMP_PROB_THRESHOLD_AVG_MATCH_STRICT("Strict-Seg Equiv Threshold Averaging", "StrictEquivThreshAvg", 1d) {
+	JUMP_PROB_THRESHOLD_AVG_MATCH_STRICT("Strict-Seg Equiv Threshold Averaging", "StrictEquivThreshAvg", 0d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			Preconditions.checkState(segModel instanceof DistDependentJumpProbabilityCalc,
@@ -57,7 +57,7 @@ public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 			return new ThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel, probs);
 		}
 	},
-	JUMP_PROB_THRESHOLD_AVG_ABOVE_1KM("Threshold Averaging >1km", "JumpProbGt1km", 1d) {
+	JUMP_PROB_THRESHOLD_AVG_ABOVE_1KM("Threshold Averaging >1km", "JumpProbGt1km", 0d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			Preconditions.checkState(segModel instanceof DistDependentJumpProbabilityCalc,
@@ -73,43 +73,43 @@ public enum SegmentationMFD_Adjustment implements LogicTreeNode {
 			return new ThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel, probs);
 		}
 	},
-	RUP_PROB_THRESHOLD_AVG("Rup Prob Threshold Averaging", "RupProb", 1d) {
+	RUP_PROB_THRESHOLD_AVG("Rup Prob Threshold Averaging", "RupProb", 0d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return new ThresholdAveragingSectNuclMFD_Estimator.WorstJumpProb(segModel);
 		}
 	},
-	RUP_MULTIPLY_WORST_JUMP_PROB("Rup Multyplied By Worst Jump Prob", "RupMultiplyWorstJumpProb", 1d) {
+	RUP_MULTIPLY_WORST_JUMP_PROB("Rup Multyplied By Worst Jump Prob", "RupMultiplyWorstJumpProb", 0d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return new ImprobModelRupMultiplyingSectNuclMFD_Estimator.WorstJumpProb(segModel);
 		}
 	},
-	GREEDY("Greedy", "Greedy", 1d) {
+	GREEDY("Greedy", "Greedy", 0d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return new SegmentationImpliedSectNuclMFD_Estimator(segModel, MultiBinDistributionMethod.GREEDY, false);
 		}
 	},
-	GREEDY_SELF_CONTAINED("Greedy Self-Contained", "GreedySlfCont", 1d) {
+	GREEDY_SELF_CONTAINED("Greedy Self-Contained", "GreedySlfCont", 0d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return new SegmentationImpliedSectNuclMFD_Estimator(segModel, MultiBinDistributionMethod.GREEDY, true);
 		}
 	},
-	CAPPED_REDIST("Capped Redistributed", "CappedRdst", 1d) {
+	CAPPED_REDIST("Capped Redistributed", "CappedRdst", 0d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return new SegmentationImpliedSectNuclMFD_Estimator(segModel, MultiBinDistributionMethod.CAPPED_DISTRIBUTED, false);
 		}
 	},
-	CAPPED_REDIST_SELF_CONTAINED("Capped Redistributed Self-Contained", "CappedRdstSlfCont", 1d) {
+	CAPPED_REDIST_SELF_CONTAINED("Capped Redistributed Self-Contained", "CappedRdstSlfCont", 0d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return new SegmentationImpliedSectNuclMFD_Estimator(segModel, MultiBinDistributionMethod.CAPPED_DISTRIBUTED, true);
 		}
 	},
-	NONE("No Adjustment", "NoAdj", 1.0d) {
+	NONE("No Adjustment", "NoAdj", 0d) {
 		@Override
 		public SectNucleationMFD_Estimator getAdjustment(JumpProbabilityCalc segModel) {
 			return null;

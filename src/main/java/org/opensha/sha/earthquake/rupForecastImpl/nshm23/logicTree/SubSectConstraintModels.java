@@ -12,8 +12,8 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum SubSectConstraintModels implements LogicTreeNode {
-	TOT_NUCL_RATE("Total Nucleation Rate", "TotNuclRate", .5d),
-	NUCL_MFD("Nucleation MFD", "NuclMFD", .5d),
+	TOT_NUCL_RATE("Total Nucleation Rate", "TotNuclRate", 1d),
+	NUCL_MFD("Nucleation MFD", "NuclMFD", 0d),
 	NONE("None", "None", 0d);
 	
 	private String name;
