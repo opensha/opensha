@@ -190,7 +190,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			if (sol != null || meta.comparison.sol != null) {
 				table.addColumn("**Unique Jump Rate**");
 				if (sol == null) {
-					table.addColumn("*N/A*");
+					table.addColumn(na);
 				} else {
 					double rateInputUnique = 0d;
 					for (Jump jump : meta.primaryOverlap.uniqueJumps)
@@ -199,7 +199,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 							rateInputUnique/sol.getTotalRateForAllFaultSystemRups())+")");
 				}
 				if (meta.comparison.sol == null) {
-					table.addColumn("*N/A*");
+					table.addColumn(na);
 				} else {
 					double rateCompUnique = 0d;
 					for (Jump jump : meta.comparisonOverlap.uniqueJumps)
@@ -253,7 +253,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 					meta.primary.jumpRupsMap, maxRups, maxCols, resourcesDir, relPathToResources, "conn_example");
 			lines.add("");
 			if (table == null)
-				lines.add("*N/A*");
+				lines.add(na);
 			else
 				lines.addAll(table.build());
 			lines.add("");
@@ -262,7 +262,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 					meta.comparison.jumpRupsMap, maxRups, maxCols, resourcesDir, relPathToResources, "comp_conn_example");
 			lines.add("");
 			if (table == null)
-				lines.add("*N/A*");
+				lines.add(na);
 			else
 				lines.addAll(table.build());
 			lines.add("");
@@ -373,7 +373,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			table.addColumn("![plot]("+relPath+"/"+mainPlot.getName()+")");
 			mainGeoJSON = new File(mainPlot.getAbsolutePath().replaceAll(".png", ".geojson"));
 		} else {
-			table.addColumn("*N/A*");
+			table.addColumn(na);
 		}
 		File compGeoJSON = null;
 		if (hasComp) {
@@ -381,7 +381,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 				table.addColumn("![plot]("+relPath+"/"+compPlot.getName()+")");
 				compGeoJSON = new File(compPlot.getAbsolutePath().replaceAll(".png", ".geojson"));
 			} else {
-				table.addColumn("*N/A*");
+				table.addColumn(na);
 			}
 		}
 		table.finalizeLine();
@@ -391,12 +391,12 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/"+mainGeoJSON.getName())
 						+" "+"[Download GeoJSON]("+relPath+"/"+mainGeoJSON.getName()+")");
 			else
-				table.addColumn("*N/A*");
+				table.addColumn(na);
 			if ((compGeoJSON != null && compGeoJSON.exists()))
 				table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPath+"/"+compGeoJSON.getName())
 						+" "+"[Download GeoJSON]("+relPath+"/"+compGeoJSON.getName()+")");
 			else
-				table.addColumn("*N/A*");
+				table.addColumn(na);
 			table.finalizeLine();
 		}
 	}
@@ -729,8 +729,20 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			sectColors.add(null);
 		
 		ConnectivityClusterSolutionMisfits clusterMisfits = null;
-		if (sol != null && table != null)
+		Map<ConnectivityCluster, InversionMisfitStats> clusterMisfitStats = null;
+		if (sol != null && table != null) {
 			clusterMisfits = sol.getModule(ConnectivityClusterSolutionMisfits.class);
+			if (clusterMisfits != null) {
+				clusterMisfitStats = new HashMap<>();
+				// get without sorting
+				ConnectivityClusters origClusters = rupSet.requireModule(ConnectivityClusters.class);
+				for (int i=0; i<origClusters.size(); i++) {
+					InversionMisfitStats stats = clusterMisfits.getMisfitStats(i);
+					if (stats != null)
+						clusterMisfitStats.put(origClusters.get(i), stats);
+				}
+			}
+		}
 		List<String> clusterMisfitNames = null;
 		Quantity tableQuantity = Quantity.MAD;
 		String quantityAbbrev = "MAD";
@@ -740,16 +752,13 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			if (clusterMisfits != null) {
 				clusterMisfitNames = new ArrayList<>();
 				HashSet<String> misfitNames = new HashSet<>();
-				for (int i=0; i<clusters.size(); i++) {
-					InversionMisfitStats stats = clusterMisfits.getMisfitStats(i);
-					if (stats != null) {
-						for (MisfitStats misfits : stats.getStats()) {
-							String name = misfits.range.name;
-							if (!misfitNames.contains(name)) {
-								misfitNames.add(name);
-								clusterMisfitNames.add(name);
-								table.addColumn(name+" "+quantityAbbrev);
-							}
+				for (InversionMisfitStats stats : clusterMisfitStats.values()) {
+					for (MisfitStats misfits : stats.getStats()) {
+						String name = misfits.range.name;
+						if (!misfitNames.contains(name)) {
+							misfitNames.add(name);
+							clusterMisfitNames.add(name);
+							table.addColumn(name+" "+quantityAbbrev);
 						}
 					}
 				}
@@ -791,7 +800,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			
 			double[] myMisfits = null;
 			if (clusterMisfits != null) {
-				InversionMisfitStats tmp = clusterMisfits.getMisfitStats(i);
+				InversionMisfitStats tmp = clusterMisfitStats.get(cluster);
 				if (tmp != null) {
 					myMisfits = new double[clusterMisfitNames.size()];
 					List<MisfitStats> myMisfitStats = tmp.getStats();
@@ -885,7 +894,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 						double sum = otherMisfits[i];
 						int count = otherMisfitCounts[i];
 						if (count == 0)
-							table.addColumn("_(N/A)_");
+							table.addColumn(na);
 						else
 							table.addColumn((float)(sum/(double)count));
 					}
@@ -903,7 +912,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 						double sum = isolatedMisfits[i];
 						int count = isolatedMisfitCounts[i];
 						if (count == 0)
-							table.addColumn("_(N/A)_");
+							table.addColumn(na);
 						else
 							table.addColumn((float)(sum/(double)count));
 					}
