@@ -69,7 +69,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			double creepingProb = 0.75;
 			double wasatchProb = 0.75;
-			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN);
+			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false);
 		}
 
 		@Override
@@ -92,7 +92,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			double creepingProb =  0.5d;
 			double wasatchProb = 0.5;
-			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN);
+			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false);
 		}
 
 		@Override
@@ -115,7 +115,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			double creepingProb = 0.25;
 			double wasatchProb = 0.25;
-			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN);
+			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false);
 		}
 
 		@Override
@@ -126,34 +126,21 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	/**
 	 * Classic segmentation:
 	 * 	* Named-fault segmentation, all other parents isolated and solved for analytically
+	 * 	* Distance-dependent R0=2, horizontal shift of 1km (within named fault clusters)
 	 * 	* Wasatch segmentation P=0
 	 * 	* Creeping section segmentation P=0 (Creeping section treated as isolated and solved analytically)
 	 * 	* Ruptures prohibited through creeping section
 	 */
-	CLASSIC("Classic ('A' faults)", "Classic", 1d) {
+	CLASSIC("Classic ('A' faults)", "Classic",
+			1d, // weight
+			2d, // R0
+			1d) { // shift
 		@Override
-		public BinaryJumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			// jumps within named faults only
-			List<BinaryJumpProbabilityCalc> models = new ArrayList<>();
-			if (rupSet.hasModule(NamedFaults.class))
-				models.add(new NamedFaultSegmentationModel(rupSet.requireModule(NamedFaults.class)));
-			else
-				models.add(new JumpProbabilityCalc.NoJumps());
-			
-			// creeping section. this limits not just through, but anything corupturing with the creeping section
-			int creepingParentID = NSHM23_ConstraintBuilder.findCreepingSection(rupSet);
-			if (creepingParentID >= 0)
-				models.add(new CreepingSectionBinaryJumpExcludeModel(creepingParentID));
-			
-			// wasatch
-			BinaryJumpProbabilityCalc wasatch = NSHM23_WasatchSegmentationData.buildFullExclusion(rupSet.getFaultSectionDataList(), null);
-			if (wasatch != null)
-				models.add(wasatch);
-			
-			Preconditions.checkState(!models.isEmpty());
-			if (models.size() == 1)
-				return models.get(0);
-			return new JumpProbabilityCalc.LogicalAnd(models.toArray(new BinaryJumpProbabilityCalc[0]));
+		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+			Preconditions.checkNotNull(rupSet, "Can only build classic segmentation model when we have a rupture set");
+			double creepingProb = 0d;
+			double wasatchProb = 0d;
+			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, true);
 		}
 
 		@Override
@@ -261,7 +248,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	public abstract JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch);
 	
 	private static JumpProbabilityCalc buildModel(FaultSystemRupSet rupSet, double shawR0, double shawShift,
-			double wasatchProb, double creepingProb, double hardCutoff) {
+			double wasatchProb, double creepingProb, double hardCutoff, boolean namedFaultsOnly) {
 		// distance dependent model, possibly with a horizontal shift
 		JumpProbabilityCalc model = null;
 		if (Double.isFinite(hardCutoff))
@@ -278,7 +265,11 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 			if (creepingProb < 1d) {
 				int creepingParentID = NSHM23_ConstraintBuilder.findCreepingSection(rupSet);
 				if (creepingParentID >= 0) {
-					CreepingSectionJumpSegModel creepModel = new CreepingSectionJumpSegModel(creepingParentID, creepingProb);
+					JumpProbabilityCalc creepModel;
+					if (creepingProb == 0d)
+						creepModel = new CreepingSectionBinaryJumpExcludeModel(creepingParentID);
+					else
+						creepModel = new CreepingSectionJumpSegModel(creepingParentID, creepingProb);
 					if (model == null)
 						model = creepModel;
 					else
@@ -286,11 +277,26 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 				}
 			}
 			// Wasatch model
+			// do it this way so that distance-dependence is overridden by wasatch probabilities
 			JumpProbabilityCalc wasatch = NSHM23_WasatchSegmentationData.build(
 					rupSet.getFaultSectionDataList(), wasatchProb, model);
 			if (wasatch != null)
 				// this rupture set has Wasatch
 				model = wasatch;
+			
+			if (namedFaultsOnly) {
+				NamedFaults namedFaults = rupSet.getModule(NamedFaults.class);
+				if (namedFaults == null)
+					// no named fault data, don't allow any jumps
+					return new JumpProbabilityCalc.NoJumps();
+				NamedFaultSegmentationModel namedFaultsModel = new NamedFaultSegmentationModel(namedFaults);
+				if (model == null)
+					model = namedFaultsModel;
+				else if (model instanceof BinaryJumpProbabilityCalc)
+					model = new JumpProbabilityCalc.LogicalAnd((BinaryJumpProbabilityCalc)model, namedFaultsModel);
+				else
+					model = new JumpProbabilityCalc.Minimum(model, namedFaultsModel);
+			}
 		}
 		return model;
 	}
