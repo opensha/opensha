@@ -205,21 +205,34 @@ BranchAverageableModule<ConnectivityClusters>, AverageableModule.ConstantAverage
 				List<String> origHeader = allStatsCSV.getLine(0);
 				List<String> commonHeader = origHeader.subList(3, origHeader.size());
 				
+				if (clusters != null)
+					for (int i=0; i<clusters.size(); i++)
+						clusterCSVs.add(null);
+				
 				for (int row=1; row<allStatsCSV.getNumRows(); row++) {
 					int clusterIndex = allStatsCSV.getInt(row, 0);
+					
 					while (clusterCSVs.size() <= clusterIndex)
-						clusterCSVs.add(new CSVFile<>(true));
+						clusterCSVs.add(null);
 					CSVFile<String> clusterCSV = clusterCSVs.get(clusterIndex);
-					if (clusterCSV.getNumRows() == 0)
+					if (clusterCSV == null) {
+						clusterCSV = new CSVFile<>(true);
 						clusterCSV.addLine(commonHeader);
+						clusterCSVs.set(clusterIndex, clusterCSV);
+					}
+					
 					List<String> line = allStatsCSV.getLine(row);
 					clusterCSV.addLine(line.subList(3, line.size()));
 				}
 				
 				Preconditions.checkState(clusterCSVs.size() > 0);
 				this.clusterStats = new ArrayList<>();
-				for (CSVFile<String> clusterCSV : clusterCSVs)
-					clusterStats.add(InversionMisfitStats.fromCSV(clusterCSV));
+				for (CSVFile<String> clusterCSV : clusterCSVs) {
+					if (clusterCSV == null)
+						clusterStats.add(null);
+					else
+						clusterStats.add(InversionMisfitStats.fromCSV(clusterCSV));
+				}
 			}
 			
 			this.largestClusterProgress = null;
@@ -239,11 +252,15 @@ BranchAverageableModule<ConnectivityClusters>, AverageableModule.ConstantAverage
 			Preconditions.checkState(sol.getRupSet().hasModule(ConnectivityClusters.class),
 					"Rupture set must have connectivity clusters attached");
 			ConnectivityClusters newClusters = sol.getRupSet().requireModule(ConnectivityClusters.class);
-			if (this.clusters != null)
+			if (this.clusters != null) {
 				Preconditions.checkState(clustersEquivalent(this.clusters, newClusters),
 						"Can't set parent solution, clusters incompatible");
-			if (clusterStats != null)
-				Preconditions.checkState(newClusters.size() == clusterStats.size());
+			} else if (clusterStats != null) {
+				// we already have cluster stats, they could be from a file though and be missing nulls at the end
+				Preconditions.checkState(newClusters.size() >= clusterStats.size());
+				while (clusterStats.size() < newClusters.size())
+					clusterStats.add(null);
+			}
 			this.clusters = newClusters;
 			this.sol = sol;
 		}
