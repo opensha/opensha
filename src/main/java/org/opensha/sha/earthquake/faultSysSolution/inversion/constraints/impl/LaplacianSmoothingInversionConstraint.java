@@ -36,7 +36,7 @@ public class LaplacianSmoothingInversionConstraint extends InversionConstraint {
 	}
 
 	public LaplacianSmoothingInversionConstraint(FaultSystemRupSet rupSet, double weight, HashSet<Integer> parentIDs) {
-		super(NAME+(parentIDs == null ? "" : " ("+parentIDs.size()+" parents)"), SHORT_NAME, weight, false);
+		super(NAME+(parentIDs == null ? "" : " (select parents)"), SHORT_NAME, weight, false);
 		this.rupSet = rupSet;
 		this.parentIDs = parentIDs;
 	}
