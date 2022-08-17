@@ -13,6 +13,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.Inversi
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SerialSimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
@@ -152,6 +153,9 @@ public class AnalyticalSingleFaultInversionSolver extends InversionSolver.Defaul
 		}
 		
 		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
+		
+		// mark that this is a prescriptive solution by setting it as the initial model as well
+		sol.addModule(new InitialSolution(rates));
 		
 		if (waterLevel != null)
 			sol.addModule(new WaterLevelRates(waterLevel));
