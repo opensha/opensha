@@ -2,7 +2,8 @@ package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import org.opensha.commons.util.modules.helpers.AbstractDoubleArrayCSV_BackedModule;
 
-public class InitialSolution extends AbstractDoubleArrayCSV_BackedModule.Averageable<InitialSolution> {
+public class InitialSolution extends AbstractDoubleArrayCSV_BackedModule.Averageable<InitialSolution>
+implements BranchAverageableModule<InitialSolution> {
 
 	@SuppressWarnings("unused") // used in deserialization
 	private InitialSolution() {
@@ -35,7 +36,7 @@ public class InitialSolution extends AbstractDoubleArrayCSV_BackedModule.Average
 
 	@Override
 	protected String getValueHeading() {
-		return "Water Level Rate";
+		return "Initial Rate";
 	}
 
 }
