@@ -56,6 +56,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityCon
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityFilterPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RateDistributionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RuptureScalingPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBValuePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectDetailPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectMaxValuesPlot;
@@ -119,6 +120,7 @@ public class ReportPageGen {
 		
 		plots.add(new InfoStringPlot());
 		plots.add(new LogicTreeBranchPlot());
+		plots.add(new RuptureScalingPlot());
 		plots.add(new SolMFDPlot());
 		plots.add(new PlausibilityConfigurationReport());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
@@ -160,8 +162,9 @@ public class ReportPageGen {
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
 			plots.add(new SectBValuePlot());
 		plots.add(new PlausibilityConfigurationReport());
-		plots.add(new RupHistogramPlots(RupHistogramPlots.SOL_SCALARS));
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
+			plots.add(new RuptureScalingPlot());
+			plots.add(new RupHistogramPlots(RupHistogramPlots.SOL_SCALARS));
 			plots.add(new ModulesPlot());
 			plots.add(new FaultSectionConnectionsPlot());
 			plots.add(new SlipRatePlots());
