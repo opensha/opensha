@@ -14,6 +14,13 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionSolver;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurationFactory;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SectionTotalRateConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SubSectMFDInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
@@ -26,11 +33,13 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings
 import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters.ConnectivityClusterSolutionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
+import org.opensha.sha.faultSurface.FaultSection;
 
 /**
  * 
@@ -84,6 +93,28 @@ public class ClassicModelInversionSolver extends ClusterSpecificInversionSolver 
 			if (cluster.getParentSectIDs().contains(paleoParentID))
 				// must invert if we have paleo data 
 				return true;
+		// if we pass all of those tests, we can do an analytical solution
+		return false;
+	}
+
+	private boolean shouldInvert(FaultSystemRupSet rupSet, InversionConfiguration config) {
+		// similar logic, but for a rupture set
+		if (NSHM23_InvConfigFactory.hasJumps(rupSet))
+			return true;
+		// can only solve analytically for the following constraints:
+		//	* slip rate
+		//	* regional mfd
+		//	* section rate
+		//	* section mfd
+		for (InversionConstraint constraint : config.getConstraints()) {
+			if (constraint instanceof SlipRateInversionConstraint
+					|| constraint instanceof MFDInversionConstraint
+					|| constraint instanceof SectionTotalRateConstraint
+					|| constraint instanceof SubSectMFDInversionConstraint)
+				// white listed
+				continue;
+			return true;
+		}
 		// if we pass all of those tests, we can do an analytical solution
 		return false;
 	}
@@ -178,7 +209,7 @@ public class ClassicModelInversionSolver extends ClusterSpecificInversionSolver 
 	@Override
 	public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config, String info) {
 		// see if it's a single-fault rupture set
-		if (!NSHM23_InvConfigFactory.hasJumps(rupSet))
+		if (!shouldInvert(rupSet, config))
 			return analytical.run(rupSet, config, info);
 		return super.run(rupSet, config, info);
 	}

@@ -181,7 +181,7 @@ public class ConnectivityCluster implements Comparable<ConnectivityCluster> {
 	
 	@Override
 	public String toString() {
-		return "ConnectivityCluster["+numSections+" sects, "+numRuptures+" rups]";
+		return "ConnectivityCluster["+numSections+" sects ("+parentSectIDs.size()+" parents), "+numRuptures+" rups]";
 	}
 
 	public static final Comparator<ConnectivityCluster> sectCountComparator = new Comparator<ConnectivityCluster>() {

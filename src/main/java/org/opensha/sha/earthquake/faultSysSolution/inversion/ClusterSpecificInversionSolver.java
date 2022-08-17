@@ -69,15 +69,21 @@ public class ClusterSpecificInversionSolver extends InversionSolver.Default {
 //			Preconditions.checkState(tmpDir.exists() || tmpDir.mkdir());
 			int numInverted = 0;
 			for (ConnectivityCluster cluster : clusters) {
+				String clusterName = cluster.toString();
+				if (cluster.getParentSectIDs().size() == 1) {
+					int sectIndex = cluster.getSectIDs().iterator().next();
+					String parentName = rupSet.getFaultSectionData(sectIndex).getParentSectionName();
+					clusterName += ", "+parentName;
+				}
 				if (!shouldInvert(cluster)) {
 					solutions.add(null);
-					System.out.println("Skipping inversion for cluster: "+cluster);
+					System.out.println("Skipping inversion for cluster: "+clusterName);
 					continue;
 				}
-				System.out.println("Handling cluster: "+cluster);
-				System.out.println("Building subset rupture set for "+cluster);
+				System.out.println("Handling cluster: "+clusterName);
+				System.out.println("Building subset rupture set for "+clusterName);
 				FaultSystemRupSet clusterRupSet = rupSet.getForSectionSubSet(cluster.getSectIDs(), rupExclusionModel);
-				System.out.println("Building subset inversion configuration for "+cluster);
+				System.out.println("Building subset inversion configuration for "+clusterName);
 				InversionConfiguration config = factory.buildInversionConfig(clusterRupSet, branch, threads);
 				if (config == null) {
 					// assume that we're not supposed to invert for this cluster, skip
