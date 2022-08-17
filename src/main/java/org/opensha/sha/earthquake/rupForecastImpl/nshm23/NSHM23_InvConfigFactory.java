@@ -569,6 +569,15 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		return false;
 	}
 	
+	public static boolean hasPaleoData(FaultSystemRupSet rupSet) {
+		PaleoseismicConstraintData data = rupSet.getModule(PaleoseismicConstraintData.class);
+		return data != null && (data.hasPaleoRateConstraints() || data.hasPaleoSlipConstraints());
+	}
+	
+	public static boolean hasParkfield(FaultSystemRupSet rupSet) {
+		return NSHM23_ConstraintBuilder.findParkfieldSection(rupSet) >= 0;
+	}
+	
 	/**
 	 * @param rupSet
 	 * @param segModel
@@ -779,31 +788,32 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	public InversionSolver getSolver(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		if (branch.getValue(NSHM23_SegmentationModels.class) == NSHM23_SegmentationModels.CLASSIC) {
 			// it's a classic model
-			if (isSolveClustersIndividually() || !hasJumps(rupSet)) {
-				// solve clusters individually (or no jumps so it doesn't matter), can handle mixed clusters and single-fault analytical
+			if (isSolveClustersIndividually()) {
+				// solve clusters individually, can handle mixed clusters and single-fault analytical
 				System.out.println("Returning classic model solver");
 				return new ClassicModelInversionSolver(rupSet, branch);
-			} else {
+			} else if (!hasPaleoData(rupSet) && !hasParkfield(rupSet)) {
 				// see if we can solve the whole thing analytically (can do if all multifault rups are excluded)
+				// but only if we don't have paleo/parkfield constraints
 				ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
 				BinaryRuptureProbabilityCalc exclusionModel = getExclusionModel(rupSet, branch, cRups);
 				boolean hasIncludedJump = false;
 				for (ClusterRupture cRup : cRups) {
 					int numJumps = cRup.getTotalNumJumps();
-					if (numJumps > 0 && exclusionModel.isRupAllowed(cRup, false)) {
+					if (numJumps > 0 && (exclusionModel == null || exclusionModel.isRupAllowed(cRup, false))) {
 						hasIncludedJump = true;
 						break;
 					}
 				}
-				if (hasIncludedJump) {
-					// have to do a full system inversion
-					return new InversionSolver.Default();
-				} else {
+				if (!hasIncludedJump) {
 					// can solve analytically
 					double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
 					return new AnalyticalSingleFaultInversionSolver(bVal, exclusionModel);
 				}
 			}
+			System.err.println("WARNING: solving classic model via full system inversion");
+			// have to do a full system inversion
+			return new InversionSolver.Default();
 		} else if (isSolveClustersIndividually()) {
 			return new ExclusionAwareClusterSpecificInversionSolver();
 		} else {

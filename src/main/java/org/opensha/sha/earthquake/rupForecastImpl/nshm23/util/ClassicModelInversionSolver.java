@@ -14,18 +14,21 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionSolver;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfigurationFactory;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitProgress;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters.ConnectivityClusterSolutionMisfits;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
 
@@ -38,10 +41,29 @@ public class ClassicModelInversionSolver extends ClusterSpecificInversionSolver 
 	
 	private AnalyticalSingleFaultInversionSolver analytical;
 	private BinaryRuptureProbabilityCalc rupProbCalc;
+	private HashSet<Integer> paleoParents;
+	private int parkfieldID;
 	
 	public ClassicModelInversionSolver(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		analytical = new AnalyticalSingleFaultInversionSolver(branch.requireValue(SupraSeisBValues.class).bValue);
 		rupProbCalc = NSHM23_InvConfigFactory.getExclusionModel(rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
+		
+		parkfieldID = NSHM23_ConstraintBuilder.findParkfieldSection(rupSet);
+		
+		paleoParents = new HashSet<>();
+		PaleoseismicConstraintData paleoData = rupSet.getModule(PaleoseismicConstraintData.class);
+		if (paleoData != null) {
+			if (paleoData.hasPaleoRateConstraints()) {
+				for (SectMappedUncertainDataConstraint data : paleoData.getPaleoRateConstraints())
+					if (data.sectionIndex >= 0)
+						paleoParents.add(rupSet.getFaultSectionData(data.sectionIndex).getParentSectionId());
+			}
+			if (paleoData.hasPaleoSlipConstraints()) {
+				for (SectMappedUncertainDataConstraint data : paleoData.getPaleoSlipConstraints())
+					if (data.sectionIndex >= 0)
+						paleoParents.add(rupSet.getFaultSectionData(data.sectionIndex).getParentSectionId());
+			}
+		}
 	}
 
 	@Override
@@ -52,8 +74,18 @@ public class ClassicModelInversionSolver extends ClusterSpecificInversionSolver 
 
 	@Override
 	protected boolean shouldInvert(ConnectivityCluster cluster) {
-		// only run inversions when multiple parent sections are involved
-		return cluster.getParentSectIDs().size() > 1;
+		if (cluster.getParentSectIDs().size() > 1)
+			// must invert if we have multiple parent sections
+			return true;
+		if (cluster.getParentSectIDs().contains(parkfieldID))
+			// must invert if we have parkfield
+			return true;
+		for (int paleoParentID : paleoParents)
+			if (cluster.getParentSectIDs().contains(paleoParentID))
+				// must invert if we have paleo data 
+				return true;
+		// if we pass all of those tests, we can do an analytical solution
+		return false;
 	}
 
 	@Override

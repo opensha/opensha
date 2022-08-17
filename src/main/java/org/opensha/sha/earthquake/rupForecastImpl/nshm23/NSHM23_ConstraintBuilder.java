@@ -571,10 +571,14 @@ public class NSHM23_ConstraintBuilder {
 		return findParkfieldRups(rupSet, parkfieldSelect);
 	}
 	
+	public static int findParkfieldSection(FaultSystemRupSet rupSet) {
+		return FaultSectionUtils.findParentSectionID(
+				rupSet.getFaultSectionDataList(), "San", "Andreas", "Parkfield");
+	}
+	
 	public static List<Integer> findParkfieldRups(FaultSystemRupSet rupSet,
 			ParkfieldSelectionCriteria parkfieldSelect) {
-		int parkfieldID = FaultSectionUtils.findParentSectionID(
-				rupSet.getFaultSectionDataList(), "San", "Andreas", "Parkfield");
+		int parkfieldID = findParkfieldSection(rupSet);
 		if (parkfieldID < 0) {
 			System.out.println("Warning: parkfield not found...removed?");
 			return new ArrayList<>();
@@ -583,7 +587,7 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public boolean rupSetHasParkfield() {
-		if (FaultSectionUtils.findParentSectionID(rupSet.getFaultSectionDataList(), "San", "Andreas", "Parkfield") < 0)
+		if (findParkfieldSection(rupSet) < 0)
 			return false;
 		List<Integer> parkfieldRups = findParkfieldRups();
 		return !parkfieldRups.isEmpty();
