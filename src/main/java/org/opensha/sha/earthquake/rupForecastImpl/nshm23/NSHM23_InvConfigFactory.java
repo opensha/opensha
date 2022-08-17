@@ -28,6 +28,7 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionSolver;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionSolver;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
@@ -803,13 +804,21 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					return new AnalyticalSingleFaultInversionSolver(bVal, exclusionModel);
 				}
 			}
+		} else if (isSolveClustersIndividually()) {
+			return new ExclusionAwareClusterSpecificInversionSolver();
+		} else {
+			return new InversionSolver.Default();
 		}
-		if (isSolveClustersIndividually() && branch.getValue(NSHM23_SegmentationModels.class) == NSHM23_SegmentationModels.CLASSIC) {
-			// classic model
-			System.out.println("Returning classic model solver");
-			return new ClassicModelInversionSolver(rupSet, branch);
+	}
+	
+	private static class ExclusionAwareClusterSpecificInversionSolver extends ClusterSpecificInversionSolver {
+
+		@Override
+		protected BinaryRuptureProbabilityCalc getRuptureExclusionModel(FaultSystemRupSet rupSet,
+				LogicTreeBranch<?> branch) {
+			return getExclusionModel(rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
 		}
-		return ClusterSpecificInversionConfigurationFactory.super.getSolver(rupSet, branch);
+		
 	}
 
 	private static ExclusionIntegerSampler getExcludeSampler(ClusterRuptures cRups,
