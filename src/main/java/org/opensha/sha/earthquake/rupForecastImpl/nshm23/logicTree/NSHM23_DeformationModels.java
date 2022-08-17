@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.jar.Attributes.Name;
 
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.json.FeatureCollection;
@@ -140,7 +141,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	private static final String NSHM23_DM_PATH_PREFIX = "/data/erf/nshm23/def_models/";
 
 	private static final String GEOLOGIC_VERSION = "v1p0";
-	private static final String CREEP_DATE = "2022_06_09";
+	private static final String CREEP_DATE = "2022_08_17";
 	
 	private static String getGeodeticDirForFM(RupSetFaultModel faultModel) {
 		if (sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v2))
@@ -596,7 +597,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	
 	private List<? extends FaultSection> applyCreepModel(MinisectionMappings mappings,
 			List<? extends FaultSection> subSects) throws IOException {
-		String creepPath = NSHM23_DM_PATH_PREFIX+"creep/"+CREEP_DATE+"/"+name()+".txt";
+		String creepPath = NSHM23_DM_PATH_PREFIX+"creep/"+CREEP_DATE+"/"+name()+".csv";
 		
 		System.out.println("Applying creep model to "+name()+" from "+creepPath);
 		
@@ -615,7 +616,8 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			}
 			if (numMissing > 0)
 				System.err.println("WARNING: "+name()+" is missing creep data for "+numMissing+"/"+records.size()
-					+" minisections on "+parentID+", assuming creep rate is 0 on those minisections");
+					+" minisections on "+parentID+", assuming creep rate is ["+(float)CREEP_FRACT_DEFAULT
+					+" x slip_rate] on those minisections");
 			
 			// make sure it's valid
 			if (!mappings.areMinisectionDataForParentValid(parentID, records, true)) {
@@ -645,14 +647,30 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 				// we have creep data for this fault
 				List<CreepRecord> records = creepData.get(parentID);
 				List<Double> values = new ArrayList<>(records.size());
-				for (CreepRecord record : records)
-					values.add(record == null ? 0d : record.creepRate);
+				boolean allDefault = true;
+				for (CreepRecord record : records) {
+					double recordVal;
+					if (record == null) {
+						// this fault has creep data, but this minisection does not. apply the default treatment
+						recordVal = CREEP_FRACT_DEFAULT * subSect.getOrigAveSlipRate();
+					} else {
+						recordVal = record.creepRate;
+						allDefault = false;
+					}
+					values.add(recordVal);
+				}
 				
-				creepRate = mappings.getAssociationScaledAverage(s, values);
-				Preconditions.checkState(subSect instanceof GeoJSONFaultSection);
-				((GeoJSONFaultSection)subSect).setProperty(GeoJSONFaultSection.CREEP_RATE, creepRate);
-				if (creepRate > 0d)
-					numNonzeroData++;
+				if (allDefault) {
+					// this subsection only touches minisections without creep data
+					creepRate = Double.NaN;
+					numCreepDefault++;
+				} else {
+					creepRate = mappings.getAssociationScaledAverage(s, values);
+					Preconditions.checkState(subSect instanceof GeoJSONFaultSection);
+					((GeoJSONFaultSection)subSect).setProperty(GeoJSONFaultSection.CREEP_RATE, creepRate);
+					if (creepRate > 0d)
+						numNonzeroData++;
+				}
 			} else {
 				creepRate = Double.NaN;
 				numCreepDefault++;
@@ -746,37 +764,22 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	
 	private static Map<Integer, List<CreepRecord>> loadCreepData(String creepPath, MinisectionMappings mappings)
 			throws IOException {
-		BufferedReader reader = new BufferedReader(new InputStreamReader(
-				NSHM23_DeformationModels.class.getResourceAsStream(creepPath)));
-		Preconditions.checkNotNull(reader, "Creep file not found: %s", creepPath);
+		CSVFile<String> csv;
+		try {
+			csv = CSVFile.readStream(NSHM23_DeformationModels.class.getResourceAsStream(creepPath), true);
+		} catch (IOException e) {
+			System.err.println("ERROR: couldn't load creep data from "+creepPath);
+			throw e;
+		}
 		
 		Map<Integer, List<CreepRecord>> ret = new HashMap<>();
 		
 		int numNegative = 0;
 		
-		String line = null;
-		while ((line = reader.readLine()) != null) {
-			line = line.trim();
-			if (line.isBlank() || line.startsWith("#"))
-				continue;
-			line = line.replaceAll("\t", "");
-			line = line.replaceAll(" ", "");
-			String[] split = line.split(",");
-			Preconditions.checkState(split.length == 2);
-			String idStr = split[0];
-			Preconditions.checkState(idStr.contains("."));
-			int periodIndex = idStr.indexOf('.');
-			int parentID = Integer.parseInt(idStr.substring(0, periodIndex));
-			if (!mappings.hasParent(parentID)) {
-				System.err.println("Skipping loading creep data for parent "+parentID+", not in fault model");
-				continue;
-			}
-			String miniStr = idStr.substring(periodIndex+1);
-			int minisectionID = Integer.parseInt(miniStr);
-			if (miniStr.length() < 2)
-				// TODO get better data files without this issue
-				minisectionID *= 10;
-			double creepRate = Double.parseDouble(split[1]);
+		for (int row=0; row<csv.getNumRows(); row++) {
+			int parentID = csv.getInt(row, 0);
+			int minisectionID = csv.getInt(row, 1);
+			double creepRate = csv.getDouble(row, 2);
 			Preconditions.checkState(Double.isFinite(creepRate), "Bad creepRate=%s for minisections=%s.%s",
 					creepRate, parentID, minisectionID);
 			if ((float)creepRate < 0f)
@@ -785,7 +788,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			// TODO get better data files with verification info
 			Location startLoc = null;
 			Location endLoc = null;
-			
+
 			List<CreepRecord> parentRecs = ret.get(parentID);
 			int numMinisections = mappings.getNumMinisectionsForParent(parentID);
 			if (parentRecs == null) {
@@ -848,7 +851,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 						dmPath += "-no_ghost_corr.txt";
 					dmSlipRecs.put(dm, loadGeodeticModel(dmPath));
 				}
-				String creepPath = NSHM23_DM_PATH_PREFIX+"creep/"+CREEP_DATE+"/"+dm.name()+".txt";
+				String creepPath = NSHM23_DM_PATH_PREFIX+"creep/"+CREEP_DATE+"/"+dm.name()+".csv";
 				dmCreepRecs.put(dm, loadCreepData(creepPath, mappings));
 			}
 		}
@@ -933,6 +936,8 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 				System.out.println("************************");
 			}
 		}
+		
+		checkForNegativeAndHighCreep(fm);
 	}
 
 }
