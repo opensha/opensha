@@ -524,9 +524,15 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 						while (in.hasNext()) {
 							LogicTreeLevel<? extends E> level = levels.get(index);
 							String shortName = in.nextString();
+							String modShortName = shortName.replace(" ", "").replace("_", "").toLowerCase();
 							E node = null;
 							for (E possible : level.getNodes()) {
-								if (possible.getShortName().equals(shortName) || possible.getFilePrefix().equals(shortName)) {
+								
+								boolean match = modShortName.equals(possible.getShortName().replace(" ", "").replace("_", "").toLowerCase());
+								match = match || modShortName.equals(possible.getFilePrefix().replace(" ", "").replace("_", "").toLowerCase());
+								match = match || (node instanceof Enum<?> &&
+										modShortName.equals(((Enum<?>)node).name().replace(" ", "").replace("_", "").toLowerCase()));
+								if (match) {
 									node = possible;
 									break;
 								}
