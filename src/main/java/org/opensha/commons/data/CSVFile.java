@@ -2,12 +2,14 @@ package org.opensha.commons.data;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -307,7 +309,7 @@ public class CSVFile<E> implements Iterable<List<E>> {
 	
 	private static ArrayList<String> loadLine(String line, int num) {
 		line = line.trim();
-		ArrayList<String> vals = new ArrayList<String>();
+		ArrayList<String> vals = num > 0 ? new ArrayList<>(num) : new ArrayList<>();
 		boolean inside = false;
 		String cur = "";
 		for (int i=0; i<line.length(); i++) {
@@ -382,17 +384,33 @@ public class CSVFile<E> implements Iterable<List<E>> {
 	public static CSVFile<String> readStream(InputStream is, boolean strictRowSizes, int cols)
 			throws IOException {
 		if (!(is instanceof BufferedInputStream))
-			is = new BufferedInputStream(is);
+			is = (BufferedInputStream)is;
+		BufferedReader br = new BufferedReader(new InputStreamReader(is));
 		List<List<String>> values = new ArrayList<List<String>>();
-		for (String line : FileUtils.loadStream(is)) {
+		String line = br.readLine();
+		while(line != null) {
 			if (strictRowSizes && cols < 0) {
 				cols = loadLine(line, -1).size();
 			}
 			ArrayList<String> vals = loadLine(line, cols);
-			if (strictRowSizes && vals.size() > cols)
+			if (strictRowSizes && vals.size() > cols) {
+				br.close();
 				throw new IllegalStateException("Line lenghts inconsistant and strictRowSizes=true");
+			}
 			values.add(vals);
+			line = br.readLine();
 		}
+		br.close();
+//		List<List<String>> values = new ArrayList<List<String>>();
+//		for (String line : FileUtils.loadStream(is)) {
+//			if (strictRowSizes && cols < 0) {
+//				cols = loadLine(line, -1).size();
+//			}
+//			ArrayList<String> vals = loadLine(line, cols);
+//			if (strictRowSizes && vals.size() > cols)
+//				throw new IllegalStateException("Line lenghts inconsistant and strictRowSizes=true");
+//			values.add(vals);
+//		}
 		
 		return new CSVFile<String>(values, strictRowSizes);
 	}
