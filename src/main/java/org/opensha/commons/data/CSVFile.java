@@ -384,7 +384,7 @@ public class CSVFile<E> implements Iterable<List<E>> {
 	public static CSVFile<String> readStream(InputStream is, boolean strictRowSizes, int cols)
 			throws IOException {
 		if (!(is instanceof BufferedInputStream))
-			is = (BufferedInputStream)is;
+			is = new BufferedInputStream(is);
 		BufferedReader br = new BufferedReader(new InputStreamReader(is));
 		List<List<String>> values = new ArrayList<List<String>>();
 		String line = br.readLine();
