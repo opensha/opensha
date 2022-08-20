@@ -116,7 +116,9 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	// minimum MFD uncertainty
 	public static double MFD_MIN_FRACT_UNCERT = 0.05;
 	
-	public static double MIN_MAG_FOR_SEISMOGENIC_RUPS = 6d;
+//	public static double MIN_MAG_FOR_SEISMOGENIC_RUPS = 6d;
+	// no longer apply min mag. this was necessary for U3 target MFDs, but not so this time around
+	public static double MIN_MAG_FOR_SEISMOGENIC_RUPS = 0d;
 	
 	protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
@@ -378,52 +380,54 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				}, PaleoseismicConstraintData.class);
 				
 				// regular system-wide minimum magnitudes
-				rupSet.offerAvailableModule(new Callable<ModSectMinMags>() {
+				if (MIN_MAG_FOR_SEISMOGENIC_RUPS > 0) {
+					rupSet.offerAvailableModule(new Callable<ModSectMinMags>() {
 
-					@Override
-					public ModSectMinMags call() throws Exception {
-						ModSectMinMags minMags = ModSectMinMags.above(rupSet, MIN_MAG_FOR_SEISMOGENIC_RUPS, true);
-						// modify for parkfield if needed
-						List<Integer> parkRups = NSHM23_ConstraintBuilder.findParkfieldRups(
-								rupSet, getParkfieldSelectionCriteria(fm));
-						if (parkRups != null && !parkRups.isEmpty()) {
-							EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(rupSet);
-							int minParkBin = -1;
-							double minParkMag = Double.POSITIVE_INFINITY;
-							for (int parkRup : parkRups) {
-								if (minMags.isRupBelowSectMinMag(parkRup, refMFD)) {
-									double mag = rupSet.getMagForRup(parkRup);
-									int bin = refMFD.getClosestXIndex(mag);
-									if (minParkBin < 0)
-										minParkBin = bin;
-									else
-										minParkBin = Integer.min(minParkBin, bin);
-									minParkMag = Math.min(minParkMag, mag);
-								}
-							}
-							if (minParkBin >= 0) {
-								// we have parkfield ruptures that would have been excluded
-								double[] array = Arrays.copyOf(minMags.getMinMagForSections(), rupSet.getNumSections());
-								int parkfieldID = FaultSectionUtils.findParentSectionID(
-										rupSet.getFaultSectionDataList(), "San", "Andreas", "Parkfield");
-								Preconditions.checkState(parkfieldID >= 0);
-								// position the minimum magnitude at the start of the magnitude bin
-								double parkMinMag = Math.min(minParkMag, refMFD.getX(minParkBin));
-								int numModified = 0;
-								for (int s=0; s<array.length; s++) {
-									if (rupSet.getFaultSectionData(s).getParentSectionId() == parkfieldID) {
-										array[s] = parkMinMag;
-										numModified++;
+						@Override
+						public ModSectMinMags call() throws Exception {
+							ModSectMinMags minMags = ModSectMinMags.above(rupSet, MIN_MAG_FOR_SEISMOGENIC_RUPS, true);
+							// modify for parkfield if needed
+							List<Integer> parkRups = NSHM23_ConstraintBuilder.findParkfieldRups(
+									rupSet, getParkfieldSelectionCriteria(fm));
+							if (parkRups != null && !parkRups.isEmpty()) {
+								EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(rupSet);
+								int minParkBin = -1;
+								double minParkMag = Double.POSITIVE_INFINITY;
+								for (int parkRup : parkRups) {
+									if (minMags.isRupBelowSectMinMag(parkRup, refMFD)) {
+										double mag = rupSet.getMagForRup(parkRup);
+										int bin = refMFD.getClosestXIndex(mag);
+										if (minParkBin < 0)
+											minParkBin = bin;
+										else
+											minParkBin = Integer.min(minParkBin, bin);
+										minParkMag = Math.min(minParkMag, mag);
 									}
 								}
-								System.out.println("Modified SectMinMag for "+numModified+" Parkfield sections to "+(float)parkMinMag);
-								Preconditions.checkState(numModified > 0, "Parkfield sections not found?");
-								minMags = ModSectMinMags.instance(rupSet, array);
+								if (minParkBin >= 0) {
+									// we have parkfield ruptures that would have been excluded
+									double[] array = Arrays.copyOf(minMags.getMinMagForSections(), rupSet.getNumSections());
+									int parkfieldID = FaultSectionUtils.findParentSectionID(
+											rupSet.getFaultSectionDataList(), "San", "Andreas", "Parkfield");
+									Preconditions.checkState(parkfieldID >= 0);
+									// position the minimum magnitude at the start of the magnitude bin
+									double parkMinMag = Math.min(minParkMag, refMFD.getX(minParkBin));
+									int numModified = 0;
+									for (int s=0; s<array.length; s++) {
+										if (rupSet.getFaultSectionData(s).getParentSectionId() == parkfieldID) {
+											array[s] = parkMinMag;
+											numModified++;
+										}
+									}
+									System.out.println("Modified SectMinMag for "+numModified+" Parkfield sections to "+(float)parkMinMag);
+									Preconditions.checkState(numModified > 0, "Parkfield sections not found?");
+									minMags = ModSectMinMags.instance(rupSet, array);
+								}
 							}
+							return minMags;
 						}
-						return minMags;
-					}
-				}, ModSectMinMags.class);
+					}, ModSectMinMags.class);
+				}
 			}
 			// add inversion target MFDs
 			rupSet.offerAvailableModule(new Callable<SupraSeisBValInversionTargetMFDs>() {
