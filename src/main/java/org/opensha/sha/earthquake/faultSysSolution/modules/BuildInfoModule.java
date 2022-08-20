@@ -31,8 +31,18 @@ public class BuildInfoModule implements JSON_TypeAdapterBackedModule<BuildInfoMo
 	public static BuildInfoModule detect() throws IOException {
 		Date date = ApplicationVersion.loadBuildDate();
 		Long buildTime = date == null ? null : date.getTime();
-		String gitHash = ApplicationVersion.loadGitHash();
-		String branch = ApplicationVersion.loadGitBranch();
+		String gitHash;
+		try {
+			gitHash = ApplicationVersion.loadGitHash();
+		} catch (Exception e) {
+			gitHash = null;
+		}
+		String branch;
+		try {
+			branch = ApplicationVersion.loadGitBranch();
+		} catch (Exception e) {
+			branch = null;
+		}
 		ApplicationVersion openshaVersion = ApplicationVersion.loadBuildVersion();
 		return new BuildInfoModule(buildTime, gitHash, branch, openshaVersion);
 	}
