@@ -128,13 +128,19 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		 */
 		FROM_INPUT_SLIP_RATES,
 		/**
+		 * For faults with minimum magnitudes above M6.5, extend the supra-seismogenic b-value to M6.5 and reduce slip
+		 * rates accordingly. The sub-seismogenic MFD down to M6.5 will be stored and should be added back in with the
+		 * gridded seismicity model. No reduction for faults with minMag <= 6.5.
+		 */
+		SUPRA_B_TO_M6p5,
+		/**
 		 * Don't reduce slip rates for sub-seismogenic ruptures. In other words, assume that the creep-reduced
 		 * deformation model slip rate is satisfied only by supra-seismogenic ruptures.
 		 */
 		NONE
 	}
 	
-	public static SubSeisMoRateReduction SUB_SEIS_MO_RATE_REDUCTION_DEFAULT = SubSeisMoRateReduction.SUB_SEIS_B_1;
+	public static SubSeisMoRateReduction SUB_SEIS_MO_RATE_REDUCTION_DEFAULT = SubSeisMoRateReduction.NONE;
 	
 	/**
 	 * Default relative standard deviation as a function of magnitude: constant (10%)
@@ -922,6 +928,54 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 						// scale target slip rates by the fraction that is supra-seismognic
 						slipRates[s] = creepReducedSlipRate*fractSupra;
 						slipRateStdDevs[s] = creepReducedSlipRateStdDev*fractSupra;
+					} else if (subSeisMoRateReduction == SubSeisMoRateReduction.SUPRA_B_TO_M6p5) {
+						int sixFiveIndex = refMFD.getClosestXIndex(6.501); // want it to round up
+						if (minMagIndex <= sixFiveIndex) {
+							// no reduction
+							supraMoRate = targetMoRate;
+							subMoRate = 0d;
+							fractSupra = 1d;
+
+							// only supra-seis MFD
+							subSeisMFD = null;
+
+							// use supra-seis MFD shape from above
+							supraGR_shape.scaleToTotalMomentRate(supraMoRate);
+
+							supraSeisMFD = new IncrementalMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
+							for (int i=0; i<supraGR_shape.size(); i++)
+								supraSeisMFD.set(i+minMagIndex, supraGR_shape.getY(i));
+
+							// scale target slip rates by the fraction that is supra-seismognic
+							slipRates[s] = creepReducedSlipRate*fractSupra;
+							slipRateStdDevs[s] = creepReducedSlipRateStdDev*fractSupra;
+						} else {
+							// GR from 6.5 to Mmax with supra-seis b-value
+							GutenbergRichterMagFreqDist sectFullMFD = new GutenbergRichterMagFreqDist(
+									MIN_MAG, maxMagIndex+1, DELTA_MAG);
+							sectFullMFD.setAllButTotCumRate(refMFD.getX(sixFiveIndex),
+									refMFD.getX(maxMagIndex), targetMoRate, supraSeisBValue);
+							
+							// split the target G-R into sub-seismo and supra-seismo parts
+							subSeisMFD = new IncrementalMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
+							for (int i=sixFiveIndex; i<minMagIndex; i++)
+								subSeisMFD.set(i, sectFullMFD.getY(i));
+
+							subMoRate = subSeisMFD.getTotalMomentRate();
+							supraMoRate = targetMoRate - subMoRate;
+							fractSupra = supraMoRate/targetMoRate;
+
+							// use supra-seis MFD shape from above
+							supraGR_shape.scaleToTotalMomentRate(supraMoRate);
+
+							supraSeisMFD = new IncrementalMagFreqDist(MIN_MAG, NUM_MAG, DELTA_MAG);
+							for (int i=0; i<supraGR_shape.size(); i++)
+								supraSeisMFD.set(i+minMagIndex, supraGR_shape.getY(i));
+
+							// scale target slip rates by the fraction that is supra-seismognic
+							slipRates[s] = creepReducedSlipRate*fractSupra;
+							slipRateStdDevs[s] = creepReducedSlipRateStdDev*fractSupra;
+						}
 					} else {
 						// use that implied by faults maximum magnitude
 						// will adjust later if system-wide avg is selected

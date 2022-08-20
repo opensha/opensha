@@ -17,6 +17,7 @@ public enum SubSeisMoRateReductions implements LogicTreeNode {
 	SYSTEM_AVG("System-Average", "SysAvg", 0d, SubSeisMoRateReduction.SYSTEM_AVG_IMPLIED_FROM_SUPRA_B),
 	NONE("None", "NoRed", 1d, SubSeisMoRateReduction.NONE),
 	SUB_B_1("Sub-Seis b=1", "SubB1", 1d, SubSeisMoRateReduction.SUB_SEIS_B_1),
+	SUPRA_B_TO_M6p5("M=[6.5,Mmin] only, supra-b", "M6.5SupraB", 1d, SubSeisMoRateReduction.SUPRA_B_TO_M6p5),
 	SYSTEM_AVG_SUB_B_1("System-Average Sub-Seis b=1", "SysAvgSubB1", 0d, SubSeisMoRateReduction.SYSTEM_AVG_SUB_B_1);
 	
 	private String name;
@@ -52,7 +53,7 @@ public enum SubSeisMoRateReductions implements LogicTreeNode {
 
 	@Override
 	public String getFilePrefix() {
-		return shortName;
+		return shortName.replace('.', 'p');
 	}
 
 }
