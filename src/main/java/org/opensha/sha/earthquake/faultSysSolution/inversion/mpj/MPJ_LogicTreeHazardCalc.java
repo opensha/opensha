@@ -51,6 +51,7 @@ import org.opensha.sha.imr.logicTree.ScalarIMR_LogicTreeNode;
 import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
 
 import com.google.common.base.Preconditions;
+import com.google.common.io.Files;
 import com.google.common.primitives.Doubles;
 
 import edu.usc.kmilner.mpj.taskDispatch.AsyncPostBatchHook;
@@ -134,11 +135,14 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private class AsyncHazardWriter extends AsyncPostBatchHook {
 		
 		private ZipOutputStream zout;
+		private File workingFile;
+		private File destFile;
 		
 		public AsyncHazardWriter() throws FileNotFoundException {
 			super(1);
-			File outputFile = new File(outputDir.getParentFile(), "results_hazard.zip");
-			zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(outputFile)));
+			destFile = new File(outputDir.getParentFile(), "results_hazard.zip");
+			workingFile = new File(outputDir.getParentFile(), "results_hazard.zip.tmp");
+			zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(workingFile)));
 		}
 
 		@Override
@@ -146,8 +150,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			super.shutdown();
 			try {
 				zout.close();
+				Files.move(workingFile, destFile);
 			} catch (IOException e) {
-				e.printStackTrace();
+				throw ExceptionUtils.asRuntimeException(e);
 			}
 		}
 
