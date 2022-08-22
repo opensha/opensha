@@ -225,8 +225,8 @@ SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
 			if (applySlipRateUncertainty) {
 				if (targetSlipRate == 0d)
 					// slip rate is zero, so mean rate is zero, set the uncertainty to the upper bound implied by
-					// taking both high options
-					rateSD = targetSlipRateStdDev / (aveSlip+aveSlipStdDev);
+					// taking both high options (high slip rate, 0+sd, and low slip, slip-sd)
+					rateSD = targetSlipRateStdDev / (aveSlip-aveSlipStdDev);
 				else 
 					rateSD = meanRate * Math.sqrt(
 							Math.pow(targetSlipRateStdDev/targetSlipRate, 2) + Math.pow(aveSlipStdDev/aveSlip, 2));
