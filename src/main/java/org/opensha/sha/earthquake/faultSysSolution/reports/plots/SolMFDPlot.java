@@ -195,16 +195,19 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 				cmlChars.add(pChar);
 				
 				if (comp instanceof UncertainIncrMagFreqDist) {
-					UncertainBoundedIncrMagFreqDist sigmaIncrBounds =
-							((UncertainIncrMagFreqDist)comp).estimateBounds(UncertaintyBoundType.ONE_SIGMA);
-					sigmaIncrBounds.setName("± σ");
+					UncertainBoundedIncrMagFreqDist bounded;
+					if (comp instanceof UncertainBoundedIncrMagFreqDist)
+						bounded = ((UncertainBoundedIncrMagFreqDist)comp).deepClone();
+					else
+						bounded = ((UncertainIncrMagFreqDist)comp).estimateBounds(UncertaintyBoundType.ONE_SIGMA);
+					bounded.setName(bounded.getBoundType().toString());
 					
-					incrFuncs.add(sigmaIncrBounds);
+					incrFuncs.add(bounded);
 					incrChars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,
 							new Color(color.getRed(), color.getGreen(), color.getBlue(), 60)));
 					
-					EvenlyDiscretizedFunc upperCumulative = sigmaIncrBounds.getUpper().getCumRateDistWithOffset();
-					EvenlyDiscretizedFunc lowerCumulative = sigmaIncrBounds.getLower().getCumRateDistWithOffset();
+					EvenlyDiscretizedFunc upperCumulative = bounded.getUpper().getCumRateDistWithOffset();
+					EvenlyDiscretizedFunc lowerCumulative = bounded.getLower().getCumRateDistWithOffset();
 					Preconditions.checkState(cumulative.size() == upperCumulative.size());
 					for (int i=0; i<cumulative.size(); i++) {
 						upperCumulative.set(i, Math.max(cumulative.getY(i), upperCumulative.getY(i)));
@@ -212,7 +215,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					}
 					
 					UncertainArbDiscFunc cmlBounded = new UncertainArbDiscFunc(cumulative, lowerCumulative, upperCumulative);
-					cmlBounded.setName("± σ");
+					cmlBounded.setName(bounded.getName());
 					cmlFuncs.add(cmlBounded);
 					cmlChars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,
 							new Color(color.getRed(), color.getGreen(), color.getBlue(), 60)));
