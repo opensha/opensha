@@ -683,7 +683,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			constrBuilder.supraPaleoSmooth().weight(LaplacianSmoothingInversionConstraint.class, paleoSmoothWeight);
 		
 		// this will skip any ruptures below the minimim magnitude
-		ExclusionIntegerSampler sampler = constrBuilder.getSkipBelowMinSampler();
+		ExclusionIntegerSampler sampler = rupSet.hasModule(ModSectMinMags.class) ? constrBuilder.getSkipBelowMinSampler() : null;
 		
 		// this will exclude ruptures through creeping section, if applicable 
 		BinaryRuptureProbabilityCalc rupExcludeModel = constrBuilder.getRupExclusionModel();
@@ -737,7 +737,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				.variablePertubationBasis(rateEst.estimateRuptureRates());
 		
 		if (parkWeight > 0d)
-			builder.initialSolution(constrBuilder.getParkfieldInitial(true));
+			builder.initialSolution(constrBuilder.getParkfieldInitial(rupSet.hasModule(ModSectMinMags.class)));
 		
 		return builder.build();
 	}
