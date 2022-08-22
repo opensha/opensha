@@ -718,6 +718,12 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 						creepReducedSlipRateStdDev = sect.getReducedSlipRateStdDev()*1e-3; // mm/yr -> m/yr
 					else
 						creepReducedSlipRateStdDev = sect.getOrigSlipRateStdDev()*1e-3; // mm/yr -> m/yr
+					
+					Preconditions.checkState(Double.isFinite(creepReducedSlipRate), "Bad slip rate for %s. %s: %s",
+							s, sect.getSectionName(), creepReducedSlipRate);
+					Preconditions.checkState(Double.isFinite(creepReducedSlipRateStdDev), "Bad slip rate std dev for %s. %s: %s",
+							s, sect.getSectionName(), creepReducedSlipRateStdDev);
+					
 					if (slipAddStdScalar != 0d)
 						// for calculating mfds +/- std dev
 						creepReducedSlipRate += slipAddStdScalar*creepReducedSlipRateStdDev;
