@@ -95,7 +95,7 @@ public class UncertainBoundedIncrMagFreqDist extends UncertainIncrMagFreqDist im
 	}
 	
 	@Override
-	public UncertainIncrMagFreqDist deepClone() {
+	public UncertainBoundedIncrMagFreqDist deepClone() {
 		if (this.stdDevs == null)
 			return new UncertainBoundedIncrMagFreqDist(this, lowerBound.deepClone(), upperBound.deepClone(), boundType);
 		return new UncertainBoundedIncrMagFreqDist(this, lowerBound.deepClone(), upperBound.deepClone(), boundType, stdDevs.deepClone());
