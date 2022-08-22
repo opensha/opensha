@@ -32,6 +32,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
@@ -253,15 +254,22 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 //				}
 			}
 			
+			Preconditions.checkState(Double.isFinite(slipRate), "Bad slip rate for section %s. %s: %s",
+					sect.getSectionId(), sect.getSectionName(), slipRate);
 			if (slipIsVertical) {
 				// need to convert form vertical slip rate to on-plane slip rate
+				double origSlipRate = slipRate;
 				slipRate = slipRate / Math.sin(Math.toRadians(sect.getAveDip()));
+				Preconditions.checkState(Double.isFinite(slipRate), "Bad slip rate after on-plane conversion for section %s. %s: %s. Vertical slip: %s",
+						sect.getSectionId(), sect.getSectionName(), slipRate, origSlipRate);
 			}
 			modSect.setAveSlipRate(slipRate);
 			
 			if (modSect.getOrigAveSlipRate() > 0d) {
 				numNonZero++;
-//				modSect.setSlipRateStdDev(0.1*modSect.getOrigAveSlipRate()); // TODO
+				modSect.setSlipRateStdDev(Math.max(NSHM23_DeformationModels.STD_DEV_FLOOR, 0.5*modSect.getOrigAveSlipRate()));
+			} else {
+				modSect.setSlipRateStdDev(NSHM23_DeformationModels.STD_DEV_FLOOR);
 			}
 			
 			modSects.add(modSect);
