@@ -21,7 +21,7 @@ public class NSHM23_PaleoProbabilityModel extends PaleoProbabilityModel {
 	private static PaleoProbabilityModel u3Model;
 	private static PaleoProbabilityModel wasatchModel;
 	
-	private Map<FaultSection, PaleoProbabilityModel> modelCache;
+	private transient Map<FaultSection, PaleoProbabilityModel> modelCache;
 
 	@Override
 	public double getProbPaleoVisible(double mag, List<FaultSection> rupSections, int sectIndex) {
