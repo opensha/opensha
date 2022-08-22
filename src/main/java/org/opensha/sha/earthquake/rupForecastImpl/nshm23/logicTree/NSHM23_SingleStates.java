@@ -65,19 +65,22 @@ public enum NSHM23_SingleStates implements LogicTreeNode {
 	private List<Integer> getStateSectionIDs(List<? extends FaultSection> sects) {
 		List<Integer> ids = new ArrayList<>();
 		
-		String myName = name();
-		
 		for (FaultSection sect : sects) {
 			Preconditions.checkState(sect instanceof GeoJSONFaultSection);
 			GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
-			String primary = geoSect.getProperty("PrimState", null);
-			String secState = geoSect.getProperty("SecState", null);
-			if (myName.equals(primary) || (INCLUDE_SECONDARY && myName.equals(secState)))
+			if (contains(geoSect))
 				ids.add(sect.getSectionId());
 		}
-		Preconditions.checkState(!ids.isEmpty(), "None of the %s sections match state: %s", sects.size(), myName);
+		Preconditions.checkState(!ids.isEmpty(), "None of the %s sections match state: %s", sects.size(), name());
 		
 		return ids;
+	}
+	
+	public boolean contains(GeoJSONFaultSection geoSect) {
+		String primary = geoSect.getProperty("PrimState", null);
+		String secState = geoSect.getProperty("SecState", null);
+		String myName = name();
+		return myName.equals(primary) || (INCLUDE_SECONDARY && myName.equals(secState));
 	}
 	
 	public FaultSystemRupSet getRuptureSubSet(FaultSystemRupSet rupSet) {
