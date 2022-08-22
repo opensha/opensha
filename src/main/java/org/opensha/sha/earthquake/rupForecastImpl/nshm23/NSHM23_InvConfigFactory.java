@@ -86,6 +86,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationM
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSeisMoRateReductions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.prior2018.NSHM18_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
@@ -370,14 +371,16 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					}
 				}, PaleoseismicConstraintData.class);
 			} else {
-				// NSHM23 paleo data
-				rupSet.offerAvailableModule(new Callable<PaleoseismicConstraintData>() {
+				if (!(fm instanceof NSHM18_FaultModels)) {
+					// NSHM23 paleo data (don't apply to NSHM18 test inversions)
+					rupSet.offerAvailableModule(new Callable<PaleoseismicConstraintData>() {
 
-					@Override
-					public PaleoseismicConstraintData call() throws Exception {
-						return NSHM23_PaleoDataLoader.load(rupSet);
-					}
-				}, PaleoseismicConstraintData.class);
+						@Override
+						public PaleoseismicConstraintData call() throws Exception {
+							return NSHM23_PaleoDataLoader.load(rupSet);
+						}
+					}, PaleoseismicConstraintData.class);
+				}
 				
 				// regular system-wide minimum magnitudes
 				if (MIN_MAG_FOR_SEISMOGENIC_RUPS > 0) {
