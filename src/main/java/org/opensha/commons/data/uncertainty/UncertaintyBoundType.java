@@ -11,7 +11,7 @@ public enum UncertaintyBoundType {
 	/**
 	 * plus/minus 2-sigma bounds: usually (but not necessarily) roughly the 95% confidence interval
 	 */
-	TWO_SIGMA {
+	TWO_SIGMA("± 2σ") {
 		@Override
 		public double estimateStdDev(double bestEstimate, double lowerBound, double upperBound) {
 			return (upperBound - lowerBound)/4d;
@@ -25,7 +25,7 @@ public enum UncertaintyBoundType {
 	/**
 	 * 95% confidence bounds: roughly plus/minus 2-sigma if normally distributed
 	 */
-	CONF_95 {
+	CONF_95("95% bounds") {
 		@Override
 		public double estimateStdDev(double bestEstimate, double lowerBound, double upperBound) {
 			return (upperBound - lowerBound)/4d;
@@ -39,7 +39,7 @@ public enum UncertaintyBoundType {
 	/**
 	 * plus/minus 1-sigma bounds: usually (but not necessarily) roughly the 68% confidence interval
 	 */
-	ONE_SIGMA {
+	ONE_SIGMA("± σ") {
 		@Override
 		public double estimateStdDev(double bestEstimate, double lowerBound, double upperBound) {
 			return (upperBound - lowerBound)/2d;
@@ -53,7 +53,7 @@ public enum UncertaintyBoundType {
 	/**
 	 * 68% confidence bounds: roughly plus/minus 1-sigma if normally distributed
 	 */
-	CONF_68 {
+	CONF_68("68% bounds") {
 		@Override
 		public double estimateStdDev(double bestEstimate, double lowerBound, double upperBound) {
 			return (upperBound - lowerBound)/2d;
@@ -68,7 +68,7 @@ public enum UncertaintyBoundType {
 	 * plus/minus 0.5-sigma bounds: this is how we treated average slip uncertainties in UCERF3,
 	 * but that was probably a poor assumption and will likely never be used
 	 */
-	HALF_SIGMA {
+	HALF_SIGMA("± σ/2") {
 		@Override
 		public double estimateStdDev(double bestEstimate, double lowerBound, double upperBound) {
 			return upperBound - lowerBound;
@@ -82,7 +82,7 @@ public enum UncertaintyBoundType {
 	/**
 	 * sigma-squared bounds
 	 */
-	SIGMA_SQUARED {
+	SIGMA_SQUARED("± σ²") {
 		@Override
 		public double estimateStdDev(double bestEstimate, double lowerBound, double upperBound) {
 			return Math.sqrt(ONE_SIGMA.estimateStdDev(bestEstimate, lowerBound, upperBound));
@@ -96,7 +96,7 @@ public enum UncertaintyBoundType {
 	/**
 	 * sigma-squared bounds
 	 */
-	SQRT_SIGMA {
+	SQRT_SIGMA("± √σ") {
 		@Override
 		public double estimateStdDev(double bestEstimate, double lowerBound, double upperBound) {
 			return Math.pow(ONE_SIGMA.estimateStdDev(bestEstimate, lowerBound, upperBound), 2);
@@ -107,6 +107,12 @@ public enum UncertaintyBoundType {
 			return new BoundedUncertainty(this, bestEstimate-Math.sqrt(stdDev), bestEstimate+Math.sqrt(stdDev), stdDev);
 		}
 	};
+	
+	private String label;
+
+	private UncertaintyBoundType(String label) {
+		this.label = label;
+	}
 	
 	/**
 	 * Estimate a standard deviation from best estimate, lower and upper bounds of this type
@@ -126,4 +132,9 @@ public enum UncertaintyBoundType {
 	 * @return
 	 */
 	public abstract BoundedUncertainty estimate(double bestEstimate, double stdDev);
+
+	@Override
+	public String toString() {
+		return label;
+	}
 }
