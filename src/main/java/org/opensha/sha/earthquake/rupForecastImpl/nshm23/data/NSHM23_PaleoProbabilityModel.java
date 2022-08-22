@@ -2,6 +2,8 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23.data;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.Location;
@@ -18,6 +20,8 @@ public class NSHM23_PaleoProbabilityModel extends PaleoProbabilityModel {
 	
 	private static PaleoProbabilityModel u3Model;
 	private static PaleoProbabilityModel wasatchModel;
+	
+	private Map<FaultSection, PaleoProbabilityModel> modelCache;
 
 	@Override
 	public double getProbPaleoVisible(double mag, List<FaultSection> rupSections, int sectIndex) {
@@ -60,7 +64,24 @@ public class NSHM23_PaleoProbabilityModel extends PaleoProbabilityModel {
 		}
 	}
 	
-	private static PaleoProbabilityModel getModel(FaultSection sect) {
+	private PaleoProbabilityModel getModel(FaultSection sect) {
+		if (modelCache == null) {
+			synchronized (this) {
+				if (modelCache == null)
+					modelCache = new ConcurrentHashMap<>();
+			}
+		}
+		PaleoProbabilityModel cached = modelCache.get(sect);
+		if (cached == null) {
+			cached = doGetModel(sect);
+			synchronized (this) {
+				modelCache.put(sect, cached);
+			}
+		}
+		return cached;
+	}
+	
+	private static PaleoProbabilityModel doGetModel(FaultSection sect) {
 		checkInitModels();
 		
 		boolean wasatch = sect.getSectionName().toLowerCase().contains("wasatch");
