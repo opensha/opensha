@@ -68,7 +68,8 @@ import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
  * probability level, generated subsection MFDs for that rupture subset, and then weight-averaged them a posteriori.
  * <p>
  * If you wish to only consider the individual probability from the worst jump within a rupture, which might be the case
- * for a segmentation model, see {@link WorstJumpProb}.
+ * for a segmentation model, see {@link WorstJumpProb}. If you want that penalty to take into account the G-R probability
+ * of such a jump soas to avoid overcorrection, see {@link RelGRWorstJumpProb}.
  * 
  * @author kevin
  *
@@ -92,6 +93,12 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 	protected List<Float> fixedBinEdges;
 	private FaultSystemRupSet rupSet;
 	
+	/**
+	 * This version uses the net "probability" for each rupture (not that from the worst jump)
+	 * 
+	 * @author kevin
+	 *
+	 */
 	public static class RupProbModel extends ThresholdAveragingSectNuclMFD_Estimator {
 		
 		private RuptureProbabilityCalc model;
@@ -165,8 +172,11 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 	}
 	
 	/**
-	 * Same as WorstJumpProb, except that the average probability is computed for each jump across all ruptures that
-	 * utilize it
+	 * Same as {@link WorstJumpProb}, except that the average probability is computed for each jump across all ruptures
+	 * that utilize it. This will only make a difference if the chosen {@link JumpProbabilityCalc} returns different
+	 * probabilities for the same jump. In practice, this occurs with distance-dependent models where the jump
+	 * occurs at subsections that aren't actually the closest point between two faults, so the controlling distance
+	 * can depend on which other subsections on those faults are included.
 	 * 
 	 * @author kevin
 	 *
@@ -207,7 +217,7 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 	}
 	
 	/**
-	 * Same as WorstJumpProb, except that the jump probabilities are passed in
+	 * Same as {@link WorstPrecomputedJumpProb}, except that the jump probabilities are passed in
 	 * 
 	 * @author kevin
 	 *
@@ -263,8 +273,15 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 	}
 	
 	/**
-	 * This uses the worst probability from any single jump as the "controlling" probability for a rupture, not the
-	 * product across all jumps. It then returns a fractional penalty relative to the GR probability of that rupture.
+	 * For each jump, this calculates a G-R adjusted probability such that the participation rate of ruptures
+	 * using the jump shall not exceed the segmentation model implied fraction of the total participation rate. This
+	 * fraction is calculated separately for the departing and landing subsection for each jump, and the lesser of the
+	 * two is retained.
+	 * 
+	 * Like {@link WorstAvgJumpProb}, this uses the average calculated probability for each jump.
+	 * 
+	 * For purposes of threshold averaging, the "probability" assigned to a rupture is that of the jump with the lowest
+	 * probability in that rupture.
 	 * 
 	 * @author kevin
 	 *
@@ -280,10 +297,14 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 		
 		private boolean applyOrigProbFloor;
 
-		public RelGRWorstJumpProb(JumpProbabilityCalc improbModel) {
-			this(improbModel, 1, false);
-		}
-
+		/**
+		 * @param improbModel jump segmentation model
+		 * @param iterations number of iterations to determine the correct adjustment to match the G-R, ~50 works well.
+		 * Should be >1 as the first iteration will usually be an overcorrection.
+		 * @param applyOrigProbFloor if true, the G-R calculated probability will never be allowed to drop below the
+		 * jump probability, which could occur in certain cases where the jump uses most magnitude bins and the
+		 * participation-to-nucleation conversion is high in those bins
+		 */
 		public RelGRWorstJumpProb(JumpProbabilityCalc improbModel, int iterations, boolean applyOrigProbFloor) {
 			super(null);
 			this.jumpModel = improbModel;
@@ -446,7 +467,6 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 				System.out.println("\tMags: "+magBinStr);
 			}
 			
-			boolean hasZeroRate = false;
 			if (jumpProb == 0d) {
 				minProb = 0d;
 			} else {
@@ -454,14 +474,14 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 					IncrementalMagFreqDist sectMFD = sectMFDs.get(sectIndex);
 					if (sectMFD == null || sectMFD.calcSumOfY_Vals() == 0d) {
 						minProb = 0d;
-						hasZeroRate = true;
 						break;
 					}
-					// total participation rate for this section assuming the original supra-seis MFD is honored
+					// total participation rate for this section assuming the original supra-seis target MFD is honored
 					double totParticRate = 0d;
 					// total participation rate for magnitudes bins that use this jump
 					double jumpParticRate = 0d;
 					double[] nuclToParticScalars = sectNuclToParticScalars[sectIndex];
+					// number of magnitude bins for this rupture that don't use this jump
 					int binsNotUsing = 0;
 					for (int m=0; m<nuclToParticScalars.length; m++) {
 						int binIndex = m + sectMinMagIndexes[sectIndex];
@@ -483,7 +503,7 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 					}
 					double myProb;
 					if (binsNotUsing == 0) {
-						// default to just using the jump probability if all bins use this jump
+						// all magnitude bins use this jump, default to just using the jump probability
 						if (D) System.out.println("\t\tAll mag bins affected, using jumpProb="+(float)jumpProb);
 						myProb = jumpProb;
 					} else {
@@ -547,6 +567,8 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 							}
 							myProb = curCorrProb;
 						} else {
+							// we don't need to make any adjustment, the allocated G-R share for these magnitude bins
+							// already implies a lower participation rate than the segmentation model
 							myProb = 1d;
 						}
 					}
@@ -555,9 +577,6 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 				}
 			}
 			if (D) System.out.println("\tRel-GR jumpProb="+(float)minProb+" (was "+(float)jumpProb+")");
-//			Preconditions.checkState(hasZeroRate || (float)minProb >= (float)jumpProb,
-//					"Relative G-R probability (%s) should never be below original jump probability (%s)",
-//					(float)minProb, (float)jumpProb);
 			return minProb;
 		}
 	}
