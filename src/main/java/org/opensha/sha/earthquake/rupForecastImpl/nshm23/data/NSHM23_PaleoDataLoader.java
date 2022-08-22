@@ -212,8 +212,6 @@ public class NSHM23_PaleoDataLoader {
 	
 	public static List<SectMappedUncertainDataConstraint> loadWasatchPaleoRateData(List<? extends FaultSection> subSects)
 			throws IOException {
-		System.err.println("WARNING: loading legacy Wasatch data, Locatios are approximate");
-		
 		CSVFile<String> csv = CSVFile.readStream(NSHM23_PaleoDataLoader.class.getResourceAsStream(WASATCH_PALEO_PATH), true);
 		
 		List<SectMappedUncertainDataConstraint> ret = new ArrayList<>();
