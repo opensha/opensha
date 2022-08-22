@@ -1617,7 +1617,6 @@ public class SegmentationCalculator {
 		if (branch == null)
 			branch = sol.getRupSet().getModule(LogicTreeBranch.class);
 		DistDependentJumpProbabilityCalc chosenSegModel = null;
-		String chosenName = null;
 		if (branch != null) {
 			SegmentationModelBranchNode segChoice = branch.getValue(SegmentationModelBranchNode.class);
 			
@@ -1637,13 +1636,10 @@ public class SegmentationCalculator {
 									}
 									if (model instanceof DistDependentJumpProbabilityCalc) {
 										DistDependentJumpProbabilityCalc distModel = (DistDependentJumpProbabilityCalc)model;
-										if (option == segChoice) {
+										if (option == segChoice)
 											chosenSegModel = distModel;
-											chosenName = option.getShortName();
-										} else {
-											comparisons.add(distModel);
-											compNames.add(option.getShortName());
-										}
+										comparisons.add(distModel);
+										compNames.add(option.getShortName());
 									}
 								} catch (Exception e) {
 									// error building segmentation model, possibly with our generic (no rupture set)
@@ -1670,7 +1666,6 @@ public class SegmentationCalculator {
 		CPT r0cpt = new CPT(0d, Double.max(1d, comparisons.size()-1), Color.RED, Color.BLUE);
 		for (int c=0; c<compColors.length; c++)
 			compColors[c] = r0cpt.getColor((float)c);
-		DiscretizedFunc modelCurve = null;
 		List<DiscretizedFunc> compCurves = new ArrayList<>();
 		HistogramFunction histXVals = null;
 		
@@ -1758,13 +1753,6 @@ public class SegmentationCalculator {
 					func.setName(name);
 					compCurves.add(func);
 				}
-				if (chosenSegModel != null) {
-					EvenlyDiscretizedFunc func = new EvenlyDiscretizedFunc(xRange.getLowerBound(), xRange.getUpperBound(), 1000);
-					for (int j=0; j<func.size(); j++)
-						func.set(j, chosenSegModel.calcJumpProbability(func.getX(j)));
-					func.setName(chosenName);
-					modelCurve = func;
-				}
 				histXVals = scalar.initHistogram(scalarTrack.getMin(), scalarTrack.getMax());
 			}
 			// now bin values
@@ -1815,14 +1803,13 @@ public class SegmentationCalculator {
 			if (zerosScatter.size() == 0)
 				zerosScatter.set(0d, -1d);
 			
-			if (chosenSegModel != null) {
-				funcs.add(modelCurve);
-				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
-			}
-			
 			funcs.addAll(compCurves);
-			for (int i=0; i<compColors.length; i++)
-				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, compColors[i]));
+			for (int i=0; i<compColors.length; i++) {
+				if (comparisons.get(i) == chosenSegModel)
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
+				else
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, compColors[i]));
+			}
 			
 			funcs.add(binnedMeans);
 			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 10f, new Color(0, 0, 0, 150)));
