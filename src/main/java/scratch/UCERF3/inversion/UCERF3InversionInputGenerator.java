@@ -1436,7 +1436,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	}
 	
 	public static double getDistanceAlongRupture(
-			List<FaultSection> sectsInRup, int targetSectIndex,
+			List<? extends FaultSection> sectsInRup, int targetSectIndex,
 			Map<Integer, Double> traceLengthCache) {
 		double distanceAlongRup = 0;
 		

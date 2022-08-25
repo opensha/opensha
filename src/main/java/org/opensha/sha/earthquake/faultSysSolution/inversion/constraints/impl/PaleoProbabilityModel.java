@@ -35,11 +35,11 @@ public abstract class PaleoProbabilityModel {
 				rupSet.getFaultSectionDataForRupture(rupIndex), sectIndex);
 	}
 	
-	public abstract double getProbPaleoVisible(double mag, List<FaultSection> rupSections, int sectIndex);
+	public abstract double getProbPaleoVisible(double mag, List<? extends FaultSection> rupSections, int sectIndex);
 	
 	public abstract double getProbPaleoVisible(double mag, double distAlongRup);
 	
-	protected double getDistAlongRup(List<FaultSection> rupSections, int sectIndex) {
+	protected double getDistAlongRup(List<? extends FaultSection> rupSections, int sectIndex) {
 		if (traceLengthCache == null) {
 			synchronized (this) {
 				if (traceLengthCache == null)

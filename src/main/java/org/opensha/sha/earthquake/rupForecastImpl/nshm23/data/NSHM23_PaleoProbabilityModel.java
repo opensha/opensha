@@ -24,7 +24,7 @@ public class NSHM23_PaleoProbabilityModel extends PaleoProbabilityModel {
 	private transient Map<FaultSection, PaleoProbabilityModel> modelCache;
 
 	@Override
-	public double getProbPaleoVisible(double mag, List<FaultSection> rupSections, int sectIndex) {
+	public double getProbPaleoVisible(double mag, List<? extends FaultSection> rupSections, int sectIndex) {
 		// first check this section
 		for (FaultSection sect : rupSections) {
 			if (sect.getSectionId() == sectIndex) {
@@ -123,7 +123,7 @@ public class NSHM23_PaleoProbabilityModel extends PaleoProbabilityModel {
 	public static class WasatchPaleoProbabilityModel extends PaleoProbabilityModel {
 
 		@Override
-		public double getProbPaleoVisible(double mag, List<FaultSection> rupSections, int sectIndex) {
+		public double getProbPaleoVisible(double mag, List<? extends FaultSection> rupSections, int sectIndex) {
 			return getProbPaleoVisible(mag, Double.NaN);
 		}
 

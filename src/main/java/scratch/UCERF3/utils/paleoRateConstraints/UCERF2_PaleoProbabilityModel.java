@@ -17,7 +17,7 @@ public class UCERF2_PaleoProbabilityModel extends PaleoProbabilityModel {
 	}
 
 	@Override
-	public double getProbPaleoVisible(double mag, List<FaultSection> rupSections, int sectIndex) {
+	public double getProbPaleoVisible(double mag, List<? extends FaultSection> rupSections, int sectIndex) {
 		return getProbPaleoVisible(mag, Double.NaN);
 	}
 
