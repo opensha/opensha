@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
@@ -22,6 +23,7 @@ public class NSHM23_RegionLoader {
 	private static final String NSHM23_REG_PATH_PREFIX = "/data/erf/nshm23/seismicity/regions";
 	private static final String REG_PATH = NSHM23_REG_PATH_PREFIX+"/nshm-regions";
 	private static final String LOCAL_REG_PATH = NSHM23_REG_PATH_PREFIX+"/nshm-regions-local";
+	private static final String STITCHED_REG_PATH = NSHM23_REG_PATH_PREFIX+"/nshm-regions-stitched";
 	
 	public static List<Region> loadPrimaryRegions() throws IOException {
 		return loadPrimaryRegions(null);
@@ -99,6 +101,29 @@ public class NSHM23_RegionLoader {
 		}
 	}
 	
+	public static Region LoadFullConterminousWUS() throws IOException {
+		return StitchedRegions.CONUS_WEST.load();
+	}
+	
+	public static Region LoadFullConterminousUS() throws IOException {
+		return StitchedRegions.CONUS.load();
+	}
+	
+	public enum StitchedRegions implements BaseRegion {
+		CONUS("conus.geojson"),
+		CONUS_WEST("conus-west.geojson");
+		
+		private String fileName;
+
+		private StitchedRegions(String fileName) {
+			this.fileName = fileName;
+		}
+		
+		public String getResourcePath() {
+			return STITCHED_REG_PATH+"/"+fileName;
+		}
+	}
+	
 	interface BaseRegion {
 		
 		public String getResourcePath();
@@ -133,6 +158,32 @@ public class NSHM23_RegionLoader {
 		List<? extends FaultSection> sects = GeoJSONFaultReader.readFaultSections(new File("/tmp/GEOLOGIC_sub_sects.geojson"));
 		for (Region reg : loadAllRegions(sects))
 			System.out.println(reg.getName());
+		LoadFullConterminousUS();
+		LoadFullConterminousWUS();
+		
+		double gridSpacing = 0.1;
+		GriddedRegion fullGriddedWUS = new GriddedRegion(LoadFullConterminousWUS(), gridSpacing, GriddedRegion.ANCHOR_0_0);
+		int numMapped = 0;
+		int numMultiplyMapped = 0;
+		List<Region> regions = loadPrimaryRegions();
+		for (int i=0; i<fullGriddedWUS.getNodeCount(); i++) {
+			Location loc = fullGriddedWUS.getLocation(i);
+			int matches = 0;
+			for (Region region : regions)
+				if (region.contains(loc))
+					matches++;
+			if (matches > 0)
+				numMapped++;
+			if (matches > 1)
+				numMultiplyMapped++;
+		}
+		
+		System.out.println(numMapped+"/"+fullGriddedWUS.getNodeCount()+" grid nodes are mapped to at least 1 sub-region");
+		System.out.println(numMultiplyMapped+"/"+fullGriddedWUS.getNodeCount()+" grid nodes are mapped to multiple sub-regions");
+		int countAcrossIndv = 0;
+		for (Region region : regions)
+			countAcrossIndv += new GriddedRegion(region, gridSpacing, GriddedRegion.ANCHOR_0_0).getNodeCount();
+		System.out.println(countAcrossIndv+" vs "+fullGriddedWUS.getNodeCount()+" if you sum individual gridded regions");
 	}
 
 }

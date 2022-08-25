@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Region;
@@ -26,6 +27,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
@@ -135,6 +137,40 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 
 	@Override
 	public void attachDefaultModules(FaultSystemRupSet rupSet) {
+		LogicTreeBranch<?> branch = rupSet.getModule(LogicTreeBranch.class);
+		if (branch != null && branch.hasValue(NSHM23_SingleStates.class)) {
+			NSHM23_SingleStates state = branch.getValue(NSHM23_SingleStates.class);
+			if (state == NSHM23_SingleStates.CA) {
+				rupSet.addAvailableModule(new Callable<ModelRegion>() {
+
+					@Override
+					public ModelRegion call() throws Exception {
+						return new ModelRegion(new CaliforniaRegions.RELM_TESTING());
+					}
+				}, ModelRegion.class);
+			}
+			else if (state == null) {
+				rupSet.addAvailableModule(new Callable<ModelRegion>() {
+
+					@Override
+					public ModelRegion call() throws Exception {
+						return new ModelRegion(NSHM23_RegionLoader.LoadFullConterminousWUS());
+					}
+				}, ModelRegion.class);
+			}
+			// else no model region specified
+		} else {
+			// no single state, full WUS
+			rupSet.addAvailableModule(new Callable<ModelRegion>() {
+
+				@Override
+				public ModelRegion call() throws Exception {
+					return new ModelRegion(NSHM23_RegionLoader.LoadFullConterminousWUS());
+				}
+			}, ModelRegion.class);
+		}
+//		if (branch != null || !branch.hasValue(NSHM23_SingleStates.class))
+//			rupSet.addAvailableModule(new , ModelRegion.class);
 		rupSet.addAvailableModule(new Callable<NamedFaults>() {
 
 			@Override

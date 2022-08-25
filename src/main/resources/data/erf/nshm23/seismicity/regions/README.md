@@ -8,3 +8,4 @@ These geojsons define areas over which comparative rate analyses between models 
 - Version 2 for the conterminous U.S. preserves the RELM testing region and adds a Pacific Northwest region
 - Version 2 updates the polygon for Alaska
 - Version 3 updates the intermountain-west CEUS boundary to be the updated 'attenuation boundary' for the 2023 update. This boundary is used to separate catalogs and for GMM-source pairings.
+ - Intermediate: Kevin Milner stitched together the conus regions to create one single region, and then also chopped it off at -100 degrees for a WUS model
