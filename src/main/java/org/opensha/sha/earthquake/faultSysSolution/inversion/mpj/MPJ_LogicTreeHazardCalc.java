@@ -2,45 +2,33 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.mpj;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.opensha.commons.data.xyz.AbstractXYZ_DataSet;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
-import org.opensha.commons.logicTree.LogicTree;
+import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeLevel;
-import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ModuleArchive;
-import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.Inversions;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.AbstractExternalFetcher;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
-import org.opensha.sha.earthquake.faultSysSolution.util.AverageSolutionCreator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
@@ -75,13 +63,16 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private static AttenRelRef GMPE_DEFAULT = AttenRelRef.ASK_2014;
 	private AttenRelRef gmpeRef = GMPE_DEFAULT;
 	
-	private static final double[] PERIODS_DEFAULT = { 0d, 0.2d, 1d };
+//	private static final double[] PERIODS_DEFAULT = { 0d, 0.2d, 1d };
+	private static final double[] PERIODS_DEFAULT = { 0d, 1d };
 	private double[] periods = PERIODS_DEFAULT;
 	
 	private ReturnPeriods[] rps = ReturnPeriods.values();
 	
 	private static final IncludeBackgroundOption GRID_SEIS_DEFAULT = IncludeBackgroundOption.EXCLUDE;
 	private IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
+	
+	private GriddedRegion gridRegion;
 
 	public MPJ_LogicTreeHazardCalc(CommandLine cmd) throws IOException {
 		super(cmd);
@@ -125,12 +116,30 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			periods = Doubles.toArray(periodsList);
 		}
 		
+		if (cmd.hasOption("region")) {
+			File regFile = new File(cmd.getOptionValue("region"));
+			Preconditions.checkState(regFile.exists(), "Supplied region file doesn't exist: %s", regFile.getAbsolutePath());
+			Feature feature = Feature.read(regFile);
+			Region region = Region.fromFeature(feature);
+			if (region instanceof GriddedRegion) {
+				gridRegion = (GriddedRegion)region;
+				Preconditions.checkState(
+						!cmd.hasOption("grid-spacing") || (float)gridSpacing == (float)gridRegion.getSpacing(),
+						"Supplied a gridded region via the command line, cannont also specify grid spacing.");
+				gridSpacing = gridRegion.getSpacing();
+			} else {
+				gridRegion = new GriddedRegion(region, gridSpacing, GriddedRegion.ANCHOR_0_0);
+			}
+		}
+		
 		if (rank == 0) {
 			waitOnDir(outputDir, 5, 1000);
 			
 			postBatchHook = new AsyncHazardWriter();
 		}
 	}
+	
+	public static final String GRID_REGION_ENTRY_NAME = "gridded_region.geojson";
 	
 	private class AsyncHazardWriter extends AsyncPostBatchHook {
 		
@@ -148,7 +157,33 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		@Override
 		public void shutdown() {
 			super.shutdown();
+			// write region to zip file
+			if (gridRegion == null) {
+				// need to detect it (could happen if not specified via command line and root node never did any calculations)
+				LogicTreeBranch<?> branch = solTree.getLogicTree().getBranch(0);
+				
+				debug("Loading solution 0 to detect region: "+branch);
+				
+				FaultSystemSolution sol;
+				try {
+					sol = solTree.forBranch(branch);
+				} catch (IOException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+				
+				gridRegion = detectRegion(sol);
+			}
+			
+			Feature feature = gridRegion.toFeature();
+			ZipEntry entry = new ZipEntry(GRID_REGION_ENTRY_NAME);
 			try {
+				zout.putNextEntry(entry);
+				BufferedOutputStream out = new BufferedOutputStream(zout);
+				BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+				Feature.write(feature, writer);
+				out.flush();
+				zout.closeEntry();
+				
 				zout.close();
 				Files.move(workingFile, destFile);
 			} catch (IOException e) {
@@ -260,6 +295,11 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		
 		return supplier;
 	}
+	
+	private GriddedRegion detectRegion(FaultSystemSolution sol) {
+		Region region = new ReportMetadata(new RupSetMetadata(null, sol)).region;
+		return new GriddedRegion(region, gridSpacing, GriddedRegion.ANCHOR_0_0);
+	}
 
 	@Override
 	protected void calculateBatch(int[] batch) throws Exception {
@@ -271,8 +311,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			
 			FaultSystemSolution sol = solTree.forBranch(branch);
 			
-			Region region = new ReportMetadata(new RupSetMetadata(null, sol)).region;
-			GriddedRegion gridRegion = new GriddedRegion(region, gridSpacing, GriddedRegion.ANCHOR_0_0);
+			if (gridRegion == null)
+				gridRegion = detectRegion(sol);
 			
 			File runDir = getSolDir(branch);
 			
@@ -326,6 +366,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		ops.addOption("gm", "gmpe", true, "Sets GMPE. Note that this will be overriden if the Logic Tree "
 				+ "supplies GMPE choices. Default: "+GMPE_DEFAULT.name());
 		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
+		ops.addOption("r", "region", true, "Optional path to GeoJSON file containing a region for which we should compute hazard. "
+				+ "Can be a gridded region or an outline. If not supplied, then one will be detected from the model.");
 		
 		return ops;
 	}
@@ -351,3 +393,4 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	}
 
 }
+
