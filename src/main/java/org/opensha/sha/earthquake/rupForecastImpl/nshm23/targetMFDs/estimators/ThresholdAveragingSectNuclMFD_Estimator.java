@@ -497,8 +497,8 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 						String name = jump.fromSection.getSectionId() == sectIndex ?
 								jump.fromSection.getSectionName() : jump.toSection.getSectionName();
 						System.out.println("\tSection "+sectIndex+". "+name);
-						System.out.println("\t\tTotal participation rate: "+(float)totParticRate);
-						System.out.println("\t\tJump participation rate: "+(float)jumpParticRate);
+						System.out.println("\t\tOrig total participation rate: "+(float)totParticRate);
+						System.out.println("\t\tOrig jump participation rate: "+(float)jumpParticRate);
 						
 					}
 					double myProb;
@@ -527,19 +527,21 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 									binsNotUsing, otherParticRate, totParticRate, jumpParticRate);
 							double origMoRate = sectMFD.getTotalMomentRate();
 							double curCorrProb = segFractOfAllotment;
+							// MFD with bins for this jump removed
+							IncrementalMagFreqDist ratesWithout = sectMFD.deepClone(); 
+							for (int m=0; m<ratesWithout.size(); m++)
+								if (jumpBitSet.get(m))
+									ratesWithout.set(m, 0d);
+							ratesWithout.scaleToTotalMomentRate(origMoRate);
 							for (int corrIters=0; corrIters<iterations; corrIters++) {
 								// assume that these bins are only affected by this jump
 								// do this iteratively as the first one is likely to be an over-correction
-								IncrementalMagFreqDist ratesWithout = sectMFD.deepClone(); 
-								for (int m=0; m<ratesWithout.size(); m++)
-									if (jumpBitSet.get(m))
-										ratesWithout.set(m, 0d);
-								ratesWithout.scaleToTotalMomentRate(origMoRate);
 								double corrJumpParticRate = 0d;
 								double corrTotalParticRate = 0d;
 								double oneMinus = 1d - curCorrProb;
 								for (int m=0; m<nuclToParticScalars.length; m++) {
 									int binIndex = m + sectMinMagIndexes[sectIndex];
+									// bin rate were we to average the MFD with & without with the given probabilities
 									double binRate = oneMinus*ratesWithout.getY(binIndex) + curCorrProb*sectMFD.getY(binIndex);
 									double particRate = binRate*nuclToParticScalars[m];
 									corrTotalParticRate += particRate;
