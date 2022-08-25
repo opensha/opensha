@@ -22,7 +22,11 @@ import org.dom4j.Element;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureProperties;
+import org.opensha.commons.geo.json.Geometry;
+import org.opensha.commons.geo.json.Geometry.GeometryCollection;
+import org.opensha.commons.geo.json.Geometry.MultiPoint;
 import org.opensha.commons.geo.json.Geometry.MultiPolygon;
+import org.opensha.commons.geo.json.Geometry.Point;
 import org.opensha.commons.geo.json.Geometry.Polygon;
 import org.opensha.commons.metadata.XMLSaveable;
 
@@ -1120,20 +1124,42 @@ public class Region implements Serializable, XMLSaveable, Named {
 	}
 	
 	/**
-	 * Converts GeoJSON feature object back to a region.
+	 * Converts GeoJSON feature object back to a region. If the given feature has Point or MultiPoint data in a
+	 * GeometryCollection, it will attempt to load it in as a {@link GriddedRegion}.
 	 * 
 	 * @return
 	 */
 	public static Region fromFeature(Feature feature) {
 		Preconditions.checkNotNull(feature.geometry, "Feature is missing geometry");
-		Preconditions.checkState(feature.geometry instanceof Polygon || feature.geometry instanceof MultiPolygon,
-				"Unexpected geometry type for Region: %s", feature.geometry.type);
-		if (feature.geometry instanceof MultiPolygon) {
-			List<Region> list = ((MultiPolygon)feature.geometry).asRegions();
+		Geometry geometry = feature.geometry;
+		if (feature.geometry instanceof GeometryCollection) {
+			for (Geometry oGeom : ((GeometryCollection)feature.geometry).geometries) {
+				if (oGeom instanceof Polygon || oGeom instanceof MultiPolygon) {
+					Preconditions.checkState(geometry == null,
+							"Multiple polygons found for region, a region must be supplied as either a single "
+							+ "Polygon or a single Polgon within a MultiPolygon geometry");
+					geometry = oGeom;
+				} else if (oGeom instanceof Point || oGeom instanceof MultiPoint) {
+					// it might be a gridded region, try that
+					try {
+						return GriddedRegion.fromFeature(feature);
+					} catch (Exception e) {
+						System.err.println("WARNING: Region feature contains geometry of type "+oGeom.type
+								+", tried and failed load it as a GriddedRegion: "+e.getMessage());
+					}
+				}
+			}
+			Preconditions.checkState(!(geometry instanceof GeometryCollection),
+					"GeometryCollection specified, but no Polygon or MultiPolygon geometries found within.");
+		}
+		Preconditions.checkState(geometry instanceof Polygon || geometry instanceof MultiPolygon,
+				"Unexpected geometry type for Region: %s", geometry.type);
+		if (geometry instanceof MultiPolygon) {
+			List<Region> list = ((MultiPolygon)geometry).asRegions();
 			Preconditions.checkState(list.size() == 1, "Must have exactly 1 polygon, have %s", list.size());
 			return list.get(0);
 		}
-		Region region = ((Polygon)feature.geometry).asRegion();
+		Region region = ((Polygon)geometry).asRegion();
 		if (feature.id != null)
 			region.setName(feature.id.toString());
 		return region;
