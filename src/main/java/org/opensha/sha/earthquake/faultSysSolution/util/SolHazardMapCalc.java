@@ -498,6 +498,7 @@ public class SolHazardMapCalc {
 			double mean = 0d;
 			double meanAbs = 0d;
 			
+			int numFinite = 0;
 			for (int i=0; i<xyz.size(); i++) {
 				double val = xyz.get(i);
 				if (Double.isFinite(val)) {
@@ -517,23 +518,24 @@ public class SolHazardMapCalc {
 				if ((float)val > 0f)
 					numAbove++;
 				if (Double.isFinite(val)) {
+					numFinite++;
 					mean += val;
 					meanAbs += Math.abs(val);
 				}
 			}
-			mean /= (double)xyz.size();
-			meanAbs /= (double)xyz.size();
+			mean /= (double)numFinite;
+			meanAbs /= (double)numFinite;
 			
 			List<String> labels = new ArrayList<>();
 			labels.add("Range: ["+oDF.format(min)+"%,"+oDF.format(max)+"%]");
 			labels.add("Mean: "+twoDigitsDF.format(mean)+"%, Abs: "+twoDigitsDF.format(meanAbs)+"%");
-			if (exactly0 >= xyz.size()/2)
-				labels.add("Exactly 0%: "+percentDF.format((double)exactly0/(double)xyz.size()));
-			labels.add(percentDF.format((double)numBelow/(double)xyz.size())
-					+" < 0, "+percentDF.format((double)numAbove/(double)xyz.size())+" > 0");
-			labels.add("Within 1%: "+percentDF.format((double)numWithin1/(double)xyz.size()));
-			labels.add("Within 5%: "+percentDF.format((double)numWithin5/(double)xyz.size()));
-			labels.add("Within 10%: "+percentDF.format((double)numWithin10/(double)xyz.size()));
+			if (exactly0 >= numFinite/2)
+				labels.add("Exactly 0%: "+percentDF.format((double)exactly0/(double)numFinite));
+			labels.add(percentDF.format((double)numBelow/(double)numFinite)
+					+" < 0, "+percentDF.format((double)numAbove/(double)numFinite)+" > 0");
+			labels.add("Within 1%: "+percentDF.format((double)numWithin1/(double)numFinite));
+			labels.add("Within 5%: "+percentDF.format((double)numWithin5/(double)numFinite));
+			labels.add("Within 10%: "+percentDF.format((double)numWithin10/(double)numFinite));
 			double yDiff = latRange.getLength();
 			if (yDiff > 10)
 				yDiff /= 30d;
