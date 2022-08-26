@@ -7,23 +7,30 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableCollection;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableTable;
+import com.google.common.collect.Table;
 
 /**
  * Module that maintains collections of the relationships between grid nodes
@@ -263,6 +270,83 @@ public interface FaultGridAssociations extends OpenSHA_Module {
 			return sectIndices;
 		}
 		
+	}
+	
+	/**
+	 * Simple {@link FaultGridAssociations} implementation where faults are associated by the fraction of the rupture
+	 * surface area that lies within a grid cell, not including any polygons or distance taper.
+	 * 
+	 * Node to section associations here assume that any section that touches a node fully controls it. In the case of
+	 * multiple sections touching a node, they are weighted by area.
+	 * @param rupSet
+	 * @param region
+	 * @return
+	 */
+	public static Precomputed getIntersectionAssociations(FaultSystemRupSet rupSet, GriddedRegion region) {
+		Precomputed ret = new Precomputed();
+		
+		// set region
+		ret.region = region;
+		
+		// don't have fractional node mappings, only from section to node
+		ret.nodeExtents = ImmutableMap.of();
+		
+		
+		ImmutableTable.Builder<Integer, Integer, Double> nodeInSectParticBuilder = ImmutableTable.builder();
+		ImmutableList.Builder<Integer> sectIndicesBuilder = ImmutableList.builder();
+		
+		// section index, node index, area of that section in that node
+		Table<Integer, Integer, Double> sectAreasInNode = HashBasedTable.create();
+		
+		for (FaultSection sect : rupSet.getFaultSectionDataList()) {
+			RuptureSurface surf = sect.getFaultSurface(0.25, false, true);
+			Map<Integer, Integer> nodeAssocCounts = new HashMap<>();
+			for (Location loc : surf.getEvenlyDiscritizedListOfLocsOnSurface()) {
+				int nodeIndex = region.indexForLocation(loc);
+				if (nodeIndex >= 0) {
+					Integer prevCount = nodeAssocCounts.get(nodeIndex);
+					if (prevCount == null)
+						prevCount = 0;
+					nodeAssocCounts.put(nodeIndex, prevCount+1);
+				}
+			}
+			if (!nodeAssocCounts.isEmpty()) {
+				int sectIndex = sect.getSectionId();
+				sectIndicesBuilder.add(sectIndex);
+				double fractScalar = 1d/(double)surf.getEvenlyDiscretizedNumLocs();
+				double areaScalar = rupSet.getAreaForSection(sectIndex) * fractScalar;
+				for (int nodeIndex : nodeAssocCounts.keySet()) {
+					double count = nodeAssocCounts.get(nodeIndex).doubleValue();
+					double fractAssoc = count*fractScalar;
+					nodeInSectParticBuilder.put(sectIndex, nodeIndex, fractAssoc);
+					double areaAssoc = count*areaScalar;
+					sectAreasInNode.put(sectIndex, nodeIndex, areaAssoc);
+				}
+			}
+		}
+		
+		// now deal with overlapping faults
+		ImmutableTable.Builder<Integer, Integer, Double> sectInNodeParticBuilder = ImmutableTable.builder();
+		for (int nodeIndex : sectAreasInNode.columnKeySet()) {
+			Map<Integer, Double> nodeSectAreas = sectAreasInNode.column(nodeIndex);
+			if (nodeSectAreas.size() == 1) {
+				sectInNodeParticBuilder.put(nodeSectAreas.keySet().iterator().next(), nodeIndex, 1d);
+			} else {
+				double sum = 0d;
+				for (Double area : nodeSectAreas.values())
+					sum += area;
+				for (int sectIndex : nodeSectAreas.keySet()) {
+					double fract = nodeSectAreas.get(sectIndex)/sum;
+					sectInNodeParticBuilder.put(sectIndex, nodeIndex, fract);
+				}
+			}
+		}
+		
+		ret.sectIndices = sectIndicesBuilder.build();
+		ret.nodeInSectPartic = nodeInSectParticBuilder.build();
+		ret.sectInNodePartic = sectInNodeParticBuilder.build();
+		
+		return ret;
 	}
 
 }
