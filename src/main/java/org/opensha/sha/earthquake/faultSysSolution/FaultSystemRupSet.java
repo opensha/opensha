@@ -773,6 +773,42 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public List<Integer> getSectionsIndicesForRup(int rupIndex) {
 		return sectionForRups.get(rupIndex);
 	}
+	
+	private double[] minMagsCache = null;
+	private double[] maxMagsCache = null;
+	
+	private void checkInitMagsCaches() {
+		if (minMagsCache == null) {
+			synchronized (this) {
+				if (minMagsCache == null) {
+					double[] mins = new double[getNumSections()];
+					for (int s=0; s<mins.length; s++)
+						mins[s] = Double.POSITIVE_INFINITY;
+					double[] maxs = new double[getNumSections()];
+					
+					for (int rupIndex=0; rupIndex<getNumRuptures(); rupIndex++) {
+						double mag = getMagForRup(rupIndex);
+						for (int sectIndex : getSectionsIndicesForRup(rupIndex)) {
+							if (mag > maxs[sectIndex])
+								maxs[sectIndex] = mag;
+							if (mag < mins[sectIndex])
+								mins[sectIndex] = mag;
+						}
+					}
+					for (int s=0; s<mins.length; s++) {
+						if (Double.isInfinite(mins[s])) {
+							// no ruptures for this section
+							mins[s] = Double.NaN;
+							maxs[s] = Double.NaN;
+						}
+					}
+					
+					maxMagsCache = maxs;
+					minMagsCache = mins;
+				}
+			}
+		}
+	}
 
 	/**
 	 * This returns the magnitude of the largest rupture involving this section or NaN
@@ -781,16 +817,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return
 	 */
 	public double getMaxMagForSection(int sectIndex) {
-		List<Integer> rups = getRupturesForSection(sectIndex);
-		if (rups.isEmpty())
-			return Double.NaN;
-		double maxMag = 0;
-		for (int rupIndex : getRupturesForSection(sectIndex)) {
-			double mag = getMagForRup(rupIndex);
-			if (mag > maxMag)
-				maxMag = mag;
-		}
-		return maxMag;
+		checkInitMagsCaches();
+		return maxMagsCache[sectIndex];
 	}
 	
 	/**
@@ -800,16 +828,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return
 	 */
 	public double getMinMagForSection(int sectIndex) {
-		List<Integer> rups = getRupturesForSection(sectIndex);
-		if (rups.isEmpty())
-			return Double.NaN;
-		double minMag = Double.POSITIVE_INFINITY;
-		for (int rupIndex : getRupturesForSection(sectIndex)) {
-			double mag = getMagForRup(rupIndex);
-			if (mag < minMag)
-				minMag = mag;
-		}
-		return minMag;
+		checkInitMagsCaches();
+		return minMagsCache[sectIndex];
 	}
 
 	/**

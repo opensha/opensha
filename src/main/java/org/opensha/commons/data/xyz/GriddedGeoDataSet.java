@@ -58,6 +58,18 @@ public class GriddedGeoDataSet extends AbstractGeoDataSet {
 	}
 
 	@Override
+	public void set(int index, double z) {
+		if (index < 0)
+			throw new InvalidRangeException("point must exist in the gridded region!");
+		values[index] = z;
+	}
+
+	@Override
+	public double get(int index) {
+		return values[index];
+	}
+
+	@Override
 	public double get(Location loc) {
 		return values[indexOf(loc)];
 	}
