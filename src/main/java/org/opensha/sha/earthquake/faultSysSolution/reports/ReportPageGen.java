@@ -50,6 +50,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.JumpCountsOverD
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.LogicTreeBranchPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.ModulesPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.NamedFaultPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.NucleationRatePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PaleoDataComparisonPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.ParticipationRatePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityConfigurationReport;
@@ -159,6 +160,7 @@ public class ReportPageGen {
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
 			plots.add(new InversionMisfitsPlot());
 		plots.add(new ParticipationRatePlot());
+		plots.add(new NucleationRatePlot());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
 			plots.add(new SectBValuePlot());
 		plots.add(new PlausibilityConfigurationReport());

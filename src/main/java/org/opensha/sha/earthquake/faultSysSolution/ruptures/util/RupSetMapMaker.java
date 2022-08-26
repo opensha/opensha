@@ -19,6 +19,7 @@ import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.xyz.GeoDataSet;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
@@ -38,6 +39,7 @@ import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
+import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ComparablePairing;
@@ -127,8 +129,14 @@ public class RupSetMapMaker {
 	private PlotSymbol scatterOutline = PlotSymbol.TRIANGLE;
 	private Color scatterOutlineColor = new Color(0, 0, 0, 127);
 	
+	// highlighted sections
 	private Collection<FaultSection> highlightSections;
 	private PlotCurveCharacterstics highlightTraceChar;
+	
+	// gridded data
+	private GeoDataSet xyzData;
+	private CPT xyzCPT;
+	private String xyzLabel;
 	
 	private boolean reverseSort = false;
 	
@@ -388,6 +396,20 @@ public class RupSetMapMaker {
 		this.scatterOutlineColor = outlineColor;
 	}
 	
+	public void plotXYZData(GeoDataSet xyzData, CPT xyzCPT, String xyzLabel) {
+		Preconditions.checkNotNull(xyzData);
+		Preconditions.checkNotNull(xyzCPT);
+		this.xyzData = xyzData;
+		this.xyzCPT = xyzCPT;
+		this.xyzLabel = xyzLabel;
+	}
+	
+	public void clearXYZData() {
+		this.xyzData = null;
+		this.xyzCPT = null;
+		this.xyzLabel = null;
+	}
+	
 	private RuptureSurface getSectSurface(FaultSection sect) {
 		if (sectSurfs == null) {
 			List<RuptureSurface> surfs = new ArrayList<>();
@@ -510,6 +532,7 @@ public class RupSetMapMaker {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
+		boolean writeGeoJSON = this.writeGeoJSON && xyzData == null;
 		if (writeGeoJSON) {
 			sectFeatures = new ArrayList<>();
 			jumpFeatures = new ArrayList<>();
@@ -894,7 +917,16 @@ public class RupSetMapMaker {
 			}
 		}
 		
-		PlotSpec spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");
+		PlotSpec spec;
+		if (xyzData != null) {
+			// XYZ data
+			Preconditions.checkNotNull(xyzCPT);
+			spec = new XYZPlotSpec(xyzData, funcs, chars, xyzCPT, title, "Longitude", "Latitude", xyzLabel);
+			((XYZPlotSpec)spec).setCPTPosition(RectangleEdge.BOTTOM);
+		} else {
+			spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");
+		}
+		
 		spec.setLegendVisible(legendVisible && hasLegend);
 		spec.setLegendInset(legendInset && hasLegend);
 		
@@ -979,7 +1011,7 @@ public class RupSetMapMaker {
 		
 		PlotUtils.writePlots(outputDir, prefix, gp, width, true, true, writePDFs, false);
 		
-		if (writeGeoJSON && sectFeatures != null && jumpFeatures != null) {
+		if (writeGeoJSON && sectFeatures != null && jumpFeatures != null && !(spec instanceof XYZPlotSpec)) {
 			List<Feature> plotFeatures = new ArrayList<>(sectFeatures);
 			if (!jumpFeatures.isEmpty()) {
 				// write out combined and separate

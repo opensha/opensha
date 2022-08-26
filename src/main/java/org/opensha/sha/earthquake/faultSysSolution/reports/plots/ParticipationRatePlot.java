@@ -40,7 +40,7 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 
 	@Override
 	public String getName() {
-		return "Participation Rates";
+		return "Fault Participation Rates";
 	}
 
 	@Override
