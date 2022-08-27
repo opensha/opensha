@@ -8,6 +8,7 @@ import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -854,6 +855,14 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 	 */
 	public int getLonIndex(Location loc) {
 		return getNodeIndex(lonNodeCenters, loc.getLongitude(), lonSpacing);
+	}
+	
+	public double[] getLatNodes() {
+		return Arrays.copyOf(latNodeCenters, latNodeCenters.length);
+	}
+	
+	public double[] getLonNodes() {
+		return Arrays.copyOf(lonNodeCenters, lonNodeCenters.length);
 	}
 	
 	/**
