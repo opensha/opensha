@@ -670,6 +670,18 @@ public class Region implements Serializable, XMLSaveable, Named {
 		return newRegion;
 	}
 	
+	/**
+	 * @param other
+	 * @return true if this region intersects the given region.
+	 */
+	public boolean intersects(Region other) {
+		validateRegion(this);
+		validateRegion(other);
+		Area newArea = (Area) area.clone();
+		newArea.intersect(other.area);
+		return !newArea.isEmpty();
+	}
+	
 	// subtraction is tricky, this flag enables easier debugging
 	private static final boolean SUBTRACT_DEBUG = false;
 
