@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
@@ -124,11 +126,16 @@ public class NSHM23_RegionLoader {
 		}
 	}
 	
+	private static Map<BaseRegion, Region> regionCache = new ConcurrentHashMap<>();
+	
 	interface BaseRegion {
 		
 		public String getResourcePath();
 		
 		public default Region load() throws IOException {
+			Region cached = regionCache.get(this);
+			if (cached != null)
+				return cached;
 			String path = getResourcePath();
 			System.out.println("Reading "+path);
 			
@@ -149,6 +156,9 @@ public class NSHM23_RegionLoader {
 					reg.setName((String)title);
 			}
 			
+			synchronized (regionCache) {
+				regionCache.putIfAbsent(this, reg);
+			}
 			return reg;
 		}
 	}

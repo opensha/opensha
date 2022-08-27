@@ -51,7 +51,7 @@ import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
  * @author Peter Powers
  * @see AbstractGridSourceProvider
  */
-public interface GridSourceProvider extends OpenSHA_Module {
+public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableModule<GridSourceProvider> {
 
 	/**
 	 * Returns the number of sources in the provider.
@@ -182,7 +182,7 @@ public interface GridSourceProvider extends OpenSHA_Module {
 	 * @author kevin
 	 *
 	 */
-	public abstract class Abstract implements GridSourceProvider, BranchAverageableModule<Abstract> {
+	public abstract class Abstract implements GridSourceProvider {
 		
 		private double minMagCutoff;
 
@@ -331,7 +331,7 @@ public interface GridSourceProvider extends OpenSHA_Module {
 		return mfdOut;
 	}
 	
-	public abstract class Averager<E extends Abstract> implements AveragingAccumulator<E> {
+	public abstract class Averager<E extends GridSourceProvider> implements AveragingAccumulator<E> {
 		
 		private E refGridProv = null;
 		private GriddedRegion gridReg = null;

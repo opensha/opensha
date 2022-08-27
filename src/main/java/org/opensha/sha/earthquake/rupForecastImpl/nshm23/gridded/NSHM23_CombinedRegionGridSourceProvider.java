@@ -1,11 +1,20 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.NucleationRatePlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SolMFDPlot;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
@@ -22,15 +31,16 @@ import com.google.common.base.Preconditions;
 public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGridSourceProvider {
 	
 	private GriddedRegion gridReg;
-	private List<? extends GridSourceProvider> regionalProviders;
+	private List<NSHM23_SingleRegionGridSourceProvider> regionalProviders;
+	private NSHM23_FaultCubeAssociations combinedFaultCubeAssociations;
 	
 	// mapping of grid node indexes to grid source providers
 	private GridSourceProvider[] nodeGridProvs;
 	// mapping of grid node indexes to the corresponding index in the source provider
 	private int[] nodeGridIndexes;
 
-	public NSHM23_CombinedRegionGridSourceProvider(GriddedRegion gridReg,
-			List<? extends GridSourceProvider> regionalProviders) {
+	public NSHM23_CombinedRegionGridSourceProvider(FaultSystemSolution sol, GriddedRegion gridReg,
+			List<NSHM23_SingleRegionGridSourceProvider> regionalProviders) {
 		this.gridReg = gridReg;
 		this.regionalProviders = regionalProviders;
 		nodeGridProvs = new GridSourceProvider[gridReg.getNodeCount()];
@@ -59,6 +69,17 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 		}
 		System.out.println("Mapped "+numMapped+"/"+nodeGridIndexes.length
 				+" model region grid locations to sub-region grid locations");
+		
+		List<NSHM23_FaultCubeAssociations> regionalAssociations = new ArrayList<>();
+		for (NSHM23_SingleRegionGridSourceProvider prov : regionalProviders)
+			regionalAssociations.add(prov.getFaultCubeassociations());
+		this.combinedFaultCubeAssociations = new NSHM23_FaultCubeAssociations(sol.getRupSet(),
+				new CubedGriddedRegion(gridReg), regionalAssociations);
+	}
+	
+	@Override
+	public NSHM23_FaultCubeAssociations getFaultCubeassociations() {
+		return combinedFaultCubeAssociations;
 	}
 
 	@Override
@@ -122,6 +143,22 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 			if (anyMapped)
 				prov.scaleAllMFDs(scalars);
 		}
+	}
+	
+	public static void main(String[] args) throws IOException {
+		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+				+ "2022_08_22-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR/"
+				+ "results_NSHM23_v2_CoulombRupSet_branch_averaged.zip"));
+		
+		LogicTreeBranch<?> offFaultBranch = NSHM23_LogicTreeBranch.DEFAULT_COMBINED;
+		
+		NSHM23_AbstractGridSourceProvider gridProv = NSHM23_InvConfigFactory.buildGridSourceProv(sol, offFaultBranch);
+		
+		sol.addModule(gridProv);
+		ReportPageGen pageGen = new ReportPageGen(sol.getRupSet(), sol, "Solution", new File("/tmp/report"),
+				List.of(new SolMFDPlot(), new NucleationRatePlot()));
+		pageGen.setReplot(true);
+		pageGen.generatePage();
 	}
 
 }

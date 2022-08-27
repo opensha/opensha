@@ -131,19 +131,19 @@ public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abst
 	}
 	
 	@Override
-	public AveragingAccumulator<Abstract> averagingAccumulator() {
+	public AveragingAccumulator<GridSourceProvider> averagingAccumulator() {
 		return new AveragerImpl();
 	}
 	
-	private static class AveragerImpl extends GridSourceProvider.Averager<Abstract> {
+	private static class AveragerImpl extends GridSourceProvider.Averager<GridSourceProvider> {
 
 		@Override
-		public Class<Abstract> getType() {
-			return Abstract.class;
+		public Class<GridSourceProvider> getType() {
+			return GridSourceProvider.class;
 		}
 
 		@Override
-		protected Abstract buildAverage(Abstract refGridProv, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+		protected GridSourceProvider buildAverage(GridSourceProvider refGridProv, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
 				double[] fracReverse) {
 			return new Precomputed(refGridProv.getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
@@ -202,7 +202,7 @@ public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abst
 		}
 
 		@Override
-		public AveragingAccumulator<Abstract> averagingAccumulator() {
+		public AveragingAccumulator<GridSourceProvider> averagingAccumulator() {
 			return new AveragerImpl();
 		}
 		

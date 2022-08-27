@@ -23,10 +23,10 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 
 	private File outputDir;
 	private SolutionProcessor processor;
-	private BranchWeightProvider weightProv;
+	protected BranchWeightProvider weightProv;
 	
-	private Map<String, BranchAverageSolutionCreator> baCreators;
-	private SolutionLogicTree.FileBuilder sltBuilder;
+	protected Map<String, BranchAverageSolutionCreator> baCreators;
+	protected SolutionLogicTree.FileBuilder sltBuilder;
 	
 	private boolean[] dones;
 
@@ -38,6 +38,14 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		this.baCreators = new HashMap<>();
 		
 		dones = new boolean[getNumTasks()];
+	}
+	
+	public File getOutputFile(File resultsDir) {
+		return new File(resultsDir.getParentFile(), resultsDir.getName()+".zip");
+	}
+	
+	public File getBAOutputFile(File resultsDir, String baPrefix) {
+		return baFile(resultsDir, baPrefix);
 	}
 	
 	public abstract int getNumTasks();
@@ -59,45 +67,14 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		synchronized (dones) {
 			try {
 				if (sltBuilder == null) {
-					sltBuilder = new SolutionLogicTree.FileBuilder(processor,
-							new File(outputDir.getParentFile(), outputDir.getName()+".zip"));
+					sltBuilder = new SolutionLogicTree.FileBuilder(processor, getOutputFile(outputDir));
 					sltBuilder.setWeightProv(weightProv);
 				}
 				
 				for (int index : batch) {
 					dones[index] = true;
 					
-					LogicTreeBranch<?> branch = getBranch(index);
-					
-					debug("AsyncLogicTree: calcDone "+index+" = branch "+branch);
-					
-					FaultSystemSolution sol = getSolution(branch, index);
-					if (sol == null)
-						// not ready, can happen if there are multiple inversions per branch
-						continue;
-					
-					sltBuilder.solution(sol, branch);
-					
-					// now add in to branch averaged
-					if (baCreators != null) {
-						String baPrefix = getBA_prefix(branch);
-						
-						if (baPrefix == null) {
-							debug("AsyncLogicTree won't branch average, all levels affect "+FaultSystemRupSet.RUP_PROPS_FILE_NAME);
-						} else {
-							if (!baCreators.containsKey(baPrefix))
-								baCreators.put(baPrefix, new BranchAverageSolutionCreator(weightProv));
-							BranchAverageSolutionCreator baCreator = baCreators.get(baPrefix);
-							try {
-								baCreator.addSolution(sol, branch);
-							} catch (Exception e) {
-								e.printStackTrace();
-								System.err.flush();
-								debug("AsyncLogicTree: Branch averaging failed for branch "+branch+", disabling averaging");
-								baCreators = null;
-							}
-						}
-					}
+					doProcessIndex(index);
 				}
 			} catch (IOException ioe) {
 				abortAndExit(ioe, 2);
@@ -106,8 +83,41 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		
 		memoryDebug("AsyncLogicTree: exiting async process, stats: "+getCountsString());
 	}
+
+	protected void doProcessIndex(int index) throws IOException {
+		LogicTreeBranch<?> branch = getBranch(index);
+		
+		debug("AsyncLogicTree: calcDone "+index+" = branch "+branch);
+		
+		FaultSystemSolution sol = getSolution(branch, index);
+		if (sol == null)
+			return;
+		
+		sltBuilder.solution(sol, branch);
+		
+		// now add in to branch averaged
+		if (baCreators != null) {
+			String baPrefix = getBA_prefix(branch);
+			
+			if (baPrefix == null) {
+				debug("AsyncLogicTree won't branch average, all levels affect "+FaultSystemRupSet.RUP_PROPS_FILE_NAME);
+			} else {
+				if (!baCreators.containsKey(baPrefix))
+					baCreators.put(baPrefix, new BranchAverageSolutionCreator(weightProv));
+				BranchAverageSolutionCreator baCreator = baCreators.get(baPrefix);
+				try {
+					baCreator.addSolution(sol, branch);
+				} catch (Exception e) {
+					e.printStackTrace();
+					System.err.flush();
+					debug("AsyncLogicTree: Branch averaging failed for branch "+branch+", disabling averaging");
+					baCreators = null;
+				}
+			}
+		}
+	}
 	
-	private static String getBA_prefix(LogicTreeBranch<?> branch) {
+	protected static String getBA_prefix(LogicTreeBranch<?> branch) {
 		String baPrefix = null;
 		boolean allAffect = true;
 		for (int i=0; i<branch.size(); i++) {
@@ -166,7 +176,7 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		
 		if (baCreators != null && !baCreators.isEmpty()) {
 			for (String baPrefix : baCreators.keySet()) {
-				File baFile = baFile(outputDir, baPrefix);
+				File baFile = getBAOutputFile(outputDir, baPrefix);
 				memoryDebug("AsyncLogicTree: building "+baFile.getAbsolutePath());
 				try {
 					FaultSystemSolution baSol = baCreators.get(baPrefix).build();

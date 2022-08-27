@@ -128,7 +128,7 @@ public class StrictSegReproductionMFDAdjustment extends SectNucleationMFD_Estima
 					branch.setValue(origVal);
 				} else {
 					// see if there's a default value
-					LogicTreeNode defaultVal = NSHM23_LogicTreeBranch.DEFAULT.getValue(level.getType());
+					LogicTreeNode defaultVal = NSHM23_LogicTreeBranch.DEFAULT_ON_FAULT.getValue(level.getType());
 					if (defaultVal instanceof NSHM23_ScalingRelationships)
 						defaultVal = NSHM23_ScalingRelationships.AVERAGE;
 					else if (defaultVal instanceof NSHM23_DeformationModels)

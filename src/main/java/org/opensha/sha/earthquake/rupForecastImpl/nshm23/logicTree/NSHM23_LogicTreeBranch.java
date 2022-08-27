@@ -8,6 +8,7 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 
 /**
  * NSHM23 Logic Tree Branch implementation and levels
@@ -17,11 +18,13 @@ import com.google.common.base.Preconditions;
  */
 public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 
-	public static List<LogicTreeLevel<? extends LogicTreeNode>> levels;
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsOnFault;
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsOffFault;
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsCombined;
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsMaxDist;
 	
 	/*
-	 * Core branch levels
+	 * Core FSS branch levels
 	 */
 	public static LogicTreeLevel<NSHM23_FaultModels> FM =
 			LogicTreeLevel.forEnum(NSHM23_FaultModels.class, "Fault Model", "FM");
@@ -47,6 +50,16 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			LogicTreeLevel.forEnum(NSHM23_PaleoUncertainties.class, "Paleoseismic Data Uncertainties", "PaleoUncert");
 	
 	/*
+	 * Gridded seismicity branch levels
+	 */
+	public static LogicTreeLevel<NSHM23_RegionalSeismicity> SEIS_RATE =
+			LogicTreeLevel.forEnum(NSHM23_RegionalSeismicity.class, "Regional Seismicity Rate", "SeisRate");
+	public static LogicTreeLevel<NSHM23_SpatialSeisPDFs> SEIS_PDF =
+			LogicTreeLevel.forEnum(NSHM23_SpatialSeisPDFs.class, "Spatical Seismicity PDF", "SeisPDF");
+	public static LogicTreeLevel<NSHM23_MaxMagOffFault> MMAX_OFF =
+			LogicTreeLevel.forEnum(NSHM23_MaxMagOffFault.class, "Off Fault Mmax", "MmaxOff");
+	
+	/*
 	 * Optional levels
 	 */
 	public static LogicTreeLevel<MaxJumpDistModels> MAX_DIST =
@@ -58,35 +71,50 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	
 	static {
 		// exhaustive for now, can trim down later
-		levels = List.of(FM, PLAUSIBILITY, DM, SCALE, SLIP_ALONG, SUPRA_B,
+		levelsOnFault = List.of(FM, PLAUSIBILITY, DM, SCALE, SLIP_ALONG, SUPRA_B,
 				SUB_SECT_CONSTR, SUB_SEIS_MO, PALEO_UNCERT, SEG, SEG_ADJ);
+		levelsOffFault = List.of(SEIS_RATE, SEIS_PDF, MMAX_OFF);
+		
+		ImmutableList.Builder<LogicTreeLevel<?>> combLevelBuilder = ImmutableList.builder();
+		combLevelBuilder.addAll(levelsOnFault);
+		combLevelBuilder.addAll(levelsOffFault);
+		levelsCombined = combLevelBuilder.build();
+		
 		levelsMaxDist = List.of(FM, PLAUSIBILITY, DM, SCALE, SLIP_ALONG, SUPRA_B,
 				SUB_SECT_CONSTR, SUB_SEIS_MO, PALEO_UNCERT, MAX_DIST, RUPS_THROUGH_CREEPING);
 	}
 	
 	/**
-	 * This is the default reference branch
+	 * This is the default on-fault reference branch
 	 */
-	public static final NSHM23_LogicTreeBranch DEFAULT = fromValues(NSHM23_FaultModels.NSHM23_v2,
-			RupturePlausibilityModels.COULOMB, NSHM23_DeformationModels.GEOLOGIC, NSHM23_ScalingRelationships.LOGA_C4p2,
-			NSHM23_SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p5, SubSectConstraintModels.TOT_NUCL_RATE,
-			SubSeisMoRateReductions.SUB_B_1, NSHM23_PaleoUncertainties.EVEN_FIT, NSHM23_SegmentationModels.MID,
+	public static final NSHM23_LogicTreeBranch DEFAULT_ON_FAULT = fromValues(levelsOnFault,
+			NSHM23_FaultModels.NSHM23_v2,
+			RupturePlausibilityModels.COULOMB,
+			NSHM23_DeformationModels.GEOLOGIC,
+			NSHM23_ScalingRelationships.LOGA_C4p2,
+			NSHM23_SlipAlongRuptureModels.UNIFORM,
+			SupraSeisBValues.B_0p5,
+			SubSectConstraintModels.TOT_NUCL_RATE,
+			SubSeisMoRateReductions.SUB_B_1,
+			NSHM23_PaleoUncertainties.EVEN_FIT,
+			NSHM23_SegmentationModels.MID,
 			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG);
-	
 	/**
-	 * Creates a NSHM23LogicTreeBranch instance from given set of node values. Null or missing values
-	 * will be replaced with their default value (from NSHM23LogicTreeBranch.DEFAULT).
-	 * 
-	 * @param vals
-	 * @return
+	 * This is the default off-fault reference branch
 	 */
-	public static NSHM23_LogicTreeBranch fromValues(List<LogicTreeNode> vals) {
-		LogicTreeNode[] valsArray = new LogicTreeNode[vals.size()];
-		
-		for (int i=0; i<vals.size(); i++)
-			valsArray[i] = vals.get(i);
-		
-		return fromValues(valsArray);
+	public static final NSHM23_LogicTreeBranch DEFAULT_OFF_FAULT = fromValues(levelsOffFault,
+			NSHM23_RegionalSeismicity.PREFFERRED,
+			NSHM23_SpatialSeisPDFs.NN_ADAPTIVE,
+			NSHM23_MaxMagOffFault.MAG_7p6);
+	
+	public static final NSHM23_LogicTreeBranch DEFAULT_COMBINED;
+	
+	static {
+		DEFAULT_COMBINED = new NSHM23_LogicTreeBranch(levelsCombined, null);
+		for (LogicTreeNode node : DEFAULT_ON_FAULT)
+			DEFAULT_COMBINED.setValue(node);
+		for (LogicTreeNode node : DEFAULT_OFF_FAULT)
+			DEFAULT_COMBINED.setValue(node);
 	}
 	
 	/**
@@ -96,8 +124,24 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	 * @param vals
 	 * @return
 	 */
-	public static NSHM23_LogicTreeBranch fromValues(LogicTreeNode... vals) {
-		return fromValues(true, vals);
+	public static NSHM23_LogicTreeBranch fromValues(List<LogicTreeLevel<?>> levels, List<LogicTreeNode> vals) {
+		LogicTreeNode[] valsArray = new LogicTreeNode[vals.size()];
+		
+		for (int i=0; i<vals.size(); i++)
+			valsArray[i] = vals.get(i);
+		
+		return fromValues(levels, valsArray);
+	}
+	
+	/**
+	 * Creates a NSHM23LogicTreeBranch instance from given set of node values. Null or missing values
+	 * will be replaced with their default value (from NSHM23LogicTreeBranch.DEFAULT).
+	 * 
+	 * @param vals
+	 * @return
+	 */
+	public static NSHM23_LogicTreeBranch fromValues(List<LogicTreeLevel<?>> levels, LogicTreeNode... vals) {
+		return fromValues(levels, null, vals);
 	}
 	
 	/**
@@ -109,7 +153,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	 * @param vals
 	 * @return
 	 */
-	public static NSHM23_LogicTreeBranch fromValues(boolean setNullToDefault, LogicTreeNode... vals) {
+	public static NSHM23_LogicTreeBranch fromValues(List<LogicTreeLevel<?>> levels, LogicTreeBranch<?> defaultValues, LogicTreeNode... vals) {
 		
 		// initialize branch with null
 		List<LogicTreeNode> values = new ArrayList<>();
@@ -122,7 +166,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 				continue;
 			
 			int ind = -1;
-			for (int i=0; i<levels.size(); i++) {
+			for (int i=0; i<levelsOnFault.size(); i++) {
 				LogicTreeLevel<?> level = levels.get(i);
 				if (level.isMember(val)) {
 					ind = i;
@@ -133,12 +177,13 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			values.set(ind, val);
 		}
 		
-		NSHM23_LogicTreeBranch branch = new NSHM23_LogicTreeBranch(values);
+		NSHM23_LogicTreeBranch branch = new NSHM23_LogicTreeBranch(levels, values);
 		
-		if (setNullToDefault) {
+		if (defaultValues != null) {
+			Preconditions.checkState(defaultValues.size() == branch.size());
 			for (int i=0; i<levels.size(); i++) {
 				if (branch.getValue(i) == null)
-					branch.setValue(i, DEFAULT.getValue(i));
+					branch.setValue(i, defaultValues.getValue(i));
 			}
 		}
 		
@@ -147,10 +192,14 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	
 	@SuppressWarnings("unused") // used for deserialization
 	public NSHM23_LogicTreeBranch() {
-		super(levels);
+		super(levelsOnFault);
 	}
 	
 	public NSHM23_LogicTreeBranch(List<LogicTreeNode> values) {
+		super(levelsOnFault, values);
+	}
+	
+	public NSHM23_LogicTreeBranch(List<LogicTreeLevel<?>> levels, List<LogicTreeNode> values) {
 		super(levels, values);
 	}
 

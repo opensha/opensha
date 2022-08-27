@@ -32,6 +32,8 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.PrimaryRegions;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -134,27 +136,34 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 	public RupSetDeformationModel getDefaultDeformationModel() {
 		return defaultDM;
 	}
+	
+	public static ModelRegion getDefaultRegion(LogicTreeBranch<?> branch) throws IOException {
+		if (branch != null && branch.hasValue(NSHM23_SingleStates.class)) {
+			NSHM23_SingleStates state = branch.getValue(NSHM23_SingleStates.class);
+			if (state == NSHM23_SingleStates.CA)
+				return new ModelRegion(PrimaryRegions.CONUS_U3_RELM.load());
+			else if (state == null)
+				return new ModelRegion(NSHM23_RegionLoader.LoadFullConterminousWUS());
+			// else no model region specified, don't return anything
+			return null;
+		} else {
+			// no single state, full WUS
+			return new ModelRegion(NSHM23_RegionLoader.LoadFullConterminousWUS());
+		}
+	}
 
 	@Override
 	public void attachDefaultModules(FaultSystemRupSet rupSet) {
 		LogicTreeBranch<?> branch = rupSet.getModule(LogicTreeBranch.class);
+		
 		if (branch != null && branch.hasValue(NSHM23_SingleStates.class)) {
 			NSHM23_SingleStates state = branch.getValue(NSHM23_SingleStates.class);
-			if (state == NSHM23_SingleStates.CA) {
+			if (state == null || state == NSHM23_SingleStates.CA) {
 				rupSet.addAvailableModule(new Callable<ModelRegion>() {
 
 					@Override
 					public ModelRegion call() throws Exception {
-						return new ModelRegion(new CaliforniaRegions.RELM_TESTING());
-					}
-				}, ModelRegion.class);
-			}
-			else if (state == null) {
-				rupSet.addAvailableModule(new Callable<ModelRegion>() {
-
-					@Override
-					public ModelRegion call() throws Exception {
-						return new ModelRegion(NSHM23_RegionLoader.LoadFullConterminousWUS());
+						return getDefaultRegion(branch);
 					}
 				}, ModelRegion.class);
 			}
@@ -165,12 +174,10 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 
 				@Override
 				public ModelRegion call() throws Exception {
-					return new ModelRegion(NSHM23_RegionLoader.LoadFullConterminousWUS());
+					return getDefaultRegion(branch);
 				}
 			}, ModelRegion.class);
 		}
-//		if (branch != null || !branch.hasValue(NSHM23_SingleStates.class))
-//			rupSet.addAvailableModule(new , ModelRegion.class);
 		rupSet.addAvailableModule(new Callable<NamedFaults>() {
 
 			@Override
@@ -191,10 +198,6 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 
 			@Override
 			public RegionsOfInterest call() throws Exception {
-				// TODO get observed MFDs from a better place, don't hardcode here
-				double refMag = 5d;
-				double deltaMag = 0.1;
-				
 				List<Region> regions = new ArrayList<>();
 				List<IncrementalMagFreqDist> regionMFDs = new ArrayList<>();
 				List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
@@ -205,47 +208,11 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
 						continue;
 					
-					Double b=null, pref=null, low=null, high=null;
-					
-					if (pReg == PrimaryRegions.CONUS_U3_RELM) {
-						b = 0.9;
-						pref = 8.3;
-						low = 3.3;
-						high = 14.3;
-					} else if (pReg == PrimaryRegions.CONUS_PNW) {
-						b = 1d;
-						pref = 0.45;
-						low = 0.35;
-						high = 2.5;
-					} else if (pReg == PrimaryRegions.CONUS_IMW) {
-						b = 0.9;
-						pref = 1.7;
-						low = 0.1;
-						high = 4.6;
-					} else if (pReg == PrimaryRegions.CONUS_EAST) {
-						b = 0.94d;
-						pref = 0.49;
-						low = 0.4;
-						high = 2.2;
-					}
-					
-					if (b != null) {
-						// find max mag in region
-						double maxMagInRegion = 7d;
-						double[] rupFracts = rupSet.getFractRupsInsideRegion(region, true);
-						for (int r=0; r<rupFracts.length; r++)
-							if (rupFracts[r] > 0d)
-								maxMagInRegion = Math.max(maxMagInRegion, rupSet.getMagForRup(r));
-						EvenlyDiscretizedFunc refMFD = new EvenlyDiscretizedFunc(
-								refMag+0.5*deltaMag, (int)(5d/deltaMag+0.5), deltaMag);
-						// now trim to size
-						int maxMagIndex = refMFD.getClosestXIndex(maxMagInRegion);
-						refMFD = new EvenlyDiscretizedFunc(refMFD.getMinX(), maxMagIndex+1, deltaMag);
-						regionMFDs.add(getUncertGR(refMFD, b, pref, low, high, UncertaintyBoundType.CONF_95));
-					} else {
-						regionMFDs.add(null);
-					}
-					
+					double mMax = rupSet.getMaxMag();
+					if (branch != null && branch.hasValue(MaxMagOffFaultBranchNode.class))
+						mMax = branch.getValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
+					EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(Math.max(mMax, rupSet.getMaxMag()));
+					regionMFDs.add(NSHM23_RegionalSeismicity.getBounded(pReg, refMFD, mMax));
 					regions.add(region);
 				}
 				for (Region region : NSHM23_RegionLoader.loadLocalRegions(subSects)) {

@@ -1,11 +1,22 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded;
 
+import java.awt.geom.Area;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.BorderType;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.PrimaryRegions;
+
+import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.utils.RELM_RegionUtils;
 
@@ -39,7 +50,7 @@ import scratch.UCERF3.utils.RELM_RegionUtils;
  */
 public class CubedGriddedRegion {
 	
-	final static boolean D = true;
+	final static boolean D = false;
 	
 	final static double DEFAULT_MAX_DEPTH = 24;	// km
 	final static int DEFAULT_NUM_CUBE_DEPTHS = 12; // 2 km hights
@@ -92,9 +103,14 @@ public class CubedGriddedRegion {
 		
 		if(!griddedRegion.isSpacingUniform())
 			throw new RuntimeException("Lat and Lon discretization must be equal in griddedRegion");
-			
+		
+		// TODO: this doesn't work for complex regions, e.g. NSHM23 intermountain west
 		Region exactRegion = getRegionDefinedByExteriorCellEdges(griddedRegion);
 		this.griddedRegionModified = new GriddedRegion(exactRegion, griddedRegion.getSpacing(), griddedRegion.getLocation(0)); // can't find method to get anchor from origGriddedRegion
+		if (griddedRegionModified.getNodeCount() != griddedRegion.getNodeCount()) {
+			System.err.println("WARNING: modified exterior cell edges failed for region, reverting to original");
+			griddedRegionModified = griddedRegion;
+		}
 		
 		cubeLatLonSpacing = griddedRegionModified.getLatSpacing()/numCubesPerGridEdge;
 		cubeDepthDiscr = maxDepth/numCubeDepths;
@@ -166,8 +182,74 @@ public class CubedGriddedRegion {
 		return new Location(regLoc.getLatitude(),regLoc.getLongitude(),getCubeDepth(regAndDepIndex[1]));
 	}
 	
+//	private Map<Integer, Integer> recoveredIndexes = new ConcurrentHashMap<>();
+	
 	public int getRegionIndexForCubeIndex(int cubeIndex) {
-		return griddedRegionModified.indexForLocation(getCubeLocationForIndex(cubeIndex));
+		Location cubeLoc = getCubeLocationForIndex(cubeIndex);
+		int ret = griddedRegionModified.indexForLocation(cubeLoc);
+//		if (ret < 0) {
+//			
+//			// TODO: would rather do this better, revisit
+//			// recover from a (literal) edge case.
+//			// this can happen if the "modified" region creation failed
+//			// just revert to the closest cube
+////			System.out.println("Recovering from edge case. CubeLoc: "+cubeLoc);
+//			Integer recoveredIndex = recoveredIndexes.get(cubeIndex);
+//			if (recoveredIndex != null)
+//				return recoveredIndex;
+//			int latIndex = griddedRegion.getLatIndex(cubeLoc);
+//			if (latIndex < 0) {
+//				if (Math.abs(cubeLoc.getLatitude() - griddedRegion.getMinLat()) < Math.abs(cubeLoc.getLatitude() - griddedRegion.getMaxLat()))
+//					// closer to minimum
+//					latIndex = 0;
+//				else
+//					// closer to maximum
+//					latIndex = griddedRegion.getNumLatNodes()-1;
+//			}
+//			int lonIndex = griddedRegion.getLonIndex(cubeLoc);
+//			if (lonIndex < 0) {
+//				if (Math.abs(cubeLoc.getLongitude() - griddedRegion.getMinLon()) < Math.abs(cubeLoc.getLongitude() - griddedRegion.getMaxLon()))
+//					// closer to minimum
+//					lonIndex = 0;
+//				else
+//					// closer to maximum
+//					lonIndex = griddedRegion.getNumLonNodes()-1;
+//			}
+//			double closestDist = Double.POSITIVE_INFINITY;
+//			Location closestLoc = null;
+//			int closestIndex = -1;
+//			int origRegNum = griddedRegion.getNodeCount();
+//			for (int i = 0; i < origRegNum; i++) {
+//				Location loc = griddedRegion.getLocation(i);
+//				int oLatIndex = griddedRegion.getLatIndex(loc);
+//				int oLonIndex = griddedRegion.getLonIndex(loc);
+//				int deltaLatIndex = latIndex - oLatIndex;
+//				int deltaLonIndex = lonIndex - oLonIndex;
+//				// see if it's worth doing the (expensive) distance calculation
+//				if ((deltaLatIndex >= -3 && deltaLatIndex <= 3) && (deltaLonIndex >= -3 && deltaLonIndex <= 3)) {
+////					double dist = LocationUtils.horzDistanceFast(cubeLoc, loc);
+//					double lonDiff = loc.getLongitude() - cubeLoc.getLongitude();
+//					double latDiff = loc.getLatitude() - cubeLoc.getLatitude();
+//					double dist = lonDiff*lonDiff + latDiff*latDiff;
+//					if (dist < closestDist) {
+//						closestDist = dist;
+//						closestLoc = loc;
+//						closestIndex = i;
+//					}
+//				}
+//			}
+//			closestDist = Math.sqrt(closestDist);
+////			System.out.println("Closest original location is "+(float)closestDist+" degrees away: "+closestLoc);
+//			Preconditions.checkState(closestIndex >= 0, "Couldn't recover from a cube-to-region index mismatch");
+//			Preconditions.checkState(closestDist < 2d*griddedRegion.getSpacing(),
+//					"Recovered location is too far away: %s -> %s is %s degrees",
+//					cubeLoc, closestLoc, closestDist);
+//			ret = closestIndex;
+//			synchronized (recoveredIndexes) {
+//				recoveredIndexes.putIfAbsent(cubeIndex, ret);
+//			}
+//		}
+		return ret;
 	}
 	
 	
@@ -211,109 +293,63 @@ public class CubedGriddedRegion {
 	
 	/**
 	 * The creates a region defined by the exterior cell edges of the supplied griddedRegion
+	 * 
+	 * This version works for complicated convex regions as well.
+	 * 
 	 * @param griddedRegion
 	 * @return
 	 */
 	public static Region getRegionDefinedByExteriorCellEdges(GriddedRegion griddedRegion) {
+		double latSpacing = griddedRegion.getLatSpacing();
+		double lonSpacing = griddedRegion.getLonSpacing();
 		
-		LocationList exactRegLocList = new LocationList();
+		double[] latNodes = griddedRegion.getLatNodes();
+		double[] lonNodes = griddedRegion.getLonNodes();
 		
-//		 Note that griddedRegion.getMaxGridLat() does not always return the correct value
-		double gridSpacing = griddedRegion.getSpacing();
-		double minLat = Double.MAX_VALUE;
-		double maxLat = -Double.MAX_VALUE;
-		for(int i=0;i<griddedRegion.getNumLocations();i++) {
-			Location loc = griddedRegion.getLocation(i);
-			if(minLat>loc.getLatitude())
-				minLat=loc.getLatitude();
-			if(maxLat<loc.getLatitude())
-				maxLat=loc.getLatitude();
-		}
-//		System.out.println(griddedRegion.getMaxGridLat()+"\t"+maxLat);
-//		System.out.println(griddedRegion.getMinGridLat()+"\t"+minLat);
-//		System.exit(0);
-
+		Area area = null;
 		
-		
-		int numLats = 1 + (int)Math.round((maxLat-minLat)/gridSpacing);
-		double[] minLonForLat = new double[numLats];
-		double[] maxLonForLat = new double[numLats];
-		for(int i=0;i<minLonForLat.length;i++) {
-			minLonForLat[i] = Double.MAX_VALUE;
-			maxLonForLat[i] = -Double.MAX_VALUE;
-		}
-		
-		for(int i=0;i<griddedRegion.getNumLocations();i++) {
-			Location loc = griddedRegion.getLocation(i);
-			int latIndex = (int)Math.round((loc.getLatitude() - minLat)/gridSpacing);
-			if(minLonForLat[latIndex]>loc.getLongitude())
-				minLonForLat[latIndex]=loc.getLongitude();
-			if(maxLonForLat[latIndex]<loc.getLongitude())
-				maxLonForLat[latIndex]=loc.getLongitude();
-		}
-		
-		
-		// down the left side
-		for(int i=minLonForLat.length-1;i>=0;i--) {
-			double lat = minLat+gridSpacing*i+gridSpacing/2;
-			double lon = minLonForLat[i]-gridSpacing/2;
-			exactRegLocList.add(new Location(lat,lon));
-			if(i>=1 && Math.abs(minLonForLat[i]-minLonForLat[i-1])>gridSpacing/100) {
-				lat = minLat+gridSpacing*i-gridSpacing/2;
-				exactRegLocList.add(new Location(lat,lon));
+		for (int i=0; i<latNodes.length; i++) {
+			double lat = latNodes[i];
+			int[] indexes = new int[lonNodes.length];
+			Location[] locs = new Location[lonNodes.length];
+			for (int j=0; j<lonNodes.length; j++) {
+				double lon = lonNodes[j];
+				locs[j] =  new Location(lat, lon);
+				indexes[j] = griddedRegion.indexForLocation(locs[j]);
 			}
-			if(i==0){
-				lat = minLat+gridSpacing*i-gridSpacing/2;
-				exactRegLocList.add(new Location(lat,lon));				
+			
+			for (int j=0; j<lonNodes.length; j++) {
+				if (indexes[j] >= 0) {
+					Location loc1 = locs[j];
+					Location loc2 = locs[j];
+					for (int j1=j+1; j1<lonNodes.length; j1++) {
+						if (indexes[j1] >= 0) {
+							loc2 = locs[j1];
+							j = j1;
+						} else {
+							break;
+						}
+					}
+					Area subArea = areaForGridCell(loc1, loc2, latSpacing*0.5, lonSpacing*0.5);
+					if (area == null)
+						area = subArea;
+					else
+						area.add(subArea);
+				}
 			}
 		}
 		
-		// across the bottom at 0.2 degree spacing (to avoid arc issues)
-		double lonSpacing = 0.2;
-		double lonDiff = maxLonForLat[0]-minLonForLat[0];
-		if(lonDiff>lonSpacing) {
-			for(double lon = minLonForLat[0]+lonSpacing; lon<maxLonForLat[0]; lon+=lonSpacing)
-				exactRegLocList.add(new Location(minLat-gridSpacing/2,lon));
-		}
-		 
-
-		// up the right side
-		for(int i=0;i<minLonForLat.length;i++) {
-			double lat = minLat+gridSpacing*i-gridSpacing/2;
-			double lon = maxLonForLat[i]+gridSpacing/2;
-			exactRegLocList.add(new Location(lat,lon));
-			if(i<minLonForLat.length-1 && Math.abs(maxLonForLat[i]-maxLonForLat[i+1])>gridSpacing/100) {
-				lat = minLat+gridSpacing*i+gridSpacing/2;
-				exactRegLocList.add(new Location(lat,lon));
-			}
-			if(i==minLonForLat.length-1){
-				lat = minLat+gridSpacing*i+gridSpacing/2;
-				exactRegLocList.add(new Location(lat,lon));				
-			}
-
-		}
+		List<LocationList> modLocList = NSHM23_FaultPolygonBuilder.areaToLocLists(area);
+		Preconditions.checkState(modLocList.size() == 1, "LocListList size=%s", modLocList.size());
 		
-		// Along the top at 0.2 degree increments
-		lonDiff = maxLonForLat[minLonForLat.length-1]-minLonForLat[minLonForLat.length-1];
-		if(lonDiff>lonSpacing) {
-			for(double lon = maxLonForLat[minLonForLat.length-1]-lonSpacing; lon>minLonForLat[minLonForLat.length-1]; lon-=lonSpacing)
-				exactRegLocList.add(new Location(maxLat+gridSpacing/2,lon));
-		}
-
-		
-//		for(Location loc:exactRegLocList) {
-//			System.out.println((float)loc.getLatitude()+"\t"+(float)loc.getLongitude());
-//		}
-		
-//		for(int i=0;i<griddedRegion.getNumLocations();i++) {
-//			Location loc = griddedRegion.getLocation(i);
-//			System.out.println((float)loc.getLatitude()+"\t"+(float)loc.getLongitude());
-//		}
-
-		
-		return new Region(exactRegLocList, BorderType.MERCATOR_LINEAR);
+		return new Region(modLocList.get(0), BorderType.MERCATOR_LINEAR);
 	}
-	
+
+	private static Area areaForGridCell(Location loc1, Location loc2, double deltaLat, double deltaLon) {
+		Region reg = new Region(new Location(loc1.getLatitude()-deltaLat, loc1.getLongitude()-deltaLon),
+				new Location(loc2.getLatitude()+deltaLat*1.05, loc2.getLongitude()+deltaLon*1.05));
+		return reg.getShape();
+	}
 	
 	public int[] getCubeIndicesForGridCell(int gridIndex) {
 		
@@ -430,7 +466,7 @@ public class CubedGriddedRegion {
 	
 
 	/**
-	 * this makes sure there are the correct number of cells in each cell and that each cube is within a cell
+	 * this makes sure there are the correct number of cubes in each cell and that each cube is within a cell
 	 * (problems could occur by arcs over long longitude distances between gridded-region perimeter points)
 	 */
 	private void testNumCubesInEachCell() {
@@ -462,12 +498,16 @@ public class CubedGriddedRegion {
 	
 	
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		
-		CaliforniaRegions.RELM_TESTING_GRIDDED griddedRegion = RELM_RegionUtils.getGriddedRegionInstance();
-
-		CubedGriddedRegion cgr = new CubedGriddedRegion(griddedRegion);
-
+//		CaliforniaRegions.RELM_TESTING_GRIDDED griddedRegion = RELM_RegionUtils.getGriddedRegionInstance();
+		for (PrimaryRegions seisReg : PrimaryRegions.values()) {
+			System.out.println("Testing CubedGriddedRegion instantiation for "+seisReg);
+			Region reg = seisReg.load();
+			GriddedRegion griddedRegion = new GriddedRegion(reg, 0.1, GriddedRegion.ANCHOR_0_0);
+			System.out.println("Original gridded region has "+griddedRegion.getNodeCount()+" locations");
+			new CubedGriddedRegion(griddedRegion);
+		}
 	}
 
 }

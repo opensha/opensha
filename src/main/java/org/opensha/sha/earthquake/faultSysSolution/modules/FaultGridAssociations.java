@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -18,6 +19,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.OpenSHA_Module;
+import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -31,6 +33,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableTable;
 import com.google.common.collect.Table;
+import com.google.common.collect.Table.Cell;
 
 /**
  * Module that maintains collections of the relationships between grid nodes
@@ -40,7 +43,7 @@ import com.google.common.collect.Table;
  * @author Peter, Kevin
  *
  */
-public interface FaultGridAssociations extends OpenSHA_Module {
+public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageableModule<FaultGridAssociations> {
 
 	/**
 	 * Returns a map of nodes (indices of nodes intersected by faults) to the
@@ -114,6 +117,11 @@ public interface FaultGridAssociations extends OpenSHA_Module {
 	 * @return
 	 */
 	Collection<Integer> sectIndices();
+
+	@Override
+	public default AveragingAccumulator<FaultGridAssociations> averagingAccumulator() {
+		return new Averager();
+	}
 
 	public static final String ARCHIVE_GRID_REGION_FILE_NAME = "grid_region.geojson";
 	public static final String ARCHIVE_NODE_EXTENTS_FILE_NAME = "grid_node_association_fracts.csv";
@@ -272,6 +280,106 @@ public interface FaultGridAssociations extends OpenSHA_Module {
 		
 	}
 	
+	public static class Averager implements AveragingAccumulator<FaultGridAssociations> {
+		
+		private FaultGridAssociations ref;
+		private boolean identical;
+		private GriddedRegion gridReg;
+		
+		private double sumWeight = 0d;
+		
+		private HashMap<Integer, Double> nodeExtents;
+		private Table<Integer, Integer, Double> nodeInSectPartic;
+		private Table<Integer, Integer, Double> sectInNodePartic;
+		private HashSet<Integer> sectIndices;
+
+		@Override
+		public Class<FaultGridAssociations> getType() {
+			return FaultGridAssociations.class;
+		}
+
+		@Override
+		public void process(FaultGridAssociations module, double relWeight) {
+			if (ref == null) {
+				ref = module;
+				identical = true;
+				gridReg = ref.getRegion();
+				
+				nodeExtents = new HashMap<>();
+				nodeInSectPartic = HashBasedTable.create();
+				sectInNodePartic = HashBasedTable.create();
+				sectIndices = new HashSet<>();
+			} else {
+				Preconditions.checkState(module.getRegion().equalsRegion(ref.getRegion()));
+			}
+			
+			for (int sectIndex : module.sectIndices()) {
+				sectIndices.add(sectIndex);
+				Map<Integer, Double> nodeFracts = module.getNodeFractions(sectIndex);
+				Map<Integer, Double> refNodeFracts = ref.getNodeFractions(sectIndex);
+				identical = identical && refNodeFracts != null && nodeFracts.size() == refNodeFracts.size();
+				for (int nodeIndex : nodeFracts.keySet()) {
+					double nodeFract = nodeFracts.get(nodeIndex);
+					Double prevFract = nodeInSectPartic.get(sectIndex, nodeIndex);
+					if (prevFract == null)
+						prevFract = 0d;
+					nodeInSectPartic.put(sectIndex, nodeIndex, prevFract + nodeFract*relWeight);
+					if (identical) {
+						Double refNodeFract = refNodeFracts.get(nodeIndex);
+						identical = refNodeFract != null && refNodeFract == nodeFract;
+					}
+				}
+			}
+			for (int nodeIndex=0; nodeIndex<gridReg.getNodeCount(); nodeIndex++) {
+				Map<Integer, Double> sectFractsOnNode = module.getSectionFracsOnNode(nodeIndex);
+				Map<Integer, Double> refSectFractsOnNode = ref.getSectionFracsOnNode(nodeIndex);
+				identical = identical && refSectFractsOnNode != null && sectFractsOnNode.size() == refSectFractsOnNode.size();
+				for (int sectIndex : sectFractsOnNode.keySet()) {
+					double sectFractOnNode = sectFractsOnNode.get(sectIndex);
+					Double prevFract = sectInNodePartic.get(sectIndex, nodeIndex);
+					if (prevFract == null)
+						prevFract = 0d;
+					sectInNodePartic.put(sectIndex, nodeIndex, prevFract + sectFractOnNode*relWeight);
+					if (identical) {
+						Double refNodeFract = refSectFractsOnNode.get(nodeIndex);
+						identical = refNodeFract != null && refNodeFract == sectFractOnNode;
+					}
+				}
+				Double prevExtent = nodeExtents.get(nodeIndex);
+				if (prevExtent == null)
+					prevExtent = 0d;
+				double extent = module.getNodeFraction(nodeIndex);
+				identical = identical && ref.getNodeFraction(nodeIndex) == extent;
+				nodeExtents.put(nodeIndex, prevExtent + extent*relWeight);
+			}
+			sumWeight += relWeight;
+		}
+
+		@Override
+		public Precomputed getAverage() {
+			if (identical)
+				return ref instanceof Precomputed ? (Precomputed)ref : new Precomputed(ref);
+			ImmutableMap.Builder<Integer, Double> nodeExtentsBuilder = ImmutableMap.builder();
+			ImmutableTable.Builder<Integer, Integer, Double> nodeInSectParticBuilder = ImmutableTable.builder();
+			ImmutableTable.Builder<Integer, Integer, Double> sectInNodeParticBuilder = ImmutableTable.builder();
+			
+			for (int nodeIndex : nodeExtents.keySet())
+				nodeExtentsBuilder.put(nodeIndex, nodeExtents.get(nodeIndex)/sumWeight);
+			for (Cell<Integer, Integer, Double> cell : nodeInSectPartic.cellSet())
+				nodeInSectParticBuilder.put(cell.getRowKey(), cell.getColumnKey(), cell.getValue()/sumWeight);
+			for (Cell<Integer, Integer, Double> cell : sectInNodePartic.cellSet())
+				sectInNodeParticBuilder.put(cell.getRowKey(), cell.getColumnKey(), cell.getValue()/sumWeight);
+			
+			Precomputed ret = new Precomputed();
+			ret.nodeExtents = nodeExtentsBuilder.build();
+			ret.nodeInSectPartic = nodeInSectParticBuilder.build();
+			ret.sectInNodePartic = sectInNodeParticBuilder.build();
+			ret.sectIndices = ImmutableList.copyOf(sectIndices);
+			return ret;
+		}
+		
+	}
+	
 	/**
 	 * Simple {@link FaultGridAssociations} implementation where faults are associated by the fraction of the rupture
 	 * surface area that lies within a grid cell, not including any polygons or distance taper.
@@ -289,6 +397,7 @@ public interface FaultGridAssociations extends OpenSHA_Module {
 		ret.region = region;
 		
 		// don't have fractional node mappings, only from section to node
+		// TODO revisit
 		ret.nodeExtents = ImmutableMap.of();
 		
 		
@@ -327,6 +436,7 @@ public interface FaultGridAssociations extends OpenSHA_Module {
 		
 		// now deal with overlapping faults
 		ImmutableTable.Builder<Integer, Integer, Double> sectInNodeParticBuilder = ImmutableTable.builder();
+		ImmutableMap.Builder<Integer, Double> nodeExtentsBuilder = ImmutableMap.builder();
 		for (int nodeIndex : sectAreasInNode.columnKeySet()) {
 			Map<Integer, Double> nodeSectAreas = sectAreasInNode.column(nodeIndex);
 			if (nodeSectAreas.size() == 1) {
@@ -340,8 +450,11 @@ public interface FaultGridAssociations extends OpenSHA_Module {
 					sectInNodeParticBuilder.put(sectIndex, nodeIndex, fract);
 				}
 			}
+			// fully associated
+			nodeExtentsBuilder.put(nodeIndex, 1d);
 		}
 		
+		ret.nodeExtents = nodeExtentsBuilder.build();
 		ret.sectIndices = sectIndicesBuilder.build();
 		ret.nodeInSectPartic = nodeInSectParticBuilder.build();
 		ret.sectInNodePartic = sectInNodeParticBuilder.build();

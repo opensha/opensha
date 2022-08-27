@@ -8,17 +8,20 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
+import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations.Averager;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
@@ -41,12 +44,22 @@ public interface PolygonFaultGridAssociations extends FaultGridAssociations {
 	 */
 	public Region getPoly(int sectIdx);
 	
+	@Override
+	public default AveragingAccumulator<FaultGridAssociations> averagingAccumulator() {
+		return new Averager();
+	}
+
 	public static class Precomputed extends FaultGridAssociations.Precomputed implements PolygonFaultGridAssociations {
 		
 		private ImmutableMap<Integer, Region> polygons;
 
 		public Precomputed() {
 			super();
+		}
+		
+		public Precomputed(FaultGridAssociations associations, Map<Integer, Region> polygons) {
+			super(associations);
+			this.polygons = ImmutableMap.copyOf(polygons);
 		}
 
 		public Precomputed(PolygonFaultGridAssociations associations) {
@@ -111,6 +124,67 @@ public interface PolygonFaultGridAssociations extends FaultGridAssociations {
 		@Override
 		public Region getPoly(int sectIdx) {
 			return polygons.get(sectIdx);
+		}
+		
+	}
+	
+	public static class Averager implements AveragingAccumulator<FaultGridAssociations> {
+		
+		private FaultGridAssociations.Averager gridAverager;
+		private ImmutableMap<Integer, Region> polys;
+
+		@Override
+		public Class<FaultGridAssociations> getType() {
+			return FaultGridAssociations.class;
+		}
+
+		@Override
+		public void process(FaultGridAssociations module, double relWeight) {
+			if (gridAverager == null) {
+				// first time
+				gridAverager = new FaultGridAssociations.Averager();
+				if (module instanceof PolygonFaultGridAssociations) {
+					if (module instanceof Precomputed) {
+						polys = ((Precomputed)module).polygons;
+					} else {
+						ImmutableMap.Builder<Integer, Region> polyBuilder = ImmutableMap.builder();
+						PolygonFaultGridAssociations associations = (PolygonFaultGridAssociations)module;
+						for (int sectIndex : associations.sectIndices())
+							polyBuilder.put(sectIndex, associations.getPoly(sectIndex));
+						polys = polyBuilder.build();
+					}
+				}
+			} else if (polys != null) {
+				if (module instanceof PolygonFaultGridAssociations) {
+					PolygonFaultGridAssociations associations = (PolygonFaultGridAssociations)module;
+					int numPolys = 0;
+					for (int sectIndex : associations.sectIndices()) {
+						Region poly = associations.getPoly(sectIndex);
+						if (poly != null) {
+							numPolys++;
+							Region prevPoly = polys.get(sectIndex);
+							if (prevPoly == null || !prevPoly.equalsRegion(poly)) {
+								polys = null;
+								break;
+							}
+						}
+					}
+					if (polys != null && numPolys != polys.size())
+						polys = null;
+				} else {
+					// this one doesn't have polys
+					polys = null;
+				}
+			}
+			gridAverager.process(module, relWeight);
+		}
+
+		@Override
+		public FaultGridAssociations getAverage() {
+			FaultGridAssociations associations = gridAverager.getAverage();
+			if (polys != null)
+				return new Precomputed(associations, polys);
+			return associations;
 		}
 		
 	}
