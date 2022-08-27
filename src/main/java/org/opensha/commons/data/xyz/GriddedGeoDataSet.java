@@ -43,6 +43,10 @@ public class GriddedGeoDataSet extends AbstractGeoDataSet {
 		this.region = region;
 		values = new double[region.getNodeCount()];
 	}
+	
+	public double[] getValues() {
+		return values;
+	}
 
 	@Override
 	public int size() {
