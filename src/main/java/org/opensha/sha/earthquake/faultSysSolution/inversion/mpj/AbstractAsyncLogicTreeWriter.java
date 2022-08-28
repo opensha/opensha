@@ -75,8 +75,9 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 					
 					doProcessIndex(index);
 				}
-			} catch (IOException ioe) {
-				abortAndExit(ioe, 2);
+			} catch (Exception e) {
+				e.printStackTrace();
+				abortAndExit(e, 2);
 			}
 		}
 		
