@@ -566,14 +566,14 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		// write the implementing class
 		List<? extends LogicTreeLevel<?>> mappingLevels = getLevelsAffectingFile(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true);
-		String gridProvFile = getBranchFileName(branch, GRID_PROV_INSTANCE_FILE_NAME, mappingLevels);
+		String gridProvFile = getBranchFileName(branch, prefix,
+				GRID_PROV_INSTANCE_FILE_NAME, mappingLevels);
 		if (!writtenFiles.contains(gridProvFile)) {
 			FileBackedModule.initEntry(zout, null, gridProvFile);
 			BufferedWriter bWrite = new BufferedWriter(new OutputStreamWriter(zout));
 			JsonWriter writer = new JsonWriter(bWrite);
 			writer.beginObject().name("gridSourceProvider").value(loadingClass.getName()).endObject();
 			writer.close();
-			bWrite.flush();
 			writtenFiles.add(unassociatedFile);
 		}
 	}
