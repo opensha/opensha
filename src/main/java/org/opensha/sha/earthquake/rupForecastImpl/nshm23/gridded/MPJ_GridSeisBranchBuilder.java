@@ -94,7 +94,6 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		
 		private boolean first = true;
 		private boolean lightCopy = false;
-		private HashSet<String> writtenFiles;
 		
 		public AsyncLogicTreeWriter(SolutionProcessor processor) throws IOException {
 			super(solsDir, processor, new BranchWeightProvider.OriginalWeights());
@@ -140,7 +139,6 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				first = false;
 				File origZipFile = super.getOutputFile(solsDir);
 				if (origZipFile.exists()) {
-					writtenFiles = new HashSet<>();
 					List<LogicTreeBranch<?>> allBranches = new ArrayList<>();
 					for (LogicTreeBranch<?> origBranch : tree)
 						for (LogicTreeBranch<?> gridBranch : gridSeisOnlyTree)
@@ -154,35 +152,35 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			
 			debug("AsyncLogicTree: calcDone "+index+" = branch "+origBranch);
 			
-			FaultSystemSolution origSol = getSolution(origBranch, index);
-			if (origSol == null)
-				return;
+			FaultSystemSolution origSol = null;
 			
 			File solDir = getSolFile(origBranch).getParentFile();
 			File gridSeisDir = new File(solDir, "grid_source_providers");
 			Preconditions.checkState(gridSeisDir.exists());
 			
+			File associationsFile = new File(gridSeisDir, GRID_ASSOCIATIONS_ARCHIVE_NAME);
+			ModuleArchive<OpenSHA_Module> assocArchive = new ModuleArchive<>(associationsFile);
+			FaultGridAssociations associations = assocArchive.requireModule(FaultGridAssociations.class);
+			
 			for (LogicTreeBranch<?> gridSeisBranch : gridSeisOnlyTree) {
-				
-				
 				File gridProvFile = new File(gridSeisDir, gridSeisBranch.buildFileName()+".zip");
 				ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(gridProvFile);
 				GridSourceProvider prov = archive.requireModule(GridSourceProvider.class);
-				FaultGridAssociations associations = archive.getModule(FaultGridAssociations.class);
 				
 				LogicTreeBranch<?> combBranch = getCombinedBranch(origBranch, gridSeisBranch);
 				
 				if (lightCopy) {
 					sltBuilder.writeGridProvToArchive(prov, combBranch);
 				} else {
+					if (origSol == null)
+						origSol = getSolution(origBranch, index);
 					FaultSystemSolution newSol = solCopy(origSol);
 					
 					newSol.getRupSet().addModule(combBranch);
 					newSol.addModule(combBranch);
 					
 					newSol.setGridSourceProvider(prov);
-					if (associations != null)
-						newSol.getRupSet().addModule(archive.getModule(FaultGridAssociations.class));
+					newSol.getRupSet().addModule(associations);
 					sltBuilder.solution(newSol, combBranch);
 				}
 				
@@ -205,7 +203,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 							gridSourceAveragers = null;
 						}
 						
-						if (associations != null && faultGridAveragers != null) {
+						if (faultGridAveragers != null) {
 							if (!faultGridAveragers.containsKey(baPrefix))
 								faultGridAveragers.put(baPrefix, associations.averagingAccumulator());
 							AveragingAccumulator<FaultGridAssociations> assocAccumulator = faultGridAveragers.get(baPrefix);
@@ -265,6 +263,8 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 	protected int getNumTasks() {
 		return tree.size();
 	}
+	
+	private static final String GRID_ASSOCIATIONS_ARCHIVE_NAME = "fault_grid_associations.zip"; 
 
 	@Override
 	protected void calculateBatch(int[] batch) throws Exception {
@@ -332,6 +332,11 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 						new CubedGriddedRegion(modelGridReg), regionalAssociations);
 			}
 			
+			File assocFile = new File(gridSeisDir, GRID_ASSOCIATIONS_ARCHIVE_NAME);
+			ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
+			archive.addModule(cubeAssoc);
+			archive.write(assocFile);
+			
 			List<Future<?>> futures = new ArrayList<>();
 			for (LogicTreeBranch<?> gridSeisBranch : gridSeisOnlyTree) {
 				CalcRunnable run = new CalcRunnable(origBranch, gridSeisBranch, gridSeisDir, sol, cubeAssoc);
@@ -383,6 +388,8 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 	}
 	
 	private boolean isAlreadyDone(File gridSeisDir) {
+		if (!new File(gridSeisDir, GRID_ASSOCIATIONS_ARCHIVE_NAME).exists())
+			return false;
 		for (LogicTreeBranch<?> gridSeisBranch : gridSeisOnlyTree) {
 			File gridSeisFile =  new File(gridSeisDir, gridSeisBranch.buildFileName()+".zip");
 			if (!gridSeisFile.exists())
@@ -436,8 +443,6 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				File outputFile = new File(gridSeisDir, gridSeisBranch.buildFileName()+".zip");
 				ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
 				archive.addModule(gridProv);
-				archive.addModule(cubeAssoc);
-				
 				archive.write(outputFile);
 			} catch (Exception e) {
 				throw ExceptionUtils.asRuntimeException(e);
