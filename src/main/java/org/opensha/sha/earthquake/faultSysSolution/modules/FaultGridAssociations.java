@@ -240,6 +240,8 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 			}
 			nodeInSectPartic = nodeInSectParticBuilder.build();
 			sectInNodePartic = sectInNodeParticBuilder.build();
+			
+			sectIndices = ImmutableList.copyOf(nodeInSectPartic.rowKeySet());
 		}
 
 		@Override
