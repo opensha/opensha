@@ -47,6 +47,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Generatio
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
@@ -509,6 +510,19 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					return ClusterRuptures.singleStranged(rupSet);
 				}
 			}, ClusterRuptures.class);
+			if (branch.hasValue(MaxMagOffFaultBranchNode.class)
+					&& branch.hasValue(NSHM23_SpatialSeisPDFs.class)
+					&& branch.hasValue(NSHM23_RegionalSeismicity.class)
+					&& rupSet.hasAvailableModule(ModelRegion.class)) {
+				// offer fault cube associations
+				rupSet.offerAvailableModule(new Callable<FaultGridAssociations>() {
+
+					@Override
+					public FaultGridAssociations call() throws Exception {
+						return buildFaultCubeAssociations(rupSet, branch, rupSet.requireModule(ModelRegion.class).getRegion());
+					}
+				}, FaultGridAssociations.class);
+			}
 			return rupSet;
 		}
 
@@ -658,6 +672,38 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	public static GriddedRegion getGriddedSeisRegion(Region region) {
 		return new GriddedRegion(region, 0.1, GriddedRegion.ANCHOR_0_0);
+	}
+	
+	public static NSHM23_FaultCubeAssociations buildFaultCubeAssociations(FaultSystemRupSet rupSet,
+			LogicTreeBranch<?> branch, Region region) throws IOException {
+		List<PrimaryRegions> seisRegions = getSeismicityRegions(region);
+		Preconditions.checkState(seisRegions.size() >= 1);
+		NSHM23_FaultCubeAssociations cubeAssoc = null;
+		if (seisRegions.size() == 1) {
+			Region seisRegion = seisRegions.get(0).load();
+			GriddedRegion seisGridReg = getGriddedSeisRegion(seisRegion);
+			cubeAssoc = new NSHM23_FaultCubeAssociations(rupSet,
+					new CubedGriddedRegion(seisGridReg),
+					NSHM23_SingleRegionGridSourceProvider.DEFAULT_MAX_FAULT_NUCL_DIST);
+			if (!seisRegion.equalsRegion(region)) {
+				// need to nest it
+				GriddedRegion modelGridReg = getGriddedSeisRegion(region);
+				cubeAssoc = new NSHM23_FaultCubeAssociations(rupSet,
+						new CubedGriddedRegion(modelGridReg), List.of(cubeAssoc));
+			}
+		} else {
+			List<NSHM23_FaultCubeAssociations> regionalAssociations = new ArrayList<>();
+			for (PrimaryRegions seisRegion : seisRegions) {
+				GriddedRegion seisGridReg = getGriddedSeisRegion(seisRegion.load());
+				regionalAssociations.add(new NSHM23_FaultCubeAssociations(rupSet,
+						new CubedGriddedRegion(seisGridReg),
+						NSHM23_SingleRegionGridSourceProvider.DEFAULT_MAX_FAULT_NUCL_DIST));
+			}
+			GriddedRegion modelGridReg = getGriddedSeisRegion(region);
+			cubeAssoc = new NSHM23_FaultCubeAssociations(rupSet,
+					new CubedGriddedRegion(modelGridReg), regionalAssociations);
+		}
+		return cubeAssoc;
 	}
 	
 	public static NSHM23_AbstractGridSourceProvider buildGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
