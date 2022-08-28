@@ -155,6 +155,10 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 		NSHM23_AbstractGridSourceProvider gridProv = NSHM23_InvConfigFactory.buildGridSourceProv(sol, offFaultBranch);
 		
 		sol.addModule(gridProv);
+		sol.getRupSet().addModule(gridProv.getFaultCubeassociations());
+		sol.write(new File("/tmp/ba_with_grid_seis.zip"));
+		
+		sol.addModule(gridProv);
 		ReportPageGen pageGen = new ReportPageGen(sol.getRupSet(), sol, "Solution", new File("/tmp/report"),
 				List.of(new SolMFDPlot(), new NucleationRatePlot()));
 		pageGen.setReplot(true);

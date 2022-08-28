@@ -571,9 +571,12 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		if (!writtenFiles.contains(gridProvFile)) {
 			FileBackedModule.initEntry(zout, null, gridProvFile);
 			BufferedWriter bWrite = new BufferedWriter(new OutputStreamWriter(zout));
+			@SuppressWarnings("resource")
 			JsonWriter writer = new JsonWriter(bWrite);
 			writer.beginObject().name("gridSourceProvider").value(loadingClass.getName()).endObject();
-			writer.close();
+			writer.flush();
+			bWrite.flush();
+			zout.closeEntry();
 			writtenFiles.add(unassociatedFile);
 		}
 	}
