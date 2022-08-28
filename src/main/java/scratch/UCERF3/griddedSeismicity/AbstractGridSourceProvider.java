@@ -91,7 +91,7 @@ public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abst
 	/*
 	 * Applies gardner Knopoff aftershock filter scaling to MFD in place.
 	 */
-	private static void applyGK_AftershockFilter(IncrementalMagFreqDist mfd) {
+	public static void applyGK_AftershockFilter(IncrementalMagFreqDist mfd) {
 		double scale;
 		for (int i=0; i<mfd.size(); i++) {
 			scale = GardnerKnopoffAftershockFilter.scaleForMagnitude(mfd.getX(i));
@@ -128,28 +128,6 @@ public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abst
 					mfd.scale(valuesArray[i]);;
 			}
 		}
-	}
-	
-	@Override
-	public AveragingAccumulator<GridSourceProvider> averagingAccumulator() {
-		return new AveragerImpl();
-	}
-	
-	private static class AveragerImpl extends GridSourceProvider.Averager<GridSourceProvider> {
-
-		@Override
-		public Class<GridSourceProvider> getType() {
-			return GridSourceProvider.class;
-		}
-
-		@Override
-		protected GridSourceProvider buildAverage(GridSourceProvider refGridProv, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
-				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
-				double[] fracReverse) {
-			return new Precomputed(refGridProv.getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
-					fracStrikeSlip, fracNormal, fracReverse);
-		}
-		
 	}
 
 	public static final String ARCHIVE_GRID_REGION_FILE_NAME = "grid_region.geojson";
@@ -202,8 +180,12 @@ public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abst
 		}
 
 		@Override
-		public AveragingAccumulator<GridSourceProvider> averagingAccumulator() {
-			return new AveragerImpl();
+		public GridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
+				double[] fracReverse) {
+			// TODO Auto-generated method stub
+			return new Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
+					fracStrikeSlip, fracNormal, fracReverse);
 		}
 		
 	}

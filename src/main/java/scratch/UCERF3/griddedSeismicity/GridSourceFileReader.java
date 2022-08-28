@@ -404,4 +404,12 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 		fracNormal = gRead.getValues();
 	}
 
+	@Override
+	public GridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+			Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
+			double[] fracReverse) {
+		return new AbstractGridSourceProvider.Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
+				fracStrikeSlip, fracNormal, fracReverse);
+	}
+
 }

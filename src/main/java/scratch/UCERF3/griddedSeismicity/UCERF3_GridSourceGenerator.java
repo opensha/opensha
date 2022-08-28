@@ -12,6 +12,7 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
@@ -359,6 +360,14 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 			fracReverse = new GridReader("ReverseWts.txt").getValues();
 		if (fracNormal == null)
 			fracNormal = new GridReader("NormalWts.txt").getValues();
+	}
+
+	@Override
+	public GridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+			Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
+			double[] fracReverse) {
+		return new AbstractGridSourceProvider.Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
+				fracStrikeSlip, fracNormal, fracReverse);
 	}
 
 }

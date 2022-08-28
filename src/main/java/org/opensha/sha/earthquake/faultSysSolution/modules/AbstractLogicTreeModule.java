@@ -45,6 +45,8 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	private LogicTree<?> logicTree;
 	private List<LogicTreeLevel<?>> levels;
 	private Map<LogicTreeLevel<?>, Integer> levelIndexes;
+	
+	public static final String LOGIC_TREE_FILE_NAME = "logic_tree.json";
 
 	protected AbstractLogicTreeModule(ZipFile zip, String prefix, LogicTree<?> logicTree) {
 		this.zip = zip;
@@ -172,7 +174,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 			throws IOException {
 		System.out.println("Writing full logic tree");
 		// write the logic tree
-		FileBackedModule.initEntry(zout, prefix, "logic_tree.json");
+		FileBackedModule.initEntry(zout, prefix, LOGIC_TREE_FILE_NAME);
 		Gson gson = new GsonBuilder().setPrettyPrinting()
 				.registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
 		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(zout));
@@ -203,7 +205,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		this.prefix = buildPrefix(entryPrefix);
 		
 		// load the logic tree
-		BufferedInputStream logicTreeIS = FileBackedModule.getInputStream(zip, prefix, "logic_tree.json");
+		BufferedInputStream logicTreeIS = FileBackedModule.getInputStream(zip, prefix, LOGIC_TREE_FILE_NAME);
 		Gson gson = new GsonBuilder().registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
 		InputStreamReader reader = new InputStreamReader(logicTreeIS);
 		setLogicTree(gson.fromJson(reader, LogicTree.class));

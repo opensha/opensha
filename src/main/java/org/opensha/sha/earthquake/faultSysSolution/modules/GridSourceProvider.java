@@ -171,6 +171,26 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * @param valuesArray
 	 */
 	public void scaleAllMFDs(double[] valuesArray);
+
+	@Override
+	public default AveragingAccumulator<GridSourceProvider> averagingAccumulator() {
+		return new Averager();
+	}
+	
+	/**
+	 * Creates a new instance of this same type, but with the given data. Used primarily to create new instances when
+	 * branch averaging by {@link Averager}.
+	 * 
+	 * @param nodeSubSeisMFDs
+	 * @param nodeUnassociatedMFDs
+	 * @param fracStrikeSlip
+	 * @param fracNormal
+	 * @param fracReverse
+	 * @return
+	 */
+	public GridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip,
+				double[] fracNormal, double[] fracReverse);
 	
 	/**
 	 * Abstract implementation of a {@link GridSourceProvider} that handles trimming MFDs to a minimum magnitude,
@@ -331,9 +351,9 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 		return mfdOut;
 	}
 	
-	public abstract class Averager<E extends GridSourceProvider> implements AveragingAccumulator<E> {
+	public class Averager implements AveragingAccumulator<GridSourceProvider> {
 		
-		private E refGridProv = null;
+		private GridSourceProvider refGridProv = null;
 		private GriddedRegion gridReg = null;
 		private Map<Integer, IncrementalMagFreqDist> subSeisMFDs = null;
 		private Map<Integer, IncrementalMagFreqDist> unassociatedMFDs = null;
@@ -343,7 +363,7 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 		private double[] fractSS, fractR, fractN;
 
 		@Override
-		public void process(E module, double relWeight) {
+		public void process(GridSourceProvider module, double relWeight) {
 			if (refGridProv == null) {
 				refGridProv = module;
 				gridReg = module.getGriddedRegion();
@@ -367,7 +387,7 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 		}
 
 		@Override
-		public E getAverage() {
+		public GridSourceProvider getAverage() {
 			double scale = 1d/totWeight;
 			for (int i=0; i<fractSS.length; i++) {
 				IncrementalMagFreqDist subSeisMFD = subSeisMFDs.get(i);
@@ -381,15 +401,13 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 				fractN[i] *= scale;
 			}
 			
-//			return new AbstractGridSourceProvider.Precomputed(refGridProv.getGriddedRegion(),
-//					subSeisMFDs, unassociatedMFDs, fractSS, fractN, fractR);
-			return buildAverage(refGridProv, subSeisMFDs, unassociatedMFDs, fractSS, fractN, fractR);
+			return refGridProv.newInstance(subSeisMFDs, unassociatedMFDs, fractSS, fractN, fractR);
 		}
-		
-		protected abstract E buildAverage(E refGridProv,
-				Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
-				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs,
-				double[] fracStrikeSlip, double[] fracNormal, double[] fracReverse);
+
+		@Override
+		public Class<GridSourceProvider> getType() {
+			return GridSourceProvider.class;
+		}
 	}
 	
 	public static void addWeighted(Map<Integer, IncrementalMagFreqDist> mfdMap, int index,
@@ -402,16 +420,25 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 			runningMFD = new IncrementalMagFreqDist(newMFD.getMinX(), newMFD.size(), newMFD.getDelta());
 			mfdMap.put(index, runningMFD);
 		}
-		addWeighted(runningMFD, newMFD, weight);
+		IncrementalMagFreqDist ret = addWeighted(runningMFD, newMFD, weight);
+		if (ret != runningMFD)
+			// we grew it
+			mfdMap.put(index, ret);
 	}
 	
-	public static void addWeighted(IncrementalMagFreqDist runningMFD,
+	public static IncrementalMagFreqDist addWeighted(IncrementalMagFreqDist runningMFD,
 			IncrementalMagFreqDist newMFD, double weight) {
-		Preconditions.checkState(runningMFD.size() == newMFD.size(), "MFD sizes inconsistent");
 		Preconditions.checkState((float)runningMFD.getMinX() == (float)newMFD.getMinX(), "MFD min x inconsistent");
 		Preconditions.checkState((float)runningMFD.getDelta() == (float)newMFD.getDelta(), "MFD delta inconsistent");
+		if (runningMFD.size() < newMFD.size()) {
+			IncrementalMagFreqDist ret = new IncrementalMagFreqDist(newMFD.getMinX(), newMFD.size(), newMFD.getDelta());
+			for (int i=0; i<runningMFD.size(); i++)
+				ret.set(i, runningMFD.getY(i));
+			runningMFD = ret;
+		}
 		for (int i=0; i<runningMFD.size(); i++)
 			runningMFD.add(i, newMFD.getY(i)*weight);
+		return runningMFD;
 	}
 	
 	public static final String ARCHIVE_GRID_REGION_FILE_NAME = "grid_region.geojson";
@@ -673,7 +700,7 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 			init(region, subSeisCSV, nodeUnassociatedCSV, mechCSV);
 		}
 		
-		private void init(GriddedRegion region, CSVFile<String> subSeisCSV,
+		public void init(GriddedRegion region, CSVFile<String> subSeisCSV,
 				CSVFile<String> unassociatedCSV, CSVFile<String> mechCSV) {
 			this.region = region;
 			Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = csvToMFDs(region, subSeisCSV);
@@ -761,6 +788,67 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 						mfd.scale(valuesArray[i]);;
 				}
 			}
+		}
+		
+	}
+	
+	/**
+	 * Default GridSourceProvider instance that will be loaded if no implementation is specifies. Currently defaults
+	 * to UCERF3 grid source treatment, but that is subject to change (will likely when NSHM23 is released).
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public static class Default extends AbstractPrecomputed {
+		
+		private Default() {
+			super(AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF);
+		}
+		
+		public Default(GridSourceProvider prov) {
+			super(prov, AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF);
+		}
+
+		public Default(GriddedRegion region, CSVFile<String> subSeisCSV, CSVFile<String> unassociatedCSV,
+				CSVFile<String> mechCSV) {
+			super(region, subSeisCSV, unassociatedCSV, mechCSV, AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF);
+		}
+
+		public Default(GriddedRegion region, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
+				double[] fracReverse) {
+			super(region, nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse,
+					AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF);
+		}
+
+		@Override
+		public String getName() {
+			return "Precomputed UCERF3 Grid Source Provider";
+		}
+
+		@Override
+		public void applyAftershockFilter(IncrementalMagFreqDist mfd) {
+			AbstractGridSourceProvider.applyGK_AftershockFilter(mfd);
+		}
+
+		@Override
+		protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
+				BackgroundRupType bgRupType) {
+			Location loc = getGriddedRegion().locationForIndex(gridIndex);
+			
+			double fracStrikeSlip = getFracStrikeSlip(gridIndex);
+			double fracNormal = getFracNormal(gridIndex);
+			double fracReverse = getFracReverse(gridIndex);
+
+			return AbstractGridSourceProvider.buildSource(
+					mfd, duration, bgRupType, loc, fracStrikeSlip, fracNormal, fracReverse);
+		}
+
+		@Override
+		public GridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
+				double[] fracReverse) {
+			return new Default(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse);
 		}
 		
 	}

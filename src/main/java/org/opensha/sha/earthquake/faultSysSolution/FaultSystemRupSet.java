@@ -291,14 +291,14 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					+": CSV file giving the annual rate of occurence for each rupture\n"));
 			if (solution.hasAvailableModule(GridSourceProvider.class)) {
 				readme.write("This solution has optional gridded seismicity information. Files related to that are:\n");
-				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, AbstractGridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME
+				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME
 						+": GeoJSON file giving the location of each gridded seismicity node\n"));
-				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, AbstractGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME
+				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME
 						+": CSV file giving the relative weights of each gridded seismicity focal mechanism at each grid node\n"));
-				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, AbstractGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
+				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
 						+": CSV file giving the magnitude-frequency distribution of sub-seismogenic ruptures at each gridded "
 						+ "seismicity node that are associated with at least one fault\n"));
-				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, AbstractGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
+				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
 						+": CSV file giving the magnitude-frequency distribution of off-fault ruptures at each gridded "
 						+ "seismicity node (those that are not associated with at any fault)\n"));
 			}

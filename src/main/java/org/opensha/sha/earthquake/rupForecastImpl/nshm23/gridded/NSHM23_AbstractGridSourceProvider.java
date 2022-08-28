@@ -49,11 +49,6 @@ public abstract class NSHM23_AbstractGridSourceProvider extends Abstract impleme
 	public abstract NSHM23_FaultCubeAssociations getFaultCubeassociations();
 
 	@Override
-	public AveragingAccumulator<GridSourceProvider> averagingAccumulator() {
-		return new AveragerImpl();
-	}
-
-	@Override
 	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
 		new Precomputed(this).writeToArchive(zout, entryPrefix);
 	}
@@ -120,26 +115,17 @@ public abstract class NSHM23_AbstractGridSourceProvider extends Abstract impleme
 			throw new IllegalStateException("Unknown Background Rup Type: "+bgRupType);
 		}
 	}
+
+	@Override
+	public GridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+			Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
+			double[] fracReverse) {
+		return new Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
+				fracStrikeSlip, fracNormal, fracReverse);
+	}
 	
 	private static void doApplyAftershockFilter(IncrementalMagFreqDist mfd) {
 		// TODO do we apply G-K? do we throw an exception? do nothing?
-	}
-	
-	private static class AveragerImpl extends GridSourceProvider.Averager<GridSourceProvider> {
-
-		@Override
-		public Class<GridSourceProvider> getType() {
-			return GridSourceProvider.class;
-		}
-
-		@Override
-		protected GridSourceProvider buildAverage(GridSourceProvider refGridProv, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
-				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
-				double[] fracReverse) {
-			return new Precomputed(refGridProv.getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
-					fracStrikeSlip, fracNormal, fracReverse);
-		}
-		
 	}
 	
 	public static class Precomputed extends AbstractPrecomputed {
@@ -172,11 +158,6 @@ public abstract class NSHM23_AbstractGridSourceProvider extends Abstract impleme
 		}
 
 		@Override
-		public AveragingAccumulator<GridSourceProvider> averagingAccumulator() {
-			return new AveragerImpl();
-		}
-
-		@Override
 		public void applyAftershockFilter(IncrementalMagFreqDist mfd) {
 			doApplyAftershockFilter(mfd);
 		}
@@ -191,6 +172,14 @@ public abstract class NSHM23_AbstractGridSourceProvider extends Abstract impleme
 			double fracReverse = getFracReverse(gridIndex);
 
 			return NSHM23_AbstractGridSourceProvider.buildSource(mfd, duration, bgRupType, loc, fracStrikeSlip, fracNormal, fracReverse);
+		}
+
+		@Override
+		public GridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
+				double[] fracReverse) {
+			return new Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
+					fracStrikeSlip, fracNormal, fracReverse);
 		}
 		
 	}

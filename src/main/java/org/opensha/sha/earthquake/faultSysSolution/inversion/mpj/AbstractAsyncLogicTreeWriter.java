@@ -60,7 +60,6 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 
 	@Override
 	protected void batchProcessedAsync(int[] batch, int processIndex) {
-		// TODO Auto-generated method stub
 		memoryDebug("AsyncLogicTree: beginning async call with batch size "
 				+batch.length+" from "+processIndex+": "+getCountsString());
 		

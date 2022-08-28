@@ -29,7 +29,6 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
-import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -38,7 +37,6 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
 /**
@@ -258,10 +256,10 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		if (archive != null && zip.getEntry(entryPrefix+"modules.json") == null) {
 			// we're missing an index, see if any common modules are present that we can manually load
 			
-			if (zip.getEntry(entryPrefix+AbstractGridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME) != null) {
+			if (zip.getEntry(entryPrefix+GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME) != null) {
 				try {
 					System.out.println("Trying to load unlisted GridSourceProvider module");
-					archive.loadUnlistedModule(AbstractGridSourceProvider.Precomputed.class, entryPrefix, this);
+					archive.loadUnlistedModule(GridSourceProvider.Default.class, entryPrefix, this);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
