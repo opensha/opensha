@@ -314,11 +314,16 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 				initSolTree(branches.get(0));
 			waitUntilWriting();
 			Enumeration<? extends ZipEntry> entries = zip.entries();
+			
+			String processorName = solTree.getSubDirectoryName()+"/"+PROCESSOR_FILE_NAME;
+			String treeName = solTree.getSubDirectoryName()+"/"+PROCESSOR_FILE_NAME;
+			String modulesName = ModuleArchive.MODULE_FILE_NAME;
 			while (entries.hasMoreElements()) {
 				ZipEntry entry = entries.nextElement();
 				
 				String name = entry.getName();
-				if (!writtenFiles.contains(name) && !name.equals(PROCESSOR_FILE_NAME) && !name.equals(LOGIC_TREE_FILE_NAME)) {
+				if (!writtenFiles.contains(name) && !name.equals(processorName)
+						&& !name.equals(treeName) && !name.endsWith(modulesName)) {
 					// need to copy this over
 					System.out.println("Copying over file from previous archive: "+entry.getName());
 					zout.putNextEntry(new ZipEntry(entry.getName()));
