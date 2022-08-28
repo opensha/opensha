@@ -2,23 +2,16 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded;
 
 import java.awt.geom.Area;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
-import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.BorderType;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
-import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.PrimaryRegions;
 
 import com.google.common.base.Preconditions;
-
-import scratch.UCERF3.utils.RELM_RegionUtils;
 
 /**
  * This class represents a 3D geographic volume discretized into "cubes" (default size is about 2 by 2 by 2 km).  It does so by
@@ -187,68 +180,6 @@ public class CubedGriddedRegion {
 	public int getRegionIndexForCubeIndex(int cubeIndex) {
 		Location cubeLoc = getCubeLocationForIndex(cubeIndex);
 		int ret = griddedRegionModified.indexForLocation(cubeLoc);
-//		if (ret < 0) {
-//			
-//			// TODO: would rather do this better, revisit
-//			// recover from a (literal) edge case.
-//			// this can happen if the "modified" region creation failed
-//			// just revert to the closest cube
-////			System.out.println("Recovering from edge case. CubeLoc: "+cubeLoc);
-//			Integer recoveredIndex = recoveredIndexes.get(cubeIndex);
-//			if (recoveredIndex != null)
-//				return recoveredIndex;
-//			int latIndex = griddedRegion.getLatIndex(cubeLoc);
-//			if (latIndex < 0) {
-//				if (Math.abs(cubeLoc.getLatitude() - griddedRegion.getMinLat()) < Math.abs(cubeLoc.getLatitude() - griddedRegion.getMaxLat()))
-//					// closer to minimum
-//					latIndex = 0;
-//				else
-//					// closer to maximum
-//					latIndex = griddedRegion.getNumLatNodes()-1;
-//			}
-//			int lonIndex = griddedRegion.getLonIndex(cubeLoc);
-//			if (lonIndex < 0) {
-//				if (Math.abs(cubeLoc.getLongitude() - griddedRegion.getMinLon()) < Math.abs(cubeLoc.getLongitude() - griddedRegion.getMaxLon()))
-//					// closer to minimum
-//					lonIndex = 0;
-//				else
-//					// closer to maximum
-//					lonIndex = griddedRegion.getNumLonNodes()-1;
-//			}
-//			double closestDist = Double.POSITIVE_INFINITY;
-//			Location closestLoc = null;
-//			int closestIndex = -1;
-//			int origRegNum = griddedRegion.getNodeCount();
-//			for (int i = 0; i < origRegNum; i++) {
-//				Location loc = griddedRegion.getLocation(i);
-//				int oLatIndex = griddedRegion.getLatIndex(loc);
-//				int oLonIndex = griddedRegion.getLonIndex(loc);
-//				int deltaLatIndex = latIndex - oLatIndex;
-//				int deltaLonIndex = lonIndex - oLonIndex;
-//				// see if it's worth doing the (expensive) distance calculation
-//				if ((deltaLatIndex >= -3 && deltaLatIndex <= 3) && (deltaLonIndex >= -3 && deltaLonIndex <= 3)) {
-////					double dist = LocationUtils.horzDistanceFast(cubeLoc, loc);
-//					double lonDiff = loc.getLongitude() - cubeLoc.getLongitude();
-//					double latDiff = loc.getLatitude() - cubeLoc.getLatitude();
-//					double dist = lonDiff*lonDiff + latDiff*latDiff;
-//					if (dist < closestDist) {
-//						closestDist = dist;
-//						closestLoc = loc;
-//						closestIndex = i;
-//					}
-//				}
-//			}
-//			closestDist = Math.sqrt(closestDist);
-////			System.out.println("Closest original location is "+(float)closestDist+" degrees away: "+closestLoc);
-//			Preconditions.checkState(closestIndex >= 0, "Couldn't recover from a cube-to-region index mismatch");
-//			Preconditions.checkState(closestDist < 2d*griddedRegion.getSpacing(),
-//					"Recovered location is too far away: %s -> %s is %s degrees",
-//					cubeLoc, closestLoc, closestDist);
-//			ret = closestIndex;
-//			synchronized (recoveredIndexes) {
-//				recoveredIndexes.putIfAbsent(cubeIndex, ret);
-//			}
-//		}
 		return ret;
 	}
 	
