@@ -1,5 +1,6 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -13,6 +14,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.ZipFile;
+import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.geo.BorderType;
 import org.opensha.commons.geo.GriddedRegion;
@@ -22,6 +25,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
@@ -41,7 +45,7 @@ import com.google.common.collect.ImmutableTable;
  * @author kevin
  *
  */
-public class NSHM23_FaultCubeAssociations implements FaultGridAssociations {
+public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, ArchivableModule {
 	
 	private static final boolean D = false;
 	
@@ -139,6 +143,8 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations {
 				totDistWtsAtCubesForSectArray[s] += regional.totDistWtsAtCubesForSectArray[s];
 		
 		this.regionalAssociations = regionalAssociations;
+		
+		aggregateToGridNodes();
 	}
 	
 	private void aggregateToGridNodes() {
@@ -514,6 +520,21 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations {
 	 */
 	public List<NSHM23_FaultCubeAssociations> getRegionalAssociations() {
 		return regionalAssociations;
+	}
+
+	@Override
+	public Class<? extends ArchivableModule> getLoadingClass() {
+		return FaultGridAssociations.Precomputed.class;
+	}
+
+	@Override
+	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+		new FaultGridAssociations.Precomputed(this).writeToArchive(zout, entryPrefix);
+	}
+
+	@Override
+	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		throw new IllegalStateException("Should be serialized back in as Precomputed");
 	}
 
 }
