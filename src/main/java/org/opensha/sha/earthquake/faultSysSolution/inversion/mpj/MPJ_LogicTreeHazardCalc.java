@@ -23,9 +23,12 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeLevel;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
@@ -135,7 +138,13 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		if (rank == 0) {
 			waitOnDir(outputDir, 5, 1000);
 			
-			postBatchHook = new AsyncHazardWriter();
+			File outputFile;
+			if (cmd.hasOption("output-file"))
+				outputFile = new File(cmd.getOptionValue("output-file"));
+			else
+				outputFile = new File(outputDir.getParentFile(), "results_hazard.zip");
+			
+			postBatchHook = new AsyncHazardWriter(outputFile);
 		}
 	}
 	
@@ -147,10 +156,10 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		private File workingFile;
 		private File destFile;
 		
-		public AsyncHazardWriter() throws FileNotFoundException {
+		public AsyncHazardWriter(File destFile) throws FileNotFoundException {
 			super(1);
-			destFile = new File(outputDir.getParentFile(), "results_hazard.zip");
-			workingFile = new File(outputDir.getParentFile(), "results_hazard.zip.tmp");
+			this.destFile = destFile;
+			workingFile = new File(destFile.getAbsolutePath()+".tmp");
 			zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(workingFile)));
 		}
 
@@ -316,28 +325,66 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			
 			File runDir = getSolDir(branch);
 			
+			String curvesPrefix = "curves_grid_seis_"+gridSeisOp.name();
+			
 			SolHazardMapCalc calc = null;
 			if (runDir.exists()) {
 				// see if it's already done
 				try {
-					calc = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, runDir, "curves");
+					calc = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, runDir, curvesPrefix);
 				} catch (Exception e) {}
 			}
+			SolHazardMapCalc excludeCurves = null;
+			if (calc == null && gridSeisOp == IncludeBackgroundOption.INCLUDE) {
+				// we're calculating with gridded seismicity
+				// lets see if we've already calculated without it
+				String excludePrefix = "curves_grid_seis_"+IncludeBackgroundOption.EXCLUDE;
+				try {
+					excludeCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, runDir, excludePrefix);
+				} catch (Exception e) {}
+				if (excludeCurves == null) {
+					// see if this is a gridded seismicity branch, but it exists already in an upstream branch
+					List<LogicTreeLevel<? extends LogicTreeNode>> faultLevels = new ArrayList<>();
+					List<LogicTreeNode> faultNodes = new ArrayList<>();
+					for (int i=0; i<branch.size(); i++) {
+						LogicTreeLevel<?> level = branch.getLevel(i);
+						if (level.affects(FaultSystemSolution.RATES_FILE_NAME, true)) {
+							faultLevels.add(level);
+							faultNodes.add(branch.getValue(i));
+						}
+					}
+					if (faultLevels.size() < branch.size()) {
+						// we have gridded seismicity branches
+						LogicTreeBranch<LogicTreeNode> subBranch = new LogicTreeBranch<>(faultLevels, faultNodes);
+						File subRunDir = getSolDir(subBranch);
+						if (subRunDir.exists()) {
+							try {
+								excludeCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, subRunDir, excludePrefix);
+							} catch (Exception e) {}
+						}
+					}
+				}
+			}
+			
 			if (calc == null) {
 				Supplier<ScalarIMR> gmpeSupplier = getGMM_Supplier(branch);
 				ScalarIMR gmpe = gmpeSupplier.get();
 				String paramStr = "";
 				for (Parameter<?> param : gmpe.getOtherParams())
 					paramStr += "; "+param.getName()+": "+param.getValue();
-				debug("Calculating hazard curve for "+index
+				debug("Calculating hazard curves for "+index
 						+"\n\tBranch: "+branch
 						+"\n\tGMPE: "+gmpe.getName()+paramStr);
-				calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, gridSeisOp, periods);
+				if (excludeCurves == null)
+					calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, gridSeisOp, periods);
+				else
+					// calculate with only gridded seismicity, we'll add in the curves excluding it
+					calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, IncludeBackgroundOption.ONLY, periods);
 				calc.setMaxSourceSiteDist(maxDistance);
 				calc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
 				
-				calc.calcHazardCurves(getNumThreads());
-				calc.writeCurvesCSVs(runDir, "curves", true);
+				calc.calcHazardCurves(getNumThreads(), excludeCurves);
+				calc.writeCurvesCSVs(runDir, curvesPrefix, true);
 			}
 			
 			for (ReturnPeriods rp : rps) {
@@ -357,6 +404,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
+		ops.addOption("of", "output-file", true, "Path to output zip file. Default will be based on the output directory");
 		ops.addOption("sp", "grid-spacing", true, "Grid spacing in decimal degrees. Default: "+(float)GRID_SPACING_DEFAULT);
 		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default: "+(float)MAX_DIST_DEFAULT);
 		ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "

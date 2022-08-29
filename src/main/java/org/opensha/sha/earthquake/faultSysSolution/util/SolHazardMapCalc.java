@@ -208,15 +208,19 @@ public class SolHazardMapCalc {
 	}
 	
 	public void calcHazardCurves(int numThreads) {
+		calcHazardCurves(numThreads, null);
+	}
+	
+	public void calcHazardCurves(int numThreads, SolHazardMapCalc combineWith) {
 		int numSites = region.getNodeCount();
 		List<Integer> calcIndexes = new ArrayList<>();
 		for (int i=0; i<numSites; i++)
 			calcIndexes.add(i);
 		
-		calcHazardCurves(numThreads, calcIndexes);
+		calcHazardCurves(numThreads, calcIndexes, combineWith);
 	}
 	
-	void calcHazardCurves(int numThreads, List<Integer> calcIndexes) {
+	void calcHazardCurves(int numThreads, List<Integer> calcIndexes, SolHazardMapCalc combineWith) {
 		synchronized (this) {
 			if (curvesList == null) {
 				List<DiscretizedFunc[]> curvesList = new ArrayList<>();
@@ -231,7 +235,7 @@ public class SolHazardMapCalc {
 		List<CalcThread> threads = new ArrayList<>();
 		CalcTracker track = new CalcTracker(calcIndexes.size());
 		for (int i=0; i<numThreads; i++) {
-			CalcThread thread = new CalcThread(deque, fssERF, track);
+			CalcThread thread = new CalcThread(deque, fssERF, track, combineWith);
 			thread.start();
 			threads.add(thread);
 		}
@@ -281,10 +285,13 @@ public class SolHazardMapCalc {
 		private int numFaultSysSources;
 		private GriddedRegion gridSourceReg;
 		private CalcTracker track;
+		private SolHazardMapCalc combineWith;
 		
-		public CalcThread(ConcurrentLinkedDeque<Integer> calcIndexes, FaultSystemSolutionERF erf, CalcTracker track) {
+		public CalcThread(ConcurrentLinkedDeque<Integer> calcIndexes, FaultSystemSolutionERF erf,
+				CalcTracker track, SolHazardMapCalc combineWith) {
 			this.calcIndexes = calcIndexes;
 			this.track = track;
+			this.combineWith = combineWith;
 			this.numFaultSysSources = erf.getNumFaultSystemSources();
 			IncludeBackgroundOption bgOption = (IncludeBackgroundOption) erf.getParameter(IncludeBackgroundParam.NAME).getValue();
 			if (bgOption == IncludeBackgroundOption.INCLUDE || bgOption == IncludeBackgroundOption.ONLY)
@@ -336,7 +343,7 @@ public class SolHazardMapCalc {
 					}
 				}
 				
-				List<DiscretizedFunc> curves = calcSiteCurves(calc, erf, gmpe, site);
+				List<DiscretizedFunc> curves = calcSiteCurves(calc, erf, gmpe, site, combineWith, index);
 				
 				for (int p=0; p<periods.length; p++)
 					curvesList.get(p)[index] = curves.get(p);
@@ -346,9 +353,11 @@ public class SolHazardMapCalc {
 		}
 	}
 	
-	private List<DiscretizedFunc> calcSiteCurves(HazardCurveCalculator calc, AbstractERF erf, ScalarIMR gmpe, Site site) {
+	private List<DiscretizedFunc> calcSiteCurves(HazardCurveCalculator calc, AbstractERF erf, ScalarIMR gmpe, Site site,
+			SolHazardMapCalc combineWith, int index) {
 		checkInitXVals();
 		List<DiscretizedFunc> ret = new ArrayList<>(periods.length);
+		
 		for (int p=0; p<periods.length; p++) {
 			if (periods[p] == -1d) {
 				gmpe.setIntensityMeasure(PGV_Param.NAME);
@@ -364,6 +373,25 @@ public class SolHazardMapCalc {
 			DiscretizedFunc curve = xVals[p].deepClone();
 			for (int i=0; i<curve.size(); i++)
 				curve.set(i, logCurve.getY(i));
+			
+			if (combineWith != null) {
+				DiscretizedFunc oCurve = combineWith.curvesList.get(p)[index];
+				Preconditions.checkNotNull(oCurve, "CombineWith curve is null for period=%s, index=%s",
+						(Double)periods[p], (Integer)index);
+				Preconditions.checkState(oCurve.size() == curve.size());
+				for (int i=0; i<curve.size(); i++) {
+					Point2D pt1 = curve.get(i);
+					Point2D pt2 = oCurve.get(i);
+					Preconditions.checkState((float)pt1.getX() == (float)pt2.getX());
+					if (pt2.getY() > 0) {
+						if (pt1.getY() == 0)
+							curve.set(i, pt2.getY());
+						else
+							curve.set(i, 1d - (1d - pt1.getY())*(1d - pt2.getY()));
+					}
+				}
+			}
+			
 			ret.add(curve);
 		}
 		return ret;
