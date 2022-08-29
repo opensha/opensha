@@ -115,6 +115,18 @@ public class PoliticalBoundariesData {
 		return caOutlines;
 	}
 	
+	public synchronized static XY_DataSet[] loadUSState(String stateName) throws IOException {
+		initUSOutlines();
+		String origName = stateName;
+		stateName = stateName.trim().toLowerCase().replace(" ", "").replace("_", "");
+		for (String state : usOutlines.keySet()) {
+			String modState = state.trim().toLowerCase().replace(" ", "").replace("_", "");
+			if (modState.equals(stateName))
+				return usOutlines.get(state);
+		}
+		throw new IllegalStateException("No political boundaries data found for "+origName);
+	}
+	
 	private synchronized static void initUSOutlines() throws IOException {
 		if (usOutlines == null) {
 			Map<String, XY_DataSet[]> usData = loadOutlinesFile(
@@ -234,7 +246,10 @@ public class PoliticalBoundariesData {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		initUSOutlines();
+//		initUSOutlines();
+		String stateName = "New Mexico";
+		XY_DataSet[] outlines = loadUSState(stateName);
+		System.out.println("Loaded "+outlines.length+" outlines for "+stateName);
 	}
 
 }
