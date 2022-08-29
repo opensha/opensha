@@ -42,6 +42,10 @@ public enum NSHM23_SingleStates implements LogicTreeNode {
 		this.stateName = stateName;
 	}
 	
+	public String getStateName() {
+		return stateName;
+	}
+	
 	@Override
 	public String getShortName() {
 		return "Only"+name();

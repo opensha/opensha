@@ -200,7 +200,7 @@ public class NSHM23_WasatchSegmentationData {
 		Region region = new Region(new Location(latTrack.getMin()-1d, lonTrack.getMin()-1d),
 				new Location(latTrack.getMax()+1d, lonTrack.getMax()+1d));
 		
-		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.NSHM23_v1p4);
+		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.NSHM23_v2);
 		
 		Map<WasatchSegLocation, IDPairing> mappings = mapToParentSects(datas, subSects, true);
 		

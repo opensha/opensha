@@ -1,5 +1,6 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 
+import java.awt.geom.Point2D;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -7,8 +8,6 @@ import java.io.Reader;
 import java.lang.reflect.Type;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -16,13 +15,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
+import org.opensha.commons.geo.BorderType;
+import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
@@ -37,7 +40,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBVa
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.PrimaryRegions;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -140,12 +142,35 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 	public static ModelRegion getDefaultRegion(LogicTreeBranch<?> branch) throws IOException {
 		if (branch != null && branch.hasValue(NSHM23_SingleStates.class)) {
 			NSHM23_SingleStates state = branch.getValue(NSHM23_SingleStates.class);
-			if (state == NSHM23_SingleStates.CA)
+			if (state == NSHM23_SingleStates.CA) {
 				return new ModelRegion(PrimaryRegions.CONUS_U3_RELM.load());
-			else if (state == null)
+			} else if (state == null) {
 				return new ModelRegion(NSHM23_RegionLoader.LoadFullConterminousWUS());
-			// else no model region specified, don't return anything
-			return null;
+			} else {
+				XY_DataSet[] outlines = PoliticalBoundariesData.loadUSState(state.getStateName());
+				Region[] regions = new Region[outlines.length];
+				for (int i=0; i<outlines.length; i++) {
+					XY_DataSet outline = outlines[i];
+					LocationList border = new LocationList();
+					for (Point2D pt : outline)
+						border.add(new Location(pt.getY(), pt.getX()));
+					regions[i] = new Region(border, BorderType.MERCATOR_LINEAR);
+				}
+				Region largest = null;
+				if (outlines.length == 1) {
+					largest = regions[0];
+				} else {
+					double largestArea = 0;
+					for (Region region : regions) {
+						double area = region.getExtent();
+						if (area > largestArea) {
+							largestArea = area;
+							largest = region;
+						}
+					}
+				}
+				return new ModelRegion(largest);
+			}
 		} else {
 			// no single state, full WUS
 			return new ModelRegion(NSHM23_RegionLoader.LoadFullConterminousWUS());
@@ -156,28 +181,13 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 	public void attachDefaultModules(FaultSystemRupSet rupSet) {
 		LogicTreeBranch<?> branch = rupSet.getModule(LogicTreeBranch.class);
 		
-		if (branch != null && branch.hasValue(NSHM23_SingleStates.class)) {
-			NSHM23_SingleStates state = branch.getValue(NSHM23_SingleStates.class);
-			if (state == null || state == NSHM23_SingleStates.CA) {
-				rupSet.addAvailableModule(new Callable<ModelRegion>() {
+		rupSet.addAvailableModule(new Callable<ModelRegion>() {
 
-					@Override
-					public ModelRegion call() throws Exception {
-						return getDefaultRegion(branch);
-					}
-				}, ModelRegion.class);
+			@Override
+			public ModelRegion call() throws Exception {
+				return getDefaultRegion(branch);
 			}
-			// else no model region specified
-		} else {
-			// no single state, full WUS
-			rupSet.addAvailableModule(new Callable<ModelRegion>() {
-
-				@Override
-				public ModelRegion call() throws Exception {
-					return getDefaultRegion(branch);
-				}
-			}, ModelRegion.class);
-		}
+		}, ModelRegion.class);
 		rupSet.addAvailableModule(new Callable<NamedFaults>() {
 
 			@Override
