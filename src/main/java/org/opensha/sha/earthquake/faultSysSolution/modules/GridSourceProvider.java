@@ -436,7 +436,7 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 				ret.set(i, runningMFD.getY(i));
 			runningMFD = ret;
 		}
-		for (int i=0; i<runningMFD.size(); i++)
+		for (int i=0; i<newMFD.size(); i++)
 			runningMFD.add(i, newMFD.getY(i)*weight);
 		return runningMFD;
 	}
