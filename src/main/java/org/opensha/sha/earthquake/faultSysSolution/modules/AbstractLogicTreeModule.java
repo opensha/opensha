@@ -62,9 +62,14 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	protected abstract String getSubDirectoryName();
 	
 	protected List<? extends LogicTreeLevel<?>> getLevelsAffectingFile(String fileName, boolean affectedByDefault) {
+		return getLevelsAffectingFile(fileName, affectedByDefault, this.levels);
+	}
+	
+	public static List<? extends LogicTreeLevel<?>> getLevelsAffectingFile(String fileName, boolean affectedByDefault,
+			List<LogicTreeLevel<?>> branchLevels) {
 		List<LogicTreeLevel<?>> levels = new ArrayList<>();
 //		System.out.println("levels affecting "+fileName);
-		for (LogicTreeLevel<?> level : this.levels) {
+		for (LogicTreeLevel<?> level : branchLevels) {
 //			System.out.println(level);
 			if (level.affects(fileName, affectedByDefault)) {
 				levels.add(level);

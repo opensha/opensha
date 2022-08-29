@@ -117,7 +117,7 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		}
 	}
 	
-	protected static String getBA_prefix(LogicTreeBranch<?> branch) {
+	public static String getBA_prefix(LogicTreeBranch<?> branch) {
 		String baPrefix = null;
 		boolean allAffect = true;
 		for (int i=0; i<branch.size(); i++) {

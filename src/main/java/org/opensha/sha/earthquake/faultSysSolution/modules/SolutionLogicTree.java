@@ -62,6 +62,7 @@ import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
  */
 public class SolutionLogicTree extends AbstractLogicTreeModule {
 	
+	public static final String SUB_DIRECTORY_NAME = "solution_logic_tree";
 	private boolean serializeGridded = true;
 	private SolutionProcessor processor;
 	
@@ -408,7 +409,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 
 	@Override
 	protected String getSubDirectoryName() {
-		return "solution_logic_tree";
+		return SUB_DIRECTORY_NAME;
 	}
 	
 	public void setSerializeGridded(boolean serializeGridded) {
