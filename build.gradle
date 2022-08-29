@@ -86,6 +86,7 @@ dependencies {
     api 'commons-cli:commons-cli:1.4'
     api 'commons-io:commons-io:2.5'
     api 'org.apache.commons:commons-math3:3.6.1'
+    api 'org.apache.commons:commons-compress:1.15'
     
     /* Atlassan commonmark - Markdown utilities */
     api 'com.atlassian.commonmark:commonmark:0.10.0'
