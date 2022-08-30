@@ -823,7 +823,7 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 
 		@Override
 		public String getName() {
-			return "Precomputed UCERF3 Grid Source Provider";
+			return "Precomputed Default Grid Source Provider";
 		}
 
 		@Override

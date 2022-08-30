@@ -6,6 +6,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
@@ -513,7 +514,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		}
 	}
 	
-	private static final String GRID_PROV_INSTANCE_FILE_NAME = "grid_provider_instance.json";
+	public static final String GRID_PROV_INSTANCE_FILE_NAME = "grid_provider_instance.json";
 
 	public void writeGridProvToArchive(GridSourceProvider prov, ZipOutputStream zout, String prefix,
 			LogicTreeBranch<?> branch, HashSet<String> writtenFiles) throws IOException {
@@ -571,15 +572,27 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 				GRID_PROV_INSTANCE_FILE_NAME, mappingLevels);
 		if (!writtenFiles.contains(gridProvFile)) {
 			FileBackedModule.initEntry(zout, null, gridProvFile);
-			BufferedWriter bWrite = new BufferedWriter(new OutputStreamWriter(zout));
-			@SuppressWarnings("resource")
-			JsonWriter writer = new JsonWriter(bWrite);
-			writer.beginObject().name("gridSourceProvider").value(loadingClass.getName()).endObject();
-			writer.flush();
-			bWrite.flush();
+			writeGridSourceProvInstanceFile(zout, loadingClass);
 			zout.closeEntry();
 			writtenFiles.add(unassociatedFile);
 		}
+	}
+	
+	/**
+	 * Writes a grid source provider instance JSON file to the given output stream, which is probably a zip outputstream,
+	 * in which case it should have the entry already created.
+	 * 
+	 * @param out
+	 * @param loadingClass
+	 * @throws IOException
+	 */
+	public static void writeGridSourceProvInstanceFile(OutputStream out, Class<? extends ArchivableModule> loadingClass) throws IOException {
+		BufferedWriter bWrite = new BufferedWriter(new OutputStreamWriter(out));
+		@SuppressWarnings("resource")
+		JsonWriter writer = new JsonWriter(bWrite);
+		writer.beginObject().name("gridSourceProvider").value(loadingClass.getName()).endObject();
+		writer.flush();
+		bWrite.flush();
 	}
 	
 	// cache files
