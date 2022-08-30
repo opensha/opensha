@@ -28,6 +28,7 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
@@ -55,6 +56,8 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 	private File solsDir;
 	
 	private LogicTree<?> gridSeisOnlyTree;
+	
+	private boolean averageOnly = false;
 	
 	private Region region;
 	
@@ -91,6 +94,8 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		if (threads > 1)
 			exec = Executors.newFixedThreadPool(threads);
 		
+		averageOnly = cmd.hasOption("average-only");
+		
 		if (rank == 0)
 			this.postBatchHook = new AsyncGridSeisCopier();
 	}
@@ -106,8 +111,8 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		private File avgOutputFile;
 		
 		// this apache commons zip alternative allows copying files from one zip to another without de/recompressing
-		private ZipArchiveOutputStream out;
-		private ZipArchiveOutputStream outAvgGridSeis;
+		private ZipArchiveOutputStream fullZipOut;
+		private ZipArchiveOutputStream avgZipOut;
 		
 		private CompletableFuture<Void> origZipCopyFuture;
 		
@@ -130,12 +135,14 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		public AsyncGridSeisCopier() throws IOException {
 			super(1);
 			
-			outputFile = new File(solsDir.getParentFile(), solsDir.getName()+"_full_gridded.zip");
-			workingOutputFile = new File(outputFile.getAbsolutePath()+".tmp");
-			out = new ZipArchiveOutputStream(workingOutputFile);
+			if (!averageOnly) {
+				outputFile = new File(solsDir.getParentFile(), solsDir.getName()+"_full_gridded.zip");
+				workingOutputFile = new File(outputFile.getAbsolutePath()+".tmp");
+				fullZipOut = new ZipArchiveOutputStream(workingOutputFile);
+			}
 			avgOutputFile = new File(solsDir.getParentFile(), solsDir.getName()+"_avg_gridded.zip");
 			workingAvgOutputFile = new File(avgOutputFile.getAbsolutePath()+".tmp");
-			outAvgGridSeis = new ZipArchiveOutputStream(workingAvgOutputFile);
+			avgZipOut = new ZipArchiveOutputStream(workingAvgOutputFile);
 			
 			// this figure will signal that we're done copying and we can start adding grid source providers
 			origZipCopyFuture = CompletableFuture.runAsync(new Runnable() {
@@ -143,8 +150,9 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				@Override
 				public void run() {
 					try {
-						origResultsZipCopy(out, new File(solsDir.getParentFile(), solsDir.getName()+".zip"));
-						origResultsZipCopy(outAvgGridSeis, new File(solsDir.getParentFile(), solsDir.getName()+".zip"));
+						if (!averageOnly)
+							origResultsZipCopy(fullZipOut, new File(solsDir.getParentFile(), solsDir.getName()+".zip"));
+						origResultsZipCopy(avgZipOut, new File(solsDir.getParentFile(), solsDir.getName()+".zip"));
 					} catch (Exception e) {
 						abortAndExit(e, 1);
 					}
@@ -278,31 +286,39 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					for (String sourceName : origNameMappings.keySet()) {
 						String destName = origNameMappings.get(sourceName);
 						if (!writtenAvgGridSourceFiles.contains(destName)) {
-							copyEntry(avgGridZip, avgGridZip.getEntry(sourceName), outAvgGridSeis, new ZipArchiveEntry(destName));
+							copyEntry(avgGridZip, avgGridZip.getEntry(sourceName), avgZipOut, new ZipArchiveEntry(destName));
 							writtenAvgGridSourceFiles.add(destName);
 						}
 					}
 					avgGridZip.close();
 					
-					// now copy each grid source provider to the output directory
-					for (LogicTreeBranch<?> gridSeisBranch : gridSeisOnlyTree) {
-						debug("AsyncLogicTree: writing branch grid source provider: "+gridSeisBranch);
-						File gridSeisFile = new File(gridSeisDir, gridSeisBranch.buildFileName()+".zip");
-						
-						ZipFile sourceZip = new ZipFile(gridSeisFile);
-						
-						LogicTreeBranch<?> combBranch = getCombinedBranch(origBranch, gridSeisBranch);
-						
-						Map<String, String> nameMappings = getNameMappings(combBranch, true);
-						
-						for (String sourceName : nameMappings.keySet()) {
-							String destName = nameMappings.get(sourceName);
-							if (!writtenFullGridSourceFiles.contains(destName)) {
-								copyEntry(sourceZip, sourceZip.getEntry(sourceName), out, new ZipArchiveEntry(destName));
-								writtenFullGridSourceFiles.add(destName);
+					// instance file
+					writeGridProvInstance(avgGridProv, origBranch, origLevelsForSubSeisMFDs, avgZipOut, writtenAvgGridSourceFiles);
+					
+					if (!averageOnly) {
+						// now copy each grid source provider to the output directory
+						for (LogicTreeBranch<?> gridSeisBranch : gridSeisOnlyTree) {
+							debug("AsyncLogicTree: writing branch grid source provider: "+gridSeisBranch);
+							File gridSeisFile = new File(gridSeisDir, gridSeisBranch.buildFileName()+".zip");
+							
+							ZipFile sourceZip = new ZipFile(gridSeisFile);
+							
+							LogicTreeBranch<?> combBranch = getCombinedBranch(origBranch, gridSeisBranch);
+							
+							Map<String, String> nameMappings = getNameMappings(combBranch, true);
+							
+							for (String sourceName : nameMappings.keySet()) {
+								String destName = nameMappings.get(sourceName);
+								if (!writtenFullGridSourceFiles.contains(destName)) {
+									copyEntry(sourceZip, sourceZip.getEntry(sourceName), fullZipOut, new ZipArchiveEntry(destName));
+									writtenFullGridSourceFiles.add(destName);
+								}
 							}
+							sourceZip.close();
+							
+							// instance file, use the average class type though as we don't want to laod it and it will be the same
+							writeGridProvInstance(avgGridProv, combBranch, fullLevelsForSubSeisMFDs, fullZipOut, writtenFullGridSourceFiles);
 						}
-						sourceZip.close();
 					}
 				} catch (Exception e) {
 					abortAndExit(e, 1);
@@ -310,6 +326,24 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			}
 			
 			memoryDebug("AsyncLogicTree: exiting async process, stats: "+getCountsString());
+		}
+		
+		private void writeGridProvInstance(GridSourceProvider prov, LogicTreeBranch<?> branch,
+				List<? extends LogicTreeLevel<?>> levelsAffecting, ZipArchiveOutputStream out,
+						HashSet<String> writtenFiles) throws IOException {
+			if (!(prov instanceof ArchivableModule) || prov instanceof GridSourceProvider.Default)
+				return;
+			String avgInstanceFileName = getBranchFileName(branch, sltPrefix,
+					SolutionLogicTree.GRID_PROV_INSTANCE_FILE_NAME, levelsAffecting);
+			if (!writtenFiles.contains(avgInstanceFileName)) {
+				Class<? extends ArchivableModule> loadingClass = ((ArchivableModule)prov).getLoadingClass();
+				out.putArchiveEntry(new ZipArchiveEntry(avgInstanceFileName));
+				SolutionLogicTree.writeGridSourceProvInstanceFile(out, loadingClass);
+				out.flush();
+				out.closeArchiveEntry();
+				writtenFiles.add(avgInstanceFileName);
+			}
+			
 		}
 		
 		private Map<String, String> getNameMappings(LogicTreeBranch<?> branch, boolean full) {
@@ -352,33 +386,39 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		public void shutdown() {
 			super.shutdown();
 			
-			// write full logic tree to zip file
-			List<LogicTreeBranch<LogicTreeNode>> combinedBranches = new ArrayList<>();
-			for (LogicTreeBranch<?> origBranch : tree)
-				for (LogicTreeBranch<?> griddedBranch : gridSeisOnlyTree)
-					combinedBranches.add((LogicTreeBranch<LogicTreeNode>)getCombinedBranch(origBranch, griddedBranch));
-			LogicTree<?> combinedLogicTree = LogicTree.fromExisting(combinedBranches.get(0).getLevels(), combinedBranches);
-			
 			try {
-				ZipArchiveEntry logicTreeEntry = new ZipArchiveEntry(SolutionLogicTree.SUB_DIRECTORY_NAME+"/"+SolutionLogicTree.LOGIC_TREE_FILE_NAME);
-				out.putArchiveEntry(logicTreeEntry);
-				combinedLogicTree.writeToStream(new BufferedOutputStream(out));
-				out.flush();
-				out.closeArchiveEntry();
-				out.close();
-				Files.move(workingOutputFile, outputFile);
+				if (!averageOnly) {
+					// write the comined logic tree to the full zip file
+					List<LogicTreeBranch<LogicTreeNode>> combinedBranches = new ArrayList<>();
+					for (LogicTreeBranch<?> origBranch : tree)
+						for (LogicTreeBranch<?> griddedBranch : gridSeisOnlyTree)
+							combinedBranches.add((LogicTreeBranch<LogicTreeNode>)getCombinedBranch(origBranch, griddedBranch));
+					LogicTree<?> combinedLogicTree = LogicTree.fromExisting(combinedBranches.get(0).getLevels(), combinedBranches);
+					
+					ZipArchiveEntry logicTreeEntry = new ZipArchiveEntry(sltPrefix+SolutionLogicTree.LOGIC_TREE_FILE_NAME);
+					fullZipOut.putArchiveEntry(logicTreeEntry);
+					combinedLogicTree.writeToStream(new BufferedOutputStream(fullZipOut));
+					fullZipOut.flush();
+					fullZipOut.closeArchiveEntry();
+					fullZipOut.close();
+					Files.move(workingOutputFile, outputFile);
+				}
 				
-				logicTreeEntry = new ZipArchiveEntry(SolutionLogicTree.SUB_DIRECTORY_NAME+"/"+SolutionLogicTree.LOGIC_TREE_FILE_NAME);
-				outAvgGridSeis.putArchiveEntry(logicTreeEntry);
-				combinedLogicTree.writeToStream(new BufferedOutputStream(outAvgGridSeis));
-				outAvgGridSeis.flush();
-				outAvgGridSeis.closeArchiveEntry();
-				outAvgGridSeis.close();
+				// write original logic tree to the average zip
+				ZipArchiveEntry logicTreeEntry = new ZipArchiveEntry(sltPrefix+SolutionLogicTree.LOGIC_TREE_FILE_NAME);
+				avgZipOut.putArchiveEntry(logicTreeEntry);
+				tree.writeToStream(new BufferedOutputStream(avgZipOut));
+				avgZipOut.flush();
+				avgZipOut.closeArchiveEntry();
+				avgZipOut.close();
 				Files.move(workingAvgOutputFile, avgOutputFile);
 				
 				for (String baPrefix : gridSourceAveragers.keySet()) {
-					File baFile = new File(solsDir.getParentFile(), baPrefix+"_branch_averaged.zip");
-					Preconditions.checkState(baFile.exists());
+					String baFilePrefix = solsDir.getName();
+					if (!baPrefix.isBlank())
+						baFilePrefix += "_"+baPrefix;
+					File baFile = new File(solsDir.getParentFile(), baFilePrefix+"_branch_averaged.zip");
+					Preconditions.checkState(baFile.exists(), "Branch averaged file doesn't exist: %s", baFile.getAbsolutePath());
 
 					memoryDebug("AsyncLogicTree: processing "+baFile.getAbsolutePath());
 					GridSourceProvider avgProv = gridSourceAveragers.get(baPrefix).getAverage();
@@ -388,7 +428,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					FaultGridAssociations associations = faultGridAveragers.get(baPrefix).getAverage();
 					baSol.getRupSet().addModule(associations);
 					
-					baSol.write(new File(solsDir.getParentFile(), baPrefix+"_branch_averaged_gridded.zip"));
+					baSol.write(new File(solsDir.getParentFile(), baFilePrefix+"_branch_averaged_gridded.zip"));
 				}
 			} catch (IOException e) {
 				abortAndExit(e, 1);
@@ -549,14 +589,16 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			return false;
 		if (!new File(gridSeisDir, AVG_GRID_SIE_PROV_ARCHIVE_NAME).exists())
 			return false;
-		for (LogicTreeBranch<?> gridSeisBranch : gridSeisOnlyTree) {
-			File gridSeisFile =  new File(gridSeisDir, gridSeisBranch.buildFileName()+".zip");
-			if (!gridSeisFile.exists())
-				return false;
-			try {
-				new ModuleArchive<>(gridSeisFile).getModule(GridSourceProvider.class);
-			} catch (Exception e) {
-				return false;
+		if (!averageOnly) {
+			for (LogicTreeBranch<?> gridSeisBranch : gridSeisOnlyTree) {
+				File gridSeisFile =  new File(gridSeisDir, gridSeisBranch.buildFileName()+".zip");
+				if (!gridSeisFile.exists())
+					return false;
+				try {
+					new ModuleArchive<>(gridSeisFile).getModule(GridSourceProvider.class);
+				} catch (Exception e) {
+					return false;
+				}
 			}
 		}
 		return true;
@@ -657,6 +699,8 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		ops.addRequiredOption("sd", "sol-dir", true, "Path to directory containing solutions");
 		ops.addOption("r", "region", true, "Optional path to GeoJSON file containing a region for which we should compute hazard. "
 				+ "Can be a gridded region or an outline. If not supplied, then one will be detected from the model.");
+		ops.addOption("ao", "average-only", false, "Flag to only write out average gridded seismicity for each fault "
+				+ "branch.");
 		
 		return ops;
 	}
