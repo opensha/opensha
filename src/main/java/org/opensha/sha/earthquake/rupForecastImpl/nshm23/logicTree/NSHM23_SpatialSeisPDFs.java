@@ -34,7 +34,27 @@ public enum NSHM23_SpatialSeisPDFs implements LogicTreeNode {
 	NN_ADAPTIVE("Nearest-Neighbor, Adaptive", "NN-Adaptive", 1d),
 	NN_FIXED("Nearest-Neighbor, Fixed", "NN-Fixed", 1d),
 	REAS_ADAPTIVE("Reasenberg, Adaptive", "Reas-Adaptive", 1d),
-	REAS_FIXED("Reasenberg, Fixed", "Reas-Fixed", 1d);
+	REAS_FIXED("Reasenberg, Fixed", "Reas-Fixed", 1d),
+	AVERAGE("Average", "Average", 0d) {
+		public GriddedGeoDataSet loadXYZ(PrimaryRegions region) throws IOException {
+			GriddedGeoDataSet avg = null;
+			double sumWeight = 0d;
+			for (NSHM23_SpatialSeisPDFs pdf : values()) {
+				if (pdf.weight == 0d || pdf == this)
+					continue;
+				GriddedGeoDataSet xyz = pdf.loadXYZ(region);
+				if (avg == null)
+					avg = new GriddedGeoDataSet(xyz.getRegion(), false);
+				else
+					Preconditions.checkState(avg.getRegion().equalsRegion(xyz.getRegion()));
+				for (int i=0; i<xyz.size(); i++)
+					avg.set(i, avg.get(i)+xyz.get(i)*pdf.weight);
+				sumWeight += pdf.weight;
+			}
+			avg.scale(1d/sumWeight);
+			return avg;
+		}
+	};
 	
 	private String name;
 	private String shortName;
@@ -53,6 +73,10 @@ public enum NSHM23_SpatialSeisPDFs implements LogicTreeNode {
 	}
 	
 	public double[] load(PrimaryRegions region) throws IOException {
+		return loadXYZ(region).getValues();
+	}
+	
+	public GriddedGeoDataSet loadXYZ(PrimaryRegions region) throws IOException {
 		String resource = getResourceName(region);
 		
 		System.out.println("Loading spatial seismicity PDF from: "+resource);
@@ -84,7 +108,7 @@ public enum NSHM23_SpatialSeisPDFs implements LogicTreeNode {
 		System.out.println("\t"+numMapped+"/"+gridReg.getNodeCount()+" ("
 				+pDF.format((double)numMapped/(double)gridReg.getNodeCount())+") of gridded region mapped");
 		xyz.scale(1d/sumMapped);
-		return xyz.getValues();
+		return xyz;
 	}
 	
 	private static final DecimalFormat pDF = new DecimalFormat("0.00%");
