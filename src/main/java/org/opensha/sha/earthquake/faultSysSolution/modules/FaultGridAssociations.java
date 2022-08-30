@@ -373,6 +373,7 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 				sectInNodeParticBuilder.put(cell.getRowKey(), cell.getColumnKey(), cell.getValue()/sumWeight);
 			
 			Precomputed ret = new Precomputed();
+			ret.region = ref.getRegion();
 			ret.nodeExtents = nodeExtentsBuilder.build();
 			ret.nodeInSectPartic = nodeInSectParticBuilder.build();
 			ret.sectInNodePartic = sectInNodeParticBuilder.build();
