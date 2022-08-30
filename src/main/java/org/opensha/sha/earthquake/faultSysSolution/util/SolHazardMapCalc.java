@@ -674,22 +674,26 @@ public class SolHazardMapCalc {
 			File curvesFile = new File(dir, getCSV_FileName(prefix, period));
 			if (!curvesFile.exists())
 				curvesFile = new File(curvesFile.getAbsolutePath()+".gz");
-			Preconditions.checkState(curvesFile.exists());
+			Preconditions.checkState(curvesFile.exists(), "Curve files doens't exist: %s", curvesFile.getAbsolutePath());
 			
 			CSVFile<String> csv = CSVFile.readFile(curvesFile, true);
 			ArbitrarilyDiscretizedFunc xVals = new ArbitrarilyDiscretizedFunc();
 			for (int col=3; col<csv.getNumCols(); col++)
 				xVals.set(csv.getDouble(0, col), 0d);
 			
-			Preconditions.checkState(csv.getNumRows() == region.getNodeCount()+1);
+			Preconditions.checkState(csv.getNumRows() == region.getNodeCount()+1,
+					"Region node count discrepancy: %s != %s", csv.getNumRows()-1, region.getNodeCount());
 			
 			DiscretizedFunc[] curves = new DiscretizedFunc[region.getNodeCount()];
 			
 			for (int row=1; row<csv.getNumRows(); row++) {
 				int index = row-1;
 				Location loc = new Location(csv.getDouble(row, 1), csv.getDouble(row, 2));
-				Preconditions.checkState(LocationUtils.areSimilar(loc, region.getLocation(index)));
-				Preconditions.checkState(index == csv.getInt(row, 0));
+				Location regLoc = region.getLocation(index);
+				Preconditions.checkState(LocationUtils.areSimilar(loc, regLoc),
+						"Region location mismatch: %s != %s", loc, regLoc);
+				int csvIndex = csv.getInt(row, 0);
+				Preconditions.checkState(index == csvIndex, "CSV index mismatch: %s != %s", index, csvIndex);
 				DiscretizedFunc curve = new ArbitrarilyDiscretizedFunc();
 				for (int i=0; i<xVals.size(); i++)
 					curve.set(xVals.getX(i), csv.getDouble(row, i+3));
