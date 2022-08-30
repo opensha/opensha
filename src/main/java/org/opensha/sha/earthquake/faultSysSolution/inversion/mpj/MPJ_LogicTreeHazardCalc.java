@@ -77,6 +77,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	
 	private GriddedRegion gridRegion;
 
+	private String hazardSubDirName;
+	private String combineWithHazardSubDirName;
+
 	public MPJ_LogicTreeHazardCalc(CommandLine cmd) throws IOException {
 		super(cmd);
 		
@@ -134,6 +137,13 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				gridRegion = new GriddedRegion(region, gridSpacing, GriddedRegion.ANCHOR_0_0);
 			}
 		}
+		
+		String hazardPrefix = "hazard_"+(float)gridSpacing+"deg_grid_seis_";
+		hazardSubDirName = hazardPrefix+gridSeisOp.name();
+		if (gridSeisOp == IncludeBackgroundOption.INCLUDE)
+			// if we're including gridded seismicity, we can shortcut and calculate only gridded seismicity and
+			// combine with curves excluding it, if we have them
+			combineWithHazardSubDirName = hazardPrefix+IncludeBackgroundOption.EXCLUDE.name();
 		
 		if (rank == 0) {
 			waitOnDir(outputDir, 5, 1000);
@@ -206,6 +216,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			try {
 				for (int index : batch) {
 					File runDir = getSolDir(solTree.getLogicTree().getBranch(index));
+					File hazardSubDir = new File(runDir, hazardSubDirName);
+					Preconditions.checkState(hazardSubDir.exists());
 					zout.putNextEntry(new ZipEntry(runDir.getName()));
 					zout.closeEntry();
 					zout.flush();
@@ -213,7 +225,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						for (double period : periods) {
 							String prefix = mapPrefix(period, rp);
 							
-							File mapFile = new File(runDir, prefix+".txt");
+							File mapFile = new File(hazardSubDir, prefix+".txt");
 							Preconditions.checkState(mapFile.exists());
 							
 							ZipEntry mapEntry = new ZipEntry(runDir.getName()+"/"+mapFile.getName());
@@ -325,24 +337,34 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			
 			File runDir = getSolDir(branch);
 			
-			String curvesPrefix = "curves_grid_seis_"+gridSeisOp.name();
+			File hazardSubDir = new File(runDir, hazardSubDirName);
+			Preconditions.checkState(hazardSubDir.exists() || hazardSubDir.mkdir());
+			
+			String curvesPrefix = "curves";
 			
 			SolHazardMapCalc calc = null;
-			if (runDir.exists()) {
+			if (hazardSubDir.exists()) {
 				// see if it's already done
 				try {
-					calc = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, runDir, curvesPrefix);
+					calc = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, hazardSubDir, curvesPrefix);
 				} catch (Exception e) {}
 			}
-			SolHazardMapCalc excludeCurves = null;
+			SolHazardMapCalc combineWithCurves = null;
 			if (calc == null && gridSeisOp == IncludeBackgroundOption.INCLUDE) {
 				// we're calculating with gridded seismicity
 				// lets see if we've already calculated without it
-				String excludePrefix = "curves_grid_seis_"+IncludeBackgroundOption.EXCLUDE;
-				try {
-					excludeCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, runDir, excludePrefix);
-				} catch (Exception e) {}
-				if (excludeCurves == null) {
+				
+				File combineWithSubDir = new File(runDir, combineWithHazardSubDirName);
+				
+				if (combineWithSubDir.exists()) {
+					debug("Seeing if we can reuse existing curves excluding gridded seismicity from "+combineWithSubDir.getAbsolutePath());
+					try {
+						combineWithCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, combineWithSubDir, curvesPrefix);
+					} catch (Exception e) {
+						debug("Can't reuse: "+e.getMessage());
+					}
+				}
+				if (combineWithCurves == null) {
 					// see if this is a gridded seismicity branch, but it exists already in an upstream branch
 					List<LogicTreeLevel<? extends LogicTreeNode>> faultLevels = new ArrayList<>();
 					List<LogicTreeNode> faultNodes = new ArrayList<>();
@@ -354,13 +376,17 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						}
 					}
 					if (faultLevels.size() < branch.size()) {
-						// we have gridded seismicity branches
+						// we have gridded seismicity only branches
 						LogicTreeBranch<LogicTreeNode> subBranch = new LogicTreeBranch<>(faultLevels, faultNodes);
 						File subRunDir = getSolDir(subBranch);
-						if (subRunDir.exists()) {
+						File subHazardDir = new File(subRunDir, combineWithHazardSubDirName);
+						if (subHazardDir.exists()) {
 							try {
-								excludeCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, subRunDir, excludePrefix);
-							} catch (Exception e) {}
+								debug("Seeing if we can reuse existing curves excluding gridded seismicity from "+subHazardDir.getAbsolutePath());
+								combineWithCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, subHazardDir, curvesPrefix);
+							} catch (Exception e) {
+								debug("Can't reuse: "+e.getMessage());
+							}
 						}
 					}
 				}
@@ -372,19 +398,21 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				String paramStr = "";
 				for (Parameter<?> param : gmpe.getOtherParams())
 					paramStr += "; "+param.getName()+": "+param.getValue();
-				debug("Calculating hazard curves for "+index
+				debug("Calculating hazard curves for "+index+", bgOption="+gridSeisOp.name()+", combine="+(combineWithCurves != null)
 						+"\n\tBranch: "+branch
 						+"\n\tGMPE: "+gmpe.getName()+paramStr);
-				if (excludeCurves == null)
+				if (combineWithCurves == null) {
 					calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, gridSeisOp, periods);
-				else
+				} else {
 					// calculate with only gridded seismicity, we'll add in the curves excluding it
+					debug("Reusing fault-based hazard for "+index+", will only compute gridded hazard");
 					calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, IncludeBackgroundOption.ONLY, periods);
+				}
 				calc.setMaxSourceSiteDist(maxDistance);
 				calc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
 				
-				calc.calcHazardCurves(getNumThreads(), excludeCurves);
-				calc.writeCurvesCSVs(runDir, curvesPrefix, true);
+				calc.calcHazardCurves(getNumThreads(), combineWithCurves);
+				calc.writeCurvesCSVs(hazardSubDir, curvesPrefix, true);
 			}
 			
 			for (ReturnPeriods rp : rps) {
@@ -393,7 +421,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					
 					String prefix = mapPrefix(period, rp);
 					
-					AbstractXYZ_DataSet.writeXYZFile(map, new File(runDir, prefix+".txt"));
+					AbstractXYZ_DataSet.writeXYZFile(map, new File(hazardSubDir, prefix+".txt"));
 				}
 			}
 		}
