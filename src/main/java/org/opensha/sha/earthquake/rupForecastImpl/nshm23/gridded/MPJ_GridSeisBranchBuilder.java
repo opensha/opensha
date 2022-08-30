@@ -42,7 +42,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.PrimaryRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
@@ -480,7 +480,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			}
 			
 			// pre-cache the cube associations once for this branch
-			List<PrimaryRegions> seisRegions = NSHM23_InvConfigFactory.getSeismicityRegions(region);
+			List<SeismicityRegions> seisRegions = NSHM23_InvConfigFactory.getSeismicityRegions(region);
 			Preconditions.checkState(seisRegions.size() >= 1);
 			NSHM23_FaultCubeAssociations cubeAssoc = null;
 			if (seisRegions.size() == 1) {
@@ -497,7 +497,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				}
 			} else {
 				List<NSHM23_FaultCubeAssociations> regionalAssociations = new ArrayList<>();
-				for (PrimaryRegions seisRegion : seisRegions) {
+				for (SeismicityRegions seisRegion : seisRegions) {
 					GriddedRegion seisGridReg = NSHM23_InvConfigFactory.getGriddedSeisRegion(seisRegion.load());
 					regionalAssociations.add(new NSHM23_FaultCubeAssociations(rupSet,
 							new CubedGriddedRegion(seisGridReg),

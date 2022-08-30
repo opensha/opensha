@@ -107,7 +107,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBVa
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.AnalyticalSingleFaultInversionSolver;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.ClassicModelInversionSolver;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.PrimaryRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
@@ -656,9 +656,9 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		return jumpProb;
 	}
 	
-	public static List<PrimaryRegions> getSeismicityRegions(Region modelRegion) throws IOException {
-		List<PrimaryRegions> seisRegions = new ArrayList<>();
-		for (PrimaryRegions seisReg : PrimaryRegions.values()) {
+	public static List<SeismicityRegions> getSeismicityRegions(Region modelRegion) throws IOException {
+		List<SeismicityRegions> seisRegions = new ArrayList<>();
+		for (SeismicityRegions seisReg : SeismicityRegions.values()) {
 			Region testReg = seisReg.load();
 //			System.out.println("Comparing "+modelRegion.getName()+" to "+testReg.getName());
 //			System.out.println("\tEquals? "+modelRegion.equals(testReg));
@@ -676,7 +676,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	public static NSHM23_FaultCubeAssociations buildFaultCubeAssociations(FaultSystemRupSet rupSet,
 			LogicTreeBranch<?> branch, Region region) throws IOException {
-		List<PrimaryRegions> seisRegions = getSeismicityRegions(region);
+		List<SeismicityRegions> seisRegions = getSeismicityRegions(region);
 		Preconditions.checkState(seisRegions.size() >= 1);
 		NSHM23_FaultCubeAssociations cubeAssoc = null;
 		if (seisRegions.size() == 1) {
@@ -693,7 +693,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			}
 		} else {
 			List<NSHM23_FaultCubeAssociations> regionalAssociations = new ArrayList<>();
-			for (PrimaryRegions seisRegion : seisRegions) {
+			for (SeismicityRegions seisRegion : seisRegions) {
 				GriddedRegion seisGridReg = getGriddedSeisRegion(seisRegion.load());
 				regionalAssociations.add(new NSHM23_FaultCubeAssociations(rupSet,
 						new CubedGriddedRegion(seisGridReg),
@@ -718,7 +718,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		NSHM23_SpatialSeisPDFs spatSeisPDF = branch.requireValue(NSHM23_SpatialSeisPDFs.class);
 		
 		// figure out what region(s) we need
-		List<PrimaryRegions> seisRegions = getSeismicityRegions(modelReg);
+		List<SeismicityRegions> seisRegions = getSeismicityRegions(modelReg);
 		
 		Preconditions.checkState(!seisRegions.isEmpty(), "Found no seismicity regions for model region %s", modelReg.getName());
 		
@@ -731,7 +731,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			ret = buildSingleGridSourceProv(sol, seisRegions.get(0), seisBranch, spatSeisPDF, maxMagOff, refMFD);
 		} else {
 			List<NSHM23_SingleRegionGridSourceProvider> regionalProvs = new ArrayList<>();
-			for (PrimaryRegions seisRegion : seisRegions)
+			for (SeismicityRegions seisRegion : seisRegions)
 				regionalProvs.add(buildSingleGridSourceProv(sol, seisRegion, seisBranch, spatSeisPDF, maxMagOff, refMFD));
 			
 			ret = new NSHM23_CombinedRegionGridSourceProvider(sol,
@@ -744,7 +744,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	}
 	
 	private static NSHM23_SingleRegionGridSourceProvider buildSingleGridSourceProv(FaultSystemSolution sol,
-			PrimaryRegions region, NSHM23_RegionalSeismicity seisBranch, NSHM23_SpatialSeisPDFs spatSeisPDF,
+			SeismicityRegions region, NSHM23_RegionalSeismicity seisBranch, NSHM23_SpatialSeisPDFs spatSeisPDF,
 			double maxMagOff, EvenlyDiscretizedFunc refMFD) throws IOException {
 		// total G-R up to Mmax
 		GutenbergRichterMagFreqDist totalGR = seisBranch.build(region, refMFD, maxMagOff);

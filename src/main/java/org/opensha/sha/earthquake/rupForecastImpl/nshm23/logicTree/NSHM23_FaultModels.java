@@ -38,7 +38,7 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.PrimaryRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -143,9 +143,9 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 		if (branch != null && branch.hasValue(NSHM23_SingleStates.class)) {
 			NSHM23_SingleStates state = branch.getValue(NSHM23_SingleStates.class);
 			if (state == NSHM23_SingleStates.CA) {
-				return new ModelRegion(PrimaryRegions.CONUS_U3_RELM.load());
+				return new ModelRegion(SeismicityRegions.CONUS_U3_RELM.load());
 			} else if (state == null) {
-				return new ModelRegion(NSHM23_RegionLoader.LoadFullConterminousWUS());
+				return new ModelRegion(NSHM23_RegionLoader.loadFullConterminousWUS());
 			} else {
 				XY_DataSet[] outlines = PoliticalBoundariesData.loadUSState(state.getStateName());
 				Region[] regions = new Region[outlines.length];
@@ -173,7 +173,7 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 			}
 		} else {
 			// no single state, full WUS
-			return new ModelRegion(NSHM23_RegionLoader.LoadFullConterminousWUS());
+			return new ModelRegion(NSHM23_RegionLoader.loadFullConterminousWUS());
 		}
 	}
 
@@ -211,7 +211,7 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 				List<Region> regions = new ArrayList<>();
 				List<IncrementalMagFreqDist> regionMFDs = new ArrayList<>();
 				List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
-				for (PrimaryRegions pReg : PrimaryRegions.values()) {
+				for (SeismicityRegions pReg : SeismicityRegions.values()) {
 					// preliminary values from Andrea/Ned via e-mail, 8/15/2022, subject "Fwd: earthquake rate model"
 					
 					Region region = pReg.load();

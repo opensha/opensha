@@ -16,11 +16,85 @@ import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_RegionalSeismicity;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SpatialSeisPDFs;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
 public class NSHM23_RegionLoader {
+	
+	/**
+	 * Regions within which seismicity constraints and spatial seismicity PDFs are determined
+	 * 
+	 * @author kevin
+	 * @see NSHM23_RegionalSeismicity
+	 * @see NSHM23_SpatialSeisPDFs
+	 * 
+	 */
+	public enum SeismicityRegions implements BaseRegion {
+		ALASKA("alaska.geojson"),
+		CONUS_EAST("conus-east.geojson"),
+		CONUS_IMW("conus-intermountain-west.geojson"),
+		CONUS_PNW("conus-pacific-northwest.geojson"),
+		CONUS_U3_RELM("conus-ucerf3-relm.geojson"),
+		CONUS_HAWAII("hawaii.geojson");
+		
+		private String fileName;
+
+		private SeismicityRegions(String fileName) {
+			this.fileName = fileName;
+		}
+		
+		public String getResourcePath() {
+			return REG_PATH+"/"+fileName;
+		}
+	}
+	
+	/**
+	 * Location regions used for analysis purposes only
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public enum LocalRegions implements BaseRegion {
+		CONUS_LA_BASIN("conus-la-basin.geojson"),
+		CONUS_NEW_MADRID("conus-new-madrid.geojson"),
+		CONUS_PUGET("conus-puget.geojson"),
+		CONUS_SF_BAY("conus-sf-bay.geojson"),
+		CONUS_WASATCH("conus-wasatch.geojson");
+		
+		private String fileName;
+
+		private LocalRegions(String fileName) {
+			this.fileName = fileName;
+		}
+		
+		public String getResourcePath() {
+			return LOCAL_REG_PATH+"/"+fileName;
+		}
+	}
+	
+	/**
+	 * Larger model regions that span multiple {@link SeismicityRegions}
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public enum StitchedRegions implements BaseRegion {
+		CONUS("conus.geojson"),
+		CONUS_WEST("conus-west.geojson");
+		
+		private String fileName;
+
+		private StitchedRegions(String fileName) {
+			this.fileName = fileName;
+		}
+		
+		public String getResourcePath() {
+			return STITCHED_REG_PATH+"/"+fileName;
+		}
+	}
 	
 	private static final String NSHM23_REG_PATH_PREFIX = "/data/erf/nshm23/seismicity/regions";
 	private static final String REG_PATH = NSHM23_REG_PATH_PREFIX+"/nshm-regions";
@@ -32,7 +106,7 @@ public class NSHM23_RegionLoader {
 	}
 	
 	public static List<Region> loadPrimaryRegions(List<? extends FaultSection> subSects) throws IOException {
-		return doLoadRegions(PrimaryRegions.values(), subSects);
+		return doLoadRegions(SeismicityRegions.values(), subSects);
 	}
 	
 	public static List<Region> loadLocalRegions() throws IOException {
@@ -66,64 +140,12 @@ public class NSHM23_RegionLoader {
 		return ret;
 	}
 	
-	public enum PrimaryRegions implements BaseRegion {
-		ALASKA("alaska.geojson"),
-		CONUS_EAST("conus-east.geojson"),
-		CONUS_IMW("conus-intermountain-west.geojson"),
-		CONUS_PNW("conus-pacific-northwest.geojson"),
-		CONUS_U3_RELM("conus-ucerf3-relm.geojson"),
-		CONUS_HAWAII("hawaii.geojson");
-		
-		private String fileName;
-
-		private PrimaryRegions(String fileName) {
-			this.fileName = fileName;
-		}
-		
-		public String getResourcePath() {
-			return REG_PATH+"/"+fileName;
-		}
-	}
-	
-	public enum LocalRegions implements BaseRegion {
-		CONUS_LA_BASIN("conus-la-basin.geojson"),
-		CONUS_NEW_MADRID("conus-new-madrid.geojson"),
-		CONUS_PUGET("conus-puget.geojson"),
-		CONUS_SF_BAY("conus-sf-bay.geojson"),
-		CONUS_WASATCH("conus-wasatch.geojson");
-		
-		private String fileName;
-
-		private LocalRegions(String fileName) {
-			this.fileName = fileName;
-		}
-		
-		public String getResourcePath() {
-			return LOCAL_REG_PATH+"/"+fileName;
-		}
-	}
-	
-	public static Region LoadFullConterminousWUS() throws IOException {
+	public static Region loadFullConterminousWUS() throws IOException {
 		return StitchedRegions.CONUS_WEST.load();
 	}
 	
-	public static Region LoadFullConterminousUS() throws IOException {
+	public static Region loadFullConterminousUS() throws IOException {
 		return StitchedRegions.CONUS.load();
-	}
-	
-	public enum StitchedRegions implements BaseRegion {
-		CONUS("conus.geojson"),
-		CONUS_WEST("conus-west.geojson");
-		
-		private String fileName;
-
-		private StitchedRegions(String fileName) {
-			this.fileName = fileName;
-		}
-		
-		public String getResourcePath() {
-			return STITCHED_REG_PATH+"/"+fileName;
-		}
 	}
 	
 	private static Map<BaseRegion, Region> regionCache = new ConcurrentHashMap<>();
@@ -168,11 +190,11 @@ public class NSHM23_RegionLoader {
 		List<? extends FaultSection> sects = GeoJSONFaultReader.readFaultSections(new File("/tmp/GEOLOGIC_sub_sects.geojson"));
 		for (Region reg : loadAllRegions(sects))
 			System.out.println(reg.getName());
-		LoadFullConterminousUS();
-		LoadFullConterminousWUS();
+		loadFullConterminousUS();
+		loadFullConterminousWUS();
 		
 		double gridSpacing = 0.1;
-		GriddedRegion fullGriddedWUS = new GriddedRegion(LoadFullConterminousWUS(), gridSpacing, GriddedRegion.ANCHOR_0_0);
+		GriddedRegion fullGriddedWUS = new GriddedRegion(loadFullConterminousWUS(), gridSpacing, GriddedRegion.ANCHOR_0_0);
 		int numMapped = 0;
 		int numMultiplyMapped = 0;
 		List<Region> regions = loadPrimaryRegions();

@@ -9,7 +9,7 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.PrimaryRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 
 import com.google.common.base.Preconditions;
 
@@ -432,7 +432,7 @@ public class CubedGriddedRegion {
 	public static void main(String[] args) throws IOException {
 		
 //		CaliforniaRegions.RELM_TESTING_GRIDDED griddedRegion = RELM_RegionUtils.getGriddedRegionInstance();
-		for (PrimaryRegions seisReg : PrimaryRegions.values()) {
+		for (SeismicityRegions seisReg : SeismicityRegions.values()) {
 			System.out.println("Testing CubedGriddedRegion instantiation for "+seisReg);
 			Region reg = seisReg.load();
 			GriddedRegion griddedRegion = new GriddedRegion(reg, 0.1, GriddedRegion.ANCHOR_0_0);

@@ -3,7 +3,7 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded;
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.PrimaryRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 
 import com.google.common.base.Preconditions;
 
@@ -25,32 +25,32 @@ import scratch.UCERF3.griddedSeismicity.GridReader;
  */
 public class NSHM23_GridFocalMechs {
 	
-	public static double[] getFractStrikeSlip(PrimaryRegions region, GriddedRegion gridRegion) {
-		if (region == PrimaryRegions.CONUS_PNW || region == PrimaryRegions.CONUS_IMW)
+	public static double[] getFractStrikeSlip(SeismicityRegions region, GriddedRegion gridRegion) {
+		if (region == SeismicityRegions.CONUS_PNW || region == SeismicityRegions.CONUS_IMW)
 			return constant(gridRegion.getNodeCount(), 0.5d);
-		if (region == PrimaryRegions.CONUS_EAST)
+		if (region == SeismicityRegions.CONUS_EAST)
 			return constant(gridRegion.getNodeCount(), 1d);
-		if (region == PrimaryRegions.CONUS_U3_RELM)
+		if (region == SeismicityRegions.CONUS_U3_RELM)
 			return mapU3(gridRegion, new GridReader("StrikeSlipWts.txt").getValues());
 		return null;
 	}
 	
-	public static double[] getFractReverse(PrimaryRegions region, GriddedRegion gridRegion) {
-		if (region == PrimaryRegions.CONUS_PNW)
+	public static double[] getFractReverse(SeismicityRegions region, GriddedRegion gridRegion) {
+		if (region == SeismicityRegions.CONUS_PNW)
 			return constant(gridRegion.getNodeCount(), 0.5d);
-		else if (region == PrimaryRegions.CONUS_IMW || region == PrimaryRegions.CONUS_EAST)
+		else if (region == SeismicityRegions.CONUS_IMW || region == SeismicityRegions.CONUS_EAST)
 			return constant(gridRegion.getNodeCount(), 0d);
-		if (region == PrimaryRegions.CONUS_U3_RELM)
+		if (region == SeismicityRegions.CONUS_U3_RELM)
 			return mapU3(gridRegion, new GridReader("ReverseWts.txt").getValues());
 		return null;
 	}
 	
-	public static double[] getFractNormal(PrimaryRegions region, GriddedRegion gridRegion) {
-		if (region == PrimaryRegions.CONUS_IMW)
+	public static double[] getFractNormal(SeismicityRegions region, GriddedRegion gridRegion) {
+		if (region == SeismicityRegions.CONUS_IMW)
 			return constant(gridRegion.getNodeCount(), 0.5d);
-		else if (region == PrimaryRegions.CONUS_PNW || region == PrimaryRegions.CONUS_EAST)
+		else if (region == SeismicityRegions.CONUS_PNW || region == SeismicityRegions.CONUS_EAST)
 			return constant(gridRegion.getNodeCount(), 0d);
-		if (region == PrimaryRegions.CONUS_U3_RELM)
+		if (region == SeismicityRegions.CONUS_U3_RELM)
 			return mapU3(gridRegion, new GridReader("NormalWts.txt").getValues());
 		return null;
 	}

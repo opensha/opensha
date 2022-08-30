@@ -12,7 +12,7 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.PrimaryRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -25,27 +25,9 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 @Affects(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
 @Affects(GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
 public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
-	LOW("Lower Seismicity Bound (p2.5)", "LowSeis", 0.025d) {
+	PREFFERRED("Preffered Seismicity Rate", "PrefSeis", 0.95d) {
 		@Override
-		public GutenbergRichterMagFreqDist build(PrimaryRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
-			switch (region) {
-			case CONUS_U3_RELM:
-				return gr(refMFD, mMax, 3.3, 0.9);
-			case CONUS_PNW:
-				return gr(refMFD, mMax, 0.35, 1d);
-			case CONUS_IMW:
-				return gr(refMFD, mMax, 0.1, 0.9);
-			case CONUS_EAST:
-				return gr(refMFD, mMax, 0.4, 0.94);
-
-			default:
-				return null;
-			}
-		}
-	},
-	PREFFERRED("Preffered Seismicity Rate (2.5%)", "PrefSeis", 0.95d) {
-		@Override
-		public GutenbergRichterMagFreqDist build(PrimaryRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
+		public GutenbergRichterMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			switch (region) {
 			case CONUS_U3_RELM:
 				return gr(refMFD, mMax, 8.3, 0.9);
@@ -61,9 +43,27 @@ public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
 			}
 		}
 	},
+	LOW("Lower Seismicity Bound (p2.5)", "LowSeis", 0.025d) {
+		@Override
+		public GutenbergRichterMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
+			switch (region) {
+			case CONUS_U3_RELM:
+				return gr(refMFD, mMax, 3.3, 0.9);
+			case CONUS_PNW:
+				return gr(refMFD, mMax, 0.35, 1d);
+			case CONUS_IMW:
+				return gr(refMFD, mMax, 0.1, 0.9);
+			case CONUS_EAST:
+				return gr(refMFD, mMax, 0.4, 0.94);
+
+			default:
+				return null;
+			}
+		}
+	},
 	HIGH("Upper Seismicity Bound (p97.5)", "HighSeis", 0.025d) {
 		@Override
-		public GutenbergRichterMagFreqDist build(PrimaryRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
+		public GutenbergRichterMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			switch (region) {
 			case CONUS_U3_RELM:
 				return gr(refMFD, mMax, 14.3, 0.9);
@@ -92,11 +92,11 @@ public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
 		this.weight = weight;
 	}
 	
-	public abstract GutenbergRichterMagFreqDist build(PrimaryRegions region, EvenlyDiscretizedFunc refMFD, double mMax);
+	public abstract GutenbergRichterMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax);
 	
 	private static final DecimalFormat oDF = new DecimalFormat("0.##");
 	
-	public static UncertainBoundedIncrMagFreqDist getBounded(PrimaryRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
+	public static UncertainBoundedIncrMagFreqDist getBounded(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 		IncrementalMagFreqDist upper = HIGH.build(region, refMFD, mMax);
 		IncrementalMagFreqDist lower = LOW.build(region, refMFD, mMax);
 		IncrementalMagFreqDist pref = PREFFERRED.build(region, refMFD, mMax);

@@ -15,7 +15,7 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.PrimaryRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 
 import com.google.common.base.Preconditions;
 
@@ -36,7 +36,7 @@ public enum NSHM23_SpatialSeisPDFs implements LogicTreeNode {
 	REAS_ADAPTIVE("Reasenberg, Adaptive", "Reas-Adaptive", 1d),
 	REAS_FIXED("Reasenberg, Fixed", "Reas-Fixed", 1d),
 	AVERAGE("Average", "Average", 0d) {
-		public GriddedGeoDataSet loadXYZ(PrimaryRegions region) throws IOException {
+		public GriddedGeoDataSet loadXYZ(SeismicityRegions region) throws IOException {
 			GriddedGeoDataSet avg = null;
 			double sumWeight = 0d;
 			for (NSHM23_SpatialSeisPDFs pdf : values()) {
@@ -68,15 +68,15 @@ public enum NSHM23_SpatialSeisPDFs implements LogicTreeNode {
 	
 	private static final String NSHM23_SS_PATH_PREFIX = "/data/erf/nshm23/seismicity/spatial_seis_pdfs/";
 	
-	private String getResourceName(PrimaryRegions region) {
+	private String getResourceName(SeismicityRegions region) {
 		return NSHM23_SS_PATH_PREFIX+region.name()+"/"+name()+".csv";
 	}
 	
-	public double[] load(PrimaryRegions region) throws IOException {
+	public double[] load(SeismicityRegions region) throws IOException {
 		return loadXYZ(region).getValues();
 	}
 	
-	public GriddedGeoDataSet loadXYZ(PrimaryRegions region) throws IOException {
+	public GriddedGeoDataSet loadXYZ(SeismicityRegions region) throws IOException {
 		String resource = getResourceName(region);
 		
 		System.out.println("Loading spatial seismicity PDF from: "+resource);
@@ -134,8 +134,8 @@ public enum NSHM23_SpatialSeisPDFs implements LogicTreeNode {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		for (PrimaryRegions region : PrimaryRegions.values()) {
-			if (region == PrimaryRegions.ALASKA || region == PrimaryRegions.CONUS_HAWAII)
+		for (SeismicityRegions region : SeismicityRegions.values()) {
+			if (region == SeismicityRegions.ALASKA || region == SeismicityRegions.CONUS_HAWAII)
 				continue;
 			for (NSHM23_SpatialSeisPDFs pdf : values()) {
 				System.out.println(region.name()+",\t"+pdf.name());
