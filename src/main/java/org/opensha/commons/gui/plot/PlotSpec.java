@@ -113,7 +113,7 @@ public class PlotSpec implements Serializable {
 	 * @param annotations
 	 */
 	public void setPlotAnnotations(List<? extends XYAnnotation> annotations) {
-		this.annotations = new ArrayList<>(annotations);
+		this.annotations = annotations == null ? null : new ArrayList<>(annotations);
 	}
 	
 	public void addPlotAnnotation(XYAnnotation annotation) {
@@ -132,7 +132,10 @@ public class PlotSpec implements Serializable {
 	 * @param annotations
 	 */
 	public void setSubtitles(List<? extends Title> subtitles) {
-		this.subtitles = new ArrayList<>(subtitles);
+		if (subtitles == null)
+			this.subtitles = null;
+		else
+			this.subtitles = new ArrayList<>(subtitles);
 	}
 	
 	public void addSubtitle(Title subtitle) {
