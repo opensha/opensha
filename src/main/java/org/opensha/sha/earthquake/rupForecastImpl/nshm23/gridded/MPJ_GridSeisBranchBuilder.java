@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -28,6 +29,7 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.commons.util.modules.ModuleArchive;
@@ -44,11 +46,17 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultM
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
+import com.google.common.collect.Table.Cell;
 import com.google.common.io.Files;
+import com.google.common.primitives.Doubles;
 
 import edu.usc.kmilner.mpj.taskDispatch.AsyncPostBatchHook;
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
+import mpi.MPI;
 
 public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 	
@@ -56,6 +64,12 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 	private File solsDir;
 	
 	private LogicTree<?> gridSeisOnlyTree;
+
+	private File nodesAverageDir;
+	private File myAverageDir;
+	private Table<String, String, AveragingAccumulator<GridSourceProvider>> gridSeisAveragers;
+	
+	private Map<String, double[]> rankWeights;
 	
 	private boolean averageOnly = false;
 	
@@ -95,6 +109,24 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			exec = Executors.newFixedThreadPool(threads);
 		
 		averageOnly = cmd.hasOption("average-only");
+		
+		gridSeisAveragers = HashBasedTable.create();
+		
+		nodesAverageDir = new File(solsDir, "node_grid_seis_averages");
+		if (rank == 0) {
+			rankWeights = new HashMap<>();
+			if (nodesAverageDir.exists()) {
+				// delete anything preexisting
+				for (File file : nodesAverageDir.listFiles())
+					Preconditions.checkState(FileUtils.deleteRecursive(file));
+			} else {
+				Preconditions.checkState(nodesAverageDir.mkdir());
+			}
+		}
+		myAverageDir = new File(nodesAverageDir, "rank_"+rank);
+		if (myAverageDir.exists()) {
+			// delete anything preexisting
+		}
 		
 		if (rank == 0)
 			this.postBatchHook = new AsyncGridSeisCopier();
@@ -267,6 +299,14 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					
 					String baPrefix = AbstractAsyncLogicTreeWriter.getBA_prefix(origBranch);
 					Preconditions.checkNotNull(baPrefix);
+					
+					double[] baRankWeights = rankWeights.get(baPrefix);
+					if (baRankWeights == null) {
+						baRankWeights = new double[size];
+						rankWeights.put(baPrefix, baRankWeights);
+					}
+					
+					baRankWeights[processIndex] += tree.getBranchWeight(index);
 					
 					double branchWeight = tree.getBranchWeight(origBranch);
 					if (!gridSourceAveragers.containsKey(baPrefix))
@@ -455,11 +495,6 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			File gridSeisDir = new File(solFile.getParentFile(), "grid_source_providers");
 			Preconditions.checkState(gridSeisDir.exists() || gridSeisDir.mkdir(), "Couldn't create grid source dir: %s", gridSeisDir);
 			
-			if (isAlreadyDone(gridSeisDir)) {
-				debug(index+" is already done, skipping");
-				continue;
-			}
-			
 			FaultSystemSolution sol = FaultSystemSolution.load(solFile);
 			FaultSystemRupSet rupSet = sol.getRupSet();
 			
@@ -530,14 +565,26 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					future.get();
 			}
 			
+			String baPrefix = AbstractAsyncLogicTreeWriter.getBA_prefix(origBranch);
+			
 			// now average
 			AveragingAccumulator<GridSourceProvider> accumulator = null;
 			for (CalcRunnable run : runnables) {
 				GridSourceProvider prov = run.gridProv;
 				Preconditions.checkNotNull(prov);
+				// full average
 				if (accumulator == null)
 					accumulator = prov.averagingAccumulator();
-				accumulator.process(prov, run.gridSeisBranch.getOrigBranchWeight());
+				double weight = run.gridSeisBranch.getOrigBranchWeight();
+				accumulator.process(prov, weight);
+				// branch-specific average
+				String gridPrefix = run.gridSeisBranch.buildFileName();
+				AveragingAccumulator<GridSourceProvider> branchAccumulator = gridSeisAveragers.get(baPrefix, gridPrefix);
+				if (branchAccumulator == null) {
+					branchAccumulator = prov.averagingAccumulator();
+					gridSeisAveragers.put(baPrefix, gridPrefix, branchAccumulator);
+				}
+				branchAccumulator.process(prov, weight);
 			}
 			
 			// write average
@@ -582,26 +629,6 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		for (OpenSHA_Module module : origSol.getModules())
 			newSol.addModule(module);
 		return newSol;
-	}
-	
-	private boolean isAlreadyDone(File gridSeisDir) {
-		if (!new File(gridSeisDir, GRID_ASSOCIATIONS_ARCHIVE_NAME).exists())
-			return false;
-		if (!new File(gridSeisDir, AVG_GRID_SIE_PROV_ARCHIVE_NAME).exists())
-			return false;
-		if (!averageOnly) {
-			for (LogicTreeBranch<?> gridSeisBranch : gridSeisOnlyTree) {
-				File gridSeisFile =  new File(gridSeisDir, gridSeisBranch.buildFileName()+".zip");
-				if (!gridSeisFile.exists())
-					return false;
-				try {
-					new ModuleArchive<>(gridSeisFile).getModule(GridSourceProvider.class);
-				} catch (Exception e) {
-					return false;
-				}
-			}
-		}
-		return true;
 	}
 	
 	private class CalcRunnable implements Runnable {
@@ -669,13 +696,154 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 
 	@Override
 	protected void doFinalAssembly() throws Exception {
-		if (exec != null)
-			exec.shutdown();
 		if (rank == 0) {
 			memoryDebug("waiting for any post batch hook operations to finish");
 			((AsyncPostBatchHook)postBatchHook).shutdown();
 			memoryDebug("post batch hook done");
 		}
+		// write out branch-specific averages
+		Preconditions.checkState(myAverageDir.exists() || myAverageDir.mkdir());
+		for (Cell<String, String, AveragingAccumulator<GridSourceProvider>> cell : gridSeisAveragers.cellSet()) {
+			String prefix = cell.getRowKey();
+			if (!prefix.isBlank())
+				prefix += "_";
+			prefix += cell.getColumnKey();
+			debug("Building node-average for "+prefix);
+			GridSourceProvider avgProv = cell.getValue().getAverage();
+			ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
+			archive.addModule(avgProv);
+			File outputFile = new File(myAverageDir, prefix+".zip");
+			archive.write(outputFile);
+		}
+		
+		// wait for everyone to write them out
+		MPI.COMM_WORLD.Barrier();
+		
+		if (rank == 0) {
+			// now merge them in
+			
+			// figure out fault branches for each prefix
+			Map<String, LogicTreeBranch<LogicTreeNode>> baCommonBranches = new HashMap<>();
+			for (LogicTreeBranch<?> origBranch : tree) {
+				String baPrefix = AbstractAsyncLogicTreeWriter.getBA_prefix(origBranch);
+				LogicTreeBranch<LogicTreeNode> commonBranch = baCommonBranches.get(baPrefix);
+				if (commonBranch == null) {
+					List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
+					List<LogicTreeNode> values = new ArrayList<>();
+					for (int i=0; i<origBranch.size(); i++) {
+						LogicTreeLevel<?> level = origBranch.getLevel(i);
+						LogicTreeNode value = origBranch.getValue(i);
+						levels.add(level);
+						values.add(value);
+					}
+					commonBranch = new LogicTreeBranch<>(levels, values);
+					baCommonBranches.put(baPrefix, commonBranch);
+				}
+				Preconditions.checkState(origBranch.size() == commonBranch.size());
+				for (int i=0; i<origBranch.size(); i++) {
+					LogicTreeNode commonVal = commonBranch.getValue(i);
+					if (commonVal != null) {
+						LogicTreeNode origVal = origBranch.getValue(i);
+						if (origVal == null || !commonVal.equals(origVal))
+							commonBranch.setValue(i, null);
+					}
+				}
+			}
+			
+			File gridBranchesFile = new File(solsDir.getParentFile(), solsDir.getName()+"_gridded_branches.zip");
+			SolutionLogicTree.FileBuilder sltBuilder = new SolutionLogicTree.FileBuilder(gridBranchesFile);
+			sltBuilder.setSerializeGridded(true);
+			for (String baPrefix : baCommonBranches.keySet()) {
+				double[] baRankWeights = rankWeights.get(baPrefix);
+				
+				String baFilePrefix = solsDir.getName();
+				if (!baPrefix.isBlank())
+					baFilePrefix += "_"+baPrefix;
+				File baFile = new File(solsDir.getParentFile(), baFilePrefix+"_branch_averaged.zip");
+				
+				FaultSystemSolution baSol = FaultSystemSolution.load(baFile);
+				
+				FaultGridAssociations associations = ((AsyncGridSeisCopier)postBatchHook).faultGridAveragers.get(baPrefix).getAverage();
+				baSol.getRupSet().addModule(associations);
+				
+				debug("Building gridded-only branches for baPrefix="+baPrefix+" with rankWeights="
+						+Joiner.on(",").join(Doubles.asList(baRankWeights)));
+				
+				LogicTreeBranch<LogicTreeNode> commonBranch = baCommonBranches.get(baPrefix);
+				for (LogicTreeBranch<?> gridBranch : gridSeisOnlyTree) {
+					// build combined branch
+					List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
+					List<LogicTreeNode> values = new ArrayList<>();
+					for (int i=0; i<commonBranch.size(); i++) {
+						LogicTreeLevel<?> level = commonBranch.getLevel(i);
+						LogicTreeNode value = commonBranch.getValue(i);
+						if (value != null) {
+							levels.add(level);
+							values.add(value);
+						}
+					}
+					for (int i=0; i<gridBranch.size(); i++) {
+						LogicTreeLevel<?> level = gridBranch.getLevel(i);
+						LogicTreeNode value = gridBranch.getValue(i);
+						if (value != null) {
+							levels.add(level);
+							values.add(value);
+						}
+					}
+					LogicTreeBranch<LogicTreeNode> combinedBranch = new LogicTreeBranch<>(levels, values);
+					String gridPrefix = gridBranch.buildFileName();
+					debug("Combining prividers for baPrefix="+baPrefix+", gridPrefix="+gridPrefix+", combBranch="+combinedBranch);
+					
+					String prefix = baPrefix;
+					if (!prefix.isBlank())
+						prefix += "_";
+					prefix += gridPrefix;
+					
+					int numNodes = 0;
+					List<Future<GridSourceProvider>> futures = new ArrayList<>();
+					for (int rank=0; rank<size; rank++) {
+						File rankDir = new File(nodesAverageDir, "rank_"+rank);
+						Preconditions.checkState(rankDir.exists(), "Dir doesn't exist: %s", rankDir.getAbsolutePath());
+						File avgFile = new File(rankDir, prefix+".zip");
+						if (avgFile.exists()) {
+							numNodes++;
+							futures.add(exec.submit(new Callable<GridSourceProvider>() {
+
+								@Override
+								public GridSourceProvider call() throws Exception {
+									ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(avgFile);
+									return archive.requireModule(GridSourceProvider.class);
+								}
+							}));
+						} else {
+							futures.add(null);
+						}
+					}
+					debug("Processed providers for "+prefix+" from "+numNodes+" nodes");
+					Preconditions.checkState(numNodes > 0, "No nodes processed %s", prefix);
+					
+					AveragingAccumulator<GridSourceProvider> accumulator = null;
+					for (int rank=0; rank<size; rank++) {
+						Future<GridSourceProvider> future = futures.get(rank);
+						if (future != null) {
+							GridSourceProvider gridProv = future.get();
+							if (accumulator == null)
+								accumulator = gridProv.averagingAccumulator();
+							accumulator.process(gridProv, baRankWeights[rank]);
+							// clear it from memory
+							futures.set(rank, null);
+						}
+					}
+					GridSourceProvider avgProv = accumulator.getAverage();
+					
+					baSol.addModule(avgProv);
+					sltBuilder.solution(baSol, combinedBranch);
+				}
+			}
+			sltBuilder.close();
+		}
+		if (exec != null)
+			exec.shutdown();
 	}
 	
 	private void memoryDebug(String info) {
