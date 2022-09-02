@@ -406,8 +406,12 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	
 	public static LogicTree<LogicTreeNode> read(File jsonFile) throws IOException {
 		Reader reader = new BufferedReader(new FileReader(jsonFile));
+		return read(reader);
+	}
+	
+	public static LogicTree<LogicTreeNode> read(Reader jsonReader) throws IOException {
 		Gson gson = new GsonBuilder().setPrettyPrinting().create();
-		return gson.fromJson(reader, TypeToken.getParameterized(LogicTree.class, LogicTreeNode.class).getType());
+		return gson.fromJson(jsonReader, TypeToken.getParameterized(LogicTree.class, LogicTreeNode.class).getType());
 	}
 	
 	public LogicTree<E> sorted(Comparator<? super LogicTreeBranch<E>> comparator) {
@@ -454,7 +458,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 					if (node == null)
 						out.nullValue();
 					else
-						out.value(node.getShortName());
+						out.value(node.getFilePrefix());
 				}
 				out.endArray();
 			}
@@ -523,22 +527,36 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 						int index = 0;
 						while (in.hasNext()) {
 							LogicTreeLevel<? extends E> level = levels.get(index);
-							String shortName = in.nextString();
-							String modShortName = shortName.replace(" ", "").replace("_", "").toLowerCase();
+							String choice = in.nextString();
+							String modChoice = simplifyChoiceString(choice);
+							int numFuzzyMatches = 0;
+							boolean perfectMatch = false;
 							E node = null;
 							for (E possible : level.getNodes()) {
-								
-								boolean match = modShortName.equals(possible.getShortName().replace(" ", "").replace("_", "").toLowerCase());
-								match = match || modShortName.equals(possible.getFilePrefix().replace(" ", "").replace("_", "").toLowerCase());
-								match = match || (node instanceof Enum<?> &&
-										modShortName.equals(((Enum<?>)node).name().replace(" ", "").replace("_", "").toLowerCase()));
-								if (match) {
+								if (choice.equals(possible.getFilePrefix())) {
+									// perfect match
+									Preconditions.checkState(!perfectMatch, "Multiple choices for %s match %s",
+											level.getName(), choice);
 									node = possible;
-									break;
+									perfectMatch = true;
+								} else if (!perfectMatch) {
+									// look for a partial match
+									boolean match = modChoice.equals(simplifyChoiceString(possible.getShortName()));
+									match = match || modChoice.equals(simplifyChoiceString(possible.getFilePrefix()));
+									match = match || (possible instanceof Enum<?> &&
+											modChoice.equals(simplifyChoiceString(((Enum<?>)possible).name())));
+									if (match) {
+//										System.out.println(possible.getShortName()+" matches "+choice);
+//										System.out.println("\t"+possible.getShortName()+"\t"+possible.getFilePrefix()+"\t"+((Enum<?>)node).name());
+										node = possible;
+										numFuzzyMatches++;
+									}
 								}
 							}
 							Preconditions.checkNotNull(node, "No matching node found with shortName=%s for level %s",
-									shortName, level.getName());
+									choice, level.getName());
+							Preconditions.checkState(perfectMatch || numFuzzyMatches == 1,
+									"%s choices for %s match %s", numFuzzyMatches, level.getName(), choice);
 							branch.setValue(index, node);
 							index++;
 						}
@@ -575,6 +593,11 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			return new LogicTree<>(levels, branches, weightProvider);
 		}
 		
+	}
+	
+	private static String simplifyChoiceString(String str) {
+		str = str.replace(" ", "").replace("_", "").replace(",", "").toLowerCase();
+		return str;
 	}
 
 }
