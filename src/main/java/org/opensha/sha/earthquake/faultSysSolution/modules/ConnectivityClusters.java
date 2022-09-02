@@ -236,7 +236,7 @@ BranchAverageableModule<ConnectivityClusters>, AverageableModule.ConstantAverage
 			}
 			
 			this.largestClusterProgress = null;
-			if (FileBackedModule.hasEntry(zip, entryPrefix, CLUSTER_MISFITS_FILE_NAME)) {
+			if (FileBackedModule.hasEntry(zip, entryPrefix, LARGEST_CLUSTER_MISFIT_PROGRESS_FILE_NAME)) {
 				CSVFile<String> progressCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix,
 						LARGEST_CLUSTER_MISFIT_PROGRESS_FILE_NAME);
 				largestClusterProgress = new InversionMisfitProgress(progressCSV);
