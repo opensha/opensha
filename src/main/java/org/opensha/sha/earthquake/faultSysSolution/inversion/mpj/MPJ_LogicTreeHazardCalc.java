@@ -277,9 +277,13 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	}
 	
 	protected File getSolDir(LogicTreeBranch<?> branch) {
+		return getSolDir(branch, true);
+	}
+	
+	protected File getSolDir(LogicTreeBranch<?> branch, boolean mkdir) {
 		String dirName = branch.buildFileName();
 		File runDir = new File(outputDir, dirName);
-		Preconditions.checkState(runDir.exists() || runDir.mkdir());
+		Preconditions.checkState(!mkdir || runDir.exists() || runDir.mkdir());
 		
 		return runDir;
 	}
@@ -378,7 +382,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					if (faultLevels.size() < branch.size()) {
 						// we have gridded seismicity only branches
 						LogicTreeBranch<LogicTreeNode> subBranch = new LogicTreeBranch<>(faultLevels, faultNodes);
-						File subRunDir = getSolDir(subBranch);
+						File subRunDir = getSolDir(subBranch, false);
 						File subHazardDir = new File(subRunDir, combineWithHazardSubDirName);
 						if (subHazardDir.exists()) {
 							try {
