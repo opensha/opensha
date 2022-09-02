@@ -14,6 +14,7 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
@@ -43,8 +44,11 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		
 		GridSourceProvider gridProv = sol.requireModule(GridSourceProvider.class);
 		FaultGridAssociations faultAssoc = rupSet.getModule(FaultGridAssociations.class);
-		if (faultAssoc == null)
+		boolean intersectionAssoc = false;
+		if (faultAssoc == null) {
+			intersectionAssoc = true;
 			faultAssoc = FaultGridAssociations.getIntersectionAssociations(rupSet, gridProv.getGriddedRegion());
+		}
 		GriddedRegion gridReg = gridProv.getGriddedRegion();
 		for (int i=0; i<gridReg.getNodeCount(); i++) {
 			IncrementalMagFreqDist mfd = gridProv.getMFD(i);
@@ -53,6 +57,57 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 					if (pt.getY() > 0 && pt.getX() > maxMag)
 						maxMag = pt.getX();
 		}
+		
+		List<String> lines = new ArrayList<>();
+		lines.add("These plots include both gridded seismicity and fault sources. The gridded seismicity"
+				+ "model attached to this solution is of type _"+ClassUtils.getClassNameWithoutPackage(gridProv.getClass())
+				+"_ and has a spatial resolution of "+(float)gridProv.getGriddedRegion().getSpacing()+" degrees.");
+		lines.add("");
+		lines.add("The following maps show the faulting type at each grid cell from the gridded seismicity model:");
+		lines.add("");
+		
+		CPT fractCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
+		fractCPT.setNanColor(Color.WHITE);
+		
+		GriddedGeoDataSet ssMap = new GriddedGeoDataSet(gridReg, false);
+		GriddedGeoDataSet revMap = new GriddedGeoDataSet(gridReg, false);
+		GriddedGeoDataSet normMap = new GriddedGeoDataSet(gridReg, false);
+		for (int i=0; i<gridReg.getNodeCount(); i++) {
+			ssMap.set(i, gridProv.getFracStrikeSlip(i));
+			revMap.set(i, gridProv.getFracReverse(i));
+			normMap.set(i, gridProv.getFracNormal(i));
+		}
+		
+		RupSetMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
+		mapMaker.setWriteGeoJSON(false);
+		mapMaker.setSectOutlineChar(null);
+		
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		table.addLine("Fracion Strike-Slip", "Fracion Normal", "Fracion Reverse");
+		table.initNewLine();
+		mapMaker.plotXYZData(ssMap, fractCPT, "Fraction Strike-Slip");
+		mapMaker.plot(resourcesDir, "gridded_fract_ss", " ");
+		table.addColumn("![SS]("+relPathToResources+"/gridded_fract_ss.png)");
+		mapMaker.plotXYZData(normMap, fractCPT, "Fraction Normal");
+		mapMaker.plot(resourcesDir, "gridded_fract_norm", " ");
+		table.addColumn("![Norm]("+relPathToResources+"/gridded_fract_norm.png)");
+		mapMaker.plotXYZData(revMap, fractCPT, "Fraction Reverse");
+		mapMaker.plot(resourcesDir, "gridded_fract_rev", " ");
+		table.addColumn("![Rev]("+relPathToResources+"/gridded_fract_rev.png)");
+		table.finalizeLine();
+		lines.addAll(table.build());
+		lines.add("");
+
+		String nuclDescription = "The following maps show the total nucleation rate in each grid cell, summed across "
+				+ "both gridded seismicity and fault-based sources.";
+		if (intersectionAssoc)
+			nuclDescription += " No model-specific fault-to-grid-cell associations were supplied, so rates on faults are "
+					+ "mapped to the grid cells that their 3D surfaces intersect.";
+		else
+			nuclDescription += " Rates from faults are mapped to grid cells according to the model supplied association "
+					+ "fractions.";
+		lines.add(nuclDescription);
+		lines.add("");
 		
 		List<IncrementalMagFreqDist> solNuclMFDs = calcNuclMFDs(sol);
 		
@@ -88,14 +143,10 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 			magPrefixes.add("m9");
 		}
 		
-		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-6, -1);
-		cpt.setNanColor(Color.WHITE);
+		CPT nuclCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-6, -1);
+		nuclCPT.setNanColor(Color.WHITE);
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
-		mapMaker.setWriteGeoJSON(false);
-		mapMaker.setSectOutlineChar(null);
-		
-		TableBuilder table = MarkdownUtils.tableBuilder();
+		table = MarkdownUtils.tableBuilder();
 		CPT ratioCPT = null;
 		
 		GridSourceProvider compGridProv = null;
@@ -150,7 +201,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 			table.finalizeLine();
 			
 			String mainPrefix = "sol_nucl_"+magPrefix;
-			mapMaker.plotXYZData(logXYZ, cpt, "Log10 "+myLabel+" Nucleation Rate (events/yr)");
+			mapMaker.plotXYZData(logXYZ, nuclCPT, "Log10 "+myLabel+" Nucleation Rate (events/yr)");
 			mapMaker.plot(resourcesDir, mainPrefix, " ");
 
 			table.initNewLine();
@@ -182,7 +233,9 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 			table.finalizeLine();
 		}
 		
-		return table.build();
+		lines.addAll(table.build());
+		
+		return lines;
 	}
 	
 	private static List<IncrementalMagFreqDist> calcNuclMFDs(FaultSystemSolution sol) {
