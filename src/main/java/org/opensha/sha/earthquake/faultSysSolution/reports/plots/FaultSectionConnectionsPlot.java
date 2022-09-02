@@ -309,7 +309,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		lines.add("");
 		lines.addAll(clustersTable.build());
 		
-		if (sol.hasModule(ConnectivityClusterSolutionMisfits.class)) {
+		if (sol != null && sol.hasModule(ConnectivityClusterSolutionMisfits.class)) {
 			InversionMisfitProgress largestClusterProgress = sol.requireModule(
 					ConnectivityClusterSolutionMisfits.class).getLargestClusterMisfitProgress();
 			if (largestClusterProgress != null) {
