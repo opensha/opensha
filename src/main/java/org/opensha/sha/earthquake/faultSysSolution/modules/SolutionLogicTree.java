@@ -64,7 +64,8 @@ import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 public class SolutionLogicTree extends AbstractLogicTreeModule {
 	
 	public static final String SUB_DIRECTORY_NAME = "solution_logic_tree";
-	private boolean serializeGridded = true;
+	private static final boolean SERIALIZE_GRIDDED_DEFAULT = true;
+	private boolean serializeGridded = SERIALIZE_GRIDDED_DEFAULT;
 	private SolutionProcessor processor;
 	
 	/**
@@ -187,6 +188,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		private List<LogicTreeBranch<LogicTreeNode>> branches = new ArrayList<>();
 		private List<LogicTreeLevel<? extends LogicTreeNode>> levels = null;
 		
+		private boolean serializeGridded = SERIALIZE_GRIDDED_DEFAULT;
+		
 		public FileBuilder(File outputFile) throws IOException {
 			this(null, outputFile);
 		}
@@ -199,6 +202,12 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			this.processor = processor;
 			this.outputFile = outputFile;
 			archive = new ModuleArchive<>();
+		}
+		
+		public void setSerializeGridded(boolean serializeGridded) {
+			this.serializeGridded = serializeGridded;
+			if (solTree != null)
+				solTree.setSerializeGridded(serializeGridded);
 		}
 		
 		private void initSolTree(LogicTreeBranch<?> branch) {
@@ -228,6 +237,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 				
 			};
 			solTree.setLogicTreeLevels(levels);
+			solTree.setSerializeGridded(serializeGridded);
 			archive.addModule(solTree);
 			// begin asynchronous module archive write
 			endArchiveWriteFuture = CompletableFuture.runAsync(new Runnable() {
