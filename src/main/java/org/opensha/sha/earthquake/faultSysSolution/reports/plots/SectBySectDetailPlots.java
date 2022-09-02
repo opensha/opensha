@@ -66,6 +66,8 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Se
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
@@ -1101,6 +1103,12 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		if (rups.isEmpty())
 			return new ArrayList<>();
 		
+		GridSourceProvider gridProv = sol.getGridSourceProvider();
+		FaultGridAssociations gridAssoc = rupSet.getModule(FaultGridAssociations.class);
+		boolean hasGridded = gridProv != null && gridAssoc != null;
+		if (hasGridded)
+			minMag = Math.min(minMag, 5d);
+		
 		IncrementalMagFreqDist defaultMFD = SolMFDPlot.initDefaultMFD(minMag, maxMag);
 		
 		SummedMagFreqDist nuclTargetMFD = null;
@@ -1118,6 +1126,43 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		for (FaultSection sect : faultSects)
 			nuclMFD.addIncrementalMagFreqDist(sol.calcNucleationMFD_forSect(
 					sect.getSectionId(), defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size()));
+		if (hasGridded) {
+			IncrementalMagFreqDist griddedMFD = null;
+			for (FaultSection sect : faultSects) {
+				Map<Integer, Double> scaledNodeFracts = gridAssoc.getScaledNodeFractions(sect.getSectionId());
+				for (int nodeIndex : scaledNodeFracts.keySet()) {
+					double fract = scaledNodeFracts.get(nodeIndex);
+					IncrementalMagFreqDist nodeMFD = gridProv.getMFD_SubSeisOnFault(nodeIndex);
+					
+					if (fract > 0 && nodeMFD != null) {
+						for (int i=0; i<nodeMFD.size(); i++) {
+							double y = nodeMFD.getY(i);
+							if (y > 0) {
+								if (griddedMFD == null) {
+									griddedMFD = new IncrementalMagFreqDist(nodeMFD.getMinX(), nodeMFD.size(), nodeMFD.getDelta());
+								} else {
+									Preconditions.checkState((float)griddedMFD.getMinX() == (float)nodeMFD.getMinX());
+									Preconditions.checkState((float)griddedMFD.getDelta() == (float)nodeMFD.getDelta());
+									if (griddedMFD.size() <= i) {
+										// need to elarge it
+										IncrementalMagFreqDist newMFD = new IncrementalMagFreqDist(
+												nodeMFD.getMinX(), nodeMFD.size(), nodeMFD.getDelta());
+										for (int j=0; j<griddedMFD.size(); j++)
+											newMFD.set(j, griddedMFD.getY(j));
+										griddedMFD = newMFD;
+									}
+								}
+								griddedMFD.add(i, y);
+							}
+						}
+					}
+				}
+			}
+			if (griddedMFD != null) {griddedMFD.setName("Sub-Seismogenic");
+				incrFuncs.add(griddedMFD);
+				incrChars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, Color.CYAN));
+			}
+		}
 
 		incrFuncs.add(particMFD);
 		incrChars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, MAIN_COLOR));
