@@ -192,6 +192,19 @@ public class MarkdownUtils {
 			return strings;
 		}
 		
+		@Override
+		public String toString() {
+			StringBuilder str = new StringBuilder();
+			for (int i=0; i<lines.size(); i++) {
+				if (i > 0)
+					str.append("\n");
+				str.append(tableLine(lines.get(i)));
+				if (i == 0)
+					str.append("\n").append(generateTableDashLine(lines.get(i).length));
+			}
+			return str.toString();
+		}
+		
 		public CSVFile<String> toCSV() {
 			return toCSV(false);
 		}
