@@ -365,6 +365,7 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 		@Override
 		public void process(GridSourceProvider module, double relWeight) {
 			if (refGridProv == null) {
+				Preconditions.checkState(totWeight == 0d, "Can't reuse an averager after getAverage called");
 				refGridProv = module;
 				gridReg = module.getGriddedRegion();
 				subSeisMFDs = new HashMap<>();
@@ -401,7 +402,15 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 				fractN[i] *= scale;
 			}
 			
-			return refGridProv.newInstance(subSeisMFDs, unassociatedMFDs, fractSS, fractN, fractR);
+			GridSourceProvider ret = refGridProv.newInstance(subSeisMFDs, unassociatedMFDs, fractSS, fractN, fractR);
+			// can't reuse this
+			subSeisMFDs = null;
+			unassociatedMFDs = null;
+			fractSS = null;
+			fractN = null;
+			fractR = null;
+			refGridProv = null;
+			return ret;
 		}
 
 		@Override
