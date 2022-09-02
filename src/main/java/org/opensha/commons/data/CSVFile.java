@@ -307,9 +307,9 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		}
 	}
 	
-	private static ArrayList<String> loadLine(String line, int num) {
+	private static ArrayList<String> loadLine(String line, int num, int prevNum) {
 		line = line.trim();
-		ArrayList<String> vals = num > 0 ? new ArrayList<>(num) : new ArrayList<>();
+		ArrayList<String> vals = prevNum > 0 ? new ArrayList<>(prevNum) : new ArrayList<>();
 		boolean inside = false;
 		String cur = "";
 		for (int i=0; i<line.length(); i++) {
@@ -388,11 +388,13 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		BufferedReader br = new BufferedReader(new InputStreamReader(is));
 		List<List<String>> values = new ArrayList<List<String>>();
 		String line = br.readLine();
+		int prevNum = -1;
 		while(line != null) {
 			if (strictRowSizes && cols < 0) {
-				cols = loadLine(line, -1).size();
+				cols = loadLine(line, -1, prevNum).size();
 			}
-			ArrayList<String> vals = loadLine(line, cols);
+			ArrayList<String> vals = loadLine(line, cols, prevNum);
+			prevNum = vals.size();
 			if (strictRowSizes && vals.size() > cols) {
 				br.close();
 				throw new IllegalStateException("Line lenghts inconsistant and strictRowSizes=true");
@@ -431,15 +433,17 @@ public class CSVFile<E> implements Iterable<List<E>> {
 			is = new BufferedInputStream(is);
 		List<List<Double>> values = new ArrayList<List<Double>>();
 		int lineCount = 0;
+		int prevNum = -1;
 		for (String line : FileUtils.loadStream(is)) {
 			if (headerLines > lineCount) {
 				lineCount++;
 				continue;
 			}
 			if (strictRowSizes && cols < 0) {
-				cols = loadLine(line, -1).size();
+				cols = loadLine(line, -1, prevNum).size();
 			}
-			ArrayList<String> vals = loadLine(line, cols);
+			ArrayList<String> vals = loadLine(line, cols, prevNum);
+			prevNum = vals.size();
 			if (strictRowSizes && vals.size() > cols)
 				throw new IllegalStateException("Line lenghts inconsistant and strictRowSizes=true");
 			List<Double> doubles;
