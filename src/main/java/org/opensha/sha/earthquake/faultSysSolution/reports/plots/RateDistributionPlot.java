@@ -36,6 +36,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnneali
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.AnnealingProgress;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.LogicTreeRateStatistics;
 import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
@@ -244,6 +245,16 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 		lines.add("![Rate Distribution]("+relPathToResources+"/rate_dist.png)");
 		lines.add("");
 		lines.add("![Cumulative Rate Distribution]("+relPathToResources+"/rate_dist_cumulative.png)");
+		
+		if (sol.hasModule(LogicTreeRateStatistics.class)) {
+			LogicTreeRateStatistics stats = sol.requireModule(LogicTreeRateStatistics.class);
+
+			lines.add("");
+			lines.add(getSubHeading()+" Logic Tree Rate Statistics");
+			lines.add(topLink); lines.add("");
+			
+			lines.addAll(stats.buildTable().build());
+		}
 		
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		
