@@ -27,6 +27,7 @@ import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
@@ -442,6 +443,12 @@ public class SolHazardMapCalc {
 	
 	public File plotMap(File outputDir, String prefix, GriddedGeoDataSet xyz, CPT cpt,
 			String title, String zLabel, boolean diffStats) throws IOException {
+		MapPlot plot = buildMapPlot(outputDir, prefix, xyz, cpt, title, zLabel, diffStats);
+		return new File(plot.outputDir, prefix+".png");
+	}
+	
+	public MapPlot buildMapPlot(File outputDir, String prefix, GriddedGeoDataSet xyz, CPT cpt,
+			String title, String zLabel, boolean diffStats) throws IOException {
 		synchronized (this) {
 			if (extraFuncs == null) {
 				List<XY_DataSet> extraFuncs = new ArrayList<>();
@@ -564,6 +571,28 @@ public class SolHazardMapCalc {
 			labels.add("Within 1%: "+percentDF.format((double)numWithin1/(double)numFinite));
 			labels.add("Within 5%: "+percentDF.format((double)numWithin5/(double)numFinite));
 			labels.add("Within 10%: "+percentDF.format((double)numWithin10/(double)numFinite));
+			
+			// default to top right, but see if there's blank space anywhere
+			boolean top;
+			boolean left;
+			double testTopLat = latRange.getLowerBound() + 0.8*latRange.getLength();
+			double testBotLat = latRange.getLowerBound() + 0.2*latRange.getLength();
+			double testRightLon = lonRange.getLowerBound() + 0.8*lonRange.getLength();
+			double testLeftLon = lonRange.getLowerBound() + 0.2*lonRange.getLength();
+			if (!region.contains(new Location(testTopLat, testRightLon))) {
+				top = true;
+				left = false;
+			} else if (!region.contains(new Location(testTopLat, testLeftLon))) {
+				top = true;
+				left = true;
+			} else if (!region.contains(new Location(testBotLat, testLeftLon))) {
+				top = false;
+				left = true;
+			} else if (!region.contains(new Location(testBotLat, testRightLon))) {
+				top = false;
+				left = false;
+			}
+			
 			double yDiff = latRange.getLength();
 			if (yDiff > 10)
 				yDiff /= 30d;
@@ -572,6 +601,7 @@ public class SolHazardMapCalc {
 			else
 				yDiff /= 15d;
 			double y = latRange.getUpperBound() - 0.5*yDiff;
+			
 			for (String label : labels) {
 				double x = lonRange.getUpperBound();
 				XYTextAnnotation ann = new XYTextAnnotation(label+"  ", x, y);
@@ -601,12 +631,33 @@ public class SolHazardMapCalc {
 		
 		PlotUtils.fixAspectRatio(gp, 800, true);
 		
-		File ret = new File(outputDir, prefix+".png");
-		gp.saveAsPNG(ret.getAbsolutePath());
+		gp.saveAsPNG(new File(outputDir, prefix+".png").getAbsolutePath());
 		if (PDFS)
-			gp.saveAsPDF(ret.getAbsolutePath().replace(".png", ".pdf"));
+			gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
 		
-		return ret;
+		return new MapPlot(spec, lonRange, latRange, tick, tick, outputDir, prefix);
+	}
+	
+	public static class MapPlot {
+		public final XYZPlotSpec spec;
+		public final Range xRnage;
+		public final Range yRange;
+		public final double xTick;
+		public final double yTick;
+		public final File outputDir;
+		public final String prefix;
+		
+		public MapPlot(XYZPlotSpec spec, Range xRnage, Range yRange, double xTick, double yTick, File outputDir,
+				String prefix) {
+			super();
+			this.spec = spec;
+			this.xRnage = xRnage;
+			this.yRange = yRange;
+			this.xTick = xTick;
+			this.yTick = yTick;
+			this.outputDir = outputDir;
+			this.prefix = prefix;
+		}
 	}
 	
 	private static String getCSV_FileName(String prefix, double period) {
@@ -636,10 +687,14 @@ public class SolHazardMapCalc {
 		Preconditions.checkState(curvesList != null, "Must call calcHazardCurves first");
 		int p = periodIndex(period);
 		
-		CSVFile<String> csv = new CSVFile<>(true);
-		
 		DiscretizedFunc[] curves = curvesList.get(p);
 		Preconditions.checkNotNull(curves[0], "Curve not calculated at index 0");
+		
+		writeCurvesCSV(outputFile, curves, region.getNodeList());
+	}
+	
+	public static void writeCurvesCSV(File outputFile, DiscretizedFunc[] curves, LocationList locs) throws IOException {
+		CSVFile<String> csv = new CSVFile<>(true);
 		
 		List<String> header = new ArrayList<>();
 		header.add("Index");
@@ -656,7 +711,7 @@ public class SolHazardMapCalc {
 			
 			List<String> line = new ArrayList<>();
 			line.add(i+"");
-			Location loc = region.getLocation(i);
+			Location loc = locs.get(i);
 			line.add(loc.getLatitude()+"");
 			line.add(loc.getLongitude()+"");
 			for (int j=0; j<curve.size(); j++)
@@ -677,28 +732,7 @@ public class SolHazardMapCalc {
 			Preconditions.checkState(curvesFile.exists(), "Curve files doens't exist: %s", curvesFile.getAbsolutePath());
 			
 			CSVFile<String> csv = CSVFile.readFile(curvesFile, true);
-			ArbitrarilyDiscretizedFunc xVals = new ArbitrarilyDiscretizedFunc();
-			for (int col=3; col<csv.getNumCols(); col++)
-				xVals.set(csv.getDouble(0, col), 0d);
-			
-			Preconditions.checkState(csv.getNumRows() == region.getNodeCount()+1,
-					"Region node count discrepancy: %s != %s", csv.getNumRows()-1, region.getNodeCount());
-			
-			DiscretizedFunc[] curves = new DiscretizedFunc[region.getNodeCount()];
-			
-			for (int row=1; row<csv.getNumRows(); row++) {
-				int index = row-1;
-				Location loc = new Location(csv.getDouble(row, 1), csv.getDouble(row, 2));
-				Location regLoc = region.getLocation(index);
-				Preconditions.checkState(LocationUtils.areSimilar(loc, regLoc),
-						"Region location mismatch: %s != %s", loc, regLoc);
-				int csvIndex = csv.getInt(row, 0);
-				Preconditions.checkState(index == csvIndex, "CSV index mismatch: %s != %s", index, csvIndex);
-				DiscretizedFunc curve = new ArbitrarilyDiscretizedFunc();
-				for (int i=0; i<xVals.size(); i++)
-					curve.set(xVals.getX(i), csv.getDouble(row, i+3));
-				curves[index] = curve;
-			}
+			DiscretizedFunc[] curves = loadCurvesCSV(csv, region);
 			
 			curvesList.add(curves);
 		}
@@ -706,6 +740,40 @@ public class SolHazardMapCalc {
 		SolHazardMapCalc calc = new SolHazardMapCalc(sol, null, region, periods);
 		calc.curvesList = curvesList;
 		return calc;
+	}
+	
+	public static DiscretizedFunc[] loadCurvesCSV(CSVFile<String> csv, GriddedRegion region) {
+		ArbitrarilyDiscretizedFunc xVals = new ArbitrarilyDiscretizedFunc();
+		for (int col=3; col<csv.getNumCols(); col++)
+			xVals.set(csv.getDouble(0, col), 0d);
+		
+		DiscretizedFunc[] curves;
+		if (region != null) {
+			Preconditions.checkState(csv.getNumRows() == region.getNodeCount()+1,
+					"Region node count discrepancy: %s != %s", csv.getNumRows()-1, region.getNodeCount());
+			
+			curves = new DiscretizedFunc[region.getNodeCount()];
+		} else {
+			curves = new DiscretizedFunc[csv.getNumRows()-1];
+		}
+		
+		
+		for (int row=1; row<csv.getNumRows(); row++) {
+			int index = row-1;
+			if (region != null) {
+				Location loc = new Location(csv.getDouble(row, 1), csv.getDouble(row, 2));
+				Location regLoc = region.getLocation(index);
+				Preconditions.checkState(LocationUtils.areSimilar(loc, regLoc),
+						"Region location mismatch: %s != %s", loc, regLoc);
+			}
+			int csvIndex = csv.getInt(row, 0);
+			Preconditions.checkState(index == csvIndex, "CSV index mismatch: %s != %s", index, csvIndex);
+			DiscretizedFunc curve = new ArbitrarilyDiscretizedFunc();
+			for (int i=0; i<xVals.size(); i++)
+				curve.set(xVals.getX(i), csv.getDouble(row, i+3));
+			curves[index] = curve;
+		}
+		return curves;
 	}
 	
 	private static Options createOptions() {
