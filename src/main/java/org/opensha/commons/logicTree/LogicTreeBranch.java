@@ -259,6 +259,10 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule
 	}
 	
 	public void setValue(int index, E value) {
+		if (value == null) {
+			clearValue(index);
+			return;
+		}
 		LogicTreeLevel<? extends E> level = levels.get(index);
 		Preconditions.checkState(level.getType().isAssignableFrom(value.getClass()) && level.isMember(value));
 		if (Objects.equals(value, values.get(index)))
