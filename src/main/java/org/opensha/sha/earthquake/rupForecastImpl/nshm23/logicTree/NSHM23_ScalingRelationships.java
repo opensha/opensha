@@ -27,7 +27,7 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 	
-	LOGA_C4p2("LogA, C=4.2", "LogA_C4p2", 1d) {
+	LOGA_C4p2("LogA, C=4.2", "C=4.2", "LogA_C4p2", 1d) {
 		@Override
 		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			area *= 1e-6; // m^2 -> km^2
@@ -35,7 +35,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 			return Math.log10(area) + 4.2;
 		}
 	},
-	LOGA_C4p1("LogA, C=4.1", "LogA_C4p1", 1d) {
+	LOGA_C4p1("LogA, C=4.1", "C=4.1", "LogA_C4p1", 1d) {
 		@Override
 		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			area *= 1e-6; // m^2 -> km^2
@@ -43,7 +43,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 			return Math.log10(area) + 4.1;
 		}
 	},
-	WIDTH_LIMITED("Width-Limited", "WdthLmtd", 1d) {
+	WIDTH_LIMITED("Width-Limited", "WdthLmtd", "WdthLmtd", 1d) {
 		@Override
 		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			width = USE_ORIG_WIDTHS ? origWidth : width;
@@ -57,7 +57,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 			return Math.log10(area) + (2d/3d)*Math.log10(upperMiddleTerm/lowerMiddleTerm) + C;
 		}
 	},
-	LOGA_C4p2_SQRT_LEN("LogA, C=4.2, SqtLen", "LogA_C4p2_SqrtLen", 1d) {
+	LOGA_C4p2_SQRT_LEN("LogA, C=4.2, SqtLen", "C=4.2, SqrtLen", "LogA_C4p2_SqrtLen", 1d) {
 		@Override
 		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			return LOGA_C4p2.getMag(area, length, width, origWidth, aveRake);
@@ -72,7 +72,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 			return C6*Math.sqrt(length*width);
 		}
 	},
-	LOGA_C4p1_SQRT_LEN("LogA, C=4.1, SqtLen", "LogA_C4p1_SqrtLen", 1d) {
+	LOGA_C4p1_SQRT_LEN("LogA, C=4.1, SqtLen", "C=4.1, SqtLen", "LogA_C4p1_SqrtLen", 1d) {
 		@Override
 		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			return LOGA_C4p1.getMag(area, length, width, origWidth, aveRake);
@@ -87,7 +87,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 			return C6*Math.sqrt(length*width);
 		}
 	},
-	WIDTH_LIMITED_CSD("Width-Limited Constant-Stress-Drop", "WdthLmtdCSD", 1d) {
+	WIDTH_LIMITED_CSD("Width-Limited Constant-Stress-Drop", "WdthLmtd, CSD", "WdthLmtdCSD", 1d) {
 		@Override
 		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			return WIDTH_LIMITED.getMag(area, length, width, origWidth, aveRake);
@@ -102,7 +102,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 			return (deltaSigma/FaultMomentCalc.SHEAR_MODULUS)*1d/(7d/(3d*length) + 1d/(2d*width));
 		}
 	},
-	AVERAGE("NSHM23 Average", "NSHM23_Avg", 0d) {
+	AVERAGE("NSHM23 Average", "NSHM23-Avg", "NSHM23_Avg", 0d) {
 		@Override
 		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
 			double sum = 0d;
@@ -136,11 +136,13 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 	
 	private String name;
 	private String shortName;
+	private String filePrefix;
 	private double weight;
 
-	private NSHM23_ScalingRelationships(String name, String shortName, double weight) {
+	private NSHM23_ScalingRelationships(String name, String shortName, String filePrefix, double weight) {
 		this.name = name;
 		this.shortName = shortName;
+		this.filePrefix = filePrefix;
 		this.weight = weight;
 	}
 
@@ -151,7 +153,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 
 	@Override
 	public String getFilePrefix() {
-		return shortName.replaceAll("\\W+", "_");
+		return filePrefix;
 	}
 
 	@Override

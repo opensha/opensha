@@ -37,7 +37,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	public static LogicTreeLevel<NSHM23_SlipAlongRuptureModels> SLIP_ALONG =
 			LogicTreeLevel.forEnum(NSHM23_SlipAlongRuptureModels.class, "Slip Along Rupture", "SlipAlong");
 	public static LogicTreeLevel<SupraSeisBValues> SUPRA_B =
-			LogicTreeLevel.forEnum(SupraSeisBValues.class, "Supra-Seis b-value", "SupraB");
+			LogicTreeLevel.forEnum(SupraSeisBValues.class, "Supra-Seismogenic b-value", "SupraB");
 	public static LogicTreeLevel<SubSectConstraintModels> SUB_SECT_CONSTR =
 			LogicTreeLevel.forEnum(SubSectConstraintModels.class, "Sub-Sect Constraint Model", "SectConstr");
 	public static LogicTreeLevel<SubSeisMoRateReductions> SUB_SEIS_MO =

@@ -16,6 +16,15 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoade
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
+/**
+ * Regional seismicity values from Andrea.
+ * 
+ * Current version via e-mail 8/12/2022, forwarded by Ned 8/15/2022, subject "Fwd: earthquake rate model"
+ * 
+ * Weights from 95% confidence are from Table 2.2 of WGCEP (2002)
+ * @author kevin
+ *
+ */
 @DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
@@ -25,7 +34,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 @Affects(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
 @Affects(GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
 public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
-	PREFFERRED("Preffered Seismicity Rate", "PrefSeis", 0.95d) {
+	PREFFERRED("Preffered Seismicity Rate", "PrefSeis", 0.74d) {
 		@Override
 		public GutenbergRichterMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			switch (region) {
@@ -43,7 +52,7 @@ public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
 			}
 		}
 	},
-	LOW("Lower Seismicity Bound (p2.5)", "LowSeis", 0.025d) {
+	LOW("Lower Seismicity Bound (p2.5)", "LowSeis", 0.13d) {
 		@Override
 		public GutenbergRichterMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			switch (region) {
@@ -61,7 +70,7 @@ public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
 			}
 		}
 	},
-	HIGH("Upper Seismicity Bound (p97.5)", "HighSeis", 0.025d) {
+	HIGH("Upper Seismicity Bound (p97.5)", "HighSeis", 0.13d) {
 		@Override
 		public GutenbergRichterMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			switch (region) {

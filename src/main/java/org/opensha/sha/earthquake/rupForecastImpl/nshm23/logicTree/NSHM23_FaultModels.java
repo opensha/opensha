@@ -211,16 +211,25 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 				List<Region> regions = new ArrayList<>();
 				List<IncrementalMagFreqDist> regionMFDs = new ArrayList<>();
 				List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+				
+				MaxMagOffFaultBranchNode offFaultMMax = null;
+				if (branch != null)
+					offFaultMMax = branch.getValue(MaxMagOffFaultBranchNode.class);
 				for (SeismicityRegions pReg : SeismicityRegions.values()) {
-					// preliminary values from Andrea/Ned via e-mail, 8/15/2022, subject "Fwd: earthquake rate model"
-					
 					Region region = pReg.load();
 					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
 						continue;
 					
-					double mMax = rupSet.getMaxMag();
-					if (branch != null && branch.hasValue(MaxMagOffFaultBranchNode.class))
-						mMax = branch.getValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
+					// TODO: revisit Mmax
+					double faultSysMmax = 0d;
+					double[] fracts = rupSet.getFractRupsInsideRegion(region, true);
+					for (int rupIndex=0; rupIndex<fracts.length; rupIndex++)
+						if (fracts[rupIndex] > 0)
+							faultSysMmax = Math.max(faultSysMmax, rupSet.getMagForRup(rupIndex));
+					
+					double mMax = faultSysMmax;
+					if (offFaultMMax != null)
+						mMax = Math.max(offFaultMMax.getMaxMagOffFault(), mMax);
 					EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(Math.max(mMax, rupSet.getMaxMag()));
 					regionMFDs.add(NSHM23_RegionalSeismicity.getBounded(pReg, refMFD, mMax));
 					regions.add(region);
