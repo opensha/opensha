@@ -124,7 +124,6 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 		this.modMinMags = rupSet.getModule(ModSectMinMags.class);
 		this.spatialPDF = spatialPDF;
 		this.totGriddedSeisMFD = totGriddedSeisMFD;
-		this.depthNuclProbHist = depthNuclProbHist;
 		this.griddedRegion = cgr.getGriddedRegion();
 		this.fracStrikeSlip = fracStrikeSlip;
 		this.fracNormal = fracNormal;
@@ -137,10 +136,9 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 		double testSum=0;
 		for(double val:spatialPDF) testSum += val;
 		Preconditions.checkState(testSum < 1.001 && testSum > 0.999, "spatialPDF values must sum to 1.0; sum=%s", testSum);
-
-		testSum = depthNuclProbHist.calcSumOfY_Vals();
-		Preconditions.checkState(testSum < 1.001 && testSum > 0.999, "depthNuclProbHist y-axis values must sum to 1.0; sum=%s", testSum);
-		// could also check the exact x-axis discretization of depthNuclProbHist
+		
+		// check normalization and binning of depthNuclProbHist
+		this.depthNuclProbHist = validateOrUpdateDepthDistr(depthNuclProbHist, cgr);
 
 		// compute total MFDs
 		long time = System.currentTimeMillis();
@@ -167,6 +165,46 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 
 		if(D) System.out.println("Done with constructor");
 
+	}
+	
+	private EvenlyDiscretizedFunc validateOrUpdateDepthDistr(EvenlyDiscretizedFunc depthNuclProbHist, CubedGriddedRegion cgr) {
+		double testSum = depthNuclProbHist.calcSumOfY_Vals();
+		Preconditions.checkState(testSum < 1.001 && testSum > 0.999, "depthNuclProbHist y-axis values must sum to 1.0; sum=%s", testSum);
+		// now make sure it matches depths used in CubedGriddedRegion
+		double cubeDiscr = cgr.getCubeDepthDiscr();
+		int numCubes = cgr.getNumCubeDepths();
+		double firstDepth = cgr.getCubeDepth(0);
+		if ((float)depthNuclProbHist.getDelta() == (float)cubeDiscr && (float)firstDepth == (float)depthNuclProbHist.getMinX()) {
+			// same gridding
+			if (numCubes == depthNuclProbHist.size())
+				// identical
+				return depthNuclProbHist;
+			// not identical, resize to the same number of bins, padding with zeros if needed
+			EvenlyDiscretizedFunc ret = new EvenlyDiscretizedFunc(firstDepth, numCubes, cubeDiscr);
+			for (int i=0; i<ret.size(); i++) {
+				if (i >= depthNuclProbHist.size())
+					System.err.println("WARNING: depth-nucleation probability histogram doesn't have a value at "
+							+(float)ret.getX(i)+", setting to 0");
+				else
+					ret.set(i, depthNuclProbHist.getY(i));
+			}
+			double weightBelow = 0d;
+			for (int i=ret.size(); i<depthNuclProbHist.size(); i++)
+				weightBelow += depthNuclProbHist.getY(i);
+			if (weightBelow > 0d) {
+				System.err.println("WARNING: depth-nucleation probability histogram has values below CubedGriddedRegion "
+						+ "with total weight="+(float)weightBelow+", ignoring those values and re-normalizing.");
+				ret.scale(1d/ret.calcSumOfY_Vals());
+			} else {
+				testSum = ret.calcSumOfY_Vals();
+				Preconditions.checkState(testSum < 1.001 && testSum > 0.999,
+						"re-gridded depth-nucleation hist doesn't sum to 1? %s", testSum);
+			}
+			return ret;
+		}
+		// TODO: could add interpolation support
+		throw new IllegalStateException("Supplied depth-nucleation probability histogram does not match "
+				+ "CubedGriddedRegion gridding.");
 	}
 	
 	@Override

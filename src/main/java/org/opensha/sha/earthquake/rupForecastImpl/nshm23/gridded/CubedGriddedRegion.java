@@ -218,7 +218,7 @@ public class CubedGriddedRegion {
 //			throw new RuntimeException("Index "+index+" is out of bounds for depth="+depth);
 	}
 	
-	private double getCubeDepth(int depthIndex) {
+	public double getCubeDepth(int depthIndex) {
 		return (double)depthIndex*cubeDepthDiscr + cubeDepthDiscr/2;
 	}
 	
@@ -355,6 +355,10 @@ public class CubedGriddedRegion {
 	
 	public double getCubeDepthDiscr() {
 		return cubeDepthDiscr;
+	}
+	
+	public int getNumCubeDepths() {
+		return numCubeDepths;
 	}
 
 	/**

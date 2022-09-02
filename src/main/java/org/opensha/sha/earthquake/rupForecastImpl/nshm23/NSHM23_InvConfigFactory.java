@@ -80,6 +80,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_Abstract
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_CombinedRegionGridSourceProvider;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_FaultCubeAssociations;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_GridFocalMechs;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SeisDepthDistributions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.HardDistCutoffJumpProbCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
@@ -806,6 +807,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		double[] pdf = spatSeisPDF.load(region);
 		
 		// seismicity depth distribution
+		
+		// TODO still using UCERF3
 		SeisDepthDistribution seisDepthDistribution = new SeisDepthDistribution();
 		double delta=2;
 		HistogramFunction binnedDepthDistFunc = new HistogramFunction(1d, 12,delta);
@@ -813,6 +816,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			double prob = seisDepthDistribution.getProbBetweenDepths(binnedDepthDistFunc.getX(i)-delta/2d,binnedDepthDistFunc.getX(i)+delta/2d);
 			binnedDepthDistFunc.set(i,prob);
 		}
+//		EvenlyDiscretizedFunc depthNuclDistFunc = NSHM23_SeisDepthDistributions.load(region);
 		
 		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, binnedDepthDistFunc,
 				fractStrikeSlip, fractNormal, fractReverse);
