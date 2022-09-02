@@ -92,6 +92,7 @@ public class PlotUtils {
 	public static int calcHeight(ChartPanel cp, int width, double aspectRatio) {
 		ChartRenderingInfo chartInfo = new ChartRenderingInfo();
 		int height = width; // start with height = width
+		// this forces it to actually render
 		cp.getChart().createBufferedImage(width, height, chartInfo);
 		Rectangle2D plotArea = chartInfo.getPlotInfo().getDataArea();
 		double myWidth = plotArea.getWidth();
@@ -104,6 +105,28 @@ public class PlotUtils {
 		double plotHeight = myWidth / aspectRatio;
 		return (int)(extraHeight + plotHeight + 0.5);
 	}
+	
+	// TODO untested, verify and uncomment if needed
+//	public static int calcWidth(GraphPanel gp, int height,  boolean isLatLon) {
+//		return calcWidth(gp.getChartPanel(), height, calcAspectRatio(gp.getX_AxisRange(), gp.getY_AxisRange(), isLatLon));
+//	}
+//	
+//	public static int calcWidth(ChartPanel cp, int height, double aspectRatio) {
+//		ChartRenderingInfo chartInfo = new ChartRenderingInfo();
+//		int width = height; // start with height = width
+//		// this forces it to actually render
+//		cp.getChart().createBufferedImage(width, height, chartInfo);
+//		Rectangle2D plotArea = chartInfo.getPlotInfo().getDataArea();
+//		double myWidth = plotArea.getWidth();
+//		double myHeight = plotArea.getHeight();
+////		double myAspect = myWidth/myHeight;
+////		System.out.println("Actual plot area: "+myWidth+" x "+myHeight+", aspect="+myAspect);
+////		double targetAspect = lonSpan / latSpan;
+////		System.out.println("Target aspect: "+targetAspect);
+//		double extraWidth = width - myWidth;
+//		double plotWidth = myHeight * aspectRatio;
+//		return (int)(extraWidth + plotWidth+ 0.5);
+//	}
 	
 	public static void writePlots(File outputDir, String prefix, GraphPanel gp, int width, int height,
 			boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
