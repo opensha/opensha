@@ -52,8 +52,34 @@ public enum GMT_CPT_Files {
 	GMT_SPLIT("GMT_split.cpt"),
 //	GMT_TOPO("GMT_topo.cpt"),
 	GMT_WYSIWYG("GMT_wysiwyg.cpt"),
+	/**
+	 * CET-L4 from https://colorcet.com/
+	 */
 	BLACK_RED_YELLOW_UNIFORM("CET-L4.cpt"),
-	RAINBOW_UNIFORM("CET-R1.cpt");
+	/**
+	 * CET-R1 from https://colorcet.com/
+	 */
+	RAINBOW_UNIFORM("CET-R1.cpt"),
+	/**
+	 * CET-D01 from https://colorcet.com/
+	 * blue, light blue, light red, red
+	 */
+	DIVERGING_BLUE_RED_UNIFORM("CET-D01.cpt"),
+	/**
+	 * CET-D01A from https://colorcet.com/
+	 * Dark blue, blue, light blue, light red, red, dark red
+	 */
+	DIVERGING_DARK_BLUE_RED_UNIFORM("CET-D01A.cpt"),
+	/**
+	 * vik from https://www.fabiocrameri.ch/colourmaps/ and GMT 6
+	 * dark cyan-ish blue, light blue, light orange red, dark orange red
+	 */
+	DIVERGING_VIK_UNIFORM("vik.cpt"),
+	/**
+	 * bam from https://www.fabiocrameri.ch/colourmaps/ and GMT 6
+	 * dark greens through white to dark magenta
+	 */
+	DIVERGING_BAM_UNIFORM("bam.cpt");
 	
 	private String fname;
 	
