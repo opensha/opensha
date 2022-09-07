@@ -45,6 +45,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
+import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen.PlotLevel;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata.ScalarRange;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityFilterPlot.RupSetPlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
@@ -89,7 +90,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			HistScalar.MAX_JUMP_DIST,
 			HistScalar.CUM_JUMP_DIST,
 			HistScalar.CUM_RAKE_CHANGE,
-			HistScalar.MAX_SLIP_DIFF
+//			HistScalar.MAX_SLIP_DIFF
 	};
 
 	public RupHistogramPlots() {
@@ -163,140 +164,144 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			
 			if (sol == null) {
 				// rup set only, do rupture examples
-				double[] fractiles = scalar.getExampleRupPlotFractiles();
-				if (fractiles == null)
-					continue;
+				if (getPlotLevel() != PlotLevel.LIGHT) {
+					// but not for light reports
+					double[] fractiles = scalar.getExampleRupPlotFractiles();
+					if (fractiles == null)
+						continue;
 
-				lines.add(getSubHeading()+"# "+scalar.getName()+" Extremes & Examples");
-				lines.add(topLink); lines.add("");
-				lines.add("Example ruptures at various percentiles of "+scalar.getName());
-				lines.add("");
-				
-				List<List<ClusterRupture>> ruptureLists = new ArrayList<>();
-				List<HashSet<UniqueRupture>> uniqueLists = new ArrayList<>();
-				List<String> headings = new ArrayList<>();
-				List<List<Double>> scalarValsList = new ArrayList<>();
-				List<String> prefixes = new ArrayList<>();
-				List<FaultSystemRupSet> rupSets = new ArrayList<>();
-				
-				ruptureLists.add(inputRups);
-				uniqueLists.add(null);
-				if (compRupSet == null)
-					headings.add(null);
-				else
-					headings.add("From the primary rupture set ("+meta.primary.name+"):");
-				scalarValsList.add(inputScalars.getValues());
-				
-				prefixes.add("hist_rup");
-				rupSets.add(rupSet);
-				if (compRupSet != null) {
-					if (meta.primaryOverlap.numUniqueRuptures > 0) {
-						// add unique to primary
-						HashSet<UniqueRupture> includeUniques = new HashSet<>();
-						for (ClusterRupture rup : inputRups)
-							if (!compUniques.contains(rup.unique))
-								includeUniques.add(rup.unique);
-						Preconditions.checkState(!includeUniques.isEmpty());
-						ruptureLists.add(inputRups);
-						uniqueLists.add(includeUniques);
-
-						headings.add("Ruptures that are unique to the primary rupture set ("+meta.primary.name+"):");
-						scalarValsList.add(inputScalars.getValues());
-
-						prefixes.add("hist_rup");
-						rupSets.add(rupSet);
-					}
-					if (meta.comparisonOverlap.numUniqueRuptures > 0) {
-						// add unique to comparison
-						HashSet<UniqueRupture> includeUniques = new HashSet<>();
-						for (ClusterRupture rup : compRups)
-							if (!inputUniques.contains(rup.unique))
-								includeUniques.add(rup.unique);
-						Preconditions.checkState(!includeUniques.isEmpty());
-						ruptureLists.add(compRups);
-						uniqueLists.add(includeUniques);
-
-						headings.add("Ruptures that are unique to the comparison rupture set ("+meta.comparison.name+"):");
-						scalarValsList.add(compScalars.getValues());
-
-						prefixes.add("hist_comp_rup");
-						rupSets.add(compRupSet);
-					}
-				}
-				
-				for (int i=0; i<headings.size(); i++) {
-					List<ClusterRupture> rups = ruptureLists.get(i);
-					String heading = headings.get(i);
-					List<Double> vals = scalarValsList.get(i);
-					HashSet<UniqueRupture> includeUniques = uniqueLists.get(i);
-					FaultSystemRupSet myRupSet = rupSets.get(i);
-					String prefix = prefixes.get(i);
+					lines.add(getSubHeading()+"# "+scalar.getName()+" Extremes & Examples");
+					lines.add(topLink); lines.add("");
+					lines.add("Example ruptures at various percentiles of "+scalar.getName());
+					lines.add("");
 					
-					if (heading != null) {
-						lines.add(heading);
-						lines.add("");
-					}
+					List<List<ClusterRupture>> ruptureLists = new ArrayList<>();
+					List<HashSet<UniqueRupture>> uniqueLists = new ArrayList<>();
+					List<String> headings = new ArrayList<>();
+					List<List<Double>> scalarValsList = new ArrayList<>();
+					List<String> prefixes = new ArrayList<>();
+					List<FaultSystemRupSet> rupSets = new ArrayList<>();
 					
-					List<Integer> filteredIndexes = new ArrayList<>();
-					List<Double> filteredVals = new ArrayList<>();
-					for (int r=0; r<rups.size(); r++) {
-						if (includeUniques == null || includeUniques.contains(rups.get(r).unique)) {
-							filteredIndexes.add(r);
-							filteredVals.add(vals.get(r));
+					ruptureLists.add(inputRups);
+					uniqueLists.add(null);
+					if (compRupSet == null)
+						headings.add(null);
+					else
+						headings.add("From the primary rupture set ("+meta.primary.name+"):");
+					scalarValsList.add(inputScalars.getValues());
+					
+					prefixes.add("hist_rup");
+					rupSets.add(rupSet);
+					if (compRupSet != null) {
+						if (meta.primaryOverlap.numUniqueRuptures > 0) {
+							// add unique to primary
+							HashSet<UniqueRupture> includeUniques = new HashSet<>();
+							for (ClusterRupture rup : inputRups)
+								if (!compUniques.contains(rup.unique))
+									includeUniques.add(rup.unique);
+							Preconditions.checkState(!includeUniques.isEmpty());
+							ruptureLists.add(inputRups);
+							uniqueLists.add(includeUniques);
+
+							headings.add("Ruptures that are unique to the primary rupture set ("+meta.primary.name+"):");
+							scalarValsList.add(inputScalars.getValues());
+
+							prefixes.add("hist_rup");
+							rupSets.add(rupSet);
+						}
+						if (meta.comparisonOverlap.numUniqueRuptures > 0) {
+							// add unique to comparison
+							HashSet<UniqueRupture> includeUniques = new HashSet<>();
+							for (ClusterRupture rup : compRups)
+								if (!inputUniques.contains(rup.unique))
+									includeUniques.add(rup.unique);
+							Preconditions.checkState(!includeUniques.isEmpty());
+							ruptureLists.add(compRups);
+							uniqueLists.add(includeUniques);
+
+							headings.add("Ruptures that are unique to the comparison rupture set ("+meta.comparison.name+"):");
+							scalarValsList.add(compScalars.getValues());
+
+							prefixes.add("hist_comp_rup");
+							rupSets.add(compRupSet);
 						}
 					}
-					List<Integer> sortedIndexes = ComparablePairing.getSortedData(filteredVals, filteredIndexes);
 					
-					int[] fractileIndexes = new int[fractiles.length];
-					for (int j=0; j<fractiles.length; j++) {
-						double f = fractiles[j];
-						if (f == 1d)
-							fractileIndexes[j] = filteredIndexes.size()-1;
-						else
-							fractileIndexes[j] = (int)(f*filteredIndexes.size());
+					for (int i=0; i<headings.size(); i++) {
+						List<ClusterRupture> rups = ruptureLists.get(i);
+						String heading = headings.get(i);
+						List<Double> vals = scalarValsList.get(i);
+						HashSet<UniqueRupture> includeUniques = uniqueLists.get(i);
+						FaultSystemRupSet myRupSet = rupSets.get(i);
+						String prefix = prefixes.get(i);
+						
+						if (heading != null) {
+							lines.add(heading);
+							lines.add("");
+						}
+						
+						List<Integer> filteredIndexes = new ArrayList<>();
+						List<Double> filteredVals = new ArrayList<>();
+						for (int r=0; r<rups.size(); r++) {
+							if (includeUniques == null || includeUniques.contains(rups.get(r).unique)) {
+								filteredIndexes.add(r);
+								filteredVals.add(vals.get(r));
+							}
+						}
+						List<Integer> sortedIndexes = ComparablePairing.getSortedData(filteredVals, filteredIndexes);
+						
+						int[] fractileIndexes = new int[fractiles.length];
+						for (int j=0; j<fractiles.length; j++) {
+							double f = fractiles[j];
+							if (f == 1d)
+								fractileIndexes[j] = filteredIndexes.size()-1;
+							else
+								fractileIndexes[j] = (int)(f*filteredIndexes.size());
+						}
+						
+						table = MarkdownUtils.tableBuilder();
+						table.initNewLine();
+						for (int j=0; j<fractiles.length; j++) {
+							int index = sortedIndexes.get(fractileIndexes[j]);
+							double val = vals.get(index);
+							double f = fractiles[j];
+							String str;
+							if (f == 0d)
+								str = "Minimum";
+							else if (f == 1d)
+								str = "Maximum";
+							else
+								str = "p"+new DecimalFormat("0.#").format(f*100d);
+							str += ": ";
+							if (val < 0.1)
+								str += (float)val;
+							else
+								str += new DecimalFormat("0.##").format(val);
+							table.addColumn("**"+str+"**");
+						}
+						table.finalizeLine();
+						table.initNewLine();
+						for (int rawIndex : fractileIndexes) {
+							int index = sortedIndexes.get(rawIndex);
+							String rupPrefix = prefix+"_"+index;
+							ClusterRupture rup = rups.get(index);
+							if (includeUniques != null)
+								Preconditions.checkState(includeUniques.contains(rup.unique),
+										"IncludeUniques doesn't contain rupture at rawIndex=%s, index=%s: %s", rawIndex, index, rup);
+							RupCartoonGenerator.plotRupture(resourcesDir, rupPrefix, rup,
+									"Rupture "+index, false, true);
+							table.addColumn("[<img src=\"" + relPathToResources + "/" + rupPrefix + ".png\" />]"+
+									"("+relPathToResources+"/../"+generateRuptureInfoPage(myRupSet, rups.get(index),
+											index, rupHtmlDir, rupPrefix, null, distAzCalc)+ ")");
+						}
+						
+						lines.addAll(table.wrap(4, 0).build());
+						lines.add("");
 					}
-					
-					table = MarkdownUtils.tableBuilder();
-					table.initNewLine();
-					for (int j=0; j<fractiles.length; j++) {
-						int index = sortedIndexes.get(fractileIndexes[j]);
-						double val = vals.get(index);
-						double f = fractiles[j];
-						String str;
-						if (f == 0d)
-							str = "Minimum";
-						else if (f == 1d)
-							str = "Maximum";
-						else
-							str = "p"+new DecimalFormat("0.#").format(f*100d);
-						str += ": ";
-						if (val < 0.1)
-							str += (float)val;
-						else
-							str += new DecimalFormat("0.##").format(val);
-						table.addColumn("**"+str+"**");
-					}
-					table.finalizeLine();
-					table.initNewLine();
-					for (int rawIndex : fractileIndexes) {
-						int index = sortedIndexes.get(rawIndex);
-						String rupPrefix = prefix+"_"+index;
-						ClusterRupture rup = rups.get(index);
-						if (includeUniques != null)
-							Preconditions.checkState(includeUniques.contains(rup.unique),
-									"IncludeUniques doesn't contain rupture at rawIndex=%s, index=%s: %s", rawIndex, index, rup);
-						RupCartoonGenerator.plotRupture(resourcesDir, rupPrefix, rup,
-								"Rupture "+index, false, true);
-						table.addColumn("[<img src=\"" + relPathToResources + "/" + rupPrefix + ".png\" />]"+
-								"("+relPathToResources+"/../"+generateRuptureInfoPage(myRupSet, rups.get(index),
-										index, rupHtmlDir, rupPrefix, null, distAzCalc)+ ")");
-					}
-					
-					lines.addAll(table.wrap(4, 0).build());
-					lines.add("");
 				}
-			} else {
+			} else if (getPlotLevel() == PlotLevel.FULL) {
 				// we have a solution and probably don't care about example ruptures, do rate scatters instead
+				// only do it for full reports
 				double[] rates = sol.getRateForAllRups();
 				
 				DefaultXY_DataSet valRateScatter = new DefaultXY_DataSet();

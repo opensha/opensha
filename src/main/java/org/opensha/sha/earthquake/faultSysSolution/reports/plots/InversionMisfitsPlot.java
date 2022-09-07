@@ -93,15 +93,19 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 		List<String> lines = new ArrayList<>();
 		lines.add("");
 		
+		boolean anyMisfits = false;
+		
 		for (int r=0; r<ranges.size(); r++) {
 			ConstraintRange range = ranges.get(r);
 			String prefix = "misfits_"+range.shortName.replaceAll("\\W+", "_");
 			
-			lines.add(getSubHeading()+" "+range.name+" Misfits");
-			lines.add(topLink); lines.add("");
-			
 			double[] misfitVals = rangeMisfitVals == null ? null : rangeMisfitVals.get(r);
 			MisfitStats stats = rangeStats.get(r);
+			
+			anyMisfits = anyMisfits || misfitVals != null;
+			
+			lines.add(getSubHeading()+" "+range.name+" Misfits");
+			lines.add(topLink); lines.add("");
 			
 			ConstraintRange compRange = null;
 			double[] compMisfitVals = null;
@@ -277,9 +281,15 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 			summaryLines.addAll(MarkdownUtils.tableFromCSV(compSummaryCSV, true).build());
 		}
 		summaryLines.add("");
-		lines.addAll(0, summaryLines);
-		
-		return lines;
+		if (anyMisfits) {
+			// we have actual misfits values, include the full sub-reports with plots
+			lines.addAll(0, summaryLines);
+			
+			return lines;
+		} else {
+			// we don't, just return the summary table
+			return summaryLines;
+		}
 	}
 	
 	private static HistogramFunction refHist(MisfitStats stats, MisfitStats compStats) {

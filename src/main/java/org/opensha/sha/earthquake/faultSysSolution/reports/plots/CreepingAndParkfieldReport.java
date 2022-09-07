@@ -222,7 +222,7 @@ public class CreepingAndParkfieldReport extends AbstractRupSetPlot {
 			lines.add(getSubHeading()+" Rupture Rates Through Creeping Section");
 			lines.add(topLink); lines.add("");
 			lines.add("A rupture is considered to be through the creeping section if it ruptures the creeping section "
-					+ "as well as at least part of one section on either side of the creeping section.");
+					+ "as well as at least part of one section on each side of the creeping section.");
 			lines.add("");
 			
 			int santaCruzID;

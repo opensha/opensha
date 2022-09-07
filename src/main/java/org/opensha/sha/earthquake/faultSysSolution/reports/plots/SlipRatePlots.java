@@ -294,7 +294,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 				String relPrefix = rawPrefix+"_rel_std_dev";
 				String misfitPrefix = rawPrefix+"_std_dev_misfit";
 				
-				mapMaker.plotSectScalars(relStdDevs, relStdDevCPT, "Relative Standard Deviations"); 
+				mapMaker.plotSectScalars(relStdDevs, relStdDevCPT, "Relative Standard Deviations (COV)"); 
 				mapMaker.plot(resourcesDir, relPrefix, " ");
 				table.addColumn("![Map]("+relPathToResources+"/"+relPrefix+".png)");
 				

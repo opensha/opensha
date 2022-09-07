@@ -29,6 +29,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
+import com.google.common.base.Preconditions;
+
 public class NucleationRatePlot extends AbstractSolutionPlot {
 
 	@Override
@@ -59,9 +61,9 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		}
 		
 		List<String> lines = new ArrayList<>();
-		lines.add("These plots include both gridded seismicity and fault sources. The gridded seismicity"
-				+ "model attached to this solution is of type _"+ClassUtils.getClassNameWithoutPackage(gridProv.getClass())
-				+"_ and has a spatial resolution of "+(float)gridProv.getGriddedRegion().getSpacing()+" degrees.");
+		lines.add("The gridded seismicity model attached to this solution is of type _"
+		+ClassUtils.getClassNameWithoutPackage(gridProv.getClass())+"_ and has a spatial resolution of "
+				+(float)gridProv.getGriddedRegion().getSpacing()+" degrees.");
 		lines.add("");
 		lines.add("The following maps show the faulting type at each grid cell from the gridded seismicity model:");
 		lines.add("");
@@ -83,7 +85,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		mapMaker.setSectOutlineChar(null);
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
-		table.addLine("Fracion Strike-Slip", "Fracion Normal", "Fracion Reverse");
+		table.addLine("Fraction Strike-Slip", "Fraction Normal", "Fraction Reverse");
 		table.initNewLine();
 		mapMaker.plotXYZData(ssMap, fractCPT, "Fraction Strike-Slip");
 		mapMaker.plot(resourcesDir, "gridded_fract_ss", " ");
@@ -99,7 +101,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		lines.add("");
 
 		String nuclDescription = "The following maps show the total nucleation rate in each grid cell, summed across "
-				+ "both gridded seismicity and fault-based sources.";
+				+ "both gridded seismicity and fault-based sources, as well as their individual contributions.";
 		if (intersectionAssoc)
 			nuclDescription += " No model-specific fault-to-grid-cell associations were supplied, so rates on faults are "
 					+ "mapped to the grid cells that their 3D surfaces intersect.";
@@ -145,8 +147,6 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		
 		CPT nuclCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-6, -1);
 		nuclCPT.setNanColor(Color.WHITE);
-		
-		table = MarkdownUtils.tableBuilder();
 		CPT ratioCPT = null;
 		
 		GridSourceProvider compGridProv = null;
@@ -169,6 +169,8 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 			}
 		}
 		
+		table = MarkdownUtils.tableBuilder();
+		
 		if (compGridProv != null) {
 			CPT belowCPT = new CPT(0.5d, 1d,
 					new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
@@ -186,7 +188,9 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		for (int m=0; m<minMags.size(); m++) {
 			double myMinMag = minMags.get(m);
 			
-			GriddedGeoDataSet xyz = calcNucleationRates(sol, gridProv, faultAssoc, solNuclMFDs, myMinMag);
+			GriddedGeoDataSet gridXYZ = calcGriddedNucleationRates(gridProv, myMinMag);
+			GriddedGeoDataSet faultXYZ = calcFaultNucleationRates(gridReg, sol, faultAssoc, solNuclMFDs, myMinMag);
+			GriddedGeoDataSet xyz = sum(gridXYZ, faultXYZ);
 			GriddedGeoDataSet logXYZ = maskZeroesAsNan(xyz);
 			logXYZ.log10();
 			
@@ -195,9 +199,13 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 			String magPrefix = magPrefixes.get(m);
 			
 			table.initNewLine();
-			table.addColumn(MarkdownUtils.boldCentered(markdownLabel));
-			if (compGridProv != null)
-				table.addColumn("Primary / Comparison Ratio");
+			table.addColumn(MarkdownUtils.boldCentered(markdownLabel+", Total"));
+			if (compGridProv != null) {
+				table.addColumn(MarkdownUtils.boldCentered("Primary / Comparison Ratio"));
+			} else {
+				table.addColumn(MarkdownUtils.boldCentered(markdownLabel+", Gridded Only"));
+				table.addColumn(MarkdownUtils.boldCentered(markdownLabel+", Fault Only"));
+			}
 			table.finalizeLine();
 			
 			String mainPrefix = "sol_nucl_"+magPrefix;
@@ -208,8 +216,10 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 			table.addColumn("![Map]("+relPathToResources+"/"+mainPrefix+".png)");
 			
 			if (ratioCPT != null) {
-				GriddedGeoDataSet compXYZ = calcNucleationRates(meta.comparison.sol,
-						compGridProv, compFaultAssoc, compSolNuclMFDs, myMinMag);
+				GriddedGeoDataSet compGridXYZ = calcGriddedNucleationRates(compGridProv, myMinMag);
+				GriddedGeoDataSet compFaultXYZ = calcFaultNucleationRates(gridReg, meta.comparison.sol,
+						compFaultAssoc, compSolNuclMFDs, myMinMag);
+				GriddedGeoDataSet compXYZ = sum(compGridXYZ, compFaultXYZ);
 				
 				GriddedGeoDataSet ratioXYZ = new GriddedGeoDataSet(gridReg, false);
 				for (int i=0; i<xyz.size(); i++) {
@@ -228,7 +238,22 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 //				mapMaker.plotSectScalars(plotRates, cpt, "Log10 "+myLabel+" Nucleation Rate (events/yr)");
 				mapMaker.plot(resourcesDir, compPrefix, " ");
 				table.addColumn("![Map]("+relPathToResources+"/"+compPrefix+".png)");
+				table.finalizeLine().initNewLine();
+				table.addColumn(MarkdownUtils.boldCentered(markdownLabel+", Gridded Only"));
+				table.addColumn(MarkdownUtils.boldCentered(markdownLabel+", Fault Only"));
 			}
+			
+			gridXYZ = maskZeroesAsNan(gridXYZ);
+			gridXYZ.log10();
+			faultXYZ = maskZeroesAsNan(faultXYZ);
+			faultXYZ.log10();
+			
+			mapMaker.plotXYZData(gridXYZ, nuclCPT, "Log10 "+myLabel+" Gridded Nucleation Rate (events/yr)");
+			mapMaker.plot(resourcesDir, mainPrefix+"_gridded", " ");
+			table.addColumn("![Map]("+relPathToResources+"/"+mainPrefix+"_gridded.png)");
+			mapMaker.plotXYZData(faultXYZ, nuclCPT, "Log10 "+myLabel+" Fault Nucleation Rate (events/yr)");
+			mapMaker.plot(resourcesDir, mainPrefix+"_fault", " ");
+			table.addColumn("![Map]("+relPathToResources+"/"+mainPrefix+"_fault.png)");
 			
 			table.finalizeLine();
 		}
@@ -247,8 +272,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		return ret;
 	}
 	
-	private static GriddedGeoDataSet calcNucleationRates(FaultSystemSolution sol, GridSourceProvider gridProv,
-			FaultGridAssociations faultGridAssoc, List<IncrementalMagFreqDist> sectNuclMFDs, double minMag) {
+	private static GriddedGeoDataSet calcGriddedNucleationRates(GridSourceProvider gridProv, double minMag) {
 		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridProv.getGriddedRegion(), false);
 		
 		// start with gridded
@@ -260,6 +284,13 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 				}
 			}
 		}
+		
+		return xyz;
+	}
+	
+	private static GriddedGeoDataSet calcFaultNucleationRates(GriddedRegion gridReg, FaultSystemSolution sol,
+			FaultGridAssociations faultGridAssoc, List<IncrementalMagFreqDist> sectNuclMFDs, double minMag) {
+		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
 		
 		// add in faults
 		for (int sectIndex=0; sectIndex<sectNuclMFDs.size(); sectIndex++) {
@@ -276,6 +307,17 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		}
 		
 		return xyz;
+	}
+	
+	private static GriddedGeoDataSet sum(GriddedGeoDataSet xyz1, GriddedGeoDataSet xyz2) {
+		Preconditions.checkState(xyz1.size() == xyz2.size());
+		
+		GriddedGeoDataSet ret = new GriddedGeoDataSet(xyz1.getRegion(), false);
+		
+		for (int i=0; i<ret.size(); i++)
+			ret.set(i, xyz1.get(i)+xyz2.get(i));
+		
+		return ret;
 	}
 	
 	private static GriddedGeoDataSet maskZeroesAsNan(GriddedGeoDataSet xyz) {
