@@ -145,6 +145,9 @@ public class ReportPageGen {
 		if (level == PlotLevel.FULL)
 			plots.add(new SectBySectDetailPlots());
 		
+		for (AbstractRupSetPlot plot : plots)
+			plot.setPlotLevel(level);
+		
 		return plots;
 	}
 	
@@ -184,6 +187,9 @@ public class ReportPageGen {
 			plots.add(new NamedFaultPlot());
 		if (level == PlotLevel.FULL)
 			plots.add(new SectBySectDetailPlots());
+		
+		for (AbstractRupSetPlot plot : plots)
+			plot.setPlotLevel(level);
 		
 		return plots;
 	}
@@ -621,12 +627,15 @@ public class ReportPageGen {
 			table.addColumn(countDF.format(comparison.numRuptures));
 		table.finalizeLine();
 		
-		table.initNewLine();
-		table.addColumn("**Num Single-Stranded Ruptures**");
-		table.addColumn(countPercentStr(primary.numSingleStrandRuptures, primary.numRuptures));
-		if (comparison != null)
-			table.addColumn(countPercentStr(comparison.numSingleStrandRuptures, comparison.numRuptures));
-		table.finalizeLine();
+		if (primary.numSingleStrandRuptures != primary.numRuptures || 
+				(comparison != null && comparison.numSingleStrandRuptures != comparison.numRuptures)) {
+			table.initNewLine();
+			table.addColumn("**Num Single-Stranded Ruptures**");
+			table.addColumn(countPercentStr(primary.numSingleStrandRuptures, primary.numRuptures));
+			if (comparison != null)
+				table.addColumn(countPercentStr(comparison.numSingleStrandRuptures, comparison.numRuptures));
+			table.finalizeLine();
+		}
 		
 		if (comparison != null) {
 			table.initNewLine();

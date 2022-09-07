@@ -14,6 +14,7 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen.PlotLevel;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 
 import com.google.common.base.Preconditions;
@@ -24,6 +25,8 @@ public abstract class AbstractRupSetPlot implements Named {
 	private String subHeading = "###";
 	
 	private int numThreads = -1;
+
+	private PlotLevel plotLevel;
 	
 	public void writePlot(FaultSystemRupSet rupSet, FaultSystemSolution sol, String name, File outputDir) throws IOException {
 		File resourcesDir = new File(outputDir, "resources");
@@ -79,6 +82,14 @@ public abstract class AbstractRupSetPlot implements Named {
 
 	public synchronized void setNumThreads(int numThreads) {
 		this.numThreads = numThreads;
+	}
+	
+	public void setPlotLevel(PlotLevel plotLevel) {
+		this.plotLevel = plotLevel;
+	}
+	
+	public PlotLevel getPlotLevel() {
+		return plotLevel;
 	}
 
 	/**
