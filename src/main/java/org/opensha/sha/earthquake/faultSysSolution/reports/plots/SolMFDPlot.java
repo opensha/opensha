@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.List;
 
 import org.jfree.data.Range;
+import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
@@ -32,6 +33,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectNuclMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
@@ -224,10 +226,10 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			
 			if (meta.comparison != null && meta.comparison.sol != null)
 				addSolMFDs(meta.comparison.sol, "Comparison", COMP_COLOR, plot.region,
-						incrFuncs, cmlFuncs, incrChars, cmlChars, defaultMFD, xRange);
+						incrFuncs, cmlFuncs, incrChars, cmlChars, defaultMFD, xRange, false);
 			if (sol != null) {
 				double myMax = addSolMFDs(sol, "Solution", MAIN_COLOR, plot.region,
-						incrFuncs, cmlFuncs, incrChars, cmlChars, defaultMFD, xRange);
+						incrFuncs, cmlFuncs, incrChars, cmlChars, defaultMFD, xRange, true);
 				maxY = Math.max(maxY, Math.pow(10, Math.ceil(Math.log10(myMax)-0.1)));
 			}
 			
@@ -386,7 +388,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 	private static double addSolMFDs(FaultSystemSolution sol, String name, Color color, Region region,
 			List<IncrementalMagFreqDist> incrFuncs, List<DiscretizedFunc> cmlFuncs,
 			List<PlotCurveCharacterstics> incrChars, List<PlotCurveCharacterstics> cmlChars,
-			IncrementalMagFreqDist defaultMFD, Range rangeForMax) {
+			IncrementalMagFreqDist defaultMFD, Range rangeForMax, boolean includeDists) {
 		IncrementalMagFreqDist mfd = sol.calcNucleationMFD_forRegion(
 				region, defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size(), false);
 		if (sol.hasModule(GridSourceProvider.class)) {
@@ -433,11 +435,97 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 5f, color);
 		incrChars.add(pChar);
 		cmlChars.add(pChar);
+		if (includeDists && sol.hasModule(BranchSectNuclMFDs.class)) {
+			// we have distributions of MFDs
+			BranchSectNuclMFDs dists = sol.requireModule(BranchSectNuclMFDs.class);
+			
+			// for now, just include min/max
+			double[] sectFracts = null;
+			if (region != null)
+				sectFracts = sol.getRupSet().getFractSectsInsideRegion(region, false);
+			IncrementalMagFreqDist[] incrPercentiles = dists.calcIncrementalFractiles(sectFracts, 0d, 0.025, 0.16, 0.5d, 0.84, 0.975d, 1d);
+			
+			Color transColor = new Color(color.getRed(), color.getGreen(), color.getBlue(), 30);
+			PlotCurveCharacterstics minMaxChar = new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, transColor);
+			
+			int cnt = 0;
+			IncrementalMagFreqDist incrMin = incrPercentiles[cnt++];
+			IncrementalMagFreqDist incrP025 = incrPercentiles[cnt++];
+			IncrementalMagFreqDist incrP16 = incrPercentiles[cnt++];
+			IncrementalMagFreqDist incrMed = incrPercentiles[cnt++];
+			IncrementalMagFreqDist incrP84 = incrPercentiles[cnt++];
+			IncrementalMagFreqDist incrP975 = incrPercentiles[cnt++];
+			IncrementalMagFreqDist incrMax = incrPercentiles[cnt++];
+			UncertainBoundedIncrMagFreqDist bounds = new UncertainBoundedIncrMagFreqDist(
+					incrMed, incrMin, incrMax, null);
+			UncertainBoundedIncrMagFreqDist bounds95 = new UncertainBoundedIncrMagFreqDist(
+					incrMed, incrP025, incrP975, null);
+			UncertainBoundedIncrMagFreqDist bounds68 = new UncertainBoundedIncrMagFreqDist(
+					incrMed, incrP16, incrP84, null);
+			bounds.setName("p[0,2.5,16,84,97.5,100]");
+			bounds95.setName(null);
+			bounds68.setName(null);
+			incrFuncs.add(bounds);
+			incrChars.add(minMaxChar);
+			incrFuncs.add(bounds95);
+			incrChars.add(minMaxChar);
+			incrFuncs.add(bounds68);
+			incrChars.add(minMaxChar);
+			
+			EvenlyDiscretizedFunc[] cmlPercentiles = dists.calcCumulativeFractiles(sectFracts, 0d, 0.025, 0.16, 0.5d, 0.84, 0.975d, 1d);
+			cnt = 0;
+			EvenlyDiscretizedFunc cmlMin = cmlPercentiles[cnt++];
+			EvenlyDiscretizedFunc cmlP025 = cmlPercentiles[cnt++];
+			EvenlyDiscretizedFunc cmlP16 = cmlPercentiles[cnt++];
+			EvenlyDiscretizedFunc cmlMed = cmlPercentiles[cnt++];
+			EvenlyDiscretizedFunc cmlP84 = cmlPercentiles[cnt++];
+			EvenlyDiscretizedFunc cmlP975 = cmlPercentiles[cnt++];
+			EvenlyDiscretizedFunc cmlMax = cmlPercentiles[cnt++];
+			UncertainArbDiscFunc cmlBounds = new UncertainArbDiscFunc(
+					extendCumulativeToLowerBound(cmlMed, cmlFunc.getMinX()),
+					extendCumulativeToLowerBound(cmlMin, cmlFunc.getMinX()),
+					extendCumulativeToLowerBound(cmlMax, cmlFunc.getMinX()));
+			UncertainArbDiscFunc cml95 = new UncertainArbDiscFunc(
+					extendCumulativeToLowerBound(cmlMed, cmlFunc.getMinX()),
+					extendCumulativeToLowerBound(cmlP025, cmlFunc.getMinX()),
+					extendCumulativeToLowerBound(cmlP975, cmlFunc.getMinX()));
+			UncertainArbDiscFunc cml68 = new UncertainArbDiscFunc(
+					extendCumulativeToLowerBound(cmlMed, cmlFunc.getMinX()),
+					extendCumulativeToLowerBound(cmlP16, cmlFunc.getMinX()),
+					extendCumulativeToLowerBound(cmlP84, cmlFunc.getMinX()));
+			cmlBounds.setName("p[0,2.5,16,84,97.5,100]");
+			cmlFuncs.add(cmlBounds);
+			cmlChars.add(minMaxChar);
+			cmlFuncs.add(cml95);
+			cmlChars.add(minMaxChar);
+			cmlFuncs.add(cml68);
+			cmlChars.add(minMaxChar);
+			
+			// now add the original MFD again on top, but without a name
+			IncrementalMagFreqDist mfd2 = mfd.deepClone();
+			mfd2.setName(null);
+			incrFuncs.add(mfd2);
+			incrChars.add(pChar);
+			EvenlyDiscretizedFunc mfd2c = cmlFunc.deepClone();
+			mfd2c.setName(null);
+			cmlFuncs.add(mfd2c);
+			cmlChars.add(pChar);
+		}
 		double maxY = 0d;
 		for (Point2D pt : cmlFunc)
 			if (rangeForMax.contains(pt.getX()))
 				maxY = Math.max(maxY, pt.getY());
 		return maxY;
+	}
+	
+	static DiscretizedFunc extendCumulativeToLowerBound(EvenlyDiscretizedFunc func, double minX) {
+		if ((float)func.getMinX() <= (float)minX)
+			return func;
+		ArbitrarilyDiscretizedFunc ret = new ArbitrarilyDiscretizedFunc();
+		ret.set(minX, func.getY(0));
+		for (Point2D pt : func)
+			ret.set(pt);
+		return ret;
 	}
 
 	@Override
