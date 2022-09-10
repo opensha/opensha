@@ -710,7 +710,9 @@ public class NSHM23_ConstraintBuilder {
 		
 		List<UncertainIncrMagFreqDist> origSupraNuclMFDs = targetMFDs.getOnFaultSupraSeisNucleationMFDs();
 		
-		double[] solRupMoRates = SectBValuePlot.calcRupMomentRates(prevSol);
+		double[] solRupMoRates = SectBValuePlot.calcRupMoments(prevSol.getRupSet());
+		for (int r=0; r<solRupMoRates.length; r++)
+			solRupMoRates[r] *= prevSol.getRateForRup(r);
 
 		double[] targetNuclRates = new double[rupSet.getNumSections()];
 		double[] targetNuclRateStdDevs = new double[rupSet.getNumSections()];

@@ -65,6 +65,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SectionTotalRateConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectNuclMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
@@ -72,6 +73,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
@@ -97,6 +99,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistance
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
+import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
@@ -1169,8 +1172,34 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		incrFuncs.add(nuclMFD);
 		incrChars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, MAIN_COLOR.darker()));
+		
+		BranchSectNuclMFDs branchMFDs = sol.getModule(BranchSectNuclMFDs.class);
+		// decided to just do branch MFDs on cumulative, uncomment if we want them back on incremental
+//		if (branchMFDs != null) {
+//			double alpha = minMaxColor.getAlpha()/255d;
+//			
+//			Color nuclColor = minMaxColor.darker();
+//			
+//			// this is the same as a transparent one over a white background
+//			// do it this way so that the lower bound shows up over the histogram
+//			Color fakeAlpha = new Color(
+//					(float)((1d-alpha) + alpha*nuclColor.getRed()/255d),
+//					(float)((1d-alpha) + alpha*nuclColor.getGreen()/255d),
+//					(float)((1d-alpha) + alpha*nuclColor.getBlue()/255d));
+//			
+//			List<Integer> sectIDs = new ArrayList<>(faultSects.size());
+//			for (FaultSection sect : faultSects)
+//				sectIDs.add(sect.getSectionId());
+//			IncrementalMagFreqDist[] minMax = branchMFDs.calcIncrementalSectFractiles(sectIDs, 0d, 1d);
+//			minMax[0].setName("Nucleation Min/Max");
+//			addFakeHistFromFunc(minMax[0], incrFuncs, incrChars,
+//					new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, fakeAlpha));
+//			minMax[1].setName(null);
+//			addFakeHistFromFunc(minMax[1], incrFuncs, incrChars,
+//					new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, fakeAlpha));
+//		}
 
-		List<EvenlyDiscretizedFunc> cmlFuncs = new ArrayList<>();
+		List<DiscretizedFunc> cmlFuncs = new ArrayList<>();
 		List<PlotCurveCharacterstics> cmlChars = new ArrayList<>();
 		
 		if (nuclTargetMFD != null) {
@@ -1183,6 +1212,36 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			
 			cmlFuncs.add(nuclTargetMFD.getCumRateDistWithOffset());
 			cmlChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, targetColor));
+		}
+		
+		// add G-R fit overlay
+		boolean[] binsAvail = new boolean[SectBValuePlot.refFunc.size()];
+		boolean[] binsUsed = new boolean[SectBValuePlot.refFunc.size()];
+		ModSectMinMags modMinMags = rupSet.getModule(ModSectMinMags.class);
+		RupMFDsModule rupMFDs = sol.getModule(RupMFDsModule.class);
+		for (FaultSection sect : faultSects)
+			SectBValuePlot.calcSectMags(sect.getSectionId(), meta.primary.sol, modMinMags, rupMFDs, binsAvail, binsUsed);
+		// traslate section MFD to b-value plot x values
+		IncrementalMagFreqDist transNuclMFD = new IncrementalMagFreqDist(SectBValuePlot.refFunc.getMinX(),
+				SectBValuePlot.refFunc.size(), SectBValuePlot.refFunc.getDelta());
+		double minNuclMag = Double.POSITIVE_INFINITY;
+		double maxNuclMag = 0d;
+		for (Point2D pt : nuclMFD) {
+			if (pt.getY() > 0) {
+				transNuclMFD.add(transNuclMFD.getClosestXIndex(pt.getX()), pt.getY());
+				minNuclMag = Math.min(minNuclMag, pt.getX());
+				maxNuclMag = Math.max(maxNuclMag, pt.getX());
+			}
+		}
+		if (transNuclMFD.calcSumOfY_Vals() > 0d) {
+			double bVal = SectBValuePlot.estBValue(binsAvail, binsUsed, transNuclMFD).b;
+			GutenbergRichterMagFreqDist gr = new GutenbergRichterMagFreqDist(nuclMFD.getMinX(), nuclMFD.size(), nuclMFD.getDelta());
+			gr.setAllButTotMoRate(gr.getX(gr.getClosestXIndex(minNuclMag)), gr.getX(gr.getClosestXIndex(maxNuclMag)),
+					transNuclMFD.calcSumOfY_Vals(), bVal);
+			
+			gr.setName("Nucl. G-R fit, b="+optionalDigitDF.format(bVal));
+			addFakeHistFromFunc(gr, incrFuncs, incrChars,
+					new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, new Color(0, 0, 0, 127)));
 		}
 		
 		if (meta.comparisonHasSameSects && meta.comparison.sol != null) {
@@ -1212,29 +1271,30 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			cmlFuncs.add(compNuclMFD.getCumRateDistWithOffset());
 			cmlChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, COMP_COLOR));
 			
-			SummedMagFreqDist compNuclTargetMFD = null;
-			if (nuclTargetMFD != null && meta.comparison.rupSet.hasModule(InversionTargetMFDs.class))
-				// see if we have section nucleation MFDs
-				compNuclTargetMFD = calcTargetMFD(faultSects, meta.comparison.rupSet.requireModule(InversionTargetMFDs.class));
-			
-			if (compNuclTargetMFD != null) {
-				// if it's identical, skip it
-				boolean identical = compNuclTargetMFD.size() == nuclTargetMFD.size();
-				for (int i=0; identical && i<nuclTargetMFD.size(); i++)
-					identical = identical && (float)nuclTargetMFD.getY(i) == (float)compNuclTargetMFD.getY(i);
-				
-				if (!identical) {
-					compNuclTargetMFD.setName("Comparison Target Nucleation");
-					
-					Color targetColor = Color.CYAN.darker();
-					
-					addFakeHistFromFunc(compNuclTargetMFD, incrFuncs, incrChars,
-							new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, targetColor));
-					
-					cmlFuncs.add(compNuclTargetMFD.getCumRateDistWithOffset());
-					cmlChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, targetColor));
-				}
-			}
+			// decided that having the comparison target is too busy, uncomment if you want it back
+//			SummedMagFreqDist compNuclTargetMFD = null;
+//			if (nuclTargetMFD != null && meta.comparison.rupSet.hasModule(InversionTargetMFDs.class))
+//				// see if we have section nucleation MFDs
+//				compNuclTargetMFD = calcTargetMFD(faultSects, meta.comparison.rupSet.requireModule(InversionTargetMFDs.class));
+//			
+//			if (compNuclTargetMFD != null) {
+//				// if it's identical, skip it
+//				boolean identical = compNuclTargetMFD.size() == nuclTargetMFD.size();
+//				for (int i=0; identical && i<nuclTargetMFD.size(); i++)
+//					identical = identical && (float)nuclTargetMFD.getY(i) == (float)compNuclTargetMFD.getY(i);
+//				
+//				if (!identical) {
+//					compNuclTargetMFD.setName("Comparison Target Nucleation");
+//					
+//					Color targetColor = Color.CYAN.darker();
+//					
+//					addFakeHistFromFunc(compNuclTargetMFD, incrFuncs, incrChars,
+//							new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, targetColor));
+//					
+//					cmlFuncs.add(compNuclTargetMFD.getCumRateDistWithOffset());
+//					cmlChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, targetColor));
+//				}
+//			}
 		} else {
 			particMFD.setName("Participation");
 			nuclMFD.setName("Nucleation");
@@ -1242,12 +1302,35 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		cmlFuncs.add(particMFD.getCumRateDistWithOffset());
 		cmlChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, MAIN_COLOR));
-		cmlFuncs.add(nuclMFD.getCumRateDistWithOffset());
+		EvenlyDiscretizedFunc nuclCmlMFD = nuclMFD.getCumRateDistWithOffset();
+		cmlFuncs.add(nuclCmlMFD);
 		cmlChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, MAIN_COLOR));
 		
 		Range yRange = yRange(cmlFuncs, MFD_DEFAULT_Y_RANGE, MFD_MAX_Y_RANGE, MFD_MAX_Y_RANGE_ORDERS_MAG);
 		if (yRange == null)
 			return new ArrayList<>();
+		
+		if (branchMFDs != null) {
+			List<Integer> sectIDs = new ArrayList<>(faultSects.size());
+			for (FaultSection sect : faultSects)
+				sectIDs.add(sect.getSectionId());
+			EvenlyDiscretizedFunc[] cmlMinMedMax = branchMFDs.calcCumulativeSectFractiles(
+					sectIDs, 0d, 0.16, 0.5d, 0.84, 1d);
+			UncertainArbDiscFunc cmlBounds = new UncertainArbDiscFunc(
+					SolMFDPlot.extendCumulativeToLowerBound(cmlMinMedMax[2], nuclCmlMFD.getMinX()),
+					SolMFDPlot.extendCumulativeToLowerBound(cmlMinMedMax[0], nuclCmlMFD.getMinX()),
+					SolMFDPlot.extendCumulativeToLowerBound(cmlMinMedMax[4], nuclCmlMFD.getMinX()));
+			UncertainArbDiscFunc cml68 = new UncertainArbDiscFunc(
+					SolMFDPlot.extendCumulativeToLowerBound(cmlMinMedMax[2], nuclCmlMFD.getMinX()),
+					SolMFDPlot.extendCumulativeToLowerBound(cmlMinMedMax[1], nuclCmlMFD.getMinX()),
+					SolMFDPlot.extendCumulativeToLowerBound(cmlMinMedMax[3], nuclCmlMFD.getMinX()));
+			cmlBounds.setName("Nucleation p[0,16,84,100]");
+			cmlFuncs.add(cmlBounds);
+			cmlChars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, PRIMARY_BOUNDS));
+			cml68.setName(null);
+			cmlFuncs.add(cml68);
+			cmlChars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, PRIMARY_68_OVERLAY));
+		}
 		
 		List<DiscretizedFunc> availableFuncs = new ArrayList<>();
 		List<PlotCurveCharacterstics> availableChars = new ArrayList<>();
@@ -1309,6 +1392,15 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		lines.add(topLink); lines.add("");
 		
 		lines.addAll(table.build());
+		
+		if (sol.hasModule(RupMFDsModule.class)) {
+			lines.add("");
+			lines.add("_NOTE: This solution has a distribution of magnitudes and rates for each ruptures, and is likely "
+					+ "a branch-averaged solution. That full distribution for each rupture is used to construct the MFDs "
+					+ "above, but only mean magnitudes are used in the lower panel showing available and utilized "
+					+ "magnitudes, and thus there may be bins with nonzero rates in the top panel where no mgnitudes "
+					+ "are shown in the bottom. The magnitude rage at the top of this page also only considers mean magnitudes._");
+		}
 		
 		return lines;
 	}
@@ -1745,6 +1837,14 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 	private static final int boundsAlpha = 60;
 	private static final Color targetBoundsColor = new Color(TARGET_COLOR.getRed(), TARGET_COLOR.getGreen(),
 			TARGET_COLOR.getBlue(), boundsAlpha);
+
+	private static final Color PRIMARY_BOUNDS = new Color(MAIN_COLOR.getRed(), MAIN_COLOR.getGreen(),
+			MAIN_COLOR.getBlue(), 30);
+	private static final Color PRIMARY_68_OVERLAY = new Color(MAIN_COLOR.getRed(), MAIN_COLOR.getGreen(),
+			MAIN_COLOR.getBlue(), 30);
+	private static final Color PRIMARY_68_STANDALONE = new Color(MAIN_COLOR.getRed(), MAIN_COLOR.getGreen(),
+			MAIN_COLOR.getBlue(), 60);
+
 	
 
 	private static final float primaryThickness = 3f;
@@ -2020,6 +2120,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		boolean comp = meta.hasComparisonSol() && meta.comparisonHasSameSects;
 		
+		BranchSectNuclMFDs dists = meta.hasPrimarySol() ? meta.primary.sol.getModule(BranchSectNuclMFDs.class) : null;
+		
 		boolean first = true;
 		for (int s=0; s<faultSects.size(); s++) {
 			FaultSection sect = faultSects.get(s);
@@ -2069,6 +2171,30 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 
 				funcs.add(rateFunc);
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, primaryThickness, MAIN_COLOR));
+				
+				if (dists != null) {
+					// we have a solution distribution
+					EvenlyDiscretizedFunc[] fractiles = dists.calcCumulativeSectFractiles(
+							List.of(sect.getSectionId()), 0d, 0.16, 0.5, 0.84, 1d);
+					double min = fractiles[0].getY(0);
+					double p16 = fractiles[1].getY(0);
+					double p50 = fractiles[2].getY(0);
+					double p84 = fractiles[3].getY(0);
+					double max = fractiles[4].getY(0);
+					
+					UncertainArbDiscFunc minMaxFunc = uncertCopyAtY(emptyFunc, p50, min, max);
+
+					if (first)
+						minMaxFunc.setName("p[0,16,84,100]");
+					
+					funcs.add(minMaxFunc);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, PRIMARY_BOUNDS));
+					
+					UncertainArbDiscFunc sixyEightFunc = uncertCopyAtY(emptyFunc, p50, p16, p84);
+					
+					funcs.add(sixyEightFunc);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, PRIMARY_68_OVERLAY));
+				}
 			}
 
 			first = false;
@@ -2284,8 +2410,15 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		SectSlipRates slipRates = rupSet.getModule(SectSlipRates.class);
 		
-		double[] rupMoRates = SectBValuePlot.calcRupMomentRates(meta.primary.sol);
-		double[] compRupMoRates = comp ? SectBValuePlot.calcRupMomentRates(meta.comparison.sol) : null;
+		double[] rupMoRates = SectBValuePlot.calcRupMoments(meta.primary.rupSet);
+		for (int r=0; r<rupMoRates.length; r++)
+			rupMoRates[r] *= meta.primary.sol.getRateForRup(r);
+		double[] compRupMoRates = null;
+		if (comp) {
+			compRupMoRates = SectBValuePlot.calcRupMoments(meta.comparison.rupSet);
+			for (int r=0; r<compRupMoRates.length; r++)
+				compRupMoRates[r] *= meta.comparison.sol.getRateForRup(r);
+		}
 		
 		for (int s=0; s<faultSects.size(); s++) {
 			XY_DataSet emptyFunc = emptySectFuncs.get(s);
@@ -2351,13 +2484,6 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return new AlongStrikePlot(moRateSpec, funcs, chars, yRange(funcs, new Range(1e15, 1e19), new Range(1e10, 1e20), 6), true);
 	}
 	
-	private static double sectMinMag(FaultSystemRupSet rupSet, int sectIndex) {
-		ModSectMinMags minMags = rupSet.getModule(ModSectMinMags.class);
-		if (minMags == null)
-			return rupSet.getMinMagForSection(sectIndex);
-		return minMags.getMinMagForSection(sectIndex);
-	}
-	
 	private static AlongStrikePlot buildBValPlot(ReportMetadata meta, List<FaultSection> faultSects,
 			String faultName, List<XY_DataSet> emptySectFuncs, String xLabel, double legendRelX) {
 		List<XY_DataSet> funcs = new ArrayList<>();
@@ -2366,20 +2492,63 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		boolean comp = meta.hasComparisonSol() && meta.comparison.rupSet.hasModule(AveSlipModule.class)
 				&& meta.comparisonHasSameSects;
 		
-		double[] rupMoRates = SectBValuePlot.calcRupMomentRates(meta.primary.sol);
-		double[] compRupMoRates = comp ? SectBValuePlot.calcRupMomentRates(meta.comparison.sol) : null;
+		double[] rupMoRates = SectBValuePlot.calcRupMoments(meta.primary.rupSet);
+		for (int r=0; r<rupMoRates.length; r++)
+			rupMoRates[r] *= meta.primary.sol.getRateForRup(r);
+		double[] compRupMoRates = null;
+		if (comp) {
+			compRupMoRates = SectBValuePlot.calcRupMoments(meta.comparison.rupSet);
+			for (int r=0; r<compRupMoRates.length; r++)
+				compRupMoRates[r] *= meta.comparison.sol.getRateForRup(r);
+		}
+		
+		ModSectMinMags modMinMags = meta.primary.rupSet.getModule(ModSectMinMags.class);
+		RupMFDsModule rupMFDs = meta.primary.sol.getModule(RupMFDsModule.class);
+		ModSectMinMags compModMinMags = comp ? meta.comparison.rupSet.getModule(ModSectMinMags.class) : null;
+		RupMFDsModule compRupMFDs = comp ? meta.comparison.sol.getModule(RupMFDsModule.class) : null;
+		
+		List<? extends IncrementalMagFreqDist> sectTargetMFDs = null;
+		if (meta.primary.rupSet.hasModule(InversionTargetMFDs.class))
+			sectTargetMFDs = meta.primary.rupSet.requireModule(InversionTargetMFDs.class).getOnFaultSupraSeisNucleationMFDs();
+		
+		EvenlyDiscretizedFunc refFunc = SectBValuePlot.refFunc;
 		
 		for (int s=0; s<faultSects.size(); s++) {
 			XY_DataSet emptyFunc = emptySectFuncs.get(s);
 			
 			int sectIndex = faultSects.get(s).getSectionId();
 			
+			if (sectTargetMFDs != null) {
+				boolean[] bins = new boolean[refFunc.size()];
+				IncrementalMagFreqDist sectMFD = new IncrementalMagFreqDist(
+						refFunc.getMinX(), refFunc.size(), refFunc.getDelta());
+				IncrementalMagFreqDist target = sectTargetMFDs.get(sectIndex);
+				
+				for (Point2D pt : target) {
+					if (pt.getY() > 0d) {
+						int binIndex = sectMFD.getClosestXIndex(pt.getX());
+						sectMFD.add(binIndex, pt.getY());
+						bins[binIndex] = true;
+					}
+				}
+				
+				double bVal = SectBValuePlot.estBValue(bins, bins, sectMFD).b;
+				
+				XY_DataSet solFunc = copyAtY(emptyFunc, bVal);
+				if (s == 0)
+					solFunc.setName("Target");
+				
+				funcs.add(solFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, TARGET_COLOR));
+			}
+			
 			if (comp) {
-				double minMag = sectMinMag(meta.comparison.rupSet, sectIndex);
-				double maxMag = meta.comparison.rupSet.getMaxMagForSection(sectIndex);
-				double bVal = SectBValuePlot.estBValue(minMag, maxMag, meta.comparison.sol,
-						meta.comparison.rupSet.getRupturesForSection(sectIndex), compRupMoRates,
-						SectIDRange.build(sectIndex, sectIndex)).b;
+				boolean[] binsAvail = new boolean[refFunc.size()];
+				boolean[] binsUsed = new boolean[refFunc.size()];
+				SectBValuePlot.calcSectMags(s, meta.comparison.sol, compModMinMags, compRupMFDs, binsAvail, binsUsed);
+				IncrementalMagFreqDist sectMFD = meta.comparison.sol.calcNucleationMFD_forSect(
+						s, refFunc.getX(0), refFunc.getX(refFunc.size()-1), refFunc.size());
+				double bVal = SectBValuePlot.estBValue(binsAvail, binsUsed, sectMFD).b;
 				
 				XY_DataSet solFunc = copyAtY(emptyFunc, bVal);
 				if (s == 0)
@@ -2389,11 +2558,12 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, COMP_COLOR));
 			}
 			
-			double minMag = sectMinMag(meta.primary.rupSet, sectIndex);
-			double maxMag = meta.primary.rupSet.getMaxMagForSection(sectIndex);
-			double bVal = SectBValuePlot.estBValue(minMag, maxMag, meta.primary.sol,
-					meta.primary.rupSet.getRupturesForSection(sectIndex), rupMoRates,
-					SectIDRange.build(sectIndex, sectIndex)).b;
+			boolean[] binsAvail = new boolean[refFunc.size()];
+			boolean[] binsUsed = new boolean[refFunc.size()];
+			SectBValuePlot.calcSectMags(s, meta.primary.sol, modMinMags, rupMFDs, binsAvail, binsUsed);
+			IncrementalMagFreqDist sectMFD = meta.primary.sol.calcNucleationMFD_forSect(
+					s, refFunc.getX(0), refFunc.getX(refFunc.size()-1), refFunc.size());
+			double bVal = SectBValuePlot.estBValue(binsAvail, binsUsed, sectMFD).b;
 			
 			XY_DataSet solFunc = copyAtY(emptyFunc, bVal);
 			if (s == 0) {
@@ -2430,22 +2600,11 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 	}
 	
 	private static double rateAbove(double minMag, int sectIndex, FaultSystemSolution sol) {
-		double rate = 0d;
-		FaultSystemRupSet rupSet = sol.getRupSet();
-		for (int rupIndex : rupSet.getRupturesForSection(sectIndex))
-			if (rupSet.getMagForRup(rupIndex) >= minMag)
-				rate += sol.getRateForRup(rupIndex);
-		return rate;
+		return sol.calcParticRateForSect(sectIndex, minMag, Double.POSITIVE_INFINITY);
 	}
 	
 	private static double nuclRateAbove(double minMag, int sectIndex, FaultSystemSolution sol) {
-		double rate = 0d;
-		FaultSystemRupSet rupSet = sol.getRupSet();
-		double sectArea = rupSet.getAreaForSection(sectIndex);
-		for (int rupIndex : rupSet.getRupturesForSection(sectIndex))
-			if (rupSet.getMagForRup(rupIndex) >= minMag)
-				rate += sol.getRateForRup(rupIndex)*sectArea/rupSet.getAreaForRup(rupIndex);
-		return rate;
+		return sol.calcNucleationRateForSect(sectIndex, minMag, Double.POSITIVE_INFINITY);
 	}
 	
 	private static double paleoRate(int sectIndex, FaultSystemSolution sol, PaleoProbabilityModel probModel) {
@@ -2505,6 +2664,18 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		for (Point2D pt : func)
 			middleFunc.set(pt.getX(), y);
 		return UncertainArbDiscFunc.forStdDev(middleFunc, stdDev, UncertaintyBoundType.ONE_SIGMA, false);
+	}
+	
+	static UncertainArbDiscFunc uncertCopyAtY(XY_DataSet func, double y, double yLower, double yUpper) {
+		ArbitrarilyDiscretizedFunc middleFunc = new ArbitrarilyDiscretizedFunc();
+		ArbitrarilyDiscretizedFunc lowerFunc = new ArbitrarilyDiscretizedFunc();
+		ArbitrarilyDiscretizedFunc upperFunc = new ArbitrarilyDiscretizedFunc();
+		for (Point2D pt : func) {
+			middleFunc.set(pt.getX(), y);
+			lowerFunc.set(pt.getX(), yLower);
+			upperFunc.set(pt.getX(), yUpper);
+		}
+		return new UncertainArbDiscFunc(middleFunc, lowerFunc, upperFunc);
 	}
 
 	@Override
