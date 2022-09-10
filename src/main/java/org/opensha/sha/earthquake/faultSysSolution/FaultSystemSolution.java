@@ -684,8 +684,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
 		List<Integer> rups = rupSet.getRupturesForSection(sectIndex);
 		if (rups != null) {
+			double sectArea = rupSet.getAreaForSection(sectIndex);
 			for (int r : rups) {
-				double nucleationScalar = rupSet.getAreaForSection(sectIndex)/rupSet.getAreaForRup(r);
+				double nucleationScalar = sectArea/rupSet.getAreaForRup(r);
 				DiscretizedFunc rupMagDist = getRupMagDist(r);
 				if (rupMagDist == null)
 					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r)*nucleationScalar, true);
