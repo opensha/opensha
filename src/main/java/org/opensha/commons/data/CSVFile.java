@@ -307,9 +307,27 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		}
 	}
 	
-	private static ArrayList<String> loadLine(String line, int num, int prevNum) {
+	/**
+	 * Reads a CSV line from a string
+	 * 
+	 * @param line
+	 * @return
+	 */
+	public static List<String> loadLine(String line) {
+		return loadLine(line, -1, -1);
+	}
+	
+	/**
+	 * Reads a CSV line from a string
+	 * 
+	 * @param line
+	 * @param padToLength if nonzero, will ensure that the returned list is at least this long, padded with empty strings 
+	 * @param expectedNum expected number of values, if nonzero will initialize the list with this capacity
+	 * @return
+	 */
+	public static List<String> loadLine(String line, int padToLength, int expectedNum) {
 		line = line.trim();
-		ArrayList<String> vals = prevNum > 0 ? new ArrayList<>(prevNum) : new ArrayList<>();
+		ArrayList<String> vals = expectedNum > 0 ? new ArrayList<>(expectedNum) : new ArrayList<>();
 		boolean inside = false;
 		String cur = "";
 		for (int i=0; i<line.length(); i++) {
@@ -328,7 +346,7 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		}
 		if (!cur.isEmpty())
 			vals.add(cur);
-		while (vals.size() < num)
+		while (vals.size() < padToLength)
 			vals.add("");
 		return vals;
 	}
@@ -393,7 +411,7 @@ public class CSVFile<E> implements Iterable<List<E>> {
 			if (strictRowSizes && cols < 0) {
 				cols = loadLine(line, -1, prevNum).size();
 			}
-			ArrayList<String> vals = loadLine(line, cols, prevNum);
+			List<String> vals = loadLine(line, cols, prevNum);
 			prevNum = vals.size();
 			if (strictRowSizes && vals.size() > cols) {
 				br.close();
@@ -442,7 +460,7 @@ public class CSVFile<E> implements Iterable<List<E>> {
 			if (strictRowSizes && cols < 0) {
 				cols = loadLine(line, -1, prevNum).size();
 			}
-			ArrayList<String> vals = loadLine(line, cols, prevNum);
+			List<String> vals = loadLine(line, cols, prevNum);
 			prevNum = vals.size();
 			if (strictRowSizes && vals.size() > cols)
 				throw new IllegalStateException("Line lenghts inconsistant and strictRowSizes=true");
