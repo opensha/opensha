@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.reports.plots;
 
 import java.awt.Color;
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -16,7 +17,9 @@ import java.util.stream.Collectors;
 import org.jfree.data.Range;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
+import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
@@ -36,21 +39,25 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectIDRange;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
+import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
 public class SectBValuePlot extends AbstractSolutionPlot {
 	
-	private static final EvenlyDiscretizedFunc refFunc = new EvenlyDiscretizedFunc(0.05, 110, 0.1);
+	static final EvenlyDiscretizedFunc refFunc = new EvenlyDiscretizedFunc(0.05, 110, 0.1);
 	
 	private static final double minB = -3;
 	private static final double maxB = 3;
@@ -69,9 +76,6 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		if (compSol != null && !meta.comparisonHasSameSects)
 			compSol = null;
 		
-		double[] rupMoRates = calcRupMomentRates(sol);
-		double[] compRupMoRates = compSol == null ? null : calcRupMomentRates(compSol);
-		
 		RupSetMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
 		
 		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(minB, maxB);
@@ -85,8 +89,13 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 				+ " MFD. This is a rough approximation, and is intended primarily for model comparisons.");
 		lines.add("");
 		
-		BValEstimate[] sectBVals = estSectBValues(sol, rupMoRates);
-		BValEstimate[] compSectBVals = compSol == null ? null : estSectBValues(compSol, compRupMoRates);
+		BValEstimate[] sectBVals = estSectBValues(sol);
+		BValEstimate[] compSectBVals = compSol == null ? null : estSectBValues(compSol);
+		
+		List<? extends IncrementalMagFreqDist> targetMFDs = null;
+		if (sol.getRupSet().hasModule(InversionTargetMFDs.class))
+			targetMFDs = sol.getRupSet().getModule(InversionTargetMFDs.class).getOnFaultSupraSeisNucleationMFDs();
+		BValEstimate[] targetSectBVals = targetMFDs == null ? null : estSectTargetBValues(targetMFDs);
 		
 		double[] sectRates = sol.calcTotParticRateForAllSects();
 		double[] compSectRates = compSol == null ? null : compSol.calcTotParticRateForAllSects();
@@ -95,12 +104,12 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		
 		System.out.println("Writing b-value CSV files");
 		File sectCSV = new File(resourcesDir, prefix+".csv");
-		writeSectCSV(sectCSV, sol.getRupSet().getFaultSectionDataList(), sectBVals);
+		writeSectCSV(sectCSV, sol.getRupSet().getFaultSectionDataList(), sectBVals, targetSectBVals);
 		String downloadLine = "Download b-value CSV file"+(compSol == null ? "" : "s")+": ["
 				+sectCSV.getName()+"]("+relPathToResources+"/"+sectCSV.getName()+")";
 		if (compSectBVals != null) {
 			File compSectCSV = new File(resourcesDir, prefix+"_comp.csv");
-			writeSectCSV(compSectCSV, compSol.getRupSet().getFaultSectionDataList(), compSectBVals);
+			writeSectCSV(compSectCSV, compSol.getRupSet().getFaultSectionDataList(), compSectBVals, null);
 			
 			downloadLine += " ["+compSectCSV.getName()+"]("+relPathToResources+"/"+compSectCSV.getName()+")";
 		}
@@ -138,7 +147,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		// histograms
 		
 		lines.addAll(getHistLines(toBArray(sectBVals), sectRates, toBArray(compSectBVals), compSectRates,
-				resourcesDir, relPathToResources, prefix));
+				targetSectBVals == null ? null : toBArray(targetSectBVals), resourcesDir, relPathToResources, prefix));
 		
 		lines.add("");
 		lines.add(getSubHeading()+" Parent Section b-values");
@@ -146,7 +155,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		
 		prefix = "parent_sect_b_values";
 		
-		Map<Integer, BValEstimate> parentBValsMap = estParentSectBValues(sol, rupMoRates);
+		Map<Integer, BValEstimate> parentBValsMap = estParentSectBValues(sol);
 		Map<Integer, String> parentNames = new HashMap<>();
 		for (FaultSection sect : sol.getRupSet().getFaultSectionDataList())
 			if (!parentNames.containsKey(sect.getParentSectionId()))
@@ -155,11 +164,19 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		double[] parentRates = new double[parentBValsMap.size()];
 		calcParentVals(sol, parentBVals, parentRates, parentBValsMap);
 		
+		BValEstimate[] parentTargetBVals = null;
+		Map<Integer, BValEstimate> parentTargetBValsMap = null;
+		if (targetMFDs != null) {
+			parentTargetBValsMap = estParentSectTargetBValues(sol, targetMFDs);
+			parentTargetBVals = new BValEstimate[parentTargetBValsMap.size()];
+			calcParentVals(sol, parentTargetBVals, null, parentTargetBValsMap);
+		}
+		
 		BValEstimate[] compParentBVals = null;
 		double[] compParentRates = null;
 		Map<Integer, BValEstimate> compParentBValsMap = null;
 		if (compSol != null) {
-			compParentBValsMap = estParentSectBValues(compSol, compRupMoRates);
+			compParentBValsMap = estParentSectBValues(compSol);
 			compParentBVals = new BValEstimate[compParentBValsMap.size()];
 			compParentRates = new double[compParentBValsMap.size()];
 			calcParentVals(sol, compParentBVals, compParentRates, compParentBValsMap);
@@ -167,12 +184,12 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		
 		System.out.println("Writing b-value CSV files");
 		sectCSV = new File(resourcesDir, prefix+".csv");
-		writeParentSectCSV(sectCSV, parentNames, parentBValsMap);
+		writeParentSectCSV(sectCSV, parentNames, parentBValsMap, parentTargetBValsMap);
 		downloadLine = "Download b-value CSV file"+(compSol == null ? "" : "s")+": ["
 				+sectCSV.getName()+"]("+relPathToResources+"/"+sectCSV.getName()+")";
 		if (compSectBVals != null) {
 			File compSectCSV = new File(resourcesDir, prefix+"_comp.csv");
-			writeParentSectCSV(compSectCSV, parentNames, compParentBValsMap);
+			writeParentSectCSV(compSectCSV, parentNames, compParentBValsMap, parentTargetBValsMap);
 			
 			downloadLine += " ["+compSectCSV.getName()+"]("+relPathToResources+"/"+compSectCSV.getName()+")";
 		}
@@ -180,7 +197,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		lines.add("");
 		
 		lines.addAll(getHistLines(toBArray(parentBVals), parentRates, toBArray(compParentBVals), compParentRates,
-				resourcesDir, relPathToResources, prefix));
+				parentTargetBVals == null ? null : toBArray(parentTargetBVals), resourcesDir, relPathToResources, prefix));
 		
 		return lines;
 	}
@@ -195,19 +212,20 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 			int parentID = parentIDs.get(i);
 			
 			parentBVals[i] = parentBValsMap.get(parentID);
-			parentRates[i] = 0;
-			for (int r : sol.getRupSet().getRupturesForParentSection(parentID))
-				parentRates[i] += sol.getRateForRup(r);
+			if (parentRates != null) {
+				parentRates[i] = 0;
+				for (int r : sol.getRupSet().getRupturesForParentSection(parentID))
+					parentRates[i] += sol.getRateForRup(r);
+			}
 		}
 	}
 	
-	public static double[] calcRupMomentRates(FaultSystemSolution sol) {
-		FaultSystemRupSet rupSet = sol.getRupSet();
+	public static double[] calcRupMoments(FaultSystemRupSet rupSet) {
 		AveSlipModule aveSlips = rupSet.requireModule(AveSlipModule.class);
 		
 		double[] ret = new double[rupSet.getNumRuptures()];
 		for (int r=0; r<ret.length; r++)
-			ret[r] = sol.getRateForRup(r)*FaultMomentCalc.getMoment(rupSet.getAreaForRup(r), aveSlips.getAveSlip(r));
+			ret[r] = FaultMomentCalc.getMoment(rupSet.getAreaForRup(r), aveSlips.getAveSlip(r));
 		return ret;
 	}
 	
@@ -230,23 +248,78 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		return ret;
 	}
 	
-	private static BValEstimate[] estSectBValues(FaultSystemSolution sol, double[] rupMoRates) {
+	private static BValEstimate[] estSectBValues(FaultSystemSolution sol) {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		BValEstimate[] ret = new BValEstimate[rupSet.getNumSections()];
 		
 		ModSectMinMags modMinMags = rupSet.getModule(ModSectMinMags.class);
 		
+		RupMFDsModule rupMFDs = sol.getModule(RupMFDsModule.class);
+		
 		for (int s=0; s<ret.length; s++) {
-			double minMag = modMinMags == null ? rupSet.getMinMagForSection(s) : modMinMags.getMinMagForSection(s);
-			double maxMag = rupSet.getMaxMagForSection(s);
+			boolean[] binsAvail = new boolean[refFunc.size()];
+			boolean[] binsUsed = new boolean[refFunc.size()];
+			calcSectMags(s, sol, modMinMags, rupMFDs, binsAvail, binsUsed);
+			IncrementalMagFreqDist sectMFD = sol.calcNucleationMFD_forSect(
+					s, refFunc.getX(0), refFunc.getX(refFunc.size()-1), refFunc.size());
 			
-			ret[s] = estBValue(minMag, maxMag, sol, rupSet.getRupturesForSection(s), rupMoRates, SectIDRange.build(s, s));
+			ret[s] = estBValue(binsAvail, binsUsed, sectMFD);
 		}
 		
 		return ret;
 	}
 	
-	private static Map<Integer, BValEstimate> estParentSectBValues(FaultSystemSolution sol, double[] rupMoRates) {
+	static void calcSectMags(int sectionIndex, FaultSystemSolution sol, ModSectMinMags modMinMags,
+			RupMFDsModule rupMFDs, boolean[] binsAvail, boolean[] binsUsed) {
+		Preconditions.checkState(refFunc.size() == binsAvail.length);
+		Preconditions.checkState(refFunc.size() == binsUsed.length);
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		for (int rupIndex : rupSet.getRupturesForSection(sectionIndex)) {
+			DiscretizedFunc rupMFD = null;
+			if (rupMFDs != null)
+				rupMFD = rupMFDs.getRuptureMFD(rupIndex);
+			if (rupMFD == null) {
+				rupMFD = new ArbitrarilyDiscretizedFunc();
+				rupMFD.set(rupSet.getMagForRup(rupIndex), sol.getRateForRup(rupIndex));
+			}
+			for (Point2D pt : rupMFD) {
+				double mag = pt.getX();
+				if (modMinMags != null && modMinMags.isBelowSectMinMag(sectionIndex, mag, refFunc))
+					continue;
+				double rate = pt.getY();
+				int magIndex = refFunc.getClosestXIndex(mag);
+				binsAvail[magIndex] = true;
+				if (rate > 0)
+					binsUsed[magIndex] = true;
+			}
+		}
+	}
+	
+	private static BValEstimate[] estSectTargetBValues(List<? extends IncrementalMagFreqDist> sectNuclMFDs) {
+		BValEstimate[] ret = new BValEstimate[sectNuclMFDs.size()];
+		
+		for (int s=0; s<ret.length; s++) {
+			boolean[] bins = new boolean[refFunc.size()];
+			IncrementalMagFreqDist sectMFD = new IncrementalMagFreqDist(
+					refFunc.getMinX(), refFunc.size(), refFunc.getDelta());
+			IncrementalMagFreqDist target = sectNuclMFDs.get(s);
+			
+			for (Point2D pt : target) {
+				if (pt.getY() > 0d) {
+					int binIndex = sectMFD.getClosestXIndex(pt.getX());
+					sectMFD.add(binIndex, pt.getY());
+					bins[binIndex] = true;
+				}
+			}
+			
+			// available == used for target
+			ret[s] = estBValue(bins, bins, sectMFD);
+		}
+		
+		return ret;
+	}
+	
+	private static Map<Integer, BValEstimate> estParentSectBValues(FaultSystemSolution sol) {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		HashMap<Integer, BValEstimate> ret = new HashMap<>();
 		
@@ -255,25 +328,55 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		
 		ModSectMinMags modMinMags = rupSet.getModule(ModSectMinMags.class);
 		
+		RupMFDsModule rupMFDs = sol.getModule(RupMFDsModule.class);
+		
 		for (int p : sectsByParent.keySet()) {
-			double minMag = Double.POSITIVE_INFINITY;
-			double maxMag = Double.NEGATIVE_INFINITY;
+			boolean[] binsAvail = new boolean[refFunc.size()];
+			boolean[] binsUsed = new boolean[refFunc.size()];
 			
-			int minID = Integer.MAX_VALUE;
-			int maxID = -1;
 			List<FaultSection> sects = sectsByParent.get(p);
 			for (FaultSection sect : sects) {
 				int s = sect.getSectionId();
-				minMag = Math.min(minMag, modMinMags == null ? rupSet.getMinMagForSection(s) : modMinMags.getMinMagForSection(s));
-				maxMag = Math.max(maxMag, rupSet.getMaxMagForSection(s));
-				minID = Integer.min(minID, s);
-				maxID = Integer.max(maxID, s);
+				calcSectMags(s, sol, modMinMags, rupMFDs, binsAvail, binsUsed);
 			}
 			
-			Preconditions.checkState(1+maxID-minID == sects.size());
+			IncrementalMagFreqDist parentMFD = sol.calcNucleationMFD_forParentSect(
+					p, refFunc.getMinX(), refFunc.getMaxX(), refFunc.size());
 			
-			ret.put(p, estBValue(minMag, maxMag, sol, rupSet.getRupturesForParentSection(p), rupMoRates,
-					SectIDRange.build(minID, maxID)));
+			ret.put(p, estBValue(binsAvail, binsUsed, parentMFD));
+		}
+		
+		return ret;
+	}
+	
+	private static Map<Integer, BValEstimate> estParentSectTargetBValues(FaultSystemSolution sol,
+			List<? extends IncrementalMagFreqDist> sectNuclMFDs) {
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		HashMap<Integer, BValEstimate> ret = new HashMap<>();
+		
+		Map<Integer, List<FaultSection>> sectsByParent = rupSet.getFaultSectionDataList().stream().collect(
+				Collectors.groupingBy(S -> S.getParentSectionId()));
+		
+		for (int p : sectsByParent.keySet()) {
+			boolean[] bins = new boolean[refFunc.size()];
+			
+			IncrementalMagFreqDist parentMFD = new IncrementalMagFreqDist(
+					refFunc.getMinX(), refFunc.size(), refFunc.getDelta());
+			List<FaultSection> sects = sectsByParent.get(p);
+			for (FaultSection sect : sects) {
+				int s = sect.getSectionId();
+				IncrementalMagFreqDist target = sectNuclMFDs.get(s);
+				for (Point2D pt : target) {
+					if (pt.getY() > 0d) {
+						int binIndex = parentMFD.getClosestXIndex(pt.getX());
+						parentMFD.add(binIndex, pt.getY());
+						bins[binIndex] = true;
+					}
+				}
+			}
+			
+			// available == used for target
+			ret.put(p, estBValue(bins, bins, parentMFD));
 		}
 		
 		return ret;
@@ -288,34 +391,31 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		return ret;
 	}
 	
-	static BValEstimate estBValue(double minMag, double maxMag, FaultSystemSolution sol,
-			Collection<Integer> rupIndexes, double[] rupMoRates, SectIDRange sectIndexes) {
+	static BValEstimate estBValue(boolean[] binsAvail, boolean[] binsUsed, IncrementalMagFreqDist nuclMFD) {
+		Preconditions.checkState(refFunc.size() == binsAvail.length);
+		Preconditions.checkState(refFunc.size() == binsUsed.length);
+		
+		int minMagIndex = -1;
+		int maxMagIndex = 0;
+		for (int i=0; i<binsAvail.length; i++) {
+			if (binsAvail[i]) {
+				if (minMagIndex < 0)
+					minMagIndex = i;
+				maxMagIndex = i;
+			}
+		}
+		
+		double minMag = refFunc.getX(minMagIndex);
+		double maxMag = refFunc.getX(maxMagIndex);
+		
+		// do it this way because soas to ignore any rates below the first magnitude bin, which could be possible
+		// if there is a modified sect min mag and those ruptures weren't forbidden in the inversion
 		double supraRate = 0d;
 		double moRate = 0d;
-		FaultSystemRupSet rupSet = sol.getRupSet();
 		
-		boolean[] binsAvail = new boolean[refFunc.size()];
-		boolean[] binsUsed = new boolean[refFunc.size()];
-		
-		int binnedMinMagIndex = refFunc.getClosestXIndex(minMag);
-		
-		for (int r : rupIndexes) {
-			int magIndex = refFunc.getClosestXIndex(rupSet.getMagForRup(r));
-			if (magIndex < binnedMinMagIndex)
-				continue;
-			binsAvail[magIndex] = true;
-			double rate = sol.getRateForRup(r);
-			if (rate == 0d)
-				continue;
-			binsUsed[magIndex] = true;
-			double rupArea = rupSet.getAreaForRup(r);
-			double sectArea = 0d;
-			for (int s : rupSet.getSectionsIndicesForRup(r))
-				if (sectIndexes.contains(s))
-					sectArea += rupSet.getAreaForSection(s);
-			double fract = sectArea/rupArea;
-			supraRate += rate*fract;
-			moRate += rupMoRates[r]*fract;
+		for (int i=minMagIndex; i<=maxMagIndex; i++) {
+			supraRate += nuclMFD.getY(i);
+			moRate += nuclMFD.getMomentRate(i);
 		}
 		double b = estBValue(minMag, maxMag, supraRate, moRate);
 		
@@ -413,45 +513,50 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 	}
 	
 	private static List<String> getHistLines(double[] bValues, double[] rates, double[] compBValues, double[] compRates,
-			File outputDir, String relPath, String prefix) throws IOException {
+			double[] targetBValues, File outputDir, String relPath, String prefix) throws IOException {
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		
 		if (compBValues == null)
-			table.addLine("b-Value Distribution", "b-Value Rate-Dependence");
+			table.addLine("b-value Distribution", "b-value Rate-Dependence");
 		else
-			table.addLine("Primary b-Value Distribution", "Primary b-Value Rate-Dependence");
+			table.addLine("Primary b-value Distribution", "Primary b-value Rate-Dependence");
 		
-		File histPlot = histPlot(outputDir, prefix+"_hist", bValues, "b-Value", MAIN_COLOR);
+		File histPlot = histPlot(outputDir, prefix+"_hist", bValues, "b-value", MAIN_COLOR);
 		File scatterPlot = rateScatterPlot(outputDir, prefix+"_rate_scatter", bValues, rates, MAIN_COLOR);
 		
 		table.addLine("![Histogram]("+relPath+"/"+histPlot.getName()+")",
 				"![Scatter]("+relPath+"/"+scatterPlot.getName()+")");
 		
+		if (targetBValues != null)
+			compHistLines(bValues, targetBValues, outputDir, relPath, prefix+"_target", table, Color.CYAN.darker(), "Target");
+		
 		if (compBValues != null) {
-			
-			File cHistPlot = histPlot(outputDir, prefix+"_hist_comp", compBValues, "B-Value", COMP_COLOR);
+			File cHistPlot = histPlot(outputDir, prefix+"_hist_comp", compBValues, "b-value", COMP_COLOR);
 			File cScatterPlot = rateScatterPlot(outputDir, prefix+"_rate_scatter_comp", compBValues, compRates, COMP_COLOR);
 
 			table.addLine(MarkdownUtils.boldCentered("Comparison B-Value Distribution"),
-					MarkdownUtils.boldCentered("Comparison b-Value Rate-Dependence"));
+					MarkdownUtils.boldCentered("Comparison b-value Rate-Dependence"));
 			table.addLine("![Histogram]("+relPath+"/"+cHistPlot.getName()+")",
 					"![Scatter]("+relPath+"/"+cScatterPlot.getName()+")");
-			
-			double[] diffs = new double[bValues.length];
-			for (int i=0; i<diffs.length; i++)
-				diffs[i] = bValues[i] - compBValues[i];
-			
-			File histDiffPlot = histPlot(outputDir, prefix+"_hist_diff", diffs, "Primary - Comparaison b-Value", COMMON_COLOR);
-			File compScatterPlot = compScatterPlot(outputDir, prefix+"_comp_scatter", bValues, compBValues, COMMON_COLOR);
-			
-			table.addLine(MarkdownUtils.boldCentered("b-Value Difference"), MarkdownUtils.boldCentered("b-Value Scatter"));
-			table.addLine("![Histogram]("+relPath+"/"+histDiffPlot.getName()+")",
-					"![Scatter]("+relPath+"/"+compScatterPlot.getName()+")");
+			compHistLines(bValues, compBValues, outputDir, relPath, prefix+"_comp", table, COMMON_COLOR, "Comparison");
 		}
 		
 		return table.build();
 	}
-	
+
+	public static void compHistLines(double[] bValues, double[] compBValues, File outputDir,
+			String relPath, String prefix, TableBuilder table, Color color, String compName) throws IOException {
+		double[] diffs = new double[bValues.length];
+		for (int i=0; i<diffs.length; i++)
+			diffs[i] = bValues[i] - compBValues[i];
+		
+		File histDiffPlot = histPlot(outputDir, prefix+"_hist_diff", diffs, "Primary - "+compName+" b-value", color);
+		File compScatterPlot = compScatterPlot(outputDir, prefix+"_scatter", bValues, compBValues, color);
+		
+		table.addLine(MarkdownUtils.boldCentered(compName+" b-value Difference"), MarkdownUtils.boldCentered(compName+" b-value Scatter"));
+		table.addLine("![Histogram]("+relPath+"/"+histDiffPlot.getName()+")",
+				"![Scatter]("+relPath+"/"+compScatterPlot.getName()+")");
+	}
 	private static File histPlot(File outputDir, String prefix, double[] values, String xAxisLabel,
 			Color color) throws IOException {
 		HistogramFunction hist = HistogramFunction.getEncompassingHistogram(minB+0.01, maxB-0.01, 0.05);
@@ -542,29 +647,54 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		return Collections.singleton(AveSlipModule.class);
 	}
 	
-	private static void writeSectCSV(File outputFile, List<? extends FaultSection> sects, BValEstimate[] bVals)
-			throws IOException {
+	private static void writeSectCSV(File outputFile, List<? extends FaultSection> sects, BValEstimate[] bVals,
+			BValEstimate[] bValTargets) throws IOException {
 		CSVFile<String> csv = new CSVFile<>(true);
 		
-		csv.addLine(BValEstimate.tableHeader("sect index", "sect name"));
+		List<String> header = BValEstimate.tableHeader("sect index", "sect name");
+		if (bValTargets != null) {
+			header.add("target MFD b-value");
+			header.add("target supra-seis event rate");
+			header.add("target supra-seis moment rate");
+		}
+		csv.addLine(header);
 		for (int s=0; s<sects.size(); s++) {
 			FaultSection sect = sects.get(s);
-			csv.addLine(bVals[s].tableLine(s+"", sect.getName()));
+			List<String> line = bVals[s].tableLine(s+"", sect.getName());
+			if (bValTargets != null) {
+				line.add((float)bValTargets[s].b+"");
+				line.add(bValTargets[s].supraRate+"");
+				line.add(bValTargets[s].moRate+"");
+			}
+			csv.addLine(line);
 		}
 		
 		csv.writeToFile(outputFile);
 	}
 	
 	private static void writeParentSectCSV(File outputFile, Map<Integer, String> parentNames,
-			Map<Integer, BValEstimate> bVals) throws IOException {
+			Map<Integer, BValEstimate> bVals, Map<Integer, BValEstimate> bValTargets) throws IOException {
 		CSVFile<String> csv = new CSVFile<>(true);
 		
 		List<Integer> parentIDs = ComparablePairing.getSortedData(parentNames);
 		
-		csv.addLine(BValEstimate.tableHeader("parent sect ID", "parent sect name"));
+		List<String> header = BValEstimate.tableHeader("parent sect ID", "parent sect name");
+		if (bValTargets != null) {
+			header.add("target MFD b-value");
+			header.add("target supra-seis event rate");
+			header.add("target supra-seis moment rate");
+		}
+		csv.addLine(header);
 		for (int parentID : parentIDs) {
 			String name = parentNames.get(parentID);
-			csv.addLine(bVals.get(parentID).tableLine(parentID+"", name));
+			List<String> line = bVals.get(parentID).tableLine(parentID+"", name);
+			if (bValTargets != null) {
+				BValEstimate target = bValTargets.get(parentID);
+				line.add((float)target.b+"");
+				line.add(target.supraRate+"");
+				line.add(target.moRate+"");
+			}
+			csv.addLine(line);
 		}
 		
 		csv.writeToFile(outputFile);
