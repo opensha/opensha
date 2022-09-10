@@ -34,6 +34,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectNuclMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -93,6 +94,7 @@ public class BranchAverageSolutionCreator {
 	private BranchWeightProvider weightProv;
 	
 	private LogicTreeRateStatistics.Builder rateStatsBuilder;
+	private BranchSectNuclMFDs.Builder sectMFDsBuilder;
 	
 	public BranchAverageSolutionCreator(BranchWeightProvider weightProv) {
 		this.weightProv = weightProv;
@@ -172,11 +174,13 @@ public class BranchAverageSolutionCreator {
 				rupMFDs.add(new ArbitrarilyDiscretizedFunc());
 			
 			rateStatsBuilder = new LogicTreeRateStatistics.Builder();
+			sectMFDsBuilder = new BranchSectNuclMFDs.Builder();
 		} else {
 			Preconditions.checkState(refRupSet.isEquivalentTo(rupSet), "Rupture sets are not equivalent");
 		}
 		
 		rateStatsBuilder.process(branch, sol.getRateForAllRups());
+		sectMFDsBuilder.process(sol, weight);
 		
 		for (int i=0; i<combBranch.size(); i++) {
 			LogicTreeNode combVal = combBranch.getValue(i);
@@ -393,6 +397,7 @@ public class BranchAverageSolutionCreator {
 		sol.addModule(combBranch);
 		sol.addModule(new RupMFDsModule(sol, rupMFDs.toArray(new DiscretizedFunc[0])));
 		sol.addModule(rateStatsBuilder.build());
+		sol.addModule(sectMFDsBuilder.build());
 		
 		String info = "Branch Averaged Fault System Solution, across "+weights.size()
 				+" branches with a total weight of "+totWeight+"."
