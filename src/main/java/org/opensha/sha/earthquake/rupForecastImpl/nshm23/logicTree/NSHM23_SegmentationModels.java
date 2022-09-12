@@ -75,7 +75,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			double creepingProb = 0.75;
 			double wasatchProb = 0.75;
-			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false, false);
+			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false);
 		}
 
 		@Override
@@ -98,7 +98,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			double creepingProb =  0.5d;
 			double wasatchProb = 0.5;
-			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false, false);
+			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false);
 		}
 
 		@Override
@@ -121,7 +121,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			double creepingProb = 0.25;
 			double wasatchProb = 0.25;
-			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false, false);
+			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false);
 		}
 
 		@Override
@@ -146,7 +146,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 			Preconditions.checkNotNull(rupSet, "Can only build classic segmentation model when we have a rupture set");
 			double creepingProb = 0d;
 			double wasatchProb = 0d;
-			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, true, false);
+			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, true);
 		}
 
 		@Override
@@ -271,8 +271,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	public abstract JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch);
 	
 	private static JumpProbabilityCalc buildModel(FaultSystemRupSet rupSet, double shawR0, double shawShift,
-			double wasatchProb, double creepingProb, double hardCutoff, boolean namedFaultsOnly,
-			boolean fullSectsOnly) {
+			double wasatchProb, double creepingProb, double hardCutoff, boolean namedFaultsOnly) {
 		// distance dependent model, possibly with a horizontal shift
 		JumpProbabilityCalc model = null;
 		if (Double.isFinite(hardCutoff))
@@ -320,10 +319,6 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 					model = new JumpProbabilityCalc.LogicalAnd((BinaryJumpProbabilityCalc)model, namedFaultsModel);
 				else
 					model = new JumpProbabilityCalc.Minimum(model, namedFaultsModel);
-			}
-			
-			if (fullSectsOnly) {
-				
 			}
 		}
 		return model;

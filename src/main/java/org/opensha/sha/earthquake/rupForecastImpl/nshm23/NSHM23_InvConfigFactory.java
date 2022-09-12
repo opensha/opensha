@@ -989,7 +989,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	@Override
 	public InversionSolver getSolver(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		if (branch.getValue(NSHM23_SegmentationModels.class) == NSHM23_SegmentationModels.CLASSIC) {
+		NSHM23_SegmentationModels segModel = branch.getValue(NSHM23_SegmentationModels.class);
+		if (segModel == NSHM23_SegmentationModels.CLASSIC || segModel == NSHM23_SegmentationModels.CLASSIC_FULL) {
 			// it's a classic model
 			if (isSolveClustersIndividually()) {
 				// solve clusters individually, can handle mixed clusters and single-fault analytical
