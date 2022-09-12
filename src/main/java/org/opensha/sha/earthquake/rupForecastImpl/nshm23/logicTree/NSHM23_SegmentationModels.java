@@ -2,6 +2,8 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
@@ -11,13 +13,17 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.BinaryJumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_WasatchSegmentationData;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels.ExcludeRupsThroughCreepingSegmentationModel;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
@@ -69,7 +75,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			double creepingProb = 0.75;
 			double wasatchProb = 0.75;
-			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false);
+			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false, false);
 		}
 
 		@Override
@@ -92,7 +98,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			double creepingProb =  0.5d;
 			double wasatchProb = 0.5;
-			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false);
+			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false, false);
 		}
 
 		@Override
@@ -115,7 +121,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			double creepingProb = 0.25;
 			double wasatchProb = 0.25;
-			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false);
+			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false, false);
 		}
 
 		@Override
@@ -140,12 +146,29 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 			Preconditions.checkNotNull(rupSet, "Can only build classic segmentation model when we have a rupture set");
 			double creepingProb = 0d;
 			double wasatchProb = 0d;
-			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, true);
+			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, true, false);
 		}
 
 		@Override
 		public boolean isExcludeRupturesThroughCreepingSect() {
 			return true;
+		}
+	},
+	/**
+	 * Same as {@link #CLASSIC} with the added requirement that all faults sections rupture fully
+	 */
+	CLASSIC_FULL("Classic Full Section", "FullClassic",
+			0d, // weight
+			2d, // R0
+			1d) { // shift
+		@Override
+		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+			return CLASSIC.getModel(rupSet, branch);
+		}
+
+		@Override
+		public boolean isExcludeRupturesThroughCreepingSect() {
+			return CLASSIC.isExcludeRupturesThroughCreepingSect();
 		}
 	},
 	/**
@@ -248,7 +271,8 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	public abstract JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch);
 	
 	private static JumpProbabilityCalc buildModel(FaultSystemRupSet rupSet, double shawR0, double shawShift,
-			double wasatchProb, double creepingProb, double hardCutoff, boolean namedFaultsOnly) {
+			double wasatchProb, double creepingProb, double hardCutoff, boolean namedFaultsOnly,
+			boolean fullSectsOnly) {
 		// distance dependent model, possibly with a horizontal shift
 		JumpProbabilityCalc model = null;
 		if (Double.isFinite(hardCutoff))
@@ -297,6 +321,10 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 				else
 					model = new JumpProbabilityCalc.Minimum(model, namedFaultsModel);
 			}
+			
+			if (fullSectsOnly) {
+				
+			}
 		}
 		return model;
 	}
@@ -335,6 +363,32 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		return shortName.replace("R₀=", "R0_");
 	}
 	
+	@Override
+	public BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		List<BinaryRuptureProbabilityCalc> exclusions = new ArrayList<>();
+		BinaryRuptureProbabilityCalc primaryExclusion = SegmentationModelBranchNode.super.getExclusionModel(rupSet, branch);
+		if (primaryExclusion != null)
+			exclusions.add(primaryExclusion);
+		
+		if (isExcludeRupturesThroughCreepingSect()) {
+			int creepingSectID = NSHM23_ConstraintBuilder.findCreepingSection(rupSet);
+			if (creepingSectID >= 0)
+				exclusions.add(new ExcludeRupsThroughCreepingSegmentationModel(creepingSectID));
+		}
+		
+		if (this == CLASSIC_FULL)
+			exclusions.add(new FullSectionsSegmentationModel(rupSet));
+		
+		if (exclusions.isEmpty())
+			return null;
+		if (exclusions.size() == 1)
+			return exclusions.get(0);
+		
+		System.out.println("Combining "+exclusions.size()+" exclusion models");
+		
+		return new RuptureProbabilityCalc.LogicalAnd(exclusions.toArray(new BinaryRuptureProbabilityCalc[0]));
+	}
+
 	public static class CreepingSectionJumpSegModel implements JumpProbabilityCalc {
 		
 		private int creepingParentID;
@@ -418,6 +472,44 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 				return false;
 			// both sections are part of a named fault, lets see if they're the same one
 			return faultName1.equals(faultName2);
+		}
+		
+	}
+	
+	public static class FullSectionsSegmentationModel implements BinaryRuptureProbabilityCalc {
+
+		private Map<Integer, List<FaultSection>> parentSectsMap;
+
+		public FullSectionsSegmentationModel(FaultSystemRupSet rupSet) {
+			this(rupSet.getFaultSectionDataList().stream().collect(
+					Collectors.groupingBy(S -> S.getParentSectionId())));
+		}
+		
+		public FullSectionsSegmentationModel(Map<Integer, List<FaultSection>> parentSectsMap) {
+			this.parentSectsMap = parentSectsMap;
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+
+		@Override
+		public String getName() {
+			return "Full Section Segmentation";
+		}
+
+		@Override
+		public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
+			for (FaultSubsectionCluster cluster : fullRupture.getClustersIterable()) {
+				List<FaultSection> fullCluster = parentSectsMap.get(cluster.parentSectionID);
+				Preconditions.checkNotNull(fullCluster);
+				Preconditions.checkState(fullCluster.size() >= cluster.subSects.size());
+				if (fullCluster.size() != cluster.subSects.size())
+					return false;
+			}
+			
+			return true;
 		}
 		
 	}

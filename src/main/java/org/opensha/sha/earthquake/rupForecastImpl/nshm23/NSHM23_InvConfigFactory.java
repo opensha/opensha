@@ -961,38 +961,21 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	public static BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
 			ClusterRuptures cRups) {
 		// segmentation model
-		JumpProbabilityCalc segModel = buildSegModel(rupSet, branch);
 		List<BinaryRuptureProbabilityCalc> exclusionModels = new ArrayList<>();
-		if (segModel instanceof BinaryJumpProbabilityCalc) {
-			exclusionModels.add((BinaryJumpProbabilityCalc)segModel);
-		} else if (segModel != null) {
-			// see if it has any zeroes, and if so exclude ruptures that use them from being sampled in the inversion
-			HashSet<IDPairing> excluded = new HashSet<>();
-			for (int rupIndex=0; rupIndex<rupSet.getNumRuptures(); rupIndex++) {
-				ClusterRupture rup = cRups.get(rupIndex);
-				for (Jump jump : rup.getJumpsIterable()) {
-					if (segModel.calcJumpProbability(rup, jump, false) == 0d) {
-						IDPairing pair = new IDPairing(jump.fromSection.getSectionId(), jump.toSection.getSectionId());
-						excluded.add(pair);
-						excluded.add(pair.getReversed());
-					}
-				}
-			}
-			if (excluded != null)
-				exclusionModels.add(new HardcodedBinaryJumpProb(segModel.getName(), true, excluded, false));
+		SegmentationModelBranchNode segChoice = branch.getValue(SegmentationModelBranchNode.class);
+		if (segChoice != null) {
+			BinaryRuptureProbabilityCalc exclusionModel = segChoice.getExclusionModel(rupSet, branch);
+			if (exclusionModel != null)
+				exclusionModels.add(exclusionModel);
 		}
 		
-		// creeping section model
-		if (shouldExcludeThroughCreeping(branch)) {
+		// creeping section model, only include if not part of our segmentation models (will already be taken care of in that case)
+		RupsThroughCreepingSectBranchNode creepingModel = branch.getValue(RupsThroughCreepingSectBranchNode.class);
+		if (creepingModel != null && creepingModel.isExcludeRupturesThroughCreepingSect() && !(creepingModel instanceof NSHM23_SegmentationModels)) {
 			int creepingSectID = NSHM23_ConstraintBuilder.findCreepingSection(rupSet);
 			if (creepingSectID >= 0)
 				exclusionModels.add(new ExcludeRupsThroughCreepingSegmentationModel(creepingSectID));
 		}
-		
-		// max dist model
-		MaxJumpDistModels distModel = branch.getValue(MaxJumpDistModels.class);
-		if (distModel != null)
-			exclusionModels.add(distModel.getModel(rupSet));
 		
 		if (exclusionModels.isEmpty())
 			return null;

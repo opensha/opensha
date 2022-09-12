@@ -15,6 +15,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 
 import com.google.common.base.Preconditions;
 
@@ -22,7 +23,7 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum MaxJumpDistModels implements LogicTreeNode {
+public enum MaxJumpDistModels implements LogicTreeNode, SegmentationModelBranchNode {
 //	ONE(		1d),
 	THREE(		3d),
 	FIVE(		5d),
@@ -204,6 +205,16 @@ public enum MaxJumpDistModels implements LogicTreeNode {
 		System.out.println("a: "+a);
 		for (MaxJumpDistModels model : values())
 			System.out.println(model.getName()+", weight="+(float)model.getNodeWeight(null));
+	}
+
+	@Override
+	public HardDistCutoffJumpProbCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		return getModel(rupSet);
+	}
+
+	@Override
+	public HardDistCutoffJumpProbCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		return getModel(rupSet, branch);
 	}
 
 }
