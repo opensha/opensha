@@ -46,7 +46,9 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 	WIDTH_LIMITED("Width-Limited", "WdthLmtd", "WdthLmtd", 1d) {
 		@Override
 		public double getMag(double area, double length, double width, double origWidth, double aveRake) {
-			width = USE_ORIG_WIDTHS ? origWidth : width;
+			// TODO:
+			// rename to Shaw 09 mod?
+			width = origWidth;
 			area *= 1e-6; // m^2 -> km^2
 			width *= 1e-3; // m -> km
 			double beta = 7.4;
@@ -65,7 +67,8 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 
 		@Override
 		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
-			width = USE_ORIG_WIDTHS ? origWidth : width;
+			if (SURFACE_SLIP_HARDCODED_W)
+				width = 15*1e3;
 			double C6 = 4.91e-5;
 			// leave in SI units here as FaultMomentCalc.SHEAR_MODULUS is in SI units
 			// eqn 13
@@ -80,8 +83,9 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 
 		@Override
 		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
-			width = USE_ORIG_WIDTHS ? origWidth : width;
-			double C6 = 4.91e-5;
+			if (SURFACE_SLIP_HARDCODED_W)
+				width = 15*1e3;
+			double C6 = 5.69e-5;
 			// leave in SI units here as FaultMomentCalc.SHEAR_MODULUS is in SI units
 			// eqn 13
 			return C6*Math.sqrt(length*width);
@@ -95,8 +99,9 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 
 		@Override
 		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
-			width = USE_ORIG_WIDTHS ? origWidth : width;
-			double deltaSigma = 3.91e6; // e6 here converts MPa to Pa
+			if (SURFACE_SLIP_HARDCODED_W)
+				width = 15*1e3;
+			double deltaSigma = 4.54e6; // e6 here converts MPa to Pa
 			// leave in SI units here as FaultMomentCalc.SHEAR_MODULUS is in SI units
 			// eqn 16
 			return (deltaSigma/FaultMomentCalc.SHEAR_MODULUS)*1d/(7d/(3d*length) + 1d/(2d*width));
@@ -132,7 +137,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 		}
 	};
 	
-	public static boolean USE_ORIG_WIDTHS = false;
+	public static boolean SURFACE_SLIP_HARDCODED_W = false;
 	
 	private String name;
 	private String shortName;

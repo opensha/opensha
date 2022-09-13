@@ -1512,10 +1512,10 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 	}
 	
-	public static class NewScaleUseOrigWidths extends NSHM23_InvConfigFactory {
+	public static class ScaleSurfSlipUseActualWidths extends NSHM23_InvConfigFactory {
 
-		public NewScaleUseOrigWidths() {
-			NSHM23_ScalingRelationships.USE_ORIG_WIDTHS = true;
+		public ScaleSurfSlipUseActualWidths() {
+			NSHM23_ScalingRelationships.SURFACE_SLIP_HARDCODED_W = false;
 		}
 		
 	}
