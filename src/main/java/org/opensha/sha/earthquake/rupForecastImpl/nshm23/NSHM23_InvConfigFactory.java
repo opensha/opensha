@@ -84,6 +84,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SeisDept
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.HardDistCutoffJumpProbCalc;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeclusteringAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
@@ -93,7 +94,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_Scalin
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels.ExcludeRupsThroughCreepingSegmentationModel;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SingleStates;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SpatialSeisPDFs;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SeisSmoothingAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSect;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSectBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
@@ -512,7 +513,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				}
 			}, ClusterRuptures.class);
 			if (branch.hasValue(MaxMagOffFaultBranchNode.class)
-					&& branch.hasValue(NSHM23_SpatialSeisPDFs.class)
+					&& branch.hasValue(NSHM23_DeclusteringAlgorithms.class)
+					&& branch.hasValue(NSHM23_SeisSmoothingAlgorithms.class)
 					&& branch.hasValue(NSHM23_RegionalSeismicity.class)
 					&& rupSet.hasAvailableModule(ModelRegion.class)) {
 				// offer fault cube associations
@@ -543,7 +545,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			}
 			
 			if (branch.hasValue(MaxMagOffFaultBranchNode.class)
-					&& branch.hasValue(NSHM23_SpatialSeisPDFs.class)
+					&& branch.hasValue(NSHM23_DeclusteringAlgorithms.class)
+					&& branch.hasValue(NSHM23_SeisSmoothingAlgorithms.class)
 					&& branch.hasValue(NSHM23_RegionalSeismicity.class)) {
 				// can build grid source provider
 				// offer as a GridSourceProvider so as not to replace a precomputed one
@@ -716,7 +719,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		double maxMagOff = branch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
 		NSHM23_RegionalSeismicity seisBranch = branch.requireValue(NSHM23_RegionalSeismicity.class);
-		NSHM23_SpatialSeisPDFs spatSeisPDF = branch.requireValue(NSHM23_SpatialSeisPDFs.class);
+		NSHM23_DeclusteringAlgorithms declusteringAlg = branch.requireValue(NSHM23_DeclusteringAlgorithms.class);
+		NSHM23_SeisSmoothingAlgorithms seisSmooth = branch.requireValue(NSHM23_SeisSmoothingAlgorithms.class);
 		
 		// figure out what region(s) we need
 		List<SeismicityRegions> seisRegions = getSeismicityRegions(modelReg);
@@ -729,11 +733,11 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		NSHM23_AbstractGridSourceProvider ret;
 		if (seisRegions.size() == 1) {
 			// simple case
-			ret = buildSingleGridSourceProv(sol, seisRegions.get(0), seisBranch, spatSeisPDF, maxMagOff, refMFD);
+			ret = buildSingleGridSourceProv(sol, seisRegions.get(0), seisBranch, declusteringAlg, seisSmooth, maxMagOff, refMFD);
 		} else {
 			List<NSHM23_SingleRegionGridSourceProvider> regionalProvs = new ArrayList<>();
 			for (SeismicityRegions seisRegion : seisRegions)
-				regionalProvs.add(buildSingleGridSourceProv(sol, seisRegion, seisBranch, spatSeisPDF, maxMagOff, refMFD));
+				regionalProvs.add(buildSingleGridSourceProv(sol, seisRegion, seisBranch, declusteringAlg, seisSmooth, maxMagOff, refMFD));
 			
 			ret = new NSHM23_CombinedRegionGridSourceProvider(sol,
 					new GriddedRegion(modelReg, 0.1d, GriddedRegion.ANCHOR_0_0), regionalProvs);
@@ -745,8 +749,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	}
 	
 	private static NSHM23_SingleRegionGridSourceProvider buildSingleGridSourceProv(FaultSystemSolution sol,
-			SeismicityRegions region, NSHM23_RegionalSeismicity seisBranch, NSHM23_SpatialSeisPDFs spatSeisPDF,
-			double maxMagOff, EvenlyDiscretizedFunc refMFD) throws IOException {
+			SeismicityRegions region, NSHM23_RegionalSeismicity seisBranch, NSHM23_DeclusteringAlgorithms declusteringAlg,
+			NSHM23_SeisSmoothingAlgorithms seisSmooth, double maxMagOff, EvenlyDiscretizedFunc refMFD) throws IOException {
 		// total G-R up to Mmax
 		GutenbergRichterMagFreqDist totalGR = seisBranch.build(region, refMFD, maxMagOff);
 		
@@ -804,7 +808,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		double[] fractNormal = NSHM23_GridFocalMechs.getFractNormal(region, gridReg);
 		
 		// spatial seismicity PDF
-		double[] pdf = spatSeisPDF.load(region);
+		double[] pdf = seisSmooth.load(region, declusteringAlg);
 		
 		// seismicity depth distribution
 		

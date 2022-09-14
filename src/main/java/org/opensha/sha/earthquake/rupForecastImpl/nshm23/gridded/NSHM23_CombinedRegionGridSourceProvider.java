@@ -16,7 +16,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.NucleationRateP
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SolMFDPlot;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SpatialSeisPDFs;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SeisSmoothingAlgorithms;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
@@ -153,7 +153,7 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 				+ "results_NSHM23_v2_CoulombRupSet_branch_averaged.zip"));
 		
 		LogicTreeBranch<LogicTreeNode> offFaultBranch = NSHM23_LogicTreeBranch.DEFAULT_COMBINED.copy();
-		offFaultBranch.setValue(NSHM23_SpatialSeisPDFs.AVERAGE);
+		offFaultBranch.setValue(NSHM23_SeisSmoothingAlgorithms.AVERAGE);
 		
 		NSHM23_AbstractGridSourceProvider gridProv = NSHM23_InvConfigFactory.buildGridSourceProv(sol, offFaultBranch);
 		

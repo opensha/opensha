@@ -17,7 +17,7 @@ import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_RegionalSeismicity;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SpatialSeisPDFs;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SeisSmoothingAlgorithms;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -29,7 +29,7 @@ public class NSHM23_RegionLoader {
 	 * 
 	 * @author kevin
 	 * @see NSHM23_RegionalSeismicity
-	 * @see NSHM23_SpatialSeisPDFs
+	 * @see NSHM23_SeisSmoothingAlgorithms
 	 * 
 	 */
 	public enum SeismicityRegions implements BaseRegion {

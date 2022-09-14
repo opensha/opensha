@@ -54,8 +54,10 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	 */
 	public static LogicTreeLevel<NSHM23_RegionalSeismicity> SEIS_RATE =
 			LogicTreeLevel.forEnum(NSHM23_RegionalSeismicity.class, "Regional Seismicity Rate", "SeisRate");
-	public static LogicTreeLevel<NSHM23_SpatialSeisPDFs> SEIS_PDF =
-			LogicTreeLevel.forEnum(NSHM23_SpatialSeisPDFs.class, "Spatical Seismicity PDF", "SeisPDF");
+	public static LogicTreeLevel<NSHM23_DeclusteringAlgorithms> SEIS_DECLUSTER =
+			LogicTreeLevel.forEnum(NSHM23_DeclusteringAlgorithms.class, "Seismicity Declustering Algorithm", "SeisDecluster");
+	public static LogicTreeLevel<NSHM23_SeisSmoothingAlgorithms> SEIS_SMOOTH =
+			LogicTreeLevel.forEnum(NSHM23_SeisSmoothingAlgorithms.class, "Seismicity Smoothing Kernel", "SeisSmooth");
 	public static LogicTreeLevel<NSHM23_MaxMagOffFault> MMAX_OFF =
 			LogicTreeLevel.forEnum(NSHM23_MaxMagOffFault.class, "Off Fault Mmax", "MmaxOff");
 	
@@ -73,7 +75,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 		// exhaustive for now, can trim down later
 		levelsOnFault = List.of(FM, PLAUSIBILITY, DM, SCALE, SLIP_ALONG, SUPRA_B,
 				SUB_SECT_CONSTR, SUB_SEIS_MO, PALEO_UNCERT, SEG, SEG_ADJ);
-		levelsOffFault = List.of(SEIS_RATE, SEIS_PDF, MMAX_OFF);
+		levelsOffFault = List.of(SEIS_RATE, SEIS_DECLUSTER, SEIS_SMOOTH, MMAX_OFF);
 		
 		ImmutableList.Builder<LogicTreeLevel<?>> combLevelBuilder = ImmutableList.builder();
 		combLevelBuilder.addAll(levelsOnFault);
@@ -104,7 +106,8 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	 */
 	public static final NSHM23_LogicTreeBranch DEFAULT_OFF_FAULT = fromValues(levelsOffFault,
 			NSHM23_RegionalSeismicity.PREFFERRED,
-			NSHM23_SpatialSeisPDFs.NN_ADAPTIVE,
+			NSHM23_DeclusteringAlgorithms.GK,
+			NSHM23_SeisSmoothingAlgorithms.ADAPTIVE,
 			NSHM23_MaxMagOffFault.MAG_7p6);
 	
 	public static final NSHM23_LogicTreeBranch DEFAULT_COMBINED;

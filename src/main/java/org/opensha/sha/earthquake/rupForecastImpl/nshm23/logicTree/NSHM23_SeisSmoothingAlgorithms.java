@@ -3,6 +3,8 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
@@ -27,32 +29,22 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME)
 @Affects(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
 @Affects(GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
-public enum NSHM23_SpatialSeisPDFs implements LogicTreeNode {
+public enum NSHM23_SeisSmoothingAlgorithms implements LogicTreeNode {
 	
-	GK_ADAPTIVE("Gardner-Knopoff, Adaptive", "GK-Adaptive", 1d),
-	GK_FIXED("Gardner-Knopoff, Fixed", "GK-Fixed", 1d),
-	NN_ADAPTIVE("Nearest-Neighbor, Adaptive", "NN-Adaptive", 1d),
-	NN_FIXED("Nearest-Neighbor, Fixed", "NN-Fixed", 1d),
-	REAS_ADAPTIVE("Reasenberg, Adaptive", "Reas-Adaptive", 1d),
-	REAS_FIXED("Reasenberg, Fixed", "Reas-Fixed", 1d),
+	ADAPTIVE("Adaptive Kernel", "Adaptive", 1d),
+	FIXED("Fixed Kernel", "Fixed", 1d),
 	AVERAGE("Average", "Average", 0d) {
-		public GriddedGeoDataSet loadXYZ(SeismicityRegions region) throws IOException {
-			GriddedGeoDataSet avg = null;
-			double sumWeight = 0d;
-			for (NSHM23_SpatialSeisPDFs pdf : values()) {
-				if (pdf.weight == 0d || pdf == this)
+		public GriddedGeoDataSet loadXYZ(SeismicityRegions region,
+				NSHM23_DeclusteringAlgorithms declusteringAlg) throws IOException {
+			List<GriddedGeoDataSet> xyzs = new ArrayList<>();
+			List<Double> weights = new ArrayList<>();
+			for (NSHM23_SeisSmoothingAlgorithms smooth : values()) {
+				if (smooth.weight == 0d || smooth == this)
 					continue;
-				GriddedGeoDataSet xyz = pdf.loadXYZ(region);
-				if (avg == null)
-					avg = new GriddedGeoDataSet(xyz.getRegion(), false);
-				else
-					Preconditions.checkState(avg.getRegion().equalsRegion(xyz.getRegion()));
-				for (int i=0; i<xyz.size(); i++)
-					avg.set(i, avg.get(i)+xyz.get(i)*pdf.weight);
-				sumWeight += pdf.weight;
+				xyzs.add(smooth.loadXYZ(region, declusteringAlg));
+				weights.add(smooth.weight);
 			}
-			avg.scale(1d/sumWeight);
-			return avg;
+			return average(xyzs, weights);
 		}
 	};
 	
@@ -60,7 +52,7 @@ public enum NSHM23_SpatialSeisPDFs implements LogicTreeNode {
 	private String shortName;
 	private double weight;
 
-	private NSHM23_SpatialSeisPDFs(String name, String shortName, double weight) {
+	private NSHM23_SeisSmoothingAlgorithms(String name, String shortName, double weight) {
 		this.name = name;
 		this.shortName = shortName;
 		this.weight = weight;
@@ -68,19 +60,54 @@ public enum NSHM23_SpatialSeisPDFs implements LogicTreeNode {
 	
 	private static final String NSHM23_SS_PATH_PREFIX = "/data/erf/nshm23/seismicity/spatial_seis_pdfs/";
 	
-	private String getResourceName(SeismicityRegions region) {
-		return NSHM23_SS_PATH_PREFIX+region.name()+"/"+name()+".csv";
+	private String getResourceName(SeismicityRegions region, NSHM23_DeclusteringAlgorithms declusteringAlg) {
+		return NSHM23_SS_PATH_PREFIX+region.name()+"/"+declusteringAlg.name()+"_"+name()+".csv";
 	}
 	
-	public double[] load(SeismicityRegions region) throws IOException {
-		return loadXYZ(region).getValues();
+	private static GriddedGeoDataSet average(List<GriddedGeoDataSet> xyzs, List<Double> weights) {
+		GriddedGeoDataSet avg = null;
+		double sumWeight = 0d;
+		for (int i=0; i<xyzs.size(); i++) {
+			GriddedGeoDataSet xyz = xyzs.get(i);
+			double weight = weights.get(i);
+			if (avg == null)
+				avg = new GriddedGeoDataSet(xyz.getRegion(), false);
+			else
+				Preconditions.checkState(avg.getRegion().equalsRegion(xyz.getRegion()));
+			for (int j=0; j<xyz.size(); j++)
+				avg.set(j, avg.get(j)+xyz.get(j)*weight);
+			sumWeight += weight;
+		}
+		if (xyzs.size() == 1)
+			return xyzs.get(0);
+		avg.scale(1d/sumWeight);
+		return avg;
 	}
 	
-	public GriddedGeoDataSet loadXYZ(SeismicityRegions region) throws IOException {
-		String resource = getResourceName(region);
+	public double[] load(SeismicityRegions region,
+			NSHM23_DeclusteringAlgorithms declusteringAlg) throws IOException {
+		return loadXYZ(region, declusteringAlg).getValues();
+	}
+	
+	public GriddedGeoDataSet loadXYZ(SeismicityRegions region,
+			NSHM23_DeclusteringAlgorithms declusteringAlg) throws IOException {
+		if (declusteringAlg == NSHM23_DeclusteringAlgorithms.AVERAGE) {
+			// average them
+			List<GriddedGeoDataSet> xyzs = new ArrayList<>();
+			List<Double> weights = new ArrayList<>();
+			for (NSHM23_DeclusteringAlgorithms alg : NSHM23_DeclusteringAlgorithms.values()) {
+				double weight = alg.getNodeWeight(null);
+				if (weight == 0d || alg == NSHM23_DeclusteringAlgorithms.AVERAGE)
+					continue;
+				xyzs.add(loadXYZ(region, alg));
+				weights.add(weight);
+			}
+			return average(xyzs, weights);
+		}
+		String resource = getResourceName(region, declusteringAlg);
 		
 		System.out.println("Loading spatial seismicity PDF from: "+resource);
-		InputStream is = NSHM23_SpatialSeisPDFs.class.getResourceAsStream(resource);
+		InputStream is = NSHM23_SeisSmoothingAlgorithms.class.getResourceAsStream(resource);
 		Preconditions.checkNotNull(is, "Spatial seismicity PDF not found: %s", resource);
 		CSVFile<String> csv = CSVFile.readStream(is, true);
 		
@@ -137,9 +164,11 @@ public enum NSHM23_SpatialSeisPDFs implements LogicTreeNode {
 		for (SeismicityRegions region : SeismicityRegions.values()) {
 			if (region == SeismicityRegions.ALASKA || region == SeismicityRegions.CONUS_HAWAII)
 				continue;
-			for (NSHM23_SpatialSeisPDFs pdf : values()) {
-				System.out.println(region.name()+",\t"+pdf.name());
-				pdf.load(region);
+			for (NSHM23_SeisSmoothingAlgorithms smooth : values()) {
+				for (NSHM23_DeclusteringAlgorithms alg : NSHM23_DeclusteringAlgorithms.values()) {
+					System.out.println(region.name()+",\t"+smooth.name());
+					smooth.load(region, alg);
+				}
 			}
 		}
 	}
