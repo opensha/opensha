@@ -44,31 +44,31 @@ import com.google.common.base.Preconditions;
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum NSHM23_DeformationModels implements RupSetDeformationModel {
-	GEOLOGIC("NSHM23 Geologic Deformation Model", "Geologic", 1d) {
+	GEOLOGIC("NSHM23 Geologic Deformation Model", "Geologic", 0.2d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeol(faultModel, GEOLOGIC_VERSION);
 		}
 	},
-	EVANS("NSHM23 Evans Deformation Model", "Evans", 1d) {
+	EVANS("NSHM23 Evans Deformation Model", "Evans", 0.1d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
 	},
-	POLLITZ("NSHM23 Pollitz Deformation Model", "Pollitz", 1d) {
+	POLLITZ("NSHM23 Pollitz Deformation Model", "Pollitz", 0.2d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
 	},
-	SHEN_BIRD("NSHM23 Shen-Bird Deformation Model", "Shen-Bird", 1d) {
+	SHEN_BIRD("NSHM23 Shen-Bird Deformation Model", "Shen-Bird", 0.25d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
 	},
-	ZENG("NSHM23 Zeng Deformation Model", "Zeng", 1d) {
+	ZENG("NSHM23 Zeng Deformation Model", "Zeng", 0.25d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
