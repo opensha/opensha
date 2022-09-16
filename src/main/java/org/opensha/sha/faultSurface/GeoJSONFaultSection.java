@@ -417,6 +417,10 @@ public final class GeoJSONFaultSection implements FaultSection {
 	}
 
 	public void setDipDirection(float dipDirection) {
+		while (dipDirection > 360f)
+			dipDirection -= 360f;
+		while (dipDirection < 0)
+			dipDirection += 360f;
 		this.dipDirection = dipDirection;
 		properties.set(DIP_DIR, dipDirection);
 	}
