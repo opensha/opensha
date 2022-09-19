@@ -105,6 +105,9 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		}
 		
 		int threads = getNumThreads();
+		if (rank == 0)
+			// subtract a thread, we've got other stuff to do
+			threads = Integer.max(1, threads-1);
 		if (threads > 1)
 			exec = Executors.newFixedThreadPool(threads);
 		
@@ -517,31 +520,8 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			// pre-cache the cube associations once for this branch
 			List<SeismicityRegions> seisRegions = NSHM23_InvConfigFactory.getSeismicityRegions(region);
 			Preconditions.checkState(seisRegions.size() >= 1);
-			NSHM23_FaultCubeAssociations cubeAssoc = null;
-			if (seisRegions.size() == 1) {
-				Region seisRegion = seisRegions.get(0).load();
-				GriddedRegion seisGridReg = NSHM23_InvConfigFactory.getGriddedSeisRegion(seisRegion);
-				cubeAssoc = new NSHM23_FaultCubeAssociations(rupSet,
-						new CubedGriddedRegion(seisGridReg),
-						NSHM23_SingleRegionGridSourceProvider.DEFAULT_MAX_FAULT_NUCL_DIST);
-				if (!seisRegion.equalsRegion(region)) {
-					// need to nest it
-					GriddedRegion modelGridReg = NSHM23_InvConfigFactory.getGriddedSeisRegion(region);
-					cubeAssoc = new NSHM23_FaultCubeAssociations(rupSet,
-							new CubedGriddedRegion(modelGridReg), List.of(cubeAssoc));
-				}
-			} else {
-				List<NSHM23_FaultCubeAssociations> regionalAssociations = new ArrayList<>();
-				for (SeismicityRegions seisRegion : seisRegions) {
-					GriddedRegion seisGridReg = NSHM23_InvConfigFactory.getGriddedSeisRegion(seisRegion.load());
-					regionalAssociations.add(new NSHM23_FaultCubeAssociations(rupSet,
-							new CubedGriddedRegion(seisGridReg),
-							NSHM23_SingleRegionGridSourceProvider.DEFAULT_MAX_FAULT_NUCL_DIST));
-				}
-				GriddedRegion modelGridReg = NSHM23_InvConfigFactory.getGriddedSeisRegion(region);
-				cubeAssoc = new NSHM23_FaultCubeAssociations(rupSet,
-						new CubedGriddedRegion(modelGridReg), regionalAssociations);
-			}
+			NSHM23_FaultCubeAssociations cubeAssoc = NSHM23_InvConfigFactory.buildFaultCubeAssociations(
+					rupSet, region, seisRegions);
 			
 			File assocFile = new File(gridSeisDir, GRID_ASSOCIATIONS_ARCHIVE_NAME);
 			ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
@@ -550,7 +530,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			
 			List<CalcRunnable> runnables = new ArrayList<>();
 			for (LogicTreeBranch<?> gridSeisBranch : gridSeisOnlyTree)
-				runnables.add(new CalcRunnable(origBranch, gridSeisBranch, gridSeisDir, sol, cubeAssoc));
+				runnables.add(new CalcRunnable(origBranch, gridSeisBranch, gridSeisDir, sol, seisRegions, cubeAssoc));
 			
 			if (exec == null) {
 				// run them serially
@@ -636,17 +616,19 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		private LogicTreeBranch<?> origBranch;
 		private LogicTreeBranch<?> gridSeisBranch;
 		private File gridSeisDir;
-		private FaultSystemSolution origSol;
+		private FaultSystemSolution sol;
+		private List<SeismicityRegions> seisRegions;
 		private NSHM23_FaultCubeAssociations cubeAssoc;
 		
 		private GridSourceProvider gridProv;
 
 		public CalcRunnable(LogicTreeBranch<?> origBranch, LogicTreeBranch<?> gridSeisBranch, File gridSeisDir,
-				FaultSystemSolution origSol, NSHM23_FaultCubeAssociations cubeAssoc) {
+				FaultSystemSolution sol, List<SeismicityRegions> seisRegions, NSHM23_FaultCubeAssociations cubeAssoc) {
 			this.origBranch = origBranch;
 			this.gridSeisBranch = gridSeisBranch;
 			this.gridSeisDir = gridSeisDir;
-			this.origSol = origSol;
+			this.sol = sol;
+			this.seisRegions = seisRegions;
 			this.cubeAssoc = cubeAssoc;
 		}
 
@@ -670,19 +652,9 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				}
 			}
 			
-			// build a copy of the rupture set/solution for this branch with all original modules attached
-			FaultSystemSolution newSol = solCopy(origSol);
-			FaultSystemRupSet newRupSet = newSol.getRupSet();
-			
-			// add cube associations so that we can reuse them
-			newRupSet.addModule(cubeAssoc);
-			newRupSet.addModule(combinedBranch);
-			newSol.addModule(combinedBranch);
-			
 			try {
 				gridProv = NSHM23_InvConfigFactory.buildGridSourceProv(
-						newSol, combinedBranch);
-				newSol.setGridSourceProvider(gridProv);
+						sol, combinedBranch, seisRegions, cubeAssoc);
 				
 				ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
 				archive.addModule(gridProv);

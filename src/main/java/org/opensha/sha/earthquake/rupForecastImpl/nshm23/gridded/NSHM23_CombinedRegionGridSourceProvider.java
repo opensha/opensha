@@ -9,6 +9,7 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
@@ -43,7 +44,23 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 
 	public NSHM23_CombinedRegionGridSourceProvider(FaultSystemSolution sol, GriddedRegion gridReg,
 			List<NSHM23_SingleRegionGridSourceProvider> regionalProviders) {
-		this.gridReg = gridReg;
+		this(sol, buildCombinedFaultCubeAssociations(sol.getRupSet(), gridReg, regionalProviders), regionalProviders);
+	}
+	
+	private static NSHM23_FaultCubeAssociations buildCombinedFaultCubeAssociations(
+			FaultSystemRupSet rupSet, GriddedRegion gridReg,
+			List<NSHM23_SingleRegionGridSourceProvider> regionalProviders) {
+		List<NSHM23_FaultCubeAssociations> regionalAssociations = new ArrayList<>();
+		for (NSHM23_SingleRegionGridSourceProvider prov : regionalProviders)
+			regionalAssociations.add(prov.getFaultCubeassociations());
+		return new NSHM23_FaultCubeAssociations(rupSet, new CubedGriddedRegion(gridReg), regionalAssociations);
+	}
+
+	public NSHM23_CombinedRegionGridSourceProvider(FaultSystemSolution sol,
+			NSHM23_FaultCubeAssociations combinedFaultCubeAssociations,
+			List<NSHM23_SingleRegionGridSourceProvider> regionalProviders) {
+		this.combinedFaultCubeAssociations = combinedFaultCubeAssociations;
+		this.gridReg = combinedFaultCubeAssociations.getRegion();
 		this.regionalProviders = regionalProviders;
 		nodeGridProvs = new GridSourceProvider[gridReg.getNodeCount()];
 		nodeGridIndexes = new int[nodeGridProvs.length];
@@ -71,12 +88,6 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 		}
 		System.out.println("Mapped "+numMapped+"/"+nodeGridIndexes.length
 				+" model region grid locations to sub-region grid locations");
-		
-		List<NSHM23_FaultCubeAssociations> regionalAssociations = new ArrayList<>();
-		for (NSHM23_SingleRegionGridSourceProvider prov : regionalProviders)
-			regionalAssociations.add(prov.getFaultCubeassociations());
-		this.combinedFaultCubeAssociations = new NSHM23_FaultCubeAssociations(sol.getRupSet(),
-				new CubedGriddedRegion(gridReg), regionalAssociations);
 	}
 	
 	@Override

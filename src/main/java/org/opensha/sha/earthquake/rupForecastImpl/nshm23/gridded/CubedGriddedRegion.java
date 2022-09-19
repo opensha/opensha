@@ -56,16 +56,11 @@ public class CubedGriddedRegion {
 	private double cubeDepthDiscr;
 	private int numCubesPerDepth;
 	private int numCubes;
-	private double maxFaultNuclDist;
 	private int numCubesPerGridCell;
 	
 	private GriddedRegion griddedRegion;
 	private GriddedRegion griddedRegionModified;
 	private GriddedRegion gridRegForCubes;
-	
-	private double[] latForCubeCenter;
-	private double[] lonForCubeCenter;
-	private double[] depthForCubeCenter;
 
 	
 	/**
@@ -97,7 +92,6 @@ public class CubedGriddedRegion {
 		if(!griddedRegion.isSpacingUniform())
 			throw new RuntimeException("Lat and Lon discretization must be equal in griddedRegion");
 		
-		// TODO: this doesn't work for complex regions, e.g. NSHM23 intermountain west
 		Region exactRegion = getRegionDefinedByExteriorCellEdges(griddedRegion);
 		this.griddedRegionModified = new GriddedRegion(exactRegion, griddedRegion.getSpacing(), griddedRegion.getLocation(0)); // can't find method to get anchor from origGriddedRegion
 		if (griddedRegionModified.getNodeCount() != griddedRegion.getNodeCount()) {
@@ -123,27 +117,6 @@ public class CubedGriddedRegion {
 			System.out.println("numCubesPerDepth = "+numCubesPerDepth);
 			System.out.println("numCubeDepths = "+numCubeDepths);
 			System.out.println("numCubes = "+numCubes);
-		}
-		
-		latForCubeCenter = new double[numCubes];
-		lonForCubeCenter = new double[numCubes];
-		depthForCubeCenter = new double[numCubes];
-		for(int i=0;i<numCubes;i++) {
-			int[] regAndDepIndex = getCubeRegAndDepIndicesForIndex(i);
-			Location loc = gridRegForCubes.getLocation(regAndDepIndex[0]);
-			latForCubeCenter[i] = loc.getLatitude();
-			lonForCubeCenter[i] = loc.getLongitude();
-			depthForCubeCenter[i] = getCubeDepth(regAndDepIndex[1]);
-			
-			// test - turn off once done once
-//			Location testLoc = this.getLocationForSamplerIndex(i);
-//			if(Math.abs(testLoc.getLatitude()-latForPoint[i]) > 0.00001)
-//				throw new RuntimeException("Lats diff by more than 0.00001");
-//			if(Math.abs(testLoc.getLongitude()-lonForPoint[i]) > 0.00001)
-//				throw new RuntimeException("Lons diff by more than 0.00001");
-//			if(Math.abs(testLoc.getDepth()-depthForPoint[i]) > 0.00001)
-//				throw new RuntimeException("Depths diff by more than 0.00001");
-			
 		}
 		
 		// a couple testsl:
