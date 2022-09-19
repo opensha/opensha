@@ -67,7 +67,7 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
 			if (SURFACE_SLIP_HARDCODED_W)
 				width = 15*1e3;
-			double C6 = 4.91e-5;
+			double C6 = 5.69e-5;
 			// leave in SI units here as FaultMomentCalc.SHEAR_MODULUS is in SI units
 			// eqn 13
 			return C6*Math.sqrt(length*width);
@@ -81,12 +81,8 @@ public enum NSHM23_ScalingRelationships implements RupSetScalingRelationship {
 
 		@Override
 		public double getAveSlip(double area, double length, double width, double origWidth, double aveRake) {
-			if (SURFACE_SLIP_HARDCODED_W)
-				width = 15*1e3;
-			double C6 = 5.69e-5;
-			// leave in SI units here as FaultMomentCalc.SHEAR_MODULUS is in SI units
-			// eqn 13
-			return C6*Math.sqrt(length*width);
+			// slip relationship is identical for these 2 branches, use the other to reduce code duplication
+			return LOGA_C4p2_SQRT_LEN.getAveSlip(area, length, width, origWidth, aveRake);
 		}
 	},
 	WIDTH_LIMITED_CSD("Width Limited, Constant Stress Drop", "WdthLmtd, CSD", "WdthLmtdCSD", 1d) {
