@@ -550,7 +550,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					&& branch.hasValue(NSHM23_RegionalSeismicity.class)) {
 				// can build grid source provider
 				// offer as a GridSourceProvider so as not to replace a precomputed one
-				// this will also add fault cube associations
+				// this will also add fault cube associations to the rupture set
 				sol.offerAvailableModule(new Callable<GridSourceProvider>() {
 
 					@Override
@@ -724,7 +724,9 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		List<SeismicityRegions> seisRegions = getSeismicityRegions(modelReg);
 		
 		Preconditions.checkState(!seisRegions.isEmpty(), "Found no seismicity regions for model region %s", modelReg.getName());
+		// build cube associations
 		NSHM23_FaultCubeAssociations cubeAssociations = buildFaultCubeAssociations(rupSet, modelReg, seisRegions);
+		// add those to the rupture set
 		rupSet.addModule(cubeAssociations);
 		return buildGridSourceProv(sol, branch, seisRegions, cubeAssociations);
 	}
