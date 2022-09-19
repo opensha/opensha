@@ -26,6 +26,8 @@ public class NSHM23_ScalingRelationshipsTest {
 	public static void setUpBeforeClass() throws Exception {
 		dataCSV = CSVFile.readStream(NSHM23_ScalingRelationshipsTest.class.getResourceAsStream(
 				"/org/opensha/sha/earthquake/rupForecastImpl/nshm23/logicTree/scaling_test_file.csv"), false);
+		// this file uses the listed width, not our harcoded version
+		NSHM23_ScalingRelationships.SURFACE_SLIP_HARDCODED_W = false;
 	}
 
 	@Test
