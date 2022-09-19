@@ -21,6 +21,7 @@ import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.util.BranchAverageSolutionCreator;
@@ -31,14 +32,23 @@ import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
 
 public class BranchSectNuclMFDs implements FileBackedModule {
-	
-	private IncrementalMagFreqDist[][] branchSectMFDs;
+
+	private IncrementalMagFreqDist refMFD;
+	private float[][][] branchSectMFDs;
+	private short[][] branchSectMinMagIndexes;
 	private double[] weights;
 	
 	public static class Builder {
 		
-		private EvenlyDiscretizedFunc refMFD;
-		private List<IncrementalMagFreqDist[]> branchSectMFDs;
+		// oversized reference MFD that starts at M=0 and goes to M=12
+		// will be reduced to the actual magnitude range when the final module is built
+		private static final EvenlyDiscretizedFunc refMFD = new EvenlyDiscretizedFunc(
+				0.05, 120, 0.1);
+		private static final double refMinMag = refMFD.getX(0)-0.5*refMFD.getDelta();
+		private static final double refMaxMag = refMFD.getX(refMFD.size()-1)+0.5*refMFD.getDelta();
+		
+		private List<float[][]> branchSectMFDs;
+		private List<short[]> branchSectMinMagIndexes;
 		private List<Double> weights;
 		
 		private int minMagIndex = Integer.MAX_VALUE;
@@ -47,26 +57,55 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 		public synchronized void process(FaultSystemSolution sol, double weight) {
 			int numSects = sol.getRupSet().getNumSections();
 			if (branchSectMFDs == null) {
-				// first time, build ref MFD and initialize lists
-				// this will start at a low magnitude that should be well below the supra-seis min, pad the upper end
-				refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(sol.getRupSet().getMaxMag()+2d);
+				// first time, initialize lists
 				branchSectMFDs = new ArrayList<>();
+				branchSectMinMagIndexes = new ArrayList<>();
 				weights = new ArrayList<>();
 			} else {
+				// ensure section count is consistent
 				Preconditions.checkState(numSects == branchSectMFDs.get(0).length);
 			}
-			IncrementalMagFreqDist[] sectMFDs = new IncrementalMagFreqDist[numSects];
-			for (int sectIndex=0; sectIndex<numSects; sectIndex++) {
-				sectMFDs[sectIndex] = sol.calcNucleationMFD_forSect(sectIndex, refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
-				for (int i=0; i<refMFD.size(); i++) {
-					if (sectMFDs[sectIndex].getY(i) > 0d) {
-						minMagIndex = Integer.min(minMagIndex, i);
-						maxMagIndex = Integer.max(maxMagIndex, i);
+			// see if we've already built these distributions and can reuse them
+			// that happens for logic-tree branch average creation
+			SingleBranchNuclMFDs branchMFDs = sol.getModule(SingleBranchNuclMFDs.class);
+			if (branchMFDs == null) {
+				double branchMinMag = sol.getRupSet().getMinMag();
+				double branchMaxMag = sol.getRupSet().getMaxMag();
+				Preconditions.checkState(branchMinMag >= refMinMag,
+						"Branch has extreme magnitudes outside of reference range: min=%s, refRange=[%s,%s]",
+						branchMinMag, refMinMag, refMaxMag);
+				Preconditions.checkState(branchMaxMag <= refMaxMag,
+						"Branch has extreme magnitudes outside of reference range: max=%s, refRange=[%s,%s]",
+						branchMaxMag, refMinMag, refMaxMag);
+				float[][] sectMFDs = new float[numSects][];
+				short[] minMagIndexes = new short[numSects];
+				for (int sectIndex=0; sectIndex<numSects; sectIndex++) {
+					IncrementalMagFreqDist mfd = sol.calcNucleationMFD_forSect(
+							sectIndex, refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
+					int myMinIndex = Integer.MAX_VALUE;
+					int myMaxIndex = 0;
+					for (int i=0; i<refMFD.size(); i++) {
+						if (mfd.getY(i) > 0d) {
+							myMinIndex = Integer.min(myMinIndex, i);
+							myMaxIndex = Integer.max(myMaxIndex, i);
+						}
+					}
+					if (myMinIndex <= myMaxIndex) {
+						// we have a nonzero value
+						sectMFDs[sectIndex] = new float[1+myMaxIndex-myMinIndex];
+						for (int i=0; i<sectMFDs[sectIndex].length; i++)
+							sectMFDs[sectIndex][i] = (float)mfd.getY(i+myMinIndex);
+						minMagIndexes[sectIndex] = (short)myMinIndex;
+						minMagIndex = Integer.min(minMagIndex, myMinIndex);
+						maxMagIndex = Integer.max(maxMagIndex, myMaxIndex);
 					}
 				}
+				branchMFDs = new SingleBranchNuclMFDs(minMagIndexes, sectMFDs);
+				sol.addModule(branchMFDs);
 			}
 			
-			branchSectMFDs.add(sectMFDs);
+			branchSectMFDs.add(branchMFDs.sectMFDs);
+			branchSectMinMagIndexes.add(branchMFDs.sectMinMagIndexes);
 			weights.add(weight);
 		}
 		
@@ -79,21 +118,47 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 			int numSects = branchSectMFDs.get(0).length;
 			
 			// trim the MFDs
-			ret.branchSectMFDs = new IncrementalMagFreqDist[numBranches][numSects];
-			EvenlyDiscretizedFunc trimmedRefMFD = new EvenlyDiscretizedFunc(
-					refMFD.getX(minMagIndex), 1+maxMagIndex-minMagIndex, refMFD.getDelta());
+			ret.refMFD = new IncrementalMagFreqDist(refMFD.getX(minMagIndex), 1+maxMagIndex-minMagIndex, refMFD.getDelta());
+			ret.branchSectMFDs = new float[numBranches][][];
+			ret.branchSectMinMagIndexes = new short[numBranches][numSects];
 			for (int b=0; b<numBranches; b++) {
+				ret.branchSectMFDs[b] = branchSectMFDs.get(b);
 				for (int s=0; s<numSects; s++) {
-					ret.branchSectMFDs[b][s] = new IncrementalMagFreqDist(
-							trimmedRefMFD.getMinX(), trimmedRefMFD.size(), trimmedRefMFD.getDelta());
-					IncrementalMagFreqDist sectMFD = branchSectMFDs.get(b)[s];
-					for (int i=0; i<trimmedRefMFD.size(); i++)
-						ret.branchSectMFDs[b][s].set(i, sectMFD.getY(i+minMagIndex));
+					if (ret.branchSectMFDs[b][s] == null)
+						continue;
+					int origMinMagIndex = branchSectMinMagIndexes.get(b)[s];
+					int modMinMagIndex = origMinMagIndex - minMagIndex;
+					Preconditions.checkState(modMinMagIndex >= 0);
+					ret.branchSectMinMagIndexes[b][s] = (short)modMinMagIndex;
 				}
 			}
 			
 			return ret;
 		}
+	}
+	
+	/**
+	 * Transient module for storing branch-specific section MFDs. this allows them to be reused in the case that
+	 * we perform multiple averaging operations, reducing memory requirements
+	 * @author kevin
+	 *
+	 */
+	private static class SingleBranchNuclMFDs implements OpenSHA_Module {
+		
+		private short[] sectMinMagIndexes;
+		private float[][] sectMFDs;
+
+		public SingleBranchNuclMFDs(short[] sectMinMagIndexes, float[][] sectMFDs) {
+			super();
+			this.sectMinMagIndexes = sectMinMagIndexes;
+			this.sectMFDs = sectMFDs;
+		}
+
+		@Override
+		public String getName() {
+			return "Single-Branch Section Nucleation MFDs";
+		}
+		
 	}
 	
 	private BranchSectNuclMFDs() {}
@@ -124,7 +189,6 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 		writer.write('\n');
 		
 		// write x values
-		IncrementalMagFreqDist refMFD = branchSectMFDs[0][0];
 		writer.write(CSVFile.getLineStr(new String[] {"Magnitudes"}));
 		writer.write('\n');
 		List<String> xValsHeader = new ArrayList<>(refMFD.size());
@@ -145,34 +209,22 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 			writer.write('\n');
 			Preconditions.checkState(branchSectMFDs[b].length == numSections);
 			for (int s=0; s<numSections; s++) {
-				IncrementalMagFreqDist mfd = branchSectMFDs[b][s];
-				int minMagIndex = -1;
-				int maxMagIndex = 0;
-				Preconditions.checkState(mfd.size() == refMFD.size());
-				Preconditions.checkState((float)mfd.getDelta() == (float)refMFD.getDelta());
-				Preconditions.checkState((float)mfd.getMinX() == (float)refMFD.getMinX());
-				for (int i=0; i<mfd.size(); i++) {
-					if (mfd.getY(i) > 0) {
-						if (minMagIndex < 0)
-							minMagIndex = i;
-						maxMagIndex = i;
-					}
-				}
-				if (minMagIndex < 0) {
+				float[] mfdVals = branchSectMFDs[b][s];
+				int minMagIndex = branchSectMinMagIndexes[b][s];
+				if (mfdVals == null || mfdVals.length == 0) {
 					// empty MFD
 					writer.write(CSVFile.getLineStr(new String[] { s+"", -1+"" }));
 					writer.write('\n');
 				} else {
-					String[] line = new String[3+maxMagIndex-minMagIndex];
+					String[] line = new String[2+mfdVals.length];
 					int cnt = 0;
 					line[cnt++] = s+"";
 					line[cnt++] = minMagIndex+"";
-					for (int i=minMagIndex; i<=maxMagIndex; i++) {
-						double y = mfd.getY(i);
-						if (y == 0d)
+					for (int i=0; i<mfdVals.length; i++) {
+						if (mfdVals[i] == 0f)
 							line[cnt++] = "0";
 						else
-							line[cnt++] = rateDF.format(mfd.getY(i));
+							line[cnt++] = rateDF.format(mfdVals[i]);
 					}
 					writer.write(CSVFile.getLineStr(line));
 					writer.write('\n');
@@ -193,11 +245,13 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 		int numSects = Integer.parseInt(countsLine.get(1));
 		reader.readLine(); // magnitudes header
 		List<String> magStrs = CSVFile.loadLine(reader.readLine());
-		EvenlyDiscretizedFunc refMFD = new EvenlyDiscretizedFunc(
-				Double.parseDouble(magStrs.get(0)), Double.parseDouble(magStrs.get(magStrs.size()-1)), magStrs.size());
 		
-		branchSectMFDs = new IncrementalMagFreqDist[numBranches][numSects];
+		refMFD = new IncrementalMagFreqDist(
+				Double.parseDouble(magStrs.get(0)), Double.parseDouble(magStrs.get(magStrs.size()-1)), magStrs.size());
+		branchSectMFDs = new float[numBranches][numSects][];
+		branchSectMinMagIndexes = new short[numBranches][numSects];
 		weights = new double[numBranches];
+		
 		for (int b=0; b<numBranches; b++) {
 			reader.readLine(); // branch header
 			List<String> weightLine = CSVFile.loadLine(reader.readLine());
@@ -208,12 +262,11 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 			for (int s=0; s<numSects; s++) {
 				List<String> mfdLine = CSVFile.loadLine(reader.readLine());
 				Preconditions.checkState(s == Integer.parseInt(mfdLine.get(0)));
-				int minMagIndex = Integer.parseInt(mfdLine.get(1));
-				branchSectMFDs[b][s] = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
-				for (int i=2; i<mfdLine.size(); i++) {
-					double y = Double.parseDouble(mfdLine.get(i));
-					branchSectMFDs[b][s].set(i+minMagIndex-2, y);
-				}
+				Preconditions.checkState(mfdLine.size() >= 2 && mfdLine.size() <= 2+refMFD.size());
+				branchSectMinMagIndexes[b][s] = Short.parseShort(mfdLine.get(1));
+				branchSectMFDs[b][s] = new float[mfdLine.size()-2];
+				for (int i=2; i<mfdLine.size(); i++)
+					branchSectMFDs[b][s][i-2] = Float.parseFloat(mfdLine.get(i));
 			}
 		}
 	}
@@ -227,7 +280,21 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 	}
 	
 	public IncrementalMagFreqDist[] getSectionMFDs(int branchIndex) {
-		return branchSectMFDs[branchIndex];
+		IncrementalMagFreqDist[] ret = new IncrementalMagFreqDist[branchSectMFDs[branchIndex].length];
+		for (int sectIndex=0; sectIndex<ret.length; sectIndex++)
+			ret[sectIndex] = getSectionMFD(branchIndex, sectIndex);
+		return ret;
+	}
+	
+	public IncrementalMagFreqDist getSectionMFD(int branchIndex, int sectIndex) {
+		IncrementalMagFreqDist ret = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+		float[] vals = branchSectMFDs[branchIndex][sectIndex];
+		if (vals == null)
+			return ret;
+		for (int i=0; i<vals.length; i++)
+			if (vals[i] > 0f)
+				ret.set(i+branchSectMinMagIndexes[branchIndex][sectIndex], vals[i]);
+		return ret;
 	}
 	
 	public IncrementalMagFreqDist[] calcIncrementalSectFractiles(Collection<Integer> sectIDs, double... fractiles) {
@@ -254,7 +321,7 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 	}
 	
 	private EvenlyDiscretizedFunc[] calcFractiles(double[] sectFracts, double[] fractiles, boolean cumulative) {
-		EvenlyDiscretizedFunc refMFD = cumulative ? branchSectMFDs[0][0].getCumRateDistWithOffset() : branchSectMFDs[0][0];
+		EvenlyDiscretizedFunc refMFD = cumulative ? this.refMFD.getCumRateDistWithOffset() : this.refMFD;
 		
 		ArbDiscrEmpiricalDistFunc[] dists = new ArbDiscrEmpiricalDistFunc[refMFD.size()];
 		
@@ -270,14 +337,14 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 						continue;
 					scalar = sectFracts[s];
 				}
-				if (sectFracts != null && sectFracts[s] == 0d)
+				float[] mfdVals = branchSectMFDs[b][s];
+				if (sectFracts != null && sectFracts[s] == 0d || mfdVals == null || mfdVals.length == 0)
 					continue;
-				IncrementalMagFreqDist mfd = branchSectMFDs[b][s];
-				Preconditions.checkState(branchMFD.size() == mfd.size());
-				for (int i=0; i<mfd.size(); i++) {
-					double y = mfd.getY(i)*scalar;
-					branchMFD.add(i, y);
-				}
+				int minIndex = branchSectMinMagIndexes[b][s];
+				Preconditions.checkState(branchMFD.size() >= minIndex+mfdVals.length);
+				for (int i=0; i<mfdVals.length; i++)
+					if (mfdVals[i] > 0f)
+						branchMFD.add(i+minIndex, mfdVals[i]*scalar);
 			}
 			if (cumulative) {
 				EvenlyDiscretizedFunc branchCmlMFD = branchMFD.getCumRateDistWithOffset();
