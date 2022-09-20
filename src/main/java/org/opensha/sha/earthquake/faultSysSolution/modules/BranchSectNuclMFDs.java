@@ -79,6 +79,8 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 						branchMaxMag, refMinMag, refMaxMag);
 				float[][] sectMFDs = new float[numSects][];
 				short[] minMagIndexes = new short[numSects];
+				int branchMinIndex = Integer.MAX_VALUE;
+				int branchMaxIndex = 0;
 				for (int sectIndex=0; sectIndex<numSects; sectIndex++) {
 					IncrementalMagFreqDist mfd = sol.calcNucleationMFD_forSect(
 							sectIndex, refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
@@ -96,12 +98,18 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 						for (int i=0; i<sectMFDs[sectIndex].length; i++)
 							sectMFDs[sectIndex][i] = (float)mfd.getY(i+myMinIndex);
 						minMagIndexes[sectIndex] = (short)myMinIndex;
-						minMagIndex = Integer.min(minMagIndex, myMinIndex);
-						maxMagIndex = Integer.max(maxMagIndex, myMaxIndex);
+						branchMinIndex = Integer.min(branchMinIndex, myMinIndex);
+						branchMaxIndex = Integer.max(branchMaxIndex, myMaxIndex);
 					}
 				}
-				branchMFDs = new SingleBranchNuclMFDs(minMagIndexes, sectMFDs);
+				minMagIndex = Integer.min(minMagIndex, branchMinIndex);
+				maxMagIndex = Integer.max(maxMagIndex, branchMaxIndex);
+				branchMFDs = new SingleBranchNuclMFDs(minMagIndexes, sectMFDs, branchMinIndex, branchMaxIndex);
 				sol.addModule(branchMFDs);
+			} else {
+				// process them for min/max mag
+				minMagIndex = Integer.min(minMagIndex, branchMFDs.branchMinIndex);
+				maxMagIndex = Integer.max(maxMagIndex, branchMFDs.branchMaxIndex);
 			}
 			
 			branchSectMFDs.add(branchMFDs.sectMFDs);
@@ -116,6 +124,9 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 			Preconditions.checkState(numBranches > 0);
 			ret.weights = Doubles.toArray(weights);
 			int numSects = branchSectMFDs.get(0).length;
+			
+			Preconditions.checkState(minMagIndex <= maxMagIndex,
+					"No sections with non-zero rates? minIndex=%s > maxIndex=%s", minMagIndex, maxMagIndex);
 			
 			// trim the MFDs
 			ret.refMFD = new IncrementalMagFreqDist(refMFD.getX(minMagIndex), 1+maxMagIndex-minMagIndex, refMFD.getDelta());
@@ -147,11 +158,16 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 		
 		private short[] sectMinMagIndexes;
 		private float[][] sectMFDs;
+		private int branchMinIndex;
+		private int branchMaxIndex;
 
-		public SingleBranchNuclMFDs(short[] sectMinMagIndexes, float[][] sectMFDs) {
+		public SingleBranchNuclMFDs(short[] sectMinMagIndexes, float[][] sectMFDs, int branchMinIndex,
+				int branchMaxIndex) {
 			super();
 			this.sectMinMagIndexes = sectMinMagIndexes;
 			this.sectMFDs = sectMFDs;
+			this.branchMinIndex = branchMinIndex;
+			this.branchMaxIndex = branchMaxIndex;
 		}
 
 		@Override
