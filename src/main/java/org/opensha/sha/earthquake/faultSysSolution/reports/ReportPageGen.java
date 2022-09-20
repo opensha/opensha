@@ -113,7 +113,8 @@ public class ReportPageGen {
 	public enum PlotLevel {
 		LIGHT,
 		DEFAULT,
-		FULL
+		FULL,
+		REVIEW
 	}
 	
 	public static List<AbstractRupSetPlot> getDefaultRupSetPlots(PlotLevel level) {
@@ -124,12 +125,13 @@ public class ReportPageGen {
 		plots.add(new RuptureScalingPlot());
 		plots.add(new SolMFDPlot());
 		plots.add(new PlausibilityConfigurationReport());
-		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
+		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL || level == PlotLevel.REVIEW) {
 			plots.add(new SlipRatePlots());
 			plots.add(new CreepingAndParkfieldReport());
 			plots.add(new RupHistogramPlots(RupHistogramPlots.RUP_SET_SCALARS));
 			plots.add(new PlausibilityFilterPlot());
-			plots.add(new ModulesPlot());
+			if (level != PlotLevel.REVIEW)
+				plots.add(new ModulesPlot());
 			plots.add(new FaultSectionConnectionsPlot());
 			plots.add(new JumpCountsOverDistancePlot());
 		} else {
@@ -140,9 +142,9 @@ public class ReportPageGen {
 			plots.add(new JumpAzimuthsPlot());
 			plots.add(new BiasiWesnouskyPlots());
 		}
-		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
+		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL || level == PlotLevel.REVIEW)
 			plots.add(new NamedFaultPlot());
-		if (level == PlotLevel.FULL)
+		if (level == PlotLevel.FULL || level == PlotLevel.REVIEW)
 			plots.add(new SectBySectDetailPlots());
 		
 		for (AbstractRupSetPlot plot : plots)
@@ -164,13 +166,15 @@ public class ReportPageGen {
 			plots.add(new InversionMisfitsPlot());
 		plots.add(new ParticipationRatePlot());
 		plots.add(new NucleationRatePlot());
-		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
+		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL || level == PlotLevel.REVIEW)
 			plots.add(new SectBValuePlot());
-		plots.add(new PlausibilityConfigurationReport());
-		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL) {
+		if (level != PlotLevel.REVIEW)
+			plots.add(new PlausibilityConfigurationReport());
+		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL || level == PlotLevel.REVIEW) {
 			plots.add(new RuptureScalingPlot());
 			plots.add(new RupHistogramPlots(RupHistogramPlots.SOL_SCALARS));
-			plots.add(new ModulesPlot());
+			if (level != PlotLevel.REVIEW)
+				plots.add(new ModulesPlot());
 			plots.add(new FaultSectionConnectionsPlot());
 			plots.add(new SlipRatePlots());
 			plots.add(new CreepingAndParkfieldReport());
@@ -180,12 +184,12 @@ public class ReportPageGen {
 		if (level == PlotLevel.FULL) {
 			plots.add(new HazardMapPlot());
 			plots.add(new SegmentationPlot());
-		} else if (level == PlotLevel.DEFAULT) {
+		} else if (level == PlotLevel.DEFAULT || level == PlotLevel.REVIEW) {
 			plots.add(new SegmentationPlot(null, new double[] {0d})); // only supra-seis dist-depend
 		}
-		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL)
+		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL || level == PlotLevel.REVIEW)
 			plots.add(new NamedFaultPlot());
-		if (level == PlotLevel.FULL)
+		if (level == PlotLevel.FULL || level == PlotLevel.REVIEW)
 			plots.add(new SectBySectDetailPlots());
 		
 		for (AbstractRupSetPlot plot : plots)
