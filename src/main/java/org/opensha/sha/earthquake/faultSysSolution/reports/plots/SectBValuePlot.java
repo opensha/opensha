@@ -304,16 +304,21 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 					refFunc.getMinX(), refFunc.size(), refFunc.getDelta());
 			IncrementalMagFreqDist target = sectNuclMFDs.get(s);
 			
+			boolean any = false;
 			for (Point2D pt : target) {
 				if (pt.getY() > 0d) {
 					int binIndex = sectMFD.getClosestXIndex(pt.getX());
 					sectMFD.add(binIndex, pt.getY());
 					bins[binIndex] = true;
+					any = true;
 				}
 			}
 			
 			// available == used for target
-			ret[s] = estBValue(bins, bins, sectMFD);
+			if (any)
+				ret[s] = estBValue(bins, bins, sectMFD);
+			else
+				ret[s] = new BValEstimate(0d, 0d, 0d, bins, bins);
 		}
 		
 		return ret;

@@ -2524,22 +2524,27 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 						refFunc.getMinX(), refFunc.size(), refFunc.getDelta());
 				IncrementalMagFreqDist target = sectTargetMFDs.get(sectIndex);
 				
+				boolean any = false;
+				
 				for (Point2D pt : target) {
 					if (pt.getY() > 0d) {
 						int binIndex = sectMFD.getClosestXIndex(pt.getX());
 						sectMFD.add(binIndex, pt.getY());
 						bins[binIndex] = true;
+						any = true;
 					}
 				}
 				
-				double bVal = SectBValuePlot.estBValue(bins, bins, sectMFD).b;
-				
-				XY_DataSet solFunc = copyAtY(emptyFunc, bVal);
-				if (s == 0)
-					solFunc.setName("Target");
-				
-				funcs.add(solFunc);
-				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, TARGET_COLOR));
+				if (any) {
+					double bVal = SectBValuePlot.estBValue(bins, bins, sectMFD).b;
+					
+					XY_DataSet solFunc = copyAtY(emptyFunc, bVal);
+					if (s == 0)
+						solFunc.setName("Target");
+					
+					funcs.add(solFunc);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, TARGET_COLOR));
+				}
 			}
 			
 			if (comp) {
