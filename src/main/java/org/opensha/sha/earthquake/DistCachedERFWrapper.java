@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.opensha.commons.data.Site;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.faultSurface.CompoundSurface;
@@ -15,10 +16,13 @@ import org.opensha.sha.faultSurface.cache.CustomCacheWrappedSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy.CacheTypes;
 import org.opensha.sha.util.TectonicRegionType;
 
+import com.google.common.base.Preconditions;
+
 /**
  * Utility class that wraps an ERF such that each source/rupture surface has it's own single-valued distance cache.
  * This can be useful to avoid thread contention in multhreaded hazard calculations that reuse the same ERF across
- * threads. This optimization only applies to {@link FaultRuptureSource} source implementations.
+ * threads. This optimization only applies to {@link FaultRuptureSource} source implementations, or custom implementations
+ * where each rupture surface implements {@link CacheEnabledSurface}.
  * 
  * The simplest method would be to instantiate a different ERF for each thread, but sometimes that isn't practical
  * due to memory constraints. Use this if re-instantiating ERFs is not practical.
@@ -61,8 +65,27 @@ public class DistCachedERFWrapper extends AbstractERF {
 				}
 				sources.add(new CustomSource(source, sourceSurf, rups));
 			} else {
-				// will retrieve directly from ERF when queried
-				sources.add(null);
+				// see if everything is cache-enabled
+				boolean cacheEnabled = true;
+				RuptureSurface sourceSurf = null;
+				try {
+					sourceSurf = source.getSourceSurface();
+					cacheEnabled = sourceSurf == null || sourceSurf instanceof CacheEnabledSurface;
+				} catch (Exception e) {}
+				for (int rupID=0; cacheEnabled && rupID<source.getNumRuptures(); rupID++)
+					cacheEnabled = cacheEnabled && source.getRupture(rupID).getRuptureSurface() instanceof CacheEnabledSurface;
+				if (cacheEnabled) {
+					List<ProbEqkRupture> rups = new ArrayList<>();
+					for (ProbEqkRupture origRup : source) {
+						RuptureSurface rupSurf = getWrappedSurface(wrappedMap, origRup.getRuptureSurface());
+						rups.add(new ProbEqkRupture(origRup.getMag(), origRup.getAveRake(),
+								origRup.getProbability(), rupSurf, origRup.getHypocenterLocation()));
+					}
+					sources.add(new CustomSource(source, sourceSurf, rups));
+				} else {
+					// will retrieve directly from ERF when queried
+					sources.add(null);
+				}
 			}
 		}
 		this.sources = sources;
@@ -154,7 +177,16 @@ public class DistCachedERFWrapper extends AbstractERF {
 
 		@Override
 		public double getMinDistance(Site site) {
-			return sourceSurf.getQuickDistance(site.getLocation());
+			Location loc = site.getLocation();
+			Preconditions.checkNotNull(loc);
+			if (sourceSurf == null) {
+				return origSource.getMinDistance(site);
+//				double minDist = Double.POSITIVE_INFINITY;
+//				for (ProbEqkRupture rup : rups)
+//					minDist = Math.min(minDist, rup.getRuptureSurface().getDistanceRup(loc));
+//				return minDist;
+			}
+			return sourceSurf.getQuickDistance(loc);
 		}
 
 		@Override
