@@ -249,6 +249,9 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 
 //		DiscretizedFunc condProbFunc = hazFunction.deepClone();
 //		DiscretizedFunc sourceHazFunc = hazFunction.deepClone();
+		// these light functions are much faster on set operations
+		DiscretizedFunc origHazFunc = hazFunction;
+		hazFunction = new LightFixedXFunc(hazFunction);
 		DiscretizedFunc condProbFunc = new LightFixedXFunc(hazFunction);
 		DiscretizedFunc sourceHazFunc = new LightFixedXFunc(hazFunction);
 
@@ -419,11 +422,14 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 
 		int i;
 		// finalize the hazard function
-		if(sourceUsed)
+		if(sourceUsed) {
 			for(i=0;i<numPoints;++i)
-				hazFunction.set(i,1-hazFunction.getY(i));
-		else
+				origHazFunc.set(i,1-hazFunction.getY(i));
+			hazFunction = origHazFunc;
+		} else {
+			hazFunction = origHazFunc;
 			this.initDiscretizeValues(hazFunction, 0.0);
+		}
 
 		if (D) System.out.println(C+"hazFunction.toString"+hazFunction.toString());
 
