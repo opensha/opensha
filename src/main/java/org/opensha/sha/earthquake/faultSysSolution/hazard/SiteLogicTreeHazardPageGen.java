@@ -39,9 +39,15 @@ public class SiteLogicTreeHazardPageGen {
 
 	@SuppressWarnings("unused")
 	public static void main(String[] args) throws ZipException, IOException {
-		File zipFile = new File("");
-		File outputDir = new File(zipFile.getParentFile(), "site_hazard_curves");
+		if (args.length < 2 || args.length > 3) {
+			System.err.println("USAGE: <zip-file> <output-dir> [<comp-zip-file>]");
+			System.exit(1);
+		}
+		File zipFile = new File(args[0]);
+		File outputDir = new File(args[1]);
 		File compZipFile = null;
+		if (args.length > 2)
+			compZipFile = new File(args[2]);
 		
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 		File resourcesDir = new File(outputDir, "resources");
@@ -169,7 +175,7 @@ public class SiteLogicTreeHazardPageGen {
 				double period;
 				if (nameLeft.equals("_pgv.csv")) {
 					period = -1;
-				} else if (nameLeft.equals("_pgv.csv")) {
+				} else if (nameLeft.equals("_pga.csv")) {
 					period = 0d;
 				} else if (nameLeft.startsWith("_sa_") && nameLeft.endsWith(".csv")) {
 					String perStr = nameLeft.substring(4, nameLeft.length()-4);
@@ -249,7 +255,7 @@ public class SiteLogicTreeHazardPageGen {
 		funcs.add(bounds68);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, transColor));
 		
-		Range yRange = new Range(1e-8, 1e0);
+		Range yRange = new Range(1e-6, 1e0);
 		double minX = Double.POSITIVE_INFINITY;
 		double maxX = 0d;
 		for (DiscretizedFunc func : funcs) {
@@ -261,7 +267,7 @@ public class SiteLogicTreeHazardPageGen {
 				iterFuncs = new DiscretizedFunc[] { func };
 			for (DiscretizedFunc iterFunc : iterFuncs) {
 				for (Point2D pt : iterFunc) {
-					if (pt.getX() > 0d && (float)pt.getY() < (float)yRange.getUpperBound()
+					if (pt.getX() > 1e-2 && (float)pt.getY() < (float)yRange.getUpperBound()
 							&& (float)pt.getY() > (float)yRange.getLowerBound()) {
 						minX = Math.min(minX, pt.getX());
 						maxX = Math.max(maxX, pt.getX());
