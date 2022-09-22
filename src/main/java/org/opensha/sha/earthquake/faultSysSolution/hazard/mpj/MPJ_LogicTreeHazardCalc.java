@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.faultSysSolution.inversion.mpj;
+package org.opensha.sha.earthquake.faultSysSolution.hazard.mpj;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
@@ -67,7 +67,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private AttenRelRef gmpeRef = GMPE_DEFAULT;
 	
 //	private static final double[] PERIODS_DEFAULT = { 0d, 0.2d, 1d };
-	private static final double[] PERIODS_DEFAULT = { 0d, 1d };
+	public static final double[] PERIODS_DEFAULT = { 0d, 1d };
 	private double[] periods = PERIODS_DEFAULT;
 	
 	private ReturnPeriods[] rps = ReturnPeriods.values();
@@ -298,7 +298,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		return ret;
 	}
 	
-	private Supplier<ScalarIMR> getGMM_Supplier(LogicTreeBranch<?> branch) {
+	public static Supplier<ScalarIMR> getGMM_Supplier(LogicTreeBranch<?> branch, AttenRelRef gmpeRef) {
 		Supplier<ScalarIMR> supplier;
 		if (branch.hasValue(ScalarIMR_LogicTreeNode.class))
 			supplier = branch.requireValue(ScalarIMR_LogicTreeNode.class);
@@ -397,7 +397,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			}
 			
 			if (calc == null) {
-				Supplier<ScalarIMR> gmpeSupplier = getGMM_Supplier(branch);
+				Supplier<ScalarIMR> gmpeSupplier = getGMM_Supplier(branch, gmpeRef);
 				ScalarIMR gmpe = gmpeSupplier.get();
 				String paramStr = "";
 				for (Parameter<?> param : gmpe.getOtherParams())
