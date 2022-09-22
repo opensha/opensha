@@ -368,6 +368,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 			IncrementalMagFreqDist parentMFD = new IncrementalMagFreqDist(
 					refFunc.getMinX(), refFunc.size(), refFunc.getDelta());
 			List<FaultSection> sects = sectsByParent.get(p);
+			boolean any = false;
 			for (FaultSection sect : sects) {
 				int s = sect.getSectionId();
 				IncrementalMagFreqDist target = sectNuclMFDs.get(s);
@@ -376,12 +377,16 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 						int binIndex = parentMFD.getClosestXIndex(pt.getX());
 						parentMFD.add(binIndex, pt.getY());
 						bins[binIndex] = true;
+						any = true;
 					}
 				}
 			}
 			
 			// available == used for target
-			ret.put(p, estBValue(bins, bins, parentMFD));
+			if (any)
+				ret.put(p, estBValue(bins, bins, parentMFD));
+			else
+				ret.put(p, new BValEstimate(0d, 0d, 0d, bins, bins));
 		}
 		
 		return ret;
