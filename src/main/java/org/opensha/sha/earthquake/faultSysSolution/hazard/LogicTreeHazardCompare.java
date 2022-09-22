@@ -13,17 +13,18 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -32,17 +33,13 @@ import javax.imageio.ImageIO;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
+import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.ChartRenderingInfo;
-import org.jfree.chart.JFreeChart;
 import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.chart.ui.RectangleEdge;
 import org.opensha.commons.data.CSVFile;
-import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
-import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
-import org.opensha.commons.data.function.DiscretizedFunc;
-import org.opensha.commons.data.xyz.ArbDiscrGeoDataSet;
-import org.opensha.commons.data.xyz.GeoDataSet;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
@@ -62,45 +59,33 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
-import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
+import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.Interpolate;
+import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_LogicTreeHazardCalc;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
-import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.MapPlot;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.ShawSegmentationModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.HashBasedTable;
-import com.google.common.collect.Table;
+import com.google.common.base.Stopwatch;
 import com.google.common.primitives.Doubles;
-import com.itextpdf.awt.DefaultFontMapper;
 import com.itextpdf.awt.FontMapper;
 import com.itextpdf.awt.PdfGraphics2D;
-import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.ExceptionConverter;
-import com.itextpdf.text.FontFactory;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.BaseFont;
 import com.itextpdf.text.pdf.PdfContentByte;
 import com.itextpdf.text.pdf.PdfTemplate;
 import com.itextpdf.text.pdf.PdfWriter;
-
-import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 
 public class LogicTreeHazardCompare {
 	
@@ -547,7 +532,13 @@ public class LogicTreeHazardCompare {
 	private GriddedGeoDataSet[] loadMaps(ReturnPeriods rp, double period) throws IOException {
 		System.out.println("Loading maps for rp="+rp+", period="+period);
 		GriddedGeoDataSet[] rpPerMaps = new GriddedGeoDataSet[branches.size()];
+		int printMod = 10;
 		for (int i=0; i<branches.size(); i++) {
+			if (i % printMod == 0) {
+				System.out.println("Loading map for branch "+i+"/"+branches.size());
+			}
+			if (i >= printMod*10 && printMod < 1000)
+				printMod *= 10;
 			LogicTreeBranch<?> branch = branches.get(i);
 			if (branch == null) {
 				// external
@@ -589,7 +580,6 @@ public class LogicTreeHazardCompare {
 						
 						BufferedReader bRead = new BufferedReader(new InputStreamReader(zip.getInputStream(entry)));
 						String line = bRead.readLine();
-						int index = 0;
 						double prevLat = Double.NaN;
 						double prevLon = Double.NaN;
 						List<Double> deltas = new ArrayList<>();
@@ -652,6 +642,8 @@ public class LogicTreeHazardCompare {
 				rpPerMaps[i] = xyz;
 			}
 		}
+		
+		System.out.println("Loaded maps for "+branches.size()+" branches");
 		
 		return rpPerMaps;
 	}
@@ -759,52 +751,136 @@ public class LogicTreeHazardCompare {
 		return diff;
 	}
 	
-	private ArbDiscrEmpiricalDistFunc[] buildArbDiscrEmpiricalDists(GriddedGeoDataSet[] maps, List<Double> weights) {
-		return buildArbDiscrEmpiricalDists(List.of(maps), weights);
+	private LightFixedXFunc[] buildNormCDFs(GriddedGeoDataSet[] maps, List<Double> weights) {
+		return buildNormCDFs(List.of(maps), weights);
 	}
 	
-	private ArbDiscrEmpiricalDistFunc[] buildArbDiscrEmpiricalDists(List<GriddedGeoDataSet> maps, List<Double> weights) {
+	private static class ValWeights implements Comparable<ValWeights> {
+		double val;
+		double weight;
+		public ValWeights(double val, double weight) {
+			super();
+			this.val = val;
+			this.weight = weight;
+		}
+		@Override
+		public int compareTo(ValWeights o) {
+			return Double.compare(val, o.val);
+		}
+	}
+	
+	private LightFixedXFunc[] buildNormCDFs(List<GriddedGeoDataSet> maps, List<Double> weights) {
 		Preconditions.checkState(maps.size() == weights.size());
-		ArbDiscrEmpiricalDistFunc[] ret = new ArbDiscrEmpiricalDistFunc[maps.get(0).size()];
+		LightFixedXFunc[] ret = new LightFixedXFunc[maps.get(0).size()];
 		
 		double totWeight = 0d;
 		for (double weight : weights)
 			totWeight += weight;
 		
+//		Stopwatch watch = Stopwatch.createStarted();
 		for (int i=0; i<ret.length; i++) {
-			ret[i] = new ArbDiscrEmpiricalDistFunc();
-			for (int j=0; j<maps.size(); j++) {
-				double weight = weights.get(j)/totWeight;
-				Preconditions.checkState(weight > 0d, "bad weight: %s", weight);
-				GriddedGeoDataSet map = maps.get(j);
-				
-				double val = map.get(i);
-				ret[i].set(val, weight);
+			// could use ArbDiscrEmpiricalDistFunc, but this version is 25-50% faster
+			ValWeights[] valWeights = new ValWeights[maps.size()];
+			for (int j=0; j<valWeights.length; j++)
+				valWeights[j] = new ValWeights(maps.get(j).get(i), weights.get(j));
+			// sort ascending
+			Arrays.sort(valWeights);
+			int destIndex = -1;
+			double[] xVals = new double[valWeights.length];
+			double[] yVals = new double[valWeights.length];
+			for (int srcIndex=0; srcIndex<valWeights.length; srcIndex++) {
+				ValWeights val = valWeights[srcIndex];
+				if (destIndex >= 0 && (float)val.val == (float)xVals[destIndex]) {
+					// add it, don't increment
+					yVals[destIndex] += val.weight;
+				} else {
+					// move to a new index
+					destIndex++;
+					xVals[destIndex] = val.val;
+					yVals[destIndex] = val.weight;
+				}
 			}
+			int size = destIndex+1;
+			if (size < xVals.length) {
+				// we have duplicates, trim them
+				xVals = Arrays.copyOf(xVals, size);
+				yVals = Arrays.copyOf(yVals, size);
+			}
+			
+			// now convert yVals to a CDF
+			double sum = 0d;
+			for (int j=0; j<yVals.length; j++) {
+				sum += yVals[j];
+				yVals[j] = sum/totWeight;
+				if (j > 0)
+					Preconditions.checkState(xVals[j] > xVals[j-1]);
+			}
+			
+			ret[i] = new LightFixedXFunc(xVals, yVals);
+			
+//			ArbDiscrEmpiricalDistFunc dist = new ArbDiscrEmpiricalDistFunc();
+//			for (int j=0; j<maps.size(); j++)
+//				dist.set(maps.get(j).get(i), weights.get(j));
+//			ret[i] = new LightFixedXFunc(dist.getNormalizedCumDist());
 		}
+//		watch.stop();
+//		System.out.println("Took "+(float)(watch.elapsed(TimeUnit.MILLISECONDS)/1000d)+" s to load ncdfs");
 		
 		for (int i=0; i<ret.length; i++) {
-			float sum = (float)ret[i].calcSumOfY_Vals();
-			Preconditions.checkState(sum == 1f, "sum of distribution y-values is not 1: %s", sum);
+			LightFixedXFunc ncdf = ret[i];
+			if (ncdf.size() > 1) {
+				double first = ncdf.getY(0);
+				double last = ncdf.getY(ncdf.size()-1);
+				Preconditions.checkState((float)last == 1f, "last value in ncdf not 1: %s", last);
+				Preconditions.checkState(first < last, "first value in ncdf is not less than last: %s %s", first, last);
+			}
 		}
 		
 		return ret;
 	}
 	
-	private GriddedGeoDataSet calcMapAtPercentile(ArbDiscrEmpiricalDistFunc[] cellDists, GriddedRegion gridReg,
+	private GriddedGeoDataSet calcMapAtPercentile(LightFixedXFunc[] ncdfs, GriddedRegion gridReg,
 			double percentile) {
-		Preconditions.checkState(gridReg.getNodeCount() == cellDists.length);
+		Preconditions.checkState(gridReg.getNodeCount() == ncdfs.length);
 		GriddedGeoDataSet ret = new GriddedGeoDataSet(gridReg, false);
 		
+		double fractile = percentile/100d;
+		Preconditions.checkState(fractile >= 0d && fractile <= 1d);
+		
 		for (int i=0; i<ret.size(); i++) {
+			int len = ncdfs[i].size();
 			double val;
-			if (cellDists[i].size() == 1) {
+			if (len == 1) {
 				if (percentile == 50d)
-					val = cellDists[i].getX(0);
+					val = ncdfs[i].getX(0);
 				else
 					val = Double.NaN;
+			} else if (fractile == 0d) {
+				val = ncdfs[i].getX(0);
+			} else if (fractile == 1d) {
+				val = ncdfs[i].getX(len-1);
 			} else {
-				val = cellDists[i].getInterpolatedFractile(percentile/100d);
+				double[] yVals = ncdfs[i].getYVals();
+				int index = Arrays.binarySearch(yVals, fractile);
+				if (index >= 0) {
+					// probably will never actually happen
+					val = ncdfs[i].getX(index);
+				} else if (yVals[0] >= fractile) {
+					val = ncdfs[i].getX(0);
+				} else {
+					// insertion index, value below this will be < fractile, value at will be >
+					index = -(index + 1);
+					// these cases should have been taken care of above
+					Preconditions.checkState(index > 0 && index < len,
+							"Unexpected insertion index=%s with len=%s, fractile=%s", index, len, fractile);
+					double v1 = ncdfs[i].getX(index-1);
+					double v2 = ncdfs[i].getX(index);
+					double f1 = ncdfs[i].getY(index-1);
+					double f2 = ncdfs[i].getY(index);
+					Preconditions.checkState(f1<fractile);
+					Preconditions.checkState(f2>fractile);
+					val = Interpolate.findX(v1, f1, v2, f2, fractile);
+				}
 			}
 			ret.set(i, val);
 		}
@@ -812,44 +888,49 @@ public class LogicTreeHazardCompare {
 		return ret;
 	}
 	
-	private GriddedGeoDataSet calcCOV(ArbDiscrEmpiricalDistFunc[] cellDists, GriddedRegion gridReg) {
-		Preconditions.checkState(gridReg.getNodeCount() == cellDists.length);
-		GriddedGeoDataSet ret = new GriddedGeoDataSet(gridReg, false);
-		
-		for (int i=0; i<ret.size(); i++) {
-			double mean = cellDists[i].getMean();
-			double val;
-			if (cellDists[i].size() == 1) {
-				val = 0d;
-			} else if (mean == 0d) {
-				val = Double.NaN;
-			} else {
-				val = cellDists[i].getStdDev()/mean;
-			}
-			ret.set(i, val);
-		}
-		
-		return ret;
-	}
-	
-	private GriddedGeoDataSet calcPercentileWithinDist(ArbDiscrEmpiricalDistFunc[] cellDists, GriddedGeoDataSet comp) {
-		Preconditions.checkState(comp.size() == cellDists.length);
+	private GriddedGeoDataSet calcPercentileWithinDist(LightFixedXFunc[] ncdfs, GriddedGeoDataSet comp) {
+		Preconditions.checkState(comp.size() == ncdfs.length);
 		GriddedGeoDataSet ret = new GriddedGeoDataSet(comp.getRegion(), false);
 		
 		for (int i=0; i<ret.size(); i++) {
 			double compVal = comp.get(i);
 			
-			DiscretizedFunc ncd = cellDists[i].getNormalizedCumDist();
-			
 			double percentile;
-			if (cellDists[i].size() == 1) {
+			if (ncdfs[i].size() == 1) {
 				percentile = -1d;
-			} else if (compVal < ncd.getMinX() || compVal > ncd.getMaxX()) {
+			} else if (compVal < ncdfs[i].getMinX() || compVal > ncdfs[i].getMaxX()) {
 				percentile = Double.NaN;
 			} else {
-				percentile = 100d * ncd.getInterpolatedY(compVal);
+				percentile = 100d * ncdfs[i].getInterpolatedY(compVal);
 			}
 			ret.set(i, percentile);
+		}
+		
+		return ret;
+	}
+	
+	private GriddedGeoDataSet calcCOV(GriddedGeoDataSet[] maps, List<Double> weights,
+			GriddedGeoDataSet meanMap, GriddedRegion gridReg) {
+		GriddedGeoDataSet ret = new GriddedGeoDataSet(gridReg, false);
+		
+		double[] weightsArray = Doubles.toArray(weights);
+		
+		for (int i=0; i<ret.size(); i++) {
+			double mean = meanMap.get(i);
+			double val;
+			if (maps.length == 1) {
+				val = 0d;
+			} else if (mean == 0d) {
+				val = Double.NaN;
+			} else {
+				Variance var = new Variance();
+				double[] cellVals = new double[maps.length];
+				for (int j=0; j<cellVals.length; j++)
+					cellVals[j] = maps[j].get(i);
+				double stdDev = Math.sqrt(var.evaluate(cellVals, weightsArray));
+				val = stdDev/mean;
+			}
+			ret.set(i, val);
 		}
 		
 		return ret;
@@ -965,20 +1046,23 @@ public class LogicTreeHazardCompare {
 				
 				GriddedRegion region = maps[0].getRegion();
 				
-				ArbDiscrEmpiricalDistFunc[] mapArbDiscrs = buildArbDiscrEmpiricalDists(maps, weights);
+				System.out.println("Calculating norm CDFs");
+				LightFixedXFunc[] mapNCDFs = buildNormCDFs(maps, weights);
+				System.out.println("Calculating mean, median, bounds, COV");
 				GriddedGeoDataSet mean = buildMean(maps);
-				GriddedGeoDataSet median = calcMapAtPercentile(mapArbDiscrs, region, 50d);
+				GriddedGeoDataSet median = calcMapAtPercentile(mapNCDFs, region, 50d);
 				GriddedGeoDataSet max = buildMax(maps);
 				GriddedGeoDataSet min = buildMin(maps);
 				GriddedGeoDataSet spread = buildSpread(log10(min), log10(max));
-				GriddedGeoDataSet cov = calcCOV(mapArbDiscrs, region);
+				GriddedGeoDataSet cov = calcCOV(maps, weights, mean, region);
 				
 				File hazardCSV = new File(resourcesDir, prefix+".csv");
+				System.out.println("Writing CSV: "+hazardCSV.getAbsolutePath());
 				writeHazardCSV(hazardCSV, mean, median, min, max);
 				
 //				table.addLine(meanMinMaxSpreadMaps(mean, min, max, spread, name, label, prefix, resourcesDir));
 				
-				ArbDiscrEmpiricalDistFunc[] cmapArbDiscrs = null;
+				LightFixedXFunc[] cmapNCDFs = null;
 				GriddedGeoDataSet cmean = null;
 				GriddedGeoDataSet cmedian = null;
 				GriddedGeoDataSet cmin = null;
@@ -987,21 +1071,25 @@ public class LogicTreeHazardCompare {
 				GriddedGeoDataSet ccov = null;
 				
 				if (comp != null) {
+					System.out.println("Loading comparison");
 					GriddedGeoDataSet[] cmaps = comp.loadMaps(rp, period);
 					Preconditions.checkNotNull(cmaps);
 					for (int i=0; i<cmaps.length; i++)
 						Preconditions.checkNotNull(cmaps[i], "map %s is null", i);
 
-					cmapArbDiscrs = buildArbDiscrEmpiricalDists(cmaps, comp.weights);
+					System.out.println("Calculating comparison norm CDFs");
+					cmapNCDFs = buildNormCDFs(cmaps, comp.weights);
+					System.out.println("Calculating comparison mean, median, bounds, COV");
 					cmean = comp.buildMean(cmaps);
-					cmedian = calcMapAtPercentile(cmapArbDiscrs, region, 50d);
+					cmedian = calcMapAtPercentile(cmapNCDFs, region, 50d);
 					cmax = comp.buildMax(cmaps);
 					cmin = comp.buildMin(cmaps);
 					cspread = comp.buildSpread(log10(cmin), log10(cmax));
-					ccov = calcCOV(cmapArbDiscrs, region);
+					ccov = calcCOV(cmaps, comp.weights, cmean, region);
 //					table.addLine(meanMinMaxSpreadMaps(cmean, cmin, cmax, cspread, compName, label, prefix+"_comp", resourcesDir));
 					
 					File compHazardCSV = new File(resourcesDir, prefix+"_comp.csv");
+					System.out.println("Writing CSV: "+compHazardCSV.getAbsolutePath());
 					writeHazardCSV(compHazardCSV, cmean, cmedian, cmin, cmax);
 					
 					lines.add("Download Mean Hazard CSVs: ["+hazardCSV.getName()+"]("+resourcesDir.getName()+"/"+hazardCSV.getName()
@@ -1044,8 +1132,8 @@ public class LogicTreeHazardCompare {
 					GriddedGeoDataSet.writeXYZFile(cmedian, new File(resourcesDir, prefix+"_comp_median.xyz"));
 					
 					table.initNewLine();
-					table.addColumn(MarkdownUtils.boldCentered("Primary Weighted-Average"));
-					table.addColumn(MarkdownUtils.boldCentered("Comparison Weighted-Average"));
+					table.addColumn(MarkdownUtils.boldCentered("Primary (_"+name+"_) Weighted-Average"));
+					table.addColumn(MarkdownUtils.boldCentered("Comparison (_"+compName+"_) Weighted-Average"));
 					table.finalizeLine().initNewLine();
 					table.addColumn("![Mean Map]("+resourcesDir.getName()+"/"+meanMapFile.getName()+")");
 					table.addColumn("![Mean Map]("+resourcesDir.getName()+"/"+cmeanMapFile.getName()+")");
@@ -1058,16 +1146,17 @@ public class LogicTreeHazardCompare {
 					addDiffInclExtremesLines(mean, name, min, max, cmean, compName, prefix+"_mean", resourcesDir, table, "Mean", label, false);
 					addDiffInclExtremesLines(mean, name, min, max, cmean, compName, prefix+"_mean", resourcesDir, table, "Mean", label, true);
 					
-					lines.add("The following lines compare mean hazard between _"+name+"_ and a comparison model, _"
-							+compName+"_. The top row gives hazard ratios, expressed as % change, and the bottom differences.");
+					lines.add("The following plots compare mean hazard between _"+name+"_ and a comparison model, _"
+							+ compName+"_. The top row gives hazard ratios, expressed as % change, and the bottom row "
+							+ "gives differences.");
 					lines.add("");
 					lines.add("The left column compares the mean maps directly, with the comparison model as the "
 							+ "divisor/subtrahend. Warmer colors indicate increased hazard in _"+name
-							+"_ relative to _"+compName+"_.");
+							+ "_ relative to _"+compName+"_.");
 					lines.add("");
 					lines.add("The right column shows where and by how much the comparison mean model (_"+compName
-							+"_) is outside the distribution of values across all branches of the primary model (_"
-							+name+"_). Here, places that are zeros (light gray) indicate that the comparison mean "
+							+ "_) is outside the distribution of values across all branches of the primary model (_"
+							+ name+"_). Here, places that are zeros (light gray) indicate that the comparison mean "
 							+ "hazard map is fully contained within the range of values in _"+name+"_, warm "
 							+ "colors indicate areas where the comparison mean model is above the maximum value in the "
 							+ "primary model, and cool colors below.");
@@ -1096,7 +1185,7 @@ public class LogicTreeHazardCompare {
 					addDiffInclExtremesLines(median, name, min, max, cmedian, compName, prefix+"_median", resourcesDir, table, "Median", label, true);
 					
 					lines.add("");
-					lines.add("Same as above, but using median hazard maps rather than mean.");
+					lines.add("This section is the same as above, but using median hazard maps rather than mean.");
 					lines.add("");
 					lines.addAll(table.build());
 					lines.add("");
@@ -1105,8 +1194,8 @@ public class LogicTreeHazardCompare {
 					
 					table.addLine(MarkdownUtils.boldCentered("Comparison Mean Percentile"),
 							MarkdownUtils.boldCentered("Comparison Median Percentile"));
-					GriddedGeoDataSet cMeanPercentile = calcPercentileWithinDist(mapArbDiscrs, cmean);
-					GriddedGeoDataSet cMedianPercentile = calcPercentileWithinDist(mapArbDiscrs, cmedian);
+					GriddedGeoDataSet cMeanPercentile = calcPercentileWithinDist(mapNCDFs, cmean);
+					GriddedGeoDataSet cMedianPercentile = calcPercentileWithinDist(mapNCDFs, cmedian);
 					table.initNewLine();
 					File map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_mean_percentile", cMeanPercentile,
 							percentileCPT, TITLES ? name+" vs "+compName : " ", "Comparison Mean %-ile, "+label);
@@ -1115,7 +1204,7 @@ public class LogicTreeHazardCompare {
 							percentileCPT, TITLES ? name+" vs "+compName : " ", "Comparison Median %-ile, "+label);
 					table.addColumn("![Median Percentile Map]("+resourcesDir.getName()+"/"+map.getName()+")");
 					table.finalizeLine();
-					lines.add("These maps show where the comparison (_"+compName+"_) model mean (left column) and "
+					lines.add("The maps below show where the comparison (_"+compName+"_) model mean (left column) and "
 							+ "median (right column) map lies within the primary model (_"+name+"_) distribution. "
 							+ "Areas where the comparison mean/median map is outside the primary model distribution "
 							+ "are shown here in black regardless of if they are above or below.");
@@ -1126,7 +1215,7 @@ public class LogicTreeHazardCompare {
 				
 				// plot mean percentile
 				TableBuilder table = MarkdownUtils.tableBuilder();
-				GriddedGeoDataSet meanPercentile = calcPercentileWithinDist(mapArbDiscrs, mean);
+				GriddedGeoDataSet meanPercentile = calcPercentileWithinDist(mapNCDFs, mean);
 				File meanPercentileMap = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_mean_percentile",
 						meanPercentile, percentileCPT, TITLES ? "Branch-Averaged Percentiles" : " ",
 						"Branch Averaged %-ile, "+label);
@@ -1137,12 +1226,16 @@ public class LogicTreeHazardCompare {
 						meanMedDiff, pDiffCPT, TITLES ? name : " ", "Mean - Median, % Change, "+label, true);
 				table.addLine("![BA percentiles]("+resourcesDir.getName()+"/"+meanPercentileMap.getName()+")",
 						"![Median vs Mean]("+resourcesDir.getName()+"/"+meanMedDiffMap.getName()+")");
-				lines.add("Branched-average hazard can be dominated by outlier branches. The map on the left shows the "
+				String branchStr = "Branched-average hazard can be dominated by outlier branches. The map below on the left shows the "
 						+ "percentile at which the branch averaged mean map lies. Areas far from the 50-th percentile "
 						+ "here are likely outlier-dominated and may show up in percentile comparison maps, even if "
-						+ "mean hazard differences are minimal. Keep this in mind when evaluating the influence of "
-						+ "individual logic tree branches by this metric. The right map show the ratio of mean to median "
-						+ "hazard.");
+						+ "mean hazard differences are minimal. Keep this in mind when evaluating ";
+				if (comp != null)
+					branchStr += "the maps above, and ";
+				branchStr += "the influence of individual logic tree branches by this metric. The right map show the ratio "
+							+ "of mean to median hazard.";
+				
+				lines.add(branchStr);
 				lines.add("");
 				lines.addAll(table.build());
 				lines.add("");
@@ -1212,6 +1305,8 @@ public class LogicTreeHazardCompare {
 				
 				int combinedMapIndex = lines.size();
 				
+				System.out.println("Building logic tree plots");
+				
 				List<LogicTreeLevel<?>> branchLevels = new ArrayList<>();
 				List<List<LogicTreeNode>> branchLevelValues = new ArrayList<>();
 				List<List<MapPlot>> branchLevelPDiffPlots = new ArrayList<>();
@@ -1233,8 +1328,13 @@ public class LogicTreeHazardCompare {
 						choiceWeights.get(choice).add(weights.get(i));
 					}
 					if (choiceMaps.size() > 1) {
+						System.out.println(level.getName()+" has "+choiceMaps.size()+" choices");
 						lines.add("#### "+level.getName()+", "+label);
 						lines.add(topLink); lines.add("");
+						lines.add("This section shows how mean hazard varies accross "+choiceMaps.size()+" choices at the "
+								+ "_"+level.getName()+"_ branch level.");
+						lines.add("");
+						
 						HashMap<LogicTreeNode, GriddedGeoDataSet> choiceMeans = new HashMap<>();
 						for (LogicTreeNode choice : choiceMaps.keySet())
 							choiceMeans.put(choice, buildMean(choiceMaps.get(choice), choiceWeights.get(choice)));
@@ -1250,6 +1350,34 @@ public class LogicTreeHazardCompare {
 						Preconditions.checkState(choices.size() == choiceMaps.size());
 //						List<LogicTreeNode> choices = new ArrayList<>(choiceMaps.keySet());
 //						Collections.sort(choices, nodeNameCompare);
+						
+						// the distribution-without plots are most expensive here as we have to calculate subset norm 
+						// CDFS, do them in parallel
+						List<Future<GriddedGeoDataSet>> percentileWithoutFutures = new ArrayList<>();
+						for (LogicTreeNode choice : choices) {
+							percentileWithoutFutures.add(exec.submit(new Callable<GriddedGeoDataSet>() {
+
+								@Override
+								public GriddedGeoDataSet call() throws Exception {
+									GriddedGeoDataSet choiceMap = choiceMeans.get(choice);
+									
+									// percentile without
+									List<GriddedGeoDataSet> mapsWithout = new ArrayList<>();
+									List<Double> weightsWithout = new ArrayList<>();
+									for (int i=0; i<branches.size(); i++) {
+										LogicTreeBranch<?> branch = branches.get(i);
+										if (!branch.hasValue(choice)) {
+											mapsWithout.add(maps[i]);
+											weightsWithout.add(weights.get(i));
+										}
+									}
+									Preconditions.checkState(!mapsWithout.isEmpty());
+									LightFixedXFunc[] mapsWithoutNCDFs = buildNormCDFs(mapsWithout, weightsWithout);
+									return calcPercentileWithinDist(mapsWithoutNCDFs, choiceMap);
+								}
+							}));
+						}
+						
 						for (LogicTreeNode choice : choices) {
 							table.addColumn("**Vs "+choice.getShortName()+"**");
 							mapVsChoiceTable.addColumn("**Vs "+choice.getShortName()+"**");
@@ -1276,7 +1404,8 @@ public class LogicTreeHazardCompare {
 						branchLevelPDiffPlots.add(branchPDiffPlots);
 						branchLevelDiffPlots.add(branchDiffPlots);
 						
-						for (LogicTreeNode choice : choices) {
+						for (int c=0; c<choices.size(); c++) {
+							LogicTreeNode choice = choices.get(c);
 							table.initNewLine().addColumn("**"+choice.getShortName()+"**");
 							mapVsChoiceTable.initNewLine().addColumn("**"+choice.getShortName()+"**");
 							
@@ -1328,25 +1457,19 @@ public class LogicTreeHazardCompare {
 							mapTable.addColumn("![Difference Map]("+resourcesDir.getName()+"/"+map.getName()+")");
 							
 							// percentile
-							GriddedGeoDataSet percentile = calcPercentileWithinDist(mapArbDiscrs, choiceMap);
+							GriddedGeoDataSet percentile = calcPercentileWithinDist(mapNCDFs, choiceMap);
 							map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_"+choice.getFilePrefix()+"_percentile",
 									percentile, percentileCPT, TITLES ? choice.getShortName()+" Comparison" : " ",
 									choice.getShortName()+" %-ile, "+label);
 							mapTable.addColumn("![Percentile Map]("+resourcesDir.getName()+"/"+map.getName()+")");
 							
 							// percentile without
-							List<GriddedGeoDataSet> mapsWithout = new ArrayList<>();
-							List<Double> weightsWithout = new ArrayList<>();
-							for (int i=0; i<branches.size(); i++) {
-								LogicTreeBranch<?> branch = branches.get(i);
-								if (!branch.hasValue(choice)) {
-									mapsWithout.add(maps[i]);
-									weightsWithout.add(weights.get(i));
-								}
+							GriddedGeoDataSet percentileWithout;
+							try {
+								percentileWithout = percentileWithoutFutures.get(c).get();
+							} catch (InterruptedException | ExecutionException e) {
+								throw ExceptionUtils.asRuntimeException(e);
 							}
-							Preconditions.checkState(!mapsWithout.isEmpty());
-							ArbDiscrEmpiricalDistFunc[] mapsWithoutArbDiscrs = buildArbDiscrEmpiricalDists(mapsWithout, weightsWithout);
-							GriddedGeoDataSet percentileWithout = calcPercentileWithinDist(mapsWithoutArbDiscrs, choiceMap);
 							map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_"+choice.getFilePrefix()+"_percentile_without",
 									percentileWithout, percentileCPT, TITLES ? choice.getShortName()+" Comparison" : " ",
 									choice.getShortName()+" %-ile, "+label);
@@ -1355,7 +1478,7 @@ public class LogicTreeHazardCompare {
 							mapTable.finalizeLine();
 						}
 						lines.add("");
-						lines.add("This table gives summary statistics for the spatial average difference and average "
+						lines.add("The table below gives summary statistics for the spatial average difference and average "
 								+ "absolute difference of hazard between mean hazard maps for each individual branch "
 								+ "choices. In other words, it gives the expected difference (or absolute "
 								+ "difference) between two models if you picked a location at random. Values are listed "
@@ -1365,22 +1488,25 @@ public class LogicTreeHazardCompare {
 						lines.add("The overall average absolute difference between the map for any choice to each other "
 								+ "choice, a decent summary measure of how much hazard varies due to this branch choice, "
 								+ "is: **"+twoDigits.format(runningAbsDiffAvg.getAverage())+"%**");
+						System.out.println("\tOverall MAD: "+twoDigits.format(runningAbsDiffAvg.getAverage())+" %");
 						lines.add("");
 						lines.addAll(table.build());
 						lines.add("");
-						lines.add("This table shows how the mean map for each branch choice compares to the overall "
-								+ "mean map, expressed as % change and difference. The 'Choice Percentile in Full Dist' "
-								+ "column then shows at what percentile the map for that branch choice lies within the "
-								+ "full distribution, and the 'Choice Percentile in Dist Without' column shows the "
-								+ "same but for the distribution of all other branches (without this choice included). "
-								+ "Note that these percentile comparisons can be outlier dominated, in which case even "
+						lines.add("The map table below shows how the mean map for each branch choice compares to the overall "
+								+ "mean map, expressed as % change (first column) and difference (second column). The "
+								+ "third column, 'Choice Percentile in Full Dist', shows at what percentile the map for "
+								+ "that branch choice lies within the full distribution, and the fourth column, 'Choice "
+								+ "Percentile in Dist Without', shows the same but for the distribution of all other "
+								+ "branches (without this choice included).");
+						lines.add("");
+						lines.add("Note that these percentile comparisons can be outlier dominated, in which case even "
 								+ "if a choice is near the overall mean hazard it may still lie far from the 50th "
 								+ "percentile (see 'Mean Map Percentile' above to better understand outlier dominated "
 								+ "regions).");
 						lines.add("");
 						lines.addAll(mapTable.build());
 						lines.add("");
-						lines.add("This table gives % change maps between each option, head-to-head.");
+						lines.add("The table below gives % change maps between each option, head-to-head.");
 						lines.add("");
 						lines.addAll(mapVsChoiceTable.build());
 						lines.add("");
