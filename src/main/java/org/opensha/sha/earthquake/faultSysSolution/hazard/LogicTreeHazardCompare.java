@@ -16,14 +16,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
@@ -92,6 +95,7 @@ public class LogicTreeHazardCompare {
 	private static boolean TITLES = false;
 	
 	public static void main(String[] args) throws IOException {
+		System.setProperty("java.awt.headless", "true");
 		File invDir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions");
 		
 		boolean currentWeights = false;
@@ -428,10 +432,13 @@ public class LogicTreeHazardCompare {
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 		
 		mapper.buildReport(outputDir, mainName, comp, compName);
+		mapper.exec.shutdown();
 		
 		mapper.zip.close();
-		if (comp != null)
+		if (comp != null) {
 			comp.zip.close();
+			comp.exec.shutdown();
+		}
 	}
 	private ReturnPeriods[] rps;
 	private double[] periods;
@@ -526,6 +533,13 @@ public class LogicTreeHazardCompare {
 			}
 		}
 		
+		int threads = Integer.max(2, Integer.min(16, FaultSysTools.defaultNumThreads()));
+//		exec = Executors.newFixedThreadPool(threads);
+		// this will block to make sure the queue is never too large
+		exec = new ThreadPoolExecutor(threads, threads,
+                0L, TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<Runnable>(Integer.max(threads*4, threads+10)), new ThreadPoolExecutor.CallerRunsPolicy());
+		
 		System.out.println(branches.size()+" branches, total weight: "+totWeight);
 	}
 	
@@ -533,8 +547,16 @@ public class LogicTreeHazardCompare {
 		System.out.println("Loading maps for rp="+rp+", period="+period);
 		GriddedGeoDataSet[] rpPerMaps = new GriddedGeoDataSet[branches.size()];
 		int printMod = 10;
+		LinkedList<Future<?>> loadFutures = new LinkedList<>();
+		Stopwatch watch = Stopwatch.createStarted();
 		for (int i=0; i<branches.size(); i++) {
 			if (i % printMod == 0) {
+				try {
+					while (!loadFutures.isEmpty())
+						loadFutures.pop().get();
+				} catch (InterruptedException | ExecutionException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
 				System.out.println("Loading map for branch "+i+"/"+branches.size());
 			}
 			if (i >= printMod*10 && printMod < 1000)
@@ -619,31 +641,49 @@ public class LogicTreeHazardCompare {
 				
 				String dirName = branch.buildFileName();
 				
-				ZipEntry entry = zip.getEntry(dirName+"/"+MPJ_LogicTreeHazardCalc.mapPrefix(period, rp)+".txt");
-				
-				GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
-				BufferedReader bRead = new BufferedReader(new InputStreamReader(zip.getInputStream(entry)));
-				String line = bRead.readLine();
-				int index = 0;
-				while (line != null) {
-					line = line.trim();
-					if (!line.startsWith("#")) {
-						StringTokenizer tok = new StringTokenizer(line);
-						double lon = Double.parseDouble(tok.nextToken());
-						double lat = Double.parseDouble(tok.nextToken());
-						double val = Double.parseDouble(tok.nextToken());
-						Location loc = new Location(lat, lon);
-						Preconditions.checkState(LocationUtils.areSimilar(loc, gridReg.getLocation(index)));
-						xyz.set(index++, val);
+				int mapIndex = i;
+				loadFutures.push(exec.submit(new Runnable() {
+					
+					@Override
+					public void run() {
+						try {
+							ZipEntry entry = zip.getEntry(dirName+"/"+MPJ_LogicTreeHazardCalc.mapPrefix(period, rp)+".txt");
+							
+							GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
+							BufferedReader bRead = new BufferedReader(new InputStreamReader(zip.getInputStream(entry)));
+							String line = bRead.readLine();
+							int index = 0;
+							while (line != null) {
+								line = line.trim();
+								if (!line.startsWith("#")) {
+									StringTokenizer tok = new StringTokenizer(line);
+									double lon = Double.parseDouble(tok.nextToken());
+									double lat = Double.parseDouble(tok.nextToken());
+									double val = Double.parseDouble(tok.nextToken());
+									Location loc = new Location(lat, lon);
+									Preconditions.checkState(LocationUtils.areSimilar(loc, gridReg.getLocation(index)));
+									xyz.set(index++, val);
+								}
+								line = bRead.readLine();
+							}
+							Preconditions.checkState(index == gridReg.getNodeCount());
+							rpPerMaps[mapIndex] = xyz;
+						} catch (Exception e) {
+							throw ExceptionUtils.asRuntimeException(e);
+						}
 					}
-					line = bRead.readLine();
-				}
-				Preconditions.checkState(index == gridReg.getNodeCount());
-				rpPerMaps[i] = xyz;
+				}));
 			}
 		}
 		
-		System.out.println("Loaded maps for "+branches.size()+" branches");
+		try {
+			while (!loadFutures.isEmpty())
+				loadFutures.pop().get();
+		} catch (InterruptedException | ExecutionException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
+		watch.stop();
+		printTime(watch, "load "+branches.size()+" maps", 0d);
 		
 		return rpPerMaps;
 	}
@@ -777,54 +817,34 @@ public class LogicTreeHazardCompare {
 		for (double weight : weights)
 			totWeight += weight;
 		
-//		Stopwatch watch = Stopwatch.createStarted();
-		for (int i=0; i<ret.length; i++) {
-			// could use ArbDiscrEmpiricalDistFunc, but this version is 25-50% faster
-			ValWeights[] valWeights = new ValWeights[maps.size()];
-			for (int j=0; j<valWeights.length; j++)
-				valWeights[j] = new ValWeights(maps.get(j).get(i), weights.get(j));
-			// sort ascending
-			Arrays.sort(valWeights);
-			int destIndex = -1;
-			double[] xVals = new double[valWeights.length];
-			double[] yVals = new double[valWeights.length];
-			for (int srcIndex=0; srcIndex<valWeights.length; srcIndex++) {
-				ValWeights val = valWeights[srcIndex];
-				if (destIndex >= 0 && (float)val.val == (float)xVals[destIndex]) {
-					// add it, don't increment
-					yVals[destIndex] += val.weight;
-				} else {
-					// move to a new index
-					destIndex++;
-					xVals[destIndex] = val.val;
-					yVals[destIndex] = val.weight;
-				}
+		Stopwatch watch = Stopwatch.createStarted();
+		if (maps.size() < 500 || ret.length < 100) {
+			// just do it serially
+			for (int i=0; i<ret.length; i++)
+				ret[i] = calcNormCDF(maps, weights, i, totWeight);
+		} else {
+			// do it in parallel
+			List<Future<?>> futures = new ArrayList<>(ret.length);
+			final double finalTotWeight = totWeight;
+			for (int i=0; i<ret.length; i++) {
+				int gridIndex = i;
+				futures.add(exec.submit(new Runnable() {
+					
+					@Override
+					public void run() {
+						ret[gridIndex] = calcNormCDF(maps, weights, gridIndex, finalTotWeight);
+					}
+				}));
 			}
-			int size = destIndex+1;
-			if (size < xVals.length) {
-				// we have duplicates, trim them
-				xVals = Arrays.copyOf(xVals, size);
-				yVals = Arrays.copyOf(yVals, size);
+			try {
+				for (Future<?> future : futures)
+					future.get();
+			} catch (Exception e) {
+				throw ExceptionUtils.asRuntimeException(e);
 			}
-			
-			// now convert yVals to a CDF
-			double sum = 0d;
-			for (int j=0; j<yVals.length; j++) {
-				sum += yVals[j];
-				yVals[j] = sum/totWeight;
-				if (j > 0)
-					Preconditions.checkState(xVals[j] > xVals[j-1]);
-			}
-			
-			ret[i] = new LightFixedXFunc(xVals, yVals);
-			
-//			ArbDiscrEmpiricalDistFunc dist = new ArbDiscrEmpiricalDistFunc();
-//			for (int j=0; j<maps.size(); j++)
-//				dist.set(maps.get(j).get(i), weights.get(j));
-//			ret[i] = new LightFixedXFunc(dist.getNormalizedCumDist());
 		}
-//		watch.stop();
-//		System.out.println("Took "+(float)(watch.elapsed(TimeUnit.MILLISECONDS)/1000d)+" s to load ncdfs");
+		watch.stop();
+		printTime(watch, "build nrom CDFs for "+maps.size()+" maps", 10d);
 		
 		for (int i=0; i<ret.length; i++) {
 			LightFixedXFunc ncdf = ret[i];
@@ -837,6 +857,58 @@ public class LogicTreeHazardCompare {
 		}
 		
 		return ret;
+	}
+	
+	private static void printTime(Stopwatch watch, String operation, double minSecsToPrint) {
+		double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+		if (secs < minSecsToPrint)
+			return;
+		if (secs > 90d)
+			System.out.println("Took "+twoDigits.format(secs/60d)+" mins to "+operation);
+		else
+			System.out.println("Took "+twoDigits.format(secs)+" secs to "+operation);
+	}
+	
+	private static LightFixedXFunc calcNormCDF(List<GriddedGeoDataSet> maps, List<Double> weights,
+			int gridIndex, double totWeight) {
+		// could use ArbDiscrEmpiricalDistFunc, but this version is 25-50% faster
+		ValWeights[] valWeights = new ValWeights[maps.size()];
+		for (int j=0; j<valWeights.length; j++)
+			valWeights[j] = new ValWeights(maps.get(j).get(gridIndex), weights.get(j));
+		// sort ascending
+		Arrays.sort(valWeights);
+		int destIndex = -1;
+		double[] xVals = new double[valWeights.length];
+		double[] yVals = new double[valWeights.length];
+		for (int srcIndex=0; srcIndex<valWeights.length; srcIndex++) {
+			ValWeights val = valWeights[srcIndex];
+			if (destIndex >= 0 && (float)val.val == (float)xVals[destIndex]) {
+				// add it, don't increment
+				yVals[destIndex] += val.weight;
+			} else {
+				// move to a new index
+				destIndex++;
+				xVals[destIndex] = val.val;
+				yVals[destIndex] = val.weight;
+			}
+		}
+		int size = destIndex+1;
+		if (size < xVals.length) {
+			// we have duplicates, trim them
+			xVals = Arrays.copyOf(xVals, size);
+			yVals = Arrays.copyOf(yVals, size);
+		}
+
+		// now convert yVals to a CDF
+		double sum = 0d;
+		for (int j=0; j<yVals.length; j++) {
+			sum += yVals[j];
+			yVals[j] = sum/totWeight;
+			if (j > 0)
+				Preconditions.checkState(xVals[j] > xVals[j-1]);
+		}
+
+		return new LightFixedXFunc(xVals, yVals);
 	}
 	
 	private GriddedGeoDataSet calcMapAtPercentile(LightFixedXFunc[] ncdfs, GriddedRegion gridReg,
@@ -914,26 +986,54 @@ public class LogicTreeHazardCompare {
 		GriddedGeoDataSet ret = new GriddedGeoDataSet(gridReg, false);
 		
 		double[] weightsArray = Doubles.toArray(weights);
-		
-		for (int i=0; i<ret.size(); i++) {
-			double mean = meanMap.get(i);
-			double val;
-			if (maps.length == 1) {
-				val = 0d;
-			} else if (mean == 0d) {
-				val = Double.NaN;
-			} else {
-				Variance var = new Variance();
-				double[] cellVals = new double[maps.length];
-				for (int j=0; j<cellVals.length; j++)
-					cellVals[j] = maps[j].get(i);
-				double stdDev = Math.sqrt(var.evaluate(cellVals, weightsArray));
-				val = stdDev/mean;
+
+		Stopwatch watch = Stopwatch.createStarted();
+		if (maps.length < 500 || ret.size() < 100) {
+			// serial
+			for (int i=0; i<ret.size(); i++)
+				ret.set(i, calcCOV(maps, weightsArray, meanMap, i));
+		} else {
+			// parallel
+			List<Future<?>> futures = new ArrayList<>(ret.size());
+			for (int i=0; i<ret.size(); i++) {
+				int gridIndex = i;
+				futures.add(exec.submit(new Runnable() {
+					
+					@Override
+					public void run() {
+						ret.set(gridIndex, calcCOV(maps, weightsArray, meanMap, gridIndex));
+					}
+				}));
 			}
-			ret.set(i, val);
+			try {
+				for (Future<?> future : futures)
+					future.get();
+			} catch (Exception e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
 		}
+		watch.stop();
+		printTime(watch, "calc COVs for "+maps.length+" maps", 10d);
 		
 		return ret;
+	}
+	
+	private static double calcCOV(GriddedGeoDataSet[] maps, double[] weights, GriddedGeoDataSet meanMap, int gridIndex) {
+		double mean = meanMap.get(gridIndex);
+		double val;
+		if (maps.length == 1) {
+			val = 0d;
+		} else if (mean == 0d) {
+			val = Double.NaN;
+		} else {
+			Variance var = new Variance();
+			double[] cellVals = new double[maps.length];
+			for (int j=0; j<cellVals.length; j++)
+				cellVals[j] = maps[j].get(gridIndex);
+			double stdDev = Math.sqrt(var.evaluate(cellVals, weights));
+			val = stdDev/mean;
+		}
+		return val;
 	}
 	
 //	private GriddedGeoDataSet calcPercentile(GriddedGeoDataSet[] maps, GriddedGeoDataSet comp) {
@@ -1015,8 +1115,6 @@ public class LogicTreeHazardCompare {
 		int tocIndex = lines.size();
 		String topLink = "_[(top)](#table-of-contents)_";
 		
-		int threads = Integer.min(16, FaultSysTools.defaultNumThreads());
-		exec = Executors.newFixedThreadPool(threads);
 		futures = new ArrayList<>();
 		
 		for (double period : periods) {
@@ -1351,33 +1449,6 @@ public class LogicTreeHazardCompare {
 //						List<LogicTreeNode> choices = new ArrayList<>(choiceMaps.keySet());
 //						Collections.sort(choices, nodeNameCompare);
 						
-						// the distribution-without plots are most expensive here as we have to calculate subset norm 
-						// CDFS, do them in parallel
-						List<Future<GriddedGeoDataSet>> percentileWithoutFutures = new ArrayList<>();
-						for (LogicTreeNode choice : choices) {
-							percentileWithoutFutures.add(exec.submit(new Callable<GriddedGeoDataSet>() {
-
-								@Override
-								public GriddedGeoDataSet call() throws Exception {
-									GriddedGeoDataSet choiceMap = choiceMeans.get(choice);
-									
-									// percentile without
-									List<GriddedGeoDataSet> mapsWithout = new ArrayList<>();
-									List<Double> weightsWithout = new ArrayList<>();
-									for (int i=0; i<branches.size(); i++) {
-										LogicTreeBranch<?> branch = branches.get(i);
-										if (!branch.hasValue(choice)) {
-											mapsWithout.add(maps[i]);
-											weightsWithout.add(weights.get(i));
-										}
-									}
-									Preconditions.checkState(!mapsWithout.isEmpty());
-									LightFixedXFunc[] mapsWithoutNCDFs = buildNormCDFs(mapsWithout, weightsWithout);
-									return calcPercentileWithinDist(mapsWithoutNCDFs, choiceMap);
-								}
-							}));
-						}
-						
 						for (LogicTreeNode choice : choices) {
 							table.addColumn("**Vs "+choice.getShortName()+"**");
 							mapVsChoiceTable.addColumn("**Vs "+choice.getShortName()+"**");
@@ -1464,12 +1535,19 @@ public class LogicTreeHazardCompare {
 							mapTable.addColumn("![Percentile Map]("+resourcesDir.getName()+"/"+map.getName()+")");
 							
 							// percentile without
-							GriddedGeoDataSet percentileWithout;
-							try {
-								percentileWithout = percentileWithoutFutures.get(c).get();
-							} catch (InterruptedException | ExecutionException e) {
-								throw ExceptionUtils.asRuntimeException(e);
+							// percentile without
+							List<GriddedGeoDataSet> mapsWithout = new ArrayList<>();
+							List<Double> weightsWithout = new ArrayList<>();
+							for (int i=0; i<branches.size(); i++) {
+								LogicTreeBranch<?> branch = branches.get(i);
+								if (!branch.hasValue(choice)) {
+									mapsWithout.add(maps[i]);
+									weightsWithout.add(weights.get(i));
+								}
 							}
+							Preconditions.checkState(!mapsWithout.isEmpty());
+							LightFixedXFunc[] mapsWithoutNCDFs = buildNormCDFs(mapsWithout, weightsWithout);
+							GriddedGeoDataSet percentileWithout = calcPercentileWithinDist(mapsWithoutNCDFs, choiceMap);
 							map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_"+choice.getFilePrefix()+"_percentile_without",
 									percentileWithout, percentileCPT, TITLES ? choice.getShortName()+" Comparison" : " ",
 									choice.getShortName()+" %-ile, "+label);
@@ -1545,7 +1623,6 @@ public class LogicTreeHazardCompare {
 			}
 		}
 		System.out.println("DONE with maps");
-		exec.shutdown();
 		
 		// add TOC
 		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2, 4));
