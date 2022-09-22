@@ -660,7 +660,7 @@ public class SolHazardMapCalc {
 		}
 	}
 	
-	private static String getCSV_FileName(String prefix, double period) {
+	public static String getCSV_FileName(String prefix, double period) {
 		String fileName = prefix;
 		if (period == -1d)
 			fileName += "_pgv";
