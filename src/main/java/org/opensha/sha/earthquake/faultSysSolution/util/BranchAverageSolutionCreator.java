@@ -28,6 +28,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchAverageableModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchRegionalMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.LogicTreeRateStatistics;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
@@ -94,6 +95,7 @@ public class BranchAverageSolutionCreator {
 	private BranchWeightProvider weightProv;
 	
 	private LogicTreeRateStatistics.Builder rateStatsBuilder;
+	private BranchRegionalMFDs.Builder regionalMFDsBuilder;
 	private BranchSectNuclMFDs.Builder sectMFDsBuilder;
 	
 	public BranchAverageSolutionCreator(BranchWeightProvider weightProv) {
@@ -174,12 +176,14 @@ public class BranchAverageSolutionCreator {
 				rupMFDs.add(new ArbitrarilyDiscretizedFunc());
 			
 			rateStatsBuilder = new LogicTreeRateStatistics.Builder();
+			regionalMFDsBuilder = new BranchRegionalMFDs.Builder();
 			sectMFDsBuilder = new BranchSectNuclMFDs.Builder();
 		} else {
 			Preconditions.checkState(refRupSet.isEquivalentTo(rupSet), "Rupture sets are not equivalent");
 		}
 		
 		rateStatsBuilder.process(branch, sol.getRateForAllRups());
+		regionalMFDsBuilder.process(sol, weight);
 		sectMFDsBuilder.process(sol, weight);
 		
 		for (int i=0; i<combBranch.size(); i++) {
@@ -397,6 +401,7 @@ public class BranchAverageSolutionCreator {
 		sol.addModule(combBranch);
 		sol.addModule(new RupMFDsModule(sol, rupMFDs.toArray(new DiscretizedFunc[0])));
 		sol.addModule(rateStatsBuilder.build());
+		sol.addModule(regionalMFDsBuilder.build());
 		sol.addModule(sectMFDsBuilder.build());
 		
 		String info = "Branch Averaged Fault System Solution, across "+weights.size()
