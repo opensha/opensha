@@ -37,6 +37,7 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.mpj.AbstractAsyncLogicTreeWriter;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchRegionalMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
@@ -79,6 +80,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 	
 	private static final String GRID_ASSOCIATIONS_ARCHIVE_NAME = "fault_grid_associations.zip";
 	private static final String AVG_GRID_SIE_PROV_ARCHIVE_NAME = "avg_grid_seis.zip"; 
+	private static final String GRID_BRANCH_REGIONAL_MFDS_NAME = "grid_branch_regional_mfds.zip"; 
 	
 	public MPJ_GridSeisBranchBuilder(CommandLine cmd) throws IOException {
 		super(cmd);
@@ -139,6 +141,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		
 		private Map<String, AveragingAccumulator<GridSourceProvider>> gridSourceAveragers;
 		private Map<String, AveragingAccumulator<FaultGridAssociations>> faultGridAveragers;
+		private Map<String, BranchRegionalMFDs.Builder> regionalMFDsBuilders;
 		
 		private File workingOutputFile;
 		private File outputFile;
@@ -229,6 +232,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			
 			gridSourceAveragers = new HashMap<>();
 			faultGridAveragers = new HashMap<>();
+			regionalMFDsBuilders = new HashMap<>();
 			writtenAvgGridSourceFiles = new HashSet<>();
 			writtenFullGridSourceFiles = new HashSet<>();
 		}
@@ -300,6 +304,10 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					ModuleArchive<OpenSHA_Module> avgArchive = new ModuleArchive<>(avgGridFile);
 					GridSourceProvider avgGridProv = avgArchive.requireModule(GridSourceProvider.class);
 					
+					File regionalMFDFile = new File(gridSeisDir, GRID_BRANCH_REGIONAL_MFDS_NAME);
+					ModuleArchive<OpenSHA_Module> mfdsArchive = new ModuleArchive<>(regionalMFDFile);
+					BranchRegionalMFDs regionalMFDs = mfdsArchive.requireModule(BranchRegionalMFDs.class);
+					
 					String baPrefix = AbstractAsyncLogicTreeWriter.getBA_prefix(origBranch);
 					Preconditions.checkNotNull(baPrefix);
 					
@@ -337,6 +345,11 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					
 					// instance file
 					writeGridProvInstance(avgGridProv, origBranch, origLevelsForSubSeisMFDs, avgZipOut, writtenAvgGridSourceFiles);
+					
+					debug("AsyncLogicTree: processing regional MFDs");
+					if (!regionalMFDsBuilders.containsKey(baPrefix))
+						regionalMFDsBuilders.put(baPrefix, new BranchRegionalMFDs.Builder());
+					regionalMFDsBuilders.get(baPrefix).process(regionalMFDs);
 					
 					if (!averageOnly) {
 						// now copy each grid source provider to the output directory
@@ -471,6 +484,9 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					FaultGridAssociations associations = faultGridAveragers.get(baPrefix).getAverage();
 					baSol.getRupSet().addModule(associations);
 					
+					BranchRegionalMFDs regionalMFDs = regionalMFDsBuilders.get(baPrefix).build();
+					baSol.addModule(regionalMFDs);
+					
 					baSol.write(new File(solsDir.getParentFile(), baFilePrefix+"_branch_averaged_gridded.zip"));
 				}
 			} catch (IOException e) {
@@ -547,6 +563,10 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			
 			String baPrefix = AbstractAsyncLogicTreeWriter.getBA_prefix(origBranch);
 			
+			BranchRegionalMFDs.Builder mfdBuilder = new BranchRegionalMFDs.Builder();
+			
+			double faultWeight = tree.getBranchWeight(origBranch); 
+			
 			// now average
 			AveragingAccumulator<GridSourceProvider> accumulator = null;
 			for (CalcRunnable run : runnables) {
@@ -555,16 +575,20 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				// full average
 				if (accumulator == null)
 					accumulator = prov.averagingAccumulator();
-				double weight = run.gridSeisBranch.getOrigBranchWeight();
-				accumulator.process(prov, weight);
+				double griddedWeight = run.gridSeisBranch.getOrigBranchWeight();
+				accumulator.process(prov, griddedWeight);
 				// branch-specific average
 				String gridPrefix = run.gridSeisBranch.buildFileName();
 				AveragingAccumulator<GridSourceProvider> branchAccumulator = gridSeisAveragers.get(baPrefix, gridPrefix);
+				
 				if (branchAccumulator == null) {
 					branchAccumulator = prov.averagingAccumulator();
 					gridSeisAveragers.put(baPrefix, gridPrefix, branchAccumulator);
+					mfdBuilder = new BranchRegionalMFDs.Builder();
 				}
-				branchAccumulator.process(prov, weight);
+				branchAccumulator.process(prov, griddedWeight);
+				
+				mfdBuilder.process(sol, prov, faultWeight * griddedWeight);
 			}
 			
 			// write average
@@ -572,6 +596,12 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			archive = new ModuleArchive<>();
 			archive.addModule(accumulator.getAverage());
 			archive.write(avgFile);
+			
+			// write regional mfds
+			File mfdsFile = new File(gridSeisDir, GRID_BRANCH_REGIONAL_MFDS_NAME);
+			archive = new ModuleArchive<>();
+			archive.addModule(mfdBuilder.build());
+			archive.write(mfdsFile);
 			
 			debug("done with "+index);
 		}
@@ -687,6 +717,9 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			File outputFile = new File(myAverageDir, prefix+".zip");
 			archive.write(outputFile);
 		}
+		
+		// write out regional MFDs
+		// TODO
 		
 		// wait for everyone to write them out
 		MPI.COMM_WORLD.Barrier();
