@@ -218,7 +218,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					File runDir = getSolDir(solTree.getLogicTree().getBranch(index));
 					File hazardSubDir = new File(runDir, hazardSubDirName);
 					Preconditions.checkState(hazardSubDir.exists());
-					zout.putNextEntry(new ZipEntry(runDir.getName()));
+					zout.putNextEntry(new ZipEntry(runDir.getName()+"/"));
 					zout.closeEntry();
 					zout.flush();
 					for (ReturnPeriods rp : rps) {
