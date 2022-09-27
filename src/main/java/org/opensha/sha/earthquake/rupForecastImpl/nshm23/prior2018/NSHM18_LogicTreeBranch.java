@@ -7,6 +7,7 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_PaleoUncertainties;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SlipAlongRuptureModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
@@ -29,7 +30,7 @@ import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 public class NSHM18_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levels;
-	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsMaxDist;
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsNewScale;
 
 	// only U3-related ones here 
 	public static LogicTreeLevel<NSHM18_FaultModels> FM =
@@ -40,18 +41,47 @@ public class NSHM18_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			LogicTreeLevel.forEnum(NSHM18_ScalingRels.class, "Scaling Relationship", "Scale");
 	
 	static {
-		levels = List.of(FM, NSHM23_LogicTreeBranch.PLAUSIBILITY, DM, SCALE, NSHM23_LogicTreeBranch.SLIP_ALONG,
-				NSHM23_LogicTreeBranch.SUPRA_B, NSHM23_LogicTreeBranch.SUB_SECT_CONSTR,
-				NSHM23_LogicTreeBranch.SUB_SEIS_MO, NSHM23_LogicTreeBranch.SEG, NSHM23_LogicTreeBranch.SEG_ADJ);
+		levels = List.of(
+				FM,
+				NSHM23_LogicTreeBranch.PLAUSIBILITY,
+				DM,
+				SCALE,
+				NSHM23_LogicTreeBranch.SLIP_ALONG,
+				NSHM23_LogicTreeBranch.SUPRA_B,
+				NSHM23_LogicTreeBranch.SUB_SECT_CONSTR,
+				NSHM23_LogicTreeBranch.SUB_SEIS_MO,
+				NSHM23_LogicTreeBranch.PALEO_UNCERT,
+				NSHM23_LogicTreeBranch.SEG,
+				NSHM23_LogicTreeBranch.SEG_ADJ);
+		levelsNewScale = List.of(
+				FM,
+				NSHM23_LogicTreeBranch.PLAUSIBILITY,
+				DM,
+				NSHM23_LogicTreeBranch.SCALE,
+				NSHM23_LogicTreeBranch.SLIP_ALONG,
+				NSHM23_LogicTreeBranch.SUPRA_B,
+				NSHM23_LogicTreeBranch.SUB_SECT_CONSTR,
+				NSHM23_LogicTreeBranch.SUB_SEIS_MO,
+				NSHM23_LogicTreeBranch.PALEO_UNCERT,
+				NSHM23_LogicTreeBranch.SEG,
+				NSHM23_LogicTreeBranch.SEG_ADJ);
 	}
 	
 	/**
 	 * This is the default reference branch
 	 */
-	public static final NSHM18_LogicTreeBranch DEFAULT = fromValues(NSHM18_FaultModels.NSHM18_WUS_NoCA,
-			RupturePlausibilityModels.COULOMB, NSHM18_DeformationModels.GEOL, NSHM18_ScalingRels.WC94_ML,
-			NSHM23_SlipAlongRuptureModels.UNIFORM, SupraSeisBValues.B_0p5, SubSectConstraintModels.TOT_NUCL_RATE,
-			SubSeisMoRateReductions.NONE, NSHM23_SegmentationModels.MID, SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG);
+	public static final NSHM18_LogicTreeBranch DEFAULT = fromValues(
+			NSHM18_FaultModels.NSHM18_WUS_NoCA,
+			RupturePlausibilityModels.COULOMB,
+			NSHM18_DeformationModels.GEOL,
+			NSHM18_ScalingRels.WC94_ML,
+			NSHM23_SlipAlongRuptureModels.UNIFORM,
+			SupraSeisBValues.B_0p5,
+			SubSectConstraintModels.TOT_NUCL_RATE,
+			SubSeisMoRateReductions.NONE,
+			NSHM23_PaleoUncertainties.EVEN_FIT,
+			NSHM23_SegmentationModels.MID,
+			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG);
 	
 	/**
 	 * Creates a NSHM23LogicTreeBranch instance from given set of node values. Null or missing values

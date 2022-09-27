@@ -11,7 +11,10 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.geo.json.FeatureProperties;
@@ -23,10 +26,20 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
+import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_RegionalSeismicity;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.prior2018.NSHM18_DeformationModels.DefModelRecord;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
+import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
@@ -95,8 +108,68 @@ public enum NSHM18_FaultModels implements LogicTreeNode, RupSetFaultModel {
 
 	@Override
 	public void attachDefaultModules(FaultSystemRupSet rupSet) {
-		// TODO NamedFaults
-		// TODO RegionsOfInterest
+		LogicTreeBranch<?> branch = rupSet.getModule(LogicTreeBranch.class);
+		
+		rupSet.addAvailableModule(new Callable<ModelRegion>() {
+
+			@Override
+			public ModelRegion call() throws Exception {
+				return new ModelRegion(NSHM23_RegionLoader.loadFullConterminousWUS());
+			}
+		}, ModelRegion.class);
+		rupSet.addAvailableModule(new Callable<NamedFaults>() {
+
+			@Override
+			public NamedFaults call() throws Exception {
+				// no CA, just do wasatch
+				HashSet<Integer> wasatchParents = new HashSet<>();
+				for (FaultSection sect : rupSet.getFaultSectionDataList())
+					if (sect.getParentSectionName().toLowerCase().contains("wasatch"))
+						wasatchParents.add(sect.getParentSectionId());
+				if (wasatchParents.isEmpty())
+					return null;
+				Map<String, List<Integer>> map = new HashMap<>();
+				map.put("Wasatch", new ArrayList<>(wasatchParents));
+				return new NamedFaults(rupSet, map);
+			}
+		}, NamedFaults.class);
+		rupSet.addAvailableModule(new Callable<RegionsOfInterest>() {
+
+			@Override
+			public RegionsOfInterest call() throws Exception {
+				List<Region> regions = new ArrayList<>();
+				List<IncrementalMagFreqDist> regionMFDs = new ArrayList<>();
+				List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+				
+				MaxMagOffFaultBranchNode offFaultMMax = null;
+				if (branch != null)
+					offFaultMMax = branch.getValue(MaxMagOffFaultBranchNode.class);
+				for (SeismicityRegions pReg : SeismicityRegions.values()) {
+					Region region = pReg.load();
+					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
+						continue;
+					
+					// TODO: revisit Mmax
+					double faultSysMmax = 0d;
+					double[] fracts = rupSet.getFractRupsInsideRegion(region, true);
+					for (int rupIndex=0; rupIndex<fracts.length; rupIndex++)
+						if (fracts[rupIndex] > 0)
+							faultSysMmax = Math.max(faultSysMmax, rupSet.getMagForRup(rupIndex));
+					
+					double mMax = faultSysMmax;
+					if (offFaultMMax != null)
+						mMax = Math.max(offFaultMMax.getMaxMagOffFault(), mMax);
+					EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(Math.max(mMax, rupSet.getMaxMag()));
+					regionMFDs.add(NSHM23_RegionalSeismicity.getBounded(pReg, refMFD, mMax));
+					regions.add(region);
+				}
+				for (Region region : NSHM23_RegionLoader.loadLocalRegions(subSects)) {
+					regions.add(region);
+					regionMFDs.add(null);
+				}
+				return new RegionsOfInterest(regions, regionMFDs);
+			}
+		}, RegionsOfInterest.class);
 	}
 	
 	/**
