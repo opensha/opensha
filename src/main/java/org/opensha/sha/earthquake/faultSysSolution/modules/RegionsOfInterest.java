@@ -119,6 +119,15 @@ BranchAverageableModule<RegionsOfInterest> {
 	public List<IncrementalMagFreqDist> getMFDs() {
 		return regionalMFDs == null ? null : Collections.unmodifiableList(regionalMFDs);
 	}
+	
+	public boolean areRegionsIdenticalTo(RegionsOfInterest o) {
+		if (regions.size() != o.regions.size())
+			return false;
+		for (int i=0; i<regions.size(); i++)
+			if (!regions.get(i).equalsRegion(o.regions.get(i)))
+				return false;
+		return true;
+	}
 
 	@Override
 	public AveragingAccumulator<RegionsOfInterest> averagingAccumulator() {
