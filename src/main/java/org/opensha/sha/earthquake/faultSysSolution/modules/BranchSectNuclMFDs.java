@@ -322,7 +322,6 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 	
 	public IncrementalMagFreqDist[] calcIncrementalFractiles(double[] sectFracts, double... fractiles) {
 		return (IncrementalMagFreqDist[])calcFractiles(sectFracts, fractiles, false);
-		
 	}
 	
 	public EvenlyDiscretizedFunc[] calcCumulativeSectFractiles(Collection<Integer> sectIDs, double... fractiles) {
