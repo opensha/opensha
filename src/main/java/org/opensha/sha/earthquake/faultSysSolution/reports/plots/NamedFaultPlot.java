@@ -10,8 +10,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.opensha.commons.geo.Region;
+import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
+import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -32,13 +35,13 @@ public class NamedFaultPlot extends AbstractRupSetPlot {
 
 	@Override
 	public String getName() {
-		return "Named Fault Detail Pages";
+		return "Special Fault Detail Pages";
 	}
 
 	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
 			String relPathToResources, String topLink) throws IOException {
-		File faultsDir = new File(resourcesDir.getParentFile(), "named_fault_pages");
+		File faultsDir = new File(resourcesDir.getParentFile(), "special_fault_pages");
 		Preconditions.checkState(faultsDir.exists() || faultsDir.mkdir());
 		
 		NamedFaults faults = rupSet.requireModule(NamedFaults.class);
@@ -61,9 +64,24 @@ public class NamedFaultPlot extends AbstractRupSetPlot {
 		List<String> sortedNames = new ArrayList<>(linksMap.keySet());
 		Collections.sort(sortedNames);
 		
-		TableBuilder table = SectBySectDetailPlots.buildSectLinksTable(linksMap, sortedNames, "Fault Name");
 
-		return table.build();
+		
+		String plotPrefix = "named_faults_map";
+		writeFaultsPlot(resourcesDir, plotPrefix, rupSet, meta.region, sortedNames, faults);
+		
+		List<String> lines = new ArrayList<>();
+		
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		table.addLine("![Map plot]("+relPathToResources+"/"+plotPrefix+".png)");
+		table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+plotPrefix+".geojson")
+				+" "+"[Download GeoJSON]("+relPathToResources+"/"+plotPrefix+".geojson)");
+		lines.addAll(table.build());
+		lines.add("");
+		
+		table = SectBySectDetailPlots.buildSectLinksTable(linksMap, sortedNames, "Fault Name");
+		lines.addAll(table.build());
+		
+		return lines;
 	}
 	
 	private static String writeFaultPage(ReportMetadata meta, NamedFaults faults, String faultName, File faultsDir) throws IOException {
@@ -133,6 +151,27 @@ public class NamedFaultPlot extends AbstractRupSetPlot {
 		MarkdownUtils.writeReadmeAndHTML(lines, faultDir);
 
 		return dirName;
+	}
+	
+	private void writeFaultsPlot(File resourcesDir, String prefix, FaultSystemRupSet rupSet, Region region,
+			List<String> sortedNames, NamedFaults faults) throws IOException {
+		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, region);
+		mapMaker.setWriteGeoJSON(true);
+		mapMaker.setWritePDFs(false);
+		mapMaker.setSkipNaNs(true);
+		
+		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, Math.max(1d, sortedNames.size()));
+		
+		double[] scalars = new double[rupSet.getNumSections()];
+		for (int i=0; i<scalars.length; i++)
+			scalars[i] = Double.NaN;
+		for (int i=0; i<sortedNames.size(); i++)
+			for (FaultSection sect : faults.getSectsForFault(sortedNames.get(i)))
+				scalars[sect.getSectionId()] = (double)i;
+		
+		mapMaker.plotSectScalars(scalars, cpt, null);
+		
+		mapMaker.plot(resourcesDir, prefix, "Special Faults");
 	}
 
 	@Override

@@ -704,13 +704,14 @@ public class RupSetMapMaker {
 				chars.add(scalarChar);
 				if (writeGeoJSON) {
 					Feature feature = traceFeature(sect, scalarChar);
-					if (Float.isFinite(scalar))
+					if (scalarLabel != null && Float.isFinite(scalar))
 						feature.properties.set(scalarLabel, scalar);
 					sectFeatures.add(feature);
 				}
 			}
 			
-			cptLegend.add(buildCPTLegend(scalarCPT, scalarLabel));
+			if (scalarLabel != null)
+				cptLegend.add(buildCPTLegend(scalarCPT, scalarLabel));
 		} else if (sectColors != null) {
 			Preconditions.checkState(sectColors.size() == subSects.size());
 			for (int s=0; s<sectColors.size(); s++) {

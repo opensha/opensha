@@ -226,11 +226,12 @@ public class SegmentationPlot extends AbstractSolutionPlot {
 			lines.add("");
 			
 			if (compConnRates == null) {
-				lines.add("![Rates]("+relPathToResources+"/"+inputConnRates[m].getName()+")");
+				TableBuilder table = MarkdownUtils.tableBuilder();
+				table.addLine("![Rates]("+relPathToResources+"/"+inputConnRates[m].getName()+")");
 				String relGeoPath = relPathToResources+"/"+inputConnRates[m].getName().replace(".png", ".geojson");
-				lines.add("");
-				lines.add(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relGeoPath)
+				table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relGeoPath)
 						+" "+"[Download GeoJSON]("+relGeoPath+")");
+				lines.addAll(table.build());
 				lines.add("");
 			} else {
 				TableBuilder table = MarkdownUtils.tableBuilder();
