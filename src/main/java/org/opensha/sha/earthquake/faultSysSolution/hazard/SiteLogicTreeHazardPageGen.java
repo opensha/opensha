@@ -12,6 +12,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
@@ -41,10 +48,12 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_SiteLogicTreeHazardCurveCalc;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -72,6 +81,11 @@ public class SiteLogicTreeHazardPageGen {
 		File compZipFile = null;
 		if (args.length > 2)
 			compZipFile = new File(args[2]);
+		
+		int threads = FaultSysTools.defaultNumThreads();
+		ExecutorService exec = new ThreadPoolExecutor(threads, threads,
+                0L, TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<Runnable>(threads), new ThreadPoolExecutor.CallerRunsPolicy());
 		
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 		File resourcesDir = new File(outputDir, "resources");
@@ -148,10 +162,14 @@ public class SiteLogicTreeHazardPageGen {
 				
 				System.out.println("Period: "+perLabel);
 				
+				List<Future<?>> plotFutures = new ArrayList<>();
+				
+				System.out.println("\tReading curves");
 				CSVFile<String> curvesCSV = CSVFile.readStream(zip.getInputStream(perEntries.get(period)), true);
 				List<DiscretizedFunc> curves = new ArrayList<>();
 				List<Double> weights = new ArrayList<>();
 				List<LogicTreeBranch<?>> branches = new ArrayList<>();
+				System.out.println("\tBuilding curve dists");
 				ArbDiscrEmpiricalDistFunc[] dists = loadCurves(curvesCSV, tree, curves, branches, weights);
 				
 				ZipEntry compEntry = null;
@@ -164,9 +182,11 @@ public class SiteLogicTreeHazardPageGen {
 				ArbDiscrEmpiricalDistFunc[] compDists = null;
 				DiscretizedFunc compMeanCurve = null;
 				if (compEntry != null) {
+					System.out.println("\tReading comparison curves");
 					CSVFile<String> compCurvesCSV = CSVFile.readStream(compZip.getInputStream(compPerEntries.get(period)), true);
 					compCurves = new ArrayList<>();
 					compWeights = new ArrayList<>();
+					System.out.println("\tBuilding comparison curve dists");
 					compDists = loadCurves(compCurvesCSV, compTree, compCurves, compBranches, compWeights);
 					compMeanCurve = calcMeanCurve(compDists, xVals(compCurves.get(0)));
 				}
@@ -175,8 +195,9 @@ public class SiteLogicTreeHazardPageGen {
 				
 				double[] xVals = xVals(curves.get(0));
 				
+				System.out.println("\tBuilding plots");
 				File plot = curveDistPlot(resourcesDir, prefix+"_curve_dists", site.getName(), perLabel, perUnits, dists,
-						xVals, primaryColor, compMeanCurve, compColor);
+						xVals, primaryColor, compMeanCurve, compColor, exec, plotFutures);
 				
 				if (compDists == null) {
 					lines.add("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
@@ -188,7 +209,8 @@ public class SiteLogicTreeHazardPageGen {
 					table.initNewLine();
 					table.addColumn("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 					plot = curveDistPlot(resourcesDir, prefix+"_comp_curve_dists", site.getName(), perLabel, perUnits, compDists,
-							xVals(compCurves.get(0)), compColor, calcMeanCurve(dists, xVals(compCurves.get(0))), primaryColor);
+							xVals(compCurves.get(0)), compColor, calcMeanCurve(dists, xVals(compCurves.get(0))), primaryColor,
+							exec, plotFutures);
 					table.addColumn("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 					table.finalizeLine();
 					
@@ -237,7 +259,8 @@ public class SiteLogicTreeHazardPageGen {
 					String label = perLabel+", "+rp.label+" ("+perUnits+")";
 					String valPrefix = prefix+"_"+rp.name();
 					
-					plot = valDistPlot(resourcesDir, valPrefix, site.getName(), label, hist, mean, primaryColor, compMean, compColor);
+					plot = valDistPlot(resourcesDir, valPrefix, site.getName(), label, hist, mean, primaryColor,
+							compMean, compColor, exec, plotFutures);
 					table.addColumn("![Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 				}
 				table.finalizeLine();
@@ -256,7 +279,8 @@ public class SiteLogicTreeHazardPageGen {
 						String label = perLabel+", "+rps[r].label+" ("+perUnits+")";
 						String valPrefix = prefix+"_"+rps[r].name();
 						
-						plot = valDistPlot(resourcesDir, valPrefix+"_comp", site.getName(), label, compHist, compMean, compColor, mean, primaryColor);
+						plot = valDistPlot(resourcesDir, valPrefix+"_comp", site.getName(), label,
+								compHist, compMean, compColor, mean, primaryColor, exec, plotFutures);
 						table.addColumn("![Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 						
 					}
@@ -306,6 +330,7 @@ public class SiteLogicTreeHazardPageGen {
 						else
 							lines.add("### "+site.getName()+", "+perLabel+", "+level.getName()+" Hazard");
 						lines.add(topLink); lines.add("");
+						System.out.println("\t\tLogic tree level: "+level.getName());
 						
 						table = MarkdownUtils.tableBuilder();
 						
@@ -314,10 +339,10 @@ public class SiteLogicTreeHazardPageGen {
 						
 						table.initNewLine();
 						plot = curveBranchPlot(resourcesDir, ltPrefix+"_indv", site.getName(), perLabel, perUnits,
-								dists, xVals, Color.BLACK, nodes, nodeCurves, null);
+								dists, xVals, Color.BLACK, nodes, nodeCurves, null, exec, plotFutures);
 						table.addColumn("![Node Individual]("+resourcesDir.getName()+"/"+plot.getName()+")");
 						plot = curveBranchPlot(resourcesDir, ltPrefix+"_means", site.getName(), perLabel, perUnits,
-								dists, xVals, Color.BLACK, nodes, null, nodeMeanCurves);
+								dists, xVals, Color.BLACK, nodes, null, nodeMeanCurves, exec, plotFutures);
 						table.addColumn("![Node Means]("+resourcesDir.getName()+"/"+plot.getName()+")");
 						table.finalizeLine();
 						if (rps.length != 2) {
@@ -335,7 +360,8 @@ public class SiteLogicTreeHazardPageGen {
 							String label = perLabel+", "+rps[r].label+" ("+perUnits+")";
 							
 							plot = valDistPlot(resourcesDir, rpPrefix, site.getName(), label, rpHists.get(r),
-									rpMeans.get(r), Color.BLACK, null, null, nodes, nodeHists.get(r), nodeMeans.get(r));
+									rpMeans.get(r), Color.BLACK, null, null, nodes,
+									nodeHists.get(r), nodeMeans.get(r), exec, plotFutures);
 							table.addColumn("![Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 						}
 						table.finalizeLine();
@@ -344,8 +370,20 @@ public class SiteLogicTreeHazardPageGen {
 						lines.add("");
 					}
 				}
+				
+				System.out.println("\tFinishing up "+plotFutures.size()+" plot futures");
+				for (Future<?> future : plotFutures) {
+					try {
+						future.get();
+					} catch (InterruptedException | ExecutionException e) {
+						exec.shutdown();
+						throw ExceptionUtils.asRuntimeException(e);
+					}
+				}
 			}
 		}
+		
+		exec.shutdown();
 		
 		// add TOC
 		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2, sites.size() > 10 ? 2 : 3));
@@ -427,7 +465,8 @@ public class SiteLogicTreeHazardPageGen {
 	
 	private static File curveDistPlot(File resourcesDir, String prefix, String siteName, String perLabel, String units,
 			ArbDiscrEmpiricalDistFunc[] curveDists, double[] xVals, Color color,
-			DiscretizedFunc compMeanCurve, Color compColor) throws IOException {
+			DiscretizedFunc compMeanCurve, Color compColor, ExecutorService exec, List<Future<?>> plotFutures)
+					throws IOException {
 		List<DiscretizedFunc> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
@@ -492,19 +531,30 @@ public class SiteLogicTreeHazardPageGen {
 		PlotSpec spec = new PlotSpec(funcs, chars, siteName, perLabel+" ("+units+")", "Annual Probability of Exceedance");
 		spec.setLegendInset(true);
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
-		
-		gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
-		gp.drawGraphPanel(spec, true, true, xRange, yRange);
-		
-		PlotUtils.writePlots(resourcesDir, prefix, gp, 1000, 800, true, true, false);
+		plotFutures.add(exec.submit(new Runnable() {
+			
+			@Override
+			public void run() {
+				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				
+				gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
+				gp.drawGraphPanel(spec, true, true, xRange, yRange);
+				
+				try {
+					PlotUtils.writePlots(resourcesDir, prefix, gp, 1000, 800, true, true, false);
+				} catch (IOException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}
+		}));
 		
 		return new File(resourcesDir, prefix+".png");
 	}
 	
 	private static File curveBranchPlot(File resourcesDir, String prefix, String siteName, String perLabel, String units,
 			ArbDiscrEmpiricalDistFunc[] curveDists, double[] xVals, Color color, List<LogicTreeNode> nodes,
-			List<List<DiscretizedFunc>> nodeIndvCurves, List<DiscretizedFunc> nodeMeanCurves) throws IOException {
+			List<List<DiscretizedFunc>> nodeIndvCurves, List<DiscretizedFunc> nodeMeanCurves,
+			ExecutorService exec, List<Future<?>> plotFutures) throws IOException {
 		List<DiscretizedFunc> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
@@ -590,12 +640,22 @@ public class SiteLogicTreeHazardPageGen {
 		PlotSpec spec = new PlotSpec(funcs, chars, siteName, perLabel+" ("+units+")", "Annual Probability of Exceedance");
 		spec.setLegendInset(true);
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
-		
-		gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
-		gp.drawGraphPanel(spec, true, true, xRange, yRange);
-		
-		PlotUtils.writePlots(resourcesDir, prefix, gp, 1000, 800, true, nodeIndvCurves == null, false);
+		plotFutures.add(exec.submit(new Runnable() {
+			
+			@Override
+			public void run() {
+				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				
+				gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
+				gp.drawGraphPanel(spec, true, true, xRange, yRange);
+				
+				try {
+					PlotUtils.writePlots(resourcesDir, prefix, gp, 1000, 800, true, nodeIndvCurves == null, false);
+				} catch (IOException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}
+		}));
 		
 		return new File(resourcesDir, prefix+".png");
 	}
@@ -734,13 +794,16 @@ public class SiteLogicTreeHazardPageGen {
 	}
 	
 	private static File valDistPlot(File resourcesDir, String prefix, String siteName, String label,
-			HistogramFunction hist, double mean, Color color, Double compMean, Color compColor) throws IOException {
-		return valDistPlot(resourcesDir, prefix, siteName, label, hist, mean, color, compMean, compColor, null, null, null);
+			HistogramFunction hist, double mean, Color color, Double compMean, Color compColor,
+			ExecutorService exec, List<Future<?>> plotFutures) throws IOException {
+		return valDistPlot(resourcesDir, prefix, siteName, label, hist, mean, color, compMean, compColor,
+				null, null, null, exec, plotFutures);
 	}
 	
 	private static File valDistPlot(File resourcesDir, String prefix, String siteName, String label,
 			HistogramFunction hist, double mean, Color color, Double compMean, Color compColor,
-			List<LogicTreeNode> nodes, List<HistogramFunction> nodeHists, List<Double> nodeMeans) throws IOException {
+			List<LogicTreeNode> nodes, List<HistogramFunction> nodeHists, List<Double> nodeMeans,
+			ExecutorService exec, List<Future<?>> plotFutures) throws IOException {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
@@ -809,11 +872,21 @@ public class SiteLogicTreeHazardPageGen {
 		PlotSpec spec = new PlotSpec(funcs, chars, siteName, label, "Fraction");
 		spec.setLegendInset(true);
 		
-		HeadlessGraphPanel gp = PlotUtils.initHeadless();
-		
-		gp.drawGraphPanel(spec, false, false, xRange, yRange);
-		
-		PlotUtils.writePlots(resourcesDir, prefix, gp, 800, 700, true, true, false);
+		plotFutures.add(exec.submit(new Runnable() {
+			
+			@Override
+			public void run() {
+				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				
+				gp.drawGraphPanel(spec, false, false, xRange, yRange);
+				
+				try {
+					PlotUtils.writePlots(resourcesDir, prefix, gp, 800, 700, true, true, false);
+				} catch (IOException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}
+		}));
 		
 		return new File(resourcesDir, prefix+".png");
 	}
