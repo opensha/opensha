@@ -79,7 +79,7 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 	
 	public static final String NSHM23_SECTS_PATH_PREFIX = "/data/erf/nshm23/fault_models/";
 	
-	public static final String NAMED_FAULTS_FILE = NSHM23_SECTS_PATH_PREFIX+"v2/named_faults.json";
+	public static final String NAMED_FAULTS_FILE = NSHM23_SECTS_PATH_PREFIX+"v2/special_faults.json";
 	
 	private String name;
 	private String shortName;
