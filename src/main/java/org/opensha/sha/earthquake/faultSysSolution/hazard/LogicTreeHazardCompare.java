@@ -10,6 +10,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -609,9 +610,13 @@ public class LogicTreeHazardCompare {
 						// detect spacing
 
 						String dirName = branch.buildFileName();
-						ZipEntry entry = zip.getEntry(dirName+"/"+MPJ_LogicTreeHazardCalc.mapPrefix(periods[0], rps[0])+".txt");
+						String name = dirName+"/"+MPJ_LogicTreeHazardCalc.mapPrefix(periods[0], rps[0])+".txt";
+						ZipEntry entry = zip.getEntry(name);
+						Preconditions.checkNotNull(entry, "Entry is null for %s", name);
+						InputStream is = zip.getInputStream(entry);
+						Preconditions.checkNotNull(is, "IS is null for %s", name);
 						
-						BufferedReader bRead = new BufferedReader(new InputStreamReader(zip.getInputStream(entry)));
+						BufferedReader bRead = new BufferedReader(new InputStreamReader(is));
 						String line = bRead.readLine();
 						double prevLat = Double.NaN;
 						double prevLon = Double.NaN;
