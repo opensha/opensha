@@ -70,6 +70,8 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 	private File myAverageDir;
 	private Table<String, String, AveragingAccumulator<GridSourceProvider>> gridSeisAveragers;
 	
+	private File writeFullTreeFile;
+	
 	private Map<String, double[]> rankWeights;
 	
 	private boolean averageOnly = false;
@@ -129,9 +131,9 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			}
 		}
 		myAverageDir = new File(nodesAverageDir, "rank_"+rank);
-		if (myAverageDir.exists()) {
-			// delete anything preexisting
-		}
+		
+		if (cmd.hasOption("write-full-tree"))
+			writeFullTreeFile = new File(cmd.getOptionValue("write-full-tree"));
 		
 		if (rank == 0)
 			this.postBatchHook = new AsyncGridSeisCopier();
@@ -846,6 +848,21 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				}
 			}
 			sltBuilder.close();
+			
+			if (writeFullTreeFile != null) {
+				// write the full logic tree
+				debug("Building full logic tree for file output");
+				List<LogicTreeLevel<? extends LogicTreeNode>> fullLevels = new ArrayList<>();
+				fullLevels.addAll(tree.getLevels());
+				fullLevels.addAll(gridSeisOnlyTree.getLevels());
+				List<LogicTreeBranch<LogicTreeNode>> fullBranches = new ArrayList<>();
+				for (LogicTreeBranch<?> origBranch : tree)
+					for (LogicTreeBranch<?> gridBranch : gridSeisOnlyTree)
+						fullBranches.add((LogicTreeBranch<LogicTreeNode>)getCombinedBranch(origBranch, gridBranch));
+				LogicTree<LogicTreeNode> fullTree = LogicTree.fromExisting(fullLevels, fullBranches);
+				debug("Writing "+fullTree.size()+" branches to "+writeFullTreeFile.getAbsolutePath());
+				fullTree.write(writeFullTreeFile);
+			}
 		}
 		if (exec != null)
 			exec.shutdown();
@@ -874,6 +891,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				+ "Can be a gridded region or an outline. If not supplied, then one will be detected from the model.");
 		ops.addOption("ao", "average-only", false, "Flag to only write out average gridded seismicity for each fault "
 				+ "branch.");
+		ops.addOption("wft", "write-full-tree", true, "If supplied, will write full logic tree JSON to this file");
 		
 		return ops;
 	}
