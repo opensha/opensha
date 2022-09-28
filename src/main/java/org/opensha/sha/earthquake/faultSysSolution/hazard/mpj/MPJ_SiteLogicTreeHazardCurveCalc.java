@@ -93,7 +93,19 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		
 		File inputFile = new File(cmd.getOptionValue("input-file"));
 		Preconditions.checkState(inputFile.exists());
-		solTree = SolutionLogicTree.load(inputFile);
+		if (inputFile.isDirectory()) {
+			Preconditions.checkArgument(cmd.hasOption("logic-tree"), "Must supply logic tree file if input-file is"
+					+ " a results directory");
+			File logicTreeFile = new File(cmd.getOptionValue("logic-tree"));
+			Preconditions.checkArgument(logicTreeFile.exists(), "Logic tree file doesn't exist: %s",
+					logicTreeFile.getAbsolutePath());
+			LogicTree<?> tree = LogicTree.read(logicTreeFile);
+			
+			solTree = new SolutionLogicTree.ResultsDirReader(inputFile, tree);
+		} else {
+			// it should be SolutionLogicTree zip file
+			solTree = SolutionLogicTree.load(inputFile);
+		}
 		tree = solTree.getLogicTree();
 		
 		if (rank == 0)
@@ -215,6 +227,9 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			LogicTreeBranch<?> branch = tree.getBranch(branchIndex);
 			FaultSystemSolution sol = solTree.forBranch(branch);
 			FaultSystemSolutionERF erf = new FaultSystemSolutionERF(sol);
+			if (gridSeisOp == IncludeBackgroundOption.INCLUDE || gridSeisOp == IncludeBackgroundOption.ONLY)
+				Preconditions.checkNotNull(sol.getGridSourceProvider(),
+						"Grid source provider is null, but gridded seis option is %s", gridSeisOp);
 			erf.setParameter(IncludeBackgroundParam.NAME, gridSeisOp);
 			erf.updateForecast();
 			Supplier<ScalarIMR> gmpeSupplier = MPJ_LogicTreeHazardCalc.getGMM_Supplier(branch, gmpeRef);
@@ -448,6 +463,8 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		Options ops = MPJTaskCalculator.createOptions();
 		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
+		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "
+				+ "supplied with --input-file");
 		ops.addRequiredOption("sf", "sites-file", true, "Path to sites CSV file");
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption("of", "output-file", true, "Path to output zip file. Default will be based on the output directory");
