@@ -379,14 +379,92 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			super(processor, logicTree);
 			this.resultsDir = resultsDir;
 		}
+		
+		private File prevSolFile;
+		private FaultSystemSolution prevSol;
 
 		@Override
 		protected FaultSystemSolution loadExternalForBranch(LogicTreeBranch<?> branch) throws IOException {
 			File subDir = new File(resultsDir, branch.buildFileName());
+			List<LogicTreeNode> gridOnlyNodes = new ArrayList<>();
+			List<LogicTreeLevel<? extends LogicTreeNode>> gridOnlyLevels = new ArrayList<>();
+			if (!subDir.exists()) {
+				// see if we have branch levels that don't affect the raw solution
+				List<LogicTreeLevel<? extends LogicTreeNode>> levelsAffecting = new ArrayList<>();
+				List<LogicTreeNode> nodesAffecting = new ArrayList<>();
+				for (int i=0; i<branch.size(); i++) {
+					LogicTreeNode node = branch.getValue(i);
+					LogicTreeLevel<? extends LogicTreeNode> level = branch.getLevel(i);
+					if (level.affects(FaultSystemSolution.RATES_FILE_NAME, true)) {
+						levelsAffecting.add(level);
+						nodesAffecting.add(node);
+					} else if (level.affects(GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true)
+							|| level.affects(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true)) {
+						gridOnlyLevels.add(level);
+						gridOnlyNodes.add(node);
+					}
+				}
+				if (nodesAffecting.size() < branch.size()) {
+					// that is the case, build new branch
+					LogicTreeBranch<LogicTreeNode> rateBranch = new LogicTreeBranch<>(levelsAffecting, nodesAffecting);
+					File testSubDir = new File(resultsDir, rateBranch.buildFileName());
+					if (testSubDir.exists()) {
+						System.out.println("Not all branches affect solution, reverting to branch: "+testSubDir.getName());
+						subDir = testSubDir;
+					}
+				}
+			}
 			Preconditions.checkState(subDir.exists(), "Branch directory doesn't exist: %s", subDir.getAbsolutePath());
 			File solFile = new File(subDir, "solution.zip");
 			Preconditions.checkState(solFile.exists(), "Solution file doesn't exist: %s", solFile.getAbsolutePath());
-			return FaultSystemSolution.load(solFile);
+			FaultSystemSolution sol = null;
+			boolean reused = false;
+			synchronized (this) {
+				// check if it's the same as the previous one
+				if (prevSol != null && solFile.equals(prevSolFile)) {
+					sol = prevSol;
+					reused = true;
+				}
+			}
+			if (sol == null) {
+				sol = FaultSystemSolution.load(solFile);
+				synchronized (this) {
+					prevSol = sol;
+					prevSolFile = solFile;
+				}
+			}
+			if (sol.getGridSourceProvider() == null) {
+				// see if we have one available
+				File gridProvsDir = new File(subDir, "grid_source_providers");
+				if (gridProvsDir.exists()) {
+					File gridProvFile;
+					if (gridOnlyLevels.isEmpty()) {
+						gridProvFile = new File(gridProvsDir, "avg_grid_seis.zip");
+					} else {
+						LogicTreeBranch<LogicTreeNode> gridBranch = new LogicTreeBranch<>(gridOnlyLevels, gridOnlyNodes);
+						gridProvFile = new File(gridProvsDir, gridBranch.buildFileName()+".zip");
+						if (gridProvFile.exists()) {
+							// want to avoid caching this grid provider as the next call could use a different one
+							FaultSystemSolution copy = new FaultSystemSolution(sol.getRupSet(), sol.getRateForAllRups());
+							for (OpenSHA_Module module : sol.getModules())
+								copy.addModule(module);
+							sol = copy;
+						}
+					}
+					if (gridProvFile.exists()) {
+						sol.addAvailableModule(new Callable<GridSourceProvider>() {
+
+							@Override
+							public GridSourceProvider call() throws Exception {
+								ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(gridProvFile);
+								return archive.requireModule(GridSourceProvider.class);
+							}
+						}, GridSourceProvider.class);
+					}
+				}
+			}
+			
+			return sol;
 		}
 		
 	}
