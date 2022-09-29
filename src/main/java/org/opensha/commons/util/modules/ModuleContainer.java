@@ -161,7 +161,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	}
 	
 	/**
-	 * elper method to determine if a module exists that maps to either the given class or any of its module
+	 * Helper method to determine if a module exists that maps to either the given class or any of its module
 	 * superclasses. If this is true, then adding a module of this type would remove at least one existing module.
 	 * If there is a not-yet-loaded available module that matches this description, it will be loaded and will return
 	 * true if loading is successful.
