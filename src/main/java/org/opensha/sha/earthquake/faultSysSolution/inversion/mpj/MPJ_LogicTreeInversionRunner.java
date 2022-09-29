@@ -16,6 +16,7 @@ import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
@@ -313,14 +314,24 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 					FaultSystemSolution sol = FaultSystemSolution.load(solFile);
 					debug("skipping "+index+" (already done)");
 					if (reprocess) {
+						FaultSystemRupSet origRupSet = sol.getRupSet();
+						
 						SolutionProcessor processor = factory.getSolutionLogicTreeProcessor();
 						// process the rupture set
-						FaultSystemRupSet rpRupSet = factory.updateRuptureSetForBranch(sol.getRupSet(), branch);
+						FaultSystemRupSet rpRupSet = factory.updateRuptureSetForBranch(origRupSet, branch);
 						// build an inversion configuration so that any adjustments at that stage are processed
-						factory.buildInversionConfig(rpRupSet, branch, getNumThreads());
-						if (rpRupSet != sol.getRupSet())
+						factory.buildInversionConfig(rpRupSet, branch, 8);
+						if (rpRupSet != origRupSet) {
 							// replaced the rupture set, need to copy the solution over to use the new rup set
+							for (OpenSHA_Module module : origRupSet.getModules()) {
+								if (!rpRupSet.hasModuleSuperclass(module.getClass())) {
+//									System.out.println("Adding module to replacement rupture set: "+module.getName()+" ("+module.getClass()+")");
+									// this is a module not present in the reproduction and won't evict anything, add it
+									rpRupSet.addModule(module);
+								}
+							}
 							sol = sol.copy(rpRupSet.getArchive());
+						}
 						// process the solution
 						sol = processor.processSolution(sol, branch);
 						// write out the reprocessed solution
