@@ -15,6 +15,7 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_RegionalSeismicity;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SeisSmoothingAlgorithms;
@@ -187,9 +188,9 @@ public class NSHM23_RegionLoader {
 	
 	public static void main(String[] args) throws IOException {
 //		List<? extends FaultSection> sects = null;
-		List<? extends FaultSection> sects = GeoJSONFaultReader.readFaultSections(new File("/tmp/GEOLOGIC_sub_sects.geojson"));
-		for (Region reg : loadAllRegions(sects))
-			System.out.println(reg.getName());
+//		List<? extends FaultSection> sects = GeoJSONFaultReader.readFaultSections(new File("/tmp/GEOLOGIC_sub_sects.geojson"));
+//		for (Region reg : loadAllRegions(sects))
+//			System.out.println(reg.getName());
 		loadFullConterminousUS();
 		loadFullConterminousWUS();
 		
@@ -216,6 +217,20 @@ public class NSHM23_RegionLoader {
 		for (Region region : regions)
 			countAcrossIndv += new GriddedRegion(region, gridSpacing, GriddedRegion.ANCHOR_0_0).getNodeCount();
 		System.out.println(countAcrossIndv+" vs "+fullGriddedWUS.getNodeCount()+" if you sum individual gridded regions");
+		
+		// write out CONUS regions to single geo json
+		List<Feature> featureList = new ArrayList<>();
+		for (SeismicityRegions reg : SeismicityRegions.values()) {
+			if (reg != SeismicityRegions.ALASKA && reg != SeismicityRegions.CONUS_HAWAII) {
+				Feature feature = reg.load().toFeature();
+//				feature = new Feature(reg., null, null)
+				featureList.add(feature);
+			}
+		}
+		FeatureCollection features = new FeatureCollection(featureList);
+		FeatureCollection.write(features, new File("/tmp/nshm23_conus_seismicity_regions.geojson"));
+		String url = "https://opensha.usc.edu/ftp/kmilner/nshm23/misc_maps/nshm23_conus_seismicity_regions.geojson";
+		System.out.print(RupSetMapMaker.getGeoJSONViewerLink(url));
 	}
 
 }
