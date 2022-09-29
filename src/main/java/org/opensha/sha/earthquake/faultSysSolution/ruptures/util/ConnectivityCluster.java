@@ -140,7 +140,9 @@ public class ConnectivityCluster implements Comparable<ConnectivityCluster> {
 				processClusterRecursive(rupSet, s, clusters.size(), clusters, sectsAssigned, sectCorups);
 		
 		// now fill in rupture counts and parent IDs
-		for (ConnectivityCluster cluster : clusters) {
+//		for (ConnectivityCluster cluster : clusters) {
+		for (int c=clusters.size(); --c>=0;) {
+			ConnectivityCluster cluster = clusters.get(c);
 			BitSet rups = new BitSet(rupSet.getNumRuptures());
 			for (int sectID : cluster.sectIDs) {
 				FaultSection sect = rupSet.getFaultSectionData(sectID);
@@ -152,6 +154,9 @@ public class ConnectivityCluster implements Comparable<ConnectivityCluster> {
 						rups.set(r);
 			}
 			cluster.numRuptures = rups.cardinality();
+			if (cluster.numRuptures == 0)
+				// empty, remove
+				clusters.remove(c);
 		}
 		
 		return clusters;
