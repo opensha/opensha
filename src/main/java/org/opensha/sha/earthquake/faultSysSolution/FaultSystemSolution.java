@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -302,11 +303,20 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			newArchive.addModule(rupSet);
 		else
 			Preconditions.checkState(rupSet.isEquivalentTo(oRupSet));
-		FaultSystemSolution copy = new FaultSystemSolution(newArchive.getModule(FaultSystemRupSet.class),
-				Arrays.copyOf(rates, rates.length));
+		FaultSystemRupSet copyRS = newArchive.getModule(FaultSystemRupSet.class);
+		Preconditions.checkNotNull(copyRS);
+		FaultSystemSolution copy = new FaultSystemSolution(copyRS, Arrays.copyOf(rates, rates.length));
 		loadAllAvailableModules();
-		for (OpenSHA_Module module : getModules(true))
-			copy.addModule(module);
+		for (OpenSHA_Module module : getModules(true)) {
+			copy.addAvailableModule(new Callable<OpenSHA_Module>() {
+
+				@Override
+				public OpenSHA_Module call() throws Exception {
+					return module;
+				}
+			}, module.getClass());
+		}
+		copy.loadAllAvailableModules();
 		newArchive.addModule(copy);
 		return copy;
 	}
