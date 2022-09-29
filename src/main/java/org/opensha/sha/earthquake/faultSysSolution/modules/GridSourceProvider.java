@@ -581,7 +581,19 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 			
 			for (IncrementalMagFreqDist mfd : mfds.values()) {
 				if (mfd != null) {
-					xVals = mfd;
+					if (xVals == null) {
+						xVals = mfd;
+					} else {
+						Preconditions.checkState(xVals.getMinX() == mfd.getMinX(),
+								"MFDs have different minX: %s != %s",
+								xVals.getMinX(), mfd.getMinX());
+						Preconditions.checkState(xVals.getDelta() == mfd.getDelta(),
+								"MFDs have different deltas: %s != %s",
+								xVals.getDelta(), mfd.getDelta());
+						// keep the largest
+						if (mfd.size() > xVals.size())
+							xVals = mfd;
+					}
 					break;
 				}
 			}
@@ -608,15 +620,19 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 				line.add(i+"");
 				line.add(DataUtils.roundFixed(loc.getLatitude(), locRoundScale)+"");
 				line.add(DataUtils.roundFixed(loc.getLongitude(), locRoundScale)+"");
-				Preconditions.checkState(mfd.size() == xVals.size(),
+				Preconditions.checkState(mfd.size() <= xVals.size(),
 						"MFD sizes inconsistent. Expected %s values, have %s", xVals.size(), mfd.size());
 				for (int j=0; j<xVals.size(); j++) {
-					Preconditions.checkState((float)mfd.getX(j) == (float)xVals.getX(j),
-							"MFD x value mismatch for node %s value %s", i, j);
-					if (round)
-						line.add(DataUtils.roundSigFigs(mfd.getY(j), mfdRoundSigFigs)+"");
-					else
-						line.add(mfd.getY(j)+"");
+					if (j >= mfd.size()) {
+						line.add(0d+"");
+					} else {
+						Preconditions.checkState((float)mfd.getX(j) == (float)xVals.getX(j),
+								"MFD x value mismatch for node %s value %s", i, j);
+						if (round)
+							line.add(DataUtils.roundSigFigs(mfd.getY(j), mfdRoundSigFigs)+"");
+						else
+							line.add(mfd.getY(j)+"");
+					}
 				}
 				csv.addLine(line);
 			}
