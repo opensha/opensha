@@ -610,14 +610,40 @@ public class SiteLogicTreeHazardPageGen {
 				if (alpha != 255)
 					nodeColor = new Color(nodeColor.getRed(), nodeColor.getGreen(), nodeColor.getBlue(), alpha);
 				PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, nodeColor);
-				for (DiscretizedFunc nodeCurve : nodeIndvCurves.get(i))
+				// do a full sort here so that when we block suffle latter there are fewer near-identical overlaps
+				List<DiscretizedFunc> shuffledNodeCurves = new ArrayList<>(nodeIndvCurves.get(i));
+				Collections.shuffle(shuffledNodeCurves, new Random(shuffledNodeCurves.size()*1000l));
+				for (DiscretizedFunc nodeCurve : shuffledNodeCurves)
 					allCurveChars.add(new CurveChar(nodeCurve, pChar));
 			}
 			// shuffle them so we're not biased by whichever one is plotted on top
-			Collections.shuffle(allCurveChars, new Random(allCurveChars.size()*1000l));
-			for (CurveChar curve : allCurveChars) {
-				funcs.add(curve.curve);
-				chars.add(curve.pChar);
+			if (allCurveChars.size() > 2000) {
+				// we want to shuffle them in blocks so that there are more datasets of the same color next to each
+				// other, which get reused internally in GraphPanel to reduce plot time
+				int blockSize = allCurveChars.size() / 1000;
+				List<List<CurveChar>> blocks = new ArrayList<>();
+				List<CurveChar> curBlock = new ArrayList<>(blockSize);
+				for (int i=0; i<allCurveChars.size(); i++) {
+					if (curBlock.size() == blockSize) {
+						blocks.add(curBlock);
+						curBlock = new ArrayList<>(blockSize);
+					}
+					curBlock.add(allCurveChars.get(i));
+				}
+				blocks.add(curBlock);
+				Collections.shuffle(blocks, new Random(allCurveChars.size()*1000l*nodes.size()));
+				for (List<CurveChar> block : blocks) {
+					for (CurveChar curve : block) {
+						funcs.add(curve.curve);
+						chars.add(curve.pChar);
+					}
+				}
+			} else {
+				Collections.shuffle(allCurveChars, new Random(allCurveChars.size()*1000l*nodes.size()));
+				for (CurveChar curve : allCurveChars) {
+					funcs.add(curve.curve);
+					chars.add(curve.pChar);
+				}
 			}
 		}
 		
