@@ -372,7 +372,14 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		}
 		
 		if (this == CLASSIC_FULL)
+			// we're on the "classic full" branch: exclude all ruptures that don't rupture a full section
 			exclusions.add(new FullSectionsSegmentationModel(rupSet));
+		
+		if (this == CLASSIC && branch.hasValue(SupraSeisBValues.B_0p0)) {
+			// we're on the "classic" branch and b=0: exclude all ruptures that don't rupture a full section,
+			// except on special faults
+			exclusions.add(new FullSectionsSegmentationModel(rupSet, true));
+		}
 		
 		if (exclusions.isEmpty())
 			return null;
@@ -474,14 +481,26 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	public static class FullSectionsSegmentationModel implements BinaryRuptureProbabilityCalc {
 
 		private Map<Integer, List<FaultSection>> parentSectsMap;
+		private boolean excludeNamed;
+		private NamedFaults namedFaults;
 
 		public FullSectionsSegmentationModel(FaultSystemRupSet rupSet) {
+			this(rupSet, false);
+		}
+
+		public FullSectionsSegmentationModel(FaultSystemRupSet rupSet, boolean excludeNamed) {
 			this(rupSet.getFaultSectionDataList().stream().collect(
-					Collectors.groupingBy(S -> S.getParentSectionId())));
+					Collectors.groupingBy(S -> S.getParentSectionId())),
+					excludeNamed, rupSet.getModule(NamedFaults.class));
 		}
 		
-		public FullSectionsSegmentationModel(Map<Integer, List<FaultSection>> parentSectsMap) {
+		public FullSectionsSegmentationModel(Map<Integer, List<FaultSection>> parentSectsMap, boolean excludeNamed,
+				NamedFaults namedFaults) {
 			this.parentSectsMap = parentSectsMap;
+			this.excludeNamed = excludeNamed;
+			if (excludeNamed)
+				Preconditions.checkNotNull(namedFaults, "excludeNamed == true but NamedFaults are null");
+			this.namedFaults = namedFaults;
 		}
 
 		@Override
@@ -497,6 +516,8 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		@Override
 		public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
 			for (FaultSubsectionCluster cluster : fullRupture.getClustersIterable()) {
+				if (excludeNamed && namedFaults.getFaultName(cluster.parentSectionID) != null)
+					continue;
 				List<FaultSection> fullCluster = parentSectsMap.get(cluster.parentSectionID);
 				Preconditions.checkNotNull(fullCluster);
 				Preconditions.checkState(fullCluster.size() >= cluster.subSects.size());
