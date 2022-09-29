@@ -647,6 +647,11 @@ public class GraphPanel extends JSplitPane {
 			
 			int charIndex = 0;
 			int defaultColorIndex = 0;
+			
+			PlotCurveCharacterstics prevChars = null;
+			DiscretizedFunctionXYDataSet prevDataset = null;
+			XYItemRenderer prevRenderer = null;
+			int numDatasetsReused = 0;
 
 			for(PlotElement elem : elems) {
 				
@@ -697,6 +702,19 @@ public class GraphPanel extends JSplitPane {
 					if (isBlankCurve(chars))
 						continue;
 					
+					if (prevDataset != null && chars == prevChars) {
+						// we can reuse the previous one
+						// this will speed up plotting
+						int prevNum = prevDataset.getFunctions().size();
+						prevDataset.getFunctions().addAll(dataFunctions);
+						int newNum = prevDataset.getFunctions().size();
+						Color color = chars.getColor();
+						for (int i=prevNum; i<newNum; i++)
+							prevRenderer.setSeriesPaint(i, color);
+						numDatasetsReused++;
+						continue;
+					}
+					
 					Color color = chars.getColor();
 					float lineWidth = chars.getLineWidth();
 					PlotLineType lineType = chars.getLineType();
@@ -730,10 +748,17 @@ public class GraphPanel extends JSplitPane {
 						renderer.setSeriesPaint(i, color);
 //					xyItemRenderer.setDefaultPaint(color);
 					datasetIndex++;
+					
+					prevDataset = dataset;
+					prevChars = chars;
+					prevRenderer = renderer;
 				}
 				Preconditions.checkState(datasetInElemIndex == totNumDatasets,
 						"elem.getDatasetsToPlot() and elem.getPlotNumColorList() are inconsistent");
 			}
+			
+//			if (numDatasetsReused > 0)
+//				System.out.println("Reused "+numDatasetsReused+" datasets (datasetIndex="+datasetIndex+")");
 			
 			// now add any annotations
 			if (plotSpec.getPlotAnnotations() != null)
