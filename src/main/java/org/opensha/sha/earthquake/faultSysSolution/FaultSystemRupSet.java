@@ -1104,16 +1104,22 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				ret[r] = 1d;
 			return ret;
 		}
-		if (!fractRupsInsideRegions.contains(region, traceOnly)) {
-			if (fractRupsInsideRegions.size() > 10) { // max cache size
-				Set<Cell<Region, Boolean, double[]>> cells = fractRupsInsideRegions.cellSet();
-				cells.remove(cells.iterator().next());
+		double[] fractRupsInside;
+		synchronized (fractRupsInsideRegions) {
+			fractRupsInside = fractRupsInsideRegions.get(region, traceOnly);
+		}
+		if (fractRupsInside == null) {
+			synchronized (fractRupsInsideRegions) {
+				if (fractRupsInsideRegions.size() > 10) { // max cache size
+					Set<Cell<Region, Boolean, double[]>> cells = fractRupsInsideRegions.cellSet();
+					cells.remove(cells.iterator().next());
+				}
 			}
 			int[] numPtsInSection = new int[getNumSections()];
 			double[] fractSectsInside = getFractSectsInsideRegion(region, traceOnly, numPtsInSection);
 			int numRuptures = getNumRuptures();
 
-			double[] fractRupsInside = new double[numRuptures];
+			fractRupsInside = new double[numRuptures];
 
 			for(int rup=0; rup<numRuptures; rup++) {
 				List<Integer> sectionsIndicesForRup = getSectionsIndicesForRup(rup);
@@ -1124,9 +1130,11 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				}
 				fractRupsInside[rup] /= totNumPts;
 			}
-			fractRupsInsideRegions.put(region, traceOnly, fractRupsInside);
+			synchronized (fractRupsInsideRegions) {
+				fractRupsInsideRegions.put(region, traceOnly, fractRupsInside);
+			}
 		}
-		return fractRupsInsideRegions.get(region, traceOnly);
+		return fractRupsInside;
 	}
 
 	/**
