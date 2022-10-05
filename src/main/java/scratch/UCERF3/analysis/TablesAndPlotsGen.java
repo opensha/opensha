@@ -579,7 +579,7 @@ public class TablesAndPlotsGen {
 		return Double.NaN;
 	}
 	
-	private static HistogramFunction loadSurfaceRupData() throws IOException {
+	public static HistogramFunction loadSurfaceRupData() throws IOException {
 		POIFSFileSystem fs = new POIFSFileSystem(
 				UCERF3_DataUtils.locateResourceAsStream("misc", "Surface_Rupture_Data_Wells_043013.xls"));
 		HSSFWorkbook wb = new HSSFWorkbook(fs);
@@ -601,6 +601,7 @@ public class TablesAndPlotsGen {
 			hist.add(length, 1d);
 			cnt++;
 		}
+		wb.close();
 		System.out.println("Loaded "+cnt+" values from data file");
 		hist.normalizeBySumOfY_Vals();
 		return hist;
