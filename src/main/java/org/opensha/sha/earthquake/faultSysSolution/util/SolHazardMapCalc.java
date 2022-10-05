@@ -50,6 +50,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
+import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
@@ -128,6 +129,11 @@ public class SolHazardMapCalc {
 
 	public SolHazardMapCalc(FaultSystemSolution sol, Supplier<ScalarIMR> gmpeRef, GriddedRegion region,
 			IncludeBackgroundOption backSeisOption, double... periods) {
+		this(sol, gmpeRef, region, backSeisOption, false, periods);
+	}
+
+	public SolHazardMapCalc(FaultSystemSolution sol, Supplier<ScalarIMR> gmpeRef, GriddedRegion region,
+			IncludeBackgroundOption backSeisOption, boolean applyAftershockFilter, double... periods) {
 		this.sol = sol;
 		this.gmpeRef = gmpeRef;
 		this.region = region;
@@ -150,6 +156,7 @@ public class SolHazardMapCalc {
 			fssERF = new FaultSystemSolutionERF(sol);
 			fssERF.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 			fssERF.setParameter(IncludeBackgroundParam.NAME, backSeisOption);
+			fssERF.setParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME, applyAftershockFilter);
 			fssERF.getTimeSpan().setDuration(1d);
 			
 			fssERF.updateForecast();
