@@ -7,10 +7,13 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
@@ -27,6 +30,8 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 	
 	protected Map<String, BranchAverageSolutionCreator> baCreators;
 	protected SolutionLogicTree.FileBuilder sltBuilder;
+	
+	private CompletableFuture<Void> processingLoadedFuture;
 	
 	private boolean[] dones;
 
@@ -93,28 +98,48 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		if (sol == null)
 			return;
 		
-		sltBuilder.solution(sol, branch);
-		
-		// now add in to branch averaged
-		if (baCreators != null) {
-			String baPrefix = getBA_prefix(branch);
-			
-			if (baPrefix == null) {
-				debug("AsyncLogicTree won't branch average, all levels affect "+FaultSystemRupSet.RUP_PROPS_FILE_NAME);
-			} else {
-				if (!baCreators.containsKey(baPrefix))
-					baCreators.put(baPrefix, new BranchAverageSolutionCreator(weightProv));
-				BranchAverageSolutionCreator baCreator = baCreators.get(baPrefix);
-				try {
-					baCreator.addSolution(sol, branch);
-				} catch (Exception e) {
-					e.printStackTrace();
-					System.err.flush();
-					debug("AsyncLogicTree: Branch averaging failed for branch "+branch+", disabling averaging");
-					baCreators = null;
-				}
+		// do this part asynchronously so that we can start loading the next one
+		if (processingLoadedFuture != null) {
+			// wait until we're done processing the previous one
+			try {
+				processingLoadedFuture.get();
+			} catch (InterruptedException | ExecutionException e) {
+				throw ExceptionUtils.asRuntimeException(e);
 			}
 		}
+		// launch this asynchronously
+		processingLoadedFuture = CompletableFuture.runAsync(new Runnable() {
+			
+			@Override
+			public void run() {
+				try {
+					sltBuilder.solution(sol, branch);
+					
+					// now add in to branch averaged
+					if (baCreators != null) {
+						String baPrefix = getBA_prefix(branch);
+						
+						if (baPrefix == null) {
+							debug("AsyncLogicTree won't branch average, all levels affect "+FaultSystemRupSet.RUP_PROPS_FILE_NAME);
+						} else {
+							if (!baCreators.containsKey(baPrefix))
+								baCreators.put(baPrefix, new BranchAverageSolutionCreator(weightProv));
+							BranchAverageSolutionCreator baCreator = baCreators.get(baPrefix);
+							try {
+								baCreator.addSolution(sol, branch);
+							} catch (Exception e) {
+								e.printStackTrace();
+								System.err.flush();
+								debug("AsyncLogicTree: Branch averaging failed for branch "+branch+", disabling averaging");
+								baCreators = null;
+							}
+						}
+					}
+				} catch (Exception e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}
+		});
 	}
 	
 	public static String getBA_prefix(LogicTreeBranch<?> branch) {
@@ -165,6 +190,15 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 	@Override
 	public void shutdown() {
 		super.shutdown();
+		
+		if (processingLoadedFuture != null) {
+			try {
+				// wait on the last asynchronous processing task to finish
+				processingLoadedFuture.get();
+			} catch (InterruptedException | ExecutionException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
 		
 		memoryDebug("AsyncLogicTree: finalizing logic tree zip");
 		try {
