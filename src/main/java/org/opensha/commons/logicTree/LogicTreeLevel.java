@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import org.opensha.commons.data.ShortNamed;
@@ -65,7 +66,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	 * 
 	 * @return collection of affected things, or empty collection if none (should never return null)
 	 */
-	protected abstract Collection<String> getAffected();
+	public abstract Collection<String> getAffected();
 	
 	/**
 	 * Gets list of things (e.g., a file name or some sort of property key) that are explicitly not affected by
@@ -76,7 +77,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	 * 
 	 * @return collection of not affected things, or empty collection if none (should never return null)
 	 */
-	protected abstract Collection<String> getNotAffected();
+	public abstract Collection<String> getNotAffected();
 	
 	public String toString() {
 		return getName();
@@ -183,13 +184,13 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 
 		@Override
-		protected Collection<String> getAffected() {
-			return affected;
+		public Collection<String> getAffected() {
+			return Collections.unmodifiableCollection(affected);
 		}
 
 		@Override
-		protected Collection<String> getNotAffected() {
-			return notAffected;
+		public Collection<String> getNotAffected() {
+			return Collections.unmodifiableCollection(notAffected);
 		}
 		
 	}
@@ -227,13 +228,13 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 
 		@Override
-		protected Collection<String> getAffected() {
+		public Collection<String> getAffected() {
 			// TODO force child class to implement?
 			return List.of();
 		}
 
 		@Override
-		protected Collection<String> getNotAffected() {
+		public Collection<String> getNotAffected() {
 			// TODO force child class to implement?
 			return List.of();
 		}
@@ -254,19 +255,19 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 	}
 
-	public static <E extends Enum<E> & LogicTreeNode> LogicTreeLevel<E> forEnum(
+	public static <E extends Enum<E> & LogicTreeNode> EnumBackedLevel<E> forEnum(
 			Class<E> type, String name, String shortName) {
 		return new EnumBackedLevel<>(name, shortName, type);
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static <E extends LogicTreeNode> LogicTreeLevel<E> forEnumUnchecked(
+	public static <E extends LogicTreeNode> EnumBackedLevel<E> forEnumUnchecked(
 			Class<?> type, String name, String shortName) {
 		return new EnumBackedLevel<>(name, shortName, (Class<E>)type);
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static <E extends LogicTreeNode> LogicTreeLevel<E> forEnumUnchecked(
+	public static <E extends LogicTreeNode> EnumBackedLevel<E> forEnumUnchecked(
 			Object enumValue, String name, String shortName) {
 		Class<? extends Object> type = enumValue.getClass();
 		if (!type.isEnum())
@@ -276,7 +277,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		return new EnumBackedLevel<>(name, shortName, (Class<E>)type);
 	}
 	
-	static class EnumBackedLevel<E extends LogicTreeNode> extends LogicTreeLevel<E> {
+	public static class EnumBackedLevel<E extends LogicTreeNode> extends LogicTreeLevel<E> {
 		
 		private String name;
 		private String shortName;
@@ -322,6 +323,46 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			result = prime * result + ((shortName == null) ? 0 : shortName.hashCode());
 			result = prime * result + ((type == null) ? 0 : type.hashCode());
 			return result;
+		}
+		
+		/**
+		 * Sets list of things that are affected/unaffected by this logic tree level. If processAnnotations is true,
+		 * then annotations attached to this enum will be processed first but may be overridden by those passed in.
+		 * If false, only those passed in will be retained.
+		 * 
+		 * @param affected collection of affected things
+		 * @param notAffected collection of not affected things
+		 * @param processAnnotations if true, annotations will be processed first and then these rules will be added
+		 * (passed in rules will supersede if there is any overlap)
+		 */
+		public void setAffected(Collection<String> affected, Collection<String> notAffected, boolean processAnnotations) {
+			Preconditions.checkNotNull(affected);
+			Preconditions.checkNotNull(notAffected);
+			if (processAnnotations) {
+				// make sure we've loaded annotations
+				checkParseAnnotations();
+				
+				// remove any references to those passed in
+				List<String> allNew = new ArrayList<>();
+				if (affected != null)
+					allNew.addAll(affected);
+				if (notAffected != null)
+					allNew.addAll(notAffected);
+				for (String val : allNew) {
+					this.affected.remove(val);
+					this.notAffected.remove(val);
+				}
+				
+				// add those passed in
+				this.affected = new ArrayList<>(this.affected);
+				this.affected.addAll(affected);
+				this.notAffected = new ArrayList<>(this.notAffected);
+				this.notAffected.addAll(notAffected);
+			} else {
+				// override everything with those passed in
+				this.affected = new ArrayList<>(affected);
+				this.notAffected = new ArrayList<>(notAffected);
+			}
 		}
 
 		@Override
@@ -410,15 +451,15 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 
 		@Override
-		protected Collection<String> getAffected() {
+		public Collection<String> getAffected() {
 			checkParseAnnotations();
-			return affected;
+			return Collections.unmodifiableCollection(affected);
 		}
 
 		@Override
-		protected Collection<String> getNotAffected() {
+		public Collection<String> getNotAffected() {
 			checkParseAnnotations();
-			return notAffected;
+			return Collections.unmodifiableCollection(notAffected);
 		}
 		
 	}
@@ -546,6 +587,9 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					System.err.println("WARNING: logic tree branch node class '"+enumClassName+"' is of the wrong type, "
 							+ "loading plain/hardcoded version instead");
 				}
+				if (!affected.isEmpty() || !notAffected.isEmpty())
+					// set the serialzed affected/unaffected levels
+					((EnumBackedLevel<?>)level).setAffected(affected, notAffected, true);
 			}
 			if (level == null && className != null) {
 				// try to load it as a class via default constructor
