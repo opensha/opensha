@@ -75,6 +75,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private static final IncludeBackgroundOption GRID_SEIS_DEFAULT = IncludeBackgroundOption.EXCLUDE;
 	private IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
 	
+	private static final boolean AFTERSHOCK_FILTER_DEFAULT = false;
+	private boolean applyAftershockFilter = AFTERSHOCK_FILTER_DEFAULT;
+	
 	private GriddedRegion gridRegion;
 
 	private String hazardSubDirName;
@@ -138,7 +141,13 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			}
 		}
 		
-		String hazardPrefix = "hazard_"+(float)gridSpacing+"deg_grid_seis_";
+		if (cmd.hasOption("aftershock-filter"))
+			applyAftershockFilter = true;
+		
+		String hazardPrefix = "hazard_"+(float)gridSpacing+"deg";
+		if (applyAftershockFilter)
+			hazardPrefix += "_aftershock_filter";
+		hazardPrefix += "_grid_seis_";
 		hazardSubDirName = hazardPrefix+gridSeisOp.name();
 		if (gridSeisOp == IncludeBackgroundOption.INCLUDE)
 			// if we're including gridded seismicity, we can shortcut and calculate only gridded seismicity and
@@ -406,11 +415,11 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						+"\n\tBranch: "+branch
 						+"\n\tGMPE: "+gmpe.getName()+paramStr);
 				if (combineWithCurves == null) {
-					calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, gridSeisOp, periods);
+					calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, gridSeisOp, applyAftershockFilter, periods);
 				} else {
 					// calculate with only gridded seismicity, we'll add in the curves excluding it
 					debug("Reusing fault-based hazard for "+index+", will only compute gridded hazard");
-					calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, IncludeBackgroundOption.ONLY, periods);
+					calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
 				}
 				calc.setMaxSourceSiteDist(maxDistance);
 				calc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
@@ -448,6 +457,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
 		ops.addOption("r", "region", true, "Optional path to GeoJSON file containing a region for which we should compute hazard. "
 				+ "Can be a gridded region or an outline. If not supplied, then one will be detected from the model.");
+		ops.addOption("af", "aftershock-filter", false, "If supplied, the aftershock filter will be applied in the ERF");
 		
 		return ops;
 	}
