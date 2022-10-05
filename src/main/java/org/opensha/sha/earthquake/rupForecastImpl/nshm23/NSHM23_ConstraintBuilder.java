@@ -591,8 +591,8 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	/**
-	 * These are derived from Baken et al. (2005), supplementary figure S2
-	 * values are calculated from the "basic sequence" of recurrence intervals:
+	 * These are derived from Baken et al. (2005), supplementary figure S2.
+	 * Values are calculated from the "basic sequence" of recurrence intervals:
 	 * Parkfield event years: 1857,1881,1901,1922,1934,1966,2004
 	 * Parkfield event RIs: 24,20,21,12,32,38
 	 * mean=24.5	SD=9.2	SDOM=3.8 (15.4%)
