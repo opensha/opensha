@@ -29,6 +29,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchAverageableModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchRegionalMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectBVals;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.LogicTreeRateStatistics;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
@@ -97,6 +98,7 @@ public class BranchAverageSolutionCreator {
 	private LogicTreeRateStatistics.Builder rateStatsBuilder;
 	private BranchRegionalMFDs.Builder regionalMFDsBuilder;
 	private BranchSectNuclMFDs.Builder sectMFDsBuilder;
+	private BranchSectBVals.Builder sectBValsBuilder;
 	
 	public BranchAverageSolutionCreator(BranchWeightProvider weightProv) {
 		this.weightProv = weightProv;
@@ -178,6 +180,7 @@ public class BranchAverageSolutionCreator {
 			rateStatsBuilder = new LogicTreeRateStatistics.Builder();
 			regionalMFDsBuilder = new BranchRegionalMFDs.Builder();
 			sectMFDsBuilder = new BranchSectNuclMFDs.Builder();
+			sectBValsBuilder = new BranchSectBVals.Builder();
 		} else {
 			Preconditions.checkState(refRupSet.isEquivalentTo(rupSet), "Rupture sets are not equivalent");
 		}
@@ -185,6 +188,7 @@ public class BranchAverageSolutionCreator {
 		rateStatsBuilder.process(branch, sol.getRateForAllRups());
 		regionalMFDsBuilder.process(sol, weight);
 		sectMFDsBuilder.process(sol, weight);
+		sectBValsBuilder.process(sol, weight);
 		
 		for (int i=0; i<combBranch.size(); i++) {
 			LogicTreeNode combVal = combBranch.getValue(i);
@@ -403,6 +407,7 @@ public class BranchAverageSolutionCreator {
 		sol.addModule(rateStatsBuilder.build());
 		sol.addModule(regionalMFDsBuilder.build());
 		sol.addModule(sectMFDsBuilder.build());
+		sol.addModule(sectBValsBuilder.build());
 		
 		String info = "Branch Averaged Fault System Solution, across "+weights.size()
 				+" branches with a total weight of "+totWeight+"."
