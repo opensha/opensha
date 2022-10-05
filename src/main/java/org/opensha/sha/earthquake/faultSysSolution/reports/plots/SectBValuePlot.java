@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 import org.jfree.data.Range;
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -39,6 +40,7 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectBVals;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
@@ -88,6 +90,13 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		lines.add("These plots estimate a Gutenberg-Richter b-value for each subsection and parent section nucleation"
 				+ " MFD. This is a rough approximation, and is intended primarily for model comparisons.");
 		lines.add("");
+		BranchSectBVals branchBVals = sol.getModule(BranchSectBVals.class);
+		if (branchBVals != null && branchBVals.getNumBranches() > 1) {
+			lines.add("Note that b-values here are calculated from the branch-averaged nucleation MFD on each section, "
+					+ "and do not represent the average of branch-specific b-values. The latter are plotted separately "
+					+ "at the end of this section.");
+			lines.add("");
+		}
 		
 		BValEstimate[] sectBVals = estSectBValues(sol);
 		BValEstimate[] compSectBVals = compSol == null ? null : estSectBValues(compSol);
@@ -132,7 +141,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 			for (int i=0; i<diffs.length; i++)
 				diffs[i] = sectBVals[i].b - compSectBVals[i].b;
 			
-			CPT diffCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-2d, 2d);
+			CPT diffCPT = GMT_CPT_Files.DIVERGING_BLUE_RED_UNIFORM.instance().rescale(-2d, 2d);
 			diffCPT.setNanColor(Color.GRAY);
 			mapMaker.plotSectScalars(diffs, diffCPT, "Subsection b-values, Primary - Comparison");
 			mapMaker.plot(resourcesDir, prefix+"_diff", "Difference");
@@ -148,8 +157,8 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		
 		lines.addAll(getHistLines(toBArray(sectBVals), sectRates, toBArray(compSectBVals), compSectRates,
 				targetSectBVals == null ? null : toBArray(targetSectBVals), resourcesDir, relPathToResources, prefix));
-		
 		lines.add("");
+		
 		lines.add(getSubHeading()+" Parent Section b-values");
 		lines.add(topLink); lines.add("");
 		
@@ -198,6 +207,54 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		
 		lines.addAll(getHistLines(toBArray(parentBVals), parentRates, toBArray(compParentBVals), compParentRates,
 				parentTargetBVals == null ? null : toBArray(parentTargetBVals), resourcesDir, relPathToResources, prefix));
+		
+		if (branchBVals != null && branchBVals.getNumBranches() > 1) {
+			lines.add("");
+			lines.add(getSubHeading()+" Branch-averaged subsection b-values");
+			lines.add(topLink); lines.add("");
+			
+			lines.add("This solution has branch-specific b-values attached. The following plots show the "
+					+ "branch-averaged b-value, interquartile range (IQR), and total range computed across all "
+					+ branchBVals.getNumBranches()+" branches.");
+			lines.add("");
+			
+			double[] meanBVals = new double[sectBVals.length];
+			double[] bValIQR = new double[sectBVals.length];
+			double[] bValRange = new double[sectBVals.length];
+			for (int s=0; s<meanBVals.length; s++) {
+				ArbDiscrEmpiricalDistFunc dist = branchBVals.getSectBValDist(s);
+				meanBVals[s] = dist.getMean();
+				bValIQR[s] = dist.getInterpolatedFractile(0.75d) - dist.getInterpolatedFractile(0.25d);
+				bValRange[s] = dist.getMaxX() - dist.getMinX();
+			}
+			
+			mapMaker.setWriteGeoJSON(false);
+			mapMaker.setWritePDFs(false);
+			
+			mapMaker.plotSectScalars(meanBVals, cpt, "Branch-averaged subsection b-values");
+			mapMaker.plot(resourcesDir, prefix+"_ba", getTruncatedTitle(meta.primary.name));
+			
+			lines.add("![BA b-values]("+relPathToResources+"/"+prefix+"_ba.png)");
+			lines.add("");
+			
+			TableBuilder table = MarkdownUtils.tableBuilder();
+			
+			table.addLine("Interquartile Range", "Full Range");
+			
+			CPT rangeCPT = GMT_CPT_Files.BLACK_RED_YELLOW_UNIFORM.instance().reverse().rescale(0d, 3d);
+			rangeCPT.setNanColor(Color.GRAY);
+			
+			table.initNewLine();
+			mapMaker.plotSectScalars(bValIQR, rangeCPT, "Subsection b-value IQR");
+			mapMaker.plot(resourcesDir, prefix+"_iqr", getTruncatedTitle(meta.primary.name));
+			table.addColumn("![b-value IQR]("+relPathToResources+"/"+prefix+"_iqr.png)");
+			mapMaker.plotSectScalars(bValRange, rangeCPT, "Subsection b-value Range");
+			mapMaker.plot(resourcesDir, prefix+"_range", getTruncatedTitle(meta.primary.name));
+			table.addColumn("![b-value range]("+relPathToResources+"/"+prefix+"_range.png)");
+			table.finalizeLine();
+			
+			lines.addAll(table.build());
+		}
 		
 		return lines;
 	}
@@ -248,7 +305,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		return ret;
 	}
 	
-	private static BValEstimate[] estSectBValues(FaultSystemSolution sol) {
+	public static BValEstimate[] estSectBValues(FaultSystemSolution sol) {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		BValEstimate[] ret = new BValEstimate[rupSet.getNumSections()];
 		
@@ -274,6 +331,15 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		Preconditions.checkState(refFunc.size() == binsAvail.length);
 		Preconditions.checkState(refFunc.size() == binsUsed.length);
 		FaultSystemRupSet rupSet = sol.getRupSet();
+		
+		IncrementalMagFreqDist target = null;
+		if (rupSet.hasModule(InversionTargetMFDs.class)) {
+			List<? extends IncrementalMagFreqDist> targets = rupSet.requireModule(
+					InversionTargetMFDs.class).getOnFaultSupraSeisNucleationMFDs();
+			if (targets != null)
+				target = targets.get(sectionIndex);
+		}
+		
 		for (int rupIndex : rupSet.getRupturesForSection(sectionIndex)) {
 			DiscretizedFunc rupMFD = null;
 			if (rupMFDs != null)
@@ -288,14 +354,24 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 					continue;
 				double rate = pt.getY();
 				int magIndex = refFunc.getClosestXIndex(mag);
-				binsAvail[magIndex] = true;
 				if (rate > 0)
 					binsUsed[magIndex] = true;
+				if (rate > 0 || target == null || targetBinAvail(target, mag))
+					// set as availble if it has rate, we don't have targets, or the target has rate for this bin
+					binsAvail[magIndex] = true;
 			}
 		}
 	}
 	
-	private static BValEstimate[] estSectTargetBValues(List<? extends IncrementalMagFreqDist> sectNuclMFDs) {
+	private static boolean targetBinAvail(IncrementalMagFreqDist target, double mag) {
+		double halfDelta = target.getDelta()*0.5;
+		if (mag > target.getMaxX()+halfDelta || mag < target.getMinX()-halfDelta)
+			return false;
+		int magIndex = target.getClosestXIndex(mag);
+		return target.getY(magIndex) > 0;
+	}
+	
+	public static BValEstimate[] estSectTargetBValues(List<? extends IncrementalMagFreqDist> sectNuclMFDs) {
 		BValEstimate[] ret = new BValEstimate[sectNuclMFDs.size()];
 		
 		for (int s=0; s<ret.length; s++) {
@@ -324,7 +400,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		return ret;
 	}
 	
-	private static Map<Integer, BValEstimate> estParentSectBValues(FaultSystemSolution sol) {
+	public static Map<Integer, BValEstimate> estParentSectBValues(FaultSystemSolution sol) {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		HashMap<Integer, BValEstimate> ret = new HashMap<>();
 		
@@ -354,7 +430,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		return ret;
 	}
 	
-	private static Map<Integer, BValEstimate> estParentSectTargetBValues(FaultSystemSolution sol,
+	public static Map<Integer, BValEstimate> estParentSectTargetBValues(FaultSystemSolution sol,
 			List<? extends IncrementalMagFreqDist> sectNuclMFDs) {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		HashMap<Integer, BValEstimate> ret = new HashMap<>();
@@ -413,6 +489,12 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 					minMagIndex = i;
 				maxMagIndex = i;
 			}
+		}
+		
+		if (minMagIndex < 0) {
+			double nuclRate = nuclMFD.calcSumOfY_Vals();
+			Preconditions.checkState(nuclRate == 0d, "No bins available but nuclRate=%s", nuclRate);
+			return new BValEstimate(-3d, 0d, 0d, binsAvail, binsUsed);
 		}
 		
 		double minMag = refFunc.getX(minMagIndex);

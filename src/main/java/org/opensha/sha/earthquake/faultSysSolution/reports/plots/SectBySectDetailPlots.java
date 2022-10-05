@@ -29,6 +29,7 @@ import org.jfree.chart.ui.RectangleAnchor;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
 import org.opensha.commons.calc.FaultMomentCalc;
+import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -65,6 +66,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SectionTotalRateConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectBVals;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectNuclMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
@@ -1106,13 +1108,25 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		if (rups.isEmpty())
 			return new ArrayList<>();
 		
+		if (sol.hasModule(RupMFDsModule.class)) {
+			// we have rupture MFDs, expand mag range as necessary
+			RupMFDsModule mfds = sol.getModule(RupMFDsModule.class);
+			for (int rupIndex : rups) {
+				DiscretizedFunc mfd = mfds.getRuptureMFD(rupIndex);
+				if (mfd != null) {
+					minMag = Math.min(minMag, mfd.getMinX());
+					maxMag = Math.max(maxMag, mfd.getMaxX());
+				}
+			}
+		}
+		
 		GridSourceProvider gridProv = sol.getGridSourceProvider();
 		FaultGridAssociations gridAssoc = rupSet.getModule(FaultGridAssociations.class);
 		boolean hasGridded = gridProv != null && gridAssoc != null;
 		if (hasGridded)
 			minMag = Math.min(minMag, 5d);
 		
-		IncrementalMagFreqDist defaultMFD = SolMFDPlot.initDefaultMFD(minMag, maxMag);
+		IncrementalMagFreqDist defaultMFD = SolMFDPlot.initDefaultMFD(6d, 8d, minMag, maxMag);
 		
 		SummedMagFreqDist nuclTargetMFD = null;
 		if (meta.primary.rupSet.hasModule(InversionTargetMFDs.class))
@@ -1244,13 +1258,15 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 					new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, new Color(0, 0, 0, 127)));
 		}
 		
+		SummedMagFreqDist compNuclMFD = null;
+		
 		if (meta.comparisonHasSameSects && meta.comparison.sol != null) {
 			HashSet<Integer> compRups = new HashSet<>();
 			for (FaultSection sect : faultSects)
 				compRups.addAll(meta.comparison.rupSet.getRupturesForSection(sect.getSectionId()));
 			IncrementalMagFreqDist compParticMFD = meta.comparison.sol.calcParticipationMFD_forRups(
 					compRups, defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size());
-			SummedMagFreqDist compNuclMFD = new SummedMagFreqDist(defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size());
+			compNuclMFD = new SummedMagFreqDist(defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size());
 			for (FaultSection sect : faultSects)
 				compNuclMFD.addIncrementalMagFreqDist(meta.comparison.sol.calcNucleationMFD_forSect(
 						sect.getSectionId(), defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size()));
@@ -1402,6 +1418,208 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 					+ "are shown in the bottom. The magnitude rage at the top of this page also only considers mean magnitudes._");
 		}
 		
+		if (branchMFDs != null) {
+			// add plots showing each one
+			int alpha;
+			if (branchMFDs.getNumBranches() > 10000)
+				alpha = 20;
+			else if (branchMFDs.getNumBranches() > 5000)
+				alpha = 40;
+			else if (branchMFDs.getNumBranches() > 1000)
+				alpha = 60;
+			else if (branchMFDs.getNumBranches() > 500)
+				alpha = 80;
+			else if (branchMFDs.getNumBranches() > 100)
+				alpha = 100;
+			else
+				alpha = 120;
+//			Color indvColor = new Color(MAIN_COLOR.getRed(), MAIN_COLOR.getGreen(), MAIN_COLOR.getBlue(), alpha);
+			Color indvColor = new Color(0, 0, 0, alpha);
+			PlotCurveCharacterstics indvCurveChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, indvColor);
+
+			Color minColor = Color.GREEN.darker().darker();
+			Color maxColor = Color.MAGENTA.darker().darker();
+			
+			IncrementalMagFreqDist minMFD = null;
+			double minRate = Double.POSITIVE_INFINITY;
+			IncrementalMagFreqDist maxMFD = null;
+			double maxRate = 0d;
+			
+			incrFuncs = new ArrayList<>();
+			incrChars = new ArrayList<>();
+			cmlFuncs = new ArrayList<>();
+			cmlChars = new ArrayList<>();
+			
+			int branches = branchMFDs.getNumBranches();
+			Preconditions.checkState(branches > 0);
+			
+			for (int b=0; b<branches; b++) {
+				SummedMagFreqDist mfd = null;
+				for (FaultSection sect : faultSects) {
+					IncrementalMagFreqDist sectMFD = branchMFDs.getSectionMFD(b, sect.getSectionId());
+					if (mfd == null)
+						mfd = new SummedMagFreqDist(sectMFD.getMinX(), sectMFD.getMaxX(), sectMFD.size());
+					mfd.addIncrementalMagFreqDist(sectMFD);
+				}
+				double totRate = mfd.calcSumOfY_Vals();
+				if (totRate > maxRate) {
+					maxRate = totRate;
+					maxMFD = mfd;
+				}
+				if (totRate < minRate) {
+					minRate = totRate;
+					minMFD = mfd;
+				}
+				
+				mfd.setName(null);
+//				addLineGapFuncs(mfd, incrFuncs, incrChars, indvCurveChar);
+				incrFuncs.add(mfd);
+				incrChars.add(indvCurveChar);
+				DiscretizedFunc cmlMFD = mfd.getCumRateDistWithOffset();
+				if (cmlMFD.getMinX() > xRange.getLowerBound()) {
+					// extend to minX
+					DiscretizedFunc extended = new ArbitrarilyDiscretizedFunc();
+					extended.set(xRange.getLowerBound(), cmlMFD.getY(0));
+					for (Point2D pt : cmlMFD)
+						extended.set(pt);
+					cmlMFD = extended;
+				}
+				cmlFuncs.add(cmlMFD);
+				cmlChars.add(indvCurveChar);
+			}
+			
+			// make sure we're not all zero
+			if (incrFuncs.size() > 0) {
+				incrFuncs.get(0).setName("Individual Branches");
+				cmlFuncs.get(0).setName("Individual Branches");
+				
+				// add min/max
+				PlotCurveCharacterstics minChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, minColor);
+				// so that we can change the name
+				minMFD = minMFD.deepClone();
+				minMFD.setName("Min Rate MFD");
+//				addLineGapFuncs(minMFD, incrFuncs, incrChars, minChar);
+				incrFuncs.add(minMFD);
+				incrChars.add(minChar);
+				
+				PlotCurveCharacterstics maxChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, maxColor);
+				// so that we can change the name
+				maxMFD = maxMFD.deepClone();
+				maxMFD.setName("Max Rate MFD");
+//				addLineGapFuncs(maxMFD, incrFuncs, incrChars, maxChar);
+				incrFuncs.add(maxMFD);
+				incrChars.add(maxChar);
+				
+				DiscretizedFunc cmlMinMFD = minMFD.getCumRateDistWithOffset();
+				DiscretizedFunc cmlMaxMFD = maxMFD.getCumRateDistWithOffset();
+				if (cmlMinMFD.getMinX() > xRange.getLowerBound()) {
+					// extend to minX
+					DiscretizedFunc extended = new ArbitrarilyDiscretizedFunc();
+					extended.set(xRange.getLowerBound(), cmlMinMFD.getY(0));
+					for (Point2D pt : cmlMinMFD)
+						extended.set(pt);
+					cmlMinMFD = extended;
+				}
+				if (cmlMaxMFD.getMinX() > xRange.getLowerBound()) {
+					// extend to minX
+					DiscretizedFunc extended = new ArbitrarilyDiscretizedFunc();
+					extended.set(xRange.getLowerBound(), cmlMaxMFD.getY(0));
+					for (Point2D pt : cmlMaxMFD)
+						extended.set(pt);
+					cmlMaxMFD = extended;
+				}
+				cmlMinMFD.setName(minMFD.getName());
+				cmlMaxMFD.setName(maxMFD.getName());
+				cmlFuncs.add(cmlMinMFD);
+				cmlChars.add(minChar);
+				cmlFuncs.add(cmlMaxMFD);
+				cmlChars.add(maxChar);
+				
+				List<Integer> sectIDs = new ArrayList<>(faultSects.size());
+				for (FaultSection sect : faultSects)
+					sectIDs.add(sect.getSectionId());
+				IncrementalMagFreqDist medianMFD = branchMFDs.calcIncrementalSectFractiles(sectIDs, 0.5d)[0];
+				DiscretizedFunc medianCmlMFD = branchMFDs.calcCumulativeSectFractiles(sectIDs, 0.5d)[0];
+				if (medianCmlMFD.getMinX() > xRange.getLowerBound()) {
+					// extend to minX
+					DiscretizedFunc extended = new ArbitrarilyDiscretizedFunc();
+					extended.set(xRange.getLowerBound(), medianCmlMFD.getY(0));
+					for (Point2D pt : medianCmlMFD)
+						extended.set(pt);
+					medianCmlMFD = extended;
+				}
+				
+				if (compNuclMFD != null) {
+					// add comparison
+					PlotCurveCharacterstics compChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, COMP_COLOR);
+					compNuclMFD.setName("Comparison Mean");
+//					addLineGapFuncs(compNuclMFD, incrFuncs, incrChars, compChar);
+					incrFuncs.add(compNuclMFD);
+					incrChars.add(compChar);
+					
+					EvenlyDiscretizedFunc compCmlMFD = compNuclMFD.getCumRateDistWithOffset();
+					compCmlMFD.setName("Comparison Mean");
+					cmlFuncs.add(compCmlMFD);
+					cmlChars.add(compChar);
+					
+					nuclMFD.setName("Primary Mean");
+					medianMFD.setName("Primary Median");
+				} else {
+					nuclMFD.setName("Mean");
+					medianMFD.setName("Median");
+				}
+				medianCmlMFD.setName(medianMFD.getName());
+				
+				PlotCurveCharacterstics medianChar = new PlotCurveCharacterstics(PlotLineType.DOTTED, 3f, MAIN_COLOR);
+				incrFuncs.add(medianMFD);
+				incrChars.add(medianChar);
+				
+				cmlFuncs.add(medianCmlMFD);
+				cmlChars.add(medianChar);
+				
+				// add mean
+				PlotCurveCharacterstics meanChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, MAIN_COLOR);
+//				addLineGapFuncs(nuclMFD, incrFuncs, incrChars, primaryChar);
+				incrFuncs.add(nuclMFD);
+				incrChars.add(meanChar);
+				
+				nuclCmlMFD.setName(nuclMFD.getName());
+				cmlFuncs.add(nuclCmlMFD);
+				cmlChars.add(meanChar);
+				
+				incrSpec = new PlotSpec(incrFuncs, incrChars, faultName, "Magnitude", "Incremental Nucleation Rate (per yr)");
+				cmlSpec = new PlotSpec(cmlFuncs, cmlChars, faultName, "Magnitude", "Cumulative Nucleation Rate (per yr)");
+				incrSpec.setLegendInset(true);
+				cmlSpec.setLegendInset(true);
+				
+				prefix = "sect_mfd_dist";
+				
+				table = MarkdownUtils.tableBuilder();
+				table.addLine("Incremental", "Cumulative");
+				
+				table.initNewLine();
+				gp.drawGraphPanel(incrSpec, false, true, xRange, yRange);
+				PlotUtils.writePlots(outputDir, prefix, gp, 1000, 800, true, false, false);
+				table.addColumn("![Incremental Plot]("+outputDir.getName()+"/"+prefix+".png)");
+				
+				prefix += "_cumulative";
+				gp.drawGraphPanel(cmlSpec, false, true, xRange, yRange);
+				PlotUtils.writePlots(outputDir, prefix, gp, 1000, 800, true, false, false);
+				table.addColumn("![Cumulative Plot]("+outputDir.getName()+"/"+prefix+".png)");
+				table.finalizeLine();
+				
+				lines.add("");
+				lines.add("### Individual Branch Nucleation MFDs");
+				lines.add(topLink); lines.add("");
+				
+				lines.add("Individual nucleation MFDs across "+branches+" logic tree branches. The individual branches "
+						+ "with the highest and lowest total rate are highlighted, as are the mean and median models.");
+				lines.add("");
+				
+				lines.addAll(table.build());
+			}
+		}
+		
 		return lines;
 	}
 
@@ -1442,6 +1660,53 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				xy.set(highX, y);
 				funcs.add(xy);
 				chars.add(pChar);
+			}
+		}
+	}
+	
+	private static void addLineGapFuncs(EvenlyDiscretizedFunc mfd, List<XY_DataSet> funcs,
+			List<PlotCurveCharacterstics> chars, PlotCurveCharacterstics pChar) {
+		boolean first = true;
+		double plusMinus = mfd.getDelta()*0.25;
+		DefaultXY_DataSet continuation = null;
+		for (int i=0; i<mfd.size(); i++) {
+			double x = mfd.getX(i);
+			double y = mfd.getY(i);
+			if (y > 0) {
+				boolean hasBefore = i > 0 && mfd.getY(i-1) > 0;
+				boolean hasAfter = i < mfd.size()-1 && mfd.getY(i+1) > 0;
+				boolean neighbors = hasBefore || hasAfter;
+				if (neighbors) {
+					if (hasBefore) {
+						Preconditions.checkState(!first);
+						Preconditions.checkNotNull(continuation);
+						
+						continuation.set(x, y);
+					} else {
+						// first in a set of multi
+						DefaultXY_DataSet xy = new DefaultXY_DataSet();
+						if (first)
+							xy.setName(mfd.getName());
+						first = false;
+						xy.set(x, y);
+						funcs.add(xy);
+						chars.add(pChar);
+						
+						continuation = xy;
+					}
+				} else {
+					// fully isolated
+					DefaultXY_DataSet xy = new DefaultXY_DataSet();
+					if (first)
+						xy.setName(mfd.getName());
+					first = false;
+					double lowX = x - plusMinus;
+					double highX = x + plusMinus;
+					xy.set(lowX, y);
+					xy.set(highX, y);
+					funcs.add(xy);
+					chars.add(pChar);
+				}
 			}
 		}
 	}
@@ -2507,6 +2772,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		ModSectMinMags compModMinMags = comp ? meta.comparison.rupSet.getModule(ModSectMinMags.class) : null;
 		RupMFDsModule compRupMFDs = comp ? meta.comparison.sol.getModule(RupMFDsModule.class) : null;
 		
+		BranchSectBVals branchBVals = meta.primary.sol.getModule(BranchSectBVals.class);
+		
 		List<? extends IncrementalMagFreqDist> sectTargetMFDs = null;
 		if (meta.primary.rupSet.hasModule(InversionTargetMFDs.class))
 			sectTargetMFDs = meta.primary.rupSet.requireModule(InversionTargetMFDs.class).getOnFaultSupraSeisNucleationMFDs();
@@ -2519,6 +2786,11 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			int sectIndex = faultSects.get(s).getSectionId();
 			
 			if (sectTargetMFDs != null) {
+//				if (branchBVals != null && branchBVals.hasTargetBVals()) {
+//					targetBVal = branchBVals.getSectTargetMeanBVal(sectIndex);
+//				} else {
+//					
+//				}
 				boolean[] bins = new boolean[refFunc.size()];
 				IncrementalMagFreqDist sectMFD = new IncrementalMagFreqDist(
 						refFunc.getMinX(), refFunc.size(), refFunc.getDelta());
@@ -2536,24 +2808,29 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				}
 				
 				if (any) {
-					double bVal = SectBValuePlot.estBValue(bins, bins, sectMFD).b;
-					
-					XY_DataSet solFunc = copyAtY(emptyFunc, bVal);
+					double targetBVal = SectBValuePlot.estBValue(bins, bins, sectMFD).b;
+					XY_DataSet solFunc = copyAtY(emptyFunc, targetBVal);
 					if (s == 0)
 						solFunc.setName("Target");
 					
 					funcs.add(solFunc);
 					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, TARGET_COLOR));
 				}
+				
+				if (branchBVals != null && branchBVals.hasTargetBVals()) {
+					double targetBVal = branchBVals.getSectTargetMeanBVal(sectIndex);
+					
+					XY_DataSet solFunc = copyAtY(emptyFunc, targetBVal);
+					if (s == 0)
+						solFunc.setName("Mean Target");
+					
+					funcs.add(solFunc);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 3f, TARGET_COLOR));
+				}
 			}
 			
 			if (comp) {
-				boolean[] binsAvail = new boolean[refFunc.size()];
-				boolean[] binsUsed = new boolean[refFunc.size()];
-				SectBValuePlot.calcSectMags(s, meta.comparison.sol, compModMinMags, compRupMFDs, binsAvail, binsUsed);
-				IncrementalMagFreqDist sectMFD = meta.comparison.sol.calcNucleationMFD_forSect(
-						s, refFunc.getX(0), refFunc.getX(refFunc.size()-1), refFunc.size());
-				double bVal = SectBValuePlot.estBValue(binsAvail, binsUsed, sectMFD).b;
+				double bVal = bVal(meta.comparison.sol, sectIndex, compModMinMags, compRupMFDs, refFunc);
 				
 				XY_DataSet solFunc = copyAtY(emptyFunc, bVal);
 				if (s == 0)
@@ -2563,12 +2840,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, COMP_COLOR));
 			}
 			
-			boolean[] binsAvail = new boolean[refFunc.size()];
-			boolean[] binsUsed = new boolean[refFunc.size()];
-			SectBValuePlot.calcSectMags(s, meta.primary.sol, modMinMags, rupMFDs, binsAvail, binsUsed);
-			IncrementalMagFreqDist sectMFD = meta.primary.sol.calcNucleationMFD_forSect(
-					s, refFunc.getX(0), refFunc.getX(refFunc.size()-1), refFunc.size());
-			double bVal = SectBValuePlot.estBValue(binsAvail, binsUsed, sectMFD).b;
+			double bVal = bVal(meta.primary.sol, sectIndex, modMinMags, rupMFDs, refFunc);
 			
 			XY_DataSet solFunc = copyAtY(emptyFunc, bVal);
 			if (s == 0) {
@@ -2580,12 +2852,53 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			
 			funcs.add(solFunc);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, MAIN_COLOR));
+			
+			if (branchBVals != null) {
+				// add distribution
+				ArbDiscrEmpiricalDistFunc bValDist = branchBVals.getSectBValDist(sectIndex);
+				
+				double min = bValDist.getMinX();
+				double p16 = bValDist.getInterpolatedFractile(0.16);
+				double p50 = bValDist.getInterpolatedFractile(0.5);
+				double p84 = bValDist.getInterpolatedFractile(0.84);
+				double max = bValDist.getMaxX();
+				
+				UncertainArbDiscFunc minMaxFunc = uncertCopyAtY(emptyFunc, p50, min, max);
+
+				if (s == 0)
+					minMaxFunc.setName("p[0,16,84,100]");
+				
+				funcs.add(minMaxFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, PRIMARY_BOUNDS));
+				
+				UncertainArbDiscFunc sixyEightFunc = uncertCopyAtY(emptyFunc, p50, p16, p84);
+				
+				funcs.add(sixyEightFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, PRIMARY_68_OVERLAY));
+				
+				solFunc = copyAtY(emptyFunc, branchBVals.getSectMeanBVal(sectIndex));
+				if (s == 0)
+					solFunc.setName("Mean");
+				
+				funcs.add(solFunc);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 3f, MAIN_COLOR));
+			}
 		}
 		
 		PlotSpec bValSpec = new PlotSpec(funcs, chars, faultName, xLabel, "G-R Estimated b-value");
 		// legend at bottom
 		bValSpec.setLegendInset(RectangleAnchor.BOTTOM_LEFT, legendRelX, 0.025, 0.95, false);
 		return new AlongStrikePlot(bValSpec, funcs, chars, new Range(-3, 3), false);
+	}
+	
+	private static double bVal(FaultSystemSolution sol, int sectIndex, ModSectMinMags modMinMags, RupMFDsModule rupMFDs,
+			EvenlyDiscretizedFunc refFunc) {
+		boolean[] binsAvail = new boolean[refFunc.size()];
+		boolean[] binsUsed = new boolean[refFunc.size()];
+		SectBValuePlot.calcSectMags(sectIndex, sol, modMinMags, rupMFDs, binsAvail, binsUsed);
+		IncrementalMagFreqDist sectMFD = sol.calcNucleationMFD_forSect(
+				sectIndex, refFunc.getX(0), refFunc.getX(refFunc.size()-1), refFunc.size());
+		return SectBValuePlot.estBValue(binsAvail, binsUsed, sectMFD).b;
 	}
 
 	private static XY_DataSet line(double x1, double y1, double x2, double y2) {
