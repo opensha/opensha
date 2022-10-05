@@ -16,6 +16,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
+import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
@@ -121,8 +122,11 @@ import com.google.common.collect.Table;
 
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
+import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.ETAS.SeisDepthDistribution;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
+import scratch.UCERF3.griddedSeismicity.GridReader;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 
@@ -525,6 +529,17 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 						return buildFaultCubeAssociations(rupSet, branch, rupSet.requireModule(ModelRegion.class).getRegion());
 					}
 				}, FaultGridAssociations.class);
+			} else if (branch.hasValue(MaxMagOffFaultBranchNode.class)
+					&& branch.hasValue(SpatialSeisPDF.class)
+					&& branch.hasValue(TotalMag5Rate.class)) {
+				// offer U3 ingredients fault cube associations
+				rupSet.offerAvailableModule(new Callable<FaultGridAssociations>() {
+
+					@Override
+					public FaultGridAssociations call() throws Exception {
+						return buildU3IngredientsFaultCubeAssociations(rupSet);
+					}
+				}, FaultGridAssociations.class);
 			}
 			return rupSet;
 		}
@@ -556,6 +571,29 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					@Override
 					public NSHM23_AbstractGridSourceProvider call() throws Exception {
 						return buildGridSourceProv(sol, branch);
+					}
+				}, GridSourceProvider.class);
+			} else if (branch.hasValue(MaxMagOffFaultBranchNode.class)
+					&& branch.hasValue(SpatialSeisPDF.class)
+					&& branch.hasValue(TotalMag5Rate.class)) {
+				// can build grid source provider using UCERF3 ingredients
+				// offer as a GridSourceProvider so as not to replace a precomputed one
+				// this will also add fault cube associations to the rupture set
+				sol.offerAvailableModule(new Callable<GridSourceProvider>() {
+
+					@Override
+					public NSHM23_AbstractGridSourceProvider call() throws Exception {
+						double maxMagOff = branch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
+						EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(
+								Math.max(maxMagOff, sol.getRupSet().getMaxMag()));
+						NSHM23_FaultCubeAssociations cubeAssociations = buildU3IngredientsFaultCubeAssociations(rupSet);
+						rupSet.addModule(cubeAssociations);
+						return buildU3IngredientsGridSourceProv(sol,
+								branch.requireValue(TotalMag5Rate.class).getRateMag5(),
+								branch.requireValue(SpatialSeisPDF.class),
+								maxMagOff,
+								refMFD,
+								cubeAssociations);
 					}
 				}, GridSourceProvider.class);
 			}
@@ -736,6 +774,16 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		GriddedRegion gridReg = cubeAssociations.getRegion();
 		
 		double maxMagOff = branch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
+		
+		EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(
+				Math.max(maxMagOff, sol.getRupSet().getMaxMag()));
+		
+		if ((seisRegions == null || seisRegions.isEmpty()) && branch.hasValue(SpatialSeisPDF.class)) {
+			// it's a UCERF3 ingredients run
+			return buildU3IngredientsGridSourceProv(sol, branch.requireValue(TotalMag5Rate.class).getRateMag5(),
+					branch.requireValue(SpatialSeisPDF.class), maxMagOff, refMFD, cubeAssociations);
+		}
+		
 		NSHM23_RegionalSeismicity seisBranch = branch.requireValue(NSHM23_RegionalSeismicity.class);
 		NSHM23_DeclusteringAlgorithms declusteringAlg = branch.requireValue(NSHM23_DeclusteringAlgorithms.class);
 		NSHM23_SeisSmoothingAlgorithms seisSmooth = branch.requireValue(NSHM23_SeisSmoothingAlgorithms.class);
@@ -750,9 +798,6 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				Preconditions.checkState(seisRegions.get(i).load().equalsRegion(regionalCubeAssoc.get(i).getRegion()),
 						"Regional cube association %s doesn't match the seismicity region at that index", i);
 		}
-		
-		EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(
-				Math.max(maxMagOff, sol.getRupSet().getMaxMag()));
 		
 		NSHM23_AbstractGridSourceProvider ret;
 		if (seisRegions.size() == 1) {
@@ -829,6 +874,76 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		}
 //		EvenlyDiscretizedFunc depthNuclDistFunc = NSHM23_SeisDepthDistributions.load(region);
 		
+		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, binnedDepthDistFunc,
+				fractStrikeSlip, fractNormal, fractReverse);
+	}
+	
+	public static NSHM23_FaultCubeAssociations buildU3IngredientsFaultCubeAssociations(FaultSystemRupSet rupSet) throws IOException {
+		GriddedRegion modelGridReg = new CaliforniaRegions.RELM_TESTING_GRIDDED();
+		return new NSHM23_FaultCubeAssociations(rupSet, new CubedGriddedRegion(modelGridReg),
+				NSHM23_SingleRegionGridSourceProvider.DEFAULT_MAX_FAULT_NUCL_DIST);
+	}
+	
+	public static NSHM23_SingleRegionGridSourceProvider buildU3IngredientsGridSourceProv(FaultSystemSolution sol,
+			double totRateM5, SpatialSeisPDF spatSeisPDF, double maxMagOff, EvenlyDiscretizedFunc refMFD,
+			NSHM23_FaultCubeAssociations cubeAssociations) throws IOException {
+		// total G-R up to Mmax
+		GutenbergRichterMagFreqDist totalGR = new GutenbergRichterMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+		
+		// this sets shape, min/max
+		totalGR.setAllButTotCumRate(refMFD.getX(0), refMFD.getX(refMFD.getClosestXIndex(maxMagOff)), 1e16, 1d);
+		// this scales it to match
+		totalGR.scaleToCumRate(refMFD.getClosestXIndex(5.001), totRateM5);
+		
+		totalGR.setName("Total Observed [b=1, N5="+(float)totRateM5+"]");
+		
+		GriddedRegion gridReg = cubeAssociations.getRegion();
+
+		// figure out what's left for gridded seismicity
+		IncrementalMagFreqDist totalGridded = new IncrementalMagFreqDist(
+				refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+
+		IncrementalMagFreqDist solNuclMFD = sol.calcNucleationMFD_forRegion(
+				gridReg, refMFD.getMinX(), refMFD.getMaxX(), refMFD.size(), false);
+		for (int i=0; i<totalGR.size(); i++) {
+			double totalRate = totalGR.getY(i);
+			if (totalRate > 0) {
+				double solRate = solNuclMFD.getY(i);
+				if (solRate > totalRate) {
+					System.err.println("WARNING: MFD bulge at M="+(float)refMFD.getX(i)
+					+"\tGR="+(float)totalRate+"\tsol="+(float)solRate);
+				} else {
+					totalGridded.set(i, totalRate - solRate);
+				}
+			}
+		}
+
+		// focal mechanisms
+		double[] fractStrikeSlip = new GridReader("StrikeSlipWts.txt").getValues();
+		double[] fractReverse = new GridReader("ReverseWts.txt").getValues();
+		double[] fractNormal = new GridReader("NormalWts.txt").getValues();
+
+		// spatial seismicity PDF
+		double[] pdf = spatSeisPDF.getPDF();
+		
+		Preconditions.checkState(pdf.length == gridReg.getNodeCount(),
+				"PDF has %s nodes but grid reg has %s", pdf.length, gridReg.getNodeCount());
+		Preconditions.checkState(pdf.length == fractStrikeSlip.length,
+				"PDF has %s nodes but fract strike-slip has %s", pdf.length, fractStrikeSlip.length);
+		Preconditions.checkState(pdf.length == fractReverse.length,
+				"PDF has %s nodes but fract reverse has %s", pdf.length, fractReverse.length);
+		Preconditions.checkState(pdf.length == fractNormal.length,
+				"PDF has %s nodes but fract normal has %s", pdf.length, fractNormal.length);
+
+		// seismicity depth distribution
+		SeisDepthDistribution seisDepthDistribution = new SeisDepthDistribution();
+		double delta=2;
+		HistogramFunction binnedDepthDistFunc = new HistogramFunction(1d, 12,delta);
+		for(int i=0;i<binnedDepthDistFunc.size();i++) {
+			double prob = seisDepthDistribution.getProbBetweenDepths(binnedDepthDistFunc.getX(i)-delta/2d,binnedDepthDistFunc.getX(i)+delta/2d);
+			binnedDepthDistFunc.set(i,prob);
+		}
+
 		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, binnedDepthDistFunc,
 				fractStrikeSlip, fractNormal, fractReverse);
 	}

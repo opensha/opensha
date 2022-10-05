@@ -1,18 +1,26 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.EnumBackedLevel;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.commons.logicTree.LogicTreeNode;
 
 import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
+import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
+import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 
 /**
  * NSHM23 Logic Tree Branch implementation but using UCERF3 ingredients (FM, DM, Scaling)
@@ -24,6 +32,7 @@ public class NSHM23_U3_HybridLogicTreeBranch extends LogicTreeBranch<LogicTreeNo
 
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levels;
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsMaxDist;
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsOffFault;
 
 	// only U3-related ones here 
 	public static LogicTreeLevel<FaultModels> U3_FM =
@@ -39,6 +48,16 @@ public class NSHM23_U3_HybridLogicTreeBranch extends LogicTreeBranch<LogicTreeNo
 //	public static LogicTreeLevel<DistDependSegShift> SEG_SHIFT =
 //			LogicTreeLevel.forEnum(DistDependSegShift.class, "Dist-Dependent Seg Model Shift", "SegShift");
 	
+	/*
+	 * Gridded seismicity branch levels
+	 */
+	public static EnumBackedLevel<TotalMag5Rate> SEIS_RATE =
+			LogicTreeLevel.forEnum(TotalMag5Rate.class, "U3 Regional Seismicity Rate", "SeisRate");
+	public static EnumBackedLevel<SpatialSeisPDF> SEIS_PDF =
+			LogicTreeLevel.forEnum(SpatialSeisPDF.class, "U3 Spatial Seismicity PDF", "SpatSeisPDF");
+	public static EnumBackedLevel<MaxMagOffFault> MMAX_OFF =
+			LogicTreeLevel.forEnum(MaxMagOffFault.class, "U3 Off Fault Mmax", "MmaxOff");
+	
 	static {
 		// exhaustive for now, can trim down later
 		levels = List.of(U3_FM, NSHM23_LogicTreeBranch.PLAUSIBILITY, U3_WRAPPED_DM, SCALE, SLIP_ALONG,
@@ -49,6 +68,15 @@ public class NSHM23_U3_HybridLogicTreeBranch extends LogicTreeBranch<LogicTreeNo
 				NSHM23_LogicTreeBranch.SUPRA_B, NSHM23_LogicTreeBranch.SUB_SECT_CONSTR,
 				NSHM23_LogicTreeBranch.SUB_SEIS_MO, NSHM23_LogicTreeBranch.PALEO_UNCERT, NSHM23_LogicTreeBranch.MAX_DIST,
 				NSHM23_LogicTreeBranch.RUPS_THROUGH_CREEPING);
+		levelsOffFault = List.of(SEIS_RATE, SEIS_PDF, MMAX_OFF);
+		
+		// need to modify the gridded seismicity branch levels to indicate that they are decoupled from the supra-seis
+		// rate model (unlike in UCERF3)
+		Collection<String> gridSeisAffected = NSHM23_LogicTreeBranch.SEIS_RATE.getAffected();
+		Collection<String> gridSeisUnaffected = NSHM23_LogicTreeBranch.SEIS_RATE.getNotAffected();
+		SEIS_RATE.setAffected(gridSeisAffected, gridSeisUnaffected, false);
+		SEIS_PDF.setAffected(gridSeisAffected, gridSeisUnaffected, false);
+		MMAX_OFF.setAffected(gridSeisAffected, gridSeisUnaffected, false);
 	}
 	
 	/**
