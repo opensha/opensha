@@ -1226,6 +1226,9 @@ public class LogicTreeHazardCompare {
 				GriddedGeoDataSet.writeXYZFile(median, new File(resourcesDir, prefix+"_median.xyz"));
 				
 				if (cmean == null) {
+					lines.add("### Mean and median hazard maps, "+label);
+					lines.add(topLink); lines.add("");
+					
 					TableBuilder table = MarkdownUtils.tableBuilder();
 					// no comparison, simple table
 					table.initNewLine();
@@ -1238,9 +1241,11 @@ public class LogicTreeHazardCompare {
 					lines.addAll(table.build());
 					lines.add("");
 				} else {
-					TableBuilder table = MarkdownUtils.tableBuilder();
 					lines.add("### Mean hazard maps and comparisons, "+label);
-					lines.add("");
+					lines.add(topLink); lines.add("");
+					
+					TableBuilder table = MarkdownUtils.tableBuilder();
+					
 					// comparison
 					File cmeanMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_mean", log10(cmean),
 							logCPT, TITLES ? compName : " ", "Log10 Weighted-Average, "+label);
@@ -1285,7 +1290,7 @@ public class LogicTreeHazardCompare {
 					lines.add("");
 					
 					lines.add("### Median hazard maps and comparisons, "+label);
-					lines.add("");
+					lines.add(topLink); lines.add("");
 					
 					table = MarkdownUtils.tableBuilder();
 					table.initNewLine();
@@ -1325,7 +1330,7 @@ public class LogicTreeHazardCompare {
 					table.addColumn("![Median Percentile Map]("+resourcesDir.getName()+"/"+map.getName()+")");
 					table.finalizeLine();
 					lines.add("### Percentile comparison maps, "+label);
-					lines.add("");
+					lines.add(topLink); lines.add("");
 					lines.add("The maps below show where the comparison (_"+compName+"_) model mean (left column) and "
 							+ "median (right column) map lies within the primary model (_"+name+"_) distribution. "
 							+ "Areas where the comparison mean or median map is outside the primary model distribution "
@@ -1367,10 +1372,8 @@ public class LogicTreeHazardCompare {
 				lines.addAll(table.build());
 				lines.add("");
 				
-				if (cmean != null) {
-					lines.add("### Bounds, spread, and COV, "+label);
-					lines.add("");
-				}
+				lines.add("### Bounds, spread, and COV, "+label);
+				lines.add(topLink); lines.add("");
 				
 				String minMaxStr = "The maps below show the range of values across all logic tree branches, the ratio of "
 						+ "the maximum to minimum value, and the coefficient of variation (std. dev. / mean). Note that "
