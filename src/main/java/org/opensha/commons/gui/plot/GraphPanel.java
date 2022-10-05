@@ -54,6 +54,7 @@ import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYBlockRenderer;
 import org.jfree.chart.renderer.xy.XYItemRenderer;
+import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.title.LegendTitle;
 import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.chart.title.Title;
@@ -651,6 +652,7 @@ public class GraphPanel extends JSplitPane {
 			PlotCurveCharacterstics prevChars = null;
 			DiscretizedFunctionXYDataSet prevDataset = null;
 			XYItemRenderer prevRenderer = null;
+			boolean reusable = false;
 			int numDatasetsReused = 0;
 
 			for(PlotElement elem : elems) {
@@ -689,12 +691,14 @@ public class GraphPanel extends JSplitPane {
 							"elem.getDatasetsToPlot() and elem.getPlotNumColorList() are inconsistent");
 					
 					XY_DataSetList dataFunctions = new XY_DataSetList();
+					boolean reuseCandidate = true;
 					for (int i=0; i<numShared; i++) {
 						// now add a copy of our curve characteristic for every line that shares it
 						XY_DataSet func = elemDatasets.get(datasetInElemIndex++);
 						dataFunctions.add(func);
 						plottedFuncs.add(func);
 						plottedChars.add(chars);
+						reuseCandidate = reuseCandidate && (!plotSpec.isLegendVisible() || func.getName() == null);
 					}
 					charIndex++;
 					
@@ -702,19 +706,18 @@ public class GraphPanel extends JSplitPane {
 					if (isBlankCurve(chars))
 						continue;
 					
-					if (prevDataset != null && chars == prevChars) {
+					if (reuseCandidate && prevDataset != null && chars == prevChars) {
 						// we can reuse the previous one
 						// this will speed up plotting
 						int prevNum = prevDataset.getFunctions().size();
 						prevDataset.getFunctions().addAll(dataFunctions);
 						int newNum = prevDataset.getFunctions().size();
-						Color color = chars.getColor();
-						for (int i=prevNum; i<newNum; i++)
-							prevRenderer.setSeriesPaint(i, color);
+						copyRendererSeriesValues(prevRenderer, 0, prevNum, newNum-1);
 						numDatasetsReused++;
 						continue;
 					}
 					
+					// new dataset
 					Color color = chars.getColor();
 					float lineWidth = chars.getLineWidth();
 					PlotLineType lineType = chars.getLineType();
@@ -742,16 +745,22 @@ public class GraphPanel extends JSplitPane {
 //					drawCurvesUsingPlottingFeatures(subPlot, lineType, lineWidth, symbol, symbolWidth, color, dataIndex);
 					
 					XYItemRenderer renderer = PlotLineType.buildRenderer(lineType, symbol, lineWidth, symbolWidth);
+					
 					subPlot.setRenderer(datasetIndex, renderer);
 //					xyItemRenderer.setPaint(color);
-					for (int i=0; i<numShared; i++)
-						renderer.setSeriesPaint(i, color);
+					renderer.setSeriesPaint(0, color);
+					copyRendererSeriesValues(renderer, 0, 1, numShared-1);
 //					xyItemRenderer.setDefaultPaint(color);
 					datasetIndex++;
 					
 					prevDataset = dataset;
 					prevChars = chars;
 					prevRenderer = renderer;
+					// reusable if simple line/shape and not part of the legend
+					reusable = renderer instanceof XYLineAndShapeRenderer && !plotSpec.isLegendVisible();
+					for (int i=0; reusable && i<dataFunctions.size(); i++)
+						// only reusable if not in a legend
+						reusable = dataFunctions.getName() == null;
 				}
 				Preconditions.checkState(datasetInElemIndex == totNumDatasets,
 						"elem.getDatasetsToPlot() and elem.getPlotNumColorList() are inconsistent");
@@ -989,6 +998,28 @@ public class GraphPanel extends JSplitPane {
 		this.plottedChars = plottedChars;
 		
 		return ;
+	}
+	
+	private static void copyRendererSeriesValues(XYItemRenderer renderer, int refIndex, int startIndex, int endIndex) {
+		Paint paint = renderer.getSeriesPaint(refIndex);
+		Stroke stroke = renderer.getSeriesStroke(refIndex);
+		Shape shape = renderer.getSeriesShape(refIndex);
+		
+		Paint outlinePaint = renderer.getSeriesOutlinePaint(refIndex);
+		Stroke outlineStroke = renderer.getSeriesOutlineStroke(refIndex);
+		
+		Paint fillPaint = renderer.getSeriesFillPaint(refIndex);
+		
+		for (int i=startIndex; i<=endIndex; i++) {
+			renderer.setSeriesPaint(i, paint);
+			renderer.setSeriesStroke(i, stroke);
+			renderer.setSeriesShape(i, shape);
+			
+			renderer.setSeriesOutlinePaint(i, outlinePaint);
+			renderer.setSeriesOutlineStroke(i, outlineStroke);
+			
+			renderer.setSeriesFillPaint(i, fillPaint);
+		}
 	}
 	
 	public static void setupPlot(XYPlot plot, int tickFontSize) {
