@@ -1432,13 +1432,13 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			else if (branchMFDs.getNumBranches() > 100)
 				alpha = 100;
 			else
-				alpha = 120;
+				alpha = 160;
 //			Color indvColor = new Color(MAIN_COLOR.getRed(), MAIN_COLOR.getGreen(), MAIN_COLOR.getBlue(), alpha);
-			Color indvColor = new Color(0, 0, 0, alpha);
+			Color indvColor = new Color(80, 80, 80, alpha);
 			PlotCurveCharacterstics indvCurveChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, indvColor);
 
-			Color minColor = Color.GREEN.darker().darker();
-			Color maxColor = Color.MAGENTA.darker().darker();
+			Color minColor = Color.GREEN.darker();
+			Color maxColor = Color.MAGENTA.darker();
 			
 			IncrementalMagFreqDist minMFD = null;
 			double minRate = Double.POSITIVE_INFINITY;
@@ -1494,7 +1494,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				cmlFuncs.get(0).setName("Individual Branches");
 				
 				// add min/max
-				PlotCurveCharacterstics minChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, minColor);
+				PlotCurveCharacterstics minChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, minColor);
 				// so that we can change the name
 				minMFD = minMFD.deepClone();
 				minMFD.setName("Min Rate MFD");
@@ -1502,7 +1502,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				incrFuncs.add(minMFD);
 				incrChars.add(minChar);
 				
-				PlotCurveCharacterstics maxChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, maxColor);
+				PlotCurveCharacterstics maxChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, maxColor);
 				// so that we can change the name
 				maxMFD = maxMFD.deepClone();
 				maxMFD.setName("Max Rate MFD");
