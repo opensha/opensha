@@ -1489,7 +1489,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			}
 			
 			// make sure we're not all zero
-			if (incrFuncs.size() > 0) {
+			if (incrFuncs.size() > 0 && maxMFD != null) {
 				incrFuncs.get(0).setName("Individual Branches");
 				cmlFuncs.get(0).setName("Individual Branches");
 				
