@@ -305,8 +305,8 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	}
 	
 	public static <E extends LogicTreeNode> LogicTree<E> buildExhaustive(
-			List<LogicTreeLevel<? extends E>> levels, boolean onlyNonZeroWeight) {
-		return buildExhaustive(levels, onlyNonZeroWeight, new BranchWeightProvider.CurrentWeights());
+			List<LogicTreeLevel<? extends E>> levels, boolean onlyNonZeroWeight, LogicTreeNode... required) {
+		return buildExhaustive(levels, onlyNonZeroWeight, new BranchWeightProvider.CurrentWeights(), required);
 	}
 	
 	/**
@@ -321,22 +321,37 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	 * @return
 	 */
 	public static <E extends LogicTreeNode> LogicTree<E> buildExhaustive(
-			List<LogicTreeLevel<? extends E>> levels, boolean onlyNonZeroWeight, BranchWeightProvider weightProv) {
+			List<LogicTreeLevel<? extends E>> levels, boolean onlyNonZeroWeight, BranchWeightProvider weightProv, LogicTreeNode... required) {
 		List<LogicTreeBranch<E>> branches = new ArrayList<>();
 		
 		LogicTreeBranch<E> emptyBranch = new LogicTreeBranch<>(levels);
 		
-		buildBranchesRecursive(levels, branches, emptyBranch, 0, onlyNonZeroWeight, weightProv);
+		buildBranchesRecursive(levels, branches, emptyBranch, 0, onlyNonZeroWeight, weightProv, required);
 		
 		return new LogicTree<>(levels, branches, DEFAULT_WEIGHTS);
 	}
 	
 	private static <E extends LogicTreeNode> void buildBranchesRecursive(List<LogicTreeLevel<? extends E>> levels,
 			List<LogicTreeBranch<E>> branches, LogicTreeBranch<E> curBranch, int curIndex, boolean onlyNonZeroWeight,
-			BranchWeightProvider weightProv) {
-		for (E node : levels.get(curIndex).getNodes()) {
+			BranchWeightProvider weightProv, LogicTreeNode[] required) {
+		LogicTreeLevel<? extends E> level = levels.get(curIndex);
+		for (E node : level.getNodes()) {
 			if (onlyNonZeroWeight && weightProv == null && node.getNodeWeight(curBranch) == 0d)
 				continue;
+			if (required != null) {
+				boolean hasRequired = true;
+				for (LogicTreeNode requiredNode : required) {
+					if (level.isMember(requiredNode)) {
+						// there's a requirement for this level
+						if (!node.equals(requiredNode)) {
+							hasRequired = false;
+							break;
+						}
+					}
+				}
+				if (!hasRequired)
+					continue;
+			}
 			LogicTreeBranch<E> copy = curBranch.copy();
 			copy.setValue(curIndex, node);
 			if (onlyNonZeroWeight && weightProv != null && weightProv.getWeight(copy) == 0d)
@@ -353,10 +368,15 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 					double weight = copy.getBranchWeight();
 					Preconditions.checkState(weight > 0d);
 				}
+				if (required != null) {
+					// make sure we actually satisfied all of the requirements
+					for (LogicTreeNode requiredNode : required)
+						Preconditions.checkState(copy.hasValue(requiredNode), "Built a branch but missed a required node: %s. Full branch: %s", requiredNode.getShortName(), copy);
+				}
 				branches.add(copy);
 			} else {
 				// continue to the next level
-				buildBranchesRecursive(levels, branches, copy, curIndex+1, onlyNonZeroWeight, weightProv);
+				buildBranchesRecursive(levels, branches, copy, curIndex+1, onlyNonZeroWeight, weightProv, required);
 			}
 		}
 	}
