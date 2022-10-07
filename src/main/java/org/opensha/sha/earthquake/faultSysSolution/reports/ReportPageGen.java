@@ -1213,7 +1213,7 @@ public class ReportPageGen {
 		ops.addOption(maxDistOption);
 		
 		Option plotLevelOption = new Option("pl", "plot-level", true,
-				"This determins which set of plots should be included. One of: "
+				"This determines which set of plots should be included. One of: "
 						+FaultSysTools.enumOptions(PlotLevel.class)+". Default: "+PLOT_LEVEL_DEFAULT.name());
 		plotLevelOption.setRequired(false);
 		ops.addOption(plotLevelOption);
