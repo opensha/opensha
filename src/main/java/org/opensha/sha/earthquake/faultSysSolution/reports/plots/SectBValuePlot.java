@@ -643,7 +643,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 			diffs[i] = bValues[i] - compBValues[i];
 		
 		File histDiffPlot = histPlot(outputDir, prefix+"_hist_diff", diffs, "Primary - "+compName+" b-value", color);
-		File compScatterPlot = compScatterPlot(outputDir, prefix+"_scatter", bValues, compBValues, color);
+		File compScatterPlot = compScatterPlot(outputDir, prefix+"_scatter", bValues, compBValues, color, compName);
 		
 		table.addLine(MarkdownUtils.boldCentered(compName+" b-value Difference"), MarkdownUtils.boldCentered(compName+" b-value Scatter"));
 		table.addLine("![Histogram]("+relPath+"/"+histDiffPlot.getName()+")",
@@ -706,7 +706,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 	}
 	
 	private static File compScatterPlot(File outputDir, String prefix, double[] bValues1, double[] bValues2,
-			Color color) throws IOException {
+			Color color, String compName) throws IOException {
 		XY_DataSet scatter = new DefaultXY_DataSet();
 		
 		for (int i=0; i<bValues1.length; i++)
@@ -723,7 +723,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		funcs.add(line);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, Color.GRAY));
 		
-		PlotSpec spec = new PlotSpec(funcs, chars, " ", "Primary B-Value", "Comparison B-Value");
+		PlotSpec spec = new PlotSpec(funcs, chars, " ", "Primary B-Value", compName+" B-Value");
 		
 		HeadlessGraphPanel gp = PlotUtils.initHeadless();
 		
