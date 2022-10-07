@@ -292,7 +292,7 @@ public class BranchAverageSolutionCreator {
 		}
 	}
 	
-	public FaultSystemSolution build() {
+	public synchronized FaultSystemSolution build() {
 		Preconditions.checkState(!weights.isEmpty(), "No solutions added!");
 		Preconditions.checkState(totWeight > 0, "Total weight is not positive: %s", totWeight);
 		
@@ -424,6 +424,10 @@ public class BranchAverageSolutionCreator {
 		}
 		
 		sol.addModule(new InfoModule(info));
+		// reset these to make sure we don't reuse this as it's now invalid
+		avgRates = null;
+		weights = new ArrayList<>();
+		totWeight = 0d;
 		return sol;
 	}
 	
