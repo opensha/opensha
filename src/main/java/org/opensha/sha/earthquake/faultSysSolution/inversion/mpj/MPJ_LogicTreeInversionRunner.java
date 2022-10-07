@@ -181,13 +181,17 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 			info = "";
 		else
 			info += "; ";
-	    
-	    System.gc();
+		
+		debug(info+memoryString());
+	}
+	
+	static String memoryString() {
+		System.gc();
 		Runtime rt = Runtime.getRuntime();
 		long totalMB = rt.totalMemory() / 1024 / 1024;
 		long freeMB = rt.freeMemory() / 1024 / 1024;
 		long usedMB = totalMB - freeMB;
-		debug(info+"mem t/u/f: "+totalMB+"/"+usedMB+"/"+freeMB);
+		return "mem t/u/f: "+totalMB+"/"+usedMB+"/"+freeMB;
 	}
 	
 	private static void waitOnDir(File dir, int maxRetries, long sleepMillis) {
