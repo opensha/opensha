@@ -19,6 +19,7 @@ import java.util.Map;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.modules.OpenSHA_Module;
@@ -338,10 +339,7 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 	private EvenlyDiscretizedFunc[] calcFractiles(double[] sectFracts, double[] fractiles, boolean cumulative) {
 		EvenlyDiscretizedFunc refMFD = cumulative ? this.refMFD.getCumRateDistWithOffset() : this.refMFD;
 		
-		ArbDiscrEmpiricalDistFunc[] dists = new ArbDiscrEmpiricalDistFunc[refMFD.size()];
-		
-		for (int i=0; i<dists.length; i++)
-			dists[i] = new ArbDiscrEmpiricalDistFunc();
+		double[][] branchVals = new double[refMFD.size()][branchSectMFDs.length];
 		
 		for (int b=0; b<branchSectMFDs.length; b++) {
 			IncrementalMagFreqDist branchMFD = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
@@ -364,12 +362,17 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 			if (cumulative) {
 				EvenlyDiscretizedFunc branchCmlMFD = branchMFD.getCumRateDistWithOffset();
 				for (int i=0; i<branchCmlMFD.size(); i++)
-					dists[i].set(branchCmlMFD.getY(i), weights[b]);
+					branchVals[i][b] = branchCmlMFD.getY(i);
 			} else {
 				for (int i=0; i<branchMFD.size(); i++)
-					dists[i].set(branchMFD.getY(i), weights[b]);
+					branchVals[i][b] = branchMFD.getY(i);
 			}
 		}
+		
+		LightFixedXFunc[] normCDFs = new LightFixedXFunc[refMFD.size()];
+		
+		for (int i=0; i<normCDFs.length; i++)
+			normCDFs[i] = ArbDiscrEmpiricalDistFunc.calcQuickNormCDF(branchVals[i], weights);
 		
 		EvenlyDiscretizedFunc[] ret = cumulative ?
 				new EvenlyDiscretizedFunc[fractiles.length] : new IncrementalMagFreqDist[fractiles.length];
@@ -380,8 +383,15 @@ public class BranchSectNuclMFDs implements FileBackedModule {
 				ret[f] = new EvenlyDiscretizedFunc(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
 			else
 				ret[f] = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
-			for (int i=0; i<dists.length; i++)
-				ret[f].set(i, dists[i].getInterpolatedFractile(fractiles[f]));
+			for (int i=0; i<normCDFs.length; i++) {
+				LightFixedXFunc ncdf = normCDFs[i];
+				if ((float)fractiles[f] <= (float)ncdf.getMinY())
+					ret[f].set(i, ncdf.getX(0));
+				else if (fractiles[f] == 1d)
+					ret[f].set(i, ncdf.getX(ncdf.size()-1));
+				else
+					ret[f].set(i, ncdf.getFirstInterpolatedX(fractiles[f]));
+			}
 		}
 		
 		return ret;

@@ -10,6 +10,7 @@ import java.util.zip.ZipOutputStream;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.modules.ArchivableModule;
@@ -592,23 +593,25 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 	
 	private EvenlyDiscretizedFunc[] calcFractiles(IncrementalMagFreqDist[] mfds, double[] fractiles, boolean cumulative) {
 		EvenlyDiscretizedFunc refMFD = cumulative ? mfds[0].getCumRateDistWithOffset() : mfds[0];
-		
-		ArbDiscrEmpiricalDistFunc[] dists = new ArbDiscrEmpiricalDistFunc[refMFD.size()];
-		
-		for (int i=0; i<dists.length; i++)
-			dists[i] = new ArbDiscrEmpiricalDistFunc();
+		 
+		double[][] branchVals = new double[refMFD.size()][mfds.length];
 		
 		for (int b=0; b<mfds.length; b++) {
 			IncrementalMagFreqDist branchMFD = mfds[b];
 			if (cumulative) {
 				EvenlyDiscretizedFunc branchCmlMFD = branchMFD.getCumRateDistWithOffset();
 				for (int i=0; i<branchCmlMFD.size(); i++)
-					dists[i].set(branchCmlMFD.getY(i), weights[b]);
+					branchVals[i][b] = branchCmlMFD.getY(i);
 			} else {
 				for (int i=0; i<branchMFD.size(); i++)
-					dists[i].set(branchMFD.getY(i), weights[b]);
+					branchVals[i][b] = branchMFD.getY(i);
 			}
 		}
+		
+		LightFixedXFunc[] normCDFs = new LightFixedXFunc[refMFD.size()];
+		
+		for (int i=0; i<normCDFs.length; i++)
+			normCDFs[i] = ArbDiscrEmpiricalDistFunc.calcQuickNormCDF(branchVals[i], weights);
 		
 		EvenlyDiscretizedFunc[] ret = cumulative ?
 				new EvenlyDiscretizedFunc[fractiles.length] : new IncrementalMagFreqDist[fractiles.length];
@@ -619,8 +622,15 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 				ret[f] = new EvenlyDiscretizedFunc(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
 			else
 				ret[f] = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
-			for (int i=0; i<dists.length; i++)
-				ret[f].set(i, dists[i].getInterpolatedFractile(fractiles[f]));
+			for (int i=0; i<normCDFs.length; i++) {
+				LightFixedXFunc ncdf = normCDFs[i];
+				if ((float)fractiles[f] <= (float)ncdf.getMinY())
+					ret[f].set(i, ncdf.getX(0));
+				else if (fractiles[f] == 1d)
+					ret[f].set(i, ncdf.getX(ncdf.size()-1));
+				else
+					ret[f].set(i, ncdf.getFirstInterpolatedX(fractiles[f]));
+			}
 		}
 		
 		return ret;

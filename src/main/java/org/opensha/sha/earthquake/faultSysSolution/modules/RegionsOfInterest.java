@@ -131,7 +131,7 @@ BranchAverageableModule<RegionsOfInterest> {
 
 	@Override
 	public AveragingAccumulator<RegionsOfInterest> averagingAccumulator() {
-		// TODO Auto-generated method stub
+		
 		return new AveragingAccumulator<>() {
 			
 			private List<Region> regions;
