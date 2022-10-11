@@ -1544,6 +1544,20 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		}
 	}
 	
+	public static class ConstantSlipRateStdDev0p1 extends NSHM23_InvConfigFactory {
+		
+		public ConstantSlipRateStdDev0p1() {
+			NSHM23_DeformationModels.HARDCODED_FRACTIONAL_STD_DEV = 0.1d;
+		}
+	}
+	
+	public static class ConstantSlipRateStdDev0p2 extends NSHM23_InvConfigFactory {
+		
+		public ConstantSlipRateStdDev0p2() {
+			NSHM23_DeformationModels.HARDCODED_FRACTIONAL_STD_DEV = 0.2d;
+		}
+	}
+	
 	/**
 	 * Extend down-dip width of all faults
 	 * 

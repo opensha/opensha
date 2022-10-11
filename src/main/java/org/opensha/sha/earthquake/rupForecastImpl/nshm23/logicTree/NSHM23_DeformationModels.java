@@ -177,6 +177,11 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	 */
 	public static final double STD_DEV_FLOOR = 1e-4;
 	
+	/**
+	 * If nonzero, will use this fractional standard deviation everywhere rather than those from the deformation model
+	 */
+	public static double HARDCODED_FRACTIONAL_STD_DEV = 0d;
+	
 	/*
 	 * Creep parameters
 	 */
@@ -525,6 +530,25 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		Map<Integer, GeoJSONFaultSection> geoSects = null; // may be needed if zeros are encountered
 		
 		System.out.println("Checking slip rate standard deviations for "+name());
+		
+		if (HARDCODED_FRACTIONAL_STD_DEV > 0d) {
+			System.out.println("Overriding deformation model slip rates std devs and using hardcoded fractional value: "
+					+HARDCODED_FRACTIONAL_STD_DEV);
+			
+			for (FaultSection sect : subSects) {
+				double slipRate = sect.getOrigAveSlipRate();
+				Preconditions.checkState(Double.isFinite(slipRate) && slipRate >= 0d, "Bad slip rate for %s. %s: %s",
+						sect.getSectionId(), sect.getSectionName(), slipRate);
+				double stdDev;
+				if ((float)slipRate == 0f)
+					stdDev = STD_DEV_FLOOR;
+				else
+					stdDev = HARDCODED_FRACTIONAL_STD_DEV * slipRate;
+				sect.setSlipRateStdDev(stdDev);
+			}
+			
+			return subSects;
+		}
 		
 		int numZeroSlips = 0;
 		int numGeoDefault = 0;
