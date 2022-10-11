@@ -97,7 +97,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			NSHM23_SlipAlongRuptureModels.UNIFORM,
 			SupraSeisBValues.B_0p5,
 			SubSectConstraintModels.TOT_NUCL_RATE,
-			SubSeisMoRateReductions.SUB_B_1,
+			SubSeisMoRateReductions.NONE,
 			NSHM23_PaleoUncertainties.EVEN_FIT,
 			NSHM23_SegmentationModels.MID,
 			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG);
