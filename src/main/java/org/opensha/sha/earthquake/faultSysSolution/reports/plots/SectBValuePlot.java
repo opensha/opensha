@@ -41,6 +41,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectBVals;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectNuclMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
@@ -113,12 +114,13 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		
 		System.out.println("Writing b-value CSV files");
 		File sectCSV = new File(resourcesDir, prefix+".csv");
-		writeSectCSV(sectCSV, sol.getRupSet().getFaultSectionDataList(), sectBVals, targetSectBVals);
+		writeSectCSV(sectCSV, sol.getRupSet().getFaultSectionDataList(), sectBVals, targetSectBVals,
+				branchBVals, sol.getModule(BranchSectNuclMFDs.class));
 		String downloadLine = "Download b-value CSV file"+(compSol == null ? "" : "s")+": ["
 				+sectCSV.getName()+"]("+relPathToResources+"/"+sectCSV.getName()+")";
 		if (compSectBVals != null) {
 			File compSectCSV = new File(resourcesDir, prefix+"_comp.csv");
-			writeSectCSV(compSectCSV, compSol.getRupSet().getFaultSectionDataList(), compSectBVals, null);
+			writeSectCSV(compSectCSV, compSol.getRupSet().getFaultSectionDataList(), compSectBVals, null, null, null);
 			
 			downloadLine += " ["+compSectCSV.getName()+"]("+relPathToResources+"/"+compSectCSV.getName()+")";
 		}
@@ -193,12 +195,14 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		
 		System.out.println("Writing b-value CSV files");
 		sectCSV = new File(resourcesDir, prefix+".csv");
-		writeParentSectCSV(sectCSV, parentNames, parentBValsMap, parentTargetBValsMap);
+		writeParentSectCSV(sectCSV, parentNames, parentBValsMap, parentTargetBValsMap,
+				meta.primary.rupSet.getFaultSectionDataList(), branchBVals, sol.getModule(BranchSectNuclMFDs.class));
 		downloadLine = "Download b-value CSV file"+(compSol == null ? "" : "s")+": ["
 				+sectCSV.getName()+"]("+relPathToResources+"/"+sectCSV.getName()+")";
 		if (compSectBVals != null) {
 			File compSectCSV = new File(resourcesDir, prefix+"_comp.csv");
-			writeParentSectCSV(compSectCSV, parentNames, compParentBValsMap, parentTargetBValsMap);
+			writeParentSectCSV(compSectCSV, parentNames, compParentBValsMap, parentTargetBValsMap,
+					meta.comparison.rupSet.getFaultSectionDataList(), null, null);
 			
 			downloadLine += " ["+compSectCSV.getName()+"]("+relPathToResources+"/"+compSectCSV.getName()+")";
 		}
@@ -740,23 +744,54 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 	}
 	
 	private static void writeSectCSV(File outputFile, List<? extends FaultSection> sects, BValEstimate[] bVals,
-			BValEstimate[] bValTargets) throws IOException {
+			BValEstimate[] bValTargets, BranchSectBVals branchBVals, BranchSectNuclMFDs branchMFDs) throws IOException {
 		CSVFile<String> csv = new CSVFile<>(true);
 		
 		List<String> header = BValEstimate.tableHeader("sect index", "sect name");
+		if (branchBVals != null) {
+			header.add("min branch b-value");
+			header.add("max branch b-value");
+			header.add("mean branch b-value");
+		}
+		if (branchMFDs != null) {
+			header.add("min branch supra-seis event rate");
+			header.add("max branch supra-seis event rate");
+		}
 		if (bValTargets != null) {
 			header.add("target MFD b-value");
 			header.add("target supra-seis event rate");
 			header.add("target supra-seis moment rate");
+			if (branchBVals != null && branchBVals.hasTargetBVals()) {
+				header.add("min branch target b-value");
+				header.add("max branch target b-value");
+				header.add("mean branch target b-value");
+			}
 		}
 		csv.addLine(header);
 		for (int s=0; s<sects.size(); s++) {
 			FaultSection sect = sects.get(s);
 			List<String> line = bVals[s].tableLine(s+"", sect.getName());
+			if (branchBVals != null) {
+				ArbDiscrEmpiricalDistFunc dist = branchBVals.getSectBValDist(s);
+				line.add((float)dist.getMinX()+"");
+				line.add((float)dist.getMaxX()+"");
+				line.add((float)dist.getMean()+"");
+			}
+			if (branchMFDs != null) {
+				EvenlyDiscretizedFunc[] cmlMFDs = branchMFDs.calcCumulativeSectFractiles(List.of(s), 0d, 1d);
+				line.add((float)cmlMFDs[0].getY(0)+"");
+				line.add((float)cmlMFDs[1].getY(0)+"");
+			}
 			if (bValTargets != null) {
 				line.add((float)bValTargets[s].b+"");
 				line.add(bValTargets[s].supraRate+"");
 				line.add(bValTargets[s].moRate+"");
+				if (branchBVals != null && branchBVals.hasTargetBVals()) {
+					ArbDiscrEmpiricalDistFunc dist = branchBVals.getSectTargetBValDist(s);
+					line.add((float)dist.getMinX()+"");
+					line.add((float)dist.getMaxX()+"");
+					line.add((float)dist.getMean()+"");
+				}
 			}
 			csv.addLine(line);
 		}
@@ -765,26 +800,66 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 	}
 	
 	private static void writeParentSectCSV(File outputFile, Map<Integer, String> parentNames,
-			Map<Integer, BValEstimate> bVals, Map<Integer, BValEstimate> bValTargets) throws IOException {
+			Map<Integer, BValEstimate> bVals, Map<Integer, BValEstimate> bValTargets,
+			List<? extends FaultSection> subSects, BranchSectBVals branchBVals, BranchSectNuclMFDs branchMFDs)
+					throws IOException {
 		CSVFile<String> csv = new CSVFile<>(true);
 		
 		List<Integer> parentIDs = ComparablePairing.getSortedData(parentNames);
 		
+		if (branchBVals != null && !branchBVals.hasParentBVals())
+			branchBVals = null;
+		
 		List<String> header = BValEstimate.tableHeader("parent sect ID", "parent sect name");
+		if (branchBVals != null) {
+			header.add("min branch b-value");
+			header.add("max branch b-value");
+			header.add("mean branch b-value");
+		}
+		if (branchMFDs != null) {
+			header.add("min branch supra-seis event rate");
+			header.add("max branch supra-seis event rate");
+		}
 		if (bValTargets != null) {
 			header.add("target MFD b-value");
 			header.add("target supra-seis event rate");
 			header.add("target supra-seis moment rate");
+			if (branchBVals != null && branchBVals.hasTargetBVals()) {
+				header.add("min branch target b-value");
+				header.add("max branch target b-value");
+				header.add("mean branch target b-value");
+			}
 		}
 		csv.addLine(header);
 		for (int parentID : parentIDs) {
 			String name = parentNames.get(parentID);
 			List<String> line = bVals.get(parentID).tableLine(parentID+"", name);
+			if (branchBVals != null) {
+				ArbDiscrEmpiricalDistFunc dist = branchBVals.getParentBValDist(parentID);
+				line.add((float)dist.getMinX()+"");
+				line.add((float)dist.getMaxX()+"");
+				line.add((float)dist.getMean()+"");
+			}
+			if (branchMFDs != null) {
+				List<Integer> sectIDs = new ArrayList<>();
+				for (FaultSection sect : subSects)
+					if (sect.getParentSectionId() == parentID)
+						sectIDs.add(sect.getSectionId());
+				EvenlyDiscretizedFunc[] cmlMFDs = branchMFDs.calcCumulativeSectFractiles(sectIDs, 0d, 1d);
+				line.add((float)cmlMFDs[0].getY(0)+"");
+				line.add((float)cmlMFDs[1].getY(0)+"");
+			}
 			if (bValTargets != null) {
 				BValEstimate target = bValTargets.get(parentID);
 				line.add((float)target.b+"");
 				line.add(target.supraRate+"");
 				line.add(target.moRate+"");
+				if (branchBVals != null && branchBVals.hasTargetBVals()) {
+					ArbDiscrEmpiricalDistFunc dist = branchBVals.getParentTargetBValDist(parentID);
+					line.add((float)dist.getMinX()+"");
+					line.add((float)dist.getMaxX()+"");
+					line.add((float)dist.getMean()+"");
+				}
 			}
 			csv.addLine(line);
 		}
