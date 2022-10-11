@@ -124,7 +124,7 @@ public class PointSourceNshm extends ProbEqkSource {
    * @param mechWtMap <code>Map</code> of focal mechanism weights
    */
   public PointSourceNshm(Location loc, IncrementalMagFreqDist mfd,
-      double duration, double[] depths, Map<FocalMech, Double> mechWtMap) {
+      double duration, Map<FocalMech, Double> mechWtMap) {
 
     name = NAME; // super
     this.loc = loc;
@@ -453,7 +453,7 @@ public class PointSourceNshm extends ProbEqkSource {
     mechMap.put(FocalMech.REVERSE, 0.0);
     mechMap.put(FocalMech.NORMAL, 1.0);
 
-    PointSourceNshm ptSrc = new PointSourceNshm(srcLoc, mfd, 1.0, depths, mechMap);
+    PointSourceNshm ptSrc = new PointSourceNshm(srcLoc, mfd, 1.0, mechMap);
     Joiner J = Joiner.on(" ");
     for (ProbEqkRupture rup : ptSrc) {
       PointSurfaceNshm surf = (PointSurfaceNshm) rup.getRuptureSurface();
