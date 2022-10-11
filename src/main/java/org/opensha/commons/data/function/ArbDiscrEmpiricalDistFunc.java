@@ -3,7 +3,9 @@ package org.opensha.commons.data.function;
 import java.awt.geom.Point2D;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 
 import org.opensha.commons.data.Point2DToleranceComparator;
 import org.opensha.commons.exceptions.InvalidRangeException;
@@ -348,7 +350,100 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
 		for(int i=0; i<size();i++) this.set(i, 0.5*val*getY(i));
 	}
 
+	/**
+	 * Quick way to get a normalized CDF if that's all you need, which will be faster for large datasets
+	 * than using an actual {@link ArbDiscrEmpiricalDistFunc}.
+	 * @param values
+	 * @param weights
+	 * @return
+	 */
+	public static LightFixedXFunc calcQuickNormCDF(List<Double> values, List<Double> weights) {
+		Preconditions.checkState(values.size() == weights.size());
+		Preconditions.checkState(!values.isEmpty());
+		
+		ValWeights[] valWeights = new ValWeights[values.size()];
+		double totWeight = 0d;
+		for (int j=0; j<valWeights.length; j++) {
+			double weight = weights.get(j);
+			totWeight += weight;
+			valWeights[j] = new ValWeights(values.get(j), weight);
+		}
+		
+		return calcQuickNormCDF(valWeights, totWeight);
+	}
 
+	/**
+	 * Quick way to get a normalized CDF if that's all you need, which will be faster for large datasets
+	 * than using an actual {@link ArbDiscrEmpiricalDistFunc}.
+	 * @param values
+	 * @param weights
+	 * @return
+	 */
+	public static LightFixedXFunc calcQuickNormCDF(double[] values, double[] weights) {
+		Preconditions.checkState(values.length == weights.length);
+		Preconditions.checkState(values.length > 0);
+		
+		ValWeights[] valWeights = new ValWeights[values.length];
+		double totWeight = 0d;
+		for (int j=0; j<valWeights.length; j++) {
+			double weight = weights[j];
+			totWeight += weight;
+			valWeights[j] = new ValWeights(values[j], weight);
+		}
+		
+		return calcQuickNormCDF(valWeights, totWeight);
+	}
+	
+	private static LightFixedXFunc calcQuickNormCDF(ValWeights[] valWeights, double totWeight) {
+		// sort ascending
+		Arrays.sort(valWeights);
+		int destIndex = -1;
+		double[] xVals = new double[valWeights.length];
+		double[] yVals = new double[valWeights.length];
+		for (int srcIndex=0; srcIndex<valWeights.length; srcIndex++) {
+			ValWeights val = valWeights[srcIndex];
+			if (destIndex >= 0 && (float)val.val == (float)xVals[destIndex]) {
+				// add it, don't increment
+				yVals[destIndex] += val.weight;
+			} else {
+				// move to a new index
+				destIndex++;
+				xVals[destIndex] = val.val;
+				yVals[destIndex] = val.weight;
+			}
+		}
+		int size = destIndex+1;
+		if (size < xVals.length) {
+			// we have duplicates, trim them
+			xVals = Arrays.copyOf(xVals, size);
+			yVals = Arrays.copyOf(yVals, size);
+		}
+
+		// now convert yVals to a CDF
+		double sum = 0d;
+		for (int j=0; j<yVals.length; j++) {
+			sum += yVals[j];
+			yVals[j] = sum/totWeight;
+			if (j > 0)
+				Preconditions.checkState(xVals[j] > xVals[j-1]);
+		}
+
+		return new LightFixedXFunc(xVals, yVals);
+	}
+	
+	private static class ValWeights implements Comparable<ValWeights> {
+		double val;
+		double weight;
+		public ValWeights(double val, double weight) {
+			super();
+			this.val = val;
+			this.weight = weight;
+		}
+		@Override
+		public int compareTo(ValWeights o) {
+			return Double.compare(val, o.val);
+		}
+	}
 
 
 /*  temp main method to test and to investige numerical precision issues */
