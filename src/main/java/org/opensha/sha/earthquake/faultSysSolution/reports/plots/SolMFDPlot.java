@@ -13,6 +13,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
+import org.opensha.commons.data.uncertainty.UncertainBoundedDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
@@ -188,10 +189,15 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 
 		List<PlotSpec> incrSpecs = new ArrayList<>();
 		List<PlotSpec> cmlSpecs = new ArrayList<>();
-		PlotSpec[] totalGridRangeIncrSpecs = null;
-		PlotSpec[] totalGridRangeCmlSpecs = null;
+		List<PlotSpec[]> gridRangeIncrSpecs = null;
+		List<PlotSpec[]> gridRangeCmlSpecs = null;
+		if (sol != null && sol.hasModule(BranchRegionalMFDs.class) && sol.requireModule(BranchRegionalMFDs.class).hasGridded()) {
+			gridRangeIncrSpecs = new ArrayList<>();
+			gridRangeCmlSpecs = new ArrayList<>();
+		}
 		
 		for (MFD_Plot plot : plots) {
+			System.out.println("Plotting MFDs for "+plot.name);
 			List<IncrementalMagFreqDist> incrFuncs = new ArrayList<>();
 			List<DiscretizedFunc> cmlFuncs = new ArrayList<>();
 			List<PlotCurveCharacterstics> incrChars = new ArrayList<>();
@@ -252,12 +258,14 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 				BranchSectNuclMFDs sectDists = null;
 				BranchRegionalMFDs branchMFDsModule = sol.getModule(BranchRegionalMFDs.class);
 				int regionalIndex = -1;
-				if (plot.region != null && branchMFDsModule != null && plot.region != modelRegion && !allInside) {
+				if (plot.region != null && branchMFDsModule != null) {
 					// find the matching region
 					RegionsOfInterest roi = sol.getRupSet().getModule(RegionsOfInterest.class);
 					if (roi == null || !branchMFDsModule.hasRegionalMFDs()) {
 						// don't have it
-						branchMFDsModule = null;
+						if (!(plot.region == modelRegion && allInside))
+							// clear it, but only if this isn't the model region and we're not fully contained within in
+							branchMFDsModule = null;
 					} else {
 						for (int r=0; r<roi.getRegions().size(); r++) {
 							Region testReg = roi.getRegions().get(r);
@@ -266,11 +274,14 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 								break;
 							}
 						}
-						if (regionalIndex < 0)
+						if (regionalIndex < 0) {
 							// no match
-							branchMFDsModule = null;
-						else
+							if (!(plot.region == modelRegion && allInside))
+								// clear it, but only if this isn't the model region and we're not fully contained within in
+								branchMFDsModule = null;
+						} else {
 							System.out.println("Matched region with name '"+plot.name+" to ROI "+regionalIndex);
+						}
 					}
 				}
 				if (branchMFDsModule == null)
@@ -282,18 +293,17 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 						MFDType.SUPRA_ONLY, regionalIndex);
 				maxY = Math.max(maxY, Math.pow(10, Math.ceil(Math.log10(myMax)-0.1)));
 				
-				if (branchMFDsModule != null && branchMFDsModule.hasGridded() &&
-						(plot.region == null || (plot.region == modelRegion && allInside))) {
-					// add extra plots for gridded seismicity for total model
+				if (branchMFDsModule != null && branchMFDsModule.hasGridded()) {
+					// add extra plots for gridded seismicity
 					List<IncrementalMagFreqDist> gridOnlyIncrFuncs = new ArrayList<>(origIncrFuncs);
 					List<PlotCurveCharacterstics> gridOnlyIncrChars = new ArrayList<>(origIncrChars);
 					List<DiscretizedFunc> gridOnlyCmlFuncs = new ArrayList<>(origCmlFuncs);
 					List<PlotCurveCharacterstics> gridOnlyCmlChars = new ArrayList<>(origCmlChars);
 					
-					myMax = addSolMFDs(sol, "Solution", MAIN_COLOR, null,
+					myMax = addSolMFDs(sol, "Solution", MAIN_COLOR, plot.region,
 							gridOnlyIncrFuncs, gridOnlyCmlFuncs, gridOnlyIncrChars, gridOnlyCmlChars,
 							defaultMFD, xRange, sectDists, branchMFDsModule,
-							MFDType.GRID_ONLY, -1);
+							MFDType.GRID_ONLY, regionalIndex);
 					maxY = Math.max(maxY, Math.pow(10, Math.ceil(Math.log10(myMax)-0.1)));
 					
 					PlotSpec gridOnlyIncrSpec = new PlotSpec(gridOnlyIncrFuncs, gridOnlyIncrChars, plot.name, "Magnitude", "Incremental Rate (per yr)");
@@ -306,10 +316,10 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					List<DiscretizedFunc> totalCmlFuncs = new ArrayList<>(origCmlFuncs);
 					List<PlotCurveCharacterstics> totalCmlChars = new ArrayList<>(origCmlChars);
 					
-					myMax = addSolMFDs(sol, "Solution", MAIN_COLOR, null,
+					myMax = addSolMFDs(sol, "Solution", MAIN_COLOR, plot.region,
 							totalIncrFuncs, totalCmlFuncs, totalIncrChars, totalCmlChars,
 							defaultMFD, xRange, sectDists, branchMFDsModule,
-							MFDType.SUM, -1);
+							MFDType.SUM, regionalIndex);
 					maxY = Math.max(maxY, Math.pow(10, Math.ceil(Math.log10(myMax)-0.1)));
 					
 					PlotSpec totalIncrSpec = new PlotSpec(totalIncrFuncs, totalIncrChars, plot.name, "Magnitude", "Incremental Rate (per yr)");
@@ -317,8 +327,29 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					totalIncrSpec.setLegendInset(true);
 					totalCmlSpec.setLegendInset(true);
 					
-					totalGridRangeIncrSpecs = new PlotSpec[] { gridOnlyIncrSpec, totalIncrSpec };
-					totalGridRangeCmlSpecs = new PlotSpec[] { gridOnlyCmlSpec, totalCmlSpec };
+					gridRangeIncrSpecs.add(new PlotSpec[] { gridOnlyIncrSpec, totalIncrSpec });
+					gridRangeCmlSpecs.add(new PlotSpec[] { gridOnlyCmlSpec, totalCmlSpec });
+					
+					if (meta.hasComparisonSol() && meta.comparison.sol.hasModule(GridSourceProvider.class)) {
+						// remove the comparison gridded seis lines as necessary
+						
+						// remove total and grid only from supra-seis plot
+						removeByName(incrFuncs, incrChars, "Comparison Gridded");
+						removeByName(incrFuncs, incrChars, "Comparison Total");
+						removeByName(cmlFuncs, cmlChars, "Comparison Gridded");
+						removeByName(cmlFuncs, cmlChars, "Comparison Total");
+						
+						// remove total from grid only plot
+						removeByName(gridOnlyIncrFuncs, gridOnlyIncrChars, "Comparison Total");
+						removeByName(gridOnlyCmlFuncs, gridOnlyCmlChars, "Comparison Total");
+						
+						// remove gridded only from total plot
+						removeByName(totalIncrFuncs, totalIncrChars, "Comparison Gridded");
+						removeByName(totalCmlFuncs, totalCmlChars, "Comparison Gridded");
+					}
+				} else if (gridRangeCmlSpecs != null) {
+					gridRangeIncrSpecs.add(null);
+					gridRangeCmlSpecs.add(null);
 				}
 			}
 			
@@ -372,17 +403,38 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			table.addColumn("![Cumulative Plot]("+relPathToResources+"/"+cmlPrefix+".png)");
 			table.finalizeLine();
 			
-			if (i == 0 && totalGridRangeIncrSpecs != null) {
-				for (int j=0; j<totalGridRangeIncrSpecs.length; j++) {
+			if (gridRangeIncrSpecs != null && gridRangeIncrSpecs.get(i) != null) {
+				PlotSpec[] rangeIncrSpecs = gridRangeIncrSpecs.get(i);
+				if (rangeIncrSpecs != null) {
+					PlotSpec[] rangeCmlSpecs = gridRangeCmlSpecs.get(i);
+					
+					table.addLine(MarkdownUtils.boldCentered("Distribution of Gridded Seismicity"), "");
+					
 					table.initNewLine();
-					gp.drawGraphPanel(totalGridRangeIncrSpecs[j], false, true, xRange, yRange);
+					gp.drawGraphPanel(rangeIncrSpecs[0], false, true, xRange, yRange);
 					PlotUtils.setXTick(gp, tick);
-					String myPrefix = prefix+"_extra_"+j;
+					String myPrefix = prefix+"_grid_only_dists";
 					PlotUtils.writePlots(resourcesDir, myPrefix, gp, 1000, 850, true, true, true);
 					table.addColumn("![Incremental Plot]("+relPathToResources+"/"+myPrefix+".png)");
 					
 					myPrefix += "_cumulative";
-					gp.drawGraphPanel(totalGridRangeCmlSpecs[j], false, true, xRange, yRange);
+					gp.drawGraphPanel(rangeCmlSpecs[0], false, true, xRange, yRange);
+					PlotUtils.setXTick(gp, tick);
+					PlotUtils.writePlots(resourcesDir, myPrefix, gp, 1000, 850, true, true, true);
+					table.addColumn("![Cumulative Plot]("+relPathToResources+"/"+myPrefix+".png)");
+					table.finalizeLine();
+					
+					table.addLine(MarkdownUtils.boldCentered("Distribution of Sum (Supra-Seis + Gridded)"), "");
+					
+					table.initNewLine();
+					gp.drawGraphPanel(rangeIncrSpecs[1], false, true, xRange, yRange);
+					PlotUtils.setXTick(gp, tick);
+					myPrefix = prefix+"_grid_sum_dists";
+					PlotUtils.writePlots(resourcesDir, myPrefix, gp, 1000, 850, true, true, true);
+					table.addColumn("![Incremental Plot]("+relPathToResources+"/"+myPrefix+".png)");
+					
+					myPrefix += "_cumulative";
+					gp.drawGraphPanel(rangeCmlSpecs[1], false, true, xRange, yRange);
 					PlotUtils.setXTick(gp, tick);
 					PlotUtils.writePlots(resourcesDir, myPrefix, gp, 1000, 850, true, true, true);
 					table.addColumn("![Cumulative Plot]("+relPathToResources+"/"+myPrefix+".png)");
@@ -393,6 +445,16 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			lines.addAll(table.build());
 		}
 		return lines;
+	}
+	
+	private void removeByName(List<? extends DiscretizedFunc> funcs, List<PlotCurveCharacterstics> chars, String name) {
+		for (int i=funcs.size(); --i>=0;) {
+			String funcName = funcs.get(i).getName();
+			if (funcName != null && funcName.equals(name)) {
+				funcs.remove(i);
+				chars.remove(i);
+			}
+		}
 	}
 
 	private void addImpliedTargets(FaultSystemRupSet rupSet,
@@ -541,7 +603,16 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 				gridMFD.addIncrementalMagFreqDist(nodeMFD);
 			}
 			if (gridMFD != null) {
-				if (!name.toLowerCase().contains("comparison")) {
+				boolean includeTotal = true;
+				boolean includeGridOnly = true;
+				
+				if (regMFDModule != null && regMFDModule.hasGridded()) {
+					// we have distributions and will be plotting each, only include the relevant one in each plot
+					includeTotal = regType == MFDType.SUM;
+					includeGridOnly = regType == MFDType.GRID_ONLY;
+				}
+				
+				if (includeGridOnly) {
 					gridMFD.setName(name+" Gridded");
 					incrFuncs.add(gridMFD);
 					EvenlyDiscretizedFunc cmlFunc = gridMFD.getCumRateDistWithOffset();
@@ -551,24 +622,28 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					incrChars.add(pChar);
 					cmlChars.add(pChar);
 //					chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, color.brighter()));
-					if (regMFDModule != null && regType == MFDType.GRID_ONLY)
-						addFromRegMFDs(color, incrFuncs, cmlFuncs, incrChars, cmlChars, regMFDModule, regType, regionalIndex, gridMFD,
-								cmlFunc, pChar, myColor, transAlpha);
+					if (regMFDModule != null && regType == MFDType.GRID_ONLY && regMFDModule.hasGridded())
+						addFromRegMFDs(color, incrFuncs, cmlFuncs, incrChars, cmlChars, regMFDModule, regType,
+								regionalIndex, gridMFD, cmlFunc, pChar, myColor, transAlpha);
 				}
-				SummedMagFreqDist totalMFD = new SummedMagFreqDist(mfd.getMinX(), mfd.getMaxX(), mfd.size());
-				totalMFD.addIncrementalMagFreqDist(mfd);
-				totalMFD.addIncrementalMagFreqDist(gridMFD);
-				totalMFD.setName(name+" Total");
-				incrFuncs.add(totalMFD);
-				EvenlyDiscretizedFunc cmlFunc = totalMFD.getCumRateDistWithOffset();
-				cmlFuncs.add(cmlFunc);
-				Color myColor = color.darker();
-				PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, myColor);
-				incrChars.add(pChar);
-				cmlChars.add(pChar);
-				if (regMFDModule != null && regType == MFDType.SUM)
-					addFromRegMFDs(color, incrFuncs, cmlFuncs, incrChars, cmlChars, regMFDModule, regType, regionalIndex, totalMFD,
-							cmlFunc, pChar, myColor, transAlpha);
+				
+				if (includeTotal) {
+					SummedMagFreqDist totalMFD = new SummedMagFreqDist(mfd.getMinX(), mfd.getMaxX(), mfd.size());
+					totalMFD.addIncrementalMagFreqDist(mfd);
+					totalMFD.addIncrementalMagFreqDist(gridMFD);
+					totalMFD.setName(name+" Total");
+					incrFuncs.add(totalMFD);
+					EvenlyDiscretizedFunc cmlFunc = totalMFD.getCumRateDistWithOffset();
+					cmlFuncs.add(cmlFunc);
+					Color myColor = color.darker();
+					PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, myColor);
+					incrChars.add(pChar);
+					cmlChars.add(pChar);
+					if (regMFDModule != null && regType == MFDType.SUM && regMFDModule.hasGridded())
+						addFromRegMFDs(color, incrFuncs, cmlFuncs, incrChars, cmlChars, regMFDModule, regType,
+								regionalIndex, totalMFD, cmlFunc, pChar, myColor, transAlpha);
+				}
+				
 				name = name+" Supra-Seis";
 			}
 		}
@@ -625,6 +700,25 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		for (Point2D pt : cmlFunc)
 			if (rangeForMax.contains(pt.getX()))
 				maxY = Math.max(maxY, pt.getY());
+		// now make sure that we have the full distributions at the minimum incremental magnitude
+		double minIncrMag = Double.POSITIVE_INFINITY;
+		for (Point2D pt : mfd) {
+			if (pt.getY() > 0) {
+				minIncrMag = pt.getX();
+				break;
+			}
+		}
+		if (Double.isFinite(minIncrMag)) {
+			for (DiscretizedFunc func : cmlFuncs) {
+				if (func.getMinX() < minIncrMag && func.getMaxX() > minIncrMag) {
+					maxY = Math.max(maxY, func.getInterpolatedY_inLogYDomain(minIncrMag));
+					if (func instanceof UncertainBoundedDiscretizedFunc) {
+						DiscretizedFunc upper = ((UncertainBoundedDiscretizedFunc)func).getUpper();
+						maxY = Math.max(maxY, upper.getInterpolatedY_inLogYDomain(minIncrMag));
+					}
+				}
+			}
+		}
 		return maxY;
 	}
 
@@ -652,7 +746,8 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			incrChars.add(minMaxChar);
 		}
 		
-		for (UncertainArbDiscFunc cmlBounds : processCmlFractiles(cmlPercentiles, cmlFunc.getMinX())) {
+		for (UncertainArbDiscFunc cmlBounds : processCmlFractiles(cmlPercentiles,
+				regType == MFDType.SUPRA_ONLY ? cmlFunc.getMinX() : Double.POSITIVE_INFINITY)) {
 			cmlFuncs.add(cmlBounds);
 			cmlChars.add(minMaxChar);
 		}
