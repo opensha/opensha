@@ -1,5 +1,6 @@
 package org.opensha.commons.gui.plot.jfreechart.xyzPlot;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.jfree.chart.annotations.XYAnnotation;
@@ -8,6 +9,7 @@ import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.xyz.XYZ_DataSet;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotElement;
+import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.cpt.CPT;
 
 /**
@@ -18,18 +20,15 @@ import org.opensha.commons.util.cpt.CPT;
  * @author kevin
  *
  */
-public class XYZPlotSpec {
+public class XYZPlotSpec extends PlotSpec {
 	
 	private XYZ_DataSet xyzData;
 	private CPT cpt;
-	private String title, xAxisLabel, yAxisLabel, zAxisLabel;
-	private Double thickness = null;
-	private List<? extends XYAnnotation> annotations;
-	private RectangleEdge legendPosition = RectangleEdge.TOP;
+	private String zAxisLabel;
+	private Double thickness = null; // this is width of each rectangle
 	private boolean cptVisible = true;
-	private List<? extends XY_DataSet> xyElems;
-	private List<PlotCurveCharacterstics> xyChars;
 	private double cptTickUnit = -1;
+	private RectangleEdge cptPosition = RectangleEdge.TOP;
 	
 	/**
 	 * 
@@ -42,12 +41,26 @@ public class XYZPlotSpec {
 	 */
 	public XYZPlotSpec(XYZ_DataSet xyzData, CPT cpt, String title,
 			String xAxisLabel, String yAxisLabel, String zAxisLabel) {
-		super();
+		this(xyzData, new ArrayList<>(), new ArrayList<>(), cpt, title, xAxisLabel, yAxisLabel, zAxisLabel);
+	}
+	
+	/**
+	 * 
+	 * @param xyzData XYZ data
+	 * @param elems XY plot elements
+	 * @param chars XY plot characteristics
+	 * @param cpt color palette
+	 * @param title
+	 * @param xAxisLabel
+	 * @param yAxisLabel
+	 * @param zAxisLabel shown under the color scale
+	 */
+	public XYZPlotSpec(XYZ_DataSet xyzData, List<? extends PlotElement> elems,
+			List<PlotCurveCharacterstics> chars, CPT cpt, String title,
+			String xAxisLabel, String yAxisLabel, String zAxisLabel) {
+		super(elems, chars, title, xAxisLabel, yAxisLabel);
 		this.xyzData = xyzData;
 		this.cpt = cpt;
-		this.title = title;
-		this.xAxisLabel = xAxisLabel;
-		this.yAxisLabel = yAxisLabel;
 		this.zAxisLabel = zAxisLabel;
 	}
 
@@ -67,30 +80,6 @@ public class XYZPlotSpec {
 		this.cpt = cpt;
 	}
 
-	public String getTitle() {
-		return title;
-	}
-
-	public void setTitle(String title) {
-		this.title = title;
-	}
-
-	public String getXAxisLabel() {
-		return xAxisLabel;
-	}
-
-	public void setXAxisLabel(String xAxisLabel) {
-		this.xAxisLabel = xAxisLabel;
-	}
-
-	public String getYAxisLabel() {
-		return yAxisLabel;
-	}
-
-	public void setYAxisLabel(String yAxisLabel) {
-		this.yAxisLabel = yAxisLabel;
-	}
-
 	public String getZAxisLabel() {
 		return zAxisLabel;
 	}
@@ -106,23 +95,9 @@ public class XYZPlotSpec {
 	public void setThickness(Double thickness) {
 		this.thickness = thickness;
 	}
-	
-	/**
-	 * Set the list of plot annotations (or null for no annotations). Note that any line annotations
-	 * will use default rendering (black 1pt line).
-	 * 
-	 * @param annotations
-	 */
-	public void setPlotAnnotations(List<? extends XYAnnotation> annotations) {
-		this.annotations = annotations;
-	}
-	
-	public List<? extends XYAnnotation> getPlotAnnotations() {
-		return annotations;
-	}
 
 	public RectangleEdge getCPTPosition() {
-		return legendPosition;
+		return cptPosition;
 	}
 
 	/**
@@ -130,7 +105,7 @@ public class XYZPlotSpec {
 	 * @param legendPosition
 	 */
 	public void setCPTPosition(RectangleEdge legendPosition) {
-		this.legendPosition = legendPosition;
+		this.cptPosition = legendPosition;
 	}
 	
 	public void setCPTVisible(boolean cptVisible) {
@@ -141,20 +116,12 @@ public class XYZPlotSpec {
 		return cptVisible;
 	}
 
-	public List<? extends XY_DataSet> getXYElems() {
-		return xyElems;
-	}
-
 	public void setXYElems(List<? extends XY_DataSet> xyElems) {
-		this.xyElems = xyElems;
-	}
-
-	public List<PlotCurveCharacterstics> getXYChars() {
-		return xyChars;
+		this.elems = xyElems;
 	}
 
 	public void setXYChars(List<PlotCurveCharacterstics> xyChars) {
-		this.xyChars = xyChars;
+		this.chars = xyChars;
 	}
 	
 	/**

@@ -10,37 +10,30 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  * This allows you to strongly minimize the rate of certain ruptures. We used this
  * in UCERF3 to zero out rates for ruptures which were below the section minimum magnitude
  * 
+ * TODO: this could easily be a single row constraint, should we change it to be?
+ * 
  * @author Morgan Page & Kevin Milner
  *
  */
 public class RupRateMinimizationConstraint extends InversionConstraint {
 	
-	private double weight;
+	public static final String NAME = "Rupture Rate Minimization";
+	public static final String SHORT_NAME = "RateMinimize";
+	
 	private List<Integer> rupIndexes;
 
 	public RupRateMinimizationConstraint(double weight, List<Integer> rupIndexes) {
-		this.weight = weight;
+		super(NAME, SHORT_NAME, weight, false);
 		this.rupIndexes = rupIndexes;
 	}
-
-	@Override
-	public String getShortName() {
-		return "RateMinimize";
-	}
-
-	@Override
-	public String getName() {
-		return "Rupture Rate Minimization";
+	
+	public List<Integer> getRupIndexes() {
+		return rupIndexes;
 	}
 
 	@Override
 	public int getNumRows() {
 		return rupIndexes.size();
-	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
 	}
 
 	@Override

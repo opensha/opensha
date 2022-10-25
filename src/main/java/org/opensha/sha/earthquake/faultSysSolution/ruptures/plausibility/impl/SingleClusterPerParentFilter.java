@@ -8,8 +8,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
-
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 
 /**
  * This filter dictates that a single parent fault section can only exist once within

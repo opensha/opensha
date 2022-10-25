@@ -34,17 +34,17 @@ import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
-import org.opensha.commons.data.function.UncertainArbDiscDataset;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
 import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
+import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotPreferences;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils;
@@ -186,7 +186,7 @@ public class PostProcessPageGen {
 			yearInc = 2;
 		else
 			yearInc = 1;
-		PaintScaleLegend scatterBar = XYZGraphPanel.getLegendForCPT(scatterCPT, "Year",
+		PaintScaleLegend scatterBar = GraphPanel.getLegendForCPT(scatterCPT, "Year",
 				22, 18, yearInc, RectangleEdge.BOTTOM);
 
 		DefaultXY_DataSet[][][] medianMagDurScatters = new DefaultXY_DataSet[scatterCPT.size()][minMags.length][scatterDurations.length];
@@ -629,8 +629,8 @@ public class PostProcessPageGen {
 					spec.setXYElems(funcs);
 					spec.setXYChars(chars);
 					
-					XYZGraphPanel gp = new XYZGraphPanel(plotPrefs);
-					gp.drawPlot(spec, false, false, xRange, yRange);
+					HeadlessGraphPanel gp = new HeadlessGraphPanel(plotPrefs);
+					gp.drawGraphPanel(spec, false, false, xRange, yRange);
 //						gp.getChartPanel().getChart().addSubtitle(slipCPTbar);
 					gp.getChartPanel().getChart().setBackgroundPaint(Color.WHITE);
 					gp.getChartPanel().setSize(800, 800);
@@ -911,7 +911,7 @@ public class PostProcessPageGen {
 		}
 		cpt.setBelowMinColor(cpt.getMinColor());
 		cpt.setAboveMaxColor(cpt.getMaxColor());
-		PaintScaleLegend cptBar = XYZGraphPanel.getLegendForCPT(cpt, "Year",
+		PaintScaleLegend cptBar = GraphPanel.getLegendForCPT(cpt, "Year",
 				22, 18, yearInc, RectangleEdge.BOTTOM);
 
 		for (boolean cumulative : new boolean[] { true, false }) {

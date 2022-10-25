@@ -1,22 +1,3 @@
-/*******************************************************************************
- * Copyright 2009 OpenSHA.org in partnership with
- * the Southern California Earthquake Center (SCEC, http://www.scec.org)
- * at the University of Southern California and the UnitedStates Geological
- * Survey (USGS; http://www.usgs.gov)
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- *   http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- ******************************************************************************/
-
 package org.opensha.sha.param;
 
 import java.util.ArrayList;
@@ -501,6 +482,7 @@ implements java.io.Serializable
 		 vStrings.add(MagFreqDistParameter.TOT_MO_RATE);
 		 vStrings.add(MagFreqDistParameter.TOT_CUM_RATE);
 		 vStrings.add(MagFreqDistParameter.GR_MAG_UPPER);
+		 vStrings.add(MagFreqDistParameter.GR_BVALUE);
 		 grSetAllButOptions = new StringConstraint(vStrings);
 		 
 		 // for Tapered Gutenberg-Richter SET ALL BUT option
@@ -828,8 +810,6 @@ implements java.io.Serializable
 
 				Double magLower = (Double) parameterList.getParameter(
 						MagFreqDistParameter.GR_MAG_LOWER).getValue();
-				Double bValue = (Double) parameterList.getParameter(
-						MagFreqDistParameter.GR_BVALUE).getValue();
 				String setAllParamsBut = parameterList.getParameter(
 						MagFreqDistParameter.SET_ALL_PARAMS_BUT).getValue().toString();
 				if (magLower.doubleValue() > max.doubleValue() ||
@@ -841,12 +821,12 @@ implements java.io.Serializable
 				independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
 						GR_MAG_LOWER));
 				independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
-						GR_BVALUE));
-				independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
 						SET_ALL_PARAMS_BUT));
 
 				// if set all parameters except total moment rate
 				if (setAllParamsBut.equalsIgnoreCase(MagFreqDistParameter.TOT_MO_RATE)) {
+					Double bValue = (Double) parameterList.getParameter(
+							MagFreqDistParameter.GR_BVALUE).getValue();
 					Double magUpper = (Double) parameterList.getParameter(
 							MagFreqDistParameter.GR_MAG_UPPER).getValue();
 					Double totCumRate = (Double) parameterList.getParameter(
@@ -869,7 +849,8 @@ implements java.io.Serializable
 						throw new java.lang.RuntimeException(
 								"magUpper and MagLower must fall on one of the discrete x-axis values");
 					}
-
+					independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
+							GR_BVALUE));
 					independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
 							GR_MAG_UPPER));
 					independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
@@ -877,6 +858,8 @@ implements java.io.Serializable
 				}
 				// if set all parameters except total cumulative rate
 				else if (setAllParamsBut.equalsIgnoreCase(MagFreqDistParameter.TOT_CUM_RATE)) {
+					Double bValue = (Double) parameterList.getParameter(
+							MagFreqDistParameter.GR_BVALUE).getValue();
 					Double magUpper = (Double) parameterList.getParameter(
 							MagFreqDistParameter.GR_MAG_UPPER).getValue();
 					Double toMoRate = (Double) parameterList.getParameter(
@@ -899,12 +882,16 @@ implements java.io.Serializable
 								"magUpper and MagLower must fall on one of the discrete x-axis values");
 					}
 					independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
+							GR_BVALUE));
+					independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
 							GR_MAG_UPPER));
 					independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
 							TOT_MO_RATE));
 				}
 				// if set all parameters except mag upper
 				else if (setAllParamsBut.equalsIgnoreCase(MagFreqDistParameter.GR_MAG_UPPER)) {
+					Double bValue = (Double) parameterList.getParameter(
+							MagFreqDistParameter.GR_BVALUE).getValue();
 					Double toCumRate = (Double) parameterList.getParameter(
 							MagFreqDistParameter.TOT_CUM_RATE).getValue();
 					Double toMoRate = (Double) parameterList.getParameter(
@@ -924,12 +911,47 @@ implements java.io.Serializable
 								"MagLower must fall on one of the discrete x-axis values");
 					}
 					independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
+							GR_BVALUE));
+					independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
 							TOT_CUM_RATE));
 					independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
 							TOT_MO_RATE));
 					independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
 							FIX));
 				}
+				// if set all parameters except b-value
+				else if (setAllParamsBut.equalsIgnoreCase(MagFreqDistParameter.GR_BVALUE)) {
+					Double totCumRate = (Double) parameterList.getParameter(
+							MagFreqDistParameter.TOT_CUM_RATE).getValue();
+					Double magUpper = (Double) parameterList.getParameter(
+							MagFreqDistParameter.GR_MAG_UPPER).getValue();
+					Double toMoRate = (Double) parameterList.getParameter(
+							MagFreqDistParameter.TOT_MO_RATE).getValue();
+					if (magUpper.doubleValue() > max.doubleValue() ||
+							magUpper.doubleValue() < min.doubleValue()) {
+						throw new java.lang.RuntimeException(
+								"Value of MagUpper must lie between the min and max value");
+					}
+					if (magLower.doubleValue() > magUpper.doubleValue()) {
+						throw new java.lang.RuntimeException(
+								"Value of MagLower must be <= to MagUpper");
+					}
+					try {
+						gR.setAllButBvalue(magLower.doubleValue(), magUpper.doubleValue(),
+								toMoRate.doubleValue(), totCumRate.doubleValue());
+					}
+					catch (RuntimeException e) {
+						throw new java.lang.RuntimeException(
+								"magUpper and MagLower must fall on one of the discrete x-axis values");
+					}
+					independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
+							TOT_CUM_RATE));
+					independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
+							GR_MAG_UPPER));
+					independentParamList.addParameter(parameterList.getParameter(MagFreqDistParameter.
+							TOT_MO_RATE));
+				}
+
 				magDist = (IncrementalMagFreqDist) gR;
 			}
 			
@@ -1205,5 +1227,10 @@ implements java.io.Serializable
 		if (paramEdit == null)
 			paramEdit = new MagFreqDistParameterEditor(this);
 		return paramEdit;
+	}
+
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
 	}
 }

@@ -22,8 +22,10 @@ import org.jfree.chart.title.LegendTitle;
 import org.jfree.chart.title.Title;
 import org.jfree.chart.ui.RectangleAnchor;
 import org.jfree.chart.ui.RectangleEdge;
+import org.jfree.data.Range;
 import org.opensha.commons.data.function.DiscretizedFunc;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 /**
@@ -38,8 +40,8 @@ public class PlotSpec implements Serializable {
 	 */
 	private static final long serialVersionUID = 1L;
 	
-	private List<? extends PlotElement> elems;
-	private List<PlotCurveCharacterstics> chars;
+	protected List<? extends PlotElement> elems;
+	protected List<PlotCurveCharacterstics> chars;
 	private String title, xAxisLabel, yAxisLabel;
 	private List<XYAnnotation> annotations;
 	private List<Title> subtitles;
@@ -53,8 +55,8 @@ public class PlotSpec implements Serializable {
 	// for inset legend
 	private boolean insetLegend = false;
 	private RectangleAnchor insetLegendLocation = RectangleAnchor.TOP_RIGHT;
-	private double insetLegendRelX = 0.95;
-	private double insetLegendRelY = 0.95;
+	private double insetLegendRelX = 0.975;
+	private double insetLegendRelY = 0.975;
 	private double insetLegendMaxWidth = 0.35;
 	private boolean insetLegendSingleColumn = true;
 	
@@ -111,7 +113,7 @@ public class PlotSpec implements Serializable {
 	 * @param annotations
 	 */
 	public void setPlotAnnotations(List<? extends XYAnnotation> annotations) {
-		this.annotations = new ArrayList<>(annotations);
+		this.annotations = annotations == null ? null : new ArrayList<>(annotations);
 	}
 	
 	public void addPlotAnnotation(XYAnnotation annotation) {
@@ -130,7 +132,10 @@ public class PlotSpec implements Serializable {
 	 * @param annotations
 	 */
 	public void setSubtitles(List<? extends Title> subtitles) {
-		this.subtitles = new ArrayList<>(subtitles);
+		if (subtitles == null)
+			this.subtitles = null;
+		else
+			this.subtitles = new ArrayList<>(subtitles);
 	}
 	
 	public void addSubtitle(Title subtitle) {
@@ -248,7 +253,7 @@ public class PlotSpec implements Serializable {
 	}
 	
 	/**
-	 * Creates an inset legend with default settings (top right, 0.95 relative x/y, single column, max 35%
+	 * Creates an inset legend with default settings (top right, 0.975 relative x/y, single column, max 35%
 	 * width).
 	 * 
 	 * @param insetLegend
@@ -257,6 +262,33 @@ public class PlotSpec implements Serializable {
 		if (insetLegend)
 			this.legend = true;
 		this.insetLegend = insetLegend;
+	}
+	
+	/**
+	 * Creates an inset legend with the given anchor and otherwise default settings (0.975 relative x/y, single column,
+	 * max 35% width).
+	 * 
+	 * @param anchor
+	 */
+	public void setLegendInset(RectangleAnchor anchor) {
+		Preconditions.checkNotNull(anchor);
+		this.legend = true;
+		this.insetLegend = true;
+		this.insetLegendLocation = anchor;
+		if (anchor == RectangleAnchor.TOP || anchor == RectangleAnchor.TOP_LEFT || anchor == RectangleAnchor.TOP_RIGHT) {
+			insetLegendRelY = 0.975;
+		} else if (anchor == RectangleAnchor.BOTTOM || anchor == RectangleAnchor.BOTTOM_LEFT || anchor == RectangleAnchor.BOTTOM_RIGHT) {
+			insetLegendRelY = 0.025;
+		} else {
+			insetLegendRelY = 0.5;
+		}
+		if (anchor == RectangleAnchor.LEFT || anchor == RectangleAnchor.TOP_LEFT || anchor == RectangleAnchor.BOTTOM_LEFT) {
+			insetLegendRelX = 0.055;
+		} else if (anchor == RectangleAnchor.RIGHT || anchor == RectangleAnchor.TOP_RIGHT || anchor == RectangleAnchor.BOTTOM_RIGHT) {
+			insetLegendRelX = 0.975;
+		} else {
+			insetLegendRelX = 0.5;
+		}
 	}
 	
 	/**
@@ -287,7 +319,8 @@ public class PlotSpec implements Serializable {
 		return insetLegend;
 	}
 	
-	public XYTitleAnnotation buildInsetLegend(LegendItemCollection items, PlotPreferences plotPrefs) {
+	public XYTitleAnnotation buildInsetLegend(LegendItemCollection items, PlotPreferences plotPrefs,
+			boolean xLog, boolean yLog, Range xRange, Range yRange) {
 //		new LegendTitle(source, hLayout, vLayout)
 		LegendItemSource source = new LegendItemSource() {
 			
@@ -314,9 +347,27 @@ public class PlotSpec implements Serializable {
 		else
 			edge = RectangleEdge.TOP;
 		lt.setPosition(edge);
-		XYTitleAnnotation ann = new XYTitleAnnotation(insetLegendRelX, insetLegendRelY,
-				lt, insetLegendLocation);
+		
+		double relX = insetLegendRelX;
+		if (xLog)
+			relX = relLogPos(relX, xRange);
+		double relY = insetLegendRelY;
+		if (yLog)
+			relY = relLogPos(relY, yRange);
+		
+		XYTitleAnnotation ann = new XYTitleAnnotation(relX, relY, lt, insetLegendLocation);
 		ann.setMaxWidth(insetLegendMaxWidth);
 		return ann;
+	}
+	
+	private static double relLogPos(double relPos, Range range) {
+		// relative positions don't work out the box with XYTitleAnnotation and log10 axis. this corrects that 
+		
+		// this is the actual anchor we want
+		double anchor = Math.pow(10, relPos * (Math.log10(range.getUpperBound())
+				- Math.log10(range.getLowerBound())) + Math.log10(range.getLowerBound()));
+		
+		// calculate the fake value that XYTitleAnnotation will use to get come to this value
+		return (anchor - range.getLowerBound())/range.getLength();
 	}
 }

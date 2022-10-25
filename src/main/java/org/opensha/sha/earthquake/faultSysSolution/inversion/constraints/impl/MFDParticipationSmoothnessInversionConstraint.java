@@ -3,10 +3,10 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.FaultSystemRupSet;
 
 /**
  * MFD Smoothness Constraint - Constrain participation MFD to be uniform for each fault subsection.
@@ -18,25 +18,17 @@ import scratch.UCERF3.FaultSystemRupSet;
  */
 public class MFDParticipationSmoothnessInversionConstraint extends InversionConstraint {
 	
-	private FaultSystemRupSet rupSet;
-	private double weight;
+	public static final String NAME = "MFD Participation Smoothness";
+	public static final String SHORT_NAME = "MFDParticSmooth";
+	
+	private transient FaultSystemRupSet rupSet;
 	private double particMagBinSize;
 
 	public MFDParticipationSmoothnessInversionConstraint(FaultSystemRupSet rupSet, double weight,
 			double particMagBinSize) {
+		super(NAME, SHORT_NAME, weight, false);
 		this.rupSet = rupSet;
-		this.weight = weight;
 		this.particMagBinSize = particMagBinSize;
-	}
-
-	@Override
-	public String getShortName() {
-		return "MFDParticSmooth";
-	}
-
-	@Override
-	public String getName() {
-		return "MFD Participation Smoothness";
 	}
 
 	@Override
@@ -67,11 +59,6 @@ public class MFDParticipationSmoothnessInversionConstraint extends InversionCons
 			}
 		}
 		return totalNumMagParticipationConstraints;
-	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
 	}
 
 	@Override
@@ -137,6 +124,11 @@ public class MFDParticipationSmoothnessInversionConstraint extends InversionCons
 			
 		}
 		return numNonZeroElements;
+	}
+
+	@Override
+	public void setRuptureSet(FaultSystemRupSet rupSet) {
+		this.rupSet = rupSet;
 	}
 
 }

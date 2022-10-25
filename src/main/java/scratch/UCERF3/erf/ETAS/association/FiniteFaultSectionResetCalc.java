@@ -49,6 +49,9 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.parsers.UCERF3_CatalogParser;
@@ -62,21 +65,19 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class FiniteFaultSectionResetCalc {
 	
 	private FaultSystemRupSet rupSet;
 	
 	// parameters
+	private PolygonFaultGridAssociations polyManager;
 	private double minFractionalAreaInPolygon;
-	private double faultBuffer;
 	private boolean removeOverlapsWithDist;
 	
 	private Region[] polygons;
@@ -88,26 +89,25 @@ public class FiniteFaultSectionResetCalc {
 	
 	/**
 	 * @param rupSet
+	 * @param polygons fault polygons
 	 * @param minFractionalAreaInPolygon sections will be reset if the area of a rupture within a section's polygon is at least
 	 * this fraction of that section's area 
 	 * @param faultBuffer fault section polygon buffer in KM (must be >0)
 	 * @param removeOverlapsWithDist flag to remove overlaps in polygons by prioritizing sections with lower mean distance to rupture
 	 */
-	public FiniteFaultSectionResetCalc(FaultSystemRupSet rupSet, double minFractionalAreaInPolygon, double faultBuffer,
-			boolean removeOverlapsWithDist) {
+	public FiniteFaultSectionResetCalc(FaultSystemRupSet rupSet, PolygonFaultGridAssociations polygons,
+			double minFractionalAreaInPolygon, boolean removeOverlapsWithDist) {
 		this.rupSet = rupSet;
 		Preconditions.checkArgument(minFractionalAreaInPolygon > 0d && minFractionalAreaInPolygon <= 1d,
 				"Min Fractional Area in Polygon must be in range (0 1]");
 		this.minFractionalAreaInPolygon = minFractionalAreaInPolygon;
-		Preconditions.checkArgument(faultBuffer > 0d, "Fault buffer must be positive");
-		setFaultBuffer(faultBuffer);
 		this.removeOverlapsWithDist = removeOverlapsWithDist;
+		setPolygons(polygons);
 	}
 	
-	public void setFaultBuffer(double faultBuffer) {
-		this.faultBuffer = faultBuffer;
-		FaultPolyMgr polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(),
-				faultBuffer);
+	public void setPolygons(PolygonFaultGridAssociations polyManager) {
+		Preconditions.checkNotNull(polyManager, "Must supply polygons");
+		this.polyManager = polyManager;
 		
 		polygons = new Region[rupSet.getNumSections()];
 		sectAreas = new double[rupSet.getNumSections()];
@@ -437,7 +437,11 @@ public class FiniteFaultSectionResetCalc {
 			table.addLine("**Ruptures w/ Finite Surfaces**", finiteRups.size());
 		}
 		table.addLine("**Min Area Fraction**&ast;", optionalDigitDF.format(minFractionalAreaInPolygon));
-		table.addLine("**Fault Polygon Buffer**", optionalDigitDF.format(faultBuffer)+" [km]");
+		Double faultBuffer = null;
+		if (polyManager instanceof FaultPolyMgr)
+			faultBuffer = ((FaultPolyMgr)polyManager).getBuffer();
+		if (faultBuffer != null)
+			table.addLine("**Fault Polygon Buffer**", optionalDigitDF.format(faultBuffer)+" [km]");
 		table.addLine("**Remove Polygon Overlap?**", removeOverlapsWithDist ? "Yes (sorted by mean section distance)" : "No");
 		lines.addAll(table.build());
 		
@@ -959,8 +963,8 @@ public class FiniteFaultSectionResetCalc {
 		private double[] matchRates;
 		private int[] matchCounts;
 		
-		public ParamSweepCallable(FaultSystemSolution sol, RuptureSurface[] surfs, int bufferIndex,double faultBuffer,
-				EvenlyDiscretizedFunc fractAreas, boolean removeOverlap) {
+		public ParamSweepCallable(FaultSystemSolution sol, RuptureSurface[] surfs, int bufferIndex,
+				double faultBuffer, EvenlyDiscretizedFunc fractAreas, boolean removeOverlap) {
 			this.sol = sol;
 			this.surfs = surfs;
 			this.bufferIndex = bufferIndex;
@@ -973,7 +977,8 @@ public class FiniteFaultSectionResetCalc {
 		public ParamSweepCallable call() throws Exception {
 			FaultSystemRupSet rupSet = sol.getRupSet();
 			
-			FiniteFaultSectionResetCalc calc = new FiniteFaultSectionResetCalc(rupSet, fractAreas.getX(0), faultBuffer, removeOverlap);
+			FaultPolyMgr polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), faultBuffer);
+			FiniteFaultSectionResetCalc calc = new FiniteFaultSectionResetCalc(rupSet, polyManager, fractAreas.getX(0), removeOverlap);
 			matchRates = new double[fractAreas.size()];
 			matchCounts = new int[fractAreas.size()];
 			for (int r=0; r<surfs.length; r++) {
@@ -1005,7 +1010,13 @@ public class FiniteFaultSectionResetCalc {
 				}
 			}
 			
-			System.out.println("buffer="+(float)faultBuffer+"\tremoveOverlap="+removeOverlap);
+			Float faultBuffer = null;
+			if (polyManager instanceof FaultPolyMgr) {
+				Double buf = ((FaultPolyMgr)polyManager).getBuffer();
+				if (buf != null)
+					faultBuffer = buf.floatValue();
+			}
+			System.out.println("buffer="+faultBuffer+"\tremoveOverlap="+removeOverlap);
 			for (int i=0; i<matchCounts.length; i++) {
 				System.out.println("\tfractArea="+(float)fractAreas.getX(i));
 				System.out.println("\t"+matchCounts[i]+"/"+rupSet.getNumRuptures()+" matches ("
@@ -1200,7 +1211,7 @@ public class FiniteFaultSectionResetCalc {
 		if (doSweep) {
 			System.out.println("Doing sweep");
 			
-			FaultSystemSolution sol = FaultSystemIO.loadSol(new File(etasInputDir,
+			FaultSystemSolution sol = U3FaultSystemIO.loadSol(new File(etasInputDir,
 					"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
 			
 			File markdownDir = new File("/home/kevin/git/misc-research/ucerf3_etas/finite_section_mapping/param_sweep");
@@ -1219,7 +1230,7 @@ public class FiniteFaultSectionResetCalc {
 			
 			Map<FaultModels, FaultSystemRupSet> rupSetMap = new HashMap<>();
 			
-			FaultSystemRupSet rupSet31 = FaultSystemIO.loadRupSet(new File(etasInputDir,
+			FaultSystemRupSet rupSet31 = U3FaultSystemIO.loadRupSet(new File(etasInputDir,
 					"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
 			rupSetMap.put(FaultModels.FM3_1, rupSet31);
 //			FaultSystemRupSet rupSet32 = FaultSystemIO.loadRupSet(new File(etasInputDir,
@@ -1227,7 +1238,7 @@ public class FiniteFaultSectionResetCalc {
 //			rupSetMap.put(FaultModels.FM3_2, rupSet32);
 			
 			double[] minFracts = { 0.5 };
-			double[] faultBuffers = { InversionTargetMFDs.FAULT_BUFFER, 1d };
+			double[] faultBuffers = { U3InversionTargetMFDs.FAULT_BUFFER, 1d };
 			boolean[] removeOverlaps = { true, false };
 			boolean replot = true;
 			
@@ -1249,7 +1260,8 @@ public class FiniteFaultSectionResetCalc {
 							System.out.println("Minimum fract inside polygon: "+minFract);
 							System.out.println("Remove overlap? "+removeOverlap);
 							
-							FiniteFaultSectionResetCalc calc = new FiniteFaultSectionResetCalc(rupSet, minFract, faultBuffer, removeOverlap);
+							FaultPolyMgr polyManager = FaultPolyMgr.create(rupSet.getFaultSectionDataList(), faultBuffer);
+							FiniteFaultSectionResetCalc calc = new FiniteFaultSectionResetCalc(rupSet, polyManager, minFract, removeOverlap);
 							
 							calc.writeMatchMarkdown(markdownDir, inputRups, replot);
 						}

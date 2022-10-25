@@ -127,7 +127,10 @@ public class AggregatedStiffnessCache {
 	
 	public String getCacheFileName() {
 		DecimalFormat df = new DecimalFormat("0.##");
-		String ret = type.name().toLowerCase()+"_cache_"+sects.size()+"sects_"+df.format(calc.getGridSpacing())
+		int numTraceLocs = 0;
+		for (FaultSection sect : sects)
+			numTraceLocs += sect.getFaultTrace().size();
+		String ret = type.name().toLowerCase()+"_cache_"+sects.size()+"sects_"+numTraceLocs+"_trace_locs_"+df.format(calc.getGridSpacing())
 			+"km_lambda"+df.format(calc.getLameLambda())+"_mu"+df.format(calc.getLameMu())+"_coeff"+(float)calc.getCoeffOfFriction()
 			+"_align"+calc.getPatchAlignment().name();
 		if (calc.getSelfStiffnessCap() > 0)

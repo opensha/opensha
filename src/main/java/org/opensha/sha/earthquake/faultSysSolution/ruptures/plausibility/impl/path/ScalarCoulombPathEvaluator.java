@@ -1,10 +1,9 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path;
 
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 
 import com.google.common.collect.Range;
-
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
 /**
  * 

@@ -12,6 +12,7 @@ import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -19,20 +20,19 @@ import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
-public class SubSectSurfaceWriter {
+class SubSectSurfaceWriter {
 	
 	public static void main(String[] args) throws IOException, DocumentException {
-		Map<FaultModels, FaultSystemSolution> sols = new HashedMap<>();
+		Map<FaultModels, U3FaultSystemSolution> sols = new HashedMap<>();
 		
 		File solDir = new File("/home/kevin/workspace/opensha-ucerf3/src/scratch/UCERF3/data/scratch/InversionSolutions");
-		sols.put(FaultModels.FM3_1, FaultSystemIO.loadSol(
+		sols.put(FaultModels.FM3_1, U3FaultSystemIO.loadSol(
 				new File(solDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip")));
-		sols.put(FaultModels.FM3_2, FaultSystemIO.loadSol(
+		sols.put(FaultModels.FM3_2, U3FaultSystemIO.loadSol(
 				new File(solDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_MEAN_BRANCH_AVG_SOL.zip")));
 		
 		double gridSpacing = 1d;

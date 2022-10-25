@@ -1,22 +1,3 @@
-/*******************************************************************************
- * Copyright 2009 OpenSHA.org in partnership with
- * the Southern California Earthquake Center (SCEC, http://www.scec.org)
- * at the University of Southern California and the UnitedStates Geological
- * Survey (USGS; http://www.usgs.gov)
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- *   http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- ******************************************************************************/
-
 package org.opensha.commons.data.function;
 
 import java.awt.geom.Point2D;
@@ -28,6 +9,7 @@ import org.apache.commons.io.IOUtils;
 import org.opensha.commons.exceptions.InvalidRangeException;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.annotations.JsonAdapter;
 
 
 /**
@@ -56,7 +38,7 @@ import com.google.common.base.Preconditions;
  * @author Steven W. Rock
  * @version 1.0
  */
-
+@JsonAdapter(EvenlyDiscretizedFunc.Adapter.class)
 public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 
 	private static final long serialVersionUID = 0xC4E0D3D;
@@ -185,6 +167,12 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	/** Returns the number of points in this series */
 	public int size(){ return num; }
 
+	/**
+	 * Returns whether index can be safely used
+	 */
+    protected boolean isIndexWithinRange(int index){
+		return (index >= 0 && index < num);
+	}
 
 	/**
 	 * Returns the minimum x-value in this series. Since the value is
@@ -201,7 +189,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 
 	/**
 	 * Returns the minimum y-value in this series. Since the value could
-	 * appear aywhere along the x-axis, each point needs to be
+	 * appear anywhere along the x-axis, each point needs to be
 	 * examined, lookup is slower the larger the dataset. <p>
 	 *
 	 * Note: An alternative would be to check for the min value every time a
@@ -217,7 +205,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 
 	/**
 	 * Returns the maximum y-value in this series. Since the value could
-	 * appear aywhere along the x-axis, each point needs to be
+	 * appear anywhere along the x-axis, each point needs to be
 	 * examined, lookup is slower the larger the dataset. <p>
 	 *
 	 * Note: An alternative would be to check for the min value every time a
@@ -233,7 +221,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	
 	/**
 	 * Returns the x index for the maximum y-value in this series. Since the value could
-	 * appear aywhere along the x-axis, each point needs to be
+	 * appear anywhere along the x-axis, each point needs to be
 	 * examined, lookup is slower the larger the dataset. <p>
 	 *
 	 */
@@ -266,7 +254,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	 * The index is based along the x-axis.
 	 */
 	public double getX(int index){
-		if( index < 0 || index > ( num -1 ) ) throw new IndexOutOfBoundsException("no point at index "+index);
+		if(!isIndexWithinRange(index)) throw new IndexOutOfBoundsException("no point at index "+index);
 		else return ( minX + delta * index );
 	}
 
@@ -276,7 +264,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	 * The index is based along the x-axis.
 	 */
 	public double getY(int index){
-		if( index < 0 || index > ( num -1 ) ) throw new IndexOutOfBoundsException("no point at index "+index);
+		if(!isIndexWithinRange(index)) throw new IndexOutOfBoundsException("no point at index "+index);
 		return points[index];
 	}
 
@@ -358,7 +346,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	 * within the range of 0 to num -1
 	 */
 	public void set(int index, double y) {
-		if( index < 0 || index >= num ) {
+		if(!isIndexWithinRange(index)) {
 			throw new IndexOutOfBoundsException(C + ": set(): The specified index ("+index+") doesn't match this function domain.");
 		}
 		points[index] = y;
@@ -372,7 +360,7 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 	 * within the range of 0 to num -1
 	 */
 	public void add(int index, double y) {
-		if( index < 0 || index > ( num -1 ) ) {
+		if(!isIndexWithinRange(index)) {
 			throw new IndexOutOfBoundsException(C + ": set(): The specified index="+index+" doesn't match this function domain.");
 		}
 		points[index] = y+points[index];
@@ -602,5 +590,22 @@ public class EvenlyDiscretizedFunc extends AbstractDiscretizedFunc{
 //			Preconditions.checkState(ynew == yold);
 //		}
 //	}
+	
+	public static class Adapter extends DiscretizedFunc.AbstractAdapter<EvenlyDiscretizedFunc> {
+
+		@Override
+		protected EvenlyDiscretizedFunc instance(Double minX, Double maxX, Integer size) {
+			Preconditions.checkNotNull(minX, "minX must be supplied before values to deserialize EvenlyDiscretizedFunc");
+			Preconditions.checkNotNull(maxX, "maxX must be supplied before values to deserialize EvenlyDiscretizedFunc");
+			Preconditions.checkNotNull(size, "size must be supplied before values to deserialize EvenlyDiscretizedFunc");
+			return new EvenlyDiscretizedFunc(minX, maxX, size);
+		}
+
+		@Override
+		protected Class<EvenlyDiscretizedFunc> getType() {
+			return EvenlyDiscretizedFunc.class;
+		}
+		
+	}
 
 }

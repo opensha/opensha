@@ -16,8 +16,8 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.threads.Task;
 import org.opensha.commons.util.threads.ThreadedTaskComputer;
 
-import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolutionFetcher;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemSolutionFetcher;
 import scratch.UCERF3.analysis.CompoundFSSPlots.AveSlipMapPlot;
 import scratch.UCERF3.analysis.CompoundFSSPlots.BranchAvgFSSBuilder;
 import scratch.UCERF3.analysis.CompoundFSSPlots.ERFBasedRegionalMFDPlot;
@@ -42,12 +42,12 @@ import scratch.UCERF3.analysis.CompoundFSSPlots.SubSectRITable;
 import scratch.UCERF3.analysis.CompoundFSSPlots.TimeDepGriddedParticipationProbPlot;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
-import scratch.UCERF3.logicTree.BranchWeightProvider;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3APrioriBranchWeightProvider;
+import scratch.UCERF3.logicTree.U3BranchWeightProvider;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.UCERF3p2BranchWeightProvider;
-import scratch.UCERF3.logicTree.UniformBranchWeightProvider;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.logicTree.U3UniformBranchWeightProvider;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
@@ -56,8 +56,8 @@ import com.google.common.primitives.Doubles;
 
 public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 	
-	private FaultSystemSolutionFetcher fetcher;
-	private List<LogicTreeBranch> branches;
+	private U3FaultSystemSolutionFetcher fetcher;
+	private List<U3LogicTreeBranch> branches;
 	private List<CompoundFSSPlots> plots;
 	
 	private int threads;
@@ -66,7 +66,7 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 	
 	private MPJDistributedCompoundFSSPlots parentMFDCompare;
 
-	public MPJDistributedCompoundFSSPlots(CommandLine cmd, FaultSystemSolutionFetcher fetcher,
+	public MPJDistributedCompoundFSSPlots(CommandLine cmd, U3FaultSystemSolutionFetcher fetcher,
 			List<CompoundFSSPlots> plots) {
 		super(cmd);
 		Preconditions.checkState(!plots.isEmpty(), "No plots specified!");
@@ -76,10 +76,10 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 		
 		if (cmd.hasOption("name-grep")) {
 			List<String> greps = Lists.newArrayList(Splitter.on(",").split(cmd.getOptionValue("name-grep")));
-			List<LogicTreeBranch> filtered = Lists.newArrayList();
+			List<U3LogicTreeBranch> filtered = Lists.newArrayList();
 			
 			branchLoop:
-			for (LogicTreeBranch branch : branches) {
+			for (U3LogicTreeBranch branch : branches) {
 				String fname = branch.buildFileName();
 				for (String grep : greps) {
 					if (!fname.contains(grep))
@@ -94,10 +94,10 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 		
 		if (cmd.hasOption("name-exclude")) {
 			List<String> greps = Lists.newArrayList(Splitter.on(",").split(cmd.getOptionValue("name-exclude")));
-			List<LogicTreeBranch> filtered = Lists.newArrayList();
+			List<U3LogicTreeBranch> filtered = Lists.newArrayList();
 			
 			branchLoop:
-			for (LogicTreeBranch branch : branches) {
+			for (U3LogicTreeBranch branch : branches) {
 				String fname = branch.buildFileName();
 				for (String grep : greps) {
 					if (fname.contains(grep))
@@ -125,10 +125,10 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 				// TODO don't hardcode?
 				subPlots.add(new ParentSectMFDsPlot(new UCERF3p2BranchWeightProvider()));
 				try {
-					FaultSystemSolutionFetcher subFetch = CompoundFaultSystemSolution.fromZipFile(compFile);
+					U3FaultSystemSolutionFetcher subFetch = U3CompoundFaultSystemSolution.fromZipFile(compFile);
 					if (cmd.hasOption("rand")) {
 						int num = Integer.parseInt(cmd.getOptionValue("rand"));
-						subFetch = FaultSystemSolutionFetcher.getRandomSample(subFetch, num);
+						subFetch = U3FaultSystemSolutionFetcher.getRandomSample(subFetch, num);
 					}
 					parentMFDCompare = new MPJDistributedCompoundFSSPlots(cmd, subFetch, subPlots);
 				} catch (Exception e) {
@@ -148,7 +148,7 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 		List<Task> tasks = Lists.newArrayList();
 		
 		for (int index : batch) {
-			LogicTreeBranch branch = branches.get(index);
+			U3LogicTreeBranch branch = branches.get(index);
 			List<CompoundFSSPlots> myPlots = Lists.newArrayList(plots);
 			Collections.shuffle(myPlots);
 			tasks.add(new PlotSolComputeTask(myPlots, fetcher, branch, true, index));
@@ -464,37 +464,37 @@ public class MPJDistributedCompoundFSSPlots extends MPJTaskCalculator {
 
 			Preconditions.checkArgument(inputFile.exists(), "Input file doesn't exist!: "+inputFile);
 			
-			FaultSystemSolutionFetcher fetcher = CompoundFaultSystemSolution.fromZipFile(inputFile);
+			U3FaultSystemSolutionFetcher fetcher = U3CompoundFaultSystemSolution.fromZipFile(inputFile);
 			if (cmd.hasOption("rand")) {
 				int num = Integer.parseInt(cmd.getOptionValue("rand"));
 				if (cmd.hasOption("mean")) {
 					final InversionFaultSystemSolution meanSol =
-							FaultSystemIO.loadInvSol(new File(cmd.getOptionValue("mean")));
-					fetcher = FaultSystemSolutionFetcher.getRandomSample(fetcher, num,
+							U3FaultSystemIO.loadInvSol(new File(cmd.getOptionValue("mean")));
+					fetcher = U3FaultSystemSolutionFetcher.getRandomSample(fetcher, num,
 							meanSol.getLogicTreeBranch().getValue(FaultModels.class));
-					final Collection<LogicTreeBranch> branches = fetcher.getBranches();
-					fetcher = new FaultSystemSolutionFetcher() {
+					final Collection<U3LogicTreeBranch> branches = fetcher.getBranches();
+					fetcher = new U3FaultSystemSolutionFetcher() {
 						
 						@Override
-						public Collection<LogicTreeBranch> getBranches() {
+						public Collection<U3LogicTreeBranch> getBranches() {
 							return branches;
 						}
 						
 						@Override
-						protected InversionFaultSystemSolution fetchSolution(LogicTreeBranch branch) {
+						protected InversionFaultSystemSolution fetchSolution(U3LogicTreeBranch branch) {
 							return meanSol;
 						}
 					};
 				} else {
-					fetcher = FaultSystemSolutionFetcher.getRandomSample(fetcher, num);
+					fetcher = U3FaultSystemSolutionFetcher.getRandomSample(fetcher, num);
 				}
 			}
 			
-			BranchWeightProvider weightProvider = new APrioriBranchWeightProvider();
+			U3BranchWeightProvider weightProvider = new U3APrioriBranchWeightProvider();
 			if (cmd.hasOption("ucerf3p2-weights"))
 				weightProvider = new UCERF3p2BranchWeightProvider();
 			if (cmd.hasOption("uniform-weights"))
-				weightProvider = new UniformBranchWeightProvider();
+				weightProvider = new U3UniformBranchWeightProvider();
 			
 			List<CompoundFSSPlots> plots = Lists.newArrayList();
 			

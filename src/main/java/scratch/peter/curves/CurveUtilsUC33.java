@@ -69,8 +69,8 @@ import org.opensha.sha.util.NEHRP_TestCity;
 import org.opensha.sra.rtgm.RTGM;
 import org.opensha.sra.rtgm.RTGM.Frequency;
 
-import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.CompoundFaultSystemSolution;
+import scratch.UCERF3.U3AverageFaultSystemSolution;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
@@ -80,9 +80,9 @@ import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3APrioriBranchWeightProvider;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.ProbOfExceed;
 import scratch.peter.nshmp.CurveContainer;
 import scratch.peter.ucerf3.calc.UC3_CalcUtils;
@@ -390,13 +390,13 @@ public class CurveUtilsUC33 {
 //			System.out.println(i + " " + branchDirs[i].getName());
 //		}
 
-		APrioriBranchWeightProvider wtProvider = new APrioriBranchWeightProvider();
+		U3APrioriBranchWeightProvider wtProvider = new U3APrioriBranchWeightProvider();
 		int index = 0;
 		for (File branch : branchDirs) {
 			if (!branch.isDirectory()) continue;
 			String branchName = branch.getName();
 			indexMap.put(branchName, index);
-			LogicTreeBranch ltb = LogicTreeBranch.fromFileName(branchName);
+			U3LogicTreeBranch ltb = U3LogicTreeBranch.fromFileName(branchName);
 			double wt = ignoreWts ? 1.0 : wtProvider.getWeight(ltb);
 			wtMap.put(index, wt);
 			index++;
@@ -761,7 +761,7 @@ public class CurveUtilsUC33 {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private static List<? extends LogicTreeBranchNode<?>> UC33nodeList = 
+	private static List<? extends U3LogicTreeBranchNode<?>> UC33nodeList = 
 			Lists.newArrayList(
 				FM3_1, FM3_2,
 				ABM, GEOLOGIC, NEOKINEMA, ZENGBB,
@@ -771,15 +771,15 @@ public class CurveUtilsUC33 {
 				MAG_7p3, MAG_7p6, MAG_7p9,
 				UCERF2, UCERF3);
 	
-	private static List<? extends Class<? extends LogicTreeBranchNode<?>>> UC33classList =
+	private static List<? extends Class<? extends U3LogicTreeBranchNode<?>>> UC33classList =
 			Lists.newArrayList(
-				(Class<? extends LogicTreeBranchNode<?>>)FaultModels.class,
-				(Class<? extends LogicTreeBranchNode<?>>)DeformationModels.class,
-				(Class<? extends LogicTreeBranchNode<?>>)ScalingRelationships.class,
-				(Class<? extends LogicTreeBranchNode<?>>)SlipAlongRuptureModels.class,
-				(Class<? extends LogicTreeBranchNode<?>>)TotalMag5Rate.class,
-				(Class<? extends LogicTreeBranchNode<?>>)MaxMagOffFault.class,
-				(Class<? extends LogicTreeBranchNode<?>>)SpatialSeisPDF.class);
+				(Class<? extends U3LogicTreeBranchNode<?>>)FaultModels.class,
+				(Class<? extends U3LogicTreeBranchNode<?>>)DeformationModels.class,
+				(Class<? extends U3LogicTreeBranchNode<?>>)ScalingRelationships.class,
+				(Class<? extends U3LogicTreeBranchNode<?>>)SlipAlongRuptureModels.class,
+				(Class<? extends U3LogicTreeBranchNode<?>>)TotalMag5Rate.class,
+				(Class<? extends U3LogicTreeBranchNode<?>>)MaxMagOffFault.class,
+				(Class<? extends U3LogicTreeBranchNode<?>>)SpatialSeisPDF.class);
 
 	// creates and writes a table of flags indicating which nodes are used
 	// in a branch; this simplifies process of building histograms in Matlab
@@ -802,27 +802,27 @@ public class CurveUtilsUC33 {
 		// if used on the branch at index.
 		
 		// intialize table of branches and nodes to false
-		ArrayTable<String, LogicTreeBranchNode<?>, Boolean> nodeTable = 
+		ArrayTable<String, U3LogicTreeBranchNode<?>, Boolean> nodeTable = 
 				ArrayTable.create(branchList, UC33nodeList);
 		for (String branchID : nodeTable.rowKeySet()) {
-			for (LogicTreeBranchNode<?> nodeID : nodeTable.columnKeySet()) {
+			for (U3LogicTreeBranchNode<?> nodeID : nodeTable.columnKeySet()) {
 				nodeTable.put(branchID, nodeID, false);
 			}
 		}
 		
 		// set trues
 		for (String branchID : branchList) {
-			LogicTreeBranch branch = LogicTreeBranch.fromFileName(branchID);
-			for (Class<? extends LogicTreeBranchNode<?>> clazz : UC33classList) {
-				LogicTreeBranchNode<?> node = branch.getValueUnchecked(clazz);
+			U3LogicTreeBranch branch = U3LogicTreeBranch.fromFileName(branchID);
+			for (Class<? extends U3LogicTreeBranchNode<?>> clazz : UC33classList) {
+				U3LogicTreeBranchNode<?> node = branch.getValueUnchecked(clazz);
 				nodeTable.put(branchID, node, true);
 			}
 		}
 		
 		// write file
 		String nodeHeader = JOIN.join(Iterables.transform(UC33nodeList,
-			new Function<LogicTreeBranchNode<?>, String>() {
-				@Override public String apply(LogicTreeBranchNode<?> nodeID) {
+			new Function<U3LogicTreeBranchNode<?>, String>() {
+				@Override public String apply(U3LogicTreeBranchNode<?> nodeID) {
 					return nodeID.name();
 				}
 			}
@@ -830,8 +830,8 @@ public class CurveUtilsUC33 {
 		Files.write(nodeHeader, flagFile, US_ASCII);
 		for (String branchID : nodeTable.rowKeyList()) {
 			List<Integer> flags = Lists.newArrayList();
-			Map<LogicTreeBranchNode<?>, Boolean>  row = nodeTable.row(branchID);
-			for (LogicTreeBranchNode<?> nodeID : nodeTable.columnKeyList()) {
+			Map<U3LogicTreeBranchNode<?>, Boolean>  row = nodeTable.row(branchID);
+			for (U3LogicTreeBranchNode<?> nodeID : nodeTable.columnKeyList()) {
 				flags.add(row.get(nodeID) ? 1 : 0);
 			}
 			String flagLine = JOIN.join(flags) + LF;
@@ -1177,21 +1177,21 @@ public class CurveUtilsUC33 {
 		public TornadoData build() {			
 
 			List<Class> classList = Lists.newArrayList(); // for ordering
-			Map<Class, Set<LogicTreeBranchNode>> nodeMap = Maps.newHashMap();
+			Map<Class, Set<U3LogicTreeBranchNode>> nodeMap = Maps.newHashMap();
 
 			// init class to node variant map
-			for (Class clazz : LogicTreeBranch.getLogicTreeNodeClasses()) {
-				Set<LogicTreeBranchNode> nodeSet = Sets.newHashSet();
+			for (Class clazz : U3LogicTreeBranch.getLogicTreeNodeClasses()) {
+				Set<U3LogicTreeBranchNode> nodeSet = Sets.newHashSet();
 				classList.add(clazz);
 				nodeMap.put(clazz, nodeSet);
 			}
 
 			// fill nodeMap wtih valid logic tree variants
 			for (String name : branchNames) {
-				LogicTreeBranch ltb = LogicTreeBranch.fromFileName(name);
-				for (LogicTreeBranchNode node : ltb) {
-					Class clazz = LogicTreeBranch.getEnumEnclosingClass(node.getClass());
-					Set<LogicTreeBranchNode> nodeSet = nodeMap.get(clazz);
+				U3LogicTreeBranch ltb = U3LogicTreeBranch.fromFileName(name);
+				for (U3LogicTreeBranchNode node : ltb) {
+					Class clazz = U3LogicTreeBranch.getEnumEnclosingClass(node.getClass());
+					Set<U3LogicTreeBranchNode> nodeSet = nodeMap.get(clazz);
 					nodeSet.add(node);
 				}
 			}
@@ -1200,14 +1200,14 @@ public class CurveUtilsUC33 {
 			int medIdx = medianIndex(values);
 			double medVal = values.get(medIdx);
 			String medBrName = branchNames.get(medIdx);
-			LogicTreeBranch medLTB = LogicTreeBranch.fromFileName(medBrName);
+			U3LogicTreeBranch medLTB = U3LogicTreeBranch.fromFileName(medBrName);
 			
 			// loop all valid nodes gathering values for branch variants
 			TornadoData td = new TornadoData(medVal);
 			for (Class clazz : classList) {
-				Set<LogicTreeBranchNode> nodeSet = nodeMap.get(clazz);
-				for (LogicTreeBranchNode node : nodeSet) {
-					LogicTreeBranch ltb = (LogicTreeBranch) medLTB.clone();
+				Set<U3LogicTreeBranchNode> nodeSet = nodeMap.get(clazz);
+				for (U3LogicTreeBranchNode node : nodeSet) {
+					U3LogicTreeBranch ltb = (U3LogicTreeBranch) medLTB.clone();
 					ltb.setValue(node);
 					String brName = ltb.buildFileName();
 					int brIdx = branchIdxMap.get(brName);
@@ -1291,15 +1291,15 @@ public class CurveUtilsUC33 {
 	private static void listAllBranches() {
 		try {
 			String path1440 = "/Users/pmpowers/projects/OpenSHA/tmp/invSols/tree/2012_10_29-tree-fm31_x7-fm32_x1_COMPOUND_SOL.zip";
-			CompoundFaultSystemSolution cfss = UC3_CalcUtils
+			U3CompoundFaultSystemSolution cfss = UC3_CalcUtils
 				.getCompoundSolution(path1440);
-			List<LogicTreeBranch> branches = Lists.newArrayList(cfss
+			List<U3LogicTreeBranch> branches = Lists.newArrayList(cfss
 				.getBranches());
 			File out = new File("tmp/branchlist1440.txt");
 			Files.write("", out, US_ASCII);
 			int idx = 0;
 
-			for (LogicTreeBranch branch : branches) {
+			for (U3LogicTreeBranch branch : branches) {
 				Files.append((idx++) + " " + branch.buildFileName() + LF, out,
 					US_ASCII);
 			}
@@ -1321,7 +1321,7 @@ public class CurveUtilsUC33 {
 		
 		// load conv fss
 		String convSolPath = "/Users/pmpowers/projects/OpenSHA/tmp/invSols/conv/FM3_1_ZENG_Shaw09Mod_DsrTap_CharConst_M5Rate8.7_MMaxOff7.6_NoFix_SpatSeisU3_mean_sol.zip";
-		AverageFaultSystemSolution afss = UC3_CalcUtils.getAvgSolution(convSolPath);
+		U3AverageFaultSystemSolution afss = UC3_CalcUtils.getAvgSolution(convSolPath);
 		for (int i=0; i<maxIdx; i++) {
 			InversionFaultSystemSolution fss = afss.getSolution(i);
 			double fssRupRate = fss.getRateForRup(fssRupIdx);

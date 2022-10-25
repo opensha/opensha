@@ -5,13 +5,15 @@ import java.util.List;
 
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
@@ -25,7 +27,7 @@ public class ETAS_LongTermMFDs {
 
 	public ETAS_LongTermMFDs(FaultSystemSolutionERF erf, boolean wtSupraNuclBySubSeisRates) {
 		// here are the sub-seis MFDs
-		longTermSubSeisMFD_OnSectList = erf.getSolution().getSubSeismoOnFaultMFD_List();
+		longTermSubSeisMFD_OnSectList = erf.getSolution().requireModule(SubSeismoOnFaultMFDs.class).getAll();
 
 		totLongTermSubSeisRateOnSectArray = new double[longTermSubSeisMFD_OnSectList.size()];
 		for(int s=0;s<totLongTermSubSeisRateOnSectArray.length;s++) {

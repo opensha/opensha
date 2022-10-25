@@ -28,6 +28,7 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.FaultSegmentData;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2_TimeIndependentEpistemicList;
@@ -341,7 +342,7 @@ public class UCERF2_Section_MFDsCalc {
 			makeMeanUCERF2_MFD_List();
 		
 		// get the UCERF2 mapped fault system solution
-		InversionFaultSystemSolution fltSysSol =
+		FaultSystemSolution fltSysSol =
 				UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(FaultModels.FM2_1);
 		
 		// get list of parent section IDs
@@ -920,9 +921,9 @@ public class UCERF2_Section_MFDsCalc {
 			
 			// now get UCERF3 IDs for mapping
 			HashMap<String, Integer> ucerf3SectNamesToIDsMap = Maps.newHashMap();
-			for (FaultSection sect : FaultModels.FM3_1.fetchFaultSections())
+			for (FaultSection sect : FaultModels.FM3_1.getFaultSections())
 				ucerf3SectNamesToIDsMap.put(sect.getName(), sect.getSectionId());
-			for (FaultSection sect : FaultModels.FM3_2.fetchFaultSections())
+			for (FaultSection sect : FaultModels.FM3_2.getFaultSections())
 				if (!ucerf3SectNamesToIDsMap.containsKey(sect.getSectionName()))
 					ucerf3SectNamesToIDsMap.put(sect.getName(), sect.getSectionId());
 			

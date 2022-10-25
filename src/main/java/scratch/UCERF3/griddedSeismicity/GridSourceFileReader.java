@@ -22,17 +22,19 @@ import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.XMLUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MatrixIO;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
+@Deprecated // old formats and UCERF3 specific
 public class GridSourceFileReader extends AbstractGridSourceProvider implements XMLSaveable {
 	
 	private static final String NODE_MFD_LIST_EL_NAME = "MFDNodeList";
@@ -56,12 +58,12 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 	}
 	
 	@Override
-	public IncrementalMagFreqDist getNodeUnassociatedMFD(int idx) {
+	public IncrementalMagFreqDist getMFD_Unassociated(int idx) {
 		return nodeUnassociatedMFDs.get(idx);
 	}
 
 	@Override
-	public IncrementalMagFreqDist getNodeSubSeisMFD(int idx) {
+	public IncrementalMagFreqDist getMFD_SubSeisOnFault(int idx) {
 		return nodeSubSeisMFDs.get(idx);
 	}
 
@@ -138,11 +140,11 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 			File binFile, File regXMLFile, GridSourceProvider gridProv, double minMag) throws IOException {
 		DiscretizedFunc refFunc = null;
 		for (int i=0; i<gridProv.size(); i++) {
-			if (gridProv.getNodeUnassociatedMFD(i) != null) {
-				refFunc = gridProv.getNodeUnassociatedMFD(i);
+			if (gridProv.getMFD_Unassociated(i) != null) {
+				refFunc = gridProv.getMFD_Unassociated(i);
 				break;
-			} else if (gridProv.getNodeSubSeisMFD(i) != null) {
-				refFunc = gridProv.getNodeSubSeisMFD(i);
+			} else if (gridProv.getMFD_SubSeisOnFault(i) != null) {
+				refFunc = gridProv.getMFD_SubSeisOnFault(i);
 				break;
 			}
 		}
@@ -153,7 +155,7 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 		arrays.add(funcToArray(true, refFunc, minMag));
 		
 		for (int i=0; i<gridProv.size(); i++) {
-			DiscretizedFunc unMFD = gridProv.getNodeUnassociatedMFD(i);
+			DiscretizedFunc unMFD = gridProv.getMFD_Unassociated(i);
 			if (unMFD != null && unMFD.getMaxY()>0) {
 				Preconditions.checkState(unMFD.getMinX() == refFunc.getMinX()
 						&& unMFD.getMaxX() == refFunc.getMaxX());
@@ -161,7 +163,7 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 			} else {
 				arrays.add(new double[0]);
 			}
-			DiscretizedFunc subSeisMFD = gridProv.getNodeSubSeisMFD(i);
+			DiscretizedFunc subSeisMFD = gridProv.getMFD_SubSeisOnFault(i);
 			if (subSeisMFD != null && subSeisMFD.getMaxY()>0) {
 				Preconditions.checkState(subSeisMFD.getMinX() == refFunc.getMinX()
 						&& subSeisMFD.getMaxX() == refFunc.getMaxX());
@@ -218,9 +220,9 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 			double[] subY = arrays.get(cnt++); // +2 for X and unassociated
 			
 			if (unY.length > 0)
-				nodeUnassociatedMFDs.put(i, FaultSystemIO.asIncr(new LightFixedXFunc(xVals, unY)));
+				nodeUnassociatedMFDs.put(i, U3FaultSystemIO.asIncr(new LightFixedXFunc(xVals, unY)));
 			if (subY.length > 0)
-				nodeSubSeisMFDs.put(i, FaultSystemIO.asIncr(new LightFixedXFunc(xVals, subY)));
+				nodeSubSeisMFDs.put(i, U3FaultSystemIO.asIncr(new LightFixedXFunc(xVals, subY)));
 		}
 		Preconditions.checkState(cnt == arrays.size());
 		
@@ -246,8 +248,8 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 			Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = Maps.newHashMap();
 			
 			for (int i=0; i<region.getNumLocations(); i++) {
-				nodeSubSeisMFDs.put(i, gridProv.getNodeSubSeisMFD(i));
-				nodeUnassociatedMFDs.put(i, gridProv.getNodeUnassociatedMFD(i));
+				nodeSubSeisMFDs.put(i, gridProv.getMFD_SubSeisOnFault(i));
+				nodeUnassociatedMFDs.put(i, gridProv.getMFD_Unassociated(i));
 			}
 			
 			fileBased = new GridSourceFileReader(region, nodeSubSeisMFDs, nodeUnassociatedMFDs);
@@ -288,14 +290,15 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 		Element regionEl = root.element(GriddedRegion.XML_METADATA_NAME);
 		
 		GriddedRegion region = GriddedRegion.fromXMLMetadata(regionEl);
-		if (region.getNodeCount() == 7637 && region.getName().startsWith("RELM"))
-			region = loadU3RegionJSON();
 		
 		Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = Maps.newHashMap();
 		Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = Maps.newHashMap();
 		
 		Element nodeListEl = root.element(NODE_MFD_LIST_EL_NAME);
 		int numNodes = Integer.parseInt(nodeListEl.attributeValue("num"));
+		
+		if (region.getNodeCount() == 7637 && (numNodes == 7636 || region.getName().startsWith("RELM")))
+			region = loadU3RegionJSON();
 		
 		Iterator<Element> nodeElIt = nodeListEl.elementIterator(NODE_MFD_ITEM_EL_NAME);
 		
@@ -320,7 +323,7 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 		EvenlyDiscretizedFunc func =
 				(EvenlyDiscretizedFunc)AbstractDiscretizedFunc.fromXMLMetadata(funcEl);
 		
-		return FaultSystemIO.asIncr(func);
+		return U3FaultSystemIO.asIncr(func);
 	}
 	
 	public static void main(String[] args) throws IOException, DocumentException {
@@ -328,7 +331,7 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 //		File solFile = new File(dataDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_MEAN_BRANCH_AVG_SOL.zip");
 		File solFile = new File(dataDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_TRUE_HAZARD_MEAN_SOL.zip");
 		File outputFile = new File(dataDir, solFile.getName().replaceAll(".zip", "")+"_grid_sources.xml");
-		FaultSystemSolution fss = FaultSystemIO.loadSol(solFile);
+		FaultSystemSolution fss = U3FaultSystemIO.loadSol(solFile);
 		writeGriddedSeisFile(outputFile, fss.getGridSourceProvider());
 ////		File fssFile = new File("/tmp/FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate8.7_MMaxOff7.6_" +
 ////				"NoFix_SpatSeisU3_VarPaleo0.6_VarSmoothPaleoSect1000_VarSectNuclMFDWt0.01_sol.zip");
@@ -400,20 +403,13 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 		gRead = new GridReader("NormalWts.txt");
 		fracNormal = gRead.getValues();
 	}
-	
-	public void scaleAllNodeMFDs(double[] valuesArray) {
-		if(valuesArray.length != getGriddedRegion().getNodeCount())
-			throw new RuntimeException("Error: valuesArray must have same length as getGriddedRegion().getNodeCount()");
-		for(int i=0;i<valuesArray.length;i++) {
-			if(valuesArray[i] != 1.0) {
-				IncrementalMagFreqDist mfd = getNodeUnassociatedMFD(i);
-				if(mfd != null)
-					mfd.scale(valuesArray[i]);;
-				mfd = getNodeSubSeisMFD(i);				
-				if(mfd != null)
-					mfd.scale(valuesArray[i]);;
-			}
-		}
+
+	@Override
+	public GridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+			Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
+			double[] fracReverse) {
+		return new AbstractGridSourceProvider.Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
+				fracStrikeSlip, fracNormal, fracReverse);
 	}
 
 }

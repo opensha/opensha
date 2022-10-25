@@ -126,7 +126,7 @@ public class GeologicSlipRateLoader {
 		ArrayList<GeologicSlipRate> rates = loadExcelFile(UCERF3_DataUtils.locateResourceAsStream("DeformationModels",
 				"geologic_slip_rate_sites_2012_07_11.xls"));
 		
-		Map<Integer, FaultSection> sects = fm.fetchFaultSectionsMap();
+		Map<Integer, FaultSection> sects = fm.getFaultSectionIDMap();
 		
 		CSVFile<String> csv = new CSVFile<String>(true);
 		

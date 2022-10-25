@@ -15,24 +15,27 @@ public class RSQSimSubSectEqkRupture extends EqkRupture {
 	private double timeSeconds;
 	private RSQSimEvent event;
 	private List<? extends FaultSection> subSections;
+	private FaultSection nuclSection;
 	
 	public RSQSimSubSectEqkRupture(double mag, double aveRake, RuptureSurface ruptureSurface, Location hypocenterLocation,
-			int eventID, double timeSeconds, List<? extends FaultSection> subSections) {
+			int eventID, double timeSeconds, List<? extends FaultSection> subSections, FaultSection nuclSection) {
 		super(mag, aveRake, ruptureSurface, hypocenterLocation);
 		
 		this.eventID = eventID;
 		this.timeSeconds = timeSeconds;
 		this.subSections = subSections;
+		this.nuclSection = nuclSection;
 	}
 	
 	public RSQSimSubSectEqkRupture(double mag, double aveRake, RuptureSurface ruptureSurface, Location hypocenterLocation,
-			RSQSimEvent event, List<? extends FaultSection> subSections) {
+			RSQSimEvent event, List<? extends FaultSection> subSections, FaultSection nuclSection) {
 		super(mag, aveRake, ruptureSurface, hypocenterLocation);
 		
 		this.event = event;
 		this.eventID = event.getID();
 		this.timeSeconds = event.getTime();
 		this.subSections = subSections;
+		this.nuclSection = nuclSection;
 	}
 
 	public RSQSimEvent getEvent() {
@@ -49,6 +52,10 @@ public class RSQSimSubSectEqkRupture extends EqkRupture {
 
 	public List<? extends FaultSection> getSubSections() {
 		return subSections;
+	}
+	
+	public FaultSection getNucleationSection() {
+		return nuclSection;
 	}
 
 }

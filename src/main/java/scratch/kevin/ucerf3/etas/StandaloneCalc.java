@@ -11,6 +11,8 @@ import org.dom4j.DocumentException;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
@@ -19,8 +21,6 @@ import org.opensha.sha.earthquake.param.MaximumMagnitudeParam;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
@@ -33,7 +33,7 @@ import scratch.UCERF3.erf.ETAS.NoFaultsModel.UCERF3_GriddedSeisOnlyERF_ETAS;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.LastEventData;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
@@ -98,7 +98,7 @@ public class StandaloneCalc {
 		
 		Map<Integer, List<LastEventData>> lastEventData = LastEventData.load();
 		
-		FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
+		FaultSystemSolution sol = U3FaultSystemIO.loadSol(solFile);
 		
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		

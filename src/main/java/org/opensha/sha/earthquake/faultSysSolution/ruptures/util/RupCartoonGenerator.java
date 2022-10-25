@@ -48,6 +48,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilde
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.CumulativeAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.DirectPathPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
@@ -95,9 +96,8 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Ints;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.U3FaultSystemRupSet;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RupCartoonGenerator {
 	
@@ -1061,7 +1061,8 @@ public class RupCartoonGenerator {
 				List<XY_DataSet> funcs = new ArrayList<>();
 				List<PlotCurveCharacterstics> chars = new ArrayList<>();
 				
-				titles.add("Rupture "+(titles.size()+1)+", "+rup.getTotalNumSects()+" Sections");
+//				titles.add("Rupture "+(titles.size()+1)+", "+rup.getTotalNumSects()+" Sections");
+				titles.add(" ");
 				
 				boolean firstRup = true;
 				boolean firstNoRup = true;
@@ -1126,7 +1127,7 @@ public class RupCartoonGenerator {
 		float fract = 0.1f;
 		
 		FaultSection s1 = buildSect(parentID++, dip, upperDepth, lowerDepth,
-				loc(0d, -2.5d), loc(45d, -0.5d));
+				loc(20d, -2.5d), loc(45d, -0.5d));
 		s1.setAveRake(180d);
 		FaultSection s2 = buildSect(parentID++, dip, upperDepth, lowerDepth,
 				loc(33d, 1d), loc(60d, -2.5d));
@@ -1198,7 +1199,8 @@ public class RupCartoonGenerator {
 				List<XY_DataSet> funcs = new ArrayList<>();
 				List<PlotCurveCharacterstics> chars = new ArrayList<>();
 				
-				titles.add("Rupture "+(titles.size()+1)+", "+rup.getTotalNumSects()+" Sections");
+//				titles.add("Rupture "+(titles.size()+1)+", "+rup.getTotalNumSects()+" Sections");
+				titles.add(" ");
 				
 				boolean firstRup = true;
 				boolean firstNoRup = true;
@@ -1244,7 +1246,8 @@ public class RupCartoonGenerator {
 				specs.add(spec);
 			}
 			
-			plotTileMulti(outputDir, prefixes.get(p), specs, title, titles, 0.01, 16, 0);
+//			plotTileMulti(outputDir, prefixes.get(p), specs, title, titles, 0.01, 16, 0);
+			plotTileMulti(outputDir, prefixes.get(p), specs, title, titles, 0.0, 16, 0);
 		}
 	}
 	
@@ -1395,6 +1398,9 @@ public class RupCartoonGenerator {
 		combSpec.setPlotAnnotations(anns);
 		
 		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		
+		if (titles != null && titles.size() >= 10)
+			gp.setLegendFontSize(26);
 		
 		gp.drawGraphPanel(combSpec, false, false, xRange, yRange);
 		PlotUtils.setAxisVisible(gp, false, false);
@@ -2859,12 +2865,17 @@ public class RupCartoonGenerator {
 	}
 
 	public static void main(String[] args) throws IOException, DocumentException {
-		File mainDir = new File("/home/kevin/workspace/opensha/src/main/java/org/opensha/sha/"
-				+ "earthquake/faultSysSolution/ruptures");
-//		File mainDir = new File("/tmp/cartoons");
+//		File mainDir = new File("/home/kevin/workspace/opensha/src/main/java/org/opensha/sha/"
+//				+ "earthquake/faultSysSolution/ruptures");
+		File mainDir = new File("/tmp/cartoons");
+		write_pdfs = true;
+		
+		Preconditions.checkState(mainDir.exists() || mainDir.mkdir());
 		File rupDocsDir = new File(mainDir, "doc");
 		File stratDocsDir = new File(mainDir, "strategies/doc");
+		Preconditions.checkState(stratDocsDir.getParentFile().exists() || stratDocsDir.getParentFile().mkdir());
 		File plausiblityDocsDir = new File(mainDir, "plausibility/doc");
+		Preconditions.checkState(plausiblityDocsDir.getParentFile().exists() || plausiblityDocsDir.getParentFile().mkdir());
 		
 //		buildStandardDemos(rupDocsDir);
 //		buildThinningDemo(stratDocsDir);

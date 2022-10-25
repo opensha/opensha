@@ -1,22 +1,3 @@
-/*******************************************************************************
- * Copyright 2009 OpenSHA.org in partnership with
- * the Southern California Earthquake Center (SCEC, http://www.scec.org)
- * at the University of Southern California and the UnitedStates Geological
- * Survey (USGS; http://www.usgs.gov)
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- *   http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- ******************************************************************************/
-
 package org.opensha.sha.magdist.gui;
 
 import java.awt.BorderLayout;
@@ -123,11 +104,11 @@ extends JFrame implements ParameterChangeListener {
 	private JSplitPane paramSplitPane = new JSplitPane();
 
 	//X and Y Axis  when plotting the Curves Name
-	private String incrRateXAxisName = "Magnitude", incrRateYAxisName = "Incremental-Rate";
+	private String incrRateXAxisName = "Magnitude", incrRateYAxisName = "Incremental Rate";
 	//X and Y Axis  when plotting the Curves Name
-	private String cumRateXAxisName = "Magnitude" , cumRateYAxisName = "Cumulative-Rate";
+	private String cumRateXAxisName = "Magnitude" , cumRateYAxisName = "Cumulative Rate";
 	//X and Y Axis  when plotting the Curves Name
-	private String momentRateXAxisName = "Magnitude", momentRateYAxisName =  "Moment-Rate";
+	private String momentRateXAxisName = "Magnitude", momentRateYAxisName =  "Moment Rate";
 
 	private boolean isIncrRatePlot,isMomentRatePlot,isCumRatePlot;
 
@@ -561,21 +542,21 @@ extends JFrame implements ParameterChangeListener {
 		
 		PlotSpec incrSpec = incrRateGraphPanel.getPlotSpec();
 		incrSpec.setXAxisLabel(incrRateXAxisName);
-		incrSpec.setXAxisLabel(incrRateYAxisName);
+		incrSpec.setYAxisLabel(incrRateYAxisName);
 		incrSpec.setPlotElems(incrRateFunctionList);
 		incrSpec.setTitle(incrRatePlotTitle);
 		incrRateGraphPanel.drawGraph();
 		
 		PlotSpec cumSpec = cumRateGraphPanel.getPlotSpec();
 		cumSpec.setXAxisLabel(cumRateXAxisName);
-		cumSpec.setXAxisLabel(cumRateYAxisName);
+		cumSpec.setYAxisLabel(cumRateYAxisName);
 		cumSpec.setPlotElems(cumRateFunctionList);
 		cumSpec.setTitle(cumRatePlotTitle);
 		cumRateGraphPanel.drawGraph();
 		
 		PlotSpec momentSpec = momentRateGraphPanel.getPlotSpec();
 		momentSpec.setXAxisLabel(momentRateXAxisName);
-		momentSpec.setXAxisLabel(momentRateYAxisName);
+		momentSpec.setYAxisLabel(momentRateYAxisName);
 		momentSpec.setPlotElems(momentRateFunctionList);
 		momentSpec.setTitle(momentRatePlotTitle);
 		momentRateGraphPanel.drawGraph();
@@ -608,11 +589,11 @@ extends JFrame implements ParameterChangeListener {
 		List<PlotCurveCharacterstics> cumPlotFeaturesList = cumRateGraphPanel.getPlottingFeatures();
 		List<PlotCurveCharacterstics> momentPlotFeaturesList = momentRateGraphPanel.getPlottingFeatures();
 		incrPlotFeaturesList.set(incrPlotFeaturesList.size() -1,new PlotCurveCharacterstics(PlotLineType.SOLID,
-				1f, null, 4f, Color.BLACK, 1));
+				1f, null, 4f, Color.BLACK));
 		cumPlotFeaturesList.set(incrPlotFeaturesList.size() -1,new PlotCurveCharacterstics(PlotLineType.SOLID,
-				1f, null, 4f, Color.BLACK, 1));
+				1f, null, 4f, Color.BLACK));
 		momentPlotFeaturesList.set(incrPlotFeaturesList.size() -1,new PlotCurveCharacterstics(PlotLineType.SOLID,
-				1f, null, 4f, Color.BLACK, 1));
+				1f, null, 4f, Color.BLACK));
 		addGraphPanel();
 	}
 
@@ -671,8 +652,9 @@ extends JFrame implements ParameterChangeListener {
 
 			IncrementalMagFreqDist function = (IncrementalMagFreqDist)this.
 			magDistEditor.getParameter().getValue();
+			magDistMetadata += "\n\n"+function.getInfo(); // this adds parameter values, which will include any solved for, which the next does not
 			function.setInfo(magDistMetadata);
-			function.setName("Mag - Incremental Rate Dist.");
+			function.setName("Incremental MFD");
 			if (D)
 				System.out.println(" after getting mag dist from editor");
 			EvenlyDiscretizedFunc cumRateFunction;
@@ -681,10 +663,10 @@ extends JFrame implements ParameterChangeListener {
 			// get the cumulative rate and moment rate distributions for this function
 			cumRateFunction = (EvenlyDiscretizedFunc) function.getCumRateDist();
 			cumRateFunction.setInfo(magDistMetadata);
-			cumRateFunction.setName("Mag - Cumulative Rate Dist.");
+			cumRateFunction.setName("Cumulative MFD");
 			moRateFunction = (EvenlyDiscretizedFunc) function.getMomentRateDist();
 			moRateFunction.setInfo(magDistMetadata);
-			moRateFunction.setName("Mag - Moment Rate Dist.");
+			moRateFunction.setName("Moment Rate Distribution");
 			int size = incrRateFunctionList.size();
 			//if the number of functions is 1 more then numFunctionsWithoutSumDist
 			//then summed has been added ealier so needs to be removed

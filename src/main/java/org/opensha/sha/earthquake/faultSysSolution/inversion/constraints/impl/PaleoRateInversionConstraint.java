@@ -2,12 +2,13 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl;
 
 import java.util.List;
 
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 
 /**
  * Constraint to match paleoseismic event rates at subsections, also taking into account
@@ -21,27 +22,22 @@ public class PaleoRateInversionConstraint extends InversionConstraint {
 	public static final String NAME = "Paleoseismic Event Rate";
 	public static final String SHORT_NAME = "PaleoRate";
 	
-	private FaultSystemRupSet rupSet;
-	private double weight;
-	private List<PaleoRateConstraint> paleoRateConstraints;
+	private transient FaultSystemRupSet rupSet;
+	private List<? extends SectMappedUncertainDataConstraint> paleoRateConstraints;
 	private PaleoProbabilityModel paleoProbModel;
 
 	public PaleoRateInversionConstraint(FaultSystemRupSet rupSet, double weight,
-			List<PaleoRateConstraint> paleoRateConstraints, PaleoProbabilityModel paleoProbModel) {
+			List<? extends SectMappedUncertainDataConstraint> paleoRateConstraints, PaleoProbabilityModel paleoProbModel) {
+		this(rupSet, weight, ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY, paleoRateConstraints, paleoProbModel);
+	}
+
+	public PaleoRateInversionConstraint(FaultSystemRupSet rupSet, double weight, ConstraintWeightingType weightingType,
+			List<? extends SectMappedUncertainDataConstraint> paleoRateConstraints, PaleoProbabilityModel paleoProbModel) {
+		super(NAME, SHORT_NAME, weight, false, weightingType);
 		this.rupSet = rupSet;
-		this.weight = weight;
 		this.paleoRateConstraints = paleoRateConstraints;
 		this.paleoProbModel = paleoProbModel;
-	}
-
-	@Override
-	public String getShortName() {
-		return SHORT_NAME;
-	}
-
-	@Override
-	public String getName() {
-		return NAME;
+		this.weightingType = weightingType;
 	}
 
 	@Override
@@ -51,27 +47,28 @@ public class PaleoRateInversionConstraint extends InversionConstraint {
 	}
 
 	@Override
-	public boolean isInequality() {
-		return false;
-	}
-
-	@Override
 	public long encode(DoubleMatrix2D A, double[] d, int startRow) {
 		long numNonZeroElements = 0;
 		for (int i=0; i<paleoRateConstraints.size(); i++) {
-			PaleoRateConstraint constraint = paleoRateConstraints.get(i);
+			SectMappedUncertainDataConstraint constraint = paleoRateConstraints.get(i);
 			int row = startRow + i;
-			d[row] = weight * constraint.getMeanRate() / constraint.getStdDevOfMeanRate();
-			List<Integer> rupsForSect = rupSet.getRupturesForSection(constraint.getSectionIndex());
+			d[row] = weight * weightingType.getD(constraint.bestEstimate, constraint.getPreferredStdDev());
+			double scalar = weightingType.getA_Scalar(constraint.bestEstimate, constraint.getPreferredStdDev());
+			List<Integer> rupsForSect = rupSet.getRupturesForSection(constraint.sectionIndex);
 			for (int rupIndex=0; rupIndex<rupsForSect.size(); rupIndex++) {
 				int rup = rupsForSect.get(rupIndex);
 				double probPaleoVisible = paleoProbModel.getProbPaleoVisible(
-						rupSet, rup, constraint.getSectionIndex());	
-				setA(A, row, rup, weight * probPaleoVisible / constraint.getStdDevOfMeanRate());
+						rupSet, rup, constraint.sectionIndex);	
+				setA(A, row, rup, weight * probPaleoVisible * scalar);
 				numNonZeroElements++;			
 			}
 		}
 		return numNonZeroElements;
+	}
+
+	@Override
+	public void setRuptureSet(FaultSystemRupSet rupSet) {
+		this.rupSet = rupSet;
 	}
 
 }

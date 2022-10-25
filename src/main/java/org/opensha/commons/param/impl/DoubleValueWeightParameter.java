@@ -494,4 +494,9 @@ public class DoubleValueWeightParameter extends AbstractParameter
 		}
 		return paramEdit;
 	}
+
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
 }

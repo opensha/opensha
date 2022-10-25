@@ -31,6 +31,7 @@ import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2.MeanUCERF2;
 import org.opensha.sha.faultSurface.CompoundSurface;
@@ -41,7 +42,8 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
-import scratch.UCERF3.FaultSystemRupSet;
+import com.google.common.base.Preconditions;
+
 import scratch.UCERF3.analysis.GMT_CA_Maps;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
@@ -219,6 +221,8 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 					magOfUCERF2_Rup[i]=data_in.readDouble();
 					lengthOfUCERF2_Rup[i]=data_in.readDouble();
 					rateOfUCERF2_Rup[i]=data_in.readDouble();
+					Preconditions.checkState(Double.isFinite(magOfUCERF2_Rup[i]), "Bad U2 mag[%s]=%s", i, (Double)magOfUCERF2_Rup[i]);
+					Preconditions.checkState(Double.isFinite(rateOfUCERF2_Rup[i]), "Bad U2 rate[%s]=%s", i, (Double)rateOfUCERF2_Rup[i]);
 					subSeismoUCERF2_Rup[i]=data_in.readBoolean();
 					invRupIndexForUCERF2_Rup[i]=data_in.readInt();
 				}
@@ -278,7 +282,7 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 				else
 					info_fw = new FileWriter(new File(scratchDir, INFO_FILE_PATH_PREFIX+"_2_"+NUM_SECTIONS+"_"+NUM_INVERSION_RUPTURES+".txt"));
 			} catch (IOException e) {
-				e.printStackTrace();
+//				e.printStackTrace();
 				// it's ok to fail here actually
 				info_fw = null;
 			}
@@ -359,10 +363,14 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 				double mag = ((int)(rup.getMag()*100.0))/100.0;	// nice value for writing
 				totMoRate += MagUtils.magToMoment(rup.getMag())*rup.getMeanAnnualRate(duration);
 				srcIndexOfUCERF2_Rup[rupIndex] = s;
-				rupIndexOfUCERF2_Rup[rupIndex] = r;;
+				rupIndexOfUCERF2_Rup[rupIndex] = r;
 				magOfUCERF2_Rup[rupIndex] = rup.getMag();
 				lengthOfUCERF2_Rup[rupIndex] = len;
 				rateOfUCERF2_Rup[rupIndex] = rup.getMeanAnnualRate(duration);
+				Preconditions.checkState(Double.isFinite(magOfUCERF2_Rup[rupIndex]),
+						"Bad U2 mag[%s]=%s\ts=%s, r=%s", rupIndex, (Double)magOfUCERF2_Rup[rupIndex], s, r);
+				Preconditions.checkState(Double.isFinite(rateOfUCERF2_Rup[rupIndex]),
+						"Bad U2 rate[%s]=%s\ts=%s, r=%s", rupIndex, (Double)rateOfUCERF2_Rup[rupIndex], s, r);
 				
 				subSeismoUCERF2_Rup[rupIndex] = false;  // the default
 
@@ -470,6 +478,9 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 	 */
 	private void writePreComputedDataFile() {
 		// write out the data
+		File parentDir = dataFile.getParentFile();
+		if (!parentDir.exists() && !parentDir.mkdir())
+			return;
 		try {
 			FileOutputStream file_output = new FileOutputStream (dataFile);
 			// Wrap the FileOutputStream with a DataOutputStream

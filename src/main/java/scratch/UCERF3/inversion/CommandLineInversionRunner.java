@@ -48,22 +48,29 @@ import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDEqualityInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDSubSectNuclInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.U3MFDSubSectNuclInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.AnnealingProgress;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
-import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
-import scratch.UCERF3.SlipEnabledRupSet;
-import scratch.UCERF3.SlipEnabledSolution;
+import scratch.UCERF3.U3AverageFaultSystemSolution;
+import scratch.UCERF3.U3SlipEnabledRupSet;
+import scratch.UCERF3.U3SlipEnabledSolution;
 import scratch.UCERF3.analysis.CompoundFSSPlots;
 import scratch.UCERF3.analysis.FaultSpecificSegmentationPlotGen;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
@@ -71,20 +78,15 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.MomentRateFixes;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
-import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
-import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
-import scratch.UCERF3.simulatedAnnealing.completion.CompletionCriteria;
-import scratch.UCERF3.simulatedAnnealing.completion.ProgressTrackingCompletionCriteria;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF2_MFD_ConstraintFetcher;
 import scratch.UCERF3.utils.UCERF2_Section_MFDs.UCERF2_Section_MFDsCalc;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoFitPlotter;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.PaleoSiteCorrelationData;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF2_PaleoProbabilityModel;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF2_PaleoRateConstraintFetcher;
@@ -144,7 +146,6 @@ public class CommandLineInversionRunner {
 		REMOVE_OUTLIER_FAULTS("removefaults", "remove-faults", "RemoveFaults", false, "Remove some outlier high slip faults."),
 		SLIP_WT_NORM("slipwt", "slip-wt", "SlipWt", true, "Normalized slip rate constraint wt"),
 		SLIP_WT_UNNORM("slipwtunnorm", "slip-wt-unnorm", "SlipWtUnNorm", true, "Unnormalized slip rate constraint wt"),
-		SLIP_WT_TYPE("sliptype", "slip-type", "SlipType", true, "Slip wt type"),
 		SERIAL("serial", "force-serial", "Serial", false, "Force serial annealing"),
 		SYNTHETIC("syn", "synthetic", "Synthetic", false, "Synthetic data from solution rates named syn.bin."),
 		COULOMB("coulomb", "coulomb-threshold", "Coulomb", true, "Set coulomb filter threshold"),
@@ -293,7 +294,7 @@ public class CommandLineInversionRunner {
 				dir.mkdir();
 			String prefix = cmd.getOptionValue("branch-prefix");
 			// parse logic tree branch from prefix
-			LogicTreeBranch branch = LogicTreeBranch.fromFileName(prefix);
+			U3LogicTreeBranch branch = U3LogicTreeBranch.fromFileName(prefix);
 			// ensure that branch is fully specified (no nulls)
 			Preconditions.checkState(branch.isFullySpecified(),
 					"Branch is not fully fleshed out! Prefix: "+prefix+", branch: "+branch);
@@ -380,22 +381,22 @@ public class CommandLineInversionRunner {
 			System.out.println("Building Inversion Configuration");
 			// this contains all inversion weights
 			UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(branch.getValue(InversionModels.class),
-					rupSet, mfdEqualityConstraintWt, mfdInequalityConstraintWt, cmd);
+					rupSet, rupSet.getFaultModel(), rupSet.getInversionTargetMFDs(), mfdEqualityConstraintWt, mfdInequalityConstraintWt, cmd);
 
 			// load paleo rate constraints
-			ArrayList<PaleoRateConstraint> paleoRateConstraints = getPaleoConstraints(branch.getValue(FaultModels.class), rupSet);
+			ArrayList<U3PaleoRateConstraint> paleoRateConstraints = getPaleoConstraints(branch.getValue(FaultModels.class), rupSet);
 
 			// load paleo probability of observance model
 			PaleoProbabilityModel paleoProbabilityModel =
 				UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
 			
-			List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+			List<U3AveSlipConstraint> aveSlipConstraints = U3AveSlipConstraint.load(rupSet.getFaultSectionDataList());
 			if (cmd.hasOption(InversionOptions.AVE_SLIP_SCALE.argName)) {
 				double scale = Double.parseDouble(cmd.getOptionValue(InversionOptions.AVE_SLIP_SCALE.argName));
 				System.out.println("Scaling ave slip by: "+scale);
-				List<AveSlipConstraint> newConstraints = new ArrayList<AveSlipConstraint>();
-				for (AveSlipConstraint constr : aveSlipConstraints)
-					newConstraints.add(new AveSlipConstraint(constr.getSubSectionIndex(), constr.getSubSectionName(),
+				List<U3AveSlipConstraint> newConstraints = new ArrayList<U3AveSlipConstraint>();
+				for (U3AveSlipConstraint constr : aveSlipConstraints)
+					newConstraints.add(new U3AveSlipConstraint(constr.getSubSectionIndex(), constr.getSubSectionName(),
 							scale*constr.getWeightedMean(), scale*constr.getUpperUncertaintyBound(),
 							scale*constr.getLowerUncertaintyBound(), constr.getSiteLocation()));
 				aveSlipConstraints = newConstraints;
@@ -423,7 +424,7 @@ public class CommandLineInversionRunner {
 			info += "\n\n"+getPreInversionInfo(rupSet);
 
 			File rupSetFile = new File(subDir, prefix+"_rupSet.zip");
-			FaultSystemIO.writeRupSet(rupSet, rupSetFile);
+			U3FaultSystemIO.writeRupSet(rupSet, rupSetFile);
 			// now clear it out of memory
 			rupSet = null;
 			System.gc();
@@ -460,52 +461,54 @@ public class CommandLineInversionRunner {
 			List<ConstraintRange> constraintRanges = gen.getConstraintRowRanges();
 			
 			if (cmd.hasOption(InversionOptions.SYNTHETIC.argName)) {
-				// special synthetic inversion test
-				double[] synrates = MatrixIO.doubleArrayFromFile(new File(dir, "syn.bin"));
-				Preconditions.checkState(synrates.length == initialState.length,
-						"synthetic starting solution has different num rups!");
-				// subtract min rates
-				synrates = gen.adjustSolutionForWaterLevel(synrates);
-				
-				DoubleMatrix1D synMatrix = new DenseDoubleMatrix1D(synrates);
-				
-				DenseDoubleMatrix1D syn = new DenseDoubleMatrix1D(A.rows());
-				A.zMult(synMatrix, syn);
-				
-				double[] d_syn = syn.elements();
-				
-				Preconditions.checkState(d.length == d_syn.length,
-						"D and D_syn lengths tdon't match!");
-				
-				List<ConstraintRange> rangesToCopy = Lists.newArrayList();
-				
-				for (int i=0; i<constraintRanges.size(); i++) {
-					ConstraintRange range = constraintRanges.get(i);
-					String name = range.name;
-					boolean keep = false;
-					if (name.equals(SlipRateInversionConstraint.NAME))
-						keep = true;
-					else if (name.equals(PaleoRateInversionConstraint.NAME))
-						keep = true;
-					else if (name.equals(PaleoSlipInversionConstraint.NAME))
-						keep = true;
-					else if (name.equals(MFDEqualityInversionConstraint.NAME))
-						keep = true;
-					else if (name.equals(MFDSubSectNuclInversionConstraint.NAME))
-						keep = true;
-					else if (name.equals(ParkfieldInversionConstraint.NAME))
-						keep = true;
-					
-					if (keep)
-						rangesToCopy.add(range);
-				}
-				
-				// copy over "data" from synthetics
-				for (ConstraintRange range : rangesToCopy) {
-					System.out.println("Copying range "+range+" from syn to D");
-					for (int i=range.startRow; i<range.endRow; i++)
-						d[i] = d_syn[i];
-				}
+				throw new UnsupportedOperationException("No longer supported");
+//				// special synthetic inversion test
+//				double[] synrates = MatrixIO.doubleArrayFromFile(new File(dir, "syn.bin"));
+//				Preconditions.checkState(synrates.length == initialState.length,
+//						"synthetic starting solution has different num rups!");
+//				// subtract min rates
+//				synrates = gen.adjustSolutionForWaterLevel(synrates);
+//				
+//				DoubleMatrix1D synMatrix = new DenseDoubleMatrix1D(synrates);
+//				
+//				DenseDoubleMatrix1D syn = new DenseDoubleMatrix1D(A.rows());
+//				A.zMult(synMatrix, syn);
+//				
+//				double[] d_syn = syn.elements();
+//				
+//				Preconditions.checkState(d.length == d_syn.length,
+//						"D and D_syn lengths tdon't match!");
+//				
+//				List<ConstraintRange> rangesToCopy = Lists.newArrayList();
+//				
+//				for (int i=0; i<constraintRanges.size(); i++) {
+//					ConstraintRange range = constraintRanges.get(i);
+//					String name = range.name;
+//					boolean keep = false;
+//					for (ConstraintWeightingType type : ConstraintWeightingType.values())
+//						if (name.equals(SlipRateInversionConstraint.getName(type)))
+//							keep = true;
+//					else if (name.equals(PaleoRateInversionConstraint.NAME))
+//						keep = true;
+//					else if (name.equals(PaleoSlipInversionConstraint.NAME))
+//						keep = true;
+//					else if (name.equals(MFDInversionConstraint.EQ_NAME))
+//						keep = true;
+//					else if (name.equals(MFDSubSectNuclInversionConstraint.NAME))
+//						keep = true;
+//					else if (name.equals(ParkfieldInversionConstraint.NAME))
+//						keep = true;
+//					
+//					if (keep)
+//						rangesToCopy.add(range);
+//				}
+//				
+//				// copy over "data" from synthetics
+//				for (ConstraintRange range : rangesToCopy) {
+//					System.out.println("Copying range "+range+" from syn to D");
+//					for (int i=range.startRow; i<range.endRow; i++)
+//						d[i] = d_syn[i];
+//				}
 			}
 
 			for (int i=0; i<constraintRanges.size(); i++)
@@ -518,7 +521,7 @@ public class CommandLineInversionRunner {
 			System.out.println("Creating TSA");
 			// set up multi thread SA
 			ThreadedSimulatedAnnealing tsa = ThreadedSimulatedAnnealing.parseOptions(cmd, A, d,
-					initialState, A_ineq, d_ineq, minimumRuptureRates, constraintRanges);
+					initialState, A_ineq, d_ineq, constraintRanges);
 			// store a copy of the initial state for later
 			initialState = Arrays.copyOf(initialState, initialState.length);
 			// setup completion criteria
@@ -545,7 +548,8 @@ public class CommandLineInversionRunner {
 			info += "\n"+tsa.getMetadata(args, criteria);
 			// add metadata on how many ruptures had their rates actually peturbed
 			ProgressTrackingCompletionCriteria pComp = (ProgressTrackingCompletionCriteria)criteria;
-			long numPerturbs = pComp.getPerturbs().get(pComp.getPerturbs().size()-1);
+			AnnealingProgress progress = pComp.getProgress();
+			long numPerturbs = progress.getNumPerturbations(progress.size()-1);
 			int numRups = initialState.length;
 			info += "\nAvg Perturbs Per Rup: "+numPerturbs+"/"+numRups+" = "
 			+((double)numPerturbs/(double)numRups);
@@ -567,13 +571,13 @@ public class CommandLineInversionRunner {
 			info += "\n******************************************";
 			System.out.println("Writing solution bin files");
 			// write out results
-			tsa.writeBestSolution(new File(subDir, prefix+".bin"));
+			tsa.writeBestSolution(new File(subDir, prefix+".bin"), minimumRuptureRates);
 
 			// for lightweight we just write out the .bin file, no solution files
 			if (!lightweight) {
 				System.out.println("Loading RupSet");
 				// load the RupSet back in for plotting and solution file creation
-				InversionFaultSystemRupSet loadedRupSet = FaultSystemIO.loadInvRupSet(rupSetFile);
+				InversionFaultSystemRupSet loadedRupSet = U3FaultSystemIO.loadInvRupSet(rupSetFile);
 				loadedRupSet.setInfoString(info);
 				double[] rupRateSolution = tsa.getBestSolution();
 				// this adds back in the minimum rupture rates (waterlevel) if present
@@ -610,7 +614,7 @@ public class CommandLineInversionRunner {
 				double totalSolutionMoment = sol.getTotalFaultSolutionMomentRate();
 				info += "\nFault Solution Supra Seis Moment Rate: "+totalSolutionMoment;
 				info += "\nFault Target Sub Seis Moment Rate: "
-						+loadedRupSet.getInversionTargetMFDs().getTotalSubSeismoOnFaultMFD().getTotalMomentRate();
+						+loadedRupSet.getInversionTargetMFDs().getTotalOnFaultSubSeisMFD().getTotalMomentRate();
 				info += "\nFault Solution Sub Seis Moment Rate: "
 						+sol.getFinalTotalSubSeismoOnFaultMFD().getTotalMomentRate();
 				info += "\nTruly Off Fault Target Moment Rate: "
@@ -685,7 +689,7 @@ public class CommandLineInversionRunner {
 
 				// actually write the solution
 				System.out.println("Writing solution");
-				FaultSystemIO.writeSol(sol, solutionFile);
+				U3FaultSystemIO.writeSol(sol, solutionFile);
 				
 				if (!noPlots) {
 					// now write out plots
@@ -702,7 +706,7 @@ public class CommandLineInversionRunner {
 					System.out.println("Writing Plots");
 					
 					// write simulated annealing related plots
-					tsa.writePlots(criteria, new File(subDir, prefix));
+					tsa.writePlots(criteria, subDir, prefix, minimumRuptureRates);
 
 					// 1 km jump plot
 					try {
@@ -988,7 +992,7 @@ public class CommandLineInversionRunner {
 				RELM_RegionUtils.getSoCalGriddedRegionInstance(), ucerf2Fetch);
 		
 		// statewide
-		return writeMFDPlot(invSol, dir, prefix, invSol.getRupSet().getInversionTargetMFDs().getTotalTargetGR(), invSol.getRupSet().getInversionTargetMFDs().getOnFaultSupraSeisMFD(),
+		return writeMFDPlot(invSol, dir, prefix, invSol.getRupSet().getInversionTargetMFDs().getTotalRegionalMFD(), invSol.getRupSet().getInversionTargetMFDs().getTotalOnFaultSupraSeisMFD(),
 						RELM_RegionUtils.getGriddedRegionInstance(), ucerf2Fetch);
 	}
 
@@ -1017,14 +1021,14 @@ public class CommandLineInversionRunner {
 		return new File(dir, getMFDPrefix(prefix, RELM_RegionUtils.getGriddedRegionInstance())+".png").exists();
 	}
 
-	public static ArrayList<PaleoRateConstraint> getPaleoConstraints(FaultModels fm, FaultSystemRupSet rupSet) throws IOException {
+	public static ArrayList<U3PaleoRateConstraint> getPaleoConstraints(FaultModels fm, FaultSystemRupSet rupSet) throws IOException {
 		if (fm == FaultModels.FM2_1)
 			return UCERF2_PaleoRateConstraintFetcher.getConstraints(rupSet.getFaultSectionDataList());
 		return UCERF3_PaleoRateConstraintFetcher.getConstraints(rupSet.getFaultSectionDataList());
 	}
 
-	public static void writePaleoPlots(ArrayList<PaleoRateConstraint> paleoRateConstraints,
-			List<AveSlipConstraint> aveSlipConstraints, InversionFaultSystemSolution sol,
+	public static void writePaleoPlots(ArrayList<U3PaleoRateConstraint> paleoRateConstraints,
+			List<U3AveSlipConstraint> aveSlipConstraints, InversionFaultSystemSolution sol,
 			File dir, String prefix)
 	throws IOException {
 		HeadlessGraphPanel gp = PaleoFitPlotter.getHeadlessSegRateComparison(
@@ -1088,10 +1092,10 @@ public class CommandLineInversionRunner {
 		return new File(dir, getSAFSegPrefix(prefix, 7.5, false)+".png").exists();
 	}
 
-	public static ArrayList<ParentMomentRecord> getSectionMoments(SlipEnabledSolution sol) {
+	public static ArrayList<ParentMomentRecord> getSectionMoments(U3SlipEnabledSolution sol) {
 		HashMap<Integer, ParentMomentRecord> map = Maps.newHashMap();
 		
-		SlipEnabledRupSet rupSet = sol.getRupSet();
+		U3SlipEnabledRupSet rupSet = sol.getRupSet();
 
 		for (int sectIndex=0; sectIndex<rupSet.getNumSections(); sectIndex++) {
 			FaultSection sect = rupSet.getFaultSectionData(sectIndex);
@@ -1182,7 +1186,7 @@ public class CommandLineInversionRunner {
 		CSVFile<String> meanIncrParticCSV = null;
 		CSVFile<String> meanCmlParticCSV = null;
 		
-		boolean isAVG = sol instanceof AverageFaultSystemSolution;
+		boolean isAVG = sol instanceof U3AverageFaultSystemSolution;
 
 		for (int parentSectionID : parentSects.keySet()) {
 			String parentSectName = parentSects.get(parentSectionID);
@@ -1205,7 +1209,7 @@ public class CommandLineInversionRunner {
 			
 			if (isAVG) {
 				// average fault system solution stuff (Std Dev, SDOM, Min/Max)
-				AverageFaultSystemSolution avgSol = (AverageFaultSystemSolution)sol;
+				U3AverageFaultSystemSolution avgSol = (U3AverageFaultSystemSolution)sol;
 				double[] sdom_over_means = calcAveSolMFDs(avgSol, true, false, true, partMFDs, parentSectionID, minMag, maxMag, numMag);
 				calcAveSolMFDs(avgSol, false, false, false, nuclMFDs, parentSectionID, minMag, maxMag, numMag);
 				double[] std_dev_over_means = calcAveSolMFDs(avgSol, true, true, false, partCmlMFDs, parentSectionID, minMag, maxMag, numMag);
@@ -1405,7 +1409,7 @@ public class CommandLineInversionRunner {
 	 * @param numMag
 	 * @returnist of SDOM/mean values for each mag bin.
 	 */
-	private static double[] calcAveSolMFDs(AverageFaultSystemSolution avgSol, boolean participation,
+	private static double[] calcAveSolMFDs(U3AverageFaultSystemSolution avgSol, boolean participation,
 			boolean cumulative, boolean ret_sdom,
 			List<EvenlyDiscretizedFunc> mfds, int parentSectionID, double minMag, double maxMag, int numMag) {
 		EvenlyDiscretizedFunc meanMFD = mfds.get(0);
@@ -1678,9 +1682,9 @@ public class CommandLineInversionRunner {
 	}
 
 	public static void writePaleoFaultPlots(
-			List<PaleoRateConstraint> paleoRateConstraints,
-			List<AveSlipConstraint> aveSlipConstraints,
-			Map<String, List<Integer>> namedFaultsMap, SlipEnabledSolution sol, File dir)
+			List<U3PaleoRateConstraint> paleoRateConstraints,
+			List<U3AveSlipConstraint> aveSlipConstraints,
+			Map<String, List<Integer>> namedFaultsMap, U3SlipEnabledSolution sol, File dir)
 					throws IOException {
 		Map<String, PlotSpec[]> specs = PaleoFitPlotter.getFaultSpecificPaleoPlotSpec(
 				paleoRateConstraints, aveSlipConstraints, namedFaultsMap, sol);
@@ -1936,9 +1940,9 @@ public class CommandLineInversionRunner {
 			cnt++;
 		}
 		
-		FaultSystemRupSet subset = new FaultSystemRupSet(rupSet.getFaultSectionDataList(), rupSet.getSlipRateForAllSections(),
-				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
-				sectionForRups, mags, rakes, rupAreas, rupLengths, rupSet.getInfoString());
+		FaultSystemRupSet subset = new FaultSystemRupSet(rupSet.getFaultSectionDataList(),
+				sectionForRups, mags, rakes, rupAreas, rupLengths);
+		subset.setInfoString(rupSet.getInfoString());
 		
 		return new InversionFaultSystemRupSet(subset, rupSet.getLogicTreeBranch(), rupSet.getOldPlausibilityConfiguration(), rupAveSlips,
 				null, null, null);
@@ -1979,9 +1983,9 @@ public class CommandLineInversionRunner {
 			rupAveSlips[i] = rupSet.getAveSlipForRup(rupIndex);
 		}
 		
-		FaultSystemRupSet subset = new FaultSystemRupSet(rupSet.getFaultSectionDataList(), rupSet.getSlipRateForAllSections(),
-				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
-				sectionForRups, mags, rakes, rupAreas, rupLengths, rupSet.getInfoString());
+		FaultSystemRupSet subset = new FaultSystemRupSet(rupSet.getFaultSectionDataList(),
+				sectionForRups, mags, rakes, rupAreas, rupLengths);
+		subset.setInfoString(rupSet.getInfoString());
 		
 		return new InversionFaultSystemRupSet(subset, rupSet.getLogicTreeBranch(), rupSet.getOldPlausibilityConfiguration(), rupAveSlips,
 				null, null, null);
@@ -2007,9 +2011,9 @@ public class CommandLineInversionRunner {
 			rupAveSlips[i] = rupSet.getAveSlipForRup(rupIndex);
 		}
 		
-		FaultSystemRupSet subset = new FaultSystemRupSet(rupSet.getFaultSectionDataList(), rupSet.getSlipRateForAllSections(),
-				rupSet.getSlipRateStdDevForAllSections(), rupSet.getAreaForAllSections(),
-				sectionForRups, mags, rakes, rupAreas, rupLengths, rupSet.getInfoString());
+		FaultSystemRupSet subset = new FaultSystemRupSet(rupSet.getFaultSectionDataList(),
+				sectionForRups, mags, rakes, rupAreas, rupLengths);
+		subset.setInfoString(rupSet.getInfoString());
 		
 		return new InversionFaultSystemRupSet(subset, rupSet.getLogicTreeBranch(), rupSet.getOldPlausibilityConfiguration(), rupAveSlips,
 				null, null, null);

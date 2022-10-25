@@ -352,4 +352,9 @@ public abstract class AbstractDoublePropEffectParam extends
 		return paramEdit;
 	}
 
+	@Override
+	public boolean isEditorBuilt() {
+		return paramEdit != null;
+	}
+
 }

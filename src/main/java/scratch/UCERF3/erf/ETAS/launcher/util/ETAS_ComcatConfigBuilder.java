@@ -68,7 +68,7 @@ public class ETAS_ComcatConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
 //			argz += " --random-seed 123456789";
 			
 			// hpc options
-			argz += " --hpc-site USC_HPC";
+			argz += " --hpc-site USC_CARC";
 			argz += " --nodes 32";
 			argz += " --hours 24";
 //			argz += " --queue scec_hiprio";

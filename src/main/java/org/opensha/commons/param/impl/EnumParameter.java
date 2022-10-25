@@ -76,6 +76,11 @@ public class EnumParameter<E extends Enum<E>> extends AbstractParameter<E> {
 	}
 
 	@Override
+	public boolean isEditorBuilt() {
+		return editor != null;
+	}
+
+	@Override
 	@SuppressWarnings("unchecked")
 	public Object clone() {
 		EnumParameter<E> ep = new EnumParameter<E>();

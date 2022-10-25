@@ -1,6 +1,15 @@
 package org.opensha.commons.geo.json;
 
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Reader;
+import java.io.StringReader;
+import java.io.StringWriter;
+import java.io.Writer;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.TypeAdapter;
@@ -89,7 +98,9 @@ public class Feature {
 			
 			out.name("properties");
 			if (value.properties == null)
-				out.nullValue();
+				// some parsers fail on null properties, even though the spec says null is file
+				// just give an empty properties object instead
+				out.beginObject().endObject();
 			else
 				propsAdapter.write(out, value.properties);
 			
@@ -163,6 +174,94 @@ public class Feature {
 		
 	}
 	
+	/**
+	 * @return GeoJSON representation of this Feature
+	 * @throws IOException
+	 */
+	public String toJSON() throws IOException {
+		StringWriter writer = new StringWriter();
+		write(this, writer);
+		return writer.toString();
+	}
 	
+	/**
+	 * Parses a Feature from GeoJSON
+	 * 
+	 * @param json
+	 * @return
+	 * @throws IOException
+	 */
+	public static Feature fromJSON(String json) throws IOException {
+		StringReader reader = new StringReader(json);
+		return read(reader);
+	}
+	
+	/**
+	 * Reads a Feature from the given GeoJSON file
+	 * 
+	 * @param jsonFile
+	 * @return
+	 * @throws IOException
+	 */
+	public static Feature read(File jsonFile) throws IOException {
+		Reader reader = new BufferedReader(new FileReader(jsonFile));
+		return read(reader);
+	}
+	
+	/**
+	 * Reads a Feature from the given reader
+	 * 
+	 * @param jsonFile
+	 * @return
+	 * @throws IOException
+	 */
+	public static Feature read(Reader reader) throws IOException {
+		if (!(reader instanceof BufferedReader))
+			reader = new BufferedReader(reader);
+		Feature ret;
+		synchronized (FeatureCollection.gson_default) {
+			ret = FeatureCollection.gson_default.fromJson(reader, Feature.class);
+			reader.close();
+		}
+		return ret;
+	}
+	
+	/**
+	 * Writes a Feature to the given GeoJSON file
+	 * 
+	 * @param features
+	 * @param jsonFile
+	 * @throws IOException
+	 */
+	public static void write(Feature feature, File jsonFile) throws IOException {
+		BufferedWriter writer = new BufferedWriter(new FileWriter(jsonFile));
+		write(feature, writer);
+		writer.close();
+	}
+	
+	/**
+	 * Writes a Feature to the given writer
+	 * 
+	 * @param features
+	 * @param writer
+	 * @throws IOException
+	 */
+	public static void write(Feature feature, Writer writer) throws IOException {
+		if (!(writer instanceof BufferedWriter))
+			writer = new BufferedWriter(writer);
+
+		synchronized (FeatureCollection.gson_default) {
+			FeatureCollection.gson_default.toJson(feature, Feature.class, writer);
+			writer.flush();
+		}
+	}
+	
+	public static Feature getWithID(Feature feature, Number id) {
+		return new Feature(id, feature.geometry, feature.properties);
+	}
+	
+	public static Feature getWithID(Feature feature, String id) {
+		return new Feature(id, feature.geometry, feature.properties);
+	}
 
 }

@@ -1,0 +1,45 @@
+,,,,Conventional Method*,,Event Likelihood Method**,,,
+Paleoseismic site,Latitude,Longitude,Number of potential earthquakes,Long-term recurrence interval (yr),Confidence interval (2.5-97.5%),Long-term recurrence interval (yr),Confidence interval (2.5-97.5%), Distribution***,References
+Calaveras North,37.5104,-121.8346,4,622,271-1429,766,302-6021,mix,"Kelson et al., 1996; Simpson et al., 1999"
+Compton,33.9660,-118.2629,6,2656,971-7262,3156,1054-9512,mix,"Leon et al., 2009"
+Elsinore-Glen Ivy,33.7701,-117.4909,6,180,111-293,207,117-380,mix,"Rockwell et al., 1986; Dawson et al., 2008"
+Elsinore-Julian,33.2071,-116.7273,2,3263,916-133424,3045,898-130817,l.n.,Thorup (1997)
+Elsinore-Temecula,33.41,-117.04,3,997,385-8860,1157,316-7266,exp.,"Vaughan et al., 1999"
+Elsinore-Whittier,33.9303,-117.8437,2,3213,904-131765,2989,924-134688,exp.,"Patterson and Rockwell, 1993; Weldon et al, 2013b"
+Garlock-Central,35.4441,-117.6815,6,1438,511-4041,1628,529-5020,mix,"Dawson et al., 2003"
+Garlock-Western,34.9868,-118.5080,5,1234,377-4023,1513,393-6358,mix,"Madden-Madugo et al., 2012; Madden and Dolan, 2004"
+Green Valley Mason Rd,38.2341,-122.1619,4,296,137-642,382,149-3169,mix,"Lienkaemper et al., 2013"
+Hayward North,37.9306,-122.2977,8,321,195-527,374,214-655,l.n.,"HPEG (1999); Dawson et al., 2008"
+Hayward South-Tyson,37.5563,-121.9739,12,168,127-224,185,133-259,l.n.,"Lienkaomper et al., 2010; Lienkaemper et al., 2007; Lienkaemper et al., 2002"
+Little Salmon-Strongs,40.6002,-124.1218,3,6761,2509-57710,9154,2440-56165,exp.,Carver and Burke (1988)
+Mohawk Valley Fault Zone - Sulphur Creek,39.66,-120.50,4,4657,1319-16437,5863,1480-53480,mix,"Gold et al., 2014"
+NSAF - Alder Creek,38.9813,-123.6770,2,885,272-39577,763,212-30887,exp,"Baldwin, 1996"
+NSAF - Santa Cruz Segment,36.9626,-121.6981,10,111,63-195,128,69-235,l.n.,"Fumal et al., 2003; Streig et al., 2014"
+NSAF - Fort Ross,38.52,-123.24,4,307,138-681,373,137-2923,mix,"Kelson et al., 2006"
+NSAF - Vedanta,38.0320,-122.7891,12,265,162-433,303,176-521,l.n.,"Zhang et al., 2006; Niemi et al., 2002"
+NSAF - Noyo Canyon,39.5167,-124.3333,15,188,139-255,218,153-311,l.n.,"Goldfinger et al., 2007"
+Puente Hills,33.9053,-118.1104,3,3499,166-73669,4542,729-153755,mix,"Dolan et al., 2003"
+San Gregorio - North,37.5207,-122.5135,2,1025,299-43606,947,119-17300,exp.,"Simpson et al., 1997"
+Rodgers Creek,38.2623,-122.5334,3,331,90-1219,476,131-11615,mix,"Budding et al., 1991; Hecker et al., 2005"
+Rose Canyon - Old Town,32.76,-117.20,6,443,200-984,495,205-1211,mix,"Singleton et al., 2019"
+SJF - Hog Lake,33.6153,-116.7091,21,199,139-283,225,154-330,l.n.,"Rockwell et al., 2015"
+SJF - Mystic Lake,33.90,-117.10,13,172,121-245,198,133-297,l.n.,"Onderdonk et al., 2018; Onderdonk et al., 2013"
+SJF - Superstition,32.9975,-115.9436,3,486,174-4005,617,148-3402,exp.,"Gurrola and Rockwell, 1996"
+SSAF - Bidart,35.2343,-119.7887,6,117,59-230,121,60-242,l.n.,"Akciz et al., 2010; Akciz et al., 2009"
+SSAF - Burro Flats,33.9730,-116.8170,9,234,126-435,271,138-529,l.n.,"Scharer and Yule, 2020; Yule and Sieh, 2001"
+SSAF - Cabazon,33.93,-116.76,4,1632,721-3696,1863,735-14050,mix,"Scharer and Yule, 2020"
+SSAF - Coachella,33.7274,-116.1701,7,173,101-298,205,121-346,l.n.,"Philobosian et al., 2011; Rockwell et al., 2018"
+SSAF - Elizabeth Lake,34.66,-118.40,5,182,90-368,216,94-587,mix,"Bemis et al., 2021"
+SSAF - 18th Avenue,33.9172,-116.538,5,658,335-1294,862,377-6567,mix,"Castillo et al., 2021"
+SSAF - Frazier Mountain,34.8122,-118.9034,10,125,69-227,139,73-267,l.n.,"Scharer et al., 2017; Scharer et al., 2014; Lindvall et al., 2002"
+SSAF - Indio,33.7414,-116.1870,4,281,151-524,346,161-2746,mix,"Sieh, 1986"
+SSAF - Pallett Creek,34.4556,-117.8870,10,151,95-238,177,106-296,l.n.,"Scharer et al., 2011; Sieh, 1978"
+SSAF - Pitman Canyon,34.2544,-117.4340,7,176,99-312,201,109-372,l.n.,"Seitz et al., 1996; Seitz et al., 2000"
+SSAF - Plunge Creek,34.1158,-117.1370,3,213,95-477,319,106-7806,mix,"McGill et al., 2002"
+SSAF - Thousand Palms,33.8376,-116.3094,5,264,154-455,337,174-1431,mix,"Fumal et al., 2002a"
+SSAF - Wrightwood,34.3697,-117.6680,14,116,77-174,129,83-200,l.n.,"Fumal et al., 2002b"
+,,,,,,,,,
+"*Follows Biasi (2013), subject to updated current year and subsequent data revisions",,,,,,,,,
+**See text; accounts for uncertainty in the number of past earthquakes using event likelihood,,,,,,,,,
+Italicized sites have unique event likelihoods; all others use generic value of 0.845,,,,,,,,,
+"***Distribution of Ris used for the revised RI; ""mixed"" indicates both log-normal and exponential distribution were used in the Monte Carlo realizations and a weighted average RI is reported (see text)",,,,,,,,,

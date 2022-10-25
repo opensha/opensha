@@ -4,15 +4,22 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.Reader;
+import java.lang.reflect.Type;
 import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
 
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.Element;
+import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.logicTree.Affects;
+import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.dao.db.DB_AccessAPI;
@@ -20,23 +27,41 @@ import org.opensha.refFaultParamDb.dao.db.DB_ConnectionPool;
 import org.opensha.refFaultParamDb.dao.db.FaultModelDB_DAO;
 import org.opensha.refFaultParamDb.dao.db.PrefFaultSectionDataDB_DAO;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.U3_UncertAddDeformationModels;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
-public enum FaultModels implements LogicTreeBranchNode<FaultModels> {
+@Affects(FaultSystemRupSet.SECTS_FILE_NAME)
+@Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
+@Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
+@Affects(FaultSystemSolution.RATES_FILE_NAME)
+public enum FaultModels implements U3LogicTreeBranchNode<FaultModels>, RupSetFaultModel {
 
 	FM2_1(	"Fault Model 2.1",	41,		0d),
 	FM3_1(	"Fault Model 3.1",	101,	0.5d),
 	FM3_2(	"Fault Model 3.2",	102,	0.5d);
-	
+
 	public static final String XML_ELEMENT_NAME = "FaultModel";
 	public static final String FAULT_MODEL_STORE_PROPERTY_NAME = "FaultModelStore";
 	private static final String FAULT_MODEL_STORE_DIR_NAME = "FaultModels";
@@ -109,19 +134,20 @@ public enum FaultModels implements LogicTreeBranchNode<FaultModels> {
 	
 	public static ArrayList<FaultSection> loadStoredFaultSections(Document doc) {
 		Element root = doc.getRootElement();
-		return FaultSystemIO.fsDataFromXML(root.element("FaultModel"));
+		return U3FaultSystemIO.fsDataFromXML(root.element("FaultModel"));
 	}
 	
-	public Map<Integer, FaultSection> fetchFaultSectionsMap() {
+	public Map<Integer, FaultSection> getFaultSectionIDMap() {
 		Map<Integer, FaultSection> map = Maps.newHashMap();
 		
-		for (FaultSection sect : fetchFaultSections())
+		for (FaultSection sect : getFaultSections())
 			map.put(sect.getSectionId(), sect);
 		
 		return map;
 	}
 	
-	public ArrayList<FaultSection> fetchFaultSections() {
+	@Override
+	public List<FaultSection> getFaultSections() {
 		return fetchFaultSections(false);
 	}
 	
@@ -302,6 +328,94 @@ public enum FaultModels implements LogicTreeBranchNode<FaultModels> {
 	@Override
 	public String getBranchLevelName() {
 		return "Fault Model";
+	}
+	
+	@Override
+	public String getShortBranchLevelName() {
+		return "FM";
+	}
+
+	@Override
+	public RupSetDeformationModel getDefaultDeformationModel() {
+		return getFilterBasis();
+	}
+	
+	@Override
+	public void attachDefaultModules(FaultSystemRupSet rupSet) {
+		LogicTreeBranch<?> branch = rupSet.getModule(LogicTreeBranch.class);
+		boolean nshm23 = false;
+		if (branch != null) {
+			// see if it's a NSHM23 branch
+			nshm23 = branch.hasValue(U3_UncertAddDeformationModels.class) || branch.hasValue(NSHM23_SegmentationModels.class);
+			if (!nshm23) {
+				// those could be null, check for levels
+				for (LogicTreeLevel<?> level : branch.getLevels()) {
+					if (level.getType().equals(U3_UncertAddDeformationModels.class))
+						nshm23 = true;
+					else if (level.getType().equals(NSHM23_SegmentationModels.class))
+						nshm23 = true;
+				}
+			}
+		}
+		if (nshm23) {
+			// custom special faults for NSHM23 segmentation rules
+			rupSet.addAvailableModule(new Callable<NamedFaults>() {
+
+				@Override
+				public NamedFaults call() throws Exception {
+					Gson gson = new GsonBuilder().create();
+					
+					String namedFaultsFile = "/data/erf/nshm23/fault_models/UCERF3_FM3_1/special_faults.json";
+					
+					BufferedReader reader = new BufferedReader(
+							new InputStreamReader(FaultModels.class.getResourceAsStream(namedFaultsFile)));
+					Type type = TypeToken.getParameterized(Map.class, String.class,
+							TypeToken.getParameterized(List.class, Integer.class).getType()).getType();
+					Map<String, List<Integer>> namedFaults = gson.fromJson(reader, type);
+					
+					Preconditions.checkState(!namedFaults.isEmpty(), "No named faults found");
+					return new NamedFaults(rupSet, namedFaults);
+				}
+			}, NamedFaults.class);
+		} else {
+			Map<String, List<Integer>> namedFaultsMap = getNamedFaultsMapAlt();
+			if (namedFaultsMap != null) {
+				rupSet.addAvailableModule(new Callable<NamedFaults>() {
+
+					@Override
+					public NamedFaults call() throws Exception {
+						return new NamedFaults(rupSet, getNamedFaultsMapAlt());
+					}
+				}, NamedFaults.class);
+			}
+		}
+		
+		rupSet.addAvailableModule(new Callable<RegionsOfInterest>() {
+
+			@Override
+			public RegionsOfInterest call() throws Exception {
+				return new RegionsOfInterest(
+						new CaliforniaRegions.RELM_NOCAL(),
+						new CaliforniaRegions.RELM_SOCAL(),
+						new CaliforniaRegions.SF_BOX(),
+						new CaliforniaRegions.LA_BOX());
+			}
+		}, RegionsOfInterest.class);
+		
+		rupSet.addAvailableModule(new Callable<PolygonFaultGridAssociations>() {
+
+			@Override
+			public PolygonFaultGridAssociations call() throws Exception {
+				if (FaultModels.this == FaultModels.FM3_1 || FaultModels.this == FaultModels.FM3_2) {
+					try {
+						return FaultPolyMgr.loadSerializedUCERF3(FaultModels.this);
+					} catch (IOException e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
+				}
+				return FaultPolyMgr.create(rupSet.getFaultSectionDataList(), U3InversionTargetMFDs.FAULT_BUFFER);
+			}
+		}, PolygonFaultGridAssociations.class);
 	}
 	
 }

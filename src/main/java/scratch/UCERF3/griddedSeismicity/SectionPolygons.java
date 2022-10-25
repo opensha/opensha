@@ -768,7 +768,7 @@ class SectionPolygons {
 
 	
 	public static void main(String[] args) {
-		SectionPolygons.create(FaultModels.FM3_1.fetchFaultSections(), 5d, 7d);
+		SectionPolygons.create(FaultModels.FM3_1.getFaultSections(), 5d, 7d);
 		
 //		SimpleFaultSystemSolution tmp = null;
 //		try {

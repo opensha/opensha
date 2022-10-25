@@ -1,22 +1,3 @@
-/*******************************************************************************
- * Copyright 2009 OpenSHA.org in partnership with
- * the Southern California Earthquake Center (SCEC, http://www.scec.org)
- * at the University of Southern California and the UnitedStates Geological
- * Survey (USGS; http://www.usgs.gov)
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- *   http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- ******************************************************************************/
-
 package org.opensha.sha.param.editor;
 
 import java.awt.GridBagConstraints;
@@ -466,7 +447,6 @@ public class MagFreqDistParameterEditor
 
     editor.setParameterVisible(MagFreqDistParameter.SET_ALL_PARAMS_BUT, true);
     editor.setParameterVisible(MagFreqDistParameter.GR_MAG_LOWER, true);
-    editor.setParameterVisible(MagFreqDistParameter.GR_BVALUE, true);
 
     // now make the params visible/invisible based on params desired to be set by user
     StringParameter param = (StringParameter) parameterList.getParameter(
@@ -475,6 +455,7 @@ public class MagFreqDistParameterEditor
 
     // set all paramerts except total Mo rate
     if (paramToSet.equalsIgnoreCase(MagFreqDistParameter.TOT_MO_RATE)) {
+      editor.setParameterVisible(MagFreqDistParameter.GR_BVALUE, true);
       editor.setParameterVisible(MagFreqDistParameter.TOT_CUM_RATE, true);
       editor.setParameterVisible(MagFreqDistParameter.GR_MAG_UPPER, true);
       editor.setParameterVisible(MagFreqDistParameter.TOT_MO_RATE, false);
@@ -483,6 +464,7 @@ public class MagFreqDistParameterEditor
 
     // set all parameters except cumulative rate
     if (paramToSet.equalsIgnoreCase(MagFreqDistParameter.TOT_CUM_RATE)) {
+      editor.setParameterVisible(MagFreqDistParameter.GR_BVALUE, true);
       editor.setParameterVisible(MagFreqDistParameter.GR_MAG_UPPER, true);
       editor.setParameterVisible(MagFreqDistParameter.TOT_MO_RATE, true);
       editor.setParameterVisible(MagFreqDistParameter.TOT_CUM_RATE, false);
@@ -491,11 +473,21 @@ public class MagFreqDistParameterEditor
 
     // set all parameters except mag upper
     if (paramToSet.equalsIgnoreCase(MagFreqDistParameter.GR_MAG_UPPER)) {
+      editor.setParameterVisible(MagFreqDistParameter.GR_BVALUE, true);
       editor.setParameterVisible(MagFreqDistParameter.TOT_CUM_RATE, true);
       editor.setParameterVisible(MagFreqDistParameter.TOT_MO_RATE, true);
       editor.setParameterVisible(MagFreqDistParameter.FIX, true);
       editor.setParameterVisible(MagFreqDistParameter.GR_MAG_UPPER, false);
     }
+    // set all parameters except b-value
+    if (paramToSet.equalsIgnoreCase(MagFreqDistParameter.GR_BVALUE)) {
+      editor.setParameterVisible(MagFreqDistParameter.GR_BVALUE, false);
+      editor.setParameterVisible(MagFreqDistParameter.GR_MAG_UPPER, true);
+      editor.setParameterVisible(MagFreqDistParameter.TOT_MO_RATE, true);
+      editor.setParameterVisible(MagFreqDistParameter.TOT_CUM_RATE, true);
+      editor.setParameterVisible(MagFreqDistParameter.FIX, false);
+    }
+
   }
   
   /**

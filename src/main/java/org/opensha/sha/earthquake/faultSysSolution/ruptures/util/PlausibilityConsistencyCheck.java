@@ -11,15 +11,15 @@ import org.dom4j.DocumentException;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.MultiDirectionalPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCountAdaptiveRuptureGrowingStrategy;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.U3FaultSystemRupSet;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class PlausibilityConsistencyCheck {
 
@@ -49,7 +49,7 @@ public class PlausibilityConsistencyCheck {
 		includeTypes.add(SectCountAdaptiveRuptureGrowingStrategy.ConnPointCleanupFilter.class);
 		
 		System.out.println("Loading rupture set");
-		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(rupSetFile);
+		U3FaultSystemRupSet rupSet = U3FaultSystemIO.loadRupSet(rupSetFile);
 		
 		PlausibilityConfiguration config = rupSet.getPlausibilityConfiguration();
 		Preconditions.checkNotNull(config, "Rup set doesn't have plausbility configuration attached");
@@ -64,7 +64,7 @@ public class PlausibilityConsistencyCheck {
 			Preconditions.checkState(!useAltRupOrders || !testUniqueAltRups,
 					"testUniqueAltRups and useAltRupOrders are mutually exclusive");
 			System.out.println("Loading alt rupture set");
-			FaultSystemRupSet altRupSet = FaultSystemIO.loadRupSet(altRupSetFile);
+			U3FaultSystemRupSet altRupSet = U3FaultSystemIO.loadRupSet(altRupSetFile);
 			List<ClusterRupture> altRups = altRupSet.getClusterRuptures();
 			HashMap<UniqueRupture, ClusterRupture> uniques = new HashMap<>();
 			for (ClusterRupture rup : rups)

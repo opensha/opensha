@@ -1,5 +1,7 @@
 package scratch.UCERF3.inversion;
 
+import java.awt.geom.Point2D;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -7,16 +9,22 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.opensha.commons.data.uncertainty.BoundedUncertainty;
 import org.opensha.commons.eq.MagUtils;
+import org.opensha.commons.geo.Location;
+import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.IDPairing;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.APrioriInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDEqualityInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInequalityInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDLaplacianSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDParticipationSmoothnessInversionConstraint;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDSubSectNuclInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.U3MFDSubSectNuclInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoVisibleEventRateSmoothnessInversionConstraint;
@@ -24,7 +32,11 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateMinimizationConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalMomentInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -32,21 +44,18 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.io.Files;
 
 import cern.colt.function.tdouble.IntIntDoubleFunction;
-import cern.colt.list.tdouble.DoubleArrayList;
-import cern.colt.list.tint.IntArrayList;
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
+import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
-import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.MFD_InversionConstraint;
-import scratch.UCERF3.utils.SectionMFD_constraint;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoProbabilityModel;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.U3SectionMFD_constraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
 
 /**
@@ -69,18 +78,18 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	private static final boolean QUICK_GETS_SETS = true;
 	
 	// inputs
-	private InversionFaultSystemRupSet rupSet;
+	private FaultSystemRupSet rupSet;
 	private UCERF3InversionConfiguration config;
-	private List<PaleoRateConstraint> paleoRateConstraints;
-	private List<AveSlipConstraint> aveSlipConstraints;
+	private List<? extends SectMappedUncertainDataConstraint> paleoRateConstraints;
+	private List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints;
 	private double[] improbabilityConstraint;
 	private PaleoProbabilityModel paleoProbabilityModel;
 	
 	public UCERF3InversionInputGenerator(
-			InversionFaultSystemRupSet rupSet,
+			FaultSystemRupSet rupSet,
 			UCERF3InversionConfiguration config,
-			List<PaleoRateConstraint> paleoRateConstraints,
-			List<AveSlipConstraint> aveSlipConstraints,
+			List<? extends SectMappedUncertainDataConstraint> paleoRateConstraints,
+			List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints,
 			double[] improbabilityConstraint, // may become an object in the future
 			PaleoProbabilityModel paleoProbabilityModel) {
 		super(rupSet, buildConstraints(rupSet, config, paleoRateConstraints, aveSlipConstraints, paleoProbabilityModel),
@@ -107,31 +116,31 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		return defaultProbModel;
 	}
 	
-	private static List<InversionConstraint> buildConstraints(
-			InversionFaultSystemRupSet rupSet,
+	public static List<InversionConstraint> buildConstraints(
+			FaultSystemRupSet rupSet,
 			UCERF3InversionConfiguration config,
-			List<PaleoRateConstraint> paleoRateConstraints,
-			List<AveSlipConstraint> aveSlipConstraints,
+			List<? extends SectMappedUncertainDataConstraint> paleoRateConstraints,
+			List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints,
 			PaleoProbabilityModel paleoProbabilityModel) {
 		// builds constraint instances
 		List<InversionConstraint> constraints = new ArrayList<>();
 		
-		double[] sectSlipRateReduced = rupSet.getSlipRateForAllSections();
-		
-		if (config.getSlipRateConstraintWt_normalized() > 0d
-				|| config.getSlipRateConstraintWt_unnormalized() > 0d)
+		if (config.getSlipRateConstraintWt_normalized() > 0d)
 			// add slip rate constraint
 			constraints.add(new SlipRateInversionConstraint(config.getSlipRateConstraintWt_normalized(),
-					config.getSlipRateConstraintWt_unnormalized(), config.getSlipRateWeightingType(),
-					rupSet, sectSlipRateReduced));
+					ConstraintWeightingType.NORMALIZED, rupSet));
+		if (config.getSlipRateConstraintWt_unnormalized() > 0d)
+			// add slip rate constraint
+			constraints.add(new SlipRateInversionConstraint(config.getSlipRateConstraintWt_unnormalized(),
+					ConstraintWeightingType.UNNORMALIZED, rupSet));
 		
 		if (config.getPaleoRateConstraintWt() > 0d)
 			constraints.add(new PaleoRateInversionConstraint(rupSet, config.getPaleoRateConstraintWt(),
 					paleoRateConstraints, paleoProbabilityModel));
 		
 		if (config.getPaleoSlipConstraintWt() > 0d)
-			constraints.add(new PaleoSlipInversionConstraint(rupSet, config.getPaleoSlipConstraintWt(),
-					aveSlipConstraints, sectSlipRateReduced));
+			constraints.add(new PaleoSlipInversionConstraint.UCERF3(rupSet, config.getPaleoSlipConstraintWt(),
+					aveSlipConstraints, U3AveSlipConstraint.slip_prob_model));
 		
 		if (config.getRupRateConstraintWt() > 0d) {
 			// This is the RupRateConstraintWt for ruptures not in UCERF2
@@ -148,9 +157,12 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// Rupture rate minimization constraint
 		// Minimize the rates of ruptures below SectMinMag (strongly so that they have zero rates)
 		if (config.getMinimizationConstraintWt() > 0.0) {
+			ModSectMinMags modMinMags = rupSet.requireModule(ModSectMinMags.class);
+			Preconditions.checkNotNull(modMinMags, "Rupture set must supply ModSectMinMags if minimization constraint is enabled");
 			List<Integer> belowMinIndexes = new ArrayList<>();
 			for (int r=0; r<rupSet.getNumRuptures(); r++)
-				if (rupSet.isRuptureBelowSectMinMag(r))
+//				if (rupSet.isRuptureBelowSectMinMag(r))
+				if (FaultSystemRupSetCalc.isRuptureBelowSectMinMag(rupSet, r, modMinMags))
 					belowMinIndexes.add(r);
 			constraints.add(new RupRateMinimizationConstraint(config.getMinimizationConstraintWt(), belowMinIndexes));
 		}
@@ -179,14 +191,14 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 						excludeRupIndexes.add(potentialRups.get(i));
 					}
 			}
-			constraints.add(new MFDEqualityInversionConstraint(rupSet, config.getMagnitudeEqualityConstraintWt(),
-					config.getMfdEqualityConstraints(), excludeRupIndexes));
+			constraints.add(new MFDInversionConstraint(rupSet, config.getMagnitudeEqualityConstraintWt(), false,
+					ConstraintWeightingType.NORMALIZED, config.getMfdEqualityConstraints(), excludeRupIndexes));
 		}
 		
 		// Prepare MFD Inequality Constraint (not added to A matrix directly since it's nonlinear)
 		if (config.getMagnitudeInequalityConstraintWt() > 0.0)	
-			constraints.add(new MFDInequalityInversionConstraint(rupSet, config.getMagnitudeInequalityConstraintWt(),
-					config.getMfdInequalityConstraints()));
+			constraints.add(new MFDInversionConstraint(rupSet, config.getMagnitudeInequalityConstraintWt(), true,
+					ConstraintWeightingType.NORMALIZED, config.getMfdInequalityConstraints(), null));
 		
 		// MFD Smoothness Constraint - Constrain participation MFD to be uniform for each fault subsection
 		if (config.getParticipationSmoothnessConstraintWt() > 0.0)
@@ -194,10 +206,10 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 					config.getParticipationSmoothnessConstraintWt(), config.getParticipationConstraintMagBinSize()));
 		
 		// MFD Subsection nucleation MFD constraint
-		ArrayList<SectionMFD_constraint> MFDConstraints = null;
+		ArrayList<U3SectionMFD_constraint> MFDConstraints = null;
 		if (config.getNucleationMFDConstraintWt() > 0.0) {
 			MFDConstraints = FaultSystemRupSetCalc.getCharInversionSectMFD_Constraints(rupSet);
-			constraints.add(new MFDSubSectNuclInversionConstraint(rupSet, config.getNucleationMFDConstraintWt(), MFDConstraints));
+			constraints.add(new U3MFDSubSectNuclInversionConstraint(rupSet, config.getNucleationMFDConstraintWt(), MFDConstraints));
 		}
 		
 		// MFD Smoothing constraint - MFDs spatially smooth along adjacent subsections on a parent section (Laplacian smoothing)
@@ -209,24 +221,40 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			// Get list of parent IDs that have a paleo data point (paleo event rate or paleo mean slip)
 			if (config.getPaleoRateConstraintWt() > 0.0) {
 				for (int i=0; i<paleoRateConstraints.size(); i++) {
-					int paleoParentID = rupSet.getFaultSectionDataList().get(paleoRateConstraints.get(i).getSectionIndex()).getParentSectionId();
+					int paleoParentID = rupSet.getFaultSectionDataList().get(paleoRateConstraints.get(i).sectionIndex).getParentSectionId();
 					paleoParentIDs.add(paleoParentID);
 				}
 			}
 			if (config.getPaleoSlipConstraintWt() > 0.0) {
 				for (int i=0; i<aveSlipConstraints.size(); i++) {
-					int paleoParentID = rupSet.getFaultSectionDataList().get(aveSlipConstraints.get(i).getSubSectionIndex()).getParentSectionId();
+					int paleoParentID = rupSet.getFaultSectionDataList().get(aveSlipConstraints.get(i).sectionIndex).getParentSectionId();
 					paleoParentIDs.add(paleoParentID);
 				}
 			}
 			
-			constraints.add(new MFDLaplacianSmoothingInversionConstraint(rupSet, config.getMFDSmoothnessConstraintWt(),
-					config.getMFDSmoothnessConstraintWtForPaleoParents(), paleoParentIDs, MFDConstraints));
+			if (config.getMFDSmoothnessConstraintWt() > 0) {
+				HashSet<Integer> nonPaleoParentIDs = null;
+				if (config.getMFDSmoothnessConstraintWtForPaleoParents() > 0) {
+					// we have both, need to apply it only to non-paleo parents here
+					nonPaleoParentIDs = new HashSet<>();
+					for (FaultSection sect : rupSet.getFaultSectionDataList())
+						if (!paleoParentIDs.contains(sect.getParentSectionId()))
+							nonPaleoParentIDs.add(sect.getParentSectionId());
+				}
+				constraints.add(new MFDLaplacianSmoothingInversionConstraint(rupSet,
+						config.getMFDSmoothnessConstraintWt(), nonPaleoParentIDs, MFDConstraints));
+			}
+			
+			if (config.getMFDSmoothnessConstraintWtForPaleoParents() > 0d) {
+				constraints.add(new MFDLaplacianSmoothingInversionConstraint(rupSet,
+						config.getMFDSmoothnessConstraintWtForPaleoParents(), paleoParentIDs, MFDConstraints));
+			}
 		}
 		
 		// Constraint solution moment to equal deformation-model moment
 		if (config.getMomentConstraintWt() > 0.0)
-			constraints.add(new TotalMomentInversionConstraint(rupSet, config.getMomentConstraintWt(), rupSet.getTotalReducedMomentRate()));
+			constraints.add(new TotalMomentInversionConstraint(rupSet, config.getMomentConstraintWt(),
+					FaultSystemRupSetCalc.getTotalReducedMomentRate(rupSet)));
 		
 		// Constraint rupture-rate for M~6 Parkfield earthquakes
 		// The Parkfield eqs are defined as rates of 6, 7, and 8 subsection ruptures in the Parkfield parent section (which has 8 subsections in total)
@@ -282,6 +310,8 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	
 	@Deprecated
 	public void generateInputsOld(Class<? extends DoubleMatrix2D> clazz) {
+		Preconditions.checkState(rupSet instanceof InversionFaultSystemRupSet);
+		InversionFaultSystemRupSet rupSet = (InversionFaultSystemRupSet)this.rupSet;
 		/*
 		 * This is a very important part of our code. There are a few key rules we should abide by here
 		 * to make sure it continues to operate correctly.
@@ -341,15 +371,17 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// NORMALIZED (minimize ratio of model to target), UNNORMALIZED (minimize difference), 
 		// or BOTH (NORMALIZED & UNNORMALIZED both included - twice as many constraints) can be specified in SlipRateConstraintWeightingType
 		// NaN slip rates are treated as 0 slip rates: We minimize the model slip rates on these sections
-		int numSlipRateConstraints = numSections;
-		if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH) 
-			numSlipRateConstraints+=numSections;
+		int numSlipRateConstraints = 0;
+		if (config.getSlipRateConstraintWt_normalized() > 0)
+			numSlipRateConstraints += numSections;
+		if (config.getSlipRateConstraintWt_unnormalized() > 0)
+			numSlipRateConstraints += numSections;
 		
 		// Find number of rows in A matrix (equals the total number of constraints)
 		if(D) System.out.println("\nNumber of slip-rate constraints:    " + numSlipRateConstraints);
 		int numRows = numSlipRateConstraints;
 		if (numRows > 0) {
-			constraintRowRanges.add(new ConstraintRange("Slip Rate", "Slip Rate", 0, numRows, false));
+			constraintRowRanges.add(new ConstraintRange("Slip Rate", "Slip Rate", 0, numRows, false, Double.NaN, null));
 		}
 		
 		int numPaleoRows = (int)Math.signum(config.getPaleoRateConstraintWt())*paleoRateConstraints.size();
@@ -357,7 +389,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		if (numPaleoRows > 0) {
 			numRows += numPaleoRows;
 			constraintRowRanges.add(new ConstraintRange("Paleo Event Rates", "Paleo Event Rates",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN, null));
 		}
 		
 		if (config.getPaleoSlipConstraintWt() > 0.0) {
@@ -365,7 +397,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			if(D) System.out.println("Number of paleo average slip constraints: "+numPaleoSlipRows);
 			numRows += numPaleoSlipRows;
 			constraintRowRanges.add(new ConstraintRange("Paleo Slips", "Paleo Slips",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN, null));
 		}
 		
 		if (config.getRupRateConstraintWt() > 0.0) {
@@ -377,7 +409,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			if(D) System.out.println("Number of rupture-rate constraints: "+numRupRateRows);
 			numRows += numRupRateRows;
 			constraintRowRanges.add(new ConstraintRange("Rupture Rate", "Rupture Rate",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN, null));
 		}
 		
 		List<IDPairing> smoothingConstraintRupPairings = Lists.newArrayList();
@@ -387,7 +419,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			if(D) System.out.println("Number of rupture-rate constraints: "+numRupRateSmoothingRows);
 			numRows += numRupRateSmoothingRows;
 			constraintRowRanges.add(new ConstraintRange("Rupture Rate Smoothing", "Rupture Rate Smoothing",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN, null));
 		}
 		
 		
@@ -400,14 +432,14 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			if(D) System.out.println("Number of minimization constraints: "+numMinimizationRows);
 			numRows += numMinimizationRows;
 			constraintRowRanges.add(new ConstraintRange("Minimization", "Minimization",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN, null));
 		}
 		
 		IncrementalMagFreqDist targetMagFreqDist=null;
 		if (config.getMagnitudeEqualityConstraintWt() > 0.0) {
 			int totalNumMagFreqConstraints = 0;
-			for (MFD_InversionConstraint constr : config.getMfdEqualityConstraints()) {
-				targetMagFreqDist=constr.getMagFreqDist();
+			for (IncrementalMagFreqDist constr : config.getMfdEqualityConstraints()) {
+				targetMagFreqDist=constr;
 				// Find number of rows used for MFD equality constraint - only include mag bins between minimum and maximum magnitudes in rupture set
 				totalNumMagFreqConstraints += targetMagFreqDist.getClosestXIndex(rupSet.getMaxMag())-targetMagFreqDist.getClosestXIndex(rupSet.getMinMag())+1;
 			}
@@ -416,7 +448,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			// add number of rows used for magnitude distribution constraint
 			numRows += totalNumMagFreqConstraints;
 			constraintRowRanges.add(new ConstraintRange("MFD Equality", "MFD Equality",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN, null));
 		}
 		if (config.getParticipationSmoothnessConstraintWt() > 0.0) {
 			int totalNumMagParticipationConstraints = 0;
@@ -446,14 +478,14 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			if(D) System.out.println("Number of MFD participation constraints: "
 					+ totalNumMagParticipationConstraints);
 			constraintRowRanges.add(new ConstraintRange("MFD Participation", "MFD Participation",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN, null));
 		}
-		ArrayList<SectionMFD_constraint> MFDConstraints = null;
+		ArrayList<U3SectionMFD_constraint> MFDConstraints = null;
 		if (config.getNucleationMFDConstraintWt() > 0.0) {
 			int totalNumNucleationMFDConstraints = 0;
 			MFDConstraints = FaultSystemRupSetCalc.getCharInversionSectMFD_Constraints(rupSet);
 			for (int sect=0; sect<numSections; sect++) { 
-				SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect);
+				U3SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect);
 				if (sectMFDConstraint == null) continue; // Parent sections with Mmax<6 have no MFD constraint; skip these
 				for (int i=0; i<sectMFDConstraint.getNumMags(); i++) {
 					if (sectMFDConstraint.getRate(i) > 0) {
@@ -464,7 +496,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			}
 			if(D) System.out.println("Number of Nucleation MFD constraints: "+totalNumNucleationMFDConstraints);
 			constraintRowRanges.add(new ConstraintRange("MFD Nucleation", "MFD Nucleation",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN, null));
 		}
 		if (config.getMFDSmoothnessConstraintWt() > 0.0 || config.getMFDSmoothnessConstraintWtForPaleoParents() > 0.0) {
 			int totalNumMFDSmoothnessConstraints = 0;
@@ -474,13 +506,13 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			ArrayList<Integer> paleoParents = new ArrayList<Integer>();
 			if (config.getPaleoRateConstraintWt() > 0.0) {
 				for (int i=0; i<paleoRateConstraints.size(); i++) {
-					int paleoParentID = rupSet.getFaultSectionDataList().get(paleoRateConstraints.get(i).getSectionIndex()).getParentSectionId();
+					int paleoParentID = rupSet.getFaultSectionDataList().get(paleoRateConstraints.get(i).sectionIndex).getParentSectionId();
 					paleoParents.add(paleoParentID);
 				}
 			}
 			if (config.getPaleoSlipConstraintWt() > 0.0) {
 				for (int i=0; i<aveSlipConstraints.size(); i++) {
-					int paleoParentID = rupSet.getFaultSectionDataList().get(aveSlipConstraints.get(i).getSubSectionIndex()).getParentSectionId();
+					int paleoParentID = rupSet.getFaultSectionDataList().get(aveSlipConstraints.get(i).sectionIndex).getParentSectionId();
 					paleoParents.add(paleoParentID);
 				}
 			}
@@ -502,7 +534,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 				// For each beginning section of subsection-pair, there will be numMagBins # of constraints
 				for (int j=1; j<sectsForParent.size()-2; j++) {
 					int sect2 = sectsForParent.get(j);
-					SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect2);
+					U3SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect2);
 					if (sectMFDConstraint == null) continue; // Parent sections with Mmax<6 have no MFD constraint; skip these
 					int numMagBins = sectMFDConstraint.getNumMags();
 					// Only add rows if this parent section will be included; it won't if it's not a paleo parent sect & MFDSmoothnessConstraintWt = 0
@@ -515,19 +547,19 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			}
 			if(D) System.out.println("Number of MFD Smoothness constraints: "+totalNumMFDSmoothnessConstraints);
 			constraintRowRanges.add(new ConstraintRange("MFD Smoothness", "MFD Smoothness",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN, null));
 		}
 		if (config.getMomentConstraintWt() > 0.0) {
 			numRows++;
 			if(D) System.out.println("Number of Moment constraints: 1");
 			constraintRowRanges.add(new ConstraintRange("Moment", "Moment",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN, null));
 		}
 		if (config.getParkfieldConstraintWt() > 0.0) {
 			numRows++;
 			if(D) System.out.println("Number of Parkfield constraints: 1");
 			constraintRowRanges.add(new ConstraintRange("Parkfield", "Parkfield",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN, null));
 		}
 		if (config.getEventRateSmoothnessWt() > 0.0) {
 			ArrayList<Integer> parentIDs = new ArrayList<Integer>();
@@ -541,7 +573,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			numRows+=numNewRows;
 			if(D) System.out.println("Number of Event-Rate Smoothness constraints: "+numNewRows);
 			constraintRowRanges.add(new ConstraintRange("Event-Rate Smoothness", "Event-Rate Smoothness",
-					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false));
+					constraintRowRanges.get(constraintRowRanges.size()-1).endRow, numRows, false, Double.NaN, null));
 		}
 		
 		
@@ -554,13 +586,13 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// to be passed to SA algorithm
 		int numMFDRows=0;
 		if (config.getMagnitudeInequalityConstraintWt() > 0.0) {
-			for (MFD_InversionConstraint constr : config.getMfdInequalityConstraints()) {
-				targetMagFreqDist=constr.getMagFreqDist();
+			for (IncrementalMagFreqDist constr : config.getMfdInequalityConstraints()) {
+				targetMagFreqDist=constr;
 				// Add number of rows used for magnitude distribution constraint - only include mag bins between minimum and maximum magnitudes in rupture set				
 				numMFDRows += targetMagFreqDist.getClosestXIndex(rupSet.getMaxMag())-targetMagFreqDist.getClosestXIndex(rupSet.getMinMag())+1;
 			}
 			constraintRowRanges.add(new ConstraintRange("MFD Inequality", "MFD Inequality",
-					0, numMFDRows, true));
+					0, numMFDRows, true, Double.NaN, null));
 			A_ineq = buildMatrix(clazz, numMFDRows, numRuptures); // (A_MFD * x <= d_MFD)
 			d_ineq = new double[numMFDRows];							
 			if(D) System.out.println("Number of magnitude-distribution inequality constraints (not in A matrix): "
@@ -596,15 +628,15 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 				int row = sects.get(i);
 				int col = rup;
 				double val;
-				if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.UNNORMALIZED || config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH) {
+				if (slipRateConstraintWt_unnormalized > 0d) {
 					if (QUICK_GETS_SETS)
 						A.setQuick(row, col, slipRateConstraintWt_unnormalized * slips[i]);
 					else
 						A.set(row, col, slipRateConstraintWt_unnormalized * slips[i]);
 					if(D) numNonZeroElements++;		
 				}
-				if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.NORMALIZED_BY_SLIP_RATE || config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH) {  
-					if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH)
+				if (slipRateConstraintWt_normalized > 0) {  
+					if (slipRateConstraintWt_unnormalized > 0)
 						row += numSections;
 					// Note that constraints for sections w/ slip rate < 0.1 mm/yr is not normalized by slip rate -- otherwise misfit will be huge (GEOBOUND model has 10e-13 slip rates that will dominate misfit otherwise)
 					if (sectSlipRateReduced[sects.get(i)] < 1E-4 || Double.isNaN(sectSlipRateReduced[sects.get(i)]))  
@@ -623,10 +655,10 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// d vector component of slip-rate constraint
 		for (int sect=0; sect<numSections; sect++) {
 			int row = sect;
-			if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.UNNORMALIZED || config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH) 
+			if (slipRateConstraintWt_unnormalized > 0d) 
 				d[row] = slipRateConstraintWt_unnormalized * sectSlipRateReduced[sect];			
-			if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.NORMALIZED_BY_SLIP_RATE || config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH) {
-				if (config.getSlipRateWeightingType() == UCERF3InversionConfiguration.SlipRateConstraintWeightingType.BOTH)
+			if (slipRateConstraintWt_normalized > 0d) {
+				if (slipRateConstraintWt_unnormalized > 0d)
 					row += numSections;
 				if (sectSlipRateReduced[sect]<1E-4)  // For very small slip rates, do not normalize by slip rate (normalize by 0.0001 instead) so they don't dominate misfit
 					d[row] = slipRateConstraintWt_normalized * sectSlipRateReduced[sect]/0.0001;
@@ -652,13 +684,13 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			numNonZeroElements = 0;
 			if(D) System.out.println("\nAdding event rates to A matrix ...");
 			for (int i=numSlipRateConstraints; i<numSlipRateConstraints+paleoRateConstraints.size(); i++) {
-				PaleoRateConstraint constraint = paleoRateConstraints.get(i-numSlipRateConstraints);
-				d[i]=paleoRateConstraintWt * constraint.getMeanRate() / constraint.getStdDevOfMeanRate();
-				List<Integer> rupsForSect = rupSet.getRupturesForSection(constraint.getSectionIndex());
+				SectMappedUncertainDataConstraint constraint = paleoRateConstraints.get(i-numSlipRateConstraints);
+				d[i]=paleoRateConstraintWt * constraint.bestEstimate / constraint.getPreferredStdDev();
+				List<Integer> rupsForSect = rupSet.getRupturesForSection(constraint.sectionIndex);
 				for (int rupIndex=0; rupIndex<rupsForSect.size(); rupIndex++) {
 					int rup = rupsForSect.get(rupIndex);
-					double probPaleoVisible = paleoProbabilityModel.getProbPaleoVisible(rupSet, rup, constraint.getSectionIndex());	
-					double setVal = (paleoRateConstraintWt * probPaleoVisible / constraint.getStdDevOfMeanRate());
+					double probPaleoVisible = paleoProbabilityModel.getProbPaleoVisible(rupSet, rup, constraint.sectionIndex);	
+					double setVal = (paleoRateConstraintWt * probPaleoVisible / constraint.getPreferredStdDev());
 					if (QUICK_GETS_SETS)
 						A.setQuick(i, rup, setVal);
 					else
@@ -682,11 +714,11 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			numNonZeroElements = 0;
 			if(D) System.out.println("\nAdding paleo mean slip constraints to A matrix ...");
 			for (int i=0; i<aveSlipConstraints.size(); i++) {
-				AveSlipConstraint constraint = aveSlipConstraints.get(i);
-				int subsectionIndex = constraint.getSubSectionIndex();
-				double meanRate = sectSlipRateReduced[subsectionIndex] / constraint.getWeightedMean();
-				double lowRateBound = sectSlipRateReduced[subsectionIndex] / constraint.getUpperUncertaintyBound();
-				double highRateBound = sectSlipRateReduced[subsectionIndex] / constraint.getLowerUncertaintyBound();
+				SectMappedUncertainDataConstraint constraint = aveSlipConstraints.get(i);
+				int subsectionIndex = constraint.sectionIndex;
+				double meanRate = sectSlipRateReduced[subsectionIndex] / constraint.bestEstimate;
+				double lowRateBound = sectSlipRateReduced[subsectionIndex] / ((BoundedUncertainty)constraint.uncertainties[0]).upperBound;
+				double highRateBound = sectSlipRateReduced[subsectionIndex] / ((BoundedUncertainty)constraint.uncertainties[0]).lowerBound;
 				double constraintError = highRateBound - lowRateBound;
 				d[rowIndex]=paleoSlipConstraintWt * meanRate / constraintError;
 				List<Integer> rupsForSect = rupSet.getRupturesForSection(subsectionIndex);
@@ -694,7 +726,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 					int rup = rupsForSect.get(rupIndex);
 					int sectIndexInRup = rupSet.getSectionsIndicesForRup(rup).indexOf(subsectionIndex);
 					double slipOnSect = rupSet.getSlipOnSectionsForRup(rup)[sectIndexInRup]; 
-					double probVisible = AveSlipConstraint.getProbabilityOfObservedSlip(slipOnSect);
+					double probVisible = U3AveSlipConstraint.getProbabilityOfObservedSlip(slipOnSect);
 					double setVal = (paleoSlipConstraintWt * probVisible / constraintError);
 					if (QUICK_GETS_SETS)
 						A.setQuick(rowIndex, rup, setVal);
@@ -835,7 +867,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// encoded into the A_ineq matrix instead since they are nonlinear
 		if (config.getMagnitudeEqualityConstraintWt() > 0.0) {
 			double magnitudeEqualityConstraintWt = config.getMagnitudeEqualityConstraintWt();
-			List<MFD_InversionConstraint> mfdEqualityConstraints = config.getMfdEqualityConstraints();
+			List<? extends IncrementalMagFreqDist> mfdEqualityConstraints = config.getMfdEqualityConstraints();
 			numNonZeroElements = 0;
 			if(D) System.out.println("\nAdding " + mfdEqualityConstraints.size()
 					+ " magnitude distribution equality constraints to A matrix ...");	
@@ -864,7 +896,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			// Loop over all MFD constraints in different regions
 			for (int i=0; i < mfdEqualityConstraints.size(); i++) {
 				double[] fractRupsInside = rupSet.getFractRupsInsideRegion(mfdEqualityConstraints.get(i).getRegion(), false);
-				targetMagFreqDist=mfdEqualityConstraints.get(i).getMagFreqDist();	
+				targetMagFreqDist=mfdEqualityConstraints.get(i);	
 				for(int rup=0; rup<numRuptures; rup++) {
 					double mag = rupMeanMag[rup];
 					double fractRupInside = fractRupsInside[rup];
@@ -901,7 +933,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// Prepare MFD Inequality Constraint (not added to A matrix directly since it's nonlinear)
 		if (config.getMagnitudeInequalityConstraintWt() > 0.0) {	
 			double magnitudeInequalityConstraintWt = config.getMagnitudeInequalityConstraintWt();
-			List<MFD_InversionConstraint> mfdInequalityConstraints = config.getMfdInequalityConstraints();
+			List<? extends IncrementalMagFreqDist> mfdInequalityConstraints = config.getMfdInequalityConstraints();
 			int rowIndex_ineq = 0; 
 			if(D) System.out.println("\nPreparing " + mfdInequalityConstraints.size()
 					+ " magnitude inequality constraints ...");	
@@ -909,7 +941,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			// Loop over all MFD constraints in different regions
 			for (int i=0; i < mfdInequalityConstraints.size(); i++) {
 				double[] fractRupsInside = rupSet.getFractRupsInsideRegion(mfdInequalityConstraints.get(i).getRegion(), false);
-				targetMagFreqDist=mfdInequalityConstraints.get(i).getMagFreqDist();	
+				targetMagFreqDist=mfdInequalityConstraints.get(i);	
 				for(int rup=0; rup<numRuptures; rup++) {
 					double mag = rupMeanMag[rup];
 					double fractRupInside = fractRupsInside[rup];
@@ -1025,7 +1057,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			// Loop over all subsections
 			for (int sect=0; sect<numSections; sect++) {
 				
-				SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect);
+				U3SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect);
 				if (sectMFDConstraint == null) continue; // Parent sections with Mmax<6 have no MFD constraint; skip these
 				int numMagBins = sectMFDConstraint.getNumMags();
 				List<Integer> rupturesForSect = rupSet.getRupturesForSection(sect);
@@ -1094,13 +1126,13 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 			ArrayList<Integer> paleoParents = new ArrayList<Integer>();
 			if (config.getPaleoRateConstraintWt() > 0.0) {
 				for (int i=0; i<paleoRateConstraints.size(); i++) {
-					int paleoParentID = rupSet.getFaultSectionDataList().get(paleoRateConstraints.get(i).getSectionIndex()).getParentSectionId();
+					int paleoParentID = rupSet.getFaultSectionDataList().get(paleoRateConstraints.get(i).sectionIndex).getParentSectionId();
 					paleoParents.add(paleoParentID);
 				}
 			}
 			if (config.getPaleoSlipConstraintWt() > 0.0) {
 				for (int i=0; i<aveSlipConstraints.size(); i++) {
-					int paleoParentID = rupSet.getFaultSectionDataList().get(aveSlipConstraints.get(i).getSubSectionIndex()).getParentSectionId();
+					int paleoParentID = rupSet.getFaultSectionDataList().get(aveSlipConstraints.get(i).sectionIndex).getParentSectionId();
 					paleoParents.add(paleoParentID);
 				}
 			}
@@ -1154,7 +1186,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 					}
 					
 					// Get section MFD constraint -- we will use the irregular mag binning for the constraint (but not the rates)
-					SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect2);
+					U3SectionMFD_constraint sectMFDConstraint = MFDConstraints.get(sect2);
 					if (sectMFDConstraint == null) continue; // Parent sections with Mmax<6 have no MFD constraint; skip these
 					int numMagBins = sectMFDConstraint.getNumMags();
 					// Loop over MFD constraints for this subsection
@@ -1404,7 +1436,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 	}
 	
 	public static double getDistanceAlongRupture(
-			List<FaultSection> sectsInRup, int targetSectIndex,
+			List<? extends FaultSection> sectsInRup, int targetSectIndex,
 			Map<Integer, Double> traceLengthCache) {
 		double distanceAlongRup = 0;
 		
@@ -1453,7 +1485,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		return config;
 	}
 
-	public List<PaleoRateConstraint> getPaleoRateConstraints() {
+	public List<? extends SectMappedUncertainDataConstraint> getPaleoRateConstraints() {
 		return paleoRateConstraints;
 	}
 
@@ -1494,11 +1526,16 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		return parkfieldRups;
 	}
 	
-	public static void main(String[] args) throws IOException {
-		LogicTreeBranch branch = LogicTreeBranch.DEFAULT;
+	/**
+	 * This tests that the legacy generateInputsOld() method is identical to the new generateInputs() method
+	 * 
+	 * @throws IOException
+	 */
+	private static void validateNewVsOld() throws IOException {
+		U3LogicTreeBranch branch = U3LogicTreeBranch.DEFAULT;
 		InversionFaultSystemRupSet rupSet = InversionFaultSystemRupSetFactory.forBranch(branch);
 		UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(
-				branch.getValue(InversionModels.class), rupSet);
+				branch.getValue(InversionModels.class), rupSet, rupSet.getFaultModel(), rupSet.getInversionTargetMFDs());
 		// first enable all other constraints
 		config.setRupRateSmoothingConstraintWt(1d);
 		config.setMagnitudeEqualityConstraintWt(1d);
@@ -1528,7 +1565,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 //		config.setSlipRateConstraintWt_unnormalized(0d);
 		
 		// get the paleo rate constraints
-		List<PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
+		List<U3PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
 					rupSet.getFaultModel(), rupSet);
 
 		// get the improbability constraints
@@ -1537,39 +1574,219 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 		// paleo probability model
 		PaleoProbabilityModel paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
 
-		List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(rupSet.getFaultSectionDataList());
-		
-		UCERF3InversionInputGenerator gen = new UCERF3InversionInputGenerator(
-				rupSet, config, paleoRateConstraints, aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel);
-		
-		double[] preGenInitial = gen.initialSolution;
-		
+		List<U3AveSlipConstraint> aveSlipConstraints = U3AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+
 		System.out.println("BUILDING ORIGINAL");
-		gen.generateInputsOld(null);
-		DoubleMatrix2D A_orig = gen.A;
-		DoubleMatrix2D A_ineq_orig = gen.A_ineq;
-		double[] d_orig = gen.d;
-		double[] d_ineq_orig = gen.d_ineq;
-		List<ConstraintRange> origRanges = gen.constraintRowRanges;
-		
-		double[] initial_orig = gen.initialSolution;
-		
-		gen.A = null;
-		gen.A_ineq = null;
-		gen.d = null;
-		gen.d_ineq = null;
-		gen.initialSolution = preGenInitial;
-		gen.constraintRowRanges = null;
+		UCERF3InversionInputGenerator origGen = getTestConfig(rupSet, rupSet.getFaultModel(), rupSet.getInversionTargetMFDs());
+		origGen.generateInputsOld(null);
 		
 		System.out.println("BUILDING NEW");
-		gen.generateInputs(true);
-		DoubleMatrix2D A_new = gen.A;
-		DoubleMatrix2D A_ineq_new = gen.A_ineq;
-		double[] d_new = gen.d;
-		double[] d_ineq_new = gen.d_ineq;
-		List<ConstraintRange> newRanges = gen.constraintRowRanges;
+		UCERF3InversionInputGenerator newGen = getTestConfig(rupSet, rupSet.getFaultModel(), rupSet.getInversionTargetMFDs());
+		newGen.generateInputs(true);
 		
-		double[] initial_new = gen.initialSolution;
+		validate(origGen, newGen);
+	}
+	
+	/**
+	 * This tests that an old style inversion rupture set, when written to and loaded from a new modular archive,
+	 * can be used to reproduce the same inversion inputs as the original representation
+	 * 
+	 * @throws Exception
+	 */
+	private static void testConfigureNewFileFormat() throws Exception {
+		File tempDir = Files.createTempDir();
+		
+		U3LogicTreeBranch origBranch = U3LogicTreeBranch.DEFAULT;
+		FaultSystemRupSet origRupSet = InversionFaultSystemRupSetFactory.forBranch(origBranch);
+		
+//		File tempIVFRS = new File(tempDir, "ivfrs.zip");
+//		FaultSystemIO.writeRupSet((InversionFaultSystemRupSet)origRupSet, tempIVFRS);
+//		origRupSet = FaultSystemIO.loadInvRupSet(tempIVFRS);
+		
+		org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs origTargetMFDs =
+				origRupSet.getModule(org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs.class);
+		ModSectMinMags origMinMags = origRupSet.requireModule(ModSectMinMags.class);
+		
+		UCERF3InversionInputGenerator origGen = getTestConfig(origRupSet, origBranch.getValue(FaultModels.class), origTargetMFDs);
+		
+		File tempFile = new File(tempDir, "ivfrs_new.zip");
+		origRupSet.getArchive().write(tempFile);
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(tempFile);
+		
+		// copy zone polygons over for issue #25
+		System.out.println("Copying original zone polygons and traces so that opensha issue #25 doesn't affect comparisons");
+		for (int s=0; s<rupSet.getNumSections(); s++) {
+			FaultSection origSect = origRupSet.getFaultSectionData(s);
+			FaultSection newSect = rupSet.getFaultSectionData(s);
+			newSect.setZonePolygon(origSect.getZonePolygon());
+			for (int i=0; i<newSect.getFaultTrace().size(); i++) {
+				Location origLoc = origSect.getFaultTrace().get(i);
+				Location newLoc = newSect.getFaultTrace().get(i);
+				boolean equals = newLoc.equals(origLoc);
+				equals = equals && origLoc.getLatRad() == newLoc.getLatRad();
+				equals = equals && origLoc.getLonRad() == newLoc.getLonRad();
+				if (!equals) {
+					System.err.println("Trace location differs for "+origSect.getName()+", location "+i);
+					System.err.println("\tORIG DEGs\t"+origLoc.getLatitude()+"\t"+origLoc.getLongitude()+"\t"+origLoc.getDepth());
+					System.err.println("\tNEW DEGs\t"+newLoc.getLatitude()+"\t"+newLoc.getLongitude()+"\t"+newLoc.getDepth());
+					System.err.println("\tORIG RADs\t"+origLoc.getLatRad()+"\t"+origLoc.getLonRad());
+					System.err.println("\tNEW RADs\t"+newLoc.getLatRad()+"\t"+newLoc.getLonRad());
+					newSect.getFaultTrace().set(i, origLoc);
+				}
+			}
+		}
+		
+		U3LogicTreeBranch newBranch = rupSet.requireModule(U3LogicTreeBranch.class);
+		Preconditions.checkState(newBranch.equals(origBranch));
+		org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs newTargetMFDs =
+				rupSet.requireModule(org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs.class);
+		
+		System.out.println("Validating modified min mags");
+		validateMinMags(origMinMags, rupSet.requireModule(ModSectMinMags.class));
+		
+		UCERF3InversionInputGenerator modGen = getTestConfig(rupSet, newBranch.getValue(FaultModels.class), newTargetMFDs);
+		
+		System.out.println("Validating target MFD constraints");
+		List<? extends IncrementalMagFreqDist> origConstrs = origTargetMFDs.getMFD_Constraints();
+		List<? extends IncrementalMagFreqDist> newConstrs = newTargetMFDs.getMFD_Constraints();
+		Preconditions.checkState(origConstrs.size() == newConstrs.size(), "MFD constraint size mismatch");
+		for (int i=0; i<origConstrs.size(); i++) {
+			IncrementalMagFreqDist origConstr = origConstrs.get(i);
+			IncrementalMagFreqDist newConstr = newConstrs.get(i);
+			Preconditions.checkState(origConstr.getRegion().equals(newConstr.getRegion()), "Region mismatch");
+			validateMFD(origConstr, newConstr);
+		}
+		
+		System.out.println("Generating mod inputs");
+		modGen.generateInputs();
+		System.out.println("Generating orig inputs");
+		origGen.generateInputs();
+		
+		validate(origGen, modGen);
+		
+		FileUtils.deleteRecursive(tempDir);
+	}
+	
+	/**
+	 * This tests creating a U3-style rupture set and configuring an inversion, without using any of the old legacy
+	 * U3 rupture set subclasses.
+	 * 
+	 * @throws Exception
+	 */
+	private static void testBuildNewFormat() throws Exception {
+		U3LogicTreeBranch origBranch = U3LogicTreeBranch.DEFAULT;
+		FaultSystemRupSet origRupSet = InversionFaultSystemRupSetFactory.forBranch(origBranch);
+		
+		org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs origTargetMFDs = origRupSet.getModule(U3InversionTargetMFDs.class);
+		ModSectMinMags origMinMags = origRupSet.requireModule(ModSectMinMags.class);
+		
+		UCERF3InversionInputGenerator origGen = getTestConfig(origRupSet, origBranch.getValue(FaultModels.class), origTargetMFDs);
+		
+		FaultSystemRupSet.Builder builder = FaultSystemRupSet.builder(
+				origRupSet.getFaultSectionDataList(), origRupSet.getSectionIndicesForAllRups());
+		FaultSystemRupSet rupSet = new U3InversionConfigFactory().updateRuptureSetForBranch(builder.build(), origBranch);
+		
+		U3LogicTreeBranch newBranch = rupSet.requireModule(U3LogicTreeBranch.class);
+		Preconditions.checkState(newBranch.equals(origBranch));
+		org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs newTargetMFDs = rupSet.requireModule(U3InversionTargetMFDs.class);
+		
+		System.out.println("Validating modified min mags");
+		validateMinMags(origMinMags, rupSet.requireModule(ModSectMinMags.class));
+		
+		UCERF3InversionInputGenerator modGen = getTestConfig(rupSet, newBranch.getValue(FaultModels.class), newTargetMFDs);
+		
+		System.out.println("Validating target MFD constraints");
+		List<? extends IncrementalMagFreqDist> origConstrs = origTargetMFDs.getMFD_Constraints();
+		List<? extends IncrementalMagFreqDist> newConstrs = newTargetMFDs.getMFD_Constraints();
+		Preconditions.checkState(origConstrs.size() == newConstrs.size(), "MFD constraint size mismatch");
+		for (int i=0; i<origConstrs.size(); i++) {
+			IncrementalMagFreqDist origConstr = origConstrs.get(i);
+			IncrementalMagFreqDist newConstr = newConstrs.get(i);
+			Preconditions.checkState(origConstr.getRegion().equals(newConstr.getRegion()), "Region mismatch");
+			validateMFD(origConstr, newConstr);
+		}
+		
+		System.out.println("Generating mod inputs");
+		modGen.generateInputs();
+		System.out.println("Generating orig inputs");
+		origGen.generateInputs();
+		
+		validate(origGen, modGen);
+	}
+	
+	public static void main(String[] args) throws Exception {
+//		validateNewVsOld();
+//		testConfigureNewFileFormat();
+		testBuildNewFormat();
+	}
+	
+	private static boolean test_double_percision = true; // true: test to double precision, false: float precision
+	
+	private static UCERF3InversionInputGenerator getTestConfig(FaultSystemRupSet rupSet, FaultModels fm,
+			org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs targetMFDs) throws IOException {
+		U3LogicTreeBranch branch = U3LogicTreeBranch.DEFAULT;
+		UCERF3InversionConfiguration config = UCERF3InversionConfiguration.forModel(
+				branch.getValue(InversionModels.class), rupSet, fm, targetMFDs);
+		// first enable all other constraints
+		config.setRupRateSmoothingConstraintWt(1d);
+		config.setMagnitudeEqualityConstraintWt(1d);
+		config.setSmoothnessWt(10000);
+		config.setMomentConstraintWt(1d);
+		config.setRupRateConstraintWt(1d);
+		config.setEventRateSmoothnessWt(1d);
+		config.setParticipationSmoothnessConstraintWt(1d);
+		// disable any/all constraints below
+//		config.setEventRateSmoothnessWt(0d);
+//		config.setMFDSmoothnessConstraintWt(0d);
+//		config.setMFDSmoothnessConstraintWtForPaleoParents(0d);
+//		config.setMinimizationConstraintWt(0d);
+//		config.setMomentConstraintWt(0d);
+//		config.setNucleationMFDConstraintWt(0d);
+//		config.setMagnitudeEqualityConstraintWt(0d);
+//		config.setMagnitudeInequalityConstraintWt(0d);
+//		config.setPaleoRateConstraintWt(0d);
+//		config.setPaleoSlipWt(0d);
+//		config.setParkfieldConstraintWt(0d);
+//		config.setParticipationSmoothnessConstraintWt(0d);
+//		config.setRupRateConstraintWt(0d);
+//		config.setRupRateSmoothingConstraintWt(0d);
+		config.setSmoothnessWt(0d); // uses a lot of memory
+		// always need these on for old to work
+//		config.setSlipRateConstraintWt_normalized(0d);
+//		config.setSlipRateConstraintWt_unnormalized(0d);
+		
+		// get the paleo rate constraints
+		List<U3PaleoRateConstraint> paleoRateConstraints = CommandLineInversionRunner.getPaleoConstraints(
+					fm, rupSet);
+
+		// get the improbability constraints
+		double[] improbabilityConstraint = null; // null for now
+
+		// paleo probability model
+		PaleoProbabilityModel paleoProbabilityModel = UCERF3InversionInputGenerator.loadDefaultPaleoProbabilityModel();
+
+		List<U3AveSlipConstraint> aveSlipConstraints = U3AveSlipConstraint.load(rupSet.getFaultSectionDataList());
+
+		return new UCERF3InversionInputGenerator(
+				rupSet, config, paleoRateConstraints, aveSlipConstraints, improbabilityConstraint, paleoProbabilityModel);
+	}
+	
+	private static void validate(UCERF3InversionInputGenerator origGen, UCERF3InversionInputGenerator modGen) {
+		DoubleMatrix2D A_orig = origGen.A;
+		DoubleMatrix2D A_ineq_orig = origGen.A_ineq;
+		double[] d_orig = origGen.d;
+		double[] d_ineq_orig = origGen.d_ineq;
+		List<ConstraintRange> origRanges = origGen.constraintRowRanges;
+		
+		double[] initial_orig = origGen.initialSolution;
+		
+		DoubleMatrix2D A_new = modGen.A;
+		DoubleMatrix2D A_ineq_new = modGen.A_ineq;
+		double[] d_new = modGen.d;
+		double[] d_ineq_new = modGen.d_ineq;
+		List<ConstraintRange> newRanges = modGen.constraintRowRanges;
+		
+		double[] initial_new = modGen.initialSolution;
 
 		System.out.println("A orig size: "+A_orig.rows()+" x "+A_orig.columns());
 		System.out.println("A new size: "+A_new.rows()+" x "+A_new.columns());
@@ -1609,6 +1826,9 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 
 		System.out.println("Validating initial");
 		validateRates(initial_orig, initial_new);
+		
+		System.out.println("Validating waterlevel");
+		validateRates(origGen.getWaterLevelRates(), modGen.getWaterLevelRates());
 	}
 	
 	private static List<ConstraintRange> getMatches(List<ConstraintRange> ranges, boolean ineq) {
@@ -1643,7 +1863,7 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 						if (range.contains(row, ineq))
 							matchRange = range;
 				}
-				Preconditions.checkState(val == oVal,
+				Preconditions.checkState(val == oVal || (!test_double_percision && (float)val == (float) oVal),
 						"Value mismatch at row=%s, col=%s: %s != %s\nConstraint: %s",
 						row, col, val, oVal, matchRange);
 			}
@@ -1684,19 +1904,57 @@ public class UCERF3InversionInputGenerator extends InversionInputGenerator {
 					if (range.contains(i, ineq))
 						matchRange = range;
 			}
-			Preconditions.checkState(d_orig[i] == d_new[i], "d mismatch at %s: %s != %s\nConstraint: %s",
-					i, d_orig[i], d_new[i], matchRange);
+			validate(d_orig[i], d_new[i], "d", i, "\nConstraint: "+matchRange);
 		}
 		System.out.println("Validated "+d_orig.length+" data values");
 	}
 	
 	private static void validateRates(double[] origRates, double[] newRates) {
+		if (origRates == null) {
+			Preconditions.checkState(newRates == null, "orig is null but new isn't");
+			System.out.println("Both are null, skipping");
+			return;
+		} else {
+			Preconditions.checkNotNull(newRates, "orig is non-null but new is null");
+		}
 		Preconditions.checkState(origRates != newRates, "orig and new are same instance!");
 		Preconditions.checkState(origRates.length == newRates.length,
 				"rates length mismatch: %s != %s", origRates.length, newRates.length);
 		for (int i=0; i<newRates.length; i++)
-			Preconditions.checkState(origRates[i] == newRates[i], "rate mismatch at %s: %s != %s",
-					i, origRates[i], newRates[i]);
+			validate(origRates[i], newRates[i], "rate", i);
 		System.out.println("Validated "+origRates.length+" rate values");
+	}
+	
+	private static void validateMinMags(ModSectMinMags origMinMags, ModSectMinMags newMinMags) {
+		double[] origVals = origMinMags.getMinMagForSections();
+		double[] newVals = newMinMags.getMinMagForSections();
+		Preconditions.checkState(origVals != newVals, "orig and new are same instance!");
+		Preconditions.checkState(origVals.length == newVals.length,
+				"rates length mismatch: %s != %s", origVals.length, newVals.length);
+		for (int i=0; i<origVals.length; i++)
+			validate(origVals[i], newVals[i], "min mag", i);
+		System.out.println("Validated "+origVals.length+" rate values");
+	}
+	
+	private static void validateMFD(IncrementalMagFreqDist origMFD, IncrementalMagFreqDist newMFD) {
+		Preconditions.checkState(origMFD != newMFD, "orig and new are same instance!");
+		Preconditions.checkState(origMFD.size() == newMFD.size(),
+				"rates length mismatch: %s != %s", origMFD.size(), newMFD.size());
+		for (int i=0; i<newMFD.size(); i++) {
+			Point2D origPt = origMFD.get(i);
+			Point2D newPt = newMFD.get(i);
+			validate(origPt.getX(), newPt.getX(), "x", i);
+			validate(origPt.getY(), newPt.getY(), "y", i, " at x="+(float)origPt.getX());
+		}
+	}
+	
+	private static void validate(double val1, double val2, String type, int index) {
+		validate(val1, val2, type, index, "");
+	}
+	
+	private static void validate(double val1, double val2, String type, int index, String extra) {
+		Preconditions.checkState(val1 == val2 || (!test_double_percision && (float)val1 == (float) val2),
+				type+" mismatch at %s: %s != %s"+extra,
+						index, val1, val2);
 	}
 }

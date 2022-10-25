@@ -16,13 +16,13 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.SimpleFaultData;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.analysis.ETAS_AbstractPlot;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
@@ -31,7 +31,7 @@ import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture.EdgeFault;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture.SectionBased;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture.SimpleFault;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
 
@@ -43,7 +43,8 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 //			argz += " --event-id ci38457511"; // 2019 Ridgecrest M7.1
 //			argz += " --event-id ci39838928"; // 4/5/2021 Inglewood M4
 //			argz += " --event-id ci39462536"; // 2020 Ridgecrest M5.5
-			argz += " --event-id nc73559265"; // 2021 Truckee 4.7
+//			argz += " --event-id nc73559265"; // 2021 Truckee 4.7
+			argz += " --event-id nc73584926"; // 7/8/2021 Walker 5.9
 //			argz += " --mag-complete 3.5";
 //			argz += " --event-id nn00719663"; // 3/20/2020 Lake Tahoe area M5
 //			argz += " --event-id ci39126079"; // 4/4/2020 SJC Anza M4.9
@@ -130,7 +131,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 //			argz += " --random-seed 123456789";
 			
 			// hpc options
-			argz += " --hpc-site USC_HPC";
+			argz += " --hpc-site USC_CARC";
 			argz += " --nodes 32";
 			argz += " --hours 24";
 ////			argz += " --queue scec_hiprio";
@@ -451,7 +452,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 				}
 				FaultSystemRupSet rupSet;
 				try {
-					rupSet = FaultSystemIO.loadRupSet(fssFile);
+					rupSet = U3FaultSystemIO.loadRupSet(fssFile);
 				} catch (IOException | DocumentException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}

@@ -2,10 +2,14 @@ package org.opensha.commons.data;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
@@ -16,6 +20,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.GZIPOutputStream;
 
 import org.opensha.commons.util.FileUtils;
 
@@ -232,8 +238,18 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		return getLineStr(getLine(0));
 	}
 	
+	/**
+	 * Writes this CSV file to the given file. If the file extension ends in '.gz' then it will be GZipped automatically.
+	 * 
+	 * @param file
+	 * @throws IOException
+	 */
 	public void writeToFile(File file) throws IOException {
-		FileWriter fw = new FileWriter(file);
+		Writer fw;
+		if (file.getName().toLowerCase().endsWith(".gz"))
+			fw = new OutputStreamWriter(new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(file))));
+		else
+			fw = new FileWriter(file);
 		writeWriter(fw);
 		fw.close();
 	}
@@ -291,9 +307,27 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		}
 	}
 	
-	private static ArrayList<String> loadLine(String line, int num) {
+	/**
+	 * Reads a CSV line from a string
+	 * 
+	 * @param line
+	 * @return
+	 */
+	public static List<String> loadLine(String line) {
+		return loadLine(line, -1, -1);
+	}
+	
+	/**
+	 * Reads a CSV line from a string
+	 * 
+	 * @param line
+	 * @param padToLength if nonzero, will ensure that the returned list is at least this long, padded with empty strings 
+	 * @param expectedNum expected number of values, if nonzero will initialize the list with this capacity
+	 * @return
+	 */
+	public static List<String> loadLine(String line, int padToLength, int expectedNum) {
 		line = line.trim();
-		ArrayList<String> vals = new ArrayList<String>();
+		ArrayList<String> vals = expectedNum > 0 ? new ArrayList<>(expectedNum) : new ArrayList<>();
 		boolean inside = false;
 		String cur = "";
 		for (int i=0; i<line.length(); i++) {
@@ -312,16 +346,44 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		}
 		if (!cur.isEmpty())
 			vals.add(cur);
-		while (vals.size() < num)
+		while (vals.size() < padToLength)
 			vals.add("");
 		return vals;
 	}
 	
+	/**
+	 * Reads a CSV file from the given file.
+	 * 
+	 * If the file extension ends with '.gz' then it is assumed to be GZipped and will be read accordingly
+	 * 
+	 * @param file
+	 * @param strictRowSizes if true, all rows will be checked to ensure that they are the same length
+	 * @return loaded CSV file
+	 * @throws IOException
+	 */
 	public static CSVFile<String> readFile(File file, boolean strictRowSizes) throws IOException {
 		return readFile(file, strictRowSizes, -1);
 	}
 	
+	/**
+	 * Reads a CSV file from the given file.
+	 * 
+	 * If the file extension ends with '.gz' then it is assumed to be GZipped and will be read accordingly
+	 * 
+	 * @param file
+	 * @param strictRowSizes if true, all rows will be checked to ensure that they are the same length
+	 * @param cols expected number of columns, or -1 if unknown
+	 * @return loaded CSV file
+	 * @throws IOException
+	 */
 	public static CSVFile<String> readFile(File file, boolean strictRowSizes, int cols) throws IOException {
+		if (file.getName().toLowerCase().endsWith(".gz")) {
+			// assume it's gzipped
+			GZIPInputStream gzis = new GZIPInputStream(new FileInputStream(file));
+			CSVFile<String> csv = readStream(gzis, strictRowSizes, cols);
+			gzis.close();
+			return csv;
+		}
 		return readURL(file.toURI().toURL(), strictRowSizes, cols);
 	}
 	
@@ -341,16 +403,34 @@ public class CSVFile<E> implements Iterable<List<E>> {
 			throws IOException {
 		if (!(is instanceof BufferedInputStream))
 			is = new BufferedInputStream(is);
+		BufferedReader br = new BufferedReader(new InputStreamReader(is));
 		List<List<String>> values = new ArrayList<List<String>>();
-		for (String line : FileUtils.loadStream(is)) {
+		String line = br.readLine();
+		int prevNum = -1;
+		while(line != null) {
 			if (strictRowSizes && cols < 0) {
-				cols = loadLine(line, -1).size();
+				cols = loadLine(line, -1, prevNum).size();
 			}
-			ArrayList<String> vals = loadLine(line, cols);
-			if (strictRowSizes && vals.size() > cols)
+			List<String> vals = loadLine(line, cols, prevNum);
+			prevNum = vals.size();
+			if (strictRowSizes && vals.size() > cols) {
+				br.close();
 				throw new IllegalStateException("Line lenghts inconsistant and strictRowSizes=true");
+			}
 			values.add(vals);
+			line = br.readLine();
 		}
+		br.close();
+//		List<List<String>> values = new ArrayList<List<String>>();
+//		for (String line : FileUtils.loadStream(is)) {
+//			if (strictRowSizes && cols < 0) {
+//				cols = loadLine(line, -1).size();
+//			}
+//			ArrayList<String> vals = loadLine(line, cols);
+//			if (strictRowSizes && vals.size() > cols)
+//				throw new IllegalStateException("Line lenghts inconsistant and strictRowSizes=true");
+//			values.add(vals);
+//		}
 		
 		return new CSVFile<String>(values, strictRowSizes);
 	}
@@ -371,15 +451,17 @@ public class CSVFile<E> implements Iterable<List<E>> {
 			is = new BufferedInputStream(is);
 		List<List<Double>> values = new ArrayList<List<Double>>();
 		int lineCount = 0;
+		int prevNum = -1;
 		for (String line : FileUtils.loadStream(is)) {
 			if (headerLines > lineCount) {
 				lineCount++;
 				continue;
 			}
 			if (strictRowSizes && cols < 0) {
-				cols = loadLine(line, -1).size();
+				cols = loadLine(line, -1, prevNum).size();
 			}
-			ArrayList<String> vals = loadLine(line, cols);
+			List<String> vals = loadLine(line, cols, prevNum);
+			prevNum = vals.size();
 			if (strictRowSizes && vals.size() > cols)
 				throw new IllegalStateException("Line lenghts inconsistant and strictRowSizes=true");
 			List<Double> doubles;

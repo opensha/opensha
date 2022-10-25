@@ -51,6 +51,8 @@ import org.opensha.commons.param.impl.IntegerParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.DataUtils;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
 import org.opensha.commons.gui.plot.GraphWindow;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -62,10 +64,9 @@ import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
-import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
@@ -141,7 +142,7 @@ ParameterChangeListener {
 	
 	private Map<VariableLogicTreeBranch, CSVFile<String>> resultFilesMap;
 	private ArrayList<String> curNames;
-	private ArrayList<LogicTreeBranch> curBranches;
+	private ArrayList<U3LogicTreeBranch> curBranches;
 	private ArrayList<ArbitrarilyDiscretizedFunc> curEnergyVsTimes;
 	private ArrayList<ArbitrarilyDiscretizedFunc> curEnergyVsIters;
 	private ArrayList<double[]> curFinalEnergies;
@@ -318,11 +319,11 @@ ParameterChangeListener {
 	}
 	
 	private VariableLogicTreeBranch getCurrentBranch() {
-		List<LogicTreeBranchNode<?>> nodes = Lists.newArrayList();
+		List<U3LogicTreeBranchNode<?>> nodes = Lists.newArrayList();
 		for (Parameter<?> param : enumParams) {
 			if (param.getValue() != null) {
 				EnumParameter<?> enumParam = (EnumParameter<?>) param;
-				LogicTreeBranchNode<?> node = (LogicTreeBranchNode<?>) enumParam.getValue();
+				U3LogicTreeBranchNode<?> node = (U3LogicTreeBranchNode<?>) enumParam.getValue();
 				nodes.add(node);
 			}
 		}
@@ -339,13 +340,13 @@ ParameterChangeListener {
 				variations.add(variation);
 			}
 		}
-		return new VariableLogicTreeBranch(LogicTreeBranch.fromValues(
-				false, nodes.toArray(new LogicTreeBranchNode[0])), variations);
+		return new VariableLogicTreeBranch(U3LogicTreeBranch.fromValues(
+				false, nodes.toArray(new U3LogicTreeBranchNode[0])), variations);
 	}
 	
 	private void buildFunctions(VariableLogicTreeBranch branch) {
 		curNames = new ArrayList<String>();
-		curBranches = new ArrayList<LogicTreeBranch>();
+		curBranches = new ArrayList<U3LogicTreeBranch>();
 		curEnergyVsTimes = new ArrayList<ArbitrarilyDiscretizedFunc>();
 		curEnergyVsIters = new ArrayList<ArbitrarilyDiscretizedFunc>();
 		curPerturbsPerItersVsTimes = new ArrayList<ArbitrarilyDiscretizedFunc>();
@@ -362,10 +363,10 @@ ParameterChangeListener {
 			ArrayList<String> diffNames = new ArrayList<String>();
 
 			for (int i=0; i<branch.size(); i++) {
-				LogicTreeBranchNode<?> node = branch.getValue(i);
+				U3LogicTreeBranchNode<?> node = branch.getValue(i);
 				if (node == null) {
 					if (candidate.getValue(i) == null)
-						System.out.println("WFT? Class: "+LogicTreeBranch.getLogicTreeNodeClasses().get(i));
+						System.out.println("WFT? Class: "+U3LogicTreeBranch.getLogicTreeNodeClasses().get(i));
 					diffNames.add(candidate.getValue(i).getShortName());
 				}
 			}
@@ -490,7 +491,7 @@ ParameterChangeListener {
 					// single run case, show all component of energy
 					funcs.addAll(loadIndividualEnergies(false));
 					title += " (Single Run Components!)";
-					chars = ThreadedSimulatedAnnealing.getEnergyBreakdownChars();
+					chars = SimulatedAnnealing.getEnergyBreakdownChars();
 				} else {
 					funcs.addAll(curEnergyVsIters);
 				}
@@ -503,7 +504,7 @@ ParameterChangeListener {
 					// single run case, show all component of energy
 					funcs.addAll(loadIndividualEnergies(true));
 					title += " (Single Run Components!)";
-					chars = ThreadedSimulatedAnnealing.getEnergyBreakdownChars();
+					chars = SimulatedAnnealing.getEnergyBreakdownChars();
 				} else {
 					funcs.addAll(curEnergyVsTimes);
 				}

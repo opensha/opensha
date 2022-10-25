@@ -1,11 +1,16 @@
 package org.opensha.commons.geo.json;
 
+import java.awt.Color;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.function.XY_DataSet.XYAdapter;
 import org.opensha.commons.geo.Location;
 
 import com.google.gson.TypeAdapter;
@@ -116,10 +121,20 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		Object val = get(name);
 		if (val == null)
 			return defaultValue;
+		return asNumber(val, name, defaultValue);
+	}
+	
+	private static Number asNumber(Object val, String name, Number defaultValue) {
 		if (val instanceof String) {
 			// try to parse string
 			try {
 				String str = (String)val;
+				if (str.equalsIgnoreCase(Double.NaN+""))
+					return Double.NaN;
+				if (str.equalsIgnoreCase(Double.POSITIVE_INFINITY+""))
+					return Double.POSITIVE_INFINITY;
+				if (str.equalsIgnoreCase(Double.NEGATIVE_INFINITY+""))
+					return Double.NEGATIVE_INFINITY;
 				if (str.contains(".") || str.toLowerCase().contains("e"))
 					return Double.parseDouble(str);
 				return Long.parseLong(str);
@@ -133,6 +148,128 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			return (Number)val;
 		} catch (ClassCastException e) {
 			System.err.println("Feature property with name '"+name+"' is of an unexpected type: "+e.getMessage());
+			return defaultValue;
+		}
+	}
+	
+	/**
+	 * Tries to return the value of the given parameter as a double array. See {@link #getNumberArray(String, Number[])}.
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	public double[] getDoubleArray(String name, double[] defaultValue) {
+		Number[] numbers = getNumberArray(name, null);
+		if (numbers == null)
+			return null;
+		double[] ret = new double[numbers.length];
+		for (int i=0; i<numbers.length; i++)
+			ret[i] = numbers[i].doubleValue();
+		return ret;
+	}
+	
+	/**
+	 * Tries to return the value of the given parameter as an int array. See {@link #getNumberArray(String, Number[])}.
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	public int[] getIntArray(String name, int[] defaultValue) {
+		Number[] numbers = getNumberArray(name, null);
+		if (numbers == null)
+			return null;
+		int[] ret = new int[numbers.length];
+		for (int i=0; i<numbers.length; i++)
+			ret[i] = numbers[i].intValue();
+		return ret;
+	}
+	
+	/**
+	 * Tries to return the value of the given parameter as a long array. See {@link #getNumberArray(String, Number[])}.
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	public long[] getLongArray(String name, int[] defaultValue) {
+		Number[] numbers = getNumberArray(name, null);
+		if (numbers == null)
+			return null;
+		long[] ret = new long[numbers.length];
+		for (int i=0; i<numbers.length; i++)
+			ret[i] = numbers[i].longValue();
+		return ret;
+	}
+	
+	/**
+	 * Tries to return the value of the given parameter as a Number array. If parameter value is a list/array of Numbers,
+	 * that will be returned. If any sub-value is a String, then that String will first be parsed to a Number.
+	 * Otherwise, the supplied default value will be returned.
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	public Number[] getNumberArray(String name, Number[] defaultValue) {
+		Object val = get(name);
+		if (val == null)
+			return defaultValue;
+		List<Number> numbers = new ArrayList<>();
+		if (val instanceof List<?>) {
+			for (Object subVal : (List<?>)val) {
+				Number number = asNumber(subVal, name, null);
+				if (number == null)
+					return defaultValue;
+				numbers.add(number);
+			}
+		} else if (val.getClass().isArray()) {
+			for (Object subVal : (Object[])val) {
+				Number number = asNumber(subVal, name, null);
+				if (number == null)
+					return defaultValue;
+				numbers.add(number);
+			}
+		}
+		return numbers.toArray(new Number[0]);
+	}
+	
+	public Location getLocation(String name, Location defaultValue) {
+		Object val = get(name);
+		if (val == null)
+			return defaultValue;
+		if (val instanceof Location)
+			return (Location)val;
+		// try loading it as a location
+		double[] array = getDoubleArray(name, null);
+		if (array == null || array.length < 2 || array.length > 3)
+			return null;
+		double lon = array[0];
+		double lat = array[1];
+		double depth = array.length == 3 ? Geometry.DEPTH_SERIALIZATION_DEFAULT.fromGeoJSON(array[2]) : 0d;
+		return new Location(lat, lon, depth);
+	}
+	
+	public static final String STROKE_COLOR_PROP = "stroke";
+	public static final String STROKE_WIDTH_PROP = "stroke-width";
+	public static final String STROKE_OPACITY_PROP = "stroke-opacity";
+	public static final String FILL_COLOR_PROP = "fill";
+	public static final String FILL_OPACITY_PROP = "fill-opacity";
+	
+	public Color getColor(String name, Color defaultValue) {
+		Object val = get(name);
+		if (val == null)
+			return defaultValue;
+		if (val instanceof Color)
+			return (Color)val;
+		// try loading it as a Color
+		String str = val.toString();
+		try {
+			return Color.decode(str);
+		} catch (NumberFormatException e) {
+			System.err.println("Feature property with name '"+name+"' and value '"
+					+str+"' could not be parsed as a color, returning default: "+e.getMessage());
 			return defaultValue;
 		}
 	}
@@ -152,6 +289,7 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		if (val == null)
 			return defaultValue;
 		try {
+//			System.out.println(val+"\t"+val.getClass());
 			return (E)val;
 		} catch (ClassCastException e) {
 			System.err.println("Feature property with name '"+name+"' is of an unexpected type: "+e.getMessage());
@@ -257,6 +395,8 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		
 	}
 	
+	private static XYAdapter xyAdapter = new XYAdapter();
+	
 	/**
 	 * Serializes the given value to the given JsonWriter, which should already have the name set. Numbers
 	 * are serialized as numbers, nulls as nulls, booleans as booleans, collections as arrays, arrays as arrays,
@@ -274,7 +414,11 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		} else if (value instanceof Boolean) {
 			out.value((Boolean)value);
 		} else if (value instanceof Location) {
-			Geometry.serializeLoc(out, (Location)value, Geometry.DEPTH_SERIALIZATION_DEFAULT);
+			Geometry.serializeLoc(out, (Location)value, Geometry.DEPTH_SERIALIZATION_DEFAULT, false);
+		} else if (value instanceof Color) {
+			out.value("#"+Integer.toHexString(((Color)value).getRGB()).substring(2));
+		} else if (value instanceof XY_DataSet) {
+			xyAdapter.write(out, (XY_DataSet)value);
 		} else if (value.getClass().isArray()) {
 			Object[] array;
 			if (value.getClass().getComponentType().isPrimitive()) {
@@ -332,9 +476,89 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			return parseNumber(in.nextString());
 		} else if (token == JsonToken.STRING) {
 			return in.nextString();
+		} else if (token == JsonToken.BEGIN_ARRAY) {
+			ArrayList<Object> values = new ArrayList<>();
+			in.beginArray();
+			while (in.hasNext())
+				values.add(propDeserializeDefault(in));
+			in.endArray();
+			return values;
+		} else if (token == JsonToken.BEGIN_OBJECT) {
+			// see if it specifies a type first
+			String startPath = in.getPath();
+			
+//			System.out.println("OBJECT at path "+startPath);
+			
+			in.beginObject();
+			
+//			System.out.println("Now inside: "+in.peek()+", "+in.getPath());
+			
+			if (in.hasNext() && in.nextName().equals("type")) {
+				String type = null;
+				try {
+					type = in.nextString();
+					Class<?> typeClass = Class.forName(type);
+					if (XY_DataSet.class.isAssignableFrom(typeClass)) {
+						XY_DataSet ret = new XY_DataSet.XYAdapter().innerReadAsType(in, (Class<? extends XY_DataSet>)typeClass);
+						in.endObject();
+						return ret;
+					}
+				} catch (Throwable t) {
+					System.err.println("WARNING: couldn't deserialize custom FeatureProperties object with type: "
+							+type+", exception: "+t.getMessage());
+				}
+			}
+			skipUntilPastObject(in, startPath);
+			return null;
 		}
 		in.skipValue();
 		return null;
+	}
+	
+	/**
+	 * This will skip all values in the given reader until it reaches END_OBJECT for the given path.
+	 * @param in
+	 * @param startPath
+	 * @throws IOException
+	 */
+	private static void skipUntilPastObject(JsonReader in, String startPath) throws IOException {
+		// this is where it gets tricky. we have descended into the an object
+		// and need to back the reader out
+		final boolean D = false;
+		if (D) System.out.println("Looking to back out to: "+startPath);
+		while (true) {
+			String path = in.getPath();
+			if (D) System.out.println("Path: "+path+"\tequals? "+path.equals(startPath));
+			JsonToken peek = in.peek();
+			if (path.equals(startPath)) {
+				if (peek == JsonToken.BEGIN_OBJECT && path.equals(startPath)) {
+					// phew, we haven't gone in yet. just skip over it
+					if (D) System.out.println("DONE: hadn't yet descended into object, can skip");
+					in.skipValue();
+					break;
+				} else {
+					// we've fully backed out
+					if (D) System.out.println("DONE: exiting with path="+path+" and peek="+peek);
+					break;
+				}
+			}
+			if (peek == JsonToken.END_DOCUMENT) {
+				// we've gone too far, end with an error
+				in.close();
+				throw new IllegalStateException("Failed to skipUnilEndObject to "+startPath+", encountered END_DOCUMENT");
+			}
+//			System.out.println("Still in the thick of it at: "+path);
+			if (peek == JsonToken.END_ARRAY) {
+				if (D) System.out.println("\tending array");
+				in.endArray();
+			} else if (peek == JsonToken.END_OBJECT) {
+				if (D) System.out.println("\tending object");
+				in.endObject();
+			} else {
+				if (D) System.out.println("\tskipping "+peek);
+				in.skipValue();
+			}
+		}
 	}
 	
 	static Number parseNumber(String numStr) {

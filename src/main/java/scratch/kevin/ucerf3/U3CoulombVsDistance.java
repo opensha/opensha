@@ -39,7 +39,7 @@ import scratch.UCERF3.inversion.coulomb.CoulombRatesRecord;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester.TestType;
 
-public class U3CoulombVsDistance {
+class U3CoulombVsDistance {
 
 	public static void main(String[] args) throws IOException, InterruptedException, ExecutionException {
 		CoulombRates cff = CoulombRates.loadUCERF3CoulombRates(FaultModels.FM3_1);

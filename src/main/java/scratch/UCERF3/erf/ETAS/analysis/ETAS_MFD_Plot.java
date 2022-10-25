@@ -20,9 +20,9 @@ import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
-import org.opensha.commons.data.function.UncertainArbDiscDataset;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSetList;
+import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -30,20 +30,20 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
-import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 
 public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 	
@@ -414,7 +414,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		if (gridProv != null) {
 			double minMag = 5d;
 			for (int i=0; i<gridProv.size(); i++) {
-				IncrementalMagFreqDist nodeMFD = gridProv.getNodeMFD(i);
+				IncrementalMagFreqDist nodeMFD = gridProv.getMFD(i);
 				for (int j=0; j<nodeMFD.size(); j++) {
 					double x = nodeMFD.getX(j);
 					if (x >= minMag)
@@ -499,7 +499,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 					probUpper.set(i, conf[1]);
 				}
 			}
-			UncertainArbDiscDataset confFunc = new UncertainArbDiscDataset(probFunc, probLower, probUpper);
+			UncertainArbDiscFunc confFunc = new UncertainArbDiscFunc(probFunc, probLower, probUpper);
 			confFunc.setName("95% Conf");
 			funcs.add(confFunc);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,

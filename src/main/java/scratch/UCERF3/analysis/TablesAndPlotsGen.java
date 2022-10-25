@@ -38,15 +38,15 @@ import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.calc.recurInterval.BPT_DistCalc;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.faultSurface.FaultSection;
 
-import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.U3AverageFaultSystemSolution;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
 import scratch.UCERF3.analysis.CompoundFSSPlots.MapBasedPlot;
 import scratch.UCERF3.analysis.CompoundFSSPlots.MapPlotData;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -62,13 +62,13 @@ import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.inversion.CommandLineInversionRunner;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
-import scratch.UCERF3.logicTree.APrioriBranchWeightProvider;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3APrioriBranchWeightProvider;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -97,7 +97,7 @@ public class TablesAndPlotsGen {
 		dms.add(DeformationModels.NEOKINEMA);
 		dms.add(DeformationModels.ZENGBB);
 		
-		Map<FaultModels, List<AveSlipConstraint>> aveSlipConstraints = Maps.newHashMap();
+		Map<FaultModels, List<U3AveSlipConstraint>> aveSlipConstraints = Maps.newHashMap();
 		Map<FaultModels, List<? extends FaultSection>> subSectDatasMap = Maps.newHashMap();
 		
 		List<double[]> dmReducedSlipRates = Lists.newArrayList();
@@ -113,7 +113,7 @@ public class TablesAndPlotsGen {
 					InversionModels.CHAR_CONSTRAINED, fm, dm);
 			dmReducedSlipRates.add(rupSet.getSlipRateForAllSections());
 			if (!aveSlipConstraints.containsKey(fm))
-				aveSlipConstraints.put(fm, AveSlipConstraint.load(rupSet.getFaultSectionDataList()));
+				aveSlipConstraints.put(fm, U3AveSlipConstraint.load(rupSet.getFaultSectionDataList()));
 			if (!subSectDatasMap.containsKey(fm))
 				subSectDatasMap.put(fm, rupSet.getFaultSectionDataList());
 			
@@ -124,10 +124,10 @@ public class TablesAndPlotsGen {
 		CSVFile<String> csv = new CSVFile<String>(true);
 		csv.addLine(header);
 		
-		List<AveSlipConstraint> fm2Constraints = aveSlipConstraints.get(FaultModels.FM2_1);
-		List<AveSlipConstraint> fm3Constraints = aveSlipConstraints.get(FaultModels.FM3_1);
+		List<U3AveSlipConstraint> fm2Constraints = aveSlipConstraints.get(FaultModels.FM2_1);
+		List<U3AveSlipConstraint> fm3Constraints = aveSlipConstraints.get(FaultModels.FM3_1);
 		
-		for (AveSlipConstraint constr : fm3Constraints) {
+		for (U3AveSlipConstraint constr : fm3Constraints) {
 			List<String> line = Lists.newArrayList();
 			
 			String subSectName = subSectDatasMap.get(FaultModels.FM3_1).get(constr.getSubSectionIndex()).getSectionName();
@@ -138,11 +138,11 @@ public class TablesAndPlotsGen {
 			for (int i=0; i<dms.size(); i++) {
 				DeformationModels dm = dms.get(i);
 				
-				AveSlipConstraint myConstr = null;
+				U3AveSlipConstraint myConstr = null;
 				if (dm == DeformationModels.UCERF2_ALL) {
 					// find the equivelant ave slip constraint by comparing locations as the list may be of different
 					// size (such as with Compton not existing in FM2.1)
-					for (AveSlipConstraint u2Constr : fm2Constraints) {
+					for (U3AveSlipConstraint u2Constr : fm2Constraints) {
 						if (u2Constr.getSiteLocation().equals(constr.getSiteLocation())) {
 							myConstr = u2Constr;
 							break;
@@ -216,7 +216,7 @@ public class TablesAndPlotsGen {
 	
 	
 	public static void makeParentSectConvergenceTable(
-			File csvOutputFile, AverageFaultSystemSolution aveSol, int parentSectionID) throws IOException {
+			File csvOutputFile, U3AverageFaultSystemSolution aveSol, int parentSectionID) throws IOException {
 		List<Integer> rups = aveSol.getRupSet().getRupturesForParentSection(parentSectionID);
 		
 		CSVFile<String> csv = new CSVFile<String>(true);
@@ -277,13 +277,13 @@ public class TablesAndPlotsGen {
 	 * @param csvFile
 	 * @throws IOException
 	 */
-	public static void makeCompoundFSSMomentRatesTable(CompoundFaultSystemSolution cfss, File csvFile)
+	public static void makeCompoundFSSMomentRatesTable(U3CompoundFaultSystemSolution cfss, File csvFile)
 			throws IOException {
 		
 		CSVFile<String> csv = new CSVFile<String>(true);
 		
 		List<String> header = Lists.newArrayList();
-		for (Class<? extends LogicTreeBranchNode<?>> clazz : LogicTreeBranch.getLogicTreeNodeClasses())
+		for (Class<? extends U3LogicTreeBranchNode<?>> clazz : U3LogicTreeBranch.getLogicTreeNodeClasses())
 			header.add(ClassUtils.getClassNameWithoutPackage(clazz));
 		header.add("A Priori Branch Weight");
 		header.add(FAULT_SUPRA_TARGET);
@@ -295,15 +295,15 @@ public class TablesAndPlotsGen {
 		
 		csv.addLine(header);
 		
-		List<LogicTreeBranch> branches = Lists.newArrayList(cfss.getBranches());
+		List<U3LogicTreeBranch> branches = Lists.newArrayList(cfss.getBranches());
 		Collections.sort(branches);
 		
 		Splitter sp = Splitter.on("\n");
 		
-		APrioriBranchWeightProvider weightProv = new APrioriBranchWeightProvider();
+		U3APrioriBranchWeightProvider weightProv = new U3APrioriBranchWeightProvider();
 		Map<DeformationModels, List<Double>> dmWeightsMap = Maps.newHashMap();
 		double totWt = 0;
-		for (LogicTreeBranch branch : branches) {
+		for (U3LogicTreeBranch branch : branches) {
 			double weight = weightProv.getWeight(branch);
 			totWt += weight;
 			DeformationModels dm = branch.getValue(DeformationModels.class);
@@ -342,10 +342,10 @@ public class TablesAndPlotsGen {
 		for (DeformationModels dm : dmWeightTotsMap.keySet())
 			dmTotHistMap.put(dm, new HistogramFunction(hist_min, hist_num, hist_delta));
 		
-		for (LogicTreeBranch branch : branches) {
+		for (U3LogicTreeBranch branch : branches) {
 			DeformationModels dm = branch.getValue(DeformationModels.class);
 			List<String> line = Lists.newArrayList();
-			for (int i=0; i<LogicTreeBranch.getLogicTreeNodeClasses().size(); i++)
+			for (int i=0; i<U3LogicTreeBranch.getLogicTreeNodeClasses().size(); i++)
 				line.add(branch.getValue(i).getShortName());
 			List<String> info = Lists.newArrayList(sp.split(cfss.getInfo(branch)));
 			double origWt = weightProv.getWeight(branch);
@@ -579,7 +579,7 @@ public class TablesAndPlotsGen {
 		return Double.NaN;
 	}
 	
-	private static HistogramFunction loadSurfaceRupData() throws IOException {
+	public static HistogramFunction loadSurfaceRupData() throws IOException {
 		POIFSFileSystem fs = new POIFSFileSystem(
 				UCERF3_DataUtils.locateResourceAsStream("misc", "Surface_Rupture_Data_Wells_043013.xls"));
 		HSSFWorkbook wb = new HSSFWorkbook(fs);
@@ -601,6 +601,7 @@ public class TablesAndPlotsGen {
 			hist.add(length, 1d);
 			cnt++;
 		}
+		wb.close();
 		System.out.println("Loaded "+cnt+" values from data file");
 		hist.normalizeBySumOfY_Vals();
 		return hist;
@@ -611,10 +612,10 @@ public class TablesAndPlotsGen {
 		return new HistogramFunction(25, 25, 50d);
 	}
 	
-	public static void buildRupLengthComparisonPlot(CompoundFaultSystemSolution cfss, File dir, String prefix) throws IOException {
+	public static void buildRupLengthComparisonPlot(U3CompoundFaultSystemSolution cfss, File dir, String prefix) throws IOException {
 		List<HistogramFunction> hists = Lists.newArrayList();
 		
-		for (LogicTreeBranch branch : cfss.getBranches()) {
+		for (U3LogicTreeBranch branch : cfss.getBranches()) {
 			double[] lengths = cfss.getLengths(branch);
 			double[] rates = cfss.getRates(branch);
 			
@@ -634,9 +635,9 @@ public class TablesAndPlotsGen {
 		for (HistogramFunction hist : hists) {
 			xyList.add(hist);
 		}
-		APrioriBranchWeightProvider weightProv = new APrioriBranchWeightProvider();
+		U3APrioriBranchWeightProvider weightProv = new U3APrioriBranchWeightProvider();
 		List<Double> weights = Lists.newArrayList();
-		for (LogicTreeBranch branch : cfss.getBranches())
+		for (U3LogicTreeBranch branch : cfss.getBranches())
 			weights.add(weightProv.getWeight(branch));
 		
 		List<DiscretizedFunc> solFuncs = CompoundFSSPlots.getFractiles(xyList, weights, "Surface Rupture Length", new double[0]);
@@ -665,7 +666,7 @@ public class TablesAndPlotsGen {
 	}
 	
 	public static void makeNumRunsForRateWithin10Plot(
-			AverageFaultSystemSolution avgSol, File outputDir, String prefix) throws IOException {
+			U3AverageFaultSystemSolution avgSol, File outputDir, String prefix) throws IOException {
 		DefaultXY_DataSet scatter = new DefaultXY_DataSet();
 		
 		for (int r=0; r<avgSol.getRupSet().getNumRuptures(); r++) {
@@ -1063,7 +1064,7 @@ public class TablesAndPlotsGen {
 		System.out.println("Instantiating ERF...");
 		FaultSystemSolutionERF erf=null;
 		try {
-			erf = new FaultSystemSolutionERF(FaultSystemIO.loadSol(file));
+			erf = new FaultSystemSolutionERF(U3FaultSystemIO.loadSol(file));
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

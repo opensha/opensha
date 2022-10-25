@@ -112,9 +112,8 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 		} else {
 			weights.setWeights(newWeights);
 		}
-		if (weightsParam != null && weightsParam.isParameterEditorBuilt()) {
-			weightsParam.getEditor().refreshParamEditor();
-		}
+		if (weightsParam != null)
+			weightsParam.refreshEditor();
 	}
 	
 	@Override
@@ -619,6 +618,7 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	@Override
 	public void setIntensityMeasure(Parameter intensityMeasure)
 			throws ParameterException, ConstraintException {
+		Preconditions.checkNotNull(intensityMeasure, "IM cannot be null");
 		super.setIntensityMeasure(intensityMeasure);
 		for (ScalarIMR imr : imrs) {
 			imr.setIntensityMeasure(intensityMeasure);
@@ -657,8 +657,8 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 	private double getWeightedValue(double[] vals) {
 		if (!weights.isNormalized()) {
 			weights.normalize();
-			if (weightsParam != null && weightsParam.isParameterEditorBuilt())
-				weightsParam.getEditor().refreshParamEditor();
+			if (weightsParam != null)
+				weightsParam.refreshEditor();
 		}
 		double weighted = weights.getWeightedAverage(vals);
 		if (D && Double.isNaN(weighted)) {

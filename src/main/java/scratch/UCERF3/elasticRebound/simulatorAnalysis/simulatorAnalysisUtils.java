@@ -10,7 +10,7 @@ import org.opensha.sha.simulators.SimulatorEvent;
 import org.opensha.sha.simulators.eqsim_v04.OldGeneral_EQSIM_Tools;
 import org.opensha.sha.simulators.parsers.EQSIMv06FileReader;
 
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoRateConstraintFetcher;
 
 public class simulatorAnalysisUtils {
@@ -244,8 +244,8 @@ public class simulatorAnalysisUtils {
 		
 		try {
 
-			ArrayList<PaleoRateConstraint> paleoConstrList = UCERF3_PaleoRateConstraintFetcher.getConstraints();
-			for(PaleoRateConstraint constr:paleoConstrList) {
+			ArrayList<U3PaleoRateConstraint> paleoConstrList = UCERF3_PaleoRateConstraintFetcher.getConstraints();
+			for(U3PaleoRateConstraint constr:paleoConstrList) {
 //				System.out.println("\n"+constr.getPaleoSiteName()+"\t"+(float)constr.getPaleoSiteLoction().getLatitude() +"\t"+
 //						(float)constr.getPaleoSiteLoction().getLongitude() +"\t"+(float)constr.getMeanRate());
 				double meanRI = Math.round(1.0/constr.getMeanRate());

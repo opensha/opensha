@@ -48,18 +48,18 @@ import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 import com.google.common.io.LittleEndianDataOutputStream;
 
-import scratch.UCERF3.SlipEnabledRupSet;
-import scratch.UCERF3.SlipEnabledSolution;
+import scratch.UCERF3.U3SlipEnabledRupSet;
+import scratch.UCERF3.U3SlipEnabledSolution;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.BatchPlotGen;
 import scratch.UCERF3.inversion.CommandLineInversionRunner;
 import scratch.UCERF3.utils.DeformationModelFetcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 
 public class RSQSimUtils {
 
@@ -99,15 +99,16 @@ public class RSQSimUtils {
 		else
 			surf = new CompoundSurface(rupSurfs);
 		
-		Location hypo = getHypocenter(event);
+		SimulatorElement hypo = getHypocenterElem(event);
 
-		RSQSimSubSectEqkRupture rup = new RSQSimSubSectEqkRupture(mag, rake, surf, hypo, event, rupSects);
+		RSQSimSubSectEqkRupture rup = new RSQSimSubSectEqkRupture(mag, rake, surf, hypo.getCenterLocation(), event,
+				rupSects, mapper.getMappedSection(hypo));
 
 		return rup;
 	}
 
-	public static Location getHypocenter(RSQSimEvent event) {
-		Location hypo = null;
+	public static SimulatorElement getHypocenterElem(RSQSimEvent event) {
+		SimulatorElement hypo = null;
 		double earliestTime = Double.POSITIVE_INFINITY;
 		for (EventRecord rec : event) {
 			List<SimulatorElement> patches = rec.getElements();
@@ -115,13 +116,17 @@ public class RSQSimUtils {
 			for (int i=0; i<patches.size(); i++) {
 				if (patchTimes[i] < earliestTime) {
 					earliestTime = patchTimes[i];
-					hypo = patches.get(i).getCenterLocation();
+					hypo = patches.get(i);
 				}
 			}
 		}
 		Preconditions.checkNotNull(hypo, "Couldn't detect hypocenter for event %s.",
 				event.getID());
 		return hypo;
+	}
+
+	public static Location getHypocenter(RSQSimEvent event) {
+		return getHypocenterElem(event).getCenterLocation();
 	}
 	
 	private static boolean warned = false;
@@ -202,7 +207,7 @@ public class RSQSimUtils {
 		return subSectAreas;
 	}
 	
-	private static class RSQSimFaultSystemRupSet extends SlipEnabledRupSet {
+	private static class RSQSimFaultSystemRupSet extends U3SlipEnabledRupSet {
 		
 		private final List<SimulatorElement> elements;
 		private final List<RSQSimEvent> events;
@@ -371,7 +376,7 @@ public class RSQSimUtils {
 		return rates;
 	}
 	
-	private static class RSQSimFaultSystemSolution extends SlipEnabledSolution {
+	private static class RSQSimFaultSystemSolution extends U3SlipEnabledSolution {
 		
 		private RSQSimFaultSystemRupSet rupSet;
 		
@@ -381,18 +386,18 @@ public class RSQSimUtils {
 		}
 
 		@Override
-		public SlipEnabledRupSet getRupSet() {
+		public U3SlipEnabledRupSet getRupSet() {
 			return rupSet;
 		}
 		
 	}
 	
-	public static SlipEnabledSolution buildFaultSystemSolution(List<? extends FaultSection> subSects,
+	public static U3SlipEnabledSolution buildFaultSystemSolution(List<? extends FaultSection> subSects,
 			List<SimulatorElement> elements, List<RSQSimEvent> events, double minMag) {
 		return buildFaultSystemSolution(subSects, elements, events, minMag, 0d);
 	}
 
-	public static SlipEnabledSolution buildFaultSystemSolution(List<? extends FaultSection> subSects,
+	public static U3SlipEnabledSolution buildFaultSystemSolution(List<? extends FaultSection> subSects,
 			List<SimulatorElement> elements, List<RSQSimEvent> events, double minMag, double minFractForInclusion) {
 		
 		if (minMag > 0)
@@ -402,7 +407,7 @@ public class RSQSimUtils {
 		return new RSQSimFaultSystemSolution(rupSet);
 	}
 	
-	public static void writeUCERF3ComparisonPlots(SlipEnabledSolution sol, FaultModels fm, DeformationModels dm,
+	public static void writeUCERF3ComparisonPlots(U3SlipEnabledSolution sol, FaultModels fm, DeformationModels dm,
 			File dir, String prefix) throws GMT_MapException, RuntimeException, IOException {
 		// regular plots
 //		CommandLineInversionRunner.writeMFDPlots(sol, dir, prefix);
@@ -423,9 +428,9 @@ public class RSQSimUtils {
 //		}
 		
 		System.out.println("Loading paleo/slip constraints");
-		ArrayList<PaleoRateConstraint> paleoRateConstraints =
+		ArrayList<U3PaleoRateConstraint> paleoRateConstraints =
 				CommandLineInversionRunner.getPaleoConstraints(fm, sol.getRupSet());
-		List<AveSlipConstraint> aveSlipConstraints = AveSlipConstraint.load(sol.getRupSet().getFaultSectionDataList());
+		List<U3AveSlipConstraint> aveSlipConstraints = U3AveSlipConstraint.load(sol.getRupSet().getFaultSectionDataList());
 //		CommandLineInversionRunner.writePaleoPlots(paleoRateConstraints, aveSlipConstraints, sol, dir, prefix);
 		System.out.println("Writing SAF Seg plots");
 		CommandLineInversionRunner.writeSAFSegPlots(sol, fm, dir, prefix);
@@ -654,8 +659,8 @@ public class RSQSimUtils {
 		File sectsFile = new File(nshmDir, "FaultSections/NSHM2023_FaultSections_v1p1.geojson");
 		File geoDBFile = new File(nshmDir, "EQGeoDB/NSHM2023_EQGeoDB_v1p1.geojson");
 		List<FaultSection> subSects = GeoJSONFaultReader.buildSubSects(sectsFile, geoDBFile, null);
-		SlipEnabledSolution sol = buildFaultSystemSolution(subSects, elements, events, minMag, 0.5);
-		FaultSystemIO.writeSol(sol, new File(dir, "rsqsim_5133_m6_skip"+skipYears+"_sectArea0.5.zip"));
+		U3SlipEnabledSolution sol = buildFaultSystemSolution(subSects, elements, events, minMag, 0.5);
+		U3FaultSystemIO.writeSol(sol, new File(dir, "rsqsim_5133_m6_skip"+skipYears+"_sectArea0.5.zip"));
 		
 //		File stlFile = new File("/home/kevin/markdown/rsqsim-analysis/catalogs/"+dir.getName(), "geometry.stl");
 //		writeSTLFile(elements, stlFile);

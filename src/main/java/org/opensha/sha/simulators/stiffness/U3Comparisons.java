@@ -20,16 +20,16 @@ import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.IDPairing;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesRecord;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class U3Comparisons {
 
@@ -37,7 +37,7 @@ public class U3Comparisons {
 		File fssFile = new File("/home/kevin/Simulators/catalogs/rundir4983_stitched/fss/"
 				+ "rsqsim_sol_m6.5_skip5000_sectArea0.2.zip");
 		FaultModels fm = FaultModels.FM3_1;
-		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(fssFile);
+		FaultSystemRupSet rupSet = U3FaultSystemIO.loadRupSet(fssFile);
 		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
 		double lambda = 30000;
 		double mu = 30000;

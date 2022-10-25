@@ -1,18 +1,22 @@
 package scratch.UCERF3.logicTree;
 
+import org.opensha.commons.logicTree.LogicTreeBranch;
+
+import com.google.common.base.Preconditions;
+
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 
-public class UCERF3p2BranchWeightProvider implements BranchWeightProvider {
+public class UCERF3p2BranchWeightProvider implements U3BranchWeightProvider {
 
 	@Override
-	public double getWeight(LogicTreeBranch branch) {
+	public double getWeight(U3LogicTreeBranch branch) {
 		double wt = 1;
 		InversionModels im = branch.getValue(InversionModels.class);
 		// special cases
-		for (LogicTreeBranchNode<?> node : branch) {
+		for (U3LogicTreeBranchNode<?> node : branch) {
 			double subWt;
 			if (node instanceof DeformationModels) {
 				// special case for DMs
@@ -67,11 +71,17 @@ public class UCERF3p2BranchWeightProvider implements BranchWeightProvider {
 					break;
 				}
 			} else {
-				subWt = LogicTreeBranch.getNormalizedWt(node, im);
+				subWt = U3LogicTreeBranch.getNormalizedWt(node, im);
 			}
 			wt *= subWt;
 		}
 		return wt;
+	}
+	
+	@Override
+	public double getWeight(LogicTreeBranch<?> branch) {
+		Preconditions.checkState(branch instanceof U3LogicTreeBranch);
+		return getWeight((U3LogicTreeBranch)branch);
 	}
 
 }

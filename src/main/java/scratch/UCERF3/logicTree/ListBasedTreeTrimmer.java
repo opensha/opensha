@@ -10,25 +10,25 @@ import com.google.common.collect.Lists;
 
 public class ListBasedTreeTrimmer implements TreeTrimmer {
 	
-	private static List<Class<? extends LogicTreeBranchNode<?>>> classes = LogicTreeBranch.getLogicTreeNodeClasses();
-	private List<List<LogicTreeBranchNode<?>>> limitations;
+	private static List<Class<? extends U3LogicTreeBranchNode<?>>> classes = U3LogicTreeBranch.getLogicTreeNodeClasses();
+	private List<List<U3LogicTreeBranchNode<?>>> limitations;
 	private boolean nonZeroWeight;
 	
 	public static ListBasedTreeTrimmer getNonZeroWeightsTrimmer() {
-		List<List<LogicTreeBranchNode<?>>> limitations = Lists.newArrayList();
+		List<List<U3LogicTreeBranchNode<?>>> limitations = Lists.newArrayList();
 		return new ListBasedTreeTrimmer(limitations, true);
 	}
 		
-	public static ListBasedTreeTrimmer getDefaultPlusSpecifiedTrimmer(List<List<LogicTreeBranchNode<?>>> customLimitations) {
-		List<List<LogicTreeBranchNode<?>>> limitations = Lists.newArrayList();
+	public static ListBasedTreeTrimmer getDefaultPlusSpecifiedTrimmer(List<List<U3LogicTreeBranchNode<?>>> customLimitations) {
+		List<List<U3LogicTreeBranchNode<?>>> limitations = Lists.newArrayList();
 		
 		for (int i=0; i<classes.size(); i++) {
-			Class<? extends LogicTreeBranchNode<?>> clazz = classes.get(i);
-			List<LogicTreeBranchNode<?>> limits = null;
+			Class<? extends U3LogicTreeBranchNode<?>> clazz = classes.get(i);
+			List<U3LogicTreeBranchNode<?>> limits = null;
 			if (customLimitations != null) {
-				for (List<LogicTreeBranchNode<?>> customLimits : customLimitations) {
+				for (List<U3LogicTreeBranchNode<?>> customLimits : customLimitations) {
 					if (customLimits != null && !customLimits.isEmpty()) {
-						Class<LogicTreeBranchNode<?>> customClass = getClassForList(customLimits);
+						Class<U3LogicTreeBranchNode<?>> customClass = getClassForList(customLimits);
 						if (customClass.equals(clazz)) {
 							limits = customLimits;
 							break;
@@ -38,7 +38,7 @@ public class ListBasedTreeTrimmer implements TreeTrimmer {
 			}
 			if (limits == null) {
 				limits = Lists.newArrayList();
-				limits.add(LogicTreeBranch.DEFAULT.getValue(i));
+				limits.add(U3LogicTreeBranch.DEFAULT.getValue(i));
 			}
 			limitations.add(limits);
 		}
@@ -46,21 +46,21 @@ public class ListBasedTreeTrimmer implements TreeTrimmer {
 		return new ListBasedTreeTrimmer(limitations);
 	}
 	
-	public ListBasedTreeTrimmer(List<List<LogicTreeBranchNode<?>>> limitationsList) {
+	public ListBasedTreeTrimmer(List<List<U3LogicTreeBranchNode<?>>> limitationsList) {
 		this(limitationsList, false);
 	}
 	
-	public ListBasedTreeTrimmer(List<List<LogicTreeBranchNode<?>>> limitationsList, boolean nonZeroWeight) {
+	public ListBasedTreeTrimmer(List<List<U3LogicTreeBranchNode<?>>> limitationsList, boolean nonZeroWeight) {
 		init(limitationsList, nonZeroWeight);
 	}
 	
-	public ListBasedTreeTrimmer(LogicTreeBranch defaultBranch, boolean nonZeroWeight) {
-		List<List<LogicTreeBranchNode<?>>> limitationsList = Lists.newArrayList();
+	public ListBasedTreeTrimmer(U3LogicTreeBranch defaultBranch, boolean nonZeroWeight) {
+		List<List<U3LogicTreeBranchNode<?>>> limitationsList = Lists.newArrayList();
 		
 		for (int i=0; i<defaultBranch.size(); i++) {
-			LogicTreeBranchNode<?> val = defaultBranch.getValue(i);
+			U3LogicTreeBranchNode<?> val = defaultBranch.getValue(i);
 			if (val != null) {
-				List<LogicTreeBranchNode<?>> list = Lists.newArrayList();
+				List<U3LogicTreeBranchNode<?>> list = Lists.newArrayList();
 				list.add(val);
 				limitationsList.add(list);
 			}
@@ -69,16 +69,16 @@ public class ListBasedTreeTrimmer implements TreeTrimmer {
 		init(limitationsList, nonZeroWeight);
 	}
 	
-	private void init(List<List<LogicTreeBranchNode<?>>> limitationsList, boolean nonZeroWeight) {
+	private void init(List<List<U3LogicTreeBranchNode<?>>> limitationsList, boolean nonZeroWeight) {
 		this.limitations = Lists.newArrayList();
 		this.nonZeroWeight = nonZeroWeight;
 		for (int i=0; i<classes.size(); i++)
 			limitations.add(null);
 		if (limitationsList != null) {
-			for (List<LogicTreeBranchNode<?>> limits : limitationsList) {
+			for (List<U3LogicTreeBranchNode<?>> limits : limitationsList) {
 				if (limits == null || limits.isEmpty())
 					continue;
-				Class<LogicTreeBranchNode<?>> clazz = getClassForList(limits);
+				Class<U3LogicTreeBranchNode<?>> clazz = getClassForList(limits);
 				int index = classes.indexOf(clazz);
 				Preconditions.checkState(index >= 0, "Could not location class in class list: "+clazz);
 				limitations.set(index, limits);
@@ -88,16 +88,16 @@ public class ListBasedTreeTrimmer implements TreeTrimmer {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private static Class<LogicTreeBranchNode<?>> getClassForList(List<LogicTreeBranchNode<?>> limits) {
-		return (Class<LogicTreeBranchNode<?>>) LogicTreeBranch.getEnumEnclosingClass(limits.get(0).getClass());
+	private static Class<U3LogicTreeBranchNode<?>> getClassForList(List<U3LogicTreeBranchNode<?>> limits) {
+		return (Class<U3LogicTreeBranchNode<?>>) U3LogicTreeBranch.getEnumEnclosingClass(limits.get(0).getClass());
 	}
 
 	@Override
-	public boolean isTreeValid(LogicTreeBranch branch) {
+	public boolean isTreeValid(U3LogicTreeBranch branch) {
 		InversionModels im = branch.getValue(InversionModels.class);
 		for (int i=0; i<branch.size(); i++) {
-			LogicTreeBranchNode<?> val = branch.getValue(i);
-			List<LogicTreeBranchNode<?>> myLimits = limitations.get(i);
+			U3LogicTreeBranchNode<?> val = branch.getValue(i);
+			List<U3LogicTreeBranchNode<?>> myLimits = limitations.get(i);
 			if (myLimits != null && !limitations.get(i).contains(val))
 				return false;
 			if (nonZeroWeight && val.getRelativeWeight(im) <= 0)

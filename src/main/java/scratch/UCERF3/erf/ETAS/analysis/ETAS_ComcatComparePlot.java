@@ -35,9 +35,9 @@ import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
-import org.opensha.commons.data.function.UncertainArbDiscDataset;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSetList;
+import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
 import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
@@ -48,7 +48,6 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZGraphPanel;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
@@ -60,6 +59,8 @@ import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.observedEarthquake.magComplete.Helmstetter2006_TimeDepMc;
@@ -71,8 +72,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
@@ -1005,12 +1004,12 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 			dataFunc.set(i, percentile);
 		}
 
-		UncertainArbDiscDataset bounds95 = new UncertainArbDiscDataset(middle, lower95, upper95);
+		UncertainArbDiscFunc bounds95 = new UncertainArbDiscFunc(middle, lower95, upper95);
 		bounds95.setName("95% Confidence");
 		funcs.add(bounds95);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(0, 0, 0, 20)));
 		
-		UncertainArbDiscDataset bounds68 = new UncertainArbDiscDataset(middle, lower68, upper68);
+		UncertainArbDiscFunc bounds68 = new UncertainArbDiscFunc(middle, lower68, upper68);
 		bounds68.setName("68% Confidence");
 		funcs.add(bounds68);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(0, 0, 0, 40)));
@@ -1288,7 +1287,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 				spec.setXYChars(chars);
 				
 				spec.setCPTPosition(RectangleEdge.BOTTOM);
-				XYZGraphPanel gp = new XYZGraphPanel(buildGraphPanel().getPlotPrefs());
+				HeadlessGraphPanel gp = buildGraphPanel();
 				
 				int width = 800;
 				
@@ -1296,7 +1295,7 @@ public class ETAS_ComcatComparePlot extends ETAS_AbstractPlot {
 				TickUnit tu = new NumberTickUnit(tickUnit);
 				tus.add(tu);
 				
-				gp.drawPlot(spec, false, false, new Range(mapRegion.getMinLon(), mapRegion.getMaxLon()),
+				gp.drawGraphPanel(spec, false, false, new Range(mapRegion.getMinLon(), mapRegion.getMaxLon()),
 						new Range(mapRegion.getMinLat(), mapRegion.getMaxLat()));
 //					gp.getChartPanel().getChart().addSubtitle(slipCPTbar);
 				gp.getYAxis().setStandardTickUnits(tus);

@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
@@ -19,8 +20,6 @@ import org.opensha.sha.faultSurface.FaultSection;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Range;
-
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
 /**
  * This represents a NucleationClusterEvaluator that represents the spread of a rupture (be it uni/bilaterally). Subclasses
@@ -90,6 +89,10 @@ public abstract class PathEvaluator implements NucleationClusterEvaluator {
 				Collection<? extends FaultSection> toSects, FaultSubsectionCluster toCluster, double distance) {
 			this.fromSect = fromSect;
 			this.fromCluster = fromCluster;
+			for (FaultSection toSect : toSects)
+				Preconditions.checkState(toSect.getParentSectionId() == toCluster.parentSectionID,
+						"toSect[%s:%s] has different parent than toCluster=%s",
+						toSect.getParentSectionId(), toSect.getSectionId(), toCluster);
 			this.toSects = toSects;
 			this.toCluster = toCluster;
 			this.distance = distance;
@@ -99,6 +102,9 @@ public abstract class PathEvaluator implements NucleationClusterEvaluator {
 				FaultSection toSect, FaultSubsectionCluster toCluster, double distance) {
 			this.fromSect = fromSect;
 			this.fromCluster = fromCluster;
+			Preconditions.checkState(toSect.getParentSectionId() == toCluster.parentSectionID,
+					"toSect[%s:%s] has different parent than toCluster=%s",
+					toSect.getParentSectionId(), toSect.getSectionId(), toCluster);
 			this.toSects = Collections.singleton(toSect);
 			this.toCluster = toCluster;
 			this.distance = distance;
@@ -136,7 +142,7 @@ public abstract class PathEvaluator implements NucleationClusterEvaluator {
 			else
 				ret = "?->[";
 			return ret+toSects.stream().map(S -> S.getSectionId()).map(S -> S.toString())
-					.collect(Collectors.joining(","))+"]";
+					.collect(Collectors.joining(","))+"], "+(float)distance+"km";
 		}
 	}
 	

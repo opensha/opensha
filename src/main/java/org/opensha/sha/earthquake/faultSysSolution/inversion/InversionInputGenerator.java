@@ -10,7 +10,9 @@ import java.util.concurrent.TimeUnit;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ConstraintRange;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -20,8 +22,6 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.SparseCCDoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.SparseDoubleMatrix2D;
 import cern.colt.matrix.tdouble.impl.SparseRCDoubleMatrix2D;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.simulatedAnnealing.ConstraintRange;
 import scratch.UCERF3.utils.MatrixIO;
 
 /**
@@ -33,6 +33,7 @@ import scratch.UCERF3.utils.MatrixIO;
 public class InversionInputGenerator {
 	
 	// inputs
+	protected FaultSystemRupSet rupSet;
 	protected int numRuptures;
 	protected List<InversionConstraint> constraints;
 	protected double[] initialSolution;
@@ -50,8 +51,13 @@ public class InversionInputGenerator {
 		this(rupSet, constraints, null, null);
 	}
 
+	public InversionInputGenerator(FaultSystemRupSet rupSet, InversionConfiguration config) {
+		this(rupSet, config.getConstraints(), config.getInitialSolution(), config.getWaterLevel());
+	}
+
 	public InversionInputGenerator(FaultSystemRupSet rupSet, List<InversionConstraint> constraints,
 			double[] initialSolution, double[] waterLevelRates) {
+		this.rupSet = rupSet;
 		this.numRuptures = rupSet.getNumRuptures();
 		this.constraints = constraints;
 		this.initialSolution = initialSolution;
@@ -66,34 +72,10 @@ public class InversionInputGenerator {
 		generateInputs(null, verbose);
 	}
 	
-	public void generateInputs(Class<? extends DoubleMatrix2D> clazz, final boolean verbose) {
-		if (verbose)
-			System.out.println("Generating inversion inputs with "+numRuptures+" ruptures "
-					+"and "+constraints.size()+" constraints");
-
-		if (initialSolution == null) {
-			if (verbose)
-				System.out.println("Building empty intial solution (all zeroes)");
-			initialSolution = new double[numRuptures];
-		} else {
-			Preconditions.checkState(initialSolution.length == numRuptures,
-					"Initial solution is wrong size: %s != %s", initialSolution.length, numRuptures);
-		}
-		
-		if (waterLevelRates != null)
-			Preconditions.checkState(waterLevelRates.length == numRuptures,
-					"Water level rates are wrong size: %s != %s", waterLevelRates.length, numRuptures);
-		
-		constraintRowRanges = new ArrayList<>();
-		
-		if (verbose)
-			System.out.println("Calculating constraint row counts");
-
-		Stopwatch watch = verbose ? Stopwatch.createStarted() : null;
-		Stopwatch watchTotal = verbose ? Stopwatch.createStarted() : null;
-
+	public static List<ConstraintRange> buildConstraintRanges(List<InversionConstraint> constraints, boolean verbose) {
 		int numRows = 0;
 		int numIneqRows = 0;
+		List<ConstraintRange> constraintRowRanges = new ArrayList<>();
 		for (InversionConstraint constraint : constraints) {
 			constraint.setQuickGetSets(!verbose);
 			ConstraintRange range;
@@ -105,6 +87,43 @@ public class InversionInputGenerator {
 				numRows = range.endRow;
 			}
 			constraintRowRanges.add(range);
+		}
+		return constraintRowRanges;
+	}
+	
+	public void generateInputs(Class<? extends DoubleMatrix2D> clazz, final boolean verbose) {
+		if (verbose)
+			System.out.println("Generating inversion inputs with "+numRuptures+" ruptures "
+					+"and "+constraints.size()+" constraints");
+
+		if (initialSolution == null) {
+			if (verbose)
+				System.out.println("Building empty initial solution (all zeroes)");
+			initialSolution = new double[numRuptures];
+		} else {
+			Preconditions.checkState(initialSolution.length == numRuptures,
+					"Initial solution is wrong size: %s != %s", initialSolution.length, numRuptures);
+		}
+		
+		if (waterLevelRates != null)
+			Preconditions.checkState(waterLevelRates.length == numRuptures,
+					"Water level rates are wrong size: %s != %s", waterLevelRates.length, numRuptures);
+		
+		
+		if (verbose)
+			System.out.println("Calculating constraint row counts");
+
+		Stopwatch watch = verbose ? Stopwatch.createStarted() : null;
+		Stopwatch watchTotal = verbose ? Stopwatch.createStarted() : null;
+
+		constraintRowRanges = buildConstraintRanges(constraints, verbose);
+		int numRows = 0;
+		int numIneqRows = 0;
+		for (ConstraintRange range : constraintRowRanges) {
+			if (range.inequality)
+				numIneqRows = range.endRow;
+			else
+				numRows = range.endRow;
 		}
 		
 		if (verbose) {
@@ -229,11 +248,9 @@ public class InversionInputGenerator {
 		
 	}
 	
-	private ConstraintRange calcRowRange(int startIndex, InversionConstraint constraint, boolean verbose) {
+	static ConstraintRange calcRowRange(int startIndex, InversionConstraint constraint, boolean verbose) {
 		Stopwatch watch = verbose ? Stopwatch.createStarted() : null;
-		int numRows = constraint.getNumRows();
-		ConstraintRange range = new ConstraintRange(constraint.getName(), constraint.getShortName(),
-				startIndex, startIndex+numRows, constraint.isInequality());
+		ConstraintRange range = constraint.getRange(startIndex);
 		if (verbose) {
 			System.out.println("\t"+range+" (took "+getTimeStr(watch)+")");
 			watch.stop();
@@ -243,7 +260,7 @@ public class InversionInputGenerator {
 	
 	private static final DecimalFormat oneDigit = new DecimalFormat("0.0");
 	
-	protected String getTimeStr(Stopwatch watch) {
+	protected static String getTimeStr(Stopwatch watch) {
 		long millis = watch.elapsed(TimeUnit.MILLISECONDS);
 		if (millis < 1000)
 			return millis+" ms";
@@ -409,6 +426,20 @@ public class InversionInputGenerator {
 	public double[] getWaterLevelRates() {
 		return waterLevelRates;
 	}
+	
+	public boolean hasInitialSolution() {
+		if (initialSolution == null)
+			return false;
+		// see if non-zero
+		boolean nonZero = false;
+		for (double val : initialSolution) {
+			if (val > 0) {
+				nonZero = true;
+				break;
+			}
+		}
+		return nonZero;
+	}
 
 	public List<ConstraintRange> getConstraintRowRanges() {
 		return constraintRowRanges;
@@ -416,6 +447,10 @@ public class InversionInputGenerator {
 
 	public List<InversionConstraint> getConstraints() {
 		return constraints;
+	}
+	
+	public FaultSystemRupSet getRuptureSet() {
+		return rupSet;
 	}
 
 }

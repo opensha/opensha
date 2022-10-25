@@ -1,16 +1,28 @@
 package org.opensha.commons.data.function;
 
 import java.awt.geom.Point2D;
+import java.io.IOException;
 import java.io.Serializable;
 import java.text.NumberFormat;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
+import java.util.function.DoubleBinaryOperator;
+import java.util.function.DoubleUnaryOperator;
 
 import org.dom4j.Element;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.gui.plot.PlotElement;
 import org.opensha.commons.metadata.XMLSaveable;
+
+import com.google.common.base.Preconditions;
+import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 
 /**
  * A wrapper for 2D double-valued data that provides access to data points via
@@ -25,6 +37,7 @@ import org.opensha.commons.metadata.XMLSaveable;
  * @author Peter Powers
  * @version $Id: XY_DataSet.java 10931 2015-01-27 22:04:06Z kmilner $
  */
+@JsonAdapter(XY_DataSet.XYAdapter.class)
 public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializable, Iterable<Point2D> {
 
 	/* ******************************/
@@ -109,6 +122,27 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 	/** Replaces a DataPoint y-value at the specifed index. */
 	public void set(int index, double Y) throws IndexOutOfBoundsException;
 
+	/**
+	 * Maps a user-defined function F to each point, setting y = F(x).
+	 *
+	 * @param mappedFn(x) a function that takes an x value and returns a new y value.
+	 */
+	public default void setYofX(DoubleUnaryOperator mappedFn){
+		for(int i=0; i<this.size();i++) {
+			this.set(i, mappedFn.applyAsDouble(getX(i)));
+		}
+	}
+
+	/**
+	 * Maps a user-defined function F to each point, setting y = F(x, y).
+	 *
+	 * @param mappedFn(x, y) a function that takes an ax and a y value and returns a new y value.
+	 */
+	public default void setYofX(DoubleBinaryOperator mappedFn){
+		for(int i=0; i<this.size();i++) {
+			this.set(i, mappedFn.applyAsDouble(getX(i), getY(i)));
+		}
+	}
 
 
 	/* **********/
@@ -215,5 +249,228 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 	public Element toXMLMetadata(Element root, String elName);
 	
 	public Element toXMLMetadata(Element root, String elName, NumberFormat format);
+	
+	public static class XYAdapter extends AbstractAdapter<XY_DataSet> {
+		
+		protected XY_DataSet instance(Double minX, Double maxX, Integer size) {
+			return new DefaultXY_DataSet();
+		}
+
+		@Override
+		protected Class<XY_DataSet> getType() {
+			return XY_DataSet.class;
+		}
+		
+	}
+	
+	public static abstract class AbstractAdapter<E extends XY_DataSet> extends TypeAdapter<E> {
+
+		@Override
+		public void write(JsonWriter out, E xy) throws IOException {
+			if (xy == null) {
+				out.nullValue();
+				return;
+			}
+			out.beginObject();
+			
+			AbstractAdapter<E> adapter = null;
+			try {
+				adapter = getSubclassAdapter((Class<E>) xy.getClass());
+			} catch (Exception e) {}
+			if (adapter != null)
+				adapter.innerWrite(out, xy);
+			else
+				innerWrite(out, xy);
+			
+			out.endObject();
+		}
+		
+		protected void innerWrite(JsonWriter out, E xy) throws IOException {
+			Class<E> serType = getType();
+			Preconditions.checkState(serType.isAssignableFrom(xy.getClass()));
+			out.name("type").value(serType.getName());
+			
+			String name = xy.getName();
+			if (name != null && !name.isEmpty())
+				out.name("name").value(name);
+			
+			String info = xy.getInfo();
+			if (info != null && !info.isEmpty())
+				out.name("info").value(info);
+			
+			String xName = xy.getXAxisName();
+			if (xName != null && !xName.isEmpty())
+				out.name("xAxisName").value(xName);
+			
+			String yName = xy.getYAxisName();
+			if (yName != null && !yName.isEmpty())
+				out.name("yAxisName").value(yName);
+			
+			out.name("size").value(xy.size());
+			out.name("minX").value(xy.getMinX());
+			out.name("maxX").value(xy.getMaxX());
+			
+			serializeExtras(out, xy);
+			
+			out.name("values").beginArray();
+			
+			for (int i=0; i<xy.size(); i++) {
+				out.beginArray();
+				Point2D val = xy.get(i);
+				out.value(val.getX()).value(val.getY());
+				out.endArray();
+			}
+			
+			out.endArray();
+		}
+		
+		protected void serializeExtras(JsonWriter out, E xy) throws IOException {
+			// do nothing
+		}
+		
+		protected abstract E instance(Double minX, Double maxX, Integer size);
+		
+		protected abstract Class<E> getType();
+		
+		protected Consumer<E> deserializeExtra(JsonReader in, String name) throws IOException {
+			in.skipValue();
+			return null;
+		}
+		
+		@SuppressWarnings("unchecked")
+		private AbstractAdapter<E> getSubclassAdapter(String type) throws Exception {
+			Class<? extends E> clazz = (Class<? extends E>) Class.forName(type);
+			return getSubclassAdapter(clazz);
+		}
+		
+		@SuppressWarnings("unchecked")
+		private AbstractAdapter<E> getSubclassAdapter(Class<? extends E> clazz) throws Exception {
+			Class<?> testClass = clazz;
+			while (XY_DataSet.class.isAssignableFrom(testClass)) {
+				JsonAdapter adapterAnn = testClass.getAnnotation(JsonAdapter.class);
+				if (adapterAnn != null) {
+					Class<?> adapterClass = adapterAnn.value();
+					if (AbstractAdapter.class.isAssignableFrom(adapterClass))
+						return (AbstractAdapter<E>)adapterClass.getConstructor().newInstance();
+				}
+				// move up the tree
+				testClass = testClass.getSuperclass();
+			}
+			return null;
+		}
+
+		@Override
+		public E read(JsonReader in) throws IOException {
+			if (in.peek() == JsonToken.NULL) {
+				in.nextNull();
+				return null;
+			}
+			in.beginObject();
+			
+			E xy = innerRead(in);
+			
+			in.endObject();
+			
+			return xy;
+		}
+		
+		public E innerReadAsType(JsonReader in, Class<? extends E> clazz) throws IOException {
+			try {
+				AbstractAdapter<? extends E> adapter = getSubclassAdapter(clazz);
+				if (adapter != null)
+					return adapter.innerRead(in);
+			} catch (Exception e) {}
+			return innerRead(in);
+		}
+		
+		public E innerRead(JsonReader in) throws IOException {
+			String xyName = null;
+			String info = null;
+			String xName = null;
+			String yName = null;
+			Integer size = null;
+			Double minX = null;
+			Double maxX = null;
+			
+			E xy = null;
+			
+			List<Consumer<E>> consumers = new ArrayList<>();
+			
+			boolean first = true;
+			
+			while (in.hasNext()) {
+				String name = in.nextName();
+				
+				switch (name) {
+				case "type":
+					String type = in.nextString();
+					if (first) {
+						// see if we should use a different type
+						try {
+							AbstractAdapter<? extends E> adapter = getSubclassAdapter(type);
+							if (adapter != null)
+								return adapter.innerRead(in);
+						} catch (Exception e) {}
+					}
+					break;
+				case "name":
+					xyName = in.nextString();
+					break;
+				case "info":
+					info = in.nextString();
+					break;
+				case "xAxisName":
+					xName = in.nextString();
+					break;
+				case "yAxisName":
+					yName = in.nextString();
+					break;
+				case "size":
+					size = in.nextInt();
+					break;
+				case "minX":
+					minX = in.nextDouble();
+					break;
+				case "maxX":
+					maxX = in.nextDouble();
+					break;
+				case "values":
+					xy = instance(minX, maxX, size);
+					
+					in.beginArray();
+					
+					while (in.hasNext()) {
+						in.beginArray();
+						double x = in.nextDouble();
+						double y = in.nextDouble();
+						xy.set(x, y);
+						in.endArray();
+					}
+					
+					in.endArray();
+					break;
+
+				default:
+					Consumer<E> consumer = deserializeExtra(in, name);
+					if (consumer != null)
+						consumers.add(consumer);
+					break;
+				}
+				first = false;
+			}
+			
+			Preconditions.checkNotNull(xy, "missing 'values'");
+			xy.setName(xyName);
+			xy.setInfo(info);
+			xy.setXAxisName(xName);
+			xy.setYAxisName(yName);
+			
+			for (Consumer<E> consumer : consumers)
+				consumer.accept(xy);
+			
+			return xy;
+		}
+		
+	}
 	
 }

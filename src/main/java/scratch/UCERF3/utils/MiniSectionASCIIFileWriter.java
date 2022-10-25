@@ -58,7 +58,7 @@ public class MiniSectionASCIIFileWriter {
 		File avgOutputFile = new File(outputDir, prefix+"_avg.txt");
 		
 		// load FM
-		List<FaultSection> fmSects = fm.fetchFaultSections();
+		List<FaultSection> fmSects = fm.getFaultSections();
 		// load DM
 		Map<Integer, DeformationSection> dmSects = DeformationModelFileParser.load(dm.getDataFileURL(fm));
 		// compute moment reductions for DMs

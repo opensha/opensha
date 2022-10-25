@@ -30,6 +30,8 @@ import org.opensha.commons.gui.plot.PlotMultiDataLayer;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.commons.gui.plot.GraphWindow;
@@ -39,14 +41,12 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.CommandLineInversionRunner;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.inversion.UCERF2_ComparisonSolutionFetcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 public class FaultSpecificSegmentationPlotGen {
@@ -519,14 +519,14 @@ public class FaultSpecificSegmentationPlotGen {
 //		File solFile = new File("/tmp/FM3_1_NEOK_EllB_DsrUni_CharConst_M5Rate8.7_MMaxOff7.6_NoFix_SpatSeisU3_mean_sol_high_a_priori.zip");
 		File solFile = new File(new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions"),
 				"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip");
-		FaultSystemSolution sol = FaultSystemIO.loadSol(solFile);
+		FaultSystemSolution sol = U3FaultSystemIO.loadSol(solFile);
 		List<Integer> safParentSects31 = FaultSpecificSegmentationPlotGen.getSAFParents(FaultModels.FM3_1);
 		List<Integer> safParentSects21 = FaultSpecificSegmentationPlotGen.getSAFParents(FaultModels.FM2_1);
 		
 		File writeDir = new File("/tmp/branch_avg");
 		Preconditions.checkState(writeDir.exists() || writeDir.mkdir());
 		
-		InversionFaultSystemSolution ucerf2Sol = UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(FaultModels.FM2_1);
+		FaultSystemSolution ucerf2Sol = UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(FaultModels.FM2_1);
 		
 		double[] minMags = { 0, 7d, 7.5d };
 		

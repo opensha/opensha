@@ -1,22 +1,3 @@
-/*******************************************************************************
- * Copyright 2009 OpenSHA.org in partnership with
- * the Southern California Earthquake Center (SCEC, http://www.scec.org)
- * at the University of Southern California and the UnitedStates Geological
- * Survey (USGS; http://www.usgs.gov)
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- *   http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- ******************************************************************************/
-
 package org.opensha.sha.magdist;
 
 
@@ -227,6 +208,79 @@ extends IncrementalMagFreqDist {
 			setAllButTotMoRate(magLower, magUpper, totCumRate, bValue);
 		else
 			setAllButTotCumRate(magLower, magUpper, totMoRate, bValue);
+	}
+	
+	/**
+	 * Set All but b-value, fitting the latter within 0.005. The search is confined to b-values
+	 * between -3 and 3, values outside this range are set as the bounding value.  The final 
+	 * totCumRate may differ slightly from that specified due to this b-value imprecision.  
+	 * @param magLower      : lowest magnitude that has non zero rate
+	 * @param magUpper      : highest magnitude that has non zero rate
+	 * @param totMoRate     : total moment rate
+	 * @param totCumRate    : total cumulative rate
+	 */
+	public void setAllButBvalue(double magLower, double magUpper, double totMoRate, double totCumRate) {
+		
+		// first try =1
+		GutenbergRichterMagFreqDist gr = new GutenbergRichterMagFreqDist(getMinX(), size(), getDelta(),
+				magLower, magUpper, totMoRate, 1.0);
+		
+		double bMax = 3.0;
+		double bIncrement = 0.01;
+		double lastB= 1.0;
+		double currRate = gr.getTotalIncrRate();
+		double lastDiff = Math.abs(totCumRate-currRate);
+		double finalB = Double.NaN;
+		
+		if(currRate > totCumRate) { // need lower b-value
+//			System.out.println("looking for lower b-value");
+			for (double b = 1.0-bIncrement; b>-bMax; b-=bIncrement) {
+				gr = new GutenbergRichterMagFreqDist(getMinX(), size(), getDelta(), magLower, magUpper, totMoRate, b);
+				currRate = gr.getTotalIncrRate();
+				double currDiff = Math.abs(totCumRate-currRate);
+//				System.out.println(b+"\t"+(currRate-totCumRate)+"\t"+(float)(currRate/totCumRate));
+				if(currRate<=totCumRate) {// we're done
+					if(currDiff <lastDiff)
+						finalB=b;
+					else
+						finalB=lastB;
+					break;
+				}
+				lastDiff = currDiff;
+				lastB=b;
+			}
+			if(Double.isNaN(finalB))
+				finalB=-bMax;
+		}
+		else { // need higher b-value
+//			System.out.println("looking for higher b-value");
+			for (double b = 1.0+bIncrement; b<bMax; b+=bIncrement) {
+				gr = new GutenbergRichterMagFreqDist(getMinX(), size(), getDelta(), magLower, magUpper, totMoRate, b);
+				currRate = gr.getTotalIncrRate();
+				double currDiff = Math.abs(totCumRate-currRate);
+//				System.out.println(b+"\t"+(currRate-totCumRate)+"\t"+(float)(currRate/totCumRate));
+				if(currRate>=totCumRate) {// we're done
+					if(currDiff <lastDiff)
+						finalB=b;
+					else
+						finalB=lastB;
+					break;
+				}
+				lastDiff = currDiff;
+				lastB=b;
+			}
+			if(Double.isNaN(finalB))
+				finalB=bMax;
+		}
+		if(Math.abs(finalB)<bIncrement/2.0)
+			finalB=0;
+		
+		this.magLower = magLower;
+		this.magUpper = magUpper;
+		this.bValue = finalB;
+		calculateRelativeRates();
+		scaleToTotalMomentRate(totMoRate);
+		
 	}
 
 	/**

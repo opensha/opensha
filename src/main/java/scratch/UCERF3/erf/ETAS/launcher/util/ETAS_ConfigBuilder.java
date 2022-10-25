@@ -23,6 +23,7 @@ import org.apache.commons.cli.ParseException;
 import org.dom4j.DocumentException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -32,7 +33,6 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_MaxPointSourceMagParam;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
@@ -41,13 +41,13 @@ import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_TotalRateScaleFactorParam;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 import scratch.UCERF3.erf.ETAS.launcher.util.KML_RuptureLoader.KML_Node;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.U3_EqkCatalogStatewideCompleteness;
 
 public class ETAS_ConfigBuilder {
 	
 	public enum HPC_Sites {
-		USC_HPC("usc_hpcc_mpj_express.slurm", "usc_hpcc_plot.slurm"),
+		USC_CARC("usc_carc_mpj_express.slurm", "usc_carc_plot.slurm"),
 		TACC_STAMPEDE2("tacc_stampede2_fastmpj.slurm", "tacc_stampede2_plot.slurm"),
 		TACC_FRONTERA("tacc_frontera_fastmpj.slurm", "tacc_frontera_plot.slurm");
 
@@ -681,7 +681,7 @@ public class ETAS_ConfigBuilder {
 //			argz += " --name M7AwaySAF";
 			
 			// hpc options
-			argz += " --hpc-site USC_HPC";
+			argz += " --hpc-site USC_CARC";
 			argz += " --nodes 12";
 			argz += " --hours 24";
 //			argz += " --queue scec_hiprio";
@@ -752,7 +752,7 @@ public class ETAS_ConfigBuilder {
 					if (fssFile.exists()) {
 						FaultSystemSolution fss;
 						try {
-							fss = FaultSystemIO.loadSol(fssFile);
+							fss = U3FaultSystemIO.loadSol(fssFile);
 							mag = fss.getRupSet().getMagForRup(fssIndex);
 						} catch (Exception e) {
 							System.err.println("Error determining magnitude for FSS rupture");

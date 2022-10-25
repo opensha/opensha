@@ -10,12 +10,19 @@ import java.util.Map;
 import java.util.zip.ZipException;
 
 import org.dom4j.DocumentException;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
+import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
+import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
+import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen.PlotLevel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration.Builder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.CumulativeProbPathEvaluator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.NucleationClusterEvaluator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.PathPlausibilityFilter;
@@ -54,13 +61,9 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.Stiffness
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.utils.FaultSystemIO;
 
 public class ClusterRupturePerturbationBuilder {
 
@@ -94,7 +97,7 @@ public class ClusterRupturePerturbationBuilder {
 		// END plausibility params
 		ScalingRelationships scale = ScalingRelationships.MEAN_UCERF3;
 		boolean rebuild = false;
-		boolean replot = false;
+		boolean replot = true;
 		boolean skipPlausibility = true; // in plots
 		
 		RuptureGrowingStrategy primaryGrowingStrat;
@@ -102,8 +105,8 @@ public class ClusterRupturePerturbationBuilder {
 			primaryGrowingStrat = new SectCountAdaptiveRuptureGrowingStrategy(sectGrowFract, true, 2);
 		else
 			primaryGrowingStrat = new ExhaustiveUnilateralRuptureGrowingStrategy();
-		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(primaryFile);
-		PlausibilityConfiguration primaryConfig = rupSet.getPlausibilityConfiguration();
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(primaryFile);
+		PlausibilityConfiguration primaryConfig = rupSet.getModule(PlausibilityConfiguration.class);
 		Preconditions.checkNotNull(primaryConfig);
 		
 		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
@@ -383,7 +386,7 @@ public class ClusterRupturePerturbationBuilder {
 		// see if we should load any coulomb cache
 		System.out.println("Loading Coulomb caches");
 		Map<String, List<AggregatedStiffnessCache>> loadedCoulombCaches = new HashMap<>();
-		RupSetDiagnosticsPageGen.checkLoadCoulombCache(filters, rupSetsDir, loadedCoulombCaches);
+		ReportPageGen.checkLoadCoulombCache(filters, rupSetsDir, loadedCoulombCaches);
 		
 		System.out.println("Will process "+names.size()+" perterbations:");
 		HashSet<String> prevPrefixes = new HashSet<>();
@@ -404,11 +407,10 @@ public class ClusterRupturePerturbationBuilder {
 			Preconditions.checkState(plotDir.exists() || plotDir.mkdir());
 			
 			if (replot || !new File(plotDir, "README.md").exists()) {
-				FaultSystemSolution u3 = FaultSystemIO.loadSol(new File(rupSetsDir, "fm3_1_ucerf3.zip"));
+				FaultSystemSolution u3 = FaultSystemSolution.load(new File(rupSetsDir, "fm3_1_ucerf3.zip"));
 				System.out.println("Plotting UCERF3");
-				RupSetDiagnosticsPageGen pageGen = new RupSetDiagnosticsPageGen(rupSet, null, primaryName, u3.getRupSet(), u3, "UCERF3", plotDir);
-				pageGen.setSkipPlausibility(false);
-				pageGen.setIndexDir(indexDir);
+				ReportMetadata meta = new ReportMetadata(new RupSetMetadata(primaryName, rupSet), new RupSetMetadata("UCERF3", u3));
+				ReportPageGen pageGen = new ReportPageGen(meta, plotDir, ReportPageGen.getDefaultRupSetPlots(PlotLevel.FULL));
 				
 				// now add "alt" filters to test how many UCERF3 ruptures pass our filters (even if they use different connection points
 				// or growing strategies)
@@ -421,12 +423,14 @@ public class ClusterRupturePerturbationBuilder {
 					if (altFilters.get(i) instanceof ConnPointCleanupFilter)
 						// don't include this cleanup filter which is part of the adaptive growing strategy
 						altFilters.remove(i);
-				RupSetDiagnosticsPageGen.checkLoadCoulombCache(altFilters, rupSetsDir, loadedCoulombCaches);
-				pageGen.setAltFilters(altFilters);
-				pageGen.setApplyAltToComparison(true); // we want to apply these alt filters to UCERF3, which is comparison
+				ReportPageGen.checkLoadCoulombCache(altFilters, rupSetsDir, loadedCoulombCaches);
+				pageGen.setAltPlausibility(altFilters, null, true); // we want to apply these alt filters to UCERF3, which is comparison
+				pageGen.setReplot(true);
 				pageGen.generatePage();
 			}
 		}
+		
+		RupSetMetadata primaryMeta = new RupSetMetadata(primaryName, rupSet);
 		
 		for (int i=0; i<configs.size(); i++) {
 			System.gc();
@@ -452,7 +456,7 @@ public class ClusterRupturePerturbationBuilder {
 				altRupSet = ClusterRuptureBuilder.buildClusterRupSet(scale, rupSet.getFaultSectionDataList(), altConfig, rups);
 				
 				System.out.println("Writing to "+outputFile.getAbsolutePath());
-				FaultSystemIO.writeRupSet(altRupSet, outputFile);
+				altRupSet.getArchive().write(outputFile);
 			}
 			
 			File plotDir = new File(indexDir, prefix);
@@ -461,12 +465,18 @@ public class ClusterRupturePerturbationBuilder {
 			if (replot || !new File(plotDir, "README.md").exists() || altRupSet != null) { // last check is true if we just rebuilt
 				if (altRupSet == null) {
 					System.out.println("Loading already built "+name+" from "+outputFile.getAbsolutePath());
-					altRupSet = FaultSystemIO.loadRupSet(outputFile);
+					altRupSet = FaultSystemRupSet.load(outputFile);
 				}
 				System.out.println("Plotting "+name);
-				RupSetDiagnosticsPageGen pageGen = new RupSetDiagnosticsPageGen(rupSet, null, primaryName, altRupSet, null, name, plotDir);
-				pageGen.setSkipPlausibility(skipPlausibility);
+				
+				RupSetMetadata compMeta = new RupSetMetadata(name, altRupSet);
+				ReportMetadata meta = new ReportMetadata(primaryMeta, compMeta);
+				
+				ReportPageGen pageGen = new ReportPageGen(meta, plotDir, ReportPageGen.getDefaultRupSetPlots(PlotLevel.FULL));
+				if (skipPlausibility)
+					pageGen.skipPlausibility();
 				pageGen.setIndexDir(indexDir);
+				pageGen.setReplot(true);
 				pageGen.generatePage();
 			}
 		}

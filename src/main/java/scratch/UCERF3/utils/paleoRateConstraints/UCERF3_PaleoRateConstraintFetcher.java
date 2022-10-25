@@ -1,5 +1,6 @@
 package scratch.UCERF3.utils.paleoRateConstraints;
 
+import java.awt.Color;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -17,20 +18,29 @@ import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.poifs.filesystem.POIFSFileSystem;
 import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.data.uncertainty.BoundedUncertainty;
+import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.gui.plot.GraphPanel;
+import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
+import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemRupSet;
+import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 
 public class UCERF3_PaleoRateConstraintFetcher {
 	
@@ -40,7 +50,7 @@ public class UCERF3_PaleoRateConstraintFetcher {
 	
 	protected final static boolean D = false;  // for debugging
 	
-	public static ArrayList<PaleoRateConstraint> getConstraints(
+	public static ArrayList<U3PaleoRateConstraint> getConstraints(
 			List<? extends FaultSection> faultSectionData) throws IOException {
 		return getConstraints(faultSectionData, -1);
 	}
@@ -52,10 +62,10 @@ public class UCERF3_PaleoRateConstraintFetcher {
 	 * @return
 	 * @throws IOException
 	 */
-	private static ArrayList<PaleoRateConstraint> getConstraints(
+	private static ArrayList<U3PaleoRateConstraint> getConstraints(
 			List<? extends FaultSection> faultSectionData, int mappingCol) throws IOException {
 		
-		ArrayList<PaleoRateConstraint> paleoRateConstraints   = new ArrayList<PaleoRateConstraint>();
+		ArrayList<U3PaleoRateConstraint> paleoRateConstraints   = new ArrayList<U3PaleoRateConstraint>();
 		if(D) System.out.println("Reading Paleo Seg Rate Data from "+PALEO_DATA_FILE_NAME);
 		POIFSFileSystem fs;
 		File outputFile = null;
@@ -149,20 +159,24 @@ public class UCERF3_PaleoRateConstraintFetcher {
 			if (D) System.out.println("Matching constraint for closest index: "+closestFaultSectionIndex+" site name: "+siteName);
 			// add to Seg Rate Constraint list
 			String name = faultSectionData.get(closestFaultSectionIndex).getSectionName();
-			PaleoRateConstraint paleoRateConstraint;
+			
+			BoundedUncertainty[] uncertainties;
 			if (hasQuantiles) {
-				paleoRateConstraint = new PaleoRateConstraint(name, loc, closestFaultSectionIndex, 
-						meanRate, lower68Conf, upper68Conf, lower95Conf, upper95Conf);
+				// UCERF3.3
+				uncertainties = new BoundedUncertainty[] {
+						BoundedUncertainty.fromMeanAndBounds(UncertaintyBoundType.CONF_68, meanRate, lower68Conf, upper68Conf),
+						BoundedUncertainty.fromMeanAndBounds(UncertaintyBoundType.CONF_95, meanRate, lower95Conf, upper95Conf)
+				};
 			} else {
-				paleoRateConstraint = new PaleoRateConstraint(name, loc, closestFaultSectionIndex, 
-						meanRate, lower68Conf, upper68Conf);
+				// UCERF3.1 and UCERF3.2
+				uncertainties = estimateFrom68(meanRate, lower68Conf, upper68Conf);
 			}
-			paleoRateConstraint.setPaleoSiteName(siteName);
+			paleoRateConstraints.add(new U3PaleoRateConstraint(siteName, closestFaultSectionIndex, name, loc, meanRate, uncertainties));
+			
 			if(D) System.out.println("\t"+siteName+" (lat="+lat+", lon="+lon+") associated with "+name+
 					" (section index = "+closestFaultSectionIndex+")\tdist="+(float)minDist+"\tmeanRate="+(float)meanRate+
 					"\tlower68="+(float)lower68Conf+"\tupper68="+(float)upper68Conf+
 					"\tlower95="+(float)lower95Conf+"\tupper95="+(float)upper95Conf);
-			paleoRateConstraints.add(paleoRateConstraint);
 			
 			if (mappingCol > 0) {
 				HSSFCell mappingCell = row.getCell(mappingCol);
@@ -178,8 +192,26 @@ public class UCERF3_PaleoRateConstraintFetcher {
 		return paleoRateConstraints;
 	}
 	
-	
-	
+	/**
+	 * Estimates uncertainties from 68% confidence intervals, as we did in UCERF3.1 and UCERF3.2. Unused in the final model
+	 * 
+	 * @param meanRate
+	 * @param lower68Conf
+	 * @param upper68Conf
+	 * @return
+	 */
+	private static BoundedUncertainty[] estimateFrom68(double meanRate, double lower68Conf, double upper68Conf) {
+		double stdDevOfMeanRate =  ((meanRate-lower68Conf)+(upper68Conf-meanRate))/2;
+		
+		double aveLogStd = (Math.abs(Math.log10(meanRate/lower68Conf)) + Math.abs(Math.log10(meanRate/upper68Conf)))/2;
+		
+		double lower95Conf = Math.pow(10, Math.log10(meanRate) - 2*aveLogStd);
+		double upper95Conf = Math.pow(10, Math.log10(meanRate) + 2*aveLogStd);
+		return new BoundedUncertainty[] {
+				new BoundedUncertainty(UncertaintyBoundType.CONF_68, lower68Conf, upper68Conf, stdDevOfMeanRate),
+				new BoundedUncertainty(UncertaintyBoundType.CONF_95, lower95Conf, upper95Conf, stdDevOfMeanRate)
+		};
+	}
 	
 	
 	/**
@@ -190,8 +222,8 @@ public class UCERF3_PaleoRateConstraintFetcher {
 	 * @return
 	 * @throws IOException
 	 */
-	public static ArrayList<PaleoRateConstraint> getConstraints() throws IOException {
-		ArrayList<PaleoRateConstraint> paleoRateConstraints   = new ArrayList<PaleoRateConstraint>();
+	public static ArrayList<U3PaleoRateConstraint> getConstraints() throws IOException {
+		ArrayList<U3PaleoRateConstraint> paleoRateConstraints   = new ArrayList<U3PaleoRateConstraint>();
 		if(D) System.out.println("Reading Paleo Seg Rate Data from "+PALEO_DATA_FILE_NAME);
 		POIFSFileSystem fs;
 		InputStream is = UCERF3_DataUtils.locateResourceAsStream(PALEO_DATA_SUB_DIR, PALEO_DATA_FILE_NAME);
@@ -241,16 +273,17 @@ public class UCERF3_PaleoRateConstraintFetcher {
 			}
 				
 			Location loc = new Location(lat,lon);
-			PaleoRateConstraint paleoRateConstraint;
+			BoundedUncertainty[] uncertainties;
 			if (hasQuantiles) {
-				paleoRateConstraint = new PaleoRateConstraint(null, loc, -1, 
-						meanRate, lower68Conf, upper68Conf, lower95Conf, upper95Conf);
+				// UCERF3.3
+				uncertainties = new BoundedUncertainty[] {
+						BoundedUncertainty.fromMeanAndBounds(UncertaintyBoundType.CONF_68, meanRate, lower68Conf, upper68Conf),
+						BoundedUncertainty.fromMeanAndBounds(UncertaintyBoundType.CONF_95, meanRate, lower95Conf, upper95Conf),
+				};
 			} else {
-				paleoRateConstraint = new PaleoRateConstraint(null, loc, -1, 
-						meanRate, lower68Conf, upper68Conf);
+				uncertainties = estimateFrom68(meanRate, lower68Conf, upper68Conf);
 			}
-			paleoRateConstraint.setPaleoSiteName(siteName);
-			paleoRateConstraints.add(paleoRateConstraint);
+			paleoRateConstraints.add(new U3PaleoRateConstraint(siteName, -1, null, loc, meanRate, uncertainties));
 		}
 		
 		return paleoRateConstraints;
@@ -264,46 +297,85 @@ public class UCERF3_PaleoRateConstraintFetcher {
 	
 	
 	public static void main(String args[]) throws IOException, DocumentException {
-//		int mappingCol = 16; // 14 for parsons, 16 for biasi
-//		for (FaultModels fm : FaultModels.values()) {
-//			List<FaultSectionPrefData> datas = new DeformationModelFetcher(
-//					fm, DeformationModels.forFaultModel(fm).get(0),	UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR,
-//					InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE).getSubSectionList();
-//			UCERF3_PaleoRateConstraintFetcher.getConstraints(datas, mappingCol++);
-//		}
+////		int mappingCol = 16; // 14 for parsons, 16 for biasi
+////		for (FaultModels fm : FaultModels.values()) {
+////			List<FaultSectionPrefData> datas = new DeformationModelFetcher(
+////					fm, DeformationModels.forFaultModel(fm).get(0),	UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR,
+////					InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE).getSubSectionList();
+////			UCERF3_PaleoRateConstraintFetcher.getConstraints(datas, mappingCol++);
+////		}
+////		System.exit(0);
+//		
+//		FaultModels fm = FaultModels.FM3_1;
+//		List<? extends FaultSection> datas = new DeformationModelFetcher(
+//				fm, DeformationModels.forFaultModel(fm).get(0),	UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR,
+//				InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE).getSubSectionList();
+//		HashSet<Integer> parentIDs = new HashSet<>();
+//		for (FaultSection data : datas)
+//			parentIDs.add(data.getParentSectionId());
+//		ArrayList<U3PaleoRateConstraint> constrs = UCERF3_PaleoRateConstraintFetcher.getConstraints(datas);
+//		System.out.println("Loaded "+constrs.size()+" constraints");
+//		HashSet<Integer> parentIDsConstrained = new HashSet<>();
+//		for (U3PaleoRateConstraint constr : constrs)
+//			parentIDsConstrained.add(datas.get(constr.getSectionIndex()).getParentSectionId());
+//		System.out.println(parentIDsConstrained.size()+"/"+parentIDs.size()+" sections constrained");
 //		System.exit(0);
+//		System.out.println("Site Name\tSubsection Index");
+//		CSVFile<String> csv = new CSVFile<>(true);
+//		csv.addLine("Site Name", "Subsection Index");
+//		for (U3PaleoRateConstraint constr : constrs) {
+//			System.out.println(constr.getPaleoSiteName()+"\t"+constr.getSectionIndex());
+//			csv.addLine(constr.getPaleoSiteName(), constr.getSectionIndex()+"");
+//		}
+//		csv.writeToFile(new File("/tmp/paleo_subsections.csv"));
+//
+////   		FaultSystemRupSet faultSysRupSet = InversionFaultSystemRupSetFactory.cachedForBranch(DeformationModels.GEOLOGIC);
+////   		UCERF3_PaleoRateConstraintFetcher.getConstraints(faultSysRupSet.getFaultSectionDataList());
+//
+////		File rupSetsDir = new File(precomp, "FaultSystemRupSets");
+////		ArrayList<FaultSystemSolution> sols = new ArrayList<FaultSystemSolution>();
+////		sols.add(SimpleFaultSystemSolution.fromFile(new File(rupSetsDir, "UCERF2.xml")));
+////		sols.add(SimpleFaultSystemSolution.fromFile(new File(rupSetsDir, "Model1.xml")));
+////		
+////		showSegRateComparison(getConstraints(precomp, sols.get(0).getFaultSectionDataList()), sols);
 		
 		FaultModels fm = FaultModels.FM3_1;
-		List<? extends FaultSection> datas = new DeformationModelFetcher(
+		List<? extends FaultSection> subSects = new DeformationModelFetcher(
 				fm, DeformationModels.forFaultModel(fm).get(0),	UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR,
 				InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE).getSubSectionList();
-		HashSet<Integer> parentIDs = new HashSet<>();
-		for (FaultSection data : datas)
-			parentIDs.add(data.getParentSectionId());
-		ArrayList<PaleoRateConstraint> constrs = UCERF3_PaleoRateConstraintFetcher.getConstraints(datas);
-		System.out.println("Loaded "+constrs.size()+" constraints");
-		HashSet<Integer> parentIDsConstrained = new HashSet<>();
-		for (PaleoRateConstraint constr : constrs)
-			parentIDsConstrained.add(datas.get(constr.getSectionIndex()).getParentSectionId());
-		System.out.println(parentIDsConstrained.size()+"/"+parentIDs.size()+" sections constrained");
-		System.exit(0);
-		System.out.println("Site Name\tSubsection Index");
-		CSVFile<String> csv = new CSVFile<>(true);
-		csv.addLine("Site Name", "Subsection Index");
-		for (PaleoRateConstraint constr : constrs) {
-			System.out.println(constr.getPaleoSiteName()+"\t"+constr.getSectionIndex());
-			csv.addLine(constr.getPaleoSiteName(), constr.getSectionIndex()+"");
+		
+		HashSet<FaultSection> mappedSects = new HashSet<>();
+		List<Location> siteLocs = new ArrayList<>();
+		
+		String prefix = "u3_paleo_mappings";
+		String title = "UCERF3 Paleo RI Mappings";
+		List<U3PaleoRateConstraint> datas = getConstraints(subSects);
+//		String prefix = "nshm23_ca_paleo_slip_mappings";
+//		String title = "NSHM23 CA Paleo Slip Mappings";
+//		List<SectMappedUncertainDataConstraint> datas = loadU3PaleoSlipData(subSects);
+		
+		System.out.println("Loaded "+datas.size()+" values");
+		for (SectMappedUncertainDataConstraint constraint : datas) {
+			System.out.println(constraint);
+			if (constraint.sectionIndex >= 0) {
+				FaultSection sect = subSects.get(constraint.sectionIndex);
+				double dist = sect.getFaultTrace().minDistToLine(constraint.dataLocation);
+				System.out.println("\tMapped section: "+sect.getSectionName()+"\tdistance: "+(float)dist+" km");
+				mappedSects.add(sect);
+				siteLocs.add(constraint.dataLocation);
+			}
 		}
-		csv.writeToFile(new File("/tmp/paleo_subsections.csv"));
-
-//   		FaultSystemRupSet faultSysRupSet = InversionFaultSystemRupSetFactory.cachedForBranch(DeformationModels.GEOLOGIC);
-//   		UCERF3_PaleoRateConstraintFetcher.getConstraints(faultSysRupSet.getFaultSectionDataList());
-
-//		File rupSetsDir = new File(precomp, "FaultSystemRupSets");
-//		ArrayList<FaultSystemSolution> sols = new ArrayList<FaultSystemSolution>();
-//		sols.add(SimpleFaultSystemSolution.fromFile(new File(rupSetsDir, "UCERF2.xml")));
-//		sols.add(SimpleFaultSystemSolution.fromFile(new File(rupSetsDir, "Model1.xml")));
-//		
-//		showSegRateComparison(getConstraints(precomp, sols.get(0).getFaultSectionDataList()), sols);
+		
+		RupSetMapMaker mapMaker = new RupSetMapMaker(subSects, new CaliforniaRegions.RELM_TESTING());
+		mapMaker.highLightSections(mappedSects, new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
+		
+		mapMaker.plotScatters(siteLocs, Color.BLUE);
+		
+		mapMaker.setWriteGeoJSON(true);
+		
+		mapMaker.plot(new File("/tmp"), prefix, title);
+		
+		String urlPrefix = "http://opensha.usc.edu/ftp/kmilner/nshm23/paleo_mappings/";
+		System.out.println("GeoJSON.io URL: "+RupSetMapMaker.getGeoJSONViewerLink(urlPrefix+prefix+".geojson"));
 	}
 }

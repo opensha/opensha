@@ -3,8 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.JumpPlausibilityFilter;
-
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 
 /**
  * This ensures that clusters never jump to themselves (which would skip a section)

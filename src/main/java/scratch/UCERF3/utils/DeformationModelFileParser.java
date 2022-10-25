@@ -657,7 +657,7 @@ public class DeformationModelFileParser {
 		List<Map<Integer, DeformationSection>> sectsList = Lists.newArrayList();
 		
 		final Map<Integer, String> namesMap = Maps.newHashMap();
-		for (FaultSection sect : fm.fetchFaultSections())
+		for (FaultSection sect : fm.getFaultSections())
 			namesMap.put(sect.getSectionId(), sect.getSectionName());
 		
 		for (int i=0; i<dms.size(); i++) {
@@ -744,7 +744,7 @@ public class DeformationModelFileParser {
 		List<Map<Integer, DeformationSection>> sectsList = Lists.newArrayList();
 		
 		final Map<Integer, String> namesMap = Maps.newHashMap();
-		for (FaultSection sect : fm.fetchFaultSections())
+		for (FaultSection sect : fm.getFaultSections())
 			namesMap.put(sect.getSectionId(), sect.getSectionName());
 		
 		for (int i=0; i<dms.size(); i++) {

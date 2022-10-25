@@ -23,6 +23,8 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
@@ -37,8 +39,6 @@ import com.google.common.io.Files;
 import com.google.common.primitives.Ints;
 
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO;
@@ -56,7 +56,7 @@ import scratch.UCERF3.erf.ETAS.NoFaultsModel.UCERF3_GriddedSeisOnlyERF_ETAS;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.LastEventData;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
@@ -64,7 +64,7 @@ import scratch.UCERF3.utils.RELM_RegionUtils;
 public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 	
 	private int numSims;
-	private FaultSystemSolution[] sols;
+	private org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution[] sols;
 //	private FaultSystemSolutionERF_ETAS erf;
 	private Map<Integer, List<LastEventData>> lastEventData;
 	private File inputDir;
@@ -150,10 +150,10 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 		
 		File solFile = new File(cmd.getOptionValue("sol-file"));
 		Preconditions.checkArgument(solFile.exists(), "Solution file doesn't exist: "+solFile.getAbsolutePath());
-		sols = new FaultSystemSolution[getNumThreads()];
+		sols = new org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution[getNumThreads()];
 		// must load in solution for each thread as last even data will be overridden/updated
 		for (int i=0; i<sols.length; i++)
-			sols[i] = FaultSystemIO.loadSol(solFile);
+			sols[i] = U3FaultSystemIO.loadSol(solFile);
 		
 		if (cmd.hasOption("reset-sections")) {
 			// reset individual sections

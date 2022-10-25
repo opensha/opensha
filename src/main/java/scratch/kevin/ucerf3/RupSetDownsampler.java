@@ -11,6 +11,7 @@ import java.util.zip.ZipException;
 import org.dom4j.DocumentException;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Joiner;
@@ -18,9 +19,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.erf.mean.RuptureCombiner;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RupSetDownsampler {
 	
@@ -140,7 +140,7 @@ public class RupSetDownsampler {
 	}
 
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
-		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/"
+		FaultSystemRupSet rupSet = U3FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/"
 				+ "InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		RupSetDownsampler sampler = new RupSetDownsampler(rupSet, 0.05);
 		sampler.calculate();
@@ -149,7 +149,7 @@ public class RupSetDownsampler {
 		double percent = 100d*sampled/orig;
 		System.out.println("Retained "+sampled+"/"+orig+" ruptures ("+(float)percent+" %)");
 		FaultSystemRupSet sampledRupSet = sampler.getDownsampled();
-		FaultSystemIO.writeRupSet(sampledRupSet, new File("/tmp/downsampled.zip"));
+//		FaultSystemIO.writeRupSet(sampledRupSet, new File("/tmp/downsampled.zip"));
 	}
 
 }

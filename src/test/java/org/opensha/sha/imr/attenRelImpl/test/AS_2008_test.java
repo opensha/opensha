@@ -1,28 +1,11 @@
-/*******************************************************************************
- * Copyright 2009 OpenSHA.org in partnership with
- * the Southern California Earthquake Center (SCEC, http://www.scec.org)
- * at the University of Southern California and the UnitedStates Geological
- * Survey (USGS; http://www.usgs.gov)
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- *   http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- ******************************************************************************/
-
 package org.opensha.sha.imr.attenRelImpl.test;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.StringTokenizer;
 
 import org.opensha.commons.exceptions.ConstraintException;
@@ -181,7 +164,16 @@ public class AS_2008_test extends NGATest {
 			testDataLines = FileUtils.loadFile(file.getAbsolutePath());
 			int numLines = testDataLines.size();
 			double period[] = this.loadPeriods((String)testDataLines.get(0));
-			for(int j=1;j<numLines;++j){
+			
+			List<String> testLines = testDataLines.subList(1, numLines);
+			if (numLines > max_num_tests) {
+				System.out.println("Downsampling "+as_2008.getName()+" tests to "+max_num_tests);
+				Collections.shuffle(testLines);
+				testLines = testLines.subList(0, max_num_tests);
+			}
+			int count = -1;
+			for (String fileLine : testLines) {
+				count++;
 				StringTokenizer st;
 				double mag;
 				//((WarningDoublePropagationEffectParameter)as_2008.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(new Double(rrup));
@@ -189,7 +181,6 @@ public class AS_2008_test extends NGATest {
 				double vs30;
 				try {
 					//System.out.println("Doing "+j+" of "+numLines);
-					String fileLine = (String)testDataLines.get(j);
 					st = new StringTokenizer(fileLine);
 					mag = Double.parseDouble(st.nextToken().trim());
 					((WarningDoubleParameter)as_2008.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
@@ -273,7 +264,7 @@ public class AS_2008_test extends NGATest {
 							testValString+" from OpenSHA = "+openSHA_Val+"  should be = "+tested_Val;
 							failLine = fileLine;
 							failMetadata = "Line: " + fileLine;
-							failMetadata += "\nTest number= "+"("+j+"/"+numLines+")"+" failed for "+failedResultMetadata;
+							failMetadata += "\nTest number= "+"("+count+"/"+numLines+")"+" failed for "+failedResultMetadata;
 							//							System.out.println("OpenSHA Median = "+medianFromOpenSHA+"   Target Median = "+targetMedian);
 							failMetadata += "\n" + getOpenSHAParams(as_2008);
 
@@ -300,7 +291,7 @@ public class AS_2008_test extends NGATest {
 						testValString+" from OpenSHA = "+openSHA_Val+"  should be = "+tested_Val;
 						failLine = fileLine;
 						failMetadata = "Line: " + fileLine;
-						failMetadata += "\nTest number= "+"("+j+"/"+numLines+")"+" failed for "+failedResultMetadata;
+						failMetadata += "\nTest number= "+"("+count+"/"+numLines+")"+" failed for "+failedResultMetadata;
 						//							System.out.println("OpenSHA Median = "+medianFromOpenSHA+"   Target Median = "+targetMedian);
 						failMetadata += "\n" + getOpenSHAParams(as_2008);
 
@@ -325,7 +316,7 @@ public class AS_2008_test extends NGATest {
 						testValString+" from OpenSHA = "+openSHA_Val+"  should be = "+tested_Val;
 						failLine = fileLine;
 						failMetadata = "Line: " + fileLine;
-						failMetadata += "\nTest number= "+"("+j+"/"+numLines+")"+" failed for "+failedResultMetadata;
+						failMetadata += "\nTest number= "+"("+count+"/"+numLines+")"+" failed for "+failedResultMetadata;
 						//							System.out.println("OpenSHA Median = "+medianFromOpenSHA+"   Target Median = "+targetMedian);
 						failMetadata += "\n" + getOpenSHAParams(as_2008);
 

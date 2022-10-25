@@ -10,17 +10,18 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
-import scratch.UCERF3.FaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
 
 import com.google.common.collect.Maps;
@@ -87,12 +88,12 @@ public class UCERF3_NoFaultsGridSourceGenerator extends AbstractGridSourceProvid
 	}
 
 	@Override
-	public IncrementalMagFreqDist getNodeSubSeisMFD(int idx) {
+	public IncrementalMagFreqDist getMFD_SubSeisOnFault(int idx) {
 		return null;
 	}
 
 	@Override
-	public IncrementalMagFreqDist getNodeUnassociatedMFD(int idx) {
+	public IncrementalMagFreqDist getMFD_Unassociated(int idx) {
 		IncrementalMagFreqDist mfd = realOffFaultMFD.deepClone();
 		if(srcSpatialPDF !=null)
 			mfd.scale(srcSpatialPDF[idx]);
@@ -145,6 +146,14 @@ public class UCERF3_NoFaultsGridSourceGenerator extends AbstractGridSourceProvid
 		fracReverse = gRead.getValues();
 		gRead = new GridReader("NormalWts.txt");
 		fracNormal = gRead.getValues();
+	}
+
+	@Override
+	public GridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+			Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
+			double[] fracReverse) {
+		return new AbstractGridSourceProvider.Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
+				fracStrikeSlip, fracNormal, fracReverse);
 	}
 
 }

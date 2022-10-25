@@ -4,7 +4,9 @@ import java.awt.geom.Point2D;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
+import org.opensha.commons.data.IntegerSampler;
 import org.opensha.commons.util.ComparablePairing;
 
 import com.google.common.base.Joiner;
@@ -12,6 +14,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Doubles;
 import com.google.common.primitives.Ints;
+import com.google.gson.annotations.JsonAdapter;
 
 /**
  * This class stores integer values in the X axis and the relative probability associated with each integer
@@ -22,7 +25,8 @@ import com.google.common.primitives.Ints;
  * @author field
  *
  */
-public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
+@JsonAdapter(IntegerPDF_FunctionSampler.Adapter.class)
+public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc implements IntegerSampler {
 	
 	/**
 	 * 
@@ -103,15 +107,6 @@ public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
 		return sumOfYvals;
 	}
 	
-	
-	/**
-	 * This returns a random integer based on the probabilities of each
-	 * @return
-	 */
-	public int getRandomInt() {
-		return getInt(Math.random());
-	}
-	
 	/**
 	 * This returns a random integer based on the probabilities of each, and
 	 * using the supplied random number (supplied in cases where reproducibility is important)
@@ -121,8 +116,6 @@ public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
 	public int getRandomInt(double randDouble) {
 		return getInt(randDouble);
 	}
-
-	
 	
 	/**
 	 * This returns the integer value corresponding to the given probability (between 0 and 1).
@@ -330,6 +323,21 @@ public class IntegerPDF_FunctionSampler extends EvenlyDiscretizedFunc {
 //		System.out.println("0.99: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(0.99)));
 //		System.out.println("0.999: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(0.999)));
 //		System.out.println("1.0: "+Joiner.on(",").join(sampler.getOrderedIndicesOfHighestXFract(1d)));
+	}
+	
+	public static class Adapter extends DiscretizedFunc.AbstractAdapter<IntegerPDF_FunctionSampler> {
+
+		@Override
+		protected IntegerPDF_FunctionSampler instance(Double minX, Double maxX, Integer size) {
+			Preconditions.checkNotNull(size, "size must be supplied before values to deserialize IntegerPDF_FunctionSampler");
+			return new IntegerPDF_FunctionSampler(size);
+		}
+
+		@Override
+		protected Class<IntegerPDF_FunctionSampler> getType() {
+			return IntegerPDF_FunctionSampler.class;
+		}
+		
 	}
 
 }

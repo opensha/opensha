@@ -1,22 +1,3 @@
-/*******************************************************************************
- * Copyright 2009 OpenSHA.org in partnership with
- * the Southern California Earthquake Center (SCEC, http://www.scec.org)
- * at the University of Southern California and the UnitedStates Geological
- * Survey (USGS; http://www.usgs.gov)
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- *   http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- ******************************************************************************/
-
 package org.opensha.sha.earthquake.calc;
 
 import java.io.FileWriter;
@@ -26,6 +7,7 @@ import java.util.ListIterator;
 
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
+import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
@@ -247,7 +229,7 @@ for(int m=0;m<testFunc.getNum();m++)
       }
       else {
     	  // get the cumulative dist of the ArbDiscrFunc (sum of values ≤ X)
-        ArbitrarilyDiscretizedFunc cumDist = funcs[i].getCumDist();
+    	  DiscretizedFunc cumDist = funcs[i].getCumDist();
         //if(i==0) System.out.println("cum function>>>>>>\n"+func.toString());
         int numMags = cumDist.size();
         ArbitrarilyDiscretizedFunc magRateFunction = new ArbitrarilyDiscretizedFunc();

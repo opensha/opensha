@@ -304,7 +304,7 @@ public class ModAttenuationRelationship extends AttenuationRelationship implemen
 		imrParams.setValue(getReferenceIMRParams(imr.getOtherParams()));
 		try {
 			// update GUI if applicable
-			imrParams.getEditor().refreshParamEditor();
+			imrParams.refreshEditor();
 		} catch (Exception e) {
 			// exception if headless, ignore
 		}
@@ -340,7 +340,7 @@ public class ModAttenuationRelationship extends AttenuationRelationship implemen
 		modParams.setValue(params);
 		try {
 			// update GUI if applicable
-			modParams.getEditor().refreshParamEditor();
+			modParams.refreshEditor();
 		} catch (Exception e) {
 			// exception if headless, ignore
 		}

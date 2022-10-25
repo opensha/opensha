@@ -15,6 +15,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.HistoricOpenIntervalParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
@@ -25,7 +26,6 @@ import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.faultSurface.FaultSection;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
 import com.google.common.base.Joiner;
@@ -61,7 +61,7 @@ public class TimeDepRateExtractor {
 		Preconditions.checkArgument(solFile.exists(), "Sol file doesn't exist: "+solFile.getAbsolutePath());
 		
 		try {
-			sol = FaultSystemIO.loadSol(solFile);
+			sol = U3FaultSystemIO.loadSol(solFile);
 		} catch (Exception e) {
 			throw new IllegalStateException("Error loading solution", e);
 		}

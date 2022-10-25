@@ -40,7 +40,6 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotWindow;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ExceptionUtils;
@@ -53,6 +52,8 @@ import org.opensha.sha.earthquake.calc.ERF_Calculator;
 import org.opensha.sha.earthquake.calc.recurInterval.BPT_DistCalc;
 import org.opensha.sha.earthquake.calc.recurInterval.LognormalDistCalc;
 import org.opensha.sha.earthquake.calc.recurInterval.WeibullDistCalc;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupOrigTimeComparator;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeOptions;
@@ -73,17 +74,15 @@ import org.opensha.sha.simulators.utils.General_EQSIM_Tools;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.utils.ProbModelsPlottingUtils;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools;
 import scratch.UCERF3.erf.ETAS.ETAS_Utils;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoRateConstraintFetcher;
 
 
@@ -900,9 +899,9 @@ public class ProbabilityModelsCalc {
 			e.printStackTrace();
 		}
 		XYZPlotSpec spec_prob = new XYZPlotSpec(xyzDataCondProbForUnknown, cpt_prob, "CondProbForUnknownLast; aper="+(float)aperiodicity, "LogNormDuration", "LogNormHistOpenInt", "Probability");
-		XYZPlotWindow window_prob = new XYZPlotWindow(spec_prob);
+		GraphWindow window_prob = new GraphWindow(spec_prob);
 		XYZPlotSpec spec_probGain = new XYZPlotSpec(xyzDataProbGain, cpt_probGain, "Log10 Prob Gain (vs Poisson); aper="+(float)aperiodicity, "LogNormDuration", "LogNormHistOpenInt", "Log10 Prob Gain");
-		XYZPlotWindow window_probGain = new XYZPlotWindow(spec_probGain);
+		GraphWindow window_probGain = new GraphWindow(spec_probGain);
 
 	}
 	
@@ -964,9 +963,9 @@ public class ProbabilityModelsCalc {
 			e.printStackTrace();
 		}
 		XYZPlotSpec spec_prob = new XYZPlotSpec(xyzDataCondProb, cpt_prob, "Log10 BPT Cond Prob; aper="+(float)aperiodicity, "LogNormTimeSinceLast", "LogNormDuration", "Probability");
-		XYZPlotWindow window_prob = new XYZPlotWindow(spec_prob);
+		GraphWindow window_prob = new GraphWindow(spec_prob);
 		XYZPlotSpec spec_probGain = new XYZPlotSpec(xyzDataProbGain, cpt_probGain, "Log10 Prob Gain (vs Poisson); aper="+(float)aperiodicity, "LogNormTimeSinceLast", "LogNormDuration", "Log10 Prob Gain");
-		XYZPlotWindow window_probGain = new XYZPlotWindow(spec_probGain);
+		GraphWindow window_probGain = new GraphWindow(spec_probGain);
 
 	}
 
@@ -3196,10 +3195,10 @@ public class ProbabilityModelsCalc {
 			e1.printStackTrace();
 		}
 		
-		ArrayList<PaleoRateConstraint> paleoConstraints = UCERF3_PaleoRateConstraintFetcher.getConstraints(fltSysRupSet.getFaultSectionDataList());
+		ArrayList<U3PaleoRateConstraint> paleoConstraints = UCERF3_PaleoRateConstraintFetcher.getConstraints(fltSysRupSet.getFaultSectionDataList());
 		ArrayList<Integer> paleoConstrainSections = new ArrayList<Integer>();
 		info_fr.write("\n"+paleoConstraints.size()+" Paleo Sites (site, sectID, sectName):\n");
-		for(PaleoRateConstraint constr : paleoConstraints) {
+		for(U3PaleoRateConstraint constr : paleoConstraints) {
 			paleoConstrainSections.add(constr.getSectionIndex());
 			info_fr.write("\t"+constr.getPaleoSiteName()+"\t"+constr.getSectionIndex()+"\t"+constr.getFaultSectionName()+"\n");
 		}

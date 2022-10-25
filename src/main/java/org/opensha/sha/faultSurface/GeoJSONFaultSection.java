@@ -44,28 +44,37 @@ public final class GeoJSONFaultSection implements FaultSection {
 	private Region zonePolygon;
 	private FeatureProperties properties;
 	
+	// common data to cache locally (to avoid more expensive FetureProperties queries)
+	private double aveLongTermSlipRate;
+	private double slipRateStdDev;
+	private String parentSectionName;
+	private int parentSectionId = -1;
+	private long dateOfLastEventMillis = Long.MIN_VALUE;
+	private int hashCode;
+	
 	// helpers
 	private StirlingSurfaceCache stirlingCache;
 	
 	// core property names
-	static final String FAULT_ID = "FaultID";
-	static final String FAULT_NAME = "FaultName";
-	static final String DIP = "DipDeg";
-	static final String DIP_DIR = "DipDir";
-	static final String RAKE = "Rake";
-	static final String LOW_DEPTH = "LowDepth";
-	static final String UPPER_DEPTH = "UpDepth";
+	public static final String FAULT_ID = "FaultID";
+	public static final String FAULT_NAME = "FaultName";
+	public static final String DIP = "DipDeg";
+	public static final String DIP_DIR = "DipDir";
+	public static final String RAKE = "Rake";
+	public static final String LOW_DEPTH = "LowDepth";
+	public static final String UPPER_DEPTH = "UpDepth";
 	
 	// optional property names
-	static final String DATE_LAST = "DateLastEvent";
-	static final String SLIP_LAST = "SlipLastEvent";
-	static final String ASEIS = "AseismicSlipFactor";
-	static final String COUPLING = "CouplingCoeff";
-	static final String SLIP_RATE = "SlipRate";
-	static final String PARENT_ID = "ParentID";
-	static final String PARENT_NAME = "ParentName";
-	static final String SLIP_STD_DEV = "SlipRateStdDev";
-	static final String CONNECTOR = "Connector";
+	public static final String DATE_LAST = "DateLastEvent";
+	public static final String SLIP_LAST = "SlipLastEvent";
+	public static final String ASEIS = "AseismicSlipFactor";
+	public static final String COUPLING = "CouplingCoeff";
+	public static final String SLIP_RATE = "SlipRate";
+	public static final String PARENT_ID = "ParentID";
+	public static final String PARENT_NAME = "ParentName";
+	public static final String SLIP_STD_DEV = "SlipRateStdDev";
+	public static final String CONNECTOR = "Connector";
+	public static final String CREEP_RATE = "CreepRate";
 
 	private GeoJSONFaultSection(Feature feature) {
 		Preconditions.checkNotNull(feature, "feature cannot be null");
@@ -93,7 +102,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 		FaultUtils.assertValidDip(dip);
 		
 		rake = properties.getDouble(RAKE, Double.NaN);
-		checkPropFinite(RAKE, rake);
+//		checkPropFinite(RAKE, rake); // allow rakes to be attached later, don't enforce that it's specified now
 		
 		upperDepth = properties.getDouble(UPPER_DEPTH, Double.NaN);
 		checkPropFinite(UPPER_DEPTH, dip);
@@ -122,9 +131,22 @@ public final class GeoJSONFaultSection implements FaultSection {
 				"Didn't find a FaultTrace in the supplied Feature. LineString and MultiLineString are supported");
 		
 		if (!Double.isFinite(dipDirection))
-			dipDirection = (float)(trace.getAveStrike()+90d);
+			setDipDirection((float)(trace.getAveStrike()+90d));
+
+		cacheCommonValues();
 	}
-	
+
+	private void cacheCommonValues() {
+		// cache common values
+		this.aveLongTermSlipRate = properties.getDouble(SLIP_RATE, Double.NaN);
+		this.slipRateStdDev = properties.getDouble(SLIP_STD_DEV, Double.NaN);
+		this.parentSectionName = properties.get(PARENT_NAME, null);
+		this.parentSectionId = properties.getInt(PARENT_ID, -1);
+		this.dateOfLastEventMillis = properties.getLong(DATE_LAST, Long.MIN_VALUE);
+
+		updateHashCode();
+	}
+
 	private void setGeometry(Geometry geometry) {
 		if (geometry instanceof GeometryCollection) {
 			for (Geometry subGeom : ((GeometryCollection)geometry).geometries) {
@@ -198,6 +220,20 @@ public final class GeoJSONFaultSection implements FaultSection {
 		} else {
 			System.err.println("Skipping unexpected FaultSection geometry type: "+geometry.type);
 		}
+		
+		if (upperDepth != 0d && dip != 90d && !geometry.isSerializeZeroDepths()) {
+			// depths were not specified in the GeoJSON, and this is a buried dipping surface.
+			// for this case, we assume that the depth is actually the top of the surface and not the up-dip projection.
+			// if you want to override this, you can do three things:
+			// 	* provide three-valued locations in the GeoJSON
+			//  * provide at least one non-zero depth
+			//  * manually call geometry.setSerializeZeroDepths(true))
+			LocationList modTrace = new LocationList();
+			for (Location loc : trace)
+				modTrace.add(new Location(loc.getLatitude(), loc.getLongitude(), upperDepth));
+			trace = new FaultTrace(trace.getName());
+			trace.addAll(modTrace);
+		}
 	}
 	
 	private static void checkPropNonNull(String propName, Object value) {
@@ -227,7 +263,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 			setProperty(RAKE, rake);
 			setProperty(LOW_DEPTH, lowerDepth);
 			setProperty(UPPER_DEPTH, upperDepth);
-			if (dipDirection != (float)(trace.getAveStrike()+90d))
+			if (dipDirection != (float)(trace.getAveStrike()+90d) && Float.isFinite(dipDirection));
 				setProperty(DIP_DIR, dipDirection);
 			setDateOfLastEvent(sect.getDateOfLastEvent());
 			setSlipInLastEvent(sect.getSlipInLastEvent());
@@ -241,6 +277,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 				properties.set(CONNECTOR, true);
 			setZonePolygon(sect.getZonePolygon());
 		}
+		cacheCommonValues();
 	}
 
 	GeoJSONFaultSection(int id, String name, double dip, double rake, double upperDepth,
@@ -254,6 +291,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 		this.dipDirection = dipDirection;
 		this.trace = trace;
 		this.properties = properties;
+		cacheCommonValues();
 	}
 	
 	public static GeoJSONFaultSection fromFeature(Feature feature) {
@@ -267,14 +305,19 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public Feature toFeature() {
 		Geometry geometry;
 		Preconditions.checkNotNull(trace, "Trace is null");
+		Geometry traceGeom = new LineString(trace);
+		if (upperDepth != 0d && dip != 90d) {
+			// we need to serialize any zeroes
+			traceGeom.setSerializeZeroDepths(true);
+		}
 		if (zonePolygon != null) {
 			// both
 			List<Geometry> geometries = new ArrayList<>();
-			geometries.add(new LineString(trace));
+			geometries.add(traceGeom);
 			geometries.add(new Polygon(zonePolygon));
 			geometry = new GeometryCollection(geometries);
 		} else {
-			geometry = new LineString(trace);
+			geometry = traceGeom;
 		}
 		return new Feature(id, geometry, properties);
 	}
@@ -286,11 +329,12 @@ public final class GeoJSONFaultSection implements FaultSection {
 	
 	@Override
 	public long getDateOfLastEvent() {
-		return properties.getLong(DATE_LAST, Long.MIN_VALUE);
+		return dateOfLastEventMillis;
 	}
 
 	@Override
 	public void setDateOfLastEvent(long dateOfLastEventMillis) {
+		this.dateOfLastEventMillis = dateOfLastEventMillis;
 		properties.setConditional(DATE_LAST, dateOfLastEventMillis, dateOfLastEventMillis > Long.MIN_VALUE);
 	}
 	
@@ -336,11 +380,12 @@ public final class GeoJSONFaultSection implements FaultSection {
 
 	@Override
 	public double getOrigAveSlipRate() {
-		return properties.getDouble(SLIP_RATE, Double.NaN);
+		return aveLongTermSlipRate;
 	}
 
 	@Override
 	public void setAveSlipRate(double aveLongTermSlipRate) {
+		this.aveLongTermSlipRate = aveLongTermSlipRate;
 		properties.setConditional(SLIP_RATE, aveLongTermSlipRate, Double.isFinite(aveLongTermSlipRate));
 	}
 
@@ -371,6 +416,15 @@ public final class GeoJSONFaultSection implements FaultSection {
 		return dipDirection;
 	}
 
+	public void setDipDirection(float dipDirection) {
+		while (dipDirection > 360f)
+			dipDirection -= 360f;
+		while (dipDirection < 0)
+			dipDirection += 360f;
+		this.dipDirection = dipDirection;
+		properties.set(DIP_DIR, dipDirection);
+	}
+
 	@Override
 	public FaultTrace getFaultTrace() {
 		return trace;
@@ -385,6 +439,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public void setSectionId(int sectID) {
 		this.id = sectID;
 		properties.set(FAULT_ID, id);
+		updateHashCode();
 	}
 
 	@Override
@@ -395,27 +450,30 @@ public final class GeoJSONFaultSection implements FaultSection {
 
 	@Override
 	public int getParentSectionId() {
-		return properties.getInt(PARENT_ID, -1);
+		return parentSectionId;
 	}
 
 	@Override
 	public void setParentSectionId(int parentSectionId) {
+		this.parentSectionId = parentSectionId;
 		properties.setConditional(PARENT_ID, parentSectionId, parentSectionId >= 0);
+		updateHashCode();
 	}
 	
 
 	@Override
 	public String getParentSectionName() {
-		return properties.get(PARENT_NAME, null);
+		return parentSectionName;
 	}
 
 	@Override
 	public void setParentSectionName(String parentSectionName) {
+		this.parentSectionName = parentSectionName;
 		properties.set(PARENT_NAME, parentSectionName);
 	}
 
 	@Override
-	public List<? extends FaultSection> getSubSectionsList(double maxSubSectionLen, int startId, int minSubSections) {
+	public List<GeoJSONFaultSection> getSubSectionsList(double maxSubSectionLen, int startId, int minSubSections) {
 		ArrayList<FaultTrace> equalLengthSubsTrace =
 				FaultUtils.getEqualLengthSubsectionTraces(this.trace, maxSubSectionLen, minSubSections);
 		ArrayList<GeoJSONFaultSection> subSectionList = new ArrayList<GeoJSONFaultSection>();
@@ -428,11 +486,13 @@ public final class GeoJSONFaultSection implements FaultSection {
 			subSection.properties.remove("FaultID");
 			subSection.properties.remove("FaultName");
 			
-			subSection.id = myID;
-			subSection.name = myName;
+			subSection.setSectionName(myName);
+			subSection.setSectionId(myID);
 			subSection.trace = equalLengthSubsTrace.get(i);
 			subSection.setParentSectionId(this.id);
 			subSection.setParentSectionName(this.name);
+			// make sure dip direction is set from parent
+			subSection.setDipDirection(dipDirection);
 			subSectionList.add(subSection);
 		}
 		return subSectionList;
@@ -441,11 +501,12 @@ public final class GeoJSONFaultSection implements FaultSection {
 
 	@Override
 	public double getOrigSlipRateStdDev() {
-		return properties.getDouble(SLIP_STD_DEV, Double.NaN);
+		return slipRateStdDev;
 	}
 
 	@Override
 	public void setSlipRateStdDev(double slipRateStdDev) {
+		this.slipRateStdDev = slipRateStdDev;
 		properties.setConditional(SLIP_STD_DEV, slipRateStdDev, Double.isFinite(slipRateStdDev));
 	}
 
@@ -508,7 +569,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 	}
 
 	@Override
-	public FaultSection clone() {
+	public GeoJSONFaultSection clone() {
 		return new GeoJSONFaultSection(this);
 	}
 
@@ -532,10 +593,14 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public static GeoJSONFaultSection fromXMLMetadata(Element el) {
 		return new GeoJSONFaultSection(FaultSectionPrefData.fromXMLMetadata(el));
 	}
+	
+	private void updateHashCode() {
+		this.hashCode = FaultSection.hashCode(this);
+	}
 
 	@Override
 	public int hashCode() {
-		return FaultSection.hashCode(this);
+		return hashCode;
 	}
 
 	@Override

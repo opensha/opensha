@@ -277,6 +277,8 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 
 	public Region getZonePolygon();
 	
+	public void setZonePolygon(Region zonePolygon);
+	
 	public Element toXMLMetadata(Element root, String name);
 	
 	/**

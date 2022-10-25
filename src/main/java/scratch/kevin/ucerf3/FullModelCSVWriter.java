@@ -16,15 +16,15 @@ import org.opensha.commons.data.CSVFile;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.MatrixIO;
 
-public class FullModelCSVWriter {
+class FullModelCSVWriter {
 
 	public static void main(String[] args) throws ZipException, IOException {
 		
-		CompoundFaultSystemSolution cfss = CompoundFaultSystemSolution.fromZipFile(new File(
+		U3CompoundFaultSystemSolution cfss = U3CompoundFaultSystemSolution.fromZipFile(new File(
 				"/home/kevin/workspace/opensha-ucerf3/src/scratch/UCERF3/data/scratch/"
 				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_WITH_IND_RUNS.zip"));
 		
@@ -50,7 +50,7 @@ public class FullModelCSVWriter {
 		out.setLevel(Deflater.DEFAULT_COMPRESSION);
 		
 		double totWeight = 0d;
-		for (LogicTreeBranch branch : cfss.getBranches())
+		for (U3LogicTreeBranch branch : cfss.getBranches())
 			totWeight += branch.getAprioriBranchWt();
 		System.out.println("Total weight: "+totWeight);
 		
@@ -59,12 +59,12 @@ public class FullModelCSVWriter {
 		weightHeader.add("Index");
 		weightHeader.add("Weight");
 		weightHeader.add("Prefix");
-		LogicTreeBranch branch0 = cfss.getBranches().iterator().next();
+		U3LogicTreeBranch branch0 = cfss.getBranches().iterator().next();
 		for (int i=0; i<branch0.size(); i++)
 			weightHeader.add(branch0.getValue(i).getBranchLevelName());
 		weightCSV.addLine(weightHeader);
 		
-		for (LogicTreeBranch branch : cfss.getBranches()) {
+		for (U3LogicTreeBranch branch : cfss.getBranches()) {
 			CSVFile<String> csv = new CSVFile<>(true);
 			csv.addLine(header);
 			

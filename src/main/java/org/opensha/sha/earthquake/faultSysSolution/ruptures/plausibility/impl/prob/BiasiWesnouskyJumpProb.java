@@ -1,12 +1,27 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jfree.data.Range;
+import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.gui.plot.HeadlessGraphPanel;
+import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
+import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.gui.plot.PlotUtils;
+import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.util.cpt.CPT;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots.RakeType;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.DistDependentJumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetDiagnosticsPageGen.RakeType;
 import org.opensha.sha.faultSurface.FaultSection;
 
 /**
@@ -24,11 +39,82 @@ public class BiasiWesnouskyJumpProb {
 				new BiasiWesnousky2017MechChangeProb()
 		};
 	}
+	
+	private static class HardcodedMechDistIndepJumpProb implements DistDependentJumpProbabilityCalc {
+		
+		private double minJumpDist;
+		private RakeType type;
 
-	public static class BiasiWesnousky2016CombJumpDistProb extends JumpProbabilityCalc {
+		public HardcodedMechDistIndepJumpProb(double minJumpDist, RakeType type) {
+			this.minJumpDist = minJumpDist;
+			this.type = type;
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+
+		@Override
+		public String getName() {
+			return "BW16 DistIndep"+type.name;
+		}
+
+		@Override
+		public double calcJumpProbability(double distance) {
+			if (distance < minJumpDist)
+				return 1d;
+			return BiasiWesnouskyDistIndepJumpProb.getDistanceIndepentProb(type);
+		}
+		
+	}
+	
+	public static class BiasiWesnouskyDistIndepJumpProb implements JumpProbabilityCalc {
+		
+		private double minJumpDist;
+
+		public BiasiWesnouskyDistIndepJumpProb(double minJumpDist) {
+			this.minJumpDist = minJumpDist;
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+
+		@Override
+		public String getName() {
+			return "BW16 DistIndep";
+		}
+
+		@Override
+		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
+			if (jump.distance < minJumpDist)
+				return 1d;
+			RakeType type1 = RakeType.getType(jump.fromSection.getAveRake());
+			RakeType type2 = RakeType.getType(jump.toSection.getAveRake());
+			// average probabilities from each mechanism
+			// TODO is this right? should we take the minimum or maximum? check with Biasi 
+			return 0.5*(getDistanceIndepentProb(type1)+getDistanceIndepentProb(type2));
+		}
+
+		public static double getDistanceIndepentProb(RakeType type) {
+			// Table 4 of Biasi & Wesnousky (2016)
+			if (type == RakeType.REVERSE)
+				return 0.62;
+			if (type == RakeType.NORMAL)
+				return 0.37;
+			// generic dip slip or SS
+			return 0.46;
+		}
+		
+	}
+
+	public static class BiasiWesnousky2016CombJumpDistProb implements JumpProbabilityCalc {
 
 		private double minJumpDist;
 		private BiasiWesnousky2016SSJumpProb ssJumpProb;
+		private BiasiWesnouskyDistIndepJumpProb indepJumpProb;
 
 		public BiasiWesnousky2016CombJumpDistProb() {
 			this(1d);
@@ -37,21 +123,7 @@ public class BiasiWesnouskyJumpProb {
 		public BiasiWesnousky2016CombJumpDistProb(double minJumpDist) {
 			this.minJumpDist = minJumpDist;
 			ssJumpProb = new BiasiWesnousky2016SSJumpProb(minJumpDist);
-		}
-
-		private boolean isStrikeSlip(FaultSection sect) {
-			return RakeType.LEFT_LATERAL.isMatch(sect.getAveRake())
-					|| RakeType.RIGHT_LATERAL.isMatch(sect.getAveRake());
-		}
-
-		public double getDistanceIndepentProb(RakeType type) {
-			// Table 4 of Biasi & Wesnousky (2016)
-			if (type == RakeType.REVERSE)
-				return 0.62;
-			if (type == RakeType.NORMAL)
-				return 0.37;
-			// generic dip slip or SS
-			return 0.46;
+			indepJumpProb = new BiasiWesnouskyDistIndepJumpProb(minJumpDist);
 		}
 
 		@Override
@@ -63,9 +135,7 @@ public class BiasiWesnouskyJumpProb {
 			if (type1 == type2 && (type1 == RakeType.LEFT_LATERAL || type1 == RakeType.RIGHT_LATERAL))
 				// only use distance-dependent model if both are SS
 				return ssJumpProb.calcJumpProbability(fullRupture, jump, verbose);
-			// average probabilities from each mechanism
-			// TODO is this right? should we take the minimum or maximum? check with Biasi 
-			return 0.5*(getDistanceIndepentProb(type1)+getDistanceIndepentProb(type2));
+			return indepJumpProb.calcJumpProbability(fullRupture, jump, verbose);
 		}
 
 		@Override
@@ -87,7 +157,7 @@ public class BiasiWesnouskyJumpProb {
 		return -prob/(prob-1d);
 	}
 
-	public static class BiasiWesnousky2016SSJumpProb extends JumpProbabilityCalc {
+	public static class BiasiWesnousky2016SSJumpProb implements DistDependentJumpProbabilityCalc{
 
 		private double minJumpDist;
 
@@ -110,10 +180,10 @@ public class BiasiWesnouskyJumpProb {
 		}
 
 		@Override
-		public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
-			if (jump.distance < minJumpDist)
+		public double calcJumpProbability(double distance) {
+			if (distance < minJumpDist)
 				return 1d;
-			return calcPassingProb(jump.distance);
+			return calcPassingProb(distance);
 		}
 
 		@Override
@@ -139,7 +209,7 @@ public class BiasiWesnouskyJumpProb {
 		bw2017_ss_passRatio.set(45d,	0.08d);
 	}
 
-	public static class BiasiWesnousky2017JumpAzChangeProb extends JumpProbabilityCalc {
+	public static class BiasiWesnousky2017JumpAzChangeProb implements JumpProbabilityCalc {
 
 		private SectionDistanceAzimuthCalculator distAzCalc;
 
@@ -198,7 +268,7 @@ public class BiasiWesnouskyJumpProb {
 
 	}
 
-	public static class BiasiWesnousky2017_SSJumpAzChangeProb extends JumpProbabilityCalc {
+	public static class BiasiWesnousky2017_SSJumpAzChangeProb implements JumpProbabilityCalc {
 
 		private SectionDistanceAzimuthCalculator distAzCalc;
 
@@ -251,7 +321,7 @@ public class BiasiWesnouskyJumpProb {
 
 	public static final double bw2017_mech_change_prob = 4d/75d;
 
-	public static class BiasiWesnousky2017MechChangeProb extends JumpProbabilityCalc {
+	public static class BiasiWesnousky2017MechChangeProb implements JumpProbabilityCalc {
 
 		public BiasiWesnousky2017MechChangeProb() {
 		}
@@ -280,6 +350,58 @@ public class BiasiWesnouskyJumpProb {
 
 		public boolean isDirectional(boolean splayed) {
 			return false;
+		}
+		
+		public static void main(String[] args) throws IOException {
+			List<DiscretizedFunc> funcs = new ArrayList<>();
+			List<PlotCurveCharacterstics> chars = new ArrayList<>();
+			
+			EvenlyDiscretizedFunc distFunc = new EvenlyDiscretizedFunc(0d, 15d, 100);
+			
+			List<DistDependentJumpProbabilityCalc> jumpProbs = new ArrayList<>();
+			jumpProbs.add(new HardcodedMechDistIndepJumpProb(1d, RakeType.REVERSE));
+			jumpProbs.add(new HardcodedMechDistIndepJumpProb(1d, RakeType.NORMAL));
+			jumpProbs.add(new HardcodedMechDistIndepJumpProb(1d, RakeType.RIGHT_LATERAL));
+			jumpProbs.add(new BiasiWesnousky2016SSJumpProb());
+			jumpProbs.add(new Shaw07JumpDistProb(1d, 1d));
+			jumpProbs.add(new Shaw07JumpDistProb(1d, 2d));
+			jumpProbs.add(new Shaw07JumpDistProb(1d, 3d));
+			jumpProbs.add(new Shaw07JumpDistProb(1d, 4d));
+			
+			CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, jumpProbs.size()-1);
+			
+			for (int i=0; i<jumpProbs.size(); i++) {
+				DistDependentJumpProbabilityCalc calc = jumpProbs.get(i);
+				EvenlyDiscretizedFunc func = new EvenlyDiscretizedFunc(distFunc.getMinX(), distFunc.getMaxX(), distFunc.size());
+				func.setName(calc.getName());
+				
+				for (int j=0; j<func.size(); j++)
+					func.set(j, calc.calcJumpProbability(func.getX(j)));
+				
+				funcs.add(func);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, cpt.getColor((float)i)));
+			}
+			
+			PlotSpec spec = new PlotSpec(funcs, chars, "Jump Distance Models", "Jump Distance (km)", "Jump Probability");
+			spec.setLegendInset(true);
+			
+			Range xRange = new Range(distFunc.getMinX(), distFunc.getMaxX());
+			Range yRange = new Range(0d, 1d);
+			
+			HeadlessGraphPanel gp = PlotUtils.initHeadless();
+			
+			gp.drawGraphPanel(spec, false, false, xRange, yRange);
+			
+			File outputDir = new File("/tmp");
+			String prefix = "jump_dist_models";
+			
+			PlotUtils.writePlots(outputDir, prefix, gp, 1000, 850, true, true, false);
+			
+			yRange = new Range(1e-4, 1);
+			
+			gp.drawGraphPanel(spec, false, true, xRange, yRange);
+			
+			PlotUtils.writePlots(outputDir, prefix+"_log", gp, 1000, 850, true, true, false);
 		}
 
 	}

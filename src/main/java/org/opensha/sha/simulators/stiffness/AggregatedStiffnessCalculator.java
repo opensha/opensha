@@ -18,6 +18,7 @@ import java.util.zip.ZipException;
 import org.apache.commons.math3.stat.StatUtils;
 import org.dom4j.DocumentException;
 import org.opensha.commons.util.DataUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
@@ -28,8 +29,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 /**
  * Stiffness (Coulomb) calculations are done between pairs of individual patches. Most faults are not
@@ -1198,7 +1198,7 @@ public class AggregatedStiffnessCalculator {
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
 		File fssFile = new File("/home/kevin/Simulators/catalogs/rundir4983_stitched/fss/"
 				+ "rsqsim_sol_m6.5_skip5000_sectArea0.2.zip");
-		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(fssFile);
+		FaultSystemRupSet rupSet = U3FaultSystemIO.loadRupSet(fssFile);
 		double lambda = 30000;
 		double mu = 30000;
 		double coeffOfFriction = 0.5;

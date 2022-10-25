@@ -4,7 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-
+@Deprecated
 public class USC_HPCC_ScriptWriter extends BatchScriptWriter {
 	
 //	public static final File MPJ_HOME = new File("/home/rcf-12/kmilner/mpj-v0_38");

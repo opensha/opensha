@@ -1,21 +1,3 @@
-/*******************************************************************************
- * Copyright 2009 OpenSHA.org in partnership with the Southern California
- * Earthquake Center (SCEC, http://www.scec.org) at the University of Southern
- * California and the UnitedStates Geological Survey (USGS; http://www.usgs.gov)
- * 
- * Licensed under the Apache License, Version 2.0 (the "License"); you may not
- * use this file except in compliance with the License. You may obtain a copy of
- * the License at
- * 
- * http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
- ******************************************************************************/
-
 package org.opensha.commons.geo;
 
 import static org.opensha.commons.geo.GeoTools.PI_BY_2;
@@ -39,7 +21,12 @@ import org.dom4j.Attribute;
 import org.dom4j.Element;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.FeatureProperties;
+import org.opensha.commons.geo.json.Geometry;
+import org.opensha.commons.geo.json.Geometry.GeometryCollection;
+import org.opensha.commons.geo.json.Geometry.MultiPoint;
 import org.opensha.commons.geo.json.Geometry.MultiPolygon;
+import org.opensha.commons.geo.json.Geometry.Point;
 import org.opensha.commons.geo.json.Geometry.Polygon;
 import org.opensha.commons.metadata.XMLSaveable;
 
@@ -424,36 +411,48 @@ public class Region implements Serializable, XMLSaveable, Named {
 		return area;
 	}
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws IOException {
 		// Region r = new CaliforniaRegions.RELM_TESTING();
 //		Region r = new Region(new Location(20, 20), new Location(21, 21));
 //		System.out.println(r.getExtent());
 		
-		LocationList border = new LocationList();
-		border.add(new Location(34, -118));
-		border.add(new Location(34.5, -118.5));
-		border.add(new Location(35, -118));
-		border.add(new Location(34.5, -117.5));
-		border.add(new Location(34, -118));
-		Region reg = new Region(border, BorderType.MERCATOR_LINEAR);
+//		LocationList border = new LocationList();
+//		border.add(new Location(34, -118));
+//		border.add(new Location(34.5, -118.5));
+//		border.add(new Location(35, -118));
+//		border.add(new Location(34.5, -117.5));
+//		border.add(new Location(34, -118));
+//		Region reg = new Region(border, BorderType.MERCATOR_LINEAR);
+//		
+//		border = border.clone();
+//		border.reverse();
+//		Region reg2 = new Region(border, BorderType.MERCATOR_LINEAR);
+//		
+//		System.out.println(reg.getBorder().get(1));
+//		System.out.println(reg2.getBorder().get(1));
+//		System.out.println();
+//		System.out.println(reg.getExtent());
+//		System.out.println(reg2.getExtent());
+//		System.out.println();
+//		System.out.println(reg.equalsRegion(reg2));
+//		System.out.println();
+//		System.out.println(reg.area.isSingular());
+//		System.out.println(reg2.area.isSingular());
+//		System.out.println();
+//		System.out.println(reg.area.isEmpty());
+//		System.out.println(reg2.area.isEmpty());
 		
-		border = border.clone();
-		border.reverse();
-		Region reg2 = new Region(border, BorderType.MERCATOR_LINEAR);
+		Region region = new Region(new Location(34, -118), new Location(36, -120));
+		region.setName("Simple region");
+		System.out.println(region.toFeature().toJSON());
 		
-		System.out.println(reg.getBorder().get(1));
-		System.out.println(reg2.getBorder().get(1));
-		System.out.println();
-		System.out.println(reg.getExtent());
-		System.out.println(reg2.getExtent());
-		System.out.println();
-		System.out.println(reg.equalsRegion(reg2));
-		System.out.println();
-		System.out.println(reg.area.isSingular());
-		System.out.println(reg2.area.isSingular());
-		System.out.println();
-		System.out.println(reg.area.isEmpty());
-		System.out.println(reg2.area.isEmpty());
+//		region.addInterior(new Region(new Location(34.5, -118.5), new Location(35.5, -119.5)));
+//		region.setName("Regin with a hole");
+//		System.out.println(region.toFeature().toJSON());
+		
+		GriddedRegion gridReg = new GriddedRegion(region, 0.5, null);
+		gridReg.setName("Example gridded region");
+		System.out.println(gridReg.toFeature().toJSON());
 	}
 
 	/*
@@ -606,6 +605,8 @@ public class Region implements Serializable, XMLSaveable, Named {
 		String name = this.name;
 		if (name == null) name = "";
 		xml.addAttribute("name", name);
+		if (type != null)
+			xml.addAttribute("borderType", type.name());
 		return root;
 	}
 
@@ -617,7 +618,11 @@ public class Region implements Serializable, XMLSaveable, Named {
 	public static Region fromXMLMetadata(Element e) {
 		LocationList list = LocationList.fromXMLMetadata(e
 			.element(LocationList.XML_METADATA_NAME));
-		Region region = new Region(list, BorderType.MERCATOR_LINEAR);
+		BorderType type = BorderType.MERCATOR_LINEAR;
+		Attribute typeAtt = e.attribute("borderType");
+		if (typeAtt != null)
+			type = BorderType.valueOf(typeAtt.getValue());
+		Region region = new Region(list, type);
 		Attribute nameAtt = e.attribute("name");
 		if (nameAtt != null) {
 			String name = nameAtt.getValue();
@@ -665,8 +670,22 @@ public class Region implements Serializable, XMLSaveable, Named {
 		return newRegion;
 	}
 	
+	/**
+	 * @param other
+	 * @return true if this region intersects the given region.
+	 */
+	public boolean intersects(Region other) {
+		validateRegion(this);
+		validateRegion(other);
+		Area newArea = (Area) area.clone();
+		newArea.intersect(other.area);
+		return !newArea.isEmpty();
+	}
+	
 	// subtraction is tricky, this flag enables easier debugging
 	private static final boolean SUBTRACT_DEBUG = false;
+
+	private BorderType type;
 
 	/**
 	 * Returns the first {@code Region} subtracted by the second, or null if no they don't intersect.
@@ -785,6 +804,8 @@ public class Region implements Serializable, XMLSaveable, Named {
 		return ratio > 1e-3 && holeExtent > 1e-0;
 	}
 	
+	private static final int max_split_recusrsion = 20;
+	
 	/**
 	 * Recursively splits an area into solids and holes
 	 * @param multiArea area which need not be singular
@@ -792,7 +813,13 @@ public class Region implements Serializable, XMLSaveable, Named {
 	 * @param holes list of holes to be populated
 	 */
 	private static void splitArea(Area multiArea, List<Area> solids, List<Area> holes) {
-		if (SUBTRACT_DEBUG) System.out.println("Splitting an area");
+		splitArea(multiArea, solids, holes, 0);
+	}
+	private static void splitArea(Area multiArea, List<Area> solids, List<Area> holes, int curRecursion) {
+		if (curRecursion == max_split_recusrsion)
+			throw new IllegalStateException("Failed to recursively split area into non-singular "
+					+ "solids and holes after "+curRecursion+" iterations");
+		if (SUBTRACT_DEBUG) System.out.println("Splitting an area, curRecursion="+curRecursion);
 		if (SUBTRACT_DEBUG) System.out.println("Splitting!");
 		PathIterator iter = multiArea.getPathIterator(null);
 		if (SUBTRACT_DEBUG) System.out.println("Winding rule: "+iter.getWindingRule());
@@ -828,7 +855,7 @@ public class Region implements Serializable, XMLSaveable, Named {
 						// not quite sure why the Area constructor sometimes addes new little patches, but it does
 						// this fixes it
 						if (SUBTRACT_DEBUG) System.out.println("Re-splitting a split area...");
-						splitArea(area, solids, holes);
+						splitArea(area, solids, holes, curRecursion+1);
 					} else {
 						if (hole)
 							holes.add(area);
@@ -893,6 +920,23 @@ public class Region implements Serializable, XMLSaveable, Named {
 	 */
 	private static Area createArea(LocationList border) {
 		Area area = new Area(border.toPath());
+		
+		if (!area.isSingular()) {
+			List<Area> solids = new ArrayList<>();
+			List<Area> holes = new ArrayList<>();
+			splitArea(area, solids, holes);
+//			System.out.println("Trying to rescue nonsingular area. Found "+solids.size()+" solids and "+holes.size()+" holes");
+			boolean hasRealHole = false;
+			for (Area hole : holes)
+				hasRealHole = hasRealHole || !hole.isEmpty();
+			if (!hasRealHole) {
+				// we might be able to rescue this
+				if (solids.size() == 1) {
+//					System.out.println("rescued!");
+					area = solids.get(0);
+				}
+			}
+		}
 		// final checks on area generated, this is redundant for some
 		// constructors that perform other checks on inputs
 		checkArgument(!area.isEmpty(), "Internally computed Area is empty");
@@ -907,7 +951,7 @@ public class Region implements Serializable, XMLSaveable, Named {
 	 * java.awt.geom.Area is generated from the border.
 	 */
 	private void initBorderedRegion(LocationList border, BorderType type) {
-
+		this.type = type;
 		// first remove last point in list if it is the same as
 		// the first point
 		int lastIndex = border.size() - 1;
@@ -1088,24 +1132,46 @@ public class Region implements Serializable, XMLSaveable, Named {
 		String name = getName();
 		if (name != null && name.equals(NAME_DEFAULT))
 			name = null;
-		return new Feature(name, new Polygon(this), null);
+		return new Feature(name, new Polygon(this), new FeatureProperties());
 	}
 	
 	/**
-	 * Converts GeoJSON feature object back to a region.
+	 * Converts GeoJSON feature object back to a region. If the given feature has Point or MultiPoint data in a
+	 * GeometryCollection, it will attempt to load it in as a {@link GriddedRegion}.
 	 * 
 	 * @return
 	 */
 	public static Region fromFeature(Feature feature) {
 		Preconditions.checkNotNull(feature.geometry, "Feature is missing geometry");
-		Preconditions.checkState(feature.geometry instanceof Polygon || feature.geometry instanceof MultiPolygon,
-				"Unexpected geometry type for Region: %s", feature.geometry.type);
-		if (feature.geometry instanceof MultiPolygon) {
-			List<Region> list = ((MultiPolygon)feature.geometry).asRegions();
+		Geometry geometry = feature.geometry;
+		if (feature.geometry instanceof GeometryCollection) {
+			for (Geometry oGeom : ((GeometryCollection)feature.geometry).geometries) {
+				if (oGeom instanceof Polygon || oGeom instanceof MultiPolygon) {
+					Preconditions.checkState(geometry == null,
+							"Multiple polygons found for region, a region must be supplied as either a single "
+							+ "Polygon or a single Polgon within a MultiPolygon geometry");
+					geometry = oGeom;
+				} else if (oGeom instanceof Point || oGeom instanceof MultiPoint) {
+					// it might be a gridded region, try that
+					try {
+						return GriddedRegion.fromFeature(feature);
+					} catch (Exception e) {
+						System.err.println("WARNING: Region feature contains geometry of type "+oGeom.type
+								+", tried and failed load it as a GriddedRegion: "+e.getMessage());
+					}
+				}
+			}
+			Preconditions.checkState(!(geometry instanceof GeometryCollection),
+					"GeometryCollection specified, but no Polygon or MultiPolygon geometries found within.");
+		}
+		Preconditions.checkState(geometry instanceof Polygon || geometry instanceof MultiPolygon,
+				"Unexpected geometry type for Region: %s", geometry.type);
+		if (geometry instanceof MultiPolygon) {
+			List<Region> list = ((MultiPolygon)geometry).asRegions();
 			Preconditions.checkState(list.size() == 1, "Must have exactly 1 polygon, have %s", list.size());
 			return list.get(0);
 		}
-		Region region = ((Polygon)feature.geometry).asRegion();
+		Region region = ((Polygon)geometry).asRegion();
 		if (feature.id != null)
 			region.setName(feature.id.toString());
 		return region;
@@ -1130,6 +1196,8 @@ public class Region implements Serializable, XMLSaveable, Named {
 		@Override
 		public Region read(JsonReader in) throws IOException {
 			Feature feature = featureAdapter.read(in);
+			if (feature == null)
+				return null;
 			return fromFeature(feature);
 		}
 		

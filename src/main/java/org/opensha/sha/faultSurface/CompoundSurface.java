@@ -494,7 +494,7 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 	/**
 	 * Should we remove adjacent points that are very close to each other
 	 */
-	public FaultTrace getUpperEdge() {
+	public synchronized FaultTrace getUpperEdge() {
 		if(upperEdge == null) {
 			upperEdge = new FaultTrace(null);
 			if(reverseOrderOfSurfaces) {

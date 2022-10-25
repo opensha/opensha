@@ -5,9 +5,9 @@ import java.io.IOException;
 
 import org.opensha.commons.util.ClassUtils;
 
-import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemSolution;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemSolution;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
 import com.google.common.base.Preconditions;
 
@@ -28,23 +28,23 @@ public class CompoundSolBranchExtractor {
 		File compoundFile = new File(args[0]);
 		Preconditions.checkState(compoundFile.exists(),
 				"Compound fault system solution file does not exist: "+compoundFile.getAbsolutePath());
-		CompoundFaultSystemSolution cfss;
+		U3CompoundFaultSystemSolution cfss;
 		try {
-			cfss = CompoundFaultSystemSolution.fromZipFile(compoundFile);
+			cfss = U3CompoundFaultSystemSolution.fromZipFile(compoundFile);
 		} catch (Exception e) {
 			throw new IllegalStateException("Could not parse compound fault system solution file, ensure correct file type", e);
 		}
 		
 		// parse branch
-		LogicTreeBranch branch;
+		U3LogicTreeBranch branch;
 		try {
-			branch = LogicTreeBranch.fromFileName(args[1]);
+			branch = U3LogicTreeBranch.fromFileName(args[1]);
 		} catch (Exception e) {
 			throw new IllegalStateException("Could not parse Logic Tree Branch from: "+args[1], e);
 		}
 		Preconditions.checkState(branch.isFullySpecified(), "Branch is not fully specified:\n\tInput: "+args[1]+"\n\tParsed: "+branch);
 		
-		FaultSystemSolution sol;
+		U3FaultSystemSolution sol;
 		try {
 			sol = cfss.getSolution(branch);
 		} catch (Exception e) {
@@ -57,7 +57,7 @@ public class CompoundSolBranchExtractor {
 		
 		System.out.println("Writing branch solution to: "+outputFile.getAbsolutePath());
 		try {
-			FaultSystemIO.writeSol(sol, outputFile);
+			U3FaultSystemIO.writeSol(sol, outputFile);
 		} catch (IOException e) {
 			throw new IllegalStateException("Error writing solution file.", e);
 		}

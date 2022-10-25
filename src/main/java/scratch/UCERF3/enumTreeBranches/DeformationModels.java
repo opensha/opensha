@@ -8,20 +8,29 @@ import java.util.Collections;
 import java.util.List;
 
 import org.dom4j.Document;
+import org.opensha.commons.logicTree.Affects;
+import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.XMLUtils;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.utils.DeformationModelFetcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
-public enum DeformationModels implements LogicTreeBranchNode<DeformationModels> {
+@Affects(FaultSystemRupSet.SECTS_FILE_NAME)
+@DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
+@Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
+@Affects(FaultSystemSolution.RATES_FILE_NAME)
+public enum DeformationModels implements U3LogicTreeBranchNode<DeformationModels>, RupSetDeformationModel {
 	
 	//						Name					ShortName	Weight	FaultModel			File
 	// UCERF2
@@ -103,7 +112,7 @@ public enum DeformationModels implements LogicTreeBranchNode<DeformationModels> 
 		return name;
 	}
 	
-	public boolean isApplicableTo(FaultModels faultModel) {
+	public boolean isApplicableTo(RupSetFaultModel faultModel) {
 		return faultModels.contains(faultModel);
 	}
 	
@@ -149,6 +158,11 @@ public enum DeformationModels implements LogicTreeBranchNode<DeformationModels> 
 		return "Deformation Model";
 	}
 	
+	@Override
+	public String getShortBranchLevelName() {
+		return "DM";
+	}
+	
 	private static File getCacheDir() {
 		File scratchDir = UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR;
 		if (scratchDir.exists()) {
@@ -189,7 +203,7 @@ public enum DeformationModels implements LogicTreeBranchNode<DeformationModels> 
 				fm, dm, UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, 0.1).getSubSectionList();
 		// write to XML
 		Document doc = XMLUtils.createDocumentWithRoot();
-		FaultSystemIO.fsDataToXML(doc.getRootElement(), FaultModels.XML_ELEMENT_NAME, fm, null, sects);
+		U3FaultSystemIO.fsDataToXML(doc.getRootElement(), FaultModels.XML_ELEMENT_NAME, fm, null, sects);
 		try {
 			XMLUtils.writeDocumentToFile(xmlFile, doc);
 		} catch (IOException e) {
@@ -197,5 +211,11 @@ public enum DeformationModels implements LogicTreeBranchNode<DeformationModels> 
 			e.printStackTrace();
 		}
 		return sects;
+	}
+
+	@Override
+	public List<? extends FaultSection> build(RupSetFaultModel faultModel) {
+		Preconditions.checkState(faultModel instanceof FaultModels, "Given fault model is not a UCERF3 fault model");
+		return new DeformationModelFetcher((FaultModels)faultModel, this, null, 0.1).getSubSectionList();
 	}
 }

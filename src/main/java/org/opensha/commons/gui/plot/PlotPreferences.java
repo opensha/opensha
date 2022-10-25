@@ -121,5 +121,25 @@ public class PlotPreferences {
 	public void setInsetLegendBorder(Color insetLegendBorder) {
 		this.insetLegendBorder = insetLegendBorder;
 	}
+	
+	public void scaleFontSizes(double scalar) {
+		axisLabelFontSize = (int)(axisLabelFontSize*scalar + 0.5);
+		tickLabelFontSize = (int)(tickLabelFontSize*scalar + 0.5);
+		plotLabelFontSize = (int)(plotLabelFontSize*scalar + 0.5);
+		legendFontSize = (int)(legendFontSize*scalar + 0.5);
+	}
+	
+	public PlotPreferences clone() {
+		PlotPreferences ret = new PlotPreferences();
+		ret.axisLabelFontSize = axisLabelFontSize;
+		ret.tickLabelFontSize = tickLabelFontSize;
+		ret.plotLabelFontSize = plotLabelFontSize;
+		ret.legendFontSize = legendFontSize;
+		ret.backgroundColor = backgroundColor;
+		ret.insetLegendBackground = insetLegendBackground;
+		ret.insetLegendBorder = insetLegendBorder;
+		// don't copy listeners
+		return ret;
+	}
 
 }

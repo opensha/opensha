@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -12,8 +13,7 @@ import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.utils.SectionMFD_constraint;
+import scratch.UCERF3.utils.U3SectionMFD_constraint;
 
 /**
  * MFDs spatially smooth along adjacent subsections on a parent section (Laplacian smoothing).
@@ -26,30 +26,25 @@ import scratch.UCERF3.utils.SectionMFD_constraint;
  */
 public class MFDLaplacianSmoothingInversionConstraint extends InversionConstraint {
 	
-	private FaultSystemRupSet rupSet;
-	private double weight;
-	private double weightForPaleoParents;
-	private HashSet<Integer> paleoParentIDs;
-	private List<SectionMFD_constraint> constraints;
+	public static final String NAME = "MFD Laplacian Smoothing";
+	public static final String SHORT_NAME = "LaplaceSmooth";
+	
+	private transient FaultSystemRupSet rupSet;
+	private HashSet<Integer> parentIDs;
+	private List<U3SectionMFD_constraint> constraints;
 
 	public MFDLaplacianSmoothingInversionConstraint(FaultSystemRupSet rupSet,
-			double weight, double weightForPaleoParents, HashSet<Integer> paleoParentIDs,
-			List<SectionMFD_constraint> constraints) {
+			double weight, List<U3SectionMFD_constraint> constraints) {
+		this(rupSet, weight, null, constraints);
+	}
+
+	public MFDLaplacianSmoothingInversionConstraint(FaultSystemRupSet rupSet,
+			double weight, HashSet<Integer> parentIDs,
+			List<U3SectionMFD_constraint> constraints) {
+		super(NAME, SHORT_NAME, weight, false);
 		this.rupSet = rupSet;
-		this.weight = weight;
-		this.weightForPaleoParents = weightForPaleoParents;
-		this.paleoParentIDs = paleoParentIDs;
+		this.parentIDs = parentIDs;
 		this.constraints = constraints;
-	}
-
-	@Override
-	public String getShortName() {
-		return "LaplaceSmooth";
-	}
-
-	@Override
-	public String getName() {
-		return "MFD Laplacian Smoothing";
 	}
 
 	@Override
@@ -62,6 +57,8 @@ public class MFDLaplacianSmoothingInversionConstraint extends InversionConstrain
 		}
 		int totalNumMFDSmoothnessConstraints = 0;
 		for (int parentID: parentIDs) {
+			if (this.parentIDs != null && !this.parentIDs.contains(parentID))
+				continue;
 			// Get list of subsections for parent 
 			ArrayList<Integer> sectsForParent = new ArrayList<Integer>();
 			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
@@ -72,23 +69,14 @@ public class MFDLaplacianSmoothingInversionConstraint extends InversionConstrain
 			// For each beginning section of subsection-pair, there will be numMagBins # of constraints
 			for (int j=1; j<sectsForParent.size()-2; j++) {
 				int sect2 = sectsForParent.get(j);
-				SectionMFD_constraint sectMFDConstraint = constraints.get(sect2);
+				U3SectionMFD_constraint sectMFDConstraint = constraints.get(sect2);
 				if (sectMFDConstraint == null)
 					continue; // Parent sections with Mmax<6 have no MFD constraint; skip these
 				int numMagBins = sectMFDConstraint.getNumMags();
-				// Only add rows if this parent section will be included; it won't if it's not a paleo parent sect & MFDSmoothnessConstraintWt = 0
-				// CASE WHERE MFDSmoothnessConstraintWt != 0 & MFDSmoothnessConstraintWtForPaleoParents 0 IS NOT SUPPORTED
-				if (weight > 0d || (weightForPaleoParents > 0d && paleoParentIDs.contains(parentID))) {
-					totalNumMFDSmoothnessConstraints+=numMagBins;
-				}
+				totalNumMFDSmoothnessConstraints+=numMagBins;
 			}
 		}
 		return totalNumMFDSmoothnessConstraints;
-	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
 	}
 
 	@Override
@@ -117,12 +105,7 @@ public class MFDLaplacianSmoothingInversionConstraint extends InversionConstrain
 			// Does this parent sect have a paleo constraint?
 			int parentID = rupSet.getFaultSectionDataList().get(sectsForParent.get(0).getSectionId()).getParentSectionId();
 			
-			// weight for this parent section depending whether it has paleo constraint or not
-			double constraintWeight = weight;
-			if (paleoParentIDs != null && paleoParentIDs.contains(parentID))
-				constraintWeight = weightForPaleoParents;
-			
-			if (constraintWeight==0)
+			if (this.parentIDs != null && !this.parentIDs.contains(parentID))
 				continue;
 			
 			// Laplacian smoothing of event rates: r[i+1]-2*r[i]+r[i-1]=0 (minimize curvature of event rates)
@@ -159,7 +142,7 @@ public class MFDLaplacianSmoothingInversionConstraint extends InversionConstrain
 				}
 				
 				// Get section MFD constraint -- we will use the irregular mag binning for the constraint (but not the rates)
-				SectionMFD_constraint sectMFDConstraint = constraints.get(sect2);
+				U3SectionMFD_constraint sectMFDConstraint = constraints.get(sect2);
 				if (sectMFDConstraint == null)
 					continue; // Parent sections with Mmax<6 have no MFD constraint; skip these
 				int numMagBins = sectMFDConstraint.getNumMags();
@@ -188,15 +171,15 @@ public class MFDLaplacianSmoothingInversionConstraint extends InversionConstrain
 					
 					// Loop over ruptures in this subsection-MFD bin
 					for (int rup: sect1RupsForMagBin) { 
-						setA(A, rowIndex, rup, constraintWeight);
+						setA(A, rowIndex, rup, weight);
 						numNonZeroElements++;
 					}
 					for (int rup: sect2RupsForMagBin) {
-						setA(A, rowIndex, rup, -constraintWeight);
+						setA(A, rowIndex, rup, -weight);
 						numNonZeroElements++;
 					}
 					for (int rup: sect3RupsForMagBin) {
-						setA(A, rowIndex, rup, constraintWeight);
+						setA(A, rowIndex, rup, weight);
 						numNonZeroElements++;
 					}
 					d[rowIndex]=0;
@@ -205,6 +188,11 @@ public class MFDLaplacianSmoothingInversionConstraint extends InversionConstrain
 			}
 		}
 		return numNonZeroElements;
+	}
+
+	@Override
+	public void setRuptureSet(FaultSystemRupSet rupSet) {
+		this.rupSet = rupSet;
 	}
 
 }

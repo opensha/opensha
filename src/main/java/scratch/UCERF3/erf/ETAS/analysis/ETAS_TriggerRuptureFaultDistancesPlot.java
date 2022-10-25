@@ -26,6 +26,8 @@ import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -33,7 +35,6 @@ import org.opensha.sha.faultSurface.SimpleFaultData;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
@@ -42,7 +43,7 @@ import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture.SimpleFault;
 import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
-import scratch.UCERF3.inversion.InversionTargetMFDs;
+import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 
 public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 	
@@ -116,7 +117,7 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 				Region poly = polys.get(i);
 				LocationList sectLocs = this.sectLocs.get(i);
 				
-				hypoContains = hypoContains || hypo != null && poly.contains(hypo);
+				hypoContains = hypoContains || poly != null && hypo != null && poly.contains(hypo);
 				for (Location rupLoc : surfLocs) {
 					surfContains = surfContains || poly.contains(rupLoc);
 					double polyDist = poly.distanceToLocation(rupLoc);
@@ -142,7 +143,7 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 						double dist = LocationUtils.linearDistanceFast(hypo, sectLoc);
 						minHypoDistToMax = Math.min(minHypoDistToMax, dist);
 					}
-					double polyDist = poly.distanceToLocation(hypo);
+					double polyDist = poly == null ? Double.POSITIVE_INFINITY : poly.distanceToLocation(hypo);
 					minHypoPolyDistToMax = Math.min(minHypoPolyDistToMax, polyDist);
 				}
 			}
@@ -182,7 +183,7 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 			throws IOException {
 		this.outputDir = outputDir;
 		List<? extends FaultSection> subSects = fss.getRupSet().getFaultSectionDataList();
-		FaultPolyMgr polyMgr = FaultPolyMgr.create(subSects, InversionTargetMFDs.FAULT_BUFFER);
+		PolygonFaultGridAssociations polyMgr = fss.getRupSet().getModule(PolygonFaultGridAssociations.class);
 		System.out.println("Building polygons");
 		
 		Region mapRegion = ETAS_EventMapPlotUtils.getMapRegion(getConfig(), getLauncher());
@@ -233,7 +234,8 @@ public class ETAS_TriggerRuptureFaultDistancesPlot extends ETAS_AbstractPlot {
 			Integer parentID = sect.getParentSectionId();
 			if (!statsMap.containsKey(parentID))
 				statsMap.put(parentID, new FaultDistStats(sect.getParentSectionName()));
-			statsMap.get(parentID).addSubSect(sect, polyMgr.getPoly(sect.getSectionId()));
+			Region poly = polyMgr == null ? null : polyMgr.getPoly(sect.getSectionId());
+			statsMap.get(parentID).addSubSect(sect, poly);
 		}
 		distStats = new ArrayList<>(statsMap.values());
 		

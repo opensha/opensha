@@ -8,8 +8,6 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistance
 import com.google.gson.Gson;
 import com.google.gson.TypeAdapter;
 
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-
 public interface PlausibilityFilter extends ShortNamed {
 	
 	/**

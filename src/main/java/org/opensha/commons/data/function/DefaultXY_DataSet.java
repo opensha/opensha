@@ -12,6 +12,7 @@ import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.dom4j.Element;
 
 import com.google.common.primitives.Doubles;
+import com.google.gson.annotations.JsonAdapter;
 
 /**
  * Container for a data set of (X,Y) values. Internally, value pairs are stored
@@ -21,6 +22,7 @@ import com.google.common.primitives.Doubles;
  * @author Kevin Milner
  * @version $Id: DefaultXY_DataSet.java 11478 2017-02-10 20:39:43Z kmilner $
  */
+@JsonAdapter(XY_DataSet.XYAdapter.class)
 public class DefaultXY_DataSet extends AbstractXY_DataSet {
 	
 	private static final long serialVersionUID = 1L;

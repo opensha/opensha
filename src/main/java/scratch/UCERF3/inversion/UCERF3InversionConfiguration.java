@@ -8,13 +8,15 @@ import org.apache.commons.cli.CommandLine;
 import org.dom4j.Element;
 import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.XMLUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
-import scratch.UCERF3.FaultSystemRupSet;
+import scratch.UCERF3.analysis.FaultSystemRupSetCalc;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.InversionModels;
 import scratch.UCERF3.inversion.CommandLineInversionRunner.InversionOptions;
@@ -38,7 +40,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	
 	private double slipRateConstraintWt_normalized;
 	private double slipRateConstraintWt_unnormalized;
-	private SlipRateConstraintWeightingType slipRateWeighting;
 	private double paleoRateConstraintWt; 
 	private double paleoSlipConstraintWt;
 	private double magnitudeEqualityConstraintWt;
@@ -59,8 +60,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	// often be set equal to initial rup model or a priori rup constraint
 	private double[] minimumRuptureRateBasis;
 	private double MFDTransitionMag;
-	private List<MFD_InversionConstraint> mfdEqualityConstraints;
-	private List<MFD_InversionConstraint> mfdInequalityConstraints;
+	private List<? extends IncrementalMagFreqDist> mfdEqualityConstraints;
+	private List<? extends IncrementalMagFreqDist> mfdInequalityConstraints;
 	private double minimumRuptureRateFraction;
 
 	private double smoothnessWt; // rupture rate smoothness (entropy)
@@ -79,7 +80,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	UCERF3InversionConfiguration(
 			double slipRateConstraintWt_normalized,
 			double slipRateConstraintWt_unnormalized,
-			SlipRateConstraintWeightingType slipRateWeighting,
 			double paleoRateConstraintWt,
 			double paleoSlipConstraintWt,
 			double magnitudeEqualityConstraintWt,
@@ -100,8 +100,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 			double smoothnessWt,
 			double eventRateSmoothnessWt,
 			double MFDTransitionMag,
-			List<MFD_InversionConstraint> mfdEqualityConstraints,
-			List<MFD_InversionConstraint> mfdInequalityConstraints,
+			List<? extends IncrementalMagFreqDist> mfdEqualityConstraints,
+			List<? extends IncrementalMagFreqDist> mfdInequalityConstraints,
 			double minimumRuptureRateFraction,
 			String metadata) {
 		if (metadata == null || metadata.isEmpty())
@@ -112,8 +112,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		metadata += "slipRateConstraintWt_normalized: "+slipRateConstraintWt_normalized;
 		this.slipRateConstraintWt_unnormalized = slipRateConstraintWt_unnormalized;
 		metadata += "\nslipRateConstraintWt_unnormalized: "+slipRateConstraintWt_unnormalized;
-		this.slipRateWeighting = slipRateWeighting;
-		metadata += "\nslipRateWeighting: "+slipRateWeighting.name();
 		this.paleoRateConstraintWt = paleoRateConstraintWt;
 		metadata += "\npaleoRateConstraintWt: "+paleoRateConstraintWt;
 		this.paleoSlipConstraintWt = paleoSlipConstraintWt;
@@ -168,11 +166,12 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	 * @param rupSet
 	 * @return
 	 */
-	public static UCERF3InversionConfiguration forModel(InversionModels model, InversionFaultSystemRupSet rupSet) {
+	public static UCERF3InversionConfiguration forModel(InversionModels model, FaultSystemRupSet rupSet, FaultModels fm, 
+			org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs targetMFDs) {
 		double mfdEqualityConstraintWt = DEFAULT_MFD_EQUALITY_WT;
 		double mfdInequalityConstraintWt = DEFAULT_MFD_INEQUALITY_WT;
 		
-		return forModel(model, rupSet, mfdEqualityConstraintWt, mfdInequalityConstraintWt);
+		return forModel(model, rupSet, fm, targetMFDs, mfdEqualityConstraintWt, mfdInequalityConstraintWt);
 	}
 	
 	/**
@@ -186,9 +185,10 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	 * to slip-rate constraint (recommended:  1000)
 	 * @return
 	 */
-	public static UCERF3InversionConfiguration forModel(InversionModels model, InversionFaultSystemRupSet rupSet,
+	public static UCERF3InversionConfiguration forModel(InversionModels model, FaultSystemRupSet rupSet, FaultModels fm,
+			org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs targetMFDs,
 			double mfdEqualityConstraintWt, double mfdInequalityConstraintWt) {
-		return forModel(model, rupSet, mfdEqualityConstraintWt, mfdInequalityConstraintWt, null);
+		return forModel(model, rupSet, fm, targetMFDs, mfdEqualityConstraintWt, mfdInequalityConstraintWt, null);
 	}
 	
 
@@ -205,19 +205,18 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	 * @param modifiers command line modifier arguments (can be null)
 	 * @return
 	 */
-	public static UCERF3InversionConfiguration forModel(InversionModels model, InversionFaultSystemRupSet rupSet,
-			double mfdEqualityConstraintWt, double mfdInequalityConstraintWt, CommandLine modifiers) {
+	public static UCERF3InversionConfiguration forModel(InversionModels model, FaultSystemRupSet rupSet, FaultModels fm,
+			org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs targetMFDs,
+			double mfdEqualityConstraintWt, double mfdInequalityConstraintWt,
+			CommandLine modifiers) {
 		
 		
 		/* *******************************************
 		 * COMMON TO ALL MODELS
 		 * ******************************************* */
-		// Setting slip-rate constraint weights to 0 does not disable them! To disable one or the other (both cannot be), use slipConstraintRateWeightingType Below
 		double slipRateConstraintWt_normalized = 1; // For SlipRateConstraintWeightingType.NORMALIZED (also used for SlipRateConstraintWeightingType.BOTH) -- NOT USED if UNNORMALIZED!
 		double slipRateConstraintWt_unnormalized = 100; // For SlipRateConstraintWeightingType.UNNORMALIZED (also used for SlipRateConstraintWeightingType.BOTH) -- NOT USED if NORMALIZED!
 		// If normalized, slip rate misfit is % difference for each section (recommended since it helps fit slow-moving faults).  If unnormalized, misfit is absolute difference.
-		// BOTH includes both normalized and unnormalized constraints.
-		SlipRateConstraintWeightingType slipRateWeighting = SlipRateConstraintWeightingType.BOTH; // (recommended: BOTH)
 		
 		// weight of paleo-rate constraint relative to slip-rate constraint (recommended: 1.2)
 		double paleoRateConstraintWt = 1.2;
@@ -227,8 +226,13 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 			System.out.println("Setting paleo constraint wt: "+paleoRateConstraintWt);
 		}
 		
-		// weight of mean paleo slip constraint relative to slip-rate constraint 
-		double paleoSlipConstraintWt = paleoRateConstraintWt*0.1;
+		// weight of mean paleo slip constraint relative to slip-rate constraint
+		// NOTE: I added the "/4d" here on 10/25/2021, when the constraint was modified to treat the supplied bounds
+		// as two-sigma bounds after consultation with Ramon Arrowsmith.
+		// In UCERF3 they were effectively treated as half-sigma bounds, and normalized by sigma. We're now cutting the
+		// sigma values down by a factor of 4, so dividing by 4 here counteracts that effect to match the effective
+		// constraint weighting used in UCERF3.
+		double paleoSlipConstraintWt = paleoRateConstraintWt*0.1/4d;
 		
 		// weight of magnitude-distribution EQUALITY constraint relative to slip-rate constraint (recommended: 10)
 //		double mfdEqualityConstraintWt = 10;
@@ -256,7 +260,7 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		double parkfieldConstraintWt = 1000;
 		
 		// get MFD constraints
-		List<MFD_InversionConstraint> mfdConstraints = rupSet.getInversionTargetMFDs().getMFD_ConstraintsForNoAndSoCal();
+		List<? extends IncrementalMagFreqDist> mfdConstraints = targetMFDs.getMFD_Constraints();
 		
 		double MFDTransitionMag = 7.85; // magnitude to switch from MFD equality to MFD inequality
 		
@@ -293,7 +297,7 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		double[] initialRupModel;
 		double[] minimumRuptureRateBasis;
 		
-		SummedMagFreqDist targetOnFaultMFD =  rupSet.getInversionTargetMFDs().getOnFaultSupraSeisMFD();
+		IncrementalMagFreqDist targetOnFaultMFD =  targetMFDs.getTotalOnFaultSupraSeisMFD();
 //		System.out.println("SUPRA SEIS MFD = ");
 //		System.out.println(rupSet.getInversionMFDs().getTargetOnFaultSupraSeisMFD());
 		
@@ -306,15 +310,15 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 				mfdSmoothnessConstraintWtForPaleoParents = 1000;
 				eventRateSmoothnessWt = 0;
 				rupRateConstraintWt = 0;
-				aPrioriRupConstraint = getUCERF2Solution(rupSet);
-				initialRupModel = Arrays.copyOf(aPrioriRupConstraint, aPrioriRupConstraint.length); 
+				aPrioriRupConstraint = fm == null ? null : getUCERF2Solution(rupSet, fm);
+//				initialRupModel = Arrays.copyOf(aPrioriRupConstraint, aPrioriRupConstraint.length); // not needed
 				minimumRuptureRateFraction = 0.01;
-				minimumRuptureRateBasis = adjustStartingModel(getSmoothStartingSolution(rupSet,targetOnFaultMFD), mfdConstraints, rupSet, true);
+				minimumRuptureRateBasis = adjustStartingModel(getSmoothStartingSolution(rupSet, targetOnFaultMFD), mfdConstraints, rupSet, true);
 //				initialRupModel = adjustIsolatedSections(rupSet, initialRupModel);
 //				if (mfdInequalityConstraintWt>0.0 || mfdEqualityConstraintWt>0.0) initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
 //				initialRupModel = adjustParkfield(rupSet, initialRupModel);
 //				initialRupModel = removeRupsBelowMinMag(rupSet, initialRupModel);
-				initialRupModel = new double[initialRupModel.length];
+				initialRupModel = new double[rupSet.getNumRuptures()];
 			} else if (model == InversionModels.GR_CONSTRAINED) {
 				participationSmoothnessConstraintWt = 1000;
 				nucleationMFDConstraintWt = 0;
@@ -323,10 +327,11 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 				eventRateSmoothnessWt = 0;
 				rupRateConstraintWt = 0;
 				aPrioriRupConstraint = null;
-				initialRupModel = getSmoothStartingSolution(rupSet,targetOnFaultMFD);
+				initialRupModel = getSmoothStartingSolution(rupSet, targetOnFaultMFD);
 				minimumRuptureRateFraction = 0.01;
 				minimumRuptureRateBasis = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
-				if (mfdInequalityConstraintWt>0.0 || mfdEqualityConstraintWt>0.0) initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true); 
+                if (mfdInequalityConstraintWt > 0.0 || mfdEqualityConstraintWt > 0.0)
+                    initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
 				initialRupModel = adjustParkfield(rupSet, initialRupModel);
 				initialRupModel = removeRupsBelowMinMag(rupSet, initialRupModel);
 			} else
@@ -409,19 +414,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 			System.out.println("Setting unnormalized slip rate constraint wt: "+slipRateConstraintWt_normalized);
 		}
 		
-		if (modifiers != null && modifiers.hasOption(InversionOptions.SLIP_WT_TYPE.getArgName())) {
-			String opt = modifiers.getOptionValue(InversionOptions.SLIP_WT_TYPE.getArgName()).toUpperCase();
-			if (opt.startsWith("NORM"))
-				slipRateWeighting = SlipRateConstraintWeightingType.NORMALIZED_BY_SLIP_RATE;
-			else if (opt.startsWith("UNNORM"))
-				slipRateWeighting = SlipRateConstraintWeightingType.UNNORMALIZED;
-			else if (opt.startsWith("BOTH"))
-				slipRateWeighting = SlipRateConstraintWeightingType.BOTH;
-			else
-				throw new IllegalArgumentException("Unkown norm type: "+opt);
-			System.out.println("Setting slip rate constraint weighting type: "+slipRateWeighting);
-		}
-		
 		if (modifiers != null && modifiers.hasOption(InversionOptions.RUP_SMOOTH_WT.getArgName())) {
 			rupRateSmoothingConstraintWt = Double.parseDouble(
 					modifiers.getOptionValue(InversionOptions.RUP_SMOOTH_WT.getArgName()));
@@ -433,32 +425,36 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 			initialRupModel = getSmoothStartingSolution(rupSet,targetOnFaultMFD);
 			minimumRuptureRateFraction = 0.01;
 			minimumRuptureRateBasis = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
-			if (mfdInequalityConstraintWt>0.0 || mfdEqualityConstraintWt>0.0) initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true); 
+            if (mfdInequalityConstraintWt > 0.0 || mfdEqualityConstraintWt > 0.0)
+                initialRupModel = adjustStartingModel(initialRupModel, mfdConstraints, rupSet, true);
 			initialRupModel = adjustParkfield(rupSet, initialRupModel);
 			initialRupModel = removeRupsBelowMinMag(rupSet, initialRupModel);
 		}
 		
-		List<MFD_InversionConstraint> mfdInequalityConstraints = new ArrayList<MFD_InversionConstraint>();
-		List<MFD_InversionConstraint> mfdEqualityConstraints = new ArrayList<MFD_InversionConstraint>();
+		List<? extends IncrementalMagFreqDist> mfdInequalityConstraints;
+		List<? extends IncrementalMagFreqDist> mfdEqualityConstraints;
 		
 		if (mfdEqualityConstraintWt>0.0 && mfdInequalityConstraintWt>0.0) {
 			// we have both MFD constraints, apply a transition mag from equality to inequality
 			
 			metadata += "\nMFDTransitionMag: "+MFDTransitionMag;
-			mfdEqualityConstraints = restrictMFDConstraintMagRange(mfdConstraints, mfdConstraints.get(0).getMagFreqDist().getMinX(), MFDTransitionMag);
-			mfdInequalityConstraints = restrictMFDConstraintMagRange(mfdConstraints, MFDTransitionMag, mfdConstraints.get(0).getMagFreqDist().getMaxX());
+			mfdEqualityConstraints = restrictMFDConstraintMagRange(mfdConstraints, mfdConstraints.get(0).getMinX(), MFDTransitionMag);
+			mfdInequalityConstraints = restrictMFDConstraintMagRange(mfdConstraints, MFDTransitionMag, mfdConstraints.get(0).getMaxX());
 		} else if (mfdEqualityConstraintWt>0.0) {
 			mfdEqualityConstraints = mfdConstraints;
+			mfdInequalityConstraints = new ArrayList<>();
 		} else if (mfdInequalityConstraintWt>0.0) {
+			mfdEqualityConstraints = new ArrayList<>();
 			mfdInequalityConstraints = mfdConstraints;
 		} else {
 			// no MFD constraints, do nothing
+			mfdEqualityConstraints = new ArrayList<>();
+			mfdInequalityConstraints = new ArrayList<>();
 		}
 		
 		return new UCERF3InversionConfiguration(
 				slipRateConstraintWt_normalized,
 				slipRateConstraintWt_unnormalized,
-				slipRateWeighting,
 				paleoRateConstraintWt,
 				paleoSlipConstraintWt,
 				mfdEqualityConstraintWt,
@@ -485,9 +481,11 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	}
 	
 	// Set rates of rups with minimum magnitude below fault section minimum magnitude to 0 initial solution
-	private static double[] removeRupsBelowMinMag(InversionFaultSystemRupSet rupSet, double[] initialRupModel) {
+	private static double[] removeRupsBelowMinMag(FaultSystemRupSet rupSet, double[] initialRupModel) {
 		for (int rup=0; rup<rupSet.getNumRuptures(); rup++) 
-			if (rupSet.isRuptureBelowSectMinMag(rup)) initialRupModel[rup] = 0;		
+//			if (rupSet.isRuptureBelowSectMinMag(rup))
+			if (FaultSystemRupSetCalc.isRuptureBelowSectMinMag(rupSet, rup, rupSet.requireModule(ModSectMinMags.class)))
+				initialRupModel[rup] = 0;		
 		return initialRupModel;
 	}
 
@@ -534,12 +532,12 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	 * @param maxMag
 	 * @return newMFDConstraints
 	 */
-	private static List<MFD_InversionConstraint> restrictMFDConstraintMagRange(List<MFD_InversionConstraint> mfdConstraints, double minMag, double maxMag) {
+	private static List<IncrementalMagFreqDist> restrictMFDConstraintMagRange(List<? extends IncrementalMagFreqDist> mfdConstraints, double minMag, double maxMag) {
 		
-		List<MFD_InversionConstraint> newMFDConstraints = new ArrayList<MFD_InversionConstraint>();
+		List<IncrementalMagFreqDist> newMFDConstraints = new ArrayList<>();
 		
 		for (int i=0; i<mfdConstraints.size(); i++) {
-			IncrementalMagFreqDist originalMFD = mfdConstraints.get(i).getMagFreqDist();
+			IncrementalMagFreqDist originalMFD = mfdConstraints.get(i);
 			double delta = originalMFD.getDelta();
 			IncrementalMagFreqDist newMFD = new IncrementalMagFreqDist(minMag, maxMag, (int) Math.round((maxMag-minMag)/delta + 1.0)); 
 			newMFD.setTolerance(delta/2.0);
@@ -547,7 +545,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 				// WARNING!  This doesn't interpolate.  For best results, set minMag & maxMag to points along original MFD constraint (i.e. 7.05, 7.15, etc)
 				newMFD.set(m, originalMFD.getClosestYtoX(m));
 			}
-			newMFDConstraints.add(i,new MFD_InversionConstraint(newMFD, mfdConstraints.get(i).getRegion()));	
+			newMFD.setRegion(originalMFD.getRegion());
+			newMFDConstraints.add(i, newMFD);	
 		}
 		
 		return newMFDConstraints;
@@ -645,14 +644,14 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	 * It will uniformly reduce the rates of ruptures in any magnitude bins that need adjusting.
 	 */
 	private static double[] adjustStartingModel(double[] initialRupModel,
-			List<MFD_InversionConstraint> mfdInequalityConstraints, FaultSystemRupSet rupSet, boolean adjustOnlyIfOverMFD) {
+			List<? extends IncrementalMagFreqDist> mfdInequalityConstraints, FaultSystemRupSet rupSet, boolean adjustOnlyIfOverMFD) {
 		
 		double[] rupMeanMag = rupSet.getMagForAllRups();
 		
 		
 		for (int i=0; i<mfdInequalityConstraints.size(); i++) {
 			double[] fractRupsInside = rupSet.getFractRupsInsideRegion(mfdInequalityConstraints.get(i).getRegion(), false);
-			IncrementalMagFreqDist targetMagFreqDist = mfdInequalityConstraints.get(i).getMagFreqDist();
+			IncrementalMagFreqDist targetMagFreqDist = mfdInequalityConstraints.get(i);
 			IncrementalMagFreqDist startingModelMagFreqDist = new IncrementalMagFreqDist(targetMagFreqDist.getMinX(), targetMagFreqDist.size(), targetMagFreqDist.getDelta());
 			startingModelMagFreqDist.setTolerance(0.1);
 			
@@ -787,7 +786,9 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		return getUCERF2MagsAndrates(faultSystemRupSet, faultSystemRupSet.getFaultModel());
 	}
 	
-	public static ArrayList<double[]> getUCERF2MagsAndrates(FaultSystemRupSet faultSystemRupSet, FaultModels fm) {
+	public synchronized static ArrayList<double[]> getUCERF2MagsAndrates(FaultSystemRupSet faultSystemRupSet, FaultModels fm) {
+		// Something in FindEquivUCERF2_Ruptures, likely within ModUCERF2, is not synchronized and can (rarely) result
+		// in garbage rates if may threads call this method at the same time. The synchronize tag here prevents this. 
 		Preconditions.checkNotNull(faultSystemRupSet, "No rupture set supplied!");
 		Preconditions.checkNotNull(fm, "A fault model must be specified by the rupture set in order" +
 				" to get a UCERF2 solution. It's possible that you're using an old rupture set that doesn't have this data" +
@@ -810,8 +811,8 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	 * @param faultSystemRupSet
 	 * @return
 	 */
-	public static double[] getUCERF2Solution(InversionFaultSystemRupSet faultSystemRupSet) {
-		ArrayList<double[]> ucerf2_magsAndRates = getUCERF2MagsAndrates(faultSystemRupSet);
+	public static double[] getUCERF2Solution(FaultSystemRupSet faultSystemRupSet, FaultModels fm) {
+		ArrayList<double[]> ucerf2_magsAndRates = getUCERF2MagsAndrates(faultSystemRupSet, fm);
 		int numRuptures=faultSystemRupSet.getNumRuptures();
 		double[] initial_state = new double[numRuptures];
 		for (int r=0; r<numRuptures; r++) {
@@ -928,14 +929,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	
 	public void setSlipRateConstraintWt_unnormalized(double slipRateConstraintWt_unnormalized) {
 		this.slipRateConstraintWt_unnormalized = slipRateConstraintWt_unnormalized;
-	}
-	
-	public SlipRateConstraintWeightingType getSlipRateWeightingType() {
-		return slipRateWeighting;
-	}
-
-	public void setSlipRateWeightingType(SlipRateConstraintWeightingType slipRateWeighting) {
-		this.slipRateWeighting = slipRateWeighting;
 	}
 
 	public double getPaleoRateConstraintWt() {
@@ -1082,21 +1075,21 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		this.mfdSmoothnessConstraintWtForPaleoParents = relativeMFDSmoothnessConstraintWtForPaleoParents;
 	}
 	
-	public List<MFD_InversionConstraint> getMfdEqualityConstraints() {
+	public List<? extends IncrementalMagFreqDist> getMfdEqualityConstraints() {
 		return mfdEqualityConstraints;
 	}
 
 	public void setMfdEqualityConstraints(
-			List<MFD_InversionConstraint> mfdEqualityConstraints) {
+			List<? extends IncrementalMagFreqDist> mfdEqualityConstraints) {
 		this.mfdEqualityConstraints = mfdEqualityConstraints;
 	}
 
-	public List<MFD_InversionConstraint> getMfdInequalityConstraints() {
+	public List<? extends IncrementalMagFreqDist> getMfdInequalityConstraints() {
 		return mfdInequalityConstraints;
 	}
 
 	public void setMfdInequalityConstraints(
-			List<MFD_InversionConstraint> mfdInequalityConstraints) {
+			List<? extends IncrementalMagFreqDist> mfdInequalityConstraints) {
 		this.mfdInequalityConstraints = mfdInequalityConstraints;
 	}
 
@@ -1136,13 +1129,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		this.rupRateSmoothingConstraintWt = rupRateSmoothingConstraintWt;
 	}
 	
-	public enum SlipRateConstraintWeightingType {
-		NORMALIZED_BY_SLIP_RATE,  // Normalize each slip-rate constraint by the slip-rate target (So the inversion tries to minimize ratio of model to target)
-		UNNORMALIZED, // Do not normalize slip-rate constraint (inversion will minimize difference of model to target, effectively fitting fast faults better than slow faults on a ratio basis)
-		BOTH,  // Include both normalized and unnormalized constraints.  This doubles the number of slip-rate constraints, and is a compromise between normalized (which fits slow faults better on a difference basis) and the unnormalized constraint (which fits fast faults better on a ratio basis)
-		UNCERTAINTY_ADJUSTED; //Adjust section slip rate targets by their CoV (slip-rate/std-dev). This used by NZSHM22. 
-	}
-
 	public double getMFDTransitionMag() {
 		return MFDTransitionMag;
 	}
@@ -1181,7 +1167,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		
 		el.addAttribute("slipRateConstraintWt_normalized", slipRateConstraintWt_normalized+"");
 		el.addAttribute("slipRateConstraintWt_unnormalized", slipRateConstraintWt_unnormalized+"");
-		el.addAttribute("slipRateWeighting", slipRateWeighting.name()+"");
 		el.addAttribute("paleoRateConstraintWt", paleoRateConstraintWt+"");
 		el.addAttribute("paleoSlipConstraintWt", paleoSlipConstraintWt+"");
 		el.addAttribute("magnitudeEqualityConstraintWt", magnitudeEqualityConstraintWt+"");
@@ -1210,9 +1195,9 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		return null;
 	}
 	
-	private static void mfdsToXML(Element el, List<MFD_InversionConstraint> constraints) {
+	private static void mfdsToXML(Element el, List<? extends IncrementalMagFreqDist> constraints) {
 		for (int i=0; i<constraints.size(); i++) {
-			MFD_InversionConstraint constr = constraints.get(i);
+			MFD_InversionConstraint constr = new MFD_InversionConstraint(constraints.get(i));
 			
 			constr.toXMLMetadata(el);
 		}
@@ -1225,7 +1210,6 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	public static UCERF3InversionConfiguration fromXMLMetadata(Element confEl) {
 		double slipRateConstraintWt_normalized = Double.parseDouble(confEl.attributeValue("slipRateConstraintWt_normalized"));
 		double slipRateConstraintWt_unnormalized = Double.parseDouble(confEl.attributeValue("slipRateConstraintWt_unnormalized"));
-		SlipRateConstraintWeightingType slipRateWeighting = SlipRateConstraintWeightingType.valueOf(confEl.attributeValue("slipRateWeighting"));
 		double paleoRateConstraintWt = Double.parseDouble(confEl.attributeValue("paleoRateConstraintWt"));
 		double paleoSlipConstraintWt = Double.parseDouble(confEl.attributeValue("paleoSlipConstraintWt"));
 		double magnitudeEqualityConstraintWt = Double.parseDouble(confEl.attributeValue("magnitudeEqualityConstraintWt"));
@@ -1245,10 +1229,10 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		double smoothnessWt = Double.parseDouble(confEl.attributeValue("smoothnessWt"));
 		double eventRateSmoothnessWt = Double.parseDouble(confEl.attributeValue("eventRateSmoothnessWt"));
 		
-		List<MFD_InversionConstraint> mfdEqualityConstraints = mfdsFromXML(confEl.element("MFD_EqualityConstraints"));
-		List<MFD_InversionConstraint> mfdInequalityConstraints = mfdsFromXML(confEl.element("MFD_InequalityConstraints"));
+		List<? extends IncrementalMagFreqDist> mfdEqualityConstraints = mfdsFromXML(confEl.element("MFD_EqualityConstraints"));
+		List<? extends IncrementalMagFreqDist> mfdInequalityConstraints = mfdsFromXML(confEl.element("MFD_InequalityConstraints"));
 		
-		return new UCERF3InversionConfiguration(slipRateConstraintWt_normalized, slipRateConstraintWt_unnormalized, slipRateWeighting, paleoRateConstraintWt,
+		return new UCERF3InversionConfiguration(slipRateConstraintWt_normalized, slipRateConstraintWt_unnormalized, paleoRateConstraintWt,
 				paleoSlipConstraintWt, magnitudeEqualityConstraintWt, magnitudeInequalityConstraintWt, rupRateConstraintWt,
 				participationSmoothnessConstraintWt, participationConstraintMagBinSize, nucleationMFDConstraintWt,
 				mfdSmoothnessConstraintWt, mfdSmoothnessConstraintWtForPaleoParents, rupRateSmoothingConstraintWt,
@@ -1256,14 +1240,14 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 				eventRateSmoothnessWt, MFDTransitionMag, mfdEqualityConstraints, mfdInequalityConstraints, minimumRuptureRateFraction, null);
 	}
 	
-	private static List<MFD_InversionConstraint> mfdsFromXML(Element mfdsEl) {
+	private static List<IncrementalMagFreqDist> mfdsFromXML(Element mfdsEl) {
 		List<Element> mfdElList = XMLUtils.getSortedChildElements(mfdsEl, null, "index");
 		
-		List<MFD_InversionConstraint> mfds = Lists.newArrayList();
+		List<IncrementalMagFreqDist> mfds = Lists.newArrayList();
 		
 		for (Element mfdEl : mfdElList) {
 			MFD_InversionConstraint constr = MFD_InversionConstraint.fromXMLMetadata(mfdEl);
-			mfds.add(constr);
+			mfds.add(constr.getMagFreqDist());
 		}
 		
 		return mfds;

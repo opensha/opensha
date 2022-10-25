@@ -15,6 +15,7 @@ import java.util.Date;
 
 public class ComcatEventQuery extends EventQuery {
 
+	private Boolean includeDeleted = null;
 	private Boolean includeSuperseded = null;
 
 	/**
@@ -25,11 +26,19 @@ public class ComcatEventQuery extends EventQuery {
 
 	// Getters
 
+	public Boolean getIncludeDeleted() {
+		return includeDeleted;
+	}
+
 	public Boolean getIncludeSuperseded() {
 		return includeSuperseded;
 	}
 
 	// Setters
+
+	public void setIncludeDeleted(Boolean in) {
+		includeDeleted = in;
+	}
 
 	public void setIncludeSuperseded(Boolean in) {
 		includeSuperseded = in;

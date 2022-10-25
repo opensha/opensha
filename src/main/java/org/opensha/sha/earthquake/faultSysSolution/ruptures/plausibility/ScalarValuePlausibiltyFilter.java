@@ -9,8 +9,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.BoundType;
 import com.google.common.collect.Range;
 
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-
 /**
  * Interface for a plausibility filter which is produces a scalar value (e.g., integer, double, float)
  * for each rupture. This is mostly a helper interface to allow diagnostic plots when comparing rupture

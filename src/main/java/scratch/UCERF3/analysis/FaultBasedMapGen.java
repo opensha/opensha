@@ -51,6 +51,8 @@ import org.opensha.commons.util.XMLUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.cpt.CPTVal;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
@@ -63,9 +65,7 @@ import com.google.common.collect.Maps;
 import com.google.common.io.Files;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
-import scratch.UCERF3.SlipEnabledSolution;
+import scratch.UCERF3.U3SlipEnabledSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
@@ -225,7 +225,7 @@ public class FaultBasedMapGen {
 		makeFaultPlot(cpt, getTraces(faults), values, region, saveDir, prefix+"_target_slip", display, false, "Target Slip Rate (mm/yr)");
 	}
 	
-	public static void plotSolutionSlipRates(SlipEnabledSolution sol, Region region, File saveDir, String prefix, boolean display)
+	public static void plotSolutionSlipRates(U3SlipEnabledSolution sol, Region region, File saveDir, String prefix, boolean display)
 			throws GMT_MapException, RuntimeException, IOException {
 		CPT cpt = getSlipRateCPT();
 		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
@@ -257,7 +257,7 @@ public class FaultBasedMapGen {
 
 		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 
-		List<GutenbergRichterMagFreqDist> subSeisMFD_List = sol.getFinalSubSeismoOnFaultMFD_List();
+		List<? extends IncrementalMagFreqDist> subSeisMFD_List = sol.getFinalSubSeismoOnFaultMFD_List();
 		List<IncrementalMagFreqDist> supraSeisMFD_List = sol.getFinalSupraSeismoOnFaultMFD_List(5.05, 8.95, 40);
 
 		double[] values = new double[faults.size()];
@@ -289,7 +289,7 @@ public class FaultBasedMapGen {
 		double mag = 6.75;
 		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 
-		List<GutenbergRichterMagFreqDist> subSeisMFD_List = sol.getFinalSubSeismoOnFaultMFD_List();
+		List<? extends IncrementalMagFreqDist> subSeisMFD_List = sol.getFinalSubSeismoOnFaultMFD_List();
 		List<IncrementalMagFreqDist> supraSeisMFD_List = sol.getFinalSupraSeismoOnFaultMFD_List(5.05, 8.95, 40);
 
 		double[] values = new double[faults.size()];
@@ -298,7 +298,7 @@ public class FaultBasedMapGen {
 
 		for(int i=0;i<subSeisMFD_List.size();i++) {
 			
-			GutenbergRichterMagFreqDist subSeisMFD = subSeisMFD_List.get(i);
+			IncrementalMagFreqDist subSeisMFD = subSeisMFD_List.get(i);
 			IncrementalMagFreqDist supraSeisMFD = supraSeisMFD_List.get(i);
 			double minMag = subSeisMFD.getMinX();
 			double maxMagWithNonZeroRate = supraSeisMFD.getMaxMagWithNonZeroRate();
@@ -341,7 +341,7 @@ public class FaultBasedMapGen {
 
 
 	
-	public static void plotSolutionSlipMisfit(SlipEnabledSolution sol, Region region, File saveDir, String prefix, boolean display, boolean logRatio)
+	public static void plotSolutionSlipMisfit(U3SlipEnabledSolution sol, Region region, File saveDir, String prefix, boolean display, boolean logRatio)
 			throws GMT_MapException, RuntimeException, IOException {
 		List<? extends FaultSection> faults = sol.getRupSet().getFaultSectionDataList();
 		double[] solSlips = sol.calcSlipRateForAllSects();

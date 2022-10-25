@@ -1,9 +1,13 @@
 package org.opensha.commons.data.xyz;
 
 import java.awt.geom.Point2D;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -115,6 +119,23 @@ public abstract class AbstractXYZ_DataSet implements XYZ_DataSet {
 			fw.write(point.getX() + "\t" + point.getY() + "\t" + z + "\n");
 		}
 		fw.close();
+	}
+	
+	public static void writeXYZStream(XYZ_DataSet xyz, OutputStream out) throws IOException {
+		writeXYZWriter(xyz, new OutputStreamWriter(out));
+		out.flush();
+	}
+	
+	public static void writeXYZWriter(XYZ_DataSet xyz, Writer write) throws IOException {
+		if (!(write instanceof BufferedWriter))
+			write = new BufferedWriter(write);
+		for (int i=0; i<xyz.size(); i++) {
+			Point2D point = xyz.getPoint(i);
+			double z = xyz.get(i);
+			
+			write.write(point.getX() + "\t" + point.getY() + "\t" + z + "\n");
+		}
+		write.flush();
 	}
 	
 	@Override

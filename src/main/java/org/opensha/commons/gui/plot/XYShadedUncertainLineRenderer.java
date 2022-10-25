@@ -21,8 +21,9 @@ import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.data.xy.XYDataset;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
-import org.opensha.commons.data.function.UncertainArbDiscDataset;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
+import org.opensha.commons.data.uncertainty.UncertainBoundedDiscretizedFunc;
 import org.opensha.commons.gui.plot.jfreechart.DiscretizedFunctionXYDataSet;
 import org.opensha.commons.gui.plot.jfreechart.JFreeLogarithmicAxis;
 
@@ -51,14 +52,14 @@ public class XYShadedUncertainLineRenderer extends AbstractXYItemRenderer {
 //		System.out.println("Draw called. series="+series+", item="+item+", pass="+pass);
 		
 		if (!(dataset instanceof DiscretizedFunctionXYDataSet
-				&& ((DiscretizedFunctionXYDataSet)dataset).getXYDataset(series) instanceof UncertainArbDiscDataset)) {
+				&& ((DiscretizedFunctionXYDataSet)dataset).getXYDataset(series) instanceof UncertainBoundedDiscretizedFunc)) {
 			System.err.println("Isn't an UncertainArbDiscrDataset, doing nothing!");
 			return;
 		}
 		
 //		System.out.println("Rendering uncertain!");
 		
-		UncertainArbDiscDataset uData = (UncertainArbDiscDataset)((DiscretizedFunctionXYDataSet)dataset).getXYDataset(series);
+		UncertainBoundedDiscretizedFunc uData = (UncertainBoundedDiscretizedFunc)((DiscretizedFunctionXYDataSet)dataset).getXYDataset(series);
 		
 		boolean logX = domainAxis instanceof JFreeLogarithmicAxis;
 		boolean logY = rangeAxis instanceof JFreeLogarithmicAxis;
@@ -140,7 +141,7 @@ public class XYShadedUncertainLineRenderer extends AbstractXYItemRenderer {
 			lowerFunc.set(x, y - 0.2*Math.random());
 		}
 		
-		UncertainArbDiscDataset uncertainFunc = new UncertainArbDiscDataset(meanFunc, lowerFunc, upperFunc);
+		UncertainArbDiscFunc uncertainFunc = new UncertainArbDiscFunc(meanFunc, lowerFunc, upperFunc);
 		
 		List<DiscretizedFunc> funcs = Lists.newArrayList();
 		List<PlotCurveCharacterstics> chars = Lists.newArrayList();

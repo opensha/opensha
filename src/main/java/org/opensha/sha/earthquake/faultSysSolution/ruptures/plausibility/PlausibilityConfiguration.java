@@ -14,6 +14,12 @@ import java.util.Collection;
 import java.util.List;
 
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.modules.ModuleContainer;
+import org.opensha.commons.util.modules.OpenSHA_Module;
+import org.opensha.commons.util.modules.SubModule;
+import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchAverageableModule;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter.PlausibilityFilterTypeAdapter;
@@ -56,22 +62,28 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.coulomb.CoulombRates;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester;
 import scratch.UCERF3.inversion.coulomb.CoulombRatesTester.TestType;
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 
-public class PlausibilityConfiguration {
+public class PlausibilityConfiguration implements SubModule<ModuleContainer<OpenSHA_Module>>, JSON_BackedModule,
+BranchAverageableModule<PlausibilityConfiguration> {
 	
 	public static PlausibilityConfiguration getUCERF3(
 			List<? extends FaultSection> subSects, SectionDistanceAzimuthCalculator distAzCalc,
 			FaultModels fm) throws IOException {
-		return getUCERF3(subSects, distAzCalc, CoulombRates.loadUCERF3CoulombRates(fm));
+		return getUCERF3(subSects, distAzCalc, fm == null ? null : CoulombRates.loadUCERF3CoulombRates(fm));
 	}
 	
 	public static PlausibilityConfiguration getUCERF3(
 			List<? extends FaultSection> subSects, SectionDistanceAzimuthCalculator distAzCalc,
 			CoulombRates coulombRates) {
+		return getUCERF3(subSects, distAzCalc, coulombRates, 5d);
+	}
+	
+	public static PlausibilityConfiguration getUCERF3(
+			List<? extends FaultSection> subSects, SectionDistanceAzimuthCalculator distAzCalc,
+			CoulombRates coulombRates, double maxJumpDist) {
 		ClusterConnectionStrategy connectionStrategy = new UCERF3ClusterConnectionStrategy(
-				subSects, distAzCalc, 5d, coulombRates);
+				subSects, distAzCalc, maxJumpDist, coulombRates);
 		return builder(connectionStrategy, distAzCalc).maxSplays(0).u3All(coulombRates).build();
 	}
 	
@@ -79,6 +91,11 @@ public class PlausibilityConfiguration {
 	private int maxNumSplays;
 	private ClusterConnectionStrategy connectionStrategy;
 	private SectionDistanceAzimuthCalculator distAzCalc;
+	
+	@SuppressWarnings("unused") // used for deserialization
+	private PlausibilityConfiguration() {
+		
+	}
 
 	public PlausibilityConfiguration(List<PlausibilityFilter> filters, int maxNumSplays,
 			ClusterConnectionStrategy connectionStrategy, SectionDistanceAzimuthCalculator distAzCalc) {
@@ -513,14 +530,19 @@ public class PlausibilityConfiguration {
 			out.name("connectionStrategy");
 			connStratAdapter.write(out, config.getConnectionStrategy());
 			out.name("maxNumSplays").value(config.getMaxNumSplays());
-			out.name("filters").beginArray(); // [
-			PlausibilityFilterAdapter adapter = new PlausibilityFilterAdapter(
-					gson, config.getConnectionStrategy(), config.getDistAzCalc());
-			
-			for (PlausibilityFilter filter : config.filters)
-				adapter.write(out, new PlausibilityFilterRecord(filter));
-			
-			out.endArray(); // ]
+			out.name("filters");
+			if (config.filters == null) {
+				out.nullValue();
+			} else {
+				out.beginArray(); // [
+				PlausibilityFilterAdapter adapter = new PlausibilityFilterAdapter(
+						gson, config.getConnectionStrategy(), config.getDistAzCalc());
+				
+				for (PlausibilityFilter filter : config.filters)
+					adapter.write(out, new PlausibilityFilterRecord(filter));
+				
+				out.endArray(); // ]
+			}
 			
 			out.endObject();
 		}
@@ -542,6 +564,10 @@ public class PlausibilityConfiguration {
 					maxNumSplays = in.nextInt();
 					break;
 				case "filters":
+					if (in.peek() == JsonToken.NULL) {
+						in.nextNull();
+						continue;
+					}
 					Preconditions.checkNotNull(connectionStrategy,
 							"Connection strategy must be before filters in JSON");
 					PlausibilityFilterAdapter adapter = new PlausibilityFilterAdapter(
@@ -989,6 +1015,123 @@ public class PlausibilityConfiguration {
 			return Range.range(lower, lowerType, upper, upperType);
 		}
 		
+	}
+
+	/*
+	 * Module methods
+	 */
+	
+	@Override
+	public String getName() {
+		return "Plausibility Configuration";
+	}
+	
+	public static final String JSON_FILE_NAME = "plausibility.json";
+
+	@Override
+	public String getFileName() {
+		return JSON_FILE_NAME;
+	}
+
+	@Override
+	public Gson buildGson() {
+		List<? extends FaultSection> subSects;
+		if (distAzCalc == null) {
+			// need to locate subsections
+			Preconditions.checkNotNull(parent, "Can't [de]serialize plausibility configuration without either first "
+					+ "supplying a sub-sections, or a parent module from which we can retrieve them");
+			distAzCalc = parent.getModule(SectionDistanceAzimuthCalculator.class);
+			if (distAzCalc == null) {
+				Preconditions.checkState(parent instanceof FaultSystemRupSet,
+						"Can't [de]serialize plausibility configuration without either first supplying sub-sections,"
+						+ " or a parent module from which we can retrieve them (a rupture set, or something with"
+						+ " a distance-azimuth cache)");
+				subSects = ((FaultSystemRupSet)parent).getFaultSectionDataList();
+			} else {
+				subSects = distAzCalc.getSubSections();
+			}
+		} else {
+			subSects = distAzCalc.getSubSections();
+		}
+		return buildGson(subSects, distAzCalc, connectionStrategy);
+	}
+
+	@Override
+	public void writeToJSON(JsonWriter out, Gson gson) throws IOException {
+		gson.toJson(this, PlausibilityConfiguration.class, out);
+	}
+
+	@Override
+	public void initFromJSON(JsonReader in, Gson gson) throws IOException {
+		PlausibilityConfiguration config = gson.fromJson(in, PlausibilityConfiguration.class);
+		this.connectionStrategy = config.connectionStrategy;
+		this.distAzCalc = config.distAzCalc;
+		this.filters = config.filters;
+		this.maxNumSplays = config.maxNumSplays;
+	}
+	
+	private ModuleContainer<OpenSHA_Module> parent;
+
+	@Override
+	public void setParent(ModuleContainer<OpenSHA_Module> parent) throws IllegalStateException {
+		this.parent = parent;
+	}
+
+	@Override
+	public ModuleContainer<OpenSHA_Module> getParent() {
+		return parent;
+	}
+
+	@Override
+	public SubModule<ModuleContainer<OpenSHA_Module>> copy(ModuleContainer<OpenSHA_Module> newParent) throws IllegalStateException {
+		SectionDistanceAzimuthCalculator distAzCalc = this.distAzCalc;
+		if (distAzCalc != null) {
+			// make sure we're compatible
+			SectionDistanceAzimuthCalculator oCalc = newParent.getModule(SectionDistanceAzimuthCalculator.class);
+			if (oCalc != null) {
+				Preconditions.checkState(oCalc.getSubSections().size() == distAzCalc.getSubSections().size());
+				distAzCalc = oCalc;
+			} else if (newParent instanceof FaultSystemRupSet) {
+				Preconditions.checkState(((FaultSystemRupSet)newParent).getNumSections() == distAzCalc.getSubSections().size());
+			}
+		}
+		
+		return new PlausibilityConfiguration(filters, maxNumSplays, connectionStrategy, distAzCalc);
+	}
+
+	@Override
+	public AveragingAccumulator<PlausibilityConfiguration> averagingAccumulator() {
+		
+		return new AveragingAccumulator<>() {
+
+			private PlausibilityConfiguration module;
+			private FaultSystemRupSet rupSet;
+
+			@Override
+			public void process(PlausibilityConfiguration module, double relWeight) {
+				if (this.module == null) {
+					this.module = module;
+					if (module.getParent() instanceof FaultSystemRupSet)
+						rupSet = (FaultSystemRupSet)module.getParent();
+				} else {
+					if (rupSet != null) {
+						Preconditions.checkState(rupSet.isEquivalentTo((FaultSystemRupSet)module.getParent()));
+					}
+				}
+			}
+
+			@Override
+			public PlausibilityConfiguration getAverage() {
+				Preconditions.checkNotNull(module);
+				return module;
+			}
+
+			@Override
+			public Class<PlausibilityConfiguration> getType() {
+				return PlausibilityConfiguration.class;
+			}
+			
+		};
 	}
 	
 	public static void main(String[] args) throws IOException {

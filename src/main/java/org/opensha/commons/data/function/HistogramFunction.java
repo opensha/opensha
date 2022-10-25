@@ -219,18 +219,26 @@ public class HistogramFunction extends EvenlyDiscretizedFunc {
 		
 		double maxDelta = maxValue - minX;
 		int numBins = (int)(maxDelta / delta + 0.5)+1;
+		Preconditions.checkState(numBins >= 1, "bad numBins=%s for min=%s, max=%s, delta=%s",
+				numBins, minValue, maxValue, delta);
 		double maxX = minX + (numBins-1)*delta;
-		Preconditions.checkState((float)maxValue <= (float)(maxX + halfDelta));
-		Preconditions.checkState((float)maxValue >= (float)(maxX - halfDelta));
+		double upperLeft = maxX - halfDelta;
+		double upperRight = maxX + halfDelta;
+		Preconditions.checkState((float)maxValue <= (float)upperRight,
+				"upper bin with center=%s, bounds=[%s,%s] doesn't contain max=%s. Orig min=%s, max=%s, delta=%s",
+				(float)maxX, (float)upperLeft, (float)upperRight, (float)maxValue, minValue, maxValue, delta);
+		Preconditions.checkState((float)maxValue >= (float)upperLeft || upperLeft - maxValue < 1e-16,
+				"upper bin with center=%s, bounds=[%s,%s] doesn't contain max=%s. Orig min=%s, max=%s, delta=%s",
+				(float)maxX, (float)upperLeft, (float)upperRight, (float)maxValue, minValue, maxValue, delta);
 		
 //		System.out.println("minX: "+minX+", maxX: "+maxX+", num: "+numBins);
 		
 		return new HistogramFunction(minX, numBins, delta);
 	}
 	
-//	// test of compute methods
-//	public static void main(String[] args) {
-//		// should not reference sha classes like the below code does
+	// test of compute methods
+	public static void main(String[] args) {
+		// should not reference sha classes like the below code does
 //		BPT_DistCalc bpt_calc = new BPT_DistCalc();
 //		bpt_calc.setAll(110, 0.25, 1, 600);
 //		EvenlyDiscretizedFunc func = bpt_calc.getPDF();
@@ -241,7 +249,7 @@ public class HistogramFunction extends EvenlyDiscretizedFunc {
 //		System.out.println("mean="+hist.computeMean());
 //		System.out.println("std="+hist.computeStdDev());
 //		System.out.println("cov="+hist.computeCOV());
-//
-//	}
+		getEncompassingHistogram(-4.2350366975140596E-4, 0d, 5.0E-6);
+	}
 
 }

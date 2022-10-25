@@ -34,6 +34,11 @@ public class FileParameter extends AbstractParameter<File> {
 	}
 
 	@Override
+	public boolean isEditorBuilt() {
+		return editor != null;
+	}
+
+	@Override
 	public Object clone() {
 		return new FileParameter(this.getName(), this.getValue());
 	}

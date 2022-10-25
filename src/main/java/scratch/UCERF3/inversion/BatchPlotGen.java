@@ -24,32 +24,33 @@ import org.opensha.commons.exceptions.GMT_MapException;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.IDPairing;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.AverageFaultSystemSolution;
-import scratch.UCERF3.CompoundFaultSystemSolution;
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
-import scratch.UCERF3.FileBasedFSSIterator;
+import scratch.UCERF3.U3AverageFaultSystemSolution;
+import scratch.UCERF3.U3CompoundFaultSystemSolution;
+import scratch.UCERF3.U3FaultSystemRupSet;
+import scratch.UCERF3.U3FileBasedFSSIterator;
 import scratch.UCERF3.analysis.FaultBasedMapGen;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
-import scratch.UCERF3.logicTree.LogicTreeBranch;
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import scratch.UCERF3.logicTree.U3LogicTreeBranch;
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
 import scratch.UCERF3.logicTree.VariableLogicTreeBranch;
-import scratch.UCERF3.simulatedAnnealing.ThreadedSimulatedAnnealing;
 import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-import scratch.UCERF3.utils.aveSlip.AveSlipConstraint;
-import scratch.UCERF3.utils.paleoRateConstraints.PaleoRateConstraint;
+import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
+import scratch.UCERF3.utils.paleoRateConstraints.U3PaleoRateConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
 
 public class BatchPlotGen {
@@ -91,20 +92,21 @@ public class BatchPlotGen {
 		FaultBasedMapGen.plotSegmentation(sol, region, dir, prefix, false, 7.5, 10);
 	}
 	
-	private static HashMap<FaultModels, InversionFaultSystemSolution> ucerf2SolutionCache = Maps.newHashMap();
+	private static HashMap<FaultModels, FaultSystemSolution> ucerf2SolutionCache = Maps.newHashMap();
 	
-	private static InversionFaultSystemSolution getUCERF2Comparision(FaultModels fm, File dir) throws IOException, DocumentException {
+	private static FaultSystemSolution getUCERF2Comparision(FaultModels fm, File dir) throws IOException, DocumentException {
 		if (ucerf2SolutionCache.containsKey(fm))
 			return ucerf2SolutionCache.get(fm);
 		File cachedFile = new File(dir, fm.getShortName()+"_UCERF2_COMPARISON_SOL.zip");
-		InversionFaultSystemSolution sol;
+		FaultSystemSolution sol;
 		if (cachedFile.exists()) {
 			System.out.println("Loading UCERF2 comparison from: "+cachedFile.getName());
-			sol = FaultSystemIO.loadInvSol(cachedFile);
+//			sol = FaultSystemIO.loadInvSol(cachedFile);
+			sol = FaultSystemSolution.load(cachedFile);
 		} else {
 			sol = UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(fm);
 			try {
-				FaultSystemIO.writeSol(sol, cachedFile);
+				sol.getArchive().write(cachedFile);
 			} catch (Exception e) {
 				// don't fail on a cache attempt
 				e.printStackTrace();
@@ -145,7 +147,7 @@ public class BatchPlotGen {
 
 		VariableLogicTreeBranch branch1 = misfitsMap.keySet().iterator().next();
 
-		for (LogicTreeBranchNode<?> node : branch1)
+		for (U3LogicTreeBranchNode<?> node : branch1)
 			header.add(ClassUtils.getClassNameWithoutPackage(node.getClass()));
 
 		if (branch1.getVariations() != null)
@@ -167,7 +169,7 @@ public class BatchPlotGen {
 
 			List<String> line = Lists.newArrayList();
 
-			for (LogicTreeBranchNode<?> node : branch)
+			for (U3LogicTreeBranchNode<?> node : branch)
 				line.add(node.getShortName());
 
 			if (branch.getVariations() != null)
@@ -217,7 +219,7 @@ public class BatchPlotGen {
 			boolean buildMean = false;
 			String grepsStr = "";
 			for (String nameGrep : nameGreps) {
-				if (nameGrep.equals(FileBasedFSSIterator.TAG_BUILD_MEAN))
+				if (nameGrep.equals(U3FileBasedFSSIterator.TAG_BUILD_MEAN))
 					buildMean = true;
 				else {
 					grepsStr += "_"+nameGrep;
@@ -237,9 +239,9 @@ public class BatchPlotGen {
 		if (compoundFile.exists()) {
 			System.out.println("Compound solution already exists: "+compoundFile.getName());
 		} else {
-			FileBasedFSSIterator it = FileBasedFSSIterator.forDirectory(dir, 1, nameGreps);
+			U3FileBasedFSSIterator it = U3FileBasedFSSIterator.forDirectory(dir, 1, nameGreps);
 			if (it.getBranches().size() > 1)
-				CompoundFaultSystemSolution.toZipFile(compoundFile, it);
+				U3CompoundFaultSystemSolution.toZipFile(compoundFile, it);
 			else
 				System.out.println("Skipping compound solution, only 1 unique branch!");
 		}
@@ -345,15 +347,15 @@ public class BatchPlotGen {
 					continue;
 				}
 				// this is an average of many runs
-				InversionFaultSystemRupSet rupSet = FaultSystemIO.loadInvRupSet(file);
-				AverageFaultSystemSolution avgSol = AverageFaultSystemSolution.fromDirectory(rupSet, myDir, prefix);
+				InversionFaultSystemRupSet rupSet = U3FaultSystemIO.loadInvRupSet(file);
+				U3AverageFaultSystemSolution avgSol = U3AverageFaultSystemSolution.fromDirectory(rupSet, myDir, prefix);
 				if (!doAvgPlotsExist(meanSolDir, meanPrefix))
 					try {
 						writeAvgSolPlots(avgSol, meanSolDir, meanPrefix);
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
-				FaultSystemIO.writeSol(avgSol, avgSolFile);
+				U3FaultSystemIO.writeSol(avgSol, avgSolFile);
 				// write bin file as well
 				MatrixIO.doubleArrayToFile(avgSol.getRateForAllRups(), new File(meanSolDir, meanPrefix+".bin"));
 				handleSolutionFile(avgSolFile, meanPrefix, avgSol, null);
@@ -402,7 +404,7 @@ public class BatchPlotGen {
 		
 		if (misfitsMap != null) {
 			if (sol == null)
-				sol = FaultSystemIO.loadInvSol(file);
+				sol = U3FaultSystemIO.loadInvSol(file);
 			VariableLogicTreeBranch branch = null;
 			try {
 //				System.out.println("Prefix: "+prefix);
@@ -452,7 +454,7 @@ public class BatchPlotGen {
 		System.out.println("Processing: "+prefix);
 		
 		if (sol == null)
-			sol = FaultSystemIO.loadInvSol(file);
+			sol = U3FaultSystemIO.loadInvSol(file);
 		
 		if (!hasMapPlots) {
 			makeMapPlots(sol, dir, prefix);
@@ -478,12 +480,12 @@ public class BatchPlotGen {
 				e.printStackTrace();
 			}
 		}
-		ArrayList<PaleoRateConstraint> paleoRateConstraints = null;
-		List<AveSlipConstraint> aveSlipConstraints = null;
+		ArrayList<U3PaleoRateConstraint> paleoRateConstraints = null;
+		List<U3AveSlipConstraint> aveSlipConstraints = null;
 		if (!hasPaleoPlots || !hasPaleoFaultBasedPlots) {
 			paleoRateConstraints =
 					CommandLineInversionRunner.getPaleoConstraints(sol.getRupSet().getFaultModel(), sol.getRupSet());
-			aveSlipConstraints = AveSlipConstraint.load(sol.getRupSet().getFaultSectionDataList());
+			aveSlipConstraints = U3AveSlipConstraint.load(sol.getRupSet().getFaultSectionDataList());
 		}
 		if (!hasPaleoPlots) {
 			CommandLineInversionRunner.writePaleoPlots(paleoRateConstraints, aveSlipConstraints, sol, dir, prefix);
@@ -533,7 +535,7 @@ public class BatchPlotGen {
 		return new File(dir, prefix+"_partic_rates_8.0+.png").exists() || new File(dir, prefix+"_rate_dist.png").exists();
 	}
 	
-	public static void writeAvgSolPlots(AverageFaultSystemSolution avgSol, File dir, String prefix) throws GMT_MapException, RuntimeException, IOException, InterruptedException {
+	public static void writeAvgSolPlots(U3AverageFaultSystemSolution avgSol, File dir, String prefix) throws GMT_MapException, RuntimeException, IOException, InterruptedException {
 		CommandLineInversionRunner.writeParentSectionMFDPlots(avgSol, new File(dir, "parent_sect_mfds"));
 //		CommandLineInversionRunner.writePaleoCorrelationPlots(
 //				avgSol, new File(dir, "paleo_correlation"), UCERF3_PaleoProbabilityModel.load());
@@ -575,7 +577,7 @@ public class BatchPlotGen {
 			for (int r=0; r<rates.length; r++)
 				ratesNoMin[r] = rates[r] - minRates[r];
 			
-			ThreadedSimulatedAnnealing.writeRateVsRankPlot(new File(dir, prefix), ratesNoMin, rates, new double[minRates.length]);
+			SimulatedAnnealing.writeRateVsRankPlot(dir, prefix+"_rate_dist", ratesNoMin, rates, new double[minRates.length]);
 		}
 	}
 	

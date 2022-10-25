@@ -483,6 +483,11 @@ public class ClusterRupture {
 									jump.toSection, nextCluster, jump.distance);
 						}
 
+						if (jump.toCluster.startSect != jump.toSection) {
+							FaultSubsectionCluster modToCluster = new FaultSubsectionCluster(
+									jump.toCluster.subSects, jump.toSection, jump.toCluster.endSects);
+							jump = new Jump(jump.fromSection, jump.fromCluster, jump.toSection, modToCluster, jump.distance);
+						}
 						ClusterRupture nextRupture = curRupture.take(jump);
 						if (inv_d) System.out.println("\t\tNew curRupture: "+nextRupture);
 						if (maxNumSplays >= 0 && nextRupture.getTotalNumSplays() > maxNumSplays) {
@@ -545,7 +550,15 @@ public class ClusterRupture {
 			FaultSection fromSect = fromCluster.subSects.get(fromCluster.subSects.size()-1);
 			FaultSubsectionCluster toCluster = clusters[i];
 			FaultSection toSect = toCluster.startSect;
-			double distance = distCalc == null ? Double.NaN : distCalc.getDistance(fromSect, toSect);
+			double distance;
+			if (distCalc == null) {
+				distance = Double.NaN;
+			} else {
+				distance = Double.POSITIVE_INFINITY;
+				for (FaultSection s1 : fromCluster.subSects)
+					for (FaultSection s2 : toCluster.subSects)
+						distance = Double.min(distance, distCalc.getDistance(s1, s2));
+			}
 			Jump jump = new Jump(fromSect, fromCluster, toSect, toCluster, distance);
 			jumpsBuilder.add(jump);
 			fromCluster.addConnection(jump);
@@ -662,7 +675,7 @@ public class ClusterRupture {
 		return ruptures;
 	}
 	
-	private static Gson buildGson(List<? extends FaultSection> subSects, boolean pretty) {
+	public static Gson buildGson(List<? extends FaultSection> subSects, boolean pretty) {
 		GsonBuilder builder = new GsonBuilder();
 		if (pretty)
 			builder.setPrettyPrinting(); // extra whitespace makes these large files large

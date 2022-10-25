@@ -1,14 +1,22 @@
 package scratch.UCERF3.enumTreeBranches;
 
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import org.opensha.commons.logicTree.Affects;
+import org.opensha.commons.logicTree.DoesNotAffect;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 
-public enum InversionModels implements LogicTreeBranchNode<InversionModels> {
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
+
+@DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
+@DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
+@DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
+@Affects(FaultSystemSolution.RATES_FILE_NAME)
+public enum InversionModels implements U3LogicTreeBranchNode<InversionModels> {
 	
-	// TODO set weights
 	CHAR_CONSTRAINED(	"Characteristic (Constrained)",			"CharConst",	1d),
-	GR_CONSTRAINED(		"Gutenberg-Richter (Constrained)",		"GRConst",		1d),
-	CHAR_UNCONSTRAINED(		"Unconstrained (Unconstrained)",	"CharUnconst",	1d),
-	GR_UNCONSTRAINED(	"Unconstrained (Unconstrained)",		"GRUnconst",	1d);
+	GR_CONSTRAINED(		"Gutenberg-Richter (Constrained)",		"GRConst",		0d),
+	CHAR_UNCONSTRAINED(		"Unconstrained (Unconstrained)",	"CharUnconst",	0d),
+	GR_UNCONSTRAINED(	"Unconstrained (Unconstrained)",		"GRUnconst",	0d);
 	
 	private String name, shortName;
 	private double weight;
@@ -76,5 +84,10 @@ public enum InversionModels implements LogicTreeBranchNode<InversionModels> {
 	@Override
 	public String getBranchLevelName() {
 		return "Inversion Model";
+	}
+	
+	@Override
+	public String getShortBranchLevelName() {
+		return "IM";
 	}
 }

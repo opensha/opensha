@@ -8,7 +8,7 @@ import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
-public class QuickSurfaceDistanceCalculator {
+class QuickSurfaceDistanceCalculator {
 
 	/**
 	 * This is a utility to calculate the distance between two surfaces where the distances is not

@@ -1,15 +1,18 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -18,17 +21,26 @@ import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import org.apache.commons.math3.stat.StatUtils;
+import org.apache.commons.math3.stat.regression.SimpleRegression;
 import org.dom4j.DocumentException;
+import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
+import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
+import org.opensha.commons.gui.plot.PlotUtils;
+import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils;
@@ -36,16 +48,29 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CumulativeProbabilityFilter.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.DistDependentJumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.InputJumpsOrDistClusterConnectionStrategy;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.DistDependSegShift;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModelBranchNode;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
@@ -59,11 +84,8 @@ import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
-import scratch.UCERF3.SlipEnabledSolution;
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.U3SlipEnabledSolution;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class SegmentationCalculator {
 	
@@ -82,6 +104,8 @@ public class SegmentationCalculator {
 	
 	private JumpProbabilityCalc detrendProb = new Shaw07JumpDistProb(1d, 3d);
 	
+	private boolean uniqueDists = true;
+	
 	/*
 	 * Calculations
 	 */
@@ -96,45 +120,16 @@ public class SegmentationCalculator {
 	// if true, there are multiple jumps between a given parent section pair
 	private final boolean multipleJumpsPerParent;
 	
-	public enum RateCombiner {
-		MIN("Min Rate") {
-			@Override
-			public double combine(double rate1, double rate2) {
-				return Math.min(rate1, rate2);
-			}
-		},
-		MAX("Max Rate") {
-			@Override
-			public double combine(double rate1, double rate2) {
-				return Math.max(rate1, rate2);
-			}
-		},
-		AVERAGE("Avg Rate") {
-			@Override
-			public double combine(double rate1, double rate2) {
-				return 0.5*(rate1 + rate2);
-			}
-		};
-		
-		private String label;
-
-		private RateCombiner(String label) {
-			this.label = label;
-		}
-	
-		@Override
-		public String toString() {
-			return label;
-		}
-		
-		public abstract double combine(double rate1, double rate2);
-	}
-	
 	public enum Scalars {
 		JUMP_DIST("Jump Distance", "km") {
 			@Override
 			public double calc(Jump jump, JumpRates rates, SectionDistanceAzimuthCalculator distAzCalc,
 					SubSectStiffnessCalculator stiffnessCalc) {
+				double rateAvgDist = rates.getRateWeightedDistance();
+				if (Double.isFinite(rateAvgDist))
+					// a jump can have different distances depending on what other sections are involved, use the
+					// rate-weighted distance
+					return rateAvgDist;
 				return jump.distance;
 			}
 
@@ -574,6 +569,8 @@ public class SegmentationCalculator {
 		// add all possible jumps from the connection strategy
 		for (FaultSubsectionCluster cluster : clusters) {
 			for (Jump jump : cluster.getConnections()) {
+				if (uniqueDists)
+					jump = new Jump.UniqueDistJump(jump);
 				IDPairing pair = pair(jump.fromCluster.parentSectionID, jump.toCluster.parentSectionID);
 				if (!parentJumpRateTable.containsRow(pair)) {
 					if (jump.fromCluster.parentSectionID == pair.getID2())
@@ -618,6 +615,10 @@ public class SegmentationCalculator {
 				FaultSubsectionCluster fullFrom = fullClustersMap.get(fromParentID);
 				FaultSubsectionCluster fullTo = fullClustersMap.get(toParentID);
 				Jump fullJump = new Jump(fromSect, fullFrom, toSect, fullTo, jump.distance);
+				if (uniqueDists) {
+					jump = new Jump.UniqueDistJump(jump);
+					fullJump = new Jump.UniqueDistJump(fullJump);
+				}
 				IDPairing pair = pair(fromParentID, toParentID);
 				JumpRates jumpRates = parentJumpRateTable.get(pair, fullJump);
 				if (jumpRates == null) {
@@ -629,7 +630,7 @@ public class SegmentationCalculator {
 					parentJumpRateTable.put(pair, fullJump, jumpRates);
 				}
 				jumpRates.addAzimuiths(jump, fullFrom, fullTo, rates[r]);
-				jumpRates.addRate(mags[r], rates[r]);
+				jumpRates.addRate(r, jump.distance);
 			}
 		}
 		System.out.println("Processed "+ruptures.size()+" ruptures. Found "+parentJumpRateTable.size()
@@ -655,6 +656,10 @@ public class SegmentationCalculator {
 		}
 		this.parentJumpRateTable = parentJumpRateTable;
 		this.multipleJumpsPerParent = multipleJumpsPerParent;
+	}
+	
+	public Set<Jump> getNonZeroJumps() {
+		return parentJumpRateTable.columnKeySet();
 	}
 
 	private void addMagRate(double[] magRates, double mag, double rate) {
@@ -694,9 +699,11 @@ public class SegmentationCalculator {
 			this.sect = sect;
 			this.parentSectRates = parentSectRates;
 			this.sectRates = sectRates;
-			this.rupSetSlipRate = sol.getRupSet().getSlipRateForSection(sect.getSectionId());
-			if (sol instanceof SlipEnabledSolution)
-				this.solSlipRate = ((SlipEnabledSolution)sol).calcSlipRateForSect(sect.getSectionId());
+			FaultSystemRupSet rupSet = sol.getRupSet();
+			this.rupSetSlipRate = rupSet.getSlipRateForSection(sect.getSectionId());
+			if (rupSet.hasModule(SlipAlongRuptureModel.class) && rupSet.hasModule(AveSlipModule.class))
+				this.solSlipRate = rupSet.getModule(SlipAlongRuptureModel.class).calcSlipRateForSects(
+						sol, rupSet.requireModule(AveSlipModule.class))[sect.getSectionId()];
 			else
 				this.solSlipRate = Double.NaN;
 		}
@@ -722,6 +729,10 @@ public class SegmentationCalculator {
 		public final JumpingPointRates toRates;
 		public final double[] magJumpRates;
 		
+		private double sumRate;
+		private double sumRateDist;
+		private HashSet<Integer> rupIndexes;
+		
 		public final AzTracker fromAzTrack;
 		public final AzTracker toAzTrack;
 		
@@ -737,10 +748,20 @@ public class SegmentationCalculator {
 			this.toRates = toRates;
 			this.toAzTrack = toAzTrack;
 			this.magJumpRates = magJumpRates;
+			rupIndexes = new HashSet<>();
 		}
 		
-		public void addRate(double mag, double rate) {
+		public void addRate(int rupIndex, double distance) {
+			double rate = sol.getRateForRup(rupIndex);
+			double mag = sol.getRupSet().getMagForRup(rupIndex);
+			sumRate += rate;
+			sumRateDist += rate*distance;
 			addMagRate(magJumpRates, mag, rate);
+			rupIndexes.add(rupIndex);
+		}
+		
+		public double getRateWeightedDistance() {
+			return sumRateDist/sumRate;
 		}
 		
 		public void addAzimuiths(Jump jump, FaultSubsectionCluster fullFrom, FaultSubsectionCluster fullTo, double rate) {
@@ -796,6 +817,7 @@ public class SegmentationCalculator {
 		if (!multipleJumpsPerParent)
 			return this;
 		
+		FaultSystemRupSet rupSet = sol.getRupSet();
 		Table<IDPairing, Jump, JumpRates> combinedTable = HashBasedTable.create();
 		for (IDPairing pair : parentJumpRateTable.rowKeySet()) {
 			Map<Jump, JumpRates> jumpMap = parentJumpRateTable.row(pair);
@@ -807,6 +829,9 @@ public class SegmentationCalculator {
 				Jump bestJump = null;
 				JumpRates bestJumpRates = null;
 				double[] totRates = new double[minMags.length];
+				HashSet<Integer> fromRups = new HashSet<>();
+				HashSet<Integer> toRups = new HashSet<>();
+				HashSet<Integer> jumpRups = new HashSet<>();
 				for (Jump jump : jumpMap.keySet()) {
 					JumpRates rate = jumpMap.get(jump);
 					boolean newBest = bestJump == null
@@ -816,31 +841,38 @@ public class SegmentationCalculator {
 						bestJump = jump;
 						bestJumpRates = rate;
 					}
-					for (int m=0; m<minMags.length; m++)
-						totRates[m] += rate.magJumpRates[m];
+					jumpRups.addAll(rate.rupIndexes);
+					fromRups.addAll(rupSet.getRupturesForSection(jump.fromSection.getSectionId()));
+					toRups.addAll(rupSet.getRupturesForSection(jump.toSection.getSectionId()));
 				}
+				for (int rupIndex : jumpRups)
+					addMagRate(totRates, rupSet.getMagForRup(rupIndex), sol.getRateForRup(rupIndex));
 				double totMaxRate = StatUtils.max(totRates);
 				double[] combFromSectRates = new double[minMags.length];
 				double[] combToSectRates = new double[minMags.length];
+				// to/from rates should be the sum of all ruptures that touch any of the from/to sections
+				for (int rup : fromRups)
+					addMagRate(combFromSectRates, rupSet.getMagForRup(rup), sol.getRateForRup(rup));
+				for (int rup : toRups)
+					addMagRate(combToSectRates, rupSet.getMagForRup(rup), sol.getRateForRup(rup));
 				double combFromRupSetSlipRate = 0d;
 				double combToRupSetSlipRate = 0d;
 				double combFromSolSlipRate = 0d;
 				double combToSolSlipRate = 0d;
+				double sumRateDist = 0d;
+				double sumRate = 0d;
 				for (Jump jump : jumpMap.keySet()) {
 					// average everything, weighted by the rate that jump is used
 					JumpRates jumpRates = jumpMap.get(jump);
-					for (int m=0; m<minMags.length; m++) {
-						// mag-specific weight
-						double weight = jumpRates.magJumpRates[m]/totRates[m];
-						combFromSectRates[m] += jumpRates.fromRates.sectRates[m]*weight;
-						combToSectRates[m] += jumpRates.toRates.sectRates[m]*weight;
-					}
 					// total weight
 					double weight = StatUtils.max(jumpRates.magJumpRates)/totMaxRate;
 					combFromRupSetSlipRate += jumpRates.fromRates.rupSetSlipRate*weight;
 					combToRupSetSlipRate += jumpRates.toRates.rupSetSlipRate*weight;
 					combFromSolSlipRate += jumpRates.fromRates.solSlipRate*weight;
 					combToSolSlipRate += jumpRates.toRates.solSlipRate*weight;
+					
+					sumRateDist += jumpRates.sumRateDist;
+					sumRate += jumpRates.sumRate;
 				}
 				FaultSection fromSect = bestJump.fromSection;
 				JumpingPointRates combFromRates = new JumpingPointRates(fromSect, parentParticRates.get(fromSect.getParentSectionId()),
@@ -849,6 +881,8 @@ public class SegmentationCalculator {
 				JumpingPointRates combToRates = new JumpingPointRates(toSect, parentParticRates.get(toSect.getParentSectionId()),
 						combToSectRates, combToRupSetSlipRate, combToSolSlipRate);
 				JumpRates combJumpRates = new JumpRates(combFromRates, bestJumpRates.fromAzTrack, combToRates, bestJumpRates.toAzTrack, totRates);
+				combJumpRates.sumRateDist = sumRateDist;
+				combJumpRates.sumRate = sumRate;
 				combinedTable.put(pair, bestJump, combJumpRates);
 			}
 		}
@@ -916,6 +950,14 @@ public class SegmentationCalculator {
 		return GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
 	}
 	
+	private static CPT getConnectionDiffCPT() throws IOException {
+		return GMT_CPT_Files.GMT_POLAR.instance().rescale(-0.5d, 0.5d);
+	}
+	
+	private static CPT getConnectionLogRatioCPT() throws IOException {
+		return GMT_CPT_Files.GMT_POLAR.instance().rescale(-1d, 1d);
+	}
+	
 	public File[] plotConnectionFracts(File outputDir, String prefix, String title, int width, RateCombiner combiner) throws IOException {
 		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 //		plotter.setJumpLineThickness(4f);
@@ -927,25 +969,174 @@ public class SegmentationCalculator {
 		for (int m=0; m<minMags.length; m++) {
 			plotter.clearJumpScalars();
 			
-			List<Jump> jumps = new ArrayList<>();
-			List<Double> values = new ArrayList<>();
-			for (Cell<IDPairing, Jump, JumpRates> cell : parentJumpRateTable.cellSet()) {
-				JumpRates rates = cell.getValue();
-				double jumpRate = rates.magJumpRates[m];
-				double fromVal = rates.fromRates.sectRates[m];
-				double toVal = rates.toRates.sectRates[m];
-				double fract = jumpRate/combiner.combine(fromVal, toVal);
-				if (fract > 0d) {
-					jumps.add(cell.getColumnKey());
-					values.add(fract);
-				}
-			}
-			String label = getMagLabel(minMags[m])+" Passthrough Rate (Rel. "+combiner.label+")";
-			plotter.plotJumpScalars(jumps, values, cpt, label);
+			String label = getMagLabel(minMags[m])+" Passthrough Rate (Rel. "+combiner+")";
+			plotter.plotJumpScalars(calcJumpPassthroughs(m, combiner), cpt, label);
 			
 			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
 			ret[m] = new File(outputDir, myPrefix+".png");
 			plotter.plot(outputDir, myPrefix, title, width);
+		}
+		
+		return ret;
+	}
+	
+	private Map<Jump, Double> calcJumpPassthroughs(int magIndex, RateCombiner combiner) {
+		Map<Jump, Double> ret = new HashMap<>();
+		for (Cell<IDPairing, Jump, JumpRates> cell : parentJumpRateTable.cellSet()) {
+			JumpRates rates = cell.getValue();
+			double jumpRate = rates.magJumpRates[magIndex];
+			double fromVal = rates.fromRates.sectRates[magIndex];
+			double toVal = rates.toRates.sectRates[magIndex];
+			double fract = jumpRate/combiner.combine(fromVal, toVal);
+			if (fract > 0d)
+				ret.put(cell.getColumnKey(), fract);
+		}
+		return ret;
+	}
+	
+	public File[] plotConnectionDiffs(File outputDir, String prefix, String title, RateCombiner combiner,
+			SegmentationCalculator compCalc) throws IOException {
+		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+//		plotter.setJumpLineThickness(4f);
+		
+		CPT cpt = getConnectionDiffCPT();
+		
+		File[] ret = new File[minMags.length];
+		
+		for (int m=0; m<minMags.length; m++) {
+			plotter.clearJumpScalars();
+			
+			String label = getMagLabel(minMags[m])+" Passthrough Rate Difference";
+			Map<Jump, Double> primary = calcJumpPassthroughs(m, combiner);
+			Map<Jump, Double> comp = compCalc.calcJumpPassthroughs(m, combiner);
+			HashSet<Jump> allJumps = new HashSet<>();
+			allJumps.addAll(primary.keySet());
+			allJumps.addAll(comp.keySet());
+			List<Jump> jumps = new ArrayList<>();
+			List<Double> values = new ArrayList<>();
+			for (Jump jump : allJumps) {
+				Double val1 = primary.get(jump);
+				Double val2 = comp.get(jump);
+				if (val1 == null)
+					val1 = 0d;
+				if (val2 == null)
+					val2 = 0d;
+				jumps.add(jump);
+				values.add(val1 - val2);
+			}
+			plotter.plotJumpScalars(jumps, values, cpt, label);
+			
+			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
+			ret[m] = new File(outputDir, myPrefix+".png");
+			plotter.plot(outputDir, myPrefix, title, 800);
+		}
+		
+		return ret;
+	}
+	
+	public File[] plotConnectionLogRatios(File outputDir, String prefix, String title, RateCombiner combiner,
+			SegmentationCalculator compCalc) throws IOException {
+		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+//		plotter.setJumpLineThickness(4f);
+		
+		CPT cpt = getConnectionLogRatioCPT();
+		
+		File[] ret = new File[minMags.length];
+		
+		for (int m=0; m<minMags.length; m++) {
+			plotter.clearJumpScalars();
+			
+			String label = "Log10 "+getMagLabel(minMags[m])+" Passthrough Rate Ratio";
+			Map<Jump, Double> primary = calcJumpPassthroughs(m, combiner);
+			Map<Jump, Double> comp = compCalc.calcJumpPassthroughs(m, combiner);
+			HashSet<Jump> allJumps = new HashSet<>();
+			allJumps.addAll(primary.keySet());
+			allJumps.addAll(comp.keySet());
+			List<Jump> jumps = new ArrayList<>();
+			List<Double> values = new ArrayList<>();
+			for (Jump jump : allJumps) {
+				Double val1 = primary.get(jump);
+				Double val2 = comp.get(jump);
+				if (val1 == null)
+					val1 = 0d;
+				if (val2 == null)
+					val2 = 0d;
+				jumps.add(jump);
+				values.add(Math.log10(val1/val2));
+			}
+			plotter.plotJumpScalars(jumps, values, cpt, label);
+			
+			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
+			ret[m] = new File(outputDir, myPrefix+".png");
+			plotter.plot(outputDir, myPrefix, title, 800);
+		}
+		
+		return ret;
+	}
+	
+	public File[] plotConnectionModelDiffs(File outputDir, String prefix, String title, RateCombiner combiner,
+			JumpProbabilityCalc segModel) throws IOException {
+		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+//		plotter.setJumpLineThickness(4f);
+		
+		CPT cpt = getConnectionDiffCPT();
+		
+		File[] ret = new File[minMags.length];
+		
+		for (int m=0; m<minMags.length; m++) {
+			plotter.clearJumpScalars();
+			
+			String label = getMagLabel(minMags[m])+" Passthrough Rate Difference";
+			Map<Jump, Double> primary = calcJumpPassthroughs(m, combiner);
+			List<Jump> jumps = new ArrayList<>();
+			List<Double> values = new ArrayList<>();
+			for (Jump jump : primary.keySet()) {
+				Double val1 = primary.get(jump);
+				double val2 = segModel.calcJumpProbability(null, jump, false);
+				if (val1 == null)
+					val1 = 0d;
+				jumps.add(jump);
+				values.add(val1 - val2);
+			}
+			plotter.plotJumpScalars(jumps, values, cpt, label);
+			
+			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
+			ret[m] = new File(outputDir, myPrefix+".png");
+			plotter.plot(outputDir, myPrefix, title, 800);
+		}
+		
+		return ret;
+	}
+	
+	public File[] plotConnectionModelLogRatios(File outputDir, String prefix, String title, RateCombiner combiner,
+			JumpProbabilityCalc segModel) throws IOException {
+		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+//		plotter.setJumpLineThickness(4f);
+		
+		CPT cpt = getConnectionLogRatioCPT();
+		
+		File[] ret = new File[minMags.length];
+		
+		for (int m=0; m<minMags.length; m++) {
+			plotter.clearJumpScalars();
+			
+			String label = "Log10 "+getMagLabel(minMags[m])+" Passthrough Rate Ratio";
+			Map<Jump, Double> primary = calcJumpPassthroughs(m, combiner);
+			List<Jump> jumps = new ArrayList<>();
+			List<Double> values = new ArrayList<>();
+			for (Jump jump : primary.keySet()) {
+				Double val1 = primary.get(jump);
+				double val2 = segModel.calcJumpProbability(null, jump, false);
+				if (val1 == null)
+					val1 = 0d;
+				jumps.add(jump);
+				values.add(Math.log10(val1/val2));
+			}
+			plotter.plotJumpScalars(jumps, values, cpt, label);
+			
+			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
+			ret[m] = new File(outputDir, myPrefix+".png");
+			plotter.plot(outputDir, myPrefix, title, 800);
 		}
 		
 		return ret;
@@ -1030,6 +1221,10 @@ public class SegmentationCalculator {
 		Color outlineColor = new Color(0, 0, 0, 100);
 		float scatterWidth = 4;
 		
+//		JumpProbabilityCalc detrendProb = this.detrendProb;
+//		if (scalar == Scalars.JUMP_DIST)
+//			detrendProb = null;
+		
 		Map<Jump, Double> scalarJumpVals = calcJumpScalarValues(scalar);
 		
 		for (int m=0; m<minMags.length; m++) {
@@ -1045,7 +1240,8 @@ public class SegmentationCalculator {
 				fakeXY.set(0d, -1d);
 				fakeXY.setName("Connection");
 				funcs.add(fakeXY);
-				chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, rateCPT.getMaxColor()));
+				float half = rateCPT.getMinValue() + 0.5f*(rateCPT.getMaxValue()-rateCPT.getMinValue());
+				chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, rateCPT.getColor(half)));
 				
 				DefaultXY_DataSet zerosScatter = new DefaultXY_DataSet();
 				zerosScatter.setName("Zero-Rate");
@@ -1061,6 +1257,7 @@ public class SegmentationCalculator {
 					JumpRates rates = cell.getValue();
 					double jumpRate = rates.magJumpRates[m];
 					double scalarVal = scalarJumpVals.get(jump);
+					double detrendFract = 0d;
 					double fract;
 					if (jumpRate == 0d) {
 						fract = 0d;
@@ -1084,13 +1281,15 @@ public class SegmentationCalculator {
 						chars.add(new PlotCurveCharacterstics(PlotSymbol.CIRCLE, scatterWidth, outlineColor));
 						if (detrendProb != null) {
 							double refProb = detrendProb.calcJumpProbability(null, jump, false);
-							detrendFracts.add(Math.min(1d, fract/refProb));
+							detrendFract = Math.min(1d, fract/refProb);
 						}
 					}
 					
 					scalarTrack.addValue(scalarVal);
 					scalarVals.add(scalarVal);
 					fracts.add(fract);
+					if (detrendProb != null)
+						detrendFracts.add(detrendFract);
 				}
 				
 				if (m == 0) {
@@ -1181,7 +1380,7 @@ public class SegmentationCalculator {
 				}
 				
 				PlotSpec spec = new PlotSpec(funcs, chars, scalar.name+" Dependence", scalar.toString(),
-						"Passthrough Rate (Rel. "+combiner.label+")");
+						"Passthrough Rate (Rel. "+combiner+")");
 				spec.setLegendVisible(specs.isEmpty());
 				specs.add(spec);
 			}
@@ -1227,9 +1426,10 @@ public class SegmentationCalculator {
 			int height = 300 + 400*specs.size();
 			gp.drawGraphPanel(specs, false, logY, xRanges, yRanges);
 			
-			CombinedDomainXYPlot plot = (CombinedDomainXYPlot)gp.getPlot();
-			for (int i=0; i<specs.size(); i++)
-				((XYPlot)plot.getSubplots().get(i)).setWeight(i < specs.size()-1 ? 5: 3);
+			int[] weights = new int[specs.size()];
+			for (int i=0; i<weights.length; i++)
+				weights[i] = i < specs.size()-1 ? 5 : 3;
+			PlotUtils.setSubPlotWeights(gp, weights);
 
 			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
 			ret[m] = new File(outputDir, myPrefix+".png");
@@ -1298,7 +1498,7 @@ public class SegmentationCalculator {
 			
 			specs.add(new PlotSpec(funcs, chars, getMagLabel(minMags[index1])+" vs "+getMagLabel(minMags[index2]),
 					getMagLabel(minMags[index1])+" Passthrough Rate",
-					getMagLabel(minMags[index2])+" Passthrough Rate (Rel. "+combiner.label+")"));
+					getMagLabel(minMags[index2])+" Passthrough Rate (Rel. "+combiner+")"));
 		}
 		
 		HeadlessGraphPanel gp = new HeadlessGraphPanel();
@@ -1374,8 +1574,8 @@ public class SegmentationCalculator {
 		chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 2f, new Color(0, 0, 0, 127)));
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, getMagLabel(minMags[magIndex])+" Relative Rate Combiners: "
-				+combiner1.label+" vs "+combiner2.label, "Passthrough Rate (Rel. "+combiner1.label+")",
-				"Passthrough Rate (Rel. "+combiner2.label+")");
+				+combiner1+" vs "+combiner2, "Passthrough Rate (Rel. "+combiner1+")",
+				"Passthrough Rate (Rel. "+combiner2+")");
 		
 		HeadlessGraphPanel gp = new HeadlessGraphPanel();
 		gp.setTickLabelFontSize(18);
@@ -1394,36 +1594,793 @@ public class SegmentationCalculator {
 		return ret;
 	}
 	
-	public static void main(String[] args) throws IOException, DocumentException {
-		File rupSetDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
-		FaultSystemSolution sol = FaultSystemIO.loadSol(new File(
-				rupSetDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip"));
-		double jumpDist = 15d;
-		File distCacheFile = new File(rupSetDir, "fm3_1_dist_az_cache.csv");
-		FaultSystemRupSet rupSet = sol.getRupSet();
-		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
-		distAzCalc.loadCacheFile(distCacheFile);
-//		ClusterConnectionStrategy connStrat = new DistCutoffClosestSectClusterConnectionStrategy(rupSet.getFaultSectionDataList(), distAzCalc, jumpDist);
-		ClusterConnectionStrategy connStrat = new InputJumpsOrDistClusterConnectionStrategy(rupSet.getFaultSectionDataList(), distAzCalc, jumpDist, new ArrayList<>());
-		RuptureConnectionSearch rsConnSearch = new RuptureConnectionSearch(rupSet, distAzCalc,
-				1000d, RuptureConnectionSearch.CUMULATIVE_JUMPS_DEFAULT);
-		rupSet.buildClusterRups(rsConnSearch);
-		List<ClusterRupture> rups = rupSet.getClusterRuptures();
+	public File[] plotDistDependComparison(File outputDir, String prefix, boolean logY, RateCombiner combiner) throws IOException {
+		File[] ret = new File[minMags.length];
 		
-		SegmentationCalculator calc = new SegmentationCalculator(sol, rups, connStrat, distAzCalc, new double[] {6.5d, 7.5d});
-		calc = calc.combineMultiJumps(true);
+		Range xRange = null;
+		Range yRange = logY ? new Range(1e-3, 1) : new Range(0d, 1d);
 		
-		File outputDir = new File("/tmp/test_seg");
-		calc.plotConnectionRates(outputDir, "conn_rates", "Connection Rates", 800);
-		calc.plotConnectionFracts(outputDir, "conn_passthrough_rel_min", "Relative Connection Passthrough Rates", 800, RateCombiner.MIN);
-		calc.plotConnectionFracts(outputDir, "conn_passthrough_rel_max", "Relative Connection Passthrough Rates", 800, RateCombiner.MAX);
-		calc.plotConnectionFracts(outputDir, "conn_passthrough_rel_avg", "Relative Connection Passthrough Rates", 800, RateCombiner.AVERAGE);
+		CPT rateCPT = getConnectionRateCPT();
+		Color outlineColor = new Color(0, 0, 0, 100);
+		float scatterWidth = 4;
 		
-		for (Scalars scalar : Scalars.values()) {
-			calc.plotFractVsScalars(outputDir, "conn_passthrough_scalars_"+scalar.name(), scalar, false, RateCombiner.values());
-			calc.plotFractVsScalars(outputDir, "conn_passthrough_scalars_"+scalar.name()+"_log", scalar, true, RateCombiner.values());
+//		JumpProbabilityCalc detrendProb = this.detrendProb;
+//		if (scalar == Scalars.JUMP_DIST)
+//			detrendProb = null;
+		
+		Scalars scalar = Scalars.JUMP_DIST;
+		
+		// see if we have a segmentation model
+		List<DistDependentJumpProbabilityCalc> comparisons = new ArrayList<>();
+		List<String> compNames = new ArrayList<>();
+		LogicTreeBranch<?> branch = sol.getModule(LogicTreeBranch.class);
+		if (branch == null)
+			branch = sol.getRupSet().getModule(LogicTreeBranch.class);
+		DistDependentJumpProbabilityCalc chosenSegModel = null;
+		if (branch != null) {
+			SegmentationModelBranchNode segChoice = branch.getValue(SegmentationModelBranchNode.class);
+			
+			for (LogicTreeLevel<?> level : branch.getLevels()) {
+				if (SegmentationModelBranchNode.class.isAssignableFrom(level.getType())
+						|| level.getType().equals(SegmentationModelBranchNode.class)) {
+					Class<? extends SegmentationModelBranchNode> segClass =
+							(Class<? extends SegmentationModelBranchNode>) level.getType();
+					if (segClass != null && segClass.isEnum() && SegmentationModelBranchNode.class.isAssignableFrom(segClass)) {
+						for (SegmentationModelBranchNode option : segClass.getEnumConstants()) {
+							if (option.getNodeWeight(branch) > 0d || option == segChoice) {
+								try {
+									JumpProbabilityCalc model = option.getModel(sol.getRupSet(), branch);
+									if (!(model instanceof DistDependentJumpProbabilityCalc)) {
+										// try generic
+										model = option.getModel(null, branch);
+									}
+									if (model instanceof DistDependentJumpProbabilityCalc) {
+										DistDependentJumpProbabilityCalc distModel = (DistDependentJumpProbabilityCalc)model;
+										if (option == segChoice)
+											chosenSegModel = distModel;
+										comparisons.add(distModel);
+										compNames.add(option.getShortName());
+									}
+								} catch (Exception e) {
+									// error building segmentation model, possibly with our generic (no rupture set)
+									// method call, skip
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 		
+		if (comparisons.isEmpty()) {
+			double[] r0s = { 1d, 2d, 3d, 4d, 6d };
+			for (double r0 : r0s) {
+				Shaw07JumpDistProb comp = new Shaw07JumpDistProb(1d, r0);
+				comparisons.add(comp);
+				compNames.add(comp.getName());
+			}
+		}
+		
+		
+		Color[] compColors = new Color[comparisons.size()];
+		CPT r0cpt = new CPT(0d, Double.max(1d, comparisons.size()-1), Color.RED, Color.BLUE);
+		for (int c=0; c<compColors.length; c++)
+			compColors[c] = r0cpt.getColor((float)c);
+		List<DiscretizedFunc> compCurves = new ArrayList<>();
+		HistogramFunction histXVals = null;
+		
+		Map<Jump, Double> scalarJumpVals = calcJumpScalarValues(scalar);
+		
+		for (int m=0; m<minMags.length; m++) {
+			MinMaxAveTracker scalarTrack = new MinMaxAveTracker();
+			
+			List<XY_DataSet> funcs = new ArrayList<>();
+			List<PlotCurveCharacterstics> chars = new ArrayList<>();
+			
+			DefaultXY_DataSet fakeXY = new DefaultXY_DataSet();
+			fakeXY.set(0d, -1d);
+			fakeXY.setName("Connection");
+			funcs.add(fakeXY);
+			float half = rateCPT.getMinValue() + 0.5f*(rateCPT.getMaxValue()-rateCPT.getMinValue());
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, rateCPT.getColor(half)));
+			
+			DefaultXY_DataSet zerosScatter = new DefaultXY_DataSet();
+			zerosScatter.setName("Zero-Rate");
+			funcs.add(zerosScatter);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, Color.GRAY));
+
+			List<Double> fracts = new ArrayList<>();
+			List<Double> detrendFracts = detrendProb == null ? null : new ArrayList<>();
+			List<Double> scalarVals = new ArrayList<>();
+			
+			for (Cell<IDPairing, Jump, JumpRates> cell : parentJumpRateTable.cellSet()) {
+				Jump jump = cell.getColumnKey();
+				JumpRates rates = cell.getValue();
+				double jumpRate = rates.magJumpRates[m];
+				double scalarVal = scalarJumpVals.get(jump);
+				double fract;
+				if (jumpRate == 0d) {
+					fract = 0d;
+					zerosScatter.set(scalarVal, yRange.getLowerBound());
+				} else {
+					double fromVal = rates.fromRates.sectRates[m];
+					double toVal = rates.toRates.sectRates[m];
+//					Preconditions.checkState(Double.isFinite(fromVal));
+//					Preconditions.checkState(Double.isFinite(toVal));
+					double rate = combiner.combine(fromVal, toVal);
+					fract = jumpRate/rate;
+					
+					Preconditions.checkState(fract < 1.001, "Passthrough fraction is >1: %s\n"
+							+ "\tjump=%s, fromVal=%s, toVal=%s, jumpRate=%s, combRate[%s]=%s",
+							fract, jump, fromVal, toVal, jumpRate, combiner, rate);
+//					if (fract > 1) {
+//						System.out.println("ABOVE 1!! jump="+jump+" with rate="+jumpRate+" and combiner: "+combiner.name());
+//						System.out.println("\tfromVal="+fromVal+"\ttoVal="+toVal+"\trate="+rate);
+//						System.out.println("\tfract = "+jumpRate+" / "+rate+" = "+fract);
+//					}
+					Color c = rateCPT.getColor((float)Math.log10(rate));
+					c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 200);
+					
+					XY_DataSet scatter = new DefaultXY_DataSet();
+					scatter.set(scalarVal, fract);
+
+					funcs.add(scatter);
+					chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, c));
+					funcs.add(scatter);
+					chars.add(new PlotCurveCharacterstics(PlotSymbol.CIRCLE, scatterWidth, outlineColor));
+					if (detrendProb != null) {
+						double refProb = detrendProb.calcJumpProbability(null, jump, false);
+						detrendFracts.add(Math.min(1d, fract/refProb));
+					}
+				}
+				
+				scalarTrack.addValue(scalarVal);
+				scalarVals.add(scalarVal);
+				fracts.add(fract);
+			}
+			
+			if (m == 0) {
+				xRange = scalar.getPlotRange(scalarTrack.getMin(), scalarTrack.getMax());
+				compCurves = new ArrayList<>();
+				for (int i=0; i<comparisons.size(); i++) {
+					DistDependentJumpProbabilityCalc prob = comparisons.get(i);
+					EvenlyDiscretizedFunc func = new EvenlyDiscretizedFunc(xRange.getLowerBound(), xRange.getUpperBound(), 1000);
+					for (int j=0; j<func.size(); j++)
+						func.set(j, prob.calcJumpProbability(func.getX(j)));
+					String name = compNames.get(i);
+					if (i > 0)
+						name = name.replaceAll("Shaw07", "").trim();
+					func.setName(name);
+					compCurves.add(func);
+				}
+				histXVals = scalar.initHistogram(scalarTrack.getMin(), scalarTrack.getMax());
+			}
+			// now bin values
+			List<List<Double>> valLists = new ArrayList<>();
+			for (int i=0; i<histXVals.size(); i++)
+				valLists.add(new ArrayList<>());
+			for (int i=0; i<fracts.size(); i++) {
+				double scalarVal = scalarVals.get(i);
+				double fract = fracts.get(i);
+				if (xRange.contains(scalarVal) && Double.isFinite(fract)) {
+					int ind = histXVals.getClosestXIndex(scalarVal);
+					valLists.get(ind).add(fract);
+				}
+			}
+			XY_DataSet binnedMeans = new DefaultXY_DataSet();
+			binnedMeans.setName("Mean");
+			XY_DataSet binnedMedians = new DefaultXY_DataSet();
+			binnedMedians.setName("Median");
+//			XY_DataSet probTaken = new DefaultXY_DataSet();
+//			probTaken.setName("P(>0)");
+			
+			CSVFile<String> csv = new CSVFile<>(true);
+			csv.addLine("Distance Bin Center (km)", "Mean Passthrough Rate", "Median Passthrough Rate");
+			
+			for (int i=0; i<valLists.size(); i++) {
+				List<Double> binnedVals = valLists.get(i);
+				if (binnedVals.isEmpty())
+					continue;
+				double[] values = Doubles.toArray(binnedVals);
+				double mean = StatUtils.mean(values);
+				double median = DataUtils.median(values);
+				binnedMeans.set(histXVals.getX(i), mean);
+				binnedMedians.set(histXVals.getX(i), median);
+				
+				List<String> line = new ArrayList<>();
+				line.add((float)histXVals.getX(i)+"");
+				line.add(mean+"");
+				line.add(median+"");
+				csv.addLine(line);
+//				probTaken.set(marginalTakenHist.getX(i), marginalTakenHist.getY(i)/marginalAllHist.getY(i));
+			}
+			
+			// add fake values so that the legend works
+			if (binnedMeans.size() == 0) {
+				binnedMeans.set(0d, -1d);
+				binnedMedians.set(0d, -1d);
+			}
+			if (zerosScatter.size() == 0)
+				zerosScatter.set(0d, -1d);
+			
+			funcs.addAll(compCurves);
+			for (int i=0; i<compColors.length; i++) {
+				if (comparisons.get(i) == chosenSegModel)
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
+				else
+					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, compColors[i]));
+			}
+			
+			funcs.add(binnedMeans);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 10f, new Color(0, 0, 0, 150)));
+			funcs.add(binnedMedians);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_SQUARE, 10f, new Color(0, 0, 150, 150)));
+//			funcs.add(probTaken);
+//			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_TRIANGLE, 6f, new Color(150, 0, 0, 150)));
+			
+			PlotSpec spec = new PlotSpec(funcs, chars, scalar.name+" Dependence", scalar.toString(),
+					"Passthrough Rate (Rel. "+combiner+")");
+			spec.setLegendVisible(true);
+			
+			System.out.println(getMagLabel(minMags[m])+" "+scalar+": "+scalarTrack);
+			
+			HeadlessGraphPanel gp = new HeadlessGraphPanel();
+			gp.setTickLabelFontSize(18);
+			gp.setAxisLabelFontSize(24);
+			gp.setPlotLabelFontSize(24);
+			gp.setLegendFontSize(18);
+			gp.setBackgroundColor(Color.WHITE);
+			
+			int width = 1000;
+			int height = 800;
+			gp.drawGraphPanel(spec, false, logY, xRange, yRange);
+
+			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
+			ret[m] = new File(outputDir, myPrefix+".png");
+			gp.getChartPanel().setSize(width, height);
+			gp.saveAsPNG(ret[m].getAbsolutePath());
+			if (!logY)
+				csv.writeToFile(new File(outputDir, myPrefix+".csv"));
+		}
+		
+		return ret;
+	}
+	
+	public File[] plotMaxDistModelsComparison(File outputDir, String prefix, boolean logY, double targetR0,
+			double a, RateCombiner combiner) throws IOException {
+		File[] ret = new File[minMags.length];
+		
+		Range xRange = null;
+		Range yRange = logY ? new Range(1e-3, 1) : new Range(0d, 1d);
+		Range targetYRange = logY ? new Range(0.1, 10) : new Range(0, 5);
+		
+		CPT rateCPT = getConnectionRateCPT();
+		Color outlineColor = new Color(0, 0, 0, 100);
+		float scatterWidth = 4;
+		
+//		JumpProbabilityCalc detrendProb = this.detrendProb;
+//		if (scalar == Scalars.JUMP_DIST)
+//			detrendProb = null;
+		
+		DefaultXY_DataSet stairStep = new DefaultXY_DataSet();
+		MaxJumpDistModels[] maxDists = MaxJumpDistModels.values();
+		double sumWeight = 0d;
+		double prevDist = Double.POSITIVE_INFINITY;
+		for (int i=maxDists.length; --i>=0;) {
+			double myDist = maxDists[i].getMaxDist();
+			double weight = maxDists[i].getNodeWeight(null);
+			if (sumWeight > 0) {
+				stairStep.set(prevDist, sumWeight);
+				stairStep.set(myDist, sumWeight);
+			}
+			sumWeight += weight;
+			prevDist = myDist;
+		}
+		stairStep.set(prevDist, sumWeight);
+		stairStep.set(0d, sumWeight);
+		
+		DiscretizedFunc target = null;
+		
+		// reverse it
+		DefaultXY_DataSet rev = new DefaultXY_DataSet();
+		for (int i=stairStep.size(); --i>=0;)
+			rev.set(stairStep.get(i));
+		stairStep = rev;
+		stairStep.setName("Inv. Cum. Weight");
+		
+		Scalars scalar = Scalars.JUMP_DIST;
+		
+		HistogramFunction histXVals = null;
+		
+		Map<Jump, Double> scalarJumpVals = calcJumpScalarValues(scalar);
+		
+		Shaw07JumpDistProb prob = new Shaw07JumpDistProb(a, targetR0);
+		
+		for (int m=0; m<minMags.length; m++) {
+			MinMaxAveTracker scalarTrack = new MinMaxAveTracker();
+			
+			List<XY_DataSet> funcs = new ArrayList<>();
+			List<PlotCurveCharacterstics> chars = new ArrayList<>();
+			
+			List<XY_DataSet> targetRatioFuncs = new ArrayList<>();
+			List<PlotCurveCharacterstics> targetRatioChars = new ArrayList<>();
+			
+			DefaultXY_DataSet fakeXY = new DefaultXY_DataSet();
+			fakeXY.set(0d, -1d);
+			fakeXY.setName("Connection");
+			funcs.add(fakeXY);
+			float half = rateCPT.getMinValue() + 0.5f*(rateCPT.getMaxValue()-rateCPT.getMinValue());
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, rateCPT.getColor(half)));
+			targetRatioFuncs.add(fakeXY);
+			targetRatioChars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, rateCPT.getMaxColor()));
+			
+			DefaultXY_DataSet zerosScatter = new DefaultXY_DataSet();
+			zerosScatter.setName("Zero-Rate");
+			funcs.add(zerosScatter);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, Color.GRAY));
+
+			List<Double> fracts = new ArrayList<>();
+			List<Double> detrendFracts = detrendProb == null ? null : new ArrayList<>();
+			List<Double> scalarVals = new ArrayList<>();
+			
+			DefaultXY_DataSet allRatioScatter = new DefaultXY_DataSet();
+			
+			for (Cell<IDPairing, Jump, JumpRates> cell : parentJumpRateTable.cellSet()) {
+				Jump jump = cell.getColumnKey();
+				JumpRates rates = cell.getValue();
+				double jumpRate = rates.magJumpRates[m];
+				double scalarVal = scalarJumpVals.get(jump);
+				double fract;
+				if (jumpRate == 0d) {
+					fract = 0d;
+					zerosScatter.set(scalarVal, yRange.getLowerBound());
+				} else {
+					double fromVal = rates.fromRates.sectRates[m];
+					double toVal = rates.toRates.sectRates[m];
+//					Preconditions.checkState(Double.isFinite(fromVal));
+//					Preconditions.checkState(Double.isFinite(toVal));
+					double rate = combiner.combine(fromVal, toVal);
+					fract = jumpRate/rate;
+					
+					Preconditions.checkState(fract < 1.001, "Passthrough fraction is >1: %s\n"
+							+ "\tjump=%s, fromVal=%s, toVal=%s, jumpRate=%s, combRate[%s]=%s",
+							fract, jump, fromVal, toVal, jumpRate, combiner, rate);
+//					if (fract > 1) {
+//						System.out.println("ABOVE 1!! jump="+jump+" with rate="+jumpRate+" and combiner: "+combiner.name());
+//						System.out.println("\tfromVal="+fromVal+"\ttoVal="+toVal+"\trate="+rate);
+//						System.out.println("\tfract = "+jumpRate+" / "+rate+" = "+fract);
+//					}
+					Color c = rateCPT.getColor((float)Math.log10(rate));
+					c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 200);
+					
+					XY_DataSet scatter = new DefaultXY_DataSet();
+					scatter.set(scalarVal, fract);
+
+					funcs.add(scatter);
+					chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, c));
+					funcs.add(scatter);
+					chars.add(new PlotCurveCharacterstics(PlotSymbol.CIRCLE, scatterWidth, outlineColor));
+					if (detrendProb != null) {
+						double refProb = detrendProb.calcJumpProbability(null, jump, false);
+						detrendFracts.add(Math.min(1d, fract/refProb));
+					}
+					
+					double refProb = prob.calcJumpProbability(scalarVal);
+					double ratio = fract/refProb;
+					
+					allRatioScatter.set(scalarVal, ratio);
+					
+					scatter = new DefaultXY_DataSet();
+					scatter.set(scalarVal, ratio);
+
+					targetRatioFuncs.add(scatter);
+					targetRatioChars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, c));
+					targetRatioFuncs.add(scatter);
+					targetRatioChars.add(new PlotCurveCharacterstics(PlotSymbol.CIRCLE, scatterWidth, outlineColor));
+				}
+				
+				scalarTrack.addValue(scalarVal);
+				scalarVals.add(scalarVal);
+				fracts.add(fract);
+			}
+			
+			if (m == 0) {
+				xRange = scalar.getPlotRange(scalarTrack.getMin(), scalarTrack.getMax());
+				target = new EvenlyDiscretizedFunc(xRange.getLowerBound(), xRange.getUpperBound(), 1000);
+				for (int j=0; j<target.size(); j++)
+					target.set(j, prob.calcJumpProbability(target.getX(j)));
+				target.setName(prob.getName());
+				histXVals = scalar.initHistogram(scalarTrack.getMin(), scalarTrack.getMax());
+			}
+			// now bin values
+			List<List<Double>> valLists = new ArrayList<>();
+			for (int i=0; i<histXVals.size(); i++)
+				valLists.add(new ArrayList<>());
+			for (int i=0; i<fracts.size(); i++) {
+				double scalarVal = scalarVals.get(i);
+				double fract = fracts.get(i);
+				if (xRange.contains(scalarVal) && Double.isFinite(fract)) {
+					int ind = histXVals.getClosestXIndex(scalarVal);
+					valLists.get(ind).add(fract);
+				}
+			}
+			XY_DataSet binnedMeans = new DefaultXY_DataSet();
+			binnedMeans.setName("Mean");
+			XY_DataSet binnedMedians = new DefaultXY_DataSet();
+			binnedMedians.setName("Median");
+//			XY_DataSet probTaken = new DefaultXY_DataSet();
+//			probTaken.setName("P(>0)");
+			
+			CSVFile<String> csv = new CSVFile<>(true);
+			csv.addLine("Distance Bin Center (km)", "Mean Passthrough Rate", "Median Passthrough Rate");
+			
+			for (int i=0; i<valLists.size(); i++) {
+				List<Double> binnedVals = valLists.get(i);
+				if (binnedVals.isEmpty())
+					continue;
+				double[] values = Doubles.toArray(binnedVals);
+				double mean = StatUtils.mean(values);
+				double median = DataUtils.median(values);
+				binnedMeans.set(histXVals.getX(i), mean);
+				binnedMedians.set(histXVals.getX(i), median);
+				
+				List<String> line = new ArrayList<>();
+				line.add((float)histXVals.getX(i)+"");
+				line.add(mean+"");
+				line.add(median+"");
+				csv.addLine(line);
+//				probTaken.set(marginalTakenHist.getX(i), marginalTakenHist.getY(i)/marginalAllHist.getY(i));
+			}
+			
+			// add fake values so that the legend works
+			if (binnedMeans.size() == 0) {
+				binnedMeans.set(0d, -1d);
+				binnedMedians.set(0d, -1d);
+			}
+			if (zerosScatter.size() == 0)
+				zerosScatter.set(0d, -1d);
+			
+			funcs.add(target);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.RED));
+			
+			funcs.add(binnedMeans);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 10f, new Color(0, 0, 0, 150)));
+			funcs.add(binnedMedians);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_SQUARE, 10f, new Color(0, 0, 150, 150)));
+			funcs.add(stairStep);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 2f, Color.DARK_GRAY));
+//			funcs.add(probTaken);
+//			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_TRIANGLE, 6f, new Color(150, 0, 0, 150)));
+			
+			PlotSpec spec = new PlotSpec(funcs, chars, scalar.name+" Max-Dist Comparison", scalar.toString(),
+					"Passthrough Rate (Rel. "+combiner+")");
+			spec.setLegendVisible(true);
+			
+			System.out.println(getMagLabel(minMags[m])+" "+scalar+": "+scalarTrack);
+			
+			HeadlessGraphPanel gp = new HeadlessGraphPanel();
+			gp.setTickLabelFontSize(18);
+			gp.setAxisLabelFontSize(24);
+			gp.setPlotLabelFontSize(24);
+			gp.setLegendFontSize(18);
+			gp.setBackgroundColor(Color.WHITE);
+			
+			int width = 1000;
+			int height = 800;
+			gp.drawGraphPanel(spec, false, logY, xRange, yRange);
+
+			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
+			ret[m] = new File(outputDir, myPrefix+".png");
+			gp.getChartPanel().setSize(width, height);
+			gp.saveAsPNG(ret[m].getAbsolutePath());
+			if (!logY)
+				csv.writeToFile(new File(outputDir, myPrefix+".csv"));
+			
+			// now ratios
+			prevDist = 0d;
+			DefaultXY_DataSet normScatter = new DefaultXY_DataSet();
+			DefaultXY_DataSet normNoZeroScatter = new DefaultXY_DataSet();
+			DefaultXY_DataSet normAbove1Scatter = new DefaultXY_DataSet();
+			double zeroThreshold = 0.05;
+			for (MaxJumpDistModels maxDist : MaxJumpDistModels.values()) {
+				double dist = maxDist.getMaxDist();
+				if ((float)dist < (float)xRange.getUpperBound()) {
+					DefaultXY_DataSet line = new DefaultXY_DataSet();
+					line.set(dist, targetYRange.getLowerBound());
+					line.set(dist, targetYRange.getUpperBound());
+					targetRatioFuncs.add(0, line);
+					targetRatioChars.add(0, new PlotCurveCharacterstics(PlotLineType.DOTTED, 2f, Color.DARK_GRAY));
+				}
+				SimpleRegression regression = new SimpleRegression();
+				for (Point2D pt : allRatioScatter) {
+					if (pt.getX() >= prevDist && pt.getX() <= dist) {
+						double y = logY ? Math.log10(pt.getY()) : pt.getY();
+						regression.addData(pt.getX(), y);
+						double normX = (pt.getX() - prevDist)/(dist - prevDist);
+						normScatter.set(normX, pt.getY());
+						if (pt.getX() >= zeroThreshold)
+							normNoZeroScatter.set(normX, pt.getY());
+						if (pt.getX() >= 1d)
+							normAbove1Scatter.set(normX, pt.getY());
+					}
+				}
+				double intercept = regression.getIntercept();
+				double slope = regression.getSlope();
+				EvenlyDiscretizedFunc fit = new EvenlyDiscretizedFunc(prevDist, dist, 10);
+				// use one to one for x values
+				for (int i=0; i<fit.size(); i++) {
+					double x = fit.getX(i);
+					double y = slope*x + intercept;
+					if (logY)
+						y = Math.pow(10, y);
+					fit.set(x, y);
+				}
+				targetRatioFuncs.add(fit);
+				targetRatioChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.RED));
+				if (prevDist == 0d) {
+					fit.setName("Ordinary Least Squares Regression");
+					
+//					// also include one without exactly zero distances
+//					regression = new SimpleRegression();
+//					for (Point2D pt : allRatioScatter) {
+//						if (pt.getX() >= zeroThreshold && pt.getX() <= dist) {
+//							double y = logY ? Math.log10(pt.getY()) : pt.getY();
+//							regression.addData(pt.getX(), y);
+//						}
+//					}
+//					intercept = regression.getIntercept();
+//					slope = regression.getSlope();
+//					fit = new EvenlyDiscretizedFunc(prevDist, dist, 10);
+//					// use one to one for x values
+//					for (int i=0; i<fit.size(); i++) {
+//						double x = fit.getX(i);
+//						double y = slope*x + intercept;
+//						if (logY)
+//							y = Math.pow(10, y);
+//						fit.set(x, y);
+//					}
+//					fit.setName(">0 1st Bin Regression");
+//					targetRatioFuncs.add(fit);
+//					targetRatioChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 3f, Color.RED));
+				}
+				prevDist = dist;
+			}
+			
+			spec = new PlotSpec(targetRatioFuncs, targetRatioChars, scalar.name+" Bias", scalar.toString(),
+					"Ratio to Target");
+			spec.setLegendVisible(true);
+			
+			System.out.println(getMagLabel(minMags[m])+" "+scalar+": "+scalarTrack);
+			
+			gp.drawGraphPanel(spec, false, logY, xRange, targetYRange);
+
+			myPrefix = prefix+"_ratios_"+getMagPrefix(minMags[m]);
+			ret[m] = new File(outputDir, myPrefix+".png");
+			gp.getChartPanel().setSize(width, height);
+			gp.saveAsPNG(ret[m].getAbsolutePath());
+			
+			// now normalized
+			funcs = new ArrayList<>();
+			chars = new ArrayList<>();
+			XY_DataSet clone = normScatter.deepClone();
+			normScatter.setName("<1 km Points");
+			funcs.add(normScatter);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, Color.LIGHT_GRAY));
+			normAbove1Scatter.setName(">1 km Points");
+			funcs.add(normAbove1Scatter);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, Color.BLUE.brighter()));
+			funcs.add(clone);
+			chars.add(new PlotCurveCharacterstics(PlotSymbol.CIRCLE, scatterWidth, outlineColor));
+			
+			// regression
+			SimpleRegression regression = new SimpleRegression();
+			for (Point2D pt : normScatter) {
+				double y = logY ? Math.log10(pt.getY()) : pt.getY();
+				regression.addData(pt.getX(), y);
+			}
+			double intercept = regression.getIntercept();
+			double slope = regression.getSlope();
+			EvenlyDiscretizedFunc fit = new EvenlyDiscretizedFunc(0d, 1d, 10);
+			// use one to one for x values
+			for (int i=0; i<fit.size(); i++) {
+				double x = fit.getX(i);
+				double y = slope*x + intercept;
+				if (logY)
+					y = Math.pow(10, y);
+				fit.set(x, y);
+			}
+			fit.setName("Ordinary Least Squares Regression");
+			funcs.add(fit);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.RED));
+			// now without zero dists
+			
+			// also include one without exactly zero distances
+//			regression = new SimpleRegression();
+//			for (Point2D pt : normNoZeroScatter) {
+//				double y = logY ? Math.log10(pt.getY()) : pt.getY();
+//				regression.addData(pt.getX(), y);
+//			}
+//			intercept = regression.getIntercept();
+//			slope = regression.getSlope();
+//			fit = new EvenlyDiscretizedFunc(0d, 1d, 10);
+//			// use one to one for x values
+//			for (int i=0; i<fit.size(); i++) {
+//				double x = fit.getX(i);
+//				double y = slope*x + intercept;
+//				if (logY)
+//					y = Math.pow(10, y);
+//				fit.set(x, y);
+//			}
+//			fit.setName(">0 km Regression");
+//			funcs.add(fit);
+//			chars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 3f, Color.RED));
+			
+			// and > 1km
+			regression = new SimpleRegression();
+			for (Point2D pt : normAbove1Scatter) {
+				double y = logY ? Math.log10(pt.getY()) : pt.getY();
+				regression.addData(pt.getX(), y);
+			}
+			intercept = regression.getIntercept();
+			slope = regression.getSlope();
+			fit = new EvenlyDiscretizedFunc(0d, 1d, 10);
+			// use one to one for x values
+			for (int i=0; i<fit.size(); i++) {
+				double x = fit.getX(i);
+				double y = slope*x + intercept;
+				if (logY)
+					y = Math.pow(10, y);
+				fit.set(x, y);
+			}
+			fit.setName(">1 km Regression");
+			funcs.add(fit);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.GREEN.darker()));
+			
+			spec = new PlotSpec(funcs, chars, scalar.name+" Normalized Bias", "Normalized Jump Distance Within Bin",
+					"Ratio to Target");
+			spec.setLegendVisible(true);
+			
+			// annotations
+			MinMaxAveTracker topHalfTrack = new MinMaxAveTracker();
+			MinMaxAveTracker botHalfTrack = new MinMaxAveTracker();
+			for (Point2D pt : normScatter) {
+				if (pt.getX() > 0.5)
+					topHalfTrack.addValue(pt.getY());
+				else
+					botHalfTrack.addValue(pt.getY());
+			}
+			MinMaxAveTracker topHalfAbove1Track = new MinMaxAveTracker();
+			MinMaxAveTracker botHalfAbove1Track = new MinMaxAveTracker();
+			for (Point2D pt : normAbove1Scatter) {
+				if (pt.getX() > 0.5)
+					topHalfAbove1Track.addValue(pt.getY());
+				else
+					botHalfAbove1Track.addValue(pt.getY());
+			}
+			MinMaxAveTracker topQuarterTrack = new MinMaxAveTracker();
+			MinMaxAveTracker botQuarterTrack = new MinMaxAveTracker();
+			for (Point2D pt : normScatter) {
+				if (pt.getX() > 0.75)
+					topQuarterTrack.addValue(pt.getY());
+				else if (pt.getX() < 0.25)
+					botQuarterTrack.addValue(pt.getY());
+			}
+			MinMaxAveTracker topQuarterAbove1Track = new MinMaxAveTracker();
+			MinMaxAveTracker botQuarterAbove1Track = new MinMaxAveTracker();
+			for (Point2D pt : normAbove1Scatter) {
+				if (pt.getX() > 0.75)
+					topQuarterAbove1Track.addValue(pt.getY());
+				else if (pt.getX() < 0.25)
+					botQuarterAbove1Track.addValue(pt.getY());
+			}
+			
+			double y1, y2, y3, y4, y5;
+			if (logY) {
+				y1 = 9;
+				y2 = 7.5;
+				y3 = 5.8;
+				y4 = 4;
+				y5 = 2;
+			} else {
+				y1 = 4.9;
+				y2 = 4.7;
+				y3 = 4.5;
+				y4 = 4.3;
+				y5 = 4.1;
+			}
+			
+			DecimalFormat df = new DecimalFormat("0.00");
+			Font font = new Font(Font.SANS_SERIF, Font.BOLD, 18);
+			XYTextAnnotation ann = new XYTextAnnotation("Gain Factors, Right vs Left", 0.5, y1);
+			ann.setFont(font);
+			ann.setTextAnchor(TextAnchor.TOP_CENTER);
+			spec.addPlotAnnotation(ann);
+			double halfGain = topHalfTrack.getAverage() / botHalfTrack.getAverage();
+			ann = new XYTextAnnotation("Right Half / Left: "+df.format(topHalfTrack.getAverage())
+					+" / "+df.format(botHalfTrack.getAverage())+" = "+df.format(halfGain), 0.5, y2);
+			ann.setFont(font);
+			ann.setTextAnchor(TextAnchor.TOP_CENTER);
+			spec.addPlotAnnotation(ann);
+			double quarterGain = topQuarterTrack.getAverage() / botQuarterTrack.getAverage();
+			ann = new XYTextAnnotation("Right Quarter / Left: "+df.format(topQuarterTrack.getAverage())
+					+" / "+df.format(botQuarterTrack.getAverage())+" = "+df.format(quarterGain), 0.5, y3);
+			ann.setFont(font);
+			ann.setTextAnchor(TextAnchor.TOP_CENTER);
+			spec.addPlotAnnotation(ann);
+			halfGain = topHalfAbove1Track.getAverage() / botHalfAbove1Track.getAverage();
+			ann = new XYTextAnnotation(">1 km Right Half / Left: "+df.format(topHalfAbove1Track.getAverage())
+					+" / "+df.format(botHalfAbove1Track.getAverage())+" = "+df.format(halfGain), 0.5, y4);
+			ann.setFont(font);
+			ann.setTextAnchor(TextAnchor.TOP_CENTER);
+			spec.addPlotAnnotation(ann);
+			quarterGain = topQuarterAbove1Track.getAverage() / botQuarterAbove1Track.getAverage();
+			ann = new XYTextAnnotation(">1 km Right Quarter / Left: "+df.format(topQuarterAbove1Track.getAverage())
+					+" / "+df.format(botQuarterAbove1Track.getAverage())+" = "+df.format(quarterGain), 0.5, y5);
+			ann.setFont(font);
+			ann.setTextAnchor(TextAnchor.TOP_CENTER);
+			spec.addPlotAnnotation(ann);
+			
+			System.out.println(getMagLabel(minMags[m])+" "+scalar+": "+scalarTrack);
+			
+			gp.drawGraphPanel(spec, false, logY, new Range(0d, 1d), targetYRange);
+
+			myPrefix = prefix+"_ratios_norm_"+getMagPrefix(minMags[m]);
+			ret[m] = new File(outputDir, myPrefix+".png");
+			gp.getChartPanel().setSize(width, height);
+			gp.saveAsPNG(ret[m].getAbsolutePath());
+		}
+		
+		return ret;
+	}
+	
+	public static void main(String[] args) throws IOException, DocumentException {
+//		File rupSetDir = new File("/home/kevin/OpenSHA/UCERF4/rup_sets");
+//		FaultSystemSolution sol = U3FaultSystemIO.loadSol(new File(
+//				rupSetDir, "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip"));
+//		double jumpDist = 15d;
+//		File distCacheFile = new File(rupSetDir, "fm3_1_dist_az_cache.csv");
+//		FaultSystemRupSet rupSet = sol.getRupSet();
+//		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
+//		distAzCalc.loadCacheFile(distCacheFile);
+////		ClusterConnectionStrategy connStrat = new DistCutoffClosestSectClusterConnectionStrategy(rupSet.getFaultSectionDataList(), distAzCalc, jumpDist);
+//		ClusterConnectionStrategy connStrat = new InputJumpsOrDistClusterConnectionStrategy(rupSet.getFaultSectionDataList(), distAzCalc, jumpDist, new ArrayList<>());
+//		RuptureConnectionSearch rsConnSearch = new RuptureConnectionSearch(rupSet, distAzCalc,
+//				1000d, RuptureConnectionSearch.CUMULATIVE_JUMPS_DEFAULT);
+//		rupSet.addModule(ClusterRuptures.instance(rupSet, rsConnSearch));
+//		List<ClusterRupture> rups = rupSet.getModule(ClusterRuptures.class).getAll();
+//		
+//		SegmentationCalculator calc = new SegmentationCalculator(sol, rups, connStrat, distAzCalc, new double[] {6.5d, 7.5d});
+//		calc = calc.combineMultiJumps(true);
+//		
+//		File outputDir = new File("/tmp/test_seg");
+//		calc.plotConnectionRates(outputDir, "conn_rates", "Connection Rates", 800);
+//		calc.plotConnectionFracts(outputDir, "conn_passthrough_rel_min", "Relative Connection Passthrough Rates", 800, RateCombiner.MIN);
+//		calc.plotConnectionFracts(outputDir, "conn_passthrough_rel_max", "Relative Connection Passthrough Rates", 800, RateCombiner.MAX);
+//		calc.plotConnectionFracts(outputDir, "conn_passthrough_rel_avg", "Relative Connection Passthrough Rates", 800, RateCombiner.AVERAGE);
+//		
+//		for (Scalars scalar : Scalars.values()) {
+//			calc.plotFractVsScalars(outputDir, "conn_passthrough_scalars_"+scalar.name(), scalar, false, RateCombiner.values());
+//			calc.plotFractVsScalars(outputDir, "conn_passthrough_scalars_"+scalar.name()+"_log", scalar, true, RateCombiner.values());
+//		}
+		File inputFile = new File("/tmp/solution.zip");
+//		File inputFile = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+////				+ "2022_02_08-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-SubB1-2000ip/"
+////				+ "node_branch_averaged/SegModel_ShawR0_3.zip");
+////				+ "results_FM3_1_CoulombRupSet_branch_averaged.zip");
+////				+ "2022_01_28-nshm23_u3_hybrid_branches-max_dist-FM3_1-CoulombRupSet-DsrUni-SubB1-2000ip/"
+////				+ "results_FM3_1_CoulombRupSet_branch_averaged_reweight_r0_3.0.zip");
+////				+ "node_branch_averaged/MaxDist_MaxDist3km.zip");
+//				+ "2022_02_15-coulomb-fm31-ref_branch-seg_model_adjustments-U3_ZENG-Shaw09Mod-DsrUni-SupraB0.8-TotNuclRate-ShawR0_3/GREEDY/solution.zip");
+		FaultSystemSolution sol = FaultSystemSolution.load(inputFile);
+		ClusterRuptures cRups = ClusterRuptures.singleStranged(sol.getRupSet());
+		PlausibilityConfiguration config = sol.getRupSet().getModule(PlausibilityConfiguration.class);
+		ClusterConnectionStrategy connStrat = config.getConnectionStrategy();
+		SegmentationCalculator calc = new SegmentationCalculator(sol, cRups.getAll(),
+				connStrat, config.getDistAzCalc(), new double[] { 0d });
+		calc = calc.combineMultiJumps(true);
+		
+		File outputDir = new File("/tmp");
+		calc.plotDistDependComparison(outputDir, "shaw_test", true, RateCombiner.MIN);
 	}
 
 }

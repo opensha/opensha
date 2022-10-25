@@ -46,6 +46,8 @@ import org.opensha.sha.earthquake.AbstractNthRupERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupOrigTimeComparator;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
@@ -89,7 +91,6 @@ import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_TemporalDecayParam_p;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
 import scratch.UCERF3.erf.ETAS.ETAS_SimAnalysisTools.EpicenterMapThread;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
-import scratch.UCERF3.griddedSeismicity.GridSourceProvider;
 import scratch.UCERF3.utils.U3_EqkCatalogStatewideCompleteness;
 
 /**
@@ -2204,7 +2205,7 @@ public class ETAS_Utils {
 		
 		double maxDays = 365.25*10.0;
 		
-		List<? extends IncrementalMagFreqDist> subSeisMFD_list = fssERF.getSolution().getSubSeismoOnFaultMFD_List();
+		List<? extends IncrementalMagFreqDist> subSeisMFD_list = fssERF.getSolution().requireModule(SubSeismoOnFaultMFDs.class).getAll();
 		double duration = fssERF.getTimeSpan().getDuration();
 		
 		double[] sectionArea = new double[subSeisMFD_list.size()];
@@ -2547,7 +2548,7 @@ System.out.println(sectID+"\t"+primaryFromSupraArray[sectID]+"\t"+resultArray[se
 		SummedMagFreqDist trulyOffMFD = new SummedMagFreqDist(2.55, 8.45, 60);
 		GridSourceProvider gridProvider = erf.getGridSourceProvider();
 		for(int n=0;n<gridProvider.getGriddedRegion().getNodeCount();n++) {
-			ProbEqkSource src = erf.getGridSourceProvider().getSourceTrulyOffOnly(n, 1.0, false, BackgroundRupType.POINT);
+			ProbEqkSource src = erf.getGridSourceProvider().getSourceUnassociated(n, 1.0, false, BackgroundRupType.POINT);
 			if(src != null) {
 				for(ProbEqkRupture rup : src) {
 					trulyOffMFD.add(rup.getMag(), rup.getMeanAnnualRate(1.0));

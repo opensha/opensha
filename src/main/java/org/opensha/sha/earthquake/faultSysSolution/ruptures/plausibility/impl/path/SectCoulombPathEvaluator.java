@@ -8,6 +8,7 @@ import java.util.List;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
@@ -17,8 +18,6 @@ import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
-
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
 
 /**
  * A section-by-section Coulomb path evaluator. It can optionally choose the most favorable path up to a given distance,
@@ -33,9 +32,12 @@ public class SectCoulombPathEvaluator extends ScalarCoulombPathEvaluator {
 			Range<Float> acceptableRange, AggregatedStiffnessCalculator aggCalc, SectionDistanceAzimuthCalculator distAzCalc,
 			boolean verbose) {
 		if (verbose)
-			System.out.println("Finding most favorable jump to "+jump.toCluster+", origJump="+jump);
+			System.out.println("Finding most favorable jump to "+jump.toCluster+", origJump="+jump+", maxSearchDist="+maxSearchDist);
 		List<FaultSection> allowedJumps = new ArrayList<>();
 		for (FaultSection sect : jump.toCluster.subSects) {
+			if (sources.contains(sect))
+				// can't jump to a section already contained
+				continue;
 			for (FaultSection source : jump.fromCluster.subSects) {
 				if (sect == jump.toSection || (float)distAzCalc.getDistance(sect, source) <= maxSearchDist) {
 					allowedJumps.add(sect);

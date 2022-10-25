@@ -23,9 +23,9 @@ import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.data.function.UncertainArbDiscDataset;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
@@ -38,6 +38,8 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -45,8 +47,6 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
 import scratch.UCERF3.erf.ETAS.ETAS_CatalogIO.ETAS_Catalog;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
@@ -360,7 +360,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 					funcs.add(gainFuncs[m]);
 					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.RED));
 
-					UncertainArbDiscDataset gainConfFunc = new UncertainArbDiscDataset(gainFuncs[m], gainLowerFuncs[m], gainUpperFuncs[m]);
+					UncertainArbDiscFunc gainConfFunc = new UncertainArbDiscFunc(gainFuncs[m], gainLowerFuncs[m], gainUpperFuncs[m]);
 					gainConfFunc.setName("95% Conf");
 					funcs.add(gainConfFunc);
 					chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(255, 0, 0, 30)));
@@ -391,7 +391,7 @@ public class ETAS_HazardChangePlot extends ETAS_AbstractPlot {
 					funcs.add(simFuncs[m]);
 					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.RED));
 
-					UncertainArbDiscDataset simConfFunc = new UncertainArbDiscDataset(simFuncs[m], simLowerFuncs[m], simUpperFuncs[m]);
+					UncertainArbDiscFunc simConfFunc = new UncertainArbDiscFunc(simFuncs[m], simLowerFuncs[m], simUpperFuncs[m]);
 					simConfFunc.setName("95% Conf");
 					funcs.add(simConfFunc);
 					chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, new Color(255, 0, 0, 30)));

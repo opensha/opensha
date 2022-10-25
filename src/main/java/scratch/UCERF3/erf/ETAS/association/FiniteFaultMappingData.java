@@ -20,6 +20,7 @@ import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.LogPrintStream;
 import org.opensha.commons.util.XMLUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupOrigTimeComparator;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
@@ -32,10 +33,9 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.FaultSystemRupSet;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 /**
  * Data structure for saving/loading finite fault mapping data
@@ -233,10 +233,10 @@ public class FiniteFaultMappingData implements XMLSaveable {
 				new File("/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/EarthquakeCatalog/ofr2013-1165_EarthquakeCat.txt"));
 		File outputFile = new File(outputDir, "finite_fault_mappings.xml");
 		
-		FaultSystemRupSet rupSet31 = FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/"
+		FaultSystemRupSet rupSet31 = U3FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/"
 				+ "UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_"
 				+ "FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
-		FaultSystemRupSet rupSet32 = FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/"
+		FaultSystemRupSet rupSet32 = U3FaultSystemIO.loadRupSet(new File("/home/kevin/workspace/OpenSHA/dev/scratch/"
 				+ "UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_"
 				+ "FM3_2_MEAN_BRANCH_AVG_SOL.zip"));
 		

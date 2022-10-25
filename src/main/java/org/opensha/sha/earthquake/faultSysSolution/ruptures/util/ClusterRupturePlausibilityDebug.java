@@ -8,10 +8,14 @@ import java.util.List;
 import java.util.zip.ZipException;
 
 import org.dom4j.DocumentException;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.ScalarValuePlausibiltyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.NetRuptureCoulombFilter;
@@ -28,15 +32,14 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.Stiffness
 
 import com.google.common.collect.Range;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.U3FaultSystemRupSet;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class ClusterRupturePlausibilityDebug {
 
 	public static void main(String[] args) throws ZipException, IOException, DocumentException {
 		System.out.println("Loading rupture set...");
-		FaultSystemRupSet rupSet = FaultSystemIO.loadRupSet(
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(
 //				new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_cmlAz.zip"));
 				new File("/home/kevin/OpenSHA/UCERF4/rup_sets/"
 //						+ "fm3_1_adapt5_10km_sMax1_slipP0.05incr_cff3_4_IntsPos_comb2Paths_cffP0.05_cffRatioN2P0.2.zip"));
@@ -51,39 +54,46 @@ public class ClusterRupturePlausibilityDebug {
 //						+ "fm3_1_plausibleMulti10km_direct_cmlRake180_jumpP0.001_slipP0.05incr_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.25_sectFractPerm0.05.zip"));
 //						+ "rsqsim_4983_stitched_m6.5_skip65000_sectArea0.5.zip"));
 //						+ "fm3_1_plausibleMulti15km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05.zip"));
-						+ "fm3_1_plausibleMulti10km_adaptive5km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_"
-						+ "cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05_comp/alt_conn_Adaptive_r05p0km_sectMax1_Plausible_3filters_"
-						+ "maxDist15km_MultiEnds.zip"));
+//						+ "fm3_1_plausibleMulti10km_adaptive5km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_"
+//						+ "cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05_comp/alt_conn_Adaptive_r05p0km_sectMax1_Plausible_3filters_"
+//						+ "maxDist15km_MultiEnds.zip"));
+						+"nshm23_geo_dm_v1_all_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_"
+						+ "cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip"));
 		System.out.println("Loaded "+rupSet.getNumRuptures()+" ruptures");
 		
-		PlausibilityConfiguration config = rupSet.getPlausibilityConfiguration();
+		PlausibilityConfiguration config = rupSet.requireModule(PlausibilityConfiguration.class);
 		
 		boolean verbose = false;
 		
 		// for specific ruptures by ID
-		List<ClusterRupture> clusterRuptures = rupSet.getClusterRuptures();
-		if (clusterRuptures == null) {
-			rupSet.buildClusterRups(new RuptureConnectionSearch(rupSet, config.getDistAzCalc(),
-					config.getConnectionStrategy().getMaxJumpDist(), false));
-			clusterRuptures = rupSet.getClusterRuptures();
-		}
+//		List<ClusterRupture> clusterRuptures = rupSet.getClusterRuptures();
+//		if (clusterRuptures == null) {
+//			rupSet.buildClusterRups(new RuptureConnectionSearch(rupSet, config.getDistAzCalc(),
+//					config.getConnectionStrategy().getMaxJumpDist(), false));
+//			clusterRuptures = rupSet.getClusterRuptures();
+//		}
 		
-//		int[] testIndexes = { 372703 };
-		int[] testIndexes = { 141968 };
-		
-		List<ClusterRupture> testRuptures = new ArrayList<>();
-		for (int testIndex : testIndexes)
-			testRuptures.add(clusterRuptures.get(testIndex));
+////		int[] testIndexes = { 372703 };
+//		int[] testIndexes = { 141968 };
+//		
+//		List<ClusterRupture> testRuptures = new ArrayList<>();
+//		for (int testIndex : testIndexes)
+//			testRuptures.add(clusterRuptures.get(testIndex));
 		
 		// by string
-//		int[] sectIDs = ClusterRuptureBuilder.loadRupString(
+		int[] sectIDs = ClusterRuptureBuilder.loadRupString(
 //				"[724:243,242][90:557,556,555][723:880,879,878][92:1025,1024][91:991,990,989]", false);
-//		List<FaultSection> rupSects = new ArrayList<>();
-//		for (int sectID : sectIDs)
-//			rupSects.add(rupSet.getFaultSectionData(sectID));
-//		List<ClusterRupture> testRuptures = new ArrayList<>();
-//		testRuptures.add(ClusterRupture.forOrderedSingleStrandRupture(rupSects, config.getDistAzCalc()));
-		
+//				"[338:3769,3768,3767][331:3272,3273,3274,3275]", false); // NSHM23 Geo Ridgecrest east & north
+//				"[338:3769,3768,3767,3766][331:3273,3274,3275]", false); // NSHM23 Geo Ridgecrest full east & north w/o intersection	PASS
+//				"[338:3769,3768,3767][331:3273,3274,3275]", false); // NSHM23 Geo Ridgecrest east & north w/o intersection				FAIL
+//				"[338:3769,3768,3767][331:3272,3271,3270]", false); // NSHM23 Geo Ridgecrest east & south w/ intersection				FAIL
+//				"[338:3769,3768,3767][331:3271,3270]", false); // NSHM23 Geo Ridgecrest east & south w/0 intersection					FAIL
+				"[338:3769,3768,3767,3766][331:3271,3270]", false); // NSHM23 Geo Ridgecrest full east & south w/0 intersection			
+		List<FaultSection> rupSects = new ArrayList<>();
+		for (int sectID : sectIDs)
+			rupSects.add(rupSet.getFaultSectionData(sectID));
+		List<ClusterRupture> testRuptures = new ArrayList<>();
+		testRuptures.add(ClusterRupture.forOrderedSingleStrandRupture(rupSects, config.getDistAzCalc()));
 		
 		// for possible whole-parent ruptures
 ////		int[] parents = {
@@ -93,9 +103,13 @@ public class ClusterRupturePlausibilityDebug {
 //////				300, // SAF Carrizo
 ////				49, // Garlock W
 ////				};
-//		int[] parents = {
-//				103, // Elsinore Coyote Mountains
-//				102, // Elsinore Julian
+////		int[] parents = {
+////				103, // Elsinore Coyote Mountains
+////				102, // Elsinore Julian
+////		};
+//		int[] parents = { // NSHM23 Geo
+//				338, // Salt Wells Valley
+//				331, // Paxton Ranch
 //		};
 //////		int startParent = 301;
 ////		int startParent = -1;
@@ -135,6 +149,7 @@ public class ClusterRupturePlausibilityDebug {
 //		List<ClusterRupture> testRuptures = new ArrayList<>();
 //		testRuptures.add(connSearch.buildClusterRupture(clusters, jumps, true, startCluster));
 //		boolean tryLastJump = false;
+		
 		// for sub-section ruptures
 //		int[] sectIDs = { 1093, 1092, 1091, 1090, 864, 863};
 //		List<FaultSection> sects = new ArrayList<>();

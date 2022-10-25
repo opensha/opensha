@@ -3,7 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 import static org.junit.Assert.*;
 
 import org.junit.Test;
-import scratch.UCERF3.inversion.laughTest.PlausibilityResult;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 
 
 public class JumpAzimuthChangeFilterTests {

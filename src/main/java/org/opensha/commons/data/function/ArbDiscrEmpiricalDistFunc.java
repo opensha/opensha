@@ -1,28 +1,11 @@
-/*******************************************************************************
- * Copyright 2009 OpenSHA.org in partnership with
- * the Southern California Earthquake Center (SCEC, http://www.scec.org)
- * at the University of Southern California and the UnitedStates Geological
- * Survey (USGS; http://www.usgs.gov)
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- *   http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- ******************************************************************************/
-
 package org.opensha.commons.data.function;
 
 import java.awt.geom.Point2D;
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.List;
 
 import org.opensha.commons.data.Point2DToleranceComparator;
 import org.opensha.commons.exceptions.InvalidRangeException;
@@ -119,7 +102,7 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
       if(fraction < 0 || fraction > 1)
         throw new InvalidRangeException("fraction value must be between 0 and 1");
 
-      ArbitrarilyDiscretizedFunc tempCumDist = getNormalizedCumDist();
+      DiscretizedFunc tempCumDist = getNormalizedCumDist();
 
       // if desired fraction is below minimum x value, give minimum x value
       if(fraction < tempCumDist.getMinY())
@@ -141,7 +124,7 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
       if(fraction < 0 || fraction > 1)
         throw new InvalidRangeException("fraction value must be between 0 and 1");
 
-      ArbitrarilyDiscretizedFunc tempCumDist = getNormalizedCumDist();
+      DiscretizedFunc tempCumDist = getNormalizedCumDist();
 
       for(int i = 0; i<tempCumDist.size();i++) {
         if(fraction <= tempCumDist.getY(i))
@@ -162,7 +145,7 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
      * distribution normalized (so that the last value is equal to one)
      * @return
      */
-    public ArbitrarilyDiscretizedFunc getNormalizedCumDist() {
+    public DiscretizedFunc getNormalizedCumDist() {
       return getCumDist(getSumOfAllY_Values());
     }
     
@@ -322,29 +305,39 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
      * by the value (totSum) passed in
      * @return
      */
-    private ArbitrarilyDiscretizedFunc getCumDist(double totSum) {
-
-      ArbitrarilyDiscretizedFunc cumDist = new ArbitrarilyDiscretizedFunc();
-      Point2D dp;
-      double sum = 0;
-      Iterator<Point2D> it = iterator();
-      while (it.hasNext()) {
-        dp = it.next();
-        sum += dp.getY();
-        Point2D dpNew = new Point2D.Double(dp.getX(),sum/totSum);
-        cumDist.set(dpNew);
-      }
-      return cumDist;
+    private DiscretizedFunc getCumDist(double totSum) {
+    	double[] xVals = new double[size()];
+    	double[] yVals = new double[xVals.length];
+    	
+    	double sum = 0d;
+    	for (int i=0; i<xVals.length; i++) {
+    		xVals[i] = getX(i);
+    		sum += getY(i);
+    		yVals[i] = sum/totSum;
+    	}
+    	
+    	return new LightFixedXFunc(xVals, yVals);
+//      ArbitrarilyDiscretizedFunc cumDist = new ArbitrarilyDiscretizedFunc();
+//      Point2D dp;
+//      double sum = 0;
+//      Iterator<Point2D> it = iterator();
+//      while (it.hasNext()) {
+//        dp = it.next();
+//        sum += dp.getY();
+//        Point2D dpNew = new Point2D.Double(dp.getX(),sum/totSum);
+//        cumDist.set(dpNew);
+//      }
+//      return cumDist;
     }
     
     
 
     /**
-     * This returns an ArbitrarilyDiscretizedFunc representing the cumulative
+     * This returns an DiscretizedFunc representing the cumulative
      * distribution (sum of Y values less than and equal te each X value).
      * @return
      */
-    public ArbitrarilyDiscretizedFunc getCumDist() {
+    public DiscretizedFunc getCumDist() {
       return getCumDist(1.0);
     }
     
@@ -357,7 +350,100 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
 		for(int i=0; i<size();i++) this.set(i, 0.5*val*getY(i));
 	}
 
+	/**
+	 * Quick way to get a normalized CDF if that's all you need, which will be faster for large datasets
+	 * than using an actual {@link ArbDiscrEmpiricalDistFunc}.
+	 * @param values
+	 * @param weights
+	 * @return
+	 */
+	public static LightFixedXFunc calcQuickNormCDF(List<Double> values, List<Double> weights) {
+		Preconditions.checkState(values.size() == weights.size());
+		Preconditions.checkState(!values.isEmpty());
+		
+		ValWeights[] valWeights = new ValWeights[values.size()];
+		double totWeight = 0d;
+		for (int j=0; j<valWeights.length; j++) {
+			double weight = weights.get(j);
+			totWeight += weight;
+			valWeights[j] = new ValWeights(values.get(j), weight);
+		}
+		
+		return calcQuickNormCDF(valWeights, totWeight);
+	}
 
+	/**
+	 * Quick way to get a normalized CDF if that's all you need, which will be faster for large datasets
+	 * than using an actual {@link ArbDiscrEmpiricalDistFunc}.
+	 * @param values
+	 * @param weights
+	 * @return
+	 */
+	public static LightFixedXFunc calcQuickNormCDF(double[] values, double[] weights) {
+		Preconditions.checkState(values.length == weights.length);
+		Preconditions.checkState(values.length > 0);
+		
+		ValWeights[] valWeights = new ValWeights[values.length];
+		double totWeight = 0d;
+		for (int j=0; j<valWeights.length; j++) {
+			double weight = weights[j];
+			totWeight += weight;
+			valWeights[j] = new ValWeights(values[j], weight);
+		}
+		
+		return calcQuickNormCDF(valWeights, totWeight);
+	}
+	
+	private static LightFixedXFunc calcQuickNormCDF(ValWeights[] valWeights, double totWeight) {
+		// sort ascending
+		Arrays.sort(valWeights);
+		int destIndex = -1;
+		double[] xVals = new double[valWeights.length];
+		double[] yVals = new double[valWeights.length];
+		for (int srcIndex=0; srcIndex<valWeights.length; srcIndex++) {
+			ValWeights val = valWeights[srcIndex];
+			if (destIndex >= 0 && (float)val.val == (float)xVals[destIndex]) {
+				// add it, don't increment
+				yVals[destIndex] += val.weight;
+			} else {
+				// move to a new index
+				destIndex++;
+				xVals[destIndex] = val.val;
+				yVals[destIndex] = val.weight;
+			}
+		}
+		int size = destIndex+1;
+		if (size < xVals.length) {
+			// we have duplicates, trim them
+			xVals = Arrays.copyOf(xVals, size);
+			yVals = Arrays.copyOf(yVals, size);
+		}
+
+		// now convert yVals to a CDF
+		double sum = 0d;
+		for (int j=0; j<yVals.length; j++) {
+			sum += yVals[j];
+			yVals[j] = sum/totWeight;
+			if (j > 0)
+				Preconditions.checkState(xVals[j] > xVals[j-1]);
+		}
+
+		return new LightFixedXFunc(xVals, yVals);
+	}
+	
+	private static class ValWeights implements Comparable<ValWeights> {
+		double val;
+		double weight;
+		public ValWeights(double val, double weight) {
+			super();
+			this.val = val;
+			this.weight = weight;
+		}
+		@Override
+		public int compareTo(ValWeights o) {
+			return Double.compare(val, o.val);
+		}
+	}
 
 
 /*  temp main method to test and to investige numerical precision issues */

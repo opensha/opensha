@@ -1,8 +1,17 @@
 package scratch.UCERF3.enumTreeBranches;
 
-import scratch.UCERF3.logicTree.LogicTreeBranchNode;
+import org.opensha.commons.logicTree.Affects;
+import org.opensha.commons.logicTree.DoesNotAffect;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 
-public enum TotalMag5Rate implements LogicTreeBranchNode<TotalMag5Rate> {
+import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
+
+@DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
+@DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
+@DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
+@Affects(FaultSystemSolution.RATES_FILE_NAME)
+public enum TotalMag5Rate implements U3LogicTreeBranchNode<TotalMag5Rate> {
 	// new rates
 	RATE_6p5(6.5,	0.1d),
 	RATE_7p9(7.9,	0.6d),
@@ -55,6 +64,11 @@ public enum TotalMag5Rate implements LogicTreeBranchNode<TotalMag5Rate> {
 	@Override
 	public String getBranchLevelName() {
 		return "Total Mag 5 Rate";
+	}
+	
+	@Override
+	public String getShortBranchLevelName() {
+		return "M5Rate";
 	}
 
 }

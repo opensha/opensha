@@ -16,13 +16,13 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class ETAS_SectionSearch {
 	
@@ -89,7 +89,7 @@ public class ETAS_SectionSearch {
 		Preconditions.checkArgument(fssFile.exists(), "FSS file doesn't exist: %s", fssFile.getAbsolutePath());
 		
 		System.out.println("Loading fault system solution from "+fssFile.getAbsolutePath());
-		FaultSystemSolution fss = FaultSystemIO.loadSol(fssFile);
+		FaultSystemSolution fss = U3FaultSystemIO.loadSol(fssFile);
 		
 		Region searchReg = null;
 		Location centerLoc = null;

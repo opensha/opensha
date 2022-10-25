@@ -5,11 +5,7 @@ import java.awt.Shape;
 import java.awt.Stroke;
 import java.util.NoSuchElementException;
 
-import org.jfree.chart.renderer.xy.StackedXYBarRenderer;
-import org.jfree.chart.renderer.xy.StandardXYBarPainter;
-import org.jfree.chart.renderer.xy.XYBarRenderer;
-import org.jfree.chart.renderer.xy.XYItemRenderer;
-import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
+import org.jfree.chart.renderer.xy.*;
 
 import com.google.common.base.Preconditions;
 
@@ -35,7 +31,11 @@ public enum PlotLineType {
 	/**
 	 * Shaded uncertainty bounds with default 50% transparency, can only be used with UncertainArbDiscDataset
 	 */
-	SHADED_UNCERTAIN_TRANS("Shaded Transparent Uncertain Dataset");
+	SHADED_UNCERTAIN_TRANS("Shaded Transparent Uncertain Dataset"),
+	/**
+	 * Polygon with solid fill, edges are not drawn. Path is closed automatically.
+	 */
+	POLYGON_SOLID("Polygon with solid fill");
 	
 	private String desc;
 	
@@ -95,7 +95,7 @@ public enum PlotLineType {
 	 */
 	public boolean isSymbolCompatible() {
 		return !(this == HISTOGRAM || this == STACKED_BAR || this == SOLID_BAR
-				|| this == SHADED_UNCERTAIN_TRANS || this == SHADED_UNCERTAIN);
+				|| this == SHADED_UNCERTAIN_TRANS || this == SHADED_UNCERTAIN || this == POLYGON_SOLID);
 	}
 	
 	public static void checkValidConfiguration(PlotLineType plt, PlotSymbol sym) {
@@ -140,6 +140,8 @@ public enum PlotLineType {
 				renderer = new XYShadedUncertainLineRenderer();
 			} else if (plt == SHADED_UNCERTAIN_TRANS) {
 				renderer = new XYShadedUncertainLineRenderer(0.5);
+			} else if (plt == POLYGON_SOLID){
+				renderer = new XYAreaRenderer(XYAreaRenderer.AREA);
 			} else {
 				renderer = lineShpRend;
 				Stroke stroke = plt.buildStroke(lineWidth);

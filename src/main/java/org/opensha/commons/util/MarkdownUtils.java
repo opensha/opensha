@@ -93,6 +93,12 @@ public class MarkdownUtils {
 			return addColumn(val.toString());
 		}
 		
+		public TableBuilder addColumns(Object... vals) {
+			for (Object val : vals)
+				addColumn(val);
+			return this;
+		}
+		
 		public TableBuilder addColumn(String val) {
 			if (curLine == null)
 				initNewLine();
@@ -143,6 +149,35 @@ public class MarkdownUtils {
 			return this;
 		}
 		
+		/**
+		 * Invert rows and columns
+		 *  
+		 * @return
+		 */
+		public TableBuilder invert() {
+			if (curLine != null)
+				finalizeLine();
+			List<String[]> origLines = lines;
+			this.lines = new ArrayList<>();
+			this.curLine = null;
+			int maxCols = 0;
+			for (String[] line : origLines)
+				maxCols = Integer.max(maxCols, line.length);
+			for (int row=0; row<maxCols; row++) {
+				initNewLine();
+				for (int col=0; col<origLines.size(); col++) {
+					String[] thatLine = origLines.get(col);
+					if (thatLine.length < row)
+						addColumn("");
+					else
+						addColumn(thatLine[row]);
+				}
+				finalizeLine();
+			}
+			
+			return this;
+		}
+		
 		public List<String> build() {
 			Preconditions.checkState(lines.size() >= 1);
 			
@@ -155,6 +190,47 @@ public class MarkdownUtils {
 			}
 			
 			return strings;
+		}
+		
+		@Override
+		public String toString() {
+			StringBuilder str = new StringBuilder();
+			for (int i=0; i<lines.size(); i++) {
+				if (i > 0)
+					str.append("\n");
+				str.append(tableLine(lines.get(i)));
+				if (i == 0)
+					str.append("\n").append(generateTableDashLine(lines.get(i).length));
+			}
+			return str.toString();
+		}
+		
+		public CSVFile<String> toCSV() {
+			return toCSV(false);
+		}
+		
+		public CSVFile<String> toCSV(boolean stripFormatting) {
+			boolean sameSize = true;
+			int len = lines.get(0).length;
+			for (String[] line : lines)
+				sameSize = sameSize && line.length == len;
+			CSVFile<String> csv = new CSVFile<>(sameSize);
+			for (String[] line : lines) {
+				List<String> csvLine = new ArrayList<>(line.length);
+				for (String val : line) {
+					if (stripFormatting) {
+						if (val.startsWith("_") && val.endsWith("_"))
+							val = val.substring(1, val.length()-1);
+						if (val.startsWith("**") && val.endsWith("**"))
+							val = val.substring(2, val.length()-2);
+						else if (val.startsWith("*") && val.endsWith("*"))
+							val = val.substring(1, val.length()-1);
+					}
+					csvLine.add(val);
+				}
+				csv.addLine(csvLine);
+			}
+			return csv;
 		}
 	}
 	
@@ -545,6 +621,24 @@ public class MarkdownUtils {
 		
 		is.close();
 		out.close();
+	}
+	
+	/**
+	 * Utility method for bold & centered text, such as to match table headings in subsequent rows
+	 * @param text
+	 * @return bold & centered Markdown text
+	 */
+	public static String boldCentered(String text) {
+		return "<p align=\"center\">**"+text+"**</p>";
+	}
+	
+	/**
+	 * Utility method for cetnered text
+	 * @param text
+	 * @return centered Markdown text
+	 */
+	public static String centered(String text) {
+		return "<p align=\"center\">"+text+"</p>";
 	}
 	
 	public static void main(String[] args) throws IOException {

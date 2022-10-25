@@ -7,11 +7,11 @@ import java.util.List;
 import java.util.Map;
 
 import org.opensha.commons.util.IDPairing;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import cern.colt.matrix.tdouble.DoubleMatrix2D;
-import scratch.UCERF3.FaultSystemRupSet;
 
 /**
  * This constrains rates of ruptures that differ by only 1 subsection to be smooth.
@@ -23,7 +23,9 @@ import scratch.UCERF3.FaultSystemRupSet;
  */
 public class RupRateSmoothingInversionConstraint extends InversionConstraint {
 	
-	private double weight;
+	public static final String NAME = "Rup Rate Smoothing";
+	public static final String SHORT_NAME = "RupRateSmooth";
+	
 	private List<IDPairing> smoothingConstraintRupPairings;
 
 	public RupRateSmoothingInversionConstraint(double weight, FaultSystemRupSet rupSet) {
@@ -31,28 +33,13 @@ public class RupRateSmoothingInversionConstraint extends InversionConstraint {
 	}
 	
 	public RupRateSmoothingInversionConstraint(double weight, List<IDPairing> smoothingConstraintRupPairings) {
-		this.weight = weight;
+		super(NAME, SHORT_NAME, weight, false);
 		this.smoothingConstraintRupPairings = smoothingConstraintRupPairings;
-	}
-
-	@Override
-	public String getShortName() {
-		return "RupRateSmooth";
-	}
-
-	@Override
-	public String getName() {
-		return "Rup Rate Smoothing";
 	}
 
 	@Override
 	public int getNumRows() {
 		return smoothingConstraintRupPairings.size();
-	}
-
-	@Override
-	public boolean isInequality() {
-		return false;
 	}
 
 	@Override

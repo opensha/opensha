@@ -22,7 +22,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 
 /**
- * This is a Geohgraphic Dataset on a regular grid, as defined by a GriddedRegion. Points
+ * This is a Geographic dataset on a regular grid, as defined by a GriddedRegion. Points
  * not in the given GriddedRegion cannot be set.
  * 
  * @author kevin
@@ -43,6 +43,10 @@ public class GriddedGeoDataSet extends AbstractGeoDataSet {
 		this.region = region;
 		values = new double[region.getNodeCount()];
 	}
+	
+	public double[] getValues() {
+		return values;
+	}
 
 	@Override
 	public int size() {
@@ -55,6 +59,18 @@ public class GriddedGeoDataSet extends AbstractGeoDataSet {
 		if (index < 0)
 			throw new InvalidRangeException("point must exist in the gridded region!");
 		values[index] = value;
+	}
+
+	@Override
+	public void set(int index, double z) {
+		if (index < 0)
+			throw new InvalidRangeException("point must exist in the gridded region!");
+		values[index] = z;
+	}
+
+	@Override
+	public double get(int index) {
+		return values[index];
 	}
 
 	@Override

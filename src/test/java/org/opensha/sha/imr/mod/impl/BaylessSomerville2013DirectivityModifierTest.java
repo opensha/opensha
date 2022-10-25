@@ -27,11 +27,11 @@ import org.opensha.commons.data.xyz.XYZ_DataSetMath;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
+import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotWindow;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.ExceptionUtils;
@@ -333,7 +333,7 @@ public class BaylessSomerville2013DirectivityModifierTest {
 		String[] names = { "Expected", "Actual", "Diff" };
 		CPT[] cpts = { cpt, cpt, diffCPT };
 		
-		XYZPlotWindow[] windows = new XYZPlotWindow[xyzs.length];
+		GraphWindow[] windows = new GraphWindow[xyzs.length];
 		
 		for (int n=0; n<xyzs.length; n++) {
 			XYZ_DataSet xyz = xyzs[n];
@@ -363,7 +363,7 @@ public class BaylessSomerville2013DirectivityModifierTest {
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
 			spec.setXYElems(funcs);
 			spec.setXYChars(chars);
-			XYZPlotWindow gw = new XYZPlotWindow(spec, new Range(xyz.getMinX(), xyz.getMaxX()),
+			GraphWindow gw = new GraphWindow(spec, new Range(xyz.getMinX(), xyz.getMaxX()),
 					new Range(xyz.getMinY(), xyz.getMaxY()));
 			gw.setLocation(gw.getWidth()*n, 0);
 //			gw.setDefaultCloseOperation(XYZPlotWindow.EXIT_ON_CLOSE);
@@ -373,7 +373,7 @@ public class BaylessSomerville2013DirectivityModifierTest {
 		// keep alive until all plots closed
 		while (true) {
 			boolean alive = false;
-			for (XYZPlotWindow window : windows)
+			for (GraphWindow window : windows)
 				alive = alive || window.isVisible();
 			if (!alive)
 				break;

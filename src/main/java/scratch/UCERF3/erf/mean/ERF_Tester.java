@@ -12,15 +12,16 @@ import java.util.zip.ZipFile;
 import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
-import scratch.UCERF3.FaultSystemRupSet;
-import scratch.UCERF3.FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
-import scratch.UCERF3.utils.FaultSystemIO;
+import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 import com.google.common.base.Stopwatch;
@@ -44,7 +45,8 @@ public class ERF_Tester {
 		Stopwatch watch = Stopwatch.createStarted();
 		FaultSystemSolution reducedSol = RuptureCombiner.getCombinedSolution(sol, upperDepthTol, false, combineRakes, rakeBasis);
 		if (combineMags > 0)
-			reducedSol.setRupMagDists(RuptureCombiner.combineMFDs(combineMags, reducedSol.getRupMagDists()));
+			reducedSol.addModule(new RupMFDsModule(reducedSol, RuptureCombiner.combineMFDs(combineMags,
+					reducedSol.getModule(RupMFDsModule.class).getRuptureMFDs())));
 		FaultSystemRupSet reducedRupSet = reducedSol.getRupSet();
 		watch.stop();
 		System.out.println("DONE. Took "+watch.elapsed(TimeUnit.SECONDS)+"s to reduce to "
@@ -76,7 +78,7 @@ public class ERF_Tester {
 		File meanSolFile = new File(invDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_TRUE_HAZARD_MEAN_SOL.zip");
 		
 		System.out.println("Loading solution...");
-		FaultSystemSolution sol = FaultSystemIO.loadSol(meanSolFile);
+		FaultSystemSolution sol = U3FaultSystemIO.loadSol(meanSolFile);
 		asdf(sol);
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		System.out.println("done.");
@@ -143,7 +145,7 @@ public class ERF_Tester {
 				
 				// clear rup MFDs for averaged mags
 				System.out.println("Clearning rup MFDs for mean mags");
-				reducedSol.setRupMagDists(null);
+				reducedSol.removeModuleInstances(RupMFDsModule.class);
 				
 				System.out.println("Instantiating ERF...");
 				erf = new MeanUCERF3(reducedSol);
