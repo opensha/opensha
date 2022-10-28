@@ -29,7 +29,9 @@ import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -59,7 +61,9 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityClu
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.FaultTrace;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -275,8 +279,9 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		lines.add("Connected clusters of fault sections, where all sections plotted in a given color connect with all "
 				+ "other sections of the same color through ruptures. There may not be any single rupture that connects "
 				+ "all such sections, but rather, chains of ruptures connect the sections. Only the first "
-				+ MAX_PLOT_CLUSTERS+" clusters are plotted, with smaller clusters plotted in gray, and fully isolated "
-				+ "faults plotted in black.");
+				+ MAX_PLOT_CLUSTERS+" clusters are plotted with bold colors; smaller clusters are plotted in random "
+				+ "saturated colors (note that neighboring clusters can be similar colors by chance), and fully "
+				+ "isolated faults are plotted in black.");
 		lines.add("");
 		TableBuilder clustersTable = MarkdownUtils.tableBuilder();
 		if (hasComp) {
@@ -699,6 +704,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 	}
 	
 	private static int MAX_PLOT_CLUSTERS = 10;
+	private static boolean SMART_RAND = true;
 	
 	public static File plotConnectedClusters(FaultSystemRupSet rupSet, FaultSystemSolution sol, Region region,
 			File outputDir, String prefix, String title, TableBuilder table) throws IOException {
@@ -721,7 +727,6 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 				+clusters.get(0).getNumRuptures()+" ruptures");
 		
 		Color isolatedColor = Color.BLACK;
-		Color otherClusterColor = Color.GRAY;
 		CPT clusterCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().reverse().rescale(0d, MAX_PLOT_CLUSTERS-1d);
 		
 		List<Color> sectColors = new ArrayList<>();
@@ -794,6 +799,31 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		
 		int tableIndex = 0;
 		
+		Random rand = new Random((long)rupSet.getNumSections() * (long)clusters.size());
+		
+		// this will try to prevent nearby similar colors
+		Map<ConnectivityCluster, Double> prevRands = new HashMap<>();
+		Map<ConnectivityCluster, Location> clusterCenters = new HashMap<>();
+		for (ConnectivityCluster cluster : clusters) {
+			double avgLat = 0d;
+			double avgLon = 0d;
+			for (int sectID : cluster.getSectIDs()) {
+				FaultSection sect = rupSet.getFaultSectionData(sectID);
+				FaultTrace trace = sect.getFaultTrace();
+				avgLat += 0.5*(trace.first().lat+trace.last().lat);
+				avgLon += 0.5*(trace.first().lon+trace.last().lon);
+			}
+			avgLat /= cluster.getNumSections();
+			avgLon /= cluster.getNumSections();
+			clusterCenters.put(cluster, new Location(avgLat, avgLon));
+		}
+		Location lowerLeft = new Location(region.getMinLat(), region.getMinLon());
+		Location lowerRight = new Location(region.getMinLat(), region.getMaxLon());
+		Location upperLeft = new Location(region.getMaxLat(), region.getMinLon());
+		// scale length for determining nearby clusters
+		double randDistScale = Double.max(150d, Math.max(0.1d*LocationUtils.horzDistanceFast(lowerLeft, lowerRight),
+				0.1d*LocationUtils.horzDistanceFast(lowerLeft, upperLeft)));
+		
 		for (int i=0; i<clusters.size(); i++) {
 			ConnectivityCluster cluster = clusters.get(i);
 			boolean allSameParent = cluster.getParentSectIDs().size() == 1;
@@ -836,6 +866,13 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			} else if (tableIndex < MAX_PLOT_CLUSTERS) {
 				color = clusterCPT.getColor((float)tableIndex);
 				
+				// make it a bit darker
+				Color darker = color.darker();
+				color = new Color(
+						(int)(0.5*(color.getRed()+darker.getRed())+0.5),
+						(int)(0.5*(color.getGreen()+darker.getGreen())+0.5),
+						(int)(0.5*(color.getBlue()+darker.getBlue())+0.5));
+				
 				tableIndex++;
 				if (table != null) {
 					table.initNewLine();
@@ -859,7 +896,83 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 					table.finalizeLine();
 				}
 			} else {
-				color = otherClusterColor;
+				Location centerLoc = clusterCenters.get(cluster);
+				
+				double myRand = rand.nextDouble();
+				if (SMART_RAND && !prevRands.isEmpty()) {
+					// see if we need to redraw
+					List<Double> closeRands = new ArrayList<>();
+					List<Double> closeDists = new ArrayList<>();
+					for (ConnectivityCluster oCluster : prevRands.keySet()) {
+						double centerDist = LocationUtils.horzDistanceFast(centerLoc, clusterCenters.get(oCluster));
+						if (centerDist < randDistScale*2d) {
+							double minClusterDist = centerDist;
+							for (int sectID1 : cluster.getSectIDs()) {
+								FaultSection sect1 = rupSet.getFaultSectionData(sectID1);
+								Location l11 = sect1.getFaultTrace().first();
+								Location l12 = sect1.getFaultTrace().last();
+								for (int sectID2 : oCluster.getSectIDs()) {
+									FaultSection sect2 = rupSet.getFaultSectionData(sectID2);
+									Location l21 = sect2.getFaultTrace().first();
+									Location l22 = sect2.getFaultTrace().last();
+									minClusterDist = Math.min(minClusterDist, LocationUtils.horzDistanceFast(l11, l21));
+									minClusterDist = Math.min(minClusterDist, LocationUtils.horzDistanceFast(l11, l22));
+									minClusterDist = Math.min(minClusterDist, LocationUtils.horzDistanceFast(l12, l21));
+									minClusterDist = Math.min(minClusterDist, LocationUtils.horzDistanceFast(l12, l22));
+								}
+							}
+							if (minClusterDist < randDistScale) {
+								closeRands.add(prevRands.get(oCluster));
+								closeDists.add(minClusterDist);
+							}
+						}
+					}
+					
+					if (!closeRands.isEmpty()) {
+						double furthestScore = 0d;
+						double curRand = myRand;
+						double nextRand = rand.nextDouble();
+						
+						// try different randoms, find the most distinct one from it's neighbors
+						for (int j=0; j<10; j++) {
+							// score that's highest when the random value is farthest from the randoms for nearby clusters
+							double score = 0;
+							for (int k=0; k<closeRands.size(); k++) {
+								double dist = closeDists.get(k);
+								double closeRand = closeRands.get(k);
+								double diff = Math.abs(closeRand - curRand);
+								// cap diff, we don't want everything to be polar opposites, just sufficiently different
+								diff = Math.min(diff, 0.3);
+								// this is 1 if they're really close, 0 if they're really far
+								double invDist = 1d - (dist/randDistScale);
+								score += invDist * diff;
+							}
+							if (score > furthestScore) {
+								furthestScore = score;
+								myRand = curRand;
+							}
+							
+							curRand = nextRand;
+							nextRand = rand.nextDouble();
+						}
+					}
+				}
+				
+				prevRands.put(cluster, myRand);
+				
+				Color c = clusterCPT.getColor((float)(myRand*(MAX_PLOT_CLUSTERS-1d)));
+				int r = c.getRed();
+				int g = c.getGreen();
+				int b = c.getBlue();
+				
+				// saturate it (2 steps)
+				for (int j=0; j<2; j++) {
+					r = (int)(0.5d*(r + 255d)+0.5);
+					g = (int)(0.5d*(g + 255d)+0.5);
+					b = (int)(0.5d*(b + 255d)+0.5);
+				}
+				
+				color = new Color(r, g, b);
 				
 				numOther++;
 				sectsOther += cluster.getNumSections();
@@ -921,14 +1034,41 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			}
 		}
 		
-		RupSetMapMaker plotter = new RupSetMapMaker(rupSet, region);
+		RupSetMapMaker plotter = new RupSetMapMaker(rupSet, region) {
+
+			@Override
+			protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
+				return setClusterProps(super.surfFeature(sect, pChar), sect);
+			}
+
+			@Override
+			protected Feature traceFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
+				return setClusterProps(super.traceFeature(sect, pChar), sect);
+			}
+			
+			private Feature setClusterProps(Feature feature, FaultSection sect) {
+				int clusterID = 0;
+				for (ConnectivityCluster cluster : clusters) {
+					if (cluster.containsSect(sect)) {
+						feature.properties.set("ClusterID", clusterID);
+						feature.properties.set("ClusterParentCount", cluster.getParentSectIDs().size());
+						feature.properties.set("ClusterSectCount", cluster.getNumSections());
+						feature.properties.set("ClusterRupCount", cluster.getNumRuptures());
+						break;
+					}
+					clusterID++;
+				}
+				return feature;
+			}
+			
+		};
 		plotter.setLegendVisible(LEGENDS);
 		plotter.setLegendInset(LEGENDS_INSET);
 		plotter.setWriteGeoJSON(true);
 		
 		plotter.plotSectColors(sectColors);
 		
-		plotter.plot(outputDir, prefix, title);
+		plotter.plot(outputDir, prefix, title, 1200);
 		
 		return new File(outputDir, prefix+".png");
 	}
@@ -939,44 +1079,42 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 	}
 	
 	public static void main(String[] args) throws IOException {
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+				+ "2022_09_28-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR/"
+				+ "results_NSHM23_v2_CoulombRupSet_branch_averaged_gridded.zip"));
+		
+		plotConnectedClusters(rupSet, null, NSHM23_RegionLoader.loadFullConterminousWUS(), new File("/tmp"), "conn_clusters", " ", null);
+		
+//		TITLES = false;
 //		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/"
-//				+ "nshm23_geo_dm_v1p1_all_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_"
-//				+ "slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip"));
-//		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_reproduce_ucerf3.zip"));
-//		TableBuilder table = MarkdownUtils.tableBuilder();
-//		plotConnectedClusters(rupSet, new CaliforniaRegions.RELM_TESTING(), new File("/tmp"), "conn_cluster_test", " ", table);
-//		for (String line : table.build())
-//			System.out.println(line);
-		TITLES = false;
-		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/"
-				+ "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_"
-				+ "cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip"));
-		File outputDir = new File("/home/kevin/Documents/papers/2021_UCERF4_Plausibility/figures/figure_16_raw");
-		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
-		
-		Region fullReg = new CaliforniaRegions.RELM_TESTING();
-		Region zoom1 = new Region(new Location(33.6, -121), new Location(35.6, -115.6));
-		Region zoom2 = new Region(new Location(36.6, -123.1), new Location(39, -120.9));
-		
-		FaultSectionConnectionsPlot plot = new FaultSectionConnectionsPlot();
-		
-		RupSetMetadata primayMeta = new RupSetMetadata("Proposed Model", rupSet);
-		RupSetMetadata compMeta = new RupSetMetadata("UCERF3",
-				FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_reproduce_ucerf3.zip")));
-
-		LEGENDS = true;
-		LEGENDS_INSET = true;
-		File fullRegDir = new File(outputDir, "full_reg");
-		Preconditions.checkState(fullRegDir.exists() || fullRegDir.mkdir());
-		plot.plot(rupSet, null, new ReportMetadata(primayMeta, compMeta, fullReg), fullRegDir, "", "");
-		LEGENDS = false;
-		LEGENDS_INSET = false;
-		File zoom1Dir = new File(outputDir, "zoom1");
-		Preconditions.checkState(zoom1Dir.exists() || zoom1Dir.mkdir());
-		plot.plot(rupSet, null, new ReportMetadata(primayMeta, compMeta, zoom1), zoom1Dir, "", "");
-		File zoom2Dir = new File(outputDir, "zoom2");
-		Preconditions.checkState(zoom2Dir.exists() || zoom2Dir.mkdir());
-		plot.plot(rupSet, null, new ReportMetadata(primayMeta, compMeta, zoom2), zoom2Dir, "", "");
+//				+ "fm3_1_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_"
+//				+ "cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip"));
+//		File outputDir = new File("/home/kevin/Documents/papers/2021_UCERF4_Plausibility/figures/figure_16_raw");
+//		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+//		
+//		Region fullReg = new CaliforniaRegions.RELM_TESTING();
+//		Region zoom1 = new Region(new Location(33.6, -121), new Location(35.6, -115.6));
+//		Region zoom2 = new Region(new Location(36.6, -123.1), new Location(39, -120.9));
+//		
+//		FaultSectionConnectionsPlot plot = new FaultSectionConnectionsPlot();
+//		
+//		RupSetMetadata primayMeta = new RupSetMetadata("Proposed Model", rupSet);
+//		RupSetMetadata compMeta = new RupSetMetadata("UCERF3",
+//				FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/fm3_1_reproduce_ucerf3.zip")));
+//
+//		LEGENDS = true;
+//		LEGENDS_INSET = true;
+//		File fullRegDir = new File(outputDir, "full_reg");
+//		Preconditions.checkState(fullRegDir.exists() || fullRegDir.mkdir());
+//		plot.plot(rupSet, null, new ReportMetadata(primayMeta, compMeta, fullReg), fullRegDir, "", "");
+//		LEGENDS = false;
+//		LEGENDS_INSET = false;
+//		File zoom1Dir = new File(outputDir, "zoom1");
+//		Preconditions.checkState(zoom1Dir.exists() || zoom1Dir.mkdir());
+//		plot.plot(rupSet, null, new ReportMetadata(primayMeta, compMeta, zoom1), zoom1Dir, "", "");
+//		File zoom2Dir = new File(outputDir, "zoom2");
+//		Preconditions.checkState(zoom2Dir.exists() || zoom2Dir.mkdir());
+//		plot.plot(rupSet, null, new ReportMetadata(primayMeta, compMeta, zoom2), zoom2Dir, "", "");
 	}
 
 }
