@@ -140,7 +140,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	private boolean adjustForSlipAlong = NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT;
 	
 	// minimum MFD uncertainty
-	public static double MFD_MIN_FRACT_UNCERT = 0.05;
+	public static double MFD_MIN_FRACT_UNCERT = 0.1;
 	
 //	public static double MIN_MAG_FOR_SEISMOGENIC_RUPS = 6d;
 	// no longer apply min mag. this was necessary for U3 target MFDs, but not so this time around
