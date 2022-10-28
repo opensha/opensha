@@ -449,9 +449,29 @@ public class ETAS_ConfigBuilder {
 			if (tline.startsWith("#SBATCH -N") && nodes != null)
 				line = "#SBATCH -N "+nodes;
 			
-			if (tline.startsWith("#SBATCH -n") && nodes != null) {
+			if (tline.startsWith("#SBATCH -n ") && nodes != null) {
 				int cores = threads == null ? nodes : nodes*threads;
 				line = "#SBATCH -n "+cores;
+			}
+			
+			if (tline.startsWith("#SBATCH --ntasks=") && nodes != null) {
+				String prefix = "#SBATCH --ntasks=";
+				String suffix = tline.substring(prefix.length()).trim();
+				int spaceIndex=-1;
+				for (int i=0; i<suffix.length(); i++) {
+					char c = suffix.charAt(i);
+					if (Character.isWhitespace(c)) {
+						spaceIndex = i;
+						break;
+					}
+				}
+				if (spaceIndex >= 0) {
+					// we have something after --ntasks, probaly --cpus-per-task, keep it
+					suffix = " "+suffix.substring(spaceIndex).trim();
+				} else {
+					suffix = "";
+				}
+				line = prefix+nodes+suffix;
 			}
 			
 			if (tline.startsWith("#SBATCH -p")) {
