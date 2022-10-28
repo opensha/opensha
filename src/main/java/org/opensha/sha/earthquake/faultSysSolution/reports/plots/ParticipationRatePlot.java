@@ -82,7 +82,7 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 			magPrefixes.add("m9");
 		}
 		
-		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-5, 0);
+		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-8, -1);
 		cpt.setNanColor(Color.GRAY);
 		
 		RupSetMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
@@ -204,7 +204,18 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 			}
 		}
 		
-		return table.build();
+		List<String> lines = new ArrayList<>();
+		
+		lines.add("The rate at which each fault section participates in events in the listed magnitude range. "
+				+ "Maps in the left column give rates above various magnitude thresholds, and in the right column "
+				+ "rates between the given threshold and the next threshold level.");
+		lines.add("");
+		lines.add("Rates are plotted on a log scale. Gray values mean that the rate is zero, and blue means that it is "
+				+ "at or below the minimum plotted rate.");
+		lines.add("");
+		lines.addAll(table.build());
+		
+		return lines;
 	}
 	
 	private double[] log10(double[] vals) {

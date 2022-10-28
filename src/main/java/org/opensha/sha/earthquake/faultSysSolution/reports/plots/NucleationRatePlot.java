@@ -260,6 +260,79 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		
 		lines.addAll(table.build());
 		
+		// moment rates
+		GriddedGeoDataSet gridXYZ = calcGriddedNucleationMomentRates(gridProv);
+		GriddedGeoDataSet faultXYZ = calcFaultNucleationMomentRates(gridReg, sol, faultAssoc, solNuclMFDs);
+		GriddedGeoDataSet xyz = sum(gridXYZ, faultXYZ);
+		double minMoRate = Double.POSITIVE_INFINITY;
+		double maxMoRate = Double.NEGATIVE_INFINITY;
+		for (int i=0; i<xyz.size(); i++) {
+			double val = xyz.get(i);
+			if (val > 0d) {
+				minMoRate = Math.min(minMoRate, val);
+				maxMoRate = Math.max(maxMoRate, val);
+			}
+		}
+		if (minMoRate < maxMoRate) {
+			double logMaxMo = Math.ceil(Math.log10(maxMoRate));
+			double logMinMo = Math.max(logMaxMo-10d, Math.floor(Math.log10(minMoRate)));
+			
+			CPT moCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(logMinMo, logMaxMo);
+			moCPT.setNanColor(Color.WHITE);
+			
+			GriddedGeoDataSet faultGriddedRatioXYZ = new GriddedGeoDataSet(gridReg, false);
+			for (int i=0; i<xyz.size(); i++)
+				faultGriddedRatioXYZ.set(i, faultXYZ.get(i)/gridXYZ.get(i));
+			faultGriddedRatioXYZ.log10();
+			
+			CPT moRatioCPT = GMT_CPT_Files.DIVERGING_BLUE_RED_UNIFORM.instance().rescale(-1d, 1d);
+			
+			GriddedGeoDataSet logXYZ = maskZeroesAsNan(xyz);
+			logXYZ.log10();
+			gridXYZ = maskZeroesAsNan(gridXYZ);
+			gridXYZ.log10();
+			faultXYZ = maskZeroesAsNan(faultXYZ);
+			faultXYZ.log10();
+			
+			table = MarkdownUtils.tableBuilder();
+			
+			table.initNewLine();
+			table.addColumn(MarkdownUtils.boldCentered("Total Moment Rate"));
+			table.addColumn(MarkdownUtils.boldCentered("Fault/Gridded Moment Rate Ratio"));
+			table.finalizeLine();
+			
+			String prefix = "sol_nucl_moment";
+			
+			table.initNewLine();
+			mapMaker.plotXYZData(logXYZ, moCPT, "Log10 Total Moment Rate (N-m/yr)");
+			mapMaker.plot(resourcesDir, prefix, " ");
+			table.addColumn("![Map]("+relPathToResources+"/"+prefix+".png)");
+			mapMaker.plotXYZData(faultGriddedRatioXYZ, moRatioCPT, "Log10 Fault/Gridded Moment Rate Ratio");
+			mapMaker.plot(resourcesDir, prefix+"_fault_gridded_ratio", " ");
+			table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_fault_gridded_ratio.png)");
+			table.finalizeLine();
+			
+			table.initNewLine();
+			table.addColumn(MarkdownUtils.boldCentered("Fault Moment Rate"));
+			table.addColumn(MarkdownUtils.boldCentered("Gridded Moment Rate"));
+			table.finalizeLine();
+			
+			table.initNewLine();
+			mapMaker.plotXYZData(faultXYZ, moCPT, "Log10 Fault Moment Rate (N-m/yr)");
+			mapMaker.plot(resourcesDir, prefix+"_fault", " ");
+			table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_fault.png)");
+			mapMaker.plotXYZData(gridXYZ, moCPT, "Log10 Gridded Moment Rate (N-m/yr)");
+			mapMaker.plot(resourcesDir, prefix+"_gridded", " ");
+			table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_gridded.png)");
+			table.finalizeLine();
+			
+			lines.add("");
+			lines.add("The following table shows nucleation moment rates in each cell, as well as the ratio of fault "
+					+ "to gridded moment.");
+			lines.add("");
+			lines.addAll(table.build());
+		}
+		
 		return lines;
 	}
 	
@@ -302,6 +375,39 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 					for (int j=mfd.getClosestXIndex(minMag+0.001); j<mfd.size(); j++) {
 						xyz.set(nodeIndex, xyz.get(nodeIndex)+mfd.getY(j)*nodeFract);
 					}
+				}
+			}
+		}
+		
+		return xyz;
+	}
+	
+	private static GriddedGeoDataSet calcGriddedNucleationMomentRates(GridSourceProvider gridProv) {
+		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridProv.getGriddedRegion(), false);
+		
+		// start with gridded
+		for (int i=0; i<xyz.size(); i++) {
+			IncrementalMagFreqDist mfd = gridProv.getMFD(i);
+			if (mfd != null)
+				xyz.set(i, xyz.get(i)+mfd.getTotalMomentRate());
+		}
+		
+		return xyz;
+	}
+	
+	private static GriddedGeoDataSet calcFaultNucleationMomentRates(GriddedRegion gridReg, FaultSystemSolution sol,
+			FaultGridAssociations faultGridAssoc, List<IncrementalMagFreqDist> sectNuclMFDs) {
+		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
+		
+		// add in faults
+		for (int sectIndex=0; sectIndex<sectNuclMFDs.size(); sectIndex++) {
+			IncrementalMagFreqDist mfd = sectNuclMFDs.get(sectIndex);
+			if (mfd != null) {
+				double moment = mfd.getTotalMomentRate();
+				Map<Integer, Double> nodeFracts = faultGridAssoc.getNodeFractions(sectIndex);
+				for (int nodeIndex : nodeFracts.keySet()) {
+					double nodeFract = nodeFracts.get(nodeIndex);
+					xyz.set(nodeIndex, xyz.get(nodeIndex)+moment*nodeFract);
 				}
 			}
 		}
