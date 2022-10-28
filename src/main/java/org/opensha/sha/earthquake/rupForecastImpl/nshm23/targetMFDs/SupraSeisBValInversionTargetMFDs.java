@@ -1011,7 +1011,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 						slipRateStdDevs[s] = creepReducedSlipRateStdDev*fractSupra;
 					}
 
-					slipRateStdDevs[s] = Math.max(slipRateStdDevs[s], slipStdDevFloor);
+					slipRateStdDevs[s] = Math.max(slipRateStdDevs[s], slipStdDevFloor*1e-3); // mm/yr -> m/yr
 
 					double targetMoRateTest = supraMoRate + subMoRate;
 
