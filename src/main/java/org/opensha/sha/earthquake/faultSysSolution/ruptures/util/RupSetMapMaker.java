@@ -503,7 +503,7 @@ public class RupSetMapMaker {
 		}
 	}
 	
-	private Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
+	protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
 		Polygon poly = new Polygon(getPerimeter(sect));
 		FeatureProperties props = new FeatureProperties();
 		props.set("name", sect.getSectionName());
@@ -516,7 +516,7 @@ public class RupSetMapMaker {
 		return new Feature(sect.getSectionName(), poly, props);
 	}
 	
-	private Feature traceFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
+	protected Feature traceFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
 		LineString line = new LineString(getUpperEdge(sect));
 		FeatureProperties props = new FeatureProperties();
 		props.set("name", sect.getSectionName());
