@@ -28,6 +28,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchAverageableModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchModuleBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchRegionalMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectBVals;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
@@ -37,6 +38,8 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectNuclMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectParticMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchParentSectParticMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -96,9 +99,8 @@ public class BranchAverageSolutionCreator {
 	private BranchWeightProvider weightProv;
 	
 	private LogicTreeRateStatistics.Builder rateStatsBuilder;
-	private BranchRegionalMFDs.Builder regionalMFDsBuilder;
-	private BranchSectNuclMFDs.Builder sectMFDsBuilder;
-	private BranchSectBVals.Builder sectBValsBuilder;
+	
+	private List<BranchModuleBuilder<FaultSystemSolution, ?>> solBranchModuleBuilders;
 	
 	public BranchAverageSolutionCreator(BranchWeightProvider weightProv) {
 		this.weightProv = weightProv;
@@ -178,17 +180,20 @@ public class BranchAverageSolutionCreator {
 				rupMFDs.add(new ArbitrarilyDiscretizedFunc());
 			
 			rateStatsBuilder = new LogicTreeRateStatistics.Builder();
-			regionalMFDsBuilder = new BranchRegionalMFDs.Builder();
-			sectMFDsBuilder = new BranchSectNuclMFDs.Builder();
-			sectBValsBuilder = new BranchSectBVals.Builder();
+			
+			solBranchModuleBuilders = new ArrayList<>();
+			solBranchModuleBuilders.add(new BranchRegionalMFDs.Builder());
+			solBranchModuleBuilders.add(new BranchSectNuclMFDs.Builder());
+			solBranchModuleBuilders.add(new BranchSectParticMFDs.Builder());
+			solBranchModuleBuilders.add(new BranchParentSectParticMFDs.Builder());
+			solBranchModuleBuilders.add(new BranchSectBVals.Builder());
 		} else {
 			Preconditions.checkState(refRupSet.isEquivalentTo(rupSet), "Rupture sets are not equivalent");
 		}
 		
 		rateStatsBuilder.process(branch, sol.getRateForAllRups());
-		regionalMFDsBuilder.process(sol, weight);
-		sectMFDsBuilder.process(sol, weight);
-		sectBValsBuilder.process(sol, weight);
+		
+		processBuilders(solBranchModuleBuilders, sol, weight);
 		
 		for (int i=0; i<combBranch.size(); i++) {
 			LogicTreeNode combVal = combBranch.getValue(i);
@@ -287,6 +292,36 @@ public class BranchAverageSolutionCreator {
 			} catch (Exception e) {
 				e.printStackTrace();
 				System.err.println("Error building average module of type "+accumulator.getType().getName());
+				System.err.flush();
+			}
+		}
+	}
+	
+	private <E extends ModuleContainer<OpenSHA_Module>> void processBuilders(List<BranchModuleBuilder<E, ?>> builders, 
+			E source, double weight) {
+		for (int i=builders.size(); --i>=0;) {
+			BranchModuleBuilder<E, ?> builder = builders.get(i);
+			try {
+				builder.process(source, weight);
+			} catch (Exception e) {
+//				e.printStackTrace();
+				System.err.println("Error processing branch module builder, will no longer average "
+						+builder.getClass().getName()
+						+"\n\tError message: "+e.getMessage());
+				System.err.flush();
+				builders.remove(i);
+			}
+		}
+	}
+	
+	private static <E extends ModuleContainer<OpenSHA_Module>> void buildBranchModules(List<BranchModuleBuilder<E, ?>> builders, 
+			E container) {
+		for (BranchModuleBuilder<?, ?> builder : builders) {
+			try {
+				container.addModule(builder.build());
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.err.println("Error building branch module of type "+builder.getClass().getName());
 				System.err.flush();
 			}
 		}
@@ -405,9 +440,8 @@ public class BranchAverageSolutionCreator {
 		sol.addModule(combBranch);
 		sol.addModule(new RupMFDsModule(sol, rupMFDs.toArray(new DiscretizedFunc[0])));
 		sol.addModule(rateStatsBuilder.build());
-		sol.addModule(regionalMFDsBuilder.build());
-		sol.addModule(sectMFDsBuilder.build());
-		sol.addModule(sectBValsBuilder.build());
+		
+		buildBranchModules(solBranchModuleBuilders, sol);
 		
 		String info = "Branch Averaged Fault System Solution, across "+weights.size()
 				+" branches with a total weight of "+totWeight+"."
