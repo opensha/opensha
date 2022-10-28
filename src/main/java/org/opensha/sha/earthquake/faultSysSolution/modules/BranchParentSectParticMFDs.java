@@ -16,35 +16,34 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
-public class BranchSectNuclMFDs extends AbstractBranchMFDs {
+public class BranchParentSectParticMFDs extends AbstractBranchMFDs {
 	
-	public static class Builder extends AbstractBranchMFDs.Builder<BranchSectNuclMFDs> {
+	public static class Builder extends AbstractBranchMFDs.Builder<BranchParentSectParticMFDs> {
 
 		@Override
 		protected SingleBranchMFDs getCachedMFDs(FaultSystemSolution sol) {
-			return sol.getModule(SingleBranchNuclMFDs.class);
+			return sol.getModule(SingleBranchParentParticMFDs.class);
 		}
 
 		@Override
 		protected void cacheMFDs(FaultSystemSolution sol, SingleBranchMFDs branchMFDs) {
-			SingleBranchNuclMFDs module;
-			if (branchMFDs instanceof SingleBranchNuclMFDs)
-				module = (SingleBranchNuclMFDs)branchMFDs;
+			SingleBranchParentParticMFDs module;
+			if (branchMFDs instanceof SingleBranchParentParticMFDs)
+				module = (SingleBranchParentParticMFDs)branchMFDs;
 			else
-				module = new SingleBranchNuclMFDs(branchMFDs);
+				module = new SingleBranchParentParticMFDs(branchMFDs);
 			sol.addModule(module);
 		}
 
 		@Override
-		protected BranchSectNuclMFDs init() {
-			return new BranchSectNuclMFDs();
+		protected BranchParentSectParticMFDs init() {
+			return new BranchParentSectParticMFDs();
 		}
 
 		@Override
 		protected IncrementalMagFreqDist calcBranchSectMFD(FaultSystemSolution sol, int sectID,
 				EvenlyDiscretizedFunc refMFD) {
-			return sol.calcNucleationMFD_forSect(
-					sectID, refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
+			return sol.calcParticipationMFD_forParentSect(sectID, refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
 		}
 	}
 	
@@ -54,86 +53,69 @@ public class BranchSectNuclMFDs extends AbstractBranchMFDs {
 	 * @author kevin
 	 *
 	 */
-	private static class SingleBranchNuclMFDs extends SingleBranchMFDs implements OpenSHA_Module {
+	private static class SingleBranchParentParticMFDs extends SingleBranchMFDs implements OpenSHA_Module {
 
-		public SingleBranchNuclMFDs(short[] sectMinMagIndexes, float[][] sectMFDs, int branchMinIndex,
+		public SingleBranchParentParticMFDs(short[] sectMinMagIndexes, float[][] sectMFDs, int branchMinIndex,
 				int branchMaxIndex) {
 			super(sectMinMagIndexes, sectMFDs, branchMinIndex, branchMaxIndex);
 		}
 
-		public SingleBranchNuclMFDs(SingleBranchMFDs branchMFDs) {
+		public SingleBranchParentParticMFDs(SingleBranchMFDs branchMFDs) {
 			super(branchMFDs);
 		}
 
 		@Override
 		public String getName() {
-			return "Single-Branch Section Nucleation MFDs";
+			return "Single-Branch Parent Section Participation MFDs";
 		}
 		
 	}
 	
-	private BranchSectNuclMFDs() {}
+	private BranchParentSectParticMFDs() {}
 
 	@Override
 	public String getFileName() {
-		return "branch_sect_nucl_mfds.csv";
+		return "branch_parent_sect_partic_mfds.csv";
 	}
 
 	@Override
 	public String getName() {
-		return "Branch Section Nucleation MFDs";
+		return "Branch Parent Section Participation MFDs";
 	}
 
 	@Override
 	public boolean isParentSections() {
-		return false;
+		return true;
 	}
 	
-	public IncrementalMagFreqDist[] calcIncrementalSectFractiles(Collection<Integer> sectIDs, double... fractiles) {
-		double[] sectFracts = new double[branchSectMFDs[0].length];
-		for (int sectID : sectIDs)
-			sectFracts[sectID] = 1d;
-		return calcIncrementalFractiles(sectFracts, fractiles);
+	public IncrementalMagFreqDist[] calcIncrementalSectFractiles(int sectID, double... fractiles) {
+		return (IncrementalMagFreqDist[])calcFractiles(sectID, fractiles, false);
 	}
 	
-	public IncrementalMagFreqDist[] calcIncrementalFractiles(double[] sectFracts, double... fractiles) {
-		return (IncrementalMagFreqDist[])calcFractiles(sectFracts, fractiles, false);
+	public EvenlyDiscretizedFunc[] calcCumulativeSectFractiles(int sectID, double... fractiles) {
+		return calcFractiles(sectID, fractiles, true);
 	}
 	
-	public EvenlyDiscretizedFunc[] calcCumulativeSectFractiles(Collection<Integer> sectIDs, double... fractiles) {
-		double[] sectFracts = new double[branchSectMFDs[0].length];
-		for (int sectID : sectIDs)
-			sectFracts[sectID] = 1d;
-		return calcCumulativeFractiles(sectFracts, fractiles);
-	}
-	
-	public EvenlyDiscretizedFunc[] calcCumulativeFractiles(double[] sectFracts, double... fractiles) {
-		return calcFractiles(sectFracts, fractiles, true);
-	}
-	
-	private EvenlyDiscretizedFunc[] calcFractiles(double[] sectFracts, double[] fractiles, boolean cumulative) {
+	private EvenlyDiscretizedFunc[] calcFractiles(int sectID, double[] fractiles, boolean cumulative) {
 		EvenlyDiscretizedFunc refMFD = cumulative ? this.refMFD.getCumRateDistWithOffset() : this.refMFD;
+		
+		int sectIndex = parentIDtoIndexMap.get(sectID);
 		
 		double[][] branchVals = new double[refMFD.size()][branchSectMFDs.length];
 		
 		for (int b=0; b<branchSectMFDs.length; b++) {
 			IncrementalMagFreqDist branchMFD = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
-			for (int s=0; s<branchSectMFDs[b].length; s++) {
-				double scalar = 1d;
-				if (sectFracts != null) {
-					if (sectFracts[s] == 0d)
-						continue;
-					scalar = sectFracts[s];
-				}
-				float[] mfdVals = branchSectMFDs[b][s];
-				if (sectFracts != null && sectFracts[s] == 0d || mfdVals == null || mfdVals.length == 0)
-					continue;
-				int minIndex = branchSectMinMagIndexes[b][s];
-				Preconditions.checkState(branchMFD.size() >= minIndex+mfdVals.length);
-				for (int i=0; i<mfdVals.length; i++)
-					if (mfdVals[i] > 0f)
-						branchMFD.add(i+minIndex, mfdVals[i]*scalar);
-			}
+			
+			float[] mfdVals = branchSectMFDs[b][sectIndex];
+			
+			if (mfdVals == null || mfdVals.length == 0)
+				// all zero for this branch
+				continue;
+			int minIndex = branchSectMinMagIndexes[b][sectIndex];
+			Preconditions.checkState(branchMFD.size() >= minIndex+mfdVals.length);
+			for (int i=0; i<mfdVals.length; i++)
+				if (mfdVals[i] > 0f)
+					branchMFD.set(i+minIndex, mfdVals[i]);
 			if (cumulative) {
 				EvenlyDiscretizedFunc branchCmlMFD = branchMFD.getCumRateDistWithOffset();
 				for (int i=0; i<branchCmlMFD.size(); i++)

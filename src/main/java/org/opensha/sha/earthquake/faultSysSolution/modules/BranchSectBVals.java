@@ -45,7 +45,7 @@ public class BranchSectBVals implements ArchivableModule {
 	private float[][] sectTargetBVals;
 	private float[][] parentTargetBVals;
 	
-	public static class Builder {
+	public static class Builder implements BranchModuleBuilder<FaultSystemSolution, BranchSectBVals> {
 		private List<Double> weights;
 		private int[] parentIDs;
 		private List<float[]> sectBVals;

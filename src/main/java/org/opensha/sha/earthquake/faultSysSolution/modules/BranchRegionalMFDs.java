@@ -49,7 +49,7 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 	@SuppressWarnings("unused") // for deserialization
 	private BranchRegionalMFDs() {};
 	
-	public static class Builder {
+	public static class Builder implements BranchModuleBuilder<FaultSystemSolution, BranchRegionalMFDs> {
 		
 		// oversized reference MFD that starts at M=0 and goes to M=12
 		// will be reduced to the actual magnitude range when the final module is built
