@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -104,6 +105,7 @@ public class RupSetMapMaker {
 	
 	// section colors
 	private List<Color> sectColors = null;
+	private List<? extends Double> sectColorComparables;
 	private CPT colorsCPT;
 	private String colorsLabel;
 	
@@ -303,19 +305,28 @@ public class RupSetMapMaker {
 	}
 	
 	public void plotSectColors(List<Color> sectColors, CPT colorsCPT, String colorsLabel) {
+		plotSectColors(sectColors, colorsCPT, colorsLabel, null);
+	}
+	
+	public void plotSectColors(List<Color> sectColors, CPT colorsCPT, String colorsLabel,
+			List<? extends Double> sectColorComparables) {
 		if (sectColors != null) {
 			clearSectScalars();
 			Preconditions.checkState(sectColors.size() == subSects.size());
+			if (sectColorComparables != null)
+				Preconditions.checkState(sectColorComparables.size() == subSects.size());
 		}
 		this.sectColors = sectColors;
 		this.colorsCPT = colorsCPT;
 		this.colorsLabel = colorsLabel;
+		this.sectColorComparables = sectColorComparables;
 	}
 	
 	public void clearSectColors() {
 		this.sectColors = null;
 		this.colorsCPT = null;
 		this.colorsLabel = null;
+		this.sectColorComparables = null;
 	}
 	
 	public void plotJumps(Collection<Jump> jumps, Color color, String label) {
@@ -714,7 +725,22 @@ public class RupSetMapMaker {
 				cptLegend.add(buildCPTLegend(scalarCPT, scalarLabel));
 		} else if (sectColors != null) {
 			Preconditions.checkState(sectColors.size() == subSects.size());
-			for (int s=0; s<sectColors.size(); s++) {
+			List<Integer> sectOrder;
+			if (sectColorComparables != null) {
+				Preconditions.checkState(sectColorComparables.size() == subSects.size());
+				List<ComparablePairing<Double, Integer>> sortables = new ArrayList<>();
+				for (int s=0; s<sectColorComparables.size(); s++)
+					sortables.add(new ComparablePairing<>(sectColorComparables.get(s), s));
+				Collections.sort(sortables, comparator);
+				sectOrder = new ArrayList<>(subSects.size());
+				for (ComparablePairing<Double, Integer> sort : sortables)
+					sectOrder.add(sort.getData());
+			} else {
+				sectOrder = new ArrayList<>(subSects.size());
+				for (int s=0; s<subSects.size(); s++)
+					sectOrder.add(s);
+			}
+			for (int s : sectOrder) {
 				Color color = sectColors.get(s);
 				if (color == null)
 					continue;

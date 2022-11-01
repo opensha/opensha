@@ -283,36 +283,94 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 				+ "saturated colors (note that neighboring clusters can be similar colors by chance), and fully "
 				+ "isolated faults are plotted in black.");
 		lines.add("");
-		TableBuilder clustersTable = MarkdownUtils.tableBuilder();
-		if (hasComp) {
-			table = MarkdownUtils.tableBuilder();
-			table.addLine(meta.primary.name, meta.comparison.name);
-			
-			File primaryClusters = plotConnectedClusters(rupSet, sol, meta.region, resourcesDir, "conn_clusters",
-					TITLES ? getTruncatedTitle(meta.primary.name)+" Clusters" : " ", clustersTable);
-			File compClusters = plotConnectedClusters(meta.comparison.rupSet, meta.comparison.sol, meta.region, resourcesDir,
-					"conn_clusters_comp", TITLES ? getTruncatedTitle(meta.comparison.name)+" Clusters" : " ", null);
-			
-			table.addLine("![Primary clusters]("+relPathToResources+"/"+primaryClusters.getName()+")",
-					"![Comparison clusters]("+relPathToResources+"/"+compClusters.getName()+")");
-			table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/conn_clusters.geojson")
-					+" [Download GeoJSON]("+relPathToResources+"/conn_clusters.geojson)",
-					RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/conn_clusters_comp.geojson")
-					+" [Download GeoJSON]("+relPathToResources+"/conn_clusters_comp.geojson)");
-			lines.addAll(table.build());
-		} else {
-			table = MarkdownUtils.tableBuilder();
-			
-			File primaryClusters = plotConnectedClusters(rupSet, sol, meta.region, resourcesDir, "conn_clusters",
-					TITLES ? "Connected Section Clusters" : " ", clustersTable);
-			
-			table.addLine("![Primary clusters]("+relPathToResources+"/"+primaryClusters.getName()+")");
-			table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/conn_clusters.geojson")
-					+" [Download GeoJSON]("+relPathToResources+"/conn_clusters.geojson)");
-			lines.addAll(table.build());
+		
+		List<ConnectivityCluster> rsClusters = rupSetClusters(rupSet);
+		List<ConnectivityCluster> solClusters = null;
+		if (sol != null) {
+			// see if we have any zero rate ruptures
+			boolean hasZero = false;
+			for (double rate : sol.getRateForAllRups()) {
+				if (rate == 0) {
+					hasZero = true;
+					break;
+				}
+			}
+			if (hasZero) {
+				// we might have solution clusters that are subsets of rup set clusters
+				solClusters = solClusters(sol);
+				if (solClusters.size() == rsClusters.size())
+					// don't bother, same number of clusters
+					solClusters = null;
+			}
 		}
-		lines.add("");
-		lines.addAll(clustersTable.build());
+		
+		boolean[] doSols;
+		if (solClusters == null)
+			doSols = new boolean[] { false };
+		else
+			doSols = new boolean[] { false, true };
+		
+		for (boolean doSol : doSols) {
+			List<ConnectivityCluster> clusters = doSol ? solClusters : rsClusters;
+			
+			String prefix = "conn_clusters";
+			if (doSol)
+				prefix += "_sol";
+			
+			table = MarkdownUtils.tableBuilder();
+			
+			TableBuilder clustersTable = MarkdownUtils.tableBuilder();
+			
+			if (hasComp) {
+				table.addLine(meta.primary.name, meta.comparison.name);
+				
+				List<ConnectivityCluster> compClusters = doSol ? solClusters(meta.comparison.sol) : rupSetClusters(meta.comparison.rupSet);
+				
+				File primaryClustersPlot = plotConnectedClusters(rupSet, sol, meta.region, resourcesDir, prefix,
+						TITLES ? getTruncatedTitle(meta.primary.name)+" Clusters" : " ", clustersTable, clusters);
+				File compClustersPlot = null;
+				if (compClusters != null)
+					compClustersPlot = plotConnectedClusters(meta.comparison.rupSet, meta.comparison.sol, meta.region, resourcesDir,
+							prefix+"_comp", TITLES ? getTruncatedTitle(meta.comparison.name)+" Clusters" : " ", null, compClusters);
+				
+				table.addLine("![Primary clusters]("+relPathToResources+"/"+primaryClustersPlot.getName()+")",
+						compClustersPlot == null ? na : "![Comparison clusters]("+relPathToResources+"/"+compClustersPlot.getName()+")");
+				table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+".geojson")
+						+" [Download GeoJSON]("+relPathToResources+"/"+prefix+".geojson)",
+						compClustersPlot == null ? na :
+							RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_comp.geojson")
+						+" [Download GeoJSON]("+relPathToResources+"/"+prefix+"_comp.geojson)");
+			} else {
+				File primaryClusters = plotConnectedClusters(rupSet, sol, meta.region, resourcesDir, prefix,
+						TITLES ? "Connected Section Clusters" : " ", clustersTable, clusters);
+				
+				table.addLine("![Primary clusters]("+relPathToResources+"/"+primaryClusters.getName()+")");
+				table.addLine(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+".geojson")
+						+" [Download GeoJSON]("+relPathToResources+"/"+prefix+".geojson)");
+			}
+			
+			if (solClusters != null) {
+				// we're doing this for both rup set and solution clusters
+				
+				if (doSol) {
+					lines.add(getSubHeading()+"# Solution Clusters");
+					lines.add(topLink); lines.add("");
+					
+					lines.add("This section shows clusters of sections connected by ruptures with nonzero rates in the "
+							+ "fault system solution, which differs from those calculated using every available rupture "
+							+ "in the rupture set. This can occur by random chance, or if the solver was conditioned to "
+							+ "only use a particular subset of all available ruptures (e.g., for a segmentation constraint).");
+					lines.add("");
+				} else {
+					lines.add(getSubHeading()+"# Rupture Set Clusters");
+					lines.add(topLink); lines.add("");
+				}
+			}
+			
+			lines.addAll(table.build());
+			lines.add("");
+			lines.addAll(clustersTable.build());
+		}
 		
 		if (sol != null && sol.hasModule(ConnectivityClusterSolutionMisfits.class)) {
 			InversionMisfitProgress largestClusterProgress = sol.requireModule(
@@ -336,6 +394,25 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		}
 		
 		return lines;
+	}
+	
+	private static List<ConnectivityCluster> rupSetClusters(FaultSystemRupSet rupSet) {
+		if (!rupSet.hasModule(ConnectivityClusters.class)) {
+			System.out.println("Calculating connection clusters");
+			Stopwatch watch = Stopwatch.createStarted();
+			ConnectivityClusters clusters = ConnectivityClusters.build(rupSet);
+			watch.stop();
+			System.out.println("Found "+clusters.size()+" connectivity clusters in "+optionalDigitDF.format(
+					watch.elapsed(TimeUnit.MILLISECONDS)/1000)+" s");
+			rupSet.addModule(clusters);
+		}
+		return rupSet.requireModule(ConnectivityClusters.class).get();
+	}
+	
+	private static List<ConnectivityCluster> solClusters(FaultSystemSolution sol) {
+		if (sol == null)
+			return null;
+		return ConnectivityCluster.buildNonzeroRateClusters(sol);
 	}
 
 	@Override
@@ -707,20 +784,12 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 	private static boolean SMART_RAND = true;
 	
 	public static File plotConnectedClusters(FaultSystemRupSet rupSet, FaultSystemSolution sol, Region region,
-			File outputDir, String prefix, String title, TableBuilder table) throws IOException {
+			File outputDir, String prefix, String title, TableBuilder table, List<ConnectivityCluster> clustersUnsorted)
+					throws IOException {
+		// sort clusters by number of sections
+		List<ConnectivityCluster> clusters = new ArrayList<>(clustersUnsorted);
+		Collections.sort(clusters, ConnectivityCluster.sectCountComparator);
 		
-		if (!rupSet.hasModule(ConnectivityClusters.class)) {
-			System.out.println("Calculating connection clusters");
-			Stopwatch watch = Stopwatch.createStarted();
-			ConnectivityClusters clusters = ConnectivityClusters.build(rupSet);
-			watch.stop();
-			System.out.println("Found "+clusters.size()+" connectivity clusters in "+optionalDigitDF.format(
-					watch.elapsed(TimeUnit.MILLISECONDS)/1000)+" s");
-			rupSet.addModule(clusters);
-		}
-		// get clusters, sorted by number of sections
-		List<ConnectivityCluster> clusters = rupSet.requireModule(ConnectivityClusters.class)
-				.getSorted(ConnectivityCluster.sectCountComparator);
 		// reverse it (decreasing)
 		Collections.reverse(clusters);
 		System.out.println("Largest has "+clusters.get(0).getNumSections()+" sections, "
@@ -730,8 +799,11 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		CPT clusterCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().reverse().rescale(0d, MAX_PLOT_CLUSTERS-1d);
 		
 		List<Color> sectColors = new ArrayList<>();
-		for (int s=0; s<rupSet.getNumSections(); s++)
+		List<Double> sectColorSortables = new ArrayList<>();
+		for (int s=0; s<rupSet.getNumSections(); s++) {
 			sectColors.add(null);
+			sectColorSortables.add(null);
+		}
 		
 		ConnectivityClusterSolutionMisfits clusterMisfits = null;
 		Map<ConnectivityCluster, InversionMisfitStats> clusterMisfitStats = null;
@@ -992,6 +1064,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			for (int s : cluster.getSectIDs()) {
 				Preconditions.checkState(sectColors.get(s) == null);
 				sectColors.set(s, color);
+				sectColorSortables.set(s, cluster.getNumSections()+(double)cluster.getNumRuptures()/(double)rupSet.getNumRuptures());
 			}
 		}
 		
@@ -1066,7 +1139,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		plotter.setLegendInset(LEGENDS_INSET);
 		plotter.setWriteGeoJSON(true);
 		
-		plotter.plotSectColors(sectColors);
+		plotter.plotSectColors(sectColors, null, null, sectColorSortables);
 		
 		plotter.plot(outputDir, prefix, title, 1200);
 		
@@ -1079,11 +1152,14 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
 				+ "2022_09_28-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR/"
 				+ "results_NSHM23_v2_CoulombRupSet_branch_averaged_gridded.zip"));
 		
-		plotConnectedClusters(rupSet, null, NSHM23_RegionLoader.loadFullConterminousWUS(), new File("/tmp"), "conn_clusters", " ", null);
+		plotConnectedClusters(sol.getRupSet(), sol, NSHM23_RegionLoader.loadFullConterminousWUS(), new File("/tmp"),
+				"conn_clusters", " ", null, rupSetClusters(sol.getRupSet()));
+		plotConnectedClusters(sol.getRupSet(), sol, NSHM23_RegionLoader.loadFullConterminousWUS(), new File("/tmp"),
+				"conn_clusters_sol", " ", null, solClusters(sol));
 		
 //		TITLES = false;
 //		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/rup_sets/"
