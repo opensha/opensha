@@ -51,6 +51,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
+import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
@@ -105,6 +106,11 @@ public class SolHazardMapCalc {
 	private double maxSiteDist = 200d;
 	private double skipMaxSiteDist = 300d;
 	
+	// ERF params
+	private IncludeBackgroundOption backSeisOption;
+	private BackgroundRupType backSeisType;
+	private boolean applyAftershockFilter;
+	
 	public enum ReturnPeriods {
 		TWO_IN_50(0.02, 50d, "2% in 50 year"),
 		TEN_IN_50(0.1, 50d, "10% in 50 year");
@@ -137,6 +143,8 @@ public class SolHazardMapCalc {
 		this.sol = sol;
 		this.gmpeRef = gmpeRef;
 		this.region = region;
+		this.backSeisOption = backSeisOption;
+		this.applyAftershockFilter = applyAftershockFilter;
 		Preconditions.checkState(periods.length > 0);
 		this.periods = periods;
 		for (double period : periods)
@@ -152,7 +160,24 @@ public class SolHazardMapCalc {
 					site.addParameter((Parameter<?>) param.clone());
 				sites.add(site);
 			}
-			
+		}
+	}
+	
+	public void setBackSeisOption(IncludeBackgroundOption backSeisOption) {
+		this.backSeisOption = backSeisOption;
+	}
+
+	public void setBackSeisType(BackgroundRupType backSeisType) {
+		this.backSeisType = backSeisType;
+	}
+
+	public void setApplyAftershockFilter(boolean applyAftershockFilter) {
+		this.applyAftershockFilter = applyAftershockFilter;
+	}
+
+	private synchronized void checkInitERF() {
+		if (fssERF == null) {
+			System.out.println("Building ERF");
 			fssERF = new FaultSystemSolutionERF(sol);
 			fssERF.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 			fssERF.setParameter(IncludeBackgroundParam.NAME, backSeisOption);
@@ -238,6 +263,8 @@ public class SolHazardMapCalc {
 			}
 		}
 		ConcurrentLinkedDeque<Integer> deque = new ConcurrentLinkedDeque<>(calcIndexes);
+		
+		checkInitERF();
 		
 		System.out.println("Calculating hazard maps with "+numThreads+" threads and "+calcIndexes.size()+" sites...");
 		List<CalcThread> threads = new ArrayList<>();
