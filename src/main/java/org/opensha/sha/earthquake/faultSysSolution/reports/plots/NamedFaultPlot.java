@@ -1,5 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.reports.plots;
 
+import java.awt.Color;
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -10,9 +12,19 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import org.jfree.data.Range;
+import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
+import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.gui.plot.HeadlessGraphPanel;
+import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
+import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.MarkdownUtils;
+import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.commons.util.modules.OpenSHA_Module;
@@ -143,6 +155,13 @@ public class NamedFaultPlot extends AbstractRupSetPlot {
 		
 		lines.addAll(SectBySectDetailPlots.getAlongStrikeLines(meta, faultName, faultSects, resourcesDir, topLink));
 		lines.add("");
+		
+		if (meta.hasPrimarySol()) {
+			lines.addAll(SectBySectDetailPlots.getLengthLines(meta, faultName, faultSects, resourcesDir, topLink));
+			lines.add("");
+			lines.addAll(SectBySectDetailPlots.getRateWeightedLengthExampleLines(meta, faultName, faultSects, resourcesDir, topLink));
+			lines.add("");
+		}
 		
 		// add TOC
 		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2, 3));

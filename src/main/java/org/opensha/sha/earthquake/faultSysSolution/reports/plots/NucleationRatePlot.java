@@ -263,6 +263,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		// moment rates
 		GriddedGeoDataSet gridXYZ = calcGriddedNucleationMomentRates(gridProv);
 		GriddedGeoDataSet faultXYZ = calcFaultNucleationMomentRates(gridReg, sol, faultAssoc, solNuclMFDs);
+		
 		GriddedGeoDataSet xyz = sum(gridXYZ, faultXYZ);
 		double minMoRate = Double.POSITIVE_INFINITY;
 		double maxMoRate = Double.NEGATIVE_INFINITY;
@@ -326,6 +327,14 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 			table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_gridded.png)");
 			table.finalizeLine();
 			
+			File gridMoRatesFile = new File(resourcesDir, "gridded_moment_rates.xyz");
+			File faultMoRatesFile = new File(resourcesDir, "fault_moment_rates.xyz");
+			GriddedGeoDataSet.writeXYZFile(gridXYZ, gridMoRatesFile);
+			GriddedGeoDataSet.writeXYZFile(faultXYZ, faultMoRatesFile);
+			lines.add("");
+			lines.add("Download moment rate XYZ data: "
+					+ "[Fault moment Rates]("+relPathToResources+"/"+faultMoRatesFile.getName()+") "
+					+ "[Gridded moment Rates]("+relPathToResources+"/"+gridMoRatesFile.getName()+")");
 			lines.add("");
 			lines.add("The following table shows nucleation moment rates in each cell, as well as the ratio of fault "
 					+ "to gridded moment.");
