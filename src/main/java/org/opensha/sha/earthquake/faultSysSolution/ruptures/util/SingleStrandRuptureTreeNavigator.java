@@ -47,6 +47,19 @@ public class SingleStrandRuptureTreeNavigator implements RuptureTreeNavigator {
 
 	@Override
 	public Jump getJump(FaultSubsectionCluster fromCluster, FaultSubsectionCluster toCluster) {
+		Jump ret = doGetJump(fromCluster, toCluster);
+		if (ret != null)
+			return ret;
+		throw new IllegalStateException(
+				"Rupture does not use a direct jump between "+fromCluster+" to "+toCluster);
+	}
+	
+	@Override
+	public boolean hasJump(FaultSubsectionCluster fromCluster, FaultSubsectionCluster toCluster) {
+		return doGetJump(fromCluster, toCluster) != null;
+	}
+	
+	private Jump doGetJump(FaultSubsectionCluster fromCluster, FaultSubsectionCluster toCluster) {
 		for (Jump jump : rupture.getJumpsIterable()) {
 			FaultSubsectionCluster myFrom = jump.fromCluster;
 			FaultSubsectionCluster myTo = jump.toCluster;
@@ -55,11 +68,24 @@ public class SingleStrandRuptureTreeNavigator implements RuptureTreeNavigator {
 			if (myTo.equals(fromCluster) && myFrom.equals(toCluster))
 				return jump.reverse();
 		}
-		throw new IllegalStateException("no jump fround from "+fromCluster+" to "+toCluster+" in rupture: "+rupture);
+		return null;
 	}
 
 	@Override
 	public Jump getJump(FaultSection fromSection, FaultSection toSection) {
+		Jump ret = doGetJump(fromSection, toSection);
+		if (ret != null)
+			return ret;
+		throw new IllegalStateException(
+				"Rupture does not use a direct jump between "+fromSection.getSectionId()+" to "+toSection.getSectionId());
+	}
+	
+	@Override
+	public boolean hasJump(FaultSection fromSection, FaultSection toSection) {
+		return doGetJump(fromSection, toSection) != null;
+	}
+	
+	private Jump doGetJump(FaultSection fromSection, FaultSection toSection) {
 		for (Jump jump : rupture.getJumpsIterable()) {
 			FaultSection myFrom = jump.fromSection;
 			FaultSection myTo = jump.toSection;
@@ -68,8 +94,7 @@ public class SingleStrandRuptureTreeNavigator implements RuptureTreeNavigator {
 			if (myTo == fromSection && myFrom == toSection)
 				return jump.reverse();
 		}
-		throw new IllegalStateException("no jump fround from "+fromSection.getSectionId()
-			+" to "+toSection.getSectionId()+" in rupture: "+rupture);
+		return null;
 	}
 	
 	private static final Collection<FaultSection> emptySects = Collections.emptySet();

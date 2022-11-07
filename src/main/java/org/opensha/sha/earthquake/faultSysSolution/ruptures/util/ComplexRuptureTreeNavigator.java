@@ -128,6 +128,19 @@ public class ComplexRuptureTreeNavigator implements RuptureTreeNavigator {
 	
 	@Override
 	public Jump getJump(FaultSubsectionCluster fromCluster, FaultSubsectionCluster toCluster) {
+		Jump ret = doGetJump(fromCluster, toCluster);
+		if (ret != null)
+			return ret;
+		throw new IllegalStateException(
+				"Rupture does not use a direct jump between "+fromCluster+" to "+toCluster);
+	}
+	
+	@Override
+	public boolean hasJump(FaultSubsectionCluster fromCluster, FaultSubsectionCluster toCluster) {
+		return doGetJump(fromCluster, toCluster) != null;
+	}
+	
+	private Jump doGetJump(FaultSubsectionCluster fromCluster, FaultSubsectionCluster toCluster) {
 		ClusterConnections connections = clusterConnectionsMap.get(toCluster);
 		Preconditions.checkNotNull(connections, "toCluster not found: %s", toCluster);
 		if (connections.jumpTo != null && connections.jumpTo.fromCluster == fromCluster)
@@ -137,12 +150,24 @@ public class ComplexRuptureTreeNavigator implements RuptureTreeNavigator {
 		Preconditions.checkNotNull(connections, "fromCluster not found: %s", fromCluster);
 		if (connections.jumpTo != null && connections.jumpTo.fromCluster == toCluster)
 			return connections.jumpTo.reverse();
-		throw new IllegalStateException(
-				"Rupture does not use a direct jump between "+fromCluster+" to "+toCluster);
+		return null;
 	}
 	
 	@Override
 	public Jump getJump(FaultSection fromSection, FaultSection toSection) {
+		Jump ret = doGetJump(fromSection, toSection);
+		if (ret != null)
+			return ret;
+		throw new IllegalStateException(
+				"Rupture does not use a direct jump between "+fromSection.getSectionId()+" to "+toSection.getSectionId());
+	}
+	
+	@Override
+	public boolean hasJump(FaultSection fromSection, FaultSection toSection) {
+		return doGetJump(fromSection, toSection) != null;
+	}
+	
+	private Jump doGetJump(FaultSection fromSection, FaultSection toSection) {
 		FaultSubsectionCluster fromCluster = locateCluster(fromSection);
 		FaultSubsectionCluster toCluster = locateCluster(toSection);
 		Preconditions.checkState(fromCluster != toCluster && fromCluster != null && fromCluster.contains(fromSection)
@@ -167,8 +192,7 @@ public class ComplexRuptureTreeNavigator implements RuptureTreeNavigator {
 					fromSection.getSectionId(), toSection.getSectionId(), connections.jumpTo, rupture);
 			return jump;
 		}
-		throw new IllegalStateException(
-				"Rupture does not use a direct jump between "+fromSection.getSectionId()+" to "+toSection.getSectionId());
+		return null;
 	}
 	
 	@Override
