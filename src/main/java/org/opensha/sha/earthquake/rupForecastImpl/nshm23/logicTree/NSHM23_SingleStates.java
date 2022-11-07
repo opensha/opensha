@@ -1,5 +1,7 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -12,6 +14,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
@@ -105,6 +108,27 @@ public enum NSHM23_SingleStates implements LogicTreeNode {
 				allClusterSectIDs.addAll(cluster.getSectIDs());
 		}
 		return rupSet.getForSectionSubSet(allClusterSectIDs);
+	}
+	
+	public static void main(String[] args) throws IOException {
+		// write out subsections for one state
+		
+		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		
+		NSHM23_SingleStates state = UT;
+		
+		List<? extends FaultSection> allSects = fm.getFaultSections();
+		
+		List<GeoJSONFaultSection> stateSects = new ArrayList<>();
+		for (FaultSection sect : allSects) {
+			Preconditions.checkState(sect instanceof GeoJSONFaultSection);
+			GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
+			if (state.contains(geoSect))
+				stateSects.add(geoSect);
+		}
+		
+		GeoJSONFaultReader.writeFaultSections(
+				new File("/tmp/"+fm.getFilePrefix()+"_"+state.getFilePrefix()+".geojson"), stateSects);
 	}
 
 }
