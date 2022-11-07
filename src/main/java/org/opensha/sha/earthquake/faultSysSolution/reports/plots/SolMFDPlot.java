@@ -224,7 +224,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 						bounded = ((UncertainBoundedIncrMagFreqDist)comp).deepClone();
 					else
 						bounded = ((UncertainIncrMagFreqDist)comp).estimateBounds(UncertaintyBoundType.ONE_SIGMA);
-					bounded.setName(bounded.getBoundType().toString());
+					bounded.setName(bounded.getBoundName());
 					
 					incrFuncs.add(bounded);
 					incrChars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,

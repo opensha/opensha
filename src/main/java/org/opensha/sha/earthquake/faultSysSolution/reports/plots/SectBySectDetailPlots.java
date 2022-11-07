@@ -1855,7 +1855,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			}
 			if (compCmlParticMFD != null) {
 				table.addColumn((float)compVal+"");
-				table.addColumn((float)(1d/compVal)+"");
+				table.addColumn(riRateStr(1d/compVal)+"");
 			}
 			table.finalizeLine();
 		}
