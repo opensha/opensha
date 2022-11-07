@@ -4,12 +4,13 @@ import java.awt.Color;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
@@ -17,33 +18,33 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.*;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.BinaryJumpProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.HardcodedBinaryJumpProb;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.HardcodedJumpProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ConnectionPointsRuptureGrowingStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveBilateralRuptureGrowingStrategy;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.PlausibleClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveBilateralRuptureGrowingStrategy.SecondaryVariations;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.PlausibleClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -57,6 +58,10 @@ public class NSHM23_WasatchSegmentationData {
 	private static final double MAX_MAP_DIST_2 = 10d;
 	// section names must contain this in order to be mapped (must be lower case)
 	private static final String MAP_SECT_NAME_REQUIREMENT = "wasatch";
+	
+	// if true, segmentation constraint applied to all jumps to/from the given sections, not just between the pair.
+	// this will disallow ruptures to bypass it by taking another (non-wasatch) path, like the West Valley fault
+	public static boolean APPLY_TO_ALL_JUMPS_FROM_LOC = true;
 	
 	private static class WasatchSegLocation {
 		private final int id;
@@ -97,8 +102,10 @@ public class NSHM23_WasatchSegmentationData {
 		return subSect.getParentSectionName().toLowerCase().contains(MAP_SECT_NAME_REQUIREMENT);
 	}
 	
-	private static Map<WasatchSegLocation, IDPairing> mapToParentSects(List<WasatchSegLocation> datas,
-			List<? extends FaultSection> subSects, boolean verbose) {
+	private static Map<WasatchSegLocation, Set<IDPairing>> mapToParentSects(List<WasatchSegLocation> datas,
+			FaultSystemRupSet rupSet, boolean verbose) {
+		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+		
 		List<FaultSection> wasatchSects = new ArrayList<>();
 		for (FaultSection subSect : subSects)
 			if (isWasatchSection(subSect))
@@ -107,7 +114,7 @@ public class NSHM23_WasatchSegmentationData {
 		if (wasatchSects.isEmpty())
 			return null;
 		
-		Map<WasatchSegLocation, IDPairing> ret = new HashMap<>();
+		Map<WasatchSegLocation, Set<IDPairing>> ret = new HashMap<>();
 		
 		Map<Integer, String> parentNames = new HashMap<>();
 		List<LocationList> discrTraces = new ArrayList<>();
@@ -116,10 +123,15 @@ public class NSHM23_WasatchSegmentationData {
 			parentNames.put(sect.getParentSectionId(), sect.getParentSectionName());
 		}
 		
+		ClusterRuptures cRups = null;
+		if (APPLY_TO_ALL_JUMPS_FROM_LOC)
+			cRups = rupSet.requireModule(ClusterRuptures.class);
+		
 		if (verbose) System.out.println("Mapping "+datas.size()+" Wasatch segmentation locations");
 		for (WasatchSegLocation data : datas) {
 			if (verbose) System.out.println("Mapping "+data.id+". "+data.name);
 			Map<Integer, Double> parentDists = new HashMap<>();
+			Map<Integer, Integer> parentClosestSects = new HashMap<>();
 			for (int i=0; i<wasatchSects.size(); i++) {
 				FaultSection subSect = wasatchSects.get(i);
 				LocationList trace = discrTraces.get(i);
@@ -129,10 +141,12 @@ public class NSHM23_WasatchSegmentationData {
 				if ((float)minDist > (float)MAX_MAP_DIST_1 && (float)minDist > (float)MAX_MAP_DIST_2)
 					continue;
 				Integer parentID = subSect.getParentSectionId();
-				if (parentDists.containsKey(parentID))
-					parentDists.put(parentID, Double.min(minDist, parentDists.get(parentID)));
-				else
+				// true if this is the closest section yet found on this parent
+				boolean closest = !parentDists.containsKey(parentID) || minDist < parentDists.get(parentID);
+				if (closest) {
 					parentDists.put(parentID, minDist);
+					parentClosestSects.put(parentID, subSect.getSectionId());
+				}
 			}
 			if (verbose) System.out.println("\tFound "+parentDists.size()+" candidate sections");
 			if (parentDists.size() < 2)
@@ -140,16 +154,127 @@ public class NSHM23_WasatchSegmentationData {
 				continue;
 			List<Integer> sortedParentIDs = ComparablePairing.getSortedData(parentDists);
 			int parentID1 = sortedParentIDs.get(0);
+			int sectID1 = parentClosestSects.get(parentID1);
 			double dist1 = parentDists.get(parentID1);
 			String name1 = parentNames.get(parentID1);
 			int parentID2 = sortedParentIDs.get(1);
+			int sectID2 = parentClosestSects.get(parentID2);
 			double dist2 = parentDists.get(parentID2);
 			String name2 = parentNames.get(parentID2);
 			if (dist1 < MAX_MAP_DIST_1 && dist2 < MAX_MAP_DIST_2) {
 				// it's a match
 				if (verbose) System.out.println("\tMatch found between: "
 						+parentID1+". "+name1+" ("+(float)dist1+" km) and "+parentID2+". "+name2+" ("+(float)dist2+" km)");
-				ret.put(data, new IDPairing(parentID1, parentID2));
+				
+				HashSet<IDPairing> pairings = new HashSet<>();
+				addBetween(pairings, parentID1, parentID2);
+				
+				if (APPLY_TO_ALL_JUMPS_FROM_LOC) {
+					// see if there are any other jumps we should also constrain to/from these sections
+					
+					// first look for direct jumps to/from the sections involved
+					for (int segID : new int[] {sectID1, sectID2}) {
+						FaultSection sect = rupSet.getFaultSectionData(segID);
+						for (int rupIndex : rupSet.getRupturesForSection(segID)) {
+							ClusterRupture cRup = cRups.get(rupIndex);
+							RuptureTreeNavigator nav = cRup.getTreeNavigator();
+							
+							FaultSection predecessor = nav.getPredecessor(sect);
+							if (predecessor != null && predecessor.getParentSectionId() != sect.getParentSectionId()) {
+								boolean isNew = addBetween(pairings, sect.getParentSectionId(), predecessor.getParentSectionId());
+								if (verbose && isNew)
+									System.out.println("Also applying between "+sect.getParentSectionName()
+										+" and "+predecessor.getParentSectionName());
+							}
+							for (FaultSection descendant : nav.getDescendants(sect)) {
+								if (descendant.getParentSectionId() != sect.getParentSectionId()) {
+									boolean isNew = addBetween(pairings, sect.getParentSectionId(), descendant.getParentSectionId());
+									if (verbose && isNew) System.out.println("Also applying between "+sect.getParentSectionName()
+										+" and "+descendant.getParentSectionName());
+								}
+							}
+						}
+					}
+					
+					// now see if there are any jumps used to connect these points indirectly
+					for (int rupIndex : rupSet.getRupturesForParentSection(parentID1)) {
+						ClusterRupture cRup = cRups.get(rupIndex);
+						FaultSubsectionCluster cluster1 = null;
+						FaultSubsectionCluster cluster2 = null;
+						for (FaultSubsectionCluster cluster : cRup.getClustersIterable()) {
+							if (cluster.parentSectionID == parentID1)
+								cluster1 = cluster;
+							if (cluster.parentSectionID == parentID2)
+								cluster2 = cluster;
+						}
+						Preconditions.checkNotNull(cluster1);
+						if (cluster2 != null) {
+							// this is a rupture that contains both of them, find out if it used any intermediate jumps
+							RuptureTreeNavigator nav = cRup.getTreeNavigator();
+							
+							if (!nav.hasJump(cluster1, cluster2)) {
+								// no direct jump, need to find the indirect path and restrict it
+//								System.out.println(cRup);
+								List<FaultSubsectionCluster> linkingPath = getPathLinking(cluster1, cluster2, nav);
+								Preconditions.checkState(linkingPath.size() >= 3);
+								
+								FaultSubsectionCluster link1 = linkingPath.get(1);
+								FaultSubsectionCluster link2 = linkingPath.get(linkingPath.size()-2);
+								
+								// see if it's already prohibited by prior direct jumps
+								if (pairings.contains(new IDPairing(cluster1.parentSectionID, link1.parentSectionID))
+										|| pairings.contains(new IDPairing(cluster1.parentSectionID, link2.parentSectionID))) {
+									// path is already blocked, we can skip
+									continue;
+								}
+								
+								boolean newBlock = false;
+								if (link1 == link2) {
+									// simple case, only 1 link to block
+									// block it on both ends
+									if (addBetween(pairings, cluster1.parentSectionID, link1.parentSectionID))
+										newBlock = true;
+									if (addBetween(pairings, cluster2.parentSectionID, link1.parentSectionID))
+										newBlock = true;
+								} else {
+									// block off the end that is closer to the actual segmentation point
+									double link1Dist = Double.POSITIVE_INFINITY;
+									for (FaultSection sect : link1.subSects)
+										for (Location loc : sect.getFaultTrace())
+											link1Dist = Math.min(link1Dist, LocationUtils.horzDistanceFast(loc, data.loc));
+									double link2Dist = Double.POSITIVE_INFINITY;
+									for (FaultSection sect : link2.subSects)
+										for (Location loc : sect.getFaultTrace())
+											link2Dist = Math.min(link2Dist, LocationUtils.horzDistanceFast(loc, data.loc));
+									if (link1Dist < link2Dist) {
+										// block cluster1 -> link1
+										if (addBetween(pairings, cluster1.parentSectionID, link1.parentSectionID))
+											newBlock = true;
+									} else {
+										// block cluster2 -> link2
+										if (addBetween(pairings, cluster2.parentSectionID, link2.parentSectionID))
+											newBlock = true;
+									}
+								}
+								
+								if (verbose && newBlock) {
+									String linkStr = null;
+									for (FaultSubsectionCluster cluster : linkingPath) {
+										if (linkStr == null)
+											linkStr = "";
+										else
+											linkStr += " -> ";
+										linkStr += cluster.parentSectionName;
+									}
+									System.out.println("Also applying to indirect connection: "+
+											linkStr);
+								}
+							}
+						}
+					}
+				}
+				
+				ret.put(data, pairings);
 			} else if (verbose) {
 				if (verbose) System.out.println("\tNo match found. Closest 2 were: "
 						+parentID1+". "+name1+" ("+(float)dist1+" km) and "+parentID2+". "+name2+" ("+(float)dist2+" km)");
@@ -159,11 +284,82 @@ public class NSHM23_WasatchSegmentationData {
 		return ret;
 	}
 	
-	public static HardcodedJumpProb build(List<? extends FaultSection> subSects, double passthroughRate) {
-		return build(subSects, passthroughRate);
+	private static boolean addBetween(HashSet<IDPairing> pairings, int parent1, int parent2) {
+		IDPairing test12 = new IDPairing(parent1, parent2);
+		IDPairing test21 = new IDPairing(parent2, parent1);
+		if (pairings.contains(test12) || pairings.contains(test21))
+			return false;
+		pairings.add(test12);
+		pairings.add(test21);
+		return true;
 	}
 	
-	public static HardcodedJumpProb build(List<? extends FaultSection> subSects, double passthroughRate,
+	/**
+	 * Finds the path between cluster1 and cluster2
+	 * @param cluster1
+	 * @param cluster2
+	 * @param nav
+	 * @return
+	 */
+	private static List<FaultSubsectionCluster> getPathLinking(FaultSubsectionCluster cluster1, FaultSubsectionCluster cluster2,
+			RuptureTreeNavigator nav) {
+		List<FaultSubsectionCluster> curPath = List.of(cluster1);
+		List<FaultSubsectionCluster> linkingPath = linkingPathSearch(curPath, cluster2, nav, true);
+		if (linkingPath == null)
+			// try the other direction;
+			linkingPath = linkingPathSearch(curPath, cluster2, nav, false);
+		Preconditions.checkNotNull(linkingPath, "No path found linking %s with %s", cluster1, cluster2);
+		Preconditions.checkState(linkingPath.get(0) == cluster1);
+		Preconditions.checkState(linkingPath.get(linkingPath.size()-1) == cluster2);
+		return linkingPath;
+	}
+	
+	private static List<FaultSubsectionCluster> linkingPathSearch(List<FaultSubsectionCluster> curPath,
+			FaultSubsectionCluster dest, RuptureTreeNavigator nav, boolean direction) {
+		Preconditions.checkState(!curPath.isEmpty());
+		FaultSubsectionCluster curLast = curPath.get(curPath.size()-1);
+		if (curLast == dest)
+			return curPath;
+		
+		if (direction) {
+			// forwards
+			Collection<FaultSubsectionCluster> descendants = nav.getDescendants(curLast);
+			if (descendants.isEmpty())
+				return null;
+			for (FaultSubsectionCluster descendant : descendants) {
+				List<FaultSubsectionCluster> newPath = new ArrayList<>(curPath.size()+1);
+				newPath.addAll(curPath);
+				newPath.add(descendant);
+				List<FaultSubsectionCluster> finalPath = linkingPathSearch(newPath, dest, nav, direction);
+				if (finalPath != null)
+					return finalPath;
+			}
+			// if we got here, no paths led to it
+			return null;
+		} else {
+			// backwards
+			FaultSubsectionCluster predecessor = nav.getPredecessor(curLast);
+			if (predecessor == null)
+				return null;
+			List<FaultSubsectionCluster> newPath = new ArrayList<>(curPath.size()+1);
+			newPath.addAll(curPath);
+			newPath.add(predecessor);
+			return linkingPathSearch(newPath, dest, nav, direction);
+		}
+	}
+	
+	private static Set<IDPairing> allPairings(Map<WasatchSegLocation, Set<IDPairing>> mappings) {
+		HashSet<IDPairing> pairings = new HashSet<>();
+		for (Set<IDPairing> subPairings : mappings.values())
+			pairings.addAll(subPairings);
+		return pairings;
+	}
+	
+	public static HardcodedJumpProb build(FaultSystemRupSet rupSet, double passthroughRate) {
+		return build(rupSet, passthroughRate, null);
+	}
+	
+	public static HardcodedJumpProb build(FaultSystemRupSet rupSet, double passthroughRate,
 			JumpProbabilityCalc fallback) {
 		List<WasatchSegLocation> datas;
 		try {
@@ -172,12 +368,12 @@ public class NSHM23_WasatchSegmentationData {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
 		
-		Map<WasatchSegLocation, IDPairing> mappings = mapToParentSects(datas, subSects, false);
+		Map<WasatchSegLocation, Set<IDPairing>> mappings = mapToParentSects(datas, rupSet, false);
 		if (mappings == null)
 			return null;
 		
 		Map<IDPairing, Double> idsToProbs = new HashMap<>();
-		for (IDPairing pair : mappings.values())
+		for (IDPairing pair : allPairings(mappings))
 			idsToProbs.put(pair, passthroughRate);
 		
 		String name = "Wasatch, P="+(float)passthroughRate;
@@ -187,7 +383,7 @@ public class NSHM23_WasatchSegmentationData {
 		return new HardcodedJumpProb(name, idsToProbs, true, fallback);
 	}
 	
-	public static BinaryJumpProbabilityCalc buildFullExclusion(List<? extends FaultSection> subSects,
+	public static BinaryJumpProbabilityCalc buildFullExclusion(FaultSystemRupSet rupSet,
 			BinaryJumpProbabilityCalc fallback) {
 		List<WasatchSegLocation> datas;
 		try {
@@ -196,16 +392,20 @@ public class NSHM23_WasatchSegmentationData {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
 		
-		Map<WasatchSegLocation, IDPairing> mappings = mapToParentSects(datas, subSects, false);
+		Map<WasatchSegLocation, Set<IDPairing>> mappings = mapToParentSects(datas, rupSet, false);
 		if (mappings == null || mappings.isEmpty())
 			return null;
+		
+		Set<IDPairing> pairings = allPairings(mappings);
 		
 		String name = "Wastach Exclude";
 		if (fallback != null)
 			name += ", "+fallback.getName();
 		
-		return new HardcodedBinaryJumpProb(name, true, new HashSet<>(mappings.values()), true);
+		return new HardcodedBinaryJumpProb(name, true, pairings, true);
 	}
+	
+//	private static boolean is
 	
 	public static void main(String[] args) throws IOException {
 		List<WasatchSegLocation> datas = load();
@@ -222,9 +422,13 @@ public class NSHM23_WasatchSegmentationData {
 		Region region = new Region(new Location(latTrack.getMin()-4d, lonTrack.getMin()-4d),
 				new Location(latTrack.getMax()+4d, lonTrack.getMax()+4d));
 		
-		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.NSHM23_v2);
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+				+ "2022_09_28-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR/"
+				+ "results_NSHM23_v2_CoulombRupSet_branch_averaged_gridded.zip"));
 		
-		Map<WasatchSegLocation, IDPairing> mappings = mapToParentSects(datas, subSects, true);
+		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+		
+		Map<WasatchSegLocation, Set<IDPairing>> mappings = mapToParentSects(datas, rupSet, true);
 		
 		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(subSects);
 		
@@ -250,7 +454,7 @@ public class NSHM23_WasatchSegmentationData {
 				return PlausibilityResult.PASS;
 			}
 		});
-		BinaryJumpProbabilityCalc fullExclusion = buildFullExclusion(subSects, null);
+		BinaryJumpProbabilityCalc fullExclusion = buildFullExclusion(rupSet, null);
 		filters.add(new PlausibilityFilter() {
 			
 			@Override
@@ -359,7 +563,7 @@ public class NSHM23_WasatchSegmentationData {
 		mapMaker.plotScatters(locs, Color.GRAY);
 		List<Color> sectColors = new ArrayList<>();
 		for (int s=0; s<subSects.size(); s++) {
-			sectColors.add(null);
+			sectColors.add(Color.LIGHT_GRAY);
 //			FaultSection subSect = subSects.get(s);
 //			if (isWasatchSection(subSect)) {
 //				Color color = null;
@@ -390,6 +594,44 @@ public class NSHM23_WasatchSegmentationData {
 			for (int sectID : clusters.get(i).getSectIDs())
 				sectColors.set(sectID, color);
 		}
+		
+		// also plot prohibited jumps
+		HashSet<Integer> wasatchRupIndexes = new HashSet<>();
+		HashSet<Integer> wasatchSectIndexes = new HashSet<>();
+		for (FaultSection sect : subSects) {
+			if (isWasatchSection(sect)) {
+				wasatchSectIndexes.add(sect.getSectionId());
+				wasatchRupIndexes.addAll(rupSet.getRupturesForSection(sect.getSectionId()));
+			}
+		}
+		ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+		
+		HashSet<Jump> allowedJumps = new HashSet<>();
+		HashSet<Jump> disallowedJumps = new HashSet<>();
+		HashSet<Jump> otherJumps = new HashSet<>();
+		Set<IDPairing> allMappings = allPairings(mappings);
+		
+		for (int rupIndex : wasatchRupIndexes) {
+			ClusterRupture cRup = cRups.get(rupIndex);
+			
+			for (Jump jump : cRup.getJumpsIterable()) {
+				if (wasatchSectIndexes.contains(jump.fromSection.getSectionId()) || wasatchSectIndexes.contains(jump.toSection.getSectionId())) {
+					// it's a jump to/from a wasatch section
+					IDPairing parents = new IDPairing(jump.fromCluster.parentSectionID, jump.toCluster.parentSectionID);
+					boolean disallowed = allMappings.contains(parents) || allMappings.contains(parents.getReversed());
+					if (disallowed)
+						disallowedJumps.add(jump);
+					else
+						allowedJumps.add(jump);
+				} else {
+					otherJumps.add(jump);
+				}
+			}
+		}
+		mapMaker.plotJumps(removeDuplicates(disallowedJumps), alpha(Color.RED.darker(), 127), "Affected Jumps");
+		mapMaker.plotJumps(removeDuplicates(allowedJumps), alpha(Color.GREEN.darker(), 127), "Unaffected Jumps");
+		mapMaker.plotJumps(removeDuplicates(otherJumps), alpha(Color.GRAY, 127), "Other Jumps");
+		
 //		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, Double.min(maxColors, largestRups.size()-1));
 //		for (int i=0; i<largestRups.size(); i++) {
 //			int colorIndex = i % maxColors;
@@ -429,6 +671,18 @@ public class NSHM23_WasatchSegmentationData {
 //			for (DistDependentJumpProbabilityCalc segModel : compSegModels)
 //				System.out.println("\t"+segModel.getName()+":\tP="+(float)segModel.calcJumpProbability(minDist));
 //		}
+	}
+	
+	private static Color alpha(Color c, int alpha) {
+		return new Color(c.getRed(), c.getGreen(), c.getBlue(), alpha);
+	}
+	
+	private static HashSet<Jump> removeDuplicates(HashSet<Jump> jumps) {
+		HashSet<Jump> ret = new HashSet<>();
+		for (Jump jump : jumps)
+			if (!ret.contains(jump) && !ret.contains(jump.reverse()))
+				ret.add(jump);
+		return ret;
 	}
 
 }
