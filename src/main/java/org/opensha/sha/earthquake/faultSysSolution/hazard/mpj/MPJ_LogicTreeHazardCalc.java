@@ -2,17 +2,20 @@ package org.opensha.sha.earthquake.faultSysSolution.hazard.mpj;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.cli.CommandLine;
@@ -128,8 +131,18 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		if (cmd.hasOption("region")) {
 			File regFile = new File(cmd.getOptionValue("region"));
 			Preconditions.checkState(regFile.exists(), "Supplied region file doesn't exist: %s", regFile.getAbsolutePath());
-			Feature feature = Feature.read(regFile);
-			Region region = Region.fromFeature(feature);
+			Region region;
+			if (regFile.getName().toLowerCase().endsWith(".zip")) {
+				// it's a zip file, assume it's a prior hazard calc
+				ZipFile zip = new ZipFile(regFile);
+				ZipEntry regEntry = zip.getEntry(GRID_REGION_ENTRY_NAME);
+				if (rank == 0) debug("Reading gridded region from zip file: "+regEntry.getName());
+				BufferedReader bRead = new BufferedReader(new InputStreamReader(zip.getInputStream(regEntry)));
+				region = GriddedRegion.fromFeature(Feature.read(bRead));
+			} else {
+				Feature feature = Feature.read(regFile);
+				region = Region.fromFeature(feature);
+			}
 			if (region instanceof GriddedRegion) {
 				gridRegion = (GriddedRegion)region;
 				Preconditions.checkState(
@@ -456,7 +469,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				+ "supplies GMPE choices. Default: "+GMPE_DEFAULT.name());
 		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
 		ops.addOption("r", "region", true, "Optional path to GeoJSON file containing a region for which we should compute hazard. "
-				+ "Can be a gridded region or an outline. If not supplied, then one will be detected from the model.");
+				+ "Can be a gridded region or an outline. If not supplied, then one will be detected from the model. If "
+				+ "a zip file is supplied, then it is assumed that the file is a prior hazard calculation zip file and the "
+				+ "region will be reused from that prior calculation.");
 		ops.addOption("af", "aftershock-filter", false, "If supplied, the aftershock filter will be applied in the ERF");
 		
 		return ops;
