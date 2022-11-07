@@ -4,21 +4,16 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ExecutionException;
 import java.util.zip.ZipException;
 
 import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
-import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -27,9 +22,6 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 
 import com.google.common.base.Preconditions;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableList;
 
 import scratch.UCERF3.utils.U3FaultSystemIO;
@@ -43,6 +35,8 @@ public class SectionDistanceAzimuthCalculator implements OpenSHA_Module {
 	private Map<Integer, RuptureSurface> sectSurfs;
 	
 	public static final double SURF_DISCRETIZATION = 1d;
+	
+	private static boolean CREEP_REDUCED = false;
 
 	public SectionDistanceAzimuthCalculator(List<? extends FaultSection> subSects) {
 		this.subSects = ImmutableList.copyOf(subSects);
@@ -58,7 +52,7 @@ public class SectionDistanceAzimuthCalculator implements OpenSHA_Module {
 		if (surf == null) {
 			FaultSection sect = subSects.get(id);
 			Preconditions.checkState(id == sect.getSectionId(), "Section IDs are not indexes");
-			surf = sect.getFaultSurface(1d, false, false);
+			surf = sect.getFaultSurface(1d, false, CREEP_REDUCED);
 			sectSurfs.putIfAbsent(id, surf);
 		}
 		return surf;
@@ -268,10 +262,24 @@ public class SectionDistanceAzimuthCalculator implements OpenSHA_Module {
 	}
 	
 	public String getDefaultCacheFileName() {
+		return "dist_az_cache_"+getUniqueSectCacheFileStr(subSects)+".csv";
+	}
+
+	/**
+	 * Creates a unique cache file name string for the given subsections. Will capture any changes to total subsection
+	 * count, total number of trace locations, and total subsection area.
+	 * 
+	 * @param subSects
+	 * @return
+	 */
+	public static String getUniqueSectCacheFileStr(Collection<? extends FaultSection> subSects) {
 		int numLocs = 0;
-		for (FaultSection sect : subSects)
+		double area = 0;
+		for (FaultSection sect : subSects) {
 			numLocs += sect.getFaultTrace().size();
-		return "dist_az_cache_"+subSects.size()+"_sects_"+numLocs+"_trace_locs.csv";
+			area += sect.getArea(CREEP_REDUCED);
+		}
+		return subSects.size()+"_sects_"+numLocs+"_trace_locs_"+(long)(area+0.5)+"_area";
 	}
 	
 	void loadCache(CSVFile<String> csv) {

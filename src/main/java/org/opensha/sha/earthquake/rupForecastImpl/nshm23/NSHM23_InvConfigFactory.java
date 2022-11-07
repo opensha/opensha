@@ -71,6 +71,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.HardcodedBinaryJumpProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
@@ -186,7 +187,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			int numLocs = 0;
 			for (FaultSection sect : subSects)
 				numLocs += sect.getFaultTrace().size();
-			String rupSetFileName = "rup_set_"+model.getFilePrefix()+"_"+subSects.size()+"_sects_"+numLocs+"_trace_locs.zip";
+			String rupSetFileName = "rup_set_"+model.getFilePrefix()+"_"
+				+SectionDistanceAzimuthCalculator.getUniqueSectCacheFileStr(subSects)+".zip";
 			cachedRupSetFile = new File(subDir, rupSetFileName);
 			config.setCacheDir(subDir);
 		}
@@ -832,7 +834,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			NSHM23_SeisSmoothingAlgorithms seisSmooth, double maxMagOff, EvenlyDiscretizedFunc refMFD,
 			NSHM23_FaultCubeAssociations cubeAssociations) throws IOException {
 		// total G-R up to Mmax
-		GutenbergRichterMagFreqDist totalGR = seisBranch.build(region, refMFD, maxMagOff);
+		IncrementalMagFreqDist totalGR = seisBranch.build(region, refMFD, maxMagOff);
 		
 		// figure out what's left for gridded seismicity
 		IncrementalMagFreqDist totalGridded = new IncrementalMagFreqDist(
