@@ -745,6 +745,8 @@ public class RupSetMapMaker {
 				if (color == null)
 					continue;
 				FaultSection sect = subSects.get(s);
+				if (!plotSects.contains(sect))
+					continue;
 
 				if (fillSurfaces && sect.getAveDip() != 90d) {
 					XY_DataSet outline = new DefaultXY_DataSet();
@@ -816,6 +818,8 @@ public class RupSetMapMaker {
 						FeatureProperties props = new FeatureProperties();
 						props.set(FeatureProperties.STROKE_WIDTH_PROP, jumpLineThickness);
 						props.set(FeatureProperties.STROKE_COLOR_PROP, color);
+						if (color.getAlpha() != 255)
+							props.set(FeatureProperties.STROKE_OPACITY_PROP, (float)((double)color.getAlpha()/255d));
 						props.set("label", label);
 						props.set("fromSection", jump.fromSection.getName());
 						props.set("toSection", jump.toSection.getName());
@@ -845,7 +849,10 @@ public class RupSetMapMaker {
 					LineString line = new LineString(loc1, loc2);
 					FeatureProperties props = new FeatureProperties();
 					props.set(FeatureProperties.STROKE_WIDTH_PROP, jumpLineThickness);
-					props.set(FeatureProperties.STROKE_COLOR_PROP, scalarJumpsCPT.getColor((float)scalar));
+					Color color = scalarJumpsCPT.getColor((float)scalar);
+					props.set(FeatureProperties.STROKE_COLOR_PROP, color);
+					if (color.getAlpha() != 255)
+						props.set(FeatureProperties.STROKE_OPACITY_PROP, (float)((double)color.getAlpha()/255d));
 					if (Double.isFinite(scalar) && scalarJumpsLabel != null)
 						props.set(scalarJumpsLabel, (float)scalar);
 					props.set("fromSection", jump.fromSection.getName());
@@ -884,13 +891,13 @@ public class RupSetMapMaker {
 					if (writeGeoJSON) {
 						Color color = scatterScalarCPT.getColor((float)scalar);
 						FeatureProperties props = new FeatureProperties();
-						props.set(FeatureProperties.FILL_OPACITY_PROP, 1d);
-						props.set(FeatureProperties.FILL_COLOR_PROP, color);
-						if (scatterOutline != null)
-							props.set(FeatureProperties.STROKE_OPACITY_PROP, 0.5d);
+						props.set(FeatureProperties.MARKER_COLOR_PROP, color);
+						if (scatterSymbolWidth > 8f)
+							props.set(FeatureProperties.MARKER_SIZE_PROP, FeatureProperties.MARKER_SIZE_LARGE);
+						else if (scatterSymbolWidth > 4f)
+							props.set(FeatureProperties.MARKER_SIZE_PROP, FeatureProperties.MARKER_SIZE_MEDIUM);
 						else
-							props.set(FeatureProperties.STROKE_OPACITY_PROP, 0d);
-						props.set(FeatureProperties.STROKE_WIDTH_PROP, scatterSymbolWidth);
+							props.set(FeatureProperties.MARKER_SIZE_PROP, FeatureProperties.MARKER_SIZE_SMALL);
 						scatterFeatures.add(new Feature(new Geometry.Point(loc), props));
 					}
 					
@@ -932,13 +939,13 @@ public class RupSetMapMaker {
 				}
 				if (writeGeoJSON) {
 					FeatureProperties props = new FeatureProperties();
-					props.set(FeatureProperties.FILL_OPACITY_PROP, 1d);
-					props.set(FeatureProperties.FILL_COLOR_PROP, scatterColor);
-					if (scatterOutline != null)
-						props.set(FeatureProperties.STROKE_OPACITY_PROP, 0.5d);
+					props.set(FeatureProperties.MARKER_COLOR_PROP, scatterColor);
+					if (scatterSymbolWidth > 8f)
+						props.set(FeatureProperties.MARKER_SIZE_PROP, FeatureProperties.MARKER_SIZE_LARGE);
+					else if (scatterSymbolWidth > 4f)
+						props.set(FeatureProperties.MARKER_SIZE_PROP, FeatureProperties.MARKER_SIZE_MEDIUM);
 					else
-						props.set(FeatureProperties.STROKE_OPACITY_PROP, 0d);
-					props.set(FeatureProperties.STROKE_WIDTH_PROP, scatterSymbolWidth);
+						props.set(FeatureProperties.MARKER_SIZE_PROP, FeatureProperties.MARKER_SIZE_SMALL);
 					scatterFeatures.add(new Feature(new Geometry.MultiPoint(locs), props));
 				}
 			}
