@@ -299,13 +299,16 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 						model = new JumpProbabilityCalc.Minimum(model, creepModel);
 				}
 			}
+			
 			// Wasatch model
-			// do it this way so that distance-dependence is overridden by wasatch probabilities
-			JumpProbabilityCalc wasatch = NSHM23_WasatchSegmentationData.build(
-					rupSet.getFaultSectionDataList(), wasatchProb, model);
-			if (wasatch != null)
+			JumpProbabilityCalc wasatch = NSHM23_WasatchSegmentationData.build(rupSet, wasatchProb);
+			if (wasatch != null) {
 				// this rupture set has Wasatch
-				model = wasatch;
+				if (model == null)
+					model = wasatch;
+				else
+					model = new JumpProbabilityCalc.Minimum(model, wasatch);
+			}
 			
 			if (namedFaultsOnly) {
 				NamedFaults namedFaults = rupSet.getModule(NamedFaults.class);
