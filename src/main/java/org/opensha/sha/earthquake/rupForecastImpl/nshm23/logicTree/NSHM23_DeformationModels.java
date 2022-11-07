@@ -180,7 +180,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	/**
 	 * If nonzero, will use this fractional standard deviation everywhere rather than those from the deformation model
 	 */
-	public static double HARDCODED_FRACTIONAL_STD_DEV = 0d;
+	public static double HARDCODED_FRACTIONAL_STD_DEV = 0.1d;
 	
 	/*
 	 * Creep parameters
@@ -535,17 +535,34 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			System.out.println("Overriding deformation model slip rates std devs and using hardcoded fractional value: "
 					+HARDCODED_FRACTIONAL_STD_DEV);
 			
+			int numZeroSlips = 0;
+			int numFloor = 0;
+			
 			for (FaultSection sect : subSects) {
 				double slipRate = sect.getOrigAveSlipRate();
 				Preconditions.checkState(Double.isFinite(slipRate) && slipRate >= 0d, "Bad slip rate for %s. %s: %s",
 						sect.getSectionId(), sect.getSectionName(), slipRate);
 				double stdDev;
-				if ((float)slipRate == 0f)
+				if ((float)slipRate == 0f) {
 					stdDev = STD_DEV_FLOOR;
-				else
+					numZeroSlips++;
+				} else {
 					stdDev = HARDCODED_FRACTIONAL_STD_DEV * slipRate;
+					if (stdDev < STD_DEV_FLOOR) {
+						stdDev = STD_DEV_FLOOR;
+						numFloor++;
+					}
+				}
 				sect.setSlipRateStdDev(stdDev);
 			}
+			
+			if (numZeroSlips > 0)
+				System.err.println("WARNING: "+numZeroSlips+"/"+subSects.size()+" ("
+						+pDF.format((double)numZeroSlips/(double)subSects.size())+") subsection slip rates are 0");
+			if (numFloor > 0)
+				System.err.println("WARNING: Set "+numFloor+"/"+subSects.size()+" ("
+						+pDF.format((double)numFloor/(double)subSects.size())
+						+") subsection slip rate standard deviations to the floor value of "+(float)STD_DEV_FLOOR+" (mm/yr)");
 			
 			return subSects;
 		}
