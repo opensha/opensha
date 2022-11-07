@@ -10,6 +10,10 @@ public interface UncertainBoundedDiscretizedFunc extends UncertainDiscretizedFun
 	DiscretizedFunc getLower();
 
 	DiscretizedFunc getUpper();
+	
+	void setBoundName(String boundName);
+	
+	String getBoundName();
 
 	default Range getYRange(int index) {
 		return new Range(getLowerY(index), getUpperY(index));

@@ -24,6 +24,7 @@ public class UncertainBoundedIncrMagFreqDist extends UncertainIncrMagFreqDist im
 	private IncrementalMagFreqDist lowerBound;
 	private IncrementalMagFreqDist upperBound;
 	private UncertaintyBoundType boundType;
+	private String boundName;
 	
 	private UncertainBoundedIncrMagFreqDist(double minX, double maxX, int size) {
 		super(new IncrementalMagFreqDist(minX, maxX, size), null);
@@ -83,6 +84,22 @@ public class UncertainBoundedIncrMagFreqDist extends UncertainIncrMagFreqDist im
 	public UncertaintyBoundType getBoundType() {
 		return boundType;
 	}
+	
+	@Override
+	public String getBoundName() {
+		if (boundName == null) {
+			UncertaintyBoundType type = getBoundType();
+			if (type == null)
+				return "Bounds";
+			return type.toString();
+		}
+		return boundName;
+	}
+
+	@Override
+	public void setBoundName(String boundsName) {
+		this.boundName = boundsName;
+	}
 
 	@Override
 	public IncrementalMagFreqDist getLower() {
@@ -96,9 +113,13 @@ public class UncertainBoundedIncrMagFreqDist extends UncertainIncrMagFreqDist im
 	
 	@Override
 	public UncertainBoundedIncrMagFreqDist deepClone() {
+		UncertainBoundedIncrMagFreqDist ret;
 		if (this.stdDevs == null)
-			return new UncertainBoundedIncrMagFreqDist(this, lowerBound.deepClone(), upperBound.deepClone(), boundType);
-		return new UncertainBoundedIncrMagFreqDist(this, lowerBound.deepClone(), upperBound.deepClone(), boundType, stdDevs.deepClone());
+			ret = new UncertainBoundedIncrMagFreqDist(this, lowerBound.deepClone(), upperBound.deepClone(), boundType);
+		else
+			ret = new UncertainBoundedIncrMagFreqDist(this, lowerBound.deepClone(), upperBound.deepClone(), boundType, stdDevs.deepClone());
+		ret.boundName = boundName;
+		return ret;
 	}
 
 	@Override
@@ -138,6 +159,9 @@ public class UncertainBoundedIncrMagFreqDist extends UncertainIncrMagFreqDist im
 			
 			if (xy.boundType != null)
 				out.name("boundType").value(xy.boundType.name());
+			
+			if (xy.boundName != null)
+				out.name("boundName").value(xy.boundName);
 		}
 		
 		static void writeDoubleArray(JsonWriter out, DiscretizedFunc func) throws IOException {
@@ -252,6 +276,18 @@ public class UncertainBoundedIncrMagFreqDist extends UncertainIncrMagFreqDist im
 					@Override
 					public void accept(UncertainBoundedIncrMagFreqDist t) {
 						t.boundType = boundType;
+					}
+				};
+			}
+			if (name.equals("boundName")) {
+				if (in.peek() == JsonToken.NULL)
+					return null;
+				String boundName = in.nextString();
+				return new Consumer<UncertainBoundedIncrMagFreqDist>() {
+
+					@Override
+					public void accept(UncertainBoundedIncrMagFreqDist t) {
+						t.boundName = boundName;
 					}
 				};
 			}
