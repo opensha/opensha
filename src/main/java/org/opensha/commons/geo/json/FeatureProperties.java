@@ -251,11 +251,22 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		return new Location(lat, lon, depth);
 	}
 	
+	/*
+	 * See: https://github.com/mapbox/simplestyle-spec/tree/master/1.1.0
+	 */
 	public static final String STROKE_COLOR_PROP = "stroke";
 	public static final String STROKE_WIDTH_PROP = "stroke-width";
 	public static final String STROKE_OPACITY_PROP = "stroke-opacity";
+	
 	public static final String FILL_COLOR_PROP = "fill";
 	public static final String FILL_OPACITY_PROP = "fill-opacity";
+	
+	public static final String MARKER_COLOR_PROP = "marker-color";
+	public static final String MARKER_SIZE_PROP = "marker-size";
+	public static final String MARKER_SIZE_SMALL = "small";
+	public static final String MARKER_SIZE_MEDIUM = "medium";
+	public static final String MARKER_SIZE_LARGE = "large";
+	
 	
 	public Color getColor(String name, Color defaultValue) {
 		Object val = get(name);
