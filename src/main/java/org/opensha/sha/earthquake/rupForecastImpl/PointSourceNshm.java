@@ -202,6 +202,7 @@ public class PointSourceNshm extends ProbEqkSource {
 
     PointSurfaceNshm fpSurf = (PointSurfaceNshm) rupture.getRuptureSurface();
     fpSurf.mag = mag; // KLUDGY needed for distance correction
+    fpSurf.setAveDip(mech.dip());
     fpSurf.dipRad = dipRad;
     fpSurf.widthDD = widthDD;
     fpSurf.widthH = widthDD * cos(dipRad);
