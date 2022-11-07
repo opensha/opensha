@@ -538,7 +538,8 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				seisRegions = null;
 				cubeAssoc = NSHM23_InvConfigFactory.buildU3IngredientsFaultCubeAssociations(rupSet);
 			} else {
-				// figure out region
+				// figure out region, which is only used to determine which seismicity regions to use
+				// those seismicity regions themselves will be used for the grid source provider 
 				Region region;
 				if (this.region == null) {
 					// detect it
@@ -558,7 +559,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				seisRegions = NSHM23_InvConfigFactory.getSeismicityRegions(region);
 				Preconditions.checkState(seisRegions.size() >= 1);
 				cubeAssoc = NSHM23_InvConfigFactory.buildFaultCubeAssociations(
-						rupSet, region, seisRegions);
+						rupSet, seisRegions);
 			}
 			
 			File assocFile = new File(gridSeisDir, GRID_ASSOCIATIONS_ARCHIVE_NAME);

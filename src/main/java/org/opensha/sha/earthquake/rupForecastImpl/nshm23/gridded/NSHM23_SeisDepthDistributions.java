@@ -58,9 +58,9 @@ public class NSHM23_SeisDepthDistributions {
 
 	public static void main(String[] args) throws IOException {
 		load(SeismicityRegions.CONUS_EAST);
-		load(SeismicityRegions.CONUS_IMW);
-		load(SeismicityRegions.CONUS_PNW);
-		load(SeismicityRegions.CONUS_U3_RELM);
+//		load(SeismicityRegions.CONUS_IMW);
+//		load(SeismicityRegions.CONUS_PNW);
+//		load(SeismicityRegions.CONUS_U3_RELM);
 	}
 
 }

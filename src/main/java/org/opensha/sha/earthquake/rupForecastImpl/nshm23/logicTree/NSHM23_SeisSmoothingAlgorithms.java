@@ -20,6 +20,8 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
 
 @DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
@@ -89,8 +91,17 @@ public enum NSHM23_SeisSmoothingAlgorithms implements LogicTreeNode {
 		return loadXYZ(region, declusteringAlg).getValues();
 	}
 	
-	public GriddedGeoDataSet loadXYZ(SeismicityRegions region,
+	private Table<SeismicityRegions, NSHM23_DeclusteringAlgorithms, GriddedGeoDataSet> xyzCache;
+	
+	public synchronized GriddedGeoDataSet loadXYZ(SeismicityRegions region,
 			NSHM23_DeclusteringAlgorithms declusteringAlg) throws IOException {
+		if (xyzCache == null)
+			xyzCache = HashBasedTable.create();
+		
+		GriddedGeoDataSet cached = xyzCache.get(region, declusteringAlg);
+		if (cached != null)
+			return cached;
+		
 		if (declusteringAlg == NSHM23_DeclusteringAlgorithms.AVERAGE) {
 			// average them
 			List<GriddedGeoDataSet> xyzs = new ArrayList<>();
@@ -102,7 +113,9 @@ public enum NSHM23_SeisSmoothingAlgorithms implements LogicTreeNode {
 				xyzs.add(loadXYZ(region, alg));
 				weights.add(weight);
 			}
-			return average(xyzs, weights);
+			GriddedGeoDataSet average = average(xyzs, weights);
+			xyzCache.put(region, declusteringAlg, average);
+			return average;
 		}
 		String resource = getResourceName(region, declusteringAlg);
 		
@@ -126,6 +139,8 @@ public enum NSHM23_SeisSmoothingAlgorithms implements LogicTreeNode {
 				numMapped++;
 				Preconditions.checkState(xyz.get(gridIndex) == 0d);
 				xyz.set(gridIndex, val);
+//			} else if (val > 0) {
+//				System.out.println("Unmapped: "+loc+" = "+val);
 			}
 		}
 		double sumMapped = xyz.getSumZ();
@@ -135,6 +150,7 @@ public enum NSHM23_SeisSmoothingAlgorithms implements LogicTreeNode {
 		System.out.println("\t"+numMapped+"/"+gridReg.getNodeCount()+" ("
 				+pDF.format((double)numMapped/(double)gridReg.getNodeCount())+") of gridded region mapped");
 		xyz.scale(1d/sumMapped);
+		xyzCache.put(region, declusteringAlg, xyz);
 		return xyz;
 	}
 	
@@ -161,12 +177,19 @@ public enum NSHM23_SeisSmoothingAlgorithms implements LogicTreeNode {
 	}
 	
 	public static void main(String[] args) throws IOException {
+//		SeismicityRegions region = SeismicityRegions.CONUS_EAST;
+//		NSHM23_SeisSmoothingAlgorithms smooth = FIXED;
+//		NSHM23_DeclusteringAlgorithms alg = NSHM23_DeclusteringAlgorithms.NN;
 		for (SeismicityRegions region : SeismicityRegions.values()) {
-			if (region == SeismicityRegions.ALASKA || region == SeismicityRegions.CONUS_HAWAII)
-				continue;
-			for (NSHM23_SeisSmoothingAlgorithms smooth : values()) {
-				for (NSHM23_DeclusteringAlgorithms alg : NSHM23_DeclusteringAlgorithms.values()) {
-					System.out.println(region.name()+",\t"+smooth.name());
+//			if (region == SeismicityRegions.ALASKA || region == SeismicityRegions.CONUS_HAWAII)
+//				continue;
+			for (NSHM23_DeclusteringAlgorithms alg : NSHM23_DeclusteringAlgorithms.values()) {
+				if (alg == NSHM23_DeclusteringAlgorithms.AVERAGE)
+					continue;
+				for (NSHM23_SeisSmoothingAlgorithms smooth : values()) {
+					if (smooth == AVERAGE)
+						continue;
+					System.out.println(region.name()+",\t"+alg.name()+",\t"+smooth.name());
 					smooth.load(region, alg);
 				}
 			}

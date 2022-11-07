@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -18,6 +19,7 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureProperties;
@@ -714,38 +716,79 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		return seisRegions;
 	}
 	
-	public static GriddedRegion getGriddedSeisRegion(Region region) {
+	public static GriddedRegion getGriddedSeisRegion(SeismicityRegions seisRegion) throws IOException {
+		return getGriddedSeisRegion(List.of(seisRegion));
+	}
+	
+	public static GriddedRegion getGriddedSeisRegion(List<SeismicityRegions> seisRegions) throws IOException {
+		Preconditions.checkState(!seisRegions.isEmpty());
+		Region region;
+		if (seisRegions.size() == 1) {
+			// simple case
+			region = seisRegions.get(0).load();
+		} else {
+			// union them
+			List<Region> regions = new ArrayList<>();
+			for (SeismicityRegions seisRegion : seisRegions)
+				regions.add(seisRegion.load());
+			if (regions.size() > 2) {
+				// sort them to try to minimize chances of non-intersecting regions
+				regions.sort(new Comparator<Region>() {
+
+					@Override
+					public int compare(Region o1, Region o2) {
+						return Double.compare(avgLon(o1), avgLon(o2));
+					}
+					
+					private double avgLon(Region reg) {
+						int num = 0;
+						double sum = 0d;
+						for (Location loc : reg.getBorder()) {
+							num++;
+							sum += loc.getLongitude();
+						}
+						return sum/(double)num;
+					}
+				});
+			}
+			region = regions.get(0);
+			for (int i=1; i<regions.size(); i++) {
+				region = Region.union(region, regions.get(i));
+				Preconditions.checkNotNull(region, "Seismicity regions don't overlap, can't union");
+			}
+		}
 		return new GriddedRegion(region, 0.1, GriddedRegion.ANCHOR_0_0);
 	}
 	
 	public static NSHM23_FaultCubeAssociations buildFaultCubeAssociations(FaultSystemRupSet rupSet,
 			LogicTreeBranch<?> branch, Region region) throws IOException {
 		List<SeismicityRegions> seisRegions = getSeismicityRegions(region);
-		return buildFaultCubeAssociations(rupSet, region, seisRegions);
+		return buildFaultCubeAssociations(rupSet, seisRegions);
 	}
 	
-	public static NSHM23_FaultCubeAssociations buildFaultCubeAssociations(FaultSystemRupSet rupSet, Region modelReg,
+	public static NSHM23_FaultCubeAssociations buildFaultCubeAssociations(FaultSystemRupSet rupSet,
 			List<SeismicityRegions> seisRegions) throws IOException {
 		Preconditions.checkState(seisRegions.size() >= 1);
-		GriddedRegion modelGridReg = getGriddedSeisRegion(modelReg);
+		GriddedRegion modelGridReg = getGriddedSeisRegion(seisRegions);
 		if (seisRegions.size() == 1) {
 			Region seisRegion = seisRegions.get(0).load();
-			if (seisRegion.equalsRegion(modelReg)) {
+//			if (seisRegion.equalsRegion(modelReg)) {
 				// simple case, model and seismicity region are the same
+				// now always the case
 				return new NSHM23_FaultCubeAssociations(rupSet, new CubedGriddedRegion(modelGridReg),
 						NSHM23_SingleRegionGridSourceProvider.DEFAULT_MAX_FAULT_NUCL_DIST);
-			} else {
-				// build it for the seismicity region, then nest within the model region
-				NSHM23_FaultCubeAssociations seisCubeAssociations = new NSHM23_FaultCubeAssociations(rupSet,
-						new CubedGriddedRegion(getGriddedSeisRegion(seisRegion)),
-						NSHM23_SingleRegionGridSourceProvider.DEFAULT_MAX_FAULT_NUCL_DIST);
-				return new NSHM23_FaultCubeAssociations(rupSet,
-						new CubedGriddedRegion(modelGridReg), List.of(seisCubeAssociations));
-			}
+//			} else {
+//				// build it for the seismicity region, then nest within the model region
+//				NSHM23_FaultCubeAssociations seisCubeAssociations = new NSHM23_FaultCubeAssociations(rupSet,
+//						new CubedGriddedRegion(getGriddedSeisRegion(seisRegion)),
+//						NSHM23_SingleRegionGridSourceProvider.DEFAULT_MAX_FAULT_NUCL_DIST);
+//				return new NSHM23_FaultCubeAssociations(rupSet,
+//						new CubedGriddedRegion(modelGridReg), List.of(seisCubeAssociations));
+//			}
 		} else {
 			List<NSHM23_FaultCubeAssociations> regionalAssociations = new ArrayList<>();
 			for (SeismicityRegions seisReg : seisRegions) {
-				GriddedRegion subGridReg = getGriddedSeisRegion(seisReg.load());
+				GriddedRegion subGridReg = getGriddedSeisRegion(seisReg);
 				regionalAssociations.add(new NSHM23_FaultCubeAssociations(rupSet, new CubedGriddedRegion(subGridReg),
 						NSHM23_SingleRegionGridSourceProvider.DEFAULT_MAX_FAULT_NUCL_DIST));
 			}
@@ -765,7 +808,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		Preconditions.checkState(!seisRegions.isEmpty(), "Found no seismicity regions for model region %s", modelReg.getName());
 		// build cube associations
-		NSHM23_FaultCubeAssociations cubeAssociations = buildFaultCubeAssociations(rupSet, modelReg, seisRegions);
+		NSHM23_FaultCubeAssociations cubeAssociations = buildFaultCubeAssociations(rupSet, seisRegions);
 		// add those to the rupture set
 		rupSet.addModule(cubeAssociations);
 		return buildGridSourceProv(sol, branch, seisRegions, cubeAssociations);
@@ -815,7 +858,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					subRegCubeAssoc = regionalCubeAssoc.get(i);
 				} else {
 					// need to build it
-					GriddedRegion subGridReg = getGriddedSeisRegion(seisRegion.load());
+					GriddedRegion subGridReg = getGriddedSeisRegion(seisRegion);
 					subRegCubeAssoc = new NSHM23_FaultCubeAssociations(sol.getRupSet(),
 							new CubedGriddedRegion(subGridReg), NSHM23_SingleRegionGridSourceProvider.DEFAULT_MAX_FAULT_NUCL_DIST);
 				}

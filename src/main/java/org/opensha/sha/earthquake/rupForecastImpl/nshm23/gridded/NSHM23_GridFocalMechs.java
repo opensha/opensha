@@ -1,8 +1,14 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded;
 
+import java.io.IOException;
+
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.Region;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.AnalysisRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.FaultStyleRegions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 
 import com.google.common.base.Preconditions;
@@ -25,34 +31,29 @@ import scratch.UCERF3.griddedSeismicity.GridReader;
  */
 public class NSHM23_GridFocalMechs {
 	
-	public static double[] getFractStrikeSlip(SeismicityRegions region, GriddedRegion gridRegion) {
-		if (region == SeismicityRegions.CONUS_PNW || region == SeismicityRegions.CONUS_IMW)
-			return constant(gridRegion.getNodeCount(), 0.5d);
-		if (region == SeismicityRegions.CONUS_EAST)
-			return constant(gridRegion.getNodeCount(), 1d);
-		if (region == SeismicityRegions.CONUS_U3_RELM)
-			return mapU3(gridRegion, new GridReader("StrikeSlipWts.txt").getValues());
-		return null;
+	public static double[] getFractStrikeSlip(SeismicityRegions region, GriddedRegion gridRegion) throws IOException {
+		double[] ret = constant(gridRegion.getNodeCount(), Double.NaN);
+		mapConstant(gridRegion, ret, FaultStyleRegions.WUS_COMPRESSIONAL.load(), 0.5d);
+		mapConstant(gridRegion, ret, FaultStyleRegions.WUS_EXTENSIONAL.load(), 0.5d);
+		// this is the rest, mostly CEUS, 100% SS
+		replaceNaNs(ret, 1d);
+		return ret;
 	}
 	
-	public static double[] getFractReverse(SeismicityRegions region, GriddedRegion gridRegion) {
-		if (region == SeismicityRegions.CONUS_PNW)
-			return constant(gridRegion.getNodeCount(), 0.5d);
-		else if (region == SeismicityRegions.CONUS_IMW || region == SeismicityRegions.CONUS_EAST)
-			return constant(gridRegion.getNodeCount(), 0d);
-		if (region == SeismicityRegions.CONUS_U3_RELM)
-			return mapU3(gridRegion, new GridReader("ReverseWts.txt").getValues());
-		return null;
+	public static double[] getFractReverse(SeismicityRegions region, GriddedRegion gridRegion) throws IOException {
+		double[] ret = constant(gridRegion.getNodeCount(), Double.NaN);
+		mapConstant(gridRegion, ret, FaultStyleRegions.WUS_COMPRESSIONAL.load(), 0.5d);
+		// this is the rest, CEUS and WUS extensional
+		replaceNaNs(ret, 0d);
+		return ret;
 	}
 	
-	public static double[] getFractNormal(SeismicityRegions region, GriddedRegion gridRegion) {
-		if (region == SeismicityRegions.CONUS_IMW)
-			return constant(gridRegion.getNodeCount(), 0.5d);
-		else if (region == SeismicityRegions.CONUS_PNW || region == SeismicityRegions.CONUS_EAST)
-			return constant(gridRegion.getNodeCount(), 0d);
-		if (region == SeismicityRegions.CONUS_U3_RELM)
-			return mapU3(gridRegion, new GridReader("NormalWts.txt").getValues());
-		return null;
+	public static double[] getFractNormal(SeismicityRegions region, GriddedRegion gridRegion) throws IOException {
+		double[] ret = constant(gridRegion.getNodeCount(), Double.NaN);
+		mapConstant(gridRegion, ret, FaultStyleRegions.WUS_EXTENSIONAL.load(), 0.5d);
+		// this is the rest, CEUS and WUS compressional
+		replaceNaNs(ret, 0d);
+		return ret;
 	}
 	
 	private static double[] constant(int length, double value) {
@@ -62,28 +63,57 @@ public class NSHM23_GridFocalMechs {
 		return ret;
 	}
 	
+	private static void replaceNaNs(double[] values, double value) {
+		for (int i=0; i<values.length; i++)
+			if (Double.isNaN(values[i]))
+				values[i] = value;
+	}
+	
 	private static GriddedRegion u3Reg;
 	
-	private static double[] mapU3(GriddedRegion gridReg, double[] u3Vals) {
+	private static void mapConstant(GriddedRegion gridReg, double[] values, Region reg, double value) {
+		for (int i=0; i<values.length; i++) {
+			Location loc = gridReg.locationForIndex(i);
+			if (reg.contains(loc))
+				values[i] = value;
+		}
+	}
+	
+	private static void mapU3(GriddedRegion gridReg, double[] values, double[] u3Vals) {
 		synchronized (NSHM23_GridFocalMechs.class) {
 			if (u3Reg == null)
 				u3Reg = new CaliforniaRegions.RELM_TESTING_GRIDDED(gridReg.getSpacing());
 		}
 		Preconditions.checkState(u3Reg.getNodeCount() == u3Vals.length);
+		Preconditions.checkState(gridReg.getNodeCount() == values.length);
 		double avgVal = 0d;
 		for (double val : u3Vals)
 			avgVal += val;
 		avgVal /= u3Vals.length;
-		double[] ret = new double[gridReg.getNodeCount()];
-		for (int i=0; i<ret.length; i++) {
+		for (int i=0; i<values.length; i++) {
 			Location loc = gridReg.locationForIndex(i);
 			int u3Ind = u3Reg.indexForLocation(loc);
 			if (u3Ind >= 0)
-				ret[i] = u3Vals[u3Ind];
+				values[i] = u3Vals[u3Ind];
 			else
-				ret[i] = avgVal;
+				values[i] = avgVal;
 		}
-		return ret;
+	}
+	
+	public static void main(String[] args) throws IOException {
+		SeismicityRegions reg = SeismicityRegions.CONUS_WEST;
+		GriddedRegion gridReg = NSHM23_InvConfigFactory.getGriddedSeisRegion(reg);
+		
+		double[] ss = getFractStrikeSlip(reg, gridReg);
+		double[] rev = getFractReverse(reg, gridReg);
+		double[] norm = getFractNormal(reg, gridReg);
+		
+		for (int i=0; i<gridReg.getNodeCount(); i++) {
+			double sum = ss[i] + rev[i] + norm[i];
+			Preconditions.checkState((float)sum == 1f, "Bad sum: %s + %s + %s = %s; loc: %s",
+					ss[i], rev[i], norm[i], gridReg.getLocation(i));
+		}
+		System.out.println("Validated");
 	}
 
 }

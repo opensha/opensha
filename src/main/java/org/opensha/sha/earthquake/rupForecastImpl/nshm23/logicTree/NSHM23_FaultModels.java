@@ -16,6 +16,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.data.uncertainty.UncertainBoundedDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.BorderType;
@@ -38,6 +39,7 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.AnalysisRegions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
@@ -143,7 +145,7 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 		if (branch != null && branch.hasValue(NSHM23_SingleStates.class)) {
 			NSHM23_SingleStates state = branch.getValue(NSHM23_SingleStates.class);
 			if (state == NSHM23_SingleStates.CA) {
-				return new ModelRegion(SeismicityRegions.CONUS_U3_RELM.load());
+				return new ModelRegion(AnalysisRegions.CONUS_U3_RELM.load());
 			} else if (state == null) {
 				return new ModelRegion(NSHM23_RegionLoader.loadFullConterminousWUS());
 			} else {
@@ -215,32 +217,142 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 				MaxMagOffFaultBranchNode offFaultMMax = null;
 				if (branch != null)
 					offFaultMMax = branch.getValue(MaxMagOffFaultBranchNode.class);
-				for (SeismicityRegions pReg : SeismicityRegions.values()) {
-					Region region = pReg.load();
+				
+				// overall seismicity regions
+				for (SeismicityRegions seisReg : SeismicityRegions.values()) {
+					Region region = seisReg.load();
 					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
 						continue;
 					
-					// TODO: revisit Mmax
-					double faultSysMmax = 0d;
-					double[] fracts = rupSet.getFractRupsInsideRegion(region, true);
-					for (int rupIndex=0; rupIndex<fracts.length; rupIndex++)
-						if (fracts[rupIndex] > 0)
-							faultSysMmax = Math.max(faultSysMmax, rupSet.getMagForRup(rupIndex));
+					regionMFDs.add(getRegionalMFD(region, seisReg, branch));
+					regions.add(region);
+				}
+				
+				// analysis regions
+				for (Region region : NSHM23_RegionLoader.loadAnalysisRegions(subSects)) {
+					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
+						continue;
 					
-					double mMax = faultSysMmax;
-					if (offFaultMMax != null)
-						mMax = Math.max(offFaultMMax.getMaxMagOffFault(), mMax);
-					EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(Math.max(mMax, rupSet.getMaxMag()));
-					regionMFDs.add(NSHM23_RegionalSeismicity.getBounded(pReg, refMFD, mMax));
+					regionMFDs.add(getRegionalMFD(region, null, branch));
 					regions.add(region);
 				}
+				
+				// local regions
 				for (Region region : NSHM23_RegionLoader.loadLocalRegions(subSects)) {
+					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
+						continue;
+					
+					regionMFDs.add(getRegionalMFD(region, null, branch));
 					regions.add(region);
-					regionMFDs.add(null);
 				}
+				for (int i=0; i<regions.size(); i++) {
+					String regName = regions.get(i).getName();
+					System.out.println(regName);
+					IncrementalMagFreqDist mfd = regionMFDs.get(i);
+					if (mfd != null) {
+						System.out.println("\t"+mfd.getName());
+						if (mfd instanceof UncertainBoundedDiscretizedFunc)
+							System.out.println("\t"+((UncertainBoundedDiscretizedFunc)mfd).getBoundName());
+					}
+				}
+//				System.exit(0);
 				return new RegionsOfInterest(regions, regionMFDs);
 			}
 		}, RegionsOfInterest.class);
+	}
+	
+	private static UncertainBoundedIncrMagFreqDist getRegionalMFD(Region region, SeismicityRegions seisRegion,
+			LogicTreeBranch<?> branch) throws IOException {
+		MaxMagOffFaultBranchNode offFaultMMax = null;
+		if (branch != null)
+			offFaultMMax = branch.getValue(MaxMagOffFaultBranchNode.class);
+		
+		NSHM23_DeclusteringAlgorithms declustering = NSHM23_DeclusteringAlgorithms.AVERAGE;
+		if (branch != null && branch.hasValue(NSHM23_DeclusteringAlgorithms.class))
+			declustering = branch.requireValue(NSHM23_DeclusteringAlgorithms.class);
+		
+		NSHM23_SeisSmoothingAlgorithms smooth = NSHM23_SeisSmoothingAlgorithms.AVERAGE;
+		if (branch != null && branch.hasValue(NSHM23_SeisSmoothingAlgorithms.class))
+			smooth = branch.requireValue(NSHM23_SeisSmoothingAlgorithms.class);
+		
+		if (offFaultMMax == null) {
+			// average across off fault MMax choices
+			
+			double overallMMax = 0d;
+			List<NSHM23_MaxMagOffFault> choices = new ArrayList<>();
+			for (NSHM23_MaxMagOffFault choice : NSHM23_MaxMagOffFault.values()) {
+				double weight = choice.getNodeWeight(branch);
+				if (weight > 0d) {
+					choices.add(choice);
+					overallMMax = Math.max(overallMMax, choice.getMaxMagOffFault());
+				}
+			}
+			
+			Preconditions.checkState(!choices.isEmpty());
+			
+			EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(overallMMax);
+			
+			if (choices.size() == 1) {
+				// simple case
+				if (seisRegion == null)
+					return NSHM23_RegionalSeismicity.getRemapped(region, declustering, smooth, refMFD, overallMMax);
+				else
+					return NSHM23_RegionalSeismicity.getBounded(seisRegion, refMFD, overallMMax);
+			} else {
+				// weight-average them
+				IncrementalMagFreqDist lower = null;
+				IncrementalMagFreqDist upper = null;
+				IncrementalMagFreqDist preferred = null;
+				double sumWeight = 0d;
+				
+				UncertaintyBoundType boundType = null;
+				
+				for (NSHM23_MaxMagOffFault choice : choices) {
+					double weight = choice.getNodeWeight(branch);
+					sumWeight += weight;
+					
+					UncertainBoundedIncrMagFreqDist choiceMFD;
+					if (seisRegion == null)
+						choiceMFD = NSHM23_RegionalSeismicity.getRemapped(region, declustering, smooth, refMFD, choice.getMaxMagOffFault());
+					else
+						choiceMFD = NSHM23_RegionalSeismicity.getBounded(seisRegion, refMFD, choice.getMaxMagOffFault());
+					
+					if (lower == null) {
+						lower = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
+						upper = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
+						preferred = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
+						preferred.setName(choiceMFD.getName());
+						boundType = choiceMFD.getBoundType();
+					}
+					
+					for (int i=0; i<refMFD.size(); i++) {
+						lower.add(i, choiceMFD.getLowerY(i)*weight);
+						upper.add(i, choiceMFD.getUpperY(i)*weight);
+						preferred.add(i, choiceMFD.getY(i)*weight);
+					}
+				}
+				
+				if (sumWeight != 1d) {
+					lower.scale(1d/sumWeight);
+					upper.scale(1d/sumWeight);
+					preferred.scale(1d/sumWeight);
+				}
+				
+				UncertainBoundedIncrMagFreqDist ret = new UncertainBoundedIncrMagFreqDist(preferred, lower, upper, boundType);
+				ret.setName(preferred.getName());
+				ret.setBoundName(NSHM23_RegionalSeismicity.getBoundName(lower, upper));
+				return ret;
+			}
+		} else {
+			// use the supplied off fault MMax choice
+			double mMax = offFaultMMax.getMaxMagOffFault();
+			EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(mMax);
+			
+			if (seisRegion == null)
+				return NSHM23_RegionalSeismicity.getRemapped(region, declustering, smooth, refMFD, mMax);
+			else
+				return NSHM23_RegionalSeismicity.getBounded(seisRegion, refMFD, mMax);
+		}
 	}
 	
 	private static final DecimalFormat oDF = new DecimalFormat("0.##");

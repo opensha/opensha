@@ -16,6 +16,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider.Abstract;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b;
+import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.Point2Vert_FaultPoisSource;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
@@ -109,7 +110,8 @@ public abstract class NSHM23_AbstractGridSourceProvider extends Abstract impleme
 			mechMap.put(FocalMech.REVERSE, fracReverse);
 			mechMap.put(FocalMech.NORMAL, fracNormal);
 			// TODO still the best implementation?
-			return new PointSource13b(loc, mfd, duration, DEPTHS, mechMap);
+//			return new PointSource13b(loc, mfd, duration, DEPTHS, mechMap);
+			return new PointSourceNshm(loc, mfd, duration, mechMap);
 
 		default:
 			throw new IllegalStateException("Unknown Background Rup Type: "+bgRupType);

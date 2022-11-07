@@ -1,0 +1,16 @@
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-126.05, 50.05],
+      [-126.05, 23.95],
+      [-103.95, 23.95],
+      [-103.95, 50.05],
+      [-126.05, 50.05]
+    ]]
+  },
+  "properties": {
+    "title": "WUS Collection Region"
+  }
+}
