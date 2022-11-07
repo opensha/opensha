@@ -137,7 +137,7 @@ public class ReportPageGen {
 		} else {
 			plots.add(new RupHistogramPlots(RupHistogramPlots.RUP_SET_LIGHT_SCALARS));
 		}
-		plots.add(new SectMaxValuesPlot());
+		plots.add(new SectMaxValuesPlot(SectMaxValuesPlot.RUP_SET_DEFAULTS));
 		if (level == PlotLevel.FULL) {
 			plots.add(new JumpAzimuthsPlot());
 			plots.add(new BiasiWesnouskyPlots());
@@ -173,6 +173,7 @@ public class ReportPageGen {
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL || level == PlotLevel.REVIEW) {
 			plots.add(new RuptureScalingPlot());
 			plots.add(new RupHistogramPlots(RupHistogramPlots.SOL_SCALARS));
+			plots.add(new SectMaxValuesPlot(SectMaxValuesPlot.SOL_DEFAULTS));
 			if (level != PlotLevel.REVIEW)
 				plots.add(new ModulesPlot());
 			plots.add(new FaultSectionConnectionsPlot());
