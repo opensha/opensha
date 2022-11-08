@@ -4,7 +4,13 @@ File name: McPhillips_California_RIs_2022_07_13.csv
 
 Data from Devin McPhillips via e-mail on 7/13/2022, subject "RI table". According to Devin, "This has been bureau approved and accepted pending minor revision at SRL, which were submitted yesterday."
 
-Updated on 7/15/2022 by Kevin Milner with the following modifications:
+Updates from the original file:
+
+11/8/2022 by Kevin Milner
+
+* Changed location of Mystic Lake to 33.898097,-117.086080 after crossreferencing aerial imagry in Google Maps with figure 3 of Onderdonk et al (2013) (which is less obstructed than the version in their 2018 paper)
+
+7/15/2022 Kevin Milner
 
 * Increased precision of site locations for prior sites used in UCERF3 using UCERF3 data file (typically 2 decimal places to 4)
 * Used exact location for 18th Ave SSAF site from Castillo et al., (2021, doi: 10.1130/GES02237.1). Note that rounding was slightly off in Devin's table for the longitude value (-116.538 was erroneously rounded to -116.59)

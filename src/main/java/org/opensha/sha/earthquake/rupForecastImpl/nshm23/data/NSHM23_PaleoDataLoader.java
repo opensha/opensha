@@ -359,20 +359,20 @@ public class NSHM23_PaleoDataLoader {
 		HashSet<FaultSection> mappedSects = new HashSet<>();
 		List<Location> siteLocs = new ArrayList<>();
 		
-//		String prefix = "nshm23_ca_paleo_mappings";
-//		String title = "NSHM23 CA Paleo RI Mappings";
-//		List<SectMappedUncertainDataConstraint> datas = loadCAPaleoRateData(subSects);
-//		Region reg = new CaliforniaRegions.RELM_TESTING();
+		String prefix = "nshm23_ca_paleo_mappings";
+		String title = "NSHM23 CA Paleo RI Mappings";
+		List<SectMappedUncertainDataConstraint> datas = loadCAPaleoRateData(subSects);
+		Region reg = new CaliforniaRegions.RELM_TESTING();
 		
 //		String prefix = "nshm23_ca_paleo_slip_mappings";
 //		String title = "NSHM23 CA Paleo Slip Mappings";
 //		List<SectMappedUncertainDataConstraint> datas = loadU3PaleoSlipData(subSects);
 //		Region reg = new CaliforniaRegions.RELM_TESTING();
 		
-		String prefix = "nshm23_wasatch_paleo_mappings";
-		String title = "NSHM23 Wasatch Paleo Mappings";
-		List<SectMappedUncertainDataConstraint> datas = loadWasatchPaleoRateData(subSects);
-		Region reg = new Region(new Location(42.5, -114.5), new Location(36.5, -108));
+//		String prefix = "nshm23_wasatch_paleo_mappings";
+//		String title = "NSHM23 Wasatch Paleo Mappings";
+//		List<SectMappedUncertainDataConstraint> datas = loadWasatchPaleoRateData(subSects);
+//		Region reg = new Region(new Location(42.5, -114.5), new Location(36.5, -108));
 		
 		System.out.println("Loaded "+datas.size()+" values");
 		for (SectMappedUncertainDataConstraint constraint : datas) {
@@ -395,7 +395,7 @@ public class NSHM23_PaleoDataLoader {
 		
 		mapMaker.plot(new File("/tmp"), prefix, title);
 		
-		String urlPrefix = "http://opensha.usc.edu/ftp/kmilner/nshm23/paleo_mappings/";
+		String urlPrefix = "https://opensha.usc.edu/ftp/kmilner/nshm23/paleo_mappings/";
 		System.out.println("GeoJSON.io URL: "+RupSetMapMaker.getGeoJSONViewerLink(urlPrefix+prefix+".geojson"));
 	}
 
