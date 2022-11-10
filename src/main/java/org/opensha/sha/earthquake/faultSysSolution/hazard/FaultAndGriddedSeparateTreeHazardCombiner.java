@@ -136,6 +136,8 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 			
 			DiscretizedFunc[][] faultCurves = loadCurves(branchHazardDir, periods);
 			
+			double faultWeight = faultTree.getBranchWeight(faultBranch);
+			
 			for (int g=0; g<gridTree.size(); g++) {
 				LogicTreeBranch<?> gridBranch = gridTree.getBranch(g);
 				LogicTreeBranch<LogicTreeNode> combinedBranch = new LogicTreeBranch<>(combinedLevels);
@@ -143,7 +145,13 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 					combinedBranch.setValue(node);
 				for (LogicTreeNode node : gridBranch)
 					combinedBranch.setValue(node);
+				
+				double gridWeight = gridTree.getBranchWeight(gridBranch);
+				double combWeight = faultWeight * gridWeight;
+				
 				System.out.println("Combined branch "+combinedBranches.size()+": "+combinedBranch);
+				System.out.println("\tCombined weight: "+(float)faultWeight+" x "+(float)gridWeight+" = "+(float)combWeight);
+				combinedBranch.setOrigBranchWeight(combWeight);
 				combinedBranches.add(combinedBranch);
 				
 				DiscretizedFunc[][] gridCurves = gridSeisCurves.get(g);
