@@ -230,7 +230,7 @@ public class NSHM23_PaleoDataLoader {
 			int cols = csv.getLine(row).size();
 			if (cols <= upperCol+2 || csv.get(row, lowerCol).isBlank())
 				continue;
-			String name = csv.get(row, siteNameCol);
+			String name = csv.get(row, siteNameCol).replace("*", "");
 			double lat = csv.getDouble(row, latCol);
 			double lon = csv.getDouble(row, lonCol);
 			double rate = csv.getDouble(row, rateCol);
