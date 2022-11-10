@@ -332,9 +332,9 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 						rankWeights.put(baPrefix, baRankWeights);
 					}
 					
-					baRankWeights[processIndex] += tree.getBranchWeight(index);
-					
 					double branchWeight = tree.getBranchWeight(origBranch);
+					baRankWeights[processIndex] += branchWeight;
+					
 					if (!gridSourceAveragers.containsKey(baPrefix))
 						gridSourceAveragers.put(baPrefix, avgGridProv.averagingAccumulator());
 					AveragingAccumulator<GridSourceProvider> accumulator = gridSourceAveragers.get(baPrefix);
@@ -459,11 +459,17 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			
 			try {
 				if (!averageOnly) {
-					// write the comined logic tree to the full zip file
+					// write the combined logic tree to the full zip file
 					List<LogicTreeBranch<LogicTreeNode>> combinedBranches = new ArrayList<>();
-					for (LogicTreeBranch<?> origBranch : tree)
-						for (LogicTreeBranch<?> griddedBranch : gridSeisOnlyTree)
-							combinedBranches.add((LogicTreeBranch<LogicTreeNode>)getCombinedBranch(origBranch, griddedBranch));
+					for (LogicTreeBranch<?> origBranch : tree) {
+						double faultWeight = tree.getBranchWeight(origBranch);
+						for (LogicTreeBranch<?> griddedBranch : gridSeisOnlyTree) {
+							double gridWeight = gridSeisOnlyTree.getBranchWeight(griddedBranch);
+							LogicTreeBranch<?> combinedBranch = getCombinedBranch(origBranch, griddedBranch);
+							combinedBranch.setOrigBranchWeight(faultWeight*gridWeight);
+							combinedBranches.add((LogicTreeBranch<LogicTreeNode>)combinedBranch);
+						}
+					}
 					LogicTree<?> combinedLogicTree = LogicTree.fromExisting(combinedBranches.get(0).getLevels(), combinedBranches);
 					
 					ZipArchiveEntry logicTreeEntry = new ZipArchiveEntry(sltPrefix+SolutionLogicTree.LOGIC_TREE_FILE_NAME);
@@ -816,6 +822,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 						}
 					}
 					LogicTreeBranch<LogicTreeNode> combinedBranch = new LogicTreeBranch<>(levels, values);
+					combinedBranch.setOrigBranchWeight(gridBranch.getOrigBranchWeight());
 					String gridPrefix = gridBranch.buildFileName();
 					debug("Combining prividers for baPrefix="+baPrefix+", gridPrefix="+gridPrefix+", combBranch="+combinedBranch);
 					
