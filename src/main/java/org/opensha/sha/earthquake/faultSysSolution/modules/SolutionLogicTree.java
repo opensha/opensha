@@ -27,6 +27,7 @@ import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleArchive;
@@ -168,6 +169,9 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	}
 	
 	public static class FileBuilder extends Builder {
+		
+		private static final String DNAME = ClassUtils.getClassNameWithoutPackage(FileBuilder.class);
+		private static final boolean D = true;
 
 		private SolutionProcessor processor;
 		private File outputFile;
@@ -177,6 +181,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		private CompletableFuture<Void> startModuleWriteFuture = null;
 		private CompletableFuture<Void> endModuleWriteFuture = null;
 		private CompletableFuture<Void> endArchiveWriteFuture = null;
+		private Thread archiveWriteThread;
 		
 		private ZipOutputStream zout;
 		private String entryPrefix;
@@ -204,6 +209,10 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			archive = new ModuleArchive<>();
 		}
 		
+		private void debug(String message) {
+			System.out.println(DNAME+"["+Thread.currentThread().getName()+"]: "+message);
+		}
+		
 		public void setSerializeGridded(boolean serializeGridded) {
 			this.serializeGridded = serializeGridded;
 			if (solTree != null)
@@ -211,6 +220,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		}
 		
 		private void initSolTree(LogicTreeBranch<?> branch) {
+			if (D) debug("initSolTree");
 			if (levels == null) {
 				levels = new ArrayList<>();
 				for (LogicTreeLevel<?> level : branch.getLevels())
@@ -219,20 +229,27 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			startModuleWriteFuture = new CompletableFuture<>();
 			endModuleWriteFuture = new CompletableFuture<>();
 			// first time
+			if (D) debug("initSolTree: SolutionLogicTree constructor");
 			this.solTree = new SolutionLogicTree() {
 
 				@Override
 				public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+					if (D) debug("initSolTree: SolutionLogicTree.writeToArchive start");
 					FileBuilder.this.zout = zout;
 					FileBuilder.this.entryPrefix = entryPrefix;
 					// signal that we have started writing this module
+					if (D) debug("initSolTree: startModuleWriteFuture.complete");
 					startModuleWriteFuture.complete(null);
+					if (D) debug("initSolTree: waiting on endModuleWriteFuture.get");
 					// now wait until we're done writing it externally
 					try {
 						endModuleWriteFuture.get();
 					} catch (Exception e) {
+						if (D) debug("endModuleWriteFuture: exception: "+e.getMessage());
+						e.printStackTrace();
 						throw ExceptionUtils.asRuntimeException(e);
 					}
+					if (D) debug("initSolTree: got endModuleWriteFuture, exiting writeToArchive");
 				}
 				
 			};
@@ -240,23 +257,41 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			solTree.setSerializeGridded(serializeGridded);
 			archive.addModule(solTree);
 			// begin asynchronous module archive write
-			endArchiveWriteFuture = CompletableFuture.runAsync(new Runnable() {
-				
+			if (D) debug("initSolTree starting async write");
+			endArchiveWriteFuture = new CompletableFuture<>();
+			// use our own thread here rather than CompletableFuture.runAsync, which will sometimes run it in the
+			// caller thread causing deadlock
+			archiveWriteThread = new Thread("slt-file-builder-archive-write") {
+
 				@Override
 				public void run() {
 					try {
+						if (D) debug("initSolTree: endArchiveWriteFuture async running");
 						archive.write(outputFile);
+						if (D) debug("initSolTree: endArchiveWriteFuture.complete");
+						endArchiveWriteFuture.complete(null);
+						if (D) debug("initSolTree: endArchiveWriteFuture async done");
 					} catch (Exception e) {
+						if (D) debug("initSolTree: exception: "+e.getMessage());
+						e.printStackTrace();
 						throw ExceptionUtils.asRuntimeException(e);
 					}
 				}
-			});
+				
+			};
+			archiveWriteThread.start();
+			
+			if (D) debug("initSolTree DONE");
 		}
 		
 		private void waitUntilWriting() {
 			try {
+				if (D) debug("waitUntilWriting: waiting on startModuleWriteFuture.get");
 				startModuleWriteFuture.get();
+				if (D) debug("waitUntilWriting: got startModuleWriteFuture, exiting");
 			} catch (Exception e) {
+				if (D) debug("waitUntilWriting: exception: "+e.getMessage());
+				e.printStackTrace();
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 			// we have started writing it!
@@ -269,6 +304,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		public synchronized void solution(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
 			if (solTree == null)
 				initSolTree(branch);
+			if (D) debug("solution: for "+branch);
 			List<? extends LogicTreeLevel<?>> myLevels = branch.getLevels();
 			Preconditions.checkState(myLevels.size() == levels.size(),
 					"Branch %s has a different number of levels than the first branch", branch);
@@ -283,6 +319,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 
 			System.out.println("Writing branch: "+branch);
 			solTree.writeBranchFilesToArchive(zout, outPrefix, branch, writtenFiles, sol);
+			if (D) debug("solution: DONE for "+branch);
 		}
 		
 		public void setWeightProv(BranchWeightProvider weightProv) {
@@ -292,23 +329,32 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		public synchronized void close() throws IOException {
 			if (zout != null) {
 				// write logic tree
+				if (D) debug("close: writing logic tree");
 				LogicTree<?> tree = LogicTree.fromExisting(levels, branches);
 				if (weightProv != null)
 					tree.setWeightProvider(weightProv);
 				solTree.writeLogicTreeToArchive(zout, solTree.buildPrefix(entryPrefix), tree);
 				
-				if (processor != null)
+				if (processor != null) {
+					if (D) debug("close: writing processor json");
 					writeProcessorJSON(zout, solTree.buildPrefix(entryPrefix), processor);
+				}
 				
 				zout = null;
 				entryPrefix = null;
 				solTree = null;
+				if (D) debug("close: endModuleWriteFuture.complete");
 				endModuleWriteFuture.complete(null);
 				
 				// now wait until the archive is done writing
 				try {
+					if (D) debug("close: waiting on endArchiveWriteFuture.get");
 					endArchiveWriteFuture.get();
+					if (D) debug("close: got endArchiveWriteFuture");
+					archiveWriteThread.join();
 				} catch (Exception e) {
+					if (D) debug("close: exception: "+e.getMessage());
+					e.printStackTrace();
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 			}
@@ -322,6 +368,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		}
 		
 		public synchronized void copyDataFrom(ZipFile zip, List<LogicTreeBranch<?>> branches) throws IOException {
+			if (D) debug("copyDataFrom: for "+zip.getName());
 			if (solTree == null)
 				initSolTree(branches.get(0));
 			waitUntilWriting();
@@ -349,13 +396,17 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 				}
 			}
 			branches.addAll(branches);
+			if (D) debug("copyDataFrom: DONE for "+zip.getName());
 		}
 
 		public synchronized void writeGridProvToArchive(GridSourceProvider prov, LogicTreeBranch<?> branch)
 				throws IOException {
+			if (D) debug("writeGridProvToArchive: for "+branch);
 			waitUntilWriting();
 			String prefix = solTree.buildPrefix(entryPrefix);
+			if (D) debug("writeGridProvToArchive: writing for "+branch);
 			solTree.writeGridProvToArchive(prov, zout, prefix, branch, writtenFiles);
+			if (D) debug("writeGridProvToArchive: DONE for "+branch);
 		}
 		
 	}
