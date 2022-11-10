@@ -36,6 +36,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.BinaryJumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.HardcodedBinaryJumpProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.HardcodedJumpProb;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveBilateralRuptureGrowingStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveBilateralRuptureGrowingStrategy.SecondaryVariations;
@@ -46,6 +48,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavi
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -405,7 +408,69 @@ public class NSHM23_WasatchSegmentationData {
 		return new HardcodedBinaryJumpProb(name, true, pairings, true);
 	}
 	
-//	private static boolean is
+	private static void printSegPaths(FaultSystemRupSet rupSet, List<JumpProbabilityCalc> segModels, int fromSectID, int toSectID) {
+		ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+		
+		FaultSection sect1 = rupSet.getFaultSectionData(fromSectID);
+		FaultSection sect2 = rupSet.getFaultSectionData(toSectID);
+		
+		HashSet<Integer> rupIndexes1 = new HashSet<>(rupSet.getRupturesForSection(fromSectID));
+		HashSet<Integer> rupIndexes2 = new HashSet<>(rupSet.getRupturesForSection(toSectID));
+		HashSet<Integer> bothRupIndexes = new HashSet<>();
+		for (int id1 : rupIndexes1)
+			if (rupIndexes2.contains(id1))
+				bothRupIndexes.add(id1);
+		
+		Map<String, List<ClusterRupture>> uniquePaths = new HashMap<>();
+		
+		for (int rupIndex : bothRupIndexes) {
+			ClusterRupture rup = cRups.get(rupIndex);
+			
+			RuptureTreeNavigator nav = rup.getTreeNavigator();
+			
+			FaultSubsectionCluster cluster1 = nav.locateCluster(sect1);
+			FaultSubsectionCluster cluster2 = nav.locateCluster(sect2);
+			
+			List<FaultSubsectionCluster> path = getPathLinking(cluster1, cluster2, nav);
+			
+			String pathStr = null;
+			for (FaultSubsectionCluster cluster : path) {
+				if (pathStr == null)
+					pathStr = "";
+				else
+					pathStr += " -> ";
+				pathStr += cluster.parentSectionName;
+			}
+			
+			List<ClusterRupture> pathRups = uniquePaths.get(pathStr);
+			if (pathRups == null) {
+				pathRups = new ArrayList<>();
+				uniquePaths.put(pathStr, pathRups);
+			}
+			pathRups.add(rup);
+		}
+		
+		System.out.println("Found "+uniquePaths.size()+" unique paths");
+		
+		for (String path : uniquePaths.keySet()) {
+			List<ClusterRupture> rups = uniquePaths.get(path);
+			System.out.println(path+"\t("+rups.size()+" ruptures)");
+			for (JumpProbabilityCalc segModel : segModels) {
+				double maxRupProb = 0d;
+				double maxWorstJumpProb = 0d;
+				for (ClusterRupture rup : rups) {
+					maxRupProb = Math.max(maxRupProb, segModel.calcRuptureProb(rup, false));
+					double worstJumpProb = 1d;
+					for (Jump jump : rup.getJumpsIterable())
+						worstJumpProb = Math.min(worstJumpProb, segModel.calcJumpProbability(rup, jump, false));
+					maxWorstJumpProb = Math.max(maxWorstJumpProb, worstJumpProb);
+				}
+				System.out.println("\t"+segModel.getName()+":\trup="+(float)maxRupProb+"\tjump="+(float)maxWorstJumpProb);
+			}
+		}
+		
+//		linkingPathSearch(null, null, null, APPLY_TO_ALL_JUMPS_FROM_LOC)
+	}
 	
 	public static void main(String[] args) throws IOException {
 		List<WasatchSegLocation> datas = load();
@@ -671,6 +736,49 @@ public class NSHM23_WasatchSegmentationData {
 //			for (DistDependentJumpProbabilityCalc segModel : compSegModels)
 //				System.out.println("\t"+segModel.getName()+":\tP="+(float)segModel.calcJumpProbability(minDist));
 //		}
+		
+		// print paths from provo to weber
+		List<JumpProbabilityCalc> segModels = new ArrayList<>();
+		List<JumpProbabilityCalc> distModels = new ArrayList<>();
+		for (NSHM23_SegmentationModels segModel : NSHM23_SegmentationModels.values()) {
+			if (segModel.getNodeWeight(null) == 0d && segModel != NSHM23_SegmentationModels.AVERAGE)
+				continue;
+			final JumpProbabilityCalc model = segModel.getModel(rupSet, null);
+			JumpProbabilityCalc namedModel = new JumpProbabilityCalc() {
+				
+				@Override
+				public String getName() {
+					return segModel.getShortName();
+				}
+				
+				@Override
+				public boolean isDirectional(boolean splayed) {
+					return model == null ? false : model.isDirectional(splayed);
+				}
+				
+				@Override
+				public double calcJumpProbability(ClusterRupture fullRupture, Jump jump, boolean verbose) {
+					if (model == null)
+						return 1d;
+					return model.calcJumpProbability(fullRupture, jump, verbose);
+				}
+			};
+			segModels.add(namedModel);
+			if (segModel.getShawR0() > 0d) {
+				double shawR0 = segModel.getShawR0();
+				double shawShift = segModel.getShawShift();
+				JumpProbabilityCalc shawModel = shawShift > 0d ?
+						Shaw07JumpDistProb.forHorzOffset(1d, shawR0, shawShift) : new Shaw07JumpDistProb(1d, shawR0);
+				boolean duplicate = false;
+				for (JumpProbabilityCalc o : distModels)
+					if (o.getName().equals(shawModel.getName()))
+						duplicate = true;
+				if (!duplicate)
+					distModels.add(shawModel);
+			}
+		}
+		segModels.addAll(distModels);
+		printSegPaths(rupSet, segModels, 5295, 5316);
 	}
 	
 	private static Color alpha(Color c, int alpha) {
