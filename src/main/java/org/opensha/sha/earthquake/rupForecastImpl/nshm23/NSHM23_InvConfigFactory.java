@@ -26,7 +26,6 @@ import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
@@ -70,9 +69,9 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.BinaryJumpProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.HardcodedBinaryJumpProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
@@ -84,10 +83,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_Abstract
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_CombinedRegionGridSourceProvider;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_FaultCubeAssociations;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_GridFocalMechs;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SeisDepthDistributions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.HardDistCutoffJumpProbCalc;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeclusteringAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
@@ -97,9 +93,8 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_Region
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels.ExcludeRupsThroughCreepingSegmentationModel;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SingleStates;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SeisSmoothingAlgorithms;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSect;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SingleStates;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSectBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
@@ -186,9 +181,6 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			File subDir = new File(cacheDir, "rup_sets_"+fm.getFilePrefix()+"_"+dm.getFilePrefix());
 			if (!subDir.exists())
 				subDir.mkdir();
-			int numLocs = 0;
-			for (FaultSection sect : subSects)
-				numLocs += sect.getFaultTrace().size();
 			String rupSetFileName = "rup_set_"+model.getFilePrefix()+"_"
 				+SectionDistanceAzimuthCalculator.getUniqueSectCacheFileStr(subSects)+".zip";
 			cachedRupSetFile = new File(subDir, rupSetFileName);
@@ -283,12 +275,13 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
-		if (rupSet.hasModule(RuptureSubSetMappings.class)) {
+		
+		RuptureSubSetMappings subsetMappings = rupSet.getModule(RuptureSubSetMappings.class);
+		if (subsetMappings != null) {
 			// state specific, remap the DM-specific sections to this subset
 			List<FaultSection> subsetSects = new ArrayList<>();
-			RuptureSubSetMappings mappings = rupSet.getModule(RuptureSubSetMappings.class);
 			for (int s=0; s<rupSet.getNumSections(); s++) {
-				FaultSection sect = subSects.get(mappings.getOrigSectID(s)).clone();
+				FaultSection sect = subSects.get(subsetMappings.getOrigSectID(s)).clone();
 				sect.setSectionId(s);
 				subsetSects.add(sect);
 			}
@@ -310,6 +303,9 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		} else {
 			rupSet = ClusterRuptureBuilder.buildClusterRupSet(scale, subSects, plausibility, cRups.getAll());
 		}
+		
+		if (subsetMappings != null)
+			rupSet.addModule(subsetMappings);
 		
 		SlipAlongRuptureModelBranchNode slipAlong = branch.requireValue(SlipAlongRuptureModelBranchNode.class);
 		rupSet.addModule(slipAlong.getModel());
@@ -657,11 +653,6 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		return constrBuilder;
 	}
 	
-	private static boolean shouldExcludeThroughCreeping(LogicTreeBranch<?> branch) {
-		RupsThroughCreepingSectBranchNode rupsThroughCreep = branch.getValue(RupsThroughCreepingSectBranchNode.class);
-		return rupsThroughCreep != null && rupsThroughCreep.isExcludeRupturesThroughCreepingSect();
-	}
-	
 	public static boolean hasJumps(FaultSystemRupSet rupSet) {
 		for (ClusterRupture cRup : rupSet.requireModule(ClusterRuptures.class))
 			if (cRup.getTotalNumJumps() > 0)
@@ -771,7 +762,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		Preconditions.checkState(seisRegions.size() >= 1);
 		GriddedRegion modelGridReg = getGriddedSeisRegion(seisRegions);
 		if (seisRegions.size() == 1) {
-			Region seisRegion = seisRegions.get(0).load();
+//			Region seisRegion = seisRegions.get(0).load();
 //			if (seisRegion.equalsRegion(modelReg)) {
 				// simple case, model and seismicity region are the same
 				// now always the case
@@ -1709,6 +1700,54 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 		public ForceNoGhostTransient() {
 			NSHM23_DeformationModels.GEODETIC_INCLUDE_GHOST_TRANSIENT = false;
+		}
+		
+	}
+	
+	public static class RemoveIsolatedFaults extends NSHM23_InvConfigFactory {
+
+		@Override
+		protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
+			FaultSystemRupSet fullRupSet = super.buildGenericRupSet(branch, threads);
+			
+			List<ConnectivityCluster> clusters = ConnectivityCluster.build(fullRupSet);
+			
+			HashSet<Integer> retained = new HashSet<>();
+			for (ConnectivityCluster cluster : clusters)
+				if (cluster.getParentSectIDs().size() > 1)
+					retained.addAll(cluster.getSectIDs());
+			
+			System.out.println("Retaining "+retained.size()+"/"+fullRupSet.getNumSections()+" subsections");
+			
+			return fullRupSet.getForSectionSubSet(retained);
+		}
+		
+		@Override
+		public FaultSystemRupSet updateRuptureSetForBranch(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch)
+				throws IOException {
+			// need to keep the subsections list from the previous
+			List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+			
+			ClusterRuptures cRups = rupSet.getModule(ClusterRuptures.class);
+			
+			PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
+			RupSetScalingRelationship scale = branch.requireValue(RupSetScalingRelationship.class);
+			
+			if (cRups == null) {
+				rupSet = FaultSystemRupSet.builder(subSects, rupSet.getSectionIndicesForAllRups())
+						.forScalingRelationship(scale).build();
+				if (plausibility != null)
+					rupSet.addModule(plausibility);
+				rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
+			} else {
+				rupSet = ClusterRuptureBuilder.buildClusterRupSet(scale, subSects, plausibility, cRups.getAll());
+			}
+			
+			SlipAlongRuptureModelBranchNode slipAlong = branch.requireValue(SlipAlongRuptureModelBranchNode.class);
+			rupSet.addModule(slipAlong.getModel());
+			
+			// add other modules
+			return getSolutionLogicTreeProcessor().processRupSet(rupSet, branch);
 		}
 		
 	}
