@@ -179,12 +179,8 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 	
 	@Override
 	public String getBoundName() {
-		if (boundName == null) {
-			UncertaintyBoundType type = getBoundType();
-			if (type == null)
-				return "Bounds";
-			return type.toString();
-		}
+		if (boundName == null)
+			getDefaultBoundName();
 		return boundName;
 	}
 

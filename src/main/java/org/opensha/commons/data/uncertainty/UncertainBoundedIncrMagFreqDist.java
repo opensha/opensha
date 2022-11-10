@@ -87,12 +87,8 @@ public class UncertainBoundedIncrMagFreqDist extends UncertainIncrMagFreqDist im
 	
 	@Override
 	public String getBoundName() {
-		if (boundName == null) {
-			UncertaintyBoundType type = getBoundType();
-			if (type == null)
-				return "Bounds";
-			return type.toString();
-		}
+		if (boundName == null)
+			return getDefaultBoundName();
 		return boundName;
 	}
 

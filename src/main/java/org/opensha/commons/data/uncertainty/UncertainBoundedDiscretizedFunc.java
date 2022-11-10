@@ -14,6 +14,13 @@ public interface UncertainBoundedDiscretizedFunc extends UncertainDiscretizedFun
 	void setBoundName(String boundName);
 	
 	String getBoundName();
+	
+	default String getDefaultBoundName() {
+		UncertaintyBoundType type = getBoundType();
+		if (type == null)
+			return "Bounds";
+		return type.toString();
+	}
 
 	default Range getYRange(int index) {
 		return new Range(getLowerY(index), getUpperY(index));
