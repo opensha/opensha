@@ -5,6 +5,7 @@ Fault model GeoJSON taken from: https://www.sciencebase.gov/catalog/item/6127b5d
 Manual updates since v2 release:
 
 * Updated dip of various Wasatch fault dips, see e-mail "Re: Consensus on revised Salt Lake City segment dip" on 10/30/2022
+* Updated lower depth of West Valley fault do 5 km on 11/10/2022 after geology review meeting
 
 Special Faults file (special_faults.json) consists of:
 
