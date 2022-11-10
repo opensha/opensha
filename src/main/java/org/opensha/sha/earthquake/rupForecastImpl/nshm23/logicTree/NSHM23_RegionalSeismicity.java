@@ -42,12 +42,12 @@ import com.google.common.base.Preconditions;
 @Affects(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
 @Affects(GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
 public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
-	PREFFERRED("Preffered Seismicity Rate", "PrefSeis", 0.8d) {
+	PREFFERRED("Preffered Seismicity Rate", "PrefSeis", 0.74d) {
 		@Override
 		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			switch (region) {
 			case CONUS_WEST:
-				return gr(refMFD, mMax, 10.6, 0.84);
+				return gr(refMFD, mMax, 12, 0.84);
 			case CONUS_EAST:
 				return gr(refMFD, mMax, 0.433, 0.94);
 
@@ -56,28 +56,28 @@ public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
 			}
 		}
 	},
-	LOW("Lower Seismicity Bound (p16)", "LowSeis", 0.2d) {
+	LOW("Lower Seismicity Bound (p2.5)", "LowSeis", 0.13d) {
 		@Override
 		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			switch (region) {
 			case CONUS_WEST:
-				return adjustForCrossover(gr(refMFD, mMax, 10.3, 0.848), true, region, mMax);
+				return adjustForCrossover(gr(refMFD, mMax, 11.3, 0.88), true, region, mMax);
 			case CONUS_EAST:
-				return adjustForCrossover(gr(refMFD, mMax, 0.403, 0.96), true, region, mMax);
+				return adjustForCrossover(gr(refMFD, mMax, 0.374, 0.98), true, region, mMax);
 
 			default:
 				return null;
 			}
 		}
 	},
-	HIGH("Upper Seismicity Bound (p84)", "HighSeis", 0.2d) {
+	HIGH("Upper Seismicity Bound (p97.5)", "HighSeis", 0.13d) {
 		@Override
 		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			switch (region) {
 			case CONUS_WEST:
-				return adjustForCrossover(gr(refMFD, mMax, 11.2, 0.832), false, region, mMax);
+				return adjustForCrossover(gr(refMFD, mMax, 13.2, 0.8), false, region, mMax);
 			case CONUS_EAST:
-				return adjustForCrossover(gr(refMFD, mMax, 0.472, 0.92), false, region, mMax);
+				return adjustForCrossover(gr(refMFD, mMax, 0.508, 0.9), false, region, mMax);
 
 			default:
 				return null;
@@ -118,7 +118,12 @@ public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
 		return gr;
 	}
 	
-	private static final UncertaintyBoundType BOUND_TYPE = UncertaintyBoundType.CONF_68;
+	/*
+	 * If changed, don't forget to update:
+	 * WEIGHTS ABOVE
+	 * High/Low labels ABOVE
+	 */
+	private static final UncertaintyBoundType BOUND_TYPE = UncertaintyBoundType.CONF_95;
 	
 	private String name;
 	private String shortName;
