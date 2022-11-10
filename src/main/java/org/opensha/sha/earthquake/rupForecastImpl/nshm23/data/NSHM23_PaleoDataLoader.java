@@ -79,7 +79,7 @@ public class NSHM23_PaleoDataLoader {
 	// ensure that mappings are within this distance in km
 	private static final String NSHM23_PALEO_RI_PATH_PREFIX = "/data/erf/nshm23/constraints/paleo_ri/";
 	private static final String CA_PALEO_PATH = NSHM23_PALEO_RI_PATH_PREFIX+"McPhillips_California_RIs_2022_07_13.csv";
-	private static final String WASATCH_PALEO_PATH = NSHM23_PALEO_RI_PATH_PREFIX+"wasatch_paleo_data_2022_08_04.csv";
+	private static final String WASATCH_PALEO_PATH = NSHM23_PALEO_RI_PATH_PREFIX+"wasatch_paleo_data_2022_11_10.csv";
 	
 	private static final String NSHM23_PALEO_SLIP_PATH_PREFIX = "/data/erf/nshm23/constraints/paleo_slip/";
 	private static final String U3_PALEO_SLIP_PATH_1 = NSHM23_PALEO_SLIP_PATH_PREFIX+"Table_R5v4.csv";
@@ -212,19 +212,32 @@ public class NSHM23_PaleoDataLoader {
 	
 	public static List<SectMappedUncertainDataConstraint> loadWasatchPaleoRateData(List<? extends FaultSection> subSects)
 			throws IOException {
-		CSVFile<String> csv = CSVFile.readStream(NSHM23_PaleoDataLoader.class.getResourceAsStream(WASATCH_PALEO_PATH), true);
+		CSVFile<String> csv = CSVFile.readStream(NSHM23_PaleoDataLoader.class.getResourceAsStream(WASATCH_PALEO_PATH), false);
 		
 		List<SectMappedUncertainDataConstraint> ret = new ArrayList<>();
 		
+		final int siteNameCol = 0;
+		final int parentNameCol = 1;
+		final int parentIDCol = 2;
+		final int latCol = 4;
+		final int lonCol = latCol+1; 
+		final int rateCol = 15;
+		final int upperCol = rateCol+1; // listed as 2.5%, but it's from the 2.5% RI
+		final int lowerCol = upperCol+1;
+		final UncertaintyBoundType boundType = UncertaintyBoundType.CONF_95;
+		
 		for (int row=2; row<csv.getNumRows(); row++) {
-			int col = 0;
-			String name = csv.get(row, col++);
-			double lat = csv.getDouble(row, col++);
-			double lon = csv.getDouble(row, col++);
-			double rate = csv.getDouble(row, col++);
-			double stdDev = csv.getDouble(row, col++);
-			double lowerRate = csv.getDouble(row, col++);
-			double upperRate = csv.getDouble(row, col++);
+			int cols = csv.getLine(row).size();
+			if (cols <= upperCol+2 || csv.get(row, lowerCol).isBlank())
+				continue;
+			String name = csv.get(row, siteNameCol);
+			double lat = csv.getDouble(row, latCol);
+			double lon = csv.getDouble(row, lonCol);
+			double rate = csv.getDouble(row, rateCol);
+			double lowerRate = csv.getDouble(row, lowerCol);
+			double upperRate = csv.getDouble(row, upperCol);
+			
+			double stdDev = boundType.estimateStdDev(rate, lowerRate, upperRate);
 			
 			Location loc = new Location(lat, lon);
 			// now find mapping
@@ -236,10 +249,18 @@ public class NSHM23_PaleoDataLoader {
 				if (mappedSect == null) {
 					System.err.println("WARNING: no matching fault section found for paleo site "+name+" at "+lat+", "+lon);
 					continue;
+				} else {
+					int parentID = csv.getInt(row, parentIDCol);
+					if (parentID != mappedSect.getParentSectionId()) {
+						System.err.println("WARNING: mapping mismatch for "+name+"? CSV parentID="+parentID
+								+", csv parentName="+csv.get(row, parentNameCol)
+								+", mapped parentID="+mappedSect.getParentSectionId()
+								+", name="+mappedSect.getParentSectionName());
+					}
 				}
 			}
 			BoundedUncertainty uncert = new BoundedUncertainty(
-					UncertaintyBoundType.CONF_95, lowerRate, upperRate, stdDev);
+					boundType, lowerRate, upperRate, stdDev);
 			if (mappedSect == null)
 				ret.add(new SectMappedUncertainDataConstraint(name, -1, null, loc, rate, uncert));
 			else
@@ -359,20 +380,20 @@ public class NSHM23_PaleoDataLoader {
 		HashSet<FaultSection> mappedSects = new HashSet<>();
 		List<Location> siteLocs = new ArrayList<>();
 		
-		String prefix = "nshm23_ca_paleo_mappings";
-		String title = "NSHM23 CA Paleo RI Mappings";
-		List<SectMappedUncertainDataConstraint> datas = loadCAPaleoRateData(subSects);
-		Region reg = new CaliforniaRegions.RELM_TESTING();
+//		String prefix = "nshm23_ca_paleo_mappings";
+//		String title = "NSHM23 CA Paleo RI Mappings";
+//		List<SectMappedUncertainDataConstraint> datas = loadCAPaleoRateData(subSects);
+//		Region reg = new CaliforniaRegions.RELM_TESTING();
 		
 //		String prefix = "nshm23_ca_paleo_slip_mappings";
 //		String title = "NSHM23 CA Paleo Slip Mappings";
 //		List<SectMappedUncertainDataConstraint> datas = loadU3PaleoSlipData(subSects);
 //		Region reg = new CaliforniaRegions.RELM_TESTING();
 		
-//		String prefix = "nshm23_wasatch_paleo_mappings";
-//		String title = "NSHM23 Wasatch Paleo Mappings";
-//		List<SectMappedUncertainDataConstraint> datas = loadWasatchPaleoRateData(subSects);
-//		Region reg = new Region(new Location(42.5, -114.5), new Location(36.5, -108));
+		String prefix = "nshm23_wasatch_paleo_mappings";
+		String title = "NSHM23 Wasatch Paleo Mappings";
+		List<SectMappedUncertainDataConstraint> datas = loadWasatchPaleoRateData(subSects);
+		Region reg = new Region(new Location(42.5, -114.5), new Location(36.5, -108));
 		
 		System.out.println("Loaded "+datas.size()+" values");
 		for (SectMappedUncertainDataConstraint constraint : datas) {

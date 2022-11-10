@@ -19,9 +19,9 @@ Updates from the original file:
 
 ## Wasatch Paleo Data
 
-File name: wasatch_paleo_data_2022_08_04.csv
+File name: wasatch_paleo_data_2022_11_10.csv
 
-Wasatch paleo RI data, taken from the code used for Valentini et al. (2020). Site locations were digitized from relevant paper figures by Alex Hatem on 8/4/2022, delivered via e-mail (subject line "Wasatch Paleo Data"). Alex's notes:
+Data file provided by Chris Duross on 11/10/2022 (by e-mail, subject "Wasatch paleosites"). Here are his notes:
 
-"I used Figure 1 from Valentini et al as a guide, and matched numbered sites in that figure to the site index from Table 2. I digitized the figure axes and the site locations ('digitize2.m), and then snapped those lat, lons to the fault sections geometries (QGIS). The locations may be not precisely where the trench was excavated, but is in a more meaningful location than the mid point of each section (sorry for the detail - these notes are mostly to jog my own mind if and when the time comes!)"
+"See the attached spreadsheet, which has all the sites (including Bowden Canyon), with more accurate Lat/Longs provided. Note that I double checked the rates in this table, and they match those in Valentini et al. (2019) table 2. I added the parent sections to the table, but wasn't sure where to find the subsection indices (am happy to add those if needed)."
 
