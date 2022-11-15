@@ -219,7 +219,7 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		return null;
 	}
 
-	public Color getNaNColor() {
+	public Color getNanColor() {
 		return nanColor;
 	}
 
@@ -703,7 +703,7 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		cpt.setBelowMinColor(getBelowMinColor());
 		cpt.setAboveMaxColor(getAboveMaxColor());
 		cpt.setGapColor(getGapColor());
-		cpt.setNanColor(getNaNColor());
+		cpt.setNanColor(getNanColor());
 		cpt.setBlender(getBlender());
 		
 		for (CPTVal val : this)
