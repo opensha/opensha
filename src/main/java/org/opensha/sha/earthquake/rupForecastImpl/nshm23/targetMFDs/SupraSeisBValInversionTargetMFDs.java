@@ -505,7 +505,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				int numZeroRups = rupsOnZeroRateSects.cardinality();
 				if (numZeroRups > 0) {
 					// we have some
-					System.out.println("Will skip "+numZeroRups+" on "+numZeroSects+" zero-rate sections");
+					System.out.println("Will skip "+numZeroRups+" ruptures on "+numZeroSects+" zero-rate sections");
 				} else {
 					rupsOnZeroRateSects = null;
 					highDMRupsOnZeroRateSects = null;
