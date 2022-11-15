@@ -233,6 +233,11 @@ public class SolHazardMapCalc {
 		}
 	}
 	
+	public DiscretizedFunc getXVals(double period) {
+		checkInitXVals();
+		return xVals[periodIndex(period)];
+	}
+	
 	private int periodIndex(double period) {
 		for (int p=0; p<periods.length; p++)
 			if ((float)period == (float)periods[p])
