@@ -37,7 +37,10 @@ import javax.imageio.ImageIO;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Options;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
+import org.apache.commons.math3.util.MathArrays;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.ChartRenderingInfo;
 import org.jfree.chart.title.PaintScaleLegend;
@@ -350,6 +353,9 @@ public class LogicTreeHazardCompare {
 ////		File outputDir = new File(mainDir, "hazard_maps_comp_coulomb");
 //		LogicTreeNode[] compSubsetNodes = null;
 		
+		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, LogicTreeHazardCompare.class);
+		args = cmd.getArgs();
+		
 		File resultsFile, hazardFile;
 		File compResultsFile, compHazardFile;
 		
@@ -415,6 +421,8 @@ public class LogicTreeHazardCompare {
 			mapper = new LogicTreeHazardCompare(solTree, tree,
 					hazardFile, rps, periods, spacing);
 			
+			mapper.skipLogicTree = cmd.hasOption("skip-logic-tree");
+			
 			if (compHazardFile != null) {
 				SolutionLogicTree compSolTree;
 				LogicTree<?> compTree;
@@ -441,17 +449,23 @@ public class LogicTreeHazardCompare {
 			e.printStackTrace();
 			exit = 1;
 		} finally {
-			if (mapper != null) {
-				mapper.exec.shutdown();
-				mapper.zip.close();
-			}
-			if (comp != null) {
-				comp.zip.close();
-				comp.exec.shutdown();
-			}
+			if (mapper != null)
+				mapper.close();
+			if (comp != null)
+				comp.close();
 		}
 		System.exit(exit);
 	}
+	
+	public static Options createOptions() {
+		Options ops = new Options();
+		
+		ops.addOption("slt", "skip-logic-tree", false,
+				"Flag to disable logic tree calculations and only focus on top level maps and comparisions.");
+		
+		return ops;
+	}
+	
 	private ReturnPeriods[] rps;
 	private double[] periods;
 	
@@ -474,7 +488,12 @@ public class LogicTreeHazardCompare {
 	private ExecutorService exec;
 	private List<Future<?>> futures;
 	
+	private GriddedRegion forceRemapRegion;
+	
 	private SolutionLogicTree solLogicTree;
+	
+	// command line options
+	private boolean skipLogicTree = false;
 
 	public LogicTreeHazardCompare(SolutionLogicTree solLogicTree, File mapsZipFile,
 			ReturnPeriods[] rps, double[] periods, double spacing) throws IOException {
@@ -555,7 +574,11 @@ public class LogicTreeHazardCompare {
 		System.out.println(branches.size()+" branches, total weight: "+totWeight);
 	}
 	
-	private GriddedGeoDataSet[] loadMaps(ReturnPeriods rp, double period) throws IOException {
+	public SolHazardMapCalc getMapper() {
+		return mapper;
+	}
+	
+	public synchronized GriddedGeoDataSet[] loadMaps(ReturnPeriods rp, double period) throws IOException {
 		System.out.println("Loading maps for rp="+rp+", period="+period);
 		GriddedGeoDataSet[] rpPerMaps = new GriddedGeoDataSet[branches.size()];
 		int printMod = 10;
@@ -599,7 +622,7 @@ public class LogicTreeHazardCompare {
 					line = bRead.readLine();
 				}
 				Preconditions.checkState(index == gridReg.getNodeCount());
-				rpPerMaps[0] = xyz;
+				rpPerMaps[0] = checkRemap(xyz);
 			} else {
 				FaultSystemSolution sol = null;
 				if (mapper == null)
@@ -662,8 +685,9 @@ public class LogicTreeHazardCompare {
 					
 					@Override
 					public void run() {
+						String entryName = dirName+"/"+MPJ_LogicTreeHazardCalc.mapPrefix(period, rp)+".txt";
 						try {
-							ZipEntry entry = zip.getEntry(dirName+"/"+MPJ_LogicTreeHazardCalc.mapPrefix(period, rp)+".txt");
+							ZipEntry entry = zip.getEntry(entryName);
 							
 							GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
 							BufferedReader bRead = new BufferedReader(new InputStreamReader(zip.getInputStream(entry)));
@@ -683,8 +707,10 @@ public class LogicTreeHazardCompare {
 								line = bRead.readLine();
 							}
 							Preconditions.checkState(index == gridReg.getNodeCount());
-							rpPerMaps[mapIndex] = xyz;
+							rpPerMaps[mapIndex] = checkRemap(xyz);
 						} catch (Exception e) {
+							System.err.println("Exception loading: "+entryName);
+							System.err.flush();
 							throw ExceptionUtils.asRuntimeException(e);
 						}
 					}
@@ -704,7 +730,33 @@ public class LogicTreeHazardCompare {
 		return rpPerMaps;
 	}
 	
-	private GriddedGeoDataSet buildMean(GriddedGeoDataSet[] maps) {
+	public void setRemapToRegion(GriddedRegion gridReg) {
+		this.forceRemapRegion = gridReg;
+	}
+	
+	private GriddedGeoDataSet checkRemap(GriddedGeoDataSet xyz) {
+		if (forceRemapRegion != null) {
+			int origCount = gridReg.getNodeCount();
+			int newCount = forceRemapRegion.getNodeCount();
+			int testIndex = origCount / 3;
+			if (origCount != newCount || !LocationUtils.areSimilar(
+					gridReg.getLocation(testIndex), forceRemapRegion.getLocation(testIndex))) {
+				// need to remap it
+				GriddedGeoDataSet remapped = new GriddedGeoDataSet(forceRemapRegion, false);
+				for (int i=0; i<newCount; i++) {
+					int origIndex = gridReg.indexForLocation(remapped.getLocation(i));
+					if (origIndex >= 0)
+						remapped.set(i, xyz.get(origIndex));
+					else
+						remapped.set(i, 0d);
+				}
+				xyz = remapped;
+			}
+		}
+		return xyz;
+	}
+	
+	public GriddedGeoDataSet buildMean(GriddedGeoDataSet[] maps) {
 		GriddedGeoDataSet avg = new GriddedGeoDataSet(maps[0].getRegion(), false);
 		
 		for (int i=0; i<avg.size(); i++) {
@@ -718,7 +770,7 @@ public class LogicTreeHazardCompare {
 		return avg;
 	}
 	
-	private GriddedGeoDataSet buildMean(List<GriddedGeoDataSet> maps, List<Double> weights) {
+	public GriddedGeoDataSet buildMean(List<GriddedGeoDataSet> maps, List<Double> weights) {
 		GriddedGeoDataSet avg = new GriddedGeoDataSet(maps.get(0).getRegion(), false);
 		
 		double totWeight = 0d;
@@ -887,6 +939,7 @@ public class LogicTreeHazardCompare {
 	
 	private static LightFixedXFunc calcNormCDF(List<GriddedGeoDataSet> maps, List<Double> weights,
 			int gridIndex, double totWeight) {
+		Preconditions.checkState(totWeight > 0d, "Bad total weight=%s", totWeight);
 		// could use ArbDiscrEmpiricalDistFunc, but this version is 25-50% faster
 		ValWeights[] valWeights = new ValWeights[maps.size()];
 		for (int j=0; j<valWeights.length; j++)
@@ -921,7 +974,9 @@ public class LogicTreeHazardCompare {
 			sum += yVals[j];
 			yVals[j] = sum/totWeight;
 			if (j > 0)
-				Preconditions.checkState(xVals[j] > xVals[j-1]);
+				Preconditions.checkState(xVals[j] > xVals[j-1],
+						"Normm CDF not monotomoically increasing. x[%s]=%s, x[%s]=%s",
+						j-1, xVals[j-1], j, xVals[j]);
 		}
 
 		return new LightFixedXFunc(xVals, yVals);
@@ -1005,7 +1060,7 @@ public class LogicTreeHazardCompare {
 			GriddedGeoDataSet meanMap, GriddedRegion gridReg) {
 		GriddedGeoDataSet ret = new GriddedGeoDataSet(gridReg, false);
 		
-		double[] weightsArray = Doubles.toArray(weights);
+		double[] weightsArray = MathArrays.normalizeArray(Doubles.toArray(weights), weights.size());
 
 		Stopwatch watch = Stopwatch.createStarted();
 		if (maps.length < 500 || ret.size() < 100) {
@@ -1052,6 +1107,7 @@ public class LogicTreeHazardCompare {
 				cellVals[j] = maps[j].get(gridIndex);
 			double stdDev = Math.sqrt(var.evaluate(cellVals, weights));
 			val = stdDev/mean;
+//			System.out.println("COV = "+(float)stdDev+" / "+(float)mean+" = "+(float)val);
 		}
 		return val;
 	}
@@ -1189,6 +1245,7 @@ public class LogicTreeHazardCompare {
 				GriddedGeoDataSet ccov = null;
 				
 				if (comp != null) {
+					comp.setRemapToRegion(region);
 					System.out.println("Loading comparison");
 					GriddedGeoDataSet[] cmaps = comp.loadMaps(rp, period);
 					Preconditions.checkNotNull(cmaps);
@@ -1240,6 +1297,10 @@ public class LogicTreeHazardCompare {
 					table.finalizeLine();
 					lines.addAll(table.build());
 					lines.add("");
+					
+					if (branches.size() == 1)
+						// don't bother with percentiles and such
+						continue;
 				} else {
 					lines.add("### Mean hazard maps and comparisons, "+label);
 					lines.add(topLink); lines.add("");
@@ -1266,8 +1327,8 @@ public class LogicTreeHazardCompare {
 					lines.add("");
 					
 					table = MarkdownUtils.tableBuilder();
-					addDiffInclExtremesLines(mean, name, min, max, cmean, compName, prefix+"_mean", resourcesDir, table, "Mean", label, false);
-					addDiffInclExtremesLines(mean, name, min, max, cmean, compName, prefix+"_mean", resourcesDir, table, "Mean", label, true);
+					addDiffInclExtremesLines(mean, name, min, max, cmean, compName, prefix+"_mean", resourcesDir, table, "Mean", label, false, comp.gridReg);
+					addDiffInclExtremesLines(mean, name, min, max, cmean, compName, prefix+"_mean", resourcesDir, table, "Mean", label, true, comp.gridReg);
 					
 					lines.add("The following plots compare mean hazard between _"+name+"_ and a comparison model, _"
 							+ compName+"_. The top row gives hazard ratios, expressed as % change, and the bottom row "
@@ -1306,8 +1367,8 @@ public class LogicTreeHazardCompare {
 					
 					table = MarkdownUtils.tableBuilder();
 					
-					addDiffInclExtremesLines(median, name, min, max, cmedian, compName, prefix+"_median", resourcesDir, table, "Median", label, false);
-					addDiffInclExtremesLines(median, name, min, max, cmedian, compName, prefix+"_median", resourcesDir, table, "Median", label, true);
+					addDiffInclExtremesLines(median, name, min, max, cmedian, compName, prefix+"_median", resourcesDir, table, "Median", label, false, comp.gridReg);
+					addDiffInclExtremesLines(median, name, min, max, cmedian, compName, prefix+"_median", resourcesDir, table, "Median", label, true, comp.gridReg);
 					
 					lines.add("");
 					lines.add("This section is the same as above, but using median hazard maps rather than mean.");
@@ -1315,12 +1376,26 @@ public class LogicTreeHazardCompare {
 					lines.addAll(table.build());
 					lines.add("");
 					
+					if (branches.size() == 1)
+						// don't bother with percentiles and such
+						continue;
+					
 					table = MarkdownUtils.tableBuilder();
 					
 					table.addLine(MarkdownUtils.boldCentered("Comparison Mean Percentile"),
 							MarkdownUtils.boldCentered("Comparison Median Percentile"));
 					GriddedGeoDataSet cMeanPercentile = calcPercentileWithinDist(mapNCDFs, cmean);
 					GriddedGeoDataSet cMedianPercentile = calcPercentileWithinDist(mapNCDFs, cmedian);
+					if (comp.gridReg.getNodeCount() < gridReg.getNodeCount()) {
+						// see if we should shrink them to comparison
+						GriddedGeoDataSet remappedMeanPercentile = new GriddedGeoDataSet(comp.gridReg, false);
+						if (checkShrinkToComparison(cMeanPercentile, remappedMeanPercentile)) {
+							GriddedGeoDataSet remappedMedianPercentile = new GriddedGeoDataSet(comp.gridReg, false);
+							Preconditions.checkState(checkShrinkToComparison(cMedianPercentile, remappedMedianPercentile));
+							cMeanPercentile = remappedMeanPercentile;
+							cMedianPercentile = remappedMedianPercentile;
+						}
+					}
 					table.initNewLine();
 					File map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_mean_percentile", cMeanPercentile,
 							percentileCPT, TITLES ? name+" vs "+compName : " ", "Comparison Mean %-ile, "+label);
@@ -1413,13 +1488,13 @@ public class LogicTreeHazardCompare {
 					table = MarkdownUtils.tableBuilder();
 					// comparison
 					addMapCompDiffLines(min, name, cmin, compName, prefix+"_min", resourcesDir, table,
-							"Minimum", "Minimum "+label, logCPT, false, pDiffCPT);
+							"Minimum", "Minimum "+label, logCPT, false, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(max, name, cmax, compName, prefix+"_max", resourcesDir, table,
-							"Maximum", "Maximum"+label, logCPT, false, pDiffCPT);
+							"Maximum", "Maximum"+label, logCPT, false, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(spread, name, cspread, compName, prefix+"_spread", resourcesDir, table,
-							"Log10 (Max/Min)", "Log10 (Max/Min) "+label, spreadCPT, true, spreadDiffCPT);
+							"Log10 (Max/Min)", "Log10 (Max/Min) "+label, spreadCPT, true, spreadDiffCPT, comp.gridReg);
 					addMapCompDiffLines(cov, name, ccov, compName, prefix+"_cov", resourcesDir, table,
-							"COV", label+", COV", covCPT, true, covDiffCPT);
+							"COV", label+", COV", covCPT, true, covDiffCPT, comp.gridReg);
 					
 					lines.add("");
 					lines.add(minMaxStr+" Each of those quantities is plotted separately for the primary and comparison "
@@ -1428,6 +1503,9 @@ public class LogicTreeHazardCompare {
 					lines.addAll(table.build());
 					lines.add("");
 				}
+				
+				if (skipLogicTree)
+					continue;
 				
 				lines.add("### "+label+" Logic Tree Comparisons");
 				lines.add(topLink); lines.add("");
@@ -1788,11 +1866,14 @@ public class LogicTreeHazardCompare {
 	
 	private void addDiffInclExtremesLines(GriddedGeoDataSet primary, String name, GriddedGeoDataSet min,
 			GriddedGeoDataSet max, GriddedGeoDataSet comparison, String compName, String prefix, File resourcesDir,
-			TableBuilder table, String type, String label, boolean difference) throws IOException {
+			TableBuilder table, String type, String label, boolean difference, GriddedRegion compReg) throws IOException {
 		
 		String diffLabel, diffPrefix;
 		CPT cpt;
 		GriddedGeoDataSet diff, diffFromRange;
+		boolean minEqualMax = true;
+		for (int i=0; minEqualMax && i<min.size(); i++)
+			minEqualMax = (float)min.get(i) == (float)max.get(i);
 		if (difference) {
 			diffLabel = "Difference";
 			diffPrefix = "diff";
@@ -1825,22 +1906,56 @@ public class LogicTreeHazardCompare {
 		table.addLine(MarkdownUtils.boldCentered(type+" "+diffLabel),
 				MarkdownUtils.boldCentered("Comparison "+type+" "+diffLabel+" From Extremes"));
 		
+		// now see if we should shrink the region for plotting
+		int compRegCount = compReg.getNodeCount();
+		if (compRegCount < primary.size()) {
+			GriddedGeoDataSet remappedDiff = new GriddedGeoDataSet(compReg, false);
+			if (checkShrinkToComparison(diff, remappedDiff)) {
+				// the comparison was for a subset of this region, shrink down the plot to the common area
+				GriddedGeoDataSet remappedRangeDiff = new GriddedGeoDataSet(compReg, false);
+				Preconditions.checkState(checkShrinkToComparison(diffFromRange, remappedRangeDiff));
+				diff = remappedDiff;
+				diffFromRange = remappedRangeDiff;
+			}
+		}
+		
 		table.initNewLine();
 		
 		String op = difference ? "-" : "/";
 		
 		File map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_"+diffPrefix, diff, cpt, TITLES ? name+" vs "+compName : " ",
-				(TITLES ? "Primary "+op+" Comparison, " : "")+diffLabel+", "+label, true);
+				(TITLES ? "Primary "+op+" Comparison, " : "")+diffLabel+", "+label, !difference);
 		table.addColumn("![Difference Map]("+resourcesDir.getName()+"/"+map.getName()+")");
-		map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_"+diffPrefix+"_range", diffFromRange, cpt.reverse(), TITLES ? name+" vs "+compName : " ",
-				"Comparison "+op+" Extremes, "+diffLabel+", "+label, true);
-		table.addColumn("![Range Difference Map]("+resourcesDir.getName()+"/"+map.getName()+")");
+		if (minEqualMax) {
+			table.addColumn("_(N/A)_");
+		} else {
+			map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_"+diffPrefix+"_range", diffFromRange, cpt.reverse(), TITLES ? name+" vs "+compName : " ",
+					"Comparison "+op+" Extremes, "+diffLabel+", "+label, !difference);
+			table.addColumn("![Range Difference Map]("+resourcesDir.getName()+"/"+map.getName()+")");
+		}
 		table.finalizeLine();
+	}
+	
+	private boolean checkShrinkToComparison(GriddedGeoDataSet orig, GriddedGeoDataSet remapped) {
+		GriddedRegion origReg = orig.getRegion();
+		GriddedRegion compReg = remapped.getRegion();
+		int compRegCount = compReg.getNodeCount();
+		if (compRegCount >= origReg.getNodeCount())
+			return false;
+		for (int i=0; i<compRegCount; i++) {
+			int index = origReg.indexForLocation(compReg.getLocation(i));
+			if (index >= 0) {
+				remapped.set(i, orig.get(index));
+			} else {
+				return false;
+			}
+		}
+		return true;
 	}
 	
 	private void addMapCompDiffLines(GriddedGeoDataSet primary, String name, GriddedGeoDataSet comparison,
 			String compName, String prefix, File resourcesDir, TableBuilder table, String type, String label,
-			CPT cpt, boolean difference, CPT diffCPT) throws IOException {
+			CPT cpt, boolean difference, CPT diffCPT, GriddedRegion compReg) throws IOException {
 
 		GriddedGeoDataSet diff;
 		String diffLabel;
@@ -1864,6 +1979,14 @@ public class LogicTreeHazardCompare {
 		table.addColumn("!["+type+"]("+resourcesDir.getName()+"/"+map.getName()+")");
 		map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp", comparison, cpt, compName, (difference ? "" : "Log10 ")+label);
 		table.addColumn("!["+type+"]("+resourcesDir.getName()+"/"+map.getName()+")");
+		
+		if (compReg != null && compReg.getNodeCount() < primary.getRegion().getNodeCount()) {
+			// see if we should shrink it to comparison
+			GriddedGeoDataSet remappedDiff = new GriddedGeoDataSet(compReg, false);
+			if (checkShrinkToComparison(diff, remappedDiff))
+				diff = remappedDiff;
+		}
+		
 		map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_pDiff", diff, diffCPT, name+" vs "+compName, diffLabel, !difference);
 		table.addColumn("![Difference Map]("+resourcesDir.getName()+"/"+map.getName()+")");
 		table.finalizeLine();
@@ -2138,6 +2261,11 @@ public class LogicTreeHazardCompare {
 		label.setSize(width, height);
 		panel.add(label);
 		label.setLocation(xTop, yTop);
+	}
+	
+	public void close() throws IOException {
+		zip.close();
+		exec.shutdown();
 	}
 
 }
