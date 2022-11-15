@@ -1719,7 +1719,9 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			
 			System.out.println("Retaining "+retained.size()+"/"+fullRupSet.getNumSections()+" subsections");
 			
-			return fullRupSet.getForSectionSubSet(retained);
+			FaultSystemRupSet ret = fullRupSet.getForSectionSubSet(retained);
+			ret.addModule(fullRupSet.getModule(PlausibilityConfiguration.class));
+			return ret;
 		}
 		
 		@Override
@@ -1748,6 +1750,55 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			
 			// add other modules
 			return getSolutionLogicTreeProcessor().processRupSet(rupSet, branch);
+		}
+		
+	}
+	
+	public static class RemoveProxyFaults extends NSHM23_InvConfigFactory {
+
+		@Override
+		protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
+			FaultSystemRupSet fullRupSet = super.buildGenericRupSet(branch, threads);
+			
+			HashSet<Integer> retained = new HashSet<>();
+			List<FaultSection> excluded = new ArrayList<>();
+			
+			for (int s=0; s<fullRupSet.getNumSections(); s++) {
+				GeoJSONFaultSection sect = (GeoJSONFaultSection)fullRupSet.getFaultSectionData(s);
+				String proxy = sect.getProperty("Proxy", null);
+				if (proxy != null && proxy.equals("yes")) {
+					System.out.println("Skipping "+sect.getName()+" (proxy="+proxy+")");
+					excluded.add(sect);
+				} else {
+					retained.add(s);
+				}
+			}
+			
+			System.out.println("Retaining "+retained.size()+"/"+fullRupSet.getNumSections()+" subsections");
+			
+			FaultSystemRupSet ret = fullRupSet.getForSectionSubSet(retained, new BinaryRuptureProbabilityCalc() {
+				
+				@Override
+				public String getName() {
+					return "No proxy faults";
+				}
+				
+				@Override
+				public boolean isDirectional(boolean splayed) {
+					return false;
+				}
+				
+				@Override
+				public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
+					for (FaultSection sect : excluded)
+						if (fullRupture.contains(sect))
+							return false;
+					return true;
+				}
+			});
+			
+			ret.addModule(fullRupSet.getModule(PlausibilityConfiguration.class));
+			return ret;
 		}
 		
 	}
