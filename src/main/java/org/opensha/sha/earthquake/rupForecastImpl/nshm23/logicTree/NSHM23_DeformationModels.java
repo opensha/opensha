@@ -9,12 +9,11 @@ import java.io.Reader;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.jar.Attributes.Name;
+import java.util.function.Function;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
@@ -23,6 +22,7 @@ import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.FaultUtils.AngleAverager;
@@ -171,7 +171,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	 * if standard deviation is zero, default to this fraction of the slip rate. if DEFAULT_STD_DEV_USE_GEOLOGIC is
 	 * true, then this will only be used if the geologic slip rate standard deviation is also zero 
 	 */
-	private static final double DEFAULT_FRACT_SLIP_STD_DEV = 0.5;
+	private static final double DEFAULT_FRACT_SLIP_STD_DEV = 0.1;
 	/**
 	 * minimum allowed slip rate standart deviation, in mm/yr
 	 */
@@ -527,48 +527,53 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	 */
 	private List<? extends FaultSection> applyStdDevDefaults(RupSetFaultModel faultModel,
 			List<? extends FaultSection> subSects) throws IOException {
-		Map<Integer, GeoJSONFaultSection> geoSects = null; // may be needed if zeros are encountered
-		
 		System.out.println("Checking slip rate standard deviations for "+name());
 		
-		if (HARDCODED_FRACTIONAL_STD_DEV > 0d) {
-			System.out.println("Overriding deformation model slip rates std devs and using hardcoded fractional value: "
-					+HARDCODED_FRACTIONAL_STD_DEV);
-			
-			int numZeroSlips = 0;
-			int numFloor = 0;
-			
-			for (FaultSection sect : subSects) {
-				double slipRate = sect.getOrigAveSlipRate();
-				Preconditions.checkState(Double.isFinite(slipRate) && slipRate >= 0d, "Bad slip rate for %s. %s: %s",
-						sect.getSectionId(), sect.getSectionName(), slipRate);
-				double stdDev;
-				if ((float)slipRate == 0f) {
-					stdDev = STD_DEV_FLOOR;
-					numZeroSlips++;
-				} else {
-					stdDev = HARDCODED_FRACTIONAL_STD_DEV * slipRate;
-					if (stdDev < STD_DEV_FLOOR) {
-						stdDev = STD_DEV_FLOOR;
-						numFloor++;
+		Function<FaultSection, Double> fallbackStdDevFunc = null;
+		if (!isHardcodedFractionalStdDev() && DEFAULT_STD_DEV_USE_GEOLOGIC) {
+			fallbackStdDevFunc = new Function<FaultSection, Double>() {
+				
+				private Map<Integer, GeoJSONFaultSection> geoSects = null;
+				
+				@Override
+				public synchronized Double apply(FaultSection sect) {
+					// use geologic
+					if (geoSects == null) {
+						try {
+							geoSects = getGeolFullSects(faultModel);
+						} catch (IOException e) {
+							throw ExceptionUtils.asRuntimeException(e);
+						}
 					}
+					FaultSection geoSect = geoSects.get(sect.getParentSectionId());
+					Preconditions.checkNotNull(geoSect, "No geologic section found with parent=%s, name=%s",
+							sect.getParentSectionId(), sect.getParentSectionName());
+					return geoSect.getOrigSlipRateStdDev();
 				}
-				sect.setSlipRateStdDev(stdDev);
-			}
-			
-			if (numZeroSlips > 0)
-				System.err.println("WARNING: "+numZeroSlips+"/"+subSects.size()+" ("
-						+pDF.format((double)numZeroSlips/(double)subSects.size())+") subsection slip rates are 0");
-			if (numFloor > 0)
-				System.err.println("WARNING: Set "+numFloor+"/"+subSects.size()+" ("
-						+pDF.format((double)numFloor/(double)subSects.size())
-						+") subsection slip rate standard deviations to the floor value of "+(float)STD_DEV_FLOOR+" (mm/yr)");
-			
-			return subSects;
+			};
 		}
 		
+		applyStdDevDefaults(subSects, fallbackStdDevFunc, "Geologic");
+		
+		return subSects;
+	}
+	
+	public static boolean isHardcodedFractionalStdDev() {
+		return HARDCODED_FRACTIONAL_STD_DEV > 0d;
+	}
+	
+	public static void applyStdDevDefaults(List<? extends FaultSection> subSects) {
+		applyStdDevDefaults(subSects, null, null);
+	}
+	
+	public static void applyStdDevDefaults(List<? extends FaultSection> subSects,
+			Function<FaultSection, Double> fallbackStdDevFunc, String fallbackName) {
+		if (isHardcodedFractionalStdDev())
+			System.out.println("Overriding deformation model slip rates std devs and using hardcoded fractional value: "
+					+HARDCODED_FRACTIONAL_STD_DEV);
+		
 		int numZeroSlips = 0;
-		int numGeoDefault = 0;
+		int numFallback = 0;
 		int numFractDefault = 0;
 		int numFloor = 0;
 		
@@ -578,51 +583,53 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 					sect.getSectionId(), sect.getSectionName(), slipRate);
 			if ((float)slipRate == 0f)
 				numZeroSlips++;
-			double stdDev = sect.getOrigSlipRateStdDev();
-			if (!Double.isFinite(stdDev))
-				stdDev = 0d;
 			
-			if ((float)stdDev <= 0f) {
-				// no slip rate std dev specified
-				if (DEFAULT_STD_DEV_USE_GEOLOGIC) {
-					// use geologic
-					if (geoSects == null)
-						geoSects = getGeolFullSects(faultModel);
-					FaultSection geoSect = geoSects.get(sect.getParentSectionId());
-					Preconditions.checkNotNull(geoSect, "No geologic section found with parent=%s, name=%s",
-							sect.getParentSectionId(), sect.getParentSectionName());
-					double geoStdDev = geoSect.getOrigSlipRateStdDev();
-					if ((float)geoStdDev > 0f) {
-						// use the geologic value
-						stdDev = geoStdDev;
-						sect.setSlipRateStdDev(stdDev);
-						numGeoDefault++;
-					}
-				}
+			double stdDev;
+			if (isHardcodedFractionalStdDev()) {
+				stdDev = HARDCODED_FRACTIONAL_STD_DEV * slipRate;
+			} else {
+				// use value from the deformation model
+				stdDev = sect.getOrigSlipRateStdDev();
+				if (!Double.isFinite(stdDev))
+					stdDev = 0d;
+				
 				if ((float)stdDev <= 0f) {
-					// didn't use geologic (DEFAULT_STD_DEV_USE_GEOLOGIC == false, or no geologic value)
-					// set it to the given default fraction of the slip rate
-					stdDev = slipRate*DEFAULT_FRACT_SLIP_STD_DEV;
-					sect.setSlipRateStdDev(stdDev);
-					numFractDefault++;
+					// no slip rate std dev specified
+					
+					if (fallbackStdDevFunc != null) {
+						// use fallback provider
+						double fallback = fallbackStdDevFunc.apply(sect);
+						if ((float)fallback > 0f) {
+							stdDev = fallback;
+							numFallback++;
+						}
+					}
+					
+					if ((float)stdDev <= 0f) {
+						// didn't use fallback (DEFAULT_STD_DEV_USE_GEOLOGIC == false, or no geologic value)
+						// set it to the given default fraction of the slip rate
+						stdDev = slipRate*DEFAULT_FRACT_SLIP_STD_DEV;
+						numFractDefault++;
+					}
 				}
 			}
 			
 			// now apply any floor
 			if ((float)stdDev < (float)STD_DEV_FLOOR) {
 				stdDev = STD_DEV_FLOOR;
-				sect.setSlipRateStdDev(stdDev);
 				numFloor++;
 			}
+			
+			sect.setSlipRateStdDev(stdDev);
 		}
 
 		if (numZeroSlips > 0)
 			System.err.println("WARNING: "+numZeroSlips+"/"+subSects.size()+" ("
 					+pDF.format((double)numZeroSlips/(double)subSects.size())+") subsection slip rates are 0");
-		if (numGeoDefault > 0)
-			System.err.println("WARNING: Set "+numGeoDefault+"/"+subSects.size()+" ("
-					+pDF.format((double)numGeoDefault/(double)subSects.size())
-					+") subsection slip rate standard deviations to geologic values");
+		if (numFallback > 0)
+			System.err.println("WARNING: Set "+numFallback+"/"+subSects.size()+" ("
+					+pDF.format((double)numFallback/(double)subSects.size())
+					+") subsection slip rate standard deviations to fallback values ("+fallbackName+")");
 		if (numFractDefault > 0)
 			System.err.println("WARNING: Set "+numFractDefault+"/"+subSects.size()+" ("
 					+pDF.format((double)numFractDefault/(double)subSects.size())
@@ -632,8 +639,6 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			System.err.println("WARNING: Set "+numFloor+"/"+subSects.size()+" ("
 					+pDF.format((double)numFloor/(double)subSects.size())
 					+") subsection slip rate standard deviations to the floor value of "+(float)STD_DEV_FLOOR+" (mm/yr)");
-		
-		return subSects;
 	}
 	
 	private List<? extends FaultSection> applyCreepModel(MinisectionMappings mappings,
