@@ -396,7 +396,7 @@ public class RateDistributionPlot extends AbstractSolutionPlot {
 				double maxZ = xyz.getMaxZ();
 				CPT cpt = GMT_CPT_Files.BLACK_RED_YELLOW_UNIFORM.instance().reverse().rescale(0d, Math.ceil(maxZ));
 				cpt.setNanColor(new Color(255, 255, 255, 0));
-				cpt.setBelowMinColor(cpt.getNaNColor());
+				cpt.setBelowMinColor(cpt.getNanColor());
 				
 				XYZPlotSpec xyzSpec = new XYZPlotSpec(xyz, cpt, title, "Log10 "+spec.getXAxisLabel(),
 						"Log10 "+spec.getYAxisLabel(), "Log10 Count");

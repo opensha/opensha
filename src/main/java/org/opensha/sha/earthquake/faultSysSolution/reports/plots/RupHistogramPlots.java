@@ -379,7 +379,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 				double maxZ = xyz.getMaxZ();
 				CPT cpt = GMT_CPT_Files.BLACK_RED_YELLOW_UNIFORM.instance().reverse().rescale(0d, Math.ceil(maxZ));
 				cpt.setNanColor(new Color(255, 255, 255, 0));
-				cpt.setBelowMinColor(cpt.getNaNColor());
+				cpt.setBelowMinColor(cpt.getNanColor());
 				
 				// set all zero to NaN so that it will plot clear
 				for (int i=0; i<xyz.size(); i++) {
