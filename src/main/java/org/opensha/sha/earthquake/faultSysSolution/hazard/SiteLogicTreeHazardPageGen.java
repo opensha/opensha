@@ -15,7 +15,6 @@ import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -55,10 +54,9 @@ import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_SiteLogicTreeHazardCurveCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
-import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.ImmutableList;
+import com.google.common.base.Stopwatch;
 
 public class SiteLogicTreeHazardPageGen {
 
@@ -541,8 +539,15 @@ public class SiteLogicTreeHazardPageGen {
 				gp.drawGraphPanel(spec, true, true, xRange, yRange);
 				
 				try {
+					Stopwatch watch = Stopwatch.createStarted();
 					PlotUtils.writePlots(resourcesDir, prefix, gp, 1000, 800, true, true, false);
+					watch.stop();
+					double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+					if (secs > 10)
+						System.out.println("\t\tDONE "+prefix+".png in "+(float)secs+" s");
 				} catch (IOException e) {
+					e.printStackTrace();
+					System.exit(1);
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 			}
@@ -676,8 +681,15 @@ public class SiteLogicTreeHazardPageGen {
 				gp.drawGraphPanel(spec, true, true, xRange, yRange);
 				
 				try {
+					Stopwatch watch = Stopwatch.createStarted();
 					PlotUtils.writePlots(resourcesDir, prefix, gp, 1000, 800, true, nodeIndvCurves == null, false);
+					watch.stop();
+					double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+					if (secs > 10)
+						System.out.println("\t\tDONE "+prefix+".png in "+(float)secs+" s");
 				} catch (IOException e) {
+					e.printStackTrace();
+					System.exit(1);
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 			}
@@ -907,8 +919,15 @@ public class SiteLogicTreeHazardPageGen {
 				gp.drawGraphPanel(spec, false, false, xRange, yRange);
 				
 				try {
+					Stopwatch watch = Stopwatch.createStarted();
 					PlotUtils.writePlots(resourcesDir, prefix, gp, 800, 700, true, true, false);
+					watch.stop();
+					double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+					if (secs > 10)
+						System.out.println("\t\tDONE "+prefix+".png in "+(float)secs+" s");
 				} catch (IOException e) {
+					e.printStackTrace();
+					System.exit(1);
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 			}
@@ -917,7 +936,7 @@ public class SiteLogicTreeHazardPageGen {
 		return new File(resourcesDir, prefix+".png");
 	}
 	
-	private static List<Color> getNodeColors(int numNodes) throws IOException {
+	public static List<Color> getNodeColors(int numNodes) throws IOException {
 		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, Double.max(numNodes-1d, 1d));
 		List<Color> colors = new ArrayList<>();
 		for (int i=0; i<numNodes; i++)
