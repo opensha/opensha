@@ -7,8 +7,13 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -71,12 +76,15 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 			BufferedInputStream is = new BufferedInputStream(zip.getInputStream(gridRegEntry));
 			Feature gridRegFeature = Feature.read(new InputStreamReader(is));
 			gridReg = GriddedRegion.fromFeature(gridRegFeature);
+			zip.close();
 		} else {
 			Feature gridRegFeature = Feature.read(gridRegFile);
 			gridReg = GriddedRegion.fromFeature(gridRegFeature);
 		}
 		double gridSpacing = gridReg.getSpacing();
 		double[] periods = MPJ_LogicTreeHazardCalc.PERIODS_DEFAULT;
+		ReturnPeriods[] rps = ReturnPeriods.values();
+		
 		if (cnt < args.length) {
 			List<Double> periodsList = new ArrayList<>();
 			String periodsStr = args[cnt++];
@@ -127,6 +135,9 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 		File tmpOut = new File(hazardOutFile.getAbsolutePath()+".tmp");
 		ZipOutputStream hazardOutZip = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(tmpOut)));
 		
+		CompletableFuture<Void> writeFuture = null;
+		WriteCounter writeCounter = new WriteCounter();
+		
 		for (LogicTreeBranch<?> faultBranch : faultTree) {
 			System.out.println("Processing fault branch "+faultBranch);
 			File branchResultsDir = new File(faultHazardDir, faultBranch.buildFileName());
@@ -149,67 +160,139 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 				double gridWeight = gridTree.getBranchWeight(gridBranch);
 				double combWeight = faultWeight * gridWeight;
 				
-				System.out.println("Combined branch "+combinedBranches.size()+": "+combinedBranch);
-				System.out.println("\tCombined weight: "+(float)faultWeight+" x "+(float)gridWeight+" = "+(float)combWeight);
 				combinedBranch.setOrigBranchWeight(combWeight);
-				combinedBranches.add(combinedBranch);
 				
 				DiscretizedFunc[][] gridCurves = gridSeisCurves.get(g);
 				String combPrefix = combinedBranch.buildFileName();
 				
-				for (int p=0; p<periods.length; p++) {
-					Preconditions.checkState(faultCurves[p].length == gridCurves[p].length);
-					Preconditions.checkState(faultCurves[p].length == gridReg.getNodeCount());
-					DiscretizedFunc[] combCurves = new DiscretizedFunc[gridCurves[p].length];
-					for (int i=0; i<combCurves.length; i++) {
-						DiscretizedFunc faultCurve = faultCurves[p][i];
-						DiscretizedFunc gridCurve = gridCurves[p][i];
-						Preconditions.checkState(faultCurve.size() == gridCurve.size());
-						ArbitrarilyDiscretizedFunc combCurve = new ArbitrarilyDiscretizedFunc();
-						for (int j=0; j<faultCurve.size(); j++) {
-							double x = faultCurve.getX(j);
-							Preconditions.checkState((float)x == (float)gridCurve.getX(j));
-							double y1 = faultCurve.getY(j);
-							double y2 = gridCurve.getY(j);
-							double y;
-							if (y1 == 0)
-								y = y2;
-							else if (y2 == 0)
-								y = y1;
-							else
-								y = 1d - (1d - y1)*(1d - y2);
-							combCurve.set(x, y);
+				List<CompletableFuture<Void>> perCombCurves = new ArrayList<>();
+				List<CompletableFuture<SimpleEntry<String, GriddedGeoDataSet>>> combineFutures = new ArrayList<>();
+				
+				for (int p1=0; p1<periods.length; p1++) {
+					final int p = p1;
+					final double period = periods[p];
+					perCombCurves.add(CompletableFuture.runAsync(new Runnable() {
+
+						@Override
+						public void run() {
+							Preconditions.checkState(faultCurves[p].length == gridCurves[p].length);
+							Preconditions.checkState(faultCurves[p].length == gridReg.getNodeCount());
+							DiscretizedFunc[] combCurves = new DiscretizedFunc[gridCurves[p].length];
+							for (int i=0; i<combCurves.length; i++) {
+								DiscretizedFunc faultCurve = faultCurves[p][i];
+								DiscretizedFunc gridCurve = gridCurves[p][i];
+								Preconditions.checkState(faultCurve.size() == gridCurve.size());
+								ArbitrarilyDiscretizedFunc combCurve = new ArbitrarilyDiscretizedFunc();
+								for (int j=0; j<faultCurve.size(); j++) {
+									double x = faultCurve.getX(j);
+									Preconditions.checkState((float)x == (float)gridCurve.getX(j));
+									double y1 = faultCurve.getY(j);
+									double y2 = gridCurve.getY(j);
+									double y;
+									if (y1 == 0)
+										y = y2;
+									else if (y2 == 0)
+										y = y1;
+									else
+										y = 1d - (1d - y1)*(1d - y2);
+									combCurve.set(x, y);
+								}
+								combCurves[i] = combCurve;
+							}
+							for (ReturnPeriods rp : rps) {
+								double curveLevel = rp.oneYearProb;
+								String mapFileName = MPJ_LogicTreeHazardCalc.mapPrefix(period, rp)+".txt";
+								String entryName = combPrefix+"/"+mapFileName;
+								CompletableFuture<SimpleEntry<String, GriddedGeoDataSet>> combineFuture = CompletableFuture.supplyAsync(new Supplier<SimpleEntry<String, GriddedGeoDataSet>>() {
+
+									@Override
+									public SimpleEntry<String, GriddedGeoDataSet> get() {
+										GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
+										for (int i=0; i<xyz.size(); i++) {
+											DiscretizedFunc curve = combCurves[i];
+											double val;
+											// curveLevel is a probability, return the IML at that probability
+											if (curveLevel > curve.getMaxY())
+												val = 0d;
+											else if (curveLevel < curve.getMinY())
+												// saturated
+												val = curve.getMaxX();
+											else
+												val = curve.getFirstInterpolatedX_inLogXLogYDomain(curveLevel);
+											xyz.set(i, val);
+										}
+										// write map
+										return new SimpleEntry<>(entryName, xyz);
+									}
+								});
+								synchronized (combineFutures) {
+									combineFutures.add(combineFuture);
+								}
+							}
 						}
-						combCurves[i] = combCurve;
-					}
-					// build maps
-					for (ReturnPeriods rp : ReturnPeriods.values()) {
-						GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
-						double curveLevel = rp.oneYearProb;
-						for (int i=0; i<xyz.size(); i++) {
-							DiscretizedFunc curve = combCurves[i];
-							double val;
-							// curveLevel is a probability, return the IML at that probability
-							if (curveLevel > curve.getMaxY())
-								val = 0d;
-							else if (curveLevel < curve.getMinY())
-								// saturated
-								val = curve.getMaxX();
-							else
-								val = curve.getFirstInterpolatedX_inLogXLogYDomain(curveLevel);
-							xyz.set(i, val);
-						}
-						// write map
-						String mapFileName = MPJ_LogicTreeHazardCalc.mapPrefix(periods[p], rp)+".txt";
-						hazardOutZip.putNextEntry(new ZipEntry(combPrefix+"/"+mapFileName));
-						ArbDiscrGeoDataSet.writeXYZStream(xyz, hazardOutZip);
-						hazardOutZip.closeEntry();
-					}
+					}));
 				}
+				
+				for (CompletableFuture<Void> future : perCombCurves)
+					future.join();
+				
+				Map<String, GriddedGeoDataSet> writeMap = new HashMap<>();
+				
+				for (CompletableFuture<SimpleEntry<String, GriddedGeoDataSet>> combineFuture : combineFutures) {
+					SimpleEntry<String, GriddedGeoDataSet> entry = combineFuture.join();
+					Preconditions.checkState(writeMap.put(entry.getKey(), entry.getValue()) == null,
+							"Duplicate entry? %s", entry.getKey());
+				}
+				
+				if (writeFuture != null) 
+					writeFuture.join();
+				
+				// everything should have been written now
+				int writable = writeCounter.getWritable();
+				Preconditions.checkState(writable == 0, "Have %s writable maps after join? written=%s",
+						writable, writeCounter.getWritten());
+				
+				int expected = periods.length*rps.length;
+				Preconditions.checkState(writeMap.size() == expected,
+						"Expected $s writeable maps, have %s", expected, writeMap.size());
+				
+				writeCounter.incrementWritable(expected);
+				
+				System.out.println("Writing combined branch "+combinedBranches.size()+": "+combinedBranch);
+				System.out.println("\tCombined weight: "+(float)faultWeight+" x "+(float)gridWeight+" = "+(float)combWeight);
+				System.out.println("\tWriting "+writeCounter.getWritable()+" new maps, "+writeCounter.getWritten()+" written so far");
+				combinedBranches.add(combinedBranch);
+				
+				writeFuture = CompletableFuture.runAsync(new Runnable() {
+					
+					@Override
+					public void run() {
+						try {
+							synchronized (hazardOutZip) {
+								for (String entryName : writeMap.keySet()) {
+									GriddedGeoDataSet xyz = writeMap.get(entryName);
+									hazardOutZip.putNextEntry(new ZipEntry(entryName));
+									ArbDiscrGeoDataSet.writeXYZStream(xyz, hazardOutZip);
+									hazardOutZip.closeEntry();
+									writeCounter.incrementWritten();
+								}
+							}
+						} catch (Exception e) {
+							e.printStackTrace();
+							System.exit(1);
+						}
+					}
+				});
+				
 			}
 		}
 		
-		hazardOutZip.putNextEntry(new ZipEntry("gridded_region.geojson"));
+		if (writeFuture != null)
+			writeFuture.join();
+		
+		System.out.println("Wrote "+writeCounter.getWritten()+" maps in total");
+		
+		hazardOutZip.putNextEntry(new ZipEntry(MPJ_LogicTreeHazardCalc.GRID_REGION_ENTRY_NAME));
 		Feature gridFeature = gridReg.toFeature();
 		Feature.write(gridFeature, new OutputStreamWriter(hazardOutZip));
 		hazardOutZip.closeEntry();
@@ -265,6 +348,32 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 			curves[p] = SolHazardMapCalc.loadCurvesCSV(csv, null);
 		}
 		return curves;
+	}
+	
+	private static class WriteCounter {
+		private int writable = 0;
+		private int written = 0;
+		
+		public synchronized void incrementWritable(int num) {
+			writable += num;
+		}
+		
+		public synchronized void incrementWritable() {
+			writable++;
+		}
+		
+		public synchronized void incrementWritten() {
+			written++;
+			writable--;
+		}
+		
+		public synchronized int getWritable() {
+			return writable;
+		}
+		
+		public synchronized int getWritten() {
+			return written;
+		}
 	}
 
 }
