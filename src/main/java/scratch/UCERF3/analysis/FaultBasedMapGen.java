@@ -1048,7 +1048,7 @@ public class FaultBasedMapGen {
 		addStyleEl(docEl, cpt.getBelowMinColor(), lineWidth, "CPT_BELOW_MIN");
 		addStyleEl(docEl, cpt.getAboveMaxColor(), lineWidth, "CPT_ABOVE_MAX");
 		if (!skipNans)
-			addStyleEl(docEl, cpt.getNaNColor(), lineWidth, "CPT_NAN");
+			addStyleEl(docEl, cpt.getNanColor(), lineWidth, "CPT_NAN");
 		
 		// add lines
 		Element folderEl = docEl.addElement("Folder");
