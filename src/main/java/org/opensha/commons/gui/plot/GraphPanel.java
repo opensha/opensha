@@ -59,6 +59,7 @@ import org.jfree.chart.title.LegendTitle;
 import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.chart.title.Title;
 import org.jfree.data.Range;
+import org.jfree.data.xy.XYDataset;
 import org.jfree.chart.ui.RectangleAnchor;
 import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.chart.ui.RectangleInsets;
@@ -526,14 +527,47 @@ public class GraphPanel extends JSplitPane {
 		}
 
 		plot = null;
+		// XYPlot (and combined versions) use a really brute force dataset index lookup
+		// we're assigning dataset idexes manually below, cache them and return those cached values
+		HashMap<XYDataset, Integer> datasetIndexMap = new HashMap<>();
 		// build the plot
 		if (specs.size() == 1) {
-			plot = new XYPlot(null, xAxis, yAxis, null);
+			plot = new XYPlot(null, xAxis, yAxis, null) {
+
+				@Override
+				public int indexOf(XYDataset dataset) {
+					Integer ret = datasetIndexMap.get(dataset);
+					if (ret != null)
+						return ret;
+					return super.indexOf(dataset);
+				}
+				
+			};
 		} else if (combinedYAxis) {
-			plot = new CombinedRangeXYPlot(yAxis);
+			plot = new CombinedRangeXYPlot(yAxis) {
+
+				@Override
+				public int indexOf(XYDataset dataset) {
+					Integer ret = datasetIndexMap.get(dataset);
+					if (ret != null)
+						return ret;
+					return super.indexOf(dataset);
+				}
+				
+			};
 			((CombinedRangeXYPlot)plot).setGap(30);
 		} else {
-			plot = new CombinedDomainXYPlot(xAxis);
+			plot = new CombinedDomainXYPlot(xAxis) {
+
+				@Override
+				public int indexOf(XYDataset dataset) {
+					Integer ret = datasetIndexMap.get(dataset);
+					if (ret != null)
+						return ret;
+					return super.indexOf(dataset);
+				}
+				
+			};
 			((CombinedDomainXYPlot)plot).setGap(30);
 		}
 
@@ -625,6 +659,7 @@ public class GraphPanel extends JSplitPane {
 		        renderer.setPaintScale(scale);
 				subPlot.setRenderer(datasetIndex, renderer);
 				subPlot.setDataset(datasetIndex, dataset);
+				datasetIndexMap.put(dataset, datasetIndex);
 				datasetIndex++;
 				
 				if (xyzSpec.isCPTVisible()) {
@@ -739,6 +774,7 @@ public class GraphPanel extends JSplitPane {
 
 					//adding the dataset to the plot
 					subPlot.setDataset(datasetIndex, dataset);
+					datasetIndexMap.put(dataset, datasetIndex);
 
 					//based on plotting characteristics for each curve sending configuring plot object
 					//to be send to JFreechart for plotting.
