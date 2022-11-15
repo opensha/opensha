@@ -748,7 +748,8 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		}
 		
 		// wait for everyone to write them out
-		MPI.COMM_WORLD.Barrier();
+		if (!SINGLE_NODE_NO_MPJ)
+			MPI.COMM_WORLD.Barrier();
 		
 		if (rank == 0) {
 			// now merge them in
