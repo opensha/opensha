@@ -271,6 +271,40 @@ public class GeolocatedRectangularBinaryMesh2DCalculator extends
 		return new Location(lat, lon);
 	}
 	
+	public Location getLocationForFileIndex(long pos) {
+		long y = calcFileY(pos);
+		long x = calcFileX(pos);
+		double lat;
+		if (startBottom)
+			lat = minLat + y * gridSpacingY;
+		else
+			lat = maxLat - y * gridSpacingY;
+		double lon;
+		if (startLeft)
+			lon = minLon + x * gridSpacingX;
+		else
+			lon = maxLon - x * gridSpacingX;
+		
+		return new Location(lat, lon);
+	}
+	
+	public Location getLocationForMeshIndex(long index) {
+		long y = calcMeshY(index);
+		long x = calcMeshX(index);
+		double lat;
+		if (startBottom)
+			lat = minLat + y * gridSpacingY;
+		else
+			lat = maxLat - y * gridSpacingY;
+		double lon;
+		if (startLeft)
+			lon = minLon + x * gridSpacingX;
+		else
+			lon = maxLon - x * gridSpacingX;
+		
+		return new Location(lat, lon);
+	}
+	
 	public Location calcClosestLocation(Location loc) {
 		return calcClosestLocation(loc.getLatitude(), loc.getLongitude());
 	}
