@@ -171,7 +171,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	public static class FileBuilder extends Builder {
 		
 		private static final String DNAME = ClassUtils.getClassNameWithoutPackage(FileBuilder.class);
-		private static final boolean D = true;
+		private static final boolean D = false;
 
 		private SolutionProcessor processor;
 		private File outputFile;
