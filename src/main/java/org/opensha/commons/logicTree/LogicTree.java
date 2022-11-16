@@ -200,6 +200,31 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	}
 	
 	/**
+	 * @param values
+	 * @return a subset of this logic tree where no branch contains any of the given values
+	 */
+	@SafeVarargs
+	public final LogicTree<E> matchingNone(LogicTreeNode... values) {
+		ImmutableList.Builder<LogicTreeBranch<E>> matching = ImmutableList.builder();
+		for (LogicTreeBranch<E> branch : branches) {
+			boolean matches = false;
+			for (LogicTreeNode value : values) {
+				if (branch.hasValue(value)) {
+					matches = true;
+					break;
+				}
+			}
+			if (!matches)
+				matching.add(branch);
+		}
+		// do it this way to skip consistency checks
+		LogicTree<E> ret = new LogicTree<>(weightProvider);
+		ret.branches = matching.build();
+		ret.levels = levels;
+		return ret;
+	}
+	
+	/**
 	 * @param numSamples number of random samples
 	 * @param redrawDuplicates if true, each branch will be unique, redrawing a branch if an already sampled branch
 	 * has been selected, otherwise duplicate branches will be given additional weight and the returned branch count
