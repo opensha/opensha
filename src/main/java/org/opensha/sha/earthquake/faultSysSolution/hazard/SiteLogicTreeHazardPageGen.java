@@ -224,6 +224,7 @@ public class SiteLogicTreeHazardPageGen {
 				table.finalizeLine().initNewLine();
 				List<HistogramFunction> rpHists = new ArrayList<>();
 				List<Double> rpMeans = new ArrayList<>();
+				List<Double> rpCompMeans = compCurves == null ? null : new ArrayList<>();
 				List<List<Double>> rpBranchValsList = new ArrayList<>();
 				List<List<Double>> rpCompBranchValsList = compCurves == null ? null : new ArrayList<>();
 				for (ReturnPeriods rp : rps) {
@@ -272,6 +273,7 @@ public class SiteLogicTreeHazardPageGen {
 						
 						List<Double> compBranchVals = rpCompBranchValsList.get(r);
 						double compMean = mean(compBranches, compWeights, compBranchVals, null);
+						rpCompMeans.add(compMean);
 						HistogramFunction compHist = buildHist(compBranches, compWeights, compBranchVals, null, rpHists.get(r));
 						
 						String label = perLabel+", "+rps[r].label+" ("+perUnits+")";
@@ -337,10 +339,10 @@ public class SiteLogicTreeHazardPageGen {
 						
 						table.initNewLine();
 						plot = curveBranchPlot(resourcesDir, ltPrefix+"_indv", site.getName(), perLabel, perUnits,
-								dists, xVals, Color.BLACK, nodes, nodeCurves, null, exec, plotFutures);
+								dists, xVals, Color.BLACK, compDists, Color.GRAY, nodes, nodeCurves, null, exec, plotFutures);
 						table.addColumn("![Node Individual]("+resourcesDir.getName()+"/"+plot.getName()+")");
 						plot = curveBranchPlot(resourcesDir, ltPrefix+"_means", site.getName(), perLabel, perUnits,
-								dists, xVals, Color.BLACK, nodes, null, nodeMeanCurves, exec, plotFutures);
+								dists, xVals, Color.BLACK, compDists, Color.GRAY, nodes, null, nodeMeanCurves, exec, plotFutures);
 						table.addColumn("![Node Means]("+resourcesDir.getName()+"/"+plot.getName()+")");
 						table.finalizeLine();
 						if (rps.length != 2) {
@@ -357,8 +359,10 @@ public class SiteLogicTreeHazardPageGen {
 							String rpPrefix = ltPrefix+"_"+rps[r].name();
 							String label = perLabel+", "+rps[r].label+" ("+perUnits+")";
 							
+							Double compVal = rpCompMeans == null ? null : rpCompMeans.get(r);
+							
 							plot = valDistPlot(resourcesDir, rpPrefix, site.getName(), label, rpHists.get(r),
-									rpMeans.get(r), Color.BLACK, null, null, nodes,
+									rpMeans.get(r), Color.BLACK, compVal, Color.GRAY, nodes,
 									nodeHists.get(r), nodeMeans.get(r), exec, plotFutures);
 							table.addColumn("![Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 						}
@@ -557,7 +561,8 @@ public class SiteLogicTreeHazardPageGen {
 	}
 	
 	private static File curveBranchPlot(File resourcesDir, String prefix, String siteName, String perLabel, String units,
-			ArbDiscrEmpiricalDistFunc[] curveDists, double[] xVals, Color color, List<LogicTreeNode> nodes,
+			ArbDiscrEmpiricalDistFunc[] curveDists, double[] xVals, Color color,
+			ArbDiscrEmpiricalDistFunc[] compCurveDists, Color compColor, List<LogicTreeNode> nodes,
 			List<List<DiscretizedFunc>> nodeIndvCurves, List<DiscretizedFunc> nodeMeanCurves,
 			ExecutorService exec, List<Future<?>> plotFutures) throws IOException {
 		List<DiscretizedFunc> funcs = new ArrayList<>();
@@ -568,6 +573,14 @@ public class SiteLogicTreeHazardPageGen {
 		meanCurve.setName("Mean");
 		funcs.add(meanCurve);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, color));
+		
+		if (compCurveDists != null) {
+			DiscretizedFunc compMeanCurve = calcMeanCurve(compCurveDists, xVals);
+			
+			compMeanCurve.setName("Comparison Mean");
+			funcs.add(compMeanCurve);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, compColor));
+		}
 		
 		List<Color> nodeColors = getNodeColors(nodes.size());
 		
@@ -898,7 +911,7 @@ public class SiteLogicTreeHazardPageGen {
 		
 		if (compMean != null) {
 			funcs.add(vertLine(compMean, 0d, maxY, "Comparison Mean"));
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, compColor));
+			chars.add(new PlotCurveCharacterstics(nodeHists == null ? PlotLineType.SOLID : PlotLineType.DASHED, 4f, compColor));
 		}
 		
 		funcs.add(vertLine(mean, 0d, maxY, "Mean"));
