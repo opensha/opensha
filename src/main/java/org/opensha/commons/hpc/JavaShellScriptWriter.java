@@ -5,7 +5,9 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -13,8 +15,6 @@ import org.dom4j.Element;
 import org.opensha.commons.metadata.XMLSaveable;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 public class JavaShellScriptWriter implements XMLSaveable {
 	
@@ -26,6 +26,7 @@ public class JavaShellScriptWriter implements XMLSaveable {
 	private Collection<File> classpath;
 	private boolean headless;
 	private Map<String, String> properties;
+	private Map<String, String> envVars;
 	
 	private int autoMemBufferMB = 5000;
 	private boolean autoMemDetect = false;
@@ -83,7 +84,7 @@ public class JavaShellScriptWriter implements XMLSaveable {
 
 	public void setProperty(String key, String value) {
 		if (properties == null)
-			properties = Maps.newHashMap();
+			properties = new HashMap<>();
 		properties.put(key, value);
 	}
 	
@@ -95,14 +96,36 @@ public class JavaShellScriptWriter implements XMLSaveable {
 		if (properties != null)
 			properties.clear();
 	}
+
+	public Map<String, String> getEnvVars() {
+		return envVars;
+	}
+
+	public void setEnvVar(String key, String value) {
+		if (envVars == null)
+			envVars = new LinkedHashMap<>(); // to keep insertion-order for iteration
+		envVars.put(key, value);
+	}
+	
+	public void clearEnvVar(String key) {
+		envVars.remove(key);
+	}
+	
+	public void clearEnvVars() {
+		if (envVars != null)
+			envVars.clear();
+	}
 	
 	public void setAutoMemDetect(boolean autoMemDetect) {
 		this.autoMemDetect = autoMemDetect;
 	}
 	
 	public List<String> getJVMSetupLines() {
-		List<String> lines = Lists.newArrayList();
+		List<String> lines = new ArrayList<>();
 		
+		if (envVars != null)
+			for (String varName : envVars.keySet())
+				lines.add(varName+"="+envVars.get(varName));
 		if (maxHeapSizeMB > 0 || autoMemDetect)
 			lines.add("JVM_MEM_MB="+maxHeapSizeMB);
 		if (initialHeapSizeMB > 0)
@@ -140,7 +163,7 @@ public class JavaShellScriptWriter implements XMLSaveable {
 					first = false;
 				else
 					cp += ":";
-				cp += el.getAbsolutePath();
+				cp += el.getPath();
 			}
 		}
 		
@@ -190,7 +213,7 @@ public class JavaShellScriptWriter implements XMLSaveable {
 	}
 	
 	public List<String> buildScript(String className, String args) {
-		return buildScript(Lists.newArrayList(className), Lists.newArrayList(args));
+		return buildScript(List.of(className), List.of(args));
 	}
 	
 	public List<String> buildScript(List<String> classNames, List<String> argss) {
