@@ -1145,6 +1145,7 @@ public class Region implements Serializable, XMLSaveable, Named {
 		Preconditions.checkNotNull(feature.geometry, "Feature is missing geometry");
 		Geometry geometry = feature.geometry;
 		if (feature.geometry instanceof GeometryCollection) {
+			geometry = null;
 			for (Geometry oGeom : ((GeometryCollection)feature.geometry).geometries) {
 				if (oGeom instanceof Polygon || oGeom instanceof MultiPolygon) {
 					Preconditions.checkState(geometry == null,
@@ -1161,7 +1162,7 @@ public class Region implements Serializable, XMLSaveable, Named {
 					}
 				}
 			}
-			Preconditions.checkState(!(geometry instanceof GeometryCollection),
+			Preconditions.checkState(geometry != null,
 					"GeometryCollection specified, but no Polygon or MultiPolygon geometries found within.");
 		}
 		Preconditions.checkState(geometry instanceof Polygon || geometry instanceof MultiPolygon,
