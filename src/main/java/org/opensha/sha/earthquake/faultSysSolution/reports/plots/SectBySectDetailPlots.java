@@ -1839,7 +1839,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			if (cmlParticBounds != null) {
 				String boundsStr = "[";
 				boundsStr += rangeRateStr(cmlParticBounds.getLower().getInterpolatedY(mag));
-				boundsStr += ",";
+				boundsStr += ", ";
 				boundsStr += rangeRateStr(cmlParticBounds.getUpper().getInterpolatedY(mag));
 				boundsStr += "]";
 				table.addColumn(boundsStr);
@@ -1848,7 +1848,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			if (cmlParticBounds != null) {
 				String boundsStr = "[";
 				boundsStr += riRateStr(1d/cmlParticBounds.getUpper().getInterpolatedY(mag));
-				boundsStr += ",";
+				boundsStr += ", ";
 				boundsStr += riRateStr(1d/cmlParticBounds.getLower().getInterpolatedY(mag));
 				boundsStr += "]";
 				table.addColumn(boundsStr);
