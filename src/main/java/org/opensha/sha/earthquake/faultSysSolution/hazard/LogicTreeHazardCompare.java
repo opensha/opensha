@@ -7,11 +7,15 @@ import java.awt.RenderingHints;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.StringReader;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -23,6 +27,7 @@ import java.util.Map;
 import java.util.StringTokenizer;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -582,17 +587,76 @@ public class LogicTreeHazardCompare {
 		System.out.println("Loading maps for rp="+rp+", period="+period);
 		GriddedGeoDataSet[] rpPerMaps = new GriddedGeoDataSet[branches.size()];
 		int printMod = 10;
-		LinkedList<Future<?>> loadFutures = new LinkedList<>();
+		LinkedList<Future<?>> processFutures = new LinkedList<>();
+		CompletableFuture<Void> readFuture = null;
+		
+		LogicTreeBranch<?> branch0 = branches.get(0);
+		if (branch0 != null) {
+			FaultSystemSolution sol = null;
+			if (mapper == null)
+				sol = solLogicTree.forBranch(branch0, false);
+			
+			if (gridReg == null) {
+				if (spacing <= 0d) {
+					// detect spacing
+
+					String dirName = branch0.buildFileName();
+					String name = dirName+"/"+MPJ_LogicTreeHazardCalc.mapPrefix(periods[0], rps[0])+".txt";
+					ZipEntry entry = zip.getEntry(name);
+					Preconditions.checkNotNull(entry, "Entry is null for %s", name);
+					InputStream is = zip.getInputStream(entry);
+					Preconditions.checkNotNull(is, "IS is null for %s", name);
+					
+					BufferedReader bRead = new BufferedReader(new InputStreamReader(is));
+					String line = bRead.readLine();
+					double prevLat = Double.NaN;
+					double prevLon = Double.NaN;
+					List<Double> deltas = new ArrayList<>();
+					while (line != null) {
+						line = line.trim();
+						if (!line.startsWith("#")) {
+							StringTokenizer tok = new StringTokenizer(line);
+							double lon = Double.parseDouble(tok.nextToken());
+							double lat = Double.parseDouble(tok.nextToken());
+							if (Double.isFinite(prevLat)) {
+								deltas.add(Math.abs(lat - prevLat));
+								deltas.add(Math.abs(lon - prevLon));
+							}
+							prevLat = lat;
+							prevLon = lon;
+						}
+						line = bRead.readLine();
+					}
+					double medianSpacing = DataUtils.median(Doubles.toArray(deltas));
+					medianSpacing = (double)Math.round(medianSpacing * 1000d) / 1000d;
+					System.out.println("Detected spacing: "+medianSpacing+" degrees");
+					spacing = medianSpacing;
+				}
+				
+				sol = solLogicTree.forBranch(branch0);
+				Region region = ReportMetadata.detectRegion(sol);
+				if (region == null)
+					// just use bounding box
+					region = RupSetMapMaker.buildBufferedRegion(sol.getRupSet().getFaultSectionDataList());
+				gridReg = new GriddedRegion(region, spacing, GriddedRegion.ANCHOR_0_0);
+			}
+			
+			if (mapper == null)
+				mapper = new SolHazardMapCalc(sol, null, gridReg, periods);
+		}
+		
 		Stopwatch watch = Stopwatch.createStarted();
+		
 		for (int i=0; i<branches.size(); i++) {
 			if (i % printMod == 0) {
 				try {
-					while (!loadFutures.isEmpty())
-						loadFutures.pop().get();
+					while (!processFutures.isEmpty())
+						processFutures.pop().get();
 				} catch (InterruptedException | ExecutionException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
-				System.out.println("Loading map for branch "+i+"/"+branches.size());
+				double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+				System.out.println("Loading map for branch "+i+"/"+branches.size()+" (rate="+twoDigits.format((double)i/secs)+" /s)");
 			}
 			if (i >= printMod*10 && printMod < 1000)
 				printMod *= 10;
@@ -624,64 +688,16 @@ public class LogicTreeHazardCompare {
 				Preconditions.checkState(index == gridReg.getNodeCount());
 				rpPerMaps[0] = checkRemap(xyz);
 			} else {
-				FaultSystemSolution sol = null;
-				if (mapper == null)
-					sol = solLogicTree.forBranch(branch, false);
-				
-				if (gridReg == null) {
-					if (spacing <= 0d) {
-						// detect spacing
-
-						String dirName = branch.buildFileName();
-						String name = dirName+"/"+MPJ_LogicTreeHazardCalc.mapPrefix(periods[0], rps[0])+".txt";
-						ZipEntry entry = zip.getEntry(name);
-						Preconditions.checkNotNull(entry, "Entry is null for %s", name);
-						InputStream is = zip.getInputStream(entry);
-						Preconditions.checkNotNull(is, "IS is null for %s", name);
-						
-						BufferedReader bRead = new BufferedReader(new InputStreamReader(is));
-						String line = bRead.readLine();
-						double prevLat = Double.NaN;
-						double prevLon = Double.NaN;
-						List<Double> deltas = new ArrayList<>();
-						while (line != null) {
-							line = line.trim();
-							if (!line.startsWith("#")) {
-								StringTokenizer tok = new StringTokenizer(line);
-								double lon = Double.parseDouble(tok.nextToken());
-								double lat = Double.parseDouble(tok.nextToken());
-								if (Double.isFinite(prevLat)) {
-									deltas.add(Math.abs(lat - prevLat));
-									deltas.add(Math.abs(lon - prevLon));
-								}
-								prevLat = lat;
-								prevLon = lon;
-							}
-							line = bRead.readLine();
-						}
-						double medianSpacing = DataUtils.median(Doubles.toArray(deltas));
-						medianSpacing = (double)Math.round(medianSpacing * 1000d) / 1000d;
-						System.out.println("Detected spacing: "+medianSpacing+" degrees");
-						spacing = medianSpacing;
-					}
-					
-					sol = solLogicTree.forBranch(branch);
-					Region region = ReportMetadata.detectRegion(sol);
-					if (region == null)
-						// just use bounding box
-						region = RupSetMapMaker.buildBufferedRegion(sol.getRupSet().getFaultSectionDataList());
-					gridReg = new GriddedRegion(region, spacing, GriddedRegion.ANCHOR_0_0);
-				}
-				
-				if (mapper == null)
-					mapper = new SolHazardMapCalc(sol, null, gridReg, periods);
-				
 //				System.out.println("Processing maps for "+branch);
 				
 				String dirName = branch.buildFileName();
 				
-				int mapIndex = i;
-				loadFutures.push(exec.submit(new Runnable() {
+				if (readFuture != null)
+					// finish reading prior one
+					readFuture.join();
+				
+				final int mapIndex = i;
+				readFuture = CompletableFuture.runAsync(new Runnable() {
 					
 					@Override
 					public void run() {
@@ -689,38 +705,54 @@ public class LogicTreeHazardCompare {
 						try {
 							ZipEntry entry = zip.getEntry(entryName);
 							
-							GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
-							BufferedReader bRead = new BufferedReader(new InputStreamReader(zip.getInputStream(entry)));
-							String line = bRead.readLine();
-							int index = 0;
-							while (line != null) {
-								line = line.trim();
-								if (!line.startsWith("#")) {
-									StringTokenizer tok = new StringTokenizer(line);
-									double lon = Double.parseDouble(tok.nextToken());
-									double lat = Double.parseDouble(tok.nextToken());
-									double val = Double.parseDouble(tok.nextToken());
-									Location loc = new Location(lat, lon);
-									Preconditions.checkState(LocationUtils.areSimilar(loc, gridReg.getLocation(index)));
-									xyz.set(index++, val);
+							BufferedReader bRead = prereadMapEntry(entry);
+							processFutures.push(exec.submit(new Runnable() {
+
+								@Override
+								public void run() {
+									try {
+										rpPerMaps[mapIndex] = readMapReader(bRead);
+									} catch (IOException e) {
+										System.err.println("Exception loading: "+entryName);
+										System.err.flush();
+										throw ExceptionUtils.asRuntimeException(e);
+									}
 								}
-								line = bRead.readLine();
-							}
-							Preconditions.checkState(index == gridReg.getNodeCount());
-							rpPerMaps[mapIndex] = checkRemap(xyz);
+								
+							}));
 						} catch (Exception e) {
 							System.err.println("Exception loading: "+entryName);
 							System.err.flush();
 							throw ExceptionUtils.asRuntimeException(e);
 						}
 					}
-				}));
+				});
+//				processFutures.push(exec.submit(new Runnable() {
+//
+//					@Override
+//					public void run() {
+//						String entryName = dirName+"/"+MPJ_LogicTreeHazardCalc.mapPrefix(period, rp)+".txt";
+//						try {
+//							ZipEntry entry = zip.getEntry(entryName);
+//
+//							rpPerMaps[mapIndex] = readMapEntry(entry);
+//						} catch (Exception e) {
+//							System.err.println("Exception loading: "+entryName);
+//							System.err.flush();
+//							throw ExceptionUtils.asRuntimeException(e);
+//						}
+//					}
+//					
+//				}));
 			}
 		}
 		
+		if (readFuture != null)
+			readFuture.join();
+		
 		try {
-			while (!loadFutures.isEmpty())
-				loadFutures.pop().get();
+			while (!processFutures.isEmpty())
+				processFutures.pop().get();
 		} catch (InterruptedException | ExecutionException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -728,6 +760,53 @@ public class LogicTreeHazardCompare {
 		printTime(watch, "load "+branches.size()+" maps", 0d);
 		
 		return rpPerMaps;
+	}
+	
+	private BufferedReader prereadMapEntry(ZipEntry entry) throws IOException {
+		InputStream is = zip.getInputStream(entry);
+//		int size = 10240;
+		int size = Integer.max(1024, Integer.min(102400, (int)(entry.getSize()/12l)));
+		byte[] buffer = new byte[size];
+		ByteArrayOutputStream os = new ByteArrayOutputStream(size);
+		for (int length; (length = is.read(buffer)) != -1; )
+			os.write(buffer, 0, length);
+//		return new BufferedReader(new StringReader(os.toString(StandardCharsets.US_ASCII)));
+		return new BufferedReader(new StringReader(os.toString(Charset.defaultCharset())));
+	}
+	
+	private GriddedGeoDataSet readMapEntry(ZipEntry entry) throws IOException {
+		BufferedReader bRead = new BufferedReader(new InputStreamReader(zip.getInputStream(entry)));
+		return readMapReader(bRead);
+	}
+	
+	private GriddedGeoDataSet readMapReader(BufferedReader bRead) throws IOException {
+		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
+		String line = bRead.readLine();
+		int index = 0;
+		while (line != null) {
+			line = line.trim();
+			if (!line.startsWith("#")) {
+				StringTokenizer tok = new StringTokenizer(line);
+				double lon = Double.parseDouble(tok.nextToken());
+				double lat = Double.parseDouble(tok.nextToken());
+				double val = Double.parseDouble(tok.nextToken());
+				Location loc = new Location(lat, lon);
+				Preconditions.checkState(LocationUtils.areSimilar(loc, gridReg.getLocation(index)));
+				xyz.set(index++, val);
+			}
+			line = bRead.readLine();
+		}
+		Preconditions.checkState(index == gridReg.getNodeCount());
+		return checkRemap(xyz);
+	}
+	
+	private GriddedGeoDataSet loadPrecomputedMeanMap(String key, ReturnPeriods rp, double period) throws IOException {
+		String entryName = key+"_"+MPJ_LogicTreeHazardCalc.mapPrefix(period, rp)+".txt";
+		ZipEntry entry = zip.getEntry(entryName);
+		if (entry == null)
+			return null;
+		
+		return readMapEntry(entry);
 	}
 	
 	public void setRemapToRegion(GriddedRegion gridReg) {
@@ -982,6 +1061,69 @@ public class LogicTreeHazardCompare {
 		return new LightFixedXFunc(xVals, yVals);
 	}
 	
+	private static LightFixedXFunc[] mergeNormCDFs(List<LightFixedXFunc[]> inputCDFs) {
+		LightFixedXFunc[][] array = new LightFixedXFunc[inputCDFs.size()][];
+		for (int i=0; i<array.length; i++)
+			array[i] = inputCDFs.get(i);
+		return mergeNormCDFs(array);
+	}
+	
+	private static LightFixedXFunc[] mergeNormCDFs(LightFixedXFunc[]... inputCDFs) {
+		final int numCDFs = inputCDFs.length;
+		Preconditions.checkState(numCDFs > 1);
+		int numLocs = inputCDFs[0].length;
+		for (int i=1; i<inputCDFs.length; i++)
+			Preconditions.checkState(inputCDFs[i].length == numLocs);
+		
+		LightFixedXFunc[] ret = new LightFixedXFunc[numLocs];
+		
+		for (int l=0; l<ret.length; l++) {
+			int size = 0;
+			for (int i=0; i<numCDFs; i++)
+				size += inputCDFs[i][l].size();
+			
+			double[] xVals = new double[size];
+			double[] yVals = new double[size];
+			
+			double sum = 0d;
+			int[] curIndexes = new int[numCDFs];
+			
+			for (int i=0; i<size; i++) {
+				// find the CDF with the lowest next value
+				int minIndex = -1;
+				double minVal = Double.NaN;
+				for (int j=0; j<numCDFs; j++) {
+					if (curIndexes[j] == inputCDFs[j][l].size())
+						// already fully used
+						continue;
+					double val = inputCDFs[j][l].getX(curIndexes[j]);
+					if (minIndex < 0 || val < minVal) {
+						minIndex = j;
+						minVal = val;
+					}
+				}
+				Preconditions.checkState(minIndex >= 0);
+				
+				// use that value
+				xVals[i] = minVal;
+				sum += inputCDFs[minIndex][l].getY(curIndexes[minIndex]);
+				yVals[i] = sum;
+				
+				// increment the index for the one we drew from
+				curIndexes[minIndex]++;
+			}
+			
+			// rescale to sum to 1
+			double scale = 1d/sum;
+			for (int i=0; i<size; i++)
+				yVals[i] *= scale;
+			
+			ret[l] = new LightFixedXFunc(xVals, yVals);
+		}
+		
+		return ret;
+	}
+	
 	private GriddedGeoDataSet calcMapAtPercentile(LightFixedXFunc[] ncdfs, GriddedRegion gridReg,
 			double percentile) {
 		Preconditions.checkState(gridReg.getNodeCount() == ncdfs.length, "grid reg has %s, but have %s ncdfs",
@@ -1223,7 +1365,13 @@ public class LogicTreeHazardCompare {
 				System.out.println("Calculating norm CDFs");
 				LightFixedXFunc[] mapNCDFs = buildNormCDFs(maps, weights);
 				System.out.println("Calculating mean, median, bounds, COV");
-				GriddedGeoDataSet mean = buildMean(maps);
+				// see if we've procomputed mean
+				GriddedGeoDataSet mean = loadPrecomputedMeanMap(LogicTreeCurveAverager.MEAN_PREFIX, rp, period);
+				boolean meanIsFromCurves = mean != null;
+				if (mean == null) {
+					// need to calculate mean from branch maps
+					mean = buildMean(maps);
+				}
 				GriddedGeoDataSet median = calcMapAtPercentile(mapNCDFs, region, 50d);
 				GriddedGeoDataSet max = buildMax(maps);
 				GriddedGeoDataSet min = buildMin(maps);
@@ -1255,7 +1403,9 @@ public class LogicTreeHazardCompare {
 					System.out.println("Calculating comparison norm CDFs");
 					cmapNCDFs = buildNormCDFs(cmaps, comp.weights);
 					System.out.println("Calculating comparison mean, median, bounds, COV");
-					cmean = comp.buildMean(cmaps);
+					cmean = comp.loadPrecomputedMeanMap(LogicTreeCurveAverager.MEAN_PREFIX, rp, period);
+					if (cmean == null)
+						cmean = comp.buildMean(cmaps);
 					cmedian = calcMapAtPercentile(cmapNCDFs, region, 50d);
 					cmax = comp.buildMax(cmaps);
 					cmin = comp.buildMin(cmaps);
@@ -1350,6 +1500,10 @@ public class LogicTreeHazardCompare {
 					lines.addAll(table.build());
 					lines.add("");
 					
+					if (branches.size() == 1)
+						// don't bother with medians, percentiles, and such
+						continue;
+					
 					lines.add("### Median hazard maps and comparisons, "+label);
 					lines.add(topLink); lines.add("");
 					
@@ -1375,10 +1529,6 @@ public class LogicTreeHazardCompare {
 					lines.add("");
 					lines.addAll(table.build());
 					lines.add("");
-					
-					if (branches.size() == 1)
-						// don't bother with percentiles and such
-						continue;
 					
 					table = MarkdownUtils.tableBuilder();
 					
@@ -1444,6 +1594,12 @@ public class LogicTreeHazardCompare {
 				
 				lines.add(branchStr);
 				lines.add("");
+				if (meanIsFromCurves) {
+					lines.add("Note: The mean map here is computed directly from mean hazard curves, but the median map "
+							+ "is taken as the median value of hazard maps across all branches (rather than first "
+							+ "calculating median curves at each location), which might bias this comparison.");
+					lines.add("");
+				}
 				lines.addAll(table.build());
 				lines.add("");
 				
@@ -1549,8 +1705,21 @@ public class LogicTreeHazardCompare {
 						lines.add("");
 						
 						HashMap<LogicTreeNode, GriddedGeoDataSet> choiceMeans = new HashMap<>();
-						for (LogicTreeNode choice : choiceMaps.keySet())
-							choiceMeans.put(choice, buildMean(choiceMaps.get(choice), choiceWeights.get(choice)));
+						for (LogicTreeNode choice : choiceMaps.keySet()) {
+							GriddedGeoDataSet choiceMean;
+							if (meanIsFromCurves) {
+								// load choice mean externally as well
+								String key = LogicTreeCurveAverager.choicePrefix(level, choice);
+								key = MPJ_LogicTreeHazardCalc.LEVEL_CHOICE_MAPS_ENTRY_PREFIX+key;
+								choiceMean = loadPrecomputedMeanMap(key, rp, period);
+								Preconditions.checkNotNull(choiceMean,
+										"Mean map was precomputed for curves, but levels were not? "
+										+ "Couldn't find mean map for %s, %s, %s", key, rp, period);
+							} else {
+								choiceMean = buildMean(choiceMaps.get(choice), choiceWeights.get(choice));
+							}
+							choiceMeans.put(choice, choiceMean);
+						}
 						
 						table = MarkdownUtils.tableBuilder();
 						table.initNewLine().addColumn("**Choice**").addColumn("**Vs Mean**");
@@ -1589,6 +1758,23 @@ public class LogicTreeHazardCompare {
 						List<MapPlot> branchDiffPlots = new ArrayList<>();
 						branchLevelPDiffPlots.add(branchPDiffPlots);
 						branchLevelDiffPlots.add(branchDiffPlots);
+						
+						// build norm CDFs for each sub-choice
+						System.out.println("Building choice CDFs for "+level.getName());
+						LightFixedXFunc[][] choiceCDFs = new LightFixedXFunc[choices.size()][];
+						for (int c=0; c<choices.size(); c++) {
+							List<GriddedGeoDataSet> mapsWith = new ArrayList<>();
+							List<Double> weightsWith = new ArrayList<>();
+							LogicTreeNode choice = choices.get(c);
+							for (int i=0; i<branches.size(); i++) {
+								LogicTreeBranch<?> branch = branches.get(i);
+								if (branch.hasValue(choice)) {
+									mapsWith.add(maps[i]);
+									weightsWith.add(weights.get(i));
+								}
+							}
+							choiceCDFs[c] = buildNormCDFs(mapsWith, weightsWith);
+						}
 						
 						for (int c=0; c<choices.size(); c++) {
 							LogicTreeNode choice = choices.get(c);
@@ -1651,17 +1837,23 @@ public class LogicTreeHazardCompare {
 							
 							// percentile without
 							// percentile without
-							List<GriddedGeoDataSet> mapsWithout = new ArrayList<>();
-							List<Double> weightsWithout = new ArrayList<>();
-							for (int i=0; i<branches.size(); i++) {
-								LogicTreeBranch<?> branch = branches.get(i);
-								if (!branch.hasValue(choice)) {
-									mapsWithout.add(maps[i]);
-									weightsWithout.add(weights.get(i));
-								}
-							}
-							Preconditions.checkState(!mapsWithout.isEmpty());
-							LightFixedXFunc[] mapsWithoutNCDFs = buildNormCDFs(mapsWithout, weightsWithout);
+//							List<GriddedGeoDataSet> mapsWithout = new ArrayList<>();
+//							List<Double> weightsWithout = new ArrayList<>();
+//							for (int i=0; i<branches.size(); i++) {
+//								LogicTreeBranch<?> branch = branches.get(i);
+//								if (!branch.hasValue(choice)) {
+//									mapsWithout.add(maps[i]);
+//									weightsWithout.add(weights.get(i));
+//								}
+//							}
+//							Preconditions.checkState(!mapsWithout.isEmpty());
+//							LightFixedXFunc[] mapsWithoutNCDFs = buildNormCDFs(mapsWithout, weightsWithout);
+							List<LightFixedXFunc[]> withoutNCDFs = new ArrayList<>(choices.size()-1);
+							for (int i=0; i<choices.size(); i++)
+								if (i != c)
+									withoutNCDFs.add(choiceCDFs[i]);
+							LightFixedXFunc[] mapsWithoutNCDFs =
+									withoutNCDFs.size() == 1 ? withoutNCDFs.get(0) : mergeNormCDFs(withoutNCDFs);
 							GriddedGeoDataSet percentileWithout = calcPercentileWithinDist(mapsWithoutNCDFs, choiceMap);
 							map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_"+choice.getFilePrefix()+"_percentile_without",
 									percentileWithout, percentileCPT, TITLES ? choice.getShortName()+" Comparison" : " ",

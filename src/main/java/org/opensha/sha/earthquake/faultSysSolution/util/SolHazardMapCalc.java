@@ -437,6 +437,10 @@ public class SolHazardMapCalc {
 		return ret;
 	}
 	
+	public DiscretizedFunc[] getCurves(double period) {
+		return curvesList.get(periodIndex(period));
+	}
+	
 	public GriddedGeoDataSet buildMap(double period, ReturnPeriods returnPeriod) {
 		return buildMap(period, returnPeriod.oneYearProb, false);
 	}
@@ -732,7 +736,7 @@ public class SolHazardMapCalc {
 		writeCurvesCSV(outputFile, curves, region.getNodeList());
 	}
 	
-	public static void writeCurvesCSV(File outputFile, DiscretizedFunc[] curves, LocationList locs) throws IOException {
+	public static CSVFile<String> buildCurvesCSV(DiscretizedFunc[] curves, LocationList locs) {
 		CSVFile<String> csv = new CSVFile<>(true);
 		
 		List<String> header = new ArrayList<>();
@@ -757,6 +761,12 @@ public class SolHazardMapCalc {
 				line.add(curve.getY(j)+"");
 			csv.addLine(line);
 		}
+		
+		return csv;
+	}
+	
+	public static void writeCurvesCSV(File outputFile, DiscretizedFunc[] curves, LocationList locs) throws IOException {
+		CSVFile<String> csv = buildCurvesCSV(curves, locs);
 		
 		csv.writeToFile(outputFile);
 	}
@@ -795,7 +805,6 @@ public class SolHazardMapCalc {
 		} else {
 			curves = new DiscretizedFunc[csv.getNumRows()-1];
 		}
-		
 		
 		for (int row=1; row<csv.getNumRows(); row++) {
 			int index = row-1;

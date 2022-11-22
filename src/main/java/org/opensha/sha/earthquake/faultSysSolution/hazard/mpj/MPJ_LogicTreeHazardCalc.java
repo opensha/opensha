@@ -12,7 +12,13 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -20,7 +26,11 @@ import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
+import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.data.xyz.AbstractXYZ_DataSet;
+import org.opensha.commons.data.xyz.ArbDiscrGeoDataSet;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
@@ -30,7 +40,9 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.hazard.LogicTreeCurveAverager;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
@@ -85,6 +97,11 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 
 	private String hazardSubDirName;
 	private String combineWithHazardSubDirName;
+	
+	private LogicTreeCurveAverager[] runningMeanCurves;
+	
+	private File nodesAverageDir;
+	private File myAverageDir;
 
 	public MPJ_LogicTreeHazardCalc(CommandLine cmd) throws IOException {
 		super(cmd);
@@ -178,6 +195,18 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			
 			postBatchHook = new AsyncHazardWriter(outputFile);
 		}
+		
+		nodesAverageDir = new File(outputDir, "node_hazard_averages");
+		if (rank == 0) {
+			if (nodesAverageDir.exists()) {
+				// delete anything preexisting
+				for (File file : nodesAverageDir.listFiles())
+					Preconditions.checkState(FileUtils.deleteRecursive(file));
+			} else {
+				Preconditions.checkState(nodesAverageDir.mkdir());
+			}
+		}
+		myAverageDir = new File(nodesAverageDir, "rank_"+rank);
 	}
 	
 	public static final String GRID_REGION_ENTRY_NAME = "gridded_region.geojson";
@@ -188,36 +217,86 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		private File workingFile;
 		private File destFile;
 		
+		private double[] rankWeights;
+		
 		public AsyncHazardWriter(File destFile) throws FileNotFoundException {
 			super(1);
 			this.destFile = destFile;
 			workingFile = new File(destFile.getAbsolutePath()+".tmp");
 			zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(workingFile)));
+			
+			rankWeights = new double[size];
 		}
 
 		@Override
 		public void shutdown() {
 			super.shutdown();
-			// write region to zip file
-			if (gridRegion == null) {
-				// need to detect it (could happen if not specified via command line and root node never did any calculations)
-				LogicTreeBranch<?> branch = solTree.getLogicTree().getBranch(0);
-				
-				debug("Loading solution 0 to detect region: "+branch);
-				
-				FaultSystemSolution sol;
-				try {
-					sol = solTree.forBranch(branch);
-				} catch (IOException e) {
-					throw ExceptionUtils.asRuntimeException(e);
+			
+			try {
+				if (gridRegion == null) {
+					// need to detect it (could happen if not specified via command line and root node never did any calculations)
+					LogicTreeBranch<?> branch = solTree.getLogicTree().getBranch(0);
+					
+					debug("Loading solution 0 to detect region: "+branch);
+					
+					FaultSystemSolution sol = solTree.forBranch(branch);
+					
+					gridRegion = detectRegion(sol);
 				}
 				
-				gridRegion = detectRegion(sol);
-			}
-			
-			Feature feature = gridRegion.toFeature();
-			ZipEntry entry = new ZipEntry(GRID_REGION_ENTRY_NAME);
-			try {
+				if (runningMeanCurves == null) {
+					// can happen if we never processed any on rank 0
+					runningMeanCurves = new LogicTreeCurveAverager[periods.length];
+					for (int p=0; p<periods.length; p++)
+						runningMeanCurves[p] = new LogicTreeCurveAverager(gridRegion.getNodeList());
+				}
+				
+				// no more than 8 load threads
+				int loadThreads = Integer.max(1, Integer.min(8, getNumThreads()));
+				ExecutorService loadExec = Executors.newFixedThreadPool(loadThreads);
+				
+				// load in mean curves
+				for (int p=0; p<periods.length; p++) {
+					// rank 0 is already loaded into runningMeanCurves
+					
+					LogicTreeCurveAverager globalCurves = runningMeanCurves[p];
+					CompletableFuture<Void> mergeFuture = null;
+					for (int rank=1; rank<size; rank++) {
+						if (rankWeights[rank] == 0d)
+							continue;
+						
+						File rankDir = new File(nodesAverageDir, "rank_"+rank);
+						debug("Async: Merging in p="+(float)periods[p]+" mean curves from "+rank+": "+rankDir.getAbsolutePath());
+						Preconditions.checkState(rankDir.exists(), "Dir doesn't exist: %s", rankDir.getAbsolutePath());
+						
+						LogicTreeCurveAverager rankCurves = LogicTreeCurveAverager.readRawCacheDir(rankDir, periods[p], loadExec);
+						
+						if (mergeFuture != null)
+							mergeFuture.join();
+						mergeFuture = CompletableFuture.runAsync(new Runnable() {
+							
+							@Override
+							public void run() {
+								globalCurves.addFrom(rankCurves);
+							}
+						});
+					}
+					if (mergeFuture != null)
+						mergeFuture.join();
+				}
+				
+				loadExec.shutdown();
+				
+				// write mean curves and maps
+				debug("Async: writing mean curves and maps");
+				writeMeanCurvesAndMaps(zout, runningMeanCurves, gridRegion, periods, rps);
+				
+				// write region to zip file
+				
+				// write grid region
+				Feature feature = gridRegion.toFeature();
+				ZipEntry entry = new ZipEntry(GRID_REGION_ENTRY_NAME);
+				
 				zout.putNextEntry(entry);
 				BufferedOutputStream out = new BufferedOutputStream(zout);
 				BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
@@ -260,6 +339,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 							zout.closeEntry();
 						}
 					}
+					
+					rankWeights[processIndex] += solTree.getLogicTree().getBranchWeight(index);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -269,9 +350,78 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		}
 		
 	}
+	
+	public static final String LEVEL_CHOICE_MAPS_ENTRY_PREFIX = "level_choice_maps/";
+	
+	public static void writeMeanCurvesAndMaps(ZipOutputStream zout, LogicTreeCurveAverager[] meanCurves,
+			GriddedRegion gridRegion, double[] periods, ReturnPeriods[] rps) throws IOException {
+		
+		boolean firstLT = true;
+		for (int p=0; p<periods.length; p++) {
+			Map<String, DiscretizedFunc[]> normCurves = meanCurves[p].getNormalizedCurves();
+			
+			for (String key : normCurves.keySet()) {
+				DiscretizedFunc[] curves = normCurves.get(key);
+				String prefix;
+				if (key.equals(LogicTreeCurveAverager.MEAN_PREFIX)) {
+					// write out mean curves (but don't write out other ones)
+					CSVFile<String> csv = SolHazardMapCalc.buildCurvesCSV(curves, gridRegion.getNodeList());
+					String fileName = "mean_"+SolHazardMapCalc.getCSV_FileName("curves", periods[p]);
+					zout.putNextEntry(new ZipEntry(fileName));
+					csv.writeToStream(zout);
+					zout.closeEntry();
+					prefix = key;
+				} else {
+					prefix = LEVEL_CHOICE_MAPS_ENTRY_PREFIX;
+					if (firstLT) {
+						zout.putNextEntry(new ZipEntry(prefix));
+						zout.closeEntry();
+						firstLT = false;
+					}
+					prefix += key;
+				}
+				
+				// calculate and write maps
+				for (ReturnPeriods rp : rps) {
+					String mapFileName = prefix+"_"+MPJ_LogicTreeHazardCalc.mapPrefix(periods[p], rp)+".txt";
+					
+					double curveLevel = rp.oneYearProb;
+					
+					GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridRegion, false);
+					for (int i=0; i<xyz.size(); i++) {
+						DiscretizedFunc curve = curves[i];
+						double val;
+						// curveLevel is a probability, return the IML at that probability
+						if (curveLevel > curve.getMaxY())
+							val = 0d;
+						else if (curveLevel < curve.getMinY())
+							// saturated
+							val = curve.getMaxX();
+						else
+							val = curve.getFirstInterpolatedX_inLogXLogYDomain(curveLevel);
+						xyz.set(i, val);
+					}
+					
+					zout.putNextEntry(new ZipEntry(mapFileName));
+					ArbDiscrGeoDataSet.writeXYZStream(xyz, zout);
+					zout.closeEntry();
+				}
+			}
+		}
+	}
 
 	@Override
 	protected void doFinalAssembly() throws Exception {
+		// write out mean curves
+		// write out branch-specific averages
+		Preconditions.checkState(myAverageDir.exists() || myAverageDir.mkdir());
+		if (runningMeanCurves != null) {
+			for (int p=0; p<periods.length; p++) {
+				debug("Caching mean curves to "+myAverageDir.getAbsolutePath());
+				runningMeanCurves[p].rawCacheToDir(myAverageDir, periods[p]);
+			}
+		}
+		
 		if (rank == 0) {
 			debug("waiting for any post batch hook operations to finish");
 			((AsyncPostBatchHook)postBatchHook).shutdown();
@@ -439,6 +589,33 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				
 				calc.calcHazardCurves(getNumThreads(), combineWithCurves);
 				calc.writeCurvesCSVs(hazardSubDir, curvesPrefix, true);
+			}
+			
+			if (runningMeanCurves == null) {
+				runningMeanCurves = new LogicTreeCurveAverager[periods.length];
+				for (int p=0; p<periods.length; p++)
+					runningMeanCurves[p] = new LogicTreeCurveAverager(gridRegion.getNodeList());
+			}
+			
+//			if (runningMeanCurves == null) {
+//				runningMeanCurves = new DiscretizedFunc[periods.length][gridRegion.getNodeCount()];
+//				for (int p=0; p<periods.length; p++) {
+//					DiscretizedFunc xValsFunc = calc.getXVals(periods[p]);
+//					double[] xVals = new double[xValsFunc.size()];
+//					for (int i=0; i<xVals.length; i++)
+//						xVals[i] = xValsFunc.getX(i);
+//					for (int i=0; i<runningMeanCurves[p].length; i++)
+//						runningMeanCurves[p][i] = new LightFixedXFunc(xVals, new double[xVals.length]);
+//				}
+//				
+//				nodeRunningMeanCurves = new HashMap<>();
+//			}
+			
+			double branchWeight = solTree.getLogicTree().getBranchWeight(branch);
+			for (int p=0; p<periods.length; p++) {
+				DiscretizedFunc[] curves = calc.getCurves(periods[p]);
+				
+				runningMeanCurves[p].processBranchCurves(branch, branchWeight, curves);
 			}
 			
 			for (ReturnPeriods rp : rps) {

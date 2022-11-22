@@ -1,0 +1,230 @@
+package org.opensha.sha.earthquake.faultSysSolution.hazard;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
+import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeLevel;
+import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
+
+import com.google.common.base.Preconditions;
+
+public class LogicTreeCurveAverager {
+	
+	private LocationList gridLocs;
+	private Map<String, DiscretizedFunc[]> curvesMap;
+	private Map<String, Double> weightSumsMap;
+	
+	public static final String MEAN_PREFIX = "mean";
+	
+	public LogicTreeCurveAverager(LocationList gridLocs) {
+		this.gridLocs = gridLocs;
+		curvesMap = new HashMap<>();
+		weightSumsMap = new HashMap<>();
+	}
+	
+	public synchronized void processBranchCurves(LogicTreeBranch<?> branch, double weight, DiscretizedFunc[] curves) {
+		Preconditions.checkState(curves.length == gridLocs.size());
+		
+		List<String> keys = getMeanCurveKeys(branch);
+		
+		double[] xVals = new double[curves[0].size()];
+		for (int i=0; i<xVals.length; i++)
+			xVals[i] = curves[0].getX(i);
+		
+		for (String key : keys) {
+			DiscretizedFunc[] meanCurves = curvesMap.get(key);
+			if (meanCurves == null) {
+				meanCurves = new DiscretizedFunc[curves.length];
+				for (int i=0; i<curves.length; i++)
+					meanCurves[i] = new LightFixedXFunc(xVals, new double[xVals.length]);
+				curvesMap.put(key, meanCurves);
+				weightSumsMap.put(key, weight);
+			} else {
+				Preconditions.checkState(meanCurves.length == curves.length);
+				weightSumsMap.put(key, weightSumsMap.get(key)+weight);
+			}
+			for (int i=0; i<curves.length; i++) {
+				DiscretizedFunc curve = curves[i];
+				DiscretizedFunc meanCurve = meanCurves[i];
+				Preconditions.checkState(curve.size() == meanCurve.size());
+				for (int j=0; j<curve.size(); j++)
+					meanCurve.set(j, meanCurve.getY(j) + weight*curve.getY(j));
+			}
+		}
+	}
+	
+	public void rawCacheToDir(File outputDir, double period) throws IOException {
+		List<String> keys = new ArrayList<>(curvesMap.keySet());
+		Collections.sort(keys);
+		CSVFile<String> weightsCSV = new CSVFile<>(true);
+		weightsCSV.addLine("Key", "Weight Sum");
+		for (String key : keys) {
+			String fileName = SolHazardMapCalc.getCSV_FileName(key+"_curves", period);
+			DiscretizedFunc[] curves = curvesMap.get(key);
+			double weight = weightSumsMap.get(key);
+			CSVFile<String> curvesCSV = SolHazardMapCalc.buildCurvesCSV(curves, gridLocs);
+			curvesCSV.writeToFile(new File(outputDir, fileName));
+			weightsCSV.addLine(key, weight+"");
+		}
+		weightsCSV.writeToFile(new File(outputDir, SolHazardMapCalc.getCSV_FileName("weights", period)));
+	}
+	
+	public static LogicTreeCurveAverager readRawCacheDir(File cacheDir, double period, ExecutorService exec) throws IOException {
+		CSVFile<String> weightsCSV = CSVFile.readFile(
+				new File(cacheDir, SolHazardMapCalc.getCSV_FileName("weights", period)), true);
+		LogicTreeCurveAverager ret = new LogicTreeCurveAverager(null);
+		
+		Map<String, Future<DiscretizedFunc[]>> loadFutures = new HashMap<>();
+		
+		for (int row=1; row<weightsCSV.getNumRows(); row++) {
+			String key = weightsCSV.get(row, 0);
+			double weight = weightsCSV.getDouble(row, 1);
+			
+			ret.weightSumsMap.put(key, weight);
+			
+			final String fileName = SolHazardMapCalc.getCSV_FileName(key+"_curves", period);
+			
+			Callable<DiscretizedFunc[]> loadCall = new Callable<DiscretizedFunc[]>() {
+
+				@Override
+				public DiscretizedFunc[] call() throws Exception {
+					CSVFile<String> curvesCSV = CSVFile.readFile(new File(cacheDir, fileName), true);
+					DiscretizedFunc[] curves = SolHazardMapCalc.loadCurvesCSV(curvesCSV, null);
+					
+					synchronized (ret) {
+						if (ret.gridLocs == null) {
+							ret.gridLocs = new LocationList();
+							for (int i=0; i<curves.length; i++) {
+								Preconditions.checkState(curvesCSV.getInt(i+1, 0) == i);
+								double lat = curvesCSV.getDouble(i+1, 1);
+								double lon = curvesCSV.getDouble(i+1, 2);
+								ret.gridLocs.add(new Location(lat, lon));
+							}
+						} else {
+							Preconditions.checkState(ret.gridLocs.size() == curves.length);
+						}
+					}
+					return curves;
+				}
+			};
+			
+			loadFutures.put(key, exec.submit(loadCall));
+		}
+		
+		for (String key : loadFutures.keySet()) {
+			try {
+				ret.curvesMap.put(key, loadFutures.get(key).get());
+			} catch (Exception e) {
+				if (e instanceof IOException)
+					throw (IOException)e;
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+		
+		return ret;
+	}
+	
+	public void addFrom(LogicTreeCurveAverager other) {
+		if (gridLocs == null && other.gridLocs != null)
+			gridLocs = other.gridLocs;
+		double[] xVals = null;
+		
+		for (String key : other.curvesMap.keySet()) {
+			double weight = other.weightSumsMap.get(key);
+			DiscretizedFunc[] curves = other.curvesMap.get(key);
+			
+			DiscretizedFunc[] meanCurves = curvesMap.get(key);
+			if (meanCurves == null) {
+				meanCurves = new DiscretizedFunc[curves.length];
+				if (xVals == null) {
+					xVals = new double[curves[0].size()];
+					for (int i=0; i<xVals.length; i++)
+						xVals[i] = curves[0].getX(i);
+				}
+				for (int i=0; i<curves.length; i++)
+					meanCurves[i] = new LightFixedXFunc(xVals, new double[xVals.length]);
+				curvesMap.put(key, meanCurves);
+				weightSumsMap.put(key, weight);
+			} else {
+				Preconditions.checkState(meanCurves.length == curves.length);
+				weightSumsMap.put(key, weightSumsMap.get(key)+weight);
+			}
+			for (int i=0; i<curves.length; i++) {
+				DiscretizedFunc curve = curves[i];
+				DiscretizedFunc meanCurve = meanCurves[i];
+				Preconditions.checkState(curve.size() == meanCurve.size());
+				for (int j=0; j<curve.size(); j++)
+					// do a direct add here, don't rescale by weight
+					meanCurve.set(j, meanCurve.getY(j) + curve.getY(j));
+			}
+		}
+	}
+	
+	private DiscretizedFunc[] getNormalized(DiscretizedFunc[] curves, double weight) {
+		if ((float)weight != 1f) {
+			double scale = 1d/weight;
+			DiscretizedFunc[] normCurves = new DiscretizedFunc[curves.length];
+			for (int i=0; i<curves.length; i++) {
+				normCurves[i] = curves[i].deepClone();
+				normCurves[i].scale(scale);
+			}
+			return normCurves;
+		}
+		return curves;
+	}
+	
+	public Map<String, DiscretizedFunc[]> getNormalizedCurves() {
+		Map<String, DiscretizedFunc[]> ret = new HashMap<>();
+		
+		for (String key : curvesMap.keySet())
+			ret.put(key, getNormalized(curvesMap.get(key), weightSumsMap.get(key)));
+		
+		return ret;
+	}
+	
+	public static String levelPrefix(LogicTreeLevel<?> level) {
+		String prefix = level.getShortName().replaceAll("\\W+", "_");
+		while (prefix.contains("__"))
+			prefix = prefix.replace("__", "_");
+		while (prefix.startsWith("_"))
+			prefix = prefix.substring(1);
+		while (prefix.endsWith("_"))
+			prefix = prefix.substring(0, prefix.length()-1);
+		return prefix;
+	}
+	
+	public static String choicePrefix(LogicTreeLevel<?> level, LogicTreeNode node) {
+		return levelPrefix(level)+"_"+node.getFilePrefix();
+	}
+	
+	private static List<String> getMeanCurveKeys(LogicTreeBranch<?> branch) {
+		List<String> meanCurveKeys = new ArrayList<>();
+		meanCurveKeys.add(MEAN_PREFIX); // always full mean
+		for (int i=0; i<branch.size(); i++) {
+			LogicTreeNode node = branch.getValue(i);
+			if (node != null)
+				meanCurveKeys.add(choicePrefix(branch.getLevel(i), node));
+		}
+		return meanCurveKeys;
+	}
+
+}
