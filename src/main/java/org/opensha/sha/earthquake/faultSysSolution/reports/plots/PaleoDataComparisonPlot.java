@@ -86,18 +86,18 @@ public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 			}
 			if (hasSlipData) {
 				slipToRateData = PaleoseismicConstraintData.inferRatesFromSlipConstraints(
-						rupSet.requireModule(SectSlipRates.class), data.getPaleoSlipConstraints(), true);
+						rupSet, data.getPaleoSlipConstraints(), true);
 				paleoSlips = calcSolPaleoSlipRates(slipToRateData, data.getPaleoSlipProbModel(), sol);
 				if (compSol != null) {
 					compSlipToRateData = PaleoseismicConstraintData.inferRatesFromSlipConstraints(
-							rupSet.requireModule(SectSlipRates.class), data.getPaleoSlipConstraints(), true);
+							rupSet, data.getPaleoSlipConstraints(), true);
 					compPaleoSlips = calcSolPaleoSlipRates(compSlipToRateData, data.getPaleoSlipProbModel(), compSol);
 				}
 			}
 		} else if (hasSlipData) {
 			// still need to convert it
 			slipToRateData = PaleoseismicConstraintData.inferRatesFromSlipConstraints(
-					rupSet.requireModule(SectSlipRates.class), data.getPaleoSlipConstraints(), true);
+					rupSet, data.getPaleoSlipConstraints(), true);
 		}
 		
 		List<String> lines = new ArrayList<>();

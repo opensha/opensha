@@ -225,7 +225,7 @@ public abstract class PaleoSectNuclEstimator extends SectNucleationMFD_Estimator
 			if (paleoUncert != null)
 				slipConstraints = paleoUncert.getScaled(slipConstraints);
 			for (SectMappedUncertainDataConstraint constr : PaleoseismicConstraintData.inferRatesFromSlipConstraints(
-					rupSet.requireModule(SectSlipRates.class), slipConstraints, true)) {
+					rupSet, slipConstraints, true)) {
 				double slipRate = rupSet.getSlipRateForSection(constr.sectionIndex);
 				double slipRateStdDev = rupSet.getSlipRateStdDevForSection(constr.sectionIndex);
 				if (slipRate > 0d || (slipRate + slipRateStdDev) > 0d)

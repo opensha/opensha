@@ -33,7 +33,6 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 	private transient FaultSystemRupSet rupSet;
 	private transient AveSlipModule aveSlipModule;
 	private transient SlipAlongRuptureModel slipAlongModule;
-	private transient SectSlipRates targetSlipRates;
 	
 	private List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints;
 	private PaleoSlipProbabilityModel slipObsProbModel;
@@ -62,10 +61,10 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 		return aveSlipConstraints.size();
 	}
 	
-	protected List<SectMappedUncertainDataConstraint> inferRateConstraints(SectSlipRates targetSlipRates,
+	protected List<SectMappedUncertainDataConstraint> inferRateConstraints(FaultSystemRupSet rupSet,
 			List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints, boolean applySlipRateUncertainty) {
 		return PaleoseismicConstraintData.inferRatesFromSlipConstraints(
-				targetSlipRates, aveSlipConstraints, applySlipRateUncertainty);
+				rupSet, aveSlipConstraints, applySlipRateUncertainty);
 	}
 
 	@Override
@@ -74,7 +73,7 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 		
 		// these are constraints on average slip, but we need to convert them to constraints on rates
 		List<SectMappedUncertainDataConstraint> rateConstraints = inferRateConstraints(
-				targetSlipRates, aveSlipConstraints, applySlipRateUncertainty);
+				rupSet, aveSlipConstraints, applySlipRateUncertainty);
 		for (int i=0; i<rateConstraints.size(); i++) {
 			SectMappedUncertainDataConstraint rateConstraint = rateConstraints.get(i);
 			
@@ -103,7 +102,6 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 		this.rupSet = rupSet;
 		this.aveSlipModule = rupSet.requireModule(AveSlipModule.class);
 		this.slipAlongModule = rupSet.requireModule(SlipAlongRuptureModel.class);
-		this.targetSlipRates = rupSet.requireModule(SectSlipRates.class);
 	}
 	
 	/**
@@ -121,8 +119,10 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 		}
 
 		@Override
-		protected List<SectMappedUncertainDataConstraint> inferRateConstraints(SectSlipRates targetSlipRates,
-		List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints, boolean applySlipRateUncertainty) {
+		protected List<SectMappedUncertainDataConstraint> inferRateConstraints(FaultSystemRupSet rupSet,
+				List<? extends SectMappedUncertainDataConstraint> aveSlipConstraints, boolean applySlipRateUncertainty) {
+			SectSlipRates targetSlipRates = rupSet.requireModule(SectSlipRates.class);
+			
 			Preconditions.checkState(!applySlipRateUncertainty);
 			
 			List<SectMappedUncertainDataConstraint> inferred = new ArrayList<>();

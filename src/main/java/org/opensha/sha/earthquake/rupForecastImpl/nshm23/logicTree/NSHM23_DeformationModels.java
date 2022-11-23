@@ -566,6 +566,8 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		applyStdDevDefaults(subSects, null, null);
 	}
 	
+	public static final String ORIG_FRACT_STD_DEV_PROPERTY_NAME = "OrigFractStdDev";
+	
 	public static void applyStdDevDefaults(List<? extends FaultSection> subSects,
 			Function<FaultSection, Double> fallbackStdDevFunc, String fallbackName) {
 		if (isHardcodedFractionalStdDev())
@@ -583,6 +585,11 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 					sect.getSectionId(), sect.getSectionName(), slipRate);
 			if ((float)slipRate == 0f)
 				numZeroSlips++;
+			
+			if (sect instanceof GeoJSONFaultSection && slipRate > 0d) {
+				double origStdDev = sect.getOrigSlipRateStdDev();
+				((GeoJSONFaultSection)sect).setProperty(ORIG_FRACT_STD_DEV_PROPERTY_NAME, origStdDev/slipRate);
+			}
 			
 			double stdDev;
 			if (isHardcodedFractionalStdDev()) {

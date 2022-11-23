@@ -4,13 +4,9 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-import org.checkerframework.checker.units.qual.m;
-import org.opensha.commons.data.uncertainty.BoundedUncertainty;
 import org.opensha.commons.data.uncertainty.Uncertainty;
-import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.JSON_TypeAdapterBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -18,9 +14,11 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
+import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.BiMap;
 import com.google.gson.GsonBuilder;
 
 import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
@@ -162,8 +160,7 @@ SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
 	public synchronized List<SectMappedUncertainDataConstraint> inferRatesFromSlipConstraints(boolean applySlipRateUncertainty) {
 		if (prevInferred != null && prevAppliedRateUncertainty == applySlipRateUncertainty)
 			return new ArrayList<>(prevInferred);
-		SectSlipRates targetSlipRates = rupSet.requireModule(SectSlipRates.class);
-		prevInferred = inferRatesFromSlipConstraints(targetSlipRates, paleoSlipConstraints, applySlipRateUncertainty);
+		prevInferred = inferRatesFromSlipConstraints(rupSet, paleoSlipConstraints, applySlipRateUncertainty);
 		prevAppliedRateUncertainty = applySlipRateUncertainty;
 		return new ArrayList<>(prevInferred);
 	}
@@ -177,12 +174,24 @@ SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
 	 * @return list of rate constraints inferred from average slip constraints
 	 */
 	public static List<SectMappedUncertainDataConstraint> inferRatesFromSlipConstraints(
-			SectSlipRates targetSlipRates, List<? extends SectMappedUncertainDataConstraint> paleoSlipConstraints,
+			FaultSystemRupSet rupSet, List<? extends SectMappedUncertainDataConstraint> paleoSlipConstraints,
 			boolean applySlipRateUncertainty) {
+		SectSlipRates targetSlipRates = rupSet.requireModule(SectSlipRates.class);
 		double[] slipRateStdDevs = null;
-		if (applySlipRateUncertainty)
+		if (applySlipRateUncertainty) {
 			slipRateStdDevs = SlipRateInversionConstraint.getSlipRateStdDevs(
 					targetSlipRates, SlipRateInversionConstraint.DEFAULT_FRACT_STD_DEV);
+			for (int s=0; s<slipRateStdDevs.length; s++) {
+				FaultSection sect = rupSet.getFaultSectionData(s);
+				double slip = targetSlipRates.getSlipRate(s);
+				if (slip > 0 && sect instanceof GeoJSONFaultSection) {
+					double origFractSlip = ((GeoJSONFaultSection)sect).getProperty(
+							NSHM23_DeformationModels.ORIG_FRACT_STD_DEV_PROPERTY_NAME, Double.NaN);
+					if (origFractSlip > 0d)
+						slipRateStdDevs[s] = Math.max(slipRateStdDevs[s], slip*origFractSlip);
+				}
+			}
+		}
 		
 		List<SectMappedUncertainDataConstraint> inferred = new ArrayList<>();
 		

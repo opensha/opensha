@@ -38,6 +38,8 @@ import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
 
 public class NSHM23_PaleoDataLoader {
 	
+	public static boolean INCLUDE_U3_PALEO_SLIP = true;
+	
 	public static PaleoseismicConstraintData load(FaultSystemRupSet rupSet) throws IOException {
 		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
 		
@@ -68,9 +70,13 @@ public class NSHM23_PaleoDataLoader {
 			paleoProbModel = null;
 		}
 
-		// reuse UCERF3 paleo slip
-		List<SectMappedUncertainDataConstraint> aveSlipConstraints = loadU3PaleoSlipData(subSects);
-		PaleoSlipProbabilityModel paleoSlipProbModel = U3AveSlipConstraint.slip_prob_model;
+		List<SectMappedUncertainDataConstraint> aveSlipConstraints = null;
+		PaleoSlipProbabilityModel paleoSlipProbModel = null;
+		if (INCLUDE_U3_PALEO_SLIP) {
+			// reuse UCERF3 paleo slip
+			aveSlipConstraints = loadU3PaleoSlipData(subSects);
+			paleoSlipProbModel = U3AveSlipConstraint.slip_prob_model;
+		}
 
 		return new PaleoseismicConstraintData(rupSet, paleoRateConstraints, paleoProbModel,
 				aveSlipConstraints, paleoSlipProbModel);
