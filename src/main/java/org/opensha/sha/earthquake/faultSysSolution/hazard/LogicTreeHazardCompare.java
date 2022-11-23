@@ -35,6 +35,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -51,6 +52,7 @@ import org.jfree.chart.ChartRenderingInfo;
 import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.chart.ui.RectangleEdge;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
@@ -497,6 +499,8 @@ public class LogicTreeHazardCompare {
 	
 	private SolutionLogicTree solLogicTree;
 	
+	private boolean floatMaps = false;
+	
 	// command line options
 	private boolean skipLogicTree = false;
 
@@ -588,7 +592,7 @@ public class LogicTreeHazardCompare {
 		GriddedGeoDataSet[] rpPerMaps = new GriddedGeoDataSet[branches.size()];
 		int printMod = 10;
 		LinkedList<Future<?>> processFutures = new LinkedList<>();
-		CompletableFuture<Void> readFuture = null;
+		CompletableFuture<Runnable> readFuture = null;
 		
 		LogicTreeBranch<?> branch0 = branches.get(0);
 		if (branch0 != null) {
@@ -640,6 +644,11 @@ public class LogicTreeHazardCompare {
 					region = RupSetMapMaker.buildBufferedRegion(sol.getRupSet().getFaultSectionDataList());
 				gridReg = new GriddedRegion(region, spacing, GriddedRegion.ANCHOR_0_0);
 			}
+			
+			floatMaps = branches.size() > 10000 && gridReg.getNodeCount() > 10000;
+			if (floatMaps)
+				System.out.println("Loading maps at 4-byte floating precision for "+branches.size()
+					+" branches and "+gridReg.getNodeCount()+" grid locs");
 			
 			if (mapper == null)
 				mapper = new SolHazardMapCalc(sol, null, gridReg, periods);
@@ -694,19 +703,19 @@ public class LogicTreeHazardCompare {
 				
 				if (readFuture != null)
 					// finish reading prior one
-					readFuture.join();
+					processFutures.push(exec.submit(readFuture.join()));
 				
 				final int mapIndex = i;
-				readFuture = CompletableFuture.runAsync(new Runnable() {
-					
+				readFuture = CompletableFuture.supplyAsync(new Supplier<Runnable>() {
+
 					@Override
-					public void run() {
+					public Runnable get() {
 						String entryName = dirName+"/"+MPJ_LogicTreeHazardCalc.mapPrefix(period, rp)+".txt";
 						try {
 							ZipEntry entry = zip.getEntry(entryName);
 							
 							BufferedReader bRead = prereadMapEntry(entry);
-							processFutures.push(exec.submit(new Runnable() {
+							return new Runnable() {
 
 								@Override
 								public void run() {
@@ -719,7 +728,7 @@ public class LogicTreeHazardCompare {
 									}
 								}
 								
-							}));
+							};
 						} catch (Exception e) {
 							System.err.println("Exception loading: "+entryName);
 							System.err.flush();
@@ -748,7 +757,7 @@ public class LogicTreeHazardCompare {
 		}
 		
 		if (readFuture != null)
-			readFuture.join();
+			processFutures.push(exec.submit(readFuture.join()));
 		
 		try {
 			while (!processFutures.isEmpty())
@@ -780,7 +789,7 @@ public class LogicTreeHazardCompare {
 	}
 	
 	private GriddedGeoDataSet readMapReader(BufferedReader bRead) throws IOException {
-		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
+		GriddedGeoDataSet xyz = floatMaps ? new GriddedGeoDataSet.FloatData(gridReg, false) : new GriddedGeoDataSet(gridReg, false);
 		String line = bRead.readLine();
 		int index = 0;
 		while (line != null) {
@@ -1057,72 +1066,137 @@ public class LogicTreeHazardCompare {
 						"Normm CDF not monotomoically increasing. x[%s]=%s, x[%s]=%s",
 						j-1, xVals[j-1], j, xVals[j]);
 		}
-
-		return new LightFixedXFunc(xVals, yVals);
-	}
-	
-	private static LightFixedXFunc[] mergeNormCDFs(List<LightFixedXFunc[]> inputCDFs) {
-		LightFixedXFunc[][] array = new LightFixedXFunc[inputCDFs.size()][];
-		for (int i=0; i<array.length; i++)
-			array[i] = inputCDFs.get(i);
-		return mergeNormCDFs(array);
-	}
-	
-	private static LightFixedXFunc[] mergeNormCDFs(LightFixedXFunc[]... inputCDFs) {
-		final int numCDFs = inputCDFs.length;
-		Preconditions.checkState(numCDFs > 1);
-		int numLocs = inputCDFs[0].length;
-		for (int i=1; i<inputCDFs.length; i++)
-			Preconditions.checkState(inputCDFs[i].length == numLocs);
 		
-		LightFixedXFunc[] ret = new LightFixedXFunc[numLocs];
+		LightFixedXFunc ret = new LightFixedXFunc(xVals, yVals);
 		
-		for (int l=0; l<ret.length; l++) {
-			int size = 0;
-			for (int i=0; i<numCDFs; i++)
-				size += inputCDFs[i][l].size();
-			
-			double[] xVals = new double[size];
-			double[] yVals = new double[size];
-			
-			double sum = 0d;
-			int[] curIndexes = new int[numCDFs];
-			
-			for (int i=0; i<size; i++) {
-				// find the CDF with the lowest next value
-				int minIndex = -1;
-				double minVal = Double.NaN;
-				for (int j=0; j<numCDFs; j++) {
-					if (curIndexes[j] == inputCDFs[j][l].size())
-						// already fully used
-						continue;
-					double val = inputCDFs[j][l].getX(curIndexes[j]);
-					if (minIndex < 0 || val < minVal) {
-						minIndex = j;
-						minVal = val;
-					}
+		if (size > MAX_NORMCDF_POINTS*1.2d) {
+			// interpolate it to a more manageable size
+			double[] remappedX = new double[MAX_NORMCDF_POINTS];
+			if (xVals[0] == 0d) {
+				remappedX[0] = 0d;
+				Preconditions.checkState(xVals[1] > 0);
+				EvenlyDiscretizedFunc logVals = new EvenlyDiscretizedFunc(
+						Math.log(xVals[1]), Math.log(xVals[xVals.length-1]), MAX_NORMCDF_POINTS-1);
+				for (int i=0; i<logVals.size(); i++) {
+					double xVal;
+					if (i == 0)
+						xVal = xVals[1];
+					else if (i == xVals.length-1)
+						xVal = xVals[xVals.length-1];
+					else
+						xVal = Math.exp(logVals.getX(i));
+					remappedX[i+1] = xVal;
 				}
-				Preconditions.checkState(minIndex >= 0);
-				
-				// use that value
-				xVals[i] = minVal;
-				sum += inputCDFs[minIndex][l].getY(curIndexes[minIndex]);
-				yVals[i] = sum;
-				
-				// increment the index for the one we drew from
-				curIndexes[minIndex]++;
+			} else {
+				EvenlyDiscretizedFunc logVals = new EvenlyDiscretizedFunc(
+						Math.log(xVals[0]), Math.log(xVals[xVals.length-1]), MAX_NORMCDF_POINTS);
+				for (int i=0; i<logVals.size(); i++) {
+					double xVal;
+					if (i == 0)
+						xVal = xVals[0];
+					else if (i == xVals.length-1)
+						xVal = xVals[xVals.length-1];
+					else
+						xVal = Math.exp(logVals.getX(i));
+					remappedX[i] = xVal;
+				}
 			}
-			
-			// rescale to sum to 1
-			double scale = 1d/sum;
-			for (int i=0; i<size; i++)
-				yVals[i] *= scale;
-			
-			ret[l] = new LightFixedXFunc(xVals, yVals);
+			double[] remappedY = new double[MAX_NORMCDF_POINTS];
+			for (int i=0; i<MAX_NORMCDF_POINTS; i++) {
+				if (i == 0)
+					remappedY[i] = yVals[0];
+				else if (i == MAX_NORMCDF_POINTS-1)
+					remappedY[i] = yVals[yVals.length-1];
+				else
+					remappedY[i] = ret.getInterpolatedY(remappedX[i]);
+			}
+			ret = new LightFixedXFunc(remappedX, remappedY);
 		}
-		
+
 		return ret;
 	}
+	
+	private static final int MAX_NORMCDF_POINTS = 10000;
+	
+//	private static LightFixedXFunc[] mergeNormCDFs(List<LightFixedXFunc[]> inputCDFs) {
+//		LightFixedXFunc[][] array = new LightFixedXFunc[inputCDFs.size()][];
+//		for (int i=0; i<array.length; i++)
+//			array[i] = inputCDFs.get(i);
+//		return mergeNormCDFs(array);
+//	}
+//	
+//	private static LightFixedXFunc[] mergeNormCDFs(LightFixedXFunc[]... inputCDFs) {
+//		if (inputCDFs.length > 0)
+//			throw new IllegalStateException("The code below needs to be modified to handle unequal weighting");
+//		/*
+//		 * THIS CODE IS WRONG, DOESN'T HANDLE UNEQUAL WEIGHTING
+//		 */
+//		final int numCDFs = inputCDFs.length;
+//		Preconditions.checkState(numCDFs > 1);
+//		int numLocs = inputCDFs[0].length;
+//		for (int i=1; i<inputCDFs.length; i++)
+//			Preconditions.checkState(inputCDFs[i].length == numLocs);
+//		
+//		LightFixedXFunc[] ret = new LightFixedXFunc[numLocs];
+//		
+//		for (int l=0; l<ret.length; l++) {
+//			int size = 0;
+//			for (int i=0; i<numCDFs; i++)
+//				size += inputCDFs[i][l].size();
+//			
+//			double[] xVals = new double[size];
+//			double[] yVals = new double[size];
+//			
+//			double sum = 0d;
+//			int[] curIndexes = new int[numCDFs];
+//			
+//			int destIndex = -1;
+//			for (int i=0; i<size; i++) {
+//				// find the CDF with the lowest next value
+//				int minIndex = -1;
+//				double minVal = Double.NaN;
+//				for (int j=0; j<numCDFs; j++) {
+//					if (curIndexes[j] == inputCDFs[j][l].size())
+//						// already fully used
+//						continue;
+//					double val = inputCDFs[j][l].getX(curIndexes[j]);
+//					if (minIndex < 0 || val < minVal) {
+//						minIndex = j;
+//						minVal = val;
+//					}
+//				}
+//				Preconditions.checkState(minIndex >= 0);
+//				
+//				sum += inputCDFs[minIndex][l].getY(curIndexes[minIndex]);
+//				// use that value
+//				if (destIndex < 0 || (float)minVal != (float)xVals[destIndex]) {
+//					// new x value
+//					destIndex++;
+//					xVals[destIndex] = minVal;
+//				}
+//				yVals[destIndex] = sum;
+//				
+//				// increment the index for the one we drew from
+//				curIndexes[minIndex]++;
+//			}
+//			
+//			// rescale to sum to 1
+//			double scale = 1d/sum;
+//			for (int i=0; i<size; i++)
+//				yVals[i] *= scale;
+//			
+//			// see if we need to trip
+//			int used = destIndex+1;
+//			if (used < size) {
+//				xVals = Arrays.copyOf(xVals, used);
+//				yVals = Arrays.copyOf(yVals, used);
+//			}
+//			
+//			ret[l] = new LightFixedXFunc(xVals, yVals);
+//		}
+//		
+//		return ret;
+//	}
 	
 	private GriddedGeoDataSet calcMapAtPercentile(LightFixedXFunc[] ncdfs, GriddedRegion gridReg,
 			double percentile) {
@@ -1177,7 +1251,7 @@ public class LogicTreeHazardCompare {
 		return ret;
 	}
 	
-	private GriddedGeoDataSet calcPercentileWithinDist(LightFixedXFunc[] ncdfs, GriddedGeoDataSet comp) {
+	private static GriddedGeoDataSet calcPercentileWithinDist(LightFixedXFunc[] ncdfs, GriddedGeoDataSet comp) {
 		Preconditions.checkState(comp.size() == ncdfs.length);
 		GriddedGeoDataSet ret = new GriddedGeoDataSet(comp.getRegion(), false);
 		
@@ -1186,11 +1260,84 @@ public class LogicTreeHazardCompare {
 			
 			double percentile;
 			if (ncdfs[i].size() == 1) {
-				percentile = -1d;
+				if (compVal > 0d && (float)ncdfs[i].getX(0) == (float)compVal)
+					percentile = 50d;
+				else
+					percentile = -1d;
 			} else if (compVal < ncdfs[i].getMinX() || compVal > ncdfs[i].getMaxX()) {
-				percentile = Double.NaN;
+				if ((float)compVal == (float)ncdfs[i].getMinX())
+					percentile = 0d;
+				else if ((float)compVal == (float)ncdfs[i].getMaxX())
+					percentile = 100d;
+				else
+					percentile = Double.NaN;
 			} else {
 				percentile = 100d * ncdfs[i].getInterpolatedY(compVal);
+			}
+			ret.set(i, percentile);
+		}
+		
+		return ret;
+	}
+	
+	private static GriddedGeoDataSet calcPercentileWithinDists(List<LightFixedXFunc[]> ncdfsList, List<Double> weightsList,
+			GriddedGeoDataSet comp) {
+		Preconditions.checkState(weightsList.size() == ncdfsList.size());
+		if (ncdfsList.size() == 1)
+			return calcPercentileWithinDist(ncdfsList.get(0), comp);
+		for (LightFixedXFunc[] ncdfs : ncdfsList)
+			Preconditions.checkState(comp.size() == ncdfs.length);
+		GriddedGeoDataSet ret = new GriddedGeoDataSet(comp.getRegion(), false);
+		
+		double sumWeights = 0d;
+		for (double weight : weightsList)
+			sumWeights += weight;
+		double weightScale = 1d/sumWeights;
+		
+		for (int i=0; i<ret.size(); i++) {
+			double compVal = comp.get(i);
+			
+			double minVal = Double.POSITIVE_INFINITY;
+			double maxVal = Double.NEGATIVE_INFINITY;
+			for (LightFixedXFunc[] ncdfs : ncdfsList) {
+				minVal = Double.min(minVal, ncdfs[i].getMinX());
+				maxVal = Double.max(maxVal, ncdfs[i].getMaxX());
+			}
+			
+			double percentile;
+			if ((float)minVal == (float)maxVal) {
+				// only one value
+				if (compVal > 0d && (float)compVal == (float)minVal)
+					percentile = 50d;
+				else
+					percentile = -1;
+			} else if (compVal < minVal || compVal > maxVal) {
+				// we're outside of the full dist
+				if ((float)compVal == (float)minVal)
+					percentile = 0d;
+				else if ((float)compVal == (float)maxVal)
+					percentile = 100d;
+				else
+					percentile = Double.NaN;
+			} else {
+				// we're contained within the dist
+				double sumY = 0d;
+				for (int n=0; n<ncdfsList.size(); n++) {
+					double weight = weightsList.get(n);
+					LightFixedXFunc[] ncdfs = ncdfsList.get(n);
+					if ((float)compVal > (float)ncdfs[i].getMaxX())
+						// we're above this whole one
+						sumY += weight;
+					else if ((float)compVal < (float)ncdfs[i].getMinX())
+						// we're below this whole one, do nothing
+						sumY += 0d;
+					else if ((float)compVal == (float)minVal && ncdfs[i].size() == 1)
+						// only one value here, and we're at it, 50th percentile
+						sumY += 0.5*weight;
+					else
+						sumY += ncdfs[i].getInterpolatedY(compVal)*weight;
+				}
+				percentile = 100d * sumY * weightScale;
 			}
 			ret.set(i, percentile);
 		}
@@ -1663,6 +1810,15 @@ public class LogicTreeHazardCompare {
 				if (skipLogicTree)
 					continue;
 				
+				cmapNCDFs = null;
+				cmean = null;
+				cmedian = null;
+				cmin = null;
+				cmax = null;
+				cspread = null;
+				ccov = null;
+				System.gc();
+				
 				lines.add("### "+label+" Logic Tree Comparisons");
 				lines.add(topLink); lines.add("");
 				
@@ -1681,6 +1837,13 @@ public class LogicTreeHazardCompare {
 				List<List<MapPlot>> branchLevelPDiffPlots = new ArrayList<>();
 				List<List<MapPlot>> branchLevelDiffPlots = new ArrayList<>();
 				
+				// precompute choice means for everything
+				List<HashMap<LogicTreeNode, List<GriddedGeoDataSet>>> choiceMapsList = new ArrayList<>();
+				List<HashMap<LogicTreeNode, List<Double>>> choiceWeightsList = new ArrayList<>();
+				List<HashMap<LogicTreeNode, GriddedGeoDataSet>> choiceMeansList = new ArrayList<>();
+				List<HashMap<LogicTreeNode, GriddedGeoDataSet>> choiceMeanPercentilesList = new ArrayList<>();
+				
+				// do mean map calculations first so that we can clear out the full NormCDFs from memory
 				for (LogicTreeLevel<?> level : solLogicTree.getLogicTree().getLevels()) {
 					HashMap<LogicTreeNode, List<GriddedGeoDataSet>> choiceMaps = new HashMap<>();
 					HashMap<LogicTreeNode, List<Double>> choiceWeights = new HashMap<>();
@@ -1697,14 +1860,11 @@ public class LogicTreeHazardCompare {
 						choiceWeights.get(choice).add(weights.get(i));
 					}
 					if (choiceMaps.size() > 1) {
-						System.out.println(level.getName()+" has "+choiceMaps.size()+" choices");
-						lines.add("#### "+level.getName()+", "+label);
-						lines.add(topLink); lines.add("");
-						lines.add("This section shows how mean hazard varies accross "+choiceMaps.size()+" choices at the "
-								+ "_"+level.getName()+"_ branch level.");
-						lines.add("");
+						choiceMapsList.add(choiceMaps);
+						choiceWeightsList.add(choiceWeights);
 						
 						HashMap<LogicTreeNode, GriddedGeoDataSet> choiceMeans = new HashMap<>();
+						HashMap<LogicTreeNode, GriddedGeoDataSet> choiceMeanPercentiles = new HashMap<>();
 						for (LogicTreeNode choice : choiceMaps.keySet()) {
 							GriddedGeoDataSet choiceMean;
 							if (meanIsFromCurves) {
@@ -1719,7 +1879,37 @@ public class LogicTreeHazardCompare {
 								choiceMean = buildMean(choiceMaps.get(choice), choiceWeights.get(choice));
 							}
 							choiceMeans.put(choice, choiceMean);
+							// calculate percentile
+							GriddedGeoDataSet percentile = calcPercentileWithinDist(mapNCDFs, choiceMean);
+							choiceMeanPercentiles.put(choice, percentile);
 						}
+						choiceMeansList.add(choiceMeans);
+						choiceMeanPercentilesList.add(choiceMeanPercentiles);
+					} else {
+						choiceMapsList.add(null);
+						choiceWeightsList.add(null);
+						choiceMeansList.add(null);
+						choiceMeanPercentilesList.add(null);
+					}
+				}
+				
+				mapNCDFs = null;
+				System.gc();
+				
+				for (int l=0; l<choiceMapsList.size(); l++) {
+					LogicTreeLevel<?> level = solLogicTree.getLogicTree().getLevels().get(l);
+					HashMap<LogicTreeNode, List<GriddedGeoDataSet>> choiceMaps = choiceMapsList.get(l);
+					if (choiceMaps != null) {
+						HashMap<LogicTreeNode, List<Double>> choiceWeights = choiceWeightsList.get(l);
+						System.out.println(level.getName()+" has "+choiceMaps.size()+" choices");
+						lines.add("#### "+level.getName()+", "+label);
+						lines.add(topLink); lines.add("");
+						lines.add("This section shows how mean hazard varies accross "+choiceMaps.size()+" choices at the "
+								+ "_"+level.getName()+"_ branch level.");
+						lines.add("");
+						
+						HashMap<LogicTreeNode, GriddedGeoDataSet> choiceMeans = choiceMeansList.get(l);
+						HashMap<LogicTreeNode, GriddedGeoDataSet> choiceMeanPercentiles = choiceMeanPercentilesList.get(l);
 						
 						table = MarkdownUtils.tableBuilder();
 						table.initNewLine().addColumn("**Choice**").addColumn("**Vs Mean**");
@@ -1762,6 +1952,7 @@ public class LogicTreeHazardCompare {
 						// build norm CDFs for each sub-choice
 						System.out.println("Building choice CDFs for "+level.getName());
 						LightFixedXFunc[][] choiceCDFs = new LightFixedXFunc[choices.size()][];
+						double[] choiceSumWeights = new double[choices.size()];
 						for (int c=0; c<choices.size(); c++) {
 							List<GriddedGeoDataSet> mapsWith = new ArrayList<>();
 							List<Double> weightsWith = new ArrayList<>();
@@ -1770,9 +1961,13 @@ public class LogicTreeHazardCompare {
 								LogicTreeBranch<?> branch = branches.get(i);
 								if (branch.hasValue(choice)) {
 									mapsWith.add(maps[i]);
-									weightsWith.add(weights.get(i));
+									double weight = weights.get(i);
+									weightsWith.add(weight);
+									choiceSumWeights[c] += weight;
 								}
 							}
+							System.out.println("\tBuilding "+choice.getShortName()+" with "+mapsWith.size()
+								+" maps, sumWeight="+(float)choiceSumWeights[c]);
 							choiceCDFs[c] = buildNormCDFs(mapsWith, weightsWith);
 						}
 						
@@ -1829,7 +2024,7 @@ public class LogicTreeHazardCompare {
 							mapTable.addColumn("![Difference Map]("+resourcesDir.getName()+"/"+map.getName()+")");
 							
 							// percentile
-							GriddedGeoDataSet percentile = calcPercentileWithinDist(mapNCDFs, choiceMap);
+							GriddedGeoDataSet percentile = choiceMeanPercentiles.get(choice);
 							map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_"+choice.getFilePrefix()+"_percentile",
 									percentile, percentileCPT, TITLES ? choice.getShortName()+" Comparison" : " ",
 									choice.getShortName()+" %-ile, "+label);
@@ -1849,12 +2044,16 @@ public class LogicTreeHazardCompare {
 //							Preconditions.checkState(!mapsWithout.isEmpty());
 //							LightFixedXFunc[] mapsWithoutNCDFs = buildNormCDFs(mapsWithout, weightsWithout);
 							List<LightFixedXFunc[]> withoutNCDFs = new ArrayList<>(choices.size()-1);
-							for (int i=0; i<choices.size(); i++)
-								if (i != c)
+							List<Double> withoutWeights = new ArrayList<>();
+							for (int i=0; i<choices.size(); i++) {
+								if (i != c) {
 									withoutNCDFs.add(choiceCDFs[i]);
-							LightFixedXFunc[] mapsWithoutNCDFs =
-									withoutNCDFs.size() == 1 ? withoutNCDFs.get(0) : mergeNormCDFs(withoutNCDFs);
-							GriddedGeoDataSet percentileWithout = calcPercentileWithinDist(mapsWithoutNCDFs, choiceMap);
+									withoutWeights.add(choiceSumWeights[i]);
+								}
+							}
+//							LightFixedXFunc[] mapsWithoutNCDFs =
+//									withoutNCDFs.size() == 1 ? withoutNCDFs.get(0) : mergeNormCDFs(withoutNCDFs);
+							GriddedGeoDataSet percentileWithout = calcPercentileWithinDists(withoutNCDFs, withoutWeights, choiceMap);
 							map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_"+choice.getFilePrefix()+"_percentile_without",
 									percentileWithout, percentileCPT, TITLES ? choice.getShortName()+" Comparison" : " ",
 									choice.getShortName()+" %-ile, "+label);
