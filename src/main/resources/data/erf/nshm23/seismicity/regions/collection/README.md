@@ -7,5 +7,5 @@ principal lines of latitude (24° and 50°) and longitude (-126°, -104°, and -
 WUS and CEUS regions, each outer boundary is offset by 0.05°, and the dividing line betwen WUS
 and CEUS is set at -103.95°.
 
-Created by: @pmpowers  
-11/3/2022
+Created by: @pmpowers 11/3/2022
+Updated filenames: 11/22/2022

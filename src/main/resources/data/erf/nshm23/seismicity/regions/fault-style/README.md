@@ -15,7 +15,7 @@ regions for each domain, but seismicity rate was then smoothed outside those reg
 For the 2023 NSHM we are using WUS- and CEUS-wide to spatial PDFs and then using the strict regions
 defined here to assign focal mechanisms for gridded seismicity (point) sources.
 
-The boundary between the WUS extansional domain and the CEUS stable craton is the updated (2022)
+The boundary between the WUS extansional domain and the CEUS stable craton is the updated (2023)
 attenuation boundary.
 
 Created by: @pmpowers  

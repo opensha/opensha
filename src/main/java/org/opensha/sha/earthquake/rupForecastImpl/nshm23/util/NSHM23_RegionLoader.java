@@ -42,8 +42,8 @@ public class NSHM23_RegionLoader {
 	 * 
 	 */
 	public enum SeismicityRegions implements BaseRegion {
-		CONUS_EAST("conus-ceus.geojson"),
-		CONUS_WEST("conus-wus.geojson");
+		CONUS_EAST("collection-ceus.geojson"),
+		CONUS_WEST("collection-wus.geojson");
 		
 		private String fileName;
 
@@ -66,12 +66,12 @@ public class NSHM23_RegionLoader {
 	 */
 	public enum AnalysisRegions implements BaseRegion {
 //		ALASKA("alaska.geojson"),
-		CONUS_EAST("conus-east.geojson"),
-//		CONUS_IMW("conus-intermountain-west-merged.geojson"),
-		CONUS_IMW_ACTIVE("conus-intermountain-west-active.geojson"),
-		CONUS_IMW_STABLE("conus-intermountain-west-stable.geojson"),
-		CONUS_PNW("conus-pacific-northwest.geojson"),
-		CONUS_U3_RELM("conus-ucerf3-relm.geojson");
+		CONUS_EAST("ceus.geojson"),
+		CONUS_IMW("intermountain-west.geojson"),
+//		CONUS_IMW_ACTIVE("intermountain-west-active.geojson"),
+//		CONUS_IMW_STABLE("intermountain-west-stable.geojson"),
+		CONUS_PNW("pacific-northwest.geojson"),
+		CONUS_U3_RELM("ucerf.geojson");
 //		CONUS_HAWAII("hawaii.geojson");
 		
 		private String fileName;
