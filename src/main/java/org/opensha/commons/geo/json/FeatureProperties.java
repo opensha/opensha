@@ -13,6 +13,7 @@ import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet.XYAdapter;
 import org.opensha.commons.geo.Location;
 
+import com.google.common.base.Preconditions;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.stream.JsonReader;
@@ -395,6 +396,7 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			
 			while (in.hasNext()) {
 				String name = in.nextName();
+//				System.out.println("Deserializing "+name);
 				Object value = deserialize(in, name);
 				
 				properties.put(name, value);
@@ -539,9 +541,10 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		if (D) System.out.println("Looking to back out to: "+startPath);
 		while (true) {
 			String path = in.getPath();
-			if (D) System.out.println("Path: "+path+"\tequals? "+path.equals(startPath));
+			if (D) System.out.println("Path: "+path+"\tequals? "+isSamePath(path, startPath));
 			JsonToken peek = in.peek();
-			if (path.equals(startPath)) {
+			if (isSamePath(path, startPath)) {
+				// do strict equals for this test, otherwise we'll skip every other object in an array
 				if (peek == JsonToken.BEGIN_OBJECT && path.equals(startPath)) {
 					// phew, we haven't gone in yet. just skip over it
 					if (D) System.out.println("DONE: hadn't yet descended into object, can skip");
@@ -570,6 +573,32 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 				in.skipValue();
 			}
 		}
+	}
+	
+	/**
+	 * 
+	 * @param testPath
+	 * @param destPath
+	 * @return true if testPath equals destPath, or testPath is another value in the same array
+	 */
+	private static boolean isSamePath(String testPath, String destPath) {
+		if (testPath.equals(destPath))
+			return true;
+		if (testPath.endsWith("]") && destPath.endsWith("]")) {
+			// special case for arrays, could be at the index in it, which should return true
+			int destArrayBegin = destPath.lastIndexOf('[');
+			Preconditions.checkState(destArrayBegin > 0);
+			int testArrayBegin = destPath.lastIndexOf('[');
+			Preconditions.checkState(testArrayBegin > 0);
+			if (destArrayBegin == testArrayBegin) {
+				// probable match
+				String destPrefix = destPath.substring(0, destArrayBegin);
+				String testPrefix = testPath.substring(0, testArrayBegin);
+				if (destPrefix.equals(testPrefix))
+					return true;
+			}
+		}
+		return false;
 	}
 	
 	static Number parseNumber(String numStr) {
