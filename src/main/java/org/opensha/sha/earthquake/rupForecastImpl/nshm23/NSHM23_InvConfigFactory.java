@@ -1813,6 +1813,9 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
 				int threads) {
 			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
+			if (config == null)
+				// can happen for an isolated fault with zero constraints (no slip rate)
+				return null;
 			boolean hasSlip = false;
 			for (InversionConstraint constraint : config.getConstraints())
 				hasSlip = hasSlip || constraint instanceof PaleoSlipInversionConstraint;
