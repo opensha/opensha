@@ -9,6 +9,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -394,6 +395,20 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 	 * @return
 	 */
 	public static Precomputed getIntersectionAssociations(FaultSystemRupSet rupSet, GriddedRegion region) {
+		return getIntersectionAssociations(rupSet.getFaultSectionDataList(), region);
+	}
+	
+	/**
+	 * Simple {@link FaultGridAssociations} implementation where faults are associated by the fraction of the rupture
+	 * surface area that lies within a grid cell, not including any polygons or distance taper.
+	 * 
+	 * Node to section associations here assume that any section that touches a node fully controls it. In the case of
+	 * multiple sections touching a node, they are weighted by area.
+	 * @param rupSet
+	 * @param region
+	 * @return
+	 */
+	public static Precomputed getIntersectionAssociations(List<? extends FaultSection> sects, GriddedRegion region) {
 		Precomputed ret = new Precomputed();
 		
 		// set region
@@ -410,7 +425,9 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 		// section index, node index, area of that section in that node
 		Table<Integer, Integer, Double> sectAreasInNode = HashBasedTable.create();
 		
-		for (FaultSection sect : rupSet.getFaultSectionDataList()) {
+		for (int s=0; s<sects.size(); s++) {
+			FaultSection sect = sects.get(s);
+			Preconditions.checkState(sect.getSectionId() == s, "Section IDs must be 0-based and in order");
 			RuptureSurface surf = sect.getFaultSurface(0.25, false, true);
 			Map<Integer, Integer> nodeAssocCounts = new HashMap<>();
 			for (Location loc : surf.getEvenlyDiscritizedListOfLocsOnSurface()) {
@@ -426,7 +443,7 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 				int sectIndex = sect.getSectionId();
 				sectIndicesBuilder.add(sectIndex);
 				double fractScalar = 1d/(double)surf.getEvenlyDiscretizedNumLocs();
-				double areaScalar = rupSet.getAreaForSection(sectIndex) * fractScalar;
+				double areaScalar = sect.getArea(true) * fractScalar;
 				for (int nodeIndex : nodeAssocCounts.keySet()) {
 					double count = nodeAssocCounts.get(nodeIndex).doubleValue();
 					double fractAssoc = count*fractScalar;
