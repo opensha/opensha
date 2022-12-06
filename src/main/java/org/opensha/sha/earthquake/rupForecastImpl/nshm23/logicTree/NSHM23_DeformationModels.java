@@ -2,13 +2,16 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -22,6 +25,7 @@ import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
@@ -135,6 +139,12 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 				applyCreepData(subSect, creepRate);
 			}
 			return ret;
+		}
+	},
+	MEDIAN("NSHM23 Median Deformation Model (Unweighted, Geol. Rakes)", "MedDM", 0d) {
+		@Override
+		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
+			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
 	};
 	
@@ -970,27 +980,118 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		}
 	}
 	
-	public static void main(String[] args) throws IOException {
-		// write geo gson
-//		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v1p4;
+	private static void writeMedianDM(File outputDir) throws IOException {
 		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
 		
-//		List<? extends FaultSection> geoFull = buildGeolFullSects(fm, GEOLOGIC_VERSION);
-//		GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+NSHM23_DeformationModels.GEOLOGIC.getFilePrefix()+"_sects.geojson"), geoFull);
+		// first load geologic
+		List<? extends FaultSection> geoSects = buildGeolFullSects(fm, GEOLOGIC_VERSION);
+		geoSects = new ArrayList<>(geoSects);
+		geoSects.sort(new Comparator<FaultSection>() {
+
+			@Override
+			public int compare(FaultSection o1, FaultSection o2) {
+				return Integer.compare(o1.getSectionId(), o2.getSectionId());
+			}
+		});
 		
-		for (NSHM23_DeformationModels dm : values()) {
-			if (dm.isApplicableTo(fm)) {
-				System.out.println("************************");
-				System.out.println("Building "+dm.name);
-				List<? extends FaultSection> subSects = dm.build(fm);
-				GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+dm.getFilePrefix()+"_sub_sects.geojson"), subSects);
-				System.err.flush();
-				System.out.flush();
-				System.out.println("************************");
+		Map<NSHM23_DeformationModels, Map<Integer, List<GeodeticSlipRecord>>> geodeticRecords = new HashMap<>();
+		Map<NSHM23_DeformationModels, Map<Integer, List<CreepRecord>>> creepRecords = new HashMap<>();
+		
+		NSHM23_DeformationModels[] models = { GEOLOGIC, EVANS, POLLITZ, SHEN_BIRD, ZENG };
+		
+		MinisectionMappings mappings = new MinisectionMappings(geoSects, GEOLOGIC.build(fm));
+		
+		for (NSHM23_DeformationModels model : models) {
+			if (model != GEOLOGIC) {
+				String fmDirName = getGeodeticDirForFM(fm);
+				String dmPath = NSHM23_DM_PATH_PREFIX+"geodetic/"+fmDirName+"/"+model.name()+"-include_ghost_corr.txt";
+				geodeticRecords.put(model, loadGeodeticModel(dmPath));
+			}
+			String creepPath = NSHM23_DM_PATH_PREFIX+"creep/"+CREEP_DATE+"/"+model.name()+".csv";
+			creepRecords.put(model, loadCreepData(creepPath, mappings));
+		}
+		
+		FileWriter dmFW = new FileWriter(new File(outputDir, "MEDIAN-include_ghost_corr.txt"));
+		dmFW.write("#FaultID	MinisectionID	StartLat	StartLon	EndLat	EndLon	Rake	SlipRate(mm/y)	StdDev\n");
+		
+		CSVFile<String> creepCSV = new CSVFile<>(true);
+		for (int i=0; i<geoSects.size(); i++) {
+			FaultSection sect = geoSects.get(i);
+			int sectID = sect.getSectionId();
+			
+			double geoSlip = sect.getOrigAveSlipRate();
+			double geoSD = sect.getOrigSlipRateStdDev();
+			double geoRake = sect.getAveRake();
+			
+			FaultTrace trace = sect.getFaultTrace();
+			
+			for (int mini=0; mini<mappings.getNumMinisectionsForParent(sect.getSectionId()); mini++) {
+				String line = sect.getSectionId()+"\t"+(mini+1);
+				Location p1 = trace.get(mini);
+				Location p2 = trace.get(mini+1);
+				line += "\t"+(float)p1.getLatitude()+"\t"+(float)p1.getLongitude();
+				line += "\t"+(float)p2.getLatitude()+"\t"+(float)p2.getLongitude();
+				line += "\t"+(float)geoRake;
+				
+				// median slip rate
+				double[] slips = new double[models.length];
+				double[] creepFracts = new double[slips.length];
+				boolean hasCreep = false;
+				for (int m=0; m<models.length; m++) {
+					if (models[m] == GEOLOGIC)
+						slips[m] = geoSlip;
+					else
+						slips[m] = geodeticRecords.get(models[m]).get(sectID).get(mini).slipRate;
+					List<CreepRecord> sectCreeps = creepRecords.get(models[m]).get(sectID);
+					if (sectCreeps != null) {
+						CreepRecord miniCreep = sectCreeps.get(mini);
+						if (miniCreep != null) {
+							hasCreep = true;
+							creepFracts[m] = Math.min(1d, miniCreep.creepRate/slips[m]);
+						}
+					}
+				}
+				
+				double medianSlip = DataUtils.median(slips);
+				line += "\t"+(float)medianSlip;
+				line += "\t"+(float)geoSD;
+				
+				if (hasCreep) {
+					double medianCreepFract = DataUtils.median(creepFracts);
+					creepCSV.addLine(sectID+"", (mini+1)+"", (float)(medianCreepFract*medianSlip)+"");
+				}
+				dmFW.write(line+"\n");
 			}
 		}
 		
-		checkForNegativeAndHighCreep(fm);
+		dmFW.close();
+		creepCSV.writeToFile(new File(outputDir, "MEDIAN.csv"));
+	}
+	
+	public static void main(String[] args) throws IOException {
+		// write geo gson
+////		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v1p4;
+//		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+//		
+////		List<? extends FaultSection> geoFull = buildGeolFullSects(fm, GEOLOGIC_VERSION);
+////		GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+NSHM23_DeformationModels.GEOLOGIC.getFilePrefix()+"_sects.geojson"), geoFull);
+//		
+//		for (NSHM23_DeformationModels dm : values()) {
+//			if (dm.isApplicableTo(fm)) {
+//				System.out.println("************************");
+//				System.out.println("Building "+dm.name);
+//				List<? extends FaultSection> subSects = dm.build(fm);
+//				GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+dm.getFilePrefix()+"_sub_sects.geojson"), subSects);
+//				System.err.flush();
+//				System.out.flush();
+//				System.out.println("************************");
+//			}
+//		}
+//		
+//		checkForNegativeAndHighCreep(fm);
+		
+		// write median dm
+		writeMedianDM(new File("/tmp"));
 	}
 
 }
