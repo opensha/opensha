@@ -429,7 +429,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		}
 	}
 	
-	private static void waitOnDir(File dir, int maxRetries, long sleepMillis) {
+	public static void waitOnDir(File dir, int maxRetries, long sleepMillis) {
 		int retry = 0;
 		while (!(dir.exists() || dir.mkdir())) {
 			try {
