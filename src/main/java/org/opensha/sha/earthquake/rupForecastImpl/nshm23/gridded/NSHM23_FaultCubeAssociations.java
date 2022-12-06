@@ -52,7 +52,7 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 	/*
 	 * Inputs
 	 */
-	private FaultSystemRupSet rupSet;
+	private List<? extends FaultSection> subSects;
 	private CubedGriddedRegion cgr;
 	private GriddedRegion griddedRegion;
 	private double maxFaultNuclDist;
@@ -87,7 +87,12 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 	private ImmutableTable<Integer, Integer, Double> sectInNodePartic;
 
 	public NSHM23_FaultCubeAssociations(FaultSystemRupSet rupSet, CubedGriddedRegion cgr, double maxFaultNuclDist) {
-		this.rupSet = rupSet;
+		this(rupSet.getFaultSectionDataList(), cgr, maxFaultNuclDist);
+	}
+
+	public NSHM23_FaultCubeAssociations(List<? extends FaultSection> subSects, CubedGriddedRegion cgr, double maxFaultNuclDist) {
+		validateSubSects(subSects);
+		this.subSects = subSects;
 		this.cgr = cgr;
 		this.maxFaultNuclDist = maxFaultNuclDist;
 		this.griddedRegion = cgr.getGriddedRegion();
@@ -98,9 +103,21 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 		aggregateToGridNodes();
 	}
 	
+	private static void validateSubSects(List<? extends FaultSection> subSects) {
+		Preconditions.checkState(!subSects.isEmpty(), "No subsections supplied");
+		for (int s=0; s<subSects.size(); s++)
+			Preconditions.checkState(subSects.get(s).getSectionId() == s, "Subsections not in order or not 0-indexed");
+	}
+	
 	public NSHM23_FaultCubeAssociations(FaultSystemRupSet rupSet, CubedGriddedRegion cgr,
 			List<NSHM23_FaultCubeAssociations> regionalAssociations) {
-		this.rupSet = rupSet;
+		this(rupSet.getFaultSectionDataList(), cgr, regionalAssociations);
+	}
+	
+	public NSHM23_FaultCubeAssociations(List<? extends FaultSection> subSects, CubedGriddedRegion cgr,
+			List<NSHM23_FaultCubeAssociations> regionalAssociations) {
+		validateSubSects(subSects);
+		this.subSects = subSects;
 		this.cgr = cgr;
 		this.griddedRegion = cgr.getGriddedRegion();
 		
@@ -137,7 +154,7 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 			}
 		}
 		System.out.println("Mapped "+numMapped+"/"+nodeCount+" model region fault associations locations to sub-region grid locations");
-		totDistWtsAtCubesForSectArray = new double[rupSet.getNumSections()];
+		totDistWtsAtCubesForSectArray = new double[subSects.size()];
 		for (NSHM23_FaultCubeAssociations regional : regionalAssociations)
 			for (int s=0; s<totDistWtsAtCubesForSectArray.length; s++)
 				totDistWtsAtCubesForSectArray[s] += regional.totDistWtsAtCubesForSectArray[s];
@@ -318,8 +335,8 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 		ExecutorService exec = Executors.newFixedThreadPool(FaultSysTools.defaultNumThreads());
 		
 		Stopwatch watch = Stopwatch.createStarted();
-		List<Future<SectCubeMapper>> futures = new ArrayList<>(rupSet.getNumSections());
-		for (int s=0; s<rupSet.getNumSections(); s++)
+		List<Future<SectCubeMapper>> futures = new ArrayList<>(subSects.size());
+		for (int s=0; s<subSects.size(); s++)
 			futures.add(exec.submit(new SectCubeMapper(s)));
 		
 		System.out.println("Waiting on "+futures.size()+" fault section to cube mapping futures");
@@ -330,7 +347,7 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 		sectsAtCubes = new int[cgr.getNumCubes()][];
 		// this is only needed temporarily
 		double[][] sectDistsAtCubes = new double[cgr.getNumCubes()][];
-		totDistWtsAtCubesForSectArray = new double[rupSet.getNumSections()];
+		totDistWtsAtCubesForSectArray = new double[subSects.size()];
 		
 		for (Future<SectCubeMapper> future : futures) {
 			try {
@@ -419,7 +436,7 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 
 		@Override
 		public SectCubeMapper call() throws Exception {
-			FaultSection fltSection = rupSet.getFaultSectionData(sectIndex);
+			FaultSection fltSection = subSects.get(sectIndex);
 			
 			// first see if we can skip this section
 			boolean skip = true;
@@ -502,7 +519,7 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 			float ratio = (float)testWt/(float)totWeight;
 			if(ratio != 1.0) {
 //				sectionsThatNucleateOutsideRegionList.add(sectIndex);
-				if(D) System.out.println((1f-ratio)+" of "+rupSet.getFaultSectionData(sectIndex).getName()+ " nucleates outside the region");
+				if(D) System.out.println((1f-ratio)+" of "+subSects.get(sectIndex).getName()+ " nucleates outside the region");
 			}
 			
 			if (mappedCubeDistances.isEmpty())
