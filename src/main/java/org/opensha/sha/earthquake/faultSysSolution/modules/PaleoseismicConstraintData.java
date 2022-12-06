@@ -201,7 +201,7 @@ SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
 			// slip rate, in m/yr
 			double targetSlipRate = targetSlipRates.getSlipRate(constraint.sectionIndex);
 			// slip rate std dev, in m/yr
-			double targetSlipRateStdDev = applySlipRateUncertainty ? slipRateStdDevs[constraint.sectionIndex] : 0d;;
+			double targetSlipRateStdDev = applySlipRateUncertainty ? slipRateStdDevs[constraint.sectionIndex] : 0d;
 			
 			// average slip, in m
 			double aveSlip = constraint.bestEstimate;
