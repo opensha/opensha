@@ -90,6 +90,7 @@ public class RupSetMapMaker {
 	private List<Feature> sectFeatures = null;
 	private List<Feature> jumpFeatures = null;
 	private List<Feature> scatterFeatures = null;
+	private List<Feature> regionFeatures = null;
 	
 	/*
 	 * Things to plot
@@ -139,6 +140,12 @@ public class RupSetMapMaker {
 	private GeoDataSet xyzData;
 	private CPT xyzCPT;
 	private String xyzLabel;
+	
+	// region outlines
+	private Collection<Region> insetRegions;
+	private PlotCurveCharacterstics insetRegionOutlineChar;
+	private Color insetRegionFillColor;
+	private double insetRegionFillOpacity;
 	
 	private boolean reverseSort = false;
 	
@@ -255,6 +262,26 @@ public class RupSetMapMaker {
 	public void clearHighlights() {
 		this.highlightSections = null;
 		this.highlightTraceChar = null;
+	}
+	
+	public void plotInsetRegions(Collection<Region> regions, PlotCurveCharacterstics outlineChar,
+			Color fillColor, double fillOpacity) {
+		if (regions == null || regions.isEmpty()) {
+			clearInsetRegions();
+		} else {
+			Preconditions.checkState(outlineChar != null || insetRegionFillColor != null);
+			this.insetRegions = regions;
+			this.insetRegionOutlineChar = outlineChar;
+			this.insetRegionFillColor = fillColor;
+			this.insetRegionFillOpacity = fillOpacity;
+		}
+	}
+	
+	public void clearInsetRegions() {
+		this.insetRegions = null;
+		this.insetRegionOutlineChar = null;
+		this.insetRegionFillColor = null;
+		this.insetRegionFillOpacity = Double.NaN;
 	}
 	
 	public void setWritePDFs(boolean writePDFs) {
@@ -548,6 +575,7 @@ public class RupSetMapMaker {
 			sectFeatures = new ArrayList<>();
 			jumpFeatures = new ArrayList<>();
 			scatterFeatures = new ArrayList<>();
+			regionFeatures = new ArrayList<>();
 		}
 		
 		// add political boundaries
@@ -555,6 +583,54 @@ public class RupSetMapMaker {
 			for (XY_DataSet xy : politicalBoundaries) {
 				funcs.add(xy);
 				chars.add(politicalBoundaryChar);
+			}
+		}
+		
+		if (insetRegions != null) {
+			Preconditions.checkNotNull(insetRegionOutlineChar);
+			
+			PlotCurveCharacterstics regFillChar = null;
+			if (insetRegionFillColor != null) {
+				Color color = insetRegionFillColor;
+				if (insetRegionFillOpacity != 1d)
+					color = new Color(color.getRed(), color.getGreen(), color.getBlue(), (int)(255d*insetRegionFillOpacity + 0.5d));
+				regFillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 1f, color);
+			}
+			
+			for (Region region : insetRegions) {
+				DefaultXY_DataSet outline = new DefaultXY_DataSet();
+				for (Location loc : region.getBorder())
+					outline.set(loc.getLongitude(), loc.getLatitude());
+				outline.set(outline.get(0)); // close polygon
+				
+//				funcs.add(outline);
+//				charsasdf
+				
+				if (insetRegionFillColor != null) {
+					funcs.add(0, outline);
+					chars.add(0, regFillChar);
+				}
+				
+				if (insetRegionOutlineChar != null) {
+					funcs.add(outline);
+					chars.add(insetRegionOutlineChar);
+				}
+				
+				if (writeGeoJSON) {
+					Feature feature = region.toFeature();
+					FeatureProperties props = feature.properties;
+					if (region.getName() != null)
+						props.set("name", region.getName());
+					if (insetRegionOutlineChar != null && insetRegionOutlineChar.getLineType() != null) {
+						props.set(FeatureProperties.STROKE_WIDTH_PROP, insetRegionOutlineChar.getLineWidth());
+						props.set(FeatureProperties.STROKE_COLOR_PROP, insetRegionOutlineChar.getColor());
+					}
+					if (insetRegionFillColor != null) {
+						props.set(FeatureProperties.FILL_COLOR_PROP, insetRegionFillColor);
+						props.set(FeatureProperties.FILL_OPACITY_PROP, insetRegionFillOpacity);
+					}
+					regionFeatures.add(feature);
+				}
 			}
 		}
 		
@@ -1045,7 +1121,8 @@ public class RupSetMapMaker {
 		
 		PlotUtils.writePlots(outputDir, prefix, gp, width, true, true, writePDFs, false);
 		
-		if (writeGeoJSON && sectFeatures != null && jumpFeatures != null && !(spec instanceof XYZPlotSpec)) {
+		if (writeGeoJSON && sectFeatures != null && jumpFeatures != null && regionFeatures != null
+				&& !(spec instanceof XYZPlotSpec)) {
 			List<Feature> plotFeatures = new ArrayList<>(sectFeatures);
 			if (!jumpFeatures.isEmpty()) {
 				// write out combined and separate
@@ -1055,6 +1132,7 @@ public class RupSetMapMaker {
 			}
 			
 			plotFeatures.addAll(scatterFeatures);
+			plotFeatures.addAll(regionFeatures);
 			
 			FeatureCollection features = new FeatureCollection(plotFeatures);
 			FeatureCollection.write(features, new File(outputDir, prefix+".geojson"));
