@@ -248,7 +248,8 @@ public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
 		GutenbergRichterMagFreqDist gr = new GutenbergRichterMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
 		
 		// this sets shape, min/max
-		gr.setAllButTotCumRate(refMFD.getX(0), refMFD.getX(refMFD.getClosestXIndex(mMax)), 1e16, bVal);
+		// subtract a tiny amount from mMax so that if it's exactly at a bin edge, e.g. 7.9, it rounds down, e.g. to 7.85
+		gr.setAllButTotCumRate(refMFD.getX(0), refMFD.getX(refMFD.getClosestXIndex(mMax-0.001)), 1e16, bVal);
 		// this scales it to match
 		gr.scaleToCumRate(refMFD.getClosestXIndex(5.001), rateM5);
 		
