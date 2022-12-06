@@ -1826,6 +1826,27 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 	}
 	
+	public static class PaleoSlipInequality extends NSHM23_InvConfigFactory {
+		
+		public PaleoSlipInequality() {
+			NSHM23_PaleoDataLoader.INCLUDE_U3_PALEO_SLIP = true;
+		}
+
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
+			if (config == null)
+				// can happen for an isolated fault with zero constraints (no slip rate)
+				return null;
+			for (InversionConstraint constraint : config.getConstraints())
+				if (constraint instanceof PaleoSlipInversionConstraint)
+					((PaleoSlipInversionConstraint)constraint).setInequality(true);
+			return config;
+		}
+		
+	}
+	
 	public static void main(String[] args) throws IOException {
 //		File dir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
 //				+ "2021_11_24-nshm23_draft_branches-FM3_1/");
