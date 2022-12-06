@@ -55,6 +55,10 @@ public class PaleoSlipInversionConstraint extends InversionConstraint {
 		this.slipObsProbModel = slipObsProbModel;
 		this.applySlipRateUncertainty = applySlipRateUncertainty;
 	}
+	
+	public void setInequality(boolean inequality) {
+		super.inequality = inequality;
+	}
 
 	@Override
 	public int getNumRows() {
