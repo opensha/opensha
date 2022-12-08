@@ -877,6 +877,8 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		default:
 			throw new IllegalStateException("Unrecognized Probability Model");
 		}
+		
+		Preconditions.checkState(probGain > 0, "Bad probGain=%s for rupIndex=%s", (Double)probGain, fltSystRupIndex);
 
 		boolean isPoisson = true;		// this is for setting the source type
 		
@@ -915,9 +917,16 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 				if(probModel == ProbabilityModelOptions.U3_BPT || probModel == ProbabilityModelOptions.U3_PREF_BLEND) {
 					for(int i=0;i<rupMFDcorrected.size();i++) {
 						double origRate = rupMFDcorrected.getY(i);
-						double prob = aftRateCorr*probGain*origRate*duration;
-						double equivRate = -Math.log(1-prob)/duration;
-						rupMFDcorrected.set(i,equivRate);
+						if (origRate > 0d) {
+							double prob = aftRateCorr*probGain*origRate*duration;
+							double equivRate = -Math.log(1-prob)/duration;
+							// can have cases where the original rate is so small that the adjusted rate becomes zero
+							boolean nonzeroCheck = origRate < 1e-16 || equivRate > 0d;
+							Preconditions.checkState(Double.isFinite(equivRate) && nonzeroCheck,
+									"bad equivRate=%s for origRate=%s, prob=%s, probGain=%s, duration=%s, aftRateCorr=%s",
+									equivRate, origRate, prob, probGain, duration, aftRateCorr);
+							rupMFDcorrected.set(i,equivRate);
+						}
 					}
 				}
 				else {	// WG02 and Poisson case
