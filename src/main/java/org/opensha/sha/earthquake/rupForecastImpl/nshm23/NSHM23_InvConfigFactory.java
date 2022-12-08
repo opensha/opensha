@@ -392,7 +392,13 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 					@Override
 					public PaleoseismicConstraintData call() throws Exception {
-						return PaleoseismicConstraintData.loadUCERF3(rupSet);
+						PaleoseismicConstraintData data = PaleoseismicConstraintData.loadUCERF3(rupSet);
+						
+						if (!NSHM23_PaleoDataLoader.INCLUDE_U3_PALEO_SLIP)
+							// remove paleo ave slip data
+							data = new PaleoseismicConstraintData(rupSet,
+									data.getPaleoRateConstraints(), data.getPaleoProbModel(), null, null);
+						return data;
 					}
 				}, PaleoseismicConstraintData.class);
 			} else {
