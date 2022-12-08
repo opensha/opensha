@@ -244,12 +244,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					gridRegion = detectRegion(sol);
 				}
 				
-				if (runningMeanCurves == null) {
-					// can happen if we never processed any on rank 0
-					runningMeanCurves = new LogicTreeCurveAverager[periods.length];
-					for (int p=0; p<periods.length; p++)
-						runningMeanCurves[p] = new LogicTreeCurveAverager(gridRegion.getNodeList());
-				}
+				checkInitRunningMean();
 				
 				// no more than 8 load threads
 				int loadThreads = Integer.max(1, Integer.min(8, getNumThreads()));
@@ -349,6 +344,17 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			debug("Async: DONE processing batch of size "+batch.length+" from "+processIndex+": "+getCountsString());
 		}
 		
+	}
+	
+	private synchronized void checkInitRunningMean() {
+		if (runningMeanCurves == null) {
+			HashSet<LogicTreeNode> variableNodes = new HashSet<>();
+			HashMap<LogicTreeNode, LogicTreeLevel<?>> nodeLevels = new HashMap<>();
+			LogicTreeCurveAverager.populateVariableNodes(solTree.getLogicTree(), variableNodes, nodeLevels);
+			runningMeanCurves = new LogicTreeCurveAverager[periods.length];
+			for (int p=0; p<periods.length; p++)
+				runningMeanCurves[p] = new LogicTreeCurveAverager(gridRegion.getNodeList(), variableNodes, nodeLevels);
+		}
 	}
 	
 	public static final String LEVEL_CHOICE_MAPS_ENTRY_PREFIX = "level_choice_maps/";
@@ -591,11 +597,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				calc.writeCurvesCSVs(hazardSubDir, curvesPrefix, true);
 			}
 			
-			if (runningMeanCurves == null) {
-				runningMeanCurves = new LogicTreeCurveAverager[periods.length];
-				for (int p=0; p<periods.length; p++)
-					runningMeanCurves[p] = new LogicTreeCurveAverager(gridRegion.getNodeList());
-			}
+			checkInitRunningMean();
 			
 //			if (runningMeanCurves == null) {
 //				runningMeanCurves = new DiscretizedFunc[periods.length][gridRegion.getNodeCount()];

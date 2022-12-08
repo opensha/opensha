@@ -13,6 +13,7 @@ import java.text.DecimalFormat;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -152,8 +153,12 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 		WriteCounter writeCounter = new WriteCounter();
 		
 		LogicTreeCurveAverager[] meanCurves = new LogicTreeCurveAverager[periods.length];
+		HashSet<LogicTreeNode> variableNodes = new HashSet<>();
+		HashMap<LogicTreeNode, LogicTreeLevel<?>> nodeLevels = new HashMap<>();
+		LogicTreeCurveAverager.populateVariableNodes(faultTree, variableNodes, nodeLevels);
+		LogicTreeCurveAverager.populateVariableNodes(gridTree, variableNodes, nodeLevels);
 		for (int p=0; p<periods.length; p++)
-			meanCurves[p] = new LogicTreeCurveAverager(gridReg.getNodeList());
+			meanCurves[p] = new LogicTreeCurveAverager(gridReg.getNodeList(), variableNodes, nodeLevels);
 		
 		ExecutorService exec = Executors.newFixedThreadPool(FaultSysTools.defaultNumThreads());
 		
@@ -347,7 +352,7 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 			double hoursLeft = minsLeft/60d;
 			if (minsLeft > 90)
 				System.out.println("\tEstimated time left: "+twoDigits.format(hoursLeft)+" hours");
-			else if (minsLeft > 60)
+			else if (secsLeft > 90)
 				System.out.println("\tEstimated time left: "+twoDigits.format(minsLeft)+" mins");
 			else
 				System.out.println("\tEstimated time left: "+twoDigits.format(secsLeft)+" secs");

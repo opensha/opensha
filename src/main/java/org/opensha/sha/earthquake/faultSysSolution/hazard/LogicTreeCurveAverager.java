@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -19,6 +20,7 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
@@ -33,12 +35,50 @@ public class LogicTreeCurveAverager {
 	private Map<String, DiscretizedFunc[]> curvesMap;
 	private Map<String, Double> weightSumsMap;
 	
+	private HashSet<LogicTreeNode> variableNodes;
+	private HashMap<LogicTreeNode, LogicTreeLevel<?>> nodeLevels;
+	
 	public static final String MEAN_PREFIX = "mean";
 	
-	public LogicTreeCurveAverager(LocationList gridLocs) {
+	public LogicTreeCurveAverager(LogicTree<?> tree, LocationList gridLocs) {
 		this.gridLocs = gridLocs;
 		curvesMap = new HashMap<>();
 		weightSumsMap = new HashMap<>();
+		
+		if (tree != null) {
+			// figure out which nodes vary on the logic tree
+			// so that we can keep track of mean maps *without* them
+			variableNodes = new HashSet<>();
+			nodeLevels = new HashMap<>();
+			populateVariableNodes(tree, variableNodes, nodeLevels);
+		}
+	}
+	
+	public LogicTreeCurveAverager(LocationList gridLocs, HashSet<LogicTreeNode> variableNodes,
+			HashMap<LogicTreeNode, LogicTreeLevel<?>> nodeLevels) {
+		this.gridLocs = gridLocs;
+		curvesMap = new HashMap<>();
+		weightSumsMap = new HashMap<>();
+		
+		this.variableNodes = variableNodes;
+		this.nodeLevels = nodeLevels;
+	}
+	
+	public static void populateVariableNodes(LogicTree<?> tree, HashSet<LogicTreeNode> variableNodes,
+			HashMap<LogicTreeNode, LogicTreeLevel<?>> nodeLevels) {
+		int numLevels = tree.getLevels().size();
+		for (int l=0; l<numLevels; l++) {
+			HashSet<LogicTreeNode> levelNodes = new HashSet<>();
+			for (LogicTreeBranch<?> branch : tree) {
+				LogicTreeNode node = branch.getValue(l);
+				levelNodes.add(node);
+			}
+			LogicTreeLevel<?> level = tree.getLevels().get(l);
+			for (LogicTreeNode node : levelNodes)
+				nodeLevels.put(node, level);
+			if (levelNodes.size() > 1)
+				variableNodes.addAll(levelNodes);
+		}
 	}
 	
 	public synchronized void processBranchCurves(LogicTreeBranch<?> branch, double weight, DiscretizedFunc[] curves) {
@@ -91,7 +131,7 @@ public class LogicTreeCurveAverager {
 	public static LogicTreeCurveAverager readRawCacheDir(File cacheDir, double period, ExecutorService exec) throws IOException {
 		CSVFile<String> weightsCSV = CSVFile.readFile(
 				new File(cacheDir, SolHazardMapCalc.getCSV_FileName("weights", period)), true);
-		LogicTreeCurveAverager ret = new LogicTreeCurveAverager(null);
+		LogicTreeCurveAverager ret = new LogicTreeCurveAverager(null, null);
 		
 		Map<String, Future<DiscretizedFunc[]>> loadFutures = new HashMap<>();
 		
@@ -216,13 +256,23 @@ public class LogicTreeCurveAverager {
 		return levelPrefix(level)+"_"+node.getFilePrefix();
 	}
 	
-	private static List<String> getMeanCurveKeys(LogicTreeBranch<?> branch) {
+	public static String choiceWithoutPrefix(LogicTreeLevel<?> level, LogicTreeNode node) {
+		return levelPrefix(level)+"_without_"+node.getFilePrefix();
+	}
+	
+	private List<String> getMeanCurveKeys(LogicTreeBranch<?> branch) {
 		List<String> meanCurveKeys = new ArrayList<>();
 		meanCurveKeys.add(MEAN_PREFIX); // always full mean
 		for (int i=0; i<branch.size(); i++) {
 			LogicTreeNode node = branch.getValue(i);
 			if (node != null)
 				meanCurveKeys.add(choicePrefix(branch.getLevel(i), node));
+		}
+		if (variableNodes != null) {
+			for (LogicTreeNode node : variableNodes) {
+				if (!branch.hasValue(node))
+					meanCurveKeys.add(choiceWithoutPrefix(nodeLevels.get(node), node));
+			}
 		}
 		return meanCurveKeys;
 	}

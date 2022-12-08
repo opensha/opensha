@@ -1841,6 +1841,7 @@ public class LogicTreeHazardCompare {
 				List<HashMap<LogicTreeNode, List<GriddedGeoDataSet>>> choiceMapsList = new ArrayList<>();
 				List<HashMap<LogicTreeNode, List<Double>>> choiceWeightsList = new ArrayList<>();
 				List<HashMap<LogicTreeNode, GriddedGeoDataSet>> choiceMeansList = new ArrayList<>();
+				List<HashMap<LogicTreeNode, GriddedGeoDataSet>> choiceMeanWithoutsList = new ArrayList<>();
 				List<HashMap<LogicTreeNode, GriddedGeoDataSet>> choiceMeanPercentilesList = new ArrayList<>();
 				
 				// do mean map calculations first so that we can clear out the full NormCDFs from memory
@@ -1862,11 +1863,13 @@ public class LogicTreeHazardCompare {
 					if (choiceMaps.size() > 1) {
 						choiceMapsList.add(choiceMaps);
 						choiceWeightsList.add(choiceWeights);
-						
+
 						HashMap<LogicTreeNode, GriddedGeoDataSet> choiceMeans = new HashMap<>();
+						HashMap<LogicTreeNode, GriddedGeoDataSet> choiceMeanWithouts = new HashMap<>();
 						HashMap<LogicTreeNode, GriddedGeoDataSet> choiceMeanPercentiles = new HashMap<>();
 						for (LogicTreeNode choice : choiceMaps.keySet()) {
 							GriddedGeoDataSet choiceMean;
+							GriddedGeoDataSet choiceMeanWithout = null;
 							if (meanIsFromCurves) {
 								// load choice mean externally as well
 								String key = LogicTreeCurveAverager.choicePrefix(level, choice);
@@ -1875,20 +1878,46 @@ public class LogicTreeHazardCompare {
 								Preconditions.checkNotNull(choiceMean,
 										"Mean map was precomputed for curves, but levels were not? "
 										+ "Couldn't find mean map for %s, %s, %s", key, rp, period);
+								
+								// now without
+								if (choiceMeanWithouts != null) {
+									key = LogicTreeCurveAverager.choiceWithoutPrefix(level, choice);
+									key = MPJ_LogicTreeHazardCalc.LEVEL_CHOICE_MAPS_ENTRY_PREFIX+key;
+									choiceMeanWithout = loadPrecomputedMeanMap(key, rp, period);
+									if (choiceMeanWithout == null)
+										// could be an old version that doesn't have it, skip and stop trying
+										choiceMeanWithouts = null;
+								}
 							} else {
 								choiceMean = buildMean(choiceMaps.get(choice), choiceWeights.get(choice));
+								
+								// build without
+								int numOthers = branches.size() - choiceMaps.get(choice).size();
+								List<GriddedGeoDataSet> mapsWithout = new ArrayList<>(numOthers);
+								List<Double> weightsWithout = new ArrayList<>(numOthers);
+								for (LogicTreeNode oChoice : choiceMaps.keySet()) {
+									if (oChoice == choice)
+										continue;
+									mapsWithout.addAll(choiceMaps.get(oChoice));
+									weightsWithout.addAll(choiceWeights.get(oChoice));
+								}
+								choiceMeanWithout = buildMean(mapsWithout, weightsWithout);
 							}
 							choiceMeans.put(choice, choiceMean);
+							if (choiceMeanWithouts != null)
+								choiceMeanWithouts.put(choice, choiceMeanWithout);
 							// calculate percentile
 							GriddedGeoDataSet percentile = calcPercentileWithinDist(mapNCDFs, choiceMean);
 							choiceMeanPercentiles.put(choice, percentile);
 						}
 						choiceMeansList.add(choiceMeans);
+						choiceMeanWithoutsList.add(choiceMeanWithouts);
 						choiceMeanPercentilesList.add(choiceMeanPercentiles);
 					} else {
 						choiceMapsList.add(null);
 						choiceWeightsList.add(null);
 						choiceMeansList.add(null);
+						choiceMeanWithoutsList.add(null);
 						choiceMeanPercentilesList.add(null);
 					}
 				}
@@ -1900,7 +1929,6 @@ public class LogicTreeHazardCompare {
 					LogicTreeLevel<?> level = solLogicTree.getLogicTree().getLevels().get(l);
 					HashMap<LogicTreeNode, List<GriddedGeoDataSet>> choiceMaps = choiceMapsList.get(l);
 					if (choiceMaps != null) {
-						HashMap<LogicTreeNode, List<Double>> choiceWeights = choiceWeightsList.get(l);
 						System.out.println(level.getName()+" has "+choiceMaps.size()+" choices");
 						lines.add("#### "+level.getName()+", "+label);
 						lines.add(topLink); lines.add("");
@@ -2094,6 +2122,55 @@ public class LogicTreeHazardCompare {
 						lines.add("");
 						lines.addAll(mapVsChoiceTable.build());
 						lines.add("");
+						
+						// now value of removal
+						HashMap<LogicTreeNode, GriddedGeoDataSet> choiceMeanWithouts = choiceMeanWithoutsList.get(l);
+						if (choiceMeanWithouts != null) {
+							table = MarkdownUtils.tableBuilder();
+							
+							List<File> ratioPlots = new ArrayList<>();
+							List<File> diffPlots = new ArrayList<>();
+							table.initNewLine();
+							for (LogicTreeNode choice : choices) {
+								table.addColumn(choice.getShortName());
+								
+								GriddedGeoDataSet choiceWithout = choiceMeanWithouts.get(choice);
+								
+								GriddedGeoDataSet pDiff = buildPDiff(mean, choiceWithout);
+								ratioPlots.add(submitMapFuture(mapper, exec, futures, resourcesDir,
+										prefix+"_"+choice.getFilePrefix()+"_mean_pDiff_without",
+										pDiff, pDiffCPT, TITLES ? choice.getShortName()+" Removal Comparison" : " ",
+										choice.getShortName()+", Mean Without / With, % Change, "+label, true));
+								
+								GriddedGeoDataSet diff = new GriddedGeoDataSet(region, false);
+								for (int i=0; i<diff.size(); i++)
+									diff.set(i, choiceWithout.get(i) - mean.get(i));
+								diffPlots.add(submitMapFuture(mapper, exec, futures, resourcesDir,
+										prefix+"_"+choice.getFilePrefix()+"_mean_diff_without",
+										diff, diffCPT, TITLES ? choice.getShortName()+" Removal Comparison" : " ",
+										choice.getShortName()+", Mean Without - With, "+label, false));
+							}
+							table.finalizeLine();
+							
+							table.initNewLine();
+							for (File ratioPlot : ratioPlots)
+								table.addColumn("![Percent Difference Map]("+resourcesDir.getName()+"/"+ratioPlot.getName()+")");
+							table.finalizeLine();
+							
+							table.initNewLine();
+							for (File diffPlot : diffPlots)
+								table.addColumn("![Difference Map]("+resourcesDir.getName()+"/"+diffPlot.getName()+")");
+							table.finalizeLine();
+							
+							lines.add("The table below shows how much the mean hazard map would change if each branch "
+									+ "were eliminated. This differs from the above comparisons in that it also "
+									+ "reflects the weight assigned to each branch. The sign is now flipped such "
+									+ "that blue and green areas indicate areas where hazard is higher due to inclusion "
+									+ "of the listed listed choice, and would go down were that choice eliminated.");
+							lines.add("");
+							lines.addAll(table.build());
+							lines.add("");
+						}
 					}
 				}
 				
