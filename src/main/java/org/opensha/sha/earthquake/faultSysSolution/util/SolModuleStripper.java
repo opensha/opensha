@@ -31,8 +31,14 @@ public class SolModuleStripper {
 		File inputFile = new File(args[0]);
 		Preconditions.checkState(inputFile.exists(), "Input file doesn't exist: %s",
 				inputFile.getAbsolutePath());
-		
 		FaultSystemSolution inputSol = FaultSystemSolution.load(inputFile);
+		
+		File outputFile = new File(args[1]);
+		FaultSystemSolution strippedSol = stripModules(inputSol);
+		strippedSol.write(outputFile);
+	}
+	
+	public static FaultSystemSolution stripModules(FaultSystemSolution inputSol) {
 		FaultSystemRupSet inputRupSet = inputSol.getRupSet();
 		
 		FaultSystemRupSet strippedRupSet = FaultSystemRupSet.buildFromExisting(inputRupSet, false).build();
@@ -64,7 +70,7 @@ public class SolModuleStripper {
 		if (mfds != null)
 			strippedSol.addModule(mfds);
 		
-		strippedSol.write(new File(args[1]));
+		return strippedSol;
 	}
 
 }
