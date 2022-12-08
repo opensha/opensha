@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
@@ -41,6 +42,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectNuclMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectParticMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchParentSectParticMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
@@ -77,6 +79,7 @@ public class BranchAverageSolutionCreator {
 	private double[] avgSectCreep = null;
 	private double[] avgSectSlipRates = null;
 	private double[] avgSectSlipRateStdDevs = null;
+	private double[] avgSectOrigFractUncert = null;
 	private List<AngleAverager> avgSectRakes = null;
 	
 //	private List<? extends LogicTreeBranch<?>> branches = getLogicTree().getBranches();
@@ -151,15 +154,25 @@ public class BranchAverageSolutionCreator {
 			
 			avgSectAseis = new double[rupSet.getNumSections()];
 			avgSectCreep = null;
+			avgSectOrigFractUncert = new double[rupSet.getNumSections()];
+			for (int i=0; i<avgSectOrigFractUncert.length; i++)
+				avgSectOrigFractUncert[i] = Double.NaN;
 			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 				if (sect instanceof GeoJSONFaultSection) {
-					double creepRate = ((GeoJSONFaultSection)sect).getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
+					GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
+					double creepRate = geoSect.getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
 					if (Double.isFinite(creepRate)) {
 						// have creep data
 						avgSectCreep = new double[rupSet.getNumSections()];
 						sectAnyCreeps = new boolean[rupSet.getNumSections()];
 						break;
 					}
+					
+					double origFractUncert = geoSect.getProperty(
+							NSHM23_DeformationModels.ORIG_FRACT_STD_DEV_PROPERTY_NAME, Double.NaN);
+					if (Double.isFinite(origFractUncert))
+						// will average this one
+						avgSectOrigFractUncert[sect.getSectionId()] = 0d;
 				}
 			}
 			avgSectSlipRates = new double[rupSet.getNumSections()];
@@ -193,7 +206,11 @@ public class BranchAverageSolutionCreator {
 		
 		rateStatsBuilder.process(branch, sol.getRateForAllRups());
 		
-		processBuilders(solBranchModuleBuilders, sol, weight);
+		// start work on modules and module builders in parallel, as they often take the longest
+		List<CompletableFuture<Void>> futures = new ArrayList<>();
+		futures.addAll(processBuilders(solBranchModuleBuilders, sol, weight));
+		futures.addAll(processAccumulators(rupSetAvgAccumulators, rupSet, branch, weight));
+		futures.addAll(processAccumulators(solAvgAccumulators, sol, branch, weight));
 		
 		for (int i=0; i<combBranch.size(); i++) {
 			LogicTreeNode combVal = combBranch.getValue(i);
@@ -233,18 +250,26 @@ public class BranchAverageSolutionCreator {
 			avgSectSlipRateStdDevs[s] += sect.getOrigSlipRateStdDev()*weight;
 			avgSectCoupling[s] += sect.getCouplingCoeff()*weight;
 			avgSectRakes.get(s).add(sect.getAveRake(), weight);
-			if (avgSectCreep != null && sect instanceof GeoJSONFaultSection) {
-				double creepRate = ((GeoJSONFaultSection)sect).getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
-				if (Double.isFinite(creepRate)) {
-					sectAnyCreeps[s] = true;
-					avgSectCreep[s] += Math.max(0d, creepRate)*weight;
+			if (sect instanceof GeoJSONFaultSection) {
+				GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
+				
+				if (avgSectCreep != null) {
+					double creepRate = geoSect.getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
+					if (Double.isFinite(creepRate)) {
+						sectAnyCreeps[s] = true;
+						avgSectCreep[s] += Math.max(0d, creepRate)*weight;
+					}
 				}
+				
+				if (Double.isFinite(avgSectOrigFractUncert[s]))
+					avgSectOrigFractUncert[s] += weight*geoSect.getProperty(
+							NSHM23_DeformationModels.ORIG_FRACT_STD_DEV_PROPERTY_NAME, Double.NaN);
 			}
 		}
 		
-		// now work on modules
-		processAccumulators(rupSetAvgAccumulators, rupSet, branch, weight);
-		processAccumulators(solAvgAccumulators, sol, branch, weight);
+		// join all of the build futures
+		for (CompletableFuture<Void> future : futures)
+			future.join();
 	}
 	
 	private List<AveragingAccumulator<? extends BranchAverageableModule<?>>> initAccumulators(
@@ -264,24 +289,57 @@ public class BranchAverageSolutionCreator {
 		return accumulators;
 	}
 	
-	private void processAccumulators(List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators, 
+	private List<CompletableFuture<Void>> processAccumulators(List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators, 
 			ModuleContainer<OpenSHA_Module> container, LogicTreeBranch<?> branch, double weight) {
-		for (int i=accumulators.size(); --i>=0;) {
-			AveragingAccumulator<? extends BranchAverageableModule<?>> accumulator = accumulators.get(i);
+		List<Runnable> runs = new ArrayList<>(accumulators.size());
+		for (AveragingAccumulator<? extends BranchAverageableModule<?>> accumulator : accumulators)
+			runs.add(new AccumulateRunnable(accumulators, accumulator, container, branch, weight));
+		
+		List<CompletableFuture<Void>> futures = new ArrayList<>(runs.size());
+		
+		for (Runnable run : runs)
+			futures.add(CompletableFuture.runAsync(run));
+		
+		return futures;
+	}
+	
+	private class AccumulateRunnable implements Runnable {
+		
+		private List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators;
+		private AveragingAccumulator<? extends BranchAverageableModule<?>> accumulator;
+		private ModuleContainer<OpenSHA_Module> container;
+		private LogicTreeBranch<?> branch;
+		private double weight;
+
+		public AccumulateRunnable(List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators,
+				AveragingAccumulator<? extends BranchAverageableModule<?>> accumulator,
+				ModuleContainer<OpenSHA_Module> container, LogicTreeBranch<?> branch, double weight) {
+			this.accumulators = accumulators;
+			this.accumulator = accumulator;
+			this.container = container;
+			this.branch = branch;
+			this.weight = weight;
+		}
+
+		@Override
+		public void run() {
 			try {
 				accumulator.processContainer(container, weight);
 			} catch (Exception e) {
-//				e.printStackTrace();
-				System.err.println("Error processing accumulator, will no longer average "+accumulator.getType().getName()
-						+".\n\tFailed on branch: "+branch
-						+"\n\tError message: "+e.getMessage());
-				System.err.flush();
-				accumulators.remove(i);
-				if (accumulatingSlipRates && SolutionSlipRates.class.isAssignableFrom(accumulator.getType()))
-					// stop calculating slip rates
-					accumulatingSlipRates = false;
+				synchronized (accumulators) {
+//					e.printStackTrace();
+					System.err.println("Error processing accumulator, will no longer average "+accumulator.getType().getName()
+							+".\n\tFailed on branch: "+branch
+							+"\n\tError message: "+e.getMessage());
+					System.err.flush();
+					accumulators.remove(accumulator);
+					if (accumulatingSlipRates && SolutionSlipRates.class.isAssignableFrom(accumulator.getType()))
+						// stop calculating slip rates
+						accumulatingSlipRates = false;
+				}
 			}
 		}
+		
 	}
 	
 	private static void buildAverageModules(List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators, 
@@ -297,21 +355,51 @@ public class BranchAverageSolutionCreator {
 		}
 	}
 	
-	private <E extends ModuleContainer<OpenSHA_Module>> void processBuilders(List<BranchModuleBuilder<E, ?>> builders, 
+	private <E extends ModuleContainer<OpenSHA_Module>> List<CompletableFuture<Void>> processBuilders(List<BranchModuleBuilder<E, ?>> builders, 
 			E source, double weight) {
-		for (int i=builders.size(); --i>=0;) {
-			BranchModuleBuilder<E, ?> builder = builders.get(i);
+		List<Runnable> runs = new ArrayList<>(builders.size());
+		for (BranchModuleBuilder<E, ?> builder : builders)
+			runs.add(new BuilderRunnable<>(builders, builder, source, weight));
+		
+		List<CompletableFuture<Void>> futures = new ArrayList<>(runs.size());
+		
+		for (Runnable run : runs)
+			futures.add(CompletableFuture.runAsync(run));
+		
+		return futures;
+	}
+	
+	private class BuilderRunnable<E extends ModuleContainer<OpenSHA_Module>> implements Runnable {
+		
+		private List<BranchModuleBuilder<E, ?>> builders;
+		private BranchModuleBuilder<E, ?> builder;
+		private E source;
+		private double weight;
+
+		public BuilderRunnable(List<BranchModuleBuilder<E, ?>> builders, BranchModuleBuilder<E, ?> builder, E source,
+				double weight) {
+			this.builders = builders;
+			this.builder = builder;
+			this.source = source;
+			this.weight = weight;
+		}
+
+		@Override
+		public void run() {
 			try {
 				builder.process(source, weight);
 			} catch (Exception e) {
-//				e.printStackTrace();
-				System.err.println("Error processing branch module builder, will no longer average "
-						+builder.getClass().getName()
-						+"\n\tError message: "+e.getMessage());
-				System.err.flush();
-				builders.remove(i);
+				synchronized (builders) {
+//					e.printStackTrace();
+					System.err.println("Error processing branch module builder, will no longer average "
+							+builder.getClass().getName()
+							+"\n\tError message: "+e.getMessage());
+					System.err.flush();
+					builders.remove(builder);
+				}
 			}
 		}
+		
 	}
 	
 	private static <E extends ModuleContainer<OpenSHA_Module>> void buildBranchModules(List<BranchModuleBuilder<E, ?>> builders, 
@@ -378,6 +466,10 @@ public class BranchAverageSolutionCreator {
 			if (avgSectCreep != null && sectAnyCreeps[s]) {
 				avgSectCreep[s] /= totWeight;
 				avgSect.setProperty(GeoJSONFaultSection.CREEP_RATE, avgSectCreep[s]);
+			}
+			if (Double.isFinite(avgSectOrigFractUncert[s])) {
+				avgSectOrigFractUncert[s] /= totWeight;
+				avgSect.setProperty(NSHM23_DeformationModels.ORIG_FRACT_STD_DEV_PROPERTY_NAME, avgSectOrigFractUncert[s]);
 			}
 			subSects.add(avgSect);
 		}
