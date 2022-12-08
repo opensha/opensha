@@ -730,6 +730,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		rupturesForSectionCache.clear();
 		rupturesForParentSectionCache.clear();
 		fractRupsInsideRegions.clear();
+		fractSectsInsideRegions.clear();
 	}
 
 	public void copyCacheFrom(FaultSystemRupSet rupSet) {
@@ -738,6 +739,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		rupturesForSectionCache = rupSet.rupturesForSectionCache;
 		rupturesForParentSectionCache = rupSet.rupturesForParentSectionCache;
 		fractRupsInsideRegions = rupSet.fractRupsInsideRegions;
+		fractSectsInsideRegions = rupSet.fractSectsInsideRegions;
 	}
 
 	/**
@@ -1068,24 +1070,40 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	private Table<Region, Boolean, double[]> fractRupsInsideRegions = HashBasedTable.create();
+	private Table<Region, Boolean, double[]> fractSectsInsideRegions = HashBasedTable.create();
 	
 	public double[] getFractSectsInsideRegion(Region region, boolean traceOnly) {
 		return getFractSectsInsideRegion(region, traceOnly, new int[getNumSections()]);
 	}
 	
 	private double[] getFractSectsInsideRegion(Region region, boolean traceOnly, int[] numPtsInSection) {
-		double[] fractSectsInside = new double[getNumSections()];
-		double gridSpacing=1;
-		for(int s=0;s<getNumSections(); s++) {
-			RuptureSurface surf = getFaultSectionData(s).getFaultSurface(gridSpacing, false, true);
-			if (traceOnly) {
-				FaultTrace trace = surf.getEvenlyDiscritizedUpperEdge();
-				numPtsInSection[s] = trace.size();
-				fractSectsInside[s] = RegionUtils.getFractionInside(region, trace);
-			} else {
-				LocationList surfLocs = surf.getEvenlyDiscritizedListOfLocsOnSurface();
-				numPtsInSection[s] = surfLocs.size();
-				fractSectsInside[s] = RegionUtils.getFractionInside(region, surfLocs);
+		double[] fractSectsInside;
+		synchronized (fractSectsInsideRegions) {
+			fractSectsInside = fractSectsInsideRegions.get(region, traceOnly);
+		}
+		if (fractSectsInside == null) {
+			synchronized (fractSectsInsideRegions) {
+				if (fractSectsInsideRegions.size() > 50) { // max cache size
+					Set<Cell<Region, Boolean, double[]>> cells = fractSectsInsideRegions.cellSet();
+					cells.remove(cells.iterator().next());
+				}
+			}
+			fractSectsInside = new double[getNumSections()];
+			double gridSpacing=1;
+			for(int s=0;s<getNumSections(); s++) {
+				RuptureSurface surf = getFaultSectionData(s).getFaultSurface(gridSpacing, false, true);
+				if (traceOnly) {
+					FaultTrace trace = surf.getEvenlyDiscritizedUpperEdge();
+					numPtsInSection[s] = trace.size();
+					fractSectsInside[s] = RegionUtils.getFractionInside(region, trace);
+				} else {
+					LocationList surfLocs = surf.getEvenlyDiscritizedListOfLocsOnSurface();
+					numPtsInSection[s] = surfLocs.size();
+					fractSectsInside[s] = RegionUtils.getFractionInside(region, surfLocs);
+				}
+			}
+			synchronized (fractSectsInsideRegions) {
+				fractSectsInsideRegions.put(region, traceOnly, fractSectsInside);
 			}
 		}
 		return fractSectsInside;
