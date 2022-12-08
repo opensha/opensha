@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.zip.ZipEntry;
@@ -55,6 +56,7 @@ import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.inversion.U3InversionConfigFactory;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.logicTree.U3LogicTreeBranchNode;
+import scratch.UCERF3.utils.LastEventData;
 
 /**
  * Module that stores/loads fault system solutions for individual branches of a logic tree.
@@ -117,10 +119,19 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			this.oldFetcher = oldFetcher;
 		}
 
+		private Map<Integer, List<LastEventData>> lastEventData = null;
+		
 		@Override
 		protected FaultSystemSolution loadExternalForBranch(LogicTreeBranch<?> branch) throws IOException {
-			if (oldFetcher != null)
-				return oldFetcher.getSolution(asU3Branch(branch));
+			if (oldFetcher != null) {
+				synchronized (this) {
+					if (lastEventData == null)
+						lastEventData = LastEventData.load();
+				}
+				FaultSystemSolution sol = oldFetcher.getSolution(asU3Branch(branch));
+				LastEventData.populateSubSects(sol.getRupSet().getFaultSectionDataList(), lastEventData);
+				return sol;
+			}
 			return null;
 		}
 	}
