@@ -64,20 +64,23 @@ public class XYShadedUncertainLineRenderer extends AbstractXYItemRenderer {
 		boolean logX = domainAxis instanceof JFreeLogarithmicAxis;
 		boolean logY = rangeAxis instanceof JFreeLogarithmicAxis;
 		
-		// find starting item number
+		Preconditions.checkState(uData.size() > 0, "Can't draw empty polygon");
+		
+		// find starting and ending item number
 		int lastIndexBefore = -1;
 		int firstIndexAfter = -1;
 		double lowerX = domainAxis.getLowerBound();
 		double upperX = domainAxis.getUpperBound();
-		for (int i=0; i<dataset.getItemCount(series); i++) {
-			double x = dataset.getXValue(series, i);
+		for (int i=0; i<uData.size(); i++) {
+			double x = uData.getX(i);
 //			double minY = uData.getLowerY(i);
 //			double maxY = uData.getUpperY(i);
 			
 			if (x < lowerX || lastIndexBefore < 0) {
 				lastIndexBefore = i;
 			}
-			if (x > upperX || i == dataset.getItemCount(series)-1) {
+			if (x > upperX || i == uData.size()-1) {
+//				System.out.println("Found x="+x+" > upper="+upperX+", index="+i);
 				firstIndexAfter = i;
 				break;
 			}
@@ -98,6 +101,8 @@ public class XYShadedUncertainLineRenderer extends AbstractXYItemRenderer {
 		outline.add(getLogCompatible(logX, logY, uData.get(firstIndexAfter)));
 		for (int i=firstIndexAfter+1; --i>=lastIndexBefore;)
 			outline.add(getLogCompatible(logX, logY, new Point2D.Double(uData.getX(i), uData.getLowerY(i))));
+		
+//		System.out.println(outline);
 		
 		Polygon p = XYSolidBarRenderer.buildPolygon(dataArea, plot, domainAxis, rangeAxis,
 				outline);
