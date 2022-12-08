@@ -20,6 +20,9 @@ public class ScalingRelSlipRateMFD_Estimator extends SectNucleationMFD_Estimator
 	private double[] calcSectSlips;
 	private double[] targetSectSupraMoRates;
 	private double[] targetSectSupraSlipRates;
+	
+	private MinMaxAveTracker slipAdjustTrack = new MinMaxAveTracker();
+	private MinMaxAveTracker absPercentTrack = new MinMaxAveTracker();
 
 	public ScalingRelSlipRateMFD_Estimator(boolean adjustForSlipAlong) {
 		this.adjustForSlipAlong = adjustForSlipAlong;
@@ -85,12 +88,18 @@ public class ScalingRelSlipRateMFD_Estimator extends SectNucleationMFD_Estimator
 		int s = sect.getSectionId();
 		if (targetSectSupraSlipRates[s] > 0 && targetSectSupraMoRates[s] > 0) {
 			double slipRatio = targetSectSupraSlipRates[s] / calcSectSlips[s];
-//			slipAdjustTrack.addValue(slipRatio);
+			slipAdjustTrack.addValue(slipRatio);
+			absPercentTrack.addValue(100d*Math.abs((targetSectSupraSlipRates[s]-calcSectSlips[s])/calcSectSlips[s]));
 			
 			curSectSupraSeisMFD = curSectSupraSeisMFD.deepClone();
 			curSectSupraSeisMFD.scale(slipRatio);
 		}
 		return curSectSupraSeisMFD;
+	}
+	
+	public void printStats() {
+		System.out.println("Scaling relationship MFD adjustment ratios: "+slipAdjustTrack);
+		System.out.println("Scaling relationship MFD adjustment abs % changes: "+absPercentTrack);
 	}
 
 }
