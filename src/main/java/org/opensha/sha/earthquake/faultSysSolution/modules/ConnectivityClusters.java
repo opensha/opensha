@@ -114,8 +114,8 @@ BranchAverageableModule<ConnectivityClusters>, AverageableModule.ConstantAverage
 		return clusters.iterator();
 	}
 	
-	private static final String CLUSTER_MISFITS_FILE_NAME = "connectivity_cluster_misfits.csv";
-	private static final String LARGEST_CLUSTER_MISFIT_PROGRESS_FILE_NAME = "connectivity_cluster_largest_misfit_progress.csv";
+	public static final String CLUSTER_MISFITS_FILE_NAME = "connectivity_cluster_misfits.csv";
+	public static final String LARGEST_CLUSTER_MISFIT_PROGRESS_FILE_NAME = "connectivity_cluster_largest_misfit_progress.csv";
 	
 	public static class ConnectivityClusterSolutionMisfits implements SubModule<FaultSystemSolution>, ArchivableModule,
 	BranchAverageableModule<ConnectivityClusterSolutionMisfits>{
