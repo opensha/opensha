@@ -43,36 +43,59 @@ import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
 import com.google.common.base.Preconditions;
 
+/**
+ * Deformation models for NSHM23
+ * 
+ * Weight revisions:
+ * 
+ * Original weights recommended by the deformation model review were:
+ * 	* Geologic: 20%
+ *  * Evans: 10%
+ *  * Pollitz: 20%
+ *  * Shen-Bird: 25%
+ *  * Shen-Bird: 25%
+ * 
+ * We revised those weights on 12/7/2022 to the following to minimize the impact of outlier slip rates on the final
+ * mean model, most notably from the Evans model but also from Pollitz:
+ * 	* Geologic: 26%
+ *  * Evans: 2%
+ *  * Pollitz: 8%
+ *  * Shen-Bird: 32%
+ *  * Shen-Bird: 32%
+ * 
+ * @author kevin
+ *
+ */
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum NSHM23_DeformationModels implements RupSetDeformationModel {
-	GEOLOGIC("NSHM23 Geologic Deformation Model", "Geologic", 0.2d) {
+	GEOLOGIC("NSHM23 Geologic Deformation Model", "Geologic", 0.26d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeol(faultModel, GEOLOGIC_VERSION);
 		}
 	},
-	EVANS("NSHM23 Evans Deformation Model", "Evans", 0.1d) {
+	EVANS("NSHM23 Evans Deformation Model", "Evans", 0.02d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
 	},
-	POLLITZ("NSHM23 Pollitz Deformation Model", "Pollitz", 0.2d) {
+	POLLITZ("NSHM23 Pollitz Deformation Model", "Pollitz", 0.08d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
 	},
-	SHEN_BIRD("NSHM23 Shen-Bird Deformation Model", "Shen-Bird", 0.25d) {
+	SHEN_BIRD("NSHM23 Shen-Bird Deformation Model", "Shen-Bird", 0.32d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
 	},
-	ZENG("NSHM23 Zeng Deformation Model", "Zeng", 0.25d) {
+	ZENG("NSHM23 Zeng Deformation Model", "Zeng", 0.32d) {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
