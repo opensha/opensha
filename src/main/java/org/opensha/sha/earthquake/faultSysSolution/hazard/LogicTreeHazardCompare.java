@@ -10,6 +10,7 @@ import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -104,6 +105,9 @@ import com.itextpdf.text.pdf.PdfWriter;
 public class LogicTreeHazardCompare {
 	
 	private static boolean TITLES = false;
+	
+//	private static final Location DEBUG_LOC = new Location(46, -105);
+	private static final Location DEBUG_LOC = null;
 	
 	public static void main(String[] args) throws IOException {
 		System.setProperty("java.awt.headless", "true");
@@ -587,6 +591,10 @@ public class LogicTreeHazardCompare {
 		return mapper;
 	}
 	
+	public void setGriddedRegion(GriddedRegion gridReg) {
+		this.gridReg = gridReg;
+	}
+	
 	public synchronized GriddedGeoDataSet[] loadMaps(ReturnPeriods rp, double period) throws IOException {
 		System.out.println("Loading maps for rp="+rp+", period="+period);
 		GriddedGeoDataSet[] rpPerMaps = new GriddedGeoDataSet[branches.size()];
@@ -1025,7 +1033,7 @@ public class LogicTreeHazardCompare {
 			System.out.println("Took "+twoDigits.format(secs)+" secs to "+operation);
 	}
 	
-	private static LightFixedXFunc calcNormCDF(List<GriddedGeoDataSet> maps, List<Double> weights,
+	public static LightFixedXFunc calcNormCDF(List<GriddedGeoDataSet> maps, List<Double> weights,
 			int gridIndex, double totWeight) {
 		Preconditions.checkState(totWeight > 0d, "Bad total weight=%s", totWeight);
 		// could use ArbDiscrEmpiricalDistFunc, but this version is 25-50% faster
@@ -1251,7 +1259,7 @@ public class LogicTreeHazardCompare {
 		return ret;
 	}
 	
-	private static GriddedGeoDataSet calcPercentileWithinDist(LightFixedXFunc[] ncdfs, GriddedGeoDataSet comp) {
+	public static GriddedGeoDataSet calcPercentileWithinDist(LightFixedXFunc[] ncdfs, GriddedGeoDataSet comp) {
 		Preconditions.checkState(comp.size() == ncdfs.length);
 		GriddedGeoDataSet ret = new GriddedGeoDataSet(comp.getRegion(), false);
 		
@@ -1738,6 +1746,24 @@ public class LogicTreeHazardCompare {
 					branchStr += "the maps above, and ";
 				branchStr += "the influence of individual logic tree branches by this metric. The right map show the ratio "
 							+ "of mean to median hazard.";
+				
+				if (DEBUG_LOC != null) {
+					int index = gridReg.indexForLocation(DEBUG_LOC);
+					if (index > 0) {
+						File debugFile = new File(resourcesDir, "loc_debug_"+prefix+".txt");
+						System.out.println("Writing debug info to: "+debugFile.getAbsolutePath());
+						FileWriter fw = new FileWriter(debugFile);
+						fw.write("Median, mean, percentile debug for location "+index+": "+DEBUG_LOC+"\n");
+						fw.write("Mean: "+mean.get(index)+"\n");
+						fw.write("Median: "+median.get(index)+"\n");
+						fw.write("Mean percentile: "+meanPercentile.get(index)+"\n");
+						fw.write("Norm CDF:\n");
+						LightFixedXFunc ncdf = mapNCDFs[index];
+						for (int i=0; i<ncdf.size(); i++)
+							fw.write("\t"+(float)ncdf.getX(i)+"\t"+(float)ncdf.getY(i)+"\n");
+						fw.close();
+					}
+				}
 				
 				lines.add(branchStr);
 				lines.add("");
