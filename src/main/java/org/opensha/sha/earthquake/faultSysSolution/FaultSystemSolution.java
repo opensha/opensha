@@ -620,10 +620,15 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return
 	 */
 	public double calcTotPaleoVisibleRateForSect(int sectIndex, PaleoProbabilityModel paleoProbModel) {
-		return calcTotPaleoVisibleRateForAllSects(paleoProbModel)[sectIndex];
+		if (paleoVisibleRatesCache != null) {
+			double[] paleoRates = paleoVisibleRatesCache.get(paleoProbModel);
+			if (paleoRates != null)
+				return paleoRates[sectIndex];
+		}
+		return doCalcTotPaleoVisibleRateForSect(sectIndex, paleoProbModel);
 	}
 	
-	public double doCalcTotPaleoVisibleRateForSect(int sectIndex, PaleoProbabilityModel paleoProbModel) {
+	private double doCalcTotPaleoVisibleRateForSect(int sectIndex, PaleoProbabilityModel paleoProbModel) {
 		double partRate=0;
 		for (int r : rupSet.getRupturesForSection(sectIndex))
 			partRate += getRateForRup(r)*paleoProbModel.getProbPaleoVisible(rupSet, r, sectIndex);
