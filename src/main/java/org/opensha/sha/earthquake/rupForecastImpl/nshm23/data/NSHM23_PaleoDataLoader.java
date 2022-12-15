@@ -38,7 +38,7 @@ import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
 
 public class NSHM23_PaleoDataLoader {
 	
-	public static boolean INCLUDE_U3_PALEO_SLIP = true;
+	public static boolean INCLUDE_U3_PALEO_SLIP = false;
 	
 	public static PaleoseismicConstraintData load(FaultSystemRupSet rupSet) throws IOException {
 		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
