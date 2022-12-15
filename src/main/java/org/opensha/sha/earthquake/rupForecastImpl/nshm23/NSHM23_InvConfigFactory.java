@@ -144,6 +144,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	// no longer apply min mag. this was necessary for U3 target MFDs, but not so this time around
 	public static double MIN_MAG_FOR_SEISMOGENIC_RUPS = 0d;
 	
+	public static boolean PARKFIELD_INITIAL = true;
+	
 	protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
 		RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
@@ -1120,8 +1122,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				.reweight()
 				.variablePertubationBasis(rateEst.estimateRuptureRates());
 		
-		if (parkWeight > 0d)
-			builder.initialSolution(constrBuilder.getParkfieldInitial(rupSet.hasModule(ModSectMinMags.class)));
+		if (parkWeight > 0d && PARKFIELD_INITIAL)
+			builder.initialSolution(constrBuilder.getParkfieldInitial(rupSet.hasModule(ModSectMinMags.class), targetMFDs));
 		
 		return builder.build();
 	}
@@ -1330,7 +1332,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		public HardcodedPrevWeightAdjustFullSys() {
 			super(new File("/project/scec_608/kmilner/nshm23/batch_inversions/"
-					+ "2022_06_10-nshm23_u3_hybrid_branches-full_sys_inv-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-Shift2km-ThreshAvgIterRelGR-IncludeThruCreep/results.zip"));
+					+ "2022_12_13-nshm23_u3_hybrid_branches-full_sys_inv-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-NoRed-ThreshAvgIterRelGR/results.zip"));
 		}
 
 		@Override
@@ -1413,7 +1415,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		public HardcodedPrevAvgWeightsFullSys() {
 			super(new File("/project/scec_608/kmilner/nshm23/batch_inversions/"
-						+ "2022_06_10-nshm23_u3_hybrid_branches-full_sys_inv-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-Shift2km-ThreshAvgIterRelGR-IncludeThruCreep/results_FM3_1_CoulombRupSet_branch_averaged.zip"));
+						+ "2022_12_09-nshm23_u3_hybrid_branches-full_sys_inv-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-NoRed-ThreshAvgIterRelGR/results_FM3_1_CoulombRupSet_branch_averaged.zip"));
 		}
 
 		@Override
@@ -1828,6 +1830,14 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			if (hasSlip)
 				config = InversionConfiguration.builder(config).except(PaleoSlipInversionConstraint.class, false).build();
 			return config;
+		}
+		
+	}
+	
+	public static class ForcePaleoSlip extends NSHM23_InvConfigFactory {
+		
+		public ForcePaleoSlip() {
+			NSHM23_PaleoDataLoader.INCLUDE_U3_PALEO_SLIP = true;
 		}
 		
 	}

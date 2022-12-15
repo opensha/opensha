@@ -296,7 +296,7 @@ public class NSHM23_ConstraintBuilder {
 		if (adjustForIncompatibleData) {
 			UncertaintyBoundType dataWithinType = UncertaintyBoundType.ONE_SIGMA;
 			List<SectNucleationMFD_Estimator> dataConstraints = new ArrayList<>();
-			dataConstraints.add(new APrioriSectNuclEstimator(rupSet, findParkfieldRups(), parkfieldRate));
+			dataConstraints.add(new APrioriSectNuclEstimator(rupSet, findParkfieldRups(), PARKFIELD_RATE));
 			if (rupSet.hasModule(PaleoseismicConstraintData.class)) {
 				PaleoseismicConstraintData paleoData = rupSet.requireModule(PaleoseismicConstraintData.class);
 				if (paleoData.getPaleoSlipConstraints() != null) {
@@ -604,12 +604,12 @@ public class NSHM23_ConstraintBuilder {
 	 * 
 	 * we round both of these: 24.5 yr -> 25 yr, and 15.4% -> 15 %
 	 */
-	private static UncertainDataConstraint parkfieldRate = 
+	public static final UncertainDataConstraint PARKFIELD_RATE = 
 		new UncertainDataConstraint("Parkfield", 1d/25d, new Uncertainty(0.15d/25d));
 	
 	public NSHM23_ConstraintBuilder parkfield() {
-		double parkfieldMeanRate = parkfieldRate.bestEstimate;
-		double parkfieldStdDev = parkfieldRate.getPreferredStdDev();
+		double parkfieldMeanRate = PARKFIELD_RATE.bestEstimate;
+		double parkfieldStdDev = PARKFIELD_RATE.getPreferredStdDev();
 		
 		// Find Parkfield M~6 ruptures
 		List<Integer> parkfieldRups = findParkfieldRups();
@@ -1119,7 +1119,7 @@ public class NSHM23_ConstraintBuilder {
 		return new IntegerPDF_FunctionSampler(weights);
 	}
 	
-	public double[] getParkfieldInitial(boolean ensureNotSkipped) {
+	public double[] getParkfieldInitial(boolean ensureNotSkipped, SupraSeisBValInversionTargetMFDs targetMFDs) {
 		List<Integer> parkRups = new ArrayList<>(findParkfieldRups());
 		double[] initial = new double[rupSet.getNumRuptures()];
 		if (ensureNotSkipped) {
@@ -1129,7 +1129,96 @@ public class NSHM23_ConstraintBuilder {
 					parkRups.remove(r);
 			Preconditions.checkState(!skips.isEmpty(), "All parkfield rups are skipped!");
 		}
-		double rateEach = parkfieldRate.bestEstimate/(double)parkRups.size();
+		double target = PARKFIELD_RATE.bestEstimate;
+		if (targetMFDs != null && targetMFDs.getOnFaultSupraSeisNucleationMFDs() != null) {
+			// adjust the target as a compromise with that implied by the MFDs
+			
+			int parkfieldSect = findParkfieldSection(rupSet);
+			
+			List<UncertainIncrMagFreqDist> mfds = targetMFDs.getOnFaultSupraSeisNucleationMFDs();
+			
+			double impliedMappedRate = 0d;
+			double impliedFullNuclRate = 0d;
+			for (int s=0; s<rupSet.getNumSections(); s++) {
+				if (rupSet.getFaultSectionData(s).getParentSectionId() == parkfieldSect) {
+					UncertainIncrMagFreqDist mfd = mfds.get(s);
+					
+					boolean[] rupBinAssocs = new boolean[mfd.size()];
+					
+					int minAssocBin = mfd.size();
+					
+					for (int rupIndex : parkRups) {
+						for (int sectIndex : rupSet.getSectionsIndicesForRup(rupIndex)) {
+							if (sectIndex == s) {
+								// this rup is on this section
+								int binIndex = mfd.getClosestXIndex(rupSet.getMagForRup(rupIndex));
+								rupBinAssocs[binIndex] = true;
+								minAssocBin = Integer.min(minAssocBin, binIndex);
+							}
+						}
+					}
+					for (int i=0; i<rupBinAssocs.length; i++) {
+						if (rupBinAssocs[i]) {
+							// this bin maps to parkfield
+							// can just sum them as this is already a nucleation rate, will sum to participation
+							// across all sections
+							impliedMappedRate += mfd.getY(i);
+						}
+					}
+					
+					// now sum up the total nucleation rate, which we'll use as our target if the in-bin-target
+					// is outside of the one sigma bounds
+					for (int i=minAssocBin; i<mfd.size(); i++)
+						impliedFullNuclRate += mfd.getY(i);
+				}
+			}
+			
+			System.out.println("Implied Parkfield rates for initial: exactMapped="+(float)impliedMappedRate+", fullNucl="+(float)impliedFullNuclRate);
+			
+			double lowerBound = target - 2*PARKFIELD_RATE.getPreferredStdDev();
+			double upperBound = target + 2*PARKFIELD_RATE.getPreferredStdDev();
+			
+			// adjustments to possibly use the full nucleation rate if our estimate is really low
+			double mappedDiff = impliedMappedRate - target;
+			double fullDiff = impliedFullNuclRate - target;
+			boolean fullCloser = Math.abs(fullDiff) < Math.abs(mappedDiff);
+			double impliedRate;
+			if (impliedMappedRate < lowerBound && fullCloser) {
+				if (impliedFullNuclRate < lowerBound)
+					// use the full rate, it's closer but also low
+					impliedRate = impliedFullNuclRate;
+				else
+					// it will be somewhere between the full rate and the mapped rate, use an average
+					impliedRate = 0.5*(lowerBound + impliedFullNuclRate);
+			} else {
+				impliedRate = impliedMappedRate;
+			}
+			
+			if (impliedRate < target) {
+				// implied rate is below the target
+				if (impliedRate <= lowerBound) {
+					System.out.println("Adjusted Parkfield initial rate to -2sigma of "+(float)lowerBound
+							+" (was "+(float)target+", implied is "+(float)impliedRate+")");
+					target = lowerBound;
+				} else {
+					System.out.println("Adjusted Parkfield initial rate to implied of "+(float)impliedRate
+							+" (was "+(float)target+")");
+					target = impliedRate;
+				}
+			} else if (impliedRate > target) {
+				// implied rate is above the target
+				if (impliedRate >= upperBound) {
+					System.out.println("Adjusted Parkfield initial rate to +2sigma of "+(float)upperBound
+							+" (was "+(float)target+", implied is "+(float)impliedRate+")");
+					target = upperBound;
+				} else {
+					System.out.println("Adjusted Parkfield initial rate to implied of "+(float)impliedRate
+							+" (was "+(float)target+")");
+					target = impliedRate;
+				}
+			}
+		}
+		double rateEach = target/(double)parkRups.size();
 		for (int rup : parkRups)
 			initial[rup] = rateEach;
 		return initial;
