@@ -865,10 +865,10 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 	}
 	
 	// must modify code below if you change these
-	private static final double[] standardFractiles = {0d, 0.025, 0.16, 0.84, 0.975d, 1d};
-	private static final String fractileLabel = "p[0,2.5,16,84,97.5,100]";
+	public static final double[] standardFractiles = {0d, 0.025, 0.16, 0.84, 0.975d, 1d};
+	public static final String fractileLabel = "p[0,2.5,16,84,97.5,100]";
 	
-	private static List<UncertainIncrMagFreqDist> processIncrFractiles(IncrementalMagFreqDist[] incrPercentiles) {
+	public static List<UncertainIncrMagFreqDist> processIncrFractiles(IncrementalMagFreqDist[] incrPercentiles) {
 		List<UncertainIncrMagFreqDist> ret = new ArrayList<>();
 		int cnt = 0;
 		IncrementalMagFreqDist incrMin = incrPercentiles[cnt++];
@@ -892,14 +892,14 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		return ret;
 	}
 	
-	private static IncrementalMagFreqDist getAvg(IncrementalMagFreqDist lower, IncrementalMagFreqDist upper) {
+	public static IncrementalMagFreqDist getAvg(IncrementalMagFreqDist lower, IncrementalMagFreqDist upper) {
 		IncrementalMagFreqDist ret = new IncrementalMagFreqDist(lower.getMinX(), lower.size(), lower.getDelta());
 		for (int i=0; i<ret.size(); i++)
 			ret.set(i, 0.5*(lower.getY(i)+upper.getY(i)));
 		return ret;
 	}
 	
-	private static List<UncertainArbDiscFunc> processCmlFractiles(EvenlyDiscretizedFunc[] cmlPercentiles, double minX) {
+	public static List<UncertainArbDiscFunc> processCmlFractiles(EvenlyDiscretizedFunc[] cmlPercentiles, double minX) {
 		List<UncertainArbDiscFunc> ret = new ArrayList<>();
 		int cnt = 0;
 		EvenlyDiscretizedFunc cmlMin = cmlPercentiles[cnt++];
