@@ -144,34 +144,10 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 	public static ModelRegion getDefaultRegion(LogicTreeBranch<?> branch) throws IOException {
 		if (branch != null && branch.hasValue(NSHM23_SingleStates.class)) {
 			NSHM23_SingleStates state = branch.getValue(NSHM23_SingleStates.class);
-			if (state == NSHM23_SingleStates.CA) {
-				return new ModelRegion(AnalysisRegions.CONUS_U3_RELM.load());
-			} else if (state == null) {
+			if (state == null) {
 				return new ModelRegion(NSHM23_RegionLoader.loadFullConterminousWUS());
 			} else {
-				XY_DataSet[] outlines = PoliticalBoundariesData.loadUSState(state.getStateName());
-				Region[] regions = new Region[outlines.length];
-				for (int i=0; i<outlines.length; i++) {
-					XY_DataSet outline = outlines[i];
-					LocationList border = new LocationList();
-					for (Point2D pt : outline)
-						border.add(new Location(pt.getY(), pt.getX()));
-					regions[i] = new Region(border, BorderType.MERCATOR_LINEAR);
-				}
-				Region largest = null;
-				if (outlines.length == 1) {
-					largest = regions[0];
-				} else {
-					double largestArea = 0;
-					for (Region region : regions) {
-						double area = region.getExtent();
-						if (area > largestArea) {
-							largestArea = area;
-							largest = region;
-						}
-					}
-				}
-				return new ModelRegion(largest);
+				return new ModelRegion(state.loadRegion());
 			}
 		} else {
 			// no single state, full WUS

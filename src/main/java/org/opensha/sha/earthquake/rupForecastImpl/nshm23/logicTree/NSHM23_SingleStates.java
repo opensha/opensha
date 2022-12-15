@@ -1,5 +1,6 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -7,14 +8,21 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.geo.BorderType;
+import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ConnectivityClusters;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.AnalysisRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
@@ -25,7 +33,12 @@ import com.google.common.base.Preconditions;
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum NSHM23_SingleStates implements LogicTreeNode {
-	CA("California"),
+	CA("California") {
+		@Override
+		public Region loadRegion() throws IOException {
+			return AnalysisRegions.CONUS_U3_RELM.load();
+		}
+	},
 	NV("Nevada"),
 	OR("Oregon"),
 	WA("Washington"),
@@ -108,6 +121,32 @@ public enum NSHM23_SingleStates implements LogicTreeNode {
 				allClusterSectIDs.addAll(cluster.getSectIDs());
 		}
 		return rupSet.getForSectionSubSet(allClusterSectIDs);
+	}
+	
+	public Region loadRegion() throws IOException {
+		XY_DataSet[] outlines = PoliticalBoundariesData.loadUSState(getStateName());
+		Region[] regions = new Region[outlines.length];
+		for (int i=0; i<outlines.length; i++) {
+			XY_DataSet outline = outlines[i];
+			LocationList border = new LocationList();
+			for (Point2D pt : outline)
+				border.add(new Location(pt.getY(), pt.getX()));
+			regions[i] = new Region(border, BorderType.MERCATOR_LINEAR);
+		}
+		Region largest = null;
+		if (outlines.length == 1) {
+			largest = regions[0];
+		} else {
+			double largestArea = 0;
+			for (Region region : regions) {
+				double area = region.getExtent();
+				if (area > largestArea) {
+					largestArea = area;
+					largest = region;
+				}
+			}
+		}
+		return largest;
 	}
 	
 	public static void main(String[] args) throws IOException {
