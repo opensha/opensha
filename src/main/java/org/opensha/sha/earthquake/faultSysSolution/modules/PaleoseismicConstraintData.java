@@ -179,8 +179,7 @@ SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
 		SectSlipRates targetSlipRates = rupSet.requireModule(SectSlipRates.class);
 		double[] slipRateStdDevs = null;
 		if (applySlipRateUncertainty) {
-			slipRateStdDevs = SlipRateInversionConstraint.getSlipRateStdDevs(
-					targetSlipRates, SlipRateInversionConstraint.DEFAULT_FRACT_STD_DEV);
+			slipRateStdDevs = targetSlipRates.getSlipRateStdDevs();
 			for (int s=0; s<slipRateStdDevs.length; s++) {
 				FaultSection sect = rupSet.getFaultSectionData(s);
 				double slip = targetSlipRates.getSlipRate(s);
