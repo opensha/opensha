@@ -1091,6 +1091,79 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		creepCSV.writeToFile(new File(outputDir, "MEDIAN.csv"));
 	}
 	
+	private static void writeMinisectionCSV(File outputFile) throws IOException {
+		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		
+		// first load geologic
+		List<? extends FaultSection> geoSects = buildGeolFullSects(fm, GEOLOGIC_VERSION);
+		geoSects = new ArrayList<>(geoSects);
+		geoSects.sort(new Comparator<FaultSection>() {
+
+			@Override
+			public int compare(FaultSection o1, FaultSection o2) {
+				return Integer.compare(o1.getSectionId(), o2.getSectionId());
+			}
+		});
+		
+		NSHM23_DeformationModels[] geodeticModels = {
+				NSHM23_DeformationModels.EVANS,
+				NSHM23_DeformationModels.POLLITZ,
+				NSHM23_DeformationModels.SHEN_BIRD,
+				NSHM23_DeformationModels.ZENG,
+				NSHM23_DeformationModels.MEDIAN
+		};
+		
+		CSVFile<String> csv = new CSVFile<>(true);
+		
+		List<String> header = new ArrayList<>(List.of("Section ID", "Section Name", "Minisection ID",
+				"Start Lat", "Start Lon", "End Lat", "End Lon", "Geologic Slip Rate (mm/yr)",
+				"Geologic Lower Bound (mm/yr)", "Geologic Upper Bound (mm/yr)"));
+		for (NSHM23_DeformationModels dm : geodeticModels)
+			header.add(dm.getShortName()+" (mm/yr)");
+		csv.addLine(header);
+		
+		Map<NSHM23_DeformationModels, Map<Integer, List<GeodeticSlipRecord>>> geodeticRecords = new HashMap<>();
+		
+		MinisectionMappings mappings = new MinisectionMappings(geoSects, GEOLOGIC.build(fm));
+		
+		for (NSHM23_DeformationModels model : geodeticModels) {
+			String fmDirName = getGeodeticDirForFM(fm);
+			String dmPath = NSHM23_DM_PATH_PREFIX+"geodetic/"+fmDirName+"/"+model.name()+"-include_ghost_corr.txt";
+			geodeticRecords.put(model, loadGeodeticModel(dmPath));
+		}
+		
+		for (FaultSection sect : geoSects) {
+			GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
+			FaultTrace trace = sect.getFaultTrace();
+			int numMinis = trace.size()-1;
+			
+			for (int i=0; i<numMinis; i++) {
+				List<String> line = new ArrayList<>(header.size());
+				
+				line.add(sect.getSectionId()+"");
+				line.add(sect.getSectionName());
+				line.add((i+1)+"");
+				Location l1 = trace.get(i);
+				Location l2 = trace.get(i+1);
+				line.add((float)l1.getLatitude()+"");
+				line.add((float)l1.getLongitude()+"");
+				line.add((float)l2.getLatitude()+"");
+				line.add((float)l2.getLongitude()+"");
+				line.add((float)sect.getOrigAveSlipRate()+"");
+				line.add(geoSect.getProperty("LowRate", Double.NaN).floatValue()+"");
+				line.add(geoSect.getProperty("HighRate", Double.NaN).floatValue()+"");
+				for (NSHM23_DeformationModels dm : geodeticModels) {
+					List<GeodeticSlipRecord> recs = geodeticRecords.get(dm).get(sect.getSectionId());
+					line.add((float)recs.get(i).slipRate+"");
+				}
+				
+				csv.addLine(line);
+			}
+		}
+		
+		csv.writeToFile(outputFile);
+	}
+	
 	public static void main(String[] args) throws IOException {
 		// write geo gson
 ////		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v1p4;
@@ -1113,8 +1186,10 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 //		
 //		checkForNegativeAndHighCreep(fm);
 		
-		// write median dm
-		writeMedianDM(new File("/tmp"));
+//		// write median dm
+//		writeMedianDM(new File("/tmp"));
+		
+		writeMinisectionCSV(new File("/tmp/nshm23_def_model_minisections.csv"));
 	}
 
 }
