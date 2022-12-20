@@ -137,7 +137,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	 * 	* Creeping section segmentation P=0 (Creeping section treated as isolated and solved analytically)
 	 * 	* Ruptures prohibited through creeping section
 	 */
-	CLASSIC("Classic ('A' faults)", "Classic",
+	CLASSIC("Classic", "Classic",
 			1d, // weight
 			2d, // R0
 			1d) { // shift
