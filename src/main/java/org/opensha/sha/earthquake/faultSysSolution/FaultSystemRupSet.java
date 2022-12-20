@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -1071,6 +1072,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 
 	private Table<Region, Boolean, double[]> fractRupsInsideRegions = HashBasedTable.create();
 	private Table<Region, Boolean, double[]> fractSectsInsideRegions = HashBasedTable.create();
+	private int[] sectNumPtsTraceOnly = null;
+	private int[] sectNumPtsFull = null;
 	
 	public double[] getFractSectsInsideRegion(Region region, boolean traceOnly) {
 		return getFractSectsInsideRegion(region, traceOnly, new int[getNumSections()]);
@@ -1080,6 +1083,15 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		double[] fractSectsInside;
 		synchronized (fractSectsInsideRegions) {
 			fractSectsInside = fractSectsInsideRegions.get(region, traceOnly);
+			int[] cachedPtsInSection = traceOnly ? sectNumPtsTraceOnly : sectNumPtsFull;
+			if (cachedPtsInSection == null) {
+				// should never happen, but would need to recalc anyway
+				fractSectsInside = null;
+			} else if (fractSectsInside != null) {
+				// copy them over
+				Preconditions.checkState(numPtsInSection.length == cachedPtsInSection.length);
+				System.arraycopy(cachedPtsInSection, 0, numPtsInSection, 0, cachedPtsInSection.length);
+			}
 		}
 		if (fractSectsInside == null) {
 			synchronized (fractSectsInsideRegions) {
@@ -1104,6 +1116,10 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			}
 			synchronized (fractSectsInsideRegions) {
 				fractSectsInsideRegions.put(region, traceOnly, fractSectsInside);
+				if (traceOnly)
+					sectNumPtsTraceOnly = Arrays.copyOf(numPtsInSection, numPtsInSection.length);
+				else
+					sectNumPtsFull = Arrays.copyOf(numPtsInSection, numPtsInSection.length);
 			}
 		}
 		return fractSectsInside;
@@ -1135,6 +1151,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			}
 			int[] numPtsInSection = new int[getNumSections()];
 			double[] fractSectsInside = getFractSectsInsideRegion(region, traceOnly, numPtsInSection);
+//			System.out.println(StatUtils.sum(fractSectsInside)+" sects inside of "+region.getName());
 			int numRuptures = getNumRuptures();
 
 			fractRupsInside = new double[numRuptures];
@@ -1148,6 +1165,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				}
 				fractRupsInside[rup] /= totNumPts;
 			}
+//			System.out.println(StatUtils.sum(fractRupsInside)+" rups inside of "+region.getName());
 			synchronized (fractRupsInsideRegions) {
 				fractRupsInsideRegions.put(region, traceOnly, fractRupsInside);
 			}
