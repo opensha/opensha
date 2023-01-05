@@ -137,6 +137,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	private boolean adjustForActualRupSlips = NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
 	private boolean adjustForSlipAlong = NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT;
 	
+	private static long NUM_ITERS_PER_RUP = 2000l;
+	
 	// minimum MFD uncertainty
 	public static double MFD_MIN_FRACT_UNCERT = 0.1;
 	
@@ -1108,7 +1110,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			// only count ruptures we can actually sample
 			numRups = sampler.size();
 		long equivNumVars = Long.max(numRups, rupSet.getNumSections()*100l);
-		CompletionCriteria completion = new IterationCompletionCriteria(equivNumVars*2000l);
+		CompletionCriteria completion = new IterationCompletionCriteria(equivNumVars*NUM_ITERS_PER_RUP);
 		CompletionCriteria subCompletion = new IterationCompletionCriteria(equivNumVars);
 		CompletionCriteria avgCompletion = new IterationCompletionCriteria(equivNumVars*50l);
 		
@@ -1267,7 +1269,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		public HardcodedPrevWeightAdjust() {
 			this(new File("/project/scec_608/kmilner/nshm23/batch_inversions/"
-						+ "2022_06_10-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-Shift2km-ThreshAvgIterRelGR-IncludeThruCreep/results.zip"));
+						+ "2022_12_20-nshm23_u3_hybrid_branches-full_sys_inv-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-NoRed-ThreshAvgIterRelGR/results.zip"));
 		}
 
 		public HardcodedPrevWeightAdjust(File resultsFile) {
@@ -1332,7 +1334,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		public HardcodedPrevWeightAdjustFullSys() {
 			super(new File("/project/scec_608/kmilner/nshm23/batch_inversions/"
-					+ "2022_12_13-nshm23_u3_hybrid_branches-full_sys_inv-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-NoRed-ThreshAvgIterRelGR/results.zip"));
+					+ "2022_12_20-nshm23_u3_hybrid_branches-full_sys_inv-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-NoRed-ThreshAvgIterRelGR/results.zip"));
 		}
 
 		@Override
@@ -1859,6 +1861,14 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				if (constraint instanceof PaleoSlipInversionConstraint)
 					((PaleoSlipInversionConstraint)constraint).setInequality(true);
 			return config;
+		}
+		
+	}
+	
+	public static class TenThousandItersPerRup extends NSHM23_InvConfigFactory {
+		
+		public TenThousandItersPerRup() {
+			NUM_ITERS_PER_RUP = 10000l;
 		}
 		
 	}
