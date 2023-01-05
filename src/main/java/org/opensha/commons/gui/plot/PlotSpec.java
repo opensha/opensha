@@ -122,6 +122,12 @@ public class PlotSpec implements Serializable {
 		annotations.add(annotation);
 	}
 	
+	public void addPlotAnnotation(int index, XYAnnotation annotation) {
+		if (annotations == null)
+			annotations = new ArrayList<>();
+		annotations.add(index, annotation);
+	}
+	
 	public List<XYAnnotation> getPlotAnnotations() {
 		return annotations;
 	}
