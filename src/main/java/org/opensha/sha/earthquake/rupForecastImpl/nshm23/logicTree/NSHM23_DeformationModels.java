@@ -1117,14 +1117,14 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		
 		List<String> header = new ArrayList<>(List.of("Section ID", "Section Name", "Minisection ID",
 				"Start Lat", "Start Lon", "End Lat", "End Lon", "Geologic Slip Rate (mm/yr)",
-				"Geologic Lower Bound (mm/yr)", "Geologic Upper Bound (mm/yr)"));
-		for (NSHM23_DeformationModels dm : geodeticModels)
-			header.add(dm.getShortName()+" (mm/yr)");
+				"Geologic Lower Bound (mm/yr)", "Geologic Upper Bound (mm/yr)", "Geologic Rake"));
+		for (NSHM23_DeformationModels dm : geodeticModels) {
+			header.add(dm.getShortName()+" Slip Rate (mm/yr)");
+			header.add(dm.getShortName()+" Rake");
+		}
 		csv.addLine(header);
 		
 		Map<NSHM23_DeformationModels, Map<Integer, List<GeodeticSlipRecord>>> geodeticRecords = new HashMap<>();
-		
-		MinisectionMappings mappings = new MinisectionMappings(geoSects, GEOLOGIC.build(fm));
 		
 		for (NSHM23_DeformationModels model : geodeticModels) {
 			String fmDirName = getGeodeticDirForFM(fm);
@@ -1152,9 +1152,12 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 				line.add((float)sect.getOrigAveSlipRate()+"");
 				line.add(geoSect.getProperty("LowRate", Double.NaN).floatValue()+"");
 				line.add(geoSect.getProperty("HighRate", Double.NaN).floatValue()+"");
+				line.add((float)geoSect.getAveRake()+"");
 				for (NSHM23_DeformationModels dm : geodeticModels) {
 					List<GeodeticSlipRecord> recs = geodeticRecords.get(dm).get(sect.getSectionId());
-					line.add((float)recs.get(i).slipRate+"");
+					GeodeticSlipRecord rec = recs.get(i);
+					line.add((float)rec.slipRate+"");
+					line.add((float)rec.rake+"");
 				}
 				
 				csv.addLine(line);
