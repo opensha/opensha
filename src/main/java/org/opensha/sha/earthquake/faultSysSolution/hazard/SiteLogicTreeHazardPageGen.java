@@ -782,7 +782,7 @@ public class SiteLogicTreeHazardPageGen {
 			if (branch.hasValue(node)) {
 				DiscretizedFunc curve = curves.get(i);
 				if (meanCurve == null)
-					meanCurve = new LightFixedXFunc(xVals(curve), new double[curves.size()]);
+					meanCurve = new LightFixedXFunc(xVals(curve), new double[curve.size()]);
 				else
 					Preconditions.checkState(curve.size() == meanCurve.size());
 				nodeCurves.add(curves.get(i));
