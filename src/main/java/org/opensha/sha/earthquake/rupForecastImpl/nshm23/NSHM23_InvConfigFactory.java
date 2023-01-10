@@ -1873,6 +1873,49 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 	}
 	
+	public static class DM_OutlierReplacementYc2p0 extends NSHM23_InvConfigFactory {
+		
+		public DM_OutlierReplacementYc2p0() {
+			NSHM23_DeformationModels.OUTLIER_SUB_YC = 2d;
+			NSHM23_DeformationModels.ORIGINAL_WEIGHTS = true;
+		}
+		
+	}
+	
+	public static class DM_OutlierReplacementYc3p5 extends NSHM23_InvConfigFactory {
+		
+		public DM_OutlierReplacementYc3p5() {
+			NSHM23_DeformationModels.OUTLIER_SUB_YC = 3.5d;
+			NSHM23_DeformationModels.ORIGINAL_WEIGHTS = true;
+		}
+		
+	}
+	
+	public static class DM_OutlierReplacementYc5p0 extends NSHM23_InvConfigFactory {
+		
+		public DM_OutlierReplacementYc5p0() {
+			NSHM23_DeformationModels.OUTLIER_SUB_YC = 5d;
+			NSHM23_DeformationModels.ORIGINAL_WEIGHTS = true;
+		}
+		
+	}
+	
+	public static class DM_OriginalWeights extends NSHM23_InvConfigFactory {
+		
+		public DM_OriginalWeights() {
+			NSHM23_DeformationModels.ORIGINAL_WEIGHTS = true;
+		}
+		
+	}
+	
+	public static class DM_OutlierlMinimizationWeights extends NSHM23_InvConfigFactory {
+		
+		public DM_OutlierlMinimizationWeights() {
+			NSHM23_DeformationModels.ORIGINAL_WEIGHTS = false;
+		}
+		
+	}
+	
 	public static void main(String[] args) throws IOException {
 //		File dir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
 //				+ "2021_11_24-nshm23_draft_branches-FM3_1/");
