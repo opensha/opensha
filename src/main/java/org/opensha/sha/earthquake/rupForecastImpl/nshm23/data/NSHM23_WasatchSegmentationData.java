@@ -693,9 +693,6 @@ public class NSHM23_WasatchSegmentationData {
 				}
 			}
 		}
-		mapMaker.plotJumps(removeDuplicates(disallowedJumps), alpha(Color.RED.darker(), 127), "Affected Jumps");
-		mapMaker.plotJumps(removeDuplicates(allowedJumps), alpha(Color.GREEN.darker(), 127), "Unaffected Jumps");
-		mapMaker.plotJumps(removeDuplicates(otherJumps), alpha(Color.GRAY, 127), "Other Jumps");
 		
 //		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, Double.min(maxColors, largestRups.size()-1));
 //		for (int i=0; i<largestRups.size(); i++) {
@@ -717,6 +714,12 @@ public class NSHM23_WasatchSegmentationData {
 		}
 		
 		mapMaker.plot(new File("/tmp"), "wasatch_seg_data", "Wasatch Segmentation Locations");
+		
+		mapMaker.plotJumps(removeDuplicates(disallowedJumps), alpha(Color.RED.darker(), 127), "Affected Jumps");
+		mapMaker.plotJumps(removeDuplicates(allowedJumps), alpha(Color.GREEN.darker(), 127), "Unaffected Jumps");
+		mapMaker.plotJumps(removeDuplicates(otherJumps), alpha(Color.GRAY, 127), "Other Jumps");
+		
+		mapMaker.plot(new File("/tmp"), "wasatch_seg_data_with_jumps", "Wasatch Segmentation Locations");
 		
 //		Map<Integer, List<FaultSection>> idToSects = subSects.stream().collect(Collectors.groupingBy(S -> S.getParentSectionId()));
 ////		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(subSects);
