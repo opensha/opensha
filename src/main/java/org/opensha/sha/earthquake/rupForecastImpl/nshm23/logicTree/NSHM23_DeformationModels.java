@@ -9,13 +9,13 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 
 import org.opensha.commons.data.CSVFile;
@@ -71,37 +71,62 @@ import com.google.common.base.Preconditions;
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum NSHM23_DeformationModels implements RupSetDeformationModel {
-	GEOLOGIC("NSHM23 Geologic Deformation Model", "Geologic", 0.26d) {
+	GEOLOGIC("NSHM23 Geologic Deformation Model", "Geologic") {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeol(faultModel, GEOLOGIC_VERSION);
 		}
+
+		@Override
+		protected double getWeight() {
+			return ORIGINAL_WEIGHTS ? 0.2 : 0.26;
+		}
 	},
-	EVANS("NSHM23 Evans Deformation Model", "Evans", 0.02d) {
+	EVANS("NSHM23 Evans Deformation Model", "Evans") {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
+
+		@Override
+		protected double getWeight() {
+			return ORIGINAL_WEIGHTS ? 0.1 : 0.02;
+		}
 	},
-	POLLITZ("NSHM23 Pollitz Deformation Model", "Pollitz", 0.08d) {
+	POLLITZ("NSHM23 Pollitz Deformation Model", "Pollitz") {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
+
+		@Override
+		protected double getWeight() {
+			return ORIGINAL_WEIGHTS ? 0.2 : 0.08;
+		}
 	},
-	SHEN_BIRD("NSHM23 Shen-Bird Deformation Model", "Shen-Bird", 0.32d) {
+	SHEN_BIRD("NSHM23 Shen-Bird Deformation Model", "Shen-Bird") {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
+
+		@Override
+		protected double getWeight() {
+			return ORIGINAL_WEIGHTS ? 0.25 : 0.32;
+		}
 	},
-	ZENG("NSHM23 Zeng Deformation Model", "Zeng", 0.32d) {
+	ZENG("NSHM23 Zeng Deformation Model", "Zeng") {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
+
+		@Override
+		protected double getWeight() {
+			return ORIGINAL_WEIGHTS ? 0.25 : 0.32;
+		}
 	},
-	AVERAGE("NSHM23 Averaged Deformation Model", "AvgDM", 0d) {
+	AVERAGE("NSHM23 Averaged Deformation Model", "AvgDM") {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			double totWeight = 0d;
@@ -112,8 +137,8 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			boolean[] hasCreeps = null;
 			AngleAverager[] rakes = null;
 			for (NSHM23_DeformationModels dm : values()) {
-				if (dm != this && dm.weight > 0d) {
-					totWeight += dm.weight;
+				if (dm != this && dm.getWeight() > 0d) {
+					totWeight += dm.getWeight();
 					List<? extends FaultSection> dmSects = dm.build(faultModel);
 					if (ret == null) {
 						ret = new ArrayList<>();
@@ -131,14 +156,14 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 					}
 					for (int s=0; s<dmSects.size(); s++) {
 						GeoJSONFaultSection sect = (GeoJSONFaultSection)dmSects.get(s);
-						slipRates[s] += dm.weight*sect.getOrigAveSlipRate();
-						slipRateStdDevs[s] += dm.weight*sect.getOrigSlipRateStdDev();
+						slipRates[s] += dm.getWeight()*sect.getOrigAveSlipRate();
+						slipRateStdDevs[s] += dm.getWeight()*sect.getOrigSlipRateStdDev();
 						double creepRate = sect.getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
 						if (Double.isFinite(creepRate)) {
-							creepRates[s] += dm.weight*creepRate;
+							creepRates[s] += dm.getWeight()*creepRate;
 							hasCreeps[s] = true;
 						}
-						rakes[s].add(sect.getAveRake(), dm.weight);
+						rakes[s].add(sect.getAveRake(), dm.getWeight());
 					}
 				}
 			}
@@ -163,13 +188,45 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			}
 			return ret;
 		}
+
+		@Override
+		protected double getWeight() {
+			return 0;
+		}
 	},
-	MEDIAN("NSHM23 Median Deformation Model (Unweighted, Geol. Rakes)", "MedDM", 0d) {
+	MEDIAN("NSHM23 Median Deformation Model (Unweighted, Geol. Rakes)", "MedDM") {
 		@Override
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			return buildGeodetic(faultModel, GEODETIC_INCLUDE_GHOST_TRANSIENT);
 		}
+
+		@Override
+		protected double getWeight() {
+			return 0;
+		}
 	};
+	
+	/**
+	 * Weight model. If true, use original weights recommended by the deformation model review:
+	 * 
+	 * 	* Geologic: 20%
+	 *  * Evans: 10%
+	 *  * Pollitz: 20%
+	 *  * Shen-Bird: 25%
+	 *  * Shen-Bird: 25%
+	 * 
+	 */
+	public static boolean ORIGINAL_WEIGHTS = false;
+	/**
+	 * If non null and >0, apply outlier substitution method proposed by Tom Jordan. Will more fully document
+	 * if used.
+	 */
+	public static Double OUTLIER_SUB_YC = null;
+	/**
+	 * Option for outlier substitution model to bound within +/- Yc rather that substitute the mean. Only used if
+	 * {@link NSHM23_DeformationModels#OUTLIER_SUB_YC} is >0.
+	 */
+	public static boolean OUTLIER_SUB_USE_BOUND = false;
 	
 	private static final String NSHM23_DM_PATH_PREFIX = "/data/erf/nshm23/def_models/";
 
@@ -244,20 +301,21 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	 */
 	
 	private static final Map<RupSetFaultModel, Map<Integer, GeoJSONFaultSection>> geologicSectsCache = new HashMap<>();
+	private static final Map<String, Map<Integer, List<MinisectionSlipRecord>>> geodeticMinisectsCache = new HashMap<>();
 
 	private String name;
 	private String shortName;
-	private double weight;
 
-	private NSHM23_DeformationModels(String name, String shortName, double weight) {
+	private NSHM23_DeformationModels(String name, String shortName) {
 		this.name = name;
 		this.shortName = shortName;
-		this.weight = weight;
 	}
+	
+	protected abstract double getWeight();
 
 	@Override
 	public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
-		return weight;
+		return getWeight();
 	}
 
 	@Override
@@ -332,11 +390,30 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		Preconditions.checkState(isApplicableTo(faultModel), "DM/FM mismatch");
 		List<? extends FaultSection> geoSects = buildGeolFullSects(faultModel, version);
 		
-		List<FaultSection> subSects = GeoJSONFaultReader.buildSubSects(geoSects);
+		Map<Integer, GeoJSONFaultSection> geoSectsMap = new HashMap<>();
+		for (FaultSection geoSect : geoSects)
+			geoSectsMap.put(geoSect.getSectionId(), (GeoJSONFaultSection)geoSect);
 		
-		MinisectionMappings mappings = new MinisectionMappings(geoSects, subSects);
+		Map<Integer, List<MinisectionSlipRecord>> geoMinisects = geoSectsToMinis(geoSectsMap);
 		
-		return applyCreepModel(mappings, applyStdDevDefaults(faultModel, subSects));
+		return buildDeformationModel(faultModel, geoMinisects);
+	}
+	
+	private static Map<Integer, List<MinisectionSlipRecord>> geoSectsToMinis(Map<Integer, GeoJSONFaultSection> geoSects) {
+		Map<Integer, List<MinisectionSlipRecord>> ret = new HashMap<>(geoSects.size());
+		for (Integer faultID : geoSects.keySet()) {
+			List<MinisectionSlipRecord> minis = new ArrayList<>();
+			GeoJSONFaultSection sect = geoSects.get(faultID);
+			double slip = sect.getOrigAveSlipRate();
+			double rake = sect.getAveRake();
+			double slipSD = sect.getOrigSlipRateStdDev();
+			FaultTrace trace = sect.getFaultTrace();
+			int numMinis = trace.size()-1;
+			for (int i=0; i<numMinis; i++)
+				minis.add(new MinisectionSlipRecord(faultID, i, trace.get(i), trace.get(i+1), rake, slip, slipSD));
+			ret.put(faultID, minis);
+		}
+		return ret;
 	}
 	
 	/*
@@ -345,35 +422,143 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	
 	public List<? extends FaultSection> buildGeodetic(RupSetFaultModel faultModel, boolean includeGhostCorrection)
 			throws IOException {
-		// first load fault model
-		List<GeoJSONFaultSection> geoSects = new ArrayList<>();
-		Map<Integer, FaultSection> sectsByID = new HashMap<>();
-		for (FaultSection sect : faultModel.getFaultSections()) {
-			if (!(sect instanceof GeoJSONFaultSection))
-				sect = new GeoJSONFaultSection(sect);
-			geoSects.add((GeoJSONFaultSection)sect);
-			sectsByID.put(sect.getSectionId(), sect);
-		}
+		Map<Integer, List<MinisectionSlipRecord>> dmRecords = loadGeodeticModel(faultModel, this, includeGhostCorrection);
 		
-		// build subsections
-		List<FaultSection> subSects = GeoJSONFaultReader.buildSubSects(geoSects);
-		
-		MinisectionMappings mappings = new MinisectionMappings(geoSects, subSects);
-		
-		String fmDirName = getGeodeticDirForFM(faultModel);
+		return buildDeformationModel(faultModel, dmRecords);
+	}
+	
+	private synchronized static Map<Integer, List<MinisectionSlipRecord>> loadGeodeticModel(RupSetFaultModel fm,
+			NSHM23_DeformationModels dm, boolean includeGhostCorrection) throws IOException {
+		String fmDirName = getGeodeticDirForFM(fm);
 		Preconditions.checkNotNull(fmDirName, "No geodetic files found for fault model %s of type %s",
-				faultModel, faultModel.getClass().getName());
+				fm, fm.getClass().getName());
 		
-		String dmPath = NSHM23_DM_PATH_PREFIX+"geodetic/"+fmDirName+"/"+name();
+		String dmPath = NSHM23_DM_PATH_PREFIX+"geodetic/"+fmDirName+"/"+dm.name();
 		if (includeGhostCorrection)
 			dmPath += "-include_ghost_corr.txt";
 		else
 			dmPath += "-no_ghost_corr.txt";
-		Map<Integer, List<GeodeticSlipRecord>> dmRecords = loadGeodeticModel(dmPath);
-
+		
+		// see if it's already cached
+		Map<Integer, List<MinisectionSlipRecord>> dmRecords = geodeticMinisectsCache.get(dmPath);
+		
+		if (dmRecords == null) {
+			// have to actually load it
+			dmRecords = loadGeodeticModel(dmPath);
+			// cache it
+			geodeticMinisectsCache.put(dmPath, dmRecords);
+		}
+		// wrap in a new map to as other methods may remove entries not mapped to faults in use
+		return new HashMap<>(dmRecords);
+	}
+	
+	private static Map<Integer, List<MinisectionSlipRecord>> loadGeodeticModel(String path) throws IOException {
+		System.out.println("Reading deformation model: "+path);
+		InputStream stream = NSHM23_DeformationModels.class.getResourceAsStream(path);
+		Preconditions.checkNotNull(stream, "Deformation model file not found: %s", path);
+		BufferedReader dmReader = new BufferedReader(new InputStreamReader(stream));
+		Preconditions.checkNotNull(dmReader, "Deformation model file not found: %s", path);
+		
+		Map<Integer, List<MinisectionSlipRecord>> ret = new HashMap<>();
+		
+		String line = null;
+		while ((line = dmReader.readLine()) != null) {
+			line = line.trim();
+			if (line.isBlank() || line.startsWith("#"))
+				continue;
+			line = line.replaceAll("\t", " ");
+			while (line.contains("  "))
+				line = line.replaceAll("  ", " ");
+			String[] split = line.split(" ");
+			Preconditions.checkState(split.length == 9 || split.length == 8, "Expected 8/9 columns, have %s. Line: %s", split.length, line);
+			
+			int index = 0;
+			int parentID = Integer.parseInt(split[index++]);
+			Preconditions.checkState(parentID >= 0, "Bad parentID=%s. Line: %s", parentID, line);
+			int minisectionID = Integer.parseInt(split[index++]);
+			Preconditions.checkState(minisectionID >= 1, "Bad minisectionID=%s. Line: %s", minisectionID, line);
+			double startLat = Double.parseDouble(split[index++]);
+			double startLon = Double.parseDouble(split[index++]);
+			Location startLoc = new Location(startLat, startLon);
+			double endLat = Double.parseDouble(split[index++]);
+			double endLon = Double.parseDouble(split[index++]);
+			Location endLoc = new Location(endLat, endLon);
+			double rake = Double.parseDouble(split[index++]);
+			Preconditions.checkState(Double.isFinite(rake) && (float)rake >= -180f && (float)rake <= 180f, 
+					"Bad rake=%s. Line: %s", rake, line);
+			double slipRate = Double.parseDouble(split[index++]);
+			Preconditions.checkState(slipRate >= 0d && Double.isFinite(slipRate),
+					"Bad slipRate=%s. Line: %s", slipRate, line);
+			double slipRateStdDev;
+			if (split.length > index) {
+				slipRateStdDev = Double.parseDouble(split[index++]);
+				Preconditions.checkState(slipRateStdDev >= 0d && Double.isFinite(slipRateStdDev),
+						"Bad slipRateStdDev=%s. Line: %s", slipRateStdDev, line);
+			} else {
+				slipRateStdDev = Double.NaN;
+			}
+			
+			List<MinisectionSlipRecord> parentRecs = ret.get(parentID);
+			if (parentRecs == null) {
+				parentRecs = new ArrayList<>();
+				ret.put(parentID, parentRecs);
+				Preconditions.checkState(minisectionID == 1,
+						"First minisection encounterd for fault %s, but minisection ID is %s",
+						parentID, minisectionID);
+			} else {
+				MinisectionSlipRecord prev = parentRecs.get(parentRecs.size()-1);
+				Preconditions.checkState(minisectionID == prev.minisectionID+2, // +2 here as prev is 0-based
+						"Minisections are out of order for fault %s, %s is directly after %s",
+						parentID, minisectionID, prev.minisectionID);
+				Preconditions.checkState(startLoc.equals(prev.endLoc) || LocationUtils.areSimilar(startLoc, prev.endLoc),
+						"Previons endLoc does not match startLoc for %s %s:\n\t%s\n\t%s",
+						parentID, minisectionID, prev.endLoc, startLoc);
+			}
+			
+			// convert minisections to 0-based
+			parentRecs.add(new MinisectionSlipRecord(
+					parentID, minisectionID-1, startLoc, endLoc, rake, slipRate, slipRateStdDev));
+		}
+		
+		return ret;
+	}
+	
+	private static class MinisectionSlipRecord extends MinisectionDataRecord {
+		public final double rake;
+		public final double slipRate; // mm/yr
+		public final double slipRateStdDev; // mm/yr
+		
+		public MinisectionSlipRecord(int parentID, int minisectionID, Location startLoc, Location endLoc, double rake,
+				double slipRate, double slipRateStdDev) {
+			super(parentID, minisectionID, startLoc, endLoc);
+			this.rake = rake;
+			this.slipRate = slipRate;
+			this.slipRateStdDev = slipRateStdDev;
+		}
+	}
+	
+	/*
+	 * Methods for building deformation model from minisections, including creep and any other processing
+	 */
+	
+	private List<? extends FaultSection> buildDeformationModel(RupSetFaultModel faultModel,
+			Map<Integer, List<MinisectionSlipRecord>> dmRecords) throws IOException {
+		
+		// fetch full sections
+		List<? extends FaultSection> fullSects = faultModel.getFaultSections();
+		
+		// build subsections
+		List<FaultSection> subSects = GeoJSONFaultReader.buildSubSects(fullSects);
+		
+		// minisection mappings
+		MinisectionMappings mappings = new MinisectionMappings(fullSects, subSects);
+		
+		// validate and remove any if needed
+		Map<Integer, FaultSection> sectsByID = faultModel.getFaultSectionIDMap();
 		for (Integer sectID : sectsByID.keySet())
 			if (!dmRecords.containsKey(sectID))
-				System.err.println("WARNING: "+name+" is missing data for fault "+sectID+". "+sectsByID.get(sectID).getSectionName());
+				System.err.println("WARNING: "+name+" is missing data for fault "
+						+sectID+". "+sectsByID.get(sectID).getSectionName());
 		for (Integer parentID : new ArrayList<>(dmRecords.keySet())) {
 			// validate records
 			if (!mappings.areMinisectionDataForParentValid(parentID, dmRecords.get(parentID), true)) {
@@ -388,6 +573,18 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			}
 		}
 		
+		// apply outlier treatment if enabled
+		dmRecords = applyOutlierSubstitution(faultModel, dmRecords);
+		
+		// apply deformation model to subsections
+		mapMinisToSubSects(subSects, faultModel, dmRecords, mappings);
+		
+		// apply std dev defaults
+		return applyCreepModel(mappings, applyStdDevDefaults(faultModel, subSects));
+	}
+	
+	private static void mapMinisToSubSects(List<FaultSection> subSects, RupSetFaultModel faultModel,
+			Map<Integer, List<MinisectionSlipRecord>> dmRecords, MinisectionMappings mappings) throws IOException {
 		Map<Integer, GeoJSONFaultSection> geoDMSects = null; // may be needed if zeros are encountered
 		int numRakesSkipped = 0;
 		
@@ -395,7 +592,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		for (FaultSection subSect : subSects) {
 			int subSectID = subSect.getSectionId();
 			int parentID = subSect.getParentSectionId();
-			List<GeodeticSlipRecord> records = dmRecords.get(parentID);
+			List<MinisectionSlipRecord> records = dmRecords.get(parentID);
 			if (records == null) {
 				subSect.setAveSlipRate(0d);
 				subSect.setSlipRateStdDev(0d);
@@ -406,7 +603,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			List<Double> recSlipStdDevs = new ArrayList<>(records.size());
 			List<Double> recRakes = new ArrayList<>(records.size());
 			
-			for (GeodeticSlipRecord record : records) {
+			for (MinisectionSlipRecord record : records) {
 				recSlips.add(record.slipRate);
 				if (Double.isNaN(record.slipRateStdDev))
 					recSlipStdDevs = null;
@@ -455,92 +652,6 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			System.err.println("WARNING: Ignored rakes set to zero with zero slip rates for "+numRakesSkipped
 					+"/"+subSects.size()+" ("+pDF.format((double)numRakesSkipped/(double)subSects.size())
 					+") subsections, keeping geologic rakes to avoid placeholder");
-		
-		return applyCreepModel(mappings, applyStdDevDefaults(faultModel, subSects));
-	}
-	
-	private static Map<Integer, List<GeodeticSlipRecord>> loadGeodeticModel(String path) throws IOException {
-		InputStream stream = NSHM23_DeformationModels.class.getResourceAsStream(path);
-		Preconditions.checkNotNull(stream, "Deformation model file not found: %s", path);
-		BufferedReader dmReader = new BufferedReader(new InputStreamReader(stream));
-		Preconditions.checkNotNull(dmReader, "Deformation model file not found: %s", path);
-		
-		Map<Integer, List<GeodeticSlipRecord>> ret = new HashMap<>();
-		
-		String line = null;
-		while ((line = dmReader.readLine()) != null) {
-			line = line.trim();
-			if (line.isBlank() || line.startsWith("#"))
-				continue;
-			line = line.replaceAll("\t", " ");
-			while (line.contains("  "))
-				line = line.replaceAll("  ", " ");
-			String[] split = line.split(" ");
-			Preconditions.checkState(split.length == 9 || split.length == 8, "Expected 8/9 columns, have %s. Line: %s", split.length, line);
-			
-			int index = 0;
-			int parentID = Integer.parseInt(split[index++]);
-			Preconditions.checkState(parentID >= 0, "Bad parentID=%s. Line: %s", parentID, line);
-			int minisectionID = Integer.parseInt(split[index++]);
-			Preconditions.checkState(minisectionID >= 1, "Bad minisectionID=%s. Line: %s", minisectionID, line);
-			double startLat = Double.parseDouble(split[index++]);
-			double startLon = Double.parseDouble(split[index++]);
-			Location startLoc = new Location(startLat, startLon);
-			double endLat = Double.parseDouble(split[index++]);
-			double endLon = Double.parseDouble(split[index++]);
-			Location endLoc = new Location(endLat, endLon);
-			double rake = Double.parseDouble(split[index++]);
-			Preconditions.checkState(Double.isFinite(rake) && (float)rake >= -180f && (float)rake <= 180f, 
-					"Bad rake=%s. Line: %s", rake, line);
-			double slipRate = Double.parseDouble(split[index++]);
-			Preconditions.checkState(slipRate >= 0d && Double.isFinite(slipRate),
-					"Bad slipRate=%s. Line: %s", slipRate, line);
-			double slipRateStdDev;
-			if (split.length > index) {
-				slipRateStdDev = Double.parseDouble(split[index++]);
-				Preconditions.checkState(slipRateStdDev >= 0d && Double.isFinite(slipRateStdDev),
-						"Bad slipRateStdDev=%s. Line: %s", slipRateStdDev, line);
-			} else {
-				slipRateStdDev = Double.NaN;
-			}
-			
-			List<GeodeticSlipRecord> parentRecs = ret.get(parentID);
-			if (parentRecs == null) {
-				parentRecs = new ArrayList<>();
-				ret.put(parentID, parentRecs);
-				Preconditions.checkState(minisectionID == 1,
-						"First minisection encounterd for fault %s, but minisection ID is %s",
-						parentID, minisectionID);
-			} else {
-				GeodeticSlipRecord prev = parentRecs.get(parentRecs.size()-1);
-				Preconditions.checkState(minisectionID == prev.minisectionID+2, // +2 here as prev is 0-based
-						"Minisections are out of order for fault %s, %s is directly after %s",
-						parentID, minisectionID, prev.minisectionID);
-				Preconditions.checkState(startLoc.equals(prev.endLoc) || LocationUtils.areSimilar(startLoc, prev.endLoc),
-						"Previons endLoc does not match startLoc for %s %s:\n\t%s\n\t%s",
-						parentID, minisectionID, prev.endLoc, startLoc);
-			}
-			
-			// convert minisections to 0-based
-			parentRecs.add(new GeodeticSlipRecord(
-					parentID, minisectionID-1, startLoc, endLoc, rake, slipRate, slipRateStdDev));
-		}
-		
-		return ret;
-	}
-	
-	private static class GeodeticSlipRecord extends MinisectionDataRecord {
-		public final double rake;
-		public final double slipRate; // mm/yr
-		public final double slipRateStdDev; // mm/yr
-		
-		public GeodeticSlipRecord(int parentID, int minisectionID, Location startLoc, Location endLoc, double rake,
-				double slipRate, double slipRateStdDev) {
-			super(parentID, minisectionID, startLoc, endLoc);
-			this.rake = rake;
-			this.slipRate = slipRate;
-			this.slipRateStdDev = slipRateStdDev;
-		}
 	}
 	
 	/*
@@ -903,9 +1014,145 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		}
 	}
 	
+	/*
+	 * Outlier substitution
+	 */
+	
+	private static class MinisectionOutlierStatistics extends MinisectionDataRecord {
+		
+		private final double slipMedian;
+		private final double slipMAD;
+
+		public MinisectionOutlierStatistics(int parentID, int minisectionID, Location startLoc, Location endLoc,
+				double slipMedian, double slipMAD) {
+			super(parentID, minisectionID, startLoc, endLoc);
+			this.slipMedian = slipMedian;
+			this.slipMAD = slipMAD;
+		}
+		
+	}
+	
+	// cache of psuedo MADs
+	private static final Map<RupSetFaultModel, Map<Integer, List<MinisectionOutlierStatistics>>> minisectionOutlierStats = new HashMap<>();
+	
+	private synchronized static Map<Integer, List<MinisectionOutlierStatistics>> calcOutlierStats(RupSetFaultModel fm) throws IOException {
+		Map<Integer, List<MinisectionOutlierStatistics>> madMap = minisectionOutlierStats.get(fm);
+		
+		if (madMap != null)
+			return madMap;
+		
+		Map<Integer, FaultSection> fmSectsByID = fm.getFaultSectionIDMap();
+		
+		// need to calculate it
+		List<Map<Integer, List<MinisectionSlipRecord>>> dmMinisectionRecords = new ArrayList<>();
+		Set<Integer> keys = null;
+		for (NSHM23_DeformationModels dm : values()) {
+			if (dm.getWeight() == 0d || dm == MEDIAN || dm == AVERAGE)
+				continue;
+			Map<Integer, List<MinisectionSlipRecord>> dmRecs;
+			if (dm == GEOLOGIC) {
+				Map<Integer, GeoJSONFaultSection> geoSects = getGeolFullSects(fm);
+				
+				dmRecs = geoSectsToMinis(geoSects);
+			} else {
+				dmRecs = loadGeodeticModel(fm, dm, GEODETIC_INCLUDE_GHOST_TRANSIENT);
+				// remove any extraneous
+				for (Integer id : new ArrayList<>(dmRecs.keySet()))
+					if (!fmSectsByID.containsKey(id))
+						dmRecs.remove(id);
+			}
+			if (keys == null)
+				keys = dmRecs.keySet();
+			else
+				Preconditions.checkState(keys.equals(dmRecs.keySet()), "Keys mismatch, first size=%s, %s size=%s",
+						keys.size(), dm.name(), dmRecs.keySet().size());
+			dmMinisectionRecords.add(dmRecs);
+		}
+		
+		madMap = new HashMap<>(keys.size());
+		double[] slips = new double[dmMinisectionRecords.size()];
+		double[] deviations = new double[dmMinisectionRecords.size()];
+		for (Integer faultID : keys) {
+			List<MinisectionSlipRecord> refRecs = dmMinisectionRecords.get(0).get(faultID);
+			int numMinis = refRecs.size();
+			List<MinisectionOutlierStatistics> stats = new ArrayList<>(numMinis);
+			for (int i=0; i<numMinis; i++) {
+				// fill in slip rates array
+				for (int j=0; j<slips.length; j++)
+					slips[j] = dmMinisectionRecords.get(j).get(faultID).get(i).slipRate;
+				double median = DataUtils.median(slips);
+				for (int j=0; j<slips.length; j++)
+					deviations[j] = Math.abs(slips[j] - median);
+				double mad = DataUtils.median(deviations);
+				MinisectionSlipRecord refRec = refRecs.get(i);
+				stats.add(new MinisectionOutlierStatistics(faultID, i, refRec.startLoc, refRec.endLoc, median, mad));
+			}
+			madMap.put(faultID, stats);
+		}
+		
+		return madMap;
+	}
+	
+	private Map<Integer, List<MinisectionSlipRecord>> applyOutlierSubstitution(RupSetFaultModel fm,
+			Map<Integer, List<MinisectionSlipRecord>> dmRecs) throws IOException {
+		if (OUTLIER_SUB_YC == null || OUTLIER_SUB_YC <= 0d)
+			return dmRecs;
+		
+		double yc = OUTLIER_SUB_YC;
+		
+		Map<Integer, List<MinisectionOutlierStatistics>> outlierStats = calcOutlierStats(fm);
+		
+		Map<Integer, List<MinisectionSlipRecord>> ret = new HashMap<>(dmRecs.size());
+		int numSlipSubs = 0;
+		int numMinis = 0;
+		for (Integer faultID : dmRecs.keySet()) {
+			List<MinisectionSlipRecord> records = dmRecs.get(faultID);
+			List<MinisectionOutlierStatistics> stats = outlierStats.get(faultID);
+			Preconditions.checkNotNull(stats, "No outlier stats for %s?", faultID);
+			Preconditions.checkState(stats.size() == records.size(), "Have %s minisections for %s, but %s outlier records",
+					records.size(), faultID, stats.size());
+			
+			List<MinisectionSlipRecord> modRecords = new ArrayList<>(records.size());
+			for (int i=0; i<records.size(); i++) {
+				MinisectionSlipRecord rec = records.get(i);
+				MinisectionOutlierStatistics stat = stats.get(i);
+				
+				// calc test statistic
+				double y = 0.6745*(rec.slipRate - stat.slipMedian)/stat.slipMAD;
+				if (Math.abs(y) > yc) {
+					double revised;
+					if (OUTLIER_SUB_USE_BOUND) {
+						// bound it
+						y = y > 0 ? yc : -yc;
+						revised = Math.max(0d, (stat.slipMAD * y)/0.6745 + stat.slipMedian);
+					} else {
+						// substitute with median
+						revised = stat.slipMedian;
+					}
+					rec = new MinisectionSlipRecord(faultID, i, rec.startLoc, rec.endLoc, rec.rake, revised, rec.slipRateStdDev);
+					numSlipSubs++;
+				}
+				
+				modRecords.add(rec);
+				numMinis++;
+			}
+			ret.put(faultID, modRecords);
+		}
+		
+		System.out.println(name()+": substituted "+numSlipSubs+"/"+numMinis+" ("
+				+pDF.format((double)numSlipSubs/(double)numMinis)
+				+") outlier slip rates with median, Yc="+OUTLIER_SUB_YC.floatValue());
+		
+		return ret;
+	}
+	
+	/*
+	 * Misc checks/utils
+	 */
+	
 	private static void checkForNegativeAndHighCreep(NSHM23_FaultModels fm) throws IOException {
 		// check for creep data > slip rate or < 0
-		Map<NSHM23_DeformationModels, Map<Integer, List<GeodeticSlipRecord>>> dmSlipRecs = new HashMap<>();
+		Map<NSHM23_DeformationModels, Map<Integer, List<MinisectionSlipRecord>>> dmSlipRecs = new HashMap<>();
 		Map<NSHM23_DeformationModels, Map<Integer, List<CreepRecord>>> dmCreepRecs = new HashMap<>();
 
 		List<? extends FaultSection> geoSects = buildGeolFullSects(fm, GEOLOGIC_VERSION);
@@ -913,17 +1160,17 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		MinisectionMappings mappings = new MinisectionMappings(geoSects, subSects);
 
 		for (NSHM23_DeformationModels dm : values()) {
-			if (dm.isApplicableTo(fm) && dm.weight > 0) {
+			if (dm.isApplicableTo(fm) && dm.getWeight() > 0) {
 				if (dm == GEOLOGIC) {
-					Map<Integer, List<GeodeticSlipRecord>> fakeRecs = new HashMap<>();
+					Map<Integer, List<MinisectionSlipRecord>> fakeRecs = new HashMap<>();
 					for (FaultSection sect : geoSects) {
 						int parentID = sect.getSectionId();
 						FaultTrace trace = sect.getFaultTrace();
-						List<GeodeticSlipRecord> recs = new ArrayList<>(trace.size()-1);
+						List<MinisectionSlipRecord> recs = new ArrayList<>(trace.size()-1);
 						for (int i=1; i<trace.size(); i++) {
 							Location loc1 = trace.get(i-1);
 							Location loc2 = trace.get(i);
-							recs.add(new GeodeticSlipRecord(parentID, i, loc1, loc2, sect.getAveRake(),
+							recs.add(new MinisectionSlipRecord(parentID, i, loc1, loc2, sect.getAveRake(),
 									sect.getOrigAveSlipRate(), sect.getOrigSlipRateStdDev()));
 						}
 						fakeRecs.put(parentID, recs);
@@ -953,10 +1200,10 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 				List<CreepRecord> creepRecs = dmCreepRecs.get(dm).get(sect.getSectionId());
 				if (creepRecs == null)
 					continue;
-				List<GeodeticSlipRecord> slipRecs = dmSlipRecs.get(dm).get(sect.getSectionId());
+				List<MinisectionSlipRecord> slipRecs = dmSlipRecs.get(dm).get(sect.getSectionId());
 				Preconditions.checkState(creepRecs.size() == slipRecs.size());
 				for (int i=0; i<slipRecs.size(); i++) {
-					GeodeticSlipRecord slip = slipRecs.get(i);
+					MinisectionSlipRecord slip = slipRecs.get(i);
 					CreepRecord creep = creepRecs.get(i);
 					if (creep == null)
 						continue;
@@ -1017,7 +1264,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			}
 		});
 		
-		Map<NSHM23_DeformationModels, Map<Integer, List<GeodeticSlipRecord>>> geodeticRecords = new HashMap<>();
+		Map<NSHM23_DeformationModels, Map<Integer, List<MinisectionSlipRecord>>> geodeticRecords = new HashMap<>();
 		Map<NSHM23_DeformationModels, Map<Integer, List<CreepRecord>>> creepRecords = new HashMap<>();
 		
 		NSHM23_DeformationModels[] models = { GEOLOGIC, EVANS, POLLITZ, SHEN_BIRD, ZENG };
@@ -1124,7 +1371,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		}
 		csv.addLine(header);
 		
-		Map<NSHM23_DeformationModels, Map<Integer, List<GeodeticSlipRecord>>> geodeticRecords = new HashMap<>();
+		Map<NSHM23_DeformationModels, Map<Integer, List<MinisectionSlipRecord>>> geodeticRecords = new HashMap<>();
 		
 		for (NSHM23_DeformationModels model : geodeticModels) {
 			String fmDirName = getGeodeticDirForFM(fm);
@@ -1154,8 +1401,8 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 				line.add(geoSect.getProperty("HighRate", Double.NaN).floatValue()+"");
 				line.add((float)geoSect.getAveRake()+"");
 				for (NSHM23_DeformationModels dm : geodeticModels) {
-					List<GeodeticSlipRecord> recs = geodeticRecords.get(dm).get(sect.getSectionId());
-					GeodeticSlipRecord rec = recs.get(i);
+					List<MinisectionSlipRecord> recs = geodeticRecords.get(dm).get(sect.getSectionId());
+					MinisectionSlipRecord rec = recs.get(i);
 					line.add((float)rec.slipRate+"");
 					line.add((float)rec.rake+"");
 				}
@@ -1169,30 +1416,30 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	
 	public static void main(String[] args) throws IOException {
 		// write geo gson
-////		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v1p4;
-//		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
-//		
-////		List<? extends FaultSection> geoFull = buildGeolFullSects(fm, GEOLOGIC_VERSION);
-////		GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+NSHM23_DeformationModels.GEOLOGIC.getFilePrefix()+"_sects.geojson"), geoFull);
-//		
-//		for (NSHM23_DeformationModels dm : values()) {
-//			if (dm.isApplicableTo(fm)) {
-//				System.out.println("************************");
-//				System.out.println("Building "+dm.name);
-//				List<? extends FaultSection> subSects = dm.build(fm);
-//				GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+dm.getFilePrefix()+"_sub_sects.geojson"), subSects);
-//				System.err.flush();
-//				System.out.flush();
-//				System.out.println("************************");
-//			}
-//		}
+//		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v1p4;
+		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		
+		List<? extends FaultSection> geoFull = buildGeolFullSects(fm, GEOLOGIC_VERSION);
+		GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+NSHM23_DeformationModels.GEOLOGIC.getFilePrefix()+"_sects.geojson"), geoFull);
+		
+		for (NSHM23_DeformationModels dm : values()) {
+			if (dm.isApplicableTo(fm)) {
+				System.out.println("************************");
+				System.out.println("Building "+dm.name);
+				List<? extends FaultSection> subSects = dm.build(fm);
+				GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+dm.getFilePrefix()+"_sub_sects.geojson"), subSects);
+				System.err.flush();
+				System.out.flush();
+				System.out.println("************************");
+			}
+		}
 //		
 //		checkForNegativeAndHighCreep(fm);
 		
 //		// write median dm
 //		writeMedianDM(new File("/tmp"));
 		
-		writeMinisectionCSV(new File("/tmp/nshm23_def_model_minisections.csv"));
+//		writeMinisectionCSV(new File("/tmp/nshm23_def_model_minisections.csv"));
 	}
 
 }
