@@ -131,6 +131,7 @@ import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory {
 
 	protected transient Table<RupSetFaultModel, RupturePlausibilityModels, FaultSystemRupSet> rupSetCache = HashBasedTable.create();
+	protected transient Map<RupSetFaultModel, SectionDistanceAzimuthCalculator> distAzCache = new HashMap<>();
 	private transient File cacheDir;
 	private boolean autoCache = true;
 	
@@ -185,8 +186,14 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			File subDir = new File(cacheDir, "rup_sets_"+fm.getFilePrefix()+"_"+dm.getFilePrefix());
 			if (!subDir.exists())
 				subDir.mkdir();
+
+			double dmMoment = 0d;
+			for (FaultSection sect : subSects)
+				dmMoment += sect.calcMomentRate(false);
+			String momentStr = ((float)dmMoment+"").replace('.', 'p');
 			String rupSetFileName = "rup_set_"+model.getFilePrefix()+"_"
-				+SectionDistanceAzimuthCalculator.getUniqueSectCacheFileStr(subSects)+".zip";
+				+SectionDistanceAzimuthCalculator.getUniqueSectCacheFileStr(subSects)+"_"+momentStr+"_moment.zip";
+			
 			cachedRupSetFile = new File(subDir, rupSetFileName);
 			config.setCacheDir(subDir);
 		}
@@ -195,8 +202,29 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		if (cachedRupSetFile != null && cachedRupSetFile.exists()) {
 			try {
 				rupSet = FaultSystemRupSet.load(cachedRupSetFile);
-				if (!rupSet.areSectionsEquivalentTo(subSects))
+				if (!rupSet.areSectionsEquivalentTo(subSects)) {
 					rupSet = null;
+				} else {
+					// see if we have section distances/azimuths already cached to copy over
+					SectionDistanceAzimuthCalculator distAzCalc = distAzCache.get(fm);
+					if (distAzCalc != null && rupSet.areSectionsEquivalentTo(distAzCalc.getSubSections())) {
+						rupSet.addModule(distAzCalc);
+					} else {
+						// see if we have it in a cache file
+						distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
+						String name = distAzCalc.getDefaultCacheFileName();
+						File distAzCacheFile = new File(cacheDir, name);
+						if (distAzCacheFile.exists()) {
+							try {
+								distAzCalc.loadCacheFile(distAzCacheFile);
+							} catch (IOException e) {
+								e.printStackTrace();
+							}
+						}
+						rupSet.addModule(distAzCalc);
+						distAzCache.put(fm, distAzCalc);
+					}
+				}
 			} catch (Exception e) {
 				e.printStackTrace();
 				rupSet = null;
@@ -1877,6 +1905,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		public DM_OutlierReplacementYc2p0() {
 			NSHM23_DeformationModels.OUTLIER_SUB_YC = 2d;
+			NSHM23_DeformationModels.OUTLIER_SUB_LOG = false;
+			NSHM23_DeformationModels.OUTLIER_SUB_USE_BOUND = false;
 			NSHM23_DeformationModels.ORIGINAL_WEIGHTS = true;
 		}
 		
@@ -1886,6 +1916,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		public DM_OutlierReplacementYc3p5() {
 			NSHM23_DeformationModels.OUTLIER_SUB_YC = 3.5d;
+			NSHM23_DeformationModels.OUTLIER_SUB_LOG = false;
+			NSHM23_DeformationModels.OUTLIER_SUB_USE_BOUND = false;
 			NSHM23_DeformationModels.ORIGINAL_WEIGHTS = true;
 		}
 		
@@ -1895,6 +1927,41 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		public DM_OutlierReplacementYc5p0() {
 			NSHM23_DeformationModels.OUTLIER_SUB_YC = 5d;
+			NSHM23_DeformationModels.OUTLIER_SUB_LOG = false;
+			NSHM23_DeformationModels.OUTLIER_SUB_USE_BOUND = false;
+			NSHM23_DeformationModels.ORIGINAL_WEIGHTS = true;
+		}
+		
+	}
+	
+	public static class DM_OutlierLogReplacementYc2p0 extends NSHM23_InvConfigFactory {
+		
+		public DM_OutlierLogReplacementYc2p0() {
+			NSHM23_DeformationModels.OUTLIER_SUB_YC = 2d;
+			NSHM23_DeformationModels.OUTLIER_SUB_LOG = true;
+			NSHM23_DeformationModels.OUTLIER_SUB_USE_BOUND = false;
+			NSHM23_DeformationModels.ORIGINAL_WEIGHTS = true;
+		}
+		
+	}
+	
+	public static class DM_OutlierLogReplacementYc3p5 extends NSHM23_InvConfigFactory {
+		
+		public DM_OutlierLogReplacementYc3p5() {
+			NSHM23_DeformationModels.OUTLIER_SUB_YC = 3.5d;
+			NSHM23_DeformationModels.OUTLIER_SUB_LOG = true;
+			NSHM23_DeformationModels.OUTLIER_SUB_USE_BOUND = false;
+			NSHM23_DeformationModels.ORIGINAL_WEIGHTS = true;
+		}
+		
+	}
+	
+	public static class DM_OutlierLogReplacementYc5p0 extends NSHM23_InvConfigFactory {
+		
+		public DM_OutlierLogReplacementYc5p0() {
+			NSHM23_DeformationModels.OUTLIER_SUB_YC = 5d;
+			NSHM23_DeformationModels.OUTLIER_SUB_LOG = true;
+			NSHM23_DeformationModels.OUTLIER_SUB_USE_BOUND = false;
 			NSHM23_DeformationModels.ORIGINAL_WEIGHTS = true;
 		}
 		
