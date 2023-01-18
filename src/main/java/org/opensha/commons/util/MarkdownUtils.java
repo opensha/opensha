@@ -99,6 +99,12 @@ public class MarkdownUtils {
 			return this;
 		}
 		
+		public TableBuilder addColumns(List<?> vals) {
+			for (Object val : vals)
+				addColumn(val);
+			return this;
+		}
+		
 		public TableBuilder addColumn(String val) {
 			if (curLine == null)
 				initNewLine();
