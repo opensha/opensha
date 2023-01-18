@@ -47,6 +47,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultRea
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader.GeoDBSlipRateRecord;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -968,9 +969,9 @@ public class ClusterRuptureBuilder {
 		// Coulomb w/ UCERF3
 //		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3);
 		// NSHM23
-		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v1p4;
+		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
 		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(fm.getDefaultDeformationModel().build(fm),
-				fm.getFilePrefix(), ScalingRelationships.MEAN_UCERF3);
+				fm.getFilePrefix(), NSHM23_ScalingRelationships.AVERAGE);
 		// UCERF3
 //		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3);
 //		((U3RupSetConfig)rsConfig).setAdaptiveSectFract(0.1f);
