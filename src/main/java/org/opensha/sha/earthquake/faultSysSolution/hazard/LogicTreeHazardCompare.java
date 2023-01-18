@@ -1304,6 +1304,7 @@ public class LogicTreeHazardCompare {
 		
 		for (int i=0; i<ret.size(); i++) {
 			double compVal = comp.get(i);
+			float compValFloat = (float)compVal;
 			
 			double minVal = Double.POSITIVE_INFINITY;
 			double maxVal = Double.NEGATIVE_INFINITY;
@@ -1315,15 +1316,15 @@ public class LogicTreeHazardCompare {
 			double percentile;
 			if ((float)minVal == (float)maxVal) {
 				// only one value
-				if (compVal > 0d && (float)compVal == (float)minVal)
+				if (compVal > 0d && compValFloat== (float)minVal)
 					percentile = 50d;
 				else
 					percentile = -1;
 			} else if (compVal < minVal || compVal > maxVal) {
 				// we're outside of the full dist
-				if ((float)compVal == (float)minVal)
+				if (compValFloat == (float)minVal)
 					percentile = 0d;
-				else if ((float)compVal == (float)maxVal)
+				else if (compValFloat== (float)maxVal)
 					percentile = 100d;
 				else
 					percentile = Double.NaN;
@@ -1333,16 +1334,19 @@ public class LogicTreeHazardCompare {
 				for (int n=0; n<ncdfsList.size(); n++) {
 					double weight = weightsList.get(n);
 					LightFixedXFunc[] ncdfs = ncdfsList.get(n);
-					if ((float)compVal > (float)ncdfs[i].getMaxX())
-						// we're above this whole one
-						sumY += weight;
-					else if ((float)compVal < (float)ncdfs[i].getMinX())
-						// we're below this whole one, do nothing
-						sumY += 0d;
-					else if ((float)compVal == (float)minVal && ncdfs[i].size() == 1)
+					float myMin = (float)ncdfs[i].getMinX();
+					float myMax = (float)ncdfs[i].getMaxX();
+					if (compValFloat == (float)myMin && compValFloat == (float)myMax)
 						// only one value here, and we're at it, 50th percentile
 						sumY += 0.5*weight;
+					else if (compValFloat >= myMax)
+						// we're at or above the max of this whole one
+						sumY += weight;
+					else if (compValFloat < myMin)
+						// we're at or below the min of this whole one, do nothing
+						sumY += 0d;
 					else
+						// we're contined within the distribution
 						sumY += ncdfs[i].getInterpolatedY(compVal)*weight;
 				}
 				percentile = 100d * sumY * weightScale;
