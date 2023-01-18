@@ -57,7 +57,10 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 	ZENG("Zeng", "ZENG", 0.1d),
 	BRANCH_AVERAGED("Branch Averaged", "BrAvg", 0d);
 	
+	public static boolean APPLY_ACTIVITY_PROBABILITY = true;
+	
 	static final String NSHM18_DM_PATH = "/data/erf/nshm18/def_models/deformation-model-data.json";
+	static final String ACTIVITY_PROB_PATH = "/data/erf/nshm18/def_models/activity-probability.json";
 
 	private String name;
 	private String shortName;
@@ -165,6 +168,35 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 		return GeoJSONFaultReader.buildSubSects(sectsSects);
 	}
 	
+	static class ActivityProbRecord {
+		int id;
+		String name;
+		String state;
+		Double probability;
+	}
+	
+	private Map<Integer, ActivityProbRecord> activityProbabilities;
+	
+	private synchronized Map<Integer, ActivityProbRecord> getActivityProbabilities() {
+		if (activityProbabilities != null)
+			return activityProbabilities;
+		Map<Integer, ActivityProbRecord> activityProbabilities = new HashMap<>();
+		
+		Reader reader = new BufferedReader(new InputStreamReader(
+				NSHM18_DeformationModels.class.getResourceAsStream(ACTIVITY_PROB_PATH)));
+		Preconditions.checkNotNull(reader, "Activity probability file not found: %s", NSHM18_DM_PATH);
+		
+		Gson gson = new GsonBuilder().create();
+		
+		List<ActivityProbRecord> recs = gson.fromJson(reader,
+						TypeToken.getParameterized(List.class, ActivityProbRecord.class).getType());
+		for (ActivityProbRecord rec : recs)
+			activityProbabilities.put(rec.id, rec);
+		
+		this.activityProbabilities = activityProbabilities;
+		return activityProbabilities;
+	}
+	
 	public List<? extends FaultSection> buildFullSects(RupSetFaultModel faultModel) throws IOException {
 		Preconditions.checkState(isApplicableTo(faultModel), "DM/FM mismatch");
 		Reader dmReader = new BufferedReader(new InputStreamReader(
@@ -182,6 +214,9 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 		for (DefModelRecord record : records)
 			recordMap.put(record.id, record);
 		Preconditions.checkState(recordMap.size() == records.size());
+		
+		Map<Integer, ActivityProbRecord> activityProbabilities =
+				APPLY_ACTIVITY_PROBABILITY ? getActivityProbabilities() : null;
 		
 		List<? extends FaultSection> origSects = faultModel.getFaultSections();
 		List<GeoJSONFaultSection> modSects = new ArrayList<>();
@@ -262,6 +297,11 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 				slipRate = slipRate / Math.sin(Math.toRadians(sect.getAveDip()));
 				Preconditions.checkState(Double.isFinite(slipRate), "Bad slip rate after on-plane conversion for section %s. %s: %s. Vertical slip: %s",
 						sect.getSectionId(), sect.getSectionName(), slipRate, origSlipRate);
+			}
+			if (activityProbabilities != null && activityProbabilities.containsKey(sect.getSectionId())) {
+				ActivityProbRecord probs = activityProbabilities.get(sect.getSectionId());
+				System.out.println("Applying activity probability of "+probs.probability+" for fault "+probs.id+", name "+sect.getSectionName());
+				slipRate *= probs.probability;
 			}
 			modSect.setAveSlipRate(slipRate);
 			
