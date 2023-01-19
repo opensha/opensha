@@ -75,6 +75,7 @@ public class RupSetMapMaker {
 	private PlotCurveCharacterstics politicalBoundaryChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.GRAY);
 	private PlotCurveCharacterstics sectOutlineChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.LIGHT_GRAY);
 	private PlotCurveCharacterstics sectTraceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.DARK_GRAY);
+	private PlotCurveCharacterstics regionOutlineChar = null;
 	
 	private float scalarThickness = 3f;
 	private float jumpLineThickness = 3f;
@@ -220,6 +221,10 @@ public class RupSetMapMaker {
 
 	public void setPoliticalBoundaryChar(PlotCurveCharacterstics politicalBoundaryChar) {
 		this.politicalBoundaryChar = politicalBoundaryChar;
+	}
+	
+	public void setRegionOutlineChar(PlotCurveCharacterstics regionOutlineChar) {
+		this.regionOutlineChar = regionOutlineChar;
 	}
 
 	public void setSectOutlineChar(PlotCurveCharacterstics sectOutlineChar) {
@@ -584,6 +589,16 @@ public class RupSetMapMaker {
 				funcs.add(xy);
 				chars.add(politicalBoundaryChar);
 			}
+		}
+		
+		if (regionOutlineChar != null && !region.isRectangular()) {
+			DefaultXY_DataSet outline = new DefaultXY_DataSet();
+			for (Location loc : region.getBorder())
+				outline.set(loc.getLongitude(), loc.getLatitude());
+			outline.set(outline.get(0));
+			
+			funcs.add(outline);
+			chars.add(regionOutlineChar);
 		}
 		
 		if (insetRegions != null) {
