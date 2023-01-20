@@ -21,6 +21,8 @@ import org.jfree.data.Range;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.xyz.GeoDataSet;
+import org.opensha.commons.data.xyz.GriddedGeoDataSet;
+import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
@@ -649,8 +651,10 @@ public class RupSetMapMaker {
 			}
 		}
 		
-		Region plotRegion = new Region(new Location(region.getMinLat(), region.getMinLon()), 
-				new Location(region.getMaxLat(), region.getMaxLon()));
+		Range xRange = getXRange();
+		Range yRange = getYRange();
+		Region plotRegion = new Region(new Location(yRange.getLowerBound(), xRange.getLowerBound()), 
+				new Location(yRange.getUpperBound(), xRange.getUpperBound()));
 		HashSet<FaultSection> plotSects = new HashSet<>();
 		for (FaultSection subSect : subSects) {
 			RuptureSurface surf = getSectSurface(subSect);
@@ -1061,12 +1065,38 @@ public class RupSetMapMaker {
 		return spec;
 	}
 	
+	private double getPlotRegionBuffer() {
+		return regionOutlineChar == null ? 0d : 0.05d;
+	}
+	
 	public Range getXRange() {
-		return new Range(region.getMinLon(), region.getMaxLon());
+		double buffer = getPlotRegionBuffer();
+		double minLon = region.getMinLon()-buffer;
+		double maxLon = region.getMaxLon()+buffer;
+		if (xyzData != null && xyzData instanceof GriddedGeoDataSet) {
+			GriddedGeoDataSet geoXYZ = (GriddedGeoDataSet)xyzData;
+			if (region.equalsRegion(geoXYZ.getRegion())) {
+				double spacing = geoXYZ.getRegion().getLonSpacing();
+				minLon = Math.min(minLon, geoXYZ.getMinLon()-0.5*spacing);
+				maxLon = Math.max(maxLon, geoXYZ.getMaxLon()+0.5*spacing);
+			}
+		}
+		return new Range(minLon, maxLon);
 	}
 	
 	public Range getYRange() {
-		return new Range(region.getMinLat(), region.getMaxLat());
+		double buffer = getPlotRegionBuffer();
+		double minLat = region.getMinLat()-buffer;
+		double maxLat = region.getMaxLat()+buffer;
+		if (xyzData != null && xyzData instanceof GriddedGeoDataSet) {
+			GriddedGeoDataSet geoXYZ = (GriddedGeoDataSet)xyzData;
+			if (region.equalsRegion(geoXYZ.getRegion())) {
+				double spacing = geoXYZ.getRegion().getLatSpacing();
+				minLat = Math.min(minLat, geoXYZ.getMinLat()-0.5*spacing);
+				maxLat = Math.max(maxLat, geoXYZ.getMaxLat()+0.5*spacing);
+			}
+		}
+		return new Range(minLat, maxLat);
 	}
 	
 	public static PaintScaleLegend buildCPTLegend(CPT cpt, String label) {
