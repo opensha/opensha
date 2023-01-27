@@ -27,6 +27,7 @@ import java.util.zip.ZipOutputStream;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.data.xyz.AbstractXYZ_DataSet;
@@ -96,7 +97,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private GriddedRegion gridRegion;
 
 	private String hazardSubDirName;
-	private String combineWithHazardSubDirName;
+	private String combineWithHazardExcludingSubDirName;
+	private String combineWithHazardBGOnlySubDirName;
 	
 	private LogicTreeCurveAverager[] runningMeanCurves;
 	
@@ -179,10 +181,13 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			hazardPrefix += "_aftershock_filter";
 		hazardPrefix += "_grid_seis_";
 		hazardSubDirName = hazardPrefix+gridSeisOp.name();
-		if (gridSeisOp == IncludeBackgroundOption.INCLUDE)
+		if (gridSeisOp == IncludeBackgroundOption.INCLUDE) {
 			// if we're including gridded seismicity, we can shortcut and calculate only gridded seismicity and
 			// combine with curves excluding it, if we have them
-			combineWithHazardSubDirName = hazardPrefix+IncludeBackgroundOption.EXCLUDE.name();
+			combineWithHazardExcludingSubDirName = hazardPrefix+IncludeBackgroundOption.EXCLUDE.name();
+			// or alternatively, see if we have hazard already calculated with *only* gridded seismicity
+			combineWithHazardBGOnlySubDirName = hazardPrefix+IncludeBackgroundOption.ONLY.name();
+		}
 		
 		if (rank == 0) {
 			waitOnDir(outputDir, 5, 1000);
@@ -531,22 +536,23 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					calc = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, hazardSubDir, curvesPrefix);
 				} catch (Exception e) {}
 			}
-			SolHazardMapCalc combineWithCurves = null;
+			SolHazardMapCalc combineWithExcludeCurves = null;
+			SolHazardMapCalc combineWithOnlyCurves = null;
 			if (calc == null && gridSeisOp == IncludeBackgroundOption.INCLUDE) {
 				// we're calculating with gridded seismicity
 				// lets see if we've already calculated without it
 				
-				File combineWithSubDir = new File(runDir, combineWithHazardSubDirName);
+				File combineWithSubDir = new File(runDir, combineWithHazardExcludingSubDirName);
 				
 				if (combineWithSubDir.exists()) {
 					debug("Seeing if we can reuse existing curves excluding gridded seismicity from "+combineWithSubDir.getAbsolutePath());
 					try {
-						combineWithCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, combineWithSubDir, curvesPrefix);
+						combineWithExcludeCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, combineWithSubDir, curvesPrefix);
 					} catch (Exception e) {
 						debug("Can't reuse: "+e.getMessage());
 					}
 				}
-				if (combineWithCurves == null) {
+				if (combineWithExcludeCurves == null) {
 					// see if this is a gridded seismicity branch, but it exists already in an upstream branch
 					List<LogicTreeLevel<? extends LogicTreeNode>> faultLevels = new ArrayList<>();
 					List<LogicTreeNode> faultNodes = new ArrayList<>();
@@ -561,17 +567,69 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						// we have gridded seismicity only branches
 						LogicTreeBranch<LogicTreeNode> subBranch = new LogicTreeBranch<>(faultLevels, faultNodes);
 						File subRunDir = getSolDir(subBranch, false);
-						File subHazardDir = new File(subRunDir, combineWithHazardSubDirName);
+						File subHazardDir = new File(subRunDir, combineWithHazardExcludingSubDirName);
 						if (subHazardDir.exists()) {
 							try {
 								debug("Seeing if we can reuse existing curves excluding gridded seismicity from "+subHazardDir.getAbsolutePath());
-								combineWithCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, subHazardDir, curvesPrefix);
+								combineWithExcludeCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, subHazardDir, curvesPrefix);
 							} catch (Exception e) {
 								debug("Can't reuse: "+e.getMessage());
 							}
 						}
 					}
 				}
+				
+				// now see if we've calculated with background only
+				combineWithSubDir = new File(runDir, combineWithHazardBGOnlySubDirName);
+				
+				if (combineWithSubDir.exists()) {
+					debug("Seeing if we can reuse existing curves with only gridded seismicity from "+combineWithSubDir.getAbsolutePath());
+					try {
+						combineWithOnlyCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, combineWithSubDir, curvesPrefix);
+					} catch (Exception e) {
+						debug("Can't reuse: "+e.getMessage());
+					}
+				}
+			}
+			
+			if (combineWithOnlyCurves != null && combineWithExcludeCurves != null) {
+				// we've already calculated both separately, just combine them without calculating
+				List<DiscretizedFunc[]> combCurvesList = new ArrayList<>();
+				for (double period : periods) {
+					DiscretizedFunc[] excludeCurves = combineWithExcludeCurves.getCurves(period);
+					DiscretizedFunc[] onlyCurves = combineWithOnlyCurves.getCurves(period);
+					Preconditions.checkState(excludeCurves.length == gridRegion.getNodeCount());
+					Preconditions.checkState(excludeCurves.length == onlyCurves.length);
+					
+					DiscretizedFunc[] combCurves = new DiscretizedFunc[excludeCurves.length];
+					for (int i=0; i<combCurves.length; i++) {
+						DiscretizedFunc curve1 = excludeCurves[i];
+						DiscretizedFunc curve2 = onlyCurves[i];
+						
+						DiscretizedFunc combCurve;
+						if (curve1 == null && curve2 == null) {
+							combCurve = null;
+						} else if (curve1 == null) {
+							combCurve = curve2;
+						} else if (curve2 == null) {
+							combCurve = curve1;
+						} else {
+							Preconditions.checkState(curve1.size() == curve2.size());
+							combCurve = new ArbitrarilyDiscretizedFunc();
+							for (int j=0; j<curve1.size(); j++) {
+								double x = curve1.getX(j);
+								Preconditions.checkState((float)x == (float)curve2.getX(j));
+								double y1 = curve1.getY(j);
+								double y2 = curve2.getY(j);
+								combCurve.set(x, 1d - (1d-y1)*(1d-y2));
+							}
+						}
+						
+						combCurves[i] = combCurve;
+					}
+					combCurvesList.add(combCurves);
+				}
+				calc = SolHazardMapCalc.forCurves(sol, gridRegion, periods, combCurvesList);
 			}
 			
 			if (calc == null) {
@@ -580,15 +638,24 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				String paramStr = "";
 				for (Parameter<?> param : gmpe.getOtherParams())
 					paramStr += "; "+param.getName()+": "+param.getValue();
-				debug("Calculating hazard curves for "+index+", bgOption="+gridSeisOp.name()+", combine="+(combineWithCurves != null)
+				debug("Calculating hazard curves for "+index+", bgOption="+gridSeisOp.name()
+						+", combineExclude="+(combineWithExcludeCurves != null)
+						+", combineOnly="+(combineWithOnlyCurves != null)
 						+"\n\tBranch: "+branch
 						+"\n\tGMPE: "+gmpe.getName()+paramStr);
-				if (combineWithCurves == null) {
+				SolHazardMapCalc combineWithCurves = null;
+				if (combineWithExcludeCurves == null && combineWithOnlyCurves == null) {
 					calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, gridSeisOp, applyAftershockFilter, periods);
-				} else {
+				} else if (combineWithExcludeCurves != null) {
 					// calculate with only gridded seismicity, we'll add in the curves excluding it
 					debug("Reusing fault-based hazard for "+index+", will only compute gridded hazard");
+					combineWithCurves = combineWithExcludeCurves;
 					calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
+				} else if (combineWithOnlyCurves != null) {
+					// calculate without gridded seismicity, we'll add in the curves with it
+					debug("Reusing fault-based hazard for "+index+", will only compute gridded hazard");
+					combineWithCurves = combineWithOnlyCurves;
+					calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
 				}
 				calc.setMaxSourceSiteDist(maxDistance);
 				calc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
