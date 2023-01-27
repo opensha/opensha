@@ -28,6 +28,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultRea
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
@@ -232,6 +233,12 @@ public class NSHM23_PaleoDataLoader {
 		final int lowerCol = upperCol+1;
 		final UncertaintyBoundType boundType = UncertaintyBoundType.CONF_95;
 		
+		// filter to just wasatch sections
+		List<FaultSection> wasatchSubSects = new ArrayList<>();
+		for (FaultSection sect : subSects)
+			if (sect.getParentSectionName().toLowerCase().contains("wasatch"))
+				wasatchSubSects.add(sect);
+		
 		for (int row=2; row<csv.getNumRows(); row++) {
 			int cols = csv.getLine(row).size();
 			if (cols <= upperCol+2 || csv.get(row, lowerCol).isBlank())
@@ -249,8 +256,8 @@ public class NSHM23_PaleoDataLoader {
 			// now find mapping
 			
 			FaultSection mappedSect = null;
-			if (subSects != null) {
-				mappedSect = findMatchingSect(loc, subSects,
+			if (wasatchSubSects != null) {
+				mappedSect = findMatchingSect(loc, wasatchSubSects,
 						LOC_MAX_DIST_NONE_CONTAINED, LOC_MAX_DIST_OTHER_CONTAINED, LOC_MAX_DIST_CONTAINED);
 				if (mappedSect == null) {
 					System.err.println("WARNING: no matching fault section found for paleo site "+name+" at "+lat+", "+lon);
@@ -288,9 +295,9 @@ public class NSHM23_PaleoDataLoader {
 	private static final double LOC_CHECK_DEGREE_TOLERANCE = 3d;
 	private static final double LOC_CHECK_DEGREE_TOLERANCE_SQ = LOC_CHECK_DEGREE_TOLERANCE*LOC_CHECK_DEGREE_TOLERANCE;
 	
-	private static final double LOC_MAX_DIST_NONE_CONTAINED = 40d; // large for offshore noyo site
-	private static final double LOC_MAX_DIST_OTHER_CONTAINED = 1d; // small, must be really close to override a fault that contains it
-	private static final double LOC_MAX_DIST_CONTAINED = 20d; // allows comptom mapping
+	public static double LOC_MAX_DIST_NONE_CONTAINED = 40d; // large for offshore noyo site
+	public static double LOC_MAX_DIST_OTHER_CONTAINED = 1d; // small, must be really close to override a fault that contains it
+	public static final double LOC_MAX_DIST_CONTAINED = 20d; // allows comptom mapping
 	
 	/**
 	 * 
@@ -330,8 +337,23 @@ public class NSHM23_PaleoDataLoader {
 					perim.addAll(sect.getFaultSurface(1d).getEvenlyDiscritizedPerimeter());
 					if (!perim.last().equals(perim.first()))
 						perim.add(perim.first());
-					Region region = new Region(perim, BorderType.GREAT_CIRCLE);
-					if (region.contains(loc))
+					Region region = null;
+					try {
+						region = new Region(perim, BorderType.GREAT_CIRCLE);
+					} catch (Exception e) {
+						// try regular perim
+						perim = new LocationList();
+						perim.addAll(sect.getFaultSurface(1d).getPerimeter());
+						if (!perim.last().equals(perim.first()))
+							perim.add(perim.first());
+						try {
+							region = new Region(perim, BorderType.GREAT_CIRCLE);
+						} catch (Exception e1) {
+							System.err.println("WARNING: failed to create polygon for section "+sect.getSectionId()
+								+". "+sect.getSectionName()+" when searching for paleo mappings for site at "+loc);
+						}
+					}
+					if (region != null && region.contains(loc))
 						containsCandidates.add(sect);
 				}
 			}
@@ -381,10 +403,7 @@ public class NSHM23_PaleoDataLoader {
 	}
 
 	public static void main(String[] args) throws IOException {
-		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.NSHM23_v1p4);
-		
-		HashSet<FaultSection> mappedSects = new HashSet<>();
-		List<Location> siteLocs = new ArrayList<>();
+//		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.NSHM23_v1p4);
 		
 //		String prefix = "nshm23_ca_paleo_mappings";
 //		String title = "NSHM23 CA Paleo RI Mappings";
@@ -396,10 +415,21 @@ public class NSHM23_PaleoDataLoader {
 //		List<SectMappedUncertainDataConstraint> datas = loadU3PaleoSlipData(subSects);
 //		Region reg = new CaliforniaRegions.RELM_TESTING();
 		
-		String prefix = "nshm23_wasatch_paleo_mappings";
-		String title = "NSHM23 Wasatch Paleo Mappings";
-		List<SectMappedUncertainDataConstraint> datas = loadWasatchPaleoRateData(subSects);
-		Region reg = new Region(new Location(42.5, -114.5), new Location(36.5, -108));
+//		String prefix = "nshm23_wasatch_paleo_mappings";
+//		String title = "NSHM23 Wasatch Paleo Mappings";
+//		List<SectMappedUncertainDataConstraint> datas = loadWasatchPaleoRateData(subSects);
+//		Region reg = new Region(new Location(42.5, -114.5), new Location(36.5, -108));
+		
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/nshm23/rup_sets/cache/"
+				+ "rup_sets_NSHM18_WUS_PlusU3_FM_3p1_GEOL/rup_set_CoulombRupSet_4228_sects_13693_trace_locs_500367461464_area_2p7441094E19_moment.zip"));
+		String prefix = "nshm18_paleo_mappings";
+		String title = "NSHM23 Paleo Mappings to NSHM18 Sections";
+		List<? extends SectMappedUncertainDataConstraint> datas = load(rupSet).getPaleoRateConstraints();
+		Region reg = NSHM23_RegionLoader.loadFullConterminousWUS();
+		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+		
+		HashSet<FaultSection> mappedSects = new HashSet<>();
+		List<Location> siteLocs = new ArrayList<>();
 		
 		System.out.println("Loaded "+datas.size()+" values");
 		for (SectMappedUncertainDataConstraint constraint : datas) {

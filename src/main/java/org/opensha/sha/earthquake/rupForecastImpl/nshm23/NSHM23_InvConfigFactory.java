@@ -434,16 +434,21 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					}
 				}, PaleoseismicConstraintData.class);
 			} else {
-				if (!(fm instanceof NSHM18_FaultModels)) {
-					// NSHM23 paleo data (don't apply to NSHM18 test inversions)
-					rupSet.offerAvailableModule(new Callable<PaleoseismicConstraintData>() {
+				// NSHM23 paleo data
+				rupSet.offerAvailableModule(new Callable<PaleoseismicConstraintData>() {
 
-						@Override
-						public PaleoseismicConstraintData call() throws Exception {
-							return NSHM23_PaleoDataLoader.load(rupSet);
-						}
-					}, PaleoseismicConstraintData.class);
-				}
+					@Override
+					public PaleoseismicConstraintData call() throws Exception {
+						double prevDistOtherContained = NSHM23_PaleoDataLoader.LOC_MAX_DIST_OTHER_CONTAINED;
+						if (fm instanceof NSHM18_FaultModels)
+							// loosen things up a bit to get better mappings for the older fault model
+							NSHM23_PaleoDataLoader.LOC_MAX_DIST_OTHER_CONTAINED = 5d;
+						PaleoseismicConstraintData ret = NSHM23_PaleoDataLoader.load(rupSet);
+						if (fm instanceof NSHM18_FaultModels)
+							NSHM23_PaleoDataLoader.LOC_MAX_DIST_OTHER_CONTAINED = prevDistOtherContained;
+						return ret;
+					}
+				}, PaleoseismicConstraintData.class);
 				
 				// regular system-wide minimum magnitudes
 				if (MIN_MAG_FOR_SEISMOGENIC_RUPS > 0) {
