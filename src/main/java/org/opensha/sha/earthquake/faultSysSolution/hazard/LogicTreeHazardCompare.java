@@ -1342,7 +1342,7 @@ public class LogicTreeHazardCompare {
 					else if (compValFloat >= myMax)
 						// we're at or above the max of this whole one
 						sumY += weight;
-					else if (compValFloat < myMin)
+					else if (compValFloat <= myMin)
 						// we're at or below the min of this whole one, do nothing
 						sumY += 0d;
 					else
