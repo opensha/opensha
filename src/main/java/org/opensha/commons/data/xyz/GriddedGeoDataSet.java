@@ -38,6 +38,10 @@ public class GriddedGeoDataSet extends AbstractGeoDataSet {
 	protected GriddedRegion region;
 	private double[] values;
 	
+	public GriddedGeoDataSet(GriddedRegion region) {
+		this(region, false);
+	}
+	
 	public GriddedGeoDataSet(GriddedRegion region, boolean latitudeX) {
 		super(latitudeX);
 		this.region = region;
