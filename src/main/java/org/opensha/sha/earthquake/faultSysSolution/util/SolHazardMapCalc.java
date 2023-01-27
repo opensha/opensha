@@ -114,6 +114,7 @@ public class SolHazardMapCalc {
 	public enum ReturnPeriods {
 		TWO_IN_50(0.02, 50d, "2% in 50 year"),
 		TEN_IN_50(0.1, 50d, "10% in 50 year");
+//		FIFTY_IN_50(0.5, 50d, "50% in 50 year");
 		
 		public final double refProb;
 		public final double refDuration;
@@ -786,6 +787,14 @@ public class SolHazardMapCalc {
 			curvesList.add(curves);
 		}
 		
+		return forCurves(sol, region, periods, curvesList);
+	}
+	
+	public static SolHazardMapCalc forCurves(FaultSystemSolution sol, GriddedRegion region, double[] periods,
+			List<DiscretizedFunc[]> curvesList) throws IOException {
+		Preconditions.checkState(periods.length == curvesList.size());
+		for (DiscretizedFunc[] curves : curvesList)
+			Preconditions.checkState(region.getNodeCount() == curves.length);
 		SolHazardMapCalc calc = new SolHazardMapCalc(sol, null, region, periods);
 		calc.curvesList = curvesList;
 		return calc;
