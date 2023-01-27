@@ -134,6 +134,7 @@ public class ReportPageGen {
 				plots.add(new ModulesPlot());
 			plots.add(new FaultSectionConnectionsPlot());
 			plots.add(new JumpCountsOverDistancePlot());
+			plots.add(new PaleoDataComparisonPlot());
 		} else {
 			plots.add(new RupHistogramPlots(RupHistogramPlots.RUP_SET_LIGHT_SCALARS));
 		}

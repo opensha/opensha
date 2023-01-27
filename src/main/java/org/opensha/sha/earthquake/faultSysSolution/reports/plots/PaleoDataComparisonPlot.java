@@ -64,7 +64,7 @@ public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 		FaultSystemSolution compSol = meta.hasComparisonSol() ? meta.comparison.sol : null;
 		if (compSol != null) {
 			// make sure they use the same sections
-			if (!sol.getRupSet().areSectionsEquivalentTo(compSol.getRupSet()))
+			if (!rupSet.areSectionsEquivalentTo(compSol.getRupSet()))
 				compSol = null;
 		}
 		
