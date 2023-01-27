@@ -13,6 +13,7 @@ import java.util.Map;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.MarkdownUtils;
@@ -345,7 +346,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		return lines;
 	}
 	
-	private static List<IncrementalMagFreqDist> calcNuclMFDs(FaultSystemSolution sol) {
+	public static List<IncrementalMagFreqDist> calcNuclMFDs(FaultSystemSolution sol) {
 		List<IncrementalMagFreqDist> ret = new ArrayList<>();
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(rupSet);
@@ -354,15 +355,23 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		return ret;
 	}
 	
-	private static GriddedGeoDataSet calcGriddedNucleationRates(GridSourceProvider gridProv, double minMag) {
-		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridProv.getGriddedRegion(), false);
+	public static GriddedGeoDataSet calcGriddedNucleationRates(GridSourceProvider gridProv, double minMag) {
+		return calcGriddedNucleationRates(gridProv, gridProv.getGriddedRegion(), minMag);
+	}
+	
+	public static GriddedGeoDataSet calcGriddedNucleationRates(GridSourceProvider gridProv, GriddedRegion gridReg, double minMag) {
+		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
 		
-		// start with gridded
+		GriddedRegion provReg = gridProv.getGriddedRegion();
 		for (int i=0; i<xyz.size(); i++) {
-			IncrementalMagFreqDist mfd = gridProv.getMFD(i);
-			if (mfd != null && (float)(mfd.getMaxX()+0.5*mfd.getDelta()) >= (float)minMag) {
-				for (int j=mfd.getClosestXIndex(minMag+0.001); j<mfd.size(); j++) {
-					xyz.set(i, xyz.get(i)+mfd.getY(j));
+			Location loc = xyz.getLocation(i);
+			int provIndex = provReg.indexForLocation(loc);
+			if (provIndex >= 0) {
+				IncrementalMagFreqDist mfd = gridProv.getMFD(provIndex);
+				if (mfd != null && (float)(mfd.getMaxX()+0.5*mfd.getDelta()) >= (float)minMag) {
+					for (int j=mfd.getClosestXIndex(minMag+0.001); j<mfd.size(); j++) {
+						xyz.set(i, xyz.get(i)+mfd.getY(j));
+					}
 				}
 			}
 		}
@@ -370,7 +379,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		return xyz;
 	}
 	
-	private static GriddedGeoDataSet calcFaultNucleationRates(GriddedRegion gridReg, FaultSystemSolution sol,
+	public static GriddedGeoDataSet calcFaultNucleationRates(GriddedRegion gridReg, FaultSystemSolution sol,
 			FaultGridAssociations faultGridAssoc, List<IncrementalMagFreqDist> sectNuclMFDs, double minMag) {
 		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
 		
@@ -391,20 +400,28 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		return xyz;
 	}
 	
-	private static GriddedGeoDataSet calcGriddedNucleationMomentRates(GridSourceProvider gridProv) {
-		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridProv.getGriddedRegion(), false);
+	public static GriddedGeoDataSet calcGriddedNucleationMomentRates(GridSourceProvider gridProv) {
+		return calcGriddedNucleationMomentRates(gridProv, gridProv.getGriddedRegion());
+	}
+	
+	public static GriddedGeoDataSet calcGriddedNucleationMomentRates(GridSourceProvider gridProv, GriddedRegion gridReg) {
+		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
 		
-		// start with gridded
+		GriddedRegion provReg = gridProv.getGriddedRegion();
 		for (int i=0; i<xyz.size(); i++) {
-			IncrementalMagFreqDist mfd = gridProv.getMFD(i);
-			if (mfd != null)
-				xyz.set(i, xyz.get(i)+mfd.getTotalMomentRate());
+			Location loc = xyz.getLocation(i);
+			int provIndex = provReg.indexForLocation(loc);
+			if (provIndex >= 0) {
+				IncrementalMagFreqDist mfd = gridProv.getMFD(provIndex);
+				if (mfd != null)
+					xyz.set(i, xyz.get(i)+mfd.getTotalMomentRate());
+			}
 		}
 		
 		return xyz;
 	}
 	
-	private static GriddedGeoDataSet calcFaultNucleationMomentRates(GriddedRegion gridReg, FaultSystemSolution sol,
+	public static GriddedGeoDataSet calcFaultNucleationMomentRates(GriddedRegion gridReg, FaultSystemSolution sol,
 			FaultGridAssociations faultGridAssoc, List<IncrementalMagFreqDist> sectNuclMFDs) {
 		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
 		
