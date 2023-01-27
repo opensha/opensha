@@ -46,6 +46,9 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 
+import scratch.UCERF3.enumTreeBranches.DeformationModels;
+import scratch.UCERF3.enumTreeBranches.FaultModels;
+
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
@@ -94,7 +97,12 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 
 	@Override
 	public boolean isApplicableTo(RupSetFaultModel faultModel) {
-		return faultModel instanceof NSHM18_FaultModels;
+		if (!(faultModel instanceof NSHM18_FaultModels))
+			return false;
+		if (faultModel != NSHM18_FaultModels.NSHM18_WUS_NoCA)
+			// if we're including CA, can only be BA or geologic
+			return this == BRANCH_AVERAGED || this == GEOL;
+		return true;
 	}
 	
 	static class DefModelRecord {
@@ -163,9 +171,40 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 	
 	@Override
 	public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
-		List<? extends FaultSection> sectsSects = buildFullSects(faultModel);
+		Preconditions.checkState(isApplicableTo(faultModel), "%s is not applicable to %s", name, faultModel.getName());
+		List<? extends FaultSection> sectsOutsideCA = buildFullSects(NSHM18_FaultModels.NSHM18_WUS_NoCA);
 		
-		return GeoJSONFaultReader.buildSubSects(sectsSects);
+		List<FaultSection> subsectsOutsideCA = GeoJSONFaultReader.buildSubSects(sectsOutsideCA);
+		
+		List<FaultSection> fullList;
+		if (faultModel == NSHM18_FaultModels.NSHM18_WUS_PlusU3_FM_3p1) {
+			// add UCERF3
+			List<? extends FaultSection> u3SubSects;
+			if (this == BRANCH_AVERAGED)
+				u3SubSects = DeformationModels.MEAN_UCERF3.build(FaultModels.FM3_1);
+			else if (this == GEOL)
+				u3SubSects = DeformationModels.GEOLOGIC.build(FaultModels.FM3_1);
+			else
+				throw new IllegalStateException("Can only build stitched NSHM18 w/ U3 DM for geologic or branch averaged");
+			
+			fullList = new ArrayList<>(subsectsOutsideCA);
+			
+			for (FaultSection subsect : u3SubSects) {
+				if (subsect.getParentSectionId() == 721 || subsect.getParentSectionId() == 719)
+					continue;
+				int newID = fullList.size();
+				subsect = subsect.clone();
+				subsect.setSectionId(newID);
+				fullList.add(subsect);
+			}
+		} else {
+			Preconditions.checkState(faultModel == NSHM18_FaultModels.NSHM18_WUS_NoCA);
+			fullList = subsectsOutsideCA;
+		}
+		
+		NSHM23_DeformationModels.applyStdDevDefaults(fullList);
+		
+		return fullList;
 	}
 	
 	static class ActivityProbRecord {
