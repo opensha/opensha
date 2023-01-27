@@ -41,7 +41,7 @@ public class NSHM23_RegionLoader {
 	 * @see NSHM23_SeisSmoothingAlgorithms
 	 * 
 	 */
-	public enum SeismicityRegions implements BaseRegion {
+	public enum SeismicityRegions implements NSHM23_BaseRegion {
 		CONUS_EAST("collection-ceus.geojson"),
 		CONUS_WEST("collection-wus.geojson");
 		
@@ -64,7 +64,7 @@ public class NSHM23_RegionLoader {
 	 * @see NSHM23_SeisSmoothingAlgorithms
 	 * 
 	 */
-	public enum AnalysisRegions implements BaseRegion {
+	public enum AnalysisRegions implements NSHM23_BaseRegion {
 //		ALASKA("alaska.geojson"),
 		CONUS_EAST("ceus.geojson"),
 		CONUS_IMW("intermountain-west.geojson"),
@@ -91,7 +91,7 @@ public class NSHM23_RegionLoader {
 	 * @author kevin
 	 *
 	 */
-	public enum LocalRegions implements BaseRegion {
+	public enum LocalRegions implements NSHM23_BaseRegion {
 		CONUS_LA_BASIN("conus-la-basin.geojson"),
 		CONUS_NEW_MADRID("conus-new-madrid.geojson"),
 		CONUS_PUGET("conus-puget.geojson"),
@@ -115,7 +115,7 @@ public class NSHM23_RegionLoader {
 	 * @author kevin
 	 *
 	 */
-	public enum StitchedRegions implements BaseRegion {
+	public enum StitchedRegions implements NSHM23_BaseRegion {
 		CONUS("conus.geojson"),
 		CONUS_WEST("conus-wus.geojson");
 		
@@ -136,7 +136,7 @@ public class NSHM23_RegionLoader {
 	 * @author kevin
 	 *
 	 */
-	public enum FaultStyleRegions implements BaseRegion {
+	public enum FaultStyleRegions implements NSHM23_BaseRegion {
 		CEUS_STABLE("focal-mech-ceus-stable.geojson"),
 		WUS_COMPRESSIONAL("focal-mech-wus-compressional.geojson"),
 		WUS_EXTENSIONAL("focal-mech-wus-extensional.geojson");
@@ -179,9 +179,9 @@ public class NSHM23_RegionLoader {
 		return ret;
 	}
 	
-	private static List<Region> doLoadRegions(BaseRegion[] regions, List<? extends FaultSection> subSects) throws IOException {
+	private static List<Region> doLoadRegions(NSHM23_BaseRegion[] regions, List<? extends FaultSection> subSects) throws IOException {
 		List<Region> ret = new ArrayList<>();
-		for (BaseRegion baseReg : regions) {
+		for (NSHM23_BaseRegion baseReg : regions) {
 			Region region = baseReg.load();
 			if (subSects != null && !FaultSectionUtils.anySectInRegion(region, subSects, true))
 				// skip this region
@@ -199,11 +199,13 @@ public class NSHM23_RegionLoader {
 		return StitchedRegions.CONUS.load();
 	}
 	
-	private static Map<BaseRegion, Region> regionCache = new ConcurrentHashMap<>();
+	private static Map<NSHM23_BaseRegion, Region> regionCache = new ConcurrentHashMap<>();
 	
-	interface BaseRegion {
+	public interface NSHM23_BaseRegion {
 		
 		public String getResourcePath();
+		
+		public String name();
 		
 		public default Region load() throws IOException {
 			Region cached = regionCache.get(this);
