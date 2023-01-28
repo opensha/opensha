@@ -1,0 +1,68 @@
+[
+  {
+    "id": 2409,
+    "name": "Hubbell Spring",
+    "state": "NM",
+    "rate": 5.0E-5
+  },
+  {
+    "id": 2418,
+    "name": "Pajarito",
+    "state": "NM",
+    "rate": 9.901E-5
+  },
+  {
+    "id": 1048,
+    "name": "Eglington",
+    "state": "NV",
+    "rate": 4.65E-4
+  },
+  {
+    "id": 1089,
+    "name": "Peavine Peak",
+    "state": "NV",
+    "rate": 8.333E-4
+  },
+  {
+    "id": 2701,
+    "name": "Great Salt Lake (Antelope Island)",
+    "state": "UT",
+    "rate": 2.38E-4
+  },
+  {
+    "id": 2702,
+    "name": "Great Salt Lake (Fremont Island)",
+    "state": "UT",
+    "rate": 2.38E-4
+  },
+  {
+    "id": 2703,
+    "name": "Great Salt Lake (Promontory)",
+    "state": "UT",
+    "rate": 2.38E-4
+  },
+  {
+    "id": 2800,
+    "name": "Boulder Creek - Kendall Scarp",
+    "state": "WA",
+    "rate": 3.24E-4
+  },
+  {
+    "id": 2881,
+    "name": "Seattle (middle)",
+    "state": "WA",
+    "rate": 1.0E-7
+  },
+  {
+    "id": 2882,
+    "name": "Seattle (north)",
+    "state": "WA",
+    "rate": 2.0E-4
+  },
+  {
+    "id": 2880,
+    "name": "Seattle (south)",
+    "state": "WA",
+    "rate": 1.0E-7
+  }
+]

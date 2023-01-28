@@ -1,0 +1,30 @@
+{
+  "type": "Feature",
+  "id": 3400,
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-86.72464, 39.34245],
+      [-87.87724, 37.67532],
+      [-88.10853, 37.69013],
+      [-88.25009, 37.67544],
+      [-88.42465, 37.70361],
+      [-88.68714, 37.75289],
+      [-87.42964, 39.67601],
+      [-86.72464, 39.34245]
+    ]]
+  },
+  "properties": {
+    "name": "Wabash",
+    "state": "IL",
+    "states": ["IL", "IN"],
+    "rate": "wabash.csv",
+    "strike": 26.639674,
+    "mfd-tree": [
+      { "id": "M1", "weight": 0.05, "value": { "type": "SINGLE", "m": 6.75 }},
+      { "id": "M2", "weight": 0.25, "value": { "type": "SINGLE", "m": 7.00 }},
+      { "id": "M3", "weight": 0.35, "value": { "type": "SINGLE", "m": 7.25 }},
+      { "id": "M4", "weight": 0.35, "value": { "type": "SINGLE", "m": 7.50 }}
+    ]
+  }
+}

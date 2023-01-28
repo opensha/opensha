@@ -63,7 +63,7 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 	public static boolean APPLY_ACTIVITY_PROBABILITY = true;
 	
 	static final String NSHM18_DM_PATH = "/data/erf/nshm18/def_models/deformation-model-data.json";
-	static final String ACTIVITY_PROB_PATH = "/data/erf/nshm18/def_models/activity-probability.json";
+	static final String ACTIVITY_PROB_PATH = "/data/erf/nshm18/special_cases/activity-probability.json";
 
 	private String name;
 	private String shortName;

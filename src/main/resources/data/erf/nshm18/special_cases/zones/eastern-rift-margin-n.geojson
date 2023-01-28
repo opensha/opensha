@@ -1,0 +1,29 @@
+{
+  "type": "Feature",
+  "id": 3800,
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-88.78370, 36.67991],
+      [-88.74661, 36.65916],
+      [-88.71044, 36.63744],
+      [-89.20534, 36.11769],
+      [-89.24141, 36.13927],
+      [-89.27749, 36.16083],
+      [-88.78370, 36.67991]
+    ]]
+  },
+  "properties": {
+    "name": "Eastern Rift Margin (north)",
+    "state": "TN",
+    "states": ["TN", "KY"],
+    "rate": "eastern-rift-margin-n.csv",
+    "strike": 37.621636,
+    "mfd-tree": [
+      { "id": "M1", "weight": 0.3, "value": { "type": "SINGLE", "m": 6.7 }},
+      { "id": "M2", "weight": 0.3, "value": { "type": "SINGLE", "m": 6.9 }},
+      { "id": "M3", "weight": 0.3, "value": { "type": "SINGLE", "m": 7.1 }},
+      { "id": "M4", "weight": 0.1, "value": { "type": "SINGLE", "m": 7.4 }}
+    ]
+  }
+}

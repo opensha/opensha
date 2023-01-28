@@ -1,0 +1,29 @@
+{
+  "type": "Feature",
+  "id": 3300,
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-90.73273, 34.49597],
+      [-91.06443, 34.79524],
+      [-90.69741, 35.06274],
+      [-90.36599, 34.76251],
+      [-90.73273, 34.49597]
+    ]]
+  },
+  "properties": {
+    "name": "Marianna",
+    "state": "AR",
+    "states": ["AR", "MS"],
+    "rate": "marianna.csv",
+    "strike": 45.0,
+    "mfd-tree": [
+      { "id": "M1", "weight": 0.15, "value": { "type": "SINGLE", "m": 6.7 }},
+      { "id": "M2", "weight": 0.20, "value": { "type": "SINGLE", "m": 6.9 }},
+      { "id": "M3", "weight": 0.20, "value": { "type": "SINGLE", "m": 7.1 }},
+      { "id": "M4", "weight": 0.20, "value": { "type": "SINGLE", "m": 7.3 }},
+      { "id": "M5", "weight": 0.20, "value": { "type": "SINGLE", "m": 7.5 }},
+      { "id": "M6", "weight": 0.05, "value": { "type": "SINGLE", "m": 7.7 }}
+    ]
+  }
+}
