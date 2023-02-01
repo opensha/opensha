@@ -136,7 +136,7 @@ public class MarkdownUtils {
 			for (int i=0; i<lines.size()*numWraps; i++) {
 				String[] newLine = new String[headerCols+newDataCols];
 				for (int h=0; h<headerCols; h++)
-					newLine[h] = lines.get(i % numWraps)[h];
+					newLine[h] = lines.get(i % lines.size())[h];
 				newLines.add(newLine);
 			}
 			
