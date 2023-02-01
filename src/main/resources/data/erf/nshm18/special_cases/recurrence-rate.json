@@ -1,5 +1,17 @@
 [
   {
+    "id": 2900,
+    "name": "Bear River",
+    "state": "WY",
+    "rate": 4.3E-4
+  },
+  {
+    "id": 2706,
+    "name": "Joes Valley",
+    "state": "UT",
+    "rate": 1.0E-4
+  },
+  {
     "id": 2409,
     "name": "Hubbell Spring",
     "state": "NM",

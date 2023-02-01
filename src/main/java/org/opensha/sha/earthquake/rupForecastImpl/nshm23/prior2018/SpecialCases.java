@@ -6,13 +6,16 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -25,6 +28,8 @@ import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+
+import scratch.UCERF3.enumTreeBranches.FaultModels;
 
 public class SpecialCases {
 	
@@ -256,6 +261,39 @@ public class SpecialCases {
 		mapMaker.plotInsetRegions(zoneRegions, new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK), Color.GRAY, 0.1);
 		
 		mapMaker.plot(outputDir, preifx, "NSHM18 Special Cases");
+		
+		int numSpecial = 0;
+		int numZoneOverlap = 0;
+		int numOutsideCA = 0;
+		int numEither = 0;
+		
+		Set<Integer> u3IDs = FaultModels.FM3_1.getFaultSectionIDMap().keySet();
+		for (FaultSection sect : fullSects) {
+			if (mapped.contains(sect.getSectionId()))
+				numSpecial++;
+			if (!u3IDs.contains(sect.getSectionId())) {
+				numOutsideCA++;
+				boolean contained = false;
+				for (Region reg : zoneRegions) {
+					for (Location loc : sect.getFaultTrace()) {
+						if (reg.contains(loc))
+							contained = true;
+					}
+				}
+				if (contained)
+					numZoneOverlap++;
+				if (contained || mapped.contains(sect.getSectionId()))
+					numEither++;
+			}
+		}
+		
+		DecimalFormat pDF = new DecimalFormat("0.0%");
+		System.out.println(numSpecial+"/"+numOutsideCA+" ("+pDF.format((double)numSpecial/(double)numOutsideCA)
+			+") non-U3 faults are special cases");
+		System.out.println(numZoneOverlap+"/"+numOutsideCA+" ("+pDF.format((double)numZoneOverlap/(double)numOutsideCA)
+			+") non-U3 faults lie in zone polygons");
+		System.out.println(numEither+"/"+numOutsideCA+" ("+pDF.format((double)numEither/(double)numOutsideCA)
+			+") non-U3 faults are either special cases or lie in zone polygons");
 	}
 
 	public static void main(String[] args) throws IOException {
