@@ -54,7 +54,7 @@ public class EmpiricalModelDataFetcher  implements java.io.Serializable {
 						 StringTokenizer locTokenizer = new StringTokenizer(fileLines.get(i),",");
 						 double latitude = Double.parseDouble(locTokenizer.nextToken());
 						 double longitude = Double.parseDouble(locTokenizer.nextToken());
-						 locList.add(new Location(latitude, longitude));
+						 locList.add(Location.backwardsCompatible(latitude, longitude));
 					 }
 					 if(locList.size()!=0) {
 						 region = new Region(

@@ -382,7 +382,7 @@ public class Point2Vert_FaultPoisSource extends ProbEqkSource implements java.io
 		// set the rupture surface
 		if(mag <= this.magCutOff) { // set the point surface
 			PointSurface ptSurface = new PointSurface(
-					new Location(loc.getLatitude(), loc.getLongitude(), depth));
+					Location.backwardsCompatible(loc.getLatitude(), loc.getLongitude(), depth));
 			ptSurface.setAveStrike(strike);
 			ptSurface.setAveDip(dip);
 			double width = calcWidth(mag, depth, dip);

@@ -2026,7 +2026,7 @@ public class UCERF2 extends AbstractERF {
 					for(int iSource=0; iSource<numSources; ++iSource) {
 						UnsegmentedSource source = (UnsegmentedSource)aFaultSourceGenerators.get(iSource);
 						if(source.getFaultSegmentData().getFaultName().equalsIgnoreCase(event.getFaultName())) {
-							loc = new Location(event.getLatitude(), event.getLongitude());
+							loc = Location.backwardsCompatible(event.getLatitude(), event.getLongitude());
 							rate+=source.getPredEventRate(loc);
 							obsRate+=source.getPredObsEventRate(loc);  // this one is reduced by the probability of it being paleoseismically observed
 						}
