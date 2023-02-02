@@ -358,13 +358,13 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
 	 * @return
 	 */
 	public static LightFixedXFunc calcQuickNormCDF(List<Double> values, List<Double> weights) {
-		Preconditions.checkState(values.size() == weights.size());
+		Preconditions.checkState(weights == null || values.size() == weights.size());
 		Preconditions.checkState(!values.isEmpty());
 		
 		ValWeights[] valWeights = new ValWeights[values.size()];
 		double totWeight = 0d;
 		for (int j=0; j<valWeights.length; j++) {
-			double weight = weights.get(j);
+			double weight = weights == null ? 1d : weights.get(j);
 			totWeight += weight;
 			valWeights[j] = new ValWeights(values.get(j), weight);
 		}
