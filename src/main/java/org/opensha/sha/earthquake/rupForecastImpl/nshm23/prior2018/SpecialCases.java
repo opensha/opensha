@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.jfree.chart.ui.RectangleAnchor;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
@@ -173,7 +174,7 @@ public class SpecialCases {
 		return Collections.unmodifiableList(zones);
 	}
 	
-	public static void plotSpecialCases(File outputDir, String preifx, Region plotReg) throws IOException {
+	public static void plotSpecialCases(File outputDir, String prefix, Region plotReg) throws IOException {
 		List<? extends FaultSection> fullSects = NSHM18_FaultModels.NSHM18_WUS_PlusU3_FM_3p1.getFaultSections();
 		
 		Map<Integer, ActivityProbRecord> activityProbs = getActivityProbabilities();
@@ -251,6 +252,27 @@ public class SpecialCases {
 		
 		RupSetMapMaker mapMaker = new RupSetMapMaker(modSects, plotReg);
 		
+		List<PlotCurveCharacterstics> legendChars = new ArrayList<>();
+		List<String> legendItems = new ArrayList<>();
+		
+		legendItems.add("Activity Probability");
+		legendChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, activityColor));
+		
+		legendItems.add("Recurrence Rate");
+		legendChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, recurrenceColor));
+		
+		legendItems.add("Historical Max. Mag.");
+		legendChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, histMagColor));
+		
+		legendItems.add("Regional Max. Mag.");
+		legendChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, regMagColor));
+		
+		legendItems.add("Zone Source");
+		legendChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK));
+		
+		mapMaker.setCustomLegendItems(legendItems, legendChars);
+		mapMaker.setLegendInset(RectangleAnchor.BOTTOM_LEFT);
+		
 		mapMaker.setSkipNaNs(true);
 		
 		mapMaker.plotSectColors(colors);
@@ -260,7 +282,7 @@ public class SpecialCases {
 			zoneRegions.add(Region.fromFeature(feature));
 		mapMaker.plotInsetRegions(zoneRegions, new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK), Color.GRAY, 0.1);
 		
-		mapMaker.plot(outputDir, preifx, "NSHM18 Special Cases");
+		mapMaker.plot(outputDir, prefix, "NSHM18 Special Cases");
 		
 		int numSpecial = 0;
 		int numZoneOverlap = 0;
