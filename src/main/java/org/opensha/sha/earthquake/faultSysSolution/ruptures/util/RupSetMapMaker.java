@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.jfree.chart.title.PaintScaleLegend;
+import org.jfree.chart.ui.RectangleAnchor;
 import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
@@ -82,7 +83,7 @@ public class RupSetMapMaker {
 	private float scalarThickness = 3f;
 	private float jumpLineThickness = 3f;
 	private boolean legendVisible = true;
-	private boolean legendInset = false;
+	private RectangleAnchor insetLegendLocation = null;
 	private boolean fillSurfaces = false;
 	
 	private boolean plotAseisReducedSurfaces = false;
@@ -149,6 +150,9 @@ public class RupSetMapMaker {
 	private PlotCurveCharacterstics insetRegionOutlineChar;
 	private Color insetRegionFillColor;
 	private double insetRegionFillOpacity;
+	
+	private List<String> customLegendLabels;
+	private List<PlotCurveCharacterstics> customLegendChars;
 	
 	private boolean reverseSort = false;
 	
@@ -254,11 +258,28 @@ public class RupSetMapMaker {
 	}
 	
 	public void setLegendInset(boolean legendInset) {
-		this.legendInset = legendInset;
+		if (legendInset)
+			this.insetLegendLocation = RectangleAnchor.TOP_RIGHT;
+		else
+			this.insetLegendLocation = null;
+	}
+	
+	public void setLegendInset(RectangleAnchor insetLegendLocation) {
+		this.insetLegendLocation = insetLegendLocation;
 	}
 	
 	public void setSkipNaNs(boolean skipNaNs) {
 		this.skipNaNs = skipNaNs;
+	}
+	
+	public void setCustomLegendItems(List<String> labels, List<PlotCurveCharacterstics> chars) {
+		this.customLegendLabels = labels;
+		this.customLegendChars = chars;
+	}
+	
+	public void clearCustomLegendItems() {
+		this.customLegendLabels = null;
+		this.customLegendChars = null;
 	}
 	
 	public void highLightSections(Collection<FaultSection> highlightSections, PlotCurveCharacterstics highlightTraceChar) {
@@ -1056,8 +1077,31 @@ public class RupSetMapMaker {
 			spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");
 		}
 		
+		if (customLegendLabels != null) {
+			Preconditions.checkState(customLegendLabels.size() == customLegendChars.size());
+			for (int i=0; i<customLegendLabels.size(); i++) {
+				hasLegend = true;
+				String label = customLegendLabels.get(i);
+				PlotCurveCharacterstics pChar = customLegendChars.get(i);
+				
+				// create this will be off the map, only exists for the legend
+				DefaultXY_DataSet xy = new DefaultXY_DataSet();
+				xy.set(-1000d, -1000d);
+				xy.set(-1001d, -1001d);
+				xy.setName(label);
+				
+				funcs.add(xy);
+				chars.add(pChar);
+			}
+		}
+		
 		spec.setLegendVisible(legendVisible && hasLegend);
-		spec.setLegendInset(legendInset && hasLegend);
+		if (hasLegend) {
+			if (insetLegendLocation == null)
+				spec.setLegendInset(false);
+			else
+				spec.setLegendInset(insetLegendLocation);
+		}
 		
 		for (PaintScaleLegend legend : cptLegend)
 			spec.addSubtitle(legend);
