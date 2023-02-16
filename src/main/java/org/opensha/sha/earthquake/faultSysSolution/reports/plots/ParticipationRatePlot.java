@@ -64,10 +64,24 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 			magPrefixes.add("m6");
 		}
 		
+		if (maxMag > 6.5d && minMag <= 6.5d && maxMag < 9d) {
+			// intermediates only if we don't have M9s
+			minMags.add(6.5d);
+			magLabels.add("M≥6.5");
+			magPrefixes.add("m6p5");
+		}
+		
 		if (maxMag > 7d) {
 			minMags.add(7d);
 			magLabels.add("M≥7");
 			magPrefixes.add("m7");
+		}
+		
+		if (maxMag > 7.5d && minMag <= 7.5d && maxMag < 9d) {
+			// intermediates only if we don't have M9s
+			minMags.add(7.5d);
+			magLabels.add("M≥7.5");
+			magPrefixes.add("m7p5");
 		}
 		
 		if (maxMag > 8d) {
