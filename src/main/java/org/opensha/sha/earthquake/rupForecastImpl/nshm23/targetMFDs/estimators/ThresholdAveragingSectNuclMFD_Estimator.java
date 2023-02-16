@@ -88,6 +88,8 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 //	private static final int DEBUG_SECT = 100; // Bicycle Lake
 //	private static final int DEBUG_SECT = 129; // Big Pine (East)
 //	private static final int DEBUG_SECT = 159; // Brawley
+//	private static final int DEBUG_SECT = 5349; // West Cache (Clarkston) subsection 0
+//	private static final int DEBUG_SECT = 361; // West Cache (Clarkston) subsection 0 for UT-only
 	private int[] sectMinMagIndexes;
 	private int[] sectMaxMagIndexes;
 	protected List<Float> fixedBinEdges;
@@ -244,7 +246,16 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 		
 	}
 	
-	private static Map<Jump, Double> calcAverageJumpProbs(ClusterRuptures cRups, JumpProbabilityCalc jumpModel) {
+	/**
+	 * Calculate average probabilities for each jump. Jump probabilities can vary by rupture, especially if one rupture
+	 * has a difference distance (distance is defined between the departing and landing clusters, rather than the 
+	 * section, and the clusters can vary).
+	 * 
+	 * @param cRups
+	 * @param jumpModel
+	 * @return
+	 */
+	public static Map<Jump, Double> calcAverageJumpProbs(ClusterRuptures cRups, JumpProbabilityCalc jumpModel) {
 		// calculate average probabilities for each jump. jump probabilities can vary by rupture, especially
 		// if one rupture has a difference distance (distance is defined between the departing and landing clusters,
 		// rather than the section, and the clusters can vary)
@@ -687,6 +698,7 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 			Float rupProb = (float)rupProbs[rupIndex];
 			if (rupProb > 0f) {
 				int insIndex = Collections.binarySearch(sortedProbs, rupProb);
+//				if (debug) System.out.println(rupIndex+": P="+rupProb);
 				if (insIndex < 0) {
 					// it's a new unique probability level
 					insIndex = -(insIndex + 1);
