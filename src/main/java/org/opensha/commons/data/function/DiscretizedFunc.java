@@ -195,5 +195,21 @@ public interface DiscretizedFunc extends XY_DataSet {
 		}
 		
 	}
+	
+	/**
+	 * Standard java function, usually used for debugging, prints out
+	 * the state of the list, such as number of points, the value of each point, etc.
+	 * @return
+	 */
+	public static String toString(DiscretizedFunc func) {
+		StringBuffer b = new StringBuffer();
+
+		b.append("Name: " + func.getName() + '\n');
+		b.append("Num Points: " + func.size() + '\n');
+		b.append("Info: " + func.getInfo() + "\n\n");
+		b.append("X, Y Data:" + '\n');
+		b.append(func.getMetadataString()+ '\n');
+		return b.toString();
+	}
 
 }

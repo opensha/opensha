@@ -66,8 +66,6 @@ implements Serializable {
 	
 	protected Point2DToleranceSortedList points = null;
 
-	private static String TAB = "\t";
-
 	/**
 	 * Creates an ArbitrarilyDiscretizedFunc from an DiscretizedFunc
 	 * 
@@ -357,42 +355,6 @@ implements Serializable {
 //		return true;
 //
 //	}
-
-
-
-	/**
-	 * Standard java function, usually used for debugging, prints out
-	 * the state of the list, such as number of points, the value of each point, etc.
-	 * @return
-	 */
-	public String toString(){
-		StringBuffer b = new StringBuffer();
-
-		b.append("Name: " + getName() + '\n');
-		b.append("Num Points: " + size() + '\n');
-		b.append("Info: " + getInfo() + "\n\n");
-		b.append("X, Y Data:" + '\n');
-		b.append(getMetadataString()+ '\n');
-		return b.toString();
-	}
-
-	/**
-	 *
-	 * @return value of each point in the function in String format
-	 */
-	public String getMetadataString(){
-		StringBuffer b = new StringBuffer();
-		Iterator it2 = this.iterator();
-
-		while(it2.hasNext()){
-
-			Point2D point = (Point2D)it2.next();
-			double x = point.getX();
-			double y = point.getY();
-			b.append((float) x + TAB + (float) y + '\n');
-		}
-		return b.toString();
-	}
 
 	/**
 	 * Almost the same as toString() but used
