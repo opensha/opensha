@@ -347,11 +347,11 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 			// loop over these ruptures
 			for(int n=0; n < numRuptures ; n++,++currRuptures) {
 				
-				EqkRupture rupture = source.getRupture(n);
+				ProbEqkRupture rupture = source.getRupture(n);
 
 				try {
 					// get the rupture probability
-					qkProb = ((ProbEqkRupture)rupture).getProbability();
+					qkProb = rupture.getProbability();
 					
 					if (qkProb == 0d)
 						continue;
@@ -404,12 +404,17 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 				} catch (Throwable t) {
 					System.err.println("Error occured while calculating hazard curve " +
 							"for rupture:  "+sourceIndex+" "+n);
+					System.err.println("Type: "+t.getClass());
+					System.err.println("Message: "+t.getMessage());
 					System.err.println("Source Name: "+source.getName());
 					System.err.println("Surface Type: "+rupture.getRuptureSurface().getClass().getName());
+					System.err.println("Mag: "+rupture.getMag());
+					System.err.println("Probability: "+rupture.getProbability());
 					System.err.println("ERF: "+eqkRupForecast.getName());
 					System.err.println("IMR: "+imr.getName());
 					System.err.println("Site: "+site);
 					System.err.println("Curve: "+hazFunction);
+					System.err.flush();
 					//System.err.println("RupM: "+source.getRupture(n).getMag());
 					ExceptionUtils.throwAsRuntimeException(t);
 				}
