@@ -231,6 +231,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				Preconditions.checkNotNull(sol.getGridSourceProvider(),
 						"Grid source provider is null, but gridded seis option is %s", gridSeisOp);
 			erf.setParameter(IncludeBackgroundParam.NAME, gridSeisOp);
+			erf.getTimeSpan().setDuration(1d);
 			erf.updateForecast();
 			Supplier<ScalarIMR> gmpeSupplier = MPJ_LogicTreeHazardCalc.getGMM_Supplier(branch, gmpeRef);
 			
