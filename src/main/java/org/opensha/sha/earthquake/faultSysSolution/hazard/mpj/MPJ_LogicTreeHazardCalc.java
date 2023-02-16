@@ -204,7 +204,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			zip.close();
 		}
 		
-		if (gridSeisOp == IncludeBackgroundOption.INCLUDE) {
+		if (gridSeisOp != IncludeBackgroundOption.EXCLUDE) {
 			// if we're including gridded seismicity, we can shortcut and calculate only gridded seismicity and
 			// combine with curves excluding it, if we have them
 			combineWithHazardExcludingSubDirName = hazardPrefix+IncludeBackgroundOption.EXCLUDE.name();
@@ -565,9 +565,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				// we're calculating with gridded seismicity
 				// lets see if we've already calculated without it
 				
-				File combineWithSubDir = new File(runDir, combineWithHazardExcludingSubDirName);
-				
 				if (gridSeisOp != IncludeBackgroundOption.ONLY) {
+					File combineWithSubDir = new File(runDir, combineWithHazardExcludingSubDirName);
+					
 					if (combineWithSubDir.exists()) {
 						debug("Seeing if we can reuse existing curves excluding gridded seismicity from "+combineWithSubDir.getAbsolutePath());
 						try {
@@ -605,7 +605,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				}
 				
 				// now see if we've calculated with background only
-				combineWithSubDir = new File(runDir, combineWithHazardBGOnlySubDirName);
+				File combineWithSubDir = new File(runDir, combineWithHazardBGOnlySubDirName);
 				
 				if (combineWithSubDir.exists()) {
 					debug("Seeing if we can reuse existing curves with only gridded seismicity from "+combineWithSubDir.getAbsolutePath());
