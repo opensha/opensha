@@ -14,6 +14,7 @@ import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.axis.ValueAxis;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.CombinedRangeXYPlot;
+import org.jfree.chart.plot.Plot;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.data.Range;
 import org.opensha.commons.geo.Location;
@@ -100,10 +101,27 @@ public class PlotUtils {
 //		double myAspect = myWidth/myHeight;
 //		System.out.println("Actual plot area: "+myWidth+" x "+myHeight+", aspect="+myAspect);
 //		double targetAspect = lonSpan / latSpan;
-//		System.out.println("Target aspect: "+targetAspect);
+//		System.out.println("Target aspect: "+aspectRatio);
+		Plot plot = cp.getChart().getPlot();
+		
+		double heightMult = 1d;
+		if (plot instanceof CombinedRangeXYPlot) {
+			// multiple plots arranged horizontally
+			CombinedRangeXYPlot combPlot = (CombinedRangeXYPlot)plot;
+			int num = combPlot.getSubplots().size();
+			double gap = combPlot.getGap();
+			myWidth = (int)(((double)myWidth/(double)num) - (num*gap) + 0.5);
+		} else if (plot instanceof CombinedDomainXYPlot) {
+			// multiple plots arranged vertically
+			CombinedDomainXYPlot combPlot = (CombinedDomainXYPlot)plot;
+			int num = combPlot.getSubplots().size();
+			double gap = combPlot.getGap();
+			myHeight = (int)(((double)myHeight/(double)num) - (num*gap) + 0.5);
+			heightMult = num;
+		}
 		double extraHeight = height - myHeight;
 		double plotHeight = myWidth / aspectRatio;
-		return (int)(extraHeight + plotHeight + 0.5);
+		return (int)(extraHeight + plotHeight*heightMult + 0.5);
 	}
 	
 	// TODO untested, verify and uncomment if needed
