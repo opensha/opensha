@@ -942,6 +942,10 @@ public class SegmentationCalculator {
 		return ret;
 	}
 	
+	public File[] plotConnectionFracts(File outputDir, String prefix, String title) throws IOException {
+		return plotConnectionFracts(outputDir, prefix, title, 800, null);
+	}
+	
 	public File[] plotConnectionFracts(File outputDir, String prefix, String title, RateCombiner combiner) throws IOException {
 		return plotConnectionFracts(outputDir, prefix, title, 800, combiner);
 	}
@@ -958,6 +962,10 @@ public class SegmentationCalculator {
 		return GMT_CPT_Files.GMT_POLAR.instance().rescale(-1d, 1d);
 	}
 	
+	public File[] plotConnectionFracts(File outputDir, String prefix, String title, int width) throws IOException {
+		return plotConnectionFracts(outputDir, prefix, title, width, null);
+	}
+	
 	public File[] plotConnectionFracts(File outputDir, String prefix, String title, int width, RateCombiner combiner) throws IOException {
 		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 //		plotter.setJumpLineThickness(4f);
@@ -969,8 +977,12 @@ public class SegmentationCalculator {
 		for (int m=0; m<minMags.length; m++) {
 			plotter.clearJumpScalars();
 			
-			String label = getMagLabel(minMags[m])+" Passthrough Rate (Rel. "+combiner+")";
-			plotter.plotJumpScalars(calcJumpPassthroughs(m, combiner), cpt, label);
+			String label = "Passthrough Rate";
+			if (combiner != null || minMags[m] > 0)
+				label = getMagLabel(minMags[m])+" "+label;
+			if (combiner != null)
+				label += " (Rel. "+combiner+")";
+			plotter.plotJumpScalars(calcJumpPassthroughs(m, combiner == null ? RateCombiner.MIN : combiner), cpt, label);
 			
 			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
 			ret[m] = new File(outputDir, myPrefix+".png");
@@ -1595,6 +1607,11 @@ public class SegmentationCalculator {
 	}
 	
 	public File[] plotDistDependComparison(File outputDir, String prefix, boolean logY, RateCombiner combiner) throws IOException {
+		String title = Scalars.JUMP_DIST.name+" Dependence";
+		return plotDistDependComparison(outputDir, prefix, logY, combiner, title);
+	}
+	
+	public File[] plotDistDependComparison(File outputDir, String prefix, boolean logY, RateCombiner combiner, String title) throws IOException {
 		File[] ret = new File[minMags.length];
 		
 		Range xRange = null;
@@ -1609,6 +1626,12 @@ public class SegmentationCalculator {
 //			detrendProb = null;
 		
 		Scalars scalar = Scalars.JUMP_DIST;
+		
+		String yAxisLabel = "Passthrough Rate";
+		if (combiner == null)
+			combiner = RateCombiner.MIN;
+		else
+			yAxisLabel += " (Rel. "+combiner+")";
 		
 		// see if we have a segmentation model
 		List<DistDependentJumpProbabilityCalc> comparisons = new ArrayList<>();
@@ -1818,8 +1841,7 @@ public class SegmentationCalculator {
 //			funcs.add(probTaken);
 //			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_TRIANGLE, 6f, new Color(150, 0, 0, 150)));
 			
-			PlotSpec spec = new PlotSpec(funcs, chars, scalar.name+" Dependence", scalar.toString(),
-					"Passthrough Rate (Rel. "+combiner+")");
+			PlotSpec spec = new PlotSpec(funcs, chars, title, scalar.toString(), yAxisLabel);
 			spec.setLegendVisible(true);
 			
 			System.out.println(getMagLabel(minMags[m])+" "+scalar+": "+scalarTrack);
