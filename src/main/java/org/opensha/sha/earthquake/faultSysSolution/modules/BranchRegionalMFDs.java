@@ -369,6 +369,20 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 		return sumRegionalBranchMFDs.get(regionIndex);
 	}
 	
+	public boolean hasTotal(MFDType type) {
+		switch (type) {
+		case SUPRA_ONLY:
+			return supraTotalBranchMFDs != null;
+		case GRID_ONLY:
+			return gridTotalBranchMFDs != null;
+		case SUM:
+			return sumTotalBranchMFDs != null;
+
+		default:
+			return false;
+		}
+	}
+	
 	public IncrementalMagFreqDist[] getTotalBranchMFDs(MFDType type) {
 		switch (type) {
 		case SUPRA_ONLY:
@@ -380,6 +394,20 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 
 		default:
 			throw new IllegalStateException();
+		}
+	}
+	
+	public boolean hasRegionalBranchMFDs(MFDType type) {
+		switch (type) {
+		case SUPRA_ONLY:
+			return supraRegionalBranchMFDs != null;
+		case GRID_ONLY:
+			return gridRegionalBranchMFDs != null;
+		case SUM:
+			return sumRegionalBranchMFDs != null;
+
+		default:
+			return false;
 		}
 	}
 	
