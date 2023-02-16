@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.chart.ui.RectangleAnchor;
@@ -156,6 +157,8 @@ public class RupSetMapMaker {
 	
 	private boolean reverseSort = false;
 	
+	private int widthDefault = 800;
+	
 	/*
 	 * Caches
 	 */
@@ -170,7 +173,6 @@ public class RupSetMapMaker {
 		this.region = region;
 		this.subSects = subSects;
 		
-		Preconditions.checkState(!subSects.isEmpty());
 		for (int s=0; s<subSects.size(); s++)
 			Preconditions.checkState(subSects.get(s).getSectionId() == s, "Subsection IDs must match index in list");
 		
@@ -1172,8 +1174,16 @@ public class RupSetMapMaker {
 				PLOT_PREFS_DEFAULT.getTickLabelFontSize(), cptTick, RectangleEdge.BOTTOM);
 	}
 	
+	public void setDefaultPlotWidth(int widthDefault) {
+		this.widthDefault = widthDefault;
+	}
+	
+	public int getDefaultPlotWidth() {
+		return this.widthDefault;
+	}
+	
 	public void plot(File outputDir, String prefix, String title) throws IOException {
-		plot(outputDir, prefix, buildPlot(title), 800);
+		plot(outputDir, prefix, buildPlot(title), widthDefault);
 	}
 	
 	public void plot(File outputDir, String prefix, String title, int width) throws IOException {
@@ -1181,12 +1191,17 @@ public class RupSetMapMaker {
 	}
 	
 	public void plot(File outputDir, String prefix, PlotSpec spec) throws IOException {
-		plot(outputDir, prefix, spec, 800);
+		plot(outputDir, prefix, spec, widthDefault);
 	}
 	
 	public static PlotPreferences PLOT_PREFS_DEFAULT = PlotUtils.getDefaultFigurePrefs();
 	
 	public void plot(File outputDir, String prefix, PlotSpec spec, int width) throws IOException {
+		plot(outputDir, prefix, spec, width, null);
+	}
+	
+	public void plot(File outputDir, String prefix, PlotSpec spec, int width, Consumer<? super HeadlessGraphPanel> customizer)
+			throws IOException {
 		HeadlessGraphPanel gp = new HeadlessGraphPanel(PLOT_PREFS_DEFAULT);
 		
 		Range xRange = getXRange();
@@ -1207,6 +1222,9 @@ public class RupSetMapMaker {
 			tick = 0.2;
 		PlotUtils.setXTick(gp, tick);
 		PlotUtils.setYTick(gp, tick);
+		
+		if (customizer != null)
+			customizer.accept(gp);
 		
 		PlotUtils.writePlots(outputDir, prefix, gp, width, true, true, writePDFs, false);
 		
