@@ -719,7 +719,8 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					EvenlyDiscretizedFunc cmlFunc = gridMFD.getCumRateDistWithOffset();
 					cmlFuncs.add(cmlFunc);
 					Color myColor = avg(color, Color.WHITE);
-					PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, myColor);
+					PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(
+							PlotLineType.DASHED, regType == MFDType.GRID_ONLY ? 5f : 3f, myColor);
 					incrChars.add(pChar);
 					cmlChars.add(pChar);
 //					chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, color.brighter()));
@@ -737,7 +738,8 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					EvenlyDiscretizedFunc cmlFunc = totalMFD.getCumRateDistWithOffset();
 					cmlFuncs.add(cmlFunc);
 					Color myColor = color.darker();
-					PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, myColor);
+					PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(
+							PlotLineType.DASHED, regType == MFDType.SUM ? 5f : 3f, myColor);
 					incrChars.add(pChar);
 					cmlChars.add(pChar);
 					if (regMFDModule != null && regType == MFDType.SUM && regMFDModule.hasGridded())
@@ -752,7 +754,8 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		incrFuncs.add(mfd);
 		EvenlyDiscretizedFunc cmlFunc = mfd.getCumRateDistWithOffset();
 		cmlFuncs.add(cmlFunc);
-		PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 5f, color);
+		PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(
+				PlotLineType.SOLID, regType == null || regType == MFDType.SUPRA_ONLY ? 5f : 3f, color);
 		incrChars.add(pChar);
 		cmlChars.add(pChar);
 		
