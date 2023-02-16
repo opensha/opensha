@@ -588,7 +588,9 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					} catch (InterruptedException | ExecutionException e) {
 						throw ExceptionUtils.asRuntimeException(e);
 					}
-					dataImpliedSectSupraSeisMFDs.set(call.sect.getSectionId(), call.impliedMFD);
+					int sectID = call.sect.getSectionId();
+					Preconditions.checkState(dataImpliedSectSupraSeisMFDs.get(sectID) == null);
+					dataImpliedSectSupraSeisMFDs.set(sectID, call.impliedMFD);
 				}
 				
 				System.out.println("Done with data estimation.");
@@ -1197,7 +1199,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					IncrementalMagFreqDist meanMFD = new IncrementalMagFreqDist(MIN_MAG, impliedMFDs.get(0).size(), DELTA_MAG);
 					IncrementalMagFreqDist upperMFD = null;
 					IncrementalMagFreqDist lowerMFD = null;
-					UncertaintyBoundType boundType = null;
+					// we use one sigma later when calculating the implie std dev, so just do that now
+					UncertaintyBoundType boundType = UncertaintyBoundType.ONE_SIGMA;
 					int numBounded = 0;
 					for (IncrementalMagFreqDist mfd : impliedMFDs) {
 						Preconditions.checkState(mfd.size() == meanMFD.size());
@@ -1209,16 +1212,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 							if (upperMFD == null) {
 								upperMFD = new IncrementalMagFreqDist(MIN_MAG, meanMFD.size(), DELTA_MAG);
 								lowerMFD = new IncrementalMagFreqDist(MIN_MAG, meanMFD.size(), DELTA_MAG);
-								if (mfd instanceof UncertainBoundedIncrMagFreqDist) {
-									bounded = (UncertainBoundedIncrMagFreqDist)mfd;
-									boundType = bounded.getBoundType();
-								} else {
-									boundType = UncertaintyBoundType.ONE_SIGMA;
-									bounded = ((UncertainIncrMagFreqDist)mfd).estimateBounds(boundType);
-								}
-							} else {
-								bounded = ((UncertainIncrMagFreqDist)mfd).estimateBounds(boundType);
 							}
+							bounded = ((UncertainIncrMagFreqDist)mfd).estimateBounds(boundType);
 							numBounded++;
 							for (int i=0; i<meanMFD.size(); i++) {
 								upperMFD.add(i, bounded.getUpperY(i));
@@ -1470,7 +1465,11 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			if (D) System.out.println("\tImplied std dev range:\t["+(float)stdDevTrack.getMin()+","+(float)stdDevTrack.getMax()
 					+"], avg="+(float)stdDevTrack.getAverage()+"\t\trel range:\t["+(float)relStdDevTrack.getMin()
 					+","+(float)relStdDevTrack.getMax()+"], avg="+(float)relStdDevTrack.getAverage());
-			return new UncertainBoundedIncrMagFreqDist(mfd, lower, upper, UncertaintyBoundType.ONE_SIGMA);
+			// this is what was used pre 2/14/23, and resulted in lower std devs
+			// basically, sd = 0.5*(origSD + max(origSD, inputSD))
+//			return new UncertainBoundedIncrMagFreqDist(mfd, lower, upper, UncertaintyBoundType.ONE_SIGMA);
+			// this actually uses the max(origSD, inputSD)
+			return new UncertainBoundedIncrMagFreqDist(mfd, lower, upper, UncertaintyBoundType.ONE_SIGMA, stdDevs);
 		}
 	}
 	
