@@ -213,10 +213,10 @@ public abstract class PaleoSectNuclEstimator extends SectNucleationMFD_Estimator
 				double slipRateStdDev = rupSet.getSlipRateStdDevForSection(constr.sectionIndex);
 				if (slipRate > 0d || (slipRate + slipRateStdDev) > 0d)
 					ret.add(new PaleoRateEstimator(rupSet, constr, applyToParent, data.getPaleoProbModel()));
-					else
-						System.err.println("WARNING: skipping paleo rate estimator for section "
-								+constr.sectionIndex+". "+constr.sectionName
-								+", slipRate="+(float)slipRate+", stdDev="+(float)slipRateStdDev);
+				else
+					System.err.println("WARNING: skipping paleo rate estimator for section "
+							+constr.sectionIndex+". "+constr.sectionName
+							+", slipRate="+(float)slipRate+", stdDev="+(float)slipRateStdDev);
 			}
 		}
 		
