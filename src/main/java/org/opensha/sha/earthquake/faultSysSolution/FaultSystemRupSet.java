@@ -1493,6 +1493,67 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		return modRupSet;
 	}
 	
+	/**
+	 * Builds a rupture subset keeping only the given ruptures.
+	 * <br>
+	 * All modules that implement {@link SplittableRuptureSubSetModule} will be copied over to the returned rupture set.
+	 * <br>
+	 * Mappings between original and new rupture IDs can be retrieved via the {@link RuptureSubSetMappings} module
+	 * that will be attached to the rupture subset.
+	 * 
+	 * @param retainedRuptureIDs
+	 * @return rupture subset containing only the given ruptures
+	 * @throws IllegalStateException if the input set is empty (or doesn't match the actual rupture count)
+	 */
+	public FaultSystemRupSet getForRuptureSubSet(Collection<Integer> retainedRuptureIDs) throws IllegalStateException {
+		Preconditions.checkState(!retainedRuptureIDs.isEmpty(), "Must retain at least 1 rupture");
+		
+		System.out.println("Building rupture sub-set, retaining "+retainedRuptureIDs.size()+"/"+getNumRuptures()+" ruptures");
+		
+		int rupIndex = 0;
+		BiMap<Integer, Integer> rupIDs_newToOld = HashBiMap.create(retainedRuptureIDs.size());
+		for (int origID=0; origID<this.getNumRuptures(); origID++)
+			if (retainedRuptureIDs.contains(origID))
+				rupIDs_newToOld.put(rupIndex++, origID);
+		Preconditions.checkState(rupIDs_newToOld.size() == retainedRuptureIDs.size(), "Retained IDs mismatch?");
+		
+		BiMap<Integer, Integer> sectIDs_newToOld = HashBiMap.create(getNumSections());
+		for (int s=0; s<getNumSections(); s++)
+			sectIDs_newToOld.put(s, s);
+		
+		double[] modMags = new double[rupIndex];
+		double[] modRakes = new double[rupIndex];
+		double[] modRupAreas = new double[rupIndex];
+		double[] modRupLengths = rupLengths == null ? null : new double[rupIndex];
+		List<List<Integer>> modSectionForRups = new ArrayList<>();
+		for (rupIndex=0; rupIndex<rupIDs_newToOld.size(); rupIndex++) {
+			int origID = rupIDs_newToOld.get(rupIndex);
+			modMags[rupIndex] = mags[origID];
+			modRakes[rupIndex] = rakes[origID];
+			modRupAreas[rupIndex] = rupAreas[origID];
+			if (modRupLengths != null)
+				modRupLengths[rupIndex] = rupLengths[origID];
+			modSectionForRups.add(getSectionsIndicesForRup(rupIndex));
+		}
+		
+		FaultSystemRupSet modRupSet = new FaultSystemRupSet(getFaultSectionDataList(), modSectionForRups,
+				modMags, modRakes, modRupAreas, modRupLengths);
+		
+		// add mappings module
+		RuptureSubSetMappings mappings = new RuptureSubSetMappings(sectIDs_newToOld, rupIDs_newToOld);
+		modRupSet.addModule(mappings);
+		
+		// now copy over any modules we can
+		for (OpenSHA_Module module : getModulesAssignableTo(SplittableRuptureSubSetModule.class, true)) {
+			OpenSHA_Module modModule = ((SplittableRuptureSubSetModule<?>)module).getForRuptureSubSet(
+					modRupSet, mappings);
+			if (modModule != null)
+				modRupSet.addModule(modModule);
+		}
+		
+		return modRupSet;
+	}
+	
 	/*
 	 * Builder, providing default implementations of initial rupture properties
 	 */
