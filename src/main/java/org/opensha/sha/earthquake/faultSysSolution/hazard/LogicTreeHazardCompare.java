@@ -1539,7 +1539,7 @@ public class LogicTreeHazardCompare {
 				
 				File hazardCSV = new File(resourcesDir, prefix+".csv");
 				System.out.println("Writing CSV: "+hazardCSV.getAbsolutePath());
-				writeHazardCSV(hazardCSV, mean, median, min, max);
+				writeHazardCSV(hazardCSV, mean, median, min, max, cov);
 				
 //				table.addLine(meanMinMaxSpreadMaps(mean, min, max, spread, name, label, prefix, resourcesDir));
 				
@@ -1574,7 +1574,7 @@ public class LogicTreeHazardCompare {
 					
 					File compHazardCSV = new File(resourcesDir, prefix+"_comp.csv");
 					System.out.println("Writing CSV: "+compHazardCSV.getAbsolutePath());
-					writeHazardCSV(compHazardCSV, cmean, cmedian, cmin, cmax);
+					writeHazardCSV(compHazardCSV, cmean, cmedian, cmin, cmax, ccov);
 					
 					lines.add("Download Mean Hazard CSVs: ["+hazardCSV.getName()+"]("+resourcesDir.getName()+"/"+hazardCSV.getName()
 						+")  ["+compHazardCSV.getName()+"]("+resourcesDir.getName()+"/"+compHazardCSV.getName()+")");
@@ -2272,17 +2272,17 @@ public class LogicTreeHazardCompare {
 	}
 	
 	private void writeHazardCSV(File outputFile, GriddedGeoDataSet mean, GriddedGeoDataSet median,
-			GriddedGeoDataSet min, GriddedGeoDataSet max) throws IOException {
+			GriddedGeoDataSet min, GriddedGeoDataSet max, GriddedGeoDataSet cov) throws IOException {
 		CSVFile<String> csv = new CSVFile<>(true);
 		
-		csv.addLine("Location Index", "Latitutde", "Longitude", "Weighted Mean", "Weighted Median", "Min", "Max");
+		csv.addLine("Location Index", "Latitutde", "Longitude", "Weighted Mean", "Weighted Median", "Min", "Max", "COV");
 		
 		GriddedRegion reg = mean.getRegion();
 		for (int i=0; i<reg.getNodeCount(); i++) {
 			Location loc = reg.getLocation(i);
 			
 			csv.addLine(i+"", (float)loc.getLatitude()+"", (float)loc.getLongitude()+"", mean.get(i)+"",
-					median.get(i)+"", min.get(i)+"", max.get(i)+"");
+					median.get(i)+"", min.get(i)+"", max.get(i)+"", cov.get(i)+"");
 		}
 		
 		csv.writeToFile(outputFile);
