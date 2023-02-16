@@ -403,11 +403,22 @@ public class TrueMeanSolutionCreator {
 		
 		List<LogicTreeLevel<?>> levels = List.of(NSHM23_U3_HybridLogicTreeBranch.U3_FM);
 		
-		sols.add(FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/FM3_1_branch_averaged.zip")));
+//		File dir = new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/");
+//		sols.add(FaultSystemSolution.load(new File(dir, "FM3_1_branch_averaged.zip")));
+//		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_1)));
+//		
+//		sols.add(FaultSystemSolution.load(new File(dir, "FM3_2_branch_averaged.zip")));
+//		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_2)));
+		
+		File dir = new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
+				+ "2023_02_09-nshm23_u3_hybrid_branches-CoulombRupSet-DsrUni-TotNuclRate-NoRed-ThreshAvgIterRelGR/");
+		sols.add(FaultSystemSolution.load(new File(dir, "results_FM3_1_CoulombRupSet_branch_averaged.zip")));
 		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_1)));
 		
-		sols.add(FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/FM3_2_branch_averaged.zip")));
+		sols.add(FaultSystemSolution.load(new File(dir, "results_FM3_2_CoulombRupSet_branch_averaged.zip")));
 		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_2)));
+		
+		File outputFile = new File(dir, "branch_avgs_combined.zip");
 		
 		for (FaultSystemSolution sol : sols) {
 			FaultSystemRupSet rupSet = sol.getRupSet();
@@ -420,7 +431,7 @@ public class TrueMeanSolutionCreator {
 			creator.addSolution(sols.get(s), branches.get(s));
 		
 		FaultSystemSolution avgSol = creator.build();
-		avgSol.write(new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/branch_avgs_combined.zip"));
+		avgSol.write(outputFile);
 	}
 
 }
