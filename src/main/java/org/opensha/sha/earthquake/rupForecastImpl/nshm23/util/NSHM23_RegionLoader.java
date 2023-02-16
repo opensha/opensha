@@ -201,6 +201,29 @@ public class NSHM23_RegionLoader {
 	
 	private static Map<NSHM23_BaseRegion, Region> regionCache = new ConcurrentHashMap<>();
 	
+	public static NSHM23_BaseRegion CATCH_ALL_REGION = new NSHM23_BaseRegion() {
+		
+		Region region;
+		
+		@Override
+		public String name() {
+			return "FULL";
+		}
+		
+		@Override
+		public String getResourcePath() {
+			return null;
+		}
+		
+		public synchronized Region load() throws IOException {
+			if (region == null) {
+				region = new Region(new Location(10d, -180d), new Location(80d, 0d));
+				region.setName("Full");
+			}
+			return region;
+		}
+	};
+	
 	public interface NSHM23_BaseRegion {
 		
 		public String getResourcePath();
