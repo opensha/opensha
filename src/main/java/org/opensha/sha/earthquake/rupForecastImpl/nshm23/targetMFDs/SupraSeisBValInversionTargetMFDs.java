@@ -158,6 +158,11 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	public static final boolean SPARSE_GR_DEFAULT = true;
 	
 	/**
+	 * If true, then don't assign any moment from empty single-fault bins to multi-fault bins.
+	 */
+	public static boolean SPARSE_GR_DONT_SPREAD_SINGLE_TO_MULTI = false;
+	
+	/**
 	 * Default choice for if we should artificially inflate uncertainties for magnitude bins for which few sections
 	 * participate
 	 */
@@ -713,6 +718,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				// first, calculate sub and supra-seismogenic G-R MFDs
 				for (int s=0; s<numSects; s++) {
 					FaultSection sect = rupSet.getFaultSectionData(s);
+					int parentID = sect.getParentSectionId();
 
 					double creepReducedSlipRate = sect.getReducedAveSlipRate()*1e-3; // mm/yr -> m/yr
 					double creepReducedSlipRateStdDev;
@@ -747,6 +753,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					double minAbove = Double.POSITIVE_INFINITY;
 					// also, if we have a segmentation model, use the max mag that has a nonzero probability
 					double sectMaxMag = Double.NEGATIVE_INFINITY;
+					// max single-fault mag
+					double sectMaxSingleFaultMag = Double.NEGATIVE_INFINITY;
 					BitSet utilization = new BitSet(rupSet.getNumRuptures());
 					for (int r : rupSet.getRupturesForSection(s)) {
 						double mag = rupSet.getMagForRup(r);
@@ -765,7 +773,15 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 							rups.add(r);
 							utilization.set(r);
 							sectRupInBinCounts[s][refMFD.getClosestXIndex(mag)]++;
-
+							boolean singleFault = true;
+							for (int rupSect : rupSet.getSectionsIndicesForRup(r)) {
+								if (rupSet.getFaultSectionData(rupSect).getParentSectionId() != parentID) {
+									singleFault = false;
+									break;
+								}
+							}
+							if (singleFault)
+								sectMaxSingleFaultMag = Math.max(sectMaxSingleFaultMag, mag);
 						}
 					}
 					sectRupUtilizations.add(utilization);
@@ -800,8 +816,14 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 
 						if (sparseGR) {
 							// re-distribute to only bins that actually have ruptures available
+							List<Double> groupBinEdges = null;
+							if (SPARSE_GR_DONT_SPREAD_SINGLE_TO_MULTI && Double.isFinite(sectMaxSingleFaultMag)) {
+								int singleBin = refMFD.getClosestXIndex(sectMaxSingleFaultMag);
+								if (singleBin < maxMagIndex)
+									groupBinEdges = List.of(refMFD.getX(singleBin)+0.5*refMFD.getDelta());
+							}
 							supraGR_shape = SparseGutenbergRichterSolver.getEquivGR(supraGR_shape, mags,
-									supraGR_shape.getTotalMomentRate(), supraSeisBValue);
+									groupBinEdges, true, supraGR_shape.getTotalMomentRate(), supraSeisBValue);
 						}
 					}
 
