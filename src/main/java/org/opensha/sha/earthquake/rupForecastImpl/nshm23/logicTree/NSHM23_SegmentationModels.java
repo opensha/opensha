@@ -3,6 +3,8 @@ package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
 import org.opensha.commons.logicTree.Affects;
@@ -256,6 +258,9 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	protected double shawR0;
 	protected double shawShift;
 
+	public static boolean LIMIT_MAX_LENGTHS = false;
+	public static double SINGLE_MAX_LENGTH_LIMIT = Double.NaN;
+
 	private NSHM23_SegmentationModels(String name, String shortName, double weight) {
 		this(name, shortName, weight, Double.NaN, Double.NaN);
 	}
@@ -361,6 +366,37 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		return shortName.replace("R₀=", "R0_");
 	}
 	
+	/**
+	 * @return maximum allowed rupture length, in km
+	 */
+	public double getMaxRuptureLength() {
+		if (LIMIT_MAX_LENGTHS) {
+			if (Double.isFinite(SINGLE_MAX_LENGTH_LIMIT) && SINGLE_MAX_LENGTH_LIMIT > 0d)
+				return SINGLE_MAX_LENGTH_LIMIT;
+			// model specific
+			switch (this) {
+			case NONE:
+				return Double.POSITIVE_INFINITY;
+			case LOW:
+				return 1000d;
+			case MID:
+				return 800d;
+			case HIGH:
+				return 600d;
+			case CLASSIC:
+				return 500d;
+			case CLASSIC_FULL:
+				return CLASSIC.getMaxRuptureLength();
+			case AVERAGE:
+				return MID.getMaxRuptureLength();
+
+			default:
+				throw new IllegalStateException();
+			}
+		}
+		return Double.POSITIVE_INFINITY;
+	}
+	
 	@Override
 	public BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		List<BinaryRuptureProbabilityCalc> exclusions = new ArrayList<>();
@@ -382,6 +418,12 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 			// we're on the "classic" branch and b=0: exclude all ruptures that don't rupture a full section,
 			// except on special faults
 			exclusions.add(new FullSectionsSegmentationModel(rupSet, true));
+		}
+		
+		double maxRupLength = getMaxRuptureLength();
+		if (maxRupLength > 0d && Double.isFinite(maxRupLength)) {
+			// limit total length
+			exclusions.add(new MaxLengthSegmentationModel(maxRupLength));
 		}
 		
 		if (exclusions.isEmpty())
@@ -554,6 +596,48 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		@Override
 		public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
 			return !NSHM23_ConstraintBuilder.isRupThroughCreeping(creepingParentID, fullRupture);
+		}
+		
+	}
+	
+	public static class MaxLengthSegmentationModel implements BinaryRuptureProbabilityCalc {
+		
+		private double maxLen;
+		private ConcurrentMap<FaultSection, Double> sectLenCache;
+
+		public MaxLengthSegmentationModel(double maxLen) {
+			this.maxLen = maxLen;
+			sectLenCache = new ConcurrentHashMap<>();
+		}
+
+		@Override
+		public String getName() {
+			return "Rupture Len <="+(float)maxLen+"km";
+		}
+		
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+		
+		@Override
+		public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
+			if (fullRupture.getTotalNumJumps() == 0)
+				return true;
+			double len = 0d;
+			for (FaultSubsectionCluster cluster : fullRupture.getClustersIterable()) {
+				for (FaultSection sect : cluster.subSects) {
+					Double sectLen = sectLenCache.get(sect);
+					if (sectLen == null) {
+						sectLen = sect.getFaultTrace().getTraceLength();
+						sectLenCache.putIfAbsent(sect, sectLen);
+					}
+					len += sectLen;
+				}
+			}
+			if ((float)len > (float)maxLen)
+				return false;
+			return true;
 		}
 		
 	}
