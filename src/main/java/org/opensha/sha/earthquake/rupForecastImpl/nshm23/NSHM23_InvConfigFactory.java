@@ -1988,6 +1988,38 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 	}
 	
+	public static class SegModelLimitMaxLen extends NSHM23_InvConfigFactory {
+		
+		public SegModelLimitMaxLen() {
+			NSHM23_SegmentationModels.LIMIT_MAX_LENGTHS = true;
+		}
+		
+	}
+	
+	public static class SegModelMaxLen600 extends NSHM23_InvConfigFactory {
+		
+		public SegModelMaxLen600() {
+			NSHM23_SegmentationModels.LIMIT_MAX_LENGTHS = true;
+			NSHM23_SegmentationModels.SINGLE_MAX_LENGTH_LIMIT = 600d;
+		}
+		
+	}
+	
+	public static class SlipRateStdDevCeil0p1 extends NSHM23_InvConfigFactory {
+		
+		public SlipRateStdDevCeil0p1() {
+			NSHM23_DeformationModels.HARDCODED_FRACTIONAL_STD_DEV = 0d;
+			NSHM23_DeformationModels.HARDCODED_FRACTIONAL_STD_DEV_UPPER_BOUND = 0.1d;
+		}
+	}
+	
+	public static class SparseGRDontSpreadSingleToMulti extends NSHM23_InvConfigFactory {
+		
+		public SparseGRDontSpreadSingleToMulti() {
+			SupraSeisBValInversionTargetMFDs.SPARSE_GR_DONT_SPREAD_SINGLE_TO_MULTI = true;
+		}
+	}
+	
 	public static void main(String[] args) throws IOException {
 //		File dir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
 //				+ "2021_11_24-nshm23_draft_branches-FM3_1/");
