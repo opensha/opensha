@@ -413,7 +413,7 @@ public class LogicTreeHazardCompare {
 		
 		SolutionLogicTree solTree = SolutionLogicTree.load(resultsFile);
 		
-		ReturnPeriods[] rps = ReturnPeriods.values();
+		ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
 		double[] periods = { 0d, 1d };
 		double spacing = -1; // detect
 //		double spacing = 0.1;

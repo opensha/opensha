@@ -88,7 +88,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	public static final double[] PERIODS_DEFAULT = { 0d, 1d };
 	private double[] periods = PERIODS_DEFAULT;
 	
-	private ReturnPeriods[] rps = ReturnPeriods.values();
+	private ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
 	
 	private static final IncludeBackgroundOption GRID_SEIS_DEFAULT = IncludeBackgroundOption.EXCLUDE;
 	private IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;

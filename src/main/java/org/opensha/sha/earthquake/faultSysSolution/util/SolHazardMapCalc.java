@@ -50,6 +50,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
+import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
@@ -111,10 +112,12 @@ public class SolHazardMapCalc {
 	private BackgroundRupType backSeisType;
 	private boolean applyAftershockFilter;
 	
+	public static ReturnPeriods[] MAP_RPS = { ReturnPeriods.TWO_IN_50, ReturnPeriods.TEN_IN_50 };
+	
 	public enum ReturnPeriods {
 		TWO_IN_50(0.02, 50d, "2% in 50 year"),
-		TEN_IN_50(0.1, 50d, "10% in 50 year");
-//		FIFTY_IN_50(0.5, 50d, "50% in 50 year");
+		TEN_IN_50(0.1, 50d, "10% in 50 year"),
+		FIFTY_IN_50(0.4, 50d, "40% in 50 year");
 		
 		public final double refProb;
 		public final double refDuration;

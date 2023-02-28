@@ -99,7 +99,7 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 		}
 		double gridSpacing = gridReg.getSpacing();
 		double[] periods = MPJ_LogicTreeHazardCalc.PERIODS_DEFAULT;
-		ReturnPeriods[] rps = ReturnPeriods.values();
+		ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
 		
 		if (cnt < args.length) {
 			List<Double> periodsList = new ArrayList<>();

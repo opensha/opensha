@@ -57,6 +57,7 @@ import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_SiteLogicTreeHazardCurveCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
 
 import com.google.common.base.Preconditions;
@@ -103,7 +104,7 @@ public class SiteLogicTreeHazardPageGen {
 		
 		List<Site> sites = MPJ_SiteLogicTreeHazardCurveCalc.parseSitesCSV(sitesCSV, null);
 		
-		ReturnPeriods[] rps = ReturnPeriods.values();
+		ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS; 
 		
 		sites.sort(new NamedComparator());
 		
