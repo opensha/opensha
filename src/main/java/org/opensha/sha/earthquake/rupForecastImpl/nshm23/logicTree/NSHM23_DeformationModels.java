@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
@@ -298,6 +299,11 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	 * If nonzero, will use this fractional standard deviation everywhere rather than those from the deformation model
 	 */
 	public static double HARDCODED_FRACTIONAL_STD_DEV = 0.1d;
+	
+	/**
+	 * If nonzero, will use this fractional standard deviation as an upper bound, retaining the original value if less
+	 */
+	public static double HARDCODED_FRACTIONAL_STD_DEV_UPPER_BOUND = 0;
 	
 	/*
 	 * Creep parameters
@@ -744,9 +750,12 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	
 	public static void applyStdDevDefaults(List<? extends FaultSection> subSects,
 			Function<FaultSection, Double> fallbackStdDevFunc, String fallbackName) {
-		if (isHardcodedFractionalStdDev())
+		if (isHardcodedFractionalStdDev()) {
 			System.out.println("Overriding deformation model slip rates std devs and using hardcoded fractional value: "
 					+HARDCODED_FRACTIONAL_STD_DEV);
+			Preconditions.checkState(!(HARDCODED_FRACTIONAL_STD_DEV_UPPER_BOUND > 0d),
+					"Can't supply both hardcoded fractional std dev, and a fractional upper bound");
+		}
 		
 		int numZeroSlips = 0;
 		int numFallback = 0;
@@ -773,6 +782,12 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 				stdDev = sect.getOrigSlipRateStdDev();
 				if (!Double.isFinite(stdDev))
 					stdDev = 0d;
+				
+				if (HARDCODED_FRACTIONAL_STD_DEV_UPPER_BOUND > 0d) {
+					double floorSD = HARDCODED_FRACTIONAL_STD_DEV_UPPER_BOUND * slipRate;
+					if ((float)stdDev <= 0f || floorSD < stdDev)
+						stdDev = floorSD;
+				}
 				
 				if ((float)stdDev <= 0f) {
 					// no slip rate std dev specified
@@ -1530,6 +1545,61 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		csv.writeToFile(outputFile);
 	}
 	
+	private static void printSlipRateCOVStats() throws IOException {
+		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		
+		Map<Integer, FaultSection> sectsMap = fm.getFaultSectionIDMap();
+		for (NSHM23_DeformationModels dm : values()) {
+			if (dm.getWeight() == 0d && dm != AVERAGE)
+				continue;
+			
+			Map<Integer, List<MinisectionSlipRecord>> minis = dm.getMinisections(fm);
+			
+			double areaWeightedAvg = 0d;
+			double sumArea = 0d;
+			double momentWeightedAvg = 0d;
+			double sumMoment = 0d;
+			double momentWeightedAbove10Avg = 0d;
+			double sumMomentAbove10 = 0d;
+			
+			for (Integer sectID : sectsMap.keySet()) {
+				FaultSection sect = sectsMap.get(sectID);
+				
+				double ddw = sect.getOrigDownDipWidth()*1e3;
+				
+				List<MinisectionSlipRecord> recs = minis.get(sectID);
+				if (recs == null)
+					continue;
+				
+				for (MinisectionSlipRecord rec : recs) {
+					double slipCOV = Math.max(STD_DEV_FLOOR, rec.slipRateStdDev)/rec.slipRate;
+					if (Double.isFinite(slipCOV) && slipCOV > 0d) {
+						double len = LocationUtils.horzDistanceFast(rec.startLoc, rec.endLoc)*1e3;
+						double area = len*ddw;
+						double moRate = FaultMomentCalc.getMoment(area, rec.slipRate*1e-3);
+						
+						areaWeightedAvg += area*slipCOV;
+						sumArea += area;
+						momentWeightedAvg += moRate*slipCOV;
+						sumMoment += moRate;
+						if (rec.slipRate >= 10d) {
+							momentWeightedAbove10Avg += moRate*slipCOV;
+							sumMomentAbove10 += moRate;
+						}
+					}
+				}
+			}
+			areaWeightedAvg /= sumArea;
+			momentWeightedAvg /= sumMoment;
+			momentWeightedAbove10Avg /= sumMomentAbove10;
+			
+			System.out.println(dm.shortName+" COV stats:");
+			System.out.println("\tArea weighted: "+areaWeightedAvg);
+			System.out.println("\tMoment-rate weighted: "+momentWeightedAvg);
+			System.out.println("\tMoment-rate weighted (min 10 mm/yr): "+momentWeightedAbove10Avg);
+		}
+	}
+	
 	public static void main(String[] args) throws IOException {
 		// write geo gson
 //		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v1p4;
@@ -1556,6 +1626,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 //		writeMedianDM(new File("/tmp"));
 		
 		writeMinisectionCSV(new File("/tmp/nshm23_def_model_minisections.csv"));
+		printSlipRateCOVStats();
 	}
 
 }
