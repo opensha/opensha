@@ -10,6 +10,7 @@ import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.eq.MagUtils;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Range;
 import com.google.common.primitives.Ints;
 
 /**
@@ -59,7 +60,24 @@ public class SparseGutenbergRichterSolver {
 	 */
 	public static IncrementalMagFreqDist getEquivGR(EvenlyDiscretizedFunc refFunc, Collection<Double> mags,
 			double totMoRate, double targetBValue) {
-		return getEquivGR(refFunc, mags, totMoRate, targetBValue, 0d, METHOD_DEFAULT, false);
+		return getEquivGR(refFunc, mags, null, false, totMoRate, targetBValue);
+	}
+	
+	/**
+	 * Calculates a G-R distribution for the given total moment rate and target b-value, only using magnitude bins
+	 * that contain at least 1 rupture.
+	 * 
+	 * @param refFunc reference function (determines binning, returned G-R will have these x-values)
+	 * @param mags available magnitudes for this G-R
+	 * @param groupBinEdges boundaries to not spread across
+	 * @param groupEdgesIncreasingOnly if true, boundaries supplied will only be enforced when spreading to larger magnitudes
+	 * @param totMoRate total moment rate to fit
+	 * @param targetBValue target b-value to fit
+	 * @return G-R only using the given magnitude bins, fitting the total moment rate and b-value
+	 */
+	public static IncrementalMagFreqDist getEquivGR(EvenlyDiscretizedFunc refFunc, Collection<Double> mags,
+			Collection<Double> groupBinEdges, boolean groupEdgesIncreasingOnly, double totMoRate, double targetBValue) {
+		return getEquivGR(refFunc, mags, groupBinEdges, groupEdgesIncreasingOnly, totMoRate, targetBValue, 0d, METHOD_DEFAULT, false);
 	}
 	
 	/**
@@ -78,6 +96,28 @@ public class SparseGutenbergRichterSolver {
 	 */
 	public static IncrementalMagFreqDist getEquivGR(EvenlyDiscretizedFunc refFunc, Collection<Double> mags,
 			double totMoRate, double targetBValue, double sampleDiscr, SpreadingMethod method, boolean preserveRates) {
+		return getEquivGR(refFunc, mags, null, false, totMoRate, targetBValue, sampleDiscr, method, preserveRates);
+	}
+	
+	/**
+	 * Calculates a G-R distribution for the given total moment rate and target b-value, only using magnitude bins
+	 * that contain at least 1 rupture.
+	 * 
+	 * @param refFunc reference function (determines binning, returned G-R will have these x-values)
+	 * @param mags available magnitudes for this G-R
+	 * @param groupBinEdges boundaries to not spread across when NEAREST_GROUP is chosen
+	 * @param groupEdgesIncreasingOnly if true, boundaries supplied will only be enforced when spreading to larger magnitudes
+	 * @param totMoRate total moment rate to fit
+	 * @param targetBValue target b-value to fit
+	 * @param sampleDiscr sampling to use when distributing rates. Small values here (compared to the reference gridding)
+	 * will super-sample the distribution, which may be more accurate but doesn't seem necessary
+	 * @param method method used to spread ruptures from empty bins to neighboring bins
+	 * @param preserveRates if true, total event rate will be preserved (default preserves moment-rate)
+	 * @return G-R only using the given magnitude bins, fitting the total moment rate and b-value
+	 */
+	public static IncrementalMagFreqDist getEquivGR(EvenlyDiscretizedFunc refFunc, Collection<Double> mags,
+			Collection<Double> groupBinEdges, boolean groupEdgesIncreasingOnly, double totMoRate, double targetBValue, double sampleDiscr,
+			SpreadingMethod method, boolean preserveRates) {
 		double minMag = Double.POSITIVE_INFINITY;
 		double maxMag = Double.NEGATIVE_INFINITY;
 		for (double mag : mags) {
@@ -164,10 +204,35 @@ public class SparseGutenbergRichterSolver {
 							for (int startBin : assignedBins) {
 								int direction = startBin > i ? 1 : -1;
 								List<Integer> group = new ArrayList<>();
+								int prevBin = i;
 								for (int bin=startBin;
 										bin>=0 && bin <superSampledParticipation.length && superSampledParticipation[bin];
 										bin+=direction) {
+									if (groupBinEdges != null && !groupBinEdges.isEmpty()
+											&& (direction > 0 || !groupEdgesIncreasingOnly)) {
+										// see if we crossed any prescribed bin edges
+										double magBefore = superSampledDiscretization.getX(prevBin);
+										double magAfter = superSampledDiscretization.getX(bin);
+										Range<Double> magRange;
+										if (magBefore > magAfter)
+											magRange = Range.closed(magAfter, magBefore);
+										else
+											magRange = Range.closed(magBefore, magAfter);
+										boolean crosses = false;
+										for (Double edge : groupBinEdges) {
+											if (magRange.contains(edge)) {
+												crosses = true;
+												break;
+											}
+										}
+										if (crosses) {
+											// we have crossed a bin edge, break
+//											System.out.println("Crossed a bin edge!");
+											break;
+										}
+									}
 									group.add(bin);
+									prevBin = bin;
 								}
 								assignmentGroups.add(Ints.toArray(group));
 							}
