@@ -32,6 +32,7 @@ public class NSHM23_RegionLoader {
 	private static final String LOCAL_REG_PATH = NSHM23_REG_PATH_PREFIX+"/local";
 	private static final String STITCHED_REG_PATH = NSHM23_REG_PATH_PREFIX+"/stitched";
 	private static final String FAULT_STYLE_REG_PATH = NSHM23_REG_PATH_PREFIX+"/fault-style";
+	private static final String GRID_SYSTEM_REG_PATH = NSHM23_REG_PATH_PREFIX+"/grid-system";
 	
 	/**
 	 * Regions within which seismicity constraints and spatial seismicity PDFs are determined
@@ -149,6 +150,27 @@ public class NSHM23_RegionLoader {
 		
 		public String getResourcePath() {
 			return FAULT_STYLE_REG_PATH+"/"+fileName;
+		}
+	}
+	
+	/**
+	 * Regions that are used for determining active vs stable faulting
+	 * 
+	 * @author kevin
+	 *
+	 */
+	public enum GridSystemRegions implements NSHM23_BaseRegion {
+		WUS_ACTIVE("grid-system-active.geojson"),
+		CEUS_STABLE("grid-system-stable.geojson");
+		
+		private String fileName;
+
+		private GridSystemRegions(String fileName) {
+			this.fileName = fileName;
+		}
+		
+		public String getResourcePath() {
+			return GRID_SYSTEM_REG_PATH+"/"+fileName;
 		}
 	}
 	
