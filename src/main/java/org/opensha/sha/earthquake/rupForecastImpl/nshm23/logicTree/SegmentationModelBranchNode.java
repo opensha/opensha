@@ -36,7 +36,7 @@ public interface SegmentationModelBranchNode extends LogicTreeNode {
 					}
 				}
 			}
-			if (excluded != null)
+			if (!excluded.isEmpty())
 				return new HardcodedBinaryJumpProb(segModel.getName(), true, excluded, false);
 		}
 		return null;
