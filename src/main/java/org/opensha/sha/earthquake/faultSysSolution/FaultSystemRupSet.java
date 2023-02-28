@@ -929,7 +929,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 */
 	public List<FaultSection> getFaultSectionDataForRupture(int rupIndex) {
 		List<Integer> inds = getSectionsIndicesForRup(rupIndex);
-		ArrayList<FaultSection> datas = new ArrayList<FaultSection>();
+		ArrayList<FaultSection> datas = new ArrayList<FaultSection>(inds.size());
 		for (int ind : inds)
 			datas.add(getFaultSectionData(ind));
 		return datas;
