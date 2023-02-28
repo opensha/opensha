@@ -34,6 +34,7 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
@@ -44,6 +45,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoade
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
@@ -231,6 +233,16 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 				return new RegionsOfInterest(regions, regionMFDs);
 			}
 		}, RegionsOfInterest.class);
+		rupSet.addAvailableModule(new Callable<RupSetTectonicRegimes>() {
+
+			@Override
+			public RupSetTectonicRegimes call() throws Exception {
+				Region stableReg = NSHM23_RegionLoader.GridSystemRegions.CEUS_STABLE.load();
+				Map<Region, TectonicRegionType> regRegimes = Map.of(stableReg, TectonicRegionType.STABLE_SHALLOW);
+				return RupSetTectonicRegimes.forRegions(
+						rupSet, regRegimes, TectonicRegionType.ACTIVE_SHALLOW, 0.5);
+			}
+		}, RupSetTectonicRegimes.class);
 	}
 	
 	private static UncertainBoundedIncrMagFreqDist getRegionalMFD(Region region, SeismicityRegions seisRegion,

@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import java.text.DecimalFormat;
+import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -9,6 +10,7 @@ import java.util.Map;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -18,7 +20,8 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
-public class RupSetTectonicRegimes implements CSV_BackedModule, SubModule<FaultSystemRupSet> {
+public class RupSetTectonicRegimes implements CSV_BackedModule, SubModule<FaultSystemRupSet>,
+BranchAverageableModule<RupSetTectonicRegimes>, AverageableModule.ConstantAverageable<RupSetTectonicRegimes> {
 	
 	private FaultSystemRupSet rupSet;
 	private TectonicRegionType[] regimes;
@@ -130,7 +133,7 @@ public class RupSetTectonicRegimes implements CSV_BackedModule, SubModule<FaultS
 			else
 				csv.addLine(r+"", type.name());
 		}
-		return null;
+		return csv;
 	}
 
 	@Override
@@ -163,6 +166,16 @@ public class RupSetTectonicRegimes implements CSV_BackedModule, SubModule<FaultS
 	@Override
 	public RupSetTectonicRegimes copy(FaultSystemRupSet newParent) throws IllegalStateException {
 		return new RupSetTectonicRegimes(newParent, regimes);
+	}
+
+	@Override
+	public Class<RupSetTectonicRegimes> getAveragingType() {
+		return RupSetTectonicRegimes.class;
+	}
+
+	@Override
+	public boolean isIdentical(RupSetTectonicRegimes module) {
+		return Arrays.equals(regimes, module.regimes);
 	}
 
 }
