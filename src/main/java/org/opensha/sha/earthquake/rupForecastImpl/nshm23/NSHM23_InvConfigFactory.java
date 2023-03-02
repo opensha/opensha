@@ -113,6 +113,8 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.magdist.SparseGutenbergRichterSolver;
+import org.opensha.sha.magdist.SparseGutenbergRichterSolver.SpreadingMethod;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
@@ -2017,6 +2019,76 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		public SparseGRDontSpreadSingleToMulti() {
 			SupraSeisBValInversionTargetMFDs.SPARSE_GR_DONT_SPREAD_SINGLE_TO_MULTI = true;
+		}
+	}
+	
+	public static class SparseGRNearest extends NSHM23_InvConfigFactory {
+		
+		public SparseGRNearest() {
+			SparseGutenbergRichterSolver.METHOD_DEFAULT = SpreadingMethod.NEAREST;
+		}
+	}
+	
+	public static class ModDepthGV08 extends NSHM23_InvConfigFactory {
+		
+		protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
+			RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
+			RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
+			if (model == null) {
+				if (fm instanceof FaultModels) // UCERF3 FM
+					model = RupturePlausibilityModels.UCERF3; // for now
+				else
+					model = RupturePlausibilityModels.COULOMB;
+			}
+			
+			// check cache
+			FaultSystemRupSet rupSet = rupSetCache.get(fm, model);
+			if (rupSet != null) {
+				return rupSet;
+			}
+			
+			RupSetScalingRelationship scale = branch.requireValue(RupSetScalingRelationship.class);
+			
+			RupSetDeformationModel dm = fm.getDefaultDeformationModel();
+			List<? extends FaultSection> origSubSects;
+			try {
+				origSubSects = dm.build(fm);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			
+			List<FaultSection> subSects = new ArrayList<>();
+			
+			// modify GV depths
+			for (int s=0; s<origSubSects.size(); s++) {
+				FaultSection sect = origSubSects.get(s);
+				if (sect.getParentSectionId() == 106) {
+					double origUpper = sect.getOrigAveUpperDepth();
+					double origLower = sect.getAveLowerDepth();
+					
+					double newUpper = 7d;
+					double newLower = 7d + (origLower - origUpper);
+					
+					GeoJSONFaultSection origSect = (sect instanceof GeoJSONFaultSection) ?
+							(GeoJSONFaultSection)sect : new GeoJSONFaultSection(sect);
+					Feature feature = origSect.toFeature();
+					feature.properties.set(GeoJSONFaultSection.UPPER_DEPTH, newUpper);
+					feature.properties.set(GeoJSONFaultSection.LOW_DEPTH, newLower);
+					GeoJSONFaultSection newSect = GeoJSONFaultSection.fromFeature(feature);
+					System.out.println("Moved DDW for "+sect.getSectionName()+" from "
+							+origSect.getOrigAveUpperDepth()+" to "+newSect.getOrigAveUpperDepth());
+					sect = newSect;
+				}
+				subSects.add(sect);
+			}
+			
+			RupSetConfig config = model.getConfig(subSects, scale);
+			
+			if (rupSet == null)
+				rupSet = config.build(threads);
+			rupSetCache.put(fm, model, rupSet);
+			
+			return rupSet;
 		}
 	}
 	
