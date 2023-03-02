@@ -819,11 +819,18 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 							List<Double> groupBinEdges = null;
 							if (SPARSE_GR_DONT_SPREAD_SINGLE_TO_MULTI && Double.isFinite(sectMaxSingleFaultMag)) {
 								int singleBin = refMFD.getClosestXIndex(sectMaxSingleFaultMag);
-								if (singleBin < maxMagIndex)
-									groupBinEdges = List.of(refMFD.getX(singleBin)+0.5*refMFD.getDelta());
+								if (singleBin < maxMagIndex) {
+									double binEdge = refMFD.getX(singleBin)+0.5*refMFD.getDelta();
+//									if (s == 1261) {
+//										System.out.println("Bin edge is "+(float)binEdge+" for maxSingle="+(float)sectMaxSingleFaultMag);
+//										SparseGutenbergRichterSolver.D = true;
+//									}
+									groupBinEdges = List.of(binEdge);
+								}
 							}
 							supraGR_shape = SparseGutenbergRichterSolver.getEquivGR(supraGR_shape, mags,
 									groupBinEdges, true, supraGR_shape.getTotalMomentRate(), supraSeisBValue);
+							SparseGutenbergRichterSolver.D = false;
 						}
 					}
 

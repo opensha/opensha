@@ -46,6 +46,8 @@ public class SparseGutenbergRichterSolver {
 		NEAREST_GROUP
 	}
 	
+	public static boolean D = false;
+	
 	public static SpreadingMethod METHOD_DEFAULT = SpreadingMethod.NEAREST_GROUP;
 	
 	/**
@@ -221,20 +223,21 @@ public class SparseGutenbergRichterSolver {
 										boolean crosses = false;
 										for (Double edge : groupBinEdges) {
 											if (magRange.contains(edge)) {
+												if (D) System.out.println("Crossed a bin edge "+edge+" from "+magBefore+" to "+magAfter);
 												crosses = true;
 												break;
 											}
 										}
 										if (crosses) {
 											// we have crossed a bin edge, break
-//											System.out.println("Crossed a bin edge!");
 											break;
 										}
 									}
 									group.add(bin);
 									prevBin = bin;
 								}
-								assignmentGroups.add(Ints.toArray(group));
+								if (!group.isEmpty())
+									assignmentGroups.add(Ints.toArray(group));
 							}
 						} else {
 							assignmentGroups = List.of(assignedBins);
@@ -248,10 +251,20 @@ public class SparseGutenbergRichterSolver {
 					
 					double valPerGroup = preserveRates ? superSampledGR.getIncrRate(i) : superSampledGR.getMomentRate(i);
 					valPerGroup /= (double)assignmentGroups.size();
+					if (D)
+						System.out.println("Spreading to "+assignmentGroups.size()+" groups");
 					for (int[] assignedBins : assignmentGroups) {
+						if (D) {
+							System.out.print("Assignment group:");
+							for (int bin : assignedBins)
+								System.out.print(" "+bin+". "+(float)superSampledDiscretization.getX(bin));
+							System.out.println();
+						}
 						if (preserveRates) {
 							// simple
 							double rateEachBin = valPerGroup/assignedBins.length;
+							if (D)
+								System.out.println("Adding "+rateEachBin+" to each bin");
 							for (int assignedBin : assignedBins)
 								ret.add(ret.getClosestXIndex(superSampledGR.getX(assignedBin)), rateEachBin);
 						} else {
@@ -261,6 +274,8 @@ public class SparseGutenbergRichterSolver {
 								double targetMag = ret.getX(retIndex);
 								double targetMo = MagUtils.magToMoment(targetMag);
 								double myTargetRate = valPerGroup/targetMo;
+								if (D)
+									System.out.println("Adding "+myTargetRate+" to single bin");
 								ret.add(retIndex, myTargetRate);
 							} else {
 								// more complicated, we want to shift the whole group up, preserving the slope
@@ -275,8 +290,12 @@ public class SparseGutenbergRichterSolver {
 								}
 								double newMomentRate = curMomentRateInBins + valPerGroup;
 								double scalar = newMomentRate / curMomentRateInBins;
-								for (int index : binIndexes)
+								for (int index : binIndexes) {
+									if (D)
+										System.out.println("Scaling bin "+index+". "+(float)ret.getX(index)
+											+" by "+(float)newMomentRate+" / "+(float)curMomentRateInBins+" = "+(float)scalar);
 									ret.set(index, ret.getY(index)*scalar);
+								}
 							}
 						}
 //						for (int assignedBin : assignedBins) {
