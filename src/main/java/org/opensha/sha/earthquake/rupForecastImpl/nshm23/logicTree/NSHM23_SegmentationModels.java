@@ -378,9 +378,9 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 			case NONE:
 				return Double.POSITIVE_INFINITY;
 			case LOW:
-				return 1000d;
-			case MID:
 				return 800d;
+			case MID:
+				return 700d;
 			case HIGH:
 				return 600d;
 			case CLASSIC:
