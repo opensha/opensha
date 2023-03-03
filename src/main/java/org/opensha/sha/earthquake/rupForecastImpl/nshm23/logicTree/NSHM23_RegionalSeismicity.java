@@ -47,9 +47,9 @@ public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
 		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			switch (region) {
 			case CONUS_WEST:
-				return gr(refMFD, mMax, 12, 0.84);
+				return gr(refMFD, mMax, 11.4, 0.82);
 			case CONUS_EAST:
-				return gr(refMFD, mMax, 0.433, 0.94);
+				return gr(refMFD, mMax, 0.436, 0.94);
 
 			default:
 				return null;
@@ -61,9 +61,9 @@ public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
 		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			switch (region) {
 			case CONUS_WEST:
-				return adjustForCrossover(gr(refMFD, mMax, 11.3, 0.88), true, region, mMax);
+				return adjustForCrossover(gr(refMFD, mMax, 10.2, 0.9), true, region, mMax);
 			case CONUS_EAST:
-				return adjustForCrossover(gr(refMFD, mMax, 0.374, 0.98), true, region, mMax);
+				return adjustForCrossover(gr(refMFD, mMax, 0.273, 1.08), true, region, mMax);
 
 			default:
 				return null;
@@ -75,9 +75,9 @@ public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
 		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			switch (region) {
 			case CONUS_WEST:
-				return adjustForCrossover(gr(refMFD, mMax, 13.2, 0.8), false, region, mMax);
+				return adjustForCrossover(gr(refMFD, mMax, 12.7, 0.74), false, region, mMax);
 			case CONUS_EAST:
-				return adjustForCrossover(gr(refMFD, mMax, 0.508, 0.9), false, region, mMax);
+				return adjustForCrossover(gr(refMFD, mMax, 0.684, 0.8), false, region, mMax);
 
 			default:
 				return null;
