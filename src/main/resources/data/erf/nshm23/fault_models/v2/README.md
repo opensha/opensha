@@ -14,6 +14,7 @@ Type A faults defined in UCERF2 (SAF, SJF, Elsinore, Garlock, Calaveras, and Hay
 
 Special faults history:
 
+* 3/3/2023: Added Cedar Mountain Fault (ID=1257) to the Cedar Mountain group after consulting with Alex
 * 10/31/2022: Fixed typo on ID for "Lost River", fault Battle Rock (id=2505) was mistakenly included, corrected to Lost River (id=2205)
 * 9/28/2022: original compilation
 
