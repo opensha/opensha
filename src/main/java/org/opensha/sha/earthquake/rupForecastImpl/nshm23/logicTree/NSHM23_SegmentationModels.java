@@ -258,7 +258,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	protected double shawR0;
 	protected double shawShift;
 
-	public static boolean LIMIT_MAX_LENGTHS = false;
+	public static boolean LIMIT_MAX_LENGTHS = true;
 	public static double SINGLE_MAX_LENGTH_LIMIT = Double.NaN;
 
 	private NSHM23_SegmentationModels(String name, String shortName, double weight) {

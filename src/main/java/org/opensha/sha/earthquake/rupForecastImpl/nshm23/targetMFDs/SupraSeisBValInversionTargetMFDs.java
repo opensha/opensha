@@ -160,7 +160,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	/**
 	 * If true, then don't assign any moment from empty single-fault bins to multi-fault bins.
 	 */
-	public static boolean SPARSE_GR_DONT_SPREAD_SINGLE_TO_MULTI = false;
+	public static boolean SPARSE_GR_DONT_SPREAD_SINGLE_TO_MULTI = true;
 	
 	/**
 	 * Default choice for if we should artificially inflate uncertainties for magnitude bins for which few sections

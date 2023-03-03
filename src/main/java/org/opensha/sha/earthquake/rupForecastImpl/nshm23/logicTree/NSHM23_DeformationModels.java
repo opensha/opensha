@@ -298,12 +298,12 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	/**
 	 * If nonzero, will use this fractional standard deviation everywhere rather than those from the deformation model
 	 */
-	public static double HARDCODED_FRACTIONAL_STD_DEV = 0.1d;
+	public static double HARDCODED_FRACTIONAL_STD_DEV = 0d;
 	
 	/**
 	 * If nonzero, will use this fractional standard deviation as an upper bound, retaining the original value if less
 	 */
-	public static double HARDCODED_FRACTIONAL_STD_DEV_UPPER_BOUND = 0;
+	public static double HARDCODED_FRACTIONAL_STD_DEV_UPPER_BOUND = 0.1;
 	
 	/*
 	 * Creep parameters
