@@ -36,6 +36,7 @@ import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
@@ -117,7 +118,19 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		
 		File inputFile = new File(cmd.getOptionValue("input-file"));
 		Preconditions.checkState(inputFile.exists());
-		solTree = SolutionLogicTree.load(inputFile);
+		if (inputFile.isDirectory()) {
+			Preconditions.checkArgument(cmd.hasOption("logic-tree"), "Must supply logic tree file if input-file is"
+					+ " a results directory");
+			File logicTreeFile = new File(cmd.getOptionValue("logic-tree"));
+			Preconditions.checkArgument(logicTreeFile.exists(), "Logic tree file doesn't exist: %s",
+					logicTreeFile.getAbsolutePath());
+			LogicTree<?> tree = LogicTree.read(logicTreeFile);
+			
+			solTree = new SolutionLogicTree.ResultsDirReader(inputFile, tree);
+		} else {
+			// it should be SolutionLogicTree zip file
+			solTree = SolutionLogicTree.load(inputFile);
+		}
 		
 		if (rank == 0)
 			debug("Loaded "+solTree.getLogicTree().size()+" tree nodes/solutions");
@@ -751,6 +764,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		Options ops = MPJTaskCalculator.createOptions();
 		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
+		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "
+				+ "supplied with --input-file");
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption("of", "output-file", true, "Path to output zip file. Default will be based on the output directory");
 		ops.addOption("sp", "grid-spacing", true, "Grid spacing in decimal degrees. Default: "+(float)GRID_SPACING_DEFAULT);
