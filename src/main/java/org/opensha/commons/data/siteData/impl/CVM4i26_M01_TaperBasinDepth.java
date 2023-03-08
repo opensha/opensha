@@ -31,11 +31,11 @@ public class CVM4i26_M01_TaperBasinDepth extends AbstractBinarySiteDataLoader {
 	
 	public static final double gridSpacing = 0.005;
 	
-	public static final String DEPTH_2_5_FILE = "src/main/resources/data/site/CVM4i26_MO1_TaperBasinDepth/basin_query_mpi_complete_cvmsi_taper_z2.5.firstOrSecond";
-	public static final String DEPTH_1_0_FILE = "src/main/resources/data/site/CVM4i26_MO1_TaperBasinDepth/basin_query_mpi_complete_cvmsi_taper_z1.0.firstOrSecond";
+	public static final String DEPTH_2_5_FILE = "src/main/resources/data/site/CVM4i26_M01_Taper/basin_query_mpi_complete_cvmsi_taper_z2.5.firstOrSecond";
+	public static final String DEPTH_1_0_FILE = "src/main/resources/data/site/CVM4i26_M01_Taper/basin_query_mpi_complete_cvmsi_taper_z1.0.firstOrSecond";
 	
-	public static final String SERVLET_2_5_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/CVM4i26_MO1_TaperBasinDepth_2_5";
-	public static final String SERVLET_1_0_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/CVM4i26_MO1_TaperBasinDepth_1_0";
+	public static final String SERVLET_2_5_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/CVM4i26_M01_TaperBasinDepth_2_5";
+	public static final String SERVLET_1_0_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "SiteData/CVM4i26_M01_TaperBasinDepth_1_0";
 	
 	/**
 	 * Constructor for creating a CVM accessor using servlets
