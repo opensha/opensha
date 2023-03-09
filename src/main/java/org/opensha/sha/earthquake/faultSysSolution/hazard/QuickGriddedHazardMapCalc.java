@@ -24,8 +24,6 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.commons.util.Interpolate;
-import org.opensha.nshmp2.erf.source.PointSource;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
@@ -47,6 +45,27 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 
+/**
+ * This class can quickly compute hazard maps for gridded seismicity point sources. It does this by first identifying
+ * unique gridded seismicity rupture properties (see {@link UniqueRupture}). Then, for each unique gridded seismicity
+ * rupture, we compute conditional exceedance probabilities as a function of site-source distance, and interpolate
+ * those for each actual site-source distance.
+ * 
+ * The calculation happens in reverse of regular hazard calculations: we get the distance-dependent exceedance
+ * probabilities for each rupture (computing if necessary, but caching for reuse), and then add the contribution to
+ * the curves for each site within the cutoff distance of that rupture.
+ * 
+ * The expensive part of the calculation here is the interpolation for individual distances. If the number of sites
+ * affected by a source is less than 1.5x the number of interpolation distances, we take a shortcut and compute full
+ * source exceedance probabilities (not conditional, including all ruptures in that source with their rates), and
+ * interpolate those onto each  
+ * 
+ * Note: site-specific parameters are not supported by this approach, and thus there is no mechanism to supply a Site
+ * list (just a gridded region). 
+ * 
+ * @author kevin
+ *
+ */
 public class QuickGriddedHazardMapCalc {
 	
 	private Supplier<ScalarIMR> gmpeSupplier;
@@ -54,20 +73,61 @@ public class QuickGriddedHazardMapCalc {
 	private DiscretizedFunc xVals;
 	private double maxDist;
 	
-	private EvenlyDiscretizedFunc distDiscr;
+	private EvenlyDiscretizedFunc logSpacedDiscr;
+	private double[] distVals;
+	private DiscretizedFunc distDiscr;
 	
 	private ConcurrentMap<UniqueRupture, DiscretizedFunc[]> rupExceedsMap = new ConcurrentHashMap<>();
+	
+	private int minNodeCalcsForSourcewise;
+	
+	public static final int NUM_DISCR_DEFAULT = 100;
 
-	public QuickGriddedHazardMapCalc(Supplier<ScalarIMR> gmpeSupplier, double period, DiscretizedFunc xVals, double maxDist, int numDiscr) {
+	/**
+	 * This constructor uses the default number of interpolation points (see {@link #NUM_DISCR_DEFAULT})
+	 * 
+	 * @param gmpeSupplier GMM suplier, such as an {@link AttenRelRef}
+	 * @param period calculation period
+	 * @param xVals x values
+	 * @param maxDist maximum site-source distance in km
+	 */
+	public QuickGriddedHazardMapCalc(Supplier<ScalarIMR> gmpeSupplier, double period, DiscretizedFunc xVals,
+			double maxDist) {
+		this(gmpeSupplier, period, xVals, maxDist, NUM_DISCR_DEFAULT);
+	}
+
+	/**
+	 * 
+	 * @param gmpeSupplier GMM suplier, such as an {@link AttenRelRef}
+	 * @param period calculation period
+	 * @param xVals x values
+	 * @param maxDist maximum site-source distance in km
+	 * @param numDiscr number of interpolation points
+	 */
+	public QuickGriddedHazardMapCalc(Supplier<ScalarIMR> gmpeSupplier, double period, DiscretizedFunc xVals,
+			double maxDist, int numDiscr) {
 		this.gmpeSupplier = gmpeSupplier;
 		this.period = period;
 		this.xVals = xVals;
 		this.maxDist = maxDist;
 		
-		distDiscr = new EvenlyDiscretizedFunc(0d, maxDist+1d, numDiscr);
+		minNodeCalcsForSourcewise = 3*numDiscr/2;
+		logSpacedDiscr = new EvenlyDiscretizedFunc(
+				Math.log(0.1), Math.log(maxDist+5d), numDiscr-1);
+		distVals = new double[numDiscr];
+		for (int i=1; i<distVals.length; i++)
+			distVals[i] = Math.exp(logSpacedDiscr.getX(i-1));
+		distDiscr = new LightFixedXFunc(distVals, new double[distVals.length]);
 	}
 	
-	private static class UniqueRupture {
+	/**
+	 * These properties define a unique rupture, for which conditional exceedance probabilities will be calculated
+	 * and cached separately. Any new fields must be added to the hashCode and equals methods
+	 * 
+	 * @author kevin
+	 *
+	 */
+	static class UniqueRupture {
 		private final double rake;
 		private final double mag;
 		private final double zTOR;
@@ -110,15 +170,27 @@ public class QuickGriddedHazardMapCalc {
 		}
 	}
 	
+	/**
+	 * This calculates a gridded seismicity hazard map for the given grid source provider, using interpolated
+	 * conditional exceedance probability distributions
+	 * 
+	 * @param gridProv grid source provider for which to calculate
+	 * @param gridReg gridded region, the returned curve array will have one curve for each location
+	 * @param threads number of calculation threads, must be >=1
+	 * @return hazard curves (linear x-values) for this grid source provider, computed at every location
+	 */
 	public DiscretizedFunc[] calc(GridSourceProvider gridProv, GriddedRegion gridReg, int threads) {
+		// calculation done in log-x space
 		DiscretizedFunc logXVals = new ArbitrarilyDiscretizedFunc();
 		for (Point2D pt : xVals)
 			logXVals.set(Math.log(pt.getX()), 0d);
 		
+		// this will be used to distribute sources to worker threads
 		ArrayDeque<Integer> sourceIndexes = new ArrayDeque<>(gridProv.size());
 		for (int i=0; i<gridProv.size(); i++)
 			sourceIndexes.add(i);
 		
+		// spin up worker threads
 		List<CalcThread> calcThreads = new ArrayList<>(threads);
 		
 		for (int i=0; i<threads; i++) {
@@ -132,9 +204,12 @@ public class QuickGriddedHazardMapCalc {
 		for (CalcThread thread : calcThreads) {
 			try {
 				thread.join();
+				if (thread.exception != null)
+					throw ExceptionUtils.asRuntimeException(thread.exception);
 			} catch (InterruptedException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
+			
 			
 			if (thread.curves == null)
 				continue;
@@ -152,7 +227,8 @@ public class QuickGriddedHazardMapCalc {
 		
 		Preconditions.checkNotNull(curves, "Curves never initialized?");
 		
-		// take 1 - curve vals and convert to linear x
+		// these are nonexceedance curves, with log x-values
+		// convert them to exceedance (1 - curve val) and convert to linear x
 		double[] linearX = new double[xVals.size()];
 		for (int i=0; i<linearX.length; i++)
 			linearX[i] = xVals.getX(i);
@@ -174,6 +250,8 @@ public class QuickGriddedHazardMapCalc {
 		private GriddedRegion gridReg;
 		private ArrayDeque<Integer> sourceIndexes;
 		
+		private Throwable exception;
+		
 		public CalcThread(GridSourceProvider gridProv, DiscretizedFunc logXVals,
 				GriddedRegion gridReg, ArrayDeque<Integer> sourceIndexes) {
 			this.gridProv = gridProv;
@@ -184,137 +262,195 @@ public class QuickGriddedHazardMapCalc {
 
 		@Override
 		public void run() {
-			ScalarIMR gmpe = gmpeSupplier.get();
-			if (period == 0d) {
-				gmpe.setIntensityMeasure(PGA_Param.NAME);
-			} else {
-				gmpe.setIntensityMeasure(SA_Param.NAME);
-				SA_Param.setPeriodInSA_Param(gmpe.getIntensityMeasure(), period);
-			}
-			
-			Site testSite = new Site(new Location(0d, 0d));
-			for (Parameter<?> param : gmpe.getSiteParams())
-				testSite.addParameter(param);
-			gmpe.setSite(testSite);
-			
-			double[] xValArray = new double[logXVals.size()];
-			for (int i=0; i<xValArray.length; i++)
-				xValArray[i] = logXVals.getX(i);
-			
-			// initialize curves, setting all y values to 1
-			curves = new DiscretizedFunc[gridReg.getNodeCount()];
-			for (int i=0; i<curves.length; i++) {
-				double[] yVals = new double[xValArray.length];
-				for (int j=0; j<yVals.length; j++)
-					yVals[j] = 1d;
-				curves[i] = new LightFixedXFunc(xValArray, yVals);
-			}
-			
-			while (true) {
-				int sourceID;
-				synchronized (sourceIndexes) {
-					if (sourceIndexes.isEmpty())
-						break;
-					sourceID = sourceIndexes.pop();
+			try {
+				ScalarIMR gmpe = gmpeSupplier.get();
+				if (period == 0d) {
+					gmpe.setIntensityMeasure(PGA_Param.NAME);
+				} else {
+					gmpe.setIntensityMeasure(SA_Param.NAME);
+					SA_Param.setPeriodInSA_Param(gmpe.getIntensityMeasure(), period);
 				}
-				ProbEqkSource source = gridProv.getSource(sourceID, 1d, false, BackgroundRupType.POINT);
 				
-				quickSourceCalc(gridReg, source, gmpe, curves);
+				Site testSite = new Site(new Location(0d, 0d));
+				for (Parameter<?> param : gmpe.getSiteParams())
+					testSite.addParameter(param);
+				gmpe.setSite(testSite);
+				
+				double[] xValArray = new double[logXVals.size()];
+				for (int i=0; i<xValArray.length; i++)
+					xValArray[i] = logXVals.getX(i);
+				
+				// initialize curves, setting all y values to 1
+				curves = new DiscretizedFunc[gridReg.getNodeCount()];
+				for (int i=0; i<curves.length; i++) {
+					double[] yVals = new double[xValArray.length];
+					for (int j=0; j<yVals.length; j++)
+						yVals[j] = 1d;
+					curves[i] = new LightFixedXFunc(xValArray, yVals);
+				}
+				
+				while (true) {
+					int sourceID;
+					synchronized (sourceIndexes) {
+						if (sourceIndexes.isEmpty())
+							break;
+						sourceID = sourceIndexes.pop();
+					}
+					ProbEqkSource source = gridProv.getSource(sourceID, 1d, false, BackgroundRupType.POINT);
+					
+					quickSourceCalc(gridReg, source, gmpe, curves);
+				}
+			} catch (Throwable t) {
+				exception = t;
+				return;
 			}
 		}
 	}
 	
 	private void quickSourceCalc(GriddedRegion gridReg, ProbEqkSource source, ScalarIMR gmpe, DiscretizedFunc[] curves) {
-		List<Integer> nodeIndexes = null;
-		List<Double> nodeDists = null;
-		
 		double[] xValsArray = new double[curves[0].size()];
 		for (int i=0; i<xValsArray.length; i++)
 			xValsArray[i] = curves[0].getX(i);
 		LightFixedXFunc exceedFunc = new LightFixedXFunc(xValsArray, new double[xValsArray.length]);
 		
-		double minXForLog = distDiscr.getX(1);
+		// figure out locations
+		Location nodeLoc = ((PointSurface)source.getRupture(0).getRuptureSurface()).getLocation();
+		List<Integer> nodeIndexes = new ArrayList<>();
+		List<Double> nodeDists = new ArrayList<>();
+		Site site = new Site(nodeLoc);
+		for (int i=0; i<gridReg.getNodeCount(); i++) {
+			Location loc = gridReg.getLocation(i);
+			site.setLocation(loc);
+			double dist = source.getMinDistance(site);
+			if (dist <= maxDist) {
+				nodeIndexes.add(i);
+				nodeDists.add(dist);
+			}
+		}
 		
-		for (ProbEqkRupture rup : source) {
-			if (nodeIndexes == null) {
-				// figure out which nodes are within max dist of this site
+		if (nodeIndexes.isEmpty()) {
+			// can skip
+			return;
+		}
+		
+		/*
+		 * the expensive part of this calculation is the interpolation step. if we have few sites, it's faster to do it
+		 * for each site and rupture individually. if we have lots of sites (or lots of ruptures), it's faster to
+		 * calculate distance-dependent source exceedance probabilities (not conditional, taking the rupture probs
+		 * into account)
+		 */
+		int nodeCalcs = nodeIndexes.size() * source.getNumRuptures();
+		
+		if (nodeCalcs < minNodeCalcsForSourcewise) {
+			// do it individually for each rupture at each node
+			
+			for (ProbEqkRupture rup : source) {
+				DiscretizedFunc[] exceeds = getCacheRupExceeds(rup, gmpe, curves[0]);
 				
-				Location nodeLoc = ((PointSurface)rup.getRuptureSurface()).getLocation();
-				nodeIndexes = new ArrayList<>();
-				nodeDists = new ArrayList<>();
-				Site site = new Site(nodeLoc);
-				for (int i=0; i<gridReg.getNodeCount(); i++) {
-					Location loc = gridReg.getLocation(i);
-					site.setLocation(loc);
-					double dist = source.getMinDistance(site);
-					if (dist <= maxDist) {
-						nodeIndexes.add(i);
-						nodeDists.add(dist);
-					}
-				}
-				
-				if (nodeIndexes.isEmpty()) {
-					// can skip
-					return;
+				for (int l=0; l<nodeIndexes.size(); l++) {
+					int index = nodeIndexes.get(l);
+					double dist = nodeDists.get(l);
+					
+					quickInterp(exceeds, dist, exceedFunc);
+					
+					double invQkProb = 1d-rup.getProbability();
+					for(int k=0; k<exceedFunc.size(); k++)
+						curves[index].set(k, curves[index].getY(k)*Math.pow(invQkProb, exceedFunc.getY(k)));
 				}
 			}
+		} else {
+			// calculate a source non exceedance functions
+			DiscretizedFunc[] sourceNonExceeds = new DiscretizedFunc[xValsArray.length];
+			for (int k=0; k<sourceNonExceeds.length; k++) {
+				double[] yVals = new double[distVals.length];
+				for (int i=0; i<yVals.length; i++)
+					yVals[i] = 1;
+				sourceNonExceeds[k] = new LightFixedXFunc(distVals, yVals);
+			}
 			
-			DiscretizedFunc[] exceeds = getCacheRupExceeds(rup, gmpe, curves[0]);
+			for (ProbEqkRupture rup : source) {
+				DiscretizedFunc[] exceeds = getCacheRupExceeds(rup, gmpe, curves[0]);
+				
+				double invQkProb = 1d-rup.getProbability();
+				for (int i=0; i<sourceNonExceeds.length; i++)
+					for(int k=0; k<sourceNonExceeds[i].size(); k++)
+						sourceNonExceeds[i].set(k, sourceNonExceeds[i].getY(k)*Math.pow(invQkProb, exceeds[i].getY(k)));
+			}
 			
+			// now interpolate those onto sites
 			for (int l=0; l<nodeIndexes.size(); l++) {
 				int index = nodeIndexes.get(l);
 				double dist = nodeDists.get(l);
 				
-				if ((float)dist == 0f) {
-					// shortcut
-					for (int i=0; i<exceedFunc.size(); i++)
-						exceedFunc.set(i, exceeds[i].getY(0));
-				} else {
-					// seems to do best with logX = true, and logY = false
-					final boolean logX = dist>minXForLog;
-//					final boolean logY = true;
-					final boolean logY = false;
-					
-//					int x1Ind = distDiscr.getXIndexBefore(dist);
-					int x1Ind = (int)Math.floor((dist-distDiscr.getMinX())/distDiscr.getDelta());
-					int x2Ind = x1Ind+1;
-					
-					double x = dist;
-					double x1 = distDiscr.getX(x1Ind);
-					double x2 = distDiscr.getX(x2Ind);
-					
-					if (logX) {
-						x1 = Math.log(x1);
-						x2 = Math.log(x2);
-						x = Math.log(x);
-					}
-					
-					// y1 + (x - x1) * (y2 - y1) / (x2 - x1);
-					double xRatio = (x-x1)/(x2-x1);
-					
-					for (int i=0; i<exceedFunc.size(); i++) {
-						double y1 = exceeds[i].getY(x1Ind);
-						double y2 = exceeds[i].getY(x2Ind);
-						
-						double y;
-						if(y1==0 && y2==0) {
-							y = 0d;
-						} else {
-							if (logY) {
-								y1 = Math.log(y1);
-								y2 = Math.log(y2);
-							}
-							y = y1 + xRatio*(y2-y1);
-							if (logY)
-								y = Math.exp(y);
-						}
-						exceedFunc.set(i, y);
-					}
-				}
+				quickInterp(sourceNonExceeds, dist, exceedFunc);
 				
-				double invQkProb = 1d-rup.getProbability();
 				for(int k=0; k<exceedFunc.size(); k++)
-					curves[index].set(k, curves[index].getY(k)*Math.pow(invQkProb, exceedFunc.getY(k)));
+					curves[index].set(k, curves[index].getY(k)*exceedFunc.getY(k));
+			}
+		}
+	}
+	
+	/**
+	 * Quick interpolation for an array of functions, each as a function of distance.
+	 * @param exceeds array of functions, each as a function of distance
+	 * @param dist distance in km
+	 * @param exceedFunc function to be filled in
+	 */
+	private void quickInterp(DiscretizedFunc[] exceeds, double dist, DiscretizedFunc exceedFunc) {
+		if ((float)dist == 0f) {
+			// shortcut
+			for (int i=0; i<exceedFunc.size(); i++)
+				exceedFunc.set(i, exceeds[i].getY(0));
+		} else {
+			
+//			int x1Ind = distDiscr.getXIndexBefore(dist);
+//			int x1Ind = (int)Math.floor((dist-distDiscr.getMinX())/distDiscr.getDelta());
+			int x1Ind;
+			if (dist < distVals[1]) {
+				x1Ind = 0;
+			} else {
+				double logX = Math.log(dist);
+				x1Ind = 1 + (int)Math.floor((logX-logSpacedDiscr.getMinX())/logSpacedDiscr.getDelta());
+			}
+			int x2Ind = x1Ind+1;
+			
+			// seems to do best with logX = true, and logY = false
+			final boolean logX = x1Ind > 0;
+//			final boolean logY = true;
+			final boolean logY = false;
+			
+			double x = dist;
+			double x1 = distDiscr.getX(x1Ind);
+			double x2 = distDiscr.getX(x2Ind);
+			
+			if (logX) {
+				x1 = Math.log(x1);
+				x2 = Math.log(x2);
+				x = Math.log(x);
+			}
+			
+			// y1 + (x - x1) * (y2 - y1) / (x2 - x1);
+			double xRatio = (x-x1)/(x2-x1);
+			
+			for (int i=0; i<exceedFunc.size(); i++) {
+				double y1 = exceeds[i].getY(x1Ind);
+				double y2 = exceeds[i].getY(x2Ind);
+				
+				boolean myLogY = logY && y1 > 0d && y2 > 0d;
+				
+				double y;
+				if(y1==0 && y2==0) {
+					y = 0d;
+				} else {
+					if (myLogY) {
+						y1 = Math.log(y1);
+						y2 = Math.log(y2);
+					}
+					y = y1 + xRatio*(y2-y1);
+					if (myLogY)
+						y = Math.exp(y);
+				}
+				exceedFunc.set(i, y);
 			}
 		}
 	}
@@ -329,7 +465,7 @@ public class QuickGriddedHazardMapCalc {
 			// calculate it
 			exceeds = new DiscretizedFunc[xVals.size()];
 			for (int i=0; i<exceeds.length; i++)
-				exceeds[i] = new EvenlyDiscretizedFunc(distDiscr.getMinX(), distDiscr.size(), distDiscr.getDelta());
+				exceeds[i] = new LightFixedXFunc(distVals, new double[distVals.length]);
 			
 			PointSurface pSurf = (PointSurface)rup.getRuptureSurface();
 			Location srcLoc = pSurf.getLocation();
@@ -370,10 +506,11 @@ public class QuickGriddedHazardMapCalc {
 		int threads = 20;
 		double period = 0d;
 		double spacing = 0.2d;
-		int numPts = 500;
+		int numPts = 50;
 		double maxDist = 200d;
 		
 		QuickGriddedHazardMapCalc calc = new QuickGriddedHazardMapCalc(gmpeRef, period, xVals, maxDist, numPts);
+//		calc.minNodesForSourcewise = Integer.MAX_VALUE;
 		
 		Region region = NSHM23_RegionLoader.loadFullConterminousWUS();
 		GriddedRegion gridReg = new GriddedRegion(region, spacing, GriddedRegion.ANCHOR_0_0);
