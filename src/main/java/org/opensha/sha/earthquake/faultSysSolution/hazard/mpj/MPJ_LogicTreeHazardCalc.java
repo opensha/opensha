@@ -47,6 +47,7 @@ import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.LogicTreeCurveAverager;
+import org.opensha.sha.earthquake.faultSysSolution.hazard.QuickGriddedHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
@@ -110,6 +111,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	
 	private GridSourceProvider externalGridProv;
 	private SolHazardMapCalc externalGriddedCurveCalc;
+	
+	private QuickGriddedHazardMapCalc[] quickGridCalcs;
 
 	public MPJ_LogicTreeHazardCalc(CommandLine cmd) throws IOException {
 		super(cmd);
@@ -223,6 +226,14 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			combineWithHazardExcludingSubDirName = hazardPrefix+IncludeBackgroundOption.EXCLUDE.name();
 			// or alternatively, see if we have hazard already calculated with *only* gridded seismicity
 			combineWithHazardBGOnlySubDirName = hazardPrefix+IncludeBackgroundOption.ONLY.name();
+		}
+		
+		if (cmd.hasOption("quick-grid-calc") && (gridSeisOp == IncludeBackgroundOption.INCLUDE
+				|| gridSeisOp == IncludeBackgroundOption.ONLY)) {
+			quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
+			for (int p=0; p<quickGridCalcs.length; p++)
+				quickGridCalcs[p] = new QuickGriddedHazardMapCalc(gmpeRef, periods[p],
+						SolHazardMapCalc.getDefaultXVals(periods[p]), maxDistance);
 		}
 		
 		if (rank == 0) {
@@ -651,6 +662,23 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				combineWithOnlyCurves = externalGriddedCurveCalc;
 			}
 			
+			if (quickGridCalcs != null && combineWithOnlyCurves == null) {
+				Supplier<ScalarIMR> supplier = getGMM_Supplier(branch, gmpeRef);
+				QuickGriddedHazardMapCalc[] quickGridCalcs = this.quickGridCalcs;
+				if (supplier != gmpeRef) {
+					// need to make custom Ones
+					quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
+					for (int p=0; p<periods.length; p++)
+						quickGridCalcs[p] = new QuickGriddedHazardMapCalc(supplier, periods[p],
+								SolHazardMapCalc.getDefaultXVals(periods[p]), maxDistance);
+				}
+				debug("Doing quick gridded seismicity calc for "+index);
+				List<DiscretizedFunc[]> curves = new ArrayList<>();
+				for (int p=0; p<periods.length; p++)
+					curves.add(quickGridCalcs[p].calc(sol.getGridSourceProvider(), gridRegion, getNumThreads()));
+				combineWithOnlyCurves = SolHazardMapCalc.forCurves(sol, gridRegion, periods, curves);
+			}
+			
 			if (gridSeisOp == IncludeBackgroundOption.INCLUDE && combineWithOnlyCurves != null && combineWithExcludeCurves != null) {
 				// we've already calculated both separately, just combine them without calculating
 				List<DiscretizedFunc[]> combCurvesList = new ArrayList<>();
@@ -785,6 +813,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		ops.addOption("egp", "external-grid-prov", true, "Path to external grid source provider to use for hazard "
 				+ "calculations. Can be either a fault system solution, or a zip file containing just a grid source "
 				+ "provider.");
+		ops.addOption("qgc", "quick-grid-calc", false, "Flag to enable quick gridded seismicity calculation.");
 		
 		return ops;
 	}

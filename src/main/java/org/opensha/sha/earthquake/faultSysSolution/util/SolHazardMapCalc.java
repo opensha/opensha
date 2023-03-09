@@ -212,6 +212,19 @@ public class SolHazardMapCalc {
 		this.skipMaxSiteDist = skipMaxSiteDist;
 	}
 	
+	public static DiscretizedFunc getDefaultXVals(double period) {
+		return getDefaultXVals(new IMT_Info(), period);
+	}
+	
+	public static DiscretizedFunc getDefaultXVals(IMT_Info imtInfo, double period) {
+		if (period == -1d)
+			return imtInfo.getDefaultHazardCurve(PGV_Param.NAME);
+		else if (period == 0d)
+			return imtInfo.getDefaultHazardCurve(PGA_Param.NAME);
+		else
+			return imtInfo.getDefaultHazardCurve(SA_Param.NAME);
+	}
+	
 	private void checkInitXVals() {
 		if (xVals == null) {
 			synchronized (this) {
@@ -220,12 +233,7 @@ public class SolHazardMapCalc {
 					DiscretizedFunc[] logXVals = new DiscretizedFunc[periods.length];
 					IMT_Info imtInfo = new IMT_Info();
 					for (int p=0; p<periods.length; p++) {
-						if (periods[p] == -1d)
-							xVals[p] = imtInfo.getDefaultHazardCurve(PGV_Param.NAME);
-						else if (periods[p] == 0d)
-							xVals[p] = imtInfo.getDefaultHazardCurve(PGA_Param.NAME);
-						else
-							xVals[p] = imtInfo.getDefaultHazardCurve(SA_Param.NAME);
+						xVals[p] = getDefaultXVals(imtInfo, periods[p]);
 						logXVals[p] = new ArbitrarilyDiscretizedFunc();
 						for (Point2D pt : xVals[p])
 							logXVals[p].set(Math.log(pt.getX()), 0d);
