@@ -58,7 +58,7 @@ import com.google.common.base.Stopwatch;
  * The expensive part of the calculation here is the interpolation for individual distances. If the number of sites
  * affected by a source is less than 1.5x the number of interpolation distances, we take a shortcut and compute full
  * source exceedance probabilities (not conditional, including all ruptures in that source with their rates), and
- * interpolate those onto each  
+ * interpolate those onto each source. This allows for the calculation to scale very efficiently to high resolutions.
  * 
  * Note: site-specific parameters are not supported by this approach, and thus there is no mechanism to supply a Site
  * list (just a gridded region). 
