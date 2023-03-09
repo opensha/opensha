@@ -1,12 +1,16 @@
 package org.opensha.sha.earthquake.faultSysSolution.hazard;
 
 import java.awt.geom.Point2D;
+import java.io.File;
+import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
 import org.opensha.commons.data.Site;
@@ -20,20 +24,28 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.Interpolate;
 import org.opensha.nshmp2.erf.source.PointSource;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
+import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm.PointSurfaceNshm;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.gui.infoTools.IMT_Info;
+import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 
 public class QuickGriddedHazardMapCalc {
 	
@@ -199,14 +211,15 @@ public class QuickGriddedHazardMapCalc {
 			}
 			
 			while (true) {
+				int sourceID;
 				synchronized (sourceIndexes) {
 					if (sourceIndexes.isEmpty())
 						break;
-					int sourceID = sourceIndexes.pop();
-					ProbEqkSource source = gridProv.getSource(sourceID, 1d, false, BackgroundRupType.POINT);
-					
-					quickSourceCalc(gridReg, source, gmpe, curves);
+					sourceID = sourceIndexes.pop();
 				}
+				ProbEqkSource source = gridProv.getSource(sourceID, 1d, false, BackgroundRupType.POINT);
+				
+				quickSourceCalc(gridReg, source, gmpe, curves);
 			}
 		}
 	}
@@ -220,23 +233,23 @@ public class QuickGriddedHazardMapCalc {
 			xValsArray[i] = curves[0].getX(i);
 		LightFixedXFunc exceedFunc = new LightFixedXFunc(xValsArray, new double[xValsArray.length]);
 		
+		double minXForLog = distDiscr.getX(1);
+		
 		for (ProbEqkRupture rup : source) {
 			if (nodeIndexes == null) {
 				// figure out which nodes are within max dist of this site
 				
 				Location nodeLoc = ((PointSurface)rup.getRuptureSurface()).getLocation();
-				Region circle = new Region(nodeLoc, maxDist*1.1);
 				nodeIndexes = new ArrayList<>();
 				nodeDists = new ArrayList<>();
+				Site site = new Site(nodeLoc);
 				for (int i=0; i<gridReg.getNodeCount(); i++) {
 					Location loc = gridReg.getLocation(i);
-					if (circle.contains(loc)) {
-						// might be within maxDist
-						double dist = LocationUtils.horzDistanceFast(nodeLoc, loc);
-						if ((float)dist <= (float)maxDist) {
-							nodeIndexes.add(i);
-							nodeDists.add(dist);
-						}
+					site.setLocation(loc);
+					double dist = source.getMinDistance(site);
+					if (dist <= maxDist) {
+						nodeIndexes.add(i);
+						nodeDists.add(dist);
 					}
 				}
 				
@@ -248,20 +261,66 @@ public class QuickGriddedHazardMapCalc {
 			
 			DiscretizedFunc[] exceeds = getCacheRupExceeds(rup, gmpe, curves[0]);
 			
-			double qkProb = rup.getProbability();
-			
 			for (int l=0; l<nodeIndexes.size(); l++) {
 				int index = nodeIndexes.get(l);
 				double dist = nodeDists.get(l);
 				
-				for (int i=0; i<exceedFunc.size(); i++)
-					exceedFunc.set(i, exceeds[i].getInterpolatedY(dist));
+				if ((float)dist == 0f) {
+					// shortcut
+					for (int i=0; i<exceedFunc.size(); i++)
+						exceedFunc.set(i, exceeds[i].getY(0));
+				} else {
+					// seems to do best with logX = true, and logY = false
+					final boolean logX = dist>minXForLog;
+//					final boolean logY = true;
+					final boolean logY = false;
+					
+//					int x1Ind = distDiscr.getXIndexBefore(dist);
+					int x1Ind = (int)Math.floor((dist-distDiscr.getMinX())/distDiscr.getDelta());
+					int x2Ind = x1Ind+1;
+					
+					double x = dist;
+					double x1 = distDiscr.getX(x1Ind);
+					double x2 = distDiscr.getX(x2Ind);
+					
+					if (logX) {
+						x1 = Math.log(x1);
+						x2 = Math.log(x2);
+						x = Math.log(x);
+					}
+					
+					// y1 + (x - x1) * (y2 - y1) / (x2 - x1);
+					double xRatio = (x-x1)/(x2-x1);
+					
+					for (int i=0; i<exceedFunc.size(); i++) {
+						double y1 = exceeds[i].getY(x1Ind);
+						double y2 = exceeds[i].getY(x2Ind);
+						
+						double y;
+						if(y1==0 && y2==0) {
+							y = 0d;
+						} else {
+							if (logY) {
+								y1 = Math.log(y1);
+								y2 = Math.log(y2);
+							}
+							y = y1 + xRatio*(y2-y1);
+							if (logY)
+								y = Math.exp(y);
+						}
+						exceedFunc.set(i, y);
+					}
+				}
 				
+				double invQkProb = 1d-rup.getProbability();
 				for(int k=0; k<exceedFunc.size(); k++)
-					curves[index].set(k, curves[index].getY(k)*Math.pow(1-qkProb, curves[index].getY(k)));
+					curves[index].set(k, curves[index].getY(k)*Math.pow(invQkProb, exceedFunc.getY(k)));
 			}
 		}
 	}
+
+	private long numCacheMisses = 0;
+	private long numCacheHits = 0;
 	
 	private DiscretizedFunc[] getCacheRupExceeds(ProbEqkRupture rup, ScalarIMR gmpe, DiscretizedFunc xVals) {
 		UniqueRupture uRup = new UniqueRupture(rup);
@@ -291,13 +350,99 @@ public class QuickGriddedHazardMapCalc {
 			}
 			
 			rupExceedsMap.putIfAbsent(uRup, exceeds);
+			numCacheMisses++;
+		} else {
+			numCacheHits++;
 		}
 		return exceeds;
 	}
 
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-
+	public static void main(String[] args) throws IOException {
+		FaultSystemSolution sol = FaultSystemSolution.load(new File("/data/kevin/nshm23/batch_inversions/"
+				+ "2023_03_01-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR/"
+				+ "results_NSHM23_v2_CoulombRupSet_branch_averaged_gridded.zip"));
+		
+		GridSourceProvider gridProv = sol.getGridSourceProvider();
+		
+		DiscretizedFunc xVals = new IMT_Info().getDefaultHazardCurve(PGA_Param.NAME);
+		
+		AttenRelRef gmpeRef = AttenRelRef.ASK_2014;
+		int threads = 20;
+		double period = 0d;
+		double spacing = 0.2d;
+		int numPts = 500;
+		double maxDist = 200d;
+		
+		QuickGriddedHazardMapCalc calc = new QuickGriddedHazardMapCalc(gmpeRef, period, xVals, maxDist, numPts);
+		
+		Region region = NSHM23_RegionLoader.loadFullConterminousWUS();
+		GriddedRegion gridReg = new GriddedRegion(region, spacing, GriddedRegion.ANCHOR_0_0);
+		
+		Stopwatch watch = Stopwatch.createStarted();
+		DiscretizedFunc[] quickCurves = calc.calc(gridProv, gridReg, threads);
+		watch.stop();
+		double quickSecs1 = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+		
+		System.out.println("Quick 1 took "+(float)quickSecs1+" s");
+		DecimalFormat pDF = new DecimalFormat("0.00%");
+		System.out.println("Calc #1 hits = "+calc.numCacheHits+"/"+(calc.numCacheHits+calc.numCacheMisses)
+				+" ("+pDF.format((double)calc.numCacheHits/(double)(calc.numCacheHits+calc.numCacheMisses))+")");
+		
+		calc.numCacheHits = 0;
+		calc.numCacheMisses = 0;
+		watch.reset();
+		watch.start();
+		calc.calc(gridProv, gridReg, threads);
+		watch.stop();
+		double quickSecs2 = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+		
+		System.out.println("Quick 2 took "+(float)quickSecs2+" s");
+		System.out.println("Calc #1 hits = "+calc.numCacheHits+"/"+(calc.numCacheHits+calc.numCacheMisses)
+				+" ("+pDF.format((double)calc.numCacheHits/(double)(calc.numCacheHits+calc.numCacheMisses))+")");
+		
+		SolHazardMapCalc tradCalc = new SolHazardMapCalc(sol, gmpeRef, gridReg, IncludeBackgroundOption.ONLY, period);
+		tradCalc.setMaxSourceSiteDist(maxDist);
+		
+		watch.reset();
+		watch.start();
+		tradCalc.calcHazardCurves(threads);
+		watch.stop();
+		double tradSecs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+		System.out.println("Quick 1 took "+(float)quickSecs1+" s");
+		System.out.println("Quick 2 took "+(float)quickSecs2+" s");
+		System.out.println("Traditional took "+(float)tradSecs+" s");
+		
+		DiscretizedFunc[] tradCurves = tradCalc.getCurves(0d);
+		
+		DiscretizedFunc avgTrad = avgCurves(tradCurves);
+		DiscretizedFunc avgQuick = avgCurves(quickCurves);
+		System.out.println("Average curves:");
+		System.out.println("X\tYtrad\tYquick\t%diff\tDiff");
+		for (int i=0; i<avgQuick.size(); i++) {
+			double x = avgTrad.getX(i);
+			double y1 = avgTrad.getY(i);
+			double y2 = avgQuick.getY(i);
+			double pDiff = 100d*(y2-y1)/y1;
+			double diff = y2-y1;
+			System.out.println((float)x+"\t"+(float)y1+"\t"+(float)y2+"\t"+(float)pDiff+"\t"+(float)diff);
+		}
+	}
+	
+	private static DiscretizedFunc avgCurves(DiscretizedFunc[] curves) {
+		double[] xVals = new double[curves[0].size()];
+		for (int i=0; i<xVals.length; i++)
+			xVals[i] = curves[0].getX(i);
+		double[] yVals = new double[xVals.length];
+		for (DiscretizedFunc curve : curves) {
+			for (int i=0; i<xVals.length; i++)
+				yVals[i] += curve.getY(i);
+		}
+		
+		double scale = 1d/curves.length;
+		for (int i=0; i<yVals.length; i++)
+			yVals[i] *= scale;
+		
+		return new LightFixedXFunc(xVals, yVals);
 	}
 
 }

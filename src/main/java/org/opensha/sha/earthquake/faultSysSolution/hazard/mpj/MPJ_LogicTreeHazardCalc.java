@@ -112,6 +112,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private GridSourceProvider externalGridProv;
 	private SolHazardMapCalc externalGriddedCurveCalc;
 	
+	private static final int QUICK_NUM_DISCR = 500;
 	private QuickGriddedHazardMapCalc[] quickGridCalcs;
 
 	public MPJ_LogicTreeHazardCalc(CommandLine cmd) throws IOException {
@@ -233,7 +234,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
 			for (int p=0; p<quickGridCalcs.length; p++)
 				quickGridCalcs[p] = new QuickGriddedHazardMapCalc(gmpeRef, periods[p],
-						SolHazardMapCalc.getDefaultXVals(periods[p]), maxDistance, 100);
+						SolHazardMapCalc.getDefaultXVals(periods[p]), maxDistance, QUICK_NUM_DISCR);
 		}
 		
 		if (rank == 0) {
@@ -670,7 +671,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
 					for (int p=0; p<periods.length; p++)
 						quickGridCalcs[p] = new QuickGriddedHazardMapCalc(supplier, periods[p],
-								SolHazardMapCalc.getDefaultXVals(periods[p]), maxDistance, 100);
+								SolHazardMapCalc.getDefaultXVals(periods[p]), maxDistance, QUICK_NUM_DISCR);
 				}
 				debug("Doing quick gridded seismicity calc for "+index);
 				List<DiscretizedFunc[]> curves = new ArrayList<>();
