@@ -33,6 +33,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BPTAveragingTypeOptions;
@@ -51,6 +52,7 @@ import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GaussianMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
@@ -963,6 +965,13 @@ public class FaultSystemSolutionERF extends AbstractNthRupERF {
 		List<FaultSection> data = rupSet.getFaultSectionDataForRupture(fltSystRupIndex);
 		String name = data.size()+" SECTIONS BETWEEN "+data.get(0).getName()+" AND "+data.get(data.size()-1).getName();
 		src.setName("Inversion Src #"+fltSystRupIndex+"; "+name);
+		
+		RupSetTectonicRegimes tectonics = rupSet.getModule(RupSetTectonicRegimes.class);
+		if (tectonics != null) {
+			TectonicRegionType regime = tectonics.get(fltSystRupIndex);
+			if (regime != null)
+				src.setTectonicRegionType(regime);
+		}
 		return src;
 	}
 	

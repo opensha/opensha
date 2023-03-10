@@ -10,6 +10,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.BuildInfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 
 import com.google.common.base.Preconditions;
@@ -42,6 +43,9 @@ public class SolModuleStripper {
 		FaultSystemRupSet inputRupSet = inputSol.getRupSet();
 		
 		FaultSystemRupSet strippedRupSet = FaultSystemRupSet.buildFromExisting(inputRupSet, false).build();
+		RupSetTectonicRegimes tectonics = inputRupSet.getModule(RupSetTectonicRegimes.class);
+		if (tectonics != null)
+			strippedRupSet.addModule(tectonics);
 		SlipAlongRuptureModel slipAlong = inputRupSet.getModule(SlipAlongRuptureModel.class);
 		if (slipAlong != null)
 			strippedRupSet.addModule(slipAlong);
