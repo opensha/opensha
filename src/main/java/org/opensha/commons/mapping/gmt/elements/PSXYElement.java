@@ -3,6 +3,7 @@ package org.opensha.commons.mapping.gmt.elements;
 import java.awt.Color;
 import java.io.Serializable;
 
+import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
 
 public abstract class PSXYElement implements Serializable {
@@ -16,6 +17,8 @@ public abstract class PSXYElement implements Serializable {
 	private Color penColor = Color.BLACK;
 	
 	private Color fillColor = null;
+	
+	private PlotLineType lineType = PlotLineType.SOLID;
 	
 	public PSXYElement() {
 		
@@ -33,7 +36,33 @@ public abstract class PSXYElement implements Serializable {
 		if (penWidth <= 0)
 			return "-W-";
 		
-		return "-W" + penWidth + "p," + GMT_MapGenerator.getGMTColorString(penColor);
+		String str = "-W" + penWidth + "p," + GMT_MapGenerator.getGMTColorString(penColor);
+		if (lineType != PlotLineType.SOLID) {
+			switch (lineType) {
+			case DASHED:
+				str += ",-";
+				break;
+			case DOTTED:
+				str += ",.";
+				break;
+			case DOTTED_AND_DASHED:
+				str += ",-.";
+				break;
+
+			default:
+				throw new IllegalStateException("LineType not supported: "+lineType);
+			}
+		}
+//		System.out.println("Pen: "+str);
+		return str;
+	}
+	
+	public void setLineType(PlotLineType lineType) {
+		this.lineType = lineType;
+	}
+	
+	public PlotLineType getLineType() {
+		return lineType;
 	}
 	
 	public String getFillString() {

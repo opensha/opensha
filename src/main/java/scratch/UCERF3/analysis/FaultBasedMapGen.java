@@ -29,6 +29,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.mapping.gmt.GMT_Map;
 import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
 import org.opensha.commons.mapping.gmt.elements.CoastAttributes;
@@ -1192,6 +1193,10 @@ public class FaultBasedMapGen {
 	}
 	
 	public static ArrayList<PSXYPolygon> getPolygons(LocationList locs, Color c, double thickness) {
+		return getPolygons(locs, c, thickness, PlotLineType.SOLID);
+	}
+	
+	public static ArrayList<PSXYPolygon> getPolygons(LocationList locs, Color c, double thickness, PlotLineType lineType) {
 		ArrayList<PSXYPolygon> polys = new ArrayList<PSXYPolygon>();
 		
 		for (int i=1; i<locs.size(); i++) {
@@ -1205,6 +1210,7 @@ public class FaultBasedMapGen {
 			PSXYPolygon poly = new PSXYPolygon(loc1, loc2);
 			poly.setPenColor(c);
 			poly.setPenWidth(thickness);
+			poly.setLineType(lineType);
 			polys.add(poly);
 		}
 		
