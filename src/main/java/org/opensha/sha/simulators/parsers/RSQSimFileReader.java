@@ -231,7 +231,7 @@ public class RSQSimFileReader {
 					elements.add(elem);
 				}
 			} catch (RuntimeException e) {
-				System.err.println("Offending line: "+line);
+				System.err.println("Error parsing geometry: "+e.getMessage()+"\n\tOffending line: "+line);
 				throw e;
 			}
 			
@@ -357,7 +357,11 @@ public class RSQSimFileReader {
 	private static Location utmToLoc(int longZone, char latZone, double x, double y, double z) {
 		UTM utm = new UTM(longZone, latZone, x, y);
 		WGS84 wgs84 = new WGS84(utm);
-		return new Location(wgs84.getLatitude(), wgs84.getLongitude(), -z/1000d);
+		double lat = wgs84.getLatitude();
+		double lon = wgs84.getLongitude();
+		if (longZone > 50 && lon < 0)
+			lon += 360d;
+		return new Location(lat, lon, -z/1000d);
 	}
 	
 	public static void main(String[] args) throws IOException {

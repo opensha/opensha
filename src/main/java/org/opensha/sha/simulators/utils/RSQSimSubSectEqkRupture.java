@@ -9,45 +9,24 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.simulators.RSQSimEvent;
 
-public class RSQSimSubSectEqkRupture extends EqkRupture {
-	
-	private int eventID;
-	private double timeSeconds;
-	private RSQSimEvent event;
+public class RSQSimSubSectEqkRupture extends RSQSimEqkRupture {
 	private List<? extends FaultSection> subSections;
 	private FaultSection nuclSection;
 	
 	public RSQSimSubSectEqkRupture(double mag, double aveRake, RuptureSurface ruptureSurface, Location hypocenterLocation,
 			int eventID, double timeSeconds, List<? extends FaultSection> subSections, FaultSection nuclSection) {
-		super(mag, aveRake, ruptureSurface, hypocenterLocation);
+		super(mag, aveRake, ruptureSurface, hypocenterLocation, eventID, timeSeconds);
 		
-		this.eventID = eventID;
-		this.timeSeconds = timeSeconds;
 		this.subSections = subSections;
 		this.nuclSection = nuclSection;
 	}
 	
 	public RSQSimSubSectEqkRupture(double mag, double aveRake, RuptureSurface ruptureSurface, Location hypocenterLocation,
 			RSQSimEvent event, List<? extends FaultSection> subSections, FaultSection nuclSection) {
-		super(mag, aveRake, ruptureSurface, hypocenterLocation);
+		super(mag, aveRake, ruptureSurface, hypocenterLocation, event);
 		
-		this.event = event;
-		this.eventID = event.getID();
-		this.timeSeconds = event.getTime();
 		this.subSections = subSections;
 		this.nuclSection = nuclSection;
-	}
-
-	public RSQSimEvent getEvent() {
-		return event;
-	}
-	
-	public int getEventID() {
-		return eventID;
-	}
-	
-	public double getTime() {
-		return timeSeconds;
 	}
 
 	public List<? extends FaultSection> getSubSections() {

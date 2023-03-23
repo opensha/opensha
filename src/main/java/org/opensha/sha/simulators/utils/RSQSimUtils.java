@@ -12,7 +12,9 @@ import java.util.List;
 import java.util.Map;
 
 import org.dom4j.Document;
+import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.exceptions.GMT_MapException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
@@ -35,6 +37,9 @@ import org.opensha.sha.simulators.SimulatorElement;
 import org.opensha.sha.simulators.SimulatorEvent;
 import org.opensha.sha.simulators.TriangularElement;
 import org.opensha.sha.simulators.Vertex;
+import org.opensha.sha.simulators.distCalc.SimEventCumDistFuncSurface;
+import org.opensha.sha.simulators.distCalc.SimRuptureDistCalcUtils.LocationElementDistanceCacheFactory;
+import org.opensha.sha.simulators.distCalc.SimRuptureDistCalcUtils.Scalar;
 import org.opensha.sha.simulators.iden.EventTimeIdentifier;
 import org.opensha.sha.simulators.iden.LogicalAndRupIden;
 import org.opensha.sha.simulators.iden.MagRangeRuptureIdentifier;
@@ -103,6 +108,51 @@ public class RSQSimUtils {
 
 		RSQSimSubSectEqkRupture rup = new RSQSimSubSectEqkRupture(mag, rake, surf, hypo.getCenterLocation(), event,
 				rupSects, mapper.getMappedSection(hypo));
+
+		return rup;
+	}
+	
+	public static double getElemAvgRake(RSQSimEvent event, boolean momentWeighted) {
+		List<SimulatorElement> elems = event.getAllElements();
+		double[] slips = momentWeighted ? event.getAllElementSlips() : null;
+		
+		List<Double> rakes = new ArrayList<>(elems.size());
+		List<Double> weights = momentWeighted ? new ArrayList<>(elems.size()) : null;
+		
+		for (int i=0; i<elems.size(); i++) {
+			SimulatorElement elem = elems.get(i);
+			rakes.add(elem.getFocalMechanism().getRake());
+			if (momentWeighted)
+				weights.add(momentWeighted ? FaultMomentCalc.getMoment(elem.getArea(), slips[i]) : 1d);
+		}
+
+		double rake = momentWeighted ? FaultUtils.getScaledAngleAverage(weights, rakes) : FaultUtils.getAngleAverage(rakes);
+		if (rake > 180)
+			rake -= 360;
+		
+		return rake;
+	}
+
+	public static RSQSimEqkRupture buildCumDistRupture(RSQSimEvent event) {
+		return buildCumDistRupture(event, new LocationElementDistanceCacheFactory());
+	}
+	
+	private static Scalar DIST_WEIGHT_SCALAR = Scalar.MOMENT;
+	private static double DIST_FRACT_THRESHOLD = 0.05;
+	private static double DIST_ABS_THRESHOLD = MagUtils.magToMoment(6d);
+	private static double DIST_X_FRACT_THRESHOLD = 0.1;
+
+	public static RSQSimEqkRupture buildCumDistRupture(RSQSimEvent event, LocationElementDistanceCacheFactory locCacheFactory) {
+		double mag = event.getMagnitude();
+
+		double rake = getElemAvgRake(event, true);
+		
+		RuptureSurface surf = new SimEventCumDistFuncSurface(event, DIST_WEIGHT_SCALAR, DIST_FRACT_THRESHOLD,
+				DIST_ABS_THRESHOLD, DIST_X_FRACT_THRESHOLD, locCacheFactory);
+		
+		SimulatorElement hypo = getHypocenterElem(event);
+
+		RSQSimEqkRupture rup = new RSQSimEqkRupture(mag, rake, surf, hypo.getCenterLocation(), event);
 
 		return rup;
 	}
