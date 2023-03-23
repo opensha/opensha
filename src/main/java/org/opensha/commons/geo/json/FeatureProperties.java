@@ -252,6 +252,26 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		return new Location(lat, lon, depth);
 	}
 	
+	public FeatureProperties getProperties(String name, FeatureProperties defaultValue) {
+		Object val = get(name);
+		if (val == null || !(val instanceof FeatureProperties))
+			return defaultValue;
+		return (FeatureProperties)val;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public List<FeatureProperties> getPropertiesList(String name, List<FeatureProperties> defaultValue) {
+		Object val = get(name);
+		if (val == null || !(val instanceof List<?>))
+			return defaultValue;
+		List<?> list = (List<?>)val;
+		if (!list.isEmpty())
+			for (Object listVal : list)
+				if (listVal != null && !(listVal instanceof FeatureProperties))
+					return defaultValue;
+		return (List<FeatureProperties>)val;
+	}
+	
 	/*
 	 * See: https://github.com/mapbox/simplestyle-spec/tree/master/1.1.0
 	 */
@@ -405,10 +425,29 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			in.endObject();
 			return properties;
 		}
+
+		public FeatureProperties readAfterFirstName(JsonReader in, String name0) throws IOException {
+			FeatureProperties properties = new FeatureProperties(); // linked for insertion order tracking
+			
+			Object value0 = deserialize(in, name0);
+			properties.put(name0, value0);
+			
+			while (in.hasNext()) {
+				String name = in.nextName();
+//				System.out.println("Deserializing "+name);
+				Object value = deserialize(in, name);
+				
+				properties.put(name, value);
+			}
+			
+			in.endObject();
+			return properties;
+		}
 		
 	}
 	
 	private static XYAdapter xyAdapter = new XYAdapter();
+	private static PropertiesAdapter propAdapter = new PropertiesAdapter();
 	
 	/**
 	 * Serializes the given value to the given JsonWriter, which should already have the name set. Numbers
@@ -506,19 +545,34 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			
 //			System.out.println("Now inside: "+in.peek()+", "+in.getPath());
 			
-			if (in.hasNext() && in.nextName().equals("type")) {
-				String type = null;
-				try {
-					type = in.nextString();
-					Class<?> typeClass = Class.forName(type);
-					if (XY_DataSet.class.isAssignableFrom(typeClass)) {
-						XY_DataSet ret = new XY_DataSet.XYAdapter().innerReadAsType(in, (Class<? extends XY_DataSet>)typeClass);
-						in.endObject();
-						return ret;
+			if (in.hasNext()) {
+				String name0 = in.nextName();
+				
+				if (name0.equals("type")) {
+					String type = null;
+					try {
+						type = in.nextString();
+						Class<?> typeClass = Class.forName(type);
+						if (XY_DataSet.class.isAssignableFrom(typeClass)) {
+							XY_DataSet ret = new XY_DataSet.XYAdapter().innerReadAsType(in, (Class<? extends XY_DataSet>)typeClass);
+							in.endObject();
+							return ret;
+						}
+					} catch (Throwable t) {
+						System.err.println("WARNING: couldn't deserialize custom FeatureProperties object with type: "
+								+type+", exception: "+t.getMessage());
 					}
-				} catch (Throwable t) {
-					System.err.println("WARNING: couldn't deserialize custom FeatureProperties object with type: "
-							+type+", exception: "+t.getMessage());
+				} else {
+					// try to deserialize as a FeatureProperties
+					
+					try {
+						FeatureProperties props = propAdapter.readAfterFirstName(in, name0);
+						if (props != null)
+							return props;
+					} catch (Throwable t) {
+						System.err.println("WARNING: couldn't deserialize custom FeatureProperties object as a map: "
+								+t.getMessage());
+					}
 				}
 			}
 			skipUntilPastObject(in, startPath);
