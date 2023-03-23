@@ -172,16 +172,9 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 
 			@Override
 			public NamedFaults call() throws Exception {
-				Gson gson = new GsonBuilder().create();
-				
-				BufferedReader reader = new BufferedReader(
-						new InputStreamReader(NSHM23_FaultModels.class.getResourceAsStream(NAMED_FAULTS_FILE)));
-				Type type = TypeToken.getParameterized(Map.class, String.class,
-						TypeToken.getParameterized(List.class, Integer.class).getType()).getType();
-				Map<String, List<Integer>> namedFaults = gson.fromJson(reader, type);
-				
-				Preconditions.checkState(!namedFaults.isEmpty(), "No named faults found");
-				return new NamedFaults(rupSet, namedFaults);
+				NamedFaults named = NSHM23_FaultModels.this.getNamedFaults();
+				named.setParent(rupSet);
+				return named;
 			}
 		}, NamedFaults.class);
 		rupSet.addAvailableModule(new Callable<RegionsOfInterest>() {
@@ -243,6 +236,20 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 						rupSet, regRegimes, TectonicRegionType.ACTIVE_SHALLOW, 0.5);
 			}
 		}, RupSetTectonicRegimes.class);
+	}
+	
+	@Override
+	public NamedFaults getNamedFaults() {
+		Gson gson = new GsonBuilder().create();
+		
+		BufferedReader reader = new BufferedReader(
+				new InputStreamReader(NSHM23_FaultModels.class.getResourceAsStream(NAMED_FAULTS_FILE)));
+		Type type = TypeToken.getParameterized(Map.class, String.class,
+				TypeToken.getParameterized(List.class, Integer.class).getType()).getType();
+		Map<String, List<Integer>> namedFaults = gson.fromJson(reader, type);
+		
+		Preconditions.checkState(!namedFaults.isEmpty(), "No named faults found");
+		return new NamedFaults(null, namedFaults);
 	}
 	
 	private static UncertainBoundedIncrMagFreqDist getRegionalMFD(Region region, SeismicityRegions seisRegion,

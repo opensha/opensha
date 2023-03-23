@@ -146,32 +146,9 @@ public enum NSHM18_FaultModels implements LogicTreeNode, RupSetFaultModel {
 
 			@Override
 			public NamedFaults call() throws Exception {
-//				Map<String, List<Integer>> map = new HashMap<>();
-//				
-//				// no CA, just do wasatch
-//				HashSet<Integer> wasatchParents = new HashSet<>();
-//				for (FaultSection sect : rupSet.getFaultSectionDataList())
-//					if (sect.getParentSectionName().toLowerCase().contains("wasatch"))
-//						wasatchParents.add(sect.getParentSectionId());
-//				if (!wasatchParents.isEmpty())
-//					map.put("Wasatch", new ArrayList<>(wasatchParents));
-//				
-//				if (map.isEmpty())
-//					return null;
-//				return new NamedFaults(rupSet, map);
-				
-				Gson gson = new GsonBuilder().create();
-				
-				String namedFaultsFile = "/data/erf/nshm18/fault_models/special_faults.json";
-				
-				BufferedReader reader = new BufferedReader(
-						new InputStreamReader(FaultModels.class.getResourceAsStream(namedFaultsFile)));
-				Type type = TypeToken.getParameterized(Map.class, String.class,
-						TypeToken.getParameterized(List.class, Integer.class).getType()).getType();
-				Map<String, List<Integer>> namedFaults = gson.fromJson(reader, type);
-				
-				Preconditions.checkState(!namedFaults.isEmpty(), "No named faults found");
-				return new NamedFaults(rupSet, namedFaults);
+				NamedFaults named = NSHM18_FaultModels.this.getNamedFaults();
+				named.setParent(rupSet);
+				return named;
 			}
 		}, NamedFaults.class);
 		rupSet.addAvailableModule(new Callable<RegionsOfInterest>() {
@@ -211,6 +188,36 @@ public enum NSHM18_FaultModels implements LogicTreeNode, RupSetFaultModel {
 				return new RegionsOfInterest(regions, regionMFDs);
 			}
 		}, RegionsOfInterest.class);
+	}
+	
+	@Override
+	public NamedFaults getNamedFaults() {
+//		Map<String, List<Integer>> map = new HashMap<>();
+//		
+//		// no CA, just do wasatch
+//		HashSet<Integer> wasatchParents = new HashSet<>();
+//		for (FaultSection sect : rupSet.getFaultSectionDataList())
+//			if (sect.getParentSectionName().toLowerCase().contains("wasatch"))
+//				wasatchParents.add(sect.getParentSectionId());
+//		if (!wasatchParents.isEmpty())
+//			map.put("Wasatch", new ArrayList<>(wasatchParents));
+//		
+//		if (map.isEmpty())
+//			return null;
+//		return new NamedFaults(rupSet, map);
+		
+		Gson gson = new GsonBuilder().create();
+		
+		String namedFaultsFile = "/data/erf/nshm18/fault_models/special_faults.json";
+		
+		BufferedReader reader = new BufferedReader(
+				new InputStreamReader(FaultModels.class.getResourceAsStream(namedFaultsFile)));
+		Type type = TypeToken.getParameterized(Map.class, String.class,
+				TypeToken.getParameterized(List.class, Integer.class).getType()).getType();
+		Map<String, List<Integer>> namedFaults = gson.fromJson(reader, type);
+		
+		Preconditions.checkState(!namedFaults.isEmpty(), "No named faults found");
+		return new NamedFaults(null, namedFaults);
 	}
 	
 	/**
