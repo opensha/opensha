@@ -188,6 +188,17 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 	public void setBoundName(String boundName) {
 		this.boundName = boundName;
 	}
+	
+	@Override
+	public UncertainArbDiscFunc deepClone() {
+		UncertainArbDiscFunc ret;
+		if (this.stdDevs == null)
+			ret = new UncertainArbDiscFunc(this.func, lowerFunc.deepClone(), upperFunc.deepClone(), boundType);
+		else
+			ret = new UncertainArbDiscFunc(this.func, lowerFunc.deepClone(), upperFunc.deepClone(), boundType, stdDevs.deepClone());
+		ret.boundName = boundName;
+		return ret;
+	}
 
 	public static class Adapter extends DiscretizedFunc.AbstractAdapter<UncertainArbDiscFunc> {
 		
