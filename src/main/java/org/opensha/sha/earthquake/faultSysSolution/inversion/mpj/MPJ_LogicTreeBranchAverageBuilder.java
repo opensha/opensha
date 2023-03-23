@@ -147,7 +147,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 		return combinations.size();
 	}
 	
-	private String levelPrefix(LogicTreeLevel<?> level) {
+	public static String levelPrefix(LogicTreeLevel<?> level) {
 		String ret = level.getShortName().replaceAll("\\W+", "_");
 		while (ret.contains("__"))
 			ret = ret.replace("__", "_");
