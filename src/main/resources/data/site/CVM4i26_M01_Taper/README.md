@@ -1,6 +1,6 @@
-# CVM-S4.26-M01 Z files
+# CVM-S4.26-M01-Taper Z files
 
-Extracted by Scott Callaghan on 7/27/17, now using the second crossing
+Extracted by Mei-Hui Su on 3/20/23
 
 ## File Format
 
