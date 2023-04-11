@@ -180,7 +180,7 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 	@Override
 	public String getBoundName() {
 		if (boundName == null)
-			getDefaultBoundName();
+			return getDefaultBoundName();
 		return boundName;
 	}
 
