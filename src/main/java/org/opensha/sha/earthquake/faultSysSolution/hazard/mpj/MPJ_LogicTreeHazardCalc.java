@@ -48,6 +48,7 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.LogicTreeCurveAverager;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.QuickGriddedHazardMapCalc;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
@@ -64,6 +65,8 @@ import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
 import com.google.common.primitives.Doubles;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import edu.usc.kmilner.mpj.taskDispatch.AsyncPostBatchHook;
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
@@ -100,6 +103,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	
 	private GriddedRegion gridRegion;
 
+	private File combineWithOtherDir;
+	
 	private String hazardSubDirName;
 	private String combineWithHazardExcludingSubDirName;
 	private String combineWithHazardBGOnlySubDirName;
@@ -228,6 +233,12 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			combineWithHazardBGOnlySubDirName = hazardPrefix+IncludeBackgroundOption.ONLY.name();
 		}
 		
+		if (cmd.hasOption("combine-with-dir")) {
+			combineWithOtherDir = new File(cmd.getOptionValue("combine-with-dir"));
+			if (!combineWithOtherDir.exists())
+				combineWithOtherDir = null;
+		}
+		
 		if (cmd.hasOption("quick-grid-calc") && (gridSeisOp == IncludeBackgroundOption.INCLUDE
 				|| gridSeisOp == IncludeBackgroundOption.ONLY)) {
 			quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
@@ -349,6 +360,17 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
 				Feature.write(feature, writer);
 				out.flush();
+				zout.closeEntry();
+				
+				// write logic tree
+				LogicTree<?> tree = solTree.getLogicTree();
+				entry = new ZipEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
+				zout.putNextEntry(entry);
+				Gson gson = new GsonBuilder().setPrettyPrinting()
+						.registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
+				gson.toJson(tree, LogicTree.class, writer);
+				writer.flush();
+				zout.flush();
 				zout.closeEntry();
 				
 				zout.close();
@@ -511,6 +533,10 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	}
 	
 	protected File getSolDir(LogicTreeBranch<?> branch, boolean mkdir) {
+		return getSolDir(outputDir, branch, mkdir);
+	}
+	
+	private File getSolDir(File outputDir, LogicTreeBranch<?> branch, boolean mkdir) {
 		String dirName = branch.buildFileName();
 		File runDir = new File(outputDir, dirName);
 		Preconditions.checkState(!mkdir || runDir.exists() || runDir.mkdir());
@@ -590,12 +616,19 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			
 			if (calc == null) {
 				// not already done, see if we can load any partial results
+				File combineFromRunDir = runDir;
+				if (combineWithOtherDir != null) {
+					File tmp = getSolDir(combineWithOtherDir, branch, false);
+					if (tmp.exists())
+						combineFromRunDir = tmp;
+				}
+				
 				if (gridSeisOp != IncludeBackgroundOption.EXCLUDE) {
 					// we're calculating with gridded seismicity
 					// lets see if we've already calculated without it
 					
 					if (gridSeisOp != IncludeBackgroundOption.ONLY) {
-						File combineWithSubDir = new File(runDir, combineWithHazardExcludingSubDirName);
+						File combineWithSubDir = new File(combineFromRunDir, combineWithHazardExcludingSubDirName);
 						
 						if (combineWithSubDir.exists()) {
 							debug("Seeing if we can reuse existing curves excluding gridded seismicity from "+combineWithSubDir.getAbsolutePath());
@@ -619,7 +652,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 							if (faultLevels.size() < branch.size()) {
 								// we have gridded seismicity only branches
 								LogicTreeBranch<LogicTreeNode> subBranch = new LogicTreeBranch<>(faultLevels, faultNodes);
-								File subRunDir = getSolDir(subBranch, false);
+								File subRunDir = getSolDir(combineWithOtherDir == null ? runDir : combineWithOtherDir, subBranch, false);
 								File subHazardDir = new File(subRunDir, combineWithHazardExcludingSubDirName);
 								if (subHazardDir.exists()) {
 									try {
@@ -634,7 +667,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					}
 					
 					// now see if we've calculated with background only
-					File combineWithSubDir = new File(runDir, combineWithHazardBGOnlySubDirName);
+					File combineWithSubDir = new File(combineFromRunDir, combineWithHazardBGOnlySubDirName);
 					
 					if (combineWithSubDir.exists()) {
 						debug("Seeing if we can reuse existing curves with only gridded seismicity from "+combineWithSubDir.getAbsolutePath());
@@ -821,6 +854,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				+ "calculations. Can be either a fault system solution, or a zip file containing just a grid source "
 				+ "provider.");
 		ops.addOption("qgc", "quick-grid-calc", false, "Flag to enable quick gridded seismicity calculation.");
+		ops.addOption("cwd", "combine-with-dir", true, "Path to a different directory to serach for pre-computed curves "
+				+ "to draw from.");
 		
 		return ops;
 	}
