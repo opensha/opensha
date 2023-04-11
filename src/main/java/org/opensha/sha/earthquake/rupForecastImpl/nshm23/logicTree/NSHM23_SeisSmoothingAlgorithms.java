@@ -33,8 +33,8 @@ import com.google.common.collect.Table;
 @Affects(GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
 public enum NSHM23_SeisSmoothingAlgorithms implements LogicTreeNode {
 	
-	ADAPTIVE("Adaptive Kernel", "Adaptive", 1d),
-	FIXED("Fixed Kernel", "Fixed", 1d),
+	ADAPTIVE("Adaptive Kernel", "Adaptive", 0.6d),
+	FIXED("Fixed Kernel", "Fixed", 0.4d),
 	AVERAGE("Average", "Average", 0d) {
 		public GriddedGeoDataSet loadXYZ(SeismicityRegions region,
 				NSHM23_DeclusteringAlgorithms declusteringAlg) throws IOException {

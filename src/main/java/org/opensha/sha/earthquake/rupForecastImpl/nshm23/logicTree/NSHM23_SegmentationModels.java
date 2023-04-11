@@ -51,7 +51,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	 * 	* No creeping section segmentation
 	 * 	* Ruptures allowed through creeping section
 	 */
-	NONE("None", "None", 1.0d) {
+	NONE("None", "None", 0.1) {
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			return null;
@@ -70,7 +70,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	 * 	* Ruptures allowed through creeping section
 	 */
 	LOW("Low Segmentation", "LowSeg",
-			1d, // weight
+			0.2, // weight
 			4d, // R0
 			3d) { // shift
 		@Override
@@ -93,7 +93,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	 * 	* Ruptures allowed through creeping section
 	 */
 	MID("Middle Segmentation", "MidSeg",
-			1d, // weight
+			0.3, // weight
 			3d, // R0
 			2d) { // shift
 		@Override
@@ -116,7 +116,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	 * 	* Ruptures prohibited through creeping section
 	 */
 	HIGH("High Segmentation", "HighSeg",
-			1d, // weight
+			0.3, // weight
 			2d, // R0
 			1d) { // shift
 		@Override
@@ -140,7 +140,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	 * 	* Ruptures prohibited through creeping section
 	 */
 	CLASSIC("Classic", "Classic",
-			1d, // weight
+			0.1, // weight
 			2d, // R0
 			1d) { // shift
 		@Override
