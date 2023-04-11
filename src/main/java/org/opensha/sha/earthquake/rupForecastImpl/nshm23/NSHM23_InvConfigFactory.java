@@ -2092,6 +2092,20 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		}
 	}
 	
+	public static class OrigDraftScaling extends NSHM23_InvConfigFactory {
+		
+		public OrigDraftScaling() {
+			NSHM23_ScalingRelationships.ORIGINAL_DRAFT_RELS = true;
+		}
+	}
+	
+	public static class ModScalingAdd4p3 extends NSHM23_InvConfigFactory {
+		
+		public ModScalingAdd4p3() {
+			NSHM23_ScalingRelationships.ORIGINAL_DRAFT_RELS = false;
+		}
+	}
+	
 	public static void main(String[] args) throws IOException {
 //		File dir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
 //				+ "2021_11_24-nshm23_draft_branches-FM3_1/");
