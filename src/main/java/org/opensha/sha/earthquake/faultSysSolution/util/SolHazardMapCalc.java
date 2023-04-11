@@ -388,6 +388,13 @@ public class SolHazardMapCalc {
 							DiscretizedFunc curve = xVals[p].deepClone();
 							for (int i=0; i<curve.size(); i++)
 								curve.set(i, 0d);
+							if (combineWith != null) {
+								// add in
+								DiscretizedFunc oCurve = combineWith.curvesList.get(p)[index];
+								Preconditions.checkNotNull(oCurve, "CombineWith curve is null for period=%s, index=%s",
+										(Double)periods[p], (Integer)index);
+								combineIn(curve, oCurve);
+							}
 							curvesList.get(p)[index] = curve;
 						}
 						track.taskCompleted();
@@ -430,23 +437,27 @@ public class SolHazardMapCalc {
 				DiscretizedFunc oCurve = combineWith.curvesList.get(p)[index];
 				Preconditions.checkNotNull(oCurve, "CombineWith curve is null for period=%s, index=%s",
 						(Double)periods[p], (Integer)index);
-				Preconditions.checkState(oCurve.size() == curve.size());
-				for (int i=0; i<curve.size(); i++) {
-					Point2D pt1 = curve.get(i);
-					Point2D pt2 = oCurve.get(i);
-					Preconditions.checkState((float)pt1.getX() == (float)pt2.getX());
-					if (pt2.getY() > 0) {
-						if (pt1.getY() == 0)
-							curve.set(i, pt2.getY());
-						else
-							curve.set(i, 1d - (1d - pt1.getY())*(1d - pt2.getY()));
-					}
-				}
+				combineIn(curve, oCurve);
 			}
 			
 			ret.add(curve);
 		}
 		return ret;
+	}
+	
+	private static void combineIn(DiscretizedFunc curve, DiscretizedFunc oCurve) {
+		Preconditions.checkState(oCurve.size() == curve.size());
+		for (int i=0; i<curve.size(); i++) {
+			Point2D pt1 = curve.get(i);
+			Point2D pt2 = oCurve.get(i);
+			Preconditions.checkState((float)pt1.getX() == (float)pt2.getX());
+			if (pt2.getY() > 0) {
+				if (pt1.getY() == 0)
+					curve.set(i, pt2.getY());
+				else
+					curve.set(i, 1d - (1d - pt1.getY())*(1d - pt2.getY()));
+			}
+		}
 	}
 	
 	public DiscretizedFunc[] getCurves(double period) {
