@@ -6,6 +6,7 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
+import java.io.BufferedInputStream;
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -83,6 +84,7 @@ import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_LogicTreeHazardCalc;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
@@ -94,6 +96,8 @@ import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnP
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.primitives.Doubles;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.itextpdf.awt.FontMapper;
 import com.itextpdf.awt.PdfGraphics2D;
 import com.itextpdf.text.Document;
@@ -369,6 +373,8 @@ public class LogicTreeHazardCompare {
 		
 		File resultsFile, hazardFile;
 		File compResultsFile, compHazardFile;
+		LogicTree<?> tree = null;
+		LogicTree<?> compTree = null;
 		
 		if (args.length > 0) {
 			// assume CLI instead
@@ -378,6 +384,7 @@ public class LogicTreeHazardCompare {
 			int cnt = 0;
 			resultsFile = new File(args[cnt++]);
 			hazardFile = new File(args[cnt++]);
+			tree = loadTreeFromResults(hazardFile);
 			mainName = args[cnt++];
 			if (args.length > 4) {
 				if (args[cnt].toLowerCase().trim().equals("null")) {
@@ -387,6 +394,7 @@ public class LogicTreeHazardCompare {
 					compResultsFile = new File(args[cnt++]);
 				}
 				compHazardFile = new File(args[cnt++]);
+				compTree = loadTreeFromResults(compHazardFile);
 				compName = args[cnt++];
 			} else {
 				compResultsFile = null;
@@ -419,7 +427,9 @@ public class LogicTreeHazardCompare {
 //		double spacing = 0.1;
 //		double spacing = 0.25;
 		
-		LogicTree<?> tree = solTree.getLogicTree();
+		if (tree == null)
+			tree = solTree.getLogicTree();
+		
 		if (subsetNodes != null)
 			tree = tree.matchingAll(subsetNodes);
 		if (currentWeights)
@@ -436,14 +446,13 @@ public class LogicTreeHazardCompare {
 			
 			if (compHazardFile != null) {
 				SolutionLogicTree compSolTree;
-				LogicTree<?> compTree;
 				if (compResultsFile == null) {
 					// just have an average hazard result, possibly an external ERF
 					compSolTree = null;
-					compTree = null;
 				} else {
 					compSolTree = SolutionLogicTree.load(compResultsFile);
-					compTree = compSolTree.getLogicTree();
+					if (compTree == null)
+						compTree = compSolTree.getLogicTree();
 					if (compSubsetNodes != null)
 						compTree = compTree.matchingAll(compSubsetNodes);
 					if (compCurrentWeights)
@@ -475,6 +484,19 @@ public class LogicTreeHazardCompare {
 				"Flag to disable logic tree calculations and only focus on top level maps and comparisions.");
 		
 		return ops;
+	}
+	
+	private static LogicTree<?> loadTreeFromResults(File resultsFile) throws IOException {
+		ZipFile zip = new ZipFile(resultsFile);
+		
+		ZipEntry entry = zip.getEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
+		if (entry == null)
+			return null;
+		
+		BufferedInputStream logicTreeIS = new BufferedInputStream(zip.getInputStream(entry));
+		Gson gson = new GsonBuilder().registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
+		InputStreamReader reader = new InputStreamReader(logicTreeIS);
+		return gson.fromJson(reader, LogicTree.class);
 	}
 	
 	private ReturnPeriods[] rps;
