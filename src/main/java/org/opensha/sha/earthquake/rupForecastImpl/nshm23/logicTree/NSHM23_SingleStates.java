@@ -48,7 +48,8 @@ public enum NSHM23_SingleStates implements LogicTreeNode {
 	UT("Utah"),
 	CO("Colorado"),
 	NM("New Mexico"),
-	AZ("Arizona");
+	AZ("Arizona"),
+	TX("Texas");
 	
 	public static boolean INCLUDE_SECONDARY = true;
 	
