@@ -436,21 +436,42 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					}
 				}, PaleoseismicConstraintData.class);
 			} else {
-				// NSHM23 paleo data
-				rupSet.offerAvailableModule(new Callable<PaleoseismicConstraintData>() {
+				if (fm instanceof NSHM18_FaultModels) {
+					// NSHM18
+					// NSHM23 paleo data
+					rupSet.offerAvailableModule(new Callable<PaleoseismicConstraintData>() {
 
-					@Override
-					public PaleoseismicConstraintData call() throws Exception {
-						double prevDistOtherContained = NSHM23_PaleoDataLoader.LOC_MAX_DIST_OTHER_CONTAINED;
-						if (fm instanceof NSHM18_FaultModels)
-							// loosen things up a bit to get better mappings for the older fault model
-							NSHM23_PaleoDataLoader.LOC_MAX_DIST_OTHER_CONTAINED = 5d;
-						PaleoseismicConstraintData ret = NSHM23_PaleoDataLoader.load(rupSet);
-						if (fm instanceof NSHM18_FaultModels)
-							NSHM23_PaleoDataLoader.LOC_MAX_DIST_OTHER_CONTAINED = prevDistOtherContained;
-						return ret;
-					}
-				}, PaleoseismicConstraintData.class);
+						@Override
+						public PaleoseismicConstraintData call() throws Exception {
+							PaleoseismicConstraintData ret;
+							if (NSHM18_FaultModels.USE_NEW_PALEO_DATA) {
+								double prevDistOtherContained = NSHM23_PaleoDataLoader.LOC_MAX_DIST_OTHER_CONTAINED;
+								// loosen things up a bit to get better mappings for the older fault model
+								NSHM23_PaleoDataLoader.LOC_MAX_DIST_OTHER_CONTAINED = 5d;
+								ret = NSHM23_PaleoDataLoader.load(rupSet);
+								NSHM23_PaleoDataLoader.LOC_MAX_DIST_OTHER_CONTAINED = prevDistOtherContained;
+							} else {
+								// UCERF3 paleo data
+								ret = PaleoseismicConstraintData.loadUCERF3(rupSet);
+								if (!NSHM23_PaleoDataLoader.INCLUDE_U3_PALEO_SLIP) {
+									// clear out paleo slip data
+									ret = new PaleoseismicConstraintData(rupSet,
+											ret.getPaleoRateConstraints(), ret.getPaleoProbModel(), null, null);
+								}
+							}
+							return ret;
+						}
+					}, PaleoseismicConstraintData.class);
+				} else {
+					// NSHM23 paleo data
+					rupSet.offerAvailableModule(new Callable<PaleoseismicConstraintData>() {
+
+						@Override
+						public PaleoseismicConstraintData call() throws Exception {
+							return NSHM23_PaleoDataLoader.load(rupSet);
+						}
+					}, PaleoseismicConstraintData.class);
+				}
 				
 				// regular system-wide minimum magnitudes
 				if (MIN_MAG_FOR_SEISMOGENIC_RUPS > 0) {
@@ -2103,6 +2124,13 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		public ModScalingAdd4p3() {
 			NSHM23_ScalingRelationships.ORIGINAL_DRAFT_RELS = false;
+		}
+	}
+	
+	public static class NSHM18_UseU3Paleo extends NSHM23_InvConfigFactory {
+		
+		public NSHM18_UseU3Paleo() {
+			NSHM18_FaultModels.USE_NEW_PALEO_DATA = false;
 		}
 	}
 	

@@ -91,6 +91,8 @@ public enum NSHM18_FaultModels implements LogicTreeNode, RupSetFaultModel {
 	
 	public static final String NSHM18_SECTS_PATH = "/data/erf/nshm18/fault_models/geol_fm_2018.geojson";
 	
+	public static boolean USE_NEW_PALEO_DATA = true;
+	
 	private String name;
 	private String shortName;
 	private RupSetDeformationModel defaultDM;
