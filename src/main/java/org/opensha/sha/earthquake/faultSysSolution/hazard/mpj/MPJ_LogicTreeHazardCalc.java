@@ -590,10 +590,12 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			
 			debug("Loading index "+index+": "+branch);
 			
-			FaultSystemSolution sol = solTree.forBranch(branch);
+			FaultSystemSolution sol = null;
 			
-			if (gridRegion == null)
+			if (gridRegion == null) {
+				sol = solTree.forBranch(branch);
 				gridRegion = detectRegion(sol);
+			}
 			
 			File runDir = getSolDir(branch);
 			
@@ -682,6 +684,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				if (combineWithOnlyCurves == null && externalGridProv != null) {
 					// external grid source provider calculation
 					if (externalGriddedCurveCalc == null) {
+						if (sol == null)
+							sol = solTree.forBranch(branch);
 						// first time, calculate them
 						debug("Calculating external grid source provider curves (will only do this once)");
 						
@@ -701,6 +705,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				}
 				
 				if (quickGridCalcs != null && combineWithOnlyCurves == null) {
+					if (sol == null)
+						sol = solTree.forBranch(branch);
 					Supplier<ScalarIMR> supplier = getGMM_Supplier(branch, gmpeRef);
 					QuickGriddedHazardMapCalc[] quickGridCalcs = this.quickGridCalcs;
 					if (supplier != gmpeRef) {
@@ -762,6 +768,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			}
 			
 			if (calc == null) {
+				if (sol == null)
+					sol = solTree.forBranch(branch);
 				Supplier<ScalarIMR> gmpeSupplier = getGMM_Supplier(branch, gmpeRef);
 				ScalarIMR gmpe = gmpeSupplier.get();
 				String paramStr = "";
