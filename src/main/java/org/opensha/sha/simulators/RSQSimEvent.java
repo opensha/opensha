@@ -45,5 +45,14 @@ public class RSQSimEvent extends SimulatorEvent {
 	public double getNextEventTime() {
 		return nextEventTime;
 	}
+	
+	public RSQSimEvent cloneNewTime(double timeSeconds, int newID) {
+		RSQSimEvent o = new RSQSimEvent(records);
+		o.time = timeSeconds;
+		o.event_id = newID;
+		o.magnitude = magnitude;
+		o.duration = duration;
+		return o;
+	}
 
 }
