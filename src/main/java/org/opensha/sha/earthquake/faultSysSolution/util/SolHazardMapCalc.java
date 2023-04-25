@@ -117,7 +117,7 @@ public class SolHazardMapCalc {
 	public enum ReturnPeriods {
 		TWO_IN_50(0.02, 50d, "2% in 50 year"),
 		TEN_IN_50(0.1, 50d, "10% in 50 year"),
-		FIFTY_IN_50(0.4, 50d, "40% in 50 year");
+		FORTY_IN_50(0.4, 50d, "40% in 50 year");
 		
 		public final double refProb;
 		public final double refDuration;
