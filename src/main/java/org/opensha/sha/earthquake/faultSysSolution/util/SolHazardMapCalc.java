@@ -123,12 +123,14 @@ public class SolHazardMapCalc {
 		public final double refDuration;
 		public final String label;
 		public final double oneYearProb;
+		public final double returnPeriod;
 
 		private ReturnPeriods(double refProb, double refDuration, String label) {
 			this.refProb = refProb;
 			this.refDuration = refDuration;
 			this.label = label;
 			this.oneYearProb = ReturnPeriodUtils.calcExceedanceProb(refProb, refDuration, 1d);
+			this.returnPeriod = ReturnPeriodUtils.calcReturnPeriod(refProb, refDuration);
 		}
 	}
 
