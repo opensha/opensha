@@ -465,7 +465,7 @@ public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 		HeadlessGraphPanel gp = PlotUtils.initHeadless();
 		gp.drawGraphPanel(plot, true, true, range, range);
 		
-		PlotUtils.writePlots(outputDir, prefix, gp, 800, false, true, false, false);
+		PlotUtils.writePlots(outputDir, prefix, gp, 800, false, true, true, false);
 		
 		return new File(outputDir, prefix+".png");
 	}
