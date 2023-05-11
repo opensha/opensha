@@ -1876,7 +1876,7 @@ public class SegmentationCalculator {
 			ret[m] = new File(outputDir, myPrefix+".png");
 			gp.getChartPanel().setSize(width, height);
 			gp.saveAsPNG(ret[m].getAbsolutePath());
-			if (WRITE_PDFS)
+//			if (WRITE_PDFS)
 				gp.saveAsPDF(ret[m].getAbsolutePath().replace(".png", ".pdf"));
 			if (!logY && csv != null)
 				csv.writeToFile(new File(outputDir, myPrefix+".csv"));
