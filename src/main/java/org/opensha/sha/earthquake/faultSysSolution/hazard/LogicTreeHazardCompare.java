@@ -371,6 +371,9 @@ public class LogicTreeHazardCompare {
 		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, LogicTreeHazardCompare.class);
 		args = cmd.getArgs();
 		
+		if (cmd.hasOption("write-pdfs"))
+			SolHazardMapCalc.PDFS = true;
+		
 		File resultsFile, hazardFile;
 		File compResultsFile, compHazardFile;
 		LogicTree<?> tree = null;
@@ -482,6 +485,7 @@ public class LogicTreeHazardCompare {
 		
 		ops.addOption("slt", "skip-logic-tree", false,
 				"Flag to disable logic tree calculations and only focus on top level maps and comparisions.");
+		ops.addOption("pdf", "write-pdfs", false, "Flag to write PDFs of top level maps");
 		
 		return ops;
 	}
