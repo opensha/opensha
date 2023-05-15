@@ -455,8 +455,8 @@ public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 			funcs.add(oneToOne);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLACK));
 		} else {
-			funcs.set(0, oneToOne);
-			chars.set(0, new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLACK));
+			funcs.add(0, oneToOne);
+			chars.add(0, new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLACK));
 		}
 		
 		PlotSpec plot = new PlotSpec(funcs, chars, title, "Paleoseismic Data Recurrence Rate (/yr)", yAxisLabel);
