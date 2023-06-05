@@ -5,12 +5,14 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.math3.stat.StatUtils;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -19,18 +21,24 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.Constra
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.LaplacianSmoothingInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModels;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RelativeBValueConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.RupRateMinimizationConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.RateCombiner;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateSegmentationConstraint.Shaw07JumpDistSegModel;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.TotalRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -103,178 +111,135 @@ public class Inversions {
 	private static Options createOptions() {
 		Options ops = InversionConfiguration.createSAOptions();
 
-		Option rupSetOption = new Option("rs", "rupture-set", true,
+		ops.addRequiredOption("rs", "rupture-set", true,
 				"Path to Rupture Set zip file.");
-		rupSetOption.setRequired(true);
-		ops.addOption(rupSetOption);
 
-		Option outputOption = new Option("o", "output-file", true,
+		ops.addRequiredOption("o", "output-file", true,
 				"Path where output Solution zip file will be written.");
-		outputOption.setRequired(true);
-		ops.addOption(outputOption);
 
-		Option writeConfig = new Option("wcj", "write-config-json", true,
+		ops.addOption("wcj", "write-config-json", true,
 				"Path to write inversion configuration JSON");
-		writeConfig.setRequired(false);
-		ops.addOption(writeConfig);
 		
 		/*
 		 * Constraints
 		 */
 		// slip rate constraint
 
-		Option slipConstraint = new Option("sl", "slip-constraint", false, "Enables the slip-rate constraint.");
-		slipConstraint.setRequired(false);
-		ops.addOption(slipConstraint);
+		ops.addOption("sl", "slip-constraint", false, "Enables the slip-rate constraint.");
 
-		Option slipWeight = new Option("sw", "slip-weight", true, "Sets weight for the regular (un-normalized) slip-rate constraint.");
-		slipWeight.setRequired(false);
-		ops.addOption(slipWeight);
+		ops.addOption("sw", "slip-weight", true, "Sets weight for the regular (un-normalized) slip-rate constraint.");
 
-		Option normSlipWeight = new Option("nsw", "norm-slip-weight", true, "Sets weight for the normalized slip-rate constraint.");
-		normSlipWeight.setRequired(false);
-		ops.addOption(normSlipWeight);
-
-		Option uncertSlipWeight = new Option("usw", "uncertain-slip-weight", true,
+		ops.addOption(null, "norm-slip-weight", true, "Sets weight for the normalized slip-rate constraint.");
+		
+		ops.addOption(null, "uncertain-slip-weight", true,
 				"Sets weight for the uncertaintly-normalized slip-rate constraint.");
-		uncertSlipWeight.setRequired(false);
-		ops.addOption(uncertSlipWeight);
 
 		// MFD constraint
 
-		Option mfdConstraint = new Option("mfd", "mfd-constraint", false, "Enables the MFD constraint. "
+		ops.addOption("mfd", "mfd-constraint", false, "Enables the MFD constraint. "
 				+ "Must supply either --infer-target-gr or --mfd-total-rate, or Rupture Set must have "
 				+ "InversionTargetMFDs module already attached.");
-		mfdConstraint.setRequired(false);
-		ops.addOption(mfdConstraint);
 
-		Option mfdWeight = new Option("mw", "mfd-weight", true, "Sets weight for the MFD constraint.");
-		mfdWeight.setRequired(false);
-		ops.addOption(mfdWeight);
+		ops.addOption("mw", "mfd-weight", true, "Sets weight for the MFD constraint.");
 
-		Option mfdFromSlip = new Option("itgr", "infer-target-gr", false,
+		ops.addOption(null, "infer-target-gr", false,
 				"Flag to infer target MFD as a G-R from total deformation model moment rate.");
-		mfdFromSlip.setRequired(false);
-		ops.addOption(mfdFromSlip);
 
-		Option grB = new Option("b", "b-value", true, "Gutenberg-Richter b-value.");
-		grB.setRequired(false);
-		ops.addOption(grB);
+		ops.addOption("b", "b-value", true, "Gutenberg-Richter b-value.");
 
-		Option mfdTotRate = new Option("mtr", "mfd-total-rate", true, "Total (cumulative) rate for the MFD constraint. "
+		ops.addOption(null, "mfd-total-rate", true, "Total (cumulative) rate for the MFD constraint. "
 				+ "By default, this will apply to the minimum magnitude from the rupture set, but another magnitude can "
 				+ "be supplied with --mfd-min-mag");
-		mfdTotRate.setRequired(false);
-		ops.addOption(mfdTotRate);
 
-		Option mfdMinMag = new Option("mmm", "mfd-min-mag", true, "Minimum magnitude for the MFD constraint "
+		ops.addOption(null, "mfd-min-mag", true, "Minimum magnitude for the MFD constraint "
 				+ "(default is minimum magnitude of the rupture set), used with --mfd-total-rate.");
-		mfdMinMag.setRequired(false);
-		ops.addOption(mfdMinMag);
 
-		// TODO add to docs
-		Option mfdIneq = new Option("min", "mfd-ineq", false, "Flag to configure MFD constraints as inequality rather "
+		ops.addOption(null, "mfd-ineq", false, "Flag to configure MFD constraints as inequality rather "
 				+ "than equality constraints. Used in conjunction with --mfd-constraint. Use --mfd-transition-mag "
 				+ "instead if you want to transition from equality to inequality constraints.");
-		mfdIneq.setRequired(false);
-		ops.addOption(mfdIneq);
 
-		// TODO add to docs
-		Option mfdTransMag = new Option("mtm", "mfd-transition-mag", true, "Magnitude at and above which the mfd "
+		ops.addOption(null, "mfd-transition-mag", true, "Magnitude at and above which the mfd "
 				+ "constraint should be applied as a inequality, allowing a natural taper (default is equality only).");
-		mfdTransMag.setRequired(false);
-		ops.addOption(mfdTransMag);
 
-		// TODO: add to docs
-		Option relGRConstraint = new Option("rgr", "rel-gr-constraint", false, "Enables the relative Gutenberg-Richter "
+		ops.addOption(null, "rel-gr-constraint", false, "Enables the relative Gutenberg-Richter "
 				+ "constraint, which constraints the overal MFD to be G-R withought constraining the total event rate. "
 				+ "The b-value will default to 1, override with --b-value <vlalue>. Set constraint weight with "
 				+ "--mfd-weight <weight>, or configure as an inequality with --mfd-ineq.");
-		relGRConstraint.setRequired(false);
-		ops.addOption(relGRConstraint);
+		
+		// paleo data constraint
+		
+		ops.addOption("paleo", "paleo-constraint", false, "Enables the paleoseismic data constraint. Must supply "
+				+ "--paleo-data, or rupture set must already have a PaleoseismicConstraintData module attached. See "
+				+ "also --paleo-prob-model.");
+		
+		ops.addOption(null, "paleo-data", true, "Paleoseismic data CSV file. Format must be as follows (including a "
+				+ "header row with column names, although those names are not tested to exactly match those that follow). "
+				+ "If values are omitted (or are negative) for 'Subsection Index', the closest subsection to each site "
+				+ "location will be mapped automatically. CSV File columns: "
+				+ "Site Name, Subsection Index, Latitude, Longitude, Rate, Rate Std Dev");
+		
+		ops.addOption(null, "paleo-prob-model", false, "Paleoseismic probability of detection model, one of: "
+				+FaultSysTools.enumOptions(PaleoProbabilityModels.class)+", default: "+PaleoProbabilityModels.DEFAULT.name());
+
+		ops.addOption(null, "paleo-weight", true, "Sets weight for the paleoseismic datat constraint.");
 
 		// event rate constraint
 
-		Option eventRateConstraint = new Option("er", "event-rate-constraint", true, "Enables the total event-rate constraint"
+		ops.addOption(null, "event-rate-constraint", true, "Enables the total event-rate constraint"
 				+ " with the supplied total event rate");
-		eventRateConstraint.setRequired(false);
-		ops.addOption(eventRateConstraint);
 
-		Option erWeight = new Option("erw", "event-rate-weight", true, "Sets weight for the event-rate constraint.");
-		erWeight.setRequired(false);
-		ops.addOption(erWeight);
+		ops.addOption(null, "event-rate-weight", true, "Sets weight for the event-rate constraint.");
 
-		// segmentation constraint
+		// segmentation constraint TODO redo
 
-		Option slipSegConstraint = new Option("seg", "slip-seg-constraint", false,
+		ops.addOption(null, "slip-seg-constraint", false,
 				"Enables the slip-rate segmentation constraint.");
-		slipSegConstraint.setRequired(false);
-		ops.addOption(slipSegConstraint);
 
-		Option normSlipSegConstraint = new Option("nseg", "norm-slip-seg-constraint", false,
+		ops.addOption(null, "norm-slip-seg-constraint", false,
 				"Enables the normalized slip-rate segmentation constraint.");
-		normSlipSegConstraint.setRequired(false);
-		ops.addOption(normSlipSegConstraint);
-
-		Option netSlipSegConstraint = new Option("ntseg", "net-slip-seg-constraint", false,
+		
+		ops.addOption(null, "net-slip-seg-constraint", false,
 				"Enables the net (distance-binned) slip-rate segmentation constraint.");
-		netSlipSegConstraint.setRequired(false);
-		ops.addOption(netSlipSegConstraint);
 
-		Option slipSegIneq = new Option("segi", "slip-seg-ineq", false,
+		ops.addOption(null, "slip-seg-ineq", false,
 				"Flag to make segmentation constraints an inequality constraint (only applies if segmentation rate is exceeded).");
-		slipSegIneq.setRequired(false);
-		ops.addOption(slipSegIneq);
 
-		Option segR0 = new Option("r0", "shaw-r0", true,
+		ops.addOption("r0", "shaw-r0", true,
 				"Sets R0 in the Shaw (2007) jump-distance probability model in km"
 						+ " (used for segmentation constraint). Default: "+(float)Shaw07JumpDistProb.R0_DEFAULT);
-		segR0.setRequired(false);
-		ops.addOption(segR0);
-
-		Option slipSegWeight = new Option("segw", "slip-seg-weight", true,
+		
+		ops.addOption(null, "slip-seg-weight", true,
 				"Sets weight for the slip-rate segmentation constraint.");
-		slipSegWeight.setRequired(false);
-		ops.addOption(slipSegWeight);
 
 		// minimization constraint
 
 		// TODO add to docs
-		Option minimizeBelowMin = new Option("mbs", "minimize-below-sect-min", false,
+		ops.addOption(null, "minimize-below-sect-min", false,
 				"Flag to enable the minimzation constraint for rupture sets that have modified section minimum magnitudes."
 						+ " If enabled, rates for all ruptures below those minimum magnitudes will be minimized.");
-		minimizeBelowMin.setRequired(false);
-		ops.addOption(minimizeBelowMin);
 
 		// TODO add to docs
-		Option mwWeight = new Option("mw", "minimize-weight", true, "Sets weight for the minimization constraint.");
-		mwWeight.setRequired(false);
-		ops.addOption(mwWeight);
+		ops.addOption(null, "minimize-weight", true, "Sets weight for the minimization constraint.");
 
-		// smooth constraint
+		// smoothness constraint
 
-		Option smooth = new Option("sm", "smooth", false,
+		ops.addOption(null, "smooth", false,
 				"Flag to enable the Laplacian smoothness constraint that smooths supra-seismogenic participation rates "
 				+ "along adjacent subsections on a parent section.");
-		smooth.setRequired(false);
-		ops.addOption(smooth);
+		
+		ops.addOption(null, "paleo-smooth", false, "Enables the Laplacian smoothness constraint (see --smooth), but only "
+				+ "for faults with paleoseismic constraints.");
 
-		Option smoothWeight = new Option("smw", "smooth-weight", true, "Sets weight for the smoothness constraint.");
-		smoothWeight.setRequired(false);
-		ops.addOption(smoothWeight);
+		ops.addOption(null, "smooth-weight", true, "Sets weight for the smoothness constraint.");
 		
 		// external configuration
 		
-		Option configOp = new Option("cfg", "config-json", true,
+		ops.addOption("cfg", "config-json", true,
 				"Path to a JSON file containing a full inversion configuration, as an alternative to using "
 				+ "command line options.");
-		configOp.setRequired(false);
-		ops.addOption(configOp);
 		
-		Option constraintsOp = new Option("cnstr", "constraints-json", true,
+		ops.addOption("cnstr", "constraints-json", true,
 				"Path to a JSON file containing inversion constraints that should be included.");
-		constraintsOp.setRequired(false);
-		ops.addOption(constraintsOp);
 		
 		return ops;
 	}
@@ -425,6 +390,39 @@ public class Inversions {
 			constraints.add(new TotalRateInversionConstraint(weight, targetEventRate));
 		}
 		
+		if (cmd.hasOption("paleo-constraint")) {
+			double weight = 1d;
+			
+			if (cmd.hasOption("paleo-weight"))
+				weight = Double.parseDouble(cmd.getOptionValue("paleo-weight"));
+			
+			PaleoseismicConstraintData paleoData;
+			
+			if (cmd.hasOption("paleo-data")) {
+				File csvFile = new File(cmd.getOptionValue("paleo-data"));
+				CSVFile<String> csv = CSVFile.readFile(csvFile, true);
+				
+				PaleoProbabilityModels modelChoice = PaleoProbabilityModels.DEFAULT;
+				if (cmd.hasOption("paleo-prob-model"))
+					modelChoice = PaleoProbabilityModels.valueOf(cmd.getOptionValue("paleo-prob-model"));
+				paleoData = PaleoseismicConstraintData.fromSimpleCSV(rupSet, csv, modelChoice.get());
+				rupSet.addModule(paleoData);
+			} else {
+				Preconditions.checkArgument(rupSet.hasModule(PaleoseismicConstraintData.class),
+						"Must supply --paleo-data if PaleoseismicConstraintData module not attached to rupture set and "
+						+ "--paleo-constraint enabled.");
+				Preconditions.checkArgument(!cmd.hasOption("paleo-prob-model"), "Cannot supply paleoseismic probably "
+						+ "model when using already attached paleo data.");
+				paleoData = rupSet.requireModule(PaleoseismicConstraintData.class);
+			}
+			
+			constraints.add(new PaleoRateInversionConstraint(rupSet, weight,
+					paleoData.getPaleoRateConstraints(), paleoData.getPaleoProbModel()));
+			if (paleoData.getPaleoSlipConstraints() != null && !paleoData.getPaleoSlipConstraints().isEmpty())
+				System.err.println("WARNING: rupture set has paleo slip constraints, which are not supported via the "
+						+ "command line inversion configuration, skipping");
+		}
+		
 		if (cmd.hasOption("slip-seg-constraint") || cmd.hasOption("norm-slip-seg-constraint")
 				|| cmd.hasOption("net-slip-seg-constraint")) {
 			System.out.println("Adding slip rate segmentation constraints");
@@ -476,13 +474,26 @@ public class Inversions {
 			constraints.add(new RupRateMinimizationConstraint(weight, belowMinIndexes));
 		}
 		
-		if (cmd.hasOption("smooth")) {
+		if (cmd.hasOption("smooth") || cmd.hasOption("paleo-smooth")) {
 			double weight = 1d;
 			if (cmd.hasOption("smooth-weight"))
 				weight = Double.parseDouble(cmd.getOptionValue("smooth-weight"));
 			
-			System.out.println("Enabling Laplacian smoothness constraint");
-			constraints.add(new LaplacianSmoothingInversionConstraint(rupSet, weight));
+			if (cmd.hasOption("paleo-smooth")) {
+				// only at paleo sites
+				Preconditions.checkArgument(rupSet.hasModule(PaleoseismicConstraintData.class),
+						"Can't smooth at paleo sites if no paleo data attached");
+				PaleoseismicConstraintData paleoData = rupSet.requireModule(PaleoseismicConstraintData.class);
+				HashSet<Integer> parentIDs = new HashSet<>();
+				for (SectMappedUncertainDataConstraint constr: paleoData.getPaleoRateConstraints())
+					parentIDs.add(rupSet.getFaultSectionData(constr.sectionIndex).getParentSectionId());
+				System.out.println("Enabling Laplacian smoothness constraint for "+parentIDs.size()+" parent fault sections");
+				constraints.add(new LaplacianSmoothingInversionConstraint(rupSet, weight, parentIDs));
+			} else {
+				// everywhere
+				System.out.println("Enabling Laplacian smoothness constraint");
+				constraints.add(new LaplacianSmoothingInversionConstraint(rupSet, weight));
+			}
 		}
 		
 		if (cmd.hasOption("constraints-json")) {
@@ -495,6 +506,7 @@ public class Inversions {
 	}
 
 	public static void main(String[] args) {
+//		args = new String[0]; // to force it to print help
 		try {
 			run(args);
 		} catch (Exception e) {

@@ -138,7 +138,7 @@ public class NSHM23_PaleoDataLoader {
 			
 			FaultSection mappedSect = null;
 			if (subSects != null) {
-				mappedSect = findMatchingSect(loc, subSects,
+				mappedSect = PaleoseismicConstraintData.findMatchingSect(loc, subSects,
 						LOC_MAX_DIST_NONE_CONTAINED, LOC_MAX_DIST_OTHER_CONTAINED, LOC_MAX_DIST_CONTAINED);
 				if (mappedSect == null) {
 					System.err.println("WARNING: no matching fault section found for paleo site "+name+" at "+lat+", "+lon);
@@ -197,7 +197,7 @@ public class NSHM23_PaleoDataLoader {
 				
 				FaultSection mappedSect = null;
 				if (subSects != null) {
-					mappedSect = findMatchingSect(loc, subSects,
+					mappedSect = PaleoseismicConstraintData.findMatchingSect(loc, subSects,
 							LOC_MAX_DIST_NONE_CONTAINED, LOC_MAX_DIST_OTHER_CONTAINED, LOC_MAX_DIST_CONTAINED);
 					if (mappedSect == null) {
 						System.err.println("WARNING: no matching fault section found for paleo site "+name+" at "+lat+", "+lon);
@@ -257,7 +257,7 @@ public class NSHM23_PaleoDataLoader {
 			
 			FaultSection mappedSect = null;
 			if (wasatchSubSects != null) {
-				mappedSect = findMatchingSect(loc, wasatchSubSects,
+				mappedSect = PaleoseismicConstraintData.findMatchingSect(loc, wasatchSubSects,
 						LOC_MAX_DIST_NONE_CONTAINED, LOC_MAX_DIST_OTHER_CONTAINED, LOC_MAX_DIST_CONTAINED);
 				if (mappedSect == null) {
 					System.err.println("WARNING: no matching fault section found for paleo site "+name+" at "+lat+", "+lon);
@@ -291,116 +291,9 @@ public class NSHM23_PaleoDataLoader {
 		return false;
 	}
 	
-	// filter sections to actually check with cartesian distances in KM
-	private static final double LOC_CHECK_DEGREE_TOLERANCE = 3d;
-	private static final double LOC_CHECK_DEGREE_TOLERANCE_SQ = LOC_CHECK_DEGREE_TOLERANCE*LOC_CHECK_DEGREE_TOLERANCE;
-	
 	public static double LOC_MAX_DIST_NONE_CONTAINED = 40d; // large for offshore noyo site
 	public static double LOC_MAX_DIST_OTHER_CONTAINED = 1d; // small, must be really close to override a fault that contains it
 	public static final double LOC_MAX_DIST_CONTAINED = 20d; // allows comptom mapping
-	
-	/**
-	 * 
-	 * @param loc
-	 * @param subSects
-	 * @param maxDistNoneContained maximum distance to search if site not contained in the surface project of any fault
-	 * @param maxDistOtherContained maximum distance to search if site is contained by a fault, but another trace is closer
-	 * @param maxDistContained maximum distance to search to the trace of a fault whose surface projection contains this site
-	 * @return
-	 */
-	private static FaultSection findMatchingSect(Location loc, List<? extends FaultSection> subSects,
-			double maxDistNoneContained, double maxDistOtherContained, double maxDistContained) {
-		List<FaultSection> candidates = new ArrayList<>();
-		List<FaultSection> containsCandidates = new ArrayList<>();
-		
-		Map<FaultSection, Double> candidateDists = new HashMap<>();
-		
-		for (FaultSection sect : subSects) {
-			// first check cartesian distance
-			boolean candidate = false;
-			for (Location traceLoc : sect.getFaultTrace()) {
-				double latDiff = loc.getLatitude() - traceLoc.getLatitude();
-				double lonDiff = loc.getLongitude() - traceLoc.getLongitude();
-				if (latDiff*latDiff + lonDiff*lonDiff < LOC_CHECK_DEGREE_TOLERANCE_SQ) {
-					candidate = true;
-					break;
-				}
-			}
-			if (candidate) {
-				candidates.add(sect);
-				double dist = sect.getFaultTrace().minDistToLine(loc);
-				candidateDists.put(sect, dist);
-				// see if this fault contains it
-				if (sect.getAveDip() < 89d) {
-					LocationList perim = new LocationList();
-//					perim.addAll(sect.getFaultSurface(1d).getPerimeter());
-					perim.addAll(sect.getFaultSurface(1d).getEvenlyDiscritizedPerimeter());
-					if (!perim.last().equals(perim.first()))
-						perim.add(perim.first());
-					Region region = null;
-					try {
-						region = new Region(perim, BorderType.GREAT_CIRCLE);
-					} catch (Exception e) {
-						// try regular perim
-						perim = new LocationList();
-						perim.addAll(sect.getFaultSurface(1d).getPerimeter());
-						if (!perim.last().equals(perim.first()))
-							perim.add(perim.first());
-						try {
-							region = new Region(perim, BorderType.GREAT_CIRCLE);
-						} catch (Exception e1) {
-							System.err.println("WARNING: failed to create polygon for section "+sect.getSectionId()
-								+". "+sect.getSectionName()+" when searching for paleo mappings for site at "+loc);
-						}
-					}
-					if (region != null && region.contains(loc))
-						containsCandidates.add(sect);
-				}
-			}
-		}
-		
-		// find the closest of any candidate section
-		FaultSection closest = null;
-		double closestDist = Double.POSITIVE_INFINITY;
-		for (FaultSection sect : candidates) {
-			double dist = candidateDists.get(sect);
-			if (dist < closestDist) {
-				closestDist = dist;
-				closest = sect;
-			}
-		}
-		
-		if (containsCandidates.isEmpty()) {
-			// this site is not in the surface projection of any faults, return if less than the none-contained threshold
-			// this allows the offshore noyo site to match
-			if (closestDist < maxDistNoneContained)
-				return closest;
-			// no match
-			return null;
-		}
-		
-		// if we're here, then this site is contained in the surface projection of at least 1 fault
-		
-		// first see if it's within the inner threshold of any fault, regardless of if it is contained
-		if (closestDist < maxDistOtherContained)
-			return closest;
-		
-		// see if any of the faults containing it are close enough
-		FaultSection closestContaining = null;
-		double closestContainingDist = Double.POSITIVE_INFINITY;
-		for (FaultSection sect : containsCandidates) {
-			double dist = candidateDists.get(sect);
-			if (dist < closestContainingDist) {
-				closestContainingDist = dist;
-				closestContaining = sect;
-			}
-		}
-		
-		if (closestContainingDist < maxDistContained)
-			return closestContaining;
-		// no match
-		return null;
-	}
 
 	public static void main(String[] args) throws IOException {
 //		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.NSHM23_v1p4);
