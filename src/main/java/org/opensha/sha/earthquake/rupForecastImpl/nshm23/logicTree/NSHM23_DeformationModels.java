@@ -1545,6 +1545,47 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		csv.writeToFile(outputFile);
 	}
 	
+	private static void printSlipRateSubSectBelow10Stats() throws IOException {
+		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		
+		List<NSHM23_DeformationModels> dms = new ArrayList<>();
+		List<List<? extends FaultSection>> dmSects = new ArrayList<>();
+		
+		for (NSHM23_DeformationModels dm : values()) {
+			if (dm.getWeight() == 0d && dm != AVERAGE)
+				continue;
+			
+			List<? extends FaultSection> sects = dm.build(fm);
+			
+			dms.add(dm);
+			dmSects.add(sects);
+		}
+		
+		for (int d=0; d<dms.size(); d++) {
+			NSHM23_DeformationModels dm = dms.get(d);
+			List<? extends FaultSection> sects = dmSects.get(d);
+			
+			int numBelow10 = 0;
+			MinMaxAveTracker below10SlipTrack = new MinMaxAveTracker();
+			MinMaxAveTracker allSlipTrack = new MinMaxAveTracker();
+			for (FaultSection sect : sects) {
+				GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
+				double origFract = geoSect.getProperty(ORIG_FRACT_STD_DEV_PROPERTY_NAME, Double.NaN);
+				if (origFract > 0d && origFract < 0.1d) {
+					numBelow10++;
+					below10SlipTrack.addValue(sect.getOrigAveSlipRate());
+				}
+				allSlipTrack.addValue(sect.getOrigAveSlipRate());
+			}
+			
+			System.out.println(dm.name);
+			System.out.println("\t"+numBelow10+"/"+sects.size()+" ("
+					+pDF.format((double)numBelow10/(double)sects.size())+") sections have uncert <10%");
+			System.out.println("\tOverall average slip rate: "+(float)+allSlipTrack.getAverage()+" (mm/yr)");
+			System.out.println("\tUncert <10% aerage slip rate: "+(float)+below10SlipTrack.getAverage()+" (mm/yr)");
+		}
+	}
+	
 	private static void printSlipRateCOVStats() throws IOException {
 		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
 		
@@ -1627,6 +1668,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		
 		writeMinisectionCSV(new File("/tmp/nshm23_def_model_minisections.csv"));
 		printSlipRateCOVStats();
+		printSlipRateSubSectBelow10Stats();
 	}
 
 }
