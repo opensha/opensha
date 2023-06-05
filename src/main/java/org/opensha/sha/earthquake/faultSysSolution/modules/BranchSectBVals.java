@@ -53,7 +53,7 @@ public class BranchSectBVals implements ArchivableModule {
 		private List<float[]> sectTargetBVals;
 		private List<float[]> parentTargetBVals;
 		
-		public synchronized void process(FaultSystemSolution sol, double weight) {
+		public synchronized void process(FaultSystemSolution sol, LogicTreeBranch<?> branch, double weight) {
 			int numSects = sol.getRupSet().getNumSections();
 			if (sectBVals == null) {
 				// first time, initialize lists
@@ -358,7 +358,7 @@ public class BranchSectBVals implements ArchivableModule {
 				
 				@Override
 				public void run() {
-					builder.process(sol, tree.getBranchWeight(branch));
+					builder.process(sol, branch, tree.getBranchWeight(branch));
 				}
 			});
 			watch.stop();

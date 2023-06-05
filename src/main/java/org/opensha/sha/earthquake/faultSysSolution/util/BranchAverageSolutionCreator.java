@@ -29,6 +29,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchAverageableModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchAveragingOrder;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchModuleBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchRegionalMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectBVals;
@@ -195,6 +196,7 @@ public class BranchAverageSolutionCreator {
 			rateStatsBuilder = new LogicTreeRateStatistics.Builder();
 			
 			solBranchModuleBuilders = new ArrayList<>();
+			solBranchModuleBuilders.add(new BranchAveragingOrder.Builder());
 			solBranchModuleBuilders.add(new BranchRegionalMFDs.Builder());
 			solBranchModuleBuilders.add(new BranchSectNuclMFDs.Builder());
 			solBranchModuleBuilders.add(new BranchSectParticMFDs.Builder());
@@ -208,7 +210,7 @@ public class BranchAverageSolutionCreator {
 		
 		// start work on modules and module builders in parallel, as they often take the longest
 		List<CompletableFuture<Void>> futures = new ArrayList<>();
-		futures.addAll(processBuilders(solBranchModuleBuilders, sol, weight));
+		futures.addAll(processBuilders(solBranchModuleBuilders, sol, branch, weight));
 		futures.addAll(processAccumulators(rupSetAvgAccumulators, rupSet, branch, weight));
 		futures.addAll(processAccumulators(solAvgAccumulators, sol, branch, weight));
 		
@@ -356,10 +358,10 @@ public class BranchAverageSolutionCreator {
 	}
 	
 	private <E extends ModuleContainer<OpenSHA_Module>> List<CompletableFuture<Void>> processBuilders(List<BranchModuleBuilder<E, ?>> builders, 
-			E source, double weight) {
+			E source, LogicTreeBranch<?> branch, double weight) {
 		List<Runnable> runs = new ArrayList<>(builders.size());
 		for (BranchModuleBuilder<E, ?> builder : builders)
-			runs.add(new BuilderRunnable<>(builders, builder, source, weight));
+			runs.add(new BuilderRunnable<>(builders, builder, source, branch, weight));
 		
 		List<CompletableFuture<Void>> futures = new ArrayList<>(runs.size());
 		
@@ -374,20 +376,22 @@ public class BranchAverageSolutionCreator {
 		private List<BranchModuleBuilder<E, ?>> builders;
 		private BranchModuleBuilder<E, ?> builder;
 		private E source;
+		private LogicTreeBranch<?> branch;
 		private double weight;
 
 		public BuilderRunnable(List<BranchModuleBuilder<E, ?>> builders, BranchModuleBuilder<E, ?> builder, E source,
-				double weight) {
+				LogicTreeBranch<?> branch, double weight) {
 			this.builders = builders;
 			this.builder = builder;
 			this.source = source;
+			this.branch = branch;
 			this.weight = weight;
 		}
 
 		@Override
 		public void run() {
 			try {
-				builder.process(source, weight);
+				builder.process(source, branch, weight);
 			} catch (Exception e) {
 				synchronized (builders) {
 //					e.printStackTrace();

@@ -13,6 +13,7 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.SubModule;
@@ -71,11 +72,12 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 		private int minSupraMagIndex = Integer.MAX_VALUE;
 		private int maxMagIndex = 0;
 
-		public synchronized void process(FaultSystemSolution sol, double weight) {
-			process(sol, sol.getGridSourceProvider(), weight);
+		public synchronized void process(FaultSystemSolution sol, LogicTreeBranch<?> branch, double weight) {
+			process(sol, sol.getGridSourceProvider(), branch, weight);
 		}
 
-		public synchronized void process(FaultSystemSolution sol, GridSourceProvider gridProv, double weight) {
+		public synchronized void process(FaultSystemSolution sol, GridSourceProvider gridProv,
+				LogicTreeBranch<?> branch, double weight) {
 			RegionsOfInterest roi = sol.getRupSet().getModule(RegionsOfInterest.class);
 			processInitCheck(roi == null ? 0 : roi.getRegions().size(), gridProv != null);
 			

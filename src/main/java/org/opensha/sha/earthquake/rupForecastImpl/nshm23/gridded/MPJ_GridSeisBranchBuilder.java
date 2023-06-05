@@ -620,7 +620,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				}
 				branchAccumulator.process(prov, griddedWeight);
 				
-				mfdBuilder.process(sol, prov, faultWeight * griddedWeight);
+				mfdBuilder.process(sol, prov, run.combinedBranch, faultWeight * griddedWeight);
 			}
 			
 			// write average
@@ -675,6 +675,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 	
 	private class CalcRunnable implements Runnable {
 		
+		// inputs
 		private LogicTreeBranch<?> origBranch;
 		private LogicTreeBranch<?> gridSeisBranch;
 		private File gridSeisDir;
@@ -682,6 +683,8 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		private List<SeismicityRegions> seisRegions;
 		private NSHM23_FaultCubeAssociations cubeAssoc;
 		
+		// outputs
+		private LogicTreeBranch<?> combinedBranch;
 		private GridSourceProvider gridProv;
 
 		public CalcRunnable(LogicTreeBranch<?> origBranch, LogicTreeBranch<?> gridSeisBranch, File gridSeisDir,
@@ -696,7 +699,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 
 		@Override
 		public void run() {
-			LogicTreeBranch<?> combinedBranch = getCombinedBranch(origBranch, gridSeisBranch);
+			combinedBranch = getCombinedBranch(origBranch, gridSeisBranch);
 			
 			debug("Building for combined branch: "+combinedBranch);
 			

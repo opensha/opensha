@@ -13,6 +13,7 @@ import java.util.List;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.modules.ModuleHelper;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -62,7 +63,7 @@ abstract class AbstractBranchMFDs implements FileBackedModule {
 		private boolean parents;
 		private List<Integer> parentIDs;
 		
-		public synchronized void process(FaultSystemSolution sol, double weight) {
+		public synchronized void process(FaultSystemSolution sol, LogicTreeBranch<?> branch, double weight) {
 			int numSects;
 			if (branchSectMFDs == null) {
 				// first time, initialize lists
