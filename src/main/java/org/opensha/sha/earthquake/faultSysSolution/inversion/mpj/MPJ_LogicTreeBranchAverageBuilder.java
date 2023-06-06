@@ -41,7 +41,6 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen.PlotLevel;
 import org.opensha.sha.earthquake.faultSysSolution.util.BranchAverageSolutionCreator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
@@ -303,7 +302,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 			IncrementalMagFreqDist compMFD = null;
 			EvenlyDiscretizedFunc compCmlMFD = null;
 			if (compSol != null) {
-				EvenlyDiscretizedFunc refFunc = SupraSeisBValInversionTargetMFDs.buildRefXValues(compSol.getRupSet());
+				EvenlyDiscretizedFunc refFunc = FaultSysTools.initEmptyMFD(compSol.getRupSet());
 				compMFD = compSol.calcTotalNucleationMFD(refFunc.getMinX(), refFunc.getMaxX(), refFunc.getDelta());
 				compMFD.setName(compName == null ? "Full Tree" : compName);
 				compCmlMFD = compMFD.getCumRateDistWithOffset();
@@ -369,7 +368,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 					linkTable.finalizeLine();
 					
 					FaultSystemSolution sol = FaultSystemSolution.load(solFile);
-					EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(sol.getRupSet());
+					EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(sol.getRupSet());
 					IncrementalMagFreqDist mfd = sol.calcTotalNucleationMFD(refMFD.getMinX(), refMFD.getMaxX(), refMFD.getDelta());
 					mfd.setName(node.getShortName());
 					incrMFDs.add(mfd);

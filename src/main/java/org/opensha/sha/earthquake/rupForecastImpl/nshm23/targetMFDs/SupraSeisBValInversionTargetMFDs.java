@@ -1,5 +1,7 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs;
 
+import static org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools.*;
+
 import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.io.File;
@@ -47,22 +49,12 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SolMFDPlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
-import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_U3_HybridLogicTreeBranch;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.U3_UncertAddDeformationModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.APrioriSectNuclEstimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ThresholdAveragingSectNuclMFD_Estimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.PaleoSectNuclEstimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ScalingRelSlipRateMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SectNucleationMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator.MultiBinDistributionMethod;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ThresholdAveragingSectNuclMFD_Estimator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -71,11 +63,6 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
-
-import scratch.UCERF3.enumTreeBranches.DeformationModels;
-import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
-import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
 
 /**
  * {@link InversionTargetMFDs} implementation where targets are determined from deformation model slip rates and a target
@@ -177,54 +164,6 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	 * Default choice for if we should consider ruptures that use zero-slip-rate sections when building MFDs
 	 */
 	public static final boolean USE_RUPTURES_ON_ZERO_SLIP_SECTIONS = false;
-	
-	// discretization parameters for MFDs
-	public final static double MIN_MAG = 0.05;
-	public final static double DELTA_MAG = 0.1;
-	
-	/**
-	 * Figures out MFD bounds for the given rupture set. It will start at 0.05 and include at least the rupture set
-	 * maximum magnitude, expanded to the ceiling of that rupture set maximum magnitude.
-	 * 
-	 * @param rupSet
-	 * @return
-	 */
-	public static EvenlyDiscretizedFunc buildRefXValues(FaultSystemRupSet rupSet) {
-		return buildRefXValues(rupSet.getMaxMag());
-	}
-	
-	/**
-	 * Figures out MFD bounds for the given rupture set maximum magnitude. It will start at 0.05 and include at
-	 * least the given maximum magnitude, expanded to the ceiling of that maximum magnitude.
-	 * 
-	 * @param rupSet
-	 * @return
-	 */
-	public static EvenlyDiscretizedFunc buildRefXValues(double maxRupSetMag) {
-		// figure out MFD bounds
-		// go up to at least ceil(maxMag)
-		int NUM_MAG = 0;
-		
-		while (true) {
-			double nextMag = MIN_MAG + (NUM_MAG+1)*DELTA_MAG;
-			double nextMagLower = nextMag - 0.5*DELTA_MAG;
-			NUM_MAG++;
-//			System.out.println("nextMag="+nextMag+", nextMagLower="+nextMagLower);
-			if ((float)nextMagLower > (float)maxRupSetMag)
-				// done
-				break;
-		}
-		
-		NUM_MAG++; // pad by a bin, it makes plots prettier
-		EvenlyDiscretizedFunc ret = new EvenlyDiscretizedFunc(MIN_MAG, NUM_MAG, DELTA_MAG);
-		
-		double upperBin = ret.getMaxX() + 0.5*DELTA_MAG;
-		Preconditions.checkState((float)maxRupSetMag <= (float)upperBin,
-				"Bad MFD gridding with maxMag=%s, upperBinCenter=%s, upperBinEdge=%s",
-				maxRupSetMag, ret.get(NUM_MAG-1).getX(), upperBin);
-		
-		return ret;
-	}
 	
 	public static class Builder {
 		
@@ -473,7 +412,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		 * @return
 		 */
 		private SupraSeisBValInversionTargetMFDs build(boolean slipOnly) {
-			EvenlyDiscretizedFunc refMFD = buildRefXValues(rupSet);
+			EvenlyDiscretizedFunc refMFD = initEmptyMFD(rupSet);
 			int NUM_MAG = refMFD.size();
 			System.out.println("Building SupraSeisBValInversionTargetMFDs with b="+supraSeisBValue
 					+", slipOnly="+slipOnly+", total MFD range: ["+(float)MIN_MAG+","+(float)refMFD.getMaxX()
@@ -519,7 +458,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			
 			ExecutorService exec = null;
 			if (targetAdjDataConstraints != null || uncertAdjDataConstraints != null)
-				exec = Executors.newFixedThreadPool(FaultSysTools.defaultNumThreads());
+				exec = Executors.newFixedThreadPool(defaultNumThreads());
 			
 			SectMFDCalculator calc = new SectMFDCalculator();
 			calc.calc(exec, refMFD, minMags, rupsOnZeroRateSects, slipOnly, 0d);

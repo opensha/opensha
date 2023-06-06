@@ -27,7 +27,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
@@ -349,7 +349,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 	public static List<IncrementalMagFreqDist> calcNuclMFDs(FaultSystemSolution sol) {
 		List<IncrementalMagFreqDist> ret = new ArrayList<>();
 		FaultSystemRupSet rupSet = sol.getRupSet();
-		EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(rupSet);
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(rupSet);
 		for (int sectIndex=0; sectIndex<rupSet.getNumSections(); sectIndex++)
 			ret.add(sol.calcNucleationMFD_forSect(sectIndex, refMFD.getMinX(), refMFD.getMaxX(), refMFD.size()));
 		return ret;

@@ -74,6 +74,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder.ParkfieldSelectionCriteria;
@@ -484,7 +485,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 							List<Integer> parkRups = NSHM23_ConstraintBuilder.findParkfieldRups(
 									rupSet, getParkfieldSelectionCriteria(fm));
 							if (parkRups != null && !parkRups.isEmpty()) {
-								EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(rupSet);
+								EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(rupSet);
 								int minParkBin = -1;
 								double minParkMag = Double.POSITIVE_INFINITY;
 								for (int parkRup : parkRups) {
@@ -650,7 +651,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					@Override
 					public NSHM23_AbstractGridSourceProvider call() throws Exception {
 						double maxMagOff = branch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
-						EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(
+						EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(
 								Math.max(maxMagOff, sol.getRupSet().getMaxMag()));
 						NSHM23_FaultCubeAssociations cubeAssociations = buildU3IngredientsFaultCubeAssociations(rupSet);
 						rupSet.addModule(cubeAssociations);
@@ -877,7 +878,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		double maxMagOff = branch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
 		
-		EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(
 				Math.max(maxMagOff, sol.getRupSet().getMaxMag()));
 		
 		if ((seisRegions == null || seisRegions.isEmpty()) && branch.hasValue(SpatialSeisPDF.class)) {

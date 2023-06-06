@@ -16,8 +16,8 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -280,7 +280,7 @@ public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
 	
 	public static void main(String[] args) {
 		double mMax = 7.6;
-		EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(mMax);
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(mMax);
 		for (SeismicityRegions seisReg : SeismicityRegions.values()) {
 			IncrementalMagFreqDist pref = PREFFERRED.build(seisReg, refMFD, mMax);
 			IncrementalMagFreqDist low = LOW.build(seisReg, refMFD, mMax);

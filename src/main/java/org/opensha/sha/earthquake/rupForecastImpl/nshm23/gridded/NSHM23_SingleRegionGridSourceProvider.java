@@ -14,7 +14,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.NucleationRatePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SolMFDPlot;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
@@ -476,7 +476,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 		fracReverse = new GridReader("ReverseWts.txt").getValues();
 		fracNormal = new GridReader("NormalWts.txt").getValues();
 
-		EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(sol.getRupSet());
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(sol.getRupSet());
 		GutenbergRichterMagFreqDist totalGR = new GutenbergRichterMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
 		totalGR.setAllButTotCumRate(refMFD.getMinX(), refMFD.getX(refMFD.getClosestXIndex(mMaxOff)), 1e16, bVal);
 		totalGR.scaleToCumRate(refMFD.getClosestXIndex(5.01d), rateM5);
