@@ -92,6 +92,18 @@ SplittableRuptureSubSetModule<SectSlipRates>{
 			totMomentRate += FaultMomentCalc.getMoment(rupSet.getAreaForSection(s), getSlipRate(s));
 		return totMomentRate;
 	}
+	
+	/**
+	 * Computes the moment rate (N-m/yr) for the given section using the slip rate and creep-reduced fault section area
+	 * 
+	 * @param sectIndex
+	 * @return moment rate in N-m/yr
+	 */
+	public double calcMomentRate(int sectIndex) {
+		FaultSystemRupSet rupSet = getParent();
+		Preconditions.checkNotNull(rupSet, "parent rupture set not set");
+		return FaultMomentCalc.getMoment(rupSet.getAreaForSection(sectIndex), getSlipRate(sectIndex));
+	}
 
 	@Override
 	public String getName() {
