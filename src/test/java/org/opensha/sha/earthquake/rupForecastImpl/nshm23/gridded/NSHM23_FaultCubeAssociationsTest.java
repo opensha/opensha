@@ -8,6 +8,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.commons.math3.stat.StatUtils;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.opensha.commons.geo.Region;
@@ -24,6 +25,7 @@ public class NSHM23_FaultCubeAssociationsTest {
 	private static int sectCount;
 	private static NSHM23_FaultCubeAssociations assoc;
 	private static int nodeCount;
+	private static int cubeCount;
 	
 	private static FaultGridAssociations averagedAssoc;
 	
@@ -41,6 +43,7 @@ public class NSHM23_FaultCubeAssociationsTest {
 		Region region = rupSet.requireModule(ModelRegion.class).getRegion();
 		assoc = NSHM23_InvConfigFactory.buildFaultCubeAssociations(rupSet, branch, region);
 		nodeCount = assoc.getRegion().getNodeCount();
+		cubeCount = assoc.getCubedGriddedRegion().getNumCubes();
 		
 		// now build averaged version (2 of the same averaged)
 		FaultGridAssociations.Averager accumulator = (FaultGridAssociations.Averager)assoc.averagingAccumulator();
@@ -54,6 +57,10 @@ public class NSHM23_FaultCubeAssociationsTest {
 		
 		averagedAssoc = accumulator.getAverage();
 	}
+	
+	/*
+	 * Test for node-aggregated quantities
+	 */
 	
 	@Test
 	public void testSectionFracsOnNode() {
@@ -108,6 +115,49 @@ public class NSHM23_FaultCubeAssociationsTest {
 		}
 	}
 	
+	/*
+	 * tests for cube quantities
+	 */
+	
+	@Test
+	public void testSectDistWeightsAtCubes() {
+		for (int c=0; c<cubeCount; c++) {
+			int[] sects = assoc.getSectsAtCube(c);
+			double[] weights = assoc.getSectDistWeightsAtCube(c);
+			if (sects == null || sects.length == 0) {
+				assertTrue(weights == null || weights.length == 0);
+			} else {
+				assertTrue(weights != null && weights.length == sects.length);
+				for (int s=0; s<sects.length; s++)
+					assertZeroToOne("Cube "+c+", sect weight for "+sects[s], weights[s]);
+			}
+		}
+	}
+	
+	@Test
+	public void testTotalSectDistWeightsAtCubes() {
+		double[] calcSectSums = new double[sectCount];
+		for (int c=0; c<cubeCount; c++) {
+			int[] sects = assoc.getSectsAtCube(c);
+			double[] weights = assoc.getSectDistWeightsAtCube(c);
+			if (sects == null || sects.length == 0) {
+				assertTrue(weights == null || weights.length == 0);
+			} else {
+				assertTrue(weights != null && weights.length == sects.length);
+				for (int s=0; s<sects.length; s++)
+					calcSectSums[sects[s]] += weights[s];
+			}
+		}
+		
+		for (int s=0; s<sectCount; s++) {
+			double fullSum = assoc.getTotalDistWtAtCubesForSect(s);
+			double sumInReg = fullSum * assoc.getFractSectNuclInRegion(s);
+			double tol = Math.max(TOL, 0.001*calcSectSums[s]);
+			assertEquals("Recalculated total dist-wt sect sum across all cubes is inconsistent for sect "+s,
+					sumInReg, calcSectSums[s], tol);
+		}
+	}
+	
 	private static void assertNonNegAndFinite(String name, double val) {
 		assertTrue(name+" is non-finite: "+val, Double.isFinite(val));
 		assertTrue(name+" is < 0: "+val, (float)val >= 0f);
@@ -119,6 +169,10 @@ public class NSHM23_FaultCubeAssociationsTest {
 	}
 	
 	private static final double TOL = 1e-6;
+	
+	/*
+	 * Tests for to make sure that things average correctly (node-aggregated only)
+	 */
 	
 	@Test
 	public void testAveragedGetNodeExtentsEqual() {
