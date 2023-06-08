@@ -70,6 +70,8 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 	// this is the total wt for each section summed from sectDistWeightsAtCubes (divide the wt directly above
 	// by this value to get the nucleation fraction for the section in the associated cube) 
 	private double[] totDistWtsAtCubesForSectArray;
+	// fraction of section nucleation (after being spread to corresponding cubes) in the region
+	private double[] fractSectsInRegion;
 	
 	/*
 	 * Grid cell outputs
@@ -155,9 +157,13 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 		}
 		System.out.println("Mapped "+numMapped+"/"+nodeCount+" model region fault associations locations to sub-region grid locations");
 		totDistWtsAtCubesForSectArray = new double[subSects.size()];
-		for (NSHM23_FaultCubeAssociations regional : regionalAssociations)
-			for (int s=0; s<totDistWtsAtCubesForSectArray.length; s++)
+		fractSectsInRegion = new double[subSects.size()];
+		for (NSHM23_FaultCubeAssociations regional : regionalAssociations) {
+			for (int s=0; s<totDistWtsAtCubesForSectArray.length; s++) {
 				totDistWtsAtCubesForSectArray[s] += regional.totDistWtsAtCubesForSectArray[s];
+				fractSectsInRegion[s] += regional.fractSectsInRegion[s];
+			}
+		}
 		
 		this.regionalAssociations = regionalAssociations;
 		
@@ -250,6 +256,14 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 	 */
 	public double getTotalDistWtAtCubesForSect(int sectIndex) {
 		return totDistWtsAtCubesForSectArray[sectIndex];
+	}
+	
+	/**
+	 * @param sectIndex
+	 * @return the fraction of section nucleation within the region (after smearing out across the weighted polygon)
+	 */
+	public double getFractSectNuclInRegion(int sectIndex) {
+		return fractSectsInRegion[sectIndex];
 	}
 
 	@Override
@@ -348,6 +362,7 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 		// this is only needed temporarily
 		double[][] sectDistsAtCubes = new double[cgr.getNumCubes()][];
 		totDistWtsAtCubesForSectArray = new double[subSects.size()];
+		fractSectsInRegion = new double[subSects.size()];
 		
 		for (Future<SectCubeMapper> future : futures) {
 			try {
@@ -370,6 +385,7 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 						}
 					}
 					totDistWtsAtCubesForSectArray[mapper.sectIndex] = mapper.totWeight;
+					fractSectsInRegion[mapper.sectIndex] = mapper.fractInRegion;
 				}
 			} catch (InterruptedException | ExecutionException e) {
 				exec.shutdown();
@@ -429,6 +445,7 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 		private int sectIndex;
 		private double totWeight;
 		private Map<Integer, Float> mappedCubeDistances;
+		private double fractInRegion;
 		
 		public SectCubeMapper(int sectIndex) {
 			this.sectIndex = sectIndex;
@@ -516,10 +533,11 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 				}
 			}
 
-			float ratio = (float)testWt/(float)totWeight;
-			if(ratio != 1.0) {
+			fractInRegion = testWt/totWeight;
+			if((float)fractInRegion != 1.0) {
 //				sectionsThatNucleateOutsideRegionList.add(sectIndex);
-				if(D) System.out.println((1f-ratio)+" of "+subSects.get(sectIndex).getName()+ " nucleates outside the region");
+				if(D) System.out.println((float)(1d-fractInRegion)+" of "+sectIndex+". "
+						+subSects.get(sectIndex).getName()+ " nucleates outside the region");
 			}
 			
 			if (mappedCubeDistances.isEmpty())
