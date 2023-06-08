@@ -82,13 +82,15 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 	
 	private boolean averageOnly = false;
 	
+	private boolean rebuild = false;
+	
 	private Region region;
 	
 	private ExecutorService exec;
 	
-	private static final String GRID_ASSOCIATIONS_ARCHIVE_NAME = "fault_grid_associations.zip";
-	private static final String AVG_GRID_SIE_PROV_ARCHIVE_NAME = "avg_grid_seis.zip"; 
-	private static final String GRID_BRANCH_REGIONAL_MFDS_NAME = "grid_branch_regional_mfds.zip"; 
+	public static final String GRID_ASSOCIATIONS_ARCHIVE_NAME = "fault_grid_associations.zip";
+	public static final String AVG_GRID_SIE_PROV_ARCHIVE_NAME = "avg_grid_seis.zip"; 
+	public static final String GRID_BRANCH_REGIONAL_MFDS_NAME = "grid_branch_regional_mfds.zip"; 
 	
 	public MPJ_GridSeisBranchBuilder(CommandLine cmd) throws IOException {
 		super(cmd);
@@ -130,6 +132,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			exec = Executors.newFixedThreadPool(threads);
 		
 		averageOnly = cmd.hasOption("average-only");
+		rebuild = cmd.hasOption("rebuild");
 		
 		gridSeisAveragers = HashBasedTable.create();
 		
@@ -705,13 +708,12 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			
 			File outputFile = new File(gridSeisDir, gridSeisBranch.buildFileName()+".zip");
 			
-			if (outputFile.exists()) {
+			if (outputFile.exists() && !rebuild) {
 				// try loading it instead
 				try {
 					ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(outputFile);
 					gridProv = archive.getModule(GridSourceProvider.class);
-					if (gridProv != null)
-						return;
+					return;
 				} catch (Exception e) {
 					// rebuild it
 				}
@@ -924,6 +926,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		ops.addOption("ao", "average-only", false, "Flag to only write out average gridded seismicity for each fault "
 				+ "branch.");
 		ops.addOption("wft", "write-full-tree", true, "If supplied, will write full logic tree JSON to this file");
+		ops.addOption(null, "rebuild", false, "Flag to force rebuild of all providers");
 		
 		return ops;
 	}
