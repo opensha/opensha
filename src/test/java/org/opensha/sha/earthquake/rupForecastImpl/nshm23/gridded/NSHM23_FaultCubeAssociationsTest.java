@@ -10,13 +10,13 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
-import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractFaultGridAssociationsTest;
+import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractFaultCubeAssociationsTest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 
-public class NSHM23_FaultCubeAssociationsTest extends AbstractFaultGridAssociationsTest {
+public class NSHM23_FaultCubeAssociationsTest extends AbstractFaultCubeAssociationsTest {
 	
 	private static FaultSystemRupSet rupSet;
 	private static int sectCount;
@@ -41,48 +41,5 @@ public class NSHM23_FaultCubeAssociationsTest extends AbstractFaultGridAssociati
 	
 	public NSHM23_FaultCubeAssociationsTest() {
 		super(rupSet, assoc);
-	}
-	
-	/*
-	 * tests for cube quantities
-	 */
-	
-	@Test
-	public void testSectDistWeightsAtCubes() {
-		for (int c=0; c<cubeCount; c++) {
-			int[] sects = assoc.getSectsAtCube(c);
-			double[] weights = assoc.getScaledSectDistWeightsAtCube(c);
-			if (sects == null || sects.length == 0) {
-				assertTrue(weights == null || weights.length == 0);
-			} else {
-				assertTrue(weights != null && weights.length == sects.length);
-				for (int s=0; s<sects.length; s++)
-					assertZeroToOne("Cube "+c+", sect weight for "+sects[s], weights[s]);
-			}
-		}
-	}
-	
-	@Test
-	public void testTotalSectDistWeightsAtCubes() {
-		double[] calcSectSums = new double[sectCount];
-		for (int c=0; c<cubeCount; c++) {
-			int[] sects = assoc.getSectsAtCube(c);
-			double[] weights = assoc.getScaledSectDistWeightsAtCube(c);
-			if (sects == null || sects.length == 0) {
-				assertTrue(weights == null || weights.length == 0);
-			} else {
-				assertTrue(weights != null && weights.length == sects.length);
-				for (int s=0; s<sects.length; s++)
-					calcSectSums[sects[s]] += weights[s];
-			}
-		}
-		
-		for (int s=0; s<sectCount; s++) {
-			double fullSum = assoc.getTotalScaledDistWtAtCubesForSect(s);
-			double sumInReg = fullSum * assoc.getSectionFractInRegion(s);
-			double tol = Math.max(TOL, 0.001*calcSectSums[s]);
-			assertEquals("Recalculated total dist-wt sect sum across all cubes is inconsistent for sect "+s,
-					sumInReg, calcSectSums[s], tol);
-		}
 	}
 }

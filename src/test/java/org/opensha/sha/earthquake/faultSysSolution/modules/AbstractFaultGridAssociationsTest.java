@@ -2,31 +2,54 @@ package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import static org.junit.Assert.*;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.FileUtils;
+import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
+import org.opensha.commons.util.modules.ModuleArchive;
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
+import com.google.common.io.Files;
 
 public abstract class AbstractFaultGridAssociationsTest {
+
+	protected static File tempDir;
 	
-	private FaultSystemRupSet rupSet;
-	private FaultGridAssociations assoc;
-	private int sectCount;
-	private int nodeCount;
-	
+	protected final FaultSystemRupSet rupSet;
+	protected final FaultGridAssociations assoc;
+	protected final int sectCount;
+	protected final int nodeCount;
+
 	private static Map<FaultGridAssociations, FaultGridAssociations> averagedAssocCache;
+	private static Map<FaultGridAssociations, FaultGridAssociations> serializedAssocCache;
 
 	public AbstractFaultGridAssociationsTest(FaultSystemRupSet rupSet, FaultGridAssociations assoc) {
 		this.rupSet = rupSet;
 		this.assoc = assoc;
 		this.sectCount = rupSet.getNumSections();
 		this.nodeCount = assoc.getRegion().getNodeCount();
+	}
+
+	@BeforeClass
+	public static void setUpBeforeClass() throws Exception {
+		tempDir = Files.createTempDir();
+	}
+
+	@AfterClass
+	public static void tearDownAfterClass() throws Exception {
+		FileUtils.deleteRecursive(tempDir);
 	}
 	
 	protected synchronized FaultGridAssociations getAveragedInstance(FaultGridAssociations assoc) {
@@ -52,6 +75,32 @@ public abstract class AbstractFaultGridAssociationsTest {
 			averagedAssocCache.put(assoc, averagedAssoc);
 		}
 		return averagedAssoc;
+	}
+	
+	protected synchronized FaultGridAssociations getSerializedInstance(FaultGridAssociations assoc) {
+		if (serializedAssocCache == null)
+			serializedAssocCache = new HashMap<>();
+		FaultGridAssociations serializedAssoc = serializedAssocCache.get(assoc);
+		if (serializedAssoc == null) {
+			System.out.println("Building serialized association instance");
+			
+			assertTrue(assoc.getName()+" isn't archivable!", assoc instanceof ArchivableModule);
+			File archiveFile = new File(tempDir, "serialized_"+assoc.hashCode()+".zip");
+			
+			try {
+				ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
+				archive.addModule(assoc);
+				archive.write(archiveFile);
+				
+				archive = new ModuleArchive<>(archiveFile);
+				serializedAssoc = archive.requireModule(FaultGridAssociations.class);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+
+			serializedAssocCache.put(assoc, serializedAssoc);
+		}
+		return serializedAssoc;
 	}
 	
 	/*
@@ -235,6 +284,11 @@ public abstract class AbstractFaultGridAssociationsTest {
 		doTestGetNodeFractionEqual(assoc, getAveragedInstance(assoc));
 	}
 	
+	@Test
+	public void testSerializedNodeFractionEqual() {
+		doTestGetNodeFractionEqual(assoc, getSerializedInstance(assoc));
+	}
+	
 	private void doTestGetNodeFractionEqual(FaultGridAssociations assoc1, FaultGridAssociations assoc2) {
 		for (int n=0; n<nodeCount; n++) {
 			double nodeFract1 = assoc1.getNodeFraction(n);
@@ -246,6 +300,11 @@ public abstract class AbstractFaultGridAssociationsTest {
 	@Test
 	public void testAveragedGetScaledNodeFractionsEqual() {
 		doTestGetScaledNodeFractionsEqual(assoc, getAveragedInstance(assoc));
+	}
+	
+	@Test
+	public void testSerializedGetScaledNodeFractionsEqual() {
+		doTestGetScaledNodeFractionsEqual(assoc, getSerializedInstance(assoc));
 	}
 	
 	private void doTestGetScaledNodeFractionsEqual(FaultGridAssociations assoc1, FaultGridAssociations assoc2) {
@@ -261,6 +320,11 @@ public abstract class AbstractFaultGridAssociationsTest {
 		doTestGetNodeFractionsEqual(assoc, getAveragedInstance(assoc));
 	}
 	
+	@Test
+	public void testSerializedGetNodeFractions() {
+		doTestGetNodeFractionsEqual(assoc, getSerializedInstance(assoc));
+	}
+	
 	private void doTestGetNodeFractionsEqual(FaultGridAssociations assoc1, FaultGridAssociations assoc2) {
 		for (int s=0; s<sectCount; s++) {
 			Map<Integer, Double> nodeFracts1 = assoc1.getNodeFractions(s);
@@ -274,6 +338,11 @@ public abstract class AbstractFaultGridAssociationsTest {
 		doTestGetSectionFracsOnNodeEqual(assoc, getAveragedInstance(assoc));
 	}
 	
+	@Test
+	public void testSerializedGetSectionFracsOnNode() {
+		doTestGetSectionFracsOnNodeEqual(assoc, getSerializedInstance(assoc));
+	}
+	
 	private void doTestGetSectionFracsOnNodeEqual(FaultGridAssociations assoc1, FaultGridAssociations assoc2) {
 		for (int n=0; n<nodeCount; n++) {
 			Map<Integer, Double> sectFracts1 = assoc1.getSectionFracsOnNode(n);
@@ -285,6 +354,11 @@ public abstract class AbstractFaultGridAssociationsTest {
 	@Test
 	public void testAveragedSectIndices() {
 		doTestSectIndicesEqual(assoc, getAveragedInstance(assoc));
+	}
+	
+	@Test
+	public void testSerializedSectIndices() {
+		doTestSectIndicesEqual(assoc, getSerializedInstance(assoc));
 	}
 	
 	private void doTestSectIndicesEqual(FaultGridAssociations assoc1, FaultGridAssociations assoc2) {
