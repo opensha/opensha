@@ -11,6 +11,7 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.RegionUtils;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
@@ -25,7 +26,7 @@ import com.google.common.base.Preconditions;
 class NSHM23_FaultPolygonBuilder {
 	
 	public static Region buildPoly(FaultSection sect, RuptureSurface surf, boolean aseisReducesArea, double distance) {
-		List<LocationList> locLists = areaToLocLists(buildPolyArea(sect, surf, aseisReducesArea, distance));
+		List<LocationList> locLists = RegionUtils.areaToLocLists(buildPolyArea(sect, surf, aseisReducesArea, distance));
 		
 		return new Region(locLists.get(0), null);
 	}
@@ -143,7 +144,7 @@ class NSHM23_FaultPolygonBuilder {
 	 */
 	static Area cleanBorder(Area area) {
 		// break apart poly into component paths; many qualify
-		List<LocationList> locLists = areaToLocLists(area);
+		List<LocationList> locLists = RegionUtils.areaToLocLists(area);
 		// prune 'empty' polygons
 		locLists = pruneEmpties(locLists);
 		// clean remaining polygons of duplicate vertices
@@ -163,36 +164,6 @@ class NSHM23_FaultPolygonBuilder {
 			newLocLists.add(locs);
 		}
 		return newLocLists;
-	}
-	
-	/*
-	 * Iterates over the path defining an Area and returns a List of
-	 * LocationLists. If Area is singular, returned list will only have one
-	 * LocationList
-	 */
-	static List<LocationList> areaToLocLists(Area area) {
-		// break apart poly into component paths; many qualify
-		List<LocationList> locLists = new ArrayList<>();
-		LocationList locs = null;
-		// placeholder vertex for path iteration
-		double[] vertex = new double[6];
-		PathIterator pi = area.getPathIterator(null);
-		while (!pi.isDone()) {
-			int type = pi.currentSegment(vertex);
-			double lon = vertex[0];
-			double lat = vertex[1];
-			if (type == PathIterator.SEG_MOVETO) {
-				locs = new LocationList();
-				locLists.add(locs);
-				locs.add(new Location(lat, lon));
-			} else if (type == PathIterator.SEG_LINETO) {
-				locs.add(new Location(lat, lon));
-			}
-			// skip any closing segments as LocationList.toPath() will
-			// close polygons
-			pi.next();
-		}
-		return locLists;
 	}
 	
 	/* Tests whether all points in a LocationList are the same */
@@ -229,7 +200,7 @@ class NSHM23_FaultPolygonBuilder {
 	private static Area removeNests(Area area) {
 		if (area == null) return null;
 		if (area.isSingular()) return area;
-		List<LocationList> locLists = areaToLocLists(area);
+		List<LocationList> locLists = RegionUtils.areaToLocLists(area);
 		Preconditions.checkArgument(locLists.size() > 1);
 		Area a = new Area();
 		for (LocationList locs : locLists) {
