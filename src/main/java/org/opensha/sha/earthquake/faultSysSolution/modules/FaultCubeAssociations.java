@@ -632,7 +632,7 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 				
 				totOrigDistWtsAtCubesForSectArray = new double[maxSectIndex+1];
 				totScaledDistWtsAtCubesForSectArray = new double[maxSectIndex+1];
-				for (int s=0; s<maxSectIndex; s++) {
+				for (int s=0; s<maxSectIndex+1; s++) {
 					totOrigDistWtsAtCubesForSectArray[s] = module.getTotalOrigDistWtAtCubesForSect(s)*relWeight;
 					totScaledDistWtsAtCubesForSectArray[s] = module.getTotalScaledDistWtAtCubesForSect(s)*relWeight;
 				}
@@ -691,7 +691,7 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 					totOrigDistWtsAtCubesForSectArray = Arrays.copyOf(totOrigDistWtsAtCubesForSectArray, maxSectIndex+1);
 					totScaledDistWtsAtCubesForSectArray = Arrays.copyOf(totScaledDistWtsAtCubesForSectArray, maxSectIndex+1);
 				}
-				for (int s=0; s<maxSectIndex; s++) {
+				for (int s=0; s<maxSectIndex+1; s++) {
 					totOrigDistWtsAtCubesForSectArray[s] += module.getTotalOrigDistWtAtCubesForSect(s)*relWeight;
 					totScaledDistWtsAtCubesForSectArray[s] += module.getTotalScaledDistWtAtCubesForSect(s)*relWeight;
 				}
