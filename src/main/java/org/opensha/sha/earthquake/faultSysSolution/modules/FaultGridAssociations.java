@@ -47,7 +47,7 @@ import com.google.common.collect.Table.Cell;
 public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageableModule<FaultGridAssociations> {
 
 	/**
-	 * Returns a map of nodes (indices of nodes intersected by faults) to the
+	 * Returns a map of grid nodes (indices of nodes intersected by faults) to the
 	 * fraction of each node that intersects faults.
 	 * 
 	 * In other words, the fraction of each node that is covered by one or more fault polygons.
@@ -70,27 +70,42 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 	/**
 	 * Returns a map of the indices of nodes that intersect the fault-section at
 	 * {@code sectIdx} where the values are the (weighted) fraction of the area of
-	 * the node occupied by the fault-section.
+	 * the node occupied by the fault-section. See {@link #getScaledSectFracsOnNode(int)} to
+	 * access the same information but keyed on node index.
 	 * 
-	 * In other words, this returns a list of nodes and the faction of each node assigned 
+	 * In other words, this returns a map of nodes and the faction of each node assigned 
 	 * to the fault polygon (where each fraction is reduced by extent to which each node
 	 * is also covered by other fault polygons).
 	 * 
-	 * <p>Use this method when distributing some property of a node across the fault
-	 * sections it intersects.</p>
+	 * <p>Use this method or {@link #getScaledSectFracsOnNode(int)} when distributing some
+	 * property of a node across the fault sections it intersects.</p>
 	 * 
 	 * @param idx fault-section index
 	 * @return a map of fault-section participation in nodes
 	 */
 	Map<Integer, Double> getScaledNodeFractions(int sectIdx);
+	
+	/**
+	 * For a given node, this provides a map of the sections that overlap it and their fractional
+	 * weight. This is scaled to account for overlap and the sum of all values will never exceed 1.
+	 * 
+	 * This returns the same information as {@link #getScaledNodeFractions(int)}, except keyed on
+	 * the node index rather than the section index.
+	 * 
+	 * @param nodeIdx
+	 * @return
+	 */
+	Map<Integer, Double> getScaledSectFracsOnNode(int nodeIdx);
 
 	/**
 	 * Returns a map of the indices of nodes that intersect the fault-section at
 	 * {@code sectIdx} where the values are the fraction of the area of the
-	 * fault-section occupied by each node. The values in the map sum to 1.
+	 * fault-section occupied by each node. See {@link #getSectionFracsOnNode(int)} to access
+	 * the same information but keyed on node index.
 	 * 
-	 * In other words, the fraction of the fault polygon occupied by each node,
-	 * where fractions sum to 1.0. 
+	 * In other words, the fraction of the fault polygon occupied by each node, not accounting
+	 * for overlap with other sections. The values will typically sum to 1.0, unless the
+	 * fault is not fully contained within the region.
 	 * 
 	 * <p>Use this method when distributing some property of a fault section across
 	 * the nodes it intersects.</p>
@@ -102,6 +117,10 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 
 	/**
 	 * This provides the sections and fraction of each section that contributes to the node.
+	 * This returns the same information as {{@link #getNodeFractions(int)}, except keyed 
+	 * on the node rather than the section. It can also be used to distribute some
+	 * property of a section to a node.
+	 * 
 	 * @param nodeIdx
 	 * @return
 	 */
@@ -118,6 +137,25 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 	 * @return
 	 */
 	Collection<Integer> sectIndices();
+	
+	/**
+	 * The provides that fraction of the given fault section that lies inside the region, defined
+	 * using its polygon (or ramp, or whatever association structure is used). This won't necessarily
+	 * equal the fraction of its surface or trace that lies inside the region.
+	 * 
+	 * The default implementation calculates it as the sum of all {@link #getNodeFractions(int)}.
+	 * 
+	 * @param sectIndex
+	 * @return the fraction of the given fault section that lies inside the region
+	 */
+	default double getSectionFractInRegion(int sectIndex) {
+		// imply it from the from the sum of getNodeFractions(s);
+		double sum = 0d;
+		for (double val : getNodeFractions(sectIndex).values())
+			sum += val;
+		Preconditions.checkState((float)sum <= 1.01f, "Bad sum when calculation section fraction in region: %s", sum);
+		return sum;
+	}
 
 	@Override
 	public default AveragingAccumulator<FaultGridAssociations> averagingAccumulator() {
@@ -130,7 +168,9 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 	
 	public static class Precomputed implements FaultGridAssociations, ArchivableModule {
 		
-		private GriddedRegion region;
+		// for lazy init
+		protected Feature regionFeature;
+		protected GriddedRegion region;
 		
 		private ImmutableList<Integer> sectIndices;
 		
@@ -186,15 +226,15 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 		@Override
 		public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
 			FileBackedModule.initEntry(zout, entryPrefix, ARCHIVE_GRID_REGION_FILE_NAME);
-			Feature regFeature = region.toFeature();
 			OutputStreamWriter writer = new OutputStreamWriter(zout);
-			Feature.write(regFeature, writer);
+			Feature.write(getRegionFeature(), writer);
 			writer.flush();
 			zout.flush();
 			zout.closeEntry();
 			
 			CSVFile<String> extentsCSV = new CSVFile<>(true);
 			extentsCSV.addLine("Grid Node Index", "Fraction Associated With Fault");
+			GriddedRegion region = getRegion();
 			for (int nodeIndex=0; nodeIndex<region.getNodeCount(); nodeIndex++)
 				extentsCSV.addLine(nodeIndex+"", getNodeFraction(nodeIndex)+"");
 			CSV_BackedModule.writeToArchive(extentsCSV, zout, entryPrefix, ARCHIVE_NODE_EXTENTS_FILE_NAME);
@@ -221,8 +261,7 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
 			BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, ARCHIVE_GRID_REGION_FILE_NAME);
 			InputStreamReader regionReader = new InputStreamReader(regionIS);
-			Feature regFeature = Feature.read(regionReader);
-			region = GriddedRegion.fromFeature(regFeature);
+			regionFeature = Feature.read(regionReader);
 			
 			CSVFile<String> extentsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, ARCHIVE_NODE_EXTENTS_FILE_NAME);
 			ImmutableMap.Builder<Integer, Double> extentsBuilder = ImmutableMap.builderWithExpectedSize(extentsCSV.getNumRows()-1);
@@ -262,6 +301,11 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 		}
 		
 		@Override
+		public Map<Integer, Double> getScaledSectFracsOnNode(int sectIdx) {
+			return sectNodeScaledFracts.column(sectIdx);
+		}
+		
+		@Override
 		public Map<Integer, Double> getNodeFractions(int sectIdx) {
 			return sectNodeOrigFracts.row(sectIdx);
 		}
@@ -273,7 +317,22 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 
 		@Override
 		public GriddedRegion getRegion() {
+			if (region == null) {
+				synchronized (this) {
+					if (region == null) {
+						Preconditions.checkNotNull(regionFeature,
+								"Region is null but we don't have a Feature to load it from");
+						region = GriddedRegion.fromFeature(regionFeature);
+					}
+				}
+			}
 			return region;
+		}
+		
+		protected Feature getRegionFeature() {
+			if (regionFeature == null)
+				regionFeature = getRegion().toFeature();
+			return regionFeature;
 		}
 
 		@Override
