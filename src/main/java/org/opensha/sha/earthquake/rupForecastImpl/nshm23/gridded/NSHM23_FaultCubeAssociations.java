@@ -506,12 +506,12 @@ public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, Arch
 
 	@Override
 	public Class<? extends ArchivableModule> getLoadingClass() {
-		return FaultGridAssociations.Precomputed.class;
+		return FaultCubeAssociations.Precomputed.class;
 	}
 
 	@Override
 	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-		new FaultGridAssociations.Precomputed(this).writeToArchive(zout, entryPrefix);
+		new FaultCubeAssociations.Precomputed(this).writeToArchive(zout, entryPrefix);
 	}
 
 	@Override
