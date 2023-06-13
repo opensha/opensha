@@ -1,17 +1,17 @@
-package org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded;
+package org.opensha.commons.geo;
 
 import java.awt.geom.Area;
 import java.io.IOException;
 import java.util.List;
 
-import org.opensha.commons.geo.BorderType;
-import org.opensha.commons.geo.GriddedRegion;
-import org.opensha.commons.geo.Location;
-import org.opensha.commons.geo.LocationList;
-import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.json.Feature;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 /**
  * This class represents a 3D geographic volume discretized into "cubes" (default size is about 2 by 2 by 2 km).  It does so by
@@ -41,6 +41,7 @@ import com.google.common.base.Preconditions;
  * @author field
  *
  */
+@JsonAdapter(CubedGriddedRegion.Adapter.class)
 public class CubedGriddedRegion {
 	
 	final static boolean D = false;
@@ -243,7 +244,7 @@ public class CubedGriddedRegion {
 			}
 		}
 		
-		List<LocationList> modLocList = NSHM23_FaultPolygonBuilder.areaToLocLists(area);
+		List<LocationList> modLocList = RegionUtils.areaToLocLists(area);
 		Preconditions.checkState(modLocList.size() == 1, "LocListList size=%s", modLocList.size());
 		
 		return new Region(modLocList.get(0), BorderType.MERCATOR_LINEAR);
@@ -402,9 +403,82 @@ public class CubedGriddedRegion {
 			System.out.println("It's confrimed that each cell has "+numCubesPerGridCell+" cubes");
 	}
 	
+	/*
+	 * GeoJSON related methods
+	 */
+	
+	private static final String JSON_MAX_DEPTH = "MaxDepth";
+	private static final String JSON_NUM_CUBE_DEPTHS = "NumCubeDepths";
+	private static final String JSON_NUM_CUBES_PER_GRID_EDGE = "NumCubesPerGridEdge";
+	
+	/**
+	 * Converts this cubed region to a GeoJSON feature object for serialization
+	 * 
+	 * @return
+	 */
+	public Feature toFeature() {
+		Feature feature = this.getGriddedRegion().toFeature();
+		
+		feature.properties.put(JSON_MAX_DEPTH, maxDepth);
+		feature.properties.put(JSON_NUM_CUBE_DEPTHS, numCubeDepths);
+		feature.properties.put(JSON_NUM_CUBES_PER_GRID_EDGE, numCubesPerGridEdge);
+		
+		return feature;
+	}
+	
+	/**
+	 * Converts GeoJSON feature object back to a cubed region.
+	 * 
+	 * @param feature
+	 * @return
+	 */
+	public static CubedGriddedRegion fromFeature(Feature feature) {
+		GriddedRegion gridReg = GriddedRegion.fromFeature(feature);
+		
+		return fromFeature(gridReg, feature);
+	}
+	
+	/**
+	 * Converts GeoJSON feature object back to a cubed region with the gridded region already loaded
+	 * 
+	 * @param gridReg
+	 * @param feature
+	 * @return
+	 */
+	public static CubedGriddedRegion fromFeature(GriddedRegion gridReg, Feature feature) {
+		double maxDepth = feature.properties.getDouble(JSON_MAX_DEPTH, Double.NaN);
+		Preconditions.checkState(Double.isFinite(maxDepth), "GeoJSON must contain "+JSON_MAX_DEPTH);
+		int numCubeDepths = feature.properties.getInt(JSON_NUM_CUBE_DEPTHS, -1);
+		Preconditions.checkState(numCubeDepths > 0, "GeoJSON must contain "+JSON_NUM_CUBE_DEPTHS);
+		int numCubesPerGridEdge = feature.properties.getInt(JSON_NUM_CUBES_PER_GRID_EDGE, -1);
+		Preconditions.checkState(numCubesPerGridEdge > 0, "GeoJSON must contain "+JSON_NUM_CUBES_PER_GRID_EDGE);
+		
+		return new CubedGriddedRegion(gridReg, maxDepth, numCubeDepths, numCubesPerGridEdge);
+	}
+	
+	public static class Adapter extends TypeAdapter<CubedGriddedRegion> {
+		
+		private Feature.FeatureAdapter featureAdapter;
+		
+		public Adapter() {
+			featureAdapter = new Feature.FeatureAdapter();
+		}
 
-	
-	
+		@Override
+		public void write(JsonWriter out, CubedGriddedRegion value) throws IOException {
+			if (value == null)
+				out.nullValue();
+			else
+				featureAdapter.write(out, value.toFeature());
+		}
+
+		@Override
+		public CubedGriddedRegion read(JsonReader in) throws IOException {
+			Feature feature = featureAdapter.read(in);
+			return fromFeature(feature);
+		}
+		
+	}
 	
 	public static void main(String[] args) throws IOException {
 		

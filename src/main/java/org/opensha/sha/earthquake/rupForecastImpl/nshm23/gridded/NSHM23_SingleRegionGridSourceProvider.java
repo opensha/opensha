@@ -7,6 +7,7 @@ import java.util.List;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.geo.CubedGriddedRegion;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -273,7 +274,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 	}
 
 	public SummedMagFreqDist getSubSeismoMFD_ForCube(int cubeIndex) {
-		double[] sectDistWeights = faultCubeassociations.getSectDistWeightsAtCube(cubeIndex);
+		double[] sectDistWeights = faultCubeassociations.getScaledSectDistWeightsAtCube(cubeIndex);
 		if (sectDistWeights == null) // no sections nucleate here
 			return null;
 		SummedMagFreqDist subSeisMFD = initSummedMFD();
@@ -297,7 +298,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 	public SummedMagFreqDist getUnassociatedMFD_ForCube(int cubeIndex) {
 		double scaleFactor = totGriddedSeisMFD.getY(0)/totalTrulyOffFaultMFD.getY(0);
 
-		double[] sectDistWeights = faultCubeassociations.getSectDistWeightsAtCube(cubeIndex);
+		double[] sectDistWeights = faultCubeassociations.getScaledSectDistWeightsAtCube(cubeIndex);
 		double wtSum =0;
 		if (sectDistWeights != null)
 			for(double weight : sectDistWeights)
@@ -325,13 +326,13 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 	}
 
 	public SummedMagFreqDist getSupraSeisMFD_ForCube(int cubeIndex) {
-		double[] sectDistWeights = faultCubeassociations.getSectDistWeightsAtCube(cubeIndex);
+		double[] sectDistWeights = faultCubeassociations.getScaledSectDistWeightsAtCube(cubeIndex);
 		if(sectDistWeights == null) // no sections nucleate here
 			return null;
 		SummedMagFreqDist supraMFD = initSummedMFD();
 		int[] sects = faultCubeassociations.getSectsAtCube(cubeIndex);
 		for(int s=0; s<sects.length; s++) {
-			double wt = sectDistWeights[s]/faultCubeassociations.getTotalDistWtAtCubesForSect(sects[s]);
+			double wt = sectDistWeights[s]/faultCubeassociations.getTotalScaledDistWtAtCubesForSect(sects[s]);
 			IncrementalMagFreqDist mfd = longTermSupraSeisMFD_OnSectArray[sects[s]].deepClone();
 			mfd.scale(wt);
 			supraMFD.addIncrementalMagFreqDist(mfd);
