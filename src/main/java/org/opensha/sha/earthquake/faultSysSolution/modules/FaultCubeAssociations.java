@@ -144,6 +144,8 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 				double[][] sectOrigDistWeightsAtCubes, double[][] sectScaledDistWeightsAtCubes,
 				double[] totOrigDistWtsAtCubesForSectArray, double[] totScaledDistWtsAtCubesForSectArray) {
 			super(gridAssociations);
+			// need the version with cube properties added
+			this.regionFeature = cgr.toFeature();
 			this.cgr = cgr;
 			this.sectsAtCubes = sectsAtCubes;
 			this.sectOrigDistWeightsAtCubes = sectOrigDistWeightsAtCubes;
@@ -164,7 +166,12 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 					if (cgr == null) {
 						Preconditions.checkNotNull(regionFeature,
 								"Feature must already be loaded to init a cgr (can't build it from a gridded region)");
-						if (region == null) {
+						if (!regionFeature.properties.containsKey(CubedGriddedRegion.JSON_MAX_DEPTH)) {
+							System.err.println("WARNING: gridded region doesn't have cube params attached, assuming default");
+							if (region == null)
+								region = GriddedRegion.fromFeature(regionFeature);
+							cgr = new CubedGriddedRegion(region);
+						} else if (region == null) {
 							// load both
 							cgr = CubedGriddedRegion.fromFeature(regionFeature);
 							region = cgr.getGriddedRegion();
@@ -198,6 +205,8 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 						for (int row=1; row<csv.getNumRows(); row++) {
 							List<String> line = csv.getLine(row);
 							int cubeIndex = Integer.parseInt(line.get(0));
+							Preconditions.checkState(cubeIndex < sectsAtCubes.length,
+									"Unexpected cubeIndex=%s with numCubes=%s", cubeIndex, sectsAtCubes.length);
 							int numValCols = line.size()-1;
 							if (numValCols % 3 == 2) {
 								// probably missing last empty value (last orig val was equal to last scaled val and omitted)
