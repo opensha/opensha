@@ -407,9 +407,9 @@ public class CubedGriddedRegion {
 	 * GeoJSON related methods
 	 */
 	
-	private static final String JSON_MAX_DEPTH = "MaxDepth";
-	private static final String JSON_NUM_CUBE_DEPTHS = "NumCubeDepths";
-	private static final String JSON_NUM_CUBES_PER_GRID_EDGE = "NumCubesPerGridEdge";
+	public static final String JSON_MAX_DEPTH = "MaxDepth";
+	public static final String JSON_NUM_CUBE_DEPTHS = "NumCubeDepths";
+	public static final String JSON_NUM_CUBES_PER_GRID_EDGE = "NumCubesPerGridEdge";
 	
 	/**
 	 * Converts this cubed region to a GeoJSON feature object for serialization
