@@ -1,13 +1,9 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-
 import java.io.File;
 import java.io.IOException;
 
 import org.junit.BeforeClass;
-import org.junit.Test;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractFaultCubeAssociationsTest;

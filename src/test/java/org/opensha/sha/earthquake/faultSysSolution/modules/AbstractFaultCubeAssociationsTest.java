@@ -1,9 +1,15 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
+import java.util.HashSet;
+
 import org.junit.Test;
+import org.opensha.commons.geo.CubedGriddedRegion;
+import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.json.Feature;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 
 import com.google.common.base.Preconditions;
@@ -127,6 +133,24 @@ public abstract class AbstractFaultCubeAssociationsTest extends AbstractFaultGri
 			assertTrue("Scaled sum for sect "+s+" is greater than original: scaled="+scaledSum+", orig="+fullSum,
 					(float)scaledSum <= (float)fullSum);
 		}
+	}
+	
+	@Test
+	public void testCubeSectIndices() {
+		doTestCubeSectIndices(assoc);
+	}
+	
+	private void doTestCubeSectIndices(FaultCubeAssociations assoc) {
+		HashSet<Integer> sectIndices = new HashSet<>(assoc.sectIndices());
+		
+		HashSet<Integer> cubeObsSectIndices = new HashSet<>();
+		for (int c=0; c<cubeCount; c++) {
+			int[] sects = assoc.getSectsAtCube(c);
+			if (sects != null)
+				for (int sectIndex : sects)
+					cubeObsSectIndices.add(sectIndex);
+		}
+		assertSetEquals("Sects set determined from node fracts", cubeObsSectIndices, sectIndices);
 	}
 	
 	/*
@@ -260,6 +284,41 @@ public abstract class AbstractFaultCubeAssociationsTest extends AbstractFaultGri
 			double val2 = assoc2.getTotalOrigDistWtAtCubesForSect(s);
 			assertEquals("getTotalOrigDistWtAtCubesForSect mismatch for sect "+s, val1, val2, TOL);
 		}
+	}
+	
+	@Test
+	public void testAveragedGridRegHasCubeInfo() {
+		doTestGridRegHasCubeInfo(getAveragedInstance(assoc));
+	}
+	
+	@Test
+	public void testSerializedGridRegHasCubeInfo() {
+		doTestGridRegHasCubeInfo(getSerializedInstance(assoc));
+	}
+	
+	private void doTestGridRegHasCubeInfo(FaultCubeAssociations assoc) {
+		assertTrue("Instance should be of type precomputed", assoc instanceof FaultCubeAssociations.Precomputed);
+		Feature feature = ((FaultCubeAssociations.Precomputed)assoc).getRegionFeature();
+		assertNotNull("Gridded region feature should already be populated", feature);
+		String[] keys = {
+				CubedGriddedRegion.JSON_MAX_DEPTH,
+				CubedGriddedRegion.JSON_NUM_CUBE_DEPTHS,
+				CubedGriddedRegion.JSON_NUM_CUBES_PER_GRID_EDGE
+		};
+		for (String key : keys)
+			assertTrue("GriddedRegion feature doesn't contain property: "+key, feature.properties.containsKey(key));
+		CubedGriddedRegion cgr = assoc.getCubedGriddedRegion();
+		assertNotNull("Couldn't build CGR?", cgr);
+	}
+	
+	@Test
+	public void testAveragedCubeSectIndices() {
+		doTestCubeSectIndices(getAveragedInstance(assoc));
+	}
+	
+	@Test
+	public void testSerializedCubeSectIndices() {
+		doTestCubeSectIndices(getSerializedInstance(assoc));
 	}
 
 }

@@ -6,7 +6,9 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -221,6 +223,36 @@ public abstract class AbstractFaultGridAssociationsTest {
 		}
 	}
 	
+	@Test
+	public void testSectIndices() {
+		doTestSectIndices(assoc);
+	}
+	
+	private void doTestSectIndices(FaultGridAssociations assoc) {
+		HashSet<Integer> sectIndices = new HashSet<>(assoc.sectIndices());
+		HashSet<Integer> nodeObsSectIndices = new HashSet<>();
+		for (int n=0; n<nodeCount; n++) {
+			Map<Integer, Double> fracts = assoc.getSectionFracsOnNode(n);
+			if (fracts != null)
+				nodeObsSectIndices.addAll(fracts.keySet());
+		}
+		assertSetEquals("Sects set determined from node fracts", nodeObsSectIndices, sectIndices);
+		
+		HashSet<Integer> sectObsSectIndices = new HashSet<>();
+		for (int s=0; s<sectCount; s++) {
+			Map<Integer, Double> fracts = assoc.getNodeFractions(s);
+			if (fracts != null && !fracts.isEmpty())
+				sectObsSectIndices.add(s);
+		}
+		assertSetEquals("Sects set determined from sect fracts", sectObsSectIndices, sectIndices);
+	}
+	
+	protected static <E> void assertSetEquals(String name, Set<E> refSet, Set<E> testSet) {
+		assertEquals(name+" sizes inconsistent", refSet.size(), testSet.size());
+		for (E refVal : refSet)
+			assertTrue(name+" doesn't contain "+refVal, testSet.contains(refVal));
+	}
+	
 	protected static void assertNonNegAndFinite(String name, double val) {
 		assertTrue(name+" is non-finite: "+val, Double.isFinite(val));
 		assertTrue(name+" is < 0: "+val, (float)val >= 0f);
@@ -352,12 +384,12 @@ public abstract class AbstractFaultGridAssociationsTest {
 	}
 	
 	@Test
-	public void testAveragedSectIndices() {
+	public void testAveragedSectIndicesEqual() {
 		doTestSectIndicesEqual(assoc, getAveragedInstance(assoc));
 	}
 	
 	@Test
-	public void testSerializedSectIndices() {
+	public void testSerializedSectIndicesEqual() {
 		doTestSectIndicesEqual(assoc, getSerializedInstance(assoc));
 	}
 	
@@ -370,6 +402,16 @@ public abstract class AbstractFaultGridAssociationsTest {
 		for (int sectIndex : set1) {
 			assertTrue("Section "+sectIndex+" is not in both", set2.contains(sectIndex));
 		}
+	}
+	
+	@Test
+	public void testAveragedSectIndices() {
+		doTestSectIndices(getAveragedInstance(assoc));
+	}
+	
+	@Test
+	public void testSerializedSectIndices() {
+		doTestSectIndices(getSerializedInstance(assoc));
 	}
 
 }
