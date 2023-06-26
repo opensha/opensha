@@ -251,8 +251,8 @@ public class ApplicationVersion implements Comparable<ApplicationVersion> {
 				if (line.trim().length() > 0)
 					return line;
 		} catch (Exception e) {
-			System.err.println("Exception detecting git hash");
-			e.printStackTrace();
+			System.err.println("Exception detecting git hash: "+e.getMessage());
+//			e.printStackTrace();
 		}
 		return null;
 	}
@@ -295,8 +295,8 @@ public class ApplicationVersion implements Comparable<ApplicationVersion> {
 				if (line.trim().length() > 0)
 					return line;
 		} catch (Exception e) {
-			System.err.println("Exception detecting git hash");
-			e.printStackTrace();
+			System.err.println("Exception detecting git hash: "+e.getMessage());
+//			e.printStackTrace();
 		}
 		return null;
 	}
