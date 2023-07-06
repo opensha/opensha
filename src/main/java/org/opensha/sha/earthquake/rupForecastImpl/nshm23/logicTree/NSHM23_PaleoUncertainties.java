@@ -19,11 +19,32 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Un
 public enum NSHM23_PaleoUncertainties implements LogicTreeNode {
 	EVEN_FIT("Even-Fit Paleo Data", "EvenFit", 1d, 1d),
 	OVER_FIT("Over-Fit Paleo Data (5x)", "OverFit", 1d/5d, 1d),
-	UNDER_FIT("Under-Fit Paleo Data (10x)", "UnderFit", 10d, 1d);
+	UNDER_FIT("Under-Fit Paleo Data (10x)", "UnderFit", 10d, 1d),
+	AVERAGE("Branch Averaged Paleo Data", "AverageFit", Double.NaN, 0d) {
+
+		@Override
+		public double getUncertaintyScalar() {
+			if (Double.isNaN(scalar)) {
+				double weightSum = 0d;
+				double logWeightedSum = 0d;
+				for (NSHM23_PaleoUncertainties uncert : values()) {
+					double weight = uncert.getNodeWeight(null);
+					if (weight > 0d && uncert != this) {
+						weightSum += weight;
+						double scalar = uncert.getUncertaintyScalar();
+						logWeightedSum += Math.log10(scalar)*weight;
+					}
+				}
+				scalar = Math.pow(10, logWeightedSum/weightSum);
+			}
+			return scalar;
+		}
+		
+	};
 
 	private String name;
 	private String shortName;
-	private double scalar;
+	protected double scalar;
 	private double weight;
 
 	private NSHM23_PaleoUncertainties(String name, String shortName, double scalar, double weight) {
@@ -54,7 +75,7 @@ public enum NSHM23_PaleoUncertainties implements LogicTreeNode {
 	}
 	
 	public List<SectMappedUncertainDataConstraint> getScaled(List<? extends SectMappedUncertainDataConstraint> constraints) {
-		return getScaled(scalar, constraints);
+		return getScaled(getUncertaintyScalar(), constraints);
 	}
 	
 	public static List<SectMappedUncertainDataConstraint> getScaled(double uncertScalar,
@@ -66,7 +87,7 @@ public enum NSHM23_PaleoUncertainties implements LogicTreeNode {
 	}
 	
 	public SectMappedUncertainDataConstraint getScaled(SectMappedUncertainDataConstraint constraint) {
-		return getScaled(scalar, constraint);
+		return getScaled(getUncertaintyScalar(), constraint);
 	}
 	
 	public static SectMappedUncertainDataConstraint getScaled(double uncertScalar, SectMappedUncertainDataConstraint constraint) {
@@ -83,6 +104,12 @@ public enum NSHM23_PaleoUncertainties implements LogicTreeNode {
 	
 	public double getUncertaintyScalar() {
 		return scalar;
+	}
+
+	public static void main(String[] args) {
+		for (NSHM23_PaleoUncertainties uncert : values()) {
+			System.out.println(uncert.getName()+": "+(float)uncert.getUncertaintyScalar());
+		}
 	}
 
 }

@@ -24,9 +24,14 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureProperties;
+import org.opensha.commons.logicTree.BranchWeightProvider;
+import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
@@ -44,6 +49,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.La
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.ParkfieldInversionConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SectionTotalRateConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
@@ -106,6 +112,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBVal
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.prior2018.NSHM18_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SupraBAverager;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.AnalyticalSingleFaultInversionSolver;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.ClassicModelInversionSolver;
@@ -670,7 +677,88 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 	}
 	
+	private static NSHM23_ConstraintBuilder getAveragedConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		SupraSeisBValues[] bVals;
+		if (branch.hasValue(SupraSeisBValues.AVERAGE))
+			bVals = SupraSeisBValues.values();
+		else
+			bVals = new SupraSeisBValues[] { branch.requireValue(SupraSeisBValues.class) };
+		
+		NSHM23_SegmentationModels[] segModels;
+		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE))
+			segModels = NSHM23_SegmentationModels.values();
+		else
+			segModels = new NSHM23_SegmentationModels[] { branch.requireValue(NSHM23_SegmentationModels.class) };
+
+		List<LogicTreeBranch<?>> avgBranches = new ArrayList<>();
+		List<Double> avgWeights = new ArrayList<>();
+		
+		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
+		for (int i=0; i<branch.size(); i++)
+			levels.add(branch.getLevel(i));
+		LogicTreeBranch<LogicTreeNode> branchCopy = new LogicTreeBranch<>(levels);
+		for (LogicTreeNode node : branch)
+			branchCopy.setValue(node);
+		for (SupraSeisBValues bVal : bVals) {
+			for (NSHM23_SegmentationModels segModel : segModels) {
+				// create copy of the branch
+				LogicTreeBranch<LogicTreeNode> subBranch = branchCopy.copy();
+				// now override our values
+				subBranch.setValue(bVal);
+				subBranch.setValue(segModel);
+				
+				double subBranchWeight = 1d;
+				if (bVals.length > 1)
+					subBranchWeight *= bVal.getNodeWeight(subBranch);
+				if (segModels.length > 1)
+					subBranchWeight *= segModel.getNodeWeight(subBranch);
+				if (subBranchWeight > 0d) {
+					avgBranches.add(subBranch);
+					avgWeights.add(subBranchWeight);
+				}
+			}
+		}
+		
+		System.out.println("Building average SupraSeisBValTargetMFDs across "+avgBranches.size()+" sub-branches");
+		Preconditions.checkState(avgBranches.size() > 1, "Expected multiple branches to average");
+		SupraBAverager averager = new SupraBAverager();
+		
+		for (int i=0; i<avgBranches.size(); i++) {
+			LogicTreeBranch<?> avgBranch = avgBranches.get(i);
+			double weight = avgWeights.get(i);
+			
+			String branchStr = null;
+			if (bVals.length > 1)
+				branchStr = avgBranch.requireValue(SupraSeisBValues.class).getShortName();
+			if (segModels.length > 1) {
+				if (branchStr == null)
+					branchStr = "";
+				else
+					branchStr += ", ";
+				branchStr += "SegModel="+avgBranch.requireValue(NSHM23_SegmentationModels.class).name();
+			}
+			
+			System.out.println("Building target MFDs for branch "+i+"/"+avgBranches.size()+": "+branchStr);
+			
+			NSHM23_ConstraintBuilder builder = doGetConstraintBuilder(rupSet, avgBranch);
+			averager.process(builder.getTargetMFDs(), weight);
+		}
+		
+		SupraSeisBValInversionTargetMFDs avgTargets = averager.getSupraSeisAverageInstance();
+		NSHM23_ConstraintBuilder ret = doGetConstraintBuilder(rupSet, branch);
+		ret.setExternalTargetMFDs(avgTargets);
+		rupSet.addModule(avgTargets);
+		return ret;
+	}
+	
 	private static NSHM23_ConstraintBuilder getConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE) || branch.hasValue(SupraSeisBValues.AVERAGE))
+			// return averaged instance, looping over b-values and/or segmentation branches
+			return getAveragedConstraintBuilder(rupSet, branch);
+		return doGetConstraintBuilder(rupSet, branch);
+	}
+	
+	private static NSHM23_ConstraintBuilder doGetConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
 		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal);
 		
@@ -852,6 +940,47 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			}
 			return new NSHM23_FaultCubeAssociations(rupSet, new CubedGriddedRegion(modelGridReg), regionalAssociations);
 		}
+	}
+	
+	public static GridSourceProvider buildBranchAveragedGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		
+		if (!rupSet.hasModule(ModelRegion.class) && faultBranch.hasValue(NSHM23_FaultModels.class))
+			rupSet.addModule(NSHM23_FaultModels.getDefaultRegion(faultBranch));
+		Region modelReg = rupSet.requireModule(ModelRegion.class).getRegion();
+		
+		// figure out what region(s) we need
+		List<SeismicityRegions> seisRegions = getSeismicityRegions(modelReg);
+		
+		Preconditions.checkState(!seisRegions.isEmpty(), "Found no seismicity regions for model region %s", modelReg.getName());
+		// build cube associations
+		NSHM23_FaultCubeAssociations cubeAssociations = buildFaultCubeAssociations(rupSet, seisRegions);
+		// add those to the rupture set
+		rupSet.addModule(cubeAssociations);
+		
+		// average across the seismicity branches and off fault MMax branches
+		// use average seis pdf and declustering
+		AveragingAccumulator<GridSourceProvider> avgBuilder = null;
+		
+		LogicTreeNode[] fixedBranches = { NSHM23_SeisSmoothingAlgorithms.AVERAGE, NSHM23_DeclusteringAlgorithms.AVERAGE };
+		// force these to have a weight of 1
+		BranchWeightProvider gridTreeWeightProv = new BranchWeightProvider.NodeWeightOverrides(fixedBranches, 1d);
+		LogicTree<?> offFaultTree = LogicTree.buildExhaustive(NSHM23_LogicTreeBranch.levelsOffFault, true,
+				gridTreeWeightProv, fixedBranches);
+		System.out.println("Building branch averaged gridded seismicity model across "+offFaultTree.size()
+			+" combinations of MMax & seis rate branches, and using the average PDF");
+		for (int i=0; i<offFaultTree.size(); i++) {
+			LogicTreeBranch<?> gridBranch = offFaultTree.getBranch(i);
+			double weight = offFaultTree.getBranchWeight(gridBranch);
+			System.out.println("Building for branch "+i+"/"+offFaultTree.size()+": "+gridBranch+" (weight="+(float)weight+")");
+			Preconditions.checkState(weight > 0d, "Bad weight (%s) for gridded branch: %s", weight, gridBranch);
+			GridSourceProvider gridProv = buildGridSourceProv(sol, gridBranch, seisRegions, cubeAssociations);
+			if (avgBuilder == null)
+				avgBuilder = gridProv.averagingAccumulator();
+			avgBuilder.process(gridProv, weight);
+		}
+		
+		return avgBuilder.getAverage();
 	}
 	
 	public static NSHM23_AbstractGridSourceProvider buildGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
@@ -2133,6 +2262,53 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		public NSHM18_UseU3Paleo() {
 			NSHM18_FaultModels.USE_NEW_PALEO_DATA = false;
 		}
+	}
+	
+	public static class MatchFullBA extends NSHM23_InvConfigFactory {
+		
+		private double[] baNuclRates;
+		
+		public MatchFullBA() throws IOException {
+			FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
+					+ "2023_04_11-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR/"
+					+ "results_NSHM23_v2_CoulombRupSet_branch_averaged_gridded.zip"));
+			baNuclRates = sol.calcNucleationRateForAllSects(0d, Double.POSITIVE_INFINITY);
+		}
+
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
+			boolean found = false;
+			for (InversionConstraint constr : config.getConstraints()) {
+				if (constr instanceof SectionTotalRateConstraint) {
+					found = true;
+					SectionTotalRateConstraint sectConstr = (SectionTotalRateConstraint)constr;
+					RuptureSubSetMappings mappings = rupSet.getModule(RuptureSubSetMappings.class);
+					double[] totRates = baNuclRates;
+					double[] totRateStdDevs = sectConstr.getSectRateStdDevs();
+					if (mappings != null) {
+						// need to map
+						totRates = new double[mappings.getNumRetainedSects()];
+						for (int i=0; i<totRates.length; i++)
+							totRates[i] = baNuclRates[mappings.getOrigSectID(i)];
+					}
+					Preconditions.checkState(totRates.length == totRateStdDevs.length);
+					sectConstr.setSectRates(totRates, totRateStdDevs);
+				}
+			}
+			Preconditions.checkState(found);
+			return config;
+		}
+		
+	}
+	
+	public static class NSHM23_V2 extends NSHM23_InvConfigFactory {
+		
+		public NSHM23_V2() {
+			NSHM23_ConstraintBuilder.MAX_NUM_ZERO_SLIP_SECTS_PER_RUP = 0;
+		}
+		
 	}
 	
 	public static void main(String[] args) throws IOException {

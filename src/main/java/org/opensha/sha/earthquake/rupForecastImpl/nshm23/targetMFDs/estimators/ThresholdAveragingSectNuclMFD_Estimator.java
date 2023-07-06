@@ -84,6 +84,7 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 
 	private static final int DEBUG_SECT = -1; // disabled
 //	private static final int DEBUG_SECT = 315; // Chino alt 1
+//	private static final int DEBUG_SECT = 334; // ig Sand Springs Valley, Subsection 1
 //	private static final int DEBUG_SECT = 1832; // Mojave N
 //	private static final int DEBUG_SECT = 100; // Bicycle Lake
 //	private static final int DEBUG_SECT = 129; // Big Pine (East)
@@ -410,7 +411,7 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 					exec.shutdown();
 					throw ExceptionUtils.asRuntimeException(e);
 				}
-				if (applyOrigProbFloor)
+				if (applyOrigProbFloor && relGRProb > 0d)
 					relGRProb = Math.max(relGRProb, avgOrigJumpProbs.get(jump));
 				jumpProbs.put(jump, relGRProb);
 				jumpProbs.put(jump.reverse(), relGRProb);
@@ -457,7 +458,8 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 		}
 		
 		public Double call() {
-			final boolean D = RelGRWorstJumpProb.D;
+			final boolean D = RelGRWorstJumpProb.D || jump.fromSection.getSectionId() == DEBUG_SECT
+					|| jump.toSection.getSectionId() == DEBUG_SECT;	
 			
 			double minProb = 1d;
 			if (D) {

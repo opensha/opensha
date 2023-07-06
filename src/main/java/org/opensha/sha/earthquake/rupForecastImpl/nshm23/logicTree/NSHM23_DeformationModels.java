@@ -135,7 +135,9 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 			double totWeight = 0d;
 			List<GeoJSONFaultSection> ret = null;
-			double[] slipRates = null;
+			double[] origSlipRates = null;
+			double[] reducedSlipRates = null;
+			double[] aseismicities = null;
 			double[] slipRateStdDevs = null;
 			double[] creepRates = null;
 			boolean[] hasCreeps = null;
@@ -150,7 +152,9 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 							GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
 							ret.add(geoSect.clone());
 						}
-						slipRates = new double[ret.size()];
+						origSlipRates = new double[ret.size()];
+						reducedSlipRates = new double[ret.size()];
+						aseismicities = new double[ret.size()];
 						slipRateStdDevs = new double[ret.size()];
 						creepRates = new double[ret.size()];
 						hasCreeps = new boolean[ret.size()];
@@ -160,7 +164,11 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 					}
 					for (int s=0; s<dmSects.size(); s++) {
 						GeoJSONFaultSection sect = (GeoJSONFaultSection)dmSects.get(s);
-						slipRates[s] += dm.getWeight()*sect.getOrigAveSlipRate();
+						if (s == 1744)
+							System.err.println("DEBUG "+s+" for "+dm.name()+": slipRate="+sect.getOrigAveSlipRate());
+						origSlipRates[s] += dm.getWeight()*sect.getOrigAveSlipRate();
+						reducedSlipRates[s] += dm.getWeight()*sect.getReducedAveSlipRate();
+						aseismicities[s] += dm.getWeight()*sect.getAseismicSlipFactor();
 						slipRateStdDevs[s] += dm.getWeight()*sect.getOrigSlipRateStdDev();
 						double creepRate = sect.getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
 						if (Double.isFinite(creepRate)) {
@@ -175,12 +183,17 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			for (int s=0; s<ret.size(); s++) {
 				GeoJSONFaultSection subSect = ret.get(s);
 				
-				double slipRate = slipRates[s]/totWeight;
+				double origSlipRate = origSlipRates[s]/totWeight;
+				double reducedSlipRate = reducedSlipRates[s]/totWeight;
+				double aseismicity = aseismicities[s]/totWeight;
+				if (Math.abs(aseismicity - CREEP_FRACT_DEFAULT) < 0.001)
+					// probably rounding error, set it to the exact value
+					aseismicity = CREEP_FRACT_DEFAULT;
 				double slipRateStdDev = slipRateStdDevs[s]/totWeight;
 				double creepRate = hasCreeps[s] ? creepRates[s]/totWeight : Double.NaN;
 				double rake = FaultUtils.getInRakeRange(rakes[s].getAverage());
 				
-				subSect.setAveSlipRate(slipRate);
+				subSect.setAveSlipRate(origSlipRate);
 				subSect.setSlipRateStdDev(slipRateStdDev);
 				subSect.setAveRake(rake);
 				if (Double.isFinite(creepRate))
@@ -188,7 +201,25 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 				else
 					subSect.getProperties().remove(GeoJSONFaultSection.CREEP_RATE);
 				
-				applyCreepData(subSect, creepRate);
+				subSect.setAseismicSlipFactor(aseismicity);
+				if (hasCreeps[s]) {
+					Preconditions.checkState((float)origSlipRate >= (float)reducedSlipRate,
+							"%s. %s: hasCreeps=%s, origSlip=%s, reducedSlip=%s", s, subSect.getSectionName(),
+							hasCreeps[s], (float)origSlipRate, (float)reducedSlipRate);
+					if ((float)origSlipRate == (float)reducedSlipRate)
+						// only affects aseismicity
+						subSect.setCouplingCoeff(1d);
+					else
+						// set it such that the the calculated reduced slip rate will match the branch averaged version
+						subSect.setCouplingCoeff(reducedSlipRate/origSlipRate);
+				} else {
+					Preconditions.checkArgument((float)origSlipRate == (float)reducedSlipRate,
+							"%s. %s: hasCreeps=%s, origSlip=%s, reducedSlip=%s", s, subSect.getSectionName(),
+							hasCreeps[s], (float)origSlipRate, (float)reducedSlipRate);
+					// no reduction
+					subSect.setCouplingCoeff(1d);
+					
+				}
 			}
 			return ret;
 		}

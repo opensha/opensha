@@ -38,6 +38,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Un
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
@@ -95,6 +96,8 @@ public class NSHM23_ConstraintBuilder {
 	public static boolean ADJ_FOR_SLIP_ALONG_DEFAULT = false;
 	private boolean adjustForActualRupSlips = ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
 	private boolean adjustForSlipAlong = ADJ_FOR_SLIP_ALONG_DEFAULT;
+	
+	static int MAX_NUM_ZERO_SLIP_SECTS_PER_RUP = 1;
 	
 	private SubSeisMoRateReduction subSeisMoRateReduction = SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
 	
@@ -270,8 +273,22 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	private SupraSeisBValInversionTargetMFDs targetCache;
+	private SupraSeisBValInversionTargetMFDs externalTargetMFDs;
+	
+	/**
+	 * This sets an external {@link SupraSeisBValInversionTargetMFDs} instance that should be used rather than building
+	 * our own. If not null, this will be used for all MFD-related constraints and returned by {@link #getTargetMFDs()}.
+	 * 
+	 * @param externalTargetMFDs
+	 */
+	public void setExternalTargetMFDs(SupraSeisBValInversionTargetMFDs externalTargetMFDs) {
+		this.externalTargetMFDs = externalTargetMFDs;
+	}
 	
 	private SupraSeisBValInversionTargetMFDs getTargetMFDs(double supraBVal) {
+		if (externalTargetMFDs != null)
+			// always return external version if set
+			return externalTargetMFDs;
 		if (targetCache != null && targetCache.getSupraSeisBValue() == supraBVal)
 			return targetCache;
 		
@@ -281,6 +298,7 @@ public class NSHM23_ConstraintBuilder {
 		builder.magDepDefaultRelStdDev(magDepRelStdDev);
 		builder.addSectCountUncertainties(addSectCountUncertaintiesToMFD);
 		builder.subSeisMoRateReduction(subSeisMoRateReduction);
+		builder.maxNumZeroSlipSectsPerRup(MAX_NUM_ZERO_SLIP_SECTS_PER_RUP);
 		if (segModel != null) {
 			if (segModel instanceof BinaryRuptureProbabilityCalc) {
 				builder.forBinaryRupProbModel((BinaryRuptureProbabilityCalc)segModel);
@@ -319,7 +337,7 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public NSHM23_ConstraintBuilder supraBValMFDs() {
-		SupraSeisBValInversionTargetMFDs target = getTargetMFDs(supraBVal);
+		InversionTargetMFDs target = getTargetMFDs(supraBVal);
 		
 		List<? extends IncrementalMagFreqDist> origMFDs = target.getMFD_Constraints();
 		List<UncertainIncrMagFreqDist> uncertainMFDs = new ArrayList<>();

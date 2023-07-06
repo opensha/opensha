@@ -24,7 +24,25 @@ public enum SupraSeisBValues implements LogicTreeNode {
 	B_0p25(0.25,	0.2),
 	B_0p5(0.5,		0.2),
 	B_0p75(0.75,	0.2),
-	B_1p0(1d,		0.2);
+	B_1p0(1d,		0.2),
+	AVERAGE(0.5,	0d) {
+
+		@Override
+		public String getShortName() {
+			return "bAvg="+(float)bValue;
+		}
+
+		@Override
+		public String getName() {
+			return super.getName()+" (Averaged)";
+		}
+
+		@Override
+		public String getFilePrefix() {
+			return "AvgSupraB";
+		}
+		
+	};
 	
 //	B_0p0(0d, 0.05),
 //	B_0p25(0.25, 0.1),
