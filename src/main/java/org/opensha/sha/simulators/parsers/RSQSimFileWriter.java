@@ -11,13 +11,14 @@ import java.io.IOException;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 import org.opensha.sha.simulators.EventRecord;
 import org.opensha.sha.simulators.RSQSimEvent;
+import org.opensha.sha.simulators.RSQSimEventRecord;
 import org.opensha.sha.simulators.SimulatorElement;
 import org.opensha.sha.simulators.iden.LogicalAndRupIden;
 import org.opensha.sha.simulators.iden.MagRangeRuptureIdentifier;
@@ -162,6 +163,8 @@ public class RSQSimFileWriter {
 		List<RSQSimStateTime> allTrans = new ArrayList<>();
 		transReader.getTransitions(event, allTrans);
 		
+		// validate them
+		double prevTransTime = this.prevTransTime;
 		for (int i=0; i<allTrans.size(); i++) {
 			RSQSimStateTime trans = allTrans.get(i);
 			double transTime = trans.absoluteTime;
@@ -192,6 +195,21 @@ public class RSQSimFileWriter {
 				throw new IllegalStateException(error);
 			}
 			prevTransTime = transTime;
+		}
+		
+		return writeTransitions(event, eventID, timeOffset, version, allTrans);
+	}
+	
+
+	
+	public synchronized double writeTransitions(RSQSimEvent event, int eventID,
+			double timeOffset, TransVersion version, List<RSQSimStateTime> transitions) throws IOException {
+		for (int i=0; i<transitions.size(); i++) {
+			RSQSimStateTime trans = transitions.get(i);
+			double transTime = trans.absoluteTime;
+			if (Double.isFinite(timeOffset) && timeOffset != 0d)
+				transTime += timeOffset;
+			prevTransTime = transTime;
 			if (version == TransVersion.ORIGINAL || version == TransVersion.TRANSV) {
 				transOut.writeDouble(transTime);
 				transOut.writeInt(trans.patchID-1); // trans file patches are 0-based
@@ -212,10 +230,10 @@ public class RSQSimFileWriter {
 		}
 		
 		prevTransEventTime = event.getTime()+timeOffset;
-		prevTransEventFirstTransTime = allTrans.get(0).absoluteTime+timeOffset;
+		prevTransEventFirstTransTime = transitions.get(0).absoluteTime+timeOffset;
 		prevTransEventLastTransTime = prevTransTime;
 		prevTransEventID = event.getID();
-		prevTrans = allTrans.get(allTrans.size()-1);
+		prevTrans = transitions.get(transitions.size()-1);
 		
 		return prevTransTime;
 	}
@@ -641,6 +659,99 @@ public class RSQSimFileWriter {
 				fw.write(" "+key+" = "+commonParams.get(key)+"\n");
 			fw.close();
 		}
+	}
+	
+	public static void patchFilterCatalog(Iterable<RSQSimEvent> events, List<SimulatorElement> allPatches,
+			Set<Integer> includePatches, boolean includeOtherCorupturingPatches, RuptureIdentifier rupFilter,
+			File outputDir, String prefix, boolean bigEndian) throws IOException {
+		patchFilterCatalog(events, allPatches, includePatches, includeOtherCorupturingPatches, rupFilter, outputDir,
+				prefix, bigEndian, null);
+	}
+	
+	public static void patchFilterCatalog(Iterable<RSQSimEvent> events, List<SimulatorElement> allPatches,
+			Set<Integer> includePatches, boolean includeOtherCorupturingPatches, RuptureIdentifier rupFilter,
+			File outputDir, String prefix, boolean bigEndian, RSQSimStateTransitionFileReader transReader) throws IOException {
+		RSQSimFileWriter writer = new RSQSimFileWriter(outputDir, prefix, bigEndian,
+				transReader != null, transReader == null ? null : transReader.getVersion());
+		
+		int numWritten = 0;
+		int totalNum = 0;
+		for (RSQSimEvent e : events) {
+			totalNum++;
+			if (rupFilter != null && !rupFilter.isMatch(e))
+				continue;
+			
+			// make sure it ruptures at least one of these patches
+			boolean fullMatch = false;
+			boolean anyMatch = false;
+			int[] elementIDs  = e.getAllElementIDs();
+			for (int patch : elementIDs) {
+				boolean match = includePatches.contains(patch);
+				fullMatch &= match;
+				anyMatch |= match;
+				if (anyMatch && !fullMatch)
+					// no need to keep searching
+					break;
+			}
+			if (!anyMatch)
+				// doesn't rupture any of these patches
+				continue;
+			
+			List<RSQSimStateTime> transitions = null;
+			if (transReader != null) {
+				transitions = new ArrayList<>();
+				transReader.getTransitions(e, transitions);
+			}
+			
+			if (!fullMatch && !includeOtherCorupturingPatches) {
+				// need to filter out the slip on other patches
+				List<RSQSimEventRecord> modRecords = new ArrayList<>();
+				for (EventRecord origRec : e) {
+					Preconditions.checkState(origRec instanceof RSQSimEventRecord);
+					RSQSimEventRecord rsRec = (RSQSimEventRecord)origRec;
+					int[] recIDs = rsRec.getElementIDs();
+					int numMatches = 0;
+					for (int patch : recIDs)
+						if (includePatches.contains(patch))
+							numMatches++;
+					
+					if (numMatches == recIDs.length) {
+						// copy directly
+						modRecords.add(rsRec);
+					} else if (numMatches > 0) {
+						// filter it
+						double[] recSlips = rsRec.getElementSlips();
+						RSQSimEventRecord modRec = new RSQSimEventRecord(allPatches);
+						
+						for (int i=0; i<recIDs.length; i++) {
+							if (includePatches.contains(recIDs[i])) {
+								modRec.addSlip(recIDs[i], recSlips[i]);
+							}
+						}
+						modRecords.add(modRec);
+					} // else skip
+				}
+				Preconditions.checkState(!modRecords.isEmpty());
+				e = new RSQSimEvent(modRecords);
+				
+				if (transitions != null) {
+					// filter transitions as well
+					List<RSQSimStateTime> filteredTrans = new ArrayList<>();
+					for (RSQSimStateTime trans : transitions)
+						if (includePatches.contains(trans.patchID))
+							filteredTrans.add(trans);
+				}
+			}
+			
+			writer.writeEvent(e);
+			if (transitions != null)
+				writer.writeTransitions(e, e.getID(), 0d, transReader.getVersion(), transitions);
+			
+			numWritten++;
+		}
+		
+		writer.close();
+		System.out.println("Wrote "+numWritten+"/"+totalNum+" events");
 	}
 
 	public static void main(String[] args) throws IOException {
