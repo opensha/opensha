@@ -2500,6 +2500,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			PlotCurveCharacterstics boundaryChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Color.GRAY);
 			for (int s=0; s<specs.size(); s++) {
 				Range yRange = yRanges.get(s);
+				if (yRange == null)
+					yRange = new Range(0d, 1d);
 				List<XY_DataSet> funcs = funcLists.get(s);
 				List<PlotCurveCharacterstics> chars = charLists.get(s);
 				
