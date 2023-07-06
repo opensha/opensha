@@ -683,27 +683,38 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 	
 		RuptureSurface surf = this.eqkRupture.getRuptureSurface();
 		
-		// ---------------------------------------------------------------------- MARCO 2010.03.15
-		// Compute the hypocenter as the middle point of the rupture
-		// this is problematic, see ticket #438
-		double hypoLon = 0.0;
-		double hypoLat = 0.0;
-		double hypoDep = 0.0;
-		double cnt = 0.0;
-		for(Location loc: surf.getEvenlyDiscritizedListOfLocsOnSurface()) {
-			hypoLon += loc.getLongitude();
-			hypoLat += loc.getLatitude();
-			hypoDep += loc.getDepth();
-			cnt += 1;		
-		}		
-		hypoLon = hypoLon / cnt;
-		hypoLat = hypoLat / cnt;
-		hypoDep = hypoDep / cnt;
-		hypodepth = hypoDep;
-//		System.out.println("computed hypocentral depth:"+hypodepth);
-//		hypodepth = this.eqkRupture.getHypocenterLocation().getDepth();
-//		System.out.println("real hypocentral depth:"+hypodepth);
-		// ---------------------------------------------------------------------- MARCO 2010.03.15
+		Location hypo = this.eqkRupture.getHypocenterLocation();
+		if (hypo == null ) {
+			// ---------------------------------------------------------------------- MARCO 2010.03.15
+			// Compute the hypocenter as the middle point of the rupture
+			// this is problematic, see ticket #438
+			try {
+				double hypoLon = 0.0;
+				double hypoLat = 0.0;
+				double hypoDep = 0.0;
+				double cnt = 0.0;
+				for(Location loc: surf.getEvenlyDiscritizedListOfLocsOnSurface()) {
+					hypoLon += loc.getLongitude();
+					hypoLat += loc.getLatitude();
+					hypoDep += loc.getDepth();
+					cnt += 1;		
+				}		
+				hypoLon = hypoLon / cnt;
+				hypoLat = hypoLat / cnt;
+				hypoDep = hypoDep / cnt;
+				hypo = new Location (hypoLat, hypoLon, hypoDep);
+			} catch (Exception e) {
+				// will just use average of top and bottom depth
+			}
+//			System.out.println("computed hypocentral depth:"+hypodepth);
+//			hypodepth = this.eqkRupture.getHypocenterLocation().getDepth();
+//			System.out.println("real hypocentral depth:"+hypodepth);
+			// ---------------------------------------------------------------------- MARCO 2010.03.15
+		}
+		if (hypo == null)
+			hypodepth = surf.getAveRupTopDepth() + 0.5*surf.getAveWidth()*Math.sin(Math.toRadians(surf.getAveDip()));
+		else
+			hypodepth = hypo.getDepth();
 		
 		// Depth dummy variable delta_h for depth term = e[iper]*(hypodepth-hc)*delta_h
 		if (hypodepth > hlow){
