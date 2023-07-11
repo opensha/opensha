@@ -12,6 +12,7 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.NucleationRatePlot;
@@ -35,8 +36,8 @@ import com.google.common.base.Preconditions;
 public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGridSourceProvider {
 	
 	private GriddedRegion gridReg;
-	private List<NSHM23_SingleRegionGridSourceProvider> regionalProviders;
-	private NSHM23_FaultCubeAssociations combinedFaultCubeAssociations;
+	private List<? extends GridSourceProvider> regionalProviders;
+	private FaultCubeAssociations combinedFaultCubeAssociations;
 	
 	// mapping of grid node indexes to grid source providers
 	private GridSourceProvider[] nodeGridProvs;
@@ -48,18 +49,18 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 		this(sol, buildCombinedFaultCubeAssociations(sol.getRupSet(), gridReg, regionalProviders), regionalProviders);
 	}
 	
-	private static NSHM23_FaultCubeAssociations buildCombinedFaultCubeAssociations(
+	private static FaultCubeAssociations buildCombinedFaultCubeAssociations(
 			FaultSystemRupSet rupSet, GriddedRegion gridReg,
 			List<NSHM23_SingleRegionGridSourceProvider> regionalProviders) {
-		List<NSHM23_FaultCubeAssociations> regionalAssociations = new ArrayList<>();
+		List<FaultCubeAssociations> regionalAssociations = new ArrayList<>();
 		for (NSHM23_SingleRegionGridSourceProvider prov : regionalProviders)
 			regionalAssociations.add(prov.getFaultCubeassociations());
-		return new NSHM23_FaultCubeAssociations(rupSet, new CubedGriddedRegion(gridReg), regionalAssociations);
+		return FaultCubeAssociations.stitch(new CubedGriddedRegion(gridReg), regionalAssociations);
 	}
 
 	public NSHM23_CombinedRegionGridSourceProvider(FaultSystemSolution sol,
-			NSHM23_FaultCubeAssociations combinedFaultCubeAssociations,
-			List<NSHM23_SingleRegionGridSourceProvider> regionalProviders) {
+			FaultCubeAssociations combinedFaultCubeAssociations,
+			List<? extends GridSourceProvider> regionalProviders) {
 		this.combinedFaultCubeAssociations = combinedFaultCubeAssociations;
 		this.gridReg = combinedFaultCubeAssociations.getRegion();
 		this.regionalProviders = regionalProviders;
@@ -92,7 +93,7 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 	}
 	
 	@Override
-	public NSHM23_FaultCubeAssociations getFaultCubeassociations() {
+	public FaultCubeAssociations getFaultCubeassociations() {
 		return combinedFaultCubeAssociations;
 	}
 

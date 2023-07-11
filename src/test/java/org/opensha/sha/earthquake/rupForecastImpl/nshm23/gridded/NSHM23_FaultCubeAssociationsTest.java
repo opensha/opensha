@@ -31,7 +31,7 @@ public class NSHM23_FaultCubeAssociationsTest extends AbstractFaultCubeAssociati
 		sectCount = rupSet.getNumSections();
 		System.out.println("Building ref branch assoc");
 		Region region = rupSet.requireModule(ModelRegion.class).getRegion();
-		assoc = NSHM23_InvConfigFactory.buildFaultCubeAssociations(rupSet, branch, region);
+		assoc = (NSHM23_FaultCubeAssociations)NSHM23_InvConfigFactory.buildFaultCubeAssociations(rupSet, branch, region);
 		cubeCount = assoc.getCubedGriddedRegion().getNumCubes();
 	}
 	

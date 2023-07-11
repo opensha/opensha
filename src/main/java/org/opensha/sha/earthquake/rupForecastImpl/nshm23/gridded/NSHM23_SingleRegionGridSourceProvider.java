@@ -11,6 +11,7 @@ import org.opensha.commons.geo.CubedGriddedRegion;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.NucleationRatePlot;
@@ -80,7 +81,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 
 	private CubedGriddedRegion cgr;
 
-	private NSHM23_FaultCubeAssociations faultCubeassociations;
+	private FaultCubeAssociations faultCubeassociations;
 
 	private double[] spatialPDF;
 	private FaultSystemSolution fss;
@@ -115,7 +116,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 				spatialPDF, totGriddedSeisMFD, depthNuclProbHist, fracStrikeSlip, fracNormal, fracReverse);
 	}
 
-	public NSHM23_SingleRegionGridSourceProvider(FaultSystemSolution fss, NSHM23_FaultCubeAssociations faultCubeassociations,
+	public NSHM23_SingleRegionGridSourceProvider(FaultSystemSolution fss, FaultCubeAssociations faultCubeassociations,
 			double[] spatialPDF, IncrementalMagFreqDist totGriddedSeisMFD, EvenlyDiscretizedFunc depthNuclProbHist, 
 			double[] fracStrikeSlip, double[] fracNormal, double[] fracReverse) {
 		this.fss = fss;
@@ -209,7 +210,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 	}
 	
 	@Override
-	public NSHM23_FaultCubeAssociations getFaultCubeassociations() {
+	public FaultCubeAssociations getFaultCubeassociations() {
 		return faultCubeassociations;
 	}
 

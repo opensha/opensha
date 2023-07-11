@@ -56,6 +56,8 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Generatio
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations.StitchedFaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
@@ -906,13 +908,13 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		return new GriddedRegion(region, 0.1, GriddedRegion.ANCHOR_0_0);
 	}
 	
-	public static NSHM23_FaultCubeAssociations buildFaultCubeAssociations(FaultSystemRupSet rupSet,
+	public static FaultCubeAssociations buildFaultCubeAssociations(FaultSystemRupSet rupSet,
 			LogicTreeBranch<?> branch, Region region) throws IOException {
 		List<SeismicityRegions> seisRegions = getSeismicityRegions(region);
 		return buildFaultCubeAssociations(rupSet, seisRegions);
 	}
 	
-	public static NSHM23_FaultCubeAssociations buildFaultCubeAssociations(FaultSystemRupSet rupSet,
+	public static FaultCubeAssociations buildFaultCubeAssociations(FaultSystemRupSet rupSet,
 			List<SeismicityRegions> seisRegions) throws IOException {
 		Preconditions.checkState(seisRegions.size() >= 1);
 		GriddedRegion modelGridReg = getGriddedSeisRegion(seisRegions);
@@ -938,7 +940,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				regionalAssociations.add(new NSHM23_FaultCubeAssociations(rupSet, new CubedGriddedRegion(subGridReg),
 						NSHM23_SingleRegionGridSourceProvider.DEFAULT_MAX_FAULT_NUCL_DIST));
 			}
-			return new NSHM23_FaultCubeAssociations(rupSet, new CubedGriddedRegion(modelGridReg), regionalAssociations);
+			return FaultCubeAssociations.stitch(new CubedGriddedRegion(modelGridReg), regionalAssociations);
 		}
 	}
 	
@@ -954,7 +956,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		Preconditions.checkState(!seisRegions.isEmpty(), "Found no seismicity regions for model region %s", modelReg.getName());
 		// build cube associations
-		NSHM23_FaultCubeAssociations cubeAssociations = buildFaultCubeAssociations(rupSet, seisRegions);
+		FaultCubeAssociations cubeAssociations = buildFaultCubeAssociations(rupSet, seisRegions);
 		// add those to the rupture set
 		rupSet.addModule(cubeAssociations);
 		
@@ -995,14 +997,14 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		Preconditions.checkState(!seisRegions.isEmpty(), "Found no seismicity regions for model region %s", modelReg.getName());
 		// build cube associations
-		NSHM23_FaultCubeAssociations cubeAssociations = buildFaultCubeAssociations(rupSet, seisRegions);
+		FaultCubeAssociations cubeAssociations = buildFaultCubeAssociations(rupSet, seisRegions);
 		// add those to the rupture set
 		rupSet.addModule(cubeAssociations);
 		return buildGridSourceProv(sol, branch, seisRegions, cubeAssociations);
 	}
 	
 	public static NSHM23_AbstractGridSourceProvider buildGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch,
-			List<SeismicityRegions> seisRegions, NSHM23_FaultCubeAssociations cubeAssociations)  throws IOException {
+			List<SeismicityRegions> seisRegions, FaultCubeAssociations cubeAssociations)  throws IOException {
 		GriddedRegion gridReg = cubeAssociations.getRegion();
 		
 		double maxMagOff = branch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
@@ -1022,7 +1024,9 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		Preconditions.checkState(!seisRegions.isEmpty(), "Found no seismicity regions for model region %s", gridReg.getName());
 		
-		List<NSHM23_FaultCubeAssociations> regionalCubeAssoc = cubeAssociations.getRegionalAssociations();
+		List<? extends FaultCubeAssociations> regionalCubeAssoc = null;
+		if (cubeAssociations instanceof StitchedFaultCubeAssociations)
+			regionalCubeAssoc = ((StitchedFaultCubeAssociations)cubeAssociations).getRegionalAssociations();
 		if (seisRegions.size() > 1 && regionalCubeAssoc != null) {
 			Preconditions.checkState(regionalCubeAssoc.size() == seisRegions.size(),
 					"Have %s regions but %s regional cube associations", seisRegions.size(), regionalCubeAssoc.size());
@@ -1040,7 +1044,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			List<NSHM23_SingleRegionGridSourceProvider> regionalProvs = new ArrayList<>();
 			for (int i=0; i<seisRegions.size(); i++) {
 				SeismicityRegions seisRegion = seisRegions.get(i);
-				NSHM23_FaultCubeAssociations subRegCubeAssoc = null;
+				FaultCubeAssociations subRegCubeAssoc = null;
 				if (regionalCubeAssoc != null) {
 					subRegCubeAssoc = regionalCubeAssoc.get(i);
 				} else {
@@ -1062,7 +1066,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	private static NSHM23_SingleRegionGridSourceProvider buildSingleGridSourceProv(FaultSystemSolution sol,
 			SeismicityRegions region, NSHM23_RegionalSeismicity seisBranch, NSHM23_DeclusteringAlgorithms declusteringAlg,
 			NSHM23_SeisSmoothingAlgorithms seisSmooth, double maxMagOff, EvenlyDiscretizedFunc refMFD,
-			NSHM23_FaultCubeAssociations cubeAssociations) throws IOException {
+			FaultCubeAssociations cubeAssociations) throws IOException {
 		// total G-R up to Mmax
 		IncrementalMagFreqDist totalGR = seisBranch.build(region, refMFD, maxMagOff);
 		
@@ -1118,7 +1122,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	public static NSHM23_SingleRegionGridSourceProvider buildU3IngredientsGridSourceProv(FaultSystemSolution sol,
 			double totRateM5, SpatialSeisPDF spatSeisPDF, double maxMagOff, EvenlyDiscretizedFunc refMFD,
-			NSHM23_FaultCubeAssociations cubeAssociations) throws IOException {
+			FaultCubeAssociations cubeAssociations) throws IOException {
 		// total G-R up to Mmax
 		GutenbergRichterMagFreqDist totalGR = new GutenbergRichterMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
 		

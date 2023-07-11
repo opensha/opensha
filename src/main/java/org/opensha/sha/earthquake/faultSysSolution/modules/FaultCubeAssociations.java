@@ -16,8 +16,8 @@ import java.util.zip.ZipOutputStream;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.CubedGriddedRegion;
 import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 
@@ -733,6 +733,173 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 			return new Precomputed(gridAssoc, cgr, sectsAtCubes,
 					sectOrigDistWeightsAtCubes, sectScaledDistWeightsAtCubes,
 					totOrigDistWtsAtCubesForSectArray, totScaledDistWtsAtCubesForSectArray);
+		}
+		
+	}
+	
+	public static StitchedFaultCubeAssociations stitch(CubedGriddedRegion cgr,
+			List<? extends FaultCubeAssociations> regionalAssociations) {
+		return new StitchedFaultCubeAssociations(cgr, regionalAssociations);
+	}
+	
+	public static class StitchedFaultCubeAssociations implements FaultCubeAssociations {
+		
+		private CubedGriddedRegion cgr;
+		private List<? extends FaultCubeAssociations> regionalAssociations;
+		private int[][] sectsAtCubes;
+		private double[][] sectOrigDistWeightsAtCubes;
+		private double[][] sectScaledDistWeightsAtCubes;
+		private double[] totScaledDistWtsAtCubesForSectArrays;
+		private double[] totOrigDistWtsAtCubesForSectArrays;
+		private double[] fractSectsInRegions;
+		private CubeToGridNodeAggregator cubeGridAggregator;
+		
+		private StitchedFaultCubeAssociations(CubedGriddedRegion cgr,
+				List<? extends FaultCubeAssociations> regionalAssociations) {
+			this.cgr = cgr;
+			this.regionalAssociations = regionalAssociations;
+			
+			sectsAtCubes = new int[cgr.getNumCubes()][];
+			sectOrigDistWeightsAtCubes = new double[sectsAtCubes.length][];
+			sectScaledDistWeightsAtCubes = new double[sectsAtCubes.length][];
+			
+			GriddedRegion griddedRegion = cgr.getGriddedRegion();
+			int maxSectIndex = -1;
+			
+			int numMapped = 0;
+			int nodeCount = griddedRegion.getNodeCount();
+			for (int gridIndex=0; gridIndex<nodeCount; gridIndex++) {
+				Location loc = griddedRegion.locationForIndex(gridIndex);
+				FaultCubeAssociations match = null;
+				int matchIndex = -1;
+				for (FaultCubeAssociations prov : regionalAssociations) {
+					int myIndex = prov.getRegion().indexForLocation(loc);
+					if (myIndex >= 0) {
+						Preconditions.checkState(match == null,
+								"TODO: don't yet support grid locations that map to multiple sub-regions");
+						match = prov;
+						matchIndex = myIndex;
+					}
+				}
+				if (match != null) {
+					// map all of the cubes for this grid node
+					numMapped++;
+					int[] newCubeIndexes = cgr.getCubeIndicesForGridCell(gridIndex);
+					int[] matchCubeIndexes = match.getCubedGriddedRegion().getCubeIndicesForGridCell(matchIndex);
+					Preconditions.checkState(newCubeIndexes.length == matchCubeIndexes.length);
+					for (int i=0; i<matchCubeIndexes.length; i++) {
+						sectsAtCubes[newCubeIndexes[i]] = match.getSectsAtCube(matchCubeIndexes[i]);
+						if (sectsAtCubes[newCubeIndexes[i]] != null)
+							for (int sectIndex : sectsAtCubes[newCubeIndexes[i]])
+								maxSectIndex = Integer.max(sectIndex, maxSectIndex);
+						sectOrigDistWeightsAtCubes[newCubeIndexes[i]] = match.getOrigSectDistWeightsAtCube(matchCubeIndexes[i]);
+						sectScaledDistWeightsAtCubes[newCubeIndexes[i]] = match.getScaledSectDistWeightsAtCube(matchCubeIndexes[i]);
+					}
+				} else {
+					// do nothing
+				}
+			}
+			System.out.println("Mapped "+numMapped+"/"+nodeCount+" model region fault associations locations to sub-region grid locations");
+			int numSects = maxSectIndex+1;
+			totScaledDistWtsAtCubesForSectArrays = new double[numSects];
+			totOrigDistWtsAtCubesForSectArrays = new double[numSects];
+			fractSectsInRegions = new double[numSects];
+			for (FaultCubeAssociations regional : regionalAssociations) {
+				for (int s=0; s<totScaledDistWtsAtCubesForSectArrays.length; s++) {
+					totScaledDistWtsAtCubesForSectArrays[s] += regional.getTotalScaledDistWtAtCubesForSect(s);
+					totOrigDistWtsAtCubesForSectArrays[s] += regional.getTotalOrigDistWtAtCubesForSect(s);
+					fractSectsInRegions[s] += regional.getSectionFractInRegion(s);
+				}
+			}
+			
+			cubeGridAggregator = new CubeToGridNodeAggregator(this);
+		}
+
+		@Override
+		public Map<Integer, Double> getNodeExtents() {
+			return cubeGridAggregator.getNodeExtents();
+		}
+
+		@Override
+		public double getNodeFraction(int nodeIdx) {
+			return cubeGridAggregator.getNodeFraction(nodeIdx);
+		}
+
+		@Override
+		public Map<Integer, Double> getScaledNodeFractions(int sectIdx) {
+			return cubeGridAggregator.getScaledNodeFractions(sectIdx);
+		}
+
+		@Override
+		public Map<Integer, Double> getScaledSectFracsOnNode(int nodeIdx) {
+			return cubeGridAggregator.getScaledSectFracsOnNode(nodeIdx);
+		}
+
+		@Override
+		public Map<Integer, Double> getNodeFractions(int sectIdx) {
+			return cubeGridAggregator.getNodeFractions(sectIdx);
+		}
+
+		@Override
+		public Map<Integer, Double> getSectionFracsOnNode(int nodeIdx) {
+			return cubeGridAggregator.getSectionFracsOnNode(nodeIdx);
+		}
+
+		@Override
+		public GriddedRegion getRegion() {
+			return cubeGridAggregator.getRegion();
+		}
+
+		@Override
+		public Collection<Integer> sectIndices() {
+			return cubeGridAggregator.sectIndices();
+		}
+
+		@Override
+		public String getName() {
+			return "Stitched Fault Cube Associations ("+regionalAssociations.size()+" regions)";
+		}
+
+		@Override
+		public CubedGriddedRegion getCubedGriddedRegion() {
+			return cgr;
+		}
+
+		@Override
+		public int[] getSectsAtCube(int cubeIndex) {
+			return sectsAtCubes[cubeIndex];
+		}
+		
+		@Override
+		public double[] getScaledSectDistWeightsAtCube(int cubeIndex) {
+			return sectScaledDistWeightsAtCubes[cubeIndex];
+		}
+		
+		@Override
+		public double getTotalScaledDistWtAtCubesForSect(int sectIndex) {
+			return totScaledDistWtsAtCubesForSectArrays[sectIndex];
+		}
+
+		@Override
+		public double[] getOrigSectDistWeightsAtCube(int cubeIndex) {
+			return sectOrigDistWeightsAtCubes[cubeIndex];
+		}
+
+		@Override
+		public double getTotalOrigDistWtAtCubesForSect(int sectIndex) {
+			return totOrigDistWtsAtCubesForSectArrays[sectIndex];
+		}
+		
+		@Override
+		public double getSectionFractInRegion(int sectIndex) {
+			return fractSectsInRegions[sectIndex];
+		}
+		
+		/**
+		 * @return List of regional associations used to construct these stitched associations 
+		 */
+		public List<? extends FaultCubeAssociations> getRegionalAssociations() {
+			return regionalAssociations;
 		}
 		
 	}

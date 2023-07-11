@@ -12,6 +12,7 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider.Abstract;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
@@ -47,7 +48,7 @@ public abstract class NSHM23_AbstractGridSourceProvider extends Abstract impleme
 		return "NSHM23 Grid Source Provider";
 	}
 	
-	public abstract NSHM23_FaultCubeAssociations getFaultCubeassociations();
+	public abstract FaultCubeAssociations getFaultCubeassociations();
 
 	@Override
 	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {

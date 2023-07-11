@@ -25,7 +25,6 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
-import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -51,8 +50,6 @@ public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, Arch
 	private CubedGriddedRegion cgr;
 	private GriddedRegion griddedRegion;
 	private double maxFaultNuclDist;
-	
-	private List<NSHM23_FaultCubeAssociations> regionalAssociations;
 	
 	/*
 	 * Cube outputs
@@ -98,69 +95,6 @@ public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, Arch
 		Preconditions.checkState(!subSects.isEmpty(), "No subsections supplied");
 		for (int s=0; s<subSects.size(); s++)
 			Preconditions.checkState(subSects.get(s).getSectionId() == s, "Subsections not in order or not 0-indexed");
-	}
-	
-	public NSHM23_FaultCubeAssociations(FaultSystemRupSet rupSet, CubedGriddedRegion cgr,
-			List<NSHM23_FaultCubeAssociations> regionalAssociations) {
-		this(rupSet.getFaultSectionDataList(), cgr, regionalAssociations);
-	}
-	
-	public NSHM23_FaultCubeAssociations(List<? extends FaultSection> subSects, CubedGriddedRegion cgr,
-			List<NSHM23_FaultCubeAssociations> regionalAssociations) {
-		validateSubSects(subSects);
-		this.subSects = subSects;
-		this.cgr = cgr;
-		this.griddedRegion = cgr.getGriddedRegion();
-		
-		sectsAtCubes = new int[cgr.getNumCubes()][];
-		sectOrigDistWeightsAtCubes = new double[sectsAtCubes.length][];
-		sectScaledDistWeightsAtCubes = new double[sectsAtCubes.length][];
-		
-		int numMapped = 0;
-		int nodeCount = griddedRegion.getNodeCount();
-		for (int gridIndex=0; gridIndex<nodeCount; gridIndex++) {
-			Location loc = griddedRegion.locationForIndex(gridIndex);
-			NSHM23_FaultCubeAssociations match = null;
-			int matchIndex = -1;
-			for (NSHM23_FaultCubeAssociations prov : regionalAssociations) {
-				int myIndex = prov.griddedRegion.indexForLocation(loc);
-				if (myIndex >= 0) {
-					Preconditions.checkState(match == null,
-							"TODO: don't yet support grid locations that map to multiple sub-regions");
-					match = prov;
-					matchIndex = myIndex;
-				}
-			}
-			if (match != null) {
-				// map all of the cubes for this grid node
-				numMapped++;
-				int[] newCubeIndexes = cgr.getCubeIndicesForGridCell(gridIndex);
-				int[] matchCubeIndexes = match.cgr.getCubeIndicesForGridCell(matchIndex);
-				Preconditions.checkState(newCubeIndexes.length == matchCubeIndexes.length);
-				for (int i=0; i<matchCubeIndexes.length; i++) {
-					sectsAtCubes[newCubeIndexes[i]] = match.sectsAtCubes[matchCubeIndexes[i]];
-					sectOrigDistWeightsAtCubes[newCubeIndexes[i]] = match.sectOrigDistWeightsAtCubes[matchCubeIndexes[i]];
-					sectScaledDistWeightsAtCubes[newCubeIndexes[i]] = match.sectScaledDistWeightsAtCubes[matchCubeIndexes[i]];
-				}
-			} else {
-				// do nothing
-			}
-		}
-		System.out.println("Mapped "+numMapped+"/"+nodeCount+" model region fault associations locations to sub-region grid locations");
-		totScaledDistWtsAtCubesForSectArray = new double[subSects.size()];
-		totOrigDistWtsAtCubesForSectArray = new double[subSects.size()];
-		fractSectsInRegion = new double[subSects.size()];
-		for (NSHM23_FaultCubeAssociations regional : regionalAssociations) {
-			for (int s=0; s<totScaledDistWtsAtCubesForSectArray.length; s++) {
-				totScaledDistWtsAtCubesForSectArray[s] += regional.totScaledDistWtsAtCubesForSectArray[s];
-				totOrigDistWtsAtCubesForSectArray[s] += regional.totOrigDistWtsAtCubesForSectArray[s];
-				fractSectsInRegion[s] += regional.fractSectsInRegion[s];
-			}
-		}
-		
-		this.regionalAssociations = regionalAssociations;
-
-		cubeGridAggregator = new CubeToGridNodeAggregator(this);
 	}
 	
 	/*
@@ -495,13 +429,6 @@ public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, Arch
 
 	public double getDistWt(double dist) {
 		return (maxFaultNuclDist-dist)/maxFaultNuclDist;
-	}
-	
-	/**
-	 * @return List of regional associations if this represents multiple regions stitched together, else null
-	 */
-	public List<NSHM23_FaultCubeAssociations> getRegionalAssociations() {
-		return regionalAssociations;
 	}
 
 	@Override

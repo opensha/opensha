@@ -38,6 +38,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.mpj.AbstractAsyncLogicTreeWriter;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchRegionalMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
@@ -545,7 +546,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			FaultSystemRupSet rupSet = sol.getRupSet();
 			
 			List<SeismicityRegions> seisRegions;
-			NSHM23_FaultCubeAssociations cubeAssoc;
+			FaultCubeAssociations cubeAssoc;
 			if (u3Ingredients) {
 				seisRegions = null;
 				cubeAssoc = NSHM23_InvConfigFactory.buildU3IngredientsFaultCubeAssociations(rupSet);
@@ -684,14 +685,14 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		private File gridSeisDir;
 		private FaultSystemSolution sol;
 		private List<SeismicityRegions> seisRegions;
-		private NSHM23_FaultCubeAssociations cubeAssoc;
+		private FaultCubeAssociations cubeAssoc;
 		
 		// outputs
 		private LogicTreeBranch<?> combinedBranch;
 		private GridSourceProvider gridProv;
 
 		public CalcRunnable(LogicTreeBranch<?> origBranch, LogicTreeBranch<?> gridSeisBranch, File gridSeisDir,
-				FaultSystemSolution sol, List<SeismicityRegions> seisRegions, NSHM23_FaultCubeAssociations cubeAssoc) {
+				FaultSystemSolution sol, List<SeismicityRegions> seisRegions, FaultCubeAssociations cubeAssoc) {
 			this.origBranch = origBranch;
 			this.gridSeisBranch = gridSeisBranch;
 			this.gridSeisDir = gridSeisDir;
