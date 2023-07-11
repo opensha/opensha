@@ -767,6 +767,7 @@ public class GeographicMapMaker {
 			// plot section outlines on bottom
 			XY_DataSet prevTrace = null;
 			XY_DataSet prevOutline = null;
+			Map<Integer, Feature> outlineFeatures = writeGeoJSON ? new HashMap<>() : null;
 			for (int s=0; s<sects.size(); s++) {
 				FaultSection sect = sects.get(s);
 				if (!plotSects.contains(sect))
@@ -823,8 +824,11 @@ public class GeographicMapMaker {
 						if (doTraces && sectTraceChar == null && s == 0)
 							outline.setName("Fault Sections");
 					}
-					if (writeGeoJSON)
-						features.add(0, surfFeature(sect, sectOutlineChar));
+					if (writeGeoJSON) {
+						Feature feature = surfFeature(sect, sectOutlineChar);
+						outlineFeatures.put(sect.getSectionId(), feature);
+						features.add(0, feature);
+					}
 				}
 				
 				if (doTraces && sectTraceChar != null) {
@@ -882,8 +886,13 @@ public class GeographicMapMaker {
 					chars.add(scalarChar);
 					if (writeGeoJSON) {
 						Feature feature = traceFeature(sect, scalarChar);
-						if (sectScalarLabel != null && Float.isFinite(scalar))
+						if (sectScalarLabel != null && Float.isFinite(scalar)) {
 							feature.properties.set(sectScalarLabel, scalar);
+							// see if we have an outline feature as well
+							Feature outlineFeature = outlineFeatures.get(sect.getSectionId());
+							if (outlineFeature != null)
+								outlineFeature.properties.set(sectScalarLabel, scalar);
+						}
 						features.add(feature);
 					}
 				}
