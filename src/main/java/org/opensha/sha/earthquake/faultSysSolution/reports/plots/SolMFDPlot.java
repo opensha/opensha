@@ -22,6 +22,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -502,7 +503,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			
 			Region plotReg = new Region(new Location(minLat, minLon), new Location(maxLat, maxLon));
 			
-			RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, plotReg);
+			GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, plotReg);
 			
 			mapMaker.plotInsetRegions(plottedRegions,
 					new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK), new Color(100, 100, 200), 0.1);

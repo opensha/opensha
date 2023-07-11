@@ -17,6 +17,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
@@ -622,7 +623,7 @@ public class NSHM23_WasatchSegmentationData {
 		
 		System.out.println("Found "+largestRups.size()+" largest segmented rups");
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(subSects, region);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(subSects, region);
 		mapMaker.setWriteGeoJSON(true);
 		
 		mapMaker.plotScatters(locs, Color.GRAY);

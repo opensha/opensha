@@ -17,6 +17,7 @@ import org.opensha.commons.geo.BorderType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -336,8 +337,8 @@ public class NSHM23_PaleoDataLoader {
 			}
 		}
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(subSects, reg);
-		mapMaker.highLightSections(mappedSects, new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
+		GeographicMapMaker mapMaker = new RupSetMapMaker(subSects, reg);
+		mapMaker.setSectHighlights(mappedSects, new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
 		
 		mapMaker.plotScatters(siteLocs, Color.BLUE);
 		

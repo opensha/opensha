@@ -19,6 +19,7 @@ import org.jfree.chart.ui.RectangleAnchor;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
@@ -250,7 +251,7 @@ public class SpecialCases {
 			if (!mapped.contains(rec.id))
 				System.err.println("WARNING: no regional max mag mapping found for "+rec.id+". "+rec.name);
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(modSects, plotReg);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(modSects, plotReg);
 		
 		List<PlotCurveCharacterstics> legendChars = new ArrayList<>();
 		List<String> legendItems = new ArrayList<>();

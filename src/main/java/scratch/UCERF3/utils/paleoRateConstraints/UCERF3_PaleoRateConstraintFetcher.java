@@ -22,6 +22,7 @@ import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.data.uncertainty.BoundedUncertainty;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -366,8 +367,8 @@ public class UCERF3_PaleoRateConstraintFetcher {
 			}
 		}
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(subSects, new CaliforniaRegions.RELM_TESTING());
-		mapMaker.highLightSections(mappedSects, new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
+		GeographicMapMaker mapMaker = new RupSetMapMaker(subSects, new CaliforniaRegions.RELM_TESTING());
+		mapMaker.setSectHighlights(mappedSects, new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
 		
 		mapMaker.plotScatters(siteLocs, Color.BLUE);
 		

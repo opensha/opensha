@@ -20,6 +20,7 @@ import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.uncertainty.BoundedUncertainty;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -103,7 +104,7 @@ public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 		List<String> lines = new ArrayList<>();
 		
 		// plot mappings
-		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
 		
 		String compMappingStr = sol == null ? "Mappings" : "Comparison";
 		
@@ -506,12 +507,12 @@ public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 		return new File(outputDir, prefix+".png");
 	}
 	
-	private static void plotMappings(RupSetMapMaker mapMaker, FaultSystemRupSet rupSet, File outputDir, String prefix,
+	private static void plotMappings(GeographicMapMaker mapMaker, FaultSystemRupSet rupSet, File outputDir, String prefix,
 			String title, List<? extends SectMappedUncertainDataConstraint> datas,
 			Map<SectMappedUncertainDataConstraint, Double> rates) throws IOException {
 		mapMaker.clearScatters();
 		mapMaker.clearSectScalars();
-		mapMaker.clearHighlights();
+		mapMaker.clearSectHighlights();
 		
 		if (rates != null) {
 			// color them
@@ -557,7 +558,7 @@ public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 				if (data.sectionIndex >= 0)
 					highlightSects.add(rupSet.getFaultSectionData(data.sectionIndex));
 			
-			mapMaker.highLightSections(highlightSects, new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
+			mapMaker.setSectHighlights(highlightSects, new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
 			List<Location> siteLocs = new ArrayList<>();
 			for (SectMappedUncertainDataConstraint data : datas)
 				siteLocs.add(data.dataLocation);

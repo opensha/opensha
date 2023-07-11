@@ -11,6 +11,7 @@ import java.util.List;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -99,7 +100,7 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-8, -1);
 		cpt.setNanColor(Color.GRAY);
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
 		mapMaker.setWriteGeoJSON(true);
 		mapMaker.setFillSurfaces(fillSurfaces);
 		

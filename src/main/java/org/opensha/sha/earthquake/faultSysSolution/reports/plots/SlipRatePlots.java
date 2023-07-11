@@ -14,6 +14,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -55,7 +56,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
 			String relPathToResources, String topLink) throws IOException {
-		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
 		mapMaker.setWriteGeoJSON(true);
 		mapMaker.setFillSurfaces(fillSurfaces);
 		

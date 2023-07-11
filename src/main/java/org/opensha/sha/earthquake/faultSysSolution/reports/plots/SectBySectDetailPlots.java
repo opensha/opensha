@@ -47,6 +47,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotElement;
@@ -237,7 +238,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		List<String> lines = new ArrayList<>();
 		
 		// make map of parent sections to make clicking easy
-		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region) {
+		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region) {
 
 			@Override
 			protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
@@ -811,7 +812,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			table.addColumn(MarkdownUtils.boldCentered("p"+optionalDigitDF.format(fractiles[f]*100d)+" Example"));
 		table.finalizeLine();
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
 		mapMaker.setWriteGeoJSON(false);
 		mapMaker.setWritePDFs(false);
 		
@@ -865,7 +866,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				
 				Region region = new Region(new Location(minLat, minLon), new Location(maxLat, maxLon));
 				mapMaker.setRegion(region);
-				mapMaker.highLightSections(rupSects, highlightChar);
+				mapMaker.setSectHighlights(rupSects, highlightChar);
 				
 				double length = rupLengths[rupIndex]*1e-3;
 				
@@ -963,12 +964,12 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		Region plotRegion = new Region(new Location(latTrack.getMin()-0.1, lonTrack.getMin()-0.1),
 				new Location(latTrack.getMax()+0.1, lonTrack.getMax()+0.1));
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
 		mapMaker.setWriteGeoJSON(doGeoJSON);
 		mapMaker.setRegion(plotRegion);
 		mapMaker.setWritePDFs(false);
 		mapMaker.setSkipNaNs(true);
-		mapMaker.highLightSections(mySects, highlightChar);
+		mapMaker.setSectHighlights(mySects, highlightChar);
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		table.initNewLine();

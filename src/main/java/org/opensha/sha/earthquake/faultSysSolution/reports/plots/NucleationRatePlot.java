@@ -14,6 +14,7 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.MarkdownUtils;
@@ -81,7 +82,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 			normMap.set(i, gridProv.getFracNormal(i));
 		}
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
 		mapMaker.setWriteGeoJSON(false);
 		mapMaker.setSectOutlineChar(null);
 		

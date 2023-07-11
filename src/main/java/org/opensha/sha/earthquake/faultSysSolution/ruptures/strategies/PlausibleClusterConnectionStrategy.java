@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.FaultSectionConnectionsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
@@ -988,7 +989,7 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 		System.out.println(origUniqueJumps.size()+" unique to "+origName);
 		System.out.println(cffUniqueJumps.size()+" unique to "+newName);
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(subSects, RupSetMapMaker.buildBufferedRegion(subSects));
+		GeographicMapMaker mapMaker = new RupSetMapMaker(subSects, RupSetMapMaker.buildBufferedRegion(subSects));
 		mapMaker.plotJumps(commonJumps, FaultSectionConnectionsPlot.darkerTrans(Color.GREEN), "Common Jumps");
 		mapMaker.plotJumps(origUniqueJumps, FaultSectionConnectionsPlot.darkerTrans(Color.BLUE), origName);
 		mapMaker.plotJumps(cffUniqueJumps, FaultSectionConnectionsPlot.darkerTrans(Color.RED), newName);

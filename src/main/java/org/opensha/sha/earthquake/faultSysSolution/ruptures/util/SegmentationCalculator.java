@@ -34,6 +34,7 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -915,7 +916,7 @@ public class SegmentationCalculator {
 	}
 	
 	public File[] plotConnectionRates(File outputDir, String prefix, String title, int width) throws IOException {
-		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+		GeographicMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 		
 		CPT cpt = getConnectionRateCPT();
 		
@@ -968,7 +969,7 @@ public class SegmentationCalculator {
 	}
 	
 	public File[] plotConnectionFracts(File outputDir, String prefix, String title, int width, RateCombiner combiner) throws IOException {
-		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+		GeographicMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 //		plotter.setJumpLineThickness(4f);
 		
 		CPT cpt = getConnectionFractCPT();
@@ -1009,7 +1010,7 @@ public class SegmentationCalculator {
 	
 	public File[] plotConnectionDiffs(File outputDir, String prefix, String title, RateCombiner combiner,
 			SegmentationCalculator compCalc) throws IOException {
-		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+		GeographicMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 //		plotter.setJumpLineThickness(4f);
 		
 		CPT cpt = getConnectionDiffCPT();
@@ -1049,7 +1050,7 @@ public class SegmentationCalculator {
 	
 	public File[] plotConnectionLogRatios(File outputDir, String prefix, String title, RateCombiner combiner,
 			SegmentationCalculator compCalc) throws IOException {
-		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+		GeographicMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 //		plotter.setJumpLineThickness(4f);
 		
 		CPT cpt = getConnectionLogRatioCPT();
@@ -1089,7 +1090,7 @@ public class SegmentationCalculator {
 	
 	public File[] plotConnectionModelDiffs(File outputDir, String prefix, String title, RateCombiner combiner,
 			JumpProbabilityCalc segModel) throws IOException {
-		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+		GeographicMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 //		plotter.setJumpLineThickness(4f);
 		
 		CPT cpt = getConnectionDiffCPT();
@@ -1123,7 +1124,7 @@ public class SegmentationCalculator {
 	
 	public File[] plotConnectionModelLogRatios(File outputDir, String prefix, String title, RateCombiner combiner,
 			JumpProbabilityCalc segModel) throws IOException {
-		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+		GeographicMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 //		plotter.setJumpLineThickness(4f);
 		
 		CPT cpt = getConnectionLogRatioCPT();

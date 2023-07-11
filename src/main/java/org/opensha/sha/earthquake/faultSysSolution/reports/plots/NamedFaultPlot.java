@@ -17,6 +17,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -174,7 +175,7 @@ public class NamedFaultPlot extends AbstractRupSetPlot {
 	
 	private void writeFaultsPlot(File resourcesDir, String prefix, FaultSystemRupSet rupSet, Region region,
 			List<String> sortedNames, NamedFaults faults) throws IOException {
-		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, region);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, region);
 		mapMaker.setWriteGeoJSON(true);
 		mapMaker.setWritePDFs(false);
 		mapMaker.setSkipNaNs(true);

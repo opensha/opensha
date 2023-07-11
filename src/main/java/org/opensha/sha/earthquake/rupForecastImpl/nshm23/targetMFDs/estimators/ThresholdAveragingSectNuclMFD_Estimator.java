@@ -24,6 +24,7 @@ import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -1083,7 +1084,7 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 		
 		PlotUtils.writePlots(outputDir, prefix+"_rates_scatter", gp, 1000, false, true, false, false);
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, reg);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, reg);
 		
 		CPT pDiffCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-100d, 100d);
 		

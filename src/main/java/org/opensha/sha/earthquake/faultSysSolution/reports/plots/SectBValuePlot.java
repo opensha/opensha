@@ -24,6 +24,7 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -79,7 +80,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		if (compSol != null && !meta.comparisonHasSameSects)
 			compSol = null;
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
 		
 		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(minB, maxB);
 		cpt.setNanColor(Color.GRAY);

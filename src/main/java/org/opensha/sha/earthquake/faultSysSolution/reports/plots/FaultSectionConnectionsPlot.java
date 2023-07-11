@@ -32,6 +32,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -173,7 +174,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			table.addColumn("[View high resolution]("+relPathToResources+"/"+combConnPrefix+"_hires.png)");
 			table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+combConnPrefix+".geojson"));
 			table.addColumn("[Download GeoJSON]("+relPathToResources+"/"+combConnPrefix+".geojson)");
-			table.addColumn("[Download Jumps-Only GeoJSON]("+relPathToResources+"/"+combConnPrefix+"_jumps_only.geojson)");
+//			table.addColumn("[Download Jumps-Only GeoJSON]("+relPathToResources+"/"+combConnPrefix+"_jumps_only.geojson)");
 			table.finalizeLine();
 			lines.addAll(table.build());
 			lines.add("");
@@ -441,7 +442,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		table.addColumn("[View high resolution]("+relPathToResources+"/"+prefix+"_hires.png)");
 		table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+".geojson"));
 		table.addColumn("[Download GeoJSON]("+relPathToResources+"/"+prefix+".geojson)");
-		table.addColumn("[Download Jumps-Only GeoJSON]("+relPathToResources+"/"+prefix+"_jumps_only.geojson)");
+//		table.addColumn("[Download Jumps-Only GeoJSON]("+relPathToResources+"/"+prefix+"_jumps_only.geojson)");
 		table.finalizeLine();
 		lines.addAll(table.build());
 		return lines;
@@ -504,7 +505,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 	public static void plotConnectivityLines(FaultSystemRupSet rupSet, File outputDir, String prefix, String title,
 			List<Set<Jump>> connectionsList, List<Color> connectedColors, List<String> connNames,
 			Region reg, int width) throws IOException {
-		RupSetMapMaker plotter = new RupSetMapMaker(rupSet, reg);
+		GeographicMapMaker plotter = new RupSetMapMaker(rupSet, reg);
 		plotter.setLegendVisible(LEGENDS);
 		plotter.setLegendInset(LEGENDS_INSET);
 		plotter.setWriteGeoJSON(!prefix.endsWith("_hires"));
@@ -1107,7 +1108,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 			}
 		}
 		
-		RupSetMapMaker plotter = new RupSetMapMaker(rupSet, region) {
+		GeographicMapMaker plotter = new RupSetMapMaker(rupSet, region) {
 
 			@Override
 			protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar) {

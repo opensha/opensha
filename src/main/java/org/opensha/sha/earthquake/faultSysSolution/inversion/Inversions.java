@@ -134,7 +134,7 @@ public class Inversions {
 		ops.addOption(null, "uncertain-slip-weight", true,
 				"Sets weight for the uncertaintly-normalized slip-rate constraint.");
 
-		// MFD constraint
+		// Regular MFD constraint
 
 		ops.addOption("mfd", "mfd-constraint", false, "Enables the MFD constraint. "
 				+ "Must supply either --infer-target-gr or --mfd-total-rate, or Rupture Set must have "
@@ -165,6 +165,13 @@ public class Inversions {
 				+ "constraint, which constraints the overal MFD to be G-R withought constraining the total event rate. "
 				+ "The b-value will default to 1, override with --b-value <vlalue>. Set constraint weight with "
 				+ "--mfd-weight <weight>, or configure as an inequality with --mfd-ineq.");
+		
+		// Supra-Seis b-value MFDs
+		
+		// TODO
+//		ops.addOption(null, "supra-reg-mfd-constraint", false, "Enables the MFD constraint. "
+//				+ "Must supply either --infer-target-gr or --mfd-total-rate, or Rupture Set must have "
+//				+ "InversionTargetMFDs module already attached.");
 		
 		// paleo data constraint
 		
