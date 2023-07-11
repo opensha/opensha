@@ -64,7 +64,7 @@ import com.google.common.base.Preconditions;
 public class GMT_MapGeneratorServlet
 extends HttpServlet {
 	
-	public static final String GMT_URL_PATH = "http://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/gmtData/";
+	public static final String GMT_URL_PATH = "https://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/gmtData/";
 	public static final File GMT_DATA_DIR = new File(ServerPrefUtils.SERVER_PREFS.getTempDir(), "gmtData");
 	private final static String GMT_SCRIPT_FILE = "gmtScript.txt";
 	

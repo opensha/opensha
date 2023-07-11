@@ -60,9 +60,10 @@ public class TestGMT_Operational {
 			e.printStackTrace();
 			fail("RuntimeException: " + e.getMessage());
 		}
+		System.out.println("Test map address: "+addr);
 		assertNotNull("Image address should not be null", addr);
 		assertTrue("Image address should not be of length 0", addr.length() > 0);
-		assertTrue("Image address should start with 'http://'", addr.startsWith("http://"));
+		assertTrue("Image address should start with 'http[s]://'", addr.startsWith("http://") || addr.startsWith("https://"));
 		URL url = null;
 		try {
 			url =  new URL(addr);
@@ -77,8 +78,9 @@ public class TestGMT_Operational {
 			e.printStackTrace();
 			fail("IOException opening connection: " + e.getMessage());
 		}
-		assertTrue("Connection to fetch image should give JPEG or PNG content type",
-				conn.getContentType().contains("jpeg") || conn.getContentType().contains("png"));
+		String contentType = conn.getContentType();
+		assertTrue("Connection to fetch image should give JPEG or PNG content type, is: "+contentType,
+				contentType.toLowerCase().contains("jpeg") || contentType.toLowerCase().contains("png"));
 		BufferedImage image = null;
 		try {
 			image =  ImageIO.read(conn.getInputStream());
