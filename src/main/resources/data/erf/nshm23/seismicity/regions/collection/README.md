@@ -9,3 +9,5 @@ and CEUS is set at -103.95°.
 
 Created by: @pmpowers 11/3/2022
 Updated filenames: 11/22/2022
+
+NOTE: manually updated by Kevin on 7/7/2023 using files from Andrea via e-mail, need new README and plot
