@@ -16,6 +16,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.logicTree.BranchWeightProvider;
+import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
@@ -25,6 +26,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_U3_HybridLogicTreeBranch;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -398,40 +400,64 @@ public class TrueMeanSolutionCreator {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		List<FaultSystemSolution> sols = new ArrayList<>();
-		List<LogicTreeBranch<?>> branches = new ArrayList<>();
-		
-		List<LogicTreeLevel<?>> levels = List.of(NSHM23_U3_HybridLogicTreeBranch.U3_FM);
-		
-//		File dir = new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/");
-//		sols.add(FaultSystemSolution.load(new File(dir, "FM3_1_branch_averaged.zip")));
+//		List<FaultSystemSolution> sols = new ArrayList<>();
+//		List<LogicTreeBranch<?>> branches = new ArrayList<>();
+//		
+//		List<LogicTreeLevel<?>> levels = List.of(NSHM23_U3_HybridLogicTreeBranch.U3_FM);
+//		
+////		File dir = new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/");
+////		sols.add(FaultSystemSolution.load(new File(dir, "FM3_1_branch_averaged.zip")));
+////		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_1)));
+////		
+////		sols.add(FaultSystemSolution.load(new File(dir, "FM3_2_branch_averaged.zip")));
+////		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_2)));
+//		
+//		File dir = new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
+//				+ "2023_04_14-nshm23_u3_hybrid_branches-CoulombRupSet-DsrUni-TotNuclRate-NoRed-ThreshAvgIterRelGR/");
+//		sols.add(FaultSystemSolution.load(new File(dir, "results_FM3_1_CoulombRupSet_branch_averaged.zip")));
 //		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_1)));
 //		
-//		sols.add(FaultSystemSolution.load(new File(dir, "FM3_2_branch_averaged.zip")));
+//		sols.add(FaultSystemSolution.load(new File(dir, "results_FM3_2_CoulombRupSet_branch_averaged.zip")));
 //		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_2)));
+//		
+//		File outputFile = new File(dir, "branch_avgs_combined.zip");
+//		
+//		for (FaultSystemSolution sol : sols) {
+//			FaultSystemRupSet rupSet = sol.getRupSet();
+//			rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
+//		}
+//		
+//		TrueMeanSolutionCreator creator = new TrueMeanSolutionCreator(new BranchWeightProvider.CurrentWeights());
+//		
+//		for (int s=0; s<sols.size(); s++)
+//			creator.addSolution(sols.get(s), branches.get(s));
+//		
+//		FaultSystemSolution avgSol = creator.build();
+//		avgSol.write(outputFile);
 		
-		File dir = new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
-				+ "2023_04_14-nshm23_u3_hybrid_branches-CoulombRupSet-DsrUni-TotNuclRate-NoRed-ThreshAvgIterRelGR/");
-		sols.add(FaultSystemSolution.load(new File(dir, "results_FM3_1_CoulombRupSet_branch_averaged.zip")));
-		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_1)));
+		File dir = new File("/data/kevin/nshm23/batch_inversions/"
+				+ "2023_04_11-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR");
+		SolutionLogicTree slt = SolutionLogicTree.load(new File(dir, "results.zip"));
+		LogicTree<?> tree = slt.getLogicTree();
 		
-		sols.add(FaultSystemSolution.load(new File(dir, "results_FM3_2_CoulombRupSet_branch_averaged.zip")));
-		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_2)));
+		TrueMeanSolutionCreator creator = new TrueMeanSolutionCreator(tree.getWeightProvider());
 		
-		File outputFile = new File(dir, "branch_avgs_combined.zip");
-		
-		for (FaultSystemSolution sol : sols) {
-			FaultSystemRupSet rupSet = sol.getRupSet();
-			rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
+		ClusterRuptures cRups = null;
+		for (int i=0; i<tree.size(); i++) {
+			LogicTreeBranch<?> branch = tree.getBranch(i);
+			System.out.println("Processing branch "+i+"/"+tree.size()+": "+branch);
+			FaultSystemSolution sol = slt.forBranch(branch);
+			if (cRups != null && cRups.size() != sol.getRupSet().getNumRuptures())
+				cRups = null;
+			if (cRups == null)
+				cRups = sol.getRupSet().requireModule(ClusterRuptures.class);
+			else
+				sol.getRupSet().addModule(cRups);
+			creator.addSolution(sol, branch);
 		}
 		
-		TrueMeanSolutionCreator creator = new TrueMeanSolutionCreator(new BranchWeightProvider.CurrentWeights());
-		
-		for (int s=0; s<sols.size(); s++)
-			creator.addSolution(sols.get(s), branches.get(s));
-		
 		FaultSystemSolution avgSol = creator.build();
-		avgSol.write(outputFile);
+		avgSol.write(new File(dir, "true_mean_solution.zip"));
 	}
 
 }
