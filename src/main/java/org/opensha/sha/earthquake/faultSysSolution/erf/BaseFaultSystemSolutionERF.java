@@ -90,8 +90,14 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	protected List<FaultRuptureSource> faultSourceList;
 	
 	public BaseFaultSystemSolutionERF() {
-		initParams();
-		initTimeSpan(); // must be done after the above because this depends on probModelParam
+		this(true);
+	}
+	
+	protected BaseFaultSystemSolutionERF(boolean doInit) {
+		if (doInit) {
+			initParams();
+			initTimeSpan(); // must be done after the above because this depends on probModelParam
+		}
 	}
 
 	@Override

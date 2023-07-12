@@ -149,88 +149,17 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 		// remove the fileParam from the adjustable parameter list
 		adjustableParams.removeParameter(fileParam);
 	}
-
 	
 	/**
 	 * This creates the ERF with a parameter for setting the input file
 	 * (e.g., from a GUI).
 	 */
 	public FaultSystemSolutionERF() {
-		super();
+		super(false); // don't initialize, need initialization of class variables first
+		// at this point class variables have been initialized, now call init methods
+		initParams();
+		initTimeSpan(); // must be done after the above because this depends on probModelParam
 	}
-	
-	
-	/**
-	 * This sets the date of last event on the sections associated with the given source
-	 * @param srcIndex
-	 * @param epoch
-	 */
-	public void setFltSystemSourceOccurranceTime(int srcIndex, Long epoch) {
-		// set it in the fault section data objects
-		int fltSysRupIndex = getFltSysRupIndexForSource(srcIndex);
-		setFltSystemSourceOccurranceTimeForFSSIndex(fltSysRupIndex, epoch);
-	}
-	
-	
-	
-	public double[] getNormTimeSinceLastForSections() {
-		if(probModelsCalc != null)	// e.g., Poisson model
-			return probModelsCalc.getNormTimeSinceLastForSections(timeSpan.getStartTimeInMillis());
-		else
-			return null;
-	}
-	
-	/**
-	 * This sets the date of last event on the sections associated with the given FSS rupture
-	 * index. Allows for it to be set without first updating the forecast to figure out the
-	 * source index.
-	 * @param fltSysRupIndex
-	 * @param epoch
-	 */
-	public void setFltSystemSourceOccurranceTimeForFSSIndex(int fltSysRupIndex, Long epoch) {
-		FaultSystemRupSet rupSet = faultSysSolution.getRupSet();
-		List<Integer> sectIndexList = rupSet.getSectionsIndicesForRup(fltSysRupIndex);
-		for(int sectIndex : sectIndexList) {
-			rupSet.getFaultSectionData(sectIndex).setDateOfLastEvent(epoch);
-		}
-		// set it in the ProbModelCalc objects
-		if(probModelsCalc != null) {
-			probModelsCalc.setFltSystemRupOccurranceTime(fltSysRupIndex, epoch);
-		}
-		if(prefBlendProbModelsCalc != null) {
-			for(ProbabilityModelsCalc calc : prefBlendProbModelsCalc.keySet()) {
-				if (calc != null) // will be null for Poisson
-					calc.setFltSystemRupOccurranceTime(fltSysRupIndex, epoch);
-			}
-		}
-		// do this to make sure the probability will be updated even if nothing else changes
-		probModelChanged = true;
-	}
-	
-	
-	
-	/**
-	 * This sets the date of last event on the given section. 
-	 * @param sectIndex
-	 * @param epoch
-	 */
-	public void setFltSectOccurranceTime(int sectIndex, Long epoch) {
-		faultSysSolution.getRupSet().getFaultSectionData(sectIndex).setDateOfLastEvent(epoch);
-		// set it in the ProbModelCalc objects
-		if(probModelsCalc != null) {
-			probModelsCalc.setFltSectRupOccurranceTime(sectIndex, epoch);
-		}
-		if(prefBlendProbModelsCalc != null) {
-			for(ProbabilityModelsCalc calc : prefBlendProbModelsCalc.keySet()) {
-				if (calc != null) // will be null for Poisson
-					calc.setFltSectRupOccurranceTime(sectIndex, epoch);
-			}
-		}
-		// do this to make sure the probability will be updated even if nothing else changes
-		probModelChanged = true;
-	}
-
-	
 	
 	protected void initParams() {
 		aleatoryMagAreaStdDevParam = new AleatoryMagAreaStdDevParam();
@@ -279,6 +208,72 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 				|| probModelParam.getValue().equals(ProbabilityModelOptions.U3_PREF_BLEND)) {
 			adjustableParams.addParameter(averagingTypeParam);
 		}
+	}
+	
+	/**
+	 * This sets the date of last event on the sections associated with the given source
+	 * @param srcIndex
+	 * @param epoch
+	 */
+	public void setFltSystemSourceOccurranceTime(int srcIndex, Long epoch) {
+		// set it in the fault section data objects
+		int fltSysRupIndex = getFltSysRupIndexForSource(srcIndex);
+		setFltSystemSourceOccurranceTimeForFSSIndex(fltSysRupIndex, epoch);
+	}
+	
+	public double[] getNormTimeSinceLastForSections() {
+		if(probModelsCalc != null)	// e.g., Poisson model
+			return probModelsCalc.getNormTimeSinceLastForSections(timeSpan.getStartTimeInMillis());
+		else
+			return null;
+	}
+	
+	/**
+	 * This sets the date of last event on the sections associated with the given FSS rupture
+	 * index. Allows for it to be set without first updating the forecast to figure out the
+	 * source index.
+	 * @param fltSysRupIndex
+	 * @param epoch
+	 */
+	public void setFltSystemSourceOccurranceTimeForFSSIndex(int fltSysRupIndex, Long epoch) {
+		FaultSystemRupSet rupSet = faultSysSolution.getRupSet();
+		List<Integer> sectIndexList = rupSet.getSectionsIndicesForRup(fltSysRupIndex);
+		for(int sectIndex : sectIndexList) {
+			rupSet.getFaultSectionData(sectIndex).setDateOfLastEvent(epoch);
+		}
+		// set it in the ProbModelCalc objects
+		if(probModelsCalc != null) {
+			probModelsCalc.setFltSystemRupOccurranceTime(fltSysRupIndex, epoch);
+		}
+		if(prefBlendProbModelsCalc != null) {
+			for(ProbabilityModelsCalc calc : prefBlendProbModelsCalc.keySet()) {
+				if (calc != null) // will be null for Poisson
+					calc.setFltSystemRupOccurranceTime(fltSysRupIndex, epoch);
+			}
+		}
+		// do this to make sure the probability will be updated even if nothing else changes
+		probModelChanged = true;
+	}
+	
+	/**
+	 * This sets the date of last event on the given section. 
+	 * @param sectIndex
+	 * @param epoch
+	 */
+	public void setFltSectOccurranceTime(int sectIndex, Long epoch) {
+		faultSysSolution.getRupSet().getFaultSectionData(sectIndex).setDateOfLastEvent(epoch);
+		// set it in the ProbModelCalc objects
+		if(probModelsCalc != null) {
+			probModelsCalc.setFltSectRupOccurranceTime(sectIndex, epoch);
+		}
+		if(prefBlendProbModelsCalc != null) {
+			for(ProbabilityModelsCalc calc : prefBlendProbModelsCalc.keySet()) {
+				if (calc != null) // will be null for Poisson
+					calc.setFltSectRupOccurranceTime(sectIndex, epoch);
+			}
+		}
+		// do this to make sure the probability will be updated even if nothing else changes
+		probModelChanged = true;
 	}
 	
 	/**
@@ -348,7 +343,6 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 
 		super.updateHookBeforeFaultSourceBuild();
 	}
-
 
 	@Override
 	public void updateForecast() {
@@ -516,7 +510,6 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 		return aftRateCorr*probGain;
 	}
 
-
 	@Override
 	protected boolean isFaultSysRupPoisson(int fltSystRupIndex) {
 		return probModel != ProbabilityModelOptions.U3_BPT && probModel != ProbabilityModelOptions.U3_PREF_BLEND;
@@ -576,6 +569,4 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 		System.out.println("run took "+runtime/(1000*60)+" minutes");
 
 	}
-
-
 }
