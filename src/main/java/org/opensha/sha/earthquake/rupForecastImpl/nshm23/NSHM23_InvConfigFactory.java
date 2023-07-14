@@ -118,6 +118,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBVa
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.AnalyticalSingleFaultInversionSolver;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.ClassicModelInversionSolver;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
@@ -2311,6 +2312,11 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		public NSHM23_V2() {
 			NSHM23_ConstraintBuilder.MAX_NUM_ZERO_SLIP_SECTS_PER_RUP = 0;
+			NSHM23_RegionalSeismicity.RATE_FILE_NAME = "rates_2023_03_30.csv";
+			NSHM23_RegionalSeismicity.clearCache();
+			NSHM23_SeisSmoothingAlgorithms.MODEL_DATE = "2023_03_30";
+			NSHM23_SeisSmoothingAlgorithms.clearCache();
+			NSHM23_RegionLoader.setSeismicityRegionVersion(2);
 		}
 		
 	}

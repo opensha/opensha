@@ -62,8 +62,10 @@ public enum NSHM23_SeisSmoothingAlgorithms implements LogicTreeNode {
 	
 	private static final String NSHM23_SS_PATH_PREFIX = "/data/erf/nshm23/seismicity/spatial_seis_pdfs/";
 	
+	public static String MODEL_DATE = "2023_06_19";
+	
 	private String getResourceName(SeismicityRegions region, NSHM23_DeclusteringAlgorithms declusteringAlg) {
-		return NSHM23_SS_PATH_PREFIX+region.name()+"/"+declusteringAlg.name()+"_"+name()+".csv";
+		return NSHM23_SS_PATH_PREFIX+MODEL_DATE+"/"+region.name()+"/"+declusteringAlg.name()+"_"+name()+".csv";
 	}
 	
 	private static GriddedGeoDataSet average(List<GriddedGeoDataSet> xyzs, List<Double> weights) {
@@ -92,6 +94,14 @@ public enum NSHM23_SeisSmoothingAlgorithms implements LogicTreeNode {
 	}
 	
 	private Table<SeismicityRegions, NSHM23_DeclusteringAlgorithms, GriddedGeoDataSet> xyzCache;
+	
+	public static void clearCache() {
+		for (NSHM23_SeisSmoothingAlgorithms smooth : values()) {
+			synchronized (smooth) {
+				smooth.xyzCache = null;
+			}
+		}
+	}
 	
 	public synchronized GriddedGeoDataSet loadXYZ(SeismicityRegions region,
 			NSHM23_DeclusteringAlgorithms declusteringAlg) throws IOException {

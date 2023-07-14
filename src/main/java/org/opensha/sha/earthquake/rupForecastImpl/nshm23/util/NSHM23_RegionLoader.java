@@ -34,6 +34,14 @@ public class NSHM23_RegionLoader {
 	private static final String FAULT_STYLE_REG_PATH = NSHM23_REG_PATH_PREFIX+"/fault-style";
 	private static final String GRID_SYSTEM_REG_PATH = NSHM23_REG_PATH_PREFIX+"/grid-system";
 	
+	private static String SEIS_REG_SUFFIX = "";
+	
+	public synchronized static void setSeismicityRegionVersion(int version) {
+		SEIS_REG_SUFFIX = "-v"+version;
+		regionCache.remove(SeismicityRegions.CONUS_WEST);
+		regionCache.remove(SeismicityRegions.CONUS_EAST);
+	}
+	
 	/**
 	 * Regions within which seismicity constraints and spatial seismicity PDFs are determined
 	 * 
@@ -43,8 +51,8 @@ public class NSHM23_RegionLoader {
 	 * 
 	 */
 	public enum SeismicityRegions implements NSHM23_BaseRegion {
-		CONUS_EAST("collection-ceus.geojson"),
-		CONUS_WEST("collection-wus.geojson");
+		CONUS_EAST("collection-ceus"+SEIS_REG_SUFFIX+".geojson"),
+		CONUS_WEST("collection-wus"+SEIS_REG_SUFFIX+".geojson");
 		
 		private String fileName;
 

@@ -1,9 +1,13 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.text.DecimalFormat;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
@@ -13,6 +17,7 @@ import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
@@ -45,45 +50,101 @@ public enum NSHM23_RegionalSeismicity implements LogicTreeNode {
 	PREFFERRED("Preffered Seismicity Rate", "PrefSeis", 0.74d) {
 		@Override
 		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
-			switch (region) {
-			case CONUS_WEST:
-				return gr(refMFD, mMax, 12, 0.81);
-			case CONUS_EAST:
-				return gr(refMFD, mMax, 0.452, 0.94);
-
-			default:
-				return null;
+			if (hasRegion(region)) {
+				// preferred is index 0
+				double rate = loadRate(region, 0);
+				double b = loadBVal(region, 0);
+				return gr(refMFD, mMax, rate, b);
 			}
+			return null;
 		}
 	},
 	LOW("Lower Seismicity Bound (p2.5)", "LowSeis", 0.13d) {
 		@Override
 		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
-			switch (region) {
-			case CONUS_WEST:
-				return adjustForCrossover(gr(refMFD, mMax, 10.6, 0.91), true, region, mMax);
-			case CONUS_EAST:
-				return adjustForCrossover(gr(refMFD, mMax, 0.265, 1.1), true, region, mMax);
-
-			default:
-				return null;
+			if (hasRegion(region)) {
+				// lower is index 1
+				double rate = loadRate(region, 1);
+				double b = loadBVal(region, 1);
+				return adjustForCrossover(gr(refMFD, mMax, rate, b), true, region, mMax);
 			}
+			return null;
 		}
 	},
 	HIGH("Upper Seismicity Bound (p97.5)", "HighSeis", 0.13d) {
 		@Override
 		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
-			switch (region) {
-			case CONUS_WEST:
-				return adjustForCrossover(gr(refMFD, mMax, 13.5, 0.71), false, region, mMax);
-			case CONUS_EAST:
-				return adjustForCrossover(gr(refMFD, mMax, 0.752, 0.78), false, region, mMax);
-
-			default:
-				return null;
+			if (hasRegion(region)) {
+				// upper is index 2
+				double rate = loadRate(region, 2);
+				double b = loadBVal(region, 2);
+				return adjustForCrossover(gr(refMFD, mMax, rate, b), false, region, mMax);
 			}
+			return null;
 		}
 	};
+	
+	public static String RATE_FILE_NAME = "rates_2023_06_21.csv";
+	private static final String NSHM23_RATES_PATH_PREFIX = "/data/erf/nshm23/seismicity/rates/";
+	
+	private static Map<String, double[]> ratesMap;
+	private static Map<String, double[]> bValsMap;
+	
+	public synchronized static void clearCache() {
+		ratesMap = null;
+		bValsMap = null;
+	}
+	
+	private synchronized static void checkLoadRates() {
+		if (ratesMap == null) {
+			Map<String, double[]> ratesMap = new HashMap<>();
+			Map<String, double[]> bValsMap = new HashMap<>();
+			
+			String resource = NSHM23_RATES_PATH_PREFIX+RATE_FILE_NAME;
+			
+			System.out.println("Loading spatial seismicity PDF from: "+resource);
+			InputStream is = NSHM23_SeisSmoothingAlgorithms.class.getResourceAsStream(resource);
+			Preconditions.checkNotNull(is, "Spatial seismicity PDF not found: %s", resource);
+			CSVFile<String> csv;
+			try {
+				csv = CSVFile.readStream(is, true);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			
+			for (int row=1; row<csv.getNumRows(); row++) {
+				int col = 0;
+				String name = csv.get(row, col++);
+				double prefVal = csv.getDouble(row, col++);
+				double prefB = csv.getDouble(row, col++);
+				double lowerVal = csv.getDouble(row, col++);
+				double lowerB = csv.getDouble(row, col++);
+				double upperVal = csv.getDouble(row, col++);
+				double upperB = csv.getDouble(row, col++);
+				
+				ratesMap.put(name, new double[] {prefVal, lowerVal, upperVal});
+				bValsMap.put(name, new double[] {prefB, lowerB, upperB});
+			}
+			
+			NSHM23_RegionalSeismicity.bValsMap = bValsMap;
+			NSHM23_RegionalSeismicity.ratesMap = ratesMap;
+		}
+	}
+	
+	private static boolean hasRegion(SeismicityRegions region) {
+		checkLoadRates();
+		return ratesMap.containsKey(region.name());
+	}
+	
+	private static double loadRate(SeismicityRegions region, int index) {
+		checkLoadRates();
+		return ratesMap.get(region.name())[index];
+	}
+	
+	private static double loadBVal(SeismicityRegions region, int index) {
+		checkLoadRates();
+		return bValsMap.get(region.name())[index];
+	}
 	
 	/**
 	 * If b various on outlier branches, they can cross over suchat that low > pref and high < pref for really small
