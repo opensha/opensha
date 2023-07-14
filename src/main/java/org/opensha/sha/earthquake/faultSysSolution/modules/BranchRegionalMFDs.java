@@ -371,7 +371,7 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 		return sumRegionalBranchMFDs.get(regionIndex);
 	}
 	
-	public boolean hasTotal(MFDType type) {
+	public boolean hasMFDs(MFDType type) {
 		switch (type) {
 		case SUPRA_ONLY:
 			return supraTotalBranchMFDs != null;
