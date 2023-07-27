@@ -48,6 +48,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	
 	private ImmutableList<LogicTreeLevel<? extends E>> levels;
 	private ImmutableList<LogicTreeBranch<E>> branches;
+	private HashSet<LogicTreeBranch<E>> branchesSet;
 
 	// default to using original weights when this logic tree was instantiated
 	private static final BranchWeightProvider DEFAULT_WEIGHTS = new BranchWeightProvider.OriginalWeights();
@@ -98,6 +99,21 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	 */
 	public double getBranchWeight(int index) {
 		return weightProvider.getWeight(getBranch(index));
+	}
+	
+	/**
+	 * @param branch
+	 * @return true if this logic tree contains the given branch, false otherwise
+	 */
+	public boolean contains(LogicTreeBranch<?> branch) {
+		if (branchesSet == null) {
+			synchronized (this) {
+				if (branchesSet == null) {
+					branchesSet = new HashSet<>(branches);
+				}
+			}
+		}
+		return branchesSet.contains(branch);
 	}
 	
 	/**
