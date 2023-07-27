@@ -379,6 +379,8 @@ public class LogicTreeHazardCompare {
 		LogicTree<?> tree = null;
 		LogicTree<?> compTree = null;
 		
+		boolean ignorePrecomputed = false;
+		
 		if (args.length > 0) {
 			// assume CLI instead
 			Preconditions.checkArgument(args.length == 4 || args.length == 7,
@@ -387,7 +389,17 @@ public class LogicTreeHazardCompare {
 			int cnt = 0;
 			resultsFile = new File(args[cnt++]);
 			hazardFile = new File(args[cnt++]);
-			tree = loadTreeFromResults(hazardFile);
+			if (cmd.hasOption("logic-tree")) {
+				File treeFile = new File(cmd.getOptionValue("logic-tree"));
+				System.out.println("Reading custom logic tree from: "+treeFile.getAbsolutePath());
+				tree = LogicTree.read(treeFile);
+				ignorePrecomputed = true;
+			} else {
+				// read it from the hazard file if available
+				tree = loadTreeFromResults(hazardFile);
+			}
+			if (cmd.hasOption("ignore-precomputed-maps"))
+				ignorePrecomputed = true;
 			mainName = args[cnt++];
 			if (args.length > 4) {
 				if (args[cnt].toLowerCase().trim().equals("null")) {
@@ -446,6 +458,9 @@ public class LogicTreeHazardCompare {
 					hazardFile, rps, periods, spacing);
 			
 			mapper.skipLogicTree = cmd.hasOption("skip-logic-tree");
+			if (ignorePrecomputed)
+				System.out.println("Ignoring any pre-computed mean maps");
+			mapper.ignorePrecomputed = ignorePrecomputed;
 			
 			if (compHazardFile != null) {
 				SolutionLogicTree compSolTree;
@@ -463,6 +478,7 @@ public class LogicTreeHazardCompare {
 				}
 				comp = new LogicTreeHazardCompare(compSolTree, compTree,
 						compHazardFile, rps, periods, spacing);
+				mapper.ignorePrecomputed = ignorePrecomputed;
 			}
 			
 			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
@@ -485,6 +501,10 @@ public class LogicTreeHazardCompare {
 		
 		ops.addOption("slt", "skip-logic-tree", false,
 				"Flag to disable logic tree calculations and only focus on top level maps and comparisions.");
+		ops.addOption("lt", "logic-tree", true,
+				"Path to alternative logic tree JSON file. Implies --ignore-precomputed-maps");
+		ops.addOption("ipm", "ignore-precomputed-maps", false,
+				"Flag to ignore precomputed mean maps");
 		ops.addOption("pdf", "write-pdfs", false, "Flag to write PDFs of top level maps");
 		
 		return ops;
@@ -533,6 +553,7 @@ public class LogicTreeHazardCompare {
 	
 	// command line options
 	private boolean skipLogicTree = false;
+	private boolean ignorePrecomputed = false;
 
 	public LogicTreeHazardCompare(SolutionLogicTree solLogicTree, File mapsZipFile,
 			ReturnPeriods[] rps, double[] periods, double spacing) throws IOException {
@@ -596,8 +617,10 @@ public class LogicTreeHazardCompare {
 			for (int i=0; i<branches.size(); i++) {
 				LogicTreeBranch<?> branch = branches.get(i);
 				double weight = weightProv.getWeight(branch);
-				Preconditions.checkState(weight > 0, "Bad weight=%s for branch %s, weightProv=%s",
+				Preconditions.checkState(weight >= 0, "Bad weight=%s for branch %s, weightProv=%s",
 						weight, branch, weightProv.getClass().getName());
+				if (weight == 0d)
+					System.err.println("WARNING: zero weight for branch: "+branch);
 				weights.add(weight);
 				totWeight += weight;
 			}
@@ -910,26 +933,30 @@ public class LogicTreeHazardCompare {
 		return avg;
 	}
 	
-	private GriddedGeoDataSet buildMin(GriddedGeoDataSet[] maps) {
+	private GriddedGeoDataSet buildMin(GriddedGeoDataSet[] maps, List<Double> weights) {
+		Preconditions.checkState(maps.length == weights.size());
 		GriddedGeoDataSet min = new GriddedGeoDataSet(maps[0].getRegion(), false);
 		
 		for (int i=0; i<min.size(); i++) {
 			double val = Double.POSITIVE_INFINITY;
 			for (int j=0; j<maps.length; j++)
-				val = Math.min(val, maps[j].get(i));
+				if (weights.get(j) > 0d)
+					val = Math.min(val, maps[j].get(i));
 			min.set(i, val);
 		}
 		
 		return min;
 	}
 	
-	private GriddedGeoDataSet buildMax(GriddedGeoDataSet[] maps) {
+	private GriddedGeoDataSet buildMax(GriddedGeoDataSet[] maps, List<Double> weights) {
+		Preconditions.checkState(maps.length == weights.size());
 		GriddedGeoDataSet max = new GriddedGeoDataSet(maps[0].getRegion(), false);
 		
 		for (int i=0; i<max.size(); i++) {
 			double val = Double.NEGATIVE_INFINITY;
 			for (int j=0; j<maps.length; j++)
-				val = Math.max(val, maps[j].get(i));
+				if (weights.get(j) > 0d)
+					val = Math.max(val, maps[j].get(i));
 			max.set(i, val);
 		}
 		
@@ -1550,16 +1577,17 @@ public class LogicTreeHazardCompare {
 				System.out.println("Calculating norm CDFs");
 				LightFixedXFunc[] mapNCDFs = buildNormCDFs(maps, weights);
 				System.out.println("Calculating mean, median, bounds, COV");
-				// see if we've procomputed mean
-				GriddedGeoDataSet mean = loadPrecomputedMeanMap(LogicTreeCurveAverager.MEAN_PREFIX, rp, period);
+				// see if we've precomputed mean
+				GriddedGeoDataSet mean = ignorePrecomputed ? null :
+					loadPrecomputedMeanMap(LogicTreeCurveAverager.MEAN_PREFIX, rp, period);
 				boolean meanIsFromCurves = mean != null;
 				if (mean == null) {
 					// need to calculate mean from branch maps
 					mean = buildMean(maps);
 				}
 				GriddedGeoDataSet median = calcMapAtPercentile(mapNCDFs, region, 50d);
-				GriddedGeoDataSet max = buildMax(maps);
-				GriddedGeoDataSet min = buildMin(maps);
+				GriddedGeoDataSet max = buildMax(maps, weights);
+				GriddedGeoDataSet min = buildMin(maps, weights);
 				GriddedGeoDataSet spread = buildSpread(log10(min), log10(max));
 				GriddedGeoDataSet cov = calcCOV(maps, weights, mean, region);
 				
@@ -1588,12 +1616,13 @@ public class LogicTreeHazardCompare {
 					System.out.println("Calculating comparison norm CDFs");
 					cmapNCDFs = buildNormCDFs(cmaps, comp.weights);
 					System.out.println("Calculating comparison mean, median, bounds, COV");
-					cmean = comp.loadPrecomputedMeanMap(LogicTreeCurveAverager.MEAN_PREFIX, rp, period);
+					if (!ignorePrecomputed)
+						cmean = comp.loadPrecomputedMeanMap(LogicTreeCurveAverager.MEAN_PREFIX, rp, period);
 					if (cmean == null)
 						cmean = comp.buildMean(cmaps);
 					cmedian = calcMapAtPercentile(cmapNCDFs, region, 50d);
-					cmax = comp.buildMax(cmaps);
-					cmin = comp.buildMin(cmaps);
+					cmax = comp.buildMax(cmaps, comp.weights);
+					cmin = comp.buildMin(cmaps, comp.weights);
 					cspread = comp.buildSpread(log10(cmin), log10(cmax));
 					ccov = calcCOV(cmaps, comp.weights, cmean, region);
 //					table.addLine(meanMinMaxSpreadMaps(cmean, cmin, cmax, cspread, compName, label, prefix+"_comp", resourcesDir));
