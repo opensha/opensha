@@ -1,8 +1,13 @@
 package org.opensha.sha.earthquake.faultSysSolution.hazard;
 
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Container;
+import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics2D;
+import java.awt.LayoutManager;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
@@ -43,6 +48,7 @@ import java.util.zip.ZipFile;
 
 import javax.imageio.ImageIO;
 import javax.swing.JLabel;
+import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 
 import org.apache.commons.cli.CommandLine;
@@ -2552,6 +2558,9 @@ public class LogicTreeHazardCompare {
 				branchLevelValues, branchLevelPlots, label, null, null);
 	}
 	
+	private static boolean CENTER_SUBPLOTS = true;
+	private static boolean INCLUDE_SUBPLOT_WEIGHT_LABELS = true;
+	
 	public void writeCombinedBranchMap(File resourcesDir, String prefix, String fullTitle, MapPlot meanMap,
 			List<LogicTreeLevel<?>> branchLevels, List<List<LogicTreeNode>> branchLevelValues,
 			List<List<MapPlot>> branchLevelPlots1, String label1, List<List<MapPlot>> branchLevelPlots2, String label2)
@@ -2580,6 +2589,7 @@ public class LogicTreeHazardCompare {
 		
 		Font fontLevelName = new Font(Font.SANS_SERIF, Font.BOLD, primaryPrefs.getPlotLabelFontSize());
 		Font fontChoiceName = new Font(Font.SANS_SERIF, Font.BOLD, primaryPrefs.getLegendFontSize());
+		Font fontWeight = new Font(Font.SANS_SERIF, Font.ITALIC, primaryPrefs.getLegendFontSize());
 		
 		// prepare primary figure and determine aspect ratio
 		HeadlessGraphPanel primaryGP = new HeadlessGraphPanel(primaryPrefs);
@@ -2653,17 +2663,23 @@ public class LogicTreeHazardCompare {
 		System.out.println("Building combined map with dimensions: primary="+primaryWidth+"x"+primaryHeight
 				+", secondary="+secondaryWidth+"x"+secondaryHeight+", total="+totalWidth+"x"+totalHeight);
 		
-		JPanel panel = new JPanel();
-		panel.setLayout(null);
+//		JPanel panel = new JPanel();
+//		panel.setLayout(null);
+		JLayeredPane panel = new JLayeredPane();
+		panel.setOpaque(true);
+//		panel.setLayout(new LayeredPaneLayout(panel, new Dimension(totalWidth, totalHeight)));
 		panel.setBackground(Color.WHITE);
 		panel.setSize(totalWidth, totalHeight);
 		
 		List<Consumer<Graphics2D>> redraws = new ArrayList<>();
 		
+		int plotLayer = JLayeredPane.DEFAULT_LAYER;
+		int labelLayer = JLayeredPane.PALETTE_LAYER;
+		
 		// X/Y reference frame is top left
 //		int primaryTopY = (totalHeight - primaryHeight)/2;
 		int primaryTopY = 0; // place it on top
-		redraws.add(placeGraph(panel, 0, primaryTopY, primaryWidth, primaryHeight, primaryGP.getChartPanel()));
+		redraws.add(placeGraph(panel, plotLayer, 0, primaryTopY, primaryWidth, primaryHeight, primaryGP.getChartPanel()));
 		// clear the custom subtitle we added
 		primarySpec.setSubtitles(null);
 		
@@ -2676,7 +2692,6 @@ public class LogicTreeHazardCompare {
 			// y is currently TOP, x is secondaryLabelX
 			int levelLabelY = y; // top
 			LogicTreeLevel<?> level = branchLevels.get(l);
-			placeLabel(panel, levelLabelX, levelLabelY, levelLabelWidth, heightLevelName, level.getName(), fontLevelName);
 			
 			int choiceLabelY = y + heightLevelName;
 
@@ -2686,17 +2701,47 @@ public class LogicTreeHazardCompare {
 			List<LogicTreeNode> myChoices = branchLevelValues.get(l);
 			List<MapPlot> myPlots = branchLevelPlots1.get(l);
 			int x = secondaryStartX;
+			if (CENTER_SUBPLOTS && myChoices.size() < maxNumChoices)
+				x += ((maxNumChoices-myChoices.size())*secondaryWidth)/2;
+			
 			for (int i=0; i<myChoices.size(); i++) {
 				secondaryPlot = myPlots.get(i);
 				secondaryGP = drawSimplifiedSecondaryPlot(secondaryPlot, secondaryPrefs, secondaryScale);
 				
-				redraws.add(placeGraph(panel, x, choiceMapY, secondaryWidth, secondaryHeight, secondaryGP.getChartPanel()));
+				redraws.add(placeGraph(panel, plotLayer, x, choiceMapY, secondaryWidth, secondaryHeight, secondaryGP.getChartPanel()));
 				
 				LogicTreeNode choice = branchLevelValues.get(l).get(i);
-				placeLabel(panel, x, choiceLabelY, secondaryWidth, heightChoice, choice.getShortName(), fontChoiceName);
+				placeLabel(panel, labelLayer, x, choiceLabelY, secondaryWidth, heightChoice, choice.getShortName(), fontChoiceName);
+				
+				if (INCLUDE_SUBPLOT_WEIGHT_LABELS) {
+//					double choice = tr
+					double totWeight = 0d;
+					double matchWeight = 0d;
+					for (int b=0; b<branches.size(); b++) {
+						LogicTreeBranch<?> branch = branches.get(b);
+						double weight = weights.get(b);
+						if (branch.hasValue(choice))
+							matchWeight += weight;
+						totWeight += weight;
+					}
+					String label = " ("+new DecimalFormat("0.0#").format(matchWeight/totWeight)+")";
+					int weightLabelY = choiceMapY + secondaryHeight - (3*heightChoice/2);
+//					System.out.println("\tweight label: "+label+" for "+choice.getShortName()+"; pos="+x+","+weightLabelY+"; size="+secondaryWidth+"x"+heightChoice);
+					JLabel jLabel = placeLabel(panel, labelLayer, x, weightLabelY, secondaryWidth, heightChoice, " "+label, fontWeight, JLabel.LEFT);
+//					// need to redraw it on top of the chart at the end for PDFs(otherwise it will be covered)
+					redraws.add(new Consumer<Graphics2D>() {
+						@Override
+						public void accept(Graphics2D t) {
+//							jLabel.update(t);
+							jLabel.paintImmediately(jLabel.getBounds());
+						}
+					});
+				}
 				
 				x += secondaryWidth;
 			}
+			
+			placeLabel(panel, labelLayer, levelLabelX, levelLabelY, levelLabelWidth, heightLevelName, level.getName(), fontLevelName);
 			
 			if (branchLevelPlots2 != null) {
 				x = secondaryStartX;
@@ -2705,7 +2750,7 @@ public class LogicTreeHazardCompare {
 					secondaryPlot = myPlots2.get(i);
 					secondaryGP = drawSimplifiedSecondaryPlot(secondaryPlot, secondaryPrefs, secondaryScale);
 					
-					redraws.add(placeGraph(panel, x, choiceMapY2, secondaryWidth, secondaryHeight, secondaryGP.getChartPanel()));
+					redraws.add(placeGraph(panel, plotLayer, x, choiceMapY2, secondaryWidth, secondaryHeight, secondaryGP.getChartPanel()));
 					
 					x += secondaryWidth;
 				}
@@ -2793,12 +2838,14 @@ public class LogicTreeHazardCompare {
 		return secondaryGP;
 	}
 	
-	private Consumer<Graphics2D> placeGraph(JPanel panel, int xTop, int yTop, int width, int height, ChartPanel chart) {
+	private Consumer<Graphics2D> placeGraph(JLayeredPane panel, int layer, int xTop, int yTop, int width, int height, ChartPanel chart) {
 		chart.setBorder(null);
 		// this forces it to actually render
 		chart.getChart().createBufferedImage(width, height, new ChartRenderingInfo());
 		chart.setSize(width, height);
+		panel.setLayer(chart, layer);
 		panel.add(chart);
+//		panel.add(chart, layer);
 		chart.setLocation(xTop, yTop);
 		return new Consumer<Graphics2D>() {
 			@Override
@@ -2808,17 +2855,60 @@ public class LogicTreeHazardCompare {
 		};
 	}
 	
-	private void placeLabel(JPanel panel, int xTop, int yTop, int width, int height, String text, Font font) {
-		JLabel label = new JLabel(text, JLabel.CENTER);
+	private JLabel placeLabel(JLayeredPane panel, int layer, int xTop, int yTop, int width, int height, String text, Font font) {
+		return placeLabel(panel, layer, xTop, yTop, width, height, text, font, JLabel.CENTER);
+	}
+	
+	private JLabel placeLabel(JLayeredPane panel, int layer, int xTop, int yTop, int width, int height, String text, Font font, int horizAlign) {
+		JLabel label = new JLabel(text, horizAlign);
 		label.setFont(font);
 		label.setSize(width, height);
+		panel.setLayer(label, layer);
 		panel.add(label);
+//		panel.add(label, layer);
 		label.setLocation(xTop, yTop);
+		return label;
 	}
 	
 	public void close() throws IOException {
 		zip.close();
 		exec.shutdown();
+	}
+	
+	private static class LayeredPaneLayout implements LayoutManager {
+
+		private final Container target;
+		private final Dimension preferredSize;
+
+		public LayeredPaneLayout(final Container target, final Dimension preferredSize) {
+			this.target = target;
+			this.preferredSize = preferredSize;
+		}
+
+		@Override
+		public void addLayoutComponent(final String name, final Component comp) {
+		}
+
+		@Override
+		public void layoutContainer(final Container container) {
+			for (final Component component : container.getComponents()) {
+				component.setBounds(new Rectangle(0, 0, target.getWidth(), target.getHeight()));
+			}
+		}
+
+		@Override
+		public Dimension minimumLayoutSize(final Container parent) {
+			return preferredLayoutSize(parent);
+		}
+
+		@Override
+		public Dimension preferredLayoutSize(final Container parent) {
+			return preferredSize;
+		}
+
+		@Override
+		public void removeLayoutComponent(final Component comp) {
+		}
 	}
 
 }
