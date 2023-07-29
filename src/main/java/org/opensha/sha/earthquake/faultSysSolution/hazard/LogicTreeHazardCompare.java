@@ -554,6 +554,7 @@ public class LogicTreeHazardCompare {
 	private GriddedRegion forceRemapRegion;
 	
 	private SolutionLogicTree solLogicTree;
+	private LogicTree<?> tree;
 	
 	private boolean floatMaps = false;
 	
@@ -569,6 +570,7 @@ public class LogicTreeHazardCompare {
 	public LogicTreeHazardCompare(SolutionLogicTree solLogicTree, LogicTree<?> tree, File mapsZipFile,
 			ReturnPeriods[] rps, double[] periods, double spacing) throws IOException {
 		this.solLogicTree = solLogicTree;
+		this.tree = tree;
 		this.rps = rps;
 		this.periods = periods;
 		this.spacing = spacing;
@@ -1936,7 +1938,7 @@ public class LogicTreeHazardCompare {
 				List<HashMap<LogicTreeNode, GriddedGeoDataSet>> choiceMeanPercentilesList = new ArrayList<>();
 				
 				// do mean map calculations first so that we can clear out the full NormCDFs from memory
-				for (LogicTreeLevel<?> level : solLogicTree.getLogicTree().getLevels()) {
+				for (LogicTreeLevel<?> level : tree.getLevels()) {
 					HashMap<LogicTreeNode, List<GriddedGeoDataSet>> choiceMaps = new HashMap<>();
 					HashMap<LogicTreeNode, List<Double>> choiceWeights = new HashMap<>();
 					for (int i=0; i<branches.size(); i++) {
@@ -2017,7 +2019,7 @@ public class LogicTreeHazardCompare {
 				System.gc();
 				
 				for (int l=0; l<choiceMapsList.size(); l++) {
-					LogicTreeLevel<?> level = solLogicTree.getLogicTree().getLevels().get(l);
+					LogicTreeLevel<?> level = tree.getLevels().get(l);
 					HashMap<LogicTreeNode, List<GriddedGeoDataSet>> choiceMaps = choiceMapsList.get(l);
 					if (choiceMaps != null) {
 						System.out.println(level.getName()+" has "+choiceMaps.size()+" choices");
