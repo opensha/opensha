@@ -8,12 +8,18 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -30,6 +36,7 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.impl.DoubleParameter;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.earthquake.DistCachedERFWrapper;
@@ -85,7 +92,11 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	
 	private ExecutorService exec;
 	
+	private File branchOutputDir;
 	private File outputFile;
+	
+	private boolean recalc;
+	private HashSet<Integer> doneIndexes;
 
 	public MPJ_SiteLogicTreeHazardCurveCalc(CommandLine cmd) throws IOException {
 		super(cmd);
@@ -168,8 +179,84 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				logXVals[p].set(Math.log(pt.getX()), 0d);
 		}
 		
+		// checkpoint write frequency. this is on a per-node basis, so it needs to be small enough to hit a useful
+		// number of times
+		recalc = cmd.hasOption("recalc");
+		
+		branchOutputDir = new File(outputDir, "branch_results");
+		
 		if (rank == 0) {
 			Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
+			
+			if (branchOutputDir.exists() && !recalc) {
+				// load previous
+				int numBranches = getNumTasks();
+				HashSet<Integer> doneIndexes = new HashSet<>();
+				for (int branchIndex=0; branchIndex<numBranches; branchIndex++) {
+					File branchCSV = getBranchCSV(branchIndex);
+					
+					if (branchCSV.exists()) {
+						try {
+							debug("reading previously written branch CSV: "+branchCSV.getAbsolutePath());
+							CSVFile<String> csv = CSVFile.readFile(branchCSV, true);
+							int expectedRows = 1 + sites.size()*periods.length;
+							Preconditions.checkState(csv.getNumRows() == expectedRows,
+									"Expected %s rows, have %s for branch %s csv", expectedRows, csv.getNumRows(), branchIndex);
+							
+							int[] periodIndexes = new int[expectedRows];
+							int[] siteIndexes = new int[expectedRows];
+							for (int row=1; row<expectedRows; row++) {
+								// match the period
+								float period = csv.getFloat(row, 0);
+								int periodIndex = -1;
+								for (int p=0; p<periods.length; p++) {
+									if ((float)periods[p] == period) {
+										periodIndex = p;
+										break;
+									}
+								}
+								Preconditions.checkState(periodIndex >= 0, "Period not found: %s", period);
+								periodIndexes[row] = periodIndex;
+								
+								// match the site
+								String siteName = csv.get(row, 1);
+								int siteIndex = -1;
+								for (int s=0; s<sites.size(); s++) {
+									if (siteName.equals(sites.get(s).getName())) {
+										siteIndex = s;
+										break;
+									}
+								}
+								Preconditions.checkState(siteIndex >= 0, "Site not found: %s", siteName);
+								siteIndexes[row] = siteIndex;
+								
+								// check column length
+								List<CSVFile<String>> csvs = getInitSiteCSVs(siteIndex);
+								int myCols = csv.getNumCols();
+								int periodCols = csvs.get(periodIndex).getNumCols();
+								Preconditions.checkState(periodCols == myCols-1,
+										"Unexpected number of columns, branchCSV has %s and expected %s",
+										myCols, periodCols+1);
+							}
+							
+							// if we made it this far, everything's a match
+							for (int row=1; row<expectedRows; row++) {
+								List<CSVFile<String>> csvs = getInitSiteCSVs(siteIndexes[row]);
+								List<String> line = csv.getLine(row);
+								// trim off the first period index
+								csvs.get(periodIndexes[row]).addLine(line.subList(1, line.size()));
+							}
+							doneIndexes.add(branchIndex);
+						} catch (Exception e) {
+							debug("error reading cache for "+branchIndex+": "+e.getMessage());
+						}
+					}
+				}
+				if (!doneIndexes.isEmpty())
+					this.doneIndexes = doneIndexes;
+			}
+			
+			initBranchDirs();
 			
 			if (cmd.hasOption("output-file"))
 				outputFile = new File(cmd.getOptionValue("output-file"));
@@ -177,9 +264,18 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				outputFile = new File(outputDir.getParentFile(), outputDir.getName()+".zip");
 		}
 		
-		exec = Executors.newFixedThreadPool(getNumThreads());
+		// blocking queue
+		int threads = getNumThreads();
+		exec = new ThreadPoolExecutor(threads, threads,
+                0L, TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<Runnable>(threads), new ThreadPoolExecutor.CallerRunsPolicy());
 	}
 	
+	@Override
+	protected Collection<Integer> getDoneIndexes() {
+		return doneIndexes;
+	}
+
 	public static List<Site> parseSitesCSV(CSVFile<String> sitesCSV, ScalarIMR gmpe) {
 		List<Site> sites = new ArrayList<>();
 		for (int row=0; row<sitesCSV.getNumRows(); row++) {
@@ -223,6 +319,8 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 
 	@Override
 	protected void calculateBatch(int[] batch) throws Exception {
+		List<List<Future<SiteCalcCallable>>> branchFutures = new ArrayList<>(batch.length);
+		
 		for (int branchIndex : batch) {
 			LogicTreeBranch<?> branch = tree.getBranch(branchIndex);
 			FaultSystemSolution sol = solTree.forBranch(branch);
@@ -238,46 +336,66 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			Deque<DistCachedERFWrapper> deque = new ArrayDeque<>();
 			
 			List<Future<SiteCalcCallable>> futures = new ArrayList<>();
-			
+			branchFutures.add(futures);
 			for (int siteIndex=0; siteIndex<sites.size(); siteIndex++)
-				futures.add(exec.submit(new SiteCalcCallable(siteIndex, erf, deque, gmpeSupplier)));
+				futures.add(exec.submit(new SiteCalcCallable(branchIndex, siteIndex, erf, deque, gmpeSupplier)));
+		}
+		
+		for (List<Future<SiteCalcCallable>> futures : branchFutures) {
+			File branchCSVFile = null;
+			CSVFile<String> branchCSV = null;
 			
 			for (Future<SiteCalcCallable> future : futures) {
 				SiteCalcCallable calc = future.get();
-				
-				List<CSVFile<String>> csvs = siteCSVs.get(calc.siteIndex);
-				if (csvs == null) {
-					csvs = new ArrayList<>();
-					for (int p=0; p<periods.length; p++) {
-						CSVFile<String> csv = new CSVFile<>(true);
-						List<String> header = new ArrayList<>();
-						header.add("Site Name");
-						header.add("Branch Index");
-						header.add("Branch Weight");
-						for (int l=0; l<branch.size(); l++)
-							header.add(branch.getLevel(l).getShortName());
-						for (Point2D pt : xVals[p])
-							header.add((float)pt.getX()+"");
-						csv.addLine(header);
-						csvs.add(csv);
-					}
-					siteCSVs.set(calc.siteIndex, csvs);
+				if (branchCSV == null) {
+					branchCSVFile = getBranchCSV(calc.branchIndex);
+					branchCSV = new CSVFile<>(true);
+					
+					List<String> header = new ArrayList<>(calc.csvHeader.size()+1);
+					header.add("Period (s)");
+					header.addAll(calc.csvHeader);
+					branchCSV.addLine(header);
 				}
-				List<String> commonPrefix = new ArrayList<>();
-				commonPrefix.add(sites.get(calc.siteIndex).getName());
-				commonPrefix.add(branchIndex+"");
-				commonPrefix.add(tree.getBranchWeight(branchIndex)+"");
-				for (LogicTreeNode node : branch)
-					commonPrefix.add(node.getShortName());
+				
 				for (int p=0; p<periods.length; p++) {
-					List<String> line = new ArrayList<>(commonPrefix.size()+xVals[p].size());
-					line.addAll(commonPrefix);
-					for (Point2D pt : calc.curves[p])
-						line.add(pt.getY()+"");
-					csvs.get(p).addLine(line);
+					List<String> line = calc.sitePeriodCSVLines.get(p);
+					List<String> periodLine = new ArrayList<>(line.size()+1);
+					periodLine.add((float)periods[p]+"");
+					periodLine.addAll(line);
+					branchCSV.addLine(periodLine);
 				}
 			}
+			branchCSV.writeToFile(branchCSVFile);
 		}
+	}
+	
+	private void initBranchDirs() {
+		Preconditions.checkState(branchOutputDir.exists() || branchOutputDir.mkdir());
+		int numBranches = getNumTasks();
+		if (numBranches > 1000) {
+			// bundled
+			for (int branchIndex=0; branchIndex<numBranches; branchIndex += 1000) {
+				File branchDir = getBranchDir(branchIndex);
+				if (!branchDir.exists())
+					Preconditions.checkState(branchDir.exists() || branchDir.mkdir());
+			}
+		}
+	}
+	
+	private File getBranchCSV(int branchIndex) {
+		File branchDir = getBranchDir(branchIndex);
+		return new File(branchDir, "branch_"+branchIndex+".csv");
+	}
+	
+	private File getBranchDir(int branchIndex) {
+		int numBranches = getNumTasks();
+		
+		if (numBranches > 1000) {
+			// bundled
+			int bundleIndex = branchIndex / 1000;
+			return new File(branchOutputDir, "branches_"+(bundleIndex*1000)+"_"+((bundleIndex+1)*1000));
+		}
+		return branchOutputDir;
 	}
 	
 	private synchronized DistCachedERFWrapper checkOutERF(FaultSystemSolutionERF fssERF, Deque<DistCachedERFWrapper> deque) {
@@ -293,6 +411,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	
 	private class SiteCalcCallable implements Callable<SiteCalcCallable> {
 		// inputs
+		private int branchIndex;
 		private int siteIndex;
 		private FaultSystemSolutionERF fssERF;
 		private Deque<DistCachedERFWrapper> erfDeque;
@@ -300,10 +419,13 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		
 		// outputs
 		private DiscretizedFunc[] curves;
+		private List<String> csvHeader;
+		private List<List<String>> sitePeriodCSVLines;
 		
-		public SiteCalcCallable(int siteIndex, FaultSystemSolutionERF fssERF, Deque<DistCachedERFWrapper> erfDeque,
-				Supplier<ScalarIMR> gmpeSupplier) {
+		public SiteCalcCallable(int branchIndex, int siteIndex, FaultSystemSolutionERF fssERF,
+				Deque<DistCachedERFWrapper> erfDeque, Supplier<ScalarIMR> gmpeSupplier) {
 			super();
+			this.branchIndex = branchIndex;
 			this.siteIndex = siteIndex;
 			this.fssERF = fssERF;
 			this.erfDeque = erfDeque;
@@ -354,14 +476,63 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			}
 			
 			checkInERF(erf, erfDeque);
+			
+			processCSVs();
+			
 			return this;
 		}
-	}
-
-	@Override
-	protected void doFinalAssembly() throws Exception {
-		exec.shutdown();
 		
+		public void processCSVs() {
+			LogicTreeBranch<?> branch = tree.getBranch(branchIndex);
+			List<CSVFile<String>> csvs;
+			synchronized (siteCSVs) {
+				csvs = getInitSiteCSVs(siteIndex);
+			}
+			csvHeader = csvs.get(0).getLine(0);
+			List<String> commonPrefix = new ArrayList<>();
+			commonPrefix.add(sites.get(siteIndex).getName());
+			commonPrefix.add(branchIndex+"");
+			commonPrefix.add(tree.getBranchWeight(branchIndex)+"");
+			for (LogicTreeNode node : branch)
+				commonPrefix.add(node.getShortName());
+			sitePeriodCSVLines = new ArrayList<>();
+			synchronized (csvs) {
+				for (int p=0; p<periods.length; p++) {
+					List<String> line = new ArrayList<>(commonPrefix.size()+xVals[p].size());
+					line.addAll(commonPrefix);
+					for (Point2D pt : curves[p])
+						line.add(pt.getY()+"");
+					csvs.get(p).addLine(line);
+					sitePeriodCSVLines.add(line);
+				}
+			}
+		}
+	}
+	
+	private List<CSVFile<String>> getInitSiteCSVs(int siteIndex) {
+		List<CSVFile<String>> csvs = siteCSVs.get(siteIndex);
+		if (csvs == null) {
+			csvs = new ArrayList<>();
+			LogicTreeBranch<?> branch = tree.getBranch(0);
+			for (int p=0; p<periods.length; p++) {
+				CSVFile<String> csv = new CSVFile<>(true);
+				List<String> header = new ArrayList<>();
+				header.add("Site Name");
+				header.add("Branch Index");
+				header.add("Branch Weight");
+				for (int l=0; l<branch.size(); l++)
+					header.add(branch.getLevel(l).getShortName());
+				for (Point2D pt : xVals[p])
+					header.add((float)pt.getX()+"");
+				csv.addLine(header);
+				csvs.add(csv);
+			}
+			siteCSVs.set(siteIndex, csvs);
+		}
+		return csvs;
+	}
+	
+	private void writeProcessCSVs() throws IOException {
 		File processDir = new File(outputDir, "process_"+rank);
 		Preconditions.checkState(processDir.exists() || processDir.mkdir());
 		
@@ -375,41 +546,53 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				csv.writeToFile(new File(processDir, csvName));
 			}
 		}
+	}
+	
+	private void mergeInProcessCSVs(File processDir) throws IOException {
+		for (int s=0; s<sites.size(); s++) {
+			List<CSVFile<String>> csvs = siteCSVs.get(s);
+			if (csvs == null) {
+				csvs = new ArrayList<>();
+				for (int p=0; p<periods.length; p++)
+					csvs.add(null);
+				siteCSVs.set(s, csvs);
+			}
+			for (int p=0; p<periods.length; p++) {
+				CSVFile<String> destCSV = csvs.get(p);
+				File sourceCSVFile = new File(processDir, getCSVName(s, p));
+				if (sourceCSVFile.exists()) {
+					CSVFile<String> sourceCSV = CSVFile.readFile(sourceCSVFile, true);
+					int origCount = destCSV == null ? 0 : destCSV.getNumRows()-1;
+					if (destCSV == null) {
+						destCSV = sourceCSV;
+						csvs.set(p, sourceCSV);
+					} else {
+						for (int row=1; row<sourceCSV.getNumRows(); row++)
+							destCSV.addLine(sourceCSV.getLine(row));
+					}
+					int count = destCSV.getNumRows()-1;
+					debug("Merged in "+(count-origCount)+" curves from "+rank+" for site "
+							+sites.get(s).getName()+", period="+(float)periods[p]);
+				}
+			}
+		}
+	}
+
+	@Override
+	protected void doFinalAssembly() throws Exception {
+		exec.shutdown();
+		
+		if (rank > 1)
+			writeProcessCSVs();
 		
 		MPI.COMM_WORLD.Barrier();
 		
 		if (rank == 0) {
-			// merge them
+			// merge them in
 			for (int rank=1; rank<size; rank++) {
-				processDir = new File(outputDir, "process_"+rank);
+				File processDir = new File(outputDir, "process_"+rank);
 				Preconditions.checkState(processDir.exists());
-				for (int s=0; s<sites.size(); s++) {
-					List<CSVFile<String>> csvs = siteCSVs.get(s);
-					if (csvs == null) {
-						csvs = new ArrayList<>();
-						for (int p=0; p<periods.length; p++)
-							csvs.add(null);
-						siteCSVs.set(s, csvs);
-					}
-					for (int p=0; p<periods.length; p++) {
-						CSVFile<String> destCSV = csvs.get(p);
-						File sourceCSVFile = new File(processDir, getCSVName(s, p));
-						if (sourceCSVFile.exists()) {
-							CSVFile<String> sourceCSV = CSVFile.readFile(sourceCSVFile, true);
-							int origCount = destCSV == null ? 0 : destCSV.getNumRows()-1;
-							if (destCSV == null) {
-								destCSV = sourceCSV;
-								csvs.set(p, sourceCSV);
-							} else {
-								for (int row=1; row<sourceCSV.getNumRows(); row++)
-									destCSV.addLine(sourceCSV.getLine(row));
-							}
-							int count = destCSV.getNumRows()-1;
-							debug("Merged in "+(count-origCount)+" curves from "+rank+" for site "
-									+sites.get(s).getName()+", period="+(float)periods[p]);
-						}
-					}
-				}
+				
 			}
 			
 			// write outputs
@@ -441,7 +624,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			
 			// delete process files
 			for (int rank=0; rank<size; rank++) {
-				processDir = new File(outputDir, "process_"+rank);
+				File processDir = new File(outputDir, "process_"+rank);
 				Preconditions.checkState(processDir.exists());
 				FileUtils.deleteRecursive(processDir);
 			}
@@ -475,6 +658,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		ops.addOption("gm", "gmpe", true, "Sets GMPE. Note that this will be overriden if the Logic Tree "
 				+ "supplies GMPE choices. Default: "+GMPE_DEFAULT.name());
 		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
+		ops.addOption(null, "recalc", false, "Flag to force recalculation (ignore checkpoints)");
 		
 		return ops;
 	}
