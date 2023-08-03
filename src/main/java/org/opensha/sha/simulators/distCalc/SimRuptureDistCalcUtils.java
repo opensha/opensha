@@ -248,8 +248,19 @@ public class SimRuptureDistCalcUtils {
 			}
 		}
 		
-		if (incrementalFunc.size() == 0)
+		if (incrementalFunc.size() == 0) {
+//			System.err.flush();
+//			System.err.println("DEBUGGING a null dist-scalar func for event "+event.getID()+", location "+siteLoc
+//					+", distType="+distType+", scalar="+scalar);
+//			for (int i=0; i<slips.length; i++) {
+//				SimulatorElement elem = elems.get(i);
+//				double scalarVal = scalar.calc(elem, slips[i]);
+//				double dist = distType.calc(siteLocDistCache.getDistances(elem));
+//				System.err.println("\t"+i+". scalarVal="+scalarVal+", dist="+dist);
+//			}
+//			System.err.flush();
 			return null;
+		}
 		
 		double cumulativeVal = 0d;
 		DiscretizedFunc cumulativeFunc = new ArbitrarilyDiscretizedFunc();

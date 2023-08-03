@@ -47,7 +47,32 @@ public class RSQSimEvent extends SimulatorEvent {
 	}
 	
 	public RSQSimEvent cloneNewTime(double timeSeconds, int newID) {
-		RSQSimEvent o = new RSQSimEvent(records);
+		List<RSQSimEventRecord> modRecs = new ArrayList<>();
+		
+		double firstPatchTime = Double.POSITIVE_INFINITY;
+		for (RSQSimEventRecord rec : records) {
+			double[] patchTimes = rec.getElementTimeFirstSlips();
+			if (patchTimes != null)
+				for (double patchTime : patchTimes)
+					firstPatchTime = Double.min(firstPatchTime, patchTime);
+		}
+		
+		for (RSQSimEventRecord rec : records) {
+			RSQSimEventRecord modRec = rec.copy();
+			// this is event time, which is constant across all records
+			modRec.setTime(timeSeconds);
+			// now update patch times
+			double[] patchTimes = rec.getElementTimeFirstSlips();
+			if (patchTimes != null) {
+				double[] modPatchTimes = new double[patchTimes.length];
+				for (int i=0; i<modPatchTimes.length; i++)
+					// set patch times such that the first one is exactly at event time
+					modPatchTimes[i] = timeSeconds + (patchTimes[i] - firstPatchTime);
+				modRec.setElementTimeFirstSlips(modPatchTimes);
+			}
+			modRecs.add(modRec);
+		}
+		RSQSimEvent o = new RSQSimEvent(modRecs);
 		o.time = timeSeconds;
 		o.event_id = newID;
 		o.magnitude = magnitude;

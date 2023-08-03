@@ -133,13 +133,14 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 					ddw = sumDDWs/sumWeights;
 				}
 				this.area = area*1e-6;
-				dip = sumWeightedDip/sumDipWeight;
-				if (dip != 90d && dip < 90.1 && dip > 89.9)
-					// avoid floating point errors
-					dip = 90d;
 				if (zTOR < 0.01 && zTOR > -0.01)
 					// avoid floating point errors
 					zTOR = 0d;
+				double dip = sumWeightedDip/sumDipWeight;
+				if (dip != 90d && dip < 90.1 && dip > 89.9)
+					// avoid floating point errors
+					dip = 90d;
+				this.dip = dip;
 			}
 		}
 	}
@@ -158,9 +159,9 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 		
 		DiscretizedFunc rSeisFunc = SimRuptureDistCalcUtils.calcDistScalarFunc(event, loc, siteLocDistCache,
 				DistanceType.R_SEIS, scalar);
-		double distanceSeis = calcDistance(rSeisFunc);
+		double distanceSeis = rSeisFunc == null ? Double.NaN : calcDistance(rSeisFunc);
 		
-		double maxDistJBforX = calcDistance(rSeisFunc, fractThresholdX, Double.NaN);
+		double maxDistJBforX = calcDistance(rJBFunc, fractThresholdX, Double.NaN);
 		
 		double wtFootwall = 0d;
 		double wtHangingwall = 0d;
