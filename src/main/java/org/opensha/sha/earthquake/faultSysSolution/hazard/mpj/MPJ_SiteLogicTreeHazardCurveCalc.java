@@ -582,7 +582,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	protected void doFinalAssembly() throws Exception {
 		exec.shutdown();
 		
-		if (rank > 1)
+		if (rank > 0)
 			writeProcessCSVs();
 		
 		MPI.COMM_WORLD.Barrier();
@@ -591,8 +591,10 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			// merge them in
 			for (int rank=1; rank<size; rank++) {
 				File processDir = new File(outputDir, "process_"+rank);
-				Preconditions.checkState(processDir.exists());
+				Preconditions.checkState(processDir.exists(),
+						"Process %s dir doesn't exist: %s", rank, processDir.getAbsolutePath());
 				
+				mergeInProcessCSVs(processDir);
 			}
 			
 			// write outputs
