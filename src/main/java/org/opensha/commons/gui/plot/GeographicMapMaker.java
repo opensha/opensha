@@ -129,6 +129,7 @@ public class GeographicMapMaker {
 	 */
 	protected List<Location> scatterLocs;
 	protected List<Double> scatterScalars;
+	protected List<PlotCurveCharacterstics> scatterChars;
 	protected CPT scatterScalarCPT;
 	protected String scatterScalarLabel;
 	protected Color scatterColor;
@@ -170,10 +171,12 @@ public class GeographicMapMaker {
 	protected List<Location> surfMiddles;
 	
 	public GeographicMapMaker(Region region) {
+		this(region, PoliticalBoundariesData.loadDefaultOutlines(region));
+	}
+	
+	public GeographicMapMaker(Region region, XY_DataSet[] politicalBoundaries) {
 		this.region = region;
-		
-		// political boundary special cases
-		politicalBoundaries = PoliticalBoundariesData.loadDefaultOutlines(region);
+		this.politicalBoundaries = politicalBoundaries;
 	}
 	
 	public static Region buildBufferedRegion(Collection<? extends FaultSection> sects) {
@@ -471,6 +474,22 @@ public class GeographicMapMaker {
 		this.scatterColor = color;
 	}
 	
+	public void plotScatters(List<Location> locs, List<PlotCurveCharacterstics> chars, String label) {
+		clearScatters();
+		Preconditions.checkState(locs.size() == chars.size());
+		this.scatterLocs = locs;
+		this.scatterChars = chars;
+		this.scatterScalarLabel = label;
+	}
+	
+	public void plotScatters(List<Location> locs, List<PlotCurveCharacterstics> chars, PlotSymbol outlineSymbol, String label) {
+		clearScatters();
+		Preconditions.checkState(locs.size() == chars.size());
+		this.scatterLocs = locs;
+		this.scatterChars = chars;
+		this.scatterScalarLabel = label;
+	}
+	
 	public void plotScatterScalars(List<Location> locs, List<Double> values, CPT cpt, String label) {
 		clearScatters();
 		Preconditions.checkState(locs.size() == values.size());
@@ -484,6 +503,7 @@ public class GeographicMapMaker {
 	public void clearScatters() {
 		this.scatterLocs = null;
 		this.scatterScalars = null;
+		this.scatterChars = null;
 		this.scatterScalarCPT = null;
 		this.scatterScalarLabel = null;
 		this.scatterColor = null;
@@ -782,7 +802,7 @@ public class GeographicMapMaker {
 				
 				// we'll plot fault traces if we don't have scalar values
 				boolean doTraces = sectScalars == null && sectColors == null;
-				if (!doTraces && skipNaNs &&
+				if (!doTraces && !skipNaNs &&
 						(sectScalars != null && Double.isNaN(sectScalars[s]) || sectColors != null && sectColors.get(s) == null))
 					doTraces = true;
 				
@@ -1059,8 +1079,8 @@ public class GeographicMapMaker {
 		protected void plotScatters() {
 			if (scatterLocs == null || scatterLocs.isEmpty())
 				return;
-			XY_DataSet outlines = scatterOutline == null ? null : new DefaultXY_DataSet();
 			if (scatterScalars != null) {
+				XY_DataSet outlines = scatterOutline == null ? null : new DefaultXY_DataSet();
 				List<ComparablePairing<Double, XY_DataSet>> sortables = new ArrayList<>();
 				for (int j=0; j<scatterLocs.size(); j++) {
 					double scalar = scatterScalars.get(j);
@@ -1102,7 +1122,36 @@ public class GeographicMapMaker {
 				
 				if (scatterScalarLabel != null)
 					cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel));
+			} else if (scatterChars != null) {
+				for (int j=0; j<scatterLocs.size(); j++) {
+					Location loc = scatterLocs.get(j);
+					PlotCurveCharacterstics xyChar = scatterChars.get(j);
+					
+					XY_DataSet xy = new DefaultXY_DataSet();
+					xy.set(loc.getLongitude(), loc.getLatitude());
+					
+					funcs.add(xy);
+					chars.add(xyChar);
+					
+					if (writeGeoJSON) {
+						Color color = xyChar.getColor();
+						FeatureProperties props = new FeatureProperties();
+						props.set(FeatureProperties.MARKER_COLOR_PROP, color);
+						float width = xyChar.getSymbolWidth();
+						if (width > 8f)
+							props.set(FeatureProperties.MARKER_SIZE_PROP, FeatureProperties.MARKER_SIZE_LARGE);
+						else if (width > 4f)
+							props.set(FeatureProperties.MARKER_SIZE_PROP, FeatureProperties.MARKER_SIZE_MEDIUM);
+						else
+							props.set(FeatureProperties.MARKER_SIZE_PROP, FeatureProperties.MARKER_SIZE_SMALL);
+						features.add(new Feature(new Geometry.Point(loc), props));
+					}
+				}
+				
+				if (scatterScalarLabel != null)
+					cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel));
 			} else {
+				XY_DataSet outlines = scatterOutline == null ? null : new DefaultXY_DataSet();
 				Preconditions.checkNotNull(scatterColor);
 				XY_DataSet xy = new DefaultXY_DataSet();
 				LocationList locs = new LocationList();
