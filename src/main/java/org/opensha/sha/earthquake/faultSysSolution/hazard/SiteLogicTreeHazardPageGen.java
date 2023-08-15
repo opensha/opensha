@@ -23,6 +23,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.Options;
 import org.jfree.chart.annotations.XYAnnotation;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.plot.DatasetRenderingOrder;
@@ -75,6 +77,10 @@ public class SiteLogicTreeHazardPageGen {
 			};
 		}
 		System.setProperty("java.awt.headless", "true");
+		
+		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, SiteLogicTreeHazardPageGen.class);
+		args = cmd.getArgs();
+		
 		if (args.length < 2 || args.length > 3) {
 			System.err.println("USAGE: <zip-file> <output-dir> [<comp-zip-file>]");
 			System.exit(1);
@@ -89,6 +95,12 @@ public class SiteLogicTreeHazardPageGen {
 		ExecutorService exec = new ThreadPoolExecutor(threads, threads,
                 0L, TimeUnit.MILLISECONDS,
                 new ArrayBlockingQueue<Runnable>(threads), new ThreadPoolExecutor.CallerRunsPolicy());
+		
+		int downsample = -1;
+		if (cmd.hasOption("downsample")) {
+			downsample = Integer.parseInt(cmd.getOptionValue("downsample"));
+			System.out.println("Will downsample to at most "+downsample+" curves when plotting individual curves");
+		}
 		
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 		File resourcesDir = new File(outputDir, "resources");
@@ -381,10 +393,10 @@ public class SiteLogicTreeHazardPageGen {
 						
 						table.initNewLine();
 						plot = curveBranchPlot(resourcesDir, ltPrefix+"_indv", site.getName(), perLabel, perUnits,
-								dists, xVals, Color.BLACK, rps, compDists, Color.GRAY, nodes, nodeCurves, null, exec, plotFutures);
+								dists, xVals, Color.BLACK, rps, compDists, Color.GRAY, nodes, nodeCurves, downsample, null, exec, plotFutures);
 						table.addColumn("![Node Individual]("+resourcesDir.getName()+"/"+plot.getName()+")");
 						plot = curveBranchPlot(resourcesDir, ltPrefix+"_means", site.getName(), perLabel, perUnits,
-								dists, xVals, Color.BLACK, rps, compDists, Color.GRAY, nodes, null, nodeMeanCurves, exec, plotFutures);
+								dists, xVals, Color.BLACK, rps, compDists, Color.GRAY, nodes, null, downsample, nodeMeanCurves, exec, plotFutures);
 						table.addColumn("![Node Means]("+resourcesDir.getName()+"/"+plot.getName()+")");
 						table.finalizeLine();
 						if (rps.length != 2) {
@@ -423,8 +435,7 @@ public class SiteLogicTreeHazardPageGen {
 						table.finalizeLine();
 						
 						table.initNewLine();
-						if (compDists != null)
-							table.addColumn("__Full Model__");
+						table.addColumn("__Full Model__");
 						for (double rpVal : rpMeans)
 							table.addColumn((float)rpVal+" (g)");
 						table.finalizeLine();
@@ -463,6 +474,15 @@ public class SiteLogicTreeHazardPageGen {
 
 		// write markdown
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
+	}
+	
+	public static Options createOptions() {
+		Options ops = new Options();
+		
+		ops.addOption(null, "downsample", true,
+				"Maximum number of individual curves to include in plots (will be randomly downsampled to match if more curves exist).");
+		
+		return ops;
 	}
 	
 	private static Map<Double, ZipEntry> loadSiteCSVs(String sitePrefix, ZipFile zip) {
@@ -515,10 +535,12 @@ public class SiteLogicTreeHazardPageGen {
 			startCol = 3+levels.size();
 		}
 		double[] xVals = new double[curvesCSV.getNumCols()-startCol];
-		ArbDiscrEmpiricalDistFunc[] dists = new ArbDiscrEmpiricalDistFunc[xVals.length];
+//		ArbDiscrEmpiricalDistFunc[] dists = new ArbDiscrEmpiricalDistFunc[xVals.length];
+		List<List<Point2D>> distPoints = new ArrayList<>();
 		for (int i=0; i<xVals.length; i++) {
 			xVals[i] = curvesCSV.getDouble(0, startCol+i);
-			dists[i] = new ArbDiscrEmpiricalDistFunc();
+//			dists[i] = new ArbDiscrEmpiricalDistFunc();
+			distPoints.add(new ArrayList<>(curvesCSV.getNumRows()-1));
 		}
 		
 		for (int row=1; row<curvesCSV.getNumRows(); row++) {
@@ -526,7 +548,8 @@ public class SiteLogicTreeHazardPageGen {
 			double[] yVals = new double[xVals.length];
 			for (int i=0; i<yVals.length; i++) {
 				yVals[i] = curvesCSV.getDouble(row, startCol+i);
-				dists[i].set(yVals[i], weight);
+//				dists[i].set(yVals[i], weight);
+				distPoints.get(i).add(new Point2D.Double(yVals[i], weight));
 			}
 			LightFixedXFunc curve = new LightFixedXFunc(xVals, yVals);
 			curves.add(curve);
@@ -549,6 +572,11 @@ public class SiteLogicTreeHazardPageGen {
 				branches.add(new LogicTreeBranch<>(levels, nodes));
 			}
 		}
+		
+		ArbDiscrEmpiricalDistFunc[] dists = new ArbDiscrEmpiricalDistFunc[xVals.length];
+		for (int i=0; i<dists.length; i++)
+			// this will initialize them more efficiently
+			dists[i] = new ArbDiscrEmpiricalDistFunc(distPoints.get(i));
 		
 		return dists;
 	}
@@ -675,7 +703,7 @@ public class SiteLogicTreeHazardPageGen {
 	private static File curveBranchPlot(File resourcesDir, String prefix, String siteName, String perLabel, String units,
 			ArbDiscrEmpiricalDistFunc[] curveDists, double[] xVals, Color color, ReturnPeriods[] rps,
 			ArbDiscrEmpiricalDistFunc[] compCurveDists, Color compColor, List<LogicTreeNode> nodes,
-			List<List<DiscretizedFunc>> nodeIndvCurves, List<DiscretizedFunc> nodeMeanCurves,
+			List<List<DiscretizedFunc>> nodeIndvCurves, int downsample, List<DiscretizedFunc> nodeMeanCurves,
 			ExecutorService exec, List<Future<?>> plotFutures) throws IOException {
 		List<DiscretizedFunc> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
@@ -710,24 +738,28 @@ public class SiteLogicTreeHazardPageGen {
 			int totNumCurves = 0;
 			for (List<DiscretizedFunc> curves : nodeIndvCurves)
 				totNumCurves += curves.size();
+			int plotNumCurves = totNumCurves;
+			if (downsample > 0 && downsample < totNumCurves)
+				plotNumCurves = downsample;
 			int alpha;
-			if (totNumCurves < 50)
+			if (plotNumCurves < 50)
 				alpha = 255;
-			else if (totNumCurves < 100)
+			else if (plotNumCurves < 100)
 				alpha = 180;
-			else if (totNumCurves < 500)
+			else if (plotNumCurves < 500)
 				alpha = 100;
-			else if (totNumCurves < 1000)
+			else if (plotNumCurves < 1000)
 				alpha = 60;
-			else if (totNumCurves < 5000)
+			else if (plotNumCurves < 5000)
 				alpha = 40;
-			else if (totNumCurves < 10000)
+			else if (plotNumCurves < 10000)
 				alpha = 20;
 			else
 				alpha = 10;
 			
 			List<CurveChar> allCurveChars = new ArrayList<>();
 			for (int i=0; i<nodes.size(); i++) {
+				
 				Color nodeColor = nodeColors.get(i);
 				// add a fake one just for the legend, without alpha
 				DiscretizedFunc fakeCurve = new ArbitrarilyDiscretizedFunc();
@@ -740,9 +772,18 @@ public class SiteLogicTreeHazardPageGen {
 				if (alpha != 255)
 					nodeColor = new Color(nodeColor.getRed(), nodeColor.getGreen(), nodeColor.getBlue(), alpha);
 				PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, nodeColor);
-				// do a full sort here so that when we block suffle latter there are fewer near-identical overlaps
+				// do a full shuffle here so that when we block suffle latter there are fewer near-identical overlaps
 				List<DiscretizedFunc> shuffledNodeCurves = new ArrayList<>(nodeIndvCurves.get(i));
 				Collections.shuffle(shuffledNodeCurves, new Random(shuffledNodeCurves.size()*1000l));
+				
+				if (downsample > 0 && downsample < totNumCurves) {
+					// downsample
+					double keepFract = (double)downsample/(double)totNumCurves;
+					int myKept = (int)(keepFract*shuffledNodeCurves.size() + 0.5);
+					if (myKept < shuffledNodeCurves.size())
+						shuffledNodeCurves = shuffledNodeCurves.subList(0, myKept);
+				}
+				
 				for (DiscretizedFunc nodeCurve : shuffledNodeCurves)
 					allCurveChars.add(new CurveChar(nodeCurve, pChar));
 			}
