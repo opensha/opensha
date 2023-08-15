@@ -980,9 +980,19 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	}
 	
 	public static SolutionLogicTree load(File treeFile) throws IOException {
+		return load(treeFile, null);
+	}
+	
+	public static SolutionLogicTree load(File treeFile, LogicTree<?> logicTree) throws IOException {
 		ModuleArchive<SolutionLogicTree> archive = new ModuleArchive<>(treeFile, SolutionLogicTree.class);
 		
-		return archive.requireModule(SolutionLogicTree.class);
+		SolutionLogicTree ret = archive.requireModule(SolutionLogicTree.class);
+		
+		if (logicTree != null)
+			// override the logic tree
+			ret.setLogicTree(logicTree);
+		
+		return ret;
 	}
 	
 	public FaultSystemSolution calcBranchAveraged() throws IOException {
