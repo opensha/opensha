@@ -20,6 +20,7 @@ import java.util.Random;
 
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.logicTree.BranchWeightProvider.OriginalWeights;
+import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 
 import com.google.common.base.Preconditions;
@@ -279,7 +280,9 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			indexCounts.put(index, prevCount+1);
 		}
 		double weightEach = 1d/numSamples;
-		ImmutableList.Builder<LogicTreeBranch<E>> samples = ImmutableList.builder();
+//		ImmutableList.Builder<LogicTreeBranch<E>> samples = ImmutableList.builder();
+		List<LogicTreeBranch<E>> samples = new ArrayList<>(numSamples);
+		List<Integer> indexes = new ArrayList<>(numSamples);
 		Map<LogicTreeNode, Integer> sampledNodeCounts = new HashMap<>();
 		int mostSamples = 0;
 		for (int index : indexCounts.keySet()) {
@@ -288,6 +291,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			LogicTreeBranch<E> branch = getBranch(index).copy();
 			branch.setOrigBranchWeight((double)count*weightEach);
 			samples.add(branch);
+			indexes.add(index);
 			for (LogicTreeNode node : branch) {
 				if (sampledNodeCounts.containsKey(node))
 					sampledNodeCounts.put(node, sampledNodeCounts.get(node)+count);
@@ -301,7 +305,12 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				new BranchWeightProvider.ConstantWeights(weightEach) : new BranchWeightProvider.OriginalWeights();
 		// do it this way to skip consistency checks
 		LogicTree<E> ret = new LogicTree<>(weightProv);
-		ret.branches = samples.build();
+		
+		// sort them so that they're in the original order (many processing routines are faster when branches are in
+		// order, even if some are skipped)
+		List<LogicTreeBranch<E>> sortedBranches = ComparablePairing.getSortedData(indexes, samples);
+		
+		ret.branches = ImmutableList.copyOf(sortedBranches);
 		ret.levels = levels;
 		
 		System.out.println("\tSampled "+indexCounts.size()+" unique branches. The most any single "
