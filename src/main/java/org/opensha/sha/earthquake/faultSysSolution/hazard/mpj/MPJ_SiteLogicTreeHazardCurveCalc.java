@@ -37,7 +37,9 @@ import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
+import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.calc.HazardCurveCalculator;
@@ -243,11 +245,24 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				
 				for (int col=3; col<sitesCSV.getNumCols(); col++) {
 					String paramName = sitesCSV.get(0, col);
+					boolean found = false;
 					for (Parameter<?> param : site) {
-						if (param.getName().toLowerCase().equals(paramName.toLowerCase()) && param instanceof DoubleParameter) {
-							((DoubleParameter)param).setValue(sitesCSV.getDouble(row, col));
+						if (param.getName().toLowerCase().equals(paramName.toLowerCase())) {
+							found = true;
+							if (param instanceof DoubleParameter) {
+								((DoubleParameter)param).setValue(sitesCSV.getDouble(row, col));
+							} else if (param instanceof StringParameter) {
+								((StringParameter)param).setValue(sitesCSV.get(row, col));
+							} else if (param instanceof BooleanParameter) {
+								((BooleanParameter)param).setValue(sitesCSV.getBoolean(row, col));
+							} else {
+								throw new IllegalStateException("Site parameter "+paramName
+										+" could not be set, unsupported type: "+param.getClass().getName());
+							}
 						}
 					}
+					if (!found)
+						System.err.println("WARNING: GMM does not have parameter "+paramName+", skipping from site CSV");
 				}
 			}
 			sites.add(site);
