@@ -561,17 +561,22 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		else
 			supplier = gmpeRef;
 		
-		if (branch.hasValue(ScalarIMR_ParamsLogicTreeNode.class)) {
-			ScalarIMR_ParamsLogicTreeNode params = branch.requireValue(ScalarIMR_ParamsLogicTreeNode.class);
-			return new Supplier<ScalarIMR>() {
+		// see if we have any GMM parameter logic tree branches
+		for (int i=0; i<branch.size(); i++) {
+			LogicTreeNode node = branch.getValue(i);
+			if (node instanceof ScalarIMR_ParamsLogicTreeNode) {
+				ScalarIMR_ParamsLogicTreeNode params = (ScalarIMR_ParamsLogicTreeNode)node;
+				Supplier<ScalarIMR> upstream = supplier;
+				supplier = new Supplier<ScalarIMR>() {
 
-				@Override
-				public ScalarIMR get() {
-					ScalarIMR imr = supplier.get();
-					params.setParams(imr);
-					return imr;
-				}
-			};
+					@Override
+					public ScalarIMR get() {
+						ScalarIMR imr = upstream.get();
+						params.setParams(imr);
+						return imr;
+					}
+				};
+			}
 		}
 		
 		return supplier;
