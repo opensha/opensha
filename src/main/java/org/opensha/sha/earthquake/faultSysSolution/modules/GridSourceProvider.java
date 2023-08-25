@@ -526,6 +526,14 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 			this.nodeUnassociatedMFDs = unassociatedBuilder.build();
 		}
 		
+		public ImmutableMap<Integer, IncrementalMagFreqDist> getNodeSubSeisMFDs() {
+			return nodeSubSeisMFDs;
+		}
+		
+		public ImmutableMap<Integer, IncrementalMagFreqDist> getNodeUnassociatedMFDs() {
+			return nodeUnassociatedMFDs;
+		}
+		
 		public void setRound(boolean round) {
 			this.round = round;
 		}
