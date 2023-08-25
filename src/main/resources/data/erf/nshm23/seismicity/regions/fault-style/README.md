@@ -20,3 +20,5 @@ attenuation boundary.
 
 Created by: @pmpowers  
 11/3/2022
+
+NOTE: current version is V8 supplied by Peter via e-mail on on 8/25/2023; map image in this directory is stale
