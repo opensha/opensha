@@ -104,6 +104,12 @@ public class GeographicMapMaker {
 	protected CPT sectColorsCPT;
 	protected String sectColorsLabel;
 
+	// section chars
+	protected List<PlotCurveCharacterstics> sectChars = null;
+	protected List<? extends Double> sectCharsComparables;
+	protected CPT sectCharsCPT;
+	protected String sectCharsLabel;
+
 	// highlighted sections
 	protected Collection<FaultSection> highlightSections;
 	protected PlotCurveCharacterstics highlightTraceChar;
@@ -404,6 +410,7 @@ public class GeographicMapMaker {
 			List<? extends Double> sectColorComparables) {
 		if (sectColors != null) {
 			clearSectScalars();
+			clearSectChars();
 			checkHasSections();
 			Preconditions.checkState(sectColors.size() == sects.size());
 			if (sectColorComparables != null)
@@ -415,11 +422,42 @@ public class GeographicMapMaker {
 		this.sectColorComparables = sectColorComparables;
 	}
 	
+	public void plotSectChars(List<PlotCurveCharacterstics> sectChars) {
+		plotSectChars(sectChars, null, null);
+	}
+	
+	public void plotSectChars(List<PlotCurveCharacterstics> sectChars, CPT cpt, String label) {
+		plotSectChars(sectChars, cpt, label, null);
+	}
+	
+	public void plotSectChars(List<PlotCurveCharacterstics> sectChars, CPT cpt, String label,
+			List<? extends Double> sectCharComparables) {
+		if (sectChars != null) {
+			clearSectScalars();
+			clearSectColors();
+			checkHasSections();
+			Preconditions.checkState(sectChars.size() == sects.size());
+			if (sectCharComparables != null)
+				Preconditions.checkState(sectCharComparables.size() == sects.size());
+		}
+		this.sectChars = sectChars;
+		this.sectCharsCPT = cpt;
+		this.sectCharsLabel = label;
+		this.sectCharsComparables = sectCharComparables;
+	}
+	
 	public void clearSectColors() {
 		this.sectColors = null;
 		this.sectColorsCPT = null;
 		this.sectColorsLabel = null;
 		this.sectColorComparables = null;
+	}
+	
+	public void clearSectChars() {
+		this.sectChars = null;
+		this.sectCharsCPT = null;
+		this.sectCharsLabel = null;
+		this.sectCharsComparables = null;
 	}
 	
 	public void plotJumps(Collection<Jump> jumps, Color color, String label) {
@@ -801,10 +839,15 @@ public class GeographicMapMaker {
 					trace.setName("Fault Sections");
 				
 				// we'll plot fault traces if we don't have scalar values
-				boolean doTraces = sectScalars == null && sectColors == null;
-				if (!doTraces && !skipNaNs &&
-						(sectScalars != null && Double.isNaN(sectScalars[s]) || sectColors != null && sectColors.get(s) == null))
-					doTraces = true;
+				boolean doTraces = sectScalars == null && sectColors == null && sectChars == null;
+				if (!doTraces && !skipNaNs) {
+					if (sectScalars != null)
+						doTraces = Double.isNaN(sectScalars[s]);
+					else if (sectColors != null)
+						doTraces = sectColors.get(s) == null;
+					else if (sectChars != null)
+						doTraces = sectChars.get(s) == null;
+				}
 				
 				if (sectOutlineChar != null && (sect.getAveDip() != 90d)) {
 					XY_DataSet outline = new DefaultXY_DataSet();
@@ -919,14 +962,24 @@ public class GeographicMapMaker {
 				
 				if (sectScalarLabel != null)
 					cptLegend.add(buildCPTLegend(sectScalarCPT, sectScalarLabel));
-			} else if (sectColors != null) {
-				Preconditions.checkState(sectColors.size() == sects.size());
+			} else if (sectColors != null || sectChars != null) {
+				List<? extends Double> comps = null;
+				boolean colors;
+				if (sectColors != null) {
+					Preconditions.checkState(sectColors.size() == sects.size());
+					comps = sectColorComparables;
+					colors = true;
+				} else {
+					Preconditions.checkState(sectChars.size() == sects.size());
+					comps = sectCharsComparables;
+					colors = false;
+				}
 				List<Integer> sectOrder;
-				if (sectColorComparables != null) {
-					Preconditions.checkState(sectColorComparables.size() == sects.size());
+				if (comps != null) {
+					Preconditions.checkState(comps.size() == sects.size());
 					List<ComparablePairing<Double, Integer>> sortables = new ArrayList<>();
-					for (int s=0; s<sectColorComparables.size(); s++)
-						sortables.add(new ComparablePairing<>(sectColorComparables.get(s), s));
+					for (int s=0; s<comps.size(); s++)
+						sortables.add(new ComparablePairing<>(comps.get(s), s));
 					Collections.sort(sortables, comparator);
 					sectOrder = new ArrayList<>(sects.size());
 					for (ComparablePairing<Double, Integer> sort : sortables)
@@ -937,9 +990,19 @@ public class GeographicMapMaker {
 						sectOrder.add(s);
 				}
 				for (int s : sectOrder) {
-					Color color = sectColors.get(s);
-					if (color == null)
-						continue;
+					PlotCurveCharacterstics scalarChar;
+					Color color;
+					if (colors) {
+						color = sectColors.get(s);
+						if (color == null)
+							continue;
+						scalarChar = new PlotCurveCharacterstics(PlotLineType.SOLID, sectScalarThickness, color);
+					} else {
+						scalarChar = sectChars.get(s);
+						if (scalarChar == null)
+							continue;
+						color = scalarChar.getColor();
+					}
 					FaultSection sect = sects.get(s);
 					if (!plotSects.contains(sect))
 						continue;
@@ -961,7 +1024,6 @@ public class GeographicMapMaker {
 						trace.set(loc.getLongitude(), loc.getLatitude());
 					
 					funcs.add(trace);
-					PlotCurveCharacterstics scalarChar = new PlotCurveCharacterstics(PlotLineType.SOLID, sectScalarThickness, color);
 					chars.add(scalarChar);
 					if (writeGeoJSON) {
 						Feature feature = traceFeature(sect, scalarChar);
@@ -969,8 +1031,10 @@ public class GeographicMapMaker {
 					}
 				}
 				
-				if (sectColorsCPT != null)
+				if (colors && sectColorsCPT != null)
 					cptLegend.add(buildCPTLegend(sectColorsCPT, sectColorsLabel));
+				if (!colors && sectCharsCPT != null)
+					cptLegend.add(buildCPTLegend(sectCharsCPT, sectCharsLabel));
 			}
 			
 			if (highlightSections != null && highlightTraceChar != null) {
