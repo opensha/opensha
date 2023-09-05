@@ -458,7 +458,12 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	
 	protected Map<Integer, List<MinisectionSlipRecord>> buildGeolMinis(RupSetFaultModel faultModel, String version)
 			throws IOException {
-		Preconditions.checkState(isApplicableTo(faultModel), "DM/FM mismatch");
+		if (!isApplicableTo(faultModel)) {
+			System.err.println("WARNING: Using a nonstandard fault model of type '"+faultModel.getClass().getName()
+					+"', which may not work: "+faultModel.getName());
+			Preconditions.checkState(!(faultModel instanceof scratch.UCERF3.enumTreeBranches.FaultModels),
+					"You passed in UCERF3 by mistake!");
+		}
 		List<? extends FaultSection> geoSects = buildGeolFullSects(faultModel, version);
 		
 		Map<Integer, GeoJSONFaultSection> geoSectsMap = new HashMap<>();
