@@ -583,7 +583,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	}
 	
 	private GriddedRegion detectRegion(FaultSystemSolution sol) {
-		Region region = new ReportMetadata(new RupSetMetadata(null, sol)).region;
+//		Region region = new ReportMetadata(new RupSetMetadata(null, sol)).region;
+		Region region = ReportMetadata.detectRegion(sol);
 		return new GriddedRegion(region, gridSpacing, GriddedRegion.ANCHOR_0_0);
 	}
 
