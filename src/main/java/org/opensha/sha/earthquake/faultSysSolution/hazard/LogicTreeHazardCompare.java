@@ -2269,19 +2269,19 @@ public class LogicTreeHazardCompare {
 				
 				if (!branchLevels.isEmpty()) {
 					String combPrefix = prefix+"_branches_combined";
-					writeCombinedBranchMap(resourcesDir, combPrefix, name+", Logic Tree Comparison",
+					writeCombinedBranchMap(resourcesDir, combPrefix, name+", Mean Hazard Map",
 							meanMapPlot, branchLevels, branchLevelValues,
 							branchLevelPDiffPlots, "Branch Choice / Mean, % Change",
 							branchLevelDiffPlots, "Branch Choice - Mean (g)");
 					combPrefix = prefix+"_branches_combined_pDiff";
-					writeCombinedBranchMap(resourcesDir, combPrefix, name+", Logic Tree Comparison",
+					writeCombinedBranchMap(resourcesDir, combPrefix, name+", Mean Hazard Map",
 							meanMapPlot, branchLevels, branchLevelValues, branchLevelPDiffPlots,
 							"Branch Choice / Mean, % Change");
 					table = MarkdownUtils.tableBuilder();
 					table.addLine("Combined Summary Maps");
 					table.addLine("![Combined Map]("+resourcesDir.getName()+"/"+combPrefix+".png)");
 					combPrefix = prefix+"_branches_combined_diff";
-					writeCombinedBranchMap(resourcesDir, combPrefix, name+", Logic Tree Comparison",
+					writeCombinedBranchMap(resourcesDir, combPrefix, name+", Mean Hazard Map",
 							meanMapPlot, branchLevels, branchLevelValues, branchLevelDiffPlots,
 							"Branch Choice - Mean (g)");
 					table.addLine("![Combined Map]("+resourcesDir.getName()+"/"+combPrefix+".png)");
