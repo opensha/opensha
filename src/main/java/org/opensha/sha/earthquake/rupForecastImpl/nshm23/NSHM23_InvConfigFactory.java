@@ -2321,6 +2321,165 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 	}
 	
+	public static class ModPitasPointDDW extends NSHM23_InvConfigFactory {
+		
+		private ModDepthFM modFM(RupSetFaultModel fm) {
+			return new ModDepthFM(fm, 333, 15d);
+		}
+		
+		protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
+			RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
+			RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
+			if (model == null) {
+				if (fm instanceof FaultModels) // UCERF3 FM
+					model = RupturePlausibilityModels.UCERF3; // for now
+				else
+					model = RupturePlausibilityModels.COULOMB;
+			}
+			
+			// check cache
+			FaultSystemRupSet rupSet = rupSetCache.get(fm, model);
+			if (rupSet != null) {
+				return rupSet;
+			}
+			
+			RupSetScalingRelationship scale = branch.requireValue(RupSetScalingRelationship.class);
+			
+			RupSetDeformationModel dm = fm.getDefaultDeformationModel();
+			List<? extends FaultSection> subSects;
+			try {
+				subSects = dm.build(modFM(fm));
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			
+			RupSetConfig config = model.getConfig(subSects, scale);
+			
+			if (rupSet == null)
+				rupSet = config.build(threads);
+			rupSetCache.put(fm, model, rupSet);
+			
+			return rupSet;
+		}
+		
+		@Override
+		public FaultSystemRupSet updateRuptureSetForBranch(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch)
+				throws IOException {
+			// we don't trust any modules attached to this rupture set as it could have been used for another calculation
+			// that could have attached anything. Instead, lets only keep the ruptures themselves
+			
+			RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
+			RupSetDeformationModel dm = branch.requireValue(RupSetDeformationModel.class);
+			Preconditions.checkState(dm.isApplicableTo(fm),
+					"Fault and deformation models are not compatible: %s, %s", fm.getName(), dm.getName());
+			// override slip rates for the given deformation model
+			List<? extends FaultSection> subSects;
+			try {
+				subSects = dm.build(modFM(fm));
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			
+			RuptureSubSetMappings subsetMappings = rupSet.getModule(RuptureSubSetMappings.class);
+			if (subsetMappings != null) {
+				// state specific, remap the DM-specific sections to this subset
+				List<FaultSection> subsetSects = new ArrayList<>();
+				for (int s=0; s<rupSet.getNumSections(); s++) {
+					FaultSection sect = subSects.get(subsetMappings.getOrigSectID(s)).clone();
+					sect.setSectionId(s);
+					subsetSects.add(sect);
+				}
+				subSects = subsetSects;
+			}
+			Preconditions.checkState(subSects.size() == rupSet.getNumSections());
+			
+			ClusterRuptures cRups = rupSet.getModule(ClusterRuptures.class);
+			
+			PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
+			RupSetScalingRelationship scale = branch.requireValue(RupSetScalingRelationship.class);
+			
+			if (cRups == null) {
+				rupSet = FaultSystemRupSet.builder(subSects, rupSet.getSectionIndicesForAllRups())
+						.forScalingRelationship(scale).build();
+				if (plausibility != null)
+					rupSet.addModule(plausibility);
+				rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
+			} else {
+				rupSet = ClusterRuptureBuilder.buildClusterRupSet(scale, subSects, plausibility, cRups.getAll());
+			}
+			
+			if (subsetMappings != null)
+				rupSet.addModule(subsetMappings);
+			
+			SlipAlongRuptureModelBranchNode slipAlong = branch.requireValue(SlipAlongRuptureModelBranchNode.class);
+			rupSet.addModule(slipAlong.getModel());
+			
+			// add other modules
+			return getSolutionLogicTreeProcessor().processRupSet(rupSet, branch);
+		}
+		
+		private class ModDepthFM implements RupSetFaultModel {
+			
+			private RupSetFaultModel fm;
+			private int parentID;
+			private double lowerDepth;
+
+			public ModDepthFM(RupSetFaultModel fm, int parentID, double lowerDepth) {
+				this.fm = fm;
+				this.parentID = parentID;
+				this.lowerDepth = lowerDepth;
+			}
+
+			@Override
+			public double getNodeWeight(LogicTreeBranch<?> fullBranch) {
+				return fm.getNodeWeight(fullBranch);
+			}
+
+			@Override
+			public String getFilePrefix() {
+				return fm.getFilePrefix();
+			}
+
+			@Override
+			public String getShortName() {
+				return fm.getShortName();
+			}
+
+			@Override
+			public String getName() {
+				return fm.getName();
+			}
+
+			@Override
+			public List<? extends FaultSection> getFaultSections() throws IOException {
+				List<FaultSection> ret = new ArrayList<>();
+				boolean found = false;
+				for (FaultSection sect : fm.getFaultSections()) {
+					if (sect.getSectionId() == parentID) {
+						found = true;
+						Preconditions.checkState(sect instanceof GeoJSONFaultSection);
+						double origDepth = sect.getAveLowerDepth();
+						Feature feature = ((GeoJSONFaultSection)sect).toFeature();
+						feature.properties.set(GeoJSONFaultSection.LOW_DEPTH, lowerDepth);
+						sect = GeoJSONFaultSection.fromFeature(feature);
+						System.out.println("Updated lowDepth for "+sect.getSectionId()+". "+sect.getSectionName()
+							+": "+(float)origDepth+" -> "+(float)sect.getAveLowerDepth()+" km");
+					}
+					ret.add(sect);
+				}
+				Preconditions.checkState(found);
+				return ret;
+			}
+
+			@Override
+			public RupSetDeformationModel getDefaultDeformationModel() {
+				return fm.getDefaultDeformationModel();
+			}
+			
+		}
+		
+	}
+	
 	public static void main(String[] args) throws IOException {
 //		File dir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
 //				+ "2021_11_24-nshm23_draft_branches-FM3_1/");
