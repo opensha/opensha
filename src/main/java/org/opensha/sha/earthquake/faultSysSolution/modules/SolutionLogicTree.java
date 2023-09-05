@@ -612,6 +612,15 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			writtenFiles.add(ratesFile);
 		}
 		
+		if (sol.hasModule(RupMFDsModule.class)) {
+			String mfdsFile = getBranchFileName(branch, prefix, RupMFDsModule.FILE_NAME, true);
+			if (!writtenFiles.contains(mfdsFile)) {
+				RupMFDsModule mfds = sol.requireModule(RupMFDsModule.class);
+				CSV_BackedModule.writeToArchive(mfds.getCSV(), zout, entryPrefix, mfdsFile);
+				writtenFiles.add(mfdsFile);
+			}
+		}
+		
 		if (serializeGridded && sol.hasModule(GridSourceProvider.class)) {
 			GridSourceProvider prov = sol.getModule(GridSourceProvider.class);
 			writeGridProvToArchive(prov, zout, prefix, branch, writtenFiles);
@@ -935,24 +944,40 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		String statsFile = getBranchFileName(branch, InversionMisfitStats.MISFIT_STATS_FILE_NAME, true);
 		if (statsFile != null && zip.getEntry(statsFile) != null) {
-			CSVFile<String> misfitStatsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, statsFile);
-			InversionMisfitStats stats = new InversionMisfitStats(null);
-			stats.initFromCSV(misfitStatsCSV);
-			sol.addModule(stats);
+			sol.addAvailableModule(new Callable<InversionMisfitStats>() {
+
+				@Override
+				public InversionMisfitStats call() throws Exception {
+					CSVFile<String> misfitStatsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, statsFile);
+					InversionMisfitStats stats = new InversionMisfitStats(null);
+					stats.initFromCSV(misfitStatsCSV);
+					return stats;
+				}
+			}, InversionMisfitStats.class);
 		}
 		
 		String progressFile = getBranchFileName(branch, AnnealingProgress.PROGRESS_FILE_NAME, true);
 		if (progressFile != null && zip.getEntry(progressFile) != null) {
-			CSVFile<String> progressCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, progressFile);
-			AnnealingProgress progress = new AnnealingProgress(progressCSV);
-			sol.addModule(progress);
+			sol.addAvailableModule(new Callable<AnnealingProgress>() {
+
+				@Override
+				public AnnealingProgress call() throws Exception {
+					CSVFile<String> progressCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, progressFile);
+					return new AnnealingProgress(progressCSV);
+				}
+			}, AnnealingProgress.class);
 		}
 		
 		String misfitProgressFile = getBranchFileName(branch, InversionMisfitProgress.MISFIT_PROGRESS_FILE_NAME, true);
 		if (misfitProgressFile != null && zip.getEntry(misfitProgressFile) != null) {
-			CSVFile<String> progressCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, misfitProgressFile);
-			InversionMisfitProgress progress = new InversionMisfitProgress(progressCSV);
-			sol.addModule(progress);
+			sol.addAvailableModule(new Callable<InversionMisfitProgress>() {
+
+				@Override
+				public InversionMisfitProgress call() throws Exception {
+					CSVFile<String> progressCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, misfitProgressFile);
+					return new InversionMisfitProgress(progressCSV);
+				}
+			}, InversionMisfitProgress.class);
 		}
 		
 		// use rupture-sections file to figure out which things affect plausibility
@@ -960,12 +985,34 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 				FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
 		String plausibilityFile = getBranchFileName(branch, PlausibilityConfiguration.JSON_FILE_NAME, rupSectLevels);
 		if (plausibilityFile != null && zip.getEntry(plausibilityFile) != null) {
-			BufferedInputStream zin = FileBackedModule.getInputStream(zip, entryPrefix, plausibilityFile);
-			InputStreamReader reader = new InputStreamReader(zin);
-			PlausibilityConfiguration plausibility = PlausibilityConfiguration.readJSON(
-					reader, rupSet.getFaultSectionDataList());
-			reader.close();
-			rupSet.addModule(plausibility);
+			List<? extends FaultSection> fsd = rupSet.getFaultSectionDataList();
+			
+			rupSet.addAvailableModule(new Callable<PlausibilityConfiguration>() {
+
+				@Override
+				public PlausibilityConfiguration call() throws Exception {
+					BufferedInputStream zin = FileBackedModule.getInputStream(zip, entryPrefix, plausibilityFile);
+					InputStreamReader reader = new InputStreamReader(zin);
+					PlausibilityConfiguration plausibility = PlausibilityConfiguration.readJSON(reader, fsd);
+					reader.close();
+					return plausibility;
+				}
+			}, PlausibilityConfiguration.class);
+		}
+		
+		String mfdsFile = getBranchFileName(branch, RupMFDsModule.FILE_NAME, true);
+		if (mfdsFile != null && zip.getEntry(mfdsFile) != null) {
+			FaultSystemSolution solTmp = sol;
+			sol.addAvailableModule(new Callable<RupMFDsModule>() {
+
+				@Override
+				public RupMFDsModule call() throws Exception {
+					CSVFile<String> csv = CSV_BackedModule.loadFromArchive(zip, entryPrefix, mfdsFile);
+					RupMFDsModule mfds = new RupMFDsModule(solTmp, null);
+					mfds.initFromCSV(csv);
+					return mfds;
+				}
+			}, RupMFDsModule.class);
 		}
 		
 		return sol;
