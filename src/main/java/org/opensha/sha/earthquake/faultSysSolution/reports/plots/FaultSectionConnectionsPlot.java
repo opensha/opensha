@@ -783,10 +783,20 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 	
 	private static int MAX_PLOT_CLUSTERS = 10;
 	private static boolean SMART_RAND = true;
-	
+
 	public static File plotConnectedClusters(FaultSystemRupSet rupSet, FaultSystemSolution sol, Region region,
 			File outputDir, String prefix, String title, TableBuilder table, List<ConnectivityCluster> clustersUnsorted)
 					throws IOException {
+		GeographicMapMaker plotter = buildConnectedClustersPlot(rupSet, sol, region, table, clustersUnsorted);
+		
+		plotter.plot(outputDir, prefix, title, 1200);
+		
+		return new File(outputDir, prefix+".png");
+	}
+	
+	public static GeographicMapMaker buildConnectedClustersPlot(FaultSystemRupSet rupSet, FaultSystemSolution sol, Region region,
+			TableBuilder table, List<ConnectivityCluster> clustersUnsorted) throws IOException {
+		
 		// sort clusters by number of sections
 		List<ConnectivityCluster> clusters = new ArrayList<>(clustersUnsorted);
 		Collections.sort(clusters, ConnectivityCluster.sectCountComparator);
@@ -1142,9 +1152,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 		
 		plotter.plotSectColors(sectColors, null, null, sectColorSortables);
 		
-		plotter.plot(outputDir, prefix, title, 1200);
-		
-		return new File(outputDir, prefix+".png");
+		return plotter;
 	}
 	
 	private static String countStr(int num, int tot) {
