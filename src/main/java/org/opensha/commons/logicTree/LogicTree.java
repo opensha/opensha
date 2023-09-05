@@ -242,6 +242,26 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	}
 	
 	/**
+	 * @param values
+	 * @return a subset of this logic tree with the specified branches
+	 */
+	public final LogicTree<E> subset(Collection<LogicTreeBranch<?>> subsetBranches) {
+		HashSet<LogicTreeBranch<?>> set = subsetBranches instanceof HashSet<?> ?
+				(HashSet<LogicTreeBranch<?>>)subsetBranches : new HashSet<>(subsetBranches);
+		ImmutableList.Builder<LogicTreeBranch<E>> matching = ImmutableList.builderWithExpectedSize(subsetBranches.size());
+		for (LogicTreeBranch<E> branch : branches)
+			if (set.contains(branch))
+				matching.add(branch);
+		// do it this way to skip consistency checks
+		LogicTree<E> ret = new LogicTree<>(weightProvider);
+		ret.branches = matching.build();
+		Preconditions.checkState(subsetBranches.size() == ret.branches.size(),
+				"Not all passed in branches were found in the tree");
+		ret.levels = levels;
+		return ret;
+	}
+	
+	/**
 	 * @param numSamples number of random samples
 	 * @param redrawDuplicates if true, each branch will be unique, redrawing a branch if an already sampled branch
 	 * has been selected, otherwise duplicate branches will be given additional weight and the returned branch count
