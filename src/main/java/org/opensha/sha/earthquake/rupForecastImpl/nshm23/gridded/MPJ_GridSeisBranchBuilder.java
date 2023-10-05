@@ -37,6 +37,7 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.mpj.AbstractAsyncLogicTreeWriter;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchAveragingOrder;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchRegionalMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
@@ -513,6 +514,9 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					if (baSol.getRupSet().hasModule(RegionsOfInterest.class)) {
 						BranchRegionalMFDs regionalMFDs = regionalMFDsBuilders.get(baPrefix).build();
 						baSol.addModule(regionalMFDs);
+						// this uses a different order, remove the old one to avoid confusion but don't add the new one
+						// because other modules will still use the old order
+						baSol.removeModuleInstances(BranchAveragingOrder.class);
 					}
 					
 					baSol.write(new File(solsDir.getParentFile(), baFilePrefix+"_branch_averaged_gridded.zip"));

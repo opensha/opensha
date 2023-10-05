@@ -132,7 +132,8 @@ public class SimulationMarkdownGenerator {
 //					+ "2020_03_07-ComCatM6p4_ci38443183_PointSources");
 //					+ "2019_11_05-Start2012_500yr_kCOV1p5_Spontaneous_HistoricalCatalog");
 //					+ "2019_10_11-Start2012_500yr_Spontaneous_HistoricalCatalog");	
-					+ "2020_08_10-ComCatM4p61_ci39338407_0DaysAfter_PointSources");	
+//					+ "2020_08_10-ComCatM4p61_ci39338407_0DaysAfter_PointSources");	
+					+ "2023_09_20-NewportInglewood7p2");
 //			File simDir = new File("/tmp/scott/ridgecrest-m7.1");
 			File configFile = new File(simDir, "config.json");
 //			File configFile = new File("/home/kevin/git/ucerf3-etas-launcher/tutorial/user_output/"

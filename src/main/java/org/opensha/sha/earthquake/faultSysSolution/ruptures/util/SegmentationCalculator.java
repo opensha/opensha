@@ -1433,7 +1433,7 @@ public class SegmentationCalculator {
 			gp.setTickLabelFontSize(18);
 			gp.setAxisLabelFontSize(24);
 			gp.setPlotLabelFontSize(24);
-			gp.setLegendFontSize(18);
+			gp.setLegendFontSize(legendFontSize);
 			gp.setBackgroundColor(Color.WHITE);
 			
 			int width = 1000;
@@ -1521,7 +1521,7 @@ public class SegmentationCalculator {
 		gp.setTickLabelFontSize(18);
 		gp.setAxisLabelFontSize(24);
 		gp.setPlotLabelFontSize(24);
-		gp.setLegendFontSize(18);
+		gp.setLegendFontSize(legendFontSize);
 		gp.setBackgroundColor(Color.WHITE);
 		
 		int width = 1000;
@@ -1599,7 +1599,7 @@ public class SegmentationCalculator {
 		gp.setTickLabelFontSize(18);
 		gp.setAxisLabelFontSize(24);
 		gp.setPlotLabelFontSize(24);
-		gp.setLegendFontSize(18);
+		gp.setLegendFontSize(legendFontSize);
 		gp.setBackgroundColor(Color.WHITE);
 		
 		int width = 1000;
@@ -1866,7 +1866,7 @@ public class SegmentationCalculator {
 			gp.setTickLabelFontSize(18);
 			gp.setAxisLabelFontSize(24);
 			gp.setPlotLabelFontSize(24);
-			gp.setLegendFontSize(18);
+			gp.setLegendFontSize(legendFontSize);
 			gp.setBackgroundColor(Color.WHITE);
 			
 			int width = 1000;
@@ -1884,6 +1884,12 @@ public class SegmentationCalculator {
 		}
 		
 		return ret;
+	}
+	
+	private int legendFontSize = 18;
+	
+	public void setLegendFontSize(int legendFontSize) {
+		this.legendFontSize = legendFontSize;
 	}
 	
 	public File[] plotMaxDistModelsComparison(File outputDir, String prefix, boolean logY, double targetR0,
@@ -2102,7 +2108,7 @@ public class SegmentationCalculator {
 			gp.setTickLabelFontSize(18);
 			gp.setAxisLabelFontSize(24);
 			gp.setPlotLabelFontSize(24);
-			gp.setLegendFontSize(18);
+			gp.setLegendFontSize(legendFontSize);
 			gp.setBackgroundColor(Color.WHITE);
 			
 			int width = 1000;

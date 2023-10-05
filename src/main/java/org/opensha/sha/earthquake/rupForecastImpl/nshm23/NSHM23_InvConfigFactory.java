@@ -242,6 +242,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				e.printStackTrace();
 				rupSet = null;
 			}
+		} else {
+			System.out.println("Rup set cache miss, doesn't exist: "+cachedRupSetFile.getAbsolutePath());
 		}
 		
 		if (rupSet == null)
