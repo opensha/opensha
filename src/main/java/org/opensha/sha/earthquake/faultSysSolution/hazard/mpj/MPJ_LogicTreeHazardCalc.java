@@ -101,6 +101,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private static final boolean AFTERSHOCK_FILTER_DEFAULT = false;
 	private boolean applyAftershockFilter = AFTERSHOCK_FILTER_DEFAULT;
 	
+	private static final boolean ASEIS_REDUCES_AREA_DEFAULT = true;
+	private boolean aseisReducesArea = ASEIS_REDUCES_AREA_DEFAULT;
+	
 	private GriddedRegion gridRegion;
 
 	private File combineWithOtherDir;
@@ -198,9 +201,14 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				gridRegion = new GriddedRegion(region, gridSpacing, GriddedRegion.ANCHOR_0_0);
 			}
 		}
-		
+
 		if (cmd.hasOption("aftershock-filter"))
 			applyAftershockFilter = true;
+		if (cmd.hasOption("aseis-reduces-area") || cmd.hasOption("no-aseis-reduces-area")) {
+			Preconditions.checkState(!cmd.hasOption("aseis-reduces-area") || !cmd.hasOption("no-aseis-reduces-area"),
+					"Can't both enable and disable aseismicity area reductions!");
+			aseisReducesArea = cmd.hasOption("aseis-reduces-area");
+		}
 		
 		String hazardPrefix = "hazard_"+(float)gridSpacing+"deg";
 		if (applyAftershockFilter)
@@ -802,6 +810,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				}
 				calc.setMaxSourceSiteDist(maxDistance);
 				calc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
+				calc.setAseisReducesArea(aseisReducesArea);
 				
 				calc.calcHazardCurves(getNumThreads(), combineWithCurves);
 				calc.writeCurvesCSVs(hazardSubDir, curvesPrefix, true);
@@ -864,6 +873,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				+ "a zip file is supplied, then it is assumed that the file is a prior hazard calculation zip file and the "
 				+ "region will be reused from that prior calculation.");
 		ops.addOption("af", "aftershock-filter", false, "If supplied, the aftershock filter will be applied in the ERF");
+		ops.addOption(null, "aseis-reduces-area", false, "If supplied, aseismicity area reductions are enabled");
+		ops.addOption(null, "no-aseis-reduces-area", false, "If supplied, aseismicity area reductions are disabled");
 		ops.addOption("egp", "external-grid-prov", true, "Path to external grid source provider to use for hazard "
 				+ "calculations. Can be either a fault system solution, or a zip file containing just a grid source "
 				+ "provider.");

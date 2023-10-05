@@ -937,23 +937,23 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 
 	private class RupSurfaceCache {
 		private double prevGridSpacing = Double.NaN;
+		private boolean prevAseisReducesArea = false;
 		private Map<Integer, RuptureSurface> rupSurfaceCache;
 
-		private RupSurfaceCache() {
-			rupSurfaceCache = new HashMap<>();
-		}
-
-		private synchronized RuptureSurface getSurfaceForRupture(int rupIndex, double gridSpacing) {
-			if (prevGridSpacing != gridSpacing) {
+		private synchronized RuptureSurface getSurfaceForRupture(int rupIndex, double gridSpacing, boolean aseisReducesArea) {
+			if (rupSurfaceCache == null)
+				rupSurfaceCache = new HashMap<>();
+			if (prevGridSpacing != gridSpacing || aseisReducesArea != prevAseisReducesArea) {
 				rupSurfaceCache.clear();
 				prevGridSpacing = gridSpacing;
+				prevAseisReducesArea = aseisReducesArea;
 			}
 			RuptureSurface surf = rupSurfaceCache.get(rupIndex);
 			if (surf != null)
 				return surf;
 			List<RuptureSurface> rupSurfs = Lists.newArrayList();
 			for (FaultSection fltData : getFaultSectionDataForRupture(rupIndex))
-				rupSurfs.add(fltData.getFaultSurface(gridSpacing, false, true));
+				rupSurfs.add(fltData.getFaultSurface(gridSpacing, false, aseisReducesArea));
 			if (rupSurfs.size() == 1)
 				surf = rupSurfs.get(0);
 			else
@@ -974,7 +974,21 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return
 	 */
 	public RuptureSurface getSurfaceForRupture(int rupIndex, double gridSpacing) {
-		return surfCache.getSurfaceForRupture(rupIndex, gridSpacing);
+		return getSurfaceForRupture(rupIndex, gridSpacing, true);
+	}
+
+	/**
+	 * This creates a CompoundGriddedSurface for the specified rupture.  This sets preserveGridSpacingExactly=false so 
+	 * there are no cut-off ends (but variable grid spacing).
+	 * 
+	 *  If <code>aseisReducesArea</code> is true, it applies aseismicity as a reduction of area.
+	 * @param rupIndex
+	 * @param gridSpacing
+	 * @param aseisReducesArea
+	 * @return
+	 */
+	public RuptureSurface getSurfaceForRupture(int rupIndex, double gridSpacing, boolean aseisReducesArea) {
+		return surfCache.getSurfaceForRupture(rupIndex, gridSpacing, aseisReducesArea);
 	}
 
 	/**

@@ -21,6 +21,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
+import org.opensha.sha.earthquake.param.AseismicityAreaReductionParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.FaultGridSpacingParam;
@@ -51,11 +52,13 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	protected FaultGridSpacingParam faultGridSpacingParam;
 	protected IncludeBackgroundParam bgIncludeParam;
 	protected BackgroundRupParam bgRupTypeParam;
+	protected AseismicityAreaReductionParam aseisParam;
 	
 	// The primitive versions of parameters; and values here are the param defaults: (none for fileParam)
 	protected double faultGridSpacing = 1.0;
 	protected IncludeBackgroundOption bgInclude = IncludeBackgroundOption.INCLUDE;
 	protected BackgroundRupType bgRupType = BackgroundRupType.POINT;
+	protected boolean aseisReducesArea = true;
 	
 	// Parameter change flags:
 	protected boolean fileParamChanged=false;	// set as false since most subclasses ignore this parameter
@@ -63,6 +66,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	protected boolean bgIncludeChanged=true;
 	protected boolean bgRupTypeChanged=true;
 	protected boolean quadSurfacesChanged=true;
+	protected boolean aseisReducesAreaChanged=true;
 	
 	// TimeSpan stuff:
 	protected final static double DURATION_DEFAULT = 30;	// years
@@ -115,6 +119,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		faultGridSpacingParam = new FaultGridSpacingParam();
 		bgIncludeParam = new IncludeBackgroundParam();
 		bgRupTypeParam = new BackgroundRupParam();
+		aseisParam = new AseismicityAreaReductionParam();
 
 
 		// set listeners
@@ -122,6 +127,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		faultGridSpacingParam.addParameterChangeListener(this);
 		bgIncludeParam.addParameterChangeListener(this);
 		bgRupTypeParam.addParameterChangeListener(this);
+		aseisParam.addParameterChangeListener(this);
 
 		
 		// set parameters to the primitive values
@@ -129,6 +135,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		faultGridSpacingParam.setValue(faultGridSpacing);
 		bgIncludeParam.setValue(bgInclude);
 		bgRupTypeParam.setValue(bgRupType);
+		aseisParam.setValue(aseisReducesArea);
 
 		createParamList();
 	}
@@ -145,6 +152,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			adjustableParams.addParameter(bgRupTypeParam);
 		}
 		adjustableParams.addParameter(faultGridSpacingParam);
+		adjustableParams.addParameter(aseisParam);
 	}
 	
 	/**
@@ -182,6 +190,9 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		} else if (paramName.equalsIgnoreCase(bgRupTypeParam.getName())) {
 			bgRupType = bgRupTypeParam.getValue();
 			bgRupTypeChanged = true;
+		} else if (paramName.equalsIgnoreCase(aseisParam.getName())) {
+			aseisReducesArea = aseisParam.getValue();
+			aseisReducesAreaChanged = true;
 		} else {
 			throw new RuntimeException("parameter name not recognized");
 		}
@@ -189,7 +200,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	}
 	
 	protected boolean shouldRebuildFaultSystemSources() {
-		return faultSysSolutionChanged || faultGridSpacingChanged || quadSurfacesChanged || timeSpanChangeFlag;
+		return faultSysSolutionChanged || faultGridSpacingChanged || quadSurfacesChanged || timeSpanChangeFlag || aseisReducesAreaChanged;
 	}
 	
 	/**
@@ -248,6 +259,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		fileParamChanged = false;
 		faultSysSolutionChanged = false;
 		faultGridSpacingChanged = false;
+		aseisReducesAreaChanged = false;
 		bgIncludeChanged = false;
 		bgRupTypeChanged = false;			
 		quadSurfacesChanged= false;
@@ -562,7 +574,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 				prob = Math.min(1d, annualRate*duration);
 			
 			src = new FaultRuptureSource(meanMag, 
-					rupSet.getSurfaceForRupture(fltSystRupIndex, faultGridSpacing), 
+					rupSet.getSurfaceForRupture(fltSystRupIndex, faultGridSpacing, aseisReducesArea), 
 					rupSet.getAveRakeForRup(fltSystRupIndex), prob, isPoisson);
 		} else {
 			// we have multiple magnitudes

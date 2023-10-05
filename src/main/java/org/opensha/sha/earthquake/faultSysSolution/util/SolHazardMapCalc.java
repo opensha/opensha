@@ -52,6 +52,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
+import org.opensha.sha.earthquake.param.AseismicityAreaReductionParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
@@ -111,6 +112,7 @@ public class SolHazardMapCalc {
 	private IncludeBackgroundOption backSeisOption;
 	private BackgroundRupType backSeisType;
 	private boolean applyAftershockFilter;
+	private boolean aseisReducesArea = true;
 	
 	public static ReturnPeriods[] MAP_RPS = { ReturnPeriods.TWO_IN_50, ReturnPeriods.TEN_IN_50 };
 	
@@ -181,6 +183,10 @@ public class SolHazardMapCalc {
 		this.applyAftershockFilter = applyAftershockFilter;
 	}
 
+	public void setAseisReducesArea(boolean aseisReducesArea) {
+		this.aseisReducesArea = aseisReducesArea;
+	}
+
 	private synchronized void checkInitERF() {
 		if (fssERF == null) {
 			System.out.println("Building ERF");
@@ -188,6 +194,7 @@ public class SolHazardMapCalc {
 			fssERF.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 			fssERF.setParameter(IncludeBackgroundParam.NAME, backSeisOption);
 			fssERF.setParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME, applyAftershockFilter);
+			fssERF.setParameter(AseismicityAreaReductionParam.NAME, aseisReducesArea);
 			fssERF.getTimeSpan().setDuration(1d);
 			
 			fssERF.updateForecast();
