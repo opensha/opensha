@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import org.jfree.chart.annotations.XYAnnotation;
 import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.chart.ui.RectangleAnchor;
 import org.jfree.chart.ui.RectangleEdge;
@@ -164,6 +165,11 @@ public class GeographicMapMaker {
 	 */
 	protected List<String> customLegendLabels;
 	protected List<PlotCurveCharacterstics> customLegendChars;
+	
+	/**
+	 * Annotations
+	 */
+	private List<XYAnnotation> annotations;
 	
 	/*
 	 * GeoJSON features
@@ -322,6 +328,20 @@ public class GeographicMapMaker {
 	public void clearCustomLegendItems() {
 		this.customLegendLabels = null;
 		this.customLegendChars = null;
+	}
+	
+	public void setAnnotations(List<? extends XYAnnotation> anns) {
+		this.annotations = new ArrayList<>(anns);
+	}
+	
+	public void addAnnotation(XYAnnotation ann) {
+		if (this.annotations == null)
+			this.annotations = new ArrayList<>();
+		this.annotations.add(ann);
+	}
+	
+	public void clearAnnotations() {
+		this.annotations = null;
 	}
 	
 	public void setSectHighlights(Collection<FaultSection> highlightSections, PlotCurveCharacterstics highlightTraceChar) {
@@ -1317,6 +1337,9 @@ public class GeographicMapMaker {
 			
 			for (PaintScaleLegend legend : cptLegend)
 				spec.addSubtitle(legend);
+			
+			if (annotations != null)
+				spec.setPlotAnnotations(annotations);
 			
 			return spec;
 		}
