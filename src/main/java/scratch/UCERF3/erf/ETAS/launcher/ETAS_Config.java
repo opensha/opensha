@@ -1120,7 +1120,7 @@ public class ETAS_Config {
 			Preconditions.checkNotNull(fssFile, "Must specify fault system solution file");
 			Preconditions.checkState(fssFile.exists(), "FSS file doesn't exist");
 			try {
-				fss = U3FaultSystemIO.loadSol(fssFile);
+				fss = FaultSystemSolution.load(fssFile);
 			} catch (Exception e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}

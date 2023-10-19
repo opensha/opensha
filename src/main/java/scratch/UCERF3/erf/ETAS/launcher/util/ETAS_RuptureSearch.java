@@ -99,7 +99,7 @@ public class ETAS_RuptureSearch {
 		Preconditions.checkArgument(fssFile.exists(), "FSS file doesn't exist: %s", fssFile.getAbsolutePath());
 		
 		System.out.println("Loading fault system solution from "+fssFile.getAbsolutePath());
-		FaultSystemSolution fss = U3FaultSystemIO.loadSol(fssFile);
+		FaultSystemSolution fss = FaultSystemSolution.load(fssFile);
 		
 		double lat = Double.parseDouble(cmd.getOptionValue("latitude"));
 		double lon = Double.parseDouble(cmd.getOptionValue("longitude"));

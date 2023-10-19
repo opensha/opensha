@@ -772,7 +772,7 @@ public class ETAS_ConfigBuilder {
 					if (fssFile.exists()) {
 						FaultSystemSolution fss;
 						try {
-							fss = U3FaultSystemIO.loadSol(fssFile);
+							fss = FaultSystemSolution.load(fssFile);
 							mag = fss.getRupSet().getMagForRup(fssIndex);
 						} catch (Exception e) {
 							System.err.println("Error determining magnitude for FSS rupture");

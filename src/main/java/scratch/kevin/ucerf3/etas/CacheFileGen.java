@@ -14,8 +14,11 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
@@ -48,15 +51,15 @@ import scratch.UCERF3.utils.RELM_RegionUtils;
 public class CacheFileGen {
 	
 	private static U3FaultSystemSolution buildFakeTestFSS() throws IOException, DocumentException {
-		U3FaultSystemSolution origFSS = U3FaultSystemIO.loadSol(
-				new File("src/scratch/UCERF3/data/scratch/InversionSolutions/"
-						+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
+		FaultSystemSolution origFSS = FaultSystemSolution.load(new File("/home/kevin/git/ucerf3-etas-launcher/inputs/"
+				+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
 		// restirct to only ruptures on Mojave S & Mojave N
 		HashSet<Integer> parentIDs = new HashSet<>();
 		parentIDs.add(286);
 		parentIDs.add(301);
 		List<Integer> validRupIDs = new ArrayList<>();
-		U3FaultSystemRupSet origRupSet = origFSS.getRupSet();
+		FaultSystemRupSet origRupSet = origFSS.getRupSet();
+		SubSeismoOnFaultMFDs origSubSeismo = origFSS.requireModule(SubSeismoOnFaultMFDs.class);
 		for (int r=0; r<origRupSet.getNumRuptures(); r++) {
 			boolean match = true;
 			for (FaultSection sect : origRupSet.getFaultSectionDataForRupture(r)) {
@@ -91,7 +94,8 @@ public class CacheFileGen {
 			sectSlipRates[s] = origRupSet.getSlipRateForSection(sectIndex);
 			sectSlipRateStdDevs[s] = origRupSet.getSlipRateStdDevForSection(sectIndex);
 			sectAreas[s] = origRupSet.getAreaForSection(sectIndex);
-			subSeismoOnFaultMFDs.add(origFSS.getSubSeismoOnFaultMFD_List().get(sectIndex));
+//			subSeismoOnFaultMFDs.add(origFSS.getSubSeismoOnFaultMFD_List().get(sectIndex));
+			subSeismoOnFaultMFDs.add(origSubSeismo.get(sectIndex));
 		}
 		List<List<Integer>> sectionForRups = new ArrayList<>();
 		int numRups = validRupIDs.size();
@@ -150,13 +154,18 @@ public class CacheFileGen {
 		for (int index=0; index<region.getNodeCount(); index++) {
 			Location loc = region.getLocation(index);
 			IncrementalMagFreqDist subSeisMFD = origGridProv.getMFD_SubSeisOnFault(index);
+			if (subSeisMFD != null && subSeisMFD.calcSumOfY_Vals() == 0d)
+				subSeisMFD = null;
 			IncrementalMagFreqDist offMFD = origGridProv.getMFD_Unassociated(index);
+			if (offMFD != null && offMFD.calcSumOfY_Vals() == 0d)
+				offMFD = null;
 			Preconditions.checkState(subSeisMFD != null || offMFD != null);
 			IncrementalMagFreqDist zeroMFD; // give things outside a very, very tiny G-R MFD, otherwise bad things happen
 			if (subSeisMFD != null)
 				zeroMFD = new GutenbergRichterMagFreqDist(1d, 1e-1, subSeisMFD.getMinX(), subSeisMFD.getMaxX(), subSeisMFD.size());
 			else
 				zeroMFD = new GutenbergRichterMagFreqDist(1d, 1e-1, offMFD.getMinX(), offMFD.getMaxX(), offMFD.size());
+			Preconditions.checkState(zeroMFD.calcSumOfY_Vals() > 0d);
 			double fract = faultPolyMgr.getNodeFraction(index);
 			if (fract < 1e-10)
 				// if previously non-null, this was from another fault
@@ -178,9 +187,23 @@ public class CacheFileGen {
 			}
 			Preconditions.checkState(nodeUnassociatedMFDs.get(index) != null || nodeSubSeisMFDs.get(index) != null);
 		}
+		GridSourceProvider gridProv = new GridSourceFileReader(region, nodeSubSeisMFDs, nodeUnassociatedMFDs);
+		for (int i=0; i<gridProv.size(); i++) {
+			IncrementalMagFreqDist totMFD = gridProv.getMFD(i);
+			IncrementalMagFreqDist assocMFD = gridProv.getMFD_SubSeisOnFault(i);
+			IncrementalMagFreqDist offMFD = gridProv.getMFD_Unassociated(i);
+			
+			Preconditions.checkState(assocMFD != null || offMFD != null);
+			double rateAssoc = assocMFD == null ? 0d : assocMFD.calcSumOfY_Vals();
+			double rateOff = offMFD == null ? 0d : offMFD.calcSumOfY_Vals();
+			Preconditions.checkState(rateAssoc > 0d || rateOff > 0d,
+					"rateAssoc=%s, assocNull ? %s, rateOff=%s, offNull ? %s",
+					rateAssoc, assocMFD == null, rateOff, offMFD == null);
+			Preconditions.checkState(totMFD.calcSumOfY_Vals() > 0d);
+		}
 		
 		U3FaultSystemSolution sol = new U3FaultSystemSolution(rupSet, rates);
-		sol.setGridSourceProvider(new GridSourceFileReader(region, nodeSubSeisMFDs, nodeUnassociatedMFDs));
+		sol.setGridSourceProvider(gridProv);
 		sol.setSubSeismoOnFaultMFD_List(subSeismoOnFaultMFDs);
 		return sol;
 	}
@@ -188,19 +211,41 @@ public class CacheFileGen {
 	public static void main(String[] args) throws IOException, DocumentException {
 		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
 //		File solFile = new File(args[0]);
-//		FaultSystemSolution fss = FaultSystemIO.loadSol(
-////				new File("src/scratch/UCERF3/data/scratch/InversionSolutions/"
-//////						+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
-////				new File("src/scratch/UCERF3/data/scratch/InversionSolutions/"
-////						+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
-//				new File("/home/kevin/OpenSHA/UCERF3/cybershake_etas/ucerf2_mapped_sol.zip"));
+		
+//		FaultSystemSolution fss = FaultSystemSolution.load(
+//////				new File("src/scratch/UCERF3/data/scratch/InversionSolutions/"
+////////						+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
+//////				new File("src/scratch/UCERF3/data/scratch/InversionSolutions/"
+//////						+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
+////				new File("/home/kevin/OpenSHA/UCERF3/cybershake_etas/ucerf2_mapped_sol.zip"));
+//				new File("/home/kevin/git/ucerf3-etas-launcher/inputs/"
+////						+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
+//						+ "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip"));
+		
 		U3FaultSystemSolution fss = buildFakeTestFSS();
-		U3FaultSystemIO.writeSol(fss, new File("/home/kevin/git/ucerf3-etas-launcher/inputs/small_test_solution.zip"));
+		fss.write(new File("/home/kevin/git/ucerf3-etas-launcher/inputs/small_test_solution.zip"));
+		
 		LastEventData.populateSubSects(fss.getRupSet().getFaultSectionDataList(), LastEventData.load());
 		FaultSystemSolutionERF_ETAS erf = ETAS_Launcher.buildERF(fss, false, 1d, 2014);
 //		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF(fss);
 //		FaultSystemSolutionERF_ETAS erf = ETAS_Simulator.getU3_ETAS_ERF();
 		erf.updateForecast();
+		
+		// delete old cache files
+		File cacheFile = new File(ETAS_PrimaryEventSampler.defaultCubeInsidePolyCacheFilename);
+		if (cacheFile.exists())
+			cacheFile.delete();
+		cacheFile = new File(ETAS_PrimaryEventSampler.defaultGriddedCorrFilename);
+		if (cacheFile.exists())
+			cacheFile.delete();
+		cacheFile = new File(ETAS_PrimaryEventSampler.defaultSectDistForCubeCacheFilename);
+		if (cacheFile.exists())
+			cacheFile.delete();
+		cacheFile = new File(ETAS_PrimaryEventSampler.defaultSectInCubeCacheFilename);
+		if (cacheFile.exists())
+			cacheFile.delete();
+		if (!cacheFile.getParentFile().exists())
+			cacheFile.getParentFile().mkdir();
 		
 		File resultsDir = new File("/tmp");
 		GriddedRegion reg = RELM_RegionUtils.getGriddedRegionInstance();

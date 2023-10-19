@@ -61,7 +61,7 @@ public class TimeDepRateExtractor {
 		Preconditions.checkArgument(solFile.exists(), "Sol file doesn't exist: "+solFile.getAbsolutePath());
 		
 		try {
-			sol = U3FaultSystemIO.loadSol(solFile);
+			sol = FaultSystemSolution.load(solFile);
 		} catch (Exception e) {
 			throw new IllegalStateException("Error loading solution", e);
 		}

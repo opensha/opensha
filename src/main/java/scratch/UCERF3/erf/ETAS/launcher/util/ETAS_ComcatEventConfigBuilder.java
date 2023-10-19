@@ -452,8 +452,8 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 				}
 				FaultSystemRupSet rupSet;
 				try {
-					rupSet = U3FaultSystemIO.loadRupSet(fssFile);
-				} catch (IOException | DocumentException e) {
+					rupSet = FaultSystemRupSet.load(fssFile);
+				} catch (IOException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 				for (int sectIndex : ((SectionBased)primaryTrigger).subSects)
