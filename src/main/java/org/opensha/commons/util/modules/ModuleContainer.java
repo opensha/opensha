@@ -65,7 +65,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 		modules = new ArrayList<>();
 		mappings = new ConcurrentHashMap<>();
 		availableModules = new ArrayList<>();
-		availableMappings = new HashMap<>();
+		availableMappings = new ConcurrentHashMap<>();
 	}
 	
 	/**
@@ -133,7 +133,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * Retrieves a module that matches the given class if it exists, otherwise null.
 	 * <p>
 	 * If no current instance matches, but an available module loader does, then we will attempt to load that available
-	 * module first. 
+	 * module first if <code>loadAvailable</code> is true.
 	 * 
 	 * @param <M> the type to be returned
 	 * @param clazz module class to look up
@@ -143,19 +143,30 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	@SuppressWarnings("unchecked")
 	public <M extends E> M getModule(Class<M> clazz, boolean loadAvailable) {
 		E module = mappings.get(clazz);
-		if (loadAvailable && module == null) {
-			// need to synchronize here as another thread could otherwise try to lead in this module
-			synchronized (this) {
-				if (!availableMappings.isEmpty()) {
-					// see if we have it, and then load it lazily
-					Callable<E> call = availableMappings.get(clazz);
-					if (call != null && loadAvailableModule(call))
+		if (module == null && loadAvailable) {
+			// see if we have a call for this. do things this way to avoid an expensive synchronization call if it
+			// can be avoided. here, we only need to synchronize if a call exists, and it had not already been
+			// loaded by another thread when we checked if that call exists (in the following line). If the following
+			// call comes back null, then it is guaranteed to have already been loaded (and thus the subsequent check
+			// to see if it is mapped will suceed) or not be available; either way we can skip synchronization.
+			Callable<E> call = availableMappings.get(clazz);
+			// try one more time to see if another thread loaded it
+			// if it exists, either the above will return non null, or the following will
+			module = mappings.get(clazz);
+			if (module != null)
+				return (M)module;
+			if (call != null) {
+				// actually have to synchronize (expensive) here as we have a callable for it and haven't yet loaded it
+				synchronized (this) {
+					// see if another thread loaded it while we were waiting on this synchronized block
+					module = mappings.get(clazz);
+					if (module != null)
+						return (M)module;
+					// actually have to load it
+					if (loadAvailableModule(call))
 						return getModule(clazz);
 				}
 			}
-			// if we're here, we failed to load it, but it's possible that it was loaded above in another thread
-			// while we were waiting for the synchronized block. try again
-			return (M)mappings.get(clazz);
 		}
 		return (M)module;
 	}
@@ -463,6 +474,14 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @throws IllegalStateException if call is not already registered as an available module
 	 */
 	public synchronized boolean loadAvailableModule(Callable<? extends E> call) {
+		/*
+		 * TODO: does this need to be synchronized? could maybe do the call portion asynchronously and just
+		 * synchronize for the list/map operations, which would allow for parallel loading.
+		 * 
+		 * would also need to synchronize on only the call in getModule for that efficiency to be realized
+		 * 
+		 * need to check other methods, could get tricky
+		 */
 		Preconditions.checkState(availableModules.remove(call));
 		E module = null;
 		Stopwatch watch = Stopwatch.createStarted();

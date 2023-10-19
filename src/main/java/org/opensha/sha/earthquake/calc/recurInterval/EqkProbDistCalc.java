@@ -180,8 +180,8 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 		if (!interpolate) {
 			pt1 = (int)Math.round(timeSinceLast/deltaX);
 			pt2 = (int)Math.round((timeSinceLast+duration)/deltaX);
-			if (pt1 == pt2)
-				// they're in the same bin, do interpolation to avoid zero values
+			if (pt1 == pt2 || pt1 == 0)
+				// special cases to force interpolation in order to avoid zeros
 				interpolate = true;
 		}
 		

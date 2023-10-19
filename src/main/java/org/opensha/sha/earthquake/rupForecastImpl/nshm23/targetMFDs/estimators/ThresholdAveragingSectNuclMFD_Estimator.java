@@ -24,6 +24,7 @@ import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -84,10 +85,13 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 
 	private static final int DEBUG_SECT = -1; // disabled
 //	private static final int DEBUG_SECT = 315; // Chino alt 1
+//	private static final int DEBUG_SECT = 334; // ig Sand Springs Valley, Subsection 1
 //	private static final int DEBUG_SECT = 1832; // Mojave N
 //	private static final int DEBUG_SECT = 100; // Bicycle Lake
 //	private static final int DEBUG_SECT = 129; // Big Pine (East)
 //	private static final int DEBUG_SECT = 159; // Brawley
+//	private static final int DEBUG_SECT = 5349; // West Cache (Clarkston) subsection 0
+//	private static final int DEBUG_SECT = 361; // West Cache (Clarkston) subsection 0 for UT-only
 	private int[] sectMinMagIndexes;
 	private int[] sectMaxMagIndexes;
 	protected List<Float> fixedBinEdges;
@@ -244,7 +248,16 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 		
 	}
 	
-	private static Map<Jump, Double> calcAverageJumpProbs(ClusterRuptures cRups, JumpProbabilityCalc jumpModel) {
+	/**
+	 * Calculate average probabilities for each jump. Jump probabilities can vary by rupture, especially if one rupture
+	 * has a difference distance (distance is defined between the departing and landing clusters, rather than the 
+	 * section, and the clusters can vary).
+	 * 
+	 * @param cRups
+	 * @param jumpModel
+	 * @return
+	 */
+	public static Map<Jump, Double> calcAverageJumpProbs(ClusterRuptures cRups, JumpProbabilityCalc jumpModel) {
 		// calculate average probabilities for each jump. jump probabilities can vary by rupture, especially
 		// if one rupture has a difference distance (distance is defined between the departing and landing clusters,
 		// rather than the section, and the clusters can vary)
@@ -399,7 +412,7 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 					exec.shutdown();
 					throw ExceptionUtils.asRuntimeException(e);
 				}
-				if (applyOrigProbFloor)
+				if (applyOrigProbFloor && relGRProb > 0d)
 					relGRProb = Math.max(relGRProb, avgOrigJumpProbs.get(jump));
 				jumpProbs.put(jump, relGRProb);
 				jumpProbs.put(jump.reverse(), relGRProb);
@@ -446,7 +459,8 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 		}
 		
 		public Double call() {
-			final boolean D = RelGRWorstJumpProb.D;
+			final boolean D = RelGRWorstJumpProb.D || jump.fromSection.getSectionId() == DEBUG_SECT
+					|| jump.toSection.getSectionId() == DEBUG_SECT;	
 			
 			double minProb = 1d;
 			if (D) {
@@ -687,6 +701,7 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 			Float rupProb = (float)rupProbs[rupIndex];
 			if (rupProb > 0f) {
 				int insIndex = Collections.binarySearch(sortedProbs, rupProb);
+//				if (debug) System.out.println(rupIndex+": P="+rupProb);
 				if (insIndex < 0) {
 					// it's a new unique probability level
 					insIndex = -(insIndex + 1);
@@ -1069,7 +1084,7 @@ public abstract class ThresholdAveragingSectNuclMFD_Estimator extends SectNuclea
 		
 		PlotUtils.writePlots(outputDir, prefix+"_rates_scatter", gp, 1000, false, true, false, false);
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, reg);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, reg);
 		
 		CPT pDiffCPT = GMT_CPT_Files.GMT_POLAR.instance().rescale(-100d, 100d);
 		

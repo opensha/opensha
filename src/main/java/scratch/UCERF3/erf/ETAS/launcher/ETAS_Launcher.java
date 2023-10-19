@@ -463,7 +463,7 @@ public class ETAS_Launcher {
 			// load a new one
 			try {
 				debug(DebugLevel.FINE, "Loading a new Fault System Solution from "+fssFile.getAbsolutePath());
-				fss = U3FaultSystemIO.loadSol(fssFile);
+				fss = FaultSystemSolution.load(fssFile);
 				
 				if (config.isGridSeisCorr() && !config.isGriddedOnly()) {
 					if (gridSeisCorrections == null) {
@@ -477,7 +477,7 @@ public class ETAS_Launcher {
 					}
 					ETAS_Simulator.correctGriddedSeismicityRatesInERF(fss, false, gridSeisCorrections);
 				}
-			} catch (IOException | DocumentException e) {
+			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 		}

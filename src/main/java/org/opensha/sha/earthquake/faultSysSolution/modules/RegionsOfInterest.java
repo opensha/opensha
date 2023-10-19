@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
@@ -137,6 +138,7 @@ BranchAverageableModule<RegionsOfInterest> {
 			private List<Region> regions;
 			private List<IncrementalMagFreqDist> regionalMFDs;
 			private List<String> mfdNames;
+			private List<String> mfdBoundNames;
 			private double weightSum = 0d;
 			
 			@Override
@@ -151,16 +153,28 @@ BranchAverageableModule<RegionsOfInterest> {
 					if (module.regionalMFDs != null) {
 						regionalMFDs = new ArrayList<>();
 						mfdNames = new ArrayList<>();
+						mfdBoundNames = new ArrayList<>();
 						for (IncrementalMagFreqDist mfd : module.regionalMFDs) {
 							if (mfd == null || relWeight == 0d) {
 								regionalMFDs.add(null);
 								mfdNames.add(null);
+								mfdBoundNames.add(null);
 							} else {
 								regionalMFDs.add(InversionTargetMFDs.Precomputed.buildSameSize(mfd));
 								if (mfd.getName() != null && !mfd.getName().isBlank() && !mfd.getName().equals(mfd.getDefaultName()))
 									mfdNames.add(mfd.getName());
 								else
 									mfdNames.add(null);
+								if (mfd instanceof UncertainBoundedIncrMagFreqDist) {
+									UncertainBoundedIncrMagFreqDist bounded = (UncertainBoundedIncrMagFreqDist)mfd;
+									String boundName = bounded.getBoundName();
+									if (boundName != null && !boundName.isBlank() && !boundName.equals(bounded.getDefaultBoundName()))
+										mfdBoundNames.add(boundName);
+									else
+										mfdBoundNames.add(null);
+								} else {
+									mfdBoundNames.add(null);
+								}
 							}
 						}
 					} else {
@@ -186,6 +200,9 @@ BranchAverageableModule<RegionsOfInterest> {
 										runningMFD, mfd, "Regional MFD", relWeight));
 								if (mfdNames.get(r) != null && !mfdNames.get(r).equals(mfd.getName()))
 									mfdNames.set(r, null);
+								if (mfdBoundNames.get(r) != null && mfd instanceof UncertainBoundedIncrMagFreqDist
+										&& !mfdBoundNames.get(r).equals(((UncertainBoundedIncrMagFreqDist)mfd).getBoundName()))
+									mfdBoundNames.set(r, null);
 							}
 						}
 					}
@@ -205,6 +222,8 @@ BranchAverageableModule<RegionsOfInterest> {
 						if (mfd != null) {
 							if (mfdNames.get(r) != null)
 								mfd.setName(mfdNames.get(r));
+							if (mfdBoundNames.get(r) != null && mfd instanceof UncertainBoundedIncrMagFreqDist)
+								((UncertainBoundedIncrMagFreqDist)mfd).setBoundName(mfdBoundNames.get(r));
 							InversionTargetMFDs.Precomputed.scaleToTotWeight(mfd, weightSum);
 						}
 					}

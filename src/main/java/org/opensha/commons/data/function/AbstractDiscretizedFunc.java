@@ -443,6 +443,35 @@ Named,java.io.Serializable{
 	public void scale(double val) {
 		for(int i=0; i<size();i++) this.set(i, val*getY(i));
 	}
+	
+	/**
+	 * Standard java function, usually used for debugging, prints out
+	 * the state of the list, such as number of points, the value of each point, etc.
+	 * @return
+	 */
+	public String toString(){
+		return DiscretizedFunc.toString(this);
+	}
+
+	private static String TAB = "\t";
+
+	/**
+	 *
+	 * @return value of each point in the function in String format
+	 */
+	public String getMetadataString(){
+		StringBuffer b = new StringBuffer();
+		Iterator<Point2D> it2 = this.iterator();
+
+		while(it2.hasNext()){
+
+			Point2D point = (Point2D)it2.next();
+			double x = point.getX();
+			double y = point.getY();
+			b.append((float) x + TAB + (float) y + '\n');
+		}
+		return b.toString();
+	}
 
 
 }

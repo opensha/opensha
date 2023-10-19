@@ -20,6 +20,7 @@ import java.util.Random;
 
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.logicTree.BranchWeightProvider.OriginalWeights;
+import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 
 import com.google.common.base.Preconditions;
@@ -48,6 +49,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	
 	private ImmutableList<LogicTreeLevel<? extends E>> levels;
 	private ImmutableList<LogicTreeBranch<E>> branches;
+	private HashSet<LogicTreeBranch<E>> branchesSet;
 
 	// default to using original weights when this logic tree was instantiated
 	private static final BranchWeightProvider DEFAULT_WEIGHTS = new BranchWeightProvider.OriginalWeights();
@@ -98,6 +100,21 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	 */
 	public double getBranchWeight(int index) {
 		return weightProvider.getWeight(getBranch(index));
+	}
+	
+	/**
+	 * @param branch
+	 * @return true if this logic tree contains the given branch, false otherwise
+	 */
+	public boolean contains(LogicTreeBranch<?> branch) {
+		if (branchesSet == null) {
+			synchronized (this) {
+				if (branchesSet == null) {
+					branchesSet = new HashSet<>(branches);
+				}
+			}
+		}
+		return branchesSet.contains(branch);
 	}
 	
 	/**
@@ -200,6 +217,51 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	}
 	
 	/**
+	 * @param values
+	 * @return a subset of this logic tree where no branch contains any of the given values
+	 */
+	@SafeVarargs
+	public final LogicTree<E> matchingNone(LogicTreeNode... values) {
+		ImmutableList.Builder<LogicTreeBranch<E>> matching = ImmutableList.builder();
+		for (LogicTreeBranch<E> branch : branches) {
+			boolean matches = false;
+			for (LogicTreeNode value : values) {
+				if (branch.hasValue(value)) {
+					matches = true;
+					break;
+				}
+			}
+			if (!matches)
+				matching.add(branch);
+		}
+		// do it this way to skip consistency checks
+		LogicTree<E> ret = new LogicTree<>(weightProvider);
+		ret.branches = matching.build();
+		ret.levels = levels;
+		return ret;
+	}
+	
+	/**
+	 * @param values
+	 * @return a subset of this logic tree with the specified branches
+	 */
+	public final LogicTree<E> subset(Collection<LogicTreeBranch<?>> subsetBranches) {
+		HashSet<LogicTreeBranch<?>> set = subsetBranches instanceof HashSet<?> ?
+				(HashSet<LogicTreeBranch<?>>)subsetBranches : new HashSet<>(subsetBranches);
+		ImmutableList.Builder<LogicTreeBranch<E>> matching = ImmutableList.builderWithExpectedSize(subsetBranches.size());
+		for (LogicTreeBranch<E> branch : branches)
+			if (set.contains(branch))
+				matching.add(branch);
+		// do it this way to skip consistency checks
+		LogicTree<E> ret = new LogicTree<>(weightProvider);
+		ret.branches = matching.build();
+		Preconditions.checkState(subsetBranches.size() == ret.branches.size(),
+				"Not all passed in branches were found in the tree");
+		ret.levels = levels;
+		return ret;
+	}
+	
+	/**
 	 * @param numSamples number of random samples
 	 * @param redrawDuplicates if true, each branch will be unique, redrawing a branch if an already sampled branch
 	 * has been selected, otherwise duplicate branches will be given additional weight and the returned branch count
@@ -238,7 +300,9 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			indexCounts.put(index, prevCount+1);
 		}
 		double weightEach = 1d/numSamples;
-		ImmutableList.Builder<LogicTreeBranch<E>> samples = ImmutableList.builder();
+//		ImmutableList.Builder<LogicTreeBranch<E>> samples = ImmutableList.builder();
+		List<LogicTreeBranch<E>> samples = new ArrayList<>(numSamples);
+		List<Integer> indexes = new ArrayList<>(numSamples);
 		Map<LogicTreeNode, Integer> sampledNodeCounts = new HashMap<>();
 		int mostSamples = 0;
 		for (int index : indexCounts.keySet()) {
@@ -247,6 +311,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 			LogicTreeBranch<E> branch = getBranch(index).copy();
 			branch.setOrigBranchWeight((double)count*weightEach);
 			samples.add(branch);
+			indexes.add(index);
 			for (LogicTreeNode node : branch) {
 				if (sampledNodeCounts.containsKey(node))
 					sampledNodeCounts.put(node, sampledNodeCounts.get(node)+count);
@@ -260,7 +325,12 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				new BranchWeightProvider.ConstantWeights(weightEach) : new BranchWeightProvider.OriginalWeights();
 		// do it this way to skip consistency checks
 		LogicTree<E> ret = new LogicTree<>(weightProv);
-		ret.branches = samples.build();
+		
+		// sort them so that they're in the original order (many processing routines are faster when branches are in
+		// order, even if some are skipped)
+		List<LogicTreeBranch<E>> sortedBranches = ComparablePairing.getSortedData(indexes, samples);
+		
+		ret.branches = ImmutableList.copyOf(sortedBranches);
 		ret.levels = levels;
 		
 		System.out.println("\tSampled "+indexCounts.size()+" unique branches. The most any single "

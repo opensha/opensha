@@ -1,0 +1,21 @@
+{
+  "type": "Feature",
+  "id": 3710,
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-80.7016, 32.8498],
+      [-79.8436, 33.3904],
+      [-79.5245, 33.0279],
+      [-80.3809, 32.4894],
+      [-80.7016, 32.8498]
+    ]]
+  },
+  "properties": {
+    "name": "Charleston Local Zone",
+    "state": "SC",
+    "rate": "local.csv",
+    "strike": 50.0,
+    "mfd-tree": "charleston"
+  }
+}

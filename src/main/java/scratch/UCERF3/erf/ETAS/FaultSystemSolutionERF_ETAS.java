@@ -2,7 +2,6 @@ package scratch.UCERF3.erf.ETAS;
 
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
-import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
@@ -44,6 +43,25 @@ public class FaultSystemSolutionERF_ETAS extends FaultSystemSolutionERF {
 		timeSpan = tdTimeSpanCache;
 	}
 
+
+	@Override
+	protected boolean isRateGainValid(double rateGain, int fltSystRupIndex, double duration) {
+		// TODO: couldn't figure out a sanity check the actually worked to validate 0 rate gains, revisit zeros
+		// when building new ETAS implementation
+		return rateGain >= 0d;
+//		if (rateGain == 0d) {
+//			// make sure that time since last is effectively zero for all sections involved
+//			long startMillis = timeSpan.getStartTimeMillisecond();
+//			// test that it's at least within the past month
+//			long testMillis = startMillis - 1000l*60l*60l*24l*30l;
+//			for (FaultSection sect : getSolution().getRupSet().getFaultSectionDataForRupture(fltSystRupIndex))
+//				if (sect.getDateOfLastEvent() < testMillis)
+//					return false;
+//			return true;
+//		} else {
+//			return rateGain > 0d;
+//		}
+	}
 
 	/**
 	 * @param args

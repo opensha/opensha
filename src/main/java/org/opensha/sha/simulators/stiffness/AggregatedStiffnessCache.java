@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.AggregationMethod;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator.ReceiverDistribution;
@@ -127,11 +128,10 @@ public class AggregatedStiffnessCache {
 	
 	public String getCacheFileName() {
 		DecimalFormat df = new DecimalFormat("0.##");
-		int numTraceLocs = 0;
-		for (FaultSection sect : sects)
-			numTraceLocs += sect.getFaultTrace().size();
-		String ret = type.name().toLowerCase()+"_cache_"+sects.size()+"sects_"+numTraceLocs+"_trace_locs_"+df.format(calc.getGridSpacing())
-			+"km_lambda"+df.format(calc.getLameLambda())+"_mu"+df.format(calc.getLameMu())+"_coeff"+(float)calc.getCoeffOfFriction()
+		String ret = type.name().toLowerCase()+"_cache_"
+			+SectionDistanceAzimuthCalculator.getUniqueSectCacheFileStr(sects)
+			+"_"+df.format(calc.getGridSpacing())+"km_lambda"+df.format(calc.getLameLambda())
+			+"_mu"+df.format(calc.getLameMu())+"_coeff"+(float)calc.getCoeffOfFriction()
 			+"_align"+calc.getPatchAlignment().name();
 		if (calc.getSelfStiffnessCap() > 0)
 			ret += "_stiffCap"+df.format(calc.getSelfStiffnessCap())+"x";

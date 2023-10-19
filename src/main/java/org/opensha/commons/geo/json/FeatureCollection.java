@@ -44,6 +44,10 @@ public class FeatureCollection implements Iterable<Feature> {
 	
 	public final ImmutableList<Feature> features;
 	
+	public FeatureCollection(Feature... features) {
+		this(List.of(features));
+	}
+	
 	public FeatureCollection(List<Feature> features) {
 		this.features = features == null ? null : ImmutableList.copyOf(features);
 	}

@@ -281,8 +281,11 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 					
 					for (MisfitStats misfits : stats.getStats()) {
 						String name = misfits.range.name;
+						String funcName = name;
+						if (funcName.startsWith("Uncertain "))
+							funcName = funcName.substring(10).trim();
 						if (!constrValIterFuncs.contains(name, q))
-							constrValIterFuncs.put(name, q, new ArbitrarilyDiscretizedFunc(name));
+							constrValIterFuncs.put(name, q, new ArbitrarilyDiscretizedFunc(funcName));
 						
 						double val = misfits.get(q);
 						constrValIterFuncs.get(name, q).set((double)iter, val);
@@ -292,7 +295,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 						if (q == quantities[0]) {
 							// track weight
 							if (!constrWeightIterFuncs.containsKey(name))
-								constrWeightIterFuncs.put(name, new ArbitrarilyDiscretizedFunc(name));
+								constrWeightIterFuncs.put(name, new ArbitrarilyDiscretizedFunc(funcName));
 							constrWeightIterFuncs.get(name).set((double)iter, misfits.range.weight);
 						}
 					}
@@ -311,6 +314,13 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 			
 			CPT colorCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, constraintNames.size()-1d);
 			
+			PlotSpec madSpec = null;
+			Range madYRange = null;
+			PlotSpec weightSpec = null;
+			Range weightYRange = null;
+			
+			Range xRange = new Range(0d, iterations.get(iterations.size()-1));
+			
 			for (Quantity quantity : plotQ) {
 				Map<String, ArbitrarilyDiscretizedFunc> constrFuncs;
 				ArbitrarilyDiscretizedFunc avgFunc;
@@ -318,7 +328,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 				boolean yLog;
 				if (quantity == null) {
 					yAxisLabel = "Constraint Weight";
-					myPrefix = "misift_progress_weights";
+					myPrefix = "misfit_progress_weights";
 					constrFuncs = constrWeightIterFuncs;
 					avgFunc = null;
 					yLog = true;
@@ -335,7 +345,7 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 						continue;
 				} else {
 					yAxisLabel = "Misfit "+quantity;
-					myPrefix = "misift_progress_"+quantity.name();
+					myPrefix = "misfit_progress_"+quantity.name();
 					constrFuncs = constrValIterFuncs.column(quantity);
 					avgFunc = avgValIterFuncs.get(quantity);
 					yLog = false;
@@ -409,7 +419,6 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 				PlotSpec spec = new PlotSpec(funcs, chars, "Misfit Progress", "Iterations", yAxisLabel);
 				spec.setLegendInset(true);
 				
-				Range xRange = new Range(0d, iterations.get(iterations.size()-1));
 				Range yRange = null;
 				if (yLog) {
 					double maxWeight = 0d;
@@ -430,6 +439,37 @@ public class InversionProgressPlot extends AbstractSolutionPlot {
 				PlotUtils.writePlots(resourcesDir, myPrefix, gp, 1000, 700, true, false, false);
 				
 				lines.add("![misfit plot]("+relPathToResources+"/"+myPrefix+".png)");
+				
+				if (quantity == null) {
+					weightSpec = spec;
+					weightYRange = yRange;
+				} else if (quantity == Quantity.MAD) {
+					madSpec = spec;
+					madYRange = yRange;
+				}
+			}
+			if (madSpec != null && weightSpec != null) {
+				// write combined plot for papers
+				weightSpec.setLegendVisible(false);
+				madSpec.setTitle(" ");
+				weightSpec.setTitle(" ");
+				
+				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				
+				gp.setTickLabelFontSize(22);
+				gp.setAxisLabelFontSize(24);
+				
+				gp.setRenderingOrder(DatasetRenderingOrder.REVERSE);
+				
+				// can't use List.of as mad range will be null
+				List<Range> yRanges = new ArrayList<>();
+				yRanges.add(madYRange);
+				yRanges.add(weightYRange);
+				
+				gp.drawGraphPanel(List.of(madSpec, weightSpec), List.of(false), List.of(false, true),
+						List.of(xRange), yRanges);
+				
+				PlotUtils.writePlots(resourcesDir, "misfit_progress_combined", gp, 1000, 1200, true, true, false);
 			}
 		}
 		return lines;

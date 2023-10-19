@@ -1,13 +1,23 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
+import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 
 /**
  * Probability calculator that occurs independently at each jump
@@ -98,8 +108,10 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 	
 	public class MultiProduct implements JumpProbabilityCalc {
 		
+		@JsonAdapter(GenericArrayJumpProbCalcAdapter.class)
 		private JumpProbabilityCalc[] calcs;
 
+		@SuppressWarnings("unused") // needed by gson to deserialize w/o hitting the varargs above
 		public MultiProduct(JumpProbabilityCalc... calcs) {
 			Preconditions.checkState(calcs.length > 1);
 			this.calcs = calcs;
@@ -130,8 +142,10 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 	
 	public class Minimum implements JumpProbabilityCalc {
 		
+		@JsonAdapter(GenericArrayJumpProbCalcAdapter.class)
 		private JumpProbabilityCalc[] calcs;
 
+		@SuppressWarnings("unused") // needed by gson to deserialize w/o hitting the varargs above
 		public Minimum(JumpProbabilityCalc... calcs) {
 			Preconditions.checkState(calcs.length > 1);
 			this.calcs = calcs;
@@ -181,12 +195,16 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 	
 	public class LogicalAnd implements BinaryJumpProbabilityCalc {
 		
+		@JsonAdapter(GenericArrayBinaryJumpProbCalcAdapter.class)
 		private BinaryJumpProbabilityCalc[] calcs;
 
 		public LogicalAnd(BinaryJumpProbabilityCalc... calcs) {
 			Preconditions.checkState(calcs.length > 1);
 			this.calcs = calcs;
 		}
+		
+		@SuppressWarnings("unused") // needed by gson to deserialize w/o hitting the varargs above
+		private LogicalAnd() {};
 
 		@Override
 		public String getName() {
@@ -215,6 +233,8 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 		private String name;
 		private Map<IDPairing, Double> idsToProbs;
 		private boolean parentSects;
+		
+		@JsonAdapter(GenericJumpProbCalcAdapter.class)
 		private JumpProbabilityCalc fallback;
 
 		public HardcodedJumpProb(String name, Map<IDPairing, Double> idsToProbs, boolean parentSects) {
@@ -316,6 +336,115 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 				}
 			}
 		}
+	}
+	
+	public static class GenericArrayJumpProbCalcAdapter extends TypeAdapter<JumpProbabilityCalc[]> {
+		
+		private GenericJumpProbCalcAdapter adapter = new GenericJumpProbCalcAdapter();
+
+		@Override
+		public void write(JsonWriter out, JumpProbabilityCalc[] calcs) throws IOException {
+			out.beginArray();
+			
+			for (JumpProbabilityCalc calc : calcs)
+				adapter.write(out, calc);
+			
+			out.endArray();
+		}
+
+		@Override
+		public JumpProbabilityCalc[] read(JsonReader in) throws IOException {
+			in.beginArray();
+			
+			List<JumpProbabilityCalc> calcs = new ArrayList<>();
+			
+			while (in.hasNext())
+				calcs.add(adapter.read(in));
+			
+			in.endArray();
+			
+			return calcs.toArray(new JumpProbabilityCalc[0]);
+		}
+		
+	}
+	
+	public static class GenericArrayBinaryJumpProbCalcAdapter extends TypeAdapter<BinaryJumpProbabilityCalc[]> {
+		
+		private GenericJumpProbCalcAdapter adapter = new GenericJumpProbCalcAdapter();
+
+		@Override
+		public void write(JsonWriter out, BinaryJumpProbabilityCalc[] calcs) throws IOException {
+			out.beginArray();
+			
+			for (JumpProbabilityCalc calc : calcs)
+				adapter.write(out, calc);
+			
+			out.endArray();
+		}
+
+		@Override
+		public BinaryJumpProbabilityCalc[] read(JsonReader in) throws IOException {
+			in.beginArray();
+			
+			List<BinaryJumpProbabilityCalc> calcs = new ArrayList<>();
+			
+			while (in.hasNext()) {
+				JumpProbabilityCalc calc = adapter.read(in);
+				Preconditions.checkState(calc instanceof BinaryJumpProbabilityCalc);
+				calcs.add((BinaryJumpProbabilityCalc)calc);
+			}
+			
+			in.endArray();
+			
+			return calcs.toArray(new BinaryJumpProbabilityCalc[0]);
+		}
+		
+	}
+	
+	public static class GenericJumpProbCalcAdapter extends TypeAdapter<JumpProbabilityCalc> {
+		
+		Gson gson = new Gson();
+
+		@Override
+		public void write(JsonWriter out, JumpProbabilityCalc value) throws IOException {
+			if (value == null) {
+				out.nullValue();
+				return;
+			}
+//			System.out.println("Serializing JumpProbCalc '"+value.getName()+"' of type "+value.getClass().getName());
+			out.beginObject();
+
+			out.name("type").value(value.getClass().getName());
+			out.name("data");
+			gson.toJson(value, value.getClass(), out);
+
+			out.endObject();
+		}
+
+		@SuppressWarnings("unchecked")
+		@Override
+		public JumpProbabilityCalc read(JsonReader in) throws IOException {
+			if (in.peek() == JsonToken.NULL)
+				return null;
+			
+			Class<? extends JumpProbabilityCalc> type = null;
+
+			in.beginObject();
+
+			Preconditions.checkState(in.nextName().equals("type"), "JSON 'type' object must be first");
+			try {
+				type = (Class<? extends JumpProbabilityCalc>) Class.forName(in.nextString());
+			} catch (ClassNotFoundException | ClassCastException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+
+			Preconditions.checkState(in.nextName().equals("data"), "JSON 'data' object must be second");
+			JumpProbabilityCalc model = gson.fromJson(in, type);
+
+			in.endObject();
+			return model;
+		}
+		
 	}
 	
 }

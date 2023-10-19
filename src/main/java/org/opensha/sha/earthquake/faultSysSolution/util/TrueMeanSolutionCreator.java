@@ -7,33 +7,33 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.logicTree.BranchWeightProvider;
+import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
-import org.opensha.commons.logicTree.LogicTreeLevel;
-import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_U3_HybridLogicTreeBranch;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
+import org.opensha.sha.earthquake.faultSysSolution.modules.TrueMeanRuptureMappings;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.util.TectonicRegionType;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 import com.google.common.primitives.Ints;
-
-import scratch.UCERF3.enumTreeBranches.FaultModels;
 
 public class TrueMeanSolutionCreator {
 	
@@ -135,6 +135,9 @@ public class TrueMeanSolutionCreator {
 		private DiscretizedFunc rupMFD;
 		private double length;
 		
+		private double weightMagSum = 0d;
+		private double weightSum = 0d;
+		
 		public UniqueRupture(int[] sectIDs, double rake, double area, double length) {
 			super();
 			this.sectIDs = sectIDs;
@@ -156,6 +159,11 @@ public class TrueMeanSolutionCreator {
 			this.globalID = globalID;
 		}
 		
+		public void addWeightMag(double mag, double weight) {
+			weightMagSum += mag*weight;
+			weightSum += weight;
+		}
+		
 		public boolean addForBranch(double mag, double rate, double weight) {
 			boolean newMag = !rupMFD.hasX(mag);
 			if (newMag)
@@ -175,6 +183,8 @@ public class TrueMeanSolutionCreator {
 		}
 		
 		public double getMeanMag() {
+			if (rupMFD.size() == 0)
+				return weightMagSum/weightSum;
 			// average magnitude, weighted by both rate and branch weight
 			double meanMag = 0d;
 			double weightSum = 0d;
@@ -186,6 +196,8 @@ public class TrueMeanSolutionCreator {
 		}
 		
 		public DiscretizedFunc getFinalMFD(double totWeight) {
+			if (rupMFD.size() == 0)
+				return null;
 			// rescale for final MFD
 			double[] xVals = new double[rupMFD.size()];
 			double[] yVals = new double[rupMFD.size()];
@@ -223,6 +235,7 @@ public class TrueMeanSolutionCreator {
 	private List<int[]> branchRupMappings;
 //	private List<double[]> branchRupMags;
 	
+	private LogicTree<?> tree;
 	private BranchWeightProvider weightProv;
 	private double totWeight = 0d;
 	
@@ -230,11 +243,18 @@ public class TrueMeanSolutionCreator {
 	
 	private boolean allSingleStranded = true;
 	
-	public TrueMeanSolutionCreator(BranchWeightProvider weightProv) {
+	public TrueMeanSolutionCreator(LogicTree<?> tree) {
+		this.tree = tree;
+		this.weightProv = tree.getWeightProvider();
+	}
+	
+	public TrueMeanSolutionCreator(LogicTree<?> tree, BranchWeightProvider weightProv) {
+		this.tree = tree;
 		this.weightProv = weightProv;
 	}
 	
 	public synchronized void addSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
+		Preconditions.checkState(tree.contains(branch), "Branch not contained by tree");
 		GridSourceProvider gridProv = sol.getGridSourceProvider();
 		if (uniqueSectsMap == null) {
 			// first time
@@ -296,22 +316,19 @@ public class TrueMeanSolutionCreator {
 		// figure out rupture mappings
 		int[] rupMappings = new int[rupSet.getNumRuptures()];
 		int numNewRups = 0;
+		int numNewNonzeroRups = 0;
 		int numNewMags = 0;
 		RupMFDsModule rupMFDs = sol.getModule(RupMFDsModule.class);
 		for (int r=0; r<rupMappings.length; r++) {
 			List<Integer> origSectIDs = rupSet.getSectionsIndicesForRup(r);
 			double rate = sol.getRateForRup(r);
-			if (rate == 0d) {
-				// skip mapping
-				rupMappings[r] = -1;
-				continue;
-			}
 			int[] globalSectIDs = new int[origSectIDs.size()];
 			for (int i=0; i<globalSectIDs.length; i++)
 				globalSectIDs[i] = sectMappings[origSectIDs.get(i)];
 			UniqueRupture unique = new UniqueRupture(globalSectIDs, rupSet.getAveRakeForRup(r),
 					rupSet.getAreaForRup(r), rupSet.getLengthForRup(r));
 			int globalID;
+			boolean isNew;
 			if (uniqueRupsMap.containsKey(unique)) {
 				// duplicate
 				globalID = uniqueRupsMap.get(unique);
@@ -324,16 +341,24 @@ public class TrueMeanSolutionCreator {
 				uniqueRupsList.add(unique);
 				uniqueRupsMap.put(unique, globalID);
 			}
-			DiscretizedFunc rupMFD = rupMFDs == null ? null : rupMFDs.getRuptureMFD(r);
-			boolean newMag;
-			if (rupMFD == null)
-				newMag = unique.addForBranch(rupSet.getMagForRup(r), rate, weight);
-			else
-				newMag = unique.addForBranch(rupMFD, weight);
-			if (newMag)
-				numNewMags++;
+			if (rate > 0 && unique.rupMFD.size() == 0)
+				numNewNonzeroRups++;
+			rupMappings[r] = globalID;
+			double rupSetMag = rupSet.getMagForRup(r);
+			unique.addWeightMag(rupSetMag, weight);
+			if (rate > 0d) {
+				DiscretizedFunc rupMFD = rupMFDs == null ? null : rupMFDs.getRuptureMFD(r);
+				boolean newMag;
+				if (rupMFD == null)
+					newMag = unique.addForBranch(rupSetMag, rate, weight);
+				else
+					newMag = unique.addForBranch(rupMFD, weight);
+				if (newMag)
+					numNewMags++;
+			}
 		}
 		System.out.println("\t"+numNewRups+"/"+rupMappings.length+" new unique ruptures");
+		System.out.println("\t"+numNewNonzeroRups+"/"+rupMappings.length+" new unique ruptures with nonzero rates");
 		System.out.println("\t"+numNewMags+"/"+rupMappings.length+" new unique rupture magnitudes");
 		
 		if (gridProvAvg != null)
@@ -380,7 +405,7 @@ public class TrueMeanSolutionCreator {
 			areas[r] = unique.area;
 			lengths[r] = unique.length;
 			DiscretizedFunc mfd = unique.getFinalMFD(totWeight);
-			rates[r] = mfd.calcSumOfY_Vals();
+			rates[r] = mfd == null ? 0d : mfd.calcSumOfY_Vals();
 			rupMFDs[r] = mfd;
 			globalSectsForRups.add(Ints.asList(unique.sectIDs));
 		}
@@ -394,33 +419,86 @@ public class TrueMeanSolutionCreator {
 		if (gridProvAvg != null)
 			avgSol.addModule(gridProvAvg.getAverage());
 		
+		LogicTree<?> tree = this.tree;
+		Preconditions.checkState(branches.size() <= tree.size(), "More branches added than exist in tree, must be duplicates");
+		if (branches.size() < tree.size()) {
+			// we did a subset, build a subset tree
+			tree = tree.subset(branches);
+		}
+		avgRupSet.addModule(TrueMeanRuptureMappings.build(tree, branchSectMappings, branchRupMappings));
+		
 		return avgSol;
 	}
 	
 	public static void main(String[] args) throws IOException {
-		List<FaultSystemSolution> sols = new ArrayList<>();
-		List<LogicTreeBranch<?>> branches = new ArrayList<>();
+//		List<FaultSystemSolution> sols = new ArrayList<>();
+//		List<LogicTreeBranch<?>> branches = new ArrayList<>();
+//		
+//		List<LogicTreeLevel<?>> levels = List.of(NSHM23_U3_HybridLogicTreeBranch.U3_FM);
+//		
+////		File dir = new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/");
+////		sols.add(FaultSystemSolution.load(new File(dir, "FM3_1_branch_averaged.zip")));
+////		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_1)));
+////		
+////		sols.add(FaultSystemSolution.load(new File(dir, "FM3_2_branch_averaged.zip")));
+////		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_2)));
+//		
+//		File dir = new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
+//				+ "2023_04_14-nshm23_u3_hybrid_branches-CoulombRupSet-DsrUni-TotNuclRate-NoRed-ThreshAvgIterRelGR/");
+//		sols.add(FaultSystemSolution.load(new File(dir, "results_FM3_1_CoulombRupSet_branch_averaged.zip")));
+//		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_1)));
+//		
+//		sols.add(FaultSystemSolution.load(new File(dir, "results_FM3_2_CoulombRupSet_branch_averaged.zip")));
+//		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_2)));
+//		
+//		File outputFile = new File(dir, "branch_avgs_combined.zip");
+//		
+//		for (FaultSystemSolution sol : sols) {
+//			FaultSystemRupSet rupSet = sol.getRupSet();
+//			rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
+//		}
+//		
+//		TrueMeanSolutionCreator creator = new TrueMeanSolutionCreator(new BranchWeightProvider.CurrentWeights());
+//		
+//		for (int s=0; s<sols.size(); s++)
+//			creator.addSolution(sols.get(s), branches.get(s));
+//		
+//		FaultSystemSolution avgSol = creator.build();
+//		avgSol.write(outputFile);
 		
-		List<LogicTreeLevel<?>> levels = List.of(NSHM23_U3_HybridLogicTreeBranch.U3_FM);
+		File dir = new File("/data/kevin/nshm23/batch_inversions/"
+				+ "2023_06_23-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR");
+		SolutionLogicTree slt = SolutionLogicTree.load(new File(dir, "results.zip"));
+		LogicTree<?> tree = slt.getLogicTree();
+//		tree = tree.sample(20, false);
+		FaultSystemSolution baSol = FaultSystemSolution.load(new File(dir, "results_NSHM23_v2_CoulombRupSet_branch_averaged_gridded.zip"));
+		GridSourceProvider gridProv = baSol.getGridSourceProvider();
 		
-		sols.add(FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/FM3_1_branch_averaged.zip")));
-		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_1)));
+		TrueMeanSolutionCreator creator = new TrueMeanSolutionCreator(tree);
 		
-		sols.add(FaultSystemSolution.load(new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/FM3_2_branch_averaged.zip")));
-		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_2)));
-		
-		for (FaultSystemSolution sol : sols) {
-			FaultSystemRupSet rupSet = sol.getRupSet();
-			rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
+		ClusterRuptures cRups = null;
+		for (int i=0; i<tree.size(); i++) {
+			LogicTreeBranch<?> branch = tree.getBranch(i);
+			System.out.println("Processing branch "+i+"/"+tree.size()+": "+branch);
+			FaultSystemSolution sol = slt.forBranch(branch);
+			if (cRups != null && cRups.size() != sol.getRupSet().getNumRuptures())
+				cRups = null;
+			if (cRups == null)
+				cRups = sol.getRupSet().requireModule(ClusterRuptures.class);
+			else
+				sol.getRupSet().addModule(cRups);
+			creator.addSolution(sol, branch);
 		}
 		
-		TrueMeanSolutionCreator creator = new TrueMeanSolutionCreator(new BranchWeightProvider.CurrentWeights());
-		
-		for (int s=0; s<sols.size(); s++)
-			creator.addSolution(sols.get(s), branches.get(s));
-		
 		FaultSystemSolution avgSol = creator.build();
-		avgSol.write(new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/branch_avgs_combined.zip"));
+		avgSol.setGridSourceProvider(gridProv);
+		
+		Region stableReg = NSHM23_RegionLoader.GridSystemRegions.CEUS_STABLE.load();
+		Map<Region, TectonicRegionType> regRegimes = Map.of(stableReg, TectonicRegionType.STABLE_SHALLOW);
+		avgSol.getRupSet().addModule(RupSetTectonicRegimes.forRegions(
+				avgSol.getRupSet(), regRegimes, TectonicRegionType.ACTIVE_SHALLOW, 0.5));
+		
+		avgSol.write(new File(dir, "true_mean_solution.zip"));
 	}
 
 }

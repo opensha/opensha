@@ -252,8 +252,10 @@ public class EvenlyDiscrXYZ_DataSet extends AbstractXYZ_DataSet {
 	 * @throws IllegalArgumentException if x or y is outside of the allowable range
 	 */
 	public double bilinearInterpolation(double x, double y) {
-		Preconditions.checkArgument(x >= minX && x <= maxX, "x value of "+x+" outside valid range of [%s %s]", minX, maxX);
-		Preconditions.checkArgument(y >= minY && y <= maxY, "y value of "+y+" outside valid range of [%s %s]", minY, maxY);
+		Preconditions.checkArgument(x >= minX && x <= maxX,
+				"x value of %s outside valid range of [%s %s]", x, minX, maxX);
+		Preconditions.checkArgument(y >= minY && y <= maxY,
+				"y value of %s outside valid range of [%s %s]", x, minY, maxY);
 			
 		int x0 = getIndexBefore(x, minX, gridSpacingX);
 		int x1 = x0 + 1;

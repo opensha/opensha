@@ -52,7 +52,7 @@ public class GMT_HazusMapServlet
 extends HttpServlet {
 	
 	private final static String GMT_SCRIPT_FILE = "gmtScript.txt";
-	public static final String GMT_URL_PATH = "http://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/gmtData/";
+	public static final String GMT_URL_PATH = "https://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/gmtData/";
 	public static final File GMT_DATA_DIR = new File(ServerPrefUtils.SERVER_PREFS.getTempDir(), "gmtData");
 	
 	private GMT_MapGenerator gmt = new GMT_MapGenerator();

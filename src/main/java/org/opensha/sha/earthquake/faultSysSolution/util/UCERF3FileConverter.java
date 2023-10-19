@@ -47,6 +47,7 @@ import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.DeformationModelFetcher;
+import scratch.UCERF3.utils.LastEventData;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 class UCERF3FileConverter {
@@ -58,6 +59,8 @@ class UCERF3FileConverter {
 		
 		U3FaultSystemSolutionFetcher cfss = U3CompoundFaultSystemSolution.fromZipFile(comoundFile);
 		
+		Map<Integer, List<LastEventData>> lastEventData = LastEventData.load();
+		
 		FaultModels[] fms = {FaultModels.FM3_1, FaultModels.FM3_2};
 		
 		System.out.println("Writing reference branches...");
@@ -65,12 +68,14 @@ class UCERF3FileConverter {
 			U3LogicTreeBranch branch = U3LogicTreeBranch.fromValues(true, fm);
 			System.out.println("Ref branch: "+branch);
 			InversionFaultSystemSolution ivfss = cfss.getSolution(branch);
+			LastEventData.populateSubSects(ivfss.getRupSet().getFaultSectionDataList(), lastEventData);
 			ivfss.setGridSourceProvider(exactGridProv(ivfss.getGridSourceProvider()));
 			attachExtraIVFSRSModules(ivfss.getRupSet());
 			ivfss.write(new File(outputDir, branch.buildFileName()+".zip"));
 			branch.setValue(SlipAlongRuptureModels.UNIFORM);
 			System.out.println("Ref (UNIFORM) branch: "+branch);
-			ivfss = cfss.getSolution(branch); 
+			ivfss = cfss.getSolution(branch);
+			LastEventData.populateSubSects(ivfss.getRupSet().getFaultSectionDataList(), lastEventData);
 			ivfss.setGridSourceProvider(exactGridProv(ivfss.getGridSourceProvider()));
 			attachExtraIVFSRSModules(ivfss.getRupSet());
 			ivfss.write(new File(outputDir, branch.buildFileName()+".zip"));
@@ -81,12 +86,12 @@ class UCERF3FileConverter {
 				branch.setValue(dm);
 				System.out.println("Alt DM (UNIFORM) branch: "+branch);
 				ivfss = cfss.getSolution(branch); 
+				LastEventData.populateSubSects(ivfss.getRupSet().getFaultSectionDataList(), lastEventData);
 				ivfss.setGridSourceProvider(exactGridProv(ivfss.getGridSourceProvider()));
 				attachExtraIVFSRSModules(ivfss.getRupSet());
 				ivfss.write(new File(outputDir, branch.buildFileName()+".zip"));
 			}
 		}
-		System.exit(0);
 		
 //		cfss = FaultSystemSolutionFetcher.getSubset(cfss,
 //				ScalingRelationships.SHAW_2009_MOD,
@@ -117,13 +122,13 @@ class UCERF3FileConverter {
 		System.out.println("Writing branch averaged files");
 		for (FaultModels fm : fms) {
 			U3FaultSystemSolutionFetcher fmFetcher = U3FaultSystemSolutionFetcher.getSubset(cfss, fm);
+			SolutionLogicTree subTreeModule = new SolutionLogicTree.UCERF3(fmFetcher);
 			
-			FaultSystemSolution sol = calcBranchAveraged(fmFetcher);
+			FaultSystemSolution sol = subTreeModule.calcBranchAveraged();
 			
 			String prefix = fm.encodeChoiceString()+"_branch_averaged";
-			sol.write(new File(outputDir, prefix+".zip"));
+			writeSimplifiedAndFull(sol, new File(outputDir, prefix+"_full_modules.zip"), new File(outputDir, prefix+".zip"));
 			
-			SolutionLogicTree subTreeModule = new SolutionLogicTree.UCERF3(fmFetcher);
 			subTreeModule.setSerializeGridded(false);
 			sol.addModule(subTreeModule);
 			sol.write(new File(outputDir, prefix+"_with_logic_tree.zip"));
@@ -131,170 +136,19 @@ class UCERF3FileConverter {
 			for (SpatialSeisPDF spatSeis : new SpatialSeisPDF[] {SpatialSeisPDF.UCERF2, SpatialSeisPDF.UCERF3}) {
 				U3FaultSystemSolutionFetcher ssFetcher = U3FaultSystemSolutionFetcher.getSubset(fmFetcher, spatSeis);
 				
-				sol = calcBranchAveraged(ssFetcher);
+				SolutionLogicTree ssSLT = new SolutionLogicTree.UCERF3(ssFetcher);
+				sol = ssSLT.calcBranchAveraged();
 				
 				prefix = fm.encodeChoiceString()+"_"+spatSeis.encodeChoiceString()+"_branch_averaged";
-				sol.write(new File(outputDir, prefix+".zip"));
+				writeSimplifiedAndFull(sol, new File(outputDir, prefix+"_full_modules.zip"), new File(outputDir, prefix+".zip"));
 			}
 		}
 	}
-
-	public static FaultSystemSolution calcBranchAveraged(U3FaultSystemSolutionFetcher fetcher) {
-		throw new UnsupportedOperationException("need to switch to new BA builder");
-//		double totWeight = 0d; 
-//		double[] avgRates = null;
-//		double[] avgMags = null;
-//		GridSourceProvider refGridProv = null;
-//		GriddedRegion gridReg = null;
-//		Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = null;
-//		Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = null;
-//		List<IncrementalMagFreqDist> sectSubSeisMFDs = null;
-//		List<List<Integer>> sectIndices = null;
-//		List<DiscretizedFunc> rupMFDs = null;
-//		
-//		List<U3LogicTreeBranch> branches = new ArrayList<>(fetcher.getBranches());
-//		
-//		U3LogicTreeBranch combBranch = null;
-//		
-//		for (U3LogicTreeBranch branch : branches) {
-//			double weight = branch.getBranchWeight();
-//			totWeight += weight;
-//			
-//			FaultSystemSolution sol = fetcher.getSolution(branch);
-//			FaultSystemRupSet rupSet = sol.getRupSet();
-//			GridSourceProvider gridProv = sol.getGridSourceProvider();
-//			SubSeismoOnFaultMFDs ssMFDs = sol.requireModule(SubSeismoOnFaultMFDs.class);
-//			
-//			if (avgRates == null) {
-//				// first time
-//				avgRates = new double[rupSet.getNumRuptures()];
-//				avgMags = new double[avgRates.length];
-//				nodeSubSeisMFDs = new HashMap<>();
-//				nodeUnassociatedMFDs = new HashMap<>();
-//				sectSubSeisMFDs = new ArrayList<>();
-//				for (int s=0; s<rupSet.getNumSections(); s++)
-//					sectSubSeisMFDs.add(null);
-//				refGridProv = gridProv;
-//				gridReg = gridProv.getGriddedRegion();
-//				combBranch = branch.copy();
-//				sectIndices = rupSet.getSectionIndicesForAllRups();
-//				rupMFDs = new ArrayList<>();
-//				for (int r=0; r<avgRates.length; r++)
-//					rupMFDs.add(new ArbitrarilyDiscretizedFunc());
-//			}
-//			
-//			for (int i=0; i<combBranch.size(); i++)
-//				if (!combBranch.hasValue(branch.getValue(i)))
-//					combBranch.clearValue(i);
-//			
-//			addWeighted(avgRates, sol.getRateForAllRups(), weight);
-//			for (int r=0; r<avgRates.length; r++) {
-//				double rate = sol.getRateForRup(r);
-//				double mag = rupSet.getMagForRup(r);
-//				DiscretizedFunc rupMFD = rupMFDs.get(r);
-//				double y = rate*weight;
-//				if (rupMFD.hasX(mag))
-//					y += rupMFD.getY(mag);
-//				rupMFD.set(mag, y);
-//			}
-//			addWeighted(avgMags, rupSet.getMagForAllRups(), weight);
-//			for (int i=0; i<gridReg.getNodeCount(); i++) {
-//				addWeighted(nodeSubSeisMFDs, i, gridProv.getNodeSubSeisMFD(i), weight);
-//				addWeighted(nodeUnassociatedMFDs, i, gridProv.getNodeUnassociatedMFD(i), weight);
-//			}
-//			
-//			for (int s=0; s<rupSet.getNumSections(); s++) {
-//				IncrementalMagFreqDist subSeisMFD = ssMFDs.get(s);
-//				Preconditions.checkNotNull(subSeisMFD);
-//				IncrementalMagFreqDist avgMFD = sectSubSeisMFDs.get(s);
-//				if (avgMFD == null) {
-//					avgMFD = new IncrementalMagFreqDist(subSeisMFD.getMinX(), subSeisMFD.getMaxX(), subSeisMFD.size());
-//					sectSubSeisMFDs.set(s, avgMFD);
-//				}
-//				addWeighted(avgMFD, subSeisMFD, weight);
-//			}
-//		}
-//		
-//		System.out.println("Common branches: "+combBranch);
-//		if (!combBranch.hasValue(DeformationModels.class))
-//			combBranch.setValue(DeformationModels.MEAN_UCERF3);
-//		if (!combBranch.hasValue(ScalingRelationships.class))
-//			combBranch.setValue(ScalingRelationships.MEAN_UCERF3);
-//		if (!combBranch.hasValue(SlipAlongRuptureModels.class))
-//			combBranch.setValue(SlipAlongRuptureModels.MEAN_UCERF3);
-//		
-//		// now scale by total weight
-//		System.out.println("Normalizing by total weight");
-//		for (int r=0; r<avgRates.length; r++) {
-//			avgRates[r] /= totWeight;
-//			avgMags[r] /= totWeight;
-//			DiscretizedFunc rupMFD = rupMFDs.get(r);
-//			rupMFD.scale(1d/totWeight);
-//			Preconditions.checkState((float)rupMFD.calcSumOfY_Vals() == (float)avgRates[r]);
-//		}
-//		double[] fractSS = new double[refGridProv.size()];
-//		double[] fractR = new double[fractSS.length];
-//		double[] fractN = new double[fractSS.length];
-//		for (int i=0; i<fractSS.length; i++) {
-//			IncrementalMagFreqDist subSeisMFD = nodeSubSeisMFDs.get(i);
-//			if (subSeisMFD != null)
-//				subSeisMFD.scale(1d/totWeight);
-//			IncrementalMagFreqDist nodeUnassociatedMFD = nodeUnassociatedMFDs.get(i);
-//			if (nodeUnassociatedMFD != null)
-//				nodeUnassociatedMFD.scale(1d/totWeight);
-//			fractSS[i] = refGridProv.getFracStrikeSlip(i);
-//			fractR[i] = refGridProv.getFracReverse(i);
-//			fractN[i] = refGridProv.getFracNormal(i);
-//		}
-//		for (int s=0; s<sectSubSeisMFDs.size(); s++)
-//			sectSubSeisMFDs.get(s).scale(1d/totWeight);
-//		
-//		GridSourceProvider combGridProv = new Precomputed(refGridProv.getGriddedRegion(),
-//				nodeSubSeisMFDs, nodeUnassociatedMFDs, fractSS, fractN, fractR);
-//		
-//		List<? extends FaultSection> subSects = new DeformationModelFetcher(combBranch.getValue(FaultModels.class),
-//				combBranch.getValue(DeformationModels.class), UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR,
-//				InversionFaultSystemRupSetFactory.DEFAULT_ASEIS_VALUE).getSubSectionList();
-//		
-//		FaultSystemRupSet avgRupSet = FaultSystemRupSet.builder(subSects, sectIndices).forU3Branch(combBranch).rupMags(avgMags).build();
-//		// remove these as they're not correct for branch-averaged
-//		avgRupSet.removeModuleInstances(InversionTargetMFDs.class);
-//		avgRupSet.removeModuleInstances(SectSlipRates.class);
-//		
-//		FaultSystemSolution sol = new FaultSystemSolution(avgRupSet, avgRates);
-//		sol.addModule(combBranch);
-//		sol.setGridSourceProvider(combGridProv);
-//		sol.addModule(new SubSeismoOnFaultMFDs(sectSubSeisMFDs));
-//		sol.addModule(new RupMFDsModule(sol, rupMFDs.toArray(new DiscretizedFunc[0])));
-//		return sol;
-	}
 	
-	public static void addWeighted(Map<Integer, IncrementalMagFreqDist> mfdMap, int index,
-			IncrementalMagFreqDist newMFD, double weight) {
-		if (newMFD == null)
-			// simple case
-			return;
-		IncrementalMagFreqDist runningMFD = mfdMap.get(index);
-		if (runningMFD == null) {
-			runningMFD = new IncrementalMagFreqDist(newMFD.getMinX(), newMFD.size(), newMFD.getDelta());
-			mfdMap.put(index, runningMFD);
-		}
-		addWeighted(runningMFD, newMFD, weight);
-	}
-	
-	public static void addWeighted(IncrementalMagFreqDist runningMFD,
-			IncrementalMagFreqDist newMFD, double weight) {
-		Preconditions.checkState(runningMFD.size() == newMFD.size(), "MFD sizes inconsistent");
-		Preconditions.checkState((float)runningMFD.getMinX() == (float)newMFD.getMinX(), "MFD min x inconsistent");
-		Preconditions.checkState((float)runningMFD.getDelta() == (float)newMFD.getDelta(), "MFD delta inconsistent");
-		for (int i=0; i<runningMFD.size(); i++)
-			runningMFD.add(i, newMFD.getY(i)*weight);
-	}
-	
-	private static void addWeighted(double[] running, double[] vals, double weight) {
-		Preconditions.checkState(running.length == vals.length);
-		for (int i=0; i<running.length; i++)
-			running[i] += vals[i]*weight;
+	private static void writeSimplifiedAndFull(FaultSystemSolution sol, File fullFile, File simplifiedFile) throws IOException {
+		sol.write(fullFile);
+		sol = SolModuleStripper.stripModules(sol);
+		sol.write(simplifiedFile);
 	}
 	
 	private static GridSourceProvider exactGridProv(GridSourceProvider prov) {

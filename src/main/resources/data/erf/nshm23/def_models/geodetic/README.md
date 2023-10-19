@@ -5,6 +5,12 @@ Geodetic deformation model file history. The current version is retained for eac
 * `fm_v1p4`: Files for the draft NSHM23 Geologic Fault Model, v1.4 (may be deleted soon if deemed no longer necessary)
 * `fm_v2`: Files for the "final" NSHM23 Geologic Fault Model, V2
 
+## 2023/01/17
+
+Updated Evans deformation model files based on e-mail from Eileen on 1/13/2023, subject "Re: URGENT: Final corrected deformation model files needed". No material changes were found.
+
+Updated Shen-Bird deformation model files based on e-mail from Zhengkang on 1/24/2023, subject "Re: URGENT: Final corrected deformation model files needed". Rakes were changed for most faults, but no slip rate changes were found. Had to manually reverse the trace directions for faults 2922 (South Granite Mountains) and 1098 (Ruby Mountains), but this was straightforward as the model contains constant slip rates and rakes on these faults.
+
 ## 2022/08/10
 
 Updated Evans deformation model files based on e-mail from Kaj Johnson on 8/10/2022, subject "Updated result files for Evans models":

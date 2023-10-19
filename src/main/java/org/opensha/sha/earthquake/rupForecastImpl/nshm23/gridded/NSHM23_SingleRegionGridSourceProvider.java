@@ -7,14 +7,16 @@ import java.util.List;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.geo.CubedGriddedRegion;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.NucleationRatePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SolMFDPlot;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
@@ -79,7 +81,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 
 	private CubedGriddedRegion cgr;
 
-	private NSHM23_FaultCubeAssociations faultCubeassociations;
+	private FaultCubeAssociations faultCubeassociations;
 
 	private double[] spatialPDF;
 	private FaultSystemSolution fss;
@@ -114,7 +116,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 				spatialPDF, totGriddedSeisMFD, depthNuclProbHist, fracStrikeSlip, fracNormal, fracReverse);
 	}
 
-	public NSHM23_SingleRegionGridSourceProvider(FaultSystemSolution fss, NSHM23_FaultCubeAssociations faultCubeassociations,
+	public NSHM23_SingleRegionGridSourceProvider(FaultSystemSolution fss, FaultCubeAssociations faultCubeassociations,
 			double[] spatialPDF, IncrementalMagFreqDist totGriddedSeisMFD, EvenlyDiscretizedFunc depthNuclProbHist, 
 			double[] fracStrikeSlip, double[] fracNormal, double[] fracReverse) {
 		this.fss = fss;
@@ -208,7 +210,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 	}
 	
 	@Override
-	public NSHM23_FaultCubeAssociations getFaultCubeassociations() {
+	public FaultCubeAssociations getFaultCubeassociations() {
 		return faultCubeassociations;
 	}
 
@@ -273,7 +275,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 	}
 
 	public SummedMagFreqDist getSubSeismoMFD_ForCube(int cubeIndex) {
-		double[] sectDistWeights = faultCubeassociations.getSectDistWeightsAtCube(cubeIndex);
+		double[] sectDistWeights = faultCubeassociations.getScaledSectDistWeightsAtCube(cubeIndex);
 		if (sectDistWeights == null) // no sections nucleate here
 			return null;
 		SummedMagFreqDist subSeisMFD = initSummedMFD();
@@ -297,7 +299,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 	public SummedMagFreqDist getUnassociatedMFD_ForCube(int cubeIndex) {
 		double scaleFactor = totGriddedSeisMFD.getY(0)/totalTrulyOffFaultMFD.getY(0);
 
-		double[] sectDistWeights = faultCubeassociations.getSectDistWeightsAtCube(cubeIndex);
+		double[] sectDistWeights = faultCubeassociations.getScaledSectDistWeightsAtCube(cubeIndex);
 		double wtSum =0;
 		if (sectDistWeights != null)
 			for(double weight : sectDistWeights)
@@ -325,13 +327,13 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 	}
 
 	public SummedMagFreqDist getSupraSeisMFD_ForCube(int cubeIndex) {
-		double[] sectDistWeights = faultCubeassociations.getSectDistWeightsAtCube(cubeIndex);
+		double[] sectDistWeights = faultCubeassociations.getScaledSectDistWeightsAtCube(cubeIndex);
 		if(sectDistWeights == null) // no sections nucleate here
 			return null;
 		SummedMagFreqDist supraMFD = initSummedMFD();
 		int[] sects = faultCubeassociations.getSectsAtCube(cubeIndex);
 		for(int s=0; s<sects.length; s++) {
-			double wt = sectDistWeights[s]/faultCubeassociations.getTotalDistWtAtCubesForSect(sects[s]);
+			double wt = sectDistWeights[s]/faultCubeassociations.getTotalScaledDistWtAtCubesForSect(sects[s]);
 			IncrementalMagFreqDist mfd = longTermSupraSeisMFD_OnSectArray[sects[s]].deepClone();
 			mfd.scale(wt);
 			supraMFD.addIncrementalMagFreqDist(mfd);
@@ -476,7 +478,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 		fracReverse = new GridReader("ReverseWts.txt").getValues();
 		fracNormal = new GridReader("NormalWts.txt").getValues();
 
-		EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(sol.getRupSet());
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(sol.getRupSet());
 		GutenbergRichterMagFreqDist totalGR = new GutenbergRichterMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
 		totalGR.setAllButTotCumRate(refMFD.getMinX(), refMFD.getX(refMFD.getClosestXIndex(mMaxOff)), 1e16, bVal);
 		totalGR.scaleToCumRate(refMFD.getClosestXIndex(5.01d), rateM5);

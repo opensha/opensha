@@ -183,6 +183,10 @@ public class PrefFaultSectionDataFinal implements Serializable {
 
 				FaultSectionPrefData data;
 				data = FaultSectionPrefData.fromXMLMetadata(el);
+				// Location has changed slightly, force it to use the old version
+				FaultTrace trace = data.getFaultTrace();
+				for (int i=0; i<trace.size(); i++)
+					trace.set(i, Location.backwardsCompatible(trace.get(i)));
 				faultSectionsList.add(data);
 			}
 			

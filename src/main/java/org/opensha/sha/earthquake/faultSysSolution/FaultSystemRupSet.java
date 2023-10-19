@@ -7,6 +7,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -730,6 +731,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		rupturesForSectionCache.clear();
 		rupturesForParentSectionCache.clear();
 		fractRupsInsideRegions.clear();
+		fractSectsInsideRegions.clear();
 	}
 
 	public void copyCacheFrom(FaultSystemRupSet rupSet) {
@@ -738,6 +740,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		rupturesForSectionCache = rupSet.rupturesForSectionCache;
 		rupturesForParentSectionCache = rupSet.rupturesForParentSectionCache;
 		fractRupsInsideRegions = rupSet.fractRupsInsideRegions;
+		fractSectsInsideRegions = rupSet.fractSectsInsideRegions;
 	}
 
 	/**
@@ -926,7 +929,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 */
 	public List<FaultSection> getFaultSectionDataForRupture(int rupIndex) {
 		List<Integer> inds = getSectionsIndicesForRup(rupIndex);
-		ArrayList<FaultSection> datas = new ArrayList<FaultSection>();
+		ArrayList<FaultSection> datas = new ArrayList<FaultSection>(inds.size());
 		for (int ind : inds)
 			datas.add(getFaultSectionData(ind));
 		return datas;
@@ -934,23 +937,23 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 
 	private class RupSurfaceCache {
 		private double prevGridSpacing = Double.NaN;
+		private boolean prevAseisReducesArea = false;
 		private Map<Integer, RuptureSurface> rupSurfaceCache;
 
-		private RupSurfaceCache() {
-			rupSurfaceCache = new HashMap<>();
-		}
-
-		private synchronized RuptureSurface getSurfaceForRupture(int rupIndex, double gridSpacing) {
-			if (prevGridSpacing != gridSpacing) {
+		private synchronized RuptureSurface getSurfaceForRupture(int rupIndex, double gridSpacing, boolean aseisReducesArea) {
+			if (rupSurfaceCache == null)
+				rupSurfaceCache = new HashMap<>();
+			if (prevGridSpacing != gridSpacing || aseisReducesArea != prevAseisReducesArea) {
 				rupSurfaceCache.clear();
 				prevGridSpacing = gridSpacing;
+				prevAseisReducesArea = aseisReducesArea;
 			}
 			RuptureSurface surf = rupSurfaceCache.get(rupIndex);
 			if (surf != null)
 				return surf;
 			List<RuptureSurface> rupSurfs = Lists.newArrayList();
 			for (FaultSection fltData : getFaultSectionDataForRupture(rupIndex))
-				rupSurfs.add(fltData.getFaultSurface(gridSpacing, false, true));
+				rupSurfs.add(fltData.getFaultSurface(gridSpacing, false, aseisReducesArea));
 			if (rupSurfs.size() == 1)
 				surf = rupSurfs.get(0);
 			else
@@ -971,7 +974,21 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return
 	 */
 	public RuptureSurface getSurfaceForRupture(int rupIndex, double gridSpacing) {
-		return surfCache.getSurfaceForRupture(rupIndex, gridSpacing);
+		return getSurfaceForRupture(rupIndex, gridSpacing, true);
+	}
+
+	/**
+	 * This creates a CompoundGriddedSurface for the specified rupture.  This sets preserveGridSpacingExactly=false so 
+	 * there are no cut-off ends (but variable grid spacing).
+	 * 
+	 *  If <code>aseisReducesArea</code> is true, it applies aseismicity as a reduction of area.
+	 * @param rupIndex
+	 * @param gridSpacing
+	 * @param aseisReducesArea
+	 * @return
+	 */
+	public RuptureSurface getSurfaceForRupture(int rupIndex, double gridSpacing, boolean aseisReducesArea) {
+		return surfCache.getSurfaceForRupture(rupIndex, gridSpacing, aseisReducesArea);
 	}
 
 	/**
@@ -1068,24 +1085,55 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	private Table<Region, Boolean, double[]> fractRupsInsideRegions = HashBasedTable.create();
+	private Table<Region, Boolean, double[]> fractSectsInsideRegions = HashBasedTable.create();
+	private int[] sectNumPtsTraceOnly = null;
+	private int[] sectNumPtsFull = null;
 	
 	public double[] getFractSectsInsideRegion(Region region, boolean traceOnly) {
 		return getFractSectsInsideRegion(region, traceOnly, new int[getNumSections()]);
 	}
 	
 	private double[] getFractSectsInsideRegion(Region region, boolean traceOnly, int[] numPtsInSection) {
-		double[] fractSectsInside = new double[getNumSections()];
-		double gridSpacing=1;
-		for(int s=0;s<getNumSections(); s++) {
-			RuptureSurface surf = getFaultSectionData(s).getFaultSurface(gridSpacing, false, true);
-			if (traceOnly) {
-				FaultTrace trace = surf.getEvenlyDiscritizedUpperEdge();
-				numPtsInSection[s] = trace.size();
-				fractSectsInside[s] = RegionUtils.getFractionInside(region, trace);
-			} else {
-				LocationList surfLocs = surf.getEvenlyDiscritizedListOfLocsOnSurface();
-				numPtsInSection[s] = surfLocs.size();
-				fractSectsInside[s] = RegionUtils.getFractionInside(region, surfLocs);
+		double[] fractSectsInside;
+		synchronized (fractSectsInsideRegions) {
+			fractSectsInside = fractSectsInsideRegions.get(region, traceOnly);
+			int[] cachedPtsInSection = traceOnly ? sectNumPtsTraceOnly : sectNumPtsFull;
+			if (cachedPtsInSection == null) {
+				// should never happen, but would need to recalc anyway
+				fractSectsInside = null;
+			} else if (fractSectsInside != null) {
+				// copy them over
+				Preconditions.checkState(numPtsInSection.length == cachedPtsInSection.length);
+				System.arraycopy(cachedPtsInSection, 0, numPtsInSection, 0, cachedPtsInSection.length);
+			}
+		}
+		if (fractSectsInside == null) {
+			synchronized (fractSectsInsideRegions) {
+				if (fractSectsInsideRegions.size() > 50) { // max cache size
+					Set<Cell<Region, Boolean, double[]>> cells = fractSectsInsideRegions.cellSet();
+					cells.remove(cells.iterator().next());
+				}
+			}
+			fractSectsInside = new double[getNumSections()];
+			double gridSpacing=1;
+			for(int s=0;s<getNumSections(); s++) {
+				RuptureSurface surf = getFaultSectionData(s).getFaultSurface(gridSpacing, false, true);
+				if (traceOnly) {
+					FaultTrace trace = surf.getEvenlyDiscritizedUpperEdge();
+					numPtsInSection[s] = trace.size();
+					fractSectsInside[s] = RegionUtils.getFractionInside(region, trace);
+				} else {
+					LocationList surfLocs = surf.getEvenlyDiscritizedListOfLocsOnSurface();
+					numPtsInSection[s] = surfLocs.size();
+					fractSectsInside[s] = RegionUtils.getFractionInside(region, surfLocs);
+				}
+			}
+			synchronized (fractSectsInsideRegions) {
+				fractSectsInsideRegions.put(region, traceOnly, fractSectsInside);
+				if (traceOnly)
+					sectNumPtsTraceOnly = Arrays.copyOf(numPtsInSection, numPtsInSection.length);
+				else
+					sectNumPtsFull = Arrays.copyOf(numPtsInSection, numPtsInSection.length);
 			}
 		}
 		return fractSectsInside;
@@ -1117,6 +1165,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			}
 			int[] numPtsInSection = new int[getNumSections()];
 			double[] fractSectsInside = getFractSectsInsideRegion(region, traceOnly, numPtsInSection);
+//			System.out.println(StatUtils.sum(fractSectsInside)+" sects inside of "+region.getName());
 			int numRuptures = getNumRuptures();
 
 			fractRupsInside = new double[numRuptures];
@@ -1130,6 +1179,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				}
 				fractRupsInside[rup] /= totNumPts;
 			}
+//			System.out.println(StatUtils.sum(fractRupsInside)+" rups inside of "+region.getName());
 			synchronized (fractRupsInsideRegions) {
 				fractRupsInsideRegions.put(region, traceOnly, fractRupsInside);
 			}
@@ -1440,6 +1490,67 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		}
 		
 		FaultSystemRupSet modRupSet = new FaultSystemRupSet(remappedSects, modSectionForRups,
+				modMags, modRakes, modRupAreas, modRupLengths);
+		
+		// add mappings module
+		RuptureSubSetMappings mappings = new RuptureSubSetMappings(sectIDs_newToOld, rupIDs_newToOld);
+		modRupSet.addModule(mappings);
+		
+		// now copy over any modules we can
+		for (OpenSHA_Module module : getModulesAssignableTo(SplittableRuptureSubSetModule.class, true)) {
+			OpenSHA_Module modModule = ((SplittableRuptureSubSetModule<?>)module).getForRuptureSubSet(
+					modRupSet, mappings);
+			if (modModule != null)
+				modRupSet.addModule(modModule);
+		}
+		
+		return modRupSet;
+	}
+	
+	/**
+	 * Builds a rupture subset keeping only the given ruptures.
+	 * <br>
+	 * All modules that implement {@link SplittableRuptureSubSetModule} will be copied over to the returned rupture set.
+	 * <br>
+	 * Mappings between original and new rupture IDs can be retrieved via the {@link RuptureSubSetMappings} module
+	 * that will be attached to the rupture subset.
+	 * 
+	 * @param retainedRuptureIDs
+	 * @return rupture subset containing only the given ruptures
+	 * @throws IllegalStateException if the input set is empty (or doesn't match the actual rupture count)
+	 */
+	public FaultSystemRupSet getForRuptureSubSet(Collection<Integer> retainedRuptureIDs) throws IllegalStateException {
+		Preconditions.checkState(!retainedRuptureIDs.isEmpty(), "Must retain at least 1 rupture");
+		
+		System.out.println("Building rupture sub-set, retaining "+retainedRuptureIDs.size()+"/"+getNumRuptures()+" ruptures");
+		
+		int rupIndex = 0;
+		BiMap<Integer, Integer> rupIDs_newToOld = HashBiMap.create(retainedRuptureIDs.size());
+		for (int origID=0; origID<this.getNumRuptures(); origID++)
+			if (retainedRuptureIDs.contains(origID))
+				rupIDs_newToOld.put(rupIndex++, origID);
+		Preconditions.checkState(rupIDs_newToOld.size() == retainedRuptureIDs.size(), "Retained IDs mismatch?");
+		
+		BiMap<Integer, Integer> sectIDs_newToOld = HashBiMap.create(getNumSections());
+		for (int s=0; s<getNumSections(); s++)
+			sectIDs_newToOld.put(s, s);
+		
+		double[] modMags = new double[rupIndex];
+		double[] modRakes = new double[rupIndex];
+		double[] modRupAreas = new double[rupIndex];
+		double[] modRupLengths = rupLengths == null ? null : new double[rupIndex];
+		List<List<Integer>> modSectionForRups = new ArrayList<>();
+		for (rupIndex=0; rupIndex<rupIDs_newToOld.size(); rupIndex++) {
+			int origID = rupIDs_newToOld.get(rupIndex);
+			modMags[rupIndex] = mags[origID];
+			modRakes[rupIndex] = rakes[origID];
+			modRupAreas[rupIndex] = rupAreas[origID];
+			if (modRupLengths != null)
+				modRupLengths[rupIndex] = rupLengths[origID];
+			modSectionForRups.add(getSectionsIndicesForRup(rupIndex));
+		}
+		
+		FaultSystemRupSet modRupSet = new FaultSystemRupSet(getFaultSectionDataList(), modSectionForRups,
 				modMags, modRakes, modRupAreas, modRupLengths);
 		
 		// add mappings module

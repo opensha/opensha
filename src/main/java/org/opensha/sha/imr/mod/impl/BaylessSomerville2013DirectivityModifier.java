@@ -10,9 +10,11 @@ import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.GriddedSubsetSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.mod.AbstractAttenRelMod;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
@@ -100,14 +102,17 @@ public class BaylessSomerville2013DirectivityModifier extends
 		boolean strikeSlip = (rake >= 0 && rake <= 30) || (rake >= 150 && rake <= 180);
 		boolean dipSlip = rake >= 60 && rake <= 120;
 		
-		Location closestTraceLoc = calcClosestLoc(rup, siteLoc, false);
+		Location closestTraceLoc = calcClosestLoc(rup, siteLoc, false, true);
 		Location closestSurfLoc;
 		if (strikeSlip)
 			closestSurfLoc = closestTraceLoc;
 		else
-			closestSurfLoc = calcClosestLoc(rup, siteLoc, true);
+			closestSurfLoc = calcClosestLoc(rup, siteLoc, true, true);
 		// compute the distance between the closest point on the trace and the hypocenter
-		Location hypoMappedToTraceLoc = calcClosestLoc(rup, hypo, false);
+		
+		// disable caching when using the hypocenter, as it's unlikely to be repeated and will cause lots of
+		// cache contention
+		Location hypoMappedToTraceLoc = calcClosestLoc(rup, hypo, false, false);
 		double s = LocationUtils.horzDistance(closestTraceLoc, hypo);
 //		double s = LocationUtils.horzDistance(closestTraceLoc, hypoMappedToTraceLoc);
 		s = Math.max(s, Math.exp(1));
@@ -303,8 +308,25 @@ public class BaylessSomerville2013DirectivityModifier extends
 		}
 	}
 	
-	private static Location calcClosestLoc(EqkRupture rup, Location siteLoc, boolean fullSurf) {
+	private static Location calcClosestLoc(EqkRupture rup, Location siteLoc, boolean fullSurf, boolean cacheDists) {
 		RuptureSurface surf = rup.getRuptureSurface();
+		if (surf instanceof CompoundSurface) {
+			// find the closest sub-surface to speed things up
+			double minDist = Double.POSITIVE_INFINITY;
+			RuptureSurface closest = null;
+			for (RuptureSurface subSurf : ((CompoundSurface)surf).getSurfaceList()) {
+				double dist;
+				if (subSurf instanceof CacheEnabledSurface && !cacheDists)
+					dist = ((CacheEnabledSurface)subSurf).calcQuickDistance(siteLoc);
+				else
+					dist = subSurf.getQuickDistance(siteLoc);
+				if (dist < minDist) {
+					minDist = dist;
+					closest = subSurf;
+				}
+			}
+			surf = closest;
+		}
 		if (fullSurf && surf instanceof EvenlyGriddedSurface) {
 			// find closest trace point and do search around there
 			EvenlyGriddedSurface gridSurf = (EvenlyGriddedSurface)surf;

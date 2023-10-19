@@ -2,10 +2,12 @@ package org.opensha.commons.geo;
 
 import java.awt.Color;
 import java.awt.geom.Area;
+import java.awt.geom.PathIterator;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
@@ -450,6 +452,36 @@ public class RegionUtils {
 		locs.add(new Location(nodeLat - halfH, nodeLon - halfW)); // bot left
 		locs.add(new Location(nodeLat + halfH, nodeLon - halfW)); // top left
 		return new Area(locs.toPath());
+	}
+	
+	/*
+	 * Iterates over the path defining an Area and returns a List of
+	 * LocationLists. If Area is singular, returned list will only have one
+	 * LocationList
+	 */
+	public static List<LocationList> areaToLocLists(Area area) {
+		// break apart poly into component paths; many qualify
+		List<LocationList> locLists = new ArrayList<>();
+		LocationList locs = null;
+		// placeholder vertex for path iteration
+		double[] vertex = new double[6];
+		PathIterator pi = area.getPathIterator(null);
+		while (!pi.isDone()) {
+			int type = pi.currentSegment(vertex);
+			double lon = vertex[0];
+			double lat = vertex[1];
+			if (type == PathIterator.SEG_MOVETO) {
+				locs = new LocationList();
+				locLists.add(locs);
+				locs.add(new Location(lat, lon));
+			} else if (type == PathIterator.SEG_LINETO) {
+				locs.add(new Location(lat, lon));
+			}
+			// skip any closing segments as LocationList.toPath() will
+			// close polygons
+			pi.next();
+		}
+		return locLists;
 	}
 
 

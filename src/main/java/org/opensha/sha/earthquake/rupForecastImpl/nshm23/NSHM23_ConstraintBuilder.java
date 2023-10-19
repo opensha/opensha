@@ -38,6 +38,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Un
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
@@ -50,6 +51,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_PaleoUncertainties;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
@@ -94,6 +96,8 @@ public class NSHM23_ConstraintBuilder {
 	public static boolean ADJ_FOR_SLIP_ALONG_DEFAULT = false;
 	private boolean adjustForActualRupSlips = ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
 	private boolean adjustForSlipAlong = ADJ_FOR_SLIP_ALONG_DEFAULT;
+	
+	static int MAX_NUM_ZERO_SLIP_SECTS_PER_RUP = 1;
 	
 	private SubSeisMoRateReduction subSeisMoRateReduction = SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
 	
@@ -269,8 +273,22 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	private SupraSeisBValInversionTargetMFDs targetCache;
+	private SupraSeisBValInversionTargetMFDs externalTargetMFDs;
+	
+	/**
+	 * This sets an external {@link SupraSeisBValInversionTargetMFDs} instance that should be used rather than building
+	 * our own. If not null, this will be used for all MFD-related constraints and returned by {@link #getTargetMFDs()}.
+	 * 
+	 * @param externalTargetMFDs
+	 */
+	public void setExternalTargetMFDs(SupraSeisBValInversionTargetMFDs externalTargetMFDs) {
+		this.externalTargetMFDs = externalTargetMFDs;
+	}
 	
 	private SupraSeisBValInversionTargetMFDs getTargetMFDs(double supraBVal) {
+		if (externalTargetMFDs != null)
+			// always return external version if set
+			return externalTargetMFDs;
 		if (targetCache != null && targetCache.getSupraSeisBValue() == supraBVal)
 			return targetCache;
 		
@@ -280,6 +298,7 @@ public class NSHM23_ConstraintBuilder {
 		builder.magDepDefaultRelStdDev(magDepRelStdDev);
 		builder.addSectCountUncertainties(addSectCountUncertaintiesToMFD);
 		builder.subSeisMoRateReduction(subSeisMoRateReduction);
+		builder.maxNumZeroSlipSectsPerRup(MAX_NUM_ZERO_SLIP_SECTS_PER_RUP);
 		if (segModel != null) {
 			if (segModel instanceof BinaryRuptureProbabilityCalc) {
 				builder.forBinaryRupProbModel((BinaryRuptureProbabilityCalc)segModel);
@@ -296,7 +315,7 @@ public class NSHM23_ConstraintBuilder {
 		if (adjustForIncompatibleData) {
 			UncertaintyBoundType dataWithinType = UncertaintyBoundType.ONE_SIGMA;
 			List<SectNucleationMFD_Estimator> dataConstraints = new ArrayList<>();
-			dataConstraints.add(new APrioriSectNuclEstimator(rupSet, findParkfieldRups(), parkfieldRate));
+			dataConstraints.add(new APrioriSectNuclEstimator(rupSet, findParkfieldRups(), PARKFIELD_RATE));
 			if (rupSet.hasModule(PaleoseismicConstraintData.class)) {
 				PaleoseismicConstraintData paleoData = rupSet.requireModule(PaleoseismicConstraintData.class);
 				if (paleoData.getPaleoSlipConstraints() != null) {
@@ -318,7 +337,7 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public NSHM23_ConstraintBuilder supraBValMFDs() {
-		SupraSeisBValInversionTargetMFDs target = getTargetMFDs(supraBVal);
+		InversionTargetMFDs target = getTargetMFDs(supraBVal);
 		
 		List<? extends IncrementalMagFreqDist> origMFDs = target.getMFD_Constraints();
 		List<UncertainIncrMagFreqDist> uncertainMFDs = new ArrayList<>();
@@ -604,12 +623,12 @@ public class NSHM23_ConstraintBuilder {
 	 * 
 	 * we round both of these: 24.5 yr -> 25 yr, and 15.4% -> 15 %
 	 */
-	private static UncertainDataConstraint parkfieldRate = 
+	public static final UncertainDataConstraint PARKFIELD_RATE = 
 		new UncertainDataConstraint("Parkfield", 1d/25d, new Uncertainty(0.15d/25d));
 	
 	public NSHM23_ConstraintBuilder parkfield() {
-		double parkfieldMeanRate = parkfieldRate.bestEstimate;
-		double parkfieldStdDev = parkfieldRate.getPreferredStdDev();
+		double parkfieldMeanRate = PARKFIELD_RATE.bestEstimate;
+		double parkfieldStdDev = PARKFIELD_RATE.getPreferredStdDev();
 		
 		// Find Parkfield M~6 ruptures
 		List<Integer> parkfieldRups = findParkfieldRups();
@@ -627,7 +646,7 @@ public class NSHM23_ConstraintBuilder {
 		Preconditions.checkNotNull(modMinMags, "Rupture set must supply ModSectMinMags if minimization constraint is enabled");
 		
 		// we want to only grab ruptures with magnitudes below the MFD bin in which the section minimium magnitude resides
-		EvenlyDiscretizedFunc refMagFunc = SupraSeisBValInversionTargetMFDs.buildRefXValues(rupSet);
+		EvenlyDiscretizedFunc refMagFunc = FaultSysTools.initEmptyMFD(rupSet);
 		
 		List<Integer> belowMinIndexes = new ArrayList<>();
 		float maxMin = (float)StatUtils.max(modMinMags.getMinMagForSections());
@@ -1119,7 +1138,7 @@ public class NSHM23_ConstraintBuilder {
 		return new IntegerPDF_FunctionSampler(weights);
 	}
 	
-	public double[] getParkfieldInitial(boolean ensureNotSkipped) {
+	public double[] getParkfieldInitial(boolean ensureNotSkipped, SupraSeisBValInversionTargetMFDs targetMFDs) {
 		List<Integer> parkRups = new ArrayList<>(findParkfieldRups());
 		double[] initial = new double[rupSet.getNumRuptures()];
 		if (ensureNotSkipped) {
@@ -1129,7 +1148,96 @@ public class NSHM23_ConstraintBuilder {
 					parkRups.remove(r);
 			Preconditions.checkState(!skips.isEmpty(), "All parkfield rups are skipped!");
 		}
-		double rateEach = parkfieldRate.bestEstimate/(double)parkRups.size();
+		double target = PARKFIELD_RATE.bestEstimate;
+		if (targetMFDs != null && targetMFDs.getOnFaultSupraSeisNucleationMFDs() != null) {
+			// adjust the target as a compromise with that implied by the MFDs
+			
+			int parkfieldSect = findParkfieldSection(rupSet);
+			
+			List<UncertainIncrMagFreqDist> mfds = targetMFDs.getOnFaultSupraSeisNucleationMFDs();
+			
+			double impliedMappedRate = 0d;
+			double impliedFullNuclRate = 0d;
+			for (int s=0; s<rupSet.getNumSections(); s++) {
+				if (rupSet.getFaultSectionData(s).getParentSectionId() == parkfieldSect) {
+					UncertainIncrMagFreqDist mfd = mfds.get(s);
+					
+					boolean[] rupBinAssocs = new boolean[mfd.size()];
+					
+					int minAssocBin = mfd.size();
+					
+					for (int rupIndex : parkRups) {
+						for (int sectIndex : rupSet.getSectionsIndicesForRup(rupIndex)) {
+							if (sectIndex == s) {
+								// this rup is on this section
+								int binIndex = mfd.getClosestXIndex(rupSet.getMagForRup(rupIndex));
+								rupBinAssocs[binIndex] = true;
+								minAssocBin = Integer.min(minAssocBin, binIndex);
+							}
+						}
+					}
+					for (int i=0; i<rupBinAssocs.length; i++) {
+						if (rupBinAssocs[i]) {
+							// this bin maps to parkfield
+							// can just sum them as this is already a nucleation rate, will sum to participation
+							// across all sections
+							impliedMappedRate += mfd.getY(i);
+						}
+					}
+					
+					// now sum up the total nucleation rate, which we'll use as our target if the in-bin-target
+					// is outside of the one sigma bounds
+					for (int i=minAssocBin; i<mfd.size(); i++)
+						impliedFullNuclRate += mfd.getY(i);
+				}
+			}
+			
+			System.out.println("Implied Parkfield rates for initial: exactMapped="+(float)impliedMappedRate+", fullNucl="+(float)impliedFullNuclRate);
+			
+			double lowerBound = target - 2*PARKFIELD_RATE.getPreferredStdDev();
+			double upperBound = target + 2*PARKFIELD_RATE.getPreferredStdDev();
+			
+			// adjustments to possibly use the full nucleation rate if our estimate is really low
+			double mappedDiff = impliedMappedRate - target;
+			double fullDiff = impliedFullNuclRate - target;
+			boolean fullCloser = Math.abs(fullDiff) < Math.abs(mappedDiff);
+			double impliedRate;
+			if (impliedMappedRate < lowerBound && fullCloser) {
+				if (impliedFullNuclRate < lowerBound)
+					// use the full rate, it's closer but also low
+					impliedRate = impliedFullNuclRate;
+				else
+					// it will be somewhere between the full rate and the mapped rate, use an average
+					impliedRate = 0.5*(lowerBound + impliedFullNuclRate);
+			} else {
+				impliedRate = impliedMappedRate;
+			}
+			
+			if (impliedRate < target) {
+				// implied rate is below the target
+				if (impliedRate <= lowerBound) {
+					System.out.println("Adjusted Parkfield initial rate to -2sigma of "+(float)lowerBound
+							+" (was "+(float)target+", implied is "+(float)impliedRate+")");
+					target = lowerBound;
+				} else {
+					System.out.println("Adjusted Parkfield initial rate to implied of "+(float)impliedRate
+							+" (was "+(float)target+")");
+					target = impliedRate;
+				}
+			} else if (impliedRate > target) {
+				// implied rate is above the target
+				if (impliedRate >= upperBound) {
+					System.out.println("Adjusted Parkfield initial rate to +2sigma of "+(float)upperBound
+							+" (was "+(float)target+", implied is "+(float)impliedRate+")");
+					target = upperBound;
+				} else {
+					System.out.println("Adjusted Parkfield initial rate to implied of "+(float)impliedRate
+							+" (was "+(float)target+")");
+					target = impliedRate;
+				}
+			}
+		}
+		double rateEach = target/(double)parkRups.size();
 		for (int rup : parkRups)
 			initial[rup] = rateEach;
 		return initial;

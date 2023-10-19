@@ -376,7 +376,7 @@ public class LastEventData {
 //		populateSubSects(subSects, datas);
 		
 		File solDir = new File(UCERF3_DataUtils.DEFAULT_SCRATCH_DATA_DIR, "InversionSolutions");
-		FaultSystemSolution sol = U3FaultSystemIO.loadSol(new File(solDir,
+		FaultSystemSolution sol = FaultSystemSolution.load(new File(solDir,
 				"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip"));
 		File csvFile = new File("/tmp/open_interval_ratios.csv");
 		writeOpenRecurrRatioTable(csvFile, sol);
@@ -388,7 +388,7 @@ public class LastEventData {
 		// now try normal methods with each FM
 		Map<Integer, List<LastEventData>> datas = load();
 		populateSubSects(sol.getRupSet().getFaultSectionDataList(), datas);
-		populateSubSects(U3FaultSystemIO.loadSol(new File(solDir,
+		populateSubSects(FaultSystemSolution.load(new File(solDir,
 				"2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_MEAN_BRANCH_AVG_SOL.zip"))
 				.getRupSet().getFaultSectionDataList(), datas);
 	}

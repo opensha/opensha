@@ -386,206 +386,197 @@ BranchAverageableModule<InversionTargetMFDs> {
 
 		@Override
 		public AveragingAccumulator<InversionTargetMFDs> averagingAccumulator() {
-			return new AveragingAccumulator<InversionTargetMFDs>() {
-				
-				private IncrementalMagFreqDist totalRegionalMFD;
-				private IncrementalMagFreqDist onFaultSupraSeisMFD;
-				private IncrementalMagFreqDist onFaultSubSeisMFD;
-				private IncrementalMagFreqDist trulyOffFaultMFD;
-				private List<IncrementalMagFreqDist> mfdConstraints;
-				private AveragingAccumulator<SubSeismoOnFaultMFDs> subSeismoOnFaultAccumulator;
-				private List<IncrementalMagFreqDist> supraSeisOnFaultNuclMFDs;
-				
-				private boolean first = true;
-				private double totWeight = 0d;
-
-				@Override
-				public Class<InversionTargetMFDs> getType() {
-					return InversionTargetMFDs.class;
-				}
-
-				@Override
-				public void process(InversionTargetMFDs module, double relWeight) {
-					IncrementalMagFreqDist myTotReg = module.getTotalRegionalMFD();
-					IncrementalMagFreqDist myOnFaultSupra = module.getTotalOnFaultSupraSeisMFD();
-					IncrementalMagFreqDist myOnFaultSub = module.getTotalOnFaultSubSeisMFD();
-					IncrementalMagFreqDist myTrulyOff = module.getTrulyOffFaultMFD();
-					List<? extends IncrementalMagFreqDist> myConstraints = module.getMFD_Constraints();
-					SubSeismoOnFaultMFDs mySubSeismoMFDs = module.getOnFaultSubSeisMFDs();
-					List<? extends IncrementalMagFreqDist> mySupraSeismoMFDs = module.getOnFaultSupraSeisNucleationMFDs();
-					if (first) {
-						if (myTotReg != null)
-							totalRegionalMFD = buildSameSize(myTotReg);
-						if (myOnFaultSupra != null)
-							onFaultSupraSeisMFD = buildSameSize(myOnFaultSupra);
-						if (myOnFaultSub != null)
-							onFaultSubSeisMFD = buildSameSize(myOnFaultSub);
-						if (myTrulyOff != null)
-							trulyOffFaultMFD = buildSameSize(myTrulyOff);
-						if (myConstraints != null) {
-							mfdConstraints = new ArrayList<>();
-							for (IncrementalMagFreqDist constraint : myConstraints)
-								mfdConstraints.add(buildSameSize(constraint));
-						}
-						if (mySubSeismoMFDs != null)
-							subSeismoOnFaultAccumulator = mySubSeismoMFDs.averagingAccumulator();
-						if (mySupraSeismoMFDs != null) {
-							supraSeisOnFaultNuclMFDs = new ArrayList<>();
-							for (IncrementalMagFreqDist constraint : mySupraSeismoMFDs)
-								supraSeisOnFaultNuclMFDs.add(buildSameSize(constraint));
-						}
-						first = false;
-					}
-					
-					totalRegionalMFD = averageInWeighted(totalRegionalMFD, myTotReg, "total regional", relWeight);
-					onFaultSupraSeisMFD= averageInWeighted(onFaultSupraSeisMFD, myOnFaultSupra, "on fault supra", relWeight);
-					onFaultSubSeisMFD = averageInWeighted(onFaultSubSeisMFD, myOnFaultSub, "on fault sub", relWeight);
-					trulyOffFaultMFD = averageInWeighted(trulyOffFaultMFD, myTrulyOff, "truly off", relWeight);
-					
-					if (myConstraints != null || mfdConstraints != null) {
-						Preconditions.checkNotNull(myConstraints, "Some branches have MFD constraints and others don't");
-						Preconditions.checkNotNull(mfdConstraints, "Some branches have MFD constraints and others don't");
-						Preconditions.checkState(mfdConstraints.size() == myConstraints.size(),
-								"MFD constraint count varies by branch");
-						for (int i=0; i<myConstraints.size(); i++)
-							mfdConstraints.set(i, averageInWeighted(
-									mfdConstraints.get(i), myConstraints.get(i), "MFD constraint "+i, relWeight));
-					}
-					if (mySubSeismoMFDs != null || subSeismoOnFaultAccumulator != null) {
-						Preconditions.checkNotNull(mySubSeismoMFDs,
-								"Some branches have sub seismo MFDs and others don't");
-						Preconditions.checkNotNull(subSeismoOnFaultAccumulator,
-								"Some branches have sub seismo MFDs and others don't");
-						subSeismoOnFaultAccumulator.process(mySubSeismoMFDs, relWeight);
-					}
-					if (mySupraSeismoMFDs != null || supraSeisOnFaultNuclMFDs != null) {
-						if (mySupraSeismoMFDs == null) {
-							// if any branches don't have them, clear them
-							supraSeisOnFaultNuclMFDs = null;
-						} else if (supraSeisOnFaultNuclMFDs != null) {
-							// everyone has had them so far, average them in
-							Preconditions.checkState(supraSeisOnFaultNuclMFDs.size() == mySupraSeismoMFDs.size(),
-									"Section nucleation MFD constraint count varies by branch?");
-							for (int i=0; i<mySupraSeismoMFDs.size(); i++)
-								supraSeisOnFaultNuclMFDs.set(i, averageInWeighted(
-										supraSeisOnFaultNuclMFDs.get(i), mySupraSeismoMFDs.get(i),
-										"Sect Nucl MFD constraint "+i, relWeight));
-						}
-					}
-					
-					totWeight += relWeight;
-				}
-
-				@Override
-				public InversionTargetMFDs getAverage() {
-					scaleToTotWeight(totalRegionalMFD, totWeight);
-					scaleToTotWeight(onFaultSupraSeisMFD, totWeight);
-					scaleToTotWeight(onFaultSubSeisMFD, totWeight);
-					scaleToTotWeight(trulyOffFaultMFD, totWeight);
-					if (mfdConstraints != null)
-						for (IncrementalMagFreqDist constr : mfdConstraints)
-							scaleToTotWeight(constr, totWeight);
-					SubSeismoOnFaultMFDs subSeismoMFDs = null;
-					if (subSeismoOnFaultAccumulator != null)
-						subSeismoMFDs = subSeismoOnFaultAccumulator.getAverage();
-					if (supraSeisOnFaultNuclMFDs != null)
-						for (IncrementalMagFreqDist constr : supraSeisOnFaultNuclMFDs)
-							scaleToTotWeight(constr, totWeight);
-					return new Precomputed(null, totalRegionalMFD, onFaultSupraSeisMFD, onFaultSubSeisMFD,
-							trulyOffFaultMFD, mfdConstraints, subSeismoMFDs, supraSeisOnFaultNuclMFDs);
-				}
-			};
+			return new Averager();
 		}
+	}
+	
+	protected static class Averager implements AveragingAccumulator<InversionTargetMFDs> {
+		private IncrementalMagFreqDist totalRegionalMFD;
+		private IncrementalMagFreqDist onFaultSupraSeisMFD;
+		private IncrementalMagFreqDist onFaultSubSeisMFD;
+		private IncrementalMagFreqDist trulyOffFaultMFD;
+		private List<IncrementalMagFreqDist> mfdConstraints;
+		private AveragingAccumulator<SubSeismoOnFaultMFDs> subSeismoOnFaultAccumulator;
+		private List<IncrementalMagFreqDist> supraSeisOnFaultNuclMFDs;
 		
-		static IncrementalMagFreqDist buildSameSize(IncrementalMagFreqDist ref) {
-			IncrementalMagFreqDist ret = new IncrementalMagFreqDist(ref.getMinX(), ref.size(), ref.getDelta());
-			ret.setName(ref.getName());
-			ret.setRegion(ref.getRegion());
-			if (ref instanceof UncertainBoundedIncrMagFreqDist) {
-				UncertainBoundedIncrMagFreqDist bounded = (UncertainBoundedIncrMagFreqDist)ref;
-				ret = new UncertainBoundedIncrMagFreqDist(ret, buildSameSize(bounded.getLower()),
-						buildSameSize(bounded.getUpper()), bounded.getBoundType(),
-						new EvenlyDiscretizedFunc(ref.getMinX(), ref.size(), ref.getDelta()));
-			} else if (ref instanceof UncertainIncrMagFreqDist) {
-				ret = new UncertainIncrMagFreqDist(ret,
-						new EvenlyDiscretizedFunc(ref.getMinX(), ref.size(), ref.getDelta()));
-			}
-			return ret;
+		private boolean first = true;
+		protected double totWeight = 0d;
+		private boolean averaged = false;
+
+		@Override
+		public Class<InversionTargetMFDs> getType() {
+			return InversionTargetMFDs.class;
 		}
-		
-		static IncrementalMagFreqDist averageInWeighted(IncrementalMagFreqDist dest, IncrementalMagFreqDist mfd, String type,
-				double weight) {
-			if (dest == null || mfd == null) {
-				// make sure both are null
-				Preconditions.checkState(dest == null, "InversionTargetMFDs: some branches have %s, others don't", type);
-				Preconditions.checkState(mfd == null, "InversionTargetMFDs: some branches have %s, others don't", type);
-				return null;
-			}
-			// make sure gridding is the same
-			Preconditions.checkState((float)dest.getMinX() == (float)mfd.getMinX(),
-					"MFD minX mismatch for %s between branches", type);
-			Preconditions.checkState((float)dest.getDelta() == (float)mfd.getDelta(),
-					"MFD delta mismatch for %s between branches", type);
-			if (mfd.getRegion() != null || dest.getRegion() != null) {
-				Preconditions.checkState(mfd.getRegion() != null,
-						"Some branches have a region for %s and others don't", type);
-				Preconditions.checkState(dest.getRegion() != null,
-						"Some branches have a region for %s and others don't", type);
-				Preconditions.checkState(mfd.getRegion().equalsRegion(dest.getRegion()),
-						"Region mismatch across branches for %s", type);
-			}
-			// ensure desination is large enough
-			if (dest.size() < mfd.size()) {
-				IncrementalMagFreqDist newDest = expandCopy(dest, mfd.size());
-				if (dest instanceof UncertainBoundedIncrMagFreqDist) {
-					// update bounds
-					UncertainBoundedIncrMagFreqDist boundedDest = (UncertainBoundedIncrMagFreqDist)dest;
-					IncrementalMagFreqDist upper = expandCopy(boundedDest.getUpper(), mfd.size());
-					IncrementalMagFreqDist lower = expandCopy(boundedDest.getLower(), mfd.size());
-					EvenlyDiscretizedFunc stdDevs = expandCopy(boundedDest.getStdDevs(), mfd.size());
-					newDest = new UncertainBoundedIncrMagFreqDist(
-							newDest, lower, upper, boundedDest.getBoundType(), stdDevs);
-				} else if (dest instanceof UncertainIncrMagFreqDist) {
-					UncertainIncrMagFreqDist uncert = (UncertainIncrMagFreqDist)dest;
-					EvenlyDiscretizedFunc stdDevs = expandCopy(uncert.getStdDevs(), mfd.size());
-					newDest = new UncertainIncrMagFreqDist(newDest, stdDevs);
+
+		@Override
+		public void process(InversionTargetMFDs module, double relWeight) {
+			IncrementalMagFreqDist myTotReg = module.getTotalRegionalMFD();
+			IncrementalMagFreqDist myOnFaultSupra = module.getTotalOnFaultSupraSeisMFD();
+			IncrementalMagFreqDist myOnFaultSub = module.getTotalOnFaultSubSeisMFD();
+			IncrementalMagFreqDist myTrulyOff = module.getTrulyOffFaultMFD();
+			List<? extends IncrementalMagFreqDist> myConstraints = module.getMFD_Constraints();
+			SubSeismoOnFaultMFDs mySubSeismoMFDs = module.getOnFaultSubSeisMFDs();
+			List<? extends IncrementalMagFreqDist> mySupraSeismoMFDs = module.getOnFaultSupraSeisNucleationMFDs();
+			if (first) {
+				if (myTotReg != null)
+					totalRegionalMFD = buildSameSize(myTotReg);
+				if (myOnFaultSupra != null)
+					onFaultSupraSeisMFD = buildSameSize(myOnFaultSupra);
+				if (myOnFaultSub != null)
+					onFaultSubSeisMFD = buildSameSize(myOnFaultSub);
+				if (myTrulyOff != null)
+					trulyOffFaultMFD = buildSameSize(myTrulyOff);
+				if (myConstraints != null) {
+					mfdConstraints = new ArrayList<>();
+					for (IncrementalMagFreqDist constraint : myConstraints)
+						mfdConstraints.add(buildSameSize(constraint));
 				}
-				dest = newDest;
+				if (mySubSeismoMFDs != null)
+					subSeismoOnFaultAccumulator = mySubSeismoMFDs.averagingAccumulator();
+				if (mySupraSeismoMFDs != null) {
+					supraSeisOnFaultNuclMFDs = new ArrayList<>();
+					for (IncrementalMagFreqDist constraint : mySupraSeismoMFDs)
+						supraSeisOnFaultNuclMFDs.add(buildSameSize(constraint));
+				}
+				first = false;
 			}
-			// ensure that worked
-			Preconditions.checkState(dest.size() >= mfd.size(), "MFD size mismatch for %s between branches", type);
-			// now actually average it in
-			for (int i=0; i<mfd.size(); i++)
-				dest.add(i, weight*mfd.getY(i));
+			
+			totalRegionalMFD = averageInWeighted(totalRegionalMFD, myTotReg, "total regional", relWeight);
+			onFaultSupraSeisMFD= averageInWeighted(onFaultSupraSeisMFD, myOnFaultSupra, "on fault supra", relWeight);
+			onFaultSubSeisMFD = averageInWeighted(onFaultSubSeisMFD, myOnFaultSub, "on fault sub", relWeight);
+			trulyOffFaultMFD = averageInWeighted(trulyOffFaultMFD, myTrulyOff, "truly off", relWeight);
+			
+			if (myConstraints != null || mfdConstraints != null) {
+				Preconditions.checkNotNull(myConstraints, "Some branches have MFD constraints and others don't");
+				Preconditions.checkNotNull(mfdConstraints, "Some branches have MFD constraints and others don't");
+				Preconditions.checkState(mfdConstraints.size() == myConstraints.size(),
+						"MFD constraint count varies by branch");
+				for (int i=0; i<myConstraints.size(); i++)
+					mfdConstraints.set(i, averageInWeighted(
+							mfdConstraints.get(i), myConstraints.get(i), "MFD constraint "+i, relWeight));
+			}
+			if (mySubSeismoMFDs != null || subSeismoOnFaultAccumulator != null) {
+				Preconditions.checkNotNull(mySubSeismoMFDs,
+						"Some branches have sub seismo MFDs and others don't");
+				Preconditions.checkNotNull(subSeismoOnFaultAccumulator,
+						"Some branches have sub seismo MFDs and others don't");
+				subSeismoOnFaultAccumulator.process(mySubSeismoMFDs, relWeight);
+			}
+			if (mySupraSeismoMFDs != null || supraSeisOnFaultNuclMFDs != null) {
+				if (mySupraSeismoMFDs == null) {
+					// if any branches don't have them, clear them
+					supraSeisOnFaultNuclMFDs = null;
+				} else if (supraSeisOnFaultNuclMFDs != null) {
+					// everyone has had them so far, average them in
+					Preconditions.checkState(supraSeisOnFaultNuclMFDs.size() == mySupraSeismoMFDs.size(),
+							"Section nucleation MFD constraint count varies by branch?");
+					for (int i=0; i<mySupraSeismoMFDs.size(); i++)
+						supraSeisOnFaultNuclMFDs.set(i, averageInWeighted(
+								supraSeisOnFaultNuclMFDs.get(i), mySupraSeismoMFDs.get(i),
+								"Sect Nucl MFD constraint "+i, relWeight));
+				}
+			}
+			
+			totWeight += relWeight;
+		}
+
+		@Override
+		public synchronized InversionTargetMFDs getAverage() {
+			Preconditions.checkState(!averaged, "Cannot call getAverage more than once!");
+			scaleToTotWeight(totalRegionalMFD, totWeight);
+			scaleToTotWeight(onFaultSupraSeisMFD, totWeight);
+			scaleToTotWeight(onFaultSubSeisMFD, totWeight);
+			scaleToTotWeight(trulyOffFaultMFD, totWeight);
+			if (mfdConstraints != null)
+				for (IncrementalMagFreqDist constr : mfdConstraints)
+					scaleToTotWeight(constr, totWeight);
+			SubSeismoOnFaultMFDs subSeismoMFDs = null;
+			if (subSeismoOnFaultAccumulator != null)
+				subSeismoMFDs = subSeismoOnFaultAccumulator.getAverage();
+			if (supraSeisOnFaultNuclMFDs != null)
+				for (IncrementalMagFreqDist constr : supraSeisOnFaultNuclMFDs)
+					scaleToTotWeight(constr, totWeight);
+			averaged = true;
+			return new Precomputed(null, totalRegionalMFD, onFaultSupraSeisMFD, onFaultSubSeisMFD,
+					trulyOffFaultMFD, mfdConstraints, subSeismoMFDs, supraSeisOnFaultNuclMFDs);
+		}
+	}
+	
+	static IncrementalMagFreqDist buildSameSize(IncrementalMagFreqDist ref) {
+		IncrementalMagFreqDist ret = new IncrementalMagFreqDist(ref.getMinX(), ref.size(), ref.getDelta());
+		ret.setName(ref.getName());
+		ret.setRegion(ref.getRegion());
+		if (ref instanceof UncertainBoundedIncrMagFreqDist) {
+			UncertainBoundedIncrMagFreqDist bounded = (UncertainBoundedIncrMagFreqDist)ref;
+			ret = new UncertainBoundedIncrMagFreqDist(ret, buildSameSize(bounded.getLower()),
+					buildSameSize(bounded.getUpper()), bounded.getBoundType(),
+					new EvenlyDiscretizedFunc(ref.getMinX(), ref.size(), ref.getDelta()));
+		} else if (ref instanceof UncertainIncrMagFreqDist) {
+			ret = new UncertainIncrMagFreqDist(ret,
+					new EvenlyDiscretizedFunc(ref.getMinX(), ref.size(), ref.getDelta()));
+		}
+		return ret;
+	}
+	
+	static IncrementalMagFreqDist averageInWeighted(IncrementalMagFreqDist dest, IncrementalMagFreqDist mfd, String type,
+			double weight) {
+		if (dest == null || mfd == null) {
+			// make sure both are null
+			Preconditions.checkState(dest == null, "InversionTargetMFDs: some branches have %s, others don't", type);
+			Preconditions.checkState(mfd == null, "InversionTargetMFDs: some branches have %s, others don't", type);
+			return null;
+		}
+		// make sure gridding is the same
+		Preconditions.checkState((float)dest.getMinX() == (float)mfd.getMinX(),
+				"MFD minX mismatch for %s between branches", type);
+		Preconditions.checkState((float)dest.getDelta() == (float)mfd.getDelta(),
+				"MFD delta mismatch for %s between branches", type);
+		if (mfd.getRegion() != null || dest.getRegion() != null) {
+			Preconditions.checkState(mfd.getRegion() != null,
+					"Some branches have a region for %s and others don't", type);
+			Preconditions.checkState(dest.getRegion() != null,
+					"Some branches have a region for %s and others don't", type);
+			Preconditions.checkState(mfd.getRegion().equalsRegion(dest.getRegion()),
+					"Region mismatch across branches for %s", type);
+		}
+		// ensure desination is large enough
+		if (dest.size() < mfd.size()) {
+			IncrementalMagFreqDist newDest = expandCopy(dest, mfd.size());
 			if (dest instanceof UncertainBoundedIncrMagFreqDist) {
-				if (mfd instanceof UncertainBoundedIncrMagFreqDist) {
-					UncertainBoundedIncrMagFreqDist boundedDest = (UncertainBoundedIncrMagFreqDist)dest;
-					UncertainBoundedIncrMagFreqDist boundedMFD = (UncertainBoundedIncrMagFreqDist)mfd;
-					Preconditions.checkState(boundedDest.getBoundType() == boundedMFD.getBoundType(),
-							"Bound type mismatch for %s", type);
-					averageInWeighted(boundedDest.getLower(), boundedMFD.getLower(), type+" LOWER", weight);
-					averageInWeighted(boundedDest.getUpper(), boundedMFD.getUpper(), type+" UPPER", weight);
-				} else {
-					// don't have bounds on this branch
-					if (mfd instanceof UncertainIncrMagFreqDist) {
-						// still have std devs, set dest to that type
-						System.err.println("WARNING: "+type+" doesn't have bounded uncertainties on all branches, "
-								+ "reverting to UncertainIncrMagFreqDist");
-						dest = new UncertainIncrMagFreqDist(dest, ((UncertainIncrMagFreqDist)dest).getStdDevs());
-					} else {
-						// revert to a regular MFD
-						System.err.println("WARNING: "+type+" doesn't have uncertainties on all branches, "
-								+ "reverting to IncrementalMagFreqDist");
-						dest = new IncrementalMagFreqDist(dest);
-					}
-				}
+				// update bounds
+				UncertainBoundedIncrMagFreqDist boundedDest = (UncertainBoundedIncrMagFreqDist)dest;
+				IncrementalMagFreqDist upper = expandCopy(boundedDest.getUpper(), mfd.size());
+				IncrementalMagFreqDist lower = expandCopy(boundedDest.getLower(), mfd.size());
+				EvenlyDiscretizedFunc stdDevs = expandCopy(boundedDest.getStdDevs(), mfd.size());
+				newDest = new UncertainBoundedIncrMagFreqDist(
+						newDest, lower, upper, boundedDest.getBoundType(), stdDevs);
+			} else if (dest instanceof UncertainIncrMagFreqDist) {
+				UncertainIncrMagFreqDist uncert = (UncertainIncrMagFreqDist)dest;
+				EvenlyDiscretizedFunc stdDevs = expandCopy(uncert.getStdDevs(), mfd.size());
+				newDest = new UncertainIncrMagFreqDist(newDest, stdDevs);
 			}
-			if (dest instanceof UncertainIncrMagFreqDist) {
+			dest = newDest;
+		}
+		// ensure that worked
+		Preconditions.checkState(dest.size() >= mfd.size(), "MFD size mismatch for %s between branches", type);
+		// now actually average it in
+		for (int i=0; i<mfd.size(); i++)
+			dest.add(i, weight*mfd.getY(i));
+		if (dest instanceof UncertainBoundedIncrMagFreqDist) {
+			if (mfd instanceof UncertainBoundedIncrMagFreqDist) {
+				UncertainBoundedIncrMagFreqDist boundedDest = (UncertainBoundedIncrMagFreqDist)dest;
+				UncertainBoundedIncrMagFreqDist boundedMFD = (UncertainBoundedIncrMagFreqDist)mfd;
+				Preconditions.checkState(boundedDest.getBoundType() == boundedMFD.getBoundType(),
+						"Bound type mismatch for %s", type);
+				averageInWeighted(boundedDest.getLower(), boundedMFD.getLower(), type+" LOWER", weight);
+				averageInWeighted(boundedDest.getUpper(), boundedMFD.getUpper(), type+" UPPER", weight);
+			} else {
+				// don't have bounds on this branch
 				if (mfd instanceof UncertainIncrMagFreqDist) {
-					EvenlyDiscretizedFunc destStdDevs = ((UncertainIncrMagFreqDist)dest).getStdDevs();
-					EvenlyDiscretizedFunc mfdStdDevs = ((UncertainIncrMagFreqDist)mfd).getStdDevs();
-					for (int i=0; i<mfdStdDevs.size(); i++)
-						destStdDevs.add(i, mfdStdDevs.getY(i)*weight);
+					// still have std devs, set dest to that type
+					System.err.println("WARNING: "+type+" doesn't have bounded uncertainties on all branches, "
+							+ "reverting to UncertainIncrMagFreqDist");
+					dest = new UncertainIncrMagFreqDist(dest, ((UncertainIncrMagFreqDist)dest).getStdDevs());
 				} else {
 					// revert to a regular MFD
 					System.err.println("WARNING: "+type+" doesn't have uncertainties on all branches, "
@@ -593,43 +584,55 @@ BranchAverageableModule<InversionTargetMFDs> {
 					dest = new IncrementalMagFreqDist(dest);
 				}
 			}
-			return dest;
 		}
-		
-		private static IncrementalMagFreqDist expandCopy(IncrementalMagFreqDist mfd, int newSize) {
-			Preconditions.checkState(newSize > mfd.size());
-			IncrementalMagFreqDist ret = new IncrementalMagFreqDist(mfd.getMinX(), newSize, mfd.getDelta());
-			for (int i=0; i<mfd.size(); i++)
-				ret.set(i, mfd.getY(i));
-			return ret;
-		}
-		
-		private static EvenlyDiscretizedFunc expandCopy(EvenlyDiscretizedFunc mfd, int newSize) {
-			Preconditions.checkState(newSize > mfd.size());
-			EvenlyDiscretizedFunc ret = new EvenlyDiscretizedFunc(mfd.getMinX(), newSize, mfd.getDelta());
-			for (int i=0; i<mfd.size(); i++)
-				ret.set(i, mfd.getY(i));
-			return ret;
-		}
-		
-		static void scaleToTotWeight(EvenlyDiscretizedFunc dest, double totWeight) {
-			if (dest == null)
-				return;
-			double scale = 1d/totWeight;
-			for (int i=0; i<dest.size(); i++) {
-				double val = dest.getY(i);
-				if (val != 0d)
-					dest.set(i, val*scale);
+		if (dest instanceof UncertainIncrMagFreqDist) {
+			if (mfd instanceof UncertainIncrMagFreqDist) {
+				EvenlyDiscretizedFunc destStdDevs = ((UncertainIncrMagFreqDist)dest).getStdDevs();
+				EvenlyDiscretizedFunc mfdStdDevs = ((UncertainIncrMagFreqDist)mfd).getStdDevs();
+				for (int i=0; i<mfdStdDevs.size(); i++)
+					destStdDevs.add(i, mfdStdDevs.getY(i)*weight);
+			} else {
+				// revert to a regular MFD
+				System.err.println("WARNING: "+type+" doesn't have uncertainties on all branches, "
+						+ "reverting to IncrementalMagFreqDist");
+				dest = new IncrementalMagFreqDist(dest);
 			}
-			if (dest instanceof UncertainBoundedIncrMagFreqDist) {
-				UncertainBoundedIncrMagFreqDist bounded = (UncertainBoundedIncrMagFreqDist)dest;
-				scaleToTotWeight(bounded.getLower(), totWeight);
-				scaleToTotWeight(bounded.getUpper(), totWeight);
-			}
-			if (dest instanceof UncertainIncrMagFreqDist)
-				scaleToTotWeight(((UncertainIncrMagFreqDist)dest).getStdDevs(), totWeight);
 		}
-		
+		return dest;
+	}
+	
+	private static IncrementalMagFreqDist expandCopy(IncrementalMagFreqDist mfd, int newSize) {
+		Preconditions.checkState(newSize > mfd.size());
+		IncrementalMagFreqDist ret = new IncrementalMagFreqDist(mfd.getMinX(), newSize, mfd.getDelta());
+		for (int i=0; i<mfd.size(); i++)
+			ret.set(i, mfd.getY(i));
+		return ret;
+	}
+	
+	private static EvenlyDiscretizedFunc expandCopy(EvenlyDiscretizedFunc mfd, int newSize) {
+		Preconditions.checkState(newSize > mfd.size());
+		EvenlyDiscretizedFunc ret = new EvenlyDiscretizedFunc(mfd.getMinX(), newSize, mfd.getDelta());
+		for (int i=0; i<mfd.size(); i++)
+			ret.set(i, mfd.getY(i));
+		return ret;
+	}
+	
+	static void scaleToTotWeight(EvenlyDiscretizedFunc dest, double totWeight) {
+		if (dest == null)
+			return;
+		double scale = 1d/totWeight;
+		for (int i=0; i<dest.size(); i++) {
+			double val = dest.getY(i);
+			if (val != 0d)
+				dest.set(i, val*scale);
+		}
+		if (dest instanceof UncertainBoundedIncrMagFreqDist) {
+			UncertainBoundedIncrMagFreqDist bounded = (UncertainBoundedIncrMagFreqDist)dest;
+			scaleToTotWeight(bounded.getLower(), totWeight);
+			scaleToTotWeight(bounded.getUpper(), totWeight);
+		}
+		if (dest instanceof UncertainIncrMagFreqDist)
+			scaleToTotWeight(((UncertainIncrMagFreqDist)dest).getStdDevs(), totWeight);
 	}
 
 }

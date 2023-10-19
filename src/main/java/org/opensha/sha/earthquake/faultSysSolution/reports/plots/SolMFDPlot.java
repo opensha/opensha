@@ -18,7 +18,11 @@ import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.geo.json.FeatureCollection;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -41,6 +45,8 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchRegionalMFDs.MFDType;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
+import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
@@ -224,7 +230,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 						bounded = ((UncertainBoundedIncrMagFreqDist)comp).deepClone();
 					else
 						bounded = ((UncertainIncrMagFreqDist)comp).estimateBounds(UncertaintyBoundType.ONE_SIGMA);
-					bounded.setName(bounded.getBoundType().toString());
+					bounded.setName(bounded.getBoundName());
 					
 					incrFuncs.add(bounded);
 					incrChars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f,
@@ -364,6 +370,8 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		
 		System.out.println("MFD Y-Range: "+minY+" "+maxY);
 		Range yRange = new Range(minY, maxY);
+		
+		List<Region> plottedRegions = new ArrayList<>();
 
 		List<String> lines = new ArrayList<>();
 		for (int i=0; i<plots.size(); i++) {
@@ -373,9 +381,18 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					lines.add("");
 				lines.add(getSubHeading()+" "+plot.name);
 				lines.add(topLink); lines.add("");
+				
+				if (i == 0 && plot.region == null) {
+					lines.add("This section contains MFDs for all sources included in the model. Subsequent sections "
+							+ "show MFDs for subsets of the model that lie in subregions.");
+					lines.add("");
+				}
 			}
 			TableBuilder table = MarkdownUtils.tableBuilder();
 			table.addLine("Incremental MFDs", "Cumulative MFDs");
+			
+			if (plot.region != null)
+				plottedRegions.add(plot.region);
 			
 			String prefix = "mfd_plot_"+getFileSafe(plot.name);
 			
@@ -444,6 +461,91 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			
 			lines.addAll(table.build());
 		}
+		
+		if (!plottedRegions.isEmpty()) {
+			// add regions plot
+			
+			double minLat = Double.POSITIVE_INFINITY;
+			double minLon = Double.POSITIVE_INFINITY;
+			double maxLat = Double.NEGATIVE_INFINITY;
+			double maxLon = Double.NEGATIVE_INFINITY;
+			
+			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
+				for (Location loc : sect.getFaultTrace()) {
+					minLat = Math.min(minLat, loc.getLatitude());
+					maxLat = Math.max(maxLat, loc.getLatitude());
+					minLon = Math.min(minLon, loc.getLongitude());
+					maxLon = Math.max(maxLon, loc.getLongitude());
+				}
+			}
+			
+			for (Region reg : plottedRegions) {
+				minLat = Math.min(minLat, reg.getMinLat());
+				maxLat = Math.max(maxLat, reg.getMaxLat());
+				minLon = Math.min(minLon, reg.getMinLon());
+				maxLon = Math.max(maxLon, reg.getMaxLon());
+			}
+			
+			double latSpan = maxLat - minLat;
+			double lonSpan = maxLon - minLon;
+			double span = Math.max(latSpan, lonSpan);
+			double buffer;
+			if (span > 10)
+				buffer = 0.5;
+			else if (span > 5)
+				buffer = 0.2;
+			else
+				buffer = 0.1;
+			minLat = Math.max(-90, minLat-buffer);
+			maxLat = Math.min(90, maxLat+buffer);
+			minLon = Math.max(-180, minLon-buffer);
+			maxLon = Math.min(minLon < 0 ? 180 : 360, maxLon+buffer);
+			
+			Region plotReg = new Region(new Location(minLat, minLon), new Location(maxLat, maxLon));
+			
+			GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, plotReg);
+			
+			mapMaker.plotInsetRegions(plottedRegions,
+					new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Color.BLACK), new Color(100, 100, 200), 0.1);
+			
+			mapMaker.setWriteGeoJSON(true);
+			mapMaker.setWritePDFs(true);
+			
+			mapMaker.plot(resourcesDir, "mfd_regions", "MFD Regions", lonSpan > 20 ? 1200 : 800);
+			
+			String relPrefix = relPathToResources+"/mfd_regions";
+			
+			List<Feature> features = new ArrayList<>();
+			for (Region reg : plottedRegions)
+				features.add(reg.toFeature());
+			FeatureCollection.write(new FeatureCollection(features), new File(resourcesDir, "mfd_regions_raw.geojson"));
+			
+			List<String> regLines = new ArrayList<>();
+			
+			TableBuilder linksTable = MarkdownUtils.tableBuilder().initNewLine();
+			
+			if (plottedRegions.size() > 1) {
+				// include the plot
+				regLines.add(getSubHeading()+" MFD Regions");
+				regLines.add(topLink); regLines.add("");
+				regLines.add("![Regions plot]("+relPrefix+".png)");
+			} else {
+				linksTable.addColumn("[View Map]("+relPrefix+".png)");
+				regLines.add("__MFD Regions:__");
+			}
+			
+			linksTable.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPrefix+".geojson"));
+			linksTable.addColumn("[Download GeoJSON w/ Faults]("+relPrefix+".geojson)");
+			linksTable.addColumn("[Download Raw GeoJSON]("+relPrefix+"_raw.geojson)");
+			linksTable.finalizeLine();
+			
+			regLines.add("");
+			regLines.addAll(linksTable.build());
+			regLines.add("");
+			
+			lines.addAll(0, regLines);
+		}
+		
 		return lines;
 	}
 	
@@ -618,7 +720,8 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					EvenlyDiscretizedFunc cmlFunc = gridMFD.getCumRateDistWithOffset();
 					cmlFuncs.add(cmlFunc);
 					Color myColor = avg(color, Color.WHITE);
-					PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, myColor);
+					PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(
+							PlotLineType.DASHED, regType == MFDType.GRID_ONLY ? 5f : 3f, myColor);
 					incrChars.add(pChar);
 					cmlChars.add(pChar);
 //					chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, color.brighter()));
@@ -636,7 +739,8 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					EvenlyDiscretizedFunc cmlFunc = totalMFD.getCumRateDistWithOffset();
 					cmlFuncs.add(cmlFunc);
 					Color myColor = color.darker();
-					PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, myColor);
+					PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(
+							PlotLineType.DASHED, regType == MFDType.SUM ? 5f : 3f, myColor);
 					incrChars.add(pChar);
 					cmlChars.add(pChar);
 					if (regMFDModule != null && regType == MFDType.SUM && regMFDModule.hasGridded())
@@ -651,7 +755,8 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		incrFuncs.add(mfd);
 		EvenlyDiscretizedFunc cmlFunc = mfd.getCumRateDistWithOffset();
 		cmlFuncs.add(cmlFunc);
-		PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 5f, color);
+		PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(
+				PlotLineType.SOLID, regType == null || regType == MFDType.SUPRA_ONLY ? 5f : 3f, color);
 		incrChars.add(pChar);
 		cmlChars.add(pChar);
 		
@@ -764,10 +869,10 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 	}
 	
 	// must modify code below if you change these
-	private static final double[] standardFractiles = {0d, 0.025, 0.16, 0.84, 0.975d, 1d};
-	private static final String fractileLabel = "p[0,2.5,16,84,97.5,100]";
+	public static final double[] standardFractiles = {0d, 0.025, 0.16, 0.84, 0.975d, 1d};
+	public static final String fractileLabel = "p[0,2.5,16,84,97.5,100]";
 	
-	private static List<UncertainIncrMagFreqDist> processIncrFractiles(IncrementalMagFreqDist[] incrPercentiles) {
+	public static List<UncertainIncrMagFreqDist> processIncrFractiles(IncrementalMagFreqDist[] incrPercentiles) {
 		List<UncertainIncrMagFreqDist> ret = new ArrayList<>();
 		int cnt = 0;
 		IncrementalMagFreqDist incrMin = incrPercentiles[cnt++];
@@ -791,14 +896,14 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		return ret;
 	}
 	
-	private static IncrementalMagFreqDist getAvg(IncrementalMagFreqDist lower, IncrementalMagFreqDist upper) {
+	public static IncrementalMagFreqDist getAvg(IncrementalMagFreqDist lower, IncrementalMagFreqDist upper) {
 		IncrementalMagFreqDist ret = new IncrementalMagFreqDist(lower.getMinX(), lower.size(), lower.getDelta());
 		for (int i=0; i<ret.size(); i++)
 			ret.set(i, 0.5*(lower.getY(i)+upper.getY(i)));
 		return ret;
 	}
 	
-	private static List<UncertainArbDiscFunc> processCmlFractiles(EvenlyDiscretizedFunc[] cmlPercentiles, double minX) {
+	public static List<UncertainArbDiscFunc> processCmlFractiles(EvenlyDiscretizedFunc[] cmlPercentiles, double minX) {
 		List<UncertainArbDiscFunc> ret = new ArrayList<>();
 		int cnt = 0;
 		EvenlyDiscretizedFunc cmlMin = cmlPercentiles[cnt++];

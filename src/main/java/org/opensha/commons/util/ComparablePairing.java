@@ -56,7 +56,7 @@ public class ComparablePairing<C extends Comparable<C>, E> implements Comparable
 	 */
 	public static <C extends Comparable<C>, E> List<ComparablePairing<C, E>> build(List<C> comparables, List<E> datas) {
 		Preconditions.checkArgument(comparables.size() == datas.size());
-		List<ComparablePairing<C, E>> list = Lists.newArrayList();
+		List<ComparablePairing<C, E>> list = new ArrayList<>(datas.size());
 		
 		for (int i=0; i<comparables.size(); i++) {
 			list.add(new ComparablePairing<C, E>(comparables.get(i), datas.get(i)));
@@ -71,8 +71,8 @@ public class ComparablePairing<C extends Comparable<C>, E> implements Comparable
 	 * @return
 	 */
 	public static <C extends Comparable<C>, E>  List<E> getSortedData(Map<E, C> dataCompMap) {
-		List<C> comps = new ArrayList<>();
-		List<E> datas = new ArrayList<>();
+		List<C> comps = new ArrayList<>(dataCompMap.size());
+		List<E> datas = new ArrayList<>(dataCompMap.size());
 		for (E data : dataCompMap.keySet()) {
 			datas.add(data);
 			comps.add(dataCompMap.get(data));
@@ -91,7 +91,7 @@ public class ComparablePairing<C extends Comparable<C>, E> implements Comparable
 		
 		Collections.sort(list);
 		
-		List<E> sortedDatas = Lists.newArrayList();
+		List<E> sortedDatas = new ArrayList<>(list.size());
 		for (ComparablePairing<C, E> elem : list)
 			sortedDatas.add(elem.getData());
 		

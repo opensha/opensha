@@ -1,0 +1,36 @@
+{
+  "type": "Feature",
+  "id": 3600,
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-90.17466, 36.53696],
+      [-90.18627, 36.52883],
+      [-90.28459, 36.60745],
+      [-89.84328, 36.96278],
+      [-89.73547, 37.03005],
+      [-89.49110, 37.21713],
+      [-89.27668, 37.35108],
+      [-89.18555, 37.26988],
+      [-89.42965, 37.11271],
+      [-89.75073, 36.88085],
+      [-90.17466, 36.53696]
+    ]]
+  },
+  "properties": {
+    "name": "Commerce Lineament",
+    "state": "MO",
+    "states": ["MO", "IL"],
+    "rate": "commerce-lineament.csv",
+    "strike": 44.715056,
+    "mfd-tree": [
+      { "id": "M1", "weight": 0.15, "value": { "type": "SINGLE", "m": 6.7 }},
+      { "id": "M2", "weight": 0.20, "value": { "type": "SINGLE", "m": 6.9 }},
+      { "id": "M3", "weight": 0.20, "value": { "type": "SINGLE", "m": 7.1 }},
+      { "id": "M4", "weight": 0.20, "value": { "type": "SINGLE", "m": 7.3 }},
+      { "id": "M5", "weight": 0.20, "value": { "type": "SINGLE", "m": 7.5 }},
+      { "id": "M6", "weight": 0.05, "value": { "type": "SINGLE", "m": 7.7 }}
+    ]
+  }
+}
+

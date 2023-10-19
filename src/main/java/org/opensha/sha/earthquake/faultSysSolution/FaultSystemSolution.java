@@ -454,9 +454,10 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 	private double doCalcParticRateForSect(int sectIndex, double magLow, double magHigh) {
 		double partRate=0;
+		RupMFDsModule mfds = getModule(RupMFDsModule.class);
 		for (int r : rupSet.getRupturesForSection(sectIndex)) {
 			double mag = rupSet.getMagForRup(r);
-			DiscretizedFunc mfd = getRupMagDist(r);
+			DiscretizedFunc mfd = getRupMagDist(mfds, r);
 			if (mfd == null || mfd.size() == 1) {
 				if(mag>=magLow && mag<magHigh)
 					partRate += getRateForRup(r);
@@ -514,9 +515,10 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 	private double doCalcNucleationRateForSect(int sectIndex, double magLow, double magHigh) {
 		double nucleationRate=0;
+		RupMFDsModule mfds = getModule(RupMFDsModule.class);
 		for (int r : rupSet.getRupturesForSection(sectIndex)) {
 			double mag = rupSet.getMagForRup(r);
-			DiscretizedFunc mfd = getRupMagDist(r);
+			DiscretizedFunc mfd = getRupMagDist(mfds, r);
 			if (mfd == null || mfd.size() == 1) {
 				if(mag>=magLow && mag<magHigh) {
 					double rate = getRateForRup(r);
@@ -618,10 +620,15 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return
 	 */
 	public double calcTotPaleoVisibleRateForSect(int sectIndex, PaleoProbabilityModel paleoProbModel) {
-		return calcTotPaleoVisibleRateForAllSects(paleoProbModel)[sectIndex];
+		if (paleoVisibleRatesCache != null) {
+			double[] paleoRates = paleoVisibleRatesCache.get(paleoProbModel);
+			if (paleoRates != null)
+				return paleoRates[sectIndex];
+		}
+		return doCalcTotPaleoVisibleRateForSect(sectIndex, paleoProbModel);
 	}
 	
-	public double doCalcTotPaleoVisibleRateForSect(int sectIndex, PaleoProbabilityModel paleoProbModel) {
+	private double doCalcTotPaleoVisibleRateForSect(int sectIndex, PaleoProbabilityModel paleoProbModel) {
 		double partRate=0;
 		for (int r : rupSet.getRupturesForSection(sectIndex))
 			partRate += getRateForRup(r)*paleoProbModel.getProbPaleoVisible(rupSet, r, sectIndex);
@@ -693,11 +700,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public  IncrementalMagFreqDist calcNucleationMFD_forSect(int sectIndex, double minMag, double maxMag, int numMag) {
 		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
 		List<Integer> rups = rupSet.getRupturesForSection(sectIndex);
+		RupMFDsModule mfds = getModule(RupMFDsModule.class);
 		if (rups != null) {
 			double sectArea = rupSet.getAreaForSection(sectIndex);
 			for (int r : rups) {
 				double nucleationScalar = sectArea/rupSet.getAreaForRup(r);
-				DiscretizedFunc rupMagDist = getRupMagDist(r);
+				DiscretizedFunc rupMagDist = getRupMagDist(mfds, r);
 				if (rupMagDist == null)
 					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r)*nucleationScalar, true);
 				else
@@ -734,9 +742,10 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 */
 	public IncrementalMagFreqDist calcParticipationMFD_forRups(Collection<Integer> rupIndexes, double minMag, double maxMag, int numMag) {
 		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
+		RupMFDsModule mfds = getModule(RupMFDsModule.class);
 		if (rupIndexes != null) {
 			for (int r : rupIndexes) {
-				DiscretizedFunc rupMagDist = getRupMagDist(r);
+				DiscretizedFunc rupMagDist = getRupMagDist(mfds, r);
 				if (rupMagDist == null)
 					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r), true);
 				else
@@ -760,9 +769,10 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public IncrementalMagFreqDist calcParticipationMFD_forSect(int sectIndex, double minMag, double maxMag, int numMag) {
 		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
 		List<Integer> rups = rupSet.getRupturesForSection(sectIndex);
+		RupMFDsModule mfds = getModule(RupMFDsModule.class);
 		if (rups != null) {
 			for (int r : rups) {
-				DiscretizedFunc rupMagDist = getRupMagDist(r);
+				DiscretizedFunc rupMagDist = getRupMagDist(mfds, r);
 				if (rupMagDist == null)
 					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r), true);
 				else
@@ -819,6 +829,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		double[] fractRupsInside = null;
 		if (region != null)
 			fractRupsInside = rupSet.getFractRupsInsideRegion(region, traceOnly);
+		RupMFDsModule mfds = getModule(RupMFDsModule.class);
 		for(int r=0;r<rupSet.getNumRuptures();r++) {
 			double fractInside = 1;
 			if (region != null)
@@ -826,7 +837,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 //			if (fractInside < 1)
 //				System.out.println("inside: "+fractInside+"\trate: "+rateInside+"\tID: "+r);
 			if (fractInside > 0d) {
-				DiscretizedFunc rupMagDist = getRupMagDist(r);
+				DiscretizedFunc rupMagDist = getRupMagDist(mfds, r);
 				if (rupMagDist == null)
 					mfd.addResampledMagRate(rupSet.getMagForRup(r), getRateForRup(r)*fractInside, true);
 				else
@@ -837,8 +848,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		return mfd;
 	}
 	
-	private DiscretizedFunc getRupMagDist(int rupIndex) {
-		RupMFDsModule mfds = getModule(RupMFDsModule.class);
+	private DiscretizedFunc getRupMagDist(RupMFDsModule mfds, int rupIndex) {
 		if (mfds != null)
 			return mfds.getRuptureMFD(rupIndex);
 		return null;

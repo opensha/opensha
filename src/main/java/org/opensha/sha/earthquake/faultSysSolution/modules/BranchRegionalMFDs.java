@@ -13,6 +13,7 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.SubModule;
@@ -49,7 +50,7 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 	@SuppressWarnings("unused") // for deserialization
 	private BranchRegionalMFDs() {};
 	
-	public static class Builder {
+	public static class Builder implements BranchModuleBuilder<FaultSystemSolution, BranchRegionalMFDs> {
 		
 		// oversized reference MFD that starts at M=0 and goes to M=12
 		// will be reduced to the actual magnitude range when the final module is built
@@ -71,11 +72,12 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 		private int minSupraMagIndex = Integer.MAX_VALUE;
 		private int maxMagIndex = 0;
 
-		public synchronized void process(FaultSystemSolution sol, double weight) {
-			process(sol, sol.getGridSourceProvider(), weight);
+		public synchronized void process(FaultSystemSolution sol, LogicTreeBranch<?> branch, double weight) {
+			process(sol, sol.getGridSourceProvider(), branch, weight);
 		}
 
-		public synchronized void process(FaultSystemSolution sol, GridSourceProvider gridProv, double weight) {
+		public synchronized void process(FaultSystemSolution sol, GridSourceProvider gridProv,
+				LogicTreeBranch<?> branch, double weight) {
 			RegionsOfInterest roi = sol.getRupSet().getModule(RegionsOfInterest.class);
 			processInitCheck(roi == null ? 0 : roi.getRegions().size(), gridProv != null);
 			
@@ -369,6 +371,20 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 		return sumRegionalBranchMFDs.get(regionIndex);
 	}
 	
+	public boolean hasMFDs(MFDType type) {
+		switch (type) {
+		case SUPRA_ONLY:
+			return supraTotalBranchMFDs != null;
+		case GRID_ONLY:
+			return gridTotalBranchMFDs != null;
+		case SUM:
+			return sumTotalBranchMFDs != null;
+
+		default:
+			return false;
+		}
+	}
+	
 	public IncrementalMagFreqDist[] getTotalBranchMFDs(MFDType type) {
 		switch (type) {
 		case SUPRA_ONLY:
@@ -380,6 +396,20 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 
 		default:
 			throw new IllegalStateException();
+		}
+	}
+	
+	public boolean hasRegionalBranchMFDs(MFDType type) {
+		switch (type) {
+		case SUPRA_ONLY:
+			return supraRegionalBranchMFDs != null;
+		case GRID_ONLY:
+			return gridRegionalBranchMFDs != null;
+		case SUM:
+			return sumRegionalBranchMFDs != null;
+
+		default:
+			return false;
 		}
 	}
 	

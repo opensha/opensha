@@ -84,6 +84,20 @@ SplittableRuptureSubSetModule<ClusterRuptures> {
 	 * @return
 	 */
 	public static ClusterRuptures instance(FaultSystemRupSet rupSet, RuptureConnectionSearch search) {
+		return instance(rupSet, search, true);
+	}
+
+	/**
+	 * Builds cluster ruptures for this RuptureSet. If the plausibility configuration has been set
+	 * and no splays are allowed, then they will be built assuming an ordered single strand rupture.
+	 * Otherwise, the given RuptureConnectionSearch will be used to construct ClusterRupture representations
+	 * 
+	 * @param rupSet
+	 * @param search
+	 * @param maintainOrder
+	 * @return
+	 */
+	public static ClusterRuptures instance(FaultSystemRupSet rupSet, RuptureConnectionSearch search, boolean maintainOrder) {
 		PlausibilityConfiguration config = rupSet.getModule(PlausibilityConfiguration.class);
 		System.out.println("Building ClusterRuptures for "+rupSet.getNumRuptures()+" ruptures");
 		if (config != null && config.getMaxNumSplays() == 0) {
@@ -95,7 +109,7 @@ SplittableRuptureSubSetModule<ClusterRuptures> {
 		
 		List<Future<ClusterRupture>> futures = new ArrayList<>();
 		for (int r=0; r<rupSet.getNumRuptures(); r++)
-			futures.add(exec.submit(new ClusterRupCalc(search, r)));
+			futures.add(exec.submit(new ClusterRupCalc(search, r, maintainOrder)));
 		
 		List<ClusterRupture> ruptures = new ArrayList<>();
 		
@@ -107,6 +121,17 @@ SplittableRuptureSubSetModule<ClusterRuptures> {
 				ruptures.add(future.get());
 			} catch (InterruptedException | ExecutionException e) {
 				exec.shutdown();
+				synchronized (ClusterRuptures.class) {
+					System.err.println("Failed to build rupture for "+r+", trying again with debug enabled");
+					System.err.flush();
+					System.out.flush();
+					ClusterRupCalc calc = new ClusterRupCalc(search, r, maintainOrder, true);
+					try {
+						calc.call();
+					} catch (Exception e1) {}
+					System.err.flush();
+					System.out.flush();
+				}
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 		}
@@ -121,15 +146,23 @@ SplittableRuptureSubSetModule<ClusterRuptures> {
 		
 		private RuptureConnectionSearch search;
 		private int rupIndex;
+		private boolean debug;
+		private boolean maintainOrder;
+		
+		public ClusterRupCalc(RuptureConnectionSearch search, int rupIndex, boolean maintainOrder) {
+			this(search, rupIndex, maintainOrder, false);
+		}
 
-		public ClusterRupCalc(RuptureConnectionSearch search, int rupIndex) {
+		public ClusterRupCalc(RuptureConnectionSearch search, int rupIndex, boolean maintainOrder, boolean debug) {
 			this.search = search;
 			this.rupIndex = rupIndex;
+			this.maintainOrder = maintainOrder;
+			this.debug = debug;
 		}
 
 		@Override
 		public ClusterRupture call() throws Exception {
-			ClusterRupture rupture = search.buildClusterRupture(rupIndex, true, false);
+			ClusterRupture rupture = search.buildClusterRupture(rupIndex, maintainOrder, debug);
 			
 			int numSplays = rupture.getTotalNumSplays();
 			if (numSplays > 0) {

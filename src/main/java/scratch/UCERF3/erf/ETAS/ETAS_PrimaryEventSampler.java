@@ -123,11 +123,11 @@ public class ETAS_PrimaryEventSampler {
 	
 	double trulyOffFaultGR_Corr = Double.NaN;
 	
-	String defaultSectDistForCubeCacheFilename="src/main/java/scratch/UCERF3/data/scratch/InversionSolutions/sectDistForCubeCache";
-	String defaultSectInCubeCacheFilename="src/main/java/scratch/UCERF3/data/scratch/InversionSolutions/sectInCubeCache";
-	public static final String defaultGriddedCorrFilename="src/main/java/scratch/UCERF3/data/scratch/InversionSolutions/griddedSeisCorrectionCache";
+	public static final String defaultSectDistForCubeCacheFilename="src/main/resources/scratchData/ucerf3/InversionSolutions/sectDistForCubeCache";
+	public static final String defaultSectInCubeCacheFilename="src/main/resources/scratchData/ucerf3/InversionSolutions/sectInCubeCache";
+	public static final String defaultGriddedCorrFilename="src/main/resources/scratchData/ucerf3/InversionSolutions/griddedSeisCorrectionCache";
 	
-	String defaultCubeInsidePolyCacheFilename="src/main/java/scratch/UCERF3/data/scratch/InversionSolutions/cubeInsidePolyCache";
+	public static final String defaultCubeInsidePolyCacheFilename="src/main/resources/scratchData/ucerf3/InversionSolutions/cubeInsidePolyCache";
 	
 	// these define the cubes in space
 	int numCubeDepths, numCubesPerDepth, numCubes, numParDepths, numParLocsPerDepth, numParLocs;
@@ -1066,11 +1066,19 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 //		FaultPolyMgr faultPolyMgr = rupSet.getInversionTargetMFDs().getGridSeisUtils().getPolyMgr();
 		int numGridLocs = gridSrcProvider.getGriddedRegion().getNodeCount();
 		int[] gridSeisStatus = new int[numGridLocs];
+//		System.out.println("Grid source prov is of type "+gridSrcProvider.getClass());
+//		System.out.println("faultPolyMgr is of type "+faultPolyMgr.getClass());
 		
 		int num0=0,num1=0,num2=0;
 		for(int i=0;i<numGridLocs; i++) {
 			IncrementalMagFreqDist subSeisMFD = gridSrcProvider.getMFD_SubSeisOnFault(i);
+//			System.out.println("SubSeis:\n"+subSeisMFD);
+			if (subSeisMFD != null && subSeisMFD.calcSumOfY_Vals() == 0d)
+				subSeisMFD = null;
 			IncrementalMagFreqDist trulyOffMFD = gridSrcProvider.getMFD_Unassociated(i);
+//			System.out.println("TrulyOff:\n"+trulyOffMFD);
+			if (trulyOffMFD != null && trulyOffMFD.calcSumOfY_Vals() == 0d)
+				trulyOffMFD = null;
 			double frac = faultPolyMgr.getNodeFraction(i);
 			if(subSeisMFD == null && trulyOffMFD != null) {
 				gridSeisStatus[i] = 0;	// no cubes are inside; all are truly off
@@ -1092,11 +1100,14 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 					System.out.println("Location:\t"+origGriddedRegion.getLocation(i));
 					System.out.println("subSeisMFD:\n"+subSeisMFD.toString());
 					System.out.println("trulyOffMFD:\n"+trulyOffMFD.toString());
-					throw new RuntimeException("Problem: frac ==0 || frac == 1; "+frac);
+					throw new RuntimeException("Problem fault association frac="+frac
+							+", but subSeis total rate >0 ("+(float)subSeisMFD.calcSumOfY_Vals()
+							+") and trulyOff total rate >0 ("+(float)trulyOffMFD.calcSumOfY_Vals()+")");
 				}
 			}
 			else {
-				throw new RuntimeException("Problem");
+				throw new RuntimeException("Problem for grid "+i+": subSeisMFD==null ? "+(subSeisMFD == null)
+						+", trulyOffMFD==null ? "+(trulyOffMFD == null)+", frac="+(float)frac);
 			}
 			
 //if(i == 258864-numFltSystSources) {

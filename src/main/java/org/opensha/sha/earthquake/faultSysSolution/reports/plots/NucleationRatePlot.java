@@ -13,6 +13,8 @@ import java.util.Map;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.Location;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.MarkdownUtils;
@@ -26,7 +28,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractSolutionPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
@@ -80,7 +82,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 			normMap.set(i, gridProv.getFracNormal(i));
 		}
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
 		mapMaker.setWriteGeoJSON(false);
 		mapMaker.setSectOutlineChar(null);
 		
@@ -260,27 +262,117 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		
 		lines.addAll(table.build());
 		
+		// moment rates
+		GriddedGeoDataSet gridXYZ = calcGriddedNucleationMomentRates(gridProv);
+		GriddedGeoDataSet faultXYZ = calcFaultNucleationMomentRates(gridReg, sol, faultAssoc, solNuclMFDs);
+		
+		GriddedGeoDataSet xyz = sum(gridXYZ, faultXYZ);
+		double minMoRate = Double.POSITIVE_INFINITY;
+		double maxMoRate = Double.NEGATIVE_INFINITY;
+		for (int i=0; i<xyz.size(); i++) {
+			double val = xyz.get(i);
+			if (val > 0d) {
+				minMoRate = Math.min(minMoRate, val);
+				maxMoRate = Math.max(maxMoRate, val);
+			}
+		}
+		if (minMoRate < maxMoRate) {
+			double logMaxMo = Math.ceil(Math.log10(maxMoRate));
+			double logMinMo = Math.max(logMaxMo-10d, Math.floor(Math.log10(minMoRate)));
+			
+			CPT moCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(logMinMo, logMaxMo);
+			moCPT.setNanColor(Color.WHITE);
+			
+			GriddedGeoDataSet faultGriddedRatioXYZ = new GriddedGeoDataSet(gridReg, false);
+			for (int i=0; i<xyz.size(); i++)
+				faultGriddedRatioXYZ.set(i, faultXYZ.get(i)/gridXYZ.get(i));
+			faultGriddedRatioXYZ.log10();
+			
+			CPT moRatioCPT = GMT_CPT_Files.DIVERGING_BLUE_RED_UNIFORM.instance().rescale(-1d, 1d);
+			
+			GriddedGeoDataSet logXYZ = maskZeroesAsNan(xyz);
+			logXYZ.log10();
+			gridXYZ = maskZeroesAsNan(gridXYZ);
+			gridXYZ.log10();
+			faultXYZ = maskZeroesAsNan(faultXYZ);
+			faultXYZ.log10();
+			
+			table = MarkdownUtils.tableBuilder();
+			
+			table.initNewLine();
+			table.addColumn(MarkdownUtils.boldCentered("Total Moment Rate"));
+			table.addColumn(MarkdownUtils.boldCentered("Fault/Gridded Moment Rate Ratio"));
+			table.finalizeLine();
+			
+			String prefix = "sol_nucl_moment";
+			
+			table.initNewLine();
+			mapMaker.plotXYZData(logXYZ, moCPT, "Log10 Total Moment Rate (N-m/yr)");
+			mapMaker.plot(resourcesDir, prefix, " ");
+			table.addColumn("![Map]("+relPathToResources+"/"+prefix+".png)");
+			mapMaker.plotXYZData(faultGriddedRatioXYZ, moRatioCPT, "Log10 Fault/Gridded Moment Rate Ratio");
+			mapMaker.plot(resourcesDir, prefix+"_fault_gridded_ratio", " ");
+			table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_fault_gridded_ratio.png)");
+			table.finalizeLine();
+			
+			table.initNewLine();
+			table.addColumn(MarkdownUtils.boldCentered("Fault Moment Rate"));
+			table.addColumn(MarkdownUtils.boldCentered("Gridded Moment Rate"));
+			table.finalizeLine();
+			
+			table.initNewLine();
+			mapMaker.plotXYZData(faultXYZ, moCPT, "Log10 Fault Moment Rate (N-m/yr)");
+			mapMaker.plot(resourcesDir, prefix+"_fault", " ");
+			table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_fault.png)");
+			mapMaker.plotXYZData(gridXYZ, moCPT, "Log10 Gridded Moment Rate (N-m/yr)");
+			mapMaker.plot(resourcesDir, prefix+"_gridded", " ");
+			table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_gridded.png)");
+			table.finalizeLine();
+			
+			File gridMoRatesFile = new File(resourcesDir, "gridded_moment_rates.xyz");
+			File faultMoRatesFile = new File(resourcesDir, "fault_moment_rates.xyz");
+			GriddedGeoDataSet.writeXYZFile(gridXYZ, gridMoRatesFile);
+			GriddedGeoDataSet.writeXYZFile(faultXYZ, faultMoRatesFile);
+			lines.add("");
+			lines.add("Download moment rate XYZ data: "
+					+ "[Fault moment Rates]("+relPathToResources+"/"+faultMoRatesFile.getName()+") "
+					+ "[Gridded moment Rates]("+relPathToResources+"/"+gridMoRatesFile.getName()+")");
+			lines.add("");
+			lines.add("The following table shows nucleation moment rates in each cell, as well as the ratio of fault "
+					+ "to gridded moment.");
+			lines.add("");
+			lines.addAll(table.build());
+		}
+		
 		return lines;
 	}
 	
-	private static List<IncrementalMagFreqDist> calcNuclMFDs(FaultSystemSolution sol) {
+	public static List<IncrementalMagFreqDist> calcNuclMFDs(FaultSystemSolution sol) {
 		List<IncrementalMagFreqDist> ret = new ArrayList<>();
 		FaultSystemRupSet rupSet = sol.getRupSet();
-		EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(rupSet);
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(rupSet);
 		for (int sectIndex=0; sectIndex<rupSet.getNumSections(); sectIndex++)
 			ret.add(sol.calcNucleationMFD_forSect(sectIndex, refMFD.getMinX(), refMFD.getMaxX(), refMFD.size()));
 		return ret;
 	}
 	
-	private static GriddedGeoDataSet calcGriddedNucleationRates(GridSourceProvider gridProv, double minMag) {
-		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridProv.getGriddedRegion(), false);
+	public static GriddedGeoDataSet calcGriddedNucleationRates(GridSourceProvider gridProv, double minMag) {
+		return calcGriddedNucleationRates(gridProv, gridProv.getGriddedRegion(), minMag);
+	}
+	
+	public static GriddedGeoDataSet calcGriddedNucleationRates(GridSourceProvider gridProv, GriddedRegion gridReg, double minMag) {
+		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
 		
-		// start with gridded
+		GriddedRegion provReg = gridProv.getGriddedRegion();
 		for (int i=0; i<xyz.size(); i++) {
-			IncrementalMagFreqDist mfd = gridProv.getMFD(i);
-			if (mfd != null && (float)(mfd.getMaxX()+0.5*mfd.getDelta()) >= (float)minMag) {
-				for (int j=mfd.getClosestXIndex(minMag+0.001); j<mfd.size(); j++) {
-					xyz.set(i, xyz.get(i)+mfd.getY(j));
+			Location loc = xyz.getLocation(i);
+			int provIndex = provReg.indexForLocation(loc);
+			if (provIndex >= 0) {
+				IncrementalMagFreqDist mfd = gridProv.getMFD(provIndex);
+				if (mfd != null && (float)(mfd.getMaxX()+0.5*mfd.getDelta()) >= (float)minMag) {
+					for (int j=mfd.getClosestXIndex(minMag+0.001); j<mfd.size(); j++) {
+						xyz.set(i, xyz.get(i)+mfd.getY(j));
+					}
 				}
 			}
 		}
@@ -288,7 +380,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		return xyz;
 	}
 	
-	private static GriddedGeoDataSet calcFaultNucleationRates(GriddedRegion gridReg, FaultSystemSolution sol,
+	public static GriddedGeoDataSet calcFaultNucleationRates(GriddedRegion gridReg, FaultSystemSolution sol,
 			FaultGridAssociations faultGridAssoc, List<IncrementalMagFreqDist> sectNuclMFDs, double minMag) {
 		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
 		
@@ -302,6 +394,47 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 					for (int j=mfd.getClosestXIndex(minMag+0.001); j<mfd.size(); j++) {
 						xyz.set(nodeIndex, xyz.get(nodeIndex)+mfd.getY(j)*nodeFract);
 					}
+				}
+			}
+		}
+		
+		return xyz;
+	}
+	
+	public static GriddedGeoDataSet calcGriddedNucleationMomentRates(GridSourceProvider gridProv) {
+		return calcGriddedNucleationMomentRates(gridProv, gridProv.getGriddedRegion());
+	}
+	
+	public static GriddedGeoDataSet calcGriddedNucleationMomentRates(GridSourceProvider gridProv, GriddedRegion gridReg) {
+		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
+		
+		GriddedRegion provReg = gridProv.getGriddedRegion();
+		for (int i=0; i<xyz.size(); i++) {
+			Location loc = xyz.getLocation(i);
+			int provIndex = provReg.indexForLocation(loc);
+			if (provIndex >= 0) {
+				IncrementalMagFreqDist mfd = gridProv.getMFD(provIndex);
+				if (mfd != null)
+					xyz.set(i, xyz.get(i)+mfd.getTotalMomentRate());
+			}
+		}
+		
+		return xyz;
+	}
+	
+	public static GriddedGeoDataSet calcFaultNucleationMomentRates(GriddedRegion gridReg, FaultSystemSolution sol,
+			FaultGridAssociations faultGridAssoc, List<IncrementalMagFreqDist> sectNuclMFDs) {
+		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
+		
+		// add in faults
+		for (int sectIndex=0; sectIndex<sectNuclMFDs.size(); sectIndex++) {
+			IncrementalMagFreqDist mfd = sectNuclMFDs.get(sectIndex);
+			if (mfd != null) {
+				double moment = mfd.getTotalMomentRate();
+				Map<Integer, Double> nodeFracts = faultGridAssoc.getNodeFractions(sectIndex);
+				for (int nodeIndex : nodeFracts.keySet()) {
+					double nodeFract = nodeFracts.get(nodeIndex);
+					xyz.set(nodeIndex, xyz.get(nodeIndex)+moment*nodeFract);
 				}
 			}
 		}

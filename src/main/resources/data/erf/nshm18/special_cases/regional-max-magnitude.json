@@ -1,0 +1,92 @@
+[
+  {
+    "id": 2006,
+    "name": "Sevier - Toroweap (south)",
+    "state": "AZ",
+    "magnitude": 7.5
+  },
+  {
+    "id": 2101,
+    "name": "Sangre de Cristo (north)",
+    "state": "CO",
+    "magnitude": 7.5
+  },
+  {
+    "id": 2400,
+    "name": "Alamogordo",
+    "state": "NM",
+    "magnitude": 7.5
+  },
+  {
+    "id": 2422,
+    "name": "San Andres Mountains",
+    "state": "NM",
+    "magnitude": 7.5
+  },
+  {
+    "id": 1095,
+    "name": "Railroad Valley",
+    "state": "NV",
+    "magnitude": 7.5
+  },
+  {
+    "id": 1108,
+    "name": "Shoshone Range",
+    "state": "NV",
+    "magnitude": 7.5
+  },
+  {
+    "id": 1117,
+    "name": "Toiyabe Range",
+    "state": "NV",
+    "magnitude": 7.5
+  },
+  {
+    "id": 1125,
+    "name": "Western Toiyabe Range",
+    "state": "NV",
+    "magnitude": 7.5
+  },
+  {
+    "id": 2531,
+    "name": "Santa Rosa Range",
+    "state": "OR",
+    "magnitude": 7.5
+  },
+  {
+    "id": 2535,
+    "name": "Steens",
+    "state": "OR",
+    "magnitude": 7.5
+  },
+  {
+    "id": 2540,
+    "name": "Warner Valley (east)",
+    "state": "OR",
+    "magnitude": 7.5
+  },
+  {
+    "id": 2801,
+    "name": "Devils Mountain",
+    "state": "WA",
+    "magnitude": 7.5
+  },
+  {
+    "id": 2894,
+    "name": "Southern Whidbey Island (middle, extended)",
+    "state": "WA",
+    "magnitude": 7.5
+  },
+  {
+    "id": 2895,
+    "name": "Southern Whidbey Island (north, extended)",
+    "state": "WA",
+    "magnitude": 7.5
+  },
+  {
+    "id": 2893,
+    "name": "Southern Whidbey Island (south, extended)",
+    "state": "WA",
+    "magnitude": 7.5
+  }
+]

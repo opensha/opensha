@@ -216,7 +216,7 @@ public class UCERF2_Final_StirlingGriddedSurface extends EvenlyGriddedSurfFromSi
     		//		simpleFaultData.getUpperSeismogenicDepth());
     		// replace trace Locations with depth corrected values
     		Location old = combinedFaultTrace.get(i);
-    		Location loc = new Location(
+    		Location loc =Location.backwardsCompatible(
     				old.getLatitude(), 
     				old.getLongitude(),
     				upperSeismogenicDepth);

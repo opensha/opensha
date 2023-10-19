@@ -446,7 +446,11 @@ public class RuptureConnectionSearch implements SubModule<FaultSystemRupSet> {
 		// calculate clusters (between which there may be connections
 		List<FaultSubsectionCluster> rupClusters = calcClusters(sects, debug);
 		
-		if (debug) System.out.println("\tHave "+rupClusters.size()+" clusters");
+		if (debug) {
+			System.out.println("\tHave "+rupClusters.size()+" clusters:");
+			for (FaultSubsectionCluster cluster : rupClusters)
+				System.out.println("\t\t"+cluster);
+		}
 		
 		List<Jump> jumps = calcRuptureJumps(rupClusters, debug);
 		FaultSubsectionCluster startCluster = null;

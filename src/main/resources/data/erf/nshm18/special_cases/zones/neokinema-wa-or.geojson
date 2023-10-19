@@ -1,0 +1,36 @@
+{
+  "type": "Feature",
+  "id": 3911,
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-122.63, 45.83],
+      [-122.63, 45.58],
+      [-122.38, 45.38],
+      [-122.18, 45.38],
+      [-122.18, 45.65],
+      [-122.45, 45.83],
+      [-122.63, 45.83]
+    ]]
+  },
+  "properties": {
+    "name": "Neokinema Geodetic (WA, OR)",
+    "state": "WA",
+    "states": ["WA", "OR"],
+    "rate": "neokinema-wa-or.csv",
+    "mfd-tree": [
+      {
+        "id": "M1",
+        "weight": 1.0,
+        "value": {
+          "type": "GR",
+          "a": 0.0,
+          "b": 0.8,
+          "Δm": 0.1,
+          "mMin": 6.5,
+          "mMax": 7.5
+        }
+      }
+    ]
+  }
+}

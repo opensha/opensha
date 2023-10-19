@@ -4,13 +4,17 @@ import java.io.File;
 import java.io.IOException;
 import java.lang.reflect.Type;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-import org.checkerframework.checker.units.qual.m;
-import org.opensha.commons.data.uncertainty.BoundedUncertainty;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.uncertainty.Uncertainty;
-import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
+import org.opensha.commons.geo.BorderType;
+import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.JSON_TypeAdapterBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -18,9 +22,11 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoSlipProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.SlipRateInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint.SectMappedUncertainDataConstraint;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
+import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
 import com.google.common.base.Preconditions;
-import com.google.common.collect.BiMap;
 import com.google.gson.GsonBuilder;
 
 import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
@@ -162,8 +168,7 @@ SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
 	public synchronized List<SectMappedUncertainDataConstraint> inferRatesFromSlipConstraints(boolean applySlipRateUncertainty) {
 		if (prevInferred != null && prevAppliedRateUncertainty == applySlipRateUncertainty)
 			return new ArrayList<>(prevInferred);
-		SectSlipRates targetSlipRates = rupSet.requireModule(SectSlipRates.class);
-		prevInferred = inferRatesFromSlipConstraints(targetSlipRates, paleoSlipConstraints, applySlipRateUncertainty);
+		prevInferred = inferRatesFromSlipConstraints(rupSet, paleoSlipConstraints, applySlipRateUncertainty);
 		prevAppliedRateUncertainty = applySlipRateUncertainty;
 		return new ArrayList<>(prevInferred);
 	}
@@ -177,12 +182,23 @@ SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
 	 * @return list of rate constraints inferred from average slip constraints
 	 */
 	public static List<SectMappedUncertainDataConstraint> inferRatesFromSlipConstraints(
-			SectSlipRates targetSlipRates, List<? extends SectMappedUncertainDataConstraint> paleoSlipConstraints,
+			FaultSystemRupSet rupSet, List<? extends SectMappedUncertainDataConstraint> paleoSlipConstraints,
 			boolean applySlipRateUncertainty) {
+		SectSlipRates targetSlipRates = rupSet.requireModule(SectSlipRates.class);
 		double[] slipRateStdDevs = null;
-		if (applySlipRateUncertainty)
-			slipRateStdDevs = SlipRateInversionConstraint.getSlipRateStdDevs(
-					targetSlipRates, SlipRateInversionConstraint.DEFAULT_FRACT_STD_DEV);
+		if (applySlipRateUncertainty) {
+			slipRateStdDevs = targetSlipRates.getSlipRateStdDevs();
+			for (int s=0; s<slipRateStdDevs.length; s++) {
+				FaultSection sect = rupSet.getFaultSectionData(s);
+				double slip = targetSlipRates.getSlipRate(s);
+				if (slip > 0 && sect instanceof GeoJSONFaultSection) {
+					double origFractSlip = ((GeoJSONFaultSection)sect).getProperty(
+							NSHM23_DeformationModels.ORIG_FRACT_STD_DEV_PROPERTY_NAME, Double.NaN);
+					if (origFractSlip > 0d)
+						slipRateStdDevs[s] = Math.max(slipRateStdDevs[s], slip*origFractSlip);
+				}
+			}
+		}
 		
 		List<SectMappedUncertainDataConstraint> inferred = new ArrayList<>();
 		
@@ -192,7 +208,7 @@ SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
 			// slip rate, in m/yr
 			double targetSlipRate = targetSlipRates.getSlipRate(constraint.sectionIndex);
 			// slip rate std dev, in m/yr
-			double targetSlipRateStdDev = applySlipRateUncertainty ? slipRateStdDevs[constraint.sectionIndex] : 0d;;
+			double targetSlipRateStdDev = applySlipRateUncertainty ? slipRateStdDevs[constraint.sectionIndex] : 0d;
 			
 			// average slip, in m
 			double aveSlip = constraint.bestEstimate;
@@ -330,6 +346,159 @@ SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
 		if (remapped.isEmpty())
 			return null;
 		return remapped;
+	}
+	
+	public static PaleoseismicConstraintData fromSimpleCSV(FaultSystemRupSet rupSet, CSVFile<String> csv,
+			PaleoProbabilityModel probModel) {
+		List<SectMappedUncertainDataConstraint> constraints = new ArrayList<>();
+		
+		double maxDist = 100d;
+		
+		Preconditions.checkState(csv.getNumCols() == 6, "Expected 6 columns, have %s", csv.getNumCols());
+		for (int row=1; row<csv.getNumRows(); row++) {
+			String name = csv.get(row, 0);
+			String sectStr = csv.get(row, 1);
+			int subsectionIndex = sectStr == null || sectStr.isBlank() ? -1 : Integer.parseInt(sectStr);
+			double lat = csv.getDouble(row, 2);
+			double lon = csv.getDouble(row, 3);
+			double rate = csv.getDouble(row, 4);
+			double rateStdDev = csv.getDouble(row, 5);
+			
+			Location loc = new Location(lat, lon);
+			
+			FaultSection sect;
+			
+			if (subsectionIndex < 0) {
+				// map it
+				System.out.println("Looking for nearest subsection to paleoseidmic site: "+(float)lat+", "+(float)lon);
+				sect = findMatchingSect(loc, rupSet.getFaultSectionDataList(), maxDist, maxDist, maxDist);
+				Preconditions.checkNotNull(sect, "No fault sections found within %s km of site '%s' at location %s",
+						(float)maxDist, name, loc);
+				double dist = sect.getFaultTrace().minDistToLine(loc);
+				System.out.println("\tClosest match is "+sect.getSectionId()+". "+sect.getSectionName()
+						+" ("+(float)dist+" km away)");
+				subsectionIndex = sect.getSectionId();
+			} else {
+				sect = rupSet.getFaultSectionData(subsectionIndex);
+				double dist = sect.getFaultTrace().minDistToLine(loc);
+				System.out.println("Supplied section for "+name+" is "+sect.getSectionId()+". "+sect.getSectionName()
+						+" ("+(float)dist+" km away)");
+			}
+			
+			Preconditions.checkState(rate > 0d, "Bad rate for paleo site '%s': %s", name, rate);
+			Preconditions.checkState(rateStdDev > 0d, "Bad rate std. dev. for paleo site '%s': %s", name, rateStdDev);
+			constraints.add(new SectMappedUncertainDataConstraint(name, sect.getSectionId(), sect.getName(),
+					loc, rate, new Uncertainty(rateStdDev)));
+		}
+		
+		return new PaleoseismicConstraintData(rupSet, constraints, probModel, null, null);
+	}
+	
+	// filter sections to actually check with cartesian distances
+	private static final double LOC_CHECK_DEGREE_TOLERANCE = 3d;
+	private static final double LOC_CHECK_DEGREE_TOLERANCE_SQ = LOC_CHECK_DEGREE_TOLERANCE*LOC_CHECK_DEGREE_TOLERANCE;
+	
+	/**
+	 * 
+	 * @param loc
+	 * @param subSects
+	 * @param maxDistNoneContained maximum distance to search if site not contained in the surface project of any fault
+	 * @param maxDistOtherContained maximum distance to search if site is contained by a fault, but another trace is closer
+	 * @param maxDistContained maximum distance to search to the trace of a fault whose surface projection contains this site
+	 * @return
+	 */
+	public static FaultSection findMatchingSect(Location loc, List<? extends FaultSection> subSects,
+			double maxDistNoneContained, double maxDistOtherContained, double maxDistContained) {
+		List<FaultSection> candidates = new ArrayList<>();
+		List<FaultSection> containsCandidates = new ArrayList<>();
+		
+		Map<FaultSection, Double> candidateDists = new HashMap<>();
+		
+		for (FaultSection sect : subSects) {
+			// first check cartesian distance
+			boolean candidate = false;
+			for (Location traceLoc : sect.getFaultTrace()) {
+				double latDiff = loc.getLatitude() - traceLoc.getLatitude();
+				double lonDiff = loc.getLongitude() - traceLoc.getLongitude();
+				if (latDiff*latDiff + lonDiff*lonDiff < LOC_CHECK_DEGREE_TOLERANCE_SQ) {
+					candidate = true;
+					break;
+				}
+			}
+			if (candidate) {
+				candidates.add(sect);
+				double dist = sect.getFaultTrace().minDistToLine(loc);
+				candidateDists.put(sect, dist);
+				// see if this fault contains it
+				if (sect.getAveDip() < 89d) {
+					LocationList perim = new LocationList();
+//					perim.addAll(sect.getFaultSurface(1d).getPerimeter());
+					perim.addAll(sect.getFaultSurface(1d).getEvenlyDiscritizedPerimeter());
+					if (!perim.last().equals(perim.first()))
+						perim.add(perim.first());
+					Region region = null;
+					try {
+						region = new Region(perim, BorderType.GREAT_CIRCLE);
+					} catch (Exception e) {
+						// try regular perim
+						perim = new LocationList();
+						perim.addAll(sect.getFaultSurface(1d).getPerimeter());
+						if (!perim.last().equals(perim.first()))
+							perim.add(perim.first());
+						try {
+							region = new Region(perim, BorderType.GREAT_CIRCLE);
+						} catch (Exception e1) {
+							System.err.println("WARNING: failed to create polygon for section "+sect.getSectionId()
+								+". "+sect.getSectionName()+" when searching for paleo mappings for site at "+loc);
+						}
+					}
+					if (region != null && region.contains(loc))
+						containsCandidates.add(sect);
+				}
+			}
+		}
+		
+		// find the closest of any candidate section
+		FaultSection closest = null;
+		double closestDist = Double.POSITIVE_INFINITY;
+		for (FaultSection sect : candidates) {
+			double dist = candidateDists.get(sect);
+			if (dist < closestDist) {
+				closestDist = dist;
+				closest = sect;
+			}
+		}
+		
+		if (containsCandidates.isEmpty()) {
+			// this site is not in the surface projection of any faults, return if less than the none-contained threshold
+			// this allows the offshore noyo site to match
+			if (closestDist < maxDistNoneContained)
+				return closest;
+			// no match
+			return null;
+		}
+		
+		// if we're here, then this site is contained in the surface projection of at least 1 fault
+		
+		// first see if it's within the inner threshold of any fault, regardless of if it is contained
+		if (closestDist < maxDistOtherContained)
+			return closest;
+		
+		// see if any of the faults containing it are close enough
+		FaultSection closestContaining = null;
+		double closestContainingDist = Double.POSITIVE_INFINITY;
+		for (FaultSection sect : containsCandidates) {
+			double dist = candidateDists.get(sect);
+			if (dist < closestContainingDist) {
+				closestContainingDist = dist;
+				closestContaining = sect;
+			}
+		}
+		
+		if (closestContainingDist < maxDistContained)
+			return closestContaining;
+		// no match
+		return null;
 	}
 
 }

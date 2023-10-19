@@ -23,6 +23,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump.UniqueDistJump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.GenericJumpProbCalcAdapter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureTreeNavigator;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -84,7 +85,7 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 	protected transient FaultSystemRupSet rupSet;
 	private transient Map<UniqueDistJump, List<Integer>> jumpRupsMap;
 	
-	@JsonAdapter(ProbCalcAdapter.class)
+	@JsonAdapter(GenericJumpProbCalcAdapter.class)
 	private JumpProbabilityCalc jumpProbCalc;
 
 	protected JumpProbabilityConstraint(String name, String shortName, double weight, boolean inequality,
@@ -261,45 +262,6 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 	public void setRuptureSet(FaultSystemRupSet rupSet) {
 		rupSet.requireModule(ClusterRuptures.class);
 		this.rupSet = rupSet;
-	}
-	
-	private static class ProbCalcAdapter extends TypeAdapter<JumpProbabilityCalc> {
-		
-		Gson gson = new Gson();
-
-		@Override
-		public void write(JsonWriter out, JumpProbabilityCalc value) throws IOException {
-			// TODO Auto-generated method stub
-			out.beginObject();
-
-			out.name("type").value(value.getClass().getName());
-			out.name("data");
-			gson.toJson(value, value.getClass(), out);
-
-			out.endObject();
-		}
-
-		@SuppressWarnings("unchecked")
-		@Override
-		public JumpProbabilityCalc read(JsonReader in) throws IOException {
-			Class<? extends JumpProbabilityCalc> type = null;
-
-			in.beginObject();
-
-			Preconditions.checkState(in.nextName().equals("type"), "JSON 'type' object must be first");
-			try {
-				type = (Class<? extends JumpProbabilityCalc>) Class.forName(in.nextString());
-			} catch (ClassNotFoundException | ClassCastException e) {
-				throw ExceptionUtils.asRuntimeException(e);
-			}
-
-			Preconditions.checkState(in.nextName().equals("data"), "JSON 'data' object must be second");
-			JumpProbabilityCalc model = gson.fromJson(in, type);
-
-			in.endObject();
-			return model;
-		}
-		
 	}
 	
 	/**

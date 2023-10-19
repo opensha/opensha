@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -96,7 +97,22 @@ public class ConnectivityCluster implements Comparable<ConnectivityCluster> {
 	 * @return
 	 */
 	public static List<ConnectivityCluster> build(FaultSystemRupSet rupSet) {
-		return build(rupSet, null);
+		return doBuild(rupSet, null);
+	}
+
+	/**
+	 * Builds a list of {@link ConnectivityCluster} instances for the given rupture set, using only ruptures that have
+	 * nonzero rates in the solution. This list will not be initially sorted
+	 * @param sol
+	 * @return
+	 */
+	public static List<ConnectivityCluster> buildNonzeroRateClusters(FaultSystemSolution sol) {
+		HashSet<Integer> exclusionIndexes = new HashSet<>();
+		double[] rates = sol.getRateForAllRups();
+		for (int r=0; r<rates.length; r++)
+			if (rates[r] == 0d)
+				exclusionIndexes.add(r);
+		return doBuild(sol.getRupSet(), exclusionIndexes);
 	}
 
 	/**
@@ -107,21 +123,29 @@ public class ConnectivityCluster implements Comparable<ConnectivityCluster> {
 	 * @return
 	 */
 	public static List<ConnectivityCluster> build(FaultSystemRupSet rupSet, BinaryRuptureProbabilityCalc rupExclusionModel) {
+		HashSet<Integer> exclusionIndexes = null;
+		if (rupExclusionModel != null) {
+			ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+			exclusionIndexes = new HashSet<>();
+			for (int r=0; r<rupSet.getNumRuptures(); r++) {
+				if (rupExclusionModel != null && !rupExclusionModel.isRupAllowed(cRups.get(r), false)) {
+					exclusionIndexes.add(r);
+					continue;
+				}
+			}
+		}
+		
+		return doBuild(rupSet, exclusionIndexes);
+	}
+	
+	private static List<ConnectivityCluster> doBuild(FaultSystemRupSet rupSet, HashSet<Integer> exclusionIndexes) {
 		List<ConnectivityCluster> clusters = new ArrayList<>();
 		boolean[] sectsAssigned = new boolean[rupSet.getNumSections()];
 		
 		boolean[][] sectCorups = new boolean[rupSet.getNumSections()][rupSet.getNumSections()];
 		
-		ClusterRuptures cRups = null;
-		HashSet<Integer> exclusionIndexes = null;
-		if (rupExclusionModel != null) {
-			cRups = rupSet.requireModule(ClusterRuptures.class);
-			exclusionIndexes = new HashSet<>();
-		}
-		
 		for (int r=0; r<rupSet.getNumRuptures(); r++) {
-			if (rupExclusionModel != null && !rupExclusionModel.isRupAllowed(cRups.get(r), false)) {
-				exclusionIndexes.add(r);
+			if (exclusionIndexes != null && exclusionIndexes.contains(r)) {
 				continue;
 			}
 			List<Integer> sects = rupSet.getSectionsIndicesForRup(r);

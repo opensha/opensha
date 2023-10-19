@@ -11,6 +11,7 @@ import java.util.List;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -64,10 +65,24 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 			magPrefixes.add("m6");
 		}
 		
+		if (maxMag > 6.5d && minMag <= 6.5d && maxMag < 9d) {
+			// intermediates only if we don't have M9s
+			minMags.add(6.5d);
+			magLabels.add("M≥6.5");
+			magPrefixes.add("m6p5");
+		}
+		
 		if (maxMag > 7d) {
 			minMags.add(7d);
 			magLabels.add("M≥7");
 			magPrefixes.add("m7");
+		}
+		
+		if (maxMag > 7.5d && minMag <= 7.5d && maxMag < 9d) {
+			// intermediates only if we don't have M9s
+			minMags.add(7.5d);
+			magLabels.add("M≥7.5");
+			magPrefixes.add("m7p5");
 		}
 		
 		if (maxMag > 8d) {
@@ -82,10 +97,10 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 			magPrefixes.add("m9");
 		}
 		
-		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-5, 0);
+		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-8, -1);
 		cpt.setNanColor(Color.GRAY);
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
 		mapMaker.setWriteGeoJSON(true);
 		mapMaker.setFillSurfaces(fillSurfaces);
 		
@@ -204,7 +219,18 @@ public class ParticipationRatePlot extends AbstractSolutionPlot implements Solid
 			}
 		}
 		
-		return table.build();
+		List<String> lines = new ArrayList<>();
+		
+		lines.add("The rate at which each fault section participates in events in the listed magnitude range. "
+				+ "Maps in the left column give rates above various magnitude thresholds, and in the right column "
+				+ "rates between the given threshold and the next threshold level.");
+		lines.add("");
+		lines.add("Rates are plotted on a log scale. Gray values mean that the rate is zero, and blue means that it is "
+				+ "at or below the minimum plotted rate.");
+		lines.add("");
+		lines.addAll(table.build());
+		
+		return lines;
 	}
 	
 	private double[] log10(double[] vals) {

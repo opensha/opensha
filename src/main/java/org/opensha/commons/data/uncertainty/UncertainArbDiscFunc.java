@@ -36,6 +36,8 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 	private UncertaintyBoundType boundType;
 	private UnmodifiableDiscrFunc stdDevs;
 	
+	private String boundName;
+	
 	public static UncertainArbDiscFunc forStdDev(DiscretizedFunc meanFunc, double stdDev, UncertaintyBoundType boundType,
 			boolean allowNegative) {
 		Preconditions.checkState(stdDev >= 0d);
@@ -174,6 +176,29 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 	public UncertaintyBoundType getBoundType() {
 		return this.boundType;
 	}
+	
+	@Override
+	public String getBoundName() {
+		if (boundName == null)
+			return getDefaultBoundName();
+		return boundName;
+	}
+
+	@Override
+	public void setBoundName(String boundName) {
+		this.boundName = boundName;
+	}
+	
+	@Override
+	public UncertainArbDiscFunc deepClone() {
+		UncertainArbDiscFunc ret;
+		if (this.stdDevs == null)
+			ret = new UncertainArbDiscFunc(this.func, lowerFunc.deepClone(), upperFunc.deepClone(), boundType);
+		else
+			ret = new UncertainArbDiscFunc(this.func, lowerFunc.deepClone(), upperFunc.deepClone(), boundType, stdDevs.deepClone());
+		ret.boundName = boundName;
+		return ret;
+	}
 
 	public static class Adapter extends DiscretizedFunc.AbstractAdapter<UncertainArbDiscFunc> {
 		
@@ -204,6 +229,9 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 			
 			if (xy.boundType != null)
 				out.name("boundType").value(xy.boundType.name());
+			
+			if (xy.boundName != null)
+				out.name("boundName").value(xy.boundName);
 			
 			if (xy.stdDevs != null) {
 				out.name("stdDevs");
@@ -312,6 +340,18 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 					@Override
 					public void accept(UncertainArbDiscFunc t) {
 						t.boundType = boundType;
+					}
+				};
+			}
+			if (name.equals("boundName")) {
+				if (in.peek() == JsonToken.NULL)
+					return null;
+				String boundName = in.nextString();
+				return new Consumer<UncertainArbDiscFunc>() {
+
+					@Override
+					public void accept(UncertainArbDiscFunc t) {
+						t.boundName = boundName;
 					}
 				};
 			}

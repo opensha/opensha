@@ -35,13 +35,77 @@ public class GriddedGeoDataSet extends AbstractGeoDataSet {
 	 */
 	private static final long serialVersionUID = 1L;
 	
-	private GriddedRegion region;
-	double[] values;
+	protected GriddedRegion region;
+	private double[] values;
+	
+	public GriddedGeoDataSet(GriddedRegion region) {
+		this(region, false);
+	}
 	
 	public GriddedGeoDataSet(GriddedRegion region, boolean latitudeX) {
 		super(latitudeX);
 		this.region = region;
 		values = new double[region.getNodeCount()];
+	}
+	
+	private GriddedGeoDataSet(boolean latitudeX) {
+		super(latitudeX);
+	}
+	
+	public static class FloatData extends GriddedGeoDataSet {
+		
+		private float[] values;
+		
+		public FloatData(GriddedRegion region, boolean latitudeX) {
+			super(latitudeX);
+			this.region = region;
+			values = new float[region.getNodeCount()];
+		}
+		
+		public double[] getValues() {
+			double[] ret = new double[values.length];
+			for (int i=0; i<ret.length; i++)
+				ret[i] = values[i];
+			return ret;
+		}
+
+		@Override
+		public void set(Location loc, double value) {
+			int index = indexOf(loc);
+			if (index < 0)
+				throw new InvalidRangeException("point must exist in the gridded region!");
+			values[index] = (float)value;
+		}
+
+		@Override
+		public void set(int index, double z) {
+			if (index < 0)
+				throw new InvalidRangeException("point must exist in the gridded region!");
+			values[index] = (float)z;
+		}
+
+		public void set(Location loc, float value) {
+			int index = indexOf(loc);
+			if (index < 0)
+				throw new InvalidRangeException("point must exist in the gridded region!");
+			values[index] = value;
+		}
+
+		public void set(int index, float z) {
+			if (index < 0)
+				throw new InvalidRangeException("point must exist in the gridded region!");
+			values[index] = (float)z;
+		}
+
+		@Override
+		public double get(int index) {
+			return values[index];
+		}
+
+		@Override
+		public double get(Location loc) {
+			return values[indexOf(loc)];
+		}
 	}
 	
 	public double[] getValues() {

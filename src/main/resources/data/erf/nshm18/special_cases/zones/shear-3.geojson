@@ -1,0 +1,34 @@
+{
+  "type": "Feature",
+  "id": 3902,
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-119.7, 40.15],
+      [-119.999094218, 39.918443186],
+      [-119.996, 40.5217209302],
+      [-119.7, 40.15]
+    ]]
+  },
+  "properties": {
+    "name": "UCERF2 Shear Zone 3",
+    "state": "NV",
+    "states": ["NV"],
+    "rate": "shear-3.csv",
+    "strike": 335.0,
+    "mfd-tree": [
+      { 
+        "id": "M1",
+        "weight": 1.0,
+        "value": {
+          "type": "GR",
+          "a": 0.0,
+          "b": 0.8,
+          "Δm": 0.1,
+          "mMin": 6.5,
+          "mMax": 7.6
+        }
+      }
+    ]
+  }
+}

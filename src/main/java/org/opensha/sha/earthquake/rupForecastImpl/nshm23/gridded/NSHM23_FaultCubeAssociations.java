@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -17,17 +16,15 @@ import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
-import org.opensha.commons.geo.BorderType;
+import org.opensha.commons.geo.CubedGriddedRegion;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
-import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
-import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -35,9 +32,6 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.ImmutableTable;
 
 /**
  * This class handles aassociations between cubes and faults, and then aggregates those cube associations to grid nodes.
@@ -45,19 +39,17 @@ import com.google.common.collect.ImmutableTable;
  * @author kevin
  *
  */
-public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, ArchivableModule {
+public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, ArchivableModule {
 	
 	private static final boolean D = false;
 	
 	/*
 	 * Inputs
 	 */
-	private FaultSystemRupSet rupSet;
+	private List<? extends FaultSection> subSects;
 	private CubedGriddedRegion cgr;
 	private GriddedRegion griddedRegion;
 	private double maxFaultNuclDist;
-	
-	private List<NSHM23_FaultCubeAssociations> regionalAssociations;
 	
 	/*
 	 * Cube outputs
@@ -66,28 +58,29 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 	private int[][] sectsAtCubes;
 	// for each cube, an array of mapped section distance-fraction wts (where the wts represent the fraction of
 	// seismicity assigned to the fault section below the min seismo mag), in the same order as sectsAtCubes
-	private double[][] sectDistWeightsAtCubes;
+	private double[][] sectOrigDistWeightsAtCubes;
+	// same as sectOrigDistWeightsAtCubes, but scaled to account for other faults also being mapped to individual cubes
+	private double[][] sectScaledDistWeightsAtCubes;
+	// this is the total wt for each section summed from sectOrigDistWeightsAtCubes, not scaled for overlap
+	private double[] totOrigDistWtsAtCubesForSectArray;
 	// this is the total wt for each section summed from sectDistWeightsAtCubes (divide the wt directly above
 	// by this value to get the nucleation fraction for the section in the associated cube) 
-	private double[] totDistWtsAtCubesForSectArray;
+	private double[] totScaledDistWtsAtCubesForSectArray;
+	// fraction of section nucleation (after being spread to corresponding cubes) in the region
+	private double[] fractSectsInRegion;
 	
 	/*
 	 * Grid cell outputs
 	 */
-	private ImmutableSet<Integer> sectIndices;
-	
-	private ImmutableMap<Integer, Double> nodeExtents;
-	
-	// both are Table<SubSectionID, NodeIndex, Value>
-	//
-	// the percentage of each node spanned by each fault sub-section
-	private ImmutableTable<Integer, Integer, Double> nodeInSectPartic;
-	// same as above, scaled with percentage scaled to account for
-	// multiple overlapping sub-sections
-	private ImmutableTable<Integer, Integer, Double> sectInNodePartic;
+	private CubeToGridNodeAggregator cubeGridAggregator;
 
 	public NSHM23_FaultCubeAssociations(FaultSystemRupSet rupSet, CubedGriddedRegion cgr, double maxFaultNuclDist) {
-		this.rupSet = rupSet;
+		this(rupSet.getFaultSectionDataList(), cgr, maxFaultNuclDist);
+	}
+
+	public NSHM23_FaultCubeAssociations(List<? extends FaultSection> subSects, CubedGriddedRegion cgr, double maxFaultNuclDist) {
+		validateSubSects(subSects);
+		this.subSects = subSects;
 		this.cgr = cgr;
 		this.maxFaultNuclDist = maxFaultNuclDist;
 		this.griddedRegion = cgr.getGriddedRegion();
@@ -95,109 +88,13 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 		// this calculates sectsAtCubes, sectDistWeightsAtCubes, and totDistWtsAtCubesForSectArray
 		cacheCubeSectMappings();
 		
-		aggregateToGridNodes();
+		cubeGridAggregator = new CubeToGridNodeAggregator(this);
 	}
 	
-	public NSHM23_FaultCubeAssociations(FaultSystemRupSet rupSet, CubedGriddedRegion cgr,
-			List<NSHM23_FaultCubeAssociations> regionalAssociations) {
-		this.rupSet = rupSet;
-		this.cgr = cgr;
-		this.griddedRegion = cgr.getGriddedRegion();
-		
-		sectsAtCubes = new int[cgr.getNumCubes()][];
-		sectDistWeightsAtCubes = new double[sectsAtCubes.length][];
-		
-		int numMapped = 0;
-		int nodeCount = griddedRegion.getNodeCount();
-		for (int gridIndex=0; gridIndex<nodeCount; gridIndex++) {
-			Location loc = griddedRegion.locationForIndex(gridIndex);
-			NSHM23_FaultCubeAssociations match = null;
-			int matchIndex = -1;
-			for (NSHM23_FaultCubeAssociations prov : regionalAssociations) {
-				int myIndex = prov.griddedRegion.indexForLocation(loc);
-				if (myIndex >= 0) {
-					Preconditions.checkState(match == null,
-							"TODO: don't yet support grid locations that map to multiple sub-regions");
-					match = prov;
-					matchIndex = myIndex;
-				}
-			}
-			if (match != null) {
-				// map all of the cubes for this grid node
-				numMapped++;
-				int[] newCubeIndexes = cgr.getCubeIndicesForGridCell(gridIndex);
-				int[] matchCubeIndexes = match.cgr.getCubeIndicesForGridCell(matchIndex);
-				Preconditions.checkState(newCubeIndexes.length == matchCubeIndexes.length);
-				for (int i=0; i<matchCubeIndexes.length; i++) {
-					sectsAtCubes[newCubeIndexes[i]] = match.sectsAtCubes[matchCubeIndexes[i]];
-					sectDistWeightsAtCubes[newCubeIndexes[i]] = match.sectDistWeightsAtCubes[matchCubeIndexes[i]];
-				}
-			} else {
-				// do nothing
-			}
-		}
-		System.out.println("Mapped "+numMapped+"/"+nodeCount+" model region fault associations locations to sub-region grid locations");
-		totDistWtsAtCubesForSectArray = new double[rupSet.getNumSections()];
-		for (NSHM23_FaultCubeAssociations regional : regionalAssociations)
-			for (int s=0; s<totDistWtsAtCubesForSectArray.length; s++)
-				totDistWtsAtCubesForSectArray[s] += regional.totDistWtsAtCubesForSectArray[s];
-		
-		this.regionalAssociations = regionalAssociations;
-		
-		aggregateToGridNodes();
-	}
-	
-	private void aggregateToGridNodes() {
-		// now collapse them to grid nodes
-		HashSet<Integer> sectIndices = new HashSet<>();
-		ImmutableMap.Builder<Integer, Double> nodeExtentsBuilder = ImmutableMap.builder();
-		ImmutableTable.Builder<Integer, Integer, Double> nodeInSectParticBuilder = ImmutableTable.builder();
-		ImmutableTable.Builder<Integer, Integer, Double> sectInNodeParticBuilder = ImmutableTable.builder();
-
-		for (int nodeIndex=0; nodeIndex<griddedRegion.getNodeCount(); nodeIndex++) {
-			int numCubes = 0;
-			Map<Integer, Double> sectFracts = null;
-			Map<Integer, Double> sectOrigFracts = null;
-			for (int cubeIndex : cgr.getCubeIndicesForGridCell(nodeIndex)) {
-				numCubes++;
-				int[] sects = sectsAtCubes[cubeIndex];
-				if (sects != null) {
-					if (sectFracts == null) {
-						sectFracts = new HashMap<>();
-						sectOrigFracts = new HashMap<>();
-					}
-					double[] sectDistWts = sectDistWeightsAtCubes[cubeIndex];
-					for (int s=0; s<sects.length; s++) {
-						sectIndices.add(sects[s]);
-						Double prevWt = sectFracts.get(sects[s]);
-						Double prevOrigWt = sectOrigFracts.get(sects[s]);
-						if (prevWt == null) {
-							prevWt = 0d;
-							prevOrigWt = 0d;
-						}
-						sectFracts.put(sects[s], prevWt + sectDistWts[s]);
-						sectOrigFracts.put(sects[s], prevOrigWt + sectDistWts[s]/totDistWtsAtCubesForSectArray[sects[s]]);
-					}
-				}
-			}
-			if (sectFracts != null) {
-				double sumNodeWeight = 0d;
-				for (Integer sectIndex : sectFracts.keySet()) {
-					// this weight is scaled to account for overlap
-					double sectWeight = sectFracts.get(sectIndex)/(double)numCubes;
-					sumNodeWeight += sectWeight;
-					sectInNodeParticBuilder.put(sectIndex, nodeIndex, sectWeight);
-					double origWeight = sectOrigFracts.get(sectIndex);
-					nodeInSectParticBuilder.put(sectIndex, nodeIndex, origWeight);
-				}
-				nodeExtentsBuilder.put(nodeIndex, sumNodeWeight);
-			}
-		}
-
-		this.sectIndices = ImmutableSet.copyOf(sectIndices);
-		this.nodeExtents = nodeExtentsBuilder.build();
-		this.nodeInSectPartic = nodeInSectParticBuilder.build();
-		this.sectInNodePartic = sectInNodeParticBuilder.build();
+	private static void validateSubSects(List<? extends FaultSection> subSects) {
+		Preconditions.checkState(!subSects.isEmpty(), "No subsections supplied");
+		for (int s=0; s<subSects.size(); s++)
+			Preconditions.checkState(subSects.get(s).getSectionId() == s, "Subsections not in order or not 0-indexed");
 	}
 	
 	/*
@@ -208,31 +105,34 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 		return cgr;
 	}
 	
-	/**
-	 * @param cubeIndex
-	 * @return sections indexes assocated with this cube, or null if none
-	 */
+	@Override
 	public int[] getSectsAtCube(int cubeIndex) {
 		return sectsAtCubes[cubeIndex];
 	}
 	
-	/**
-	 * @param cubeIndex
-	 * @return section distance-fraction weights for this cube, returned in the same order as
-	 * {@link #getSectsAtCube(int)}, or null if none.
-	 */
-	public double[] getSectDistWeightsAtCube(int cubeIndex) {
-		return sectDistWeightsAtCubes[cubeIndex];
+	@Override
+	public double[] getScaledSectDistWeightsAtCube(int cubeIndex) {
+		return sectScaledDistWeightsAtCubes[cubeIndex];
 	}
 	
-	/**
-	 * 
-	 * @param sectIndex
-	 * @return the total weight for each section summed across all cubes, after accounting for any overlapping
-	 * sections
-	 */
-	public double getTotalDistWtAtCubesForSect(int sectIndex) {
-		return totDistWtsAtCubesForSectArray[sectIndex];
+	@Override
+	public double getTotalScaledDistWtAtCubesForSect(int sectIndex) {
+		return totScaledDistWtsAtCubesForSectArray[sectIndex];
+	}
+
+	@Override
+	public double[] getOrigSectDistWeightsAtCube(int cubeIndex) {
+		return sectOrigDistWeightsAtCubes[cubeIndex];
+	}
+
+	@Override
+	public double getTotalOrigDistWtAtCubesForSect(int sectIndex) {
+		return totOrigDistWtsAtCubesForSectArray[sectIndex];
+	}
+	
+	@Override
+	public double getSectionFractInRegion(int sectIndex) {
+		return fractSectsInRegion[sectIndex];
 	}
 
 	@Override
@@ -246,28 +146,32 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 
 	@Override
 	public Map<Integer, Double> getNodeExtents() {
-		return ImmutableMap.copyOf(nodeExtents);
+		return cubeGridAggregator.getNodeExtents();
 	}
 	
 	@Override
 	public double getNodeFraction(int nodeIdx) {
-		Double fraction = nodeExtents.get(nodeIdx);
-		return (fraction == null) ? 0.0 : fraction;
+		return cubeGridAggregator.getNodeFraction(nodeIdx);
 	}
 	
 	@Override
 	public Map<Integer, Double> getScaledNodeFractions(int sectIdx) {
-		return sectInNodePartic.row(sectIdx);
+		return cubeGridAggregator.getScaledNodeFractions(sectIdx);
+	}
+	
+	@Override
+	public Map<Integer, Double> getScaledSectFracsOnNode(int nodeIdx) {
+		return cubeGridAggregator.getScaledSectFracsOnNode(nodeIdx);
 	}
 	
 	@Override
 	public Map<Integer, Double> getNodeFractions(int sectIdx) {
-		return nodeInSectPartic.row(sectIdx);
+		return cubeGridAggregator.getNodeFractions(sectIdx);
 	}
 	
 	@Override
 	public Map<Integer, Double> getSectionFracsOnNode(int nodeIdx) {
-		return nodeInSectPartic.column(nodeIdx);
+		return cubeGridAggregator.getSectionFracsOnNode(nodeIdx);
 	}
 
 	@Override
@@ -277,7 +181,7 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 
 	@Override
 	public Collection<Integer> sectIndices() {
-		return sectIndices;
+		return cubeGridAggregator.sectIndices();
 	}
 	
 //	/**
@@ -318,8 +222,8 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 		ExecutorService exec = Executors.newFixedThreadPool(FaultSysTools.defaultNumThreads());
 		
 		Stopwatch watch = Stopwatch.createStarted();
-		List<Future<SectCubeMapper>> futures = new ArrayList<>(rupSet.getNumSections());
-		for (int s=0; s<rupSet.getNumSections(); s++)
+		List<Future<SectCubeMapper>> futures = new ArrayList<>(subSects.size());
+		for (int s=0; s<subSects.size(); s++)
 			futures.add(exec.submit(new SectCubeMapper(s)));
 		
 		System.out.println("Waiting on "+futures.size()+" fault section to cube mapping futures");
@@ -330,7 +234,9 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 		sectsAtCubes = new int[cgr.getNumCubes()][];
 		// this is only needed temporarily
 		double[][] sectDistsAtCubes = new double[cgr.getNumCubes()][];
-		totDistWtsAtCubesForSectArray = new double[rupSet.getNumSections()];
+		totOrigDistWtsAtCubesForSectArray = new double[subSects.size()];
+		totScaledDistWtsAtCubesForSectArray = new double[subSects.size()];
+		fractSectsInRegion = new double[subSects.size()];
 		
 		for (Future<SectCubeMapper> future : futures) {
 			try {
@@ -352,7 +258,9 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 							sectDistsAtCubes[mappedCube][prevLen] = distance;
 						}
 					}
-					totDistWtsAtCubesForSectArray[mapper.sectIndex] = mapper.totWeight;
+					totScaledDistWtsAtCubesForSectArray[mapper.sectIndex] = mapper.totWeight;
+					totOrigDistWtsAtCubesForSectArray[mapper.sectIndex] = mapper.totWeight;
+					fractSectsInRegion[mapper.sectIndex] = mapper.fractInRegion;
 				}
 			} catch (InterruptedException | ExecutionException e) {
 				exec.shutdown();
@@ -367,7 +275,8 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 		
 		watch.reset().start();
 		// now convert to weights
-		sectDistWeightsAtCubes = new double[cgr.getNumCubes()][];
+		sectOrigDistWeightsAtCubes = new double[cgr.getNumCubes()][];
+		sectScaledDistWeightsAtCubes = new double[cgr.getNumCubes()][];
 		
 		// could easily parallelize this, but it's quite fast
 		for(int c=0;c<cgr.getNumCubes();c++) {
@@ -385,15 +294,20 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 				weights[s] = getDistWt(dist);
 				wtSum += weights[s];
 			}
+			double[] scaledWeights;
 			if(wtSum>1.0) {
+				scaledWeights = new double[numSect];
 				for(int s=0;s<numSect;s++) {
-					double prevWeight = weights[s];
-					weights[s] = prevWeight/wtSum;
-					totDistWtsAtCubesForSectArray[sects[s]] += (weights[s]-prevWeight); // reduce this for the wt reduction here
+					scaledWeights[s] = weights[s]/wtSum;
+					// reduce this to still track sum of scaled weights
+					totScaledDistWtsAtCubesForSectArray[sects[s]] += (scaledWeights[s]-weights[s]);
 				}
+			} else {
+				scaledWeights = weights;
 			}
 			
-			sectDistWeightsAtCubes[c] = weights;
+			sectOrigDistWeightsAtCubes[c] = weights;
+			sectScaledDistWeightsAtCubes[c] = scaledWeights;
 		}
 		
 		watch.stop();
@@ -412,6 +326,7 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 		private int sectIndex;
 		private double totWeight;
 		private Map<Integer, Float> mappedCubeDistances;
+		private double fractInRegion;
 		
 		public SectCubeMapper(int sectIndex) {
 			this.sectIndex = sectIndex;
@@ -419,7 +334,7 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 
 		@Override
 		public SectCubeMapper call() throws Exception {
-			FaultSection fltSection = rupSet.getFaultSectionData(sectIndex);
+			FaultSection fltSection = subSects.get(sectIndex);
 			
 			// first see if we can skip this section
 			boolean skip = true;
@@ -499,10 +414,11 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 				}
 			}
 
-			float ratio = (float)testWt/(float)totWeight;
-			if(ratio != 1.0) {
+			fractInRegion = testWt/totWeight;
+			if((float)fractInRegion != 1.0) {
 //				sectionsThatNucleateOutsideRegionList.add(sectIndex);
-				if(D) System.out.println((1f-ratio)+" of "+rupSet.getFaultSectionData(sectIndex).getName()+ " nucleates outside the region");
+				if(D) System.out.println((float)(1d-fractInRegion)+" of "+sectIndex+". "
+						+subSects.get(sectIndex).getName()+ " nucleates outside the region");
 			}
 			
 			if (mappedCubeDistances.isEmpty())
@@ -514,22 +430,15 @@ public class NSHM23_FaultCubeAssociations implements FaultGridAssociations, Arch
 	public double getDistWt(double dist) {
 		return (maxFaultNuclDist-dist)/maxFaultNuclDist;
 	}
-	
-	/**
-	 * @return List of regional associations if this represents multiple regions stitched together, else null
-	 */
-	public List<NSHM23_FaultCubeAssociations> getRegionalAssociations() {
-		return regionalAssociations;
-	}
 
 	@Override
 	public Class<? extends ArchivableModule> getLoadingClass() {
-		return FaultGridAssociations.Precomputed.class;
+		return FaultCubeAssociations.Precomputed.class;
 	}
 
 	@Override
 	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-		new FaultGridAssociations.Precomputed(this).writeToArchive(zout, entryPrefix);
+		new FaultCubeAssociations.Precomputed(this).writeToArchive(zout, entryPrefix);
 	}
 
 	@Override

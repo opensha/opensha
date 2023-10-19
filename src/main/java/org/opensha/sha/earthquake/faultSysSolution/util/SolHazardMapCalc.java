@@ -50,7 +50,10 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
+import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
+import org.opensha.sha.earthquake.param.AseismicityAreaReductionParam;
+import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
@@ -105,20 +108,31 @@ public class SolHazardMapCalc {
 	private double maxSiteDist = 200d;
 	private double skipMaxSiteDist = 300d;
 	
+	// ERF params
+	private IncludeBackgroundOption backSeisOption;
+	private BackgroundRupType backSeisType;
+	private boolean applyAftershockFilter;
+	private boolean aseisReducesArea = true;
+	
+	public static ReturnPeriods[] MAP_RPS = { ReturnPeriods.TWO_IN_50, ReturnPeriods.TEN_IN_50 };
+	
 	public enum ReturnPeriods {
 		TWO_IN_50(0.02, 50d, "2% in 50 year"),
-		TEN_IN_50(0.1, 50d, "10% in 50 year");
+		TEN_IN_50(0.1, 50d, "10% in 50 year"),
+		FORTY_IN_50(0.4, 50d, "40% in 50 year");
 		
 		public final double refProb;
 		public final double refDuration;
 		public final String label;
 		public final double oneYearProb;
+		public final double returnPeriod;
 
 		private ReturnPeriods(double refProb, double refDuration, String label) {
 			this.refProb = refProb;
 			this.refDuration = refDuration;
 			this.label = label;
 			this.oneYearProb = ReturnPeriodUtils.calcExceedanceProb(refProb, refDuration, 1d);
+			this.returnPeriod = ReturnPeriodUtils.calcReturnPeriod(refProb, refDuration);
 		}
 	}
 
@@ -137,6 +151,8 @@ public class SolHazardMapCalc {
 		this.sol = sol;
 		this.gmpeRef = gmpeRef;
 		this.region = region;
+		this.backSeisOption = backSeisOption;
+		this.applyAftershockFilter = applyAftershockFilter;
 		Preconditions.checkState(periods.length > 0);
 		this.periods = periods;
 		for (double period : periods)
@@ -152,11 +168,33 @@ public class SolHazardMapCalc {
 					site.addParameter((Parameter<?>) param.clone());
 				sites.add(site);
 			}
-			
+		}
+	}
+	
+	public void setBackSeisOption(IncludeBackgroundOption backSeisOption) {
+		this.backSeisOption = backSeisOption;
+	}
+
+	public void setBackSeisType(BackgroundRupType backSeisType) {
+		this.backSeisType = backSeisType;
+	}
+
+	public void setApplyAftershockFilter(boolean applyAftershockFilter) {
+		this.applyAftershockFilter = applyAftershockFilter;
+	}
+
+	public void setAseisReducesArea(boolean aseisReducesArea) {
+		this.aseisReducesArea = aseisReducesArea;
+	}
+
+	private synchronized void checkInitERF() {
+		if (fssERF == null) {
+			System.out.println("Building ERF");
 			fssERF = new FaultSystemSolutionERF(sol);
 			fssERF.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 			fssERF.setParameter(IncludeBackgroundParam.NAME, backSeisOption);
 			fssERF.setParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME, applyAftershockFilter);
+			fssERF.setParameter(AseismicityAreaReductionParam.NAME, aseisReducesArea);
 			fssERF.getTimeSpan().setDuration(1d);
 			
 			fssERF.updateForecast();
@@ -183,6 +221,19 @@ public class SolHazardMapCalc {
 		this.skipMaxSiteDist = skipMaxSiteDist;
 	}
 	
+	public static DiscretizedFunc getDefaultXVals(double period) {
+		return getDefaultXVals(new IMT_Info(), period);
+	}
+	
+	public static DiscretizedFunc getDefaultXVals(IMT_Info imtInfo, double period) {
+		if (period == -1d)
+			return imtInfo.getDefaultHazardCurve(PGV_Param.NAME);
+		else if (period == 0d)
+			return imtInfo.getDefaultHazardCurve(PGA_Param.NAME);
+		else
+			return imtInfo.getDefaultHazardCurve(SA_Param.NAME);
+	}
+	
 	private void checkInitXVals() {
 		if (xVals == null) {
 			synchronized (this) {
@@ -191,12 +242,7 @@ public class SolHazardMapCalc {
 					DiscretizedFunc[] logXVals = new DiscretizedFunc[periods.length];
 					IMT_Info imtInfo = new IMT_Info();
 					for (int p=0; p<periods.length; p++) {
-						if (periods[p] == -1d)
-							xVals[p] = imtInfo.getDefaultHazardCurve(PGV_Param.NAME);
-						else if (periods[p] == 0d)
-							xVals[p] = imtInfo.getDefaultHazardCurve(PGA_Param.NAME);
-						else
-							xVals[p] = imtInfo.getDefaultHazardCurve(SA_Param.NAME);
+						xVals[p] = getDefaultXVals(imtInfo, periods[p]);
 						logXVals[p] = new ArbitrarilyDiscretizedFunc();
 						for (Point2D pt : xVals[p])
 							logXVals[p].set(Math.log(pt.getX()), 0d);
@@ -206,6 +252,11 @@ public class SolHazardMapCalc {
 				}
 			}
 		}
+	}
+	
+	public DiscretizedFunc getXVals(double period) {
+		checkInitXVals();
+		return xVals[periodIndex(period)];
 	}
 	
 	private int periodIndex(double period) {
@@ -238,6 +289,8 @@ public class SolHazardMapCalc {
 			}
 		}
 		ConcurrentLinkedDeque<Integer> deque = new ConcurrentLinkedDeque<>(calcIndexes);
+		
+		checkInitERF();
 		
 		System.out.println("Calculating hazard maps with "+numThreads+" threads and "+calcIndexes.size()+" sites...");
 		List<CalcThread> threads = new ArrayList<>();
@@ -344,6 +397,13 @@ public class SolHazardMapCalc {
 							DiscretizedFunc curve = xVals[p].deepClone();
 							for (int i=0; i<curve.size(); i++)
 								curve.set(i, 0d);
+							if (combineWith != null) {
+								// add in
+								DiscretizedFunc oCurve = combineWith.curvesList.get(p)[index];
+								Preconditions.checkNotNull(oCurve, "CombineWith curve is null for period=%s, index=%s",
+										(Double)periods[p], (Integer)index);
+								combineIn(curve, oCurve);
+							}
 							curvesList.get(p)[index] = curve;
 						}
 						track.taskCompleted();
@@ -386,23 +446,31 @@ public class SolHazardMapCalc {
 				DiscretizedFunc oCurve = combineWith.curvesList.get(p)[index];
 				Preconditions.checkNotNull(oCurve, "CombineWith curve is null for period=%s, index=%s",
 						(Double)periods[p], (Integer)index);
-				Preconditions.checkState(oCurve.size() == curve.size());
-				for (int i=0; i<curve.size(); i++) {
-					Point2D pt1 = curve.get(i);
-					Point2D pt2 = oCurve.get(i);
-					Preconditions.checkState((float)pt1.getX() == (float)pt2.getX());
-					if (pt2.getY() > 0) {
-						if (pt1.getY() == 0)
-							curve.set(i, pt2.getY());
-						else
-							curve.set(i, 1d - (1d - pt1.getY())*(1d - pt2.getY()));
-					}
-				}
+				combineIn(curve, oCurve);
 			}
 			
 			ret.add(curve);
 		}
 		return ret;
+	}
+	
+	private static void combineIn(DiscretizedFunc curve, DiscretizedFunc oCurve) {
+		Preconditions.checkState(oCurve.size() == curve.size());
+		for (int i=0; i<curve.size(); i++) {
+			Point2D pt1 = curve.get(i);
+			Point2D pt2 = oCurve.get(i);
+			Preconditions.checkState((float)pt1.getX() == (float)pt2.getX());
+			if (pt2.getY() > 0) {
+				if (pt1.getY() == 0)
+					curve.set(i, pt2.getY());
+				else
+					curve.set(i, 1d - (1d - pt1.getY())*(1d - pt2.getY()));
+			}
+		}
+	}
+	
+	public DiscretizedFunc[] getCurves(double period) {
+		return curvesList.get(periodIndex(period));
 	}
 	
 	public GriddedGeoDataSet buildMap(double period, ReturnPeriods returnPeriod) {
@@ -700,7 +768,7 @@ public class SolHazardMapCalc {
 		writeCurvesCSV(outputFile, curves, region.getNodeList());
 	}
 	
-	public static void writeCurvesCSV(File outputFile, DiscretizedFunc[] curves, LocationList locs) throws IOException {
+	public static CSVFile<String> buildCurvesCSV(DiscretizedFunc[] curves, LocationList locs) {
 		CSVFile<String> csv = new CSVFile<>(true);
 		
 		List<String> header = new ArrayList<>();
@@ -726,6 +794,12 @@ public class SolHazardMapCalc {
 			csv.addLine(line);
 		}
 		
+		return csv;
+	}
+	
+	public static void writeCurvesCSV(File outputFile, DiscretizedFunc[] curves, LocationList locs) throws IOException {
+		CSVFile<String> csv = buildCurvesCSV(curves, locs);
+		
 		csv.writeToFile(outputFile);
 	}
 	
@@ -744,6 +818,14 @@ public class SolHazardMapCalc {
 			curvesList.add(curves);
 		}
 		
+		return forCurves(sol, region, periods, curvesList);
+	}
+	
+	public static SolHazardMapCalc forCurves(FaultSystemSolution sol, GriddedRegion region, double[] periods,
+			List<DiscretizedFunc[]> curvesList) throws IOException {
+		Preconditions.checkState(periods.length == curvesList.size());
+		for (DiscretizedFunc[] curves : curvesList)
+			Preconditions.checkState(region.getNodeCount() == curves.length);
 		SolHazardMapCalc calc = new SolHazardMapCalc(sol, null, region, periods);
 		calc.curvesList = curvesList;
 		return calc;
@@ -754,9 +836,14 @@ public class SolHazardMapCalc {
 		for (int col=3; col<csv.getNumCols(); col++)
 			xVals.set(csv.getDouble(0, col), 0d);
 		
+		boolean remap = region != null && region.getNodeCount() != csv.getNumRows()-1;
+		if (remap)
+			Preconditions.checkState(region.getNodeCount() < csv.getNumRows()-1,
+					"Can only remap if the passed in region is a subset of the CSV region");
+		
 		DiscretizedFunc[] curves;
 		if (region != null) {
-			Preconditions.checkState(csv.getNumRows() == region.getNodeCount()+1,
+			Preconditions.checkState(remap || csv.getNumRows() == region.getNodeCount()+1,
 					"Region node count discrepancy: %s != %s", csv.getNumRows()-1, region.getNodeCount());
 			
 			curves = new DiscretizedFunc[region.getNodeCount()];
@@ -764,21 +851,35 @@ public class SolHazardMapCalc {
 			curves = new DiscretizedFunc[csv.getNumRows()-1];
 		}
 		
-		
 		for (int row=1; row<csv.getNumRows(); row++) {
 			int index = row-1;
 			if (region != null) {
 				Location loc = new Location(csv.getDouble(row, 1), csv.getDouble(row, 2));
-				Location regLoc = region.getLocation(index);
-				Preconditions.checkState(LocationUtils.areSimilar(loc, regLoc),
-						"Region location mismatch: %s != %s", loc, regLoc);
+				if (remap) {
+					index = region.indexForLocation(loc);
+					if (index < 0)
+						continue;
+				} else {
+					Location regLoc = region.getLocation(index);
+					Preconditions.checkState(LocationUtils.areSimilar(loc, regLoc),
+							"Region location mismatch: %s != %s", loc, regLoc);
+				}
 			}
-			int csvIndex = csv.getInt(row, 0);
-			Preconditions.checkState(index == csvIndex, "CSV index mismatch: %s != %s", index, csvIndex);
+			if (!remap) {
+				int csvIndex = csv.getInt(row, 0);
+				Preconditions.checkState(index == csvIndex, "CSV index mismatch: %s != %s", index, csvIndex);
+			}
 			DiscretizedFunc curve = new ArbitrarilyDiscretizedFunc();
 			for (int i=0; i<xVals.size(); i++)
 				curve.set(xVals.getX(i), csv.getDouble(row, i+3));
 			curves[index] = curve;
+		}
+		if (remap) {
+			// make sure they were all mapped
+			for (int i=0; i<curves.length; i++)
+				Preconditions.checkNotNull(curves[i],
+						"Can only remap if the passed in region is a subset of the CSV region. No match for index %s: %s",
+						i, region.locationForIndex(i));
 		}
 		return curves;
 	}

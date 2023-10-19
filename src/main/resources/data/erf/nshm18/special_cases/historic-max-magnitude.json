@@ -1,0 +1,56 @@
+[
+  {
+    "id": 2200,
+    "name": "Beaverhead",
+    "state": "ID",
+    "magnitude": 7.0
+  },
+  {
+    "id": 2204,
+    "name": "Lemhi",
+    "state": "ID",
+    "magnitude": 7.0
+  },
+  {
+    "id": 2205,
+    "name": "Lost River",
+    "state": "ID",
+    "magnitude": 7.0
+  },
+  {
+    "id": 2305,
+    "name": "Hebgen - Red Canyon",
+    "state": "MT",
+    "magnitude": 7.3
+  },
+  {
+    "id": 1032,
+    "name": "Dixie Valley",
+    "state": "NV",
+    "magnitude": 7.0
+  },
+  {
+    "id": 1051,
+    "name": "Fairview",
+    "state": "NV",
+    "magnitude": 7.2
+  },
+  {
+    "id": 1113,
+    "name": "Spanish Springs Peak",
+    "state": "NV",
+    "magnitude": 6.0
+  },
+  {
+    "id": 2704,
+    "name": "Hansel Valley",
+    "state": "UT",
+    "magnitude": 6.6
+  },
+  {
+    "id": 2800,
+    "name": "Boulder Creek - Kendall Scarp",
+    "state": "WA",
+    "magnitude": 6.8
+  }
+]

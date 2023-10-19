@@ -20,6 +20,7 @@ import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.uncertainty.BoundedUncertainty;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -64,7 +65,7 @@ public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 		FaultSystemSolution compSol = meta.hasComparisonSol() ? meta.comparison.sol : null;
 		if (compSol != null) {
 			// make sure they use the same sections
-			if (!sol.getRupSet().areSectionsEquivalentTo(compSol.getRupSet()))
+			if (!rupSet.areSectionsEquivalentTo(compSol.getRupSet()))
 				compSol = null;
 		}
 		
@@ -86,24 +87,24 @@ public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 			}
 			if (hasSlipData) {
 				slipToRateData = PaleoseismicConstraintData.inferRatesFromSlipConstraints(
-						rupSet.requireModule(SectSlipRates.class), data.getPaleoSlipConstraints(), true);
+						rupSet, data.getPaleoSlipConstraints(), true);
 				paleoSlips = calcSolPaleoSlipRates(slipToRateData, data.getPaleoSlipProbModel(), sol);
 				if (compSol != null) {
 					compSlipToRateData = PaleoseismicConstraintData.inferRatesFromSlipConstraints(
-							rupSet.requireModule(SectSlipRates.class), data.getPaleoSlipConstraints(), true);
+							rupSet, data.getPaleoSlipConstraints(), true);
 					compPaleoSlips = calcSolPaleoSlipRates(compSlipToRateData, data.getPaleoSlipProbModel(), compSol);
 				}
 			}
 		} else if (hasSlipData) {
 			// still need to convert it
 			slipToRateData = PaleoseismicConstraintData.inferRatesFromSlipConstraints(
-					rupSet.requireModule(SectSlipRates.class), data.getPaleoSlipConstraints(), true);
+					rupSet, data.getPaleoSlipConstraints(), true);
 		}
 		
 		List<String> lines = new ArrayList<>();
 		
 		// plot mappings
-		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
 		
 		String compMappingStr = sol == null ? "Mappings" : "Comparison";
 		
@@ -455,8 +456,8 @@ public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 			funcs.add(oneToOne);
 			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLACK));
 		} else {
-			funcs.set(0, oneToOne);
-			chars.set(0, new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLACK));
+			funcs.add(0, oneToOne);
+			chars.add(0, new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.BLACK));
 		}
 		
 		PlotSpec plot = new PlotSpec(funcs, chars, title, "Paleoseismic Data Recurrence Rate (/yr)", yAxisLabel);
@@ -465,7 +466,7 @@ public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 		HeadlessGraphPanel gp = PlotUtils.initHeadless();
 		gp.drawGraphPanel(plot, true, true, range, range);
 		
-		PlotUtils.writePlots(outputDir, prefix, gp, 800, false, true, false, false);
+		PlotUtils.writePlots(outputDir, prefix, gp, 800, false, true, true, false);
 		
 		return new File(outputDir, prefix+".png");
 	}
@@ -506,12 +507,12 @@ public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 		return new File(outputDir, prefix+".png");
 	}
 	
-	private static void plotMappings(RupSetMapMaker mapMaker, FaultSystemRupSet rupSet, File outputDir, String prefix,
+	private static void plotMappings(GeographicMapMaker mapMaker, FaultSystemRupSet rupSet, File outputDir, String prefix,
 			String title, List<? extends SectMappedUncertainDataConstraint> datas,
 			Map<SectMappedUncertainDataConstraint, Double> rates) throws IOException {
 		mapMaker.clearScatters();
 		mapMaker.clearSectScalars();
-		mapMaker.clearHighlights();
+		mapMaker.clearSectHighlights();
 		
 		if (rates != null) {
 			// color them
@@ -557,7 +558,7 @@ public class PaleoDataComparisonPlot extends AbstractRupSetPlot {
 				if (data.sectionIndex >= 0)
 					highlightSects.add(rupSet.getFaultSectionData(data.sectionIndex));
 			
-			mapMaker.highLightSections(highlightSects, new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
+			mapMaker.setSectHighlights(highlightSects, new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLACK));
 			List<Location> siteLocs = new ArrayList<>();
 			for (SectMappedUncertainDataConstraint data : datas)
 				siteLocs.add(data.dataLocation);

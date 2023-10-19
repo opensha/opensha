@@ -8,6 +8,7 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_PaleoUncertainties;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SlipAlongRuptureModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
@@ -70,7 +71,7 @@ public class NSHM18_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	/**
 	 * This is the default reference branch
 	 */
-	public static final NSHM18_LogicTreeBranch DEFAULT = fromValues(
+	public static final NSHM18_LogicTreeBranch DEFAULT = fromValues(levels,
 			NSHM18_FaultModels.NSHM18_WUS_NoCA,
 			RupturePlausibilityModels.COULOMB,
 			NSHM18_DeformationModels.GEOL,
@@ -84,30 +85,48 @@ public class NSHM18_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG);
 	
 	/**
+	 * This is the default reference branch using new scaling relationships
+	 */
+	public static final NSHM18_LogicTreeBranch DEFAULT_NEW_SCALE = fromValues(levelsNewScale,
+			NSHM18_FaultModels.NSHM18_WUS_NoCA,
+			RupturePlausibilityModels.COULOMB,
+			NSHM18_DeformationModels.GEOL,
+			NSHM23_ScalingRelationships.LOGA_C4p2,
+			NSHM23_SlipAlongRuptureModels.UNIFORM,
+			SupraSeisBValues.B_0p5,
+			SubSectConstraintModels.TOT_NUCL_RATE,
+			SubSeisMoRateReductions.NONE,
+			NSHM23_PaleoUncertainties.EVEN_FIT,
+			NSHM23_SegmentationModels.MID,
+			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG);
+	
+	/**
 	 * Creates a NSHM23LogicTreeBranch instance from given set of node values. Null or missing values
 	 * will be replaced with their default value (from NSHM23LogicTreeBranch.DEFAULT).
 	 * 
+	 * @param levels
 	 * @param vals
 	 * @return
 	 */
-	public static NSHM18_LogicTreeBranch fromValues(List<LogicTreeNode> vals) {
+	public static NSHM18_LogicTreeBranch fromValues(List<LogicTreeLevel<? extends LogicTreeNode>> levels, List<LogicTreeNode> vals) {
 		LogicTreeNode[] valsArray = new LogicTreeNode[vals.size()];
 		
 		for (int i=0; i<vals.size(); i++)
 			valsArray[i] = vals.get(i);
 		
-		return fromValues(valsArray);
+		return fromValues(levels, valsArray);
 	}
 	
 	/**
 	 * Creates a NSHM23LogicTreeBranch instance from given set of node values. Null or missing values
 	 * will be replaced with their default value (from NSHM23LogicTreeBranch.DEFAULT).
 	 * 
+	 * @param levels
 	 * @param vals
 	 * @return
 	 */
-	public static NSHM18_LogicTreeBranch fromValues(LogicTreeNode... vals) {
-		return fromValues(true, vals);
+	public static NSHM18_LogicTreeBranch fromValues(List<LogicTreeLevel<? extends LogicTreeNode>> levels, LogicTreeNode... vals) {
+		return fromValues(levels, true, vals);
 	}
 	
 	/**
@@ -115,11 +134,13 @@ public class NSHM18_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	 * will be replaced with their default value (from LogicTreeBranch.DEFAULT) if setNullToDefault
 	 * is true.
 	 * 
+	 * @param levels
 	 * @param setNullToDefault if true, null or missing values will be set to their default value
 	 * @param vals
 	 * @return
 	 */
-	public static NSHM18_LogicTreeBranch fromValues(boolean setNullToDefault, LogicTreeNode... vals) {
+	public static NSHM18_LogicTreeBranch fromValues(List<LogicTreeLevel<? extends LogicTreeNode>> levels,
+			boolean setNullToDefault, LogicTreeNode... vals) {
 		
 		// initialize branch with null
 		List<LogicTreeNode> values = new ArrayList<>();
@@ -143,7 +164,7 @@ public class NSHM18_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			values.set(ind, val);
 		}
 		
-		NSHM18_LogicTreeBranch branch = new NSHM18_LogicTreeBranch(values);
+		NSHM18_LogicTreeBranch branch = new NSHM18_LogicTreeBranch(levels, values);
 		
 		if (setNullToDefault) {
 			for (int i=0; i<levels.size(); i++) {
@@ -156,11 +177,11 @@ public class NSHM18_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	}
 	
 	@SuppressWarnings("unused") // used for deserialization
-	public NSHM18_LogicTreeBranch() {
+	public NSHM18_LogicTreeBranch(List<LogicTreeLevel<? extends LogicTreeNode>> levels) {
 		super(levels);
 	}
 	
-	public NSHM18_LogicTreeBranch(List<LogicTreeNode> values) {
+	public NSHM18_LogicTreeBranch(List<LogicTreeLevel<? extends LogicTreeNode>> levels, List<LogicTreeNode> values) {
 		super(levels, values);
 	}
 

@@ -400,17 +400,23 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 			
 			while (in.hasNext()) {
 				String name = in.nextName();
+//				System.out.println("Reading "+name+" at "+in.getPath());
 				
 				switch (name) {
 				case "type":
 					String type = in.nextString();
 					if (first) {
 						// see if we should use a different type
+						AbstractAdapter<? extends E> adapter = null;
 						try {
-							AbstractAdapter<? extends E> adapter = getSubclassAdapter(type);
-							if (adapter != null)
-								return adapter.innerRead(in);
-						} catch (Exception e) {}
+							adapter = getSubclassAdapter(type);
+						} catch (Exception e) {
+							System.err.println("WARNING: error getting subclass adapter for type='"+type
+									+"', will use generic adapter: "+e.getMessage());
+//							e.printStackTrace();
+						}
+						if (adapter != null)
+							return adapter.innerRead(in);
 					}
 					break;
 				case "name":
@@ -435,6 +441,7 @@ public interface XY_DataSet extends PlotElement, Named, XMLSaveable, Serializabl
 					maxX = in.nextDouble();
 					break;
 				case "values":
+//					System.out.println("Init values w/ minX="+minX+", maxX="+maxX+", size="+size);
 					xy = instance(minX, maxX, size);
 					
 					in.beginArray();

@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -31,10 +32,10 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_RegionalSeismicity;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.prior2018.NSHM18_DeformationModels.DefModelRecord;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -45,6 +46,8 @@ import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
+
+import scratch.UCERF3.enumTreeBranches.FaultModels;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
@@ -60,11 +63,35 @@ public enum NSHM18_FaultModels implements LogicTreeNode, RupSetFaultModel {
 			Preconditions.checkNotNull(sectsReader, "Fault model file not found: %s", NSHM18_SECTS_PATH);
 			return GeoJSONFaultReader.readFaultSections(sectsReader);
 		}
+	},	
+	NSHM18_WUS_PlusU3_FM_3p1("NSHM18 WUS w/ UCERF3 FM3.1", "NSHM18-WUS-U3_FM3_1", NSHM18_DeformationModels.GEOL, 1d) {
+		@Override
+		public List<? extends FaultSection> getFaultSections() throws IOException {
+			List<? extends FaultSection> outsideSects = NSHM18_WUS_NoCA.getFaultSections();
+			Map<Integer, String> outsideIDs = new HashMap<>();
+			for (FaultSection sect : outsideSects) {
+				Preconditions.checkState(!outsideIDs.containsKey(sect.getSectionId()), "Duplicate ID");
+				outsideIDs.put(sect.getSectionId(), sect.getSectionName());
+			}
+			List<FaultSection> fm31Sects = FaultModels.FM3_1.getFaultSections();
+			List<FaultSection> fullList = new ArrayList<>(outsideSects);
+			for (FaultSection sect : fm31Sects) {
+				if (sect.getSectionId() == 721 || sect.getSectionId() == 719)
+					continue;
+				Preconditions.checkState(!outsideIDs.containsKey(sect.getSectionId()),
+						"UCERF3 uses ID %s for '%s', which is also mapped to '%s' outside of CA ",
+						sect.getSectionId(), sect.getSectionName(), outsideIDs.get(sect.getSectionId()));
+				fullList.add(sect);
+			}
+			return fullList;
+		}
 	};
 	
 	static final Set<String> STATES = Set.of("WA", "OR", "ID", "MT", "WY", "NV", "UT", "CO", "AZ", "NM");
 	
 	public static final String NSHM18_SECTS_PATH = "/data/erf/nshm18/fault_models/geol_fm_2018.geojson";
+	
+	public static boolean USE_NEW_PALEO_DATA = true;
 	
 	private String name;
 	private String shortName;
@@ -121,16 +148,9 @@ public enum NSHM18_FaultModels implements LogicTreeNode, RupSetFaultModel {
 
 			@Override
 			public NamedFaults call() throws Exception {
-				// no CA, just do wasatch
-				HashSet<Integer> wasatchParents = new HashSet<>();
-				for (FaultSection sect : rupSet.getFaultSectionDataList())
-					if (sect.getParentSectionName().toLowerCase().contains("wasatch"))
-						wasatchParents.add(sect.getParentSectionId());
-				if (wasatchParents.isEmpty())
-					return null;
-				Map<String, List<Integer>> map = new HashMap<>();
-				map.put("Wasatch", new ArrayList<>(wasatchParents));
-				return new NamedFaults(rupSet, map);
+				NamedFaults named = NSHM18_FaultModels.this.getNamedFaults();
+				named.setParent(rupSet);
+				return named;
 			}
 		}, NamedFaults.class);
 		rupSet.addAvailableModule(new Callable<RegionsOfInterest>() {
@@ -159,7 +179,7 @@ public enum NSHM18_FaultModels implements LogicTreeNode, RupSetFaultModel {
 					double mMax = faultSysMmax;
 					if (offFaultMMax != null)
 						mMax = Math.max(offFaultMMax.getMaxMagOffFault(), mMax);
-					EvenlyDiscretizedFunc refMFD = SupraSeisBValInversionTargetMFDs.buildRefXValues(Math.max(mMax, rupSet.getMaxMag()));
+					EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(Math.max(mMax, rupSet.getMaxMag()));
 					regionMFDs.add(NSHM23_RegionalSeismicity.getBounded(pReg, refMFD, mMax));
 					regions.add(region);
 				}
@@ -170,6 +190,36 @@ public enum NSHM18_FaultModels implements LogicTreeNode, RupSetFaultModel {
 				return new RegionsOfInterest(regions, regionMFDs);
 			}
 		}, RegionsOfInterest.class);
+	}
+	
+	@Override
+	public NamedFaults getNamedFaults() {
+//		Map<String, List<Integer>> map = new HashMap<>();
+//		
+//		// no CA, just do wasatch
+//		HashSet<Integer> wasatchParents = new HashSet<>();
+//		for (FaultSection sect : rupSet.getFaultSectionDataList())
+//			if (sect.getParentSectionName().toLowerCase().contains("wasatch"))
+//				wasatchParents.add(sect.getParentSectionId());
+//		if (!wasatchParents.isEmpty())
+//			map.put("Wasatch", new ArrayList<>(wasatchParents));
+//		
+//		if (map.isEmpty())
+//			return null;
+//		return new NamedFaults(rupSet, map);
+		
+		Gson gson = new GsonBuilder().create();
+		
+		String namedFaultsFile = "/data/erf/nshm18/fault_models/special_faults.json";
+		
+		BufferedReader reader = new BufferedReader(
+				new InputStreamReader(FaultModels.class.getResourceAsStream(namedFaultsFile)));
+		Type type = TypeToken.getParameterized(Map.class, String.class,
+				TypeToken.getParameterized(List.class, Integer.class).getType()).getType();
+		Map<String, List<Integer>> namedFaults = gson.fromJson(reader, type);
+		
+		Preconditions.checkState(!namedFaults.isEmpty(), "No named faults found");
+		return new NamedFaults(null, namedFaults);
 	}
 	
 	/**
@@ -551,11 +601,11 @@ public enum NSHM18_FaultModels implements LogicTreeNode, RupSetFaultModel {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		File dataFile = new File("/home/kevin/workspace/opensha/src/main/resources"+NSHM18_SECTS_PATH);
+//		File dataFile = new File("/home/kevin/workspace/opensha/src/main/resources"+NSHM18_SECTS_PATH);
 //		convertConsolidatedGeoJSON(new File("/home/kevin/git/nshm-fault-sections/fault-sections/CONUS.geojson"), dataFile);
 //		convertIndividualGeoJSON(new File("/home/kevin/git/nshm-fault-sections/fault-sections/"), dataFile);
-		consolidatedFaultSearchGeoJSON(new File("/home/kevin/git/nshm-fault-sections-1.0/fault-sections/"),
-				new File("/home/kevin/git/nshm-conus"), dataFile);
+//		consolidatedFaultSearchGeoJSON(new File("/home/kevin/git/nshm-fault-sections-1.0/fault-sections/"),
+//				new File("/home/kevin/git/nshm-conus"), dataFile);
 		// write NSHM18 fault/def model files
 		
 //		File baseDir = new File("/home/kevin/git/nshm-conus/active-crust/fault");
@@ -577,6 +627,8 @@ public enum NSHM18_FaultModels implements LogicTreeNode, RupSetFaultModel {
 //					continue;
 //			}
 //		}
+		
+		NSHM18_WUS_PlusU3_FM_3p1.getFaultSections();
 	}
 
 }

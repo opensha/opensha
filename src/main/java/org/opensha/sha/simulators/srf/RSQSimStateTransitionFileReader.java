@@ -17,6 +17,7 @@ import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
@@ -236,8 +237,12 @@ public class RSQSimStateTransitionFileReader {
 				}
 				if (D) System.out.println("\tpatch valid? "+valid);
 				// check that index/time func is monotonically increasing
-				for (int n=1; valid && n<indexTimeFunc.size(); n++)
+				for (int n=1; valid && n<indexTimeFunc.size(); n++) {
 					valid = indexTimeFunc.getY(n) >= indexTimeFunc.getY(n-1);
+					if (D && !valid)
+						System.out.println("\tINVALD: indexTimeFunc.getY("+n+")="+indexTimeFunc.getY(n)
+								+", indexTimeFunc.getY("+(n-1)+")="+indexTimeFunc.getY(n-1));
+				}
 				if (D) System.out.println("\tfully valid? "+valid);
 				testResults.put(testVersion, testOrder, valid);
 			}
@@ -735,7 +740,8 @@ public class RSQSimStateTransitionFileReader {
 
 		@Override
 		public synchronized RSQSimStateTime next() {
-			Preconditions.checkState(hasNext()); // will advance index if before startTime
+			if (!hasNext()) // will advance index if before startTime
+				throw new NoSuchElementException();
 			while (index < numTransitions && (curList.isEmpty() || !isFirstReady())) {
 				try {
 					RSQSimStateTime trans = readTransition(index);

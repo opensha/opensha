@@ -23,6 +23,7 @@ import org.opensha.commons.util.ClassUtils;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
@@ -132,11 +133,12 @@ public class U3TD_ComparisonLauncher {
 		System.out.println("Loading FSS file");
 		FaultSystemSolution fss = null;
 		try {
-			fss = U3FaultSystemIO.loadSol(fssFile);
-		} catch (IOException | DocumentException e1) {
+			fss = FaultSystemSolution.load(fssFile);
+		} catch (IOException e1) {
 			e1.printStackTrace();
 			System.exit(1);
 		}
+		fss.removeAvailableModuleInstances(RupMFDsModule.class);
 		
 		System.out.println("Building ERF");
 		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(fss);

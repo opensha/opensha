@@ -1,0 +1,21 @@
+{
+  "type": "Feature",
+  "id": 3712,
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-81.5597, 32.8766],
+      [-79.3085, 34.2915],
+      [-78.3542, 33.1881],
+      [-80.6151, 31.7755],
+      [-81.5597, 32.8766]
+    ]]
+  },
+  "properties": {
+    "name": "Charleston Regional Zone",
+    "state": "SC",
+    "rate": "regional.csv",
+    "strike": 50.0,
+    "mfd-tree": "charleston"
+  }
+}

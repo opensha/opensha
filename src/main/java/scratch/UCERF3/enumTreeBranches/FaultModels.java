@@ -340,6 +340,8 @@ public enum FaultModels implements U3LogicTreeBranchNode<FaultModels>, RupSetFau
 		return getFilterBasis();
 	}
 	
+	
+	
 	@Override
 	public void attachDefaultModules(FaultSystemRupSet rupSet) {
 		LogicTreeBranch<?> branch = rupSet.getModule(LogicTreeBranch.class);
@@ -378,16 +380,15 @@ public enum FaultModels implements U3LogicTreeBranchNode<FaultModels>, RupSetFau
 				}
 			}, NamedFaults.class);
 		} else {
-			Map<String, List<Integer>> namedFaultsMap = getNamedFaultsMapAlt();
-			if (namedFaultsMap != null) {
-				rupSet.addAvailableModule(new Callable<NamedFaults>() {
+			rupSet.addAvailableModule(new Callable<NamedFaults>() {
 
-					@Override
-					public NamedFaults call() throws Exception {
-						return new NamedFaults(rupSet, getNamedFaultsMapAlt());
-					}
-				}, NamedFaults.class);
-			}
+				@Override
+				public NamedFaults call() throws Exception {
+					NamedFaults named = FaultModels.this.getNamedFaults();
+					named.setParent(rupSet);
+					return named;
+				}
+			}, NamedFaults.class);
 		}
 		
 		rupSet.addAvailableModule(new Callable<RegionsOfInterest>() {
@@ -416,6 +417,14 @@ public enum FaultModels implements U3LogicTreeBranchNode<FaultModels>, RupSetFau
 				return FaultPolyMgr.create(rupSet.getFaultSectionDataList(), U3InversionTargetMFDs.FAULT_BUFFER);
 			}
 		}, PolygonFaultGridAssociations.class);
+	}
+
+	@Override
+	public NamedFaults getNamedFaults() {
+		Map<String, List<Integer>> namedFaultsMap = getNamedFaultsMapAlt();
+		if (namedFaultsMap != null)
+			return new NamedFaults(null, getNamedFaultsMapAlt());
+		return null;
 	}
 	
 }

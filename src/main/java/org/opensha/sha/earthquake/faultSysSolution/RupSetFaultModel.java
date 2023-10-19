@@ -44,6 +44,15 @@ public interface RupSetFaultModel extends LogicTreeNode {
 	}
 	
 	/**
+	 * Returns named faults if available. Default implementation returns null.
+	 * 
+	 * @return named faults map
+	 */
+	public default NamedFaults getNamedFaults() {
+		return null;
+	}
+	
+	/**
 	 * This returns the default deformation model for the given fault model, which will be used to apply slip rates
 	 * when building a {@link FaultSystemRupSet}. Some rupture plausibility models depend on slip rate and/or rake,
 	 * and this model will be used in order to ensure a consistent rupture set across all deformation models.

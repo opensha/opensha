@@ -161,6 +161,7 @@ public class RSQSimSubSectionMapper {
 //		System.out.println("Min fract: "+this.minFractForInclusion);
 		
 		this.minElemSectID = RSQSimUtils.getSubSectIndexOffset(elements, subSects);
+//		System.out.println("Offset: "+minElemSectID);
 		
 		// build basic mapping
 		elemToSectsMap = new HashMap<>();

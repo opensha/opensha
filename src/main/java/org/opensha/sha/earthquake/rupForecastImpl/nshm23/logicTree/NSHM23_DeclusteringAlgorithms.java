@@ -29,9 +29,9 @@ import com.google.common.base.Preconditions;
 @Affects(GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
 public enum NSHM23_DeclusteringAlgorithms implements LogicTreeNode {
 	
-	GK("Gardner-Knopoff", "GK", 1d),
-	NN("Nearest-Neighbor", "NN", 1d),
-	REAS("Reasenberg", "Reas", 1d),
+	GK("Gardner-Knopoff", "GK", 0.4d),
+	NN("Nearest-Neighbor", "NN", 0.4d),
+	REAS("Reasenberg", "Reas", 0.2d),
 	AVERAGE("Average", "Average", 0d);
 	
 	private String name;

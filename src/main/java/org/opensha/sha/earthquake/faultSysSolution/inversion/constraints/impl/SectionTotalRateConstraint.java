@@ -25,9 +25,17 @@ public class SectionTotalRateConstraint extends InversionConstraint {
 				weightType.applyShortNamePrefix("SubSect"+(nucleation?"Nucl":"Part")+"Rates"), weight, false, weightType);
 		this.rupSet = rupSet;
 		this.nucleation = nucleation;
+		this.setSectRates(sectRates, sectRateStdDevs);
+	}
+	
+	public void setSectRates(double[] sectRates) {
+		setSectRates(sectRates, null);
+	}
+	
+	public void setSectRates(double[] sectRates, double[] sectRateStdDevs) {
 		Preconditions.checkState(rupSet.getNumSections() == sectRates.length, "section rates array isn't the right length");
 		this.sectRates = sectRates;
-		if (weightType == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY) {
+		if (getWeightingType() == ConstraintWeightingType.NORMALIZED_BY_UNCERTAINTY) {
 			Preconditions.checkState(sectRateStdDevs != null, "Must supply standard deviations to weight by uncertainty");
 			Preconditions.checkState(sectRateStdDevs.length == sectRates.length, "Standard deviations array isn't the right length");
 			this.sectRateStdDevs = sectRateStdDevs;

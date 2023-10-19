@@ -164,7 +164,7 @@ public final class UCERF2_Final_RelativeLocation {
 	        double newDepth = depth + -1*vertDistance;
 	
 	        //
-	        Location newLoc = new Location(newLat, newLon, newDepth);
+	        Location newLoc = Location.backwardsCompatible(newLat, newLon, newDepth);
 	        return newLoc;
 	
 	    }

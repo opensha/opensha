@@ -28,6 +28,8 @@ public class RupMFDsModule implements CSV_BackedModule, SubModule<FaultSystemSol
 	
 	private FaultSystemSolution parent;
 	
+	public static final String FILE_NAME = "rup_mfds.csv";
+	
 	private RupMFDsModule() {
 	}
 
@@ -48,7 +50,7 @@ public class RupMFDsModule implements CSV_BackedModule, SubModule<FaultSystemSol
 
 	@Override
 	public String getFileName() {
-		return "rup_mfds.csv";
+		return FILE_NAME;
 	}
 
 	@Override

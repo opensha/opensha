@@ -127,6 +127,9 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 	public static final boolean USE_SQRT_FOR_TARGET_RATIOS_DEFAULT = true;
 	public static final boolean USE_VALUE_WEIGHTED_AVERAGE_DEFAULT = false;
 	
+	// if true, removes zero misfits (usually means solution < target) when calculating for inequality constraints
+	public static final boolean REMOVE_ZEROS_FOR_INEQUALITY = true;
+	
 	// every x rounds, recompute A/d values as scalars from the original values to correct for any floating point error
 	// propagated through repeated multiplications
 	private static final int floatingPointDriftMod = 100;
@@ -232,6 +235,30 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 				myMisfits = Arrays.copyOfRange(myMisfits, range.startRow, range.endRow);
 				for (int i=0; i<myMisfits.length; i++)
 					myMisfits[i] /= range.weight;
+				if (range.inequality && REMOVE_ZEROS_FOR_INEQUALITY) {
+					int numZero = 0;
+					int numNonZero = 0;
+					for (int i=0; i<myMisfits.length; i++) {
+						if (myMisfits[i] == 0d)
+							numZero++;
+						else
+							numNonZero++;
+					}
+					if (numZero > 0 && numNonZero > 0) {
+						// we have both zeros and nonzeros
+						// zeros likely mean the solution value was less than target and the constraint did not accrue misfit
+						// we don't want these zeros to bias the reweighting, remove them
+						double[] modMisfits = new double[numNonZero];
+						int index = 0;
+						for (int i=0; i<myMisfits.length; i++)
+							if (myMisfits[i] > 0d)
+								modMisfits[index++] = myMisfits[i];
+						Preconditions.checkState(index == numNonZero);
+						myMisfits = modMisfits;
+						range = new ConstraintRange(range.name, range.shortName, range.startRow,
+								range.startRow+numNonZero, range.inequality, range.weight, range.weightingType);
+					}
+				}
 				myStats = new MisfitStats(myMisfits, range);
 			}
 			stats.add(myStats);
@@ -267,6 +294,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 			double[] misfits = getBestMisfit();
 			double[] misfits_ineq = getBestInequalityMisfit();
 			
+			// calculate the target value for each constraint
 			List<MisfitStats> stats = calcUncertWtStats(ranges, misfits, misfits_ineq);
 			int numConstraints = 0;
 			int numValues = 0;
@@ -303,7 +331,10 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 				}
 			}
 			
+			// calculate the overall target value
 			if (PHASE_OUT_BELOW_LOWER_BOUND && hasPhaseOut) {
+				// we're phasing out at least one constraint, need to take that into account when computing the target
+				
 				// do this in a loop to ensure that nothing is both 'phased out' and above average
 				while (true) {
 					if (targetMedian) {
@@ -368,6 +399,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 						break;
 				}
 			} else {
+				// simple, no phased out targets
 				if (targetMedian)
 					target = DataUtils.median(Doubles.toArray(constraintTargetVals));
 				else
@@ -375,6 +407,7 @@ public class ReweightEvenFitSimulatedAnnealing extends ThreadedSimulatedAnnealin
 			}
 			
 			if (targetOnly) {
+				// shortcut to just get the target value without actually re-weighting
 				if (verbose) System.out.println("Final target value: "+(float)target);
 				return target;
 			}

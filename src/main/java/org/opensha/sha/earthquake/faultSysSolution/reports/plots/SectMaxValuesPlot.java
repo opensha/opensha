@@ -15,6 +15,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -40,13 +41,15 @@ import com.google.common.base.Preconditions;
 
 public class SectMaxValuesPlot extends AbstractRupSetPlot {
 	
-	private static final List<HistScalar> defaultMaxScalars = List.of(HistScalar.LENGTH, HistScalar.MAG,
+	public static final List<HistScalar> RUP_SET_DEFAULTS = List.of(HistScalar.LENGTH, HistScalar.MAG,
 			HistScalar.CUM_JUMP_DIST, HistScalar.CUM_RAKE_CHANGE, HistScalar.CUM_AZ_CHANGE);
+	
+	public static final List<HistScalar> SOL_DEFAULTS = List.of(HistScalar.LENGTH, HistScalar.MAG);
 	
 	private List<HistScalar> scalars;
 	
 	public SectMaxValuesPlot() {
-		this(defaultMaxScalars);
+		this(RUP_SET_DEFAULTS);
 	}
 
 	public SectMaxValuesPlot(List<HistScalar> scalars) {
@@ -276,7 +279,7 @@ public class SectMaxValuesPlot extends AbstractRupSetPlot {
 		cpt.setBelowMinColor(cpt.getMinColor());
 		cpt.setAboveMaxColor(cpt.getMaxColor());
 		
-		RupSetMapMaker plotter = new RupSetMapMaker(rupSet, reg);
+		GeographicMapMaker plotter = new RupSetMapMaker(rupSet, reg);
 		plotter.setWriteGeoJSON(!prefix.contains("_ratio") && !prefix.contains("_diff"));
 		
 		String cptTitle = "Section Max Participating "+histScalar.getxAxisLabel();

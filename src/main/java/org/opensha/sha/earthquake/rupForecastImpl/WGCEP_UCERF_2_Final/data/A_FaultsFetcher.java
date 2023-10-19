@@ -164,7 +164,7 @@ public class A_FaultsFetcher extends FaultsFetcher implements java.io.Serializab
 				sigma =  row.getCell( (short) 4).getNumericCellValue();
 				lower95Conf = row.getCell( (short) 7).getNumericCellValue();
 				upper95Conf =  row.getCell( (short) 8).getNumericCellValue();
-				faultSectionId = getClosestFaultSectionId(new Location(lat,lon));
+				faultSectionId = getClosestFaultSectionId(Location.backwardsCompatible(lat,lon));
 				if(faultSectionId==-1) continue; // closest fault section is at a distance of more than 2 km
 				String faultName = setRecurIntv(faultSectionId, rate, sigma, lower95Conf, upper95Conf);
 				eventRatesList.add(new EventRates(siteName, faultName, lat,lon, rate, sigma, lower95Conf, upper95Conf));

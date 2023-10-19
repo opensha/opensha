@@ -100,7 +100,36 @@ public class Location implements
 	
 	/**
 	 * Creates a backwards compatible <code>Location</code> where getLatitude/getLongitude will
-	 * return the same values as the prior OpenSHA implementation where values were only stored
+	 * return the same values as the prior OpenSHA implementation (before June 2021) where values were only stored
+	 * in radians, and converted back to degrees when requested. Note that returned latitude/longitude
+	 * values here will not always exactly match the passed in lat/lon values (they are converted
+	 * to radians and then back).
+	 * 
+	 * @param lat
+	 * @param lon
+	 * @return
+	 */
+	public static Location backwardsCompatible(double lat, double lon) {
+		return backwardsCompatible(lat, lon, 0d);
+	}
+	
+	/**
+	 * Creates a backwards compatible <code>Location</code> where getLatitude/getLongitude will
+	 * return the same values as the prior OpenSHA implementation (before June 2021) where values were only stored
+	 * in radians, and converted back to degrees when requested. Note that returned latitude/longitude
+	 * values here will not always exactly match the passed in lat/lon values (they are converted
+	 * to radians and then back).
+	 * 
+	 * @param loc
+	 * @return
+	 */
+	public static Location backwardsCompatible(Location loc) {
+		return backwardsCompatible(loc.lat, loc.lon, loc.depth);
+	}
+	
+	/**
+	 * Creates a backwards compatible <code>Location</code> where getLatitude/getLongitude will
+	 * return the same values as the prior OpenSHA implementation (before June 2021) where values were only stored
 	 * in radians, and converted back to degrees when requested. Note that returned latitude/longitude
 	 * values here will not always exactly match the passed in lat/lon values (they are converted
 	 * to radians and then back).

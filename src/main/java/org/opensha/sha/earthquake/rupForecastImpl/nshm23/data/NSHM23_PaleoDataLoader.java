@@ -17,6 +17,7 @@ import org.opensha.commons.geo.BorderType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -28,6 +29,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultRea
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
@@ -37,6 +39,8 @@ import scratch.UCERF3.utils.aveSlip.U3AveSlipConstraint;
 import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoProbabilityModel;
 
 public class NSHM23_PaleoDataLoader {
+	
+	public static boolean INCLUDE_U3_PALEO_SLIP = false;
 	
 	public static PaleoseismicConstraintData load(FaultSystemRupSet rupSet) throws IOException {
 		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
@@ -68,9 +72,13 @@ public class NSHM23_PaleoDataLoader {
 			paleoProbModel = null;
 		}
 
-		// reuse UCERF3 paleo slip
-		List<SectMappedUncertainDataConstraint> aveSlipConstraints = loadU3PaleoSlipData(subSects);
-		PaleoSlipProbabilityModel paleoSlipProbModel = U3AveSlipConstraint.slip_prob_model;
+		List<SectMappedUncertainDataConstraint> aveSlipConstraints = null;
+		PaleoSlipProbabilityModel paleoSlipProbModel = null;
+		if (INCLUDE_U3_PALEO_SLIP) {
+			// reuse UCERF3 paleo slip
+			aveSlipConstraints = loadU3PaleoSlipData(subSects);
+			paleoSlipProbModel = U3AveSlipConstraint.slip_prob_model;
+		}
 
 		return new PaleoseismicConstraintData(rupSet, paleoRateConstraints, paleoProbModel,
 				aveSlipConstraints, paleoSlipProbModel);
@@ -79,7 +87,7 @@ public class NSHM23_PaleoDataLoader {
 	// ensure that mappings are within this distance in km
 	private static final String NSHM23_PALEO_RI_PATH_PREFIX = "/data/erf/nshm23/constraints/paleo_ri/";
 	private static final String CA_PALEO_PATH = NSHM23_PALEO_RI_PATH_PREFIX+"McPhillips_California_RIs_2022_07_13.csv";
-	private static final String WASATCH_PALEO_PATH = NSHM23_PALEO_RI_PATH_PREFIX+"wasatch_paleo_data_2022_08_04.csv";
+	private static final String WASATCH_PALEO_PATH = NSHM23_PALEO_RI_PATH_PREFIX+"wasatch_paleo_data_2022_11_10.csv";
 	
 	private static final String NSHM23_PALEO_SLIP_PATH_PREFIX = "/data/erf/nshm23/constraints/paleo_slip/";
 	private static final String U3_PALEO_SLIP_PATH_1 = NSHM23_PALEO_SLIP_PATH_PREFIX+"Table_R5v4.csv";
@@ -131,7 +139,7 @@ public class NSHM23_PaleoDataLoader {
 			
 			FaultSection mappedSect = null;
 			if (subSects != null) {
-				mappedSect = findMatchingSect(loc, subSects,
+				mappedSect = PaleoseismicConstraintData.findMatchingSect(loc, subSects,
 						LOC_MAX_DIST_NONE_CONTAINED, LOC_MAX_DIST_OTHER_CONTAINED, LOC_MAX_DIST_CONTAINED);
 				if (mappedSect == null) {
 					System.err.println("WARNING: no matching fault section found for paleo site "+name+" at "+lat+", "+lon);
@@ -190,7 +198,7 @@ public class NSHM23_PaleoDataLoader {
 				
 				FaultSection mappedSect = null;
 				if (subSects != null) {
-					mappedSect = findMatchingSect(loc, subSects,
+					mappedSect = PaleoseismicConstraintData.findMatchingSect(loc, subSects,
 							LOC_MAX_DIST_NONE_CONTAINED, LOC_MAX_DIST_OTHER_CONTAINED, LOC_MAX_DIST_CONTAINED);
 					if (mappedSect == null) {
 						System.err.println("WARNING: no matching fault section found for paleo site "+name+" at "+lat+", "+lon);
@@ -212,34 +220,61 @@ public class NSHM23_PaleoDataLoader {
 	
 	public static List<SectMappedUncertainDataConstraint> loadWasatchPaleoRateData(List<? extends FaultSection> subSects)
 			throws IOException {
-		CSVFile<String> csv = CSVFile.readStream(NSHM23_PaleoDataLoader.class.getResourceAsStream(WASATCH_PALEO_PATH), true);
+		CSVFile<String> csv = CSVFile.readStream(NSHM23_PaleoDataLoader.class.getResourceAsStream(WASATCH_PALEO_PATH), false);
 		
 		List<SectMappedUncertainDataConstraint> ret = new ArrayList<>();
 		
+		final int siteNameCol = 0;
+		final int parentNameCol = 1;
+		final int parentIDCol = 2;
+		final int latCol = 4;
+		final int lonCol = latCol+1; 
+		final int rateCol = 15;
+		final int upperCol = rateCol+1; // listed as 2.5%, but it's from the 2.5% RI
+		final int lowerCol = upperCol+1;
+		final UncertaintyBoundType boundType = UncertaintyBoundType.CONF_95;
+		
+		// filter to just wasatch sections
+		List<FaultSection> wasatchSubSects = new ArrayList<>();
+		for (FaultSection sect : subSects)
+			if (sect.getParentSectionName().toLowerCase().contains("wasatch"))
+				wasatchSubSects.add(sect);
+		
 		for (int row=2; row<csv.getNumRows(); row++) {
-			int col = 0;
-			String name = csv.get(row, col++);
-			double lat = csv.getDouble(row, col++);
-			double lon = csv.getDouble(row, col++);
-			double rate = csv.getDouble(row, col++);
-			double stdDev = csv.getDouble(row, col++);
-			double lowerRate = csv.getDouble(row, col++);
-			double upperRate = csv.getDouble(row, col++);
+			int cols = csv.getLine(row).size();
+			if (cols <= upperCol+2 || csv.get(row, lowerCol).isBlank())
+				continue;
+			String name = csv.get(row, siteNameCol).replace("*", "");
+			double lat = csv.getDouble(row, latCol);
+			double lon = csv.getDouble(row, lonCol);
+			double rate = csv.getDouble(row, rateCol);
+			double lowerRate = csv.getDouble(row, lowerCol);
+			double upperRate = csv.getDouble(row, upperCol);
+			
+			double stdDev = boundType.estimateStdDev(rate, lowerRate, upperRate);
 			
 			Location loc = new Location(lat, lon);
 			// now find mapping
 			
 			FaultSection mappedSect = null;
-			if (subSects != null) {
-				mappedSect = findMatchingSect(loc, subSects,
+			if (wasatchSubSects != null) {
+				mappedSect = PaleoseismicConstraintData.findMatchingSect(loc, wasatchSubSects,
 						LOC_MAX_DIST_NONE_CONTAINED, LOC_MAX_DIST_OTHER_CONTAINED, LOC_MAX_DIST_CONTAINED);
 				if (mappedSect == null) {
 					System.err.println("WARNING: no matching fault section found for paleo site "+name+" at "+lat+", "+lon);
 					continue;
+				} else {
+					int parentID = csv.getInt(row, parentIDCol);
+					if (parentID != mappedSect.getParentSectionId()) {
+						System.err.println("WARNING: mapping mismatch for "+name+"? CSV parentID="+parentID
+								+", csv parentName="+csv.get(row, parentNameCol)
+								+", mapped parentID="+mappedSect.getParentSectionId()
+								+", name="+mappedSect.getParentSectionName());
+					}
 				}
 			}
 			BoundedUncertainty uncert = new BoundedUncertainty(
-					UncertaintyBoundType.CONF_95, lowerRate, upperRate, stdDev);
+					boundType, lowerRate, upperRate, stdDev);
 			if (mappedSect == null)
 				ret.add(new SectMappedUncertainDataConstraint(name, -1, null, loc, rate, uncert));
 			else
@@ -257,107 +292,12 @@ public class NSHM23_PaleoDataLoader {
 		return false;
 	}
 	
-	// filter sections to actually check with cartesian distances in KM
-	private static final double LOC_CHECK_DEGREE_TOLERANCE = 3d;
-	private static final double LOC_CHECK_DEGREE_TOLERANCE_SQ = LOC_CHECK_DEGREE_TOLERANCE*LOC_CHECK_DEGREE_TOLERANCE;
-	
-	private static final double LOC_MAX_DIST_NONE_CONTAINED = 40d; // large for offshore noyo site
-	private static final double LOC_MAX_DIST_OTHER_CONTAINED = 1d; // small, must be really close to override a fault that contains it
-	private static final double LOC_MAX_DIST_CONTAINED = 20d; // allows comptom mapping
-	
-	/**
-	 * 
-	 * @param loc
-	 * @param subSects
-	 * @param maxDistNoneContained maximum distance to search if site not contained in the surface project of any fault
-	 * @param maxDistOtherContained maximum distance to search if site is contained by a fault, but another trace is closer
-	 * @param maxDistContained maximum distance to search to the trace of a fault whose surface projection contains this site
-	 * @return
-	 */
-	private static FaultSection findMatchingSect(Location loc, List<? extends FaultSection> subSects,
-			double maxDistNoneContained, double maxDistOtherContained, double maxDistContained) {
-		List<FaultSection> candidates = new ArrayList<>();
-		List<FaultSection> containsCandidates = new ArrayList<>();
-		
-		Map<FaultSection, Double> candidateDists = new HashMap<>();
-		
-		for (FaultSection sect : subSects) {
-			// first check cartesian distance
-			boolean candidate = false;
-			for (Location traceLoc : sect.getFaultTrace()) {
-				double latDiff = loc.getLatitude() - traceLoc.getLatitude();
-				double lonDiff = loc.getLongitude() - traceLoc.getLongitude();
-				if (latDiff*latDiff + lonDiff*lonDiff < LOC_CHECK_DEGREE_TOLERANCE_SQ) {
-					candidate = true;
-					break;
-				}
-			}
-			if (candidate) {
-				candidates.add(sect);
-				double dist = sect.getFaultTrace().minDistToLine(loc);
-				candidateDists.put(sect, dist);
-				// see if this fault contains it
-				if (sect.getAveDip() < 89d) {
-					LocationList perim = new LocationList();
-//					perim.addAll(sect.getFaultSurface(1d).getPerimeter());
-					perim.addAll(sect.getFaultSurface(1d).getEvenlyDiscritizedPerimeter());
-					if (!perim.last().equals(perim.first()))
-						perim.add(perim.first());
-					Region region = new Region(perim, BorderType.GREAT_CIRCLE);
-					if (region.contains(loc))
-						containsCandidates.add(sect);
-				}
-			}
-		}
-		
-		// find the closest of any candidate section
-		FaultSection closest = null;
-		double closestDist = Double.POSITIVE_INFINITY;
-		for (FaultSection sect : candidates) {
-			double dist = candidateDists.get(sect);
-			if (dist < closestDist) {
-				closestDist = dist;
-				closest = sect;
-			}
-		}
-		
-		if (containsCandidates.isEmpty()) {
-			// this site is not in the surface projection of any faults, return if less than the none-contained threshold
-			// this allows the offshore noyo site to match
-			if (closestDist < maxDistNoneContained)
-				return closest;
-			// no match
-			return null;
-		}
-		
-		// if we're here, then this site is contained in the surface projection of at least 1 fault
-		
-		// first see if it's within the inner threshold of any fault, regardless of if it is contained
-		if (closestDist < maxDistOtherContained)
-			return closest;
-		
-		// see if any of the faults containing it are close enough
-		FaultSection closestContaining = null;
-		double closestContainingDist = Double.POSITIVE_INFINITY;
-		for (FaultSection sect : containsCandidates) {
-			double dist = candidateDists.get(sect);
-			if (dist < closestContainingDist) {
-				closestContainingDist = dist;
-				closestContaining = sect;
-			}
-		}
-		
-		if (closestContainingDist < maxDistContained)
-			return closestContaining;
-		// no match
-		return null;
-	}
+	public static double LOC_MAX_DIST_NONE_CONTAINED = 40d; // large for offshore noyo site
+	public static double LOC_MAX_DIST_OTHER_CONTAINED = 1d; // small, must be really close to override a fault that contains it
+	public static final double LOC_MAX_DIST_CONTAINED = 20d; // allows comptom mapping
 
 	public static void main(String[] args) throws IOException {
-		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.NSHM23_v1p4);
-		
-		HashSet<FaultSection> mappedSects = new HashSet<>();
-		List<Location> siteLocs = new ArrayList<>();
+//		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.NSHM23_v1p4);
 		
 //		String prefix = "nshm23_ca_paleo_mappings";
 //		String title = "NSHM23 CA Paleo RI Mappings";
@@ -369,10 +309,21 @@ public class NSHM23_PaleoDataLoader {
 //		List<SectMappedUncertainDataConstraint> datas = loadU3PaleoSlipData(subSects);
 //		Region reg = new CaliforniaRegions.RELM_TESTING();
 		
-		String prefix = "nshm23_wasatch_paleo_mappings";
-		String title = "NSHM23 Wasatch Paleo Mappings";
-		List<SectMappedUncertainDataConstraint> datas = loadWasatchPaleoRateData(subSects);
-		Region reg = new Region(new Location(42.5, -114.5), new Location(36.5, -108));
+//		String prefix = "nshm23_wasatch_paleo_mappings";
+//		String title = "NSHM23 Wasatch Paleo Mappings";
+//		List<SectMappedUncertainDataConstraint> datas = loadWasatchPaleoRateData(subSects);
+//		Region reg = new Region(new Location(42.5, -114.5), new Location(36.5, -108));
+		
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/nshm23/rup_sets/cache/"
+				+ "rup_sets_NSHM18_WUS_PlusU3_FM_3p1_GEOL/rup_set_CoulombRupSet_4228_sects_13693_trace_locs_500367461464_area_2p7441094E19_moment.zip"));
+		String prefix = "nshm18_paleo_mappings";
+		String title = "NSHM23 Paleo Mappings to NSHM18 Sections";
+		List<? extends SectMappedUncertainDataConstraint> datas = load(rupSet).getPaleoRateConstraints();
+		Region reg = NSHM23_RegionLoader.loadFullConterminousWUS();
+		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+		
+		HashSet<FaultSection> mappedSects = new HashSet<>();
+		List<Location> siteLocs = new ArrayList<>();
 		
 		System.out.println("Loaded "+datas.size()+" values");
 		for (SectMappedUncertainDataConstraint constraint : datas) {
@@ -386,8 +337,8 @@ public class NSHM23_PaleoDataLoader {
 			}
 		}
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(subSects, reg);
-		mapMaker.highLightSections(mappedSects, new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
+		GeographicMapMaker mapMaker = new RupSetMapMaker(subSects, reg);
+		mapMaker.setSectHighlights(mappedSects, new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
 		
 		mapMaker.plotScatters(siteLocs, Color.BLUE);
 		
@@ -395,7 +346,7 @@ public class NSHM23_PaleoDataLoader {
 		
 		mapMaker.plot(new File("/tmp"), prefix, title);
 		
-		String urlPrefix = "http://opensha.usc.edu/ftp/kmilner/nshm23/paleo_mappings/";
+		String urlPrefix = "https://opensha.usc.edu/ftp/kmilner/nshm23/paleo_mappings/";
 		System.out.println("GeoJSON.io URL: "+RupSetMapMaker.getGeoJSONViewerLink(urlPrefix+prefix+".geojson"));
 	}
 

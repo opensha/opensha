@@ -1,5 +1,7 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs;
 
+import static org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools.*;
+
 import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.io.File;
@@ -24,6 +26,7 @@ import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.Uncertainty;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -47,22 +50,12 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SolMFDPlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.Shaw07JumpDistProb;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
-import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.MaxJumpDistModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_U3_HybridLogicTreeBranch;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.U3_UncertAddDeformationModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.APrioriSectNuclEstimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ThresholdAveragingSectNuclMFD_Estimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.PaleoSectNuclEstimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ScalingRelSlipRateMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SectNucleationMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator.MultiBinDistributionMethod;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ThresholdAveragingSectNuclMFD_Estimator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -71,11 +64,7 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
-
-import scratch.UCERF3.enumTreeBranches.DeformationModels;
-import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
-import scratch.UCERF3.inversion.UCERF3InversionInputGenerator;
+import com.google.common.primitives.Ints;
 
 /**
  * {@link InversionTargetMFDs} implementation where targets are determined from deformation model slip rates and a target
@@ -158,6 +147,11 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	public static final boolean SPARSE_GR_DEFAULT = true;
 	
 	/**
+	 * If true, then don't assign any moment from empty single-fault bins to multi-fault bins.
+	 */
+	public static boolean SPARSE_GR_DONT_SPREAD_SINGLE_TO_MULTI = true;
+	
+	/**
 	 * Default choice for if we should artificially inflate uncertainties for magnitude bins for which few sections
 	 * participate
 	 */
@@ -169,57 +163,11 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	public static final boolean USE_CREEP_REDUCED_SLIP_STD_DEVS_DEFAULT = false;
 	
 	/**
-	 * Default choice for if we should consider ruptures that use zero-slip-rate sections when building MFDs
+	 * Maximum number of zero slip-rate fault subsections allowed per rupture. Excepting special cases for 2-subsection
+	 * fault clusters, these zero slip-rate subsections must be in the interior of the rupture and each fault involved
+	 * must have at least one nonzero slip-rate subsection.
 	 */
-	public static final boolean USE_RUPTURES_ON_ZERO_SLIP_SECTIONS = false;
-	
-	// discretization parameters for MFDs
-	public final static double MIN_MAG = 0.05;
-	public final static double DELTA_MAG = 0.1;
-	
-	/**
-	 * Figures out MFD bounds for the given rupture set. It will start at 0.05 and include at least the rupture set
-	 * maximum magnitude, expanded to the ceiling of that rupture set maximum magnitude.
-	 * 
-	 * @param rupSet
-	 * @return
-	 */
-	public static EvenlyDiscretizedFunc buildRefXValues(FaultSystemRupSet rupSet) {
-		return buildRefXValues(rupSet.getMaxMag());
-	}
-	
-	/**
-	 * Figures out MFD bounds for the given rupture set maximum magnitude. It will start at 0.05 and include at
-	 * least the given maximum magnitude, expanded to the ceiling of that maximum magnitude.
-	 * 
-	 * @param rupSet
-	 * @return
-	 */
-	public static EvenlyDiscretizedFunc buildRefXValues(double maxRupSetMag) {
-		// figure out MFD bounds
-		// go up to at least ceil(maxMag)
-		int NUM_MAG = 0;
-		
-		while (true) {
-			double nextMag = MIN_MAG + (NUM_MAG+1)*DELTA_MAG;
-			double nextMagLower = nextMag - 0.5*DELTA_MAG;
-			NUM_MAG++;
-//			System.out.println("nextMag="+nextMag+", nextMagLower="+nextMagLower);
-			if ((float)nextMagLower > (float)maxRupSetMag)
-				// done
-				break;
-		}
-		
-		NUM_MAG++; // pad by a bin, it makes plots prettier
-		EvenlyDiscretizedFunc ret = new EvenlyDiscretizedFunc(MIN_MAG, NUM_MAG, DELTA_MAG);
-		
-		double upperBin = ret.getMaxX() + 0.5*DELTA_MAG;
-		Preconditions.checkState((float)maxRupSetMag <= (float)upperBin,
-				"Bad MFD gridding with maxMag=%s, upperBinCenter=%s, upperBinEdge=%s",
-				maxRupSetMag, ret.get(NUM_MAG-1).getX(), upperBin);
-		
-		return ret;
-	}
+	public static final int MAX_NUM_ZERO_SLIP_SECTS_PER_RUP = 1;
 	
 	public static class Builder {
 		
@@ -234,7 +182,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		private boolean sparseGR = SPARSE_GR_DEFAULT;
 		private boolean addSectCountUncertainties = ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT;
 		private boolean useCreepReducedSlipStdDevs = USE_CREEP_REDUCED_SLIP_STD_DEVS_DEFAULT;
-		private boolean useRupsOnZeroSlipSects = USE_RUPTURES_ON_ZERO_SLIP_SECTIONS;
+		private int maxNumZeroSlipSectsPerRup = MAX_NUM_ZERO_SLIP_SECTS_PER_RUP;
 		
 		private double slipStdDevFloor = 0d;
 		
@@ -337,12 +285,18 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		}
 		
 		/**
-		 * Sets whether or not we should use ruptures that include sections with zero slip rates when determining MFDs
+		 * Sets the maximum number of zero slip-rate fault subsections allowed per rupture. Excepting special cases for
+		 * 2-subsection fault clusters, these zero slip-rate subsections must be in the interior of the rupture and each
+		 * fault involved must have at least one nonzero slip-rate subsection.
+		 * 
+		 * Set to {@link Integer#MAX_VALUE} to allow all ruptures regardless of the number of single fault sections
+		 * 
 		 * @param useRupsOnZeroSlipSects
 		 * @return
 		 */
-		public Builder useRupsOnZeroSlipSects(boolean useRupsOnZeroSlipSects) {
-			this.useRupsOnZeroSlipSects = useRupsOnZeroSlipSects;
+		public Builder maxNumZeroSlipSectsPerRup(int maxNumZeroSlipSectsPerRup) {
+			Preconditions.checkArgument(maxNumZeroSlipSectsPerRup >= 0);
+			this.maxNumZeroSlipSectsPerRup = maxNumZeroSlipSectsPerRup;
 			return this;
 		}
 		
@@ -468,7 +422,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		 * @return
 		 */
 		private SupraSeisBValInversionTargetMFDs build(boolean slipOnly) {
-			EvenlyDiscretizedFunc refMFD = buildRefXValues(rupSet);
+			EvenlyDiscretizedFunc refMFD = initEmptyMFD(rupSet);
 			int NUM_MAG = refMFD.size();
 			System.out.println("Building SupraSeisBValInversionTargetMFDs with b="+supraSeisBValue
 					+", slipOnly="+slipOnly+", total MFD range: ["+(float)MIN_MAG+","+(float)refMFD.getMaxX()
@@ -478,46 +432,38 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			
 			int numSects = rupSet.getNumSections();
 			
-			BitSet rupsOnZeroRateSects = null;
-			BitSet highDMRupsOnZeroRateSects = null; // alt version using slip + sd
-			if (!useRupsOnZeroSlipSects) {
-				rupsOnZeroRateSects = new BitSet(rupSet.getNumRuptures());
-				if (applyDefModelUncertainties)
-					highDMRupsOnZeroRateSects = new BitSet(rupSet.getNumRuptures());
+			BitSet zeroRateAllowed = null;
+			BitSet highDMZeroRateAllowed = null;
+			if (maxNumZeroSlipSectsPerRup < Integer.MAX_VALUE) {
+				boolean[] zeroRateSects = new boolean[rupSet.getNumSections()];
+				boolean[] highDMZeroRateSects = applyDefModelUncertainties ? new boolean[zeroRateSects.length] : null;
 				int numZeroSects = 0;
-				for (int s=0; s<rupSet.getNumSections(); s++) {
+				for (int s=0; s<zeroRateSects.length; s++) {
 					FaultSection sect = rupSet.getFaultSectionData(s);
 					double slipRate = sect.getReducedAveSlipRate();
 					double slipSD = useCreepReducedSlipStdDevs ? sect.getReducedSlipRateStdDev() : sect.getOrigSlipRateStdDev();
 					if (slipRate == 0d) {
 						// it's a zero rate section
 						numZeroSects++;
-						boolean highDMzero = Double.isNaN(slipSD) || slipSD == 0;
-						for (int rupIndex : rupSet.getRupturesForSection(s)) {
-							rupsOnZeroRateSects.set(rupIndex);
-							if (applyDefModelUncertainties && highDMzero) {
-								// no standard deviation, so it's still zero for high DM calculations
-								highDMRupsOnZeroRateSects.set(rupIndex);
-							}
-						}
+						zeroRateSects[s] = true;
+						if (applyDefModelUncertainties && Double.isNaN(slipSD) || slipSD == 0)
+							highDMZeroRateSects[s] = true;
 					}
 				}
-				int numZeroRups = rupsOnZeroRateSects.cardinality();
-				if (numZeroRups > 0) {
-					// we have some
-					System.out.println("Will skip "+numZeroRups+" on "+numZeroSects+" zero-rate sections");
-				} else {
-					rupsOnZeroRateSects = null;
-					highDMRupsOnZeroRateSects = null;
-				}
+				
+				zeroRateAllowed = SlipRateAllowedRupsFinder.calcAllowedRuptures(
+						rupSet, zeroRateSects, rupSubSet, maxNumZeroSlipSectsPerRup);
+				if (applyDefModelUncertainties)
+					highDMZeroRateAllowed = SlipRateAllowedRupsFinder.calcAllowedRuptures(
+							rupSet, highDMZeroRateSects, rupSubSet, maxNumZeroSlipSectsPerRup);
 			}
 			
 			ExecutorService exec = null;
 			if (targetAdjDataConstraints != null || uncertAdjDataConstraints != null)
-				exec = Executors.newFixedThreadPool(FaultSysTools.defaultNumThreads());
+				exec = Executors.newFixedThreadPool(defaultNumThreads());
 			
 			SectMFDCalculator calc = new SectMFDCalculator();
-			calc.calc(exec, refMFD, minMags, rupsOnZeroRateSects, slipOnly, 0d);
+			calc.calc(exec, refMFD, minMags, zeroRateAllowed, slipOnly, 0d);
 			// give the newly computed target slip rates to the rupture set for use in inversions
 			rupSet.addModule(calc.sectSlipRates);
 			if (slipOnly)
@@ -531,12 +477,12 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				System.out.println("Re-calculating MFDs using low slip rates");
 				dmLowerCalc = new SectMFDCalculator();
 				// don't zero out any sections where slip - sd is zero
-				dmLowerCalc.calc(exec, refMFD, minMags, rupsOnZeroRateSects, false, -1d);
+				dmLowerCalc.calc(exec, refMFD, minMags, zeroRateAllowed, false, -1d);
 				// for upper, use rups on zero rate+sd sections
 				System.out.println("Re-calculating MFDs using high slip rates");
 				dmUpperCalc = new SectMFDCalculator();
 				// do add back in section wher slip=0 but sd > 0
-				dmUpperCalc.calc(exec, refMFD, minMags, highDMRupsOnZeroRateSects, false, 1d);
+				dmUpperCalc.calc(exec, refMFD, minMags, highDMZeroRateAllowed, false, 1d);
 				System.out.println("Done with DM high/low MFD estimation");
 			}
 			
@@ -588,7 +534,9 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					} catch (InterruptedException | ExecutionException e) {
 						throw ExceptionUtils.asRuntimeException(e);
 					}
-					dataImpliedSectSupraSeisMFDs.set(call.sect.getSectionId(), call.impliedMFD);
+					int sectID = call.sect.getSectionId();
+					Preconditions.checkState(dataImpliedSectSupraSeisMFDs.get(sectID) == null);
+					dataImpliedSectSupraSeisMFDs.set(sectID, call.impliedMFD);
 				}
 				
 				System.out.println("Done with data estimation.");
@@ -686,7 +634,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			SectSlipRates sectSlipRates;
 
 			public void calc(ExecutorService exec, EvenlyDiscretizedFunc refMFD, ModSectMinMags minMags,
-					BitSet rupsOnZeroRateSects, boolean slipOnly, double slipAddStdScalar) {
+					BitSet zeroRateAllowed, boolean slipOnly, double slipAddStdScalar) {
 				int numSects = rupSet.getNumSections();
 				int NUM_MAG = refMFD.size();
 				
@@ -711,6 +659,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				// first, calculate sub and supra-seismogenic G-R MFDs
 				for (int s=0; s<numSects; s++) {
 					FaultSection sect = rupSet.getFaultSectionData(s);
+					int parentID = sect.getParentSectionId();
 
 					double creepReducedSlipRate = sect.getReducedAveSlipRate()*1e-3; // mm/yr -> m/yr
 					double creepReducedSlipRateStdDev;
@@ -745,17 +694,23 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					double minAbove = Double.POSITIVE_INFINITY;
 					// also, if we have a segmentation model, use the max mag that has a nonzero probability
 					double sectMaxMag = Double.NEGATIVE_INFINITY;
+					// max single-fault mag
+					double sectMaxSingleFaultMag = Double.NEGATIVE_INFINITY;
 					BitSet utilization = new BitSet(rupSet.getNumRuptures());
+					int numMinMagExcluded = 0;
+					int numSubsetExcluded = 0;
+					int numZeroRateExcluded = 0;
 					for (int r : rupSet.getRupturesForSection(s)) {
 						double mag = rupSet.getMagForRup(r);
 						if (minMags == null || !minMags.isBelowSectMinMag(s, mag, refMFD)) {
-							if (rupSubSet != null && !rupSubSet.get(r))
+							if (rupSubSet != null && !rupSubSet.get(r)) {
 								// not allowed to use this rupture, skip
+								numSubsetExcluded++;
 								continue;
-							if (rupsOnZeroRateSects != null) {
-								if (rupsOnZeroRateSects.get(r))
-									// this rupture uses a zero-slip-rate section, and we're skipping them
-									continue;
+							}
+							if (zeroRateAllowed != null && !zeroRateAllowed.get(r)) {
+								numZeroRateExcluded++;
+								continue;
 							}
 							minAbove = Math.min(mag, minAbove);
 							sectMaxMag = Math.max(sectMaxMag, mag);
@@ -763,10 +718,28 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 							rups.add(r);
 							utilization.set(r);
 							sectRupInBinCounts[s][refMFD.getClosestXIndex(mag)]++;
-
+							boolean singleFault = true;
+							for (int rupSect : rupSet.getSectionsIndicesForRup(r)) {
+								if (rupSet.getFaultSectionData(rupSect).getParentSectionId() != parentID) {
+									singleFault = false;
+									break;
+								}
+							}
+							if (singleFault)
+								sectMaxSingleFaultMag = Math.max(sectMaxSingleFaultMag, mag);
+						} else {
+							numMinMagExcluded++;
 						}
 					}
 					sectRupUtilizations.add(utilization);
+					
+//					if (s == 1745) {
+//						System.out.println("DEBUG FOR "+s+". "+sect.getSectionName());
+//						System.out.println("Creep-reduced slip rate: "+creepReducedSlipRate);
+//						System.out.println("Rups: "+rups.size());
+//						System.out.println("Min mags? "+(minMags == null ? "null" : (float)minMags.getMinMagForSection(s)));
+//						System.out.println("rupsOnZeroRateParents == null ? "+(rupsOnZeroRateParents == null));
+//					}
 
 					// this will contain the shape of the supra-seismogenic G-R distribution for this section, but the
 					// actual a value of this MFD will be set later
@@ -775,8 +748,10 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					if (rups.isEmpty()) {
 						if (creepReducedSlipRate > 0d && slipAddStdScalar == 0d)
 							// only print warning if we have a slip rate on this section
-							System.err.println("WARNING: Section "+s+" has no ruptures above the minimum magnitude ("
-									+sectMinMag+"): "+sect.getName());
+							System.err.println("WARNING: Section "+s+" has no ruptures: "+sect.getName()
+									+"; exclusions: "+numMinMagExcluded+" for minMag="+(float)sectMinMag
+									+", "+numSubsetExcluded+" for rupture subset, "
+									+numZeroRateExcluded+" for using zero-rate subsections");
 						minMagIndex = refMFD.getClosestXIndex(sectMinMag);
 						maxMagIndex = minMagIndex;
 						supraGR_shape = new IncrementalMagFreqDist(minMagIndex, 1, refMFD.getDelta());
@@ -798,8 +773,21 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 
 						if (sparseGR) {
 							// re-distribute to only bins that actually have ruptures available
+							List<Double> groupBinEdges = null;
+							if (SPARSE_GR_DONT_SPREAD_SINGLE_TO_MULTI && Double.isFinite(sectMaxSingleFaultMag)) {
+								int singleBin = refMFD.getClosestXIndex(sectMaxSingleFaultMag);
+								if (singleBin < maxMagIndex) {
+									double binEdge = refMFD.getX(singleBin)+0.5*refMFD.getDelta();
+//									if (s == 1261) {
+//										System.out.println("Bin edge is "+(float)binEdge+" for maxSingle="+(float)sectMaxSingleFaultMag);
+//										SparseGutenbergRichterSolver.D = true;
+//									}
+									groupBinEdges = List.of(binEdge);
+								}
+							}
 							supraGR_shape = SparseGutenbergRichterSolver.getEquivGR(supraGR_shape, mags,
-									supraGR_shape.getTotalMomentRate(), supraSeisBValue);
+									groupBinEdges, true, supraGR_shape.getTotalMomentRate(), supraSeisBValue);
+							SparseGutenbergRichterSolver.D = false;
 						}
 					}
 
@@ -1011,7 +999,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 						slipRateStdDevs[s] = creepReducedSlipRateStdDev*fractSupra;
 					}
 
-					slipRateStdDevs[s] = Math.max(slipRateStdDevs[s], slipStdDevFloor);
+					slipRateStdDevs[s] = Math.max(slipRateStdDevs[s], slipStdDevFloor*1e-3); // mm/yr -> m/yr
 
 					double targetMoRateTest = supraMoRate + subMoRate;
 
@@ -1197,7 +1185,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					IncrementalMagFreqDist meanMFD = new IncrementalMagFreqDist(MIN_MAG, impliedMFDs.get(0).size(), DELTA_MAG);
 					IncrementalMagFreqDist upperMFD = null;
 					IncrementalMagFreqDist lowerMFD = null;
-					UncertaintyBoundType boundType = null;
+					// we use one sigma later when calculating the implie std dev, so just do that now
+					UncertaintyBoundType boundType = UncertaintyBoundType.ONE_SIGMA;
 					int numBounded = 0;
 					for (IncrementalMagFreqDist mfd : impliedMFDs) {
 						Preconditions.checkState(mfd.size() == meanMFD.size());
@@ -1209,16 +1198,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 							if (upperMFD == null) {
 								upperMFD = new IncrementalMagFreqDist(MIN_MAG, meanMFD.size(), DELTA_MAG);
 								lowerMFD = new IncrementalMagFreqDist(MIN_MAG, meanMFD.size(), DELTA_MAG);
-								if (mfd instanceof UncertainBoundedIncrMagFreqDist) {
-									bounded = (UncertainBoundedIncrMagFreqDist)mfd;
-									boundType = bounded.getBoundType();
-								} else {
-									boundType = UncertaintyBoundType.ONE_SIGMA;
-									bounded = ((UncertainIncrMagFreqDist)mfd).estimateBounds(boundType);
-								}
-							} else {
-								bounded = ((UncertainIncrMagFreqDist)mfd).estimateBounds(boundType);
 							}
+							bounded = ((UncertainIncrMagFreqDist)mfd).estimateBounds(boundType);
 							numBounded++;
 							for (int i=0; i<meanMFD.size(); i++) {
 								upperMFD.add(i, bounded.getUpperY(i));
@@ -1470,7 +1451,11 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			if (D) System.out.println("\tImplied std dev range:\t["+(float)stdDevTrack.getMin()+","+(float)stdDevTrack.getMax()
 					+"], avg="+(float)stdDevTrack.getAverage()+"\t\trel range:\t["+(float)relStdDevTrack.getMin()
 					+","+(float)relStdDevTrack.getMax()+"], avg="+(float)relStdDevTrack.getAverage());
-			return new UncertainBoundedIncrMagFreqDist(mfd, lower, upper, UncertaintyBoundType.ONE_SIGMA);
+			// this is what was used pre 2/14/23, and resulted in lower std devs
+			// basically, sd = 0.5*(origSD + max(origSD, inputSD))
+//			return new UncertainBoundedIncrMagFreqDist(mfd, lower, upper, UncertaintyBoundType.ONE_SIGMA);
+			// this actually uses the max(origSD, inputSD)
+			return new UncertainBoundedIncrMagFreqDist(mfd, lower, upper, UncertaintyBoundType.ONE_SIGMA, stdDevs);
 		}
 	}
 	
@@ -1520,6 +1505,78 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		   rups.add(r);
 		return rups;
 	}
+
+	@Override
+	public AveragingAccumulator<InversionTargetMFDs> averagingAccumulator() {
+//		return new Averager();
+		return null;
+	}
+	
+	public static class SupraBAverager extends InversionTargetMFDs.Averager {
+		
+		private boolean allSupra = true;
+		
+		private double weightedBValSum = 0d;
+		private AveragingAccumulator<SectSlipRates> slipAvg;
+		private List<BitSet> sectRupUtilizations;
+
+		@Override
+		public void process(InversionTargetMFDs module, double relWeight) {
+			super.process(module, relWeight);
+			allSupra = allSupra && module instanceof SupraSeisBValInversionTargetMFDs;
+			if (allSupra) {
+				SupraSeisBValInversionTargetMFDs mfds = (SupraSeisBValInversionTargetMFDs)module;
+				weightedBValSum += relWeight*mfds.supraSeisBValue;
+				if (slipAvg == null) {
+					slipAvg = mfds.sectSlipRates.averagingAccumulator();
+					Preconditions.checkNotNull(slipAvg);
+					sectRupUtilizations = new ArrayList<>();
+					FaultSystemRupSet rupSet = mfds.getParent();
+					for (int s=0; s<rupSet.getNumSections(); s++)
+						sectRupUtilizations.add(new BitSet(rupSet.getNumRuptures()));
+				}
+				slipAvg.process(mfds.sectSlipRates, relWeight);
+				for (int s=0; s<sectRupUtilizations.size(); s++)
+					sectRupUtilizations.get(s).or(mfds.sectRupUtilizations.get(s));
+			}
+		}
+
+		@Override
+		public InversionTargetMFDs getAverage() {
+			InversionTargetMFDs average = super.getAverage();
+			if (allSupra)
+				average = doGetSupraSeisAverageInstance(average);
+			return average;
+		}
+		
+		public SupraSeisBValInversionTargetMFDs getSupraSeisAverageInstance() {
+			Preconditions.checkState(allSupra, "Not all processed target MFDs were SupraSeisBValInversionTargetMFDs instances");
+			return doGetSupraSeisAverageInstance(super.getAverage());
+		}
+		
+		private SupraSeisBValInversionTargetMFDs doGetSupraSeisAverageInstance(InversionTargetMFDs average) {
+			double supraSeisBValue = weightedBValSum/totWeight;
+			IncrementalMagFreqDist totalRegionalMFD = average.getTotalRegionalMFD();
+			UncertainIncrMagFreqDist onFaultSupraSeisMFD = (UncertainIncrMagFreqDist) average.getTotalOnFaultSupraSeisMFD();
+			IncrementalMagFreqDist onFaultSubSeisMFD = average.getTotalOnFaultSubSeisMFD();
+			List<UncertainIncrMagFreqDist> mfdConstraints = new ArrayList<>();
+			for (IncrementalMagFreqDist mfd : average.getMFD_Constraints()) {
+				Preconditions.checkState(mfd instanceof UncertainIncrMagFreqDist);
+				mfdConstraints.add((UncertainIncrMagFreqDist)mfd);
+			}
+			SubSeismoOnFaultMFDs subSeismoOnFaultMFDs = average.getOnFaultSubSeisMFDs();
+			List<UncertainIncrMagFreqDist> supraSeismoOnFaultMFDs = new ArrayList<>();
+			for (IncrementalMagFreqDist mfd : average.getOnFaultSupraSeisNucleationMFDs()) {
+				Preconditions.checkState(mfd instanceof UncertainIncrMagFreqDist);
+				supraSeismoOnFaultMFDs.add((UncertainIncrMagFreqDist)mfd);
+			}
+			SectSlipRates sectSlipRates = slipAvg.getAverage();
+			return new SupraSeisBValInversionTargetMFDs(
+					null, supraSeisBValue, totalRegionalMFD, onFaultSupraSeisMFD, onFaultSubSeisMFD, mfdConstraints,
+					subSeismoOnFaultMFDs, supraSeismoOnFaultMFDs, sectSlipRates, sectRupUtilizations);
+		}
+		
+	}
 	
 	public static void main(String[] args) throws IOException {
 		FaultSystemRupSet rupSet = FaultSystemRupSet.load(
@@ -1530,7 +1587,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		InversionTargetMFDs origTargets = rupSet.getModule(InversionTargetMFDs.class);
 		SectSlipRates origSlips = rupSet.getModule(SectSlipRates.class);
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, new CaliforniaRegions.RELM_TESTING());
+		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, new CaliforniaRegions.RELM_TESTING());
 		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
 		
 		rupSet = FaultSystemRupSet.buildFromExisting(rupSet)

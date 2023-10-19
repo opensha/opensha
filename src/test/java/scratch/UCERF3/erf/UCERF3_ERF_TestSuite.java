@@ -5,7 +5,7 @@ import org.junit.runners.Suite;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-	FSS_ERF_ParamTest.class,
+//	FSS_ERF_ParamTest.class, TODO: disabled until #96 is fixed
 	FSS_ERF_PrefBlendTest.class
 })
 

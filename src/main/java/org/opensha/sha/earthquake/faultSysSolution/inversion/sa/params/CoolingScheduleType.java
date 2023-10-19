@@ -6,11 +6,11 @@ public enum CoolingScheduleType {
 	 */
 	CLASSICAL_SA,
 	/**
-	 * fast SA cooling schedule (Szu and Hartley, 1987)
+	 * fast SA cooling schedule (Szu and Hartley, 1987) (recommended)
 	 */
 	FAST_SA,
 	/**
-	 * very fast SA cooling schedule (Ingber, 1989) (recommended)
+	 * very fast SA cooling schedule (Ingber, 1989)
 	 */
 	VERYFAST_SA,
 	LINEAR; // Drops temperature uniformly from 1 to 0.  Only use with a completion criteria of a fixed number of iterations.

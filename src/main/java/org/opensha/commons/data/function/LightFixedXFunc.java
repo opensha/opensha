@@ -128,11 +128,6 @@ public class LightFixedXFunc extends AbstractDiscretizedFunc {
 	public void set(int index, double Y) throws IndexOutOfBoundsException {
 		yVals[index] = Y;
 	}
-
-	@Override
-	public String getMetadataString() {
-		return null;
-	}
 	
 	public double[] getXVals() {
 		return xVals;

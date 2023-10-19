@@ -24,6 +24,7 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -79,7 +80,7 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		if (compSol != null && !meta.comparisonHasSameSects)
 			compSol = null;
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(sol.getRupSet(), meta.region);
 		
 		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(minB, maxB);
 		cpt.setNanColor(Color.GRAY);
@@ -223,13 +224,21 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 			lines.add("");
 			
 			double[] meanBVals = new double[sectBVals.length];
+			double[] minBVals = new double[sectBVals.length];
+			double[] maxBVals = new double[sectBVals.length];
+			double[] p25BVals = new double[sectBVals.length];
+			double[] p75BVals = new double[sectBVals.length];
 			double[] bValIQR = new double[sectBVals.length];
 			double[] bValRange = new double[sectBVals.length];
 			for (int s=0; s<meanBVals.length; s++) {
 				ArbDiscrEmpiricalDistFunc dist = branchBVals.getSectBValDist(s);
 				meanBVals[s] = dist.getMean();
-				bValIQR[s] = dist.getInterpolatedFractile(0.75d) - dist.getInterpolatedFractile(0.25d);
-				bValRange[s] = dist.getMaxX() - dist.getMinX();
+				p25BVals[s] = dist.getInterpolatedFractile(0.25d);
+				p75BVals[s] = dist.getInterpolatedFractile(0.75d);
+				minBVals[s] = dist.getMinX();
+				maxBVals[s] = dist.getMaxX();
+				bValIQR[s] = p75BVals[s] - p25BVals[s];
+				bValRange[s] = maxBVals[s] - minBVals[s];
 			}
 			
 			mapMaker.setWriteGeoJSON(false);
@@ -243,10 +252,10 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 			
 			TableBuilder table = MarkdownUtils.tableBuilder();
 			
-			table.addLine("Interquartile Range", "Full Range");
-			
 			CPT rangeCPT = GMT_CPT_Files.BLACK_RED_YELLOW_UNIFORM.instance().reverse().rescale(0d, 3d);
 			rangeCPT.setNanColor(Color.GRAY);
+			
+			table.addLine(MarkdownUtils.boldCentered("Interquartile Range"), MarkdownUtils.boldCentered("Full Range"));
 			
 			table.initNewLine();
 			mapMaker.plotSectScalars(bValIQR, rangeCPT, "Subsection b-value IQR");
@@ -255,6 +264,28 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 			mapMaker.plotSectScalars(bValRange, rangeCPT, "Subsection b-value Range");
 			mapMaker.plot(resourcesDir, prefix+"_range", getTruncatedTitle(meta.primary.name));
 			table.addColumn("![b-value range]("+relPathToResources+"/"+prefix+"_range.png)");
+			table.finalizeLine();
+			
+			table.addLine(MarkdownUtils.boldCentered("Minimum"), MarkdownUtils.boldCentered("Maximum"));
+			
+			table.initNewLine();
+			mapMaker.plotSectScalars(minBVals, cpt, "Subsection minimum b-value");
+			mapMaker.plot(resourcesDir, prefix+"_min", getTruncatedTitle(meta.primary.name));
+			table.addColumn("![b-value min]("+relPathToResources+"/"+prefix+"_min.png)");
+			mapMaker.plotSectScalars(maxBVals, cpt, "Subsection maximum b-value");
+			mapMaker.plot(resourcesDir, prefix+"_max", getTruncatedTitle(meta.primary.name));
+			table.addColumn("![b-value max]("+relPathToResources+"/"+prefix+"_max.png)");
+			table.finalizeLine();
+			
+			table.addLine(MarkdownUtils.boldCentered("25 %-ile"), MarkdownUtils.boldCentered("75 %-ile"));
+			
+			table.initNewLine();
+			mapMaker.plotSectScalars(p25BVals, cpt, "Subsection 25 %-ile b-value");
+			mapMaker.plot(resourcesDir, prefix+"_p25", getTruncatedTitle(meta.primary.name));
+			table.addColumn("![b-value p25]("+relPathToResources+"/"+prefix+"_p25.png)");
+			mapMaker.plotSectScalars(p75BVals, cpt, "Subsection 75 %-ile b-value");
+			mapMaker.plot(resourcesDir, prefix+"_p75", getTruncatedTitle(meta.primary.name));
+			table.addColumn("![b-value p75]("+relPathToResources+"/"+prefix+"_p75.png)");
 			table.finalizeLine();
 			
 			lines.addAll(table.build());
@@ -750,6 +781,8 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		List<String> header = BValEstimate.tableHeader("sect index", "sect name");
 		if (branchBVals != null) {
 			header.add("min branch b-value");
+			header.add("25 %-ile branch b-value");
+			header.add("75 %-ile branch b-value");
 			header.add("max branch b-value");
 			header.add("mean branch b-value");
 		}
@@ -774,6 +807,8 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 			if (branchBVals != null) {
 				ArbDiscrEmpiricalDistFunc dist = branchBVals.getSectBValDist(s);
 				line.add((float)dist.getMinX()+"");
+				line.add((float)dist.getInterpolatedFractile(0.25d)+"");
+				line.add((float)dist.getInterpolatedFractile(0.75d)+"");
 				line.add((float)dist.getMaxX()+"");
 				line.add((float)dist.getMean()+"");
 			}
@@ -813,6 +848,8 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 		List<String> header = BValEstimate.tableHeader("parent sect ID", "parent sect name");
 		if (branchBVals != null) {
 			header.add("min branch b-value");
+			header.add("25 %-ile branch b-value");
+			header.add("75 %-ile branch b-value");
 			header.add("max branch b-value");
 			header.add("mean branch b-value");
 		}
@@ -837,6 +874,8 @@ public class SectBValuePlot extends AbstractSolutionPlot {
 			if (branchBVals != null) {
 				ArbDiscrEmpiricalDistFunc dist = branchBVals.getParentBValDist(parentID);
 				line.add((float)dist.getMinX()+"");
+				line.add((float)dist.getInterpolatedFractile(0.25d)+"");
+				line.add((float)dist.getInterpolatedFractile(0.75d)+"");
 				line.add((float)dist.getMaxX()+"");
 				line.add((float)dist.getMean()+"");
 			}

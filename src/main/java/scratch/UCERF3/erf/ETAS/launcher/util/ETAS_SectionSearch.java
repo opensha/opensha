@@ -89,7 +89,7 @@ public class ETAS_SectionSearch {
 		Preconditions.checkArgument(fssFile.exists(), "FSS file doesn't exist: %s", fssFile.getAbsolutePath());
 		
 		System.out.println("Loading fault system solution from "+fssFile.getAbsolutePath());
-		FaultSystemSolution fss = U3FaultSystemIO.loadSol(fssFile);
+		FaultSystemSolution fss = FaultSystemSolution.load(fssFile);
 		
 		Region searchReg = null;
 		Location centerLoc = null;

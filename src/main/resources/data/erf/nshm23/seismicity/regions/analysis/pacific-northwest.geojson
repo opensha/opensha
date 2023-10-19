@@ -1,0 +1,24 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-119.00, 49.20],
+          [-123.70, 49.20],
+          [-123.70, 48.60],
+          [-125.30, 48.60],
+          [-124.60, 46.20],
+          [-125.20, 43.00],
+          [-119.00, 43.00],
+          [-119.00, 49.20]
+        ]]
+      },
+      "properties": {
+        "title": "NSHMP Pacific Northwest Region"
+      }
+    }
+  ]
+}

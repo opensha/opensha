@@ -79,22 +79,27 @@ public enum U3_UncertAddDeformationModels implements LogicTreeNode, RupSetDeform
 		Preconditions.checkState(faultModel instanceof FaultModels, "%s is not a UCERF3 fault model", faultModel.getName());
 		FaultModels fm = (FaultModels)faultModel;
 		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, u3dm, null, 0.1);
-		List<? extends FaultSection> sects = dmFetch.getSubSectionList();
+		List<? extends FaultSection> subSects = dmFetch.getSubSectionList();
 		
-		// infer standard deviations from geologic bounds so we can use newer slip rate constraints
-		// assume bounds are +/- 2 sigma
-		System.out.println("Inferring slip-rate standard deviations from geologic bounds...");
-		List<? extends FaultSection> lowerSects = new DeformationModelFetcher(
-				fm, DeformationModels.GEOLOGIC_LOWER, null, 0.1).getSubSectionList();
-		List<? extends FaultSection> upperSects = new DeformationModelFetcher(
-				fm, DeformationModels.GEOLOGIC_UPPER, null, 0.1).getSubSectionList();
-		for (int s=0; s<sects.size(); s++) {
-			double upper = upperSects.get(s).getOrigAveSlipRate();
-			double lower = lowerSects.get(s).getOrigAveSlipRate();
-			sects.get(s).setSlipRateStdDev((upper-lower)/4d);
+		if (!NSHM23_DeformationModels.isHardcodedFractionalStdDev()) {
+			// infer standard deviations from geologic bounds
+			// assume bounds are +/- 2 sigma
+			System.out.println("Inferring slip-rate standard deviations from geologic bounds...");
+			List<? extends FaultSection> lowerSects = new DeformationModelFetcher(
+					fm, DeformationModels.GEOLOGIC_LOWER, null, 0.1).getSubSectionList();
+			List<? extends FaultSection> upperSects = new DeformationModelFetcher(
+					fm, DeformationModels.GEOLOGIC_UPPER, null, 0.1).getSubSectionList();
+			
+			for (int s=0; s<subSects.size(); s++) {
+				double upper = upperSects.get(s).getOrigAveSlipRate();
+				double lower = lowerSects.get(s).getOrigAveSlipRate();
+				subSects.get(s).setSlipRateStdDev((upper-lower)/4d);
+			}
 		}
 		
-		return sects;
+		NSHM23_DeformationModels.applyStdDevDefaults(subSects);
+		
+		return subSects;
 	}
 	
 	public static void main(String[] args) throws IOException {

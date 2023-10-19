@@ -92,6 +92,11 @@ public class FaultPolyMgr implements Iterable<Area>, PolygonFaultGridAssociation
 	public Map<Integer, Double> getScaledNodeFractions(int sectIdx) {
 		return sectInNodePartic.row(sectIdx);
 	}
+
+	@Override
+	public Map<Integer, Double> getScaledSectFracsOnNode(int nodeIdx) {
+		return sectInNodePartic.column(nodeIdx);
+	}
 	
 	@Override
 	public Map<Integer, Double> getNodeFractions(int sectIdx) {

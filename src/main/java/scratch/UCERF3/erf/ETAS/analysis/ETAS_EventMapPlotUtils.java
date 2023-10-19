@@ -546,6 +546,14 @@ public class ETAS_EventMapPlotUtils {
 		return gp;
 	}
 	
+	static FaultTrace getUpperEdge(RuptureSurface surf) {
+		try {
+			return surf.getUpperEdge();
+		} catch (Exception e) {
+			return surf.getEvenlyDiscritizedUpperEdge();
+		}
+	}
+	
 	static void buildEventDepthPlot(List<ETAS_EqkRupture> events, List<XY_DataSet> funcs, List<PlotCurveCharacterstics> chars,
 			RuptureSurface surf) throws IOException {
 		if (events.isEmpty() || surf == null || surf.isPointSurface())
@@ -557,10 +565,10 @@ public class ETAS_EventMapPlotUtils {
 			List<? extends RuptureSurface> subSurfs = ((CompoundSurface)surf).getSurfaceList();
 			List<Location[]> pairs = new ArrayList<>();
 			for (int i=0; i<subSurfs.size(); i++) {
-				LocationList tr1 = subSurfs.get(i).getUpperEdge();
+				LocationList tr1 = getUpperEdge(subSurfs.get(i));
 				pairs.add(new Location[] { tr1.first(), tr1.last() });
 				for (int j=i+1; j<subSurfs.size(); j++) {
-					LocationList tr2 = subSurfs.get(j).getUpperEdge();
+					LocationList tr2 = getUpperEdge(subSurfs.get(j));
 					pairs.add(new Location[] { tr1.first(), tr2.first() });
 					pairs.add(new Location[] { tr1.first(), tr2.last() });
 					pairs.add(new Location[] { tr1.last(), tr2.first() });
@@ -581,7 +589,7 @@ public class ETAS_EventMapPlotUtils {
 			trace.add(furthestPair[0]);
 			trace.add(furthestPair[1]);
 		} else {
-			trace = surf.getUpperEdge();
+			trace = getUpperEdge(surf);
 		}
 		
 		// draw rupture

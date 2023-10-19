@@ -13,6 +13,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -34,6 +35,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.uncertainty.BoundedUncertainty;
 import org.opensha.commons.data.uncertainty.UncertainArbDiscFunc;
@@ -42,9 +44,13 @@ import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertaintyBoundType;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
+import org.opensha.commons.gui.plot.PlotElement;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
@@ -68,6 +74,8 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Un
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectBVals;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectNuclMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectParticMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchParentSectParticMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
@@ -80,6 +88,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
+import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots.HistScalar;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.RupHistogramPlots.HistScalarValues;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SectBySectDetailPlots.AlongStrikePlot;
@@ -225,8 +234,61 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		Collections.sort(sortedNames);
 		
 		TableBuilder table = buildSectLinksTable(linksMap, sortedNames, "Fault Section");
+		
+		List<String> lines = new ArrayList<>();
+		
+		// make map of parent sections to make clicking easy
+		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region) {
 
-		return table.build();
+			@Override
+			protected Feature surfFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
+				return featureLink(super.surfFeature(sect, pChar), sect);
+			}
+
+			@Override
+			protected Feature traceFeature(FaultSection sect, PlotCurveCharacterstics pChar) {
+				return featureLink(super.traceFeature(sect, pChar), sect);
+			}
+			
+			private Feature featureLink(Feature feature, FaultSection sect) {
+				feature.properties.set("name", sect.getParentSectionName());
+				feature.properties.set("id", sect.getParentSectionId());
+				feature.properties.set("subSectID", sect.getSectionId());
+				return feature;
+			}
+			
+		};
+		mapMaker.setWriteGeoJSON(true);
+		mapMaker.setRegion(meta.region);
+		mapMaker.setWritePDFs(false);
+		
+		List<Color> sectColors = new ArrayList<>();
+		for (int s=0; s<rupSet.getNumSections(); s++)
+			sectColors.add(null);
+		// now fill in random colors for each parent section
+		Random rand = new Random(rupSet.getNumSections()*sectsByParent.size());
+		List<Integer> sortedIDs = new ArrayList<>(sectsByParent.keySet());
+		Collections.sort(sortedIDs);
+		CPT cpt = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
+		for (int parentID : sortedIDs) {
+			List<FaultSection> sects = sectsByParent.get(parentID);
+			Color color = cpt.getColor(rand.nextFloat());
+			for (FaultSection sect : sects)
+				sectColors.set(sect.getSectionId(), color);
+		}
+		mapMaker.plotSectColors(sectColors);
+		mapMaker.plot(resourcesDir, "parent_sections", "Parent Fault Sections");
+		
+		lines.add("This section includes links to pages with plots for specific parent fault sections.");
+		lines.add("");
+		lines.add("Clickable GeoJSON map to identify fault section names (each parent section is plotted in a random color): "+
+				RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/parent_sections.geojson")
+				+" "+"[Download GeoJSON]("+relPathToResources+"/parent_sections.geojson)");
+		lines.add("");
+		
+		lines.addAll(table.build());
+
+		return lines;
 	}
 	
 	public void plotSingleParent(File outputDir, ReportMetadata meta, int parentID) throws IOException {
@@ -464,6 +526,12 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			
 			lines.add("");
 			lines.addAll(getAlongStrikeLines(meta, parentName, parentSects, resourcesDir, topLink));
+			
+			lines.add("");
+			lines.addAll(getLengthLines(meta, parentName, parentSects, resourcesDir, topLink));
+			
+			lines.add("");
+			lines.addAll(getRateWeightedLengthExampleLines(meta, parentName, parentSects, resourcesDir, topLink));
 		} else {
 			// histograms and rupture examples when we don't have a solution
 			lines.add("");
@@ -567,6 +635,269 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		}
 		return lines;
 	}
+	
+	static List<String> getLengthLines(ReportMetadata meta, String faultName,
+			List<FaultSection> faultSects, File outputDir, String topLink) throws IOException {
+		FaultSystemRupSet rupSet = meta.primary.rupSet;
+		FaultSystemSolution sol = meta.primary.sol;
+		
+		double[] rupLengths = rupSet.getLengthForAllRups();
+		if (rupLengths == null)
+			return new ArrayList<>();
+		
+		HashSet<Integer> rupIndexes = new HashSet<>();
+		for (FaultSection sect : faultSects)
+			rupIndexes.addAll(rupSet.getRupturesForSection(sect.getSectionId()));
+		
+		if (rupIndexes.isEmpty())
+			return new ArrayList<>();
+		
+		boolean anyRate = false;
+		for (int rupIndex : rupIndexes) {
+			if (sol.getRateForRup(rupIndex) > 0) {
+				anyRate = true;
+				break;
+			}
+		}
+		if (!anyRate)
+			return new ArrayList<>();
+		
+		MinMaxAveTracker track = new MinMaxAveTracker();
+		for (int rupIndex : rupIndexes)
+			track.addValue(rupLengths[rupIndex]*1e-3);
+		
+		HistogramFunction countHist = RupHistogramPlots.HistScalar.LENGTH.getHistogram(track);
+		HistogramFunction rateHist = RupHistogramPlots.HistScalar.LENGTH.getHistogram(track);
+		
+		for (int rupIndex : rupIndexes) {
+			int index = countHist.getClosestXIndex(rupLengths[rupIndex]*1e-3);
+			countHist.add(index, 1d);
+			rateHist.add(index, sol.getRateForRup(rupIndex));
+		}
+		
+		List<PlotSpec> specs = new ArrayList<>();
+		List<Range> yRanges = new ArrayList<>();
+		List<Boolean> yLogs = new ArrayList<>();
+		Range xRange = null;
+		
+		Color color = MAIN_COLOR;
+		
+		for (int p=0; p<3; p++) {
+			HistogramFunction hist;
+			boolean logY;
+			boolean rateWeighted;
+			if (p == 0) {
+				hist = countHist;
+				logY = false;
+				rateWeighted = false;
+			} else if (p == 1) {
+				hist = rateHist;
+				logY = false;
+				rateWeighted = true;
+			} else {
+				hist = rateHist;
+				logY = true;
+				rateWeighted = true;
+			}
+			
+			List<DiscretizedFunc> funcs = new ArrayList<>();
+			List<PlotCurveCharacterstics> chars = new ArrayList<>();
+			
+			funcs.add(hist);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, color));
+			
+			String title = "Rupture Length Histogram";
+			String xAxisLabel = "Length (km)";
+			String yAxisLabel = rateWeighted ? "Annual Rate" : "Count";
+			
+			PlotSpec spec = new PlotSpec(funcs, chars, title, xAxisLabel, yAxisLabel);
+			
+			if (xRange == null)
+				xRange = new Range(hist.getMinX() - 0.5*hist.getDelta(),
+						hist.getMaxX() + 0.5*hist.getDelta());
+			
+			Range yRange;
+			if (logY) {
+				double minY = Double.POSITIVE_INFINITY;
+				double maxY = 0d;
+				for (DiscretizedFunc func : funcs) {
+					for (Point2D pt : func) {
+						double y = pt.getY();
+						if (y > 0) {
+							minY = Math.min(minY, y);
+							maxY = Math.max(maxY, y);
+						}
+					}
+				}
+				yRange = new Range(Math.pow(10, Math.floor(Math.log10(minY))),
+						Math.pow(10, Math.ceil(Math.log10(maxY))));
+			} else {
+				double maxY = hist.getMaxY();
+				yRange = new Range(0, 1.05*maxY);
+			}
+			
+			specs.add(spec);
+			yRanges.add(yRange);
+			yLogs.add(logY);
+		}
+		
+		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		
+		gp.drawGraphPanel(specs, List.of(false), yLogs, List.of(xRange), yRanges);
+		gp.getChartPanel().setSize(800, 1200);
+		File pngFile = new File(outputDir, "length_hist.png");
+		gp.saveAsPNG(pngFile.getAbsolutePath());
+		
+		List<String> lines = new ArrayList<>();
+		
+		lines.add("## Length Distributions");
+		lines.add(topLink); lines.add("");
+		
+		lines.add("Fault rupture length distributions. The top panel shows the raw count of ruptures in which _"
+				+ faultName+"_ participates in the rupture set as a function of rupture length. The bottom two panels "
+				+ "show the rate-weighted distribution (i.e., the distribution of lengths in the solution). The middle "
+				+ "panel is plotted with a linear scale, and the bottom paney a logarithmic scale.");
+		lines.add("");
+		
+		lines.add("![Length Hist]("+outputDir.getName()+"/"+pngFile.getName()+")");
+		return lines;
+	}
+	
+	static List<String> getRateWeightedLengthExampleLines(ReportMetadata meta, String faultName,
+			List<FaultSection> faultSects, File outputDir, String topLink) throws IOException {
+		double[] fractiles = { 0.5d, 0.75, 0.9, 0.975, 0.99, 1d };
+		
+		FaultSystemRupSet rupSet = meta.primary.rupSet;
+		FaultSystemSolution sol = meta.primary.sol;
+		
+		double[] rupLengths = rupSet.getLengthForAllRups();
+		ClusterRuptures cRups = rupSet.getModule(ClusterRuptures.class);
+		if (rupLengths == null || cRups == null)
+			return new ArrayList<>();
+		
+		HashSet<Integer> rupIndexes = new HashSet<>();
+		for (FaultSection sect : faultSects)
+			for (int rupIndex : rupSet.getRupturesForSection(sect.getSectionId()))
+				if (sol.getRateForRup(rupIndex) > 0d)
+					// only include ruptures that were used here
+					rupIndexes.add(rupIndex);
+		
+		boolean hasMultiFault = false;
+		for (int rupIndex : rupIndexes) {
+			Integer commonParent = null;
+			for (FaultSection sect : rupSet.getFaultSectionDataForRupture(rupIndex)) {
+				if (commonParent == null) {
+					commonParent = sect.getParentSectionId();
+				} else if (commonParent != sect.getParentSectionId()) {
+					// multi-fault rupture
+					hasMultiFault = true;
+					break;
+				}
+			}
+			if (hasMultiFault)
+				break;
+		}
+		
+		if (!hasMultiFault)
+			return new ArrayList<>();
+		
+		ArbDiscrEmpiricalDistFunc lengthRateDist = new ArbDiscrEmpiricalDistFunc();
+		for (int rupIndex : rupIndexes)
+			lengthRateDist.set(rupLengths[rupIndex], sol.getRateForRup(rupIndex));
+		
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		
+		table.initNewLine();
+		for (int f=0; f<fractiles.length; f++)
+			table.addColumn(MarkdownUtils.boldCentered("p"+optionalDigitDF.format(fractiles[f]*100d)+" Example"));
+		table.finalizeLine();
+		
+		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
+		mapMaker.setWriteGeoJSON(false);
+		mapMaker.setWritePDFs(false);
+		
+		table.initNewLine();
+		
+		HashSet<Integer> writtenRups = new HashSet<>();
+		for (int f=0; f<fractiles.length; f++) {
+			double targetLen = lengthRateDist.getInterpolatedFractile(fractiles[f]);
+			
+			double closestDiff = Double.POSITIVE_INFINITY;
+			int closestIndex = -1;
+			
+			for (int rupIndex : rupIndexes) {
+				double len = rupLengths[rupIndex];
+				double diff = Math.abs(len - targetLen);
+				if (diff < closestDiff) {
+					closestDiff = diff;
+					closestIndex = rupIndex;
+				}
+			}
+			
+			int rupIndex = closestIndex;
+			
+			String rupPrefix = "rupture_"+rupIndex;
+			
+			if (!writtenRups.contains(rupIndex)) {
+				// not a duplicate, need to plot
+				MinMaxAveTracker latTrack = new MinMaxAveTracker();
+				MinMaxAveTracker lonTrack = new MinMaxAveTracker();
+				List<FaultSection> rupSects = rupSet.getFaultSectionDataForRupture(rupIndex);
+				for (FaultSection sect : rupSects) {
+					LocationList locs;
+					if (sect.getAveDip() == 90d)
+						locs = sect.getFaultTrace();
+					else
+						locs = sect.getFaultSurface(1d).getEvenlyDiscritizedPerimeter();
+					for (Location loc : locs) {
+						latTrack.addValue(loc.getLatitude());
+						lonTrack.addValue(loc.getLongitude());
+					}
+				}
+				
+				double minLon = lonTrack.getMin();
+				double maxLon = lonTrack.getMax();
+				double minLat = latTrack.getMin();
+				double maxLat = latTrack.getMax();
+				maxLat += 0.05;
+				minLat -= 0.05;
+				maxLon += 0.05;
+				minLon -= 0.05;
+				
+				Region region = new Region(new Location(minLat, minLon), new Location(maxLat, maxLon));
+				mapMaker.setRegion(region);
+				mapMaker.setSectHighlights(rupSects, highlightChar);
+				
+				double length = rupLengths[rupIndex]*1e-3;
+				
+				String title = "Rupture "+rupIndex+", M"+optionalDigitDF.format(rupSet.getMagForRup(rupIndex))
+					+", "+optionalDigitDF.format(length)+" km, rate="+expProbDF.format(sol.getRateForRup(rupIndex));
+				mapMaker.plot(outputDir, rupPrefix, title);
+				
+				writtenRups.add(rupIndex);
+			}
+			table.addColumn("![Rupture "+rupIndex+"]("+outputDir.getName()+"/"+rupPrefix+".png)");
+		}
+		table.finalizeLine();
+		
+		List<String> lines = new ArrayList<>();
+		
+		lines.add("## Rupture Examples");
+		lines.add(topLink); lines.add("");
+		
+		lines.add("The following table includes example ruptures, selected at various percentiles from the rate-weighted "
+				+ "rupture length distribution. So, for example, the rupture with length closest to the median length "
+				+ "(again, rate-weighted) is plotted in the first column ('p50 Example'). The longest participating "
+				+ "rupture is plotted last ('p100 Example').");
+		lines.add("");
+		lines.add("It is important to note that the rupture examples here may not be representative, and may have "
+				+ "negligible rates. They are included for illustration purposes only.");
+		
+		lines.add("");
+		lines.addAll(table.wrap(4, 0).build());
+		
+		return lines;
+	}
 
 	private List<String> getConnectivityLines(ReportMetadata meta, int parentSectIndex, String parentName,
 			SectionDistanceAzimuthCalculator distAzCalc, Map<Integer, List<FaultSection>> sectsByParent,
@@ -633,17 +964,25 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		Region plotRegion = new Region(new Location(latTrack.getMin()-0.1, lonTrack.getMin()-0.1),
 				new Location(latTrack.getMax()+0.1, lonTrack.getMax()+0.1));
 		
-		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
 		mapMaker.setWriteGeoJSON(doGeoJSON);
 		mapMaker.setRegion(plotRegion);
 		mapMaker.setWritePDFs(false);
 		mapMaker.setSkipNaNs(true);
-		mapMaker.highLightSections(mySects, highlightChar);
+		mapMaker.setSectHighlights(mySects, highlightChar);
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		table.initNewLine();
 		List<String> jsonLinks = doGeoJSON ? new ArrayList<>() : null;
-		for (boolean rate : new boolean[] {false, true}) {
+		
+		boolean[] isPlotRates;
+		if (rupData.sectCoruptureRates == null)
+			// no rates, plot counts only
+			isPlotRates = new boolean[] {false};
+		else
+			// have rates, plot rates only
+			isPlotRates = new boolean[] {true};
+		for (boolean rate : isPlotRates) {
 			Map<Integer, ? extends Number> valsMap = rate ? rupData.sectCoruptureRates : rupData.sectCoruptureCounts;
 			if (valsMap == null)
 				continue;
@@ -666,8 +1005,10 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 					min = -6;
 					max = -1d;
 				} else {
-					min = Math.floor(logValTrack.getMin());
 					max = Math.ceil(logValTrack.getMax());
+					min = Math.floor(logValTrack.getMin());
+					// at most 5 orders of magnitude
+					min = Math.max(min, max-5d);
 				}
 				label = "Log10 Co-rupture Rate";
 				prefix = "corupture_rate";
@@ -1187,7 +1528,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		incrFuncs.add(nuclMFD);
 		incrChars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, MAIN_COLOR.darker()));
 		
-		BranchSectNuclMFDs branchMFDs = sol.getModule(BranchSectNuclMFDs.class);
+		BranchSectNuclMFDs branchNuclMFDs = sol.getModule(BranchSectNuclMFDs.class);
 		// decided to just do branch MFDs on cumulative, uncomment if we want them back on incremental
 //		if (branchMFDs != null) {
 //			double alpha = minMaxColor.getAlpha()/255d;
@@ -1259,6 +1600,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		}
 		
 		SummedMagFreqDist compNuclMFD = null;
+		EvenlyDiscretizedFunc compCmlParticMFD = null;
 		
 		if (meta.comparisonHasSameSects && meta.comparison.sol != null) {
 			HashSet<Integer> compRups = new HashSet<>();
@@ -1282,7 +1624,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			addFakeHistFromFunc(compNuclMFD, incrFuncs, incrChars,
 					new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, COMP_COLOR));
 			
-			cmlFuncs.add(compParticMFD.getCumRateDistWithOffset());
+			compCmlParticMFD = compParticMFD.getCumRateDistWithOffset();
+			cmlFuncs.add(compCmlParticMFD);
 			cmlChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, COMP_COLOR));
 			cmlFuncs.add(compNuclMFD.getCumRateDistWithOffset());
 			cmlChars.add(new PlotCurveCharacterstics(PlotLineType.DOTTED, 4f, COMP_COLOR));
@@ -1316,7 +1659,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			nuclMFD.setName("Nucleation");
 		}
 		
-		cmlFuncs.add(particMFD.getCumRateDistWithOffset());
+		EvenlyDiscretizedFunc cmlParticMFD = particMFD.getCumRateDistWithOffset();
+		cmlFuncs.add(cmlParticMFD);
 		cmlChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, MAIN_COLOR));
 		EvenlyDiscretizedFunc nuclCmlMFD = nuclMFD.getCumRateDistWithOffset();
 		cmlFuncs.add(nuclCmlMFD);
@@ -1326,11 +1670,41 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		if (yRange == null)
 			return new ArrayList<>();
 		
-		if (branchMFDs != null) {
+		Integer commonParentID = faultSects.get(0).getParentSectionId();
+		for (FaultSection sect : faultSects) {
+			int parentID = sect.getParentSectionId();
+			if (parentID < 0 || parentID != commonParentID) {
+				commonParentID = null;
+				break;
+			}
+		}
+		
+		BranchParentSectParticMFDs parentParticMFDs = commonParentID == null ? null : sol.getModule(BranchParentSectParticMFDs.class);
+		UncertainArbDiscFunc cmlParticBounds = null;
+		
+		if (parentParticMFDs != null) {
+			// plot cumulative participation fractiles
+			EvenlyDiscretizedFunc[] cmlMinMedMax = parentParticMFDs.calcCumulativeSectFractiles(
+					commonParentID, 0d, 0.16, 0.5d, 0.84, 1d);
+			cmlParticBounds = new UncertainArbDiscFunc(
+					SolMFDPlot.extendCumulativeToLowerBound(cmlMinMedMax[2], nuclCmlMFD.getMinX()),
+					SolMFDPlot.extendCumulativeToLowerBound(cmlMinMedMax[0], nuclCmlMFD.getMinX()),
+					SolMFDPlot.extendCumulativeToLowerBound(cmlMinMedMax[4], nuclCmlMFD.getMinX()));
+			UncertainArbDiscFunc cml68 = new UncertainArbDiscFunc(
+					SolMFDPlot.extendCumulativeToLowerBound(cmlMinMedMax[2], nuclCmlMFD.getMinX()),
+					SolMFDPlot.extendCumulativeToLowerBound(cmlMinMedMax[1], nuclCmlMFD.getMinX()),
+					SolMFDPlot.extendCumulativeToLowerBound(cmlMinMedMax[3], nuclCmlMFD.getMinX()));
+			cmlParticBounds.setName("Participation p[0,16,84,100]");
+			cmlFuncs.add(cmlParticBounds);
+			cmlChars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, PRIMARY_BOUNDS));
+			cml68.setName(null);
+			cmlFuncs.add(cml68);
+			cmlChars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, PRIMARY_68_OVERLAY));
+		} else if (branchNuclMFDs != null) {
 			List<Integer> sectIDs = new ArrayList<>(faultSects.size());
 			for (FaultSection sect : faultSects)
 				sectIDs.add(sect.getSectionId());
-			EvenlyDiscretizedFunc[] cmlMinMedMax = branchMFDs.calcCumulativeSectFractiles(
+			EvenlyDiscretizedFunc[] cmlMinMedMax = branchNuclMFDs.calcCumulativeSectFractiles(
 					sectIDs, 0d, 0.16, 0.5d, 0.84, 1d);
 			UncertainArbDiscFunc cmlBounds = new UncertainArbDiscFunc(
 					SolMFDPlot.extendCumulativeToLowerBound(cmlMinMedMax[2], nuclCmlMFD.getMinX()),
@@ -1407,6 +1781,14 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		lines.add("## Magnitude-Frequency Distribution");
 		lines.add(topLink); lines.add("");
 		
+		lines.add("Fault magnitude-frequency distributions. The left plot shows incremental rates (rates within "
+				+ "each magnitude bin), and the right plot shows cumulative rates (rates at or above the given magnitude).");
+		lines.add("");
+		lines.add("The smaller bottom panel shows the distribution of available ruptures with a green histogram and "
+				+ "_is not rate-weighted_. It only shows the raw count of ruptures of various magnitudes available in "
+				+ "the rupture set.");
+		lines.add("");
+		
 		lines.addAll(table.build());
 		
 		if (sol.hasModule(RupMFDsModule.class)) {
@@ -1418,18 +1800,85 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 					+ "are shown in the bottom. The magnitude rage at the top of this page also only considers mean magnitudes._");
 		}
 		
-		if (branchMFDs != null) {
+		// table of cumulative participation
+		table = MarkdownUtils.tableBuilder();
+		
+		table.initNewLine();
+		table.addColumn("Magnitude");
+		table.addColumn("Participation Rate");
+		if (cmlParticBounds != null)
+			table.addColumn("Range");
+		table.addColumn("Participation RI (yrs)");
+		if (cmlParticBounds != null)
+			table.addColumn("Range");
+		if (compCmlParticMFD != null) {
+			table.addColumn("Comparison Rate");
+			table.addColumn("Comparison RI (yrs)");
+		}
+		table.finalizeLine();
+		
+		int firstIndex = 0;
+		double firstVal = cmlParticMFD.getY(0);
+		for (int i=1; i<cmlParticMFD.size(); i++) {
+			double val = cmlParticMFD.getY(i);
+			if ((float)val != (float)firstVal)
+				// we're above the first bin
+				break;
+			else
+				firstIndex = i;
+		}
+		for (int i=firstIndex; i<cmlParticMFD.size(); i++) {
+			double val = cmlParticMFD.getY(i);
+			double compVal = compCmlParticMFD == null ? 0d : compCmlParticMFD.getY(i);
+			if (val == 0d && compVal == 0d)
+				// we're above the max mag, stop
+				break;
+			double mag = cmlParticMFD.getX(i);
+			table.initNewLine();
+			table.addColumn("__M&ge;"+optionalDigitDF.format(mag)+"__");
+			table.addColumn((float)val+"");
+			if (cmlParticBounds != null) {
+				String boundsStr = "[";
+				boundsStr += rangeRateStr(cmlParticBounds.getLower().getInterpolatedY(mag));
+				boundsStr += ", ";
+				boundsStr += rangeRateStr(cmlParticBounds.getUpper().getInterpolatedY(mag));
+				boundsStr += "]";
+				table.addColumn(boundsStr);
+			}
+			table.addColumn(riRateStr(1d/val)+"");
+			if (cmlParticBounds != null) {
+				String boundsStr = "[";
+				boundsStr += riRateStr(1d/cmlParticBounds.getUpper().getInterpolatedY(mag));
+				boundsStr += ", ";
+				boundsStr += riRateStr(1d/cmlParticBounds.getLower().getInterpolatedY(mag));
+				boundsStr += "]";
+				table.addColumn(boundsStr);
+			}
+			if (compCmlParticMFD != null) {
+				table.addColumn((float)compVal+"");
+				table.addColumn(riRateStr(1d/compVal)+"");
+			}
+			table.finalizeLine();
+		}
+		
+		lines.add("");
+		lines.add("### Cumulative Rates and Recurrence Intervals Table");
+		lines.add(topLink); lines.add("");
+		
+		lines.addAll(table.build());
+		
+		if (branchNuclMFDs != null) {
 			// add plots showing each one
 			int alpha;
-			if (branchMFDs.getNumBranches() > 10000)
+			if (branchNuclMFDs.getNumBranches() > 10000)
 				alpha = 20;
-			else if (branchMFDs.getNumBranches() > 5000)
+			else if (branchNuclMFDs.getNumBranches() > 5000)
 				alpha = 40;
-			else if (branchMFDs.getNumBranches() > 1000)
+			else if (branchNuclMFDs.getNumBranches() > 1000)
 				alpha = 60;
-			else if (branchMFDs.getNumBranches() > 500)
+			else if (branchNuclMFDs.getNumBranches() > 500)
 				alpha = 80;
-			else if (branchMFDs.getNumBranches() > 100)
+			else if (branchNuclMFDs.getNumBranches() > 100)
 				alpha = 100;
 			else
 				alpha = 160;
@@ -1450,13 +1899,13 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			cmlFuncs = new ArrayList<>();
 			cmlChars = new ArrayList<>();
 			
-			int branches = branchMFDs.getNumBranches();
+			int branches = branchNuclMFDs.getNumBranches();
 			Preconditions.checkState(branches > 0);
 			
 			for (int b=0; b<branches; b++) {
 				SummedMagFreqDist mfd = null;
 				for (FaultSection sect : faultSects) {
-					IncrementalMagFreqDist sectMFD = branchMFDs.getSectionMFD(b, sect.getSectionId());
+					IncrementalMagFreqDist sectMFD = branchNuclMFDs.getSectionMFD(b, sect.getSectionId());
 					if (mfd == null)
 						mfd = new SummedMagFreqDist(sectMFD.getMinX(), sectMFD.getMaxX(), sectMFD.size());
 					mfd.addIncrementalMagFreqDist(sectMFD);
@@ -1538,8 +1987,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 				List<Integer> sectIDs = new ArrayList<>(faultSects.size());
 				for (FaultSection sect : faultSects)
 					sectIDs.add(sect.getSectionId());
-				IncrementalMagFreqDist medianMFD = branchMFDs.calcIncrementalSectFractiles(sectIDs, 0.5d)[0];
-				DiscretizedFunc medianCmlMFD = branchMFDs.calcCumulativeSectFractiles(sectIDs, 0.5d)[0];
+				IncrementalMagFreqDist medianMFD = branchNuclMFDs.calcIncrementalSectFractiles(sectIDs, 0.5d)[0];
+				DiscretizedFunc medianCmlMFD = branchNuclMFDs.calcCumulativeSectFractiles(sectIDs, 0.5d)[0];
 				if (medianCmlMFD.getMinX() > xRange.getLowerBound()) {
 					// extend to minX
 					DiscretizedFunc extended = new ArbitrarilyDiscretizedFunc();
@@ -1621,6 +2070,18 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		}
 		
 		return lines;
+	}
+	
+	private static String rangeRateStr(double rate) {
+		if (rate < 1e-1)
+			return expProbDF.format(rate);
+		return (float)rate+"";
+	}
+	
+	private static String riRateStr(double ri) {
+		if (ri > 1d)
+			return riDF.format(ri);
+		return (float)ri+"";
 	}
 
 	public static SummedMagFreqDist calcTargetMFD(List<FaultSection> faultSects, InversionTargetMFDs targetMFDs) {
@@ -2040,6 +2501,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			PlotCurveCharacterstics boundaryChar = new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Color.GRAY);
 			for (int s=0; s<specs.size(); s++) {
 				Range yRange = yRanges.get(s);
+				if (yRange == null)
+					yRange = new Range(0d, 1d);
 				List<XY_DataSet> funcs = funcLists.get(s);
 				List<PlotCurveCharacterstics> chars = charLists.get(s);
 				
@@ -2169,6 +2632,8 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			else
 				magLabels.add("Supra-Seis");
 		}
+		
+		BranchSectParticMFDs dists = meta.hasPrimarySol() ? meta.primary.sol.getModule(BranchSectParticMFDs.class) : null;
 
 		boolean comp = meta.hasComparisonSol() && meta.comparisonHasSameSects;
 		boolean first = true;
@@ -2235,6 +2700,30 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 
 					funcs.add(rateFunc);
 					chars.add(new PlotCurveCharacterstics(line, primaryThickness, MAIN_COLOR));
+					
+					if (m == 0 && dists != null) {
+						// we have a solution distribution
+						EvenlyDiscretizedFunc[] fractiles = dists.calcCumulativeSectFractiles(
+								sect.getSectionId(), 0d, 0.16, 0.5, 0.84, 1d);
+						double min = fractiles[0].getY(0);
+						double p16 = fractiles[1].getY(0);
+						double p50 = fractiles[2].getY(0);
+						double p84 = fractiles[3].getY(0);
+						double max = fractiles[4].getY(0);
+						
+						UncertainArbDiscFunc minMaxFunc = uncertCopyAtY(emptyFunc, p50, min, max);
+
+						if (first)
+							minMaxFunc.setName("p[0,16,84,100]");
+						
+						funcs.add(minMaxFunc);
+						chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, PRIMARY_BOUNDS));
+						
+						UncertainArbDiscFunc sixyEightFunc = uncertCopyAtY(emptyFunc, p50, p16, p84);
+						
+						funcs.add(sixyEightFunc);
+						chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, PRIMARY_68_OVERLAY));
+					}
 				}
 			}
 

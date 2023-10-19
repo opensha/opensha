@@ -61,7 +61,22 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	 */
 	protected abstract String getSubDirectoryName();
 	
+	private Map<String, List<? extends LogicTreeLevel<?>>> levelsCache = new HashMap<>();
+	
 	protected List<? extends LogicTreeLevel<?>> getLevelsAffectingFile(String fileName, boolean affectedByDefault) {
+		List<? extends LogicTreeLevel<?>> mappingLevels;
+		synchronized (levelsCache) {
+			if (levelsCache.containsKey(fileName)) {
+				mappingLevels = levelsCache.get(fileName);
+			} else {
+				mappingLevels = getLevelsAffectingFile(fileName, affectedByDefault, this.levels);
+				if (mappingLevels == null) {
+					System.out.println("no levels specified for file '"+fileName+"', assuming it's affected by all levels");
+					mappingLevels = logicTree.getLevels();
+				}
+				levelsCache.put(fileName, mappingLevels);
+			}
+		}
 		return getLevelsAffectingFile(fileName, affectedByDefault, this.levels);
 	}
 	
@@ -79,8 +94,6 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		return levels;
 	}
 	
-	private Map<String, List<? extends LogicTreeLevel<?>>> levelsCache = new HashMap<>();
-	
 	protected String getBranchFileName(LogicTreeBranch<?> branch, String fileName, boolean affectedByDefault) {
 		return getBranchFileName(branch, prefix, fileName, affectedByDefault);
 	}
@@ -91,19 +104,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	
 	protected String getBranchFileName(LogicTreeBranch<?> branch, String prefix, String fileName,
 			boolean affectedByDefault) {
-		List<? extends LogicTreeLevel<?>> mappingLevels;
-		synchronized (levelsCache) {
-			if (levelsCache.containsKey(fileName)) {
-				mappingLevels = levelsCache.get(fileName);
-			} else {
-				mappingLevels = getLevelsAffectingFile(fileName, affectedByDefault);
-				if (mappingLevels == null) {
-					System.out.println("no levels specified for file '"+fileName+"', assuming it's affected by all levels");
-					mappingLevels = logicTree.getLevels();
-				}
-				levelsCache.put(fileName, mappingLevels);
-			}
-		}
+		List<? extends LogicTreeLevel<?>> mappingLevels = getLevelsAffectingFile(fileName, affectedByDefault);
 		return getBranchFileName(branch, prefix, fileName, mappingLevels);
 	}
 
@@ -129,7 +130,6 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	}
 	
 	protected void setLogicTree(LogicTree<?> logicTree) {
-		Preconditions.checkState(this.logicTree == null, "Logic Tree should only be set once");
 		if (logicTree == null)
 			return;
 		this.logicTree = logicTree;
@@ -137,7 +137,6 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	}
 	
 	protected void setLogicTreeLevels(List<? extends LogicTreeLevel<?>> levels) {
-		Preconditions.checkState(this.levels == null, "Logic Tree levels should only be set once");
 		if (levels == null)
 			return;
 		this.levels = new ArrayList<>(levels);

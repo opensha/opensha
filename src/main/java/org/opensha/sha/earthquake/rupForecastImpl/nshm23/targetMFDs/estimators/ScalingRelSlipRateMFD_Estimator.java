@@ -1,5 +1,8 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators;
 
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
 
@@ -9,6 +12,9 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.UncertainDataConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.Builder;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -20,6 +26,9 @@ public class ScalingRelSlipRateMFD_Estimator extends SectNucleationMFD_Estimator
 	private double[] calcSectSlips;
 	private double[] targetSectSupraMoRates;
 	private double[] targetSectSupraSlipRates;
+	
+	private MinMaxAveTracker slipAdjustTrack = new MinMaxAveTracker();
+	private MinMaxAveTracker absPercentTrack = new MinMaxAveTracker();
 
 	public ScalingRelSlipRateMFD_Estimator(boolean adjustForSlipAlong) {
 		this.adjustForSlipAlong = adjustForSlipAlong;
@@ -85,12 +94,64 @@ public class ScalingRelSlipRateMFD_Estimator extends SectNucleationMFD_Estimator
 		int s = sect.getSectionId();
 		if (targetSectSupraSlipRates[s] > 0 && targetSectSupraMoRates[s] > 0) {
 			double slipRatio = targetSectSupraSlipRates[s] / calcSectSlips[s];
-//			slipAdjustTrack.addValue(slipRatio);
+			slipAdjustTrack.addValue(slipRatio);
+			absPercentTrack.addValue(100d*Math.abs((targetSectSupraSlipRates[s]-calcSectSlips[s])/calcSectSlips[s]));
 			
 			curSectSupraSeisMFD = curSectSupraSeisMFD.deepClone();
 			curSectSupraSeisMFD.scale(slipRatio);
 		}
 		return curSectSupraSeisMFD;
+	}
+	
+	public void printStats() {
+		System.out.println("Scaling relationship MFD adjustment ratios: "+slipAdjustTrack);
+		System.out.println("Scaling relationship MFD adjustment abs % changes: "+absPercentTrack);
+	}
+	
+	public static void main(String[] args) throws IOException {
+		FaultSystemRupSet rupSet = FaultSystemRupSet.load(new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+				+ "2023_04_11-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR/"
+				+ "results_NSHM23_v2_CoulombRupSet_branch_averaged_gridded.zip"));
+		
+		List<NSHM23_ScalingRelationships> scales = new ArrayList<>();
+		List<ScalingRelSlipRateMFD_Estimator> estimators = new ArrayList<>();
+		
+		double avgFromMoment = 0d;
+		int numFromMoment = 0;
+		double avgOther = 0d;
+		int numOther = 0;
+		for (NSHM23_ScalingRelationships scale : NSHM23_ScalingRelationships.values()) {
+			if (scale.getNodeWeight(null) > 0d) {
+				scales.add(scale);
+				ScalingRelSlipRateMFD_Estimator estimator = new ScalingRelSlipRateMFD_Estimator(false);
+				
+				rupSet = FaultSystemRupSet.buildFromExisting(rupSet, false).forScalingRelationship(scale).build();
+				Builder mfdBuilder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, 0.5d);
+				mfdBuilder.adjustTargetsForData(estimator);
+				mfdBuilder.build();
+				
+				estimators.add(estimator);
+				
+				if (scale.getName().toLowerCase().contains("from moment")) {
+					avgFromMoment += estimator.absPercentTrack.getAverage();
+					numFromMoment++;
+				} else {
+					avgOther += estimator.absPercentTrack.getAverage();
+					numOther++;
+				}
+			}
+		}
+		
+		for (int i=0; i<scales.size(); i++) {
+			System.out.println(scales.get(i).getName());
+			estimators.get(i).printStats();
+			System.out.println();
+		}
+		
+		avgFromMoment /= numFromMoment;
+		avgOther /= numOther;
+		System.out.println("From-Moment abs % change: "+(float)avgFromMoment+" %");
+		System.out.println("Other abs % change: "+(float)avgOther+" %");
 	}
 
 }

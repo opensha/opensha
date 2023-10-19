@@ -137,9 +137,12 @@ public abstract class AbstractRupSetPlot implements Named {
 	protected static DecimalFormat expProbDF = new DecimalFormat("0.00E0");
 	protected static DecimalFormat percentDF = new DecimalFormat("0.00%");
 	protected static DecimalFormat countDF = new DecimalFormat("#");
+	protected static DecimalFormat riDF = new DecimalFormat("#.##");
 	static {
 		countDF.setGroupingUsed(true);
 		countDF.setGroupingSize(3);
+		riDF.setGroupingUsed(true);
+		riDF.setGroupingSize(3);
 	}
 	
 	protected static final String na = "_(N/A)_";

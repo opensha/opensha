@@ -10,6 +10,7 @@ import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.eq.MagUtils;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.Range;
 import com.google.common.primitives.Ints;
 
 /**
@@ -45,6 +46,8 @@ public class SparseGutenbergRichterSolver {
 		NEAREST_GROUP
 	}
 	
+	public static boolean D = false;
+	
 	public static SpreadingMethod METHOD_DEFAULT = SpreadingMethod.NEAREST_GROUP;
 	
 	/**
@@ -59,7 +62,24 @@ public class SparseGutenbergRichterSolver {
 	 */
 	public static IncrementalMagFreqDist getEquivGR(EvenlyDiscretizedFunc refFunc, Collection<Double> mags,
 			double totMoRate, double targetBValue) {
-		return getEquivGR(refFunc, mags, totMoRate, targetBValue, 0d, METHOD_DEFAULT, false);
+		return getEquivGR(refFunc, mags, null, false, totMoRate, targetBValue);
+	}
+	
+	/**
+	 * Calculates a G-R distribution for the given total moment rate and target b-value, only using magnitude bins
+	 * that contain at least 1 rupture.
+	 * 
+	 * @param refFunc reference function (determines binning, returned G-R will have these x-values)
+	 * @param mags available magnitudes for this G-R
+	 * @param groupBinEdges boundaries to not spread across
+	 * @param groupEdgesIncreasingOnly if true, boundaries supplied will only be enforced when spreading to larger magnitudes
+	 * @param totMoRate total moment rate to fit
+	 * @param targetBValue target b-value to fit
+	 * @return G-R only using the given magnitude bins, fitting the total moment rate and b-value
+	 */
+	public static IncrementalMagFreqDist getEquivGR(EvenlyDiscretizedFunc refFunc, Collection<Double> mags,
+			Collection<Double> groupBinEdges, boolean groupEdgesIncreasingOnly, double totMoRate, double targetBValue) {
+		return getEquivGR(refFunc, mags, groupBinEdges, groupEdgesIncreasingOnly, totMoRate, targetBValue, 0d, METHOD_DEFAULT, false);
 	}
 	
 	/**
@@ -78,6 +98,28 @@ public class SparseGutenbergRichterSolver {
 	 */
 	public static IncrementalMagFreqDist getEquivGR(EvenlyDiscretizedFunc refFunc, Collection<Double> mags,
 			double totMoRate, double targetBValue, double sampleDiscr, SpreadingMethod method, boolean preserveRates) {
+		return getEquivGR(refFunc, mags, null, false, totMoRate, targetBValue, sampleDiscr, method, preserveRates);
+	}
+	
+	/**
+	 * Calculates a G-R distribution for the given total moment rate and target b-value, only using magnitude bins
+	 * that contain at least 1 rupture.
+	 * 
+	 * @param refFunc reference function (determines binning, returned G-R will have these x-values)
+	 * @param mags available magnitudes for this G-R
+	 * @param groupBinEdges boundaries to not spread across when NEAREST_GROUP is chosen
+	 * @param groupEdgesIncreasingOnly if true, boundaries supplied will only be enforced when spreading to larger magnitudes
+	 * @param totMoRate total moment rate to fit
+	 * @param targetBValue target b-value to fit
+	 * @param sampleDiscr sampling to use when distributing rates. Small values here (compared to the reference gridding)
+	 * will super-sample the distribution, which may be more accurate but doesn't seem necessary
+	 * @param method method used to spread ruptures from empty bins to neighboring bins
+	 * @param preserveRates if true, total event rate will be preserved (default preserves moment-rate)
+	 * @return G-R only using the given magnitude bins, fitting the total moment rate and b-value
+	 */
+	public static IncrementalMagFreqDist getEquivGR(EvenlyDiscretizedFunc refFunc, Collection<Double> mags,
+			Collection<Double> groupBinEdges, boolean groupEdgesIncreasingOnly, double totMoRate, double targetBValue, double sampleDiscr,
+			SpreadingMethod method, boolean preserveRates) {
 		double minMag = Double.POSITIVE_INFINITY;
 		double maxMag = Double.NEGATIVE_INFINITY;
 		for (double mag : mags) {
@@ -164,12 +206,38 @@ public class SparseGutenbergRichterSolver {
 							for (int startBin : assignedBins) {
 								int direction = startBin > i ? 1 : -1;
 								List<Integer> group = new ArrayList<>();
+								int prevBin = i;
 								for (int bin=startBin;
 										bin>=0 && bin <superSampledParticipation.length && superSampledParticipation[bin];
 										bin+=direction) {
+									if (groupBinEdges != null && !groupBinEdges.isEmpty()
+											&& (direction > 0 || !groupEdgesIncreasingOnly)) {
+										// see if we crossed any prescribed bin edges
+										double magBefore = superSampledDiscretization.getX(prevBin);
+										double magAfter = superSampledDiscretization.getX(bin);
+										Range<Double> magRange;
+										if (magBefore > magAfter)
+											magRange = Range.closed(magAfter, magBefore);
+										else
+											magRange = Range.closed(magBefore, magAfter);
+										boolean crosses = false;
+										for (Double edge : groupBinEdges) {
+											if (magRange.contains(edge)) {
+												if (D) System.out.println("Crossed a bin edge "+edge+" from "+magBefore+" to "+magAfter);
+												crosses = true;
+												break;
+											}
+										}
+										if (crosses) {
+											// we have crossed a bin edge, break
+											break;
+										}
+									}
 									group.add(bin);
+									prevBin = bin;
 								}
-								assignmentGroups.add(Ints.toArray(group));
+								if (!group.isEmpty())
+									assignmentGroups.add(Ints.toArray(group));
 							}
 						} else {
 							assignmentGroups = List.of(assignedBins);
@@ -183,10 +251,20 @@ public class SparseGutenbergRichterSolver {
 					
 					double valPerGroup = preserveRates ? superSampledGR.getIncrRate(i) : superSampledGR.getMomentRate(i);
 					valPerGroup /= (double)assignmentGroups.size();
+					if (D)
+						System.out.println("Spreading to "+assignmentGroups.size()+" groups");
 					for (int[] assignedBins : assignmentGroups) {
+						if (D) {
+							System.out.print("Assignment group:");
+							for (int bin : assignedBins)
+								System.out.print(" "+bin+". "+(float)superSampledDiscretization.getX(bin));
+							System.out.println();
+						}
 						if (preserveRates) {
 							// simple
 							double rateEachBin = valPerGroup/assignedBins.length;
+							if (D)
+								System.out.println("Adding "+rateEachBin+" to each bin");
 							for (int assignedBin : assignedBins)
 								ret.add(ret.getClosestXIndex(superSampledGR.getX(assignedBin)), rateEachBin);
 						} else {
@@ -196,6 +274,8 @@ public class SparseGutenbergRichterSolver {
 								double targetMag = ret.getX(retIndex);
 								double targetMo = MagUtils.magToMoment(targetMag);
 								double myTargetRate = valPerGroup/targetMo;
+								if (D)
+									System.out.println("Adding "+myTargetRate+" to single bin");
 								ret.add(retIndex, myTargetRate);
 							} else {
 								// more complicated, we want to shift the whole group up, preserving the slope
@@ -210,8 +290,12 @@ public class SparseGutenbergRichterSolver {
 								}
 								double newMomentRate = curMomentRateInBins + valPerGroup;
 								double scalar = newMomentRate / curMomentRateInBins;
-								for (int index : binIndexes)
+								for (int index : binIndexes) {
+									if (D)
+										System.out.println("Scaling bin "+index+". "+(float)ret.getX(index)
+											+" by "+(float)newMomentRate+" / "+(float)curMomentRateInBins+" = "+(float)scalar);
 									ret.set(index, ret.getY(index)*scalar);
+								}
 							}
 						}
 //						for (int assignedBin : assignedBins) {

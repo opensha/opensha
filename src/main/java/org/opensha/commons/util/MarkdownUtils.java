@@ -99,6 +99,12 @@ public class MarkdownUtils {
 			return this;
 		}
 		
+		public TableBuilder addColumns(List<?> vals) {
+			for (Object val : vals)
+				addColumn(val);
+			return this;
+		}
+		
 		public TableBuilder addColumn(String val) {
 			if (curLine == null)
 				initNewLine();
@@ -130,7 +136,7 @@ public class MarkdownUtils {
 			for (int i=0; i<lines.size()*numWraps; i++) {
 				String[] newLine = new String[headerCols+newDataCols];
 				for (int h=0; h<headerCols; h++)
-					newLine[h] = lines.get(i % numWraps)[h];
+					newLine[h] = lines.get(i % lines.size())[h];
 				newLines.add(newLine);
 			}
 			
@@ -642,32 +648,25 @@ public class MarkdownUtils {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		List<String> lines = new ArrayList<>();
+		if (args.length != 2) {
+			System.err.println("USAGE: <input-file.md> <output-file.html>");
+			System.exit(1);
+		}
+		File input = new File(args[0]);
+		Preconditions.checkState(input.exists(), "Input markdown file doesn't exist: %s", input);
+		File output = new File(args[1]);
 		
-		lines.add("");
-		lines.add("# Hello!");
-		lines.add("");
-		lines.add("![Test image](http://opensha.usc.edu/ftp/kmilner/markdown/ucerf3-etas-results/"
-				+ "2020_04_27-ComCatM7p1_ci38457511_296p8DaysAfter_ShakeMapSurfaces/plots/"
-				+ "comcat_compare_mean_1mo_m6.png)");
-		lines.add("");
-		lines.add("# Heading 1");
-		lines.add("");
-		for (int i=0; i<50; i++)
-			lines.add("astdstdsggdsagsd\n");
-		lines.add("# Heading 2");
-		lines.add("");
-		lines.add("# Heading 3 test &ge;4");
-		lines.add("");
-		for (int i=0; i<50; i++)
-			lines.add("astdstdsggdsagsd\n");
-		lines.add("## Heading 3.1 &phi;&ge;&tau;");
-		lines.add("");
+		System.out.println("Reading markdown from "+input.getAbsolutePath());
+		List<String> lines = Files.readLines(input, Charset.defaultCharset());
 		
-		lines.addAll(0, buildTOC(lines, 0));
-		File outputDir = new File("/tmp/html_test");
-		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
-		writeReadmeAndHTML(lines, outputDir);
+		System.out.println("Read "+lines.size()+" lines");
+		
+		System.out.println("Writing HTML to "+output.getAbsolutePath());
+		
+		writeHTML(lines, output);
+		
+		System.out.println("DONE");
+		System.exit(0);
 	}
 
 }

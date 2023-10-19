@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.apache.commons.math3.stat.StatUtils;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet;
@@ -273,60 +274,93 @@ public class CreepingAndParkfieldReport extends AbstractRupSetPlot {
 				if (rupSetMagRange.contains(8d))
 					minMags.add(8d);
 				
+				double[] rupLengths = rupSet.getLengthForAllRups();
+				List<Double> minLengths = new ArrayList<>();
+				if (rupLengths != null) {
+					double maxLen = StatUtils.max(rupLengths);
+					// lengths are in meters
+					for (double lenKM : new double[] {500d, 600d, 700d, 800d}) {
+						double len = lenKM*1e3;
+						if (maxLen > len)
+							minLengths.add(len);
+					}
+				}
+				
 				TableBuilder table = MarkdownUtils.tableBuilder();
 				
-				table.initNewLine().addColumns("Minimum Magnitude", "Rate Through Creeping", "RI (years)", "% of Creeping Sect Rate");
+				table.initNewLine().addColumns("Minimum Magnitude"+(minLengths.isEmpty() ? "" : " or Length"),
+						"Rate Through Creeping", "RI (years)", "% of Creeping Sect Rate");
 				if (santaCruzID >= 0)
 					table.addColumn("% of Santa Cruz Rate");
 				if (calaverasID >= 0)
 					table.addColumn("% of Calaveras Rate");
 				if (parkfieldID >= 0)
 					table.addColumn("% of Parkfield Rate");
+				table.addColumn("% of Total Solution Rate");
 				table.finalizeLine();
 				
-				for (double minMag : minMags) {
-					table.initNewLine();
-					if (minMag <= 0d)
-						table.addColumn("**Supra-Seismogenic**");
-					else
-						table.addColumn("**M&ge;"+optionalDigitDF.format(minMag)+"**");
-					double rateThrough = 0d;
-					for (int rupIndex : rupsThroughCreeping)
-						if (rupSet.getMagForRup(rupIndex) >= minMag)
-							rateThrough += sol.getRateForRup(rupIndex);
-					double totCreepingRate = rateForSect(sol, creepingID, minMag);
-					
-					table.addColumn((float)rateThrough);
-					if (rateThrough > 0d)
-						table.addColumn(twoDigits.format(1d/rateThrough));
-					else
-						table.addColumn("_(N/A)_");
-					if (totCreepingRate == 0d)
-						table.addColumn("_(N/A)_");
-					else
-						table.addColumn(percentDF.format(rateThrough/totCreepingRate));
-					if (santaCruzID >= 0) {
-						double cruzRate = rateForSect(sol, santaCruzID, minMag);
-						if (cruzRate == 0d)
+				for (boolean magThresh : new boolean[] {true,false}) {
+					List<Double> thresholds = magThresh ? minMags : minLengths;
+					for (double threshold : thresholds) {
+						table.initNewLine();
+						if (threshold <= 0d)
+							table.addColumn("**Supra-Seismogenic**");
+						else if (magThresh)
+							table.addColumn("**M&ge;"+optionalDigitDF.format(threshold)+"**");
+						else
+							table.addColumn("**L&ge;"+optionalDigitDF.format(threshold*1e-3)+" km**");
+						double rateThrough = 0d;
+						for (int rupIndex : rupsThroughCreeping) {
+							if (magThresh && rupSet.getMagForRup(rupIndex) >= threshold)
+								rateThrough += sol.getRateForRup(rupIndex);
+							if (!magThresh && rupLengths[rupIndex] >= threshold)
+								rateThrough += sol.getRateForRup(rupIndex);
+						}
+						double totCreepingRate = rateForSect(sol, creepingID, magThresh, threshold);
+						
+						table.addColumn((float)rateThrough);
+						if (rateThrough > 0d)
+							table.addColumn(twoDigits.format(1d/rateThrough));
+						else
+							table.addColumn("_(N/A)_");
+						if (totCreepingRate == 0d)
 							table.addColumn("_(N/A)_");
 						else
-							table.addColumn(percentDF.format(rateThrough/cruzRate));
-					}
-					if (calaverasID >= 0) {
-						double calaverasRate = rateForSect(sol, calaverasID, minMag);
-						if (calaverasRate == 0d)
-							table.addColumn("_(N/A)_");
+							table.addColumn(percentDF.format(rateThrough/totCreepingRate));
+						if (santaCruzID >= 0) {
+							double cruzRate = rateForSect(sol, santaCruzID, magThresh, threshold);
+							if (cruzRate == 0d)
+								table.addColumn("_(N/A)_");
+							else
+								table.addColumn(percentDF.format(rateThrough/cruzRate));
+						}
+						if (calaverasID >= 0) {
+							double calaverasRate = rateForSect(sol, calaverasID, magThresh, threshold);
+							if (calaverasRate == 0d)
+								table.addColumn("_(N/A)_");
+							else
+								table.addColumn(percentDF.format(rateThrough/calaverasRate));
+						}
+						if (parkfieldID >= 0) {
+							double parkRate = rateForSect(sol, parkfieldID, magThresh, threshold);
+							if (parkRate == 0d)
+								table.addColumn("_(N/A)_");
+							else
+								table.addColumn(percentDF.format(rateThrough/parkRate));
+						}
+						double totRate = 0d;
+						for (int r=0; r<rupSet.getNumRuptures(); r++) {
+							if (magThresh && rupSet.getMagForRup(r) >= threshold)
+								totRate += sol.getRateForRup(r);
+							if (!magThresh && rupLengths[r] >= threshold)
+								totRate += sol.getRateForRup(r);
+						}
+						if (totRate > 0d)
+							table.addColumn(percentDF.format(rateThrough/totRate));
 						else
-							table.addColumn(percentDF.format(rateThrough/calaverasRate));
-					}
-					if (parkfieldID >= 0) {
-						double parkRate = rateForSect(sol, parkfieldID, minMag);
-						if (parkRate == 0d)
 							table.addColumn("_(N/A)_");
-						else
-							table.addColumn(percentDF.format(rateThrough/parkRate));
+						table.finalizeLine();
 					}
-					table.finalizeLine();
 				}
 				lines.addAll(table.build());
 			}
@@ -390,12 +424,14 @@ public class CreepingAndParkfieldReport extends AbstractRupSetPlot {
 		return lines;
 	}
 	
-	private double rateForSect(FaultSystemSolution sol, int parentID, double minMag) {
+	private double rateForSect(FaultSystemSolution sol, int parentID, boolean magThresh, double threshold) {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		double rate = 0d;
-		for (int rupIndex : rupSet.getRupturesForParentSection(parentID))
-			if (rupSet.getMagForRup(rupIndex) >= minMag)
+		for (int rupIndex : rupSet.getRupturesForParentSection(parentID)) {
+			if ((magThresh && rupSet.getMagForRup(rupIndex) >= threshold)
+					|| (!magThresh && rupSet.getLengthForRup(rupIndex) >= threshold))
 				rate += sol.getRateForRup(rupIndex);
+		}
 		return rate;
 	}
 

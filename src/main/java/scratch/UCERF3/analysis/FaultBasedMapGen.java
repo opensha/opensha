@@ -29,6 +29,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.mapping.gmt.GMT_Map;
 import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
 import org.opensha.commons.mapping.gmt.elements.CoastAttributes;
@@ -898,59 +899,7 @@ public class FaultBasedMapGen {
 		
 		String baseURL;
 		if (LOCAL_MAPGEN) {
-			GMT_MapGenerator.clearEnv();
-			GMT_MapGenerator.GMT_DATA_PATH = "/data/kevin/opensha/gmt/";
-			map.setJPGFileName(null);
-			File tempDir = Files.createTempDir();
-			List<String> script = gmt.getGMT_ScriptLines(map, tempDir.getAbsolutePath());
-			
-			File scriptFile = new File(tempDir, "script.sh");
-			
-			if (map.getGriddedData() != null) {
-				GeoDataSet griddedData = map.getGriddedData();
-				griddedData.setLatitudeX(true);
-				ArbDiscrGeoDataSet.writeXYZFile(griddedData, tempDir.getAbsolutePath()+"/"+new File(map.getXyzFileName()).getName());
-			}
-			
-			FileWriter fw = new FileWriter(scriptFile);
-			BufferedWriter bw = new BufferedWriter(fw);
-			for (String line : script)
-				bw.write(line + "\n");
-			bw.close();
-			
-			String[] command = {
-					"sh", "-c", "/bin/bash "+scriptFile.getAbsolutePath()+" > /dev/null 2> /dev/null"};
-			RunScript.runScript(command);
-			
-			if (saveDir != null) {
-				if (SAVE_ZIPS) {
-					FileUtils.createZipFile(tempDir.getAbsolutePath());
-					File zipFile = new File(tempDir, "allFiles.zip");
-					Preconditions.checkState(zipFile.exists(), "No ZIP file: %s", zipFile.getAbsolutePath());
-					Files.move(zipFile, new File(saveDir, prefix+".zip"));
-				}
-				
-				if (map.getPNGFileName() != null) {
-					File pngFile = new File(tempDir, map.getPNGFileName());
-					Preconditions.checkState(pngFile.exists(), "No PNG file: %s", pngFile.getAbsolutePath());
-					Files.move(pngFile, new File(saveDir, prefix+".png"));
-				}
-				if (map.getPDFFileName() != null) {
-					File pdfFile = new File(tempDir, map.getPDFFileName());
-					Preconditions.checkState(pdfFile.exists(), "No PDF file: %s", pdfFile.getAbsolutePath());
-					Files.move(pdfFile, new File(saveDir, prefix+".pdf"));
-				}
-				if (SAVE_PS) {
-					File psFile = new File(tempDir, map.getPSFileName());
-					Preconditions.checkState(psFile.exists(), "No PS file: %s", psFile.getAbsolutePath());
-					Files.move(psFile, new File(saveDir, prefix+".ps"));
-				}
-				
-				if (map.isGenerateKML())
-					Files.move(new File(tempDir, "map.kmz"), new File(saveDir, prefix+".kmz"));
-			}
-			
-			FileUtils.deleteRecursive(tempDir);
+			plotLocalMap(saveDir, prefix, display, false, map);
 			
 			baseURL = null;
 		} else {
@@ -995,6 +944,72 @@ public class FaultBasedMapGen {
 		}
 		
 		return baseURL;
+	}
+	
+	public static void plotLocalMap(File saveDir, String prefix, boolean display, boolean writeScript,
+			GMT_Map map) throws GMT_MapException, IOException {
+		if (gmt == null) {
+			gmt = new GMT_MapGenerator();
+			gmt.getAdjustableParamsList().getParameter(Boolean.class, GMT_MapGenerator.LOG_PLOT_NAME).setValue(false);
+			gmt.getAdjustableParamsList().getParameter(Boolean.class, GMT_MapGenerator.GMT_SMOOTHING_PARAM_NAME).setValue(false);
+		}
+
+		GMT_MapGenerator.clearEnv();
+		GMT_MapGenerator.GMT_DATA_PATH = "/data/kevin/opensha/gmt/";
+		map.setJPGFileName(null);
+		File tempDir = Files.createTempDir();
+		List<String> script = gmt.getGMT_ScriptLines(map, tempDir.getAbsolutePath());
+
+		File scriptFile = new File(tempDir, "script.sh");
+
+		if (map.getGriddedData() != null) {
+			GeoDataSet griddedData = map.getGriddedData();
+			griddedData.setLatitudeX(true);
+			ArbDiscrGeoDataSet.writeXYZFile(griddedData, tempDir.getAbsolutePath()+"/"+new File(map.getXyzFileName()).getName());
+		}
+
+		FileWriter fw = new FileWriter(scriptFile);
+		BufferedWriter bw = new BufferedWriter(fw);
+		for (String line : script)
+			bw.write(line + "\n");
+		bw.close();
+		
+		if (writeScript)
+			Files.copy(scriptFile, new File(saveDir, prefix+".sh"));
+
+		String[] command = {
+				"sh", "-c", "/bin/bash "+scriptFile.getAbsolutePath()+" > /dev/null 2> /dev/null"};
+		RunScript.runScript(command);
+
+		if (saveDir != null) {
+			if (SAVE_ZIPS) {
+				FileUtils.createZipFile(tempDir.getAbsolutePath());
+				File zipFile = new File(tempDir, "allFiles.zip");
+				Preconditions.checkState(zipFile.exists(), "No ZIP file: %s", zipFile.getAbsolutePath());
+				Files.move(zipFile, new File(saveDir, prefix+".zip"));
+			}
+
+			if (map.getPNGFileName() != null) {
+				File pngFile = new File(tempDir, map.getPNGFileName());
+				Preconditions.checkState(pngFile.exists(), "No PNG file: %s", pngFile.getAbsolutePath());
+				Files.move(pngFile, new File(saveDir, prefix+".png"));
+			}
+			if (map.getPDFFileName() != null) {
+				File pdfFile = new File(tempDir, map.getPDFFileName());
+				Preconditions.checkState(pdfFile.exists(), "No PDF file: %s", pdfFile.getAbsolutePath());
+				Files.move(pdfFile, new File(saveDir, prefix+".pdf"));
+			}
+			if (SAVE_PS) {
+				File psFile = new File(tempDir, map.getPSFileName());
+				Preconditions.checkState(psFile.exists(), "No PS file: %s", psFile.getAbsolutePath());
+				Files.move(psFile, new File(saveDir, prefix+".ps"));
+			}
+
+			if (map.isGenerateKML())
+				Files.move(new File(tempDir, "map.kmz"), new File(saveDir, prefix+".kmz"));
+		}
+
+		FileUtils.deleteRecursive(tempDir);
 	}
 	
 	private static void checkLocalDownloadOpenSHA(String url, File destFile) throws IOException {
@@ -1048,7 +1063,7 @@ public class FaultBasedMapGen {
 		addStyleEl(docEl, cpt.getBelowMinColor(), lineWidth, "CPT_BELOW_MIN");
 		addStyleEl(docEl, cpt.getAboveMaxColor(), lineWidth, "CPT_ABOVE_MAX");
 		if (!skipNans)
-			addStyleEl(docEl, cpt.getNaNColor(), lineWidth, "CPT_NAN");
+			addStyleEl(docEl, cpt.getNanColor(), lineWidth, "CPT_NAN");
 		
 		// add lines
 		Element folderEl = docEl.addElement("Folder");
@@ -1192,6 +1207,10 @@ public class FaultBasedMapGen {
 	}
 	
 	public static ArrayList<PSXYPolygon> getPolygons(LocationList locs, Color c, double thickness) {
+		return getPolygons(locs, c, thickness, PlotLineType.SOLID);
+	}
+	
+	public static ArrayList<PSXYPolygon> getPolygons(LocationList locs, Color c, double thickness, PlotLineType lineType) {
 		ArrayList<PSXYPolygon> polys = new ArrayList<PSXYPolygon>();
 		
 		for (int i=1; i<locs.size(); i++) {
@@ -1205,6 +1224,7 @@ public class FaultBasedMapGen {
 			PSXYPolygon poly = new PSXYPolygon(loc1, loc2);
 			poly.setPenColor(c);
 			poly.setPenWidth(thickness);
+			poly.setLineType(lineType);
 			polys.add(poly);
 		}
 		

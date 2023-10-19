@@ -132,6 +132,24 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			rupSet.addModule(distAzCalc);
 		}
 		
+		// break histograms into mechanism-specific plots as well
+		boolean doMechHists = sol != null && (getPlotLevel() == PlotLevel.FULL || getPlotLevel() == PlotLevel.REVIEW);
+		RakeType[] sectRakes = null;
+		HashSet<RakeType> uniqueRakes = null;
+		if (doMechHists) {
+			// make sure we actually have multiple mechanisms
+			sectRakes = new RakeType[rupSet.getNumSections()];
+			uniqueRakes = new HashSet<>();
+			for (int s=0; s<sectRakes.length; s++) {
+				sectRakes[s] = RakeType.getType(rupSet.getFaultSectionData(s).getAveRake());
+				uniqueRakes.add(sectRakes[s]);
+			}
+			
+			if (uniqueRakes.size() < 2)
+				// don't bother
+				doMechHists = false;
+		}
+		
 		for (HistScalar scalar : scalars) {
 			lines.add(getSubHeading()+" "+scalar.getName());
 			lines.add(topLink); lines.add("");
@@ -361,7 +379,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 				double maxZ = xyz.getMaxZ();
 				CPT cpt = GMT_CPT_Files.BLACK_RED_YELLOW_UNIFORM.instance().reverse().rescale(0d, Math.ceil(maxZ));
 				cpt.setNanColor(new Color(255, 255, 255, 0));
-				cpt.setBelowMinColor(cpt.getNaNColor());
+				cpt.setBelowMinColor(cpt.getNanColor());
 				
 				// set all zero to NaN so that it will plot clear
 				for (int i=0; i<xyz.size(); i++) {
@@ -388,6 +406,84 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 				lines.add(topLink); lines.add("");
 				lines.add("");
 				lines.addAll(table.build());
+			}
+			
+			if (doMechHists) {
+				// break down into mechanisms
+				table = MarkdownUtils.tableBuilder();
+				
+				table.initNewLine();
+				List<RakeType> types = new ArrayList<>();
+				for (RakeType type : RakeType.values()) {
+					if (uniqueRakes.contains(type)) {
+						table.addColumn(MarkdownUtils.boldCentered(type.name));
+						types.add(type);
+					}
+				}
+				table.finalizeLine();
+				
+				List<HistogramFunction> countHists = new ArrayList<>();
+				List<HistogramFunction> rateHists = new ArrayList<>();
+				
+				MinMaxAveTracker track = new MinMaxAveTracker();
+				int numRups = rupSet.getNumRuptures();
+				for (int r=0; r<numRups; r++) {
+					double val = inputScalars.getValue(r);
+					track.addValue(val);
+				}
+				
+				boolean logX = scalar.isLogX();
+				
+				for (RakeType type : types) {
+					HistogramFunction countHist = scalar.getHistogram(track);
+					HistogramFunction rateHist = scalar.getHistogram(track);
+					
+					for (int r=0; r<numRups; r++) {
+						int numMatches = 0;
+						int numSects = 0;
+						
+						for (int s : rupSet.getSectionsIndicesForRup(r)) {
+							numSects++;
+							if (sectRakes[s] == type)
+								numMatches++;
+						}
+						if (numMatches > 0) {
+							double fract = (double)numMatches/(double)numSects;
+							
+							double val = inputScalars.getValue(r);
+							int index;
+							if (logX)
+								index = val <= 0 ? 0 : countHist.getClosestXIndex(Math.log10(val));
+							else
+								index = countHist.getClosestXIndex(val);
+							
+							countHist.add(index, fract);
+							rateHist.add(index, fract*sol.getRateForRup(r));
+						}
+					}
+					
+					countHists.add(countHist);
+					rateHists.add(rateHist);
+				}
+				
+				String prefix = "hist_"+scalar.name();
+				
+				table.initNewLine();
+				for (int i=0; i<types.size(); i++) {
+					RakeType type = types.get(i);
+					File plot = plotMechSpecificHist(resourcesDir, prefix+"_"+type.prefix, scalar,
+							countHists.get(i), rateHists.get(i), type);
+					table.addColumn("![Hists]("+relPathToResources+"/"+plot.getName()+")");
+				}
+				table.finalizeLine();
+				
+				table = table.wrap(3, 0);
+				
+				lines.add("");
+				lines.add(getSubHeading()+"# "+scalar.getName()+" Mechanism-Specific Histograms");
+				lines.add(topLink); lines.add("");
+				lines.addAll(table.build());
+				lines.add("");
 			}
 			
 		}
@@ -689,6 +785,98 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 		gp.saveAsPNG(pngFile.getAbsolutePath());
 		gp.saveAsPDF(pdfFile.getAbsolutePath());
 		gp.saveAsTXT(txtFile.getAbsolutePath());
+		return pngFile;
+	}
+	
+	private static File plotMechSpecificHist(File outputDir, String prefix, HistScalar histScalar,
+			HistogramFunction countHist, HistogramFunction rateHist, RakeType type) throws IOException {
+		List<PlotSpec> specs = new ArrayList<>();
+		List<Range> yRanges = new ArrayList<>();
+		List<Boolean> yLogs = new ArrayList<>();
+		Range xRange = null;
+		
+		boolean logX = histScalar.isLogX();
+		Color color = type.color;
+		
+		for (int p=0; p<3; p++) {
+			HistogramFunction hist;
+			boolean logY;
+			boolean rateWeighted;
+			if (p == 0) {
+				hist = countHist;
+				logY = false;
+				rateWeighted = false;
+			} else if (p == 1) {
+				hist = rateHist;
+				logY = false;
+				rateWeighted = true;
+			} else {
+				hist = rateHist;
+				logY = true;
+				rateWeighted = true;
+			}
+			
+			List<DiscretizedFunc> funcs = new ArrayList<>();
+			List<PlotCurveCharacterstics> chars = new ArrayList<>();
+			
+			if (logX) {
+				ArbitrarilyDiscretizedFunc linearHist = new ArbitrarilyDiscretizedFunc();
+				for (Point2D pt : hist)
+					linearHist.set(Math.pow(10, pt.getX()), pt.getY());
+				
+				funcs.add(linearHist);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, color));
+			} else {
+				funcs.add(hist);
+				chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, color));
+			}
+			
+			String title = TITLES ? histScalar.getName()+" Histogram" : " ";
+			String xAxisLabel = histScalar.getxAxisLabel();
+			String yAxisLabel = rateWeighted ? "Annual Rate" : "Count";
+			
+			PlotSpec spec = new PlotSpec(funcs, chars, title, xAxisLabel, yAxisLabel);
+			
+			if (xRange == null) {
+				if (logX)
+					xRange = new Range(Math.pow(10, hist.getMinX() - 0.5*hist.getDelta()),
+							Math.pow(10, hist.getMaxX() + 0.5*hist.getDelta()));
+				else
+					xRange = new Range(hist.getMinX() - 0.5*hist.getDelta(),
+							hist.getMaxX() + 0.5*hist.getDelta());
+			}
+			
+			Range yRange;
+			if (logY) {
+				double minY = Double.POSITIVE_INFINITY;
+				double maxY = 0d;
+				for (DiscretizedFunc func : funcs) {
+					for (Point2D pt : func) {
+						double y = pt.getY();
+						if (y > 0) {
+							minY = Math.min(minY, y);
+							maxY = Math.max(maxY, y);
+						}
+					}
+				}
+				yRange = new Range(Math.pow(10, Math.floor(Math.log10(minY))),
+						Math.pow(10, Math.ceil(Math.log10(maxY))));
+			} else {
+				double maxY = hist.getMaxY();
+				yRange = new Range(0, 1.05*maxY);
+			}
+			
+			specs.add(spec);
+			yRanges.add(yRange);
+			yLogs.add(logY);
+		}
+		
+		HeadlessGraphPanel gp = new HeadlessGraphPanel(PLOT_PREFS_DEFAULT);
+		
+		gp.drawGraphPanel(specs, List.of(logX), yLogs, List.of(xRange), yRanges);
+		gp.getChartPanel().setSize(800, 1200);
+		File pngFile = new File(outputDir, prefix+".png");
+		gp.saveAsPNG(pngFile.getAbsolutePath());
 		return pngFile;
 	}
 	

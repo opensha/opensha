@@ -485,7 +485,8 @@ public class ETAS_LocationWeightCalculator {
 	
 	private int getParDepthIndex(double parDep) {
 		int ret = (int)Math.round(parDep/depthDiscrKm);
-		Preconditions.checkState(ret >= 0 && ret <randLocSampler.length,
+		int numParDepth = randLocSampler == null ? this.numParDepth : randLocSampler.length;
+		Preconditions.checkState(ret >= 0 && ret < numParDepth,
 				"Bad depth index=%s for depth=%s, depthDisr=%s", ret, parDep, depthDiscrKm);
 		return ret;
 	}

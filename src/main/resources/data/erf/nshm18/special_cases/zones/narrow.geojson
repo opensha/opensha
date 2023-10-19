@@ -1,0 +1,22 @@
+{
+  "type": "Feature",
+  "id": 3711,
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-80.2067, 33.2956],
+      [-79.9087, 33.2185],
+      [-80.1209, 32.6542],
+      [-80.4144, 32.7313],
+      [-80.2067, 33.2956]
+    ]]
+  },
+  "properties": {
+    "name": "Charleston Narrow Zone",
+    "state": "SC",
+    "rate": "narrow.csv",
+    "strike": 17.0,
+    "mfd-tree": "charleston"
+  }
+}
+

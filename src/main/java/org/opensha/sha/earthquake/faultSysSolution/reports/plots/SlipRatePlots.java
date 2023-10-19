@@ -10,9 +10,11 @@ import java.util.List;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.jfree.data.Range;
+import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -54,7 +56,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
 			String relPathToResources, String topLink) throws IOException {
-		RupSetMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
+		GeographicMapMaker mapMaker = new RupSetMapMaker(rupSet, meta.region);
 		mapMaker.setWriteGeoJSON(true);
 		mapMaker.setFillSurfaces(fillSurfaces);
 		
@@ -66,6 +68,11 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 		double maxSlip = StatUtils.max(nonReduced);
 		double[] origReduced = origReduced(rupSet);
 		double[] solRates = null;
+		
+		SectSlipRates slipRates = rupSet.getModule(SectSlipRates.class);
+		double[] targets = null;
+		if (slipRates != null)
+			targets = target(rupSet, slipRates);
 		
 		for (boolean log : new boolean[] {false,true}) {
 			CPT slipCPT;
@@ -112,10 +119,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 			
 			if (rupSet.hasModule(SectSlipRates.class) || sol != null) {
 				table.initNewLine();
-				SectSlipRates slipRates = rupSet.getModule(SectSlipRates.class);
-				double[] targets = null;
 				if (slipRates != null) {
-					targets = target(rupSet, slipRates);
 					mapMaker.plotSectScalars(log ? log10(targets) : targets, slipCPT, labelPrefix+"Target Slip Rate (mm/yr)");
 					mapMaker.plot(resourcesDir, prefix+"_target", " ");
 					table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_target.png)");
@@ -267,10 +271,9 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 		
 		// see if we have std devs
 		boolean hasStdDev = false;
-		if (rupSet.hasModule(SectSlipRates.class)) {
-			SectSlipRates slips = rupSet.requireModule(SectSlipRates.class);
-			double[] stdDevs = slips.getSlipRateStdDevs();
-			for (int s=0; s<slips.size(); s++)
+		if (slipRates != null) {
+			double[] stdDevs = slipRates.getSlipRateStdDevs();
+			for (int s=0; s<slipRates.size(); s++)
 				if (stdDevs[s] > 0d)
 					hasStdDev = true;
 			if (hasStdDev) {
@@ -285,7 +288,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 				
 				double[] relStdDevs = new double[stdDevs.length];
 				for (int s=0; s<stdDevs.length; s++)
-					relStdDevs[s] = stdDevs[s]/slips.getSlipRate(s);
+					relStdDevs[s] = stdDevs[s]/slipRates.getSlipRate(s);
 				
 				TableBuilder table = MarkdownUtils.tableBuilder();
 				
@@ -304,7 +307,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 					double[] misfits = new double[stdDevs.length];
 					
 					for (int s=0; s<misfits.length; s++) {
-						double target = slips.getSlipRate(s);
+						double target = slipRates.getSlipRate(s);
 						double solSlip = solSlips[s]*1e-3; // to m/yr
 						double stdDev = stdDevs[s];
 						
@@ -330,12 +333,12 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 					relPrefix += "_comp";
 					misfitPrefix += "_comp";
 					
-					slips = meta.comparison.rupSet.requireModule(SectSlipRates.class);
-					stdDevs = slips.getSlipRateStdDevs();
+					SectSlipRates compSlips = meta.comparison.rupSet.requireModule(SectSlipRates.class);
+					stdDevs = compSlips.getSlipRateStdDevs();
 					
 					relStdDevs = new double[stdDevs.length];
 					for (int s=0; s<stdDevs.length; s++)
-						relStdDevs[s] = stdDevs[s]/slips.getSlipRate(s);
+						relStdDevs[s] = stdDevs[s]/compSlips.getSlipRate(s);
 					
 					table.initNewLine();
 					mapMaker.plotSectScalars(relStdDevs, relStdDevCPT, "Comparison Relative Standard Deviations"); 
@@ -347,7 +350,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 					double[] misfits = new double[stdDevs.length];
 					
 					for (int s=0; s<misfits.length; s++) {
-						double target = slips.getSlipRate(s);
+						double target = compSlips.getSlipRate(s);
 						double solSlip = solSlips[s]*1e-3;
 						double stdDev = stdDevs[s];
 						
@@ -371,7 +374,6 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 				lines.add(topLink); lines.add("");
 				lines.addAll(table.build());
 			}
-//			for (Fault)
 		}
 		
 		boolean hasAseis = false;
@@ -527,6 +529,66 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 			
 			lines.addAll(table.build());
 		}
+		
+		// write CSV file
+		List<String> header = new ArrayList<>();
+		
+		header.add("Section Index");
+		header.add("Section Name");
+		header.add("Original (non-reduced) Slip Rate (mm/yr)");
+		header.add("Creep-Reduced Slip Rate (mm/yr)");
+		if (targets != null) {
+			header.add("Target Slip Rate (mm/yr)");
+			if (hasStdDev)
+				header.add("Target Slip Rate Std. Dev. (mm/yr)");
+		}
+		if (sol != null) {
+			header.add("Solution Slip Rate (mm/yr)");
+			if (targets != null) {
+				header.add("Solution - Target, Slip Rate Misfit (mm/yr)");
+				header.add("Solution / Target, Slip Rate Ratio");
+				if (hasStdDev)
+					header.add("Solution Slip Rate Rate z-score (std. devs.)");
+			}
+		}
+		
+		CSVFile<String> csv = new CSVFile<>(true);
+		csv.addLine(header);
+		
+		for (int s=0; s<rupSet.getNumSections(); s++) {
+			List<String> line = new ArrayList<>();
+			
+			line.add(s+"");
+			line.add(rupSet.getFaultSectionData(s).getSectionName());
+			line.add((float)nonReduced[s]+"");
+			line.add((float)origReduced[s]+"");
+			if (targets != null) {
+				line.add((float)targets[s]+"");
+				if (hasStdDev)
+					line.add((float)(slipRates.getSlipRateStdDev(s)*1e3)+"");
+			}
+			if (sol != null) {
+				line.add((float)solRates[s]+"");
+				if (targets != null) {
+					line.add((float)(solRates[s] - targets[s])+"");
+					line.add((float)(solRates[s] / targets[s])+"");
+					if (hasStdDev) {
+						double sd = slipRates.getSlipRateStdDev(s)*1e3;
+						double z = (solRates[s] - targets[s])/sd;
+						line.add((float)z+"");
+					}
+				}
+			}
+			
+			csv.addLine(line);
+		}
+		
+		csv.writeToFile(new File(resourcesDir, rawPrefix+".csv"));
+		
+		List<String> csvLines = new ArrayList<>();
+		csvLines.add("Download CSV file with slip rate data: ["+rawPrefix+".csv]("+relPathToResources+"/"+rawPrefix+".csv)");
+		csvLines.add("");
+		lines.addAll(0, csvLines);
 		
 		return lines;
 	}

@@ -32,7 +32,7 @@ public class NamedFaults implements SubModule<FaultSystemRupSet>, BranchAveragea
 ConstantAverageable<NamedFaults>, JSON_TypeAdapterBackedModule<Map<String, List<Integer>>>,
 SplittableRuptureSubSetModule<NamedFaults> {
 	
-	private FaultSystemRupSet rupSet;
+	private transient FaultSystemRupSet rupSet;
 	private Map<String, List<Integer>> namedFaults;
 	private Map<Integer, String> faultNames;
 	

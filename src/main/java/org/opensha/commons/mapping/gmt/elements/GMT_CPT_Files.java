@@ -79,7 +79,17 @@ public enum GMT_CPT_Files {
 	 * bam from https://www.fabiocrameri.ch/colourmaps/ and GMT 6
 	 * dark greens through white to dark magenta
 	 */
-	DIVERGING_BAM_UNIFORM("bam.cpt");
+	DIVERGING_BAM_UNIFORM("bam.cpt"),
+	/**
+	 * cork from https://www.fabiocrameri.ch/colourmaps/ and GMT 6
+	 * dark blues through white to dark greens
+	 */
+	DIVERGING_CORK_UNIFORM("cork.cpt"),
+	/**
+	 * bam from https://www.fabiocrameri.ch/colourmaps/ and GMT 6
+	 * broc blues through white to yellow/greenish browns
+	 */
+	DIVERGING_BROC_UNIFORM("broc.cpt");
 	
 	private String fname;
 	

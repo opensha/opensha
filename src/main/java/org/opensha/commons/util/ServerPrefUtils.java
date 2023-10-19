@@ -24,12 +24,12 @@ public class ServerPrefUtils {
 	/**
 	 * Hostname for all production services
 	 */
-	static final String OPENSHA_SERVER_PRODUCTION_HOST = "opensha.usc.edu";
+	static final String OPENSHA_SERVER_PRODUCTION_HOST = "data.opensha.org";
 	
 	/**
 	 * Hostname for all development services
 	 */
-	static final String OPENSHA_SERVER_DEV_HOST = "opensha.usc.edu";
+	static final String OPENSHA_SERVER_DEV_HOST = "data.opensha.org";
 	
 //	static final String OPENSHA_TOMCAT_WEBAPPS_DIR = "/usr/local/tomcat/default/webapps";
 	static final String OPENSHA_TOMCAT_WEBAPPS_DIR = "/var/lib/tomcat/webapps/";
@@ -69,20 +69,17 @@ public class ServerPrefUtils {
 		} catch (Exception e) {
 			hostName = null;
 		}
+		// TODO: switch to SSL. USC's firewall currently doesn't allow 8443 traffic, so we can't yet
+		String PROD_URL = "http://"+OPENSHA_SERVER_PRODUCTION_HOST+":8080/OpenSHA/";
+		String DEV_URL = "http://"+OPENSHA_SERVER_DEV_HOST+":8080/OpenSHA_master/";
 		if (hostName != null && !hostName.isEmpty()) {
-			// see if we should use localhost for servlets
-			OPENSHA_SERVLET_PRODUCTION_URL =
-					"http://"+OPENSHA_SERVER_PRODUCTION_HOST.replaceAll(hostName, "localhost")+":8080/OpenSHA/";
-			
-			OPENSHA_SERVLET_DEV_URL =
-					"http://"+OPENSHA_SERVER_DEV_HOST.replaceAll(hostName, "localhost")+":8080/OpenSHA_master/";
-		} else {
-			OPENSHA_SERVLET_PRODUCTION_URL =
-					"http://"+OPENSHA_SERVER_PRODUCTION_HOST+":8080/OpenSHA/";
-			
-			OPENSHA_SERVLET_DEV_URL =
-					"http://"+OPENSHA_SERVER_DEV_HOST+":8080/OpenSHA_master/";
+			if (hostName.equalsIgnoreCase(OPENSHA_SERVER_PRODUCTION_HOST))
+				PROD_URL = "http://localhost:8080/OpenSHA/";
+			if (hostName.equalsIgnoreCase(OPENSHA_SERVER_DEV_HOST))
+				DEV_URL = "http://localhost:8080/OpenSHA_master/";
 		}
+		OPENSHA_SERVLET_PRODUCTION_URL = PROD_URL;
+		OPENSHA_SERVLET_DEV_URL = DEV_URL;
 	}
 	
 	/**

@@ -13,6 +13,7 @@ import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet.XYAdapter;
 import org.opensha.commons.geo.Location;
 
+import com.google.common.base.Preconditions;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.stream.JsonReader;
@@ -251,11 +252,42 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		return new Location(lat, lon, depth);
 	}
 	
+	public FeatureProperties getProperties(String name, FeatureProperties defaultValue) {
+		Object val = get(name);
+		if (val == null || !(val instanceof FeatureProperties))
+			return defaultValue;
+		return (FeatureProperties)val;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public List<FeatureProperties> getPropertiesList(String name, List<FeatureProperties> defaultValue) {
+		Object val = get(name);
+		if (val == null || !(val instanceof List<?>))
+			return defaultValue;
+		List<?> list = (List<?>)val;
+		if (!list.isEmpty())
+			for (Object listVal : list)
+				if (listVal != null && !(listVal instanceof FeatureProperties))
+					return defaultValue;
+		return (List<FeatureProperties>)val;
+	}
+	
+	/*
+	 * See: https://github.com/mapbox/simplestyle-spec/tree/master/1.1.0
+	 */
 	public static final String STROKE_COLOR_PROP = "stroke";
 	public static final String STROKE_WIDTH_PROP = "stroke-width";
 	public static final String STROKE_OPACITY_PROP = "stroke-opacity";
+	
 	public static final String FILL_COLOR_PROP = "fill";
 	public static final String FILL_OPACITY_PROP = "fill-opacity";
+	
+	public static final String MARKER_COLOR_PROP = "marker-color";
+	public static final String MARKER_SIZE_PROP = "marker-size";
+	public static final String MARKER_SIZE_SMALL = "small";
+	public static final String MARKER_SIZE_MEDIUM = "medium";
+	public static final String MARKER_SIZE_LARGE = "large";
+	
 	
 	public Color getColor(String name, Color defaultValue) {
 		Object val = get(name);
@@ -384,6 +416,25 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			
 			while (in.hasNext()) {
 				String name = in.nextName();
+//				System.out.println("Deserializing "+name);
+				Object value = deserialize(in, name);
+				
+				properties.put(name, value);
+			}
+			
+			in.endObject();
+			return properties;
+		}
+
+		public FeatureProperties readAfterFirstName(JsonReader in, String name0) throws IOException {
+			FeatureProperties properties = new FeatureProperties(); // linked for insertion order tracking
+			
+			Object value0 = deserialize(in, name0);
+			properties.put(name0, value0);
+			
+			while (in.hasNext()) {
+				String name = in.nextName();
+//				System.out.println("Deserializing "+name);
 				Object value = deserialize(in, name);
 				
 				properties.put(name, value);
@@ -396,6 +447,7 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 	}
 	
 	private static XYAdapter xyAdapter = new XYAdapter();
+	private static PropertiesAdapter propAdapter = new PropertiesAdapter();
 	
 	/**
 	 * Serializes the given value to the given JsonWriter, which should already have the name set. Numbers
@@ -493,19 +545,34 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			
 //			System.out.println("Now inside: "+in.peek()+", "+in.getPath());
 			
-			if (in.hasNext() && in.nextName().equals("type")) {
-				String type = null;
-				try {
-					type = in.nextString();
-					Class<?> typeClass = Class.forName(type);
-					if (XY_DataSet.class.isAssignableFrom(typeClass)) {
-						XY_DataSet ret = new XY_DataSet.XYAdapter().innerReadAsType(in, (Class<? extends XY_DataSet>)typeClass);
-						in.endObject();
-						return ret;
+			if (in.hasNext()) {
+				String name0 = in.nextName();
+				
+				if (name0.equals("type")) {
+					String type = null;
+					try {
+						type = in.nextString();
+						Class<?> typeClass = Class.forName(type);
+						if (XY_DataSet.class.isAssignableFrom(typeClass)) {
+							XY_DataSet ret = new XY_DataSet.XYAdapter().innerReadAsType(in, (Class<? extends XY_DataSet>)typeClass);
+							in.endObject();
+							return ret;
+						}
+					} catch (Throwable t) {
+						System.err.println("WARNING: couldn't deserialize custom FeatureProperties object with type: "
+								+type+", exception: "+t.getMessage());
 					}
-				} catch (Throwable t) {
-					System.err.println("WARNING: couldn't deserialize custom FeatureProperties object with type: "
-							+type+", exception: "+t.getMessage());
+				} else {
+					// try to deserialize as a FeatureProperties
+					
+					try {
+						FeatureProperties props = propAdapter.readAfterFirstName(in, name0);
+						if (props != null)
+							return props;
+					} catch (Throwable t) {
+						System.err.println("WARNING: couldn't deserialize custom FeatureProperties object as a map: "
+								+t.getMessage());
+					}
 				}
 			}
 			skipUntilPastObject(in, startPath);
@@ -528,9 +595,10 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		if (D) System.out.println("Looking to back out to: "+startPath);
 		while (true) {
 			String path = in.getPath();
-			if (D) System.out.println("Path: "+path+"\tequals? "+path.equals(startPath));
+			if (D) System.out.println("Path: "+path+"\tequals? "+isSamePath(path, startPath));
 			JsonToken peek = in.peek();
-			if (path.equals(startPath)) {
+			if (isSamePath(path, startPath)) {
+				// do strict equals for this test, otherwise we'll skip every other object in an array
 				if (peek == JsonToken.BEGIN_OBJECT && path.equals(startPath)) {
 					// phew, we haven't gone in yet. just skip over it
 					if (D) System.out.println("DONE: hadn't yet descended into object, can skip");
@@ -559,6 +627,32 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 				in.skipValue();
 			}
 		}
+	}
+	
+	/**
+	 * 
+	 * @param testPath
+	 * @param destPath
+	 * @return true if testPath equals destPath, or testPath is another value in the same array
+	 */
+	private static boolean isSamePath(String testPath, String destPath) {
+		if (testPath.equals(destPath))
+			return true;
+		if (testPath.endsWith("]") && destPath.endsWith("]")) {
+			// special case for arrays, could be at the index in it, which should return true
+			int destArrayBegin = destPath.lastIndexOf('[');
+			Preconditions.checkState(destArrayBegin > 0);
+			int testArrayBegin = destPath.lastIndexOf('[');
+			Preconditions.checkState(testArrayBegin > 0);
+			if (destArrayBegin == testArrayBegin) {
+				// probable match
+				String destPrefix = destPath.substring(0, destArrayBegin);
+				String testPrefix = testPath.substring(0, testArrayBegin);
+				if (destPrefix.equals(testPrefix))
+					return true;
+			}
+		}
+		return false;
 	}
 	
 	static Number parseNumber(String numStr) {

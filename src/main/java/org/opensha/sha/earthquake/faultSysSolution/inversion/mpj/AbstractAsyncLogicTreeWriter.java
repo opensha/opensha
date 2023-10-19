@@ -31,6 +31,7 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 	protected Map<String, BranchAverageSolutionCreator> baCreators;
 	protected SolutionLogicTree.FileBuilder sltBuilder;
 	
+	private CompletableFuture<Void> writingLoadedFuture;
 	private CompletableFuture<Void> processingLoadedFuture;
 	
 	private boolean[] dones;
@@ -99,47 +100,50 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 			return;
 		
 		// do this part asynchronously so that we can start loading the next one
-		if (processingLoadedFuture != null) {
-			// wait until we're done processing the previous one
-			try {
-				processingLoadedFuture.get();
-			} catch (InterruptedException | ExecutionException e) {
-				throw ExceptionUtils.asRuntimeException(e);
-			}
-		}
-		// launch this asynchronously
-		processingLoadedFuture = CompletableFuture.runAsync(new Runnable() {
+		if (writingLoadedFuture != null)
+			// wait until we're done writing the previous one
+			writingLoadedFuture.join();
+		// launch write asynchronously
+		writingLoadedFuture = CompletableFuture.runAsync(new Runnable() {
 			
 			@Override
 			public void run() {
 				try {
 					sltBuilder.solution(sol, branch);
-					
-					// now add in to branch averaged
-					if (baCreators != null) {
-						String baPrefix = getBA_prefix(branch);
-						
-						if (baPrefix == null) {
-							debug("AsyncLogicTree won't branch average, all levels affect "+FaultSystemRupSet.RUP_PROPS_FILE_NAME);
-						} else {
-							if (!baCreators.containsKey(baPrefix))
-								baCreators.put(baPrefix, new BranchAverageSolutionCreator(weightProv));
-							BranchAverageSolutionCreator baCreator = baCreators.get(baPrefix);
-							try {
-								baCreator.addSolution(sol, branch);
-							} catch (Exception e) {
-								e.printStackTrace();
-								System.err.flush();
-								debug("AsyncLogicTree: Branch averaging failed for branch "+branch+", disabling averaging");
-								baCreators = null;
-							}
-						}
-					}
 				} catch (Exception e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 			}
 		});
+		if (baCreators != null) {
+			if (processingLoadedFuture != null)
+				// wait until we're done processing the previous one
+				processingLoadedFuture.join();
+			// launch processing asynchronously
+			processingLoadedFuture = CompletableFuture.runAsync(new Runnable() {
+				
+				@Override
+				public void run() {
+					String baPrefix = getBA_prefix(branch);
+					
+					if (baPrefix == null) {
+						debug("AsyncLogicTree won't branch average, all levels affect "+FaultSystemRupSet.RUP_PROPS_FILE_NAME);
+					} else {
+						if (!baCreators.containsKey(baPrefix))
+							baCreators.put(baPrefix, new BranchAverageSolutionCreator(weightProv));
+						BranchAverageSolutionCreator baCreator = baCreators.get(baPrefix);
+						try {
+							baCreator.addSolution(sol, branch);
+						} catch (Exception e) {
+							e.printStackTrace();
+							System.err.flush();
+							debug("AsyncLogicTree: Branch averaging failed for branch "+branch+", disabling averaging");
+							baCreators = null;
+						}
+					}
+				}
+			});
+		}
 	}
 	
 	public static String getBA_prefix(LogicTreeBranch<?> branch) {
@@ -191,14 +195,12 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 	public void shutdown() {
 		super.shutdown();
 		
-		if (processingLoadedFuture != null) {
-			try {
-				// wait on the last asynchronous processing task to finish
-				processingLoadedFuture.get();
-			} catch (InterruptedException | ExecutionException e) {
-				throw ExceptionUtils.asRuntimeException(e);
-			}
-		}
+		if (writingLoadedFuture != null)
+			// wait on the last asynchonous write task to finish
+			writingLoadedFuture.join();
+		if (processingLoadedFuture != null)
+			// wait on the last asynchronous processing task to finish
+			processingLoadedFuture.join();
 		
 		memoryDebug("AsyncLogicTree: finalizing logic tree zip");
 		try {

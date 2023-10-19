@@ -181,7 +181,7 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 				subHeading += "#";
 			}
 			
-			for (ReturnPeriods rp : ReturnPeriods.values()) {
+			for (ReturnPeriods rp : SolHazardMapCalc.MAP_RPS) {
 				lines.add(subHeading+" "+perLabel+", "+rp.label+" Hazard Maps");
 				lines.add(topLink); lines.add("");
 				

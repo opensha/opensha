@@ -271,28 +271,51 @@ public class ShakeMapFiniteFaultAccessor {
 		List<LocationList> ret = new ArrayList<>();
 		for (Feature feature : collection.features) {
 			Geometry geom = feature.geometry;
+			if (D) System.out.println("Parsing feature with geometry type "+geom.type);
 			if (geom instanceof Polygon) {
 				Polygon poly = (Polygon)geom;
 				if (poly.polygon != null)
 					ret.add(poly.polygon);
+				if (poly.holes != null) {
+					// doesn't conform to GeoJSON standards, "holes" are actually additional surfaces
+					for (LocationList hole : poly.holes)
+						ret.add(hole);
+				}
 			} else if (geom instanceof MultiPolygon) {
-				for (Polygon poly : ((MultiPolygon)geom).polygons)
-					if (poly != null)
+				for (Polygon poly : ((MultiPolygon)geom).polygons) {
+					if (poly != null) {
 						ret.add(poly.polygon);
+						if (poly.holes != null) {
+							// doesn't conform to GeoJSON standards, "holes" are actually additional surfaces
+							for (LocationList hole : poly.holes)
+								ret.add(hole);
+						}
+					}
+				}
 			} else if (geom instanceof Point) {
+				System.out.println("Found Point geometry, skipping ShakeMap surface entirely");
 				return null;
 			} else {
 				throw new IllegalStateException("Unexpected ShakeMap geometry type: "+geom.type);
 			}
 		}
+		System.out.println("Fetched "+ret.size()+" outlines");
 		return ret.toArray(new LocationList[0]);
 	}
 	
 	public static void main(String[] args) throws IOException {
 		ShakeMapFiniteFaultAccessor source = new ShakeMapFiniteFaultAccessor();
 //		source.fetchShakemapSourceOutlines("ci38443183", 6);
-		source.fetchShakemapSourceOutlines("ci38457511");
-		FeatureCollection.read(new File("/tmp/rupture.json"));
+		LocationList[] outlineArray = source.fetchShakemapSourceOutlines("ci38457511", 14);
+		
+		List<LocationList> outlines = new ArrayList<>();
+		for (LocationList outline : outlineArray)
+			outlines.add(outline);
+		Geometry geom = new Geometry.MultiLineString(outlines);
+		Feature feature = new Feature(geom, null);
+		System.out.println("\n\n"+feature.toJSON()+"\n");
+		
+//		FeatureCollection.read(new File("/tmp/rupture.json"));
 	}
 
 }

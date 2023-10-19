@@ -111,5 +111,23 @@ public class RSQSimEventRecord extends EventRecord {
 //		checkInitNextSlipTimes();
 //		return nextSlipTimes;
 //	}
+	
+	public RSQSimEventRecord copy() {
+		RSQSimEventRecord copy = new RSQSimEventRecord(rectElementsList);
+		copy.area = area;
+		copy.duration = duration;
+		copy.elementIDs = elementIDs;
+		copy.elementSlips = elementSlips;
+		copy.event_id = event_id;
+		copy.firstPatchID = firstPatchID;
+		copy.length = length;
+		copy.magnitude = magnitude;
+		copy.moment = moment;
+		copy.numElements = numElements;
+		copy.sectionID = sectionID;
+		copy.time = time;
+		copy.setElementTimeFirstSlips(getElementTimeFirstSlips());
+		return copy;
+	}
 
 }

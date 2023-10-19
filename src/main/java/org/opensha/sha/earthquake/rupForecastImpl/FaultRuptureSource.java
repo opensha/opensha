@@ -142,8 +142,21 @@ extends ProbEqkSource {
 	 */
 	public FaultRuptureSource(DiscretizedFunc magDist, RuptureSurface  ruptureSurface,
 			double rake, double duration) {
-
-		this.isPoissonian = true;
+		this(magDist, ruptureSurface, rake, duration, true);
+	}
+	
+	/**
+	 * Constructor - this produces a separate rupture for each mag in the mag-freq-dist.
+	 * This source is set as Poissonian.
+	 * @param magnitude-frequency distribution
+	 * @param ruptureSurface - any EvenlyGriddedSurface representation of the fault
+	 * @param rake - average rake of the ruptures
+	 * @param duration - the duration in years
+	 * @param isPoisson - whether or not it's a poisson source
+	 */
+	public FaultRuptureSource(DiscretizedFunc magDist, RuptureSurface  ruptureSurface,
+			double rake, double duration, boolean isPoisson) {
+		this.isPoissonian = isPoisson;
 		this.duration = duration;
 
 		if (D) {
@@ -161,7 +174,10 @@ extends ProbEqkSource {
 			mag = magDist.getX(i);
 			// make sure it has a non-zero rate
 			if (magDist.getY(i) > 0) {
-				prob = 1 - Math.exp( -duration * magDist.getY(i));
+				if (isPoissonian)
+					prob = 1 - Math.exp( -duration * magDist.getY(i));
+				else
+					prob = Math.min(1d, magDist.getY(i)*duration);
 				ProbEqkRupture probEqkRupture = new ProbEqkRupture();
 				probEqkRupture.setAveRake(rake);
 				probEqkRupture.setRuptureSurface(ruptureSurface);

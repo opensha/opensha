@@ -1,0 +1,16 @@
+{
+  "type": "Feature",
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [[
+      [-103.95, 53.05],
+      [-103.95, 22.95],
+      [ -59.95, 22.95],
+      [ -59.95, 53.05],
+      [-103.95, 53.05]
+    ]]
+  },
+  "properties": {
+    "title": "CEUS Collection Region"
+  }
+}

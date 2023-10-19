@@ -34,6 +34,7 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.XY_DataSet;
+import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -90,6 +91,7 @@ import scratch.UCERF3.utils.U3FaultSystemIO;
 public class SegmentationCalculator {
 	
 	public static final double[] MIN_MAGS_DEFAULT = { 0d, 6.5d, 7d, 7.5d };
+	public static boolean WRITE_PDFS = false;
 
 	/*
 	 * Inputs
@@ -914,7 +916,7 @@ public class SegmentationCalculator {
 	}
 	
 	public File[] plotConnectionRates(File outputDir, String prefix, String title, int width) throws IOException {
-		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+		GeographicMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 		
 		CPT cpt = getConnectionRateCPT();
 		
@@ -942,6 +944,10 @@ public class SegmentationCalculator {
 		return ret;
 	}
 	
+	public File[] plotConnectionFracts(File outputDir, String prefix, String title) throws IOException {
+		return plotConnectionFracts(outputDir, prefix, title, 800, null);
+	}
+	
 	public File[] plotConnectionFracts(File outputDir, String prefix, String title, RateCombiner combiner) throws IOException {
 		return plotConnectionFracts(outputDir, prefix, title, 800, combiner);
 	}
@@ -958,8 +964,12 @@ public class SegmentationCalculator {
 		return GMT_CPT_Files.GMT_POLAR.instance().rescale(-1d, 1d);
 	}
 	
+	public File[] plotConnectionFracts(File outputDir, String prefix, String title, int width) throws IOException {
+		return plotConnectionFracts(outputDir, prefix, title, width, null);
+	}
+	
 	public File[] plotConnectionFracts(File outputDir, String prefix, String title, int width, RateCombiner combiner) throws IOException {
-		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+		GeographicMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 //		plotter.setJumpLineThickness(4f);
 		
 		CPT cpt = getConnectionFractCPT();
@@ -969,8 +979,12 @@ public class SegmentationCalculator {
 		for (int m=0; m<minMags.length; m++) {
 			plotter.clearJumpScalars();
 			
-			String label = getMagLabel(minMags[m])+" Passthrough Rate (Rel. "+combiner+")";
-			plotter.plotJumpScalars(calcJumpPassthroughs(m, combiner), cpt, label);
+			String label = "Passthrough Rate";
+			if (combiner != null || minMags[m] > 0)
+				label = getMagLabel(minMags[m])+" "+label;
+			if (combiner != null)
+				label += " (Rel. "+combiner+")";
+			plotter.plotJumpScalars(calcJumpPassthroughs(m, combiner == null ? RateCombiner.MIN : combiner), cpt, label);
 			
 			String myPrefix = prefix+"_"+getMagPrefix(minMags[m]);
 			ret[m] = new File(outputDir, myPrefix+".png");
@@ -996,7 +1010,7 @@ public class SegmentationCalculator {
 	
 	public File[] plotConnectionDiffs(File outputDir, String prefix, String title, RateCombiner combiner,
 			SegmentationCalculator compCalc) throws IOException {
-		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+		GeographicMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 //		plotter.setJumpLineThickness(4f);
 		
 		CPT cpt = getConnectionDiffCPT();
@@ -1036,7 +1050,7 @@ public class SegmentationCalculator {
 	
 	public File[] plotConnectionLogRatios(File outputDir, String prefix, String title, RateCombiner combiner,
 			SegmentationCalculator compCalc) throws IOException {
-		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+		GeographicMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 //		plotter.setJumpLineThickness(4f);
 		
 		CPT cpt = getConnectionLogRatioCPT();
@@ -1076,7 +1090,7 @@ public class SegmentationCalculator {
 	
 	public File[] plotConnectionModelDiffs(File outputDir, String prefix, String title, RateCombiner combiner,
 			JumpProbabilityCalc segModel) throws IOException {
-		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+		GeographicMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 //		plotter.setJumpLineThickness(4f);
 		
 		CPT cpt = getConnectionDiffCPT();
@@ -1110,7 +1124,7 @@ public class SegmentationCalculator {
 	
 	public File[] plotConnectionModelLogRatios(File outputDir, String prefix, String title, RateCombiner combiner,
 			JumpProbabilityCalc segModel) throws IOException {
-		RupSetMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
+		GeographicMapMaker plotter = new RupSetMapMaker(sol.getRupSet(), RupSetMapMaker.buildBufferedRegion(subSects));
 //		plotter.setJumpLineThickness(4f);
 		
 		CPT cpt = getConnectionLogRatioCPT();
@@ -1419,7 +1433,7 @@ public class SegmentationCalculator {
 			gp.setTickLabelFontSize(18);
 			gp.setAxisLabelFontSize(24);
 			gp.setPlotLabelFontSize(24);
-			gp.setLegendFontSize(18);
+			gp.setLegendFontSize(legendFontSize);
 			gp.setBackgroundColor(Color.WHITE);
 			
 			int width = 1000;
@@ -1435,6 +1449,8 @@ public class SegmentationCalculator {
 			ret[m] = new File(outputDir, myPrefix+".png");
 			gp.getChartPanel().setSize(width, height);
 			gp.saveAsPNG(ret[m].getAbsolutePath());
+			if (WRITE_PDFS)
+				gp.saveAsPDF(ret[m].getAbsolutePath().replace(".png", ".pdf"));
 		}
 		
 		return ret;
@@ -1505,7 +1521,7 @@ public class SegmentationCalculator {
 		gp.setTickLabelFontSize(18);
 		gp.setAxisLabelFontSize(24);
 		gp.setPlotLabelFontSize(24);
-		gp.setLegendFontSize(18);
+		gp.setLegendFontSize(legendFontSize);
 		gp.setBackgroundColor(Color.WHITE);
 		
 		int width = 1000;
@@ -1520,6 +1536,8 @@ public class SegmentationCalculator {
 		File ret = new File(outputDir, prefix+".png");
 		gp.getChartPanel().setSize(width, height);
 		gp.saveAsPNG(ret.getAbsolutePath());
+		if (WRITE_PDFS)
+			gp.saveAsPDF(ret.getAbsolutePath().replace(".png", ".pdf"));
 		return ret;
 	}
 	
@@ -1581,7 +1599,7 @@ public class SegmentationCalculator {
 		gp.setTickLabelFontSize(18);
 		gp.setAxisLabelFontSize(24);
 		gp.setPlotLabelFontSize(24);
-		gp.setLegendFontSize(18);
+		gp.setLegendFontSize(legendFontSize);
 		gp.setBackgroundColor(Color.WHITE);
 		
 		int width = 1000;
@@ -1591,13 +1609,20 @@ public class SegmentationCalculator {
 		File ret = new File(outputDir, prefix+".png");
 		gp.getChartPanel().setSize(width, height);
 		gp.saveAsPNG(ret.getAbsolutePath());
+		if (WRITE_PDFS)
+			gp.saveAsPDF(ret.getAbsolutePath().replace(".png", ".pdf"));
 		return ret;
 	}
 	
 	public File[] plotDistDependComparison(File outputDir, String prefix, boolean logY, RateCombiner combiner) throws IOException {
+		String title = Scalars.JUMP_DIST.name+" Dependence";
+		return plotDistDependComparison(outputDir, prefix, logY, combiner, title);
+	}
+	
+	public File[] plotDistDependComparison(File outputDir, String prefix, boolean logY, RateCombiner combiner, String title) throws IOException {
 		File[] ret = new File[minMags.length];
 		
-		Range xRange = null;
+		Range xRange = new Range(0d, 15d);
 		Range yRange = logY ? new Range(1e-3, 1) : new Range(0d, 1d);
 		
 		CPT rateCPT = getConnectionRateCPT();
@@ -1609,6 +1634,12 @@ public class SegmentationCalculator {
 //			detrendProb = null;
 		
 		Scalars scalar = Scalars.JUMP_DIST;
+		
+		String yAxisLabel = "Passthrough Rate";
+		if (combiner == null)
+			combiner = RateCombiner.MIN;
+		else
+			yAxisLabel += " (Rel. "+combiner+")";
 		
 		// see if we have a segmentation model
 		List<DistDependentJumpProbabilityCalc> comparisons = new ArrayList<>();
@@ -1677,70 +1708,7 @@ public class SegmentationCalculator {
 			List<XY_DataSet> funcs = new ArrayList<>();
 			List<PlotCurveCharacterstics> chars = new ArrayList<>();
 			
-			DefaultXY_DataSet fakeXY = new DefaultXY_DataSet();
-			fakeXY.set(0d, -1d);
-			fakeXY.setName("Connection");
-			funcs.add(fakeXY);
-			float half = rateCPT.getMinValue() + 0.5f*(rateCPT.getMaxValue()-rateCPT.getMinValue());
-			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, rateCPT.getColor(half)));
-			
-			DefaultXY_DataSet zerosScatter = new DefaultXY_DataSet();
-			zerosScatter.setName("Zero-Rate");
-			funcs.add(zerosScatter);
-			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, Color.GRAY));
-
-			List<Double> fracts = new ArrayList<>();
-			List<Double> detrendFracts = detrendProb == null ? null : new ArrayList<>();
-			List<Double> scalarVals = new ArrayList<>();
-			
-			for (Cell<IDPairing, Jump, JumpRates> cell : parentJumpRateTable.cellSet()) {
-				Jump jump = cell.getColumnKey();
-				JumpRates rates = cell.getValue();
-				double jumpRate = rates.magJumpRates[m];
-				double scalarVal = scalarJumpVals.get(jump);
-				double fract;
-				if (jumpRate == 0d) {
-					fract = 0d;
-					zerosScatter.set(scalarVal, yRange.getLowerBound());
-				} else {
-					double fromVal = rates.fromRates.sectRates[m];
-					double toVal = rates.toRates.sectRates[m];
-//					Preconditions.checkState(Double.isFinite(fromVal));
-//					Preconditions.checkState(Double.isFinite(toVal));
-					double rate = combiner.combine(fromVal, toVal);
-					fract = jumpRate/rate;
-					
-					Preconditions.checkState(fract < 1.001, "Passthrough fraction is >1: %s\n"
-							+ "\tjump=%s, fromVal=%s, toVal=%s, jumpRate=%s, combRate[%s]=%s",
-							fract, jump, fromVal, toVal, jumpRate, combiner, rate);
-//					if (fract > 1) {
-//						System.out.println("ABOVE 1!! jump="+jump+" with rate="+jumpRate+" and combiner: "+combiner.name());
-//						System.out.println("\tfromVal="+fromVal+"\ttoVal="+toVal+"\trate="+rate);
-//						System.out.println("\tfract = "+jumpRate+" / "+rate+" = "+fract);
-//					}
-					Color c = rateCPT.getColor((float)Math.log10(rate));
-					c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 200);
-					
-					XY_DataSet scatter = new DefaultXY_DataSet();
-					scatter.set(scalarVal, fract);
-
-					funcs.add(scatter);
-					chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, c));
-					funcs.add(scatter);
-					chars.add(new PlotCurveCharacterstics(PlotSymbol.CIRCLE, scatterWidth, outlineColor));
-					if (detrendProb != null) {
-						double refProb = detrendProb.calcJumpProbability(null, jump, false);
-						detrendFracts.add(Math.min(1d, fract/refProb));
-					}
-				}
-				
-				scalarTrack.addValue(scalarVal);
-				scalarVals.add(scalarVal);
-				fracts.add(fract);
-			}
-			
 			if (m == 0) {
-				xRange = scalar.getPlotRange(scalarTrack.getMin(), scalarTrack.getMax());
 				compCurves = new ArrayList<>();
 				for (int i=0; i<comparisons.size(); i++) {
 					DistDependentJumpProbabilityCalc prob = comparisons.get(i);
@@ -1753,55 +1721,126 @@ public class SegmentationCalculator {
 					func.setName(name);
 					compCurves.add(func);
 				}
-				histXVals = scalar.initHistogram(scalarTrack.getMin(), scalarTrack.getMax());
 			}
-			// now bin values
-			List<List<Double>> valLists = new ArrayList<>();
-			for (int i=0; i<histXVals.size(); i++)
-				valLists.add(new ArrayList<>());
-			for (int i=0; i<fracts.size(); i++) {
-				double scalarVal = scalarVals.get(i);
-				double fract = fracts.get(i);
-				if (xRange.contains(scalarVal) && Double.isFinite(fract)) {
-					int ind = histXVals.getClosestXIndex(scalarVal);
-					valLists.get(ind).add(fract);
-				}
-			}
-			XY_DataSet binnedMeans = new DefaultXY_DataSet();
-			binnedMeans.setName("Mean");
-			XY_DataSet binnedMedians = new DefaultXY_DataSet();
-			binnedMedians.setName("Median");
-//			XY_DataSet probTaken = new DefaultXY_DataSet();
-//			probTaken.setName("P(>0)");
+			XY_DataSet binnedMeans = null;
+			XY_DataSet binnedMedians = null;
+			CSVFile<String> csv = null;
 			
-			CSVFile<String> csv = new CSVFile<>(true);
-			csv.addLine("Distance Bin Center (km)", "Mean Passthrough Rate", "Median Passthrough Rate");
-			
-			for (int i=0; i<valLists.size(); i++) {
-				List<Double> binnedVals = valLists.get(i);
-				if (binnedVals.isEmpty())
-					continue;
-				double[] values = Doubles.toArray(binnedVals);
-				double mean = StatUtils.mean(values);
-				double median = DataUtils.median(values);
-				binnedMeans.set(histXVals.getX(i), mean);
-				binnedMedians.set(histXVals.getX(i), median);
+			if (minMags[m] < 10d) {
+				DefaultXY_DataSet fakeXY = new DefaultXY_DataSet();
+				fakeXY.set(0d, -1d);
+				fakeXY.setName("Connection");
+				funcs.add(fakeXY);
+				float half = rateCPT.getMinValue() + 0.5f*(rateCPT.getMaxValue()-rateCPT.getMinValue());
+				chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, rateCPT.getColor(half)));
 				
-				List<String> line = new ArrayList<>();
-				line.add((float)histXVals.getX(i)+"");
-				line.add(mean+"");
-				line.add(median+"");
-				csv.addLine(line);
-//				probTaken.set(marginalTakenHist.getX(i), marginalTakenHist.getY(i)/marginalAllHist.getY(i));
+				DefaultXY_DataSet zerosScatter = new DefaultXY_DataSet();
+				zerosScatter.setName("Zero-Rate");
+				funcs.add(zerosScatter);
+				chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, Color.GRAY));
+
+				List<Double> fracts = new ArrayList<>();
+				List<Double> detrendFracts = detrendProb == null ? null : new ArrayList<>();
+				List<Double> scalarVals = new ArrayList<>();
+				
+				for (Cell<IDPairing, Jump, JumpRates> cell : parentJumpRateTable.cellSet()) {
+					Jump jump = cell.getColumnKey();
+					JumpRates rates = cell.getValue();
+					double jumpRate = rates.magJumpRates[m];
+					double scalarVal = scalarJumpVals.get(jump);
+					double fract;
+					if (jumpRate == 0d) {
+						fract = 0d;
+						zerosScatter.set(scalarVal, yRange.getLowerBound());
+					} else {
+						double fromVal = rates.fromRates.sectRates[m];
+						double toVal = rates.toRates.sectRates[m];
+//						Preconditions.checkState(Double.isFinite(fromVal));
+//						Preconditions.checkState(Double.isFinite(toVal));
+						double rate = combiner.combine(fromVal, toVal);
+						fract = jumpRate/rate;
+						
+						Preconditions.checkState(fract < 1.001, "Passthrough fraction is >1: %s\n"
+								+ "\tjump=%s, fromVal=%s, toVal=%s, jumpRate=%s, combRate[%s]=%s",
+								fract, jump, fromVal, toVal, jumpRate, combiner, rate);
+//						if (fract > 1) {
+//							System.out.println("ABOVE 1!! jump="+jump+" with rate="+jumpRate+" and combiner: "+combiner.name());
+//							System.out.println("\tfromVal="+fromVal+"\ttoVal="+toVal+"\trate="+rate);
+//							System.out.println("\tfract = "+jumpRate+" / "+rate+" = "+fract);
+//						}
+						Color c = rateCPT.getColor((float)Math.log10(rate));
+						c = new Color(c.getRed(), c.getGreen(), c.getBlue(), 200);
+						
+						XY_DataSet scatter = new DefaultXY_DataSet();
+						scatter.set(scalarVal, fract);
+
+						funcs.add(scatter);
+						chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, c));
+						funcs.add(scatter);
+						chars.add(new PlotCurveCharacterstics(PlotSymbol.CIRCLE, scatterWidth, outlineColor));
+						if (detrendProb != null) {
+							double refProb = detrendProb.calcJumpProbability(null, jump, false);
+							detrendFracts.add(Math.min(1d, fract/refProb));
+						}
+					}
+					
+					scalarTrack.addValue(scalarVal);
+					scalarVals.add(scalarVal);
+					fracts.add(fract);
+				}
+				
+				if (m == 0)
+					histXVals = scalar.initHistogram(scalarTrack.getMin(), scalarTrack.getMax());
+				// now bin values
+				List<List<Double>> valLists = new ArrayList<>();
+				for (int i=0; i<histXVals.size(); i++)
+					valLists.add(new ArrayList<>());
+				for (int i=0; i<fracts.size(); i++) {
+					double scalarVal = scalarVals.get(i);
+					double fract = fracts.get(i);
+					if (xRange.contains(scalarVal) && Double.isFinite(fract)) {
+						int ind = histXVals.getClosestXIndex(scalarVal);
+						valLists.get(ind).add(fract);
+					}
+				}
+				binnedMeans = new DefaultXY_DataSet();
+				binnedMeans.setName("Mean");
+				binnedMedians = new DefaultXY_DataSet();
+				binnedMedians.setName("Median");
+//				XY_DataSet probTaken = new DefaultXY_DataSet();
+//				probTaken.setName("P(>0)");
+				
+				csv = new CSVFile<>(true);
+				csv.addLine("Distance Bin Center (km)", "Mean Passthrough Rate", "Median Passthrough Rate");
+				
+				for (int i=0; i<valLists.size(); i++) {
+					List<Double> binnedVals = valLists.get(i);
+					if (binnedVals.isEmpty())
+						continue;
+					double[] values = Doubles.toArray(binnedVals);
+					double mean = StatUtils.mean(values);
+					double median = DataUtils.median(values);
+					binnedMeans.set(histXVals.getX(i), mean);
+					binnedMedians.set(histXVals.getX(i), median);
+					
+					List<String> line = new ArrayList<>();
+					line.add((float)histXVals.getX(i)+"");
+					line.add(mean+"");
+					line.add(median+"");
+					csv.addLine(line);
+//					probTaken.set(marginalTakenHist.getX(i), marginalTakenHist.getY(i)/marginalAllHist.getY(i));
+				}
+				
+				// add fake values so that the legend works
+				if (binnedMeans.size() == 0) {
+					binnedMeans.set(0d, -1d);
+					binnedMedians.set(0d, -1d);
+				}
+				if (zerosScatter.size() == 0)
+					zerosScatter.set(0d, -1d);
 			}
 			
-			// add fake values so that the legend works
-			if (binnedMeans.size() == 0) {
-				binnedMeans.set(0d, -1d);
-				binnedMedians.set(0d, -1d);
-			}
-			if (zerosScatter.size() == 0)
-				zerosScatter.set(0d, -1d);
+			
 			
 			funcs.addAll(compCurves);
 			for (int i=0; i<compColors.length; i++) {
@@ -1811,15 +1850,14 @@ public class SegmentationCalculator {
 					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, compColors[i]));
 			}
 			
-			funcs.add(binnedMeans);
-			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 10f, new Color(0, 0, 0, 150)));
-			funcs.add(binnedMedians);
-			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_SQUARE, 10f, new Color(0, 0, 150, 150)));
-//			funcs.add(probTaken);
-//			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_TRIANGLE, 6f, new Color(150, 0, 0, 150)));
+			if (binnedMeans != null) {
+				funcs.add(binnedMeans);
+				chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 10f, new Color(0, 0, 0, 150)));
+				funcs.add(binnedMedians);
+				chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_SQUARE, 10f, new Color(0, 0, 150, 150)));
+			}
 			
-			PlotSpec spec = new PlotSpec(funcs, chars, scalar.name+" Dependence", scalar.toString(),
-					"Passthrough Rate (Rel. "+combiner+")");
+			PlotSpec spec = new PlotSpec(funcs, chars, title, scalar.toString(), yAxisLabel);
 			spec.setLegendVisible(true);
 			
 			System.out.println(getMagLabel(minMags[m])+" "+scalar+": "+scalarTrack);
@@ -1828,7 +1866,7 @@ public class SegmentationCalculator {
 			gp.setTickLabelFontSize(18);
 			gp.setAxisLabelFontSize(24);
 			gp.setPlotLabelFontSize(24);
-			gp.setLegendFontSize(18);
+			gp.setLegendFontSize(legendFontSize);
 			gp.setBackgroundColor(Color.WHITE);
 			
 			int width = 1000;
@@ -1839,11 +1877,19 @@ public class SegmentationCalculator {
 			ret[m] = new File(outputDir, myPrefix+".png");
 			gp.getChartPanel().setSize(width, height);
 			gp.saveAsPNG(ret[m].getAbsolutePath());
-			if (!logY)
+//			if (WRITE_PDFS)
+				gp.saveAsPDF(ret[m].getAbsolutePath().replace(".png", ".pdf"));
+			if (!logY && csv != null)
 				csv.writeToFile(new File(outputDir, myPrefix+".csv"));
 		}
 		
 		return ret;
+	}
+	
+	private int legendFontSize = 18;
+	
+	public void setLegendFontSize(int legendFontSize) {
+		this.legendFontSize = legendFontSize;
 	}
 	
 	public File[] plotMaxDistModelsComparison(File outputDir, String prefix, boolean logY, double targetR0,
@@ -2062,7 +2108,7 @@ public class SegmentationCalculator {
 			gp.setTickLabelFontSize(18);
 			gp.setAxisLabelFontSize(24);
 			gp.setPlotLabelFontSize(24);
-			gp.setLegendFontSize(18);
+			gp.setLegendFontSize(legendFontSize);
 			gp.setBackgroundColor(Color.WHITE);
 			
 			int width = 1000;
@@ -2073,6 +2119,8 @@ public class SegmentationCalculator {
 			ret[m] = new File(outputDir, myPrefix+".png");
 			gp.getChartPanel().setSize(width, height);
 			gp.saveAsPNG(ret[m].getAbsolutePath());
+			if (WRITE_PDFS)
+				gp.saveAsPDF(ret[m].getAbsolutePath().replace(".png", ".pdf"));
 			if (!logY)
 				csv.writeToFile(new File(outputDir, myPrefix+".csv"));
 			
@@ -2158,6 +2206,8 @@ public class SegmentationCalculator {
 			ret[m] = new File(outputDir, myPrefix+".png");
 			gp.getChartPanel().setSize(width, height);
 			gp.saveAsPNG(ret[m].getAbsolutePath());
+			if (WRITE_PDFS)
+				gp.saveAsPDF(ret[m].getAbsolutePath().replace(".png", ".pdf"));
 			
 			// now normalized
 			funcs = new ArrayList<>();
@@ -2328,6 +2378,8 @@ public class SegmentationCalculator {
 			ret[m] = new File(outputDir, myPrefix+".png");
 			gp.getChartPanel().setSize(width, height);
 			gp.saveAsPNG(ret[m].getAbsolutePath());
+			if (WRITE_PDFS)
+				gp.saveAsPDF(ret[m].getAbsolutePath().replace(".png", ".pdf"));
 		}
 		
 		return ret;

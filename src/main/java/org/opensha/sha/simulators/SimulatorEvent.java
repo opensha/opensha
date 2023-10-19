@@ -14,6 +14,8 @@ import com.google.common.collect.Lists;
 
 /**
  * Event records are ordered such that the first is where the event nucleated
+ * 
+ * @TODO: make generic? e.g.: public class SimulatorEvent<E extends EventRecord> implements Comparable<SimulatorEvent<?>>, Iterable<E>, Serializable
  * @author field
  *
  */
