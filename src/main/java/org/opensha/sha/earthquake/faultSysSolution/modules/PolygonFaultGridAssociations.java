@@ -164,15 +164,22 @@ public interface PolygonFaultGridAssociations extends FaultGridAssociations {
 							numPolys++;
 							Region prevPoly = polys.get(sectIndex);
 							if (prevPoly == null || !prevPoly.equalsRegion(poly)) {
+								System.err.println("WARNING: poly mismatch for sect "+sectIndex+", will average as simple "
+										+ "FaultGridAssociations");
 								polys = null;
 								break;
 							}
 						}
 					}
-					if (polys != null && numPolys != polys.size())
+					if (polys != null && numPolys != polys.size()) {
+						System.err.println("WARNING: polys.size() mismatch, will average as simple "
+								+ "FaultGridAssociations: "+numPolys+" != "+polys.size());
 						polys = null;
+					}
 				} else {
 					// this one doesn't have polys
+					System.err.println("WARNING: sub module doesn't have polys, will average as simple "
+							+ "FaultGridAssociations");
 					polys = null;
 				}
 			}
@@ -184,6 +191,7 @@ public interface PolygonFaultGridAssociations extends FaultGridAssociations {
 			FaultGridAssociations associations = gridAverager.getAverage();
 			if (polys != null)
 				return new Precomputed(associations, polys);
+			System.err.println("WARNING: don't have average polys, returning a simple FaultGridAssociations");
 			return associations;
 		}
 		
