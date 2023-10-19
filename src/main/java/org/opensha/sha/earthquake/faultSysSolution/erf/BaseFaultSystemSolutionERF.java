@@ -76,7 +76,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	
 	// solution and constants
 	protected FaultSystemSolution faultSysSolution;		// the FFS for the ERF
-	protected RupMFDsModule mfdsModule;					// rupture MFDs
+	protected RupMFDsModule mfdsModule;					// rupture MFDs (if available)
 	protected boolean cacheGridSources = false;			// if true, grid sources are cached instead of built on the fly
 	protected ProbEqkSource[] gridSourceCache = null;
 	protected int numNonZeroFaultSystemSources;			// this is the number of faultSystemRups with non-zero rates (each is a source here)
@@ -541,6 +541,19 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	}
 	
 	/**
+	 * Determines if the given rupture rate gain is valid. Default implementation ensures that the gain is >0; if rate
+	 * gains of 0 are expected in a particular subclass (e.g., ETAS right after a rupture occurred), override this.
+	 * 
+	 * @param rateGain
+	 * @param fltSystRupIndex
+	 * @param duration
+	 * @return
+	 */
+	protected boolean isRateGainValid(double rateGain, int fltSystRupIndex, double duration) {
+		return rateGain > 0d;
+	}
+	
+	/**
 	 * Creates a fault source.
 	 * @param iSource - source index in ERF
 	 * @return
@@ -558,7 +571,8 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		double rateGain = getFaultSysRupRateGain(fltSystRupIndex);
 		boolean isPoisson = isFaultSysRupPoisson(fltSystRupIndex);
 		
-		Preconditions.checkState(rateGain > 0, "Bad probGain=%s for rupIndex=%s", (Double)rateGain, fltSystRupIndex);
+		Preconditions.checkState(isRateGainValid(rateGain, fltSystRupIndex, duration),
+				"Bad probGain=%s for rupIndex=%s, duration=%s", rateGain, fltSystRupIndex, duration);
 		
 		FaultRuptureSource src;
 		if (rupMFD == null || rupMFD.size() < 2) {
