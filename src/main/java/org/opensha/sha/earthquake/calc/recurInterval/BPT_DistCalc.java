@@ -188,7 +188,7 @@ public final class BPT_DistCalc extends EqkProbDistCalc implements ParameterChan
 //			System.out.println("bad");
 			double condProbForMinNormDur = getCondProb(timeSinceLast, MIN_NORM_DURATION*mean); // this will temporarily override this.duration, so we need to fix this below
 			result = condProbForMinNormDur*duration/(MIN_NORM_DURATION*mean);
-			 this.duration=duration;
+			this.duration=duration;
 		}
 		
 		 return result;
