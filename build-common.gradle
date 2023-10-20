@@ -5,9 +5,10 @@
  * This file requires that the 'parentProject' property be defined (should be null for top level project)
  */
 
-
-sourceCompatibility = JavaVersion.VERSION_11
-targetCompatibility = JavaVersion.VERSION_11
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
 compileJava.options.encoding = "UTF-8"
 
 repositories {
