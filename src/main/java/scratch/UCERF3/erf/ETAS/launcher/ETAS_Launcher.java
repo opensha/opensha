@@ -935,11 +935,13 @@ public class ETAS_Launcher {
 						File infoString = new File(tempResultsDir, "infoString.txt");
 						if (infoString.exists())
 							Files.copy(infoString, new File(resultsDir, infoString.getName()));
-						// make sure that the binary file really succeeded before deleting ascii
-						if (newAscii.length() > 0l)
+						// make sure that the copy really succeeded before deleting the original
+						if (newAscii.length() > 0l) {
 							asciiFile.delete();
-						else
+							asciiFile = newAscii;
+						} else {
 							newAscii.delete();
+						}
 					}
 					if (binaryPreStage) {
 						if (catalog == null)
