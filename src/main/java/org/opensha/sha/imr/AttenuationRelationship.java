@@ -674,6 +674,12 @@ extends AbstractIMR implements ScalarIMR {
 
 		double exceedProb = ( (Double) ( (Parameter) exceedProbParam).getValue()).
 		doubleValue();
+		
+		return getIML_AtExceedProb(getMean(), getStdDev(), exceedProb, sigmaTruncTypeParam, sigmaTruncLevelParam);
+	}
+	
+	protected double getIML_AtExceedProb(double mean, double stdDev, double exceedProb,
+			SigmaTruncTypeParam sigmaTruncTypeParam, SigmaTruncLevelParam sigmaTruncLevelParam) {
 		double stRndVar;
 		String sigTrType = (String) sigmaTruncTypeParam.getValue();
 
@@ -700,7 +706,7 @@ extends AbstractIMR implements ScalarIMR {
 							1e-6);
 				}
 			}
-			return getMean() + stRndVar * getStdDev();
+			return mean + stRndVar * stdDev;
 		}
 	}
 
