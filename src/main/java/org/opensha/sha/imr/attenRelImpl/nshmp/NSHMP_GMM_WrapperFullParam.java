@@ -105,6 +105,7 @@ public class NSHMP_GMM_WrapperFullParam extends AttenuationRelationship implemen
 			Field.Z2P5, Field.ZHYP, Field.ZSED, Field.ZTOR);
 	
 	private String defaultIMT = null;
+	private Double defaultPeriod = null; // if SA
 	
 	public NSHMP_GMM_WrapperFullParam(Gmm gmm) {
 		this(gmm, gmm.name());
@@ -140,21 +141,7 @@ public class NSHMP_GMM_WrapperFullParam extends AttenuationRelationship implemen
 		initIndependentParamLists();
 	}
 	
-	private GroundMotionModel getBuildGMM(Imt imt) {
-		Preconditions.checkNotNull(imt);
-		GroundMotionModel gmmInstance = instanceMap.get(imt);
-		if (gmmInstance == null) {
-			gmmInstance = gmm.instance(imt);
-			instanceMap.put(imt, gmmInstance);
-		}
-		return gmmInstance;
-	}
-	
-	public synchronized LogicTree<GroundMotion> getGroundMotionTree() {
-		if (gmTree != null)
-			// already built for these inputs
-			return gmTree;
-		
+	private Imt getCurrentIMT() {
 		if (imt == null) {
 			// IMT has changed
 			String imName = im.getName();
@@ -169,7 +156,29 @@ public class NSHMP_GMM_WrapperFullParam extends AttenuationRelationship implemen
 			else
 				throw new IllegalStateException("Unexpected IM: "+imName);
 		}
-		GroundMotionModel gmmInstance = getBuildGMM(imt);
+		return imt;
+	}
+	
+	private GroundMotionModel getBuildGMM(Imt imt) {
+		Preconditions.checkNotNull(imt);
+		GroundMotionModel gmmInstance = instanceMap.get(imt);
+		if (gmmInstance == null) {
+			gmmInstance = gmm.instance(imt);
+			instanceMap.put(imt, gmmInstance);
+		}
+		return gmmInstance;
+	}
+	
+	public GroundMotionModel getCurrentGMM_Instance() {
+		return getBuildGMM(getCurrentIMT());
+	}
+	
+	public synchronized LogicTree<GroundMotion> getGroundMotionTree() {
+		if (gmTree != null)
+			// already built for these inputs
+			return gmTree;
+		
+		GroundMotionModel gmmInstance = getCurrentGMM_Instance();
 		
 		if (gmmInput == null) {
 			// an input has changed, rebuild
@@ -374,12 +383,23 @@ public class NSHMP_GMM_WrapperFullParam extends AttenuationRelationship implemen
 		if (hasSA) {
 			
 			DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint();
+			Double firstPeriod = null;
 			for (Imt imt : imts) {
-				if (imt.isSA())
+				if (imt.isSA()) {
 					periodConstraint.addDouble(imt.period());
+					if (firstPeriod == null)
+						firstPeriod = imt.period();
+					if (imt.period() == 1d)
+						defaultPeriod = imt.period();
+				}
 			}
 			periodConstraint.setNonEditable();
-			saPeriodParam = new PeriodParam(periodConstraint);
+
+			defaultIMT = SA_Param.NAME;
+			if (defaultPeriod == null)
+				defaultPeriod = firstPeriod;
+				
+			saPeriodParam = new PeriodParam(periodConstraint, defaultPeriod, false);
 			saPeriodParam.setValueAsDefault();
 			saPeriodParam.addParameterChangeListener(this);
 			saDampingParam = new DampingParam();
@@ -389,8 +409,6 @@ public class NSHMP_GMM_WrapperFullParam extends AttenuationRelationship implemen
 			saParam.setNonEditable();
 			saParam.addParameterChangeWarningListener(listener);
 			supportedIMParams.addParameter(saParam);
-			
-			defaultIMT = SA_Param.NAME;
 		}
 
 		if (imts.contains(Imt.PGA)) {
@@ -434,7 +452,7 @@ public class NSHMP_GMM_WrapperFullParam extends AttenuationRelationship implemen
 		siteParams.clear();
 		if (fields.contains(Field.VS30)) {
 			Range<Double> range = getConstraintRange(Field.VS30, 150d, 1500d);
-			vs30Param = new Vs30_Param(Field.VS30.defaultValue, range.lowerEndpoint(), range.upperEndpoint());
+			vs30Param = new Vs30_Param(safeDefault(Field.VS30, range), range.lowerEndpoint(), range.upperEndpoint());
 			siteParams.addParameter(vs30Param);
 		}
 		if (fields.contains(Field.Z1P0)) {
@@ -442,7 +460,7 @@ public class NSHMP_GMM_WrapperFullParam extends AttenuationRelationship implemen
 			Range<Double> range = getConstraintRange(Field.Z1P0,
 					DepthTo1pt0kmPerSecParam.MIN*1e-3, DepthTo1pt0kmPerSecParam.MAX*1e-3);
 			depthTo1pt0kmPerSecParam = new DepthTo1pt0kmPerSecParam(
-					Double.isNaN(Field.Z1P0.defaultValue) ? null : Field.Z1P0.defaultValue,
+					safeDefault(Field.Z1P0, range, true),
 					range.lowerEndpoint()*1e3, range.upperEndpoint()*1e3, true);
 			siteParams.addParameter(depthTo1pt0kmPerSecParam);
 		}
@@ -450,14 +468,14 @@ public class NSHMP_GMM_WrapperFullParam extends AttenuationRelationship implemen
 			Range<Double> range = getConstraintRange(Field.Z2P5,
 					DepthTo2pt5kmPerSecParam.MIN, DepthTo2pt5kmPerSecParam.MAX);
 			depthTo2pt5kmPerSecParam = new DepthTo2pt5kmPerSecParam(
-					Double.isNaN(Field.Z2P5.defaultValue) ? null : Field.Z2P5.defaultValue,
+					safeDefault(Field.Z2P5, range, true),
 					range.lowerEndpoint(), range.upperEndpoint(), true);
 			siteParams.addParameter(depthTo2pt5kmPerSecParam);
 		}
 		
 		if (fields.contains(Field.ZSED)) {
 			Range<Double> range = getConstraintRange(Field.ZSED);
-			Double defaultValue = Double.isNaN(Field.ZSED.defaultValue) ? null : Field.ZSED.defaultValue;
+			Double defaultValue = safeDefault(Field.ZSED, range, true);
 			if (range == null)
 				zSedParam = new SedimentThicknessParam(defaultValue, true);
 			else
@@ -484,6 +502,18 @@ public class NSHMP_GMM_WrapperFullParam extends AttenuationRelationship implemen
 			return (Range<Double>)constraintRange;
 		return defaultRange;
 	}
+	
+	private double safeDefault(Field field, Range<Double> range) {
+		return safeDefault(field, range, false);
+	}
+	
+	private Double safeDefault(Field field, Range<Double> range, boolean nanAsNull) {
+		if (Double.isNaN(field.defaultValue))
+			return nanAsNull ? null : Double.NaN;
+		if (range != null && !range.contains(field.defaultValue))
+			return range.lowerEndpoint()+0.5*(range.upperEndpoint() - range.lowerEndpoint());
+		return field.defaultValue;
+	}
 
 	@Override
 	protected void initEqkRuptureParams() {
@@ -491,19 +521,19 @@ public class NSHMP_GMM_WrapperFullParam extends AttenuationRelationship implemen
 		
 		if (fields.contains(Field.MW)) {
 			Range<Double> range = getConstraintRange(Field.MW, 4d, 9d);
-			magParam = new MagParam(range.lowerEndpoint(), range.upperEndpoint(), Field.MW.defaultValue);
+			magParam = new MagParam(range.lowerEndpoint(), range.upperEndpoint(), safeDefault(Field.MW, range));
 			eqkRuptureParams.addParameter(magParam);
 		}
 		
 		if (fields.contains(Field.DIP)) {
 			Range<Double> range = getConstraintRange(Field.DIP, 15d, 90d);
-			dipParam = new DipParam(range.lowerEndpoint(), range.upperEndpoint(), Field.DIP.defaultValue);
+			dipParam = new DipParam(range.lowerEndpoint(), range.upperEndpoint(), safeDefault(Field.DIP, range));
 			eqkRuptureParams.addParameter(dipParam);
 		}
 		
 		if (fields.contains(Field.WIDTH)) {
 			Range<Double> range = getConstraintRange(Field.WIDTH, 0d, 500d);
-			rupWidthParam = new RupWidthParam(range.lowerEndpoint(), range.upperEndpoint(), Field.WIDTH.defaultValue);
+			rupWidthParam = new RupWidthParam(range.lowerEndpoint(), range.upperEndpoint(), safeDefault(Field.WIDTH, range));
 			eqkRuptureParams.addParameter(rupWidthParam);
 		}
 		
@@ -514,13 +544,13 @@ public class NSHMP_GMM_WrapperFullParam extends AttenuationRelationship implemen
 		
 		if (fields.contains(Field.ZTOR)) {
 			Range<Double> range = getConstraintRange(Field.ZTOR, 0d, 15d);
-			rupTopDepthParam = new RupTopDepthParam(range.lowerEndpoint(), range.upperEndpoint(), Field.ZTOR.defaultValue);
+			rupTopDepthParam = new RupTopDepthParam(range.lowerEndpoint(), range.upperEndpoint(), safeDefault(Field.ZTOR, range));
 			eqkRuptureParams.addParameter(rupTopDepthParam);
 		}
 		
 		if (fields.contains(Field.ZHYP)) {
 			Range<Double> range = getConstraintRange(Field.ZHYP, 0d, 15d);
-			focalDepthParam = new FocalDepthParam(range.lowerEndpoint(), range.upperEndpoint(), Field.ZHYP.defaultValue);
+			focalDepthParam = new FocalDepthParam(range.lowerEndpoint(), range.upperEndpoint(), safeDefault(Field.ZHYP, range));
 			eqkRuptureParams.addParameter(focalDepthParam);
 		}
 		
@@ -535,21 +565,21 @@ public class NSHMP_GMM_WrapperFullParam extends AttenuationRelationship implemen
 		if (fields.contains(Field.RJB)) {
 			Range<Double> range = getConstraintRange(Field.RJB, 0d, 400d);
 			distanceJBParam = new DistanceJBParameter(
-					new DoubleConstraint(range.lowerEndpoint(), range.upperEndpoint()), Field.RJB.defaultValue);
+					new DoubleConstraint(range.lowerEndpoint(), range.upperEndpoint()), safeDefault(Field.RJB, range));
 			propagationEffectParams.addParameter(distanceJBParam);
 		}
 		
 		if (fields.contains(Field.RRUP)) {
 			Range<Double> range = getConstraintRange(Field.RRUP, 0d, 400d);
 			distanceRupParam = new DistanceRupParameter(
-					new DoubleConstraint(range.lowerEndpoint(), range.upperEndpoint()), Field.RRUP.defaultValue);
+					new DoubleConstraint(range.lowerEndpoint(), range.upperEndpoint()), safeDefault(Field.RRUP, range));
 			propagationEffectParams.addParameter(distanceRupParam);
 		}
 		
 		if (fields.contains(Field.RX)) {
 			Range<Double> range = getConstraintRange(Field.RX, -400d, 400d);
 			distanceXParam = new DistanceX_Parameter(
-					new DoubleConstraint(range.lowerEndpoint(), range.upperEndpoint()), Field.RX.defaultValue);
+					new DoubleConstraint(range.lowerEndpoint(), range.upperEndpoint()), safeDefault(Field.RX, range));
 			propagationEffectParams.addParameter(distanceXParam);
 		}
 		
@@ -696,14 +726,8 @@ public class NSHMP_GMM_WrapperFullParam extends AttenuationRelationship implemen
 		gmTree = null;
 	}
 	
-	/**
-	 * This creates the lists of independent parameters that the various dependent
-	 * parameters (mean, standard deviation, exceedance probability, and IML at
-	 * exceedance probability) depend upon. NOTE: these lists do not include anything
-	 * about the intensity-measure parameters or any of thier internal
-	 * independentParamaters.
-	 */
 	protected void initIndependentParamLists() {
+		// assume that mean/std dev/exceed probs depend on pretty much everything
 
 		// params that the mean depends upon
 		meanIndependentParams.clear();
@@ -737,17 +761,21 @@ public class NSHMP_GMM_WrapperFullParam extends AttenuationRelationship implemen
 			meanIndependentParams.addParameter(focalDepthParam);
 		meanIndependentParams.addParameter(componentParam);
 
-		// params that the stdDev depends upon TODO
+		// params that the stdDev depends upon
+		// assume the same as mean (likely a subset in reality, but we don't have that info)
 		stdDevIndependentParams.clear();
 		stdDevIndependentParams.addParameterList(meanIndependentParams);
 
-		// params that the exceed. prob. depends upon TODO
+		// params that the exceed. prob. depends upon
+		// assume the same as mean (likely a subset in reality, but we don't have that info)
 		exceedProbIndependentParams.clear();
 		exceedProbIndependentParams.addParameterList(stdDevIndependentParams);
+		// add sigma truncation options
 		exceedProbIndependentParams.addParameter(sigmaTruncTypeParam);
 		exceedProbIndependentParams.addParameter(sigmaTruncLevelParam);
 
 		// params that the IML at exceed. prob. depends upon
+		// assume the same as exceed params
 		imlAtExceedProbIndependentParams.addParameterList(
 				exceedProbIndependentParams);
 		imlAtExceedProbIndependentParams.addParameter(exceedProbParam);
