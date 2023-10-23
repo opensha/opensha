@@ -22,7 +22,7 @@ public class RupTopDepthParam extends WarningDoubleParameter {
 	 *  as given, and leaves the parameter as non editable.
 	 */
 	public RupTopDepthParam(double minWarning, double maxWarning, double defaultDepth) {
-		super(NAME, new DoubleConstraint(MIN, MAX));
+		super(NAME, new DoubleConstraint(Double.min(MIN, minWarning), Double.max(MAX, maxWarning)));
 		getConstraint().setNonEditable();
 		DoubleConstraint warn = new DoubleConstraint(minWarning,maxWarning);
 		warn.setNonEditable();
