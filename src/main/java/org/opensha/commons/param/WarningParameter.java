@@ -111,7 +111,7 @@ public interface WarningParameter<E> extends Parameter<E> {
      * @return                The min value
      * @exception  Exception  Description of the Exception
      */
-    public E getWarningMin() throws Exception ;
+    public E getWarningMin() ;
 
 
     /**

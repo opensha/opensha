@@ -387,7 +387,7 @@ public class WarningIntegerParameter extends IntegerParameter implements
      * @return                The min value
      * @exception  Exception  Description of the Exception
      */
-    public Integer getWarningMin() throws Exception {
+    public Integer getWarningMin() {
         if ( warningConstraint != null ) return warningConstraint.getMin();
         else return null;
     }
