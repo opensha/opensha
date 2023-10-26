@@ -11,8 +11,8 @@ public class WeightedList<E> implements XMLSaveable {
 	
 	public static final String XML_METADATA_NAME = "WeightedList";
 	
-	private ArrayList<E> objects;
-	private ArrayList<Double> weights;
+	private List<E> objects;
+	private List<Double> weights;
 	
 	private boolean forceNormalization = false;
 	
@@ -23,7 +23,7 @@ public class WeightedList<E> implements XMLSaveable {
 		this(new ArrayList<E>(), new ArrayList<Double>());
 	}
 	
-	public WeightedList(ArrayList<E> objects, ArrayList<Double> weights) {
+	public WeightedList(List<E> objects, List<Double> weights) {
 		set(objects, weights);
 	}
 	
@@ -36,7 +36,7 @@ public class WeightedList<E> implements XMLSaveable {
 	 * @throws IllegalStateException if lists are of different sizes
 	 * @throws IllegalArgumentException if lists are null
 	 */
-	private void validate(ArrayList<?> objects, ArrayList<Double> weights)
+	private void validate(List<?> objects, List<Double> weights)
 	throws IllegalStateException, IllegalArgumentException {
 		if (objects == null)
 			throw new IllegalArgumentException("object list cannot be null!");
@@ -77,7 +77,7 @@ public class WeightedList<E> implements XMLSaveable {
 	 * @param newWeights
 	 * @throws IllegalStateException if the weights are invalid
 	 */
-	public void setWeights(ArrayList<Double> newWeights) throws IllegalStateException {
+	public void setWeights(List<Double> newWeights) throws IllegalStateException {
 		set(objects, newWeights);
 	}
 	
@@ -87,7 +87,7 @@ public class WeightedList<E> implements XMLSaveable {
 	 * @param objects
 	 * @throws IllegalStateException if the objects and weights are invalid
 	 */
-	public void setObjects(ArrayList<E> objects) throws IllegalStateException {
+	public void setObjects(List<E> objects) throws IllegalStateException {
 		set(objects, weights);
 	}
 	
@@ -109,7 +109,7 @@ public class WeightedList<E> implements XMLSaveable {
 	 * @param weights
 	 * @throws IllegalStateException if the objects and weights are invalid
 	 */
-	public void set(ArrayList<E> objects, ArrayList<Double> weights) throws IllegalStateException {
+	public void set(List<E> objects, List<Double> weights) throws IllegalStateException {
 		validate(objects, weights);
 		
 		this.objects = objects;
@@ -187,7 +187,7 @@ public class WeightedList<E> implements XMLSaveable {
 		return getWeightSum(weights);
 	}
 	
-	private static double getWeightSum(ArrayList<Double> weights) {
+	private static double getWeightSum(List<Double> weights) {
 		double sum = 0;
 		for (double weight : weights)
 			sum += weight;
@@ -198,7 +198,7 @@ public class WeightedList<E> implements XMLSaveable {
 		return isNormalized(weights);
 	}
 	
-	private static boolean isNormalized(ArrayList<Double> weights) {
+	private static boolean isNormalized(List<Double> weights) {
 		float sum = (float)getWeightSum(weights);
 		return sum == 1f;
 	}
@@ -326,7 +326,7 @@ public class WeightedList<E> implements XMLSaveable {
 	 * @throws IllegalArgumentException if the size of <code>values</code> doesn't match
 	 * the size of this list.
 	 */
-	public double getWeightedAverage(ArrayList<Double> values) {
+	public double getWeightedAverage(List<Double> values) {
 		if (values.size() != weights.size())
 			throw new IllegalArgumentException("values.size() != weights.size()");
 		double weighted = 0;
