@@ -1,10 +1,11 @@
-package org.opensha.sha.imr.attenRelImpl.nshmp;
+package org.opensha.sha.imr.attenRelImpl.nshmp.util;
 
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
 import org.opensha.commons.param.Parameter;
+import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 
 import gov.usgs.earthquake.nshmp.gmm.Gmm;
 import gov.usgs.earthquake.nshmp.gmm.GmmInput;
@@ -67,9 +68,9 @@ class InitialTests {
 //			}
 			
 			System.out.print("\tBuilding wrapped instance...");
-			NSHMP_GMM_WrapperFullParam wrapper;
+			NSHMP_GMM_Wrapper wrapper;
 			try {
-				wrapper = new NSHMP_GMM_WrapperFullParam(gmmRef);
+				wrapper = new NSHMP_GMM_Wrapper(gmmRef);
 				wrapper.setParamDefaults();
 				System.out.println("Success!");
 			} catch (Exception e) {
