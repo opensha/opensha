@@ -302,6 +302,35 @@ public final class GeoJSONFaultSection implements FaultSection {
 		return new GeoJSONFaultSection(sect).toFeature();
 	}
 	
+	/**
+	 * Reads in a fault section GeoJSON Feature from nshmp-haz, converting their property names to ours
+	 * 
+	 * @param feature
+	 * @return
+	 */
+	public static GeoJSONFaultSection fromNSHMP_HazFeature(Feature feature) {
+		FeatureProperties origProps = feature.properties;
+		FeatureProperties mappedProps = new FeatureProperties();
+		
+		Preconditions.checkState(feature.id != null && feature.id instanceof Number);
+		int id = ((Number)feature.id).intValue();
+		
+		// required
+		mappedProps.set(FAULT_NAME, origProps.require("name", String.class));
+		mappedProps.set(DIP, origProps.require("dip", Double.class));
+		mappedProps.set(RAKE, origProps.require("rake", Double.class));
+		mappedProps.set(UPPER_DEPTH, origProps.require("upper-depth", Double.class));
+		mappedProps.set(LOW_DEPTH, origProps.require("lower-depth", Double.class));
+		
+		// optional ones to carry forward
+		if (origProps.containsKey("state"))
+			mappedProps.set("PrimState", origProps.require("state", String.class));
+		if (origProps.containsKey("references"))
+			mappedProps.set("references", origProps.get("references"));
+		
+		return new GeoJSONFaultSection(new Feature(id, feature.geometry, mappedProps));
+	}
+	
 	public Feature toFeature() {
 		Geometry geometry;
 		Preconditions.checkNotNull(trace, "Trace is null");
