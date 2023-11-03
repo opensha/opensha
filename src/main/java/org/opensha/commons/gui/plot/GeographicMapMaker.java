@@ -186,6 +186,11 @@ public class GeographicMapMaker {
 		this(region, PoliticalBoundariesData.loadDefaultOutlines(region));
 	}
 	
+	public GeographicMapMaker(List<? extends FaultSection> sects) {
+		this(buildBufferedRegion(sects));
+		setFaultSections(sects);
+	}
+	
 	public GeographicMapMaker(Region region, XY_DataSet[] politicalBoundaries) {
 		this.region = region;
 		this.politicalBoundaries = politicalBoundaries;
