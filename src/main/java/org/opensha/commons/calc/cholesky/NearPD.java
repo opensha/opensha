@@ -1,6 +1,15 @@
-package org.opensha.sha.gcim.calc;
+package org.opensha.commons.calc.cholesky;
 
+import java.text.DecimalFormat;
 import java.util.StringTokenizer;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.commons.math3.linear.Array2DRowRealMatrix;
+import org.apache.commons.math3.linear.EigenDecomposition;
+import org.apache.commons.math3.linear.RealMatrix;
+
+import com.google.common.base.Stopwatch;
+
 import Jama.EigenvalueDecomposition;
 import Jama.Matrix;
  
@@ -36,6 +45,8 @@ public class NearPD {
 	private double eigTol;		 //Relative tolerence used for determining if eigenvalues are negative
 	private double convTol;		 //Tolerence used for convergence
 	private int maxit;   		 //Max number of iterations to perform
+	private boolean apache;	//whether to use apache commons instead of Jama. apache seems to be faster for large
+								//matrices, but there's some overhead doing the conversion
 	
 	//Values from solution
 	private double conv;		 //convergence value
@@ -52,6 +63,10 @@ public class NearPD {
 	};
 	
 	public boolean calcNearPD(Matrix x) {
+		return calcNearPD(x, false);
+	}
+	
+	public boolean calcNearPD(Matrix x, boolean verbose) {
 		
 		int n = x.getRowDimension();
 		Matrix X;
@@ -77,8 +92,21 @@ public class NearPD {
 		int iter = 0;
 		boolean converged = false;
 		double conv = Double.POSITIVE_INFINITY;
+		
+		Stopwatch totWatch = null;
+		if (verbose) {
+			System.out.println("Beginning NearPD calculation with up to "+maxit+" iterations and convTol="+(float)convTol);
+			totWatch = Stopwatch.createStarted();
+		}
+		
+		double prevConv = conv;
 		//Loop
 		while ((iter<maxit)&!converged) {
+			Stopwatch iterWatch = null;
+			if (verbose) {
+				System.out.println("NearPD iteration "+iter);
+				iterWatch = Stopwatch.createStarted();
+			}
 			Y = X.copy();
 			
 			//Dykstra correction
@@ -87,13 +115,24 @@ public class NearPD {
 			}
 			
 	        //project onto PSD matrices  X_k  =  P_S (R_k)
-	        if (doDykstra) {
-	        	eig = R.eig();
-	        } else {
-	        	eig = Y.eig();
-	        }
-	        d = eig.getRealEigenvalues();
-	        Q = eig.getV();
+			if (apache) {
+				RealMatrix mat;
+				if (doDykstra)
+					mat = new Array2DRowRealMatrix(R.getArray());
+				else
+					mat = new Array2DRowRealMatrix(Y.getArray());
+				EigenDecomposition eigen = new EigenDecomposition(mat);
+				d = eigen.getRealEigenvalues();
+		        Q = new Matrix(eigen.getV().getData());
+			} else {
+				if (doDykstra) {
+		        	eig = R.eig();
+		        } else {
+		        	eig = Y.eig();
+		        }
+		        d = eig.getRealEigenvalues();
+		        Q = eig.getV();
+			}
 	        //Get the maximum eigenvalue
 	        double eigMax=Double.NEGATIVE_INFINITY;
 	        for (int i=0; i<n; i++) {
@@ -126,8 +165,19 @@ public class NearPD {
 	        //check convergence criteria
 	        if (conv <= convTol)
 	        	converged=true;
+	        if (verbose) {
+	        	iterWatch.stop();
+	        	System.out.println("\tTook "+elapsed(iterWatch)+"; convergence="+(float)conv+", converged="+converged
+	        			+", improvement: "+(float)(prevConv-conv)+" ("+pDF.format((prevConv-conv)/prevConv)+")");
+	        	
+	        }
+	        prevConv = conv;
 		}
-		
+		if (verbose) {
+			totWatch.stop();
+			System.out.println("Done NearPD after "+elapsed(totWatch)+" ("+elapsed(totWatch, iter)+" each), "
+					+iter+" iterations, conv="+(float)conv+", convTol="+(float)convTol+", and converged="+converged);
+		}
 		
 		//Set solution local variables as globals
 		this.X = X;
@@ -140,6 +190,24 @@ public class NearPD {
 		return converged;
 		
 	}
+	
+	private static String elapsed(Stopwatch watch) {
+		return elapsed(watch, 1);
+	}
+	
+	private static String elapsed(Stopwatch watch, int instances) {
+		double millis = watch.elapsed(TimeUnit.MILLISECONDS);
+		if (instances > 1)
+			millis /= (double)instances;
+		double secs = millis/1000d;
+		if (secs < 90d)
+			return tDF.format(secs)+" s";
+		double mins = secs/60d;
+		return tDF.format(mins)+" m";
+	}
+	
+	private static final DecimalFormat tDF = new DecimalFormat("0.00");
+	private static final DecimalFormat pDF = new DecimalFormat("0.000%");
 	
 	/**
 	 * This method returns the nearest PD matrix X
@@ -193,6 +261,7 @@ public class NearPD {
 		eigTol = 1.e-6;
 		convTol = 1.e-7;
 		maxit = 100;
+		apache = false;
 	}
 	
 	/**
@@ -224,6 +293,16 @@ public class NearPD {
 	 */
 	public void setMaxit(int val) {
 		maxit = val;
+	}
+	
+	/**
+	 * If true, will use apache for the eigenvalue calculation instead of Jama. Tests show that apache is aoorox.
+	 * 35% faster for large matrices, but some overhead is involved for the conversion.
+	 * 
+	 * @param apache
+	 */
+	public void setUseApache(boolean apache) {
+		this.apache = apache;
 	}
 	
 	/**
@@ -304,6 +383,7 @@ public class NearPD {
 		
 		NearPD nearPd = new NearPD();
 		nearPd.setKeepDiag(true);
+		nearPd.setUseApache(true);
 		nearPd.calcNearPD(rho_matrix);
 		Matrix rho_PDmatrix = nearPd.getX();
 		
