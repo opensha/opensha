@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 import org.opensha.commons.logicTree.LogicTreeLevel.EnumBackedLevel;
 
 /**
- * Tagging interface for use with {@link EnumBackedLevel}, to allow logic tree node enums to specify files/properties
+ * Tagging interface for use with {@link LogicTreeLevel}, to allow logic tree levels to specify files/properties
  * that they don't affect.
  * 
  * @author kevin

@@ -99,5 +99,7 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 		}
 		
 	}
+	
+//	public static interface RandomlySampledNode extends LogicTreeNode
 
 }
