@@ -952,7 +952,7 @@ public class SegmentationCalculator {
 		return plotConnectionFracts(outputDir, prefix, title, 800, combiner);
 	}
 	
-	private static CPT getConnectionFractCPT() throws IOException {
+	public static CPT getConnectionFractCPT() throws IOException {
 		return GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0d, 1d);
 	}
 	
@@ -994,7 +994,7 @@ public class SegmentationCalculator {
 		return ret;
 	}
 	
-	private Map<Jump, Double> calcJumpPassthroughs(int magIndex, RateCombiner combiner) {
+	public Map<Jump, Double> calcJumpPassthroughs(int magIndex, RateCombiner combiner) {
 		Map<Jump, Double> ret = new HashMap<>();
 		for (Cell<IDPairing, Jump, JumpRates> cell : parentJumpRateTable.cellSet()) {
 			JumpRates rates = cell.getValue();
@@ -1863,9 +1863,9 @@ public class SegmentationCalculator {
 			System.out.println(getMagLabel(minMags[m])+" "+scalar+": "+scalarTrack);
 			
 			HeadlessGraphPanel gp = new HeadlessGraphPanel();
-			gp.setTickLabelFontSize(18);
-			gp.setAxisLabelFontSize(24);
-			gp.setPlotLabelFontSize(24);
+			gp.setTickLabelFontSize(24);
+			gp.setAxisLabelFontSize(28);
+			gp.setPlotLabelFontSize(28);
 			gp.setLegendFontSize(legendFontSize);
 			gp.setBackgroundColor(Color.WHITE);
 			

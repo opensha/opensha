@@ -1505,7 +1505,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		creepCSV.writeToFile(new File(outputDir, "MEDIAN.csv"));
 	}
 	
-	private static void writeMinisectionCSV(File outputFile) throws IOException {
+	public static void writeMinisectionCSV(File outputFile) throws IOException {
 		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
 		
 		// first load geologic
