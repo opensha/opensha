@@ -206,8 +206,14 @@ public class LogicTreeRateStatistics implements JSON_BackedModule {
 			
 			List<String> values = logicTreeValues.get(l);
 			List<FractAboveStats[]> valueStats = logicTreeValueStats.get(l);
-			for (int v=0; v<values.size(); v++)
+			for (int v=0; v<values.size(); v++) {
+				if (v == 15 && values.size()>16) {
+					int numLeft = values.size()-v;
+					table.addLine("_(Skipping "+numLeft+" additional)_");
+					break;
+				}
 				statLine(table, values.get(v), valueStats.get(v));
+			}
 		}
 		
 		return table;
