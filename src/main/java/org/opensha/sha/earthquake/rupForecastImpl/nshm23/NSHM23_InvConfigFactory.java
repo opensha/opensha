@@ -145,7 +145,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 	protected transient Table<RupSetFaultModel, RupturePlausibilityModels, FaultSystemRupSet> rupSetCache = HashBasedTable.create();
 	protected transient Map<RupSetFaultModel, SectionDistanceAzimuthCalculator> distAzCache = new HashMap<>();
-	private transient File cacheDir;
+	protected transient File cacheDir;
 	private boolean autoCache = true;
 	
 	private boolean adjustForActualRupSlips = NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
@@ -304,6 +304,14 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		// build empty-ish rup set without modules attached
 		return updateRuptureSetForBranch(buildGenericRupSet(branch, threads), branch);
 	}
+	
+	protected List<? extends FaultSection> buildSubSectsForBranch(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) throws IOException {
+		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
+		RupSetDeformationModel dm = branch.requireValue(RupSetDeformationModel.class);
+		Preconditions.checkState(dm.isApplicableTo(fm),
+				"Fault and deformation models are not compatible: %s, %s", fm.getName(), dm.getName());
+		return dm.build(fm);
+	}
 
 	@Override
 	public FaultSystemRupSet updateRuptureSetForBranch(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch)
@@ -311,14 +319,11 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		// we don't trust any modules attached to this rupture set as it could have been used for another calculation
 		// that could have attached anything. Instead, lets only keep the ruptures themselves
 		
-		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
-		RupSetDeformationModel dm = branch.requireValue(RupSetDeformationModel.class);
-		Preconditions.checkState(dm.isApplicableTo(fm),
-				"Fault and deformation models are not compatible: %s, %s", fm.getName(), dm.getName());
+		
 		// override slip rates for the given deformation model
 		List<? extends FaultSection> subSects;
 		try {
-			subSects = dm.build(fm);
+			subSects = buildSubSectsForBranch(rupSet, branch);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
