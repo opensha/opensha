@@ -79,6 +79,7 @@ import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.RandomlySampledLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils;
@@ -415,7 +416,15 @@ public class LogicTreeHazardCompare {
 					compResultsFile = new File(args[cnt++]);
 				}
 				compHazardFile = new File(args[cnt++]);
-				compTree = loadTreeFromResults(compHazardFile);
+				if (cmd.hasOption("comp-logic-tree")) {
+					File treeFile = new File(cmd.getOptionValue("comp-logic-tree"));
+					System.out.println("Reading custom logic tree from: "+treeFile.getAbsolutePath());
+					compTree = LogicTree.read(treeFile);
+					ignorePrecomputed = true;
+				} else {
+					// read it from the hazard file if available
+					compTree = loadTreeFromResults(compHazardFile);
+				}
 				compName = args[cnt++];
 			} else {
 				compResultsFile = null;
@@ -509,6 +518,8 @@ public class LogicTreeHazardCompare {
 				"Flag to disable logic tree calculations and only focus on top level maps and comparisions.");
 		ops.addOption("lt", "logic-tree", true,
 				"Path to alternative logic tree JSON file. Implies --ignore-precomputed-maps");
+		ops.addOption("clt", "comp-logic-tree", true,
+				"Path to alternative logic tree JSON file for the comparison model. Implies --ignore-precomputed-maps");
 		ops.addOption("ipm", "ignore-precomputed-maps", false,
 				"Flag to ignore precomputed mean maps");
 		ops.addOption("pdf", "write-pdfs", false, "Flag to write PDFs of top level maps");
@@ -1953,7 +1964,13 @@ public class LogicTreeHazardCompare {
 						myChoiceMaps.add(maps[i]);
 						choiceWeights.get(choice).add(weights.get(i));
 					}
-					if (choiceMaps.size() > 1) {
+					boolean include = choiceMaps.size() > 1;
+					if (LogicTreeCurveAverager.shouldSkipLevel(level, choiceMaps.size())) {
+						System.out.println("Skipping randomly sampled level ("+level.getName()
+							+") with "+choiceMaps.size()+" choices");
+						include = false;
+					}
+					if (include) {
 						choiceMapsList.add(choiceMaps);
 						choiceWeightsList.add(choiceWeights);
 

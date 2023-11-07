@@ -23,6 +23,7 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.RandomlySampledLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
@@ -74,11 +75,18 @@ public class LogicTreeCurveAverager {
 				levelNodes.add(node);
 			}
 			LogicTreeLevel<?> level = tree.getLevels().get(l);
-			for (LogicTreeNode node : levelNodes)
-				nodeLevels.put(node, level);
-			if (levelNodes.size() > 1)
+			if (!(shouldSkipLevel(level, levelNodes.size()))) {
+				for (LogicTreeNode node : levelNodes)
+					nodeLevels.put(node, level);
 				variableNodes.addAll(levelNodes);
+			}
 		}
+	}
+	
+	public static boolean shouldSkipLevel(LogicTreeLevel<?> level, int nodeCount) {
+		if (nodeCount <= 1)
+			return false;
+		return level instanceof RandomlySampledLevel<?> && nodeCount > 6;
 	}
 	
 	public synchronized void processBranchCurves(LogicTreeBranch<?> branch, double weight, DiscretizedFunc[] curves) {
@@ -265,7 +273,7 @@ public class LogicTreeCurveAverager {
 		meanCurveKeys.add(MEAN_PREFIX); // always full mean
 		for (int i=0; i<branch.size(); i++) {
 			LogicTreeNode node = branch.getValue(i);
-			if (node != null)
+			if (node != null && nodeLevels.containsKey(node))
 				meanCurveKeys.add(choicePrefix(branch.getLevel(i), node));
 		}
 		if (variableNodes != null) {
