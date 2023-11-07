@@ -1,6 +1,7 @@
 package org.opensha.commons.calc.cholesky;
 
 import java.text.DecimalFormat;
+import java.util.Arrays;
 import java.util.StringTokenizer;
 import java.util.concurrent.TimeUnit;
 
@@ -99,7 +100,14 @@ public class NearPD {
 			totWatch = Stopwatch.createStarted();
 		}
 		
+		boolean apache = this.apache;
+		
 		double prevConv = conv;
+		
+		double bestConv = conv;
+		Matrix bestX = null;
+		double[] bestD = null;
+		
 		//Loop
 		while ((iter<maxit)&!converged) {
 			Stopwatch iterWatch = null;
@@ -118,12 +126,25 @@ public class NearPD {
 			if (apache) {
 				RealMatrix mat;
 				if (doDykstra)
-					mat = new Array2DRowRealMatrix(R.getArray());
+					mat = new Array2DRowRealMatrix(R.getArray(), false);
 				else
-					mat = new Array2DRowRealMatrix(Y.getArray());
-				EigenDecomposition eigen = new EigenDecomposition(mat);
-				d = eigen.getRealEigenvalues();
-		        Q = new Matrix(eigen.getV().getData());
+					mat = new Array2DRowRealMatrix(Y.getArray(), false);
+				try {
+					EigenDecomposition eigen = new EigenDecomposition(mat);
+					d = eigen.getRealEigenvalues();
+					Q = new Matrix(eigen.getV().getData());
+				} catch (Exception e) {
+					if (verbose)
+						System.err.println("WARNING: failed via apache, reverting to Jama: "+e.getMessage());
+					apache = false;
+					if (doDykstra) {
+			        	eig = R.eig();
+			        } else {
+			        	eig = Y.eig();
+			        }
+			        d = eig.getRealEigenvalues();
+			        Q = eig.getV();
+				}
 			} else {
 				if (doDykstra) {
 		        	eig = R.eig();
@@ -168,23 +189,29 @@ public class NearPD {
 	        if (verbose) {
 	        	iterWatch.stop();
 	        	System.out.println("\tTook "+elapsed(iterWatch)+"; convergence="+(float)conv+", converged="+converged
-	        			+", improvement: "+(float)(prevConv-conv)+" ("+pDF.format((prevConv-conv)/prevConv)+")");
+	        			+", improvement: "+(float)(prevConv-conv)+" ("+pDF.format((prevConv-conv)/prevConv)+")"
+	        			+(conv < bestConv ? " (new best)" : ""));
 	        	
+	        }
+	        if (conv < bestConv) {
+	        	bestX = X.copy();
+	        	bestD = Arrays.copyOf(d, d.length);
+	        	bestConv = conv;
 	        }
 	        prevConv = conv;
 		}
 		if (verbose) {
 			totWatch.stop();
 			System.out.println("Done NearPD after "+elapsed(totWatch)+" ("+elapsed(totWatch, iter)+" each), "
-					+iter+" iterations, conv="+(float)conv+", convTol="+(float)convTol+", and converged="+converged);
+					+iter+" iterations, conv="+(float)bestConv+", convTol="+(float)convTol+", and converged="+converged);
 		}
 		
 		//Set solution local variables as globals
-		this.X = X;
-		this.conv = conv;
-		this.normF = (x.minus(X)).normF();
+		this.X = bestX;
+		this.conv = bestConv;
+		this.normF = (x.minus(bestX)).normF();
 		this.iter = iter;
-		this.eigVals = d;
+		this.eigVals = bestD;
 		
 		
 		return converged;
