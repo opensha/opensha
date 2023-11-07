@@ -9,8 +9,12 @@ import java.lang.annotation.Target;
 import org.opensha.commons.logicTree.LogicTreeLevel.EnumBackedLevel;
 
 /**
- * Tagging interface for use with {@link LogicTreeLevel}, to allow logic tree levels to specify files/properties
- * that they don't affect.
+ * Tagging interface for use with {@link LogicTreeNode} instances, to allow them to specify files/properties that they
+ * don't affect.
+ * <p>
+ * For {@link EnumBackedLevel} instances, this annotation should be added to the enum class. For other
+ * instances, this annotation should be added to the {@link LogicTreeNode} class returned by
+ * {@link LogicTreeLevel#getType()} (not the level itself).
  * 
  * @author kevin
  *

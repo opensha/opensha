@@ -7,12 +7,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 import org.opensha.commons.data.ShortNamed;
 import org.opensha.commons.logicTree.Affects.Affected;
 import org.opensha.commons.logicTree.DoesNotAffect.NotAffected;
 import org.opensha.commons.logicTree.LogicTreeBranch.NodeTypeAdapter;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
+import org.opensha.commons.logicTree.LogicTreeNode.RandomlySampledNode;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 
 import com.google.common.base.Preconditions;
@@ -118,7 +120,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 						for (DoesNotAffect doesNot : multiNotAffected.value()) {
 							String name = doesNot.value();
 							Preconditions.checkState(!affected.contains(name),
-									"EnumBackedLevel type %s annotates '%s' as both affected and not affected!",
+									"Node type %s annotates '%s' as both affected and not affected!",
 									type.getName(), name);
 							notAffected.add(name);
 						}
@@ -128,7 +130,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 						if (doesNot != null) {
 							String name = doesNot.value();
 							Preconditions.checkState(!affected.contains(name),
-									"EnumBackedLevel type %s annotates '%s' as both affected and not affected!",
+									"Node type %s annotates '%s' as both affected and not affected!",
 									type.getName(), name);
 							notAffected.add(name);
 						}
@@ -438,6 +440,56 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		
 	}
 	
+	public static abstract class RandomlySampledLevel<E extends RandomlySampledNode> extends LogicTreeLevel<E> {
+		
+		private List<? extends E> nodes;
+		
+		public void buildNodes(Random rand, int num) {
+			double weightEach = 1d/(double)num;
+			buildNodes(rand, num, weightEach);
+		}
+		
+		public void buildNodes(Random rand, int num, double weightEach) {
+			List<E> nodes = new ArrayList<>();
+			
+			Preconditions.checkState(num >= 1);
+			for (int i=0; i<num; i++)
+				nodes.add(buildNodeInstance(i, rand.nextLong(), weightEach));
+			
+			this.nodes = nodes;
+		}
+		
+		@SuppressWarnings("unchecked")
+		public void setNodes(List<? extends LogicTreeNode> nodes) {
+			List<E> cast = new ArrayList<>(nodes.size());
+			for (LogicTreeNode node : nodes) {
+				Preconditions.checkState(node instanceof RandomlySampledNode);
+				Preconditions.checkState(getType().isInstance(node));
+				cast.add((E)node);
+			}
+			this.nodes = cast;
+		}
+
+		@Override
+		public List<E> getNodes() {
+			Preconditions.checkNotNull(nodes, "Nodes have not yet been built/set");
+			return Collections.unmodifiableList(nodes);
+		}
+		
+		public abstract E buildNodeInstance(int index, long seed, double weight);
+		
+		@Override
+		public boolean isMember(LogicTreeNode node) {
+			if (!(node instanceof RandomlySampledNode))
+				return false;
+			long seed = ((RandomlySampledNode)node).getSeed();
+			for (E nodeTest : getNodes())
+				if (node.equals(nodeTest) || seed == nodeTest.getSeed())
+					return true;
+			return false;
+		}
+	}
+	
 	public static class Adapter<E extends LogicTreeNode> extends TypeAdapter<LogicTreeLevel<? extends E>> {
 		
 		private boolean writeNodes;
@@ -574,6 +626,9 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					constructor.setAccessible(true);
 					
 					level = constructor.newInstance();
+					
+					if (level instanceof RandomlySampledLevel<?>)
+						((RandomlySampledLevel<?>)level).setNodes(nodes);
 				} catch (ClassNotFoundException e) {
 					System.err.println("WARNING: couldn't locate logic tree branch node class '"+className+"', "
 							+ "loading plain/hardcoded version instead");
