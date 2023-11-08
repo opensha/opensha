@@ -376,7 +376,7 @@ public class SiteLogicTreeHazardPageGen {
 							nodeMeanCurves.add(nodeMeanCurve);
 						}
 					}
-					if (nodes.size() > 1) {
+					if (nodes.size() > 1 && !LogicTreeCurveAverager.shouldSkipLevel(level, nodes.size())) {
 						// we have multiple at this level
 						String ltPrefix = prefix+"_"+level.getShortName().replaceAll("\\W+", "_");
 						if (periods.size() > 1)
