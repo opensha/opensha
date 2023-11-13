@@ -6,6 +6,7 @@ import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.List;
@@ -169,10 +170,13 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	 */
 	public static final int MAX_NUM_ZERO_SLIP_SECTS_PER_RUP = 1;
 	
+	private static final DecimalFormat twoDigits = new DecimalFormat("0.00");
+	
 	public static class Builder {
 		
 		private FaultSystemRupSet rupSet;
 		private double supraSeisBValue;
+		private double[] sectSpecificBValues;
 		
 		private IncrementalMagFreqDist totalTargetMFD;
 
@@ -201,6 +205,12 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		public Builder(FaultSystemRupSet rupSet, double supraSeisBValue) {
 			this.rupSet = rupSet;
 			this.supraSeisBValue = supraSeisBValue;
+		}
+
+		public Builder(FaultSystemRupSet rupSet, double[] sectSpecificBValues) {
+			this.rupSet = rupSet;
+			this.supraSeisBValue = Double.NaN;
+			this.sectSpecificBValues = sectSpecificBValues;
 		}
 		
 		/**
@@ -424,7 +434,17 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		private SupraSeisBValInversionTargetMFDs build(boolean slipOnly) {
 			EvenlyDiscretizedFunc refMFD = initEmptyMFD(rupSet);
 			int NUM_MAG = refMFD.size();
-			System.out.println("Building SupraSeisBValInversionTargetMFDs with b="+supraSeisBValue
+			String bString;
+			if (sectSpecificBValues == null) {
+				bString = "b="+(float)supraSeisBValue;
+			} else {
+				MinMaxAveTracker bStats = new MinMaxAveTracker();
+				for (double b : sectSpecificBValues)
+					bStats.addValue(b);
+				bString = "section-specific b (avg="+twoDigits.format(bStats.getAverage())
+					+", range=["+twoDigits.format(bStats.getMin())+", "+twoDigits.format(bStats.getMax())+"])";
+			}
+			System.out.println("Building SupraSeisBValInversionTargetMFDs with "+bString
 					+", slipOnly="+slipOnly+", total MFD range: ["+(float)MIN_MAG+","+(float)refMFD.getMaxX()
 					+"] for maxMag="+rupSet.getMaxMag());
 			
@@ -467,8 +487,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			// give the newly computed target slip rates to the rupture set for use in inversions
 			rupSet.addModule(calc.sectSlipRates);
 			if (slipOnly)
-				return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, null, null, null, null, null, null,
-						calc.sectSlipRates, null);
+				return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, sectSpecificBValues,
+						null, null, null, null, null, null, calc.sectSlipRates, null);
 			
 			SectMFDCalculator dmLowerCalc = null;
 			SectMFDCalculator dmUpperCalc = null;
@@ -612,7 +632,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			if (exec != null)
 				exec.shutdown();
 			
-			return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, totalTargetMFD, totalOnFaultSupra,
+			return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, sectSpecificBValues, totalTargetMFD, totalOnFaultSupra,
 					totalOnFaultSub, mfdConstraints, subSeismoMFDs, uncertSectSupraSeisMFDs, calc.sectSlipRates, calc.sectRupUtilizations);
 		}
 		
@@ -660,6 +680,14 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				for (int s=0; s<numSects; s++) {
 					FaultSection sect = rupSet.getFaultSectionData(s);
 					int parentID = sect.getParentSectionId();
+					
+					double supraSeisBValue;
+					if (sectSpecificBValues == null)
+						supraSeisBValue = Builder.this.supraSeisBValue;
+					else
+						supraSeisBValue = sectSpecificBValues[s];
+					Preconditions.checkState(Double.isFinite(supraSeisBValue), "Bad b=%s for section %s. %s",
+							supraSeisBValue, s, sect.getSectionName());
 
 					double creepReducedSlipRate = sect.getReducedAveSlipRate()*1e-3; // mm/yr -> m/yr
 					double creepReducedSlipRateStdDev;
@@ -1460,20 +1488,29 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	}
 	
 	private double supraSeisBValue;
+	private double[] sectSpecificBValues;
 	private List<UncertainIncrMagFreqDist> supraSeismoOnFaultMFDs;
 
 	private SectSlipRates sectSlipRates;
 
 	private List<BitSet> sectRupUtilizations;
 
-	private SupraSeisBValInversionTargetMFDs(FaultSystemRupSet rupSet, double supraSeisBValue,
+	private SupraSeisBValInversionTargetMFDs(FaultSystemRupSet rupSet, double supraSeisBValue, double[] sectSpecificBValues,
 			IncrementalMagFreqDist totalRegionalMFD, UncertainIncrMagFreqDist onFaultSupraSeisMFD,
 			IncrementalMagFreqDist onFaultSubSeisMFD, List<UncertainIncrMagFreqDist> mfdConstraints,
 			SubSeismoOnFaultMFDs subSeismoOnFaultMFDs, List<UncertainIncrMagFreqDist> supraSeismoOnFaultMFDs,
 			SectSlipRates sectSlipRates, List<BitSet> sectRupUtilizations) {
 		super(rupSet, totalRegionalMFD, onFaultSupraSeisMFD, onFaultSubSeisMFD, null, mfdConstraints,
 				subSeismoOnFaultMFDs, supraSeismoOnFaultMFDs);
-		this.supraSeisBValue = supraSeisBValue;
+		if (sectSpecificBValues == null) {
+			this.supraSeisBValue = supraSeisBValue;
+		} else {
+			this.sectSpecificBValues = sectSpecificBValues;
+			if (Double.isFinite(supraSeisBValue))
+				this.supraSeisBValue = supraSeisBValue;
+			else
+				this.supraSeisBValue = StatUtils.mean(sectSpecificBValues);
+		}
 		this.supraSeismoOnFaultMFDs = supraSeismoOnFaultMFDs;
 		this.sectSlipRates = sectSlipRates;
 		this.sectRupUtilizations = sectRupUtilizations;
@@ -1485,6 +1522,10 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 
 	public double getSupraSeisBValue() {
 		return supraSeisBValue;
+	}
+	
+	public double[] getSectSpecificBValues() {
+		return sectSpecificBValues;
 	}
 
 	@Override
@@ -1515,18 +1556,38 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	public static class SupraBAverager extends InversionTargetMFDs.Averager {
 		
 		private boolean allSupra = true;
-		
+
 		private double weightedBValSum = 0d;
+		private double[] weightedSectSpecificBValsSum;
 		private AveragingAccumulator<SectSlipRates> slipAvg;
 		private List<BitSet> sectRupUtilizations;
 
 		@Override
 		public void process(InversionTargetMFDs module, double relWeight) {
+			boolean first = totWeight == 0d;
 			super.process(module, relWeight);
 			allSupra = allSupra && module instanceof SupraSeisBValInversionTargetMFDs;
 			if (allSupra) {
 				SupraSeisBValInversionTargetMFDs mfds = (SupraSeisBValInversionTargetMFDs)module;
 				weightedBValSum += relWeight*mfds.supraSeisBValue;
+				if (mfds.sectSpecificBValues != null) {
+					if (weightedSectSpecificBValsSum == null) {
+						if (first) {
+							weightedSectSpecificBValsSum = new double[mfds.sectSpecificBValues.length];
+						} else {
+							// not all have sect-specific, bail
+							allSupra = false;
+							return;
+						}
+					}
+					Preconditions.checkState(weightedSectSpecificBValsSum.length == mfds.sectSpecificBValues.length);
+					for (int s=0; s<weightedSectSpecificBValsSum.length; s++)
+						weightedSectSpecificBValsSum[s] += relWeight*mfds.sectSpecificBValues[s];
+				} else if (weightedSectSpecificBValsSum != null) {
+					// not all have sect-specific, bail
+					allSupra = false;
+					return;
+				}
 				if (slipAvg == null) {
 					slipAvg = mfds.sectSlipRates.averagingAccumulator();
 					Preconditions.checkNotNull(slipAvg);
@@ -1550,7 +1611,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		}
 		
 		public SupraSeisBValInversionTargetMFDs getSupraSeisAverageInstance() {
-			Preconditions.checkState(allSupra, "Not all processed target MFDs were SupraSeisBValInversionTargetMFDs instances");
+			Preconditions.checkState(allSupra, "Not all processed target MFDs were averagable SupraSeisBValInversionTargetMFDs instances");
 			return doGetSupraSeisAverageInstance(super.getAverage());
 		}
 		
@@ -1571,8 +1632,14 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				supraSeismoOnFaultMFDs.add((UncertainIncrMagFreqDist)mfd);
 			}
 			SectSlipRates sectSlipRates = slipAvg.getAverage();
+			double[] sectSpecificBValues = null;
+			if (weightedSectSpecificBValsSum != null) {
+				sectSpecificBValues = new double[weightedSectSpecificBValsSum.length];
+				for (int i=0; i<sectSpecificBValues.length; i++)
+					sectSpecificBValues[i] = weightedSectSpecificBValsSum[i]/totWeight;
+			}
 			return new SupraSeisBValInversionTargetMFDs(
-					null, supraSeisBValue, totalRegionalMFD, onFaultSupraSeisMFD, onFaultSubSeisMFD, mfdConstraints,
+					null, supraSeisBValue, sectSpecificBValues, totalRegionalMFD, onFaultSupraSeisMFD, onFaultSubSeisMFD, mfdConstraints,
 					subSeismoOnFaultMFDs, supraSeismoOnFaultMFDs, sectSlipRates, sectRupUtilizations);
 		}
 		

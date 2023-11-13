@@ -330,6 +330,22 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 	}
 	
 	/**
+	 * This requires that a property with the given name and type exists, and returns it
+	 * 
+	 * @param <E>
+	 * @param name
+	 * @param type
+	 * @return property with the given name and of the given type
+	 * @throws NullPointerException if no value is present with that name
+	 * @throws ClassCastException if a value exists but of a different type
+	 */
+	public <E> E require(String name, Class<E> type) {
+		Object val = get(name);
+		Preconditions.checkNotNull(val, "No value present named '%s'", name);
+		return type.cast(val);
+	}
+	
+	/**
 	 * Similar to {@link FeatureProperties#put(String, Object)}, except that a null value will remove the property
 	 * from the map
 	 * 

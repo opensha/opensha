@@ -593,7 +593,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 		return lines;
 	}
 
-	public CPT linearSlipCPT(double maxSlip) {
+	public static CPT linearSlipCPT(double maxSlip) {
 		CPT slipCPT;
 		slipCPT = new CPT();
 		

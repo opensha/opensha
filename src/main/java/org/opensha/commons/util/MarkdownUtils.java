@@ -303,6 +303,26 @@ public class MarkdownUtils {
 	}
 	
 	/**
+	 * Writes the given markdown lines to README.md as well as an accompanying index.html rendering
+	 * of that page
+	 * @param lines
+	 * @param outputDir
+	 * @throws IOException
+	 */
+	public static void writeReadmeAndHTML(List<String> lines, File outputDir, String prefix) throws IOException {
+		File mdFile = new File(outputDir, prefix+".md");
+		// write markdown
+		FileWriter fw = new FileWriter(mdFile);
+		for (String line : lines)
+			fw.write(line+"\n");
+		fw.close();
+
+		// write html
+		File htmlFile = new File(outputDir, prefix+".html");
+		writeHTML(lines, htmlFile);
+	}
+	
+	/**
 	 * Returns the name of the first header (no matter what header level)
 	 * @param markdownPage
 	 * @return
@@ -441,6 +461,50 @@ public class MarkdownUtils {
 					(line.contains("README.md)") || line.contains("README.md#")))
 				// replace links to README.md with index.html
 				line = line.replace("README.md", "index.html");
+			
+			if (line.contains("[") && line.contains("](") &&
+					(line.contains(".md)") || line.contains(".md#"))) {
+				// replace other custom <prefix>.md links with <prefix>.html
+//				System.out.println("Checking for replacment of custom link. Line: "+line);
+				String lineLeft = line;
+				String newLine = "";
+				boolean update = false;
+				while (lineLeft.contains("](")) {
+					int index = lineLeft.indexOf("](")+2;
+					newLine += lineLeft.substring(0, index);
+					lineLeft = lineLeft.substring(index);
+					int linkEndIndex = lineLeft.indexOf(")");
+					String linkStr = lineLeft.substring(0, linkEndIndex);
+//					String origLinkStr = linkStr;
+					if (linkStr.endsWith(".md")) {
+						// non-anchor link
+						int mdIndex = linkStr.length()-3;
+						String prefix = linkStr.substring(0, mdIndex);
+						linkStr = prefix+".html";
+						update = true;
+					} else if (linkStr.contains(".md#")) {
+						int mdIndex = linkStr.indexOf(".md#");
+						String prefix = linkStr.substring(0, mdIndex);
+						String suffix = linkStr.substring(mdIndex+3);
+						linkStr = prefix+".html#"+suffix;
+						update = true;
+					}
+//					System.out.println("\tReplacing '"+origLinkStr+"' with '"+linkStr+"'");
+					newLine += linkStr;
+					lineLeft = lineLeft.substring(linkEndIndex);
+					if (linkEndIndex < 0) {
+						// unexpected, abort
+						update = false;
+						break;
+					}
+				}
+				newLine += lineLeft;
+				if (update) {
+					// went smoothly and we actually replaced something, use our newline
+					line = newLine;
+//					System.out.println("\tReplaced line: "+line);
+				}
+			}
 			str.append(line).append("\n");
 		}
 		writeHTML(str.toString(), outputFile);

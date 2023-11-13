@@ -489,6 +489,11 @@ public class ETAS_CatalogIO {
 	public static void writeCatalogBinary(DataOutputStream out, List<ETAS_EqkRupture> catalog) throws IOException {
 		// write file version as short
 		if (catalog instanceof ETAS_Catalog && ((ETAS_Catalog)catalog).getSimulationMetadata() != null) {
+			// TODO: when we eventually settle on new file formats"
+			// * in addition to writing the format version (3) here, we should then write the length of the metadata header in bytes
+			// * we should also think about hashing the contents of the catalog here
+			// * think about writing the number of bytes per rupture record so that we can always read future formats with old code
+			
 			// we have metadata
 			out.writeShort(3);
 			ETAS_SimulationMetadata meta = ((ETAS_Catalog)catalog).getSimulationMetadata();
@@ -818,6 +823,10 @@ public class ETAS_CatalogIO {
 		return new BinarayCatalogsIterable(binFile, minMag);
 	}
 	
+	public static BinarayCatalogsListIterator getBinaryCatalogsIterator(final File binFile, final double minMag) throws IOException {
+		return new BinarayCatalogsListIterator(binFile, minMag);
+	}
+	
 	public static class BinarayCatalogsIterable implements Iterable<ETAS_Catalog> {
 		
 		private final File binFile;
@@ -861,7 +870,7 @@ public class ETAS_CatalogIO {
 	
 	private static final int ITERABLE_PRELOAD_CAPACITY = 500; // catalogs
 	
-	private static class BinarayCatalogsListIterator implements Iterator<ETAS_Catalog> {
+	public static class BinarayCatalogsListIterator implements Iterator<ETAS_Catalog> {
 		
 		private int numCatalogs;
 		private int retIndex;

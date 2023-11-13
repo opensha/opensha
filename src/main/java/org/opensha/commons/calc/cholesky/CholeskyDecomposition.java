@@ -1,4 +1,4 @@
-package org.opensha.sha.gcim.calc;
+package org.opensha.commons.calc.cholesky;
 
 import Jama.Matrix;
 
