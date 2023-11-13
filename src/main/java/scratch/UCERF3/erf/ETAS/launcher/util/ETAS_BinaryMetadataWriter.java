@@ -153,25 +153,16 @@ public class ETAS_BinaryMetadataWriter {
 		
 		BinarayCatalogsMetadataIterator it = null;
 		
-		List<String> catalogDeepHashes = null;
-		String fullCatalogDeepHash = null;
+		List<byte[]> catalogDeepHashes = null;
 		if (deepHash) {
 			System.out.println("Reading input file fully and computing deep hashes");
 			catalogDeepHashes = new ArrayList<>();
-			MessageDigest fullMD = null;
-			try {
-				fullMD = MessageDigest.getInstance("MD5");
-			} catch (NoSuchAlgorithmException e) {
-				throw ExceptionUtils.asRuntimeException(e);
-			}
 			for (ETAS_Catalog catalog : ETAS_CatalogIO.getBinaryCatalogsIterable(resultsFile, Double.NEGATIVE_INFINITY)) {
 				md.reset();
-				deepHashCatalog(catalog, fullMD, md);
+				deepHashCatalog(catalog, md);
 				byte[] hash = md.digest();
-				catalogDeepHashes.add(hashBytesToString(hash));
+				catalogDeepHashes.add(hash);
 			}
-			byte[] fullHash = fullMD.digest();
-			fullCatalogDeepHash = hashBytesToString(fullHash);
 			System.out.println("Done fully reading catalog, computed "+catalogDeepHashes.size()+" catalog hashes");
 		}
 		
@@ -201,7 +192,7 @@ public class ETAS_BinaryMetadataWriter {
 							byte[] hash = md.digest();
 							str += ", metaHash="+hashBytesToString(hash);
 							if (deepHash && count < catalogDeepHashes.size())
-								str += ", deepHash="+catalogDeepHashes.get(count);
+								str += ", deepHash="+hashBytesToString(catalogDeepHashes.get(count));
 						}
 					}
 					if (tail) {
@@ -256,7 +247,7 @@ public class ETAS_BinaryMetadataWriter {
 							line.add(hashBytesToString(hash));
 							if (deepHash) {
 								if (count < catalogDeepHashes.size())
-									line.add(catalogDeepHashes.get(count));
+									line.add(hashBytesToString(catalogDeepHashes.get(count)));
 								else
 									line.add("");
 							}
@@ -307,6 +298,24 @@ public class ETAS_BinaryMetadataWriter {
 				System.out.println("Not all catalogs have metadata, skipping hash");
 		} else if (md != null) {
 			// we can build a hash
+			int maxID = 0;
+			for (ETAS_SimulationMetadata meta : metas)
+				maxID = Integer.max(maxID, meta.catalogIndex);
+			ETAS_SimulationMetadata[] metaArray = new ETAS_SimulationMetadata[maxID+1];
+			byte[][] deepHashArray = deepHash ? new byte[maxID+1][] : null;
+			for (int i=0; i<metas.size(); i++) {
+				ETAS_SimulationMetadata meta = metas.get(i);
+				Preconditions.checkState(metaArray[meta.catalogIndex] == null,
+						"Duplicate catalogs found with index %s", meta.catalogIndex);
+				if (deepHash) {
+					if (i < catalogDeepHashes.size()) {
+						deepHashArray[meta.catalogIndex] = catalogDeepHashes.get(i);
+					} else {
+						System.err.println("Don't have deep hashes for each catalog?");
+						deepHash = false;
+					}
+				}
+			}
 			Collections.sort(metas, new Comparator<ETAS_SimulationMetadata>() {
 
 				@Override
@@ -318,9 +327,16 @@ public class ETAS_BinaryMetadataWriter {
 			for (ETAS_SimulationMetadata meta : metas)
 				hashCatalogMeta(meta, md);
 			byte[] hash = md.digest();
-			System.out.println("Full Catalog Metadata Hash: "+hashBytesToString(hash));
-			if (deepHash)
-				System.out.println("Full Catalog Deep Hash: "+fullCatalogDeepHash);
+			System.out.println("Full Simulation Metadata Hash: "+hashBytesToString(hash));
+			if (deepHash) {
+				md.reset();
+				for (byte[] catHash : deepHashArray) {
+					if (catHash != null)
+						md.update(catHash);
+				}
+				byte[] fullHash = md.digest();
+				System.out.println("Full Simulation Deep Hash: "+hashBytesToString(fullHash));
+			}
 		}
 		System.exit(0);
 	}
@@ -337,7 +353,7 @@ public class ETAS_BinaryMetadataWriter {
 		md.update(dout.toByteArray());
 	}
 	
-	private static void deepHashCatalog(ETAS_Catalog catalog, MessageDigest... mds) {
+	private static void deepHashCatalog(ETAS_Catalog catalog, MessageDigest md) {
 		ByteArrayDataOutput dout = ByteStreams.newDataOutput();
 		dout.writeInt(catalog.size());
 		for (ETAS_EqkRupture rup : catalog) {
@@ -357,8 +373,7 @@ public class ETAS_BinaryMetadataWriter {
 			dout.writeDouble(rup.getETAS_k());
 		}
 		byte[] bytes = dout.toByteArray();
-		for (MessageDigest md : mds)
-			md.update(bytes);
+		md.update(bytes);
 	}
 	
 	private static String hashBytesToString(byte[] hash) {
