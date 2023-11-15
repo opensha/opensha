@@ -652,6 +652,14 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			double[] rupAreas,
 			double[] rupLengths) {
 		Preconditions.checkNotNull(faultSectionData, "Fault Section Data cannot be null");
+		int numSects = faultSectionData.size();
+		for (int s=0; s<numSects; s++) {
+			FaultSection sect = faultSectionData.get(s);
+			Preconditions.checkNotNull(sect, "Section %s is null", s);
+			Preconditions.checkState(sect.getSectionId() == s,
+					"Section indexes and IDs must match. Instead, section %s has ID %s with name: %s",
+					s, sect.getSectionId(), sect.getSectionName());
+		}
 		this.faultSectionData = faultSectionData;
 		Preconditions.checkNotNull(faultSectionData, "Magnitudes cannot be null");
 		this.mags = mags;
@@ -672,6 +680,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		this.rupLengths = rupLengths;
 		
 		Preconditions.checkArgument(sectionForRups.size() == numRups, "array sizes inconsistent!");
+		for (int r=0; r<numRups; r++) {
+			for (int s : sectionForRups.get(r)) {
+				Preconditions.checkState(s >= 0 && s < numSects,
+						"Bad sectIndex=%s in sectionForRups for rupIndex=%s", s, r);
+			}
+		}
 		this.sectionForRups = sectionForRups;
 		
 		// add default model implementations, but only if not already set
