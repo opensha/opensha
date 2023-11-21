@@ -450,11 +450,21 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		}
 		
 		public void buildNodes(Random rand, int num, double weightEach) {
-			List<E> nodes = new ArrayList<>();
+			List<E> nodes = new ArrayList<>(num);
 			
 			Preconditions.checkState(num >= 1);
 			for (int i=0; i<num; i++)
 				nodes.add(buildNodeInstance(i, rand.nextLong(), weightEach));
+			
+			this.nodes = nodes;
+		}
+		
+		public void buildNodes(List<Long> seeds, double weightEach) {
+			List<E> nodes = new ArrayList<>(seeds.size());
+			
+			Preconditions.checkState(seeds.size() >= 1);
+			for (int i=0; i<seeds.size(); i++)
+				nodes.add(buildNodeInstance(i, seeds.get(i), weightEach));
 			
 			this.nodes = nodes;
 		}
