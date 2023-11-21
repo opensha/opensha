@@ -19,6 +19,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.WaterLevelRates;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
@@ -26,21 +27,27 @@ import com.google.common.base.Preconditions;
 /**
  * This solves for the rate of each rupture analytically, according to the prescribed section nucleation MFDs. It does
  * so by first fetching section supra-seismogenic nucleation MFDs from the {@link InversionTargetMFDs} attached to the
- * rupture set. Then, for each each section, that nucleation MFD is spread across all participating ruptures. If a
- * b-value is supplied, then rupture rates for different magnitudes within a single MFD bin will be proportioned according
- * to their relative G-R rate.
+ * rupture set. Then, for each each section, that nucleation MFD is spread across all participating ruptures.
+ * <p>
+ * If a b-value is available (either passed in via the constructor or retrieved from a
+ * {@link SupraSeisBValInversionTargetMFDs} instance), then rupture rates for different magnitudes within a single MFD
+ * bin will be proportioned according to their relative G-R rate.
  * 
  * @author kevin
  *
  */
 public class AnalyticalSingleFaultInversionSolver extends InversionSolver.Default {
 	
-	private double bVal;
+	private double forcedBVal;
 	private BinaryRuptureProbabilityCalc rupExclusionModel;
+
+	public AnalyticalSingleFaultInversionSolver() {
+		this(Double.NaN, null);
+	}
 
 	/**
 	 * 
-	 * @param bVal used to proportion for ruptures of different magniutdes that share an MFD bin
+	 * @param bVal used to proportion for ruptures of different magnitudes that share an MFD bin
 	 * @param rupExclusionModel optional rupture exclusion model
 	 */
 	public AnalyticalSingleFaultInversionSolver(double bVal) {
@@ -49,11 +56,19 @@ public class AnalyticalSingleFaultInversionSolver extends InversionSolver.Defaul
 
 	/**
 	 * 
-	 * @param bVal used to proportion for ruptures of different magniutdes that share an MFD bin
+	 * @param rupExclusionModel optional rupture exclusion model
+	 */
+	public AnalyticalSingleFaultInversionSolver(BinaryRuptureProbabilityCalc rupExclusionModel) {
+		this(Double.NaN, rupExclusionModel);
+	}
+
+	/**
+	 * 
+	 * @param bVal used to proportion for ruptures of different magnitudes that share an MFD bin (0 to force spreading evenly)
 	 * @param rupExclusionModel optional rupture exclusion model
 	 */
 	public AnalyticalSingleFaultInversionSolver(double bVal, BinaryRuptureProbabilityCalc rupExclusionModel) {
-		this.bVal = bVal;
+		this.forcedBVal = bVal;
 		this.rupExclusionModel = rupExclusionModel;
 	}
 
@@ -79,6 +94,27 @@ public class AnalyticalSingleFaultInversionSolver extends InversionSolver.Defaul
 		
 		// if non-null, will subtract from target MFDs
 		double[] waterLevel = config.getWaterLevel();
+		
+		double[] bVals = null;
+		if (Double.isFinite(forcedBVal)) {
+			// use the passed in b-value no matter what
+			bVals = new double[rupSet.getNumSections()];
+			for (int s=0; s<bVals.length; s++)
+				bVals[s] = forcedBVal;
+		} else if (targets instanceof SupraSeisBValInversionTargetMFDs) {
+			SupraSeisBValInversionTargetMFDs bTargets = (SupraSeisBValInversionTargetMFDs)targets;
+			bVals = bTargets.getSectSpecificBValues();
+			if (bVals == null) {
+				// use global from targets
+				double b = bTargets.getSupraSeisBValue();
+				bVals = new double[rupSet.getNumSections()];
+				for (int s=0; s<bVals.length; s++)
+					bVals[s] = b;
+			} else {
+				// we have section-specific
+				Preconditions.checkState(bVals.length == rupSet.getNumSections());
+			}
+		}
 		
 		double[] rates = new double[rupSet.getNumRuptures()];
 		for (int s=0; s<rupSet.getNumSections(); s++) {
@@ -125,7 +161,7 @@ public class AnalyticalSingleFaultInversionSolver extends InversionSolver.Defaul
 				if (rups == null || binRate == 0d)
 					continue;
 				
-				if (this.bVal == 0d || allMagsSame(rupSet, rups)) {
+				if (bVals == null || bVals[s] == 0d || allMagsSame(rupSet, rups)) {
 					// simple case
 					double rateEach = binRate / rups.size();
 					
@@ -136,12 +172,12 @@ public class AnalyticalSingleFaultInversionSolver extends InversionSolver.Defaul
 					// do so according to the target b-value
 					
 					double binCenter = sectMFD.getX(i);
-					double centerGR = calcGR(bVal, binCenter);
+					double centerGR = calcGR(bVals[s], binCenter);
 					double[] weights = new double[rups.size()];
 					double sumWeight = 0d;
 					for (int r=0; r<weights.length; r++) {
 						double mag = rupSet.getMagForRup(rups.get(r));
-						double myGR = calcGR(bVal, mag);
+						double myGR = calcGR(bVals[s], mag);
 						double weight = myGR/centerGR;
 						sumWeight += weight;
 						weights[r] = weight;
