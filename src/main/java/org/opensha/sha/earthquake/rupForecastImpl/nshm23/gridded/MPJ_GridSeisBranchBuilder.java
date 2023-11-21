@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -77,8 +78,11 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 	private File nodesAverageDir;
 	private File myAverageDir;
 	private Table<String, String, AveragingAccumulator<GridSourceProvider>> gridSeisAveragers;
-	
+
 	private File writeFullTreeFile;
+	private File writeRandTreeFile;
+	private int numSamples = -1;
+	private int numSamplesPerSol = -1;
 	
 	private Map<String, double[]> rankWeights;
 	
@@ -153,6 +157,20 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		
 		if (cmd.hasOption("write-full-tree"))
 			writeFullTreeFile = new File(cmd.getOptionValue("write-full-tree"));
+		if (cmd.hasOption("write-rand-tree")) {
+			writeRandTreeFile = new File(cmd.getOptionValue("write-rand-tree"));
+			if (cmd.hasOption("num-samples")) {
+				Preconditions.checkState(!cmd.hasOption("num-samples-per-sol"),
+						"Can only supply one of --num-samples and --num-samples-per-sol");
+				numSamples = Integer.parseInt(cmd.getOptionValue("num-samples"));
+			} else if (cmd.hasOption("num-samples-per-sol")) {
+				Preconditions.checkState(!cmd.hasOption("num-samples"),
+						"Can only supply one of --num-samples and --num-samples-per-sol");
+				numSamplesPerSol = Integer.parseInt(cmd.getOptionValue("num-samples-per-sol"));
+			} else {
+				throw new IllegalArgumentException("Must supply either --num-samples or --num-samples-per-sol with --write-rand-tree");
+			}
+		}
 		
 		if (rank == 0)
 			this.postBatchHook = new AsyncGridSeisCopier();
@@ -888,7 +906,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			}
 			sltBuilder.close();
 			
-			if (writeFullTreeFile != null) {
+			if (writeFullTreeFile != null || (writeRandTreeFile != null && numSamples > 0)) {
 				// write the full logic tree
 				debug("Building full logic tree for file output");
 				List<LogicTreeLevel<? extends LogicTreeNode>> fullLevels = new ArrayList<>();
@@ -899,8 +917,32 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					for (LogicTreeBranch<?> gridBranch : gridSeisOnlyTree)
 						fullBranches.add((LogicTreeBranch<LogicTreeNode>)getCombinedBranch(origBranch, gridBranch));
 				LogicTree<LogicTreeNode> fullTree = LogicTree.fromExisting(fullLevels, fullBranches);
-				debug("Writing "+fullTree.size()+" branches to "+writeFullTreeFile.getAbsolutePath());
-				fullTree.write(writeFullTreeFile);
+				if (writeFullTreeFile != null) {
+					debug("Writing "+fullTree.size()+" branches to "+writeFullTreeFile.getAbsolutePath());
+					fullTree.write(writeFullTreeFile);
+				}
+				if (writeRandTreeFile != null && numSamples > 0) {
+					Random rand = new Random((long)fullTree.size()*numSamples);
+					LogicTree<?> sampled = fullTree.sample(numSamples, false, rand);
+					debug("Writing "+sampled.size()+" sampled branches to "+writeRandTreeFile.getAbsolutePath());
+					sampled.write(writeRandTreeFile);
+				}
+			}
+			if (writeRandTreeFile != null && numSamplesPerSol > 0) {
+				debug("Building randomized logic tree with "+numSamplesPerSol+" gridded samples per solution for file output");
+				List<LogicTreeLevel<? extends LogicTreeNode>> fullLevels = new ArrayList<>();
+				fullLevels.addAll(tree.getLevels());
+				fullLevels.addAll(gridSeisOnlyTree.getLevels());
+				List<LogicTreeBranch<LogicTreeNode>> fullBranches = new ArrayList<>();
+				Random rand = new Random((long)tree.size()*gridSeisOnlyTree.size()*numSamplesPerSol);
+				for (LogicTreeBranch<?> origBranch : tree) {
+					LogicTree<?> subTree = gridSeisOnlyTree.sample(numSamplesPerSol, false, rand, false);
+					for (LogicTreeBranch<?> gridBranch : subTree)
+						fullBranches.add((LogicTreeBranch<LogicTreeNode>)getCombinedBranch(origBranch, gridBranch));
+				}
+				LogicTree<LogicTreeNode> randTree = LogicTree.fromExisting(fullLevels, fullBranches);
+				debug("Writing "+randTree.size()+" sampled branches to "+writeRandTreeFile.getAbsolutePath());
+				randTree.write(writeRandTreeFile);
 			}
 		}
 		if (exec != null)
@@ -931,6 +973,12 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		ops.addOption("ao", "average-only", false, "Flag to only write out average gridded seismicity for each fault "
 				+ "branch.");
 		ops.addOption("wft", "write-full-tree", true, "If supplied, will write full logic tree JSON to this file");
+		ops.addOption(null, "write-rand-tree", true, "If supplied, will write a randomly sampled (from the full distribution) "
+				+ "logic tree JSON to this file. Must supply either --num-samples or --num-samples-per-sol");
+		ops.addOption(null, "num-samples", true, "If --write-rand-tree is enabled, will write this many random samples "
+				+ "of the full tree");
+		ops.addOption(null, "num-samples-per-sol", true, "If --write-rand-tree is enabled, will write this many random "
+				+ "gridded seismicity samples for each solution");
 		ops.addOption(null, "rebuild", false, "Flag to force rebuild of all providers");
 		
 		return ops;
