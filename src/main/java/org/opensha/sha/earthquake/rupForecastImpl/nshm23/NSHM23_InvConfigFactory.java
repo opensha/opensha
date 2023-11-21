@@ -102,6 +102,8 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_Region
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels.ExcludeRupsThroughCreepingSegmentationModel;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.random.BranchSamplingManager;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.random.RandomBValSampler;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SeisSmoothingAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SingleStates;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSectBranchNode;
@@ -560,12 +562,19 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 						// we already have target MFDs loaded, get it from there
 						return targetMFDs.getSectSlipRates();
 					// build them
-					double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
 					SubSeisMoRateReduction moRateRed = branch.hasValue(SubSeisMoRateReductions.class) ?
 							branch.getValue(SubSeisMoRateReductions.class).getChoice() :
 								SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
-					return new SupraSeisBValInversionTargetMFDs.Builder(rupSet, bVal)
-							.subSeisMoRateReduction(moRateRed).buildSlipRatesOnly();
+					SupraSeisBValInversionTargetMFDs.Builder builder;
+					RandomBValSampler.Node bValNode = branch.getValue(RandomBValSampler.Node.class);
+					if (bValNode != null) {
+						RandomBValSampler sampler = rupSet.requireModule(BranchSamplingManager.class).getSampler(bValNode);
+						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, sampler.getBValues());
+					} else {
+						double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
+						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, bVal);
+					}
+					return builder.subSeisMoRateReduction(moRateRed).buildSlipRatesOnly();
 				}
 			}, SectSlipRates.class);
 			
@@ -624,6 +633,16 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 						return buildU3IngredientsFaultCubeAssociations(rupSet);
 					}
 				}, FaultGridAssociations.class);
+			}
+			
+			if (BranchSamplingManager.hasSamplingNodes(branch)) {
+				rupSet.offerAvailableModule(new Callable<BranchSamplingManager>() {
+
+					@Override
+					public BranchSamplingManager call() throws Exception {
+						return new BranchSamplingManager(rupSet, branch);
+					}
+				}, BranchSamplingManager.class);
 			}
 			return rupSet;
 		}
@@ -688,6 +707,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	}
 	
 	private static NSHM23_ConstraintBuilder getAveragedConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+		// TODO maybe add sampling support?
 		SupraSeisBValues[] bVals;
 		if (branch.hasValue(SupraSeisBValues.AVERAGE))
 			bVals = SupraSeisBValues.values();
@@ -769,8 +789,19 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	}
 	
 	private static NSHM23_ConstraintBuilder doGetConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
-		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal);
+		RandomBValSampler.Node bValNode = branch.getValue(RandomBValSampler.Node.class);
+		double bVal;
+		double[] sectSpecificBValues = null;
+		if (bValNode != null) {
+			RandomBValSampler sampler = rupSet.requireModule(BranchSamplingManager.class).getSampler(bValNode);
+			sectSpecificBValues = sampler.getBValues();
+			Preconditions.checkState(sectSpecificBValues.length == rupSet.getNumSections(),
+					"Have %s sections but %s section b-values", rupSet.getNumSections(), sectSpecificBValues.length);
+			bVal = NSHM23_ConstraintBuilder.momentWeightedAverage(rupSet, sectSpecificBValues);
+		} else {
+			bVal = branch.requireValue(SupraSeisBValues.class).bValue;
+		}
+		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
 		
 		RupSetFaultModel fm = branch.getValue(RupSetFaultModel.class);
 		constrBuilder.parkfieldSelection(getParkfieldSelectionCriteria(fm));
@@ -1381,8 +1412,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				}
 				if (!hasIncludedJump) {
 					// can solve analytically
-					double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
-					return new AnalyticalSingleFaultInversionSolver(bVal, exclusionModel);
+					return new AnalyticalSingleFaultInversionSolver(exclusionModel);
 				}
 			}
 			System.err.println("WARNING: solving classic model via full system inversion");
