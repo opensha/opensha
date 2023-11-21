@@ -12,6 +12,9 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.commons.util.FaultUtils.AngleAverager;
+
+import com.google.common.base.Preconditions;
 
 /**
  * This classe represents and approximately evenly gridded surface, where the gridSpacing represents some average value.
@@ -33,7 +36,13 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 	private FaultTrace lowerFaultTrace = null;
 	
 	// lazily initialized on first call to getAvgDip()
-	double avgDip = Double.NaN;
+	private double avgDip = Double.NaN;
+	// lazily initialized on first call to getAvgDipDirection()
+	private double avgDipDir = Double.NaN;
+	// lazily initialized on first call to getAvgRupTopDepth()
+	private double aveUpperDepth = Double.NaN;
+	// lazily initialized on first call to getAvgRupBottomDepth()
+	private double aveLowerDepth = Double.NaN;
 
 
 	/**
@@ -56,18 +65,52 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 	 * a straight line between the top and bottom point of each column.  The number of columns is the average length
 	 * the top and bottom trace divided by the aveGridSpacing (plus 1), and the number of rows is the average distance
 	 * between the top and bottom points in each column divided by the aveGridSpacing (plus 1).
-	 * and then
 	 * @param numRows
 	 * @param numCols
 	 * @param aveGridSpacing
 	 */
 	public ApproxEvenlyGriddedSurface(FaultTrace upperFaultTrace,FaultTrace lowerFaultTrace, double aveGridSpacing) {
+		this(upperFaultTrace, lowerFaultTrace, aveGridSpacing, false, 0d);
+	}
 
+
+	/**
+	 * This constructor takes an upper and lower fault trace, re-samples these according the the given aveGridSpacing
+	 * to represent the first and last rows of the surface, and then fills in the intermediate rows by evenly sampling
+	 * a straight line between the top and bottom point of each column.  The number of columns is the average length
+	 * the top and bottom trace divided by the aveGridSpacing (plus 1), and the number of rows is the average distance
+	 * between the top and bottom points in each column divided by the aveGridSpacing (plus 1).
+	 * <p>
+	 * If aseisReducesArea is true and aseismicSlipFactor>0, the upper depth will be reduced so that the final area
+	 * is approximately aseismicSlipFactor fraction of the original area.
+	 * @param numRows
+	 * @param numCols
+	 * @param aveGridSpacing
+	 * @param aseisReducesArea if true and aseismicSlipFactor>0, reduce the upper depth by aseismicSlipFactor
+	 * @param aseismicSlipFactor if >0 and aseisReducesArea is true, reduce the upper depth by this factor
+	 */
+	public ApproxEvenlyGriddedSurface(FaultTrace upperFaultTrace,FaultTrace lowerFaultTrace, double aveGridSpacing,
+			boolean aseisReducesArea, double aseismicSlipFactor) {
 		gridSpacingAlong = aveGridSpacing;
 		gridSpacingDown = aveGridSpacing;
 		sameGridSpacing = true;
 		this.upperFaultTrace = upperFaultTrace;
 		this.lowerFaultTrace = lowerFaultTrace;
+		
+		double traceDistFactor;
+		if (aseisReducesArea) {
+			Preconditions.checkState(aseismicSlipFactor >= 0d && aseismicSlipFactor < 1,
+					"Bad aseismicSlipFactor=%s", aseismicSlipFactor);
+			if (aseismicSlipFactor == 0d) {
+				traceDistFactor = 1d;
+				aseisReducesArea = false;
+			} else {
+				traceDistFactor = 1d - aseismicSlipFactor;
+			}
+		} else {
+			aseismicSlipFactor = 0d;
+			traceDistFactor = 1d;
+		}
 
 		// check that the traces are both in the same order
 		Location firstUpperLoc = upperFaultTrace.get(0);
@@ -108,6 +151,8 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 			aveDist += LocationUtils.linearDistanceFast(topLoc, botLoc);
 		}
 		aveDist /= resampUpperTrace.size();
+		// reduce for aseismicity if applicable
+		aveDist *= traceDistFactor;
 		int nRows = (int) Math.round(aveDist/aveGridSpacing)+1;
 		
 		if(D) System.out.println("aveDist="+aveDist+", nRows="+nRows);
@@ -119,6 +164,16 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 			Location topLoc = resampUpperTrace.get(c);
 			Location botLoc = resampLowerTrace.get(c);
 			LocationVector dir = LocationUtils.vector(topLoc, botLoc);
+			if (aseisReducesArea) {
+				// move the top location toward the bottom loc aseismicSlipFactor fraction
+				double horzDist = dir.getHorzDistance();
+				Preconditions.checkState(horzDist >= 0d);
+				double vertDist = dir.getVertDistance();
+				Preconditions.checkState(vertDist >= 0d);
+				topLoc = LocationUtils.location(topLoc, dir.getAzimuthRad(), horzDist*aseismicSlipFactor);
+				topLoc = new Location(topLoc.getLatitude(), topLoc.getLongitude(), topLoc.getDepth()+vertDist*aseismicSlipFactor);
+				dir = LocationUtils.vector(topLoc, botLoc);
+			}
 			double horzIncr = dir.getHorzDistance()/(nRows-1);
 			double vertIncr = dir.getVertDistance()/(nRows-1);  // minus sign because vertDist is pos up and depth is pos down
 			dir.setHorzDistance(horzIncr);
@@ -339,10 +394,11 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 
 
 	@Override
-	public double getAveDip() {
-		if (!Double.isNaN(avgDip)) return avgDip;
+	public synchronized double getAveDip() {
+		if (!Double.isNaN(avgDip))
+			return avgDip;
 		// (lazy) average the dips of lines connecting the first 
-		// and last points ofthe upper and lower traces
+		// and last points of the upper and lower traces
 		LocationList ut = upperFaultTrace;
 		LocationList lt = lowerFaultTrace;
 		Location pUp = ut.get(0);
@@ -359,17 +415,45 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 
 
 	@Override
-	public double getAveDipDirection() {
-		throw new RuntimeException("Method not yet implemented");
+	public synchronized double getAveDipDirection() {
+		if (!Double.isNaN(avgDipDir))
+			return avgDipDir;
+		// (lazy) average direction between first and last 
+		// points of the upper and lower traces
+		LocationList ut = upperFaultTrace;
+		LocationList lt = lowerFaultTrace;
+		Location pUp = ut.get(0);
+		Location pLo = lt.get(0);
+		LocationVector v = LocationUtils.vector(pUp, pLo);
+		AngleAverager avg = new AngleAverager();
+		avg.add(v.getAzimuth(), 1d);
+		v = LocationUtils.vector(pUp, pLo);
+		avg.add(v.getAzimuth(), 1d);
+		avgDipDir = avg.getAverage();
+		return avgDipDir;
 	}
 
 	@Override
-	public double getAveRupTopDepth() {
+	public synchronized double getAveRupTopDepth() {
+		if (!Double.isNaN(aveUpperDepth))
+			return aveUpperDepth;
 		double aveDepth = 0;
 		FaultTrace topTrace = getRowAsTrace(0);
 		for(Location loc:topTrace)
 			aveDepth += loc.getDepth();
-		return aveDepth/topTrace.size();
+		aveUpperDepth = aveDepth/topTrace.size();
+		return aveUpperDepth;
+	}
+	
+	public synchronized double getAveRupBottomDepth() {
+		if (!Double.isNaN(aveLowerDepth))
+			return aveLowerDepth;
+		double aveDepth = 0;
+		FaultTrace botTrace = getRowAsTrace(numRows-1);
+		for(Location loc:botTrace)
+			aveDepth += loc.getDepth();
+		aveLowerDepth = aveDepth/botTrace.size();
+		return aveLowerDepth;
 	}
 
 
