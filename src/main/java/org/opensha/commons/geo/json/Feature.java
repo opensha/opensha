@@ -62,7 +62,7 @@ public class Feature {
 		this.properties = properties;
 	}
 	
-	public static class FeatureAdapter extends TypeAdapter<Feature> {
+	public static class FeatureAdapter extends AbstractGeoJSON_TypeAdapter<Feature> {
 		
 		private TypeAdapter<FeatureProperties> propsAdapter;
 		private Geometry.GeometryAdapter geomAdapter = new Geometry.GeometryAdapter();
@@ -123,7 +123,16 @@ public class Feature {
 //			System.out.print("Deserializing feature at "+in.getPath());
 			
 			in.beginObject();
-			GeoJSON_Type type = null;
+			
+			Feature feature = innerReadAsType(in, null);
+			
+			in.endObject();
+			
+			return feature;
+		}
+		
+		@Override
+		public Feature innerReadAsType(JsonReader in, GeoJSON_Type type) throws IOException {
 			Object id = null;
 			Geometry geometry = null;
 			FeatureProperties properties = null;
@@ -166,9 +175,6 @@ public class Feature {
 			
 			Preconditions.checkState(type == GeoJSON_Type.Feature, "Expected Feature type, have %s", type);
 			// everything else can be null
-			
-			in.endObject();
-			
 			return new Feature(id, geometry, properties);
 		}
 		

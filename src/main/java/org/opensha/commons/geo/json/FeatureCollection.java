@@ -52,7 +52,7 @@ public class FeatureCollection implements Iterable<Feature> {
 		this.features = features == null ? null : ImmutableList.copyOf(features);
 	}
 	
-	public static class FeatureCollectionAdapter extends TypeAdapter<FeatureCollection> {
+	public static class FeatureCollectionAdapter extends AbstractGeoJSON_TypeAdapter<FeatureCollection> {
 		
 		private FeatureAdapter featureAdapter = new FeatureAdapter();
 		
@@ -98,7 +98,15 @@ public class FeatureCollection implements Iterable<Feature> {
 			
 			in.beginObject();
 			
-			GeoJSON_Type type = null;
+			FeatureCollection features = innerReadAsType(in, null);
+			
+			in.endObject();
+			
+			return features;
+		}
+
+		@Override
+		public FeatureCollection innerReadAsType(JsonReader in, GeoJSON_Type type) throws IOException {
 			List<Feature> features = null;
 			
 			while (in.hasNext()) {
@@ -129,8 +137,6 @@ public class FeatureCollection implements Iterable<Feature> {
 					break;
 				}
 			}
-			
-			in.endObject();
 			
 			Preconditions.checkState(type == GeoJSON_Type.FeatureCollection,
 					"Expected FeatureCollection type, have %s", type);

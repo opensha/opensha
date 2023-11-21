@@ -12,6 +12,9 @@ import org.apache.commons.lang3.ArrayUtils;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSet.XYAdapter;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.json.Feature.FeatureAdapter;
+import org.opensha.commons.geo.json.FeatureCollection.FeatureCollectionAdapter;
+import org.opensha.commons.geo.json.Geometry.GeometryAdapter;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.TypeAdapter;
@@ -464,6 +467,9 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 	
 	private static XYAdapter xyAdapter = new XYAdapter();
 	private static PropertiesAdapter propAdapter = new PropertiesAdapter();
+	private static GeometryAdapter geomAdapter = new GeometryAdapter();
+	private static FeatureAdapter featureAdapter = new FeatureAdapter();
+	private static FeatureCollectionAdapter featureCollectionAdapter = new FeatureCollectionAdapter();
 	
 	/**
 	 * Serializes the given value to the given JsonWriter, which should already have the name set. Numbers
@@ -487,6 +493,12 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			out.value("#"+Integer.toHexString(((Color)value).getRGB()).substring(2));
 		} else if (value instanceof XY_DataSet) {
 			xyAdapter.write(out, (XY_DataSet)value);
+		} else if (value instanceof Geometry) {
+			geomAdapter.write(out, (Geometry)value);
+		} else if (value instanceof Feature) {
+			featureAdapter.write(out, (Feature)value);
+		} else if (value instanceof FeatureCollection) {
+			featureCollectionAdapter.write(out, (FeatureCollection)value);
 		} else if (value.getClass().isArray()) {
 			Object[] array;
 			if (value.getClass().getComponentType().isPrimitive()) {
@@ -568,11 +580,43 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 					String type = null;
 					try {
 						type = in.nextString();
-						Class<?> typeClass = Class.forName(type);
-						if (XY_DataSet.class.isAssignableFrom(typeClass)) {
-							XY_DataSet ret = new XY_DataSet.XYAdapter().innerReadAsType(in, (Class<? extends XY_DataSet>)typeClass);
-							in.endObject();
-							return ret;
+						// check if it's a GeoJSON type
+						GeoJSON_Type geoType = null;
+						try {
+							geoType = GeoJSON_Type.valueOf(type);
+						} catch (Exception e) {
+							// not a GeoJSON type
+						}
+						if (geoType != null) {
+							// GeoJSON object
+							if (GeoJSON_Type.GEOM_TYPES.contains(geoType)) {
+								// geometry
+								Geometry ret = geomAdapter.innerReadAsType(in, geoType);
+								in.endObject();
+								return ret;
+							} else if (geoType == GeoJSON_Type.Feature) {
+								// feature
+								Feature ret = featureAdapter.innerReadAsType(in, geoType);
+								in.endObject();
+								return ret;
+							} else if (geoType == GeoJSON_Type.FeatureCollection) {
+								// feature collection
+								FeatureCollection ret = featureCollectionAdapter.innerReadAsType(in, geoType);
+								in.endObject();
+								return ret;
+							} else {
+								System.err.println("WARNING: couldn't deserialize custom FeatureProperties object with type: "
+										+type);
+							}
+						} else {
+							// regular class
+							Class<?> typeClass = Class.forName(type);
+							if (XY_DataSet.class.isAssignableFrom(typeClass)) {
+								XY_DataSet ret = new XY_DataSet.XYAdapter().innerReadAsType(in, (Class<? extends XY_DataSet>)typeClass);
+								in.endObject();
+								return ret;
+							}
+							// TODO support generic adapters?
 						}
 					} catch (Throwable t) {
 						System.err.println("WARNING: couldn't deserialize custom FeatureProperties object with type: "
