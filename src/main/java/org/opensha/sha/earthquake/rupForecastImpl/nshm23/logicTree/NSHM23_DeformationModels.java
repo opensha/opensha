@@ -267,7 +267,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	 *  * Evans: 10%
 	 *  * Pollitz: 20%
 	 *  * Shen-Bird: 25%
-	 *  * Shen-Bird: 25%
+	 *  * Zeng: 25%
 	 * 
 	 */
 	public static boolean ORIGINAL_WEIGHTS = false;
