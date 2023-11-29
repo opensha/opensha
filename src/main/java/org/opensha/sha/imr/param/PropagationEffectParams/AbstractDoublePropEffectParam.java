@@ -126,7 +126,7 @@ public abstract class AbstractDoublePropEffectParam extends
 	 *  Gets the min value of the constraint object. If the constraint
 	 *  is not set returns null.
 	 */
-	public Double getWarningMin() throws Exception {
+	public Double getWarningMin() {
 		if ( warningConstraint != null ) return warningConstraint.getMin();
 		else return null;
 	}

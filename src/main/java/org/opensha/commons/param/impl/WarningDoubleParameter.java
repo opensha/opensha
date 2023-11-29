@@ -386,9 +386,8 @@ WarningParameter<Double> {
 	 * minimumn value below which warnings will be issued.
 	 *
 	 * @return                The min value
-	 * @exception  Exception  Description of the Exception
 	 */
-	public Double getWarningMin() throws Exception {
+	public Double getWarningMin() {
 		if ( warningConstraint != null ) return warningConstraint.getMin();
 		else return null;
 	}
@@ -399,7 +398,6 @@ WarningParameter<Double> {
 	 * minimumn value below which warnings will be issued.
 	 *
 	 * @return                The min value
-	 * @exception  Exception  Description of the Exception
 	 */
 	public Double getWarningMax() {
 		if ( warningConstraint != null ) return warningConstraint.getMax();

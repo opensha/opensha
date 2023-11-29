@@ -82,7 +82,7 @@ import org.opensha.sha.imr.mod.impl.stewartSiteSpecific.StewartAfshariGoulet2017
  * @author Peter Powers
  * @version $Id: AttenRelRef.java 11385 2016-08-24 22:40:54Z kmilner $
  */
-public enum AttenRelRef implements Named, Supplier<ScalarIMR> {
+public enum AttenRelRef implements AttenRelSupplier {
 
 	// PRODUCTION
 	

@@ -173,9 +173,8 @@ public class TranslatedWarningDoubleParameter extends WarningDoubleParameter {
      *  on the underlying Parameter data if the translate flag is set.
      *
      * @return                The reverse translated min value.
-     * @exception  Exception  Thrown if any mathmatical exceptions occur.
      */
-    public Double getWarningMin() throws Exception {
+    public Double getWarningMin() {
         Double min = (Double)param.getWarningMin();
         if( min  == null || !translate ) return min;
         else return new Double( trans.reverse( min.doubleValue() ) );
