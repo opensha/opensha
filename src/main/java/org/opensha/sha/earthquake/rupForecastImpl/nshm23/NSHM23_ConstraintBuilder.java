@@ -8,10 +8,12 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.DoubleUnaryOperator;
 import java.util.stream.Collectors;
 
 import org.apache.commons.math3.stat.StatUtils;
+import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.IntegerSampler;
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -87,6 +89,7 @@ public class NSHM23_ConstraintBuilder {
 	private List<InversionConstraint> constraints;
 	private FaultSystemRupSet rupSet;
 	private double supraBVal;
+	private double[] sectSpecificBValues;
 	private boolean applyDefModelUncertaintiesToNucl;
 	private boolean addSectCountUncertaintiesToMFD;
 	public static boolean ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT = true;
@@ -116,15 +119,39 @@ public class NSHM23_ConstraintBuilder {
 	private NSHM23_PaleoUncertainties paleoUncert;
 	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB) {
-		this(rupSet, supraSeisB, SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT,
+		this(rupSet, supraSeisB, null);
+	}
+	
+	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double[] sectSpecificBValues) {
+		this(rupSet, momentWeightedAverage(rupSet, sectSpecificBValues), sectSpecificBValues);
+	}
+	
+	static double momentWeightedAverage(FaultSystemRupSet rupSet, double[] sectSpecificBValues) {
+		double sumMoment = 0d;
+		double sumProduct = 0d;
+		Preconditions.checkState(sectSpecificBValues.length == rupSet.getNumSections());
+		for (int s=0; s<sectSpecificBValues.length; s++) {
+			double moment = FaultMomentCalc.getMoment(rupSet.getAreaForSection(s), rupSet.getSlipRateForSection(s));
+			sumMoment += moment;
+			sumProduct += moment*sectSpecificBValues[s];
+		}
+		if (sumMoment == 0d)
+			return StatUtils.mean(sectSpecificBValues);
+		return sumProduct/sumMoment;
+	}
+	
+	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB, double[] sectSpecificBValues) {
+		this(rupSet, supraSeisB, sectSpecificBValues, SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT,
 				SupraSeisBValInversionTargetMFDs.ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT, ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT);
 	}
 	
-	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraBVal,
+	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraBVal, double[] sectSpecificBValues,
 			boolean applyDefModelUncertaintiesToNucl, boolean addSectCountUncertaintiesToMFD,
 			boolean adjustForIncompatibleData) {
 		this.rupSet = rupSet;
+		Preconditions.checkState(Double.isFinite(supraBVal));
 		this.supraBVal = supraBVal;
+		this.sectSpecificBValues = sectSpecificBValues;
 		this.applyDefModelUncertaintiesToNucl = applyDefModelUncertaintiesToNucl;
 		this.addSectCountUncertaintiesToMFD = addSectCountUncertaintiesToMFD;
 		this.adjustForIncompatibleData = adjustForIncompatibleData;
@@ -269,7 +296,7 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public SupraSeisBValInversionTargetMFDs getTargetMFDs() {
-		return getTargetMFDs(supraBVal);
+		return getTargetMFDs(supraBVal, sectSpecificBValues);
 	}
 	
 	private SupraSeisBValInversionTargetMFDs targetCache;
@@ -285,15 +312,19 @@ public class NSHM23_ConstraintBuilder {
 		this.externalTargetMFDs = externalTargetMFDs;
 	}
 	
-	private SupraSeisBValInversionTargetMFDs getTargetMFDs(double supraBVal) {
+	private SupraSeisBValInversionTargetMFDs getTargetMFDs(double supraBVal, double[] sectSpecificBValues) {
 		if (externalTargetMFDs != null)
 			// always return external version if set
 			return externalTargetMFDs;
-		if (targetCache != null && targetCache.getSupraSeisBValue() == supraBVal)
+		if (targetCache != null && targetCache.getSupraSeisBValue() == supraBVal
+				&& Objects.equals(targetCache.getSectSpecificBValues(), sectSpecificBValues))
 			return targetCache;
 		
-		SupraSeisBValInversionTargetMFDs.Builder builder = new SupraSeisBValInversionTargetMFDs.Builder(
-				rupSet, supraBVal);
+		SupraSeisBValInversionTargetMFDs.Builder builder;
+		if (sectSpecificBValues == null)
+			builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, supraBVal);
+		else
+			builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, sectSpecificBValues);
 		builder.applyDefModelUncertainties(applyDefModelUncertaintiesToNucl);
 		builder.magDepDefaultRelStdDev(magDepRelStdDev);
 		builder.addSectCountUncertainties(addSectCountUncertaintiesToMFD);
@@ -337,7 +368,7 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public NSHM23_ConstraintBuilder supraBValMFDs() {
-		InversionTargetMFDs target = getTargetMFDs(supraBVal);
+		InversionTargetMFDs target = getTargetMFDs(supraBVal, sectSpecificBValues);
 		
 		List<? extends IncrementalMagFreqDist> origMFDs = target.getMFD_Constraints();
 		List<UncertainIncrMagFreqDist> uncertainMFDs = new ArrayList<>();
@@ -360,7 +391,7 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public NSHM23_ConstraintBuilder sectSupraRates() {
-		SupraSeisBValInversionTargetMFDs target = getTargetMFDs(supraBVal);
+		SupraSeisBValInversionTargetMFDs target = getTargetMFDs(supraBVal, sectSpecificBValues);
 		
 		double[] targetRates = new double[rupSet.getNumSections()];
 		double[] targetRateStdDevs = new double[rupSet.getNumSections()];
@@ -383,7 +414,7 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public NSHM23_ConstraintBuilder sectSupraNuclMFDs() {
-		SupraSeisBValInversionTargetMFDs target = getTargetMFDs(supraBVal);
+		SupraSeisBValInversionTargetMFDs target = getTargetMFDs(supraBVal, sectSpecificBValues);
 		
 		List<UncertainIncrMagFreqDist> sectSupraMFDs = target.getOnFaultSupraSeisNucleationMFDs();
 		
@@ -727,7 +758,8 @@ public class NSHM23_ConstraintBuilder {
 	
 	public NSHM23_ConstraintBuilder testFlipBVals(FaultSystemSolution prevSol, double targetBVal) {
 		Preconditions.checkState(rupSet.isEquivalentTo(prevSol.getRupSet()));
-		SupraSeisBValInversionTargetMFDs targetMFDs = getTargetMFDs(targetBVal);
+		Preconditions.checkState(sectSpecificBValues == null);
+		SupraSeisBValInversionTargetMFDs targetMFDs = getTargetMFDs(targetBVal, null);
 		
 		List<UncertainIncrMagFreqDist> origSupraNuclMFDs = targetMFDs.getOnFaultSupraSeisNucleationMFDs();
 		
@@ -1094,7 +1126,7 @@ public class NSHM23_ConstraintBuilder {
 	}
 	
 	public NSHM23_ConstraintBuilder parkfieldHackSectSupraRates(double parkfieldRelStdDev) {
-		SupraSeisBValInversionTargetMFDs target = getTargetMFDs(supraBVal);
+		SupraSeisBValInversionTargetMFDs target = getTargetMFDs(supraBVal, sectSpecificBValues);
 		
 		double[] targetRates = new double[rupSet.getNumSections()];
 		double[] targetRateStdDevs = new double[rupSet.getNumSections()];

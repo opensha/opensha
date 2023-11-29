@@ -180,6 +180,7 @@ public class RSQSimStateTransitionFileReader {
 		byte[] doubleRecordBuffer = new byte[8];
 		
 		Table<TransVersion, ByteOrder, Boolean> testResults = HashBasedTable.create();
+		Table<TransVersion, ByteOrder, Integer> testFailPatches = HashBasedTable.create();
 		
 		for (TransVersion testVersion : testVersions) {
 			for (ByteOrder testOrder : testOrders) {
@@ -231,6 +232,8 @@ public class RSQSimStateTransitionFileReader {
 					// IDs in this file are 0-based, add 1
 					int patchID = intRecord.get(0)+1;
 					valid = RSQSimFileReader.isValidPatchID(patchID, elements);
+					if (!valid)
+						testFailPatches.put(testVersion, testOrder, patchID);
 					
 					if (D && i < 5)
 						System.out.println(i+". p="+patchID+"\tt="+absTime);
@@ -265,6 +268,10 @@ public class RSQSimStateTransitionFileReader {
 			// debug
 			System.out.println("Failed to detect! Debugging, firstPatch="+elements.get(0).getID()
 					+", lastPatch="+elements.get(elements.size()-1).getID());
+			System.out.println("Failed patch IDs for each configuration:");
+			for (TransVersion testVersion : testVersions)
+				for (ByteOrder testOrder : testOrders)
+					System.out.println(testVersion+", "+testOrder+":\t"+testFailPatches.get(testVersion, testOrder));
 			long[] debugPositions = { 0l, 8l, 12l, 16l, 20l, 21l };
 			for (ByteOrder testOrder : testOrders) {
 				System.out.println("Debugging detection with "+testOrder);
@@ -324,7 +331,16 @@ public class RSQSimStateTransitionFileReader {
 		return version;
 	}
 	
-	private synchronized RSQSimStateTime[] read(long index, int num) throws IOException {
+	/**
+	 * This reads the given number of transitions starting at the given index.  This is a raw read and should generally
+	 * be only used for debugging purposes.
+	 * 
+	 * @param index
+	 * @param num
+	 * @return
+	 * @throws IOException
+	 */
+	public synchronized RSQSimStateTime[] read(long index, int num) throws IOException {
 //		System.out.println("index: "+index);
 		Preconditions.checkState(index >= 0, "Bad index: %s", index);
 		long seek = index*bytesPerRecord;
@@ -498,6 +514,7 @@ public class RSQSimStateTransitionFileReader {
 				System.out.println((startIndex+i)+":\t"+time+"\t"+relTime+"\t"+event
 						+"\t"+patch+"\t"+stateInt+"\t"+vel);
 			} else {
+				raFile.close();
 				throw new IllegalStateException("Unsupported transition version: "+version);
 			}
 		}

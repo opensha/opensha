@@ -652,6 +652,14 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			double[] rupAreas,
 			double[] rupLengths) {
 		Preconditions.checkNotNull(faultSectionData, "Fault Section Data cannot be null");
+		int numSects = faultSectionData.size();
+		for (int s=0; s<numSects; s++) {
+			FaultSection sect = faultSectionData.get(s);
+			Preconditions.checkNotNull(sect, "Section %s is null", s);
+			Preconditions.checkState(sect.getSectionId() == s,
+					"Section indexes and IDs must match. Instead, section %s has ID %s with name: %s",
+					s, sect.getSectionId(), sect.getSectionName());
+		}
 		this.faultSectionData = faultSectionData;
 		Preconditions.checkNotNull(faultSectionData, "Magnitudes cannot be null");
 		this.mags = mags;
@@ -672,6 +680,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		this.rupLengths = rupLengths;
 		
 		Preconditions.checkArgument(sectionForRups.size() == numRups, "array sizes inconsistent!");
+		for (int r=0; r<numRups; r++) {
+			for (int s : sectionForRups.get(r)) {
+				Preconditions.checkState(s >= 0 && s < numSects,
+						"Bad sectIndex=%s in sectionForRups for rupIndex=%s", s, r);
+			}
+		}
 		this.sectionForRups = sectionForRups;
 		
 		// add default model implementations, but only if not already set
@@ -1206,8 +1220,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				if (showProgress) {
 					p = new CalcProgressBar("Calculating Ruptures for each Section", "Calculating Ruptures for each Section");
 				}
-				ArrayList<List<Integer>> rupturesForSectionCache = new ArrayList<List<Integer>>();
-				for (int secID=0; secID<getNumSections(); secID++)
+				int numSects = getNumSections();
+				ArrayList<List<Integer>> rupturesForSectionCache = new ArrayList<List<Integer>>(numSects);
+				for (int secID=0; secID<numSects; secID++)
 					rupturesForSectionCache.add(new ArrayList<Integer>());
 
 				int numRups = getNumRuptures();
@@ -1247,27 +1262,29 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				if (showProgress) {
 					p = new CalcProgressBar("Calculating Ruptures for each Parent Section", "Calculating Ruptures for each Parent Section");
 				}
-				// note this assumes that sections are in order
 				Map<Integer, List<Integer>> rupturesForParentSectionCache = Maps.newConcurrentMap();
 
 				int numRups = getNumRuptures();
 				for (int rupID=0; rupID<numRups; rupID++) {
 					if (p != null) p.updateProgress(rupID, numRups);
-					HashSet<Integer> parents = new HashSet<Integer>();
+					int prevParent = -1;
 					for (int secID : getSectionsIndicesForRup(rupID)) {
 						int parent = getFaultSectionData(secID).getParentSectionId();
-						if (parent < 0)
+						if (parent < 0 || parent == prevParent)
+							// no parent, or the same as the previous section
 							continue;
-						if (!parents.contains(parent))
-							parents.add(parent);
-					}
-					for (int parent : parents) {
+						// potentially new parent
 						List<Integer> rupsForParent = rupturesForParentSectionCache.get(parent);
 						if (rupsForParent == null) {
 							rupsForParent = new ArrayList<Integer>();
 							rupturesForParentSectionCache.put(parent, rupsForParent);
 						}
-						rupsForParent.add(rupID);
+						// add this rupture, but make sure we haven't already added this rupture (possible if the
+						// rupture jumps back and forth between parents). if we have already added it, the last item in
+						// the list will be this rupture
+						if (rupsForParent.isEmpty() || rupsForParent.get(rupsForParent.size()-1) != rupID)
+							rupsForParent.add(rupID);
+						prevParent = parent;
 					}
 				}
 

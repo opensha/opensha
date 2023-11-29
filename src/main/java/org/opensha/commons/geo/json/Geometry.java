@@ -294,7 +294,7 @@ public class Geometry {
 		return loc.getDepth() != 0d;
 	}
 	
-	public static class GeometryAdapter extends TypeAdapter<Geometry> {
+	public static class GeometryAdapter extends AbstractGeoJSON_TypeAdapter<Geometry> {
 		
 		private DepthSerializationType depthType;
 		
@@ -386,13 +386,21 @@ public class Geometry {
 			}
 			in.beginObject();
 			
-			GeoJSON_Type type = null;
+			Geometry geometry = innerReadAsType(in, null);
+			
+			in.endObject();
+			return geometry;
+		}
+
+		@Override
+		public Geometry innerReadAsType(JsonReader in, GeoJSON_Type type) throws IOException {
 			Geometry geometry = null;
 			Coordinates coords = null;
 			
 			while (in.hasNext()) {
 				switch (in.nextName()) {
 				case "type":
+					Preconditions.checkState(type == null, "Type already declared");
 					type = GeoJSON_Type.valueOf(in.nextString());
 					Preconditions.checkState(GeoJSON_Type.GEOM_TYPES.contains(type),
 							"Not a valid geometry type: %s", type.name());
@@ -433,6 +441,7 @@ public class Geometry {
 				Preconditions.checkState(type == GeoJSON_Type.GeometryCollection,
 						"Only GeometryCollections should have a geometries array");
 			} else if (type == GeoJSON_Type.GeometryCollection) {
+				// empty geometry collection
 				Preconditions.checkState(coords == null, "GeometryCollection should not supply coordinates array");
 				geometry = new GeometryCollection(new ArrayList<>());
 			} else {
@@ -486,8 +495,6 @@ public class Geometry {
 				}
 			}
 			Preconditions.checkNotNull(geometry);
-			
-			in.endObject();
 			return geometry;
 		}
 		

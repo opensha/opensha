@@ -156,7 +156,7 @@ public class Jump {
 	public static class UniqueDistJump extends Jump {
 		
 		public UniqueDistJump(Jump jump) {
-			this(jump.fromSection, jump.fromCluster, jump.toSection, jump.toCluster, jump.distance);;
+			this(jump.fromSection, jump.fromCluster, jump.toSection, jump.toCluster, jump.distance);
 		}
 
 		public UniqueDistJump(FaultSection fromSection, FaultSubsectionCluster fromCluster, FaultSection toSection,

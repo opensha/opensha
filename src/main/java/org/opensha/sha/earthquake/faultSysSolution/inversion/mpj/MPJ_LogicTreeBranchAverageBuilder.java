@@ -33,6 +33,7 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.hazard.LogicTreeCurveAverager;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchAverageableModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
@@ -318,7 +319,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 			for (int l=0; l<levelNodesUsed.size(); l++) {
 				List<LogicTreeNode> levelNodes = levelNodesUsed.get(l);
 				
-				if (levelNodes.size() < 2)
+				if (levelNodes.size() < 2 || LogicTreeCurveAverager.shouldSkipLevel(tree.getLevels().get(l), levelNodes.size()))
 					continue;
 				
 				LogicTreeLevel<?> level = tree.getLevels().get(l);
@@ -528,7 +529,9 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 		} else {
 			int startLevel = curFixed.length == 0 ? 0 : Ints.max(curFixed)+1;
 			for (int l=startLevel; l<levelNodesUsed.size(); l++) {
-				if (levelNodesUsed.get(l).size() < 2)
+				int numNodes = levelNodesUsed.get(l).size();
+				LogicTreeLevel<?> level = tree.getLevels().get(l);
+				if (numNodes < 2 || LogicTreeCurveAverager.shouldSkipLevel(level, numNodes))
 					continue;
 				int[] newFixed = Arrays.copyOf(curFixed, curFixed.length+1);
 				newFixed[newFixed.length-1] = l;

@@ -1,14 +1,9 @@
 package org.opensha.sha.faultSurface;
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 
 import org.dom4j.Element;
-import org.opensha.commons.geo.BorderType;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
@@ -25,10 +20,6 @@ import org.opensha.commons.util.FaultUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 
 import com.google.common.base.Preconditions;
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
-import com.google.gson.stream.JsonWriter;
 
 public final class GeoJSONFaultSection implements FaultSection {
 	
@@ -51,9 +42,12 @@ public final class GeoJSONFaultSection implements FaultSection {
 	private int parentSectionId = -1;
 	private long dateOfLastEventMillis = Long.MIN_VALUE;
 	private int hashCode;
+	private FaultTrace lowerTrace; // if supplied, will use an approximately gridded surface
 	
 	// helpers
 	private StirlingSurfaceCache stirlingCache;
+	// for faults with lower traces
+	private ApproxEvenlyGriddedSurfaceCache approxGriddedCache;
 	
 	// core property names
 	public static final String FAULT_ID = "FaultID";
@@ -75,6 +69,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public static final String SLIP_STD_DEV = "SlipRateStdDev";
 	public static final String CONNECTOR = "Connector";
 	public static final String CREEP_RATE = "CreepRate";
+	public static final String LOWER_TRACE = "LowerTrace";
 
 	private GeoJSONFaultSection(Feature feature) {
 		Preconditions.checkNotNull(feature, "feature cannot be null");
@@ -130,8 +125,33 @@ public final class GeoJSONFaultSection implements FaultSection {
 		Preconditions.checkNotNull(trace,
 				"Didn't find a FaultTrace in the supplied Feature. LineString and MultiLineString are supported");
 		
-		if (!Double.isFinite(dipDirection))
-			setDipDirection((float)(trace.getAveStrike()+90d));
+		Geometry lowerTraceGeom = properties.get(LOWER_TRACE, null);
+		if (lowerTraceGeom != null) {
+			LocationList line;
+			if (lowerTraceGeom instanceof LineString) {
+				line = ((LineString)lowerTraceGeom).line;
+			} else if (lowerTraceGeom instanceof MultiLineString) {
+				MultiLineString multiLine = (MultiLineString)lowerTraceGeom;
+				Preconditions.checkState(multiLine.lines.size() == 1,
+						"Lower trace MultiLineString only supported if exactly 1 line");
+				line = multiLine.lines.get(0);
+			} else {
+				throw new IllegalStateException("Unsupported lower trace type: "+lowerTraceGeom.type);
+			}
+			lowerTrace = new FaultTrace(name);
+			lowerTrace.addAll(line);
+		}
+		
+		if (!Double.isFinite(dipDirection)) {
+			if (lowerTrace == null) {
+				// use upper trace
+				setDipDirection((float)(trace.getAveStrike()+90d));
+			} else {
+				// calculate between traces
+				ApproxEvenlyGriddedSurface surf = getApproxGriddedSurface(1d, false);
+				setDipDirection((float)surf.getAveDipDirection());
+			}
+		}
 
 		cacheCommonValues();
 	}
@@ -300,6 +320,64 @@ public final class GeoJSONFaultSection implements FaultSection {
 	
 	public static Feature toFeature(FaultSection sect) {
 		return new GeoJSONFaultSection(sect).toFeature();
+	}
+	
+	/**
+	 * Reads in a fault section GeoJSON Feature from nshmp-haz, converting their property names to ours
+	 * 
+	 * @param feature
+	 * @return
+	 */
+	public static GeoJSONFaultSection fromNSHMP_HazFeature(Feature feature) {
+		FeatureProperties origProps = feature.properties;
+		FeatureProperties mappedProps = new FeatureProperties();
+		
+		Preconditions.checkState(feature.id != null && feature.id instanceof Number);
+		int id = ((Number)feature.id).intValue();
+		
+		// required
+		String name = origProps.require("name", String.class);
+		mappedProps.set(FAULT_NAME, name);
+		
+		Geometry geometry = feature.geometry;
+		if (geometry instanceof MultiLineString && ((MultiLineString)geometry).lines.size() == 2) {
+			// subduction interface, convert to simple fault data
+			MultiLineString multiGeom = (MultiLineString)geometry;
+			LocationList upperTrace = multiGeom.lines.get(0);
+			FaultTrace upperAsFaultTrace = new FaultTrace(null);
+			upperAsFaultTrace.addAll(upperTrace);
+			LocationList lowerTrace = multiGeom.lines.get(1);
+			FaultTrace lowerAsFaultTrace = new FaultTrace(null);
+			lowerAsFaultTrace.addAll(lowerTrace);
+			ApproxEvenlyGriddedSurface approxSurf = new ApproxEvenlyGriddedSurface(
+					upperAsFaultTrace, lowerAsFaultTrace, 1d);
+			
+			mappedProps.set(DIP, approxSurf.getAveDip());
+			if (origProps.containsKey("rake"))
+				mappedProps.set(RAKE, origProps.require("rake", Double.class));
+			mappedProps.set(UPPER_DEPTH, approxSurf.getAveRupTopDepth());
+			mappedProps.set(LOW_DEPTH, approxSurf.getAveRupBottomDepth());
+			mappedProps.set(DIP_DIR, approxSurf.getAveDipDirection());
+			
+			// convert geometry to simple line string with only upper trace
+			geometry = new LineString(upperTrace);
+			
+			// set lower trace as separate property
+			mappedProps.put(LOWER_TRACE, new LineString(lowerTrace));
+		} else {
+			mappedProps.set(DIP, origProps.require("dip", Double.class));
+			mappedProps.set(RAKE, origProps.require("rake", Double.class));
+			mappedProps.set(UPPER_DEPTH, origProps.require("upper-depth", Double.class));
+			mappedProps.set(LOW_DEPTH, origProps.require("lower-depth", Double.class));
+		}
+		
+		// optional ones to carry forward
+		if (origProps.containsKey("state"))
+			mappedProps.set("PrimState", origProps.require("state", String.class));
+		if (origProps.containsKey("references"))
+			mappedProps.set("references", origProps.get("references"));
+		
+		return new GeoJSONFaultSection(new Feature(id, geometry, mappedProps));
 	}
 	
 	public Feature toFeature() {
@@ -525,14 +603,16 @@ public final class GeoJSONFaultSection implements FaultSection {
 	}
 
 	@Override
-	public StirlingGriddedSurface getFaultSurface(double gridSpacing) {
-		return getStirlingGriddedSurface(gridSpacing, true, true);
+	public RuptureSurface getFaultSurface(double gridSpacing) {
+		return getFaultSurface(gridSpacing, false, true);
 	}
 
 	@Override
-	public StirlingGriddedSurface getFaultSurface(
+	public RuptureSurface getFaultSurface(
 			double gridSpacing, boolean preserveGridSpacingExactly,
 			boolean aseisReducesArea) {
+		if (lowerTrace != null)
+			return getApproxGriddedSurface(gridSpacing, aseisReducesArea);
 		return getStirlingGriddedSurface(gridSpacing, preserveGridSpacingExactly, aseisReducesArea);
 	}
 	
@@ -566,6 +646,20 @@ public final class GeoJSONFaultSection implements FaultSection {
 		if (stirlingCache == null)
 			stirlingCache = new StirlingSurfaceCache(this);
 		return stirlingCache.getStirlingGriddedSurface(gridSpacing, preserveGridSpacingExactly, aseisReducesArea);
+	}
+	
+	/**
+	 * This returns a ApproxEvenlyGriddedSurface with the specified grid spacing, where aseismicSlipFactor
+	 * is applied as a reduction of down-dip-width (an increase of the upper seis depth).
+	 * @param gridSpacing
+	 * @return
+	 */
+	public synchronized ApproxEvenlyGriddedSurface getApproxGriddedSurface(
+			double gridSpacing,
+			boolean aseisReducesArea) {
+		if (approxGriddedCache == null)
+			approxGriddedCache = new ApproxEvenlyGriddedSurfaceCache(this, lowerTrace);
+		return approxGriddedCache.getStirlingGriddedSurface(gridSpacing, aseisReducesArea);
 	}
 
 	@Override

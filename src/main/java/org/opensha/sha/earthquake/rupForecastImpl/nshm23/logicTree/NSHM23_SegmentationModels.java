@@ -72,11 +72,11 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	LOW("Low Segmentation", "LowSeg",
 			0.2, // weight
 			4d, // R0
-			3d) { // shift
+			3d,  // shift
+			0.75, // creeping
+			0.75) { // SAF
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			double creepingProb = 0.75;
-			double wasatchProb = 0.75;
 			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false);
 		}
 
@@ -95,11 +95,11 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	MID("Middle Segmentation", "MidSeg",
 			0.3, // weight
 			3d, // R0
-			2d) { // shift
+			2d, // shift
+			0.5, // creeping
+			0.5) { // SAF
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			double creepingProb =  0.5d;
-			double wasatchProb = 0.5;
 			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false);
 		}
 
@@ -118,11 +118,11 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	HIGH("High Segmentation", "HighSeg",
 			0.3, // weight
 			2d, // R0
-			1d) { // shift
+			1d, // shift
+			0.25, // creeping
+			0.25) { // SAF
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-			double creepingProb = 0.25;
-			double wasatchProb = 0.25;
 			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, false);
 		}
 
@@ -142,12 +142,12 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	CLASSIC("Classic", "Classic",
 			0.1, // weight
 			2d, // R0
-			1d) { // shift
+			1d, // shift
+			0d, // creeping
+			0d) { // SAF
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			Preconditions.checkNotNull(rupSet, "Can only build classic segmentation model when we have a rupture set");
-			double creepingProb = 0d;
-			double wasatchProb = 0d;
 			return buildModel(rupSet, shawR0, shawShift, wasatchProb, creepingProb, Double.NaN, true);
 		}
 
@@ -162,7 +162,9 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	CLASSIC_FULL("Classic Full Section", "FullClassic",
 			0d, // weight
 			2d, // R0
-			1d) { // shift
+			1d, // shift
+			0d, // creeping
+			0d) { // SAF
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			return CLASSIC.getModel(rupSet, branch);
@@ -176,7 +178,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	/**
 	 * Weighted average of all segmentation branches
 	 */
-	AVERAGE("NSHM23 Average Segmentation", "AvgSeg", 0.0d) {
+	AVERAGE("NSHM23 Average Segmentation", "AvgSeg", 0.0d, Double.NaN, Double.NaN, 0.475, 0.475) {
 		@Override
 		public JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 			List<JumpProbabilityCalc> models = new ArrayList<>();
@@ -257,20 +259,26 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 
 	protected double shawR0;
 	protected double shawShift;
+	
+	protected double creepingProb;
+	protected double wasatchProb;
 
 	public static boolean LIMIT_MAX_LENGTHS = true;
 	public static double SINGLE_MAX_LENGTH_LIMIT = Double.NaN;
 
 	private NSHM23_SegmentationModels(String name, String shortName, double weight) {
-		this(name, shortName, weight, Double.NaN, Double.NaN);
+		this(name, shortName, weight, Double.NaN, Double.NaN, 1d, 1d);
 	}
 
-	private NSHM23_SegmentationModels(String name, String shortName, double weight, double shawR0, double shawShift) {
+	private NSHM23_SegmentationModels(String name, String shortName, double weight,
+			double shawR0, double shawShift, double creepingProb, double wasatchProb) {
 		this.name = name;
 		this.shortName = shortName;
 		this.weight = weight;
 		this.shawR0 = shawR0;
 		this.shawShift = shawShift;
+		this.creepingProb = creepingProb;
+		this.wasatchProb = wasatchProb;
 	}
 	
 	public abstract JumpProbabilityCalc getModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch);
@@ -344,6 +352,14 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	 */
 	public double getShawShift() {
 		return shawShift;
+	}
+	
+	public double getCreepingSectPassthrough() {
+		return creepingProb;
+	}
+	
+	public double getWasatchPassthrough() {
+		return wasatchProb;
 	}
 
 	@Override

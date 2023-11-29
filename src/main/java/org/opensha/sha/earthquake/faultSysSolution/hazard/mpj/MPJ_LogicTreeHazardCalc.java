@@ -505,7 +505,14 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		Preconditions.checkState(myAverageDir.exists() || myAverageDir.mkdir());
 		if (runningMeanCurves != null) {
 			for (int p=0; p<periods.length; p++) {
-				debug("Caching mean curves to "+myAverageDir.getAbsolutePath());
+				String imt;
+				if (periods[p] == -1d)
+					imt = "PGV";
+				else if (periods[p] == 0d)
+					imt = "PGA";
+				else
+					imt = (float)periods[p]+"s";
+				debug("Caching "+imt+" mean curves to "+myAverageDir.getAbsolutePath());
 				runningMeanCurves[p].rawCacheToDir(myAverageDir, periods[p]);
 			}
 		}

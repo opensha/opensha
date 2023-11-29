@@ -54,7 +54,10 @@ public class ClassicModelInversionSolver extends ClusterSpecificInversionSolver 
 	private int parkfieldID;
 	
 	public ClassicModelInversionSolver(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		analytical = new AnalyticalSingleFaultInversionSolver(branch.requireValue(SupraSeisBValues.class).bValue);
+		if (branch.hasValue(SupraSeisBValues.class))
+			analytical = new AnalyticalSingleFaultInversionSolver(branch.requireValue(SupraSeisBValues.class).bValue);
+		else
+			analytical = new AnalyticalSingleFaultInversionSolver();
 		rupProbCalc = NSHM23_InvConfigFactory.getExclusionModel(rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
 		
 		parkfieldID = NSHM23_ConstraintBuilder.findParkfieldSection(rupSet);

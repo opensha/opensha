@@ -73,6 +73,7 @@ public class GeographicMapMaker {
 	protected boolean writePDFs = true;
 	protected boolean writeGeoJSON = true;
 	protected boolean reverseSort = false;
+	protected Boolean absoluteSort = null;
 	protected int widthDefault = 800;
 	
 	/*
@@ -186,6 +187,11 @@ public class GeographicMapMaker {
 		this(region, PoliticalBoundariesData.loadDefaultOutlines(region));
 	}
 	
+	public GeographicMapMaker(List<? extends FaultSection> sects) {
+		this(buildBufferedRegion(sects));
+		setFaultSections(sects);
+	}
+	
 	public GeographicMapMaker(Region region, XY_DataSet[] politicalBoundaries) {
 		this.region = region;
 		this.politicalBoundaries = politicalBoundaries;
@@ -195,16 +201,29 @@ public class GeographicMapMaker {
 		MinMaxAveTracker latTrack = new MinMaxAveTracker();
 		MinMaxAveTracker lonTrack = new MinMaxAveTracker();
 		for (FaultSection sect : sects) {
-			for (Location loc : sect.getFaultTrace()) {
+			for (Location loc : bufferPerimLocsForSect(sect)) {
 				latTrack.addValue(loc.getLatitude());
 				lonTrack.addValue(loc.getLongitude());
 			}
 		}
-		double minLat = Math.floor(latTrack.getMin());
-		double maxLat = Math.ceil(latTrack.getMax());
-		double minLon = Math.floor(lonTrack.getMin());
-		double maxLon = Math.ceil(lonTrack.getMax());
+		double minLat = Math.floor(latTrack.getMin()-0.05);
+		double maxLat = Math.ceil(latTrack.getMax()+0.05);
+		double minLon = Math.floor(lonTrack.getMin()-0.05);
+		double maxLon = Math.ceil(lonTrack.getMax()+0.05);
 		return new Region(new Location(minLat, minLon), new Location(maxLat, maxLon));
+	}
+	
+	private static LocationList bufferPerimLocsForSect(FaultSection sect) {
+		RuptureSurface surf = sect.getFaultSurface(1d);
+		if (surf != null) {
+			try {
+				return surf.getPerimeter();
+			} catch (Exception e) {}
+			try {
+				return surf.getEvenlyDiscritizedPerimeter();
+			} catch (Exception e) {}
+		}
+		return sect.getFaultTrace();
 	}
 	
 	public static Region buildBufferedRegion(Collection<? extends FaultSection> sects, double buffDistKM, boolean fullPerims) {
@@ -396,6 +415,10 @@ public class GeographicMapMaker {
 	
 	public boolean isReverseSort() {
 		return reverseSort;
+	}
+	
+	public void setAbsoluteSort(boolean absoluteSort) {
+		this.absoluteSort = absoluteSort;
 	}
 	
 	public void plotSectScalars(List<Double> scalars, CPT cpt, String label) {
@@ -720,9 +743,18 @@ public class GeographicMapMaker {
 		protected List<PaintScaleLegend> cptLegend = new ArrayList<>();
 		protected boolean hasLegend = false;
 		
-		private Comparator<ComparablePairing<Double, ?>> comparator;
-		
-		protected Comparator<ComparablePairing<Double, ?>> buildComparator() {
+		protected Comparator<ComparablePairing<Double, ?>> buildComparator(CPT cpt) {
+			boolean absoluteSort;
+			if (GeographicMapMaker.this.absoluteSort != null)
+				// use externally set absolute sort
+				absoluteSort = GeographicMapMaker.this.absoluteSort;
+			else if (cpt != null && cpt.getMinValue() < -0f && cpt.getMaxValue() > 0f
+					&& cpt.getMinValue() == -cpt.getMaxValue()
+					&& (cpt.getName() == null || (!cpt.getName().toLowerCase().contains("rainbow") && !cpt.getName().toLowerCase().contains("max"))))
+				// we're symmetric about zero and not one of the standard rainbows, force absolute centering
+				absoluteSort = true;
+			else
+				absoluteSort = false;
 			return new Comparator<ComparablePairing<Double,?>>() {
 				
 				@Override
@@ -735,6 +767,10 @@ public class GeographicMapMaker {
 						return -1;
 					} else if (d2 == null || Double.isNaN(d2)) {
 						return 1;
+					}
+					if (absoluteSort) {
+						d1 = Math.abs(d1);
+						d2 = Math.abs(d2);
 					}
 					if (reverseSort)
 						return Double.compare(d2, d1);
@@ -941,7 +977,7 @@ public class GeographicMapMaker {
 				List<ComparablePairing<Double, FaultSection>> sortables = new ArrayList<>();
 				for (int s=0; s<sectScalars.length; s++)
 					sortables.add(new ComparablePairing<>(sectScalars[s], sects.get(s)));
-				Collections.sort(sortables, comparator);
+				Collections.sort(sortables, buildComparator(sectScalarCPT));
 				for (ComparablePairing<Double, FaultSection> val : sortables) {
 					float scalar = val.getComparable().floatValue();
 					Color color = sectScalarCPT.getColor(scalar);
@@ -1000,7 +1036,7 @@ public class GeographicMapMaker {
 					List<ComparablePairing<Double, Integer>> sortables = new ArrayList<>();
 					for (int s=0; s<comps.size(); s++)
 						sortables.add(new ComparablePairing<>(comps.get(s), s));
-					Collections.sort(sortables, comparator);
+					Collections.sort(sortables, buildComparator(colors ? sectColorsCPT : sectCharsCPT));
 					sectOrder = new ArrayList<>(sects.size());
 					for (ComparablePairing<Double, Integer> sort : sortables)
 						sectOrder.add(sort.getData());
@@ -1146,7 +1182,7 @@ public class GeographicMapMaker {
 						features.add(new Feature(line, props));
 					}
 				}
-				Collections.sort(sortables, comparator);
+				Collections.sort(sortables, buildComparator(scalarJumpsCPT));
 				for (ComparablePairing<Double, XY_DataSet> val : sortables) {
 					float scalar = val.getComparable().floatValue();
 					Color color = scalarJumpsCPT.getColor(scalar);
@@ -1191,7 +1227,7 @@ public class GeographicMapMaker {
 					if (outlines != null)
 						outlines.set(xy.get(0));
 				}
-				Collections.sort(sortables, comparator);
+				Collections.sort(sortables, buildComparator(scatterScalarCPT));
 				for (ComparablePairing<Double, XY_DataSet> val : sortables) {
 					float scalar = val.getComparable().floatValue();
 					Color color = scatterScalarCPT.getColor(scalar);
@@ -1281,7 +1317,6 @@ public class GeographicMapMaker {
 			
 			cptLegend = new ArrayList<>();
 			hasLegend = false;
-			comparator = buildComparator();
 			
 			plotFirst();
 			

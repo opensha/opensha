@@ -357,6 +357,11 @@ public final class FaultUtils {
 	public static class AngleAverager {
 		double xdir=0; double ydir=0;
 		
+		/**
+		 * 
+		 * @param angle in degrees
+		 * @param weight
+		 */
 		public synchronized void add(double angle, double weight) {
 			xdir+=weight*Math.cos(Math.toRadians(angle));
 			ydir+=weight*Math.sin(Math.toRadians(angle));

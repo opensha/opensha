@@ -7,12 +7,14 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 
 import org.opensha.commons.data.ShortNamed;
 import org.opensha.commons.logicTree.Affects.Affected;
 import org.opensha.commons.logicTree.DoesNotAffect.NotAffected;
 import org.opensha.commons.logicTree.LogicTreeBranch.NodeTypeAdapter;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
+import org.opensha.commons.logicTree.LogicTreeNode.RandomlySampledNode;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 
 import com.google.common.base.Preconditions;
@@ -63,10 +65,15 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	 * <b>
 	 * This is originally designed for use for efficient storage of {@link SolutionLogicTree}'s, but other
 	 * use cases may exist.
+	 * <b>
+	 * The default implementation parses {@link Affects} annotations on the level class.
 	 * 
 	 * @return collection of affected things, or empty collection if none (should never return null)
 	 */
-	public abstract Collection<String> getAffected();
+	public Collection<String> getAffected() {
+		checkParseAnnotations();
+		return Collections.unmodifiableCollection(affected);
+	}
 	
 	/**
 	 * Gets list of things (e.g., a file name or some sort of property key) that are explicitly not affected by
@@ -74,10 +81,115 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	 * <b>
 	 * This is originally designed for use for efficient storage of {@link SolutionLogicTree}'s, but other
 	 * use cases may exist.
+	 * <b>
+	 * The default implementation parses {@link DoesNotAffect} annotations on the level class.
 	 * 
 	 * @return collection of not affected things, or empty collection if none (should never return null)
 	 */
-	public abstract Collection<String> getNotAffected();
+	public Collection<String> getNotAffected() {
+		checkParseAnnotations();
+		return Collections.unmodifiableCollection(notAffected);
+	}
+	
+	private List<String> affected, notAffected;
+	
+	private void checkParseAnnotations() {
+		if (affected == null) {
+			synchronized (this) {
+				if (affected == null) {
+					List<String> affected = new ArrayList<>();
+					List<String> notAffected = new ArrayList<>();
+					
+					Class<? extends E> type = getType();
+					
+					Affected multAffected = type.getAnnotation(Affected.class);
+					if (multAffected != null) {
+						// multiple
+						for (Affects affects : multAffected.value())
+							affected.add(affects.value());
+					} else {
+						// single
+						Affects affects = type.getAnnotation(Affects.class);
+						if (affects != null)
+							affected.add(affects.value());
+					}
+					
+					NotAffected multiNotAffected = type.getAnnotation(NotAffected.class);
+					if (multiNotAffected != null) {
+						// multiple
+						for (DoesNotAffect doesNot : multiNotAffected.value()) {
+							String name = doesNot.value();
+							Preconditions.checkState(!affected.contains(name),
+									"Node type %s annotates '%s' as both affected and not affected!",
+									type.getName(), name);
+							notAffected.add(name);
+						}
+					} else {
+						// single
+						DoesNotAffect doesNot = type.getAnnotation(DoesNotAffect.class);
+						if (doesNot != null) {
+							String name = doesNot.value();
+							Preconditions.checkState(!affected.contains(name),
+									"Node type %s annotates '%s' as both affected and not affected!",
+									type.getName(), name);
+							notAffected.add(name);
+						}
+					}
+					
+//					System.out.println(getName()+" affected:");
+//					for (String name : affected)
+//						System.out.println("\t"+name);
+//					System.out.println(getName()+" unaffected:");
+//					for (String name : notAffected)
+//						System.out.println("\t"+name);
+//					System.out.println();
+					
+					this.notAffected = notAffected;
+					this.affected = affected;
+				}
+			}
+		}
+	}
+	
+	/**
+	 * Sets list of things that are affected/unaffected by this logic tree level. If processAnnotations is true,
+	 * then annotations attached to this enum will be processed first but may be overridden by those passed in.
+	 * If false, only those passed in will be retained.
+	 * 
+	 * @param affected collection of affected things
+	 * @param notAffected collection of not affected things
+	 * @param processAnnotations if true, annotations will be processed first and then these rules will be added
+	 * (passed in rules will supersede if there is any overlap)
+	 */
+	public void setAffected(Collection<String> affected, Collection<String> notAffected, boolean processAnnotations) {
+		Preconditions.checkNotNull(affected);
+		Preconditions.checkNotNull(notAffected);
+		if (processAnnotations) {
+			// make sure we've loaded annotations
+			checkParseAnnotations();
+			
+			// remove any references to those passed in
+			List<String> allNew = new ArrayList<>();
+			if (affected != null)
+				allNew.addAll(affected);
+			if (notAffected != null)
+				allNew.addAll(notAffected);
+			for (String val : allNew) {
+				this.affected.remove(val);
+				this.notAffected.remove(val);
+			}
+			
+			// add those passed in
+			this.affected = new ArrayList<>(this.affected);
+			this.affected.addAll(affected);
+			this.notAffected = new ArrayList<>(this.notAffected);
+			this.notAffected.addAll(notAffected);
+		} else {
+			// override everything with those passed in
+			this.affected = new ArrayList<>(affected);
+			this.notAffected = new ArrayList<>(notAffected);
+		}
+	}
 	
 	public String toString() {
 		return getName();
@@ -95,8 +207,6 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		private String name;
 		private String shortName;
 		private List<FileBackedNode> choices;
-		private List<String> affected;
-		private List<String> notAffected;
 
 		FileBackedLevel(String name, String shortName) {
 			this(name, shortName, new ArrayList<>());
@@ -114,8 +224,6 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			if (choices == null)
 				choices = new ArrayList<>();
 			this.choices = choices;
-			this.affected = new ArrayList<>();
-			this.notAffected = new ArrayList<>();
 		}
 
 		@Override
@@ -182,16 +290,6 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				return false;
 			return true;
 		}
-
-		@Override
-		public Collection<String> getAffected() {
-			return Collections.unmodifiableCollection(affected);
-		}
-
-		@Override
-		public Collection<String> getNotAffected() {
-			return Collections.unmodifiableCollection(notAffected);
-		}
 		
 	}
 
@@ -200,7 +298,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		String shortName;
 		Class<? extends LogicTreeNode> nodeType;
 
-		public AdapterBackedLevel(String name, String shortName, Class<? extends LogicTreeNode>nodeType){
+		public AdapterBackedLevel(String name, String shortName, Class<? extends LogicTreeNode> nodeType) {
 		    this.name = name;
 			this.shortName = shortName;
 			this.nodeType = nodeType;
@@ -225,18 +323,6 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		public List<? extends LogicTreeNode> getNodes() {
 			// TODO why not force child class to implement this method?
 			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public Collection<String> getAffected() {
-			// TODO force child class to implement?
-			return List.of();
-		}
-
-		@Override
-		public Collection<String> getNotAffected() {
-			// TODO force child class to implement?
-			return List.of();
 		}
 
 		@Override
@@ -324,46 +410,6 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			result = prime * result + ((type == null) ? 0 : type.hashCode());
 			return result;
 		}
-		
-		/**
-		 * Sets list of things that are affected/unaffected by this logic tree level. If processAnnotations is true,
-		 * then annotations attached to this enum will be processed first but may be overridden by those passed in.
-		 * If false, only those passed in will be retained.
-		 * 
-		 * @param affected collection of affected things
-		 * @param notAffected collection of not affected things
-		 * @param processAnnotations if true, annotations will be processed first and then these rules will be added
-		 * (passed in rules will supersede if there is any overlap)
-		 */
-		public void setAffected(Collection<String> affected, Collection<String> notAffected, boolean processAnnotations) {
-			Preconditions.checkNotNull(affected);
-			Preconditions.checkNotNull(notAffected);
-			if (processAnnotations) {
-				// make sure we've loaded annotations
-				checkParseAnnotations();
-				
-				// remove any references to those passed in
-				List<String> allNew = new ArrayList<>();
-				if (affected != null)
-					allNew.addAll(affected);
-				if (notAffected != null)
-					allNew.addAll(notAffected);
-				for (String val : allNew) {
-					this.affected.remove(val);
-					this.notAffected.remove(val);
-				}
-				
-				// add those passed in
-				this.affected = new ArrayList<>(this.affected);
-				this.affected.addAll(affected);
-				this.notAffected = new ArrayList<>(this.notAffected);
-				this.notAffected.addAll(notAffected);
-			} else {
-				// override everything with those passed in
-				this.affected = new ArrayList<>(affected);
-				this.notAffected = new ArrayList<>(notAffected);
-			}
-		}
 
 		@Override
 		public boolean equals(Object obj) {
@@ -392,76 +438,66 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			return true;
 		}
 		
-		private List<String> affected, notAffected;
+	}
+	
+	public static abstract class RandomlySampledLevel<E extends RandomlySampledNode> extends LogicTreeLevel<E> {
 		
-		private void checkParseAnnotations() {
-			if (affected == null) {
-				synchronized (this) {
-					if (affected == null) {
-						List<String> affected = new ArrayList<>();
-						List<String> notAffected = new ArrayList<>();
-						
-						Affected multAffected = type.getAnnotation(Affected.class);
-						if (multAffected != null) {
-							// multiple
-							for (Affects affects : multAffected.value())
-								affected.add(affects.value());
-						} else {
-							// single
-							Affects affects = type.getAnnotation(Affects.class);
-							if (affects != null)
-								affected.add(affects.value());
-						}
-						
-						NotAffected multiNotAffected = type.getAnnotation(NotAffected.class);
-						if (multiNotAffected != null) {
-							// multiple
-							for (DoesNotAffect doesNot : multiNotAffected.value()) {
-								String name = doesNot.value();
-								Preconditions.checkState(!affected.contains(name),
-										"EnumBackedLevel type %s annotates '%s' as both affected and not affected!",
-										type.getName(), name);
-								notAffected.add(name);
-							}
-						} else {
-							// single
-							DoesNotAffect doesNot = type.getAnnotation(DoesNotAffect.class);
-							if (doesNot != null) {
-								String name = doesNot.value();
-								Preconditions.checkState(!affected.contains(name),
-										"EnumBackedLevel type %s annotates '%s' as both affected and not affected!",
-										type.getName(), name);
-								notAffected.add(name);
-							}
-						}
-						
-//						System.out.println(getName()+" affected:");
-//						for (String name : affected)
-//							System.out.println("\t"+name);
-//						System.out.println(getName()+" unaffected:");
-//						for (String name : notAffected)
-//							System.out.println("\t"+name);
-//						System.out.println();
-						
-						this.notAffected = notAffected;
-						this.affected = affected;
-					}
-				}
+		private List<? extends E> nodes;
+		
+		public void buildNodes(Random rand, int num) {
+			double weightEach = 1d/(double)num;
+			buildNodes(rand, num, weightEach);
+		}
+		
+		public void buildNodes(Random rand, int num, double weightEach) {
+			List<E> nodes = new ArrayList<>(num);
+			
+			Preconditions.checkState(num >= 1);
+			for (int i=0; i<num; i++)
+				nodes.add(buildNodeInstance(i, rand.nextLong(), weightEach));
+			
+			this.nodes = nodes;
+		}
+		
+		public void buildNodes(List<Long> seeds, double weightEach) {
+			List<E> nodes = new ArrayList<>(seeds.size());
+			
+			Preconditions.checkState(seeds.size() >= 1);
+			for (int i=0; i<seeds.size(); i++)
+				nodes.add(buildNodeInstance(i, seeds.get(i), weightEach));
+			
+			this.nodes = nodes;
+		}
+		
+		@SuppressWarnings("unchecked")
+		public void setNodes(List<? extends LogicTreeNode> nodes) {
+			List<E> cast = new ArrayList<>(nodes.size());
+			for (LogicTreeNode node : nodes) {
+				Preconditions.checkState(node instanceof RandomlySampledNode);
+				Preconditions.checkState(getType().isInstance(node));
+				cast.add((E)node);
 			}
+			this.nodes = cast;
 		}
 
 		@Override
-		public Collection<String> getAffected() {
-			checkParseAnnotations();
-			return Collections.unmodifiableCollection(affected);
-		}
-
-		@Override
-		public Collection<String> getNotAffected() {
-			checkParseAnnotations();
-			return Collections.unmodifiableCollection(notAffected);
+		public List<E> getNodes() {
+			Preconditions.checkNotNull(nodes, "Nodes have not yet been built/set");
+			return Collections.unmodifiableList(nodes);
 		}
 		
+		public abstract E buildNodeInstance(int index, long seed, double weight);
+		
+		@Override
+		public boolean isMember(LogicTreeNode node) {
+			if (!(node instanceof RandomlySampledNode))
+				return false;
+			long seed = ((RandomlySampledNode)node).getSeed();
+			for (E nodeTest : getNodes())
+				if (node.equals(nodeTest) || seed == nodeTest.getSeed())
+					return true;
+			return false;
+		}
 	}
 	
 	public static class Adapter<E extends LogicTreeNode> extends TypeAdapter<LogicTreeLevel<? extends E>> {
@@ -600,6 +636,9 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					constructor.setAccessible(true);
 					
 					level = constructor.newInstance();
+					
+					if (level instanceof RandomlySampledLevel<?>)
+						((RandomlySampledLevel<?>)level).setNodes(nodes);
 				} catch (ClassNotFoundException e) {
 					System.err.println("WARNING: couldn't locate logic tree branch node class '"+className+"', "
 							+ "loading plain/hardcoded version instead");
@@ -614,8 +653,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			if (level == null) {
 				// file-backed
 				FileBackedLevel fileLevel = new FileBackedLevel(name, shortName);
-				fileLevel.affected = affected;
-				fileLevel.notAffected = notAffected;
+				fileLevel.setAffected(affected, notAffected, false);
 				level = (LogicTreeLevel<E>) fileLevel;
 				if (nodes != null) {
 					for (LogicTreeNode node : nodes) {

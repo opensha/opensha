@@ -99,5 +99,26 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 		}
 		
 	}
+	
+	/**
+	 * Randomly sampled logic tree node. Must have a default constructor for deserialization, and be fully initializable
+	 * via that constructor and the {@link RandomlySampledNode#init(String, String, String, double, long)} method.
+	 */
+	public static interface RandomlySampledNode extends LogicTreeNode {
+		
+		public long getSeed();
+		
+		/**
+		 * Initializes this node with the given properties and seed
+		 * 
+		 * @param name
+		 * @param shortName
+		 * @param prefix
+		 * @param weight
+		 * @param seed
+		 */
+		public void init(String name, String shortName, String prefix, double weight, long seed);
+		
+	}
 
 }

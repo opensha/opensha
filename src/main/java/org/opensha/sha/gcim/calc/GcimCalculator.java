@@ -10,6 +10,8 @@ import java.util.Map;
 import org.apache.commons.math3.random.GaussianRandomGenerator;
 import org.apache.commons.math3.random.NormalizedRandomGenerator;
 import org.opensha.commons.calc.GaussianDistCalc;
+import org.opensha.commons.calc.cholesky.CholeskyDecomposition;
+import org.opensha.commons.calc.cholesky.NearPD;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.param.Parameter;

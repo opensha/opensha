@@ -6,7 +6,10 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
@@ -20,6 +23,7 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.DataUtils;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.FaultUtils.AngleAverager;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
@@ -105,6 +109,8 @@ public class BranchAverageSolutionCreator {
 	private LogicTreeRateStatistics.Builder rateStatsBuilder;
 	
 	private List<BranchModuleBuilder<FaultSystemSolution, ?>> solBranchModuleBuilders;
+	
+	private ExecutorService exec;
 	
 	public BranchAverageSolutionCreator(BranchWeightProvider weightProv) {
 		this.weightProv = weightProv;
@@ -209,69 +215,81 @@ public class BranchAverageSolutionCreator {
 		rateStatsBuilder.process(branch, sol.getRateForAllRups());
 		
 		// start work on modules and module builders in parallel, as they often take the longest
-		List<CompletableFuture<Void>> futures = new ArrayList<>();
-		futures.addAll(processBuilders(solBranchModuleBuilders, sol, branch, weight));
-		futures.addAll(processAccumulators(rupSetAvgAccumulators, rupSet, branch, weight));
-		futures.addAll(processAccumulators(solAvgAccumulators, sol, branch, weight));
+		List<Future<?>> futures = new ArrayList<>();
+		if (exec == null) 
+			exec = Executors.newFixedThreadPool(Integer.min(8, FaultSysTools.defaultNumThreads()));
 		
-		for (int i=0; i<combBranch.size(); i++) {
-			LogicTreeNode combVal = combBranch.getValue(i);
-			LogicTreeNode branchVal = branch.getValue(i);
-			if (combVal != null && !combVal.equals(branchVal))
-				combBranch.clearValue(i);
-			int prevCount = nodeCounts.containsKey(branchVal) ? nodeCounts.get(branchVal) : 0;
-			nodeCounts.put(branchVal, prevCount+1);
-		}
-		
-		for (int r=0; r<avgRates.length; r++) {
-			avgRakes.get(r).add(rupSet.getAveRakeForRup(r), weight);
-			double rate = sol.getRateForRup(r);
-			Preconditions.checkState(rate >= 0d, "bad rate: %s", rate);
-			if (rate == 0d)
-				continue;
-			double mag = rupSet.getMagForRup(r);
+		try {
+			futures.addAll(processBuilders(solBranchModuleBuilders, sol, branch, weight));
+			futures.addAll(processAccumulators(rupSetAvgAccumulators, rupSet, branch, weight));
+			futures.addAll(processAccumulators(solAvgAccumulators, sol, branch, weight));
 			
-			if (skipRupturesBelowSectMin && modMinMags != null && modMinMags.isRupBelowSectMinMag(r))
-				// skip
-				continue;
-			avgRates[r] += rate*weight;
-			DiscretizedFunc rupMFD = rupMFDs.get(r);
-			double y = rate*weight;
-			if (rupMFD.hasX(mag))
-				y += rupMFD.getY(mag);
-			rupMFD.set(mag, y);
-		}
-		addWeighted(avgMags, rupSet.getMagForAllRups(), weight);
-		addWeighted(avgAreas, rupSet.getAreaForAllRups(), weight);
-		addWeighted(avgLengths, rupSet.getLengthForAllRups(), weight);
-		
-		for (int s=0; s<rupSet.getNumSections(); s++) {
-			FaultSection sect = rupSet.getFaultSectionData(s);
-			avgSectAseis[s] += sect.getAseismicSlipFactor()*weight;
-			avgSectSlipRates[s] += sect.getOrigAveSlipRate()*weight;
-			avgSectSlipRateStdDevs[s] += sect.getOrigSlipRateStdDev()*weight;
-			avgSectCoupling[s] += sect.getCouplingCoeff()*weight;
-			avgSectRakes.get(s).add(sect.getAveRake(), weight);
-			if (sect instanceof GeoJSONFaultSection) {
-				GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
-				
-				if (avgSectCreep != null) {
-					double creepRate = geoSect.getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
-					if (Double.isFinite(creepRate)) {
-						sectAnyCreeps[s] = true;
-						avgSectCreep[s] += Math.max(0d, creepRate)*weight;
-					}
-				}
-				
-				if (Double.isFinite(avgSectOrigFractUncert[s]))
-					avgSectOrigFractUncert[s] += weight*geoSect.getProperty(
-							NSHM23_DeformationModels.ORIG_FRACT_STD_DEV_PROPERTY_NAME, Double.NaN);
+			for (int i=0; i<combBranch.size(); i++) {
+				LogicTreeNode combVal = combBranch.getValue(i);
+				LogicTreeNode branchVal = branch.getValue(i);
+				if (combVal != null && !combVal.equals(branchVal))
+					combBranch.clearValue(i);
+				int prevCount = nodeCounts.containsKey(branchVal) ? nodeCounts.get(branchVal) : 0;
+				nodeCounts.put(branchVal, prevCount+1);
 			}
+			
+			for (int r=0; r<avgRates.length; r++) {
+				avgRakes.get(r).add(rupSet.getAveRakeForRup(r), weight);
+				double rate = sol.getRateForRup(r);
+				Preconditions.checkState(rate >= 0d, "bad rate: %s", rate);
+				if (rate == 0d)
+					continue;
+				double mag = rupSet.getMagForRup(r);
+				
+				if (skipRupturesBelowSectMin && modMinMags != null && modMinMags.isRupBelowSectMinMag(r))
+					// skip
+					continue;
+				avgRates[r] += rate*weight;
+				DiscretizedFunc rupMFD = rupMFDs.get(r);
+				double y = rate*weight;
+				if (rupMFD.hasX(mag))
+					y += rupMFD.getY(mag);
+				rupMFD.set(mag, y);
+			}
+			addWeighted(avgMags, rupSet.getMagForAllRups(), weight);
+			addWeighted(avgAreas, rupSet.getAreaForAllRups(), weight);
+			addWeighted(avgLengths, rupSet.getLengthForAllRups(), weight);
+			
+			for (int s=0; s<rupSet.getNumSections(); s++) {
+				FaultSection sect = rupSet.getFaultSectionData(s);
+				avgSectAseis[s] += sect.getAseismicSlipFactor()*weight;
+				avgSectSlipRates[s] += sect.getOrigAveSlipRate()*weight;
+				avgSectSlipRateStdDevs[s] += sect.getOrigSlipRateStdDev()*weight;
+				avgSectCoupling[s] += sect.getCouplingCoeff()*weight;
+				avgSectRakes.get(s).add(sect.getAveRake(), weight);
+				if (sect instanceof GeoJSONFaultSection) {
+					GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
+					
+					if (avgSectCreep != null) {
+						double creepRate = geoSect.getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
+						if (Double.isFinite(creepRate)) {
+							sectAnyCreeps[s] = true;
+							avgSectCreep[s] += Math.max(0d, creepRate)*weight;
+						}
+					}
+					
+					if (Double.isFinite(avgSectOrigFractUncert[s]))
+						avgSectOrigFractUncert[s] += weight*geoSect.getProperty(
+								NSHM23_DeformationModels.ORIG_FRACT_STD_DEV_PROPERTY_NAME, Double.NaN);
+				}
+			}
+			
+			// join all of the build futures
+			for (Future<?> future : futures)
+				future.get();
+		} catch (RuntimeException | InterruptedException | ExecutionException e) {
+			if (exec != null) {
+				exec.shutdown();
+				exec = null;
+			}
+			throw ExceptionUtils.asRuntimeException(e);
 		}
 		
-		// join all of the build futures
-		for (CompletableFuture<Void> future : futures)
-			future.join();
 	}
 	
 	private List<AveragingAccumulator<? extends BranchAverageableModule<?>>> initAccumulators(
@@ -291,16 +309,16 @@ public class BranchAverageSolutionCreator {
 		return accumulators;
 	}
 	
-	private List<CompletableFuture<Void>> processAccumulators(List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators, 
+	private List<Future<?>> processAccumulators(List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators, 
 			ModuleContainer<OpenSHA_Module> container, LogicTreeBranch<?> branch, double weight) {
 		List<Runnable> runs = new ArrayList<>(accumulators.size());
 		for (AveragingAccumulator<? extends BranchAverageableModule<?>> accumulator : accumulators)
 			runs.add(new AccumulateRunnable(accumulators, accumulator, container, branch, weight));
 		
-		List<CompletableFuture<Void>> futures = new ArrayList<>(runs.size());
+		List<Future<?>> futures = new ArrayList<>(runs.size());
 		
 		for (Runnable run : runs)
-			futures.add(CompletableFuture.runAsync(run));
+			futures.add(exec.submit(run));
 		
 		return futures;
 	}
@@ -357,16 +375,16 @@ public class BranchAverageSolutionCreator {
 		}
 	}
 	
-	private <E extends ModuleContainer<OpenSHA_Module>> List<CompletableFuture<Void>> processBuilders(List<BranchModuleBuilder<E, ?>> builders, 
+	private <E extends ModuleContainer<OpenSHA_Module>> List<Future<?>> processBuilders(List<BranchModuleBuilder<E, ?>> builders, 
 			E source, LogicTreeBranch<?> branch, double weight) {
 		List<Runnable> runs = new ArrayList<>(builders.size());
 		for (BranchModuleBuilder<E, ?> builder : builders)
 			runs.add(new BuilderRunnable<>(builders, builder, source, branch, weight));
 		
-		List<CompletableFuture<Void>> futures = new ArrayList<>(runs.size());
+		List<Future<?>> futures = new ArrayList<>(runs.size());
 		
 		for (Runnable run : runs)
-			futures.add(CompletableFuture.runAsync(run));
+			futures.add(exec.submit(run));
 		
 		return futures;
 	}
@@ -422,6 +440,11 @@ public class BranchAverageSolutionCreator {
 	public synchronized FaultSystemSolution build() {
 		Preconditions.checkState(!weights.isEmpty(), "No solutions added!");
 		Preconditions.checkState(totWeight > 0, "Total weight is not positive: %s", totWeight);
+		
+		if (exec != null) {
+			exec.shutdown();
+			exec = null;
+		}
 		
 		System.out.println("Common branches: "+combBranch);
 //		if (!combBranch.hasValue(DeformationModels.class))
@@ -546,10 +569,29 @@ public class BranchAverageSolutionCreator {
 		for (int i=0; i<combBranch.size(); i++) {
 			LogicTreeLevel<? extends LogicTreeNode> level = combBranch.getLevel(i);
 			info += level.getName()+":\n";
+			int numIncluded = 0;
+			int numSkipped = 0;
+			int lastSkippedCount = -1;
+			int totalSkippedCount = 0;
+			LogicTreeNode lastSkipped = null;
 			for (LogicTreeNode choice : level.getNodes()) {
 				Integer count = nodeCounts.get(choice);
-				if (count != null)
-					info += "\t"+choice.getName()+" ("+count+")\n";
+				if (count != null) {
+					if (numIncluded < 15) {
+						info += "\t"+choice.getName()+" ("+count+")\n";
+						numIncluded++;
+					} else {
+						lastSkipped = choice;
+						lastSkippedCount = count;
+						totalSkippedCount += count;
+						numSkipped++;
+					}
+				}
+			}
+			if (lastSkipped != null) {
+				if (numSkipped > 1)
+					info += "\t...(skipping "+(numSkipped-1)+" branches used "+(totalSkippedCount-lastSkippedCount)+" times)...\n";
+				info += "\t"+lastSkipped.getName()+" ("+lastSkippedCount+")\n";
 			}
 		}
 		

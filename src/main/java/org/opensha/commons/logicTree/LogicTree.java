@@ -8,6 +8,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
 import java.lang.reflect.Constructor;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -263,9 +264,9 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	
 	/**
 	 * @param numSamples number of random samples
-	 * @param redrawDuplicates if true, each branch will be unique, redrawing a branch if an already sampled branch
-	 * has been selected, otherwise duplicate branches will be given additional weight and the returned branch count
-	 * may be less than the input number of samples
+	 * @param redrawDuplicates if true, each branch will be unique, drawing another branch if an already sampled branch
+	 * has been selected. Branches that are drawn multiple times will be assigned greater weight and the total number
+	 * of branches will exactly match the specified number of samples.
 	 * @return a randomly sampled subset of this logic tree, according to their weights. The returned logic tree will
 	 * use a {@link BranchWeightProvider} instance modified to reflect the even (post-sampling) weights.
 	 */
@@ -275,15 +276,28 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 	
 	/**
 	 * @param numSamples number of random samples
-	 * @param redrawDuplicates if true, each branch will be unique, redrawing a branch if an already sampled branch
-	 * has been selected, otherwise duplicate branches will be given additional weight and the returned branch count
-	 * may be less than the input number of samples
+	 * @param redrawDuplicates if true, each branch will be unique, drawing another branch if an already sampled branch
+	 * has been selected. Branches that are drawn multiple times will be assigned greater weight and the total number
+	 * of branches will exactly match the specified number of samples.
 	 * @param rand random number generator
 	 * @return a randomly sampled subset of this logic tree, according to their weights. The returned logic tree will
 	 * use a {@link BranchWeightProvider} instance modified to reflect the even (post-sampling) weights.
 	 */
 	public final LogicTree<E> sample(int numSamples, boolean redrawDuplicates, Random rand) {
-		System.out.println("Resampling logic tree of size="+size()+" to "+numSamples+" samples...");
+		return sample(numSamples, redrawDuplicates, rand, true);
+	}
+	
+	/**
+	 * @param numSamples number of random samples
+	 * @param redrawDuplicates if true, each branch will be unique, drawing another branch if an already sampled branch
+	 * has been selected. Branches that are drawn multiple times will be assigned greater weight and the total number
+	 * of branches will exactly match the specified number of samples.
+	 * @param rand random number generator
+	 * @return a randomly sampled subset of this logic tree, according to their weights. The returned logic tree will
+	 * use a {@link BranchWeightProvider} instance modified to reflect the even (post-sampling) weights.
+	 */
+	public final LogicTree<E> sample(int numSamples, boolean redrawDuplicates, Random rand, boolean verbose) {
+		if (verbose) System.out.println("Resampling logic tree of size="+size()+" to "+numSamples+" samples...");
 		Preconditions.checkArgument(numSamples > 0);
 		Preconditions.checkState(!redrawDuplicates || numSamples <= size(),
 				"Cannot randomly sample %s branches from %s values without any duplicates!", numSamples, size());
@@ -291,27 +305,43 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		for (int i=0; i<weights.length; i++)
 			weights[i] = getBranchWeight(i);
 		IntegerPDF_FunctionSampler sampler = new IntegerPDF_FunctionSampler(weights);
-		HashMap<Integer, Integer> indexCounts = new HashMap<>();
-		for (int i=0; i<numSamples; i++) {
-			int index = sampler.getRandomInt(rand);
-			int prevCount = indexCounts.containsKey(index) ? indexCounts.get(index) : 0;
-			while (redrawDuplicates && prevCount > 0)
-				index = sampler.getRandomInt(rand);
-			indexCounts.put(index, prevCount+1);
+		int[] indexCounts = new int[branches.size()];
+		int sampleCountSum = 0;
+		int uniqueBranches = 0;
+		if (redrawDuplicates) {
+			while (uniqueBranches < numSamples) {
+				int index = sampler.getRandomInt(rand);
+				if (indexCounts[index] == 0)
+					// first time this branch has been sampled
+					uniqueBranches++;
+				sampleCountSum++;
+				indexCounts[index]++;
+			}
+		} else {
+			for (int i=0; i<numSamples; i++) {
+				int index = sampler.getRandomInt(rand);
+				if (indexCounts[index] == 0)
+					uniqueBranches++;
+				sampleCountSum++;
+				indexCounts[index]++;
+			}
 		}
-		double weightEach = 1d/numSamples;
+		double weightEach = 1d/(double)sampleCountSum;
 //		ImmutableList.Builder<LogicTreeBranch<E>> samples = ImmutableList.builder();
-		List<LogicTreeBranch<E>> samples = new ArrayList<>(numSamples);
-		List<Integer> indexes = new ArrayList<>(numSamples);
+		List<LogicTreeBranch<E>> samples = new ArrayList<>(uniqueBranches);
 		Map<LogicTreeNode, Integer> sampledNodeCounts = new HashMap<>();
+		// iterate in original index order, which keeps the original order (just skipping branches that weren't sampled)
+		// (many processing routines are faster when branches are in order, even if some are skipped)
 		int mostSamples = 0;
-		for (int index : indexCounts.keySet()) {
-			int count = indexCounts.get(index);
+		for (int index=0; index<indexCounts.length; index++) {
+			int count = indexCounts[index];
+			if (count == 0)
+				// never sampled
+				continue;
 			mostSamples = Integer.max(mostSamples, count);
 			LogicTreeBranch<E> branch = getBranch(index).copy();
 			branch.setOrigBranchWeight((double)count*weightEach);
 			samples.add(branch);
-			indexes.add(index);
 			for (LogicTreeNode node : branch) {
 				if (sampledNodeCounts.containsKey(node))
 					sampledNodeCounts.put(node, sampledNodeCounts.get(node)+count);
@@ -321,54 +351,80 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		}
 		// if we don't have any duplicates we can just set it to constant values
 		// otherwise, we'll use the 'original weights' which we have just overridden
-		BranchWeightProvider weightProv = indexCounts.size() == numSamples ?
+		BranchWeightProvider weightProv = uniqueBranches == sampleCountSum ?
 				new BranchWeightProvider.ConstantWeights(weightEach) : new BranchWeightProvider.OriginalWeights();
 		// do it this way to skip consistency checks
 		LogicTree<E> ret = new LogicTree<>(weightProv);
 		
-		// sort them so that they're in the original order (many processing routines are faster when branches are in
-		// order, even if some are skipped)
-		List<LogicTreeBranch<E>> sortedBranches = ComparablePairing.getSortedData(indexes, samples);
-		
-		ret.branches = ImmutableList.copyOf(sortedBranches);
+		ret.branches = ImmutableList.copyOf(samples);
 		ret.levels = levels;
 		
-		System.out.println("\tSampled "+indexCounts.size()+" unique branches. The most any single "
-				+ "branch was sampled is "+mostSamples+" time(s).");
-		System.out.println("Sampled Logic Tree:");
-		Map<LogicTreeNode, Integer> origNodeCounts = new HashMap<>();
-		Map<LogicTreeNode, Double> origNodeWeights = new HashMap<>();
-		double totWeight = 0d;
-		for (LogicTreeBranch<?> branch : branches) {
-			double weight = getBranchWeight(branch);
-			totWeight += weight;
-			for (LogicTreeNode node : branch) {
-				if (origNodeCounts.containsKey(node)) {
-					origNodeCounts.put(node, origNodeCounts.get(node) + 1);
-					origNodeWeights.put(node, origNodeWeights.get(node) + weight);
-				} else {
-					origNodeCounts.put(node, 1);
-					origNodeWeights.put(node, weight);
+		if (verbose) {
+			System.out.println("\tSampled "+uniqueBranches+" unique branches a total of "+sampleCountSum
+					+" times. The most any single branch was sampled is "+mostSamples+" time(s).");
+			System.out.println("Sampled Logic Tree:");
+			Map<LogicTreeNode, Integer> origNodeCounts = new HashMap<>();
+			Map<LogicTreeNode, Double> origNodeWeights = new HashMap<>();
+			double totWeight = 0d;
+			for (LogicTreeBranch<?> branch : branches) {
+				double weight = getBranchWeight(branch);
+				totWeight += weight;
+				for (LogicTreeNode node : branch) {
+					if (origNodeCounts.containsKey(node)) {
+						origNodeCounts.put(node, origNodeCounts.get(node) + 1);
+						origNodeWeights.put(node, origNodeWeights.get(node) + weight);
+					} else {
+						origNodeCounts.put(node, 1);
+						origNodeWeights.put(node, weight);
+					}
 				}
 			}
-		}
-		for (LogicTreeLevel<? extends E> level : levels) {
-			List<LogicTreeNode> origNodes = new ArrayList<>();
-			for (E node : level.getNodes())
-				if (origNodeCounts.containsKey(node))
-					origNodes.add(node);
-			if (origNodes.size() < 2)
-				continue;
-			System.out.println("\t"+level.getName());
-			for (LogicTreeNode node : origNodes) {
-				int origCount = origNodeCounts.get(node);
-				double origWeight = origNodeWeights.get(node)/totWeight;
-				Integer sampleCount = sampledNodeCounts.get(node);
-				if (sampleCount == null)
-					sampleCount = 0;
-				double sampledWeight = sampleCount*weightEach;
-				System.out.println("\t\t"+node.getShortName()+": ORIG count="+origCount+", weight="+(float)origWeight
-						+";\tSAMPLED count="+sampleCount+", weight="+(double)sampledWeight);
+			DecimalFormat weightDF = new DecimalFormat("0.0000");
+			for (LogicTreeLevel<? extends E> level : levels) {
+				List<LogicTreeNode> origNodes = new ArrayList<>();
+				for (E node : level.getNodes())
+					if (origNodeCounts.containsKey(node))
+						origNodes.add(node);
+				if (origNodes.size() < 2)
+					continue;
+				System.out.println("\t"+level.getName());
+				for (int i=0; i<origNodes.size(); i++) {
+					LogicTreeNode node = origNodes.get(i);
+					int origCount = origNodeCounts.get(node);
+					double origWeight = origNodeWeights.get(node)/totWeight;
+					Integer sampleCount = sampledNodeCounts.get(node);
+					if (sampleCount == null)
+						sampleCount = 0;
+					double sampledWeight = sampleCount*weightEach;
+					System.out.println("\t\t"+node.getShortName()+":\tORIG count="+origCount
+								+", weight="+weightDF.format(origWeight)+";\tSAMPLED count="+sampleCount
+								+", weight="+weightDF.format(sampledWeight));
+					if (origNodes.size() > 20 && i == 9) {
+						int skipped = 0;
+						int skippedOrigCount = 0;
+						double skippedOrigWeight = 0d;
+						int skippedSampledCount = 0;
+						double skippedSampledWeight = 0d;
+						for (; i<origNodes.size()-2; i++) {
+							node = origNodes.get(i);
+							origCount = origNodeCounts.get(node);
+							origWeight = origNodeWeights.get(node)/totWeight;
+							sampleCount = sampledNodeCounts.get(node);
+							if (sampleCount == null)
+								sampleCount = 0;
+							sampledWeight = sampleCount*weightEach;
+
+							skipped++;
+							skippedOrigCount += origCount;
+							skippedOrigWeight += origWeight;
+							skippedSampledCount += sampleCount;
+							skippedSampledWeight += sampledWeight;
+						}
+						System.out.println("\t\t...(Skipping "+skipped+" branches with:\tORIG count="+skippedOrigCount
+								+", weight="+weightDF.format(skippedOrigWeight)+";\tSAMPLED count="+skippedSampledCount
+								+", weight="+weightDF.format(skippedSampledWeight)+")...");
+					}
+				}
 			}
 		}
 		return ret;

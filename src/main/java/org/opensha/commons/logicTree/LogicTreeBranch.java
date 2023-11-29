@@ -11,6 +11,7 @@ import java.util.Objects;
 
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
+import org.opensha.commons.logicTree.LogicTreeNode.RandomlySampledNode;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -665,6 +666,9 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule
 				Preconditions.checkState(enumClass.isEnum(), "Enum enclosing class not an enum?");
 				out.name("enumClass").value(enumClass.getName());
 				out.name("enumName").value(((Enum<?>)value).name());
+			} else if (value instanceof RandomlySampledNode) {
+				out.name("class").value(value.getClass().getName());
+				out.name("randomSeed").value(((RandomlySampledNode)value).getSeed());
 			} else if (JsonAdapterHelper.hasTypeAdapter(value)) {
 				out.name("adapterValue");
 				JsonAdapterHelper.writeAdapterValue(out, value);
@@ -685,11 +689,13 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule
 			Class<? extends LogicTreeNode> clazz = null;
 			Class<? extends Enum<? extends LogicTreeNode>> enumClass = null;
 			String enumName = null;
+			Long randomSeed = null;
 			LogicTreeNode adapterNode = null;
 			
 			in.beginObject();
 			while (in.hasNext()) {
-				switch (in.nextName()) {
+				String jsonName = in.nextName();
+				switch (jsonName) {
 				case "name":
 					name = in.nextString();
 					break;
@@ -731,10 +737,15 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule
 				case "enumName":
 					enumName = in.nextString();
 					break;
+				case "randomSeed":
+					randomSeed = in.nextLong();
+					break;
 				case "adapterValue":
 					adapterNode = (LogicTreeNode) JsonAdapterHelper.readAdapterValue(in);
 					break;
 				default:
+					System.err.println("WARNING: unexpected JSON field named '"+jsonName+"' in LogicTreeNode, skipping");
+					in.skipValue();
 					break;
 				}
 			}
@@ -759,6 +770,23 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule
 					constructor.setAccessible(true);
 					
 					LogicTreeNode instance = constructor.newInstance();
+					
+					if (instance instanceof RandomlySampledNode) {
+						Preconditions.checkState(randomSeed != null, "Have a randomly sampled node instance but no seed?");
+						RandomlySampledNode sample = (RandomlySampledNode)instance;
+						Preconditions.checkState(shortName != null || name != null, "Must supply either name or short name");
+						if (name == null)
+							name = shortName;
+						else if (shortName == null)
+							shortName = name;
+						if (prefix == null)
+							prefix = shortName;
+						sample.init(name, shortName, prefix, weight, randomSeed);
+					} else {
+						Preconditions.checkState(randomSeed == null,
+								"Found a random seed but instance is not a RandomlySampledNode. Instance class: %s", clazz);
+					}
+					
 					return instance;
 				} catch (Exception e) {
 					System.err.println("Couldn't instantiate default no-arg constructor of declared logic tree node class, "
