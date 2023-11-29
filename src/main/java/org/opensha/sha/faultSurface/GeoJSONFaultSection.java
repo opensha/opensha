@@ -341,7 +341,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 		
 		Geometry geometry = feature.geometry;
 		if (geometry instanceof MultiLineString && ((MultiLineString)geometry).lines.size() == 2) {
-			// subduction interface, convert to simple fault data (TODO: actually store the lower trace and do it right)
+			// subduction interface, convert to simple fault data
 			MultiLineString multiGeom = (MultiLineString)geometry;
 			LocationList upperTrace = multiGeom.lines.get(0);
 			FaultTrace upperAsFaultTrace = new FaultTrace(null);
