@@ -67,7 +67,7 @@ public class PlotUtils {
 		gp.getChartPanel().setSize(width, height);
 	}
 	
-	private static double calcAspectRatio(Range xRange, Range yRange,  boolean isLatLon) {
+	public static double calcAspectRatio(Range xRange, Range yRange, boolean isLatLon) {
 		Preconditions.checkNotNull(xRange, "Cannot determine aspect ratio if x range not supplied");
 		Preconditions.checkNotNull(yRange, "Cannot determine aspect ratio if y range not supplied");
 		if (isLatLon) {
