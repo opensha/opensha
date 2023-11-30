@@ -2,6 +2,7 @@ package org.opensha.commons.geo.json;
 
 import java.awt.Color;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -19,6 +20,7 @@ import org.opensha.commons.geo.json.Geometry.GeometryAdapter;
 import com.google.common.base.Preconditions;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
+import com.google.gson.reflect.TypeToken;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
@@ -48,7 +50,7 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 	}
 	
 	/**
-	 * Tries to return the value of the given parameter as a boolean. If the parameter value is a Boolean, that boolean will be
+	 * Tries to return the value of the given parameter as a boolean. If the parameter value is a boolean, that boolean will be
 	 * returned. If the value is a String, it will return true if the value, ignoring case, equals 'true' or 'yes',
 	 * otherwise false. If the value is null or neither a Boolean nor a String, the supplied default value will be returned.
 	 * 
@@ -114,6 +116,18 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 	
 	/**
 	 * Tries to return the value of the given parameter as a Number. If parameter value is a Number, that will be returned.
+	 * If the value is a String, then that String will first be parsed to a Number. Otherwise, null will be returned.
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return Number value
+	 */
+	public Number getNumber(String name) {
+		return getNumber(name, null);
+	}
+	
+	/**
+	 * Tries to return the value of the given parameter as a Number. If parameter value is a Number, that will be returned.
 	 * If the value is a String, then that String will first be parsed to a Number. Otherwise, the supplied
 	 * default value will be returned.
 	 * 
@@ -129,6 +143,8 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 	}
 	
 	private static Number asNumber(Object val, String name, Number defaultValue) {
+		if (val == null)
+			return defaultValue;
 		if (val instanceof String) {
 			// try to parse string
 			try {
@@ -157,14 +173,13 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 	}
 	
 	/**
-	 * Tries to return the value of the given parameter as a double array. See {@link #getNumberArray(String, Number[])}.
+	 * Tries to return the value of the given parameter as a double array. See {@link #getNumberArray(String)}.
 	 * 
 	 * @param name
-	 * @param defaultValue
 	 * @return
 	 */
-	public double[] getDoubleArray(String name, double[] defaultValue) {
-		Number[] numbers = getNumberArray(name, null);
+	public double[] getDoubleArray(String name) {
+		Number[] numbers = getNumberArray(name);
 		if (numbers == null)
 			return null;
 		double[] ret = new double[numbers.length];
@@ -174,14 +189,13 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 	}
 	
 	/**
-	 * Tries to return the value of the given parameter as an int array. See {@link #getNumberArray(String, Number[])}.
+	 * Tries to return the value of the given parameter as an int array. See {@link #getNumberArray(String)}.
 	 * 
 	 * @param name
-	 * @param defaultValue
 	 * @return
 	 */
-	public int[] getIntArray(String name, int[] defaultValue) {
-		Number[] numbers = getNumberArray(name, null);
+	public int[] getIntArray(String name) {
+		Number[] numbers = getNumberArray(name);
 		if (numbers == null)
 			return null;
 		int[] ret = new int[numbers.length];
@@ -191,14 +205,13 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 	}
 	
 	/**
-	 * Tries to return the value of the given parameter as a long array. See {@link #getNumberArray(String, Number[])}.
+	 * Tries to return the value of the given parameter as a long array. See {@link #getNumberArray(String)}.
 	 * 
 	 * @param name
-	 * @param defaultValue
 	 * @return
 	 */
-	public long[] getLongArray(String name, int[] defaultValue) {
-		Number[] numbers = getNumberArray(name, null);
+	public long[] getLongArray(String name) {
+		Number[] numbers = getNumberArray(name);
 		if (numbers == null)
 			return null;
 		long[] ret = new long[numbers.length];
@@ -210,35 +223,62 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 	/**
 	 * Tries to return the value of the given parameter as a Number array. If parameter value is a list/array of Numbers,
 	 * that will be returned. If any sub-value is a String, then that String will first be parsed to a Number.
-	 * Otherwise, the supplied default value will be returned.
+	 * Otherwise, the null will be returned.
 	 * 
 	 * @param name
-	 * @param defaultValue
 	 * @return
 	 */
-	public Number[] getNumberArray(String name, Number[] defaultValue) {
+	public Number[] getNumberArray(String name) {
 		Object val = get(name);
 		if (val == null)
-			return defaultValue;
+			return null;
 		List<Number> numbers = new ArrayList<>();
 		if (val instanceof List<?>) {
 			for (Object subVal : (List<?>)val) {
 				Number number = asNumber(subVal, name, null);
 				if (number == null)
-					return defaultValue;
+					return null;
 				numbers.add(number);
 			}
 		} else if (val.getClass().isArray()) {
 			for (Object subVal : (Object[])val) {
 				Number number = asNumber(subVal, name, null);
 				if (number == null)
-					return defaultValue;
+					return null;
 				numbers.add(number);
 			}
 		}
 		return numbers.toArray(new Number[0]);
 	}
 	
+	/**
+	 * Tries to return the value of the given parameter as a Location, either by returning the value directly if it's
+	 * already a location (e.g., was set in memory as a location) or parsing a location array of lon, lat, and optinoally
+	 * depth (using the default depth serialization, see {@link Geometry#DEPTH_SERIALIZATION_DEFAULT}.
+	 * 
+	 * If the stored value is not a location or number array, or that array is an unexpected size, null will be returned.
+	 * May throw an exception when attempting to build a location with bad lat/lon/depth values.
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	public Location getLocation(String name) {
+		return getLocation(name, null);
+	}
+	
+	/**
+	 * Tries to return the value of the given parameter as a Location, either by returning the value directly if it's
+	 * already a location (e.g., was set in memory as a location) or parsing a location array of lon, lat, and optinoally
+	 * depth (using the default depth serialization, see {@link Geometry#DEPTH_SERIALIZATION_DEFAULT}.
+	 * 
+	 * If the stored value is not a location or number array, or that array is an unexpected size, the passed in default
+	 * value will be returned. May throw an exception when attempting to build a location with bad lat/lon/depth values.
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
 	public Location getLocation(String name, Location defaultValue) {
 		Object val = get(name);
 		if (val == null)
@@ -246,7 +286,7 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		if (val instanceof Location)
 			return (Location)val;
 		// try loading it as a location
-		double[] array = getDoubleArray(name, null);
+		double[] array = getDoubleArray(name);
 		if (array == null || array.length < 2 || array.length > 3)
 			return null;
 		double lon = array[0];
@@ -255,24 +295,86 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		return new Location(lat, lon, depth);
 	}
 	
-	public FeatureProperties getProperties(String name, FeatureProperties defaultValue) {
-		Object val = get(name);
-		if (val == null || !(val instanceof FeatureProperties))
-			return defaultValue;
-		return (FeatureProperties)val;
+	/**
+	 * Tries to retrieve the value with the given name as a FeatureProperties instance, and returns null if no value
+	 * exists or it's of an unxepected type.
+	 * 
+	 * @param name
+	 * @return
+	 */
+	public FeatureProperties getProperties(String name) {
+		return getProperties(name, null);
 	}
 	
+	/**
+	 * Tries to retrieve the value with the given name as a FeatureProperties instance, and returns the supplied
+	 * default value if no value exists or it's of an unxepected type.
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	public FeatureProperties getProperties(String name, FeatureProperties defaultValue) {
+		Object val = get(name);
+		FeatureProperties props = getAsFeatureProps(val);
+		if (props == null)
+			return defaultValue;
+		return props;
+	}
+
 	@SuppressWarnings("unchecked")
+	private FeatureProperties getAsFeatureProps(Object val) {
+		if (val == null)
+			return null;
+		if (val instanceof FeatureProperties)
+			return (FeatureProperties)val;
+		if (val instanceof Map<?, ?>) {
+			Map<?, ?> map = (Map<?, ?>)val;
+			if (map.isEmpty() || map.keySet().iterator().next() instanceof String) {
+				try {
+					return new FeatureProperties((Map<String, Object>)map);
+				} catch (Exception e) {}
+			}
+		}
+		return null;
+	}
+	
+	/**
+	 * Tries to retrieve the value with the given name as a list of FeatureProperties instances, and returns null if no
+	 * value exists or it's of an unxepected type.
+	 * 
+	 * @param name
+	 * @return
+	 */
+	public List<FeatureProperties> getPropertiesList(String name) {
+		return getPropertiesList(name, null);
+	}
+	
+	/**
+	 * Tries to retrieve the value with the given name as a list of  FeatureProperties instances, and returns the supplied
+	 * default value if no value exists or it's of an unxepected type.
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
 	public List<FeatureProperties> getPropertiesList(String name, List<FeatureProperties> defaultValue) {
 		Object val = get(name);
-		if (val == null || !(val instanceof List<?>))
+		if (val == null || !(val instanceof Collection<?>))
 			return defaultValue;
-		List<?> list = (List<?>)val;
-		if (!list.isEmpty())
-			for (Object listVal : list)
-				if (listVal != null && !(listVal instanceof FeatureProperties))
+		Collection<?> inputList = (Collection<?>)val;
+		List<FeatureProperties> ret = new ArrayList<>();
+		for (Object obj : inputList) {
+			if (obj == null) {
+				ret.add(null);
+			} else {
+				FeatureProperties props = getAsFeatureProps(obj);
+				if (props == null)
 					return defaultValue;
-		return (List<FeatureProperties>)val;
+				ret.add(props);
+			}
+		}
+		return ret;
 	}
 	
 	/*
@@ -291,7 +393,24 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 	public static final String MARKER_SIZE_MEDIUM = "medium";
 	public static final String MARKER_SIZE_LARGE = "large";
 	
+	/**
+	 * Tries to read the property with the given name as a Color and returns null if this fails.
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	public Color getColor(String name) {
+		return getColor(name, null);
+	}
 	
+	/**
+	 * Tries to read the property with the given name as a Color and returns the supplied default value if this fails.
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
 	public Color getColor(String name, Color defaultValue) {
 		Object val = get(name);
 		if (val == null)
@@ -307,6 +426,33 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 					+str+"' could not be parsed as a color, returning default: "+e.getMessage());
 			return defaultValue;
 		}
+	}
+	
+	/**
+	 * Tries to read the property with the given name as a String and returns null if this fails. Non-string objects
+	 * will return the default value, not their toString() value (use get(name).toString() if you need that).
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	public String getString(String name) {
+		return getString(name, null);
+	}
+	
+	/**
+	 * Tries to read the property with the given name as a String and returns the supplied default value if this fails.
+	 * Non-string objects will return the default value, not their toString() value (use get(name).toString() if you need that).
+	 * 
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	public String getString(String name, String defaultValue) {
+		Object val = get(name);
+		if (val == null || !(val instanceof String))
+			return defaultValue;
+		return (String)val;
 	}
 	
 	/**
@@ -329,6 +475,52 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 		} catch (ClassCastException e) {
 			System.err.println("Feature property with name '"+name+"' is of an unexpected type: "+e.getMessage());
 			return defaultValue;
+		}
+	}
+	
+	/**
+	 * Returns the value of the given parameter, cast to the expected type. Returns null if a ClassCastException
+	 * is encountered or the value is null.
+	 * 
+	 * @param <E>
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	@SuppressWarnings("unchecked") // is caught
+	public <E> E getAsType(String name, TypeToken<E> type) {
+		Object val = get(name);
+		if (val == null)
+			return null;
+		try {
+//			System.out.println(val+"\t"+val.getClass());
+			return (E)val;
+		} catch (ClassCastException e) {
+			System.err.println("Feature property with name '"+name+"' is of an unexpected type: "+e.getMessage());
+			return null;
+		}
+	}
+	
+	/**
+	 * Returns the value of the given parameter, cast to the expected type. Returns null if a ClassCastException
+	 * is encountered or the value is null.
+	 * 
+	 * @param <E>
+	 * @param name
+	 * @param defaultValue
+	 * @return
+	 */
+	@SuppressWarnings("unchecked") // is caught
+	public <E> E getAsType(String name, Class<E> type) {
+		Object val = get(name);
+		if (val == null)
+			return null;
+		try {
+//			System.out.println(val+"\t"+val.getClass());
+			return (E)val;
+		} catch (ClassCastException e) {
+			System.err.println("Feature property with name '"+name+"' is of an unexpected type: "+e.getMessage());
+			return null;
 		}
 	}
 	
@@ -445,10 +637,44 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			return properties;
 		}
 
+		/**
+		 * Utility method to read assuming that we've already inside of the object and have ingested the first name
+		 * 
+		 * @param in
+		 * @param name0
+		 * @return
+		 * @throws IOException
+		 */
 		public FeatureProperties readAfterFirstName(JsonReader in, String name0) throws IOException {
 			FeatureProperties properties = new FeatureProperties(); // linked for insertion order tracking
 			
 			Object value0 = deserialize(in, name0);
+			properties.put(name0, value0);
+			
+			while (in.hasNext()) {
+				String name = in.nextName();
+//				System.out.println("Deserializing "+name);
+				Object value = deserialize(in, name);
+				
+				properties.put(name, value);
+			}
+			
+			in.endObject();
+			return properties;
+		}
+
+		/**
+		 * Utility method to read assuming that we've already inside of the object and have ingested the first name
+		 * and the first value
+		 * 
+		 * @param in
+		 * @param name0
+		 * @return
+		 * @throws IOException
+		 */
+		public FeatureProperties readAfterFirstNameAndValue(JsonReader in, String name0, Object value0) throws IOException {
+			FeatureProperties properties = new FeatureProperties(); // linked for insertion order tracking
+			
 			properties.put(name0, value0);
 			
 			while (in.hasNext()) {
@@ -532,7 +758,19 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			for (Object subValue : (Collection<?>)value)
 				propSerializeDefault(out, subValue);
 			out.endArray();
+		} else if (value instanceof FeatureProperties) {
+			propAdapter.write(out, (FeatureProperties)value);
+		} else if (value instanceof Map<?, ?>) {
+			// map that's not a FeatureProperties, serialize it directly
+			out.beginObject();
+			Map<?, ?> map = (Map<?, ?>)value;
+			for (Object key : map.keySet()) {
+				out.name(key.toString());
+				propSerializeDefault(out, map.get(key));
+			}
+			out.endObject();
 		} else {
+			// TODO support custom adapters?
 			out.value(value.toString());
 		}
 	}
@@ -576,11 +814,12 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 			if (in.hasNext()) {
 				String name0 = in.nextName();
 				
-				if (name0.equals("type")) {
+				if (name0.equals("type") && in.peek() == JsonToken.STRING) {
 					String type = null;
+					// we hit the (possibly" magic 'type' keyword
 					try {
 						type = in.nextString();
-						// check if it's a GeoJSON type
+						// first check if it's a GeoJSON type; if so, load it as a GeoJSON object
 						GeoJSON_Type geoType = null;
 						try {
 							geoType = GeoJSON_Type.valueOf(type);
@@ -588,7 +827,7 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 							// not a GeoJSON type
 						}
 						if (geoType != null) {
-							// GeoJSON object
+							// it's GeoJSON object
 							if (GeoJSON_Type.GEOM_TYPES.contains(geoType)) {
 								// geometry
 								Geometry ret = geomAdapter.innerReadAsType(in, geoType);
@@ -609,14 +848,27 @@ public class FeatureProperties extends LinkedHashMap<String, Object> {
 										+type);
 							}
 						} else {
-							// regular class
-							Class<?> typeClass = Class.forName(type);
-							if (XY_DataSet.class.isAssignableFrom(typeClass)) {
-								XY_DataSet ret = new XY_DataSet.XYAdapter().innerReadAsType(in, (Class<? extends XY_DataSet>)typeClass);
-								in.endObject();
-								return ret;
+							// it's not a GeoJSON object, see if it's a class name that we know how to deal with
+							try {
+								Class<?> typeClass = Class.forName(type);
+								if (XY_DataSet.class.isAssignableFrom(typeClass)) {
+									XY_DataSet ret = new XY_DataSet.XYAdapter().innerReadAsType(in, (Class<? extends XY_DataSet>)typeClass);
+									in.endObject();
+									return ret;
+								}
+								// TODO support generic adapters?
+							} catch (Throwable t) {
+								// not a class, which is fine
 							}
-							// TODO support generic adapters?
+							// ok no special cases found, just load it in as a FeatureProperties map
+							try {
+								FeatureProperties props = propAdapter.readAfterFirstNameAndValue(in, name0, type);
+								if (props != null)
+									return props;
+							} catch (Throwable t) {
+								System.err.println("WARNING: couldn't deserialize custom FeatureProperties object as a map: "
+										+t.getMessage());
+							}
 						}
 					} catch (Throwable t) {
 						System.err.println("WARNING: couldn't deserialize custom FeatureProperties object with type: "
