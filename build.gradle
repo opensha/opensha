@@ -67,13 +67,6 @@ task testOperational (type: Test) {
     }
 }
 
-repositories {
-    maven {
-        url "https://code.usgs.gov/api/v4/groups/1352/-/packages/maven"
-        name "NSHMP GitLab Group"
-    }
-}
-
 dependencies {
 
 	api "ghsc:nshmp-gmm:1.4.5"
