@@ -19,21 +19,21 @@ class InitialTests {
 
 	public static void main(String[] args) {
 //		Gmm[] gmms = Gmm.values();
-//		Gmm[] gmms = {
-//				Gmm.ASK_14,
-//				Gmm.ASK_14_BASE,
-//				Gmm.ASK_14_BASIN,
-//				Gmm.ASK_14_CYBERSHAKE,
-//				Gmm.ASK_14_VS30_MEASURED
-//		};
+		Gmm[] gmms = {
+				Gmm.ASK_14,
+				Gmm.ASK_14_BASE,
+				Gmm.ASK_14_BASIN,
+				Gmm.ASK_14_CYBERSHAKE,
+				Gmm.ASK_14_VS30_MEASURED
+		};
 //		Gmm[] gmms = {
 //				Gmm.COMBINED_ACTIVE_CRUST_2023,
 //				Gmm.COMBINED_ACTIVE_CRUST_2023_LOS_ANGELES,
 //				Gmm.COMBINED_ACTIVE_CRUST_2023_SAN_FRANCISCO,
 //		};
-		Gmm[] gmms = {
-				Gmm.COMBINED_INTERFACE_2023_SEATTLE
-		};
+//		Gmm[] gmms = {
+//				Gmm.COMBINED_INTERFACE_2023_SEATTLE
+//		};
 //		GroundMotionModel gmm = Gmm.ASK_14.instance(Imt.PGA);
 //		GroundMotionModel gmm = Gmm.ASK_14_BASE.instance(Imt.PGA);
 		
