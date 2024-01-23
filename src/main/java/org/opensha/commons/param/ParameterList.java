@@ -187,6 +187,32 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 		return (Parameter<T>)getParameter(name);
 	}
 
+	/** Returns the parameter at the given index */
+	public Parameter getParameter(int index) throws ParameterException {
+		if( index >= 0 && index < params.size() ) {
+			Parameter param = (Parameter)params.get(index);
+			return param;
+		}
+		else{
+			String S = C + ": getParameter(): ";
+			throw new ParameterException(S + "No parameter exists at index " + index);
+		}
+
+	}
+	
+	/**
+	 * Returns the Parameter at the given index, cast to the given type. For example,
+	 * <code>getParameter(String.class, 0)</code> would return a
+	 * Parameter<String> instead of a raw typed Parameter instance.
+	 * 
+	 * @param type
+	 * @param name
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public <T> Parameter<T> getParameter(Class<T> type, int index) {
+		return (Parameter<T>)getParameter(index);
+	}
 
 	/** Returns parameter contained value object if the parameter exist, else throws exception. */
 	public Object getValue(String name) throws ParameterException{
