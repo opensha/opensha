@@ -481,8 +481,7 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 
 	@Override
 	public ListIterator<Location> getLocationsIterator() {
-		// TODO Auto-generated method stub
-		return null;
+		return getEvenlyDiscritizedListOfLocsOnSurface().listIterator();
 	}
 
 	@Override
