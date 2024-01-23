@@ -118,7 +118,7 @@ public class EAL_IndependentCalcTest {
 			}
 			Asset asset = assets.get(i);
 			double eal = asset.calculateEAL(imr, distance, site, erf, handler);
-			double[][] vals = asset.calculateExpectedLossPerRup(imr, magThreshFunc, site, erf, handler);
+			double[][] vals = asset.calculateExpectedLossPerRup(imr, Double.NaN, magThreshFunc, site, erf, handler);
 			int numNonZeroRups = 0;
 			int numNonZeroSources = 0;
 			for (double[] srcVals : vals) {

@@ -278,7 +278,7 @@ public class Asset implements Cloneable {
 			//			((AttenuationRelationship)imr).setIntensityMeasure(imt);
 		} catch( ParameterException e ) {
 			e.printStackTrace();
-			controller.calculationException( e.getMessage() );
+			if (controller != null) controller.calculationException( e.getMessage() );
 		}
 
 		// Take the log of the x values of the hazard function
@@ -319,7 +319,7 @@ public class Asset implements Cloneable {
 			error = true;
 		}
 
-		if ( error ) controller.calculationException( errorMessage );
+		if ( error && controller != null) controller.calculationException( errorMessage );
 
 		EALCalculator currentCalc = new EALCalculator( annualizedRates, vulnModel.getVulnerabilityFunc(), getValue() );
 		EAL = currentCalc.computeEAL();
@@ -331,11 +331,16 @@ public class Asset implements Cloneable {
 	/**
 	 * This calculates the expected loss for each rupture in the given forecast individually.
 	 * 
-	 * @return The EAL for the asset.  This will be summed up with all of the EAL's
-	 * for the other assets in the list.
+	 * @param imr
+	 * @param maxDistance maximum source-site distance for the hazard calculation (if magThreshFunc is non null)
+	 * @param magThreshFunc magnitude-distance threshold function, or null to use maxDistance
+	 * @param site site to supply any extra GMM paramters
+	 * @param erf ERF
+	 * @param controller application to use for error reporting, or null
+	 * @return The expected loss for each rupture for this asset. You can access the EAL via getAssetEAL()
 	 */
 	public double[][] calculateExpectedLossPerRup(
-			ScalarIMR imr, DiscretizedFunc magThreshFunc, Site site, ERF erf,
+			ScalarIMR imr, double maxDistance, DiscretizedFunc magThreshFunc, Site site, ERF erf,
 			CalculationExceptionHandler controller ) {
 		// Edit the site with the asset values
 		siteSetup(site);
@@ -385,7 +390,7 @@ public class Asset implements Cloneable {
 			System.out.println("Vuln class: "+vulnModel.getClass().getName());
 			System.out.println("Vuln name: "+vulnModel.getName());
 			e.printStackTrace();
-			controller.calculationException( e.getMessage() );
+			if (controller != null) controller.calculationException( e.getMessage() );
 		}
 
 		// Take the log of the x values of the hazard function
@@ -410,16 +415,21 @@ public class Asset implements Cloneable {
 			ProbEqkSource source = erf.getSource(sourceID);
 			double distance = source.getMinDistance(site);
 			
-			if (distance > magThreshFunc.getMaxX()) {
-//				System.out.println("Distance thresh fail (dist="+distance+")");
-				continue;
+			if (magThreshFunc == null) {
+				if (distance > maxDistance)
+					continue;
+			} else {
+				if (distance > magThreshFunc.getMaxX()) {
+//					System.out.println("Distance thresh fail (dist="+distance+")");
+					continue;
+				}
 			}
-			double magThresh = magThreshFunc.getInterpolatedY(distance);
+			double magThresh = magThreshFunc == null ? Double.NaN : magThreshFunc.getInterpolatedY(distance);
 			results[sourceID] = new double[source.getNumRuptures()];
 			for (int rupID=0; rupID<source.getNumRuptures(); rupID++) {
 				ProbEqkRupture rupture = source.getRupture(rupID);
 				
-				if (rupture.getMag() < magThresh) {
+				if (magThreshFunc != null && rupture.getMag() < magThresh) {
 //					System.out.println("Mag thresh fail (mag="+rupture.getMag()+", thresh="+magThresh+")");
 					continue;
 				}
@@ -442,7 +452,7 @@ public class Asset implements Cloneable {
 //					error = true;
 //				}
 
-				if ( error ) controller.calculationException( errorMessage );
+				if ( error && controller != null) controller.calculationException( errorMessage );
 
 				currentCalc.setMAFE(hazFunction);
 				double rupEL = currentCalc.computeEAL();
