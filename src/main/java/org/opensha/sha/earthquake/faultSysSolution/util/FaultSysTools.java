@@ -83,6 +83,16 @@ public class FaultSysTools {
 	}
 	
 	/**
+	 * @return commonly used -?/--help command line option
+	 */
+	public static Option helpOption() {
+		Option threadsOption = new Option("?", "help", false,
+				"Displays usage including command line arguments, and exits.");
+		threadsOption.setRequired(false);
+		return threadsOption;
+	}
+	
+	/**
 	 * Parse command line, or exit and print help if a ParseException is encountered
 	 * 
 	 * @param options
@@ -98,20 +108,30 @@ public class FaultSysTools {
 			cmd = parser.parse(options, args);
 		} catch (ParseException e) {
 			System.err.println(e.getMessage());
-			HelpFormatter formatter = new HelpFormatter();
-			int columns = 120;
-			String colStr = System.getenv("COLUMNS");
-			if (colStr != null && !colStr.isBlank()) {
-				try {
-					columns = Integer.max(80, Integer.parseInt(colStr));
-				} catch (Exception e2) {}
-			}
-			formatter.printHelp(columns, ClassUtils.getClassNameWithoutPackage(mainClass), null, options, null, true);
-			System.exit(2);
-			return null;
+			printHelpAndExit(options, mainClass);
+			// will never be reached (the above exits)
+			throw new IllegalStateException("Should never reach this");
 		}
 		
 		return cmd;
+	}
+	
+	public static void checkPrintHelp(Options options, CommandLine cmd, Class<?> mainClass) {
+		if (cmd.hasOption("help"))
+			printHelpAndExit(options, mainClass);
+	}
+	
+	public static void printHelpAndExit(Options options, Class<?> mainClass) {
+		HelpFormatter formatter = new HelpFormatter();
+		int columns = 120;
+		String colStr = System.getenv("COLUMNS");
+		if (colStr != null && !colStr.isBlank()) {
+			try {
+				columns = Integer.max(80, Integer.parseInt(colStr));
+			} catch (Exception e2) {}
+		}
+		formatter.printHelp(columns, ClassUtils.getClassNameWithoutPackage(mainClass), null, options, null, true);
+		System.exit(2);
 	}
 	
 	private static final String s = File.separator;
