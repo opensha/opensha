@@ -31,7 +31,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
@@ -174,7 +174,7 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 		Preconditions.checkState(isApplicableTo(faultModel), "%s is not applicable to %s", name, faultModel.getName());
 		List<? extends FaultSection> sectsOutsideCA = buildFullSects(NSHM18_FaultModels.NSHM18_WUS_NoCA);
 		
-		List<FaultSection> subsectsOutsideCA = GeoJSONFaultReader.buildSubSects(sectsOutsideCA);
+		List<FaultSection> subsectsOutsideCA = SubSectionBuilder.buildSubSects(sectsOutsideCA);
 		
 		List<FaultSection> fullList;
 		if (faultModel == NSHM18_FaultModels.NSHM18_WUS_PlusU3_FM_3p1) {
@@ -205,6 +205,21 @@ public enum NSHM18_DeformationModels implements RupSetDeformationModel {
 		NSHM23_DeformationModels.applyStdDevDefaults(fullList);
 		
 		return fullList;
+	}
+
+	@Override
+	public List<? extends FaultSection> build(RupSetFaultModel faultModel, int minPerFault, double ddwFract,
+			double fixedLen) throws IOException {
+		Preconditions.checkState(minPerFault == 2, "minPerFault must be 2 for NSHM18");
+		Preconditions.checkState(ddwFract == 0.5, "ddwFract must be 0.5 for NSHM18");
+		Preconditions.checkState(!(fixedLen > 0d), "fixedLen must be NaN for NSHM18");
+		return build(faultModel);
+	}
+
+	@Override
+	public List<? extends FaultSection> buildForSubsects(RupSetFaultModel faultModel,
+			List<? extends FaultSection> subSects) throws IOException {
+		throw new UnsupportedOperationException("Not supported, NSHM18/UCERF3 must build the subsections");
 	}
 	
 	static class ActivityProbRecord {
