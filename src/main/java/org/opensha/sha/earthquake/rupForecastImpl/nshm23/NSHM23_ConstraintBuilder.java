@@ -111,7 +111,9 @@ public class NSHM23_ConstraintBuilder {
 	private BinaryRuptureProbabilityCalc rupExclusionModel;
 	
 	private JumpProbabilityCalc segModel;
-	private SegmentationMFD_Adjustment segAdjMethod = SegmentationMFD_Adjustment.JUMP_PROB_THRESHOLD_AVG;
+	
+	public static SegmentationMFD_Adjustment SEG_ADJ_METHOD_DEFAULT = SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG;
+	private SegmentationMFD_Adjustment segAdjMethod = SEG_ADJ_METHOD_DEFAULT;
 	
 	public static ParkfieldSelectionCriteria PARKFIELD_SELECT_DEFAULT = ParkfieldSelectionCriteria.MAG_6;
 	private ParkfieldSelectionCriteria parkfieldSelect = PARKFIELD_SELECT_DEFAULT;
