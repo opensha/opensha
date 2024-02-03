@@ -38,6 +38,14 @@ public class RSQSimEventSlipTimeFunc {
 		double maxTime = Double.NEGATIVE_INFINITY;
 		double minVel = Double.POSITIVE_INFINITY;
 		double maxVel = Double.NEGATIVE_INFINITY;
+		
+		// relative times might not actually start at zero
+		float origMinRelTime = Float.POSITIVE_INFINITY;
+		for (Integer patchID : patchTransitions.keySet())
+			for (RSQSimStateTime trans : patchTransitions.get(patchID))
+				origMinRelTime = Float.min(origMinRelTime, trans.relativeTime);
+		Preconditions.checkState(Float.isFinite(origMinRelTime));
+		
 		for (int patchID : patchTransitions.keySet()) {
 			List<RSQSimStateTime> patchTrans = patchTransitions.get(patchID);
 			if (patchTrans.isEmpty())
@@ -49,8 +57,11 @@ public class RSQSimEventSlipTimeFunc {
 				if (trans.state == RSQSimState.EARTHQUAKE_SLIP) {
 					// slipping
 					slipFunc.set(trans.absoluteTime, curSlip);
-					Preconditions.checkState(Double.isFinite(trans.relativeTime));
-					relSlipFunc.set(trans.relativeTime, curSlip);
+					float relativeTime = trans.relativeTime;
+					if (origMinRelTime > 0f)
+						relativeTime -= origMinRelTime;
+					Preconditions.checkState(Double.isFinite(relativeTime));
+					relSlipFunc.set(relativeTime, curSlip);
 					double slipVel = trans.velocity;
 					minVel = Math.min(minVel, slipVel);
 					maxVel = Math.max(maxVel, slipVel);
@@ -58,7 +69,7 @@ public class RSQSimEventSlipTimeFunc {
 					double slip = slipVel * trans.getDuration();
 					curSlip += slip;
 					slipFunc.set(trans.absoluteTime+trans.getDuration(), curSlip);
-					relSlipFunc.set(trans.relativeTime+trans.getDuration(), curSlip);
+					relSlipFunc.set(relativeTime+trans.getDuration(), curSlip);
 				}
 			}
 			slipFuncs.put(patchID, slipFunc);
@@ -108,11 +119,11 @@ public class RSQSimEventSlipTimeFunc {
 		return null;
 	}
 	
-	List<RSQSimStateTime> getTransitions(int patchID) {
+	public List<RSQSimStateTime> getTransitions(int patchID) {
 		return patchTransitions.get(patchID);
 	}
 	
-	DiscretizedFunc getSlipFunc(int patchID) {
+	public DiscretizedFunc getSlipFunc(int patchID) {
 		return slipFuncs.get(patchID);
 	}
 	
@@ -233,11 +244,21 @@ public class RSQSimEventSlipTimeFunc {
 		if (minTime == 0)
 			return this;
 		if (relative == null) {
+			// relative times might not actually start at zero
+			float origMinRelTime = Float.POSITIVE_INFINITY;
+			for (Integer patchID : patchTransitions.keySet())
+				for (RSQSimStateTime trans : patchTransitions.get(patchID))
+					origMinRelTime = Float.min(origMinRelTime, trans.relativeTime);
+			Preconditions.checkState(Float.isFinite(origMinRelTime));
+			
 			Map<Integer, List<RSQSimStateTime>> relPatchTransitions = new HashMap<>();
 			for (Integer patchID : patchTransitions.keySet()) {
 				List<RSQSimStateTime> relTrans = new ArrayList<>();
 				for (RSQSimStateTime trans : patchTransitions.get(patchID)) {
-					RSQSimStateTime rTrans = new RSQSimStateTime((double)trans.relativeTime, trans.relativeTime,
+					float relativeTime = trans.relativeTime;
+					if (origMinRelTime > 0f)
+						relativeTime -= origMinRelTime;
+					RSQSimStateTime rTrans = new RSQSimStateTime((double)relativeTime, relativeTime,
 							trans.eventID, patchID, trans.state, trans.velocity);
 					if (trans.hasDuration())
 						rTrans.setDuration(trans.getDuration());
