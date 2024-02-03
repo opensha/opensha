@@ -106,6 +106,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.random.Branch
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.random.RandomBValSampler;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SeisSmoothingAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SingleStates;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SlipAlongRuptureModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSectBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
@@ -153,7 +154,11 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	private boolean adjustForActualRupSlips = NSHM23_ConstraintBuilder.ADJ_FOR_ACTUAL_RUP_SLIPS_DEFAULT;
 	private boolean adjustForSlipAlong = NSHM23_ConstraintBuilder.ADJ_FOR_SLIP_ALONG_DEFAULT;
 	
-	private static long NUM_ITERS_PER_RUP = 2000l;
+	public static final long NUM_ITERS_PER_RUP_DEFAULT = 2000l;
+	protected long numItersPerRup;
+	
+	public static final boolean SOLVE_CLUSTERS_INDIVIDUALLY_DEFAULT = true;
+	protected boolean solveClustersIndividually;
 	
 	// minimum MFD uncertainty
 	public static double MFD_MIN_FRACT_UNCERT = 0.1;
@@ -164,6 +169,29 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	public static boolean PARKFIELD_INITIAL = true;
 	
+	public static SubSectConstraintModels SUB_SECT_CONSTR_DEFAULT = SubSectConstraintModels.TOT_NUCL_RATE;
+	
+	public static SlipAlongRuptureModelBranchNode SLIP_ALONG_DEFAULT = NSHM23_SlipAlongRuptureModels.UNIFORM;
+	
+	public NSHM23_InvConfigFactory() {
+		numItersPerRup = NUM_ITERS_PER_RUP_DEFAULT;
+		solveClustersIndividually = SOLVE_CLUSTERS_INDIVIDUALLY_DEFAULT;
+	}
+	
+	public void setNumItersPerRup(long numItersPerRup) {
+		Preconditions.checkState(numItersPerRup > 0l, "numItersPerRup must be >0: %s", numItersPerRup);
+		this.numItersPerRup = numItersPerRup;
+	}
+	
+	@Override
+	public boolean isSolveClustersIndividually() {
+		return solveClustersIndividually;
+	}
+
+	public void setSolveClustersIndividually(boolean solveClustersIndividually) {
+		this.solveClustersIndividually = solveClustersIndividually;
+	}
+
 	protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
 		RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
@@ -245,7 +273,11 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				rupSet = null;
 			}
 		} else {
-			System.out.println("Rup set cache miss, doesn't exist: "+cachedRupSetFile.getAbsolutePath());
+			if (cachedRupSetFile != null)
+				System.out.println("Rup set cache miss, doesn't exist: "+cachedRupSetFile.getAbsolutePath());
+			else
+				System.out.println("No cache directory supplied, will build rupture set from scratch. Consider "
+						+ "settting a cache directory to speed up rupture set building in the future.");
 		}
 		
 		if (rupSet == null)
@@ -361,7 +393,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		if (subsetMappings != null)
 			rupSet.addModule(subsetMappings);
 		
-		SlipAlongRuptureModelBranchNode slipAlong = branch.requireValue(SlipAlongRuptureModelBranchNode.class);
+		SlipAlongRuptureModelBranchNode slipAlong = branch.hasValue(SlipAlongRuptureModelBranchNode.class) ?
+				branch.requireValue(SlipAlongRuptureModelBranchNode.class) : SLIP_ALONG_DEFAULT;
 		rupSet.addModule(slipAlong.getModel());
 		
 		// add other modules
@@ -1263,7 +1296,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		constrBuilder.adjustForActualRupSlips(adjustForActualRupSlips, adjustForSlipAlong);
 		
-		SubSectConstraintModels constrModel = branch.requireValue(SubSectConstraintModels.class);
+		SubSectConstraintModels constrModel = branch.hasValue(SubSectConstraintModels.class) ?
+				branch.getValue(SubSectConstraintModels.class) : SUB_SECT_CONSTR_DEFAULT;
 		
 		double slipWeight = 1d;
 		double paleoWeight = hasPaleoData ? 5 : 0;
@@ -1339,7 +1373,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			// only count ruptures we can actually sample
 			numRups = sampler.size();
 		long equivNumVars = Long.max(numRups, rupSet.getNumSections()*100l);
-		CompletionCriteria completion = new IterationCompletionCriteria(equivNumVars*NUM_ITERS_PER_RUP);
+		CompletionCriteria completion = new IterationCompletionCriteria(equivNumVars*numItersPerRup);
 		CompletionCriteria subCompletion = new IterationCompletionCriteria(equivNumVars);
 		CompletionCriteria avgCompletion = new IterationCompletionCriteria(equivNumVars*50l);
 		
@@ -1803,10 +1837,10 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	}
 	
 	public static class FullSysInv extends NSHM23_InvConfigFactory {
-
-		@Override
-		public boolean isSolveClustersIndividually() {
-			return false;
+		
+		public FullSysInv() {
+			super();
+			setSolveClustersIndividually(false);
 		}
 		
 	}
@@ -2096,7 +2130,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	public static class TenThousandItersPerRup extends NSHM23_InvConfigFactory {
 		
 		public TenThousandItersPerRup() {
-			NUM_ITERS_PER_RUP = 10000l;
+			super();
+			numItersPerRup = 10000;
 		}
 		
 	}
