@@ -99,6 +99,7 @@ import org.opensha.sra.vulnerability.models.servlet.VulnerabilityServletAccessor
 import org.opensha.sra.gui.components.GuiBeanAPI;
 import org.opensha.sra.gui.components.VulnerabilityBean;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 
 
@@ -895,10 +896,13 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 					forecast.getTimeSpan().getDuration());
 		getAnnualizedPE(currentAnnualizedRates);
 	}*/
+		AbstractVulnerability vuln = vulnBean.getCurrentModel();
+		Preconditions.checkNotNull(vuln, "Vulnerability model is null");
+		System.out.println("Vuln model: "+vuln.getName()+" ("+vuln.getClass()+")");
 		LossCurveCalculator lCalc = new LossCurveCalculator();
-		ArbitrarilyDiscretizedFunc lossFunc = lCalc.getLossCurve(currentHazardCurve, vulnBean.getCurrentModel());
+		ArbitrarilyDiscretizedFunc lossFunc = lCalc.getLossCurve(currentHazardCurve, vuln);
 		lossFunc.setInfo(this.getParametersInfoAsString());
-		lossFunc.setName(vulnBean.getCurrentModel().getName());
+		lossFunc.setName(vuln.getName());
 		// set the X-axis label
 		String imt = currentIMT;
 		graphWidget.setXAxisLabel("Fractional Loss");
