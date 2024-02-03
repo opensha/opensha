@@ -486,7 +486,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			SectMFDCalculator calc = new SectMFDCalculator();
 			calc.calc(exec, refMFD, minMags, zeroRateAllowed, slipOnly, 0d);
 			// give the newly computed target slip rates to the rupture set for use in inversions
-			rupSet.addModule(calc.sectSlipRates);
+			if (subSeisMoRateReduction != SubSeisMoRateReduction.FROM_INPUT_SLIP_RATES)
+				rupSet.addModule(calc.sectSlipRates);
 			if (slipOnly)
 				return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, sectSpecificBValues,
 						null, null, null, null, null, null, calc.sectSlipRates, null);
