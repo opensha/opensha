@@ -11,7 +11,9 @@ import java.io.OutputStreamWriter;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -202,6 +204,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		private BranchWeightProvider weightProv;
 		
 		private List<LogicTreeBranch<LogicTreeNode>> branches = new ArrayList<>();
+		private List<Map<String, String>> branchMappings = new ArrayList<>();
 		private List<LogicTreeLevel<? extends LogicTreeNode>> levels = null;
 		
 		private boolean serializeGridded = SERIALIZE_GRIDDED_DEFAULT;
@@ -329,7 +332,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			String outPrefix = solTree.buildPrefix(entryPrefix);
 
 			System.out.println("Writing branch: "+branch);
-			solTree.writeBranchFilesToArchive(zout, outPrefix, branch, writtenFiles, sol);
+			branchMappings.add(solTree.writeBranchFilesToArchive(zout, outPrefix, branch, writtenFiles, sol));
 			if (D) debug("solution: DONE for "+branch);
 		}
 		
@@ -350,6 +353,10 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 					if (D) debug("close: writing processor json");
 					writeProcessorJSON(zout, solTree.buildPrefix(entryPrefix), processor);
 				}
+				
+				solTree.writeLogicTreeMappingsToArchive(zout, solTree.buildPrefix(entryPrefix), tree, branchMappings);
+				
+				solTree.writeREADMEToArchive(zout);
 				
 				zout = null;
 				entryPrefix = null;
@@ -531,7 +538,6 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 	}
 	
-	@SuppressWarnings("unused") // used for serialization
 	private SolutionLogicTree() {
 		this(null, null);
 	}
@@ -568,14 +574,14 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	}
 
 	@Override
-	protected void writeBranchFilesToArchive(ZipOutputStream zout, String prefix, LogicTreeBranch<?> branch,
+	protected Map<String, String> writeBranchFilesToArchive(ZipOutputStream zout, String prefix, LogicTreeBranch<?> branch,
 			HashSet<String> writtenFiles) throws IOException {
 		FaultSystemSolution sol = forBranch(branch);
-		writeBranchFilesToArchive(zout, prefix, branch, writtenFiles, sol);
+		return writeBranchFilesToArchive(zout, prefix, branch, writtenFiles, sol);
 	}
 	
 
-	protected void writeBranchFilesToArchive(ZipOutputStream zout, String prefix, LogicTreeBranch<?> branch,
+	protected Map<String, String> writeBranchFilesToArchive(ZipOutputStream zout, String prefix, LogicTreeBranch<?> branch,
 			HashSet<String> writtenFiles, FaultSystemSolution sol) throws IOException {
 		// could try to be fancy and copy files over without loading, but these things will be written out so rarely
 		// (usually one and done) so it's not worth the added complexity
@@ -583,7 +589,9 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		String entryPrefix = null; // prefixes will be encoded in the results of getBranchFileName(...) calls
 		
-		String sectsFile = getBranchFileName(branch, prefix, FaultSystemRupSet.SECTS_FILE_NAME, true);
+		Map<String, String> mappings = new LinkedHashMap<>();
+		
+		String sectsFile = getRecordBranchFileName(branch, prefix, FaultSystemRupSet.SECTS_FILE_NAME, true, mappings);
 		if (!writtenFiles.contains(sectsFile)) {
 			FileBackedModule.initEntry(zout, entryPrefix, sectsFile);
 			OutputStreamWriter writer = new OutputStreamWriter(zout);
@@ -594,26 +602,26 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			writtenFiles.add(sectsFile);
 		}
 		
-		String indicesFile = getBranchFileName(branch, prefix, FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
+		String indicesFile = getRecordBranchFileName(branch, prefix, FaultSystemRupSet.RUP_SECTS_FILE_NAME, true, mappings);
 		if (!writtenFiles.contains(indicesFile)) {
 			CSV_BackedModule.writeToArchive(FaultSystemRupSet.buildRupSectsCSV(rupSet), zout, entryPrefix, indicesFile);
 			writtenFiles.add(indicesFile);
 		}
 		
-		String propsFile = getBranchFileName(branch, prefix, FaultSystemRupSet.RUP_PROPS_FILE_NAME, true);
+		String propsFile = getRecordBranchFileName(branch, prefix, FaultSystemRupSet.RUP_PROPS_FILE_NAME, true, mappings);
 		if (!writtenFiles.contains(propsFile)) {
 			CSV_BackedModule.writeToArchive(new RuptureProperties(rupSet).buildCSV(), zout, entryPrefix, propsFile);
 			writtenFiles.add(propsFile);
 		}
 		
-		String ratesFile = getBranchFileName(branch, prefix, FaultSystemSolution.RATES_FILE_NAME, true);
+		String ratesFile = getRecordBranchFileName(branch, prefix, FaultSystemSolution.RATES_FILE_NAME, true, mappings);
 		if (!writtenFiles.contains(ratesFile)) {
 			CSV_BackedModule.writeToArchive(FaultSystemSolution.buildRatesCSV(sol), zout, entryPrefix, ratesFile);
 			writtenFiles.add(ratesFile);
 		}
 		
 		if (sol.hasModule(RupMFDsModule.class)) {
-			String mfdsFile = getBranchFileName(branch, prefix, RupMFDsModule.FILE_NAME, true);
+			String mfdsFile = getRecordBranchFileName(branch, prefix, RupMFDsModule.FILE_NAME, true, mappings);
 			if (!writtenFiles.contains(mfdsFile)) {
 				RupMFDsModule mfds = sol.requireModule(RupMFDsModule.class);
 				CSV_BackedModule.writeToArchive(mfds.getCSV(), zout, entryPrefix, mfdsFile);
@@ -623,7 +631,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		if (serializeGridded && sol.hasModule(GridSourceProvider.class)) {
 			GridSourceProvider prov = sol.getModule(GridSourceProvider.class);
-			writeGridProvToArchive(prov, zout, prefix, branch, writtenFiles);
+			mappings.putAll(writeGridProvToArchive(prov, zout, prefix, branch, writtenFiles));
 		}
 		
 		InversionMisfitStats misfitStats = sol.getModule(InversionMisfitStats.class);
@@ -631,8 +639,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			misfitStats = sol.requireModule(InversionMisfits.class).getMisfitStats();
 		
 		if (misfitStats != null) {
-			String statsFile = getBranchFileName(branch, prefix,
-					InversionMisfitStats.MISFIT_STATS_FILE_NAME, true);
+			String statsFile = getRecordBranchFileName(branch, prefix,
+					InversionMisfitStats.MISFIT_STATS_FILE_NAME, true, mappings);
 			Preconditions.checkState(!writtenFiles.contains(statsFile));
 			CSV_BackedModule.writeToArchive(misfitStats.getCSV(), zout, entryPrefix, statsFile);
 			writtenFiles.add(statsFile);
@@ -641,8 +649,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		AnnealingProgress progress = sol.getModule(AnnealingProgress.class);
 		
 		if (progress != null) {
-			String progressFile = getBranchFileName(branch, prefix,
-					AnnealingProgress.PROGRESS_FILE_NAME, true);
+			String progressFile = getRecordBranchFileName(branch, prefix,
+					AnnealingProgress.PROGRESS_FILE_NAME, true, mappings);
 			Preconditions.checkState(!writtenFiles.contains(progressFile));
 			CSV_BackedModule.writeToArchive(progress.getCSV(), zout, entryPrefix, progressFile);
 			writtenFiles.add(progressFile);
@@ -651,8 +659,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		InversionMisfitProgress misfitProgress = sol.getModule(InversionMisfitProgress.class);
 		
 		if (misfitProgress != null) {
-			String progressFile = getBranchFileName(branch, prefix,
-					InversionMisfitProgress.MISFIT_PROGRESS_FILE_NAME, true);
+			String progressFile = getRecordBranchFileName(branch, prefix,
+					InversionMisfitProgress.MISFIT_PROGRESS_FILE_NAME, true, mappings);
 			Preconditions.checkState(!writtenFiles.contains(progressFile));
 			CSV_BackedModule.writeToArchive(misfitProgress.getCSV(), zout, entryPrefix, progressFile);
 			writtenFiles.add(progressFile);
@@ -667,16 +675,20 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
 			
 			if (plausibility != null) {
+				mappings.put(PlausibilityConfiguration.JSON_FILE_NAME, plausibilityFile);
 				plausibility.writeToArchive(zout, entryPrefix, plausibilityFile);
 				writtenFiles.add(plausibilityFile);
 			}
 		}
+		
+		return mappings;
 	}
 	
 	public static final String GRID_PROV_INSTANCE_FILE_NAME = "grid_provider_instance.json";
 
-	public void writeGridProvToArchive(GridSourceProvider prov, ZipOutputStream zout, String prefix,
+	public Map<String, String> writeGridProvToArchive(GridSourceProvider prov, ZipOutputStream zout, String prefix,
 			LogicTreeBranch<?> branch, HashSet<String> writtenFiles) throws IOException {
+		Map<String, String> mappings = new LinkedHashMap<>();
 		GridSourceProvider.AbstractPrecomputed precomputed;
 		if (prov instanceof GridSourceProvider.AbstractPrecomputed)
 			precomputed = (GridSourceProvider.AbstractPrecomputed)prov;
@@ -687,8 +699,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		if (!GridSourceProvider.AbstractPrecomputed.class.isAssignableFrom(loadingClass))
 			loadingClass = GridSourceProvider.Default.class;
 		
-		String gridRegFile = getBranchFileName(branch, prefix,
-				GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false);
+		String gridRegFile = getRecordBranchFileName(branch, prefix,
+				GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false, mappings);
 		if (gridRegFile != null && !writtenFiles.contains(gridRegFile)) {
 			FileBackedModule.initEntry(zout, null, gridRegFile);
 			Feature regFeature = precomputed.getGriddedRegion().toFeature();
@@ -700,14 +712,14 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			writtenFiles.add(gridRegFile);
 		}
 
-		String mechFile = getBranchFileName(branch, prefix,
-				GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false);
+		String mechFile = getRecordBranchFileName(branch, prefix,
+				GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false, mappings);
 		if (mechFile != null && !writtenFiles.contains(mechFile)) {
 			CSV_BackedModule.writeToArchive(precomputed.buildWeightsCSV(), zout, null, mechFile);
 			writtenFiles.add(mechFile);
 		}
-		String subSeisFile = getBranchFileName(branch, prefix,
-				GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true);
+		String subSeisFile = getRecordBranchFileName(branch, prefix,
+				GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true, mappings);
 		if (subSeisFile != null && !writtenFiles.contains(subSeisFile)) {
 			CSVFile<String> csv = precomputed.buildSubSeisCSV();
 			if (csv != null) {
@@ -715,8 +727,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 				writtenFiles.add(subSeisFile);
 			}
 		}
-		String unassociatedFile = getBranchFileName(branch, prefix,
-				GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true);
+		String unassociatedFile = getRecordBranchFileName(branch, prefix,
+				GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true, mappings);
 		if (unassociatedFile != null && !writtenFiles.contains(unassociatedFile)) {
 			CSVFile<String> csv = precomputed.buildUnassociatedCSV();
 			if (csv != null) {
@@ -727,14 +739,16 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		// write the implementing class
 		List<? extends LogicTreeLevel<?>> mappingLevels = getLevelsAffectingFile(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true);
-		String gridProvFile = getBranchFileName(branch, prefix,
-				GRID_PROV_INSTANCE_FILE_NAME, mappingLevels);
+		String gridProvFile = getRecordBranchFileName(branch, prefix,
+				GRID_PROV_INSTANCE_FILE_NAME, mappingLevels, mappings);
 		if (!writtenFiles.contains(gridProvFile)) {
 			FileBackedModule.initEntry(zout, null, gridProvFile);
 			writeGridSourceProvInstanceFile(zout, loadingClass);
 			zout.closeEntry();
 			writtenFiles.add(unassociatedFile);
 		}
+		
+		return mappings;
 	}
 	
 	/**
@@ -1023,7 +1037,9 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		archive.addModule(this);
 		
+		writeREADME = true;
 		archive.write(outputFile);
+		writeREADME = false;
 	}
 	
 	public static SolutionLogicTree load(File treeFile) throws IOException {
@@ -1060,6 +1076,45 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	}
 	
 	private static final String PROCESSOR_FILE_NAME = "solution_processor.json";
+	// will only write a readme if initiated via the .write(File) method, or via FileBuilder
+	// otherwise it could conflict with other modules if written as a submodule
+	protected boolean writeREADME = false;
+	
+	protected void writeREADMEToArchive(ZipOutputStream zout) throws IOException {
+		OutputStreamWriter writer = new OutputStreamWriter(zout);
+		System.out.println("Writing README at root");
+		FileBackedModule.initEntry(zout, null, "README");
+		BufferedWriter readme = new BufferedWriter(writer);
+		readme.write("This is an OpenSHA Fault System Solution Logic Tree zip file.\n\n");
+		
+		readme.write("The file format is described in detail at https://opensha.org/Modular-Fault-System-Solution\n\n");
+		
+		readme.write("Unlike a regular Fault System Solution, this archive contains information for multiple solutions "
+				+ "across multiple logic tree branches. Individual files that make up a solution are often only affected "
+				+ "by some logic tree branching levels. For example, fault section data ('"+FaultSystemRupSet.SECTS_FILE_NAME
+				+ "')is often affected by fault and deformation model branching levels, but not scaling relationships "
+				+ "nor rate model branches. We store information efficiently for each branch by not duplicating those "
+				+ "files that are constant across multiple branches.\n\n");
+		
+		readme.write("All relevant files are stored in the '"+SUB_DIRECTORY_NAME+"' directory. Solution and rupture "
+				+ "set files will be stored in branch-specific subdirectories, and information on the logic tree "
+				+ "branches available and their file mapping structure are avilable in the following files:\n\n");
+		
+		readme.write(" - "+SUB_DIRECTORY_NAME+"/"+LOGIC_TREE_FILE_NAME+": Logic Tree JSON file listing all logic tree "
+				+ "branches, weights, and details of the branch levels.\n");
+		readme.write(" - "+SUB_DIRECTORY_NAME+"/"+LOGIC_TREE_MAPPINGS_FILE_NAME+": File name mappings for each logic "
+				+ "tree branch. This file is not used by OpenSHA, but is written to help external users quickly identify "
+				+ "the location of each solution or rupture set file for individual logic tree branches.\n");
+		readme.write(" - "+SUB_DIRECTORY_NAME+"/"+PROCESSOR_FILE_NAME+": This file format does not support all optional "
+				+ "modules that can be attached to a solution or rupture set. Instead, a solution processor class in "
+				+ "OpenSHA can be used to provide additional modules as a function of logic tree branch. This file, if "
+				+ "present, gives the class name in OpenSHA of that processor.\n");
+		
+		readme.flush();
+		writer.flush();
+		zout.flush();
+		zout.closeEntry();
+	}
 
 	@Override
 	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
@@ -1067,6 +1122,10 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		if (processor != null)
 			writeProcessorJSON(zout, buildPrefix(entryPrefix), processor);
+		
+		// write README
+		if (writeREADME)
+			writeREADMEToArchive(zout);
 	}
 
 	private static void writeProcessorJSON(ZipOutputStream zout, String prefix, SolutionProcessor processor)

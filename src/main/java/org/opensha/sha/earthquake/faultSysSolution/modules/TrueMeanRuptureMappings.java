@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.zip.ZipEntry;
@@ -92,11 +93,13 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 	public abstract int[] getRuptureMappings(LogicTreeBranch<?> branch);
 
 	@Override
-	protected synchronized void writeBranchFilesToArchive(ZipOutputStream zout, String prefix, LogicTreeBranch<?> branch,
+	protected synchronized Map<String, String> writeBranchFilesToArchive(ZipOutputStream zout, String prefix, LogicTreeBranch<?> branch,
 			HashSet<String> writtenFiles) throws IOException {
+		Map<String, String> mappings = new LinkedHashMap<>();
+		
 		String entryPrefix = null; // prefixes will be encoded in the results of getBranchFileName(...) calls
 		
-		String sectMappingFile = getBranchFileName(branch, prefix, SECT_MAPPING_FILE_NAME, sectMappingLevels);
+		String sectMappingFile = getRecordBranchFileName(branch, prefix, SECT_MAPPING_FILE_NAME, sectMappingLevels, mappings);
 		if (writtenFiles.contains(sectMappingFile)) {
 			if (!(this instanceof FileBacked)) {
 				// already written, validate that it is indeed identical
@@ -117,7 +120,7 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 			writtenFiles.add(sectMappingFile);
 		}
 		
-		String rupMappingFile = getBranchFileName(branch, prefix, RUP_MAPPING_FILE_NAME, rupMappingLevels);
+		String rupMappingFile = getRecordBranchFileName(branch, prefix, RUP_MAPPING_FILE_NAME, rupMappingLevels, mappings);
 		if (writtenFiles.contains(rupMappingFile)) {
 			if (!(this instanceof FileBacked)) {
 				// already written, validate that it is indeed identical
@@ -137,6 +140,7 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 			rupFileMappingsCache.put(rupMappingFile, rupMappings);
 			writtenFiles.add(rupMappingFile);
 		}
+		return mappings;
 	}
 	
 	
