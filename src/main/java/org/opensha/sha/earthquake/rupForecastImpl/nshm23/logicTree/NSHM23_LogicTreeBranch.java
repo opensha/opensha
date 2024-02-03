@@ -28,24 +28,14 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	 */
 	public static LogicTreeLevel<NSHM23_FaultModels> FM =
 			LogicTreeLevel.forEnum(NSHM23_FaultModels.class, "Fault Model", "FM");
-	public static LogicTreeLevel<RupturePlausibilityModels> PLAUSIBILITY =
-			LogicTreeLevel.forEnum(RupturePlausibilityModels.class, "Rupture Plausibility Model", "RupSet");
 	public static LogicTreeLevel<NSHM23_DeformationModels> DM =
 			LogicTreeLevel.forEnum(NSHM23_DeformationModels.class, "Deformation Model", "DM");
 	public static LogicTreeLevel<NSHM23_ScalingRelationships> SCALE =
 			LogicTreeLevel.forEnum(NSHM23_ScalingRelationships.class, "Scaling Relationship", "Scale");
-	public static LogicTreeLevel<NSHM23_SlipAlongRuptureModels> SLIP_ALONG =
-			LogicTreeLevel.forEnum(NSHM23_SlipAlongRuptureModels.class, "Slip Along Rupture", "SlipAlong");
 	public static LogicTreeLevel<SupraSeisBValues> SUPRA_B =
 			LogicTreeLevel.forEnum(SupraSeisBValues.class, "Supra-Seismogenic b-value", "SupraB");
-	public static LogicTreeLevel<SubSectConstraintModels> SUB_SECT_CONSTR =
-			LogicTreeLevel.forEnum(SubSectConstraintModels.class, "Sub-Sect Constraint Model", "SectConstr");
-	public static LogicTreeLevel<SubSeisMoRateReductions> SUB_SEIS_MO =
-			LogicTreeLevel.forEnum(SubSeisMoRateReductions.class, "Sub-Sect Moment Rate Reduction", "SectMoRed");
 	public static LogicTreeLevel<NSHM23_SegmentationModels> SEG =
 			LogicTreeLevel.forEnum(NSHM23_SegmentationModels.class, "Segmentation Model", "SegModel");
-	public static LogicTreeLevel<SegmentationMFD_Adjustment> SEG_ADJ =
-			LogicTreeLevel.forEnum(SegmentationMFD_Adjustment.class, "Segmentation MFD Adjustment", "SegAdj");
 	public static LogicTreeLevel<NSHM23_PaleoUncertainties> PALEO_UNCERT =
 			LogicTreeLevel.forEnum(NSHM23_PaleoUncertainties.class, "Paleoseismic Data Uncertainties", "PaleoUncert");
 	
@@ -64,6 +54,16 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	/*
 	 * Optional levels
 	 */
+	public static LogicTreeLevel<RupturePlausibilityModels> PLAUSIBILITY =
+			LogicTreeLevel.forEnum(RupturePlausibilityModels.class, "Rupture Plausibility Model", "RupSet");
+	public static LogicTreeLevel<NSHM23_SlipAlongRuptureModels> SLIP_ALONG =
+			LogicTreeLevel.forEnum(NSHM23_SlipAlongRuptureModels.class, "Slip Along Rupture", "SlipAlong");
+	public static LogicTreeLevel<SubSectConstraintModels> SUB_SECT_CONSTR =
+			LogicTreeLevel.forEnum(SubSectConstraintModels.class, "Sub-Sect Constraint Model", "SectConstr");
+	public static LogicTreeLevel<SubSeisMoRateReductions> SUB_SEIS_MO =
+			LogicTreeLevel.forEnum(SubSeisMoRateReductions.class, "Sub-Sect Moment Rate Reduction", "SectMoRed");
+	public static LogicTreeLevel<SegmentationMFD_Adjustment> SEG_ADJ =
+			LogicTreeLevel.forEnum(SegmentationMFD_Adjustment.class, "Segmentation MFD Adjustment", "SegAdj");
 	public static LogicTreeLevel<MaxJumpDistModels> MAX_DIST =
 			LogicTreeLevel.forEnum(MaxJumpDistModels.class, "Maximum Jump Distance", "MaxJumpDist");
 	public static LogicTreeLevel<RupsThroughCreepingSect> RUPS_THROUGH_CREEPING =
@@ -73,8 +73,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	
 	static {
 		// exhaustive for now, can trim down later
-		levelsOnFault = List.of(FM, PLAUSIBILITY, DM, SCALE, SLIP_ALONG, SUPRA_B,
-				SUB_SECT_CONSTR, SUB_SEIS_MO, PALEO_UNCERT, SEG, SEG_ADJ);
+		levelsOnFault = List.of(FM, DM, SCALE, SUPRA_B, PALEO_UNCERT, SEG);
 		levelsOffFault = List.of(SEIS_RATE, SEIS_DECLUSTER, SEIS_SMOOTH, MMAX_OFF);
 		
 		ImmutableList.Builder<LogicTreeLevel<?>> combLevelBuilder = ImmutableList.builder();
@@ -90,17 +89,23 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	 * This is the default on-fault reference branch
 	 */
 	public static final NSHM23_LogicTreeBranch DEFAULT_ON_FAULT = fromValues(levelsOnFault,
-			NSHM23_FaultModels.NSHM23_v2,
-			RupturePlausibilityModels.COULOMB,
+			NSHM23_FaultModels.NSHM23_v3,
 			NSHM23_DeformationModels.GEOLOGIC,
 			NSHM23_ScalingRelationships.LOGA_C4p2,
-			NSHM23_SlipAlongRuptureModels.UNIFORM,
 			SupraSeisBValues.B_0p5,
-			SubSectConstraintModels.TOT_NUCL_RATE,
-			SubSeisMoRateReductions.NONE,
 			NSHM23_PaleoUncertainties.EVEN_FIT,
-			NSHM23_SegmentationModels.MID,
-			SegmentationMFD_Adjustment.REL_GR_THRESHOLD_AVG);
+			NSHM23_SegmentationModels.MID);
+	/**
+	 * This is the average on-fault reference branch
+	 */
+	public static final NSHM23_LogicTreeBranch AVERAGE_ON_FAULT = fromValues(levelsOnFault,
+			NSHM23_FaultModels.NSHM23_v3,
+			NSHM23_DeformationModels.AVERAGE,
+			NSHM23_ScalingRelationships.AVERAGE,
+			SupraSeisBValues.AVERAGE,
+			NSHM23_PaleoUncertainties.AVERAGE,
+			NSHM23_SegmentationModels.AVERAGE);
+
 	/**
 	 * This is the default off-fault reference branch
 	 */
@@ -109,8 +114,17 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			NSHM23_DeclusteringAlgorithms.GK,
 			NSHM23_SeisSmoothingAlgorithms.ADAPTIVE,
 			NSHM23_MaxMagOffFault.MAG_7p6);
-	
+	/**
+	 * This is the default off-fault reference branch
+	 */
+	public static final NSHM23_LogicTreeBranch AVERAGE_OFF_FAULT = fromValues(levelsOffFault,
+			NSHM23_RegionalSeismicity.PREFFERRED,
+			NSHM23_DeclusteringAlgorithms.AVERAGE,
+			NSHM23_SeisSmoothingAlgorithms.AVERAGE,
+			NSHM23_MaxMagOffFault.MAG_7p6);
+
 	public static final NSHM23_LogicTreeBranch DEFAULT_COMBINED;
+	public static final NSHM23_LogicTreeBranch AVERAGE_COMBINED;
 	
 	static {
 		DEFAULT_COMBINED = new NSHM23_LogicTreeBranch(levelsCombined, null);
@@ -118,6 +132,11 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 			DEFAULT_COMBINED.setValue(node);
 		for (LogicTreeNode node : DEFAULT_OFF_FAULT)
 			DEFAULT_COMBINED.setValue(node);
+		AVERAGE_COMBINED = new NSHM23_LogicTreeBranch(levelsCombined, null);
+		for (LogicTreeNode node : AVERAGE_ON_FAULT)
+			AVERAGE_COMBINED.setValue(node);
+		for (LogicTreeNode node : AVERAGE_OFF_FAULT)
+			AVERAGE_COMBINED.setValue(node);
 	}
 	
 	/**
