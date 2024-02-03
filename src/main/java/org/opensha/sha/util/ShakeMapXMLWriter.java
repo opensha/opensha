@@ -9,7 +9,6 @@ import org.dom4j.Document;
 import org.dom4j.Element;
 import org.dom4j.io.OutputFormat;
 import org.dom4j.io.XMLWriter;
-import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
@@ -138,13 +137,33 @@ public class ShakeMapXMLWriter {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		GriddedRegion reg = new GriddedRegion(new Location(34, -118), new Location(35, -119), 0.5, null);
+//		GriddedRegion reg = new GriddedRegion(new Location(34, -118), new Location(35, -119), 0.5, null);
+//		
+//		GriddedGeoDataSet data = new GriddedGeoDataSet(reg, false);
+//		for (int i=0; i<data.size(); i++)
+//			data.set(i, i);
+//		
+//		writeXML(new File("/tmp/output.xml"), 7d, "Test Event", "ID", data, data, data, data, null);
 		
-		GriddedGeoDataSet data = new GriddedGeoDataSet(reg, false);
-		for (int i=0; i<data.size(); i++)
-			data.set(i, i);
+////		File dir = new File("/home/kevin/CyberShake/caloes_shakemaps/consolidated");
+//		File dir = new File("/home/kevin/CyberShake/caloes_shakemaps/consolidated_gmpe");
+//		String prefix = "newport-inglewood";
+//		String name = "Newport-Inglewood Scenario";
+//		double mag = 7.25;
 		
-		writeXML(new File("/tmp/output.xml"), 7d, "Test Event", "ID", data, data, data, data, null);
+//		File dir = new File("/home/kevin/CyberShake/caloes_shakemaps/consolidated");
+		File dir = new File("/home/kevin/CyberShake/caloes_shakemaps/consolidated_gmpe");
+		String prefix = "palos-verdes";
+		String name = "Palos Verdes Scenario";
+		double mag = 7.05;
+		
+		GriddedGeoDataSet pga = GriddedGeoDataSet.loadXYZFile(new File(dir, prefix+"_pga.xyz"), true);
+		GriddedGeoDataSet pgv = GriddedGeoDataSet.loadXYZFile(new File(dir, prefix+"_pgv.xyz"), true);
+		GriddedGeoDataSet sa03 = GriddedGeoDataSet.loadXYZFile(new File(dir, prefix+"_0.3s.xyz"), true);
+		GriddedGeoDataSet sa10 = GriddedGeoDataSet.loadXYZFile(new File(dir, prefix+"_1.0s.xyz"), true);
+		GriddedGeoDataSet sa30 = GriddedGeoDataSet.loadXYZFile(new File(dir, prefix+"_3.0s.xyz"), true);
+		
+		writeXML(new File(dir, prefix+"_grid.xml"), mag, name, prefix, pga, pgv, sa03, sa10, sa30);
 	}
 
 }
