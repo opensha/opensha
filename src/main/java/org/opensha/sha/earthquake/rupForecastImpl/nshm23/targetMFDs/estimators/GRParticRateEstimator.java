@@ -21,9 +21,12 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.Inversions;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint.SectParticipationRateEstimator;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc.BinaryJumpProbabilityCalc;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
+import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 
@@ -50,27 +53,30 @@ public class GRParticRateEstimator implements SectParticipationRateEstimator {
 			if (segModel instanceof BinaryJumpProbabilityCalc)
 				builder.forBinaryRupProbModel((BinaryJumpProbabilityCalc)segModel);
 			else
-				builder.adjustTargetsForData(new ThresholdAveragingSectNuclMFD_Estimator.RelGRWorstJumpProb(segModel, 100, true));
-//				builder.adjustTargetsForData(new SegmentationImpliedSectNuclMFD_Estimator(segModel));
+				builder.adjustTargetsForData(NSHM23_ConstraintBuilder.SEG_ADJ_METHOD_DEFAULT.getAdjustment(segModel));
 		}
 		builder.applyDefModelUncertainties(false);
 		init(rupSet, builder.build());
 	}
 
-	public GRParticRateEstimator(FaultSystemRupSet rupSet, SupraSeisBValInversionTargetMFDs targetMFDs) {
+	public GRParticRateEstimator(FaultSystemRupSet rupSet, InversionTargetMFDs targetMFDs) {
 		init(rupSet, targetMFDs);
 	}
 	
-	private void init(FaultSystemRupSet rupSet, SupraSeisBValInversionTargetMFDs targetMFDs) {
-		List<UncertainIncrMagFreqDist> sectSupraMFDs = targetMFDs.getOnFaultSupraSeisNucleationMFDs();
+	private void init(FaultSystemRupSet rupSet, InversionTargetMFDs targetMFDs) {
+		List<? extends IncrementalMagFreqDist> sectSupraMFDs = targetMFDs.getOnFaultSupraSeisNucleationMFDs();
 		
 		estParticRates = new double[rupSet.getNumSections()];
 		estRupRates = new double[rupSet.getNumRuptures()];
 		
 		for (int s=0; s<estParticRates.length; s++) {
-			UncertainIncrMagFreqDist nuclGR = sectSupraMFDs.get(s);
+			IncrementalMagFreqDist nuclGR = sectSupraMFDs.get(s);
 			
-			List<Integer> rups = targetMFDs.getRupturesForSect(s);
+			List<Integer> rups;
+			if (targetMFDs instanceof SupraSeisBValInversionTargetMFDs)
+				rups = ((SupraSeisBValInversionTargetMFDs)targetMFDs).getRupturesForSect(s);
+			else
+				rups = rupSet.getRupturesForSection(s);
 			List<Double> rupMags = new ArrayList<>();
 			int[] rupsPerBin = new int[nuclGR.size()];
 			for (int r : rups) {
@@ -114,6 +120,7 @@ public class GRParticRateEstimator implements SectParticipationRateEstimator {
 		return estParticRates[sectionIndex];
 	}
 	
+	@Override
 	public double[] estimateRuptureRates() {
 		return estRupRates;
 	}

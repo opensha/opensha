@@ -340,15 +340,19 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 		
 		public double[] estimateSectParticRates();
 		
-		public double estimateSectParticRate(int sectionIndex); 
+		public double estimateSectParticRate(int sectionIndex);
+
+		public double[] estimateRuptureRates(); 
 	}
 	
 	@JsonAdapter(RateEstAdapter.class)
 	public static class InitialModelParticipationRateEstimator implements SectParticipationRateEstimator {
 		
 		private double[] particRates;
+		private double[] initialSol;
 		
 		public InitialModelParticipationRateEstimator(FaultSystemRupSet rupSet, double[] initialSol) {
+			this.initialSol = initialSol;
 			particRates = new FaultSystemSolution(rupSet, initialSol).calcTotParticRateForAllSects();
 		}
 		
@@ -359,6 +363,11 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 		@Override
 		public double[] estimateSectParticRates() {
 			return particRates;
+		}
+
+		@Override
+		public double[] estimateRuptureRates() {
+			return initialSol;
 		}
 	}
 	
@@ -384,16 +393,23 @@ public abstract class JumpProbabilityConstraint extends InversionConstraint {
 				vals.add(in.nextDouble());
 			in.endArray();
 			
+			final double[] valArray = Doubles.toArray(vals);
+			
 			return new SectParticipationRateEstimator() {
 				
 				@Override
 				public double[] estimateSectParticRates() {
-					return Doubles.toArray(vals);
+					return valArray;
 				}
 				
 				@Override
 				public double estimateSectParticRate(int sectionIndex) {
-					return vals.get(sectionIndex);
+					return valArray[sectionIndex];
+				}
+
+				@Override
+				public double[] estimateRuptureRates() {
+					throw new UnsupportedOperationException();
 				}
 			};
 		}
