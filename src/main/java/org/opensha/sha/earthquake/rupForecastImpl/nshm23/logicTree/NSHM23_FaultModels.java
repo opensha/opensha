@@ -67,8 +67,13 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 			Preconditions.checkNotNull(sectsReader, "Fault model file not found: %s", sectPath);
 			return GeoJSONFaultReader.readFaultSections(sectsReader);
 		}
+
+		@Override
+		protected String getNamedFaultResourceName() {
+			return null;
+		}
 	},
-	NSHM23_v2("NSHM23 WUS Fault Model v2", "NSHM23 WUS v2", NSHM23_DeformationModels.GEOLOGIC, 1d) {
+	NSHM23_v2("NSHM23 WUS Fault Model v2", "NSHM23 WUS v2", NSHM23_DeformationModels.GEOLOGIC, 0d) {
 		@Override
 		protected List<? extends FaultSection> loadFaultSections() throws IOException {
 			String sectPath = NSHM23_SECTS_PATH_PREFIX+"v2/NSHM23_FSD_v2.geojson";
@@ -77,13 +82,31 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 			Preconditions.checkNotNull(sectsReader, "Fault model file not found: %s", sectPath);
 			return GeoJSONFaultReader.readFaultSections(sectsReader);
 		}
+
+		@Override
+		protected String getNamedFaultResourceName() {
+			return NSHM23_SECTS_PATH_PREFIX+"v2/special_faults.json";
+		}
+	},
+	NSHM23_v3("NSHM23 WUS Fault Model v3", "NSHM23 WUS v3", NSHM23_DeformationModels.GEOLOGIC, 1d) {
+		@Override
+		protected List<? extends FaultSection> loadFaultSections() throws IOException {
+			String sectPath = NSHM23_SECTS_PATH_PREFIX+"v3/NSHM23_FSD_v3.geojson";
+			Reader sectsReader = new BufferedReader(new InputStreamReader(
+					GeoJSONFaultReader.class.getResourceAsStream(sectPath)));
+			Preconditions.checkNotNull(sectsReader, "Fault model file not found: %s", sectPath);
+			return GeoJSONFaultReader.readFaultSections(sectsReader);
+		}
+
+		@Override
+		protected String getNamedFaultResourceName() {
+			return NSHM23_SECTS_PATH_PREFIX+"v3/special_faults.json";
+		}
 	};
 	
 	private static final ConcurrentMap<NSHM23_FaultModels, List<? extends FaultSection>> sectsCache = new ConcurrentHashMap<>();
 	
 	public static final String NSHM23_SECTS_PATH_PREFIX = "/data/erf/nshm23/fault_models/";
-	
-	public static final String NAMED_FAULTS_FILE = NSHM23_SECTS_PATH_PREFIX+"v2/special_faults.json";
 	
 	private String name;
 	private String shortName;
@@ -137,6 +160,8 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 	}
 	
 	protected abstract List<? extends FaultSection> loadFaultSections() throws IOException;
+	
+	protected abstract String getNamedFaultResourceName();
 
 	@Override
 	public RupSetDeformationModel getDefaultDeformationModel() {
@@ -240,10 +265,13 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 	
 	@Override
 	public NamedFaults getNamedFaults() {
+		String resourceName = getNamedFaultResourceName();
+		if (resourceName == null)
+			return null;
 		Gson gson = new GsonBuilder().create();
 		
 		BufferedReader reader = new BufferedReader(
-				new InputStreamReader(NSHM23_FaultModels.class.getResourceAsStream(NAMED_FAULTS_FILE)));
+				new InputStreamReader(NSHM23_FaultModels.class.getResourceAsStream(resourceName)));
 		Type type = TypeToken.getParameterized(Map.class, String.class,
 				TypeToken.getParameterized(List.class, Integer.class).getType()).getType();
 		Map<String, List<Integer>> namedFaults = gson.fromJson(reader, type);
