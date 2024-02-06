@@ -83,7 +83,7 @@ public abstract class NSHM23_AbstractGridSourceProvider extends Abstract impleme
 	}
 
 	/**
-	 * Builds NSHM23 source. TODO: currently uses UCERF3 implementations
+	 * Builds NSHM23 source
 	 * 
 	 * @param mfd
 	 * @param duration
