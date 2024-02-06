@@ -29,7 +29,6 @@ import org.apache.commons.cli.Options;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
-import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.data.xyz.AbstractXYZ_DataSet;
 import org.opensha.commons.data.xyz.ArbDiscrGeoDataSet;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
@@ -52,7 +51,6 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModu
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
-import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
@@ -187,6 +185,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				if (rank == 0) debug("Reading gridded region from zip file: "+regEntry.getName());
 				BufferedReader bRead = new BufferedReader(new InputStreamReader(zip.getInputStream(regEntry)));
 				region = GriddedRegion.fromFeature(Feature.read(bRead));
+				zip.close();
 			} else {
 				Feature feature = Feature.read(regFile);
 				region = Region.fromFeature(feature);
@@ -569,24 +568,24 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		return ret;
 	}
 	
-	public static Supplier<ScalarIMR> getGMM_Supplier(LogicTreeBranch<?> branch, AttenRelRef gmpeRef) {
+	public static Supplier<ScalarIMR> getGMM_Supplier(LogicTreeBranch<?> branch, Supplier<ScalarIMR> upstream) {
 		Supplier<ScalarIMR> supplier;
 		if (branch.hasValue(ScalarIMR_LogicTreeNode.class))
 			supplier = branch.requireValue(ScalarIMR_LogicTreeNode.class);
 		else
-			supplier = gmpeRef;
+			supplier = upstream;
 		
 		// see if we have any GMM parameter logic tree branches
 		for (int i=0; i<branch.size(); i++) {
 			LogicTreeNode node = branch.getValue(i);
 			if (node instanceof ScalarIMR_ParamsLogicTreeNode) {
 				ScalarIMR_ParamsLogicTreeNode params = (ScalarIMR_ParamsLogicTreeNode)node;
-				Supplier<ScalarIMR> upstream = supplier;
+				Supplier<ScalarIMR> myUpstream = supplier;
 				supplier = new Supplier<ScalarIMR>() {
 
 					@Override
 					public ScalarIMR get() {
-						ScalarIMR imr = upstream.get();
+						ScalarIMR imr = myUpstream.get();
 						params.setParams(imr);
 						return imr;
 					}
