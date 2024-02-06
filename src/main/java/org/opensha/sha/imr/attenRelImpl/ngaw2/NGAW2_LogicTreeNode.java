@@ -40,7 +40,7 @@ public enum NGAW2_LogicTreeNode implements ScalarIMR_LogicTreeNode {
 		return name();
 	}
 	@Override
-	public AttenRelRef getRef() {
+	public AttenRelRef getSupplier() {
 		return ref;
 	}
 }

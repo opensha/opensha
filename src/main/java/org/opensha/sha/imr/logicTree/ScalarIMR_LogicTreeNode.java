@@ -4,6 +4,7 @@ import java.util.function.Supplier;
 
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.imr.AttenRelRef;
+import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
 
 /**
@@ -15,22 +16,21 @@ import org.opensha.sha.imr.ScalarIMR;
  */
 public interface ScalarIMR_LogicTreeNode extends LogicTreeNode, Supplier<ScalarIMR> {
 	
-	public AttenRelRef getRef();
+	public AttenRelSupplier getSupplier();
 	
 	public default ScalarIMR get() {
-		ScalarIMR imr = getRef().instance(null);
-		imr.setParamDefaults();
+		ScalarIMR imr = getSupplier().get();
 		return imr;
 	}
 
 	@Override
 	public default String getShortName() {
-		return getRef().getShortName();
+		return getSupplier().getShortName();
 	}
 
 	@Override
 	public default String getName() {
-		return getRef().getName();
+		return getSupplier().getName();
 	}
 
 }
