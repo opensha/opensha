@@ -62,10 +62,14 @@ import gov.usgs.earthquake.nshmp.tree.LogicTree;
 
 /**
  * This wraps the Gmm implementations in nshmp-lib: https://code.usgs.gov/ghsc/nshmp/nshmp-lib
- * 
+ * <br>
  * If supplied with the 'parameterize' flag, it will conform to the full AttenuationRelationship specification, filling
  * in relevant parameter values. If not, parameters will be skipped for computational efficiency except for site
  * parameters (those are needed so that calculators know which site parameters are required).
+ * <br>
+ * If the Gmm passed in is null, this can still be used to build fully populated {@link GmmInput} instances, but
+ * attempts to calculate exceedance probabilities or GMM values will throw exceptions. Otherwise, {@link GmmInput}
+ * instances will be built only for relevant fields.
  * 
  * @author kevin
  *
@@ -120,24 +124,31 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		this.gmm = gmm;
 		this.shortName = shortName;
 		this.component = component;
-		this.constraints = gmm.constraints();
 		this.parameterize = parameterize;
 		
 		instanceMap = new EnumMap<>(Imt.class);
 		
-		// figure out which fields are actually used by this GMM
-		ImmutableList.Builder<Field> fieldsUsedListBuilder = ImmutableList.builder();
-		for (Field field : Field.values()) {
-			if (constraints.get(field).isPresent()) {
-				// this field is used
-				
-				// make sure we support this field
-				FieldParameterValueManager.ensureSupported(field);
-				fieldsUsedListBuilder.add(field);
+		if (gmm != null) {
+			this.constraints = gmm.constraints();
+			// figure out which fields are actually used by this GMM
+			ImmutableList.Builder<Field> fieldsUsedListBuilder = ImmutableList.builder();
+			for (Field field : Field.values()) {
+				if (constraints.get(field).isPresent()) {
+					// this field is used
+					
+					// make sure we support this field
+					FieldParameterValueManager.ensureSupported(field);
+					fieldsUsedListBuilder.add(field);
+				}
 			}
+			this.fieldsUsedList = fieldsUsedListBuilder.build();
+			this.fields = EnumSet.copyOf(fieldsUsedList);
+		} else {
+			// create inputs for all fields
+			this.constraints = Constraints.defaults();
+			this.fieldsUsedList = ImmutableList.copyOf(Field.values());
+			this.fields = EnumSet.allOf(Field.class);
 		}
-		this.fieldsUsedList = fieldsUsedListBuilder.build();
-		this.fields = EnumSet.copyOf(fieldsUsedList);
 		this.valueManager = new FieldParameterValueManager(this);
 		
 		initSupportedIntensityMeasureParams();
@@ -201,6 +212,17 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		if (gmmInput == null)
 			gmmInput = valueManager.getGmmInput();
 		return gmmInput;
+	}
+	
+	/**
+	 * Sets the passed in {@link GmmInput} as the current input for the GMM. Note that this will not set any parameter
+	 * values. If a paremter is changed subsequently, all changes passed in via this method will be blown away (even
+	 * those not affefcted by the parameter update).
+	 * @param gmmInput
+	 */
+	public void setCurrentGmmInput(GmmInput gmmInput) {
+		clearCachedGmmInputs();
+		this.gmmInput = gmmInput;
 	}
 	
 	/**
@@ -353,6 +375,9 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	@Override
 	protected void initSupportedIntensityMeasureParams() {
 		supportedIMParams.clear();
+		
+		if (gmm == null)
+			return;
 		
 		// Create SA Parameter
 		Set<Imt> imts = gmm.supportedImts();
@@ -628,32 +653,34 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			otherParams.addParameter(componentParam);
 		}
 		
-		// tectonic region type
-		Type type = gmm.type();
-		if (type != null) {
-			String typeStr;
-			switch (type) {
-			case ACTIVE_CRUST:
-				typeStr = TectonicRegionType.ACTIVE_SHALLOW.toString();
-				break;
-			case STABLE_CRUST:
-				typeStr = TectonicRegionType.STABLE_SHALLOW.toString();
-				break;
-			case SUBDUCTION_INTERFACE:
-				typeStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
-				break;
-			case SUBDUCTION_SLAB:
-				typeStr = TectonicRegionType.SUBDUCTION_SLAB.toString();
-				break;
+		if (gmm != null) {
+			// tectonic region type
+			Type type = gmm.type();
+			if (type != null) {
+				String typeStr;
+				switch (type) {
+				case ACTIVE_CRUST:
+					typeStr = TectonicRegionType.ACTIVE_SHALLOW.toString();
+					break;
+				case STABLE_CRUST:
+					typeStr = TectonicRegionType.STABLE_SHALLOW.toString();
+					break;
+				case SUBDUCTION_INTERFACE:
+					typeStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
+					break;
+				case SUBDUCTION_SLAB:
+					typeStr = TectonicRegionType.SUBDUCTION_SLAB.toString();
+					break;
 
-			default:
-				throw new IllegalStateException("Unexpected TRT: "+type);
+				default:
+					throw new IllegalStateException("Unexpected TRT: "+type);
+				}
+				StringConstraint options = new StringConstraint();
+				options.addString(typeStr);
+				tectonicRegionTypeParam.setConstraint(options);
+			    tectonicRegionTypeParam.setDefaultValue(typeStr);
+			    tectonicRegionTypeParam.setValueAsDefault();
 			}
-			StringConstraint options = new StringConstraint();
-			options.addString(typeStr);
-			tectonicRegionTypeParam.setConstraint(options);
-		    tectonicRegionTypeParam.setDefaultValue(typeStr);
-		    tectonicRegionTypeParam.setValueAsDefault();
 		}
 	}
 
@@ -674,6 +701,8 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 
 	@Override
 	public String getName() {
+		if (gmm == null)
+			return null;
 		return gmm.toString();
 	}
 
