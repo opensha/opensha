@@ -35,12 +35,14 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 	private CompletableFuture<Void> processingLoadedFuture;
 	
 	private boolean[] dones;
+	private LogicTree<?> tree;
 
-	public AbstractAsyncLogicTreeWriter(File outputDir, SolutionProcessor processor, BranchWeightProvider weightProv) {
+	public AbstractAsyncLogicTreeWriter(File outputDir, SolutionProcessor processor, LogicTree<?> tree) {
 		super(1);
 		this.outputDir = outputDir;
 		this.processor = processor;
-		this.weightProv = weightProv;
+		this.tree = tree;
+		this.weightProv = tree.getWeightProvider();
 		this.baCreators = new HashMap<>();
 		
 		dones = new boolean[getNumTasks()];
@@ -204,6 +206,7 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		
 		memoryDebug("AsyncLogicTree: finalizing logic tree zip");
 		try {
+			sltBuilder.sortLogicTreeBranchesToMatchTree(tree);
 			sltBuilder.build();
 		} catch (IOException e) {
 			memoryDebug("AsyncLogicTree: failed to build logic tree zip");
