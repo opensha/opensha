@@ -374,23 +374,7 @@ public class SolHazardMapCalc {
 				
 				if (skipMaxSiteDist > 0d && Double.isFinite(skipMaxSiteDist)) {
 					// see if we should just skip this site
-					
-					boolean hasSourceWithin = false;
-					if (gridSourceReg != null) {
-						Location siteLoc = site.getLocation();
-						hasSourceWithin = gridSourceReg.contains(siteLoc) ||
-								gridSourceReg.distanceToLocation(siteLoc) <= skipMaxSiteDist;
-					}
-					
-					for (int sourceID=0; !hasSourceWithin && sourceID<numFaultSysSources; sourceID++) {
-						ProbEqkSource source = erf.getSource(sourceID);
-						if (source.getMinDistance(site) < skipMaxSiteDist) {
-							hasSourceWithin = true;
-							break;
-						}
-					}
-					
-					if (!hasSourceWithin) {
+					if (shouldSkipSite(site, skipMaxSiteDist, erf, numFaultSysSources, gridSourceReg)) {
 						// can skip this site, no sources within skipMaxSiteDist
 						checkInitXVals();
 						for (int p=0; p<periods.length; p++) {
@@ -421,21 +405,34 @@ public class SolHazardMapCalc {
 		}
 	}
 	
+	public static boolean shouldSkipSite(Site site, double skipMaxSiteDist, AbstractERF erf,
+			int numFaultSysSources, GriddedRegion gridSourceReg) {
+		if (!(skipMaxSiteDist > 0d && Double.isFinite(skipMaxSiteDist)))
+			return false;
+		boolean hasSourceWithin = false;
+		if (gridSourceReg != null) {
+			Location siteLoc = site.getLocation();
+			hasSourceWithin = gridSourceReg.contains(siteLoc) ||
+					gridSourceReg.distanceToLocation(siteLoc) <= skipMaxSiteDist;
+		}
+		
+		for (int sourceID=0; !hasSourceWithin && sourceID<numFaultSysSources; sourceID++) {
+			ProbEqkSource source = erf.getSource(sourceID);
+			if (source.getMinDistance(site) < skipMaxSiteDist) {
+				hasSourceWithin = true;
+				break;
+			}
+		}
+		
+		return !hasSourceWithin;
+	}
+	
 	private List<DiscretizedFunc> calcSiteCurves(HazardCurveCalculator calc, AbstractERF erf, ScalarIMR gmpe, Site site,
 			SolHazardMapCalc combineWith, int index) {
 		checkInitXVals();
 		List<DiscretizedFunc> ret = new ArrayList<>(periods.length);
 		
 		for (int p=0; p<periods.length; p++) {
-			if (periods[p] == -1d) {
-				gmpe.setIntensityMeasure(PGV_Param.NAME);
-			} else if (periods[p] == 0d) {
-				gmpe.setIntensityMeasure(PGA_Param.NAME);
-			} else {
-				Preconditions.checkState(periods[p] > 0);
-				gmpe.setIntensityMeasure(SA_Param.NAME);
-				SA_Param.setPeriodInSA_Param(gmpe.getIntensityMeasure(), periods[p]);
-			}
 			DiscretizedFunc logCurve = logXVals[p].deepClone();
 			calc.getHazardCurve(logCurve, site, gmpe, erf);
 			DiscretizedFunc curve = xVals[p].deepClone();
@@ -452,6 +449,18 @@ public class SolHazardMapCalc {
 			ret.add(curve);
 		}
 		return ret;
+	}
+	
+	public static void setIMforPeriod(ScalarIMR gmpe, double period) {
+		if (period == -1d) {
+			gmpe.setIntensityMeasure(PGV_Param.NAME);
+		} else if (period == 0d) {
+			gmpe.setIntensityMeasure(PGA_Param.NAME);
+		} else {
+			Preconditions.checkState(period > 0);
+			gmpe.setIntensityMeasure(SA_Param.NAME);
+			SA_Param.setPeriodInSA_Param(gmpe.getIntensityMeasure(), period);
+		}
 	}
 	
 	private static void combineIn(DiscretizedFunc curve, DiscretizedFunc oCurve) {
