@@ -210,10 +210,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public String getName() {
 		return "Solution";
 	}
+	
+	public static final String NESTING_PREFIX = "solution/";
 
 	@Override
 	protected String getNestingPrefix() {
-		return "solution/";
+		return NESTING_PREFIX;
 	}
 	
 	public static final String RATES_FILE_NAME = "rates.csv";

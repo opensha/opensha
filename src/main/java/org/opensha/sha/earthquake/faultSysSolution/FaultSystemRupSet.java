@@ -243,10 +243,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public String getName() {
 		return "Rupture Set";
 	}
+	
+	public static final String NESTING_PREFIX = "ruptures/";
 
 	@Override
 	protected String getNestingPrefix() {
-		return "ruptures/";
+		return NESTING_PREFIX;
 	}
 	
 	public static final String SECTS_FILE_NAME = "fault_sections.geojson";
