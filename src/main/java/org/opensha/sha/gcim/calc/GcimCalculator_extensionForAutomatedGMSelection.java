@@ -95,7 +95,7 @@ public class GcimCalculator_extensionForAutomatedGMSelection {
 		this.eqkRupForecast = eqkRupForecast;
 		
 		//Call DisaggregationCalculator twice for IMj = imj and imj + deltaimj
-		DisaggregationCalculator disaggCalc = new DisaggregationCalculator();
+		GCIM_DisaggregationCalculator disaggCalc = new GCIM_DisaggregationCalculator();
 		disaggCalc.setStoreRupProbEpsilons(true);
 		disaggCalc.disaggregate(iml, site, imrjMap, eqkRupForecast, maxDist, magDistFilter);
 		double disaggRupDetails1[][][] = disaggCalc.getRupProbEpsilons();

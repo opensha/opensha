@@ -20,6 +20,7 @@ import java.security.AccessControlException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -79,6 +80,8 @@ import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.HazardCurveCalculatorAPI;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculatorAPI;
+import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
+import org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter;
 import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.EpistemicListERF;
 import org.opensha.sha.earthquake.AbstractERF;
@@ -1363,7 +1366,7 @@ ScalarIMRChangeListener {
 					disaggCalc.setDistanceRange(minDist, numDist, deltaDist);
 				}
 				disaggCalc.setMagRange(minMag, numMag, deltaMag);
-				disaggCalc.setNumSourcestoShow(numSourcesForDisag);
+				disaggCalc.setNumSourcesToShow(numSourcesForDisag);
 				disaggCalc.setShowDistances(showSourceDistances);
 
 			} catch (Exception e) {
@@ -1420,7 +1423,7 @@ ScalarIMRChangeListener {
 					}
 				}
 				disaggSuccessFlag = disaggCalc.disaggregate(Math.log(imlVal),
-						site, imrMap, (AbstractERF) forecast,
+						site, imrMap, (ERF) forecast,
 						this.calc.getAdjustableParams());
 				disaggCalc.setMaxZAxisForPlot(maxZAxis);
 				disaggregationString = disaggCalc.getMeanAndModeInfo();
@@ -1492,16 +1495,17 @@ ScalarIMRChangeListener {
 			boolean imlBasedDisaggr, double imlVal, double probVal) {
 		// String sourceDisaggregationListAsHTML = null;
 		String sourceDisaggregationList = null;
+		String consolidatedSourceDisaggregationList = null;
 		if (numSourceToShow > 0) {
 			sourceDisaggregationList = getSourceDisaggregationInfo();
+			consolidatedSourceDisaggregationList = getConsolidatedSourceDisaggregationInfo();
 			// sourceDisaggregationListAsHTML = sourceDisaggregationList.
 			// replaceAll("\n", "<br>");
 			// sourceDisaggregationListAsHTML = sourceDisaggregationListAsHTML.
 			// replaceAll("\t", "&nbsp;&nbsp;&nbsp;");
 		}
 		String binData = null;
-		boolean binDataToShow = disaggregationControlPanel
-		.isShowDisaggrBinDataSelected();
+		boolean binDataToShow = disaggregationControlPanel.isShowDisaggrBinDataSelected();
 		if (binDataToShow) {
 			try {
 				binData = disaggCalc.getBinData();
@@ -1526,36 +1530,36 @@ ScalarIMRChangeListener {
 		modeString += "\n" + disaggregationString;
 
 		String disaggregationPlotWebAddr = null;
-		String metadata;
-		// String pdfImageLink;
-		try {
-			disaggregationPlotWebAddr = getDisaggregationPlot();
-			/*
-			 * pdfImageLink = "<br>Click  " + "<a href=\"" +
-			 * disaggregationPlotWebAddr +
-			 * DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME + "\">" +
-			 * "here" + "</a>" +
-			 * " to view a PDF (non-pixelated) version of the image (this will be deleted at midnight)."
-			 * ;
-			 */
+		String metadata = getMapParametersInfoAsHTML();
+		if (disaggregationControlPanel.isUseGMT()) {
+			// String pdfImageLink;
+			try {
+				disaggregationPlotWebAddr = getDisaggregationPlot();
+				/*
+				 * pdfImageLink = "<br>Click  " + "<a href=\"" +
+				 * disaggregationPlotWebAddr +
+				 * DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME + "\">" +
+				 * "here" + "</a>" +
+				 * " to view a PDF (non-pixelated) version of the image (this will be deleted at midnight)."
+				 * ;
+				 */
 
-			metadata = getMapParametersInfoAsHTML();
-			metadata += "<br><br>Click  " + "<a href=\""
-			+ disaggregationPlotWebAddr + "\">" + "here" + "</a>"
-			+ " to download files. They will be deleted at midnight";
-		} catch (RuntimeException e) {
-			e.printStackTrace();
-			JOptionPane.showMessageDialog(this, e.getMessage(),
-					"Server Problem", JOptionPane.INFORMATION_MESSAGE);
-			return;
+				
+				metadata += "<br><br>Click  " + "<a href=\""
+				+ disaggregationPlotWebAddr + "\">" + "here" + "</a>"
+				+ " to download files. They will be deleted at midnight";
+			} catch (RuntimeException e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(this, e.getMessage(),
+						"Server Problem", JOptionPane.INFORMATION_MESSAGE);
+				return;
+			}
+			new DisaggregationPlotViewerWindow(disaggregationPlotWebAddr
+					+ DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME, disaggCalc, metadata, binDataToShow);
+		} else {
+			new DisaggregationPlotViewerWindow(PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),
+					disaggCalc, metadata, binDataToShow);
 		}
-
-		// adding the image to the Panel and returning that to the applet
-		// new DisaggregationPlotViewerWindow(imgName,true,modeString,
-		// metadata,binData,sourceDisaggregationList);
-		new DisaggregationPlotViewerWindow(disaggregationPlotWebAddr
-				+ DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME, true,
-				modeString, metadata, binData, sourceDisaggregationList);
 	}
 
 	/**
@@ -2356,6 +2360,24 @@ ScalarIMRChangeListener {
 	public String getSourceDisaggregationInfo() {
 		try {
 			return disaggCalc.getDisaggregationSourceInfo();
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			setButtonsEnable(true);
+			BugReport bug = new BugReport(ex, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+			bugDialog.setVisible(true);
+		}
+		return null;
+	}
+
+	/**
+	 * Returns the Source Disaggregated List
+	 * 
+	 * @return String
+	 */
+	public String getConsolidatedSourceDisaggregationInfo() {
+		try {
+			return disaggCalc.getConsolidatedDisaggregationSourceInfo();
 		} catch (Exception ex) {
 			ex.printStackTrace();
 			setButtonsEnable(true);
