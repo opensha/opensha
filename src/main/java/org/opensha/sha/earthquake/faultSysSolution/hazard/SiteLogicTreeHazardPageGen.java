@@ -735,7 +735,7 @@ public class SiteLogicTreeHazardPageGen {
 		return new File(resourcesDir, prefix+".png");
 	}
 	
-	private static List<XYAnnotation> addRPAnnotations(List<? super DiscretizedFunc> funcs,
+	public static List<XYAnnotation> addRPAnnotations(List<? super DiscretizedFunc> funcs,
 			List<PlotCurveCharacterstics> chars, Range xRange, ReturnPeriods[] rps) {
 		List<XYAnnotation> anns = new ArrayList<>();
 		
@@ -1058,7 +1058,7 @@ public class SiteLogicTreeHazardPageGen {
 		return ret/sumWeight;
 	}
 	
-	private static double curveVal(DiscretizedFunc curve, ReturnPeriods rp) {
+	public static double curveVal(DiscretizedFunc curve, ReturnPeriods rp) {
 		double curveLevel = rp.oneYearProb;
 		// curveLevel is a probability, return the IML at that probability
 		if (curveLevel > curve.getMaxY())
