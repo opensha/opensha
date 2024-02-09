@@ -3,7 +3,10 @@ package org.opensha.sha.util;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.DateFormat;
 import java.text.DecimalFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 import org.dom4j.Document;
 import org.dom4j.Element;
@@ -61,7 +64,7 @@ public class ShakeMapXMLWriter {
 		root.addAttribute("shakemap_id", eventID);
 		root.addAttribute("shakemap_version", "1");
 		root.addAttribute("code_version", "3.5.1543");
-		root.addAttribute("process_timestamp", "2016-06-11T01:19:53Z");
+		root.addAttribute("process_timestamp", dateFormat.format(new Date()));
 		root.addAttribute("shakemap_originator", "us");
 		root.addAttribute("map_status", "RELEASED");
 		root.addAttribute("shakemap_event_type", "SCENARIO");
@@ -101,13 +104,25 @@ public class ShakeMapXMLWriter {
 				int index = region.indexForLocation(new Location(lat, lon));
 				gridText.append(degreeDF.format(lon)+" ");
 				gridText.append(latStr+" ");
+				double pgaVal = pga.get(index);
+				Preconditions.checkState(pgaVal >= 0d, "Bad PGA: %s", pgaVal);
 				// convert G to percent G
-				gridText.append(valDF.format(pga.get(index)*100d)+" ");
-				gridText.append(valDF.format(pgv.get(index))+" ");
+				gridText.append(valDF.format(pgaVal*100d)+" ");
+				double pgvVal = pgv.get(index);
+				Preconditions.checkState(pgvVal >= 0d, "Bad PGV: %s", pgvVal);
+				gridText.append(valDF.format(pgvVal)+" ");
 				double mmi = Wald_MMI_Calc.getMMI(pga.get(index), pgv.get(index));
+				Preconditions.checkState(mmi >= 0d && Double.isFinite(mmi),
+						"Bad MMI=%s with pga=%s and pgv=%s", mmi, pgaVal, pgvVal);
 				gridText.append(valDF.format(mmi)+" ");
-				gridText.append(valDF.format(sa03.get(index)*100d)+" ");
-				gridText.append(valDF.format(sa10.get(index)*100d)+" ");
+				double sa03val = sa03.get(index);
+				Preconditions.checkState(sa03val >= 0d, "Bad SA03: %s", sa03val);
+				// convert G to percent G
+				gridText.append(valDF.format(sa03val*100d)+" ");
+				double sa10val = sa10.get(index);
+				Preconditions.checkState(sa10val >= 0d, "Bad SA10: %s", sa10val);
+				// convert G to percent G
+				gridText.append(valDF.format(sa10val*100d)+" ");
 				if (sa30 == null)
 					gridText.append("0.0");
 				else
@@ -128,6 +143,7 @@ public class ShakeMapXMLWriter {
 	
 	private static final DecimalFormat degreeDF = new DecimalFormat("0.0000");
 	private static final DecimalFormat valDF = new DecimalFormat("0.00");
+	private static final DateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
 	
 	private static void addGridFieldEl(Element root, int index, String name, String units) {
 		Element el = root.addElement("grid_field");
