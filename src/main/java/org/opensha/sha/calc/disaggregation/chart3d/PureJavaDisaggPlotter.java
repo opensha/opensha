@@ -301,6 +301,7 @@ public class PureJavaDisaggPlotter {
 		MeanUCERF2 erf = new MeanUCERF2();
 		erf.getTimeSpan().setDuration(30d);
 		erf.getTimeSpan().setStartTime(2007);
+		
 		erf.updateForecast();
 		ScalarIMR gmm = AttenRelRef.ASK_2014.get();
 		gmm.setParamDefaults();
@@ -320,6 +321,12 @@ public class PureJavaDisaggPlotter {
 //		calc.setMaxZAxisForPlot(Double.NaN);
 //		String url = calc.getDisaggregationPlotUsingServlet("meta");
 //		System.out.println(url);
+		
+//		// try all zeros to make sure it doesn't blow up
+//		for (double[][] pdfRow : calc.getDisaggPlotData().getPdf3D())
+//			for (double[] pdf : pdfRow)
+//				for (int i=0; i<pdf.length; i++)
+//					pdf[i] = 0d;
 		
 		boolean fixed = true;
 		Chart3DPanel chartPanel = buildChartPanel(calc.getDisaggPlotData(), fixed);
