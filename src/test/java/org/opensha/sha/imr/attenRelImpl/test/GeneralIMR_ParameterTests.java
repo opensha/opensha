@@ -94,7 +94,7 @@ public class GeneralIMR_ParameterTests {
 		ArrayList<AttenRelRef[]> ret = new ArrayList<AttenRelRef[]>();
 
 		for (AttenRelRef ref : refs) {
-			if (ModAttenuationRelationship.class.isAssignableFrom(ref.getAttenRelClass()))
+			if (ref.getAttenRelClass() == null || ModAttenuationRelationship.class.isAssignableFrom(ref.getAttenRelClass()))
 				// these tests are not applicable to ModAttenuationRelationship
 				continue;
 			AttenRelRef[] theRef = { ref };
