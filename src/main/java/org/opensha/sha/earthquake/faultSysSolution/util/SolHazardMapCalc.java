@@ -279,7 +279,7 @@ public class SolHazardMapCalc {
 		calcHazardCurves(numThreads, calcIndexes, combineWith);
 	}
 	
-	void calcHazardCurves(int numThreads, List<Integer> calcIndexes, SolHazardMapCalc combineWith) {
+	public void calcHazardCurves(int numThreads, List<Integer> calcIndexes, SolHazardMapCalc combineWith) {
 		synchronized (this) {
 			if (curvesList == null) {
 				List<DiscretizedFunc[]> curvesList = new ArrayList<>();
@@ -757,41 +757,63 @@ public class SolHazardMapCalc {
 	}
 	
 	public void writeCurvesCSVs(File outputDir, String prefix, boolean gzip) throws IOException {
+		writeCurvesCSVs(outputDir, prefix, gzip, false);
+	}
+	
+	public void writeCurvesCSVs(File outputDir, String prefix, boolean gzip, boolean allowNull) throws IOException {
 		for (double period : periods) {
 			String fileName = getCSV_FileName(prefix, period);
 			if (gzip)
 				fileName += ".gz";
 			File outputFile = new File(outputDir, fileName);
 			
-			writeCurvesCSV(outputFile, period);
+			writeCurvesCSV(outputFile, period, allowNull);
 		}
 	}
 	
 	public void writeCurvesCSV(File outputFile, double period) throws IOException {
+		writeCurvesCSV(outputFile, period, false);
+	}
+	
+	public void writeCurvesCSV(File outputFile, double period, boolean allowNull) throws IOException {
 		
 		Preconditions.checkState(curvesList != null, "Must call calcHazardCurves first");
 		int p = periodIndex(period);
 		
 		DiscretizedFunc[] curves = curvesList.get(p);
-		Preconditions.checkNotNull(curves[0], "Curve not calculated at index 0");
+		Preconditions.checkState(allowNull || curves[0] != null, "Curve not calculated at index 0");
 		
-		writeCurvesCSV(outputFile, curves, region.getNodeList());
+		writeCurvesCSV(outputFile, curves, region.getNodeList(), allowNull);
 	}
 	
 	public static CSVFile<String> buildCurvesCSV(DiscretizedFunc[] curves, LocationList locs) {
+		return buildCurvesCSV(curves, locs, false);
+	}
+	
+	public static CSVFile<String> buildCurvesCSV(DiscretizedFunc[] curves, LocationList locs, boolean allowNull) {
 		CSVFile<String> csv = new CSVFile<>(true);
 		
 		List<String> header = new ArrayList<>();
 		header.add("Index");
 		header.add("Latitude");
 		header.add("Longitude");
-		for (int i=0; i<curves[0].size(); i++)
-			header.add((float)curves[0].getX(i)+"");
+		DiscretizedFunc refCurve = null;
+		for (DiscretizedFunc curve : curves) {
+			if (curve != null) {
+				refCurve = curve;
+				break;
+			}
+		}
+		Preconditions.checkNotNull(refCurve, "All curves are null");
+		for (int i=0; i<refCurve.size(); i++)
+			header.add((float)refCurve.getX(i)+"");
 		
 		csv.addLine(header);
 		
 		for (int i=0; i<curves.length; i++) {
 			DiscretizedFunc curve = curves[i];
+			if (allowNull && curve == null)
+				continue;
 			Preconditions.checkNotNull(curve, "Curve not calculated at index %s", i);
 			
 			List<String> line = new ArrayList<>();
@@ -808,7 +830,11 @@ public class SolHazardMapCalc {
 	}
 	
 	public static void writeCurvesCSV(File outputFile, DiscretizedFunc[] curves, LocationList locs) throws IOException {
-		CSVFile<String> csv = buildCurvesCSV(curves, locs);
+		writeCurvesCSV(outputFile, curves, locs, false);
+	}
+	
+	public static void writeCurvesCSV(File outputFile, DiscretizedFunc[] curves, LocationList locs, boolean allowNull) throws IOException {
+		CSVFile<String> csv = buildCurvesCSV(curves, locs, allowNull);
 		
 		csv.writeToFile(outputFile);
 	}
@@ -842,18 +868,22 @@ public class SolHazardMapCalc {
 	}
 	
 	public static DiscretizedFunc[] loadCurvesCSV(CSVFile<String> csv, GriddedRegion region) {
+		return loadCurvesCSV(csv, region, false);
+	}
+	
+	public static DiscretizedFunc[] loadCurvesCSV(CSVFile<String> csv, GriddedRegion region, boolean allowNull) {
 		ArbitrarilyDiscretizedFunc xVals = new ArbitrarilyDiscretizedFunc();
 		for (int col=3; col<csv.getNumCols(); col++)
 			xVals.set(csv.getDouble(0, col), 0d);
 		
-		boolean remap = region != null && region.getNodeCount() != csv.getNumRows()-1;
+		boolean remap = !allowNull && region != null && region.getNodeCount() != csv.getNumRows()-1;
 		if (remap)
 			Preconditions.checkState(region.getNodeCount() < csv.getNumRows()-1,
 					"Can only remap if the passed in region is a subset of the CSV region");
 		
 		DiscretizedFunc[] curves;
 		if (region != null) {
-			Preconditions.checkState(remap || csv.getNumRows() == region.getNodeCount()+1,
+			Preconditions.checkState(allowNull || remap || csv.getNumRows() == region.getNodeCount()+1,
 					"Region node count discrepancy: %s != %s", csv.getNumRows()-1, region.getNodeCount());
 			
 			curves = new DiscretizedFunc[region.getNodeCount()];
@@ -862,7 +892,7 @@ public class SolHazardMapCalc {
 		}
 		
 		for (int row=1; row<csv.getNumRows(); row++) {
-			int index = row-1;
+			int index = allowNull ? csv.getInt(row, 0) : row-1;
 			if (region != null) {
 				Location loc = new Location(csv.getDouble(row, 1), csv.getDouble(row, 2));
 				if (remap) {
