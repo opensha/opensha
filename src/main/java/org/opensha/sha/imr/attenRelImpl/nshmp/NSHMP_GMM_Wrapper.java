@@ -80,6 +80,7 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	
 	// inputs
 	private Gmm gmm;
+	private String name;
 	private String shortName;
 	private Constraints constraints;
 	private ImmutableList<Field> fieldsUsedList;
@@ -121,7 +122,12 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	}
 	
 	public NSHMP_GMM_Wrapper(Gmm gmm, String shortName, boolean parameterize, Component component) {
+		this(gmm, gmm == null ? null : gmm.toString(), shortName, parameterize, component);
+	}
+	
+	public NSHMP_GMM_Wrapper(Gmm gmm, String name, String shortName, boolean parameterize, Component component) {
 		this.gmm = gmm;
+		this.name = name;
 		this.shortName = shortName;
 		this.component = component;
 		this.parameterize = parameterize;
@@ -701,9 +707,7 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 
 	@Override
 	public String getName() {
-		if (gmm == null)
-			return null;
-		return gmm.toString();
+		return name;
 	}
 
 	@Override

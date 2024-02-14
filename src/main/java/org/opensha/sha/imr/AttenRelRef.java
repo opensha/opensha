@@ -182,7 +182,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.ASK_14_BASE, getShortName(), false);
+			return new NSHMP_GMM_Wrapper(Gmm.ASK_14_BASE, getName(), getShortName(), false, null);
 		}
 		
 	},
