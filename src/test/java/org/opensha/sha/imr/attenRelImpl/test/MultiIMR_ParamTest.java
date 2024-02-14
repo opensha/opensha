@@ -13,6 +13,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.MultiIMR_Averaged_AttenRel;
+import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 import org.opensha.sha.imr.mod.impl.stewartSiteSpecific.StewartAfshariGoulet2017NonergodicGMPE;
 import org.opensha.sha.imr.param.OtherParams.SigmaTruncLevelParam;
 import org.opensha.sha.imr.param.OtherParams.SigmaTruncTypeParam;
@@ -37,6 +38,8 @@ public class MultiIMR_ParamTest {
 			if (imr instanceof MultiIMR_Averaged_AttenRel)
 				imrs.remove(i);
 			else if (imr instanceof StewartAfshariGoulet2017NonergodicGMPE)
+				imrs.remove(i);
+			else if (imr instanceof NSHMP_GMM_Wrapper)
 				imrs.remove(i);
 			
 			imr.setParamDefaults();
