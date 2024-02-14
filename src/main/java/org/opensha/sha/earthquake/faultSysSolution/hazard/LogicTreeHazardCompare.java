@@ -449,7 +449,15 @@ public class LogicTreeHazardCompare {
 			}
 		}
 		
-		SolutionLogicTree solTree = SolutionLogicTree.load(resultsFile);
+		ZipFile resultsZip = new ZipFile(resultsFile);
+		SolutionLogicTree solTree;
+		if (FaultSystemSolution.isSolution(resultsZip)) {
+			// single solution
+			FaultSystemSolution sol = FaultSystemSolution.load(resultsZip);
+			solTree = new SolutionLogicTree.InMemory(sol, sol.requireModule(LogicTreeBranch.class));
+		} else {
+			solTree = SolutionLogicTree.load(resultsZip);
+		}
 		
 		ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
 		double[] periods = { 0d, 1d };
@@ -483,7 +491,16 @@ public class LogicTreeHazardCompare {
 					// just have an average hazard result, possibly an external ERF
 					compSolTree = null;
 				} else {
-					compSolTree = SolutionLogicTree.load(compResultsFile);
+					
+					ZipFile compResultsZip = new ZipFile(compResultsFile);
+					if (FaultSystemSolution.isSolution(compResultsZip)) {
+						// single solution
+						FaultSystemSolution sol = FaultSystemSolution.load(compResultsZip);
+						compSolTree = new SolutionLogicTree.InMemory(sol, sol.requireModule(LogicTreeBranch.class));
+					} else {
+						compSolTree = SolutionLogicTree.load(compResultsZip);
+					}
+					
 					if (compTree == null)
 						compTree = compSolTree.getLogicTree();
 					if (compSubsetNodes != null)
