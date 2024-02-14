@@ -75,32 +75,32 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 
 	private SolutionLogicTree solTree;
 	
-	private static final double GRID_SPACING_DEFAULT = 0.1d;
+	static final double GRID_SPACING_DEFAULT = 0.1d;
 	private double gridSpacing = GRID_SPACING_DEFAULT;
 	
-	private static final double MAX_DIST_DEFAULT = 500;
+	static final double MAX_DIST_DEFAULT = 500;
 	private double maxDistance = MAX_DIST_DEFAULT;
 	
-	private static final double SKIP_MAX_DIST_DEFAULT = 300;
+	static final double SKIP_MAX_DIST_DEFAULT = 300;
 	private double skipMaxSiteDist = SKIP_MAX_DIST_DEFAULT;
 	
-	private static AttenRelRef GMPE_DEFAULT = AttenRelRef.ASK_2014;
+	static AttenRelRef GMPE_DEFAULT = AttenRelRef.ASK_2014;
 	private AttenRelRef gmpeRef = GMPE_DEFAULT;
 	
-//	private static final double[] PERIODS_DEFAULT = { 0d, 0.2d, 1d };
+//	static final double[] PERIODS_DEFAULT = { 0d, 0.2d, 1d };
 	public static final double[] PERIODS_DEFAULT = { 0d, 1d };
 	private double[] periods = PERIODS_DEFAULT;
 	
 	private ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
 	
-	private static final IncludeBackgroundOption GRID_SEIS_DEFAULT = IncludeBackgroundOption.EXCLUDE;
+	static final IncludeBackgroundOption GRID_SEIS_DEFAULT = IncludeBackgroundOption.EXCLUDE;
 	private IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
 	
-	private static final boolean AFTERSHOCK_FILTER_DEFAULT = false;
+	static final boolean AFTERSHOCK_FILTER_DEFAULT = false;
 	private boolean applyAftershockFilter = AFTERSHOCK_FILTER_DEFAULT;
 	
-	private static final boolean ASEIS_REDUCES_AREA_DEFAULT = true;
-	private boolean aseisReducesArea = ASEIS_REDUCES_AREA_DEFAULT;
+	static final boolean ASEIS_REDUCES_AREA_DEFAULT = true;
+	boolean aseisReducesArea = ASEIS_REDUCES_AREA_DEFAULT;
 	
 	private GriddedRegion gridRegion;
 
@@ -273,7 +273,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				for (File file : nodesAverageDir.listFiles())
 					Preconditions.checkState(FileUtils.deleteRecursive(file));
 			} else {
-				Preconditions.checkState(nodesAverageDir.mkdir());
+				Preconditions.checkState(nodesAverageDir.mkdir() || nodesAverageDir.exists());
 			}
 		}
 		myAverageDir = new File(nodesAverageDir, "rank_"+rank);
