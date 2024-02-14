@@ -90,7 +90,7 @@ public class NGAW2_WrapperTest {
 	public static Collection<AttenRelRef[]> data() {
 		ArrayList<AttenRelRef[]> ret = new ArrayList<AttenRelRef[]>();
 		for (AttenRelRef imr : AttenRelRef.values()) {
-			if (!NGAW2_Wrapper.class.isAssignableFrom(imr.getAttenRelClass())
+			if (imr.getAttenRelClass() == null || !NGAW2_Wrapper.class.isAssignableFrom(imr.getAttenRelClass())
 					&& !NGAW2_WrapperFullParam.class.isAssignableFrom(imr.getAttenRelClass()))
 				continue;
 			AttenRelRef[] array = { imr };
