@@ -141,6 +141,77 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		}
 	}
 	
+	public static class InMemory extends AbstractExternalFetcher {
+		
+		private Map<LogicTreeBranch<?>, Integer> branchIndexMap;
+		private List<FaultSystemSolution> solutions;
+		
+		/**
+		 * Single solution constructor
+		 * 
+		 * @param sol
+		 * @param branch
+		 */
+		public InMemory(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
+			super(null, singleSolTree(branch));
+			init(List.of(sol), getLogicTree());
+		}
+		
+		private static LogicTree<?> singleSolTree(LogicTreeBranch<?> branch) {
+			List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
+			List<LogicTreeNode> nodes = new ArrayList<>();
+			for (int i=0; i<branch.size(); i++) {
+				levels.add(branch.getLevel(i));
+				nodes.add(branch.getValue(i));
+			}
+			LogicTreeBranch<LogicTreeNode> modBranch = new LogicTreeBranch<>(levels, nodes);
+			modBranch.setOrigBranchWeight(branch.getOrigBranchWeight());
+			return LogicTree.fromExisting(levels, List.of(modBranch));
+		}
+		
+		/**
+		 * Multiple solution constructor. Solutions should be in tree-index order
+		 * 
+		 * @param solutions
+		 * @param tree
+		 */
+		public InMemory(List<FaultSystemSolution> solutions, LogicTree<?> tree) {
+			super(null, tree);
+			init(solutions, tree);
+		}
+		
+		private void init(List<FaultSystemSolution> solutions, LogicTree<?> tree) {
+			this.solutions = solutions;
+			Preconditions.checkState(solutions.size() == tree.size());
+			branchIndexMap = new HashMap<>(solutions.size());
+			for (int i=0; i<tree.size(); i++)
+				branchIndexMap.put(tree.getBranch(i), i);
+		}
+
+		@Override
+		protected FaultSystemSolution loadExternalForBranch(LogicTreeBranch<?> branch) throws IOException {
+			Integer index = branchIndexMap.get(branch);
+			Preconditions.checkNotNull(index, "Unexpected branch: %s", branch);
+			return solutions.get(index);
+		}
+
+		@Override
+		public synchronized double[] loadRatesForBranch(LogicTreeBranch<?> branch) throws IOException {
+			return loadExternalForBranch(branch).getRateForAllRups();
+		}
+
+		@Override
+		public synchronized RuptureProperties loadPropsForBranch(LogicTreeBranch<?> branch) throws IOException {
+			FaultSystemRupSet rupSet = loadExternalForBranch(branch).getRupSet();
+			return new RuptureProperties(rupSet);
+		}
+
+		@Override
+		public synchronized GridSourceProvider loadGridProvForBranch(LogicTreeBranch<?> branch) throws IOException {
+			return loadExternalForBranch(branch).getGridSourceProvider();
+		}
+	}
+	
 	public static abstract class AbstractExternalFetcher extends SolutionLogicTree {
 
 		protected AbstractExternalFetcher(SolutionProcessor processor, LogicTree<?> logicTree) {
@@ -1215,7 +1286,15 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	}
 	
 	public static SolutionLogicTree load(File treeFile, LogicTree<?> logicTree) throws IOException {
-		ModuleArchive<SolutionLogicTree> archive = new ModuleArchive<>(treeFile, SolutionLogicTree.class);
+		return load(new ZipFile(treeFile), logicTree);
+	}
+	
+	public static SolutionLogicTree load(ZipFile treeZip) throws IOException {
+		return load(treeZip, null);
+	}
+	
+	public static SolutionLogicTree load(ZipFile treeZip, LogicTree<?> logicTree) throws IOException {
+		ModuleArchive<SolutionLogicTree> archive = new ModuleArchive<>(treeZip, SolutionLogicTree.class);
 		
 		SolutionLogicTree ret = archive.requireModule(SolutionLogicTree.class);
 		
