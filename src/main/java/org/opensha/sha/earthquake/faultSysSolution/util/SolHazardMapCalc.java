@@ -433,6 +433,7 @@ public class SolHazardMapCalc {
 		List<DiscretizedFunc> ret = new ArrayList<>(periods.length);
 		
 		for (int p=0; p<periods.length; p++) {
+			setIMforPeriod(gmpe, periods[p]);
 			DiscretizedFunc logCurve = logXVals[p].deepClone();
 			calc.getHazardCurve(logCurve, site, gmpe, erf);
 			DiscretizedFunc curve = xVals[p].deepClone();
