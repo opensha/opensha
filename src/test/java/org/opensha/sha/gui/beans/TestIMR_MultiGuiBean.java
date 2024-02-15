@@ -29,6 +29,7 @@ import org.opensha.sha.imr.attenRelImpl.CB_2008_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.CY_2008_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.ShakeMap_2003_AttenRel;
 import org.opensha.sha.imr.attenRelImpl.ZhaoEtAl_2006_AttenRel;
+import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 import org.opensha.sha.imr.event.ScalarIMRChangeEvent;
 import org.opensha.sha.imr.event.ScalarIMRChangeListener;
 import org.opensha.sha.imr.param.IntensityMeasureParams.MMI_Param;
@@ -54,9 +55,9 @@ public class TestIMR_MultiGuiBean implements ScalarIMRChangeListener {
 		List<? extends ScalarIMR> imrs =  AttenRelRef.instanceList(null, true, ServerPrefUtils.SERVER_PREFS);
 		for (int i=imrs.size()-1; i>=0; i--) {
 			ScalarIMR imr = imrs.get(i);
-//			if (imr instanceof CyberShakeIMR)
-//				imrs.remove(i);
-//			else
+			if (imr instanceof NSHMP_GMM_Wrapper)
+				imrs.remove(i);
+			else
 				imr.setParamDefaults();
 		}
 		return imrs;

@@ -4,10 +4,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
+import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -148,6 +150,11 @@ public class DistCachedERFWrapper extends AbstractERF {
 		return erf.getName();
 	}
 	
+	@Override
+	public UnaryOperator<List<DisaggregationSourceRuptureInfo>> getDisaggSourceConsolidator() {
+		return erf.getDisaggSourceConsolidator();
+	}
+
 	private static class CustomSource extends ProbEqkSource {
 		
 		/**

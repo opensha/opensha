@@ -459,15 +459,15 @@ implements DisaggregationCalculatorAPI{
           }*/
 
 			}
-			if (numSourcesToShow > 0) {
+//			if (numSourcesToShow > 0) {
 				// sort the ruptures in this source according to contribution
 				//ArrayList sourceRupList = (ArrayList) sourceDissaggMap.get(sourceName);
 				//Collections.sort(sourceRupList,srcRupComparator);
 				// create the total rate info for this source
 				DisaggregationSourceRuptureInfo disaggInfo = new
-				DisaggregationSourceRuptureInfo(sourceName, (float) sourceRate, i, source);
+						DisaggregationSourceRuptureInfo(sourceName, sourceRate, i, source);
 				disaggSourceList.add(disaggInfo);
-			}
+//			}
 		}
 		
 		// reset TRT parameter in IMRs
@@ -609,7 +609,8 @@ implements DisaggregationCalculatorAPI{
 				"; binNum = " + modeEpsilonBin);
 		//if( D ) System.out.println(S + "EpsMode = "  + E_mode3D + "; binNum = " + modeEpsilonBin);
 
-System.out.println("numRupRejected="+numRupRejected);
+		if (D || numRupRejected>0)
+			System.out.println("numRupRejected="+numRupRejected);
 
 		return true;
 	}
@@ -656,7 +657,7 @@ System.out.println("numRupRejected="+numRupRejected);
 	}
 	
 	/**
-	 * @return sonsolidated disaggregation source list, sorted by contribution
+	 * @return consolidated disaggregation source list, sorted by contribution
 	 */
 	@Override
 	public List<DisaggregationSourceRuptureInfo> getConsolidatedDisaggregationSourceList() {
@@ -802,6 +803,10 @@ System.out.println("numRupRejected="+numRupRejected);
 
 		return results;
 
+	}
+	
+	public double getTotalRate() {
+		return totalRate;
 	}
 
 
