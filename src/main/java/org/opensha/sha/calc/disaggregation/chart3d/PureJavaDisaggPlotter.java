@@ -252,7 +252,7 @@ public class PureJavaDisaggPlotter {
 		metadataDocument.close();
 	}
 
-	private static DecimalFormat magDF = new DecimalFormat("0.0");
+	private static DecimalFormat magDF = new DecimalFormat("0.0#");
 	private static DecimalFormat distDF = new DecimalFormat("0");
 	
 	private static class DisaggCategoryLabelGenerator implements CategoryLabelGenerator<EpsilonCategories, Double, Double> {
