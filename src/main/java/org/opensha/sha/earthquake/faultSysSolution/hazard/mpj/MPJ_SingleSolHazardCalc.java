@@ -402,10 +402,6 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			
 			zout.close();
 			Files.move(workingFile, outputFile);
-			
-			debug("waiting for any post batch hook operations to finish");
-			((AsyncPostBatchHook)postBatchHook).shutdown();
-			debug("post batch hook done");
 		}
 	}
 
