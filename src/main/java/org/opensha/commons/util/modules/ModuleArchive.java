@@ -105,6 +105,12 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		System.out.println("---------- END LOADING ARCHIVE ----------");
 	}
 	
+	public File getFile() {
+		if (zip == null)
+			return null;
+		return new File(zip.getName());
+	}
+	
 	public static final String MODULE_FILE_NAME = "modules.json";
 	
 	/**
