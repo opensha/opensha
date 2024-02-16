@@ -394,7 +394,11 @@ public class LogicTreeHazardCompare {
 					"USAGE: <primary-results-zip> <primary-hazard-zip> <primary-name> [<comparison-results-zip> "
 					+ "<comparison-hazard-zip> <comparison-name>] <output-dir>");
 			int cnt = 0;
-			resultsFile = new File(args[cnt++]);
+			if (args[cnt].equals("null"))
+				resultsFile = null;
+			else
+				resultsFile = new File(args[cnt]);
+			cnt++;
 			hazardFile = new File(args[cnt++]);
 			if (cmd.hasOption("logic-tree")) {
 				File treeFile = new File(cmd.getOptionValue("logic-tree"));
@@ -449,14 +453,18 @@ public class LogicTreeHazardCompare {
 			}
 		}
 		
-		ZipFile resultsZip = new ZipFile(resultsFile);
 		SolutionLogicTree solTree;
-		if (FaultSystemSolution.isSolution(resultsZip)) {
-			// single solution
-			FaultSystemSolution sol = FaultSystemSolution.load(resultsZip);
-			solTree = new SolutionLogicTree.InMemory(sol, sol.requireModule(LogicTreeBranch.class));
+		if (resultsFile == null) {
+			solTree = null;
 		} else {
-			solTree = SolutionLogicTree.load(resultsZip);
+			ZipFile resultsZip = new ZipFile(resultsFile);
+			if (FaultSystemSolution.isSolution(resultsZip)) {
+				// single solution
+				FaultSystemSolution sol = FaultSystemSolution.load(resultsZip);
+				solTree = new SolutionLogicTree.InMemory(sol, sol.requireModule(LogicTreeBranch.class));
+			} else {
+				solTree = SolutionLogicTree.load(resultsZip);
+			}
 		}
 		
 		ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
@@ -465,7 +473,7 @@ public class LogicTreeHazardCompare {
 //		double spacing = 0.1;
 //		double spacing = 0.25;
 		
-		if (tree == null)
+		if (tree == null && solTree != null)
 			tree = solTree.getLogicTree();
 		
 		if (subsetNodes != null)
@@ -480,7 +488,7 @@ public class LogicTreeHazardCompare {
 			mapper = new LogicTreeHazardCompare(solTree, tree,
 					hazardFile, rps, periods, spacing);
 			
-			mapper.skipLogicTree = cmd.hasOption("skip-logic-tree");
+			mapper.skipLogicTree = cmd.hasOption("skip-logic-tree") || tree == null;
 			if (ignorePrecomputed)
 				System.out.println("Ignoring any pre-computed mean maps");
 			mapper.ignorePrecomputed = ignorePrecomputed;
@@ -736,6 +744,7 @@ public class LogicTreeHazardCompare {
 					spacing = medianSpacing;
 				}
 				
+				Preconditions.checkNotNull(solLogicTree, "Can't determine region; neither a region nor a solution was found.");
 				sol = solLogicTree.forBranch(branch0);
 				Region region = ReportMetadata.detectRegion(sol);
 				if (region == null)
@@ -752,6 +761,11 @@ public class LogicTreeHazardCompare {
 			if (mapper == null)
 				mapper = new SolHazardMapCalc(sol, null, gridReg, periods);
 		}
+		
+		if (mapper == null)
+			// if we're here, the primary is an external (branch is null)
+			// build mapper without a solution (no faults will be shown)
+			mapper = new SolHazardMapCalc(null, null, gridReg, periods);
 		
 		Stopwatch watch = Stopwatch.createStarted();
 		
@@ -2504,8 +2518,12 @@ public class LogicTreeHazardCompare {
 		CPT cpt;
 		GriddedGeoDataSet diff, diffFromRange;
 		boolean minEqualMax = true;
-		for (int i=0; minEqualMax && i<min.size(); i++)
-			minEqualMax = (float)min.get(i) == (float)max.get(i);
+		for (int i=0; minEqualMax && i<min.size(); i++) {
+			double minVal = min.get(i);
+			double maxVal = max.get(i);
+			if (Double.isFinite(minVal) && Double.isFinite(maxVal))
+				minEqualMax = (float)minVal == (float)maxVal;
+		}
 		if (difference) {
 			diffLabel = "Difference";
 			diffPrefix = "diff";
