@@ -534,6 +534,16 @@ public class SolHazardMapCalc {
 	
 	public MapPlot buildMapPlot(File outputDir, String prefix, GriddedGeoDataSet xyz, CPT cpt,
 			String title, String zLabel, boolean diffStats) throws IOException {
+		GriddedRegion gridReg = xyz.getRegion();
+		Range lonRange = new Range(
+				Math.min(gridReg.getMinLon()-0.05, xyz.getMinLon()-0.75*gridReg.getLonSpacing()),
+				Math.max(gridReg.getMaxLon()+0.05, xyz.getMaxLon()+0.75*gridReg.getLonSpacing()));
+		Range latRange = new Range(
+				Math.min(gridReg.getMinLat()-0.05, xyz.getMinLat()-0.75*gridReg.getLatSpacing()),
+				Math.max(gridReg.getMaxLat()+0.05, xyz.getMaxLat()+0.75*gridReg.getLatSpacing()));
+		double latSpan = latRange.getLength();
+		double lonSpan = lonRange.getLength();
+		double maxSpan = Math.max(latSpan, lonSpan);
 		synchronized (this) {
 			if (extraFuncs == null) {
 				List<XY_DataSet> extraFuncs = new ArrayList<>();
@@ -541,6 +551,8 @@ public class SolHazardMapCalc {
 				
 				Color outlineColor = new Color(0, 0, 0, 180);
 				Color faultColor = new Color(0, 0, 0, 100);
+				
+				float outlineWidth = maxSpan > 30d ? 1f : 2f;
 				
 				if (!region.isRectangular()) {
 					DefaultXY_DataSet outline = new DefaultXY_DataSet();
@@ -556,33 +568,35 @@ public class SolHazardMapCalc {
 				if (boundaries != null) {
 					for (XY_DataSet boundary : boundaries) {
 						extraFuncs.add(boundary);
-						extraChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, outlineColor));
+						extraChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, outlineWidth, outlineColor));
 					}
 				}
 				
-				PlotCurveCharacterstics traceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, faultColor);
-				
-				DefaultXY_DataSet prevTrace = null;
-				for (FaultSection sect : sol.getRupSet().getFaultSectionDataList()) {
-					DefaultXY_DataSet trace = new DefaultXY_DataSet();
-					for (Location loc : sect.getFaultTrace())
-						trace.set(loc.getLongitude(), loc.getLatitude());
+				if (sol != null) {
+					PlotCurveCharacterstics traceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, faultColor);
 					
-					boolean reused = false;
-					if (prevTrace != null) {
-						Point2D prevLast = prevTrace.get(prevTrace.size()-1);
-						Point2D newFirst = trace.get(0);
-						if ((float)prevLast.getX() == (float)newFirst.getX() && (float)prevLast.getY() == (float)newFirst.getY()) {
-							// reuse
-							for (int i=1; i<trace.size(); i++)
-								prevTrace.set(trace.get(i));
-							reused = true;
+					DefaultXY_DataSet prevTrace = null;
+					for (FaultSection sect : sol.getRupSet().getFaultSectionDataList()) {
+						DefaultXY_DataSet trace = new DefaultXY_DataSet();
+						for (Location loc : sect.getFaultTrace())
+							trace.set(loc.getLongitude(), loc.getLatitude());
+						
+						boolean reused = false;
+						if (prevTrace != null) {
+							Point2D prevLast = prevTrace.get(prevTrace.size()-1);
+							Point2D newFirst = trace.get(0);
+							if ((float)prevLast.getX() == (float)newFirst.getX() && (float)prevLast.getY() == (float)newFirst.getY()) {
+								// reuse
+								for (int i=1; i<trace.size(); i++)
+									prevTrace.set(trace.get(i));
+								reused = true;
+							}
 						}
-					}
-					if (!reused) {
-						extraFuncs.add(trace);
-						prevTrace = trace;
-						extraChars.add(traceChar);
+						if (!reused) {
+							extraFuncs.add(trace);
+							prevTrace = trace;
+							extraChars.add(traceChar);
+						}
 					}
 				}
 				this.extraChars = extraChars;
@@ -596,14 +610,6 @@ public class SolHazardMapCalc {
 		
 		spec.setXYElems(extraFuncs);
 		spec.setXYChars(extraChars);
-		
-		GriddedRegion gridReg = xyz.getRegion();
-		Range lonRange = new Range(
-				Math.min(gridReg.getMinLon()-0.05, xyz.getMinLon()-0.75*gridReg.getLonSpacing()),
-				Math.max(gridReg.getMaxLon()+0.05, xyz.getMaxLon()+0.75*gridReg.getLonSpacing()));
-		Range latRange = new Range(
-				Math.min(gridReg.getMinLat()-0.05, xyz.getMinLat()-0.75*gridReg.getLatSpacing()),
-				Math.max(gridReg.getMaxLat()+0.05, xyz.getMaxLat()+0.75*gridReg.getLatSpacing()));
 		
 		if (diffStats) {
 			// these are percent differences, add stats
@@ -678,13 +684,18 @@ public class SolHazardMapCalc {
 				left = false;
 			}
 			
-			double yDiff = latRange.getLength();
-			if (yDiff > 10)
+			double yDiff = latSpan;
+			if (yDiff > 30)
+				yDiff /= 30d;
+			else if (yDiff > 10)
 				yDiff /= 30d;
 			else if (yDiff > 5d)
 				yDiff /= 20d;
 			else
 				yDiff /= 15d;
+			if (lonSpan > 1.75*latSpan)
+				// really wide (conus?), stretch it back out
+				yDiff *= 1.5;
 			double y = latRange.getUpperBound() - 0.5*yDiff;
 			
 			for (String label : labels) {
@@ -699,7 +710,6 @@ public class SolHazardMapCalc {
 		
 		gp.drawGraphPanel(spec, false, false, lonRange, latRange);
 		
-		double maxSpan = Math.max(lonRange.getLength(), latRange.getLength());
 		double tick;
 		if (maxSpan > 20)
 			tick = 5d;
