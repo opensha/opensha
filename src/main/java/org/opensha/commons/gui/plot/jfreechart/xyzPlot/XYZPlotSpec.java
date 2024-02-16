@@ -60,8 +60,8 @@ public class XYZPlotSpec extends PlotSpec {
 			String xAxisLabel, String yAxisLabel, String zAxisLabel) {
 		super(elems, chars, title, xAxisLabel, yAxisLabel);
 		this.xyzData = xyzData;
-		this.cpt = cpt;
 		this.zAxisLabel = zAxisLabel;
+		setCPT(cpt);
 	}
 
 	public XYZ_DataSet getXYZ_Data() {
@@ -78,6 +78,9 @@ public class XYZPlotSpec extends PlotSpec {
 
 	public void setCPT(CPT cpt) {
 		this.cpt = cpt;
+		double cptTick = cpt.getPreferredTickInterval();
+		if (Double.isFinite(cptTick) && cptTick > 0d)
+			this.cptTickUnit = cptTick;
 	}
 
 	public String getZAxisLabel() {

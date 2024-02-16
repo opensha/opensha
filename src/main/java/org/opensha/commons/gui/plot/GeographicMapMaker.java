@@ -1428,29 +1428,31 @@ public class GeographicMapMaker {
 	
 	public static PaintScaleLegend buildCPTLegend(CPT cpt, String label) {
 		double cptLen = cpt.getMaxValue() - cpt.getMinValue();
-		double cptTick;
-		if (cptLen > 5000)
-			cptTick = 1000;
-		else if (cptLen > 2500)
-			cptTick = 500;
-		else if (cptLen > 1000)
-			cptTick = 250;
-		else if (cptLen > 500)
-			cptTick = 100;
-		else if (cptLen > 100)
-			cptTick = 50;
-		else if (cptLen > 50)
-			cptTick = 10;
-		else if (cptLen > 10)
-			cptTick = 5;
-		else if (cptLen > 5)
-			cptTick = 1;
-		else if (cptLen > 1)
-			cptTick = .5;
-		else if (cptLen > .5)
-			cptTick = .1;
-		else
-			cptTick = cptLen / 10d;
+		double cptTick = cpt.getPreferredTickInterval();
+		if (!Double.isFinite(cptTick)) {
+			if (cptLen > 5000)
+				cptTick = 1000;
+			else if (cptLen > 2500)
+				cptTick = 500;
+			else if (cptLen > 1000)
+				cptTick = 250;
+			else if (cptLen > 500)
+				cptTick = 100;
+			else if (cptLen > 100)
+				cptTick = 50;
+			else if (cptLen > 50)
+				cptTick = 10;
+			else if (cptLen > 10)
+				cptTick = 5;
+			else if (cptLen > 5)
+				cptTick = 1;
+			else if (cptLen > 1)
+				cptTick = .5;
+			else if (cptLen > .5)
+				cptTick = .1;
+			else
+				cptTick = cptLen / 10d;
+		}
 		return GraphPanel.getLegendForCPT(cpt, label, PLOT_PREFS_DEFAULT.getAxisLabelFontSize(),
 				PLOT_PREFS_DEFAULT.getTickLabelFontSize(), cptTick, RectangleEdge.BOTTOM);
 	}
