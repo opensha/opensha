@@ -26,6 +26,7 @@ public final class SurfaceCachingPolicy {
 		SINGLE,
 		MULTI,
 		HYBRID,
+		THREAD_LOCAL,
 		DISABLED
 	}
 	private static CacheTypes force = null;
@@ -71,6 +72,10 @@ public final class SurfaceCachingPolicy {
 		}
 	}
 	
+	public static void force(CacheTypes type) {
+		force = type;
+	}
+	
 	/**
 	 * Build a cache for the given {@link CacheEnabledSurface}. Returns a {@link HybridDistanceCache} if
 	 * the force multi property is set, or if size>1 and it is not a {@link CompoundSurface}. Otherwise a
@@ -105,6 +110,8 @@ public final class SurfaceCachingPolicy {
 			return new MultiDistanceCache(surf, size, expirationTime, expirationUnit);
 		case HYBRID:
 			return new HybridDistanceCache(surf, size, expirationTime, expirationUnit);
+		case THREAD_LOCAL:
+			return new ThreadLocalSingleLocDistanceCache(surf, size);
 		case DISABLED:
 			return new DisabledDistanceCache(surf);
 
