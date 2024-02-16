@@ -6,8 +6,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.URL;
 import java.net.URLConnection;
-import java.rmi.RemoteException;
-import java.rmi.server.UnicastRemoteObject;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,7 +13,6 @@ import java.util.Map;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
-import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.util.ServerPrefUtils;
@@ -123,7 +120,7 @@ implements GCIM_DisaggregationCalculatorAPI {
 	 * @throws java.rmi.RemoteException
 	 * @throws IOException
 	 */
-	public GCIM_DisaggregationCalculator()throws java.rmi.RemoteException {
+	public GCIM_DisaggregationCalculator() {
 
 		//set defaults
 		setMagRange(5, 9, 0.5);
