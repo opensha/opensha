@@ -167,7 +167,7 @@ public class SubSectionBuilder {
 		
 		ops.addOption(FaultSysTools.helpOption());
 
-		ops.addRequiredOption("if", "input-file", true,
+		ops.addOption("if", "input-file", true,
 				"Path to a file containing fault sections. This should either be a GeoJSON file, "
 				+ "or a legacy OpenSHA fault sections XML file. See https://opensha.org/Geospatial-File-Formats "
 				+ "for more information.");
