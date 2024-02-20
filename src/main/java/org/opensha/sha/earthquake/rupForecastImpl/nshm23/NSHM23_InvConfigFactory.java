@@ -734,6 +734,9 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				}, GridSourceProvider.class);
 			}
 			
+			if (!sol.hasModule(LogicTreeBranch.class) || !branch.equals(sol.getModule(LogicTreeBranch.class)))
+				sol.addModule(branch);
+			
 			return sol;
 		}
 		

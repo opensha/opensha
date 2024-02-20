@@ -13,17 +13,23 @@ import org.apache.commons.cli.Options;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.util.MarkdownUtils;
+import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SingleStates;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
+import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
+import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 import scratch.UCERF3.inversion.U3InversionConfigFactory;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 
@@ -40,10 +46,20 @@ public class InversionFactories {
 			public LogicTreeBranch<?> getDefaultBranch() {
 				return U3LogicTreeBranch.getMEAN_UCERF3(FaultModels.FM3_1);
 			}
+
+			@Override
+			public LogicTreeBranch<?> getSolutionOnlyDefaultBranch() {
+				return branchCopyWithoutTypes(getDefaultBranch(),
+						List.of(FaultModels.class, DeformationModels.class, ScalingRelationships.class,
+								SlipAlongRuptureModels.class));
+			}
 		},
 		NSHM23("nshm23", "Selects the NSHM23 inversion configuration factory.") {
 			
 			private NSHM23_InvConfigFactory factory;
+			private boolean noGridded;
+			private NSHM23_SingleStates singleState;
+			
 			@Override
 			public NSHM23_InvConfigFactory get() {
 				if (factory == null)
@@ -53,15 +69,44 @@ public class InversionFactories {
 
 			@Override
 			public LogicTreeBranch<?> getDefaultBranch() {
-				return NSHM23_LogicTreeBranch.AVERAGE_COMBINED;
+				LogicTreeBranch<?> branch = noGridded ?
+						NSHM23_LogicTreeBranch.AVERAGE_ON_FAULT : NSHM23_LogicTreeBranch.AVERAGE_COMBINED;
+				
+				if (singleState != null) {
+					List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
+					List<LogicTreeNode> nodes = new ArrayList<>();
+					
+					levels.add(NSHM23_LogicTreeBranch.SINGLE_STATES);
+					nodes.add(singleState);
+					
+					levels.addAll(branch.getLevels());
+					for (LogicTreeNode node : branch)
+						nodes.add(node);
+					
+					branch = new LogicTreeBranch<>(levels, nodes);
+				}
+				
+				return branch;
+			}
+
+			@Override
+			public LogicTreeBranch<?> getSolutionOnlyDefaultBranch() {
+				return branchCopyWithoutLevels(getDefaultBranch(),
+						List.of(NSHM23_LogicTreeBranch.FM, NSHM23_LogicTreeBranch.DM,
+								NSHM23_LogicTreeBranch.PLAUSIBILITY, NSHM23_LogicTreeBranch.SCALE,
+								NSHM23_LogicTreeBranch.SINGLE_STATES));
 			}
 
 			@Override
 			public void addExtraOptions(Options ops) {
 				ops.addOption(null, "iters-per-rup", true, "Specify the number of iterations per rupture in order to "
-						+ "speed up the inversion or change convergende. Default: "+NSHM23_InvConfigFactory.NUM_ITERS_PER_RUP_DEFAULT);
+						+ "speed up the inversion or change convergence. Default: "+NSHM23_InvConfigFactory.NUM_ITERS_PER_RUP_DEFAULT);
 				ops.addOption(null, "full-sys-inv", false, "Flag to force a single full-system inversion rather than "
-						+ "splitting the problem into smaller inversions for each isolated fault system.");
+						+ "splitting the problem into smaller inversions for each isolated fault system.");;
+				ops.addOption(null, "no-gridded", false, "Flag to disable the gridded seismicity model; useful if you "
+						+ "are applying NSHM23 methodology to a new region (or just don't need gridded seismicity).");
+				ops.addOption(null, "single-state", true, "Limit the model to a single state (specified by two letter "
+						+ "abbreviation). This does not apply when an external rupture set it supplied.");
 			}
 
 			@Override
@@ -70,6 +115,9 @@ public class InversionFactories {
 					get().setNumItersPerRup(Long.parseLong(cmd.getOptionValue("iters-per-rup")));
 				if (cmd.hasOption("full-sys-inv"))
 					get().setSolveClustersIndividually(false);
+				noGridded = cmd.hasOption("no-gridded");
+				if (cmd.hasOption("single-state"))
+					singleState = NSHM23_SingleStates.valueOf(cmd.getOptionValue("single-state"));
 			}
 		};
 		
@@ -94,6 +142,58 @@ public class InversionFactories {
 		 * @return a full {@link LogicTreeBranch} that can be used to build a rupture set and inversion configuration
 		 */
 		public abstract LogicTreeBranch<?> getDefaultBranch();
+		
+		/**
+		 * @return a {@link LogicTreeBranch} that can be used to build a an inversion configuration for an existing
+		 * rupture set
+		 */
+		public abstract LogicTreeBranch<?> getSolutionOnlyDefaultBranch();
+		
+		private static LogicTreeBranch<LogicTreeNode> branchCopyWithoutLevels(LogicTreeBranch<?> branch,
+				List<LogicTreeLevel<?>> excludes) {
+			 List<LogicTreeLevel<? extends LogicTreeNode>> newLevels = new ArrayList<>();
+			 List<LogicTreeNode> newNodes = new ArrayList<>();
+			 
+			 for (int l=0; l<branch.size(); l++) {
+				 LogicTreeLevel<?> level = branch.getLevel(l);
+				 boolean keep = true;
+				 for (LogicTreeLevel<?> exclude : excludes) {
+					 if (exclude.equals(level) || exclude.getName().equals(level.getName())) {
+						 keep = false;
+						 break;
+					 }
+				 }
+				 if (keep) {
+					 newLevels.add(level);
+					 newNodes.add(branch.getValue(l));
+				 }
+			 }
+			 
+			 return new LogicTreeBranch<>(newLevels, newNodes);
+		}
+		
+		private static LogicTreeBranch<LogicTreeNode> branchCopyWithoutTypes(LogicTreeBranch<?> branch,
+				List<Class<? extends LogicTreeNode>> excludes) {
+			 List<LogicTreeLevel<? extends LogicTreeNode>> newLevels = new ArrayList<>();
+			 List<LogicTreeNode> newNodes = new ArrayList<>();
+			 
+			 for (int l=0; l<branch.size(); l++) {
+				 LogicTreeLevel<?> level = branch.getLevel(l);
+				 boolean keep = true;
+				 for (Class<? extends LogicTreeNode> exclude : excludes) {
+					 if (level.getType().equals(exclude) || level.getType().isAssignableFrom(exclude)) {
+						 keep = false;
+						 break;
+					 }
+				 }
+				 if (keep) {
+					 newLevels.add(level);
+					 newNodes.add(branch.getValue(l));
+				 }
+			 }
+			 
+			 return new LogicTreeBranch<>(newLevels, newNodes);
+		}
 	}
 	
 	private static Options createOptions(Factory factory) {
@@ -107,7 +207,8 @@ public class InversionFactories {
 		if (factory != null)
 			factory.addExtraOptions(ops);
 
-		ops.addOption(null, "list-branch-choices", false, "Flag to list all logic tree branch choices and exit.");
+		ops.addOption(null, "list-branch-choices", false, "Flag to list all logic tree branch choices and exit. Make "
+				+ "sure to also supply a model flag.");
 		ops.addOption(null, "branch-choice", true, "Set a logic tree branch choice to a non-default value. See "
 				+ "--list-branch-choices to see available branching levels and choices along with example syntax. "
 				+ "Supply this argument multiple times to set multiple branch choices. Usage: "
@@ -115,6 +216,8 @@ public class InversionFactories {
 		
 		return ops;
 	}
+	
+	private static boolean LIST_BRANCH_MARKDOWN = false;
 	
 	public static void main(String[] args) {
 //		args = new String[0]; // to force it to print help
@@ -154,22 +257,73 @@ public class InversionFactories {
 		
 		factoryChoice.processExtraOptions(cmd);
 
-		LogicTreeBranch<?> rawBranch = factoryChoice.getDefaultBranch();
+		LogicTreeBranch<?> rawBranch = cmd.hasOption("rupture-set") ?
+				factoryChoice.getSolutionOnlyDefaultBranch() : factoryChoice.getDefaultBranch();
 		
 		if (cmd.hasOption("list-branch-choices")) {
-			System.out.println("Logic Tree Branch options. Each branching level will be listed separately with the "
-					+ "level name, and then each choice following (indented). Each choice lists its full descriptive "
-					+ "name and then an example showing how to set that branch choice from the command line. "
-					+ "Options selected by default will be annotated with '(DEFAULT)'");
-			for (int l=0; l<rawBranch.size(); l++) {
-				LogicTreeLevel<?> level = rawBranch.getLevel(l);
-				System.out.println(level.getName());
-				for (LogicTreeNode choice : level.getNodes()) {
-					String arg = level.getShortName()+":"+choice.getFilePrefix();
-					if (arg.contains(" "))
-						arg = "\""+arg+"\"";
-					arg = "--branch-choice "+arg;
-					System.out.println("\t"+choice.getName()+(rawBranch.hasValue(choice) ? " (DEFAULT)" : "")+";\t"+arg);
+			if (LIST_BRANCH_MARKDOWN) {
+				// generate markdown table for generating documentation
+				TableBuilder table = MarkdownUtils.tableBuilder();
+				
+				table.addLine("Level", "Type", "Default Choice", "Options");
+				
+				LogicTreeBranch<?> branch = factoryChoice.getDefaultBranch();
+				LogicTreeBranch<?> solBranch = factoryChoice.getSolutionOnlyDefaultBranch();
+				
+				for (int l=0; l<branch.size(); l++) {
+					LogicTreeLevel<?> level = branch.getLevel(l);
+					LogicTreeNode value = branch.getValue(l);
+					
+					table.initNewLine();
+					table.addColumn(level.getName());
+					boolean isRupSetOnly = true;
+					for (int i=0; i<solBranch.size(); i++) {
+						LogicTreeLevel<?> solLevel = solBranch.getLevel(i);
+						if (solLevel.equals(level)) {
+							isRupSetOnly = false;
+							break;
+						}
+					}
+					if (isRupSetOnly)
+						table.addColumn("Rupture Set");
+					else
+						table.addColumn("Solution");
+					
+					if (value == null)
+						table.addColumn("_(null)_");
+					else
+						table.addColumn("`"+value.getFilePrefix()+"`");
+					
+					String opsStr = null;
+					for (LogicTreeNode option : level.getNodes()) {
+						if (opsStr == null)
+							opsStr = "";
+						else
+							opsStr += ", ";
+						opsStr += option.getFilePrefix();
+					}
+					table.addColumn("`"+opsStr+"`");
+					table.finalizeLine();
+				}
+				
+				List<String> lines = table.build();
+				for (String line : lines)
+					System.out.println(line);
+			} else {
+				System.out.println("Logic Tree Branch options. Each branching level will be listed separately with the "
+						+ "level name, and then each choice following (indented). Each choice lists its full descriptive "
+						+ "name and then an example showing how to set that branch choice from the command line. "
+						+ "Options selected by default will be annotated with '(DEFAULT)'");
+				for (int l=0; l<rawBranch.size(); l++) {
+					LogicTreeLevel<?> level = rawBranch.getLevel(l);
+					System.out.println(level.getName());
+					for (LogicTreeNode choice : level.getNodes()) {
+						String arg = level.getShortName()+":"+choice.getFilePrefix();
+						if (arg.contains(" "))
+							arg = "\""+arg+"\"";
+						arg = "--branch-choice "+arg;
+						System.out.println("\t"+choice.getName()+(rawBranch.hasValue(choice) ? " (DEFAULT)" : "")+";\t"+arg);
+					}
 				}
 			}
 			System.out.flush();
@@ -227,6 +381,8 @@ public class InversionFactories {
 			// use that passed in
 			File rupSetFile = new File(cmd.getOptionValue("rupture-set"));
 			rupSet = FaultSystemRupSet.load(rupSetFile);
+			
+			
 			
 			LogicTreeBranch<?> rsBranch = rupSet.getModule(LogicTreeBranch.class);
 			if (rsBranch != null) {

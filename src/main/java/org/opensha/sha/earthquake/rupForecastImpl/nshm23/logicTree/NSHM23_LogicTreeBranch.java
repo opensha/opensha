@@ -89,7 +89,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	 * This is the default on-fault reference branch
 	 */
 	public static final NSHM23_LogicTreeBranch DEFAULT_ON_FAULT = fromValues(levelsOnFault,
-			NSHM23_FaultModels.NSHM23_v3,
+			NSHM23_FaultModels.WUS_FM_v3,
 			NSHM23_DeformationModels.GEOLOGIC,
 			NSHM23_ScalingRelationships.LOGA_C4p2,
 			SupraSeisBValues.B_0p5,
@@ -99,7 +99,7 @@ public class NSHM23_LogicTreeBranch extends LogicTreeBranch<LogicTreeNode> {
 	 * This is the average on-fault reference branch
 	 */
 	public static final NSHM23_LogicTreeBranch AVERAGE_ON_FAULT = fromValues(levelsOnFault,
-			NSHM23_FaultModels.NSHM23_v3,
+			NSHM23_FaultModels.WUS_FM_v3,
 			NSHM23_DeformationModels.AVERAGE,
 			NSHM23_ScalingRelationships.AVERAGE,
 			SupraSeisBValues.AVERAGE,

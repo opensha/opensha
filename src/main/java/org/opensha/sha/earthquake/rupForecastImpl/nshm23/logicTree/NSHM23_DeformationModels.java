@@ -294,9 +294,9 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	private static final String CREEP_DATE = "2022_08_17";
 	
 	private static String getGeodeticDirForFM(RupSetFaultModel faultModel) {
-		if (sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v2) || sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v3))
+		if (sameFaultModel(faultModel, NSHM23_FaultModels.WUS_FM_v2) || sameFaultModel(faultModel, NSHM23_FaultModels.WUS_FM_v3))
 			return "fm_v2";
-		if (sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v1p4))
+		if (sameFaultModel(faultModel, NSHM23_FaultModels.WUS_FM_v1p4))
 			return "fm_v1p4";
 		System.err.println("Warning, returning most recent geodetic date for unknown fault model: "
 				+faultModel.getName()+" of type "+faultModel.getClass().getName());
@@ -1437,7 +1437,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	}
 	
 	private static void writeMedianDM(File outputDir) throws IOException {
-		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		NSHM23_FaultModels fm = NSHM23_FaultModels.WUS_FM_v2;
 		
 		// first load geologic
 		List<? extends FaultSection> geoSects = buildGeolFullSects(fm, GEOLOGIC_VERSION);
@@ -1525,7 +1525,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	}
 	
 	public static void writeMinisectionCSV(File outputFile) throws IOException {
-		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		NSHM23_FaultModels fm = NSHM23_FaultModels.WUS_FM_v2;
 		
 		// first load geologic
 		List<? extends FaultSection> geoSects = buildGeolFullSects(fm, GEOLOGIC_VERSION);
@@ -1601,7 +1601,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	}
 	
 	private static void printSlipRateSubSectBelow10Stats() throws IOException {
-		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		NSHM23_FaultModels fm = NSHM23_FaultModels.WUS_FM_v2;
 		
 		List<NSHM23_DeformationModels> dms = new ArrayList<>();
 		List<List<? extends FaultSection>> dmSects = new ArrayList<>();
@@ -1642,7 +1642,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	}
 	
 	private static void printSlipRateCOVStats() throws IOException {
-		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		NSHM23_FaultModels fm = NSHM23_FaultModels.WUS_FM_v2;
 		
 		Map<Integer, FaultSection> sectsMap = fm.getFaultSectionIDMap();
 		for (NSHM23_DeformationModels dm : values()) {
@@ -1699,7 +1699,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	public static void main(String[] args) throws IOException {
 		// write geo gson
 //		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v1p4;
-		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		NSHM23_FaultModels fm = NSHM23_FaultModels.WUS_FM_v2;
 		
 		List<? extends FaultSection> geoFull = buildGeolFullSects(fm, GEOLOGIC_VERSION);
 		GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+NSHM23_DeformationModels.GEOLOGIC.getFilePrefix()+"_sects.geojson"), geoFull);

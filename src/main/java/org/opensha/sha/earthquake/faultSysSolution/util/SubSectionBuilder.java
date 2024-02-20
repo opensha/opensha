@@ -102,7 +102,7 @@ public class SubSectionBuilder {
 				+ "externally supplied fault sections.") {
 			@Override
 			public RupSetFaultModel getDefaultFM() {
-				return NSHM23_FaultModels.NSHM23_v2;
+				return NSHM23_FaultModels.WUS_FM_v2;
 			}
 
 			@Override

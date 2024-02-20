@@ -58,7 +58,7 @@ import com.google.gson.reflect.TypeToken;
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 	
-	NSHM23_v1p4("NSHM23 WUS Fault Model v1.4", "NSHM23 WUS v1.4", NSHM23_DeformationModels.GEOLOGIC, 0d) {
+	WUS_FM_v1p4("NSHM23 WUS Fault Model v1.4", "WUS FM v1.4", NSHM23_DeformationModels.GEOLOGIC, 0d) {
 		@Override
 		protected List<? extends FaultSection> loadFaultSections() throws IOException {
 			String sectPath = NSHM23_SECTS_PATH_PREFIX+"v1p4/NSHM23_FaultSections_v1p4.geojson";
@@ -73,7 +73,7 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 			return null;
 		}
 	},
-	NSHM23_v2("NSHM23 WUS Fault Model v2", "NSHM23 WUS v2", NSHM23_DeformationModels.GEOLOGIC, 0d) {
+	WUS_FM_v2("NSHM23 WUS Fault Model v2", "WUS FM v2", NSHM23_DeformationModels.GEOLOGIC, 0d) {
 		@Override
 		protected List<? extends FaultSection> loadFaultSections() throws IOException {
 			String sectPath = NSHM23_SECTS_PATH_PREFIX+"v2/NSHM23_FSD_v2.geojson";
@@ -88,7 +88,7 @@ public enum NSHM23_FaultModels implements LogicTreeNode, RupSetFaultModel {
 			return NSHM23_SECTS_PATH_PREFIX+"v2/special_faults.json";
 		}
 	},
-	NSHM23_v3("NSHM23 WUS Fault Model v3", "NSHM23 WUS v3", NSHM23_DeformationModels.GEOLOGIC, 1d) {
+	WUS_FM_v3("NSHM23 WUS Fault Model v3", "WUS FM v3", NSHM23_DeformationModels.GEOLOGIC, 1d) {
 		@Override
 		protected List<? extends FaultSection> loadFaultSections() throws IOException {
 			String sectPath = NSHM23_SECTS_PATH_PREFIX+"v3/NSHM23_FSD_v3.geojson";
