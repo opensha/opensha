@@ -129,17 +129,17 @@ public class SolSiteHazardCalc {
 		
 		// inputs and outputs
 		
-		ops.addRequiredOption("if", "input-file", true, "Input solution file.");
+		ops.addRequiredOption("if", "input-file", true, "Path to input solution zip file.");
 		
 		ops.addOption("n", "name", true,
-				"Name of the solution. Default: "+SOL_NAME_DEFAULT);
+				"Name of the solution (used in plots). Default: "+SOL_NAME_DEFAULT);
 
 		ops.addOption("cmp", "compare-to", true, "Optional path to an alternative solution for comparison.");
 		
 		ops.addOption("cn", "comp-name", true,
 				"Name of the comparison solution. Default: "+COMP_SOL_NAME_DEFAULT);
 		
-		ops.addOption("od", "output-dir", true, "Output directory where curves and a report (with plots) will be written."
+		ops.addOption("od", "output-dir", true, "Output directory where curves and a report (with plots) will be written. "
 				+ "You must supply either this, or --output-file to write curves only (without the repoort). The report "
 				+ "will be written to `index.html` and `README.md`, curves will be written to `curves_<period>.csv`, and all "
 				+ "plots will be placed in a `resources` subdirctory.");
@@ -148,6 +148,8 @@ public class SolSiteHazardCalc {
 				+ "to generate a report with plots (alternative to --output-dir). If multiple periods are supplied, "
 				+ "a period-specific suffix will be added before the .csv extension. If a comparison model, '_comp' "
 				+ "will also be appended.");
+		
+		// site specification
 		
 		ops.addOption(null, "site-location", true, "Site location specified as <lat>,<lon>; must supply either this, "
 				+ "--sites, or --nehrp-sites.");
@@ -173,20 +175,17 @@ public class SolSiteHazardCalc {
 		ops.addOption(null, "z25", true, "Site Z2.5 (depth Vs=2.5 km/s), supplied in kilometers. If not supplied (and the "
 				+ "chosen GMPE uses Z2.5), the default (usually Vs30-dependent) model will be used.");
 		
-		ops.addOption(null, "return-periods", true, "Sets custom return periods (in years) to highlight in plots (or use in "
-				+ "disaggregations if --disagg-rps is supplied). Default are those corresponding to 2% and 10% "
-				+ "probability in 50 years.");
-		
 		// TODO: site data providers?
 		
 		// calculation parameters
 		
-		ops.addOption(null, "spectra", false, "Flag to calculate and plot hazard spectra. Usually used in conjunction with --all-periods.");
+		ops.addOption(null, "spectra", false, "Flag to calculate and plot hazard spectra. Usually used in conjunction "
+				+ "with --all-periods. Also see --return-periods.");
 		
 		ops.addOption("p", "periods", true, "Calculation spectral period(s). Mutliple can be comma separated; supply 0 "
 				+ "for PGA, or -1 for PGV.");
 		
-		ops.addOption(null, "all-periods", false, "Flag to calculate all available periods (alternative to --periods)");
+		ops.addOption(null, "all-periods", false, "Flag to calculate all available periods (alternative to --periods).");
 		
 		ops.addOption(null, "gmpe", true, "GMPE name. Default is `"+GMM_DEFAULT.name()+"`, "
 				+ "and the full list can be found at https://github.com/opensha/opensha/blob/master/src/main/java/org/"
@@ -209,13 +208,17 @@ public class SolSiteHazardCalc {
 				+ "multiple levels can be comma separated.");
 		
 		ops.addOption(null, "disagg-rps", false, "Enables disaggregation at the recurrence intervals. By default, those "
-				+ "are those corresponding to 2% and 10% in 50 years, override with --return-periods.");
+				+ "corresponding to 2% and 10% in 50 years (override with --return-periods).");
 		
 		ops.addOption(null, "disagg-max-dist", true, "Sets the maximum distance for disaggregation plots.");
 		
 		ops.addOption(null, "disagg-min-mag", true, "Sets the minimum magnitude for disaggregation plots.");
 		
 		ops.addOption(null, "disagg-max-mag", true, "Sets the maximum magnitude for disaggregation plots.");
+		
+		ops.addOption(null, "return-periods", true, "Sets custom return periods (in years) to highlight in plots (or use in "
+				+ "disaggregations if --disagg-rps is supplied). Default are those corresponding to 2% and 10% "
+				+ "probability in 50 years.");
 		
 		// mixc
 		
@@ -226,6 +229,9 @@ public class SolSiteHazardCalc {
 	}
 	
 	public static void main(String[] args) throws IOException {
+//		writeExampleSitesCSV(new File("/home/kevin/git/opensha-fault-sys-tools/examples/hazard_site_list.csv"), false);
+//		writeExampleSitesCSV(new File("/home/kevin/git/opensha-fault-sys-tools/examples/hazard_site_list_with_params.csv"), true);
+//		System.exit(0);
 		System.setProperty("java.awt.headless", "true");
 		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, SolSiteHazardCalc.class);
 		
@@ -1102,6 +1108,45 @@ public class SolSiteHazardCalc {
 		exec.shutdown();
 		System.exit(0);
 	}
+	
+	public static void writeExampleSitesCSV(File outputFile, boolean params) throws IOException {
+		CSVFile<String> csv = new CSVFile<>(true);
+		
+		Location[] siteLocs = {
+				new Location(34, -118),
+				new Location(35, -117),
+				new Location(37.2, -120),
+				new Location(38, -119.5)
+		};
+		
+		List<String> header = new ArrayList<>();
+		header.add(NAME_HEADER);
+		header.add(LAT_HEADER);
+		header.add(LON_HEADER);
+		if (params) {
+			header.add(VS30_HEADER);
+			header.add(Z10_HEADER);
+			header.add(Z25_HEADER);
+		}
+		csv.addLine(header);
+		
+		for (int i=0; i<siteLocs.length; i++) {
+			List<String> line = new ArrayList<>(header.size());
+			line.add("Site "+(i+1));
+			line.add((float)siteLocs[i].lat+"");
+			line.add((float)siteLocs[i].lon+"");
+			
+			if (params) {
+				line.add("760");
+				line.add("100");
+				line.add("1.25");
+			}
+			
+			csv.addLine(line);
+		}
+		
+		csv.writeToFile(outputFile);
+	}
 
 	public static String paramValStr(Parameter<?> param) {
 		Object val = param.getValue();
@@ -1223,24 +1268,24 @@ public class SolSiteHazardCalc {
 		if (sites > 1 && threads > 1 && !THREAD_LOCAL_ERFS && erf.getNumFaultSystemSources() > 0) {
 			// clear caches
 			
-//			// clear compound surfaces
-//			for (int i=0; i<erf.getNumFaultSystemSources(); i++) {
-//				ProbEqkSource source = erf.getSource(i);
-//				for (ProbEqkRupture rup : source) {
-//					RuptureSurface surf = rup.getRuptureSurface();
-//					if (surf instanceof CompoundSurface)
-//						((CompoundSurface)surf).clearCache();
-//				}
-//			}
-//			
-//			// clear sect surfaces
-//			boolean aseisReducesArea = (boolean)erf.getParameter(AseismicityAreaReductionParam.NAME).getValue();
-//			double gridSpacing = (double)erf.getParameter(FaultGridSpacingParam.NAME).getValue();
-//			for (FaultSection sect : erf.getSolution().getRupSet().getFaultSectionDataList()) {
-//				RuptureSurface surf = sect.getFaultSurface(gridSpacing, false, aseisReducesArea);
-//				if (surf instanceof CacheEnabledSurface)
-//					((CacheEnabledSurface)surf).clearCache();
-//			}
+			// clear compound surfaces
+			for (int i=0; i<erf.getNumFaultSystemSources(); i++) {
+				ProbEqkSource source = erf.getSource(i);
+				for (ProbEqkRupture rup : source) {
+					RuptureSurface surf = rup.getRuptureSurface();
+					if (surf instanceof CompoundSurface)
+						((CompoundSurface)surf).clearCache();
+				}
+			}
+			
+			// clear sect surfaces
+			boolean aseisReducesArea = (boolean)erf.getParameter(AseismicityAreaReductionParam.NAME).getValue();
+			double gridSpacing = (double)erf.getParameter(FaultGridSpacingParam.NAME).getValue();
+			for (FaultSection sect : erf.getSolution().getRupSet().getFaultSectionDataList()) {
+				RuptureSurface surf = sect.getFaultSurface(gridSpacing, false, aseisReducesArea);
+				if (surf instanceof CacheEnabledSurface)
+					((CacheEnabledSurface)surf).clearCache();
+			}
 		}
 	}
 	
