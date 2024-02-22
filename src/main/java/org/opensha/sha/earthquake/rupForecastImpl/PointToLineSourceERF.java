@@ -57,7 +57,7 @@ public class PointToLineSourceERF extends AbstractERF{
 	public final static String  NAME = "Point To Line Source ERF";
 
 	// this is the source (only 1 for this ERF)
-	private PointToLineSource source;
+	private PointToFiniteSource source;
 
 	// adjustable parameter declarations
 	LocationParameter locParam;
@@ -114,14 +114,6 @@ public class PointToLineSourceERF extends AbstractERF{
 	// magDepthParam stuff;
 	public final static String RUP_TOP_DEPTH_FUNC_PARAM_NAME = "Rup-Top Depth vs Mag";
 	private final static String RUP_TOP_DEPTH_FUNC_PARAM_INFO = "Used to set the depth of line sources";
-
-	// defaultHypoDepthParam stuff
-	public final static String DEFAULT_HYPO_DEPTH_PARAM_NAME = "Default Hypo Depth";
-	private final static String DEFAULT_HYPO_DEPTH_PARAM_INFO = "This depth applied to small mags";
-	private final static String DEFAULT_HYPO_DEPTH_PARAM_UNITS = "km";
-	private Double DEFAULT_HYPO_DEPTH_PARAM_MIN = new Double(0);
-	private Double DEFAULT_HYPO_DEPTH_PARAM_MAX = new Double(100);
-	private Double DEFAULT_HYPO_DEPTH_PARAM_DEFAULT = new Double(5);
 
 	// lowerSeisDepthParam stuff
 	public final static String LOWER_SEIS_DEPTH_PARAM_NAME = "Lower Seis Depth";
@@ -216,11 +208,6 @@ public class PointToLineSourceERF extends AbstractERF{
 		discretizedFunc.set(9.0, 1.0);
 		rupTopDepthParam = new ArbitrarilyDiscretizedFuncParameter(RUP_TOP_DEPTH_FUNC_PARAM_NAME, discretizedFunc);
 		rupTopDepthParam.setInfo(RUP_TOP_DEPTH_FUNC_PARAM_INFO);
-
-		// create defaultHypoDepthParam
-		defaultHypoDepthParam = new DoubleParameter(DEFAULT_HYPO_DEPTH_PARAM_NAME,DEFAULT_HYPO_DEPTH_PARAM_MIN,
-				DEFAULT_HYPO_DEPTH_PARAM_MAX,DEFAULT_HYPO_DEPTH_PARAM_UNITS,DEFAULT_HYPO_DEPTH_PARAM_DEFAULT);
-		defaultHypoDepthParam.setInfo(DEFAULT_HYPO_DEPTH_PARAM_INFO);
 
 		// create lowerSeisDepthParam
 		lowerSeisDepthParam = new DoubleParameter(LOWER_SEIS_DEPTH_PARAM_NAME,LOWER_SEIS_DEPTH_PARAM_MIN,
@@ -317,20 +304,18 @@ public class PointToLineSourceERF extends AbstractERF{
 				locParam.getValue(), focalMech);
 		
 		if(spokedRupturesParam.getValue()) {
-			source = new PointToLineSource(hypoMagFreqDistAtLoc,
+			source = new PointToFiniteSource(hypoMagFreqDistAtLoc,
 					rupTopDepthParam.getValue(), 
-					defaultHypoDepthParam.getValue(),
 					getmagScalingRelationship(magScalingRelParam.getValue()),
 					lowerSeisDepthParam.getValue(), 
 					timeSpan.getDuration(), 
 					minMagParam.getValue(), 
 					numStrikeParam.getValue(), 
-					firstStrikeParam.getValue());
+					firstStrikeParam.getValue(), true);
 		}
 		else {
-			source = new PointToLineSource(hypoMagFreqDistAtLoc,
+			source = new PointToFiniteSource(hypoMagFreqDistAtLoc,
 					rupTopDepthParam.getValue(), 
-					defaultHypoDepthParam.getValue(),
 					getmagScalingRelationship(magScalingRelParam.getValue()),
 					lowerSeisDepthParam.getValue(), 
 					timeSpan.getDuration(), 

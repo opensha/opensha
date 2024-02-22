@@ -4,16 +4,17 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
+import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
 import org.opensha.sha.faultSurface.cache.CustomCacheWrappedSurface;
-import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy.CacheTypes;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -91,7 +92,8 @@ public class DistCachedERFWrapper extends AbstractERF {
 		this.sources = sources;
 	}
 	
-	private static RuptureSurface getWrappedSurface(Map<RuptureSurface, CustomCacheWrappedSurface> wrappedMap, RuptureSurface origSurf) {
+	private static RuptureSurface getWrappedSurface(Map<RuptureSurface, CustomCacheWrappedSurface> wrappedMap,
+			RuptureSurface origSurf) {
 		RuptureSurface wrappedSurf;
 		if (wrappedMap.containsKey(origSurf))
 			// already encountered (duplicate surface)
@@ -105,17 +107,17 @@ public class DistCachedERFWrapper extends AbstractERF {
 					subSurfs.add(wrappedMap.get(subSurf));
 				} else if (subSurf instanceof CacheEnabledSurface) {
 					CustomCacheWrappedSurface cachedSubSurf =
-							new CustomCacheWrappedSurface((CacheEnabledSurface)subSurf, CacheTypes.SINGLE);
+							new CustomCacheWrappedSurface((CacheEnabledSurface)subSurf);
 					subSurfs.add(cachedSubSurf);
 					wrappedMap.put(subSurf, cachedSubSurf);
 				} else {
 					subSurfs.add(subSurf);
 				}
 			}
-			wrappedSurf = new CustomCacheWrappedSurface(new CompoundSurface(subSurfs), CacheTypes.SINGLE);
+			wrappedSurf = new CustomCacheWrappedSurface(new CompoundSurface(subSurfs));
 			wrappedMap.put(origSurf, (CustomCacheWrappedSurface)wrappedSurf);
 		} else if (origSurf instanceof CacheEnabledSurface) {
-			wrappedSurf = new CustomCacheWrappedSurface((CacheEnabledSurface)origSurf, CacheTypes.SINGLE);
+			wrappedSurf = new CustomCacheWrappedSurface((CacheEnabledSurface)origSurf);
 			wrappedMap.put(origSurf, (CustomCacheWrappedSurface)wrappedSurf);
 		} else {
 			wrappedSurf = origSurf;
@@ -148,6 +150,11 @@ public class DistCachedERFWrapper extends AbstractERF {
 		return erf.getName();
 	}
 	
+	@Override
+	public UnaryOperator<List<DisaggregationSourceRuptureInfo>> getDisaggSourceConsolidator() {
+		return erf.getDisaggSourceConsolidator();
+	}
+
 	private static class CustomSource extends ProbEqkSource {
 		
 		/**

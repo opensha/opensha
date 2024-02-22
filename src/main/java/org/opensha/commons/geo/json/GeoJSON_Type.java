@@ -42,7 +42,6 @@ public enum GeoJSON_Type {
 		if (!(reader instanceof BufferedReader))
 			reader = new BufferedReader(reader);
 		
-		FeatureCollection ret;
 		synchronized (gson_default) {
 			JsonReader in = gson_default.newJsonReader(reader);
 			

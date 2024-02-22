@@ -6,7 +6,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.Writer;
@@ -22,27 +21,18 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.commons.text.similarity.LevenshteinDistance;
-import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.geo.json.Geometry.Point;
+import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
-import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.TypeAdapter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
-import com.google.gson.stream.JsonWriter;
 
-import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.utils.DeformationModelFetcher;
 
 public class GeoJSONFaultReader {
 	
@@ -507,21 +497,6 @@ public class GeoJSONFaultReader {
 		return null;
 	}
 	
-	public static List<FaultSection> buildSubSects(List<? extends FaultSection> sects) {
-		Collections.sort(sects, new Comparator<FaultSection>() {
-
-			@Override
-			public int compare(FaultSection o1, FaultSection o2) {
-				return o1.getSectionName().compareTo(o2.getSectionName());
-			}
-		});
-		List<FaultSection> subSects = new ArrayList<>();
-		for (FaultSection sect : sects)
-			subSects.addAll(sect.getSubSectionsList(0.5*sect.getOrigDownDipWidth(), subSects.size(), 2));
-		System.out.println("Built "+subSects.size()+" subsections");
-		return subSects;
-	}
-	
 	public static final String NSHM23_SECTS_CUR_VERSION = "v1p4";
 	private static final String NSHM23_SECTS_PATH_PREFIX = "/data/erf/nshm23/fault_models/";
 	public static final String NSHM23_DM_CUR_VERSION = "v1p2";
@@ -548,7 +523,7 @@ public class GeoJSONFaultReader {
 		Preconditions.checkNotNull(dmReader, "Deformation model file not found: %s", dmPath);
 		FeatureCollection defModel = FeatureCollection.read(dmReader);
 		attachGeoDefModel(sects, defModel);
-		return buildSubSects(sects);
+		return SubSectionBuilder.buildSubSects(sects);
 	}
 	
 	public static List<FaultSection> buildSubSects(File sectsFile, File geoDBFile, String state) throws IOException {
@@ -574,7 +549,7 @@ public class GeoJSONFaultReader {
 		fallbacks.addAll(FaultModels.FM3_1.getFaultSections());
 		fallbacks.addAll(FaultModels.FM3_2.getFaultSections());
 		GeoJSONFaultReader.testMapSlipRates(sects, slipRates, 1d, fallbacks);
-		return buildSubSects(sects);
+		return SubSectionBuilder.buildSubSects(sects);
 	}
 
 	public static void main(String[] args) throws IOException {

@@ -9,15 +9,17 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipFile;
 
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
-import org.opensha.commons.geo.Region;
 import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
+import org.opensha.commons.util.modules.ModuleArchive;
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
@@ -26,7 +28,6 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.modules.TrueMeanRuptureMappings;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -233,13 +234,20 @@ public class TrueMeanSolutionCreator {
 	private List<LogicTreeBranch<?>> branches;
 	private List<int[]> branchSectMappings;
 	private List<int[]> branchRupMappings;
-//	private List<double[]> branchRupMags;
+	private List<double[]> branchRupMags;
+	
+	private HashMap<Integer, int[]> sectMappingsCache;
+	private HashMap<Integer, int[]> rupMappingsCache;
+	private HashMap<Integer, double[]> rupMagsCache;
 	
 	private LogicTree<?> tree;
 	private BranchWeightProvider weightProv;
 	private double totWeight = 0d;
-	
+
+	private boolean doGridProv;
 	private AveragingAccumulator<GridSourceProvider> gridProvAvg;
+	
+	private List<TectonicRegionType> rupTRTs = null;
 	
 	private boolean allSingleStranded = true;
 	
@@ -253,9 +261,14 @@ public class TrueMeanSolutionCreator {
 		this.weightProv = weightProv;
 	}
 	
+	public void setDoGridProv(boolean doGridProv) {
+		this.doGridProv = doGridProv;
+	}
+	
 	public synchronized void addSolution(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
 		Preconditions.checkState(tree.contains(branch), "Branch not contained by tree");
-		GridSourceProvider gridProv = sol.getGridSourceProvider();
+		GridSourceProvider gridProv = doGridProv ? sol.getGridSourceProvider() : null;
+		RupSetTectonicRegimes myRupTRTs = sol.getRupSet().getModule(RupSetTectonicRegimes.class);
 		if (uniqueSectsMap == null) {
 			// first time
 			uniqueSectsMap = new HashMap<>();
@@ -266,13 +279,23 @@ public class TrueMeanSolutionCreator {
 			branches = new ArrayList<>();
 			branchSectMappings = new ArrayList<>();
 			branchRupMappings = new ArrayList<>();
+			branchRupMags = new ArrayList<>();
+			sectMappingsCache = new HashMap<>();
+			rupMappingsCache = new HashMap<>();
+			rupMagsCache = new HashMap<>();
 			
 			if (gridProv != null)
 				gridProvAvg = gridProv.averagingAccumulator();
+			if (myRupTRTs != null)
+				rupTRTs = new ArrayList<>();
 		} else {
 			if (gridProvAvg != null && gridProv == null) {
 				System.err.println("WARNING: not all solutions contain grid source providers, disabling averaging");
 				gridProvAvg = null;
+			}
+			if (rupTRTs != null && myRupTRTs == null) {
+				System.err.println("WARNING: not all rupture sets contain tectonic region types, won't track");
+				rupTRTs = null;
 			}
 		}
 		
@@ -328,7 +351,6 @@ public class TrueMeanSolutionCreator {
 			UniqueRupture unique = new UniqueRupture(globalSectIDs, rupSet.getAveRakeForRup(r),
 					rupSet.getAreaForRup(r), rupSet.getLengthForRup(r));
 			int globalID;
-			boolean isNew;
 			if (uniqueRupsMap.containsKey(unique)) {
 				// duplicate
 				globalID = uniqueRupsMap.get(unique);
@@ -340,6 +362,8 @@ public class TrueMeanSolutionCreator {
 				unique.setGlobalID(globalID);
 				uniqueRupsList.add(unique);
 				uniqueRupsMap.put(unique, globalID);
+				if (rupTRTs != null)
+					rupTRTs.add(myRupTRTs.get(r));
 			}
 			if (rate > 0 && unique.rupMFD.size() == 0)
 				numNewNonzeroRups++;
@@ -364,10 +388,35 @@ public class TrueMeanSolutionCreator {
 		if (gridProvAvg != null)
 			gridProvAvg.process(gridProv, weight);
 		
-		// TODO maybe use these
 		branches.add(branch);
-		branchSectMappings.add(sectMappings);
-		branchRupMappings.add(rupMappings);
+		
+		int sectMappingHash = Arrays.hashCode(sectMappings);
+		if (sectMappingsCache.containsKey(sectMappingHash) && Arrays.equals(sectMappings, sectMappingsCache.get(sectMappingHash))) {
+			// re-use the identical prior one
+			branchSectMappings.add(sectMappingsCache.get(sectMappingHash));
+		} else {
+			branchSectMappings.add(sectMappings);
+			sectMappingsCache.put(sectMappingHash, sectMappings);
+		}
+		
+		int rupMappingHash = Arrays.hashCode(rupMappings);
+		if (rupMappingsCache.containsKey(rupMappingHash) && Arrays.equals(rupMappings, rupMappingsCache.get(rupMappingHash))) {
+			// re-use the identical prior one
+			branchRupMappings.add(rupMappingsCache.get(rupMappingHash));
+		} else {
+			branchRupMappings.add(rupMappings);
+			rupMappingsCache.put(rupMappingHash, rupMappings);
+		}
+		
+		double[] rupMags = rupSet.getMagForAllRups();
+		int magMappingHash = Arrays.hashCode(rupMags);
+		if (rupMagsCache.containsKey(magMappingHash) && Arrays.equals(rupMags, rupMagsCache.get(magMappingHash))) {
+			// re-use the identical prior one
+			branchRupMags.add(rupMagsCache.get(magMappingHash));
+		} else {
+			branchRupMags.add(rupMags);
+			rupMagsCache.put(magMappingHash, rupMags);
+		}
 	}
 	
 	public synchronized FaultSystemSolution build() {
@@ -414,6 +463,9 @@ public class TrueMeanSolutionCreator {
 		if (allSingleStranded)
 			avgRupSet.addModule(ClusterRuptures.singleStranged(avgRupSet));
 		
+		if (rupTRTs != null)
+			avgRupSet.addModule(new RupSetTectonicRegimes(avgRupSet, rupTRTs.toArray(new TectonicRegionType[0])));
+		
 		FaultSystemSolution avgSol = new FaultSystemSolution(avgRupSet, rates);
 		avgSol.addModule(new RupMFDsModule(avgSol, rupMFDs));
 		if (gridProvAvg != null)
@@ -425,56 +477,49 @@ public class TrueMeanSolutionCreator {
 			// we did a subset, build a subset tree
 			tree = tree.subset(branches);
 		}
-		avgRupSet.addModule(TrueMeanRuptureMappings.build(tree, branchSectMappings, branchRupMappings));
+		avgRupSet.addModule(TrueMeanRuptureMappings.build(tree, branchSectMappings, branchRupMappings, branchRupMags));
 		
 		return avgSol;
 	}
 	
 	public static void main(String[] args) throws IOException {
-//		List<FaultSystemSolution> sols = new ArrayList<>();
-//		List<LogicTreeBranch<?>> branches = new ArrayList<>();
-//		
-//		List<LogicTreeLevel<?>> levels = List.of(NSHM23_U3_HybridLogicTreeBranch.U3_FM);
-//		
-////		File dir = new File("/home/kevin/OpenSHA/UCERF3/rup_sets/modular/");
-////		sols.add(FaultSystemSolution.load(new File(dir, "FM3_1_branch_averaged.zip")));
-////		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_1)));
-////		
-////		sols.add(FaultSystemSolution.load(new File(dir, "FM3_2_branch_averaged.zip")));
-////		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_2)));
-//		
-//		File dir = new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
-//				+ "2023_04_14-nshm23_u3_hybrid_branches-CoulombRupSet-DsrUni-TotNuclRate-NoRed-ThreshAvgIterRelGR/");
-//		sols.add(FaultSystemSolution.load(new File(dir, "results_FM3_1_CoulombRupSet_branch_averaged.zip")));
-//		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_1)));
-//		
-//		sols.add(FaultSystemSolution.load(new File(dir, "results_FM3_2_CoulombRupSet_branch_averaged.zip")));
-//		branches.add(new LogicTreeBranch<LogicTreeNode>(levels, List.of(FaultModels.FM3_2)));
-//		
-//		File outputFile = new File(dir, "branch_avgs_combined.zip");
-//		
-//		for (FaultSystemSolution sol : sols) {
-//			FaultSystemRupSet rupSet = sol.getRupSet();
-//			rupSet.addModule(ClusterRuptures.singleStranged(rupSet));
-//		}
-//		
-//		TrueMeanSolutionCreator creator = new TrueMeanSolutionCreator(new BranchWeightProvider.CurrentWeights());
-//		
-//		for (int s=0; s<sols.size(); s++)
-//			creator.addSolution(sols.get(s), branches.get(s));
-//		
-//		FaultSystemSolution avgSol = creator.build();
-//		avgSol.write(outputFile);
-		
-		File dir = new File("/data/kevin/nshm23/batch_inversions/"
-				+ "2023_06_23-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR");
-		SolutionLogicTree slt = SolutionLogicTree.load(new File(dir, "results.zip"));
+		System.setProperty("java.awt.headless", "true");
+		File sltFile;
+		File outputFile;
+		File gridProvFile;
+		if (args.length == 1 && args[0].equals("--hardcoded")) {
+			File dir = new File("/data/kevin/nshm23/batch_inversions/"
+					+ "2023_06_23-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR");
+			sltFile = new File(dir, "results.zip");
+			gridProvFile = new File(dir, "results_NSHM23_v2_CoulombRupSet_branch_averaged_gridded.zip");
+			outputFile = new File(dir, "true_mean_solution.zip");
+		} else if (args.length == 2 || args.length == 3) {
+			sltFile = new File(args[0]);
+			outputFile = new File(args[1]);
+			if (args.length == 3)
+				gridProvFile = new File(args[2]);
+			else
+				gridProvFile = null;
+		} else {
+			throw new IllegalArgumentException("USAGE: <slt-file.zip> <output-file.zip> [<BA sol or grid prov.zip>]");
+		}
+		Preconditions.checkState(sltFile.exists(), "Solution logic tree file doesn't exist: %s", sltFile.getAbsolutePath());
+		SolutionLogicTree slt = SolutionLogicTree.load(sltFile);
 		LogicTree<?> tree = slt.getLogicTree();
-//		tree = tree.sample(20, false);
-		FaultSystemSolution baSol = FaultSystemSolution.load(new File(dir, "results_NSHM23_v2_CoulombRupSet_branch_averaged_gridded.zip"));
-		GridSourceProvider gridProv = baSol.getGridSourceProvider();
+		GridSourceProvider avgGridProv = null;
+		if (gridProvFile != null) {
+			ZipFile zip = new ZipFile(gridProvFile);
+			if (FaultSystemSolution.isSolution(zip)) {
+				avgGridProv = FaultSystemSolution.load(zip).requireModule(GridSourceProvider.class);
+			} else {
+				ModuleArchive<OpenSHA_Module> avgArchive = new ModuleArchive<>(zip);
+				avgGridProv = avgArchive.requireModule(GridSourceProvider.class);
+			}
+		}
 		
 		TrueMeanSolutionCreator creator = new TrueMeanSolutionCreator(tree);
+		// only bother to average grid provs if we don't have an external
+		creator.setDoGridProv(avgGridProv == null);
 		
 		ClusterRuptures cRups = null;
 		for (int i=0; i<tree.size(); i++) {
@@ -491,14 +536,10 @@ public class TrueMeanSolutionCreator {
 		}
 		
 		FaultSystemSolution avgSol = creator.build();
-		avgSol.setGridSourceProvider(gridProv);
+		if (avgGridProv != null)
+			avgSol.setGridSourceProvider(avgGridProv);
 		
-		Region stableReg = NSHM23_RegionLoader.GridSystemRegions.CEUS_STABLE.load();
-		Map<Region, TectonicRegionType> regRegimes = Map.of(stableReg, TectonicRegionType.STABLE_SHALLOW);
-		avgSol.getRupSet().addModule(RupSetTectonicRegimes.forRegions(
-				avgSol.getRupSet(), regRegimes, TectonicRegionType.ACTIVE_SHALLOW, 0.5));
-		
-		avgSol.write(new File(dir, "true_mean_solution.zip"));
+		avgSol.write(outputFile);
 	}
 
 }

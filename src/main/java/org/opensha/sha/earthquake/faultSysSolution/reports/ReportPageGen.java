@@ -41,7 +41,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.BiasiWesnouskyP
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.CreepingAndParkfieldReport;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.FaultSectionConnectionsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
-import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InfoStringPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.GeneralInfoPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionConfigurationPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionMisfitsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionProgressPlot;
@@ -120,7 +120,7 @@ public class ReportPageGen {
 	public static List<AbstractRupSetPlot> getDefaultRupSetPlots(PlotLevel level) {
 		List<AbstractRupSetPlot> plots = new ArrayList<>();
 		
-		plots.add(new InfoStringPlot());
+		plots.add(new GeneralInfoPlot());
 		plots.add(new LogicTreeBranchPlot());
 		plots.add(new RuptureScalingPlot());
 		plots.add(new SolMFDPlot());
@@ -157,7 +157,7 @@ public class ReportPageGen {
 	public static List<AbstractRupSetPlot> getDefaultSolutionPlots(PlotLevel level) {
 		List<AbstractRupSetPlot> plots = new ArrayList<>();
 		
-		plots.add(new InfoStringPlot());
+		plots.add(new GeneralInfoPlot());
 		plots.add(new LogicTreeBranchPlot());
 		plots.add(new SolMFDPlot());
 		plots.add(new InversionConfigurationPlot());

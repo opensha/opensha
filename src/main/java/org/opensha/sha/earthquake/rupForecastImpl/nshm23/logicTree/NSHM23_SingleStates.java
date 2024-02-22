@@ -153,7 +153,7 @@ public enum NSHM23_SingleStates implements LogicTreeNode {
 	public static void main(String[] args) throws IOException {
 		// write out subsections for one state
 		
-		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		NSHM23_FaultModels fm = NSHM23_FaultModels.WUS_FM_v2;
 		
 		NSHM23_SingleStates state = UT;
 		

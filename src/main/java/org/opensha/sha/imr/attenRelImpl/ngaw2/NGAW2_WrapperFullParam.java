@@ -366,7 +366,7 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 		rakeParam = new RakeParam(null, true);
 		eqkRuptureParams.addParameter(rakeParam);
 		
-		rupTopDepthParam = new RupTopDepthParam(0, 15, 0);
+		rupTopDepthParam = new RupTopDepthParam(0d, 500d, 0d, 15d, 0d);
 		eqkRuptureParams.addParameter(rupTopDepthParam);
 		
 		focalDepthParam = new FocalDepthParam(0, 15, 0);

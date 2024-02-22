@@ -272,6 +272,25 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule
 	}
 	
 	/**
+	 * Sets the given value in the branch. Cannot be null (use clearValue(clazz)).
+	 * @param value
+	 */
+	@SuppressWarnings("unchecked")
+	public void setValueUnchecked(LogicTreeNode value) {
+		for (int i=0; i<levels.size(); i++) {
+			LogicTreeLevel<? extends E> level = levels.get(i);
+			if (level.getType().isAssignableFrom(value.getClass()) && level.isMember(value)) {
+				if (Objects.equals(value, values.get(i)))
+					originalWeight = null;
+				values.set(i, (E)value);
+				return;
+			}
+		}
+		throw new IllegalArgumentException("Value '"+value.getName()+"' with type '"+value.getClass()
+			+"' is not a valid member of any level of this logic tree branch");
+	}
+	
+	/**
 	 * 
 	 * @return true if all branch values are non-null
 	 */

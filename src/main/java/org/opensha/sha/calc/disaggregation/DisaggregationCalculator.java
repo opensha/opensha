@@ -1,6 +1,7 @@
 package org.opensha.sha.calc.disaggregation;
 
 
+import java.awt.Color;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -10,7 +11,9 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.function.UnaryOperator;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
@@ -27,6 +30,7 @@ import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.PtSrcDistanceCorrectionParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.faultSurface.PointSurface;
@@ -73,7 +77,47 @@ implements DisaggregationCalculatorAPI{
 	private double[] mag_center, mag_binEdges;
 	private double[] dist_center, dist_binEdges;
 
-	private int NUM_E = 8;
+	public enum EpsilonCategories {
+		LESS_NEG_TWO("ε<-2", Double.NEGATIVE_INFINITY, -2d, new Color(215, 38, 3)),
+		NEG_TWO_ONE("-2<ε<-1", -2d, -1d, new Color(252, 94, 62)),
+		NEG_ONE_HALF("-1<ε<-0.5", -1d, -0.5d, new Color(252, 180, 158)),
+		NEG_HALF_ZERO("-0.5<ε<0", -0.5d, 0d, new Color(254, 220, 210)),
+		ZERO_HALF("0<ε<0.5", 0d, 0.5d, new Color(217, 217, 255)),
+		HALF_ONE("0.5<ε<1", 0.5d, 1d, new Color(151, 151, 255)),
+		ONE_TWO("1<ε<2", 1d, 2d, new Color(0, 0, 255)),
+		GREATER_TWO("2<ε", 2d, Double.POSITIVE_INFINITY, new Color(0, 0, 170));
+		
+		public final String label;
+		public final double min;
+		public final double max;
+		public final Color color;
+
+		private EpsilonCategories(String label, double min, double max, Color color) {
+			this.label = label;
+			this.min = min;
+			this.max = max;
+			this.color = color;
+		}
+		
+		public String gmtColorStr() {
+			return "-G"+color.getRed()+"/"+color.getGreen()+"/"+color.getBlue();
+		}
+		
+		static EpsilonCategories locate(double epsilon) {
+			if (Double.isInfinite(epsilon)) {
+				if (epsilon < 0)
+					return LESS_NEG_TWO;
+				else
+					return GREATER_TWO;
+			}
+			for (EpsilonCategories cat : values())
+				if (epsilon > cat.min && epsilon <= cat.max)
+					return cat;
+			throw new IllegalStateException("No category found for epsilon="+epsilon);
+		}
+	}
+	
+	private int NUM_E = EpsilonCategories.values().length;
 	private double[][][] pdf3D;
 	private double maxContrEpsilonForDisaggrPlot;
 	private double maxContrEpsilonForGMT_Plot;
@@ -101,6 +145,9 @@ implements DisaggregationCalculatorAPI{
 
 	//stores the source Disagg info
 	private String sourceDisaggInfo;
+	private List<DisaggregationSourceRuptureInfo> disaggSourceList;
+	private String consolidatedSourceDisaggInfo;
+	private List<DisaggregationSourceRuptureInfo> consolidatedDisaggSourceList;
 
 	//Disaggregation Plot Img Name
 	public static final String DISAGGREGATION_PLOT_NAME = "DisaggregationPlot";
@@ -111,15 +158,12 @@ implements DisaggregationCalculatorAPI{
 	//Address to the disaggregation plot img
 	private String disaggregationPlotImgWebAddr;
 
-	static String[] epsilonColors = {
-			"-G215/38/3",
-			"-G252/94/62",
-			"-G252/180/158",
-			"-G254/220/210",
-			"-G217/217/255",
-			"-G151/151/255",
-			"-G0/0/255",
-	"-G0/0/170"};
+	static String[] epsilonColors;
+	static {
+		epsilonColors = new String[EpsilonCategories.values().length];
+		for (int i=0; i<epsilonColors.length; i++)
+			epsilonColors[i] = EpsilonCategories.values()[i].gmtColorStr();
+	};
 
 
 	/**
@@ -159,7 +203,7 @@ implements DisaggregationCalculatorAPI{
 	 */
 	public boolean disaggregate(double iml, Site site,
 			ScalarIMR imr,
-			AbstractERF eqkRupForecast,
+			ERF eqkRupForecast,
 			ParameterList calcParams) {
 		return disaggregate(iml, site, TRTUtils.wrapInHashMap(imr), eqkRupForecast, calcParams);
 	}
@@ -169,7 +213,7 @@ implements DisaggregationCalculatorAPI{
 			double iml,
 			Site site,
 			Map<TectonicRegionType, ScalarIMR> imrMap,
-			AbstractERF eqkRupForecast, ParameterList calcParams) {
+			ERF eqkRupForecast, ParameterList calcParams) {
 		
 		if (Double.isInfinite(iml) || Double.isNaN(iml)) {
 			currRuptures = 0;
@@ -207,12 +251,11 @@ implements DisaggregationCalculatorAPI{
 		if (D) System.out.println(S + "iml = " + iml);
 
 		//    if( D )System.out.println(S + "deltaMag = " + deltaMag + "; deltaDist = " + deltaDist + "; deltaE = " + deltaE);
-		ArrayList<DisaggregationSourceRuptureInfo> disaggSourceList = null;
-		DisaggregationSourceRuptureComparator srcRupComparator = null;
-		if (this.numSourcesToShow > 0) {
-			disaggSourceList = new ArrayList<DisaggregationSourceRuptureInfo>();
-			srcRupComparator = new DisaggregationSourceRuptureComparator();
-		}
+		disaggSourceList = new ArrayList<DisaggregationSourceRuptureInfo>();
+		sourceDisaggInfo = null;
+		consolidatedDisaggSourceList = null;
+		consolidatedSourceDisaggInfo = null;
+		
 		//resetting the Parameter change Listeners on the AttenuationRelationship
 		//parameters. This allows the Server version of our application to listen to the
 		//parameter changes.
@@ -416,15 +459,15 @@ implements DisaggregationCalculatorAPI{
           }*/
 
 			}
-			if (numSourcesToShow > 0) {
+//			if (numSourcesToShow > 0) {
 				// sort the ruptures in this source according to contribution
 				//ArrayList sourceRupList = (ArrayList) sourceDissaggMap.get(sourceName);
 				//Collections.sort(sourceRupList,srcRupComparator);
 				// create the total rate info for this source
 				DisaggregationSourceRuptureInfo disaggInfo = new
-				DisaggregationSourceRuptureInfo(sourceName, (float) sourceRate, i, source);
+						DisaggregationSourceRuptureInfo(sourceName, sourceRate, i, source);
 				disaggSourceList.add(disaggInfo);
-			}
+//			}
 		}
 		
 		// reset TRT parameter in IMRs
@@ -436,52 +479,60 @@ implements DisaggregationCalculatorAPI{
 			System.out.println("Disagg filed: totalRate: "+totalRate);
 			return false;
 		}
+		
+		DisaggregationSourceRuptureComparator srcRupComparator = new DisaggregationSourceRuptureComparator();
+		Collections.sort(disaggSourceList, srcRupComparator);
+		
+		UnaryOperator<List<DisaggregationSourceRuptureInfo>> sourceConsolidator = eqkRupForecast.getDisaggSourceConsolidator();
+		if (sourceConsolidator != null) {
+			consolidatedDisaggSourceList = sourceConsolidator.apply(disaggSourceList);
+			Collections.sort(consolidatedDisaggSourceList, srcRupComparator);
+		}
 
 		// sort the disaggSourceList according to contribution
 		if (numSourcesToShow > 0) {
-			Collections.sort(disaggSourceList, srcRupComparator);
-			// make a string of the sorted list info
-			sourceDisaggInfo =
-				"Source#\t% Contribution\tTotExceedRate\tSourceName";
-			if (showDistances)
-				sourceDisaggInfo += "\tDistRup\tDistX\tDistSeis\tDistJB";
-			sourceDisaggInfo += "\n";
-			int size = disaggSourceList.size();
-			if (size > numSourcesToShow)
-				size = numSourcesToShow;
-			// overide to only give the top 100 sources (otherwise can be to big and cause crash)
-			for (int i = 0; i < size; ++i) {
-				DisaggregationSourceRuptureInfo disaggInfo = (
-						DisaggregationSourceRuptureInfo)
-						disaggSourceList.get(i);
-				sourceDisaggInfo += f1.format(disaggInfo.getId()) + "\t" +
-				f2.format(100*disaggInfo.getRate()/totalRate) +
-				"\t" + (float) disaggInfo.getRate() +
-				"\t" + disaggInfo.getName();
-				
-				if (showDistances) {
-					ProbEqkSource source = disaggInfo.getSource();
-					double mag = 0;
-					for (int rupID=0; rupID<source.getNumRuptures(); rupID++) {
-						double myMag = source.getRupture(rupID).getMag();
-						if (myMag > mag)
-							mag = myMag;
+			boolean[] consolidates = sourceConsolidator == null ? new boolean[] {false} : new boolean[] {false,true};
+			for (boolean consolidated : consolidates) {
+				List<DisaggregationSourceRuptureInfo> disaggSourceList = consolidated ?
+						this.consolidatedDisaggSourceList : this.disaggSourceList;
+				// make a string of the sorted list info
+				String sourceDisaggInfo =
+					"Source#\t% Contribution\tTotExceedRate\tSourceName";
+				if (showDistances)
+					sourceDisaggInfo += "\tDistRup\tDistX\tDistSeis\tDistJB";
+				sourceDisaggInfo += "\n";
+				int size = disaggSourceList.size();
+				if (size > numSourcesToShow)
+					size = numSourcesToShow;
+				// overide to only give the top 100 sources (otherwise can be to big and cause crash)
+				for (int i = 0; i < size; ++i) {
+					DisaggregationSourceRuptureInfo disaggInfo = disaggSourceList.get(i);
+					sourceDisaggInfo += f1.format(disaggInfo.getId()) + "\t" +
+					f2.format(100*disaggInfo.getRate()/totalRate) +
+					"\t" + (float) disaggInfo.getRate() +
+					"\t" + disaggInfo.getName();
+					
+					if (showDistances ) {
+						try {
+							ProbEqkSource source = disaggInfo.getSource();
+							RuptureSurface surf = source.getSourceSurface();
+							sourceDisaggInfo += "\t" + f2.format(surf.getDistanceRup(site.getLocation()))
+									+ "\t" + f2.format(surf.getDistanceX(site.getLocation()))
+									+ "\t" + f2.format(surf.getDistanceSeis(site.getLocation()))
+									+ "\t" + f2.format(surf.getDistanceJB(site.getLocation()));
+						} catch (Exception e) {
+							sourceDisaggInfo += "\t(no source surface information available, likely a background or consolidated source)";
+						}
+
 					}
 					
-					try {
-						RuptureSurface surf = source.getSourceSurface();
-						sourceDisaggInfo += "\t" + f2.format(surf.getDistanceRup(site.getLocation()))
-								+ "\t" + f2.format(surf.getDistanceX(site.getLocation()))
-								+ "\t" + f2.format(surf.getDistanceSeis(site.getLocation()))
-								+ "\t" + f2.format(surf.getDistanceJB(site.getLocation()));
-					} catch (Exception e) {
-						sourceDisaggInfo += "\t(no source surface information available, likely a background source)";
-					}
-
+					sourceDisaggInfo += "\n";
+					//System.out.println(f2.format(100*disaggInfo.getRate()/totalRate));
+					if (consolidated)
+						this.consolidatedSourceDisaggInfo = sourceDisaggInfo;
+					else
+						this.sourceDisaggInfo = sourceDisaggInfo;
 				}
-				
-				sourceDisaggInfo += "\n";
-				//System.out.println(f2.format(100*disaggInfo.getRate()/totalRate));
 			}
 		}
 		/*try {
@@ -558,11 +609,11 @@ implements DisaggregationCalculatorAPI{
 				"; binNum = " + modeEpsilonBin);
 		//if( D ) System.out.println(S + "EpsMode = "  + E_mode3D + "; binNum = " + modeEpsilonBin);
 
-System.out.println("numRupRejected="+numRupRejected);
+		if (D || numRupRejected>0)
+			System.out.println("numRupRejected="+numRupRejected);
 
 		return true;
 	}
-
 
 	/**
 	 *
@@ -578,6 +629,39 @@ System.out.println("numRupRejected="+numRupRejected);
 		if(numSourcesToShow >0)
 			return sourceDisaggInfo;
 		return "";
+	}
+	
+	/**
+	 * @return disaggregation source list, sorted by contribution
+	 */
+	@Override
+	public List<DisaggregationSourceRuptureInfo> getDisaggregationSourceList() {
+		return disaggSourceList;
+	}
+
+	/**
+	 *
+	 * Returns the disaggregated source list, consolidated with the given consolidator, with following info ( in each line)
+	 * 1)Source Id as given by OpenSHA
+	 * 2)Name of the Source
+	 * 3)Rate Contributed by that source
+	 * 4)Percentage Contribution of the source in Hazard at the site.
+	 *
+	 * @return String
+	 */
+	@Override
+	public String getConsolidatedDisaggregationSourceInfo() {
+		if(numSourcesToShow >0 && consolidatedSourceDisaggInfo != null)
+			return consolidatedSourceDisaggInfo;
+		return "";
+	}
+	
+	/**
+	 * @return consolidated disaggregation source list, sorted by contribution
+	 */
+	@Override
+	public List<DisaggregationSourceRuptureInfo> getConsolidatedDisaggregationSourceList() {
+		return consolidatedDisaggSourceList;
 	}
 
 	/**
@@ -720,6 +804,10 @@ System.out.println("numRupRejected="+numRupRejected);
 		return results;
 
 	}
+	
+	public double getTotalRate() {
+		return totalRate;
+	}
 
 
 	/**
@@ -734,7 +822,7 @@ System.out.println("numRupRejected="+numRupRejected);
 		double totPercent, percent;
 
 		String binInfo = "Dist\tMag\tE≤-2\t-2<E≤-1\t-1<E≤-0.5\t "+
-		"-0.5>E≤0\t 0<E≤0.5\t 0.5<E≤1\t 1<E≤2\t 2>E \n";
+		"-0.5>E≤0\t 0<E≤0.5\t 0.5<E≤1\t 1<E≤2\t 2>E\tSum \n";
 		binInfo += "-----\t----\t------\t------\t-------\t" +
 		"-------\t-------\t-------\t-------\t------\n";
 		for (int i = 0; i < dist_center.length; ++i) {
@@ -773,22 +861,7 @@ System.out.println("numRupRejected="+numRupRejected);
 				break;
 			}
 
-		if (epsilon <= -2)
-			iEpsilon = 0;
-		else if (epsilon > -2 && epsilon <= -1)
-			iEpsilon = 1;
-		else if (epsilon > -1 && epsilon <= -0.5)
-			iEpsilon = 2;
-		else if (epsilon > -0.5 && epsilon <= 0)
-			iEpsilon = 3;
-		else if (epsilon > 0 && epsilon <= 0.5)
-			iEpsilon = 4;
-		else if (epsilon > 0.5 && epsilon <= 1.0)
-			iEpsilon = 5;
-		else if (epsilon > 1.0 && epsilon <= 2.0)
-			iEpsilon = 6;
-		else if (epsilon > 2.0)
-			iEpsilon = 7;
+		iEpsilon = EpsilonCategories.locate(epsilon).ordinal();
 
 		if( iMag == -1) withinBounds= false;
 		if( iDist == -1) withinBounds = false;
@@ -1107,8 +1180,12 @@ System.out.println("numRupRejected="+numRupRejected);
 	 * Sets the number of sources to be shown in the Disaggregation.
 	 * @param numSources int
 	 */
-	public void setNumSourcestoShow(int numSources) {
+	public void setNumSourcesToShow(int numSources) {
 		numSourcesToShow = numSources;
+	}
+	
+	public int getNumSourcesToShow() {
+		return numSourcesToShow;
 	}
 	
 	public void setShowDistances(boolean showDistances) {

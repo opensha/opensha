@@ -1390,46 +1390,46 @@ public class ComcatAccessor {
 			// This exception (subclass of IOException) indicates a timeout connecting to or
 			// reading from Comcat.  We use the HTTP status code to differentiate.
 			if (get_http_status_code() == -1) {
-				http_statuses.add (new Integer(get_http_status_code()));
+				http_statuses.add (Integer.valueOf(get_http_status_code()));
 				reportQueryError          ("ComcatAccessor: Timeout error (SocketTimeoutException) while accessing Comcat", e);
 				throw new ComcatException ("ComcatAccessor: Timeout error (SocketTimeoutException) while accessing Comcat", e);
 			}
 			if (get_http_status_code() == -2) {
-				http_statuses.add (new Integer(get_http_status_code()));
+				http_statuses.add (Integer.valueOf(get_http_status_code()));
 				reportQueryError          ("ComcatAccessor: Timeout error (SocketTimeoutException) while connecting to Comcat", e);
 				throw new ComcatException ("ComcatAccessor: Timeout error (SocketTimeoutException) while connecting to Comcat", e);
 			}
-			http_statuses.add (new Integer(get_http_status_code()));
+			http_statuses.add (Integer.valueOf(get_http_status_code()));
 			reportQueryError          ("ComcatAccessor: Timeout error (SocketTimeoutException) while reading data from Comcat", e);
 			throw new ComcatException ("ComcatAccessor: Timeout error (SocketTimeoutException) while reading data from Comcat", e);
 
 		} catch (UnknownServiceException e) {
 			// This exception (subclass of IOException) indicates an I/O error.
-			http_statuses.add (new Integer(get_http_status_code()));
+			http_statuses.add (Integer.valueOf(get_http_status_code()));
 			reportQueryError          ("ComcatAccessor: I/O error (UnknownServiceException) while accessing Comcat", e);
 			throw new ComcatException ("ComcatAccessor: I/O error (UnknownServiceException) while accessing Comcat", e);
 
 		} catch (ZipException e) {
 			// This exception (subclass of IOException) indicates a data error.
-			http_statuses.add (new Integer(get_http_status_code()));
+			http_statuses.add (Integer.valueOf(get_http_status_code()));
 			reportQueryError          ("ComcatAccessor: Data error (ZipException) while accessing Comcat", e);
 			throw new ComcatException ("ComcatAccessor: Data error (ZipException) while accessing Comcat", e);
 
 		} catch (UnknownHostException e) {
 			// This exception (subclass of IOException) indicates bad host name, DNS failure, or connectivity issue.
-			http_statuses.add (new Integer(get_http_status_code()));
+			http_statuses.add (Integer.valueOf(get_http_status_code()));
 			reportQueryError          ("ComcatAccessor: Unable to find host (UnknownHostException) while accessing Comcat", e);
 			throw new ComcatException ("ComcatAccessor: Unable to find host (UnknownHostException) while accessing Comcat", e);
 
 		} catch (SSLException e) {
 			// This exception (subclass of IOException) indicates a failure in setting up SSL.
-			http_statuses.add (new Integer(get_http_status_code()));
+			http_statuses.add (Integer.valueOf(get_http_status_code()));
 			reportQueryError          ("ComcatAccessor: SSL error (SSLException) while accessing Comcat", e);
 			throw new ComcatException ("ComcatAccessor: SSL error (SSLException) while accessing Comcat", e);
 
 		} catch (MalformedURLException e) {
 			// This exception (subclass of IOException) indicates a bad query URL.
-			http_statuses.add (new Integer(get_http_status_code()));
+			http_statuses.add (Integer.valueOf(get_http_status_code()));
 			reportQueryError          ("ComcatAccessor: Bad query URL (MalformedURLException) while accessing Comcat", e);
 			throw new ComcatException ("ComcatAccessor: Bad query URL (MalformedURLException) while accessing Comcat", e);
 
@@ -1442,7 +1442,7 @@ public class ComcatAccessor {
 			}
 			// Otherwise it's an I/O error
 			else {
-				http_statuses.add (new Integer(get_http_status_code()));
+				http_statuses.add (Integer.valueOf(get_http_status_code()));
 				reportQueryError          ("ComcatAccessor: I/O error (FileNotFoundException) while accessing Comcat", e);
 				throw new ComcatException ("ComcatAccessor: I/O error (FileNotFoundException) while accessing Comcat", e);
 			}
@@ -1451,20 +1451,20 @@ public class ComcatAccessor {
 			// If the HTTP status is unknown, then we don't know if this is error or not-found.
 			// EventWebService typically throws this exception when an eventID refers to a deleted event
 			// (in response to Comcat HTTP status 409), but we nonetheless treat it as an I/O error.
-			http_statuses.add (new Integer(get_http_status_code()));
+			http_statuses.add (Integer.valueOf(get_http_status_code()));
 			reportQueryError          ("ComcatAccessor: I/O error (IOException) while accessing Comcat", e);
 			throw new ComcatException ("ComcatAccessor: I/O error (IOException) while accessing Comcat", e);
 
 		} catch (Exception e) {
 			// An exception not an I/O exception probably indicates bad data received.
-			http_statuses.add (new Integer(get_http_status_code()));
+			http_statuses.add (Integer.valueOf(get_http_status_code()));
 			reportQueryError          ("ComcatAccessor: Data error (Exception) while accessing Comcat", e);
 			throw new ComcatException ("ComcatAccessor: Data error (Exception) while accessing Comcat", e);
 		}
 
 		// Add the HTTP status to the list
 
-		http_statuses.add (new Integer(get_http_status_code()));
+		http_statuses.add (Integer.valueOf(get_http_status_code()));
 
 		// The event list should not be null, but if it is, replace it with an empty List
 

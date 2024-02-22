@@ -2,6 +2,7 @@ package org.opensha.sha.imr.attenRelImpl;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -97,11 +98,26 @@ public class MultiIMR_Averaged_AttenRel extends AttenuationRelationship {
 		initIndependentParamLists(); // Do this after the above
 	}
 	
-	protected List<? extends ScalarIMR> getIMRs() {
-		return imrs;
+	/**
+	 * 
+	 * @return unmodifiable view of the IMRs list
+	 */
+	public List<? extends ScalarIMR> getIMRs() {
+		return Collections.unmodifiableList(imrs);
 	}
 	
-	public void setWeights(ArrayList<Double> newWeights) {
+	/**
+	 * 
+	 * @return @return unmodifiable view of the current weights
+	 */
+	public List<Double> getWeights() {
+		List<Double> ret = new ArrayList<>();
+		for (int i=0; i<weights.size(); i++)
+			ret.add(weights.getWeight(i));
+		return Collections.unmodifiableList(ret);
+	}
+	
+	public void setWeights(List<Double> newWeights) {
 		if (weights == null) {
 			weights = new WeightedList<ScalarIMR>();
 			for (ScalarIMR imr : imrs)

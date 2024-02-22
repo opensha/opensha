@@ -29,13 +29,13 @@ public class TotalRateInversionConstraint extends InversionConstraint {
 
 	public TotalRateInversionConstraint(double weight, double totalRateTarget, ConstraintWeightingType weightingType,
 			double totalRateStdDev) {
-		this(weight, totalRateTarget, null, 0d, weightingType, totalRateStdDev);
+		this(weight, totalRateTarget, null, 0d, weightingType, totalRateStdDev, false);
 	}
 
 	public TotalRateInversionConstraint(double weight, double totalRateTarget, FaultSystemRupSet rupSet, double minMag,
-			 ConstraintWeightingType weightingType, double totalRateStdDev) {
+			 ConstraintWeightingType weightingType, double totalRateStdDev, boolean inequality) {
 		super(weightingType.applyNamePrefix(name(minMag)), weightingType.applyShortNamePrefix(shortName(minMag)),
-				weight, false, weightingType);
+				weight, inequality, weightingType);
 		this.totalRateTarget = totalRateTarget;
 		this.rupSet = rupSet;
 		this.minMag = minMag;

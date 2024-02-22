@@ -70,7 +70,7 @@ public abstract class AbstractRupSetPlot implements Named {
 		return subHeading;
 	}
 	
-	protected void setSubHeading(String subHeading) {
+	public void setSubHeading(String subHeading) {
 		this.subHeading = subHeading;
 	}
 	

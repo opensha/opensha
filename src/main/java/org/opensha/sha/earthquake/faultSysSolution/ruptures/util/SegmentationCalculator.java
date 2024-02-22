@@ -957,11 +957,11 @@ public class SegmentationCalculator {
 	}
 	
 	private static CPT getConnectionDiffCPT() throws IOException {
-		return GMT_CPT_Files.GMT_POLAR.instance().rescale(-0.5d, 0.5d);
+		return GMT_CPT_Files.DIVERGING_VIK_UNIFORM.instance().rescale(-0.5d, 0.5d);
 	}
 	
 	private static CPT getConnectionLogRatioCPT() throws IOException {
-		return GMT_CPT_Files.GMT_POLAR.instance().rescale(-1d, 1d);
+		return GMT_CPT_Files.DIVERGING_VIK_UNIFORM.instance().rescale(-1d, 1d);
 	}
 	
 	public File[] plotConnectionFracts(File outputDir, String prefix, String title, int width) throws IOException {

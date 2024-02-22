@@ -14,9 +14,6 @@ public class DisaggregationSourceRuptureInfo {
 
 	private String name;
 	private double rate;
-	private double eventRate;
-	private double mag;
-	private double distance;
 	private int id;
 	private ProbEqkSource source;
 
@@ -28,31 +25,9 @@ public class DisaggregationSourceRuptureInfo {
 		this.source = source;
 	}
 
-	public DisaggregationSourceRuptureInfo(String name, double eventRate, double rate,
-			int id,double mag,double distance, ProbEqkSource source) {
-		this.name = name;
-		this.rate = rate;
-		this.id = id;
-		this.eventRate = eventRate;
-		this.mag = mag;
-		this.distance = distance;
-		this.source = source;
-	}
-
-
-	public DisaggregationSourceRuptureInfo(String name, double eventRate, double rate, int id, ProbEqkSource source) {
-
-		this.name = name;
-		this.rate = rate;
-		this.id = id;
-		this.eventRate = eventRate;
-		this.source = source;
-	}
-
 	public int getId(){
 		return id;
 	}
-
 
 	public double getRate(){
 		return rate;
@@ -60,18 +35,6 @@ public class DisaggregationSourceRuptureInfo {
 
 	public String getName(){
 		return name;
-	}
-
-	public double getEventRate(){
-		return eventRate;
-	}
-
-	public double getMag(){
-		return mag;
-	}
-
-	public double getDistance(){
-		return distance;
 	}
 	
 	public ProbEqkSource getSource() {

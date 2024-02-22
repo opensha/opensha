@@ -46,6 +46,8 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 	private Color nanColor, belowMinColor, aboveMaxColor, gapColor;
 	public Blender blender;
 	
+	private double preferredTickInterval = Double.NaN;
+	
 	private String name;
 	
 //	int nanColor[] = new int[0];
@@ -709,6 +711,8 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		for (CPTVal val : this)
 			cpt.add((CPTVal)val.clone());
 		
+		cpt.setPreferredTickInterval(getPreferredTickInterval());
+		
 		return cpt;
 	}
 
@@ -881,6 +885,14 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		} else if (!nanColor.equals(other.nanColor))
 			return false;
 		return true;
+	}
+
+	public double getPreferredTickInterval() {
+		return preferredTickInterval;
+	}
+
+	public void setPreferredTickInterval(double preferredTickInterval) {
+		this.preferredTickInterval = preferredTickInterval;
 	}
 	
 }

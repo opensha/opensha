@@ -68,8 +68,11 @@ import org.opensha.sha.imr.attenRelImpl.ngaw2.NGAW2_Wrappers.CB_2014_Wrapper;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.NGAW2_Wrappers.CY_2014_Wrapper;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.NGAW2_Wrappers.GK_2014_Wrapper;
 import org.opensha.sha.imr.attenRelImpl.ngaw2.NGAW2_Wrappers.Idriss_2014_Wrapper;
+import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 import org.opensha.sha.imr.mod.ModAttenuationRelationship;
 import org.opensha.sha.imr.mod.impl.stewartSiteSpecific.StewartAfshariGoulet2017NonergodicGMPE;
+
+import gov.usgs.earthquake.nshmp.gmm.Gmm;
 
 /**
  * This <code>enum</code> supplies references to
@@ -82,7 +85,7 @@ import org.opensha.sha.imr.mod.impl.stewartSiteSpecific.StewartAfshariGoulet2017
  * @author Peter Powers
  * @version $Id: AttenRelRef.java 11385 2016-08-24 22:40:54Z kmilner $
  */
-public enum AttenRelRef implements Named, Supplier<ScalarIMR> {
+public enum AttenRelRef implements AttenRelSupplier {
 
 	// PRODUCTION
 	
@@ -172,6 +175,17 @@ public enum AttenRelRef implements Named, Supplier<ScalarIMR> {
 	NON_ERGODIC_2016(StewartAfshariGoulet2017NonergodicGMPE.class, StewartAfshariGoulet2017NonergodicGMPE.NAME, StewartAfshariGoulet2017NonergodicGMPE.SHORT_NAME, PRODUCTION),
 
 	// DEVELOPMENT
+	
+	WRAPPED_ASK_2014(null, "NSHMP-Haz ASK (2014) Base",
+			"WrapedASK2014", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.ASK_14_BASE, getName(), getShortName(), false, null);
+		}
+		
+	},
 
 	/** Interpolation between periods using BA. */
 	BA_2008_INTERP(InterpolatedBA_2008_AttenRel.class,

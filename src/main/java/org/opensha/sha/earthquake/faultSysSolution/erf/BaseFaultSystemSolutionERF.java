@@ -7,6 +7,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.EventObject;
 import java.util.List;
+import java.util.function.UnaryOperator;
 
 import org.apache.commons.lang3.StringUtils;
 import org.opensha.commons.data.TimeSpan;
@@ -14,6 +15,7 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.impl.FileParameter;
+import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
 import org.opensha.sha.earthquake.AbstractNthRupERF;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -21,6 +23,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
+import org.opensha.sha.earthquake.faultSysSolution.util.SolutionDisaggConsolidator;
 import org.opensha.sha.earthquake.param.AseismicityAreaReductionParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
@@ -761,6 +764,15 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	
 	public GridSourceProvider getGridSourceProvider() {
 		return faultSysSolution.getGridSourceProvider();
+	}
+
+	private SolutionDisaggConsolidator disaggSourceConsolidator;
+	
+	@Override
+	public UnaryOperator<List<DisaggregationSourceRuptureInfo>> getDisaggSourceConsolidator() {
+		if (disaggSourceConsolidator == null)
+			disaggSourceConsolidator = new SolutionDisaggConsolidator(this);
+		return disaggSourceConsolidator;
 	}
 	
 }

@@ -63,6 +63,8 @@ public class ReturnPeriodUtils {
 		return referenceDuration * targetProbStar / referenceProbStar;
 	}
 	
+	/**
+	 */
 	private static double calcDurationWithExceedanceProb(double exceedProb, double referenceReturnPeriod) {
 		double targetProbStar = calcProbStar(exceedProb);
 		
@@ -79,6 +81,19 @@ public class ReturnPeriodUtils {
 	 */
 	public static double calcReturnPeriod(double exceedProb, double duration) {
 		return duration / calcProbStar(exceedProb);
+	}
+	
+	/**
+	 * This calculates the exceedance probability for the given duration that corresponds to the given return period
+	 * @param returnPeriod
+	 * @param calcDuration
+	 * @return
+	 */
+	public static double calcExceedanceProbForReturnPeriod(double returnPeriod, double calcDuration) {
+		// rp = duration / pStar(prob)
+		// pStar(prob) = duration/rp
+		double probStar = calcDuration/returnPeriod;
+		return calcProbFromPorbStar(probStar);
 	}
 	
 	public static void main(String[] args) {
@@ -101,31 +116,37 @@ public class ReturnPeriodUtils {
 //			System.out.println("T2="+(float)t2+"\tR2*="+(float)r2Star+"\tR2="+(float)r2);
 //		}
 		
-		System.out.println("Return periods for probability levels");
-		for (double p : new double[] {0.2, 0.1, 0.05, 0.02, 0.01}) {
-			System.out.println("\t"+(float)(p*100d)+"% in 50:\t"+(float)calcReturnPeriod(p, 50d));
-			System.out.println("\t\tVerificiation: "
-					+(float)calcExceedanceProb(0.5, calcDurationWithExceedanceProb(0.5, calcReturnPeriod(p, 50d)), 50d));
-			System.out.println("\t\tProb for 1yr curves: "+(float)calcExceedanceProb(p, 50d, 1d));
-		}
-		System.out.println();
-		System.out.println("duration with p=1.0 for 2% in 50");
-		System.out.println(calcDurationWithExceedanceProb(1.0, 0.02, 50));
-		System.out.println("duration with p=0.9 for 2% in 50");
-		System.out.println(calcDurationWithExceedanceProb(0.9, 0.02, 50));
-		System.out.println("duration with p=0.5 for 2% in 50");
-		System.out.println(calcDurationWithExceedanceProb(0.5, 0.02, 50));
-		System.out.println("duration with p=0.5 for 2474.9yr RP");
-		System.out.println(calcDurationWithExceedanceProb(0.5, calcReturnPeriod(0.02, 50d)));
-		System.out.println("duration with p=0.5 for 2500yr RP");
-		System.out.println(calcDurationWithExceedanceProb(0.5, 2500));
-		System.out.println();
-		System.out.println("duration with p=0.5 for 10% in 50");
-		System.out.println(calcDurationWithExceedanceProb(0.5, 0.10, 50));
-		System.out.println("duration with p=0.5 for 474.6yr RP");
-		System.out.println(calcDurationWithExceedanceProb(0.5, calcReturnPeriod(0.1, 50d)));
-		System.out.println("duration with p=0.5 for 500yr RP");
-		System.out.println(calcDurationWithExceedanceProb(0.5, 500));
+//		System.out.println("Return periods for probability levels");
+//		for (double p : new double[] {0.2, 0.1, 0.05, 0.02, 0.01}) {
+//			System.out.println("\t"+(float)(p*100d)+"% in 50:\t"+(float)calcReturnPeriod(p, 50d));
+//			System.out.println("\t\tVerificiation: "
+//					+(float)calcExceedanceProb(0.5, calcDurationWithExceedanceProb(0.5, calcReturnPeriod(p, 50d)), 50d));
+//			System.out.println("\t\tProb for 1yr curves: "+(float)calcExceedanceProb(p, 50d, 1d));
+//		}
+//		System.out.println();
+//		System.out.println("duration with p=1.0 for 2% in 50");
+//		System.out.println(calcDurationWithExceedanceProb(1.0, 0.02, 50));
+//		System.out.println("duration with p=0.9 for 2% in 50");
+//		System.out.println(calcDurationWithExceedanceProb(0.9, 0.02, 50));
+//		System.out.println("duration with p=0.5 for 2% in 50");
+//		System.out.println(calcDurationWithExceedanceProb(0.5, 0.02, 50));
+//		System.out.println("duration with p=0.5 for 2474.9yr RP");
+//		System.out.println(calcDurationWithExceedanceProb(0.5, calcReturnPeriod(0.02, 50d)));
+//		System.out.println("duration with p=0.5 for 2500yr RP");
+//		System.out.println(calcDurationWithExceedanceProb(0.5, 2500));
+//		System.out.println();
+//		System.out.println("duration with p=0.5 for 10% in 50");
+//		System.out.println(calcDurationWithExceedanceProb(0.5, 0.10, 50));
+//		System.out.println("duration with p=0.5 for 474.6yr RP");
+//		System.out.println(calcDurationWithExceedanceProb(0.5, calcReturnPeriod(0.1, 50d)));
+//		System.out.println("duration with p=0.5 for 500yr RP");
+//		System.out.println(calcDurationWithExceedanceProb(0.5, 500));
+		
+		double[] rps = { 2475, 975, 475 };
+		double[] durs = { 1d, 50d };
+		for (double rp : rps)
+			for (double dur : durs)
+				System.out.println("Prob for "+(float)rp+", "+(float)dur+" year: "+calcExceedanceProbForReturnPeriod(rp, dur));
 	}
 
 }

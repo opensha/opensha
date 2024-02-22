@@ -43,6 +43,9 @@ import cern.colt.matrix.tdouble.DoubleMatrix2D;
  * <br>
  * It can also be applied as a net constraint, where the segmentation model will be fit on average, allowing for individual
  * junctions to vary as the inversion sees fit.
+ * <br>
+ * This constraint is generally not recommended, it has been superceded by {@link JumpProbabilityConstraint} that was
+ * used in NSHM23.
  * 
  * @author Kevin Milner and Ned Field
  *

@@ -1209,8 +1209,8 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		Location anchor = null;
 		
 		if (properties != null) {
-			latNodeCenters = properties.getDoubleArray(JSON_LAT_NODES, null);
-			lonNodeCenters = properties.getDoubleArray(JSON_LON_NODES, null);
+			latNodeCenters = properties.getDoubleArray(JSON_LAT_NODES);
+			lonNodeCenters = properties.getDoubleArray(JSON_LON_NODES);
 			latSpacing = properties.getDouble(JSON_LAT_SPACING, Double.NaN);
 			lonSpacing = properties.getDouble(JSON_LON_SPACING, Double.NaN);
 			anchor = properties.getLocation(JSON_ANCHOR, null);

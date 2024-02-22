@@ -70,8 +70,8 @@ implements XMLSaveable {
 	
 	public static U3LogicTreeBranch getMEAN_UCERF3(FaultModels fm, DeformationModels dm) {
 		return fromValues(fm, dm, ScalingRelationships.MEAN_UCERF3,
-				SlipAlongRuptureModels.MEAN_UCERF3, InversionModels.CHAR_CONSTRAINED, TotalMag5Rate.RATE_6p5,
-				MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE, SpatialSeisPDF.UCERF2);
+				SlipAlongRuptureModels.MEAN_UCERF3, InversionModels.CHAR_CONSTRAINED, TotalMag5Rate.RATE_7p9,
+				MaxMagOffFault.MAG_7p6, MomentRateFixes.NONE, SpatialSeisPDF.UCERF3);
 	}
 	
 	private static List<Class<? extends U3LogicTreeBranchNode<?>>> logicTreeClasses;

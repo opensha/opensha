@@ -1,10 +1,11 @@
 package org.opensha.sha.calc.disaggregation;
 
+import java.util.List;
 import java.util.Map;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -18,6 +19,7 @@ import org.opensha.sha.util.TectonicRegionType;
  * @author : Nitin Gupta
  * @created Oct 01,2004
  * @version 1.0
+ * TODO: delete this?
  */
 public interface DisaggregationCalculatorAPI {
 
@@ -41,7 +43,7 @@ public interface DisaggregationCalculatorAPI {
 	 */
 	public boolean disaggregate(double iml, Site site,
 			ScalarIMR imr,
-			AbstractERF eqkRupForecast,
+			ERF eqkRupForecast,
 			ParameterList calcParams);
 
 	/**
@@ -58,14 +60,16 @@ public interface DisaggregationCalculatorAPI {
 	 */
 	public boolean disaggregate(double iml, Site site,
 			Map<TectonicRegionType, ScalarIMR> imrMap,
-			AbstractERF eqkRupForecast,
+			ERF eqkRupForecast,
 			ParameterList calcParams);
 
 	/**
 	 * Sets the number of sources to be shown in the Disaggregation.
 	 * @param numSources int
 	 */
-	public void setNumSourcestoShow(int numSources);
+	public void setNumSourcesToShow(int numSources);
+	
+	public int getNumSourcesToShow();
 	
 	/**
 	 * Enables/disables calculation and display of source distances in source data list.
@@ -115,6 +119,8 @@ public interface DisaggregationCalculatorAPI {
 	 * @return String
 	 */
 	public String getDisaggregationPlotUsingServlet(String metadata);
+	
+	public DisaggregationPlotData getDisaggPlotData();
 
 
 	/**
@@ -150,4 +156,26 @@ public interface DisaggregationCalculatorAPI {
 	 * @return resultant disaggregation in a String format.
 	 */
 	public String getMeanAndModeInfo();
+
+	/**
+	 * @return sonsolidated disaggregation source list, sorted by contribution
+	 */
+	List<DisaggregationSourceRuptureInfo> getConsolidatedDisaggregationSourceList();
+
+	/**
+	 *
+	 * Returns the disaggregated source list, consolidated with the given consolidator, with following info ( in each line)
+	 * 1)Source Id as given by OpenSHA
+	 * 2)Name of the Source
+	 * 3)Rate Contributed by that source
+	 * 4)Percentage Contribution of the source in Hazard at the site.
+	 *
+	 * @return String
+	 */
+	String getConsolidatedDisaggregationSourceInfo();
+
+	/**
+	 * @return disaggregation source list, sorted by contribution
+	 */
+	List<DisaggregationSourceRuptureInfo> getDisaggregationSourceList();
 }

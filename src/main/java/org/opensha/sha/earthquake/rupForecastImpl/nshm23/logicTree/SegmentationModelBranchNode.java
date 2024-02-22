@@ -20,6 +20,10 @@ public interface SegmentationModelBranchNode extends LogicTreeNode {
 	
 	public default BinaryRuptureProbabilityCalc getExclusionModel(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		JumpProbabilityCalc segModel = getModel(rupSet, branch);
+		return buildJumpExclusionModel(rupSet, segModel);
+	}
+	
+	public static BinaryJumpProbabilityCalc buildJumpExclusionModel(FaultSystemRupSet rupSet, JumpProbabilityCalc segModel) {
 		if (segModel instanceof BinaryJumpProbabilityCalc) {
 			return (BinaryJumpProbabilityCalc)segModel;
 		} else if (segModel != null && rupSet.hasModule(ClusterRuptures.class)) {

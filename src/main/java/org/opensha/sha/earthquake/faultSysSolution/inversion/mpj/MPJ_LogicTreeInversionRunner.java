@@ -107,7 +107,7 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 		private boolean[] dones;
 		
 		public AsyncLogicTreeWriter(SolutionProcessor processor) {
-			super(outputDir, processor, tree.getWeightProvider());
+			super(outputDir, processor, tree);
 			dones = new boolean[getNumTasks()];
 		}
 

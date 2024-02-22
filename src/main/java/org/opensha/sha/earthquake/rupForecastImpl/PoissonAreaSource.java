@@ -28,13 +28,13 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
  * <p>Title: PoissonAreaSource </p>
  * <p>Description: This is basically a more sophisticated version of the class GriddedRegionPoissonEqkSource. 
  * The options to account for the finiteness of rupture surfaces are the same as provided in the <code>PointToLineSource</code>
- * class, plus the option to treat all sources as point sources is added included here. </p>
+ * class, plus the option to treat all sources as point sources is included here. </p>
  * 
- * @author Marco Pagani and Edward Field
+ * @author Edward Field
  * @version 1.0
  */
 
-public class PoissonAreaSource extends PointToLineSource implements java.io.Serializable{
+public class PoissonAreaSource extends PointToFiniteSource implements java.io.Serializable{
 
 	private static final long serialVersionUID = 1L;
 	// for Debug purposes
@@ -61,12 +61,11 @@ public class PoissonAreaSource extends PointToLineSource implements java.io.Seri
 	 */
 	public PoissonAreaSource(Region reg, double gridResolution, MagFreqDistsForFocalMechs 
 			magFreqDistsForFocalMechs, ArbitrarilyDiscretizedFunc aveRupTopVersusMag, 
-			double defaultHypoDepth, double duration, double minMag) {
+			double duration, double minMag) {
 		
 		this.magFreqDists = magFreqDistsForFocalMechs.getMagFreqDistList();
 		this.focalMechanisms = magFreqDistsForFocalMechs.getFocalMechanismList();
 		this.aveRupTopVersusMag = aveRupTopVersusMag;
-		this.defaultHypoDepth = defaultHypoDepth;
 		this.duration = duration;
 		this.minMag = minMag;
 		this.reg = reg;
@@ -170,8 +169,8 @@ public class PoissonAreaSource extends PointToLineSource implements java.io.Seri
 							rup.setProbability(prob);
 							rup.setAveRake(focalMechanisms[k].getRake());
 							double depth;
-							if(mag < aveRupTopVersusMag.getMinX())
-								depth = defaultHypoDepth;
+							if(mag < aveRupTopVersusMag.getMinX() || mag > aveRupTopVersusMag.getMaxX())
+								throw new RuntimeException("aveRupTopVersusMag x-axis range not wide enough");
 							else
 								depth = aveRupTopVersusMag.getClosestYtoX(mag);
 							Location finalLoc = new Location(
@@ -192,7 +191,7 @@ public class PoissonAreaSource extends PointToLineSource implements java.io.Seri
 				location = gridReg.getNodeList().get(j);
 				if(numStrikes == -1) { // random or applied strike
 					for (int i=0; i<magFreqDists.length; i++) {
-						mkAndAddRuptures(location, magFreqDists[i], focalMechanisms[i], aveRupTopVersusMag, defaultHypoDepth, 
+						mkAndAddRuptures(location, magFreqDists[i], focalMechanisms[i], aveRupTopVersusMag, 
 								magScalingRel, lowerSeisDepth, duration, minMag, nodeWeights[j]);
 					}			
 				}
@@ -207,7 +206,7 @@ public class PoissonAreaSource extends PointToLineSource implements java.io.Seri
 						FocalMechanism focalMech = focalMechanisms[i].copy(); // COPY THIS
 						for(int s=0;s<numStrikes;s++) {
 							focalMech.setStrike(strike[s]);
-							mkAndAddRuptures(location, magFreqDists[i], focalMech, aveRupTopVersusMag, defaultHypoDepth, 
+							mkAndAddRuptures(location, magFreqDists[i], focalMech, aveRupTopVersusMag, 
 									magScalingRel, lowerSeisDepth, duration, minMag,weight);			  
 						}
 					}			
@@ -246,7 +245,7 @@ public class PoissonAreaSource extends PointToLineSource implements java.io.Seri
 			double duration, double minMag) {
 		
 		// call the other constructor setting numStrikes to -1.
-		this(reg, gridResolution, magFreqDistsForFocalMechs, aveRupTopVersusMag, defaultHypoDepth, 
+		this(reg, gridResolution, magFreqDistsForFocalMechs, aveRupTopVersusMag, 
 				magScalingRel, lowerSeisDepth, duration, minMag, -1, Double.NaN);
 		
 	}
@@ -262,14 +261,13 @@ public class PoissonAreaSource extends PointToLineSource implements java.io.Seri
 	 */
 	public PoissonAreaSource(Region reg, double gridResolution, MagFreqDistsForFocalMechs 
 			magFreqDistsForFocalMechs, ArbitrarilyDiscretizedFunc aveRupTopVersusMag, 
-			double defaultHypoDepth, MagScalingRelationship magScalingRel, double lowerSeisDepth, 
+			MagScalingRelationship magScalingRel, double lowerSeisDepth, 
 			double duration, double minMag, int numStrikes, double firstStrike){
 		
 		this.reg = reg;
 		this.magFreqDists = magFreqDistsForFocalMechs.getMagFreqDistList();
 		this.focalMechanisms = magFreqDistsForFocalMechs.getFocalMechanismList();
 		this.aveRupTopVersusMag = aveRupTopVersusMag;
-		this.defaultHypoDepth = defaultHypoDepth;
 		this.magScalingRel = magScalingRel;
 		this.lowerSeisDepth = lowerSeisDepth;
 		this.duration = duration;

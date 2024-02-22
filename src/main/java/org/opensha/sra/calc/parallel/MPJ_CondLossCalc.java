@@ -999,7 +999,7 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 		
 		void calculate(ERF erf, ScalarIMR imr, Site initialSite, DiscretizedFunc magThreshFunc) {
 			try {
-				results = asset.calculateExpectedLossPerRup(imr, magThreshFunc, initialSite, erf, MPJ_CondLossCalc.this);
+				results = asset.calculateExpectedLossPerRup(imr, Double.NaN, magThreshFunc, initialSite, erf, MPJ_CondLossCalc.this);
 				registerResult(this);
 			} catch (Exception e) {
 				abortAndExit(e);

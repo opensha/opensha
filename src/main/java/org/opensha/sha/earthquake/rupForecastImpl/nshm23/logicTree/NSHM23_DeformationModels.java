@@ -36,6 +36,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.MinisectionMappings;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.MinisectionMappings.MinisectionDataRecord;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -267,7 +268,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	 *  * Evans: 10%
 	 *  * Pollitz: 20%
 	 *  * Shen-Bird: 25%
-	 *  * Shen-Bird: 25%
+	 *  * Zeng: 25%
 	 * 
 	 */
 	public static boolean ORIGINAL_WEIGHTS = false;
@@ -293,9 +294,9 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	private static final String CREEP_DATE = "2022_08_17";
 	
 	private static String getGeodeticDirForFM(RupSetFaultModel faultModel) {
-		if (sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v2))
+		if (sameFaultModel(faultModel, NSHM23_FaultModels.WUS_FM_v2) || sameFaultModel(faultModel, NSHM23_FaultModels.WUS_FM_v3))
 			return "fm_v2";
-		if (sameFaultModel(faultModel, NSHM23_FaultModels.NSHM23_v1p4))
+		if (sameFaultModel(faultModel, NSHM23_FaultModels.WUS_FM_v1p4))
 			return "fm_v1p4";
 		System.err.println("Warning, returning most recent geodetic date for unknown fault model: "
 				+faultModel.getName()+" of type "+faultModel.getClass().getName());
@@ -404,12 +405,40 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	
 	public abstract Map<Integer, List<MinisectionSlipRecord>> getMinisections(RupSetFaultModel faultModel) throws IOException;
 	
+	static final double DOWN_DIP_FRACT_DEFAULT = 0.5;
+	static final double MAX_LEN_DEFAULT = Double.NaN;
+	static final int MIN_SUB_SECTS_PER_FAULT_DEFAULT = 2;
+	
 	@Override
 	public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
+		return build(faultModel, MIN_SUB_SECTS_PER_FAULT_DEFAULT, DOWN_DIP_FRACT_DEFAULT, MAX_LEN_DEFAULT);
+	}
+	
+	@Override
+	public List<? extends FaultSection> build(RupSetFaultModel faultModel, int minPerFault, double ddwFract,
+			double fixedLen) throws IOException {
 		Map<Integer, List<MinisectionSlipRecord>> minis = getMinisections(faultModel);
 		
-		return buildDeformationModel(faultModel, minis);
-	};
+		// fetch full sections
+		List<? extends FaultSection> fullSects = faultModel.getFaultSections();
+
+		// no subsections passed in, build them
+		List<? extends FaultSection> subSects = SubSectionBuilder.buildSubSects(
+				fullSects, minPerFault, ddwFract, fixedLen);
+
+		return buildDeformationModel(faultModel, minis, fullSects, subSects);
+	}
+
+	@Override
+	public List<? extends FaultSection> buildForSubsects(
+			RupSetFaultModel faultModel, List<? extends FaultSection> subSects) throws IOException {
+		Map<Integer, List<MinisectionSlipRecord>> minis = getMinisections(faultModel);
+		
+		// fetch full sections
+		List<? extends FaultSection> fullSects = faultModel.getFaultSections();
+		
+		return buildDeformationModel(faultModel, minis, fullSects, subSects);
+	}
 	
 	/*
 	 * Methods for loading the geologic model
@@ -609,19 +638,9 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		}
 	}
 	
-	/*
-	 * Methods for building deformation model from minisections, including creep and any other processing
-	 */
-	
 	private List<? extends FaultSection> buildDeformationModel(RupSetFaultModel faultModel,
-			Map<Integer, List<MinisectionSlipRecord>> dmRecords) throws IOException {
-		
-		// fetch full sections
-		List<? extends FaultSection> fullSects = faultModel.getFaultSections();
-		
-		// build subsections
-		List<FaultSection> subSects = GeoJSONFaultReader.buildSubSects(fullSects);
-		
+			Map<Integer, List<MinisectionSlipRecord>> dmRecords, List<? extends FaultSection> fullSects,
+			List<? extends FaultSection> subSects) throws IOException {
 		// minisection mappings
 		MinisectionMappings mappings = new MinisectionMappings(fullSects, subSects);
 		
@@ -655,7 +674,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		return applyCreepModel(mappings, applyStdDevDefaults(faultModel, subSects));
 	}
 	
-	private static void mapMinisToSubSects(List<FaultSection> subSects, RupSetFaultModel faultModel,
+	private static void mapMinisToSubSects(List<? extends FaultSection> subSects, RupSetFaultModel faultModel,
 			Map<Integer, List<MinisectionSlipRecord>> dmRecords, MinisectionMappings mappings) throws IOException {
 		Map<Integer, GeoJSONFaultSection> geoDMSects = null; // may be needed if zeros are encountered
 		int numRakesSkipped = 0;
@@ -741,7 +760,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	 * @return subsection list that was supplied
 	 * @throws IOException
 	 */
-	private List<? extends FaultSection> applyStdDevDefaults(RupSetFaultModel faultModel,
+	public List<? extends FaultSection> applyStdDevDefaults(RupSetFaultModel faultModel,
 			List<? extends FaultSection> subSects) throws IOException {
 		System.out.println("Checking slip rate standard deviations for "+name());
 		
@@ -1323,7 +1342,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		Map<NSHM23_DeformationModels, Map<Integer, List<CreepRecord>>> dmCreepRecs = new HashMap<>();
 
 		List<? extends FaultSection> geoSects = buildGeolFullSects(fm, GEOLOGIC_VERSION);
-		List<FaultSection> subSects = GeoJSONFaultReader.buildSubSects(geoSects);
+		List<FaultSection> subSects = SubSectionBuilder.buildSubSects(geoSects);
 		MinisectionMappings mappings = new MinisectionMappings(geoSects, subSects);
 
 		for (NSHM23_DeformationModels dm : values()) {
@@ -1418,7 +1437,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	}
 	
 	private static void writeMedianDM(File outputDir) throws IOException {
-		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		NSHM23_FaultModels fm = NSHM23_FaultModels.WUS_FM_v2;
 		
 		// first load geologic
 		List<? extends FaultSection> geoSects = buildGeolFullSects(fm, GEOLOGIC_VERSION);
@@ -1506,7 +1525,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	}
 	
 	public static void writeMinisectionCSV(File outputFile) throws IOException {
-		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		NSHM23_FaultModels fm = NSHM23_FaultModels.WUS_FM_v2;
 		
 		// first load geologic
 		List<? extends FaultSection> geoSects = buildGeolFullSects(fm, GEOLOGIC_VERSION);
@@ -1582,7 +1601,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	}
 	
 	private static void printSlipRateSubSectBelow10Stats() throws IOException {
-		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		NSHM23_FaultModels fm = NSHM23_FaultModels.WUS_FM_v2;
 		
 		List<NSHM23_DeformationModels> dms = new ArrayList<>();
 		List<List<? extends FaultSection>> dmSects = new ArrayList<>();
@@ -1623,7 +1642,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	}
 	
 	private static void printSlipRateCOVStats() throws IOException {
-		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		NSHM23_FaultModels fm = NSHM23_FaultModels.WUS_FM_v2;
 		
 		Map<Integer, FaultSection> sectsMap = fm.getFaultSectionIDMap();
 		for (NSHM23_DeformationModels dm : values()) {
@@ -1680,7 +1699,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	public static void main(String[] args) throws IOException {
 		// write geo gson
 //		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v1p4;
-		NSHM23_FaultModels fm = NSHM23_FaultModels.NSHM23_v2;
+		NSHM23_FaultModels fm = NSHM23_FaultModels.WUS_FM_v2;
 		
 		List<? extends FaultSection> geoFull = buildGeolFullSects(fm, GEOLOGIC_VERSION);
 		GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+NSHM23_DeformationModels.GEOLOGIC.getFilePrefix()+"_sects.geojson"), geoFull);

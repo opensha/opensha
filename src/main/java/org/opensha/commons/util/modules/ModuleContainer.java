@@ -148,7 +148,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 			// can be avoided. here, we only need to synchronize if a call exists, and it had not already been
 			// loaded by another thread when we checked if that call exists (in the following line). If the following
 			// call comes back null, then it is guaranteed to have already been loaded (and thus the subsequent check
-			// to see if it is mapped will suceed) or not be available; either way we can skip synchronization.
+			// to see if it is mapped will succeed) or not be available; either way we can skip synchronization.
 			Callable<E> call = availableMappings.get(clazz);
 			// try one more time to see if another thread loaded it
 			// if it exists, either the above will return non null, or the following will
@@ -163,8 +163,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 					if (module != null)
 						return (M)module;
 					// actually have to load it
-					if (loadAvailableModule(call))
-						return getModule(clazz);
+					module = getLoadAvailableModule(call);
 				}
 			}
 		}
@@ -473,7 +472,19 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @return true if loading succeeded, otherwise false
 	 * @throws IllegalStateException if call is not already registered as an available module
 	 */
-	public synchronized boolean loadAvailableModule(Callable<? extends E> call) {
+	public boolean loadAvailableModule(Callable<? extends E> call) {
+		E module = getLoadAvailableModule(call);
+		return module != null;
+	}
+	
+	/**
+	 * Attempts to load the given available module
+	 * 
+	 * @param call (must have already been registered via {@link #addAvailableModule(Callable, Class)})
+	 * @return the module if loading succeeded, otherwise null
+	 * @throws IllegalStateException if call is not already registered as an available module
+	 */
+	private synchronized E getLoadAvailableModule(Callable<? extends E> call) {
 		/*
 		 * TODO: does this need to be synchronized? could maybe do the call portion asynchronously and just
 		 * synchronize for the list/map operations, which would allow for parallel loading.
@@ -505,12 +516,11 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 			availableMappings.remove(oldMapping);
 		
 		if (module != null) {
-			// register it and report success
+			// register it
 			addModule(module);
-			return true;
 		}
-		// failed
-		return false;
+		// will return null if failed
+		return module;
 	}
 	
 	private static DecimalFormat secsDF = new DecimalFormat("0.##"); 

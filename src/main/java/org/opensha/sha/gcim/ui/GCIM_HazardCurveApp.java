@@ -70,6 +70,7 @@ import org.opensha.commons.util.bugReports.BugReportDialog;
 import org.opensha.commons.util.bugReports.DefaultExceptoinHandler;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.HazardCurveCalculatorAPI;
+import org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.AbstractEpistemicListERF;
 import org.opensha.sha.earthquake.BaseERF;
@@ -88,8 +89,8 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2_TimeIndependentEpistemicList;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2.MeanUCERF2;
 import org.opensha.sha.earthquake.rupForecastImpl.step.STEP_AlaskanPipeForecast;
-import org.opensha.sha.gcim.calc.DisaggregationCalculator;
-import org.opensha.sha.gcim.calc.DisaggregationCalculatorAPI;
+import org.opensha.sha.gcim.calc.GCIM_DisaggregationCalculator;
+import org.opensha.sha.gcim.calc.GCIM_DisaggregationCalculatorAPI;
 import org.opensha.sha.gcim.calc.GcimCalculator;
 import org.opensha.sha.gcim.imCorrRel.ImCorrelationRelationship;
 import org.opensha.sha.gcim.ui.infoTools.AttenuationRelationshipsInstance;
@@ -281,7 +282,7 @@ public class GCIM_HazardCurveApp  extends HazardCurveApplication {
 
 	// instances of various calculators
 	protected HazardCurveCalculatorAPI calc;
-	protected DisaggregationCalculatorAPI disaggCalc;
+	protected GCIM_DisaggregationCalculatorAPI disaggCalc;
 	protected GcimCalculator gcimCalc;
 	CalcProgressBar progressClass;
 	CalcProgressBar disaggProgressClass;
@@ -915,7 +916,7 @@ public class GCIM_HazardCurveApp  extends HazardCurveApplication {
 			}
 			if(disaggregationFlag)
 				if(disaggCalc == null)
-					disaggCalc = new DisaggregationCalculator();
+					disaggCalc = new GCIM_DisaggregationCalculator();
 		}catch(Exception e){
 			e.printStackTrace();
 			BugReport bug = new BugReport(e, this.getParametersInfoAsString(), appShortName, getAppVersion(), this);
@@ -1695,36 +1696,41 @@ public class GCIM_HazardCurveApp  extends HazardCurveApplication {
 		modeString += "\n" + disaggregationString;
 
 		String disaggregationPlotWebAddr = null;
-		String metadata;
+		String metadata = getMapParametersInfoAsHTML();
 		// String pdfImageLink;
-		try {
-			disaggregationPlotWebAddr = getDisaggregationPlot();
-			/*
-			 * pdfImageLink = "<br>Click  " + "<a href=\"" +
-			 * disaggregationPlotWebAddr +
-			 * DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME + "\">" +
-			 * "here" + "</a>" +
-			 * " to view a PDF (non-pixelated) version of the image (this will be deleted at midnight)."
-			 * ;
-			 */
+		if (disaggregationControlPanel.isUseGMT()) {
+			try {
+				disaggregationPlotWebAddr = getDisaggregationPlot();
+				/*
+				 * pdfImageLink = "<br>Click  " + "<a href=\"" +
+				 * disaggregationPlotWebAddr +
+				 * DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME + "\">" +
+				 * "here" + "</a>" +
+				 * " to view a PDF (non-pixelated) version of the image (this will be deleted at midnight)."
+				 * ;
+				 */
 
-			metadata = getMapParametersInfoAsHTML();
-			metadata += "<br><br>Click  " + "<a href=\""
-			+ disaggregationPlotWebAddr + "\">" + "here" + "</a>"
-			+ " to download files. They will be deleted at midnight";
-		} catch (RuntimeException e) {
-			e.printStackTrace();
-			JOptionPane.showMessageDialog(this, e.getMessage(),
-					"Server Problem", JOptionPane.INFORMATION_MESSAGE);
-			return;
+				metadata += "<br><br>Click  " + "<a href=\""
+				+ disaggregationPlotWebAddr + "\">" + "here" + "</a>"
+				+ " to download files. They will be deleted at midnight";
+			} catch (RuntimeException e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(this, e.getMessage(),
+						"Server Problem", JOptionPane.INFORMATION_MESSAGE);
+				return;
+			}
+
+			// adding the image to the Panel and returning that to the applet
+			// new DisaggregationPlotViewerWindow(imgName,true,modeString,
+			// metadata,binData,sourceDisaggregationList);isaggCalc, metadata,
+//					disaggregationControlPanel.isShowDisaggrBinDataSelected());\
+			String addr = disaggregationPlotWebAddr
+					+ GCIM_DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME;
+			new DisaggregationPlotViewerWindow(null, addr, modeString, metadata, binData, sourceDisaggregationList, null);
+		} else {
+			new DisaggregationPlotViewerWindow(PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),
+					null, modeString, metadata, binData, sourceDisaggregationList, null);
 		}
-
-		// adding the image to the Panel and returning that to the applet
-		// new DisaggregationPlotViewerWindow(imgName,true,modeString,
-		// metadata,binData,sourceDisaggregationList);
-		new DisaggregationPlotViewerWindow(disaggregationPlotWebAddr
-				+ DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME, true,
-				modeString, metadata, binData, sourceDisaggregationList);
 	}
 	
 	/**

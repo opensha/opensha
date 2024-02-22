@@ -10,8 +10,12 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -29,6 +33,7 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleArchive;
@@ -136,6 +141,77 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		}
 	}
 	
+	public static class InMemory extends AbstractExternalFetcher {
+		
+		private Map<LogicTreeBranch<?>, Integer> branchIndexMap;
+		private List<FaultSystemSolution> solutions;
+		
+		/**
+		 * Single solution constructor
+		 * 
+		 * @param sol
+		 * @param branch
+		 */
+		public InMemory(FaultSystemSolution sol, LogicTreeBranch<?> branch) {
+			super(null, singleSolTree(branch));
+			init(List.of(sol), getLogicTree());
+		}
+		
+		private static LogicTree<?> singleSolTree(LogicTreeBranch<?> branch) {
+			List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
+			List<LogicTreeNode> nodes = new ArrayList<>();
+			for (int i=0; i<branch.size(); i++) {
+				levels.add(branch.getLevel(i));
+				nodes.add(branch.getValue(i));
+			}
+			LogicTreeBranch<LogicTreeNode> modBranch = new LogicTreeBranch<>(levels, nodes);
+			modBranch.setOrigBranchWeight(branch.getOrigBranchWeight());
+			return LogicTree.fromExisting(levels, List.of(modBranch));
+		}
+		
+		/**
+		 * Multiple solution constructor. Solutions should be in tree-index order
+		 * 
+		 * @param solutions
+		 * @param tree
+		 */
+		public InMemory(List<FaultSystemSolution> solutions, LogicTree<?> tree) {
+			super(null, tree);
+			init(solutions, tree);
+		}
+		
+		private void init(List<FaultSystemSolution> solutions, LogicTree<?> tree) {
+			this.solutions = solutions;
+			Preconditions.checkState(solutions.size() == tree.size());
+			branchIndexMap = new HashMap<>(solutions.size());
+			for (int i=0; i<tree.size(); i++)
+				branchIndexMap.put(tree.getBranch(i), i);
+		}
+
+		@Override
+		protected FaultSystemSolution loadExternalForBranch(LogicTreeBranch<?> branch) throws IOException {
+			Integer index = branchIndexMap.get(branch);
+			Preconditions.checkNotNull(index, "Unexpected branch: %s", branch);
+			return solutions.get(index);
+		}
+
+		@Override
+		public synchronized double[] loadRatesForBranch(LogicTreeBranch<?> branch) throws IOException {
+			return loadExternalForBranch(branch).getRateForAllRups();
+		}
+
+		@Override
+		public synchronized RuptureProperties loadPropsForBranch(LogicTreeBranch<?> branch) throws IOException {
+			FaultSystemRupSet rupSet = loadExternalForBranch(branch).getRupSet();
+			return new RuptureProperties(rupSet);
+		}
+
+		@Override
+		public synchronized GridSourceProvider loadGridProvForBranch(LogicTreeBranch<?> branch) throws IOException {
+			return loadExternalForBranch(branch).getGridSourceProvider();
+		}
+	}
+	
 	public static abstract class AbstractExternalFetcher extends SolutionLogicTree {
 
 		protected AbstractExternalFetcher(SolutionProcessor processor, LogicTree<?> logicTree) {
@@ -202,6 +278,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		private BranchWeightProvider weightProv;
 		
 		private List<LogicTreeBranch<LogicTreeNode>> branches = new ArrayList<>();
+		private List<Map<String, String>> branchMappings = new ArrayList<>();
 		private List<LogicTreeLevel<? extends LogicTreeNode>> levels = null;
 		
 		private boolean serializeGridded = SERIALIZE_GRIDDED_DEFAULT;
@@ -218,6 +295,52 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			this.processor = processor;
 			this.outputFile = outputFile;
 			archive = new ModuleArchive<>();
+		}
+		
+		/**
+		 * By default, the written logic tree zip file will have a logic tree attached with branches in the order that
+		 * they are passed in. If you want that ordering to match an existing tree, sort them with this method before 
+		 * calling {@link #build()}.
+		 * 
+		 * @param tree
+		 * @throws NullPointerException if branches exist that aren't in the supplied tree
+		 */
+		public synchronized void sortLogicTreeBranchesToMatchTree(LogicTree<?> tree) {
+			Map<LogicTreeBranch<?>, Integer> branchIndexes = new HashMap<>(tree.size());
+			for (int i=0; i<tree.size(); i++)
+				branchIndexes.put(tree.getBranch(i), i);
+			sortLogicTreeBranches(new Comparator<LogicTreeBranch<LogicTreeNode>>() {
+				
+				@Override
+				public int compare(LogicTreeBranch<LogicTreeNode> o1, LogicTreeBranch<LogicTreeNode> o2) {
+					int index1 = branchIndexes.get(o1);
+					int index2 = branchIndexes.get(o2);
+					return Integer.compare(index1, index2);
+				}
+			});
+		}
+		
+		/**
+		 * By default, the written logic tree zip file will have a logic tree attached with branches in the order that
+		 * they are passed in. If you want custom ordering, sort them with this method before calling {@link #build()}.
+		 * 
+		 * @param tree
+		 */
+		public synchronized void sortLogicTreeBranches(Comparator<LogicTreeBranch<LogicTreeNode>> comparator) {
+			// need to sort branches and mappings together
+			List<ComparablePairing<LogicTreeBranch<LogicTreeNode>, Map<String, String>>> pairings = new ArrayList<>(branches.size());
+			for (int i=0; i<branches.size(); i++)
+				pairings.add(new ComparablePairing<LogicTreeBranch<LogicTreeNode>, Map<String, String>>(
+						branches.get(i), branchMappings.get(i), comparator));
+			Collections.sort(pairings);
+			List<LogicTreeBranch<LogicTreeNode>> branches = new ArrayList<>(pairings.size());
+			List<Map<String, String>> branchMappings = new ArrayList<>(pairings.size());
+			for (ComparablePairing<LogicTreeBranch<LogicTreeNode>, Map<String, String>> pairing : pairings) {
+				branches.add(pairing.getComparable());
+				branchMappings.add(pairing.getData());
+			}
+			this.branches = branches;
+			this.branchMappings = branchMappings;
 		}
 		
 		private void debug(String message) {
@@ -329,7 +452,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			String outPrefix = solTree.buildPrefix(entryPrefix);
 
 			System.out.println("Writing branch: "+branch);
-			solTree.writeBranchFilesToArchive(zout, outPrefix, branch, writtenFiles, sol);
+			branchMappings.add(solTree.writeBranchFilesToArchive(zout, outPrefix, branch, writtenFiles, sol));
 			if (D) debug("solution: DONE for "+branch);
 		}
 		
@@ -350,6 +473,10 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 					if (D) debug("close: writing processor json");
 					writeProcessorJSON(zout, solTree.buildPrefix(entryPrefix), processor);
 				}
+				
+				solTree.writeLogicTreeMappingsToArchive(zout, solTree.buildPrefix(entryPrefix), tree, branchMappings);
+				
+				solTree.writeREADMEToArchive(zout);
 				
 				zout = null;
 				entryPrefix = null;
@@ -444,12 +571,14 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		private File prevSolFile;
 		private FaultSystemSolution prevSol;
-
-		@Override
-		protected FaultSystemSolution loadExternalForBranch(LogicTreeBranch<?> branch) throws IOException {
+		
+		private double[] prevRates;
+		private RuptureProperties prevProps;
+		private GridSourceProvider prevGridProv;
+		
+		private File getBranchSubDir(LogicTreeBranch<?> branch, List<LogicTreeNode> gridOnlyNodes,
+				List<LogicTreeLevel<? extends LogicTreeNode>> gridOnlyLevels) {
 			File subDir = new File(resultsDir, branch.buildFileName());
-			List<LogicTreeNode> gridOnlyNodes = new ArrayList<>();
-			List<LogicTreeLevel<? extends LogicTreeNode>> gridOnlyLevels = new ArrayList<>();
 			if (!subDir.exists()) {
 				// see if we have branch levels that don't affect the raw solution
 				List<LogicTreeLevel<? extends LogicTreeNode>> levelsAffecting = new ArrayList<>();
@@ -462,8 +591,10 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 						nodesAffecting.add(node);
 					} else if (level.affects(GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true)
 							|| level.affects(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true)) {
-						gridOnlyLevels.add(level);
-						gridOnlyNodes.add(node);
+						if (gridOnlyLevels != null)
+							gridOnlyLevels.add(level);
+						if (gridOnlyNodes != null)
+							gridOnlyNodes.add(node);
 					}
 				}
 				if (nodesAffecting.size() < branch.size()) {
@@ -477,25 +608,34 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 				}
 			}
 			Preconditions.checkState(subDir.exists(), "Branch directory doesn't exist: %s", subDir.getAbsolutePath());
+			return subDir;
+		}
+
+		@Override
+		protected FaultSystemSolution loadExternalForBranch(LogicTreeBranch<?> branch) throws IOException {
+			List<LogicTreeNode> gridOnlyNodes = new ArrayList<>();
+			List<LogicTreeLevel<? extends LogicTreeNode>> gridOnlyLevels = new ArrayList<>();
+			File subDir = getBranchSubDir(branch, gridOnlyNodes, gridOnlyLevels);
 			File solFile = new File(subDir, "solution.zip");
 			Preconditions.checkState(solFile.exists(), "Solution file doesn't exist: %s", solFile.getAbsolutePath());
 			FaultSystemSolution sol = null;
-			boolean reused = false;
 			synchronized (this) {
 				// check if it's the same as the previous one
 				if (prevSol != null && solFile.equals(prevSolFile)) {
 					sol = prevSol;
-					reused = true;
 				}
 			}
 			if (sol == null) {
 				sol = FaultSystemSolution.load(solFile);
 				synchronized (this) {
+					clearPrevSol();
 					prevSol = sol;
 					prevSolFile = solFile;
+					prevRates = sol.getRateForAllRups();
+					prevProps = new RuptureProperties(sol.getRupSet());
 				}
 			}
-			if (sol.getGridSourceProvider() == null) {
+			if (!sol.hasAvailableModule(GridSourceProvider.class)) {
 				// see if we have one available
 				File gridProvsDir = new File(subDir, "grid_source_providers");
 				if (gridProvsDir.exists()) {
@@ -529,9 +669,92 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			return sol;
 		}
 		
+		private synchronized void clearPrevSol() {
+			prevSolFile = null;
+			prevSol = null;
+			prevRates = null;
+			prevProps = null;
+			prevGridProv = null;
+		}
+
+		@Override
+		public synchronized double[] loadRatesForBranch(LogicTreeBranch<?> branch) throws IOException {
+			File subDir = getBranchSubDir(branch, null, null);
+			File solFile = new File(subDir, "solution.zip");
+			
+			if (!solFile.equals(prevSolFile)) {
+				clearPrevSol();
+				prevSolFile = solFile;
+			}
+			if (prevRates != null)
+				return prevRates;
+			// load them directly
+			ZipFile zip = new ZipFile(solFile);
+			String ratesFile = FaultSystemSolution.NESTING_PREFIX+FaultSystemSolution.RATES_FILE_NAME;
+			System.out.println("\tLoading rate data from "+ratesFile);
+			CSVFile<String> ratesCSV = CSV_BackedModule.loadFromArchive(zip, null, ratesFile);
+			double[] rates = FaultSystemSolution.loadRatesCSV(ratesCSV);
+			prevRates = rates;
+			return rates;
+		}
+
+		@Override
+		public synchronized RuptureProperties loadPropsForBranch(LogicTreeBranch<?> branch) throws IOException {
+			File subDir = getBranchSubDir(branch, null, null);
+			File solFile = new File(subDir, "solution.zip");
+			
+			if (!solFile.equals(prevSolFile)) {
+				clearPrevSol();
+				prevSolFile = solFile;
+			}
+			if (prevProps != null)
+				return prevProps;
+			// load them directly
+			ZipFile zip = new ZipFile(solFile);
+			String propsFile = FaultSystemRupSet.NESTING_PREFIX+FaultSystemRupSet.RUP_PROPS_FILE_NAME;
+			System.out.println("\tLoading rupture properties from "+propsFile);
+			CSVFile<String> rupPropsCSV = CSV_BackedModule.loadFromArchive(zip, null, propsFile);
+			RuptureProperties props = new RuptureProperties(rupPropsCSV);
+			prevProps = props;
+			return props;
+		}
+
+		@Override
+		public synchronized GridSourceProvider loadGridProvForBranch(LogicTreeBranch<?> branch) throws IOException {
+			List<LogicTreeNode> gridOnlyNodes = new ArrayList<>();
+			List<LogicTreeLevel<? extends LogicTreeNode>> gridOnlyLevels = new ArrayList<>();
+			File subDir = getBranchSubDir(branch, gridOnlyNodes, gridOnlyLevels);
+			File solFile = new File(subDir, "solution.zip");
+			if (solFile.equals(prevSolFile)) {
+				if (prevGridProv != null)
+					return prevGridProv;
+				if (prevSol != null && prevSol.hasAvailableModule(GridSourceProvider.class))
+					return prevSol.getGridSourceProvider();
+			} else {
+				clearPrevSol();
+				prevSolFile = solFile;
+			}
+			// see if we have one available
+			File gridProvsDir = new File(subDir, "grid_source_providers");
+			if (gridProvsDir.exists()) {
+				File gridProvFile;
+				if (gridOnlyLevels.isEmpty()) {
+					gridProvFile = new File(gridProvsDir, "avg_grid_seis.zip");
+				} else {
+					LogicTreeBranch<LogicTreeNode> gridBranch = new LogicTreeBranch<>(gridOnlyLevels, gridOnlyNodes);
+					gridProvFile = new File(gridProvsDir, gridBranch.buildFileName()+".zip");
+				}
+				if (gridProvFile.exists()) {
+					ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(gridProvFile);
+					prevGridProv = archive.requireModule(GridSourceProvider.class);
+					return prevGridProv;
+				}
+			}
+			return null;
+		}
+		
 	}
 	
-	@SuppressWarnings("unused") // used for serialization
 	private SolutionLogicTree() {
 		this(null, null);
 	}
@@ -568,14 +791,14 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	}
 
 	@Override
-	protected void writeBranchFilesToArchive(ZipOutputStream zout, String prefix, LogicTreeBranch<?> branch,
+	protected Map<String, String> writeBranchFilesToArchive(ZipOutputStream zout, String prefix, LogicTreeBranch<?> branch,
 			HashSet<String> writtenFiles) throws IOException {
 		FaultSystemSolution sol = forBranch(branch);
-		writeBranchFilesToArchive(zout, prefix, branch, writtenFiles, sol);
+		return writeBranchFilesToArchive(zout, prefix, branch, writtenFiles, sol);
 	}
 	
 
-	protected void writeBranchFilesToArchive(ZipOutputStream zout, String prefix, LogicTreeBranch<?> branch,
+	protected Map<String, String> writeBranchFilesToArchive(ZipOutputStream zout, String prefix, LogicTreeBranch<?> branch,
 			HashSet<String> writtenFiles, FaultSystemSolution sol) throws IOException {
 		// could try to be fancy and copy files over without loading, but these things will be written out so rarely
 		// (usually one and done) so it's not worth the added complexity
@@ -583,7 +806,9 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		String entryPrefix = null; // prefixes will be encoded in the results of getBranchFileName(...) calls
 		
-		String sectsFile = getBranchFileName(branch, prefix, FaultSystemRupSet.SECTS_FILE_NAME, true);
+		Map<String, String> mappings = new LinkedHashMap<>();
+		
+		String sectsFile = getRecordBranchFileName(branch, prefix, FaultSystemRupSet.SECTS_FILE_NAME, true, mappings);
 		if (!writtenFiles.contains(sectsFile)) {
 			FileBackedModule.initEntry(zout, entryPrefix, sectsFile);
 			OutputStreamWriter writer = new OutputStreamWriter(zout);
@@ -594,26 +819,26 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			writtenFiles.add(sectsFile);
 		}
 		
-		String indicesFile = getBranchFileName(branch, prefix, FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
+		String indicesFile = getRecordBranchFileName(branch, prefix, FaultSystemRupSet.RUP_SECTS_FILE_NAME, true, mappings);
 		if (!writtenFiles.contains(indicesFile)) {
 			CSV_BackedModule.writeToArchive(FaultSystemRupSet.buildRupSectsCSV(rupSet), zout, entryPrefix, indicesFile);
 			writtenFiles.add(indicesFile);
 		}
 		
-		String propsFile = getBranchFileName(branch, prefix, FaultSystemRupSet.RUP_PROPS_FILE_NAME, true);
+		String propsFile = getRecordBranchFileName(branch, prefix, FaultSystemRupSet.RUP_PROPS_FILE_NAME, true, mappings);
 		if (!writtenFiles.contains(propsFile)) {
 			CSV_BackedModule.writeToArchive(new RuptureProperties(rupSet).buildCSV(), zout, entryPrefix, propsFile);
 			writtenFiles.add(propsFile);
 		}
 		
-		String ratesFile = getBranchFileName(branch, prefix, FaultSystemSolution.RATES_FILE_NAME, true);
+		String ratesFile = getRecordBranchFileName(branch, prefix, FaultSystemSolution.RATES_FILE_NAME, true, mappings);
 		if (!writtenFiles.contains(ratesFile)) {
 			CSV_BackedModule.writeToArchive(FaultSystemSolution.buildRatesCSV(sol), zout, entryPrefix, ratesFile);
 			writtenFiles.add(ratesFile);
 		}
 		
 		if (sol.hasModule(RupMFDsModule.class)) {
-			String mfdsFile = getBranchFileName(branch, prefix, RupMFDsModule.FILE_NAME, true);
+			String mfdsFile = getRecordBranchFileName(branch, prefix, RupMFDsModule.FILE_NAME, true, mappings);
 			if (!writtenFiles.contains(mfdsFile)) {
 				RupMFDsModule mfds = sol.requireModule(RupMFDsModule.class);
 				CSV_BackedModule.writeToArchive(mfds.getCSV(), zout, entryPrefix, mfdsFile);
@@ -623,7 +848,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		if (serializeGridded && sol.hasModule(GridSourceProvider.class)) {
 			GridSourceProvider prov = sol.getModule(GridSourceProvider.class);
-			writeGridProvToArchive(prov, zout, prefix, branch, writtenFiles);
+			mappings.putAll(writeGridProvToArchive(prov, zout, prefix, branch, writtenFiles));
 		}
 		
 		InversionMisfitStats misfitStats = sol.getModule(InversionMisfitStats.class);
@@ -631,8 +856,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			misfitStats = sol.requireModule(InversionMisfits.class).getMisfitStats();
 		
 		if (misfitStats != null) {
-			String statsFile = getBranchFileName(branch, prefix,
-					InversionMisfitStats.MISFIT_STATS_FILE_NAME, true);
+			String statsFile = getRecordBranchFileName(branch, prefix,
+					InversionMisfitStats.MISFIT_STATS_FILE_NAME, true, mappings);
 			Preconditions.checkState(!writtenFiles.contains(statsFile));
 			CSV_BackedModule.writeToArchive(misfitStats.getCSV(), zout, entryPrefix, statsFile);
 			writtenFiles.add(statsFile);
@@ -641,8 +866,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		AnnealingProgress progress = sol.getModule(AnnealingProgress.class);
 		
 		if (progress != null) {
-			String progressFile = getBranchFileName(branch, prefix,
-					AnnealingProgress.PROGRESS_FILE_NAME, true);
+			String progressFile = getRecordBranchFileName(branch, prefix,
+					AnnealingProgress.PROGRESS_FILE_NAME, true, mappings);
 			Preconditions.checkState(!writtenFiles.contains(progressFile));
 			CSV_BackedModule.writeToArchive(progress.getCSV(), zout, entryPrefix, progressFile);
 			writtenFiles.add(progressFile);
@@ -651,8 +876,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		InversionMisfitProgress misfitProgress = sol.getModule(InversionMisfitProgress.class);
 		
 		if (misfitProgress != null) {
-			String progressFile = getBranchFileName(branch, prefix,
-					InversionMisfitProgress.MISFIT_PROGRESS_FILE_NAME, true);
+			String progressFile = getRecordBranchFileName(branch, prefix,
+					InversionMisfitProgress.MISFIT_PROGRESS_FILE_NAME, true, mappings);
 			Preconditions.checkState(!writtenFiles.contains(progressFile));
 			CSV_BackedModule.writeToArchive(misfitProgress.getCSV(), zout, entryPrefix, progressFile);
 			writtenFiles.add(progressFile);
@@ -667,16 +892,20 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
 			
 			if (plausibility != null) {
+				mappings.put(PlausibilityConfiguration.JSON_FILE_NAME, plausibilityFile);
 				plausibility.writeToArchive(zout, entryPrefix, plausibilityFile);
 				writtenFiles.add(plausibilityFile);
 			}
 		}
+		
+		return mappings;
 	}
 	
 	public static final String GRID_PROV_INSTANCE_FILE_NAME = "grid_provider_instance.json";
 
-	public void writeGridProvToArchive(GridSourceProvider prov, ZipOutputStream zout, String prefix,
+	public Map<String, String> writeGridProvToArchive(GridSourceProvider prov, ZipOutputStream zout, String prefix,
 			LogicTreeBranch<?> branch, HashSet<String> writtenFiles) throws IOException {
+		Map<String, String> mappings = new LinkedHashMap<>();
 		GridSourceProvider.AbstractPrecomputed precomputed;
 		if (prov instanceof GridSourceProvider.AbstractPrecomputed)
 			precomputed = (GridSourceProvider.AbstractPrecomputed)prov;
@@ -687,8 +916,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		if (!GridSourceProvider.AbstractPrecomputed.class.isAssignableFrom(loadingClass))
 			loadingClass = GridSourceProvider.Default.class;
 		
-		String gridRegFile = getBranchFileName(branch, prefix,
-				GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false);
+		String gridRegFile = getRecordBranchFileName(branch, prefix,
+				GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false, mappings);
 		if (gridRegFile != null && !writtenFiles.contains(gridRegFile)) {
 			FileBackedModule.initEntry(zout, null, gridRegFile);
 			Feature regFeature = precomputed.getGriddedRegion().toFeature();
@@ -700,14 +929,14 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			writtenFiles.add(gridRegFile);
 		}
 
-		String mechFile = getBranchFileName(branch, prefix,
-				GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false);
+		String mechFile = getRecordBranchFileName(branch, prefix,
+				GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false, mappings);
 		if (mechFile != null && !writtenFiles.contains(mechFile)) {
 			CSV_BackedModule.writeToArchive(precomputed.buildWeightsCSV(), zout, null, mechFile);
 			writtenFiles.add(mechFile);
 		}
-		String subSeisFile = getBranchFileName(branch, prefix,
-				GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true);
+		String subSeisFile = getRecordBranchFileName(branch, prefix,
+				GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true, mappings);
 		if (subSeisFile != null && !writtenFiles.contains(subSeisFile)) {
 			CSVFile<String> csv = precomputed.buildSubSeisCSV();
 			if (csv != null) {
@@ -715,8 +944,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 				writtenFiles.add(subSeisFile);
 			}
 		}
-		String unassociatedFile = getBranchFileName(branch, prefix,
-				GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true);
+		String unassociatedFile = getRecordBranchFileName(branch, prefix,
+				GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true, mappings);
 		if (unassociatedFile != null && !writtenFiles.contains(unassociatedFile)) {
 			CSVFile<String> csv = precomputed.buildUnassociatedCSV();
 			if (csv != null) {
@@ -727,14 +956,16 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		// write the implementing class
 		List<? extends LogicTreeLevel<?>> mappingLevels = getLevelsAffectingFile(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true);
-		String gridProvFile = getBranchFileName(branch, prefix,
-				GRID_PROV_INSTANCE_FILE_NAME, mappingLevels);
+		String gridProvFile = getRecordBranchFileName(branch, prefix,
+				GRID_PROV_INSTANCE_FILE_NAME, mappingLevels, mappings);
 		if (!writtenFiles.contains(gridProvFile)) {
 			FileBackedModule.initEntry(zout, null, gridProvFile);
 			writeGridSourceProvInstanceFile(zout, loadingClass);
 			zout.closeEntry();
 			writtenFiles.add(unassociatedFile);
 		}
+		
+		return mappings;
 	}
 	
 	/**
@@ -770,6 +1001,9 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	private CSVFile<String> prevGridMechs;
 	private String prevGridMechFile;
 	
+	private double[] prevRates;
+	private String prevRatesFile;
+	
 	/**
 	 * 
 	 * @param branch
@@ -778,11 +1012,107 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	 */
 	public synchronized double[] loadRatesForBranch(LogicTreeBranch<?> branch) throws IOException {
 		String ratesFile = getBranchFileName(branch, FaultSystemSolution.RATES_FILE_NAME, true);
+		if (prevRates != null && ratesFile.equals(prevRates)) {
+			System.out.println("\tRe-using previous rupture rates");
+			return prevRates;
+		}
 		System.out.println("\tLoading rate data from "+ratesFile);
 		ZipFile zip = getZipFile();
 		CSVFile<String> ratesCSV = CSV_BackedModule.loadFromArchive(zip, null, ratesFile);
 		double[] rates = FaultSystemSolution.loadRatesCSV(ratesCSV);
+		prevRates = rates;
+		prevRatesFile = ratesFile;
 		return rates;
+	}
+	
+	public synchronized RuptureProperties loadPropsForBranch(LogicTreeBranch<?> branch) throws IOException {
+		String propsFile = getBranchFileName(branch, FaultSystemRupSet.RUP_PROPS_FILE_NAME, true);
+		RuptureProperties props;
+		if (prevProps != null && propsFile.equals(prevPropsFile)) {
+			System.out.println("\tRe-using previous rupture properties");
+			props = prevProps;
+		} else {
+			System.out.println("\tLoading rupture properties from "+propsFile);
+			ZipFile zip = getZipFile();
+			CSVFile<String> rupPropsCSV = CSV_BackedModule.loadFromArchive(zip, null, propsFile);
+			props = new RuptureProperties(rupPropsCSV);
+			prevProps = props;
+			prevPropsFile = propsFile;
+		}
+		return props;
+	}
+	
+	public synchronized GridSourceProvider loadGridProvForBranch(LogicTreeBranch<?> branch) throws IOException {
+		String gridRegFile = getBranchFileName(branch, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false);
+		String mechFile = getBranchFileName(branch, GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false);
+		
+		ZipFile zip = getZipFile();
+		if (gridRegFile == null || zip.getEntry(gridRegFile) == null || mechFile == null || zip.getEntry(mechFile) == null)
+			return null;
+		GriddedRegion region;
+		CSVFile<String> mechCSV;
+		synchronized (SolutionLogicTree.this) {
+			if (prevGridReg != null && gridRegFile.equals(prevGridRegFile)) {
+				region = prevGridReg;
+			} else {
+				BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, null, gridRegFile);
+				InputStreamReader regionReader = new InputStreamReader(regionIS);
+				Feature regFeature = Feature.read(regionReader);
+				region = GriddedRegion.fromFeature(regFeature);
+				prevGridReg = region;
+				prevGridRegFile = gridRegFile;
+			}
+			
+			// load mechanisms
+			if (prevGridMechs != null && mechFile.equals(prevGridMechFile)) {
+				mechCSV = prevGridMechs;
+			} else {
+				mechCSV = CSV_BackedModule.loadFromArchive(zip, null, mechFile);
+				prevGridMechs = mechCSV;
+				prevGridMechFile = mechFile;
+			}
+		}
+		
+		CSVFile<String> subSeisCSV = null;
+		CSVFile<String> nodeUnassociatedCSV = null;
+		
+		String subSeisFile = getBranchFileName(branch, GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true);
+		String nodeUnassociatedFile = getBranchFileName(branch, GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true);
+		if (subSeisFile != null && zip.getEntry(subSeisFile) != null)
+			subSeisCSV = GridSourceProvider.AbstractPrecomputed.loadCSV(zip, null, subSeisFile);
+		if (nodeUnassociatedFile != null && zip.getEntry(nodeUnassociatedFile) != null)
+			nodeUnassociatedCSV = GridSourceProvider.AbstractPrecomputed.loadCSV(zip, null, nodeUnassociatedFile);
+		
+		List<? extends LogicTreeLevel<?>> mappingLevels = getLevelsAffectingFile(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true);
+		String gridProvFile = getBranchFileName(branch, GRID_PROV_INSTANCE_FILE_NAME, mappingLevels);
+		ZipEntry gridProvEntry = zip.getEntry(gridProvFile);
+		if (gridProvEntry != null) {
+			// try to read the actual implementing class
+			try {
+				BufferedReader bRead = new BufferedReader(new InputStreamReader(zip.getInputStream(gridProvEntry)));
+				JsonReader reader = new JsonReader(bRead);
+				reader.beginObject();
+				reader.nextName();
+				String className = reader.nextString();
+				reader.endObject();
+				reader.close();
+				bRead.close();
+				Class<? extends GridSourceProvider.AbstractPrecomputed> loadingClass =
+						(Class<? extends AbstractPrecomputed>) Class.forName(className);
+
+				Constructor<? extends GridSourceProvider.AbstractPrecomputed> constructor = loadingClass.getDeclaredConstructor();
+				
+				constructor.setAccessible(true);
+				
+				GridSourceProvider.AbstractPrecomputed module = constructor.newInstance();
+				module.init(region, subSeisCSV, nodeUnassociatedCSV, mechCSV);
+				return module;
+			} catch (Exception e) {
+				System.err.println("Warning: couldn't load specified GridSourceProvider instance: "+e.getMessage());
+			}
+		}
+		// defer to default
+		return new GridSourceProvider.Default(region, subSeisCSV, nodeUnassociatedCSV, mechCSV);
 	}
 	
 	/**
@@ -835,28 +1165,14 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			prevIndicesFile = indicesFile;
 		}
 		
-		String propsFile = getBranchFileName(branch, FaultSystemRupSet.RUP_PROPS_FILE_NAME, true);
-		RuptureProperties props;
-		if (prevProps != null && propsFile.equals(prevPropsFile)) {
-			System.out.println("\tRe-using previous rupture properties");
-			props = prevProps;
-		} else {
-			System.out.println("\tLoading rupture properties from "+propsFile);
-			CSVFile<String> rupPropsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, propsFile);
-			props = new RuptureProperties(rupPropsCSV);
-			prevProps = props;
-			prevPropsFile = propsFile;
-		}
+		RuptureProperties props = loadPropsForBranch(branch);
 		
 		FaultSystemRupSet rupSet = new FaultSystemRupSet(subSects, rupIndices,
 				props.mags, props.rakes, props.areas, props.lengths);
 		if (process && processor != null)
 			rupSet = processor.processRupSet(rupSet, branch);
 		
-		String ratesFile = getBranchFileName(branch, FaultSystemSolution.RATES_FILE_NAME, true);
-		System.out.println("\tLoading rate data from "+ratesFile);
-		CSVFile<String> ratesCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, ratesFile);
-		double[] rates = FaultSystemSolution.loadRatesCSV(ratesCSV);
+		double[] rates = loadRatesForBranch(branch);
 		Preconditions.checkState(rates.length == rupIndices.size());
 		
 		rupSet.addModule(branch);
@@ -874,70 +1190,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 
 				@Override
 				public GridSourceProvider call() throws Exception {
-					GriddedRegion region;
-					CSVFile<String> mechCSV;
-					synchronized (SolutionLogicTree.this) {
-						if (prevGridReg != null && gridRegFile.equals(prevGridRegFile)) {
-							region = prevGridReg;
-						} else {
-							BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, gridRegFile);
-							InputStreamReader regionReader = new InputStreamReader(regionIS);
-							Feature regFeature = Feature.read(regionReader);
-							region = GriddedRegion.fromFeature(regFeature);
-							prevGridReg = region;
-							prevGridRegFile = gridRegFile;
-						}
-						
-						// load mechanisms
-						if (prevGridMechs != null && mechFile.equals(prevGridMechFile)) {
-							mechCSV = prevGridMechs;
-						} else {
-							mechCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, mechFile);
-							prevGridMechs = mechCSV;
-							prevGridMechFile = mechFile;
-						}
-					}
-					
-					CSVFile<String> subSeisCSV = null;
-					CSVFile<String> nodeUnassociatedCSV = null;
-					
-					String subSeisFile = getBranchFileName(branch, GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true);
-					String nodeUnassociatedFile = getBranchFileName(branch, GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true);
-					if (subSeisFile != null && zip.getEntry(subSeisFile) != null)
-						subSeisCSV = GridSourceProvider.AbstractPrecomputed.loadCSV(zip, entryPrefix, subSeisFile);
-					if (nodeUnassociatedFile != null && zip.getEntry(nodeUnassociatedFile) != null)
-						nodeUnassociatedCSV = GridSourceProvider.AbstractPrecomputed.loadCSV(zip, entryPrefix, nodeUnassociatedFile);
-					
-					List<? extends LogicTreeLevel<?>> mappingLevels = getLevelsAffectingFile(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true);
-					String gridProvFile = getBranchFileName(branch, GRID_PROV_INSTANCE_FILE_NAME, mappingLevels);
-					ZipEntry gridProvEntry = zip.getEntry(gridProvFile);
-					if (gridProvEntry != null) {
-						// try to read the actual implementing class
-						try {
-							BufferedReader bRead = new BufferedReader(new InputStreamReader(zip.getInputStream(gridProvEntry)));
-							JsonReader reader = new JsonReader(bRead);
-							reader.beginObject();
-							reader.nextName();
-							String className = reader.nextString();
-							reader.endObject();
-							reader.close();
-							bRead.close();
-							Class<? extends GridSourceProvider.AbstractPrecomputed> loadingClass =
-									(Class<? extends AbstractPrecomputed>) Class.forName(className);
-
-							Constructor<? extends GridSourceProvider.AbstractPrecomputed> constructor = loadingClass.getDeclaredConstructor();
-							
-							constructor.setAccessible(true);
-							
-							GridSourceProvider.AbstractPrecomputed module = constructor.newInstance();
-							module.init(region, subSeisCSV, nodeUnassociatedCSV, mechCSV);
-							return module;
-						} catch (Exception e) {
-							System.err.println("Warning: couldn't load specified GridSourceProvider instance: "+e.getMessage());
-						}
-					}
-					// defer to default
-					return new GridSourceProvider.Default(region, subSeisCSV, nodeUnassociatedCSV, mechCSV);
+					return loadGridProvForBranch(branch);
 				}
 			}, GridSourceProvider.class);
 		}
@@ -1023,7 +1276,9 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		archive.addModule(this);
 		
+		writeREADME = true;
 		archive.write(outputFile);
+		writeREADME = false;
 	}
 	
 	public static SolutionLogicTree load(File treeFile) throws IOException {
@@ -1031,7 +1286,15 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	}
 	
 	public static SolutionLogicTree load(File treeFile, LogicTree<?> logicTree) throws IOException {
-		ModuleArchive<SolutionLogicTree> archive = new ModuleArchive<>(treeFile, SolutionLogicTree.class);
+		return load(new ZipFile(treeFile), logicTree);
+	}
+	
+	public static SolutionLogicTree load(ZipFile treeZip) throws IOException {
+		return load(treeZip, null);
+	}
+	
+	public static SolutionLogicTree load(ZipFile treeZip, LogicTree<?> logicTree) throws IOException {
+		ModuleArchive<SolutionLogicTree> archive = new ModuleArchive<>(treeZip, SolutionLogicTree.class);
 		
 		SolutionLogicTree ret = archive.requireModule(SolutionLogicTree.class);
 		
@@ -1060,6 +1323,45 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	}
 	
 	private static final String PROCESSOR_FILE_NAME = "solution_processor.json";
+	// will only write a readme if initiated via the .write(File) method, or via FileBuilder
+	// otherwise it could conflict with other modules if written as a submodule
+	protected boolean writeREADME = false;
+	
+	protected void writeREADMEToArchive(ZipOutputStream zout) throws IOException {
+		OutputStreamWriter writer = new OutputStreamWriter(zout);
+		System.out.println("Writing README at root");
+		FileBackedModule.initEntry(zout, null, "README");
+		BufferedWriter readme = new BufferedWriter(writer);
+		readme.write("This is an OpenSHA Fault System Solution Logic Tree zip file.\n\n");
+		
+		readme.write("The file format is described in detail at https://opensha.org/Modular-Fault-System-Solution\n\n");
+		
+		readme.write("Unlike a regular Fault System Solution, this archive contains information for multiple solutions "
+				+ "across multiple logic tree branches. Individual files that make up a solution are often only affected "
+				+ "by some logic tree branching levels. For example, fault section data ('"+FaultSystemRupSet.SECTS_FILE_NAME
+				+ "')is often affected by fault and deformation model branching levels, but not scaling relationships "
+				+ "nor rate model branches. We store information efficiently for each branch by not duplicating those "
+				+ "files that are constant across multiple branches.\n\n");
+		
+		readme.write("All relevant files are stored in the '"+SUB_DIRECTORY_NAME+"' directory. Solution and rupture "
+				+ "set files will be stored in branch-specific subdirectories, and information on the logic tree "
+				+ "branches available and their file mapping structure are avilable in the following files:\n\n");
+		
+		readme.write(" - "+SUB_DIRECTORY_NAME+"/"+LOGIC_TREE_FILE_NAME+": Logic Tree JSON file listing all logic tree "
+				+ "branches, weights, and details of the branch levels.\n");
+		readme.write(" - "+SUB_DIRECTORY_NAME+"/"+LOGIC_TREE_MAPPINGS_FILE_NAME+": File name mappings for each logic "
+				+ "tree branch. This file is not used by OpenSHA, but is written to help external users quickly identify "
+				+ "the location of each solution or rupture set file for individual logic tree branches.\n");
+		readme.write(" - "+SUB_DIRECTORY_NAME+"/"+PROCESSOR_FILE_NAME+": This file format does not support all optional "
+				+ "modules that can be attached to a solution or rupture set. Instead, a solution processor class in "
+				+ "OpenSHA can be used to provide additional modules as a function of logic tree branch. This file, if "
+				+ "present, gives the class name in OpenSHA of that processor.\n");
+		
+		readme.flush();
+		writer.flush();
+		zout.flush();
+		zout.closeEntry();
+	}
 
 	@Override
 	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
@@ -1067,6 +1369,10 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		if (processor != null)
 			writeProcessorJSON(zout, buildPrefix(entryPrefix), processor);
+		
+		// write README
+		if (writeREADME)
+			writeREADMEToArchive(zout);
 	}
 
 	private static void writeProcessorJSON(ZipOutputStream zout, String prefix, SolutionProcessor processor)

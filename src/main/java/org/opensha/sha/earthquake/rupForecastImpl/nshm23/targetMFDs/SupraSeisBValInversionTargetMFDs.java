@@ -442,7 +442,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				for (double b : sectSpecificBValues)
 					bStats.addValue(b);
 				bString = "section-specific b (avg="+twoDigits.format(bStats.getAverage())
-					+", range=["+twoDigits.format(bStats.getMin())+", "+twoDigits.format(bStats.getMax())+"])";
+					+", range=["+twoDigits.format(bStats.getMin())+", "+twoDigits.format(bStats.getMax())+"]"
+					+ ", N="+sectSpecificBValues.length+")";
 			}
 			System.out.println("Building SupraSeisBValInversionTargetMFDs with "+bString
 					+", slipOnly="+slipOnly+", total MFD range: ["+(float)MIN_MAG+","+(float)refMFD.getMaxX()
@@ -485,7 +486,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			SectMFDCalculator calc = new SectMFDCalculator();
 			calc.calc(exec, refMFD, minMags, zeroRateAllowed, slipOnly, 0d);
 			// give the newly computed target slip rates to the rupture set for use in inversions
-			rupSet.addModule(calc.sectSlipRates);
+			if (subSeisMoRateReduction != SubSeisMoRateReduction.FROM_INPUT_SLIP_RATES)
+				rupSet.addModule(calc.sectSlipRates);
 			if (slipOnly)
 				return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, sectSpecificBValues,
 						null, null, null, null, null, null, calc.sectSlipRates, null);
@@ -675,6 +677,9 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				sectRupInBinCounts = new int[numSects][refMFD.size()];
 				sectMinMagIndexes = new int[numSects];
 				sectMaxMagIndexes = new int[numSects];
+				
+				if (sectSpecificBValues != null)
+					Preconditions.checkState(sectSpecificBValues.length == rupSet.getNumSections());
 				
 				// first, calculate sub and supra-seismogenic G-R MFDs
 				for (int s=0; s<numSects; s++) {
@@ -1506,6 +1511,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			this.supraSeisBValue = supraSeisBValue;
 		} else {
 			this.sectSpecificBValues = sectSpecificBValues;
+			Preconditions.checkState(sectSpecificBValues.length == rupSet.getNumSections());
 			if (Double.isFinite(supraSeisBValue))
 				this.supraSeisBValue = supraSeisBValue;
 			else

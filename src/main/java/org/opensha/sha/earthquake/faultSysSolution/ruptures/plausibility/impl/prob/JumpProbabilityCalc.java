@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.p
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -231,6 +232,7 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 	public class HardcodedJumpProb implements JumpProbabilityCalc {
 		
 		private String name;
+		@JsonAdapter(IDtoProbsTypeAdapter.class)
 		private Map<IDPairing, Double> idsToProbs;
 		private boolean parentSects;
 		
@@ -275,6 +277,43 @@ public interface JumpProbabilityCalc extends RuptureProbabilityCalc {
 				return 1d;
 			return fallback.calcJumpProbability(fullRupture, jump, verbose);
 		}
+	}
+	
+	static class IDtoProbsTypeAdapter extends TypeAdapter<Map<IDPairing, Double>> {
+
+		@Override
+		public void write(JsonWriter out, Map<IDPairing, Double> map) throws IOException {
+			out.beginArray();
+			
+			for (IDPairing pair : map.keySet()) {
+				out.beginArray();
+				out.value(pair.getID1()).value(pair.getID2()).value(map.get(pair));
+				out.endArray();
+			}
+			
+			out.endArray();
+		}
+
+		@Override
+		public Map<IDPairing, Double> read(JsonReader in) throws IOException {
+			in.beginArray();
+			
+			Map<IDPairing, Double> ret = new HashMap<>();
+			
+			while (in.hasNext()) {
+				in.beginArray();
+				int id1 = in.nextInt();
+				int id2 = in.nextInt();
+				double prob = in.nextDouble();
+				ret.put(new IDPairing(id1, id2), prob);
+				in.endArray();
+			}
+			
+			in.endArray();
+			
+			return ret;
+		}
+		
 	}
 	
 	public static class HardcodedBinaryJumpProb implements BinaryJumpProbabilityCalc {

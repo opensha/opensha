@@ -279,7 +279,7 @@ public class SolHazardMapCalc {
 		calcHazardCurves(numThreads, calcIndexes, combineWith);
 	}
 	
-	void calcHazardCurves(int numThreads, List<Integer> calcIndexes, SolHazardMapCalc combineWith) {
+	public void calcHazardCurves(int numThreads, List<Integer> calcIndexes, SolHazardMapCalc combineWith) {
 		synchronized (this) {
 			if (curvesList == null) {
 				List<DiscretizedFunc[]> curvesList = new ArrayList<>();
@@ -374,23 +374,7 @@ public class SolHazardMapCalc {
 				
 				if (skipMaxSiteDist > 0d && Double.isFinite(skipMaxSiteDist)) {
 					// see if we should just skip this site
-					
-					boolean hasSourceWithin = false;
-					if (gridSourceReg != null) {
-						Location siteLoc = site.getLocation();
-						hasSourceWithin = gridSourceReg.contains(siteLoc) ||
-								gridSourceReg.distanceToLocation(siteLoc) <= skipMaxSiteDist;
-					}
-					
-					for (int sourceID=0; !hasSourceWithin && sourceID<numFaultSysSources; sourceID++) {
-						ProbEqkSource source = erf.getSource(sourceID);
-						if (source.getMinDistance(site) < skipMaxSiteDist) {
-							hasSourceWithin = true;
-							break;
-						}
-					}
-					
-					if (!hasSourceWithin) {
+					if (shouldSkipSite(site, skipMaxSiteDist, erf, numFaultSysSources, gridSourceReg)) {
 						// can skip this site, no sources within skipMaxSiteDist
 						checkInitXVals();
 						for (int p=0; p<periods.length; p++) {
@@ -421,21 +405,35 @@ public class SolHazardMapCalc {
 		}
 	}
 	
+	public static boolean shouldSkipSite(Site site, double skipMaxSiteDist, AbstractERF erf,
+			int numFaultSysSources, GriddedRegion gridSourceReg) {
+		if (!(skipMaxSiteDist > 0d && Double.isFinite(skipMaxSiteDist)))
+			return false;
+		boolean hasSourceWithin = false;
+		if (gridSourceReg != null) {
+			Location siteLoc = site.getLocation();
+			hasSourceWithin = gridSourceReg.contains(siteLoc) ||
+					gridSourceReg.distanceToLocation(siteLoc) <= skipMaxSiteDist;
+		}
+		
+		for (int sourceID=0; !hasSourceWithin && sourceID<numFaultSysSources; sourceID++) {
+			ProbEqkSource source = erf.getSource(sourceID);
+			if (source.getMinDistance(site) < skipMaxSiteDist) {
+				hasSourceWithin = true;
+				break;
+			}
+		}
+		
+		return !hasSourceWithin;
+	}
+	
 	private List<DiscretizedFunc> calcSiteCurves(HazardCurveCalculator calc, AbstractERF erf, ScalarIMR gmpe, Site site,
 			SolHazardMapCalc combineWith, int index) {
 		checkInitXVals();
 		List<DiscretizedFunc> ret = new ArrayList<>(periods.length);
 		
 		for (int p=0; p<periods.length; p++) {
-			if (periods[p] == -1d) {
-				gmpe.setIntensityMeasure(PGV_Param.NAME);
-			} else if (periods[p] == 0d) {
-				gmpe.setIntensityMeasure(PGA_Param.NAME);
-			} else {
-				Preconditions.checkState(periods[p] > 0);
-				gmpe.setIntensityMeasure(SA_Param.NAME);
-				SA_Param.setPeriodInSA_Param(gmpe.getIntensityMeasure(), periods[p]);
-			}
+			setIMforPeriod(gmpe, periods[p]);
 			DiscretizedFunc logCurve = logXVals[p].deepClone();
 			calc.getHazardCurve(logCurve, site, gmpe, erf);
 			DiscretizedFunc curve = xVals[p].deepClone();
@@ -452,6 +450,18 @@ public class SolHazardMapCalc {
 			ret.add(curve);
 		}
 		return ret;
+	}
+	
+	public static void setIMforPeriod(ScalarIMR gmpe, double period) {
+		if (period == -1d) {
+			gmpe.setIntensityMeasure(PGV_Param.NAME);
+		} else if (period == 0d) {
+			gmpe.setIntensityMeasure(PGA_Param.NAME);
+		} else {
+			Preconditions.checkState(period > 0);
+			gmpe.setIntensityMeasure(SA_Param.NAME);
+			SA_Param.setPeriodInSA_Param(gmpe.getIntensityMeasure(), period);
+		}
 	}
 	
 	private static void combineIn(DiscretizedFunc curve, DiscretizedFunc oCurve) {
@@ -524,6 +534,16 @@ public class SolHazardMapCalc {
 	
 	public MapPlot buildMapPlot(File outputDir, String prefix, GriddedGeoDataSet xyz, CPT cpt,
 			String title, String zLabel, boolean diffStats) throws IOException {
+		GriddedRegion gridReg = xyz.getRegion();
+		Range lonRange = new Range(
+				Math.min(gridReg.getMinLon()-0.05, xyz.getMinLon()-0.75*gridReg.getLonSpacing()),
+				Math.max(gridReg.getMaxLon()+0.05, xyz.getMaxLon()+0.75*gridReg.getLonSpacing()));
+		Range latRange = new Range(
+				Math.min(gridReg.getMinLat()-0.05, xyz.getMinLat()-0.75*gridReg.getLatSpacing()),
+				Math.max(gridReg.getMaxLat()+0.05, xyz.getMaxLat()+0.75*gridReg.getLatSpacing()));
+		double latSpan = latRange.getLength();
+		double lonSpan = lonRange.getLength();
+		double maxSpan = Math.max(latSpan, lonSpan);
 		synchronized (this) {
 			if (extraFuncs == null) {
 				List<XY_DataSet> extraFuncs = new ArrayList<>();
@@ -531,6 +551,8 @@ public class SolHazardMapCalc {
 				
 				Color outlineColor = new Color(0, 0, 0, 180);
 				Color faultColor = new Color(0, 0, 0, 100);
+				
+				float outlineWidth = maxSpan > 30d ? 1f : 2f;
 				
 				if (!region.isRectangular()) {
 					DefaultXY_DataSet outline = new DefaultXY_DataSet();
@@ -546,33 +568,35 @@ public class SolHazardMapCalc {
 				if (boundaries != null) {
 					for (XY_DataSet boundary : boundaries) {
 						extraFuncs.add(boundary);
-						extraChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, outlineColor));
+						extraChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, outlineWidth, outlineColor));
 					}
 				}
 				
-				PlotCurveCharacterstics traceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, faultColor);
-				
-				DefaultXY_DataSet prevTrace = null;
-				for (FaultSection sect : sol.getRupSet().getFaultSectionDataList()) {
-					DefaultXY_DataSet trace = new DefaultXY_DataSet();
-					for (Location loc : sect.getFaultTrace())
-						trace.set(loc.getLongitude(), loc.getLatitude());
+				if (sol != null) {
+					PlotCurveCharacterstics traceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, faultColor);
 					
-					boolean reused = false;
-					if (prevTrace != null) {
-						Point2D prevLast = prevTrace.get(prevTrace.size()-1);
-						Point2D newFirst = trace.get(0);
-						if ((float)prevLast.getX() == (float)newFirst.getX() && (float)prevLast.getY() == (float)newFirst.getY()) {
-							// reuse
-							for (int i=1; i<trace.size(); i++)
-								prevTrace.set(trace.get(i));
-							reused = true;
+					DefaultXY_DataSet prevTrace = null;
+					for (FaultSection sect : sol.getRupSet().getFaultSectionDataList()) {
+						DefaultXY_DataSet trace = new DefaultXY_DataSet();
+						for (Location loc : sect.getFaultTrace())
+							trace.set(loc.getLongitude(), loc.getLatitude());
+						
+						boolean reused = false;
+						if (prevTrace != null) {
+							Point2D prevLast = prevTrace.get(prevTrace.size()-1);
+							Point2D newFirst = trace.get(0);
+							if ((float)prevLast.getX() == (float)newFirst.getX() && (float)prevLast.getY() == (float)newFirst.getY()) {
+								// reuse
+								for (int i=1; i<trace.size(); i++)
+									prevTrace.set(trace.get(i));
+								reused = true;
+							}
 						}
-					}
-					if (!reused) {
-						extraFuncs.add(trace);
-						prevTrace = trace;
-						extraChars.add(traceChar);
+						if (!reused) {
+							extraFuncs.add(trace);
+							prevTrace = trace;
+							extraChars.add(traceChar);
+						}
 					}
 				}
 				this.extraChars = extraChars;
@@ -586,14 +610,6 @@ public class SolHazardMapCalc {
 		
 		spec.setXYElems(extraFuncs);
 		spec.setXYChars(extraChars);
-		
-		GriddedRegion gridReg = xyz.getRegion();
-		Range lonRange = new Range(
-				Math.min(gridReg.getMinLon()-0.05, xyz.getMinLon()-0.75*gridReg.getLonSpacing()),
-				Math.max(gridReg.getMaxLon()+0.05, xyz.getMaxLon()+0.75*gridReg.getLonSpacing()));
-		Range latRange = new Range(
-				Math.min(gridReg.getMinLat()-0.05, xyz.getMinLat()-0.75*gridReg.getLatSpacing()),
-				Math.max(gridReg.getMaxLat()+0.05, xyz.getMaxLat()+0.75*gridReg.getLatSpacing()));
 		
 		if (diffStats) {
 			// these are percent differences, add stats
@@ -668,13 +684,18 @@ public class SolHazardMapCalc {
 				left = false;
 			}
 			
-			double yDiff = latRange.getLength();
-			if (yDiff > 10)
+			double yDiff = latSpan;
+			if (yDiff > 30)
+				yDiff /= 30d;
+			else if (yDiff > 10)
 				yDiff /= 30d;
 			else if (yDiff > 5d)
 				yDiff /= 20d;
 			else
 				yDiff /= 15d;
+			if (lonSpan > 1.75*latSpan)
+				// really wide (conus?), stretch it back out
+				yDiff *= 1.5;
 			double y = latRange.getUpperBound() - 0.5*yDiff;
 			
 			for (String label : labels) {
@@ -689,7 +710,6 @@ public class SolHazardMapCalc {
 		
 		gp.drawGraphPanel(spec, false, false, lonRange, latRange);
 		
-		double maxSpan = Math.max(lonRange.getLength(), latRange.getLength());
 		double tick;
 		if (maxSpan > 20)
 			tick = 5d;
@@ -747,41 +767,63 @@ public class SolHazardMapCalc {
 	}
 	
 	public void writeCurvesCSVs(File outputDir, String prefix, boolean gzip) throws IOException {
+		writeCurvesCSVs(outputDir, prefix, gzip, false);
+	}
+	
+	public void writeCurvesCSVs(File outputDir, String prefix, boolean gzip, boolean allowNull) throws IOException {
 		for (double period : periods) {
 			String fileName = getCSV_FileName(prefix, period);
 			if (gzip)
 				fileName += ".gz";
 			File outputFile = new File(outputDir, fileName);
 			
-			writeCurvesCSV(outputFile, period);
+			writeCurvesCSV(outputFile, period, allowNull);
 		}
 	}
 	
 	public void writeCurvesCSV(File outputFile, double period) throws IOException {
+		writeCurvesCSV(outputFile, period, false);
+	}
+	
+	public void writeCurvesCSV(File outputFile, double period, boolean allowNull) throws IOException {
 		
 		Preconditions.checkState(curvesList != null, "Must call calcHazardCurves first");
 		int p = periodIndex(period);
 		
 		DiscretizedFunc[] curves = curvesList.get(p);
-		Preconditions.checkNotNull(curves[0], "Curve not calculated at index 0");
+		Preconditions.checkState(allowNull || curves[0] != null, "Curve not calculated at index 0");
 		
-		writeCurvesCSV(outputFile, curves, region.getNodeList());
+		writeCurvesCSV(outputFile, curves, region.getNodeList(), allowNull);
 	}
 	
 	public static CSVFile<String> buildCurvesCSV(DiscretizedFunc[] curves, LocationList locs) {
+		return buildCurvesCSV(curves, locs, false);
+	}
+	
+	public static CSVFile<String> buildCurvesCSV(DiscretizedFunc[] curves, LocationList locs, boolean allowNull) {
 		CSVFile<String> csv = new CSVFile<>(true);
 		
 		List<String> header = new ArrayList<>();
 		header.add("Index");
 		header.add("Latitude");
 		header.add("Longitude");
-		for (int i=0; i<curves[0].size(); i++)
-			header.add((float)curves[0].getX(i)+"");
+		DiscretizedFunc refCurve = null;
+		for (DiscretizedFunc curve : curves) {
+			if (curve != null) {
+				refCurve = curve;
+				break;
+			}
+		}
+		Preconditions.checkNotNull(refCurve, "All curves are null");
+		for (int i=0; i<refCurve.size(); i++)
+			header.add((float)refCurve.getX(i)+"");
 		
 		csv.addLine(header);
 		
 		for (int i=0; i<curves.length; i++) {
 			DiscretizedFunc curve = curves[i];
+			if (allowNull && curve == null)
+				continue;
 			Preconditions.checkNotNull(curve, "Curve not calculated at index %s", i);
 			
 			List<String> line = new ArrayList<>();
@@ -798,7 +840,11 @@ public class SolHazardMapCalc {
 	}
 	
 	public static void writeCurvesCSV(File outputFile, DiscretizedFunc[] curves, LocationList locs) throws IOException {
-		CSVFile<String> csv = buildCurvesCSV(curves, locs);
+		writeCurvesCSV(outputFile, curves, locs, false);
+	}
+	
+	public static void writeCurvesCSV(File outputFile, DiscretizedFunc[] curves, LocationList locs, boolean allowNull) throws IOException {
+		CSVFile<String> csv = buildCurvesCSV(curves, locs, allowNull);
 		
 		csv.writeToFile(outputFile);
 	}
@@ -832,18 +878,22 @@ public class SolHazardMapCalc {
 	}
 	
 	public static DiscretizedFunc[] loadCurvesCSV(CSVFile<String> csv, GriddedRegion region) {
+		return loadCurvesCSV(csv, region, false);
+	}
+	
+	public static DiscretizedFunc[] loadCurvesCSV(CSVFile<String> csv, GriddedRegion region, boolean allowNull) {
 		ArbitrarilyDiscretizedFunc xVals = new ArbitrarilyDiscretizedFunc();
 		for (int col=3; col<csv.getNumCols(); col++)
 			xVals.set(csv.getDouble(0, col), 0d);
 		
-		boolean remap = region != null && region.getNodeCount() != csv.getNumRows()-1;
+		boolean remap = !allowNull && region != null && region.getNodeCount() != csv.getNumRows()-1;
 		if (remap)
 			Preconditions.checkState(region.getNodeCount() < csv.getNumRows()-1,
 					"Can only remap if the passed in region is a subset of the CSV region");
 		
 		DiscretizedFunc[] curves;
 		if (region != null) {
-			Preconditions.checkState(remap || csv.getNumRows() == region.getNodeCount()+1,
+			Preconditions.checkState(allowNull || remap || csv.getNumRows() == region.getNodeCount()+1,
 					"Region node count discrepancy: %s != %s", csv.getNumRows()-1, region.getNodeCount());
 			
 			curves = new DiscretizedFunc[region.getNodeCount()];
@@ -852,7 +902,7 @@ public class SolHazardMapCalc {
 		}
 		
 		for (int row=1; row<csv.getNumRows(); row++) {
-			int index = row-1;
+			int index = allowNull ? csv.getInt(row, 0) : row-1;
 			if (region != null) {
 				Location loc = new Location(csv.getDouble(row, 1), csv.getDouble(row, 2));
 				if (remap) {

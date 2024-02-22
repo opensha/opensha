@@ -17,16 +17,9 @@ public class CustomCacheWrappedSurface extends WrappedRuptureSurface implements 
 	private SurfaceDistanceCache cache;
 
 	public CustomCacheWrappedSurface(CacheEnabledSurface surf) {
-		this(surf, null);
-	}
-
-	public CustomCacheWrappedSurface(CacheEnabledSurface surf, CacheTypes type) {
 		super(surf);
 		this.surf = surf;
-		if (type == null)
-			cache = SurfaceCachingPolicy.build(this);
-		else
-			cache = SurfaceCachingPolicy.build(this, type);
+		cache = SurfaceCachingPolicy.build(this, CacheTypes.SINGLE);
 	}
 
 	@Override

@@ -369,7 +369,6 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 					&& (aseisReducesArea == lastAseisReducesArea)) {
 				return stirlingGriddedSurface;
 			} else {		// make the surface
-				// make sure quad surf is null since things changed
 				if (preserveGridSpacingExactly)
 					stirlingGriddedSurface = new StirlingGriddedSurface(sect.getSimpleFaultData(aseisReducesArea), gridSpacing);
 				else
@@ -380,6 +379,43 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 				lastGridSpacing = gridSpacing;
 			}
 			return stirlingGriddedSurface;
+		}
+	}
+	
+	public static class ApproxEvenlyGriddedSurfaceCache {
+		
+		double lastGridSpacing = Double.NaN; 
+		boolean lastAseisReducesArea;
+		private ApproxEvenlyGriddedSurface approxGriddedSurface = null;
+		private FaultSection sect;
+		private FaultTrace lowerTrace;
+		
+		public ApproxEvenlyGriddedSurfaceCache(FaultSection sect, FaultTrace lowerTrace) {
+			this.sect = sect;
+			this.lowerTrace = lowerTrace;
+		}
+		
+		/**
+		 * This returns a StirlingGriddedSurface with the specified grid spacing, where aseismicSlipFactor
+		 * is applied as a reduction of down-dip-width (an increase of the upper seis depth).
+		 * @param gridSpacing
+		 * @param preserveGridSpacingExactly - if false, this will decrease the grid spacing to fit the length 
+		 * and ddw exactly (otherwise trimming occurs)
+		 * @return
+		 */
+		public synchronized ApproxEvenlyGriddedSurface getStirlingGriddedSurface(
+				double gridSpacing, boolean aseisReducesArea) {
+			// return cached surface?
+			if( (gridSpacing==lastGridSpacing && approxGriddedSurface != null)
+					&& (aseisReducesArea == lastAseisReducesArea)) {
+				return approxGriddedSurface;
+			} else {		// make the surface
+				approxGriddedSurface = new ApproxEvenlyGriddedSurface(sect.getFaultTrace(), lowerTrace,
+						gridSpacing, aseisReducesArea, sect.getAseismicSlipFactor());
+				lastAseisReducesArea = aseisReducesArea;
+				lastGridSpacing = gridSpacing;
+			}
+			return approxGriddedSurface;
 		}
 	}
 	

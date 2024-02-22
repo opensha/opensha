@@ -75,7 +75,7 @@ public enum U3_UncertAddDeformationModels implements LogicTreeNode, RupSetDeform
 	}
 
 	@Override
-	public List<? extends FaultSection> build(RupSetFaultModel faultModel) {
+	public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
 		Preconditions.checkState(faultModel instanceof FaultModels, "%s is not a UCERF3 fault model", faultModel.getName());
 		FaultModels fm = (FaultModels)faultModel;
 		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, u3dm, null, 0.1);
@@ -100,6 +100,21 @@ public enum U3_UncertAddDeformationModels implements LogicTreeNode, RupSetDeform
 		NSHM23_DeformationModels.applyStdDevDefaults(subSects);
 		
 		return subSects;
+	}
+
+	@Override
+	public List<? extends FaultSection> build(RupSetFaultModel faultModel, int minPerFault, double ddwFract,
+			double fixedLen) throws IOException {
+		Preconditions.checkState(minPerFault == 2, "minPerFault must be 2 for UCERF3");
+		Preconditions.checkState(ddwFract == 0.5, "ddwFract must be 0.5 for UCERF3");
+		Preconditions.checkState(!(fixedLen > 0d), "fixedLen must be NaN for UCERF3");
+		return build(faultModel);
+	}
+
+	@Override
+	public List<? extends FaultSection> buildForSubsects(RupSetFaultModel faultModel,
+			List<? extends FaultSection> subSects) throws IOException {
+		throw new UnsupportedOperationException("Not supported, UCERF3 must build the subsections");
 	}
 	
 	public static void main(String[] args) throws IOException {

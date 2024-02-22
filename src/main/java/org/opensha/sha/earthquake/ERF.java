@@ -1,6 +1,9 @@
 package org.opensha.sha.earthquake;
 
 import java.util.List;
+import java.util.function.UnaryOperator;
+
+import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
 
 /**
  * This is the base interface for an Earthquake Rupture Forecast</b> <br>
@@ -54,6 +57,16 @@ public interface ERF extends BaseERF, Iterable<ProbEqkSource> {
 	 * @return a random set of ruptures
 	 */
 	public List<EqkRupture> drawRandomEventSet();
+	
+	/**
+	 * If non null, this can be used to consolidate disaggregation results into a consolidatd (and potentially more useful)
+	 * list; this is most useful when many sources in an ERF rupture the same fault, and you want that fault to only
+	 * be listed once. The default implementation returns null.
+	 * @return consolidator or null
+	 */
+	public default UnaryOperator<List<DisaggregationSourceRuptureInfo>> getDisaggSourceConsolidator() {
+		return null;
+	}
 	
 
 }

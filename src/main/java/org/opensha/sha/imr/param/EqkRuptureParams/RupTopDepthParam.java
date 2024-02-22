@@ -15,14 +15,14 @@ public class RupTopDepthParam extends WarningDoubleParameter {
 	protected final static Double MIN = new Double(0);
 	protected final static Double MAX = new Double(100);
 	// warning values are set in subclasses
-	
+
 	
 	/**
 	 * This sets the default value and warning-constraint limits
 	 *  as given, and leaves the parameter as non editable.
 	 */
-	public RupTopDepthParam(double minWarning, double maxWarning, double defaultDepth) {
-		super(NAME, new DoubleConstraint(MIN, MAX));
+	public RupTopDepthParam(double min, double max, double minWarning, double maxWarning, double defaultDepth) {
+		super(NAME, new DoubleConstraint(min, max));
 		getConstraint().setNonEditable();
 		DoubleConstraint warn = new DoubleConstraint(minWarning,maxWarning);
 		warn.setNonEditable();
@@ -30,6 +30,14 @@ public class RupTopDepthParam extends WarningDoubleParameter {
 		setInfo(INFO);
 		setDefaultValue(defaultDepth);
 		setNonEditable();
+	}
+	
+	/**
+	 * This sets the default value and warning-constraint limits
+	 *  as given, and leaves the parameter as non editable.
+	 */
+	public RupTopDepthParam(double minWarning, double maxWarning, double defaultDepth) {
+		this(Double.min(MIN, minWarning), Double.max(MAX, maxWarning), minWarning, maxWarning, defaultDepth);
 	}
 
 	/**

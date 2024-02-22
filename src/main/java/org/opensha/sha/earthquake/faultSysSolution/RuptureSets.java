@@ -10,8 +10,11 @@ import java.io.Reader;
 import java.io.Writer;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -51,6 +54,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCount
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCache;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
@@ -1016,9 +1020,38 @@ public class RuptureSets {
 		}
 	}
 	
+	private static Map<String, RupSetScalingRelationship> scaleOptions = null;
+	static Map<String, RupSetScalingRelationship> getScalingRelOptions() {
+		if (scaleOptions == null) {
+			synchronized (RuptureSets.class) {
+				if (scaleOptions != null)
+					// populated in another thread
+					return scaleOptions;
+				Map<String, RupSetScalingRelationship> ret = new LinkedHashMap<>();
+				
+				// UCERF3 options
+				for (ScalingRelationships scale : ScalingRelationships.values())
+					if (scale.getNodeWeight(null) > 0d)
+						ret.put(scale.name(), scale);
+				ret.put(ScalingRelationships.AVE_UCERF2.name(), ScalingRelationships.AVE_UCERF2);
+				ret.put(ScalingRelationships.MEAN_UCERF3.name(), ScalingRelationships.MEAN_UCERF3);
+				
+				// NSHM23 options
+				for (NSHM23_ScalingRelationships scale : NSHM23_ScalingRelationships.values())
+					if (scale.getNodeWeight(null) > 0d)
+						ret.put(scale.name(), scale);
+				ret.put("MEAN_NSHM23", NSHM23_ScalingRelationships.AVERAGE);
+				
+				scaleOptions = ret;
+			}
+		}
+		return scaleOptions;
+	}
+	
 	private static Options createOptions() {
 		Options ops = new Options();
 
+		ops.addOption(FaultSysTools.helpOption());
 		ops.addOption(FaultSysTools.threadsOption());
 
 		Option subSectsOption = new Option("s", "sub-sections", true,
@@ -1035,7 +1068,8 @@ public class RuptureSets {
 
 		Option scaleOption = new Option("sc", "scale", true,
 				"Scaling relationship to use (for rupture magnitudes & average slips). "
-				+ "Options: "+FaultSysTools.enumOptions(ScalingRelationships.class));
+//				+ "Options: "+FaultSysTools.enumOptions(ScalingRelationships.class));
+				+ "Options: "+getScalingRelOptions().keySet().stream().collect(Collectors.joining(", ")));
 		scaleOption.setRequired(true);
 		ops.addOption(scaleOption);
 
@@ -1085,6 +1119,8 @@ public class RuptureSets {
 	public static void main(String[] args) {
 		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, RuptureSets.class);
 		
+		FaultSysTools.checkPrintHelp(null, cmd, RuptureSets.class);
+		
 		try {
 			Presets preset = Presets.valueOf(cmd.getOptionValue("preset").trim().toUpperCase());
 			System.out.println("Rupture plausibility preset: "+preset);
@@ -1130,7 +1166,8 @@ public class RuptureSets {
 			}
 			
 			Preconditions.checkArgument(cmd.hasOption("scale"), "Must supply scaling relationship (via --scale option)");
-			ScalingRelationships scale = ScalingRelationships.valueOf(cmd.getOptionValue("scale"));
+//			ScalingRelationships scale = ScalingRelationships.valueOf(cmd.getOptionValue("scale"));
+			RupSetScalingRelationship scale = getScalingRelOptions().get(cmd.getOptionValue("scale"));
 			System.out.println("Scaling relationship: "+scale);
 			
 			RupSetConfig config;
@@ -1145,6 +1182,9 @@ public class RuptureSets {
 			}
 			if (cmd.hasOption("jump-distance"))
 				config.setMaxJumpDist(Double.parseDouble(cmd.getOptionValue("jump-distance")));
+			File cacheDir = FaultSysTools.getCacheDir(cmd);
+			config.setCacheDir(cacheDir);
+			config.setAutoCache(cacheDir != null && cacheDir.exists());
 			FaultSystemRupSet rupSet = config.build(FaultSysTools.getNumThreads(cmd));
 			
 			if (outputFile.exists() && outputFile.isDirectory())

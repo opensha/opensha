@@ -3,6 +3,7 @@ package org.opensha.sra.gui.portfolioeal;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 import java.util.StringTokenizer;
 
@@ -56,7 +57,7 @@ public class PortfolioParser {
 
 				// Parse the current line and set the parameters in the asset to it
 				try {
-					ArrayList<String> assetArrayList = parseLine( assetLine );
+					List<String> assetArrayList = parseLine( assetLine );
 					String[] assetValueList = new String[assetArrayList.size()];
 					assetValueList = assetArrayList.toArray( assetValueList );
 					if( assetValueList.length > 0 ) {
@@ -88,7 +89,7 @@ public class PortfolioParser {
 	 * asset.
 	 * @return An ArrayList 
 	 */
-	private ArrayList<String> parseLine( String assetLine ) {
+	public static List<String> parseLine( String assetLine ) {
 		StringTokenizer tokenizer = new StringTokenizer(assetLine);
 		ArrayList<String> assetArrayList = new ArrayList<String>();
 		while( tokenizer.hasMoreTokens() ) {

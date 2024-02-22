@@ -5,8 +5,8 @@ import java.io.Serializable;
 /**
  * <p>Title: FocalMechanism</p>
  *
- * <p>Description: This class allows to set the Focal Mechanism</p>
- * @author Nitin Gupta
+ * <p>Description: This class allows to set the Focal Mechanism. Default values are Double.NaN</p>
+ * @author Nitin Gupta & Ned Field
  * @version 1.0
  */
 public class FocalMechanism implements Serializable {
@@ -16,7 +16,7 @@ public class FocalMechanism implements Serializable {
 	 */
 	private static final long serialVersionUID = 1L;
 
-	private double strike,dip,rake;
+	private double strike=Double.NaN,dip=Double.NaN,rake=Double.NaN;
 
 	/**
 	 * Class default constructor

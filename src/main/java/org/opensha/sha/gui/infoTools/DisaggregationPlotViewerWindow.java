@@ -1,12 +1,8 @@
 package org.opensha.sha.gui.infoTools;
 
 import java.awt.BorderLayout;
-import java.awt.Color;
-import java.awt.Desktop;
 import java.awt.Dimension;
-import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
@@ -19,7 +15,6 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
-import javax.swing.JLabel;
 import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
@@ -33,13 +28,17 @@ import javax.swing.JToolBar;
 import javax.swing.event.HyperlinkEvent;
 import javax.swing.event.HyperlinkListener;
 
+import org.jfree.chart3d.Chart3DPanel;
 import org.jpedal.PdfDecoder;
 import org.opensha.commons.util.BrowserUtils;
 import org.opensha.commons.util.CustomFileFilter;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.sha.calc.disaggregation.DisaggregationCalculatorAPI;
+import org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter;
 
+import com.google.common.base.Preconditions;
 import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
 import com.itextpdf.text.Paragraph;
 import com.itextpdf.text.pdf.PRAcroForm;
 import com.itextpdf.text.pdf.PdfCopy;
@@ -58,24 +57,23 @@ import com.itextpdf.text.pdf.SimpleBookmark;
  */
 
 public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkListener{
-	private final static int W=650;
-	private final static int H=730;
-
+	
+	private final static int W=830;
+	private final static int H=1000;
 
 	private final static String MAP_WINDOW = "Maps using GMT";
 	private JSplitPane mapSplitPane = new JSplitPane();
 	private JScrollPane mapScrollPane = new JScrollPane();
 
 
-	private boolean gmtFromServer = true;
-	JMenuBar menuBar = new JMenuBar();
-	JMenu fileMenu = new JMenu();
+	private JMenuBar menuBar = new JMenuBar();
+	private JMenu fileMenu = new JMenu();
 
-	JMenuItem fileSaveMenu = new JMenuItem();
-	JToolBar jToolBar = new JToolBar();
+	private JMenuItem fileSaveMenu = new JMenuItem();
+	private JToolBar jToolBar = new JToolBar();
 
-	JButton saveButton = new JButton();
-	ImageIcon saveFileImage = new ImageIcon(FileUtils.loadImage("icons/saveFile.jpg"));
+	private JButton saveButton = new JButton();
+	private ImageIcon saveFileImage = new ImageIcon(FileUtils.loadImage("icons/saveFile.jpg"));
 
 
 	private BorderLayout borderLayout1 = new BorderLayout();
@@ -85,8 +83,10 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 	//private final static String HTML_START = "<html><body>";
 	//private final static String HTML_END = "</body></html>";
 
-	//gets the image file name as URL to save as PDF
-	private String imgFileName;
+	//the image as URL (if remote)
+	private String imagePDF_URL;
+	// image pane if native
+	private Chart3DPanel imagePanel;
 
 	//creates the tab panes for the user to view different information for the
 	//disaggregation plot
@@ -95,64 +95,106 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 	private JScrollPane meanModeScrollPane = new JScrollPane();
 	private JScrollPane metadataScrollPane = new JScrollPane();
 	private JScrollPane sourceListDataScrollPane;
+	private JScrollPane consolidatedSourceListDataScrollPane;
 	private JScrollPane binnedDataScrollPane;
 
 	//TextPane to show different disaggregation information
 	private JTextPane meanModePane = new JTextPane();
 	private JTextPane metadataPane = new JTextPane();
 	private JTextPane sourceListDataPane;
+	private JTextPane consolidatedSourceListDataPane;
 	private JTextPane binnedDataPane;
 
 	//Strings for getting the different disaggregation info.
-	private String meanModeText,metadataText,binDataText,sourceDataText;
+	private String meanModeText,metadataText,binDataText,sourceDataText,consolidatedSourceDataText;
 
 	private JFileChooser fileChooser;
-
-
+	
 	/**
-	 * Class constructor
-	 * @param imageFileName : Name of the image file to be shown
-	 * @param mapInfo : Metadata about the Map
-	 * @param gmtFromServer : boolean to check if map to be generated using the Server GMT
-	 * @throws RuntimeException
+	 * Constructor when using a remote disagg PDF (URL)
+	 * @param imagePDF_URL URL of the image
+	 * @param calc disaggregation calculator
+	 * @param metadataText metadata
+	 * @param showBinData if ture, bin data will be shown in a tab
 	 */
-	public DisaggregationPlotViewerWindow(String imageFileName,
-			boolean gmtFromServer,
-			String meanModeString, String metadataString,
-			String binDataString, String sourceDataString)
-	throws RuntimeException{
+	public DisaggregationPlotViewerWindow(String imagePDF_URL,
+			DisaggregationCalculatorAPI calc, String metadataText, boolean showBinData) throws RuntimeException{
+		this(null, imagePDF_URL, calc, metadataText, showBinData);
+	}
+	
+	/**
+	 * Constructor when using a java-generated plot
+	 * @param imagePanel
+	 * @param calc
+	 * @param metadataText metadata
+	 * @param showBinData if ture, bin data will be shown in a tab
+	 */
+	public DisaggregationPlotViewerWindow(Chart3DPanel imagePanel,
+			DisaggregationCalculatorAPI calc, String metadataText, boolean showBinData) {
+		this(imagePanel, null, calc, metadataText, showBinData);
+	}
+	
+	private DisaggregationPlotViewerWindow(
+			Chart3DPanel imagePanel, String imagePDF_URL,
+			DisaggregationCalculatorAPI calc, String metadataText, boolean showBinData) {
+		this(imagePanel, imagePDF_URL, calc.getMeanAndModeInfo(), metadataText,
+				showBinData ? calc.getBinData() : null,
+				calc.getNumSourcesToShow() > 0 ? calc.getDisaggregationSourceInfo() : null,
+				calc.getNumSourcesToShow() > 0 ? calc.getConsolidatedDisaggregationSourceInfo() : null);
+	}
 
-		meanModeText = meanModeString;
-		metadataText = metadataString;
-		binDataText = binDataString;
-		sourceDataText = sourceDataString;
-		this.gmtFromServer = gmtFromServer;
-		imgFileName = imageFileName;
+	
+	public DisaggregationPlotViewerWindow(
+			Chart3DPanel imagePanel, String imagePDF_URL,
+			String meanModeText, String metadataText, String binDataText,
+			String sourceDataText, String consolidatedSourceDataText) {
+		Preconditions.checkState(imagePanel != null || imagePDF_URL != null,
+				"Both imagePanel and imagePDF_URL are null");
+		Preconditions.checkState(imagePanel == null || imagePDF_URL == null,
+				"Both imagePanel and imagePDF_URL are non-null");
+		this.imagePanel = imagePanel;
+		this.imagePDF_URL = imagePDF_URL;
+		this.meanModeText = meanModeText;
+		this.metadataText = metadataText;
+		this.binDataText = binDataText;
+		this.sourceDataText = sourceDataText;
+		this.consolidatedSourceDataText = consolidatedSourceDataText;
 		try {
 			jbInit();
 
 			//show the bin data only if it is not  null
-			if(binDataString !=null && !binDataString.trim().equals("")){
+			if (binDataText !=null && !binDataText.isBlank()){
 				binnedDataScrollPane = new JScrollPane();
 				binnedDataPane = new JTextPane();
 				//adding the text pane for the bin data
 				infoTabPane.addTab("Bin Data", binnedDataScrollPane);
 				binnedDataScrollPane.getViewport().add(binnedDataPane, null);
-				binnedDataPane.setForeground(Color.blue);
+//				binnedDataPane.setForeground(Color.blue);
 				binnedDataPane.setText(binDataText);
 				binnedDataPane.setEditable(false);
 			}
 
 			//show the source list metadata only if it not null
-			if(sourceDataString !=null && !sourceDataString.trim().equals("")){
+			if(sourceDataText !=null && !sourceDataText.isBlank()){
 				sourceListDataScrollPane = new JScrollPane();
 				sourceListDataPane = new JTextPane();
 				//adding the text pane for the source list data
 				infoTabPane.addTab("Source List Data", sourceListDataScrollPane);
 				sourceListDataScrollPane.getViewport().add(sourceListDataPane, null);
-				sourceListDataPane.setForeground(Color.blue);
+//				sourceListDataPane.setForeground(Color.blue);
 				sourceListDataPane.setText(sourceDataText);
 				sourceListDataPane.setEditable(false);
+			}
+			
+			if(consolidatedSourceDataText !=null && !consolidatedSourceDataText.isBlank()){
+				consolidatedSourceListDataScrollPane = new JScrollPane();
+				consolidatedSourceListDataPane = new JTextPane();
+				//adding the text pane for the source list data
+				infoTabPane.addTab("Consolidated Source List Data", consolidatedSourceListDataScrollPane);
+				consolidatedSourceListDataScrollPane.getViewport().add(consolidatedSourceListDataPane, null);
+//				consolidatedSourceListDataPane.setForeground(Color.blue);
+				consolidatedSourceListDataPane.setText(consolidatedSourceDataText);
+				consolidatedSourceListDataPane.setEditable(false);
 			}
 
 		}catch(RuntimeException e) {
@@ -160,7 +202,30 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 			throw new RuntimeException(e.getMessage());
 		}
 		//addImageToWindow(imageFileName);
-		addPdfImageToWindow(imageFileName);
+		if (imagePDF_URL != null) {
+			int currentPage = 1;
+			PdfDecoder pdfDecoder = new PdfDecoder();
+
+			try {
+				//this opens the PDF and reads its internal details
+				pdfDecoder.openPdfFileFromURL(imagePDF_URL);
+
+				//these 2 lines opens page 1 at 100% scaling
+				pdfDecoder.decodePage(currentPage);
+				pdfDecoder.setPageParameters(1, 1); //values scaling (1=100%). page number
+			}
+			catch (Exception e) {
+				e.printStackTrace();
+			}
+
+			//setup our GUI display
+			mapScrollPane.setViewportView(pdfDecoder);
+		} else {
+			mapScrollPane.setViewportView(imagePanel);
+//			mapPanel.add(imagePanel, new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
+//					,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(4, 3, 5, 5), 0, 0));
+		}
+			
 		this.setVisible(true);
 	}
 
@@ -209,13 +274,13 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 
 		//adding the metadata text to the metatada info window
 		metadataPane.setContentType("text/html");
-		metadataPane.setForeground(Color.blue);
+//		metadataPane.setForeground(Color.blue);
 		metadataPane.setText(metadataText);
 		metadataPane.setEditable(false);
 		metadataPane.addHyperlinkListener(this);
 
 		//adding the meanMode text to the meanMode info window
-		meanModePane.setForeground(Color.blue);
+//		meanModePane.setForeground(Color.blue);
 		meanModePane.setText(meanModeText);
 		meanModePane.setEditable(false);
 
@@ -225,54 +290,9 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 		infoTabPane.setTabPlacement(JTabbedPane.BOTTOM);
 		mapPanel.setLayout(layout);
 		mapScrollPane.getViewport().add(mapPanel, null);
-		mapSplitPane.setDividerLocation(480);
+		mapSplitPane.setDividerLocation((int)(H*5d/7d));
 	}
-
-
-	/**
-	 * This function plots the image for the dataset in a single map window
-	 * @param imageFile : Absolute Path/URL to the image.
-	 */
-	private void addImageToWindow(String imageFile){
-		JLabel mapLabel = new JLabel();
-		//adding the image to the label
-		if(!this.gmtFromServer)
-			mapLabel.setIcon(new ImageIcon(imageFile));
-		else
-			try{
-				mapLabel.setIcon(new ImageIcon(new URL(imageFile)));
-			}catch(Exception e){
-				throw new RuntimeException("No Internet connection available");
-			}
-			mapPanel.add(mapLabel,new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
-					,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(4, 3, 5, 5), 0, 0));
-	}
-
-	/**
-	 * Displays the PDF file to the user in the window
-	 * @param fileName String URL to the PDF filename
-	 */
-	private void addPdfImageToWindow(String fileName){
-		int currentPage = 1;
-		PdfDecoder pdfDecoder = new PdfDecoder();
-
-		try {
-			//this opens the PDF and reads its internal details
-			pdfDecoder.openPdfFileFromURL(fileName);
-
-			//these 2 lines opens page 1 at 100% scaling
-			pdfDecoder.decodePage(currentPage);
-			pdfDecoder.setPageParameters(1, 1); //values scaling (1=100%). page number
-		}
-		catch (Exception e) {
-			e.printStackTrace();
-		}
-
-		//setup our GUI display
-		mapScrollPane.setViewportView(pdfDecoder);
-	}
-
-
+	
 	/**
 	 * Opens a file chooser and gives the user an opportunity to save the Image and Metadata
 	 * in PDF format.
@@ -283,9 +303,11 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 		if (fileChooser == null) {
 			fileChooser = new JFileChooser();
 			CustomFileFilter pdfChooser = new CustomFileFilter(".pdf", "PDF File");
+//			CustomFileFilter pngChooser = new CustomFileFilter(".png", "PNG File");
 			CustomFileFilter txtChooser = new CustomFileFilter(".txt", "TXT File");
 
 			fileChooser.addChoosableFileFilter(pdfChooser);
+//			fileChooser.addChoosableFileFilter(pngChooser);
 			fileChooser.addChoosableFileFilter(txtChooser);
 			fileChooser.setAcceptAllFileFilterUsed(false);
 			fileChooser.setFileFilter(pdfChooser);
@@ -301,6 +323,8 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 			}
 			if (ext.equals(".pdf")) {
 				saveAsPDF(fileName);
+//			} else if (ext.equals(".png")) {
+//				saveAsPNG(fileName);
 			} else if (ext.equals(".txt")) {
 				saveAsTXT(fileName);
 			} else {
@@ -311,111 +335,133 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 	}
 
 	private String getDissaggText() {
-		return getDisaggTest(meanModeText, metadataText, binDataText, sourceDataText);
+		return getDisaggText(meanModeText, metadataText, binDataText, sourceDataText, consolidatedSourceDataText);
 	}
 	
-	public static String getDisaggTest(String meanModeText,
-			String metadataText, String binDataText, String sourceDataText) {
-		return "Mean/Mode Metadata :\n"+meanModeText+
-		"\n\n"+"Disaggregation Plot Parameters Info :\n"+
-		metadataText+"\n\n"+"Disaggregation Bin Data :\n"+binDataText+"\n\n"+
-		"Disaggregation Source List Info:\n"+sourceDataText;
+	public static String getDisaggText(String meanModeText,
+			String metadataText, String binDataText, String sourceDataText, String consolidatedSourceDataText) {
+		StringBuilder str = new StringBuilder("Mean/Mode Metadata :\n");
+		str.append(meanModeText);
+		str.append("\n\nDisaggregation Plot Parameters Info :\n");
+		str.append(metadataText);
+		if (binDataText != null && !binDataText.isBlank()) {
+			str.append("\n\n"+"Disaggregation Bin Data :\n");
+			str.append(binDataText);
+		}
+		if (sourceDataText != null && !sourceDataText.isBlank()) {
+			str.append("\n\nDisaggregation Source List Info:\n");
+			str.append(sourceDataText);
+		}
+		if (consolidatedSourceDataText != null && !consolidatedSourceDataText.isBlank()) {
+			str.append("\n\nDisaggregation Source List Info:\n");
+			str.append(sourceDataText);
+		}
+		return str.toString();
 	}
 	
 	protected void saveAsTXT(String outputFileName) {
-		saveAsTXT(outputFileName,  meanModeText, metadataText, binDataText, sourceDataText);
+		saveAsTXT(outputFileName,  meanModeText, metadataText, binDataText, sourceDataText, consolidatedSourceDataText);
 	}
 	
 	public static void saveAsTXT(String outputFileName, String meanModeText,
-			String metadataText, String binDataText, String sourceDataText) {
-		FileUtils.save(outputFileName, getDisaggTest(meanModeText, metadataText, binDataText, sourceDataText));
+			String metadataText, String binDataText, String sourceDataText,
+			String consolidatedSourceDataText) {
+		FileUtils.save(outputFileName, getDisaggText(meanModeText, metadataText, binDataText, sourceDataText, consolidatedSourceDataText));
+	}
+
+	public static void saveAsPDF(Chart3DPanel disaggPanel, String outputFileName, String meanModeText,
+			String metadataText, String binDataText, String sourceDataText, String consolidatedSourceDataText) throws IOException {
+		saveAsPDF(disaggPanel, null, outputFileName, meanModeText, metadataText, binDataText, sourceDataText, consolidatedSourceDataText);
 	}
 
 	public static void saveAsPDF(String disaggPDF_URL, String outputFileName, String meanModeText,
-			String metadataText, String binDataText, String sourceDataText) {
-		// step 1: creation of a document-object
-		Document document = new Document();
-		//document for temporary storing the metadata as pdf-file
-		Document document_temp = new Document();
-		//String array to store the 2 pdfs
-		String[] pdfFiles = new String[2];
-		try {
+			String metadataText, String binDataText, String sourceDataText, String consolidatedSourceDataText) throws IOException {
+		saveAsPDF(null, disaggPDF_URL, outputFileName, meanModeText, metadataText, binDataText, sourceDataText, consolidatedSourceDataText);
+	}
 
-			String disaggregationInfoString = getDisaggTest(meanModeText, metadataText, binDataText, sourceDataText);
-
+	private static void saveAsPDF(Chart3DPanel disaggPanel, String disaggPDF_URL, String outputFileName, String meanModeText,
+			String metadataText, String binDataText, String sourceDataText, String consolidatedSourceDataText) throws IOException {
+		String disaggregationInfoString = getDisaggText(meanModeText, metadataText, binDataText, sourceDataText, consolidatedSourceDataText);
+		
+		if (disaggPanel != null) {
+			PureJavaDisaggPlotter.writeChartPDF(new File(outputFileName), disaggPanel, disaggregationInfoString);
+		} else {
+			// step 1: creation of a document-object
+			Document document = new Document();
+			//document for temporary storing the metadata as pdf-file
+			Document document_temp = new Document();
+			//String array to store the 2 pdfs
+			String[] pdfFiles = new String[2];
 			pdfFiles[0] = disaggPDF_URL;
 			pdfFiles[1] = outputFileName+".tmp";
 			//creating the temp data pdf for the Metadata
-			PdfWriter.getInstance(document_temp,
-					new FileOutputStream(pdfFiles[1]));
-			document_temp.open();
-			document_temp.add(new Paragraph(disaggregationInfoString));
-			document_temp.close();
+			try {
+				PdfWriter.getInstance(document_temp,
+						new FileOutputStream(pdfFiles[1]));
+				document_temp.open();
+				document_temp.add(new Paragraph(disaggregationInfoString));
+				document_temp.close();
 
-			//concating the PDF files, one is the temporary pdf file that was created
-			//for storing the metadata, other is the Disaggregation plot image pdf file
-			//which is read as URL.
-			int pageOffset = 0;
-			ArrayList master = new ArrayList();
-			int f = 0;
+				//concating the PDF files, one is the temporary pdf file that was created
+				//for storing the metadata, other is the Disaggregation plot image pdf file
+				//which is read as URL.
+				int pageOffset = 0;
+				ArrayList master = new ArrayList();
 
-			PdfCopy writer = null;
-			while (f < pdfFiles.length) {
-				// we create a reader for a certain document
-				PdfReader reader = null;
-				if(f ==0)
-					reader = new PdfReader(new URL(pdfFiles[f]));
-				else
-					reader = new PdfReader(pdfFiles[f]);
+				PdfCopy writer = null;
+				for (int f=0; f<pdfFiles.length; f++) {
+					// we create a reader for a certain document
+					PdfReader reader = null;
+					if(f ==0)
+						reader = new PdfReader(new URL(pdfFiles[f]));
+					else
+						reader = new PdfReader(pdfFiles[f]);
 
-				reader.consolidateNamedDestinations();
-				// we retrieve the total number of pages
-				int n = reader.getNumberOfPages();
-				java.util.List bookmarks = SimpleBookmark.getBookmark(reader);
-				if (bookmarks != null) {
-					if (pageOffset != 0)
-						SimpleBookmark.shiftPageNumbers(bookmarks, pageOffset, null);
-					master.addAll(bookmarks);
-				}
-				pageOffset += n;
+					reader.consolidateNamedDestinations();
+					// we retrieve the total number of pages
+					int n = reader.getNumberOfPages();
+					java.util.List bookmarks = SimpleBookmark.getBookmark(reader);
+					if (bookmarks != null) {
+						if (pageOffset != 0)
+							SimpleBookmark.shiftPageNumbers(bookmarks, pageOffset, null);
+						master.addAll(bookmarks);
+					}
+					pageOffset += n;
 
-				if (f == 0) {
-					// step 1: creation of a document-object
-					document = new Document(reader.getPageSizeWithRotation(1));
-					// step 2: we create a writer that listens to the document
-					writer = new PdfCopy(document, new FileOutputStream(outputFileName));
-					// step 3: we open the document
-					document.open();
-				}
-				// step 4: we add content
-				PdfImportedPage page;
-				for (int i = 0; i < n; ) {
-					++i;
-					page = writer.getImportedPage(reader, i);
-					writer.addPage(page);
-				}
-				PRAcroForm form = reader.getAcroForm();
-				if (form != null)
-					System.err.println("TODO: replace old copyAcroForm method");
+					if (f == 0) {
+						// step 1: creation of a document-object
+						document = new Document(reader.getPageSizeWithRotation(1));
+						// step 2: we create a writer that listens to the document
+						writer = new PdfCopy(document, new FileOutputStream(outputFileName));
+						// step 3: we open the document
+						document.open();
+					}
+					// step 4: we add content
+					PdfImportedPage page;
+					for (int i = 0; i < n; ) {
+						++i;
+						page = writer.getImportedPage(reader, i);
+						writer.addPage(page);
+					}
+					PRAcroForm form = reader.getAcroForm();
+					if (form != null)
+						System.err.println("TODO: replace old copyAcroForm method");
 //					writer.copyAcroForm(reader);
-				f++;
+				}
+				if (master.size() > 0)
+					writer.setOutlines(master);
+				// step 5: we close the document
+				document.close();
+			} catch (IOException e) {
+				throw e;
+			} catch (Exception e) {
+				throw ExceptionUtils.asRuntimeException(e);
 			}
-			if (master.size() > 0)
-				writer.setOutlines(master);
-			// step 5: we close the document
-			document.close();
 
+			//deleting the temporary PDF file that was created for storing the metadata
+			File f = new File(pdfFiles[1]);
+			f.delete();
 		}
-		catch (DocumentException de) {
-			System.err.println(de.getMessage());
-		}
-		catch (IOException ioe) {
-			System.err.println(ioe.getMessage());
-		}
-
-		//deleting the temporary PDF file that was created for storing the metadata
-		File f = new File(pdfFiles[1]);
-		f.delete();
 	}
 
 	/**
@@ -424,7 +470,8 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 	 * @throws IOException
 	 */
 	protected void saveAsPDF(String fileName) throws IOException {
-		saveAsPDF(imgFileName, fileName, meanModeText, metadataText, binDataText, sourceDataText);
+		saveAsPDF(imagePanel, imagePDF_URL, fileName, meanModeText, metadataText,
+				binDataText, sourceDataText, consolidatedSourceDataText);
 	}
 
 	/**

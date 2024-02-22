@@ -1208,6 +1208,8 @@ public class ETAS_CatalogIO {
 
 		// write number of catalogs as int
 		out.writeInt(entries.size());
+		
+		int printMod = 1;
 
 		for (int i=0; i<entries.size(); i++) {
 			ZipEntry catEntry = entries.get(i);
@@ -1215,8 +1217,15 @@ public class ETAS_CatalogIO {
 					zip.getInputStream(catEntry), minMag);
 			writeCatalogBinary(out, cat);
 
-			if ((i+1) % 1000 == 0)
+			if ((i+1) % printMod == 0) {
 				System.out.println("Converted "+(i+1)+" catalogs (and counting)...");
+				if (printMod < 1000) {
+					if (i+1 == 10)
+						printMod = 10;
+					else if (i+1 == 100)
+						printMod = 100;
+				}
+			}
 		}
 
 		zip.close();
