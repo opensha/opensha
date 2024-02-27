@@ -27,6 +27,7 @@ public class JavaShellScriptWriter implements XMLSaveable {
 	private boolean headless;
 	private Map<String, String> properties;
 	private Map<String, String> envVars;
+	private List<String> customSetupLines;
 	
 	private int autoMemBufferMB = 5000;
 	private boolean autoMemDetect = false;
@@ -120,12 +121,17 @@ public class JavaShellScriptWriter implements XMLSaveable {
 		this.autoMemDetect = autoMemDetect;
 	}
 	
+	public void setCustomSetupLines(List<String> setupLines) {
+		this.customSetupLines = setupLines;
+	}
+	
+	public List<String> getCustomSetupLines() {
+		return customSetupLines;
+	}
+	
 	public List<String> getJVMSetupLines() {
 		List<String> lines = new ArrayList<>();
 		
-		if (envVars != null)
-			for (String varName : envVars.keySet())
-				lines.add(varName+"="+envVars.get(varName));
 		if (maxHeapSizeMB > 0 || autoMemDetect)
 			lines.add("JVM_MEM_MB="+maxHeapSizeMB);
 		if (initialHeapSizeMB > 0)
@@ -146,6 +152,29 @@ public class JavaShellScriptWriter implements XMLSaveable {
 			lines.add("else");
 			lines.add("\techo \"Keeping minimum JVM MEM of $JVM_MEM_MB MB\"");
 			lines.add("fi");
+		}
+		
+		return lines;
+	}
+	
+	public List<String> getAllSetupLines() {
+		List<String> lines = new ArrayList<>();
+		
+		if (envVars != null)
+			for (String varName : envVars.keySet())
+				lines.add(varName+"="+envVars.get(varName));
+		
+		if (customSetupLines != null && !customSetupLines.isEmpty()) {
+			if (!lines.isEmpty())
+				lines.add("");
+			lines.addAll(customSetupLines);
+		}
+		
+		List<String> jvmLines = getJVMSetupLines();
+		if (jvmLines != null && !jvmLines.isEmpty()) {
+			if (!lines.isEmpty())
+				lines.add("");
+			lines.addAll(jvmLines);
 		}
 		
 		return lines;
@@ -223,7 +252,7 @@ public class JavaShellScriptWriter implements XMLSaveable {
 		
 		script.add("#!/bin/bash");
 		script.add("");
-		script.addAll(getJVMSetupLines());
+		script.addAll(getAllSetupLines());
 		for (int i=0; i<classNames.size(); i++) {
 			script.add("");
 			script.add(buildCommand(classNames.get(i), argss.get(i)));
