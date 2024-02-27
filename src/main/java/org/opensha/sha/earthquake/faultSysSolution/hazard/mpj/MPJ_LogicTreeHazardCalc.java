@@ -119,6 +119,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private SolHazardMapCalc externalGriddedCurveCalc;
 	
 	private QuickGriddedHazardMapCalc[] quickGridCalcs;
+	
+	private boolean noMFDs;
 
 	public MPJ_LogicTreeHazardCalc(CommandLine cmd) throws IOException {
 		super(cmd);
@@ -253,6 +255,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				quickGridCalcs[p] = new QuickGriddedHazardMapCalc(gmpeRef, periods[p],
 						SolHazardMapCalc.getDefaultXVals(periods[p]), maxDistance);
 		}
+		
+		noMFDs = cmd.hasOption("no-mfds");
 		
 		if (rank == 0) {
 			waitOnDir(outputDir, 5, 1000);
@@ -569,6 +573,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	}
 	
 	public static Supplier<ScalarIMR> getGMM_Supplier(LogicTreeBranch<?> branch, Supplier<ScalarIMR> upstream) {
+		if (branch == null)
+			return upstream;
+		
 		Supplier<ScalarIMR> supplier;
 		if (branch.hasValue(ScalarIMR_LogicTreeNode.class))
 			supplier = branch.requireValue(ScalarIMR_LogicTreeNode.class);
@@ -817,6 +824,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				calc.setMaxSourceSiteDist(maxDistance);
 				calc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
 				calc.setAseisReducesArea(aseisReducesArea);
+				calc.setNoMFDs(noMFDs);
 				
 				calc.calcHazardCurves(getNumThreads(), combineWithCurves);
 				calc.writeCurvesCSVs(hazardSubDir, curvesPrefix, true);
@@ -887,6 +895,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		ops.addOption("qgc", "quick-grid-calc", false, "Flag to enable quick gridded seismicity calculation.");
 		ops.addOption("cwd", "combine-with-dir", true, "Path to a different directory to serach for pre-computed curves "
 				+ "to draw from.");
+		ops.addOption(null, "no-mfds", false, "Flag to disable rupture MFDs, i.e., use a single magnitude for all "
+				+ "ruptures in the case of a branch-averaged solution");
 		
 		return ops;
 	}
