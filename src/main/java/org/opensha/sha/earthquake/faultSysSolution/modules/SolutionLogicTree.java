@@ -158,6 +158,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		}
 		
 		private static LogicTree<?> singleSolTree(LogicTreeBranch<?> branch) {
+			if (branch == null)
+				return null;
 			List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
 			List<LogicTreeNode> nodes = new ArrayList<>();
 			for (int i=0; i<branch.size(); i++) {
@@ -182,10 +184,16 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		private void init(List<FaultSystemSolution> solutions, LogicTree<?> tree) {
 			this.solutions = solutions;
-			Preconditions.checkState(solutions.size() == tree.size());
 			branchIndexMap = new HashMap<>(solutions.size());
-			for (int i=0; i<tree.size(); i++)
-				branchIndexMap.put(tree.getBranch(i), i);
+			if (tree == null) {
+				// no tree
+				Preconditions.checkState(solutions.size() == 1);
+				branchIndexMap.put(null, 0);
+			} else {
+				Preconditions.checkState(solutions.size() == tree.size());
+				for (int i=0; i<tree.size(); i++)
+					branchIndexMap.put(tree.getBranch(i), i);
+			}
 		}
 
 		@Override

@@ -461,7 +461,7 @@ public class LogicTreeHazardCompare {
 			if (FaultSystemSolution.isSolution(resultsZip)) {
 				// single solution
 				FaultSystemSolution sol = FaultSystemSolution.load(resultsZip);
-				solTree = new SolutionLogicTree.InMemory(sol, sol.requireModule(LogicTreeBranch.class));
+				solTree = new SolutionLogicTree.InMemory(sol, null);
 			} else {
 				solTree = SolutionLogicTree.load(resultsZip);
 			}
@@ -476,9 +476,9 @@ public class LogicTreeHazardCompare {
 		if (tree == null && solTree != null)
 			tree = solTree.getLogicTree();
 		
-		if (subsetNodes != null)
+		if (subsetNodes != null && tree != null)
 			tree = tree.matchingAll(subsetNodes);
-		if (currentWeights)
+		if (currentWeights && tree != null)
 			tree.setWeightProvider(new BranchWeightProvider.CurrentWeights());
 		
 		LogicTreeHazardCompare mapper = null;
@@ -762,10 +762,18 @@ public class LogicTreeHazardCompare {
 				mapper = new SolHazardMapCalc(sol, null, gridReg, periods);
 		}
 		
-		if (mapper == null)
+		if (mapper == null) {
 			// if we're here, the primary is an external (branch is null)
-			// build mapper without a solution (no faults will be shown)
-			mapper = new SolHazardMapCalc(null, null, gridReg, periods);
+			
+			if (solLogicTree != null && solLogicTree instanceof SolutionLogicTree.InMemory && tree == null) {
+				// single in memory, keyed with null branch, fetch the solution
+				FaultSystemSolution sol = solLogicTree.forBranch(null);
+				mapper = new SolHazardMapCalc(sol, null, gridReg, periods);
+			} else {
+				// build mapper without a solution (no faults will be shown)
+				mapper = new SolHazardMapCalc(null, null, gridReg, periods);
+			}
+		}
 		
 		Stopwatch watch = Stopwatch.createStarted();
 		
@@ -1720,13 +1728,19 @@ public class LogicTreeHazardCompare {
 				}
 				lines.add("");
 				
+				boolean multi = branches.size() > 1;
+				boolean cmulti = comp.branches != null && comp.branches.size() > 1;
+				
 				MapPlot meanMapPlot = mapper.buildMapPlot(resourcesDir, prefix+"_mean", log10(mean),
-						logCPT, TITLES ? name : " ", "Log10 Weighted-Average, "+label, false);
+						logCPT, TITLES ? name : " ", "Log10 "+(multi ? "Weighted-Average" : "Mean")+", "+label, false);
 				File meanMapFile = new File(resourcesDir, meanMapPlot.prefix+".png");
 				GriddedGeoDataSet.writeXYZFile(mean, new File(resourcesDir, prefix+"_mean.xyz"));
-				File medianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_median", log10(median),
-						logCPT, TITLES ? name : " ", "Log10 Weighted-Median, "+label);
-				GriddedGeoDataSet.writeXYZFile(median, new File(resourcesDir, prefix+"_median.xyz"));
+				File medianMapFile = null;
+				if (multi) {
+					medianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_median", log10(median),
+							logCPT, TITLES ? name : " ", "Log10 Weighted-Median, "+label);
+					GriddedGeoDataSet.writeXYZFile(median, new File(resourcesDir, prefix+"_median.xyz"));
+				}
 				
 				if (cmean == null) {
 					lines.add("### Mean and median hazard maps, "+unitlessLabel);
@@ -1734,17 +1748,21 @@ public class LogicTreeHazardCompare {
 					
 					TableBuilder table = MarkdownUtils.tableBuilder();
 					// no comparison, simple table
+					if (multi) {
+						table.initNewLine();
+						table.addColumn(MarkdownUtils.boldCentered("Weighted-Average"));
+						table.addColumn(MarkdownUtils.boldCentered("Weighted-Median"));
+						table.finalizeLine();
+					}
 					table.initNewLine();
-					table.addColumn(MarkdownUtils.boldCentered("Weighted-Average"));
-					table.addColumn(MarkdownUtils.boldCentered("Weighted-Median"));
-					table.finalizeLine().initNewLine();
 					table.addColumn("![Mean Map]("+resourcesDir.getName()+"/"+meanMapFile.getName()+")");
-					table.addColumn("![Median Map]("+resourcesDir.getName()+"/"+medianMapFile.getName()+")");
+					if (multi)
+						table.addColumn("![Median Map]("+resourcesDir.getName()+"/"+medianMapFile.getName()+")");
 					table.finalizeLine();
 					lines.addAll(table.build());
 					lines.add("");
 					
-					if (branches.size() == 1)
+					if (!multi)
 						// don't bother with percentiles and such
 						continue;
 				} else {
@@ -1753,17 +1771,20 @@ public class LogicTreeHazardCompare {
 					
 					TableBuilder table = MarkdownUtils.tableBuilder();
 					
-					// comparison
+					// comparison mean
 					File cmeanMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_mean", log10(cmean),
 							logCPT, TITLES ? compName : " ", "Log10 Weighted-Average, "+label);
 					GriddedGeoDataSet.writeXYZFile(cmean, new File(resourcesDir, prefix+"_comp_mean.xyz"));
-					File cmedianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_median", log10(cmedian),
-							logCPT, TITLES ? compName : " ", "Log10 Weighted-Median, "+label);
-					GriddedGeoDataSet.writeXYZFile(cmedian, new File(resourcesDir, prefix+"_comp_median.xyz"));
 					
 					table.initNewLine();
-					table.addColumn(MarkdownUtils.boldCentered("Primary (_"+name+"_) Weighted-Average"));
-					table.addColumn(MarkdownUtils.boldCentered("Comparison (_"+compName+"_) Weighted-Average"));
+					if (multi)
+						table.addColumn(MarkdownUtils.boldCentered("Primary (_"+name+"_) Weighted-Average"));
+					else
+						table.addColumn(MarkdownUtils.boldCentered("Comparison (_"+name+"_)"));
+					if (cmulti)
+						table.addColumn(MarkdownUtils.boldCentered("Comparison (_"+compName+"_) Weighted-Average"));
+					else
+						table.addColumn(MarkdownUtils.boldCentered("Comparison (_"+compName+"_)"));
 					table.finalizeLine().initNewLine();
 					table.addColumn("![Mean Map]("+resourcesDir.getName()+"/"+meanMapFile.getName()+")");
 					table.addColumn("![Mean Map]("+resourcesDir.getName()+"/"+cmeanMapFile.getName()+")");
@@ -1772,93 +1793,115 @@ public class LogicTreeHazardCompare {
 					lines.addAll(table.build());
 					lines.add("");
 					
-					table = MarkdownUtils.tableBuilder();
-					addDiffInclExtremesLines(mean, name, min, max, cmean, compName, prefix+"_mean", resourcesDir, table, "Mean", unitlessLabel, false, comp.gridReg);
-					addDiffInclExtremesLines(mean, name, min, max, cmean, compName, prefix+"_mean", resourcesDir, table, "Mean", label, true, comp.gridReg);
-					
-					lines.add("The following plots compare mean hazard between _"+name+"_ and a comparison model, _"
-							+ compName+"_. The top row gives hazard ratios, expressed as % change, and the bottom row "
-							+ "gives differences.");
-					lines.add("");
-					lines.add("The left column compares the mean maps directly, with the comparison model as the "
-							+ "divisor/subtrahend. Warmer colors indicate increased hazard in _"+name
-							+ "_ relative to _"+compName+"_.");
-					lines.add("");
-					lines.add("The right column shows where and by how much the comparison mean model (_"+compName
-							+ "_) is outside the distribution of values across all branches of the primary model (_"
-							+ name+"_). Here, places that are zeros (light gray) indicate that the comparison mean "
-							+ "hazard map is fully contained within the range of values in _"+name+"_, cool colors "
-							+ "indicate areas where the primary model is always lower than the comparison mean model, "
-							+ "and warm colors areas where the primary model is always greater. Note that the color "
-							+ "scales are reversed here so that colors are consistent with the left column even though "
-							+ "the comparison model is now the dividend/minuend.");
-					lines.add("");
-					lines.addAll(table.build());
-					lines.add("");
-					
-					if (branches.size() == 1)
-						// don't bother with medians, percentiles, and such
-						continue;
-					
-					lines.add("### Median hazard maps and comparisons, "+unitlessLabel);
-					lines.add(topLink); lines.add("");
-					
-					table = MarkdownUtils.tableBuilder();
-					table.initNewLine();
-					table.addColumn(MarkdownUtils.boldCentered("Primary Weighted-Median"));
-					table.addColumn(MarkdownUtils.boldCentered("Comparison Weighted-Median"));
-					table.finalizeLine().initNewLine();
-					table.addColumn("![Median Map]("+resourcesDir.getName()+"/"+medianMapFile.getName()+")");
-					table.addColumn("![Median Map]("+resourcesDir.getName()+"/"+cmedianMapFile.getName()+")");
-					table.finalizeLine();
-					
-					lines.addAll(table.build());
-					lines.add("");
-					
-					table = MarkdownUtils.tableBuilder();
-					
-					addDiffInclExtremesLines(median, name, min, max, cmedian, compName, prefix+"_median", resourcesDir, table, "Median", unitlessLabel, false, comp.gridReg);
-					addDiffInclExtremesLines(median, name, min, max, cmedian, compName, prefix+"_median", resourcesDir, table, "Median", label, true, comp.gridReg);
-					
-					lines.add("");
-					lines.add("This section is the same as above, but using median hazard maps rather than mean.");
-					lines.add("");
-					lines.addAll(table.build());
-					lines.add("");
-					
-					table = MarkdownUtils.tableBuilder();
-					
-					table.addLine(MarkdownUtils.boldCentered("Comparison Mean Percentile"),
-							MarkdownUtils.boldCentered("Comparison Median Percentile"));
-					GriddedGeoDataSet cMeanPercentile = calcPercentileWithinDist(mapNCDFs, cmean);
-					GriddedGeoDataSet cMedianPercentile = calcPercentileWithinDist(mapNCDFs, cmedian);
-					if (comp.gridReg.getNodeCount() < gridReg.getNodeCount()) {
-						// see if we should shrink them to comparison
-						GriddedGeoDataSet remappedMeanPercentile = new GriddedGeoDataSet(comp.gridReg, false);
-						if (checkShrinkToComparison(cMeanPercentile, remappedMeanPercentile)) {
-							GriddedGeoDataSet remappedMedianPercentile = new GriddedGeoDataSet(comp.gridReg, false);
-							Preconditions.checkState(checkShrinkToComparison(cMedianPercentile, remappedMedianPercentile));
-							cMeanPercentile = remappedMeanPercentile;
-							cMedianPercentile = remappedMedianPercentile;
+					if (multi) {
+						table = MarkdownUtils.tableBuilder();
+						addDiffInclExtremesLines(mean, name, min, max, cmean, compName, prefix+"_mean", resourcesDir, table, "Mean", unitlessLabel, false, comp.gridReg);
+						addDiffInclExtremesLines(mean, name, min, max, cmean, compName, prefix+"_mean", resourcesDir, table, "Mean", label, true, comp.gridReg);
+						
+						lines.add("The following plots compare mean hazard between _"+name+"_ and a comparison model, _"
+								+ compName+"_. The top row gives hazard ratios, expressed as % change, and the bottom row "
+								+ "gives differences.");
+						lines.add("");
+						lines.add("The left column compares the mean maps directly, with the comparison model as the "
+								+ "divisor/subtrahend. Warmer colors indicate increased hazard in _"+name
+								+ "_ relative to _"+compName+"_.");
+						lines.add("");
+						lines.add("The right column shows where and by how much the comparison mean model (_"+compName
+								+ "_) is outside the distribution of values across all branches of the primary model (_"
+								+ name+"_). Here, places that are zeros (light gray) indicate that the comparison mean "
+								+ "hazard map is fully contained within the range of values in _"+name+"_, cool colors "
+								+ "indicate areas where the primary model is always lower than the comparison mean model, "
+								+ "and warm colors areas where the primary model is always greater. Note that the color "
+								+ "scales are reversed here so that colors are consistent with the left column even though "
+								+ "the comparison model is now the dividend/minuend.");
+						lines.add("");
+						lines.addAll(table.build());
+						lines.add("");
+						
+						File cmedianMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_median", log10(cmedian),
+								logCPT, TITLES ? compName : " ", "Log10 Weighted-Median, "+label);
+						GriddedGeoDataSet.writeXYZFile(cmedian, new File(resourcesDir, prefix+"_comp_median.xyz"));
+						
+						lines.add("### Median hazard maps and comparisons, "+unitlessLabel);
+						lines.add(topLink); lines.add("");
+						
+						table = MarkdownUtils.tableBuilder();
+						table.initNewLine();
+						table.addColumn(MarkdownUtils.boldCentered("Primary Weighted-Median"));
+						if (cmulti)
+							table.addColumn(MarkdownUtils.boldCentered("Comparison Weighted-Median"));
+						else
+							table.addColumn(MarkdownUtils.boldCentered("Comparison"));
+						table.finalizeLine().initNewLine();
+						table.addColumn("![Median Map]("+resourcesDir.getName()+"/"+medianMapFile.getName()+")");
+						table.addColumn("![Median Map]("+resourcesDir.getName()+"/"+cmedianMapFile.getName()+")");
+						table.finalizeLine();
+						
+						lines.addAll(table.build());
+						lines.add("");
+						
+						table = MarkdownUtils.tableBuilder();
+						
+						addDiffInclExtremesLines(median, name, min, max, cmedian, compName, prefix+"_median", resourcesDir, table, "Median", unitlessLabel, false, comp.gridReg);
+						addDiffInclExtremesLines(median, name, min, max, cmedian, compName, prefix+"_median", resourcesDir, table, "Median", label, true, comp.gridReg);
+						
+						lines.add("");
+						lines.add("This section is the same as above, but using median hazard maps rather than mean.");
+						lines.add("");
+						lines.addAll(table.build());
+						lines.add("");
+						
+						table = MarkdownUtils.tableBuilder();
+						
+						table.addLine(MarkdownUtils.boldCentered("Comparison Mean Percentile"),
+								MarkdownUtils.boldCentered("Comparison Median Percentile"));
+						GriddedGeoDataSet cMeanPercentile = calcPercentileWithinDist(mapNCDFs, cmean);
+						GriddedGeoDataSet cMedianPercentile = calcPercentileWithinDist(mapNCDFs, cmedian);
+						if (comp.gridReg.getNodeCount() < gridReg.getNodeCount()) {
+							// see if we should shrink them to comparison
+							GriddedGeoDataSet remappedMeanPercentile = new GriddedGeoDataSet(comp.gridReg, false);
+							if (checkShrinkToComparison(cMeanPercentile, remappedMeanPercentile)) {
+								GriddedGeoDataSet remappedMedianPercentile = new GriddedGeoDataSet(comp.gridReg, false);
+								Preconditions.checkState(checkShrinkToComparison(cMedianPercentile, remappedMedianPercentile));
+								cMeanPercentile = remappedMeanPercentile;
+								cMedianPercentile = remappedMedianPercentile;
+							}
 						}
+						table.initNewLine();
+						File map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_mean_percentile", cMeanPercentile,
+								percentileCPT, TITLES ? name+" vs "+compName : " ", "Comparison Mean %-ile, "+unitlessLabel);
+						table.addColumn("![Mean Percentile Map]("+resourcesDir.getName()+"/"+map.getName()+")");
+						map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_median_percentile", cMedianPercentile,
+								percentileCPT, TITLES ? name+" vs "+compName : " ", "Comparison Median %-ile, "+unitlessLabel);
+						table.addColumn("![Median Percentile Map]("+resourcesDir.getName()+"/"+map.getName()+")");
+						table.finalizeLine();
+						lines.add("### Percentile comparison maps, "+unitlessLabel);
+						lines.add(topLink); lines.add("");
+						lines.add("The maps below show where the comparison (_"+compName+"_) model mean (left column) and "
+								+ "median (right column) map lies within the primary model (_"+name+"_) distribution. "
+								+ "Areas where the comparison mean or median map is outside the primary model distribution "
+								+ "are shown here in black regardless of if they are above or below.");
+						lines.add("");
+						lines.addAll(table.build());
+						lines.add("");
+					} else {
+						// with comparison, but single branch
+						table = MarkdownUtils.tableBuilder();
+						
+						addSingleBranchDiffLines(mean, name, cmean, compName, prefix+"_mean", resourcesDir, table,
+								unitlessLabel, label, comp.gridReg);
+						
+						lines.add("The following plots compare hazard between _"+name+"_ and a comparison model, _"
+								+ compName+"_. The left column gives hazard ratios, expressed as % change, and the "
+								+ "right column gives differences. The comparison model is the divisor/subtrahend; "
+								+ "warmer colors indicate increased hazard in _"+name+"_ relative to _"+compName+"_.");
+						lines.add("");
+						lines.addAll(table.build());
+						lines.add("");
+						
+						// don't bother with branches and such
+						continue;
 					}
-					table.initNewLine();
-					File map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_mean_percentile", cMeanPercentile,
-							percentileCPT, TITLES ? name+" vs "+compName : " ", "Comparison Mean %-ile, "+unitlessLabel);
-					table.addColumn("![Mean Percentile Map]("+resourcesDir.getName()+"/"+map.getName()+")");
-					map = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_median_percentile", cMedianPercentile,
-							percentileCPT, TITLES ? name+" vs "+compName : " ", "Comparison Median %-ile, "+unitlessLabel);
-					table.addColumn("![Median Percentile Map]("+resourcesDir.getName()+"/"+map.getName()+")");
-					table.finalizeLine();
-					lines.add("### Percentile comparison maps, "+unitlessLabel);
-					lines.add(topLink); lines.add("");
-					lines.add("The maps below show where the comparison (_"+compName+"_) model mean (left column) and "
-							+ "median (right column) map lies within the primary model (_"+name+"_) distribution. "
-							+ "Areas where the comparison mean or median map is outside the primary model distribution "
-							+ "are shown here in black regardless of if they are above or below.");
-					lines.add("");
-					lines.addAll(table.build());
-					lines.add("");
 				}
 				
 				// plot mean percentile
@@ -2583,6 +2626,43 @@ public class LogicTreeHazardCompare {
 					"Comparison "+op+" Extremes, "+diffLabel+", "+label, !difference);
 			table.addColumn("![Range Difference Map]("+resourcesDir.getName()+"/"+map.getName()+")");
 		}
+		table.finalizeLine();
+	}
+	
+	private void addSingleBranchDiffLines(GriddedGeoDataSet primary, String name, GriddedGeoDataSet comparison,
+			String compName, String prefix, File resourcesDir, TableBuilder table, String unitlessLlabel,
+			String label, GriddedRegion compReg) throws IOException {
+		
+		GriddedGeoDataSet pDiff = buildPDiff(comparison, primary);
+		GriddedGeoDataSet diff = new GriddedGeoDataSet(primary.getRegion(), false);
+		for (int i=0; i<diff.size(); i++) {
+			double val = primary.get(i);
+			double compVal = comparison.get(i);
+			diff.set(i, val - compVal);
+		}
+		table.addLine(MarkdownUtils.boldCentered("% Change"), MarkdownUtils.boldCentered("Difference"));
+		
+		// now see if we should shrink the region for plotting
+		int compRegCount = compReg.getNodeCount();
+		if (compRegCount < primary.size()) {
+			GriddedGeoDataSet remappedDiff = new GriddedGeoDataSet(compReg, false);
+			if (checkShrinkToComparison(diff, remappedDiff)) {
+				// the comparison was for a subset of this region, shrink down the plot to the common area
+				GriddedGeoDataSet remappedPDiff = new GriddedGeoDataSet(compReg, false);
+				Preconditions.checkState(checkShrinkToComparison(pDiff, remappedPDiff));
+				diff = remappedDiff;
+				pDiff = remappedPDiff;
+			}
+		}
+		
+		table.initNewLine();
+		
+		File pDiffMap = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_pDiff", pDiff, pDiffCPT,
+				TITLES ? name+" vs "+compName : " ", (TITLES ? "Primary / Comparison, " : "")+"% Change, "+unitlessLlabel, true);
+		table.addColumn("![% Difference Map]("+resourcesDir.getName()+"/"+pDiffMap.getName()+")");
+		File diffMap = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_comp_diff", diff, diffCPT,
+				TITLES ? name+" vs "+compName : " ", (TITLES ? "Primary - Comparison, " : "")+"Difference, "+label, false);
+		table.addColumn("![% Difference Map]("+resourcesDir.getName()+"/"+diffMap.getName()+")");
 		table.finalizeLine();
 	}
 	
