@@ -433,7 +433,8 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		if (this == CLASSIC && branch.hasValue(SupraSeisBValues.B_0p0)) {
 			// we're on the "classic" branch and b=0: exclude all ruptures that don't rupture a full section,
 			// except on special faults
-			exclusions.add(new FullSectionsSegmentationModel(rupSet, true));
+			boolean excludeNamed = rupSet.hasModule(NamedFaults.class);
+			exclusions.add(new FullSectionsSegmentationModel(rupSet, excludeNamed));
 		}
 		
 		double maxRupLength = getMaxRuptureLength();

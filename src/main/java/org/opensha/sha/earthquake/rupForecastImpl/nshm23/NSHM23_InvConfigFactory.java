@@ -515,7 +515,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 							return ret;
 						}
 					}, PaleoseismicConstraintData.class);
-				} else {
+				} else if (fm instanceof NSHM23_FaultModels) {
 					// NSHM23 paleo data
 					rupSet.offerAvailableModule(new Callable<PaleoseismicConstraintData>() {
 
@@ -1366,7 +1366,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					weight, ineq, rupSet, buildSegModel(rupSet, branch), rateEst));
 		}
 		
-		int avgThreads = threads / 4;
+		int avgThreads = Integer.max(1, threads / 4);
 		
 //		CompletionCriteria completion = new IterationsPerVariableCompletionCriteria(5000d);
 		// the greater of 2,000 iterations per rupture, but floor the rupture count to be at least 100 times the number

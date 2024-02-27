@@ -17,11 +17,16 @@ import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.SolutionProcessor;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SingleStates;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -58,6 +63,7 @@ public class InversionFactories {
 			
 			private NSHM23_InvConfigFactory factory;
 			private boolean noGridded;
+			private boolean applyStdDevDefaults;
 			private NSHM23_SingleStates singleState;
 			
 			@Override
@@ -107,6 +113,8 @@ public class InversionFactories {
 						+ "are applying NSHM23 methodology to a new region (or just don't need gridded seismicity).");
 				ops.addOption(null, "single-state", true, "Limit the model to a single state (specified by two letter "
 						+ "abbreviation). This does not apply when an external rupture set it supplied.");
+				ops.addOption(null, "apply-std-dev-defaults", false, "Flag to apply NSHM23 slip rate standard deviation "
+						+ "defaults to a passed in rupture set.");
 			}
 
 			@Override
@@ -118,6 +126,19 @@ public class InversionFactories {
 				noGridded = cmd.hasOption("no-gridded");
 				if (cmd.hasOption("single-state"))
 					singleState = NSHM23_SingleStates.valueOf(cmd.getOptionValue("single-state"));
+				applyStdDevDefaults = cmd.hasOption("apply-std-dev-defaults");
+			}
+
+			@Override
+			public FaultSystemRupSet processExternalRupSet(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+				if (applyStdDevDefaults) {
+					System.out.println("Applying NSHM23 standard deviation defaults to fault sections in passed in "
+							+ "rupture set.");
+					NSHM23_DeformationModels.applyStdDevDefaults(rupSet.getFaultSectionDataList());
+					// replace any previously created SectSlipRates instance
+					rupSet.addModule(SectSlipRates.fromFaultSectData(rupSet));
+				}
+				return super.processExternalRupSet(rupSet, branch);
 			}
 		};
 		
@@ -148,6 +169,13 @@ public class InversionFactories {
 		 * rupture set
 		 */
 		public abstract LogicTreeBranch<?> getSolutionOnlyDefaultBranch();
+		
+		public FaultSystemRupSet processExternalRupSet(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
+			SolutionProcessor processor = get().getSolutionLogicTreeProcessor();
+			if (processor != null)
+				rupSet = processor.processRupSet(rupSet, branch);
+			return rupSet;
+		}
 		
 		private static LogicTreeBranch<LogicTreeNode> branchCopyWithoutLevels(LogicTreeBranch<?> branch,
 				List<LogicTreeLevel<?>> excludes) {
@@ -382,8 +410,6 @@ public class InversionFactories {
 			File rupSetFile = new File(cmd.getOptionValue("rupture-set"));
 			rupSet = FaultSystemRupSet.load(rupSetFile);
 			
-			
-			
 			LogicTreeBranch<?> rsBranch = rupSet.getModule(LogicTreeBranch.class);
 			if (rsBranch != null) {
 				// set values from the branch
@@ -400,6 +426,8 @@ public class InversionFactories {
 					}
 				}
 			}
+			
+			rupSet = factoryChoice.processExternalRupSet(rupSet, branch);
 		} else {
 			// build it with the factory
 			System.out.println("Building rupture set for logic tree branch: "+branch);
@@ -430,6 +458,13 @@ public class InversionFactories {
 			writer.flush();
 			writer.close();
 		}
+		
+		String info = "Fault System Solution generated with OpenSHA Fault System Tools ("
+				+ "https://github.com/opensha/opensha-fault-sys-tools), using the following command:"
+				+ "\n\nfst_inversion_factory_runner.sh "+Joiner.on(" ").join(args);
+		info += "\n\nThe selected inversion factory is: "+factoryChoice+" ("+factory.getClass().getName()+")";
+		
+		sol.addModule(new InfoModule(info));
 		
 		// write solution
 		sol.write(outputFile);
