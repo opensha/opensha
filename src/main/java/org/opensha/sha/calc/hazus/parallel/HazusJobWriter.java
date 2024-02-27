@@ -545,7 +545,7 @@ public class HazusJobWriter {
 		String assembleArgs = archiver.getStoreDir().getPath() + " " + years + " " + metadataFile;
 		String assembleCommand = assembleWriter.buildCommand(HazusDataSetAssmbler.class.getName(), assembleArgs);
 		String exitLine = script.remove(script.size()-1);
-		script.addAll(assembleWriter.getJVMSetupLines());
+		script.addAll(assembleWriter.getAllSetupLines());
 		script.add(assembleCommand);
 		script.add("");
 		script.add(exitLine);
