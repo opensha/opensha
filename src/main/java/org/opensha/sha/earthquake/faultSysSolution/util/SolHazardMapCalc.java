@@ -46,13 +46,15 @@ import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
-import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.AseismicityAreaReductionParam;
+import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
@@ -93,7 +95,7 @@ public class SolHazardMapCalc {
 	private GriddedRegion region;
 	private double[] periods;
 	
-	private FaultSystemSolutionERF fssERF;
+	private BaseFaultSystemSolutionERF fssERF;
 	
 	private List<Site> sites;
 	
@@ -113,6 +115,7 @@ public class SolHazardMapCalc {
 	private BackgroundRupType backSeisType;
 	private boolean applyAftershockFilter;
 	private boolean aseisReducesArea = true;
+	private boolean noMFDs = false;
 	
 	public static ReturnPeriods[] MAP_RPS = { ReturnPeriods.TWO_IN_50, ReturnPeriods.TEN_IN_50 };
 	
@@ -172,27 +175,55 @@ public class SolHazardMapCalc {
 	}
 	
 	public void setBackSeisOption(IncludeBackgroundOption backSeisOption) {
+		Preconditions.checkState(fssERF == null, "ERF already initialized");
 		this.backSeisOption = backSeisOption;
 	}
 
 	public void setBackSeisType(BackgroundRupType backSeisType) {
+		Preconditions.checkState(fssERF == null, "ERF already initialized");
 		this.backSeisType = backSeisType;
 	}
 
 	public void setApplyAftershockFilter(boolean applyAftershockFilter) {
+		Preconditions.checkState(fssERF == null, "ERF already initialized");
 		this.applyAftershockFilter = applyAftershockFilter;
 	}
 
 	public void setAseisReducesArea(boolean aseisReducesArea) {
+		Preconditions.checkState(fssERF == null, "ERF already initialized");
 		this.aseisReducesArea = aseisReducesArea;
+	}
+
+	public void setNoMFDs(boolean noMFDs) {
+		Preconditions.checkState(fssERF == null, "ERF already initialized");
+		this.noMFDs = noMFDs;
+	}
+	
+	public void setERF(BaseFaultSystemSolutionERF fssERF) {
+		this.fssERF = fssERF;
+	}
+	
+	public BaseFaultSystemSolutionERF getERF() {
+		checkInitERF();
+		return fssERF;
 	}
 
 	private synchronized void checkInitERF() {
 		if (fssERF == null) {
 			System.out.println("Building ERF");
+			if (noMFDs && sol.hasAvailableModule(RupMFDsModule.class)) {
+				// build new solution without MFDs module
+				FaultSystemSolution modSol = new FaultSystemSolution(sol.getRupSet(), sol.getRateForAllRups());
+				if (backSeisOption != IncludeBackgroundOption.EXCLUDE)
+					modSol.setGridSourceProvider(sol.getGridSourceProvider());
+				sol = modSol;
+			}
 			fssERF = new FaultSystemSolutionERF(sol);
 			fssERF.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 			fssERF.setParameter(IncludeBackgroundParam.NAME, backSeisOption);
+			if (backSeisOption != IncludeBackgroundOption.EXCLUDE && backSeisType != null)
+				fssERF.setParameter(BackgroundRupParam.NAME, backSeisType);
+			
 			fssERF.setParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME, applyAftershockFilter);
 			fssERF.setParameter(AseismicityAreaReductionParam.NAME, aseisReducesArea);
 			fssERF.getTimeSpan().setDuration(1d);
@@ -315,6 +346,8 @@ public class SolHazardMapCalc {
 		private int size;
 		private int mod;
 		
+		private String printPrefix;
+		
 		public CalcTracker(int size) {
 			this.size = size;
 			this.numDone = 0;
@@ -326,12 +359,24 @@ public class SolHazardMapCalc {
 				mod = 20;
 			else
 				mod = 10;
+			
+			try {
+				// see if we're in MPJ mode and include a more useful prefix
+				int rank =  mpi.MPI.COMM_WORLD.Rank();
+				String hostname = java.net.InetAddress.getLocalHost().getHostName();
+				if (hostname != null && !hostname.isBlank())
+					printPrefix = hostname+", "+rank+": ";
+				else
+					printPrefix = rank+": ";
+			} catch (Throwable t) {
+				printPrefix = "";
+			}
 		}
 		
 		public synchronized void taskCompleted() {
 			numDone++;
 			if (numDone == size || numDone % mod == 0) {
-				System.out.println("Computed "+numDone+"/"+size+" curves ("+percentDF.format((double)numDone/(double)size)+")");
+				System.out.println(printPrefix+"Computed "+numDone+"/"+size+" curves ("+percentDF.format((double)numDone/(double)size)+")");
 			}
 		}
 	}
@@ -348,7 +393,7 @@ public class SolHazardMapCalc {
 		private CalcTracker track;
 		private SolHazardMapCalc combineWith;
 		
-		public CalcThread(ConcurrentLinkedDeque<Integer> calcIndexes, FaultSystemSolutionERF erf,
+		public CalcThread(ConcurrentLinkedDeque<Integer> calcIndexes, BaseFaultSystemSolutionERF erf,
 				CalcTracker track, SolHazardMapCalc combineWith) {
 			this.calcIndexes = calcIndexes;
 			this.track = track;
@@ -856,7 +901,7 @@ public class SolHazardMapCalc {
 			File curvesFile = new File(dir, getCSV_FileName(prefix, period));
 			if (!curvesFile.exists())
 				curvesFile = new File(curvesFile.getAbsolutePath()+".gz");
-			Preconditions.checkState(curvesFile.exists(), "Curve files doens't exist: %s", curvesFile.getAbsolutePath());
+			Preconditions.checkState(curvesFile.exists(), "Curve files doesn't exist: %s", curvesFile.getAbsolutePath());
 			
 			CSVFile<String> csv = CSVFile.readFile(curvesFile, true);
 			DiscretizedFunc[] curves = loadCurvesCSV(csv, region);
