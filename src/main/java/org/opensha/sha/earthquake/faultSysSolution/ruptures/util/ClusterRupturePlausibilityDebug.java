@@ -23,6 +23,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pa
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.PathPlausibilityFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.PathPlausibilityFilter.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.CumulativeProbabilityFilter.*;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
@@ -57,8 +59,9 @@ public class ClusterRupturePlausibilityDebug {
 //						+ "fm3_1_plausibleMulti10km_adaptive5km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_cff0.75IntsPos_comb2Paths_"
 //						+ "cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.05_comp/alt_conn_Adaptive_r05p0km_sectMax1_Plausible_3filters_"
 //						+ "maxDist15km_MultiEnds.zip"));
-						+"nshm23_geo_dm_v1_all_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_"
-						+ "cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip"));
+//						+"nshm23_geo_dm_v1_all_plausibleMulti15km_adaptive6km_direct_cmlRake360_jumpP0.001_slipP0.05incrCapDist_"
+//						+ "cff0.75IntsPos_comb2Paths_cffFavP0.01_cffFavRatioN2P0.5_sectFractGrow0.1.zip"));
+						+ "../prvi/2024_02-initial_dm/rup_set.zip"));
 		System.out.println("Loaded "+rupSet.getNumRuptures()+" ruptures");
 		
 		PlausibilityConfiguration config = rupSet.requireModule(PlausibilityConfiguration.class);
@@ -81,74 +84,83 @@ public class ClusterRupturePlausibilityDebug {
 //			testRuptures.add(clusterRuptures.get(testIndex));
 		
 		// by string
-		int[] sectIDs = ClusterRuptureBuilder.loadRupString(
-//				"[724:243,242][90:557,556,555][723:880,879,878][92:1025,1024][91:991,990,989]", false);
-//				"[338:3769,3768,3767][331:3272,3273,3274,3275]", false); // NSHM23 Geo Ridgecrest east & north
-//				"[338:3769,3768,3767,3766][331:3273,3274,3275]", false); // NSHM23 Geo Ridgecrest full east & north w/o intersection	PASS
-//				"[338:3769,3768,3767][331:3273,3274,3275]", false); // NSHM23 Geo Ridgecrest east & north w/o intersection				FAIL
-//				"[338:3769,3768,3767][331:3272,3271,3270]", false); // NSHM23 Geo Ridgecrest east & south w/ intersection				FAIL
-//				"[338:3769,3768,3767][331:3271,3270]", false); // NSHM23 Geo Ridgecrest east & south w/0 intersection					FAIL
-				"[338:3769,3768,3767,3766][331:3271,3270]", false); // NSHM23 Geo Ridgecrest full east & south w/0 intersection			
-		List<FaultSection> rupSects = new ArrayList<>();
-		for (int sectID : sectIDs)
-			rupSects.add(rupSet.getFaultSectionData(sectID));
-		List<ClusterRupture> testRuptures = new ArrayList<>();
-		testRuptures.add(ClusterRupture.forOrderedSingleStrandRupture(rupSects, config.getDistAzCalc()));
+//		int[] sectIDs = ClusterRuptureBuilder.loadRupString(
+////				"[724:243,242][90:557,556,555][723:880,879,878][92:1025,1024][91:991,990,989]", false);
+////				"[338:3769,3768,3767][331:3272,3273,3274,3275]", false); // NSHM23 Geo Ridgecrest east & north
+////				"[338:3769,3768,3767,3766][331:3273,3274,3275]", false); // NSHM23 Geo Ridgecrest full east & north w/o intersection	PASS
+////				"[338:3769,3768,3767][331:3273,3274,3275]", false); // NSHM23 Geo Ridgecrest east & north w/o intersection				FAIL
+////				"[338:3769,3768,3767][331:3272,3271,3270]", false); // NSHM23 Geo Ridgecrest east & south w/ intersection				FAIL
+////				"[338:3769,3768,3767][331:3271,3270]", false); // NSHM23 Geo Ridgecrest east & south w/0 intersection					FAIL
+//				"[338:3769,3768,3767,3766][331:3271,3270]", false); // NSHM23 Geo Ridgecrest full east & south w/0 intersection			
+//		List<FaultSection> rupSects = new ArrayList<>();
+//		for (int sectID : sectIDs)
+//			rupSects.add(rupSet.getFaultSectionData(sectID));
+//		List<ClusterRupture> testRuptures = new ArrayList<>();
+//		testRuptures.add(ClusterRupture.forOrderedSingleStrandRupture(rupSects, config.getDistAzCalc()));
 		
 		// for possible whole-parent ruptures
-////		int[] parents = {
-////				301, // SAF Mojave S
-////				286, // SAF Mojave N
-//////				287, // SAF Big Bend
-//////				300, // SAF Carrizo
-////				49, // Garlock W
-////				};
-////		int[] parents = {
-////				103, // Elsinore Coyote Mountains
-////				102, // Elsinore Julian
-////		};
+//		int[] parents = {
+//				301, // SAF Mojave S
+//				286, // SAF Mojave N
+////				287, // SAF Big Bend
+////				300, // SAF Carrizo
+//				49, // Garlock W
+//				};
+//		int[] parents = {
+//				103, // Elsinore Coyote Mountains
+//				102, // Elsinore Julian
+//		};
 //		int[] parents = { // NSHM23 Geo
 //				338, // Salt Wells Valley
 //				331, // Paxton Ranch
 //		};
-//////		int startParent = 301;
-////		int startParent = -1;
-////		int[] parents = {
-////				653, // SAF Offshore
-////				654, // SAF North Coast
-////				655, // SAF Peninsula
-////				657, // SAF Santa Cruz
-////				658, // SAF Creeping
-////				32, // SAF Parkfield
-////				285, // SAF Cholame
-////				300, // SAF Carrizo
-////				287, // SAF Big Bend
-////				286, // SAF Mojave N
-////				301, // SAF Mojave S
-////				282, // SAF SB N
-////				283, // SAF SB S
-////				284, // SAF SGP-GH
-////				295, // SAF Coachella
-////				170, // Brawley
-////				};
-////		int startParent = 102;
+		int[] parents = { // PRVI initial geo
+				19, // Bunce 5
+				23, // Main Ridge 1
+		};
+////		int startParent = 301;
 //		int startParent = -1;
-//		FaultSubsectionCluster startCluster = null;
-//		List<FaultSubsectionCluster> clusters = new ArrayList<>();
-//		HashSet<Integer> parentIDsSet = new HashSet<>();
-//		for (int parent : parents)
-//			parentIDsSet.add(parent);
-//		for (FaultSubsectionCluster cluster : config.getConnectionStrategy().getClusters()) {
-//			if (parentIDsSet.contains(cluster.parentSectionID))
-//				clusters.add(cluster);
-//			if (cluster.parentSectionID == startParent)
-//				startCluster = cluster;
-//		}
-//		RuptureConnectionSearch connSearch = new RuptureConnectionSearch(rupSet, config.getDistAzCalc());
-//		List<Jump> jumps = connSearch.calcRuptureJumps(clusters, true);
-//		List<ClusterRupture> testRuptures = new ArrayList<>();
-//		testRuptures.add(connSearch.buildClusterRupture(clusters, jumps, true, startCluster));
-//		boolean tryLastJump = false;
+//		int[] parents = {
+//				653, // SAF Offshore
+//				654, // SAF North Coast
+//				655, // SAF Peninsula
+//				657, // SAF Santa Cruz
+//				658, // SAF Creeping
+//				32, // SAF Parkfield
+//				285, // SAF Cholame
+//				300, // SAF Carrizo
+//				287, // SAF Big Bend
+//				286, // SAF Mojave N
+//				301, // SAF Mojave S
+//				282, // SAF SB N
+//				283, // SAF SB S
+//				284, // SAF SGP-GH
+//				295, // SAF Coachella
+//				170, // Brawley
+//				};
+//		int startParent = 102;
+		int startParent = -1;
+		FaultSubsectionCluster startCluster = null;
+		List<FaultSubsectionCluster> clusters = new ArrayList<>();
+		HashSet<Integer> parentIDsSet = new HashSet<>();
+		for (int parent : parents)
+			parentIDsSet.add(parent);
+		// to use input connection strategy, which may already be filtered to remove unallowed jumps
+//		ClusterConnectionStrategy connStrat = config.getConnectionStrategy();
+		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
+		ClusterConnectionStrategy connStrat =  new DistCutoffClosestSectClusterConnectionStrategy(
+				rupSet.getFaultSectionDataList(), distAzCalc, 15d);
+		for (FaultSubsectionCluster cluster : connStrat.getClusters()) {
+			if (parentIDsSet.contains(cluster.parentSectionID))
+				clusters.add(cluster);
+			if (cluster.parentSectionID == startParent)
+				startCluster = cluster;
+		}
+		RuptureConnectionSearch connSearch = new RuptureConnectionSearch(rupSet, config.getDistAzCalc());
+		List<Jump> jumps = connSearch.calcRuptureJumps(clusters, true);
+		List<ClusterRupture> testRuptures = new ArrayList<>();
+		testRuptures.add(connSearch.buildClusterRupture(clusters, jumps, true, startCluster));
+		boolean tryLastJump = false;
 		
 		// for sub-section ruptures
 //		int[] sectIDs = { 1093, 1092, 1091, 1090, 864, 863};
