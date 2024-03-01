@@ -10,6 +10,7 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.RandomlySampledLevel;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.RandomlySampledNode;
 import org.opensha.commons.util.ClassUtils;
@@ -645,6 +646,14 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule
 							level = new FileBackedLevel(
 									level.getName(), level.getShortName(), (FileBackedNode)value);
 						}
+					} else if (value instanceof RandomlySampledNode && level instanceof RandomlySampledLevel<?>) {
+						RandomlySampledLevel<?> randLevel = (RandomlySampledLevel<?>)level;
+						if (randLevel.getNodes().isEmpty())
+							randLevel.setNodes(List.of(value));
+						else
+							Preconditions.checkState(randLevel.isMember(value),
+									"Random level '%s' has node list, but our node ('%s' with seed %s) isn't a member",
+									level.getName(), value.getName(), ((RandomlySampledNode)value).getSeed());
 					}
 				}
 				levels.add(level);
