@@ -126,6 +126,7 @@ public class ClassicModelInversionSolver extends ClusterSpecificInversionSolver 
 	public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfigurationFactory factory,
 			LogicTreeBranch<?> branch, int threads, CommandLine cmd) throws IOException {
 		// first do inversion-based solutions
+		// this will check shouldInvert on each cluster, and skip any that it shouldn't run an inversion for
 		FaultSystemSolution inversionSol = super.run(rupSet, factory, branch, threads, cmd);
 		if (inversionSol == null) {
 			// simplest case, all analytical
