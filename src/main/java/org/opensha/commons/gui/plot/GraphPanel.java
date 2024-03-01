@@ -9,8 +9,6 @@ import java.awt.Graphics2D;
 import java.awt.Paint;
 import java.awt.Shape;
 import java.awt.Stroke;
-import java.awt.geom.Line2D;
-import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.print.PrinterException;
@@ -39,7 +37,6 @@ import org.apache.commons.lang3.SystemUtils;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
-import org.jfree.chart.LegendItem;
 import org.jfree.chart.LegendItemCollection;
 import org.jfree.chart.LegendItemSource;
 import org.jfree.chart.annotations.XYAnnotation;
@@ -47,55 +44,47 @@ import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.axis.ValueAxis;
-import org.jfree.chart.block.BlockBorder;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.CombinedRangeXYPlot;
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.chart.plot.XYPlot;
-import org.jfree.chart.renderer.xy.XYBlockRenderer;
 import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.title.LegendTitle;
 import org.jfree.chart.title.PaintScaleLegend;
 import org.jfree.chart.title.Title;
-import org.jfree.data.Range;
-import org.jfree.data.xy.XYDataset;
-import org.jfree.chart.ui.RectangleAnchor;
 import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.chart.ui.RectangleInsets;
+import org.jfree.data.Range;
+import org.jfree.data.xy.XYDataset;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.data.function.HistogramFunction;
 import org.opensha.commons.data.function.WeightedFuncListforPlotting;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.function.XY_DataSetList;
-import org.opensha.commons.data.xyz.EvenlyDiscrXYZ_DataSet;
 import org.opensha.commons.data.xyz.XYZ_DataSet;
-import org.opensha.commons.gui.plot.jfreechart.DiscretizedFunctionXYDataSet;
 import org.opensha.commons.gui.plot.jfreechart.CustomOffsetNumberAxis;
+import org.opensha.commons.gui.plot.jfreechart.DiscretizedFunctionXYDataSet;
 import org.opensha.commons.gui.plot.jfreechart.JFreeLogarithmicAxis;
 import org.opensha.commons.gui.plot.jfreechart.MyTickUnits;
-import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.PaintScaleWrapper;
+import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYIntervalBlockRenderer;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZDatasetWrapper;
+import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.gui.plot.pdf.PDF_UTF8_FontMapper;
 import org.opensha.commons.util.CustomFileFilter;
-import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.cpt.CPT;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
-import com.itextpdf.awt.DefaultFontMapper;
 import com.itextpdf.awt.FontMapper;
 import com.itextpdf.awt.PdfGraphics2D;
 import com.itextpdf.text.BaseColor;
 import com.itextpdf.text.Document;
 import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.ExceptionConverter;
 import com.itextpdf.text.FontFactory;
 import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.BaseFont;
 import com.itextpdf.text.pdf.PdfContentByte;
 import com.itextpdf.text.pdf.PdfTemplate;
 import com.itextpdf.text.pdf.PdfWriter;
@@ -527,7 +516,7 @@ public class GraphPanel extends JSplitPane {
 		}
 
 		plot = null;
-		// XYPlot (and combined versions) use a really brute force dataset index lookup
+		// XYPlot (and combined versions) use a really slow brute force dataset index lookup
 		// we're assigning dataset idexes manually below, cache them and return those cached values
 		HashMap<XYDataset, Integer> datasetIndexMap = new HashMap<>();
 		// build the plot
@@ -618,43 +607,8 @@ public class GraphPanel extends JSplitPane {
 			
 			if (plotSpec instanceof XYZPlotSpec) {
 				XYZPlotSpec xyzSpec = (XYZPlotSpec)plotSpec;
-				XYZ_DataSet xyz = xyzSpec.getXYZ_Data();
-				Double thicknessX = xyzSpec.getThickness();
-				Double thicknessY = thicknessX;
-				if (thicknessX == null) {
-					if (xyz instanceof EvenlyDiscrXYZ_DataSet) {
-						thicknessX = ((EvenlyDiscrXYZ_DataSet)xyz).getGridSpacingX();
-						thicknessY = ((EvenlyDiscrXYZ_DataSet)xyz).getGridSpacingY();
-					} else {
-						// detect from data - use median of differences
-						int numToCheck = xyz.size();
-						if (numToCheck > 1000)
-							numToCheck = 1000;
-						if (numToCheck > 0) {
-							double[] diffs = new double[numToCheck];
-							Point2D prevPt = xyz.getPoint(0);
-							for (int i=1; i<numToCheck; i++) {
-								Point2D pt = xyz.getPoint(i);
-								
-								double diffX = Math.abs(pt.getX() - prevPt.getX());
-								double diffY = Math.abs(pt.getY() - prevPt.getY());
-								
-								if (diffX > diffY)
-									diffs[i] = diffX;
-								else
-									diffs[i] = diffY;
-								
-								prevPt = pt;
-							}
-							thicknessX = DataUtils.median(diffs);
-							thicknessY = DataUtils.median(diffs);
-						}
-					}
-				}
-				XYZDatasetWrapper dataset = new XYZDatasetWrapper(xyzSpec);
-				XYBlockRenderer renderer = new XYBlockRenderer();
-				renderer.setBlockHeight(thicknessY);
-				renderer.setBlockWidth(thicknessX);
+				XYZDatasetWrapper dataset = new XYZDatasetWrapper(xyzSpec, xLog, yLog);
+				XYIntervalBlockRenderer renderer = new XYIntervalBlockRenderer();
 				PaintScaleWrapper scale = new PaintScaleWrapper(xyzSpec.getCPT());
 		        renderer.setPaintScale(scale);
 				subPlot.setRenderer(datasetIndex, renderer);
@@ -1819,10 +1773,10 @@ public class GraphPanel extends JSplitPane {
 		if (legend.getPosition() == RectangleEdge.BOTTOM || legend.getPosition() == RectangleEdge.TOP)
 			legend.setPadding(5d, 50d, 5d, 50d);
 		else if (legend.getPosition() == RectangleEdge.LEFT)
-			legend.setPadding(15d, 20d, 15d, 5d);
+			legend.setPadding(5d, 5d, 50d, 20d);
 		else
 			// right
-			legend.setPadding(15d, 5d, 15d, 20d);
+			legend.setPadding(5d, 20d, 50d, 5d);
 		return legend;
 	}
 }

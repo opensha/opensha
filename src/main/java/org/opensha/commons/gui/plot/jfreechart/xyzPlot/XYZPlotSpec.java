@@ -14,8 +14,16 @@ import org.opensha.commons.util.cpt.CPT;
 
 /**
  * Analogous to PlotSpec, but for XYZ plots. Contains data, labels, CPT for XYZ plot to be
- * passed to XYZGraphPanel. It is recommended that you set the tickness (width of the colored
- * square to be shown at each XY location) for non-gridded surfaces.
+ * passed to XYZGraphPanel.
+ * <br>
+ * If you pass in an arbitrarily discretized XYZ dataset, it is recommended that you set the thickness (width of the
+ * colored square to be shown at each XY location); otherwise we will attempt to detect the correct spacing assuming
+ * that values are listed sequentially (either fast XY or fast YX).
+ * <br>
+ * Log axis (x or y) plotting is supported, but unlike regular functions, XYZ data should should have the log values
+ * stored in the x or y value and not the linear one. This is needed in order to be able to pass in a gridded XYZ
+ * dataset and to detect the size of each block. In other words, if you are plotting with logX, then the x values
+ * stored in the XYZ dataset should already by in Log10 space.
  * 
  * @author kevin
  *
@@ -25,10 +33,12 @@ public class XYZPlotSpec extends PlotSpec {
 	private XYZ_DataSet xyzData;
 	private CPT cpt;
 	private String zAxisLabel;
-	private Double thickness = null; // this is width of each rectangle
 	private boolean cptVisible = true;
 	private double cptTickUnit = -1;
 	private RectangleEdge cptPosition = RectangleEdge.TOP;
+	
+	private Double thicknessX;
+	private Double thicknessY;
 	
 	/**
 	 * 
@@ -91,14 +101,6 @@ public class XYZPlotSpec extends PlotSpec {
 		this.zAxisLabel = zAxisLabel;
 	}
 
-	public Double getThickness() {
-		return thickness;
-	}
-
-	public void setThickness(Double thickness) {
-		this.thickness = thickness;
-	}
-
 	public RectangleEdge getCPTPosition() {
 		return cptPosition;
 	}
@@ -115,6 +117,27 @@ public class XYZPlotSpec extends PlotSpec {
 		this.cptVisible = cptVisible;
 	}
 	
+	public void setThickness(Double thickness) {
+		this.thicknessX = thickness;
+		this.thicknessY = thickness;
+	}
+	
+	public Double getThicknessX() {
+		return thicknessX;
+	}
+
+	public void setThicknessX(Double thicknessX) {
+		this.thicknessX = thicknessX;
+	}
+
+	public Double getThicknessY() {
+		return thicknessY;
+	}
+
+	public void setThicknessY(Double thicknessY) {
+		this.thicknessY = thicknessY;
+	}
+
 	public boolean isCPTVisible() {
 		return cptVisible;
 	}
