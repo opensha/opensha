@@ -623,9 +623,9 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					System.err.println("WARNING: logic tree branch node class '"+enumClassName+"' is of the wrong type, "
 							+ "loading plain/hardcoded version instead");
 				}
-				if (!affected.isEmpty() || !notAffected.isEmpty())
+				if (level != null && (!affected.isEmpty() || !notAffected.isEmpty()))
 					// set the serialzed affected/unaffected levels
-					((EnumBackedLevel<?>)level).setAffected(affected, notAffected, true);
+					level.setAffected(affected, notAffected, true);
 			}
 			if (level == null && className != null) {
 				// try to load it as a class via default constructor
@@ -639,6 +639,9 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					
 					if (level instanceof RandomlySampledLevel<?>)
 						((RandomlySampledLevel<?>)level).setNodes(nodes);
+					if (!affected.isEmpty() || !notAffected.isEmpty())
+						// set the serialzed affected/unaffected levels
+						level.setAffected(affected, notAffected, true);
 				} catch (ClassNotFoundException e) {
 					System.err.println("WARNING: couldn't locate logic tree branch node class '"+className+"', "
 							+ "loading plain/hardcoded version instead");
