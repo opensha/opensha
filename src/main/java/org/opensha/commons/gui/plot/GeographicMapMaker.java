@@ -99,6 +99,7 @@ public class GeographicMapMaker {
 	protected CPT sectScalarCPT;
 	protected String sectScalarLabel;
 	protected float sectScalarThickness = 3f;
+	protected PlotCurveCharacterstics sectNaNChar;
 
 	// section colors
 	protected List<Color> sectColors = null;
@@ -136,6 +137,7 @@ public class GeographicMapMaker {
 	 * Scatter data
 	 */
 	protected List<Location> scatterLocs;
+	protected List<FeatureProperties> scatterProps;
 	protected List<Double> scatterScalars;
 	protected List<PlotCurveCharacterstics> scatterChars;
 	protected CPT scatterScalarCPT;
@@ -145,6 +147,15 @@ public class GeographicMapMaker {
 	protected float scatterSymbolWidth = 5f;
 	protected PlotSymbol scatterOutline = PlotSymbol.TRIANGLE;
 	protected Color scatterOutlineColor = new Color(0, 0, 0, 127);
+	
+	/**
+	 * Lines
+	 */
+	protected List<LocationList> lines;
+	protected Color linesColor;
+	protected List<Color> lineColors;
+	protected List<PlotCurveCharacterstics> lineChars;
+	protected float lineThickness = 2f;
 	
 	/*
 	 * Gridded (XYZ) data
@@ -337,6 +348,10 @@ public class GeographicMapMaker {
 	
 	public void setSkipNaNs(boolean skipNaNs) {
 		this.skipNaNs = skipNaNs;
+	}
+	
+	public void setSectNaNChar(PlotCurveCharacterstics sectNaNChar) {
+		this.sectNaNChar = sectNaNChar;
 	}
 	
 	public void setCustomLegendItems(List<String> labels, List<PlotCurveCharacterstics> chars) {
@@ -581,8 +596,15 @@ public class GeographicMapMaker {
 		this.scatterScalarLabel = label;
 	}
 	
+	public void setScatterProperties(List<FeatureProperties> scatterProps) {
+		Preconditions.checkNotNull(scatterLocs);
+		Preconditions.checkState(scatterLocs.size() == scatterProps.size());
+		this.scatterProps = scatterProps;
+	}
+	
 	public void clearScatters() {
 		this.scatterLocs = null;
+		this.scatterProps = null;
 		this.scatterScalars = null;
 		this.scatterChars = null;
 		this.scatterScalarCPT = null;
@@ -599,6 +621,41 @@ public class GeographicMapMaker {
 		this.scatterSymbolWidth = width;
 		this.scatterOutline = outline;
 		this.scatterOutlineColor = outlineColor;
+	}
+	
+	public void plotLines(List<LocationList> lines, Color color, float thickness) {
+		clearLines();
+		Preconditions.checkNotNull(lines);
+		Preconditions.checkNotNull(color);
+		this.lines = lines;
+		this.linesColor = color;
+		this.lineThickness = thickness;
+	}
+	
+	public void plotLines(List<LocationList> lines, List<Color> colors, float thickness) {
+		clearLines();
+		Preconditions.checkNotNull(lines);
+		Preconditions.checkNotNull(colors);
+		Preconditions.checkState(lines.size() == colors.size());
+		this.lines = lines;
+		this.lineColors = colors;
+		this.lineThickness = thickness;
+	}
+	
+	public void plotLines(List<LocationList> lines, List<PlotCurveCharacterstics> chars) {
+		clearLines();
+		Preconditions.checkNotNull(lines);
+		Preconditions.checkNotNull(chars);
+		Preconditions.checkState(lines.size() == chars.size());
+		this.lines = lines;
+		this.lineChars = chars;
+	}
+	
+	public void clearLines() {
+		lines = null;
+		lineColors = null;
+		linesColor = null;
+		lineChars = null;
 	}
 	
 	public void plotXYZData(GeoDataSet xyzData, CPT xyzCPT, String xyzLabel) {
@@ -715,6 +772,8 @@ public class GeographicMapMaker {
 		FeatureProperties props = new FeatureProperties();
 		props.set("name", sect.getSectionName());
 		props.set("id", sect.getSectionId());
+		if (sect.getParentSectionId() >= 0)
+			props.set("parentID", sect.getParentSectionId());
 		if (pChar.getLineType() != null) {
 			props.set(FeatureProperties.STROKE_WIDTH_PROP, pChar.getLineWidth());
 			props.set(FeatureProperties.STROKE_COLOR_PROP, pChar.getColor());
@@ -728,6 +787,8 @@ public class GeographicMapMaker {
 		FeatureProperties props = new FeatureProperties();
 		props.set("name", sect.getSectionName());
 		props.set("id", sect.getSectionId());
+		if (sect.getParentSectionId() >= 0)
+			props.set("parentID", sect.getParentSectionId());
 		if (pChar.getLineType() != null) {
 			props.set(FeatureProperties.STROKE_WIDTH_PROP, pChar.getLineWidth());
 			props.set(FeatureProperties.STROKE_COLOR_PROP, pChar.getColor());
@@ -880,6 +941,7 @@ public class GeographicMapMaker {
 
 			// plot section outlines on bottom
 			XY_DataSet prevTrace = null;
+			XY_DataSet prevNanTrace = null;
 			XY_DataSet prevOutline = null;
 			Map<Integer, Feature> outlineFeatures = writeGeoJSON ? new HashMap<>() : null;
 			for (int s=0; s<sects.size(); s++) {
@@ -896,14 +958,15 @@ public class GeographicMapMaker {
 				
 				// we'll plot fault traces if we don't have scalar values
 				boolean doTraces = sectScalars == null && sectColors == null && sectChars == null;
-				if (!doTraces && !skipNaNs) {
-					if (sectScalars != null)
-						doTraces = Double.isNaN(sectScalars[s]);
-					else if (sectColors != null)
-						doTraces = sectColors.get(s) == null;
-					else if (sectChars != null)
-						doTraces = sectChars.get(s) == null;
-				}
+				boolean isNaN = false;
+				if (sectScalars != null)
+					isNaN = Double.isNaN(sectScalars[s]);
+				else if (sectColors != null)
+					isNaN = sectColors.get(s) == null;
+				else if (sectChars != null)
+					isNaN = sectChars.get(s) == null;
+				if (!doTraces && (!skipNaNs || sectNaNChar != null))
+					doTraces = true;
 				
 				if (sectOutlineChar != null && (sect.getAveDip() != 90d)) {
 					XY_DataSet outline = new DefaultXY_DataSet();
@@ -950,25 +1013,46 @@ public class GeographicMapMaker {
 					}
 				}
 				
-				if (doTraces && sectTraceChar != null) {
-					boolean reused = false;
-					if (prevTrace != null) {
-						Point2D prevLast = prevTrace.get(prevTrace.size()-1);
-						Point2D newFirst = trace.get(0);
-						if ((float)prevLast.getX() == (float)newFirst.getX() && (float)prevLast.getY() == (float)newFirst.getY()) {
-							// reuse
-							for (int i=1; i<trace.size(); i++)
-								prevTrace.set(trace.get(i));
-							reused = true;
+				if (doTraces) {
+					if (isNaN && sectNaNChar != null) {
+						boolean reused = false;
+						if (prevNanTrace != null) {
+							Point2D prevLast = prevNanTrace.get(prevNanTrace.size()-1);
+							Point2D newFirst = trace.get(0);
+							if ((float)prevLast.getX() == (float)newFirst.getX() && (float)prevLast.getY() == (float)newFirst.getY()) {
+								// reuse
+								for (int i=1; i<trace.size(); i++)
+									prevNanTrace.set(trace.get(i));
+								reused = true;
+							}
 						}
+						if (!reused) {
+							funcs.add(trace);
+							prevNanTrace = trace;
+							chars.add(sectNaNChar);
+						}
+						if (writeGeoJSON)
+							features.add(traceFeature(sect, sectNaNChar));
+					} else if (sectTraceChar != null) {
+						boolean reused = false;
+						if (prevTrace != null) {
+							Point2D prevLast = prevTrace.get(prevTrace.size()-1);
+							Point2D newFirst = trace.get(0);
+							if ((float)prevLast.getX() == (float)newFirst.getX() && (float)prevLast.getY() == (float)newFirst.getY()) {
+								// reuse
+								for (int i=1; i<trace.size(); i++)
+									prevTrace.set(trace.get(i));
+								reused = true;
+							}
+						}
+						if (!reused) {
+							funcs.add(trace);
+							prevTrace = trace;
+							chars.add(sectTraceChar);
+						}
+						if (writeGeoJSON)
+							features.add(traceFeature(sect, sectTraceChar));
 					}
-					if (!reused) {
-						funcs.add(trace);
-						prevTrace = trace;
-						chars.add(sectTraceChar);
-					}
-					if (writeGeoJSON)
-						features.add(traceFeature(sect, sectTraceChar));
 				}
 			}
 			
@@ -1214,6 +1298,11 @@ public class GeographicMapMaker {
 					if (writeGeoJSON) {
 						Color color = scatterScalarCPT.getColor((float)scalar);
 						FeatureProperties props = new FeatureProperties();
+						if (scatterProps != null) {
+							FeatureProperties extProps = scatterProps.get(j);
+							if (extProps != null)
+								props.putAll(extProps);
+						}
 						props.set(FeatureProperties.MARKER_COLOR_PROP, color);
 						if (scatterSymbolWidth > 8f)
 							props.set(FeatureProperties.MARKER_SIZE_PROP, FeatureProperties.MARKER_SIZE_LARGE);
@@ -1256,6 +1345,11 @@ public class GeographicMapMaker {
 					if (writeGeoJSON) {
 						Color color = xyChar.getColor();
 						FeatureProperties props = new FeatureProperties();
+						if (scatterProps != null) {
+							FeatureProperties extProps = scatterProps.get(j);
+							if (extProps != null)
+								props.putAll(extProps);
+						}
 						props.set(FeatureProperties.MARKER_COLOR_PROP, color);
 						float width = xyChar.getSymbolWidth();
 						if (width > 8f)
@@ -1282,6 +1376,23 @@ public class GeographicMapMaker {
 					
 					if (outlines != null)
 						outlines.set(loc.getLongitude(), loc.getLatitude());
+					
+					if (writeGeoJSON && scatterProps != null) {
+						FeatureProperties props = new FeatureProperties();
+						if (scatterProps != null) {
+							FeatureProperties extProps = scatterProps.get(j);
+							if (extProps != null)
+								props.putAll(extProps);
+						}
+						props.set(FeatureProperties.MARKER_COLOR_PROP, scatterColor);
+						if (scatterSymbolWidth > 8f)
+							props.set(FeatureProperties.MARKER_SIZE_PROP, FeatureProperties.MARKER_SIZE_LARGE);
+						else if (scatterSymbolWidth > 4f)
+							props.set(FeatureProperties.MARKER_SIZE_PROP, FeatureProperties.MARKER_SIZE_MEDIUM);
+						else
+							props.set(FeatureProperties.MARKER_SIZE_PROP, FeatureProperties.MARKER_SIZE_SMALL);
+						features.add(new Feature(new Geometry.Point(loc), props));
+					}
 				}
 				funcs.add(xy);
 				chars.add(new PlotCurveCharacterstics(scatterSymbol, scatterSymbolWidth, scatterColor));
@@ -1289,8 +1400,9 @@ public class GeographicMapMaker {
 					funcs.add(outlines);
 					chars.add(new PlotCurveCharacterstics(scatterOutline, scatterSymbolWidth, scatterOutlineColor));
 				}
-				if (writeGeoJSON) {
+				if (writeGeoJSON && scatterProps == null) {
 					FeatureProperties props = new FeatureProperties();
+					
 					props.set(FeatureProperties.MARKER_COLOR_PROP, scatterColor);
 					if (scatterSymbolWidth > 8f)
 						props.set(FeatureProperties.MARKER_SIZE_PROP, FeatureProperties.MARKER_SIZE_LARGE);
@@ -1299,6 +1411,72 @@ public class GeographicMapMaker {
 					else
 						props.set(FeatureProperties.MARKER_SIZE_PROP, FeatureProperties.MARKER_SIZE_SMALL);
 					features.add(new Feature(new Geometry.MultiPoint(locs), props));
+				}
+			}
+		}
+		
+		protected void plotLines() {
+			if (lines == null || lines.isEmpty())
+				return;
+			if (lineColors != null) {
+				for (int j=0; j<lines.size(); j++) {
+					LocationList line = lines.get(j);
+					Color color = lineColors.get(j);
+					PlotCurveCharacterstics xyChar = new PlotCurveCharacterstics(PlotLineType.SOLID, lineThickness, color);
+					
+					XY_DataSet xy = new DefaultXY_DataSet();
+					for (Location loc : line)
+						xy.set(loc.getLongitude(), loc.getLatitude());
+					
+					funcs.add(xy);
+					chars.add(xyChar);
+					
+					if (writeGeoJSON) {
+						FeatureProperties props = new FeatureProperties();
+						float width = xyChar.getLineWidth();
+						props.set(FeatureProperties.STROKE_WIDTH_PROP, width);
+						props.set(FeatureProperties.STROKE_COLOR_PROP, color);
+						features.add(new Feature(new Geometry.LineString(line), props));
+					}
+				}
+			} else if (lineChars != null) {
+				for (int j=0; j<lines.size(); j++) {
+					LocationList line = lines.get(j);
+					PlotCurveCharacterstics xyChar = lineChars.get(j);
+					
+					XY_DataSet xy = new DefaultXY_DataSet();
+					for (Location loc : line)
+						xy.set(loc.getLongitude(), loc.getLatitude());
+					
+					funcs.add(xy);
+					chars.add(xyChar);
+					
+					if (writeGeoJSON) {
+						FeatureProperties props = new FeatureProperties();
+						float width = xyChar.getLineWidth();
+						props.set(FeatureProperties.STROKE_WIDTH_PROP, width);
+						props.set(FeatureProperties.STROKE_COLOR_PROP, xyChar.getColor());
+						features.add(new Feature(new Geometry.LineString(line), props));
+					}
+				}
+			} else {
+				PlotCurveCharacterstics xyChar = new PlotCurveCharacterstics(PlotLineType.SOLID, lineThickness, linesColor);
+				for (int j=0; j<lines.size(); j++) {
+					LocationList line = lines.get(j);
+					
+					XY_DataSet xy = new DefaultXY_DataSet();
+					for (Location loc : line)
+						xy.set(loc.getLongitude(), loc.getLatitude());
+					
+					funcs.add(xy);
+					chars.add(xyChar);
+				}
+				if (writeGeoJSON) {
+					FeatureProperties props = new FeatureProperties();
+					float width = xyChar.getLineWidth();
+					props.set(FeatureProperties.STROKE_WIDTH_PROP, width);
+					props.set(FeatureProperties.STROKE_COLOR_PROP, linesColor);
+					features.add(new Feature(new Geometry.MultiLineString(lines), props));
 				}
 			}
 		}
@@ -1329,6 +1507,8 @@ public class GeographicMapMaker {
 			plotAfterSects();
 			
 			plotJumps();
+			
+			plotLines();
 			
 			plotScatters();
 			
