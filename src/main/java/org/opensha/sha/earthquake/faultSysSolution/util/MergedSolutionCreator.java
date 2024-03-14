@@ -21,7 +21,7 @@ public class MergedSolutionCreator {
 	 * @param sols
 	 * @return
 	 */
-	public FaultSystemSolution merge(List<FaultSystemSolution> sols) {
+	public static FaultSystemSolution merge(List<FaultSystemSolution> sols) {
 		return merge(sols.toArray(new FaultSystemSolution[0]));
 	}
 	
@@ -32,7 +32,7 @@ public class MergedSolutionCreator {
 	 * @param sols
 	 * @return
 	 */
-	public FaultSystemSolution merge(FaultSystemSolution... sols) {
+	public static FaultSystemSolution merge(FaultSystemSolution... sols) {
 		Preconditions.checkState(sols.length > 1, "Need at least 2 solutions to merge");
 		
 		int totNumSects = 0;
