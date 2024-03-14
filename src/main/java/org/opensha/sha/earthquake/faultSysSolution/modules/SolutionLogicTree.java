@@ -263,6 +263,36 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 	}
 	
+	public static class SubsetSolutionLogicTree extends AbstractExternalFetcher {
+		
+		private SolutionLogicTree slt;
+
+		public SubsetSolutionLogicTree(SolutionLogicTree slt, LogicTree<?> subsetTree) {
+			super(slt.getProcessor(), subsetTree);
+			this.slt = slt;
+		}
+
+		@Override
+		protected FaultSystemSolution loadExternalForBranch(LogicTreeBranch<?> branch) throws IOException {
+			return slt.forBranch(branch);
+		}
+
+		@Override
+		public synchronized double[] loadRatesForBranch(LogicTreeBranch<?> branch) throws IOException {
+			return slt.loadRatesForBranch(branch);
+		}
+
+		@Override
+		public synchronized RuptureProperties loadPropsForBranch(LogicTreeBranch<?> branch) throws IOException {
+			return slt.loadPropsForBranch(branch);
+		}
+
+		@Override
+		public synchronized GridSourceProvider loadGridProvForBranch(LogicTreeBranch<?> branch) throws IOException {
+			return slt.loadGridProvForBranch(branch);
+		}
+	}
+	
 	public static class FileBuilder extends Builder {
 		
 		private static final String DNAME = ClassUtils.getClassNameWithoutPackage(FileBuilder.class);
