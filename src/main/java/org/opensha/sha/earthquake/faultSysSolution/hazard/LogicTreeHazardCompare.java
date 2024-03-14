@@ -577,6 +577,8 @@ public class LogicTreeHazardCompare {
 	private CPT logCPT;
 	private CPT spreadCPT;
 	private CPT spreadDiffCPT;
+	private CPT iqrCPT;
+	private CPT iqrDiffCPT;
 	private CPT sdCPT;
 	private CPT sdDiffCPT;
 	private CPT covCPT;
@@ -618,9 +620,13 @@ public class LogicTreeHazardCompare {
 		spreadCPT.setNanColor(Color.LIGHT_GRAY);
 		spreadDiffCPT = GMT_CPT_Files.DIVERGING_BAM_UNIFORM.instance().reverse().rescale(-1d, 1d);
 		spreadDiffCPT.setNanColor(Color.LIGHT_GRAY);
+		iqrCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(-2, 0d);
+		iqrCPT.setNanColor(Color.LIGHT_GRAY);
+		iqrDiffCPT = GMT_CPT_Files.DIVERGING_BAM_UNIFORM.instance().reverse().rescale(-0.05d, 0.05d);
+		iqrDiffCPT.setNanColor(Color.LIGHT_GRAY);
 		covCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0, 1d);
 		covCPT.setNanColor(Color.LIGHT_GRAY);
-		covDiffCPT = GMT_CPT_Files.DIVERGING_BAM_UNIFORM.instance().reverse().rescale(-0.5d, 0.5d);
+		covDiffCPT = GMT_CPT_Files.DIVERGING_BAM_UNIFORM.instance().reverse().rescale(-0.3d, 0.3d);
 		covDiffCPT.setNanColor(Color.LIGHT_GRAY);
 		sdCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(0, 0.2d);
 		sdCPT.setNanColor(Color.LIGHT_GRAY);
@@ -1392,6 +1398,15 @@ public class LogicTreeHazardCompare {
 		return ret;
 	}
 	
+	private GriddedGeoDataSet calcIQR(LightFixedXFunc[] ncdfs, GriddedRegion gridReg) {
+		GriddedGeoDataSet p75 = calcMapAtPercentile(ncdfs, gridReg, 75d);
+		GriddedGeoDataSet p25 = calcMapAtPercentile(ncdfs, gridReg, 25d);
+		GriddedGeoDataSet ret = new GriddedGeoDataSet(gridReg, false);
+		for (int i=0; i<ret.size(); i++)
+			ret.set(i, p75.get(i) - p25.get(i));
+		return ret;
+	}
+	
 	public static GriddedGeoDataSet calcPercentileWithinDist(LightFixedXFunc[] ncdfs, GriddedGeoDataSet comp) {
 		Preconditions.checkState(comp.size() == ncdfs.length);
 		GriddedGeoDataSet ret = new GriddedGeoDataSet(comp.getRegion(), false);
@@ -1630,6 +1645,8 @@ public class LogicTreeHazardCompare {
 		
 		futures = new ArrayList<>();
 		
+		boolean intermediateWrite = branches != null && branches.size() > 50 && !new File(outputDir, "index.html").exists();
+		
 		for (double period : periods) {
 			String perLabel, perPrefix, unitlessPerLabel;
 			if (period == 0d) {
@@ -1674,6 +1691,7 @@ public class LogicTreeHazardCompare {
 				GriddedGeoDataSet max = buildMax(maps, weights);
 				GriddedGeoDataSet min = buildMin(maps, weights);
 				GriddedGeoDataSet spread = buildSpread(log10(min), log10(max));
+				GriddedGeoDataSet iqr = calcIQR(mapNCDFs, region);
 				GriddedGeoDataSet sd = new GriddedGeoDataSet(region);
 				GriddedGeoDataSet cov = new GriddedGeoDataSet(region);
 				calcSD_COV(maps, weights, mean, sd, cov);
@@ -1690,6 +1708,7 @@ public class LogicTreeHazardCompare {
 				GriddedGeoDataSet cmin = null;
 				GriddedGeoDataSet cmax = null;
 				GriddedGeoDataSet cspread = null;
+				GriddedGeoDataSet ciqr = null;
 				GriddedGeoDataSet csd = null;
 				GriddedGeoDataSet ccov = null;
 				
@@ -1712,6 +1731,7 @@ public class LogicTreeHazardCompare {
 					cmax = comp.buildMax(cmaps, comp.weights);
 					cmin = comp.buildMin(cmaps, comp.weights);
 					cspread = comp.buildSpread(log10(cmin), log10(cmax));
+					ciqr = calcIQR(cmapNCDFs, region);
 					csd = new GriddedGeoDataSet(region);
 					ccov = new GriddedGeoDataSet(region);
 					calcSD_COV(cmaps, comp.weights, cmean, csd, ccov);
@@ -1729,7 +1749,7 @@ public class LogicTreeHazardCompare {
 				lines.add("");
 				
 				boolean multi = branches.size() > 1;
-				boolean cmulti = comp.branches != null && comp.branches.size() > 1;
+				boolean cmulti = comp != null && comp.branches != null && comp.branches.size() > 1;
 				
 				MapPlot meanMapPlot = mapper.buildMapPlot(resourcesDir, prefix+"_mean", log10(mean),
 						logCPT, TITLES ? name : " ", "Log10 "+(multi ? "Weighted-Average" : "Mean")+", "+label, false);
@@ -1762,9 +1782,12 @@ public class LogicTreeHazardCompare {
 					lines.addAll(table.build());
 					lines.add("");
 					
-					if (!multi)
+					if (!multi) {
 						// don't bother with percentiles and such
+						if (intermediateWrite)
+							writeIntermediate(outputDir, lines, tocIndex);
 						continue;
+					}
 				} else {
 					lines.add("### Mean hazard maps and comparisons, "+unitlessLabel);
 					lines.add(topLink); lines.add("");
@@ -1780,7 +1803,7 @@ public class LogicTreeHazardCompare {
 					if (multi)
 						table.addColumn(MarkdownUtils.boldCentered("Primary (_"+name+"_) Weighted-Average"));
 					else
-						table.addColumn(MarkdownUtils.boldCentered("Comparison (_"+name+"_)"));
+						table.addColumn(MarkdownUtils.boldCentered("Primary (_"+name+"_)"));
 					if (cmulti)
 						table.addColumn(MarkdownUtils.boldCentered("Comparison (_"+compName+"_) Weighted-Average"));
 					else
@@ -1900,6 +1923,8 @@ public class LogicTreeHazardCompare {
 						lines.add("");
 						
 						// don't bother with branches and such
+						if (intermediateWrite)
+							writeIntermediate(outputDir, lines, tocIndex);
 						continue;
 					}
 				}
@@ -1964,7 +1989,8 @@ public class LogicTreeHazardCompare {
 				lines.add(topLink); lines.add("");
 				
 				String minMaxStr = "The maps below show the range of values across all logic tree branches, the ratio of "
-						+ "the maximum to minimum value, and the coefficient of variation (std. dev. / mean). Note that "
+						+ "the maximum to minimum value, the interquartile range (p75 - p25), standard deviation, "
+						+ "and the coefficient of variation (std. dev. / mean). Note that "
 						+ "the minimum and maximum maps are not a result for any single logic tree branch, but rather "
 						+ "the smallest or largest value encountered at each location across all logic tree branches.";
 
@@ -1979,6 +2005,8 @@ public class LogicTreeHazardCompare {
 							logCPT, TITLES ? name : " ", "Log10 Maximum, "+label);
 					File spreadMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_spread", spread,
 							spreadCPT, TITLES ? name : " ", "Log10 (Max/Min), "+unitlessLabel);
+					File iqrMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_iqr", log10(iqr),
+							iqrCPT, TITLES ? name : " ", "Log10 IQR, "+label);
 					File sdMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_sd", sd,
 							sdCPT, TITLES ? name : " ", "SD, "+label);
 					File covMapFile = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_cov", cov,
@@ -1988,9 +2016,14 @@ public class LogicTreeHazardCompare {
 					table.addColumn("![Min Map]("+resourcesDir.getName()+"/"+minMapFile.getName()+")");
 					table.addColumn("![Max Map]("+resourcesDir.getName()+"/"+maxMapFile.getName()+")");
 					table.finalizeLine();
-					table.addLine(MarkdownUtils.boldCentered("Log10 (Max/Min)"), MarkdownUtils.boldCentered("COV"));
+					table.addLine(MarkdownUtils.boldCentered("Log10 (Max/Min)"), MarkdownUtils.boldCentered("Interquartile Range"));
 					table.initNewLine();
 					table.addColumn("![Spread Map]("+resourcesDir.getName()+"/"+spreadMapFile.getName()+")");
+					table.addColumn("![IQR Map]("+resourcesDir.getName()+"/"+iqrMapFile.getName()+")");
+					table.finalizeLine();
+					table.addLine(MarkdownUtils.boldCentered("SD"), MarkdownUtils.boldCentered("COV"));
+					table.initNewLine();
+					table.addColumn("![SD Map]("+resourcesDir.getName()+"/"+sdMapFile.getName()+")");
 					table.addColumn("![COV Map]("+resourcesDir.getName()+"/"+covMapFile.getName()+")");
 					table.finalizeLine();
 					
@@ -2009,6 +2042,9 @@ public class LogicTreeHazardCompare {
 					addMapCompDiffLines(spread, name, cspread, compName, prefix+"_spread", resourcesDir, table,
 							"Log10 (Max/Min)", "Log10 (Max/Min) "+unitlessLabel, "Log10 (Max/Min) "+unitlessLabel, false,
 							spreadCPT, spreadDiffCPT, pDiffCPT, comp.gridReg);
+					addMapCompDiffLines(iqr, name, ciqr, compName, prefix+"_iqr", resourcesDir, table,
+							"Interquartile Range", "IQR "+label, "IQR "+unitlessLabel, true,
+							iqrCPT, iqrDiffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(sd, name, csd, compName, prefix+"_sd", resourcesDir, table,
 							"SD", label+", SD", unitlessLabel+", SD", false, sdCPT, sdDiffCPT, pDiffCPT, comp.gridReg);
 					addMapCompDiffLines(cov, name, ccov, compName, prefix+"_cov", resourcesDir, table,
@@ -2022,8 +2058,11 @@ public class LogicTreeHazardCompare {
 					lines.add("");
 				}
 				
-				if (skipLogicTree)
+				if (skipLogicTree) {
+					if (intermediateWrite)
+						writeIntermediate(outputDir, lines, tocIndex);
 					continue;
+				}
 				
 				cmapNCDFs = null;
 				cmean = null;
@@ -2415,6 +2454,9 @@ public class LogicTreeHazardCompare {
 					table.addLine("![Combined Map]("+resourcesDir.getName()+"/"+combPrefix+".png)");
 					lines.addAll(combinedMapIndex, table.build());
 				}
+				
+				if (intermediateWrite)
+					writeIntermediate(outputDir, lines, tocIndex);
 			}
 		}
 		
@@ -2432,6 +2474,18 @@ public class LogicTreeHazardCompare {
 		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2, 4));
 		lines.add(tocIndex, "## Table Of Contents");
 		
+		// write markdown
+		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
+	}
+	
+	private static void writeIntermediate(File outputDir, List<String> lines, int tocIndex) throws IOException {
+		System.out.println("Writing intermediate markdown");
+		
+		lines = new ArrayList<>(lines);
+		// add TOC
+		lines.addAll(tocIndex, MarkdownUtils.buildTOC(lines, 2, 4));
+		lines.add(tocIndex, "## Table Of Contents");
+
 		// write markdown
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
 	}
