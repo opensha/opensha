@@ -11,6 +11,8 @@ import java.io.StringReader;
 import java.io.StringWriter;
 import java.io.Writer;
 
+import org.opensha.commons.util.ExceptionUtils;
+
 import com.google.common.base.Preconditions;
 import com.google.gson.TypeAdapter;
 import com.google.gson.annotations.JsonAdapter;
@@ -184,9 +186,27 @@ public class Feature {
 	 * @return GeoJSON representation of this Feature
 	 * @throws IOException
 	 */
-	public String toJSON() throws IOException {
+	public String toJSON() {
 		StringWriter writer = new StringWriter();
-		write(this, writer);
+		try {
+			write(this, writer);
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
+		return writer.toString();
+	}
+	
+	/**
+	 * @return GeoJSON representation of this Feature
+	 * @throws IOException
+	 */
+	public String toCompactJSON() {
+		StringWriter writer = new StringWriter();
+		try {
+			writeCompact(this, writer);
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
 		return writer.toString();
 	}
 	
@@ -258,6 +278,23 @@ public class Feature {
 
 		synchronized (FeatureCollection.gson_default) {
 			FeatureCollection.gson_default.toJson(feature, Feature.class, writer);
+			writer.flush();
+		}
+	}
+	
+	/**
+	 * Writes a Feature to the given writer
+	 * 
+	 * @param features
+	 * @param writer
+	 * @throws IOException
+	 */
+	public static void writeCompact(Feature feature, Writer writer) throws IOException {
+		if (!(writer instanceof BufferedWriter))
+			writer = new BufferedWriter(writer);
+
+		synchronized (FeatureCollection.gson_compact) {
+			FeatureCollection.gson_compact.toJson(feature, Feature.class, writer);
 			writer.flush();
 		}
 	}
