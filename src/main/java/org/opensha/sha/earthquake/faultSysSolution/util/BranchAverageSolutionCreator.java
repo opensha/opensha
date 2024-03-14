@@ -167,7 +167,7 @@ public class BranchAverageSolutionCreator {
 			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 				if (sect instanceof GeoJSONFaultSection) {
 					GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
-					double creepRate = geoSect.getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
+					double creepRate = geoSect.getProperties().getDouble(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
 					if (Double.isFinite(creepRate)) {
 						// have creep data
 						avgSectCreep = new double[rupSet.getNumSections()];
@@ -175,7 +175,7 @@ public class BranchAverageSolutionCreator {
 						break;
 					}
 					
-					double origFractUncert = geoSect.getProperty(
+					double origFractUncert = geoSect.getProperties().getDouble(
 							NSHM23_DeformationModels.ORIG_FRACT_STD_DEV_PROPERTY_NAME, Double.NaN);
 					if (Double.isFinite(origFractUncert))
 						// will average this one
@@ -266,7 +266,7 @@ public class BranchAverageSolutionCreator {
 					GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
 					
 					if (avgSectCreep != null) {
-						double creepRate = geoSect.getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
+						double creepRate = geoSect.getProperties().getDouble(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
 						if (Double.isFinite(creepRate)) {
 							sectAnyCreeps[s] = true;
 							avgSectCreep[s] += Math.max(0d, creepRate)*weight;
@@ -274,7 +274,7 @@ public class BranchAverageSolutionCreator {
 					}
 					
 					if (Double.isFinite(avgSectOrigFractUncert[s]))
-						avgSectOrigFractUncert[s] += weight*geoSect.getProperty(
+						avgSectOrigFractUncert[s] += weight*geoSect.getProperties().getDouble(
 								NSHM23_DeformationModels.ORIG_FRACT_STD_DEV_PROPERTY_NAME, Double.NaN);
 				}
 			}
