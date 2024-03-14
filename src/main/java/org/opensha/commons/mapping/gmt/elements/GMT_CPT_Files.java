@@ -14,6 +14,9 @@ import org.opensha.commons.util.cpt.CPT;
  */
 public enum GMT_CPT_Files {
 	
+	/*
+	 * Original GMT set
+	 */
 	BLUE_YELLOW_RED("BlueYellowRed.cpt"),
 	GMT_COOL("GMT_cool.cpt"),
 	MAX_SPECTRUM("MaxSpectrum.cpt"),
@@ -52,6 +55,11 @@ public enum GMT_CPT_Files {
 	GMT_SPLIT("GMT_split.cpt"),
 //	GMT_TOPO("GMT_topo.cpt"),
 	GMT_WYSIWYG("GMT_wysiwyg.cpt"),
+	
+	/*
+	 * Newer perceptually uniform
+	 */
+	
 	/**
 	 * CET-L4 from https://colorcet.com/
 	 */
@@ -87,9 +95,29 @@ public enum GMT_CPT_Files {
 	DIVERGING_CORK_UNIFORM("cork.cpt"),
 	/**
 	 * bam from https://www.fabiocrameri.ch/colourmaps/ and GMT 6
-	 * broc blues through white to yellow/greenish browns
+	 * dark blues through white to yellow/greenish browns
 	 */
-	DIVERGING_BROC_UNIFORM("broc.cpt");
+	DIVERGING_BROC_UNIFORM("broc.cpt"),
+	/**
+	 * batlow from https://www.fabiocrameri.ch/colourmaps/ and GMT 6
+	 * rainbow-ish, but perceptually uniform
+	 */
+	SEQUENTIAL_BATLOW_UNIFORM("batlow.cpt"),
+	/**
+	 * navia from https://www.fabiocrameri.ch/colourmaps/ and GMT 6
+	 * Dark blue through green to light green-yellow
+	 */
+	SEQUENTIAL_NAVIA_UNIFORM("navia.cpt"),
+	/**
+	 * lajolla from https://www.fabiocrameri.ch/colourmaps/ and GMT 6
+	 * Dark red through to light yellow
+	 */
+	SEQUENTIAL_LAJOLLA_UNIFORM("lajolla.cpt"),
+	/**
+	 * categorical version of batlow from https://www.fabiocrameri.ch/colourmaps/ and GMT 6
+	 * Grab the first color from each CPT value
+	 */
+	CATEGORICAL_BATLOW_UNIFORM("batlowS.cpt");
 	
 	private String fname;
 	
