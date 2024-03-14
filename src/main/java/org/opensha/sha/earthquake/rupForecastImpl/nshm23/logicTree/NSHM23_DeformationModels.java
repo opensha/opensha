@@ -165,8 +165,8 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 					}
 					for (int s=0; s<dmSects.size(); s++) {
 						GeoJSONFaultSection sect = (GeoJSONFaultSection)dmSects.get(s);
-						if (s == 1744)
-							System.err.println("DEBUG "+s+" for "+dm.name()+": slipRate="+sect.getOrigAveSlipRate());
+//						if (s == 1744)
+//							System.err.println("DEBUG "+s+" for "+dm.name()+": slipRate="+sect.getOrigAveSlipRate());
 						origSlipRates[s] += dm.getWeight()*sect.getOrigAveSlipRate();
 						reducedSlipRates[s] += dm.getWeight()*sect.getReducedAveSlipRate();
 						aseismicities[s] += dm.getWeight()*sect.getAseismicSlipFactor();
