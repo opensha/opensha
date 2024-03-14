@@ -808,6 +808,40 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		return newMin + ((oldVal - getMinValue()) / oldDelta) * newDelta;
 	}
 	
+	public CPT trim(double newMin, double newMax) {
+		Preconditions.checkState(newMin >= getMinValue(), "new minimum is lower than original minimum");
+		Preconditions.checkState(newMax <= getMaxValue(), "new maximum is greater than original maximum");
+		Preconditions.checkState(newMax > newMin, "new max must be greater than new max");
+		CPT cpt = (CPT)clone();
+		cpt.clear();
+		
+		for (CPTVal val : this) {
+			if (val.end < (float)newMin)
+				// completely before the start
+				continue;
+			if (val.start > (float)newMax)
+				// completely after the end
+				break;
+			// if we're here, we are inside or at least overlap a new bound
+			CPTVal newVal = val;
+			if (val.start < (float)newMin) {
+				// we started before the new minimum, truncate the lower bound
+				Color minColor = getColor((float)newMin);
+				newVal = new CPTVal((float)newMin, minColor, newVal.end, newVal.maxColor);
+			}
+			if (val.end > (float)newMax) {
+				// we end after the new maximum, truncate the upper bound
+				Color maxColor = getColor((float)newMax);
+				newVal = new CPTVal(newVal.start, newVal.minColor, (float)newMax, maxColor);
+			}
+			cpt.add(newVal);
+		}
+		cpt.setBelowMinColor(cpt.getMinColor());
+		cpt.setAboveMaxColor(cpt.getMaxColor());
+		
+		return cpt;
+	}
+	
 	/**
 	 * @return reversed version of this CPT file
 	 */
