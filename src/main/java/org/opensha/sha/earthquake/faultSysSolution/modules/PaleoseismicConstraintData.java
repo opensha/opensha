@@ -192,7 +192,7 @@ SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
 				FaultSection sect = rupSet.getFaultSectionData(s);
 				double slip = targetSlipRates.getSlipRate(s);
 				if (slip > 0 && sect instanceof GeoJSONFaultSection) {
-					double origFractSlip = ((GeoJSONFaultSection)sect).getProperty(
+					double origFractSlip = ((GeoJSONFaultSection)sect).getProperties().getDouble(
 							NSHM23_DeformationModels.ORIG_FRACT_STD_DEV_PROPERTY_NAME, Double.NaN);
 					if (origFractSlip > 0d)
 						slipRateStdDevs[s] = Math.max(slipRateStdDevs[s], slip*origFractSlip);

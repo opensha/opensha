@@ -3043,7 +3043,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			
 			if (sect instanceof GeoJSONFaultSection) {
 				GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
-				double creepRate = geoSect.getProperty("CreepRate", Double.NaN);
+				double creepRate = geoSect.getProperties().getDouble("CreepRate", Double.NaN);
 				if (Double.isFinite(creepRate)) {
 					XY_DataSet creepFunc = copyAtY(emptyFunc, creepRate);
 					if (firstCreep)

@@ -863,7 +863,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 		for (int s=0; s<creep.length; s++) {
 			FaultSection sect = rupSet.getFaultSectionData(s);
 			if (sect instanceof GeoJSONFaultSection)
-				creep[s] = ((GeoJSONFaultSection)sect).getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
+				creep[s] = ((GeoJSONFaultSection)sect).getProperties().getDouble(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
 			else
 				creep[s] = Double.NaN;
 		}
