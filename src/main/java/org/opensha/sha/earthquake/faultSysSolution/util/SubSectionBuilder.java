@@ -54,6 +54,7 @@ public class SubSectionBuilder {
 			double ddwFract, double fixedLen) {
 		Preconditions.checkState(ddwFract > 0 || fixedLen > 0, "Must give either ddwFract or fixedLen >0");
 		Preconditions.checkState(!(ddwFract > 0) || !(fixedLen > 0), "Can't supply both ddwFract and fixedLen");
+		sects = new ArrayList<>(sects);
 		Collections.sort(sects, new Comparator<FaultSection>() {
 	
 			@Override
