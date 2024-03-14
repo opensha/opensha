@@ -354,11 +354,11 @@ public class SolSiteHazardCalc {
 			Preconditions.checkState(csv.getNumCols() >= 3 && csv.getNumCols() <= 6,
 					"Expected between 3 and 6 columns, have %s", csv.getNumCols());
 			Preconditions.checkState(csv.get(0, 0).trim().toLowerCase().equals(NAME_HEADER.toLowerCase()),
-					"First header coulumn must be `%s`, got: %s", NAME_HEADER, csv.getInt(0, 0));
+					"First header coulumn must be `%s`, got: %s", NAME_HEADER, csv.get(0, 0));
 			Preconditions.checkState(csv.get(0, 1).trim().toLowerCase().equals(LAT_HEADER.toLowerCase()),
-					"Second header coulumn must be `%s`, got: %s", LAT_HEADER, csv.getInt(0, 1));
+					"Second header coulumn must be `%s`, got: %s", LAT_HEADER, csv.get(0, 1));
 			Preconditions.checkState(csv.get(0, 2).trim().toLowerCase().equals(LON_HEADER.toLowerCase()),
-					"Third header coulumn must be `%s`, got: %s", LON_HEADER, csv.getInt(0, 2));
+					"Third header coulumn must be `%s`, got: %s", LON_HEADER, csv.get(0, 2));
 			int vsCol = -1;
 			int z10Col = -1;
 			int z25Col = -1;
