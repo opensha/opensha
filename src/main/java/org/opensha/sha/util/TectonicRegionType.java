@@ -16,7 +16,7 @@ public enum TectonicRegionType implements Serializable {
 	
 	
 	/** Active shallow crust tectonic region. */
-	ACTIVE_SHALLOW("Active Shallow Crust", 200),
+	ACTIVE_SHALLOW("Active Shallow Crust", 300),
 	
 	/** Stable shallow crust tectonic region. */
 	STABLE_SHALLOW("Stable Shallow Crust", 1000),
@@ -25,10 +25,10 @@ public enum TectonicRegionType implements Serializable {
 	SUBDUCTION_INTERFACE("Subduction Interface", 1000),
 	
 	/** Subduction IntraSlab tectonic region. */
-	SUBDUCTION_SLAB("Subduction IntraSlab", 1000),
+	SUBDUCTION_SLAB("Subduction IntraSlab", 300),
 	
 	/** Volcanic tectonic region. */
-	VOLCANIC("Volcanic", 200);
+	VOLCANIC("Volcanic", 300);
 	
 	private String name;
 	private double cutoff;
