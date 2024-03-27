@@ -7,6 +7,7 @@ import org.dom4j.Element;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureProperties;
@@ -120,6 +121,15 @@ public final class GeoJSONFaultSection implements FaultSection {
 				}
 			}
 		}
+		
+		if (properties.containsKey(SLIP_RATE))
+			aveLongTermSlipRate = properties.getDouble(SLIP_RATE, Double.NaN);
+
+		if (properties.containsKey(PARENT_ID))
+			parentSectionId = properties.getInt(PARENT_ID, -0);
+		
+		if (properties.containsKey(ASEIS))
+			setAseismicSlipFactor(properties.getDouble(ASEIS, Double.NaN));
 		
 		setGeometry(feature.geometry);
 		Preconditions.checkNotNull(trace,
@@ -359,23 +369,64 @@ public final class GeoJSONFaultSection implements FaultSection {
 			mappedProps.set(LOW_DEPTH, approxSurf.getAveRupBottomDepth());
 			mappedProps.set(DIP_DIR, approxSurf.getAveDipDirection());
 			
+			// make all depths in the trace the same by projecting up or down dip
+			LocationList newUpperTrace = new LocationList();
+			double aveDepth = approxSurf.getAveRupTopDepth();
+			double dipDir = approxSurf.getAveDipDirection();
+			double dip = approxSurf.getAveDip();
+			System.out.println("aveDep="+(float)aveDepth+"\tdipDir="+(float)dipDir+"\tdip="+(float)dip+"\n");
+			for(Location loc:upperTrace) {
+				double deltaDep = aveDepth-loc.depth; // positive means go to greater depth, meaning move in negative Z dir
+				double azimuth = Double.NaN;
+				if(deltaDep>0) 
+					azimuth = dipDir; // move down dip
+				else
+					azimuth = dipDir+180; // move up dip
+				double horzDist = Math.abs(deltaDep)/Math.tan(dip*Math.PI/180);
+				LocationVector dir = new LocationVector(azimuth, horzDist, deltaDep);
+//				System.out.println("azimuth="+(float)azimuth+"\thorzDist="+(float)horzDist+"\tvertDis="+(float)-deltaDep);
+				newUpperTrace.add(LocationUtils.location(loc, dir));
+
+//				newUpperTrace.add(new Location(loc.getLatitude(),loc.getLongitude(),aveDepth));
+			}
+			
+//			System.out.println("Orig Trace:\n"+upperTrace);
+//			System.out.println("\nRevised Trace:\n"+newUpperTrace);
+//			System.exit(0);
+			
 			// convert geometry to simple line string with only upper trace
-			geometry = new LineString(upperTrace);
+			geometry = new LineString(newUpperTrace);
 			
 			// set lower trace as separate property
 			mappedProps.put(LOWER_TRACE, new LineString(lowerTrace));
 		} else {
 			mappedProps.set(DIP, origProps.require("dip", Double.class));
-			mappedProps.set(RAKE, origProps.require("rake", Double.class));
+			if (origProps.containsKey("rake"))
+				mappedProps.set(RAKE, origProps.require("rake", Double.class));
 			mappedProps.set(UPPER_DEPTH, origProps.require("upper-depth", Double.class));
 			mappedProps.set(LOW_DEPTH, origProps.require("lower-depth", Double.class));
+			if (origProps.containsKey("dip-direction"))
+				mappedProps.set(DIP_DIR, origProps.require("dip-direction", Double.class));
 		}
 		
 		// optional ones to carry forward
 		if (origProps.containsKey("state"))
 			mappedProps.set("PrimState", origProps.require("state", String.class));
 		if (origProps.containsKey("references"))
-			mappedProps.set("references", origProps.get("references"));
+			mappedProps.set("references", origProps.require("references", String.class));
+		
+		if (origProps.containsKey("aseismicity"))
+			mappedProps.set(ASEIS, origProps.require("aseismicity", Double.class));
+		if (origProps.containsKey("slip-rate"))
+			mappedProps.set(SLIP_RATE, origProps.require("slip-rate", Double.class));
+
+		// if "index" exists use above feature.id as parent id and index as id
+		if (origProps.containsKey("index")) {
+			mappedProps.set(PARENT_ID, id);
+//			id = origProps.require("index", Integer.class);
+			id = origProps.getInt("index", -0);
+		}
+
 		
 		return new GeoJSONFaultSection(new Feature(id, geometry, mappedProps));
 	}
