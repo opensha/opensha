@@ -122,15 +122,6 @@ public final class GeoJSONFaultSection implements FaultSection {
 			}
 		}
 		
-		if (properties.containsKey(SLIP_RATE))
-			aveLongTermSlipRate = properties.getDouble(SLIP_RATE, Double.NaN);
-
-		if (properties.containsKey(PARENT_ID))
-			parentSectionId = properties.getInt(PARENT_ID, -0);
-		
-		if (properties.containsKey(ASEIS))
-			setAseismicSlipFactor(properties.getDouble(ASEIS, Double.NaN));
-		
 		setGeometry(feature.geometry);
 		Preconditions.checkNotNull(trace,
 				"Didn't find a FaultTrace in the supplied Feature. LineString and MultiLineString are supported");
