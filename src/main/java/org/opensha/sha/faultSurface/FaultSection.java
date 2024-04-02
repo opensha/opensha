@@ -146,6 +146,14 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	public FaultTrace getFaultTrace();
 	
 	/**
+	 * This returns the lower fault trace if the surface is not a simple fault, otherwise null.
+	 * @return
+	 */
+	public default FaultTrace getLowerFaultTrace() {
+		return null;
+	}
+	
+	/**
 	 * This returns the section ID 
 	 * @return
 	 */

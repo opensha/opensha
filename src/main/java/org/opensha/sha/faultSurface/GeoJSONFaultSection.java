@@ -274,6 +274,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 		this.lowerDepth = sect.getAveLowerDepth();
 		this.dipDirection = sect.getDipDirection();
 		this.trace = sect.getFaultTrace();
+		this.lowerTrace = sect.getLowerFaultTrace();
 		if (sect instanceof GeoJSONFaultSection) {
 			this.properties = new FeatureProperties(((GeoJSONFaultSection)sect).properties);
 		} else {
@@ -297,6 +298,8 @@ public final class GeoJSONFaultSection implements FaultSection {
 			if (sect.isConnector())
 				properties.set(CONNECTOR, true);
 			setZonePolygon(sect.getZonePolygon());
+			if (lowerTrace != null)
+				properties.set(LOWER_TRACE, new LineString(lowerTrace));
 		}
 		cacheCommonValues();
 	}
@@ -551,6 +554,11 @@ public final class GeoJSONFaultSection implements FaultSection {
 	}
 
 	@Override
+	public FaultTrace getLowerFaultTrace() {
+		return lowerTrace;
+	}
+
+	@Override
 	public int getSectionId() {
 		return id;
 	}
@@ -596,6 +604,10 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public List<GeoJSONFaultSection> getSubSectionsList(double maxSubSectionLen, int startId, int minSubSections) {
 		ArrayList<FaultTrace> equalLengthSubsTrace =
 				FaultUtils.getEqualLengthSubsectionTraces(this.trace, maxSubSectionLen, minSubSections);
+		ArrayList<FaultTrace> equalLengthLowerSubsTrace = null;
+		if (lowerTrace != null)
+			equalLengthLowerSubsTrace = FaultUtils.getEqualLengthSubsectionTraces(this.lowerTrace, equalLengthSubsTrace.size());
+		
 		ArrayList<GeoJSONFaultSection> subSectionList = new ArrayList<GeoJSONFaultSection>();
 		for(int i=0; i<equalLengthSubsTrace.size(); ++i) {
 			int myID = startId + i;
@@ -603,8 +615,8 @@ public final class GeoJSONFaultSection implements FaultSection {
 			GeoJSONFaultSection subSection = new GeoJSONFaultSection(this);
 			
 			// clear these just in case they were somehow set externally
-			subSection.properties.remove("FaultID");
-			subSection.properties.remove("FaultName");
+			subSection.properties.remove(FAULT_ID);
+			subSection.properties.remove(FAULT_NAME);
 			
 			subSection.setSectionName(myName);
 			subSection.setSectionId(myID);
@@ -613,6 +625,13 @@ public final class GeoJSONFaultSection implements FaultSection {
 			subSection.setParentSectionName(this.name);
 			// make sure dip direction is set from parent
 			subSection.setDipDirection(dipDirection);
+			
+			if (lowerTrace != null) {
+				FaultTrace lowerSubTrace = equalLengthLowerSubsTrace.get(i);
+				subSection.properties.set(LOWER_TRACE, new LineString(lowerSubTrace));
+				subSection.lowerTrace = lowerSubTrace;
+			}
+			
 			subSectionList.add(subSection);
 		}
 		return subSectionList;
