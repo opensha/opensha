@@ -411,7 +411,7 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 		 * and ddw exactly (otherwise trimming occurs)
 		 * @return
 		 */
-		public synchronized ApproxEvenlyGriddedSurface getStirlingGriddedSurface(
+		public synchronized ApproxEvenlyGriddedSurface getApproxEvenlyGriddedSurface(
 				double gridSpacing, boolean aseisReducesArea) {
 			// return cached surface?
 			if( (gridSpacing==lastGridSpacing && approxGriddedSurface != null)

@@ -93,19 +93,15 @@ public final class GeoJSONFaultSection implements FaultSection {
 		
 		name = properties.get(FAULT_NAME, null); // can be null
 		
-		dip = properties.getDouble(DIP, Double.NaN);
-		checkPropFinite(DIP, dip);
-		FaultUtils.assertValidDip(dip);
-		
 		rake = properties.getDouble(RAKE, Double.NaN);
 //		checkPropFinite(RAKE, rake); // allow rakes to be attached later, don't enforce that it's specified now
 		
 		upperDepth = properties.getDouble(UPPER_DEPTH, Double.NaN);
-		checkPropFinite(UPPER_DEPTH, dip);
+		checkPropFinite(UPPER_DEPTH, upperDepth);
 		FaultUtils.assertValidDepth(upperDepth);
 		
 		lowerDepth = properties.getDouble(LOW_DEPTH, Double.NaN);
-		checkPropFinite(LOW_DEPTH, dip);
+		checkPropFinite(LOW_DEPTH, lowerDepth);
 		FaultUtils.assertValidDepth(lowerDepth);
 		
 		dipDirection = Float.NaN;
@@ -142,6 +138,16 @@ public final class GeoJSONFaultSection implements FaultSection {
 			lowerTrace = new FaultTrace(name);
 			lowerTrace.addAll(line);
 		}
+		
+		dip = properties.getDouble(DIP, Double.NaN);
+		if (!Double.isFinite(dip) && lowerTrace != null) {
+			// calculate dip from the lower trace
+			ApproxEvenlyGriddedSurface surf = getApproxGriddedSurface(1d, false);
+			dip = surf.getAveDip();
+			properties.set(DIP, dip);
+		}
+		checkPropFinite(DIP, dip);
+		FaultUtils.assertValidDip(dip);
 		
 		if (!Double.isFinite(dipDirection)) {
 			if (lowerTrace == null) {
@@ -630,6 +636,10 @@ public final class GeoJSONFaultSection implements FaultSection {
 				FaultTrace lowerSubTrace = equalLengthLowerSubsTrace.get(i);
 				subSection.properties.set(LOWER_TRACE, new LineString(lowerSubTrace));
 				subSection.lowerTrace = lowerSubTrace;
+				// calculate new dip
+				subSection.dip = new ApproxEvenlyGriddedSurface(subSection.trace, subSection.lowerTrace,
+						subSection.trace.getTraceLength()/20d).getAveDip();
+				subSection.properties.set(DIP, subSection.dip);
 			}
 			
 			subSectionList.add(subSection);
@@ -720,7 +730,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 			boolean aseisReducesArea) {
 		if (approxGriddedCache == null)
 			approxGriddedCache = new ApproxEvenlyGriddedSurfaceCache(this, lowerTrace);
-		return approxGriddedCache.getStirlingGriddedSurface(gridSpacing, aseisReducesArea);
+		return approxGriddedCache.getApproxEvenlyGriddedSurface(gridSpacing, aseisReducesArea);
 	}
 
 	@Override
