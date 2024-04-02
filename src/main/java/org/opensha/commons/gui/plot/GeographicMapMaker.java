@@ -711,34 +711,52 @@ public class GeographicMapMaker {
 					List<LocationList> upperEdges = new ArrayList<>();
 					List<LocationList> perimeters = new ArrayList<>();
 					for (FaultSection sect : sects) {
-						// build our own simple perimeters here that have fewer points (not evenly discretized
+						if (sect.getAveDip() == 90d) {
+							// vertical, don't bother with perimeter
+							upperEdges.add(sect.getFaultTrace());
+							perimeters.add(null);
+							continue;
+						}
+						
+						// build our own simple perimeters here that have fewer points (not evenly discretized)
 						FaultTrace trace = sect.getFaultTrace();
 						
-						LocationList upperEdge = new LocationList();
-						LocationList lowerEdge = new LocationList();
+						LocationList upperEdge;
+						LocationList lowerEdge;
 						
-						double dipDirDeg = sect.getDipDirection(); // degrees
-						double aveDipRad = Math.toRadians(sect.getAveDip()); // radians
-						double upperDepth, ddw;
-						if (plotAseisReducedSurfaces) {
-							upperDepth = sect.getReducedAveUpperDepth();
-							ddw = sect.getReducedDownDipWidth();
+						if (sect.getLowerFaultTrace() == null) {
+							upperEdge = new LocationList();
+							lowerEdge = new LocationList();
+							// project down dip to get the lower trace
+							double dipDirDeg = sect.getDipDirection(); // degrees
+							double aveDipRad = Math.toRadians(sect.getAveDip()); // radians
+							double upperDepth, ddw;
+							if (plotAseisReducedSurfaces) {
+								upperDepth = sect.getReducedAveUpperDepth();
+								ddw = sect.getReducedDownDipWidth();
+							} else {
+								upperDepth = sect.getOrigAveUpperDepth();
+								ddw = sect.getOrigDownDipWidth();
+							}
+							double horzToBottom = ddw * Math.cos( aveDipRad );
+							double vertToBottom = ddw * Math.sin( aveDipRad );
+							
+							for (Location traceLoc : trace) {
+								Location upperLoc = StirlingGriddedSurface.getTopLocation(
+										traceLoc, upperDepth, aveDipRad, dipDirDeg);
+								upperEdge.add(upperLoc);
+
+								LocationVector dir = new LocationVector(dipDirDeg, horzToBottom, vertToBottom);
+
+								Location lowerLoc = LocationUtils.location(upperLoc, dir);
+								lowerEdge.add(lowerLoc);
+							}
 						} else {
-							upperDepth = sect.getOrigAveUpperDepth();
-							ddw = sect.getOrigDownDipWidth();
-						}
-						double horzToBottom = ddw * Math.cos( aveDipRad );
-						double vertToBottom = ddw * Math.sin( aveDipRad );
-						
-						for (Location traceLoc : trace) {
-							Location upperLoc = StirlingGriddedSurface.getTopLocation(
-									traceLoc, upperDepth, aveDipRad, dipDirDeg);
-							upperEdge.add(upperLoc);
-
-							LocationVector dir = new LocationVector(dipDirDeg, horzToBottom, vertToBottom);
-
-							Location lowerLoc = LocationUtils.location(upperLoc, dir);
-							lowerEdge.add(lowerLoc);
+							// we have our own lower trace
+							upperEdge = new LocationList();
+							upperEdge.addAll(sect.getFaultTrace());
+							lowerEdge = new LocationList();
+							lowerEdge.addAll(sect.getLowerFaultTrace());
 						}
 						
 						LocationList perimeter = new LocationList();
