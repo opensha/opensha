@@ -170,6 +170,13 @@ public class PathPlausibilityFilter implements PlausibilityFilter {
 					result = result.logicalOr(subResult);
 				else
 					result = result.logicalAnd(subResult);
+
+				if (logicalOr && result.isPass() && !verbose) {
+					break;
+				}
+				if (!logicalOr && !result.canContinue() && !verbose){
+					break;
+				}
 			}
 			if (result.isPass())
 				numPasses++;
