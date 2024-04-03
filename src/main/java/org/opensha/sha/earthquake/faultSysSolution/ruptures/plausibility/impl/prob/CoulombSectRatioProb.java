@@ -99,6 +99,9 @@ public class CoulombSectRatioProb implements RuptureProbabilityCalc {
 					System.out.println("Probability of adding "+receiver.getSectionId()+" with "
 							+currentSects.size()+" sources: "+track.sum+"/|"+track.getSumHighest()+"| = "+myProb);
 				prob *= myProb;
+				if (prob == 0 && !verbose) {
+					return 0;
+				}
 			}
 			
 			currentSects = nav.getCurrentSects();
