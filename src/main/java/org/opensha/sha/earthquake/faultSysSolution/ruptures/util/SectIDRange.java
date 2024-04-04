@@ -2,8 +2,8 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
 
 import com.google.common.base.Preconditions;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Range of section IDs, inclusive, for memory efficient tracking of unique ruptures and contains
@@ -14,11 +14,15 @@ import java.util.Map;
  */
 public abstract class SectIDRange implements Comparable<SectIDRange> {
 
-	private final static Map<SectIDRange, SectIDRange> cache = new HashMap<>();
+	private final static Map<SectIDRange, SectIDRange> cache = new ConcurrentHashMap<>();
 
 	public static SectIDRange build(int startID, int endID) {
 		SectIDRange range = construct(startID, endID);
-		SectIDRange cached = cache.putIfAbsent(range, range);
+		// try to use non-blocking get operation before using blocking putIfAbsent
+		SectIDRange cached = cache.get(range);
+		if (cached == null) {
+			cached = cache.putIfAbsent(range, range);
+		}
 		return cached == null ? range : cached;
 	}
 
