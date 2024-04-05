@@ -132,7 +132,7 @@ public final class FaultUtils {
 
 	/**
 	 * This subdivides the given fault trace into sub-traces that have the length as given (or less).
-	 * This assumes all fault trace points are at the same depth.
+	 * 
 	 * @param faultTrace 
 	 * @param maxSubSectionLen Maximum length of each subsection
 	 */
@@ -142,7 +142,7 @@ public final class FaultUtils {
 
 	/**
 	 * This subdivides the given fault trace into sub-traces that have the length as given (or less).
-	 * This assumes all fault trace points are at the same depth.
+	 * 
 	 * @param faultTrace 
 	 * @param maxSubSectionLen Maximum length of each subsection
 	 * @param minSubSections minimum number of sub sections to generate
@@ -162,7 +162,7 @@ public final class FaultUtils {
 	
 	/**
 	 * This subdivides the given fault trace into the specified number of equal-length sub-traces.
-	 * This assumes all fault trace points are at the same depth.
+	 * 
 	 * @param faultTrace 
 	 * @param maxSubSectionLen Maximum length of each subsection
 	 * @param minSubSections minimum number of sub sections to generate
@@ -171,7 +171,7 @@ public final class FaultUtils {
 			FaultTrace faultTrace, int numSubSections) {
 		// find the length of each sub section
 		double subSecLength = faultTrace.getTraceLength()/numSubSections;
-		double distance = 0, distLocs=0;;
+		double distance = 0, distLocs=0;
 		int numLocs = faultTrace.getNumLocations();
 		int index=0;
 		ArrayList<FaultTrace> subSectionTraceList = new ArrayList<FaultTrace>();
@@ -192,7 +192,12 @@ public final class FaultUtils {
 					++index;
 				} else {
 					LocationVector direction = LocationUtils.vector(prevLoc, nextLoc);
-					direction.setHorzDistance(subSecLength-(distance-distLocs));
+					double origHorzDist = direction.getHorzDistance();
+					double modHorzDist = subSecLength-(distance-distLocs);
+					direction.setHorzDistance(modHorzDist);
+					if (direction.getVertDistance() != 0d)
+						// scale vert distance to account for truncated horizontal distance
+						direction.setVertDistance(direction.getVertDistance()*modHorzDist/origHorzDist);
 					prevLoc = LocationUtils.location(prevLoc, direction);
 					subSectionTrace.add(prevLoc);
 					--index;

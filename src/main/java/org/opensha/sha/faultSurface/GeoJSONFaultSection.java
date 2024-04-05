@@ -97,12 +97,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 //		checkPropFinite(RAKE, rake); // allow rakes to be attached later, don't enforce that it's specified now
 		
 		upperDepth = properties.getDouble(UPPER_DEPTH, Double.NaN);
-		checkPropFinite(UPPER_DEPTH, upperDepth);
-		FaultUtils.assertValidDepth(upperDepth);
-		
 		lowerDepth = properties.getDouble(LOW_DEPTH, Double.NaN);
-		checkPropFinite(LOW_DEPTH, lowerDepth);
-		FaultUtils.assertValidDepth(lowerDepth);
 		
 		dipDirection = Float.NaN;
 		if (properties.containsKey(DIP_DIR)) {
@@ -137,6 +132,26 @@ public final class GeoJSONFaultSection implements FaultSection {
 			}
 			lowerTrace = new FaultTrace(name);
 			lowerTrace.addAll(line);
+		}
+		
+		if (!Double.isFinite(upperDepth)) {
+			Preconditions.checkState(feature.geometry.isSerializeZeroDepths(),
+					"Can't infer upper depth: upper depth not specified, and fault trace did not specify depths.");
+			// set upper depth to lesser of fault trace depths (bounding rectangle)
+			upperDepth = Double.POSITIVE_INFINITY;
+			for (Location loc : trace)
+				upperDepth = Math.min(upperDepth, loc.depth);
+			FaultUtils.assertValidDepth(upperDepth);
+		}
+		
+		if (!Double.isFinite(lowerDepth)) {
+			Preconditions.checkState(lowerTrace != null,
+					"Can't infer lower depth: neither lower depth nor lower trace were supplied");
+			// set lower depth the the greater of fault trace depths (bounding rectangle)
+			lowerDepth = Double.NEGATIVE_INFINITY;
+			for (Location loc : lowerTrace)
+				lowerDepth = Math.max(lowerDepth, loc.depth);
+			FaultUtils.assertValidDepth(lowerDepth);
 		}
 		
 		dip = properties.getDouble(DIP, Double.NaN);
@@ -255,6 +270,8 @@ public final class GeoJSONFaultSection implements FaultSection {
 			// 	* provide three-valued locations in the GeoJSON
 			//  * provide at least one non-zero depth
 			//  * manually call geometry.setSerializeZeroDepths(true))
+			Preconditions.checkState(!Double.isNaN(upperDepth),
+					"Can't infer upper depth: upper depth not specified, and fault trace did not specify depths.");
 			LocationList modTrace = new LocationList();
 			for (Location loc : trace)
 				modTrace.add(new Location(loc.getLatitude(), loc.getLongitude(), upperDepth));
@@ -682,9 +699,17 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public RuptureSurface getFaultSurface(
 			double gridSpacing, boolean preserveGridSpacingExactly,
 			boolean aseisReducesArea) {
-		if (lowerTrace != null)
+		if (lowerTrace != null || !isUpperTraceSameDepth())
 			return getApproxGriddedSurface(gridSpacing, aseisReducesArea);
 		return getStirlingGriddedSurface(gridSpacing, preserveGridSpacingExactly, aseisReducesArea);
+	}
+	
+	private boolean isUpperTraceSameDepth() {
+		double depth = trace.first().depth;
+		for (int i=0; i<trace.size(); i++)
+			if (depth != trace.get(i).depth)
+				return false;
+		return true;
 	}
 	
 	public void setProperty(String name, Object value) {
@@ -728,8 +753,51 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public synchronized ApproxEvenlyGriddedSurface getApproxGriddedSurface(
 			double gridSpacing,
 			boolean aseisReducesArea) {
-		if (approxGriddedCache == null)
+		if (approxGriddedCache == null) {
+			FaultTrace lowerTrace = this.lowerTrace;
+			if (lowerTrace == null) {
+				// no lower trace supplied, project down dip to lower depth
+				if (dip == 90d) {
+					// simple
+					lowerTrace = new FaultTrace(name);
+					for (Location loc : trace)
+						lowerTrace.add(new Location(loc.lat, loc.lon, lowerDepth));
+				} else {
+					// complicated
+					
+					/*
+					 * 	upper
+					 * 		^
+					 * 		| \
+					 * 		|  \  h
+					 * 	y	|   \
+					 * 		|____\ lower
+					 * 		   x
+					 * 
+					 * y = lowerDepth - upperLoc.depth
+					 * tan (dip) = x / y
+					 * x = y*tan(dip)
+					 */
+					double aveDipRad = Math.toRadians(dip); // radians
+					lowerTrace = new FaultTrace(name);
+					for (Location traceLoc : trace) {
+						Location upperLoc = StirlingGriddedSurface.getTopLocation(
+								traceLoc, upperDepth, aveDipRad, dipDirection);
+						
+						// 'y' above
+						double vertToBottom = lowerDepth - upperLoc.depth;
+						Preconditions.checkState(vertToBottom > 0, "lower depth is above upper loc? %s %s", lowerDepth, upperLoc.depth);
+						double horzToBottom = Math.tan(aveDipRad);
+
+						LocationVector dir = new LocationVector(dipDirection, horzToBottom, vertToBottom);
+
+						Location lowerLoc = LocationUtils.location(upperLoc, dir);
+						lowerTrace.add(lowerLoc);
+					}
+				}
+			}
 			approxGriddedCache = new ApproxEvenlyGriddedSurfaceCache(this, lowerTrace);
+		}
 		return approxGriddedCache.getApproxEvenlyGriddedSurface(gridSpacing, aseisReducesArea);
 	}
 
