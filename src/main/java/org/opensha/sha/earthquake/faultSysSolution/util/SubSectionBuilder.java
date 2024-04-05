@@ -290,7 +290,7 @@ public class SubSectionBuilder {
 					Preconditions.checkNotNull(dm, "Unknown deformation model: %s", dmStr);
 				}
 			} else {
-				Preconditions.checkArgument(cmd.hasOption("fault-model") || cmd.hasOption("deformation-model"),
+				Preconditions.checkArgument(cmd.hasOption("fault-model"),
 						"Must supply either --input-file or --fault-model");
 				Preconditions.checkArgument(model != null, "Can't use --fault-model without first choosing "
 						+ "a model (e.g., with --ucerf3 or --nshm23)");
@@ -298,6 +298,14 @@ public class SubSectionBuilder {
 				fm = model.getFM(fmStr);
 				Preconditions.checkNotNull(fm, "Unknown fault model: %s", fmStr);
 				sects = fm.getFaultSections();
+				if (cmd.hasOption("deformation-model")) {
+					String dmStr = cmd.getOptionValue("deformation-model");
+					dm = model.getDM(dmStr);
+					Preconditions.checkNotNull(fm, "Unknown fault model: %s", dmStr);
+					if (!dm.isApplicableTo(fm))
+						System.err.println("WARNING: The chosen deformation model ("+dm.getShortName()
+							+") does not think it is applicable to the chosen fault model ("+fm.getShortName()+"); will try to proceed anyway.");
+				}
 			}
 			System.out.println("Loaded "+sects.size()+" fault sections.");
 			Preconditions.checkState(!sects.isEmpty(), "Loaded fault sections are empty");
