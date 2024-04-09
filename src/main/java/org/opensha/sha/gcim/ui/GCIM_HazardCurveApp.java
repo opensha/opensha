@@ -424,7 +424,7 @@ public class GCIM_HazardCurveApp  extends HazardCurveApplication {
 		//		saveButton.addActionListener(this);
 		//		toolbar.add(saveButton);
 
-		Color bg = new Color(220,220,220);
+		Color bg = HazardCurveApplication.getBottomBarColor();
 
 		// ======== button panel ========
 		JPanel buttonPanel = new JPanel(new GridBagLayout()) {

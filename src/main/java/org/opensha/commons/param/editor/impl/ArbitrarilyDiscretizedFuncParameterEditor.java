@@ -102,6 +102,8 @@ implements ActionListener, DocumentListener, TableModelListener
 
 		this.table.setEnabled(isEnabled);
 		this.tableModel.setEnabled(isEnabled);
+		xField.setEnabled(isEnabled);
+		yField.setEnabled(isEnabled);
 		this.addButton.setEnabled(isEnabled);
 		this.removeButton.setEnabled(isEnabled);
 
