@@ -89,7 +89,6 @@ public class AggregatedStiffnessCalculator {
 		}
 		CACHE_ARRAY_SIZE = maxTerminalIndex+1;
 	}
-	private final boolean cacheSs2R;
 	
 	// multiplier to use for section IDs, to which patch IDs are added to get unique patch IDs
 	private transient int patch_sect_id_multiplier = -1;
@@ -540,7 +539,6 @@ public class AggregatedStiffnessCalculator {
 		private SubSectStiffnessCalculator calc;
 		private List<AggregationMethod> layers;
 		private boolean allowSectToSelf = false;
-		private boolean cacheSs2R = true;
 
 		private Builder(StiffnessType type, SubSectStiffnessCalculator calc) {
 			this.type = type;
@@ -556,16 +554,6 @@ public class AggregatedStiffnessCalculator {
 		 */
 		public Builder allowSectToSelf(boolean allowSectToSelf) {
 			this.allowSectToSelf = allowSectToSelf;
-			return this;
-		}
-
-		/**
-		 * Sets the cacheSs2R property.
-		 * @param cacheSs2R if true, caches section to section aggregations. True by default.
-		 * @return this builder
-		 */
-		public Builder cacheSs2R(boolean cacheSs2R) {
-			this.cacheSs2R = cacheSs2R;
 			return this;
 		}
 		
@@ -647,21 +635,8 @@ public class AggregatedStiffnessCalculator {
 		}
 		
 		public AggregatedStiffnessCalculator get() {
-			return new AggregatedStiffnessCalculator(type, calc, allowSectToSelf, cacheSs2R, this.layers.toArray(new AggregationMethod[0]));
+			return new AggregatedStiffnessCalculator(type, calc, allowSectToSelf, this.layers.toArray(new AggregationMethod[0]));
 		}
-	}
-
-	/**
-	 *
-	 * @param type stiffness type that we are calculating
-	 * @param calc stiffness calculator between two subsections
-	 * @param allowSectToSelf if true, calculations between the same source and receiver section will be included.
-	 * The calculation between the exact same source and receiver patch will always be excluded.
-	 * @param layers aggregations layers. Must supply at least 1, and the final layer must be a terminal layer.
-	 */
-	public AggregatedStiffnessCalculator(StiffnessType type, SubSectStiffnessCalculator calc, boolean allowSectToSelf,
-										  AggregationMethod... layers) {
-		this(type, calc, allowSectToSelf, true, layers);
 	}
 	
 	/**
@@ -670,13 +645,11 @@ public class AggregatedStiffnessCalculator {
 	 * @param calc stiffness calculator between two subsections
 	 * @param allowSectToSelf if true, calculations between the same source and receiver section will be included.
 		 * The calculation between the exact same source and receiver patch will always be excluded.
-	 * @param cacheSs2R whether to cache section to section values
 	 * @param layers aggregations layers. Must supply at least 1, and the final layer must be a terminal layer.
 	 */
 	public AggregatedStiffnessCalculator(StiffnessType type, SubSectStiffnessCalculator calc, boolean allowSectToSelf,
-										 boolean cacheSs2R, AggregationMethod... layers) {
+			AggregationMethod... layers) {
 		super();
-		this.cacheSs2R = cacheSs2R;
 		this.type = type;
 		this.calc = calc;
 		this.allowSectToSelf = allowSectToSelf;
@@ -989,17 +962,18 @@ public class AggregatedStiffnessCalculator {
 		return aggregated;
 	}
 
+	private static final boolean CACHE_SS2R = true;
 	// array by receiver index, to map of <sources, val>>
 	private transient List<ConcurrentMap<UniqueRupture, Double>> ss2rCache = null;
 	
 	public double calc(Collection<? extends FaultSection> sources, FaultSection receiver) {
-		return calc(sources, receiver, cacheSs2R ? UniqueRupture.forSects(sources) : null);
+		return calc(sources, receiver, CACHE_SS2R ? UniqueRupture.forSects(sources) : null);
 	}
 	
 	private double calc(Collection<? extends FaultSection> sources, FaultSection receiver, UniqueRupture sourcesUnique) {
 		Preconditions.checkState(layers.length > 2, "Sections-to-section aggregation layer not supplied");
 		
-		if (cacheSs2R) {
+		if (CACHE_SS2R) {
 			if (ss2rCache == null) {
 				synchronized (this) {
 					if (ss2rCache == null) {
@@ -1050,7 +1024,7 @@ public class AggregatedStiffnessCalculator {
 				return calc(sources, receivers.iterator().next());
 			double[] values = new double[receivers.size()];
 			int r = 0;
-			UniqueRupture sourcesUnique = cacheSs2R ? UniqueRupture.forSects(sources) : null;
+			UniqueRupture sourcesUnique = CACHE_SS2R ? UniqueRupture.forSects(sources) : null;
 			for (FaultSection receiver : receivers)
 				values[r++] = calc(sources, receiver, sourcesUnique);
 			return layers[3].calculate(values);
