@@ -962,7 +962,7 @@ public class AggregatedStiffnessCalculator {
 		return aggregated;
 	}
 
-	private static final boolean CACHE_SS2R = true;
+	private static final boolean CACHE_SS2R = false;
 	// array by receiver index, to map of <sources, val>>
 	private transient List<ConcurrentMap<UniqueRupture, Double>> ss2rCache = null;
 	
