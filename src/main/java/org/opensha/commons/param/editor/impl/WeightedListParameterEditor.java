@@ -47,6 +47,11 @@ public class WeightedListParameterEditor extends AbstractParameterEditor<Weighte
 		gui.setEnabled(isEnabled);
 	}
 	
+	@Override
+	public boolean isEnabled() {
+		return gui != null && gui.isEnabled();
+	}
+	
 	public static void main(String[] args) {
 		ArrayList<String> objects = new ArrayList<String>();
 		ArrayList<Double> weights = new ArrayList<Double>();

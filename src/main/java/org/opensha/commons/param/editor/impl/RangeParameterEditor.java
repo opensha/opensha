@@ -39,6 +39,11 @@ public class RangeParameterEditor extends AbstractParameterEditor<Range> impleme
 		lowerField.setEnabled(enabled);
 		upperField.setEnabled(enabled);
 	}
+	
+	@Override
+	public boolean isEnabled() {
+		return lowerField != null && lowerField.isEnabled();
+	}
 
 	@Override
 	protected JComponent buildWidget() {

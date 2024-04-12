@@ -63,8 +63,14 @@ public class EnumParameterEditor<E extends Enum<E>> extends
 
 	@Override
 	public void setEnabled(boolean enabled) {
-		widget.setEnabled(enabled);
+		if (widget != null)
+			widget.setEnabled(enabled);
 //		widget.repaint();
+	}
+	
+	@Override
+	public boolean isEnabled() {
+		return widget != null && widget.isEnabled();
 	}
 
 	@Override

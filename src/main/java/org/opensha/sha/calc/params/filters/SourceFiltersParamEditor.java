@@ -15,6 +15,7 @@ import javax.swing.SwingConstants;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.editor.AbstractParameterEditor;
+import org.opensha.commons.param.editor.ParameterEditor;
 import org.opensha.commons.param.editor.impl.ParameterListEditor;
 
 public class SourceFiltersParamEditor extends AbstractParameterEditor<SourceFilterManager> implements ActionListener {
@@ -44,7 +45,7 @@ public class SourceFiltersParamEditor extends AbstractParameterEditor<SourceFilt
 		if (panel == null)
 			return;
 		
-		globalEnabled = false;
+		globalEnabled = enabled;
 		updateWidget();
 		
 		for (JCheckBox box : checkBoxes)
@@ -60,6 +61,11 @@ public class SourceFiltersParamEditor extends AbstractParameterEditor<SourceFilt
 					param.getEditor().setEnabled(enabled && selected);
 		}
 		paramsEdit.refreshParamEditor();
+	}
+	
+	@Override
+	public boolean isEnabled() {
+		return globalEnabled;
 	}
 
 	@Override
@@ -84,8 +90,16 @@ public class SourceFiltersParamEditor extends AbstractParameterEditor<SourceFilt
 			panel.add(subPanel);
 			
 			ParameterList filterParams = manager.getFilterInstance(filter).getAdjustableParams();
-			if (filterParams != null)
+			if (filterParams != null) {
+				for (Parameter<?> param : filterParams) {
+					params.addParameter(param);
+					ParameterEditor<?> editor = param.getEditor();
+					if (editor instanceof AbstractParameterEditor<?>)
+						// to make it clear what is enabled vs disabled
+						((AbstractParameterEditor<?>)editor).setShowDisabledStatusInTitle(true);
+				}
 				params.addParameterList(filterParams);
+			}
 		}
 		
 		paramsEdit = new ParameterListEditor(params);
@@ -125,7 +139,7 @@ public class SourceFiltersParamEditor extends AbstractParameterEditor<SourceFilt
 				boolean selected = checkBoxes[i].isSelected();
 				SourceFilterManager manager = getParameter().getValue();
 				manager.setEnabled(filters[i], selected);
-				updateWidget();;
+				updateWidget();
 				break;
 			}
 		}

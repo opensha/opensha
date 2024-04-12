@@ -236,7 +236,15 @@ public class DoubleParameterEditor extends AbstractParameterEditor<Double> imple
 
 	@Override
 	public void setEnabled(boolean enabled) {
-		widget.setEditable(enabled);
+		if (widget != null) {
+			widget.setEditable(enabled);
+			widget.setEnabled(enabled);
+		}
+	}
+	
+	@Override
+	public boolean isEnabled() {
+		return widget != null && widget.isEnabled();
 	}
 
 	@Override

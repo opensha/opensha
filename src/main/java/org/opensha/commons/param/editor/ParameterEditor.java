@@ -60,7 +60,18 @@ public interface ParameterEditor<E> {
     /** Returns the focusEnabled boolean indicating this is the GUI componet with the current focus */
     public boolean isFocusEnabled();
     
+    /**
+     * Set if the parameter is enabled or not (i.e., accepts user input and edits)
+     * 
+     * @param isEnabled
+     */
     public void setEnabled(boolean isEnabled);
+    
+    /**
+     * 
+     * @return if the parameter is enabled  (i.e., accepts user input and edits)
+     */
+    public boolean isEnabled();
     
     public void setVisible(boolean isVisible);
     

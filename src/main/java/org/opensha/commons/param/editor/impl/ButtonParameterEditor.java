@@ -30,7 +30,13 @@ public class ButtonParameterEditor extends AbstractParameterEditor<Integer> impl
 
 	@Override
 	public void setEnabled(boolean enabled) {
-		button.setEnabled(enabled);
+		if (button != null)
+			button.setEnabled(enabled);
+	}
+	
+	@Override
+	public boolean isEnabled() {
+		return button != null && button.isEnabled();
 	}
 
 	@Override

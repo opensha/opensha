@@ -28,7 +28,7 @@ import com.google.common.base.Preconditions;
 class TectonicRegionDistCutoffParamEditor extends AbstractParameterEditor<TectonicRegionDistanceCutoffs>
 implements FocusListener, KeyListener {
 	
-	private static final boolean D = true;
+	private static final boolean D = false;
 	
 	private static TectonicRegionType[] trts = TectonicRegionType.values();
 	
@@ -50,9 +50,16 @@ implements FocusListener, KeyListener {
 
 	@Override
 	public void setEnabled(boolean enabled) {
-		if (fields != null)
+		if (fields != null) {
+			panel.setEnabled(enabled);
 			for (NumericTextField field : fields)
 				field.setEnabled(enabled);
+		}
+	}
+	
+	@Override
+	public boolean isEnabled() {
+		return panel != null && panel.isEnabled();
 	}
 
 	@Override
