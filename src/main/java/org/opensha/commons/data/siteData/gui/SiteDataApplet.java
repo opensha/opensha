@@ -1,6 +1,5 @@
 package org.opensha.commons.data.siteData.gui;
 
-import java.applet.Applet;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
@@ -20,7 +19,7 @@ import org.opensha.commons.data.siteData.SiteDataValue;
 import org.opensha.commons.data.siteData.gui.beans.OrderedSiteDataGUIBean;
 import org.opensha.commons.geo.Location;
 
-public class SiteDataApplet extends Applet implements ActionListener {
+public class SiteDataApplet extends JPanel implements ActionListener {
 	
 	/**
 	 * 

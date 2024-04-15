@@ -10,7 +10,6 @@ import java.awt.Toolkit;
 import java.util.ArrayList;
 
 import javax.swing.BorderFactory;
-import javax.swing.JApplet;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -62,7 +61,7 @@ import org.opensha.commons.param.impl.WarningIntegerParameter;
  */
 
 public class ParameterApplet
-         extends JApplet
+         extends JFrame
          implements
         ParameterChangeListener,
         ParameterChangeFailListener,
@@ -80,7 +79,7 @@ public class ParameterApplet
 
     final static int NUM = 6;
     static int paramCount = 0;
-    boolean isStandalone = false;
+    boolean isStandalone = true;
     GridBagLayout gridBagLayout1 = new GridBagLayout();
     GridBagLayout gridBagLayout2 = new GridBagLayout();
 
@@ -97,9 +96,7 @@ public class ParameterApplet
      * @return      The parameter value
      */
     public String getParameter( String key, String def ) {
-        return ( isStandalone ? System.getProperty( key, def )
-                 : this.getParameter( key ) != null ? this.getParameter( key )
-                 : def );
+        return (System.getProperty( key, def ));
     }
 
     /**
@@ -426,25 +423,21 @@ public class ParameterApplet
 
         //System.out.println("" + d1.compareTo(d3));
 
-
-
-
         ParameterApplet applet = new ParameterApplet();
         applet.isStandalone = true;
 
-        JFrame frame = new JFrame();
-        frame.setDefaultCloseOperation( 3 );
-        frame.setTitle( "Applet Frame" );
-        frame.getContentPane().add( applet, "Center" );
+        applet.setDefaultCloseOperation( 3 );
+        applet.setTitle( "Applet Frame" );
+//        applet.getContentPane().add( applet, "Center" );
 
         applet.init();
         applet.start();
 
-        frame.setSize( 400, 320 );
+        applet.setSize( 400, 320 );
         Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
-        frame.setLocation( ( d.width - frame.getSize().width ) / 2,
-                ( d.height - frame.getSize().height ) / 2 );
-        frame.setVisible( true );
+        applet.setLocation( ( d.width - applet.getSize().width ) / 2,
+                ( d.height - applet.getSize().height ) / 2 );
+        applet.setVisible( true );
     }
 
     /**

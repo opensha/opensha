@@ -1,6 +1,5 @@
 package org.opensha.commons.data.siteData.gui;
 
-import java.applet.Applet;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.event.ActionEvent;
@@ -28,7 +27,7 @@ import org.opensha.commons.mapping.gmt.gui.GMT_MapGuiBean;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 
-public class SiteDataMapApplet extends Applet implements ActionListener, ListSelectionListener {
+public class SiteDataMapApplet extends JPanel implements ActionListener, ListSelectionListener {
 	
 	private OrderedSiteDataGUIBean dataBean;
 	private GMT_MapGuiBean mapBean;
