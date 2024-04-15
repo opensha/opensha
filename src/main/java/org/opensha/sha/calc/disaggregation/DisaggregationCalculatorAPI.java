@@ -1,10 +1,12 @@
 package org.opensha.sha.calc.disaggregation;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.param.ParameterList;
+import org.opensha.sha.calc.params.filters.SourceFilter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.util.TectonicRegionType;
@@ -38,12 +40,14 @@ public interface DisaggregationCalculatorAPI {
 	 * @param site: site parameter
 	 * @param imr: selected IMR object
 	 * @param eqkRupForecast: selected Earthquake rup forecast
+	 * @param sourceFilters: source filters (e.g., distance)
 	 * @param calcParams: calculation parameters from the <code>HazardCurveCalculator</code>
 	 * @return boolean
 	 */
 	public boolean disaggregate(double iml, Site site,
 			ScalarIMR imr,
 			ERF eqkRupForecast,
+			Collection<SourceFilter> sourceFilters,
 			ParameterList calcParams);
 
 	/**
@@ -55,12 +59,14 @@ public interface DisaggregationCalculatorAPI {
 	 * @param site: site parameter
 	 * @param imrMap: mapping of tectonic regions to IMR objects
 	 * @param eqkRupForecast: selected Earthquake rup forecast
+	 * @param sourceFilters: source filters (e.g., distance)
 	 * @param calcParams: calculation parameters from the <code>HazardCurveCalculator</code>
 	 * @return boolean
 	 */
 	public boolean disaggregate(double iml, Site site,
 			Map<TectonicRegionType, ScalarIMR> imrMap,
 			ERF eqkRupForecast,
+			Collection<SourceFilter> sourceFilters,
 			ParameterList calcParams);
 
 	/**

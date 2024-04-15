@@ -51,5 +51,10 @@ public class MinMagFilter implements SourceFilter, ParameterChangeListener {
 	public void parameterChange(ParameterChangeEvent event) {
 		minMag = param.getValue();
 	}
+	
+	@Override
+	public String toString() {
+		return "MinMag="+(float)minMag;
+	}
 
 }

@@ -1437,6 +1437,7 @@ ScalarIMRChangeListener {
 				}
 				disaggSuccessFlag = disaggCalc.disaggregate(Math.log(imlVal),
 						site, imrMap, (ERF) forecast,
+						this.calc.getSourceFilters(),
 						this.calc.getAdjustableParams());
 				disaggCalc.setMaxZAxisForPlot(maxZAxis);
 				disaggregationString = disaggCalc.getMeanAndModeInfo();
@@ -1568,10 +1569,10 @@ ScalarIMRChangeListener {
 				return;
 			}
 			new DisaggregationPlotViewerWindow(disaggregationPlotWebAddr
-					+ DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME, disaggCalc, metadata, binDataToShow);
+					+ DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME, disaggCalc, modeString, metadata, binDataToShow);
 		} else {
 			new DisaggregationPlotViewerWindow(PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),
-					disaggCalc, metadata, binDataToShow);
+					disaggCalc, modeString, metadata, binDataToShow);
 		}
 	}
 

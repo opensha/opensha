@@ -9,6 +9,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
+import org.opensha.sha.calc.params.filters.SourceFilter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
@@ -52,12 +53,19 @@ public interface HazardCurveCalculatorAPI {
 	 * @param ptSrcDistCorrType
 	 */
 	public PtSrcDistCorr.Type getPtSrcDistCorrType();
+	
+	/**
+	 * This gets a list of source filters (e.g., distance, magnitude, etc) used to speed up
+	 * hazard calculations
+	 * @return
+	 */
+	public List<SourceFilter> getSourceFilters();
 
 	/**
 	 * This sets the maximum distance of sources to be considered in the calculation.
 	 * Sources more than this distance away are ignored.  This is simply a direct
 	 * way of setting the parameter.
-	 * Default value is 250 km.
+	 * Default value is 200 km.
 	 *
 	 * @param distance: the maximum distance in km
 	 */

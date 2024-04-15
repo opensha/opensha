@@ -2,6 +2,7 @@ package org.opensha.sha.calc;
 
 
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
@@ -149,6 +150,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		return sourceFilters;
 	}
 	
+	@Override
 	public List<SourceFilter> getSourceFilters() {
 		return sourceFilters.getEnabledFilters();
 	}
@@ -454,7 +456,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		return hazFunction;
 	}
 	
-	private static boolean canSkipSource(List<SourceFilter> filters, ProbEqkSource source, Site site) {
+	public static boolean canSkipSource(Collection<SourceFilter> filters, ProbEqkSource source, Site site) {
 		if (filters == null || filters.isEmpty())
 			return false;
 		if (!filters.isEmpty()) {
@@ -468,7 +470,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		return false;
 	}
 	
-	private static boolean canSkipRupture(List<SourceFilter> filters, EqkRupture rupture, Site site) {
+	public static boolean canSkipRupture(Collection<SourceFilter> filters, EqkRupture rupture, Site site) {
 		if (filters == null || filters.isEmpty())
 			return false;
 		if (!filters.isEmpty()) {

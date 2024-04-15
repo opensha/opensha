@@ -9,8 +9,12 @@ public class SourceFiltersParam extends AbstractParameter<SourceFilterManager> {
 	
 	private SourceFiltersParamEditor editor = null;
 	
+	public static SourceFilterManager getDefault() {
+		return new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
+	}
+	
 	public SourceFiltersParam() {
-		super(NAME, null, null, new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF));
+		super(NAME, null, null, getDefault());
 	}
 
 	@Override

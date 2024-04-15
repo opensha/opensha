@@ -2,6 +2,7 @@ package scratch.peter.nshmp;
 
 
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
@@ -25,6 +26,9 @@ import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.NumStochasticEventSetsParam;
 import org.opensha.sha.calc.params.PtSrcDistanceCorrectionParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
+import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.params.filters.MagDependentDistCutoffFilter;
+import org.opensha.sha.calc.params.filters.SourceFilter;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
@@ -65,6 +69,7 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	protected final static boolean D = false;
 
 	//Info for parameter that sets the maximum distance considered
+	private FixedDistanceCutoffFilter maxDistFilter;
 	private MaxDistanceParam maxDistanceParam;
 
 	//Info for parameter tells whether to apply a magnitude-dependent distance cutoff
@@ -72,6 +77,7 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	
 	//Info for parameter that specifies a magnitude-dependent distance cutoff
 	// (distance on x-axis and mag on y-axis)
+	private MagDependentDistCutoffFilter magDistFilter;
 	private MagDistCutoffParam magDistCutoffParam;
 	
 	//Info for parameter that sets the maximum distance considered
@@ -104,13 +110,15 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		// Create adjustable parameters and add to list
 
 		// Max Distance Parameter
-		maxDistanceParam = new MaxDistanceParam();
+		maxDistFilter = new FixedDistanceCutoffFilter();
+		maxDistanceParam = maxDistFilter.getParam();
 		maxDistanceParam.setValue(300.0);
 
 		// Include Mag-Distance Filter Parameter
 		includeMagDistFilterParam = new IncludeMagDistFilterParam();
 
-		magDistCutoffParam = new MagDistCutoffParam();
+		magDistFilter = new MagDependentDistCutoffFilter();
+		magDistCutoffParam = magDistFilter.getParam();
 
 		// Max Distance Parameter
 		numStochEventSetRealizationsParam = new NumStochasticEventSetsParam();
@@ -753,7 +761,17 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	}
 
 	// added this and the associated API implementation to instantiate BJF_1997_AttenRel in the above
-	public void parameterChangeWarning( ParameterChangeWarningEvent event ) {};
+	public void parameterChangeWarning( ParameterChangeWarningEvent event ) {}
+
+
+	@Override
+	public List<SourceFilter> getSourceFilters() {
+		List<SourceFilter> filters = new ArrayList<>();
+		filters.add(maxDistFilter);
+		if (includeMagDistFilterParam.getValue())
+			filters.add(magDistFilter);
+		return filters;
+	};
 
 
 }
