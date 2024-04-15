@@ -171,6 +171,11 @@ public class IntegerParameterEditor extends AbstractParameterEditor<Integer> imp
 		if (widget != null)
 			widget.setEnabled(enabled);
 	}
+	
+	@Override
+	public boolean isEnabled() {
+		return widget != null && widget.isEnabled();
+	}
 
 	@Override
 	protected JComponent buildWidget() {

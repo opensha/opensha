@@ -112,7 +112,13 @@ implements ItemListener
 
 	@Override
 	public void setEnabled(boolean enabled) {
-		widget.setEnabled(enabled);
+		if (widget != null)
+			widget.setEnabled(enabled);
+	}
+	
+	@Override
+	public boolean isEnabled() {
+		return widget != null && widget.isEnabled();
 	}
 
 	@Override

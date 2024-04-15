@@ -64,7 +64,7 @@ public class CalculationSettingsControlPanel extends ControlPanel {
 	}
 	
 	private void jbInit() throws Exception {
-		frame.setSize(350,500);
+		frame.setSize(350,800);
 		frame.setTitle("Calculation Settings");
 		frame.getContentPane().setLayout(new GridBagLayout());
 		frame.getContentPane().add(editor,new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0

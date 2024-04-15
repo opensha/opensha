@@ -125,6 +125,11 @@ public abstract class AbstractParameterEditorConverter<E, F> implements
 	public void setEnabled(boolean isEnabled) {
 		editor.setEnabled(isEnabled);
 	}
+	
+	@Override
+	public boolean isEnabled() {
+		return editor.isEnabled();
+	}
 
 	@Override
 	public void setVisible(boolean isVisible) {

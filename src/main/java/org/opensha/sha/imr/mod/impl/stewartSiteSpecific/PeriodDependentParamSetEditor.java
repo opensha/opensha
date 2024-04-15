@@ -88,6 +88,11 @@ extends AbstractParameterEditor<PeriodDependentParamSet<E>> implements ActionLis
 		this.addButton.setEnabled(enabled);
 		this.removeButton.setEnabled(enabled);
 	}
+	
+	@Override
+	public boolean isEnabled() {
+		return table != null && table.isEnabled();
+	}
 
 	@Override
 	protected JComponent buildWidget() {

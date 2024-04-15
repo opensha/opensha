@@ -368,6 +368,18 @@ ScalarIMRChangeListener {
 		
 		return builder.buildMenu();
 	}
+	
+	public static Color getBottomBarColor() {
+		Color defaultBackground = UIManager.getColor ( "Panel.background" );
+		double avgColor = (defaultBackground.getRed() + defaultBackground.getGreen() + defaultBackground.getBlue())/3d;
+		if (avgColor > 127d) {
+			// light theme
+			return new Color(220,220,220);
+		} else {
+			// dark theme
+			return new Color(35,35,35);
+		}
+	}
 
 	// Component initialization TODO should be private
 	protected void jbInit() throws Exception {
@@ -409,7 +421,8 @@ ScalarIMRChangeListener {
 		//		saveButton.addActionListener(this);
 		//		toolbar.add(saveButton);
 
-		Color bg = new Color(220,220,220);
+		
+		Color bg = getBottomBarColor();
 
 		// ======== button panel ========
 		JPanel buttonPanel = new JPanel(new GridBagLayout()) {
