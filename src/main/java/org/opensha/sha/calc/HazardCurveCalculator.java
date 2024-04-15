@@ -145,6 +145,10 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 
 	}
 	
+	public SourceFilterManager getSourceFilterManager() {
+		return sourceFilters;
+	}
+	
 	public List<SourceFilter> getSourceFilters() {
 		return sourceFilters.getEnabledFilters();
 	}
