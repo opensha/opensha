@@ -55,39 +55,33 @@ public class TectonicRegionDistCutoffFilter implements SourceFilter, ParameterCh
 	public static class TectonicRegionDistanceCutoffs {
 		private TectonicRegionType[] trts;
 		private double[] cutoffDists;
-		private double unknownDist;
 		
-		public TectonicRegionDistanceCutoffs(double unknownDist) {
+		public TectonicRegionDistanceCutoffs() {
 			trts = TectonicRegionType.values();
 			cutoffDists = new double[trts.length];
 			for (int i=0; i<trts.length; i++)
 				cutoffDists[i] = trts[i].defaultCutoffDist();
-			this.unknownDist = unknownDist;
 		}
 		
 		public double getCutoffDist(TectonicRegionType trt) {
-			if (trt == null)
-				return unknownDist;
+			Preconditions.checkNotNull(trt, "Tectonic region type must be non-null");
 			return cutoffDists[trt.ordinal()];
 		}
 		
 		public void setCutoffDist(TectonicRegionType trt, double dist) {
+			Preconditions.checkNotNull(trt, "Tectonic region type must be non-null");
 			Preconditions.checkState(dist > 0, "Distance must be >0: %s", dist);
-			if (trt == null) {
-				unknownDist = dist;
-			} else {
-				for (int i=0; i<trts.length; i++) {
-					if (trt == trts[i]) {
-						cutoffDists[i] = dist;
-						return;
-					}
+			for (int i=0; i<trts.length; i++) {
+				if (trt == trts[i]) {
+					cutoffDists[i] = dist;
+					return;
 				}
-				throw new IllegalStateException("TRT not found? "+trt);
 			}
+			throw new IllegalStateException("TRT not found? "+trt);
 		}
 		
 		public double getLargestCutoffDist() {
-			return Math.max(unknownDist, StatUtils.max(cutoffDists));
+			return StatUtils.max(cutoffDists);
 		}
 	}
 

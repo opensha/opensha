@@ -32,7 +32,6 @@ implements FocusListener, KeyListener {
 	
 	private static TectonicRegionType[] trts = TectonicRegionType.values();
 	
-	static final String UNKNOWN_LABEL = "Unknown";
 	static final DecimalFormat oDF = new DecimalFormat("0.##");
 	static final int DIST_COLS = 7;
 	
@@ -66,22 +65,15 @@ implements FocusListener, KeyListener {
 	protected JComponent buildWidget() {
 		TectonicRegionDistanceCutoffs cutoffs = getParameter().getValue();
 		Preconditions.checkNotNull(cutoffs, "Cutoffs are null in the parameter");
-		int rows = trts.length + 1; // +1 for unknown
+		int rows = trts.length;
 		fields = new NumericTextField[rows];
 		
 		JPanel panel = new JPanel();
 		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
 		
 		for (int i=0; i<rows; i++) {
-			String text;
-			double val;
-			if (i < rows-1) {
-				text = trts[i].toString();
-				val = cutoffs.getCutoffDist(trts[i]);
-			} else {
-				text = UNKNOWN_LABEL;
-				val = cutoffs.getCutoffDist(null);
-			}
+			String text = trts[i].toString();
+			double val = cutoffs.getCutoffDist(trts[i]);
 			JLabel label = new JLabel(text);
 //			label.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 16));
 //			label.setPreferredSize(new Dimension(40, 20));
@@ -172,7 +164,7 @@ implements FocusListener, KeyListener {
 				reset = true;
 			} else {
 				if (D) System.out.println("Updating "+index+" to "+(float)val);
-				cutoffs.setCutoffDist(index < trts.length-1 ? trts[index] : null, val);
+				cutoffs.setCutoffDist(trts[index], val);
 			}
 		} catch (ParseException e) {
 			e.printStackTrace();
@@ -182,12 +174,7 @@ implements FocusListener, KeyListener {
 		}
 		
 		if (reset) {
-			double val;
-			if (index < trts.length-1) {
-				val = cutoffs.getCutoffDist(trts[index]);
-			} else {
-				val = cutoffs.getCutoffDist(null);
-			}
+			double val = cutoffs.getCutoffDist(trts[index]);
 			field.setValue(val);
 			field.invalidate();
 		}

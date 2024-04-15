@@ -17,7 +17,7 @@ public class TectonicRegionDistCutoffParam extends AbstractParameter<TectonicReg
 	}
 	
 	public TectonicRegionDistCutoffParam(String name) {
-		this(name, new TectonicRegionDistanceCutoffs(TectonicRegionType.ACTIVE_SHALLOW.defaultCutoffDist()));
+		this(name, new TectonicRegionDistanceCutoffs());
 	}
 	
 	public TectonicRegionDistCutoffParam(String name, TectonicRegionDistanceCutoffs cutoffs) {
