@@ -117,7 +117,7 @@ public class XYDataWindow extends JFrame {
       StringTokenizer st = new StringTokenizer(data,"\n");
       while(st.hasMoreTokens()){
         StringTokenizer st1 = new StringTokenizer(st.nextToken());
-        series.add(new Double(st1.nextToken()).doubleValue(),new Double(st1.nextToken()).doubleValue());
+        series.add(Double.valueOf(st1.nextToken()).doubleValue(),Double.valueOf(st1.nextToken()).doubleValue());
       }
     }catch(NumberFormatException e){
       throw new RuntimeException("Must enter valid number");

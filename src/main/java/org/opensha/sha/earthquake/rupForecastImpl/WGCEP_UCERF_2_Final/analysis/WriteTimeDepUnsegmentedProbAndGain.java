@@ -111,8 +111,8 @@ public class WriteTimeDepUnsegmentedProbAndGain {
 		// Aprioti wt param
 		paramNames.add(UCERF2.REL_A_PRIORI_WT_PARAM_NAME);
 		options = new ParamOptions();
-		options.addValueWeight(new Double(1e-4), 0.5);
-		options.addValueWeight(new Double(1e10), 0.5);
+		options.addValueWeight(Double.valueOf(1e-4), 0.5);
+		options.addValueWeight(Double.valueOf(1e10), 0.5);
 		paramValues.add(options);
 		
 		// Prob Model
@@ -125,9 +125,9 @@ public class WriteTimeDepUnsegmentedProbAndGain {
 		// Aperiodicity
 		paramNames.add(UCERF2.APERIODICITY_PARAM_NAME);
 		options = new ParamOptions();
-		options.addValueWeight(new Double(0.3), 0.2);
-		options.addValueWeight(new Double(0.5), 0.5);
-		options.addValueWeight(new Double(0.7), 0.3);
+		options.addValueWeight(Double.valueOf(0.3), 0.2);
+		options.addValueWeight(Double.valueOf(0.5), 0.5);
+		options.addValueWeight(Double.valueOf(0.7), 0.3);
 		paramValues.add(options);
 		
 		PROB_MODEL_VAL= UCERF2.PROB_MODEL_BPT;
@@ -327,8 +327,8 @@ public class WriteTimeDepUnsegmentedProbAndGain {
 				if(paramName.equalsIgnoreCase(UCERF2.REL_A_PRIORI_WT_PARAM_NAME)) {
 					Parameter param = ucerf2.getParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME);
 					if(((Double)param.getValue()).doubleValue()==1e10) {
-						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_1_PARAM_NAME).setValue(new Double(0.0));
-						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_2_PARAM_NAME).setValue(new Double(0.0));	
+						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_1_PARAM_NAME).setValue(Double.valueOf(0.0));
+						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_2_PARAM_NAME).setValue(Double.valueOf(0.0));	
 					} else {
 						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_1_PARAM_NAME).setValue(UCERF2.MIN_A_FAULT_RATE_1_DEFAULT);
 						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_2_PARAM_NAME).setValue(UCERF2.MIN_A_FAULT_RATE_2_DEFAULT);	

@@ -60,11 +60,11 @@ public class TestHazardCurveSetCalculator extends TestCase {
 		
 		cb08.setIntensityMeasure(SA_Param.NAME);
 		cb08.getIntensityMeasure()
-				.getIndependentParameter(PeriodParam.NAME).setValue(new Double(1.0));
+				.getIndependentParameter(PeriodParam.NAME).setValue(Double.valueOf(1.0));
 		
 		ba08.setIntensityMeasure(SA_Param.NAME);
 		ba08.getIntensityMeasure()
-				.getIndependentParameter(PeriodParam.NAME).setValue(new Double(1.0));
+				.getIndependentParameter(PeriodParam.NAME).setValue(Double.valueOf(1.0));
 		
 		map1.put(TectonicRegionType.ACTIVE_SHALLOW, cb08);
 		map2.put(TectonicRegionType.ACTIVE_SHALLOW, ba08);

@@ -92,9 +92,9 @@ public class HazardMapXMLViewerServlet  extends HttpServlet {
 							ListIterator it = fileLines.listIterator();
 							while(it.hasNext()){
 								StringTokenizer st = new StringTokenizer((String)it.next());
-								double lat = new Double(st.nextToken().trim());
-								double lon = new Double(st.nextToken().trim());
-								double val = new Double(st.nextToken().trim());
+								double lat = Double.valueOf(st.nextToken().trim());
+								double lon = Double.valueOf(st.nextToken().trim());
+								double val = Double.valueOf(st.nextToken().trim());
 								xyzData.set(new Location(lat, lon), val);
 							}
 						}catch(Exception ee){
@@ -110,7 +110,7 @@ public class HazardMapXMLViewerServlet  extends HttpServlet {
 				} catch (IOException e1) {
 					e1.printStackTrace();
 					ObjectOutputStream outputToApplet =new ObjectOutputStream(response.getOutputStream());
-					outputToApplet.writeObject(new Boolean(false));
+					outputToApplet.writeObject(Boolean.valueOf(false));
 					outputToApplet.close();
 					return;
 				}
@@ -119,7 +119,7 @@ public class HazardMapXMLViewerServlet  extends HttpServlet {
 		}catch(Exception e) {
 			e.printStackTrace();
 			ObjectOutputStream outputToApplet =new ObjectOutputStream(response.getOutputStream());
-			outputToApplet.writeObject(new Boolean(false));
+			outputToApplet.writeObject(Boolean.valueOf(false));
 			outputToApplet.close();
 			return;
 		}
@@ -137,9 +137,9 @@ public class HazardMapXMLViewerServlet  extends HttpServlet {
 	//				ListIterator it = fileLines.listIterator();
 	//				while(it.hasNext()){
 	//					StringTokenizer st = new StringTokenizer((String)it.next());
-	//					xVals.add(new Double(st.nextToken().trim()));
-	//					yVals.add(new Double(st.nextToken().trim()));
-	//					zVals.add(new Double(st.nextToken().trim()));
+	//					xVals.add(Double.valueOf(st.nextToken().trim()));
+	//					yVals.add(Double.valueOf(st.nextToken().trim()));
+	//					zVals.add(Double.valueOf(st.nextToken().trim()));
 	//				}
 	//				xyzData = new ArbDiscretizedXYZ_DataSet(xVals,yVals,zVals);
 	//			}catch(Exception ee){
@@ -278,8 +278,8 @@ public class HazardMapXMLViewerServlet  extends HttpServlet {
 							if(firstIndex != lastIndex){
 
 								//getting the lat and Lon values from file names
-								Double latVal = new Double(fileName.substring(0,index).trim());
-								Double lonVal = new Double(fileName.substring(index+1,lastIndex).trim());
+								Double latVal = Double.valueOf(fileName.substring(0,index).trim());
+								Double lonVal = Double.valueOf(fileName.substring(index+1,lastIndex).trim());
 								//System.out.println("Lat: " + latVal + " Lon: " + lonVal);
 								// handle the file
 								double writeVal = handleFile(latVal, lonVal, file.getAbsolutePath(), isProbAt_IML, val);

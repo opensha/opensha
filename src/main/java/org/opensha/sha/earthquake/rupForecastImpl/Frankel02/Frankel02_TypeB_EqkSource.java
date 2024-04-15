@@ -125,8 +125,8 @@ public class Frankel02_TypeB_EqkSource extends ProbEqkSource {
 		for (int i=0; i<magFreqDist.size(); ++i){
 			if(magFreqDist.getY(i) > 0){
 				//magsAndRates.set(magFreqDist.getX(i),magFreqDist.getY(i));
-				mags.add(new Double(magFreqDist.getX(i)));
-				rates.add(new Double(magFreqDist.getY(i)));
+				mags.add(Double.valueOf(magFreqDist.getX(i)));
+				rates.add(Double.valueOf(magFreqDist.getY(i)));
 			}
 		}
 

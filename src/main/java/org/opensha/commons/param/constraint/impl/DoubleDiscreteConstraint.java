@@ -117,7 +117,7 @@ public class DoubleDiscreteConstraint
      * @param  d  value to check.
      * @return    True if the value is allowed, i.e. in the doubles list.
      */
-    public boolean isAllowed( double d ) { return isAllowed( new Double( d ) ); }
+    public boolean isAllowed( double d ) { return isAllowed( Double.valueOf( d ) ); }
 
 
     /** Returns Iterator over all allowed values */
@@ -129,7 +129,7 @@ public class DoubleDiscreteConstraint
      * is thrown is the list is currently not editable.
      */
     public void addDouble( double d ) throws EditableException {
-        addDouble( new Double(d) );
+        addDouble( Double.valueOf(d) );
     }
 
     /**
@@ -163,7 +163,7 @@ public class DoubleDiscreteConstraint
      * is thrown is the list is currently not editable.
      */
     public void removeDouble( double d ) throws EditableException {
-        removeDouble( new Double(d) );
+        removeDouble( Double.valueOf(d) );
     }
 
     /**
@@ -183,7 +183,7 @@ public class DoubleDiscreteConstraint
      * @param  d  The value to check.
      * @return    True if this value is one of the allowed objects.
      */
-    public boolean containsDouble( double d ) { return containsDouble( new Double(d) ); }
+    public boolean containsDouble( double d ) { return containsDouble( Double.valueOf(d) ); }
 
     /** The number of allowed values for this constraint. */
     public int size() { return doubles.size(); }
@@ -228,7 +228,7 @@ public class DoubleDiscreteConstraint
         ListIterator<Double> it = v.listIterator();
         while ( it.hasNext() ) {
             Double val = ( Double ) it.next();
-            Double val2 = new Double( val.doubleValue() );
+            Double val2 = Double.valueOf( val.doubleValue() );
             c1.addDouble( val2 );
         }
         c1.setNullAllowed( nullAllowed );

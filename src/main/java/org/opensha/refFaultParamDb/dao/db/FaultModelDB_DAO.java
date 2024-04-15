@@ -75,7 +75,7 @@ public class FaultModelDB_DAO {
 		ArrayList<Integer> faultSectionIdList = new ArrayList<Integer>();
 		try {
 			ResultSet rs  = dbAccessAPI.queryData(sql);
-			while(rs.next()) faultSectionIdList.add(new Integer(rs.getInt(SECTION_ID)));
+			while(rs.next()) faultSectionIdList.add(Integer.valueOf(rs.getInt(SECTION_ID)));
 			rs.close();
 		} catch(SQLException e) { throw new QueryException(e.getMessage()); }
 		return faultSectionIdList;

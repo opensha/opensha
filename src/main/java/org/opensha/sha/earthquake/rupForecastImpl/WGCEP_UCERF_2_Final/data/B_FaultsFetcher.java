@@ -99,7 +99,7 @@ public  class B_FaultsFetcher extends FaultsFetcher  implements java.io.Serializ
 			// add to B type faults only if slip is not 0 and not NaN
 			if(faultSectionPrefData.getOrigAveSlipRate()==0.0 || Double.isNaN(faultSectionPrefData.getOrigAveSlipRate())) continue;
 			bFaultNames.add(faultSectionPrefData.getSectionName());
-			bFaultIds.add(new Integer(faultSectionPrefData.getSectionId()));
+			bFaultIds.add(Integer.valueOf(faultSectionPrefData.getSectionId()));
 			// Arraylist of segments of list of sections
 			ArrayList sectionList = new ArrayList();
 			sectionList.add(faultSectionPrefData);

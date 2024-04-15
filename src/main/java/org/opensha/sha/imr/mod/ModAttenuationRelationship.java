@@ -204,7 +204,7 @@ public class ModAttenuationRelationship extends AttenuationRelationship implemen
 		// Create saParam:
 		DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint();
 		for (double period : periods)
-			periodConstraint.addDouble(new Double(period));
+			periodConstraint.addDouble(Double.valueOf(period));
 		periodConstraint.setNonEditable();
 		saPeriodParam = new PeriodParam(periodConstraint);
 		saDampingParam = new DampingParam();

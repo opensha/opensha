@@ -87,10 +87,10 @@ public class SadighEtAl_1997_AttenRel extends AttenuationRelationship {
 	public final static String SITE_TYPE_DEFAULT = "Deep-Soil";
 
 	// warning constraints:
-	protected final static Double MAG_WARN_MIN = new Double(4);
-	protected final static Double MAG_WARN_MAX = new Double(8.25);
-	protected final static Double DISTANCE_RUP_WARN_MIN = new Double(0.0);
-	protected final static Double DISTANCE_RUP_WARN_MAX = new Double(100.0);
+	protected final static Double MAG_WARN_MIN = Double.valueOf(4);
+	protected final static Double MAG_WARN_MAX = Double.valueOf(8.25);
+	protected final static Double DISTANCE_RUP_WARN_MIN = Double.valueOf(0.0);
+	protected final static Double DISTANCE_RUP_WARN_MAX = Double.valueOf(100.0);
 
 	/**
 	 * The current set of coefficients based on the selected intensityMeasure
@@ -132,7 +132,7 @@ public class SadighEtAl_1997_AttenRel extends AttenuationRelationship {
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 
-		magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
 		setFaultTypeFromRake(eqkRupture.getAveRake());
 		this.eqkRupture = eqkRupture;
 		setPropagationEffectParams();
@@ -511,7 +511,7 @@ public class SadighEtAl_1997_AttenRel extends AttenuationRelationship {
 			SCEMY_1997_AttenRelCoefficients coeff = (SCEMY_1997_AttenRelCoefficients)
 			coefficients.get(keys.nextElement());
 			if (coeff.period >= 0) {
-				set.add(new Double(coeff.period));
+				set.add(Double.valueOf(coeff.period));
 			}
 		}
 		Iterator it = set.iterator();
@@ -586,80 +586,80 @@ public class SadighEtAl_1997_AttenRel extends AttenuationRelationship {
 		// SA/0.0
 		SCEMY_1997_AttenRelCoefficients coeff0 = new
 		SCEMY_1997_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("0.0")).doubleValue(),
+				(Double.valueOf("0.0")).doubleValue(),
 				0.0, -0.624, -1.274, 0.000, -2.100, 0.0,
 				0.0, 0.0, 0.0, 1.39, 1.52);
 
 		/*        // only for comparing with their figures - 0.03 SA = PGA
-            SCEMY_1997_AttenRelCoefficients coeffTEMP = new SCEMY_1997_AttenRelCoefficients( SA_Param.NAME + '/' +( new Double( "0.03" ) ).doubleValue() ,
+            SCEMY_1997_AttenRelCoefficients coeffTEMP = new SCEMY_1997_AttenRelCoefficients( SA_Param.NAME + '/' +( Double.valueOf( "0.03" ) ).doubleValue() ,
      0.03, -0.624, -1.274, 0.000, -2.100, 0.0, 0.0, 0.0, 0.0, 1.39, 1.52);
 		 */
 		// SA/0.075
 		SCEMY_1997_AttenRelCoefficients coeff1 = new
 		SCEMY_1997_AttenRelCoefficients("SA/" +
-				(new Double("0.075")).doubleValue(),
+				(Double.valueOf("0.075")).doubleValue(),
 				0.075, 0.110, -0.540, 0.006, -2.128,
 				-0.082, 0.4572, 0.4572, 0.005, 1.40,
 				1.54);
 		// SA/0.1
 		SCEMY_1997_AttenRelCoefficients coeff2 = new
-		SCEMY_1997_AttenRelCoefficients("SA/" + (new Double("0.1")).doubleValue(),
+		SCEMY_1997_AttenRelCoefficients("SA/" + (Double.valueOf("0.1")).doubleValue(),
 				0.1, 0.275, -0.375, 0.006, -2.148,
 				-0.041, 0.6395, 0.6395, 0.005, 1.41,
 				1.54);
 		// SA/0.2
 		SCEMY_1997_AttenRelCoefficients coeff3 = new
-		SCEMY_1997_AttenRelCoefficients("SA/" + (new Double("0.2")).doubleValue(),
+		SCEMY_1997_AttenRelCoefficients("SA/" + (Double.valueOf("0.2")).doubleValue(),
 				0.2, 0.153, -0.497, -0.004, -2.080, 0.0,
 				0.9187, 0.9187, -0.004, 1.43, 1.565);
 		// SA/0.3
 		SCEMY_1997_AttenRelCoefficients coeff4 = new
-		SCEMY_1997_AttenRelCoefficients("SA/" + (new Double("0.3")).doubleValue(),
+		SCEMY_1997_AttenRelCoefficients("SA/" + (Double.valueOf("0.3")).doubleValue(),
 				0.3, -0.057, -0.707, -0.017, -2.028,
 				0.0, 0.9547, 0.9547, -0.014, 1.45, 1.58);
 		// SA/0.4
 		SCEMY_1997_AttenRelCoefficients coeff5 = new
-		SCEMY_1997_AttenRelCoefficients("SA/" + (new Double("0.4")).doubleValue(),
+		SCEMY_1997_AttenRelCoefficients("SA/" + (Double.valueOf("0.4")).doubleValue(),
 				0.4, -0.298, -0.948, -0.028, -1.990,
 				0.0, 0.9251, 0.9005, -0.024, 1.48,
 				1.595);
 		// SA/0.5
 		SCEMY_1997_AttenRelCoefficients coeff6 = new
-		SCEMY_1997_AttenRelCoefficients("SA/" + (new Double("0.5")).doubleValue(),
+		SCEMY_1997_AttenRelCoefficients("SA/" + (Double.valueOf("0.5")).doubleValue(),
 				0.5, -0.588, -1.238, -0.040, -1.945,
 				0.0, 0.8494, 0.8285, -0.033, 1.50, 1.61);
 		// SA/0.75
 		SCEMY_1997_AttenRelCoefficients coeff7 = new
 		SCEMY_1997_AttenRelCoefficients("SA/" +
-				(new Double("0.75")).doubleValue(),
+				(Double.valueOf("0.75")).doubleValue(),
 				0.75, -1.208, -1.858, -0.050, -1.865,
 				0.0, 0.7010, 0.6802, -0.051, 1.52,
 				1.635);
 		// SA/1.0
 		SCEMY_1997_AttenRelCoefficients coeff8 = new
-		SCEMY_1997_AttenRelCoefficients("SA/" + (new Double("1.0")).doubleValue(),
+		SCEMY_1997_AttenRelCoefficients("SA/" + (Double.valueOf("1.0")).doubleValue(),
 				1.0, -1.705, -2.355, -0.055, -1.800,
 				0.0, 0.5665, 0.5075, -0.065, 1.53, 1.66);
 		// SA/1.5
 		SCEMY_1997_AttenRelCoefficients coeff9 = new
-		SCEMY_1997_AttenRelCoefficients("SA/" + (new Double("1.5")).doubleValue(),
+		SCEMY_1997_AttenRelCoefficients("SA/" + (Double.valueOf("1.5")).doubleValue(),
 				1.5, -2.407, -3.057, -0.065, -1.725,
 				0.0, 0.3235, 0.2215, -0.090, 1.53, 1.69);
 		// SA/2.0
 		SCEMY_1997_AttenRelCoefficients coeff10 = new
-		SCEMY_1997_AttenRelCoefficients("SA/" + (new Double("2.0")).doubleValue(),
+		SCEMY_1997_AttenRelCoefficients("SA/" + (Double.valueOf("2.0")).doubleValue(),
 				2.0, -2.945, -3.595, -0.070, -1.670,
 				0.0, 0.1001, -0.0526, -0.108, 1.53,
 				1.70);
 		// SA/3.0
 		SCEMY_1997_AttenRelCoefficients coeff11 = new
-		SCEMY_1997_AttenRelCoefficients("SA/" + (new Double("3.0")).doubleValue(),
+		SCEMY_1997_AttenRelCoefficients("SA/" + (Double.valueOf("3.0")).doubleValue(),
 				3.0, -3.700, -4.350, -0.080, -1.610,
 				0.0, -0.2801, -0.4905, -0.139, 1.53,
 				1.71);
 		// SA/4.0
 		SCEMY_1997_AttenRelCoefficients coeff12 = new
-		SCEMY_1997_AttenRelCoefficients("SA/" + (new Double("4.0")).doubleValue(),
+		SCEMY_1997_AttenRelCoefficients("SA/" + (Double.valueOf("4.0")).doubleValue(),
 				4.0, -4.230, -4.880, -0.100, -1.570,
 				0.0, -0.6274, -0.8907, -0.160, 1.53,
 				1.71);

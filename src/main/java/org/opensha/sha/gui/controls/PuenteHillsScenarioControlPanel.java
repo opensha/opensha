@@ -362,7 +362,7 @@ public class PuenteHillsScenarioControlPanel {
     ERF_GuiBean erfParamGuiBean =erfPanel.getERF_ParamEditor();
 
     // Set rake value to 90 degrees
-    erfParamGuiBean.getERFParameterList().getParameter(PoissonFaultERF.RAKE_PARAM_NAME).setValue(new Double(90));
+    erfParamGuiBean.getERFParameterList().getParameter(PoissonFaultERF.RAKE_PARAM_NAME).setValue(Double.valueOf(90));
 
 
 
@@ -376,18 +376,18 @@ public class PuenteHillsScenarioControlPanel {
     ArrayList<Double> lats = new ArrayList<Double>();
     ArrayList<Double> lons = new ArrayList<Double>();
     for(int i = 0; i<faultTrace.getNumLocations(); i++) {
-      lats.add(new Double(faultTrace.get(i).getLatitude()));
-      lons.add(new Double(faultTrace.get(i).getLongitude()));
+      lats.add(Double.valueOf(faultTrace.get(i).getLatitude()));
+      lons.add(Double.valueOf(faultTrace.get(i).getLongitude()));
     }
 
     //creating the dip vector for the SimpleFaultParameter
     ArrayList<Double> dips = new ArrayList<Double>();
-    dips.add(new Double(dip));
+    dips.add(Double.valueOf(dip));
 
     //creating the depth vector for the SimpleFaultParameter
     ArrayList<Double> depths = new ArrayList<Double>();
-    depths.add(new Double(depth1));
-    depths.add(new Double(depth2));
+    depths.add(Double.valueOf(depth1));
+    depths.add(Double.valueOf(depth2));
 
     //setting the FaultParameterEditor with the default values for Puente Hills Scenario
     faultPanel.setAll(SimpleFaultParameter.DEFAULT_GRID_SPACING,lats,
@@ -406,7 +406,7 @@ public class PuenteHillsScenarioControlPanel {
     MagFreqDistParameterEditor magEditor = erfParamGuiBean.getMagDistEditor();
     magEditor.getParameter(MagFreqDistParameter.DISTRIBUTION_NAME).setValue(SingleMagFreqDist.NAME);
     magEditor.getParameter(MagFreqDistParameter.SINGLE_PARAMS_TO_SET).setValue(MagFreqDistParameter.MAG_AND_MO_RATE);
-    magEditor.getParameter(MagFreqDistParameter.MAG).setValue(new Double(magnitude));
+    magEditor.getParameter(MagFreqDistParameter.MAG).setValue(Double.valueOf(magnitude));
     erfParamGuiBean.getERFParameterListEditor().refreshParamEditor();
     // now have the editor create the magFreqDist
     magEditor.setMagDistFromParams();
@@ -422,12 +422,12 @@ public class PuenteHillsScenarioControlPanel {
     imrGuiBean.refreshParamEditor();
 
     //Updating the SitesInGriddedRectangularRegionGuiBean with the Puente Hills resion setting
-    regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LATITUDE).setValue(new Double(33.2));
-    regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LATITUDE).setValue(new Double(35.0));
-    regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LONGITUDE).setValue(new Double(-119.5));
-    regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LONGITUDE).setValue(new Double(-116.18));
-//    regionGuiBean.getParameterList().getParameter(regionGuiBean.GRID_SPACING).setValue(new Double(.1));
-    regionGuiBean.getParameterList().getParameter(regionGuiBean.GRID_SPACING).setValue(new Double(.016667));
+    regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LATITUDE).setValue(Double.valueOf(33.2));
+    regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LATITUDE).setValue(Double.valueOf(35.0));
+    regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LONGITUDE).setValue(Double.valueOf(-119.5));
+    regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LONGITUDE).setValue(Double.valueOf(-116.18));
+//    regionGuiBean.getParameterList().getParameter(regionGuiBean.GRID_SPACING).setValue(Double.valueOf(.1));
+    regionGuiBean.getParameterList().getParameter(regionGuiBean.GRID_SPACING).setValue(Double.valueOf(.016667));
     regionGuiBean.getParameterList().getParameter(regionGuiBean.SITE_PARAM_NAME).setValue(regionGuiBean.SET_SITES_USING_SCEC_CVM);
 
     // Set the imt as PGA
@@ -435,8 +435,8 @@ public class PuenteHillsScenarioControlPanel {
     imtGuiBean.refreshParamEditor();
 
     // Set some of the mapping params:
-    mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.GMT_WEBSERVICE_NAME).setValue(new Boolean(true));
-    mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.LOG_PLOT_NAME).setValue(new Boolean(false));
+    mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.GMT_WEBSERVICE_NAME).setValue(Boolean.valueOf(true));
+    mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.LOG_PLOT_NAME).setValue(Boolean.valueOf(false));
     mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.COLOR_SCALE_MODE_NAME).setValue(GMT_MapGenerator.COLOR_SCALE_MODE_FROMDATA);
     mapGuiBean.refreshParamEditor();
   }

@@ -273,17 +273,17 @@ public class SiteDataValueList<E> implements XMLSaveable, Serializable {
 	public static void main(String args[]) throws IOException {
 		ArrayList<Double> vals = new ArrayList<Double>();
 		LocationList locs = new LocationList();
-		vals.add(new Double(0.5));
+		vals.add(Double.valueOf(0.5));
 		locs.add(new Location(34, -120.6));
-		vals.add(new Double(0.4));
+		vals.add(Double.valueOf(0.4));
 		locs.add(new Location(34, -120.5));
-		vals.add(new Double(0.3));
+		vals.add(Double.valueOf(0.3));
 		locs.add(new Location(34, -120.4));
-		vals.add(new Double(0.2));
+		vals.add(Double.valueOf(0.2));
 		locs.add(new Location(34, -120.3));
-		vals.add(new Double(0.1));
+		vals.add(Double.valueOf(0.1));
 		locs.add(new Location(34, -120.2));
-		vals.add(new Double(0.05));
+		vals.add(Double.valueOf(0.05));
 		locs.add(new Location(34, -120.1));
 		
 		SiteDataValueList<Double> list = new SiteDataValueList<Double>(SiteData.TYPE_VS30, "asdfas", vals, null, locs);

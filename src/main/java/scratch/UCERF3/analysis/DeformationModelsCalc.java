@@ -426,7 +426,7 @@ public class DeformationModelsCalc {
 		BA_2008_AttenRel ba2008 = new BA_2008_AttenRel(null);
 		// set SA with period = 1.0
 		ba2008.setIntensityMeasure(SA_Param.NAME);
-		ba2008.getParameter(PeriodParam.NAME).setValue(new Double(1.0));
+		ba2008.getParameter(PeriodParam.NAME).setValue(Double.valueOf(1.0));
 		double vs30	= 400;
 		double mag = 7;
 		String faultType = BA_2008_AttenRel.FLT_TYPE_UNKNOWN;
@@ -439,7 +439,7 @@ public class DeformationModelsCalc {
 		
 		EvenlyDiscretizedFunc imlVsDistFunc = new EvenlyDiscretizedFunc(0., 201., 202);
 		for(int i=0;i<imlVsDistFunc.size();i++) {
-			Double dist = new Double(imlVsDistFunc.getX(i));
+			Double dist = Double.valueOf(imlVsDistFunc.getX(i));
 			DistanceJBParameter distParm = (DistanceJBParameter) ba2008.getParameter(DistanceJBParameter.NAME);
 			distParm.setValueIgnoreWarning(dist);
 			imlVsDistFunc.set(i,Math.exp(ba2008.getMean()));

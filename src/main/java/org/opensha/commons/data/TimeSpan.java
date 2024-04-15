@@ -132,31 +132,31 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 	public final static String START_YEAR = "Start Year";
 	private IntegerParameter startYearParam;
 	private IntegerConstraint startYearConstraint = new IntegerConstraint(0,Integer.MAX_VALUE);
-	private final static Integer START_YEAR_DEFAULT = new Integer(2003);
+	private final static Integer START_YEAR_DEFAULT = Integer.valueOf(2003);
 	public final static String START_MONTH = "Start Month";
 	private IntegerParameter startMonthParam;
 	private IntegerConstraint startMonthConstraint = new IntegerConstraint(1,12);
-	private final static Integer START_MONTH_DEFAULT = new Integer(1);
+	private final static Integer START_MONTH_DEFAULT = Integer.valueOf(1);
 	public final static String START_DAY = "Start Day";
 	private IntegerParameter startDayParam;
-	private final static Integer START_DAY_DEFAULT = new Integer(1);
+	private final static Integer START_DAY_DEFAULT = Integer.valueOf(1);
 	private IntegerConstraint startDayConstraint = new IntegerConstraint(1,31);
 	public final static String START_HOUR = "Start Hour";
 	private IntegerParameter startHourParam;
-	private final static Integer START_HOUR_DEFAULT = new Integer(0);
+	private final static Integer START_HOUR_DEFAULT = Integer.valueOf(0);
 	private IntegerConstraint startHourConstraint = new IntegerConstraint(0,59);
 	public final static String START_MINUTE = "Start Minute";
 	private IntegerParameter startMinuteParam;
-	private final static Integer START_MINUTE_DEFAULT = new Integer(0);
+	private final static Integer START_MINUTE_DEFAULT = Integer.valueOf(0);
 	private IntegerConstraint startMinuteConstraint = new IntegerConstraint(0,59);
 	public final static String START_SECOND = "Start Second";
 	private IntegerParameter startSecondParam;
-	private final static Integer START_SECOND_DEFAULT = new Integer(0);
+	private final static Integer START_SECOND_DEFAULT = Integer.valueOf(0);
 	private IntegerConstraint startSecondConstraint = new IntegerConstraint(0,Integer.MAX_VALUE);
 	public final static String START_MILLISECOND = "Start Second";
 	private IntegerParameter startMillisecondParam;
 	private IntegerConstraint startMillisecondConstraint = new IntegerConstraint(0,999);
-	private final static Integer START_MILLISECOND_DEFAULT = new Integer(0);
+	private final static Integer START_MILLISECOND_DEFAULT = Integer.valueOf(0);
 
 	// Misc Strings (e.g., for setting units)
 	public final static String YEARS = "Years";
@@ -177,7 +177,7 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 
 	// For Duration Parameter
 	public final static String DURATION = "Duration";
-	private final static Double DURATION_DEFAULT = new Double(50.);
+	private final static Double DURATION_DEFAULT = Double.valueOf(50.);
 	private DoubleConstraint durationConstraint = new DoubleConstraint(0.0,Double.MAX_VALUE);
 	private DoubleParameter durationParam;
 	private DoubleDiscreteParameter discreteDurationParam;
@@ -550,7 +550,7 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 	 */
 	public void setDuration( double duration ) {
 		if(isDurationDiscrete)
-			discreteDurationParam.setValue(new Double(duration));
+			discreteDurationParam.setValue(Double.valueOf(duration));
 		else
 			durationParam.setValue(duration);
 	}
@@ -567,7 +567,7 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 		String desiredUnits = (String) durationUnitsParam.getValue();
 		double newValue = convertDurationUnits(duration,units,desiredUnits);
 		if(isDurationDiscrete)
-			discreteDurationParam.setValue(new Double(newValue));
+			discreteDurationParam.setValue(Double.valueOf(newValue));
 		else
 			durationParam.setValue(newValue);
 	}
@@ -697,7 +697,7 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 	public void setStartTime(int year) throws RuntimeException {
 
 		if(getStartTimePrecInt() == 1)
-			startYearParam.setValue(new Integer(year));
+			startYearParam.setValue(Integer.valueOf(year));
 		else {
 			String prec = (String) startTimePrecisionParam.getValue();
 			String method = "setStartTime(int year)";
@@ -715,8 +715,8 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 	public void setStartTime(int year, int month) throws RuntimeException {
 
 		if(getStartTimePrecInt() == 2) {
-			startYearParam.setValue(new Integer(year));
-			startMonthParam.setValue(new Integer(month));
+			startYearParam.setValue(Integer.valueOf(year));
+			startMonthParam.setValue(Integer.valueOf(month));
 		}
 		else {
 			String prec = (String) startTimePrecisionParam.getValue();
@@ -735,9 +735,9 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 	public void setStartTime(int year, int month, int day) throws RuntimeException {
 
 		if(getStartTimePrecInt() == 3) {
-			startYearParam.setValue(new Integer(year));
-			startMonthParam.setValue(new Integer(month));
-			startDayParam.setValue(new Integer(day));
+			startYearParam.setValue(Integer.valueOf(year));
+			startMonthParam.setValue(Integer.valueOf(month));
+			startDayParam.setValue(Integer.valueOf(day));
 		}
 		else {
 			String prec = (String) startTimePrecisionParam.getValue();
@@ -756,10 +756,10 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 	public void setStartTime(int year, int month, int day, int hour) throws RuntimeException {
 
 		if(getStartTimePrecInt() == 4) {
-			startYearParam.setValue(new Integer(year));
-			startMonthParam.setValue(new Integer(month));
-			startDayParam.setValue(new Integer(day));
-			startHourParam.setValue(new Integer(hour));
+			startYearParam.setValue(Integer.valueOf(year));
+			startMonthParam.setValue(Integer.valueOf(month));
+			startDayParam.setValue(Integer.valueOf(day));
+			startHourParam.setValue(Integer.valueOf(hour));
 		}
 		else {
 			String prec = (String) startTimePrecisionParam.getValue();
@@ -779,11 +779,11 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 	public void setStartTime(int year, int month, int day, int hour, int minute) throws RuntimeException {
 
 		if(getStartTimePrecInt() == 5) {
-			startYearParam.setValue(new Integer(year));
-			startMonthParam.setValue(new Integer(month));
-			startDayParam.setValue(new Integer(day));
-			startHourParam.setValue(new Integer(hour));
-			startMinuteParam.setValue(new Integer(minute));
+			startYearParam.setValue(Integer.valueOf(year));
+			startMonthParam.setValue(Integer.valueOf(month));
+			startDayParam.setValue(Integer.valueOf(day));
+			startHourParam.setValue(Integer.valueOf(hour));
+			startMinuteParam.setValue(Integer.valueOf(minute));
 		}
 		else {
 			String prec = (String) startTimePrecisionParam.getValue();
@@ -802,12 +802,12 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 	public void setStartTime(int year, int month, int day, int hour, int minute, int second) throws RuntimeException {
 
 		if(getStartTimePrecInt() == 6) {
-			startYearParam.setValue(new Integer(year));
-			startMonthParam.setValue(new Integer(month));
-			startDayParam.setValue(new Integer(day));
-			startHourParam.setValue(new Integer(hour));
-			startMinuteParam.setValue(new Integer(minute));
-			startSecondParam.setValue(new Integer(second));
+			startYearParam.setValue(Integer.valueOf(year));
+			startMonthParam.setValue(Integer.valueOf(month));
+			startDayParam.setValue(Integer.valueOf(day));
+			startHourParam.setValue(Integer.valueOf(hour));
+			startMinuteParam.setValue(Integer.valueOf(minute));
+			startSecondParam.setValue(Integer.valueOf(second));
 		}
 		else {
 			String prec = (String) startTimePrecisionParam.getValue();
@@ -828,13 +828,13 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 	throws RuntimeException {
 
 		if(getStartTimePrecInt() == 7) {
-			startYearParam.setValue(new Integer(year));
-			startMonthParam.setValue(new Integer(month));
-			startDayParam.setValue(new Integer(day));
-			startHourParam.setValue(new Integer(hour));
-			startMinuteParam.setValue(new Integer(minute));
-			startSecondParam.setValue(new Integer(second));
-			startMillisecondParam.setValue(new Integer(millisecond));
+			startYearParam.setValue(Integer.valueOf(year));
+			startMonthParam.setValue(Integer.valueOf(month));
+			startDayParam.setValue(Integer.valueOf(day));
+			startHourParam.setValue(Integer.valueOf(hour));
+			startMinuteParam.setValue(Integer.valueOf(minute));
+			startSecondParam.setValue(Integer.valueOf(second));
+			startMillisecondParam.setValue(Integer.valueOf(millisecond));
 		}
 		else {
 			String prec = (String) startTimePrecisionParam.getValue();
@@ -991,7 +991,7 @@ public class TimeSpan implements ParameterChangeListener, Serializable {
 			// build the startTime Calendar
 			buildStartTimeCalendar();
 			// compute duration in mSec from the duration parameter
-			Double durMsec = new Double(getDuration(MILLISECONDS));
+			Double durMsec = Double.valueOf(getDuration(MILLISECONDS));
 			long endTime_mSec =  startTimeCal.getTime().getTime() + durMsec.longValue();
 			GregorianCalendar cal = new GregorianCalendar();
 			cal.setTimeZone(TimeZone.getTimeZone("UTC"));

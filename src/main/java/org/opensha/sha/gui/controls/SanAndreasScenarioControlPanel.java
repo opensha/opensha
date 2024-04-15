@@ -220,7 +220,7 @@ public class SanAndreasScenarioControlPanel extends ConfirmDialogControlPanel {
 
 
 		// Set rake value to 90 degrees
-		erfPanel.getParameter(erfPanel.RAKE_PARAM_NAME).setValue(new Double(180));
+		erfPanel.getParameter(erfPanel.RAKE_PARAM_NAME).setValue(Double.valueOf(180));
 
 
 		//getting the instance for the SimpleFaultParameterEditorPanel from the GuiBean to adjust the fault Params
@@ -231,19 +231,19 @@ public class SanAndreasScenarioControlPanel extends ConfirmDialogControlPanel {
 		ArrayList lons = new ArrayList();
 		FaultTrace faultTrace = sanAndreasFaultData.getFaultTrace();
 		for(int i = 0; i<faultTrace.getNumLocations(); i++) {
-			lats.add(new Double(faultTrace.get(i).getLatitude()));
-			lons.add(new Double(faultTrace.get(i).getLongitude()));
+			lats.add(Double.valueOf(faultTrace.get(i).getLatitude()));
+			lons.add(Double.valueOf(faultTrace.get(i).getLongitude()));
 		}
 
 		//creating the dip vector for the SimpleFaultParameter
 		ArrayList dips = new ArrayList();
-		dips.add(new Double(sanAndreasFaultData.getAveDip()));
+		dips.add(Double.valueOf(sanAndreasFaultData.getAveDip()));
 
 
 		//creating the depth vector for the SimpleFaultParameter
 		ArrayList depths = new ArrayList();
-		depths.add(new Double(sanAndreasFaultData.getUpperSeismogenicDepth()));
-		depths.add(new Double(sanAndreasFaultData.getLowerSeismogenicDepth()));
+		depths.add(Double.valueOf(sanAndreasFaultData.getUpperSeismogenicDepth()));
+		depths.add(Double.valueOf(sanAndreasFaultData.getLowerSeismogenicDepth()));
 
 		//setting the FaultParameterEditor with the default values for Puente Hills Scenario
 		faultPanel.setAll(((SimpleFaultParameter)faultPanel.getParameter()).DEFAULT_GRID_SPACING,lats,
@@ -256,7 +256,7 @@ public class SanAndreasScenarioControlPanel extends ConfirmDialogControlPanel {
 		//updaing the faultParameter to update the faultSurface
 		faultPanel.setEvenlyGriddedSurfaceFromParams();
 
-		erfPanel.getParameter(erfPanel.MAG_PARAM_NAME).setValue(new Double(magnitude));
+		erfPanel.getParameter(erfPanel.MAG_PARAM_NAME).setValue(Double.valueOf(magnitude));
 		erfPanel.getParameterListEditor().refreshParamEditor();
 
 
@@ -275,11 +275,11 @@ public class SanAndreasScenarioControlPanel extends ConfirmDialogControlPanel {
 		imrGuiBean.getSingleAttenRelParamListEditor().refreshParamEditor();
 
 		//Updating the SitesInGriddedRectangularRegionGuiBean with the Puente Hills resion setting
-		regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LATITUDE).setValue(new Double(32.3));
-		regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LATITUDE).setValue(new Double(35.5));
-		regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LONGITUDE).setValue(new Double(-119.5));
-		regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LONGITUDE).setValue(new Double(-115));
-		regionGuiBean.getParameterList().getParameter(regionGuiBean.GRID_SPACING).setValue(new Double(.02));
+		regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LATITUDE).setValue(Double.valueOf(32.3));
+		regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LATITUDE).setValue(Double.valueOf(35.5));
+		regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LONGITUDE).setValue(Double.valueOf(-119.5));
+		regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LONGITUDE).setValue(Double.valueOf(-115));
+		regionGuiBean.getParameterList().getParameter(regionGuiBean.GRID_SPACING).setValue(Double.valueOf(.02));
 		regionGuiBean.getParameterList().getParameter(regionGuiBean.SITE_PARAM_NAME).setValue(SitesInGriddedRectangularRegionGuiBean.USE_SITE_DATA);
 
 		regionGuiBean.refreshParamEditor();
@@ -292,13 +292,13 @@ public class SanAndreasScenarioControlPanel extends ConfirmDialogControlPanel {
 		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.COLOR_SCALE_MODE_NAME).
 		setValue(GMT_MapGenerator.COLOR_SCALE_MODE_MANUALLY);
 		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.COLOR_SCALE_MIN_PARAM_NAME).
-		setValue(new Double(-0.39));
+		setValue(Double.valueOf(-0.39));
 		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.COLOR_SCALE_MAX_PARAM_NAME).
-		setValue(new Double(2.2));
+		setValue(Double.valueOf(2.2));
 		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.SHOW_HIWYS_PARAM_NAME).
 		setValue(GMT_MapGenerator.SHOW_HIWYS_ALL);
-		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.GMT_WEBSERVICE_NAME).setValue(new Boolean(true));
-		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.LOG_PLOT_NAME).setValue(new Boolean(true));
+		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.GMT_WEBSERVICE_NAME).setValue(Boolean.valueOf(true));
+		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.LOG_PLOT_NAME).setValue(Boolean.valueOf(true));
 		mapGuiBean.refreshParamEditor();
 	}
 }

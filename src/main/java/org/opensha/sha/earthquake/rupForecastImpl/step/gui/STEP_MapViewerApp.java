@@ -372,7 +372,7 @@ public class STEP_MapViewerApp extends JApplet {
 				maxLonVector, (String)maxLonVector.get(0));
 		// make the gridspacing param
 		DoubleParameter gridSpacingParam = new DoubleParameter(GRIDSPACING_PARAM_NAME,
-				new Double(intervalLat));
+				Double.valueOf(intervalLat));
 
 		// add the params to the list
 		this.sitesParamList = new ParameterList();

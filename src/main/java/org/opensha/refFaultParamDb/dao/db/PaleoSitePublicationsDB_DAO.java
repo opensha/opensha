@@ -117,9 +117,8 @@ public class PaleoSitePublicationsDB_DAO {
 				String contributorName = this.contributorDAO.getContributor(rs.getInt(CONTRIBUTOR_ID)).getName();
 				PaleoSitePublication paleoSitePublication;
 				// if we encounter the same publication again
-				if (refIdPublicationMap.containsKey(new Integer(referenceId))) {
-					paleoSitePublication = (PaleoSitePublication) refIdPublicationMap.get(new
-							Integer(referenceId));
+				if (refIdPublicationMap.containsKey(Integer.valueOf(referenceId))) {
+					paleoSitePublication = (PaleoSitePublication) refIdPublicationMap.get(Integer.valueOf(referenceId));
 					paleoSitePublication.setContributorName(contributorName);
 					paleoSitePublication.setEntryDate(rs.getString(ENTRY_DATE));
 					ArrayList<String> siteTypeNames = paleoSitePublication.getSiteTypeNames();
@@ -138,7 +137,7 @@ public class PaleoSitePublicationsDB_DAO {
 					paleoSitePublication.setSiteTypeNames(siteTypeNames);
 					paleoSitePublication.setReference(referenceDAO.getReference(rs.getInt(REFERENCE_ID)));
 					paleoSitePubList.add(paleoSitePublication);
-					refIdPublicationMap.put(new Integer(rs.getInt(REFERENCE_ID)), paleoSitePublication);
+					refIdPublicationMap.put(Integer.valueOf(rs.getInt(REFERENCE_ID)), paleoSitePublication);
 				}
 			}
 			rs.close();

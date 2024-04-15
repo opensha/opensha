@@ -344,10 +344,10 @@ ActionListener,ParameterChangeListener{
 			symbolTypeParam[i].addParameterChangeListener(this);
 
 			lineWidthParameter[i] = new DoubleParameter(LINE_WIDTH_NAME, sizeConstraint,
-						new Double(curvePlotPref.getLineWidth()));
+						Double.valueOf(curvePlotPref.getLineWidth()));
 			
 			symbolWidthParameter[i] = new DoubleParameter(SYMBOL_WIDTH_NAME, sizeConstraint,
-					new Double(curvePlotPref.getSymbolWidth()));
+					Double.valueOf(curvePlotPref.getSymbolWidth()));
 		}
 
 		curveFeaturePanel.removeAll();

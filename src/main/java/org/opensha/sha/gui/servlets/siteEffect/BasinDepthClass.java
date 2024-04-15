@@ -119,7 +119,7 @@ public final class BasinDepthClass {
 
       //initializing the bd vector with the Double.NaN values
       for(int i=0;i<size;++i)
-        bd.add(new Double(Double.NaN));
+        bd.add(Double.valueOf(Double.NaN));
       
       double prevLat=Double.NaN;
       for(int i=0;i<size;++i){
@@ -150,7 +150,7 @@ public final class BasinDepthClass {
             //if we found the desired lon in the file ,
             //we get the value of the basinDepth for the nearest point
             //returns the actual value for the basinDepth
-            bd.set(i,new Double(st.nextToken()));
+            bd.set(i,Double.valueOf(st.nextToken()));
             break;
 
           }

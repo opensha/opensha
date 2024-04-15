@@ -37,7 +37,7 @@ public class BooleanParameter extends AbstractParameter<Boolean> {
 	 * @param  name  Name of the parameter
 	 */
 	public BooleanParameter(String name) {
-		super(name,null,null,new Boolean(false));
+		super(name,null,null,Boolean.valueOf(false));
 		setDefaultValue(value);
 	}
 

@@ -135,26 +135,26 @@ public class BA_2008_test extends NGATest implements ParameterChangeWarningListe
 				//System.out.println("Doing "+j+" of "+numLines);
 				StringTokenizer st = new StringTokenizer(fileLine);
 				double mag = Double.parseDouble(st.nextToken().trim());
-				((WarningDoubleParameter)ba_2008.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
+				((WarningDoubleParameter)ba_2008.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 
 				//Rrup not used, skipping
 				st.nextToken();
-				//((WarningDoublePropagationEffectParameter)ba_2008.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(new Double(rrup));
+				//((WarningDoublePropagationEffectParameter)ba_2008.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(Double.valueOf(rrup));
 
 				double rjb = Double.parseDouble(st.nextToken().trim());
-				((AbstractDoublePropEffectParam)ba_2008.getParameter(DistanceJBParameter.NAME)).setValueIgnoreWarning(new Double(rjb));
+				((AbstractDoublePropEffectParam)ba_2008.getParameter(DistanceJBParameter.NAME)).setValueIgnoreWarning(Double.valueOf(rjb));
 
 				st.nextToken().trim(); // ignore R(x) ( Horizontal distance from top of rupture perpendicular to fault strike)
 
 				st.nextToken(); // ignore dip
-				//ba_2008.getParameter(ba_2008.DIP_NAME).setValue(new Double(dip));
+				//ba_2008.getParameter(ba_2008.DIP_NAME).setValue(Double.valueOf(dip));
 
 				st.nextToken(); // ignore W, width of rup plane
 
 				st.nextToken(); // ignore Ztor, depth of top
 
 				double vs30 = Double.parseDouble(st.nextToken().trim());
-				((WarningDoubleParameter)ba_2008.getParameter(Vs30_Param.NAME)).setValueIgnoreWarning(new Double(vs30));
+				((WarningDoubleParameter)ba_2008.getParameter(Vs30_Param.NAME)).setValueIgnoreWarning(Double.valueOf(vs30));
 
 				st.nextToken(); // ignore Zsed, sediment/basin depth
 
@@ -162,7 +162,7 @@ public class BA_2008_test extends NGATest implements ParameterChangeWarningListe
 				int num= period.length;
 				double openSHA_Val, tested_Val;
 				for(int k=0;k<num;++k){
-					ba_2008.getParameter(PeriodParam.NAME).setValue(new Double(period[k]));
+					ba_2008.getParameter(PeriodParam.NAME).setValue(Double.valueOf(period[k]));
 					if(isMedian) openSHA_Val = Math.exp(ba_2008.getMean());
 					else openSHA_Val = ba_2008.getStdDev();
 					tested_Val = Double.parseDouble(st.nextToken().trim());

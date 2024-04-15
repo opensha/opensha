@@ -95,7 +95,7 @@ public class IMCorrRel_MultiGuiBean extends LabeledBoxPanel implements ActionLis
 		this.imtj = imtj;
 		imCorrRelEnables = new ArrayList<Boolean>();
 		for (int i=0; i<imCorrRels.size(); i++) {
-			imCorrRelEnables.add(new Boolean(true));
+			imCorrRelEnables.add(Boolean.valueOf(true));
 		}
 
 		initGUI();

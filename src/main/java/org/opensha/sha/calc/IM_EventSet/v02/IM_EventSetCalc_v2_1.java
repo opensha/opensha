@@ -377,7 +377,7 @@ implements ParameterChangeWarningListener {
 	private void createUCERF1_Forecast(){
 		forecast = new WGCEP_UCERF1_EqkRupForecast();
 		forecast.getAdjustableParameterList().getParameter(
-				WGCEP_UCERF1_EqkRupForecast.TIME_DEPENDENT_PARAM_NAME).setValue(new Boolean(false));
+				WGCEP_UCERF1_EqkRupForecast.TIME_DEPENDENT_PARAM_NAME).setValue(Boolean.valueOf(false));
 	}
 
 	/**
@@ -410,7 +410,7 @@ implements ParameterChangeWarningListener {
 	private void setRupOffset(double rupOffset){
 		forecast.getAdjustableParameterList().getParameter(
 				Frankel02_AdjustableEqkRupForecast.
-				RUP_OFFSET_PARAM_NAME).setValue(new Double(rupOffset));
+				RUP_OFFSET_PARAM_NAME).setValue(Double.valueOf(rupOffset));
 		forecast.updateForecast();
 	}
 
@@ -548,7 +548,7 @@ implements ParameterChangeWarningListener {
 			if (numTokens == 2) {
 				pd = st.nextToken().trim();
 				if (pd != null && !pd.equals(""))
-					imr.getParameter(PeriodParam.NAME).setValue(new Double(Double.parseDouble(pd)));
+					imr.getParameter(PeriodParam.NAME).setValue(Double.valueOf(Double.parseDouble(pd)));
 				String str = pd.replace('.', '_');
 				meanSigmaFile = new FileWriter(fileNamePrefixCommon + "_" +
 						imt + "_" + str + ".txt");

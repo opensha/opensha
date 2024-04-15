@@ -227,9 +227,9 @@ public class GMT_MapGeneratorApplet extends Applet{
 				ListIterator<String> it = fileLines.listIterator();
 				while(it.hasNext()){
 					StringTokenizer st = new StringTokenizer((String)it.next());
-					double lat = new Double(st.nextToken().trim());
-					double lon = new Double(st.nextToken().trim());
-					double z = new Double(st.nextToken().trim());
+					double lat = Double.valueOf(st.nextToken().trim());
+					double lon = Double.valueOf(st.nextToken().trim());
+					double z = Double.valueOf(st.nextToken().trim());
 					xyzData.set(new Location(lat, lon), z);
 				}
 			}catch(Exception ee){

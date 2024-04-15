@@ -157,7 +157,7 @@ ActionListener, ItemListener{
 		Iterator it = paramList.getParametersIterator();
 		while(it.hasNext()) {
 			Parameter param = (Parameter)it.next();
-			param.setValue(new Double(weight));
+			param.setValue(Double.valueOf(weight));
 		}
 		autoWeightComboBox.setSelectedItem(this.AUTO_WEIGHTS_PARAM_NAME);
 		this.editor.refreshParamEditor();

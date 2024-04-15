@@ -148,7 +148,7 @@ public class ScenarioShakeMapCalculator {
 			attenRel.resetParameterEventListeners();
 
 			if(isProbAtIML) //if Prob@IML set the Intensity Measure Level
-				attenRel.setIntensityMeasureLevel(new Double(value));
+				attenRel.setIntensityMeasureLevel(Double.valueOf(value));
 			else{
 				try{ //if IML@Prob set the Exceed Prob param for the Attenuation.
 					attenRel.setExceedProb(value);
@@ -275,12 +275,12 @@ public class ScenarioShakeMapCalculator {
 			outputToServlet.writeObject(rupture);
 
 			//sending the Map type ot the servlet, is it Prob@IML or IML@Prob
-			outputToServlet.writeObject(new Boolean(isProbAtIML));
+			outputToServlet.writeObject(Boolean.valueOf(isProbAtIML));
 
 
 			//sending the value of the iml or prob whichever other needs to be computed
 			//based on the selection of the IML@prob or Prob@IML
-			outputToServlet.writeObject(new Double(value));
+			outputToServlet.writeObject(Double.valueOf(value));
 
 			//sending the selected IMT to the server
 			outputToServlet.writeObject(selectedIMT);

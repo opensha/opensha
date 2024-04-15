@@ -35,8 +35,8 @@ public class B_FaultFixes  implements java.io.Serializable {
 				if(line.startsWith("#")) continue; // skip the comment line
 				StringTokenizer tokenizer = new StringTokenizer(line,DELIMITER);
 				sectionNames.add(tokenizer.nextToken().trim());
-				mags.add(new Double(tokenizer.nextToken().trim()));
-				rates.add(new Double(tokenizer.nextToken().trim()));
+				mags.add(Double.valueOf(tokenizer.nextToken().trim()));
+				rates.add(Double.valueOf(tokenizer.nextToken().trim()));
 			}
 
 		}catch(Exception e) {

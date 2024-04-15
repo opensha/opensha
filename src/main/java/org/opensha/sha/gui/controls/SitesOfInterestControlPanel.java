@@ -70,43 +70,43 @@ public class SitesOfInterestControlPanel extends ControlPanel {
 
 			//GEM test site
 			sitesComboBox.addItem("GEM test site");
-			latVector.add(new Double(40.0));
-			lonVector.add(new Double(70.0));
+			latVector.add(Double.valueOf(40.0));
+			lonVector.add(Double.valueOf(70.0));
 
 			// los angeles
 			sitesComboBox.addItem("Los Angeles Civic Center");
-			latVector.add(new Double(34.055));
-			lonVector.add(new Double(-118.2467));
+			latVector.add(Double.valueOf(34.055));
+			lonVector.add(Double.valueOf(-118.2467));
 
 			// san francisco
 			sitesComboBox.addItem("San Francisco City Hall");
-			latVector.add(new Double(37.775));
-			lonVector.add(new Double(-122.4183));
+			latVector.add(Double.valueOf(37.775));
+			lonVector.add(Double.valueOf(-122.4183));
 
 			// san francisco
 			sitesComboBox.addItem("San Francisco Class B");
-			latVector.add(new Double(37.8));
-			lonVector.add(new Double(-122.417));
+			latVector.add(Double.valueOf(37.8));
+			lonVector.add(Double.valueOf(-122.417));
 
 			// san francisco
 			sitesComboBox.addItem("San Francisco Class D");
-			latVector.add(new Double(37.783));
-			lonVector.add(new Double(-122.417));
+			latVector.add(Double.valueOf(37.783));
+			lonVector.add(Double.valueOf(-122.417));
 
 			// Sierra Madre Fault Gap
 			this.sitesComboBox.addItem("Sierra Madre Fault Gap");
-			latVector.add(new Double(34.225));
-			lonVector.add(new Double(-117.835));
+			latVector.add(Double.valueOf(34.225));
+			lonVector.add(Double.valueOf(-117.835));
 
 			// Alaskan Pipeline
 			this.sitesComboBox.addItem("Alaskan Pipeline");
-			latVector.add(new Double(63.375));
-			lonVector.add(new Double(-145.825));
+			latVector.add(Double.valueOf(63.375));
+			lonVector.add(Double.valueOf(-145.825));
 			
 			// Santiago, Chile
 			this.sitesComboBox.addItem("Santiago, Chile");
-			latVector.add(new Double(-33.45));
-			lonVector.add(new Double(-70.6666667));
+			latVector.add(Double.valueOf(-33.45));
+			lonVector.add(Double.valueOf(-70.6666667));
 
 			jbInit();
 			// show the window at center of the parent component

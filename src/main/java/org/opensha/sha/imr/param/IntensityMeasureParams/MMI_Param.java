@@ -15,9 +15,9 @@ public class MMI_Param extends DoubleParameter {
 
 	public final static String NAME = "MMI";
 	public final static String INFO = "Peak Ground Acceleration";
-	public final static Double MIN = new Double(Math.log(1.0));
-	public final static Double MAX = new Double(Math.log(10.0));
-	public final static Double DEFAULT = new Double(Math.log(5.0));
+	public final static Double MIN = Double.valueOf(Math.log(1.0));
+	public final static Double MAX = Double.valueOf(Math.log(10.0));
+	public final static Double DEFAULT = Double.valueOf(Math.log(5.0));
 	public final static String MMI_ERROR_STRING = "Problem:  cannot " +
 			"complete\n the requested computation for MMI.\n\n" +
 			"This has occurred because you attempted to compute the\n" +

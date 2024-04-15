@@ -264,7 +264,7 @@ class UCERF2_GridBuilder {
 			LittleEndianDataInputStream in = new LittleEndianDataInputStream(
 				FileUtils.openInputStream(file));
 			for (int i = 0; i < count; i++) {
-				double value = new Float(in.readFloat()).doubleValue();
+				double value = Float.valueOf(in.readFloat()).doubleValue();
 				data[calcIndex(i, nRows, nCols)] = value;
 			}
 			in.close();

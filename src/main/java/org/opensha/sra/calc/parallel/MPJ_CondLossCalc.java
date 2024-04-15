@@ -1008,7 +1008,7 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 
 		@Override
 		public int compareTo(SiteResult o) {
-			return new Integer(index).compareTo(o.index);
+			return Integer.valueOf(index).compareTo(o.index);
 		}
 	}
 

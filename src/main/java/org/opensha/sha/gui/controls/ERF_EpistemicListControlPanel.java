@@ -96,9 +96,9 @@ implements ParameterChangeFailListener{
 
 		//creating the default custom fractile values list
 		ArrayList defaultFractileValues = new ArrayList();
-		defaultFractileValues.add(new Double(.05));
-		defaultFractileValues.add(new Double(.50));
-		defaultFractileValues.add(new Double(.95));
+		defaultFractileValues.add(Double.valueOf(.05));
+		defaultFractileValues.add(Double.valueOf(.50));
+		defaultFractileValues.add(Double.valueOf(.95));
 		setCustomFractileValues(defaultFractileValues);
 	}
 	
@@ -286,7 +286,7 @@ implements ParameterChangeFailListener{
 		StringTokenizer st = new StringTokenizer(str,"\n");
 		fractileValues.clear();
 		while(st.hasMoreTokens()){
-			double fractileVal = (new Double(st.nextToken().trim())).doubleValue();
+			double fractileVal = (Double.valueOf(st.nextToken().trim())).doubleValue();
 			if(fractileVal<1.0 && fractileVal>0)
 				fractileValues.add(fractileVal);
 			else

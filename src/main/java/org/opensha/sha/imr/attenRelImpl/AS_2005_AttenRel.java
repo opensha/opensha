@@ -167,12 +167,12 @@ public class AS_2005_AttenRel extends AttenuationRelationship implements
   private double mean, stdDev;
 
   // ?????????????????????????????????????
-  protected final static Double MAG_WARN_MIN = new Double(4.5);
-  protected final static Double MAG_WARN_MAX = new Double(8.5);
-  protected final static Double DISTANCE_RUP_WARN_MIN = new Double(0.0);
-  protected final static Double DISTANCE_RUP_WARN_MAX = new Double(200.0);
-  protected final static Double VS30_WARN_MIN = new Double(180.0);
-  protected final static Double VS30_WARN_MAX = new Double(3500.0);
+  protected final static Double MAG_WARN_MIN = Double.valueOf(4.5);
+  protected final static Double MAG_WARN_MAX = Double.valueOf(8.5);
+  protected final static Double DISTANCE_RUP_WARN_MIN = Double.valueOf(0.0);
+  protected final static Double DISTANCE_RUP_WARN_MAX = Double.valueOf(200.0);
+  protected final static Double VS30_WARN_MIN = Double.valueOf(180.0);
+  protected final static Double VS30_WARN_MAX = Double.valueOf(3500.0);
 
   /**
    * srcSiteAngle parameter - .  This is created in the
@@ -184,9 +184,9 @@ public class AS_2005_AttenRel extends AttenuationRelationship implements
   public final static String SRC_SITE_ANGLE_INFO =
       "Difference between directions defined by closest point" +
       " on trace to site and the average strike of fault";
-  public final static Double SRC_SITE_ANGLE_DEFAULT = new Double(90);
-  protected final static Double SRC_SITE_ANGLE_MIN = new Double( -360);
-  protected final static Double SRC_SITE_ANGLE_MAX = new Double(360);
+  public final static Double SRC_SITE_ANGLE_DEFAULT = Double.valueOf(90);
+  protected final static Double SRC_SITE_ANGLE_MIN = Double.valueOf( -360);
+  protected final static Double SRC_SITE_ANGLE_MAX = Double.valueOf(360);
 
   /**
    * aspectRatio parameter - Rupture aspect ratio.  This is created in the
@@ -196,9 +196,9 @@ public class AS_2005_AttenRel extends AttenuationRelationship implements
   public final static String ASPECT_RATIO_NAME = "Rupture Apsect Ratio";
   public final static String ASPECT_RATIO_INFO =
       "Rupture length over down-dip width";
-  public final static Double ASPECT_RATIO_DEFAULT = new Double(1);
-  protected final static Double ASPECT_RATIO_MIN = new Double(Double.MIN_VALUE);
-  protected final static Double ASPECT_RATIO_MAX = new Double(200);
+  public final static Double ASPECT_RATIO_DEFAULT = Double.valueOf(1);
+  protected final static Double ASPECT_RATIO_MIN = Double.valueOf(Double.MIN_VALUE);
+  protected final static Double ASPECT_RATIO_MAX = Double.valueOf(200);
 
   /**
    *  This initializes several ParameterList objects.
@@ -210,7 +210,7 @@ public class AS_2005_AttenRel extends AttenuationRelationship implements
     initSupportedIntensityMeasureParams();
     indexFromPerHashMap = new HashMap();
     for (int i = 0; i < period.length; i++) {
-      indexFromPerHashMap.put(new Double(period[i]), new Integer(i));
+      indexFromPerHashMap.put(Double.valueOf(period[i]), Integer.valueOf(i));
     }
 
     initEqkRuptureParams();
@@ -234,7 +234,7 @@ public class AS_2005_AttenRel extends AttenuationRelationship implements
    */
   public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 
-    magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+    magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
     rakeParam.setValue(eqkRupture.getAveRake());
     RuptureSurface surface = eqkRupture.getRuptureSurface();
     dipParam.setValue(surface.getAveDip());
@@ -526,7 +526,7 @@ public class AS_2005_AttenRel extends AttenuationRelationship implements
      // Create saParam:
     DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint();
     for (int i = 0; i < period.length; i++) {
-      periodConstraint.addDouble(new Double(period[i]));
+      periodConstraint.addDouble(Double.valueOf(period[i]));
     }
     periodConstraint.setNonEditable();
 	saPeriodParam = new PeriodParam(periodConstraint);

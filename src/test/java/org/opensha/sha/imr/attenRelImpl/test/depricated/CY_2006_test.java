@@ -73,18 +73,18 @@ public class CY_2006_test implements ParameterChangeWarningListener{
 			cy_2006.setIntensityMeasure(cy_2006.SA_Param.NAME);
 			StringTokenizer st = new StringTokenizer((String)testDataLines.get(i));
 			double period = Double.parseDouble(st.nextToken().trim());
-			cy_2006.getParameter(cy_2006.PeriodParam.NAME).setValue(new Double(period));
+			cy_2006.getParameter(cy_2006.PeriodParam.NAME).setValue(Double.valueOf(period));
 			double mag = Double.parseDouble(st.nextToken().trim());
-			cy_2006.getParameter(cy_2006.MAG_NAME).setValue(new Double(mag));
+			cy_2006.getParameter(cy_2006.MAG_NAME).setValue(Double.valueOf(mag));
 			double rrup = Double.parseDouble(st.nextToken().trim());
-			cy_2006.getParameter(DistanceRupParameter.NAME).setValue(new Double(rrup));
+			cy_2006.getParameter(DistanceRupParameter.NAME).setValue(Double.valueOf(rrup));
 			double vs30 = Double.parseDouble(st.nextToken().trim());
-			cy_2006.getParameter(cy_2006.VS30_NAME).setValue(new Double(vs30));
+			cy_2006.getParameter(cy_2006.VS30_NAME).setValue(Double.valueOf(vs30));
 			double rjb = Double.parseDouble(st.nextToken().trim());
 			double distRupMinusJB_OverRup = (rrup-rjb)/rrup;
-			cy_2006.getParameter(DistRupMinusJB_OverRupParameter.NAME).setValue(new Double(distRupMinusJB_OverRup));
+			cy_2006.getParameter(DistRupMinusJB_OverRupParameter.NAME).setValue(Double.valueOf(distRupMinusJB_OverRup));
 			double rupWidth =  Double.parseDouble(st.nextToken().trim());
-			cy_2006.getParameter(cy_2006.RUP_WIDTH_NAME).setValue(new Double(rupWidth));
+			cy_2006.getParameter(cy_2006.RUP_WIDTH_NAME).setValue(Double.valueOf(rupWidth));
 			int frv =  Integer.parseInt(st.nextToken().trim());
 			int fnm = Integer.parseInt(st.nextToken().trim());
 			cy_2006.getParameter(cy_2006.FLT_TYPE_NAME).setValue(cy_2006.FLT_TYPE_STRIKE_SLIP);
@@ -94,9 +94,9 @@ public class CY_2006_test implements ParameterChangeWarningListener{
 			   cy_2006.getParameter(cy_2006.FLT_TYPE_NAME).setValue(cy_2006.FLT_TYPE_NORMAL);
 
 			double depthTop =  Double.parseDouble(st.nextToken().trim());
-			cy_2006.getParameter(cy_2006.RUP_TOP_NAME).setValue(new Double(depthTop));
+			cy_2006.getParameter(cy_2006.RUP_TOP_NAME).setValue(Double.valueOf(depthTop));
 			double dip =  Double.parseDouble(st.nextToken().trim());
-			cy_2006.getParameter(cy_2006.DIP_NAME).setValue(new Double(dip));
+			cy_2006.getParameter(cy_2006.DIP_NAME).setValue(Double.valueOf(dip));
 			double meanVal = cy_2006.getMean();
 			st.nextToken();
 			double targetMedian = Double.parseDouble(st.nextToken().trim());
@@ -143,12 +143,12 @@ public class CY_2006_test implements ParameterChangeWarningListener{
 				else
 					continue;
 				double dip = Double.parseDouble(fileName.substring(8,10));
-				cy_2006.getParameter(DipParam.NAME).setValue(new Double(dip));
+				cy_2006.getParameter(DipParam.NAME).setValue(Double.valueOf(dip));
 
 				double vs30 = Double.parseDouble(fileName.substring(11,fileName.indexOf("_Z")));
-				cy_2006.getParameter(Vs30_Param.NAME).setValue(new Double(vs30));
+				cy_2006.getParameter(Vs30_Param.NAME).setValue(Double.valueOf(vs30));
 				double depthTop = Double.parseDouble(fileName.substring((fileName.indexOf("Zt")+2),fileName.indexOf(".")));
-				cy_2006.getParameter(RupTopDepthParam.NAME).setValue(new Double(depthTop));
+				cy_2006.getParameter(RupTopDepthParam.NAME).setValue(Double.valueOf(depthTop));
 				try {
 					testDataLines = FileUtils.loadFile(fileList[i].getAbsolutePath());
 					int numLines = testDataLines.size();
@@ -156,15 +156,15 @@ public class CY_2006_test implements ParameterChangeWarningListener{
 						String fileLine = (String)testDataLines.get(j);
 						StringTokenizer st = new StringTokenizer(fileLine);
 						double mag = Double.parseDouble(st.nextToken().trim());
-						((WarningDoubleParameter)cy_2006.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
+						((WarningDoubleParameter)cy_2006.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 
 						double rjb = Double.parseDouble(st.nextToken().trim());
 						double rrup = Double.parseDouble(st.nextToken().trim());
 						((AbstractDoublePropEffectParam)cy_2006.getParameter(DistanceRupParameter.NAME)).
-						setValueIgnoreWarning(new Double(rrup));
+						setValueIgnoreWarning(Double.valueOf(rrup));
 						double distRupMinusJB_OverRup = (rrup-rjb)/rrup;
 						((AbstractDoublePropEffectParam)cy_2006.getParameter(DistRupMinusJB_OverRupParameter.NAME)).
-						setValueIgnoreWarning(new Double(distRupMinusJB_OverRup));
+						setValueIgnoreWarning(Double.valueOf(distRupMinusJB_OverRup));
 						st.nextToken().trim();//for rSeis
 						cy_2006.setIntensityMeasure(PGA_Param.NAME);
 						double openSHA_mean = Math.exp(cy_2006.getMean());
@@ -188,7 +188,7 @@ public class CY_2006_test implements ParameterChangeWarningListener{
 						cy_2006.setIntensityMeasure(SA_Param.NAME);
 						int num= period.length;
 						for(int k=0;k<num;++k){
-							cy_2006.getParameter(PeriodParam.NAME).setValue(new Double(period[k]));
+							cy_2006.getParameter(PeriodParam.NAME).setValue(Double.valueOf(period[k]));
 							if(k == 1)
 								st.nextToken();
 

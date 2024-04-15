@@ -260,9 +260,9 @@ public class UCERF1ComparisonPlotter {
 		// Def. params with High apriori model weight
 		ucerf2.setParamDefaults();
 		ucerf2.getParameter(UCERF2.DEFORMATION_MODEL_PARAM_NAME).setValue(defModelName);
-		ucerf2.setParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME, new Double(1e10));
-		ucerf2.setParameter(UCERF2.MIN_A_FAULT_RATE_1_PARAM_NAME, new Double(0));
-		ucerf2.setParameter(UCERF2.MIN_A_FAULT_RATE_2_PARAM_NAME, new Double(0));
+		ucerf2.setParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME, Double.valueOf(1e10));
+		ucerf2.setParameter(UCERF2.MIN_A_FAULT_RATE_1_PARAM_NAME, Double.valueOf(0));
+		ucerf2.setParameter(UCERF2.MIN_A_FAULT_RATE_2_PARAM_NAME, Double.valueOf(0));
 		ucerf2.updateForecast();
 		name = "Def. params with High apriori model weight with "+UCERF2.DEFORMATION_MODEL_PARAM_NAME+"="+defModelName;
 		addToFuncListForReportPlots(aFaultIncrRateFuncList, aFaultCumRateFuncList, name);
@@ -366,7 +366,7 @@ public class UCERF1ComparisonPlotter {
 
 		// Def Params with Mean Mag correction=-0.1
 		ucerf2.setParamDefaults();
-		ucerf2.setParameter(UCERF2.MEAN_MAG_CORRECTION, new Double(-0.1));
+		ucerf2.setParameter(UCERF2.MEAN_MAG_CORRECTION, Double.valueOf(-0.1));
 		ucerf2.updateForecast();
 		name = "Def Params w/ change Mean Mag Correction to -0.1";
 		addToB_FaultsPlottingList(b_FaultIndices, numB_Faults, bFaultIncrRateFuncList, bFaultCumRateFuncList, name);
@@ -379,7 +379,7 @@ public class UCERF1ComparisonPlotter {
 		
 		// Def Params with Mean Mag correction=0.1
 		ucerf2.setParamDefaults();
-		ucerf2.setParameter(UCERF2.MEAN_MAG_CORRECTION, new Double(0.1));
+		ucerf2.setParameter(UCERF2.MEAN_MAG_CORRECTION, Double.valueOf(0.1));
 		ucerf2.updateForecast();
 		name = "Def Params w/ change Mean Mag Correction to 0.1";
 		addToB_FaultsPlottingList(b_FaultIndices, numB_Faults, bFaultIncrRateFuncList, bFaultCumRateFuncList, name);

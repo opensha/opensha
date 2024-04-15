@@ -672,9 +672,9 @@ public class PlotMapFromXMLHazardDataSetApp extends JApplet implements Parameter
 				ListIterator<String> it = fileLines.listIterator();
 				while(it.hasNext()){
 					StringTokenizer st = new StringTokenizer((String)it.next());
-					double lat = new Double(st.nextToken().trim());
-					double lon = new Double(st.nextToken().trim());
-					double val = new Double(st.nextToken().trim());
+					double lat = Double.valueOf(st.nextToken().trim());
+					double lon = Double.valueOf(st.nextToken().trim());
+					double val = Double.valueOf(st.nextToken().trim());
 					Location loc = new Location(lat, lon);
 					xyzData.set(loc, val);
 				}
@@ -726,7 +726,7 @@ public class PlotMapFromXMLHazardDataSetApp extends JApplet implements Parameter
 			toServlet.writeObject(imlProbGuiBean.getSelectedOption());
 
 			//sending the IML or Prob Selected value
-			toServlet.writeObject(new Double(imlProbGuiBean.getIML_Prob()));
+			toServlet.writeObject(Double.valueOf(imlProbGuiBean.getIML_Prob()));
 
 			// metadata for this map
 			String metadata = dataSetText.getText()+"\nGMT Param List: \n"+

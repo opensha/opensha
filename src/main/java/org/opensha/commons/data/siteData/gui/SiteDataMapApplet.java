@@ -50,8 +50,8 @@ public class SiteDataMapApplet extends Applet implements ActionListener, ListSel
 		dataBean = new OrderedSiteDataGUIBean(OrderedSiteDataProviderList.createSiteDataMapProviders());
 		dataBean.addListSelectionListener(this);
 		mapBean = new GMT_MapGuiBean();
-		mapBean.getParameterList().getParameter(GMT_MapGenerator.LOG_PLOT_NAME).setValue(new Boolean(false));
-		mapBean.getParameterList().getParameter(GMT_MapGenerator.GMT_SMOOTHING_PARAM_NAME).setValue(new Boolean(false));
+		mapBean.getParameterList().getParameter(GMT_MapGenerator.LOG_PLOT_NAME).setValue(Boolean.valueOf(false));
+		mapBean.getParameterList().getParameter(GMT_MapGenerator.GMT_SMOOTHING_PARAM_NAME).setValue(Boolean.valueOf(false));
 		mapBean.getParameterList().getParameter(
 				GMT_MapGenerator.TOPO_RESOLUTION_PARAM_NAME).setValue(GMT_MapGenerator.TOPO_RESOLUTION_NONE);
 		mapBean.getParameterList().getParameter(
@@ -92,7 +92,7 @@ public class SiteDataMapApplet extends Applet implements ActionListener, ListSel
 		// if the user didn't specify a custom one, then do it for them
 		boolean custom = (Boolean)customParam.getValue();
 		if (!custom && label != null && label.length() > 0) {
-			customParam.setValue(new Boolean(true));
+			customParam.setValue(Boolean.valueOf(true));
 			System.out.println("Label: " + label);
 			label = "'" + label + "'";
 			mapBean.getParameterList().getParameter(
@@ -194,10 +194,10 @@ public class SiteDataMapApplet extends Applet implements ActionListener, ListSel
 			Region region = provider.getApplicableRegion();
 			
 			ParameterList paramList = mapBean.getParameterList();
-			paramList.getParameter(GMT_MapGenerator.MIN_LAT_PARAM_NAME).setValue(new Double(region.getMinLat()));
-			paramList.getParameter(GMT_MapGenerator.MAX_LAT_PARAM_NAME).setValue(new Double(region.getMaxLat()));
-			paramList.getParameter(GMT_MapGenerator.MIN_LON_PARAM_NAME).setValue(new Double(region.getMinLon()));
-			paramList.getParameter(GMT_MapGenerator.MAX_LON_PARAM_NAME).setValue(new Double(region.getMaxLon()));
+			paramList.getParameter(GMT_MapGenerator.MIN_LAT_PARAM_NAME).setValue(Double.valueOf(region.getMinLat()));
+			paramList.getParameter(GMT_MapGenerator.MAX_LAT_PARAM_NAME).setValue(Double.valueOf(region.getMaxLat()));
+			paramList.getParameter(GMT_MapGenerator.MIN_LON_PARAM_NAME).setValue(Double.valueOf(region.getMinLon()));
+			paramList.getParameter(GMT_MapGenerator.MAX_LON_PARAM_NAME).setValue(Double.valueOf(region.getMaxLon()));
 			mapBean.refreshParamEditor();
 		}
 	}

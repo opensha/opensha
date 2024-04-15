@@ -96,14 +96,14 @@ public class Campbell_1997_AttenRel extends AttenuationRelationship {
 	public final static String SITE_TYPE_DEFAULT = "Firm-Soil";
 
 	// warning constraints:
-	protected final static Double MAG_WARN_MIN = new Double(5);
-	protected final static Double MAG_WARN_MAX = new Double(8);
-	protected final static Double DISTANCE_SEIS_WARN_MIN = new Double(3.0);
-	protected final static Double DISTANCE_SEIS_WARN_MAX = new Double(60.0);
+	protected final static Double MAG_WARN_MIN = Double.valueOf(5);
+	protected final static Double MAG_WARN_MAX = Double.valueOf(8);
+	protected final static Double DISTANCE_SEIS_WARN_MIN = Double.valueOf(3.0);
+	protected final static Double DISTANCE_SEIS_WARN_MAX = Double.valueOf(60.0);
 	// the minimum warning will get overridden by seisDepth is less than seisDepth
 
 	// Override period default because 0.0 is not an option here
-	protected final static Double PERIOD_DEFAULT = new Double(0.5);
+	protected final static Double PERIOD_DEFAULT = Double.valueOf(0.5);
 
 	/**
 	 * Campbell's Basin-Depth Parameter, defined as depth (km) to Cretaceous, crystalline
@@ -114,11 +114,11 @@ public class Campbell_1997_AttenRel extends AttenuationRelationship {
 	public final static String BASIN_DEPTH_UNITS = "km";
 	public final static String BASIN_DEPTH_INFO =
 		"Depth to Cretaceous, crystalline basement, or 3 km/sec S-wave velocity";
-	protected final static Double BASIN_DEPTH_DEFAULT = new Double(5.0);
-	protected final static Double BASIN_DEPTH_MIN = new Double(0);
-	protected final static Double BASIN_DEPTH_MAX = new Double(30);
-	protected final static Double BASIN_DEPTH_WARN_MIN = new Double(0);
-	protected final static Double BASIN_DEPTH_WARN_MAX = new Double(10);
+	protected final static Double BASIN_DEPTH_DEFAULT = Double.valueOf(5.0);
+	protected final static Double BASIN_DEPTH_MIN = Double.valueOf(0);
+	protected final static Double BASIN_DEPTH_MAX = Double.valueOf(30);
+	protected final static Double BASIN_DEPTH_WARN_MIN = Double.valueOf(0);
+	protected final static Double BASIN_DEPTH_WARN_MAX = Double.valueOf(10);
 
 	/**
 	 * The current set of coefficients based on the selected intensityMeasure
@@ -162,7 +162,7 @@ public class Campbell_1997_AttenRel extends AttenuationRelationship {
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 
-		magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
 		setFaultTypeFromRake(eqkRupture.getAveRake());
 		this.eqkRupture = eqkRupture;
 		setPropagationEffectParams();
@@ -741,11 +741,11 @@ public class Campbell_1997_AttenRel extends AttenuationRelationship {
 			Campbell_1997_AttenRelCoefficients coeff = (
 					Campbell_1997_AttenRelCoefficients) coefficients.get(keys.nextElement());
 			if (coeff.period >= 0) {
-				set.add(new Double(coeff.period));
+				set.add(Double.valueOf(coeff.period));
 			}
 		}
 		// add the zero period by hand since there are no corresponding coefficients
-		periodConstraint.addDouble(new Double(0.0));
+		periodConstraint.addDouble(Double.valueOf(0.0));
 		// now add the list of periods from the coefficients
 		Iterator it = set.iterator();
 		while (it.hasNext()) {
@@ -823,91 +823,91 @@ public class Campbell_1997_AttenRel extends AttenuationRelationship {
 		// SA/0.05
 		Campbell_1997_AttenRelCoefficients coeff0 = new
 		Campbell_1997_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("0.05")).doubleValue(),
+				(Double.valueOf("0.05")).doubleValue(),
 				0.05, 0.05, 0.0, 0.0, -0.0011,
 				0.000055, 0.20, 0.0, 0.0, -1.32, 0.0,
 				0.0, 0.0, 0.0);
 		// SA/0.075
 		Campbell_1997_AttenRelCoefficients coeff1 = new
 		Campbell_1997_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("0.075")).doubleValue(),
+				(Double.valueOf("0.075")).doubleValue(),
 				0.075, 0.27, 0.0, 0.0, -0.0024,
 				0.000095, 0.22, 0.0, 0.0, -1.21, 0.0,
 				0.0, 0.0, 0.0);
 		// SA/0.1
 		Campbell_1997_AttenRelCoefficients coeff2 = new
 		Campbell_1997_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("0.1")).doubleValue(),
+				(Double.valueOf("0.1")).doubleValue(),
 				0.1, 0.48, 0.0, 0.0, -0.0024,
 				0.000007, 0.14, 0.0, 0.0, -1.29, 0.0,
 				0.0, 0.0, 0.0);
 		// SA/0.15
 		Campbell_1997_AttenRelCoefficients coeff3 = new
 		Campbell_1997_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("0.15")).doubleValue(),
+				(Double.valueOf("0.15")).doubleValue(),
 				0.15, 0.72, 0.0, 0.0, -0.0010,
 				-0.00027, -0.02, 0.0, 0.0, -1.57,
 				0.0, 0.0, 0.0, 0.0);
 		// SA/0.2
 		Campbell_1997_AttenRelCoefficients coeff4 = new
 		Campbell_1997_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("0.2")).doubleValue(),
+				(Double.valueOf("0.2")).doubleValue(),
 				0.2, 0.79, 0.0, 0.0, 0.0011,
 				-0.00053, -0.18, 0.0, 0.0, -1.73,
 				0.0, 0.0, 0.0, 0.0);
 		// SA/0.3
 		Campbell_1997_AttenRelCoefficients coeff5 = new
 		Campbell_1997_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("0.3")).doubleValue(),
+				(Double.valueOf("0.3")).doubleValue(),
 				0.3, 0.77, 0.0, 0.0, 0.0035,
 				-0.00072, -0.40, 0.0, 0.0, -1.98,
 				0.0, 0.0, 0.0, 0.0);
 		// SA/0.5
 		Campbell_1997_AttenRelCoefficients coeff6 = new
 		Campbell_1997_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("0.5")).doubleValue(),
+				(Double.valueOf("0.5")).doubleValue(),
 				0.5, -0.28, 0.74, 0.66, 0.0068,
 				-0.001, -0.42, 0.25, 0.62, -2.03,
 				0.46, -0.74, 0.0, 0.0);
 		// SA/0.75
 		Campbell_1997_AttenRelCoefficients coeff7 = new
 		Campbell_1997_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("0.75")).doubleValue(),
+				(Double.valueOf("0.75")).doubleValue(),
 				0.75, -1.08, 1.23, 0.66, 0.0077,
 				-0.001, -0.44, 0.37, 0.62, -1.79,
 				0.67, -1.23, 0.0, 0.0);
 		// SA/1.0
 		Campbell_1997_AttenRelCoefficients coeff8 = new
 		Campbell_1997_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("1.0")).doubleValue(),
+				(Double.valueOf("1.0")).doubleValue(),
 				1.0, -1.79, 1.59, 0.66, 0.0085,
 				-0.001, -0.38, 0.57, 0.62, -1.82,
 				1.13, -1.59, 0.18, -0.18);
 		// SA/1.5
 		Campbell_1997_AttenRelCoefficients coeff9 = new
 		Campbell_1997_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("1.5")).doubleValue(),
+				(Double.valueOf("1.5")).doubleValue(),
 				1.5, -2.65, 1.98, 0.66, 0.0094,
 				-0.001, -0.32, 0.72, 0.62, -1.81,
 				1.52, -1.98, 0.57, -0.49);
 		// SA/2.0
 		Campbell_1997_AttenRelCoefficients coeff10 = new
 		Campbell_1997_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("2.0")).doubleValue(),
+				(Double.valueOf("2.0")).doubleValue(),
 				2.0, -3.28, 2.23, 0.66, 0.0100,
 				-0.001, -0.36, 0.83, 0.62, -1.65,
 				1.65, -2.23, 0.61, -0.63);
 		// SA/3.0
 		Campbell_1997_AttenRelCoefficients coeff11 = new
 		Campbell_1997_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("3.0")).doubleValue(),
+				(Double.valueOf("3.0")).doubleValue(),
 				3.0, -4.07, 2.39, 0.66, 0.0108,
 				-0.001, -0.22, 0.86, 0.62, -1.31,
 				1.28, -2.39, 1.07, -0.84);
 		// SA/4.0
 		Campbell_1997_AttenRelCoefficients coeff12 = new
 		Campbell_1997_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("4.0")).doubleValue(),
+				(Double.valueOf("4.0")).doubleValue(),
 				4.0, -4.26, 2.03, 0.66, 0.0112,
 				-0.001, -0.30, 1.05, 0.62, -1.35,
 				1.15, -2.03, 1.26, -1.17);

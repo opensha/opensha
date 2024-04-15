@@ -158,12 +158,12 @@ public class HazusJobWriter {
 		}
 //		ScalarIntensityMeasureRelationshipAPI attenRel = getUSGSCombined2008IMR();
 //		ScalarIntensityMeasureRelationshipAPI attenRel = getCB_2008IMR();
-		attenRel.getParameter(Vs30_Param.NAME).setValue(new Double(760));
+		attenRel.getParameter(Vs30_Param.NAME).setValue(Double.valueOf(760));
 		if (sigmaTrunc > 0) {
 			attenRel.getParameter(SigmaTruncTypeParam.NAME).
 				setValue(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED);
 			attenRel.getParameter(SigmaTruncLevelParam.NAME).
-				setValue(new Double(sigmaTrunc));
+				setValue(Double.valueOf(sigmaTrunc));
 		} else {
 			attenRel.getParameter(SigmaTruncTypeParam.NAME).
 			setValue(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_NONE);

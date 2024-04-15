@@ -147,7 +147,7 @@ public class TranslatedWarningDoubleParameterEditor extends ConstrainedDoublePar
 
 
 		if( value instanceof String){
-			try{ value = new Double(value.toString()); }
+			try{ value = Double.valueOf(value.toString()); }
 			catch( NumberFormatException ee){}
 		}
 
@@ -164,7 +164,7 @@ public class TranslatedWarningDoubleParameterEditor extends ConstrainedDoublePar
 				if( trans != null || param.isTranslate() ){
 
 					Double dUntranslated = (Double)value;
-					Double dTranslated = new Double( trans.translate( dUntranslated.doubleValue() ) );
+					Double dTranslated = Double.valueOf( trans.translate( dUntranslated.doubleValue() ) );
 					Double oldUntranslated = (Double)param.getValue();
 
 					if ( D ) System.out.println( S + "Old Value = " + obj.toString() );

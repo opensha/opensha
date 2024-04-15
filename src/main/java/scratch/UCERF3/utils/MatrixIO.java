@@ -662,7 +662,7 @@ public class MatrixIO {
 
 		@Override
 		public Integer get(int index) {
-			return new Integer(vals[index]);
+			return Integer.valueOf(vals[index]);
 		}
 
 		@Override

@@ -2449,7 +2449,7 @@ ScalarIMRChangeListener {
 
 		int size = func.size();
 		for (int i = 0; i < size; ++i)
-			imlList.add(new Double(func.getX(i)));
+			imlList.add(Double.valueOf(func.getX(i)));
 
 		return imlList;
 	}

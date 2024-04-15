@@ -51,8 +51,8 @@ public class DoubleConstraint extends AbstractParameterConstraint<Double> {
      * @param  max  The max value allowed
      */
     public DoubleConstraint( double min, double max ) {
-        this.min = new Double(min);
-        this.max = new Double(max);
+        this.min = Double.valueOf(min);
+        this.max = Double.valueOf(max);
     }
 
 
@@ -81,8 +81,8 @@ public class DoubleConstraint extends AbstractParameterConstraint<Double> {
     public void setMinMax( double min, double max ) throws EditableException {
         String S = C + ": setMinMax(double, double): ";
         checkEditable(S);
-        this.min = new Double( min ) ;
-        this.max = new Double( max ) ;
+        this.min = Double.valueOf( min ) ;
+        this.max = Double.valueOf( max ) ;
     }
 
 
@@ -137,7 +137,7 @@ public class DoubleConstraint extends AbstractParameterConstraint<Double> {
      * @param  obj  The object to check if allowed.
      * @return      True if this is one of the allowed values.
      */
-    public boolean isAllowed( double d ) { return isAllowed( new Double( d ) ); }
+    public boolean isAllowed( double d ) { return isAllowed( Double.valueOf( d ) ); }
 
 
     /** returns the classname of the constraint, and the min & max as a debug string */

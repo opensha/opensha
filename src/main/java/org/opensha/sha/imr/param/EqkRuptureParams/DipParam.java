@@ -12,8 +12,8 @@ public class DipParam extends WarningDoubleParameter {
 	public final static String NAME = "Dip";
 	public final static String UNITS = "degrees";
 	public final static String INFO = "Average dip of earthquake rupture";
-	protected final static Double MIN = new Double(0);
-	protected final static Double MAX = new Double(90);
+	protected final static Double MIN = Double.valueOf(0);
+	protected final static Double MAX = Double.valueOf(90);
 
 	/**
 	 * This sets the default value and warning-constraint limits

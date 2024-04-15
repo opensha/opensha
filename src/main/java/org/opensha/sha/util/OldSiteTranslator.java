@@ -173,27 +173,27 @@ public class OldSiteTranslator
     // (e.g., used by BJF-1997 and Field-2000) site type
     else if (param.getName().equals(Vs30_Param.NAME)) {
       if (wc.equals(WILLS_DE)) {
-        param.setValue(new Double(180));
+        param.setValue(Double.valueOf(180));
         return true;
       }
       else if (wc.equals(WILLS_D)) {
-        param.setValue(new Double(270));
+        param.setValue(Double.valueOf(270));
         return true;
       }
       else if (wc.equals(WILLS_CD)) {
-        param.setValue(new Double(360));
+        param.setValue(Double.valueOf(360));
         return true;
       }
       else if (wc.equals(WILLS_C)) {
-        param.setValue(new Double(560));
+        param.setValue(Double.valueOf(560));
         return true;
       }
       else if (wc.equals(WILLS_BC)) {
-        param.setValue(new Double(760));
+        param.setValue(Double.valueOf(760));
         return true;
       }
       else if (wc.equals(WILLS_B)) {
-        param.setValue(new Double(1000));
+        param.setValue(Double.valueOf(1000));
         return true;
       }
       else {
@@ -205,15 +205,15 @@ public class OldSiteTranslator
     // (these are as Ken Campbell requested)
     else if (param.getName().equals(Campbell_1997_AttenRel.BASIN_DEPTH_NAME)) {
       if (wc.equals(WILLS_DE) || wc.equals(WILLS_D) || wc.equals(WILLS_CD)) {
-        param.setValue(new Double(5.0));
+        param.setValue(Double.valueOf(5.0));
         return true;
       }
       else if (wc.equals(WILLS_C)) {
-        param.setValue(new Double(1.0));
+        param.setValue(Double.valueOf(1.0));
         return true;
       }
       else if (wc.equals(WILLS_BC) || wc.equals(WILLS_B)) {
-        param.setValue(new Double(0.0));
+        param.setValue(Double.valueOf(0.0));
         return true;
       }
       else {
@@ -272,14 +272,14 @@ public class OldSiteTranslator
     else if (param.getName().equals(Field_2000_AttenRel.BASIN_DEPTH_NAME)) {
       // set basin depth in kms
       if(Double.isNaN(basinDepth)) param.setValue(null);
-      else  param.setValue(new Double(basinDepth/1000));
+      else  param.setValue(Double.valueOf(basinDepth/1000));
       return true;
     }
     // Depth 2.5 km/sec Parameter
     else if (param.getName().equals(DepthTo2pt5kmPerSecParam.NAME)) {
       // set Depth 2.5 km/sec in kms
       if (Double.isNaN(basinDepth)) param.setValue(null);
-      else ((WarningDoubleParameter)param).setValueIgnoreWarning(new Double(basinDepth / 1000));
+      else ((WarningDoubleParameter)param).setValueIgnoreWarning(Double.valueOf(basinDepth / 1000));
       return true;
     }
     // ShakeMap_2003_AttenRel.WILLS_SITE_NAME
@@ -296,9 +296,9 @@ public class OldSiteTranslator
     //CS_2005.SOFT_SOIL_CASE
     else if(param.getName().equals(CS_2005_AttenRel.SOFT_SOIL_NAME)){
     	if (wc.equals(WILLS_E))
-    		param.setValue(new Boolean(true));
+    		param.setValue(Boolean.valueOf(true));
     	else
-    		param.setValue(new Boolean(false));
+    		param.setValue(Boolean.valueOf(false));
         return true;
     }
 

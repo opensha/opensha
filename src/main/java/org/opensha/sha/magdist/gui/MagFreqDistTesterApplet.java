@@ -499,8 +499,8 @@ implements ItemListener {
 		Color c = new Color( .9f, .9f, 1.0f, 1f );
 		Font f = new Font( "Dialog", Font.PLAIN, 11 );
 
-		UIManager.put( "ScrollBar.width", new Integer( 12 ) );
-		UIManager.put( "ScrollPane.width", new Integer( 12 ) );
+		UIManager.put( "ScrollBar.width", Integer.valueOf( 12 ) );
+		UIManager.put( "ScrollPane.width", Integer.valueOf( 12 ) );
 
 		UIManager.put( "PopupMenu.font", f );
 		UIManager.put( "Menu.font", f );
@@ -520,7 +520,7 @@ implements ItemListener {
 		UIManager.put( "MenuItem.disabledBackground", c );
 		//UIManager.put("MenuItem.selectionBackground", c );
 
-		// UIManager.put("MenuItem.borderPainted", new Boolean(false) );
+		// UIManager.put("MenuItem.borderPainted", Boolean.valueOf(false) );
 		UIManager.put( "MenuItem.margin", new Insets( 0, 0, 0, 0 ) );
 
 		UIManager.put( "ComboBox.background", c );

@@ -30,12 +30,12 @@ public class EvaluateA_PrioriWt {
 	 */
 	public void evaluateA_prioriWT() {
 //		do some tests
-		//erRateModel2_ERF.setParameter(REL_SEG_RATE_WT_PARAM_NAME,new Double(1.0));
+		//erRateModel2_ERF.setParameter(REL_SEG_RATE_WT_PARAM_NAME,Double.valueOf(1.0));
 		//erRateModel2_ERF.setParameter(PRESERVE_MIN_A_FAULT_RATE_PARAM_NAME,false);
 		DecimalFormat formatter = new DecimalFormat("0.000E0");
 		System.out.println("A_prior Wt\tTotal Gen Pred Error\tSeg Slip Rate Error\tSeg Event Rate Error\tA-Priori Rup Rate Error (non-normalized)");
 		double aPrioriWt = 0;
-		ucerf2.getParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME).setValue(new Double(aPrioriWt));
+		ucerf2.getParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME).setValue(Double.valueOf(aPrioriWt));
 		ucerf2.updateForecast();
 		// do the 0.0 case
 		System.out.println((float)aPrioriWt+"\t"+
@@ -47,7 +47,7 @@ public class EvaluateA_PrioriWt {
 		")");
 		for(int pow=-20; pow<16;pow++) {
 			aPrioriWt = Math.pow(10,pow);
-			ucerf2.getParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME).setValue(new Double(aPrioriWt));
+			ucerf2.getParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME).setValue(Double.valueOf(aPrioriWt));
 			ucerf2.updateForecast();
 			System.out.println("1E"+pow+"\t"+
 					formatter.format(ucerf2.getGeneralPredErr())+"\t"+

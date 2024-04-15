@@ -247,7 +247,7 @@ public class CyberShakeHazardDataSelectorServlet  extends HttpServlet {
 								//System.out.println("FirstIndex = "+firstIndex+" LastIndex = "+lastIndex);
 								String srcIndex = srcRupfileName.substring(firstIndex,
 										lastIndex);
-								srcIndexList.add(new Integer(srcIndex));
+								srcIndexList.add(Integer.valueOf(srcIndex));
 							}
 						}
 						siteSA_PeriodHazardDatasetMap.put(dirList[i].getName(), saPeriodVals);

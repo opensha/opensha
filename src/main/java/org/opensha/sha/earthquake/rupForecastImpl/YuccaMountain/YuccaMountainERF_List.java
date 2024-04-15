@@ -51,7 +51,7 @@ public class YuccaMountainERF_List  extends AbstractEpistemicListERF{
 	
 	//	 For num realizations parameter
 	private final static String NUM_REALIZATIONS_PARAM_NAME ="Num Realizations";
-	private Integer DEFAULT_NUM_REALIZATIONS_VAL= new Integer(1000);
+	private Integer DEFAULT_NUM_REALIZATIONS_VAL= Integer.valueOf(1000);
 	private int NUM_REALIZATIONS_MIN = 1;
 	private int NUM_REALIZATIONS_MAX = 10000;
 	private final static String NUM_REALIZATIONS_PARAM_INFO = "Number of Monte Carlo ERF realizations";
@@ -190,9 +190,9 @@ public class YuccaMountainERF_List  extends AbstractEpistemicListERF{
 			}
 			
 			ParameterList backgroundParamList = new ParameterList();
-			backgroundParamList.addParameter(new DoubleParameter(BACKGROUND1_PARAM_NAME, 0.0, 1.0, new Double(minWt)));
-			backgroundParamList.addParameter(new DoubleParameter(BACKGROUND2_PARAM_NAME, 0.0, 1.0,new Double(prefWt)));
-			backgroundParamList.addParameter(new DoubleParameter(BACKGROUND3_PARAM_NAME, 0.0, 1.0, new Double(maxWt)));
+			backgroundParamList.addParameter(new DoubleParameter(BACKGROUND1_PARAM_NAME, 0.0, 1.0, Double.valueOf(minWt)));
+			backgroundParamList.addParameter(new DoubleParameter(BACKGROUND2_PARAM_NAME, 0.0, 1.0,Double.valueOf(prefWt)));
+			backgroundParamList.addParameter(new DoubleParameter(BACKGROUND3_PARAM_NAME, 0.0, 1.0, Double.valueOf(maxWt)));
 			
 			this.adjustableParams.addParameter(new TreeBranchWeightsParameter(BACKGROUND, backgroundParamList));
 		}catch(Exception e) {

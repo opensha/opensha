@@ -16,9 +16,9 @@ public class ETAS_FractionSpontaneousParam extends DoubleParameter {
 	public final static String NAME = "n - ETAS Fraction Spontaneous";
 	public final static String INFO = "The fraction of ETAS earthquakes that are spontaneous (vs triggered)";
 	private static final String UNITS = null;
-	protected final static Double MIN = new Double(0.1);
-	protected final static Double MAX = new Double(0.9);
-	public final static Double DEFAULT_VALUE = new Double(0.33);
+	protected final static Double MIN = Double.valueOf(0.1);
+	protected final static Double MAX = Double.valueOf(0.9);
+	public final static Double DEFAULT_VALUE = Double.valueOf(0.33);
 	
 
 	/**

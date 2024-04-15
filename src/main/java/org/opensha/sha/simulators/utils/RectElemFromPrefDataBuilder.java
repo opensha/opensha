@@ -325,7 +325,7 @@ public class RectElemFromPrefDataBuilder {
 		public int compare(FaultSection o1, FaultSection o2) {
 			if (o1.getParentSectionId() != o2.getParentSectionId())
 				return nameComp.compare(o1, o2);
-			return new Integer(o1.getSectionId()).compareTo(o2.getSectionId());
+			return Integer.valueOf(o1.getSectionId()).compareTo(o2.getSectionId());
 		}
 		
 	}

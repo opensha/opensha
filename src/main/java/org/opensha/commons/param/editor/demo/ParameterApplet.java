@@ -246,8 +246,8 @@ public class ParameterApplet
     
     
     private Parameter makeParameterListParameter(){
-      DoubleParameter param1 = new DoubleParameter("param1",new Double(.01));
-      DoubleParameter param2 = new DoubleParameter("param2",new Double(.02));
+      DoubleParameter param1 = new DoubleParameter("param1",Double.valueOf(.01));
+      DoubleParameter param2 = new DoubleParameter("param2",Double.valueOf(.02));
       ParameterList paramList = new ParameterList();
       paramList.addParameter(param1);
       paramList.addParameter(param2);
@@ -273,13 +273,13 @@ public class ParameterApplet
         String value = "12.1";
         paramCount++;
         ArrayList val = new ArrayList();
-        val.add( new Double( 11.1 ) );
-        val.add( new Double( 12.1 ) );
-        val.add( new Double( 13.1 ) );
+        val.add( Double.valueOf( 11.1 ) );
+        val.add( Double.valueOf( 12.1 ) );
+        val.add( Double.valueOf( 13.1 ) );
         DoubleDiscreteConstraint constraint
                  = new DoubleDiscreteConstraint( val );
         DoubleDiscreteParameter param
-                 = new DoubleDiscreteParameter( name, constraint, "sec.", new Double( 12.1 ) );
+                 = new DoubleDiscreteParameter( name, constraint, "sec.", Double.valueOf( 12.1 ) );
         param.addParameterChangeFailListener(this);
         param.addParameterChangeListener(this);
         return param;
@@ -290,7 +290,7 @@ public class ParameterApplet
         String name = "Integer Parameter";
         String value = "1" + paramCount;
         paramCount++;
-        IntegerParameter param = new IntegerParameter( name, new Integer( value ) );
+        IntegerParameter param = new IntegerParameter( name, Integer.valueOf( value ) );
         param.addParameterChangeFailListener(this);
         param.addParameterChangeListener(this);
 
@@ -312,7 +312,7 @@ public class ParameterApplet
         String value = "1" + paramCount;
         paramCount++;
         IntegerConstraint constraint = new IntegerConstraint( -180, 180 );
-        IntegerParameter param = new IntegerParameter( name, constraint, "degrees", new Integer( value ) );
+        IntegerParameter param = new IntegerParameter( name, constraint, "degrees", Integer.valueOf( value ) );
         param.addParameterChangeFailListener(this);
         param.addParameterChangeListener(this);
 
@@ -326,8 +326,7 @@ public class ParameterApplet
       paramCount++;
       IntegerConstraint constraint = new IntegerConstraint( -200, 200 );
       IntegerConstraint warnConstraint = new IntegerConstraint( -100, 100 );
-      WarningIntegerParameter param= new WarningIntegerParameter(name,constraint,"degrees",
-                                     new Integer ( value));
+      WarningIntegerParameter param= new WarningIntegerParameter(name,constraint,"degrees", Integer.valueOf( value));
       param.setWarningConstraint(warnConstraint);
       param.addParameterChangeWarningListener(this);
       param.addParameterChangeFailListener(this);
@@ -343,7 +342,7 @@ public class ParameterApplet
       DoubleConstraint constraint = new DoubleConstraint( -120, 120 );
       DoubleConstraint warn = new DoubleConstraint(-60,60);
       WarningDoubleParameter param= new WarningDoubleParameter(name,constraint,"degrees",
-          new Double( value));
+          Double.valueOf( value));
       param.setWarningConstraint(warn);
       param.addParameterChangeWarningListener(this);
       param.addParameterChangeFailListener(this);
@@ -357,7 +356,7 @@ public class ParameterApplet
         String value = "12." + paramCount;
         paramCount++;
         DoubleConstraint constraint = new DoubleConstraint( 0.0, 20.0 );
-        DoubleParameter param = new DoubleParameter( name, constraint, "acres", new Double( value ) );
+        DoubleParameter param = new DoubleParameter( name, constraint, "acres", Double.valueOf( value ) );
         param.addParameterChangeFailListener(this);
         param.addParameterChangeListener(this);
 
@@ -421,8 +420,8 @@ public class ParameterApplet
      */
     public static void main( String[] args ) {
 
-        Double d1 = new Double(1);
-        Double d2 = new Double( Double.NaN );
+        Double d1 = Double.valueOf(1);
+        Double d2 = Double.valueOf( Double.NaN );
         Double d3 = null;
 
         //System.out.println("" + d1.compareTo(d3));

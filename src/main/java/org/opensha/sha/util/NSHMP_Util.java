@@ -55,7 +55,7 @@ public class NSHMP_Util {
 				if (line.startsWith(magID)) {
 					double mag = Double.parseDouble(line.substring(
 						magID.length() + 1).trim());
-					int magKey = new Double(mag * 100).intValue();
+					int magKey = Double.valueOf(mag * 100).intValue();
 					magMap = new HashMap<Integer, Double>();
 					rjb_map.put(magKey, magMap);
 					continue;
@@ -63,7 +63,7 @@ public class NSHMP_Util {
 				if (line.startsWith("#")) continue;
 				String[] dVal = StringUtils.split(line);
 				if (dVal.length == 0) continue;
-				int distKey = new Double(dVal[0]).intValue();
+				int distKey = Double.valueOf(dVal[0]).intValue();
 				magMap.put(distKey, Double.parseDouble(dVal[1]));
 			}
 		} catch (Exception e) {
@@ -177,9 +177,9 @@ public class NSHMP_Util {
 		int perKey = (int) (P * 1000);
 		checkArgument(map.containsKey(perKey), "Invalid period: " + P);
 		Map<Integer, Map<Integer, Double>> magMap = map.get(perKey);
-		int magKey = new Double(M * 100).intValue();
+		int magKey = Double.valueOf(M * 100).intValue();
 		if (!magMap.containsKey(magKey)) return 0;
-		int distKey = new Double(Math.floor(D)).intValue();
+		int distKey = Double.valueOf(Math.floor(D)).intValue();
 		return (distKey > 200) ? 0 : magMap.get(magKey).get(distKey);
 	}
 

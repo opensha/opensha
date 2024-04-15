@@ -42,14 +42,14 @@ public class PEER_LogicTreeERF_List extends AbstractEpistemicListERF{
 
   // grid spacing parameter stuff
  public final static String GRID_PARAM_NAME =  "Fault Grid Spacing";
- private Double DEFAULT_GRID_VAL = new Double(1);
+ private Double DEFAULT_GRID_VAL = Double.valueOf(1);
  public final static String GRID_PARAM_UNITS = "kms";
  private final static double GRID_PARAM_MIN = .001;
  private final static double GRID_PARAM_MAX = 1000;
 
  //rupture offset parameter stuff
  public final static String OFFSET_PARAM_NAME =  "Offset";
- private Double DEFAULT_OFFSET_VAL = new Double(1);
+ private Double DEFAULT_OFFSET_VAL = Double.valueOf(1);
  public final static String OFFSET_PARAM_UNITS = "kms";
  private final static double OFFSET_PARAM_MIN = .01;
  private final static double OFFSET_PARAM_MAX = 10000;
@@ -59,7 +59,7 @@ public class PEER_LogicTreeERF_List extends AbstractEpistemicListERF{
  public final static String SIGMA_PARAM_NAME =  "Mag Length Sigma";
  private double SIGMA_PARAM_MIN = 0;
  private double SIGMA_PARAM_MAX = 1;
- public Double DEFAULT_SIGMA_VAL = new Double(0.0);
+ public Double DEFAULT_SIGMA_VAL = Double.valueOf(0.0);
 
  // fault-model parameter stuff
  public final static String FAULT_MODEL_NAME = new String ("Fault Model");
@@ -136,8 +136,8 @@ public class PEER_LogicTreeERF_List extends AbstractEpistemicListERF{
                                         double slipRate, double magUpper) {
     PEER_NonPlanarFaultForecast forecast = new PEER_NonPlanarFaultForecast();
     forecast.getParameter(PEER_NonPlanarFaultForecast.SEGMENTATION_NAME).setValue(segmentation);
-    forecast.getParameter(PEER_NonPlanarFaultForecast.SLIP_RATE_NAME).setValue(new Double(slipRate));
-    forecast.getParameter(PEER_NonPlanarFaultForecast.GR_MAG_UPPER).setValue(new Double(magUpper));
+    forecast.getParameter(PEER_NonPlanarFaultForecast.SLIP_RATE_NAME).setValue(Double.valueOf(slipRate));
+    forecast.getParameter(PEER_NonPlanarFaultForecast.GR_MAG_UPPER).setValue(Double.valueOf(magUpper));
     forecast.getParameter(PEER_NonPlanarFaultForecast.DIP_DIRECTION_NAME).setValue(PEER_NonPlanarFaultForecast.DIP_DIRECTION_EAST);
     return forecast;
   }

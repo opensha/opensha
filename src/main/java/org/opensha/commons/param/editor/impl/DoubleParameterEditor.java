@@ -105,7 +105,7 @@ public class DoubleParameterEditor extends AbstractParameterEditor<Double> imple
 			if(D) System.out.println(S + "New Value = " + value);
 			try {
 				Double d = null;
-				if( !value.equals( "" ) ) d = new Double(value);
+				if( !value.equals( "" ) ) d = Double.valueOf(value);
 				setValue(d);
 				refreshParamEditor();
 				widget.validate();
@@ -165,7 +165,7 @@ public class DoubleParameterEditor extends AbstractParameterEditor<Double> imple
 		try {
 
 			Double d = null;
-			if( !value.equals( "" ) ) d = new Double(value);
+			if( !value.equals( "" ) ) d = Double.valueOf(value);
 			setValue(d);
 			refreshParamEditor();
 			widget.validate();

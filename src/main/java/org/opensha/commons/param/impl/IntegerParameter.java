@@ -328,7 +328,7 @@ implements Parameter<Integer>
 	 * @return      True if the value is allowed
 	 */
 	public boolean isAllowed( int i ){
-		return isAllowed( new Integer(i) );
+		return isAllowed( Integer.valueOf(i) );
 	}
 
 
@@ -432,7 +432,7 @@ implements Parameter<Integer>
 			c1 = ( IntegerConstraint ) constraint.clone();
 		IntegerParameter param = null;
 		if( value == null ) param = new IntegerParameter( name, c1, units);
-		else param = new IntegerParameter( name, c1, units, new Integer( this.value.toString() )  );
+		else param = new IntegerParameter( name, c1, units, Integer.valueOf( this.value.toString() )  );
 		if( param == null ) return null;
 		param.editable = true;
 		param.info = info;

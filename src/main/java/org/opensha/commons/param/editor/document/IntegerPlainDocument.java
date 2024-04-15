@@ -98,7 +98,7 @@ public class IntegerPlainDocument extends PlainDocument{
                 super.insertString(offset, str, a);
             else {
                 try {
-                    int i = new Integer(str).intValue();
+                    int i = Integer.valueOf(str).intValue();
 
                     if (i >= min && i <= max) super.insertString(offset, str, a);
                     else if (errorListener != null) {
@@ -135,7 +135,7 @@ public class IntegerPlainDocument extends PlainDocument{
             String context = this.getText(0, this.getLength());
             parsePos.setIndex(0);
 
-            Integer result = new Integer(context);
+            Integer result = Integer.valueOf(context);
             if (parsePos.getIndex() != this.getLength())
                 throw new ParseException (S + "Not a valid number: " + context, 0);
 

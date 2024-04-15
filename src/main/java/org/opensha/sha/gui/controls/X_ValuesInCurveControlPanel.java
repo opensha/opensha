@@ -396,7 +396,7 @@ public class X_ValuesInCurveControlPanel extends ControlPanel {
 			double tempX_Val=0;
 			double previousTempX_Val =tempX_Val;
 			try{
-				tempX_Val=(new Double(st.nextToken().trim())).doubleValue();
+				tempX_Val=(Double.valueOf(st.nextToken().trim())).doubleValue();
 				if(tempX_Val < previousTempX_Val)
 					throw new RuntimeException("X Values must be entered in increasing  order");
 			}catch(NumberFormatException e){

@@ -2187,9 +2187,9 @@ public class ETAS_SimAnalysisTools {
 
 		@Override
 		public int compare(ETAS_EqkRupture o1, ETAS_EqkRupture o2) {
-			int ret = new Long(o1.getOriginTime()).compareTo(o2.getOriginTime());
+			int ret = Long.valueOf(o1.getOriginTime()).compareTo(o2.getOriginTime());
 			if (ret == 0)
-				ret = new Integer(o1.getID()).compareTo(o2.getID());
+				ret = Integer.valueOf(o1.getID()).compareTo(o2.getID());
 			return ret;
 		}
 	};

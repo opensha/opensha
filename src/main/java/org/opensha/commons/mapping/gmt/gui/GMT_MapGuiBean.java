@@ -118,11 +118,11 @@ ParameterChangeListener {
 	public void setRegionParams(double minLat,double maxLat,double minLon,double maxLon,
 			double gridSpacing){
 		if(D) System.out.println(C+" setGMTRegionParams: " +minLat+"  "+maxLat+"  "+minLon+"  "+maxLon);
-		getParameterList().getParameter(GMT_MapGenerator.MIN_LAT_PARAM_NAME).setValue(new Double(minLat));
-		getParameterList().getParameter(GMT_MapGenerator.MAX_LAT_PARAM_NAME).setValue(new Double(maxLat));
-		getParameterList().getParameter(GMT_MapGenerator.MIN_LON_PARAM_NAME).setValue(new Double(minLon));
-		getParameterList().getParameter(GMT_MapGenerator.MAX_LON_PARAM_NAME).setValue(new Double(maxLon));
-		getParameterList().getParameter(GMT_MapGenerator.GRID_SPACING_PARAM_NAME).setValue(new Double(gridSpacing));
+		getParameterList().getParameter(GMT_MapGenerator.MIN_LAT_PARAM_NAME).setValue(Double.valueOf(minLat));
+		getParameterList().getParameter(GMT_MapGenerator.MAX_LAT_PARAM_NAME).setValue(Double.valueOf(maxLat));
+		getParameterList().getParameter(GMT_MapGenerator.MIN_LON_PARAM_NAME).setValue(Double.valueOf(minLon));
+		getParameterList().getParameter(GMT_MapGenerator.MAX_LON_PARAM_NAME).setValue(Double.valueOf(maxLon));
+		getParameterList().getParameter(GMT_MapGenerator.GRID_SPACING_PARAM_NAME).setValue(Double.valueOf(gridSpacing));
 	}
 
 

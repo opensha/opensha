@@ -641,7 +641,7 @@ public class FindEquivUCERF2_FM3_Ruptures extends FindEquivUCERF2_Ruptures {
 			for(int r=0;r<ucerf2_fm.numRuptures;r++) {
 				int invRup = invRupIndexForUCERF2_Rup[r];
 				if(invRup != -1)
-					tempRupAssociationList.get(invRup).remove(new Integer(r));
+					tempRupAssociationList.get(invRup).remove(Integer.valueOf(r));
 			}
 			for(ArrayList<Integer> list:tempRupAssociationList)
 				if(list.size() != 0)

@@ -146,7 +146,7 @@ public class simulatorAnalysisUtils {
 				
 				File eventFile = new File(simEventFileDir, fileName);
 				dirIndex+=1;
-				String dirNameForSavingFiles = dirNamesPrefixArray[dirIndex]+"_"+ (new Double(magThresh)).toString().replaceAll("\\.", "pt");
+				String dirNameForSavingFiles = dirNamesPrefixArray[dirIndex]+"_"+ (Double.valueOf(magThresh)).toString().replaceAll("\\.", "pt");
 
 				try {
 					System.out.println("Loading geometry...");

@@ -350,9 +350,9 @@ public class EvenlyDiscretizedFuncParameterEditor extends AbstractParameterEdito
 	public void refreshParamEditor() {
 		if(evenlyDiscrFuncParam==null || evenlyDiscrFuncParam.getValue()==null) return;
 		EvenlyDiscretizedFunc func = (EvenlyDiscretizedFunc)evenlyDiscrFuncParam.getValue();
-		parameterList.getParameter(EvenlyDiscretizedFuncParameter.MIN_PARAM_NAME).setValue(new Double(func.getMinX()));
-		parameterList.getParameter(EvenlyDiscretizedFuncParameter.MAX_PARAM_NAME).setValue(new Double(func.getMaxX()));
-		parameterList.getParameter(EvenlyDiscretizedFuncParameter.NUM_PARAM_NAME).setValue(new Integer(func.size()));
+		parameterList.getParameter(EvenlyDiscretizedFuncParameter.MIN_PARAM_NAME).setValue(Double.valueOf(func.getMinX()));
+		parameterList.getParameter(EvenlyDiscretizedFuncParameter.MAX_PARAM_NAME).setValue(Double.valueOf(func.getMaxX()));
+		parameterList.getParameter(EvenlyDiscretizedFuncParameter.NUM_PARAM_NAME).setValue(Integer.valueOf(func.size()));
 		editor.getParameterEditor(EvenlyDiscretizedFuncParameter.MIN_PARAM_NAME).refreshParamEditor();
 		editor.getParameterEditor(EvenlyDiscretizedFuncParameter.MAX_PARAM_NAME).refreshParamEditor();
 		editor.getParameterEditor(EvenlyDiscretizedFuncParameter.NUM_PARAM_NAME).refreshParamEditor();

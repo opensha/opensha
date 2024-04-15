@@ -484,7 +484,7 @@ public class FaultSysSolutionERF_Calc {
 				}
 				
 				// convert minMag to string for filename
-				Double tempDouble = new Double(minMag);
+				Double tempDouble = Double.valueOf(minMag);
 				String magString = tempDouble.toString();
 				String dirName = fileName+"_Part_"+magString.replace(".", "pt");
 				
@@ -544,7 +544,7 @@ public class FaultSysSolutionERF_Calc {
 			String scaleLabel = "Nucleation Rate";
 			String metadata ="magThresh="+magThresh+"\nincludeAftershocks="+includeAftershocks+"\nmagAreaAleatory="+magAreaAleatory+"\n";
 			// convert minMag to string for filename
-			Double tempDouble = new Double(magThresh);
+			Double tempDouble = Double.valueOf(magThresh);
 			String magString = tempDouble.toString();
 			String dirName = fileName+"_Nucl_"+magString.replace(".", "pt");
 			System.out.println(dirName);
@@ -2394,7 +2394,7 @@ public class FaultSysSolutionERF_Calc {
 			int ss1 = Integer.parseInt(o1.substring(ss1_index));
 			int ss2 = Integer.parseInt(o2.substring(ss2_index));
 			Preconditions.checkState(ss1 >= 0 && ss2 >= 0);
-			return new Integer(ss1).compareTo(ss2);
+			return Integer.valueOf(ss1).compareTo(ss2);
 		}
 		
 	}

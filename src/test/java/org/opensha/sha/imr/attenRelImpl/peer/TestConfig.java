@@ -151,13 +151,13 @@ public class TestConfig {
 		
 		} else if (is(CASE_8B)) {
 			imr.getParameter(SigmaTruncTypeParam.NAME).setValue(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED);
-			imr.getParameter(SigmaTruncLevelParam.NAME).setValue(new Double(2.0));
+			imr.getParameter(SigmaTruncLevelParam.NAME).setValue(Double.valueOf(2.0));
 			imr.getParameter(StdDevTypeParam.NAME).setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
 			imr.setIntensityMeasure(PGA_Param.NAME);  // needed because IMT gets reset to SA afer the above
 		
 		} else if (is(CASE_8C)) {
 			imr.getParameter(SigmaTruncTypeParam.NAME).setValue(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED);
-			imr.getParameter(SigmaTruncLevelParam.NAME).setValue(new Double(3.0));
+			imr.getParameter(SigmaTruncLevelParam.NAME).setValue(Double.valueOf(3.0));
 			imr.getParameter(StdDevTypeParam.NAME).setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
 			imr.setIntensityMeasure(PGA_Param.NAME);  // needed because IMT gets reset to SA afer the above
 		
@@ -165,7 +165,7 @@ public class TestConfig {
 			imr = new SadighEtAl_1997_AttenRel(null);
 			imr.setParamDefaults();
 			imr.getParameter(SigmaTruncTypeParam.NAME).setValue(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED);
-			imr.getParameter(SigmaTruncLevelParam.NAME).setValue(new Double(3.0));
+			imr.getParameter(SigmaTruncLevelParam.NAME).setValue(Double.valueOf(3.0));
 			imr.getParameter(StdDevTypeParam.NAME).setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
 			imr.setIntensityMeasure(PGA_Param.NAME);
 
@@ -173,7 +173,7 @@ public class TestConfig {
 			imr = new AS_1997_AttenRel(null);
 			imr.setParamDefaults();
 			imr.getParameter(SigmaTruncTypeParam.NAME).setValue(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_NONE);
-			imr.getParameter(SigmaTruncLevelParam.NAME).setValue(new Double(3.0)); // this shouldn't matter
+			imr.getParameter(SigmaTruncLevelParam.NAME).setValue(Double.valueOf(3.0)); // this shouldn't matter
 			imr.getParameter(StdDevTypeParam.NAME).setValue(StdDevTypeParam.STD_DEV_TYPE_NONE);
 			imr.setIntensityMeasure(PGA_Param.NAME);
 			
@@ -184,18 +184,18 @@ public class TestConfig {
 			imr = new Campbell_1997_AttenRel(null);
 			imr.setParamDefaults();
 			imr.getParameter(SigmaTruncTypeParam.NAME).setValue(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED);
-			imr.getParameter(SigmaTruncLevelParam.NAME).setValue(new Double(3.0));
+			imr.getParameter(SigmaTruncLevelParam.NAME).setValue(Double.valueOf(3.0));
 			imr.getParameter(StdDevTypeParam.NAME).setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL_PGA_DEP);
 			imr.setIntensityMeasure(PGA_Param.NAME);
 			
 			site.addParameter(imr.getParameter(Campbell_1997_AttenRel.SITE_TYPE_NAME));
 			site.setValue(Campbell_1997_AttenRel.SITE_TYPE_NAME, Campbell_1997_AttenRel.SITE_TYPE_SOFT_ROCK);
 			site.addParameter(imr.getParameter(Campbell_1997_AttenRel.BASIN_DEPTH_NAME));
-			site.setValue(Campbell_1997_AttenRel.BASIN_DEPTH_NAME, new Double(2.0));
+			site.setValue(Campbell_1997_AttenRel.BASIN_DEPTH_NAME, Double.valueOf(2.0));
 
 		} else if (is(CASE_12)){
 			imr.getParameter(SigmaTruncTypeParam.NAME).setValue(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED);
-			imr.getParameter(SigmaTruncLevelParam.NAME).setValue(new Double(3.0));
+			imr.getParameter(SigmaTruncLevelParam.NAME).setValue(Double.valueOf(3.0));
 			imr.getParameter(StdDevTypeParam.NAME).setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
 			imr.setIntensityMeasure(PGA_Param.NAME);  // needed because IMT gets reset to SA afer the above
 		}
@@ -233,24 +233,24 @@ public class TestConfig {
 			}
 
 			// set the common parameters like timespan
-			erf.getParameter(FloatingPoissonFaultERF.OFFSET_PARAM_NAME).setValue(new Double(gridSpacing));
+			erf.getParameter(FloatingPoissonFaultERF.OFFSET_PARAM_NAME).setValue(Double.valueOf(gridSpacing));
 			erf.getParameter(FloatingPoissonFaultERF.MAG_SCALING_REL_PARAM_NAME).setValue(PEER_testsMagAreaRelationship.NAME);
-			erf.getParameter(FloatingPoissonFaultERF.SIGMA_PARAM_NAME).setValue(new Double(0));
-			erf.getParameter(FloatingPoissonFaultERF.ASPECT_RATIO_PARAM_NAME).setValue(new Double(2.0));
-			erf.getParameter(FloatingPoissonFaultERF.MIN_MAG_PARAM_NAME).setValue(new Double(5.0));
+			erf.getParameter(FloatingPoissonFaultERF.SIGMA_PARAM_NAME).setValue(Double.valueOf(0));
+			erf.getParameter(FloatingPoissonFaultERF.ASPECT_RATIO_PARAM_NAME).setValue(Double.valueOf(2.0));
+			erf.getParameter(FloatingPoissonFaultERF.MIN_MAG_PARAM_NAME).setValue(Double.valueOf(5.0));
 			erf.getTimeSpan().setDuration(1.0);
 
 			// magScalingSigma parameter is changed if the test case chosen is 3
 			if (is(CASE_3)) {
-				erf.getParameter(FloatingPoissonFaultERF.SIGMA_PARAM_NAME).setValue(new Double(0.25));
+				erf.getParameter(FloatingPoissonFaultERF.SIGMA_PARAM_NAME).setValue(Double.valueOf(0.25));
 			}
 
 			// set the rake for all cases
 			if (is(CASE_4) || is(CASE_9A) || is(CASE_9B) || is(CASE_9C) ) {
-				erf.getParameter(FloatingPoissonFaultERF.RAKE_PARAM_NAME).setValue(new Double(90.0));
+				erf.getParameter(FloatingPoissonFaultERF.RAKE_PARAM_NAME).setValue(Double.valueOf(90.0));
 			
 			} else {
-				erf.getParameter(FloatingPoissonFaultERF.RAKE_PARAM_NAME).setValue(new Double(0.0));
+				erf.getParameter(FloatingPoissonFaultERF.RAKE_PARAM_NAME).setValue(Double.valueOf(0.0));
 			}
 
 			// set the Fault Parameter
@@ -267,25 +267,25 @@ public class TestConfig {
 		// it's an area ERF (case 10 or 11)
 		} else {
 			erf = new PEER_AreaForecast();
-			erf.getParameter(PEER_AreaForecast.DEPTH_UPPER_PARAM_NAME).setValue(new Double(5));
-			erf.getParameter(PEER_AreaForecast.DIP_PARAM_NAME).setValue(new Double(90));
-			erf.getParameter(PEER_AreaForecast.RAKE_PARAM_NAME).setValue(new Double(0));
+			erf.getParameter(PEER_AreaForecast.DEPTH_UPPER_PARAM_NAME).setValue(Double.valueOf(5));
+			erf.getParameter(PEER_AreaForecast.DIP_PARAM_NAME).setValue(Double.valueOf(90));
+			erf.getParameter(PEER_AreaForecast.RAKE_PARAM_NAME).setValue(Double.valueOf(0));
 			erf.getTimeSpan().setDuration(1.0);
 
 			if (is(CASE_10)) {
-				erf.getParameter(PEER_AreaForecast.DEPTH_LOWER_PARAM_NAME).setValue(new Double(5));
-				erf.getParameter(PEER_AreaForecast.GRID_PARAM_NAME).setValue(new Double(1.0));
+				erf.getParameter(PEER_AreaForecast.DEPTH_LOWER_PARAM_NAME).setValue(Double.valueOf(5));
+				erf.getParameter(PEER_AreaForecast.GRID_PARAM_NAME).setValue(Double.valueOf(1.0));
 			
 			} else {
-				erf.getParameter(PEER_AreaForecast.DEPTH_LOWER_PARAM_NAME).setValue(new Double(10));
+				erf.getParameter(PEER_AreaForecast.DEPTH_LOWER_PARAM_NAME).setValue(Double.valueOf(10));
 				
 				// NOTE Case_11 grid spacing had been set to 0.25 km which
 				// yields a better result, but which takes an exorbitant
 				// amount of time and can lead to uncaught OutOfMemoryErrors
 				// in multi-threaded test runs.
 				
-				//erf.getParameter(PEER_AreaForecast.GRID_PARAM_NAME).setValue(new Double(0.25));   	 
-				erf.getParameter(PEER_AreaForecast.GRID_PARAM_NAME).setValue(new Double(1.0));   	 
+				//erf.getParameter(PEER_AreaForecast.GRID_PARAM_NAME).setValue(Double.valueOf(0.25));   	 
+				erf.getParameter(PEER_AreaForecast.GRID_PARAM_NAME).setValue(Double.valueOf(1.0));   	 
 			}
 		}
 		
@@ -363,146 +363,146 @@ public class TestConfig {
 		}
 		
 		// these apply to most (overridden below where not)
-		plist.getParameter(MIN).setValue(new Double(6));
-		plist.getParameter(MAX).setValue(new Double(6.5));
-		plist.getParameter(NUM).setValue(new Integer(6));
+		plist.getParameter(MIN).setValue(Double.valueOf(6));
+		plist.getParameter(MAX).setValue(Double.valueOf(6.5));
+		plist.getParameter(NUM).setValue(Integer.valueOf(6));
 
 		if (is(CASE_1) || is(CASE_12)) {
 			plist.getParameter(DISTRIBUTION_NAME).setValue(SingleMagFreqDist.NAME);
 			plist.getParameter(FIX).setConstraint(mfd.getSingleDistFixOptions());
 			plist.getParameter(SINGLE_PARAMS_TO_SET).setValue(MagFreqDistParameter.MAG_AND_MO_RATE);
-			plist.getParameter(MAG).setValue(new Double(6.5));
-			plist.getParameter(MO_RATE).setValue(new Double(1.8e16));
+			plist.getParameter(MAG).setValue(Double.valueOf(6.5));
+			plist.getParameter(MO_RATE).setValue(Double.valueOf(1.8e16));
 		
 		} else if (is(CASE_2)) {
 			plist.getParameter(DISTRIBUTION_NAME).setValue(SingleMagFreqDist.NAME);
 			plist.getParameter(FIX).setConstraint(mfd.getSingleDistFixOptions());
 			plist.getParameter(SINGLE_PARAMS_TO_SET).setValue(MagFreqDistParameter.MAG_AND_MO_RATE);
-			plist.getParameter(MAG).setValue(new Double(6.0));
-			plist.getParameter(MO_RATE).setValue(new Double(1.8e16));
+			plist.getParameter(MAG).setValue(Double.valueOf(6.0));
+			plist.getParameter(MO_RATE).setValue(Double.valueOf(1.8e16));
 		
 		} else if (is(CASE_3)) {
 			plist.getParameter(DISTRIBUTION_NAME).setValue(SingleMagFreqDist.NAME);
 			plist.getParameter(FIX).setConstraint(mfd.getSingleDistFixOptions());
 			plist.getParameter(SINGLE_PARAMS_TO_SET).setValue(MagFreqDistParameter.MAG_AND_MO_RATE);
-			plist.getParameter(MAG).setValue(new Double(6.0));
-			plist.getParameter(MO_RATE).setValue(new Double(1.8e16));
+			plist.getParameter(MAG).setValue(Double.valueOf(6.0));
+			plist.getParameter(MO_RATE).setValue(Double.valueOf(1.8e16));
 		
 		} else if (is(CASE_4)) {
 			plist.getParameter(DISTRIBUTION_NAME).setValue(SingleMagFreqDist.NAME);
 			plist.getParameter(FIX).setConstraint(mfd.getSingleDistFixOptions());
 			plist.getParameter(SINGLE_PARAMS_TO_SET).setValue(MagFreqDistParameter.MAG_AND_MO_RATE);
-			plist.getParameter(MAG).setValue(new Double(6.0));
-			plist.getParameter(MO_RATE).setValue(new Double(1.905e16));
+			plist.getParameter(MAG).setValue(Double.valueOf(6.0));
+			plist.getParameter(MO_RATE).setValue(Double.valueOf(1.905e16));
 
 		} else if (is(CASE_5)) {
 			plist.getParameter(DISTRIBUTION_NAME).setValue(GutenbergRichterMagFreqDist.NAME);
 			plist.getParameter(SET_ALL_PARAMS_BUT).setConstraint(mfd.getGRSetAllButOptions());
 			plist.getParameter(FIX).setConstraint(mfd.getGRFixOptions());
-			plist.getParameter(MIN).setValue(new Double(0.005));
-			plist.getParameter(MAX).setValue(new Double(9.995));
-			plist.getParameter(NUM).setValue(new Integer(1000));
+			plist.getParameter(MIN).setValue(Double.valueOf(0.005));
+			plist.getParameter(MAX).setValue(Double.valueOf(9.995));
+			plist.getParameter(NUM).setValue(Integer.valueOf(1000));
 			plist.getParameter(SET_ALL_PARAMS_BUT).setValue(MagFreqDistParameter.TOT_CUM_RATE);
-			plist.getParameter(GR_MAG_LOWER).setValue(new Double(0.005));
-			plist.getParameter(GR_MAG_UPPER).setValue(new Double(6.495));
-			plist.getParameter(GR_BVALUE).setValue(new Double(0.9));
-			plist.getParameter(TOT_MO_RATE).setValue(new Double(1.8e16));
+			plist.getParameter(GR_MAG_LOWER).setValue(Double.valueOf(0.005));
+			plist.getParameter(GR_MAG_UPPER).setValue(Double.valueOf(6.495));
+			plist.getParameter(GR_BVALUE).setValue(Double.valueOf(0.9));
+			plist.getParameter(TOT_MO_RATE).setValue(Double.valueOf(1.8e16));
 			plist.getParameter(SET_ALL_PARAMS_BUT).setValue(MagFreqDistParameter.TOT_CUM_RATE);
 
 		} else if (is(CASE_6)) {
 			plist.getParameter(DISTRIBUTION_NAME).setValue(GaussianMagFreqDist.NAME);
 			plist.getParameter(SET_ALL_PARAMS_BUT).setConstraint(mfd.getGaussianDistSetAllButOptions());
-			plist.getParameter(MIN).setValue(new Double(0.005));
-			plist.getParameter(MAX).setValue(new Double(9.995));
-			plist.getParameter(NUM).setValue(new Integer(1000));
+			plist.getParameter(MIN).setValue(Double.valueOf(0.005));
+			plist.getParameter(MAX).setValue(Double.valueOf(9.995));
+			plist.getParameter(NUM).setValue(Integer.valueOf(1000));
 			plist.getParameter(SET_ALL_PARAMS_BUT).setValue(MagFreqDistParameter.TOT_CUM_RATE);
-			plist.getParameter(TOT_MO_RATE).setValue(new Double(1.8e16));
-			plist.getParameter(STD_DEV).setValue(new Double(0.25));
-			plist.getParameter(MEAN).setValue(new Double(6.2));
+			plist.getParameter(TOT_MO_RATE).setValue(Double.valueOf(1.8e16));
+			plist.getParameter(STD_DEV).setValue(Double.valueOf(0.25));
+			plist.getParameter(MEAN).setValue(Double.valueOf(6.2));
 			plist.getParameter(TRUNCATION_REQ).setValue(MagFreqDistParameter.TRUNCATE_UPPER_ONLY);
-			plist.getParameter(TRUNCATE_NUM_OF_STD_DEV).setValue(new Double(1.19));
+			plist.getParameter(TRUNCATE_NUM_OF_STD_DEV).setValue(Double.valueOf(1.19));
 
 		} else if (is(CASE_7)) {
 			plist.getParameter(DISTRIBUTION_NAME).setValue(YC_1985_CharMagFreqDist.NAME);
 			plist.getParameter(SET_ALL_PARAMS_BUT).setConstraint(mfd.getYCSetAllButOptions());
-			plist.getParameter(MIN).setValue(new Double(0.005));
-			plist.getParameter(MAX).setValue(new Double(10.005));
-			plist.getParameter(NUM).setValue(new Integer(1001));
-			plist.getParameter(GR_BVALUE).setValue(new Double(0.9));
-			plist.getParameter(YC_DELTA_MAG_CHAR).setValue(new Double(0.49));
-			plist.getParameter(YC_DELTA_MAG_PRIME).setValue(new Double(1.0));
-			plist.getParameter(GR_MAG_LOWER).setValue(new Double(0.005));
-			plist.getParameter(YC_MAG_PRIME).setValue(new Double(5.945));
-			plist.getParameter(GR_MAG_UPPER).setValue(new Double(6.445));
-			plist.getParameter(TOT_MO_RATE).setValue(new Double(1.8e16));
+			plist.getParameter(MIN).setValue(Double.valueOf(0.005));
+			plist.getParameter(MAX).setValue(Double.valueOf(10.005));
+			plist.getParameter(NUM).setValue(Integer.valueOf(1001));
+			plist.getParameter(GR_BVALUE).setValue(Double.valueOf(0.9));
+			plist.getParameter(YC_DELTA_MAG_CHAR).setValue(Double.valueOf(0.49));
+			plist.getParameter(YC_DELTA_MAG_PRIME).setValue(Double.valueOf(1.0));
+			plist.getParameter(GR_MAG_LOWER).setValue(Double.valueOf(0.005));
+			plist.getParameter(YC_MAG_PRIME).setValue(Double.valueOf(5.945));
+			plist.getParameter(GR_MAG_UPPER).setValue(Double.valueOf(6.445));
+			plist.getParameter(TOT_MO_RATE).setValue(Double.valueOf(1.8e16));
 		
 		} else if (is(CASE_8A)) {
 			plist.getParameter(DISTRIBUTION_NAME).setValue(SingleMagFreqDist.NAME);
 			plist.getParameter(FIX).setConstraint(mfd.getSingleDistFixOptions());
 			plist.getParameter(SINGLE_PARAMS_TO_SET).setValue(MagFreqDistParameter.MAG_AND_MO_RATE);
-			plist.getParameter(MAG).setValue(new Double(6.0));
-			plist.getParameter(MO_RATE).setValue(new Double(1.8e16));
+			plist.getParameter(MAG).setValue(Double.valueOf(6.0));
+			plist.getParameter(MO_RATE).setValue(Double.valueOf(1.8e16));
 		
 		} else if (is(CASE_8B)) {
 			plist.getParameter(DISTRIBUTION_NAME).setValue(SingleMagFreqDist.NAME);
 			plist.getParameter(FIX).setConstraint(mfd.getSingleDistFixOptions());
 			plist.getParameter(SINGLE_PARAMS_TO_SET).setValue(MagFreqDistParameter.MAG_AND_MO_RATE);
-			plist.getParameter(MAG).setValue(new Double(6.0));
-			plist.getParameter(MO_RATE).setValue(new Double(1.8e16));
+			plist.getParameter(MAG).setValue(Double.valueOf(6.0));
+			plist.getParameter(MO_RATE).setValue(Double.valueOf(1.8e16));
 		
 		} else if (is(CASE_8C)) {
 			plist.getParameter(DISTRIBUTION_NAME).setValue(SingleMagFreqDist.NAME);
 			plist.getParameter(FIX).setConstraint(mfd.getSingleDistFixOptions());
 			plist.getParameter(SINGLE_PARAMS_TO_SET).setValue(MagFreqDistParameter.MAG_AND_MO_RATE);
-			plist.getParameter(MAG).setValue(new Double(6.0));
-			plist.getParameter(MO_RATE).setValue(new Double(1.8e16));
+			plist.getParameter(MAG).setValue(Double.valueOf(6.0));
+			plist.getParameter(MO_RATE).setValue(Double.valueOf(1.8e16));
 		
 		} else if (is(CASE_9A)) {
 			plist.getParameter(DISTRIBUTION_NAME).setValue(SingleMagFreqDist.NAME);
 			plist.getParameter(FIX).setConstraint(mfd.getSingleDistFixOptions());
 			plist.getParameter(SINGLE_PARAMS_TO_SET).setValue(MagFreqDistParameter.MAG_AND_MO_RATE);
-			plist.getParameter(MAG).setValue(new Double(6.0));
-			plist.getParameter(MO_RATE).setValue(new Double(1.905e16));
+			plist.getParameter(MAG).setValue(Double.valueOf(6.0));
+			plist.getParameter(MO_RATE).setValue(Double.valueOf(1.905e16));
 		
 		} else if (is(CASE_9B)) {
 			plist.getParameter(DISTRIBUTION_NAME).setValue(SingleMagFreqDist.NAME);
 			plist.getParameter(FIX).setConstraint(mfd.getSingleDistFixOptions());
 			plist.getParameter(SINGLE_PARAMS_TO_SET).setValue(MagFreqDistParameter.MAG_AND_MO_RATE);
-			plist.getParameter(MAG).setValue(new Double(6.0));
-			plist.getParameter(MO_RATE).setValue(new Double(1.905e16));
+			plist.getParameter(MAG).setValue(Double.valueOf(6.0));
+			plist.getParameter(MO_RATE).setValue(Double.valueOf(1.905e16));
 		
 		} else if (is(CASE_9C)) {
 			plist.getParameter(DISTRIBUTION_NAME).setValue(SingleMagFreqDist.NAME);
 			plist.getParameter(FIX).setConstraint(mfd.getSingleDistFixOptions());
 			plist.getParameter(SINGLE_PARAMS_TO_SET).setValue(MagFreqDistParameter.MAG_AND_MO_RATE);
-			plist.getParameter(MAG).setValue(new Double(6.0));
-			plist.getParameter(MO_RATE).setValue(new Double(1.905e16));
+			plist.getParameter(MAG).setValue(Double.valueOf(6.0));
+			plist.getParameter(MO_RATE).setValue(Double.valueOf(1.905e16));
 		
 		} else if (is(CASE_10)) {
 			plist.getParameter(DISTRIBUTION_NAME).setValue(GutenbergRichterMagFreqDist.NAME);
 			plist.getParameter(SET_ALL_PARAMS_BUT).setConstraint(mfd.getGRSetAllButOptions());
 			plist.getParameter(FIX).setConstraint(mfd.getGRFixOptions());
-			plist.getParameter(MIN).setValue(new Double(0.05));
-			plist.getParameter(MAX).setValue(new Double(9.95));
-			plist.getParameter(NUM).setValue(new Integer(100));
+			plist.getParameter(MIN).setValue(Double.valueOf(0.05));
+			plist.getParameter(MAX).setValue(Double.valueOf(9.95));
+			plist.getParameter(NUM).setValue(Integer.valueOf(100));
 			plist.getParameter(SET_ALL_PARAMS_BUT).setValue(MagFreqDistParameter.TOT_MO_RATE);
-			plist.getParameter(GR_MAG_LOWER).setValue(new Double(5.05));
-			plist.getParameter(GR_MAG_UPPER).setValue(new Double(6.45));
-			plist.getParameter(GR_BVALUE).setValue(new Double(0.9));
-			plist.getParameter(TOT_CUM_RATE).setValue(new Double(.0395));
+			plist.getParameter(GR_MAG_LOWER).setValue(Double.valueOf(5.05));
+			plist.getParameter(GR_MAG_UPPER).setValue(Double.valueOf(6.45));
+			plist.getParameter(GR_BVALUE).setValue(Double.valueOf(0.9));
+			plist.getParameter(TOT_CUM_RATE).setValue(Double.valueOf(.0395));
 		
 		} else if (is(CASE_11)) {
 			plist.getParameter(DISTRIBUTION_NAME).setValue(GutenbergRichterMagFreqDist.NAME);
 			plist.getParameter(SET_ALL_PARAMS_BUT).setConstraint(mfd.getGRSetAllButOptions());
 			plist.getParameter(FIX).setConstraint(mfd.getGRFixOptions());
-			plist.getParameter(MIN).setValue(new Double(0.05));
-			plist.getParameter(MAX).setValue(new Double(9.95));
-			plist.getParameter(NUM).setValue(new Integer(100));
+			plist.getParameter(MIN).setValue(Double.valueOf(0.05));
+			plist.getParameter(MAX).setValue(Double.valueOf(9.95));
+			plist.getParameter(NUM).setValue(Integer.valueOf(100));
 			plist.getParameter(SET_ALL_PARAMS_BUT).setValue(MagFreqDistParameter.TOT_MO_RATE);
-			plist.getParameter(GR_MAG_LOWER).setValue(new Double(5.05));
-			plist.getParameter(GR_MAG_UPPER).setValue(new Double(6.45));
-			plist.getParameter(GR_BVALUE).setValue(new Double(0.9));
-			plist.getParameter(TOT_CUM_RATE).setValue(new Double(.0395));
+			plist.getParameter(GR_MAG_LOWER).setValue(Double.valueOf(5.05));
+			plist.getParameter(GR_MAG_UPPER).setValue(Double.valueOf(6.45));
+			plist.getParameter(GR_BVALUE).setValue(Double.valueOf(0.9));
+			plist.getParameter(TOT_CUM_RATE).setValue(Double.valueOf(.0395));
 		}
 
 		// create the actual magFreqDist
@@ -529,7 +529,7 @@ public class TestConfig {
 		// change IMR sigma if it's Case 2
 		if (is(CASE_2) || is(CASE_5)){
 			imr.getParameter(SigmaTruncTypeParam.NAME).setValue(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED);
-			imr.getParameter(SigmaTruncLevelParam.NAME).setValue(new Double(3.0));
+			imr.getParameter(SigmaTruncLevelParam.NAME).setValue(Double.valueOf(3.0));
 			imr.getParameter(StdDevTypeParam.NAME).setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
 		}
 
@@ -581,12 +581,12 @@ public class TestConfig {
 		if (is(CASE_1)){
 			erf = new PEER_NonPlanarFaultForecast();
 			// add sigma for maglength(0-1)
-			erf.getParameter(PEER_NonPlanarFaultForecast.SIGMA_PARAM_NAME).setValue(new Double(0));
+			erf.getParameter(PEER_NonPlanarFaultForecast.SIGMA_PARAM_NAME).setValue(Double.valueOf(0));
 			erf.getTimeSpan().setDuration(1.0);
-			erf.getParameter(PEER_NonPlanarFaultForecast.GRID_PARAM_NAME).setValue(new Double(1.0));
-			erf.getParameter(PEER_NonPlanarFaultForecast.OFFSET_PARAM_NAME).setValue(new Double(1.0));
-			erf.getParameter(PEER_NonPlanarFaultForecast.GR_MAG_UPPER).setValue(new Double(6.95));
-			erf.getParameter(PEER_NonPlanarFaultForecast.SLIP_RATE_NAME).setValue(new Double(2.0));
+			erf.getParameter(PEER_NonPlanarFaultForecast.GRID_PARAM_NAME).setValue(Double.valueOf(1.0));
+			erf.getParameter(PEER_NonPlanarFaultForecast.OFFSET_PARAM_NAME).setValue(Double.valueOf(1.0));
+			erf.getParameter(PEER_NonPlanarFaultForecast.GR_MAG_UPPER).setValue(Double.valueOf(6.95));
+			erf.getParameter(PEER_NonPlanarFaultForecast.SLIP_RATE_NAME).setValue(Double.valueOf(2.0));
 			erf.getParameter(PEER_NonPlanarFaultForecast.SEGMENTATION_NAME).setValue(PEER_NonPlanarFaultForecast.SEGMENTATION_NO);
 			erf.getParameter(PEER_NonPlanarFaultForecast.FAULT_MODEL_NAME).setValue(PEER_NonPlanarFaultForecast.FAULT_MODEL_STIRLING);
 			
@@ -601,22 +601,22 @@ public class TestConfig {
 			
 		} else if (is(CASE_2)) {
 			erf = new PEER_MultiSourceForecast();
-			erf.getParameter(PEER_MultiSourceForecast.DEPTH_LOWER_PARAM_NAME).setValue(new Double(10));
-			erf.getParameter(PEER_MultiSourceForecast.DEPTH_UPPER_PARAM_NAME).setValue(new Double(5));
-			erf.getParameter(PEER_MultiSourceForecast.GRID_PARAM_NAME).setValue(new Double(1.0));
-			erf.getParameter(PEER_MultiSourceForecast.OFFSET_PARAM_NAME).setValue(new Double(1.0));
+			erf.getParameter(PEER_MultiSourceForecast.DEPTH_LOWER_PARAM_NAME).setValue(Double.valueOf(10));
+			erf.getParameter(PEER_MultiSourceForecast.DEPTH_UPPER_PARAM_NAME).setValue(Double.valueOf(5));
+			erf.getParameter(PEER_MultiSourceForecast.GRID_PARAM_NAME).setValue(Double.valueOf(1.0));
+			erf.getParameter(PEER_MultiSourceForecast.OFFSET_PARAM_NAME).setValue(Double.valueOf(1.0));
 			erf.getTimeSpan().setDuration(1.0);
 		
 		} else if (is(CASE_3) || is(CASE_4) ) {
 
 			erf = new FloatingPoissonFaultERF();
-			erf.getParameter(FloatingPoissonFaultERF.OFFSET_PARAM_NAME).setValue(new Double(1.0));
+			erf.getParameter(FloatingPoissonFaultERF.OFFSET_PARAM_NAME).setValue(Double.valueOf(1.0));
 			erf.getParameter(FloatingPoissonFaultERF.MAG_SCALING_REL_PARAM_NAME).setValue(PEER_testsMagAreaRelationship.NAME);
-			erf.getParameter(FloatingPoissonFaultERF.SIGMA_PARAM_NAME).setValue(new Double(0));
-			erf.getParameter(FloatingPoissonFaultERF.ASPECT_RATIO_PARAM_NAME).setValue(new Double(2.0));
-			erf.getParameter(FloatingPoissonFaultERF.MIN_MAG_PARAM_NAME).setValue(new Double(5.0));
+			erf.getParameter(FloatingPoissonFaultERF.SIGMA_PARAM_NAME).setValue(Double.valueOf(0));
+			erf.getParameter(FloatingPoissonFaultERF.ASPECT_RATIO_PARAM_NAME).setValue(Double.valueOf(2.0));
+			erf.getParameter(FloatingPoissonFaultERF.MIN_MAG_PARAM_NAME).setValue(Double.valueOf(5.0));
 			erf.getTimeSpan().setDuration(1.0);
-			erf.getParameter(FloatingPoissonFaultERF.RAKE_PARAM_NAME).setValue(new Double(0.0));
+			erf.getParameter(FloatingPoissonFaultERF.RAKE_PARAM_NAME).setValue(Double.valueOf(0.0));
 
 			// set the Fault Parameter
 			SimpleFaultParameter fault = (SimpleFaultParameter) erf.getParameter(FloatingPoissonFaultERF.FAULT_PARAM_NAME);
@@ -630,20 +630,20 @@ public class TestConfig {
 			// yet set up to handle epistemic lists
 //			erf = new PEER_LogicTreeERF_List(); 
 //			erf.getParameter(PEER_LogicTreeERF_List.FAULT_MODEL_NAME).setValue(PEER_LogicTreeERF_List.FAULT_MODEL_STIRLING);
-//			erf.getParameter(PEER_LogicTreeERF_List.OFFSET_PARAM_NAME).setValue(new Double(1));
-//			erf.getParameter(PEER_LogicTreeERF_List.GRID_PARAM_NAME).setValue(new Double(1));
-//			erf.getParameter(PEER_LogicTreeERF_List.SIGMA_PARAM_NAME).setValue(new Double(0.0));
+//			erf.getParameter(PEER_LogicTreeERF_List.OFFSET_PARAM_NAME).setValue(Double.valueOf(1));
+//			erf.getParameter(PEER_LogicTreeERF_List.GRID_PARAM_NAME).setValue(Double.valueOf(1));
+//			erf.getParameter(PEER_LogicTreeERF_List.SIGMA_PARAM_NAME).setValue(Double.valueOf(0.0));
 //			erf.getTimeSpan().setDuration(1.0);
 		
 		} else if (is(CASE_6)){
 			erf = new FloatingPoissonFaultERF();
-			erf.getParameter(FloatingPoissonFaultERF.OFFSET_PARAM_NAME).setValue(new Double(1.0));
+			erf.getParameter(FloatingPoissonFaultERF.OFFSET_PARAM_NAME).setValue(Double.valueOf(1.0));
 			erf.getParameter(FloatingPoissonFaultERF.MAG_SCALING_REL_PARAM_NAME).setValue(PEER_testsMagAreaRelationship.NAME);
-			erf.getParameter(FloatingPoissonFaultERF.SIGMA_PARAM_NAME).setValue(new Double(0));
-			erf.getParameter(FloatingPoissonFaultERF.ASPECT_RATIO_PARAM_NAME).setValue(new Double(2.0));
-			erf.getParameter(FloatingPoissonFaultERF.MIN_MAG_PARAM_NAME).setValue(new Double(5.0));
+			erf.getParameter(FloatingPoissonFaultERF.SIGMA_PARAM_NAME).setValue(Double.valueOf(0));
+			erf.getParameter(FloatingPoissonFaultERF.ASPECT_RATIO_PARAM_NAME).setValue(Double.valueOf(2.0));
+			erf.getParameter(FloatingPoissonFaultERF.MIN_MAG_PARAM_NAME).setValue(Double.valueOf(5.0));
 			erf.getTimeSpan().setDuration(1.0);
-			erf.getParameter(FloatingPoissonFaultERF.RAKE_PARAM_NAME).setValue(new Double(0.0));
+			erf.getParameter(FloatingPoissonFaultERF.RAKE_PARAM_NAME).setValue(Double.valueOf(0.0));
 
 			// set the Fault Parameter
 			SimpleFaultParameter fault = (SimpleFaultParameter) erf.getParameter(FloatingPoissonFaultERF.FAULT_PARAM_NAME);
@@ -673,43 +673,43 @@ public class TestConfig {
 			if (is(CASE_3)) {
 				plist.getParameter(DISTRIBUTION_NAME).setValue(YC_1985_CharMagFreqDist.NAME);
 				plist.getParameter(SET_ALL_PARAMS_BUT).setConstraint(mfd.getYCSetAllButOptions());
-				plist.getParameter(MIN).setValue(new Double(0.0));
-				plist.getParameter(MAX).setValue(new Double(10));
-				plist.getParameter(NUM).setValue(new Integer(1001));
-				plist.getParameter(GR_BVALUE).setValue(new Double(0.9));
-				plist.getParameter(YC_DELTA_MAG_CHAR).setValue(new Double(.5));
-				plist.getParameter(YC_DELTA_MAG_PRIME).setValue(new Double(1.0));
-				plist.getParameter(GR_MAG_LOWER).setValue(new Double(0.01));
-				plist.getParameter(YC_MAG_PRIME).setValue(new Double(5.95));
-				plist.getParameter(GR_MAG_UPPER).setValue(new Double(6.45));
+				plist.getParameter(MIN).setValue(Double.valueOf(0.0));
+				plist.getParameter(MAX).setValue(Double.valueOf(10));
+				plist.getParameter(NUM).setValue(Integer.valueOf(1001));
+				plist.getParameter(GR_BVALUE).setValue(Double.valueOf(0.9));
+				plist.getParameter(YC_DELTA_MAG_CHAR).setValue(Double.valueOf(.5));
+				plist.getParameter(YC_DELTA_MAG_PRIME).setValue(Double.valueOf(1.0));
+				plist.getParameter(GR_MAG_LOWER).setValue(Double.valueOf(0.01));
+				plist.getParameter(YC_MAG_PRIME).setValue(Double.valueOf(5.95));
+				plist.getParameter(GR_MAG_UPPER).setValue(Double.valueOf(6.45));
 				plist.getParameter(SET_ALL_PARAMS_BUT).setValue(MagFreqDistParameter.TOT_MO_RATE);
-				plist.getParameter(YC_TOT_CHAR_RATE).setValue(new Double(1e-3));
+				plist.getParameter(YC_TOT_CHAR_RATE).setValue(Double.valueOf(1e-3));
 			
 			} else if (is(CASE_4)) {
 				plist.getParameter(DISTRIBUTION_NAME).setValue(GaussianMagFreqDist.NAME);
 				plist.getParameter(SET_ALL_PARAMS_BUT).setConstraint(mfd.getGaussianDistSetAllButOptions());
-				plist.getParameter(MIN).setValue(new Double(0.05));
-				plist.getParameter(MAX).setValue(new Double(9.95));
-				plist.getParameter(NUM).setValue(new Integer(100));
+				plist.getParameter(MIN).setValue(Double.valueOf(0.05));
+				plist.getParameter(MAX).setValue(Double.valueOf(9.95));
+				plist.getParameter(NUM).setValue(Integer.valueOf(100));
 				plist.getParameter(SET_ALL_PARAMS_BUT).setValue(MagFreqDistParameter.TOT_MO_RATE);
-				plist.getParameter(TOT_CUM_RATE).setValue(new Double(1e-3));
-				plist.getParameter(STD_DEV).setValue(new Double(0.25));
-				plist.getParameter(MEAN).setValue(new Double(6.2));
+				plist.getParameter(TOT_CUM_RATE).setValue(Double.valueOf(1e-3));
+				plist.getParameter(STD_DEV).setValue(Double.valueOf(0.25));
+				plist.getParameter(MEAN).setValue(Double.valueOf(6.2));
 				plist.getParameter(TRUNCATION_REQ).setValue(MagFreqDistParameter.TRUNCATE_UPPER_ONLY);
-				plist.getParameter(TRUNCATE_NUM_OF_STD_DEV).setValue(new Double(1.0));
+				plist.getParameter(TRUNCATE_NUM_OF_STD_DEV).setValue(Double.valueOf(1.0));
 			
 			} else if (is(CASE_6)) {
 				plist.getParameter(DISTRIBUTION_NAME).setValue(GutenbergRichterMagFreqDist.NAME);
 				plist.getParameter(SET_ALL_PARAMS_BUT).setConstraint(mfd.getGRSetAllButOptions());
 				plist.getParameter(FIX).setConstraint(mfd.getGRFixOptions());
 				plist.getParameter(SET_ALL_PARAMS_BUT).setValue(MagFreqDistParameter.TOT_CUM_RATE);
-				plist.getParameter(MIN).setValue(new Double(0.05));
-				plist.getParameter(MAX).setValue(new Double(9.95));
-				plist.getParameter(NUM).setValue(new Integer(100));
-				plist.getParameter(GR_MAG_LOWER).setValue(new Double(0.05));
-				plist.getParameter(GR_MAG_UPPER).setValue(new Double(6.45));
-				plist.getParameter(GR_BVALUE).setValue(new Double(0.9));
-				plist.getParameter(TOT_MO_RATE).setValue(new Double(3.8055e16));
+				plist.getParameter(MIN).setValue(Double.valueOf(0.05));
+				plist.getParameter(MAX).setValue(Double.valueOf(9.95));
+				plist.getParameter(NUM).setValue(Integer.valueOf(100));
+				plist.getParameter(GR_MAG_LOWER).setValue(Double.valueOf(0.05));
+				plist.getParameter(GR_MAG_UPPER).setValue(Double.valueOf(6.45));
+				plist.getParameter(GR_BVALUE).setValue(Double.valueOf(0.9));
+				plist.getParameter(TOT_MO_RATE).setValue(Double.valueOf(3.8055e16));
 			}
 
 		// create the actual magFreqDist
@@ -723,44 +723,44 @@ public class TestConfig {
 
 		// Set1 faults
 		fault1and2_Lats = new ArrayList();
-		fault1and2_Lats.add(new Double(38.22480));
-		fault1and2_Lats.add(new Double(38.0));
+		fault1and2_Lats.add(Double.valueOf(38.22480));
+		fault1and2_Lats.add(Double.valueOf(38.0));
 
 		fault1and2_Lons = new ArrayList();
-		fault1and2_Lons.add(new Double(-122.0));
-		fault1and2_Lons.add(new Double(-122.0));
+		fault1and2_Lons.add(Double.valueOf(-122.0));
+		fault1and2_Lons.add(Double.valueOf(-122.0));
 
 		fault1_Dips = new ArrayList();
-		fault1_Dips.add(new Double(90.0));
+		fault1_Dips.add(Double.valueOf(90.0));
 
 		fault1_Depths = new ArrayList();
-		fault1_Depths.add(new Double(0.0));
-		fault1_Depths.add(new Double(12.0));
+		fault1_Depths.add(Double.valueOf(0.0));
+		fault1_Depths.add(Double.valueOf(12.0));
 
 		fault2_Dips = new ArrayList();
-		fault2_Dips.add(new Double(60.0));
+		fault2_Dips.add(Double.valueOf(60.0));
 
 		fault2_Depths = new ArrayList();
-		fault2_Depths.add(new Double(1.0));
-		fault2_Depths.add(new Double(12.0));
+		fault2_Depths.add(Double.valueOf(1.0));
+		fault2_Depths.add(Double.valueOf(12.0));
 
 		// Set2 faults
 		faultE_Lats = new ArrayList();
-		faultE_Lats.add(new Double(38.0));
-		faultE_Lats.add(new Double(38.2248));
+		faultE_Lats.add(Double.valueOf(38.0));
+		faultE_Lats.add(Double.valueOf(38.2248));
 
 		faultE_Lons = new ArrayList();
-		faultE_Lons.add(new Double(-122.0));
-		faultE_Lons.add(new Double(-122.0));
+		faultE_Lons.add(Double.valueOf(-122.0));
+		faultE_Lons.add(Double.valueOf(-122.0));
 
 		faultE_Dips = new ArrayList();
-		faultE_Dips.add(new Double(50.0));
-		faultE_Dips.add(new Double(20.0));
+		faultE_Dips.add(Double.valueOf(50.0));
+		faultE_Dips.add(Double.valueOf(20.0));
 
 		faultE_Depths = new ArrayList();
-		faultE_Depths.add(new Double(0.0));
-		faultE_Depths.add(new Double(6.0));
-		faultE_Depths.add(new Double(12.0));
+		faultE_Depths.add(Double.valueOf(0.0));
+		faultE_Depths.add(Double.valueOf(6.0));
+		faultE_Depths.add(Double.valueOf(12.0));
 	}
 
 	// init function with log of xVals

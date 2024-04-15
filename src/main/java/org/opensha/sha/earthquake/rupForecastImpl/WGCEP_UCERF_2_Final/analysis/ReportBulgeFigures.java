@@ -149,7 +149,7 @@ public class ReportBulgeFigures {
 		//		 figure 8
 		++fig;
 		ucerf2.setParamDefaults();
-		ucerf2.getParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME).setValue(new Double(1e7));
+		ucerf2.getParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME).setValue(Double.valueOf(1e7));
 		ucerf2.updateForecast();
 		sheet.getRow(0).createCell((short)fig).setCellValue("Figure "+fig);
 		sheet.getRow(1+paramNames.indexOf(UCERF2.REL_A_PRIORI_WT_PARAM_NAME)).createCell((short)fig).setCellValue("1e7");
@@ -169,7 +169,7 @@ public class ReportBulgeFigures {
 		//		 figure 6
 		/*++fig;
 		ucerf2.setParamDefaults();
-		ucerf2.getParameter(UCERF2.MEAN_MAG_CORRECTION).setValue(new Double(-0.1));
+		ucerf2.getParameter(UCERF2.MEAN_MAG_CORRECTION).setValue(Double.valueOf(-0.1));
 		ucerf2.updateForecast();
 		sheet.getRow(0).createCell((short)fig).setCellValue("Figure "+fig);
 		sheet.getRow(1+paramNames.indexOf(UCERF2.MEAN_MAG_CORRECTION)).createCell((short)fig).setCellValue(-0.1);
@@ -179,7 +179,7 @@ public class ReportBulgeFigures {
 		//		 figure 7
 		++fig;
 		ucerf2.setParamDefaults();
-		ucerf2.getParameter(UCERF2.MEAN_MAG_CORRECTION).setValue(new Double(0.1));
+		ucerf2.getParameter(UCERF2.MEAN_MAG_CORRECTION).setValue(Double.valueOf(0.1));
 		ucerf2.updateForecast();
 		sheet.getRow(0).createCell((short)fig).setCellValue("Figure "+fig);
 		sheet.getRow(1+paramNames.indexOf(UCERF2.MEAN_MAG_CORRECTION)).createCell((short)fig).setCellValue(0.1);
@@ -189,7 +189,7 @@ public class ReportBulgeFigures {
 		//		 figure 10 (More B-Faults not connected)
 		++fig;
 		ucerf2.setParamDefaults();
-		ucerf2.getParameter(UCERF2.CONNECT_B_FAULTS_PARAM_NAME).setValue(new Boolean(false));
+		ucerf2.getParameter(UCERF2.CONNECT_B_FAULTS_PARAM_NAME).setValue(Boolean.valueOf(false));
 		ucerf2.updateForecast();
 		sheet.getRow(0).createCell((short)fig).setCellValue("Figure "+fig);
 		sheet.getRow(1+paramNames.indexOf(UCERF2.CONNECT_B_FAULTS_PARAM_NAME)).createCell((short)fig).setCellValue("False");
@@ -199,7 +199,7 @@ public class ReportBulgeFigures {
 		//		 figure 9
 		/*++fig;
 		ucerf2.setParamDefaults();
-		ucerf2.getParameter(UCERF2.C_ZONE_WT_PARAM_NAME).setValue(new Double(0.0));
+		ucerf2.getParameter(UCERF2.C_ZONE_WT_PARAM_NAME).setValue(Double.valueOf(0.0));
 		ucerf2.updateForecast();
 		sheet.getRow(0).createCell((short)fig).setCellValue("Figure "+fig);
 		sheet.getRow(1+paramNames.indexOf(UCERF2.C_ZONE_WT_PARAM_NAME)).createCell((short)fig).setCellValue(0.0);
@@ -209,7 +209,7 @@ public class ReportBulgeFigures {
 		//		 figure 10
 		++fig;
 		ucerf2.setParamDefaults();
-		ucerf2.getParameter(UCERF2.C_ZONE_WT_PARAM_NAME).setValue(new Double(1.0));
+		ucerf2.getParameter(UCERF2.C_ZONE_WT_PARAM_NAME).setValue(Double.valueOf(1.0));
 		ucerf2.updateForecast();
 		sheet.getRow(0).createCell((short)fig).setCellValue("Figure "+fig);
 		sheet.getRow(1+paramNames.indexOf(UCERF2.C_ZONE_WT_PARAM_NAME)).createCell((short)fig).setCellValue(1.0);

@@ -120,10 +120,10 @@ public class ToroEtAl_1997_AttenRel extends AttenuationRelationship implements
 	private EnumParameter<SiteType> siteTypeParam;
 
 	// lowered to 4 from5 for CEUS mblg conversions
-	private final static Double MAG_WARN_MIN = new Double(4);
-	private final static Double MAG_WARN_MAX = new Double(8);
-	private final static Double DISTANCE_JB_WARN_MIN = new Double(0.0);
-	private final static Double DISTANCE_JB_WARN_MAX = new Double(1000.0);
+	private final static Double MAG_WARN_MIN = Double.valueOf(4);
+	private final static Double MAG_WARN_MAX = Double.valueOf(8);
+	private final static Double DISTANCE_JB_WARN_MIN = Double.valueOf(0.0);
+	private final static Double DISTANCE_JB_WARN_MAX = Double.valueOf(1000.0);
 
 	private transient ParameterChangeWarningListener warningListener = null;
 
@@ -137,7 +137,7 @@ public class ToroEtAl_1997_AttenRel extends AttenuationRelationship implements
 		initSupportedIntensityMeasureParams();
 		indexFromPerHashMap = Maps.newHashMap();
 		for (int i = 0; i < perx.length; i++) {
-			indexFromPerHashMap.put(new Double(perx[i]), new Integer(i));
+			indexFromPerHashMap.put(Double.valueOf(perx[i]), Integer.valueOf(i));
 		}
 
 		initEqkRuptureParams();
@@ -154,7 +154,7 @@ public class ToroEtAl_1997_AttenRel extends AttenuationRelationship implements
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture)
 			throws InvalidRangeException {
-		magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
 		this.eqkRupture = eqkRupture;
 		setPropagationEffectParams();
 	}
@@ -292,7 +292,7 @@ public class ToroEtAl_1997_AttenRel extends AttenuationRelationship implements
 		// Create saParam:
 		DoubleDiscreteConstraint perConstraint = new DoubleDiscreteConstraint();
 		for (int i = 0; i < perx.length; i++) {
-			perConstraint.addDouble(new Double(perx[i]));
+			perConstraint.addDouble(Double.valueOf(perx[i]));
 		}
 		perConstraint.setNonEditable();
 		saPeriodParam = new PeriodParam(perConstraint);

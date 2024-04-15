@@ -94,13 +94,13 @@ public class IM_EventSetCEA_ControlPanel extends ConfirmDialogControlPanel {
 
 
 		// Set rake value to 90 degrees
-		erfPanel.getParameter(erfPanel.RAKE_PARAM_NAME).setValue(new Double(90));
+		erfPanel.getParameter(erfPanel.RAKE_PARAM_NAME).setValue(Double.valueOf(90));
 
 		IM_EventSetScenarioForCEA eventSet = new IM_EventSetScenarioForCEA(); 
 		Parameter param = erfPanel.getParameter(erfPanel.FAULT_PARAM_NAME);
 		eventSet.createSimpleFaultParam((SimpleFaultParameter)param);
 
-		erfPanel.getParameter(erfPanel.MAG_PARAM_NAME).setValue(new Double(magnitude));
+		erfPanel.getParameter(erfPanel.MAG_PARAM_NAME).setValue(Double.valueOf(magnitude));
 		erfPanel.getParameterListEditor().refreshParamEditor();
 
 
@@ -118,11 +118,11 @@ public class IM_EventSetCEA_ControlPanel extends ConfirmDialogControlPanel {
 		imrGuiBean.getSingleAttenRelParamListEditor().refreshParamEditor();
 
 		//Updating the SitesInGriddedRectangularRegionGuiBean with the Puente Hills resion setting
-		regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LATITUDE).setValue(new Double(33));
-		regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LATITUDE).setValue(new Double(35));
-		regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LONGITUDE).setValue(new Double(-119));
-		regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LONGITUDE).setValue(new Double(-117));
-		regionGuiBean.getParameterList().getParameter(regionGuiBean.GRID_SPACING).setValue(new Double(.01667));
+		regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LATITUDE).setValue(Double.valueOf(33));
+		regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LATITUDE).setValue(Double.valueOf(35));
+		regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LONGITUDE).setValue(Double.valueOf(-119));
+		regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LONGITUDE).setValue(Double.valueOf(-117));
+		regionGuiBean.getParameterList().getParameter(regionGuiBean.GRID_SPACING).setValue(Double.valueOf(.01667));
 		regionGuiBean.getParameterList().getParameter(regionGuiBean.SITE_PARAM_NAME).setValue(SitesInGriddedRectangularRegionGuiBean.USE_SITE_DATA);
 
 
@@ -132,8 +132,8 @@ public class IM_EventSetCEA_ControlPanel extends ConfirmDialogControlPanel {
 		cptParam.setByName(GMT_CPT_Files.MAX_SPECTRUM.getFileName());
 		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.COLOR_SCALE_MODE_NAME).
 		setValue(GMT_MapGenerator.COLOR_SCALE_MODE_FROMDATA);
-		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.GMT_WEBSERVICE_NAME).setValue(new Boolean(true));
-		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.LOG_PLOT_NAME).setValue(new Boolean(false));
+		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.GMT_WEBSERVICE_NAME).setValue(Boolean.valueOf(true));
+		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.LOG_PLOT_NAME).setValue(Boolean.valueOf(false));
 		mapGuiBean.refreshParamEditor();
 	}
 }

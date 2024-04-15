@@ -62,48 +62,48 @@ public class Point2MultVertSS_FaultERF extends AbstractERF{
 	public final static String SRC_LAT_PARAM_NAME = "Latitude";
 	private final static String SRC_LAT_PARAM_INFO = "The latitude of the point source";
 	private final static String SRC_LAT_PARAM_UNITS = "Degrees";
-	private Double SRC_LAT_PARAM_MIN = new Double (-90.0);
-	private Double SRC_LAT_PARAM_MAX = new Double (90.0);
-	private Double SRC_LAT_PARAM_DEFAULT = new Double (35.71);
+	private Double SRC_LAT_PARAM_MIN = Double.valueOf(-90.0);
+	private Double SRC_LAT_PARAM_MAX = Double.valueOf(90.0);
+	private Double SRC_LAT_PARAM_DEFAULT = Double.valueOf(35.71);
 
 	public final static String SRC_LON_PARAM_NAME = "Longitude";
 	private final static String SRC_LON_PARAM_INFO = "The longitude of the point source";
 	private final static String SRC_LON_PARAM_UNITS = "Degrees";
-	private Double SRC_LON_PARAM_MIN = new Double (-360);
-	private Double SRC_LON_PARAM_MAX = new Double (360);
-	private Double SRC_LON_PARAM_DEFAULT = new Double (-121.1);
+	private Double SRC_LON_PARAM_MIN = Double.valueOf(-360);
+	private Double SRC_LON_PARAM_MAX = Double.valueOf(360);
+	private Double SRC_LON_PARAM_DEFAULT = Double.valueOf(-121.1);
 
 	// mag parameter stuff
 	public final static String MAG_PARAM_NAME = "Magnitude";
 	private final static String MAG_PARAM_INFO = "The  magnitude of the point source";
 	private final static String MAG_PARAM_UNITS = null;
-	private Double MAG_PARAM_MIN = new Double(5);
-	private Double MAG_PARAM_MAX = new Double(10);
-	private Double MAG_PARAM_DEFAULT = new Double(7.0);
+	private Double MAG_PARAM_MIN = Double.valueOf(5);
+	private Double MAG_PARAM_MAX = Double.valueOf(10);
+	private Double MAG_PARAM_DEFAULT = Double.valueOf(7.0);
 
 	// prob parameter stuff
 	public final static String PROB_PARAM_NAME = "Probability";
 	private final static String PROB_PARAM_INFO = "The probability of the source (independent of whatever timeSpan is given)";
 	private final static String PROB_PARAM_UNITS = null;
-	private Double PROB_PARAM_MIN = new Double(0);
-	private Double PROB_PARAM_MAX = new Double(1);
-	private Double PROB_PARAM_DEFAULT = new Double(1.0);
+	private Double PROB_PARAM_MIN = Double.valueOf(0);
+	private Double PROB_PARAM_MAX = Double.valueOf(1);
+	private Double PROB_PARAM_DEFAULT = Double.valueOf(1.0);
 
 	// maxRupOffset parameter stuff
 	public final static String RUP_OFFSET_PARAM_NAME = "Max Rupture Offset";
 	private final static String RUP_OFFSET_PARAM_INFO = "The amount by which ruptures are floated along stike (actual value will be slightly less)";
 	private final static String RUP_OFFSET_PARAM_UNITS = "km";
-	private Double RUP_OFFSET_PARAM_MIN = new Double(1e-2);
-	private Double RUP_OFFSET_PARAM_MAX = new Double(20);
-	private Double RUP_OFFSET_PARAM_DEFAULT = new Double(2.0);
+	private Double RUP_OFFSET_PARAM_MIN = Double.valueOf(1e-2);
+	private Double RUP_OFFSET_PARAM_MAX = Double.valueOf(20);
+	private Double RUP_OFFSET_PARAM_DEFAULT = Double.valueOf(2.0);
 
 	// deltaStrike parameter stuff
 	public final static String DELTA_STRIKE_PARAM_NAME = "Delta Strike";
 	private final static String DELTA_STRIKE_PARAM_INFO = "Discretization of strike for spinning fault";
 	private final static String DELTA_STRIKE_PARAM_UNITS = "degrees";
-	private Double DELTA_STRIKE_PARAM_MIN = new Double(1e-2);
-	private Double DELTA_STRIKE_PARAM_MAX = new Double(90);
-	private Double DELTA_STRIKE_PARAM_DEFAULT = new Double(5.0);
+	private Double DELTA_STRIKE_PARAM_MIN = Double.valueOf(1e-2);
+	private Double DELTA_STRIKE_PARAM_MAX = Double.valueOf(90);
+	private Double DELTA_STRIKE_PARAM_DEFAULT = Double.valueOf(5.0);
 
 
 	/**

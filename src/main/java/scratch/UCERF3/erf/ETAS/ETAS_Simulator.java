@@ -1773,11 +1773,11 @@ public class ETAS_Simulator {
 		
 		
 		
-		//		runTest(TestScenario.NEAR_MAACAMA, params, new Long(1407965202664l), "nearMaacama_1", null);
-//		runTest(TestScenario.ON_MAACAMA, params, new Long(1407965202664l), "onMaacama_1", null);
+		//		runTest(TestScenario.NEAR_MAACAMA, params, Long.valueOf(1407965202664l), "nearMaacama_1", null);
+//		runTest(TestScenario.ON_MAACAMA, params, Long.valueOf(1407965202664l), "onMaacama_1", null);
 		
-//		runTest(TestScenario.ON_N_MOJAVE, params, new Long(1407965202664l), "OnN_Mojave_2", null);
-//		runTest(TestScenario.NEAR_N_MOJAVE_3KM, params, new Long(1407965202664l), "NearN_Mojave_3KM_1", null);
+//		runTest(TestScenario.ON_N_MOJAVE, params, Long.valueOf(1407965202664l), "OnN_Mojave_2", null);
+//		runTest(TestScenario.NEAR_N_MOJAVE_3KM, params, Long.valueOf(1407965202664l), "NearN_Mojave_3KM_1", null);
 //		runTest(TestScenario.LA_HABRA_6p2, params, null, "LaHabraTest_1", null);
 //		runTest(null, params, null, "NoMainshockTest_1", null);
 //		runTest(null, params, null, "HistCatalogTest_2", getHistCatalog());
@@ -1785,7 +1785,7 @@ public class ETAS_Simulator {
 //		runTest(TestScenario.NAPA, params, 1409243011639l, "NapaEvent_noSpont_uniform_2", null);
 //		runTest(TestScenario.NAPA, params, 1409709441451l, "NapaEvent_maxLoss", null);
 //		runTest(TestScenario.NAPA, params, 1409709441451l, "NapaEvent_test ", null);
-//		runTest(TestScenario.MOJAVE, params, new Long(14079652l), "MojaveEvent_2", null);	// aveStrike=295.0367915096109; All Hell!
+//		runTest(TestScenario.MOJAVE, params, Long.valueOf(14079652l), "MojaveEvent_2", null);	// aveStrike=295.0367915096109; All Hell!
 //		runTest(TestScenario.MOJAVE, params, null, "MojaveEvent_New_5", null);	// aveStrike=295.0367915096109; All Hell!
 //		runTest(TestScenario.MOJAVE, params, 1433367544567l, "MojaveEvent_newApproach", null);	// aveStrike=295.0367915096109; All Hell!
 //		runTest(TestScenario.NORTHRIDGE, params, null, "Northridge_1", null);
@@ -1809,8 +1809,8 @@ public class ETAS_Simulator {
 //		runTest(TestScenario.KEVIN_MOJAVE, params, null, "KevinTestMojave_"+distAway+"km", null);	// aveStrike=295.0367915096109;
 
 		
-//		runTest(TestScenario.PARKFIELD, params, new Long(14079652l), "ParkfieldTest_noSpnont_1", null);	// aveStrike=295.0367915096109
-//		runTest(TestScenario.BOMBAY_BEACH_M6, params, new Long(14079652l), "BombayBeachTest_noSpnont_1", null);	// aveStrike=295.0367915096109
+//		runTest(TestScenario.PARKFIELD, params, Long.valueOf(14079652l), "ParkfieldTest_noSpnont_1", null);	// aveStrike=295.0367915096109
+//		runTest(TestScenario.BOMBAY_BEACH_M6, params, Long.valueOf(14079652l), "BombayBeachTest_noSpnont_1", null);	// aveStrike=295.0367915096109
 
 
 		// ************** OLD STUFF BELOW *********************

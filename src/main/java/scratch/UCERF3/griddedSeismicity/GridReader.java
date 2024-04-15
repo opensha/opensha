@@ -122,14 +122,14 @@ public class GridReader {
 	private static class FnStrToInt implements Function<String, Integer> {
 		@Override
 		public Integer apply(String s) {
-			return new Integer(s);
+			return Integer.valueOf(s);
 		}
 	}
 
 	private static class FnStrToDbl implements Function<String, Double> {
 		@Override
 		public Double apply(String s) {
-			return new Double(s);
+			return Double.valueOf(s);
 		}
 	}
 

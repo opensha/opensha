@@ -218,7 +218,7 @@ public class MPJ_ETAS_Launcher extends MPJTaskCalculator {
 		launcher.shutdownExecutor();
 		if (binaryWriter != null) {
 			((BinaryConsolidateHook)postBatchHook).shutdown();
-			binaryWriter.finalize();
+			binaryWriter.close();
 		}
 	}
 	
