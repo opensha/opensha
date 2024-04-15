@@ -18,6 +18,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
@@ -158,6 +159,12 @@ public class SourceFilterTests {
 			return rups.get(nRupture);
 		}
 		
+		@Override
+		public ArrayList<ProbEqkRupture> drawRandomEqkRuptures() {
+			sourceAccessed = true;
+			return super.drawRandomEqkRuptures();
+		}
+
 		public void clearAccess() {
 			sourceAccessed = false;
 			for (AccessTrackingPointEqkRup rup : rups)
@@ -189,6 +196,12 @@ public class SourceFilterTests {
 		
 		public boolean hasRupBeenAccessed() {
 			return rupAccessed;
+		}
+
+		@Override
+		public Object clone() {
+			// random event sets clone ruptures, which messes with the tracking, so just return this
+			return this;
 		}
 		
 	}
@@ -265,8 +278,10 @@ public class SourceFilterTests {
 		for (ProbEqkSource source : erf.sources) {
 			double dist = source.getMinDistance(testSite);
 			assertEquals(dist > maxDist, filter.canSkipSource(source, testSite, dist));
-			for (ProbEqkRupture rup : source)
-				assertFalse("Fixed distance filter should never apply to a rupture, just sources", filter.canSkipRupture(rup, testSite));
+			for (ProbEqkRupture rup : source) {
+				dist = rup.getRuptureSurface().getQuickDistance(testSite.getLocation());
+				assertEquals(dist > maxDist, filter.canSkipRupture(rup, testSite));
+			}
 		}
 		return doTestHazardCalc();
 	}
@@ -337,8 +352,7 @@ public class SourceFilterTests {
 		ArbitrarilyDiscretizedFunc func = filter.getMagDistFunc();
 		for (ProbEqkSource source : erf.sources) {
 			double dist = source.getMinDistance(testSite);
-			assertFalse("Mag-Dist filter should never exclude a whole source (applied to ruptures)",
-					filter.canSkipSource(source, testSite, dist));
+			assertEquals(dist > func.getMaxX(), filter.canSkipSource(source, testSite, dist));
 			for (ProbEqkRupture rup : source) {
 				dist = rup.getRuptureSurface().getQuickDistance(testSite.getLocation());
 				boolean skip;
@@ -384,17 +398,59 @@ public class SourceFilterTests {
 	}
 	
 	private int doTestHazardCalc() {
+		int numRups = doTestHazardCurveCalc();
+		
+		// test event set methods as well
+		doTestAverageHazardEventSetCurveCalc();
+		doTestHazardEventSetCurveCalc();
+		doTestHazardEventSetExpNumCurveCalc();
+		
+		return numRups;
+	}
+	
+	private int doTestHazardCurveCalc() {
 		for (AccessTrackingPointEqkSource source : erf.sources)
 			source.clearAccess();
 		calc.getHazardCurve(xVals, testSite, testIMR, erf);
+		return doCheckTestHazardCurveCalcVisited(true);
+	}
+	
+	private void doTestAverageHazardEventSetCurveCalc() {
+		for (AccessTrackingPointEqkSource source : erf.sources)
+			source.clearAccess();
+		calc.getAverageEventSetHazardCurve(xVals, testSite, testIMR, erf);
+		doCheckTestHazardCurveCalcVisited(false);
+	}
+	
+	private void doTestHazardEventSetCurveCalc() {
+		for (AccessTrackingPointEqkSource source : erf.sources)
+			source.clearAccess();
+		List<EqkRupture> events = erf.drawRandomEventSet(testSite, filterManager.getEnabledFilters());
+		calc.getEventSetHazardCurve(xVals, testSite, testIMR, events, false);
+		doCheckTestHazardCurveCalcVisited(false);
+	}
+	
+	private void doTestHazardEventSetExpNumCurveCalc() {
+		for (AccessTrackingPointEqkSource source : erf.sources)
+			source.clearAccess();
+		List<EqkRupture> events = erf.drawRandomEventSet(testSite, filterManager.getEnabledFilters());
+		calc.getEventSetExpNumExceedCurve(xVals, testSite, testIMR, events, false);
+		doCheckTestHazardCurveCalcVisited(false);
+	}
+	
+	private int doCheckTestHazardCurveCalcVisited(boolean forceAllIncludcedRups) {
 		List<SourceFilter> filters = filterManager.getEnabledFilters();
 		int rupsIncluded = 0;
 		for (AccessTrackingPointEqkSource source : erf.sources) {
 			if (filters == null || filters.isEmpty()) {
 				assertTrue("There are no filters enabled, but source wasn't accessed?", source.hasSourceBeenAccessed());
 				for (AccessTrackingPointEqkRup rup : source.rups) {
-					assertTrue("There are no filters enabled, but rupture wasn't accessed?", rup.hasRupBeenAccessed());
-					rupsIncluded++;
+					if (forceAllIncludcedRups) {
+						assertTrue("There are no filters enabled, but rupture wasn't accessed?", rup.hasRupBeenAccessed());
+						rupsIncluded++;
+					} else if (rup.hasRupBeenAccessed()) {
+						rupsIncluded++;
+					}
 				}
 			} else {
 				boolean canSkipSource = false;
@@ -407,6 +463,8 @@ public class SourceFilterTests {
 				}
 				if (canSkipSource) {
 					assertFalse("Source should have been skipped in hazard calculation, but was accessed", source.hasSourceBeenAccessed());
+					for (AccessTrackingPointEqkRup rup : source.rups)
+						assertFalse("source was skipped, but a rupture was still accessed", rup.hasRupBeenAccessed());
 				} else {
 					assertTrue("Source shouldn't have been skipped in hazard calculation, but wasn't accessed", source.hasSourceBeenAccessed());
 					for (AccessTrackingPointEqkRup rup : source.rups) {
@@ -419,19 +477,26 @@ public class SourceFilterTests {
 						}
 						if (canSkipRup) {
 							assertFalse("Rupture should have been skipped in hazard calculation, but was accessed", rup.hasRupBeenAccessed());
-						} else {
+						} else if (forceAllIncludcedRups) {
 							assertTrue("Rupture shouldn't have been skipped in hazard calculation, but wasn't accessed", rup.hasRupBeenAccessed());
+							rupsIncluded++;
+						} else if (rup.hasRupBeenAccessed()) {
 							rupsIncluded++;
 						}
 					}
 				}
 			}
 		}
-		
+		int rawIncluded = 0;
+		for (AccessTrackingPointEqkSource source : erf.sources)
+			for (AccessTrackingPointEqkRup rup : source.rups)
+				if (rup.hasRupBeenAccessed())
+					rawIncluded++;
+		assertEquals(rawIncluded, rupsIncluded);
 		if (rupsIncluded > 0)
 			assertTrue("We had "+rupsIncluded+" included rups, but hazard curve is all zero", xVals.calcSumOfY_Vals() > 0d);
 		else
-			assertTrue("We had no included rups, but hazard curve is nonzero", xVals.calcSumOfY_Vals() == 0d);
+			assertTrue("We had no included rups, but hazard curve is nonzero: "+xVals.calcSumOfY_Vals(), xVals.calcSumOfY_Vals() == 0d);
 		return rupsIncluded;
 	}
 

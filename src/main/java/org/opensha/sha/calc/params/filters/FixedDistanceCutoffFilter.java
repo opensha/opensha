@@ -9,7 +9,7 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.EqkSource;
 
 /**
- * Fixed distance cutoff, applied at the source level ({@link #canSkipRupture(EqkRupture, Site)} always returns false)
+ * Fixed distance cutoff, applied at the source and rupture level
  */
 public class FixedDistanceCutoffFilter implements SourceFilter, ParameterChangeListener {
 	
@@ -46,8 +46,7 @@ public class FixedDistanceCutoffFilter implements SourceFilter, ParameterChangeL
 
 	@Override
 	public boolean canSkipRupture(EqkRupture rup, Site site) {
-		// this is applied at the source level, individual ruptures can be further away
-		return false;
+		return rup.getRuptureSurface().getQuickDistance(site.getLocation()) > maxDist;
 	}
 
 	@Override

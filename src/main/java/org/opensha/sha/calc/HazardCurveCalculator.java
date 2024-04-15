@@ -279,7 +279,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		DiscretizedFunc sourceHazFunc = new LightFixedXFunc(hazFunction);
 
 		// declare some varibles used in the calculation
-		double qkProb, distance;
+		double qkProb;
 		int k;
 
 		// get the number of points

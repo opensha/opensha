@@ -10,7 +10,8 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.EqkSource;
 
 /**
- * Magnitude-dependent distance cutoffs, applied at the rupture level ({@link #canSkipSource(EqkSource, Site, double)} always returns false).
+ * Magnitude-dependent distance cutoffs, generally applied at the rupture level, but also checked at the source level
+ * against the largest stated cutoff 
  */
 public class MagDependentDistCutoffFilter implements SourceFilter, ParameterChangeListener {
 	
@@ -37,8 +38,8 @@ public class MagDependentDistCutoffFilter implements SourceFilter, ParameterChan
 
 	@Override
 	public boolean canSkipSource(EqkSource source, Site site, double sourceSiteDistance) {
-		// never skip a source, this is done on a per-rupture basis
-		return false;
+		// skip if it's further than the largest allowed cutoff
+		return sourceSiteDistance > magDistFunc.getMaxX();
 	}
 
 	@Override
