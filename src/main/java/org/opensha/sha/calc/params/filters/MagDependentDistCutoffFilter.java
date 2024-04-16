@@ -35,6 +35,10 @@ public class MagDependentDistCutoffFilter implements SourceFilter, ParameterChan
 	public ArbitrarilyDiscretizedFunc getMagDistFunc() {
 		return magDistFunc;
 	}
+	
+	public MagDistCutoffParam getParam() {
+		return magDist;
+	}
 
 	@Override
 	public boolean canSkipSource(EqkSource source, Site site, double sourceSiteDistance) {
@@ -64,6 +68,18 @@ public class MagDependentDistCutoffFilter implements SourceFilter, ParameterChan
 	@Override
 	public void parameterChange(ParameterChangeEvent event) {
 		magDistFunc = magDist.getValue();
+	}
+	
+	@Override
+	public String toString() {
+		String str = "MagDistFunc=[";
+		for (int i=0; i<magDistFunc.size(); i++) {
+			if (i > 0)
+				str += ", ";
+			str += (float)magDistFunc.getX(i)+":"+(float)magDistFunc.getY(i);
+		}
+		str += "]";
+		return str;
 	}
 
 }

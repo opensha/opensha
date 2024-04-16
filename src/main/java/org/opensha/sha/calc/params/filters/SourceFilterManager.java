@@ -52,4 +52,22 @@ public class SourceFilterManager {
 			filterInstances[filter.ordinal()] = filter.initFilter();
 		return filterInstances[filter.ordinal()];
 	}
+	
+	public String toString() {
+		StringBuilder str = new StringBuilder();
+		str.append("[");
+		boolean first = true;
+		for (int i=0; i<filters.length; i++) {
+			if (filterEnableds[i]) {
+				if (first) {
+					first = false;
+				} else {
+					str.append(", ");
+				}
+				str.append(filterInstances[i].toString());
+			}
+		}
+		str.append("]");
+		return str.toString();
+	}
 }

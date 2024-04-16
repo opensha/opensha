@@ -34,6 +34,8 @@ import org.opensha.commons.gui.plot.pdf.PDF_UTF8_FontMapper;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator.EpsilonCategories;
 import org.opensha.sha.calc.disaggregation.DisaggregationPlotData;
+import org.opensha.sha.calc.params.filters.SourceFilterManager;
+import org.opensha.sha.calc.params.filters.SourceFilters;
 import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_AdjustableEqkRupForecast;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2.MeanUCERF2;
 import org.opensha.sha.imr.AttenRelRef;
@@ -314,7 +316,9 @@ public class PureJavaDisaggPlotter {
 //		calc.setDistanceRange(5d, 21, 10d);
 		calc.setMagRange(5d, 10, 0.5);
 //		calc.setMagRange(5d, 20, 0.5);
-		calc.disaggregate(Math.log(0.1d), site, gmm, erf, DisaggregationCalculator.getDefaultParams());
+		calc.disaggregate(Math.log(0.1d), site, gmm, erf,
+				new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF).getEnabledFilters(),
+				DisaggregationCalculator.getDefaultParams());
 		
 		System.out.println(calc.getBinData());
 		

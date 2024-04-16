@@ -62,6 +62,7 @@ import org.opensha.sha.calc.disaggregation.DisaggregationCalculator.EpsilonCateg
 import org.opensha.sha.calc.disaggregation.DisaggregationPlotData;
 import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
 import org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter;
+import org.opensha.sha.calc.params.filters.SourceFilter;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -680,11 +681,12 @@ public class SolSiteHazardCalc {
 			HazardCurveCalculator curveCalc = new HazardCurveCalculator();
 			curveCalc.setMaxSourceDistance(maxDist);
 			ParameterList calcParams = curveCalc.getAdjustableParams();
+			List<SourceFilter> sourceFilters = curveCalc.getSourceFilters();
 			for (int i=0; i<threads; i++) {
 				DisaggregationCalculator calc = new DisaggregationCalculator();
 				calc.setMagRange(magRange.getMinX(), magRange.size(), magRange.getDelta());
 				calc.setDistanceRange(distRange.getMinX(), distRange.size(), distRange.getDelta());
-				disaggThreads.add(new DisaggCalcThread(calc, calcParams,
+				disaggThreads.add(new DisaggCalcThread(calc, sourceFilters, calcParams,
 						calcThreads.get(i).gmm, disaggProbs, disaggIMLs));
 			}
 			
@@ -1832,6 +1834,7 @@ public class SolSiteHazardCalc {
 	private static class DisaggCalcThread extends Thread {
 		
 		private DisaggregationCalculator calc;
+		private List<SourceFilter> sourceFilters;
 		private ParameterList calcParams;
 		private AbstractERF erf;
 		private ScalarIMR gmm;
@@ -1840,9 +1843,10 @@ public class SolSiteHazardCalc {
 		private double[] disaggIMLs;
 		private ProgressTrack track;
 
-		public DisaggCalcThread(DisaggregationCalculator calc, ParameterList calcParams,
+		public DisaggCalcThread(DisaggregationCalculator calc, List<SourceFilter> sourceFilters, ParameterList calcParams,
 				ScalarIMR gmm, double[] disaggProbs, double[] disaggIMLs) {
 			this.calc = calc;
+			this.sourceFilters = sourceFilters;
 			this.calcParams = calcParams;
 			this.gmm = gmm;
 			this.disaggProbs = disaggProbs;
@@ -1890,7 +1894,7 @@ public class SolSiteHazardCalc {
 						isFromProb = false;
 					}
 					
-					calc.disaggregate(Math.log(iml), task.site, gmm, erf, calcParams);
+					calc.disaggregate(Math.log(iml), task.site, gmm, erf, sourceFilters, calcParams);
 					results[i] = new DisaggResult(iml, prob, isFromProb, calc.getDisaggPlotData(), calc.getTotalRate(),
 							calc.getDisaggregationSourceList(), calc.getConsolidatedDisaggregationSourceList());
 				}

@@ -90,6 +90,14 @@ public class TectonicRegionDistCutoffFilter implements SourceFilter, ParameterCh
 		cutoffs = param.getValue();
 	}
 	
-	
+	@Override
+	public String toString() {
+		return "TRT=["
+				+ "Active:"+(float)cutoffs.getCutoffDist(TectonicRegionType.ACTIVE_SHALLOW)
+				+ ", Stable:"+(float)cutoffs.getCutoffDist(TectonicRegionType.STABLE_SHALLOW)
+				+ ", Interface:"+(float)cutoffs.getCutoffDist(TectonicRegionType.SUBDUCTION_INTERFACE)
+				+ ", Slab:"+(float)cutoffs.getCutoffDist(TectonicRegionType.SUBDUCTION_SLAB)
+				+ ", Volcanic:"+(float)cutoffs.getCutoffDist(TectonicRegionType.VOLCANIC)+"]";
+	}
 
 }

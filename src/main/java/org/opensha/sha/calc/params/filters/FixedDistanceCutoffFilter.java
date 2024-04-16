@@ -38,6 +38,10 @@ public class FixedDistanceCutoffFilter implements SourceFilter, ParameterChangeL
 	public double getMaxDistance() {
 		return maxDist;
 	}
+	
+	public MaxDistanceParam getParam() {
+		return distParam;
+	}
 
 	@Override
 	public boolean canSkipSource(EqkSource source, Site site, double sourceSiteDistance) {
@@ -57,6 +61,11 @@ public class FixedDistanceCutoffFilter implements SourceFilter, ParameterChangeL
 	@Override
 	public void parameterChange(ParameterChangeEvent event) {
 		maxDist = distParam.getValue();
+	}
+	
+	@Override
+	public String toString() {
+		return "MaxDist="+(float)maxDist;
 	}
 
 }
