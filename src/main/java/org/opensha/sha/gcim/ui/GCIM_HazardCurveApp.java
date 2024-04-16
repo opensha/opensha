@@ -756,7 +756,7 @@ public class GCIM_HazardCurveApp  extends HazardCurveApplication {
 	static {
 		try {
 			System.setProperty("apple.laf.useScreenMenuBar", "true");
-		} catch (AccessControlException e1) {
+		} catch (Exception e1) {
 			System.err.println("WARNING: could not set property 'apple.laf.useScreenMenuBar'");
 		}
 //		String osName = System.getProperty("os.name");
