@@ -42,7 +42,7 @@ public class GenerateFilesForHypoRatesMaps {
 System.out.println("UCERF2");
 		MeanUCERF2 meanUCERF2 = new MeanUCERF2();
 	    // include background sources as point sources
-		meanUCERF2.setParameter(UCERF2.RUP_OFFSET_PARAM_NAME, new Double(10.0));
+		meanUCERF2.setParameter(UCERF2.RUP_OFFSET_PARAM_NAME, Double.valueOf(10.0));
 		meanUCERF2.getParameter(UCERF2.PROB_MODEL_PARAM_NAME).setValue(probModel);
 		meanUCERF2.setParameter(UCERF2.BACK_SEIS_NAME, UCERF2.BACK_SEIS_INCLUDE);
 		meanUCERF2.setParameter(UCERF2.BACK_SEIS_RUP_NAME, UCERF2.BACK_SEIS_RUP_POINT);
@@ -69,7 +69,7 @@ System.out.println("NSHMP02");
 		AbstractERF nshmp2002 = new Frankel02_AdjustableEqkRupForecast();
 	    // include background sources as point sources
 		nshmp2002.setParameter(Frankel02_AdjustableEqkRupForecast.RUP_OFFSET_PARAM_NAME,
-	                                new Double(10.0));
+	                                Double.valueOf(10.0));
 		nshmp2002.setParameter(Frankel02_AdjustableEqkRupForecast.BACK_SEIS_NAME,
 	                                Frankel02_AdjustableEqkRupForecast.BACK_SEIS_INCLUDE);
 		nshmp2002.setParameter(Frankel02_AdjustableEqkRupForecast.BACK_SEIS_RUP_NAME,

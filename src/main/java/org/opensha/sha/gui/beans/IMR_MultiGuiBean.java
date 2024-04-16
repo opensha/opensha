@@ -117,7 +117,7 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 		
 		imrEnables = new ArrayList<Boolean>();
 		for (int i=0; i<imrs.size(); i++) {
-			imrEnables.add(new Boolean(true));
+			imrEnables.add(Boolean.valueOf(true));
 		}
 
 		// TODO add make the multi imr bean handle warnings

@@ -153,11 +153,11 @@ public class HazardMapUsingGridStandaloneApplicationUsingFrankel02
     attenRel = new BJF_1997_AttenRel(this);
 
     attenRel.getParameter(SigmaTruncTypeParam.NAME).setValue(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED);
-    attenRel.getParameter(SigmaTruncLevelParam.NAME).setValue(new Double(3.0));
+    attenRel.getParameter(SigmaTruncLevelParam.NAME).setValue(Double.valueOf(3.0));
     attenRel.getParameter(ComponentParam.NAME).setValue(Component.RANDOM_HORZ);
     attenRel.getParameter(StdDevTypeParam.NAME).setValue(StdDevTypeParam.STD_DEV_TYPE_TOTAL);
     // set the vs30
-    attenRel.getParameter(Vs30_Param.NAME).setValue(new Double(760.0));
+    attenRel.getParameter(Vs30_Param.NAME).setValue(Double.valueOf(760.0));
   }
 
   /**
@@ -170,7 +170,7 @@ public class HazardMapUsingGridStandaloneApplicationUsingFrankel02
       forecastParamList.getParameter(Frankel02_AdjustableEqkRupForecast.FAULT_MODEL_NAME).setValue(Frankel02_AdjustableEqkRupForecast.FAULT_MODEL_FRANKEL);
       forecastParamList.getParameter(Frankel02_AdjustableEqkRupForecast.BACK_SEIS_NAME).setValue(Frankel02_AdjustableEqkRupForecast.BACK_SEIS_INCLUDE);
       forecastParamList.getParameter(Frankel02_AdjustableEqkRupForecast.BACK_SEIS_RUP_NAME).setValue(Frankel02_AdjustableEqkRupForecast.BACK_SEIS_RUP_FINITE);
-      forecastParamList.getParameter(Frankel02_AdjustableEqkRupForecast.RUP_OFFSET_PARAM_NAME).setValue(new Double(Frankel02_AdjustableEqkRupForecast.RUP_OFFSET_PARAM_MIN));
+      forecastParamList.getParameter(Frankel02_AdjustableEqkRupForecast.RUP_OFFSET_PARAM_NAME).setValue(Double.valueOf(Frankel02_AdjustableEqkRupForecast.RUP_OFFSET_PARAM_MIN));
     }catch(Exception e){
       e.printStackTrace();
     }
@@ -342,7 +342,7 @@ public class HazardMapUsingGridStandaloneApplicationUsingFrankel02
      for(int i = 0; i<function.size(); ++i) list.add(new String(""+function.getX(i)));
      toServlet.writeObject(list);
      // send the MAX DISTANCE
-     Double maxDistance = new Double(200.0);
+     Double maxDistance = Double.valueOf(200.0);
      toServlet.writeObject(maxDistance);
 
      //sending email address to the servlet

@@ -103,7 +103,7 @@ public class HazardProfileCalculator implements ParameterChangeWarningListener {
 			File outputDir = new File(outDir);
 			outputDir.mkdirs();
 			String outputFileName = outDir + "/" + imrID + "_" + periodFormat.format(lat) + 
-					"_" + imtString + "_vs" + (new Double(vs30)).intValue() + ".xls";
+					"_" + imtString + "_vs" + (Double.valueOf(vs30)).intValue() + ".xls";
 			// Do for First Lat
 			double twoPercentProb, tenPercentProb;
 			int colIndex=1;
@@ -167,7 +167,7 @@ public class HazardProfileCalculator implements ParameterChangeWarningListener {
 	
 	private void setupERF() {
 		meanUCERF2 = new MeanUCERF2();
-		meanUCERF2.setParameter(MeanUCERF2.RUP_OFFSET_PARAM_NAME, new Double(5.0));
+		meanUCERF2.setParameter(MeanUCERF2.RUP_OFFSET_PARAM_NAME, Double.valueOf(5.0));
 		meanUCERF2.setParameter(MeanUCERF2.CYBERSHAKE_DDW_CORR_PARAM_NAME, false);
 		meanUCERF2.setParameter(UCERF2.PROB_MODEL_PARAM_NAME, UCERF2.PROB_MODEL_POISSON);
 		meanUCERF2.setParameter(UCERF2.BACK_SEIS_NAME, UCERF2.BACK_SEIS_INCLUDE);

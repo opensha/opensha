@@ -150,9 +150,9 @@ public class NSHMP_CEUS_SourceGenerator extends GriddedRegion {
 			for(int line=0;line<getNodeCount();line++) {
 				String lineString = ratesFileBufferedReader.readLine();
 				StringTokenizer st = new StringTokenizer(lineString);
-				double lon = new Double(st.nextToken());
-				double lat = new Double(st.nextToken());
-				double val = new Double(st.nextToken());
+				double lon = Double.valueOf(st.nextToken());
+				double lat = Double.valueOf(st.nextToken());
+				double val = Double.valueOf(st.nextToken());
 				
 //				System.out.println("Lat: " + lat + " Lon: " + lon + " Val: " + val);
 
@@ -378,7 +378,7 @@ public class NSHMP_CEUS_SourceGenerator extends GriddedRegion {
 		ArrayList<Integer>  tempArrayList = new ArrayList<Integer>();
 		for(int i=0; i<this.getNodeCount(); i++) {
 			if((adapt_cn_vals[i]+adapt_cy_vals[i]) > 0)
-				tempArrayList.add(new Integer(i));
+				tempArrayList.add(Integer.valueOf(i));
 		}
 		
 //		System.out.println("num locs:"+this.getNumGridLocs()+"; num sources:"+tempArrayList.size());
@@ -429,7 +429,7 @@ public class NSHMP_CEUS_SourceGenerator extends GriddedRegion {
 			rate = 	agrd_chrls3_6p8_vals[i] + agrd_chrls3_7p1_vals[i] + agrd_chrls3_7p3_vals[i] + agrd_chrls3_7p5_vals[i] +
 					charlnA_vals[i] + charlnB_vals[i] + charlnarrow_vals[i] + charnCagrid1008_vals[i];
 			if(rate > 0)
-				tempArrayList.add(new Integer(i));
+				tempArrayList.add(Integer.valueOf(i));
 		}
 		
 //		System.out.println("num locs:"+this.getNumGridLocs()+"; num sources:"+tempArrayList.size());

@@ -126,13 +126,13 @@ public class GenerateHazusFilesControlPanel extends JFrame {
 		//Doing for SA
 		imtGuiBean.getParameterList().getParameter(imtGuiBean.IMT_PARAM_NAME).setValue(sa);
 		//Doing for SA-0.3sec
-		imtGuiBean.getParameterList().getParameter(PeriodParam.NAME).setValue(new Double(0.3));
+		imtGuiBean.getParameterList().getParameter(PeriodParam.NAME).setValue(Double.valueOf(0.3));
 		sa03_xyzdata = application.generateShakeMap();
 
 		metadata = imtGuiBean.getVisibleParameters().getParameterListMetadataString()+"<br>\n";
 
 		//Doing for SA-1.0sec
-		imtGuiBean.getParameterList().getParameter(PeriodParam.NAME).setValue(new Double(1.0));
+		imtGuiBean.getParameterList().getParameter(PeriodParam.NAME).setValue(Double.valueOf(1.0));
 		sa10_xyzdata = application.generateShakeMap();
 		metadata += imtGuiBean.getVisibleParameters().getParameterListMetadataString()+"<br>\n";
 

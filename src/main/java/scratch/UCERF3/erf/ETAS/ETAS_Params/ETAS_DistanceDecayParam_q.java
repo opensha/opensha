@@ -15,9 +15,9 @@ public class ETAS_DistanceDecayParam_q extends DoubleParameter {
 	public final static String NAME = "q - ETAS Distance Decay";
 	public final static String INFO = "The ETAS q value in the linear distance decay: (r+d)^-q";
 	private static final String UNITS = null;
-	protected final static Double MIN = new Double(1.8);
-	protected final static Double MAX = new Double(4.00);
-	public final static Double DEFAULT_VALUE = new Double(1.96);
+	protected final static Double MIN = Double.valueOf(1.8);
+	protected final static Double MAX = Double.valueOf(4.00);
+	public final static Double DEFAULT_VALUE = Double.valueOf(1.96);
 
 
 	/**

@@ -85,26 +85,26 @@ public class PointToLineSourceERF extends AbstractERF{
 	public final static String RAKE_PARAM_NAME = "Rake";
 	private final static String RAKE_PARAM_INFO = "The rake of the rupture (direction of slip)";
 	private final static String RAKE_PARAM_UNITS = "degrees";
-	private Double RAKE_PARAM_MIN = new Double(-180);
-	private Double RAKE_PARAM_MAX = new Double(180);
-	private Double RAKE_PARAM_DEFAULT = new Double(0.0);
+	private Double RAKE_PARAM_MIN = Double.valueOf(-180);
+	private Double RAKE_PARAM_MAX = Double.valueOf(180);
+	private Double RAKE_PARAM_DEFAULT = Double.valueOf(0.0);
 
 
 	// strike parameter stuff
 	public final static String STRIKE_PARAM_NAME = "Strike";
 	private final static String STRIKE_PARAM_INFO = "The strike of the rupture (put blank for random)";
 	private final static String STRIKE_PARAM_UNITS = "degrees";
-	private Double STRIKE_PARAM_MIN = new Double(-180);
-	private Double STRIKE_PARAM_MAX = new Double(180);
-	private Double STRIKE_PARAM_DEFAULT = new Double(0.0);
+	private Double STRIKE_PARAM_MIN = Double.valueOf(-180);
+	private Double STRIKE_PARAM_MAX = Double.valueOf(180);
+	private Double STRIKE_PARAM_DEFAULT = Double.valueOf(0.0);
 
 	// dip parameter stuff
 	public final static String DIP_PARAM_NAME = "Dip";
 	private final static String DIP_PARAM_INFO = "The dip of the rupture";
 	private final static String DIP_PARAM_UNITS = "degrees";
-	private Double DIP_PARAM_MIN = new Double(0);
-	private Double DIP_PARAM_MAX = new Double(90);
-	private Double DIP_PARAM_DEFAULT = new Double(90);
+	private Double DIP_PARAM_MIN = Double.valueOf(0);
+	private Double DIP_PARAM_MAX = Double.valueOf(90);
+	private Double DIP_PARAM_DEFAULT = Double.valueOf(90);
 
 	// Mag-scaling relationship parameter stuff
 	public final static String MAG_SCALING_REL_PARAM_NAME = "Mag-Scaling Relationship";
@@ -119,16 +119,16 @@ public class PointToLineSourceERF extends AbstractERF{
 	public final static String LOWER_SEIS_DEPTH_PARAM_NAME = "Lower Seis Depth";
 	private final static String LOWER_SEIS_DEPTH_PARAM_INFO = "Lower Seismogenic Depth";
 	private final static String LOWER_SEIS_DEPTH_PARAM_UNITS = "km";
-	private Double LOWER_SEIS_DEPTH_PARAM_MIN = new Double(0);
-	private Double LOWER_SEIS_DEPTH_PARAM_MAX = new Double(100);
-	private Double LOWER_SEIS_DEPTH_PARAM_DEFAULT = new Double(14);
+	private Double LOWER_SEIS_DEPTH_PARAM_MIN = Double.valueOf(0);
+	private Double LOWER_SEIS_DEPTH_PARAM_MAX = Double.valueOf(100);
+	private Double LOWER_SEIS_DEPTH_PARAM_DEFAULT = Double.valueOf(14);
 
 	// min mag parameter stuff
 	public final static String MIN_MAG_PARAM_NAME = "Min Mag";
 	private final static String MIN_MAG_PARAM_INFO = "The minimum mag to be considered from the mag freq dist";
-	private Double MIN_MAG_PARAM_MIN = new Double(0);
-	private Double MIN_MAG_PARAM_MAX = new Double(10);
-	private Double MIN_MAG_PARAM_DEFAULT = new Double(5);
+	private Double MIN_MAG_PARAM_MIN = Double.valueOf(0);
+	private Double MIN_MAG_PARAM_MAX = Double.valueOf(10);
+	private Double MIN_MAG_PARAM_DEFAULT = Double.valueOf(5);
 
 	// spokedRupturesParam
 	public final static String SPOKED_RUPTURES_PARAM_NAME = "Apply spoked source?";
@@ -137,17 +137,17 @@ public class PointToLineSourceERF extends AbstractERF{
 	// deltaStrike parameter stuff
 	public final static String NUM_STRIKE_PARAM_NAME = "Num Strikes";
 	private final static String NUM_STRIKE_PARAM_INFO = "Number of strikes for spoked source";
-	private Integer NUM_STRIKE_PARAM_MIN = new Integer(1);
-	private Integer NUM_STRIKE_PARAM_MAX = new Integer(180);
-	private Integer NUM_STRIKE_PARAM_DEFAULT = new Integer(2);
+	private Integer NUM_STRIKE_PARAM_MIN = Integer.valueOf(1);
+	private Integer NUM_STRIKE_PARAM_MAX = Integer.valueOf(180);
+	private Integer NUM_STRIKE_PARAM_DEFAULT = Integer.valueOf(2);
 
 	// min mag parameter stuff
 	public final static String FIRST_STRIKE_PARAM_NAME = "First Strike";
 	private final static String FIRST_STRIKE_PARAM_INFO = "The first strike for the spoked source";
 	private final static String FIRST_STRIKE_PARAM_UNITS = "degrees";
-	private Double FIRST_STRIKE_PARAM_MIN = new Double(0);
-	private Double FIRST_STRIKE_PARAM_MAX = new Double(90);
-	private Double FIRST_STRIKE_PARAM_DEFAULT = new Double(0);
+	private Double FIRST_STRIKE_PARAM_MIN = Double.valueOf(0);
+	private Double FIRST_STRIKE_PARAM_MAX = Double.valueOf(90);
+	private Double FIRST_STRIKE_PARAM_DEFAULT = Double.valueOf(0);
 
 	/**
 	 * Constructor for this source (no arguments)

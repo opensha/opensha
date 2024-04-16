@@ -100,12 +100,12 @@ public class KS_2006_AttenRel
   //private PropagationEffect propagationEffect;
 
   // values for warning parameters
-  protected final static Double MAG_WARN_MIN = new Double(5.0);
-  protected final static Double MAG_WARN_MAX = new Double(7.6);
-  protected final static Double DISTANCE_RUP_WARN_MIN = new Double(0.0);
-  protected final static Double DISTANCE_RUP_WARN_MAX = new Double(200.0);
-  protected final static Double VS30_WARN_MIN = new Double(150.0);
-  protected final static Double VS30_WARN_MAX = new Double(1500.0);
+  protected final static Double MAG_WARN_MIN = Double.valueOf(5.0);
+  protected final static Double MAG_WARN_MAX = Double.valueOf(7.6);
+  protected final static Double DISTANCE_RUP_WARN_MIN = Double.valueOf(0.0);
+  protected final static Double DISTANCE_RUP_WARN_MAX = Double.valueOf(200.0);
+  protected final static Double VS30_WARN_MIN = Double.valueOf(150.0);
+  protected final static Double VS30_WARN_MAX = Double.valueOf(1500.0);
 
   // for issuing warnings:
   private transient ParameterChangeWarningListener warningListener = null;
@@ -141,7 +141,7 @@ public class KS_2006_AttenRel
    */
   public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 	  
-	  magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+	  magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
 	  
 	  this.eqkRupture = eqkRupture;
 	  setPropagationEffectParams();

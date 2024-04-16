@@ -84,37 +84,37 @@ public class NewZealandERF2015_ChchAftershock extends AbstractERF{
 	//Overall consideration
 	public final static String EPISTEMIC_PARAM_NAME = "Consider Epistemic Uncertainties";
 	private final static String EPISTEMIC_PARAM_INFO = "Consideration of Epistemic Uncertainties";
-	private final static Boolean EPISTEMIC_PARAM_DEFAULT = new Boolean(false);
+	private final static Boolean EPISTEMIC_PARAM_DEFAULT = Boolean.valueOf(false);
 	private BooleanParameter epistemicParam;
 	//in length, top and bottom
 	public final static String EPISTEMIC_GEOMETRY_PARAM_NAME = "Epistemic Uncertainties in fault length, depth";
 	private final static String EPISTEMIC_GEOMETRY_PARAM_INFO = "Epistemic Uncertainties in fault length, depth";
-	private final static Boolean EPISTEMIC_GEOMETRY_PARAM_DEFAULT = new Boolean(false);
+	private final static Boolean EPISTEMIC_GEOMETRY_PARAM_DEFAULT = Boolean.valueOf(false);
 	private BooleanParameter epistemicGeometryParam;
 	//in dip
 	public final static String EPISTEMIC_DIP_PARAM_NAME = "Epistemic Uncertainties in fault dip";
 	private final static String EPISTEMIC_DIP_PARAM_INFO = "Epistemic Uncertainties in fault dip";
-	private final static Boolean EPISTEMIC_DIP_PARAM_DEFAULT = new Boolean(false);
+	private final static Boolean EPISTEMIC_DIP_PARAM_DEFAULT = Boolean.valueOf(false);
 	private BooleanParameter epistemicDipParam;
 	//in slip rate and coupling coefficient
 	public final static String EPISTEMIC_SLIP_PARAM_NAME = "Epistemic Uncertainties in fault slip rate and coupling";
 	private final static String EPISTEMIC_SLIP_PARAM_INFO = "Epistemic Uncertainties in fault slip rate and coupling";
-	private final static Boolean EPISTEMIC_SLIP_PARAM_DEFAULT = new Boolean(false);
+	private final static Boolean EPISTEMIC_SLIP_PARAM_DEFAULT = Boolean.valueOf(false);
 	private BooleanParameter epistemicSlipParam;
 	//in magnitude scaling
 	public final static String EPISTEMIC_MAGSCALING_PARAM_NAME = "Epistemic Uncertainties in Magnitude Scaling Relations";
 	private final static String EPISTEMIC_MAGSCALING_PARAM_INFO = "Epistemic Uncertainties in Magnitude Scaling Relations";
-	private final static Boolean EPISTEMIC_MAGSCALING_PARAM_DEFAULT = new Boolean(false);
+	private final static Boolean EPISTEMIC_MAGSCALING_PARAM_DEFAULT = Boolean.valueOf(false);
 	private BooleanParameter epistemicMagScalingParam;
 	//in correlation between mag scaling on different faults
 	public final static String EPISTEMIC_MAGSCALINGCORRELATION_PARAM_NAME = "Correlation of Epistemic Uncertainties in Mw Scaling on faults";
 	private final static String EPISTEMIC_MAGSCALINGCORRELATION_PARAM_INFO = "Correlation of Epistemic Uncertainties in Mw Scaling on faults";
-	private final static double EPISTEMIC_MAGSCALINGCORRELATION_PARAM_DEFAULT = new Double(0.5);
+	private final static double EPISTEMIC_MAGSCALINGCORRELATION_PARAM_DEFAULT = Double.valueOf(0.5);
 	private DoubleParameter epistemicMagScalingCorrelationParam;
 	//proportion of mag scaling uncertainty considered as aleatory 
 	public final static String EPISTEMIC_MAGSCALINGPROPORTION_PARAM_NAME = "Proportion of Mw Scaling Unc considered as epistemic (remaining aleatory)";
 	private final static String EPISTEMIC_MAGSCALINGPROPORTION_PARAM_INFO = "Proportion of Mw Scaling Unc considered as epistemic (remaining aleatory)";
-	private final static double EPISTEMIC_MAGSCALINGPROPORTION_PARAM_DEFAULT = new Double(0.5);
+	private final static double EPISTEMIC_MAGSCALINGPROPORTION_PARAM_DEFAULT = Double.valueOf(0.5);
 	private DoubleParameter epistemicMagScalingUncertaintyProportionParam;
 
 	private int numBkSources = 0;

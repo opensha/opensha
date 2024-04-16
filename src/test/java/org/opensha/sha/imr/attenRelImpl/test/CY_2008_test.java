@@ -147,14 +147,14 @@ public class CY_2008_test extends NGATest {
 				count++;
 				StringTokenizer st;
 				double mag;
-				//((WarningDoublePropagationEffectParameter)as_2008.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(new Double(rrup));
+				//((WarningDoublePropagationEffectParameter)as_2008.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(Double.valueOf(rrup));
 				double dist_jb;
 				double vs30;
 				try {
 					//System.out.println("Doing "+j+" of "+numLines);
 					st = new StringTokenizer(fileLine);
 					mag = Double.parseDouble(st.nextToken().trim());
-					((WarningDoubleParameter)cy_08.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
+					((WarningDoubleParameter)cy_08.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 
 					//Rrup is used for this one
 					double rRup = Double.parseDouble(st.nextToken().trim());
@@ -188,34 +188,34 @@ public class CY_2008_test extends NGATest {
 					}
 
 					double dip = Double.parseDouble(st.nextToken()); // dip
-					cy_08.getParameter(DipParam.NAME).setValue(new Double(dip));
+					cy_08.getParameter(DipParam.NAME).setValue(Double.valueOf(dip));
 
 					double w = Double.parseDouble(st.nextToken()); // W, width of rup plane
 					// not sure what i should do here....
 //					if (w < AS_2008_AttenRel.RUP_WIDTH_MIN)
-//						cy_08.getParameter(CY_2008_AttenRel.RUP_WIDTH_NAME).setValue(new Double(CY_2008_AttenRel.RUP_WIDTH_MIN));
+//						cy_08.getParameter(CY_2008_AttenRel.RUP_WIDTH_NAME).setValue(Double.valueOf(CY_2008_AttenRel.RUP_WIDTH_MIN));
 //					else if (w > AS_2008_AttenRel.RUP_WIDTH_MAX)
-//						cy_08.getParameter(CY_2008_AttenRel.RUP_WIDTH_NAME).setValue(new Double(CY_2008_AttenRel.RUP_WIDTH_MAX));
+//						cy_08.getParameter(CY_2008_AttenRel.RUP_WIDTH_NAME).setValue(Double.valueOf(CY_2008_AttenRel.RUP_WIDTH_MAX));
 //					else
-//						cy_08.getParameter(CY_2008_AttenRel.RUP_WIDTH_NAME).setValue(new Double(w));
-//					as_2008.getParameter(AS_2008_AttenRel.RUP_WIDTH_NAME).setValue(new Double(AS_2008_AttenRel.RUP_WIDTH_DEFAULT));
+//						cy_08.getParameter(CY_2008_AttenRel.RUP_WIDTH_NAME).setValue(Double.valueOf(w));
+//					as_2008.getParameter(AS_2008_AttenRel.RUP_WIDTH_NAME).setValue(Double.valueOf(AS_2008_AttenRel.RUP_WIDTH_DEFAULT));
 					
 
 					double ztor = Double.parseDouble(st.nextToken()); // Ztor, depth of top
-					cy_08.getParameter(RupTopDepthParam.NAME).setValue(new Double(ztor));
+					cy_08.getParameter(RupTopDepthParam.NAME).setValue(Double.valueOf(ztor));
 
 					vs30 = Double.parseDouble(st.nextToken().trim());
-					((WarningDoubleParameter)cy_08.getParameter(Vs30_Param.NAME)).setValueIgnoreWarning(new Double(vs30));
+					((WarningDoubleParameter)cy_08.getParameter(Vs30_Param.NAME)).setValueIgnoreWarning(Double.valueOf(vs30));
 
 					double zsed = Double.parseDouble(st.nextToken()); // Zsed, sediment/basin depth
-					cy_08.getParameter(DepthTo1pt0kmPerSecParam.NAME).setValue(new Double(zsed));
+					cy_08.getParameter(DepthTo1pt0kmPerSecParam.NAME).setValue(Double.valueOf(zsed));
 					
 					cy_08.setIntensityMeasure(SA_Param.NAME);
 					int num= period.length;
 					double openSHA_Val, tested_Val;
 					boolean skipTest = false;
 					for(int k=0;k<num;++k){
-						cy_08.getParameter(PeriodParam.NAME).setValue(new Double(period[k]));
+						cy_08.getParameter(PeriodParam.NAME).setValue(Double.valueOf(period[k]));
 						if(isMedian) openSHA_Val = Math.exp(cy_08.getMean());
 						else openSHA_Val = cy_08.getStdDev();
 						tested_Val = Double.parseDouble(st.nextToken().trim());

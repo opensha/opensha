@@ -12,8 +12,8 @@ public class RupTopDepthParam extends WarningDoubleParameter {
 	public final static String NAME = "Rupture Top Depth";
 	public final static String UNITS = "km";
 	public final static String INFO = "The depth to the shallowest point on the earthquake rupture surface";
-	protected final static Double MIN = new Double(0);
-	protected final static Double MAX = new Double(100);
+	protected final static Double MIN = Double.valueOf(0);
+	protected final static Double MAX = Double.valueOf(100);
 	// warning values are set in subclasses
 
 	

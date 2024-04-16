@@ -105,7 +105,7 @@ public class DeformationModelPrefDataFinal implements Serializable {
 			for(int j=0;j<faultSectionIdList.size();j++) {
 				int faultSectionId = ((Integer) faultSectionIdList.get(j)).intValue();
 				
-				faultSectionIdIndexMap.put(faultSectionId, new Integer(j));
+				faultSectionIdIndexMap.put(faultSectionId, Integer.valueOf(j));
 				slipRateList[j]=deformationModelPrefDB_DAO.getSlipRate(defModId, faultSectionId);
 				slipRateStdDevList[j]=deformationModelPrefDB_DAO.getSlipStdDev(defModId, faultSectionId);
 				aseismicSlipList[j] = deformationModelPrefDB_DAO.getAseismicSlipFactor(defModId, faultSectionId);
@@ -234,7 +234,7 @@ public class DeformationModelPrefDataFinal implements Serializable {
 					int faultSectionId = Integer.parseInt(faultSection.attributeValue("faultSectionId"));
 					faultSectionIdList.add(faultSectionId);
 					
-					faultSectionIdIndexMap.put(faultSectionId, new Integer(i));
+					faultSectionIdIndexMap.put(faultSectionId, Integer.valueOf(i));
 					slipRateList[i]=Double.parseDouble(faultSection.attributeValue("slipRate"));
 					slipRateStdDevList[i]=Double.parseDouble(faultSection.attributeValue("slipRateStdDev"));
 					aseismicSlipList[i] = Double.parseDouble(faultSection.attributeValue("aseismicSlip"));

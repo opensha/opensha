@@ -70,7 +70,7 @@ public class SimulatorEvent implements Comparable<SimulatorEvent>, Iterable<Even
 		double thatTime = event.getTime();
 		int cmp = Double.compare(thisTime, thatTime);
 		if (cmp == 0)
-			cmp = new Integer(event_id).compareTo(event.event_id);
+			cmp = Integer.valueOf(event_id).compareTo(event.event_id);
 		return cmp;
 	}
 	

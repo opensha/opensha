@@ -114,9 +114,9 @@ public class GRD_InfoFromFile {
     while(st.hasMoreTokens()){
       st.nextToken(); // reading the non-required elements from the line
       ++count; // to get the required elements from the file
-      if(count==2) x_min = (new Double(st.nextToken())).doubleValue();
-      else if(count==3) x_max = (new Double(st.nextToken())).doubleValue();
-      else if(count==4) x_inc = (new Double(st.nextToken())).doubleValue();  // the discretization interval (increment)
+      if(count==2) x_min = (Double.valueOf(st.nextToken())).doubleValue();
+      else if(count==3) x_max = (Double.valueOf(st.nextToken())).doubleValue();
+      else if(count==4) x_inc = (Double.valueOf(st.nextToken())).doubleValue();  // the discretization interval (increment)
       else if(count==5) x_units = new String(st.nextToken());
       else if(count==6) nx = Integer.parseInt(st.nextToken().toString());
     }
@@ -129,9 +129,9 @@ public class GRD_InfoFromFile {
     while(st.hasMoreTokens()){
       st.nextToken(); // reading the non-required elements from the line
       ++count; // to get the required elements from the file
-      if(count==2) y_min = (new Double(st.nextToken())).doubleValue();
-      else if(count==3) y_max = (new Double(st.nextToken())).doubleValue();
-      else if(count==4) y_inc = (new Double(st.nextToken())).doubleValue();  // the discretization interval (increment)
+      if(count==2) y_min = (Double.valueOf(st.nextToken())).doubleValue();
+      else if(count==3) y_max = (Double.valueOf(st.nextToken())).doubleValue();
+      else if(count==4) y_inc = (Double.valueOf(st.nextToken())).doubleValue();  // the discretization interval (increment)
       else if(count==5) y_units = new String(st.nextToken());
       else if(count==6) ny = Integer.parseInt(st.nextToken().toString());
     }
@@ -144,8 +144,8 @@ public class GRD_InfoFromFile {
     while(st.hasMoreTokens()){
       st.nextToken(); // reading the non-required elements from the line
       ++count; // to get the required elements from the file
-      if(count==2) z_min = (new Double(st.nextToken())).doubleValue();
-      else if(count==3) z_max = (new Double(st.nextToken())).doubleValue();
+      if(count==2) z_min = (Double.valueOf(st.nextToken())).doubleValue();
+      else if(count==3) z_max = (Double.valueOf(st.nextToken())).doubleValue();
       else if(count==4) z_units = new String(st.nextToken());
     }
 

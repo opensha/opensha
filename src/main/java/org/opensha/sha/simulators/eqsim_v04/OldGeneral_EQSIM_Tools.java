@@ -3217,7 +3217,7 @@ if(norm_tpInterval1 < 0  && goodSample) {
 		Location loc = ((RectangularElement)rectElementsList.get(497-1)).getSurface().get(0, 1);
 		plotRecurIntervalsForNearestLoc(loc, 6.5, true,"RI_distAt_NSAF_ElementID497", "");
 		
-		Integer testElementID = new Integer(661); // not sure how this was chosen
+		Integer testElementID = Integer.valueOf(661); // not sure how this was chosen
 //testElementID = null; 
 		
 		String info2 = testTimePredictability(magThresh, true, testElementID, true);

@@ -2083,7 +2083,7 @@ public class FaultSystemRupSetCalc {
 			for(int rupID : fltSystRupSet.getRupturesForSection(s)){
 				int index = constr.getIndexForMag(fltSystRupSet.getMagForRup(rupID));
 				if(ithMags.contains(index)) {
-					ithMags.remove(new Integer(index));
+					ithMags.remove(Integer.valueOf(index));
 				}
 			}
 			numCases[ithMags.size()] += 1;
@@ -2474,7 +2474,7 @@ public class FaultSystemRupSetCalc {
 //		HashMap<Integer, Integer> numParSectMFD_ConstraintMap = new HashMap<Integer, Integer>();
 //		for(Integer parID: parNameFromID_Map.keySet()) {
 //			aveParSectMFD_ConstraintMap.put(parID, new SummedMagFreqDist(minMag, numMag, deltaMag));
-//			numParSectMFD_ConstraintMap.put(parID, new Integer(0));
+//			numParSectMFD_ConstraintMap.put(parID, Integer.valueOf(0));
 //		}		
 //		
 //		// loop over all branches

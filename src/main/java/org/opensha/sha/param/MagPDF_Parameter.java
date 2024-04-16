@@ -343,46 +343,46 @@ implements java.io.Serializable
 				(String) getAllowedMagPDFs().get(0));
 
 		// make the min, delta and num Parameters
-		DoubleParameter minParameter = new DoubleParameter(MIN,new Double(0));
+		DoubleParameter minParameter = new DoubleParameter(MIN,Double.valueOf(0));
 		minParameter.setInfo(MIN_INFO);
-		DoubleParameter maxParameter = new DoubleParameter(MAX,new Double(10));
+		DoubleParameter maxParameter = new DoubleParameter(MAX,Double.valueOf(10));
 		maxParameter.setInfo(MAX_INFO);
-		IntegerParameter numParameter = new IntegerParameter(NUM, (int) 0, Integer.MAX_VALUE, new Integer(101));
+		IntegerParameter numParameter = new IntegerParameter(NUM, (int) 0, Integer.MAX_VALUE, Integer.valueOf(101));
 		numParameter.setInfo(NUM_INFO);
 
 		// Make the other common parameters (used by more than one distribution)
-		DoubleParameter magLower = new DoubleParameter(GR_MAG_LOWER, new Double(5));
+		DoubleParameter magLower = new DoubleParameter(GR_MAG_LOWER, Double.valueOf(5));
 		magLower.setInfo(GR_MAG_LOWER_INFO);
-		DoubleParameter magUpper = new DoubleParameter(GR_MAG_UPPER, new Double(8));
+		DoubleParameter magUpper = new DoubleParameter(GR_MAG_UPPER, Double.valueOf(8));
 		magUpper.setInfo(GR_MAG_UPPER_INFO);
-		DoubleParameter bValue = new DoubleParameter(GR_BVALUE,Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, new Double(1));
+		DoubleParameter bValue = new DoubleParameter(GR_BVALUE,Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY, Double.valueOf(1));
 		bValue.setInfo(BVALUE_INFO);
 
 		// add Parameters for single Mag freq dist
-		DoubleParameter mag = new DoubleParameter(MAG, new Double(8));
+		DoubleParameter mag = new DoubleParameter(MAG, Double.valueOf(8));
 
 		/**
 		 * Make parameters for Gaussian distribution
 		 */
-		DoubleParameter mean = new DoubleParameter(MEAN, new Double(8));
-		DoubleParameter stdDev = new DoubleParameter(STD_DEV, 0, Double.POSITIVE_INFINITY, new Double(0.25));
+		DoubleParameter mean = new DoubleParameter(MEAN, Double.valueOf(8));
+		DoubleParameter stdDev = new DoubleParameter(STD_DEV, 0, Double.POSITIVE_INFINITY, Double.valueOf(0.25));
 		ArrayList vStrings=new ArrayList();
 		vStrings.add(NONE);
 		vStrings.add(TRUNCATE_UPPER_ONLY);
 		vStrings.add(TRUNCATE_ON_BOTH_SIDES);
 		StringParameter truncType=new StringParameter(TRUNCATION_REQ,vStrings,TRUNCATE_UPPER_ONLY);
-		DoubleParameter truncLevel = new DoubleParameter(TRUNCATE_NUM_OF_STD_DEV, 0, Double.POSITIVE_INFINITY, new Double (1));
+		DoubleParameter truncLevel = new DoubleParameter(TRUNCATE_NUM_OF_STD_DEV, 0, Double.POSITIVE_INFINITY, Double.valueOf(1));
 
 
 		/**
 		 * Make paramters for Youngs and Coppersmith 1985 char distribution
 		 */
 		DoubleParameter deltaMagChar = new DoubleParameter(YC_DELTA_MAG_CHAR, 0,
-				Double.POSITIVE_INFINITY, new Double(1));
+				Double.POSITIVE_INFINITY, Double.valueOf(1));
 		deltaMagChar.setInfo(YC_DELTA_MAG_CHAR_INFO);
-		DoubleParameter magPrime = new DoubleParameter(YC_MAG_PRIME, new Double(7));
+		DoubleParameter magPrime = new DoubleParameter(YC_MAG_PRIME, Double.valueOf(7));
 		magPrime.setInfo(YC_MAG_PRIME_INFO);
-		DoubleParameter deltaMagPrime = new DoubleParameter(YC_DELTA_MAG_PRIME, 0, Double.POSITIVE_INFINITY, new Double(1));
+		DoubleParameter deltaMagPrime = new DoubleParameter(YC_DELTA_MAG_PRIME, 0, Double.POSITIVE_INFINITY, Double.valueOf(1));
 		deltaMagPrime.setInfo(YC_DELTA_MAG_PRIME_INFO);
 
 
@@ -509,7 +509,7 @@ implements java.io.Serializable
 				else if (truncTypeValue.equalsIgnoreCase(TRUNCATE_ON_BOTH_SIDES))
 					truncType = 2;
 
-				Double truncLevel = new Double(Double.NaN);
+				Double truncLevel = Double.valueOf(Double.NaN);
 				if (truncType != 0) {
 					truncLevel = (Double) parameterList.getParameter(TRUNCATE_NUM_OF_STD_DEV).getValue();
 					independentParamList.addParameter(parameterList.getParameter(TRUNCATE_NUM_OF_STD_DEV));

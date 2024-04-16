@@ -15,10 +15,10 @@ public class PGD_Param extends WarningDoubleParameter {
 	public final static String NAME = "PGD";
 	public final static String UNITS = "cm";
 	public final static String INFO = "Peak Ground Displacement";
-	public final static Double MIN = new Double(Math.log(Double.MIN_VALUE));
-	public final static Double MAX = new Double(Double.MAX_VALUE);
-	public final static Double DEFAULT_WARN_MIN = new Double(Math.log(Double.MIN_VALUE));
-	protected final static Double DEFAULT_WARN_MAX = new Double(Math.log(2500));
+	public final static Double MIN = Double.valueOf(Math.log(Double.MIN_VALUE));
+	public final static Double MAX = Double.valueOf(Double.MAX_VALUE);
+	public final static Double DEFAULT_WARN_MIN = Double.valueOf(Math.log(Double.MIN_VALUE));
+	protected final static Double DEFAULT_WARN_MAX = Double.valueOf(Math.log(2500));
 
 
 	/**

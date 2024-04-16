@@ -43,11 +43,11 @@ public class RunAll_PuenteHillsScenariosControlPanel {
   public RunAll_PuenteHillsScenariosControlPanel(RunAll_PuenteHillsScenariosControlPanelAPI api){
     application = api;
     //adding the magnitudes to the ArrayList List
-    magnitudes.add(new Double(7.1));
-    magnitudes.add(new Double(7.2));
-    magnitudes.add(new Double(7.3));
-    magnitudes.add(new Double(7.4));
-    magnitudes.add(new Double(7.5));
+    magnitudes.add(Double.valueOf(7.1));
+    magnitudes.add(Double.valueOf(7.2));
+    magnitudes.add(Double.valueOf(7.3));
+    magnitudes.add(Double.valueOf(7.4));
+    magnitudes.add(Double.valueOf(7.5));
 
     //adding the supported AttenuationRelationshipsName to the ArrayList List
     attenuationRelationships.add(AS_1997_AttenRel.NAME);
@@ -81,7 +81,7 @@ public class RunAll_PuenteHillsScenariosControlPanel {
       MagFreqDistParameterEditor magEditor = erfParamGuiBean.getMagDistEditor();
       magEditor.getParameter(MagFreqDistParameter.DISTRIBUTION_NAME).setValue(SingleMagFreqDist.NAME);
       magEditor.getParameter(MagFreqDistParameter.SINGLE_PARAMS_TO_SET).setValue(MagFreqDistParameter.MAG_AND_MO_RATE);
-      magEditor.getParameter(MagFreqDistParameter.MAG).setValue(new Double(((Double)magnitudes.get(i)).doubleValue()));
+      magEditor.getParameter(MagFreqDistParameter.MAG).setValue(Double.valueOf(((Double)magnitudes.get(i)).doubleValue()));
       erfParamGuiBean.getERFParameterListEditor().refreshParamEditor();
       magEditor.setMagDistFromParams();
       //updating the EQK_RupSelectorGuiBean with the Source and Rupture Index respectively.

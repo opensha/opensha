@@ -15,9 +15,9 @@ public class ETAS_TemporalDecayParam_p extends DoubleParameter {
 	public final static String NAME = "p - ETAS Temporal Decay";
 	public final static String INFO = "The ETAS p value in the temporal decay: (t+c)^-p";
 	private static final String UNITS = null;
-	protected final static Double MIN = new Double(1.00);
-	protected final static Double MAX = new Double(1.40);
-	public final static Double DEFAULT_VALUE = new Double(1.07);
+	protected final static Double MIN = Double.valueOf(1.00);
+	protected final static Double MAX = Double.valueOf(1.40);
+	public final static Double DEFAULT_VALUE = Double.valueOf(1.07);
 
 	/**
 	 * This sets the default value as given.

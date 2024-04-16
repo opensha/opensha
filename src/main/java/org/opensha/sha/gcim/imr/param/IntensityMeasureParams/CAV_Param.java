@@ -17,10 +17,10 @@ public class CAV_Param extends WarningDoubleParameter {
     public final static String NAME = "CAV"; 
     public final static String UNITS = "g.s"; 
     public final static String INFO = "Cumulative Absolute Velocity"; 
-    public final static Double MIN = new Double(Math.log(Double.MIN_VALUE)); 
-    public final static Double MAX = new Double(Double.MAX_VALUE); 
-    public final static Double DEFAULT_WARN_MIN = new Double(Math.log(Double.MIN_VALUE)); 
-    public final static Double DEFAULT_WARN_MAX = new Double(Math.log(0.3));
+    public final static Double MIN = Double.valueOf(Math.log(Double.MIN_VALUE)); 
+    public final static Double MAX = Double.valueOf(Double.MAX_VALUE); 
+    public final static Double DEFAULT_WARN_MIN = Double.valueOf(Math.log(Double.MIN_VALUE)); 
+    public final static Double DEFAULT_WARN_MAX = Double.valueOf(Math.log(0.3));
 
 
 	/**

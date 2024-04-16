@@ -105,14 +105,14 @@ public class BommerEtAl_2009_AttenRel
   //private PropagationEffect propagationEffect;
 
   // values for warning parameters
-  protected final static Double MAG_WARN_MIN = new Double(4.8);
-  protected final static Double MAG_WARN_MAX = new Double(7.9);
-  protected final static Double DISTANCE_RUP_WARN_MIN = new Double(0.0);
-  protected final static Double DISTANCE_RUP_WARN_MAX = new Double(100.0);
-  protected final static Double VS30_WARN_MIN = new Double(150.0);
-  protected final static Double VS30_WARN_MAX = new Double(1500.0);
-  protected final static Double RUP_TOP_WARN_MIN = new Double(0);
-  protected final static Double RUP_TOP_WARN_MAX = new Double(15);
+  protected final static Double MAG_WARN_MIN = Double.valueOf(4.8);
+  protected final static Double MAG_WARN_MAX = Double.valueOf(7.9);
+  protected final static Double DISTANCE_RUP_WARN_MIN = Double.valueOf(0.0);
+  protected final static Double DISTANCE_RUP_WARN_MAX = Double.valueOf(100.0);
+  protected final static Double VS30_WARN_MIN = Double.valueOf(150.0);
+  protected final static Double VS30_WARN_MAX = Double.valueOf(1500.0);
+  protected final static Double RUP_TOP_WARN_MIN = Double.valueOf(0);
+  protected final static Double RUP_TOP_WARN_MAX = Double.valueOf(15);
 
   // for issuing warnings:
   private transient ParameterChangeWarningListener warningListener = null;
@@ -149,7 +149,7 @@ public class BommerEtAl_2009_AttenRel
    */
   public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 	  
-	  magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+	  magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
 	  rupTopDepthParam.setValueIgnoreWarning(eqkRupture.getRuptureSurface().getAveRupTopDepth());
 	  
 	  this.eqkRupture = eqkRupture;

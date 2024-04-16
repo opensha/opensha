@@ -614,7 +614,7 @@ public class WarningIntegerParameter extends IntegerParameter implements
 
         WarningIntegerParameter param = null;
         if( value == null ) param = new WarningIntegerParameter( name, c1, units);
-        else param = new WarningIntegerParameter( name, c1, units, new Integer( this.value.toString() )  );
+        else param = new WarningIntegerParameter( name, c1, units, Integer.valueOf( this.value.toString() )  );
         if( param == null ) return null;
 
         param.setWarningConstraint(c2);

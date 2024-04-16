@@ -57,7 +57,7 @@ public class TimeGuiBean extends LabeledBoxPanel implements ParameterChangeListe
   private final static String AD = "AD";
   private final static String BC = "BC";
   private final static String KA = "ka";
-  private final static Integer YEAR1950 = new Integer(1950);
+  private final static Integer YEAR1950 = Integer.valueOf(1950);
 
   private final static String YEARS = "Years";
   private final static String PUBLICATION_YEAR_PARAM_NAME = "Publication Year";
@@ -133,7 +133,7 @@ public class TimeGuiBean extends LabeledBoxPanel implements ParameterChangeListe
     timeOptionsParam.setValue(NOW);
     int year = exactTime.getYear();
     if(year!=DEFAULT_PUB_YEAR_VAL){
-      this.publicationYearParam.setValue(new Integer(year));
+      this.publicationYearParam.setValue(Integer.valueOf(year));
       publicationYearParamEditor.refreshParamEditor();
     }
   }
@@ -156,7 +156,7 @@ public class TimeGuiBean extends LabeledBoxPanel implements ParameterChangeListe
     eraParamEditor.refreshParamEditor();
     if(timeEstimate.isKaSelected()) {
       this.yearUnitsParam.setValue(KA);
-      zeroYearParam.setValue(new Integer(timeEstimate.getZeroYear()));
+      zeroYearParam.setValue(Integer.valueOf(timeEstimate.getZeroYear()));
       zeroYearParamEditor.refreshParamEditor();
     } else yearUnitsParam.setValue(this.CALENDAR_YEAR);
      yearUnitsParamEditor.refreshParamEditor();
@@ -167,7 +167,7 @@ public class TimeGuiBean extends LabeledBoxPanel implements ParameterChangeListe
    * @param year
    */
   public void setNowYearVal(int year) {
-    this.publicationYearParam.setValue(new Integer(year));
+    this.publicationYearParam.setValue(Integer.valueOf(year));
     this.publicationYearParamEditor.refreshParamEditor();
   }
 
@@ -338,8 +338,8 @@ public class TimeGuiBean extends LabeledBoxPanel implements ParameterChangeListe
     } else { // "Now" is selected
       Integer pubYearVal = (Integer)this.publicationYearParam.getValue();
       // if publication year not available, set the current year as NOW
-      if(pubYearVal==null) //pubYearVal = new Integer(new GregorianCalendar().get(Calendar.YEAR));
-        pubYearVal = new Integer(DEFAULT_PUB_YEAR_VAL);
+      if(pubYearVal==null) //pubYearVal = Integer.valueOf(new GregorianCalendar().get(Calendar.YEAR));
+        pubYearVal = Integer.valueOf(DEFAULT_PUB_YEAR_VAL);
       timeAPI = new ExactTime(pubYearVal.intValue(), 0, 0, 0, 0, 0, AD, true);
     }
     return timeAPI;

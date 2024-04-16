@@ -23,7 +23,7 @@ public class SegmentRecurIntv {
 	 * @param recurIntv
 	 */
 	public void addMeanRecurIntv(double recurIntv) {
-		meanRecurIntv.add(new Double(recurIntv));
+		meanRecurIntv.add(Double.valueOf(recurIntv));
 	}
 	
 	/**
@@ -31,7 +31,7 @@ public class SegmentRecurIntv {
 	 * @param recurIntv
 	 */
 	public void addLowRecurIntv(double recurIntv) {
-		lowRecurIntv.add(new Double(recurIntv));
+		lowRecurIntv.add(Double.valueOf(recurIntv));
 	}
 	
 	/**
@@ -39,7 +39,7 @@ public class SegmentRecurIntv {
 	 * @param recurIntv
 	 */
 	public void addHighRecurIntv(double recurIntv) {
-		highRecurIntv.add(new Double(recurIntv));
+		highRecurIntv.add(Double.valueOf(recurIntv));
 	}
 	
 	/**

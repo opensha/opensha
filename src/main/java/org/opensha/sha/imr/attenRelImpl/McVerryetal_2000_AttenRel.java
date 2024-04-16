@@ -156,12 +156,12 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
   private boolean parameterChange;
   private String tecRegType;
   
-  protected final static Double MAG_WARN_MIN = new Double(5.0);
-  protected final static Double MAG_WARN_MAX = new Double(8.5);
-  protected final static Double DISTANCE_RUP_WARN_MIN = new Double(0.0);
-  protected final static Double DISTANCE_RUP_WARN_MAX = new Double(400.0);
-  protected final static Double FOCALDEPTH_WARN_MIN = new Double(0.0);
-  protected final static Double FOCALDEPTH_WARN_MAX = new Double(100.0);
+  protected final static Double MAG_WARN_MIN = Double.valueOf(5.0);
+  protected final static Double MAG_WARN_MAX = Double.valueOf(8.5);
+  protected final static Double DISTANCE_RUP_WARN_MIN = Double.valueOf(0.0);
+  protected final static Double DISTANCE_RUP_WARN_MAX = Double.valueOf(400.0);
+  protected final static Double FOCALDEPTH_WARN_MIN = Double.valueOf(0.0);
+  protected final static Double FOCALDEPTH_WARN_MAX = Double.valueOf(100.0);
   
   /**
    * Site Type Parameter ("Rock/Shallow-Soil" versus "Deep-Soil")
@@ -205,7 +205,7 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
     initSupportedIntensityMeasureParams();
     indexFromPerHashMap = new HashMap();
     for (int i = 1; i < period.length ; i++) {
-      indexFromPerHashMap.put(new Double(period[i]), new Integer(i));
+      indexFromPerHashMap.put(Double.valueOf(period[i]), Integer.valueOf(i));
     }
 
     initEqkRuptureParams();
@@ -229,7 +229,7 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
    */
   public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 
-    magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+    magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
     setFaultTypeFromRake(eqkRupture.getAveRake());
     this.eqkRupture = eqkRupture;
     setPropagationEffectParams();
@@ -252,7 +252,7 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
 		hypoLon = hypoLon / cnt;
 		hypoLat = hypoLat / cnt;
 		hypoDep = hypoDep / cnt;
-		focalDepthParam.setValueIgnoreWarning(new Double(hypoDep));
+		focalDepthParam.setValueIgnoreWarning(Double.valueOf(hypoDep));
     }
     
 
@@ -501,7 +501,7 @@ public class McVerryetal_2000_AttenRel extends AttenuationRelationship implement
 	    // Create saParam:
 	    DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint();
 	    for (int i = 2; i < period.length; i++) {
-	      periodConstraint.addDouble(new Double(period[i]));
+	      periodConstraint.addDouble(Double.valueOf(period[i]));
 	    }
 	    periodConstraint.setNonEditable();
 		saPeriodParam = new PeriodParam(periodConstraint);

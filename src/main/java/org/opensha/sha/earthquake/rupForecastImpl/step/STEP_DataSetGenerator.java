@@ -136,8 +136,8 @@ public class STEP_DataSetGenerator implements ParameterChangeWarningListener{
       //adding the numSites to the lat and Lon ArrayList
       for(int i=0;i<numSites;++i){
 
-        latVals[i]=(new Double(format.format(sites.getSite(i).getLocation().getLatitude()))).doubleValue();
-        lonVals[i]=(new Double(format.format(sites.getSite(i).getLocation().getLongitude()))).doubleValue();
+        latVals[i]=(Double.valueOf(format.format(sites.getSite(i).getLocation().getLatitude()))).doubleValue();
+        lonVals[i]=(Double.valueOf(format.format(sites.getSite(i).getLocation().getLongitude()))).doubleValue();
       }
       currentTime = System.currentTimeMillis();
       fw.write("Time to create Lat and Lon ArrayList :"+(currentTime - startTime)+"\n");
@@ -1287,9 +1287,9 @@ public class STEP_DataSetGenerator implements ParameterChangeWarningListener{
         st.nextToken();
         String val =st.nextToken().trim();
         if(!val.equalsIgnoreCase("NaN"))
-          vals[i++]=(new Double(val)).doubleValue();
+          vals[i++]=(Double.valueOf(val)).doubleValue();
         else
-          vals[i++]=(new Double(Double.NaN)).doubleValue();
+          vals[i++]=(Double.valueOf(Double.NaN)).doubleValue();
       }
     }catch(Exception e){
       e.printStackTrace();
@@ -1423,7 +1423,7 @@ public class STEP_DataSetGenerator implements ParameterChangeWarningListener{
       else
         hazVal = 0.0;
       //System.out.println("HazVal: "+hazVal);
-      probVals.add(new Double(hazVal));
+      probVals.add(Double.valueOf(hazVal));
     }
 
     return probVals;

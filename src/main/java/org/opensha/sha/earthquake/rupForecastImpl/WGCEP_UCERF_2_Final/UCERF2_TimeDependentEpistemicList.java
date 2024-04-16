@@ -33,7 +33,7 @@ public class UCERF2_TimeDependentEpistemicList extends UCERF2_TimeIndependentEpi
 	 */
 	protected void fillLogicTreeParams() {
 		
-		ucerf2.getParameter(UCERF2.SEG_DEP_APERIODICITY_PARAM_NAME).setValue(new Boolean(false));
+		ucerf2.getParameter(UCERF2.SEG_DEP_APERIODICITY_PARAM_NAME).setValue(Boolean.valueOf(false));
 		this.logicTreeParamNames = new ArrayList<String>();
 		this.logicTreeParamValues = new ArrayList<ParamOptions>();
 		
@@ -65,22 +65,22 @@ public class UCERF2_TimeDependentEpistemicList extends UCERF2_TimeIndependentEpi
 		// Aprioti wt param
 		logicTreeParamNames.add(UCERF2.REL_A_PRIORI_WT_PARAM_NAME);
 		options = new ParamOptions();
-		options.addValueWeight(new Double(1e-4), 0.5);
-		options.addValueWeight(new Double(1e10), 0.5);
+		options.addValueWeight(Double.valueOf(1e-4), 0.5);
+		options.addValueWeight(Double.valueOf(1e10), 0.5);
 		logicTreeParamValues.add(options);
 		
 		//	Connect More B-Faults?
 		logicTreeParamNames.add(UCERF2.CONNECT_B_FAULTS_PARAM_NAME);
 		options = new ParamOptions();
-		options.addValueWeight(new Boolean(true), 0.5);
-		options.addValueWeight(new Boolean(false), 0.5);
+		options.addValueWeight(Boolean.valueOf(true), 0.5);
+		options.addValueWeight(Boolean.valueOf(false), 0.5);
 		logicTreeParamValues.add(options);
 		
 		// B-Fault bValue=0
 		logicTreeParamNames.add(UCERF2.B_FAULTS_B_VAL_PARAM_NAME);
 		options = new ParamOptions();
-		options.addValueWeight(new Double(0.8), 0.5);
-		options.addValueWeight(new Double(0.0), 0.5);
+		options.addValueWeight(Double.valueOf(0.8), 0.5);
+		options.addValueWeight(Double.valueOf(0.0), 0.5);
 		logicTreeParamValues.add(options);
 		
 		// Prob Model
@@ -94,9 +94,9 @@ public class UCERF2_TimeDependentEpistemicList extends UCERF2_TimeIndependentEpi
 		//	BPT parameter setting
 		logicTreeParamNames.add(UCERF2.APERIODICITY_PARAM_NAME);
 		options = new ParamOptions();
-		options.addValueWeight(new Double(0.3), 0.2);
-		options.addValueWeight(new Double(0.5), 0.5);
-		options.addValueWeight(new Double(0.7), 0.3);
+		options.addValueWeight(Double.valueOf(0.3), 0.2);
+		options.addValueWeight(Double.valueOf(0.5), 0.5);
+		options.addValueWeight(Double.valueOf(0.7), 0.3);
 		logicTreeParamValues.add(options);
 	}
 	

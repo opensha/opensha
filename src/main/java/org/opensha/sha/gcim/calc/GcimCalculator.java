@@ -735,7 +735,7 @@ public class GcimCalculator {
 	
 	private static void setSAPeriodInIMR(ScalarIMR imr, double period) {
 		((Parameter<Double>)imr.getIntensityMeasure())
-		.getIndependentParameter(PeriodParam.NAME).setValue(new Double(period));
+		.getIndependentParameter(PeriodParam.NAME).setValue(Double.valueOf(period));
 	}
 	
 	/**

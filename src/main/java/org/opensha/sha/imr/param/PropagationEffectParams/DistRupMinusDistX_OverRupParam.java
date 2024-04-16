@@ -15,9 +15,9 @@ public class DistRupMinusDistX_OverRupParam extends DoubleParameter {
 
 	public final static String NAME = "(distRup-distX)/distRup";
 	public final static String INFO = "(DistanceRup - DistanceX)/DistanceRup";
-	public final static Double MIN = new Double(Double.NEGATIVE_INFINITY);
-	public final static Double MAX = new Double(Double.POSITIVE_INFINITY);
-//	public final static Double DEFAULT = new Double(0.0);
+	public final static Double MIN = Double.valueOf(Double.NEGATIVE_INFINITY);
+	public final static Double MAX = Double.valueOf(Double.POSITIVE_INFINITY);
+//	public final static Double DEFAULT = Double.valueOf(0.0);
 
 	/**
 	 * This sets the default value as given, and sets the parameter as

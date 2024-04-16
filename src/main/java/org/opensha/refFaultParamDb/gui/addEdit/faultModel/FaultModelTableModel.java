@@ -32,9 +32,9 @@ public class FaultModelTableModel extends DefaultTableModel {
     	this.faultSectionsList = faultSectionsList;
     	isSelectedRow = new Boolean[faultSectionsList.size()];
     	for(int i=0; i<isSelectedRow.length; ++i)  {
-    		isSelectedRow[i] = new Boolean(false);
+    		isSelectedRow[i] = Boolean.valueOf(false);
     		FaultSectionSummary faultSectionSummary = (FaultSectionSummary)faultSectionsList.get(i);
-    		sectionId_RowIdMapping.put(new Integer(faultSectionSummary.getSectionId()), new Integer(i) );
+    		sectionId_RowIdMapping.put(Integer.valueOf(faultSectionSummary.getSectionId()), Integer.valueOf(i) );
     	}
     		
     }
@@ -83,8 +83,8 @@ public class FaultModelTableModel extends DefaultTableModel {
        * @param val
        */
       public void setSelected(int faultSectionId, boolean val) {
-    	  int row = ((Integer)this.sectionId_RowIdMapping.get(new Integer(faultSectionId))).intValue();
-    	  setValueAt(new Boolean(val), row, 0);
+    	  int row = ((Integer)this.sectionId_RowIdMapping.get(Integer.valueOf(faultSectionId))).intValue();
+    	  setValueAt(Boolean.valueOf(val), row, 0);
       }
       
       /**
@@ -96,7 +96,7 @@ public class FaultModelTableModel extends DefaultTableModel {
     	  ArrayList selectedSectionsList = new ArrayList();
     	  for(int i=0; i<numRows; ++i) {
     		  if(this.isSelectedRow[i].booleanValue()) {
-    			  selectedSectionsList.add(new Integer(((FaultSectionSummary)this.faultSectionsList.get(i)).getSectionId()));
+    			  selectedSectionsList.add(Integer.valueOf(((FaultSectionSummary)this.faultSectionsList.get(i)).getSectionId()));
     		  }
     	  }
     	  return selectedSectionsList;

@@ -19,26 +19,26 @@ public class ExactTimeGuiBean extends ParameterListEditor{
     public final static String YEAR_PARAM_NAME = "Year";
     private IntegerParameter yearParam;
     private IntegerConstraint yearConstraint = new IntegerConstraint(0,Integer.MAX_VALUE);
-    private final static Integer YEAR_PARAM_DEFAULT = new Integer(2005);
+    private final static Integer YEAR_PARAM_DEFAULT = Integer.valueOf(2005);
     public final static String MONTH_PARAM_NAME = "Month";
     private IntegerParameter monthParam;
     private IntegerConstraint monthConstraint = new IntegerConstraint(1,12);
-    private final static Integer MONTH_PARAM_DEFAULT = new Integer(1);
+    private final static Integer MONTH_PARAM_DEFAULT = Integer.valueOf(1);
     public final static String DAY_PARAM_NAME = "Day";
     private IntegerParameter dayParam;
-    private final static Integer DAY_PARAM_DEFAULT = new Integer(1);
+    private final static Integer DAY_PARAM_DEFAULT = Integer.valueOf(1);
     private IntegerConstraint dayConstraint = new IntegerConstraint(1,31);
     public final static String HOUR_PARAM_NAME = "Hour";
     private IntegerParameter hourParam;
-    private final static Integer HOUR_PARAM_DEFAULT = new Integer(0);
+    private final static Integer HOUR_PARAM_DEFAULT = Integer.valueOf(0);
     private IntegerConstraint hourConstraint = new IntegerConstraint(0,59);
     public final static String MINUTE_PARAM_NAME = "Minute";
     private IntegerParameter minuteParam;
-    private final static Integer MINUTE_PARAM_DEFAULT = new Integer(0);
+    private final static Integer MINUTE_PARAM_DEFAULT = Integer.valueOf(0);
     private IntegerConstraint minuteConstraint = new IntegerConstraint(0,59);
     public final static String SECOND_PARAM_NAME = "Second";
     private IntegerParameter secondParam;
-    private final static Integer SECOND_PARAM_DEFAULT = new Integer(0);
+    private final static Integer SECOND_PARAM_DEFAULT = Integer.valueOf(0);
     private IntegerConstraint secondConstraint = new IntegerConstraint(0,59);
 
   public ExactTimeGuiBean(String title) {
@@ -61,31 +61,31 @@ public class ExactTimeGuiBean extends ParameterListEditor{
     int second = exactTime.getSecond();
 
     // set year
-    yearParam.setValue(new Integer(exactTime.getYear()));
+    yearParam.setValue(Integer.valueOf(exactTime.getYear()));
     getParameterEditor(yearParam.getName()).refreshParamEditor();
     //set month
     if(month!=0){
-      monthParam.setValue(new Integer(month));
+      monthParam.setValue(Integer.valueOf(month));
       getParameterEditor(monthParam.getName()).refreshParamEditor();
     }
     //set day
     if(day!=0){
-      dayParam.setValue(new Integer(day));
+      dayParam.setValue(Integer.valueOf(day));
       getParameterEditor(dayParam.getName()).refreshParamEditor();
     }
     //set hour
     if(hour!=0){
-      hourParam.setValue(new Integer(hour));
+      hourParam.setValue(Integer.valueOf(hour));
       getParameterEditor(hourParam.getName()).refreshParamEditor();
     }
     //set minute
     if(minute!=0){
-      minuteParam.setValue(new Integer(minute));
+      minuteParam.setValue(Integer.valueOf(minute));
       getParameterEditor(minuteParam.getName()).refreshParamEditor();
     }
      //set second
     if(second!=0){
-      secondParam.setValue(new Integer(second));
+      secondParam.setValue(Integer.valueOf(second));
       getParameterEditor(secondParam.getName()).refreshParamEditor();
     }
 

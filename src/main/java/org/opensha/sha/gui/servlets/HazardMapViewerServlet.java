@@ -256,8 +256,8 @@ public class HazardMapViewerServlet  extends HttpServlet {
 					if(firstIndex != lastIndex){
 
 						//getting the lat and Lon values from file names
-						Double latVal = new Double(fileName.substring(0,index).trim());
-						Double lonVal = new Double(fileName.substring(index+1,lastIndex).trim());
+						Double latVal = Double.valueOf(fileName.substring(0,index).trim());
+						Double lonVal = Double.valueOf(fileName.substring(index+1,lastIndex).trim());
 						//Adding the Latitude from the file name to the list if not already there
 						if(!latList.contains(latVal))
 							latList.add(latVal);

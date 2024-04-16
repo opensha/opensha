@@ -54,9 +54,9 @@ public class PoissonFaultERF extends AbstractERF{
   public final static String RAKE_PARAM_NAME = "Rake";
   private final static String RAKE_PARAM_INFO = "The rake of the rupture (direction of slip)";
   private final static String RAKE_PARAM_UNITS = "degrees";
-  private Double RAKE_PARAM_MIN = new Double(-180);
-  private Double RAKE_PARAM_MAX = new Double(180);
-  private Double RAKE_PARAM_DEFAULT = new Double(0.0);
+  private Double RAKE_PARAM_MIN = Double.valueOf(-180);
+  private Double RAKE_PARAM_MAX = Double.valueOf(180);
+  private Double RAKE_PARAM_DEFAULT = Double.valueOf(0.0);
 
   // parameter declarations
   MagFreqDistParameter magDistParam;

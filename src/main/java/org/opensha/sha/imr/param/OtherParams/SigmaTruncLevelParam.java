@@ -14,9 +14,9 @@ public class SigmaTruncLevelParam extends DoubleParameter {
 	public final static String NAME = "Truncation Level";
 	public final static String UNITS = "Std Dev";
 	public final static String INFO = "The number of standard deviations, from the mean, where truncation occurs";
-	public final static Double DEFAULT = new Double(2.0);
-	public final static Double MIN = new Double(Double.MIN_VALUE);
-	public final static Double MAX = new Double(Double.MAX_VALUE);
+	public final static Double DEFAULT = Double.valueOf(2.0);
+	public final static Double MIN = Double.valueOf(Double.MIN_VALUE);
+	public final static Double MAX = Double.valueOf(Double.MAX_VALUE);
 
 	/**
 	 * This constructor sets the default as given, and leaves the

@@ -84,23 +84,23 @@ public class Field_2000_AttenRel extends AttenuationRelationship {
 	public final static String BASIN_DEPTH_UNITS = "km";
 	public final static String BASIN_DEPTH_INFO =
 		"Depth to 2.5 km/sec S-wave-velocity isosurface, from SCEC Phase III Report";
-	protected final static Double BASIN_DEPTH_DEFAULT = new Double(0.0);
-	protected final static Double BASIN_DEPTH_MIN = new Double(0);
-	protected final static Double BASIN_DEPTH_MAX = new Double(30);
-	//protected final static Double BASIN_DEPTH_WARN_MIN = new Double(0);
-	//protected final static Double BASIN_DEPTH_WARN_MAX = new Double(10);
+	protected final static Double BASIN_DEPTH_DEFAULT = Double.valueOf(0.0);
+	protected final static Double BASIN_DEPTH_MIN = Double.valueOf(0);
+	protected final static Double BASIN_DEPTH_MAX = Double.valueOf(30);
+	//protected final static Double BASIN_DEPTH_WARN_MIN = Double.valueOf(0);
+	//protected final static Double BASIN_DEPTH_WARN_MAX = Double.valueOf(10);
 
 	// warning constraint fields:
-	protected final static Double VS30_WARN_MIN = new Double(180.0);
-	protected final static Double VS30_WARN_MAX = new Double(3500.0);
-	protected final static Double MAG_WARN_MIN = new Double(5.0);
-	protected final static Double MAG_WARN_MAX = new Double(8.0);
+	protected final static Double VS30_WARN_MIN = Double.valueOf(180.0);
+	protected final static Double VS30_WARN_MAX = Double.valueOf(3500.0);
+	protected final static Double MAG_WARN_MIN = Double.valueOf(5.0);
+	protected final static Double MAG_WARN_MAX = Double.valueOf(8.0);
 
 	/**
 	 * Joyner-Boore Distance parameter
 	 */
-	protected final static Double DISTANCE_JB_WARN_MIN = new Double(0.0);
-	protected final static Double DISTANCE_JB_WARN_MAX = new Double(150.0);
+	protected final static Double DISTANCE_JB_WARN_MIN = Double.valueOf(0.0);
+	protected final static Double DISTANCE_JB_WARN_MAX = Double.valueOf(150.0);
 
 	/**
 	 * The current set of coefficients based on the selected intensityMeasure
@@ -142,7 +142,7 @@ public class Field_2000_AttenRel extends AttenuationRelationship {
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 
-		magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
 		setFaultTypeFromRake(eqkRupture.getAveRake());
 		this.eqkRupture = eqkRupture;
 		setPropagationEffectParams();
@@ -509,7 +509,7 @@ public class Field_2000_AttenRel extends AttenuationRelationship {
 			Field_2000_AttenRelCoefficients coeff = (Field_2000_AttenRelCoefficients)
 			coefficients.get(keys.nextElement());
 			if (coeff.period >= 0) {
-				set.add(new Double(coeff.period));
+				set.add(Double.valueOf(coeff.period));
 			}
 		}
 		Iterator it = set.iterator();
@@ -597,25 +597,25 @@ public class Field_2000_AttenRel extends AttenuationRelationship {
 		// SA/0.00
 		Field_2000_AttenRelCoefficients coeff0 = new
 		Field_2000_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("0.0")).doubleValue(),
+				(Double.valueOf("0.0")).doubleValue(),
 				0.0, 0.853, 0.872, 0.442, -0.067,
 				-0.960, -0.154, 8.90, 0.067, -0.14,
 				-0.1, 0.8771, 0.23, 0.47);
 		// SA/0.3
 		Field_2000_AttenRelCoefficients coeff1 = new
-		Field_2000_AttenRelCoefficients("SA/" + (new Double("0.3")).doubleValue(),
+		Field_2000_AttenRelCoefficients("SA/" + (Double.valueOf("0.3")).doubleValue(),
 				0.3, 0.995, 1.096, 0.501, -0.112,
 				-0.841, -0.350, 7.20, 0.057, -0.12,
 				-0.11, 0.9924, 0.26, 0.53);
 		// SA/1.0
 		Field_2000_AttenRelCoefficients coeff2 = new
-		Field_2000_AttenRelCoefficients("SA/" + (new Double("1.0")).doubleValue(),
+		Field_2000_AttenRelCoefficients("SA/" + (Double.valueOf("1.0")).doubleValue(),
 				1.0, -0.164, -0.267, 0.903, 0.0, -0.914,
 				-0.704, 6.20, 0.12, -0.25, -0.1, 0.9516,
 				0.22, 0.53);
 		// SA/3.0
 		Field_2000_AttenRelCoefficients coeff3 = new
-		Field_2000_AttenRelCoefficients("SA/" + (new Double("3.0")).doubleValue(),
+		Field_2000_AttenRelCoefficients("SA/" + (Double.valueOf("3.0")).doubleValue(),
 				3.0, -2.267, -2.681, 1.083, 0.0, -0.720,
 				-0.674, 3.00, 0.11, -0.18, 0.14, -0.66,
 				0.3, 0.52);

@@ -53,8 +53,8 @@ public class PrefFaultSectionDataFinal implements Serializable {
 		for (Integer num : faultNums) {
 			int i = num;
 //			System.out.println("Testint fault " + i);
-			FaultSectionPrefData dbFault = (FaultSectionPrefData)dbFaultSectionsList.get((Integer)dbMap.get(new Integer(i)));
-			FaultSectionPrefData fileFault = (FaultSectionPrefData)faultSectionsList.get((Integer)dbMap.get(new Integer(i)));
+			FaultSectionPrefData dbFault = (FaultSectionPrefData)dbFaultSectionsList.get((Integer)dbMap.get(Integer.valueOf(i)));
+			FaultSectionPrefData fileFault = (FaultSectionPrefData)faultSectionsList.get((Integer)dbMap.get(Integer.valueOf(i)));
 			
 			if (dbFault.getSectionId() != fileFault.getSectionId())
 				System.out.println("ERROR: Id's not equal!");
@@ -135,10 +135,10 @@ public class PrefFaultSectionDataFinal implements Serializable {
 			
 			root = fspd.toXMLMetadata(root);
 			
-			indexForID_Map.put(fspd.getSectionId(), new Integer(i));
-			dbMap.put(fspd.getSectionId(), new Integer(i));
+			indexForID_Map.put(fspd.getSectionId(), Integer.valueOf(i));
+			dbMap.put(fspd.getSectionId(), Integer.valueOf(i));
 //			System.out.println(fspd.getSectionId()+"\t"+fspd.getSectionName());
-			faultNums.add(new Integer(fspd.getSectionId()));
+			faultNums.add(Integer.valueOf(fspd.getSectionId()));
 			dbFaultSectionsList.add(fspd);
 		}
 		
@@ -192,7 +192,7 @@ public class PrefFaultSectionDataFinal implements Serializable {
 			
 			for (int i=0; i<faultSectionsList.size(); i++) {
 				FaultSectionPrefData fspd = faultSectionsList.get(i);
-				indexForID_Map.put(fspd.getSectionId(), new Integer(i));
+				indexForID_Map.put(fspd.getSectionId(), Integer.valueOf(i));
 			}
 		} catch (DocumentException e) {
 			// TODO Auto-generated catch block

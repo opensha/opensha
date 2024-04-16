@@ -15,7 +15,7 @@ public class MaxDistanceParam extends DoubleParameter {
 	public final static String INFO = "Earthquake Ruptures beyond this distance are ignored";
 	public final static double MIN = 0;
 	public final static double MAX = 40000;
-	public final static Double DEFAULT = new Double(200);
+	public final static Double DEFAULT = Double.valueOf(200);
 	
 	public MaxDistanceParam() throws ConstraintException {
 		super(NAME, MIN, MAX, UNITS, DEFAULT);

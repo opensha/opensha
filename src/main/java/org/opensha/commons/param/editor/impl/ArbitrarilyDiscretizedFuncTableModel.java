@@ -209,10 +209,10 @@ public class ArbitrarilyDiscretizedFuncTableModel extends AbstractTableModel {
 	public Object getValueAt(int rowIndex, int columnIndex) {
 		if (columnIndex == 0) {
 			// X
-			return new Double(func.getX(rowIndex));
+			return Double.valueOf(func.getX(rowIndex));
 		} else {
 			// Y
-			return new Double(func.getY(rowIndex));
+			return Double.valueOf(func.getY(rowIndex));
 		}
 	}
 

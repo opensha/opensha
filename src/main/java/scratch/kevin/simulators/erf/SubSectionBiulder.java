@@ -213,7 +213,7 @@ public class SubSectionBiulder {
 
 		@Override
 		public int compare(SimulatorElement o1, SimulatorElement o2) {
-			return new Integer(o1.getNumAlongStrike()).compareTo(o2.getNumAlongStrike());
+			return Integer.valueOf(o1.getNumAlongStrike()).compareTo(o2.getNumAlongStrike());
 		}
 		
 	}
@@ -222,7 +222,7 @@ public class SubSectionBiulder {
 
 		@Override
 		public int compare(SimulatorElement o1, SimulatorElement o2) {
-			return new Integer(o1.getNumDownDip()).compareTo(o2.getNumDownDip());
+			return Integer.valueOf(o1.getNumDownDip()).compareTo(o2.getNumDownDip());
 		}
 		
 	}

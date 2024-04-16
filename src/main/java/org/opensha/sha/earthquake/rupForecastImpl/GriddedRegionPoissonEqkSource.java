@@ -116,8 +116,8 @@ public class GriddedRegionPoissonEqkSource extends ProbEqkSource implements java
 
     for (int i=0; i<magFreqDist.size(); ++i){
         if(magFreqDist.getY(i) > 0 && magFreqDist.getX(i) >= minMag){
-          mags.add(new Double(magFreqDist.getX(i)));
-          rates.add(new Double(magFreqDist.getY(i)/numLocs));   // normalized by numLocs!
+          mags.add(Double.valueOf(magFreqDist.getX(i)));
+          rates.add(Double.valueOf(magFreqDist.getY(i)/numLocs));   // normalized by numLocs!
         }
     }
     this.numMags = mags.size();

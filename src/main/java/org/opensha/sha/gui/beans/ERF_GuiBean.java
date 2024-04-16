@@ -114,7 +114,7 @@ ParameterChangeListener{
 
 		@Override
 		public int compare(ERF_Ref o1, ERF_Ref o2) {
-			int priorityComp = new Integer(o1.status().priority()).compareTo(o2.status().priority());
+			int priorityComp = Integer.valueOf(o1.status().priority()).compareTo(o2.status().priority());
 			if (priorityComp != 0)
 				return priorityComp;
 			return o1.toString().compareTo(o2.toString());

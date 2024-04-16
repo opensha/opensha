@@ -354,7 +354,7 @@ public class CalculationInputsXMLFile implements XMLSaveable {
 			Parameter<Double> imt = imtFromXML(testIMR, imrMapEl);
 			if (imt == null)
 				return null;
-			listsMap.put(new Integer(index), (Parameter<Double>) imt.clone());
+			listsMap.put(Integer.valueOf(index), (Parameter<Double>) imt.clone());
 		}
 		for (int i=0; i<listsMap.size(); i++) {
 			Parameter<Double> imt = listsMap.get(i);
@@ -429,10 +429,10 @@ public class CalculationInputsXMLFile implements XMLSaveable {
 			Element imrMapEl = it.next();
 			int index = Integer.parseInt(imrMapEl.attributeValue("index"));
 			Map<TectonicRegionType, ScalarIMR> map = imrMapFromXML(imrs, imrMapEl);
-			mapsMap.put(new Integer(index), map);
+			mapsMap.put(Integer.valueOf(index), map);
 		}
 		for (int i=0; i<mapsMap.size(); i++) {
-			maps.add(mapsMap.get(new Integer(i)));
+			maps.add(mapsMap.get(Integer.valueOf(i)));
 		}
 		
 		return maps;

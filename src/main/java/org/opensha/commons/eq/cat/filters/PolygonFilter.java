@@ -75,8 +75,8 @@ public class PolygonFilter implements CatalogFilter {
 			return null;
 		}
 
-		extents.setLatitudes(new Float(latMin), new Float(latMax));
-		extents.setLongitudes(new Float(lonMin), new Float(lonMax));
+		extents.setLatitudes((float)latMin, (float)latMax);
+		extents.setLongitudes((float)lonMin, (float)lonMax);
 
 		int[] indices;
 		int[] indicesOut;

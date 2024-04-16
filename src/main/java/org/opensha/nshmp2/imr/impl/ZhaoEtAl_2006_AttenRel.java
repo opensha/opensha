@@ -92,7 +92,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 		initSupportedIntensityMeasureParams();
 		indexFromPerHashMap = new HashMap<Double, Integer>();
 		for (int i = 0; i < period.length; i++) { 
-			indexFromPerHashMap.put(new Double(period[i]), new Integer(i));
+			indexFromPerHashMap.put(Double.valueOf(period[i]), Integer.valueOf(i));
 		}
 		initEqkRuptureParams();
 		initPropagationEffectParams();
@@ -107,7 +107,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 
 	@Override
 	public void setEqkRupture(EqkRupture eqkRupture) {
-		magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));		
+		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));		
 		this.eqkRupture = eqkRupture;
 		setPropagationEffectParams();
 	}
@@ -231,7 +231,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 		// Create saParam:
 		DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint();
 		for (int i = 0; i < period.length; i++) {
-			periodConstraint.addDouble(new Double(period[i]));
+			periodConstraint.addDouble(Double.valueOf(period[i]));
 		}
 		periodConstraint.setNonEditable();
 		saPeriodParam = new PeriodParam(periodConstraint);

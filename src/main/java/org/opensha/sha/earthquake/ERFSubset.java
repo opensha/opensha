@@ -104,7 +104,7 @@ public class ERFSubset implements ERF {
 	}
 	
 	private int getBaseSourceID(int sourceID) {
-		return sourceIDMap.get(new Integer(sourceID));
+		return sourceIDMap.get(Integer.valueOf(sourceID));
 	}
 
 	@Override
@@ -117,14 +117,14 @@ public class ERFSubset implements ERF {
 	}
 	
 	public void includeSource(int sourceID) {
-		if (sourceIDMap.containsValue(new Integer(sourceID))) {
+		if (sourceIDMap.containsValue(Integer.valueOf(sourceID))) {
 			System.out.println("source "+sourceID+" already included!");
 			return; // it's already included
 		}
 		if (sourceID < 0 || sourceID >= baseERF.getNumSources())
 			throw new IndexOutOfBoundsException("source ID to include is out of bounds!");
 		int newID = this.getNumSources();
-		sourceIDMap.put(new Integer(newID), new Integer(sourceID));
+		sourceIDMap.put(Integer.valueOf(newID), Integer.valueOf(sourceID));
 	}
 	
 	public void includeAllExcept(int sourceID) {

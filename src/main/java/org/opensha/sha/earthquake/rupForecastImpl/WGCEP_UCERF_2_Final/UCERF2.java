@@ -116,15 +116,15 @@ public class UCERF2 extends AbstractERF {
 
 	// background seismicity max-mag param
 	public final static String BACK_SEIS_MAG_NAME = "Backgroud Seis Mmax";
-	public final static Double BACK_SEIS_MAG_MIN = new Double(5.0);
-	public final static Double BACK_SEIS_MAG_MAX = new Double(9.0);
-	public final static Double BACK_SEIS_MAG_DEFAULT = new Double(7.0);
+	public final static Double BACK_SEIS_MAG_MIN = Double.valueOf(5.0);
+	public final static Double BACK_SEIS_MAG_MAX = Double.valueOf(9.0);
+	public final static Double BACK_SEIS_MAG_DEFAULT = Double.valueOf(7.0);
 	private final static String BACK_SEIS_MAG_INFO = "Maximum Magnitude for background seismicity";
 	private DoubleParameter backSeisMaxMagParam ;
 
 	// For rupture offset lenth along fault parameter
 	public final static String RUP_OFFSET_PARAM_NAME ="Rupture Offset";
-	private Double DEFAULT_RUP_OFFSET_VAL= new Double(10);
+	private Double DEFAULT_RUP_OFFSET_VAL= Double.valueOf(10);
 	private final static String RUP_OFFSET_PARAM_UNITS = "km";
 	private final static String RUP_OFFSET_PARAM_INFO = "Length of offset for floating ruptures";
 	public final static double RUP_OFFSET_PARAM_MIN = 1;
@@ -141,25 +141,25 @@ public class UCERF2 extends AbstractERF {
 	
 	// rate for M>=5
 	public final static String TOT_MAG_RATE_PARAM_NAME = "Total M≥5 Rate";
-	public final static Double TOT_MAG_RATE_MIN = new Double(2.0);
-	public final static Double TOT_MAG_RATE_MAX = new Double(20.0);
-	public final static Double TOT_MAG_RATE_DEFAULT = new Double(3.6);
+	public final static Double TOT_MAG_RATE_MIN = Double.valueOf(2.0);
+	public final static Double TOT_MAG_RATE_MAX = Double.valueOf(20.0);
+	public final static Double TOT_MAG_RATE_DEFAULT = Double.valueOf(3.6);
 	private final static String TOT_MAG_RATE_INFO = "Total rate of M≥5 events in the RELM test region (e.g, 3.60 for no aftershocks, or 7.84 including aftershocks)";
 	private DoubleParameter totalMagRateParam ;
 
 	// Aftershock/Foreshock Fraction
 	public final static String AFTERSHOCK_FRACTION_PARAM_NAME = "Fraction Smaller Events & Aftershocks";
-	public final static Double AFTERSHOCK_FRACTION_MIN = new Double(0.0);
-	public final static Double AFTERSHOCK_FRACTION_MAX = new Double(1.0);
-	public final static Double AFTERSHOCK_FRACTION_DEFAULT = new Double(0.1);
+	public final static Double AFTERSHOCK_FRACTION_MIN = Double.valueOf(0.0);
+	public final static Double AFTERSHOCK_FRACTION_MAX = Double.valueOf(1.0);
+	public final static Double AFTERSHOCK_FRACTION_DEFAULT = Double.valueOf(0.1);
 	private final static String AFTERSHOCK_FRACTION_INFO = "Fraction of moment rate released in foreshocks and aftershocks";
 	private DoubleParameter aftershockFractionParam ;
 
 	// Coupling Coefficient
 	public final static String COUPLING_COEFF_PARAM_NAME = "Coupling Coefficient";
-	public final static Double COUPLING_COEFF_MIN = new Double(0.0);
-	public final static Double COUPLING_COEFF_MAX = new Double(1.0);
-	public final static Double COUPLING_COEFF_DEFAULT = new Double(1.0);
+	public final static Double COUPLING_COEFF_MIN = Double.valueOf(0.0);
+	public final static Double COUPLING_COEFF_MAX = Double.valueOf(1.0);
+	public final static Double COUPLING_COEFF_DEFAULT = Double.valueOf(1.0);
 	private final static String COUPLING_COEFF_INFO = "Fraction of moment rate on A & B faults released via seismogenic processes (e.g., excluding afterslip)";
 	private DoubleParameter couplingCoeffParam ;
 
@@ -189,17 +189,17 @@ public class UCERF2 extends AbstractERF {
 	 */
 	// relative a-priori weights (CHANGE NAME TO REMOVE "REL")
 	public final static String REL_A_PRIORI_WT_PARAM_NAME = "Wt On A-Priori Rates";
-	private final static Double REL_A_PRIORI_WT_PARAM_MIN = new Double(0.0);
-	private final static Double REL_A_PRIORI_WT_PARAM_MAX = new Double(Double.MAX_VALUE);
-	private final static Double REL_A_PRIORI_WT_PARAM_DEFAULT = new Double(1e-4);
+	private final static Double REL_A_PRIORI_WT_PARAM_MIN = Double.valueOf(0.0);
+	private final static Double REL_A_PRIORI_WT_PARAM_MAX = Double.valueOf(Double.MAX_VALUE);
+	private final static Double REL_A_PRIORI_WT_PARAM_DEFAULT = Double.valueOf(1e-4);
 	private final static String REL_A_PRIORI_WT_PARAM_INFO = "Applied as rate/uncert (this is important to understand!)";
 	private DoubleParameter relativeA_PrioriWeightParam; 
 
 	// relative segment rate weights
 	public final static String REL_SEG_RATE_WT_PARAM_NAME = "Relative Wt On Segment Rates";
-	private final static Double REL_SEG_RATE_WT_PARAM_MIN = new Double(0);
-	private final static Double REL_SEG_RATE_WT_PARAM_MAX = new Double(Double.MAX_VALUE);
-	public final static Double REL_SEG_RATE_WT_PARAM_DEFAULT = new Double(0);
+	private final static Double REL_SEG_RATE_WT_PARAM_MIN = Double.valueOf(0);
+	private final static Double REL_SEG_RATE_WT_PARAM_MAX = Double.valueOf(Double.MAX_VALUE);
+	public final static Double REL_SEG_RATE_WT_PARAM_DEFAULT = Double.valueOf(0);
 	private final static String REL_SEG_RATE_WT_PARAM_INFO = "Relative to that put on the sement slip rates";
 	private DoubleParameter relativeSegRateWeightParam; 
 
@@ -222,15 +222,15 @@ public class UCERF2 extends AbstractERF {
 
 	// min rate param 1
 	public final static String MIN_A_FAULT_RATE_1_PARAM_NAME = "Min Fraction for Unknown Ruptures";
-	private final static Double MIN_A_FAULT_RATE_MIN = new Double(0.0);
-	private final static Double MIN_A_FAULT_RATE_MAX = new Double(1.0);
-	public final static Double MIN_A_FAULT_RATE_1_DEFAULT = new Double(0.5);
+	private final static Double MIN_A_FAULT_RATE_MIN = Double.valueOf(0.0);
+	private final static Double MIN_A_FAULT_RATE_MAX = Double.valueOf(1.0);
+	public final static Double MIN_A_FAULT_RATE_1_DEFAULT = Double.valueOf(0.5);
 	private final static String MIN_A_FAULT_RATE_1_INFO = "The min rate for unknown ruptures, defined as fraction of min non-zero a-priori rate";
 	private DoubleParameter minA_FaultRate1Param;
 
 	// min rate param 2
 	public final static String MIN_A_FAULT_RATE_2_PARAM_NAME = "Min Fraction for Unlikely Ruptures";
-	public final static Double MIN_A_FAULT_RATE_2_DEFAULT = new Double(0.1);
+	public final static Double MIN_A_FAULT_RATE_2_DEFAULT = Double.valueOf(0.1);
 	private final static String MIN_A_FAULT_RATE_2_INFO = "The min rate for unlikely ruptures, defined as fraction of min non-zero a-priori rate";
 	private DoubleParameter minA_FaultRate2Param;
 	/*
@@ -251,17 +251,17 @@ public class UCERF2 extends AbstractERF {
 
 	// % char vs GR param
 	public final static String CHAR_VS_GR_PARAM_NAME = "% Char vs GR";
-	private final static Double CHAR_VS_GR_MIN = new Double(.0);
-	private final static Double CHAR_VS_GR_MAX = new Double(100.0);
-	private final static Double CHAR_VS_GR_DEFAULT = new Double(67.0);
+	private final static Double CHAR_VS_GR_MIN = Double.valueOf(.0);
+	private final static Double CHAR_VS_GR_MAX = Double.valueOf(100.0);
+	private final static Double CHAR_VS_GR_DEFAULT = Double.valueOf(67.0);
 	private final static String CHAR_VS_GR_INFO = "The % moment rate put into characteristic (vs GR) events on B-Faults (and A-Faults for un-segmented option)";
 	private DoubleParameter percentCharVsGRParam; 
 
 	// char mag sigma >=0 and <=1
 	public final static String MAG_SIGMA_PARAM_NAME = "Mag Sigma";
-	private final static Double MAG_SIGMA_MIN = new Double(0.0);
-	private final static Double MAG_SIGMA_MAX = new Double(1.0);
-	public final static Double MAG_SIGMA_DEFAULT = new Double(0.12);
+	private final static Double MAG_SIGMA_MIN = Double.valueOf(0.0);
+	private final static Double MAG_SIGMA_MAX = Double.valueOf(1.0);
+	public final static Double MAG_SIGMA_DEFAULT = Double.valueOf(0.12);
 	private final static String MAG_SIGMA_INFO = "Standard Deviation for characteristic MFD";
 	private DoubleParameter magSigmaParam;
 
@@ -269,64 +269,64 @@ public class UCERF2 extends AbstractERF {
 	// Mag truncation level
 	public final static String TRUNC_LEVEL_PARAM_NAME = "Truncation Level";
 	private final static String TRUNC_LEVEL_PARAM_UNITS = "Number of sigmas";
-	private final static Double TRUNC_LEVEL_MIN = new Double(0.0);
-	private final static Double TRUNC_LEVEL_MAX = new Double(6.0);
-	public final static Double TRUNC_LEVEL_DEFAULT = new Double(2.0);
+	private final static Double TRUNC_LEVEL_MIN = Double.valueOf(0.0);
+	private final static Double TRUNC_LEVEL_MAX = Double.valueOf(6.0);
+	public final static Double TRUNC_LEVEL_DEFAULT = Double.valueOf(2.0);
 	private final static String TRUNC_LEVEL_INFO = "This defines the last non-zero value on the characteristic MFD";
 	private DoubleParameter truncLevelParam;
 
 	public final static String B_FAULTS_B_VAL_PARAM_NAME = "B-Faults b-value";
 	public final static String B_FAULTS_B_VAL_PARAM_INFO = "GR-distribution b-value to apply to B-Faults";
-	public final static Double B_FAULT_GR_B_DEFAULT= new Double(0.8);
-	public final static Double B_VAL_MIN = new Double(-1);
-	public final static Double B_VAL_MAX = new Double(2);
+	public final static Double B_FAULT_GR_B_DEFAULT= Double.valueOf(0.8);
+	public final static Double B_VAL_MIN = Double.valueOf(-1);
+	public final static Double B_VAL_MAX = Double.valueOf(2);
 	private DoubleParameter bFaultB_ValParam;
 
 	public final static String A_FAULTS_B_VAL_PARAM_NAME = "A-Faults b-value";
 	public final static String A_FAULTS_B_VAL_PARAM_INFO = "GR-distribution b-value to apply to A-Faults";
-	public final static Double A_FAULT_GR_B_DEFAULT= new Double(0.0);
-	public final static Double A_VAL_MIN = new Double(-1);
-	public final static Double A_VAL_MAX = new Double(2);
+	public final static Double A_FAULT_GR_B_DEFAULT= Double.valueOf(0.0);
+	public final static Double A_VAL_MIN = Double.valueOf(-1);
+	public final static Double A_VAL_MAX = Double.valueOf(2);
 	private DoubleParameter aFaultB_ValParam;
 
 	public final static String BACK_SEIS_B_VAL_PARAM_NAME = "Background Seis b-value";
 	public final static String BACK_SEIS_B_VAL_PARAM_INFO = "GR-distribution b-value to apply to the background seismicity";
-	public final static Double BACK_SEIS_B_DEFAULT = new Double(0.9);
+	public final static Double BACK_SEIS_B_DEFAULT = Double.valueOf(0.9);
 	// min and max same as for bFaultB_ValParam
 	private DoubleParameter regionB_ValParam;
 
 	// B-Fault Min Mag
 	public final static String B_FAULTS_MIN_MAG = "B-Faults Min Mag";
-	private final static Double B_FAULTS_MIN_MAG_DEFAULT = new Double(6.5);
+	private final static Double B_FAULTS_MIN_MAG_DEFAULT = Double.valueOf(6.5);
 	private final static String B_FAULTS_MIN_MAG_INFO = "Min Mag to apply to B-Faults GR-distribution";
 	private DoubleParameter bFaultsMinMagParam;
 
 	/*
 	// whether to inlcude C-zones
 	public final static String INCLUDE_C_ZONES  = "Include C Zones?";
-	private final static Boolean INCLUDE_C_ZONES_DEFAULT = new Boolean(true);
+	private final static Boolean INCLUDE_C_ZONES_DEFAULT = Boolean.valueOf(true);
 	private BooleanParameter includeC_ZonesParam;
 	 */
 //	C-zone weight
 	public final static String C_ZONE_WT_PARAM_NAME  = "C-Zone Weight";
-	private final static Double C_ZONE_WT_DEFAULT = new Double(0.5);
+	private final static Double C_ZONE_WT_DEFAULT = Double.valueOf(0.5);
 	private final static String C_ZONE_WT_INFO = "Weight to apply to type C-zones";
 	private DoubleParameter c_ZoneWtParam;
 
 
 	// fraction to put into background
 	public final static String ABC_MO_RATE_REDUCTION_PARAM_NAME = "Fract MoRate to Background";
-	public final static Double ABC_MO_RATE_REDUCTION_MIN = new Double(0);
-	public final static Double ABC_MO_RATE_REDUCTION_MAX = new Double(1);
-	public final static Double ABC_MO_RATE_REDUCTION_DEFAULT = new Double(0.0);
+	public final static Double ABC_MO_RATE_REDUCTION_MIN = Double.valueOf(0);
+	public final static Double ABC_MO_RATE_REDUCTION_MAX = Double.valueOf(1);
+	public final static Double ABC_MO_RATE_REDUCTION_DEFAULT = Double.valueOf(0.0);
 	public final static String ABC_MO_RATE_REDUCTION_INFO = "Fraction of Moment Rate to take from A & B Faults & C zones to put into background seismicity";
 	private DoubleParameter moRateFracToBackgroundParam;
 
 	// Mean Mag Correction
 	public final static String MEAN_MAG_CORRECTION = "Mean Mag Correction";
-	private final static Double MEAN_MAG_CORRECTION_MIN = new Double(-0.5);
-	private final static Double MEAN_MAG_CORRECTION_MAX = new Double(0.5);
-	public final static Double MEAN_MAG_CORRECTION_DEFAULT = new Double(0.0);
+	private final static Double MEAN_MAG_CORRECTION_MIN = Double.valueOf(-0.5);
+	private final static Double MEAN_MAG_CORRECTION_MAX = Double.valueOf(0.5);
+	public final static Double MEAN_MAG_CORRECTION_DEFAULT = Double.valueOf(0.0);
 	private final static String MEAN_MAG_CORRECTION_INFO = "Increment added to mean mag as additional epistemic uncertainity";
 	private DoubleParameter meanMagCorrectionParam;
 
@@ -361,23 +361,23 @@ public class UCERF2 extends AbstractERF {
 	// Aperiodicity Param
 	public final static String APERIODICITY_PARAM_NAME = "Aperiodicity";
 	private final static String APERIODICITY_PARAM_INFO = "Aperiodicity for Time dependence";
-	private final static Double APERIODICITY_PARAM_MIN = new Double(0.1);
-	private final static Double APERIODICITY_PARAM_MAX = new Double(2.0);
-	private final static Double APERIODICITY_PARAM_DEFAULT = new Double(0.5);
+	private final static Double APERIODICITY_PARAM_MIN = Double.valueOf(0.1);
+	private final static Double APERIODICITY_PARAM_MAX = Double.valueOf(2.0);
+	private final static Double APERIODICITY_PARAM_DEFAULT = Double.valueOf(0.5);
 	private DoubleParameter aperiodicityParam;
 
 	//	Default Aperiodicity Param
 	public final static String DEF_APERIODICITY_PARAM_NAME = "Default Aperiodicity";
 	private final static String DEF_APERIODICITY_PARAM_INFO = "Default Aperiodicity for Time dependence";
-	private final static Double DEF_APERIODICITY_PARAM_MIN = new Double(0.1);
-	private final static Double DEF_APERIODICITY_PARAM_MAX = new Double(2.0);
-	private final static Double DEF_APERIODICITY_PARAM_DEFAULT = new Double(0.5);
+	private final static Double DEF_APERIODICITY_PARAM_MIN = Double.valueOf(0.1);
+	private final static Double DEF_APERIODICITY_PARAM_MAX = Double.valueOf(2.0);
+	private final static Double DEF_APERIODICITY_PARAM_DEFAULT = Double.valueOf(0.5);
 	private DoubleParameter defaultAperiodicityParam;
 
 	// Segment Dependent Aperiodicity Param
 	public final static String SEG_DEP_APERIODICITY_PARAM_NAME = "Seg Dependent Aperiodicity";
 	private final static String SEG_DEP_APERIODICITY_PARAM_INFO = "Segment Aperiodicity for Time dependence";
-	private final static Boolean SEG_DEP_APERIODICITY_PARAM_DEFAULT = new Boolean(false);
+	private final static Boolean SEG_DEP_APERIODICITY_PARAM_DEFAULT = Boolean.valueOf(false);
 	private BooleanParameter segDepAperiodicityParam;
 
 	// Time duration
@@ -505,7 +505,7 @@ public class UCERF2 extends AbstractERF {
 		percentCharVsGRParam.setInfo(CHAR_VS_GR_INFO);
 
 		// aseis factor param
-		aseisFactorInterParam = new BooleanParameter(ASEIS_INTER_PARAM_NAME, new Boolean(true));
+		aseisFactorInterParam = new BooleanParameter(ASEIS_INTER_PARAM_NAME, Boolean.valueOf(true));
 		aseisFactorInterParam.setInfo(ASEIS_INTER_PARAM_INFO);
 
 		// relativeA_PrioriWeightParam
@@ -519,7 +519,7 @@ public class UCERF2 extends AbstractERF {
 		relativeSegRateWeightParam.setInfo(REL_SEG_RATE_WT_PARAM_INFO);
 		/*		
 		// constrainA_SegRatesParam
-		constrainA_SegRatesParam = new BooleanParameter(CONSTRAIN_A_SEG_RATES_PARAM_NAME, new Boolean(true));
+		constrainA_SegRatesParam = new BooleanParameter(CONSTRAIN_A_SEG_RATES_PARAM_NAME, Boolean.valueOf(true));
 		constrainA_SegRatesParam.setInfo(CONSTRAIN_A_SEG_RATES_PARAM_INFO);
 		 */
 		/*		

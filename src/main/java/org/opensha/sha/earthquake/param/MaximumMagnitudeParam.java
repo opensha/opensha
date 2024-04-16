@@ -12,8 +12,8 @@ public class MaximumMagnitudeParam extends DoubleParameter {
 	public final static String NAME = "Maximum Magnitude";
 	public final static String INFO = "The maximum magnitude for the region";
 	private static final String UNITS = null;
-	protected final static Double MIN = new Double(5.0);
-	protected final static Double MAX = new Double(10.0);
+	protected final static Double MIN = Double.valueOf(5.0);
+	protected final static Double MAX = Double.valueOf(10.0);
 	
 
 	/**

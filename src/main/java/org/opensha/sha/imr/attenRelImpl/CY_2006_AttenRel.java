@@ -317,7 +317,7 @@ public class CY_2006_AttenRel extends AttenuationRelationship implements
 		  0.6709,0.6717,0.6744,0.686,0.6937,0.6922,0.6934,0.6967,0.7023,0.7217,0.7204,0.7234,0.7306,0.7313,0.7343,0.7348,
 		  0.7538,0.7582,0.7776,0.7997,0.7085,0.7223,0.7271,0.7081
   };
-  protected final static Double PERIOD_DEFAULT = new Double(1.0);
+  protected final static Double PERIOD_DEFAULT = Double.valueOf(1.0);
   private HashMap indexFromPerHashMap;
 
   private int iper;
@@ -326,16 +326,16 @@ public class CY_2006_AttenRel extends AttenuationRelationship implements
   private boolean parameterChange;
 
   // from page 66 of their report
-  protected final static Double MAG_WARN_MIN = new Double(4.);
-  protected final static Double MAG_WARN_MAX = new Double(8.5);
-  protected final static Double DISTANCE_RUP_WARN_MIN = new Double(0.0);
-  protected final static Double DISTANCE_RUP_WARN_MAX = new Double(200.0);
-  protected final static Double DISTANCE_MINUS_WARN_MIN = new Double(0.0);
-  protected final static Double DISTANCE_MINUS_WARN_MAX = new Double(50.0);
-  protected final static Double VS30_WARN_MIN = new Double(150.0);
-  protected final static Double VS30_WARN_MAX = new Double(1500.0);
-  protected final static Double RUP_TOP_WARN_MIN = new Double(0);
-  protected final static Double RUP_TOP_WARN_MAX = new Double(20);
+  protected final static Double MAG_WARN_MIN = Double.valueOf(4.);
+  protected final static Double MAG_WARN_MAX = Double.valueOf(8.5);
+  protected final static Double DISTANCE_RUP_WARN_MIN = Double.valueOf(0.0);
+  protected final static Double DISTANCE_RUP_WARN_MAX = Double.valueOf(200.0);
+  protected final static Double DISTANCE_MINUS_WARN_MIN = Double.valueOf(0.0);
+  protected final static Double DISTANCE_MINUS_WARN_MAX = Double.valueOf(50.0);
+  protected final static Double VS30_WARN_MIN = Double.valueOf(150.0);
+  protected final static Double VS30_WARN_MAX = Double.valueOf(1500.0);
+  protected final static Double RUP_TOP_WARN_MIN = Double.valueOf(0);
+  protected final static Double RUP_TOP_WARN_MAX = Double.valueOf(20);
   
   // style of faulting options
   public final static String FLT_TYPE_STRIKE_SLIP = "Strike-Slip";
@@ -352,7 +352,7 @@ public class CY_2006_AttenRel extends AttenuationRelationship implements
     initSupportedIntensityMeasureParams();
     indexFromPerHashMap = new HashMap();
     for (int i = 0; i < period.length; i++) {
-      indexFromPerHashMap.put(new Double(period[i]), new Integer(i));
+      indexFromPerHashMap.put(Double.valueOf(period[i]), Integer.valueOf(i));
     }
 
     initEqkRuptureParams();
@@ -376,7 +376,7 @@ public class CY_2006_AttenRel extends AttenuationRelationship implements
    */
   public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 	  
-	  magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+	  magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
 	  
 	  double rake = eqkRupture.getAveRake();
 	  if(rake >30 && rake <150) {
@@ -651,7 +651,7 @@ public class CY_2006_AttenRel extends AttenuationRelationship implements
     // Create saParam:
     DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint();
     for (int i = 0; i < period.length; i++) {
-      periodConstraint.addDouble(new Double(period[i]));
+      periodConstraint.addDouble(Double.valueOf(period[i]));
     }
     periodConstraint.setNonEditable();
 	saPeriodParam = new PeriodParam(periodConstraint);

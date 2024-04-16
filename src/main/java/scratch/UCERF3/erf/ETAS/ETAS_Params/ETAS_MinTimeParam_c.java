@@ -16,9 +16,9 @@ public class ETAS_MinTimeParam_c extends DoubleParameter {
 	public final static String NAME = "c - ETAS Min Time";
 	public final static String INFO = "The ETAS c value in the temporal decay: (t+c)^-p";
 	private static final String UNITS = "days";
-	protected final static Double MIN = new Double(1.00E-6*365.25);
-	protected final static Double MAX = new Double(3.16E-4*365.25);
-	public final static Double DEFAULT_VALUE = new Double(1.78E-05*365.25);
+	protected final static Double MIN = Double.valueOf(1.00E-6*365.25);
+	protected final static Double MAX = Double.valueOf(3.16E-4*365.25);
+	public final static Double DEFAULT_VALUE = Double.valueOf(1.78E-05*365.25);
 	
 
 	/**

@@ -213,7 +213,7 @@ public class NonErgodicSiteResponseMod extends IML_DependentAttenRelMod implemen
 		paramList.addParameter(plotInterpParam);
 		
 		// TODO name
-		rhoParam = new DoubleParameter("lnZ, lnX correlation", 0d, 1d, new Double(0.65));
+		rhoParam = new DoubleParameter("lnZ, lnX correlation", 0d, 1d, Double.valueOf(0.65));
 		rhoParam.setInfo("Correlation between surface intensity measure and the reference intensity measure.");
 		// don't need to listen for changes
 		paramList.addParameter(rhoParam);

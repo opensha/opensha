@@ -48,7 +48,7 @@ public class DistanceSeisParameter extends AbstractDoublePropEffectParam {
 	private final static String INFO = "Seismogenic Distance (closest distance to seismogenic part of fault surface)";
 
 	/** Hardcoded max allowed value */
-	private final static Double MAX = new Double(Double.MAX_VALUE);
+	private final static Double MAX = Double.valueOf(Double.MAX_VALUE);
 
 	/** set default seismogenic depth. actually hard-wired for now. */
 	public final static double SEIS_DEPTH = GriddedSurfaceUtils.SEIS_DEPTH;
@@ -163,7 +163,7 @@ public class DistanceSeisParameter extends AbstractDoublePropEffectParam {
 			Double val = null, val2 = null;
 			if( value != null ) {
 				val = ( Double ) this.value;
-				val2 = new Double( val.doubleValue() );
+				val2 = Double.valueOf( val.doubleValue() );
 			}
 
 			DistanceSeisParameter param = new DistanceSeisParameter(  );

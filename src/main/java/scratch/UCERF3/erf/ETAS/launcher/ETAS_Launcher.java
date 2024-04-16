@@ -1037,7 +1037,7 @@ public class ETAS_Launcher {
 		if (binaryWriter != null) {
 			try {
 				debug(DebugLevel.FINE, "finalizing");
-				binaryWriter.finalize();
+				binaryWriter.close();
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}

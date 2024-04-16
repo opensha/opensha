@@ -376,7 +376,7 @@ public class FaultSectionVer2_DB_DAO {
 				EstimateInstances slipRateEstInstance= null;
 				int slipRateEstId= rs.getInt(FaultSectionVer2_DB_DAO.AVE_LONG_TERM_SLIP_RATE_EST);
 				if(!rs.wasNull()) slipRateEstInstance = this.estimateInstancesDAO.getEstimateInstance(slipRateEstId);
-				sectionSlipRate.put(new Integer(rs.getInt(SECTION_ID)), slipRateEstInstance);
+				sectionSlipRate.put(Integer.valueOf(rs.getInt(SECTION_ID)), slipRateEstInstance);
 			}
 		}catch(Exception e) {
 			e.printStackTrace();

@@ -187,8 +187,8 @@ public class PutCombinedInfoIntoDatabase_FAD {
   }
   
   private PaleoSite getPaleoSite(PaleoSitePublication paleoSitePub) throws Exception {
-	  PaleoSite paleoSite = (PaleoSite)this.insertedFAD_SiteIntoDB.get(new Integer(this.fadSiteId));
-	  PaleoSite fadPaleoSite = (PaleoSite)this.fadSites.get(new Integer(this.fadSiteId));
+	  PaleoSite paleoSite = (PaleoSite)this.insertedFAD_SiteIntoDB.get(Integer.valueOf(this.fadSiteId));
+	  PaleoSite fadPaleoSite = (PaleoSite)this.fadSites.get(Integer.valueOf(this.fadSiteId));
 	  if(fadPaleoSite.getSiteName().equalsIgnoreCase("per"))
 		  fadPaleoSite.setSiteName("Per "+paleoSitePub.getReference().getSummary());
 	  if(paleoSite==null) {
@@ -222,7 +222,7 @@ public class PutCombinedInfoIntoDatabase_FAD {
 				}
 				paleoSiteDAO.addPaleoSite(fadPaleoSite);
 				Thread.sleep(1000);
-				insertedFAD_SiteIntoDB.put(new Integer(this.fadSiteId), fadPaleoSite);
+				insertedFAD_SiteIntoDB.put(Integer.valueOf(this.fadSiteId), fadPaleoSite);
 				paleoSite = fadPaleoSite;
 		  } else paleoSite = paleoSiteDAO.getPaleoSiteByQfaultId(fadPaleoSite.getOldSiteId());
 	  } 
@@ -263,7 +263,7 @@ public class PutCombinedInfoIntoDatabase_FAD {
 		            	reference.setFullBiblioReference(value);
 		            }
 		          }
-			  this.fadReferences.put(new Integer(fadRefId), reference);
+			  this.fadReferences.put(Integer.valueOf(fadRefId), reference);
 		  }
 	  }catch(Exception e) {
 		  e.printStackTrace();
@@ -317,7 +317,7 @@ public class PutCombinedInfoIntoDatabase_FAD {
 	    	          paleoSite.setSiteName("per");
 			  } 
 			  if(paleoSite.getGeneralComments()==null) paleoSite.setGeneralComments("");
-			  this.fadSites.put(new Integer(fadSiteId), paleoSite);
+			  this.fadSites.put(Integer.valueOf(fadSiteId), paleoSite);
 		  }
 	  }catch(Exception e) {
 		  e.printStackTrace();
@@ -345,7 +345,7 @@ public class PutCombinedInfoIntoDatabase_FAD {
         break;
       case 2: //  FAD reference Id
     	  this.fadReferenceId = Integer.parseInt(value);
-    	  Reference reference = (Reference)this.fadReferences.get(new Integer(fadReferenceId));
+    	  Reference reference = (Reference)this.fadReferences.get(Integer.valueOf(fadReferenceId));
     	  Reference refFromDB = this.referenceDAO.getReference(reference.getRefAuth(), reference.getRefYear());
     	  if(refFromDB==null) {
     		  int refId = referenceDAO.addReference(reference);
@@ -360,13 +360,13 @@ public class PutCombinedInfoIntoDatabase_FAD {
       case 4: // FAD fault Id
     	  break;
       case 5: // WG Fault section Id
-    	  PaleoSite paleoSite = (PaleoSite)this.fadSites.get(new Integer(fadSiteId));
+    	  PaleoSite paleoSite = (PaleoSite)this.fadSites.get(Integer.valueOf(fadSiteId));
     	  paleoSite.setFaultSectionNameId("temp", (int)Double.parseDouble(value.trim()));
     	  break;
       case 6: // compiler
     	  String compilerComment = "Compiler="+value;
     	  combinedSlipRateInfo.setSlipRateComments(compilerComment);
-    	  PaleoSite paleoSite1 = (PaleoSite)this.fadSites.get(new Integer(fadSiteId));
+    	  PaleoSite paleoSite1 = (PaleoSite)this.fadSites.get(Integer.valueOf(fadSiteId));
     	  paleoSite1.setGeneralComments(paleoSite1.getGeneralComments()+"\n"+compilerComment);
     	  break;
       case 7: // component of Slip

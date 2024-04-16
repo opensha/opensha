@@ -91,7 +91,7 @@ public class Tree {
 			rupList.add(rup);
 			//writeRup(rup);
 		}
-		//traversedBranchMap.put(subSecName, new Boolean(true));
+		//traversedBranchMap.put(subSecName, Boolean.valueOf(true));
 		//if(isTraversed(subSecName)) return;
 		TreeBranch branch = treeBranchMap.get(subSecId);
 		for(int i=0; branch!=null && i<branch.getNumAdjacentSubsections(); ++i) {

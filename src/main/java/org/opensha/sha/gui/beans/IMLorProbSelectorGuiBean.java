@@ -34,8 +34,8 @@ ParameterChangeListener{
 	private final static String MAP_INFO="Set What To Plot";
 	private final static Double MIN_PROB = AbstractIMR.EXCEED_PROB_MIN;
 	private final static Double MAX_PROB = AbstractIMR.EXCEED_PROB_MAX;
-	private final static Double DEFAULT_PROB= new Double(.5);
-	private final static Double DEFAULT_IML = new Double(.1);
+	private final static Double DEFAULT_PROB= Double.valueOf(.5);
+	private final static Double DEFAULT_IML = Double.valueOf(.1);
 
 	private StringParameter imlProbParam;
 
@@ -108,7 +108,7 @@ ParameterChangeListener{
 		double defaultVal = IMT_Info.getDefaultIMT_VAL(imt);
 		DoubleConstraint constraint = new DoubleConstraint(minVal,maxVal);
 		imlParam.setConstraint(constraint);
-		imlParam.setValue(new Double(defaultVal));
+		imlParam.setValue(Double.valueOf(defaultVal));
 		refreshParamEditor();
 	}
 

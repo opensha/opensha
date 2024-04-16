@@ -99,7 +99,7 @@ public class ViewAllReferences extends JFrame implements ActionListener {
       tableData[i][0] = ref.getRefAuth();
       tableData[i][1] = ref.getRefYear();
       tableData[i][2] = ref.getFullBiblioReference();
-      tableData[i][3] = new Integer(ref.getQfaultReferenceId());
+      tableData[i][3] = Integer.valueOf(ref.getQfaultReferenceId());
     }
     return tableData;
   }

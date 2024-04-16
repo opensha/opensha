@@ -285,7 +285,7 @@ public class AddEditFaultModel extends JPanel implements ActionListener, Paramet
 	  */
 	 private void setAllRowsSelection(boolean isSelected) {
 		 int numRows = this.tableModel.getRowCount();
-		 Boolean val = new Boolean(isSelected);
+		 Boolean val = Boolean.valueOf(isSelected);
 		 for(int i=0; i<numRows; ++i)
 			 tableModel.setValueAt(val, i, 0);
 		 tableModel.fireTableDataChanged();
@@ -318,7 +318,7 @@ public class AddEditFaultModel extends JPanel implements ActionListener, Paramet
 		
 		//deselect all the check boxes in the table
 		for(int i=0; i<this.tableModel.getRowCount(); ++i)
-			tableModel.setValueAt(new Boolean(false), i, 0);
+			tableModel.setValueAt(Boolean.valueOf(false), i, 0);
 		// only select the check boxes which are part of this fault model
 		int numSectionsInFaultModel = faultSectionIdList.size();
 		for(int i=0; i<numSectionsInFaultModel; ++i) {

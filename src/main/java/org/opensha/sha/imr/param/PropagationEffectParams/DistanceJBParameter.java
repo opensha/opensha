@@ -38,9 +38,9 @@ public class DistanceJBParameter extends AbstractDoublePropEffectParam {
 	/** Hardcoded info string */
 	private final static String INFO = "Joyner-Boore Distance (closest distance to surface projection of fault)";
 	/** Hardcoded min allowed value */
-	private final static Double MIN = new Double(0.0);
+	private final static Double MIN = Double.valueOf(0.0);
 	/** Hardcoded max allowed value */
-	private final static Double MAX = new Double(Double.MAX_VALUE);
+	private final static Double MAX = Double.valueOf(Double.MAX_VALUE);
 
 
 	/**
@@ -126,7 +126,7 @@ public class DistanceJBParameter extends AbstractDoublePropEffectParam {
 		Double val = null, val2 = null;
 		if( value != null ) {
 			val = ( Double ) this.value;
-			val2 = new Double( val.doubleValue() );
+			val2 = Double.valueOf( val.doubleValue() );
 		}
 
 		DistanceJBParameter param = new DistanceJBParameter(  );

@@ -122,7 +122,7 @@ public class Frankel02_AdjustableEqkRupForecast extends AbstractERF{
 
 	// For rupture offset lenth along fault parameter
 	public final static String RUP_OFFSET_PARAM_NAME ="Rupture Offset";
-	private Double DEFAULT_RUP_OFFSET_VAL= new Double(10);
+	private Double DEFAULT_RUP_OFFSET_VAL= Double.valueOf(10);
 	private final static String RUP_OFFSET_PARAM_UNITS = "km";
 	private final static String RUP_OFFSET_PARAM_INFO = "Length of offset for floating ruptures";
 	public final static double RUP_OFFSET_PARAM_MIN = 1;
@@ -417,11 +417,11 @@ public class Frankel02_AdjustableEqkRupForecast extends AbstractERF{
 
 		// get the dMags from the 3rd line
 		st = new StringTokenizer(it.next().toString());
-		for(int n=0;n<numBranches;n++) branchDmags.add(new Double(st.nextToken()));
+		for(int n=0;n<numBranches;n++) branchDmags.add(Double.valueOf(st.nextToken()));
 
 		// get branch wts from the 4rd line
 		st = new StringTokenizer(it.next().toString());
-		for(int n=0;n<numBranches;n++) branchWts.add(new Double(st.nextToken()));
+		for(int n=0;n<numBranches;n++) branchWts.add(Double.valueOf(st.nextToken()));
 
 		// get aleatory stddev and truncation width from 5th line
 		st = new StringTokenizer(it.next().toString());
@@ -790,8 +790,8 @@ public class Frankel02_AdjustableEqkRupForecast extends AbstractERF{
 			for(int i=0;i<numOfDataLines;++i) {
 				if( !it.hasNext() ) throw ERR;
 				st =new StringTokenizer(it.next().toString().trim());
-				lat = new Double(st.nextToken()).doubleValue();
-				lon = new Double(st.nextToken()).doubleValue();
+				lat = Double.valueOf(st.nextToken()).doubleValue();
+				lon = Double.valueOf(st.nextToken()).doubleValue();
 				Location loc = new Location(lat, lon, upperSeismoDepth);
 				faultTrace.add(loc.clone());
 			}

@@ -87,7 +87,7 @@ public class IntegerParameterEditor extends AbstractParameterEditor<Integer> imp
 
 			try {
 				Integer d = null;
-				if( !value.trim().equals( "" ) ) d = new Integer(value);
+				if( !value.trim().equals( "" ) ) d = Integer.valueOf(value);
 				setValue(d);
 				refreshParamEditor();
 				widget.validate();
@@ -133,7 +133,7 @@ public class IntegerParameterEditor extends AbstractParameterEditor<Integer> imp
 		try {
 
 			Integer d = null;
-			if( !value.trim().equals( "" ) ) d = new Integer(value);
+			if( !value.trim().equals( "" ) ) d = Integer.valueOf(value);
 			setValue(d);
 			refreshParamEditor();
 			widget.validate();

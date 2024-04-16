@@ -135,9 +135,9 @@ ParameterChangeListener {
 	private static final int LOOK_BACK_DEFAULT_ITERATIONS = 200000 * 10; // 10x num rups
 	private IntegerParameter lookBackParam = new IntegerParameter("Look Back", LOOK_BACK_DEFAULT_TIME);
 	private DoubleParameter energyPercentChangeThresholdParam = new DoubleParameter("Energy Change % Threshold",
-			new Double(0), new Double(100), "%", new Double(1.5));
+			Double.valueOf(0), Double.valueOf(100), "%", Double.valueOf(1.5));
 	private DoubleParameter energyChangeThresholdParam = new DoubleParameter("Energy Change Threshold",
-			new Double(0), new Double(1000), new Double(2));
+			Double.valueOf(0), Double.valueOf(1000), Double.valueOf(2));
 	private GraphWidget convergeGP;
 	
 	private Map<VariableLogicTreeBranch, CSVFile<String>> resultFilesMap;

@@ -15,10 +15,10 @@ public class IA_Param extends WarningDoubleParameter {
     public final static String NAME = "IA"; 
     public final static String UNITS = "m/s"; 
     public final static String INFO = "Arias Intensity"; 
-    public final static Double MIN = new Double(Math.log(Double.MIN_VALUE)); 
-    public final static Double MAX = new Double(Double.MAX_VALUE); 
-    public final static Double DEFAULT_WARN_MIN = new Double(Math.log(Double.MIN_VALUE)); 
-    public final static Double DEFAULT_WARN_MAX = new Double(Double.MAX_VALUE); 
+    public final static Double MIN = Double.valueOf(Math.log(Double.MIN_VALUE)); 
+    public final static Double MAX = Double.valueOf(Double.MAX_VALUE); 
+    public final static Double DEFAULT_WARN_MIN = Double.valueOf(Math.log(Double.MIN_VALUE)); 
+    public final static Double DEFAULT_WARN_MAX = Double.valueOf(Double.MAX_VALUE); 
 
 
 	/**

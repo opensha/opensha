@@ -50,13 +50,13 @@ public class STP_Request {
 
 	public static void main(String[] args) {
 		STP_Request req = new STP_Request();
-		req.setDateMin(new Long(1237880234));
-		req.setMagnitudeMax(new Double(6));
-		req.setLatitudeMin(new Double(23));
-		req.setLatitudeMax(new Double(30));
+		req.setDateMin(Long.valueOf(1237880234));
+		req.setMagnitudeMax(Double.valueOf(6));
+		req.setLatitudeMin(Double.valueOf(23));
+		req.setLatitudeMax(Double.valueOf(30));
 		req.setEventType(EventType.NUCLEAR);
-		req.setDepthMax(new Double(10));
-		req.setLongitudeMin(new Double(-120));
+		req.setDepthMax(Double.valueOf(10));
+		req.setLongitudeMin(Double.valueOf(-120));
 
 		System.out.println(req.toString());
 	}

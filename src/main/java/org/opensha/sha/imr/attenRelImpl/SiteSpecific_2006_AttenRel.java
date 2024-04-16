@@ -136,8 +136,8 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 
 
 	// warning constraint fields:
-	protected final static Double VS30_WARN_MIN = new Double(50.0);
-	protected final static Double VS30_WARN_MAX = new Double(760.0);
+	protected final static Double VS30_WARN_MIN = Double.valueOf(50.0);
+	protected final static Double VS30_WARN_MAX = Double.valueOf(760.0);
 
 	// the Soft Soil Parameter
 	private BooleanParameter softSoilParam = null;
@@ -146,7 +146,7 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 		"Indicates that site is considered NEHRP E regardless of Vs30.\n\n" +
 		"Conditions required are undrained shear strength < 24 kPa, " +
 		"PI > 20, water content > 40%, and thickness of clay exceeds 3 m.";
-	public final static Boolean SOFT_SOIL_DEFAULT = new Boolean(false);
+	public final static Boolean SOFT_SOIL_DEFAULT = Boolean.valueOf(false);
 
 
 
@@ -584,14 +584,14 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 					return getStdDevForCS();
 				else{
 					//getting the Std Dev for Period of 0.75
-					saPeriodParam.setValue(new Double(0.75));
+					saPeriodParam.setValue(Double.valueOf(0.75));
 					double stdDev_BS = getStdDevForBS();
 					//getting the Std Dev. for period param 1.5
-					saPeriodParam.setValue(new Double(1.5));
+					saPeriodParam.setValue(Double.valueOf(1.5));
 					double stdDev_CS = getStdDevForCS();
 					//setting the period to period selected by the user
 					DecimalFormat format = new DecimalFormat("##.###");
-					saPeriodParam.setValue(new Double(format.format(periodParamVal)));
+					saPeriodParam.setValue(Double.valueOf(format.format(periodParamVal)));
 					//linear interpolation to get the Std Dev.
 					double stdDev = ((periodParamVal - 0.75)/(1.5 -0.75))*
 					(stdDev_CS - stdDev_BS) + stdDev_BS;
@@ -676,15 +676,15 @@ public class SiteSpecific_2006_AttenRel extends AttenuationRelationship implemen
 
 		//((ParameterAPI)this.iml).setValue( IML_DEFAULT );
 		vs30Param.setValueAsDefault();
-		softSoilParam.setValue(new Boolean(false));
+		softSoilParam.setValue(Boolean.valueOf(false));
 		String rockAttenDefaultVal = (String)rockAttenRelSelectorParam.getAllowedStrings().get(0);
 		rockAttenRelSelectorParam.setValue(rockAttenDefaultVal);
 		siteEffectCorrectionParam.setValue(BATURAY_STEWART_MODEL);
-		this.AF_AddRefAccParam.setValue(new Double(this.AF_ADDITIVE_REF_ACCERLATION_DEFAULT));
-		this.AF_InterceptParam.setValue(new Double(this.AF_INTERCEPT_PARAM_DEFAULT));
-		this.AF_SlopeParam.setValue(new Double(this.AF_SLOPE_PARAM_DEFAULT));
-		this.AF_StdDevParam.setValue(new Double(this.AF_STD_DEV_DEFAULT));
-		this.numRunsParam.setValue(new Integer(this.NUM_RUNS_PARAM_DEFAULT));
+		this.AF_AddRefAccParam.setValue(Double.valueOf(this.AF_ADDITIVE_REF_ACCERLATION_DEFAULT));
+		this.AF_InterceptParam.setValue(Double.valueOf(this.AF_INTERCEPT_PARAM_DEFAULT));
+		this.AF_SlopeParam.setValue(Double.valueOf(this.AF_SLOPE_PARAM_DEFAULT));
+		this.AF_StdDevParam.setValue(Double.valueOf(this.AF_STD_DEV_DEFAULT));
+		this.numRunsParam.setValue(Integer.valueOf(this.NUM_RUNS_PARAM_DEFAULT));
 		attenRel.setParamDefaults();
 		this.initRockAttenuationRealtionships();
 	}

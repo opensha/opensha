@@ -65,26 +65,26 @@ public class PEER_AreaForecast extends AbstractERF{
   public final static String DEPTH_PARAM_UNITS = "km";
   private final static double DEPTH_PARAM_MIN = 0;
   private final static double DEPTH_PARAM_MAX = 30;
-  private final static Double DEPTH_PARAM_DEFAULT = new Double(5);
+  private final static Double DEPTH_PARAM_DEFAULT = Double.valueOf(5);
   public final static String MAG_DIST_PARAM_NAME = "Mag Dist";
 
    //Rake Variable
   public final static String RAKE_PARAM_NAME = "Ave Rake";
   public final static String RAKE_PARAM_UNITS = "degrees";
-  private final static Double RAKE_PARAM_DEFAULT = new Double(0);
+  private final static Double RAKE_PARAM_DEFAULT = Double.valueOf(0);
   private final static double RAKE_PARAM_MIN = -180;
   private final static double RAKE_PARAM_MAX = 180;
 
   //Rake Variable
   public final static String DIP_PARAM_NAME = "Ave Dip";
   public final static String DIP_PARAM_UNITS = "degrees";
-  private final static Double DIP_PARAM_DEFAULT = new Double(90);
+  private final static Double DIP_PARAM_DEFAULT = Double.valueOf(90);
   private final static double DIP_PARAM_MIN = 0;
   private final static double DIP_PARAM_MAX = 90;
 
 
   // default grid spacing is 1km
-  private Double DEFAULT_GRID_VAL = new Double(1);
+  private Double DEFAULT_GRID_VAL = Double.valueOf(1);
 
   // list of forecast locations
   private LocationList locationList;

@@ -87,7 +87,7 @@ public class EstimateConstraint extends AbstractParameterConstraint<Estimate> {
      * @param allowedEstimateList List of classnames of allowed Estimate objects
      */
     public EstimateConstraint( double min, double max, ArrayList allowedEstimateList) {
-        this(new Double(min), new Double(max), allowedEstimateList);
+        this(Double.valueOf(min), Double.valueOf(max), allowedEstimateList);
     }
 
 
@@ -151,8 +151,8 @@ public class EstimateConstraint extends AbstractParameterConstraint<Estimate> {
         String name = (String)list.get(i);
         if(estimate.getName().equalsIgnoreCase(name)) {
           // if this object is among list of allowed estimates, check min/max value
-          Double estimateMinValue = new Double(estimate.getMin());
-          Double estimateMaxValue = new Double(estimate.getMax());
+          Double estimateMinValue = Double.valueOf(estimate.getMin());
+          Double estimateMaxValue = Double.valueOf(estimate.getMax());
           if(min==null && max==null) return true;
           if(min!=null && max!=null && estimateMinValue.compareTo(min)>=0 &&  estimateMaxValue.compareTo(max)<=0)
             return true;

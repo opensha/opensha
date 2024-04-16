@@ -126,11 +126,11 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 	private final static String LAT_LON_PARAM_UNITS = "Degrees";
 	private final static String LAT_LON_PARAM_INFO = "Corner point of mapped region";
 	private final static String GRID_SPACING_PARAM_INFO = "Grid interval in the Region";
-	private final static Double MIN_LAT_PARAM_DEFAULT = new Double(20);
-	private final static Double MAX_LAT_PARAM_DEFAULT = new Double(60);
-	private final static Double MIN_LON_PARAM_DEFAULT = new Double(-130);
-	private final static Double MAX_LON_PARAM_DEFAULT = new Double(-60.0);
-	private final static Double GRID_SPACING_PARAM_DEFAULT = new Double(.1);
+	private final static Double MIN_LAT_PARAM_DEFAULT = Double.valueOf(20);
+	private final static Double MAX_LAT_PARAM_DEFAULT = Double.valueOf(60);
+	private final static Double MIN_LON_PARAM_DEFAULT = Double.valueOf(-130);
+	private final static Double MAX_LON_PARAM_DEFAULT = Double.valueOf(-60.0);
+	private final static Double GRID_SPACING_PARAM_DEFAULT = Double.valueOf(.1);
 	DoubleParameter minLatParam;
 	DoubleParameter maxLatParam;
 	DoubleParameter minLonParam;
@@ -143,7 +143,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 	private final static String IMAGE_WIDTH_INFO = "Width of the final jpg image (ps file width is always 8.5 inches)";
 	private final static double IMAGE_WIDTH_MIN = 1.0;
 	private final static double IMAGE_WIDTH_MAX = 20.0;
-	protected final static Double IMAGE_WIDTH_DEFAULT = new Double(6.5);
+	protected final static Double IMAGE_WIDTH_DEFAULT = Double.valueOf(6.5);
 	DoubleParameter imageWidthParam;
 
 //	public final static String CPT_FILE_PARAM_NAME = "Color Scheme";
@@ -181,10 +181,10 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 
 	// for color scale limits
 	public final static String COLOR_SCALE_MIN_PARAM_NAME = "Color-Scale Min";
-	private final static Double COLOR_SCALE_MIN_PARAM_DEFAULT = new Double(-2.);
+	private final static Double COLOR_SCALE_MIN_PARAM_DEFAULT = Double.valueOf(-2.);
 	private final static String COLOR_SCALE_MIN_PARAM_INFO = "Lower limit on color scale (values below are the same color)";
 	public final static String COLOR_SCALE_MAX_PARAM_NAME = "Color-Scale Max";
-	private final static Double COLOR_SCALE_MAX_PARAM_DEFAULT = new Double(-0.5);
+	private final static Double COLOR_SCALE_MAX_PARAM_DEFAULT = Double.valueOf(-0.5);
 	private final static String COLOR_SCALE_MAX_PARAM_INFO = "Upper limit on color scale (values above are the same color)";
 	DoubleParameter colorScaleMaxParam;
 	DoubleParameter colorScaleMinParam;
@@ -192,9 +192,9 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 	// DPI
 	public final static String DPI_PARAM_NAME = "DPI";
 	private final static String DPI_PARAM_INFO = "Dots per inch for PS file";
-	protected final static Integer DPI_DEFAULT = new Integer(72);
-	private final static Integer DPI_MIN = new Integer(0);
-	private final static Integer DPI_MAX = new Integer(Integer.MAX_VALUE);
+	protected final static Integer DPI_DEFAULT = Integer.valueOf(72);
+	private final static Integer DPI_MIN = Integer.valueOf(0);
+	private final static Integer DPI_MAX = Integer.valueOf(Integer.MAX_VALUE);
 	private IntegerParameter dpiParam;
 
 	// Apply GMT smoothing
@@ -340,14 +340,14 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		showHiwysParam = new StringParameter( SHOW_HIWYS_PARAM_NAME, showHiwysConstraint, SHOW_HIWYS_PARAM_DEFAULT );
 		showHiwysParam.setInfo( SHOW_HIWYS_PARAM_INFO );
 
-		gmtFromServer = new BooleanParameter(GMT_WEBSERVICE_NAME,new Boolean("true"));
+		gmtFromServer = new BooleanParameter(GMT_WEBSERVICE_NAME,Boolean.valueOf("true"));
 		gmtFromServer.setInfo(GMT_WEBSERVICE_INFO);
 
 		logPlotParam = new BooleanParameter(LOG_PLOT_NAME, LOG_PLOT_PARAM_DEFAULT);
 		logPlotParam.setInfo(LOG_PLOT_INFO);
 
 
-		customScaleLabelCheckParam = new BooleanParameter(CUSTOM_SCALE_LABEL_PARAM_CHECK_NAME,new Boolean(false));
+		customScaleLabelCheckParam = new BooleanParameter(CUSTOM_SCALE_LABEL_PARAM_CHECK_NAME,Boolean.valueOf(false));
 		customScaleLabelCheckParam.setInfo(CUSTOM_SCALE_LABEL_PARAM_CHECK_INFO);
 
 		scaleLabelParam = new StringParameter(SCALE_LABEL_PARAM_NAME,"");
@@ -1033,7 +1033,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		}
 		else {
 			// redefine the region so that maxLat, minLat, and delta fall exactly on the topoIntenFile
-			gridSpacing = (new Integer(resolution)).doubleValue()/(3600.0);
+			gridSpacing = (Integer.valueOf(resolution)).doubleValue()/(3600.0);
 			double tempNum = Math.ceil((minLat-32.0)/gridSpacing);
 			minLat = tempNum*gridSpacing+32.0;
 			tempNum = Math.ceil((minLon-(-126))/gridSpacing);
@@ -1086,7 +1086,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 
 		// add the color scale
 		DecimalFormat df2 = new DecimalFormat("0.E0");
-		Float tickInc = new Float(df2.format((colorScaleMax-colorScaleMin)/4.0));
+		Float tickInc = Float.valueOf(df2.format((colorScaleMax-colorScaleMin)/4.0));
 		inc = tickInc.floatValue();
 		//checks to see if customLabel is selected, then get the custom label
 		boolean customLabelSelected = ((Boolean)customScaleLabelCheckParam.getValue()).booleanValue();
@@ -1897,7 +1897,7 @@ public class GMT_MapGenerator implements SecureMapGenerator, Serializable {
 		DecimalFormat df2 = new DecimalFormat("0.E0");
 		Float tickInc;
 		if (customTickInterval == null)
-			tickInc = new Float(df2.format((colorScaleMax-colorScaleMin)/4.0));
+			tickInc = Float.valueOf(df2.format((colorScaleMax-colorScaleMin)/4.0));
 		else
 			tickInc = customTickInterval.floatValue();
 		//checks to see if customLabel is selected, then get the custom label

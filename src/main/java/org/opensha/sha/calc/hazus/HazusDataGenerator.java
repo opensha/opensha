@@ -118,9 +118,9 @@ public class HazusDataGenerator implements ParameterChangeWarningListener{
   private void createAttenRel_Instance(){
 	  attenRel = new USGS_Combined_2004_AttenRel(this);
           attenRel.setParamDefaults();
-	  attenRel.getParameter(Vs30_Param.NAME).setValue(new Double(760));
+	  attenRel.getParameter(Vs30_Param.NAME).setValue(Double.valueOf(760));
 	  attenRel.getParameter(SigmaTruncTypeParam.NAME).setValue(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED);
-	  attenRel.getParameter(SigmaTruncLevelParam.NAME).setValue(new Double(3.0));
+	  attenRel.getParameter(SigmaTruncLevelParam.NAME).setValue(Double.valueOf(3.0));
 	  attenRel.getParameter(ComponentParam.NAME).setValue(Component.AVE_HORZ);
   }
 
