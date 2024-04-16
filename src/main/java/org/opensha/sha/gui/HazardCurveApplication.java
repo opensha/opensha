@@ -1500,6 +1500,14 @@ ScalarIMRChangeListener {
 
 		String disaggregationPlotWebAddr = null;
 		String metadata = getMapParametersInfoAsHTML();
+		String modeString = "";
+		if (imlBasedDisaggr)
+			modeString = "Disaggregation Results for IML = " + imlVal
+			+ " (for Prob = " + (float) probVal + ")";
+		else
+			modeString = "Disaggregation Results for Prob = " + probVal
+			+ " (for IML = " + (float) imlVal + ")";
+		modeString += "\n" + disaggregationString;
 		if (disaggregationControlPanel.isUseGMT()) {
 			// String pdfImageLink;
 			try {
