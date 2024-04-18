@@ -702,6 +702,9 @@ public class MeanUCERF2 extends AbstractERF {
 					sourceMFDMapping.put(key, new SummedMagFreqDist(UCERF2.MIN_MAG, UCERF2.MAX_MAG, UCERF2.NUM_MAG));
 
 					sourceRakeMapping.put(key, aFaultSourceGenerator.getAveRakeForSource(srcIndex));
+					// TODO: this is a bug, it always hits for Ellsworth-B first and then keeps the cached corrected 
+					// surface using the Ellsworth-B magnitude rather than using the average magnitude.
+					// See issue #111 (https://github.com/opensha/opensha/issues/111)
 					this.sourceGriddedSurfaceMapping.put(key, aFaultSourceGenerator.getCombinedGriddedSurfaceForSource(srcIndex, ddwCorr));
 
 // Debugging tests:		
