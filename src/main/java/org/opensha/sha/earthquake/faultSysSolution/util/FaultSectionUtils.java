@@ -21,7 +21,10 @@ public class FaultSectionUtils {
 	 * @throws IllegalStateException if multiple matches are found
 	 */
 	public static int findParentSectionID(List<? extends FaultSection> subSects, String... nameParts) {
-		return doFindSectionID(subSects, true, nameParts);
+		FaultSection sect = findSection(subSects, true, nameParts);
+		if (sect == null)
+			return -1;
+		return sect.getParentSectionId();
 	}
 	
 	/**
@@ -34,13 +37,19 @@ public class FaultSectionUtils {
 	 * @throws IllegalStateException if multiple matches are found
 	 */
 	public static int findSectionID(List<? extends FaultSection> sects, String... nameParts) {
-		return doFindSectionID(sects, false, nameParts);
+		FaultSection sect = findSection(sects, false, nameParts);
+		if (sect == null)
+			return -1;
+		return sect.getSectionId();
 	}
 	
-	private static int doFindSectionID(List<? extends FaultSection> subSects, boolean parent, String... nameParts) {
+	public static FaultSection findSection(List<? extends FaultSection> subSects, String... nameParts) {
+		return findSection(subSects, false, nameParts);
+	}
+	
+	private static FaultSection findSection(List<? extends FaultSection> subSects, boolean parent, String... nameParts) {
 		Preconditions.checkState(nameParts.length > 0);
-		String prevMatch = null;
-		int matchingID = -1;
+		FaultSection matchSect = null;
 		String partDebugStr = "[";
 		for (int i=0; i<nameParts.length; i++) {
 			String part = nameParts[i];
@@ -64,7 +73,8 @@ public class FaultSectionUtils {
 			}
 			Preconditions.checkState(myID >= 0, "IDs not set");
 			myName = myName.toLowerCase();
-			if (sect.getParentSectionId() == matchingID)
+			if (parent && matchSect != null && matchSect.getParentSectionId() == sect.getParentSectionId())
+				// multiple sects of the same parent, which is fine, continue
 				continue;
 			boolean match = true;
 			for (String part : nameParts) {
@@ -74,13 +84,16 @@ public class FaultSectionUtils {
 				}
 			}
 			if (match) {
-				Preconditions.checkState(prevMatch == null, "Multiple matches for %s: %s='%s' and %s='%s'",
-						partDebugStr, matchingID, prevMatch, myID, myName);
-				matchingID = myID;
-				prevMatch = myName;
+				if (matchSect != null) {
+					String prevName = parent ? matchSect.getParentSectionName() : matchSect.getSectionName();
+					int prevID = parent ? matchSect.getParentSectionId() : matchSect.getSectionId();
+					throw new IllegalStateException("Multiple matches for "+partDebugStr+": "
+							+prevID+"='"+prevName+"' and "+myID+"='"+myName+"'");
+				}
+				matchSect = sect;
 			}
 		}
-		return matchingID;
+		return matchSect;
 	}
 	
 	/**
