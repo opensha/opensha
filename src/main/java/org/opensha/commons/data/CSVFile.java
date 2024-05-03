@@ -30,7 +30,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.primitives.Doubles;
 
-public class CSVFile<E> implements Iterable<List<E>> {
+public class CSVFile<E> implements Iterable<List<E>>, CSVWriter {
 	
 	private List<List<E>> values;
 //	private List<String> colNames;
@@ -259,6 +259,7 @@ public class CSVFile<E> implements Iterable<List<E>> {
 	 * @param stream
 	 * @throws IOException
 	 */
+	@Override
 	public void writeToStream(OutputStream stream) throws IOException {
 		if (!(stream instanceof BufferedOutputStream))
 			stream = new BufferedOutputStream(stream);

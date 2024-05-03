@@ -25,6 +25,7 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.CSVReader;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.logicTree.BranchWeightProvider;
@@ -1197,7 +1198,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			rupIndices = prevRupIndices;
 		} else {
 			System.out.println("\tLoading rupture indices from "+indicesFile);
-			CSVFile<String> rupSectsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, indicesFile);
+			CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(zip, entryPrefix, indicesFile);
 			rupIndices = FaultSystemRupSet.loadRupSectsCSV(rupSectsCSV, subSects.size());
 			prevRupIndices = rupIndices;
 			prevIndicesFile = indicesFile;

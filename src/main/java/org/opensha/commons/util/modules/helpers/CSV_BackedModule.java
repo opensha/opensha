@@ -7,6 +7,8 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.CSVReader;
+import org.opensha.commons.data.CSVWriter;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleHelper;
 
@@ -42,7 +44,7 @@ public interface CSV_BackedModule extends FileBackedModule {
 		initFromCSV(csv);
 	}
 	
-	public static void writeToArchive(CSVFile<?> csv, ZipOutputStream zout, String entryPrefix, String fileName)
+	public static void writeToArchive(CSVWriter csv, ZipOutputStream zout, String entryPrefix, String fileName)
 			throws IOException {
 		FileBackedModule.initEntry(zout, entryPrefix, fileName);
 		BufferedOutputStream out = new BufferedOutputStream(zout);
@@ -56,6 +58,15 @@ public interface CSV_BackedModule extends FileBackedModule {
 		
 		CSVFile<String> csv = CSVFile.readStream(zin, false);
 		
+		zin.close();
+		return csv;
+	}
+
+	public static CSVReader loadLargeFileFromArchive(ZipFile zip, String entryPrefix, String fileName) throws IOException {
+		BufferedInputStream zin = FileBackedModule.getInputStream(zip, entryPrefix, fileName);
+
+		CSVReader csv = new CSVReader(zin);
+
 		zin.close();
 		return csv;
 	}

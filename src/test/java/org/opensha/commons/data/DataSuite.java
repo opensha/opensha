@@ -16,6 +16,8 @@ import org.opensha.commons.geo.RegionTest;
 	TimeSpanTests.class,
 	XY_DataSetTests.class,
 	WeightedListTest.class,
+	CSVReaderTests.class,
+	CSVWriterTests.class,
 	
 	// siteData
 	SiteDataProvidersTest.class,
