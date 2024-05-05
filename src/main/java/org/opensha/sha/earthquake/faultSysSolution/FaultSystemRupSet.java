@@ -1647,11 +1647,25 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public static Builder builderForClusterRups(List<? extends FaultSection> faultSectionData,
 			List<ClusterRupture> rups) {
 		List<List<Integer>> sectionForRups = new ArrayList<>();
-		for (ClusterRupture rup : rups) {
-			List<Integer> ids = new ArrayList<>();
-			for (FaultSection sect : rup.buildOrderedSectionList())
-				ids.add(sect.getSectionId());
-			sectionForRups.add(ids);
+		boolean shortSafe = faultSectionData.get(faultSectionData.size()-1).getSectionId() < Short.MAX_VALUE;
+		if(shortSafe) {
+			for (ClusterRupture rup : rups) {
+				List<FaultSection> sections= rup.buildOrderedSectionList();
+				short[] ids = new short[sections.size()];
+				for(int s = 0; s < ids.length; s++) {
+					ids[s] = (short) sections.get(s).getSectionId();
+				}
+				sectionForRups.add(new ShortListWrapper(ids));
+			}
+		} else {
+			for (ClusterRupture rup : rups) {
+				List<FaultSection> sections= rup.buildOrderedSectionList();
+				int[] ids = new int[sections.size()];
+				for(int s = 0; s < ids.length; s++) {
+					ids[s] = sections.get(s).getSectionId();
+				}
+				sectionForRups.add(new IntListWrapper(ids));
+			}
 		}
 		Builder builder = new Builder(faultSectionData, sectionForRups);
 		builder.setClusterRuptures(rups);
