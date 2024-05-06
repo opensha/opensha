@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.stream.IntStream;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -1802,7 +1803,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					for (int r=0; r<numRups; r++)
 						rupAreas[r] = Double.NaN;
 				}
-				for (int r=0; r<numRups; r++) {
+				double[] finalRakes = rakes;
+				double[] finalRupAreas = rupAreas;
+				IntStream.range(0, numRups).parallel().forEach(r -> {
 					List<Double> mySectAreas = new ArrayList<>();
 					List<Double> mySectRakes = new ArrayList<>();
 					double totArea = 0d;
@@ -1813,11 +1816,11 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 						mySectAreas.add(area);
 						mySectRakes.add(sect.getAveRake());
 					}
-					if (Double.isNaN(rupAreas[r]))
-						rupAreas[r] = totArea;
-					if (Double.isNaN(rakes[r]))
-						rakes[r] = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(mySectAreas, mySectRakes));
-				}
+					if (Double.isNaN(finalRupAreas[r]))
+						finalRupAreas[r] = totArea;
+					if (Double.isNaN(finalRakes[r]))
+						finalRakes[r] = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(mySectAreas, mySectRakes));
+				});
 				this.rakes = rakes;
 				this.rupAreas = rupAreas;
 			}
@@ -1838,7 +1841,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			this.mags = new double[sectionForRups.size()];
 			checkBuildRakesAndAreas();
 			checkBuildLengths();
-			for (int r=0; r<mags.length; r++) {
+			IntStream.range(0, mags.length).parallel().forEach(r -> {
 				double totOrigArea = 0;
 				for (int s : sectionForRups.get(r)) {
 					FaultSection sect = faultSectionData.get(s);
@@ -1846,7 +1849,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				}
 				double origDDW = totOrigArea / rupLengths[r];
 				mags[r] = scale.getMag(rupAreas[r], rupLengths[r], rupAreas[r]/rupLengths[r], origDDW, rakes[r]);
-			}
+			});
 			modules.add(new ModuleBuilder() {
 				
 				@Override
