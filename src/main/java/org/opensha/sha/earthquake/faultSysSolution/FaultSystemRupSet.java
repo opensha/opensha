@@ -1841,7 +1841,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			this.mags = new double[sectionForRups.size()];
 			checkBuildRakesAndAreas();
 			checkBuildLengths();
-			IntStream.range(0, mags.length).parallel().forEach(r -> {
+			for (int r=0; r<mags.length; r++) {
 				double totOrigArea = 0;
 				for (int s : sectionForRups.get(r)) {
 					FaultSection sect = faultSectionData.get(s);
@@ -1849,7 +1849,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				}
 				double origDDW = totOrigArea / rupLengths[r];
 				mags[r] = scale.getMag(rupAreas[r], rupLengths[r], rupAreas[r]/rupLengths[r], origDDW, rakes[r]);
-			});
+			}
 			modules.add(new ModuleBuilder() {
 				
 				@Override
