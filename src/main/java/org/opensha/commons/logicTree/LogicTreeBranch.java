@@ -92,7 +92,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule
 				values.add(null);
 			this.values = values;
 		} else {
-			Preconditions.checkState(levels.size() == values.size());
+			Preconditions.checkState(levels.size() == values.size(), "Have %s levels but %s values", levels.size(), values.size());
 			for (int i=0; i<values.size(); i++) {
 				LogicTreeNode value = values.get(i);
 				if (value != null) {
