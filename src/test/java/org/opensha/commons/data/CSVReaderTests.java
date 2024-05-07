@@ -17,15 +17,16 @@ public class CSVReaderTests {
                         + "1,2,3";
         CSVReader reader = new CSVReader(new ByteArrayInputStream(sourceCSV.getBytes(StandardCharsets.UTF_8)));
 
-        assertEquals(2, reader.getNumRows());
-        assertTrue(reader.next());
-        assertEquals("a", reader.get(0));
-        assertEquals(1, reader.getInt(1));
-        assertEquals(2.3, reader.getDouble(2), 0.0000000001);
-        assertEquals(" a comma,", reader.get(3));
-        assertEquals(" the end", reader.get(4));
-        assertTrue(reader.next());
-        assertEquals(1, reader.getInt(0));
-        assertFalse(reader.next());
+        CSVReader.Row row = reader.read();
+        assertNotNull(row);
+        assertEquals("a", row.get(0));
+        assertEquals(1, row.getInt(1));
+        assertEquals(2.3, row.getDouble(2), 0.0000000001);
+        assertEquals(" a comma,", row.get(3));
+        assertEquals(" the end", row.get(4));
+        row = reader.read();
+        assertNotNull(row);
+        assertEquals(1, row.getInt(0));
+        assertNull(reader.read());
     }
 }

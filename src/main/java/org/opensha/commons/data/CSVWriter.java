@@ -4,71 +4,59 @@ import com.google.common.base.Preconditions;
 
 import java.io.*;
 import java.util.*;
-import java.util.stream.Stream;
 
 /**
- * A CSVFile for sequentially writing large CSV data to file in a memory efficient way while avoiding storing
- * intermediate internal List<String> representations.
- * This interface is not meant for manipulating or querying CSV data.
+ * For writing large CSV data to file without building intermediate internal List<String> representations.
+ * Remember to call flush() when done writing to the archive.
  */
 
-public interface CSVWriter {
+public class CSVWriter implements Flushable {
+
+    protected boolean strictRowSizes;
+    protected int cols = 0;
+    protected Writer writer;
 
     /**
-     * Writes the CSV file to the given output stream. The stream will not be closed.
+     * Creates a CSVWriter
      *
-     * @param stream
+     * @param out            the OutputStream to write to
+     * @param strictRowSizes whether this write should enforce strict row sizes
      * @throws IOException
      */
-    void writeToStream(OutputStream out) throws IOException;
+    public CSVWriter(OutputStream out, boolean strictRowSizes)
+            throws IOException {
+        this.strictRowSizes = strictRowSizes;
+        this.writer = new OutputStreamWriter(new BufferedOutputStream(out));
+    }
+
+    protected void validateLine(List<String> line) {
+        if (!strictRowSizes) {
+            return;
+        }
+
+        if (cols == 0) {
+            cols = line.size();
+        }
+
+        Preconditions.checkArgument(line.size() == cols, "New line must contain" +
+                " same number of values as columns (expected " + cols + ", got " + line.size() + ")");
+    }
 
     /**
-     * A CSVWriter based on a lazy stream of List<String> objects.
-     * Usage: Instead of creating a CSVFile and repeatedly calling addline(), create a stream of List<String> objects
-     * and pass the stream into the constructor. In effect, this is like passing a function that can lazily produce
-     * all CSV lines.
+     * Write a CSV-formatted row to the OutputStream.
+     *
+     * @param line
+     * @throws IOException
      */
-    class CSVWriterStream implements CSVWriter {
+    public void write(List<String> line) throws IOException {
+        validateLine(line);
+        String row = CSVFile.getLineStr(line);
+        writer.write(row);
+        writer.write('\n');
+    }
 
-        Stream<List<String>> stream;
-        boolean strictRowSizes;
-        int cols = 0;
-
-        public CSVWriterStream(Stream<List<String>> lines, boolean strictRowSizes) {
-            this.stream = lines;
-            this.strictRowSizes = strictRowSizes;
-        }
-
-        protected boolean validateLine(List<String> line) {
-            if (!strictRowSizes) {
-                return true;
-            }
-
-            if (cols == 0) {
-                cols = line.size();
-            }
-
-            Preconditions.checkArgument(line.size() == cols, "New line must contain" +
-                    " same number of values as columns (expected " + cols + ", got " + line.size() + ")");
-
-            return true;
-        }
-
-        @Override
-        public void writeToStream(OutputStream out) throws IOException {
-            OutputStreamWriter writer = new OutputStreamWriter(out);
-            stream.
-                    filter(this::validateLine).
-                    map(CSVFile::getLineStr).
-                    forEach(line -> {
-                        try {
-                            writer.write(line);
-                            writer.write('\n');
-                        } catch (IOException x) {
-                            throw new RuntimeException(x);
-                        }
-                    });
-            writer.flush();
-        }
+    @Override
+    public void flush() throws IOException {
+        writer.flush();
     }
 }
