@@ -49,6 +49,8 @@ public class MinisectionMappings {
 			FaultSection subSect = subSects.get(s);
 			int parentID = subSect.getParentSectionId();
 			FaultSection parentSect = sectsByID.get(parentID);
+			Preconditions.checkNotNull(parentSect, "Parent sect is null? ParentID=%s, SubSect: %s. %s",
+					parentID, s, subSect.getSectionName());
 			
 			// subsection tract
 			FaultTrace subTrace = subSect.getFaultTrace();
