@@ -1005,7 +1005,7 @@ public class RuptureSets {
 			@Override
 			public void addExtraOptions(Options ops) {
 				ops.addOption(null, "bilateral", false, "Flag to enable bilateral rupture. Also see --bilateral-variation-mode.");
-				ops.addOption(null, "bilateral-variation-mode", true, "Bilateral variation mode; one of "
+				ops.addOption(null, "bilateral-variation-mode", true, "Bilateral variation mode, see figure 13 of Milner et al. (2022). Options:"
 						+FaultSysTools.enumOptions(SecondaryVariations.class));
 			}
 		},
