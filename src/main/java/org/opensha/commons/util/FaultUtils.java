@@ -246,12 +246,13 @@ public final class FaultUtils {
 			}
 		}
 
-		// make sure we got the last one (might be missed because of numerical precision issues?)
+		// the last one usually (always?) gets missed in the above, add it if needed
 		double dist = LocationUtils.linearDistanceFast(trace.get(trace.size()-1), resampTrace.get(resampTrace.size()-1));
-		if (dist> resampInt/2) {
-//			System.err.println("WARNING: Adding end because our last was too far ("+(float)dist+" km) with resampInt="+(float)resampInt+" km");
+		if (dist> resampInt/2)
 			resampTrace.add(trace.get(trace.size()-1));
-		}
+		
+		Preconditions.checkState(resampTrace.size() == num+1,
+				"Resampled trace should have %s locations, but has %s", num+1, resampTrace.size());
 
 		/* Debugging Stuff *****************/
 		/*
