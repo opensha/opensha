@@ -31,7 +31,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence.DOLE_SubsectionMapper.AbstractDOLE_Data;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence.DOLE_SubsectionMapper.DOLE_Data;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence.DOLE_SubsectionMapper.PaleoDOLE_Data;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence.DOLE_SubsectionMapper.DOLE_MappingAlgorithm;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence.DOLE_SubsectionMapper.HistoricalRupture;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.timeDependence.DOLE_SubsectionMapper.MappingType;
@@ -51,7 +51,7 @@ public class TimeDependentReportPageGen {
 		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
 		
 		System.out.println("Loading DOLE data");
-		List<DOLE_Data> doleData = DOLE_SubsectionMapper.loadDOLE();
+		List<PaleoDOLE_Data> doleData = DOLE_SubsectionMapper.loadPaleoDOLE();
 		System.out.println("Loading Historical Rupture data");
 		List<HistoricalRupture> histRupData = DOLE_SubsectionMapper.loadHistRups();
 		System.out.println("Mapping DOLE data");
@@ -147,7 +147,7 @@ public class TimeDependentReportPageGen {
 		mapMaker.setLegendInset(RectangleAnchor.TOP_RIGHT);
 		List<Location> doleLocs = new ArrayList<>();
 		List<FeatureProperties> scatterProps = new ArrayList<>();
-		for (DOLE_Data data : doleData) {
+		for (PaleoDOLE_Data data : doleData) {
 			doleLocs.add(data.location);
 			scatterProps.add(data.feature.properties);
 		}
@@ -159,13 +159,13 @@ public class TimeDependentReportPageGen {
 		// make debug geojson that draws lines between sites and mapped faults
 		// first do mapping without any historical
 		List<FaultSection> clonedFaultSects = new ArrayList<>();
-		List<DOLE_Data> doleDataDebug = DOLE_SubsectionMapper.loadDOLE();
+		List<PaleoDOLE_Data> doleDataDebug = DOLE_SubsectionMapper.loadPaleoDOLE();
 		for (FaultSection sect : subSects)
 			clonedFaultSects.add(sect.clone());
 		PlotCurveCharacterstics connectorChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.CYAN.darker());
 		List<LocationList> debugLines = new ArrayList<>();
 		List<PlotCurveCharacterstics> debugLineChars = new ArrayList<>();
-		for (DOLE_Data data : doleDataDebug) {
+		for (PaleoDOLE_Data data : doleDataDebug) {
 			DOLE_SubsectionMapper.mapDOLE(clonedFaultSects, List.of(), List.of(data), DOLE_MappingAlgorithm.CLOSEST_SECT, false);
 			for (FaultSection sect : data.getMappedSubSects()) {
 				Location closest = null;
