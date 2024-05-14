@@ -39,6 +39,7 @@ import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotElement;
 import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
+import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ExceptionUtils;
@@ -258,8 +259,11 @@ public class SubSectStiffnessCalculator {
 	private List<PatchLocation> buildFillOverlapPatches(FaultSection sect) {
 		// super sample the surface
 		double hiResSpacing = gridSpacing/10d;
-		StirlingGriddedSurface surf = new StirlingGriddedSurface(
-				sect.getSimpleFaultData(false), hiResSpacing, hiResSpacing);
+		RuptureSurface surf = sect.getFaultSurface(hiResSpacing, false, false);
+		Preconditions.checkState(surf instanceof StirlingGriddedSurface, "Currently only support Coulomb calculations for "
+				+ "StirlingGriddedSurface instances, have %s for %s", ClassUtils.getClassNameWithoutPackage(surf.getClass()), sect.getSectionName());
+//		StirlingGriddedSurface surf = new StirlingGriddedSurface(
+//				sect.getSimpleFaultData(false), hiResSpacing, hiResSpacing);
 		
 		double surfLength = surf.getAveLength();
 		double surfWidth = surf.getAveWidth();
@@ -280,7 +284,7 @@ public class SubSectStiffnessCalculator {
 		
 		for (double das : dasCenters) {
 			for (double ddw : dasWidths) {
-				PatchLocation patchLoc = buildPatch(surf, aveDip, aveRake, halfSpacingKM, dipRad, das, ddw);
+				PatchLocation patchLoc = buildPatch((StirlingGriddedSurface)surf, aveDip, aveRake, halfSpacingKM, dipRad, das, ddw);
 				myPatches.add(patchLoc);
 			}
 		}
