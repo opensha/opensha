@@ -75,6 +75,8 @@ public class GeographicMapMaker {
 	protected boolean reverseSort = false;
 	protected Boolean absoluteSort = null;
 	protected int widthDefault = 800;
+	protected boolean axisLabels = true;
+	protected boolean axisTicks = true;
 	
 	/*
 	 * Fault sections and cached surfaces/traces
@@ -1532,14 +1534,17 @@ public class GeographicMapMaker {
 			
 			plotLast();
 			
+			String xAxisLabel = axisLabels ? "Longitude" : " ";
+			String yAxisLabel = axisLabels ? "Latitude" : " ";
+			
 			PlotSpec spec;
 			if (xyzData != null) {
 				// XYZ data
 				Preconditions.checkNotNull(xyzCPT);
-				spec = new XYZPlotSpec(xyzData, funcs, chars, xyzCPT, title, "Longitude", "Latitude", xyzLabel);
+				spec = new XYZPlotSpec(xyzData, funcs, chars, xyzCPT, title, xAxisLabel, yAxisLabel, xyzLabel);
 				((XYZPlotSpec)spec).setCPTPosition(RectangleEdge.BOTTOM);
 			} else {
-				spec = new PlotSpec(funcs, chars, title, "Longitude", "Latitude");
+				spec = new PlotSpec(funcs, chars, title, xAxisLabel, yAxisLabel);
 			}
 			
 			if (customLegendLabels != null) {
@@ -1663,6 +1668,14 @@ public class GeographicMapMaker {
 		return this.widthDefault;
 	}
 	
+	public void setAxisLabelsVisible(boolean axisLabels) {
+		this.axisLabels = axisLabels;
+	}
+
+	public void setAxisTicksVisible(boolean axisTicks) {
+		this.axisTicks = axisTicks;
+	}
+
 	public void plot(File outputDir, String prefix, String title) throws IOException {
 		plot(outputDir, prefix, buildPlot(title), widthDefault);
 	}
@@ -1689,20 +1702,31 @@ public class GeographicMapMaker {
 		Range yRange = getYRange();
 		
 		gp.drawGraphPanel(spec, false, false, xRange, yRange);
-		double maxSpan = Math.max(xRange.getLength(), yRange.getLength());
-		double tick;
-		if (maxSpan > 20)
-			tick = 5d;
-		else if (maxSpan > 8)
-			tick = 2d;
-		else if (maxSpan > 3)
-			tick = 1d;
-		else if (maxSpan > 1)
-			tick = 0.5d;
-		else
-			tick = 0.2;
-		PlotUtils.setXTick(gp, tick);
-		PlotUtils.setYTick(gp, tick);
+		if (axisTicks) {
+			double maxSpan = Math.max(xRange.getLength(), yRange.getLength());
+			double tick;
+			if (maxSpan > 20)
+				tick = 5d;
+			else if (maxSpan > 8)
+				tick = 2d;
+			else if (maxSpan > 3)
+				tick = 1d;
+			else if (maxSpan > 1)
+				tick = 0.5d;
+			else
+				tick = 0.2;
+			PlotUtils.setXTick(gp, tick);
+			PlotUtils.setYTick(gp, tick);
+		} else {
+			gp.getPlot().setDomainGridlinesVisible(false);
+			gp.getPlot().setRangeGridlinesVisible(false);
+			gp.getXAxis().setTickLabelsVisible(false);
+			gp.getXAxis().setTickMarksVisible(false);
+			gp.getXAxis().setMinorTickMarksVisible(false);
+			gp.getYAxis().setTickLabelsVisible(false);
+			gp.getYAxis().setTickMarksVisible(false);
+			gp.getYAxis().setMinorTickMarksVisible(false);
+		}
 		
 		if (customizer != null)
 			customizer.accept(gp);
