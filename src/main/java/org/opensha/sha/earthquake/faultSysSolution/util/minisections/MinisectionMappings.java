@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.rupForecastImpl.nshm23.util;
+package org.opensha.sha.earthquake.faultSysSolution.util.minisections;
 
 import java.util.HashMap;
 import java.util.List;
@@ -310,15 +310,15 @@ public class MinisectionMappings {
 	 */
 	private static final double GEODETIC_LOC_ERR_TOL = 1;
 	
-	public boolean areMinisectionDataForParentValid(int parentID, List<? extends MinisectionDataRecord> records, boolean verbose) {
+	public boolean areMinisectionDataForParentValid(int parentID, List<? extends AbstractMinisectionDataRecord> records, boolean verbose) {
 		return checkMinisectionDataForParentValid(parentID, records, verbose, false);
 	}
 	
-	public void assertMinisectionDataForParentValid(int parentID, List<? extends MinisectionDataRecord> records) {
+	public void assertMinisectionDataForParentValid(int parentID, List<? extends AbstractMinisectionDataRecord> records) {
 		checkMinisectionDataForParentValid(parentID, records, false, true);
 	}
 	
-	private boolean checkMinisectionDataForParentValid(int parentID, List<? extends MinisectionDataRecord> records,
+	private boolean checkMinisectionDataForParentValid(int parentID, List<? extends AbstractMinisectionDataRecord> records,
 			boolean verbose, boolean failOnInvalid) {
 		FaultSection sect = sectsByID.get(parentID);
 		
@@ -349,20 +349,20 @@ public class MinisectionMappings {
 		
 		// now check each individual
 		boolean ret = true;
-		for (MinisectionDataRecord record : records)
+		for (AbstractMinisectionDataRecord record : records)
 			ret = checkMinisectionDataValid(record, verbose, failOnInvalid) && ret;
 		return ret;
 	}
 	
-	public boolean isMinisectionDataValid(MinisectionDataRecord record, boolean verbose) {
+	public boolean isMinisectionDataValid(AbstractMinisectionDataRecord record, boolean verbose) {
 		return checkMinisectionDataValid(record, verbose, false);
 	}
 	
-	public void assertMinisectionDataValid(MinisectionDataRecord record) {
+	public void assertMinisectionDataValid(AbstractMinisectionDataRecord record) {
 		checkMinisectionDataValid(record, false, true);
 	}
 	
-	private boolean checkMinisectionDataValid(MinisectionDataRecord record, boolean verbose, boolean failOnInvalid) {
+	private boolean checkMinisectionDataValid(AbstractMinisectionDataRecord record, boolean verbose, boolean failOnInvalid) {
 		FaultSection sect = sectsByID.get(record.parentID);
 		
 		if (sect == null) {
@@ -417,23 +417,6 @@ public class MinisectionMappings {
 		
 		// checks out
 		return true;
-	}
-	
-	public static abstract class MinisectionDataRecord {
-		public final int parentID;
-		public final int minisectionID;
-		public final Location startLoc;
-		public final Location endLoc;
-		
-		public MinisectionDataRecord(int parentID, int minisectionID, Location startLoc, Location endLoc) {
-			super();
-			Preconditions.checkState(parentID >= 0);
-			this.parentID = parentID;
-			Preconditions.checkState(minisectionID >= 0);
-			this.minisectionID = minisectionID;
-			this.startLoc = startLoc;
-			this.endLoc = endLoc;
-		}
 	}
 
 }
