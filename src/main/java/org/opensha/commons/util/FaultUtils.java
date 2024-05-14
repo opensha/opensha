@@ -228,7 +228,7 @@ public final class FaultUtils {
 		int NextLocIndex = 1;
 		while (NextLocIndex < trace.size()) {
 			Location nextLoc = trace.get(NextLocIndex);
-			double length = LocationUtils.linearDistanceFast(lastLoc, nextLoc);
+			double length = LocationUtils.horzDistance(lastLoc, nextLoc);
 			if (length > remainingLength) {
 				// set the point
 				LocationVector dir = LocationUtils.vector(lastLoc, nextLoc);
@@ -248,7 +248,10 @@ public final class FaultUtils {
 
 		// make sure we got the last one (might be missed because of numerical precision issues?)
 		double dist = LocationUtils.linearDistanceFast(trace.get(trace.size()-1), resampTrace.get(resampTrace.size()-1));
-		if (dist> resampInt/2) resampTrace.add(trace.get(trace.size()-1));
+		if (dist> resampInt/2) {
+//			System.err.println("WARNING: Adding end because our last was too far ("+(float)dist+" km) with resampInt="+(float)resampInt+" km");
+			resampTrace.add(trace.get(trace.size()-1));
+		}
 
 		/* Debugging Stuff *****************/
 		/*
@@ -458,6 +461,20 @@ public final class FaultUtils {
 		for (int i=0; i<angles.size(); i++)
 			scalars.add(1d);
 		return getScaledAngleAverage(scalars, angles);
+	}
+	
+	/**
+	 * Absolute difference between two angles dealing with any -180/180 or 0/360 cut issues. Note that this
+	 * expects angles in degrees, and will return angles from 0 to 360 degrees.
+	 * @param angle1
+	 * @param angle2
+	 * @return
+	 */
+	public static double getAbsAngleDiff(double angle1, double angle2) {
+		double angleDiff = Math.abs(angle1 - angle2);
+		while (angleDiff > 270)
+			angleDiff -= 360;
+		return Math.abs(angleDiff);
 	}
 
 	/* <b>x</b>-axis unit normal vector [1,0,0]*/ 
