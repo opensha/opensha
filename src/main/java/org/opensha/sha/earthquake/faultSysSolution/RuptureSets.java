@@ -192,6 +192,10 @@ public class RuptureSets {
 		// if nonzero, apply thinning to growing strategy
 		@Expose	private float adaptiveSectFract = 0f;
 
+		public SimpleAzimuthalRupSetConfig(RupSetFaultModel fm, RupSetScalingRelationship scale) throws IOException {
+			this(fm.getDefaultDeformationModel().build(fm), scale);
+		}
+
 		public SimpleAzimuthalRupSetConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			init(subSects, scale);
 		}
