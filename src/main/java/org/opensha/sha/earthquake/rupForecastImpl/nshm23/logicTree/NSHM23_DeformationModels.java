@@ -590,81 +590,10 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		dmRecords = applyOutlierSubstitution(faultModel, dmRecords);
 		
 		// apply deformation model to subsections
-		mapMinisToSubSects(subSects, faultModel, dmRecords, mappings);
+		mappings.mapDefModelMinisToSubSects(subSects, dmRecords);
 		
 		// apply std dev defaults
 		return applyCreepModel(mappings, applyStdDevDefaults(faultModel, subSects));
-	}
-	
-	private static void mapMinisToSubSects(List<? extends FaultSection> subSects, RupSetFaultModel faultModel,
-			Map<Integer, List<MinisectionSlipRecord>> dmRecords, MinisectionMappings mappings) throws IOException {
-		Map<Integer, GeoJSONFaultSection> geoDMSects = null; // may be needed if zeros are encountered
-		int numRakesSkipped = 0;
-		
-		// replace slip rates and rakes from deformation model
-		for (FaultSection subSect : subSects) {
-			int subSectID = subSect.getSectionId();
-			int parentID = subSect.getParentSectionId();
-			List<MinisectionSlipRecord> records = dmRecords.get(parentID);
-			if (records == null) {
-				subSect.setAveSlipRate(0d);
-				subSect.setSlipRateStdDev(0d);
-				continue;
-			}
-
-			List<Double> recSlips = new ArrayList<>(records.size());
-			List<Double> recSlipStdDevs = new ArrayList<>(records.size());
-			List<Double> recRakes = new ArrayList<>(records.size());
-			
-			for (MinisectionSlipRecord record : records) {
-				recSlips.add(record.slipRate);
-				if (Double.isNaN(record.slipRateStdDev))
-					recSlipStdDevs = null;
-				else 
-					recSlipStdDevs.add(record.slipRateStdDev);
-				recRakes.add(record.rake);
-			}
-
-			// these are length averaged
-			double avgSlip = mappings.getAssociationScaledAverage(subSectID, recSlips);
-			Preconditions.checkState(Double.isFinite(avgSlip) && avgSlip >= 0d,
-					"Bad slip rate for subSect=%, parentID=%: %s",
-					subSect.getSectionId(), parentID, avgSlip);
-			double avgSlipStdDev;
-			if (recSlipStdDevs == null) {
-				// will replace when applying defaults at the end
-				avgSlipStdDev = Double.NaN;
-			} else {
-				avgSlipStdDev = mappings.getAssociationScaledAverage(subSectID, recSlipStdDevs);
-				Preconditions.checkState(Double.isFinite(avgSlipStdDev),
-						"Bad slip rate standard deviation for subSect=%, parentID=%: %s",
-						subSect.getSectionId(), parentID, avgSlipStdDev);
-				if (avgSlipStdDev == 0d && avgSlip > 0d)
-					System.err.println("WARNING: slipRateStdDev=0 for "+subSect.getSectionId()
-						+". "+subSect.getSectionName()+", with slipRate="+avgSlip);
-			}
-			double avgRake = FaultUtils.getInRakeRange(mappings.getAssociationScaledAngleAverage(subSectID, recRakes));
-			Preconditions.checkState(Double.isFinite(avgRake), "Bad rake for subSect=%, parentID=%: %s",
-					subSect.getSectionId(), parentID, avgRake);
-			
-			if ((float)avgSlip == 0f && (float)avgRake == 0f) {
-				// this is likely a placeholder rake, skip
-				if (geoDMSects == null)
-					geoDMSects = getGeolFullSects(faultModel);
-				avgRake = geoDMSects.get(parentID).getAveRake();
-				if ((float)avgRake != 0f)
-					// it wasn't supposed to be zero
-					numRakesSkipped++;
-			}
-			subSect.setAveSlipRate(avgSlip);
-			subSect.setSlipRateStdDev(avgSlipStdDev);
-			subSect.setAveRake(avgRake);
-		}
-		
-		if (numRakesSkipped > 0)
-			System.err.println("WARNING: Ignored rakes set to zero with zero slip rates for "+numRakesSkipped
-					+"/"+subSects.size()+" ("+pDF.format((double)numRakesSkipped/(double)subSects.size())
-					+") subsections, keeping geologic rakes to avoid placeholder");
 	}
 	
 	/*
