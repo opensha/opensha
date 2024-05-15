@@ -8,6 +8,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.zip.ZipException;
 
 import org.dom4j.DocumentException;
@@ -32,19 +34,23 @@ public class SectionDistanceAzimuthCalculator implements OpenSHA_Module {
 	
 	private double[][] distCache;
 	private double[][] azCache;
-	private Map<Integer, RuptureSurface> sectSurfs;
+	private ConcurrentMap<Integer, RuptureSurface> sectSurfs;
 	
-	public static final double SURF_DISCRETIZATION = 1d;
+	public static final double SURF_DISCRETIZATION_DEFAULT = 1d;
+	private double surfDiscretization = SURF_DISCRETIZATION_DEFAULT;
 	
 	private static boolean CREEP_REDUCED = false;
 
 	public SectionDistanceAzimuthCalculator(List<? extends FaultSection> subSects) {
 		this.subSects = ImmutableList.copyOf(subSects);
-		sectSurfs = new HashMap<>();
-		for (FaultSection subSect : subSects)
-			sectSurfs.put(subSect.getSectionId(), subSect.getFaultSurface(SURF_DISCRETIZATION, false, false));
+		sectSurfs = new ConcurrentHashMap<>();
 		distCache = new double[subSects.size()][];
 		azCache = new double[subSects.size()][];
+	}
+	
+	public void setDiscretization(double surfDicretization) {
+		sectSurfs.clear();
+		this.surfDiscretization = surfDicretization;
 	}
 	
 	private RuptureSurface getSurface(int id) {
@@ -52,7 +58,7 @@ public class SectionDistanceAzimuthCalculator implements OpenSHA_Module {
 		if (surf == null) {
 			FaultSection sect = subSects.get(id);
 			Preconditions.checkState(id == sect.getSectionId(), "Section IDs are not indexes");
-			surf = sect.getFaultSurface(1d, false, CREEP_REDUCED);
+			surf = sect.getFaultSurface(surfDiscretization, false, CREEP_REDUCED);
 			sectSurfs.putIfAbsent(id, surf);
 		}
 		return surf;
