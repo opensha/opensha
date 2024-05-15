@@ -2,6 +2,8 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
@@ -19,9 +21,12 @@ import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonWriter;
 
 /**
- * This enforces a minimum number of subsections per parent fault section. A special case can be
- * enabled (allowIfNoDirect) which allows a deficient cluster (i.e., one that has fewer than minPerParent
- * subsections) only if the clusters immediately before and after the deficient cluster can only connect
+ * This enforces a minimum aspect ratio for each involved fault section (total rupture length on that section divided by
+ * its down dip width). A threshold value of 1 will require all ruptures to be at least as long as they are wide
+ * (regardless of subsection count) on each involved fault section.
+ * 
+ * A special case can be enabled (allowIfNoDirect) which allows a deficient cluster (i.e., one that has a small aspect
+ * ratio) only if the clusters immediately before and after the deficient cluster can only connect
  * through that cluster. This allows deficient connections only in cases where they are required in order
  * to maintain connectivity.
  * 
@@ -31,42 +36,76 @@ import com.google.gson.stream.JsonWriter;
  * @author kevin
  *
  */
-public class MinSectsPerParentFilter extends AbstractClusterSizeFilter {
+public class AspectRatioFilter extends AbstractClusterSizeFilter {
 	
-	private int minPerParent;
-
+	private float minAspectRatio;
+	
 	/**
-	 * @param minPerParent minimum number of subsections per cluster
+	 * @param minAspectRatio minimum aspect ratio per cluster
 	 * @param allowIfNoDirect if true, enable special case to allow violations if it's the only way to
 	 * connect two clusters 
 	 * @param allowChained if true and allowIfNoDirect, allow multiple chained violations
 	 * @param connStrategy connection strategy, needed if allowIfNoDirect in order to test for direct
 	 * connections
 	 */
-	public MinSectsPerParentFilter(int minPerParent, boolean allowIfNoDirect, boolean allowChained,
+	public AspectRatioFilter(float minAspectRatio, boolean allowIfNoDirect, boolean allowChained,
 			ClusterConnectionStrategy connStrategy) {
 		super(allowIfNoDirect, allowChained, connStrategy);
-		this.minPerParent = minPerParent;
-	}
-
-	@Override
-	boolean isClusterSufficient(FaultSubsectionCluster cluster) {
-		return cluster.subSects.size() >= minPerParent;
+		this.minAspectRatio = minAspectRatio;
 	}
 
 	@Override
 	String getQuantityStr(FaultSubsectionCluster cluster) {
-		return "sectsPerParent="+cluster.subSects.size();
+		return "aspect="+(float)clusterAspectRatio(cluster);
+	}
+
+	@Override
+	boolean isClusterSufficient(FaultSubsectionCluster cluster) {
+		return clusterAspectRatio(cluster) >= minAspectRatio;
+	}
+	
+	public static float clusterAspectRatio(FaultSubsectionCluster cluster) {
+		return clusterAspectRatio(cluster.subSects);
+	}
+	
+	public static float clusterAspectRatio(Collection<? extends FaultSection> subSects) {
+		boolean debug = false;
+//		if (subSects.size() == 3) {
+//			Iterator<? extends FaultSection> iterator = subSects.iterator();
+//			debug = iterator.next().getSectionId() == 20 && iterator.next().getSectionId() == 21 && iterator.next().getSectionId() == 22;
+//		}
+		double sumArea = 0d;
+		double sumLength = 0d;
+		for (FaultSection sect : subSects) {
+			sumArea += sect.getArea(false)*1e-6; // m^2 -> km^2
+			double len = sect.getTraceLength();
+			if (sect.getLowerFaultTrace() != null)
+				len = 0.5*len + 0.5*sect.getLowerFaultTrace().getTraceLength();
+			if (debug) {
+				double myArea = sect.getArea(false)*1e-6;
+				double ddw = myArea/len;
+				System.out.println("Sect "+sect.getSectionId()+": len="+(float)len+", area="+(float)myArea+", impliedDDW="+(float)ddw);
+				System.out.println("\tdip="+sect.getAveDip());
+				System.out.println("\treported ddw="+(float)sect.getOrigDownDipWidth());
+			}
+			sumLength += len; // already km
+		}
+		double ddw = sumArea / sumLength;
+		if (debug) {
+			System.out.println("total ddw = "+(float)sumArea+" / "+(float)sumLength+" = "+(float)ddw);
+			System.out.println("aspect = "+(float)sumLength+" / "+(float)ddw+" = "+(float)(sumLength/ddw));
+		}
+		return (float)(sumLength / ddw);
 	}
 
 	@Override
 	public String getShortName() {
-		return "SectsPerParent";
+		return "Aspect";
 	}
 
 	@Override
 	public String getName() {
-		return "Min Sections Per Parent";
+		return "Minimum Aspect Ratio";
 	}
 
 	@Override
@@ -92,9 +131,9 @@ public class MinSectsPerParentFilter extends AbstractClusterSizeFilter {
 
 		@Override
 		public void write(JsonWriter out, PlausibilityFilter value) throws IOException {
-			MinSectsPerParentFilter filter = (MinSectsPerParentFilter)value;
+			AspectRatioFilter filter = (AspectRatioFilter)value;
 			out.beginObject();
-			out.name("minPerParent").value(filter.minPerParent);
+			out.name("minAspectRatio").value(filter.minAspectRatio);
 			out.name("allowIfNoDirect").value(filter.allowIfNoDirect);
 			out.name("allowChained").value(filter.allowChained);
 			out.endObject();
@@ -124,7 +163,7 @@ public class MinSectsPerParentFilter extends AbstractClusterSizeFilter {
 			}
 			
 			in.endObject();
-			return new MinSectsPerParentFilter(minPerParent, allowIfNoDirect, allowChained, connStrategy);
+			return new AspectRatioFilter(minPerParent, allowIfNoDirect, allowChained, connStrategy);
 		}
 		
 	}
