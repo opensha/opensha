@@ -199,7 +199,8 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	public void setParentSectionName(String parentSectionName);
 	
 	/**
-	 * this returns the length of the trace in km.
+	 * this returns the length of the upper trace in km.
+	 * TODO: should this return the average trace length if a lower trace is supplied?
 	 * @return
 	 */
 	public default double getTraceLength() {
@@ -296,7 +297,10 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	 */
 	public default double getArea(boolean creepReduced) {
 		double ddw = creepReduced ? getReducedDownDipWidth() : getOrigDownDipWidth();
-		return ddw * getTraceLength() * 1e6;
+		double len = getTraceLength();
+		if (getLowerFaultTrace() != null)
+			len = 0.5*len + 0.5*getLowerFaultTrace().getTraceLength();
+		return ddw * len * 1e6;
 	}
 	
 	/**
