@@ -53,7 +53,6 @@ public class SubSectionBuilder {
 	public static List<FaultSection> buildSubSects(List<? extends FaultSection> sects, int minPerFault,
 			double ddwFract, double fixedLen) {
 		Preconditions.checkState(ddwFract > 0 || fixedLen > 0, "Must give either ddwFract or fixedLen >0");
-		Preconditions.checkState(!(ddwFract > 0) || !(fixedLen > 0), "Can't supply both ddwFract and fixedLen");
 		sects = new ArrayList<>(sects);
 		Collections.sort(sects, new Comparator<FaultSection>() {
 	
@@ -64,7 +63,9 @@ public class SubSectionBuilder {
 		});
 		List<FaultSection> subSects = new ArrayList<>();
 		for (FaultSection sect : sects) {
-			double maxLen = fixedLen > 0d ? fixedLen : ddwFract*sect.getOrigDownDipWidth();
+			double maxLen = fixedLen > 0d ? fixedLen : Double.POSITIVE_INFINITY;
+			if (ddwFract > 0d)
+				maxLen = Double.min(maxLen, ddwFract*sect.getOrigDownDipWidth());
 			subSects.addAll(sect.getSubSectionsList(maxLen, subSects.size(), minPerFault));
 		}
 		System.out.println("Built "+subSects.size()+" subsections");
@@ -240,15 +241,14 @@ public class SubSectionBuilder {
 		try {
 			double ddwFract, fixedLen;
 			if (cmd.hasOption("down-dip-fraction") || cmd.hasOption("fixed-length")) {
-				Preconditions.checkArgument(!cmd.hasOption("down-dip-fraction") || !cmd.hasOption("fixed-length"),
-						"Can't supply both --down-dip-fraction and --fixed-length");
-				if (cmd.hasOption("down-dip-fraction")) {
+				if (cmd.hasOption("down-dip-fraction"))
 					ddwFract = Double.parseDouble(cmd.getOptionValue("down-dip-fraction"));
-					fixedLen = Double.NaN;
-				} else {
+				else
 					ddwFract = Double.NaN;
+				if (cmd.hasOption("fixed-length"))
 					fixedLen = Double.parseDouble(cmd.getOptionValue("fixed-length"));
-				}
+				else
+					fixedLen = Double.NaN;
 			} else {
 				ddwFract = DOWN_DIP_FRACT_DEFAULT;
 				fixedLen = MAX_LEN_DEFAULT;
