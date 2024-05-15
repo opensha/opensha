@@ -99,6 +99,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 		
 		upperDepth = properties.getDouble(UPPER_DEPTH, Double.NaN);
 		lowerDepth = properties.getDouble(LOW_DEPTH, Double.NaN);
+		dip = properties.getDouble(DIP, Double.NaN);
 		
 		dipDirection = Float.NaN;
 		if (properties.containsKey(DIP_DIR)) {
@@ -120,33 +121,24 @@ public final class GeoJSONFaultSection implements FaultSection {
 		
 		checkLoadDeprecatedLowerTraceProperty();
 		
-		if (!Double.isFinite(upperDepth)) {
+		if (lowerTrace != null) {
+			// this checks that the lower trace is below the upper trace, and the the right hand rule is followed (if dipping).
+			// it also sets the upper/lower depths, dip, and dip direction as needed (if omitted in the GeoJSON properties).
+			validateLowerTrace(trace, lowerTrace);
+		} else if (!Double.isFinite(upperDepth)) {
+			// upper depth is missing, might be able to infer from upper fault trace
 			Preconditions.checkState(feature.geometry.isSerializeZeroDepths(),
 					"Can't infer upper depth: upper depth not specified, and fault trace did not specify depths.");
 			// compute average upper depth
 			int num = Integer.max(10, (int)trace.getTraceLength());
 			upperDepth = FaultUtils.resampleTrace(trace, num).stream().map(S -> S.depth).mapToDouble(d->d).average().getAsDouble();
-			FaultUtils.assertValidDepth(upperDepth);
 			properties.set(UPPER_DEPTH, upperDepth);
 		}
 		
-		if (!Double.isFinite(lowerDepth)) {
-			Preconditions.checkState(lowerTrace != null,
-					"Can't infer lower depth: neither lower depth nor lower trace were supplied");
-			// compute average lower depth
-			int num = Integer.max(10, (int)lowerTrace.getTraceLength());
-			lowerDepth = FaultUtils.resampleTrace(lowerTrace, num).stream().map(S -> S.depth).mapToDouble(d->d).average().getAsDouble();
-			FaultUtils.assertValidDepth(lowerDepth);
-			properties.set(LOW_DEPTH, lowerDepth);
-		}
-		
-		dip = properties.getDouble(DIP, Double.NaN);
-		if (!Double.isFinite(dip) && lowerTrace != null) {
-			// calculate dip from the lower trace
-			ApproxEvenlyGriddedSurface surf = getApproxGriddedSurface(1d, false);
-			dip = surf.getAveDip();
-			properties.set(DIP, dip);
-		}
+		checkPropFinite(UPPER_DEPTH, upperDepth);
+		FaultUtils.assertValidDepth(upperDepth);
+		checkPropFinite(LOW_DEPTH, lowerDepth);
+		FaultUtils.assertValidDepth(lowerDepth);
 		checkPropFinite(DIP, dip);
 		FaultUtils.assertValidDip(dip);
 		
@@ -222,6 +214,8 @@ public final class GeoJSONFaultSection implements FaultSection {
 			if (lines.size() > 1) {
 				Preconditions.checkState(lines.size() == 2, "MultiLineString supplied; must either containe 1 trace (upper only)"
 						+ " or 2 (upper and then lower).");
+				Preconditions.checkState(geometry.isSerializeZeroDepths(),
+						"Depths must be explicitly supplied in the GeoJSON coordinates array of a lower trace");
 				// TODO: support more than 2 (listric)?
 				double avgUpperDepth = 0d;
 				for (Location loc : trace)
@@ -271,6 +265,54 @@ public final class GeoJSONFaultSection implements FaultSection {
 		}
 	}
 	
+	private void validateLowerTrace(FaultTrace upper, FaultTrace lower) {
+		int num = Integer.max(10, (int)Math.max(upper.getTraceLength(), lower.getTraceLength()));
+		
+		// check depth
+		FaultTrace resampledUpper = FaultUtils.resampleTrace(upper, num);
+		double upperDepth = resampledUpper.stream().map(S -> S.depth).mapToDouble(d->d).average().getAsDouble();
+		FaultTrace resampledLower = FaultUtils.resampleTrace(lower, num);
+		double lowerDepth = resampledLower.stream().map(S -> S.depth).mapToDouble(d->d).average().getAsDouble();
+		Preconditions.checkState(lowerDepth > upperDepth,
+				"Upper trace (depth=%s) must be above (less than) lower trace (depth=%s)", upperDepth, lowerDepth);
+		if (Double.isNaN(this.upperDepth)) {
+			this.upperDepth = upperDepth;
+			this.properties.set(UPPER_DEPTH, upperDepth);
+		}
+		if (Double.isNaN(this.lowerDepth)) {
+			this.lowerDepth = lowerDepth;
+			this.properties.set(UPPER_DEPTH, lowerDepth);
+		}
+		
+		ApproxEvenlyGriddedSurface surf = getApproxGriddedSurface(1d, false);
+		dip = properties.getDouble(DIP, Double.NaN);
+		if (!Double.isFinite(dip)) {
+			// calculate dip from the lower trace
+			dip = surf.getAveDip();
+			properties.set(DIP, dip);
+		}
+		
+		// check right hand rule if dipping
+		// skip the check if basically vertical
+		if (dip < 90d && (dip <= 85 || LocationUtils.horzDistanceFast(upper.first(), lower.first()) > 0.1d
+				|| LocationUtils.horzDistanceFast(upper.last(), lower.last()) > 0.1d)) {
+			double strike = upper.getAveStrike();
+			double simpleDipDir = FaultUtils.getAngleAverage(List.of(
+					LocationUtils.azimuth(upper.first(), lower.first()),
+					LocationUtils.azimuth(upper.last(), lower.last())));
+			double idealDipDir = strike + 90d;
+			while (idealDipDir > 360d)
+				idealDipDir -= 360;
+			double arDiff = FaultUtils.getAbsAngleDiff(idealDipDir, simpleDipDir);
+			Preconditions.checkState(arDiff <= 90d,
+					"Right hand rule violation: dip=%s, dipDir=%s, idealDipDir=%s, diff=%s",
+					dip, simpleDipDir, idealDipDir, arDiff);
+		}
+		
+		if (!Double.isFinite(this.dipDirection))
+			setDipDirection((float)surf.getAveDipDirection());
+	}
+	
 	private static void checkPropNonNull(String propName, Object value) {
 		Preconditions.checkNotNull(value, "FaultSections must have the '%s' GeoJSON property", propName);
 	}
@@ -312,8 +354,6 @@ public final class GeoJSONFaultSection implements FaultSection {
 			if (sect.isConnector())
 				properties.set(CONNECTOR, true);
 			setZonePolygon(sect.getZonePolygon());
-			if (lowerTrace != null)
-				properties.set(LOWER_TRACE, new LineString(lowerTrace));
 		}
 		cacheCommonValues();
 	}
@@ -1032,7 +1072,8 @@ public final class GeoJSONFaultSection implements FaultSection {
 						// 'y' above
 						double vertToBottom = lowerDepth - upperLoc.depth;
 						Preconditions.checkState(vertToBottom > 0, "lower depth is above upper loc? %s %s", lowerDepth, upperLoc.depth);
-						double horzToBottom = Math.tan(aveDipRad);
+						double horzToBottom = vertToBottom*Math.tan(aveDipRad);
+						Preconditions.checkState(dip==90 || horzToBottom > 0, "no horizontal offset (%s) for lower trace with dip=%s?", horzToBottom, dip);
 
 						LocationVector dir = new LocationVector(dipDirection, horzToBottom, vertToBottom);
 
