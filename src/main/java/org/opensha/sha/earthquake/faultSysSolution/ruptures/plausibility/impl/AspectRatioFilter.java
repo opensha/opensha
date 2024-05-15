@@ -142,13 +142,13 @@ public class AspectRatioFilter extends AbstractClusterSizeFilter {
 		@Override
 		public PlausibilityFilter read(JsonReader in) throws IOException {
 			in.beginObject();
-			Integer minPerParent = null;
+			Float minAspectRatio = null;
 			Boolean allowIfNoDirect = null;
 			boolean allowChained = false;
 			while (in.hasNext()) {
 				switch (in.nextName()) {
-				case "minPerParent":
-					minPerParent = in.nextInt();
+				case "minAspectRatio":
+					minAspectRatio = (float)in.nextDouble();
 					break;
 				case "allowIfNoDirect":
 					allowIfNoDirect = in.nextBoolean();
@@ -163,7 +163,7 @@ public class AspectRatioFilter extends AbstractClusterSizeFilter {
 			}
 			
 			in.endObject();
-			return new AspectRatioFilter(minPerParent, allowIfNoDirect, allowChained, connStrategy);
+			return new AspectRatioFilter(minAspectRatio, allowIfNoDirect, allowChained, connStrategy);
 		}
 		
 	}
