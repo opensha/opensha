@@ -1462,7 +1462,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		}
 	}
 	
-	private static class ExclusionAwareClusterSpecificInversionSolver extends ClusterSpecificInversionSolver {
+	public static class ExclusionAwareClusterSpecificInversionSolver extends ClusterSpecificInversionSolver {
 
 		@Override
 		protected BinaryRuptureProbabilityCalc getRuptureExclusionModel(FaultSystemRupSet rupSet,
