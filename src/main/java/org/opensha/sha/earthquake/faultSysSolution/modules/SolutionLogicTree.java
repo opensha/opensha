@@ -906,7 +906,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		if (misfitStats != null) {
 			String statsFile = getRecordBranchFileName(branch, prefix,
 					InversionMisfitStats.MISFIT_STATS_FILE_NAME, true, mappings);
-			Preconditions.checkState(!writtenFiles.contains(statsFile));
+			Preconditions.checkState(!writtenFiles.contains(statsFile),
+					"Duplicate misfit stats file: %s; branch: %s", statsFile, branch);
 			CSV_BackedModule.writeToArchive(misfitStats.getCSV(), zout, entryPrefix, statsFile);
 			writtenFiles.add(statsFile);
 		}
@@ -916,7 +917,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		if (progress != null) {
 			String progressFile = getRecordBranchFileName(branch, prefix,
 					AnnealingProgress.PROGRESS_FILE_NAME, true, mappings);
-			Preconditions.checkState(!writtenFiles.contains(progressFile));
+			Preconditions.checkState(!writtenFiles.contains(progressFile),
+					"Duplicate annealing progress file: %s; branch: %s", progressFile, branch);
 			CSV_BackedModule.writeToArchive(progress.getCSV(), zout, entryPrefix, progressFile);
 			writtenFiles.add(progressFile);
 		}
@@ -926,7 +928,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		if (misfitProgress != null) {
 			String progressFile = getRecordBranchFileName(branch, prefix,
 					InversionMisfitProgress.MISFIT_PROGRESS_FILE_NAME, true, mappings);
-			Preconditions.checkState(!writtenFiles.contains(progressFile));
+			Preconditions.checkState(!writtenFiles.contains(progressFile),
+					"Duplicate misfit progress file: %s; branch: %s", progressFile, branch);
 			CSV_BackedModule.writeToArchive(misfitProgress.getCSV(), zout, entryPrefix, progressFile);
 			writtenFiles.add(progressFile);
 		}
