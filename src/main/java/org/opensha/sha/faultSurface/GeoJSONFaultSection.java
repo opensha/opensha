@@ -70,7 +70,8 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public static final String SLIP_STD_DEV = "SlipRateStdDev";
 	public static final String CONNECTOR = "Connector";
 	public static final String CREEP_RATE = "CreepRate";
-	public static final String LOWER_TRACE = "LowerTrace";
+	// use MultiLineString instead
+	@Deprecated private static final String LOWER_TRACE = "LowerTrace";
 
 	private GeoJSONFaultSection(Feature feature) {
 		Preconditions.checkNotNull(feature, "feature cannot be null");
@@ -117,41 +118,26 @@ public final class GeoJSONFaultSection implements FaultSection {
 		Preconditions.checkNotNull(trace,
 				"Didn't find a FaultTrace in the supplied Feature. LineString and MultiLineString are supported");
 		
-		Geometry lowerTraceGeom = properties.get(LOWER_TRACE, null);
-		if (lowerTraceGeom != null) {
-			LocationList line;
-			if (lowerTraceGeom instanceof LineString) {
-				line = ((LineString)lowerTraceGeom).line;
-			} else if (lowerTraceGeom instanceof MultiLineString) {
-				MultiLineString multiLine = (MultiLineString)lowerTraceGeom;
-				Preconditions.checkState(multiLine.lines.size() == 1,
-						"Lower trace MultiLineString only supported if exactly 1 line");
-				line = multiLine.lines.get(0);
-			} else {
-				throw new IllegalStateException("Unsupported lower trace type: "+lowerTraceGeom.type);
-			}
-			lowerTrace = new FaultTrace(name);
-			lowerTrace.addAll(line);
-		}
+		checkLoadDeprecatedLowerTraceProperty();
 		
 		if (!Double.isFinite(upperDepth)) {
 			Preconditions.checkState(feature.geometry.isSerializeZeroDepths(),
 					"Can't infer upper depth: upper depth not specified, and fault trace did not specify depths.");
-			// set upper depth to lesser of fault trace depths (bounding rectangle)
-			upperDepth = Double.POSITIVE_INFINITY;
-			for (Location loc : trace)
-				upperDepth = Math.min(upperDepth, loc.depth);
+			// compute average upper depth
+			int num = Integer.max(10, (int)trace.getTraceLength());
+			upperDepth = FaultUtils.resampleTrace(trace, num).stream().map(S -> S.depth).mapToDouble(d->d).average().getAsDouble();
 			FaultUtils.assertValidDepth(upperDepth);
+			properties.set(UPPER_DEPTH, upperDepth);
 		}
 		
 		if (!Double.isFinite(lowerDepth)) {
 			Preconditions.checkState(lowerTrace != null,
 					"Can't infer lower depth: neither lower depth nor lower trace were supplied");
-			// set lower depth the the greater of fault trace depths (bounding rectangle)
-			lowerDepth = Double.NEGATIVE_INFINITY;
-			for (Location loc : lowerTrace)
-				lowerDepth = Math.max(lowerDepth, loc.depth);
+			// compute average lower depth
+			int num = Integer.max(10, (int)lowerTrace.getTraceLength());
+			lowerDepth = FaultUtils.resampleTrace(lowerTrace, num).stream().map(S -> S.depth).mapToDouble(d->d).average().getAsDouble();
 			FaultUtils.assertValidDepth(lowerDepth);
+			properties.set(LOW_DEPTH, lowerDepth);
 		}
 		
 		dip = properties.getDouble(DIP, Double.NaN);
@@ -176,6 +162,29 @@ public final class GeoJSONFaultSection implements FaultSection {
 		}
 
 		cacheCommonValues();
+	}
+	
+	private void checkLoadDeprecatedLowerTraceProperty() {
+		Geometry lowerTraceGeom = properties.get(LOWER_TRACE, null);
+		if (lowerTraceGeom != null) {
+			System.err.println("WARNING: deprecated "+LOWER_TRACE+" property used; use a MultiLineString geometry instead");
+			properties.remove(LOWER_TRACE);
+			Preconditions.checkState(lowerTrace == null,
+					"Can't have both an explicit LowerTrace and a lower trace in a MultiLineString geometry");
+			LocationList line;
+			if (lowerTraceGeom instanceof LineString) {
+				line = ((LineString)lowerTraceGeom).line;
+			} else if (lowerTraceGeom instanceof MultiLineString) {
+				MultiLineString multiLine = (MultiLineString)lowerTraceGeom;
+				Preconditions.checkState(multiLine.lines.size() == 1,
+						"Lower trace MultiLineString only supported if exactly 1 line");
+				line = multiLine.lines.get(0);
+			} else {
+				throw new IllegalStateException("Unsupported lower trace type: "+lowerTraceGeom.type);
+			}
+			lowerTrace = new FaultTrace(name);
+			lowerTrace.addAll(line);
+		}
 	}
 
 	private void cacheCommonValues() {
@@ -211,40 +220,22 @@ public final class GeoJSONFaultSection implements FaultSection {
 			trace = new FaultTrace(name);
 			trace.addAll(lines.get(0));
 			if (lines.size() > 1) {
-				System.err.println("WARNING: concatenating multi-trace for "+name+" ("+id+")");
-				List<LocationList> extraTraces = lines.subList(1, lines.size());
-				// figure out where they go
-				while (!extraTraces.isEmpty()) {
-					int bestIndex = -1;
-					boolean bestAtEnd = false;
-					double bestDistance = Double.POSITIVE_INFINITY;
-					for (int i=0; i<extraTraces.size(); i++) {
-						LocationList extraTrace = extraTraces.get(i);
-						double beforeDist = LocationUtils.horzDistanceFast(extraTrace.last(), trace.first());
-						double afterDist = LocationUtils.horzDistanceFast(extraTrace.first(), trace.last());
-						if (beforeDist < afterDist && beforeDist < bestDistance) {
-							bestIndex = i;
-							bestAtEnd = false;
-							bestDistance = beforeDist;
-						} else if (afterDist <= beforeDist && afterDist < bestDistance) {
-							bestIndex = i;
-							bestAtEnd = true;
-							bestDistance = afterDist;
-						}
-					}
-					LocationList addTrace = extraTraces.remove(bestIndex);
-					if (bestAtEnd) {
-						System.err.println("\tadding extra trace to end:\n\t\tprevLoc="+trace.last()+"\n\t\tnextLoc="
-								+addTrace.first()+"\t(dist="+bestDistance+")");
-						trace.addAll(addTrace);
-					} else {
-						System.err.println("\tadding extra trace to start (before previous):\n\t\tprevLoc="
-								+trace.last()+"\n\t\tnextLoc="+addTrace.first()+"\t(dist="+bestDistance+")");
-						trace.addAll(0, addTrace);
-					}
-					if (bestIndex != 0)
-						System.out.println("\t\tWARNING: didn't add new traces in order");
-				}
+				Preconditions.checkState(lines.size() == 2, "MultiLineString supplied; must either containe 1 trace (upper only)"
+						+ " or 2 (upper and then lower).");
+				// TODO: support more than 2 (listric)?
+				double avgUpperDepth = 0d;
+				for (Location loc : trace)
+					avgUpperDepth += loc.depth;
+				avgUpperDepth /= trace.size();
+				lowerTrace = new FaultTrace(name);
+				lowerTrace.addAll(lines.get(1));
+				double avgLowerDepth = 0d;
+				for (Location loc : lowerTrace)
+					avgLowerDepth += loc.depth;
+				avgLowerDepth /= lowerTrace.size();
+				Preconditions.checkState(avgLowerDepth > avgUpperDepth, "MultiLineString supplied with upper and lower traces, "
+						+ "but lower trace (depth="+(float)avgLowerDepth+") is not below upper trace (depth="+(float)avgUpperDepth
+						+"). Were depths supplied in GeoJSON (tuples)?");
 			}
 		} else if (geometry instanceof Polygon) {
 			Region polygon = ((Polygon)geometry).asRegion();
@@ -415,6 +406,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 			geometry = new LineString(newUpperTrace);
 			
 			// set lower trace as separate property
+			// TODO fix this
 			mappedProps.put(LOWER_TRACE, new LineString(lowerTrace));
 		} else {
 			mappedProps.set(DIP, origProps.require("dip", Double.class));
@@ -451,8 +443,12 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public Feature toFeature() {
 		Geometry geometry;
 		Preconditions.checkNotNull(trace, "Trace is null");
-		Geometry traceGeom = new LineString(trace);
-		if (upperDepth != 0d && dip != 90d) {
+		Geometry traceGeom;
+		if (lowerTrace != null)
+			traceGeom = new MultiLineString(List.of(trace, lowerTrace));
+		else
+			traceGeom = new LineString(trace);
+		if ((upperDepth != 0d && dip != 90d) || lowerTrace != null) {
 			// we need to serialize any zeroes
 			traceGeom.setSerializeZeroDepths(true);
 		}
@@ -625,13 +621,202 @@ public final class GeoJSONFaultSection implements FaultSection {
 
 	@Override
 	public List<GeoJSONFaultSection> getSubSectionsList(double maxSubSectionLen, int startId, int minSubSections) {
-		ArrayList<FaultTrace> equalLengthSubsTrace =
-				FaultUtils.getEqualLengthSubsectionTraces(this.trace, maxSubSectionLen, minSubSections);
-		ArrayList<FaultTrace> equalLengthLowerSubsTrace = null;
-		if (lowerTrace != null)
-			equalLengthLowerSubsTrace = FaultUtils.getEqualLengthSubsectionTraces(this.lowerTrace, equalLengthSubsTrace.size());
+		List<FaultTrace> equalLengthSubsTrace, equalLengthLowerSubsTrace;
+		if (lowerTrace == null) {
+			// simple case
+			equalLengthSubsTrace = FaultUtils.getEqualLengthSubsectionTraces(this.trace, maxSubSectionLen, minSubSections);
+			equalLengthLowerSubsTrace = null;
+		} else {
+			// we have a lower trace, which is more complex.
+			// we could just split the upper and lower traces into equal length pieces and connect them, but those can
+			// be skewed if one trace has more (and uneven) curvature than the other
+			
+			// instead, we'll try to build less skewed sections by subsectioning a trace down the middle of the fault
+			// and then projecting up/down to the top/bottom
+			
+			// build a trace at the middle
+			int numResample = Integer.max(100, (int)Math.max(trace.getTraceLength(), lowerTrace.getTraceLength()));
+			FaultTrace upperResampled = FaultUtils.resampleTrace(trace, numResample);
+			FaultTrace lowerResampled = FaultUtils.resampleTrace(lowerTrace, numResample);
+			Preconditions.checkState(upperResampled.size() == lowerResampled.size());
+			// this won't necessarily be evenly spaced, but that's fine (we'll build equal length traces next)
+			FaultTrace middleTrace = new FaultTrace(null);
+			double maxHorzDist = 0d;
+			for (int i=0; i<upperResampled.size(); i++) {
+				Location upperLoc = upperResampled.get(i);
+				Location lowerLoc = lowerResampled.get(i);
+				// vector from upper to lower
+				LocationVector vector = LocationUtils.vector(upperLoc, lowerLoc);
+				maxHorzDist = Math.max(maxHorzDist, vector.getHorzDistance());
+				// scale by 0.5 to get a middle loc
+				vector.setHorzDistance(0.5*vector.getHorzDistance());
+				vector.setVertDistance(0.5*vector.getVertDistance());
+				middleTrace.add(LocationUtils.location(upperLoc, vector));
+			}
+			
+			// resample the middle trace to get subsections
+			ArrayList<FaultTrace> equalLengthMiddleTraces = FaultUtils.getEqualLengthSubsectionTraces(
+					middleTrace, maxSubSectionLen, minSubSections);
+			int numSubSects = equalLengthMiddleTraces.size();
+			// project the middle trace to the upper and lower traces; do that by finding the index on the resampled
+			// traces that is closest to a right angle from middle trace strike direction
+			int[][] closestUpperIndexes = new int[numSubSects][2];
+			int[][] closestLowerIndexes = new int[numSubSects][2];
+			for (int i=0; i<numSubSects; i++) {
+				FaultTrace middle = equalLengthMiddleTraces.get(i);
+				double strike = middle.getAveStrike();
+				double leftOfStrikeRad = Math.toRadians(strike-90d);
+				double rightOfStrikeRad = Math.toRadians(strike+90d);
+				Location[] firstLine = {
+						LocationUtils.location(middle.first(), leftOfStrikeRad, maxHorzDist),
+						LocationUtils.location(middle.first(), rightOfStrikeRad, maxHorzDist)
+				};
+				Location[] lastLine = {
+						LocationUtils.location(middle.last(), leftOfStrikeRad, maxHorzDist),
+						LocationUtils.location(middle.last(), rightOfStrikeRad, maxHorzDist)
+				};
+				double upperFirstDist = Double.POSITIVE_INFINITY;
+				double upperLastDist = Double.POSITIVE_INFINITY;
+				double lowerFirstDist = Double.POSITIVE_INFINITY;
+				double lowerLastDist = Double.POSITIVE_INFINITY;
+				// this could be sped up, we shouldn't need to search the whole trace every time
+				for (int j=0; j<upperResampled.size(); j++) {
+					double distUpFirst = Math.abs(LocationUtils.distanceToLineFast(firstLine[0], firstLine[1], upperResampled.get(j)));
+					if (distUpFirst < upperFirstDist) {
+						upperFirstDist = distUpFirst;
+						closestUpperIndexes[i][0] = j;
+					}
+					double distUpLast = Math.abs(LocationUtils.distanceToLineFast(lastLine[0], lastLine[1], upperResampled.get(j)));
+					if (distUpLast < upperLastDist) {
+						upperLastDist = distUpLast;
+						closestUpperIndexes[i][1] = j;
+					}
+					double distLowFirst = Math.abs(LocationUtils.distanceToLineFast(firstLine[0], firstLine[1], lowerResampled.get(j)));
+					if (distLowFirst < lowerFirstDist) {
+						lowerFirstDist = distLowFirst;
+						closestLowerIndexes[i][0] = j;
+					}
+					double distLowLast = Math.abs(LocationUtils.distanceToLineFast(lastLine[0], lastLine[1], lowerResampled.get(j)));
+					if (distLowLast < lowerLastDist) {
+						lowerLastDist = distLowLast;
+						closestLowerIndexes[i][1] = j;
+					}
+				}
+//				System.out.println("Raw mappings for subsection "+i);
+//				System.out.println("\t"+closestUpperIndexes[i][0]+" "+closestUpperIndexes[i][1]);
+//				System.out.println("\t"+(float)upperFirstDist+" "+(float)upperLastDist);
+//				System.out.println("\t"+closestLowerIndexes[i][0]+" "+closestLowerIndexes[i][1]);
+//				System.out.println("\t"+(float)lowerFirstDist+" "+(float)lowerLastDist);
+			}
+			// now process to fix two cases:
+			// * any overlaps with the neighbors
+			// * ensure that we include the overall first or last point on the traces
+			for (int i=0; i<numSubSects; i++) {
+				int[] myUpper = closestUpperIndexes[i];
+				int[] myLower = closestLowerIndexes[i];
+				if (i == 0) {
+					// force it to start at the first point
+					myUpper[0] = 0;
+					myLower[0] = 0;
+				} else {
+					// average with the previous
+					int[] prevUpper = closestUpperIndexes[i-1];
+					if (myUpper[0] != prevUpper[1]) {
+						double tieBreaker = myUpper[1]-myUpper[0] > prevUpper[1]-prevUpper[0] ? 0.1 : -0.1;
+						int avg = (int)(0.5*(myUpper[0] + prevUpper[1])+tieBreaker);
+						myUpper[0] = avg;
+						prevUpper[1] = avg;
+					}
+					int[] prevLower = closestLowerIndexes[i-1];
+					if (myLower[0] != prevLower[1]) {
+						double tieBreaker = myLower[1]-myLower[0] > prevLower[1]-prevLower[0] ? 0.1 : -0.1;
+						int avg = (int)(0.5*(myLower[0] + prevLower[1])+tieBreaker);
+						myLower[0] = avg;
+						prevLower[1] = avg;
+					}
+				}
+				
+				if (i == numSubSects-1) {
+					// force it to end at the last point
+					myUpper[1] = upperResampled.size()-1;
+					myLower[1] = upperResampled.size()-1;
+				}
+			}
+			// now check to make sure that none are weird (last same as or before first)
+			boolean fail = false;
+			for (int i=0; i<numSubSects; i++) {
+				int[] myUpper = closestUpperIndexes[i];
+				int[] myLower = closestLowerIndexes[i];
+				if (myUpper[0] >= myUpper[1] || myLower[0] >= myLower[1]) {
+					System.out.println("Fail for subsection "+i);
+					System.out.println("\tupper: "+myUpper[0]+"->"+myUpper[1]);
+					System.out.println("\tlower: "+myLower[0]+"->"+myLower[1]);
+					fail = true;
+					break;
+				}
+			}
+			if (fail) {
+				// fallback to the possibly skewed subsections just using the resampled upper and lower trace
+				System.err.println("WARNING: failed to build unskewed subsections for "+id+". "+name
+						+", reverting to splitting upper and lower trace evenly");
+				equalLengthSubsTrace = FaultUtils.getEqualLengthSubsectionTraces(this.trace, maxSubSectionLen, minSubSections);
+				equalLengthLowerSubsTrace = FaultUtils.getEqualLengthSubsectionTraces(this.lowerTrace, equalLengthSubsTrace.size());
+				Preconditions.checkState(equalLengthLowerSubsTrace.size() == equalLengthLowerSubsTrace.size());
+			} else {
+				// build our nicer subsections
+				equalLengthSubsTrace = new ArrayList<>(numSubSects);
+				equalLengthLowerSubsTrace = new ArrayList<>(numSubSects);
+				
+				int upperSearchStartIndex = 0;
+				int lowerSearchStartIndex = 0;
+				for (int i=0; i<numSubSects; i++) {
+					FaultTrace upperSubTrace = new FaultTrace(null);
+					FaultTrace lowerSubTrace = new FaultTrace(null);
+					int[] myUpper = closestUpperIndexes[i];
+					int[] myLower = closestLowerIndexes[i];
+					Location upperFirst = upperResampled.get(myUpper[0]);
+					Location upperLast = upperResampled.get(myUpper[1]);
+					Location lowerFirst = lowerResampled.get(myLower[0]);
+					Location lowerLast = lowerResampled.get(myLower[1]);
+					upperSubTrace.add(upperFirst);
+					lowerSubTrace.add(lowerFirst);
+					
+					// add any intermediate locations
+					upperSearchStartIndex = addIntermediateTracePoints(trace, upperSubTrace, upperFirst, upperLast, upperSearchStartIndex);
+					lowerSearchStartIndex = addIntermediateTracePoints(lowerTrace, lowerSubTrace, lowerFirst, lowerLast, lowerSearchStartIndex);
+					
+					upperSubTrace.add(upperLast);
+					lowerSubTrace.add(lowerLast);
+//					int upperBeforeStartIndex = -1;
+//					int upperAfterEndIndex = -1;
+//					int lowerBeforeStartIndex = -1;
+//					int lowerAfterEndIndex = -1;
+//					for (int j=0; j<2; j++) {
+//						int targetUpperSampledIndex = closestUpperIndexes[i][j];
+//						int targetLowerSampledIndex = closestUpperIndexes[i][j];
+//						
+//						if (i == 0 && j == 0) {
+//							// simple, just start at the beginning
+//							upperSubTrace.add(trace.first());
+//							lowerSubTrace.add(lowerTrace.first());
+//						} else if (i == numSubSects-1 && j == 2) {
+//							// need to search for the index before
+//						}
+//						
+//						
+//					}
+//					
+//					int upperBeforeIndex = -1;
+//					for (int j=upperSearchStartIndex; j<trace.size(); j++)
+//					int lowerBeforeIndex = -1;
+					
+					equalLengthSubsTrace.add(upperSubTrace);
+					equalLengthLowerSubsTrace.add(lowerSubTrace);
+				}
+			}
+		}
 		
-		ArrayList<GeoJSONFaultSection> subSectionList = new ArrayList<GeoJSONFaultSection>();
+		List<GeoJSONFaultSection> subSectionList = new ArrayList<GeoJSONFaultSection>();
 		for(int i=0; i<equalLengthSubsTrace.size(); ++i) {
 			int myID = startId + i;
 			String myName = name+", Subsection "+(i);
@@ -651,12 +836,23 @@ public final class GeoJSONFaultSection implements FaultSection {
 			
 			if (lowerTrace != null) {
 				FaultTrace lowerSubTrace = equalLengthLowerSubsTrace.get(i);
-				subSection.properties.set(LOWER_TRACE, new LineString(lowerSubTrace));
+//				System.out.println(myName);
+//				System.out.println("Upper trace az="+subSection.trace.getAveStrike()+": "+subSection.trace);
+//				System.out.println("Lower trace az="+lowerSubTrace.getAveStrike()+": "+lowerSubTrace);
+				// now done separately
+//				subSection.properties.set(LOWER_TRACE, new LineString(lowerSubTrace));
 				subSection.lowerTrace = lowerSubTrace;
 				// calculate new dip
 				subSection.dip = new ApproxEvenlyGriddedSurface(subSection.trace, subSection.lowerTrace,
 						subSection.trace.getTraceLength()/20d).getAveDip();
 				subSection.properties.set(DIP, subSection.dip);
+				// calculate new depth
+				int num = Integer.max(10, (int)Math.max(subSection.trace.getTraceLength(), lowerSubTrace.getTraceLength()));
+				subSection.upperDepth = FaultUtils.resampleTrace(subSection.trace, num).stream().map(S -> S.depth).mapToDouble(d->d).average().getAsDouble();
+				subSection.properties.set(UPPER_DEPTH, subSection.upperDepth);
+				subSection.lowerDepth = FaultUtils.resampleTrace(lowerSubTrace, num).stream().map(S -> S.depth).mapToDouble(d->d).average().getAsDouble();
+				subSection.properties.set(LOW_DEPTH, subSection.lowerDepth);
+				
 			}
 			
 			subSectionList.add(subSection);
@@ -664,6 +860,55 @@ public final class GeoJSONFaultSection implements FaultSection {
 		return subSectionList;
 	}
 	
+	private static int addIntermediateTracePoints(FaultTrace rawTrace, FaultTrace subSectTrace,
+			Location subsectionStart, Location subsectionEnd, int searchStartIndex) {
+//		System.out.println("Adding intermediate points with start:\t"+subsectionStart);
+		// find the segment for the start index
+		double minDist = Double.POSITIVE_INFINITY;
+		int closestSegToStart = -1;
+		for (int i=searchStartIndex; i<rawTrace.size()-1; i++) {
+			Location loc1 = rawTrace.get(i);
+			Location loc2 = rawTrace.get(i+1);
+			double distToSeg = LocationUtils.distanceToLineSegmentFast(loc1, loc2, subsectionStart);
+			if (distToSeg < minDist) {
+				closestSegToStart = i;
+				minDist = distToSeg;
+			} else if (minDist < 1d && distToSeg > 10d) {
+				// we've already found it and gone past, stop searching
+				break;
+			}
+		}
+//		System.out.println("\tClosest segment to start: "+closestSegToStart+" (minDist="+(float)minDist+")");
+		
+		// find the segment for the start index
+		minDist = Double.POSITIVE_INFINITY;
+		int closestSegToEnd = -1;
+		for (int i=closestSegToStart; i<rawTrace.size()-1; i++) {
+			Location loc1 = rawTrace.get(i);
+			Location loc2 = rawTrace.get(i+1);
+			double distToSeg = LocationUtils.distanceToLineSegmentFast(loc1, loc2, subsectionEnd);
+			if (distToSeg < minDist) {
+				closestSegToEnd = i;
+				minDist = distToSeg;
+			} else if (minDist < 1d && distToSeg > 10d) {
+				// we've already found it and gone past, stop searching
+				break;
+			}
+		}
+//		System.out.println("\tClosest segment to end: "+closestSegToEnd+" (minDist="+(float)minDist+")");
+		
+		// we've now identified the segments on which the start and end section lie
+		if (closestSegToStart < closestSegToEnd) {
+			// there's at least one point between the two
+			for (int i=closestSegToStart+1; i<=closestSegToEnd; i++) {
+//				System.out.println("\tAdding intermediate: "+i+". "+rawTrace.get(i));
+				subSectTrace.add(rawTrace.get(i));
+			}
+		}
+//		System.out.println("Done adding intermediate points with end:\t"+subsectionEnd);
+		
+		return closestSegToEnd;
+	}
 
 	@Override
 	public double getOrigSlipRateStdDev() {
@@ -767,7 +1012,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 					
 					/*
 					 * 	upper
-					 * 		^
+					 * 		|\
 					 * 		| \
 					 * 		|  \  h
 					 * 	y	|   \
@@ -796,6 +1041,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 					}
 				}
 			}
+//			System.out.println("Building approx surface with traces:\nUpper: "+trace+"\nLower: "+lowerTrace);
 			approxGriddedCache = new ApproxEvenlyGriddedSurfaceCache(this, lowerTrace);
 		}
 		return approxGriddedCache.getApproxEvenlyGriddedSurface(gridSpacing, aseisReducesArea);
