@@ -1,7 +1,9 @@
 package org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree;
 
-import java.io.File;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.text.DecimalFormat;
 import java.util.HashMap;
 import java.util.List;
@@ -16,6 +18,8 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
+import org.opensha.sha.earthquake.faultSysSolution.util.minisections.MinisectionMappings;
+import org.opensha.sha.earthquake.faultSysSolution.util.minisections.MinisectionSlipRecord;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
@@ -26,25 +30,11 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
-	GEOLOGIC("Geologic Preferred", "Geologic", 0.9) {
-		@Override
-		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
-			applyGeologicSlipRates(subSects, fullSects, GeoJSONFaultSection.SLIP_RATE);
-		}
-	},
-	GEOLOGIC_HIGH("Geologic High", "HighGeologic", 0.05) {
-		@Override
-		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
-			applyGeologicSlipRates(subSects, fullSects, "HighRate");
-		}
-	},
-	GEOLOGIC_LOW("Geologic Low", "LowGeologic", 0.05) {
-		@Override
-		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
-			applyGeologicSlipRates(subSects, fullSects, "LowRate");
-		}
-	};
+public enum PRVI25_SubductionDeformationModels implements RupSetDeformationModel {
+	FULL("Full Rate", "Full", "PRVI_sub_v2_full_minisections.txt", 0.5),
+	PARTIAL("Partial Rate", "Partial", "PRVI_sub_v2_partial_minisections.txt", 0.5);
+
+	private static final String PREFIX = "/data/erf/prvi25/def_models/subduction/";
 	
 	/**
 	 * if standard deviation is zero, default to this fraction of the slip rate. if DEFAULT_STD_DEV_USE_GEOLOGIC is
@@ -88,11 +78,15 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 	
 	private String name;
 	private String shortName;
+	private String fName;
 	private double weight;
+	
+	private Map<Integer, List<MinisectionSlipRecord>> dmMinis;
 
-	private PRVI25_CrustalDeformationModels(String name, String shortName, double weight) {
+	private PRVI25_SubductionDeformationModels(String name, String shortName, String fName, double weight) {
 		this.name = name;
 		this.shortName = shortName;
+		this.fName = fName;
 		this.weight = weight;
 	}
 
@@ -118,12 +112,12 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 
 	@Override
 	public boolean isApplicableTo(RupSetFaultModel faultModel) {
-		return faultModel instanceof PRVI25_CrustalFaultModels;
+		return faultModel instanceof PRVI25_SubductionFaultModels;
 	}
 
 	@Override
 	public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
-		return build(faultModel, 2, 0.5, Double.NaN);
+		return build(faultModel, 2, 0.5, 30d);
 	}
 
 	@Override
@@ -140,30 +134,23 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 		return buildDefModel(subSects, fullSects);
 	}
 	
-	private List<? extends FaultSection> buildDefModel(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
+	private List<? extends FaultSection> buildDefModel(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) throws IOException {
 		applySlipRates(subSects, fullSects);
 		applyStdDevDefaults(subSects);
 		applyCreepDefaults(subSects);
 		return subSects;
 	}
 	
-	protected abstract void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects);
-	
-	protected static void applyGeologicSlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects, String propertyName) {
-		Map<Integer, FaultSection> idMapped = new HashMap<>();
-		for (FaultSection sect : fullSects)
-			idMapped.put(sect.getSectionId(), sect);
-		
-		for (FaultSection subSect : subSects) {
-			FaultSection origSect = idMapped.get(subSect.getParentSectionId());
-			Preconditions.checkNotNull(origSect);
-			Preconditions.checkState(origSect.getSectionName().equals(subSect.getParentSectionName()));
-			
-			Preconditions.checkState(origSect instanceof GeoJSONFaultSection);
-			double slip = ((GeoJSONFaultSection)origSect).getProperties().getDouble(propertyName, Double.NaN);
-			Preconditions.checkState(Double.isFinite(slip));
-			subSect.setAveSlipRate(slip);
+	protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) throws IOException {
+		synchronized (this) {
+			if (dmMinis == null) {
+				InputStream is = PRVI25_CrustalDeformationModels.class.getResourceAsStream(PREFIX+fName);
+				dmMinis = MinisectionSlipRecord.readMinisectionsFile(is);
+				is.close();
+			}
 		}
+		MinisectionMappings mappings = new MinisectionMappings(fullSects, subSects);
+		mappings.mapDefModelMinisToSubSects(dmMinis);
 	}
 	
 	public static boolean isHardcodedFractionalStdDev() {
@@ -262,13 +249,5 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 	}
 	
 	private static final DecimalFormat pDF = new DecimalFormat("0.00%");
-	
-	public static void main(String[] args) throws IOException {
-		PRVI25_CrustalFaultModels fm = PRVI25_CrustalFaultModels.PRVI_FM_INITIAL;
-		for (PRVI25_CrustalDeformationModels dm : values()) {
-			List<? extends FaultSection> subSects = dm.build(fm);
-			GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+fm.getFilePrefix()+"_"+dm.getFilePrefix()+"_subSects.geojson"), subSects);
-		}
-	}
 
 }
