@@ -710,6 +710,11 @@ public class BranchAverageSolutionCreator {
 		}
 
 		@Override
+		public FaultTrace getLowerFaultTrace() {
+			return refSect.getLowerFaultTrace();
+		}
+
+		@Override
 		public double getAveRake() {
 			return avgRake;
 		}
