@@ -66,6 +66,13 @@ public enum RupturePlausibilityModels implements LogicTreeNode {
 			config.setMaxJumpDist(5d);;
 			return config;
 		}
+	},
+	SIMPLE_SUBDUCTION("Simple Subduction", "Subduction", 0d) {
+		@Override
+		public RupSetConfig getConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			SimpleSubductionRupSetConfig config = new SimpleSubductionRupSetConfig(subSects, scale);
+			return config;
+		}
 	};
 	
 	private String name;
