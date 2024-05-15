@@ -290,7 +290,7 @@ public class RuptureSets {
 		@Expose	private float jumpAzimuthChange = 60f;
 		@Expose	private int minSectsPerParent = 0;
 		// minim aspect ratio
-		@Expose	private float minAspectRatio = 0.66f;
+		@Expose	private float minAspectRatio = 0.67f;
 		// maximum individual jump distance
 		@Expose	private double maxJumpDist = 5d;
 		// if nonzero, apply thinning to growing strategy
