@@ -282,6 +282,100 @@ public class RuptureSets {
 		
 	}
 	
+	public static class SimpleSubductionRupSetConfig extends RupSetConfig {
+		
+		private List<? extends FaultSection> subSects;
+		private RupSetScalingRelationship scale;
+		
+		@Expose	private float jumpAzimuthChange = 60f;
+		@Expose	private int minSectsPerParent = 0;
+		// minim aspect ratio
+		@Expose	private float minAspectRatio = 0.66f;
+		// maximum individual jump distance
+		@Expose	private double maxJumpDist = 5d;
+		// if nonzero, apply thinning to growing strategy
+		@Expose	private float adaptiveSectFract = 0f;
+
+		public SimpleSubductionRupSetConfig(RupSetFaultModel fm, RupSetScalingRelationship scale) throws IOException {
+			this(fm.getDefaultDeformationModel().build(fm), scale);
+		}
+
+		public SimpleSubductionRupSetConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			init(subSects, scale);
+		}
+
+		@Override
+		protected void init(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			this.subSects = subSects;
+			this.scale = scale;
+		}
+
+		@Override
+		public List<? extends FaultSection> getSubSects() {
+			return subSects;
+		}
+
+		@Override
+		public PlausibilityConfiguration getPlausibilityConfig() {
+			SectionDistanceAzimuthCalculator distAzCalc = getDistAzCalc();
+			if (distAzCalc.getNumCachedDistances() == 0)
+				// increase discretization for subduction sources
+				distAzCalc.setDiscretization(5d);
+			ClusterConnectionStrategy connStrat = new DistCutoffClosestSectClusterConnectionStrategy(
+					getSubSects(), distAzCalc, maxJumpDist);
+			Builder builder = PlausibilityConfiguration.builder(connStrat, subSects);
+			if (minSectsPerParent > 1)
+				builder.minSectsPerParent(minSectsPerParent, true, true);
+			AzimuthCalc azCalc = new JumpAzimuthChangeFilter.SimpleAzimuthCalc(distAzCalc);
+			if (jumpAzimuthChange > 0f)
+				builder.jumpAzChange(azCalc, jumpAzimuthChange);
+			if (minAspectRatio > 0f)
+				builder.minAspectRatio(minAspectRatio, true, true);
+			return builder.build();
+		}
+
+		@Override
+		public RuptureGrowingStrategy getGrowingStrategy() {
+			RuptureGrowingStrategy strat = new ExhaustiveUnilateralRuptureGrowingStrategy();
+			if (adaptiveSectFract > 0f)
+				strat = new SectCountAdaptiveRuptureGrowingStrategy(strat, adaptiveSectFract, true, minSectsPerParent);
+			return strat;
+		}
+
+		@Override
+		public String getRupSetFileName() {
+			List<String> elements = new ArrayList<>();
+			if (minAspectRatio > 0f)
+				elements.add("aspect"+(int)minAspectRatio);
+			if (jumpAzimuthChange > 0f)
+				elements.add("jumpAz"+(int)jumpAzimuthChange);
+			if (minSectsPerParent > 0)
+				elements.add(minSectsPerParent+"sectsPerParent");
+			if (adaptiveSectFract > 0f)
+				elements.add("fractGrow"+adaptiveSectFract);
+			return Joiner.on("_").join(elements)+".zip";
+		}
+
+		@Override
+		public RupSetScalingRelationship getScalingRelationship() {
+			return scale;
+		}
+
+		@Override
+		public void setMaxJumpDist(double maxJumpDist) {
+			this.maxJumpDist = maxJumpDist;
+		}
+		
+		public void setMinSectsPerParent(int minSectsPerParent) {
+			this.minSectsPerParent = minSectsPerParent;
+		}
+
+		public void setAdaptiveSectFract(float adaptiveSectFract) {
+			this.adaptiveSectFract = adaptiveSectFract;
+		}
+		
+	}
+	
 	public static class CoulombRupSetConfig extends RupSetConfig {
 		
 		private List<? extends FaultSection> subSects;
@@ -936,6 +1030,7 @@ public class RuptureSets {
 			else
 				config.getConnectionStrategy().getClusters();
 			ClusterRuptureBuilder builder = new ClusterRuptureBuilder(config);
+//			builder.setDebugCriteria(new ClusterRuptureBuilder.StartEndSectRupDebugCriteria(20, 22, false, false), false);
 			System.out.println("Building ruptures with "+numThreads+" threads...");
 			Stopwatch watch = Stopwatch.createStarted();
 			List<ClusterRupture> rups = builder.build(getGrowingStrategy(), numThreads);
