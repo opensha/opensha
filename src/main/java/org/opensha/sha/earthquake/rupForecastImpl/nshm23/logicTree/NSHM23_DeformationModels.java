@@ -590,7 +590,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		dmRecords = applyOutlierSubstitution(faultModel, dmRecords);
 		
 		// apply deformation model to subsections
-		mappings.mapDefModelMinisToSubSects(subSects, dmRecords);
+		mappings.mapDefModelMinisToSubSects(dmRecords);
 		
 		// apply std dev defaults
 		return applyCreepModel(mappings, applyStdDevDefaults(faultModel, subSects));

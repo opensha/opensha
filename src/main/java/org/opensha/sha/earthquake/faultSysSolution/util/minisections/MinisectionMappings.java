@@ -27,6 +27,7 @@ import com.google.common.primitives.Doubles;
  */
 public class MinisectionMappings {
 
+	private List<? extends FaultSection> subSects;
 	private Map<Integer, FaultSection> sectsByID;
 	
 	private int[] subSectMinisectionAssociationNum;
@@ -36,6 +37,7 @@ public class MinisectionMappings {
 	private double[] subSectLengths;
 	
 	public MinisectionMappings(List<? extends FaultSection> fullSects, List<? extends FaultSection> subSects) {
+		this.subSects = subSects;
 		sectsByID = new HashMap<>();
 		for (FaultSection fullSect : fullSects) {
 			Preconditions.checkState(!sectsByID.containsKey(fullSect.getSectionId()));
@@ -243,7 +245,7 @@ public class MinisectionMappings {
 	 */
 	public double getAssociationScaledAverage(int subSectIndex, List<Double> values) {
 		Preconditions.checkState(values.size() == subSectMinisectionLengths[subSectIndex].length,
-				"Given %s values but have %s minisections for subsection %s",
+				"Given %s values but should have %s minisections (based on full section trace size) for subsection %s",
 				values.size(), subSectMinisectionLengths[subSectIndex].length, subSectIndex);
 		int numAssociations = getNumAssociatedMinisections(subSectIndex);
 		Preconditions.checkState(numAssociations >= 1, "No associations found for subsection %s", subSectIndex);
@@ -422,8 +424,7 @@ public class MinisectionMappings {
 		return true;
 	}
 	
-	public void mapDefModelMinisToSubSects(List<? extends FaultSection> subSects,
-			Map<Integer, List<MinisectionSlipRecord>> dmRecords) {
+	public void mapDefModelMinisToSubSects(Map<Integer, List<MinisectionSlipRecord>> dmRecords) {
 		int numRakesSkipped = 0;
 		
 		// replace slip rates and rakes from deformation model
