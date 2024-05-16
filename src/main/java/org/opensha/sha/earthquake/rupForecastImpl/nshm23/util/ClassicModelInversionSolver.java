@@ -48,17 +48,15 @@ import org.opensha.sha.faultSurface.FaultSection;
  */
 public class ClassicModelInversionSolver extends ClusterSpecificInversionSolver {
 	
-	private AnalyticalSingleFaultInversionSolver analytical;
-	private BinaryRuptureProbabilityCalc rupProbCalc;
+	private BinaryRuptureProbabilityCalc exclusionModel;
 	private HashSet<Integer> paleoParents;
 	private int parkfieldID;
+	private LogicTreeBranch<?> branch;
 	
-	public ClassicModelInversionSolver(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		if (branch.hasValue(SupraSeisBValues.class))
-			analytical = new AnalyticalSingleFaultInversionSolver(branch.requireValue(SupraSeisBValues.class).bValue);
-		else
-			analytical = new AnalyticalSingleFaultInversionSolver();
-		rupProbCalc = NSHM23_InvConfigFactory.getExclusionModel(rupSet, branch, rupSet.requireModule(ClusterRuptures.class));
+	public ClassicModelInversionSolver(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+			BinaryRuptureProbabilityCalc exclusionModel) {
+		this.branch = branch;
+		this.exclusionModel = exclusionModel;
 		
 		parkfieldID = NSHM23_ConstraintBuilder.findParkfieldSection(rupSet);
 		
@@ -77,11 +75,18 @@ public class ClassicModelInversionSolver extends ClusterSpecificInversionSolver 
 			}
 		}
 	}
+	
+	private AnalyticalSingleFaultInversionSolver getAnalyiticalSolver(boolean includeExclusionModel) {
+		BinaryRuptureProbabilityCalc exclusionModel = includeExclusionModel ? this.exclusionModel : null;
+		if (branch.hasValue(SupraSeisBValues.class))
+			return new AnalyticalSingleFaultInversionSolver(branch.requireValue(SupraSeisBValues.class).bValue, exclusionModel);
+		return new AnalyticalSingleFaultInversionSolver(exclusionModel);
+	}
 
 	@Override
 	protected BinaryRuptureProbabilityCalc getRuptureExclusionModel(FaultSystemRupSet rupSet,
 			LogicTreeBranch<?> branch) {
-		return rupProbCalc;
+		return exclusionModel;
 	}
 
 	@Override
@@ -130,7 +135,7 @@ public class ClassicModelInversionSolver extends ClusterSpecificInversionSolver 
 		FaultSystemSolution inversionSol = super.run(rupSet, factory, branch, threads, cmd);
 		if (inversionSol == null) {
 			// simplest case, all analytical
-			return analytical.run(rupSet, factory, branch, threads, cmd);
+			return getAnalyiticalSolver(true).run(rupSet, factory, branch, threads, cmd);
 		}
 		ConnectivityClusters clusters = rupSet.requireModule(ConnectivityClusters.class);
 		// now add in analytical
@@ -143,9 +148,10 @@ public class ClassicModelInversionSolver extends ClusterSpecificInversionSolver 
 			return inversionSol;
 		} else {
 			// build rupture set only with analytical sections
-			FaultSystemRupSet analyticalRupSet = rupSet.getForSectionSubSet(analyticalSects, rupProbCalc);
+			FaultSystemRupSet analyticalRupSet = rupSet.getForSectionSubSet(analyticalSects, exclusionModel);
 			// inversion configuration for it (required for target MFDs, and then to calc misfits)
 			InversionConfiguration config = factory .buildInversionConfig(analyticalRupSet, branch, threads);
+			AnalyticalSingleFaultInversionSolver analytical = getAnalyiticalSolver(false); // don't include exclusion model as we'll sent filtered rupture sets
 			FaultSystemSolution analyticalSol = analytical.run(analyticalRupSet, config);
 			double[] analyticalRates = analyticalSol.getRateForAllRups();
 			
@@ -214,7 +220,7 @@ public class ClassicModelInversionSolver extends ClusterSpecificInversionSolver 
 	public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config, String info) {
 		// see if it's a single-fault rupture set
 		if (!shouldInvert(rupSet, config))
-			return analytical.run(rupSet, config, info);
+			return getAnalyiticalSolver(true).run(rupSet, config, info);
 		return super.run(rupSet, config, info);
 	}
 	

@@ -616,10 +616,6 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		return data != null && (data.hasPaleoRateConstraints() || data.hasPaleoSlipConstraints());
 	}
 	
-	public static boolean hasParkfield(FaultSystemRupSet rupSet) {
-		return NSHM23_ConstraintBuilder.findParkfieldSection(rupSet) >= 0;
-	}
-	
 	/**
 	 * @param rupSet
 	 * @param segModel
@@ -765,8 +761,10 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 				exclusionModels.add(exclusionModel);
 		}
 		
-		if (!allowConnectedProxyFaults)
+		if (!allowConnectedProxyFaults) {
+			System.out.println("Excluding jumps to/from proxy faults");
 			exclusionModels.add(new ProxyConnectionExclusionModel());
+		}
 		
 		if (exclusionModels.isEmpty())
 			return null;
@@ -810,8 +808,9 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			if (isSolveClustersIndividually()) {
 				// solve clusters individually, can handle mixed clusters and single-fault analytical
 				System.out.println("Returning classic model solver");
-				return new ClassicModelInversionSolver(rupSet, branch);
-			} else if (!hasPaleoData(rupSet) && !hasParkfield(rupSet)) {
+				ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+				return new ClassicModelInversionSolver(rupSet, branch, getExclusionModel(rupSet, branch, cRups));
+			} else if (!hasPaleoData(rupSet)) {
 				// see if we can solve the whole thing analytically (can do if all multifault rups are excluded)
 				// but only if we don't have paleo/parkfield constraints
 				ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
