@@ -1,5 +1,6 @@
 package org.opensha.sha.faultSurface;
 
+import java.awt.geom.Area;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -19,6 +20,7 @@ import org.opensha.commons.geo.json.Geometry.MultiPolygon;
 import org.opensha.commons.geo.json.Geometry.Polygon;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionPolygonBuilder;
 
 import com.google.common.base.Preconditions;
 
@@ -898,10 +900,13 @@ public final class GeoJSONFaultSection implements FaultSection {
 				subSection.properties.set(LOW_DEPTH, subSection.lowerDepth);
 			}
 			
-			// TODO: should probably split polygons?
+			subSection.setZonePolygon(null);
 			
 			subSectionList.add(subSection);
 		}
+		if (zonePolygon != null)
+			SubSectionPolygonBuilder.buildSubsectionPolygons(subSectionList, zonePolygon);
+		
 		return subSectionList;
 	}
 	
