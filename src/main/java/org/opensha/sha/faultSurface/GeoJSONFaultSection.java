@@ -332,6 +332,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 		this.dipDirection = sect.getDipDirection();
 		this.trace = sect.getFaultTrace();
 		this.lowerTrace = sect.getLowerFaultTrace();
+		this.zonePolygon = sect.getZonePolygon();
 		if (sect instanceof GeoJSONFaultSection) {
 			this.properties = new FeatureProperties(((GeoJSONFaultSection)sect).properties);
 		} else {
