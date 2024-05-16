@@ -448,7 +448,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		if (exclusions.size() == 1)
 			return exclusions.get(0);
 		
-		System.out.println("Combining "+exclusions.size()+" exclusion models");
+		System.out.println("Combining "+exclusions.size()+" segmentation exclusion models");
 		
 		return new RuptureProbabilityCalc.LogicalAnd(exclusions.toArray(new BinaryRuptureProbabilityCalc[0]));
 	}

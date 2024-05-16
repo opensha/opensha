@@ -1839,18 +1839,18 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			table.addColumn((float)val+"");
 			if (cmlParticBounds != null && (float)mag <= (float)cmlParticBounds.getMaxX()) {
 				String boundsStr = "[";
-				boundsStr += rangeRateStr(cmlParticBounds.getLower().getInterpolatedY(mag));
+				boundsStr += rangeRateStr(cmlParticBounds.getLower(), mag);
 				boundsStr += ", ";
-				boundsStr += rangeRateStr(cmlParticBounds.getUpper().getInterpolatedY(mag));
+				boundsStr += rangeRateStr(cmlParticBounds.getUpper(), mag);
 				boundsStr += "]";
 				table.addColumn(boundsStr);
 			}
 			table.addColumn(riRateStr(1d/val)+"");
 			if (cmlParticBounds != null && (float)mag <= (float)cmlParticBounds.getMaxX()) {
 				String boundsStr = "[";
-				boundsStr += riRateStr(1d/cmlParticBounds.getUpper().getInterpolatedY(mag));
+				boundsStr += riRateStr(cmlParticBounds.getUpper(), mag);
 				boundsStr += ", ";
-				boundsStr += riRateStr(1d/cmlParticBounds.getLower().getInterpolatedY(mag));
+				boundsStr += riRateStr(cmlParticBounds.getLower(), mag);
 				boundsStr += "]";
 				table.addColumn(boundsStr);
 			}
@@ -2072,10 +2072,30 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return lines;
 	}
 	
+	private static String rangeRateStr(DiscretizedFunc func, double mag) {
+		if ((float)mag == (float)func.getMinX())
+			return rangeRateStr(func.getY(0));
+		if ((float)mag == (float)func.getMaxX())
+			return rangeRateStr(func.getY(func.size()-1));
+		if ((float)mag > (float)func.getMaxX() || (float)mag < (float)func.getMinX())
+			return "_N/A_";
+		return rangeRateStr(func.getInterpolatedY(mag));
+	}
+	
 	private static String rangeRateStr(double rate) {
 		if (rate < 1e-1)
 			return expProbDF.format(rate);
 		return (float)rate+"";
+	}
+	
+	private static String riRateStr(DiscretizedFunc func, double mag) {
+		if ((float)mag == (float)func.getMinX())
+			return riRateStr(1d/func.getY(0));
+		if ((float)mag == (float)func.getMaxX())
+			return riRateStr(1d/func.getY(func.size()-1));
+		if ((float)mag > (float)func.getMaxX() || (float)mag < (float)func.getMinX())
+			return "_N/A_";
+		return riRateStr(1d/func.getInterpolatedY(mag));
 	}
 	
 	private static String riRateStr(double ri) {
