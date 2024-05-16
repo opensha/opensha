@@ -825,6 +825,11 @@ public class BranchAverageSolutionCreator {
 		public FaultSection clone() {
 			throw new UnsupportedOperationException();
 		}
+
+		@Override
+		public boolean isProxyFault() {
+			return refSect.isProxyFault();
+		}
 		
 	}
 	

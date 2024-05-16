@@ -283,6 +283,11 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	 * @return true if this is a connector fault
 	 */
 	public boolean isConnector();
+	
+	/**
+	 * @return true if this is a proxy fault
+	 */
+	public boolean isProxyFault();
 
 	public Region getZonePolygon();
 	

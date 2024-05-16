@@ -70,6 +70,7 @@ public final class GeoJSONFaultSection implements FaultSection {
 	public static final String SLIP_STD_DEV = "SlipRateStdDev";
 	public static final String CONNECTOR = "Connector";
 	public static final String CREEP_RATE = "CreepRate";
+	public static final String PROXY = "Proxy";
 	// use MultiLineString instead
 	@Deprecated private static final String LOWER_TRACE = "LowerTrace";
 
@@ -353,6 +354,8 @@ public final class GeoJSONFaultSection implements FaultSection {
 			setSlipRateStdDev(sect.getOrigSlipRateStdDev());
 			if (sect.isConnector())
 				properties.set(CONNECTOR, true);
+			if (sect.isProxyFault())
+				properties.set(PROXY, true);
 			setZonePolygon(sect.getZonePolygon());
 		}
 		cacheCommonValues();
@@ -892,8 +895,9 @@ public final class GeoJSONFaultSection implements FaultSection {
 				subSection.properties.set(UPPER_DEPTH, subSection.upperDepth);
 				subSection.lowerDepth = FaultUtils.resampleTrace(lowerSubTrace, num).stream().map(S -> S.depth).mapToDouble(d->d).average().getAsDouble();
 				subSection.properties.set(LOW_DEPTH, subSection.lowerDepth);
-				
 			}
+			
+			// TODO: should probably split polygons?
 			
 			subSectionList.add(subSection);
 		}
@@ -964,6 +968,11 @@ public final class GeoJSONFaultSection implements FaultSection {
 	@Override
 	public boolean isConnector() {
 		return properties.getBoolean(CONNECTOR, false);
+	}
+
+	@Override
+	public boolean isProxyFault() {
+		return properties.getBoolean(PROXY, false);
 	}
 
 	@Override
