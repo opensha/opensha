@@ -418,7 +418,7 @@ implements ParameterChangeWarningListener {
 		logger.log(Level.CONFIG, "Creating UCERF1 ERF");
 		forecast = new WGCEP_UCERF1_EqkRupForecast();
 		forecast.getAdjustableParameterList().getParameter(
-				WGCEP_UCERF1_EqkRupForecast.TIME_DEPENDENT_PARAM_NAME).setValue(new Boolean(false));
+				WGCEP_UCERF1_EqkRupForecast.TIME_DEPENDENT_PARAM_NAME).setValue(Boolean.valueOf(false));
 	}
 
 	/**
@@ -524,7 +524,7 @@ implements ParameterChangeWarningListener {
 			logger.log(Level.FINE, "Setting ERF rupture offset: " + rupOffset);
 			forecast.getAdjustableParameterList().getParameter(
 					Frankel02_AdjustableEqkRupForecast.
-					RUP_OFFSET_PARAM_NAME).setValue(new Double(rupOffset));
+					RUP_OFFSET_PARAM_NAME).setValue(Double.valueOf(rupOffset));
 		} else {
 			logger.log(Level.WARNING, "ERF doesn't contain param '"+Frankel02_AdjustableEqkRupForecast.
 					RUP_OFFSET_PARAM_NAME+"', ignoring setting.");

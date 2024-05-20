@@ -69,9 +69,9 @@ public class GcimSite_GuiBean extends JPanel implements ParameterChangeListener,
 	 * Longitude and Latitude paramerts to be added to the site params list
 	 */
 	private DoubleParameter longitude = new DoubleParameter(LONGITUDE,
-			new Double(-360), new Double(360), new Double(-118.243));
+			Double.valueOf(-360), Double.valueOf(360), Double.valueOf(-118.243));
 	private DoubleParameter latitude = new DoubleParameter(LATITUDE,
-			new Double(-90), new Double(90), new Double(34.053));
+			Double.valueOf(-90), Double.valueOf(90), Double.valueOf(34.053));
 	private GridBagLayout gridBagLayout1 = new GridBagLayout();
 
 	/**

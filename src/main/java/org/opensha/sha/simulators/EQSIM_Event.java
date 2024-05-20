@@ -176,7 +176,7 @@ public class EQSIM_Event extends SimulatorEvent {
 			double totalRuptureLength = getLength();	// this is in meters!
 			double[] distAlongForEachElement = new double[getNumElements()];
 			for(int er_index=0;er_index<size();er_index++) {
-				double startDistanceAlong = startDistAlongForReorderedER[reorderedIndices.indexOf(new Integer(er_index))];
+				double startDistanceAlong = startDistAlongForReorderedER[reorderedIndices.indexOf(Integer.valueOf(er_index))];
 //				int reorderedIndex = reorderedIndices.get(er_index);
 				EventRecord er = get(er_index);
 // System.out.println("er.getSectionID()="+er.getSectionID()+"\t"+"startDistanceAlong="+startDistanceAlong);

@@ -24,7 +24,9 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
+import org.opensha.commons.data.CSVWriter;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.CSVReader;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.logicTree.BranchWeightProvider;
@@ -859,13 +861,21 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		String indicesFile = getRecordBranchFileName(branch, prefix, FaultSystemRupSet.RUP_SECTS_FILE_NAME, true, mappings);
 		if (!writtenFiles.contains(indicesFile)) {
-			CSV_BackedModule.writeToArchive(FaultSystemRupSet.buildRupSectsCSV(rupSet), zout, entryPrefix, indicesFile);
+			FileBackedModule.initEntry(zout, entryPrefix, indicesFile);
+			CSVWriter entryWriter = new CSVWriter(zout, false);
+			FaultSystemRupSet.buildRupSectsCSV(rupSet,entryWriter);
+			entryWriter.flush();
+			zout.closeEntry();
 			writtenFiles.add(indicesFile);
 		}
 		
 		String propsFile = getRecordBranchFileName(branch, prefix, FaultSystemRupSet.RUP_PROPS_FILE_NAME, true, mappings);
 		if (!writtenFiles.contains(propsFile)) {
-			CSV_BackedModule.writeToArchive(new RuptureProperties(rupSet).buildCSV(), zout, entryPrefix, propsFile);
+			FileBackedModule.initEntry(zout, entryPrefix, propsFile);
+			CSVWriter entryWriter = new CSVWriter(zout, true);
+			new RuptureProperties(rupSet).buildCSV(entryWriter);
+			entryWriter.flush();
+			zout.closeEntry();
 			writtenFiles.add(propsFile);
 		}
 		
@@ -896,7 +906,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		if (misfitStats != null) {
 			String statsFile = getRecordBranchFileName(branch, prefix,
 					InversionMisfitStats.MISFIT_STATS_FILE_NAME, true, mappings);
-			Preconditions.checkState(!writtenFiles.contains(statsFile));
+			Preconditions.checkState(!writtenFiles.contains(statsFile),
+					"Duplicate misfit stats file: %s; branch: %s", statsFile, branch);
 			CSV_BackedModule.writeToArchive(misfitStats.getCSV(), zout, entryPrefix, statsFile);
 			writtenFiles.add(statsFile);
 		}
@@ -906,7 +917,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		if (progress != null) {
 			String progressFile = getRecordBranchFileName(branch, prefix,
 					AnnealingProgress.PROGRESS_FILE_NAME, true, mappings);
-			Preconditions.checkState(!writtenFiles.contains(progressFile));
+			Preconditions.checkState(!writtenFiles.contains(progressFile),
+					"Duplicate annealing progress file: %s; branch: %s", progressFile, branch);
 			CSV_BackedModule.writeToArchive(progress.getCSV(), zout, entryPrefix, progressFile);
 			writtenFiles.add(progressFile);
 		}
@@ -916,7 +928,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		if (misfitProgress != null) {
 			String progressFile = getRecordBranchFileName(branch, prefix,
 					InversionMisfitProgress.MISFIT_PROGRESS_FILE_NAME, true, mappings);
-			Preconditions.checkState(!writtenFiles.contains(progressFile));
+			Preconditions.checkState(!writtenFiles.contains(progressFile),
+					"Duplicate misfit progress file: %s; branch: %s", progressFile, branch);
 			CSV_BackedModule.writeToArchive(misfitProgress.getCSV(), zout, entryPrefix, progressFile);
 			writtenFiles.add(progressFile);
 		}
@@ -1189,7 +1202,9 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			prevSubSects = subSects;
 			prevSectsFile = sectsFile;
 		}
-		
+
+		RuptureProperties props = loadPropsForBranch(branch);
+
 		String indicesFile = getBranchFileName(branch, FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
 		List<List<Integer>> rupIndices;
 		if (prevRupIndices != null && indicesFile.equals(prevIndicesFile)) {
@@ -1197,14 +1212,12 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			rupIndices = prevRupIndices;
 		} else {
 			System.out.println("\tLoading rupture indices from "+indicesFile);
-			CSVFile<String> rupSectsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, indicesFile);
-			rupIndices = FaultSystemRupSet.loadRupSectsCSV(rupSectsCSV, subSects.size());
+			CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(zip, entryPrefix, indicesFile);
+			rupIndices = FaultSystemRupSet.loadRupSectsCSV(rupSectsCSV, subSects.size(), props.mags.length);
 			prevRupIndices = rupIndices;
 			prevIndicesFile = indicesFile;
 		}
-		
-		RuptureProperties props = loadPropsForBranch(branch);
-		
+
 		FaultSystemRupSet rupSet = new FaultSystemRupSet(subSects, rupIndices,
 				props.mags, props.rakes, props.areas, props.lengths);
 		if (process && processor != null)

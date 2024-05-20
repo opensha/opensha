@@ -710,6 +710,11 @@ public class BranchAverageSolutionCreator {
 		}
 
 		@Override
+		public FaultTrace getLowerFaultTrace() {
+			return refSect.getLowerFaultTrace();
+		}
+
+		@Override
 		public double getAveRake() {
 			return avgRake;
 		}
@@ -819,6 +824,11 @@ public class BranchAverageSolutionCreator {
 		@Override
 		public FaultSection clone() {
 			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public boolean isProxyFault() {
+			return refSect.isProxyFault();
 		}
 		
 	}

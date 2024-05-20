@@ -164,12 +164,12 @@ public class DoubleValueWeightParameterEditor extends AbstractParameterEditorOld
 		if(paramName.equalsIgnoreCase(VALUE)) {
 			//set the Value in ValueWeight object
 			Double value = (Double)valueParameter.getValue();
-			if(value==null) value = new Double(Double.NaN);
+			if(value==null) value = Double.valueOf(Double.NaN);
 			valueWeight.setValue(value.doubleValue());
 		} else if(paramName.equalsIgnoreCase(WEIGHT)) {
 			//set the weight in ValueWeight object
 			Double weight = (Double)weightParameter.getValue();
-			if(weight==null) weight = new Double(Double.NaN);
+			if(weight==null) weight = Double.valueOf(Double.NaN);
 			valueWeight.setWeight(weight.doubleValue());
 		}
 		model.setValue(valueWeight);

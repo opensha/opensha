@@ -13,8 +13,8 @@ public class RakeParam extends DoubleParameter {
 	public final static String NAME = "Rake";
 	public final static String UNITS = "degrees";
 	public final static String INFO = "Average rake of earthquake rupture";
-	protected final static Double MIN = new Double( -180);
-	protected final static Double MAX = new Double(180);
+	protected final static Double MIN = Double.valueOf( -180);
+	protected final static Double MAX = Double.valueOf(180);
 
 	/**
 	 * This sets the default as given  

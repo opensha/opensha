@@ -333,7 +333,7 @@ public class MakeB_FaultsTable {
 	 */
 	private void makeData(boolean connectMoreB_Faults, String defModelName) {
 
-		ucerf2.getParameter(UCERF2.CONNECT_B_FAULTS_PARAM_NAME).setValue(new Boolean(connectMoreB_Faults));
+		ucerf2.getParameter(UCERF2.CONNECT_B_FAULTS_PARAM_NAME).setValue(Boolean.valueOf(connectMoreB_Faults));
 		ucerf2.getParameter(UCERF2.DEFORMATION_MODEL_PARAM_NAME).setValue(defModelName);
 
 		// bVal = 0.8

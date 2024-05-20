@@ -5,6 +5,7 @@ package org.opensha.sha.faultSurface;
 
 import java.io.FileWriter;
 import java.util.Iterator;
+import java.util.List;
 
 import org.opensha.commons.geo.GeoTools;
 import org.opensha.commons.geo.Location;
@@ -94,6 +95,13 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 		gridSpacingAlong = aveGridSpacing;
 		gridSpacingDown = aveGridSpacing;
 		sameGridSpacing = true;
+		// our checks can flip these, wrap so we don't alter that passed in
+		FaultTrace tmpUpperFaultTrace = new FaultTrace(upperFaultTrace.getName());
+		tmpUpperFaultTrace.addAll(upperFaultTrace);
+		upperFaultTrace = tmpUpperFaultTrace;
+		FaultTrace tmpLowerFaultTrace = new FaultTrace(lowerFaultTrace.getName());
+		tmpLowerFaultTrace.addAll(lowerFaultTrace);
+		lowerFaultTrace = tmpLowerFaultTrace;
 		this.upperFaultTrace = upperFaultTrace;
 		this.lowerFaultTrace = lowerFaultTrace;
 		
@@ -113,23 +121,28 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 		}
 
 		// check that the traces are both in the same order
-		Location firstUpperLoc = upperFaultTrace.get(0);
-		Location firstLowerLoc = lowerFaultTrace.get(0);
-		Location lastLowerLoc = lowerFaultTrace.get(lowerFaultTrace.size()-1);
-		double firstFirstDist = LocationUtils.horzDistanceFast(firstUpperLoc, firstLowerLoc);
-		double firstLastDist = LocationUtils.horzDistanceFast(firstUpperLoc, lastLowerLoc);
-		if(firstLastDist < firstFirstDist) {
+		double upperAz = upperFaultTrace.getAveStrike();
+		double lowerAz = lowerFaultTrace.getAveStrike();
+		double azDiff = FaultUtils.getAbsAngleDiff(upperAz, lowerAz);
+		if (azDiff > 90d) {
 			lowerFaultTrace.reverse();
-			if(D) System.out.println("Needed to reversed lower trace to comply with upper trace");
+			if(D) System.out.println("Needed to reversed lower trace to comply with upper trace; upperAz="
+					+(float)upperAz+", lowerAz="+(float)lowerAz+", diff="+(float)azDiff);
 		}
 
 		// Now check that Aki-Richards convention is adhered to (fault dips to right)
-		double dipDir = LocationUtils.azimuth(upperFaultTrace.get(0), lowerFaultTrace.get(0));
-		double strikeDir = upperFaultTrace.getStrikeDirection();
-		if((strikeDir-dipDir) <0 ||  (strikeDir-dipDir) > 180) {
+		double dipDir = FaultUtils.getAngleAverage(List.of(
+				LocationUtils.azimuth(upperFaultTrace.first(), lowerFaultTrace.first()),
+				LocationUtils.azimuth(upperFaultTrace.last(), lowerFaultTrace.last())));
+		double idealDipDir = upperAz + 90d;
+		while (idealDipDir > 360d)
+			idealDipDir -= 360;
+		double arDiff = FaultUtils.getAbsAngleDiff(idealDipDir, dipDir);
+		if	(arDiff > 90d) {
 			upperFaultTrace.reverse();
 			lowerFaultTrace.reverse();
-			if(D) System.out.println("reversed trace order to adhere to Aki Richards");
+			if(D) System.out.println("reversed trace order to adhere to Aki Richards; ideal dipDir="
+					+(float)idealDipDir+", actual="+(float)dipDir+", diff="+(float)arDiff);
 		}
 
 		// now compute num subsection of trace
@@ -141,6 +154,8 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 		// get resampled traces (note that number of locs in trace will be num+1)
 		FaultTrace resampUpperTrace = FaultUtils.resampleTrace(upperFaultTrace, num);
 		FaultTrace resampLowerTrace = FaultUtils.resampleTrace(lowerFaultTrace, num);
+		Preconditions.checkState(resampUpperTrace.size() == num+1, "Resampled upper has %s but expected %s", resampUpperTrace.size(), num+1);
+		Preconditions.checkState(resampLowerTrace.size() == num+1, "Resampled lower has %s but expected %s", resampLowerTrace.size(), num+1);
 
 		if(D) System.out.println("resample trace lengths: "+resampUpperTrace.size()+" & "+resampLowerTrace.size());
 		// compute ave num columns
@@ -198,11 +213,10 @@ public class ApproxEvenlyGriddedSurface extends AbstractEvenlyGriddedSurfaceWith
 		if(D) System.out.println("DeltaLon = "+ (float)((loc1.getLongitude()-loc2.getLongitude())*111));
 		if(D) System.out.println("DeltaDepth = "+ (float)(loc1.getDepth()-loc2.getDepth()));
 
-		if(D) System.out.println(resampLowerTrace.get(resampLowerTrace.size()-1).toString());
-		if(D) System.out.println(resampUpperTrace.get(resampLowerTrace.size()-1).toString());
+//		if(D) System.out.println(resampLowerTrace.get(resampLowerTrace.size()-1).toString());
+//		if(D) System.out.println(resampUpperTrace.get(resampLowerTrace.size()-1).toString());
 
 	}
-	
 	
 	/**
 	 * This explores an accuracy issue (final depth is right be lats and lons are more off)

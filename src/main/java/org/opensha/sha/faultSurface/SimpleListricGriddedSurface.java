@@ -308,13 +308,13 @@ public class SimpleListricGriddedSurface extends EvenlyGriddedSurfFromSimpleFaul
 		//         faultTrace.addLocation(new Location(37.80000, -122.2, 0.0));
 		//
 		//         ArrayList dips = new ArrayList();
-		//         dips.add(new Double(60.0));
-		//         dips.add(new Double(45.0));
+		//         dips.add(Double.valueOf(60.0));
+		//         dips.add(Double.valueOf(45.0));
 		//
 		//         ArrayList depths = new ArrayList();
-		//         depths.add(new Double(0.0));
-		//         depths.add(new Double(5.0));
-		//         depths.add(new Double(10.0));
+		//         depths.add(Double.valueOf(0.0));
+		//         depths.add(Double.valueOf(5.0));
+		//         depths.add(Double.valueOf(10.0));
 		//
 		//         SimpleListricGriddedSurface test = new SimpleListricGriddedSurface(
 		//                                        faultTrace,
@@ -335,13 +335,13 @@ public class SimpleListricGriddedSurface extends EvenlyGriddedSurfFromSimpleFaul
 		faultTrace.add(new Location(20.2, -120.0, 0.0));
 
 		ArrayList<Double> dips = new ArrayList<Double>();
-		dips.add(new Double(60.0));
-		dips.add(new Double(45.0));
+		dips.add(Double.valueOf(60.0));
+		dips.add(Double.valueOf(45.0));
 
 		ArrayList<Double> depths = new ArrayList<Double>();
-		depths.add(new Double(0.0));
-		depths.add(new Double(5.0));
-		depths.add(new Double(10.0));
+		depths.add(Double.valueOf(0.0));
+		depths.add(Double.valueOf(5.0));
+		depths.add(Double.valueOf(10.0));
 
 		SimpleListricGriddedSurface test = new SimpleListricGriddedSurface(
 				faultTrace,

@@ -100,11 +100,11 @@ public class CPTVal implements Comparable<CPTVal>, Serializable, Cloneable, XMLS
 		// If this range is less than other range or only contains the start
 		// point of the other range
 		if (this.end <= other.start) {
-			return -1;// (new Float(this.end - other.start )).intValue();
+			return -1;// (Float.valueOf(this.end - other.start )).intValue();
 		}// If this range is greater than other range or only contains the
 			// end point of the other range
 		else if (this.start >= other.end) {
-			return +1;// (new Float(this.start - other.end)).intValue();
+			return +1;// (Float.valueOf(this.start - other.end)).intValue();
 		} else {
 			// There is overlap
 			return 0;

@@ -156,7 +156,7 @@ public class MapGuiBean extends GMT_MapGuiBean {
 		String[] imgNames = null;
 
 		//boolean gmtServerCheck = ((Boolean)gmtMap.getAdjustableParamsList().getParameter(gmtMap.GMT_WEBSERVICE_NAME).getValue()).booleanValue();
-		// gmtMap.getAdjustableParamsList().getParameter(gmtMap.GMT_WEBSERVICE_NAME).setValue(new Boolean(true));
+		// gmtMap.getAdjustableParamsList().getParameter(gmtMap.GMT_WEBSERVICE_NAME).setValue(Boolean.valueOf(true));
 
 		//if(gmtServerCheck){
 		try {
@@ -193,7 +193,7 @@ public class MapGuiBean extends GMT_MapGuiBean {
 			ImageViewerWindow imgView = new ImageViewerWindow(imgNames,metadataAsHTML,true);
 		}
 		dirName = null;
-		//gmtMap.getAdjustableParamsList().getParameter(gmtMap.GMT_WEBSERVICE_NAME).setValue(new Boolean(gmtServerCheck));
+		//gmtMap.getAdjustableParamsList().getParameter(gmtMap.GMT_WEBSERVICE_NAME).setValue(Boolean.valueOf(gmtServerCheck));
 	}
 
 
@@ -257,13 +257,13 @@ public class MapGuiBean extends GMT_MapGuiBean {
 		//checking if hazus file generator param is selected, if not then make it selected and the deselect it again
 		hazusFileGeneratorCheck = ((Boolean)paramList.getParameter(GMT_MapGeneratorForShakeMaps.HAZUS_SHAPE_PARAM_NAME).getValue()).booleanValue();
 		if(!hazusFileGeneratorCheck)
-			paramList.getParameter(GMT_MapGeneratorForShakeMaps.HAZUS_SHAPE_PARAM_NAME).setValue(new Boolean(true));
+			paramList.getParameter(GMT_MapGeneratorForShakeMaps.HAZUS_SHAPE_PARAM_NAME).setValue(Boolean.valueOf(true));
 
 
 		//checking if log map generator param is selected, if yes then make it unselected and the select it again
 		generateMapInLogSpace = ((Boolean)paramList.getParameter(GMT_MapGeneratorForShakeMaps.LOG_PLOT_NAME).getValue()).booleanValue();
 		if(generateMapInLogSpace)
-			paramList.getParameter(GMT_MapGeneratorForShakeMaps.LOG_PLOT_NAME).setValue(new Boolean(false));
+			paramList.getParameter(GMT_MapGeneratorForShakeMaps.LOG_PLOT_NAME).setValue(Boolean.valueOf(false));
 
 		//always making the map color scale from the data if the person has choosen the Hazus control panel
 		mapColorScaleValue = (String)paramList.getParameter(GMT_MapGeneratorForShakeMaps.COLOR_SCALE_MODE_NAME).getValue();
@@ -284,11 +284,11 @@ public class MapGuiBean extends GMT_MapGuiBean {
 
 		//reverting the value for the Hazus file generation to the what was before the selection of the Hazus control panel.
 		if(!hazusFileGeneratorCheck)
-			paramList.getParameter(GMT_MapGeneratorForShakeMaps.HAZUS_SHAPE_PARAM_NAME).setValue(new Boolean(false));
+			paramList.getParameter(GMT_MapGeneratorForShakeMaps.HAZUS_SHAPE_PARAM_NAME).setValue(Boolean.valueOf(false));
 
 		//reverting the value for the Log file generation to the what was before the selection of the Hazus control panel.
 		if(generateMapInLogSpace)
-			paramList.getParameter(GMT_MapGeneratorForShakeMaps.LOG_PLOT_NAME).setValue(new Boolean(true));
+			paramList.getParameter(GMT_MapGeneratorForShakeMaps.LOG_PLOT_NAME).setValue(Boolean.valueOf(true));
 
 		//reverting the value for the map color generation to the what was before the selection of the Hazus control panel.
 		if(!mapColorScaleValue.equals(GMT_MapGeneratorForShakeMaps.COLOR_SCALE_MODE_FROMDATA))

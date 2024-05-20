@@ -67,28 +67,28 @@ public class RegionsOfInterestControlPanel extends ControlPanel {
 
 
 			regionsComboBox.addItem("GEM Test Region");
-			minLatVector.add(new Double(35));
-			maxLatVector.add(new Double(45));
-			minLonVector.add(new Double(65));
-			maxLonVector.add(new Double(85));
+			minLatVector.add(Double.valueOf(35));
+			maxLatVector.add(Double.valueOf(45));
+			minLonVector.add(Double.valueOf(65));
+			maxLonVector.add(Double.valueOf(85));
 
 			regionsComboBox.addItem("SF Bay Area");
-			minLatVector.add(new Double(36.5500));
-			maxLatVector.add(new Double(39.6167));
-			minLonVector.add(new Double(-124.7333));
-			maxLonVector.add(new Double(-120.1333));
+			minLatVector.add(Double.valueOf(36.5500));
+			maxLatVector.add(Double.valueOf(39.6167));
+			minLonVector.add(Double.valueOf(-124.7333));
+			maxLonVector.add(Double.valueOf(-120.1333));
 
 			regionsComboBox.addItem("Greater LA Region");
-			minLatVector.add(new Double(33.5));
-			maxLatVector.add(new Double(34.7));
-			minLonVector.add(new Double(-119.5));
-			maxLonVector.add(new Double(-117.0));
+			minLatVector.add(Double.valueOf(33.5));
+			maxLatVector.add(Double.valueOf(34.7));
+			minLonVector.add(Double.valueOf(-119.5));
+			maxLonVector.add(Double.valueOf(-117.0));
 
 			regionsComboBox.addItem("San Simeon Region");
-			minLatVector.add(new Double(34.872466));
-			maxLatVector.add(new Double(36.539133));
-			minLonVector.add(new Double(-121.844633));
-			maxLonVector.add(new Double(-119.361300));
+			minLatVector.add(Double.valueOf(34.872466));
+			maxLatVector.add(Double.valueOf(36.539133));
+			minLonVector.add(Double.valueOf(-121.844633));
+			maxLonVector.add(Double.valueOf(-119.361300));
 
 
 			jbInit();

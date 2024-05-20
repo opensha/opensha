@@ -13,8 +13,8 @@ public class HistoricOpenIntervalParam extends DoubleParameter {
 	public final static String NAME = "Historic Open Interval";
 	public final static String INFO = "Historic time interval over which event is known not to have occurred";
 	private static final String UNITS = "Years";
-	protected final static Double MIN = new Double(0d);
-	protected final static Double MAX = new Double(1e6);
+	protected final static Double MIN = Double.valueOf(0d);
+	protected final static Double MAX = Double.valueOf(1e6);
 	
 
 	/**

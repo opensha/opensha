@@ -138,10 +138,10 @@ public class CB_2008_test extends NGATest implements ParameterChangeWarningListe
 				//System.out.println("Doing "+j+" of "+numLines);
 				StringTokenizer st = new StringTokenizer(fileLine);
 				double mag = Double.parseDouble(st.nextToken().trim());
-				cb_2008.getParameter(MagParam.NAME).setValue(new Double(mag));
+				cb_2008.getParameter(MagParam.NAME).setValue(Double.valueOf(mag));
 
 				double rrup = Double.parseDouble(st.nextToken().trim());
-				((AbstractDoublePropEffectParam)cb_2008.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(new Double(rrup));
+				((AbstractDoublePropEffectParam)cb_2008.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(Double.valueOf(rrup));
 
 				double rjb = Double.parseDouble(st.nextToken().trim());
 
@@ -149,29 +149,29 @@ public class CB_2008_test extends NGATest implements ParameterChangeWarningListe
 				if(rrup==0 && rjb==0) distRupMinusJB_OverRup=0;
 				else distRupMinusJB_OverRup = (rrup-rjb)/rrup;
 
-				((AbstractDoublePropEffectParam)cb_2008.getParameter(DistRupMinusJB_OverRupParameter.NAME)).setValueIgnoreWarning(new Double(distRupMinusJB_OverRup));
+				((AbstractDoublePropEffectParam)cb_2008.getParameter(DistRupMinusJB_OverRupParameter.NAME)).setValueIgnoreWarning(Double.valueOf(distRupMinusJB_OverRup));
 
 				st.nextToken().trim(); // ignore R(x) ( Horizontal distance from top of rupture perpendicular to fault strike)
 
 				double dip = Double.parseDouble(st.nextToken().trim());
-				cb_2008.getParameter(DipParam.NAME).setValue(new Double(dip));
+				cb_2008.getParameter(DipParam.NAME).setValue(Double.valueOf(dip));
 
 				st.nextToken().trim(); // ignore W, width of rup plane
 
 				double depthTop = Double.parseDouble(st.nextToken().trim());
-				cb_2008.getParameter(RupTopDepthParam.NAME).setValue(new Double(depthTop));
+				cb_2008.getParameter(RupTopDepthParam.NAME).setValue(Double.valueOf(depthTop));
 
 				double vs30 = Double.parseDouble(st.nextToken().trim());
-				((WarningDoubleParameter)cb_2008.getParameter(Vs30_Param.NAME)).setValueIgnoreWarning(new Double(vs30));
+				((WarningDoubleParameter)cb_2008.getParameter(Vs30_Param.NAME)).setValueIgnoreWarning(Double.valueOf(vs30));
 
 				double depth25 = Double.parseDouble(st.nextToken().trim());
-				((WarningDoubleParameter)cb_2008.getParameter(DepthTo2pt5kmPerSecParam.NAME)).setValueIgnoreWarning(new Double(depth25));
+				((WarningDoubleParameter)cb_2008.getParameter(DepthTo2pt5kmPerSecParam.NAME)).setValueIgnoreWarning(Double.valueOf(depth25));
 
 				cb_2008.setIntensityMeasure(SA_Param.NAME);
 				int num= period.length;
 				double openSHA_Val, tested_Val;
 				for(int k=0;k<num;++k){
-					cb_2008.getParameter(PeriodParam.NAME).setValue(new Double(period[k]));
+					cb_2008.getParameter(PeriodParam.NAME).setValue(Double.valueOf(period[k]));
 					if(isMedian) openSHA_Val = Math.exp(cb_2008.getMean());
 					else openSHA_Val = cb_2008.getStdDev();
 					tested_Val = Double.parseDouble(st.nextToken().trim());

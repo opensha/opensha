@@ -745,7 +745,7 @@ ParameterChangeListener, ParameterChangeFailListener
                 bdB = bdB.setScale( 2, BigDecimal.ROUND_UP );
                 newVal = bdB.doubleValue();
 
-                xAxisParam.setValue( new Double( newVal ) );
+                xAxisParam.setValue( Double.valueOf( newVal ) );
                 Point2D point = new Point2D.Double( newVal , getCalculation( type ) );
                 function.set( point );
                 val += minmaxdelta.delta;
@@ -760,7 +760,7 @@ ParameterChangeListener, ParameterChangeFailListener
                 bdB = bdB.setScale( 2, BigDecimal.ROUND_UP );
                 newVal = bdB.doubleValue();
 
-                independentParam.setValue( new Double( newVal ) );
+                independentParam.setValue( Double.valueOf( newVal ) );
                 Point2D point = new Point2D.Double( newVal , getCalculation( type ) );
                 function.set( point );
                 val += minmaxdelta.delta;
@@ -836,7 +836,7 @@ ParameterChangeListener, ParameterChangeFailListener
 			// if it's just beyond the max (due to numerical imprececion) make it the max
 //			System.out.println("val before: " + val);
 			if(val > minmaxdelta.max) val = minmaxdelta.max;
-			paramToSet.setValue( new Double( val ) );
+			paramToSet.setValue( Double.valueOf( val ) );
 			Point2D point = new Point2D.Double( val , getCalculation( type ) );
 			function.set( point );
 			if (log) {
@@ -1557,10 +1557,10 @@ ParameterChangeListener, ParameterChangeFailListener
 
 	}
 	static {
-		yAxisMap.put( Y_AXIS_V1, new Integer( MEAN ) );
-		yAxisMap.put( Y_AXIS_V2, new Integer( STD_DEV ) );
-		yAxisMap.put( Y_AXIS_V3, new Integer( EXCEED_PROB ) );
-		yAxisMap.put( Y_AXIS_V4, new Integer( IML_AT_EXCEED_PROB) );
+		yAxisMap.put( Y_AXIS_V1, Integer.valueOf( MEAN ) );
+		yAxisMap.put( Y_AXIS_V2, Integer.valueOf( STD_DEV ) );
+		yAxisMap.put( Y_AXIS_V3, Integer.valueOf( EXCEED_PROB ) );
+		yAxisMap.put( Y_AXIS_V4, Integer.valueOf( IML_AT_EXCEED_PROB) );
 	}
 	@Override
 	public void parameterChangeFailed(ParameterChangeFailEvent event) {

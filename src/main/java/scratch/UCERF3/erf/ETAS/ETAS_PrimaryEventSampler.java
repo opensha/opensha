@@ -959,7 +959,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 			if(cubeDistMap != null) {	// null for some Mendocino sections because they are outside the RELM region
 				for(int cubeIndex:cubeDistMap.keySet()) {
 					sectAtPointList.get(cubeIndex).add(s);
-					sectDistToPointList.get(cubeIndex).add(new Float(cubeDistMap.get(cubeIndex)));
+					sectDistToPointList.get(cubeIndex).add(cubeDistMap.get(cubeIndex).floatValue());
 				}			
 			}
 		}
@@ -6446,7 +6446,7 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		
 		ArrayList<Integer> idList = new ArrayList<Integer>();
 		for(int i=0;i<totNumSrc;i++)
-			idList.add(new Integer(i));
+			idList.add(Integer.valueOf(i));
 		
 		for (int i=0; i<size; i++) {
 			int listSize = in.readInt();

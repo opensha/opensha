@@ -114,35 +114,36 @@ public class DisaggregationPlotViewerWindow extends JFrame implements HyperlinkL
 	 * Constructor when using a remote disagg PDF (URL)
 	 * @param imagePDF_URL URL of the image
 	 * @param calc disaggregation calculator
+	 * @param meanModeText mean/mode text
 	 * @param metadataText metadata
 	 * @param showBinData if ture, bin data will be shown in a tab
 	 */
 	public DisaggregationPlotViewerWindow(String imagePDF_URL,
-			DisaggregationCalculatorAPI calc, String metadataText, boolean showBinData) throws RuntimeException{
-		this(null, imagePDF_URL, calc, metadataText, showBinData);
+			DisaggregationCalculatorAPI calc, String meanModeText, String metadataText, boolean showBinData) throws RuntimeException{
+		this(null, imagePDF_URL, calc, meanModeText, metadataText, showBinData);
 	}
 	
 	/**
 	 * Constructor when using a java-generated plot
 	 * @param imagePanel
 	 * @param calc
+	 * @param meanModeText mean/mode text
 	 * @param metadataText metadata
 	 * @param showBinData if ture, bin data will be shown in a tab
 	 */
 	public DisaggregationPlotViewerWindow(Chart3DPanel imagePanel,
-			DisaggregationCalculatorAPI calc, String metadataText, boolean showBinData) {
-		this(imagePanel, null, calc, metadataText, showBinData);
+			DisaggregationCalculatorAPI calc, String meanModeText, String metadataText, boolean showBinData) {
+		this(imagePanel, null, calc, meanModeText, metadataText, showBinData);
 	}
 	
 	private DisaggregationPlotViewerWindow(
 			Chart3DPanel imagePanel, String imagePDF_URL,
-			DisaggregationCalculatorAPI calc, String metadataText, boolean showBinData) {
-		this(imagePanel, imagePDF_URL, calc.getMeanAndModeInfo(), metadataText,
+			DisaggregationCalculatorAPI calc, String meanModeText, String metadataText, boolean showBinData) {
+		this(imagePanel, imagePDF_URL, meanModeText, metadataText,
 				showBinData ? calc.getBinData() : null,
 				calc.getNumSourcesToShow() > 0 ? calc.getDisaggregationSourceInfo() : null,
 				calc.getNumSourcesToShow() > 0 ? calc.getConsolidatedDisaggregationSourceInfo() : null);
 	}
-
 	
 	public DisaggregationPlotViewerWindow(
 			Chart3DPanel imagePanel, String imagePDF_URL,

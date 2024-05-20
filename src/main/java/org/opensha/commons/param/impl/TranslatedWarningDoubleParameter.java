@@ -177,7 +177,7 @@ public class TranslatedWarningDoubleParameter extends WarningDoubleParameter {
     public Double getWarningMin() {
         Double min = (Double)param.getWarningMin();
         if( min  == null || !translate ) return min;
-        else return new Double( trans.reverse( min.doubleValue() ) );
+        else return Double.valueOf( trans.reverse( min.doubleValue() ) );
     }
 
 
@@ -209,7 +209,7 @@ public class TranslatedWarningDoubleParameter extends WarningDoubleParameter {
     public Double getWarningMax() {
         Double max = (Double)param.getWarningMax();
         if( max  == null || !translate ) return max;
-        else return new Double( trans.reverse( max.doubleValue() ) );
+        else return Double.valueOf( trans.reverse( max.doubleValue() ) );
     }
 
 
@@ -233,7 +233,7 @@ public class TranslatedWarningDoubleParameter extends WarningDoubleParameter {
         else{
 
             Double dUntranslated = (Double)value;
-            Double dTranslated = new Double( trans.translate( dUntranslated.doubleValue() ) );
+            Double dTranslated = Double.valueOf( trans.translate( dUntranslated.doubleValue() ) );
 
             if( !param.isAllowed( dTranslated ) ) {
                 String err = S + "Value is not allowed: ";
@@ -292,7 +292,7 @@ public class TranslatedWarningDoubleParameter extends WarningDoubleParameter {
         else{
             double d = ((Double)value).doubleValue();
             d = trans.reverse( d );
-            return new Double( d ) ;
+            return Double.valueOf( d ) ;
         }
     }
     
@@ -355,7 +355,7 @@ public class TranslatedWarningDoubleParameter extends WarningDoubleParameter {
             param.setValueIgnoreWarning( value );
         else{
             double d = trans.translate( ((Double)value).doubleValue() );
-            param.setValueIgnoreWarning( new Double( d ) );
+            param.setValueIgnoreWarning( Double.valueOf( d ) );
         }
     }
 
@@ -374,7 +374,7 @@ public class TranslatedWarningDoubleParameter extends WarningDoubleParameter {
         if ( obj == null || !translate || !( obj instanceof Double ) ) return param.isRecommended( obj );
         else{
             double d = trans.translate( ((Double)obj).doubleValue() );
-            return param.isRecommended( new Double( d ) );
+            return param.isRecommended( Double.valueOf( d ) );
         }
 
     }
@@ -391,7 +391,7 @@ public class TranslatedWarningDoubleParameter extends WarningDoubleParameter {
 
         Double min = param.getMin();
         if( min  == null || !translate ) return min;
-        else return new Double( trans.reverse( min.doubleValue() ) );
+        else return Double.valueOf( trans.reverse( min.doubleValue() ) );
 
     }
 
@@ -407,7 +407,7 @@ public class TranslatedWarningDoubleParameter extends WarningDoubleParameter {
 
         Double max = param.getMax();
         if( max  == null || !translate ) return max;
-        else return new Double(  trans.reverse( max.doubleValue() ) );
+        else return Double.valueOf(  trans.reverse( max.doubleValue() ) );
 
     }
 

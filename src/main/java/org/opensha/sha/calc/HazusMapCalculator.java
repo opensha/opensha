@@ -410,12 +410,12 @@ public class HazusMapCalculator {
         	 else if(imtIndex ==1){
         		 condProbFunc = IMT_Info.getUSGS_SA_Function();
         		 imr.setIntensityMeasure(SA_Param.NAME);
-        		 imr.getParameter(PeriodParam.NAME).setValue(new Double(0.3));
+        		 imr.getParameter(PeriodParam.NAME).setValue(Double.valueOf(0.3));
         	 }
         	 else if(imtIndex ==2){
         		 condProbFunc = IMT_Info.getUSGS_SA_Function();
         		 imr.setIntensityMeasure(SA_Param.NAME);
-        		 imr.getParameter(PeriodParam.NAME).setValue(new Double(1.0));
+        		 imr.getParameter(PeriodParam.NAME).setValue(Double.valueOf(1.0));
         	 }
         	 else if(imtIndex ==3){
         		 condProbFunc = (DiscretizedFunc)pgvFunction.deepClone();
@@ -423,7 +423,7 @@ public class HazusMapCalculator {
         		     imr.setIntensityMeasure(pgv);
         		 else{
         			 imr.setIntensityMeasure(SA_Param.NAME);
-            		 imr.getParameter(PeriodParam.NAME).setValue(new Double(1.0));
+            		 imr.getParameter(PeriodParam.NAME).setValue(Double.valueOf(1.0));
         		 }
         		 
         	 }

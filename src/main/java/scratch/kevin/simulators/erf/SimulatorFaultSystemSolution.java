@@ -134,7 +134,7 @@ public class SimulatorFaultSystemSolution extends FaultSystemSolution {
 
 			@Override
 			public int compare(FaultSection o1, FaultSection o2) {
-				return new Integer(o1.getSectionId()).compareTo(new Integer(o2.getSectionId()));
+				return Integer.valueOf(o1.getSectionId()).compareTo(Integer.valueOf(o2.getSectionId()));
 			}
 		};
 		

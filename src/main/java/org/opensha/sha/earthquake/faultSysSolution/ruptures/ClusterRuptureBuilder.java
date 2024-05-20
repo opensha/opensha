@@ -969,10 +969,10 @@ public class ClusterRuptureBuilder {
 		// Coulomb w/ UCERF3
 //		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3);
 		// NSHM23
-		NSHM23_FaultModels fm = NSHM23_FaultModels.WUS_FM_v2;
+		NSHM23_FaultModels fm = NSHM23_FaultModels.WUS_FM_v3;
 		RupSetConfig rsConfig = new RuptureSets.CoulombRupSetConfig(fm.getDefaultDeformationModel().build(fm),
 				fm.getFilePrefix(), NSHM23_ScalingRelationships.AVERAGE);
-		rsConfig.setMaxJumpDist(5d);
+//		rsConfig.setMaxJumpDist(5d);
 		// UCERF3
 //		RupSetConfig rsConfig = new RuptureSets.U3RupSetConfig(FaultModels.FM3_1, ScalingRelationships.MEAN_UCERF3);
 //		((U3RupSetConfig)rsConfig).setAdaptiveSectFract(0.1f);

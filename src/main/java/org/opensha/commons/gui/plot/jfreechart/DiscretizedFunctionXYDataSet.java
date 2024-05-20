@@ -476,7 +476,7 @@ public class DiscretizedFunctionXYDataSet extends AbstractXYDataset implements N
 	 * @return the ending X value for the specified series and item.
 	 */
 	public Number getEndX(int series, int item) {
-		return new Double(getEndXValue(series,item));
+		return Double.valueOf(getEndXValue(series,item));
 	}
 
 	/**
@@ -489,7 +489,7 @@ public class DiscretizedFunctionXYDataSet extends AbstractXYDataset implements N
 	 * @return the ending Y value for the specified series and item.
 	 */
 	public Number getEndY(int series, int item) {
-		return new Double(getEndYValue(series,item));
+		return Double.valueOf(getEndYValue(series,item));
 	}
 
 	/**
@@ -502,7 +502,7 @@ public class DiscretizedFunctionXYDataSet extends AbstractXYDataset implements N
 	 * @return the starting X value for the specified series and item.
 	 */
 	public Number getStartX(int series, int item) {
-		return new Double(getStartXValue(series,item));
+		return Double.valueOf(getStartXValue(series,item));
 	}
 
 	/**
@@ -515,7 +515,7 @@ public class DiscretizedFunctionXYDataSet extends AbstractXYDataset implements N
 	 * @return the starting Y value for the specified series and item.
 	 */
 	public Number getStartY(int series, int item) {
-		return new Double(getStartYValue(series,item));
+		return Double.valueOf(getStartYValue(series,item));
 	}
 
 
@@ -533,7 +533,7 @@ public class DiscretizedFunctionXYDataSet extends AbstractXYDataset implements N
 	 * @return         The x-value for an item within a series.
 	 */
 	public Number getX(int series, int item) {
-		return new Double(this.getXValue(series, item));
+		return Double.valueOf(this.getXValue(series, item));
 	}
 
 	/**
@@ -550,7 +550,7 @@ public class DiscretizedFunctionXYDataSet extends AbstractXYDataset implements N
 	 * @return         The y-value for an item within a series.
 	 */
 	public Number getY(int series, int item) {
-		return new Double(this.getYValue(series, item));
+		return Double.valueOf(this.getYValue(series, item));
 	}
 
 

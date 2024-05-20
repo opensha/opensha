@@ -103,7 +103,7 @@ public abstract class FaultsFetcher {
 	 * @param isAseisReducesArea
 	 * @return
 	 */
-	public ArrayList getFaultSegmentDataList(boolean isAseisReducesArea) {
+	public ArrayList<FaultSegmentData> getFaultSegmentDataList(boolean isAseisReducesArea) {
 		ArrayList<FaultSegmentData> faultSegDataList = new ArrayList<FaultSegmentData>();
 		for(int i=0; i< faultModelNames.size(); ++i)
 			faultSegDataList.add(getFaultSegmentData((String)faultModelNames.get(i), isAseisReducesArea));

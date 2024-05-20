@@ -22,7 +22,7 @@ implements Comparator<ObsEqkRupture>, java.io.Serializable {
 	 * equal to, or greater than the second, respectively.
 	 */
 	public int compare(ObsEqkRupture rupEvent1, ObsEqkRupture rupEvent2) {
-		return new Long(rupEvent1.getOriginTime()).compareTo(rupEvent2.getOriginTime());
+		return Long.valueOf(rupEvent1.getOriginTime()).compareTo(rupEvent2.getOriginTime());
 	}
 
 }

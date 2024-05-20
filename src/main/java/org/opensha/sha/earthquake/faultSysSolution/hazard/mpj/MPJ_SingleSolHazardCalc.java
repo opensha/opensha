@@ -453,7 +453,6 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			File curvesFile = new File(dir, SolHazardMapCalc.getCSV_FileName(prefix, period));
 			if (!curvesFile.exists())
 				curvesFile = new File(curvesFile.getAbsolutePath()+".gz");
-			Preconditions.checkState(curvesFile.exists(), "Curve files doesn't exist: %s", curvesFile.getAbsolutePath());
 			if (!curvesFile.exists())
 				return false;
 		}

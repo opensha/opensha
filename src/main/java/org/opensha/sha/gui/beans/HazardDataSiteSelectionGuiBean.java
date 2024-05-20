@@ -228,9 +228,9 @@ public class HazardDataSiteSelectionGuiBean extends ParameterListEditor implemen
      lonParam.setConstraint(new DoubleConstraint(minLon,maxLon));
 
      //checking if Lat and Lon parameter value lies within the constraint of new constraint of new selected dataset
-     if(!latParam.getConstraint().isAllowed(new Double(latParamVal)))
+     if(!latParam.getConstraint().isAllowed(Double.valueOf(latParamVal)))
        latParam.setValue(minLat);
-     if(!lonParam.getConstraint().isAllowed(new Double(lonParamVal)))
+     if(!lonParam.getConstraint().isAllowed(Double.valueOf(lonParamVal)))
        lonParam.setValue(minLon);
 
 

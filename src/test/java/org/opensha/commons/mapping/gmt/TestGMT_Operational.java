@@ -30,7 +30,7 @@ public class TestGMT_Operational {
 	@BeforeClass
 	public static void setUp() throws Exception {
 		gmt = new GMT_MapGenerator();
-		gmt.getAdjustableParamsList().getParameter(GMT_MapGenerator.LOG_PLOT_NAME).setValue(new Boolean(false));
+		gmt.getAdjustableParamsList().getParameter(GMT_MapGenerator.LOG_PLOT_NAME).setValue(Boolean.valueOf(false));
 		xyz = TestGMT_MapGenerator.generateTestData();
 	}
 	

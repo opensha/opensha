@@ -424,7 +424,7 @@ extends AbstractIMR implements ScalarIMR {
 	IMRException {
 
 		// set the im parameter in order to verify that it's a permitted value
-		setIntensityMeasureLevel(new Double(iml));
+		setIntensityMeasureLevel(Double.valueOf(iml));
 
 		return getExceedProbability();
 	}
@@ -440,7 +440,7 @@ extends AbstractIMR implements ScalarIMR {
 	public DiscretizedFunc getSA_ExceedProbSpectrum(double iml) throws ParameterException,
 	IMRException {
 		this.setIntensityMeasure(SA_Param.NAME);
-		setIntensityMeasureLevel(new Double(iml));
+		setIntensityMeasureLevel(Double.valueOf(iml));
 		DiscretizedFunc exeedProbFunction =  new ArbitrarilyDiscretizedFunc();
 		List allowedSA_Periods = saPeriodParam.getAllowedDoubles();
 		int size = allowedSA_Periods.size();
@@ -498,7 +498,7 @@ extends AbstractIMR implements ScalarIMR {
 	 */
 	public double getEpsilon(double iml){
 		// set the im parameter in order to verify that it's a permitted value
-		setIntensityMeasureLevel(new Double(iml));
+		setIntensityMeasureLevel(Double.valueOf(iml));
 
 		return getEpsilon();
 	}
@@ -630,7 +630,7 @@ extends AbstractIMR implements ScalarIMR {
 		ProbEqkRupture tempRup;
 
 		//set the IML
-		setIntensityMeasureLevel(new Double(iml));
+		setIntensityMeasureLevel(Double.valueOf(iml));
 
 		// set the eqRup- and propEffect-params from the first rupture
 		this.setEqkRupture(ptSrc.getRupture(0));
@@ -638,7 +638,7 @@ extends AbstractIMR implements ScalarIMR {
 		//now loop over ruptures changing only the magnitude parameter.
 		for (int i = 0; i < ptSrc.getNumRuptures(); i++) {
 			tempRup = ptSrc.getRupture(i);
-			magParam.setValueIgnoreWarning(new Double(tempRup.getMag()));
+			magParam.setValueIgnoreWarning(Double.valueOf(tempRup.getMag()));
 			qkProb = tempRup.getProbability();
 
 			// check for numerical problems

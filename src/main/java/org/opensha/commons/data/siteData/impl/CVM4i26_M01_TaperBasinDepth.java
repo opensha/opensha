@@ -150,7 +150,7 @@ public class CVM4i26_M01_TaperBasinDepth extends AbstractBinarySiteDataLoader {
 		
 		Document doc = XMLUtils.createDocumentWithRoot();
 		org.dom4j.Element root = doc.getRootElement();
-		map.getAdjustableParameterList().getParameter(PARAM_MIN_BASIN_DEPTH_DOUBLE_NAME).setValue(new Double(1.0));
+		map.getAdjustableParameterList().getParameter(PARAM_MIN_BASIN_DEPTH_DOUBLE_NAME).setValue(Double.valueOf(1.0));
 		org.dom4j.Element mapEl = map.toXMLMetadata(root).element(XML_METADATA_NAME);
 		XMLUtils.writeDocumentToFile(new File("/tmp/cvm4.xml"), doc);
 		

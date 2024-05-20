@@ -120,10 +120,10 @@ public class Abrahamson_2000_AttenRel extends AttenuationRelationship {
 
 	// these were given to Ned Field by Norm Abrahamson over the phone
 	// (they're not given in their 1997 paper)
-	protected final static Double MAG_WARN_MIN = new Double(4.5);
-	protected final static Double MAG_WARN_MAX = new Double(8);
-	protected final static Double DISTANCE_RUP_WARN_MIN = new Double(0.0);
-	protected final static Double DISTANCE_RUP_WARN_MAX = new Double(200.0);
+	protected final static Double MAG_WARN_MIN = Double.valueOf(4.5);
+	protected final static Double MAG_WARN_MAX = Double.valueOf(8);
+	protected final static Double DISTANCE_RUP_WARN_MIN = Double.valueOf(0.0);
+	protected final static Double DISTANCE_RUP_WARN_MAX = Double.valueOf(200.0);
 
 	/**
 	 * theta directivity parameter.
@@ -131,9 +131,9 @@ public class Abrahamson_2000_AttenRel extends AttenuationRelationship {
 	protected DoubleParameter thetaDirParam = null;
 	public final static String THETA_NAME = "theta";
 	public final static String THETA_UNITS = "degrees";
-	protected final static Double THETA_MIN = new Double( -90);
-	protected final static Double THETA_MAX = new Double(90);
-	protected final static Double THETA_DEFAULT = new Double(0);
+	protected final static Double THETA_MIN = Double.valueOf( -90);
+	protected final static Double THETA_MAX = Double.valueOf(90);
+	protected final static Double THETA_DEFAULT = Double.valueOf(0);
 	public final static String THETA_INFO =
 		"Angle Between Fault & Ray Path Directivity Parameter";
 
@@ -144,9 +144,9 @@ public class Abrahamson_2000_AttenRel extends AttenuationRelationship {
 	protected DoubleParameter xDirParam = null;
 	public final static String X_NAME = "X";
 	protected final static String X_UNITS = null;
-	protected final static Double X_MIN = new Double(0);
-	protected final static Double X_MAX = new Double(1);
-	protected final static Double X_DEFAULT = new Double(1);
+	protected final static Double X_MIN = Double.valueOf(0);
+	protected final static Double X_MAX = Double.valueOf(1);
+	protected final static Double X_DEFAULT = Double.valueOf(1);
 	public final static String X_INFO = "Length Ratio Directivity Parameter";
 
 	/**
@@ -196,7 +196,7 @@ public class Abrahamson_2000_AttenRel extends AttenuationRelationship {
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 
-		magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
 		setFaultTypeFromRake(eqkRupture.getAveRake());
 		this.eqkRupture = eqkRupture;
 		setPropagationEffectParams();
@@ -774,7 +774,7 @@ public class Abrahamson_2000_AttenRel extends AttenuationRelationship {
 			Abrahamson_2000_AttenRelCoefficients coeff = (
 					Abrahamson_2000_AttenRelCoefficients) horzCoeffs.get(keys.nextElement());
 			if (coeff.period >= 0) {
-				set.add(new Double(coeff.period));
+				set.add(Double.valueOf(coeff.period));
 			}
 		}
 		Iterator it = set.iterator();
@@ -847,199 +847,199 @@ public class Abrahamson_2000_AttenRel extends AttenuationRelationship {
 		// SA/5.00
 		Abrahamson_2000_AttenRelCoefficients coeff0 = new
 		Abrahamson_2000_AttenRelCoefficients(SA_Param.NAME + '/' +
-				(new Double("5.00")).doubleValue(),
+				(Double.valueOf("5.00")).doubleValue(),
 				5.00, 3.5, -1.46, -0.725, 0.4,
 				-0.2, 0, 0.664, 0.04, -0.215, 0.89,
 				0.087, -0.797, 1.757);
 		// SA/4.00
 		Abrahamson_2000_AttenRelCoefficients coeff1 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("4.00")).doubleValue(),
+				(Double.valueOf("4.00")).doubleValue(),
 				4.00, 3.5, -1.13, -0.725, 0.4,
 				-0.2, 0.039, 0.64, 0.04, -0.1956,
 				0.88, 0.092, -0.713, 1.571);
 		// SA/3.00
 		Abrahamson_2000_AttenRelCoefficients coeff2 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("3.00")).doubleValue(),
+				(Double.valueOf("3.00")).doubleValue(),
 				3.00, 3.5, -0.69, -0.725, 0.4,
 				-0.156, 0.089, 0.63, 0.04, -0.1726,
 				0.87, 0.097, -0.605, 1.333);
 		// SA/2.00
 		Abrahamson_2000_AttenRelCoefficients coeff3 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("2.00")).doubleValue(),
+				(Double.valueOf("2.00")).doubleValue(),
 				2.00, 3.5, -0.15, -0.725, 0.4,
 				-0.094, 0.16, 0.61, 0.04, -0.14,
 				0.85, 0.105, -0.452, 0.998);
 		// SA/1.50
 		Abrahamson_2000_AttenRelCoefficients coeff4 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("1.50")).doubleValue(),
+				(Double.valueOf("1.50")).doubleValue(),
 				1.50, 3.55, 0.26, -0.7721, 0.438,
 				-0.049, 0.21, 0.6, 0.04, -0.12,
 				0.84, 0.11, -0.344, 0.759);
 		// SA/1.00
 		Abrahamson_2000_AttenRelCoefficients coeff5 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("1.00")).doubleValue(),
+				(Double.valueOf("1.00")).doubleValue(),
 				1.00, 3.7, 0.828, -0.8383, 0.49,
 				0.013, 0.281, 0.423, 0, -0.102,
 				0.83, 0.118, -0.192, 0.423);
 		//        // SA/0.85  NOT SUPPORTED
-		//       Abrahamson_2000_AttenRelCoefficients coeff6 = new Abrahamson_2000_AttenRelCoefficients( "SA/" +( new Double( "0.85" ) ).doubleValue() ,
+		//       Abrahamson_2000_AttenRelCoefficients coeff6 = new Abrahamson_2000_AttenRelCoefficients( "SA/" +( Double.valueOf( "0.85" ) ).doubleValue() ,
 		//            0.85, 3.81, 1.02, -0.8648, 0.512, 0.038, 0.309, 0.37, -0.028, -0.0927, 0.82, 0.121, );
 		// SA/0.75
 		Abrahamson_2000_AttenRelCoefficients coeff7 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.75")).doubleValue(),
+				(Double.valueOf("0.75")).doubleValue(),
 				0.75, 3.9, 1.16, -0.8852, 0.528,
 				0.057, 0.331, 0.32, -0.05, -0.0862,
 				0.81, 0.123, -0.084, 0.185);
 		// SA/0.60
 		Abrahamson_2000_AttenRelCoefficients coeff8 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.60")).doubleValue(),
+				(Double.valueOf("0.60")).doubleValue(),
 				0.60, 4.12, 1.428, -0.9218, 0.557,
 				0.091, 0.37, 0.194, -0.089, -0.074,
 				0.81, 0.127, 0.0, 0.0);
 		// SA/0.50
 		Abrahamson_2000_AttenRelCoefficients coeff9 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.50")).doubleValue(),
+				(Double.valueOf("0.50")).doubleValue(),
 				0.50, 4.3, 1.615, -0.9515, 0.581,
 				0.119, 0.37, 0.085, -0.121,
 				-0.0635, 0.8, 0.13, 0.0, 0.0);
 		// SA/0.46
 		Abrahamson_2000_AttenRelCoefficients coeff10 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.46")).doubleValue(),
+				(Double.valueOf("0.46")).doubleValue(),
 				0.46, 4.38, 1.717, -0.9652, 0.592,
 				0.132, 0.37, 0.02, -0.136, -0.0594,
 				0.8, 0.132, 0.0, 0.0);
 		// SA/0.40
 		Abrahamson_2000_AttenRelCoefficients coeff11 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.40")).doubleValue(),
+				(Double.valueOf("0.40")).doubleValue(),
 				0.40, 4.52, 1.86, -0.988, 0.61,
 				0.154, 0.37, -0.065, -0.16,
 				-0.0518, 0.79, 0.135, 0.0, 0.0);
 		// SA/0.36
 		Abrahamson_2000_AttenRelCoefficients coeff12 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.36")).doubleValue(),
+				(Double.valueOf("0.36")).doubleValue(),
 				0.36, 4.62, 1.955, -1.0052, 0.61,
 				0.17, 0.37, -0.123, -0.173, -0.046,
 				0.79, 0.135, 0.0, 0.0);
 		// SA/0.30
 		Abrahamson_2000_AttenRelCoefficients coeff13 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.30")).doubleValue(),
+				(Double.valueOf("0.30")).doubleValue(),
 				0.30, 4.8, 2.114, -1.035, 0.61,
 				0.198, 0.37, -0.219, -0.195,
 				-0.036, 0.78, 0.135, 0.0, 0.0);
 		// SA/0.24
 		Abrahamson_2000_AttenRelCoefficients coeff14 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.24")).doubleValue(),
+				(Double.valueOf("0.24")).doubleValue(),
 				0.24, 4.97, 2.293, -1.079, 0.61,
 				0.232, 0.37, -0.35, -0.223,
 				-0.0238, 0.77, 0.135, 0.0, 0.0);
 		// SA/0.20
 		Abrahamson_2000_AttenRelCoefficients coeff15 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.20")).doubleValue(),
+				(Double.valueOf("0.20")).doubleValue(),
 				0.20, 5.1, 2.406, -1.115, 0.61,
 				0.26, 0.37, -0.445, -0.245,
 				-0.0138, 0.77, 0.135, 0.0, 0.0);
 		// SA/0.17
 		Abrahamson_2000_AttenRelCoefficients coeff16 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.17")).doubleValue(),
+				(Double.valueOf("0.17")).doubleValue(),
 				0.17, 5.19, 2.43, -1.135, 0.61,
 				0.26, 0.37, -0.522, -0.265, -0.004,
 				0.76, 0.135, 0.0, 0.0);
 		// SA/0.15
 		Abrahamson_2000_AttenRelCoefficients coeff17 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.15")).doubleValue(),
+				(Double.valueOf("0.15")).doubleValue(),
 				0.15, 5.27, 2.407, -1.145, 0.61,
 				0.26, 0.37, -0.577, -0.28, 0.005,
 				0.75, 0.135, 0.0, 0.0);
 		// SA/0.12
 		Abrahamson_2000_AttenRelCoefficients coeff18 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.12")).doubleValue(),
+				(Double.valueOf("0.12")).doubleValue(),
 				0.12, 5.39, 2.272, -1.145, 0.61,
 				0.26, 0.37, -0.591, -0.28, 0.018,
 				0.75, 0.135, 0.0, 0.0);
 		// SA/0.10
 		Abrahamson_2000_AttenRelCoefficients coeff19 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.10")).doubleValue(),
+				(Double.valueOf("0.10")).doubleValue(),
 				0.10, 5.5, 2.16, -1.145, 0.61,
 				0.26, 0.37, -0.598, -0.28, 0.028,
 				0.74, 0.135, 0.0, 0.0);
 		// SA/0.09
 		Abrahamson_2000_AttenRelCoefficients coeff20 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.09")).doubleValue(),
+				(Double.valueOf("0.09")).doubleValue(),
 				0.09, 5.54, 2.1, -1.145, 0.61,
 				0.26, 0.37, -0.609, -0.28, 0.03,
 				0.74, 0.135, 0.0, 0.0);
 		// SA/0.075
 		Abrahamson_2000_AttenRelCoefficients coeff21 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.075")).doubleValue(),
+				(Double.valueOf("0.075")).doubleValue(),
 				0.075, 5.58, 2.037, -1.145, 0.61,
 				0.26, 0.37, -0.628, -0.28, 0.03,
 				0.73, 0.135, 0.0, 0.0);
 		// SA/0.06
 		Abrahamson_2000_AttenRelCoefficients coeff22 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.06")).doubleValue(),
+				(Double.valueOf("0.06")).doubleValue(),
 				0.06, 5.6, 1.94, -1.145, 0.61,
 				0.26, 0.37, -0.665, -0.28, 0.03,
 				0.72, 0.135, 0.0, 0.0);
 		// SA/0.05
 		Abrahamson_2000_AttenRelCoefficients coeff23 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.05")).doubleValue(),
+				(Double.valueOf("0.05")).doubleValue(),
 				0.05, 5.6, 1.87, -1.145, 0.61,
 				0.26, 0.37, -0.62, -0.267, 0.028,
 				0.71, 0.135, 0.0, 0.0);
 		// SA/0.04
 		Abrahamson_2000_AttenRelCoefficients coeff24 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.04")).doubleValue(),
+				(Double.valueOf("0.04")).doubleValue(),
 				0.04, 5.6, 1.78, -1.145, 0.61,
 				0.26, 0.37, -0.555, -0.251, 0.0245,
 				0.71, 0.135, 0.0, 0.0);
 		// SA/0.03
 		Abrahamson_2000_AttenRelCoefficients coeff25 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.03")).doubleValue(),
+				(Double.valueOf("0.03")).doubleValue(),
 				0.03, 5.6, 1.69, -1.145, 0.61,
 				0.26, 0.37, -0.47, -0.23, 0.0143,
 				0.7, 0.135, 0.0, 0.0);
 		// SA/0.02
 		Abrahamson_2000_AttenRelCoefficients coeff26 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.02")).doubleValue(),
+				(Double.valueOf("0.02")).doubleValue(),
 				0.02, 5.6, 1.64, -1.145, 0.61,
 				0.26, 0.37, -0.417, -0.23, 0, 0.7,
 				0.135, 0.0, 0.0);
 		// SA/0.01
 		Abrahamson_2000_AttenRelCoefficients coeff27 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.01")).doubleValue(),
+				(Double.valueOf("0.01")).doubleValue(),
 				0.01, 5.6, 1.64, -1.145, 0.61,
 				0.26, 0.37, -0.417, -0.23, 0, 0.7,
 				0.135, 0.0, 0.0);
 		// SA/0.0 -- same as 0.01
 		Abrahamson_2000_AttenRelCoefficients coeff28 = new
 		Abrahamson_2000_AttenRelCoefficients("SA/" +
-				(new Double("0.0")).doubleValue(),
+				(Double.valueOf("0.0")).doubleValue(),
 				0.0, 5.6, 1.64, -1.145, 0.61, 0.26,
 				0.37, -0.417, -0.23, 0, 0.7, 0.135,
 				0.0, 0.0);

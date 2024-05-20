@@ -36,6 +36,7 @@ import scratch.UCERF3.utils.UCERF3_DataUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
+import com.google.common.io.Files;
 
 /**
  * This is the MeanUCERF3 ERF. It extends UCERF3_FaultSysSol_ERF, but allows and facilitates creation
@@ -654,9 +655,11 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		} catch (Throwable t) {}
 		String url = DOWNLOAD_URL+fName;
 //		if (!ignoreErrors)
-			System.out.print("Downloading "+url+" to "+file.getAbsolutePath());
+//			System.out.println("Downloading "+url+" to "+file.getAbsolutePath());
 		try {
-			FileUtils.downloadURL(url, file);
+			File tmpFile = new File(file.getAbsolutePath()+".tmp");
+			FileUtils.downloadURL(url, tmpFile);
+			Files.move(tmpFile, file);
 		} catch (Exception e) {
 			if (progress != null) {
 				// not headless

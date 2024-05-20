@@ -244,14 +244,14 @@ public class AttenRelResultsChecker {
 					if(tempParam instanceof StringParameter)
 						tempParam.setValue(paramVal);
 					else if(tempParam instanceof DoubleParameter)
-						tempParam.setValue(new Double(paramVal));
+						tempParam.setValue(Double.valueOf(paramVal));
 					else if(tempParam instanceof IntegerParameter)
-						tempParam.setValue(new Integer(paramVal));
+						tempParam.setValue(Integer.valueOf(paramVal));
 					else if(tempParam instanceof DoubleDiscreteParameter)
-						tempParam.setValue(new Double(paramVal));
+						tempParam.setValue(Double.valueOf(paramVal));
 					else if(tempParam instanceof AbstractDoublePropEffectParam) {
 						((AbstractDoublePropEffectParam)tempParam).setIgnoreWarning(true);
-						tempParam.setValue(new Double(paramVal));
+						tempParam.setValue(Double.valueOf(paramVal));
 					} else if (tempParam instanceof EnumParameter<?>) {
 						// need to get enum constants
 						Object enumVal = ((EnumParameter<?>)tempParam).getDefaultValue();
@@ -289,7 +289,7 @@ public class AttenRelResultsChecker {
 
 					//getting the value of the Y_Axis Param as specified in the file from the test cases
 					//which will be compared to the SHA value for the Y_Axis Param
-					double yAxisParamVal =new Double(str.substring(str.indexOf("=")+1).trim()).doubleValue();
+					double yAxisParamVal =Double.valueOf(str.substring(str.indexOf("=")+1).trim()).doubleValue();
 					decimalFormat.setMaximumFractionDigits(6);
 					failedParamsSetting += "GetValue For Param: "+"\""+yControlName+"\": "+"\n";
 					double yAxisParamValFromSHA =this.getCalculation(yAxisValue);
@@ -313,7 +313,7 @@ public class AttenRelResultsChecker {
 						else
 							result = tempRsult;
 					}
-					//  this.testCaseNumberVector.add(new Integer(this.testCaseNumber));*/
+					//  this.testCaseNumberVector.add(Integer.valueOf(this.testCaseNumber));*/
 
 					//adding the Control Param names and Value to ArrayList for all the test cases
 					this.controlParamVector.add(this.getControlParametersValueForTest());
@@ -402,7 +402,7 @@ public class AttenRelResultsChecker {
 		if( imParam instanceof WarningDoubleParameter){
 			WarningDoubleParameter warnParam = (WarningDoubleParameter)imParam;
 			if(((Double)imParam.getValue()).doubleValue() >0)
-				warnParam.setValueIgnoreWarning(new Double(Math.log(((Double)imParam.getValue()).doubleValue())));
+				warnParam.setValueIgnoreWarning(Double.valueOf(Math.log(((Double)imParam.getValue()).doubleValue())));
 		}
 
 		switch ( type ) {

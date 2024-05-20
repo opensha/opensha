@@ -21,7 +21,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 @Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum PRVI25_FaultModels implements RupSetFaultModel {
+public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 	PRVI_FM_INITIAL("Initial Draft FM", "InitialFM", "/data/erf/prvi25/fault_models/initial/NSHM2025_GeoDefModel_PRVI_mod.geojson", 1d);
 	
 	private String name;
@@ -29,7 +29,7 @@ public enum PRVI25_FaultModels implements RupSetFaultModel {
 	private String jsonPath;
 	private double weight;
 
-	private PRVI25_FaultModels(String name, String shortName, String jsonPath, double weight) {
+	private PRVI25_CrustalFaultModels(String name, String shortName, String jsonPath, double weight) {
 		this.name = name;
 		this.shortName = shortName;
 		this.jsonPath = jsonPath;
@@ -59,7 +59,7 @@ public enum PRVI25_FaultModels implements RupSetFaultModel {
 
 	@Override
 	public List<? extends FaultSection> getFaultSections() throws IOException {
-		BufferedReader reader = new BufferedReader(new InputStreamReader(PRVI25_FaultModels.class.getResourceAsStream(jsonPath)));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(PRVI25_CrustalFaultModels.class.getResourceAsStream(jsonPath)));
 		return GeoJSONFaultReader.readFaultSections(reader);
 	}
 	
@@ -85,7 +85,7 @@ public enum PRVI25_FaultModels implements RupSetFaultModel {
 
 	@Override
 	public RupSetDeformationModel getDefaultDeformationModel() {
-		return PRVI25_DeformationModels.GEOLOGIC;
+		return PRVI25_CrustalDeformationModels.GEOLOGIC;
 	}
 
 }

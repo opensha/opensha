@@ -13,8 +13,8 @@ public class AleatoryMagAreaStdDevParam extends DoubleParameter {
 	public final static String NAME = "Aleatory Mag-Area StdDev";
 	public final static String INFO = "For variability of magnitude for given area";
 	private static final String UNITS = null;
-	protected final static Double MIN = new Double(0d);
-	protected final static Double MAX = new Double(1.0d);
+	protected final static Double MIN = Double.valueOf(0d);
+	protected final static Double MAX = Double.valueOf(1.0d);
 	
 
 	/**

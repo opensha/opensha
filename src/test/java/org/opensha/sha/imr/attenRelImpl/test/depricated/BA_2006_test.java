@@ -76,16 +76,16 @@ public class BA_2006_test implements ParameterChangeWarningListener{
 				ba_2006.setIntensityMeasure(ba_2006.PGV_Param.NAME);
 			else{
 			  ba_2006.setIntensityMeasure(ba_2006.SA_Param.NAME);
-			  ba_2006.getParameter(ba_2006.PeriodParam.NAME).setValue(new Double(period));
+			  ba_2006.getParameter(ba_2006.PeriodParam.NAME).setValue(Double.valueOf(period));
 			}
 			double mag = Double.parseDouble(st.nextToken().trim());
-			ba_2006.getParameter(ba_2006.MAG_NAME).setValue(new Double(mag));
+			ba_2006.getParameter(ba_2006.MAG_NAME).setValue(Double.valueOf(mag));
 
 			double rjb = Double.parseDouble(st.nextToken().trim());
-			ba_2006.getParameter(DistanceJBParameter.NAME).setValue(new Double(rjb));
+			ba_2006.getParameter(DistanceJBParameter.NAME).setValue(Double.valueOf(rjb));
 
 			double vs30 = Double.parseDouble(st.nextToken().trim());
-			ba_2006.getParameter(ba_2006.VS30_NAME).setValue(new Double(vs30));
+			ba_2006.getParameter(ba_2006.VS30_NAME).setValue(Double.valueOf(vs30));
 
 			int imech = Integer.parseInt(st.nextToken().trim());
 			String faultType;
@@ -184,7 +184,7 @@ public class BA_2006_test implements ParameterChangeWarningListener{
 					continue;
 
 				double vs30 = Double.parseDouble(fileName.substring(11,fileName.indexOf(".")));
-				ba_2006.getParameter(Vs30_Param.NAME).setValue(new Double(vs30));
+				ba_2006.getParameter(Vs30_Param.NAME).setValue(Double.valueOf(vs30));
 				try {
 					testDataLines = FileUtils.loadFile(fileList[i].getAbsolutePath());
 					int numLines = testDataLines.size();
@@ -192,10 +192,10 @@ public class BA_2006_test implements ParameterChangeWarningListener{
 						String fileLine = (String)testDataLines.get(j);
 						StringTokenizer st = new StringTokenizer(fileLine);
 						double mag = Double.parseDouble(st.nextToken().trim());
-						((WarningDoubleParameter)ba_2006.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
+						((WarningDoubleParameter)ba_2006.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 
 						double rjb = Double.parseDouble(st.nextToken().trim());
-						((AbstractDoublePropEffectParam)ba_2006.getParameter(DistanceJBParameter.NAME)).setValueIgnoreWarning(new Double(rjb));
+						((AbstractDoublePropEffectParam)ba_2006.getParameter(DistanceJBParameter.NAME)).setValueIgnoreWarning(Double.valueOf(rjb));
 						st.nextToken().trim();//for rRup
 						st.nextToken().trim();//for rSeis
 						ba_2006.setIntensityMeasure(PGA_Param.NAME);
@@ -233,7 +233,7 @@ public class BA_2006_test implements ParameterChangeWarningListener{
 						ba_2006.setIntensityMeasure(SA_Param.NAME);
 						int num= period.length;
 						for(int k=0;k<num;++k){
-							ba_2006.getParameter(PeriodParam.NAME).setValue(new Double(period[k]));
+							ba_2006.getParameter(PeriodParam.NAME).setValue(Double.valueOf(period[k]));
 							if(k == 0){
 								st.nextToken();
 								st.nextToken();

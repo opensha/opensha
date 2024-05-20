@@ -128,7 +128,7 @@ public class NSHM23_ConstraintBuilder {
 		this(rupSet, momentWeightedAverage(rupSet, sectSpecificBValues), sectSpecificBValues);
 	}
 	
-	static double momentWeightedAverage(FaultSystemRupSet rupSet, double[] sectSpecificBValues) {
+	public static double momentWeightedAverage(FaultSystemRupSet rupSet, double[] sectSpecificBValues) {
 		double sumMoment = 0d;
 		double sumProduct = 0d;
 		Preconditions.checkState(sectSpecificBValues.length == rupSet.getNumSections());

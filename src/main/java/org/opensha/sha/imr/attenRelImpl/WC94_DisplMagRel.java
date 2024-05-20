@@ -70,24 +70,24 @@ public class WC94_DisplMagRel extends AttenuationRelationship {
 	protected WarningDoubleParameter faultDisplParam = null;
 	public final static String FAULT_DISPL_NAME = "Fault Displacement";
 	public final static String FAULT_DISPL_UNITS = "m";
-	protected final static Double FAULT_DISPL_DEFAULT = new Double(Math.log(1.0));
+	protected final static Double FAULT_DISPL_DEFAULT = Double.valueOf(Math.log(1.0));
 	public final static String FAULT_DISPL_INFO = "Average Fault Displacement";
-	protected final static Double FAULT_DISPL_MIN = new Double(Math.log(Double.
+	protected final static Double FAULT_DISPL_MIN = Double.valueOf(Math.log(Double.
 			MIN_VALUE));
-	protected final static Double FAULT_DISPL_MAX = new Double(Double.MAX_VALUE);
-	protected final static Double FAULT_DISPL_WARN_MIN = new Double(Math.log(
+	protected final static Double FAULT_DISPL_MAX = Double.valueOf(Double.MAX_VALUE);
+	protected final static Double FAULT_DISPL_WARN_MIN = Double.valueOf(Math.log(
 			Double.MIN_VALUE));
-	protected final static Double FAULT_DISPL_WARN_MAX = new Double(Math.log(50.0));
+	protected final static Double FAULT_DISPL_WARN_MAX = Double.valueOf(Math.log(50.0));
 
 	// style of faulting options
 	public final static String FLT_TYPE_SS = "Strike Slip";
 	public final static String FLT_TYPE_ALL = "Any Type";
 
 	// warning constraint fields:
-	protected final static Double MAG_WARN_MIN = new Double(5.0);
-	protected final static Double MAG_WARN_MAX = new Double(9.0);
-	protected final static Double DISTANCE_RUP_WARN_MIN = new Double(0.0);
-	protected final static Double DISTANCE_RUP_WARN_MAX = new Double(200.0);
+	protected final static Double MAG_WARN_MIN = Double.valueOf(5.0);
+	protected final static Double MAG_WARN_MAX = Double.valueOf(9.0);
+	protected final static Double DISTANCE_RUP_WARN_MIN = Double.valueOf(0.0);
+	protected final static Double DISTANCE_RUP_WARN_MAX = Double.valueOf(200.0);
 
 	/**
 	 * Determines the style of faulting from the rake angle (which
@@ -128,7 +128,7 @@ public class WC94_DisplMagRel extends AttenuationRelationship {
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 
-		magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
 		setFaultTypeFromRake(eqkRupture.getAveRake());
 		this.eqkRupture = eqkRupture;
 		setPropagationEffectParams();

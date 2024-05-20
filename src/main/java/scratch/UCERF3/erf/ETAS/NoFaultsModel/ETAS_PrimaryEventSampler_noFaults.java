@@ -1609,7 +1609,7 @@ public class ETAS_PrimaryEventSampler_noFaults {
 		
 		ArrayList<Integer> idList = new ArrayList<Integer>();
 		for(int i=0;i<totNumSrc;i++)
-			idList.add(new Integer(i));
+			idList.add(Integer.valueOf(i));
 		
 		for (int i=0; i<size; i++) {
 			int listSize = in.readInt();

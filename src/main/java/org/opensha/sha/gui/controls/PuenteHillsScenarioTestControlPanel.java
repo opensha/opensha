@@ -82,33 +82,33 @@ public class PuenteHillsScenarioTestControlPanel {
     //Getting the instance for the editor that holds all the adjustable params for the selcetd ERF
     ERF_GuiBean erfParamGuiBean =erfPanel.getERF_ParamEditor();
     //As the Selecetd ERF is simple FaultERF so updating the rake value to -90 (so the ALL or UKNOWN category is used to be consistent with online shakemaps).
-    erfParamGuiBean.getERFParameterList().getParameter(FloatingPoissonFaultERF.RAKE_PARAM_NAME).setValue(new Double(-90));
+    erfParamGuiBean.getERFParameterList().getParameter(FloatingPoissonFaultERF.RAKE_PARAM_NAME).setValue(Double.valueOf(-90));
     erfParamGuiBean.getERFParameterList().getParameter(FloatingPoissonFaultERF.MAG_SCALING_REL_PARAM_NAME).setValue(WC1994_MagLengthRelationship.NAME);
 
     //getting the instance for the SimpleFaultParameterEditorPanel from the GuiBean to adjust the fault Params
     SimpleFaultParameterEditorPanel faultPanel= erfParamGuiBean.getSimpleFaultParamEditor().getParameterEditorPanel();
     //creating the Lat vector for the SimpleFaultParameter
     ArrayList lats = new ArrayList();
-    lats.add(new Double(33.92690));
-    lats.add(new Double(33.93150));
-    lats.add(new Double(33.95410));
-    lats.add(new Double(34.05860));
+    lats.add(Double.valueOf(33.92690));
+    lats.add(Double.valueOf(33.93150));
+    lats.add(Double.valueOf(33.95410));
+    lats.add(Double.valueOf(34.05860));
 
     //creating the Lon vector for the SimpleFaultParameter
     ArrayList lons = new ArrayList();
-    lons.add(new Double(-117.86730));
-    lons.add(new Double(-118.04320));
-    lons.add(new Double(-118.14350));
-    lons.add(new Double(-118.29760));
+    lons.add(Double.valueOf(-117.86730));
+    lons.add(Double.valueOf(-118.04320));
+    lons.add(Double.valueOf(-118.14350));
+    lons.add(Double.valueOf(-118.29760));
 
     //creating the dip vector for the SimpleFaultParameter
     ArrayList dips = new ArrayList();
-    dips.add(new Double(25));
+    dips.add(Double.valueOf(25));
 
     //creating the depth vector for the SimpleFaultParameter
     ArrayList depths = new ArrayList();
-    depths.add(new Double(5));
-    depths.add(new Double(13));
+    depths.add(Double.valueOf(5));
+    depths.add(Double.valueOf(13));
 
     //setting the FaultParameterEditor with the default values for Puente Hills Scenario
     faultPanel.setAll(((SimpleFaultParameter)faultPanel.getParameter()).DEFAULT_GRID_SPACING,lats,lons,dips,depths,((SimpleFaultParameter)faultPanel.getParameter()).FRANKEL);
@@ -120,7 +120,7 @@ public class PuenteHillsScenarioTestControlPanel {
     MagFreqDistParameterEditor magEditor = erfParamGuiBean.getMagDistEditor();
     magEditor.getParameter(MagFreqDistParameter.DISTRIBUTION_NAME).setValue(SingleMagFreqDist.NAME);
     magEditor.getParameter(MagFreqDistParameter.SINGLE_PARAMS_TO_SET).setValue(MagFreqDistParameter.MAG_AND_MO_RATE);
-    magEditor.getParameter(MagFreqDistParameter.MAG).setValue(new Double(7.1));
+    magEditor.getParameter(MagFreqDistParameter.MAG).setValue(Double.valueOf(7.1));
     erfParamGuiBean.getERFParameterListEditor().refreshParamEditor();
     // now have the editor create the magFreqDist
     magEditor.setMagDistFromParams();
@@ -137,11 +137,11 @@ public class PuenteHillsScenarioTestControlPanel {
     imrGuiBean.refreshParamEditor();
 
     //Updating the SitesInGriddedRectangularRegionGuiBean with the Puente Hills resion setting
-    regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LATITUDE).setValue(new Double(33.2));
-    regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LATITUDE).setValue(new Double(34.66));
-    regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LONGITUDE).setValue(new Double(-119.05));
-    regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LONGITUDE).setValue(new Double(-116.85));
-    regionGuiBean.getParameterList().getParameter(regionGuiBean.GRID_SPACING).setValue(new Double(.016667));
+    regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LATITUDE).setValue(Double.valueOf(33.2));
+    regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LATITUDE).setValue(Double.valueOf(34.66));
+    regionGuiBean.getParameterList().getParameter(regionGuiBean.MIN_LONGITUDE).setValue(Double.valueOf(-119.05));
+    regionGuiBean.getParameterList().getParameter(regionGuiBean.MAX_LONGITUDE).setValue(Double.valueOf(-116.85));
+    regionGuiBean.getParameterList().getParameter(regionGuiBean.GRID_SPACING).setValue(Double.valueOf(.016667));
     regionGuiBean.getParameterList().getParameter(regionGuiBean.SITE_PARAM_NAME).setValue(regionGuiBean.SET_SITE_USING_WILLS_SITE_TYPE);
 
     // Set the imt as PGA
@@ -149,8 +149,8 @@ public class PuenteHillsScenarioTestControlPanel {
     imtGuiBean.refreshParamEditor();
 
     // Set some of the mapping params:
-    mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.GMT_WEBSERVICE_NAME).setValue(new Boolean(true));
-    mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.LOG_PLOT_NAME).setValue(new Boolean(false));
+    mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.GMT_WEBSERVICE_NAME).setValue(Boolean.valueOf(true));
+    mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.LOG_PLOT_NAME).setValue(Boolean.valueOf(false));
     mapGuiBean.refreshParamEditor();
   }
 }

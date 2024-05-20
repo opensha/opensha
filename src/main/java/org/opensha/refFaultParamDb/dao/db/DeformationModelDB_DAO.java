@@ -147,7 +147,7 @@ public class DeformationModelDB_DAO {
 			ResultSet rs  = dbAccessAPI.queryData(sql);
 			// iterate over all fault section to get their slip rates and aseismic slip factor estimates
 			while(rs.next()) {
-				faultSectionIdList.add(new Integer( rs.getInt(SECTION_ID)));
+				faultSectionIdList.add(Integer.valueOf( rs.getInt(SECTION_ID)));
 			}
 			rs.close();
 		} catch(SQLException e) { throw new QueryException(e.getMessage()); }

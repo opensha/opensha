@@ -87,8 +87,8 @@ public class ValueWeight {
             throw new ClassCastException( S + "Object not a ValueWeight, unable to compare" );
         }
         ValueWeight param = ( ValueWeight ) obj;
-        Double thisVal = new Double(value);
+        Double thisVal = Double.valueOf(value);
 
-        return thisVal.compareTo( new Double(param.value) );
+        return thisVal.compareTo( Double.valueOf(param.value) );
     }
 }

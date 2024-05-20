@@ -17,9 +17,9 @@ import java.util.Iterator;
 
 import javax.swing.BorderFactory;
 import javax.swing.ButtonGroup;
-import javax.swing.JApplet;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
@@ -51,7 +51,7 @@ import org.jfree.chart.ui.RectangleInsets;
  * @version 1.0
  */
 
-public class JFreeLogPlotTesterApp extends JApplet  {
+public class JFreeLogPlotTesterApp extends JFrame  {
 
   // for debug purposes
   protected final static String C = "JFreeLogPlotTesterApp";
@@ -60,7 +60,7 @@ public class JFreeLogPlotTesterApp extends JApplet  {
   //auto scales the graph
   private boolean autoScale =true;
 
-  private boolean isStandalone = false;
+  private boolean isStandalone = true;
   private JSplitPane jSplitPane1 = new JSplitPane();
   private JPanel innerPlotPanel = new JPanel();
   private JPanel jPanel2 = new JPanel();
@@ -161,8 +161,7 @@ public class JFreeLogPlotTesterApp extends JApplet  {
 
   //Get a parameter value
   public String getParameter(String key, String def) {
-    return isStandalone ? System.getProperty(key, def) :
-        (getParameter(key) != null ? getParameter(key) : def);
+    return System.getProperty(key, def);
   }
 
   //Construct the applet
@@ -385,27 +384,13 @@ public class JFreeLogPlotTesterApp extends JApplet  {
   public static void main(String[] args) {
     JFreeLogPlotTesterApp applet = new JFreeLogPlotTesterApp();
     applet.isStandalone = true;
-    Frame frame;
-    frame = new Frame() {
-      protected void processWindowEvent(WindowEvent e) {
-        super.processWindowEvent(e);
-        if (e.getID() == WindowEvent.WINDOW_CLOSING) {
-          System.exit(0);
-        }
-      }
-      public synchronized void setTitle(String title) {
-        super.setTitle(title);
-        enableEvents(AWTEvent.WINDOW_EVENT_MASK);
-      }
-    };
-    frame.setTitle("Log Plot Tester Applet");
-    frame.add(applet, BorderLayout.CENTER);
+    applet.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+    applet.setTitle("Log Plol Tester Applet");
     applet.init();
-    applet.start();
-    frame.setSize(W,H);
+    applet.setSize(W,H);
     Dimension d = Toolkit.getDefaultToolkit().getScreenSize();
-    frame.setLocation((d.width - frame.getSize().width) / 2, (d.height - frame.getSize().height) / 2);
-    frame.setVisible(true);
+    applet.setLocation((d.width - applet.getSize().width) / 2, (d.height - applet.getSize().height) / 2);
+    applet.setVisible(true);
   }
 
   /**

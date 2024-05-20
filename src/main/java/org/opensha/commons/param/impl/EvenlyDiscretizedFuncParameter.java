@@ -79,9 +79,9 @@ public class EvenlyDiscretizedFuncParameter extends
 		int num = func.size();
 		if (D)
 			System.out.println(S + "Starting:");
-		minParam = new DoubleParameter(MIN_PARAM_NAME,new Double(min));
-		maxParam = new DoubleParameter(MAX_PARAM_NAME,new Double(max));
-		numParam = new IntegerParameter(NUM_PARAM_NAME,new Integer(num));
+		minParam = new DoubleParameter(MIN_PARAM_NAME,Double.valueOf(min));
+		maxParam = new DoubleParameter(MAX_PARAM_NAME,Double.valueOf(max));
+		numParam = new IntegerParameter(NUM_PARAM_NAME,Integer.valueOf(num));
 
 		// put all the parameters in the parameter list
 		paramList = new ParameterList();

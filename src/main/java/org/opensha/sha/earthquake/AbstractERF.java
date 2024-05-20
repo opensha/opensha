@@ -2,12 +2,14 @@ package org.opensha.sha.earthquake;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EventObject;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 
 import org.dom4j.Element;
+import org.opensha.commons.data.Site;
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.metadata.MetadataLoader;
@@ -18,6 +20,7 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.event.TimeSpanChangeListener;
+import org.opensha.sha.calc.params.filters.SourceFilter;
 import org.opensha.sha.util.TectonicRegionType;
 
 /**
@@ -260,10 +263,38 @@ public abstract class AbstractERF implements
 	 * This draws a random event set.  Non-poisson sources are not yet implemented
 	 * @return
 	 */
-	public ArrayList<EqkRupture> drawRandomEventSet() {
+	public ArrayList<EqkRupture> drawRandomEventSet(Site site, Collection<SourceFilter> sourceFilters) {
+		boolean doFilter = site != null && sourceFilters != null && !sourceFilters.isEmpty();
 		ArrayList<EqkRupture> rupList = new ArrayList<EqkRupture>();
-		for(int s=0; s<this.getNumSources(); s++)
-			rupList.addAll(getSource(s).drawRandomEqkRuptures());
+		for(int s=0; s<this.getNumSources(); s++) {
+			ProbEqkSource source = getSource(s);
+			if (doFilter) {
+				boolean skip = false;
+				double dist = source.getMinDistance(site);
+				for (SourceFilter filter : sourceFilters) {
+					if (filter.canSkipSource(source, site, dist)) {
+						skip = true;
+						break;
+					}
+				}
+				if (skip)
+					continue;
+				ArrayList<ProbEqkRupture> rups = source.drawRandomEqkRuptures();
+				for (ProbEqkRupture rup : rups) {
+					skip = false;
+					for (SourceFilter filter : sourceFilters) {
+						if (filter.canSkipRupture(rup, site)) {
+							skip = true;
+							break;
+						}
+					}
+					if (!skip)
+						rupList.add(rup);
+				}
+			} else {
+				rupList.addAll(source.drawRandomEqkRuptures());
+			}
+		}
 		return rupList;
 	}
 

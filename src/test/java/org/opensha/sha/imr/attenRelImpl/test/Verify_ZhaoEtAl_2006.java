@@ -123,9 +123,9 @@ public class Verify_ZhaoEtAl_2006 {
 		focMechStr = ZhaoEtAl_2006_AttenRel.FLT_FOC_MECH_REVERSE;
 		imr.getParameter(FaultTypeParam.NAME).setValue(focMechStr);
 		// Magnitude
-		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
+		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
-		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(new Double(dst));
+		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(Double.valueOf(dst));
 		// Verification table
 		fle = "zhao_r20.0_m6.5_dep10.0_shallow_reverse_site1.dat";
 		// Output file 
@@ -158,9 +158,9 @@ public class Verify_ZhaoEtAl_2006 {
 		focMechStr = ZhaoEtAl_2006_AttenRel.FLT_FOC_MECH_NORMAL;
 		imr.getParameter(FaultTypeParam.NAME).setValue(focMechStr);
 		// Magnitude
-		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
+		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
-		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(new Double(dst));
+		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(Double.valueOf(dst));
 		// Verification table
 		fle = "zhao_r20.0_m6.5_dep10.0_shallow_normal_site1.dat";
 		// Output file 
@@ -195,9 +195,9 @@ public class Verify_ZhaoEtAl_2006 {
 		tecRegStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
 		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
 		// Magnitude
-		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
+		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
-		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(new Double(dst));
+		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(Double.valueOf(dst));
 		// Verification table
 		fle = "zhao_r22.3_m6.5_dep20.0_interf_site1.dat";
 		// Output file
@@ -226,9 +226,9 @@ public class Verify_ZhaoEtAl_2006 {
 		tecRegStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
 		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
 		// Magnitude
-		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
+		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
-		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(new Double(dst));
+		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(Double.valueOf(dst));
 		// Verification table
 		fle = "zhao_r22.3_m6.5_dep20.0_interf_site2.dat";
 		// Output file 
@@ -257,9 +257,9 @@ public class Verify_ZhaoEtAl_2006 {
 		tecRegStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
 		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
 		// Magnitude
-		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
+		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
-		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(new Double(dst));
+		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(Double.valueOf(dst));
 		// Verification table
 		fle = "zhao_r22.3_m6.5_dep20.0_interf_site3.dat";
 		// Output file 
@@ -288,9 +288,9 @@ public class Verify_ZhaoEtAl_2006 {
 		tecRegStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
 		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
 		// Magnitude
-		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
+		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
-		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(new Double(dst));
+		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(Double.valueOf(dst));
 		// Verification table
 		fle = "zhao_r22.3_m6.5_dep20.0_interf_site4.dat";
 		// Output file 
@@ -319,9 +319,9 @@ public class Verify_ZhaoEtAl_2006 {
 		tecRegStr = TectonicRegionType.SUBDUCTION_SLAB.toString();
 		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
 		// Magnitude
-		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
+		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
-		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(new Double(dst));
+		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(Double.valueOf(dst));
 		// Verification table
 		fle = "zhao_r22.3_m6.5_dep20.0_slab_site1.dat";
 		// Output file 
@@ -350,9 +350,9 @@ public class Verify_ZhaoEtAl_2006 {
 		//		tecRegStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
 		//		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
 		//		// Magnitude
-		//		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
+		//		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		//		// Distance 
-		//		((WarningDoublePropagationEffectParameter)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(new Double(dst));
+		//		((WarningDoublePropagationEffectParameter)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(Double.valueOf(dst));
 		//		// Verification table
 		//        fle = "zhao_r30.0_m5.0_dep30_interf_site1.dat";
 		//        // Output file 
@@ -386,9 +386,9 @@ public class Verify_ZhaoEtAl_2006 {
 		tecRegStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
 		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
 		// Magnitude
-		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
+		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
-		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(new Double(dst));
+		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(Double.valueOf(dst));
 		// Verification table
 		fle = "zhao_r30.0_m6.5_dep20.0_interf_site1.dat";
 		// Output file 
@@ -422,9 +422,9 @@ public class Verify_ZhaoEtAl_2006 {
 		tecRegStr = TectonicRegionType.SUBDUCTION_SLAB.toString();
 		imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);
 		// Magnitude
-		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
+		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 		// Distance 
-		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(new Double(dst));
+		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME)).setValueIgnoreWarning(Double.valueOf(dst));
 		// Verification table
 		fle = "zhao_r150.0_m7.0_dep130.0_slab_site1.dat";
 		// Output file 
@@ -447,7 +447,7 @@ public class Verify_ZhaoEtAl_2006 {
 			rup = new EqkRupture(mag,rake,fltSurf,new Location(mLa,mLo,dep)); imr.setEqkRupture(rup);
 			System.out.println("hypocenter:"+rup.getHypocenterLocation());
 			// 
-			((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(mag));
+			((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(mag));
 			imr.getParameter(FaultTypeParam.NAME).setValue(ZhaoEtAl_2006_AttenRel.FLT_FOC_MECH_REVERSE);
 			tecRegStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
 			imr.getParameter(TectonicRegionTypeParam.NAME).setValue(tecRegStr);

@@ -743,7 +743,9 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 							PlausibilityResult result = PlausibilityResult.PASS;
 							boolean directional = false;
 							for (PlausibilityFilter filter : filters) {
-								result = result.logicalAnd(filter.apply(rupture, false));
+								if (result.canContinue()) {
+									result = result.logicalAnd(filter.apply(rupture, false));
+								}
 								directional = directional || filter.isDirectional(false);
 							}
 							if (debug)
@@ -761,8 +763,12 @@ public class PlausibleClusterConnectionStrategy extends ClusterConnectionStrateg
 								if (debug)
 									System.out.println("\tTrying reversed: "+rupture);
 								PlausibilityResult reverseResult = PlausibilityResult.PASS;
-								for (PlausibilityFilter filter : filters)
+								for (PlausibilityFilter filter : filters) {
 									reverseResult = reverseResult.logicalAnd(filter.apply(rupture, false));
+									if (!reverseResult.canContinue()) {
+										break;
+									}
+								}
 								if (debug)
 									System.out.println("\tResult: "+reverseResult);
 								if (scalarFilter != null && reverseResult.isPass()) {

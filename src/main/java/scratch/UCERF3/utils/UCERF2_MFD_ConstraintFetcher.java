@@ -59,7 +59,7 @@ public class UCERF2_MFD_ConstraintFetcher {
 //		System.out.println("Starting MeanUCERF2 instantiation");
 		double forecastDuration = 1.0;	// years
 		modMeanUCERF2 = new ModMeanUCERF2();
-		modMeanUCERF2.setParameter(UCERF2.RUP_OFFSET_PARAM_NAME, new Double(10.0));
+		modMeanUCERF2.setParameter(UCERF2.RUP_OFFSET_PARAM_NAME, Double.valueOf(10.0));
 		modMeanUCERF2.getParameter(UCERF2.PROB_MODEL_PARAM_NAME).setValue(UCERF2.PROB_MODEL_POISSON);
 //		meanUCERF2_ETAS.setParameter(UCERF2.BACK_SEIS_NAME, UCERF2.BACK_SEIS_ONLY);
 		modMeanUCERF2.setParameter(UCERF2.BACK_SEIS_NAME, UCERF2.BACK_SEIS_INCLUDE);

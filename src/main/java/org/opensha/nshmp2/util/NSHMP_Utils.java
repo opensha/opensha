@@ -261,7 +261,7 @@ public class NSHMP_Utils {
 			LittleEndianDataInputStream in = new LittleEndianDataInputStream(
 				url.openStream());
 			for (int i = 0; i < count; i++) {
-				double value = new Float(in.readFloat()).doubleValue();
+				double value = Float.valueOf(in.readFloat()).doubleValue();
 				data[calcIndex(i, nRows, nCols)] = value;
 			}
 			in.close();

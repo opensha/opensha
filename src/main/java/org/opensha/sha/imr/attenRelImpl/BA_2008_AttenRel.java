@@ -123,12 +123,12 @@ public class BA_2008_AttenRel extends AttenuationRelationship implements
 	private double vs30, rjb, mag;
 	private String stdDevType, fltType;
 	
-	protected final static Double MAG_WARN_MIN = new Double(5);
-	protected final static Double MAG_WARN_MAX = new Double(8);
-	protected final static Double DISTANCE_JB_WARN_MIN = new Double(0.0);
-	protected final static Double DISTANCE_JB_WARN_MAX = new Double(200.0);
-	protected final static Double VS30_WARN_MIN = new Double(180.0);
-	protected final static Double VS30_WARN_MAX = new Double(1300.0);
+	protected final static Double MAG_WARN_MIN = Double.valueOf(5);
+	protected final static Double MAG_WARN_MAX = Double.valueOf(8);
+	protected final static Double DISTANCE_JB_WARN_MIN = Double.valueOf(0.0);
+	protected final static Double DISTANCE_JB_WARN_MAX = Double.valueOf(200.0);
+	protected final static Double VS30_WARN_MIN = Double.valueOf(180.0);
+	protected final static Double VS30_WARN_MAX = Double.valueOf(1300.0);
 
 
 	// style of faulting options
@@ -147,7 +147,7 @@ public class BA_2008_AttenRel extends AttenuationRelationship implements
 		initSupportedIntensityMeasureParams();
 		indexFromPerHashMap = new HashMap();
 		for (int i = 3; i < period.length ; i++) {
-			indexFromPerHashMap.put(new Double(period[i]), new Integer(i));
+			indexFromPerHashMap.put(Double.valueOf(period[i]), Integer.valueOf(i));
 		}
 
 		initEqkRuptureParams();
@@ -385,7 +385,7 @@ public class BA_2008_AttenRel extends AttenuationRelationship implements
 		// Create saParam:
 		DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint();
 		for (int i = 3; i < period.length; i++) {
-			periodConstraint.addDouble(new Double(period[i]));
+			periodConstraint.addDouble(Double.valueOf(period[i]));
 		}
 		periodConstraint.setNonEditable();
 		saPeriodParam = new PeriodParam(periodConstraint);

@@ -53,7 +53,6 @@ public class SubSectionBuilder {
 	public static List<FaultSection> buildSubSects(List<? extends FaultSection> sects, int minPerFault,
 			double ddwFract, double fixedLen) {
 		Preconditions.checkState(ddwFract > 0 || fixedLen > 0, "Must give either ddwFract or fixedLen >0");
-		Preconditions.checkState(!(ddwFract > 0) || !(fixedLen > 0), "Can't supply both ddwFract and fixedLen");
 		sects = new ArrayList<>(sects);
 		Collections.sort(sects, new Comparator<FaultSection>() {
 	
@@ -64,7 +63,9 @@ public class SubSectionBuilder {
 		});
 		List<FaultSection> subSects = new ArrayList<>();
 		for (FaultSection sect : sects) {
-			double maxLen = fixedLen > 0d ? fixedLen : ddwFract*sect.getOrigDownDipWidth();
+			double maxLen = fixedLen > 0d ? fixedLen : Double.POSITIVE_INFINITY;
+			if (ddwFract > 0d)
+				maxLen = Double.min(maxLen, ddwFract*sect.getOrigDownDipWidth());
 			subSects.addAll(sect.getSubSectionsList(maxLen, subSects.size(), minPerFault));
 		}
 		System.out.println("Built "+subSects.size()+" subsections");
@@ -240,15 +241,14 @@ public class SubSectionBuilder {
 		try {
 			double ddwFract, fixedLen;
 			if (cmd.hasOption("down-dip-fraction") || cmd.hasOption("fixed-length")) {
-				Preconditions.checkArgument(!cmd.hasOption("down-dip-fraction") || !cmd.hasOption("fixed-length"),
-						"Can't supply both --down-dip-fraction and --fixed-length");
-				if (cmd.hasOption("down-dip-fraction")) {
+				if (cmd.hasOption("down-dip-fraction"))
 					ddwFract = Double.parseDouble(cmd.getOptionValue("down-dip-fraction"));
-					fixedLen = Double.NaN;
-				} else {
+				else
 					ddwFract = Double.NaN;
+				if (cmd.hasOption("fixed-length"))
 					fixedLen = Double.parseDouble(cmd.getOptionValue("fixed-length"));
-				}
+				else
+					fixedLen = Double.NaN;
 			} else {
 				ddwFract = DOWN_DIP_FRACT_DEFAULT;
 				fixedLen = MAX_LEN_DEFAULT;
@@ -290,7 +290,7 @@ public class SubSectionBuilder {
 					Preconditions.checkNotNull(dm, "Unknown deformation model: %s", dmStr);
 				}
 			} else {
-				Preconditions.checkArgument(cmd.hasOption("fault-model") || cmd.hasOption("deformation-model"),
+				Preconditions.checkArgument(cmd.hasOption("fault-model"),
 						"Must supply either --input-file or --fault-model");
 				Preconditions.checkArgument(model != null, "Can't use --fault-model without first choosing "
 						+ "a model (e.g., with --ucerf3 or --nshm23)");
@@ -298,6 +298,14 @@ public class SubSectionBuilder {
 				fm = model.getFM(fmStr);
 				Preconditions.checkNotNull(fm, "Unknown fault model: %s", fmStr);
 				sects = fm.getFaultSections();
+				if (cmd.hasOption("deformation-model")) {
+					String dmStr = cmd.getOptionValue("deformation-model");
+					dm = model.getDM(dmStr);
+					Preconditions.checkNotNull(fm, "Unknown fault model: %s", dmStr);
+					if (!dm.isApplicableTo(fm))
+						System.err.println("WARNING: The chosen deformation model ("+dm.getShortName()
+							+") does not think it is applicable to the chosen fault model ("+fm.getShortName()+"); will try to proceed anyway.");
+				}
 			}
 			System.out.println("Loaded "+sects.size()+" fault sections.");
 			Preconditions.checkState(!sects.isEmpty(), "Loaded fault sections are empty");

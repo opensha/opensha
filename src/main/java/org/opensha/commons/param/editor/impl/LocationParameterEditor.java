@@ -130,7 +130,7 @@ public class LocationParameterEditor extends AbstractParameterEditorConverter<Lo
 	protected Location convertToNative(ParameterList value) {
 		Double lat = latParam.getValue();
 		Double lon = lonParam.getValue();
-		Double depth = depthParam == null ? new Double(0d) : depthParam.getValue();
+		Double depth = depthParam == null ? Double.valueOf(0d) : depthParam.getValue();
 		if (lat == null || lon == null)
 			return null;
 		if (depth == null)

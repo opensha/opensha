@@ -124,12 +124,12 @@ public class BA_2006_AttenRel extends AttenuationRelationship implements
   private boolean parameterChange;
 
   // ?????????????????????????????????????
-  protected final static Double MAG_WARN_MIN = new Double(4.5);
-  protected final static Double MAG_WARN_MAX = new Double(8.5);
-  protected final static Double DISTANCE_JB_WARN_MIN = new Double(0.0);
-  protected final static Double DISTANCE_JB_WARN_MAX = new Double(200.0);
-  protected final static Double VS30_WARN_MIN = new Double(120.0);
-  protected final static Double VS30_WARN_MAX = new Double(2000.0);
+  protected final static Double MAG_WARN_MIN = Double.valueOf(4.5);
+  protected final static Double MAG_WARN_MAX = Double.valueOf(8.5);
+  protected final static Double DISTANCE_JB_WARN_MIN = Double.valueOf(0.0);
+  protected final static Double DISTANCE_JB_WARN_MAX = Double.valueOf(200.0);
+  protected final static Double VS30_WARN_MIN = Double.valueOf(120.0);
+  protected final static Double VS30_WARN_MAX = Double.valueOf(2000.0);
 
   
   // style of faulting options
@@ -148,7 +148,7 @@ public class BA_2006_AttenRel extends AttenuationRelationship implements
     initSupportedIntensityMeasureParams();
     indexFromPerHashMap = new HashMap();
     for (int i = 3; i < period.length ; i++) {
-      indexFromPerHashMap.put(new Double(period[i]), new Integer(i));
+      indexFromPerHashMap.put(Double.valueOf(period[i]), Integer.valueOf(i));
     }
 
     initEqkRuptureParams();
@@ -172,7 +172,7 @@ public class BA_2006_AttenRel extends AttenuationRelationship implements
    */
   public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 
-    magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+    magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
     setFaultTypeFromRake(eqkRupture.getAveRake());
     this.eqkRupture = eqkRupture;
     setPropagationEffectParams();
@@ -421,7 +421,7 @@ public class BA_2006_AttenRel extends AttenuationRelationship implements
     // Create saParam:
     DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint();
     for (int i = 3; i < period.length; i++) {
-      periodConstraint.addDouble(new Double(period[i]));
+      periodConstraint.addDouble(Double.valueOf(period[i]));
     }
     periodConstraint.setNonEditable();
 	saPeriodParam = new PeriodParam(periodConstraint);

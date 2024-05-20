@@ -169,8 +169,8 @@ public class USGS_Combined_2004_AttenRel extends AttenuationRelationship {
 	// the site object for the BC boundary
 	private Site site_BC;
 
-	protected final static Double VS30_WARN_MIN = new Double(180.0);
-	protected final static Double VS30_WARN_MAX = new Double(3500.0);
+	protected final static Double VS30_WARN_MIN = Double.valueOf(180.0);
+	protected final static Double VS30_WARN_MAX = Double.valueOf(3500.0);
 
 	/**
 	 * MMI parameter, the natural log of the "Modified Mercalli Intensity" IMT.
@@ -217,8 +217,7 @@ public class USGS_Combined_2004_AttenRel extends AttenuationRelationship {
 		site_BC.addParameter(scemy_1997_attenRel.getParameter(scemy_1997_attenRel.
 				SITE_TYPE_NAME));
 
-		bjf_1997_attenRel.getParameter(Vs30_Param.NAME).setValue(new
-				Double(760.0));
+		bjf_1997_attenRel.getParameter(Vs30_Param.NAME).setValue(Double.valueOf(760.0));
 		site_BC.addParameter(bjf_1997_attenRel.getParameter(Vs30_Param.NAME));
 
 		// set the components in the attenuation relationships
@@ -397,7 +396,7 @@ public class USGS_Combined_2004_AttenRel extends AttenuationRelationship {
 		else { // it must be MMI
 			// here we must set the imt because it wasn't done in the setAttenRelsIMT(*) method
 			attenRel.setIntensityMeasure(SA_Param.NAME);
-			attenRel.getParameter(PeriodParam.NAME).setValue(new Double(1.0));
+			attenRel.getParameter(PeriodParam.NAME).setValue(Double.valueOf(1.0));
 			ave_bc = attenRel.getMean();
 			attenRel.setIntensityMeasure(PGA_Param.NAME);
 			pga_bc = attenRel.getMean();
@@ -445,7 +444,7 @@ public class USGS_Combined_2004_AttenRel extends AttenuationRelationship {
 			}
 		}
 		else if (imt.equals(PGV_Param.NAME)) {
-			Double per = new Double(1.0);
+			Double per = Double.valueOf(1.0);
 			as_1997_attenRel.setIntensityMeasure(SA_Param.NAME);
 			as_1997_attenRel.getParameter(PeriodParam.NAME).setValue(per);
 			scemy_1997_attenRel.setIntensityMeasure(SA_Param.NAME);

@@ -99,7 +99,7 @@ public class ServerPrefUtils {
 	
 	public static void fail(ObjectOutputStream out, String debugName, String message) throws IOException {
 		debug(debugName, "Failing: " + message);
-		out.writeObject(new Boolean(false));
+		out.writeObject(Boolean.valueOf(false));
 		out.writeObject(message);
 		out.flush();
 		out.close();

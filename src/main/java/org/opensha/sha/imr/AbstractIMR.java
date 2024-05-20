@@ -76,10 +76,10 @@ implements IntensityMeasureRelationship {
 	 */
 	protected DoubleParameter exceedProbParam = null;
 	public final static String EXCEED_PROB_NAME = "Exceed. Prob.";
-	protected final static Double EXCEED_PROB_DEFAULT = new Double(0.5);
+	protected final static Double EXCEED_PROB_DEFAULT = Double.valueOf(0.5);
 	public final static String EXCEED_PROB_INFO = "Exceedance Probability";
-	public final static Double EXCEED_PROB_MIN = new Double(1.0e-6);
-	public final static Double EXCEED_PROB_MAX = new Double(1.0 - 1e-6);
+	public final static Double EXCEED_PROB_MIN = Double.valueOf(1.0e-6);
+	public final static Double EXCEED_PROB_MAX = Double.valueOf(1.0 - 1e-6);
 
 	/** ParameterList of all Site parameters */
 	protected ParameterList siteParams = new ParameterList();

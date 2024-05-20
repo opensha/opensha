@@ -5,6 +5,7 @@ import java.awt.Dimension;
 import java.text.DecimalFormat;
 
 import javax.swing.JLabel;
+import javax.swing.UIManager;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.DefaultTableCellRenderer;
 
@@ -24,7 +25,8 @@ public class ArbitrarilyDiscretizedFuncTableModel extends AbstractTableModel {
 	
 	public static DecimalFormat format;
 	
-	public final static Color disabledColor = new Color(210, 210, 210);
+	public Color disabledBackgroundColor;
+	public Color enabledBackgroundColor;
 	
 	ArbitrarilyDiscretizedFuncTableCellRenderer renderer = null;
 	
@@ -37,6 +39,18 @@ public class ArbitrarilyDiscretizedFuncTableModel extends AbstractTableModel {
 //		System.out.println("Func: " + func);
 		this.func = func;
 //		this.fireTableDataChanged();
+		
+		Color defaultBackground = UIManager.getColor ( "Panel.background" );
+		double avgColor = (defaultBackground.getRed() + defaultBackground.getGreen() + defaultBackground.getBlue())/3d;
+		if (avgColor > 127d) {
+			// light theme
+			enabledBackgroundColor = Color.WHITE;
+			disabledBackgroundColor = new Color(210, 210, 210);
+		} else {
+			// dark theme
+			enabledBackgroundColor = defaultBackground;
+			disabledBackgroundColor = new Color(80, 80, 80);
+		}
 	}
 	
 	public void updateData(ArbitrarilyDiscretizedFunc newFunc) {
@@ -195,10 +209,10 @@ public class ArbitrarilyDiscretizedFuncTableModel extends AbstractTableModel {
 	public Object getValueAt(int rowIndex, int columnIndex) {
 		if (columnIndex == 0) {
 			// X
-			return new Double(func.getX(rowIndex));
+			return Double.valueOf(func.getX(rowIndex));
 		} else {
 			// Y
-			return new Double(func.getY(rowIndex));
+			return Double.valueOf(func.getY(rowIndex));
 		}
 	}
 
@@ -214,10 +228,11 @@ public class ArbitrarilyDiscretizedFuncTableModel extends AbstractTableModel {
 	
 	public void setEnabled(boolean isEnabled) {
 		ArbitrarilyDiscretizedFuncTableCellRenderer renderer = getRenderer();
+		
 		if (isEnabled)
-			renderer.setBackground(Color.WHITE);
+			renderer.setBackground(enabledBackgroundColor);
 		else
-			renderer.setBackground(disabledColor);
+			renderer.setBackground(disabledBackgroundColor);
 	}
 
 	/**

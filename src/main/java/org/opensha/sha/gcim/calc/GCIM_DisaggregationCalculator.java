@@ -198,9 +198,9 @@ implements GCIM_DisaggregationCalculatorAPI {
 		Parameter<Double> im = TRTUtils.getFirstIMR(imrMap).getIntensityMeasure();
 		if (im instanceof WarningParameter<?>) {
 			WarningParameter<Double> warnIM = (WarningParameter<Double>)im;
-			warnIM.setValueIgnoreWarning(new Double(iml));
+			warnIM.setValueIgnoreWarning(Double.valueOf(iml));
 		} else {
-			im.setValue(new Double(iml));
+			im.setValue(Double.valueOf(iml));
 		}
 
 		// get total number of sources

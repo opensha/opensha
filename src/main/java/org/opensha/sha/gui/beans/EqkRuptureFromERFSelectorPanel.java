@@ -330,7 +330,7 @@ implements ParameterChangeListener,EqkRupSelectorGuiBeanAPI{
 		int numRuptures = erf.getNumRuptures(sourceValue);
 		//creating the rupture parameter
 		if (ruptureParam == null) {
-			ruptureParam = new IntegerParameter(RUPTURE_PARAM_NAME,0,numRuptures-1,new Integer(ruptureIndex));
+			ruptureParam = new IntegerParameter(RUPTURE_PARAM_NAME,0,numRuptures-1,Integer.valueOf(ruptureIndex));
 			ruptureParam.addParameterChangeListener(this);
 			parameterList.addParameter(ruptureParam);
 		} else {

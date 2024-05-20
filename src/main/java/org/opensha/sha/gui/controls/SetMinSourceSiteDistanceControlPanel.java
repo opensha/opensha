@@ -68,7 +68,7 @@ public class SetMinSourceSiteDistanceControlPanel extends JFrame {
    * set the value by hand in this panel
    */
   public void setDistance(double distance) {
-    distanceParam.setValue(new Double(distance));
+    distanceParam.setValue(Double.valueOf(distance));
     distanceEditor.refreshParamEditor();
   }
 }

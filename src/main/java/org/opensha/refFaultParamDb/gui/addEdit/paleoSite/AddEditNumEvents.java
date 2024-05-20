@@ -92,10 +92,10 @@ public class AddEditNumEvents extends LabeledBoxPanel implements ParameterChange
     IntegerEstimate estimate  = (IntegerEstimate)combinedNumEventsInfo.getNumEventsEstimate().getEstimate();
     AbstractDiscretizedFunc func = estimate.getValues();
     // min events param
-    minEventsParam.setValue(new Integer((int)func.getMinX()));
+    minEventsParam.setValue(Integer.valueOf((int)func.getMinX()));
     minEventsParamEditor.refreshParamEditor();
     // max events param
-    maxEventsParam.setValue(new Integer((int)func.getMaxX()));
+    maxEventsParam.setValue(Integer.valueOf((int)func.getMaxX()));
     maxEventsParamEditor.refreshParamEditor();
     // events probabilities
     eventsProbParameter.setValue((ArbitrarilyDiscretizedFunc)func);

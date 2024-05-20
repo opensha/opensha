@@ -1433,7 +1433,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			if (isSolveClustersIndividually()) {
 				// solve clusters individually, can handle mixed clusters and single-fault analytical
 				System.out.println("Returning classic model solver");
-				return new ClassicModelInversionSolver(rupSet, branch);
+				ClusterRuptures cRups = rupSet.requireModule(ClusterRuptures.class);
+				return new ClassicModelInversionSolver(rupSet, branch, getExclusionModel(rupSet, branch, cRups));
 			} else if (!hasPaleoData(rupSet) && !hasParkfield(rupSet)) {
 				// see if we can solve the whole thing analytically (can do if all multifault rups are excluded)
 				// but only if we don't have paleo/parkfield constraints
@@ -1462,7 +1463,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		}
 	}
 	
-	private static class ExclusionAwareClusterSpecificInversionSolver extends ClusterSpecificInversionSolver {
+	public static class ExclusionAwareClusterSpecificInversionSolver extends ClusterSpecificInversionSolver {
 
 		@Override
 		protected BinaryRuptureProbabilityCalc getRuptureExclusionModel(FaultSystemRupSet rupSet,

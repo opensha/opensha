@@ -345,7 +345,7 @@ implements Parameter<Double>
 
 		DoubleDiscreteParameter param = null;
 		if( value == null ) param = new DoubleDiscreteParameter( name, c1, units);
-		else param = new DoubleDiscreteParameter( name, c1, units, new Double( this.value.toString() )  );
+		else param = new DoubleDiscreteParameter( name, c1, units, Double.valueOf( this.value.toString() )  );
 		param.editable = true;
 		param.info = info;
 		return param;

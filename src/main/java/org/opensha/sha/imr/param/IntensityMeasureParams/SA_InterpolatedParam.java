@@ -18,10 +18,10 @@ public class SA_InterpolatedParam extends WarningDoubleParameter {
 	public final static String NAME = "SA Interpolated";
 	public final static String UNITS = "g";
 	public final static String INFO = "Response Spectral Acceleration";
-	protected final static Double MIN = new Double(Math.log(Double.MIN_VALUE));
-	protected final static Double MAX = new Double(Double.MAX_VALUE);
-	protected final static Double DEFAULT_WARN_MIN = new Double(Math.log(Double.MIN_VALUE));
-	protected final static Double DEFAULT_WARN_MAX = new Double(Math.log(3.0));
+	protected final static Double MIN = Double.valueOf(Math.log(Double.MIN_VALUE));
+	protected final static Double MAX = Double.valueOf(Double.MAX_VALUE);
+	protected final static Double DEFAULT_WARN_MIN = Double.valueOf(Math.log(Double.MIN_VALUE));
+	protected final static Double DEFAULT_WARN_MAX = Double.valueOf(Math.log(3.0));
 
 	/**
 	 * This uses the DEFAULT_WARN_MIN and DEFAULT_WARN_MAX fields to set the

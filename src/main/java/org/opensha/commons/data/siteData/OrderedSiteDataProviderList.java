@@ -311,8 +311,8 @@ public class OrderedSiteDataProviderList implements Iterable<SiteData<?>>, XMLSa
 		providers.set(index1, two);
 		providers.set(index2, one);
 		
-		enabled.set(index1, new Boolean(enabledTwo));
-		enabled.set(index2, new Boolean(enabledOne));
+		enabled.set(index1, Boolean.valueOf(enabledTwo));
+		enabled.set(index2, Boolean.valueOf(enabledOne));
 	}
 	
 	public SiteData<?> getProvider(int index) {
@@ -639,7 +639,7 @@ public class OrderedSiteDataProviderList implements Iterable<SiteData<?>>, XMLSa
 		for (int i=0; i<providers.size(); i++) {
 			if (this.isEnabled(i)) {
 				newProvs.add(providers.get(i));
-				newEnabled.add(new Boolean(true));
+				newEnabled.add(Boolean.valueOf(true));
 			}
 		}
 		

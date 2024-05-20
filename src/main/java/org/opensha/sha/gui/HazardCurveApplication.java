@@ -16,11 +16,10 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.security.AccessControlException;
+import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.function.UnaryOperator;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -40,10 +39,8 @@ import javax.swing.JTabbedPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.UIManager;
-import javax.swing.border.LineBorder;
 
 import org.apache.commons.lang3.SystemUtils;
-import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.data.Range;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
@@ -54,11 +51,8 @@ import org.opensha.commons.exceptions.WarningException;
 import org.opensha.commons.gui.ControlPanel;
 import org.opensha.commons.gui.DisclaimerDialog;
 import org.opensha.commons.gui.HelpMenuBuilder;
-import org.opensha.commons.gui.plot.ButtonControlPanel;
-import org.opensha.commons.gui.plot.GraphPanel;
 import org.opensha.commons.gui.plot.GraphWidget;
 import org.opensha.commons.gui.plot.GraphWindow;
-import org.opensha.commons.gui.plot.PlotColorAndLineTypeSelectorControlPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotElement;
 import org.opensha.commons.gui.plot.PlotLineType;
@@ -80,15 +74,12 @@ import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.HazardCurveCalculatorAPI;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculatorAPI;
-import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
 import org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter;
+import org.opensha.sha.earthquake.BaseERF;
+import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.EpistemicListERF;
-import org.opensha.sha.earthquake.AbstractERF;
-import org.opensha.sha.earthquake.ERF;
-import org.opensha.sha.earthquake.BaseERF;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.gui.beans.ERF_GuiBean;
 import org.opensha.sha.gui.beans.EqkRupSelectorGuiBean;
 import org.opensha.sha.gui.beans.IMR_GuiBean;
@@ -256,8 +247,8 @@ ScalarIMRChangeListener {
 	private JButton clearButton;
 	private JButton peelButton;
 	protected JCheckBox progressCheckBox; // TODO make private
-	protected JComboBox controlComboBox; // TODO make private
-	protected JComboBox probDeterComboBox;
+	protected JComboBox<String> controlComboBox; // TODO make private
+	protected JComboBox<String> probDeterComboBox;
 
 	private JPanel plotPanel;
 	//private JPanel sitePanel;
@@ -368,6 +359,18 @@ ScalarIMRChangeListener {
 		
 		return builder.buildMenu();
 	}
+	
+	public static Color getBottomBarColor() {
+		Color defaultBackground = UIManager.getColor ( "Panel.background" );
+		double avgColor = (defaultBackground.getRed() + defaultBackground.getGreen() + defaultBackground.getBlue())/3d;
+		if (avgColor > 127d) {
+			// light theme
+			return new Color(220,220,220);
+		} else {
+			// dark theme
+			return new Color(35,35,35);
+		}
+	}
 
 	// Component initialization TODO should be private
 	protected void jbInit() throws Exception {
@@ -409,7 +412,8 @@ ScalarIMRChangeListener {
 		//		saveButton.addActionListener(this);
 		//		toolbar.add(saveButton);
 
-		Color bg = new Color(220,220,220);
+		
+		Color bg = getBottomBarColor();
 
 		// ======== button panel ========
 		JPanel buttonPanel = new JPanel(new GridBagLayout()) {
@@ -433,7 +437,7 @@ ScalarIMRChangeListener {
 		JLabel calcTypeLabel = new JLabel("Calculation type:");
 		JLabel cpLabel = new JLabel("Control panel:");
 
-		controlComboBox = new JComboBox();
+		controlComboBox = new JComboBox<>();
 		initControlList();
 		controlComboBox.addActionListener(this);
 		controlComboBox.setMaximumRowCount(32);
@@ -443,7 +447,7 @@ ScalarIMRChangeListener {
 		progressCheckBox = new JCheckBox("Show Progress Bar");
 		progressCheckBox.setSelected(true);
 
-		probDeterComboBox = new JComboBox();
+		probDeterComboBox = new JComboBox<>();
 		initProbOrDeterList();
 		probDeterComboBox.addActionListener(this);
 		probDeterComboBox.setPreferredSize(cbSize);
@@ -734,7 +738,7 @@ ScalarIMRChangeListener {
 	static {
 		try {
 			System.setProperty("apple.laf.useScreenMenuBar", "true");
-		} catch (AccessControlException e1) {
+		} catch (Exception e1) {
 			System.err.println("WARNING: could not set property 'apple.laf.useScreenMenuBar'");
 		}
 //		String osName = System.getProperty("os.name");
@@ -1174,7 +1178,6 @@ ScalarIMRChangeListener {
 		if (this.progressCheckBox.isSelected()) {
 			progressClass = new CalcProgressBar(this, "Calculation Status",
 				"Starting\u2026");
-			progressClass.displayProgressBar();
 			timer.start();
 		}
 
@@ -1326,7 +1329,6 @@ ScalarIMRChangeListener {
 				disaggProgressClass = new CalcProgressBar(this,
 						"Disaggregation Status",
 				"Beginning disaggregation\u2026");
-				disaggProgressClass.displayProgressBar();
 				disaggTimer.start();
 			}
 			/*
@@ -1424,6 +1426,7 @@ ScalarIMRChangeListener {
 				}
 				disaggSuccessFlag = disaggCalc.disaggregate(Math.log(imlVal),
 						site, imrMap, (ERF) forecast,
+						this.calc.getSourceFilters(),
 						this.calc.getAdjustableParams());
 				disaggCalc.setMaxZAxisForPlot(maxZAxis);
 				disaggregationString = disaggCalc.getMeanAndModeInfo();
@@ -1493,33 +1496,10 @@ ScalarIMRChangeListener {
 	 */
 	private void showDisaggregationResults(int numSourceToShow,
 			boolean imlBasedDisaggr, double imlVal, double probVal) {
-		// String sourceDisaggregationListAsHTML = null;
-		String sourceDisaggregationList = null;
-		String consolidatedSourceDisaggregationList = null;
-		if (numSourceToShow > 0) {
-			sourceDisaggregationList = getSourceDisaggregationInfo();
-			consolidatedSourceDisaggregationList = getConsolidatedSourceDisaggregationInfo();
-			// sourceDisaggregationListAsHTML = sourceDisaggregationList.
-			// replaceAll("\n", "<br>");
-			// sourceDisaggregationListAsHTML = sourceDisaggregationListAsHTML.
-			// replaceAll("\t", "&nbsp;&nbsp;&nbsp;");
-		}
-		String binData = null;
 		boolean binDataToShow = disaggregationControlPanel.isShowDisaggrBinDataSelected();
-		if (binDataToShow) {
-			try {
-				binData = disaggCalc.getBinData();
-				// binDataAsHTML = binDataAsHTML.replaceAll("\n", "<br>");
-				// binDataAsHTML = binDataAsHTML.replaceAll("\t",
-				// "&nbsp;&nbsp;&nbsp;");
-			} catch (RuntimeException ex) {
-				setButtonsEnable(true);
-				ex.printStackTrace();
-				BugReport bug = new BugReport(ex, getParametersInfoAsString(), appShortName, getAppVersion(), this);
-				BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
-				bugDialog.setVisible(true);
-			}
-		}
+
+		String disaggregationPlotWebAddr = null;
+		String metadata = getMapParametersInfoAsHTML();
 		String modeString = "";
 		if (imlBasedDisaggr)
 			modeString = "Disaggregation Results for IML = " + imlVal
@@ -1528,9 +1508,6 @@ ScalarIMRChangeListener {
 			modeString = "Disaggregation Results for Prob = " + probVal
 			+ " (for IML = " + (float) imlVal + ")";
 		modeString += "\n" + disaggregationString;
-
-		String disaggregationPlotWebAddr = null;
-		String metadata = getMapParametersInfoAsHTML();
 		if (disaggregationControlPanel.isUseGMT()) {
 			// String pdfImageLink;
 			try {
@@ -1555,10 +1532,10 @@ ScalarIMRChangeListener {
 				return;
 			}
 			new DisaggregationPlotViewerWindow(disaggregationPlotWebAddr
-					+ DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME, disaggCalc, metadata, binDataToShow);
+					+ DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME, disaggCalc, modeString, metadata, binDataToShow);
 		} else {
 			new DisaggregationPlotViewerWindow(PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),
-					disaggCalc, metadata, binDataToShow);
+					disaggCalc, modeString, metadata, binDataToShow);
 		}
 	}
 
@@ -2436,7 +2413,7 @@ ScalarIMRChangeListener {
 
 		int size = func.size();
 		for (int i = 0; i < size; ++i)
-			imlList.add(new Double(func.getX(i)));
+			imlList.add(Double.valueOf(func.getX(i)));
 
 		return imlList;
 	}

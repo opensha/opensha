@@ -347,17 +347,17 @@ public class UCERF2_DataForComparisonFetcher {
 						else throw new RuntimeException("COV of "+cov+" not recognized");
 					}
 					// add nulls for any missing COVs
-					if(!covList.contains(new Double(0.01))) parsonsBPT0pt01_PDF_Funcs.add(null);
-					if(!covList.contains(new Double(0.1)))  parsonsBPT0pt10_PDF_Funcs.add(null);
-					if(!covList.contains(new Double(0.2)))  parsonsBPT0pt20_PDF_Funcs.add(null);
-					if(!covList.contains(new Double(0.3)))  parsonsBPT0pt30_PDF_Funcs.add(null);
-					if(!covList.contains(new Double(0.4)))  parsonsBPT0pt40_PDF_Funcs.add(null);
-					if(!covList.contains(new Double(0.5)))  parsonsBPT0pt50_PDF_Funcs.add(null);
-					if(!covList.contains(new Double(0.6)))  parsonsBPT0pt60_PDF_Funcs.add(null);
-					if(!covList.contains(new Double(0.7)))  parsonsBPT0pt70_PDF_Funcs.add(null);
-					if(!covList.contains(new Double(0.8)))  parsonsBPT0pt80_PDF_Funcs.add(null);
-					if(!covList.contains(new Double(0.9)))  parsonsBPT0pt90_PDF_Funcs.add(null);
-					if(!covList.contains(new Double(0.99))) parsonsBPT0pt99_PDF_Funcs.add(null);
+					if(!covList.contains(Double.valueOf(0.01))) parsonsBPT0pt01_PDF_Funcs.add(null);
+					if(!covList.contains(Double.valueOf(0.1)))  parsonsBPT0pt10_PDF_Funcs.add(null);
+					if(!covList.contains(Double.valueOf(0.2)))  parsonsBPT0pt20_PDF_Funcs.add(null);
+					if(!covList.contains(Double.valueOf(0.3)))  parsonsBPT0pt30_PDF_Funcs.add(null);
+					if(!covList.contains(Double.valueOf(0.4)))  parsonsBPT0pt40_PDF_Funcs.add(null);
+					if(!covList.contains(Double.valueOf(0.5)))  parsonsBPT0pt50_PDF_Funcs.add(null);
+					if(!covList.contains(Double.valueOf(0.6)))  parsonsBPT0pt60_PDF_Funcs.add(null);
+					if(!covList.contains(Double.valueOf(0.7)))  parsonsBPT0pt70_PDF_Funcs.add(null);
+					if(!covList.contains(Double.valueOf(0.8)))  parsonsBPT0pt80_PDF_Funcs.add(null);
+					if(!covList.contains(Double.valueOf(0.9)))  parsonsBPT0pt90_PDF_Funcs.add(null);
+					if(!covList.contains(Double.valueOf(0.99))) parsonsBPT0pt99_PDF_Funcs.add(null);
 				} catch (IOException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();

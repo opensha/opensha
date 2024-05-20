@@ -12,9 +12,9 @@ public class U3ETAS_MaxCharFactorParam extends DoubleParameter {
 	public final static String NAME = "MaxCharFactor";
 	public final static String INFO = "The maximum CharFactor allowed on a fault section";
 	private static final String UNITS = null;
-	protected final static Double MIN = new Double(1.0);
-	protected final static Double MAX = new Double(100.00);
-	public final static Double DEFAULT_VALUE = new Double(10.0);
+	protected final static Double MIN = Double.valueOf(1.0);
+	protected final static Double MAX = Double.valueOf(100.00);
+	public final static Double DEFAULT_VALUE = Double.valueOf(10.0);
 
 
 	/**

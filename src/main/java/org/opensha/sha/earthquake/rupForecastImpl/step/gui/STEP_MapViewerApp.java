@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.StringTokenizer;
 
-import javax.swing.JApplet;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
@@ -54,8 +53,7 @@ import org.opensha.sha.gui.beans.MapGuiBean;
  * @version 1.0
  */
 
-public class STEP_MapViewerApp extends JApplet {
-	private boolean isStandalone = false;
+public class STEP_MapViewerApp extends JPanel {
 	JSplitPane mainSplitPane = new JSplitPane();
 	JSplitPane gmtSplitPane = new JSplitPane();
 	JSplitPane siteSplitPane = new JSplitPane();
@@ -118,8 +116,7 @@ public class STEP_MapViewerApp extends JApplet {
 
 	//Get a parameter value
 	public String getParameter(String key, String def) {
-		return isStandalone ? System.getProperty(key, def) :
-			(getParameter(key) != null ? getParameter(key) : def);
+		return System.getProperty(key, def);
 	}
 
 	//Construct the applet
@@ -144,7 +141,7 @@ public class STEP_MapViewerApp extends JApplet {
 	//Component initialization
 	private void jbInit() throws Exception {
 		border1 = new EtchedBorder(EtchedBorder.RAISED,new Color(248, 254, 255),new Color(121, 124, 136));
-		this.getContentPane().setLayout(gridBagLayout5);
+		this.setLayout(gridBagLayout5);
 		mainSplitPane.setBottomComponent(gmtSplitPane);
 		mainSplitPane.setLeftComponent(null);
 		sitePanel.setLayout(gridBagLayout3);
@@ -177,7 +174,7 @@ public class STEP_MapViewerApp extends JApplet {
 		dataSetPanel.setLayout(gridBagLayout1);
 		gmtPanel.setLayout(gridBagLayout2);
 		siteSplitPane.setOrientation(JSplitPane.VERTICAL_SPLIT);
-		this.getContentPane().add(mainSplitPane,   new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
+		this.add(mainSplitPane,   new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
 				,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 0, 0, 4), 274, -2));
 		mainSplitPane.add(dataSetPanel, JSplitPane.TOP);
 		gmtSplitPane.add(gmtPanel, JSplitPane.RIGHT);
@@ -218,7 +215,6 @@ public class STEP_MapViewerApp extends JApplet {
 	//Main method
 	public static void main(String[] args) {
 		STEP_MapViewerApp applet = new STEP_MapViewerApp();
-		applet.isStandalone = true;
 		Frame frame;
 		frame = new Frame() {
 			protected void processWindowEvent(WindowEvent e) {
@@ -372,7 +368,7 @@ public class STEP_MapViewerApp extends JApplet {
 				maxLonVector, (String)maxLonVector.get(0));
 		// make the gridspacing param
 		DoubleParameter gridSpacingParam = new DoubleParameter(GRIDSPACING_PARAM_NAME,
-				new Double(intervalLat));
+				Double.valueOf(intervalLat));
 
 		// add the params to the list
 		this.sitesParamList = new ParameterList();

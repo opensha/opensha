@@ -69,7 +69,7 @@ public class DB_AccessServlet extends HttpServlet{
 			int maxConns = Integer.parseInt( (String) p.get("maxConns"));
 			String logFileString = (String) p.get("logFileString");
 			double maxConnTime =
-				(new Double( (String) p.get("maxConnTime"))).doubleValue();
+				(Double.valueOf( (String) p.get("maxConnTime"))).doubleValue();
 			String usrName = (String) p.get("userName");
 			String password = (String)p.get("password");
 			myBroker = new
@@ -142,7 +142,7 @@ public class DB_AccessServlet extends HttpServlet{
 			//getting the sequence number from Data table
 			if(functionToPerform.equals(DB_AccessAPI.SEQUENCE_NUMBER)){
 				int seqNo = myBroker.getNextSequenceNumber((String)query);
-				outputToApp.writeObject(new Integer(seqNo));
+				outputToApp.writeObject(Integer.valueOf(seqNo));
 			}
 			//inserting new data in the table
 			else if(functionToPerform.equals(DB_AccessAPI.INSERT_UPDATE_QUERY)){
@@ -154,7 +154,7 @@ public class DB_AccessServlet extends HttpServlet{
 					outputToApp.writeObject(ret);
 				} else {
 					int key = myBroker.insertUpdateOrDeleteData((String)query);
-					outputToApp.writeObject(new Integer(key));
+					outputToApp.writeObject(Integer.valueOf(key));
 				}
 				
 			}
@@ -162,7 +162,7 @@ public class DB_AccessServlet extends HttpServlet{
 			else if(functionToPerform.equals(DB_AccessAPI.INSERT_UPDATE_SPATIAL)){
 				ArrayList<JGeometry> geomteryObjectList = (ArrayList<JGeometry>)inputFromApp.readObject();
 				int key = myBroker.insertUpdateOrDeleteData((String)query, geomteryObjectList);
-				outputToApp.writeObject(new Integer(key));
+				outputToApp.writeObject(Integer.valueOf(key));
 			}
 			//reading the data form the database
 			else if(functionToPerform.equals(DB_AccessAPI.SELECT_QUERY)){
@@ -195,12 +195,12 @@ public class DB_AccessServlet extends HttpServlet{
 				if (key > 0) {
 					MailUtil.sendMail(props,emailMessage);
 				}
-				outputToApp.writeObject(new Integer(key));
+				outputToApp.writeObject(Integer.valueOf(key));
 			} else if(functionToPerform.equalsIgnoreCase(ServerDB_Access.UPDATE_ALL_PREF_DATA)) {
 				if (prefDataDAO == null)
 					prefDataDAO = new PrefFaultSectionDataDB_DAO(myBroker);
 				prefDataDAO.rePopulatePrefDataTable();
-				outputToApp.writeObject(new Boolean(true));
+				outputToApp.writeObject(Boolean.valueOf(true));
 			}
 			inputFromApp.close();
 			outputToApp.close();

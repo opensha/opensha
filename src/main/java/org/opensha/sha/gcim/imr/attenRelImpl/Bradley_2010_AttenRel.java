@@ -142,7 +142,7 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 	protected static final double chm = 3;
 	protected static final double cg3 = 4;
 
-	protected final static Double PERIOD_DEFAULT = new Double(1.0);
+	protected final static Double PERIOD_DEFAULT = Double.valueOf(1.0);
 	private HashMap indexFromPerHashMap;
 
 	private int iper;
@@ -191,7 +191,7 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 		initSupportedIntensityMeasureParams();
 		indexFromPerHashMap = new HashMap();
 		for (int i = 0; i < period.length-2; i++) {  // subtract two for PGA/PGV (last two indicies)
-			indexFromPerHashMap.put(new Double(period[i]), new Integer(i));
+			indexFromPerHashMap.put(Double.valueOf(period[i]), Integer.valueOf(i));
 		}
 
 		initEqkRuptureParams();
@@ -526,7 +526,7 @@ public class Bradley_2010_AttenRel extends AttenuationRelationship implements
 		// Create saParam:
 		DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint();
 		for (int i = 0; i < period.length-2; i++) {  // subtract two for PGA/PGV (last indicies)
-			periodConstraint.addDouble(new Double(period[i]));
+			periodConstraint.addDouble(Double.valueOf(period[i]));
 		}
 		periodConstraint.setNonEditable();
 		saPeriodParam = new PeriodParam(periodConstraint);

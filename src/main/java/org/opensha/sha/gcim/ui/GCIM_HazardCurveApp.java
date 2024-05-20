@@ -424,7 +424,7 @@ public class GCIM_HazardCurveApp  extends HazardCurveApplication {
 		//		saveButton.addActionListener(this);
 		//		toolbar.add(saveButton);
 
-		Color bg = new Color(220,220,220);
+		Color bg = HazardCurveApplication.getBottomBarColor();
 
 		// ======== button panel ========
 		JPanel buttonPanel = new JPanel(new GridBagLayout()) {
@@ -756,7 +756,7 @@ public class GCIM_HazardCurveApp  extends HazardCurveApplication {
 	static {
 		try {
 			System.setProperty("apple.laf.useScreenMenuBar", "true");
-		} catch (AccessControlException e1) {
+		} catch (Exception e1) {
 			System.err.println("WARNING: could not set property 'apple.laf.useScreenMenuBar'");
 		}
 //		String osName = System.getProperty("os.name");
@@ -2733,7 +2733,7 @@ public class GCIM_HazardCurveApp  extends HazardCurveApplication {
 
 		int size = func.size();
 		for (int i = 0; i < size; ++i)
-			imlList.add(new Double(func.getX(i)));
+			imlList.add(Double.valueOf(func.getX(i)));
 
 		return imlList;
 	}

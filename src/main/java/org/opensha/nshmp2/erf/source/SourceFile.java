@@ -38,7 +38,7 @@ class SourceFile {
 			.append(StringUtils.rightPad(type.toString(), 12))
 			.append(
 				StringUtils.rightPad(
-					new Double(Precision.round(weight, 7)).toString(), 11))
+					Double.valueOf(Precision.round(weight, 7)).toString(), 11))
 			.append(name).toString();
 	}
 

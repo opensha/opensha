@@ -43,17 +43,17 @@ public class SingleFaultRuptureERF extends AbstractERF{
   public final static String MAG_PARAM_NAME = "Magnitude";
   private final static String MAG_PARAM_INFO = "The  magnitude of the rupture";
   private final static String MAG_PARAM_UNITS = null;
-  private Double MAG_PARAM_MIN = new Double(5);
-  private Double MAG_PARAM_MAX = new Double(10);
-  private Double MAG_PARAM_DEFAULT = new Double(7.0);
+  private Double MAG_PARAM_MIN = Double.valueOf(5);
+  private Double MAG_PARAM_MAX = Double.valueOf(10);
+  private Double MAG_PARAM_DEFAULT = Double.valueOf(7.0);
 
   // prob parameter stuff
   public final static String PROB_PARAM_NAME = "Probability";
   private final static String PROB_PARAM_INFO = "The probability of the rupture";
   private final static String PROB_PARAM_UNITS = null;
-  private Double PROB_PARAM_MIN = new Double(0);
-  private Double PROB_PARAM_MAX = new Double(1);
-  private Double PROB_PARAM_DEFAULT = new Double(1.0);
+  private Double PROB_PARAM_MIN = Double.valueOf(0);
+  private Double PROB_PARAM_MAX = Double.valueOf(1);
+  private Double PROB_PARAM_DEFAULT = Double.valueOf(1.0);
 
   // fault parameter name
   public final static String FAULT_PARAM_NAME = "Fault Parameter";
@@ -62,9 +62,9 @@ public class SingleFaultRuptureERF extends AbstractERF{
   public final static String RAKE_PARAM_NAME = "Rake";
   private final static String RAKE_PARAM_INFO = "The rake of the rupture (direction of slip)";
   private final static String RAKE_PARAM_UNITS = "degrees";
-  private Double RAKE_PARAM_MIN = new Double(-180);
-  private Double RAKE_PARAM_MAX = new Double(180);
-  private Double RAKE_PARAM_DEFAULT = new Double(0.0);
+  private Double RAKE_PARAM_MIN = Double.valueOf(-180);
+  private Double RAKE_PARAM_MAX = Double.valueOf(180);
+  private Double RAKE_PARAM_DEFAULT = Double.valueOf(0.0);
 
   // parameter declarations
   DoubleParameter magParam;

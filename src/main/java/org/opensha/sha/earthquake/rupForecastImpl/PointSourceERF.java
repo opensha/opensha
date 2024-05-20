@@ -41,55 +41,55 @@ public class PointSourceERF extends AbstractERF{
   public final static String MAG_PARAM_NAME = "Magnitude";
   private final static String MAG_PARAM_INFO = "The  magnitude of the rupture";
   private final static String MAG_PARAM_UNITS = null;
-  private Double MAG_PARAM_MIN = new Double(0);
-  private Double MAG_PARAM_MAX = new Double(10);
-  private Double MAG_PARAM_DEFAULT = new Double(7.0);
+  private Double MAG_PARAM_MIN = Double.valueOf(0);
+  private Double MAG_PARAM_MAX = Double.valueOf(10);
+  private Double MAG_PARAM_DEFAULT = Double.valueOf(7.0);
 
   // prob parameter stuff
   public final static String PROB_PARAM_NAME = "Source Probability";
   private final static String PROB_PARAM_INFO = "The probability of the rupture";
   private final static String PROB_PARAM_UNITS = null;
-  private Double PROB_PARAM_MIN = new Double(0);
-  private Double PROB_PARAM_MAX = new Double(1);
-  private Double PROB_PARAM_DEFAULT = new Double(1.0);
+  private Double PROB_PARAM_MIN = Double.valueOf(0);
+  private Double PROB_PARAM_MAX = Double.valueOf(1);
+  private Double PROB_PARAM_DEFAULT = Double.valueOf(1.0);
 
   // rake parameter stuff
   public final static String RAKE_PARAM_NAME = "Rake";
   private final static String RAKE_PARAM_INFO = "The rake of the rupture (direction of slip)";
   private final static String RAKE_PARAM_UNITS = "degrees";
-  private Double RAKE_PARAM_MIN = new Double(-180);
-  private Double RAKE_PARAM_MAX = new Double(180);
-  private Double RAKE_PARAM_DEFAULT = new Double(0.0);
+  private Double RAKE_PARAM_MIN = Double.valueOf(-180);
+  private Double RAKE_PARAM_MAX = Double.valueOf(180);
+  private Double RAKE_PARAM_DEFAULT = Double.valueOf(0.0);
 
   // dip parameter stuff
   public final static String DIP_PARAM_NAME = "Dip";
   private final static String DIP_PARAM_INFO = "The dip of the rupture surface";
   private final static String DIP_PARAM_UNITS = "degrees";
-  private Double DIP_PARAM_MIN = new Double(0);
-  private Double DIP_PARAM_MAX = new Double(90);
-  private Double DIP_PARAM_DEFAULT = new Double(90);
+  private Double DIP_PARAM_MIN = Double.valueOf(0);
+  private Double DIP_PARAM_MAX = Double.valueOf(90);
+  private Double DIP_PARAM_DEFAULT = Double.valueOf(90);
 
   // the source-location parameters (this should be a location parameter)
   public final static String SRC_LAT_PARAM_NAME = "Source Latitude";
   private final static String SRC_LAT_PARAM_INFO = "Latitude of the point source";
   private final static String SRC_LAT_PARAM_UNITS = "Degrees";
-  private Double SRC_LAT_PARAM_MIN = new Double (-90.0);
-  private Double SRC_LAT_PARAM_MAX = new Double (90.0);
-  private Double SRC_LAT_PARAM_DEFAULT = new Double (35.71);
+  private Double SRC_LAT_PARAM_MIN = Double.valueOf(-90.0);
+  private Double SRC_LAT_PARAM_MAX = Double.valueOf(90.0);
+  private Double SRC_LAT_PARAM_DEFAULT = Double.valueOf(35.71);
 
   public final static String SRC_LON_PARAM_NAME = "Source Longitude";
   private final static String SRC_LON_PARAM_INFO = "Longitude of the point source";
   private final static String SRC_LON_PARAM_UNITS = "Degrees";
-  private Double SRC_LON_PARAM_MIN = new Double (-360);
-  private Double SRC_LON_PARAM_MAX = new Double (360);
-  private Double SRC_LON_PARAM_DEFAULT = new Double (-121.1);
+  private Double SRC_LON_PARAM_MIN = Double.valueOf(-360);
+  private Double SRC_LON_PARAM_MAX = Double.valueOf(360);
+  private Double SRC_LON_PARAM_DEFAULT = Double.valueOf(-121.1);
 
   public final static String SRC_DEPTH_PARAM_NAME = "Source Depth";
   private final static String SRC_DEPTH_PARAM_INFO = "Depth of the point source";
   private final static String SRC_DEPTH_PARAM_UNITS = "km";
-  private Double SRC_DEPTH_PARAM_MIN = new Double (0);
-  private Double SRC_DEPTH_PARAM_MAX = new Double (50);
-  private Double SRC_DEPTH_PARAM_DEFAULT = new Double (7.6);
+  private Double SRC_DEPTH_PARAM_MIN = Double.valueOf(0);
+  private Double SRC_DEPTH_PARAM_MAX = Double.valueOf(50);
+  private Double SRC_DEPTH_PARAM_DEFAULT = Double.valueOf(7.6);
 
 
   // parameter declarations

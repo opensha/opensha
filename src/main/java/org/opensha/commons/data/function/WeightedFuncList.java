@@ -127,7 +127,7 @@ public class WeightedFuncList {
 	 * @param func
 	 */
 	public void add(double relWt,DiscretizedFunc func){
-		relativeWts.add(new Double(relWt));
+		relativeWts.add(Double.valueOf(relWt));
 		if(isFuncAllowed(func))
 			functionList.add(func);
 		else

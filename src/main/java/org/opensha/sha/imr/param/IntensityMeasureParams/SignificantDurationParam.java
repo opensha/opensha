@@ -19,8 +19,8 @@ public class SignificantDurationParam extends DoubleParameter {
 	public final static String NAME = "Significant Duration";
 	public final static String UNITS = "s";
 	public final static String INFO = "Significant Duration";
-	public final static Double MIN = new Double(Math.log(Double.MIN_VALUE));
-	public final static Double MAX = new Double(Double.MAX_VALUE);
+	public final static Double MIN = Double.valueOf(Math.log(Double.MIN_VALUE));
+	public final static Double MAX = Double.valueOf(Double.MAX_VALUE);
 	
 	private DurationTimeIntervalParam intervalParam;
 	

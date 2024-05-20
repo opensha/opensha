@@ -126,7 +126,10 @@ public class LabeledBorderPanel extends JPanel{
 	 */
 	public void setTitle( String newTitle ) {
 		title = newTitle;
-		if( titledBorder1 != null ) titledBorder1.setTitle( title );
+		if( titledBorder1 != null ) {
+			titledBorder1.setTitle( title );
+			mainPanel.repaint();
+		}
 	}
 	
 	public void initParameterLookAndFeel() {

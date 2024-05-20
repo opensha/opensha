@@ -226,15 +226,15 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 	public final static String FLT_FOC_MECH_STRIKE_SLIP = "Strike-slip";
 	public final static String FLT_FOC_MECH_UNKNOWN = "Unknown";
 
-	protected final static Double MAG_WARN_MIN = new Double(5);
-	protected final static Double MAG_WARN_MAX = new Double(8.3);
+	protected final static Double MAG_WARN_MIN = Double.valueOf(5);
+	protected final static Double MAG_WARN_MAX = Double.valueOf(8.3);
 
-	protected final static Double DISTANCE_RUP_WARN_MIN = new Double(0.0);
-	protected final static Double DISTANCE_RUP_WARN_MAX = new Double(500.0);
+	protected final static Double DISTANCE_RUP_WARN_MIN = Double.valueOf(0.0);
+	protected final static Double DISTANCE_RUP_WARN_MAX = Double.valueOf(500.0);
 	
 	// depth hypocentre
-	protected final static Double DEPTH_HYPO_WARN_MIN = new Double(0.0);
-	protected final static Double DEPTH_HYPO_WARN_MAX = new Double(125.0);
+	protected final static Double DEPTH_HYPO_WARN_MIN = Double.valueOf(0.0);
+	protected final static Double DEPTH_HYPO_WARN_MAX = Double.valueOf(125.0);
 
 	/**
 	 *  This initializes several ParameterList objects.
@@ -247,7 +247,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 		indexFromPerHashMap = new HashMap<Double, Integer>();
 		for (int i = 0; i < period.length; i++) { 
 			//			System.out.println(period[i]+" "+i);
-			indexFromPerHashMap.put(new Double(period[i]), new Integer(i));
+			indexFromPerHashMap.put(Double.valueOf(period[i]), Integer.valueOf(i));
 		}
 
 		initEqkRuptureParams();
@@ -271,7 +271,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 	 *             If not valid rake angle
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
-		magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));		
+		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));		
 		this.eqkRupture = eqkRupture;
 		setPropagationEffectParams();
 		// TODO
@@ -546,7 +546,7 @@ public class ZhaoEtAl_2006_AttenRel extends AttenuationRelationship implements
 		// Create saParam:
 		DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint();
 		for (int i = 1; i < period.length; i++) {
-			periodConstraint.addDouble(new Double(period[i]));
+			periodConstraint.addDouble(Double.valueOf(period[i]));
 		}
 		periodConstraint.setNonEditable();
 		saPeriodParam = new PeriodParam(periodConstraint);

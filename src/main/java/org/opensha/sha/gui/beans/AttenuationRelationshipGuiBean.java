@@ -278,7 +278,7 @@ ParameterChangeWarningListener, ParameterChangeFailListener{
 		for(int i=0;i<numSupportedAttenRels;++i){
 			attenRelCheckBox[i] = new JCheckBox(((ScalarIMR)attenRelsSupported.get(i)).getName());
 			attenRelCheckBox[i].addItemListener(this);
-			wtsParameter[i] = new DoubleParameter(wtsParamName+(i+1),new Double(1.0));
+			wtsParameter[i] = new DoubleParameter(wtsParamName+(i+1),Double.valueOf(1.0));
 			wtsParameterEditor[i] = new DoubleParameterEditor(wtsParameter[i]);
 			paramButtons[i] = new JButton(attenRelParamsButtonName);
 			paramButtons[i].addActionListener(this);
@@ -694,8 +694,8 @@ ParameterChangeWarningListener, ParameterChangeFailListener{
 					// added by Ned so the default period is 1.0 sec (this is a hack).
 					if (independentParam.getName().equals(PeriodParam.NAME)) {
 						DoubleDiscreteParameter per = (DoubleDiscreteParameter)independentParam;
-						if (per.isAllowed(new Double(1.0)))
-								per.setValue(new Double(1.0));
+						if (per.isAllowed(Double.valueOf(1.0)))
+								per.setValue(Double.valueOf(1.0));
 					}
 
 					/**
@@ -1234,15 +1234,15 @@ ParameterChangeWarningListener, ParameterChangeFailListener{
 				if(wtsParameterEditor[i].isVisible()){
 					double value = ((Double)wtsParameterEditor[i].getValue()).doubleValue();
 					totalWts +=value;
-					wtsList.add(new Double(value));
+					wtsList.add(Double.valueOf(value));
 				}
 			}
 			int size = wtsList.size();
 			for(int i=0;i<size;++i)
-				wtsList.set(i,new Double(((Double)wtsList.get(i)).doubleValue()/totalWts));
+				wtsList.set(i,Double.valueOf(((Double)wtsList.get(i)).doubleValue()/totalWts));
 		}
 		else //if the single AttenRel is selecetd give it the wt of 1
-			wtsList.add(new Double(1.0));
+			wtsList.add(Double.valueOf(1.0));
 		return wtsList;
 	}
 

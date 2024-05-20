@@ -101,7 +101,7 @@ public class GMT_MapGeneratorForShakeMaps extends GMT_MapGenerator{
 		rupPlotParam.setInfo( RUP_PLOT_PARAM_INFO );
 
 		//creating the Boolean parameter to generate the shape files from the Hazus code
-		hazusShapeParam = new BooleanParameter(HAZUS_SHAPE_PARAM_NAME, new Boolean(false));
+		hazusShapeParam = new BooleanParameter(HAZUS_SHAPE_PARAM_NAME, Boolean.valueOf(false));
 		hazusShapeParam.setInfo(HAZUS_SHAPE_PARAM_INFO);
 
 		adjustableParams.addParameter(hazusShapeParam);

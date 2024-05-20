@@ -94,15 +94,15 @@ public class PropagationEffect implements java.io.Serializable, ParameterChangeL
 	/** No Argument consructor */
 	public PropagationEffect() {
 
-		approxDistParam = new BooleanParameter(APPROX_DIST_PARAM_NAME, new Boolean(approxHorzDist));
+		approxDistParam = new BooleanParameter(APPROX_DIST_PARAM_NAME, Boolean.valueOf(approxHorzDist));
 		approxDistParam.setInfo(APPROX_DIST_PARAM_INFO);
 		approxDistParam.addParameterChangeListener(this);
 
-		pointSrcCorrParam = new BooleanParameter(POINT_SRC_CORR_PARAM_NAME, new Boolean(ptSrcCorr));
+		pointSrcCorrParam = new BooleanParameter(POINT_SRC_CORR_PARAM_NAME, Boolean.valueOf(ptSrcCorr));
 		pointSrcCorrParam.setInfo(POINT_SRC_CORR_PARAM_INFO);
 		pointSrcCorrParam.addParameterChangeListener(this);
 
-		nshmpPtSrcCorrParam = new BooleanParameter(NSHMP_PT_SRC_CORR_PARAM_NAME, new Boolean(nshmpPtSrcCorr));
+		nshmpPtSrcCorrParam = new BooleanParameter(NSHMP_PT_SRC_CORR_PARAM_NAME, Boolean.valueOf(nshmpPtSrcCorr));
 		nshmpPtSrcCorrParam.setInfo(NSHMP_PT_SRC_CORR_PARAM_INFO);
 		nshmpPtSrcCorrParam.addParameterChangeListener(this);
 
@@ -173,15 +173,15 @@ public class PropagationEffect implements java.io.Serializable, ParameterChangeL
 
 		//QUESTION - IS CREATING A NEW DOUBLE OBJECT WITH EACH CALL INEFFICIENT/UNNECESSARY?
 		if(paramName.equals(DistanceRupParameter.NAME))
-			return new Double(distanceRup);
+			return Double.valueOf(distanceRup);
 		else if(paramName.equals(DistanceJBParameter.NAME))
-			return new Double(distanceJB);
+			return Double.valueOf(distanceJB);
 		else if(paramName.equals(DistanceSeisParameter.NAME))
-			return new Double(distanceSeis);
+			return Double.valueOf(distanceSeis);
 		else if(paramName.equals(DistanceX_Parameter.NAME)) {
 			if(this.DISTANCE_X_STALE == true)
 				computeDistanceX();
-			return new Double(distanceX);
+			return Double.valueOf(distanceX);
 		}
 		else
 			throw new RuntimeException("Parameter not supported");

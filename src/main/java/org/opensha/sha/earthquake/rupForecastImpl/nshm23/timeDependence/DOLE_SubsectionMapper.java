@@ -31,8 +31,8 @@ import com.google.common.base.Preconditions;
 public class DOLE_SubsectionMapper {
 	
 	public static final String REL_PATH = "/data/erf/nshm23/fault_models/v3";
-	public static final String DOLE_PATH = REL_PATH+"/DOLEv0_March12.geojson";
-	public static final String HIST_PATH = REL_PATH+"/HistoricRuptsFSD_Feb15.geojson";
+	public static final String PALEO_DOLE_PATH = REL_PATH+"/PaleoDOLEv1_April26.geojson";
+	public static final String HIST_PATH = REL_PATH+"/HistDOLEv1_April26.geojson";
 	
 	private static final FeatureCollection loadGeoJSON(String path) throws IOException {
 		BufferedReader bRead = new BufferedReader(
@@ -81,12 +81,12 @@ public class DOLE_SubsectionMapper {
 		}
 	}
 	
-	public static class DOLE_Data extends AbstractDOLE_Data {
+	public static class PaleoDOLE_Data extends AbstractDOLE_Data {
 		public final Location location;
 		public final String siteName;
 		public final String reference;
 		
-		public DOLE_Data(Feature feature) {
+		public PaleoDOLE_Data(Feature feature) {
 			super(feature);
 			Preconditions.checkNotNull(feature, "Feature is null?");
 			Preconditions.checkNotNull(feature.geometry, "Feature geometry is null?");
@@ -101,16 +101,16 @@ public class DOLE_SubsectionMapper {
 		}
 	}
 	
-	public static List<DOLE_Data> loadDOLE() throws IOException {
-		FeatureCollection features = loadGeoJSON(DOLE_PATH);
+	public static List<PaleoDOLE_Data> loadPaleoDOLE() throws IOException {
+		FeatureCollection features = loadGeoJSON(PALEO_DOLE_PATH);
 		
-		List<DOLE_Data> ret = new ArrayList<>(features.features.size());
+		List<PaleoDOLE_Data> ret = new ArrayList<>(features.features.size());
 		for (Feature feature : features) {
 			if (feature.geometry == null) {
 				System.err.println("WARNING: skipping feature with null geometry! "+feature.toCompactJSON());
 				continue;
 			}
-			ret.add(new DOLE_Data(feature));
+			ret.add(new PaleoDOLE_Data(feature));
 		}
 		return ret;
 	}
@@ -132,10 +132,10 @@ public class DOLE_SubsectionMapper {
 		}
 	}
 	
-	private static final Comparator<DOLE_Data> DOLE_DATE_COMPARATOR = new Comparator<DOLE_SubsectionMapper.DOLE_Data>() {
+	private static final Comparator<PaleoDOLE_Data> DOLE_DATE_COMPARATOR = new Comparator<DOLE_SubsectionMapper.PaleoDOLE_Data>() {
 		
 		@Override
-		public int compare(DOLE_Data o1, DOLE_Data o2) {
+		public int compare(PaleoDOLE_Data o1, PaleoDOLE_Data o2) {
 			return Integer.compare(o1.year, o2.year);
 		}
 	};
@@ -168,7 +168,7 @@ public class DOLE_SubsectionMapper {
 	 * This loads DOLE data and maps to the given subsection list, according to the given {@link DOLE_MappingAlgorithm}.
 	 * <br>
 	 * The date of last event will be overridden in all mapped fault sections, and the mappedSubSects field will be
-	 * polulated in the {@link DOLE_Data} object.
+	 * polulated in the {@link PaleoDOLE_Data} object.
 	 * 
 	 * @param subSects
 	 * @param doleData
@@ -176,21 +176,21 @@ public class DOLE_SubsectionMapper {
 	 * @throws IOException 
 	 */
 	public static void mapDOLE(List<? extends FaultSection> subSects, DOLE_MappingAlgorithm mappingType, boolean verbose) throws IOException {
-		mapDOLE(subSects, loadHistRups(), loadDOLE(), mappingType, verbose);
+		mapDOLE(subSects, loadHistRups(), loadPaleoDOLE(), mappingType, verbose);
 	}
 	
 	/**
 	 * This maps the given DOLE data to the given subsection list, according to the given {@link DOLE_MappingAlgorithm}.
 	 * <br>
 	 * The date of last event will be overridden in all mapped fault sections, and the mappedSubSects field will be
-	 * polulated in the {@link DOLE_Data} object.
+	 * polulated in the {@link PaleoDOLE_Data} object.
 	 * 
 	 * @param subSects
 	 * @param doleData
 	 * @param mappingType
 	 */
 	public static void mapDOLE(List<? extends FaultSection> subSects, List<HistoricalRupture> histRups,
-			List<DOLE_Data> doleData, DOLE_MappingAlgorithm mappingType, boolean verbose) {
+			List<PaleoDOLE_Data> doleData, DOLE_MappingAlgorithm mappingType, boolean verbose) {
 		// group subsects by parent
 		Map<Integer, List<FaultSection>> parentSectsMap = subSects.stream().collect(
 				Collectors.groupingBy(S -> S.getParentSectionId()));
@@ -200,7 +200,7 @@ public class DOLE_SubsectionMapper {
 				Collectors.groupingBy(D -> D.faultID));
 		
 		// group DOLE data by parent
-		Map<Integer, List<DOLE_Data>> doleParentsMap = doleData.stream().collect(
+		Map<Integer, List<PaleoDOLE_Data>> doleParentsMap = doleData.stream().collect(
 				Collectors.groupingBy(D -> D.faultID));
 		
 		HashSet<Integer> allParents = new HashSet<>();
@@ -216,7 +216,7 @@ public class DOLE_SubsectionMapper {
 			
 			if (verbose) System.out.println("--- "+parentID+". "+parentSects.get(0).getParentSectionName()+" ---");
 			
-			List<DOLE_Data> parentDOLE = doleParentsMap.get(parentID);
+			List<PaleoDOLE_Data> parentDOLE = doleParentsMap.get(parentID);
 			List<HistoricalRupture> parentRups = rupParentsMap.get(parentID);
 			
 			// trace locs for distance calculations
@@ -285,7 +285,7 @@ public class DOLE_SubsectionMapper {
 				
 				int[] closestSects = new int[parentDOLE.size()];
 				for (int i=0; i<parentDOLE.size(); i++) {
-					DOLE_Data dole = parentDOLE.get(i);
+					PaleoDOLE_Data dole = parentDOLE.get(i);
 					if (verbose) System.out.println("\t"+dole.year+", "+dole.siteName+", "+dole.reference);
 					double[] sectDists = new double[parentSects.size()];
 					closestSects[i] = getClosestSect(parentSects, sectTraceLocs, dole.location, sectDists, dole.year, dole.siteName);
@@ -418,8 +418,8 @@ public class DOLE_SubsectionMapper {
 				if (verbose) {
 					if (mappings[s] == null)
 						System.out.println("\t"+s+". (none)");
-					else if (mappings[s] instanceof DOLE_Data)
-						System.out.println("\t"+s+". "+mappings[s].year+", "+mappingTypes[s]+", "+((DOLE_Data)mappings[s]).siteName+", "+(float)mappedDists[s]+" km");
+					else if (mappings[s] instanceof PaleoDOLE_Data)
+						System.out.println("\t"+s+". "+mappings[s].year+", "+mappingTypes[s]+", "+((PaleoDOLE_Data)mappings[s]).siteName+", "+(float)mappedDists[s]+" km");
 					else
 						System.out.println("\t"+s+". "+mappings[s].year+", "+mappingTypes[s]+", "+((HistoricalRupture)mappings[s]).eventID);
 				}
@@ -492,8 +492,8 @@ public class DOLE_SubsectionMapper {
 
 		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.WUS_FM_v3);
 		
-		System.out.println("Loading DOLE data");
-		List<DOLE_Data> doleData = loadDOLE();
+		System.out.println("Loading Paleo DOLE data");
+		List<PaleoDOLE_Data> doleData = loadPaleoDOLE();
 		System.out.println("Loading Historical Rupture data");
 		List<HistoricalRupture> hisRupData = loadHistRups();
 		System.out.println("Mapping DOLE data");

@@ -109,27 +109,27 @@ public class WriteTimeDepSegmentedProbAndGain {
 		// BPT 30 yrs seg Depenedent Aper
 		DURATION = 30;
 		FILENAME = "RupProbs_BPT_30yr_SegDepAper.xls";
-		SEG_DEP_APERIODICITY = new Boolean(true);
+		SEG_DEP_APERIODICITY = Boolean.valueOf(true);
 		PROB_MODEL_VAL = UCERF2.PROB_MODEL_BPT;
 		makeExcelSheet(ucerf2);
 		//	BPT 5 yrs seg Depenedent Aper
 		DURATION = 5;
 		FILENAME = "RupProbs_BPT_5yr_SegDepAper.xls";
-		SEG_DEP_APERIODICITY = new Boolean(true);
+		SEG_DEP_APERIODICITY = Boolean.valueOf(true);
 		PROB_MODEL_VAL = UCERF2.PROB_MODEL_BPT;
 		makeExcelSheet(ucerf2);
 		
 		// BPT 30 yrs seg Const Aper
 		DURATION = 30;
 		FILENAME = "RupProbs_BPT_30yr_ConstAper.xls";
-		SEG_DEP_APERIODICITY = new Boolean(false);
+		SEG_DEP_APERIODICITY = Boolean.valueOf(false);
 		PROB_MODEL_VAL = UCERF2.PROB_MODEL_BPT;
 		makeExcelSheet(ucerf2);
 		
 		//	BPT 5 yrs seg const Aper
 		DURATION = 5;
 		FILENAME = "RupProbs_BPT_5yr_ConstAper.xls";
-		SEG_DEP_APERIODICITY = new Boolean(false);
+		SEG_DEP_APERIODICITY = Boolean.valueOf(false);
 		PROB_MODEL_VAL = UCERF2.PROB_MODEL_BPT;
 		makeExcelSheet(ucerf2);
 		
@@ -143,19 +143,19 @@ public class WriteTimeDepSegmentedProbAndGain {
 		//	BPT parameter setting
 		paramNames.add(UCERF2.APERIODICITY_PARAM_NAME);
 		options = new ParamOptions();
-		options.addValueWeight(new Double(0.3), 0.2);
-		options.addValueWeight(new Double(0.5), 0.5);
-		options.addValueWeight(new Double(0.7), 0.3);
+		options.addValueWeight(Double.valueOf(0.3), 0.2);
+		options.addValueWeight(Double.valueOf(0.5), 0.5);
+		options.addValueWeight(Double.valueOf(0.7), 0.3);
 		paramValues.add(options);
 		
 		DURATION = 5;
 		FILENAME = "RupProbs_Emp_BPT_5yr.xls";
-		SEG_DEP_APERIODICITY = new Boolean(false);
+		SEG_DEP_APERIODICITY = Boolean.valueOf(false);
 		makeExcelSheet(ucerf2);
 		
 		DURATION = 30;
 		FILENAME = "RupProbs_Emp_BPT_30yr.xls";
-		SEG_DEP_APERIODICITY = new Boolean(false);
+		SEG_DEP_APERIODICITY = Boolean.valueOf(false);
 		makeExcelSheet(ucerf2);
 		
 		
@@ -164,14 +164,14 @@ public class WriteTimeDepSegmentedProbAndGain {
 		//		BPT 30 yrs seg const Aper
 		DURATION = 30;
 		FILENAME = "RupProbs_BPT_30yr_ConstAperBranches.xls";
-		SEG_DEP_APERIODICITY = new Boolean(false);
+		SEG_DEP_APERIODICITY = Boolean.valueOf(false);
 		PROB_MODEL_VAL = UCERF2.PROB_MODEL_BPT;
 		makeExcelSheet(ucerf2);
 		
 		//	BPT 5 yrs seg const Aper
 		DURATION = 5;
 		FILENAME = "RupProbs_BPT_5yr_ConstAperBranches.xls";
-		SEG_DEP_APERIODICITY = new Boolean(false);
+		SEG_DEP_APERIODICITY = Boolean.valueOf(false);
 		PROB_MODEL_VAL = UCERF2.PROB_MODEL_BPT;
 		makeExcelSheet(ucerf2);
 		
@@ -375,8 +375,8 @@ public class WriteTimeDepSegmentedProbAndGain {
 		// Aprioti wt param
 		paramNames.add(UCERF2.REL_A_PRIORI_WT_PARAM_NAME);
 		options = new ParamOptions();
-		options.addValueWeight(new Double(1e-4), 0.5);
-		options.addValueWeight(new Double(1e10), 0.5);
+		options.addValueWeight(Double.valueOf(1e-4), 0.5);
+		options.addValueWeight(Double.valueOf(1e10), 0.5);
 		paramValues.add(options);
 	
 	
@@ -402,8 +402,8 @@ public class WriteTimeDepSegmentedProbAndGain {
 				if(paramName.equalsIgnoreCase(UCERF2.REL_A_PRIORI_WT_PARAM_NAME)) {
 					Parameter param = ucerf2.getParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME);
 					if(((Double)param.getValue()).doubleValue()==1e10) {
-						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_1_PARAM_NAME).setValue(new Double(0.0));
-						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_2_PARAM_NAME).setValue(new Double(0.0));	
+						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_1_PARAM_NAME).setValue(Double.valueOf(0.0));
+						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_2_PARAM_NAME).setValue(Double.valueOf(0.0));	
 					} else {
 						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_1_PARAM_NAME).setValue(UCERF2.MIN_A_FAULT_RATE_1_DEFAULT);
 						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_2_PARAM_NAME).setValue(UCERF2.MIN_A_FAULT_RATE_2_DEFAULT);	

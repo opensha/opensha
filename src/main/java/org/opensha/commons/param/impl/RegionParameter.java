@@ -48,13 +48,13 @@ public class RegionParameter extends AbstractParameter<Region> {
 	public final static String MAX_LATITUDE =  "Max Latitude";
 
 	private DoubleParameter minLon = new DoubleParameter(MIN_LONGITUDE,
-			new Double(-360), new Double(360),new Double(-119.5));
+			Double.valueOf(-360), Double.valueOf(360),Double.valueOf(-119.5));
 	private DoubleParameter maxLon = new DoubleParameter(MAX_LONGITUDE,
-			new Double(-360), new Double(360),new Double(-117));
+			Double.valueOf(-360), Double.valueOf(360),Double.valueOf(-117));
 	private DoubleParameter minLat = new DoubleParameter(MIN_LATITUDE,
-			new Double(-90), new Double(90), new Double(33.5));
+			Double.valueOf(-90), Double.valueOf(90), Double.valueOf(33.5));
 	private DoubleParameter maxLat = new DoubleParameter(MAX_LATITUDE,
-			new Double(-90), new Double(90), new Double(34.7));
+			Double.valueOf(-90), Double.valueOf(90), Double.valueOf(34.7));
 
 	//location parameters
 	protected Parameter minLatParam;

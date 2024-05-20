@@ -149,7 +149,7 @@ public class ClusterParser {
 	
 	private static double readReturnPeriod(String fname) {
 		String[] parts = StringUtils.split(fname, '.');
-		return new Double(parts[1]);
+		return Double.valueOf(parts[1]);
 	}
 	
 	private static void toLog(Logger log, ClusterSource cs) {

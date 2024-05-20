@@ -52,14 +52,14 @@ public class PEER_NonPlanarFaultForecast extends AbstractERF{
 
   // grid spacing parameter stuff
   public final static String GRID_PARAM_NAME =  "Fault Grid Spacing";
-  private Double DEFAULT_GRID_VAL = new Double(1);
+  private Double DEFAULT_GRID_VAL = Double.valueOf(1);
   public final static String GRID_PARAM_UNITS = "kms";
   private final static double GRID_PARAM_MIN = .001;
   private final static double GRID_PARAM_MAX = 1000;
 
   //rupture offset parameter stuff
   public final static String OFFSET_PARAM_NAME =  "Offset";
-  private Double DEFAULT_OFFSET_VAL = new Double(1);
+  private Double DEFAULT_OFFSET_VAL = Double.valueOf(1);
   public final static String OFFSET_PARAM_UNITS = "kms";
   private final static double OFFSET_PARAM_MIN = .01;
   private final static double OFFSET_PARAM_MAX = 10000;
@@ -68,19 +68,19 @@ public class PEER_NonPlanarFaultForecast extends AbstractERF{
   public final static String SIGMA_PARAM_NAME =  "Mag Length Sigma";
   private double SIGMA_PARAM_MIN = 0;
   private double SIGMA_PARAM_MAX = 1;
-  public Double DEFAULT_SIGMA_VAL = new Double(0.0);
+  public Double DEFAULT_SIGMA_VAL = Double.valueOf(0.0);
 
   // slip rate prameter stuff
   public final static String SLIP_RATE_NAME = "Slip Rate";
   public final static String SLIP_RATE_UNITS = "mm/yr";
   public final static double SLIP_RATE_MIN = 0.0;
   public final static double SLIP_RATE_MAX = 1e5;
-  public final static Double SLIP_RATE_DEFAULT = new Double(2);
+  public final static Double SLIP_RATE_DEFAULT = Double.valueOf(2);
 
   // parameter for magUpper of the GR dist
   public static final String GR_MAG_UPPER=new String("Mag Upper");
   public static final String GR_MAG_UPPER_INFO=new String("Max mag of the GR distribution (must be an increment of 0.05)");
-  public final static Double GR_MAG_UPPER_DEFAULT = new Double(7.15);
+  public final static Double GR_MAG_UPPER_DEFAULT = Double.valueOf(7.15);
 
   // dip direction parameter stuff
   public final static String DIP_DIRECTION_NAME = new String ("Dip LocationVector");

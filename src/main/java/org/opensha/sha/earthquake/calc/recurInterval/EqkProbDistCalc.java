@@ -70,12 +70,12 @@ public abstract class EqkProbDistCalc implements ParameterChangeListener {
 	protected final static String HIST_OPEN_INTERVAL_PARAM_INFO = "Historic time interval over which event is known not to have occurred";
 	
 	// default param values
-	protected final static Double DEFAULT_MEAN_PARAM_VAL = new Double(100);
-	protected final static Double DEFAULT_APERIODICITY_PARAM_VAL = new Double(0.5);
-	protected final static Double DEFAULT_DURATION_PARAM_VAL = new Double(30);
-	protected final static Double DEFAULT_DELTAX_PARAM_VAL = new Double(1);
-	protected final static Integer DEFAULT_NUMPOINTS_PARAM_VAL = new Integer(500);
-	protected final static Double DEFAULT_HIST_OPEN_INTERVAL_PARAM_VAL = new Double(0.0);
+	protected final static Double DEFAULT_MEAN_PARAM_VAL = Double.valueOf(100);
+	protected final static Double DEFAULT_APERIODICITY_PARAM_VAL = Double.valueOf(0.5);
+	protected final static Double DEFAULT_DURATION_PARAM_VAL = Double.valueOf(30);
+	protected final static Double DEFAULT_DELTAX_PARAM_VAL = Double.valueOf(1);
+	protected final static Integer DEFAULT_NUMPOINTS_PARAM_VAL = Integer.valueOf(500);
+	protected final static Double DEFAULT_HIST_OPEN_INTERVAL_PARAM_VAL = Double.valueOf(0.0);
 	
 	// various adjustable params
 	protected DoubleParameter meanParam, aperiodicityParam, durationParam, deltaX_Param, histOpenIntParam;

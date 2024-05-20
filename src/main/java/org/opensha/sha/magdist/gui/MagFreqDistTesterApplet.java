@@ -18,7 +18,6 @@ import java.util.ArrayList;
 
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
-import javax.swing.JApplet;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
@@ -70,7 +69,7 @@ import org.opensha.sha.param.editor.MagFreqDistParameterEditor;
  * @version 1.0
  */
 
-public class MagFreqDistTesterApplet extends JApplet
+public class MagFreqDistTesterApplet extends JPanel
 implements ItemListener {
 
 
@@ -296,7 +295,7 @@ implements ItemListener {
 		mainPanel.setLayout(GBL);
 		mainPanel.setBorder(border1 );
 
-		this.getContentPane().setLayout(GBL);
+		this.setLayout(GBL);
 
 		rangeComboBox.setBackground(new Color(200, 200, 230));
 		rangeComboBox.setFont(new java.awt.Font("Lucida Grande", 0, 11));
@@ -380,7 +379,7 @@ implements ItemListener {
 		titlePanel.setLayout(GBL);
 		innerPlotPanel.setLayout(GBL);
 		innerPlotPanel.setBorder(null);
-		this.getContentPane().setBackground(Color.white);
+		this.setBackground(Color.white);
 		outerPanel.setBackground(Color.white);
 		mainPanel.setBackground(Color.white);
 		buttonPanel.setBackground(Color.white);
@@ -408,7 +407,7 @@ implements ItemListener {
 				,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(2, 4, 4, 4), 0, 0));
 		mainPanel.add(buttonPanel,         new GridBagConstraints(0, 1, GridBagConstraints.REMAINDER, GridBagConstraints.REMAINDER, 1.0, 0.0
 				,GridBagConstraints.CENTER, GridBagConstraints.HORIZONTAL, new Insets(1, 1, 1, 1), 0, 0));
-		this.getContentPane().add(outerPanel,         new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
+		this.add(outerPanel,         new GridBagConstraints(0, 0, 1, 1, 1.0, 1.0
 				,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(9, 9, 0, 9), 109, 399));
 		outerPanel.add(mainPanel,       new GridBagConstraints(0, 1, 1, 1, 1.0, 1.0
 				,GridBagConstraints.CENTER, GridBagConstraints.BOTH, new Insets(0, 5, 5, 5), 0, 0));
@@ -499,8 +498,8 @@ implements ItemListener {
 		Color c = new Color( .9f, .9f, 1.0f, 1f );
 		Font f = new Font( "Dialog", Font.PLAIN, 11 );
 
-		UIManager.put( "ScrollBar.width", new Integer( 12 ) );
-		UIManager.put( "ScrollPane.width", new Integer( 12 ) );
+		UIManager.put( "ScrollBar.width", Integer.valueOf( 12 ) );
+		UIManager.put( "ScrollPane.width", Integer.valueOf( 12 ) );
 
 		UIManager.put( "PopupMenu.font", f );
 		UIManager.put( "Menu.font", f );
@@ -520,7 +519,7 @@ implements ItemListener {
 		UIManager.put( "MenuItem.disabledBackground", c );
 		//UIManager.put("MenuItem.selectionBackground", c );
 
-		// UIManager.put("MenuItem.borderPainted", new Boolean(false) );
+		// UIManager.put("MenuItem.borderPainted", Boolean.valueOf(false) );
 		UIManager.put( "MenuItem.margin", new Insets( 0, 0, 0, 0 ) );
 
 		UIManager.put( "ComboBox.background", c );
@@ -535,7 +534,6 @@ implements ItemListener {
 		frame.getContentPane().add( applet, BorderLayout.CENTER );
 
 		applet.init();
-		applet.start();
 		applet.setFrame( frame );
 
 		frame.setTitle( applet.getAppletInfo() + " (Version:"+applet.version+")");
@@ -1349,12 +1347,12 @@ implements ItemListener {
 	}
 
 	void imgLabel_mouseClicked(MouseEvent e) {
-		try{
-			this.getAppletContext().showDocument(new URL(OPENSHA_WEBSITE),"new_mag_win");
-		}catch(java.net.MalformedURLException ee){
-			JOptionPane.showMessageDialog(this,new String("No Internet Connection Available"),
-					"Error Connecting to Internet",JOptionPane.OK_OPTION);
-		}
+//		try{
+//			this.getAppletContext().showDocument(new URL(OPENSHA_WEBSITE),"new_mag_win");
+//		}catch(java.net.MalformedURLException ee){
+//			JOptionPane.showMessageDialog(this,new String("No Internet Connection Available"),
+//					"Error Connecting to Internet",JOptionPane.OK_OPTION);
+//		}
 	}
 
 }

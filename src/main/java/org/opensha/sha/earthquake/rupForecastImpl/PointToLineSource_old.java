@@ -194,7 +194,7 @@ public class PointToLineSource_old extends ProbEqkSource implements java.io.Seri
 
 				// add the rupture to the list and save the rate in case the duration changes
 				probEqkRuptureList.add(rupture);
-				rates.add(new Double(rate*weight));
+				rates.add(Double.valueOf(rate*weight));
 			}
 		}
 	}

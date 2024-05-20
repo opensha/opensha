@@ -26,7 +26,7 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum PRVI25_DeformationModels implements RupSetDeformationModel {
+public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 	GEOLOGIC("Geologic Preferred", "Geologic", 0.9) {
 		@Override
 		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
@@ -90,7 +90,7 @@ public enum PRVI25_DeformationModels implements RupSetDeformationModel {
 	private String shortName;
 	private double weight;
 
-	private PRVI25_DeformationModels(String name, String shortName, double weight) {
+	private PRVI25_CrustalDeformationModels(String name, String shortName, double weight) {
 		this.name = name;
 		this.shortName = shortName;
 		this.weight = weight;
@@ -118,7 +118,7 @@ public enum PRVI25_DeformationModels implements RupSetDeformationModel {
 
 	@Override
 	public boolean isApplicableTo(RupSetFaultModel faultModel) {
-		return faultModel instanceof PRVI25_FaultModels;
+		return faultModel instanceof PRVI25_CrustalFaultModels;
 	}
 
 	@Override
@@ -245,7 +245,7 @@ public enum PRVI25_DeformationModels implements RupSetDeformationModel {
 					+") subsection slip rate standard deviations to the floor value of "+(float)STD_DEV_FLOOR+" (mm/yr)");
 	}
 	
-	private void applyCreepDefaults(List<? extends FaultSection> subSects) {
+	static void applyCreepDefaults(List<? extends FaultSection> subSects) {
 		double creepFract = CREEP_FRACT_DEFAULT;
 		double aseis, coupling;
 		if (creepFract < ASEIS_CEILING) {
@@ -264,8 +264,8 @@ public enum PRVI25_DeformationModels implements RupSetDeformationModel {
 	private static final DecimalFormat pDF = new DecimalFormat("0.00%");
 	
 	public static void main(String[] args) throws IOException {
-		PRVI25_FaultModels fm = PRVI25_FaultModels.PRVI_FM_INITIAL;
-		for (PRVI25_DeformationModels dm : values()) {
+		PRVI25_CrustalFaultModels fm = PRVI25_CrustalFaultModels.PRVI_FM_INITIAL;
+		for (PRVI25_CrustalDeformationModels dm : values()) {
 			List<? extends FaultSection> subSects = dm.build(fm);
 			GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+fm.getFilePrefix()+"_"+dm.getFilePrefix()+"_subSects.geojson"), subSects);
 		}

@@ -75,35 +75,38 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	
 	// or for a quad surface
 	private QuadSurfaceCache quadCache;
+	
+	private boolean proxyFault = false;
 
 	public String getShortName() {
 		return this.shortName;
 	}
 
-	public void setFaultSectionPrefData(FaultSection faultSectionPrefData) {
-		sectionId = faultSectionPrefData.getSectionId();
-		sectionName= faultSectionPrefData.getSectionName();
-		parentSectionId = faultSectionPrefData.getParentSectionId();
-		parentSectionName = faultSectionPrefData.getParentSectionName();
-		if (faultSectionPrefData instanceof ShortNamed) {
-			shortName = ((ShortNamed)faultSectionPrefData).getShortName();
+	public void setFaultSectionPrefData(FaultSection faultSection) {
+		sectionId = faultSection.getSectionId();
+		sectionName= faultSection.getSectionName();
+		parentSectionId = faultSection.getParentSectionId();
+		parentSectionName = faultSection.getParentSectionName();
+		if (faultSection instanceof ShortNamed) {
+			shortName = ((ShortNamed)faultSection).getShortName();
 		} else {
-			shortName = faultSectionPrefData.getName();
+			shortName = faultSection.getName();
 		}
-		aveLongTermSlipRate= faultSectionPrefData.getOrigAveSlipRate();
-		slipRateStdDev=faultSectionPrefData.getOrigSlipRateStdDev();
-		aveDip= faultSectionPrefData.getAveDip();
-		aveRake= faultSectionPrefData.getAveRake();
-		aveUpperDepth= faultSectionPrefData.getOrigAveUpperDepth();
-		aveLowerDepth= faultSectionPrefData.getAveLowerDepth();
-		aseismicSlipFactor= faultSectionPrefData.getAseismicSlipFactor();
-		couplingCoeff= faultSectionPrefData.getCouplingCoeff();
-		faultTrace= faultSectionPrefData.getFaultTrace();
-		dipDirection= faultSectionPrefData.getDipDirection();
-		dateOfLastEventMillis = faultSectionPrefData.getDateOfLastEvent();
-		slipInLastEvent = faultSectionPrefData.getSlipInLastEvent();
-		connector = faultSectionPrefData.isConnector();
-		zonePolygon = faultSectionPrefData.getZonePolygon();
+		aveLongTermSlipRate= faultSection.getOrigAveSlipRate();
+		slipRateStdDev=faultSection.getOrigSlipRateStdDev();
+		aveDip= faultSection.getAveDip();
+		aveRake= faultSection.getAveRake();
+		aveUpperDepth= faultSection.getOrigAveUpperDepth();
+		aveLowerDepth= faultSection.getAveLowerDepth();
+		aseismicSlipFactor= faultSection.getAseismicSlipFactor();
+		couplingCoeff= faultSection.getCouplingCoeff();
+		faultTrace= faultSection.getFaultTrace();
+		dipDirection= faultSection.getDipDirection();
+		dateOfLastEventMillis = faultSection.getDateOfLastEvent();
+		slipInLastEvent = faultSection.getSlipInLastEvent();
+		connector = faultSection.isConnector();
+		zonePolygon = faultSection.getZonePolygon();
+		proxyFault = faultSection.isProxyFault();
 	}
 
 	public String toString() {
@@ -699,5 +702,10 @@ public class FaultSectionPrefData implements FaultSection, java.io.Serializable,
 	@Override
 	public boolean equals(Object obj) {
 		return FaultSection.equals(this, obj);
+	}
+
+	@Override
+	public boolean isProxyFault() {
+		return proxyFault;
 	}
 }

@@ -38,7 +38,7 @@ public class DeformationModel {
 	 * @param faultSectionId
 	 */
 	public void addFaultSection(int faultSectionId) {
-		this.faultSectionIdList.add(new Integer(faultSectionId));
+		this.faultSectionIdList.add(Integer.valueOf(faultSectionId));
 	}
 
 	/**
@@ -56,7 +56,7 @@ public class DeformationModel {
 	 * @param slipRateEstimate
 	 */
 	public void setSlipRateEstimate(int faultSectionId, EstimateInstances slipRateEstimate) {
-		slipRatesList.put(new Integer(faultSectionId), slipRateEstimate);
+		slipRatesList.put(Integer.valueOf(faultSectionId), slipRateEstimate);
 	}
 
 	/**
@@ -66,7 +66,7 @@ public class DeformationModel {
 	 * @param aseismicSlipFactorEstimate
 	 */
 	public void setAseismicSlipFactorEstimate(int faultSectionId, EstimateInstances aseismicSlipFactorEstimate) {
-		aseismicSlipList.put(new Integer(faultSectionId), aseismicSlipFactorEstimate);
+		aseismicSlipList.put(Integer.valueOf(faultSectionId), aseismicSlipFactorEstimate);
 	}
 
 	/**
@@ -75,7 +75,7 @@ public class DeformationModel {
 	 * @return
 	 */
 	public EstimateInstances getSlipRateEstimate(int faultSectionId) {
-		return (EstimateInstances)slipRatesList.get(new Integer(faultSectionId));
+		return (EstimateInstances)slipRatesList.get(Integer.valueOf(faultSectionId));
 	}
 
 	/**
@@ -84,7 +84,7 @@ public class DeformationModel {
 	 * @return
 	 */
 	public EstimateInstances getAseismicSlipEstimate(int faultSectionId) {
-		return (EstimateInstances)aseismicSlipList.get(new Integer(faultSectionId));
+		return (EstimateInstances)aseismicSlipList.get(Integer.valueOf(faultSectionId));
 	}
 
 }

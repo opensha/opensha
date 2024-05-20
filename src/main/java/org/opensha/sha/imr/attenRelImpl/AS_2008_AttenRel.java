@@ -194,7 +194,7 @@ public class AS_2008_AttenRel extends AttenuationRelationship implements
 		initSupportedIntensityMeasureParams();
 		indexFromPerHashMap = new HashMap();
 		for (int i = 2; i < per.length; i++) {
-			indexFromPerHashMap.put(new Double(per[i]), new Integer(i));
+			indexFromPerHashMap.put(Double.valueOf(per[i]), Integer.valueOf(i));
 		}
 
 		initEqkRuptureParams();
@@ -587,7 +587,7 @@ public class AS_2008_AttenRel extends AttenuationRelationship implements
 		// Create saParam (& its periodParam and dampingParam):
 		DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint();
 		for (int i = 2; i < per.length; i++) {
-			periodConstraint.addDouble(new Double(per[i]));
+			periodConstraint.addDouble(Double.valueOf(per[i]));
 		}
 		periodConstraint.setNonEditable();
 		saPeriodParam = new PeriodParam(periodConstraint);

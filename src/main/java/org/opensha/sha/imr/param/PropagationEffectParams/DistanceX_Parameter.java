@@ -46,9 +46,9 @@ public class DistanceX_Parameter extends AbstractDoublePropEffectParam {
     /** Hardcoded info string */
     private final static String INFO = "Horizontal distance to top edge of rupture, measured ppd to strike; neg valuse are on the foot wall";
     /** Hardcoded min allowed value */
-    private final static Double MIN = new Double(-1*Double.MAX_VALUE);
+    private final static Double MIN = Double.valueOf(-1*Double.MAX_VALUE);
     /** Hardcoded max allowed value */
-    private final static Double MAX = new Double(Double.MAX_VALUE);
+    private final static Double MAX = Double.valueOf(Double.MAX_VALUE);
 
 
     /**
@@ -159,7 +159,7 @@ public class DistanceX_Parameter extends AbstractDoublePropEffectParam {
         Double val = null, val2 = null;
         if( value != null ) {
             val = ( Double ) this.value;
-            val2 = new Double( val.doubleValue() );
+            val2 = Double.valueOf( val.doubleValue() );
         }
 
         DistanceX_Parameter param = new DistanceX_Parameter(  );

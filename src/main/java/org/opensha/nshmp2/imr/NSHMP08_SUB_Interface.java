@@ -494,7 +494,7 @@ public class NSHMP08_SUB_Interface extends AttenuationRelationship implements
 //			this.eqkRupture = propEffect.getEqkRupture();
 //			vs30Param.setValue((Double) site.getParameter(
 //				Vs30_Param.NAME).getValue());
-//			magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+//			magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
 //			propEffect.setParamValue(distanceRupParam);
 //		}
 //

@@ -14,8 +14,8 @@ public class DepthTo1pt0kmPerSecParam extends WarningDoubleParameter {
 	public final static String NAME = "Depth 1.0 km/sec";
 	public final static String UNITS = "m";
 	public final static String INFO = "The depth to where shear-wave velocity = 1.0 km/sec";
-	public final static Double MIN = new Double(0.0);
-	public final static Double MAX = new Double(30000.0);
+	public final static Double MIN = Double.valueOf(0.0);
+	public final static Double MAX = Double.valueOf(30000.0);
 
 
 	/**

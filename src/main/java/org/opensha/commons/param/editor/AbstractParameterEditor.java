@@ -34,6 +34,8 @@ public abstract class AbstractParameterEditor<E> extends LabeledBorderPanel impl
 	protected final static Border CONST_BORDER = BorderFactory.createLineBorder( Color.blue, 1 );
 	protected final static Border FOCUS_BORDER = BorderFactory.createLineBorder( Color.orange, 1 );
 	protected final static Border ETCHED = BorderFactory.createEtchedBorder();
+	
+	private boolean showDisabledStatusInTitle = false;
 
 //	public static Font DEFAULT_LABEL_FONT = new Font( "SansSerif", Font.BOLD, 12 );
 //	public static Color FORE_COLOR = new Color( 80, 80, 140 );
@@ -116,6 +118,10 @@ public abstract class AbstractParameterEditor<E> extends LabeledBorderPanel impl
 	 * @return
 	 */
 	public abstract boolean isParameterSupported(Parameter<E> param);
+	
+	public void setShowDisabledStatusInTitle(boolean showDisabledStatusInTitle) {
+		this.showDisabledStatusInTitle = showDisabledStatusInTitle;
+	}
 
 	protected void updateTitle() {
 		String label;
@@ -131,7 +137,13 @@ public abstract class AbstractParameterEditor<E> extends LabeledBorderPanel impl
 					label += " (" + units + ")";
 				label += ':';
 			}
+			if (showDisabledStatusInTitle && !isEnabled()) {
+				label = "(disabled) "+label;
+//				System.out.println("Updated label: "+label);
+			}
 		}
+//		System.out.println("Updated title: "+label+", showDisabledStatusInTitle="
+//				+showDisabledStatusInTitle+", isEnabled()="+isEnabled());
 		super.setTitle(label);
 	}
 
@@ -167,6 +179,9 @@ public abstract class AbstractParameterEditor<E> extends LabeledBorderPanel impl
 				this.add(widget);
 			}
 		}
+//		System.out.println("Refreshing "+param.getName());
+		if (showDisabledStatusInTitle)
+			updateTitle();
 		widget.validate();
 		this.validate();
 		super.setToolTipText(getLabelToolTipText());

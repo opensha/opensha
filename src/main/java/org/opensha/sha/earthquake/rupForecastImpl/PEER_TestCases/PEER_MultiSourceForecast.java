@@ -94,11 +94,11 @@ public class PEER_MultiSourceForecast extends AbstractERF{
   public final static String GRID_PARAM_UNITS =  "km";
   private final static double GRID_PARAM_MIN = 0.001;
   private final static double GRID_PARAM_MAX = 100;
-  private Double DEFAULT_GRID_VAL = new Double(1);
+  private Double DEFAULT_GRID_VAL = Double.valueOf(1);
 
   // rupture-offset parameter stuff
   public final static String OFFSET_PARAM_NAME =  "Offset";
-  private Double DEFAULT_OFFSET_VAL = new Double(1);
+  private Double DEFAULT_OFFSET_VAL = Double.valueOf(1);
   public final static String OFFSET_PARAM_UNITS = "kms";
   private final static double OFFSET_PARAM_MIN = .01;
   private final static double OFFSET_PARAM_MAX = 10000;
@@ -110,7 +110,7 @@ public class PEER_MultiSourceForecast extends AbstractERF{
   public final static String DEPTH_PARAM_UNITS = "km";
   private final static double DEPTH_PARAM_MIN = 0;
   private final static double DEPTH_PARAM_MAX = 30;
-  private final static Double DEPTH_PARAM_DEFAULT = new Double(5);
+  private final static Double DEPTH_PARAM_DEFAULT = Double.valueOf(5);
 
 
   // list of area forecast locations

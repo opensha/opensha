@@ -210,8 +210,8 @@ public class PrefFaultSectionDataDB_DAO  implements java.io.Serializable {
 	 */
 	public FaultSectionPrefData getFaultSectionPrefData(int faultSectionId) {
 		String condition = " where "+SECTION_ID+"="+faultSectionId;
-		if(cachedSections.containsKey(new Integer(faultSectionId))) {
-			return (FaultSectionPrefData)cachedSections.get(new Integer(faultSectionId));
+		if(cachedSections.containsKey(Integer.valueOf(faultSectionId))) {
+			return (FaultSectionPrefData)cachedSections.get(Integer.valueOf(faultSectionId));
 		}
 		ArrayList<FaultSectionPrefData> faultSectionsList = query(condition);	
 		FaultSectionPrefData faultSectionPrefData = null;		
@@ -314,7 +314,7 @@ public class PrefFaultSectionDataDB_DAO  implements java.io.Serializable {
 				
 				faultSectionPrefData.setFaultTrace(faultTrace);
 				faultSectionsList.add(faultSectionPrefData);
-				cachedSections.put(new Integer(faultSectionPrefData.getSectionId()), faultSectionPrefData);
+				cachedSections.put(Integer.valueOf(faultSectionPrefData.getSectionId()), faultSectionPrefData);
 			}
 			rs.close();
 		} catch(SQLException e) { throw new QueryException(e.getMessage()); }

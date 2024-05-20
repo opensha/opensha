@@ -44,33 +44,33 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 	public final static String MAG_PARAM_NAME = "Magnitude";
 	private final static String MAG_PARAM_INFO = "The  magnitude of the rupture";
 	private final static String MAG_PARAM_UNITS = null;
-	private Double MAG_PARAM_MIN = new Double(0);
-	private Double MAG_PARAM_MAX = new Double(10);
-	private Double MAG_PARAM_DEFAULT = new Double(7.0);
+	private Double MAG_PARAM_MIN = Double.valueOf(0);
+	private Double MAG_PARAM_MAX = Double.valueOf(10);
+	private Double MAG_PARAM_DEFAULT = Double.valueOf(7.0);
 
 	// rake parameter stuff
 	public final static String RAKE_PARAM_NAME = "Rake";
 	private final static String RAKE_PARAM_INFO =
 		"The rake of the rupture (direction of slip)";
 	private final static String RAKE_PARAM_UNITS = "degrees";
-	private Double RAKE_PARAM_MIN = new Double( -180);
-	private Double RAKE_PARAM_MAX = new Double(180);
-	private Double RAKE_PARAM_DEFAULT = new Double(0.0);
+	private Double RAKE_PARAM_MIN = Double.valueOf( -180);
+	private Double RAKE_PARAM_MAX = Double.valueOf(180);
+	private Double RAKE_PARAM_DEFAULT = Double.valueOf(0.0);
 
 	// dip parameter stuff
 	public final static String DIP_PARAM_NAME = "Dip";
 	private final static String DIP_PARAM_INFO = "The dip of the rupture surface";
 	private final static String DIP_PARAM_UNITS = "degrees";
-	private Double DIP_PARAM_MIN = new Double(0);
-	private Double DIP_PARAM_MAX = new Double(90);
-	private Double DIP_PARAM_DEFAULT = new Double(90);
+	private Double DIP_PARAM_MIN = Double.valueOf(0);
+	private Double DIP_PARAM_MAX = Double.valueOf(90);
+	private Double DIP_PARAM_DEFAULT = Double.valueOf(90);
 
 	// the source-location parameters (this should be a location parameter)
-	private Double SRC_LAT_PARAM_DEFAULT = new Double(35.71);
+	private Double SRC_LAT_PARAM_DEFAULT = Double.valueOf(35.71);
 
-	private Double SRC_LON_PARAM_DEFAULT = new Double( -121.1);
+	private Double SRC_LON_PARAM_DEFAULT = Double.valueOf( -121.1);
 
-	private Double SRC_DEPTH_PARAM_DEFAULT = new Double(7.6);
+	private Double SRC_DEPTH_PARAM_DEFAULT = Double.valueOf(7.6);
 
 	//Param to select "kind of rupture", finite or point rupture
 	public final static String SRC_TYP_PARAM_NAME = "Rupture Type";
@@ -110,7 +110,7 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 	private LocationParameter locationParam;
 	private LocationParameter hypocenterLocationParam;
 	private BooleanParameter showHypocenterLocationParam = new
-	BooleanParameter(SHOW_HYPOCENTER_LOCATION_PARAM_NAME,new Boolean(false));
+	BooleanParameter(SHOW_HYPOCENTER_LOCATION_PARAM_NAME,Boolean.valueOf(false));
 	private SimpleFaultParameter faultParam;
 
 	//boolean to check if any parameter has been changed
@@ -260,7 +260,7 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 			parameterList.addParameter(hypocenterLocationParam);
 		if (listEditor != null) {
 			listEditor.getParameterEditor(this.SHOW_HYPOCENTER_LOCATION_PARAM_NAME).
-			setValue(new Boolean(false));
+			setValue(Boolean.valueOf(false));
 			listEditor.refreshParamEditor();
 		}
 		//}

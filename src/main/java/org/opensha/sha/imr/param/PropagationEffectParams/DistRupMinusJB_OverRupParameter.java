@@ -37,9 +37,9 @@ public class DistRupMinusJB_OverRupParameter extends AbstractDoublePropEffectPar
     /** Hardcoded info string */
     public final static String INFO = "(DistanceRup - DistanceJB)/DistanceRup";
     /** Hardcoded min allowed value */
-    private final static Double MIN = new Double(0.0);
+    private final static Double MIN = Double.valueOf(0.0);
     /** Hardcoded max allowed value */
-    private final static Double MAX = new Double(1.0);
+    private final static Double MAX = Double.valueOf(1.0);
 
 
     /** No-Arg constructor that calls init(). No constraint so all values are allowed.  */
@@ -137,10 +137,10 @@ public class DistRupMinusJB_OverRupParameter extends AbstractDoublePropEffectPar
             }
             totalDist = Math.sqrt( minRupDistance );
             if(totalDist == 0)
-              this.setValueIgnoreWarning( new Double( 0 ));
+              this.setValueIgnoreWarning( Double.valueOf( 0 ));
             else{
               double fract = (totalDist - minHorzDistance) / totalDist;
-              this.setValueIgnoreWarning(new Double(fract));
+              this.setValueIgnoreWarning(Double.valueOf(fract));
             }
         }
         else this.value = null;
@@ -182,7 +182,7 @@ public class DistRupMinusJB_OverRupParameter extends AbstractDoublePropEffectPar
         Double val = null, val2 = null;
         if( value != null ) {
             val = ( Double ) this.value;
-            val2 = new Double( val.doubleValue() );
+            val2 = Double.valueOf( val.doubleValue() );
         }
 
         DistRupMinusJB_OverRupParameter param = new DistRupMinusJB_OverRupParameter(  );

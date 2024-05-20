@@ -186,6 +186,17 @@ public enum AttenRelRef implements AttenRelSupplier {
 		}
 		
 	},
+	
+	AG_2020_GLOBAL(null, "AG (2020) Global Interfase",
+			"AG2020", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.AG_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
+		}
+		
+	},
 
 	/** Interpolation between periods using BA. */
 	BA_2008_INTERP(InterpolatedBA_2008_AttenRel.class,

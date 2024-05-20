@@ -50,7 +50,7 @@ public class NGA08_Site_EqkRup_Tests {
 	// hard-coded test values (just make sure they aren't equal to defaults in atten relationships)
 	double mag=6.345, vs30=551.2, depth2pt5=8.134, depth1pt0=1111.1;
 	String vs30_type = Vs30_TypeParam.VS30_TYPE_INFERRED;
-	Boolean aftershock = new Boolean(false);
+	Boolean aftershock = Boolean.valueOf(false);
 	
 		
 	double[] distX;
@@ -236,10 +236,10 @@ public class NGA08_Site_EqkRup_Tests {
 		eqkRup.setMag(mag);
 		
 		// set site parameters
-		site.getParameter(Vs30_Param.NAME).setValue(new Double(vs30));
+		site.getParameter(Vs30_Param.NAME).setValue(Double.valueOf(vs30));
 		site.getParameter(Vs30_TypeParam.NAME).setValue(vs30_type);
-		site.getParameter(DepthTo2pt5kmPerSecParam.NAME).setValue(new Double(depth2pt5));
-		site.getParameter(DepthTo1pt0kmPerSecParam.NAME).setValue(new Double(depth1pt0));
+		site.getParameter(DepthTo2pt5kmPerSecParam.NAME).setValue(Double.valueOf(depth2pt5));
+		site.getParameter(DepthTo1pt0kmPerSecParam.NAME).setValue(Double.valueOf(depth1pt0));
 
 		int counter=0;
 		

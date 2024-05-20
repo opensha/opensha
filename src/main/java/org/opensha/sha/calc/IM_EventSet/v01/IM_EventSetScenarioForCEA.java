@@ -68,25 +68,25 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 	public void  createSimpleFaultParam(SimpleFaultParameter faultParameter){
 		
 		ArrayList lats = new ArrayList();
-		lats.add(new Double(33.875));
-		lats.add(new Double( (33.933+ 33.966)/2));
-		lats.add(new Double(34.039));
+		lats.add(Double.valueOf(33.875));
+		lats.add(Double.valueOf( (33.933+ 33.966)/2));
+		lats.add(Double.valueOf(34.039));
 		
 		ArrayList lons = new ArrayList();
-		lons.add(new Double(-117.873));
-		lons.add(new Double((-118.124-118.135)/2));
-		lons.add(new Double(-118.334));
+		lons.add(Double.valueOf(-117.873));
+		lons.add(Double.valueOf((-118.124-118.135)/2));
+		lons.add(Double.valueOf(-118.334));
 		
 		double dip = 27.5;
 		ArrayList dips = new ArrayList();
-		dips.add(new Double(dip));
+		dips.add(Double.valueOf(dip));
 		
 		double dow = 27.00;
 		double lowDepth = dow*Math.sin(dip);
 		
 		ArrayList depths = new ArrayList();
-		depths.add(new Double(0.0));
-		depths.add(new Double(lowDepth));
+		depths.add(Double.valueOf(0.0));
+		depths.add(Double.valueOf(lowDepth));
 		faultParameter.initLatLonParamList();
 		faultParameter.initDipParamList();
 		faultParameter.initDepthParamList();
@@ -229,7 +229,7 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 	      //adding the site Params from the CVM, if site is out the range of CVM then it
 	      //sets the site with whatever site Parameter Value user has choosen in the application
 	      SiteDataValue<Double> val = new SiteDataValue<Double>(SiteData.TYPE_VS30,
-	    		  SiteData.TYPE_FLAG_INFERRED, new Double(vs30));
+	    		  SiteData.TYPE_FLAG_INFERRED, Double.valueOf(vs30));
 	      boolean flag = siteTranslator.setParameterValue(tempParam, val);
 
 	      if (!flag) {
@@ -272,7 +272,7 @@ public class IM_EventSetScenarioForCEA implements ParameterChangeWarningListener
 						String  saName = st.nextToken().trim();
 						period = Double.parseDouble(st.nextToken().trim());
 						attenRel.setIntensityMeasure(saName);
-						attenRel.getParameter(PeriodParam.NAME).setValue(new Double(period));
+						attenRel.getParameter(PeriodParam.NAME).setValue(Double.valueOf(period));
 					}
 					
 					if(period ==-1)
