@@ -41,7 +41,7 @@ public class PRVI25_CrustalRandomlySampledDeformationModels implements RandomlyS
 	private double weight;
 	private long seed;
 	
-	private static final String PATH = "/data/erf/prvi25/def_models/synth_dm_pdfs";
+	private static final String PATH = "/data/erf/prvi25/def_models/crustal/synth_dm_pdfs";
 	private static Map<Integer, DiscretizedFunc> pdfs = null;
 	private static Map<Integer, IntegerPDF_FunctionSampler> pdfSamplers = null;
 
