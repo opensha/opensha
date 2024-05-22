@@ -103,9 +103,33 @@ public class RupCartoonGenerator {
 	
 	private static boolean write_pdfs = false;
 	
+	public interface SectionCharacteristicsFunction {
+		List<PlotCurveCharacterstics> getChars(FaultSection section,
+											   PlotCurveCharacterstics traceChar,
+											   PlotCurveCharacterstics outlineChar);
+	}
+
+	/**
+	 * Override this function to change section characteristics based on the section.
+	 * This function is called in plotSection()
+	 */
+	public static SectionCharacteristicsFunction sectCharFun = (section, traceChar, outlineChar) -> {
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		chars.add(traceChar);
+		chars.add(outlineChar);
+		chars.add(null);
+		return chars;
+	};
+
 	private static void plotSection(FaultSection sect, List<XY_DataSet> funcs,
 			List<PlotCurveCharacterstics> chars, PlotCurveCharacterstics traceChar,
 			PlotCurveCharacterstics outlineChar) {
+
+		List<PlotCurveCharacterstics> charOverrides = sectCharFun.getChars(sect, traceChar, outlineChar);
+		traceChar = charOverrides.get(0);
+		outlineChar = charOverrides.get(1);
+		PlotCurveCharacterstics fillChar = charOverrides.get(2);
+
 		if (sect.getAveDip() < 90d) {
 			RuptureSurface surf = sect.getFaultSurface(1d, false, false);
 			LocationList perimeter = surf.getPerimeter();
@@ -113,15 +137,23 @@ public class RupCartoonGenerator {
 			for (Location loc : perimeter)
 				xy.set(loc.getLongitude(), loc.getLatitude());
 			xy.set(xy.get(0));
-			funcs.add(xy);
-			chars.add(outlineChar);
+			if (fillChar != null) {
+				funcs.add(xy);
+				chars.add(fillChar);
+			}
+			if (outlineChar != null) {
+				funcs.add(xy);
+				chars.add(outlineChar);
+			}
 		}
-		
-		DefaultXY_DataSet xy = new DefaultXY_DataSet();
-		for (Location loc : sect.getFaultTrace())
-			xy.set(loc.getLongitude(), loc.getLatitude());
-		funcs.add(xy);
-		chars.add(traceChar);
+
+		if (traceChar != null) {
+			DefaultXY_DataSet xy = new DefaultXY_DataSet();
+			for (Location loc : sect.getFaultTrace())
+				xy.set(loc.getLongitude(), loc.getLatitude());
+			funcs.add(xy);
+			chars.add(traceChar);
+		}
 	}
 	
 	private static List<XY_DataSet> line(FaultSection from, FaultSection to, boolean arrow, double lenScale) {
