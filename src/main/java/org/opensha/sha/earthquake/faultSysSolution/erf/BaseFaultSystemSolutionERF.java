@@ -602,7 +602,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			}
 			
 			src = new FaultRuptureSource(rupMFDcorrected, 
-					rupSet.getSurfaceForRupture(fltSystRupIndex, faultGridSpacing),
+					rupSet.getSurfaceForRupture(fltSystRupIndex, faultGridSpacing, aseisReducesArea),
 					rupSet.getAveRakeForRup(fltSystRupIndex), timeSpan.getDuration(), isPoisson);
 		}
 		

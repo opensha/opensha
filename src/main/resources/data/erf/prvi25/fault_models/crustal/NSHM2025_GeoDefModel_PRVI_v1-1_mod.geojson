@@ -306,7 +306,7 @@
       "properties": {
         "FaultID": 4,
         "CountryTer": "PR",
-        "Rake": -45,
+        "Rake": -135,
         "FaultName": "Great Southern Puerto Rico",
         "UpDepth": 0.0,
         "LowDepth": 15.0,
@@ -1113,7 +1113,7 @@
       "properties": {
         "FaultID": 15,
         "CountryTer": "Offshore",
-        "Rake": -45,
+        "Rake": 0,
         "FaultName": "Bunce 1",
         "UpDepth": 0.0,
         "LowDepth": 5.0,
@@ -1170,7 +1170,7 @@
       "properties": {
         "FaultID": 16,
         "CountryTer": "Offshore",
-        "Rake": -45,
+        "Rake": 0,
         "FaultName": "Bunce 2",
         "UpDepth": 0.0,
         "LowDepth": 5.0,
@@ -1231,7 +1231,7 @@
       "properties": {
         "FaultID": 17,
         "CountryTer": "Offshore",
-        "Rake": -45,
+        "Rake": 0,
         "FaultName": "Bunce 3",
         "UpDepth": 0.0,
         "LowDepth": 7.0,
@@ -1304,7 +1304,7 @@
       "properties": {
         "FaultID": 18,
         "CountryTer": "Offshore",
-        "Rake": -45,
+        "Rake": 0,
         "FaultName": "Bunce 4",
         "UpDepth": 0.0,
         "LowDepth": 10.0,
@@ -1361,7 +1361,7 @@
       "properties": {
         "FaultID": 19,
         "CountryTer": "Offshore",
-        "Rake": -45,
+        "Rake": 0,
         "FaultName": "Bunce 5",
         "UpDepth": 0.0,
         "LowDepth": 5.0,
@@ -1458,7 +1458,7 @@
       "properties": {
         "FaultID": 20,
         "CountryTer": "Offshore",
-        "Rake": -45,
+        "Rake": 0,
         "FaultName": "Bunce 6",
         "UpDepth": 0.0,
         "LowDepth": 7.0,
@@ -1515,7 +1515,7 @@
       "properties": {
         "FaultID": 21,
         "CountryTer": "Offshore",
-        "Rake": -45,
+        "Rake": 0,
         "FaultName": "Bunce 7",
         "UpDepth": 0.0,
         "LowDepth": 5.0,
@@ -1612,7 +1612,7 @@
       "properties": {
         "FaultID": 22,
         "CountryTer": "Offshore",
-        "Rake": -45,
+        "Rake": 0,
         "FaultName": "Bunce 8",
         "UpDepth": 0.0,
         "LowDepth": 5.0,
