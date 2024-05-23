@@ -4,7 +4,10 @@ import java.awt.Color;
 import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -12,6 +15,8 @@ import java.util.Map;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
+import org.opensha.commons.data.CSVReader;
+import org.opensha.commons.data.CSVWriter;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -26,8 +31,12 @@ import org.opensha.commons.geo.json.Geometry;
 import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
+import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionBranchAverager;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
@@ -38,7 +47,10 @@ import com.google.common.base.Preconditions;
  * This class discretized fault polygons into proxy fault sections spanning the polygon and generally following the
  * strike of (and keeping other properties from) the proxy fault.
  */
-public class ProxyFaultSections implements ArchivableModule {
+public class ProxyFaultSections implements ArchivableModule, BranchAverageableModule<ProxyFaultSections> {
+	
+	public static final String PROXY_SECTS_FILE_NAME = "proxy_fault_sections.geojson";
+	public static final String PROXY_RUP_SECTS_FILE_NAME = "proxy_indices.csv";
 	
 	private List<? extends FaultSection> proxySects;
 	private Map<Integer, List<List<Integer>>> proxyRupSectIndices;
@@ -86,8 +98,6 @@ public class ProxyFaultSections implements ArchivableModule {
 				
 				double traceLen = trace.getTraceLength();
 				LocationVector traceVect = LocationUtils.vector(trace.first(), trace.last());
-				// TODO, shouldn't need to actually keep the resampled trace
-				int numSamplesAlong = Integer.max(500, (int)(traceLen*traceBufLengthsAlongStrike*10));
 				
 				double maxTraceOrWidth = traceLen;
 				if (sect.getAveDip() < 90d && sect.getOrigDownDipWidth() > 0d)
@@ -120,21 +130,52 @@ public class ProxyFaultSections implements ArchivableModule {
 					extended.addAll(relocatedTrace);
 					extended.add(LocationUtils.location(relocatedTrace.last(),
 							traceVect.getAzimuthRad(), traceLen*traceBufLengthsAlongStrike));
-					FaultTrace resampled = FaultUtils.resampleTrace(extended, numSamplesAlong);
-					int firstIndexInside = -1;
-					int lastIndexInside = -1;
-					for (int i=0; i<resampled.size(); i++) {
-						Location loc = resampled.get(i);
-						if (poly.contains(loc)) {
-							if (firstIndexInside < 0)
-								firstIndexInside = i;
-							lastIndexInside = i;
-						}
-					}
-					Preconditions.checkState(lastIndexInside > firstIndexInside);
+					
 					FaultTrace proxyTrace = new FaultTrace(null);
-					for (int i=firstIndexInside; i<=lastIndexInside; i++)
-						proxyTrace.add(resampled.get(i));
+					for (int i=0; i<extended.size(); i++) {
+						Location loc = extended.get(i);
+						
+						if (i > 0) {
+							// add any points between the previous one and this one that cross the boundary
+							Location prev = extended.get(i-1);
+							FaultTrace seg = new FaultTrace(null);
+							seg.add(prev);
+							seg.add(loc);
+							int numSamples = Integer.max(100, (int)(seg.getTraceLength()*10d));
+							FaultTrace resampled = FaultUtils.resampleTrace(seg, numSamples);
+							for (int j=1; j<resampled.size(); j++) {
+								Location sample1 = resampled.get(j-1);
+								Location sample2 = resampled.get(j);
+								if (poly.contains(sample1) != poly.contains(sample2)) {
+									// crosses a boundary
+									// lets really narrow in on the location
+									FaultTrace seg2 = new FaultTrace(null);
+									seg2.add(sample1);
+									seg2.add(sample2);
+									FaultTrace resampled2 = FaultUtils.resampleTrace(seg2,
+											Integer.max(10, (int)(seg2.getTraceLength()*10d)));
+									boolean found = false;
+									for (int k=1; k<resampled2.size(); k++) {
+										Location resample1 = resampled2.get(k-1);
+										Location resample2 = resampled2.get(k);
+										if (poly.contains(resample1) != poly.contains(resample2)) {
+											if (poly.contains(resample1))
+												proxyTrace.add(resample1);
+											else
+												proxyTrace.add(resample2);
+											found = true;
+											break;
+										}
+									}
+									Preconditions.checkState(found);
+								}
+							}
+						}
+						
+						if (poly.contains(loc))
+							proxyTrace.add(loc);
+					}
+					Preconditions.checkState(proxyTrace.size() > 1);
 					proxyTraces.add(proxyTrace);
 				}
 				
@@ -162,10 +203,10 @@ public class ProxyFaultSections implements ArchivableModule {
 					int id = allProxySects.size();
 					String name = sect.getSectionName()+", Proxy "+p;
 					FeatureProperties myProxyProps = new FeatureProperties(proxyProps);
-					proxyProps.set(GeoJSONFaultSection.FAULT_ID, id);
-					proxyProps.set(GeoJSONFaultSection.FAULT_NAME, name);
-					proxyProps.set(GeoJSONFaultSection.PARENT_ID, sect.getSectionId());
-					proxyProps.set(GeoJSONFaultSection.PARENT_NAME, sect.getSectionName());
+					myProxyProps.set(GeoJSONFaultSection.FAULT_ID, id);
+					myProxyProps.set(GeoJSONFaultSection.FAULT_NAME, name);
+					myProxyProps.set(GeoJSONFaultSection.PARENT_ID, sect.getSectionId());
+					myProxyProps.set(GeoJSONFaultSection.PARENT_NAME, sect.getSectionName());
 					Feature proxyFeature = new Feature(id, geom, myProxyProps);
 					FaultSection proxySect = GeoJSONFaultSection.fromFeature(proxyFeature);
 					allProxySects.add(proxySect);
@@ -221,13 +262,28 @@ public class ProxyFaultSections implements ArchivableModule {
 	
 	private static double findFurtherstViableRelocatedTrace(FaultTrace trace, Region poly,
 			double azimuth, double maxDistAway, double minFract, DiscretizedFunc improvementWorthItFunc) {
-		EvenlyDiscretizedFunc distFractFunc = new EvenlyDiscretizedFunc(0d, maxDistAway, 500);
+		// first find the maximum distance to any containment using a coarse discretization
+		EvenlyDiscretizedFunc distFractFunc = new EvenlyDiscretizedFunc(0d, maxDistAway, 100);
 		
+		double maxCoarse = 0d;
 		for (int i=0; i<distFractFunc.size(); i++) {
 			double dist = distFractFunc.getX(i);
 			LocationVector vector = new LocationVector(azimuth, dist, 0d);
 			FaultTrace relocated = relocate(trace, vector);
-			distFractFunc.set(i, fractInside(relocated, poly));
+			double fract = fractInside(relocated, poly);
+			if (fract > 0d)
+				maxCoarse = dist;
+			distFractFunc.set(i, fract);
+		}
+		
+		// now resample just up to that distance
+		distFractFunc = new EvenlyDiscretizedFunc(0d, maxCoarse+1d, 100);
+		for (int i=0; i<distFractFunc.size(); i++) {
+			double dist = distFractFunc.getX(i);
+			LocationVector vector = new LocationVector(azimuth, dist, 0d);
+			FaultTrace relocated = relocate(trace, vector);
+			double fract = fractInside(relocated, poly);
+			distFractFunc.set(i, fract);
 		}
 		
 		double fractForRet = -1d;
@@ -291,23 +347,190 @@ public class ProxyFaultSections implements ArchivableModule {
 
 	@Override
 	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-		// TODO Auto-generated method stub
+		FileBackedModule.initEntry(zout, entryPrefix, PROXY_SECTS_FILE_NAME);
+		OutputStreamWriter writer = new OutputStreamWriter(zout);
+		GeoJSONFaultReader.writeFaultSections(writer, proxySects);
+		writer.flush();
+		zout.flush();
+		zout.closeEntry();
+		
+		FileBackedModule.initEntry(zout, entryPrefix, PROXY_RUP_SECTS_FILE_NAME);
+		CSVWriter csvWriter = new CSVWriter(zout, false);
+		buildRupSectsCSV(proxyRupSectIndices, csvWriter);
+		csvWriter.flush();
+		zout.closeEntry();
+	}
+	
+	public static void buildRupSectsCSV(Map<Integer, List<List<Integer>>> proxyRupSectIndices, CSVWriter writer) throws IOException {
+		int maxNumSects = 0;
+		for (List<List<Integer>> list : proxyRupSectIndices.values())
+			for (List<Integer> ids : list)
+				maxNumSects = Integer.max(maxNumSects, ids.size());
 
+		List<String> header = new ArrayList<>(List.of("Rupture Index", "Num Proxy Representations",
+				"Proxy Representation Index", "Num Sections", "Proxy Sect # 1"));
+
+		for (int s = 1; s < maxNumSects; s++)
+			header.add("# " + (s + 1));
+
+		writer.write(header);
+		
+		List<Integer> rupIndexes = new ArrayList<>(proxyRupSectIndices.keySet());
+		Collections.sort(rupIndexes);
+
+		for (int r : rupIndexes) {
+			List<List<Integer>> sectIDsList = proxyRupSectIndices.get(r);
+			int numProxies = sectIDsList.size();
+			
+			for (int p=0; p<numProxies; p++) {
+				List<Integer> sectIDs = sectIDsList.get(p);
+				List<String> line = new ArrayList<>(4 + sectIDs.size());
+
+				line.add(r + "");
+				line.add(numProxies + "");
+				line.add(p + "");
+				line.add(sectIDs.size() + "");
+				for (int s : sectIDs)
+					line.add(s + "");
+				writer.write(line);
+			}
+		}
 	}
 
 	@Override
 	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
-		// TODO Auto-generated method stub
+		// fault sections
+		List<GeoJSONFaultSection> sections = GeoJSONFaultReader.readFaultSections(
+				new InputStreamReader(FileBackedModule.getInputStream(zip, entryPrefix, PROXY_SECTS_FILE_NAME)));
+		for (int s=0; s<sections.size(); s++) {
+			FaultSection sect = sections.get(s);
+			Preconditions.checkState(sect.getSectionId() == s,
+					"Fault sections must be provided in order starting with ID=0");
+			Preconditions.checkState(sect.getParentSectionId() >= 0,
+					"All proxy faults should have their parent ID set (to the corresponding subsection)");
+		}
+		proxySects = sections;
+		
+		CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(zip, entryPrefix, PROXY_RUP_SECTS_FILE_NAME);
+		proxyRupSectIndices = loadRupSectsCSV(rupSectsCSV, sections.size());
+	}
+	
+	public static Map<Integer, List<List<Integer>>> loadRupSectsCSV(CSVReader rupSectsCSV, int numSections) {
+		Map<Integer, List<List<Integer>>> proxyRupSectIndices = new HashMap<>();
+		boolean shortSafe = numSections < Short.MAX_VALUE;
+		rupSectsCSV.read(); // skip header row
+		
+		while (true) {
+			CSVReader.Row csvRow = rupSectsCSV.read();
+			if (csvRow == null)
+				break;
+			int rupIndex = csvRow.getInt(0);
+			Preconditions.checkState(rupIndex >= 0,
+					"Bad rupIndex=%s", rupIndex);
+			int numProxies = csvRow.getInt(1);
+			Preconditions.checkState(numProxies > 0,
+					"Bad numProxies=%s for rupIndex=%s", numProxies, rupIndex);
+			int proxyIndex = csvRow.getInt(2);
+			Preconditions.checkState(proxyIndex >= 0 && proxyIndex < numProxies,
+					"Bad proxyIndex=%s for rupIndex=%s with numProxies=%s", proxyIndex, rupIndex, numProxies);
+			int numRupSects = csvRow.getInt(3);
+			Preconditions.checkState(numRupSects > 0,
+					"Bad numRupSects=%s for rupIndex=%s", numRupSects, rupIndex);
+			Preconditions.checkState(csvRow.getLine().size() == numRupSects+4,
+					"Expected numRupSects+4=%s columns for rupIndex=%s proxyIndex=%s, have %s columns",
+					numRupSects+4, rupIndex, proxyIndex, csvRow.getLine().size());
+			List<List<Integer>> sectIDsList = proxyRupSectIndices.get(rupIndex);
+			if (sectIDsList == null) {
+				sectIDsList = new ArrayList<>(numProxies);
+				for (int p=0; p<numProxies; p++)
+					sectIDsList.add(null);
+				proxyRupSectIndices.put(rupIndex, sectIDsList);
+			} else {
+				Preconditions.checkState(sectIDsList.size() == numProxies);
+				Preconditions.checkState(sectIDsList.get(proxyIndex) == null);
+			}
+			List<Integer> sectIDs = new ArrayList<>(numRupSects);
+			sectIDsList.set(proxyIndex, sectIDs);
+			for (int i=0; i<numRupSects; i++)
+				sectIDs.add(csvRow.getInt(i+4));
+		}
+		
+		Preconditions.checkState(!proxyRupSectIndices.isEmpty(), "No proxy ruptures included?");
+		
+		// make sure they're all complete
+		for (int rupIndex : proxyRupSectIndices.keySet()) {
+			List<List<Integer>> sectIDsList = proxyRupSectIndices.get(rupIndex);
+			for (int p=0; p<sectIDsList.size(); p++) {
+				Preconditions.checkNotNull(sectIDsList.get(p),
+						"Proxy %s/%s never filled in for rupIndex=%s", p, sectIDsList.size(), rupIndex);
+			}
+		}
 
+		try {
+			rupSectsCSV.close();
+		}catch(IOException x) {
+			throw new RuntimeException(x);
+		}
+
+		return proxyRupSectIndices;
+	}
+
+	@Override
+	public AveragingAccumulator<ProxyFaultSections> averagingAccumulator() {
+		return new Averager();
+	}
+	
+	private static class Averager implements AveragingAccumulator<ProxyFaultSections> {
+		
+		private FaultSectionBranchAverager sectAverager;
+		private Map<Integer, List<List<Integer>>> proxyRupSectIndices;
+
+		@Override
+		public Class<ProxyFaultSections> getType() {
+			return ProxyFaultSections.class;
+		}
+
+		@Override
+		public void process(ProxyFaultSections module, double relWeight) {
+			if (sectAverager == null) {
+				// first time
+				sectAverager = new FaultSectionBranchAverager(module.proxySects);
+				proxyRupSectIndices = module.proxyRupSectIndices;
+			} else {
+				Preconditions.checkState(proxyRupSectIndices.size() == module.proxyRupSectIndices.size());
+				for (int rupIndex : proxyRupSectIndices.keySet()) {
+					List<List<Integer>> mine = proxyRupSectIndices.get(rupIndex);
+					List<List<Integer>> theirs = module.proxyRupSectIndices.get(rupIndex);
+					Preconditions.checkNotNull(theirs);
+					Preconditions.checkState(mine.size() == theirs.size());
+					// make sure the first and last are the same
+					Preconditions.checkState(mine.get(0).equals(theirs.get(0)));
+					Preconditions.checkState(mine.get(mine.size()-1).equals(theirs.get(mine.size()-1)));
+				}
+			}
+			sectAverager.addWeighted(module.proxySects, relWeight);
+		}
+
+		@Override
+		public ProxyFaultSections getAverage() {
+			return new ProxyFaultSections(sectAverager.buildAverageSects(), proxyRupSectIndices);
+		}
+		
 	}
 	
 	public static void main(String[] args) throws IOException {
-		FaultSystemSolution sol = FaultSystemSolution.load(new File("C:\\Users\\kmilner\\Downloads\\"
-				+ "results_PRVI_FM_INITIAL_branch_averaged.zip"));
+		File solFile = new File("C:\\Users\\kmilner\\Downloads\\"
+				+ "results_PRVI_FM_INITIAL_branch_averaged.zip");
+		FaultSystemSolution sol = FaultSystemSolution.load(solFile);
 //		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
 //				+ "2024_05_21-prvi25_crustal_branches-GEOLOGIC/results_PRVI_FM_INITIAL_branch_averaged.zip"));
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		ProxyFaultSections proxySects = build(rupSet, 10);
+		rupSet.addModule(proxySects);
+		
+		File modSolFile = new File(solFile.getParentFile(), solFile.getName().substring(0, solFile.getName().indexOf(".zip"))+"_mod.zip");
+		sol.write(modSolFile);
+		proxySects = FaultSystemRupSet.load(modSolFile).requireModule(ProxyFaultSections.class);
 		
 		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
 		
@@ -322,7 +545,7 @@ public class ProxyFaultSections implements ArchivableModule {
 		List<LocationList> lines = new ArrayList<>();
 		for (FaultSection sect : proxySects.proxySects)
 			lines.add(sect.getFaultTrace());
-		mapMaker.plotLines(lines, Color.BLACK, 1f);
+		mapMaker.plotLines(lines, Color.BLUE, 1f);
 		
 //		mapMaker.plot(new File("/tmp"), "proxy_finite_sect_test", " ");
 		mapMaker.plot(new File("C:\\Users\\kmilner\\Downloads"), "proxy_finite_sect_test", " ");

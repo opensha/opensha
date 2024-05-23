@@ -519,7 +519,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @author kevin
 	 *
 	 */
-	private static class ShortListWrapper extends AbstractList<Integer> {
+	public static class ShortListWrapper extends AbstractList<Integer> {
 		
 		private short[] vals;
 		
@@ -573,7 +573,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @author kevin
 	 *
 	 */
-	private static class IntListWrapper extends AbstractList<Integer> {
+	public static class IntListWrapper extends AbstractList<Integer> {
 		
 		private int[] vals;
 		
