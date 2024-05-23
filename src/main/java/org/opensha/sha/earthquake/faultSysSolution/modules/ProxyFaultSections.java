@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import java.awt.Color;
+import java.awt.geom.Point2D;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -11,6 +12,9 @@ import java.util.Map;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
+import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
+import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
@@ -41,7 +45,7 @@ public class ProxyFaultSections implements ArchivableModule {
 	
 	private static final int TRACE_BUF_LENGTHS_ALONG_STRIKE_DEFAULT = 2;
 	private static final int TRACE_BUF_LENGTHS_FAULT_NORMAL_DEFAULT = 5;
-	private static final double MIN_FRACT_TRACE_LEN_DEFAULT = 0.1;
+	private static final double MIN_FRACT_TRACE_LEN_DEFAULT = 0.25;
 	
 	public static ProxyFaultSections build(FaultSystemRupSet rupSet, int numProxySectsPerPoly) {
 		return build(rupSet, numProxySectsPerPoly, MIN_FRACT_TRACE_LEN_DEFAULT,
@@ -59,6 +63,20 @@ public class ProxyFaultSections implements ArchivableModule {
 		
 		Map<Integer, List<FaultSection>> subProxySects = new HashMap<>();
 		
+		DiscretizedFunc improvementWorthItFunc = new ArbitrarilyDiscretizedFunc();
+		if (minFractTraceLen < 0.5)
+			improvementWorthItFunc.set(0.5, 0.05);
+		if (minFractTraceLen < 0.75)
+			improvementWorthItFunc.set(0.75, 0.10);
+		if (minFractTraceLen < 0.9)
+			improvementWorthItFunc.set(0.9, 0.11);
+		if (minFractTraceLen < 0.95)
+			improvementWorthItFunc.set(0.95, 0.12);
+		if (minFractTraceLen < 1d)
+			improvementWorthItFunc.set(1d, 0.13);
+		if (improvementWorthItFunc.size() == 0)
+			improvementWorthItFunc = null;
+		
 		HashSet<Integer> possibleProxyRups = new HashSet<>();
 		for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 			if (sect.isProxyFault() && sect.getZonePolygon() != null) {
@@ -66,125 +84,58 @@ public class ProxyFaultSections implements ArchivableModule {
 				Region poly = sect.getZonePolygon();
 				FaultTrace trace = sect.getFaultTrace();
 				
-				// we'll first draw a line in the trace direction, but extended a bunch so that (hopefully) the entire
-				// polygon will be not before or after the extended line (i.e., fully to the left and right)
 				double traceLen = trace.getTraceLength();
 				LocationVector traceVect = LocationUtils.vector(trace.first(), trace.last());
-				Location bufferEnd = LocationUtils.location(trace.last(), traceVect.getAzimuthRad(), traceLen*traceBufLengthsAlongStrike);
-				Location bufferStart = LocationUtils.location(trace.first(), traceVect.getAzimuthRad()+Math.PI, traceLen*traceBufLengthsAlongStrike);
-				FaultTrace bufferTrace = new FaultTrace(null);
-				bufferTrace.add(bufferStart);
-				bufferTrace.add(bufferEnd);
-				int numSamplesAlong = Integer.max(100, (int)(bufferTrace.getTraceLength()*(2*traceBufLengthsAlongStrike+1)));
-				FaultTrace resampledBufferTrace = FaultUtils.resampleTrace(bufferTrace, numSamplesAlong-1);
-				Preconditions.checkState(resampledBufferTrace.size() == numSamplesAlong);
+				// TODO, shouldn't need to actually keep the resampled trace
+				int numSamplesAlong = Integer.max(500, (int)(traceLen*traceBufLengthsAlongStrike*10));
 				
-				// now we'll draw perpendicular lines
 				double maxTraceOrWidth = traceLen;
 				if (sect.getAveDip() < 90d && sect.getOrigDownDipWidth() > 0d)
 					// max of trace length or horizontal widthe of surface projected dipping rupture
 					maxTraceOrWidth = Math.max(traceLen, Math.sqrt(Math.pow(sect.getOrigDownDipWidth(), 2d))
 							- Math.pow(sect.getOrigAveUpperDepth() - sect.getAveLowerDepth(), 2d));
-				int numSamplesAcross = Integer.max(101, (int)(maxTraceOrWidth*2d*traceBufLengthsFaultNormal));
-				// we really want this to be odd so that one lies on the original trace (if straight)
-				if (numSamplesAcross % 2 != 0)
-					numSamplesAcross++;
-				List<FaultTrace> faultNormSamples = new ArrayList<>(numSamplesAlong);
-				List<boolean[]> faultNormSamplesInsides = new ArrayList<>(numSamplesAlong);
-				double leftAz = traceVect.getAzimuthRad() - 0.5*Math.PI;
-				double rightAz = traceVect.getAzimuthRad() + 0.5*Math.PI;
-				int[] colFirstInsides = new int[numSamplesAlong];
-				int[] colLastInsides = new int[numSamplesAlong];
-				int firstRowInside = -1;
-				int lastRowInside = -1;
-				int firstColInside = -1;
-				int lastColInside = -1;
-				for (int col=0; col<numSamplesAlong; col++) {
-					Location traceLoc = resampledBufferTrace.get(col);
-					Location sampleStart = LocationUtils.location(traceLoc, leftAz, maxTraceOrWidth*traceBufLengthsFaultNormal);
-					Location sampleEnd = LocationUtils.location(traceLoc, rightAz, maxTraceOrWidth*traceBufLengthsFaultNormal);
-					FaultTrace sampleTrace = new FaultTrace(null);
-					sampleTrace.add(sampleStart);
-					sampleTrace.add(sampleEnd);
-					FaultTrace resampledTrace = FaultUtils.resampleTrace(sampleTrace, numSamplesAcross-1);
-					Preconditions.checkState(resampledTrace.size() == numSamplesAcross);
-					boolean[] insides = new boolean[numSamplesAcross];
-					int firstInsideIndex = -1;
-					int lastInsideIndex = -1;
-					for (int row=0; row<numSamplesAcross; row++) {
-						if (poly.contains(resampledTrace.get(row))) {
-							insides[row] = true;
-							if (firstInsideIndex < 0)
-								firstInsideIndex = row;
-							lastInsideIndex = row;
-							
-							if (firstRowInside < 0)
-								firstRowInside = row;
-							if (row > lastRowInside)
-								lastRowInside = row;
-							if (firstColInside < 0)
-								firstColInside = col;
-							lastColInside = col;
+				
+				double maxDistFaultNorm = maxTraceOrWidth*traceBufLengthsFaultNormal;
+				
+				double leftAz = traceVect.getAzimuth() - 90d;
+				double rightAz = traceVect.getAzimuth() + 90d;
+				
+				
+				double maxDistForLeft = findFurtherstViableRelocatedTrace(trace, poly, leftAz,
+						maxDistFaultNorm, minFractTraceLen, improvementWorthItFunc);
+				double maxDistForRight = findFurtherstViableRelocatedTrace(trace, poly, rightAz,
+						maxDistFaultNorm, minFractTraceLen, improvementWorthItFunc);
+				Preconditions.checkState(maxDistForLeft > 0d);
+				Preconditions.checkState(maxDistForRight > 0d);
+				
+				EvenlyDiscretizedFunc distBins = new EvenlyDiscretizedFunc(-maxDistForLeft, maxDistForRight, numProxySectsPerPoly);
+				List<FaultTrace> proxyTraces = new ArrayList<>();
+				for (int p=0; p<numProxySectsPerPoly; p++) {
+					double dist = distBins.getX(p);
+					FaultTrace relocatedTrace = relocate(trace, new LocationVector(rightAz, dist, 0d));
+					// extend it in the trace direction in each direction
+					FaultTrace extended = new FaultTrace(null);
+					extended.add(LocationUtils.location(relocatedTrace.first(),
+							traceVect.getAzimuthRad()+Math.PI, traceLen*traceBufLengthsAlongStrike));
+					extended.addAll(relocatedTrace);
+					extended.add(LocationUtils.location(relocatedTrace.last(),
+							traceVect.getAzimuthRad(), traceLen*traceBufLengthsAlongStrike));
+					FaultTrace resampled = FaultUtils.resampleTrace(extended, numSamplesAlong);
+					int firstIndexInside = -1;
+					int lastIndexInside = -1;
+					for (int i=0; i<resampled.size(); i++) {
+						Location loc = resampled.get(i);
+						if (poly.contains(loc)) {
+							if (firstIndexInside < 0)
+								firstIndexInside = i;
+							lastIndexInside = i;
 						}
 					}
-					colFirstInsides[col] = firstInsideIndex;
-					colLastInsides[col] = lastInsideIndex;
-					faultNormSamples.add(resampledTrace);
-					faultNormSamplesInsides.add(insides);
-				}
-
-				Preconditions.checkState(lastRowInside > firstRowInside,
-						"firstRowInside=%s and lastRowInside=%s", firstRowInside, lastRowInside);
-				Preconditions.checkState(lastColInside > firstColInside,
-						"firstColInside=%s and lastColInside=%s", firstColInside, lastColInside);
-				
-				// now build the proxy faults
-				// first just build for each row, then we'll filter down
-				List<FaultTrace> viableProxyTraces = new ArrayList<>();
-				for (int row=firstRowInside; row<=lastRowInside; row++) {
-					FaultTrace rowTrace = new FaultTrace(null);
-					for (int col=firstColInside; col<=lastColInside; col++)
-						if (faultNormSamplesInsides.get(col)[row])
-							rowTrace.add(faultNormSamples.get(col).get(row));
-					if (rowTrace.size() > 1 && rowTrace.getTraceLength() > traceLen*minFractTraceLen)
-						viableProxyTraces.add(rowTrace);
-				}
-				Preconditions.checkState(viableProxyTraces.size() > 1, "Only found %s viable row traces?", viableProxyTraces.size());
-				
-				List<FaultTrace> proxyTraces;
-//				if (viableProxyTraces.size() < numProxySectsPerPoly*5) {
-				if (true) {
-					// need to resample them
-					double maxLen = 0d;
-					for (FaultTrace proxy : viableProxyTraces)
-						maxLen = Math.max(maxLen, proxy.getTraceLength());
-					int numResamplesAlong = Integer.max(10, (int)maxLen);
-					List<FaultTrace> resampledViableProxies = new ArrayList<>(viableProxyTraces.size());
-					for (FaultTrace proxy : viableProxyTraces)
-						resampledViableProxies.add(FaultUtils.resampleTrace(proxy, numResamplesAlong-1));
-					List<FaultTrace> resampledNorms = new ArrayList<>(numResamplesAlong);
-					for (int i=0; i<numResamplesAlong; i++) {
-						FaultTrace norm = new FaultTrace(null);
-						for (int j=0; j<resampledViableProxies.size(); j++)
-							norm.add(resampledViableProxies.get(j).get(i));
-						resampledNorms.add(FaultUtils.resampleTrace(norm, numProxySectsPerPoly-1));
-					}
-					proxyTraces = new ArrayList<>(numProxySectsPerPoly);
-					for (int p=0; p<numProxySectsPerPoly; p++) {
-						FaultTrace proxyTrace = new FaultTrace(null);
-						for (int i=0; i<numResamplesAlong; i++)
-							proxyTrace.add(resampledNorms.get(i).get(p));
-						proxyTraces.add(proxyTrace);
-					}
-				} else {
-					// just grab from the set we have
-					proxyTraces = new ArrayList<>(numProxySectsPerPoly);
-					for (int p=0; p<numProxySectsPerPoly; p++) {
-						double fract = (double)p/(double)(numProxySectsPerPoly-1);
-						int index = (int)(fract*(viableProxyTraces.size()-1) + 0.5);
-						Preconditions.checkState(index < viableProxyTraces.size());
-						proxyTraces.add(viableProxyTraces.get(index));
-					}
+					Preconditions.checkState(lastIndexInside > firstIndexInside);
+					FaultTrace proxyTrace = new FaultTrace(null);
+					for (int i=firstIndexInside; i<=lastIndexInside; i++)
+						proxyTrace.add(resampled.get(i));
+					proxyTraces.add(proxyTrace);
 				}
 				
 				// build proxy sects using those traces
@@ -252,6 +203,77 @@ public class ProxyFaultSections implements ArchivableModule {
 		return new ProxyFaultSections(allProxySects, proxyRupSectIndices);
 	}
 	
+	private static FaultTrace relocate(FaultTrace trace, LocationVector vect) {
+		FaultTrace ret = new FaultTrace(null);
+		for (Location loc : trace)
+			ret.add(LocationUtils.location(loc, vect));
+		return ret;
+	}
+	
+	private static double fractInside(FaultTrace trace, Region poly) {
+		FaultTrace resampled = FaultUtils.resampleTrace(trace, 100);
+		int numInside = 0;
+		for (Location loc : resampled)
+			if (poly.contains(loc))
+				numInside++;
+		return (double)numInside/(double)resampled.size();
+	}
+	
+	private static double findFurtherstViableRelocatedTrace(FaultTrace trace, Region poly,
+			double azimuth, double maxDistAway, double minFract, DiscretizedFunc improvementWorthItFunc) {
+		EvenlyDiscretizedFunc distFractFunc = new EvenlyDiscretizedFunc(0d, maxDistAway, 500);
+		
+		for (int i=0; i<distFractFunc.size(); i++) {
+			double dist = distFractFunc.getX(i);
+			LocationVector vector = new LocationVector(azimuth, dist, 0d);
+			FaultTrace relocated = relocate(trace, vector);
+			distFractFunc.set(i, fractInside(relocated, poly));
+		}
+		
+		double fractForRet = -1d;
+		double retDist = -1d;
+		for (int i=distFractFunc.size(); --i>=0;) {
+			double dist = distFractFunc.getX(i);
+			double fract = distFractFunc.getY(i);
+			if (fract >= minFract) {
+				retDist = dist;
+				fractForRet = fract;
+				break;
+			}
+		}
+		
+		Preconditions.checkState(fractForRet > 0d, "Bad fract for %s: %s\nfunc: %s", trace.getName(), fractForRet, distFractFunc);
+		if (improvementWorthItFunc != null) {
+			// see if we can improve
+			double origDist = retDist;
+			for (Point2D pt : improvementWorthItFunc) {
+				double targetFract = pt.getX();
+				double testDist = -1d;
+				double fractForTest = -1d;
+				for (int i=distFractFunc.size(); --i>=0;) {
+					double dist = distFractFunc.getX(i);
+					double fract = distFractFunc.getY(i);
+					if (fract >= targetFract) {
+						testDist = dist;
+						fractForTest = fract;
+						break;
+					}
+				}
+				if (testDist > 0d) {
+					double deltaFract = (origDist - testDist)/origDist;
+					double maxDelta = pt.getY();
+					if (deltaFract <= maxDelta) {
+						retDist = testDist;
+						fractForRet = fractForTest;
+					}
+				} else {
+					break;
+				}
+			}
+		}
+		return retDist;
+	}
+	
 	// for deserialization
 	private ProxyFaultSections() {};
 
@@ -280,19 +302,30 @@ public class ProxyFaultSections implements ArchivableModule {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
-				+ "2024_05_21-prvi25_crustal_branches-GEOLOGIC/results_PRVI_FM_INITIAL_branch_averaged.zip"));
+		FaultSystemSolution sol = FaultSystemSolution.load(new File("C:\\Users\\kmilner\\Downloads\\"
+				+ "results_PRVI_FM_INITIAL_branch_averaged.zip"));
+//		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
+//				+ "2024_05_21-prvi25_crustal_branches-GEOLOGIC/results_PRVI_FM_INITIAL_branch_averaged.zip"));
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		ProxyFaultSections proxySects = build(rupSet, 10);
 		
-		GeographicMapMaker mapMaker = new GeographicMapMaker(rupSet.getFaultSectionDataList());
+		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+		
+//		List<FaultSection> filteredSects = new ArrayList<>();
+//		for (FaultSection sect : subSects)
+//			if (sect.getName().startsWith("Anegada Passage"))
+//				filteredSects.add(sect);
+//		subSects = filteredSects;
+		
+		GeographicMapMaker mapMaker = new GeographicMapMaker(subSects);
 		
 		List<LocationList> lines = new ArrayList<>();
 		for (FaultSection sect : proxySects.proxySects)
 			lines.add(sect.getFaultTrace());
 		mapMaker.plotLines(lines, Color.BLACK, 1f);
 		
-		mapMaker.plot(new File("/tmp"), "proxy_finite_sect_test", " ");
+//		mapMaker.plot(new File("/tmp"), "proxy_finite_sect_test", " ");
+		mapMaker.plot(new File("C:\\Users\\kmilner\\Downloads"), "proxy_finite_sect_test", " ");
 	}
 
 }
