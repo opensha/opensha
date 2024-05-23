@@ -13,6 +13,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ProxyFaultSections;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -78,6 +79,14 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 				return getDefaultRegion(branch);
 			}
 		}, ModelRegion.class);
+		
+		rupSet.addAvailableModule(new Callable<ProxyFaultSections>() {
+
+			@Override
+			public ProxyFaultSections call() throws Exception {
+				return ProxyFaultSections.build(rupSet, 10);
+			}
+		}, ProxyFaultSections.class);
 		// TODO: named faults?
 		// TODO: regions of interest
 		// TODO: tectonic regimes?
