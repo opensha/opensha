@@ -523,7 +523,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		private short[] vals;
 		
-		private ShortListWrapper(List<Integer> ints) {
+		public ShortListWrapper(List<Integer> ints) {
 			vals = new short[ints.size()];
 			for (int i=0; i<vals.length; i++) {
 				int val = ints.get(i);
@@ -577,7 +577,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		private int[] vals;
 		
-		private IntListWrapper(List<Integer> ints) {
+		public IntListWrapper(List<Integer> ints) {
 			vals = new int[ints.size()];
 			for (int i=0; i<vals.length; i++)
 				vals[i] = ints.get(i);
@@ -968,8 +968,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			RuptureSurface surf = rupSurfaceCache.get(rupIndex);
 			if (surf != null)
 				return surf;
-			List<RuptureSurface> rupSurfs = Lists.newArrayList();
-			for (FaultSection fltData : getFaultSectionDataForRupture(rupIndex))
+			List<FaultSection> fltDatas =  getFaultSectionDataForRupture(rupIndex);
+			List<RuptureSurface> rupSurfs = new ArrayList<>(fltDatas.size());
+			for (FaultSection fltData : fltDatas)
 				rupSurfs.add(fltData.getFaultSurface(gridSpacing, false, aseisReducesArea));
 			if (rupSurfs.size() == 1)
 				surf = rupSurfs.get(0);

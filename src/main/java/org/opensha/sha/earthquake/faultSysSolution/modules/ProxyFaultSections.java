@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -450,9 +451,13 @@ public class ProxyFaultSections implements ArchivableModule, BranchAverageableMo
 				Preconditions.checkState(sectIDsList.get(proxyIndex) == null);
 			}
 			List<Integer> sectIDs = new ArrayList<>(numRupSects);
-			sectIDsList.set(proxyIndex, sectIDs);
 			for (int i=0; i<numRupSects; i++)
 				sectIDs.add(csvRow.getInt(i+4));
+			if (shortSafe)
+				sectIDs = new FaultSystemRupSet.ShortListWrapper(sectIDs);
+			else
+				sectIDs = new FaultSystemRupSet.IntListWrapper(sectIDs);
+			sectIDsList.set(proxyIndex, sectIDs);
 		}
 		
 		Preconditions.checkState(!proxyRupSectIndices.isEmpty(), "No proxy ruptures included?");
@@ -468,11 +473,39 @@ public class ProxyFaultSections implements ArchivableModule, BranchAverageableMo
 
 		try {
 			rupSectsCSV.close();
-		}catch(IOException x) {
+		} catch(IOException x) {
 			throw new RuntimeException(x);
 		}
 
 		return proxyRupSectIndices;
+	}
+	
+	public List<? extends FaultSection> getProxySects() {
+		return proxySects;
+	}
+	
+	public Set<Integer> getProxyRupIndexes() {
+		return proxyRupSectIndices.keySet();
+	}
+	
+	public boolean rupHasProxies(int rupIndex) {
+		return proxyRupSectIndices.containsKey(rupIndex);
+	}
+	
+	public List<List<Integer>> getRupProxySectIndexes(int rupIndex) {
+		return proxyRupSectIndices.get(rupIndex);
+	}
+	
+	public List<List<FaultSection>> getRupProxySects(int rupIndex) {
+		List<List<Integer>> sectIDsList = proxyRupSectIndices.get(rupIndex);
+		List<List<FaultSection>> ret = new ArrayList<>(sectIDsList.size());
+		for (List<Integer> sectIDs : sectIDsList) {
+			List<FaultSection> sects = new ArrayList<>();
+			for (int sectID : sectIDs)
+				sects.add(proxySects.get(sectID));
+			ret.add(sects);
+		}
+		return ret;
 	}
 
 	@Override
