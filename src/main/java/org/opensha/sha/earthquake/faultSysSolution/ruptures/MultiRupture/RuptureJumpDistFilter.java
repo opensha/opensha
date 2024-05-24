@@ -21,7 +21,7 @@ class RuptureJumpDistFilter implements MultiRuptureCompatibilityFilter {
                                                  ClusterRupture target,
                                                  boolean verbose) {
         for (FaultSection targetSection : target.buildOrderedSectionList()) {
-            for (FaultSection nucleationSection : nucleation.buildOrderedSectionList()) {
+            for (FaultSection nucleationSection : nucleation.clusters[0].subSects) {
                 double distance = disAzCalc.getDistance(targetSection, nucleationSection);
                 if (distance <= maxDist) {
                     // Just take the first jump we find for now.
