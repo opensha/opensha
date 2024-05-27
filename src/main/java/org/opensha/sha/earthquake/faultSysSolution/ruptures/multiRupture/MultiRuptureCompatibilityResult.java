@@ -1,10 +1,10 @@
-package org.opensha.sha.earthquake.faultSysSolution.ruptures.MultiRupture;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 
 public class MultiRuptureCompatibilityResult {
     public final PlausibilityResult plausibilityResult;
-    public final RuptureJump jump;
+    public final MultiRuptureJump jump;
 
     public final static MultiRuptureCompatibilityResult FAIL =
             new MultiRuptureCompatibilityResult(PlausibilityResult.FAIL_HARD_STOP, null);
@@ -13,7 +13,7 @@ public class MultiRuptureCompatibilityResult {
             new MultiRuptureCompatibilityResult(PlausibilityResult.PASS, null);
 
     public MultiRuptureCompatibilityResult(PlausibilityResult plausibilityResult,
-                                           RuptureJump jump) {
+                                           MultiRuptureJump jump) {
         this.plausibilityResult = plausibilityResult;
         this.jump = jump;
     }

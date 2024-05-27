@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.faultSysSolution.ruptures.MultiRupture;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
@@ -25,7 +25,7 @@ class RuptureJumpDistFilter implements MultiRuptureCompatibilityFilter {
                 double distance = disAzCalc.getDistance(targetSection, nucleationSection);
                 if (distance <= maxDist) {
                     // Just take the first jump we find for now.
-                    RuptureJump jump = new RuptureJump(nucleationSection, nucleation, targetSection, target, distance);
+                    MultiRuptureJump jump = new MultiRuptureJump(nucleationSection, nucleation, targetSection, target, distance);
                     return new MultiRuptureCompatibilityResult(PlausibilityResult.PASS, jump);
                 }
             }

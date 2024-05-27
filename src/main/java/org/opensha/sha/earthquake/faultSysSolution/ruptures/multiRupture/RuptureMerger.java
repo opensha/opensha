@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.faultSysSolution.ruptures.MultiRupture;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture;
 
 import com.google.common.base.Preconditions;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;

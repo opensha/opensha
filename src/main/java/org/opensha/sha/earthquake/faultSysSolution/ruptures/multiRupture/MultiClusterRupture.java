@@ -1,6 +1,5 @@
-package org.opensha.sha.earthquake.faultSysSolution.ruptures.MultiRupture;
+package org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
@@ -18,7 +17,7 @@ public class MultiClusterRupture extends ClusterRupture {
         super(clusters, internalJumps, splays, unique, internalUnique, false);
     }
 
-    public static ClusterRupture takeSplayJump(RuptureJump jump) {
+    public static ClusterRupture takeSplayJump(MultiRuptureJump jump) {
         ImmutableMap.Builder<Jump, ClusterRupture> splayBuilder = ImmutableMap.builder();
         splayBuilder.putAll(jump.fromRupture.splays);
         splayBuilder.put(jump, jump.toRupture);
