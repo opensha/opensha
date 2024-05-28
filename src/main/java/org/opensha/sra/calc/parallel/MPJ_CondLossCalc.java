@@ -932,6 +932,7 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 	}
 	
 	public static void main(String[] args) {
+		System.setProperty("java.awt.headless", "true");
 		args = MPJTaskCalculator.initMPJ(args);
 		
 		try {
