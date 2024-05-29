@@ -593,7 +593,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		Preconditions.checkState(isRateGainValid(rateGain, fltSystRupIndex, duration),
 				"Bad probGain=%s for rupIndex=%s, duration=%s", rateGain, fltSystRupIndex, duration);
 		
-		boolean proxyRups = proxySectsModule != null && proxySectsModule.rupHasProxies(fltSystRupIndex);
+		boolean proxyRups = useProxyRuptures && proxySectsModule != null && proxySectsModule.rupHasProxies(fltSystRupIndex);
 		double rake = rupSet.getAveRakeForRup(fltSystRupIndex);
 		
 		ProbEqkSource src;
