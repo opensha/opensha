@@ -30,6 +30,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NoJumpsFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NoProxyFaultConnectionsFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayConnectionsOnlyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.NetRuptureCoulombFilter;
@@ -430,6 +431,7 @@ public class RuptureSets {
 		@Expose	private double stiffGridSpacing = 2d;
 		// coefficient of friction for coulomb calculations
 		@Expose	private double coeffOfFriction = 0.5;
+		@Expose private boolean connectProxyFaults = true;
 
 		public CoulombRupSetConfig(RupSetFaultModel fm, RupSetScalingRelationship scale) throws IOException {
 			this(fm.getDefaultDeformationModel().build(fm), fm.getFilePrefix().toLowerCase(), scale);
@@ -577,6 +579,11 @@ public class RuptureSets {
 			this.coeffOfFriction = coeffOfFriction;
 		}
 		
+		public void setConnectProxyFaults(boolean connectProxyFaults) {
+			clear();
+			this.connectProxyFaults = connectProxyFaults;
+		}
+		
 		private synchronized void clear() {
 			config = null;
 			growingStrat = null;
@@ -665,6 +672,8 @@ public class RuptureSets {
 						new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 0.1d);
 				neighborsConnStrat.checkBuildThreaded(getNumThreads());
 				List<PlausibilityFilter> connFilters = new ArrayList<>();
+				if (!connectProxyFaults)
+					connFilters.add(new NoProxyFaultConnectionsFilter());
 				if (cffRatioThresh > 0f) {
 					connFilters.add(new CumulativeProbabilityFilter(cffRatioThresh, new CoulombSectRatioProb(
 							sumAgg, cffRatioN, favorableJumps, (float)maxJumpDist, distAzCalc)));
@@ -725,6 +734,14 @@ public class RuptureSets {
 //			configBuilder.cumulativeRakeChange(360f); outputName += "_cmlRake360"; // cml rake only
 //			configBuilder.u3Azimuth(); outputName += "_u3Az";
 //			configBuilder.u3Coulomb(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_u3CFF";
+			
+			/*
+			 * No proxy connnections
+			 */
+			if (!connectProxyFaults) {
+				outputName += "_noProxyConn";
+				configBuilder.noProxyConnections();
+			}
 			
 			/*
 			 * Cumulative jump prob
