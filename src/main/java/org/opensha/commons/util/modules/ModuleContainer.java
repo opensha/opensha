@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -168,6 +169,43 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 			}
 		}
 		return (M)module;
+	}
+	
+	/**
+	 * Retrieves an {@link Optional} module that matches the given class if it exists.
+	 * <p>
+	 * If no current instance matches, but an available module loader does, then we will attempt to load that available
+	 * module first. 
+	 * 
+	 * @param <M> the type to be returned
+	 * @param clazz module class to look up
+	 * @return module {@link Optional} containing the module mapping to the given class if available
+	 */
+	@SuppressWarnings("unchecked")
+	public <M extends E> Optional<M> getOptionalModule(Class<M> clazz) {
+		M module = getModule(clazz, true);
+		if (module == null)
+			return Optional.empty();
+		return Optional.of(module);
+	}
+	
+	/**
+	 * Retrieves an {@link Optional} module that matches the given class if it exists.
+	 * <p>
+	 * If no current instance matches, but an available module loader does, then we will attempt to load that available
+	 * module first if <code>loadAvailable</code> is true.
+	 * 
+	 * @param <M> the type to be returned
+	 * @param clazz module class to look up
+	 * @param loadAvailable if true, load available modules if needed
+	 * @return module {@link Optional} containing the module mapping to the given class if available
+	 */
+	@SuppressWarnings("unchecked")
+	public <M extends E> Optional<M> getOptionalModule(Class<M> clazz, boolean loadAvailable) {
+		M module = getModule(clazz, loadAvailable);
+		if (module == null)
+			return Optional.empty();
+		return Optional.of(module);
 	}
 	
 	/**
