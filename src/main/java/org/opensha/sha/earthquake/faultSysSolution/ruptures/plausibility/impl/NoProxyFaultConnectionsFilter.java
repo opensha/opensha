@@ -14,7 +14,7 @@ public class NoProxyFaultConnectionsFilter implements PlausibilityFilter {
 
 	@Override
 	public String getShortName() {
-		return "NoConnProxy";
+		return "NoProxyConns";
 	}
 
 	@Override
