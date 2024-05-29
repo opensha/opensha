@@ -339,7 +339,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						Preconditions.checkState(rankDir.exists(), "Dir doesn't exist: %s", rankDir.getAbsolutePath());
 						
 						LogicTreeCurveAverager rankCurves = LogicTreeCurveAverager.readRawCacheDir(rankDir, periods[p], loadExec);
-						
+
 						if (mergeFuture != null)
 							mergeFuture.join();
 						mergeFuture = CompletableFuture.runAsync(new Runnable() {
@@ -355,6 +355,15 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				}
 				
 				loadExec.shutdown();
+				
+				debug("Async: deleting "+nodesAverageDir.getAbsolutePath());
+				CompletableFuture<Void> deleteFuture = CompletableFuture.runAsync(new Runnable() {
+					
+					@Override
+					public void run() {
+						FileUtils.deleteRecursive(nodesAverageDir);
+					}
+				});
 				
 				// write mean curves and maps
 				debug("Async: writing mean curves and maps");
@@ -386,6 +395,13 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				
 				zout.close();
 				Files.move(workingFile, destFile);
+				
+				try {
+					deleteFuture.get();
+				} catch (Exception e) {
+					System.err.println("WARNING: exception deleting "+nodesAverageDir.getAbsolutePath());
+					e.printStackTrace();
+				}
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
