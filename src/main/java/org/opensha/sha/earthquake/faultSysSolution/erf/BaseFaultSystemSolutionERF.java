@@ -21,7 +21,7 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
-import org.opensha.sha.earthquake.faultSysSolution.modules.ProxyFaultSections;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ProxyFaultSectionInstances;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolutionDisaggConsolidator;
@@ -85,7 +85,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	// solution and constants
 	protected FaultSystemSolution faultSysSolution;		// the FFS for the ERF
 	protected RupMFDsModule mfdsModule;					// rupture MFDs (if available)
-	protected ProxyFaultSections proxySectsModule;					// proxy sects (if available)
+	protected ProxyFaultSectionInstances proxySectsModule;					// proxy sects (if available)
 	protected boolean cacheGridSources = false;			// if true, grid sources are cached instead of built on the fly
 	protected ProbEqkSource[] gridSourceCache = null;
 	protected int numNonZeroFaultSystemSources;			// this is the number of faultSystemRups with non-zero rates (each is a source here)
@@ -311,7 +311,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		FaultSystemRupSet rupSet = faultSysSolution.getRupSet();
 		longTermRateOfFltSysRupInERF = new double[rupSet.getNumRuptures()];
 		mfdsModule = faultSysSolution.getModule(RupMFDsModule.class);
-		proxySectsModule = rupSet.getModule(ProxyFaultSections.class);
+		proxySectsModule = rupSet.getModule(ProxyFaultSectionInstances.class);
 				
 		if(D) {
 			System.out.println("Running makeFaultSystemSources() ...");

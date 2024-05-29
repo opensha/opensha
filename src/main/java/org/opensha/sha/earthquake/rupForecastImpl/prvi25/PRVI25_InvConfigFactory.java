@@ -19,6 +19,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
+import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.CoulombRupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionSolver;
@@ -145,6 +146,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		}
 		
 		RupSetConfig config = model.getConfig(subSects, scale);
+		if (config instanceof CoulombRupSetConfig)
+			((CoulombRupSetConfig)config).setConnectProxyFaults(allowConnectedProxyFaults);
 		
 		File cachedRupSetFile = null;
 		if (cacheDir != null) {
