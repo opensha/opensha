@@ -64,7 +64,7 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 	private static final int TRACE_BUF_LENGTHS_FAULT_NORMAL_DEFAULT = 10;
 	private static final double MIN_FRACT_TRACE_LEN_DEFAULT = 0.25;
 	
-	private static final boolean D = true;
+	private static final boolean D = false;
 	
 	/**
 	 * 
