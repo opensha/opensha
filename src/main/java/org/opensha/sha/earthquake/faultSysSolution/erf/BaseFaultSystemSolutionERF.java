@@ -7,6 +7,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.EventObject;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.UnaryOperator;
 
 import org.apache.commons.lang3.StringUtils;
@@ -32,6 +33,7 @@ import org.opensha.sha.earthquake.param.FaultGridSpacingParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.earthquake.param.UseProxySectionsParam;
+import org.opensha.sha.earthquake.param.UseRupMFDsParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.util.TectonicRegionType;
@@ -58,6 +60,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	protected IncludeBackgroundParam bgIncludeParam;
 	protected BackgroundRupParam bgRupTypeParam;
 	protected AseismicityAreaReductionParam aseisParam;
+	protected UseRupMFDsParam useRupMFDsParam;
 	protected UseProxySectionsParam useProxyRupturesParam;
 	
 	// The primitive versions of parameters; and values here are the param defaults: (none for fileParam)
@@ -65,6 +68,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	protected IncludeBackgroundOption bgInclude = IncludeBackgroundOption.INCLUDE;
 	protected BackgroundRupType bgRupType = BackgroundRupType.POINT;
 	protected boolean aseisReducesArea = true;
+	protected boolean useRupMFDs = true;
 	protected boolean useProxyRuptures = true;
 	
 	// Parameter change flags:
@@ -75,6 +79,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	protected boolean quadSurfacesChanged=true;
 	protected boolean aseisReducesAreaChanged=true;
 	protected boolean useProxyRupturesChanged=true;
+	protected boolean useRupMFDsChanged=true;
 	
 	// TimeSpan stuff:
 	protected final static double DURATION_DEFAULT = 30;	// years
@@ -84,8 +89,8 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	
 	// solution and constants
 	protected FaultSystemSolution faultSysSolution;		// the FFS for the ERF
-	protected RupMFDsModule mfdsModule;					// rupture MFDs (if available)
-	protected ProxyFaultSectionInstances proxySectsModule;					// proxy sects (if available)
+	protected Optional<RupMFDsModule> mfdsModuleOptional; // rupture MFDs (if available); null until first load is tried
+	protected Optional<ProxyFaultSectionInstances> proxySectsModuleOptional;					// proxy sects (if available); null until first load is tried
 	protected boolean cacheGridSources = false;			// if true, grid sources are cached instead of built on the fly
 	protected ProbEqkSource[] gridSourceCache = null;
 	protected int numNonZeroFaultSystemSources;			// this is the number of faultSystemRups with non-zero rates (each is a source here)
@@ -129,6 +134,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		bgIncludeParam = new IncludeBackgroundParam();
 		bgRupTypeParam = new BackgroundRupParam();
 		aseisParam = new AseismicityAreaReductionParam();
+		useRupMFDsParam = new UseRupMFDsParam(useRupMFDs);
 		useProxyRupturesParam = new UseProxySectionsParam(useProxyRuptures);
 
 
@@ -138,6 +144,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		bgIncludeParam.addParameterChangeListener(this);
 		bgRupTypeParam.addParameterChangeListener(this);
 		aseisParam.addParameterChangeListener(this);
+		useRupMFDsParam.addParameterChangeListener(this);
 		useProxyRupturesParam.addParameterChangeListener(this);
 
 		
@@ -147,6 +154,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		bgIncludeParam.setValue(bgInclude);
 		bgRupTypeParam.setValue(bgRupType);
 		aseisParam.setValue(aseisReducesArea);
+		useRupMFDsParam.setValue(useRupMFDs);
 		useProxyRupturesParam.setValue(useProxyRuptures);
 
 		createParamList();
@@ -206,6 +214,9 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		} else if (paramName.equalsIgnoreCase(aseisParam.getName())) {
 			aseisReducesArea = aseisParam.getValue();
 			aseisReducesAreaChanged = true;
+		} else if (paramName.equalsIgnoreCase(useRupMFDsParam.getName())) {
+			useRupMFDs = useRupMFDsParam.getValue();
+			useRupMFDsChanged = true;
 		} else if (paramName.equalsIgnoreCase(useProxyRupturesParam.getName())) {
 			useProxyRuptures = useProxyRupturesParam.getValue();
 			useProxyRupturesChanged = true;
@@ -217,7 +228,8 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	
 	protected boolean shouldRebuildFaultSystemSources() {
 		return faultSysSolutionChanged || faultGridSpacingChanged || quadSurfacesChanged
-				|| timeSpanChangeFlag || aseisReducesAreaChanged || useProxyRupturesChanged;
+				|| timeSpanChangeFlag || aseisReducesAreaChanged || useProxyRupturesChanged
+				|| useRupMFDsChanged;
 	}
 	
 	/**
@@ -277,6 +289,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		faultSysSolutionChanged = false;
 		faultGridSpacingChanged = false;
 		aseisReducesAreaChanged = false;
+		useRupMFDsChanged = false;
 		useProxyRupturesChanged = false;
 		bgIncludeChanged = false;
 		bgRupTypeChanged = false;			
@@ -310,8 +323,6 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	private void makeMiscFSS_Arrays() {
 		FaultSystemRupSet rupSet = faultSysSolution.getRupSet();
 		longTermRateOfFltSysRupInERF = new double[rupSet.getNumRuptures()];
-		mfdsModule = faultSysSolution.getModule(RupMFDsModule.class);
-		proxySectsModule = rupSet.getModule(ProxyFaultSectionInstances.class);
 				
 		if(D) {
 			System.out.println("Running makeFaultSystemSources() ...");
@@ -523,10 +534,22 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	 * @return
 	 */
 	protected DiscretizedFunc getFaultSysRupMFD(int fltSystRupIndex) {
-		if (mfdsModule == null)
+		if (!useRupMFDs)
+			// not using rupture MFDs
 			return null;
-		DiscretizedFunc rupMFD = mfdsModule.getRuptureMFD(fltSystRupIndex);	// this exists for multi-branch mean solutions
+		if (mfdsModuleOptional == null) {
+			synchronized (this) {
+				if (mfdsModuleOptional == null) {
+					mfdsModuleOptional = faultSysSolution.getOptionalModule(RupMFDsModule.class);
+				}
+			}
+		}
+		if (mfdsModuleOptional.isEmpty())
+			// don't have rupture MFDs
+			return null;
+		DiscretizedFunc rupMFD = mfdsModuleOptional.get().getRuptureMFD(fltSystRupIndex);	// this exists for multi-branch mean solutions
 		if (rupMFD == null || rupMFD.size() < 2)
+			// no MFD for this rupture, or it only has 1 value
 			return null;
 		return rupMFD;
 	}
@@ -593,7 +616,23 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		Preconditions.checkState(isRateGainValid(rateGain, fltSystRupIndex, duration),
 				"Bad probGain=%s for rupIndex=%s, duration=%s", rateGain, fltSystRupIndex, duration);
 		
-		boolean proxyRups = useProxyRuptures && proxySectsModule != null && proxySectsModule.rupHasProxies(fltSystRupIndex);
+		boolean proxyRups = false;
+		ProxyFaultSectionInstances proxySectsModule = null;
+		if (useProxyRuptures) {
+			if (proxySectsModuleOptional == null) {
+				synchronized (this) {
+					if (proxySectsModuleOptional == null) {
+						// haven't yet checked to see if we have them, do that now
+						proxySectsModuleOptional = faultSysSolution.getRupSet().getOptionalModule(ProxyFaultSectionInstances.class);
+					}
+				}
+			}
+			if (proxySectsModuleOptional.isPresent()) {
+				proxySectsModule = proxySectsModuleOptional.get();
+				proxyRups = proxySectsModule.rupHasProxies(fltSystRupIndex);
+			}
+		}
+		
 		double rake = rupSet.getAveRakeForRup(fltSystRupIndex);
 		
 		ProbEqkSource src;
