@@ -293,6 +293,11 @@ BranchAverageableModule<PlausibilityConfiguration> {
 			return this;
 		}
 		
+		public Builder noProxyConnections() {
+			filters.add(new NoProxyFaultConnectionsFilter());
+			return this;
+		}
+		
 		public Builder cumulativeAzChange(float threshold) {
 			return cumulativeAzChange(new JumpAzimuthChangeFilter.SimpleAzimuthCalc(distAzCalc), threshold);
 		}
