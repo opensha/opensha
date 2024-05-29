@@ -99,10 +99,13 @@ public class ProxyRupsFaultRuptureSource extends ProbEqkSource {
 	@Override
 	public double getMinDistance(Site site) {
 		double minDist = Double.POSITIVE_INFINITY;
-		if (polys != null)
-			for (Region poly : polys)
+		if (polys != null) {
+			for (Region poly : polys) {
 				minDist = Math.min(minDist, poly.distanceToLocation(site.getLocation()));
-		else
+				if (minDist == 0d)
+					return 0d;
+			}
+		} else
 			for (RuptureSurface surf : origSectSurfaces)
 				minDist = Math.min(minDist, surf.getQuickDistance(site.getLocation()));
 		return minDist;
