@@ -173,6 +173,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		}
 		adjustableParams.addParameter(faultGridSpacingParam);
 		adjustableParams.addParameter(aseisParam);
+		adjustableParams.addParameter(useRupMFDsParam);
 		adjustableParams.addParameter(useProxyRupturesParam);
 	}
 	
