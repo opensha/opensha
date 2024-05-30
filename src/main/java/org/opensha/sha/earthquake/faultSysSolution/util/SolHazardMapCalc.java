@@ -60,6 +60,8 @@ import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
+import org.opensha.sha.earthquake.param.UseProxySectionsParam;
+import org.opensha.sha.earthquake.param.UseRupMFDsParam;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
@@ -116,6 +118,7 @@ public class SolHazardMapCalc {
 	private boolean applyAftershockFilter;
 	private boolean aseisReducesArea = true;
 	private boolean noMFDs = false;
+	private boolean useProxyRuptures = true;
 	
 	public static ReturnPeriods[] MAP_RPS = { ReturnPeriods.TWO_IN_50, ReturnPeriods.TEN_IN_50 };
 	
@@ -198,6 +201,11 @@ public class SolHazardMapCalc {
 		Preconditions.checkState(fssERF == null, "ERF already initialized");
 		this.noMFDs = noMFDs;
 	}
+
+	public void setUseProxyRups(boolean useProxyRuptures) {
+		Preconditions.checkState(fssERF == null, "ERF already initialized");
+		this.useProxyRuptures = useProxyRuptures;
+	}
 	
 	public void setERF(BaseFaultSystemSolutionERF fssERF) {
 		this.fssERF = fssERF;
@@ -211,14 +219,9 @@ public class SolHazardMapCalc {
 	private synchronized void checkInitERF() {
 		if (fssERF == null) {
 			System.out.println("Building ERF");
-			if (noMFDs && sol.hasAvailableModule(RupMFDsModule.class)) {
-				// build new solution without MFDs module
-				FaultSystemSolution modSol = new FaultSystemSolution(sol.getRupSet(), sol.getRateForAllRups());
-				if (backSeisOption != IncludeBackgroundOption.EXCLUDE)
-					modSol.setGridSourceProvider(sol.getGridSourceProvider());
-				sol = modSol;
-			}
 			fssERF = new FaultSystemSolutionERF(sol);
+			fssERF.setParameter(UseRupMFDsParam.NAME, !noMFDs);
+			fssERF.setParameter(UseProxySectionsParam.NAME, useProxyRuptures);
 			fssERF.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 			fssERF.setParameter(IncludeBackgroundParam.NAME, backSeisOption);
 			if (backSeisOption != IncludeBackgroundOption.EXCLUDE && backSeisType != null)

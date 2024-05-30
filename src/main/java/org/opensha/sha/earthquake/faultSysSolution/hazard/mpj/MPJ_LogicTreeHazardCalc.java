@@ -119,8 +119,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private SolHazardMapCalc externalGriddedCurveCalc;
 	
 	private QuickGriddedHazardMapCalc[] quickGridCalcs;
-	
+
 	private boolean noMFDs;
+	private boolean noProxyRups;
 
 	public MPJ_LogicTreeHazardCalc(CommandLine cmd) throws IOException {
 		super(cmd);
@@ -255,8 +256,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				quickGridCalcs[p] = new QuickGriddedHazardMapCalc(gmpeRef, periods[p],
 						SolHazardMapCalc.getDefaultXVals(periods[p]), maxDistance);
 		}
-		
+
 		noMFDs = cmd.hasOption("no-mfds");
+		noProxyRups = cmd.hasOption("no-proxy-ruptures");
 		
 		if (rank == 0) {
 			waitOnDir(outputDir, 5, 1000);
@@ -265,7 +267,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			if (cmd.hasOption("output-file"))
 				outputFile = new File(cmd.getOptionValue("output-file"));
 			else
-				outputFile = new File(outputDir.getParentFile(), "results_hazard.zip");
+				outputFile = new File(outputDir.getParentFile(), outputDir.getName()+"_hazard.zip");
 			
 			postBatchHook = new AsyncHazardWriter(outputFile);
 		}
@@ -841,6 +843,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				calc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
 				calc.setAseisReducesArea(aseisReducesArea);
 				calc.setNoMFDs(noMFDs);
+				calc.setUseProxyRups(!noProxyRups);
 				
 				calc.calcHazardCurves(getNumThreads(), combineWithCurves);
 				calc.writeCurvesCSVs(hazardSubDir, curvesPrefix, true);
@@ -913,6 +916,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				+ "to draw from.");
 		ops.addOption(null, "no-mfds", false, "Flag to disable rupture MFDs, i.e., use a single magnitude for all "
 				+ "ruptures in the case of a branch-averaged solution");
+		ops.addOption(null, "no-proxy-ruptures", false, "Flag to disable proxy ruptures MFDs, i.e., use a single proxy "
+				+ "fault instead of distributed proxies that fill the source zone");
 		
 		return ops;
 	}

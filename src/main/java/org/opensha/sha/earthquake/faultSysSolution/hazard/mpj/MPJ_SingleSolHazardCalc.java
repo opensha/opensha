@@ -97,6 +97,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	private SolHazardMapCalc externalGriddedCurveCalc;
 	
 	private boolean noMFDs;
+	private boolean noProxyRups;
 
 	public MPJ_SingleSolHazardCalc(CommandLine cmd) throws IOException {
 		super(cmd);
@@ -243,6 +244,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		}
 		
 		noMFDs = cmd.hasOption("no-mfds");
+		noProxyRups = cmd.hasOption("no-proxy-ruptures");
 		
 		if (rank == 0) {
 			MPJ_LogicTreeHazardCalc.waitOnDir(outputDir, 5, 1000);
@@ -606,6 +608,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			calc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
 			calc.setAseisReducesArea(aseisReducesArea);
 			calc.setNoMFDs(noMFDs);
+			calc.setUseProxyRups(!noProxyRups);
 			
 			if (erf != null)
 				calc.setERF(erf);
@@ -651,6 +654,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				+ "to draw from.");
 		ops.addOption(null, "no-mfds", false, "Flag to disable rupture MFDs, i.e., use a single magnitude for all "
 				+ "ruptures in the case of a branch-averaged solution");
+		ops.addOption(null, "no-proxy-ruptures", false, "Flag to disable proxy ruptures MFDs, i.e., use a single proxy "
+				+ "fault instead of distributed proxies that fill the source zone");
 		
 		return ops;
 	}
