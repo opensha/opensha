@@ -23,7 +23,8 @@ import org.opensha.sha.faultSurface.FaultSection;
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
-	PRVI_FM_INITIAL("Initial Draft FM", "InitialFM", "/data/erf/prvi25/fault_models/crustal/NSHM2025_GeoDefModel_PRVI_v1-1_mod.geojson", 1d);
+	PRVI_CRUSTAL_FM_V1p1("PRVI25 Crustal FM v1.1", "Crustal FM v1.1",
+			"/data/erf/prvi25/fault_models/crustal/NSHM2025_GeoDefModel_PRVI_v1-1_mod.geojson", 1d);
 	
 	private String name;
 	private String shortName;

@@ -219,7 +219,7 @@ public class PRVI25_CrustalRandomlySampledDeformationModels implements RandomlyS
 		
 		PRVI25_CrustalRandomlySampledDeformationModelLevel level = new PRVI25_CrustalRandomlySampledDeformationModelLevel(numSamples);
 		List<PRVI25_CrustalRandomlySampledDeformationModels> nodes = level.getNodes();
-		PRVI25_CrustalFaultModels fm = PRVI25_CrustalFaultModels.PRVI_FM_INITIAL;
+		PRVI25_CrustalFaultModels fm = PRVI25_CrustalFaultModels.PRVI_CRUSTAL_FM_V1p1;
 		List<? extends FaultSection> fullSects = fm.getFaultSections();
 		
 		List<MinMaxAveTracker> parentTracks = new ArrayList<>();

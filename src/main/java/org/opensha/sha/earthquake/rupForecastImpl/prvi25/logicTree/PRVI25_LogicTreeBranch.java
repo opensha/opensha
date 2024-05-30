@@ -50,7 +50,7 @@ public class PRVI25_LogicTreeBranch {
 	 * This is the default on-fault reference branch
 	 */
 	public static final LogicTreeBranch<LogicTreeNode> DEFAULT_ON_FAULT = fromValues(levelsOnFault,
-			PRVI25_CrustalFaultModels.PRVI_FM_INITIAL,
+			PRVI25_CrustalFaultModels.PRVI_CRUSTAL_FM_V1p1,
 			PRVI25_CrustalDeformationModels.GEOLOGIC,
 			NSHM23_ScalingRelationships.LOGA_C4p2,
 			SupraSeisBValues.B_0p5,

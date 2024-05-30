@@ -24,7 +24,8 @@ import org.opensha.sha.util.TectonicRegionType;
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
-	PRVI_SUB_FM_INITIAL("Initial Draft Subduction FM", "SubFM", "/data/erf/prvi25/fault_models/initial/PRVI_sub_v2_fault_model.geojson", 1d);
+	PRVI_SUB_FM_LARGE("Subduction FM, Large", "LargeSubFM", "/data/erf/prvi25/fault_models/subduction/PRVI_sub_v3_fault_model_large.geojson", 0.5d),
+	PRVI_SUB_FM_SMALL("Subduction FM, Small", "SmallSubFM", "/data/erf/prvi25/fault_models/subduction/PRVI_sub_v3_fault_model_small.geojson", 0.5d);
 	
 	private String name;
 	private String shortName;
