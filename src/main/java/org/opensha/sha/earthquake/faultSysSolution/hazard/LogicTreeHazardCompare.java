@@ -2099,12 +2099,15 @@ public class LogicTreeHazardCompare {
 				List<HashMap<LogicTreeNode, GriddedGeoDataSet>> choiceMeanPercentilesList = new ArrayList<>();
 				
 				// do mean map calculations first so that we can clear out the full NormCDFs from memory
-				for (LogicTreeLevel<?> level : tree.getLevels()) {
+				int numLevels = tree.getLevels().size();
+				for (int l=0; l<numLevels; l++) {
+//				for (LogicTreeLevel<?> level : tree.getLevels()) {
+					LogicTreeLevel<?> level = tree.getLevels().get(l);
 					HashMap<LogicTreeNode, List<GriddedGeoDataSet>> choiceMaps = new HashMap<>();
 					HashMap<LogicTreeNode, List<Double>> choiceWeights = new HashMap<>();
 					for (int i=0; i<branches.size(); i++) {
 						LogicTreeBranch<?> branch = branches.get(i);
-						LogicTreeNode choice = branch.getValue(level.getType());
+						LogicTreeNode choice = branch.getValue(l);
 						List<GriddedGeoDataSet> myChoiceMaps = choiceMaps.get(choice);
 						if (myChoiceMaps == null) {
 							myChoiceMaps = new ArrayList<>();
@@ -2114,6 +2117,7 @@ public class LogicTreeHazardCompare {
 						myChoiceMaps.add(maps[i]);
 						choiceWeights.get(choice).add(weights.get(i));
 					}
+//					System.out.println("Processing level "+level.getName()+" with "+choiceMaps.size()+" choices");
 					boolean include = choiceMaps.size() > 1;
 					if (LogicTreeCurveAverager.shouldSkipLevel(level, choiceMaps.size())) {
 						System.out.println("Skipping randomly sampled level ("+level.getName()
