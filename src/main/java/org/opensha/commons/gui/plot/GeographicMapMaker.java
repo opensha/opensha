@@ -1187,25 +1187,25 @@ public class GeographicMapMaker {
 
 						funcs.add(0, outline);
 						chars.add(0, fillChar);
-					}
-
-					XY_DataSet trace = new DefaultXY_DataSet();
-					for (Location loc : getUpperEdge(sect))
-						trace.set(loc.getLongitude(), loc.getLatitude());
-					
-					funcs.add(trace);
-					PlotCurveCharacterstics scalarChar = new PlotCurveCharacterstics(PlotLineType.SOLID, sectScalarThickness, color);
-					chars.add(scalarChar);
-					if (writeGeoJSON) {
-						Feature feature = traceFeature(sect, scalarChar);
-						if (sectScalarLabel != null && Float.isFinite(scalar)) {
-							feature.properties.set(sectScalarLabel, scalar);
-							// see if we have an outline feature as well
-							Feature outlineFeature = outlineFeatures.get(sect.getSectionId());
-							if (outlineFeature != null)
-								outlineFeature.properties.set(sectScalarLabel, scalar);
+					} else {
+						XY_DataSet trace = new DefaultXY_DataSet();
+						for (Location loc : getUpperEdge(sect))
+							trace.set(loc.getLongitude(), loc.getLatitude());
+						
+						funcs.add(trace);
+						PlotCurveCharacterstics scalarChar = new PlotCurveCharacterstics(PlotLineType.SOLID, sectScalarThickness, color);
+						chars.add(scalarChar);
+						if (writeGeoJSON) {
+							Feature feature = traceFeature(sect, scalarChar);
+							if (sectScalarLabel != null && Float.isFinite(scalar)) {
+								feature.properties.set(sectScalarLabel, scalar);
+								// see if we have an outline feature as well
+								Feature outlineFeature = outlineFeatures.get(sect.getSectionId());
+								if (outlineFeature != null)
+									outlineFeature.properties.set(sectScalarLabel, scalar);
+							}
+							features.add(feature);
 						}
-						features.add(feature);
 					}
 				}
 				
