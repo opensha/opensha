@@ -701,7 +701,7 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 		FaultSystemSolution sol = null;
 		File solFile = null;
 		FaultSystemRupSet rupSet = new PRVI25_InvConfigFactory().buildRuptureSet(
-				PRVI25_LogicTreeBranch.DEFAULT_ON_FAULT, FaultSysTools.defaultNumThreads());
+				PRVI25_LogicTreeBranch.DEFAULT_CRUSTAL_ON_FAULT, FaultSysTools.defaultNumThreads());
 		ProxyFaultSectionInstances proxySects = build(rupSet, 5, 5d);
 		rupSet.addModule(proxySects);
 		
