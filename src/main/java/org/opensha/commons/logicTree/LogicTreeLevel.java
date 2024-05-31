@@ -202,7 +202,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 		return false;
 	}
 	
-	static class FileBackedLevel extends LogicTreeLevel<FileBackedNode> {
+	public static class FileBackedLevel extends LogicTreeLevel<FileBackedNode> {
 		
 		private String name;
 		private String shortName;
@@ -218,7 +218,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 				addChoice(choice);
 		}
 
-		FileBackedLevel(String name, String shortName, List<FileBackedNode> choices) {
+		public FileBackedLevel(String name, String shortName, List<FileBackedNode> choices) {
 			this.name = name;
 			this.shortName = shortName;
 			if (choices == null)
