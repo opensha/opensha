@@ -62,11 +62,18 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	private List<Callable<E>> availableModules;
 	private Map<Class<? extends E>, Callable<E>> availableMappings;
 	
+	public static boolean VERBOSE_DEFAULT = true;
+	protected boolean verbose = VERBOSE_DEFAULT;
+	
 	public ModuleContainer() {
 		modules = new ArrayList<>();
 		mappings = new ConcurrentHashMap<>();
 		availableModules = new ArrayList<>();
 		availableMappings = new ConcurrentHashMap<>();
+	}
+	
+	public void setVerbose(boolean verbose) {
+		this.verbose = verbose;
 	}
 	
 	/**
@@ -445,7 +452,7 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 		for (Class<? extends OpenSHA_Module> clazz : assignableClasses)
 			removeAvailableModuleInstances(clazz);
 		
-//		System.out.println("Adding available module with class: "+moduleClass);
+//		if (VERBOSE) System.out.println("Adding available module with class: "+moduleClass);
 		
 		availableModules.add((Callable<E>)call);
 		
@@ -736,6 +743,8 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	}
 	
 	private void debug(String message, boolean err) {
+		if (!err && !verbose)
+			return;
 		if (this instanceof Named)
 			message = ((Named)this).getName()+":\t"+message;
 		if (err)
