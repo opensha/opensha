@@ -45,6 +45,8 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	private LogicTree<?> logicTree;
 	private List<LogicTreeLevel<?>> levels;
 	private Map<LogicTreeLevel<?>, Integer> levelIndexes;
+	
+	protected boolean verbose;
 
 	public static final String LOGIC_TREE_FILE_NAME = "logic_tree.json";
 	public static final String LOGIC_TREE_MAPPINGS_FILE_NAME = "logic_tree_mappings.json";
@@ -53,6 +55,10 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		this.zip = zip;
 		this.prefix = prefix;
 		setLogicTree(logicTree);
+	}
+	
+	public void setVerbose(boolean verbose) {
+		this.verbose = verbose;
 	}
 	
 	/**
@@ -72,7 +78,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 			} else {
 				mappingLevels = getLevelsAffectingFile(fileName, affectedByDefault, this.levels);
 				if (mappingLevels == null) {
-					System.out.println("no levels specified for file '"+fileName+"', assuming it's affected by all levels");
+					if (verbose) System.out.println("no levels specified for file '"+fileName+"', assuming it's affected by all levels");
 					mappingLevels = logicTree.getLevels();
 				}
 				levelsCache.put(fileName, mappingLevels);
@@ -191,7 +197,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	
 	protected void writeLogicTreeToArchive(ZipOutputStream zout, String prefix, LogicTree<?> logicTree)
 			throws IOException {
-		System.out.println("Writing full logic tree");
+		if (verbose) System.out.println("Writing full logic tree");
 		// write the logic tree
 		FileBackedModule.initEntry(zout, prefix, LOGIC_TREE_FILE_NAME);
 		Gson gson = new GsonBuilder().setPrettyPrinting()
@@ -205,8 +211,8 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	
 	protected void writeLogicTreeMappingsToArchive(ZipOutputStream zout, String prefix, LogicTree<?> logicTree,
 			List<Map<String, String>> branchMappings) throws IOException {
-		System.out.println("Writing full logic tree");
-		System.out.println("Writing branch file mappings");
+		if (verbose) System.out.println("Writing full logic tree");
+		if (verbose) System.out.println("Writing branch file mappings");
 		FileBackedModule.initEntry(zout, prefix, LOGIC_TREE_MAPPINGS_FILE_NAME);
 		Gson gson = new GsonBuilder().setPrettyPrinting()
 				.registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
@@ -253,7 +259,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		List<Map<String, String>> branchMappings = new ArrayList<>();
 		for (int i=0; i<logicTree.size(); i++) {
 			LogicTreeBranch<?> branch = logicTree.getBranch(i);
-			System.out.println("Writing branch "+i+"/"+logicTree.size()+": "+branch);
+			if (verbose) System.out.println("Writing branch "+i+"/"+logicTree.size()+": "+branch);
 			branchMappings.add(writeBranchFilesToArchive(zout, outPrefix, branch, writtenFiles));
 		}
 		
