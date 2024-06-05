@@ -473,7 +473,7 @@
   <!-- * USGS SF 21.1 2.5 * -->
   <servlet>
     <servlet-name>USGS_SF_21p1_2_5</servlet-name>
-    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.USGSBayAreaBasinDepthTo2_5_Servlet</servlet-class>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.USGS_SFBay_BasinDepth_v21p1To2_5_Servlet</servlet-class>
     <init-param>
       <param-name>debug</param-name>
       <param-value>2</param-value>
@@ -489,7 +489,7 @@
   <!-- * USGS SF 21.1 1.0 * -->
   <servlet>
     <servlet-name>USGS_SF_21p1_1_0</servlet-name>
-    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.USGSBayAreaBasinDepthTo1_0_Servlet</servlet-class>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.USGS_SFBay_BasinDepth_v21p1To1_0_Servlet</servlet-class>
     <init-param>
       <param-name>debug</param-name>
       <param-value>2</param-value>
