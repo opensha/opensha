@@ -22,14 +22,14 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 	 */
 	public String getFilePrefix();
 	
-	static class FileBackedNode implements LogicTreeNode {
+	public static class FileBackedNode implements LogicTreeNode {
 		
 		private String name;
 		private String shortName;
 		private double weight;
 		private String choiceStr;
 
-		FileBackedNode(String name, String shortName, double weight, String choiceStr) {
+		public FileBackedNode(String name, String shortName, double weight, String choiceStr) {
 			this.name = name;
 			this.shortName = shortName;
 			this.weight = weight;

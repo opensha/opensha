@@ -67,15 +67,26 @@ public class LogicTreeCurveAverager {
 	
 	public static void populateVariableNodes(LogicTree<?> tree, HashSet<LogicTreeNode> variableNodes,
 			HashMap<LogicTreeNode, LogicTreeLevel<?>> nodeLevels) {
+		populateVariableNodes(tree, variableNodes, nodeLevels, null, null);
+	}
+	
+	public static void populateVariableNodes(LogicTree<?> tree, HashSet<LogicTreeNode> variableNodes,
+			HashMap<LogicTreeNode, LogicTreeLevel<?>> nodeLevels,
+			Map<LogicTreeLevel<?>, LogicTreeLevel<?>> levelRemappings,
+			Map<LogicTreeNode, LogicTreeNode> nodeRemappings) {
 		int numLevels = tree.getLevels().size();
 		for (int l=0; l<numLevels; l++) {
 			HashSet<LogicTreeNode> levelNodes = new HashSet<>();
 			for (LogicTreeBranch<?> branch : tree) {
 				LogicTreeNode node = branch.getValue(l);
+				if (nodeRemappings != null && nodeRemappings.containsKey(node))
+					node = nodeRemappings.get(node);
 				levelNodes.add(node);
 			}
 			LogicTreeLevel<?> level = tree.getLevels().get(l);
 			if (!(shouldSkipLevel(level, levelNodes.size()))) {
+				if (levelRemappings != null && levelRemappings.containsKey(level))
+					level = levelRemappings.get(level);
 				for (LogicTreeNode node : levelNodes)
 					nodeLevels.put(node, level);
 				variableNodes.addAll(levelNodes);

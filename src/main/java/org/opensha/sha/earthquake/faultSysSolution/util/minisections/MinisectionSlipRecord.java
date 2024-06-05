@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
@@ -135,5 +136,27 @@ public class MinisectionSlipRecord extends AbstractMinisectionDataRecord {
 		}
 		
 		fw.close();
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + Objects.hash(rake, slipRate, slipRateStdDev);
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		MinisectionSlipRecord other = (MinisectionSlipRecord) obj;
+		return Double.doubleToLongBits(rake) == Double.doubleToLongBits(other.rake)
+				&& Double.doubleToLongBits(slipRate) == Double.doubleToLongBits(other.slipRate)
+				&& Double.doubleToLongBits(slipRateStdDev) == Double.doubleToLongBits(other.slipRateStdDev);
 	}
 }
