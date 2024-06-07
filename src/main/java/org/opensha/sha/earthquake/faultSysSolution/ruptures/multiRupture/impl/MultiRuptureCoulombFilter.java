@@ -67,7 +67,7 @@ public class MultiRuptureCoulombFilter implements MultiRuptureCompatibilityFilte
 		}
 		MultiRuptureCompatibilityResult ret = result ? MultiRuptureCompatibilityResult.PASS : MultiRuptureCompatibilityResult.FAIL;
 		if (verbose) System.out.println("MultiRuptureCoulombFilter: "+ret.plausibilityResult
-				+" (nuclToTarget="+nuclToTarget+", targetToNucl="+targetToNucl+")");
+				+" (nuclToTarget="+nuclToTarget+", targetToNucl="+targetToNucl+")\n\tNucl: "+nucleation+"\n\tTarget: "+target);
 		return ret;
 	}
 
