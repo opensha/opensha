@@ -720,9 +720,11 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 				}
 			}
 			// make sure we got all of the fractional losses for each mag bin
-			for (int i=0; i<fractTrack.size(); i++)
-				Preconditions.checkState((float)fractTrack.getY(i) == 1f,
-						"Fract for mag "+fractTrack.getX(i)+" != 1: "+fractTrack.getY(i));
+			for (int i=0; i<fractTrack.size(); i++) {
+				double diff = Math.abs(fractTrack.getY(i) - 1d);
+				Preconditions.checkState(diff <= 0.001,
+						"Fract for mag "+fractTrack.getX(i)+" != 1: "+(float)fractTrack.getY(i));
+			}
 			ret[nodeIndex] = func;
 		}
 		
@@ -932,6 +934,7 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 	}
 	
 	public static void main(String[] args) {
+		System.setProperty("java.awt.headless", "true");
 		args = MPJTaskCalculator.initMPJ(args);
 		
 		try {

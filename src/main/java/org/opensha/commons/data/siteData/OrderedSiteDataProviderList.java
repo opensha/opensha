@@ -28,6 +28,7 @@ import org.opensha.commons.data.siteData.impl.SRTM30TopoSlope;
 import org.opensha.commons.data.siteData.impl.SRTM30Topography;
 import org.opensha.commons.data.siteData.impl.ThompsonVs30_2018;
 import org.opensha.commons.data.siteData.impl.USGSBayAreaBasinDepth;
+import org.opensha.commons.data.siteData.impl.USGS_SFBay_BasinDepth_v21p1;
 import org.opensha.commons.data.siteData.impl.WaldAllenGlobalVs30;
 import org.opensha.commons.data.siteData.impl.WillsMap2000;
 import org.opensha.commons.data.siteData.impl.WillsMap2000TranslatedVs30;
@@ -446,6 +447,18 @@ public class OrderedSiteDataProviderList implements Iterable<SiteData<?>>, XMLSa
 		/*		CCA i6 Depth 1.0		*/
 		try {
 			providers.add(new CVM_CCAi6BasinDepth(SiteData.TYPE_DEPTH_TO_1_0));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		/*		USGS SF Bay Area v21.1 Depth 2.5		*/
+		try {
+			providers.add(new USGS_SFBay_BasinDepth_v21p1(SiteData.TYPE_DEPTH_TO_2_5));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		/*		USGS SF Bay Area v21.1 Depth 1.0		*/
+		try {
+			providers.add(new USGS_SFBay_BasinDepth_v21p1(SiteData.TYPE_DEPTH_TO_1_0));
 		} catch (IOException e) {
 			e.printStackTrace();
 		}

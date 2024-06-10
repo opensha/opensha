@@ -17,6 +17,7 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
@@ -60,6 +61,9 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssoc
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
+import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b.PointSurface13b;
+import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
+import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm.PointSurfaceNshm;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -4211,28 +4215,61 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		else { // it's a gridded seis source
 			
 			int gridRegionIndex = randSrcIndex-numFltSystSources;
-			ProbEqkSource src=null;
-			if(origGridSeisTrulyOffVsSubSeisStatus[gridRegionIndex] == 2) {	// it has both truly off and sub-seismo components
-				int[] regAndDepIndex = getCubeRegAndDepIndicesForIndex(aftShCubeIndex);
-				int isSubSeismo = isCubeInsideFaultPolygon[regAndDepIndex[0]];
-				if(isSubSeismo == 1) {
-					src = ((FaultSystemSolutionERF)erf).getSourceSubSeisOnly(randSrcIndex);
+			ProbEqkSource src = erf.getSource(randSrcIndex);
+			int randRupIndex;
+			if (src.getNumRuptures() == 1) {
+				randRupIndex = 0; // just use the only rupture
+			} else {
+				Preconditions.checkState(src.getNumRuptures() > 1);
+				// more than 1, need to randomly sample a rupture
+				
+				if (origGridSeisTrulyOffVsSubSeisStatus[gridRegionIndex] == 2) {	// it has both truly off and sub-seismo components
+					// figure out if this cube is inside the polygon, then choose a random rupture from the off or sub-seismo
+					// MFD as appropriate
+					int[] regAndDepIndex = getCubeRegAndDepIndicesForIndex(aftShCubeIndex);
+					int isSubSeismo = isCubeInsideFaultPolygon[regAndDepIndex[0]];
+					ProbEqkSource filteredSrc;
+					if(isSubSeismo == 1)
+						filteredSrc = ((FaultSystemSolutionERF)erf).getSourceSubSeisOnly(randSrcIndex);
+					else
+						filteredSrc = ((FaultSystemSolutionERF)erf).getSourceTrulyOffOnly(randSrcIndex);
+					int filteredR = filteredSrc.drawSingleRandomEqkRuptureIndex(etas_utils.getRandomDouble());
+					ProbEqkRupture filteredRup = filteredSrc.getRupture(filteredR);
+					randRupIndex = -1;
+					// find match in the original source; this is needed for the nth rupture index to be real in the
+					// output files, see issue #120: https://github.com/opensha/opensha/issues/120
+					
+					// we'll find it by finding a rupture in the original source with the same magnitude, rake,
+					// and footwall setting (there can be 2 versions of the dipping ruptures that are programmed to be
+					// on/off the footwall). This is pretty specific to the UCERF3 point source implementation (with
+					// distance corrected point surface, e.g. from PointSource13b), and should be generalized in
+					// future models. Checks are made to ensure that exactly 1 mapping is found, so if those assumptions
+					// break down those checks should fail (e.g., with multiple mappings found).
+					boolean footwall = ptRupFootwallTest(filteredRup);
+					for (int r=0; r<src.getNumRuptures(); r++) {
+						ProbEqkRupture rup = src.getRupture(r);
+						boolean match = Precision.equals(rup.getAveRake(), filteredRup.getAveRake())
+								&& Precision.equals(rup.getMag(), filteredRup.getMag())
+								&& footwall == ptRupFootwallTest(rup);
+						if (match) {
+							Preconditions.checkState(randRupIndex < 0, "Multiple rupture mappings? sourceID=%s, subSeismo=%s,"
+									+ "filteredR=%s, mag=%s, rake=%s, sourceType=%s, surfType=%s",
+									randSrcIndex, isSubSeismo, filteredR, filteredRup.getMag(), filteredRup.getAveRake(),
+									filteredSrc.getClass().getName(), filteredRup.getRuptureSurface().getClass().getName());
+							randRupIndex = r;
+						}
+					}
+					Preconditions.checkState(randRupIndex >= 0, "No rupture mapping found sourceID=%s, subSeismo=%s,"
+										+ "filteredR=%s, mag=%s, rake=%s, sourceType=%s, surfType=%s",
+										randSrcIndex, isSubSeismo, filteredR, filteredRup.getMag(), filteredRup.getAveRake(),
+										filteredSrc.getClass().getName(), filteredRup.getRuptureSurface().getClass().getName());
+				} else {
+					randRupIndex = src.drawSingleRandomEqkRuptureIndexFromRelativeRates(etas_utils.getRandomDouble());
 				}
-				else {
-					src = ((FaultSystemSolutionERF)erf).getSourceTrulyOffOnly(randSrcIndex);
-				}
-			}
-			else {
-				src = erf.getSource(randSrcIndex);
 			}
 			
-			
-			int r=0;
-			if(src.getNumRuptures() > 1) {
-				r = src.drawSingleRandomEqkRuptureIndexFromRelativeRates(etas_utils.getRandomDouble());
-			}
-			int nthRup = erf.getIndexN_ForSrcAndRupIndices(randSrcIndex,r);
-			ProbEqkRupture erf_rup = src.getRupture(r);
+			int nthRup = erf.getIndexN_ForSrcAndRupIndices(randSrcIndex,randRupIndex);
+			ProbEqkRupture erf_rup = src.getRupture(randRupIndex);
 
 			double relLat = latForCubeCenter[aftShCubeIndex]-translatedParLoc.getLatitude();
 			double relLon = lonForCubeCenter[aftShCubeIndex]-translatedParLoc.getLongitude();
@@ -4330,6 +4367,18 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		rupToFillIn.setDistanceToParent(distToParent);
 		
 		return true;
+	}
+	
+	private static final Location ptStrFootwallTestLoc = new Location(0d, 0d);
+	private static boolean ptRupFootwallTest(ProbEqkRupture rup) {
+		RuptureSurface surf = rup.getRuptureSurface();
+		if (surf.getAveDip() == 90d)
+			return false;
+		if (surf instanceof PointSurfaceNshm)
+			return ((PointSurfaceNshm)surf).isOnFootwall();
+		if (surf instanceof PointSurface13b)
+			return ((PointSurface13b)surf).isOnFootwall();
+		return surf.getDistanceX(ptStrFootwallTestLoc) < 0;
 	}
 	
 	/**

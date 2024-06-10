@@ -47,14 +47,23 @@ public class PRVI25_LogicTreeBranch {
 	}
 	
 	/**
-	 * This is the default on-fault reference branch
+	 * This is the default crustal on-fault reference branch
 	 */
-	public static final LogicTreeBranch<LogicTreeNode> DEFAULT_ON_FAULT = fromValues(levelsOnFault,
-			PRVI25_CrustalFaultModels.PRVI_FM_INITIAL,
+	public static final LogicTreeBranch<LogicTreeNode> DEFAULT_CRUSTAL_ON_FAULT = fromValues(levelsOnFault,
+			PRVI25_CrustalFaultModels.PRVI_CRUSTAL_FM_V1p1,
 			PRVI25_CrustalDeformationModels.GEOLOGIC,
 			NSHM23_ScalingRelationships.LOGA_C4p2,
 			SupraSeisBValues.B_0p5,
 			NSHM23_SegmentationModels.MID);
+	
+	/**
+	 * This is the default subduction interface reference branch
+	 */
+	public static final LogicTreeBranch<LogicTreeNode> DEFAULT_SUBDUCTION_INTERFACE = fromValues(levelsSubduction,
+			PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE,
+			PRVI25_SubductionDeformationModels.FULL,
+			PRVI25_SubductionScalingRelationships.LOGA_C4p0,
+			SupraSeisBValues.B_0p5);
 	
 	public static LogicTreeBranch<LogicTreeNode> fromValues(List<LogicTreeLevel<? extends LogicTreeNode>> levels, LogicTreeNode... vals) {
 		Preconditions.checkState(levels.size() == vals.length);

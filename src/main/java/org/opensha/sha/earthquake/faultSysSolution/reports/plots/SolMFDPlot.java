@@ -581,7 +581,20 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 	}
 	
 	public static IncrementalMagFreqDist initDefaultMFD(double minMag, double maxMag) {
-		return initDefaultMFD(5d, 9d, minMag, maxMag);
+		double defaultMin;
+		if (minMag > 7d)
+			defaultMin = 6d;
+		else
+			defaultMin = 5d;
+		double defaultMax;
+		if (maxMag > 8.8)
+			defaultMax = 10d;
+		else if (maxMag < 7d)
+			defaultMax = 8d;
+		else
+			defaultMax = 9d;
+		
+		return initDefaultMFD(defaultMin, defaultMax, minMag, maxMag);
 	}
 	
 	public static IncrementalMagFreqDist initDefaultMFD(double defaultMinMag, double defaultMaxMag, double minMag, double maxMag) {

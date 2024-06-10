@@ -440,9 +440,11 @@ public class NGAW2_WrapperFullParam extends AttenuationRelationship implements P
 			boolean supports = supportsEpi(intensityMeasureName);
 			if (!supports && epiParam.getValue() != null) {
 				epiParam.setValue(null);
-				epiParam.refreshEditor();
+				if (epiParam.isEditorBuilt())
+					epiParam.refreshEditor();
 			}
-			epiParam.getEditor().setEnabled(supports);
+			if (epiParam.isEditorBuilt())
+				epiParam.getEditor().setEnabled(supports);
 		}
 		clear();
 	}

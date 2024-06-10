@@ -264,7 +264,7 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 	private static final DecimalFormat pDF = new DecimalFormat("0.00%");
 	
 	public static void main(String[] args) throws IOException {
-		PRVI25_CrustalFaultModels fm = PRVI25_CrustalFaultModels.PRVI_FM_INITIAL;
+		PRVI25_CrustalFaultModels fm = PRVI25_CrustalFaultModels.PRVI_CRUSTAL_FM_V1p1;
 		for (PRVI25_CrustalDeformationModels dm : values()) {
 			List<? extends FaultSection> subSects = dm.build(fm);
 			GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+fm.getFilePrefix()+"_"+dm.getFilePrefix()+"_subSects.geojson"), subSects);

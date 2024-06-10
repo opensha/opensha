@@ -528,10 +528,16 @@ public class TrueMeanSolutionCreator {
 			FaultSystemSolution sol = slt.forBranch(branch);
 			if (cRups != null && cRups.size() != sol.getRupSet().getNumRuptures())
 				cRups = null;
-			if (cRups == null)
-				cRups = sol.getRupSet().requireModule(ClusterRuptures.class);
-			else
+			if (cRups == null) {
+				cRups = sol.getRupSet().getModule(ClusterRuptures.class);
+				if (cRups == null) {
+					System.err.println("WARNING: Building ClusterRuptures and assuming single-stranded");
+					cRups = ClusterRuptures.singleStranged(sol.getRupSet());
+					sol.getRupSet().addModule(cRups);
+				}
+			} else {
 				sol.getRupSet().addModule(cRups);
+			}
 			creator.addSolution(sol, branch);
 		}
 		

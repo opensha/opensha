@@ -13,6 +13,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ProxyFaultSectionInstances;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -22,7 +23,8 @@ import org.opensha.sha.faultSurface.FaultSection;
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
-	PRVI_FM_INITIAL("Initial Draft FM", "InitialFM", "/data/erf/prvi25/fault_models/crustal/NSHM2025_GeoDefModel_PRVI_v1-1_mod.geojson", 1d);
+	PRVI_CRUSTAL_FM_V1p1("PRVI25 Crustal FM v1.1", "Crustal FM v1.1",
+			"/data/erf/prvi25/fault_models/crustal/NSHM2025_GeoDefModel_PRVI_v1-1_mod.geojson", 1d);
 	
 	private String name;
 	private String shortName;
@@ -78,6 +80,14 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 				return getDefaultRegion(branch);
 			}
 		}, ModelRegion.class);
+		
+		rupSet.addAvailableModule(new Callable<ProxyFaultSectionInstances>() {
+
+			@Override
+			public ProxyFaultSectionInstances call() throws Exception {
+				return ProxyFaultSectionInstances.build(rupSet, 5, 5d, 0.25, 5, 10);
+			}
+		}, ProxyFaultSectionInstances.class);
 		// TODO: named faults?
 		// TODO: regions of interest
 		// TODO: tectonic regimes?

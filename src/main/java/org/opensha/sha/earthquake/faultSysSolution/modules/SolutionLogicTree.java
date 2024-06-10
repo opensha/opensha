@@ -1063,11 +1063,11 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	 */
 	public synchronized double[] loadRatesForBranch(LogicTreeBranch<?> branch) throws IOException {
 		String ratesFile = getBranchFileName(branch, FaultSystemSolution.RATES_FILE_NAME, true);
-		if (prevRates != null && ratesFile.equals(prevRates)) {
-			System.out.println("\tRe-using previous rupture rates");
+		if (prevRates != null && ratesFile.equals(prevRatesFile)) {
+			if (verbose) System.out.println("\tRe-using previous rupture rates");
 			return prevRates;
 		}
-		System.out.println("\tLoading rate data from "+ratesFile);
+		if (verbose) System.out.println("\tLoading rate data from "+ratesFile);
 		ZipFile zip = getZipFile();
 		CSVFile<String> ratesCSV = CSV_BackedModule.loadFromArchive(zip, null, ratesFile);
 		double[] rates = FaultSystemSolution.loadRatesCSV(ratesCSV);
@@ -1080,10 +1080,10 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		String propsFile = getBranchFileName(branch, FaultSystemRupSet.RUP_PROPS_FILE_NAME, true);
 		RuptureProperties props;
 		if (prevProps != null && propsFile.equals(prevPropsFile)) {
-			System.out.println("\tRe-using previous rupture properties");
+			if (verbose) System.out.println("\tRe-using previous rupture properties");
 			props = prevProps;
 		} else {
-			System.out.println("\tLoading rupture properties from "+propsFile);
+			if (verbose) System.out.println("\tLoading rupture properties from "+propsFile);
 			ZipFile zip = getZipFile();
 			CSVFile<String> rupPropsCSV = CSV_BackedModule.loadFromArchive(zip, null, propsFile);
 			props = new RuptureProperties(rupPropsCSV);
@@ -1183,17 +1183,17 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	 * @throws IOException
 	 */
 	public synchronized FaultSystemSolution forBranch(LogicTreeBranch<?> branch, boolean process) throws IOException {
-		System.out.println("Loading rupture set for logic tree branch: "+branch);
+		if (verbose) System.out.println("Loading rupture set for logic tree branch: "+branch);
 		ZipFile zip = getZipFile();
 		String entryPrefix = null; // prefixes will be encoded in the results of getBranchFileName(...) calls
 		
 		String sectsFile = getBranchFileName(branch, FaultSystemRupSet.SECTS_FILE_NAME, true);
 		List<? extends FaultSection> subSects;
 		if (prevSubSects != null && sectsFile.equals(prevSectsFile)) {
-			System.out.println("\tRe-using previous section data");
+			if (verbose) System.out.println("\tRe-using previous section data");
 			subSects = prevSubSects;
 		} else {
-			System.out.println("\tLoading section data from "+sectsFile);
+			if (verbose) System.out.println("\tLoading section data from "+sectsFile);
 			subSects = GeoJSONFaultReader.readFaultSections(
 					new InputStreamReader(FileBackedModule.getInputStream(zip, entryPrefix, sectsFile)));
 			for (int s=0; s<subSects.size(); s++)
@@ -1208,10 +1208,10 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		String indicesFile = getBranchFileName(branch, FaultSystemRupSet.RUP_SECTS_FILE_NAME, true);
 		List<List<Integer>> rupIndices;
 		if (prevRupIndices != null && indicesFile.equals(prevIndicesFile)) {
-			System.out.println("\tRe-using previous rupture indices");
+			if (verbose) System.out.println("\tRe-using previous rupture indices");
 			rupIndices = prevRupIndices;
 		} else {
-			System.out.println("\tLoading rupture indices from "+indicesFile);
+			if (verbose) System.out.println("\tLoading rupture indices from "+indicesFile);
 			CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(zip, entryPrefix, indicesFile);
 			rupIndices = FaultSystemRupSet.loadRupSectsCSV(rupSectsCSV, subSects.size(), props.mags.length);
 			prevRupIndices = rupIndices;
@@ -1380,7 +1380,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	
 	protected void writeREADMEToArchive(ZipOutputStream zout) throws IOException {
 		OutputStreamWriter writer = new OutputStreamWriter(zout);
-		System.out.println("Writing README at root");
+		if (verbose) System.out.println("Writing README at root");
 		FileBackedModule.initEntry(zout, null, "README");
 		BufferedWriter readme = new BufferedWriter(writer);
 		readme.write("This is an OpenSHA Fault System Solution Logic Tree zip file.\n\n");
@@ -1498,7 +1498,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			}
 			
 			try {
-				System.out.println("Building instance: "+processorClass.getName());
+				if (verbose) System.out.println("Building instance: "+processorClass.getName());
 				this.processor = constructor.newInstance();
 			} catch (Exception e) {
 				e.printStackTrace();
