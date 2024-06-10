@@ -610,7 +610,12 @@ public class ETAS_Launcher {
 	}
 	
 	/**
-	 * Creates ERF for use with ETAS simulations. Will not be updated
+	 * Creates ERF for use with ETAS simulations. Will not be updated.
+	 * 
+	 * Note that the timeIndep boolean only affects whether or not the historical open interval is set; the ERF is still
+	 * set to BPT either way. If you want to do a time-independent ETAS simulation you should also (externally) clear
+	 * the date of last event on all fault sections.
+	 * 
 	 * @param sol
 	 * @param timeIndep
 	 * @param duration
@@ -622,6 +627,19 @@ public class ETAS_Launcher {
 		return buildERF_millis(sol, timeIndep, duration, ot);
 	}
 	
+	/**
+	 * Creates ERF for use with ETAS simulations. Will not be updated.
+	 * 
+	 * Note that the timeIndep boolean only affects whether or not the historical open interval is set; the ERF is still
+	 * set to BPT either way. If you want to do a time-independent ETAS simulation you should also (externally) clear
+	 * the date of last event on all fault sections.
+	 * 
+	 * @param sol
+	 * @param timeIndep
+	 * @param duration
+	 * @param ot
+	 * @return
+	 */
 	@SuppressWarnings("unchecked")
 	public static FaultSystemSolutionERF_ETAS buildERF_millis(FaultSystemSolution sol, boolean timeIndep, double duration,
 			long ot) {
