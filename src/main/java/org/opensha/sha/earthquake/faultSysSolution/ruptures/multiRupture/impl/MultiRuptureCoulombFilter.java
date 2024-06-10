@@ -1,6 +1,8 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture.impl;
 
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
@@ -9,6 +11,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture.MultiRu
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture.MultiRuptureJump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.ParentCoulombCompatibilityFilter.Directionality;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
 
@@ -72,5 +75,61 @@ public class MultiRuptureCoulombFilter implements MultiRuptureCompatibilityFilte
 				+" (forward="+forward+", reversed="+reversed+")\n\tFromRup: "+fromRup+"\n\tToRup: "+toRup);
 		return ret;
 	}
+	
+	public void parallelCacheStiffness(ClusterRupture fromRup, List<ClusterRupture> toRups,
+			SectionDistanceAzimuthCalculator distAzCalc, double maxDist) {
+		List<FaultSection> fromSects = new ArrayList<>(fromRup.getTotalNumSects());
+		for (FaultSubsectionCluster cluster : fromRup.getClustersIterable())
+			fromSects.addAll(cluster.subSects);
+		HashSet<FaultSection> toSects = new HashSet<>();
+		for (ClusterRupture toRup : toRups) {
+			boolean withinDist = false;
+			for (FaultSubsectionCluster cluster : toRup.getClustersIterable()) {
+				for (FaultSection sect : cluster.subSects) {
+					for (FaultSection fromSect : fromSects) {
+						if (distAzCalc.getDistance(fromSect, sect) <= maxDist) {
+							withinDist = true;
+							break;
+						}
+					}
+				}
+			}
+			if (withinDist)
+				for (FaultSubsectionCluster cluster : toRup.getClustersIterable())
+					toSects.addAll(cluster.subSects);
+		}
+		parallelCacheStiffness(fromSects, toSects);
+	}
+	
+	/**
+	 * Pre-calculates (and thus caches) stiffness between each of the given source and receiver sections. Can be useful
+	 * to speed up merging operations.
+	 * 
+	 * @param fromSects
+	 * @param toSects
+	 */
+	public void parallelCacheStiffness(Collection<? extends FaultSection> fromSects,
+			Collection<? extends FaultSection> toSects) {
+		System.out.println("Pre-calculating stiffness between "+fromSects.size()+" source and "+toSects.size()+" receiver sections.");
+		fromSects.parallelStream().flatMap(fromSect -> toSects.parallelStream()
+				.map(toSect -> new FaultSectionPair(fromSect, toSect)))
+				.forEach(pair -> aggCalc.calc(pair.fromSect, pair.toSect));
+		System.out.println("Pre-calculating reversed stiffness between "+toSects.size()+" source and "+fromSects.size()+" receiver sections.");
+		fromSects.parallelStream().flatMap(fromSect -> toSects.parallelStream()
+				.map(toSect -> new FaultSectionPair(fromSect, toSect)))
+				.forEach(pair -> aggCalc.calc(pair.toSect, pair.fromSect));
+		System.out.println("DONE Pre-calculating stiffness.");
+	}
+	
+	// A helper class to hold pairs of FaultSections
+    private static class FaultSectionPair {
+        FaultSection fromSect;
+        FaultSection toSect;
+
+        FaultSectionPair(FaultSection fromSect, FaultSection toSect) {
+            this.fromSect = fromSect;
+            this.toSect = toSect;
+        }
+    }
 
 }
