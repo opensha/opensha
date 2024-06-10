@@ -41,6 +41,7 @@ import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.AbstractNthRupERF;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
@@ -136,7 +137,7 @@ public class ETAS_Launcher {
 	private int[] isCubeInsideFaultPolygon;
 	
 	private Deque<FaultSystemSolution> fssDeque = new ArrayDeque<>();
-	private Deque<AbstractERF> erfDeque = new ArrayDeque<>();
+	private Deque<AbstractNthRupERF> erfDeque = new ArrayDeque<>();
 	
 	// last event data
 	private Map<Integer, List<LastEventData>> lastEventData;
@@ -660,8 +661,8 @@ public class ETAS_Launcher {
 		return erf;
 	}
 
-	public AbstractERF checkOutERF() {
-		AbstractERF erf = null;
+	public AbstractNthRupERF checkOutERF() {
+		AbstractNthRupERF erf = null;
 		synchronized (erfDeque) {
 			if (!erfDeque.isEmpty())
 				erf = erfDeque.pop();
@@ -701,7 +702,7 @@ public class ETAS_Launcher {
 		return erf;
 	}
 	
-	public void checkInERF(AbstractERF erf) {
+	public void checkInERF(AbstractNthRupERF erf) {
 		synchronized (erfDeque) {
 			erfDeque.push(erf);
 		}
@@ -834,7 +835,7 @@ public class ETAS_Launcher {
 			debug("calculating "+index);
 
 			debug("Instantiating ERF");
-			AbstractERF erf = checkOutERF();
+			AbstractNthRupERF erf = checkOutERF();
 			FaultSystemSolution sol = config.isGriddedOnly() ? null : ((FaultSystemSolutionERF_ETAS)erf).getSolution();
 			
 			if (index == 0 && dateLastDebug && sol != null) {
