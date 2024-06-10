@@ -6,7 +6,8 @@ import java.util.List;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture.MultiRuptureCompatibilityFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture.MultiRuptureCompatibilityResult;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture.MultiRuptureJump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.ParentCoulombCompatibilityFilter.Directionality;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCalculator;
@@ -34,40 +35,41 @@ public class MultiRuptureCoulombFilter implements MultiRuptureCompatibilityFilte
 	}
 
 	@Override
-	public MultiRuptureCompatibilityResult apply(MultiRuptureCompatibilityResult previousResult,
-			ClusterRupture nucleation, ClusterRupture target, boolean verbose) {
-		List<FaultSection> nuclSects = new ArrayList<>(nucleation.getTotalNumSects());
-		for (FaultSubsectionCluster cluster : nucleation.getClustersIterable())
-			nuclSects.addAll(cluster.subSects);
-		List<FaultSection> targetSects = new ArrayList<>(target.getTotalNumSects());
-		for (FaultSubsectionCluster cluster : target.getClustersIterable())
-			targetSects.addAll(cluster.subSects);
-		float nuclToTarget = (float)aggCalc.calc(nuclSects, targetSects);
-		if (!verbose && directionality == Directionality.EITHER && nuclToTarget >= threshold)
+	public PlausibilityResult apply(MultiRuptureJump jump, boolean verbose) {
+		ClusterRupture fromRup = jump.fromRupture;
+		List<FaultSection> fromSects = new ArrayList<>(fromRup.getTotalNumSects());
+		for (FaultSubsectionCluster cluster : fromRup.getClustersIterable())
+			fromSects.addAll(cluster.subSects);
+		ClusterRupture toRup = jump.toRupture;
+		List<FaultSection> toSects = new ArrayList<>(toRup.getTotalNumSects());
+		for (FaultSubsectionCluster cluster : toRup.getClustersIterable())
+			toSects.addAll(cluster.subSects);
+		float forward = (float)aggCalc.calc(fromSects, toSects);
+		if (!verbose && directionality == Directionality.EITHER && forward >= threshold)
 			// shortcut
-			return MultiRuptureCompatibilityResult.PASS;
-		if (!verbose && directionality == Directionality.BOTH && nuclToTarget < threshold)
+			return PlausibilityResult.PASS;
+		if (!verbose && directionality == Directionality.BOTH && forward < threshold)
 			// shortcut
-			return MultiRuptureCompatibilityResult.FAIL;
-		float targetToNucl = (float)aggCalc.calc(targetSects, nuclSects);
+			return PlausibilityResult.FAIL_HARD_STOP;
+		float reversed = (float)aggCalc.calc(toSects, fromSects);
 		boolean result;
 		switch (directionality) {
 		case BOTH:
-			result = nuclToTarget >= threshold && targetToNucl >= threshold;
+			result = forward >= threshold && reversed >= threshold;
 			break;
 		case EITHER:
-			result = nuclToTarget >= threshold || targetToNucl >= threshold;
+			result = forward >= threshold || reversed >= threshold;
 			break;
 		case SUM:
-			result = (nuclToTarget+targetToNucl) >= threshold;
+			result = (forward+reversed) >= threshold;
 			break;
 
 		default:
 			throw new IllegalStateException();
 		}
-		MultiRuptureCompatibilityResult ret = result ? MultiRuptureCompatibilityResult.PASS : MultiRuptureCompatibilityResult.FAIL;
-		if (verbose) System.out.println("MultiRuptureCoulombFilter: "+ret.plausibilityResult
-				+" (nuclToTarget="+nuclToTarget+", targetToNucl="+targetToNucl+")\n\tNucl: "+nucleation+"\n\tTarget: "+target);
+		PlausibilityResult ret = result ? PlausibilityResult.PASS : PlausibilityResult.FAIL_HARD_STOP;
+		if (verbose) System.out.println("MultiRuptureCoulombFilter: "+ret
+				+" (forward="+forward+", reversed="+reversed+")\n\tFromRup: "+fromRup+"\n\tToRup: "+toRup);
 		return ret;
 	}
 
