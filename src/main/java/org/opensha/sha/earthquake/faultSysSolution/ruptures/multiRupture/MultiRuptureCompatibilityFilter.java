@@ -1,10 +1,7 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture;
 
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 
 public interface MultiRuptureCompatibilityFilter {
-    MultiRuptureCompatibilityResult apply(MultiRuptureCompatibilityResult previousResult,
-                                          ClusterRupture nucleation,
-                                          ClusterRupture target,
-                                          boolean verbose);
+    PlausibilityResult apply(MultiRuptureJump jump, boolean verbose);
 }

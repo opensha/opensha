@@ -2,10 +2,13 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture;
 
 import com.google.common.base.Preconditions;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupCartoonGenerator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.faultSurface.FaultSection;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 
 import java.io.File;
@@ -19,12 +22,38 @@ public class RuptureMerger {
 
     final boolean VERBOSE = true;
     List<MultiRuptureCompatibilityFilter> compatibilityFilters = new ArrayList<>();
+    final SectionDistanceAzimuthCalculator disAzCalc;
+    final double maxJumpDist;
+
+    public RuptureMerger(FaultSystemRupSet rupSet, double maxJumpDist) {
+        disAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
+        this.maxJumpDist = maxJumpDist;
+    }
 
     public void addFilter(MultiRuptureCompatibilityFilter filter) {
         compatibilityFilters.add(filter);
     }
 
     transient int mergeCounter = 0;
+
+    /**
+     * Creates a jump between the two ruptures if at least two fault sections are within maxJumpDist.
+     * Does not guarantee to create the shortest jump.
+     * @param nucleation
+     * @param target
+     * @return
+     */
+    protected MultiRuptureJump makeJump(ClusterRupture nucleation, ClusterRupture target) {
+        for (FaultSection targetSection : target.buildOrderedSectionList()) {
+            for (FaultSection nucleationSection : nucleation.clusters[0].subSects) {
+                double distance = disAzCalc.getDistance(targetSection, nucleationSection);
+                if (distance <= maxJumpDist) {
+                    return new MultiRuptureJump(nucleationSection, nucleation, targetSection, target, distance);
+                }
+            }
+        }
+        return null;
+    }
 
     /**
      * Create new ruptures that combine the nucleation rupture and any of the target ruptures if they
@@ -40,16 +69,18 @@ public class RuptureMerger {
         List<ClusterRupture> result = new ArrayList<>();
 
         for (ClusterRupture target : targets) {
-            MultiRuptureCompatibilityResult compatibility = MultiRuptureCompatibilityResult.PASS;
-            for (MultiRuptureCompatibilityFilter filter : compatibilityFilters) {
-                compatibility = compatibility.and(filter.apply(compatibility, nucleation, target, VERBOSE));
-                if (!compatibility.canContinue()) {
-                    break;
+            MultiRuptureJump jump = makeJump(nucleation, target);
+            if (jump != null) {
+                PlausibilityResult compatibility = PlausibilityResult.PASS;
+                for (MultiRuptureCompatibilityFilter filter : compatibilityFilters) {
+                    compatibility = compatibility.logicalAnd(filter.apply(jump, VERBOSE));
+                    if (!compatibility.canContinue()) {
+                        break;
+                    }
                 }
-            }
-            if (compatibility.isPass()) {
-                Preconditions.checkState(compatibility.jump != null);
-                result.add(MultiClusterRupture.takeSplayJump(compatibility.jump));
+                if (compatibility.isPass()) {
+                    result.add(MultiClusterRupture.takeSplayJump(jump));
+                }
             }
         }
 
@@ -88,10 +119,7 @@ public class RuptureMerger {
         System.out.println("Loaded " + targetRuptures.size() + " target ruptures");
 
         // set up RuptureMerger
-        RuptureMerger merger = new RuptureMerger();
-        SectionDistanceAzimuthCalculator distCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
-        RuptureJumpDistFilter distFilter = new RuptureJumpDistFilter(5, distCalc);
-        merger.addFilter(distFilter);
+        RuptureMerger merger = new RuptureMerger(rupSet, 5);
 
         // run RuptureMerger for one nucleation rupture for now
         ClusterRupture testNucleation = cRups.get(97653);
