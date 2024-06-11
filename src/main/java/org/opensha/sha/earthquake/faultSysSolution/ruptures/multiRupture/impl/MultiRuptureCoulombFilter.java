@@ -76,6 +76,15 @@ public class MultiRuptureCoulombFilter implements MultiRuptureCompatibilityFilte
 		return ret;
 	}
 	
+	/**
+	 * Pre-cache stiffness in parallel all sections in the given fromRup to all sections in any of the given list of
+	 * toRups
+	 * 
+	 * @param fromRup
+	 * @param toRups
+	 * @param distAzCalc
+	 * @param maxDist
+	 */
 	public void parallelCacheStiffness(ClusterRupture fromRup, List<ClusterRupture> toRups,
 			SectionDistanceAzimuthCalculator distAzCalc, double maxDist) {
 		List<FaultSection> fromSects = new ArrayList<>(fromRup.getTotalNumSects());
@@ -98,6 +107,24 @@ public class MultiRuptureCoulombFilter implements MultiRuptureCompatibilityFilte
 				for (FaultSubsectionCluster cluster : toRup.getClustersIterable())
 					toSects.addAll(cluster.subSects);
 		}
+		parallelCacheStiffness(fromSects, toSects);
+	}
+	
+	/**
+	 * Pre-cache stiffness in parallel between all sections of any fromRup to all sections of any toRup. This will likely
+	 * calculate some that are not needed, but it's tricky to figure out the distinct list of actually used section pairs
+	 * @param fromRups
+	 * @param toRups
+	 */
+	public void parallelCacheStiffness(List<ClusterRupture> fromRups, List<ClusterRupture> toRups) {
+		HashSet<FaultSection> fromSects = new HashSet<>();
+		for (ClusterRupture fromRup : fromRups)
+			for (FaultSubsectionCluster cluster : fromRup.getClustersIterable())
+				fromSects.addAll(cluster.subSects);
+		HashSet<FaultSection> toSects = new HashSet<>();
+		for (ClusterRupture toRup : toRups)
+			for (FaultSubsectionCluster cluster : toRup.getClustersIterable())
+				toSects.addAll(cluster.subSects);
 		parallelCacheStiffness(fromSects, toSects);
 	}
 	

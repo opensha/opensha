@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 
 public class RuptureMerger {
 
-    final boolean VERBOSE = true;
+    boolean VERBOSE = true;
     List<MultiRuptureCompatibilityFilter> compatibilityFilters = new ArrayList<>();
     final SectionDistanceAzimuthCalculator disAzCalc;
     final double maxJumpDist;
@@ -42,6 +42,10 @@ public class RuptureMerger {
 
     public void addFilter(MultiRuptureCompatibilityFilter filter) {
         compatibilityFilters.add(filter);
+    }
+    
+    public void setVerbose(boolean verbose) {
+    	this.VERBOSE = verbose;
     }
 
     transient int mergeCounter = 0;
@@ -97,6 +101,8 @@ public class RuptureMerger {
         int counter = mergeCounter++;
         if (counter % 10 == 0) {
             System.out.print('.');
+            if (counter % 1000 == 0)
+            	System.out.println();
         }
         return result;
     }
@@ -142,7 +148,9 @@ public class RuptureMerger {
         
         // Coulomb filter
         // stiffness grid spacing, increase if it's taking too long
-     	double stiffGridSpacing = 1d;
+     	double stiffGridSpacing = 2d;
+     	if (stiffGridSpacing != 1d)
+     		outPrefix += "_cffPatch"+oDF.format(stiffGridSpacing)+"km";
      	// stiffness calculation constants
      	double lameLambda = 3e4;
      	double lameMu = 3e4;
@@ -190,15 +198,19 @@ public class RuptureMerger {
      	merger.addFilter(netCoulombFilter);
 
         // run RuptureMerger for one nucleation rupture for now
-     	int fromID = 97653;
-        ClusterRupture testNucleation = cRups.get(fromID);
-        outPrefix += "_from"+fromID;
+//     	int fromID = 97653;
+//        ClusterRupture testNucleation = cRups.get(fromID);
+//        outPrefix += "_from"+fromID;
+//        
+//        // precalculate coulomb metrics between each section in parallel
+//        firstCoulombFilter.parallelCacheStiffness(testNucleation, targetRuptures, merger.disAzCalc, merger.maxJumpDist);
+//        stiffnessCacheSize = checkUpdateStiffnessCache(stiffnessCacheFile, stiffnessCacheSize, stiffnessCache);
+//        
+//        List<ClusterRupture> mergedRuptures = merger.merge(testNucleation, targetRuptures);
         
-        // precalculate coulomb metrics between each section in parallel
-        firstCoulombFilter.parallelCacheStiffness(testNucleation, targetRuptures, merger.disAzCalc, merger.maxJumpDist);
-        stiffnessCacheSize = checkUpdateStiffnessCache(stiffnessCacheFile, stiffnessCacheSize, stiffnessCache);
-        
-        List<ClusterRupture> mergedRuptures = merger.merge(testNucleation, targetRuptures);
+        // full calculation
+     	merger.setVerbose(false); // otherwise too much stdout
+        List<ClusterRupture> mergedRuptures = merger.merge(nucleationRuptures, targetRuptures);
 
 //        List<ClusterRupture> shortList = nucleationRuptures.stream()
 //                .filter(rupture -> rupture.clusters[0].subSects.get(0).getFaultTrace().first().lat > -42 &&
