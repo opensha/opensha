@@ -20,8 +20,7 @@ import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.Stiffness
 
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -115,20 +114,48 @@ public class RuptureMerger {
                 .collect(Collectors.toList());
     }
 
+    public static File resolveFile(String... locations) {
+        for(String location:locations) {
+            File file = new File(location);
+            if(file.exists()) {
+                return file;
+            }
+        }
+        return null;
+    }
+
     public static void main(String[] args) throws IOException {
 
         // load ruptures and split them up into crustal and subduction
     	// dirty...but this will help us collaborate better...
     	// Oakley's file:
-    	File inputFile = new File("C:\\Users\\user\\GNS\\nzshm-opensha\\TEST\\ruptures\\rupset-disjointed.zip");
-    	if (!inputFile.exists())
-    		// try Kevin's
-    		inputFile = new File("/home/kevin/Downloads/rupset-disjointed.zip");
+    	File inputFile = resolveFile(
+                "C:\\Users\\user\\GNS\\rupture sets\\nzshm_complete_merged.zip",
+                "/home/kevin/Downloads/rupset-disjointed.zip");
         FaultSystemRupSet rupSet = FaultSystemRupSet.load(inputFile);
         List<ClusterRupture> nucleationRuptures = new ArrayList<>();
         List<ClusterRupture> targetRuptures = new ArrayList<>();
         ClusterRuptures cRups = rupSet.getModule(ClusterRuptures.class);
-        for (ClusterRupture rupture : cRups) {
+        if (cRups == null) {
+            // assume single stranded for our purposes here
+            cRups = ClusterRuptures.singleStranged(rupSet);
+        }
+
+        List<ClusterRupture> ruptures = cRups.getAll();
+        File filterFile = resolveFile("C:\\Users\\user\\GNS\\rupture sets\\filteredRuptures.txt");
+        if (filterFile != null) {
+            int oldRupCount = ruptures.size();
+            ruptures = new ArrayList<>();
+            BufferedReader reader = new BufferedReader(new FileReader(filterFile));
+            String line = "";
+            while ((line = reader.readLine()) != null) {
+                ruptures.add(cRups.get(Integer.parseInt(line.trim())));
+            }
+            reader.close();
+            System.out.println("Filter file exists. We're only using " + ruptures.size() + " of " + oldRupCount + " ruptures.");
+        }
+
+        for (ClusterRupture rupture : ruptures) {
             if (rupture.clusters[0].subSects.get(0).getSectionName().contains("row:")) {
                 nucleationRuptures.add(rupture);
             } else {
