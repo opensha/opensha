@@ -131,7 +131,7 @@ public class MultiRuptureStiffnessPlot extends AbstractRupSetPlot {
                 filter(p -> p.subToCrustalStiffness >= STIFFNESS_THRESHOLD && p.crustalToSubStiffness < STIFFNESS_THRESHOLD).
                 collect(Collectors.toList());
 
-        lines.add("### Only Subduction As Source Above Threshold");
+        lines.add("### Only Subduction As Source Above Stiffness Threshold of " + oDF.format(STIFFNESS_THRESHOLD));
         lines.add("Ruptures where subduction as source is above threshold and crustal as source is below threshold.");
         lines.add("");
         lines.addAll(plotForValue(subductionOnly, p -> p.crustal.size() + p.subduction.size(), resourcesDir, relPathToResources, "subToCru"));
@@ -140,7 +140,7 @@ public class MultiRuptureStiffnessPlot extends AbstractRupSetPlot {
                 filter(p -> p.subToCrustalStiffness < STIFFNESS_THRESHOLD && p.crustalToSubStiffness >= STIFFNESS_THRESHOLD).
                 collect(Collectors.toList());
 
-        lines.add("### Only Crustal As Source Above Threshold");
+        lines.add("### Only Crustal As Source Above Stiffness Threshold of " + oDF.format(STIFFNESS_THRESHOLD));
         lines.add("Ruptures where crustal as source is above threshold and subduction as source is below threshold.");
         lines.add("");
         lines.addAll(plotForValue(crustalOnly, p -> p.crustal.size() + p.subduction.size(), resourcesDir, relPathToResources, "cruToSub"));
@@ -149,7 +149,7 @@ public class MultiRuptureStiffnessPlot extends AbstractRupSetPlot {
                 filter(p -> p.subToCrustalStiffness >= STIFFNESS_THRESHOLD && p.crustalToSubStiffness >= STIFFNESS_THRESHOLD).
                 collect(Collectors.toList());
 
-        lines.add("### Both Crustal and Subduction As Source Are Above Threshold");
+        lines.add("### Both Crustal and Subduction As Source Are Above Stiffness Threshold of "+oDF.format(STIFFNESS_THRESHOLD));
         lines.add("Ruptures where both crustal as source is above threshold and subduction as source is above threshold.");
         lines.add("");
         lines.addAll(plotForValue(both, p -> p.crustal.size() + p.subduction.size(), resourcesDir, relPathToResources, "subToCru"));
