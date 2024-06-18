@@ -1,8 +1,6 @@
 package org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture;
 
-import com.google.common.base.Preconditions;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
-import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.multiRupture.impl.MultiRuptureCoulombFilter;
@@ -13,10 +11,6 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.co
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupCartoonGenerator;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCache;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.PatchAlignment;
-import org.opensha.sha.simulators.stiffness.SubSectStiffnessCalculator.StiffnessType;
 
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 
@@ -24,6 +18,7 @@ import java.io.*;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -61,7 +56,7 @@ public class RuptureMerger {
             for (FaultSection nucleationSection : nucleation.clusters[0].subSects) {
                 double distance = disAzCalc.getDistance(targetSection, nucleationSection);
                 if (distance <= maxJumpDist) {
-                    return new MultiRuptureJump(nucleationSection, nucleation, targetSection, target, distance);
+                    return new MultiRuptureJump(nucleation.clusters[0].startSect, nucleation, target.clusters[0].startSect, target, distance);
                 }
             }
         }
@@ -172,57 +167,31 @@ public class RuptureMerger {
         double maxJumpDist = 5d;
         String outPrefix = "mergedRupset_"+oDF.format(maxJumpDist)+"km";
         RuptureMerger merger = new RuptureMerger(rupSet, 5);
-        
-        // Coulomb filter
-        // stiffness grid spacing, increase if it's taking too long
-     	double stiffGridSpacing = 2d;
-     	if (stiffGridSpacing != 1d)
-     		outPrefix += "_cffPatch"+oDF.format(stiffGridSpacing)+"km";
-     	// stiffness calculation constants
-     	double lameLambda = 3e4;
-     	double lameMu = 3e4;
-     	double coeffOfFriction = 0.5;
-     	SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
-     			rupSet.getFaultSectionDataList(), stiffGridSpacing, lameLambda, lameMu, coeffOfFriction, PatchAlignment.FILL_OVERLAP, 1d);
-     	AggregatedStiffnessCache stiffnessCache = stiffnessCalc.getAggregationCache(StiffnessType.CFF);
 
-     	File cacheDir = new File("/tmp");
-     	File stiffnessCacheFile = null;
-     	int stiffnessCacheSize = 0;
-     	if (cacheDir != null && cacheDir.exists()) {
-     		stiffnessCacheFile = new File(cacheDir, stiffnessCache.getCacheFileName());
-     		stiffnessCacheSize = 0;
-     		if (stiffnessCacheFile.exists()) {
-     			try {
-     				stiffnessCacheSize = stiffnessCache.loadCacheFile(stiffnessCacheFile);
-     			} catch (IOException e) {
-     				System.err.println("WARNING: exception loading previous cache");
-     				e.printStackTrace();
-     			}
-     		} else {
-     			System.out.println("Will cache to: "+stiffnessCacheFile.getAbsolutePath());
-     		}
-     	}
-     	
-     	// will be used to quickly cache all interactions
-     	MultiRuptureCoulombFilter firstCoulombFilter = null;
-     	
-     	// what fraction of interactions should be positive? this number will take some tuning
-     	float fractThreshold = 0.75f;
-     	outPrefix += "_cff"+oDF.format(fractThreshold)+"IntsPos";
-     	MultiRuptureFractCoulombPositiveFilter fractCoulombFilter = new MultiRuptureFractCoulombPositiveFilter(stiffnessCalc, fractThreshold);
-     	if (firstCoulombFilter == null)
-     		firstCoulombFilter = fractCoulombFilter;
-     	merger.addFilter(fractCoulombFilter);
-     	
-     	// force the net coulomb from one rupture to the other to positive; this more heavily weights nearby interactions
-     	Directionality netDirectionality = Directionality.BOTH; // require it to be positive to from subduction to crustal AND from crustal to subduction
+        StiffnessCalcModule stiffness = new StiffnessCalcModule(rupSet, 2);
+
+        if (stiffness.stiffGridSpacing != 1d)
+            outPrefix += "_cffPatch" + oDF.format(stiffness.stiffGridSpacing) + "km";
+
+        // will be used to quickly cache all interactions
+        MultiRuptureCoulombFilter firstCoulombFilter = null;
+
+        // what fraction of interactions should be positive? this number will take some tuning
+        float fractThreshold = 0.75f;
+        outPrefix += "_cff" + oDF.format(fractThreshold) + "IntsPos";
+        MultiRuptureFractCoulombPositiveFilter fractCoulombFilter = new MultiRuptureFractCoulombPositiveFilter(stiffness.stiffnessCalc, fractThreshold);
+        if (firstCoulombFilter == null)
+            firstCoulombFilter = fractCoulombFilter;
+        merger.addFilter(fractCoulombFilter);
+
+        // force the net coulomb from one rupture to the other to positive; this more heavily weights nearby interactions
+        Directionality netDirectionality = Directionality.BOTH; // require it to be positive to from subduction to crustal AND from crustal to subduction
 //     	Directionality netDirectionality = Directionality.EITHER; // require it to be positive to from subduction to crustal OR from crustal to subduction
-     	outPrefix += "_cffNetPositive"+netDirectionality;
-     	MultiRuptureNetCoulombPositiveFilter netCoulombFilter = new MultiRuptureNetCoulombPositiveFilter(stiffnessCalc, netDirectionality);
-     	if (firstCoulombFilter == null)
-     		firstCoulombFilter = netCoulombFilter;
-     	merger.addFilter(netCoulombFilter);
+        outPrefix += "_cffNetPositive" + netDirectionality;
+        MultiRuptureNetCoulombPositiveFilter netCoulombFilter = new MultiRuptureNetCoulombPositiveFilter(stiffness.stiffnessCalc, netDirectionality);
+        if (firstCoulombFilter == null)
+            firstCoulombFilter = netCoulombFilter;
+        merger.addFilter(netCoulombFilter);
 
         // run RuptureMerger for one nucleation rupture for now
 //     	int fromID = 97653;
@@ -250,8 +219,8 @@ public class RuptureMerger {
 //        List<ClusterRupture> mergedRuptures = merger.merge(shortList, targetRuptures);
 
         System.out.println("Generated " + mergedRuptures.size() + " ruptures.");
-        
-        checkUpdateStiffnessCache(stiffnessCacheFile, stiffnessCacheSize, stiffnessCache);
+
+        stiffness.checkUpdateStiffnessCache();
 
         // write only the merged ruptures
         FaultSystemRupSet resultRupSet =
@@ -260,27 +229,19 @@ public class RuptureMerger {
                                 mergedRuptures)
                         // magnitudes will be wrong, but this is required
                         .forScalingRelationship(ScalingRelationships.MEAN_UCERF3)
+                        .addModule(stiffness)
                         .build();
-        resultRupSet.write(new File("/tmp/"+outPrefix+".zip"));
+        resultRupSet.write(new File("/tmp/" + outPrefix + ".zip"));
 
         // quick sanity check
         RupCartoonGenerator.plotRupture(new File("/tmp/"), outPrefix, mergedRuptures.get(0), "merged rupture", false, true);
 
+        List<ClusterRupture> sortedRups = new ArrayList<>(mergedRuptures);
+        sortedRups.sort(Comparator.comparing((ClusterRupture r) -> r.clusters[0].subSects.size()).thenComparing((ClusterRupture r) -> r.buildOrderedSectionList().size()));
+//
+//        MultiRuptureStiffnessPlot plot = new MultiRuptureStiffnessPlot(stiffness.stiffnessCalc);
+//        plot.plot(new File("/tmp"), outPrefix + "stiffness", sortedRups.get(sortedRups.size() - 1), "merged rupture " + (sortedRups.size() - 1));
     }
-    
-    private static int checkUpdateStiffnessCache(File stiffnessCacheFile, int stiffnessCacheSize, AggregatedStiffnessCache stiffnessCache) {
-        int newSize = stiffnessCache.calcCacheSize();
-        if (stiffnessCacheFile != null && stiffnessCacheSize < stiffnessCache.calcCacheSize()) {
-        	// we've calculated new Coulomb values, write out new cache files
-        	System.out.println("Writing stiffness cache to "+stiffnessCacheFile.getAbsolutePath());
-        	try {
-        		stiffnessCache.writeCacheFile(stiffnessCacheFile);
-        		System.out.println("DONE writing stiffness cache");
-                return newSize; 
-        	} catch (IOException e) {
-        		e.printStackTrace();
-        	}
-        }
-        return stiffnessCacheSize;
-    }
+
+
 }
