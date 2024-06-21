@@ -133,29 +133,35 @@ public class MultiRuptureStiffnessPlot extends AbstractRupSetPlot {
                 filter(p -> p.subToCrustalStiffness >= STIFFNESS_THRESHOLD && p.crustalToSubStiffness < STIFFNESS_THRESHOLD).
                 collect(Collectors.toList());
 
-        lines.add("### Only Subduction As Source Above Stiffness Threshold of " + oDF.format(STIFFNESS_THRESHOLD));
-        lines.add("Ruptures where subduction as source is above threshold and crustal as source is below threshold.");
-        lines.add("");
-        lines.addAll(plotForValue(subductionOnly, p -> p.crustal.size() + p.subduction.size(), resourcesDir, relPathToResources, "subToCru"));
+        if (!subductionOnly.isEmpty()) {
+            lines.add("### Only Subduction As Source Above Stiffness Threshold of " + oDF.format(STIFFNESS_THRESHOLD));
+            lines.add("Ruptures where subduction as source is above threshold and crustal as source is below threshold.");
+            lines.add("");
+            lines.addAll(plotForValue(subductionOnly, p -> p.crustal.size() + p.subduction.size(), resourcesDir, relPathToResources, "subToCru"));
+
+        }
 
         List<RuptureProperties> crustalOnly = properties.stream().
                 filter(p -> p.subToCrustalStiffness < STIFFNESS_THRESHOLD && p.crustalToSubStiffness >= STIFFNESS_THRESHOLD).
                 collect(Collectors.toList());
 
-        lines.add("### Only Crustal As Source Above Stiffness Threshold of " + oDF.format(STIFFNESS_THRESHOLD));
-        lines.add("Ruptures where crustal as source is above threshold and subduction as source is below threshold.");
-        lines.add("");
-        lines.addAll(plotForValue(crustalOnly, p -> p.crustal.size() + p.subduction.size(), resourcesDir, relPathToResources, "cruToSub"));
+        if (!crustalOnly.isEmpty()) {
+            lines.add("### Only Crustal As Source Above Stiffness Threshold of " + oDF.format(STIFFNESS_THRESHOLD));
+            lines.add("Ruptures where crustal as source is above threshold and subduction as source is below threshold.");
+            lines.add("");
+            lines.addAll(plotForValue(crustalOnly, p -> p.crustal.size() + p.subduction.size(), resourcesDir, relPathToResources, "cruToSub"));
+        }
 
         List<RuptureProperties> both = properties.stream().
                 filter(p -> p.subToCrustalStiffness >= STIFFNESS_THRESHOLD && p.crustalToSubStiffness >= STIFFNESS_THRESHOLD).
                 collect(Collectors.toList());
 
-        lines.add("### Both Crustal and Subduction As Source Are Above Stiffness Threshold of " + oDF.format(STIFFNESS_THRESHOLD));
-        lines.add("Ruptures where both crustal as source is above threshold and subduction as source is above threshold.");
-        lines.add("");
-        lines.addAll(plotForValue(both, p -> p.crustal.size() + p.subduction.size(), resourcesDir, relPathToResources, "subToCru"));
-
+        if (!both.isEmpty()) {
+            lines.add("### Both Crustal and Subduction As Source Are Above Stiffness Threshold of " + oDF.format(STIFFNESS_THRESHOLD));
+            lines.add("Ruptures where both crustal as source is above threshold and subduction as source is above threshold.");
+            lines.add("");
+            lines.addAll(plotForValue(both, p -> p.crustal.size() + p.subduction.size(), resourcesDir, relPathToResources, "subToCru"));
+        }
         RupCartoonGenerator.sectCharFun = rupToonFun;
         return lines;
     }
@@ -204,11 +210,9 @@ public class MultiRuptureStiffnessPlot extends AbstractRupSetPlot {
             RuptureProperties prop = findBestMatch(properties, valueFn, value);
             String relOutputDir = PREFIX + prop.index;
             File outputDir = new File(resourcesDir, relOutputDir);
-            if (outputDir.mkdirs()) {
-                plotRupturePage(prop, outputDir);
-            }
+            outputDir.mkdirs();
+            plotRupturePage(prop, outputDir);
             File relPageDir = new File(relPathToResources, relOutputDir);
-
             table.addColumn("[<img src=\"" + new File(relPageDir, prop.plots.get(thumbnail)) + "\" />](" + new File(relPageDir, "index.html") + ")");
         }
         table.finalizeLine();
@@ -420,7 +424,7 @@ public class MultiRuptureStiffnessPlot extends AbstractRupSetPlot {
         FaultSystemRupSet rupSet = FaultSystemRupSet.load(file);
         ReportMetadata meta = new ReportMetadata(new RupSetMetadata(file.getName(), rupSet));
         List<AbstractRupSetPlot> plots = List.of(new MultiRuptureStiffnessPlot());
-        ReportPageGen report = new ReportPageGen(meta, new File("/tmp/reports/stiffness"), plots);
+        ReportPageGen report = new ReportPageGen(meta, new File("/tmp/reports/stiffness2"), plots);
         report.generatePage();
     }
 }

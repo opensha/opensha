@@ -179,7 +179,7 @@ public class RuptureMerger {
         // what fraction of interactions should be positive? this number will take some tuning
         float fractThreshold = 0.75f;
         outPrefix += "_cff" + oDF.format(fractThreshold) + "IntsPos";
-        MultiRuptureFractCoulombPositiveFilter fractCoulombFilter = new MultiRuptureFractCoulombPositiveFilter(stiffness.stiffnessCalc, fractThreshold);
+        MultiRuptureFractCoulombPositiveFilter fractCoulombFilter = new MultiRuptureFractCoulombPositiveFilter(stiffness.stiffnessCalc, fractThreshold, Directionality.BOTH);
         if (firstCoulombFilter == null)
             firstCoulombFilter = fractCoulombFilter;
         merger.addFilter(fractCoulombFilter);
