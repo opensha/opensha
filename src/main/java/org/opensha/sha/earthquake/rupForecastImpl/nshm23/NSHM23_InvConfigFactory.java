@@ -1128,9 +1128,10 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 				cubeAssociations = null; // force a rebuild
 			}
 			// build cube associations
-			if (cubeAssociations != null)
+			if (cubeAssociations == null)
 				cubeAssociations = buildFaultCubeAssociations(rupSet, seisRegions);
 		}
+		Preconditions.checkNotNull(cubeAssociations, "Cube associations is null");
 		// add to the rupture set
 		if (addCubeAssoc)
 			rupSet.addModule(cubeAssociations);
