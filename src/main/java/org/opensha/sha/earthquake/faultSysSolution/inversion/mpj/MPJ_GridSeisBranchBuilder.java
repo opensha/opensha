@@ -1,4 +1,4 @@
-package org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded;
+package org.opensha.sha.earthquake.faultSysSolution.inversion.mpj;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -22,9 +22,6 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
 import org.apache.commons.compress.archivers.zip.ZipFile;
-import org.opensha.commons.geo.GriddedRegion;
-import org.opensha.commons.geo.Region;
-import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
@@ -37,21 +34,13 @@ import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
-import org.opensha.sha.earthquake.faultSysSolution.inversion.mpj.AbstractAsyncLogicTreeWriter;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.GridSourceProviderFactory;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchAveragingOrder;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchRegionalMFDs;
-import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
-import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_U3_HybridLogicTreeBranch;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.U3_UncertAddDeformationModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
@@ -64,15 +53,14 @@ import com.google.common.primitives.Doubles;
 import edu.usc.kmilner.mpj.taskDispatch.AsyncPostBatchHook;
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
 import mpi.MPI;
-import scratch.UCERF3.enumTreeBranches.FaultModels;
-import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 
 public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
+	
+	private GridSourceProviderFactory factory;
 	
 	private LogicTree<?> tree;
 	private File solsDir;
 	
-	private boolean u3Ingredients = false;
 	private LogicTree<?> gridSeisOnlyTree;
 
 	private File nodesAverageDir;
@@ -89,8 +77,6 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 	private boolean averageOnly = false;
 	
 	private boolean rebuild = false;
-	
-	private Region region;
 	
 	private ExecutorService exec;
 	
@@ -110,25 +96,25 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		solsDir = new File(cmd.getOptionValue("sol-dir"));
 		Preconditions.checkState(solsDir.exists());
 		
-		LogicTreeBranch<?> branch0 = tree.getBranch(0);
-		if (branch0.hasValue(FaultModels.class) || branch0.hasValue(U3_UncertAddDeformationModels.class)) {
-			// UCERF3 ingredients
-			debug("Detected UCERF3 ingredients run");
-			u3Ingredients = true;
-			gridSeisOnlyTree = LogicTree.buildExhaustive(NSHM23_U3_HybridLogicTreeBranch.levelsOffFault, true);
-		} else {
-			gridSeisOnlyTree = LogicTree.buildExhaustive(NSHM23_LogicTreeBranch.levelsOffFault, true);
+		try {
+			@SuppressWarnings("unchecked")
+			Class<? extends GridSourceProviderFactory> factoryClass = (Class<? extends GridSourceProviderFactory>)
+					Class.forName(cmd.getOptionValue("factory"));
+			factory = factoryClass.getDeclaredConstructor().newInstance();
+		} catch (Exception e) {
+			throw ExceptionUtils.asRuntimeException(e);
 		}
+		
+		if (cmd.hasOption("gridded-logic-tree")) {
+			gridSeisOnlyTree = LogicTree.read(new File(cmd.getOptionValue("gridded-logic-tree")));
+		} else {
+			gridSeisOnlyTree = factory.getGridSourceTree(tree);
+		}
+		Preconditions.checkNotNull(gridSeisOnlyTree, "Gridded seismicity tree cannot be null");
+		Preconditions.checkState(gridSeisOnlyTree.size() > 0, "Gridded seismicity tree cannot be empty");
 		int totBranches = getNumTasks()*gridSeisOnlyTree.size();
 		if (rank == 0)
 			debug("Will build "+gridSeisOnlyTree.size()+" grid-seis branches per fault branch, "+totBranches+" in total");
-		
-		if (cmd.hasOption("region")) {
-			File regFile = new File(cmd.getOptionValue("region"));
-			Preconditions.checkState(regFile.exists(), "Supplied region file doesn't exist: %s", regFile.getAbsolutePath());
-			Feature feature = Feature.read(regFile);
-			region = Region.fromFeature(feature);
-		}
 		
 		int threads = getNumThreads();
 		if (rank == 0)
@@ -336,8 +322,22 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					
 					// handle averaged associations and grid sources
 					File associationsFile = new File(gridSeisDir, GRID_ASSOCIATIONS_ARCHIVE_NAME);
-					ModuleArchive<OpenSHA_Module> assocArchive = new ModuleArchive<>(associationsFile);
-					FaultGridAssociations associations = assocArchive.requireModule(FaultGridAssociations.class);
+					FaultGridAssociations associations = null;
+					if (associationsFile.exists()) {
+						if (faultGridAveragers == null) {
+							debug("WARNING: branch "+index+" has fault grid associations, but an earlier one didn't; skipping");
+						} else {
+							
+						}
+						ModuleArchive<OpenSHA_Module> assocArchive = new ModuleArchive<>(associationsFile);
+						associations = assocArchive.requireModule(FaultGridAssociations.class);
+					} else if (faultGridAveragers != null) {
+						if (faultGridAveragers.isEmpty())
+							debug("We don't have fault grid associations; skipping consolidation");
+						else
+							debug("WARNING: not all branches have fault grid associations, skipping");
+						faultGridAveragers = null;
+					}
 					
 					File avgGridFile = new File(gridSeisDir, AVG_GRID_SIE_PROV_ARCHIVE_NAME);
 					ModuleArchive<OpenSHA_Module> avgArchive = new ModuleArchive<>(avgGridFile);
@@ -364,10 +364,12 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					AveragingAccumulator<GridSourceProvider> accumulator = gridSourceAveragers.get(baPrefix);
 					accumulator.process(avgGridProv, branchWeight);
 					
-					if (!faultGridAveragers.containsKey(baPrefix))
-						faultGridAveragers.put(baPrefix, associations.averagingAccumulator());
-					AveragingAccumulator<FaultGridAssociations> assocAccumulator = faultGridAveragers.get(baPrefix);
-					assocAccumulator.process(associations, branchWeight);
+					if (faultGridAveragers != null) {
+						if (!faultGridAveragers.containsKey(baPrefix))
+							faultGridAveragers.put(baPrefix, associations.averagingAccumulator());
+						AveragingAccumulator<FaultGridAssociations> assocAccumulator = faultGridAveragers.get(baPrefix);
+						assocAccumulator.process(associations, branchWeight);
+					}
 					
 					debug("AsyncLogicTree: writing averaged grid source provider");
 					// write out averaged grid source provider for this branch
@@ -411,7 +413,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 							}
 							sourceZip.close();
 							
-							// instance file, use the average class type though as we don't want to laod it and it will be the same
+							// instance file, use the average class type though as we don't want to load it and it will be the same
 							writeGridProvInstance(avgGridProv, combBranch, fullLevelsForSubSeisMFDs, fullZipOut, writtenFullGridSourceFiles);
 						}
 					}
@@ -526,8 +528,10 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					FaultSystemSolution baSol = FaultSystemSolution.load(baFile);
 					baSol.setGridSourceProvider(avgProv);
 					
-					FaultGridAssociations associations = faultGridAveragers.get(baPrefix).getAverage();
-					baSol.getRupSet().addModule(associations);
+					if (faultGridAveragers != null) {
+						FaultGridAssociations associations = faultGridAveragers.get(baPrefix).getAverage();
+						baSol.getRupSet().addModule(associations);
+					}
 					
 					if (baSol.getRupSet().hasModule(RegionsOfInterest.class)) {
 						BranchRegionalMFDs regionalMFDs = regionalMFDsBuilders.get(baPrefix).build();
@@ -565,46 +569,21 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			Preconditions.checkState(gridSeisDir.exists() || gridSeisDir.mkdir(), "Couldn't create grid source dir: %s", gridSeisDir);
 			
 			FaultSystemSolution sol = FaultSystemSolution.load(solFile);
+			
+			factory.preGridBuildHook(sol, origBranch);
 			FaultSystemRupSet rupSet = sol.getRupSet();
 			
-			List<SeismicityRegions> seisRegions;
-			FaultCubeAssociations cubeAssoc;
-			if (u3Ingredients) {
-				seisRegions = null;
-				cubeAssoc = NSHM23_InvConfigFactory.buildU3IngredientsFaultCubeAssociations(rupSet);
-			} else {
-				// figure out region, which is only used to determine which seismicity regions to use
-				// those seismicity regions themselves will be used for the grid source provider 
-				Region region;
-				if (this.region == null) {
-					// detect it
-					ModelRegion modelReg = rupSet.getModule(ModelRegion.class);
-					if (modelReg == null) {
-						modelReg = NSHM23_FaultModels.getDefaultRegion(origBranch);
-						rupSet.addModule(modelReg);
-					}
-					region = modelReg.getRegion();
-				} else {
-					// use the one from the command line
-					region = this.region;
-					rupSet.addModule(new ModelRegion(region));
-				}
-				
-				// pre-cache the cube associations once for this branch
-				seisRegions = NSHM23_InvConfigFactory.getSeismicityRegions(region);
-				Preconditions.checkState(seisRegions.size() >= 1);
-				cubeAssoc = NSHM23_InvConfigFactory.buildFaultCubeAssociations(
-						rupSet, seisRegions);
+			FaultGridAssociations gridAssoc = rupSet.getModule(FaultGridAssociations.class);
+			if (gridAssoc != null && gridAssoc instanceof ArchivableModule) {
+				File assocFile = new File(gridSeisDir, GRID_ASSOCIATIONS_ARCHIVE_NAME);
+				ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
+				archive.addModule(gridAssoc);
+				archive.write(assocFile);
 			}
-			
-			File assocFile = new File(gridSeisDir, GRID_ASSOCIATIONS_ARCHIVE_NAME);
-			ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
-			archive.addModule(cubeAssoc);
-			archive.write(assocFile);
 			
 			List<CalcRunnable> runnables = new ArrayList<>();
 			for (LogicTreeBranch<?> gridSeisBranch : gridSeisOnlyTree)
-				runnables.add(new CalcRunnable(origBranch, gridSeisBranch, gridSeisDir, sol, seisRegions, cubeAssoc));
+				runnables.add(new CalcRunnable(origBranch, gridSeisBranch, gridSeisDir, sol));
 			
 			if (exec == null) {
 				// run them serially
@@ -651,7 +630,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			
 			// write average
 			File avgFile = new File(gridSeisDir, AVG_GRID_SIE_PROV_ARCHIVE_NAME);
-			archive = new ModuleArchive<>();
+			ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
 			archive.addModule(accumulator.getAverage());
 			archive.write(avgFile);
 			
@@ -706,21 +685,17 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		private LogicTreeBranch<?> gridSeisBranch;
 		private File gridSeisDir;
 		private FaultSystemSolution sol;
-		private List<SeismicityRegions> seisRegions;
-		private FaultCubeAssociations cubeAssoc;
 		
 		// outputs
 		private LogicTreeBranch<?> combinedBranch;
 		private GridSourceProvider gridProv;
 
 		public CalcRunnable(LogicTreeBranch<?> origBranch, LogicTreeBranch<?> gridSeisBranch, File gridSeisDir,
-				FaultSystemSolution sol, List<SeismicityRegions> seisRegions, FaultCubeAssociations cubeAssoc) {
+				FaultSystemSolution sol) {
 			this.origBranch = origBranch;
 			this.gridSeisBranch = gridSeisBranch;
 			this.gridSeisDir = gridSeisDir;
 			this.sol = sol;
-			this.seisRegions = seisRegions;
-			this.cubeAssoc = cubeAssoc;
 		}
 
 		@Override
@@ -743,8 +718,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			}
 			
 			try {
-				gridProv = NSHM23_InvConfigFactory.buildGridSourceProv(
-						sol, combinedBranch, seisRegions, cubeAssoc);
+				gridProv = factory.buildGridSourceProvider(sol, combinedBranch);
 				
 				ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
 				archive.addModule(gridProv);
@@ -967,9 +941,10 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		Options ops = MPJTaskCalculator.createOptions();
 		
 		ops.addRequiredOption("lt", "logic-tree", true, "Path to logic tree JSON file");
+		ops.addOption(null, "gridded-logic-tree", true, "Optional path to gridded seismicity branch logic tree JSON file "
+				+ "(otherwise will be loaded from the factory)");
+		ops.addRequiredOption(null, "factory", true, "Gridded seismicity factory classname");
 		ops.addRequiredOption("sd", "sol-dir", true, "Path to directory containing solutions");
-		ops.addOption("r", "region", true, "Optional path to GeoJSON file containing a region for which we should compute hazard. "
-				+ "Can be a gridded region or an outline. If not supplied, then one will be detected from the model.");
 		ops.addOption("ao", "average-only", false, "Flag to only write out average gridded seismicity for each fault "
 				+ "branch.");
 		ops.addOption("wft", "write-full-tree", true, "If supplied, will write full logic tree JSON to this file");

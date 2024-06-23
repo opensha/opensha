@@ -40,6 +40,7 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionSolver;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.GridSourceProviderFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionSolver;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
@@ -107,6 +108,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.random.Random
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SeisSmoothingAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SingleStates;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SlipAlongRuptureModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_U3_HybridLogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSectBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
@@ -114,6 +116,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationM
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSeisMoRateReductions;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.U3_UncertAddDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.prior2018.NSHM18_FaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
@@ -144,7 +147,7 @@ import scratch.UCERF3.griddedSeismicity.GridReader;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 
-public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory {
+public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory {
 
 	protected transient Table<RupSetFaultModel, RupturePlausibilityModels, FaultSystemRupSet> rupSetCache = HashBasedTable.create();
 	protected transient Map<RupSetFaultModel, SectionDistanceAzimuthCalculator> distAzCache = new HashMap<>();
@@ -925,6 +928,18 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		return jumpProb;
 	}
 	
+	@Override
+	public LogicTree<?> getGridSourceTree(LogicTree<?> faultTree) {
+		if (isU3Branch(faultTree.getBranch(0)))
+			return LogicTree.buildExhaustive(NSHM23_U3_HybridLogicTreeBranch.levelsOffFault, true);
+		return LogicTree.buildExhaustive(NSHM23_LogicTreeBranch.levelsOffFault, true);
+	}
+	
+	private static boolean isU3Branch(LogicTreeBranch<?> branch) {
+		return branch.hasValue(FaultModels.class) || branch.hasValue(U3_UncertAddDeformationModels.class)
+				|| branch.hasValue(SpatialSeisPDF.class);
+	}
+	
 	public static List<SeismicityRegions> getSeismicityRegions(Region modelRegion) throws IOException {
 		List<SeismicityRegions> seisRegions = new ArrayList<>();
 		for (SeismicityRegions seisReg : SeismicityRegions.values()) {
@@ -1060,21 +1075,73 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		return avgBuilder.getAverage();
 	}
 	
-	public static NSHM23_AbstractGridSourceProvider buildGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
+	@Override
+	public NSHM23_AbstractGridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
+		return buildGridSourceProv(sol, branch);
+	}
+	
+	@Override
+	public void preGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
+		doPreGridBuildHook(sol, faultBranch);
+	}
+	
+	private static class SeismicityRegionsListModule implements OpenSHA_Module {
+		
+		public final List<SeismicityRegions> seisRegions;
+
+		public SeismicityRegionsListModule(List<SeismicityRegions> seisRegions) {
+			super();
+			this.seisRegions = seisRegions;
+		}
+
+		@Override
+		public String getName() {
+			return "Seismicity Regions";
+		}
+		
+	}
+	
+	private static void doPreGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
+		// add fault cube associations and seismicity regions
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		
-		if (!rupSet.hasModule(ModelRegion.class) && branch.hasValue(NSHM23_FaultModels.class))
-			rupSet.addModule(NSHM23_FaultModels.getDefaultRegion(branch));
+		if (!rupSet.hasModule(ModelRegion.class) && faultBranch.hasValue(NSHM23_FaultModels.class))
+			rupSet.addModule(NSHM23_FaultModels.getDefaultRegion(faultBranch));
 		Region modelReg = rupSet.requireModule(ModelRegion.class).getRegion();
 		
 		// figure out what region(s) we need
-		List<SeismicityRegions> seisRegions = getSeismicityRegions(modelReg);
-		
-		Preconditions.checkState(!seisRegions.isEmpty(), "Found no seismicity regions for model region %s", modelReg.getName());
-		// build cube associations
-		FaultCubeAssociations cubeAssociations = buildFaultCubeAssociations(rupSet, seisRegions);
-		// add those to the rupture set
-		rupSet.addModule(cubeAssociations);
+		FaultCubeAssociations cubeAssociations = rupSet.getModule(FaultCubeAssociations.class);
+		boolean addCubeAssoc = cubeAssociations == null;
+		if (isU3Branch(faultBranch)) {
+			// U3 branch, skip seismicity regions
+			if (cubeAssociations == null)
+				cubeAssociations = NSHM23_InvConfigFactory.buildU3IngredientsFaultCubeAssociations(rupSet);
+		} else {
+			List<SeismicityRegions> seisRegions;
+			if (rupSet.hasModule(SeismicityRegionsListModule.class)) {
+				seisRegions = rupSet.requireModule(SeismicityRegionsListModule.class).seisRegions;
+			} else {
+				seisRegions = getSeismicityRegions(modelReg);
+				Preconditions.checkState(!seisRegions.isEmpty(), "Found no seismicity regions for model region %s", modelReg.getName());
+				rupSet.addModule(new SeismicityRegionsListModule(seisRegions));
+				addCubeAssoc = true;
+				cubeAssociations = null; // force a rebuild
+			}
+			// build cube associations
+			if (cubeAssociations != null)
+				cubeAssociations = buildFaultCubeAssociations(rupSet, seisRegions);
+		}
+		// add to the rupture set
+		if (addCubeAssoc)
+			rupSet.addModule(cubeAssociations);
+	}
+
+	public static NSHM23_AbstractGridSourceProvider buildGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
+		doPreGridBuildHook(sol, branch);
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		SeismicityRegionsListModule seisRegionsModule = rupSet.getModule(SeismicityRegionsListModule.class);
+		List<SeismicityRegions> seisRegions = seisRegionsModule == null ? null : seisRegionsModule.seisRegions;
+		FaultCubeAssociations cubeAssociations = rupSet.requireModule(FaultCubeAssociations.class);
 		return buildGridSourceProv(sol, branch, seisRegions, cubeAssociations);
 	}
 	
