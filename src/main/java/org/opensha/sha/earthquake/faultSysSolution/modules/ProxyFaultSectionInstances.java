@@ -51,6 +51,8 @@ import com.google.common.base.Preconditions;
  * This module takes proxy faults with polygons attached, and re-discretizes them into multiple parallel proxy instances
  * that span the width of the polygon. This is used to generate finite fault rupture realizations that span the entire
  * polygon (rather than just using the proxy at the middle of the polygon) for hazard calculations.
+ * 
+ * Only ruptures that exclusively use proxy faults will be turned into proxy ruptures.
  */
 public class ProxyFaultSectionInstances implements ArchivableModule, BranchAverageableModule<ProxyFaultSectionInstances> {
 	
