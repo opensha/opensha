@@ -37,6 +37,8 @@ import scratch.UCERF3.utils.FindEquivUCERF2_Ruptures.FindEquivUCERF2_Ruptures;
 public class UCERF3InversionConfiguration implements XMLSaveable {
 	
 	public static final String XML_METADATA_NAME = "InversionConfiguration";
+
+	private static double magNorm = 7.0;
 	
 	private double slipRateConstraintWt_normalized;
 	private double slipRateConstraintWt_unnormalized;
@@ -76,7 +78,7 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 	private boolean excludeParkfieldRupsFromMfdEqualityConstraints = true;
 	
 	private String metadata;
-	
+
 	UCERF3InversionConfiguration(
 			double slipRateConstraintWt_normalized,
 			double slipRateConstraintWt_unnormalized,
@@ -825,7 +827,14 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		return initial_state;
 		
 	}
-	
+
+	/**
+	 * Sets the magnitude used by getSmoothStartingSolution() to normalize the initial state.
+	 * @param magNorm
+	 */
+	public static void setMagNorm(double magNorm) {
+		UCERF3InversionConfiguration.magNorm = magNorm;
+	}
 	
 	/**
 	 * This creates a smooth starting solution, which partitions the available rates from the target MagFreqDist
@@ -896,12 +905,12 @@ public class UCERF3InversionConfiguration implements XMLSaveable {
 		// all bins by the amount it's off:
 		double totalEventRate=0;
 		for (int rup=0; rup<numRup; rup++) {
-			if (rupMeanMag[rup]>7.0 && rupMeanMag[rup]<=7.1)
+			if (rupMeanMag[rup]>magNorm && rupMeanMag[rup]<=magNorm+0.1)
 				totalEventRate += initial_state[rup];
 		}
-		double normalization = targetMagFreqDist.getClosestYtoX(7.0)/totalEventRate;	
-		if (targetMagFreqDist.getClosestYtoX(7.0)==0)
-			throw new IllegalStateException("targetMagFreqDist.getClosestY(7.0) = 0.  Check rupSet.getInversionMFDs().getTargetOnFaultSupraSeisMFD()");
+		double normalization = targetMagFreqDist.getClosestYtoX(magNorm)/totalEventRate;
+		if (targetMagFreqDist.getClosestYtoX(magNorm)==0)
+			throw new IllegalStateException("targetMagFreqDist.getClosestY("+magNorm+") = 0.  Check rupSet.getInversionMFDs().getTargetOnFaultSupraSeisMFD()");
 		// Adjust rates by normalization to match target MFD total event rates
 		for (int rup=0; rup<numRup; rup++) {
 			initial_state[rup]=initial_state[rup]*normalization;
