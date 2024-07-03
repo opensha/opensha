@@ -7,6 +7,7 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_MaxMagOffFault;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
@@ -16,6 +17,7 @@ import com.google.common.base.Preconditions;
 public class PRVI25_LogicTreeBranch {
 
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsOnFault;
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsCrustalOffFault;
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsSubduction;
 	
 	/*
@@ -28,6 +30,18 @@ public class PRVI25_LogicTreeBranch {
 	public static LogicTreeLevel<NSHM23_ScalingRelationships> CRUSTAL_SCALE = NSHM23_LogicTreeBranch.SCALE;
 	public static LogicTreeLevel<SupraSeisBValues> SUPRA_B = NSHM23_LogicTreeBranch.SUPRA_B;
 	public static LogicTreeLevel<NSHM23_SegmentationModels> SEG = NSHM23_LogicTreeBranch.SEG;
+	
+	/*
+	 * Crustal Gridded seismicity branch levels
+	 */
+	public static LogicTreeLevel<PRVI25_RegionalSeismicity> SEIS_RATE =
+			LogicTreeLevel.forEnum(PRVI25_RegionalSeismicity.class, "Regional Seismicity Rate", "SeisRate");
+	public static LogicTreeLevel<PRVI25_DeclusteringAlgorithms> SEIS_DECLUSTER =
+			LogicTreeLevel.forEnum(PRVI25_DeclusteringAlgorithms.class, "Seismicity Declustering Algorithm", "SeisDecluster");
+	public static LogicTreeLevel<PRVI25_SeisSmoothingAlgorithms> SEIS_SMOOTH =
+			LogicTreeLevel.forEnum(PRVI25_SeisSmoothingAlgorithms.class, "Seismicity Smoothing Kernel", "SeisSmooth");
+	public static LogicTreeLevel<NSHM23_MaxMagOffFault> MMAX_OFF = // use NSHM23 for now
+			LogicTreeLevel.forEnum(NSHM23_MaxMagOffFault.class, "Off Fault Mmax", "MmaxOff");
 	
 	/*
 	 * Core subduction FSS branch levels
@@ -43,6 +57,7 @@ public class PRVI25_LogicTreeBranch {
 	static {
 		// exhaustive for now, can trim down later
 		levelsOnFault = List.of(CRUSTAL_FM, CRUSTAL_DM, CRUSTAL_SCALE, SUPRA_B, SEG);
+		levelsCrustalOffFault = List.of(SEIS_RATE, SEIS_DECLUSTER, SEIS_SMOOTH, MMAX_OFF);
 		levelsSubduction = List.of(SUB_FM, SUB_DM, SUB_SCALE, SUB_SUPRA_B);
 	}
 	

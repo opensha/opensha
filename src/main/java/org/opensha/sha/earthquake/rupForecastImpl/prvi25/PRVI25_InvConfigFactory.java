@@ -10,6 +10,12 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.data.function.HistogramFunction;
+import org.opensha.commons.geo.CubedGriddedRegion;
+import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.Region;
+import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
@@ -23,6 +29,7 @@ import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.CoulombRupSetConf
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionSolver;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.GridSourceProviderFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionSolver;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
@@ -33,7 +40,10 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Generatio
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
@@ -49,8 +59,12 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_FaultCubeAssociations;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SlipAlongRuptureModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSectBranchNode;
@@ -68,14 +82,23 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBVa
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.AnalyticalSingleFaultInversionSolver;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.ClassicModelInversionSolver;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_DeclusteringAlgorithms;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_RegionalSeismicity;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SeisSmoothingAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionFaultModels;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
-public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory {
+import scratch.UCERF3.erf.ETAS.SeisDepthDistribution;
+
+public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory {
 	
 	protected transient Table<RupSetFaultModel, RupturePlausibilityModels, FaultSystemRupSet> rupSetCache = HashBasedTable.create();
 	protected transient Map<RupSetFaultModel, SectionDistanceAzimuthCalculator> distAzCache = new HashMap<>();
@@ -100,6 +123,11 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	public static boolean ALLOW_CONNECTED_PROXY_FAULTS_DEFAULT = false;
 	private static boolean allowConnectedProxyFaults = ALLOW_CONNECTED_PROXY_FAULTS_DEFAULT;
+	
+	/**
+	 * if true, will subtract on-fault supra-seis rates from gridded MFDs
+	 */
+	private static boolean RATE_BALANCE_GRIDDED = true;
 	
 	public PRVI25_InvConfigFactory() {
 		numItersPerRup = NUM_ITERS_PER_RUP_DEFAULT;
@@ -868,6 +896,124 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			return skipSampler;
 		else
 			return currentSampler.getCombinedWith(skipSampler);
+	}
+
+	@Override
+	public LogicTree<?> getGridSourceTree(LogicTree<?> faultTree) {
+		if (faultTree.getBranch(0).hasValue(PRVI25_CrustalFaultModels.class))
+			return LogicTree.buildExhaustive(PRVI25_LogicTreeBranch.levelsCrustalOffFault, true);
+		return null;
+	}
+
+	@Override
+	public GridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch)
+			throws IOException {
+		// TODO Auto-generated method stub
+		return buildGridSourceProv(sol, fullBranch);
+	}
+	
+	@Override
+	public void preGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
+		doPreGridBuildHook(sol, faultBranch);
+	}
+	
+	private static void doPreGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
+		// add fault cube associations and seismicity regions
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		
+		if (!rupSet.hasModule(ModelRegion.class) && faultBranch.hasValue(PRVI25_CrustalFaultModels.class))
+			rupSet.addModule(PRVI25_CrustalFaultModels.getDefaultRegion(faultBranch));
+		Region modelReg = rupSet.requireModule(ModelRegion.class).getRegion();
+		
+		FaultCubeAssociations cubeAssociations = rupSet.getModule(FaultCubeAssociations.class);
+		if (cubeAssociations == null) {
+			GriddedRegion modelGridReg = new GriddedRegion(modelReg, 0.1, GriddedRegion.ANCHOR_0_0);
+			cubeAssociations = new NSHM23_FaultCubeAssociations(rupSet, new CubedGriddedRegion(modelGridReg),
+					NSHM23_SingleRegionGridSourceProvider.DEFAULT_MAX_FAULT_NUCL_DIST);
+			rupSet.addModule(cubeAssociations);
+		}
+		Preconditions.checkNotNull(cubeAssociations, "Cube associations is null");
+	}
+	
+	public static NSHM23_SingleRegionGridSourceProvider buildGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
+		doPreGridBuildHook(sol, branch);
+		FaultSystemRupSet rupSet = sol.getRupSet();
+		Preconditions.checkState(branch.hasValue(PRVI25_CrustalFaultModels.class), "Only crustal supported (so far)");
+		FaultCubeAssociations cubeAssociations = rupSet.requireModule(FaultCubeAssociations.class);
+		return buildGridSourceProv(sol, branch, SeismicityRegions.CRUSTAL, cubeAssociations);
+	}
+	
+	public static NSHM23_SingleRegionGridSourceProvider buildGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch,
+			SeismicityRegions seisRegion, FaultCubeAssociations cubeAssociations)  throws IOException {
+		GriddedRegion gridReg = cubeAssociations.getRegion();
+		
+		double maxMagOff = branch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
+		
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(
+				Math.max(maxMagOff, sol.getRupSet().getMaxMag()));
+		
+		PRVI25_RegionalSeismicity seisBranch = branch.requireValue(PRVI25_RegionalSeismicity.class);
+		PRVI25_DeclusteringAlgorithms declusteringAlg = branch.requireValue(PRVI25_DeclusteringAlgorithms.class);
+		PRVI25_SeisSmoothingAlgorithms seisSmooth = branch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
+		
+		// total G-R up to Mmax
+		IncrementalMagFreqDist totalGR = seisBranch.build(seisRegion, refMFD, maxMagOff);
+
+		// figure out what's left for gridded seismicity
+		IncrementalMagFreqDist totalGridded = new IncrementalMagFreqDist(
+				refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+
+		IncrementalMagFreqDist solNuclMFD = sol.calcNucleationMFD_forRegion(
+				gridReg, refMFD.getMinX(), refMFD.getMaxX(), refMFD.size(), false);
+		for (int i=0; i<totalGR.size(); i++) {
+			double totalRate = totalGR.getY(i);
+			if (totalRate > 0) {
+				if (RATE_BALANCE_GRIDDED) {
+					double solRate = solNuclMFD.getY(i);
+					if (solRate > totalRate) {
+						System.err.println("WARNING: MFD bulge at M="+(float)refMFD.getX(i)
+						+"\tGR="+(float)totalRate+"\tsol="+(float)solRate);
+					} else {
+						totalGridded.set(i, totalRate - solRate);
+					}
+				} else {
+					totalGridded.set(i, totalRate);
+				}
+			}
+		}
+
+		// focal mechanisms
+//		double[] fractStrikeSlip = PRVI25_GridFocalMechs.getFractStrikeSlip(region, gridReg);
+//		double[] fractReverse = PRVI25_GridFocalMechs.getFractReverse(region, gridReg);
+//		double[] fractNormal = PRVI25_GridFocalMechs.getFractNormal(region, gridReg);
+		// TODO
+		System.err.println("WARNING: DON'T YET HAVE FOCAL MECHS!");
+		double[] fractStrikeSlip = new double[gridReg.getNodeCount()];
+		double[] fractReverse = new double[gridReg.getNodeCount()];
+		double[] fractNormal = new double[gridReg.getNodeCount()];
+		for (int i=0; i<fractStrikeSlip.length; i++) {
+			fractStrikeSlip[i] = 0.5;
+			fractReverse[i] = 0.5;
+			fractNormal[i] = 0.5;
+		}
+
+		// spatial seismicity PDF
+		double[] pdf = seisSmooth.load(seisRegion, declusteringAlg);
+
+		// seismicity depth distribution
+
+		// TODO still using UCERF3
+		SeisDepthDistribution seisDepthDistribution = new SeisDepthDistribution();
+		double delta=2;
+		HistogramFunction binnedDepthDistFunc = new HistogramFunction(1d, 12,delta);
+		for(int i=0;i<binnedDepthDistFunc.size();i++) {
+			double prob = seisDepthDistribution.getProbBetweenDepths(binnedDepthDistFunc.getX(i)-delta/2d,binnedDepthDistFunc.getX(i)+delta/2d);
+			binnedDepthDistFunc.set(i,prob);
+		}
+		//				EvenlyDiscretizedFunc depthNuclDistFunc = NSHM23_SeisDepthDistributions.load(region);
+
+		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, binnedDepthDistFunc,
+				fractStrikeSlip, fractNormal, fractReverse);
 	}
 
 }
