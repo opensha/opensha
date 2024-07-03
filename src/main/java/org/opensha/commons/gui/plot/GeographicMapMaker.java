@@ -64,6 +64,7 @@ public class GeographicMapMaker {
 	protected PlotCurveCharacterstics sectTraceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, Color.DARK_GRAY);
 	protected PlotCurveCharacterstics sectPolyChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 1f, new Color(127, 127, 127, 26));
 	protected PlotCurveCharacterstics regionOutlineChar = null;
+	protected boolean plotRectangularRegionOutlines = false;
 	
 	/*
 	 * General plot settings
@@ -314,6 +315,11 @@ public class GeographicMapMaker {
 	
 	public void setRegionOutlineChar(PlotCurveCharacterstics regionOutlineChar) {
 		this.regionOutlineChar = regionOutlineChar;
+	}
+	
+	public void setRegionOutlineChar(PlotCurveCharacterstics regionOutlineChar, boolean plotIfRectangular) {
+		this.regionOutlineChar = regionOutlineChar;
+		this.plotRectangularRegionOutlines = plotIfRectangular;
 	}
 
 	public void setSectOutlineChar(PlotCurveCharacterstics sectOutlineChar) {
@@ -890,7 +896,7 @@ public class GeographicMapMaker {
 		}
 		
 		protected void plotRegionOutlines() {
-			if (regionOutlineChar != null && !region.isRectangular()) {
+			if (regionOutlineChar != null && (plotRectangularRegionOutlines || !region.isRectangular())) {
 				DefaultXY_DataSet outline = new DefaultXY_DataSet();
 				for (Location loc : region.getBorder())
 					outline.set(loc.getLongitude(), loc.getLatitude());
