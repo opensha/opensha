@@ -460,9 +460,22 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 	 * @return null if the color range was not found
 	 */
 	public CPTVal getCPTVal(float value) {
-		for (CPTVal val : this) {
+		int size = size();
+		for (int i=0; i<size; i++) {
+			CPTVal val = get(i);
 			if (val.contains(value)) {
 				return val;
+			} else if (val.end == value) {
+				// it equals the end of this range, check for special cases where we should return this one
+				// rather than the next
+				if (i < size-1) {
+					if (value < get(i+1).start)
+						// we're not contiguous, call it a match
+						return val;
+				} else {
+					// this is the last value and it matches the end, call it a match
+					return val;
+				}
 			}
 		}
 		return null;

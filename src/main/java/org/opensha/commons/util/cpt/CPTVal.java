@@ -151,10 +151,10 @@ public class CPTVal implements Comparable<CPTVal>, Serializable, Cloneable, XMLS
 	/**
 	 *
 	 * @param value
-	 * @return true if value is less than end and more than start
+	 * @return true if value is greater than or equal to the start value and less than the end value
 	 */
 	public boolean contains(float value) {
-		return this.start <= value && value <= this.end;
+		return this.start <= value && value < this.end;
 	}
 
 
