@@ -1,4 +1,4 @@
-package scratch.kevin.ucerf3.etas.weeklyRuns;
+package scratch.kevin.ucerf3.etas.csepDailyRuns;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,52 +31,40 @@ import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_ComcatConfigBuilder;
 import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_ComcatEventFetcher;
 import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_ConfigBuilder;
 import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_ConfigBuilder.HPC_Sites;
+import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 
-public class WeeklyScriptWriter {
+public class DailyScriptWriter {
 
 	public static void main(String[] args) throws IOException {
 		GregorianCalendar startDate = new GregorianCalendar(TimeZone.getTimeZone("UTC"));
 		startDate.clear();
-		startDate.set(1986, 0, 1);
+		startDate.set(2007, 7, 1); // month is 0-based, so '7' is actually August
 		GregorianCalendar endDate = new GregorianCalendar(startDate.getTimeZone());
-		int deltaDays = 7;
+		endDate.set(2018, 7, 1);
+		int deltaDays = 1;
 		
-		int batchSize = 50;
+		int batchSize = 30;
 		int batchNodes = 40;
-		int batchHours = 14;
-//		int batchSize = 80;
-//		int batchNodes = 30;
-//		int batchHours = 15;
+		int batchHours = 24;
 		int batchThreads = 20;
+		HPC_Sites site = HPC_Sites.TACC_STAMPEDE3;
+		String queue = "skx";
+		int indvNodes = 10;
+		int indvHours = 5;
+		int indvThreads = 15; // scale it back, if we're running individually we might have run out of memory
 		
-		double duration = 1d;
-		int numCatalogs = 10000;
+		double duration = ProbabilityModelsCalc.MILLISEC_PER_DAY/1000d;
+		int numCatalogs = 100000;
 		
 		DecimalFormat batchDF = new DecimalFormat("000");
 		
-//		String kCOV = null;
-		
-//		String kCOV = "1.5";
-//		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.FULL_TD;
-//		String parentDir = "${ETAS_SIM_DIR}/2020_05_14-weekly-1986-present-full_td-kCOV1.5";
-//		boolean griddedOnly = false;
-		
-		String kCOV = null;
+		String kCOV = "1.5";
 		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.FULL_TD;
-		String parentDir = "${ETAS_SIM_DIR}/2020_07_22-weekly-1986-present-full_td";
+		String parentDir = "${ETAS_SIM_DIR}/2024_07_23-csep1-daily-full_td-kCOV1.5";
 		boolean griddedOnly = false;
 		
-//		String kCOV = "1.5";
-//		U3ETAS_ProbabilityModelOptions probModel = U3ETAS_ProbabilityModelOptions.NO_ERT;
-//		String parentDir = "${ETAS_SIM_DIR}/2020_05_25-weekly-1986-present-no_ert-kCOV1.5";
-//		boolean griddedOnly = false;
-		
-//		String kCOV = "1.5";
-//		U3ETAS_ProbabilityModelOptions probModel = null;
-//		String parentDir = "${ETAS_SIM_DIR}/2020_07_13-weekly-1986-present-gridded-kCOV1.5";
-//		boolean griddedOnly = true;
-		
 		File resolvedParentDir = ETAS_Config.resolvePath(parentDir);
+		System.out.println("Output Directory: "+resolvedParentDir.getAbsolutePath());
 		Preconditions.checkState(resolvedParentDir.exists() || resolvedParentDir.mkdir());
 		
 		GregorianCalendar curStart = new GregorianCalendar(startDate.getTimeZone());
@@ -114,6 +102,8 @@ public class WeeklyScriptWriter {
 			}
 		}
 		
+		File surfCacheDir = new File(resolvedParentDir, "surf-json-cache");
+		
 		int batchNum = 0;
 		List<String> curBatch = new ArrayList<>();
 		String curBatchName = "batch_"+batchDF.format(batchNum);
@@ -149,6 +139,7 @@ public class WeeklyScriptWriter {
 			if (comcat) {
 				argz.add("--start-after-historical");
 				argz.add("--end-time"); argz.add(curStart.getTimeInMillis()+"");
+				argz.add("--finite-surf-cache"); argz.add(surfCacheDir.getAbsolutePath());
 				argz.add("--finite-surf-shakemap");
 				argz.add("--finite-surf-shakemap-min-mag"); argz.add("6");
 				argz.add("--comcat-file"); argz.add(comcatFile.getAbsolutePath());
@@ -157,12 +148,13 @@ public class WeeklyScriptWriter {
 				argz.add("--start-time"); argz.add(curStart.getTimeInMillis()+"");
 			}
 			argz.add("--name"); argz.add(name);
+			argz.add("--max-point-src-mag"); argz.add("6");
 			
-			argz.add("--hpc-site"); argz.add("TACC_STAMPEDE2");
-			argz.add("--nodes"); argz.add("10");
-			argz.add("--hours"); argz.add("3");
-			argz.add("--threads"); argz.add("12");
-			argz.add("--queue"); argz.add("skx-normal");
+			argz.add("--hpc-site"); argz.add(site.name());
+			argz.add("--nodes"); argz.add(indvNodes+"");
+			argz.add("--hours"); argz.add(indvHours+"");
+			argz.add("--threads"); argz.add(indvThreads+"");
+			argz.add("--queue"); argz.add(queue);
 			argz.add("--output-dir"); argz.add(outputDir);
 			
 			System.out.println(name);
@@ -176,7 +168,7 @@ public class WeeklyScriptWriter {
 			curBatch.add(outputDir+"/config.json");
 			if (curBatch.size() == batchSize) {
 				File outputFile = new File(batchDir, curBatchName+".slurm");
-				writeBatch(curBatch, outputFile, batchNodes, batchHours, batchThreads, "skx-normal");
+				writeBatch(site, curBatch, outputFile, batchNodes, batchHours, batchThreads, queue);
 				curBatch.clear();
 				batchNum++;
 				curBatchName = "batch_"+batchDF.format(batchNum);
@@ -190,14 +182,14 @@ public class WeeklyScriptWriter {
 		}
 		if (!curBatch.isEmpty()) {
 			File outputFile = new File(batchDir, curBatchName+".slurm");
-			writeBatch(curBatch, outputFile, batchNodes, batchHours, batchThreads, "skx-normal");
+			writeBatch(site, curBatch, outputFile, batchNodes, batchHours, batchThreads, queue);
 		}
 	}
 	
-	private static void writeBatch(List<String> configs, File outputFile,
+	private static void writeBatch(HPC_Sites site, List<String> configs, File outputFile,
 			int nodes, int hours, int threads, String queue) throws IOException {
 		String configFile = Joiner.on(" ").join(configs);
-		File inputFile = HPC_Sites.TACC_STAMPEDE3.getSlurmFile();
+		File inputFile = site.getSlurmFile();
 		ETAS_ConfigBuilder.updateSlurmScript(inputFile, outputFile, nodes, threads,
 				hours, queue, configFile);
 	}

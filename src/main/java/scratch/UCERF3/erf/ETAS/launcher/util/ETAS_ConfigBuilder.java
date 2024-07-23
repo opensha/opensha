@@ -48,7 +48,7 @@ public class ETAS_ConfigBuilder {
 	
 	public enum HPC_Sites {
 		USC_CARC("usc_carc_mpj_express.slurm", "usc_carc_plot.slurm"),
-		TACC_STAMPEDE2("tacc_stampede2_fastmpj.slurm", "tacc_stampede2_plot.slurm"),
+		TACC_STAMPEDE3("tacc_stampede3_fastmpj.slurm", "tacc_stampede3_plot.slurm"),
 		TACC_FRONTERA("tacc_frontera_fastmpj.slurm", "tacc_frontera_plot.slurm");
 
 		private String plotFileName;

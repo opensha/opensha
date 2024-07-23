@@ -1,10 +1,12 @@
 package scratch.UCERF3.erf.ETAS.launcher.util;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -29,9 +31,9 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ClassUtils;
+import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
-import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
@@ -41,6 +43,10 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
 
 import scratch.UCERF3.erf.ETAS.ETAS_CubeDiscretizationParams;
 import scratch.UCERF3.erf.ETAS.ETAS_EqkRupture;
@@ -48,11 +54,10 @@ import scratch.UCERF3.erf.ETAS.analysis.ETAS_TriggerRuptureFaultDistancesPlot;
 import scratch.UCERF3.erf.ETAS.analysis.SimulationMarkdownGenerator;
 import scratch.UCERF3.erf.ETAS.association.FiniteFaultSectionResetCalc;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
+import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.TriggerRuptureTypeAdapter;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Launcher;
 import scratch.UCERF3.erf.ETAS.launcher.TriggerRupture;
-import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.ComcatMetadata;
-import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_AbstractComcatConfigBuilder.RuptureBuilder;
-import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 
 public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilder {
 	
@@ -155,6 +160,13 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 		ops.addOption(finiteSurfInversionSlip);
 		
 		/*
+		 * cached finite surfaces
+		 */
+		ops.addOption(null, "finite-surf-cache", true, "Path to cache directory to store finite surface representations "
+				+ "to avoid repeated HTTP requests. If you use this option and change finite surface parameterizations "
+				+ "between runs, be sure to clear the cache.");
+		
+		/*
 		 * Event-specific ETAS params (all others will be applied to all other ComCat events
 		 */
 		Option kOption = new Option("mek", "event-etas-k", true, "Mainshock-specific ETAS productivity parameter parameter,"
@@ -212,6 +224,8 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 		public TriggerRupture build(ObsEqkRupture rup, int[] resetSubSects);
 		
 		public String getDisplayName(int totalNumRuptures);
+		
+		public double getMinMag();
 		
 	}
 	
@@ -290,6 +304,11 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 			if (planarExtents)
 				name += " (Planar Extents)";
 			return name;
+		}
+
+		@Override
+		public double getMinMag() {
+			return minMag;
 		}
 		
 	}
@@ -383,6 +402,11 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 				name += " (minSlip="+(float)minSlip+")";
 			return name;
 		}
+
+		@Override
+		public double getMinMag() {
+			return minMag;
+		}
 		
 	}
 	
@@ -413,6 +437,74 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 			name += " From Sects";
 			return name;
 		}
+
+		@Override
+		public double getMinMag() {
+			return 0d;
+		}
+		
+	}
+	
+	protected static class CachedRuptureBuilder implements RuptureBuilder {
+		
+		private double minMag;
+		private Gson gson;
+		private TriggerRuptureTypeAdapter adapter;
+		private File cacheDir;
+
+		public CachedRuptureBuilder(File cacheDir) {
+			this.cacheDir = cacheDir;
+			adapter = new TriggerRuptureTypeAdapter();
+			GsonBuilder builder = new GsonBuilder();
+			builder.setPrettyPrinting();
+			builder.registerTypeAdapter(TriggerRupture.class, adapter);
+			gson = builder.create();
+		}
+		
+		private File getCacheFile(ObsEqkRupture rup) {
+			return new File(cacheDir, rup.getEventId()+".json");
+		}
+
+		@Override
+		public TriggerRupture build(ObsEqkRupture rup, int[] resetSubSects) {
+			File rupFile = getCacheFile(rup);
+			if (!rupFile.exists())
+				return null;
+			System.out.println("Loading cached TriggerRupture for "+rup.getEventId()+" from "+rupFile.getAbsolutePath());
+			try {
+				JsonReader in = gson.newJsonReader(new BufferedReader(new FileReader(rupFile)));
+				return adapter.read(in);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+		
+		public void cacheTriggerRupture(ObsEqkRupture rup, TriggerRupture trigRup) throws IOException {
+			if (rup.getMag() < minMag)
+				return;
+			File rupFile = getCacheFile(rup);
+			System.out.println("Caching TriggerRupture for "+rup.getEventId()+" to "+rupFile.getAbsolutePath());
+			
+			FileWriter fw = new FileWriter(rupFile);
+			JsonWriter out = gson.newJsonWriter(fw);
+			adapter.write(out, trigRup);
+			fw.write("\n");
+			fw.close();
+		}
+
+		@Override
+		public String getDisplayName(int totalNumRuptures) {
+			return null;
+		}
+
+		@Override
+		public double getMinMag() {
+			return minMag;
+		}
+		
+		public void setMinMag(double minMag) {
+			this.minMag = minMag;
+		}
 		
 	}
 	
@@ -437,6 +529,11 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 			if (numProcessed > 1)
 				name += "s";
 			return name;
+		}
+
+		@Override
+		public double getMinMag() {
+			return 0d;
 		}
 		
 	}
@@ -723,11 +820,22 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 		}
 		int[] resetSubSects = resetSectsMap == null ? null : resetSectsMap.get(eq.getEventId());
 		TriggerRupture triggerRup = null;
+		CachedRuptureBuilder cachedBuilder = null;
+		for (RuptureBuilder builder : ruptureBuilders)
+			if (builder instanceof CachedRuptureBuilder)
+				cachedBuilder = (CachedRuptureBuilder)builder;
 		for (RuptureBuilder builder : ruptureBuilders) {
 			triggerRup = builder.build(eq, resetSubSects);
 			if (triggerRup != null) {
 				if (eq.getEventId().equals(primaryEventID))
 					System.out.println("Primary rupture type: "+ClassUtils.getClassNameWithoutPackage(triggerRup.getClass()));
+				if (cachedBuilder != null && cachedBuilder != builder) {
+					try {
+						cachedBuilder.cacheTriggerRupture(eq, triggerRup);
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
 				break;
 			}
 		}
@@ -820,6 +928,17 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 				ruptureBuilders.add(builder);
 		}
 		
+		CachedRuptureBuilder cachedBuilder = null;
+		double minNonzerMinMag = Double.POSITIVE_INFINITY;
+		for (RuptureBuilder builder : ruptureBuilders) {
+			if (builder instanceof CachedRuptureBuilder)
+				cachedBuilder = (CachedRuptureBuilder)builder;
+			else if (builder.getMinMag() > 0d)
+				minNonzerMinMag = Math.min(minNonzerMinMag, builder.getMinMag());
+		}
+		if (cachedBuilder != null)
+			cachedBuilder.setMinMag(minNonzerMinMag);
+		
 		// add fallback point source builder
 		ruptureBuilders.add(new PointRuptureBuilder());
 	}
@@ -891,6 +1010,11 @@ public abstract class ETAS_AbstractComcatConfigBuilder extends ETAS_ConfigBuilde
 			Preconditions.checkArgument(resetSectsMap != null && !resetSectsMap.isEmpty(),
 					"must supply --reset-sects argument with --finite-surf-from-sections");
 			return new SectionRuptureBuilder(resetSectsMap);
+		case "finite-surf-cache":
+			File cacheDir = new File(cmd.getOptionValue("finite-surf-cache"));
+			Preconditions.checkState(cacheDir.exists() || cacheDir.mkdir(),
+					"Finite surfaces cache doesn't exist and couldn't be created: %s", cacheDir.getAbsolutePath());
+			return new CachedRuptureBuilder(cacheDir);
 
 		default:
 			return null;
