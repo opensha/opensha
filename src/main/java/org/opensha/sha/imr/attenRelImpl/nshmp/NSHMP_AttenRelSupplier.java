@@ -9,19 +9,25 @@ public class NSHMP_AttenRelSupplier implements AttenRelSupplier {
 	
 	private Gmm gmm;
 	private String shortName;
+	private boolean parameterize;
 
 	public NSHMP_AttenRelSupplier(Gmm gmm) {
-		this(gmm, gmm.name());
+		this(gmm, true);
 	}
 	
-	public NSHMP_AttenRelSupplier(Gmm gmm, String shortName) {
+	public NSHMP_AttenRelSupplier(Gmm gmm, boolean parameterize) {
+		this(gmm, gmm.name(), parameterize);
+	}
+	
+	public NSHMP_AttenRelSupplier(Gmm gmm, String shortName, boolean parameterize) {
 		this.gmm = gmm;
 		this.shortName = shortName;
+		this.parameterize = parameterize;
 	}
 
 	@Override
 	public ScalarIMR get() {
-		return new NSHMP_GMM_Wrapper(gmm, shortName, true);
+		return new NSHMP_GMM_Wrapper(gmm, shortName, parameterize);
 	}
 
 	@Override
