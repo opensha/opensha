@@ -76,6 +76,11 @@ public class PRVI25_CrustalRandomlySampledDeformationModels implements RandomlyS
 	public long getSeed() {
 		return seed;
 	}
+	
+	@Override
+	public String toString() {
+		return shortName;
+	}
 
 	@Override
 	public void init(String name, String shortName, String prefix, double weight, long seed) {
