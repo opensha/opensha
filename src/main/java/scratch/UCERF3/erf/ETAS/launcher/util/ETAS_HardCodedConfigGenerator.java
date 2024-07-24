@@ -92,6 +92,7 @@ public class ETAS_HardCodedConfigGenerator {
 		int hours = 24;
 		String queue = hpcSite == HPC_Sites.USC_CARC ? "scec_hiprio" : null;
 //		String queue = "scec_hiprio";
+		Integer nodeThreads = null;
 		Integer threads = null;
 		
 //		Integer threads = 12;
@@ -190,7 +191,7 @@ public class ETAS_HardCodedConfigGenerator {
 		if (mpj) {
 			File slurmScriptFile = new File(localOutputDir, "etas_sim_mpj.slurm");
 			File template = hpcSite.getSlurmFile();
-			ETAS_ConfigBuilder.updateSlurmScript(template, slurmScriptFile, nodes, threads, hours, queue, configFile);
+			ETAS_ConfigBuilder.updateSlurmScript(template, slurmScriptFile, nodes, nodeThreads, threads, hours, queue, configFile);
 		}
 	}
 	

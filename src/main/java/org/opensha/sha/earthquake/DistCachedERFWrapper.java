@@ -92,6 +92,20 @@ public class DistCachedERFWrapper extends AbstractERF {
 		this.sources = sources;
 	}
 	
+	public static class DistCacheWrapperRupture extends ProbEqkRupture {
+		
+		private ProbEqkRupture origRup;
+
+		public DistCacheWrapperRupture(ProbEqkRupture origRup, RuptureSurface wrappedSurf) {
+			super(origRup.getMag(), origRup.getAveRake(), origRup.getProbability(), wrappedSurf, origRup.getHypocenterLocation());
+			this.origRup = origRup;
+		}
+		
+		public ProbEqkRupture getOriginalRupture() {
+			return origRup;
+		}
+	}
+	
 	private static RuptureSurface getWrappedSurface(Map<RuptureSurface, CustomCacheWrappedSurface> wrappedMap,
 			RuptureSurface origSurf) {
 		RuptureSurface wrappedSurf;

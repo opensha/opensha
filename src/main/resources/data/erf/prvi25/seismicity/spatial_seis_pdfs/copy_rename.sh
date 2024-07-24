@@ -2,13 +2,13 @@
 
 set -o errexit
 
-SRC=/tmp/test_grids/v1
+SRC=/tmp/prvi_grids/v2
 
 echo "REGULAR"
 declare -a prefixes=("apdf_pmmx_car_interface" "apdf_pmmx_car_intraslab" "apdf_pmmx_crustal" "apdf_pmmx_mue_interface" "apdf_pmmx_mue_intraslab")
 declare -a dirnames=("CAR_INTERFACE" "CAR_INTRASLAB" "CRUSTAL" "MUE_INTERFACE" "MUE_INTRASLAB")
 
-UNIFORM_INTERFACE=1
+UNIFORM_INTERFACE=0
 
 arraylength=${#prefixes[@]}
 

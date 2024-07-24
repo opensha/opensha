@@ -52,6 +52,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.Sol
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
@@ -123,6 +124,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	public static boolean ALLOW_CONNECTED_PROXY_FAULTS_DEFAULT = false;
 	private static boolean allowConnectedProxyFaults = ALLOW_CONNECTED_PROXY_FAULTS_DEFAULT;
+	private static final double MAX_PROXY_FAULT_RUP_LEN_DEFAULT = 75d;
+	private static double maxProxyFaultRupLen = MAX_PROXY_FAULT_RUP_LEN_DEFAULT;
 	
 	/**
 	 * if true, will subtract on-fault supra-seis rates from gridded MFDs
@@ -797,6 +800,11 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			exclusionModels.add(new ProxyConnectionExclusionModel());
 		}
 		
+		if (maxProxyFaultRupLen > 0d) {
+			System.out.println("Excluding proxy fault ruptures longer than "+(float)maxProxyFaultRupLen+" km");
+			exclusionModels.add(new ProxyMaxLenExclusionModel(maxProxyFaultRupLen));
+		}
+		
 		if (exclusionModels.isEmpty())
 			return null;
 		if (exclusionModels.size() == 1)
@@ -821,12 +829,42 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 		@Override
 		public boolean isJumpAllowed(ClusterRupture fullRupture, Jump jump, boolean verbose) {
-			return !isProxyFault(jump.fromSection) && !isProxyFault(jump.toSection);
+			return !jump.fromSection.isProxyFault() && !jump.toSection.isProxyFault();
 		}
 		
-		private boolean isProxyFault(FaultSection sect) {
-			// TODO do better
-			return sect.getSectionName().toLowerCase().contains("proxy");
+	}
+	
+	private static class ProxyMaxLenExclusionModel implements BinaryRuptureProbabilityCalc {
+		
+		private double maxLen;
+
+		public ProxyMaxLenExclusionModel(double maxLen) {
+			this.maxLen = maxLen;
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+
+		@Override
+		public String getName() {
+			return "Proxy Fault Connections Excluded";
+		}
+
+		@Override
+		public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
+			double proxyLen = 0d;
+			for (FaultSubsectionCluster cluster : fullRupture.getClustersIterable()) {
+				for (FaultSection sect : cluster.subSects) {
+					if (sect.isProxyFault()) {
+						proxyLen += sect.getTraceLength();
+						if (proxyLen > maxLen)
+							return false;
+					}
+				}
+			}
+			return true;
 		}
 		
 	}
@@ -908,7 +946,6 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	@Override
 	public GridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch)
 			throws IOException {
-		// TODO Auto-generated method stub
 		return buildGridSourceProv(sol, fullBranch);
 	}
 	
