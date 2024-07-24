@@ -28,6 +28,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.Pa
 import org.opensha.sha.earthquake.faultSysSolution.modules.BuildInfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
@@ -262,7 +263,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			if (zip.getEntry(entryPrefix+GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME) != null) {
 				try {
 					System.out.println("Trying to load unlisted GridSourceProvider module");
-					archive.loadUnlistedModule(GridSourceProvider.Default.class, entryPrefix, this);
+					archive.loadUnlistedModule(MFDGridSourceProvider.Default.class, entryPrefix, this);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}

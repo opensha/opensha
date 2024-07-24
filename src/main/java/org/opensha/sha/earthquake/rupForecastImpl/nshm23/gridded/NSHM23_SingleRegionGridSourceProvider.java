@@ -440,7 +440,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 	}
 
 	@Override
-	public void scaleAllMFDs(double[] valuesArray) {
+	public void scaleAll(double[] valuesArray) {
 		// TODO
 		throw new UnsupportedOperationException("not yet implemented");
 	}

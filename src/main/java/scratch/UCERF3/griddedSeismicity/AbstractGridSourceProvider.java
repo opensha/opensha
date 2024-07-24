@@ -14,7 +14,8 @@ import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
-import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider.Abstract;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider.Abstract;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.Point2Vert_FaultPoisSource;
@@ -31,7 +32,7 @@ import scratch.UCERF3.utils.GardnerKnopoffAftershockFilter;
  * @author Peter Powers
  * @version $Id:$
  */
-public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abstract implements ArchivableModule {
+public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.Abstract implements ArchivableModule {
 
 	private static final WC1994_MagLengthRelationship magLenRel = new WC1994_MagLengthRelationship();
 	private static final double ptSrcCutoff = 6.0;
@@ -115,7 +116,7 @@ public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abst
 	}
 	
 	@Override
-	public void scaleAllMFDs(double[] valuesArray) {
+	public void scaleAll(double[] valuesArray) {
 		if(valuesArray.length != getGriddedRegion().getNodeCount())
 			throw new RuntimeException("Error: valuesArray must have same length as getGriddedRegion().getNodeCount()");
 		for(int i=0;i<valuesArray.length;i++) {
@@ -135,7 +136,7 @@ public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abst
 	public static final String ARCHIVE_SUB_SEIS_FILE_NAME = "grid_sub_seis_mfds.csv";
 	public static final String ARCHIVE_UNASSOCIATED_FILE_NAME = "grid_unassociated_mfds.csv";
 
-	public static class Precomputed extends GridSourceProvider.AbstractPrecomputed {
+	public static class Precomputed extends MFDGridSourceProvider.AbstractPrecomputed {
 		
 		private Precomputed() {
 			super(SOURCE_MIN_MAG_CUTOFF);
@@ -180,10 +181,9 @@ public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abst
 		}
 
 		@Override
-		public GridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+		public MFDGridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
 				double[] fracReverse) {
-			// TODO Auto-generated method stub
 			return new Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
 					fracStrikeSlip, fracNormal, fracReverse);
 		}

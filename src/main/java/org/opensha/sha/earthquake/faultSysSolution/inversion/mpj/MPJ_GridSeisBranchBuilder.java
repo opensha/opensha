@@ -39,6 +39,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.BranchAveragingOrder;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchRegionalMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 
@@ -234,11 +235,11 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				List<? extends LogicTreeLevel<?>> levelsForGridReg = SolutionLogicTree.getLevelsAffectingFile(
 						GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false, levels);
 				List<? extends LogicTreeLevel<?>> levelsForGridMechs = SolutionLogicTree.getLevelsAffectingFile(
-						GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false, levels);
+						MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false, levels);
 				List<? extends LogicTreeLevel<?>> levelsForSubSeisMFDs = SolutionLogicTree.getLevelsAffectingFile(
-						GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true, levels);
+						MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true, levels);
 				List<? extends LogicTreeLevel<?>> levelsForSubUnassociatedMFDs = SolutionLogicTree.getLevelsAffectingFile(
-						GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true, levels);
+						MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true, levels);
 				if (full) {
 					this.fullLevelIndexes = new HashMap<>();
 					for (int i=0; i<levels.size(); i++)
@@ -428,7 +429,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		private void writeGridProvInstance(GridSourceProvider prov, LogicTreeBranch<?> branch,
 				List<? extends LogicTreeLevel<?>> levelsAffecting, ZipArchiveOutputStream out,
 						HashSet<String> writtenFiles) throws IOException {
-			if (!(prov instanceof ArchivableModule) || prov instanceof GridSourceProvider.Default)
+			if (!(prov instanceof ArchivableModule) || prov instanceof MFDGridSourceProvider.Default)
 				return;
 			String avgInstanceFileName = getBranchFileName(branch, sltPrefix,
 					SolutionLogicTree.GRID_PROV_INSTANCE_FILE_NAME, levelsAffecting);
@@ -449,17 +450,17 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					getBranchFileName(branch, sltPrefix,
 							GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME,
 							full ? fullLevelsForGridReg : origLevelsForGridReg));
-			nameMappings.put(GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME,
+			nameMappings.put(MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME,
 					getBranchFileName(branch, sltPrefix,
-							GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME,
+							MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME,
 							full ? fullLevelsForGridMechs : origLevelsForGridMechs));
-			nameMappings.put(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME,
+			nameMappings.put(MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME,
 					getBranchFileName(branch, sltPrefix,
-							GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME,
+							MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME,
 							full ? fullLevelsForSubSeisMFDs : origLevelsForSubSeisMFDs));
-			nameMappings.put(GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME,
+			nameMappings.put(MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME,
 					getBranchFileName(branch, sltPrefix,
-							GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME,
+							MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME,
 							full ? fullLevelsForUnassociatedMFDs : origLevelsForUnassociatedMFDs));
 			return nameMappings;
 		}

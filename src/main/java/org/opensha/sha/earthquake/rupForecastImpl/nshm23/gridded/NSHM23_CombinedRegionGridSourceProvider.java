@@ -138,7 +138,7 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 	}
 
 	@Override
-	public void scaleAllMFDs(double[] valuesArray) {
+	public void scaleAll(double[] valuesArray) {
 		Preconditions.checkState(valuesArray.length == size());
 		for (GridSourceProvider prov : regionalProviders) {
 			GriddedRegion provReg = prov.getGriddedRegion();
@@ -156,7 +156,7 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 				}
 			}
 			if (anyMapped)
-				prov.scaleAllMFDs(scalars);
+				prov.scaleAll(scalars);
 		}
 	}
 	
