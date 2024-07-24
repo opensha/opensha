@@ -7,22 +7,14 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.text.DecimalFormat;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Deque;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -30,7 +22,6 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.Site;
-import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.logicTree.LogicTree;
@@ -40,28 +31,18 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
-import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
-import org.opensha.sha.calc.HazardCurveCalculator;
-import org.opensha.sha.earthquake.DistCachedERFWrapper;
-import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
-import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
-import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
-import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
-import org.opensha.sha.imr.param.IntensityMeasureParams.PGV_Param;
-import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
 
 import edu.usc.kmilner.mpj.taskDispatch.MPJTaskCalculator;
 import mpi.MPI;
-import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
 public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	
@@ -79,14 +60,14 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	private static final double[] PERIODS_DEFAULT = { 0d, 1d };
 	private double[] periods = PERIODS_DEFAULT;
 	
-	private DiscretizedFunc[] xVals;
-	private DiscretizedFunc[] logXVals;
-	
 	private static final IncludeBackgroundOption GRID_SEIS_DEFAULT = IncludeBackgroundOption.INCLUDE;
 	private IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
 	
 	private SolutionLogicTree solTree;
 	private LogicTree<?> tree;
+	
+	private AbstractSitewiseThreadedLogicTreeCalc calc;
+	private DiscretizedFunc[] xVals;
 	
 	private File outputDir;
 	
@@ -176,21 +157,6 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			siteCSVs.add(null);
 		}
 		
-		xVals = new DiscretizedFunc[periods.length];
-		logXVals = new DiscretizedFunc[periods.length];
-		IMT_Info imtInfo = new IMT_Info();
-		for (int p=0; p<periods.length; p++) {
-			if (periods[p] == -1d)
-				xVals[p] = imtInfo.getDefaultHazardCurve(PGV_Param.NAME);
-			else if (periods[p] == 0d)
-				xVals[p] = imtInfo.getDefaultHazardCurve(PGA_Param.NAME);
-			else
-				xVals[p] = imtInfo.getDefaultHazardCurve(SA_Param.NAME);
-			logXVals[p] = new ArbitrarilyDiscretizedFunc();
-			for (Point2D pt : xVals[p])
-				logXVals[p].set(Math.log(pt.getX()), 0d);
-		}
-		
 		// checkpoint write frequency. this is on a per-node basis, so it needs to be small enough to hit a useful
 		// number of times
 		recalc = cmd.hasOption("recalc");
@@ -215,6 +181,22 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		exec = new ThreadPoolExecutor(threads, threads,
                 0L, TimeUnit.MILLISECONDS,
                 new ArrayBlockingQueue<Runnable>(threads), new ThreadPoolExecutor.CallerRunsPolicy());
+		
+		calc = new AbstractSitewiseThreadedLogicTreeCalc(exec, sites.size(), solTree, gmpeRef, periods, gridSeisOp, maxDistance) {
+			
+			@Override
+			public Site siteForIndex(int siteIndex, ScalarIMR gmm) {
+				return sites.get(siteIndex);
+			}
+
+			@Override
+			public void debug(String message) {
+				MPJ_SiteLogicTreeHazardCurveCalc.this.debug(message);
+			}
+		};
+		xVals = calc.getXVals();
+		
+		calc.setDoGmmInputCache(cmd.hasOption("cache-gmm-inputs"));
 	}
 	
 	@Override
@@ -278,8 +260,6 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 
 	@Override
 	protected void calculateBatch(int[] batch) throws Exception {
-		List<List<Future<SiteCalcCallable>>> branchFutures = new ArrayList<>(batch.length);
-		
 		for (int branchIndex : batch) {
 			if (!recalc) {
 				// see if it's already done
@@ -344,43 +324,54 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				}
 			}
 			
+			DiscretizedFunc[][] curves = calc.calcForBranch(branchIndex);
+			
 			LogicTreeBranch<?> branch = tree.getBranch(branchIndex);
-			FaultSystemSolution sol = solTree.forBranch(branch);
-			FaultSystemSolutionERF erf = new FaultSystemSolutionERF(sol);
-			if (gridSeisOp == IncludeBackgroundOption.INCLUDE || gridSeisOp == IncludeBackgroundOption.ONLY)
-				Preconditions.checkNotNull(sol.getGridSourceProvider(),
-						"Grid source provider is null, but gridded seis option is %s", gridSeisOp);
-			erf.setParameter(IncludeBackgroundParam.NAME, gridSeisOp);
-			erf.getTimeSpan().setDuration(1d);
-			erf.updateForecast();
-			Supplier<ScalarIMR> gmpeSupplier = MPJ_LogicTreeHazardCalc.getGMM_Supplier(branch, gmpeRef);
+			List<String> csvHeader = null;
+			List<List<List<String>>> sitesPeriodCSVLines = new ArrayList<>(sites.size());
+			for (int siteIndex=0; siteIndex<sites.size(); siteIndex++) {
+				List<CSVFile<String>> csvs;
+				synchronized (siteCSVs) {
+					csvs = getInitSiteCSVs(siteIndex);
+				}
+				if (csvHeader == null)
+					csvHeader = csvs.get(0).getLine(0);
+				List<String> commonPrefix = new ArrayList<>();
+				commonPrefix.add(sites.get(siteIndex).getName());
+				commonPrefix.add(branchIndex+"");
+				commonPrefix.add(tree.getBranchWeight(branchIndex)+"");
+				for (LogicTreeNode node : branch)
+					commonPrefix.add(node.getShortName());
+				List<List<String>> sitePeriodCSVLines = new ArrayList<>();
+				sitesPeriodCSVLines.add(sitePeriodCSVLines);
+				synchronized (csvs) {
+					for (int p=0; p<periods.length; p++) {
+						List<String> line = new ArrayList<>(commonPrefix.size()+xVals[p].size());
+						line.addAll(commonPrefix);
+						for (Point2D pt : curves[siteIndex][p])
+							line.add(pt.getY()+"");
+						csvs.get(p).addLine(line);
+						sitePeriodCSVLines.add(line);
+					}
+				}
+			}
 			
-			Deque<DistCachedERFWrapper> deque = new ArrayDeque<>();
-			
-			List<Future<SiteCalcCallable>> futures = new ArrayList<>();
-			branchFutures.add(futures);
-			for (int siteIndex=0; siteIndex<sites.size(); siteIndex++)
-				futures.add(exec.submit(new SiteCalcCallable(branchIndex, siteIndex, erf, deque, gmpeSupplier)));
-		}
-		
-		for (List<Future<SiteCalcCallable>> futures : branchFutures) {
 			File branchCSVFile = null;
 			CSVFile<String> branchCSV = null;
 			
-			for (Future<SiteCalcCallable> future : futures) {
-				SiteCalcCallable calc = future.get();
+			for (int siteIndex=0; siteIndex<sites.size(); siteIndex++) {
 				if (branchCSV == null) {
-					branchCSVFile = getBranchCSV(calc.branchIndex);
+					branchCSVFile = getBranchCSV(branchIndex);
 					branchCSV = new CSVFile<>(true);
 					
-					List<String> header = new ArrayList<>(calc.csvHeader.size()+1);
+					List<String> header = new ArrayList<>(csvHeader.size()+1);
 					header.add("Period (s)");
-					header.addAll(calc.csvHeader);
+					header.addAll(csvHeader);
 					branchCSV.addLine(header);
 				}
 				
 				for (int p=0; p<periods.length; p++) {
-					List<String> line = calc.sitePeriodCSVLines.get(p);
+					List<String> line = sitesPeriodCSVLines.get(siteIndex).get(p);
 					List<String> periodLine = new ArrayList<>(line.size()+1);
 					periodLine.add((float)periods[p]+"");
 					periodLine.addAll(line);
@@ -418,117 +409,6 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			return new File(branchOutputDir, "branches_"+(bundleIndex*1000)+"_"+((bundleIndex+1)*1000));
 		}
 		return branchOutputDir;
-	}
-	
-	private synchronized DistCachedERFWrapper checkOutERF(FaultSystemSolutionERF fssERF, Deque<DistCachedERFWrapper> deque) {
-		if (!deque.isEmpty()) {
-			return deque.pop();
-		}
-		return new DistCachedERFWrapper(fssERF);
-	}
-	
-	private synchronized void checkInERF(DistCachedERFWrapper erf, Deque<DistCachedERFWrapper> deque) {
-		deque.push(erf);
-	}
-	
-	private class SiteCalcCallable implements Callable<SiteCalcCallable> {
-		// inputs
-		private int branchIndex;
-		private int siteIndex;
-		private FaultSystemSolutionERF fssERF;
-		private Deque<DistCachedERFWrapper> erfDeque;
-		private Supplier<ScalarIMR> gmpeSupplier;
-		
-		// outputs
-		private DiscretizedFunc[] curves;
-		private List<String> csvHeader;
-		private List<List<String>> sitePeriodCSVLines;
-		
-		public SiteCalcCallable(int branchIndex, int siteIndex, FaultSystemSolutionERF fssERF,
-				Deque<DistCachedERFWrapper> erfDeque, Supplier<ScalarIMR> gmpeSupplier) {
-			super();
-			this.branchIndex = branchIndex;
-			this.siteIndex = siteIndex;
-			this.fssERF = fssERF;
-			this.erfDeque = erfDeque;
-			this.gmpeSupplier = gmpeSupplier;
-		}
-
-		@Override
-		public SiteCalcCallable call() throws Exception {
-			DistCachedERFWrapper erf = checkOutERF(fssERF, erfDeque);
-			
-			ScalarIMR gmpe = gmpeSupplier.get();
-			
-			Site site = sites.get(siteIndex);
-			
-			curves = new DiscretizedFunc[periods.length];
-			
-			HazardCurveCalculator calc = new HazardCurveCalculator();
-			calc.setMaxSourceDistance(maxDistance);
-			
-			for (int p=0; p<periods.length; p++) {
-				if (periods[p] == -1d) {
-					gmpe.setIntensityMeasure(PGV_Param.NAME);
-				} else if (periods[p] == 0d) {
-					gmpe.setIntensityMeasure(PGA_Param.NAME);
-				} else {
-					Preconditions.checkState(periods[p] > 0d);
-					gmpe.setIntensityMeasure(SA_Param.NAME);
-					SA_Param.setPeriodInSA_Param(gmpe.getIntensityMeasure(), periods[p]);
-				}
-				
-				DiscretizedFunc logHazCurve = logXVals[p].deepClone();
-				
-				calc.getHazardCurve(logHazCurve, site, gmpe, erf);
-				
-				double sumY = logHazCurve.calcSumOfY_Vals();
-				if (!Double.isFinite(sumY) || sumY <= 0d) {
-					System.err.println("Hazard curve is non-finite or zero. sumY="+sumY);
-					System.err.println("\tSite: "+site.getName()+", "+site.getLocation());
-					System.err.println("\tGMPE: "+gmpe.getName());
-					System.err.println("\tLog Curve:\n"+logHazCurve);
-				}
-				Preconditions.checkState(Double.isFinite(sumY), "Non-finite hazard curve");
-				
-				curves[p] = xVals[p].deepClone();
-				Preconditions.checkState(curves[p].size() == logHazCurve.size());
-				for (int i=0; i<logHazCurve.size(); i++)
-					curves[p].set(i, logHazCurve.getY(i));
-			}
-			
-			checkInERF(erf, erfDeque);
-			
-			processCSVs();
-			
-			return this;
-		}
-		
-		public void processCSVs() {
-			LogicTreeBranch<?> branch = tree.getBranch(branchIndex);
-			List<CSVFile<String>> csvs;
-			synchronized (siteCSVs) {
-				csvs = getInitSiteCSVs(siteIndex);
-			}
-			csvHeader = csvs.get(0).getLine(0);
-			List<String> commonPrefix = new ArrayList<>();
-			commonPrefix.add(sites.get(siteIndex).getName());
-			commonPrefix.add(branchIndex+"");
-			commonPrefix.add(tree.getBranchWeight(branchIndex)+"");
-			for (LogicTreeNode node : branch)
-				commonPrefix.add(node.getShortName());
-			sitePeriodCSVLines = new ArrayList<>();
-			synchronized (csvs) {
-				for (int p=0; p<periods.length; p++) {
-					List<String> line = new ArrayList<>(commonPrefix.size()+xVals[p].size());
-					line.addAll(commonPrefix);
-					for (Point2D pt : curves[p])
-						line.add(pt.getY()+"");
-					csvs.get(p).addLine(line);
-					sitePeriodCSVLines.add(line);
-				}
-			}
-		}
 	}
 	
 	private List<CSVFile<String>> getInitSiteCSVs(int siteIndex) {
@@ -705,6 +585,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				+ "supplies GMPE choices. Default: "+GMPE_DEFAULT.name());
 		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
 		ops.addOption(null, "recalc", false, "Flag to force recalculation (ignore checkpoints)");
+		ops.addOption(null, "cache-gmm-inputs", false, "Flag to enable caching of GMM inputs (for nshmp-haz GMMs)");
 		
 		return ops;
 	}
