@@ -249,7 +249,7 @@ public class PRVI25_CrustalRandomlySampledDeformationModels implements RandomlyS
 			System.out.println(sect.getSectionId()+". "+sect.getSectionName()+":\torigMean="+
 					slipDF.format(origMean)+"\tsampleMean="+slipDF.format(sampleMean)
 					+"\tpDiff="+pDF.format((sampleMean - origMean)/origMean)
-					+"\trage=["+slipDF.format(track.getMin())+","+slipDF.format(track.getMax())+"]");
+					+"\trange=["+slipDF.format(track.getMin())+","+slipDF.format(track.getMax())+"]");
 		}
 	}
 
