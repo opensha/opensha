@@ -69,7 +69,7 @@ public enum PRVI25_SeisSmoothingAlgorithms implements LogicTreeNode {
 	
 	private static final String NSHM23_SS_PATH_PREFIX = "/data/erf/prvi25/seismicity/spatial_seis_pdfs/";
 	
-	public static String MODEL_DATE = "2024_07_01";
+	public static String MODEL_DATE = "2024_07_12";
 	
 	private String getResourceName(SeismicityRegions region, PRVI25_DeclusteringAlgorithms declusteringAlg) {
 		return NSHM23_SS_PATH_PREFIX+MODEL_DATE+"/"+region.name()+"/"+declusteringAlg.name()+"_"+name()+".csv";
