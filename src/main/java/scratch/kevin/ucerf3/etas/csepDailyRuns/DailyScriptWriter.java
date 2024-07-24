@@ -46,6 +46,7 @@ public class DailyScriptWriter {
 		int batchSize = 30;
 		int batchNodes = 40;
 		int batchHours = 24;
+		int nodeThreads = 48;
 		int batchThreads = 20;
 		HPC_Sites site = HPC_Sites.TACC_STAMPEDE3;
 		String queue = "skx";
@@ -53,7 +54,7 @@ public class DailyScriptWriter {
 		int indvHours = 5;
 		int indvThreads = 15; // scale it back, if we're running individually we might have run out of memory
 		
-		double duration = ProbabilityModelsCalc.MILLISEC_PER_DAY/1000d;
+		double duration = 1d/365.25d;
 		int numCatalogs = 100000;
 		
 		DecimalFormat batchDF = new DecimalFormat("000");
@@ -114,6 +115,7 @@ public class DailyScriptWriter {
 			argz.add("--num-simulations"); argz.add(numCatalogs+"");
 			argz.add("--include-spontaneous");
 			argz.add("--historical-catalog");
+			argz.add("--binary-output");
 			argz.add("--duration"); argz.add((float)duration+"");
 			if (kCOV != null && !kCOV.isEmpty()) {
 				argz.add("--etas-k-cov"); argz.add(kCOV);
@@ -168,7 +170,7 @@ public class DailyScriptWriter {
 			curBatch.add(outputDir+"/config.json");
 			if (curBatch.size() == batchSize) {
 				File outputFile = new File(batchDir, curBatchName+".slurm");
-				writeBatch(site, curBatch, outputFile, batchNodes, batchHours, batchThreads, queue);
+				writeBatch(site, curBatch, outputFile, batchNodes, batchHours, nodeThreads, batchThreads, queue);
 				curBatch.clear();
 				batchNum++;
 				curBatchName = "batch_"+batchDF.format(batchNum);
@@ -182,15 +184,15 @@ public class DailyScriptWriter {
 		}
 		if (!curBatch.isEmpty()) {
 			File outputFile = new File(batchDir, curBatchName+".slurm");
-			writeBatch(site, curBatch, outputFile, batchNodes, batchHours, batchThreads, queue);
+			writeBatch(site, curBatch, outputFile, batchNodes, batchHours, nodeThreads, batchThreads, queue);
 		}
 	}
 	
 	private static void writeBatch(HPC_Sites site, List<String> configs, File outputFile,
-			int nodes, int hours, int threads, String queue) throws IOException {
+			int nodes, int hours, int nodeThreads, int calcThreads, String queue) throws IOException {
 		String configFile = Joiner.on(" ").join(configs);
 		File inputFile = site.getSlurmFile();
-		ETAS_ConfigBuilder.updateSlurmScript(inputFile, outputFile, nodes, threads,
+		ETAS_ConfigBuilder.updateSlurmScript(inputFile, outputFile, nodes, nodeThreads, calcThreads,
 				hours, queue, configFile);
 	}
 

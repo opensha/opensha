@@ -418,30 +418,48 @@ public class ETAS_ConfigBuilder {
 		Integer threads = cmd.hasOption("threads") ? Integer.parseInt(cmd.getOptionValue("threads")) : null;
 		String queue = cmd.hasOption("queue") ? cmd.getOptionValue("queue") : null;
 		
-		updateSlurmScript(inputFile, outputFile, nodes, threads, hours, queue, configFile);
+		updateSlurmScript(inputFile, outputFile, nodes, null, threads, hours, queue, configFile);
 		
 		File plotFile = site.getSlurmPlotFile();
 		if (plotFile.exists()) {
 			System.out.println("Building SLURM plot file for "+site.name());
 			outputFile = new File(outputDir, "plot_results.slurm");
 			
-			updateSlurmScript(plotFile, outputFile, null, null, null, queue, configFile);
+			updateSlurmScript(plotFile, outputFile, null, null, null, null, queue, configFile);
 		}
 	}
 	
-	public static void updateSlurmScript(File inputFile, File outputFile, Integer nodes, Integer threads, Integer hours, String queue, File configFile)
-			throws IOException {
-		updateSlurmScript(inputFile, outputFile, nodes, threads, hours, queue, configFile.getPath());
+	public static void updateSlurmScript(File inputFile, File outputFile, Integer nodes, Integer nodeThreads, Integer calcThreads,
+			Integer hours, String queue, File configFile) throws IOException {
+		updateSlurmScript(inputFile, outputFile, nodes, nodeThreads, calcThreads, hours, queue, configFile.getPath());
 	}
 	
-	public static void updateSlurmScript(File inputFile, File outputFile, Integer nodes, Integer threads, Integer hours, String queue, String configFile)
-			throws IOException {
+	public static void updateSlurmScript(File inputFile, File outputFile, Integer nodes, Integer nodeThreads, Integer calcThreads,
+			Integer hours, String queue, String configFile) throws IOException {
 		List<String> lines = new ArrayList<>();
 		
 		boolean nodeLineFound = true;
 		int lastIndexSBATCH = -1;
 		
-		for (String line : Files.readLines(inputFile, Charset.defaultCharset())) {
+		List<String> inLines = Files.readLines(inputFile, Charset.defaultCharset());
+		if (nodeThreads == null) {
+			// see if we can determine from -N and -n
+			int origNodes = -1;
+			int origTasks = -1;
+			for (String line : inLines) {
+				String tline = line.trim();
+				if (tline.startsWith("#SBATCH -N") && nodes != null)
+					origNodes = Integer.parseInt(tline.substring(tline.lastIndexOf(" ")+1));
+				else if (tline.startsWith("#SBATCH -n") && nodes != null)
+					origTasks = Integer.parseInt(tline.substring(tline.lastIndexOf(" ")+1));
+			}
+			if (origNodes > 0 && origTasks > 0 && origTasks >= origNodes) {
+				nodeThreads = origTasks / origNodes;
+				System.out.println("Detected nodeThreads = "+origTasks+" / "+origNodes+" = "+nodeThreads);
+			}
+		}
+		
+		for (String line : inLines) {
 			String tline = line.trim();
 			if (tline.startsWith("#SBATCH -t") && hours != null)
 				line = "#SBATCH -t "+hours+":00:00";
@@ -450,7 +468,7 @@ public class ETAS_ConfigBuilder {
 				line = "#SBATCH -N "+nodes;
 			
 			if (tline.startsWith("#SBATCH -n ") && nodes != null) {
-				int cores = threads == null ? nodes : nodes*threads;
+				int cores = nodeThreads == null ? nodes : nodes*nodeThreads;
 				line = "#SBATCH -n "+cores;
 			}
 			
@@ -486,8 +504,8 @@ public class ETAS_ConfigBuilder {
 			if (tline.startsWith("#SBATCH"))
 				lastIndexSBATCH = lines.size();
 			
-			if (threads != null && tline.startsWith("THREADS="))
-				line = "THREADS="+threads;
+			if (calcThreads != null && tline.startsWith("THREADS="))
+				line = "THREADS="+calcThreads;
 			
 			lines.add(line);
 		}
