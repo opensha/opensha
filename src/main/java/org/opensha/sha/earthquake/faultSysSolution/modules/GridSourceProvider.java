@@ -48,6 +48,18 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	public Location getLocation(int index);
 	
 	/**
+	 * Sets the minimum magnitude of ruptures to include when building sources for hazard calculation
+	 * 
+	 * @param minMagCutoff
+	 */
+	public void setSourceMinMagCutoff(double minMagCutoff);
+	
+	/**
+	 * @return the minimum magnitude of ruptures to include when building sources for hazard calculation
+	 */
+	public double getSourceMinMagCutoff();
+	
+	/**
 	 * Return the source at {@code gridIndex}.
 	 * 
 	 * @param sourceIndex index of source to retrieve

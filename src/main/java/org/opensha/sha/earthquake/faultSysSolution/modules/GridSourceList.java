@@ -6,8 +6,11 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.DoubleBinaryOperator;
@@ -37,6 +40,7 @@ import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -48,10 +52,26 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 	private LocationList locs;
 	private GriddedRegion gridReg; // can be null
 	
+	private IncrementalMagFreqDist refMFD; // used for getMFD(...) methods
+	
+	// the actual rupture data
 	private EnumMap<TectonicRegionType, ImmutableList<ImmutableList<GriddedRupture>>> trtRuptureLists;
-	private IncrementalMagFreqDist refMFD;
+	
+	// mappings from source index to tectonic region type and grid index
 	private TectonicRegionType[] sourceTRTs;
 	private int[] sourceGridIndexes;
+	
+	private double sourceMinMag = 5d;;
+	
+	private GridSourceList() {}
+	
+	public GridSourceList(LocationList locs, EnumMap<TectonicRegionType, ? extends List<? extends List<GriddedRupture>>> trtRuptureLists) {
+		setAll(null, locs, trtRuptureLists);
+	}
+	
+	public GridSourceList(GriddedRegion gridReg, EnumMap<TectonicRegionType, ? extends List<? extends List<GriddedRupture>>> trtRuptureLists) {
+		setAll(gridReg, gridReg.getNodeList(), trtRuptureLists);
+	}
 	
 	private void setAll(GriddedRegion gridReg, LocationList locs,
 			EnumMap<TectonicRegionType, ? extends List<? extends List<GriddedRupture>>> trtRuptureLists) {
@@ -118,14 +138,23 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 	}
 
 	@Override
+	public void setSourceMinMagCutoff(double minMagCutoff) {
+		this.sourceMinMag = minMagCutoff;
+	}
+
+	@Override
+	public double getSourceMinMagCutoff() {
+		return getSourceMinMagCutoff();
+	}
+
+	@Override
 	public String getName() {
 		return "Grid Source List";
 	}
 
 	@Override
 	public AveragingAccumulator<GridSourceProvider> averagingAccumulator() {
-		// TODO averaging
-		return null;
+		return new Averager();
 	}
 
 	@Override
@@ -196,21 +225,21 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 	public ProbEqkSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType) {
 		return new GriddedRuptureSource(getLocation(gridIndex), getRuptures(tectonicRegionType, gridIndex),
-				duration, aftershockFilter, bgRupType, TectonicRegionType.ACTIVE_SHALLOW);
+				duration, sourceMinMag, aftershockFilter, bgRupType, TectonicRegionType.ACTIVE_SHALLOW);
 	}
 
 	@Override
 	public ProbEqkSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration, DoubleBinaryOperator aftershockFilter,
 			BackgroundRupType bgRupType) {
 		return new GriddedRuptureSource(getLocation(gridIndex), getRupturesSubSeisOnFault(tectonicRegionType, gridIndex),
-				duration, aftershockFilter, bgRupType, TectonicRegionType.ACTIVE_SHALLOW);
+				duration, sourceMinMag, aftershockFilter, bgRupType, TectonicRegionType.ACTIVE_SHALLOW);
 	}
 
 	@Override
 	public ProbEqkSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration, DoubleBinaryOperator aftershockFilter,
 			BackgroundRupType bgRupType) {
 		return new GriddedRuptureSource(getLocation(gridIndex), getRupturesUnassociated(tectonicRegionType, gridIndex),
-				duration, aftershockFilter, bgRupType, TectonicRegionType.ACTIVE_SHALLOW);
+				duration, sourceMinMag, aftershockFilter, bgRupType, TectonicRegionType.ACTIVE_SHALLOW);
 	}
 
 	@Override
@@ -353,7 +382,7 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 			} else {
 				ImmutableList.Builder<GriddedRupture> modRupBuilder = ImmutableList.builder();
 				for (GriddedRupture rup : origRups)
-					modRupBuilder.add(rup.getNewRate(rup.rake*valuesArray[i]));
+					modRupBuilder.add(rup.copyNewRate(rup.rake*valuesArray[i]));
 				modRupListBuilder.add(modRupBuilder.build());
 			}
 		}
@@ -650,7 +679,7 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 	 * Note that hashCode() and equals() do not consider the rate, and can thus be used to find identical ruptures
 	 * when combining multiple models (e.g., averaging or adding).
 	 */
-	public static class GriddedRupture {
+	public static class GriddedRupture implements Comparable<GriddedRupture> {
 		// LOCATION
 		public final int gridIndex;
 		public final Location location;
@@ -673,6 +702,8 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		public final int[] associatedSections;
 		public final double[] associatedSectionFracts;
 		
+		private transient int hashCode = -1;
+		
 		public GriddedRupture(int gridIndex, Location location, double magnitude, double rate, double rake, double dip,
 				double strike, Range<Double> strikeRange, double upperDepth, double lowerDepth, double length,
 				TectonicRegionType tectonicRegionType, int[] associatedSections, double[] associatedSectionFracts) {
@@ -693,7 +724,7 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 			this.associatedSectionFracts = associatedSectionFracts;
 		}
 		
-		public GriddedRupture getNewRate(double modRate) {
+		public GriddedRupture copyNewRate(double modRate) {
 			return new GriddedRupture(gridIndex, location, magnitude, modRate,
 					rake, dip, strike, strikeRange, upperDepth, lowerDepth,
 					length, tectonicRegionType, associatedSections, associatedSectionFracts);
@@ -701,11 +732,18 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 
 		@Override
 		public int hashCode() {
+			// cache hashCode to make hashing faster as all fields are immutable
+			if (hashCode == -1)
+				hashCode = calcHashCode();
+			return hashCode;
+		}
+
+		public int calcHashCode() {
 			final int prime = 31;
 			int result = 1;
 			result = prime * result + Arrays.hashCode(associatedSectionFracts);
 			result = prime * result + Arrays.hashCode(associatedSections);
-			result = prime * result + Objects.hash(dip, gridIndex, length, location, lowerDepth, magnitude, rake,
+			result = prime * result + Objects.hash(dip, gridIndex, length, lowerDepth, magnitude, rake,
 					strike, strikeRange, tectonicRegionType, upperDepth);
 			return result;
 		}
@@ -718,19 +756,99 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 				return false;
 			if (getClass() != obj.getClass())
 				return false;
+			if (hashCode() != obj.hashCode())
+				return false;
 			GriddedRupture other = (GriddedRupture) obj;
 			return Arrays.equals(associatedSectionFracts, other.associatedSectionFracts)
 					&& Arrays.equals(associatedSections, other.associatedSections)
 					&& Double.doubleToLongBits(dip) == Double.doubleToLongBits(other.dip)
 					&& gridIndex == other.gridIndex
 					&& Double.doubleToLongBits(length) == Double.doubleToLongBits(other.length)
-					&& Objects.equals(location, other.location)
 					&& Double.doubleToLongBits(lowerDepth) == Double.doubleToLongBits(other.lowerDepth)
 					&& Double.doubleToLongBits(magnitude) == Double.doubleToLongBits(other.magnitude)
 					&& Double.doubleToLongBits(rake) == Double.doubleToLongBits(other.rake)
 					&& Double.doubleToLongBits(strike) == Double.doubleToLongBits(other.strike)
 					&& Objects.equals(strikeRange, other.strikeRange) && tectonicRegionType == other.tectonicRegionType
 					&& Double.doubleToLongBits(upperDepth) == Double.doubleToLongBits(other.upperDepth);
+		}
+		
+		private double[] getCompDoubles() {
+			return new double[] {
+				magnitude,
+				rake,
+				dip,
+				strike,
+				strikeRange == null ? Double.NaN : strikeRange.lowerEndpoint(),
+				strikeRange == null ? Double.NaN : strikeRange.upperEndpoint(),
+				upperDepth,
+				lowerDepth,
+				length
+			};
+		}
+
+		@Override
+		public int compareTo(GriddedRupture other) {
+			int result;
+
+			result = Integer.compare(this.gridIndex, other.gridIndex);
+			if (result != 0) return result;
+
+			result = Double.compare(this.magnitude, other.magnitude);
+			if (result != 0) return result;
+
+			result = Double.compare(this.rake, other.rake);
+			if (result != 0) return result;
+
+			result = Double.compare(this.dip, other.dip);
+			if (result != 0) return result;
+
+			result = Double.compare(this.strike, other.strike);
+			if (result != 0) return result;
+
+			if (this.strikeRange == null && other.strikeRange != null) return -1;
+			if (this.strikeRange != null && other.strikeRange == null) return 1;
+			if (this.strikeRange != null && other.strikeRange != null) {
+				result = this.strikeRange.lowerEndpoint().compareTo(other.strikeRange.lowerEndpoint());
+				if (result != 0) return result;
+				result = this.strikeRange.upperEndpoint().compareTo(other.strikeRange.upperEndpoint());
+				if (result != 0) return result;
+			}
+
+			result = Double.compare(this.upperDepth, other.upperDepth);
+			if (result != 0) return result;
+
+			result = Double.compare(this.lowerDepth, other.lowerDepth);
+			if (result != 0) return result;
+
+			result = Double.compare(this.length, other.length);
+			if (result != 0) return result;
+
+			result = this.tectonicRegionType.compareTo(other.tectonicRegionType);
+			if (result != 0) return result;
+
+			result = compareIntArrays(this.associatedSections, other.associatedSections);
+			if (result != 0) return result;
+
+			result = compareDoubleArrays(this.associatedSectionFracts, other.associatedSectionFracts);
+			return result;
+		}
+
+		private int compareIntArrays(int[] a, int[] b) {
+			int len = Math.min(a.length, b.length);
+			for (int i = 0; i < len; i++) {
+				int result = Integer.compare(a[i], b[i]);
+				if (result != 0) return result;
+			}
+			return Integer.compare(a.length, b.length);
+		}
+
+		private int compareDoubleArrays(double[] a, double[] b) {
+			int len = Math.min(a.length, b.length);
+			for (int i = 0; i < len; i++) {
+				int result = Double.compare(a[i], b[i]);
+				if (result != 0) return result;
+			}
+			return Integer.compare(a.length, b.length);
 		}
 	}
 	
@@ -740,13 +858,15 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		private Location gridLoc;
 		private List<ProbEqkRupture> ruptures;
 		
-		public GriddedRuptureSource(Location gridLoc, List<GriddedRupture> gridRups, double duration,
+		public GriddedRuptureSource(Location gridLoc, List<GriddedRupture> gridRups, double duration, double minMag,
 				DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType, TectonicRegionType tectonicRegionType) {
 			this.gridLoc = gridLoc;
 			this.sourceSurf = new PointSurface(gridLoc);
 			PointSurfaceBuilder surfBuilder = new PointSurfaceBuilder(gridLoc);
-			ruptures = new ArrayList<>(gridRups.size());
+			ruptures = new ArrayList<>();
 			for (GriddedRupture rup : gridRups) {
+				if (rup.magnitude < minMag)
+					continue;
 				surfBuilder.magnitude(rup.magnitude);
 				surfBuilder.dip(rup.dip);
 				if (Double.isFinite(rup.strike)) {
@@ -804,6 +924,213 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 			return ruptures.get(nRupture);
 		}
 		
+	}
+	
+	public class Averager implements AveragingAccumulator<GridSourceProvider> {
+		
+		private GriddedRegion gridReg = null;
+		private LocationList locs;
+		private EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists;
+		private EnumMap<TectonicRegionType, List<List<Double>>> trtRuptureRateLists;
+		private double totWeight = 0d;
+
+		@Override
+		public Class<GridSourceProvider> getType() {
+			return GridSourceProvider.class;
+		}
+
+		@Override
+		public void process(GridSourceProvider module, double relWeight) {
+			Preconditions.checkState(module instanceof GridSourceList,
+					"Can only average if all GridSourceProviders are of type GridSourceList");
+			GridSourceList sourceList = (GridSourceList)module;
+			if (trtRuptureLists == null) {
+				// first time through, init
+				trtRuptureLists = new EnumMap<>(TectonicRegionType.class);
+				trtRuptureRateLists = new EnumMap<>(TectonicRegionType.class);
+				Preconditions.checkState(totWeight == 0d, "Can't reuse averagers");
+				this.gridReg = sourceList.getGriddedRegion();
+				this.locs = sourceList.locs;
+			} else {
+				// make sure they're identical
+				Preconditions.checkState(locs.size() == sourceList.getNumLocations());
+				for (int i=0; i<locs.size(); i++)
+					Preconditions.checkState(LocationUtils.areSimilar(locs.get(i), sourceList.getLocation(i)));
+			}
+			
+			for (TectonicRegionType trt : sourceList.getTectonicRegionTypes()) {
+				List<List<GriddedRupture>> ruptureLists = trtRuptureLists.get(trt);
+				List<List<Double>> ruptureRateLists = trtRuptureRateLists.get(trt);
+				if (ruptureLists == null) {
+					ruptureLists = new ArrayList<>(locs.size());
+					ruptureRateLists = new ArrayList<>(locs.size());
+					for (int i=0; i<locs.size(); i++) {
+						ruptureLists.add(null);
+						ruptureRateLists.add(null);
+					}
+					trtRuptureLists.put(trt, ruptureLists);
+					trtRuptureRateLists.put(trt, ruptureRateLists);
+				}
+				for (int gridIndex=0; gridIndex<locs.size(); gridIndex++) {
+					List<GriddedRupture> ruptures = sourceList.getRuptures(trt, gridIndex);
+					if (!ruptures.isEmpty()) {
+						List<GriddedRupture> ruptureList = ruptureLists.get(gridIndex);
+						List<Double> ruptureRates = ruptureRateLists.get(gridIndex);
+						if (ruptureList == null) {
+							ruptureList = new ArrayList<>();
+							ruptureRates = new ArrayList<>();
+							ruptureLists.set(gridIndex, ruptureList);
+							ruptureRateLists.set(gridIndex, ruptureRates);
+						}
+						for (GriddedRupture rupture : ruptures) {
+							int index = Collections.binarySearch(ruptureList, rupture);
+							if (index < 0) {
+								// new, need to add it
+								index = -(index + 1);
+								ruptureList.add(index, rupture);
+								ruptureRates.add(index, rupture.rate*relWeight);
+							} else {
+								// duplicate, just add rate
+								ruptureRates.set(index, ruptureRates.get(index) + rupture.rate*relWeight);
+							}
+						}
+					}
+				}
+			}
+			
+			totWeight += relWeight;
+		}
+
+		@Override
+		public GridSourceProvider getAverage() {
+			Preconditions.checkState(totWeight > 0d, "No weight assigned?");
+			
+			EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureListsOut = new EnumMap<>(TectonicRegionType.class);
+			
+			for (TectonicRegionType trt : trtRuptureLists.keySet()) {
+				List<List<GriddedRupture>> ruptureLists = trtRuptureLists.get(trt);
+				List<List<Double>> ruptureRateLists = trtRuptureRateLists.get(trt);
+				
+				List<List<GriddedRupture>> ruptureListsOut = new ArrayList<>(locs.size());
+				
+				for (int gridIndex=0; gridIndex<locs.size(); gridIndex++) {
+					if (ruptureLists.get(gridIndex) == null) {
+						ruptureListsOut.add(null);
+					} else {
+						List<GriddedRupture> ruptureList = ruptureLists.get(gridIndex);
+						List<Double> ruptureRates = ruptureRateLists.get(gridIndex);
+						List<GriddedRupture> ruptureListOut = new ArrayList<>(ruptureList.size());
+						for (int i=0; i<ruptureList.size(); i++) {
+							GriddedRupture rup = ruptureList.get(i);
+							double rate = ruptureRates.get(i)/totWeight;
+							ruptureListOut.add(rup.copyNewRate(rate));
+						}
+						ruptureListsOut.add(ruptureListOut);
+					}
+				}
+				
+				trtRuptureListsOut.put(trt, ruptureListsOut);
+			}
+			
+			GridSourceList ret = new GridSourceList();
+			ret.setAll(gridReg, locs, trtRuptureListsOut);
+			
+			trtRuptureLists = null; // to prevent reuse
+			return ret;
+		}
+		
+	}
+	
+	public interface FiniteRuptureConverter {
+		
+		public GriddedRupture buildFiniteRupture(int gridIndex, Location loc, double magnitude, double rate,
+				FocalMech forcalMech, int[] associatedSections, double[] associatedSectionFracts);
+	}
+	
+	public static GridSourceList convert(MFDGridSourceProvider mfdGridProv, FaultGridAssociations associations,
+			FiniteRuptureConverter converter) {
+		GriddedRegion gridReg = mfdGridProv.getGriddedRegion();
+		List<List<GriddedRupture>> ruptureLists = new ArrayList<>(mfdGridProv.getNumLocations());
+		for (int gridIndex=0; gridIndex<mfdGridProv.getNumLocations(); gridIndex++) {
+			double fractSS = mfdGridProv.getFracStrikeSlip(gridIndex);
+			double fractN = mfdGridProv.getFracNormal(gridIndex);
+			double fractR = mfdGridProv.getFracReverse(gridIndex);
+			
+			IncrementalMagFreqDist mfd = mfdGridProv.getMFD(gridIndex);
+			if (mfd == null) {
+				ruptureLists.add(null);
+				continue;
+			}
+			IncrementalMagFreqDist mfdAssoc = mfdGridProv.getMFD_SubSeisOnFault(gridIndex);
+			Map<Integer, Double> nodeFractAssociations = null;
+			if (mfdAssoc != null) {
+				nodeFractAssociations = new HashMap<>(associations.getScaledSectFracsOnNode(gridIndex));
+				Preconditions.checkState(!nodeFractAssociations.isEmpty());
+				// turn it into a fractional: scale to 1 if not already
+				double sumFracts = 0d;
+				for (double fract : nodeFractAssociations.values())
+					sumFracts += fract;
+				if ((float)sumFracts != 1f) {
+					for (int sectIndex : new ArrayList<>(nodeFractAssociations.keySet()))
+						nodeFractAssociations.put(sectIndex, nodeFractAssociations.get(sectIndex)/sumFracts);
+				}
+			}
+			List<GriddedRupture> ruptureList = new ArrayList<>();
+			ruptureLists.add(ruptureList);
+			for (int m=0; m<mfd.size(); m++) {
+				double mag = mfd.getX(m);
+				double totRate = mfd.getY(m);
+				if (totRate == 0d)
+					continue;
+				double associatedFract = 0d;
+				if (mfdAssoc != null && mfdAssoc.size() > m) {
+					Preconditions.checkState((float)mfdAssoc.getX(m) == (float)mag);
+					double assocRate = mfdAssoc.getY(mag);
+					associatedFract = assocRate/totRate;
+					Preconditions.checkState((float)associatedFract <= 1f, "Bad associatedFract = %s / %s = %s",
+							assocRate, totRate, associatedFract);
+				}
+				for (FocalMech mech : FocalMech.values()) {
+					double mechRate;
+					switch (mech) {
+					case STRIKE_SLIP:
+						mechRate = totRate*fractSS;
+						break;
+					case NORMAL:
+						mechRate = totRate*fractN;
+						break;
+					case REVERSE:
+						mechRate = totRate*fractR;
+						break;
+
+					default:
+						throw new IllegalStateException();
+					}
+					if (mechRate == 0d)
+						continue;
+					
+					int[] associatedSections = null;
+					double[] associatedSectionFracts = null;
+					if (associatedFract > 0) {
+						List<Integer> sectIndexes = new ArrayList<>(nodeFractAssociations.keySet());
+						Collections.sort(sectIndexes);
+						associatedSections = new int[sectIndexes.size()];
+						associatedSectionFracts = new double[sectIndexes.size()];
+						for (int s=0; s<sectIndexes.size(); s++) {
+							int sectIndex = sectIndexes.get(s);
+							associatedSections[s] = sectIndex;
+							associatedSectionFracts[s] = associatedFract * nodeFractAssociations.get(sectIndex);
+						}
+					}
+					ruptureList.add(converter.buildFiniteRupture(gridIndex, mfdGridProv.getLocation(gridIndex),
+							mag, mechRate, mech, associatedSections, associatedSectionFracts));
+				}
+			}
+		}
+		
+		EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists = new EnumMap<>(TectonicRegionType.class);
+		trtRuptureLists.put(mfdGridProv.getTectonicRegionType(), ruptureLists);
+		return new GridSourceList(gridReg, trtRuptureLists);
 	}
 
 }

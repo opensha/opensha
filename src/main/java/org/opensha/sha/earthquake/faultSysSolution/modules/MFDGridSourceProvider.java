@@ -187,20 +187,20 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		 * 
 		 * @param minMagCutoff
 		 */
-		public void setMinMagCutoff(double minMagCutoff) {
+		public void setSourceMinMagCutoff(double minMagCutoff) {
 			this.minMagCutoff = minMagCutoff;
 		}
 		
 		/**
 		 * @return the minimum magnitude of ruptures to include when building sources for hazard calculation
 		 */
-		public double getMinMagCutoff() {
+		public double getSourceMinMagCutoff() {
 			return minMagCutoff;
 		}
 		
 		/**
 		 * Builds a source for hazard calculation for the given MFD, which will already be trimmed such that it starts
-		 * at/above {@link #getMinMagCutoff()}.
+		 * at/above {@link #getSourceMinMagCutoff()}.
 		 * 
 		 * @param gridIndex
 		 * @param mfd
@@ -480,7 +480,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		}
 	
 		public AbstractPrecomputed(Abstract prov) {
-			this(prov, prov.getMinMagCutoff());
+			this(prov, prov.getSourceMinMagCutoff());
 		}
 		
 		public AbstractPrecomputed(MFDGridSourceProvider prov, double minMagCutoff) {
