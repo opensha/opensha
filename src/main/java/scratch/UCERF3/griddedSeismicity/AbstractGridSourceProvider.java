@@ -22,6 +22,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.Point2Vert_FaultPoisSource;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.collect.Maps;
 
@@ -118,6 +119,11 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 			}
 		}
 	}
+	
+	@Override
+	public TectonicRegionType getTectonicRegionType() {
+		return TectonicRegionType.ACTIVE_SHALLOW;
+	}
 
 	public static final String ARCHIVE_GRID_REGION_FILE_NAME = "grid_region.geojson";
 	public static final String ARCHIVE_MECH_WEIGHT_FILE_NAME = "grid_mech_weights.csv";
@@ -130,7 +136,7 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 			super(SOURCE_MIN_MAG_CUTOFF);
 		}
 		
-		public Precomputed(GridSourceProvider prov) {
+		public Precomputed(MFDGridSourceProvider prov) {
 			super(prov, SOURCE_MIN_MAG_CUTOFF);
 		}
 
@@ -169,6 +175,11 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 				double[] fracReverse) {
 			return new Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
 					fracStrikeSlip, fracNormal, fracReverse);
+		}
+
+		@Override
+		public TectonicRegionType getTectonicRegionType() {
+			return TectonicRegionType.ACTIVE_SHALLOW;
 		}
 		
 	}

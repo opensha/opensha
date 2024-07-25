@@ -456,64 +456,64 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		return null;
 	}
 	
-	/**
-	 * This returns a source that includes only the subseismo component
-	 * for the grid cell.  This returns null is the iSource is fault based,
-	 * or if the grid cell does not have any subseismo component.
-	 * @param iSource
-	 * @return
-	 */
-	public ProbEqkSource getSourceSubSeisOnly(int iSource) {
-		GridSourceProvider gridSources = faultSysSolution.getGridSourceProvider();
-		
-		if (bgInclude.equals(ONLY)) {
-			if (gridSources == null)
-				return null;
-			else
-				return gridSources.getSourceSubSeisOnFault(iSource, timeSpan.getDuration(),
-						getGridSourceAftershockFilter(), bgRupType);
-		} else if(bgInclude.equals(EXCLUDE)) {
-			return null;
-		} else if (iSource < numNonZeroFaultSystemSources) {
-			return null;
-		} else {
-			if (gridSources == null)
-				return null;
-			else
-				return gridSources.getSourceSubSeisOnFault(iSource - numNonZeroFaultSystemSources, timeSpan.getDuration(),
-						getGridSourceAftershockFilter(), bgRupType);
-		}
-	}
-	
-	
-	/**
-	 * This returns a source that includes only the truly off fault component
-	 * for the grid cell.  This returns null is the iSource is fault based,
-	 * or if the grid cell does not have any truly off fault component.
-	 * @param iSource
-	 * @return
-	 */
-	public ProbEqkSource getSourceTrulyOffOnly(int iSource) {
-		GridSourceProvider gridSources = faultSysSolution.getGridSourceProvider();
-		
-		if (bgInclude.equals(ONLY)) {
-			if (gridSources == null)
-				return null;
-			else
-				return gridSources.getSourceUnassociated(iSource, timeSpan.getDuration(),
-						getGridSourceAftershockFilter(), bgRupType);
-		} else if(bgInclude.equals(EXCLUDE)) {
-			return null;
-		} else if (iSource < numNonZeroFaultSystemSources) {
-			return null;
-		} else {
-			if (gridSources == null)
-				return null;
-			else
-				return gridSources.getSourceUnassociated(iSource - numNonZeroFaultSystemSources, timeSpan.getDuration(),
-						getGridSourceAftershockFilter(), bgRupType);
-		}
-	}
+//	/**
+//	 * This returns a source that includes only the subseismo component
+//	 * for the grid cell.  This returns null is the iSource is fault based,
+//	 * or if the grid cell does not have any subseismo component.
+//	 * @param iSource
+//	 * @return
+//	 */
+//	public ProbEqkSource getSourceSubSeisOnly(int iSource) {
+//		GridSourceProvider gridSources = faultSysSolution.getGridSourceProvider();
+//		
+//		if (bgInclude.equals(ONLY)) {
+//			if (gridSources == null)
+//				return null;
+//			else
+//				return gridSources.getSourceSubSeisOnFault(iSource, timeSpan.getDuration(),
+//						getGridSourceAftershockFilter(), bgRupType);
+//		} else if(bgInclude.equals(EXCLUDE)) {
+//			return null;
+//		} else if (iSource < numNonZeroFaultSystemSources) {
+//			return null;
+//		} else {
+//			if (gridSources == null)
+//				return null;
+//			else
+//				return gridSources.getSourceSubSeisOnFault(iSource - numNonZeroFaultSystemSources, timeSpan.getDuration(),
+//						getGridSourceAftershockFilter(), bgRupType);
+//		}
+//	}
+//	
+//	
+//	/**
+//	 * This returns a source that includes only the truly off fault component
+//	 * for the grid cell.  This returns null is the iSource is fault based,
+//	 * or if the grid cell does not have any truly off fault component.
+//	 * @param iSource
+//	 * @return
+//	 */
+//	public ProbEqkSource getSourceTrulyOffOnly(int iSource) {
+//		GridSourceProvider gridSources = faultSysSolution.getGridSourceProvider();
+//		
+//		if (bgInclude.equals(ONLY)) {
+//			if (gridSources == null)
+//				return null;
+//			else
+//				return gridSources.getSourceUnassociated(iSource, timeSpan.getDuration(),
+//						getGridSourceAftershockFilter(), bgRupType);
+//		} else if(bgInclude.equals(EXCLUDE)) {
+//			return null;
+//		} else if (iSource < numNonZeroFaultSystemSources) {
+//			return null;
+//		} else {
+//			if (gridSources == null)
+//				return null;
+//			else
+//				return gridSources.getSourceUnassociated(iSource - numNonZeroFaultSystemSources, timeSpan.getDuration(),
+//						getGridSourceAftershockFilter(), bgRupType);
+//		}
+//	}
 	
 	/**
 	 * This makes all the fault-system sources and put them into faultSourceList
@@ -746,7 +746,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 				// return true only if we used to have grid sources but now don't
 				return prevOther > 0;
 			}
-			numOtherSources = gridSources.size();
+			numOtherSources = gridSources.getNumSources();
 			return true;
 		} else {
 			return false;

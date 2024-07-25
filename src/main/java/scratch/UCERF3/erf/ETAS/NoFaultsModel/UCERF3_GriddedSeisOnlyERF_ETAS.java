@@ -225,7 +225,7 @@ public class UCERF3_GriddedSeisOnlyERF_ETAS extends AbstractNthRupERF {
 	
 	@Override
 	public int getNumSources() {
-		return gridSources.size();
+		return gridSources.getNumSources();
 	}
 	
 	@Override

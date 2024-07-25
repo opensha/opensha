@@ -22,6 +22,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.Point2Vert_FaultPoisSource;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
+import org.opensha.sha.util.TectonicRegionType;
 
 /**
  * Abstract base class for an NSHM23 {@link GridSourceProvider}. This class handles serialization, averaging, and building
@@ -76,6 +77,11 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 		double fracReverse = getFracReverse(gridIndex);
 
 		return buildSource(mfd, duration, bgRupType, loc, fracStrikeSlip, fracNormal, fracReverse);
+	}
+	
+	@Override
+	public TectonicRegionType getTectonicRegionType() {
+		return TectonicRegionType.ACTIVE_SHALLOW;
 	}
 
 	/**
@@ -143,7 +149,7 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 					DEFAULT_SOURCE_MIN_MAG_CUTOFF);
 		}
 
-		public Precomputed(GridSourceProvider prov) {
+		public Precomputed(MFDGridSourceProvider prov) {
 			super(prov, DEFAULT_SOURCE_MIN_MAG_CUTOFF);
 		}
 
@@ -170,6 +176,11 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 				double[] fracReverse) {
 			return new Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
 					fracStrikeSlip, fracNormal, fracReverse);
+		}
+		
+		@Override
+		public TectonicRegionType getTectonicRegionType() {
+			return TectonicRegionType.ACTIVE_SHALLOW;
 		}
 		
 	}

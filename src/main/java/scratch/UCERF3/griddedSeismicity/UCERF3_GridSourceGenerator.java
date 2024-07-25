@@ -288,7 +288,7 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 		}
 		
 		UCERF3_GridSourceGenerator gridGen = new UCERF3_GridSourceGenerator(invFss);
-		int numSrcs = gridGen.size();
+		int numSrcs = gridGen.getNumLocations();
 		int numRups = 0;
 		System.out.println("numSrcs: " + numSrcs);
 		for (int i=0; i<numSrcs; i++) {

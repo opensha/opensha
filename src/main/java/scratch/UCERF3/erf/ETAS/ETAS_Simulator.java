@@ -1163,13 +1163,13 @@ public class ETAS_Simulator {
 		gridSources.scaleAll(gridSeisCorrValsArray);
 		
 		double totalRate=0;
-		double[] nodeRateArray = new double[gridSources.size()];
+		double[] nodeRateArray = new double[gridSources.getNumLocations()];
 		for(int i=0;i<nodeRateArray.length;i++) {
 			nodeRateArray[i] = gridSources.getMFD(i).getCumRate(2.55);
 			totalRate+=nodeRateArray[i];
 		}
 				
-		double[] nodeRatePDF = new double[gridSources.size()];
+		double[] nodeRatePDF = new double[gridSources.getNumLocations()];
 		for(int i=0;i<nodeRateArray.length;i++) {
 			nodeRatePDF[i] = nodeRateArray[i]/totalRate;
 		}

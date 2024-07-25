@@ -960,8 +960,10 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		MFDGridSourceProvider.AbstractPrecomputed precomputed;
 		if (prov instanceof MFDGridSourceProvider.AbstractPrecomputed)
 			precomputed = (MFDGridSourceProvider.AbstractPrecomputed)prov;
+		else if (prov instanceof MFDGridSourceProvider)
+			precomputed = new MFDGridSourceProvider.Default((MFDGridSourceProvider)prov);
 		else
-			precomputed = new MFDGridSourceProvider.Default(prov);
+			throw new UnsupportedOperationException("Don't yet support writing non-MFD grid source provs");
 		
 		Class<? extends ArchivableModule> loadingClass = precomputed.getLoadingClass();
 		if (!MFDGridSourceProvider.AbstractPrecomputed.class.isAssignableFrom(loadingClass))

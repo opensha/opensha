@@ -186,8 +186,8 @@ public class QuickGriddedHazardMapCalc {
 			logXVals.set(Math.log(pt.getX()), 0d);
 		
 		// this will be used to distribute sources to worker threads
-		ArrayDeque<Integer> sourceIndexes = new ArrayDeque<>(gridProv.size());
-		for (int i=0; i<gridProv.size(); i++)
+		ArrayDeque<Integer> sourceIndexes = new ArrayDeque<>(gridProv.getNumSources());
+		for (int i=0; i<gridProv.getNumSources(); i++)
 			sourceIndexes.add(i);
 		
 		// spin up worker threads

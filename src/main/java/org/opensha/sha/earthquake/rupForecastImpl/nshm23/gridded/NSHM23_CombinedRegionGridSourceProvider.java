@@ -139,7 +139,7 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 
 	@Override
 	public void scaleAll(double[] valuesArray) {
-		Preconditions.checkState(valuesArray.length == size());
+		Preconditions.checkState(valuesArray.length == getNumLocations());
 		for (GridSourceProvider prov : regionalProviders) {
 			GriddedRegion provReg = prov.getGriddedRegion();
 			double[] scalars = new double[provReg.getNumLocations()];
