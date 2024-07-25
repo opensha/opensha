@@ -2,6 +2,7 @@ package scratch.UCERF3.griddedSeismicity;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.function.DoubleBinaryOperator;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -60,11 +61,6 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 
 		return buildSource(mfd, duration, bgRupType, loc, fracStrikeSlip, fracNormal, fracReverse);
 	}
-	
-	@Override
-	public void applyAftershockFilter(IncrementalMagFreqDist mfd) {
-		applyGK_AftershockFilter(mfd);
-	}
 
 	public static ProbEqkSource buildSource(IncrementalMagFreqDist mfd, double duration, BackgroundRupType bgRupType,
 			Location loc, double fracStrikeSlip, double fracNormal, double fracReverse) {
@@ -89,16 +85,8 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 		}
 	}
 	
-	/*
-	 * Applies gardner Knopoff aftershock filter scaling to MFD in place.
-	 */
-	public static void applyGK_AftershockFilter(IncrementalMagFreqDist mfd) {
-		double scale;
-		for (int i=0; i<mfd.size(); i++) {
-			scale = GardnerKnopoffAftershockFilter.scaleForMagnitude(mfd.getX(i));
-			mfd.set(i, mfd.getY(i) * scale);
-		}
-	}
+	public static DoubleBinaryOperator GK_AFTERSHOCK_FILTER =
+			(M,R) -> R*GardnerKnopoffAftershockFilter.scaleForMagnitude(M);
 
 	@Override
 	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
@@ -160,11 +148,6 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 		@Override
 		public String getName() {
 			return "Precomputed UCERF3 Grid Source Provider";
-		}
-
-		@Override
-		public void applyAftershockFilter(IncrementalMagFreqDist mfd) {
-			applyGK_AftershockFilter(mfd);
 		}
 
 		@Override

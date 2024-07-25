@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.DoubleBinaryOperator;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -39,6 +40,11 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		return new MFDGridSourceProvider.Averager();
 	}
 	
+	@Override
+	public default Location getLocation(int index) {
+		return getGriddedRegion().getLocation(index);
+	}
+
 	/**
 	 * Creates a new instance of this same type, but with the given data. Used primarily to create new instances when
 	 * branch averaging by {@link MFDGridSourceProvider.Averager}.
@@ -52,7 +58,9 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	 */
 	public MFDGridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip,
-				double[] fracNormal, double[] fracReverse);/**
+				double[] fracNormal, double[] fracReverse);
+	
+	/**
 	 * Abstract implementation of a {@link GridSourceProvider} that handles trimming MFDs to a minimum magnitude,
 	 * combining sub-seismogenic and unassociated MFDs for a given grid node, and averaging across multiple instances.
 	 * 
@@ -87,12 +95,6 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		}
 		
 		/**
-		 * Will be called if a source is requested with aftershocks filterd. This MFD can and should be modified in place
-		 * @param mfd
-		 */
-		public abstract void applyAftershockFilter(IncrementalMagFreqDist mfd);
-		
-		/**
 		 * Builds a source for hazard calculation for the given MFD, which will already be trimmed such that it starts
 		 * at/above {@link #getMinMagCutoff()}.
 		 * 
@@ -118,41 +120,51 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 			// subsequent modification; if this changes, then we need to review if
 			// MFD is safe from alteration.
 		}
+		
+		private void applyAftershockFilter(IncrementalMagFreqDist mfd, DoubleBinaryOperator aftershockFilter) {
+			for (int i=0; i<mfd.size(); i++) {
+				double rate = mfd.getY(i);
+				if (rate > 0d) {
+					double mag = mfd.getX(i);
+					mfd.set(i, aftershockFilter.applyAsDouble(mag, rate));
+				}
+			}
+		}
 	
 		@Override
-		public ProbEqkSource getSource(int gridIndex, double duration, boolean filterAftershocks,
+		public ProbEqkSource getSource(int gridIndex, double duration, DoubleBinaryOperator aftershockFilter,
 				BackgroundRupType bgRupType) {
 			IncrementalMagFreqDist mfd = getMFD(gridIndex, minMagCutoff);
 			if (mfd == null)
 				return null;
-			if (filterAftershocks)
-				applyAftershockFilter(mfd);
+			if (aftershockFilter != null)
+				applyAftershockFilter(mfd, aftershockFilter);
 			return buildSource(gridIndex, mfd, duration, bgRupType);
 		}
 	
 		@Override
-		public ProbEqkSource getSourceSubSeisOnFault(int gridIndex, double duration, boolean filterAftershocks,
+		public ProbEqkSource getSourceSubSeisOnFault(int gridIndex, double duration, DoubleBinaryOperator aftershockFilter,
 				BackgroundRupType bgRupType) {
 			IncrementalMagFreqDist mfd = getMFD_SubSeisOnFault(gridIndex);
 			if(mfd == null)
 				return null;
 			// trim it
 			mfd = trimMFD(mfd, minMagCutoff);
-			if (filterAftershocks)
-				applyAftershockFilter(mfd);
+			if (aftershockFilter != null)
+				applyAftershockFilter(mfd, aftershockFilter);
 			return buildSource(gridIndex, mfd, duration, bgRupType);
 		}
 	
 		@Override
-		public ProbEqkSource getSourceUnassociated(int gridIndex, double duration, boolean filterAftershocks,
+		public ProbEqkSource getSourceUnassociated(int gridIndex, double duration, DoubleBinaryOperator aftershockFilter,
 				BackgroundRupType bgRupType) {
 			IncrementalMagFreqDist mfd = getMFD_Unassociated(gridIndex);
 			if(mfd == null)
 				return null;
 			// trim it
 			mfd = trimMFD(mfd, minMagCutoff);
-			if (filterAftershocks)
-				applyAftershockFilter(mfd);
+			if (aftershockFilter != null)
+				applyAftershockFilter(mfd, aftershockFilter);
 			return buildSource(gridIndex, mfd, duration, bgRupType);
 		}
 		
@@ -721,11 +733,6 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		@Override
 		public String getName() {
 			return "Precomputed Default Grid Source Provider";
-		}
-	
-		@Override
-		public void applyAftershockFilter(IncrementalMagFreqDist mfd) {
-			AbstractGridSourceProvider.applyGK_AftershockFilter(mfd);
 		}
 	
 		@Override

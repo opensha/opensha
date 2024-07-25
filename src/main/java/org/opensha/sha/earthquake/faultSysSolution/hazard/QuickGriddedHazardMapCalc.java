@@ -296,7 +296,7 @@ public class QuickGriddedHazardMapCalc {
 							break;
 						sourceID = sourceIndexes.pop();
 					}
-					ProbEqkSource source = gridProv.getSource(sourceID, 1d, false, BackgroundRupType.POINT);
+					ProbEqkSource source = gridProv.getSource(sourceID, 1d, null, BackgroundRupType.POINT);
 					
 					quickSourceCalc(gridReg, source, gmpe, curves);
 				}

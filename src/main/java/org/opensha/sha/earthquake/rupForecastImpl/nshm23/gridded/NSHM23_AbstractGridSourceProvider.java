@@ -67,11 +67,6 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 	}
 
 	@Override
-	public void applyAftershockFilter(IncrementalMagFreqDist mfd) {
-		doApplyAftershockFilter(mfd);
-	}
-
-	@Override
 	protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
 			BackgroundRupType bgRupType) {
 		Location loc = getGriddedRegion().locationForIndex(gridIndex);
@@ -128,10 +123,6 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 				fracStrikeSlip, fracNormal, fracReverse);
 	}
 	
-	private static void doApplyAftershockFilter(IncrementalMagFreqDist mfd) {
-		// TODO do we apply G-K? do we throw an exception? do nothing?
-	}
-	
 	public static class Precomputed extends MFDGridSourceProvider.AbstractPrecomputed {
 		
 		private Precomputed() {
@@ -159,11 +150,6 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 		@Override
 		public String getName() {
 			return "Precomputed NSHM23 Grid Source Provider";
-		}
-
-		@Override
-		public void applyAftershockFilter(IncrementalMagFreqDist mfd) {
-			doApplyAftershockFilter(mfd);
 		}
 
 		@Override

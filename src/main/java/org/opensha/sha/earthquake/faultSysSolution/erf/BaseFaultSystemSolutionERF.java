@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.EventObject;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.DoubleBinaryOperator;
 import java.util.function.UnaryOperator;
 
 import org.apache.commons.lang3.StringUtils;
@@ -451,8 +452,8 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		}
 	}
 	
-	protected boolean isGridSourceApplyAftershockFilter() {
-		return false;
+	protected DoubleBinaryOperator getGridSourceAftershockFilter() {
+		return null;
 	}
 	
 	/**
@@ -470,7 +471,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 				return null;
 			else
 				return gridSources.getSourceSubSeisOnFault(iSource, timeSpan.getDuration(),
-						isGridSourceApplyAftershockFilter(), bgRupType);
+						getGridSourceAftershockFilter(), bgRupType);
 		} else if(bgInclude.equals(EXCLUDE)) {
 			return null;
 		} else if (iSource < numNonZeroFaultSystemSources) {
@@ -480,7 +481,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 				return null;
 			else
 				return gridSources.getSourceSubSeisOnFault(iSource - numNonZeroFaultSystemSources, timeSpan.getDuration(),
-						isGridSourceApplyAftershockFilter(), bgRupType);
+						getGridSourceAftershockFilter(), bgRupType);
 		}
 	}
 	
@@ -500,7 +501,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 				return null;
 			else
 				return gridSources.getSourceUnassociated(iSource, timeSpan.getDuration(),
-						isGridSourceApplyAftershockFilter(), bgRupType);
+						getGridSourceAftershockFilter(), bgRupType);
 		} else if(bgInclude.equals(EXCLUDE)) {
 			return null;
 		} else if (iSource < numNonZeroFaultSystemSources) {
@@ -510,7 +511,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 				return null;
 			else
 				return gridSources.getSourceUnassociated(iSource - numNonZeroFaultSystemSources, timeSpan.getDuration(),
-						isGridSourceApplyAftershockFilter(), bgRupType);
+						getGridSourceAftershockFilter(), bgRupType);
 		}
 	}
 	
@@ -713,11 +714,11 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			}
 			// if we made it here, it's not cached
 			gridSourceCache[iSource] = gridSources.getSource(iSource, timeSpan.getDuration(),
-					isGridSourceApplyAftershockFilter(), bgRupType);
+					getGridSourceAftershockFilter(), bgRupType);
 			return gridSourceCache[iSource];
 		}
 		return gridSources.getSource(iSource, timeSpan.getDuration(),
-				isGridSourceApplyAftershockFilter(), bgRupType);
+				getGridSourceAftershockFilter(), bgRupType);
 	}
 	
 	public void setCacheGridSources(boolean cacheGridSources) {

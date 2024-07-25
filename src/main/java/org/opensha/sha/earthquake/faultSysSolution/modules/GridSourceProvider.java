@@ -1,13 +1,13 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
+import java.util.function.DoubleBinaryOperator;
+
 import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
-
-import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
-import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
 
 /**
  * Interface implemented by providers of gridded (sometimes referred to as 'other') seismicity sources. Each
@@ -23,7 +23,6 @@ import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
  * for sub-seismogenic and/or unassociated sources only.
  * 
  * @author Peter Powers
- * @see AbstractGridSourceProvider
  */
 public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableModule<GridSourceProvider> {
 
@@ -32,18 +31,26 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * @return the number of sources
 	 */
 	public int size();
+	
+	/**
+	 * Returns the location for the given index.
+	 * @param index
+	 * @return
+	 */
+	public Location getLocation(int index);
 
 	/**
 	 * Return the source at {@code gridIndex}.
 	 * 
 	 * @param gridIndex of source to retrieve
 	 * @param duration of forecast
-	 * @param filterAftershocks
+	 * @param aftershockFilter if non-null, function that will be used to scale rupture rates for aftershocks in the
+	 * form scaledRate = aftershockFilter(magnitude, rate)
 	 * @param bgRupType type of source to build
 	 * @return the source at {@code index}
 	 */
 	public ProbEqkSource getSource(int gridIndex, double duration,
-			boolean filterAftershocks, BackgroundRupType bgRupType);
+			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType);
 	
 
 	/**
@@ -53,12 +60,13 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * 
 	 * @param index of source to retrieve
 	 * @param duration of forecast
-	 * @param filterAftershocks
+	 * @param aftershockFilter if non-null, function that will be used to scale rupture rates for aftershocks in the
+	 * form scaledRate = aftershockFilter(magnitude, rate)
 	 * @param bgRupType type of source to build
 	 * @return the source at {@code index}
 	 */
 	public ProbEqkSource getSourceSubSeisOnFault(int gridIndex, double duration,
-			boolean filterAftershocks, BackgroundRupType bgRupType);
+			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType);
 
 	/**
 	 * Return the source at {@code gridIndex}, where only the component that is unassociated with modeled faults
@@ -67,12 +75,13 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * 
 	 * @param gridIndex of source to retrieve
 	 * @param duration of forecast
-	 * @param filterAftershocks
+	 * @param aftershockFilter if non-null, function that will be used to scale rupture rates for aftershocks in the
+	 * form scaledRate = aftershockFilter(magnitude, rate)
 	 * @param bgRupType type of source to build
 	 * @return the source at {@code index}
 	 */
 	public ProbEqkSource getSourceUnassociated(int gridIndex, double duration,
-			boolean filterAftershocks, BackgroundRupType bgRupType);
+			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType);
 
 	/**
 	 * Returns the unassociated MFD of a grid location, if any exists, null otherwise.
@@ -105,8 +114,8 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * 
 	 * @param gridIndex grid index
 	 * @return the MFD
-	 * @see UCERF3_GridSourceGenerator#getMFD_Unassociated(int)
-	 * @see UCERF3_GridSourceGenerator#getMFD_SubSeisOnFault(int)
+	 * @see #getMFD_Unassociated(int)
+	 * @see #getMFD_SubSeisOnFault(int)
 	 */
 	public IncrementalMagFreqDist getMFD(int gridIndex);
 	
