@@ -7,6 +7,7 @@ import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.DoubleBinaryOperator;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -223,13 +224,8 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 				modRupListBuilder.add(origRups);
 			} else {
 				ImmutableList.Builder<GriddedRupture> modRupBuilder = ImmutableList.builder();
-				for (GriddedRupture rup : origRups) {
-					double rate = rup.rake*valuesArray[i];
-					GriddedRupture modRup = new GriddedRupture(rup.gridIndex, rup.location, rup.magnitude, rate,
-							rup.rake, rup.dip, rup.strike, rup.strikeRange, rup.upperDepth, rup.lowerDepth,
-							rup.length, rup.tectonicRegionType, rup.associatedSections, rup.associatedSectionFracts);
-					modRupBuilder.add(modRup);
-				}
+				for (GriddedRupture rup : origRups)
+					modRupBuilder.add(rup.getNewRate(rup.rake*valuesArray[i]));
 				modRupListBuilder.add(modRupBuilder.build());
 			}
 		}
@@ -515,6 +511,12 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		this.ruptureLists = ruptureListBuilder.build();
 	}
 	
+	/**
+	 * Gridded rupture representation.
+	 * 
+	 * Note that hashCode() and equals() do not consider the rate, and can thus be used to find identical ruptures
+	 * when combining multiple models (e.g., averaging or adding).
+	 */
 	public static class GriddedRupture {
 		// LOCATION
 		public final int gridIndex;
@@ -556,6 +558,46 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 			this.tectonicRegionType = tectonicRegionType;
 			this.associatedSections = associatedSections;
 			this.associatedSectionFracts = associatedSectionFracts;
+		}
+		
+		public GriddedRupture getNewRate(double modRate) {
+			return new GriddedRupture(gridIndex, location, magnitude, modRate,
+					rake, dip, strike, strikeRange, upperDepth, lowerDepth,
+					length, tectonicRegionType, associatedSections, associatedSectionFracts);
+		}
+
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + Arrays.hashCode(associatedSectionFracts);
+			result = prime * result + Arrays.hashCode(associatedSections);
+			result = prime * result + Objects.hash(dip, gridIndex, length, location, lowerDepth, magnitude, rake,
+					strike, strikeRange, tectonicRegionType, upperDepth);
+			return result;
+		}
+
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			GriddedRupture other = (GriddedRupture) obj;
+			return Arrays.equals(associatedSectionFracts, other.associatedSectionFracts)
+					&& Arrays.equals(associatedSections, other.associatedSections)
+					&& Double.doubleToLongBits(dip) == Double.doubleToLongBits(other.dip)
+					&& gridIndex == other.gridIndex
+					&& Double.doubleToLongBits(length) == Double.doubleToLongBits(other.length)
+					&& Objects.equals(location, other.location)
+					&& Double.doubleToLongBits(lowerDepth) == Double.doubleToLongBits(other.lowerDepth)
+					&& Double.doubleToLongBits(magnitude) == Double.doubleToLongBits(other.magnitude)
+					&& Double.doubleToLongBits(rake) == Double.doubleToLongBits(other.rake)
+					&& Double.doubleToLongBits(strike) == Double.doubleToLongBits(other.strike)
+					&& Objects.equals(strikeRange, other.strikeRange) && tectonicRegionType == other.tectonicRegionType
+					&& Double.doubleToLongBits(upperDepth) == Double.doubleToLongBits(other.upperDepth);
 		}
 	}
 	
