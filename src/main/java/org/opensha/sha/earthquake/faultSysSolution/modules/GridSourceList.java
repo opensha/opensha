@@ -29,6 +29,7 @@ import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
+import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder;
@@ -591,8 +592,12 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 					continue;
 				double rateEach = surfs.length == 1 ? rate : rate/(double)surfs.length;
 				double probEach = 1 - Math.exp(-rateEach * duration);
-				for (RuptureSurface surf : surfs)
+				for (RuptureSurface surf : surfs) {
+					if (surf instanceof FiniteApproxPointSurface)
+						// TODO: hack to get nshmp corrected rJB until we revamp the framework
+						((FiniteApproxPointSurface)surf).setDistCorrMagAndType(rup.magnitude, null);
 					ruptures.add(new ProbEqkRupture(rup.magnitude, rup.rake, probEach, surf, null));
+				}
 			}
 			this.setTectonicRegionType(tectonicRegionType);
 		}
