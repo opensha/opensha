@@ -86,5 +86,14 @@ public class CSVReader implements Closeable {
         public List<String> getLine() {
             return line;
         }
+        
+        /**
+         * Get the number of columns in this row
+         * 
+         * @return number of columns
+         */
+        public int columns() {
+        	return line.size();
+        }
     }
 }
