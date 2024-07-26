@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.FaultUtils;
@@ -73,6 +75,12 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		setAll(gridReg, gridReg.getNodeList(), trtRuptureLists);
 	}
 	
+	public GridSourceList(GriddedRegion gridReg, TectonicRegionType trt, List<? extends List<GriddedRupture>> ruptureLists) {
+		EnumMap<TectonicRegionType, List<? extends List<GriddedRupture>>> trtRuptureLists = new EnumMap<>(TectonicRegionType.class);
+		trtRuptureLists.put(trt, ruptureLists);
+		setAll(gridReg, gridReg.getNodeList(), trtRuptureLists);
+	}
+	
 	private void setAll(GriddedRegion gridReg, LocationList locs,
 			EnumMap<TectonicRegionType, ? extends List<? extends List<GriddedRupture>>> trtRuptureLists) {
 		Preconditions.checkNotNull(locs);
@@ -101,11 +109,14 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 			Preconditions.checkState(ruptureLists.size() == locs.size());
 			ImmutableList.Builder<ImmutableList<GriddedRupture>> ruptureListsBuilder = ImmutableList.builder();
 			for (int gridIndex=0; gridIndex<locs.size(); gridIndex++) {
+				Location gridLoc = locs.get(gridIndex);
 				List<GriddedRupture> ruptures = ruptureLists.get(gridIndex);
 				if (ruptures == null || ruptures.isEmpty()) {
 					ruptureListsBuilder.add(ImmutableList.of());
 				} else {
 					for (GriddedRupture rup : ruptures) {
+						Preconditions.checkState(rup.tectonicRegionType == trt);
+						Preconditions.checkState(LocationUtils.areSimilar(rup.location, gridLoc));
 						numRups++;
 						minMag = Math.min(minMag, rup.magnitude);
 						maxMag = Math.max(maxMag, rup.magnitude);
@@ -715,6 +726,13 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		
 		public GriddedRupture(int gridIndex, Location location, double magnitude, double rate, double rake, double dip,
 				double strike, Range<Double> strikeRange, double upperDepth, double lowerDepth, double length,
+				TectonicRegionType tectonicRegionType) {
+			this(gridIndex, location, magnitude, rate, rake, dip, strike, strikeRange,
+					upperDepth, lowerDepth, length, tectonicRegionType, null, null);
+		}
+		
+		public GriddedRupture(int gridIndex, Location location, double magnitude, double rate, double rake, double dip,
+				double strike, Range<Double> strikeRange, double upperDepth, double lowerDepth, double length,
 				TectonicRegionType tectonicRegionType, int[] associatedSections, double[] associatedSectionFracts) {
 			super();
 			this.gridIndex = gridIndex;
@@ -735,6 +753,12 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		
 		public GriddedRupture copyNewRate(double modRate) {
 			return new GriddedRupture(gridIndex, location, magnitude, modRate,
+					rake, dip, strike, strikeRange, upperDepth, lowerDepth,
+					length, tectonicRegionType, associatedSections, associatedSectionFracts);
+		}
+		
+		public GriddedRupture copyNewGridIndex(int gridIndex) {
+			return new GriddedRupture(gridIndex, location, magnitude, rate,
 					rake, dip, strike, strikeRange, upperDepth, lowerDepth,
 					length, tectonicRegionType, associatedSections, associatedSectionFracts);
 		}
@@ -1140,6 +1164,157 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists = new EnumMap<>(TectonicRegionType.class);
 		trtRuptureLists.put(mfdGridProv.getTectonicRegionType(), ruptureLists);
 		return new GridSourceList(gridReg, trtRuptureLists);
+	}
+	
+	public static GridSourceList combine(GridSourceList... gridLists) {
+		Preconditions.checkState(gridLists.length > 1);
+		
+		if (gridLists[0].gridReg != null) {
+			// first try to do it using a combined region
+			GriddedRegion unionGridReg = gridLists[0].getGriddedRegion();
+			double latSpacing = unionGridReg.getLatSpacing();
+			double lonSpacing = unionGridReg.getLonSpacing();
+			Location anchor = unionGridReg.getLocation(0);
+			for (int i=1; unionGridReg != null && i<gridLists.length; i++) {
+				GriddedRegion myReg = gridLists[i].getGriddedRegion();
+				if (myReg == null || (float)myReg.getLatSpacing() != (float)latSpacing
+							|| (float)myReg.getLonSpacing() != (float)lonSpacing) {
+					unionGridReg = null;
+				} else {
+					if (myReg.equals(unionGridReg))
+						continue;
+					// see if that region contains this one
+					boolean fullyContained = true;
+					for (Location loc : myReg.getNodeList()) {
+						if (unionGridReg.indexForLocation(loc) < 0) {
+							fullyContained = false;
+							break;
+						}
+					}
+					if (fullyContained)
+						// no need to union, this one is already fully contained
+						continue;
+					Region unionReg = Region.union(unionGridReg, myReg);
+					if (unionReg == null) {
+						unionGridReg = null;
+						break;
+					}
+					unionGridReg = new GriddedRegion(unionReg, latSpacing, lonSpacing, anchor);
+				}
+			}
+			
+			if (unionGridReg != null) {
+				// might work, but make sure that we still contain all of the grid nodes
+				boolean fullyContained = true;
+				for (GridSourceList gridList : gridLists) {
+					GriddedRegion myReg = gridList.getGriddedRegion();
+					for (Location loc : myReg.getNodeList()) {
+						if (unionGridReg.indexForLocation(loc) < 0) {
+							fullyContained = false;
+							break;
+						}
+					}
+					if (!fullyContained)
+						break;
+				}
+				if (fullyContained) {
+					System.out.println("Building combined GridSourceList using stitched gridded region");
+					return combine(unionGridReg, gridLists);
+				}
+				System.err.println("WARNING: built a stitched gridded region for all sub-regions but there's a gridding "
+						+ "mismatch, will revert to just a location list");
+			} else {
+				System.err.println("WARNING: couldn't build a stitched gridded region for all sub-regions, will revert "
+						+ "to just a location list");
+			}
+		}
+		
+		System.out.println("Building combined GridSourceList using a location list (no stitched region)");
+		
+		LocationList locs = new LocationList();
+		Map<Location, Integer> locIndexMap = new HashMap<>();
+		EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists = new EnumMap<>(TectonicRegionType.class);
+		
+		// first find each unique location
+		int rawNumLocs = 0;
+		for (GridSourceList gridList : gridLists) {
+			for (int gridIndex=0; gridIndex<gridList.getNumLocations(); gridIndex++) {
+				Location loc = gridList.getLocation(gridIndex);
+				Integer index = locIndexMap.get(loc);
+				rawNumLocs++;
+				if (index == null) {
+					index = locs.size();
+					locs.add(loc);
+					locIndexMap.put(loc, index);
+				}
+			}
+		}
+		System.out.println("Found "+locs.size()+" unique locations (out of "+rawNumLocs+" total)");
+		
+		for (GridSourceList gridList : gridLists) {
+			for (TectonicRegionType trt : gridList.getTectonicRegionTypes()) {
+				List<List<GriddedRupture>> ruptureLists = trtRuptureLists.get(trt);
+				if (ruptureLists == null) {
+					ruptureLists = new ArrayList<>(locs.size());
+					for (int i=0; i<locs.size(); i++)
+						ruptureLists.add(null);
+					trtRuptureLists.put(trt, ruptureLists);
+				}
+				for (int gridIndex=0; gridIndex<gridList.getNumLocations(); gridIndex++) {
+					ImmutableList<GriddedRupture> rups = gridList.getRuptures(trt, gridIndex);
+					if (!rups.isEmpty()) {
+						Location loc = gridList.getLocation(gridIndex);
+						Integer mappedIndex = locIndexMap.get(loc);
+						Preconditions.checkNotNull(mappedIndex,
+								"Location %s is not mapped to a location in the combined location list?", loc);
+						List<GriddedRupture> destRups = ruptureLists.get(mappedIndex);
+						if (destRups == null) {
+							destRups = new ArrayList<>(rups.size());
+							ruptureLists.set(mappedIndex, destRups);
+						}
+						for (GriddedRupture rup : rups)
+							destRups.add(rup.copyNewGridIndex(mappedIndex));
+					}
+				}
+			}
+		}
+		
+		return new GridSourceList(locs, trtRuptureLists);
+	}
+	
+	public static GridSourceList combine(GriddedRegion combRegion, GridSourceList... gridLists) {
+		EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists = new EnumMap<>(TectonicRegionType.class);
+		
+		for (GridSourceList gridList : gridLists) {
+			for (TectonicRegionType trt : gridList.getTectonicRegionTypes()) {
+				List<List<GriddedRupture>> ruptureLists = trtRuptureLists.get(trt);
+				if (ruptureLists == null) {
+					ruptureLists = new ArrayList<>(combRegion.getNodeCount());
+					for (int i=0; i<combRegion.getNodeCount(); i++)
+						ruptureLists.add(null);
+					trtRuptureLists.put(trt, ruptureLists);
+				}
+				for (int gridIndex=0; gridIndex<gridList.getNumLocations(); gridIndex++) {
+					ImmutableList<GriddedRupture> rups = gridList.getRuptures(trt, gridIndex);
+					if (!rups.isEmpty()) {
+						Location loc = gridList.getLocation(gridIndex);
+						Preconditions.checkState(loc.equals(gridList.getGriddedRegion().getLocation(gridIndex)));
+						int mappedGridIndex = combRegion.indexForLocation(loc);
+						Preconditions.checkState(mappedGridIndex >= 0,
+								"Location %s is not mapped to a location in the given combined gridded region", loc);
+						List<GriddedRupture> destRups = ruptureLists.get(mappedGridIndex);
+						if (destRups == null) {
+							destRups = new ArrayList<>(rups.size());
+							ruptureLists.set(mappedGridIndex, destRups);
+						}
+						for (GriddedRupture rup : rups)
+							destRups.add(rup.copyNewGridIndex(mappedGridIndex));
+					}
+				}
+			}
+		}
+		
+		return new GridSourceList(combRegion, trtRuptureLists);
 	}
 
 }
