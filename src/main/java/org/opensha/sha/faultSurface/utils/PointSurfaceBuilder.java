@@ -46,7 +46,7 @@ public class PointSurfaceBuilder {
 	private Range<Double> strikeRange = null;
 	private double dip = 90d;
 	private double length = Double.NaN;
-	private boolean footwall = true;
+	private Boolean footwall = null;
 	
 	private double zHyp = Double.NaN;
 	private double zHypFract = 0.5;
@@ -145,8 +145,12 @@ public class PointSurfaceBuilder {
 		seeds.add(Double.doubleToLongBits(dip));
 		if (Double.isFinite(length))
 			seeds.add(Double.doubleToLongBits(length));
-		if (footwall)
-			seeds.add(1l);
+		if (footwall != null) {
+			if (footwall)
+				seeds.add(1l);
+			else
+				seeds.add(2l);
+		}
 		if (Double.isFinite(zHyp))
 			seeds.add(Double.doubleToLongBits(zHyp));
 		if (Double.isFinite(zHypFract))
@@ -631,7 +635,18 @@ public class PointSurfaceBuilder {
 	 * and other distances are calculated using the (possibly corrected) rJB, the footwall setting, and zTop/zBot/dip. 
 	 * @return
 	 */
-	public FiniteApproxPointSurface buildPointSurface() {
+	public FiniteApproxPointSurface buildFiniteApproxPointSurface() {
+		Preconditions.checkState(footwall != null || dip == 90, "Footwall boolean must be specified if dip != 90");
+		boolean footwall = this.footwall == null ? true : this.footwall;
+		return buildFiniteApproxPointSurface(footwall);
+	}
+	
+	/**
+	 * Builds a point surface representation where rJB is calculated according to the chosen {@link PtSrcDistCorr},
+	 * and other distances are calculated using the (possibly corrected) rJB, the footwall setting, and zTop/zBot/dip. 
+	 * @return
+	 */
+	public FiniteApproxPointSurface buildFiniteApproxPointSurface(boolean footwall) {
 		Preconditions.checkState(zBot >= zTop, "zBOT must be >= zTOR"); 
 		
 		double length = getCalcLength();
@@ -805,7 +820,10 @@ public class PointSurfaceBuilder {
 	public RuptureSurface[] build(BackgroundRupType bgRupType) {
 		switch (bgRupType) {
 		case POINT:
-			return new RuptureSurface[] {buildPointSurface()};
+			if (dip == 90d || footwall != null)
+				return new RuptureSurface[] {buildFiniteApproxPointSurface()};
+			return new RuptureSurface[] {
+					buildFiniteApproxPointSurface(true), buildFiniteApproxPointSurface(false)};
 		case FINITE:
 			// this will use the given strike or strikeRange if previously supplied
 			return buildRandQuadSurfaces(1);
@@ -819,13 +837,13 @@ public class PointSurfaceBuilder {
 	
 	/**
 	 * Builds a surface for the given inputs. This returns {@link #buildQuadSurface()} if the strike direction has
-	 * been set, and {@link #buildPointSurface()} otherwise.
+	 * been set, and {@link #buildFiniteApproxPointSurface()} otherwise.
 	 * @return
 	 */
 	public RuptureSurface build() {
 		if (Double.isFinite(strike))
 			return buildQuadSurface();
-		return buildPointSurface();
+		return buildFiniteApproxPointSurface();
 	}
 	
 	public static void main(String[] args) {
