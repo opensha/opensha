@@ -1,16 +1,27 @@
 package org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
 
+import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
+import org.opensha.commons.calc.magScalingRelations.MagScalingRelationship;
+import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.HistogramFunction;
+import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.CubedGriddedRegion;
 import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRupture;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
@@ -18,10 +29,12 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_FaultCub
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_DeclusteringAlgorithms;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_RegionalSeismicity;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SeisSmoothingAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.SeismicityRegions;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -134,10 +147,106 @@ public class PRVI25_GridSourceBuilder {
 		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, binnedDepthDistFunc,
 				fractStrikeSlip, fractNormal, fractReverse);
 	}
+	
+	public static GridSourceList buildSlabGridSourceList(LogicTreeBranch<?> branch) throws IOException {
+		GridSourceList muertos = buildSlabGridSourceList(branch, SeismicityRegions.MUE_INTRASLAB);
+		GridSourceList car = buildSlabGridSourceList(branch, SeismicityRegions.CAR_INTRASLAB);
+		return GridSourceList.combine(car, muertos);
+	}
+	
+	public static GridSourceList buildSlabGridSourceList(LogicTreeBranch<?> branch, SeismicityRegions seisRegion) throws IOException {
+		Preconditions.checkState(seisRegion == SeismicityRegions.CAR_INTRASLAB
+				|| seisRegion == SeismicityRegions.MUE_INTRASLAB);
+		
+		double maxMagOff = SLAB_MMAX;
+		
+		PRVI25_RegionalSeismicity seisBranch = branch.requireValue(PRVI25_RegionalSeismicity.class);
+		PRVI25_DeclusteringAlgorithms declusteringAlg = branch.requireValue(PRVI25_DeclusteringAlgorithms.class);
+		PRVI25_SeisSmoothingAlgorithms seisSmooth = branch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
+		
+		// total G-R up to Mmax
+		IncrementalMagFreqDist totalGR = seisBranch.build(seisRegion, FaultSysTools.initEmptyMFD(maxMagOff), maxMagOff);
+		
+		GriddedGeoDataSet pdf = seisSmooth.loadXYZ(seisRegion, declusteringAlg);
+		
+		List<List<GriddedRupture>> ruptureLists = new ArrayList<>(pdf.size());
+		
+		// TODO
+		System.err.println("WARNING: USING ARBITRARILY SLAB FOCAL MECH");
+		double rake = -90d;
+		double dip = 50d;
+		
+		double upper = 50d;
+		System.err.println("WARNING: USING ARBITRARILY SLAB UPPER DEPTH");
+		double maxLower = 65d;
+		double maxDDW = (maxLower-upper)/Math.sin(Math.toRadians(dip));
+		MagScalingRelationship scale = new WC1994_MagLengthRelationship();
+		
+		for (int gridIndex=0; gridIndex<pdf.size(); gridIndex++) {
+			double fract = pdf.get(gridIndex);
+			if (fract == 0d) {
+				ruptureLists.add(null);
+				continue;
+			}
+			
+			Location loc = pdf.getLocation(gridIndex);
+			
+			List<GriddedRupture> ruptureList = new ArrayList<>(totalGR.size());
+			ruptureLists.add(ruptureList);
+			for (int i=0; i<totalGR.size(); i++) {
+				double mag = totalGR.getX(i);
+				double rate = totalGR.getY(i)*fract;
+				
+				double length, ddw;
+				if (scale instanceof MagLengthRelationship) {
+					length = ((MagLengthRelationship)scale).getMedianLength(mag);
+					ddw = Math.min(maxDDW, length);
+				} else {
+					throw new IllegalStateException();
+				}
+				double lower;
+				if (dip == 90d)
+					lower = upper + ddw;
+				else
+					lower = upper + ddw*Math.sin(Math.toRadians(dip));
+				
+				ruptureList.add(new GriddedRupture(gridIndex, loc, mag, rate, rake, dip, Double.NaN, null,
+						upper, lower, length, TectonicRegionType.SUBDUCTION_SLAB, null, null));
+			}
+		}
+		
+		return new GridSourceList(pdf.getRegion(), TectonicRegionType.SUBDUCTION_SLAB, ruptureLists);
+	}
+	
+	public static GridSourceList buildInterfaceGridSourceList(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch) throws IOException {
+		GridSourceList muertos = buildInterfaceGridSourceList(sol, fullBranch, SeismicityRegions.MUE_INTERFACE);
+		GridSourceList car = buildInterfaceGridSourceList(sol, fullBranch, SeismicityRegions.CAR_INTERFACE);
+		return GridSourceList.combine(car, muertos);
+	}
+	
+//	public static GridSourceList buildInterfaceGridSourceList(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch,
+//			SeismicityRegions seisRegion) throws IOException {
+//		Preconditions.checkState(seisRegion == SeismicityRegions.CAR_INTERFACE
+//				|| seisRegion == SeismicityRegions.MUE_INTERFACE);
+//		
+//		int[] parentID;
+//		switch (seisRegion) {
+//		case CAR_INTERFACE:
+//			
+//			break;
+//
+//		default:
+//			break;
+//		}
+//	}
 
-	public static void main(String[] args) {
-		// TODO Auto-generated method stub
-
+	public static void main(String[] args) throws IOException {
+		LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>(PRVI25_LogicTreeBranch.levelsSubductionGridded);
+		branch.setValue(PRVI25_RegionalSeismicity.PREFFERRED);
+		branch.setValue(PRVI25_SeisSmoothingAlgorithms.AVERAGE);
+		branch.setValue(PRVI25_DeclusteringAlgorithms.AVERAGE);
+		
+		buildSlabGridSourceList(branch);
 	}
 
 }
