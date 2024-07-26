@@ -75,8 +75,8 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 		}
 	};
 	
-	public static String RATE_FILE_NAME = "rates_2024_07_02.csv";
-	private static final String NSHM23_RATES_PATH_PREFIX = "/data/erf/prvi25/seismicity/rates/";
+	public static String RATE_FILE_NAME = "rates_2024_07_03.csv";
+	private static final String RATES_PATH_PREFIX = "/data/erf/prvi25/seismicity/rates/";
 	
 	private static Map<String, double[]> ratesMap;
 	private static Map<String, double[]> bValsMap;
@@ -91,7 +91,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 			Map<String, double[]> ratesMap = new HashMap<>();
 			Map<String, double[]> bValsMap = new HashMap<>();
 			
-			String resource = NSHM23_RATES_PATH_PREFIX+RATE_FILE_NAME;
+			String resource = RATES_PATH_PREFIX+RATE_FILE_NAME;
 			
 			System.out.println("Loading spatial seismicity PDF from: "+resource);
 			InputStream is = PRVI25_RegionalSeismicity.class.getResourceAsStream(resource);
