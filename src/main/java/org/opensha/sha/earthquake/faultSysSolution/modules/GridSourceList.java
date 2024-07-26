@@ -82,7 +82,7 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		int sourceCount = 0;
 		for (TectonicRegionType trt : trtRuptureLists.keySet())
 			for (List<GriddedRupture> ruptures : trtRuptureLists.get(trt))
-				if (!ruptures.isEmpty())
+				if (ruptures != null && !ruptures.isEmpty())
 					sourceCount++;
 		
 		TectonicRegionType[] sourceTRTs = new TectonicRegionType[sourceCount];
@@ -119,7 +119,10 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 					sourceIndex++;
 				}
 			}
+			trtRuptureListsOut.put(trt, ruptureListsBuilder.build());
 		}
+		Preconditions.checkState(sourceIndex == sourceCount,
+				"Source count mismatch; expected=%s, sourceIndex=%s after last", sourceCount, sourceIndex);
 		Preconditions.checkState(numRups > 0, "Must supply at least 1 rupture to determine MFD gridding");
 		double delta = 0.1;
 		if (!magsTenthAligned) {
@@ -449,9 +452,14 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 					if (rup.associatedSections != null)
 						maxNumAssoc = Integer.max(maxNumAssoc, rup.associatedSections.length);
 		if (maxNumAssoc > 0) {
-			for (int i=0; i<maxNumAssoc; i++) {
-				header.add("Associated Section Index "+(i+1));
-				header.add("Fraction Associated "+(i+1));
+			if (maxNumAssoc == 1) {
+				header.add("Associated Section Index");
+				header.add("Fraction Associated");
+			} else {
+				header.add("Associated Section Index 1");
+				header.add("Fraction Associated 1");
+				header.add("Associated Section Index N");
+				header.add("Fraction Associated N");
 			}
 		}
 		rupCSV.write(header);
@@ -623,12 +631,13 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 			double length = row.getDouble(col++);
 			Preconditions.checkState(Double.isFinite(length) && length >= 0d, "Bad length=%s", length);
 			TectonicRegionType tectonicRegionType = TectonicRegionType.valueOf(row.get(col++));
-			int colsLeft = row.columns() - (col+1);
+			int colsLeft = row.columns() - col;
 			int[] associatedSections = null;
 			double[] associatedSectionFracts = null;
 			if (colsLeft > 0) {
 				Preconditions.checkState(colsLeft % 2 == 0,
-						"Have %s columns left for associations, which is not divisible by 2; expected pairs of id, fract");
+						"Have %s columns left for associations, which is not divisible by 2; expected pairs of id, fract",
+						colsLeft);
 				int numAssoc = colsLeft/2;
 				associatedSections = new int[numAssoc];
 				associatedSectionFracts = new double[numAssoc];
@@ -1044,7 +1053,7 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 	public interface FiniteRuptureConverter {
 		
 		public GriddedRupture buildFiniteRupture(int gridIndex, Location loc, double magnitude, double rate,
-				FocalMech forcalMech, int[] associatedSections, double[] associatedSectionFracts);
+				FocalMech focalMech, int[] associatedSections, double[] associatedSectionFracts);
 	}
 	
 	public static GridSourceList convert(MFDGridSourceProvider mfdGridProv, FaultGridAssociations associations,
