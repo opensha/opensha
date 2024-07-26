@@ -815,11 +815,16 @@ public class PointSurfaceBuilder {
 	/**
 	 * Builds surfaces for the given {@link BackgroundRupType}. If a finite option has been chosen and the strike
 	 * direction has not been set, then random a strike (or random strikes for crosshair) will be chosen.
+	 * 
+	 * Note: if the strike has been set, a single finite surface will be returned even if {@link BackgroundRupType#POINT}
+	 * is chosen.
 	 * @return
 	 */
 	public RuptureSurface[] build(BackgroundRupType bgRupType) {
 		switch (bgRupType) {
 		case POINT:
+			if (Double.isFinite(strike))
+				return new RuptureSurface[] { buildQuadSurface() };
 			if (dip == 90d || footwall != null)
 				return new RuptureSurface[] {buildFiniteApproxPointSurface()};
 			return new RuptureSurface[] {
