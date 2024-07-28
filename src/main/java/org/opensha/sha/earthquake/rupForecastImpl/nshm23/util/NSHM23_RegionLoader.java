@@ -289,10 +289,16 @@ public class NSHM23_RegionLoader {
 			
 			Region reg = Region.fromFeature(feature);
 			
-			if (feature.id == null && feature.properties != null && feature.properties.containsKey("title")) {
-				Object title = feature.properties.get("title");
-				if (title instanceof String && !((String)title).isBlank())
-					reg.setName((String)title);
+			if (feature.id == null && feature.properties != null) {
+				if (feature.properties.containsKey("title")) {
+					Object title = feature.properties.get("title");
+					if (title instanceof String && !((String)title).isBlank())
+						reg.setName((String)title);
+				} else if (feature.properties.containsKey("name")) {
+					Object name = feature.properties.get("name");
+					if (name instanceof String && !((String)name).isBlank())
+						reg.setName((String)name);
+				}
 			}
 			
 			synchronized (regionCache) {

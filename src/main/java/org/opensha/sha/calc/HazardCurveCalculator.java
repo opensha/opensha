@@ -118,10 +118,16 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	 * creates the HazardCurveCalculator object
 	 */
 	public HazardCurveCalculator() {
+		this(SourceFiltersParam.getDefault());
+	}
 
+	/**
+	 * creates the HazardCurveCalculator object
+	 */
+	public HazardCurveCalculator(SourceFilterManager sourceFilters) {
 		// Create adjustable parameters and add to list
-		sourceFilterParam = new SourceFiltersParam();
-		sourceFilters = sourceFilterParam.getValue();
+		this.sourceFilters = sourceFilters;
+		sourceFilterParam = new SourceFiltersParam(sourceFilters);
 		
 		fixedDistanceFilter = (FixedDistanceCutoffFilter) sourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF);
 		magDependentFilter = (MagDependentDistCutoffFilter) sourceFilters.getFilterInstance(SourceFilters.MAG_DIST_CUTOFFS);

@@ -35,6 +35,13 @@ BranchAverageableModule<RupSetTectonicRegimes>, AverageableModule.ConstantAverag
 		this.regimes = regimes;
 	}
 	
+	public static RupSetTectonicRegimes constant(FaultSystemRupSet rupSet, TectonicRegionType regime) {
+		TectonicRegionType[] regimes = new TectonicRegionType[rupSet.getNumRuptures()];
+		for (int i=0; i<regimes.length; i++)
+			regimes[i] = regime;
+		return new RupSetTectonicRegimes(rupSet, regimes);
+	}
+	
 	public static RupSetTectonicRegimes forRegions(FaultSystemRupSet rupSet, Map<Region, TectonicRegionType> regRegimes,
 			TectonicRegionType fallback, double minFractInside) {
 		TectonicRegionType[] regimes = new TectonicRegionType[rupSet.getNumRuptures()];

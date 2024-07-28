@@ -443,6 +443,11 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		double maxMag = Double.NEGATIVE_INFINITY;
 		double minLen = Double.POSITIVE_INFINITY;
 		double maxLen = Double.NEGATIVE_INFINITY;
+		boolean hasMultiFault = false;
+		double minSingleFaultMag = Double.POSITIVE_INFINITY;
+		double maxSingleFaultMag = Double.NEGATIVE_INFINITY;
+		double minNonzeroRateMag = Double.POSITIVE_INFINITY;
+		double maxNonzeroRateMag = Double.NEGATIVE_INFINITY;
 		HashSet<Integer> directConnections = new HashSet<>();
 		HashSet<Integer> allConnections = new HashSet<>();
 		double totRate = 0d;
@@ -462,13 +467,22 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			minLen = Math.min(minLen, len);
 			maxLen = Math.max(maxLen, len);
 			ClusterRupture rup = cRups.get(r);
+			if (rup.getTotalNumClusters() > 1) {
+				hasMultiFault = true;
+			} else {
+				minSingleFaultMag = Math.min(minSingleFaultMag, mag);
+				maxSingleFaultMag = Math.max(maxSingleFaultMag, mag);
+			}
 			if (meta.primary.sol != null) {
 				double rate = meta.primary.sol.getRateForRup(r);
 				totRate += rate;
 				if (rup.getTotalNumClusters() > 1)
 					multiRate += rate;
-				if (rate > 0d)
+				if (rate > 0d) {
 					rupCountNonZero++;
+					minNonzeroRateMag = Math.min(minNonzeroRateMag, mag);
+					maxNonzeroRateMag = Math.max(maxNonzeroRateMag, mag);
+				}
 			}
 			if (minMags != null && mag < maxMin) {
 				boolean below = false;
@@ -505,6 +519,12 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		if (meta.primary.sol != null)
 			table.addLine("**Ruptures w/ Nonzero Rates**", countDF.format(rupCountNonZero));
 		table.addLine("**Magnitude Range**", "["+twoDigits.format(minMag)+", "+twoDigits.format(maxMag)+"]");
+		if (hasMultiFault)
+			table.addLine("**Single-Fault Magnitude Range**", "["+twoDigits.format(minSingleFaultMag)
+					+", "+twoDigits.format(maxSingleFaultMag)+"]");
+		if (meta.primary.sol != null)
+			table.addLine("**Magnitude Range w/ Nonzero Rates**", "["+twoDigits.format(minNonzeroRateMag)
+					+", "+twoDigits.format(maxNonzeroRateMag)+"]");
 		table.addLine("**Length Range**", "["+countDF.format(minLen)+", "+countDF.format(maxLen)+"] km");
 		if (meta.primary.sol != null) {
 			table.addLine("**Total Rate**", (float)totRate+" /yr");

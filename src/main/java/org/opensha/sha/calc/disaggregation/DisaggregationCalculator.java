@@ -431,6 +431,8 @@ implements DisaggregationCalculatorAPI{
 
 				// proceed only if rate is greater than zero (avoids NaN epsilons & is faster)
 				if( rate > 0.0) {
+					if (Double.isNaN(epsilon))
+						throw new IllegalStateException("Epsilon is "+epsilon+", rate="+rate+", mean="+imr.getMean()+", stdDev="+imr.getStdDev());
 					// set the 3D array indices & check that all are in bounds
 					setIndices();
 					if (withinBounds)

@@ -4,7 +4,9 @@ import static org.opensha.commons.geo.GeoTools.TO_RAD;
 
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.opensha.commons.data.Site;
@@ -18,6 +20,7 @@ import org.opensha.commons.param.constraint.impl.DoubleDiscreteConstraint;
 import org.opensha.commons.param.constraint.impl.StringConstraint;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
+import org.opensha.sha.earthquake.DistCachedERFWrapper.DistCacheWrapperRupture;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -98,6 +101,10 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	private EnumMap<Imt, GroundMotionModel> instanceMap;
 	private LogicTree<GroundMotion> gmTree;
 	
+	// if enabled, will cache GmmInputs on a per-rupture basis
+	private boolean cacheInputsPerRupture = false;
+	private Map<EqkRupture, GmmInput> perRuptureInputCache;
+	
 	// params not in parent class
 	private DistanceX_Parameter distanceXParam;
 	private SedimentThicknessParam zSedParam;
@@ -106,11 +113,11 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	private Double defaultPeriod = null; // if SA
 	
 	public NSHMP_GMM_Wrapper(Gmm gmm) {
-		this(gmm, gmm.name());
+		this(gmm, gmm == null ? null : gmm.name());
 	}
 	
 	public NSHMP_GMM_Wrapper(Gmm gmm, boolean parameterize) {
-		this(gmm, gmm.name(), parameterize);
+		this(gmm, gmm == null ? null : gmm.name(), parameterize);
 	}
 	
 	public NSHMP_GMM_Wrapper(Gmm gmm, String shortName) {
@@ -221,14 +228,30 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	}
 	
 	/**
-	 * Sets the passed in {@link GmmInput} as the current input for the GMM. Note that this will not set any parameter
-	 * values. If a paremter is changed subsequently, all changes passed in via this method will be blown away (even
-	 * those not affefcted by the parameter update).
+	 * Sets the passed in {@link GmmInput} as the current input for the GMM.
 	 * @param gmmInput
 	 */
 	public void setCurrentGmmInput(GmmInput gmmInput) {
 		clearCachedGmmInputs();
 		this.gmmInput = gmmInput;
+		valueManager.setGmmInput(gmmInput);
+	}
+	
+	/**
+	 * Enables or disables caching of {@link GmmInput} values on a per-rupture basis; that cache will be cleared
+	 * whenever a parameter is set externally, or the {@link Site} is changed.
+	 */
+	public void setCacheInputsPerRupture(boolean cacheInputsPerRupture) {
+		this.cacheInputsPerRupture = cacheInputsPerRupture;
+	}
+	
+	/**
+	 * Copies the current per-rupture {@link GmmInput} cache from the given GMM. This is a shallow copy, so any updates
+	 * made on either GMM will affect the other (until they are cleared by a site or parameter change) 
+	 * @param other
+	 */
+	public void copyPerRuptureCacheFrom(NSHMP_GMM_Wrapper other) {
+		this.perRuptureInputCache = other.perRuptureInputCache;
 	}
 	
 	/**
@@ -287,8 +310,6 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			DiscretizedFunc intensityMeasureLevels)
 			throws ParameterException {
 		LogicTree<GroundMotion> gmTree = getGroundMotionTree();
-		if (gmTree.size() == 1)
-			return super.getExceedProbabilities(intensityMeasureLevels);
 		
 		double weightSum = 0d;
 		boolean first = true;
@@ -702,6 +723,8 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			param.setValueAsDefault();
 		setIntensityMeasure(defaultIMT);
 		
+		perRuptureInputCache = null;
+		
 		clearCachedGmmInputs();
 	}
 
@@ -717,17 +740,25 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 
 	@Override
 	public void setSite(Site site) {
+		if (site != this.site)
+			perRuptureInputCache = null;
 		super.setSite(site);
 		clearCachedGmmInputs();
 		
+		// the 'if (gmm != null || site.containsParameter(<param>.NAME))' checks make things work if we're using
+		// this just to pre-cache GmmInputs (gmm == null) and we were passed in a site that doesn't have that parameter
 		if (fields.contains(Field.VS30))
-			valueManager.setParameterValue(Field.VS30, site.getParameter(Double.class, Vs30_Param.NAME).getValue());
+			if (gmm != null || site.containsParameter(Vs30_Param.NAME))
+				valueManager.setParameterValue(Field.VS30, site.getParameter(Double.class, Vs30_Param.NAME).getValue());
 		if (fields.contains(Field.Z1P0))
-			valueManager.setParameterValue(Field.Z1P0, site.getParameter(Double.class, DepthTo1pt0kmPerSecParam.NAME).getValue());
+			if (gmm != null || site.containsParameter(DepthTo1pt0kmPerSecParam.NAME))
+				valueManager.setParameterValue(Field.Z1P0, site.getParameter(Double.class, DepthTo1pt0kmPerSecParam.NAME).getValue());
 		if (fields.contains(Field.Z2P5))
-			valueManager.setParameterValue(Field.Z2P5, site.getParameter(Double.class, DepthTo2pt5kmPerSecParam.NAME).getValue());
+			if (gmm != null || site.containsParameter(DepthTo2pt5kmPerSecParam.NAME))
+				valueManager.setParameterValue(Field.Z2P5, site.getParameter(Double.class, DepthTo2pt5kmPerSecParam.NAME).getValue());
 		if (fields.contains(Field.ZSED))
-			valueManager.setParameterValue(Field.ZSED, site.getParameter(Double.class, SedimentThicknessParam.NAME).getValue());
+			if (gmm != null || site.containsParameter(SedimentThicknessParam.NAME))
+				valueManager.setParameterValue(Field.ZSED, site.getParameter(Double.class, SedimentThicknessParam.NAME).getValue());
 		
 		setPropagationEffectParams();
 	}
@@ -736,6 +767,20 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	public void setEqkRupture(EqkRupture eqkRupture) {
 		super.setEqkRupture(eqkRupture);
 		clearCachedGmmInputs();
+		
+		boolean usePerRupCache = cacheInputsPerRupture && site != null;
+		EqkRupture rupForCache = eqkRupture;
+		if (usePerRupCache) {
+			if (perRuptureInputCache == null)
+				perRuptureInputCache = new HashMap<>();
+			if (eqkRupture instanceof DistCacheWrapperRupture)
+				rupForCache = ((DistCacheWrapperRupture)eqkRupture).getOriginalRupture();
+			GmmInput cached = perRuptureInputCache.get(rupForCache);
+			if (cached != null) {
+				setCurrentGmmInput(cached);
+				return;
+			}
+		}
 		
 		RuptureSurface surf = eqkRupture.getRuptureSurface();
 		
@@ -761,6 +806,11 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		}
 		
 		setPropagationEffectParams();
+		
+		if (usePerRupCache) {
+			// cache the GmmInput for future reuse
+			perRuptureInputCache.put(rupForCache, getCurrentGmmInput());
+		}
 	}
 
 	@Override
@@ -781,10 +831,12 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 
 	@Override
 	public void parameterChange(ParameterChangeEvent event) {
-		if (event.getParameter() == saPeriodParam || event.getParameter() == saPeriodParam)
+		if (event.getParameter() == saPeriodParam || event.getParameter() == saPeriodParam) {
 			clearCachedImt();
-		else
+		} else {
 			clearCachedGmmInputs();
+			perRuptureInputCache = null; // this will only be called when set externally, clear any per-rupture input cache
+		}
 	}
 	
 	@Override

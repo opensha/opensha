@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
+import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
@@ -23,6 +24,7 @@ import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.CoulombRupSetConf
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionSolver;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.GridSourceProviderFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionSolver;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
@@ -33,6 +35,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Generatio
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.NonnegativityConstraintType;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
@@ -42,6 +45,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree.Sol
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.JumpProbabilityCalc;
@@ -53,7 +57,6 @@ import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBra
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SlipAlongRuptureModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSectBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModelBranchNode;
@@ -68,6 +71,9 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBVa
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.GRParticRateEstimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.AnalyticalSingleFaultInversionSolver;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.ClassicModelInversionSolver;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionFaultModels;
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -75,7 +81,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
 
-public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory {
+public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory {
 	
 	protected transient Table<RupSetFaultModel, RupturePlausibilityModels, FaultSystemRupSet> rupSetCache = HashBasedTable.create();
 	protected transient Map<RupSetFaultModel, SectionDistanceAzimuthCalculator> distAzCache = new HashMap<>();
@@ -100,6 +106,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	public static boolean ALLOW_CONNECTED_PROXY_FAULTS_DEFAULT = false;
 	private static boolean allowConnectedProxyFaults = ALLOW_CONNECTED_PROXY_FAULTS_DEFAULT;
+	private static final double MAX_PROXY_FAULT_RUP_LEN_DEFAULT = 75d;
+	private static double maxProxyFaultRupLen = MAX_PROXY_FAULT_RUP_LEN_DEFAULT;
 	
 	public PRVI25_InvConfigFactory() {
 		numItersPerRup = NUM_ITERS_PER_RUP_DEFAULT;
@@ -769,6 +777,11 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			exclusionModels.add(new ProxyConnectionExclusionModel());
 		}
 		
+		if (maxProxyFaultRupLen > 0d) {
+			System.out.println("Excluding proxy fault ruptures longer than "+(float)maxProxyFaultRupLen+" km");
+			exclusionModels.add(new ProxyMaxLenExclusionModel(maxProxyFaultRupLen));
+		}
+		
 		if (exclusionModels.isEmpty())
 			return null;
 		if (exclusionModels.size() == 1)
@@ -793,12 +806,42 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 		@Override
 		public boolean isJumpAllowed(ClusterRupture fullRupture, Jump jump, boolean verbose) {
-			return !isProxyFault(jump.fromSection) && !isProxyFault(jump.toSection);
+			return !jump.fromSection.isProxyFault() && !jump.toSection.isProxyFault();
 		}
 		
-		private boolean isProxyFault(FaultSection sect) {
-			// TODO do better
-			return sect.getSectionName().toLowerCase().contains("proxy");
+	}
+	
+	private static class ProxyMaxLenExclusionModel implements BinaryRuptureProbabilityCalc {
+		
+		private double maxLen;
+
+		public ProxyMaxLenExclusionModel(double maxLen) {
+			this.maxLen = maxLen;
+		}
+
+		@Override
+		public boolean isDirectional(boolean splayed) {
+			return false;
+		}
+
+		@Override
+		public String getName() {
+			return "Proxy Fault Connections Excluded";
+		}
+
+		@Override
+		public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
+			double proxyLen = 0d;
+			for (FaultSubsectionCluster cluster : fullRupture.getClustersIterable()) {
+				for (FaultSection sect : cluster.subSects) {
+					if (sect.isProxyFault()) {
+						proxyLen += sect.getTraceLength();
+						if (proxyLen > maxLen)
+							return false;
+					}
+				}
+			}
+			return true;
 		}
 		
 	}
@@ -868,6 +911,24 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			return skipSampler;
 		else
 			return currentSampler.getCombinedWith(skipSampler);
+	}
+
+	@Override
+	public LogicTree<?> getGridSourceTree(LogicTree<?> faultTree) {
+		if (faultTree.getBranch(0).hasValue(PRVI25_CrustalFaultModels.class))
+			return LogicTree.buildExhaustive(PRVI25_LogicTreeBranch.levelsCrustalOffFault, true);
+		return null;
+	}
+
+	@Override
+	public GridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch)
+			throws IOException {
+		return PRVI25_GridSourceBuilder.buildCrustalGridSourceProv(sol, fullBranch);
+	}
+	
+	@Override
+	public void preGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
+		PRVI25_GridSourceBuilder.doPreGridBuildHook(sol, faultBranch);
 	}
 
 }

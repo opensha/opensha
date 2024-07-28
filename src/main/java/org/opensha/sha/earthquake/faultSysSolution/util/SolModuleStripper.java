@@ -9,6 +9,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BuildInfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ProxyFaultSectionInstances;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
@@ -52,6 +53,9 @@ public class SolModuleStripper {
 		AveSlipModule aveSlip = inputRupSet.getModule(AveSlipModule.class);
 		if (aveSlip != null)
 			strippedRupSet.addModule(aveSlip);
+		ProxyFaultSectionInstances proxies = inputRupSet.getModule(ProxyFaultSectionInstances.class);
+		if (proxies != null)
+			strippedRupSet.addModule(proxies);
 		BuildInfoModule buildInfo = inputRupSet.getModule(BuildInfoModule.class);
 		if (buildInfo != null)
 			strippedRupSet.addModule(buildInfo);
