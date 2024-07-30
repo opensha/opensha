@@ -19,6 +19,7 @@ import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.FrankelGriddedSurface;
+import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.QuadSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
@@ -631,6 +632,16 @@ public class PointSurfaceBuilder {
 	}
 	
 	/**
+	 * Builds true point surface representation where all distances are set from the 3D distance to the epicenter 
+	 * @return
+	 */
+	public PointSurface buildTruePointSurface() {
+		if (loc.depth == zTop)
+			return new PointSurface(loc);
+		return new PointSurface(loc.lat, loc.lon, zTop);
+	}
+	
+	/**
 	 * Builds a point surface representation where rJB is calculated according to the chosen {@link PtSrcDistCorr},
 	 * and other distances are calculated using the (possibly corrected) rJB, the footwall setting, and zTop/zBot/dip. 
 	 * @return
@@ -821,13 +832,21 @@ public class PointSurfaceBuilder {
 	 * @return
 	 */
 	public RuptureSurface[] build(BackgroundRupType bgRupType) {
+		// special cases
+		if ((float)length == 0f && (float)zTop == (float)zBot && footwall == null) {
+			// true point source
+			return new RuptureSurface[] { buildTruePointSurface() };
+		} else if (Double.isFinite(strike) && (float)length > 0f) {
+			// we have a finite surface
+			return new RuptureSurface[] { buildQuadSurface() };
+		}
 		switch (bgRupType) {
 		case POINT:
-			if (Double.isFinite(strike))
-				return new RuptureSurface[] { buildQuadSurface() };
 			if (dip == 90d || footwall != null)
+				// either vertical, or footwall parameter explicitly set
 				return new RuptureSurface[] {buildFiniteApproxPointSurface()};
 			return new RuptureSurface[] {
+					// sample both footwall settings
 					buildFiniteApproxPointSurface(true), buildFiniteApproxPointSurface(false)};
 		case FINITE:
 			// this will use the given strike or strikeRange if previously supplied
