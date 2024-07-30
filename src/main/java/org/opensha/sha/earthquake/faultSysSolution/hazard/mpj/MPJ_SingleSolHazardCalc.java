@@ -276,9 +276,29 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	@Override
 	protected void doFinalAssembly() throws Exception {
 		// write out branch curves
-		if (!SINGLE_NODE_NO_MPJ && calc != null) {
-			// we have calculated some
-			calc.writeCurvesCSVs(nodesCurveDir, "node_"+rank+"_curves", false, true);
+		if (!SINGLE_NODE_NO_MPJ) {
+			String prefix = "node_"+rank+"_curves";
+			if (calc != null) {
+				// we have calculated some
+				calc.writeCurvesCSVs(nodesCurveDir, prefix, false, true);
+			} else {
+				// we've calculated none
+				// write empty CSVs
+				for (double period : periods) {
+					String fileName = SolHazardMapCalc.getCSV_FileName(prefix, period);
+					File outputFile = new File(nodesCurveDir, fileName);
+					
+					CSVFile<String> csv = new CSVFile<>(true);
+					
+					List<String> header = new ArrayList<>();
+					header.add("Index");
+					header.add("Latitude");
+					header.add("Longitude");
+					csv.addLine(header);
+					
+					csv.writeToFile(outputFile);
+				}
+			}
 		}
 		
 		// wait for everyone to finish writing
@@ -302,6 +322,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				} else {
 					// read it
 					nodeCurves = null;
+					boolean anyEmpty = false;
+					boolean allEmpty = true;
 					for (int p=0; p<periods.length; p++) {
 						File curvesFile = new File(nodesCurveDir,
 								SolHazardMapCalc.getCSV_FileName("node_"+rank+"_curves", periods[p]));
@@ -310,15 +332,24 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 								nodeCurves = new ArrayList<>(periods.length);
 							else
 								Preconditions.checkNotNull(nodeCurves,
-										"Have curves for p=%s rank=%s, but not an earlier perioed",
+										"Have curves for p=%s rank=%s, but not an earlier period",
 										(Double)periods[p], rank);
-							nodeCurves.add(SolHazardMapCalc.loadCurvesCSV(CSVFile.readFile(curvesFile, true),
-									gridRegion, true));
+							CSVFile<String> csv = CSVFile.readFile(curvesFile, true);
+							if (csv.getNumRows() == 1) {
+								anyEmpty = true;
+							} else {
+								allEmpty = false;
+								nodeCurves.add(SolHazardMapCalc.loadCurvesCSV(csv, gridRegion, true));
+							}
 						} else {
 							Preconditions.checkState(curvesFile == null,
-									"Don't have curves for p=%s rank=%s, but did for an earlier perioed",
+									"Don't have curves for p=%s rank=%s, but did for an earlier period",
 									(Double)periods[p], rank);
 						}
+					}
+					if (anyEmpty) {
+						Preconditions.checkState(allEmpty);
+						nodeCurves = null;
 					}
 				}
 				if (nodeCurves != null) {
