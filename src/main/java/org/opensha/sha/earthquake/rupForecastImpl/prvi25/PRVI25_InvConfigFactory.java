@@ -917,13 +917,19 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	public LogicTree<?> getGridSourceTree(LogicTree<?> faultTree) {
 		if (faultTree.getBranch(0).hasValue(PRVI25_CrustalFaultModels.class))
 			return LogicTree.buildExhaustive(PRVI25_LogicTreeBranch.levelsCrustalOffFault, true);
+		if (faultTree.getBranch(0).hasValue(PRVI25_SubductionFaultModels.class))
+			return LogicTree.buildExhaustive(PRVI25_LogicTreeBranch.levelsSubductionGridded, true);
 		return null;
 	}
 
 	@Override
 	public GridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch)
 			throws IOException {
-		return PRVI25_GridSourceBuilder.buildCrustalGridSourceProv(sol, fullBranch);
+		if (fullBranch.hasValue(PRVI25_CrustalFaultModels.class))
+			return PRVI25_GridSourceBuilder.buildCrustalGridSourceProv(sol, fullBranch);
+		if (fullBranch.hasValue(PRVI25_SubductionFaultModels.class))
+			return PRVI25_GridSourceBuilder.buildCombinedSubductionGridSourceList(sol, fullBranch);
+		throw new IllegalStateException("Unexpected logic tree branch: "+fullBranch);
 	}
 	
 	@Override

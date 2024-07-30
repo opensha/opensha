@@ -3,9 +3,11 @@ package org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -13,10 +15,15 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
@@ -94,7 +101,50 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 			}
 		}, RupSetTectonicRegimes.class);
 		// TODO: named faults?
-		// TODO: regions of interest
+		rupSet.addAvailableModule(new Callable<RegionsOfInterest>() {
+
+			@Override
+			public RegionsOfInterest call() throws Exception {
+				List<Region> regions = new ArrayList<>();
+				List<IncrementalMagFreqDist> regionMFDs = new ArrayList<>();
+				List<TectonicRegionType> regionTRTs = new ArrayList<>();
+				
+				// overall seismicity regions
+				
+				regions.add(PRVI25_RegionLoader.loadPRVI_ModelBroad());
+				regionMFDs.add(null);
+				regionTRTs.add(null);
+				
+				SeismicityRegions[] interfaceRegions = {
+						SeismicityRegions.CAR_INTERFACE,
+						SeismicityRegions.MUE_INTERFACE,
+				};
+				double maxMinMag = 0d;
+				for (int s=0; s<rupSet.getNumSections(); s++)
+					maxMinMag = Math.max(maxMinMag, rupSet.getMinMagForSection(s));
+				IncrementalMagFreqDist interfaceRefMFD = FaultSysTools.initEmptyMFD(maxMinMag);
+				for (SeismicityRegions seisReg : interfaceRegions) {
+					regions.add(seisReg.load());
+					regionMFDs.add(PRVI25_RegionalSeismicity.getBounded(seisReg,
+							interfaceRefMFD, interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(maxMinMag))));
+					regionTRTs.add(TectonicRegionType.SUBDUCTION_INTERFACE);
+				}
+				
+				SeismicityRegions[] slabRegions = {
+						SeismicityRegions.CAR_INTRASLAB,
+						SeismicityRegions.MUE_INTRASLAB,
+				};
+				IncrementalMagFreqDist slabRefMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.SLAB_MMAX);
+				for (SeismicityRegions seisReg : slabRegions) {
+					regions.add(seisReg.load());
+					regionMFDs.add(PRVI25_RegionalSeismicity.getBounded(seisReg,
+							slabRefMFD, slabRefMFD.getX(interfaceRefMFD.getClosestXIndex(PRVI25_GridSourceBuilder.SLAB_MMAX))));
+					regionTRTs.add(TectonicRegionType.SUBDUCTION_SLAB);
+				}
+				return new RegionsOfInterest(regions, regionMFDs, regionTRTs);
+			}
+		}, RegionsOfInterest.class);
+		
 	}
 
 	@Override
