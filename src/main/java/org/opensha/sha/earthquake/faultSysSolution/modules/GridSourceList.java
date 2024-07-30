@@ -10,11 +10,13 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.DoubleBinaryOperator;
+import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -45,9 +47,11 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.TectonicRegionType;
 
+import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Range;
+import com.google.common.primitives.Ints;
 
 public class GridSourceList implements GridSourceProvider, ArchivableModule {
 	
@@ -63,7 +67,10 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 	private TectonicRegionType[] sourceTRTs;
 	private int[] sourceGridIndexes;
 	
-	private double sourceMinMag = 5d;;
+	// mapping from associated sections to grid nodes
+	private Map<Integer, Set<Integer>> sectAssociations;
+	
+	private double sourceMinMag = 5d;
 	
 	private GridSourceList() {}
 	
@@ -102,6 +109,7 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		boolean magsTenthAligned = true;
 		int numRups = 0;
 		int sourceIndex = 0;
+		HashMap<Integer, Set<Integer>> sectAssociations = new HashMap<>();
 		for (TectonicRegionType trt : TectonicRegionType.values()) {
 			List<? extends List<GriddedRupture>> ruptureLists = trtRuptureLists.get(trt);
 			if (ruptureLists == null)
@@ -122,6 +130,17 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 						maxMag = Math.max(maxMag, rup.magnitude);
 						// detect the case where ruptures are directly on the tenths (e.g., 5.0, 5.1)
 						magsTenthAligned &= (float)(rup.magnitude*10d) == (float)Math.floor(rup.magnitude*10d);
+						
+						if (rup.associatedSections != null) {
+							for (int sectID : rup.associatedSections) {
+								Set<Integer> sectNodes = sectAssociations.get(sectID);
+								if (sectNodes == null) {
+									sectNodes = new HashSet<>();
+									sectAssociations.put(sectID, sectNodes);
+								}
+								sectNodes.add(gridIndex);
+							}
+						}
 					}
 					
 					ruptureListsBuilder.add(ImmutableList.copyOf(ruptures));
@@ -149,6 +168,7 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		this.gridReg = gridReg;
 		this.sourceTRTs = sourceTRTs;
 		this.sourceGridIndexes = sourceGridIndexes;
+		this.sectAssociations = sectAssociations;
 	}
 
 	@Override
@@ -199,6 +219,25 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		return sourceTRTs[sourceIndex];
 	}
 	
+	/**
+	 * @param sectionIndex
+	 * @return set of associated grid indexes, or empty set if none
+	 */
+	public Set<Integer> getAssociatedGridIndexes(int sectionIndex) {
+		Set<Integer> ret = sectAssociations.get(sectionIndex);
+		if (ret == null)
+			return Set.of();
+		return ret;
+	}
+	
+	/**
+	 * 
+	 * @return reference (empty) MFD for use determining magnitude range and discreization of getMFD methods
+	 */
+	public IncrementalMagFreqDist getRefMFD() {
+		return refMFD;
+	}
+	
 	public ImmutableList<GriddedRupture> getRuptures(TectonicRegionType tectonicRegionType, int gridIndex) {
 		if (tectonicRegionType == null) {
 			ImmutableList.Builder<GriddedRupture> listBuilder = ImmutableList.builder();
@@ -210,6 +249,21 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		if (trtList == null)
 			return ImmutableList.of();
 		return trtList.get(gridIndex);
+	}
+	
+	public ImmutableList<GriddedRupture> getAssociatedRuptures(int sectionIndex) {
+		Set<Integer> gridIndexes = sectAssociations.get(sectionIndex);
+		if (gridIndexes == null)
+			return ImmutableList.of();
+		ImmutableList.Builder<GriddedRupture> ret = ImmutableList.builder();
+		
+		for (int gridIndex : gridIndexes)
+			for (TectonicRegionType trt : getTectonicRegionTypes())
+				for (GriddedRupture rup : getRuptures(trt, gridIndex))
+					if (rup.associatedSections != null && Ints.contains(rup.associatedSections, sectionIndex))
+						ret.add(rup);
+		
+		return ret.build();
 	}
 	
 	public ImmutableList<GriddedRupture> getRupturesSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex) {
@@ -418,32 +472,21 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 	public void setArhiveRounding(boolean round) {
 		this.round = true;
 	}
-
-	@Override
-	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-		if (gridReg != null) {
-			// write the gridded region
-			FileBackedModule.initEntry(zout, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
-			Feature regFeature = gridReg.toFeature();
-			OutputStreamWriter writer = new OutputStreamWriter(zout);
-			Feature.write(regFeature, writer);
-			writer.flush();
-			zout.flush();
-			zout.closeEntry();
-		}
-		
-		// write grid locations
+	
+	public CSVFile<String> buildGridLocsCSV() {
 		CSVFile<String> gridCSV = new CSVFile<>(true);
 		gridCSV.addLine("Grid Index", "Latitude", "Longitude");
 		for (int i=0; i<getNumLocations(); i++) {
 			Location loc = getLocation(i);
 			gridCSV.addLine(i+"", getFixedPrecision(loc.lat, locRoundScale), getFixedPrecision(loc.lon, locRoundScale));
 		}
-		CSV_BackedModule.writeToArchive(gridCSV, zout, entryPrefix, ARCHIVE_GRID_LOCS_FILE_NAME);
-		
-		// write gridded rupture list
+		return gridCSV;
+	}
+	
+	public void writeGridSourcesCSV(ZipOutputStream zout, String entryName) throws IOException {
 		// use CSVWriter for efficiency
-		FileBackedModule.initEntry(zout, entryPrefix, ARCHIVE_GRID_SOURCES_FILE_NAME);
+		ZipEntry entry = new ZipEntry(entryName);
+		zout.putNextEntry(entry);
 		CSVWriter rupCSV = new CSVWriter(zout, false);
 		List<String> header = new ArrayList<>();
 		header.add("Grid Index");
@@ -455,6 +498,8 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		header.add("Upper Depth (km)");
 		header.add("Lower Depth (km)");
 		header.add("Length (km)");
+		header.add("Hypocentral Depth (km)");
+		header.add("Hypocentral DAS (km)");
 		header.add("Tectonic Regime");
 		int maxNumAssoc = 0;
 		for (TectonicRegionType trt : getTectonicRegionTypes())
@@ -490,6 +535,8 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 					line.add(getSigFigs(rup.upperDepth, depthRoundSigFigs));
 					line.add(getSigFigs(rup.lowerDepth, depthRoundSigFigs));
 					line.add(getSigFigs(rup.length, lenRoundSigFigs));
+					line.add(getSigFigs(rup.hypocentralDepth, depthRoundSigFigs));
+					line.add(getSigFigs(rup.hypocentralDAS, lenRoundSigFigs));
 					line.add(rup.tectonicRegionType.name());
 					if (rup.associatedSections != null) {
 						for (int s=0; s<rup.associatedSections.length; s++) {
@@ -503,6 +550,26 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		}
 		rupCSV.flush();
 		zout.closeEntry();
+	}
+
+	@Override
+	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+		if (gridReg != null) {
+			// write the gridded region
+			FileBackedModule.initEntry(zout, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
+			Feature regFeature = gridReg.toFeature();
+			OutputStreamWriter writer = new OutputStreamWriter(zout);
+			Feature.write(regFeature, writer);
+			writer.flush();
+			zout.flush();
+			zout.closeEntry();
+		}
+		
+		// write grid locations
+		CSV_BackedModule.writeToArchive(buildGridLocsCSV(), zout, entryPrefix, ARCHIVE_GRID_LOCS_FILE_NAME);
+		
+		// write gridded rupture list
+		writeGridSourcesCSV(zout, ArchivableModule.getEntryName(entryPrefix, ARCHIVE_GRID_SOURCES_FILE_NAME));
 	}
 	
 	private static boolean isRangeString(String str) {
@@ -558,20 +625,8 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 			return val+"";
 		return DataUtils.roundSigFigs(val, sigFigs)+"";
 	}
-
-	@Override
-	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
-		// load gridded region (if supplied)
-		GriddedRegion gridReg = null;
-		if (FileBackedModule.hasEntry(zip, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)) {
-			BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
-			InputStreamReader regionReader = new InputStreamReader(regionIS);
-			Feature regFeature = Feature.read(regionReader);
-			gridReg = GriddedRegion.fromFeature(regFeature);
-		}
-		
-		// load grid location CSV
-		CSVFile<String> gridCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, ARCHIVE_GRID_LOCS_FILE_NAME);
+	
+	public static LocationList loadGridLocsCSV(CSVFile<String> gridCSV, GriddedRegion gridReg) {
 		LocationList fileLocs = new LocationList();
 		for (int row=1; row<gridCSV.getNumRows(); row++) {
 			int index = row-1;
@@ -583,32 +638,29 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 			double lon = gridCSV.getDouble(row, 2);
 			fileLocs.add(new Location(lat, lon));
 		}
-		LocationList locs;
-		if (gridReg == null) {
+		if (gridReg == null)
 			// use the CSV file directly
-			locs = fileLocs;
-		} else {
-			// use the gridded region, but validate
-			Preconditions.checkState(gridReg.getNodeCount() == fileLocs.size(),
-					"Gridded region has %s nodes, but %s has %s", gridReg.getNodeCount(), ARCHIVE_GRID_LOCS_FILE_NAME, fileLocs.size());
-			for (int i=0; i<fileLocs.size(); i++) {
-				Location fileLoc = fileLocs.get(i);
-				Location gridLoc = gridReg.getLocation(i);
-				if (!LocationUtils.areSimilar(fileLoc, gridLoc)) {
-					// check rounding
-					Location roundedLoc = new Location(DataUtils.roundFixed(gridLoc.lat, locRoundScale),
-							DataUtils.roundFixed(gridLoc.lon, locRoundScale));
-					Preconditions.checkState(LocationUtils.areSimilar(fileLoc, roundedLoc),
-							"Location mismatch at index=%s between gridded region and %s: %s != %s;"
-							+ "also tried test with rounded form: %s != %s",
-							i, ARCHIVE_GRID_LOCS_FILE_NAME, gridLoc, fileLoc, roundedLoc, fileLoc);
-				}
+			return fileLocs;
+		// use the gridded region, but validate
+		Preconditions.checkState(gridReg.getNodeCount() == fileLocs.size(),
+				"Gridded region has %s nodes, but %s has %s", gridReg.getNodeCount(), ARCHIVE_GRID_LOCS_FILE_NAME, fileLocs.size());
+		for (int i=0; i<fileLocs.size(); i++) {
+			Location fileLoc = fileLocs.get(i);
+			Location gridLoc = gridReg.getLocation(i);
+			if (!LocationUtils.areSimilar(fileLoc, gridLoc)) {
+				// check rounding
+				Location roundedLoc = new Location(DataUtils.roundFixed(gridLoc.lat, locRoundScale),
+						DataUtils.roundFixed(gridLoc.lon, locRoundScale));
+				Preconditions.checkState(LocationUtils.areSimilar(fileLoc, roundedLoc),
+						"Location mismatch at index=%s between gridded region and %s: %s != %s;"
+								+ "also tried test with rounded form: %s != %s",
+								i, ARCHIVE_GRID_LOCS_FILE_NAME, gridLoc, fileLoc, roundedLoc, fileLoc);
 			}
-			locs = gridReg.getNodeList();
 		}
-		
-		// load ruptures themselves
-		CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(zip, entryPrefix, ARCHIVE_GRID_SOURCES_FILE_NAME);
+		return gridReg.getNodeList();
+	}
+	
+	public static EnumMap<TectonicRegionType, List<List<GriddedRupture>>> loadGridSourcesCSV(CSVReader rupSectsCSV, LocationList locs) {
 		rupSectsCSV.read(); // skip header row
 		EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists = new EnumMap<>(TectonicRegionType.class);
 		while (true) {
@@ -641,6 +693,21 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 			FaultUtils.assertValidDepth(lowerDepth);
 			double length = row.getDouble(col++);
 			Preconditions.checkState(Double.isFinite(length) && length >= 0d, "Bad length=%s", length);
+			String hypocentralDepthStr = row.get(col++);
+			double hypocentralDepth = hypocentralDepthStr.isBlank() ? Double.NaN : Double.parseDouble(hypocentralDepthStr);
+			if (!Double.isNaN(hypocentralDepth)) {
+				FaultUtils.assertValidDepth(hypocentralDepth);
+				Preconditions.checkState((float)hypocentralDepth >= (float)upperDepth,
+						"Hypocentral depth (%s) must be at or below upper depth (%s)", (float)hypocentralDepth, (float)upperDepth);
+				Preconditions.checkState((float)hypocentralDepth <= (float)lowerDepth,
+						"Hypocentral depth (%s) must be at or above lower depth (%s)", (float)hypocentralDepth, (float)lowerDepth);
+			}
+			String hypocentralDASStr = row.get(col++);
+			double hypocentralDAS = hypocentralDASStr.isBlank() ? Double.NaN : Double.parseDouble(hypocentralDASStr);
+			if (!Double.isNaN(hypocentralDAS)) {
+				Preconditions.checkState(hypocentralDAS >= 0d && (float)hypocentralDAS <= (float)length,
+						"Hypocentral DAS (%s) must be >= 0 and <= len (%s)", (float)hypocentralDAS, (float)length);
+			}
 			TectonicRegionType tectonicRegionType = TectonicRegionType.valueOf(row.get(col++));
 			int colsLeft = row.columns() - col;
 			int[] associatedSections = null;
@@ -677,8 +744,8 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 				}
 			}
 			GriddedRupture rup = new GriddedRupture(gridIndex, locs.get(gridIndex), mag, rate, rake, dip,
-					strike, strikeRange, upperDepth, lowerDepth, length, tectonicRegionType,
-					associatedSections, associatedSectionFracts);
+					strike, strikeRange, upperDepth, lowerDepth, length, hypocentralDepth, hypocentralDAS,
+					tectonicRegionType, associatedSections, associatedSectionFracts);
 			if (!trtRuptureLists.containsKey(tectonicRegionType)) {
 				List<List<GriddedRupture>> ruptureLists = new ArrayList<>(locs.size());
 				for (int i=0; i<locs.size(); i++)
@@ -690,6 +757,27 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 				ruptureLists.set(gridIndex, new ArrayList<>());
 			ruptureLists.get(gridIndex).add(rup);
 		}
+		return trtRuptureLists;
+	}
+
+	@Override
+	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		// load gridded region (if supplied)
+		GriddedRegion gridReg = null;
+		if (FileBackedModule.hasEntry(zip, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)) {
+			BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
+			InputStreamReader regionReader = new InputStreamReader(regionIS);
+			Feature regFeature = Feature.read(regionReader);
+			gridReg = GriddedRegion.fromFeature(regFeature);
+		}
+		
+		// load grid location CSV
+		CSVFile<String> gridCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, ARCHIVE_GRID_LOCS_FILE_NAME);
+		LocationList locs = loadGridLocsCSV(gridCSV, gridReg);
+		
+		// load ruptures themselves
+		CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(zip, entryPrefix, ARCHIVE_GRID_SOURCES_FILE_NAME);
+		EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists = loadGridSourcesCSV(rupSectsCSV, locs);
 		setAll(gridReg, locs, trtRuptureLists);
 	}
 	
@@ -716,6 +804,8 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		public final double upperDepth;
 		public final double lowerDepth;
 		public final double length;
+		public final double hypocentralDepth;
+		public final double hypocentralDAS;
 		// TECTONIC REGIME
 		public final TectonicRegionType tectonicRegionType;
 		// ASSOCIATIONS
@@ -726,14 +816,15 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		
 		public GriddedRupture(int gridIndex, Location location, double magnitude, double rate, double rake, double dip,
 				double strike, Range<Double> strikeRange, double upperDepth, double lowerDepth, double length,
-				TectonicRegionType tectonicRegionType) {
+				double hypocentralDepth, double hypocentralDAS, TectonicRegionType tectonicRegionType) {
 			this(gridIndex, location, magnitude, rate, rake, dip, strike, strikeRange,
-					upperDepth, lowerDepth, length, tectonicRegionType, null, null);
+					upperDepth, lowerDepth, length, hypocentralDepth, hypocentralDAS, tectonicRegionType, null, null);
 		}
 		
 		public GriddedRupture(int gridIndex, Location location, double magnitude, double rate, double rake, double dip,
 				double strike, Range<Double> strikeRange, double upperDepth, double lowerDepth, double length,
-				TectonicRegionType tectonicRegionType, int[] associatedSections, double[] associatedSectionFracts) {
+				double hypocentralDepth, double hypocentralDAS, TectonicRegionType tectonicRegionType,
+				int[] associatedSections, double[] associatedSectionFracts) {
 			super();
 			this.gridIndex = gridIndex;
 			this.location = location;
@@ -746,6 +837,8 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 			this.upperDepth = upperDepth;
 			this.lowerDepth = lowerDepth;
 			this.length = length;
+			this.hypocentralDepth = hypocentralDepth;
+			this.hypocentralDAS = hypocentralDAS;
 			this.tectonicRegionType = tectonicRegionType;
 			this.associatedSections = associatedSections;
 			this.associatedSectionFracts = associatedSectionFracts;
@@ -754,13 +847,22 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		public GriddedRupture copyNewRate(double modRate) {
 			return new GriddedRupture(gridIndex, location, magnitude, modRate,
 					rake, dip, strike, strikeRange, upperDepth, lowerDepth,
-					length, tectonicRegionType, associatedSections, associatedSectionFracts);
+					length, hypocentralDepth, hypocentralDAS, tectonicRegionType, associatedSections, associatedSectionFracts);
 		}
 		
 		public GriddedRupture copyNewGridIndex(int gridIndex) {
 			return new GriddedRupture(gridIndex, location, magnitude, rate,
 					rake, dip, strike, strikeRange, upperDepth, lowerDepth,
-					length, tectonicRegionType, associatedSections, associatedSectionFracts);
+					length, hypocentralDepth, hypocentralDAS, tectonicRegionType, associatedSections, associatedSectionFracts);
+		}
+		
+		public double getFractAssociated(int sectionIndex) {
+			if (associatedSections == null)
+				return 0d;
+			for (int i=0; i<associatedSections.length; i++)
+				if (associatedSections[i] == sectionIndex)
+					return associatedSectionFracts[i];
+			return 0d;
 		}
 
 		@Override
@@ -776,7 +878,7 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 			int result = 1;
 			result = prime * result + Arrays.hashCode(associatedSectionFracts);
 			result = prime * result + Arrays.hashCode(associatedSections);
-			result = prime * result + Objects.hash(dip, gridIndex, length, lowerDepth, magnitude, rake,
+			result = prime * result + Objects.hash(dip, gridIndex, hypocentralDAS, hypocentralDepth, length, lowerDepth, magnitude, rake,
 					strike, strikeRange, tectonicRegionType, upperDepth);
 			return result;
 		}
@@ -796,6 +898,8 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 					&& Arrays.equals(associatedSections, other.associatedSections)
 					&& Double.doubleToLongBits(dip) == Double.doubleToLongBits(other.dip)
 					&& gridIndex == other.gridIndex
+					&& Double.doubleToLongBits(hypocentralDAS) == Double.doubleToLongBits(other.hypocentralDAS)
+					&& Double.doubleToLongBits(hypocentralDepth) == Double.doubleToLongBits(other.hypocentralDepth)
 					&& Double.doubleToLongBits(length) == Double.doubleToLongBits(other.length)
 					&& Double.doubleToLongBits(lowerDepth) == Double.doubleToLongBits(other.lowerDepth)
 					&& Double.doubleToLongBits(magnitude) == Double.doubleToLongBits(other.magnitude)
@@ -803,20 +907,6 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 					&& Double.doubleToLongBits(strike) == Double.doubleToLongBits(other.strike)
 					&& Objects.equals(strikeRange, other.strikeRange) && tectonicRegionType == other.tectonicRegionType
 					&& Double.doubleToLongBits(upperDepth) == Double.doubleToLongBits(other.upperDepth);
-		}
-		
-		private double[] getCompDoubles() {
-			return new double[] {
-				magnitude,
-				rake,
-				dip,
-				strike,
-				strikeRange == null ? Double.NaN : strikeRange.lowerEndpoint(),
-				strikeRange == null ? Double.NaN : strikeRange.upperEndpoint(),
-				upperDepth,
-				lowerDepth,
-				length
-			};
 		}
 
 		@Override
@@ -856,6 +946,12 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 			result = Double.compare(this.length, other.length);
 			if (result != 0) return result;
 
+			result = Double.compare(this.hypocentralDAS, other.hypocentralDAS);
+			if (result != 0) return result;
+
+			result = Double.compare(this.hypocentralDepth, other.hypocentralDepth);
+			if (result != 0) return result;
+
 			result = this.tectonicRegionType.compareTo(other.tectonicRegionType);
 			if (result != 0) return result;
 
@@ -867,6 +963,9 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		}
 
 		private int compareIntArrays(int[] a, int[] b) {
+			if (a == null && b == null) return 0;
+			if (a == null && b != null) return -1;
+			if (a != null && b == null) return 1;
 			int len = Math.min(a.length, b.length);
 			for (int i = 0; i < len; i++) {
 				int result = Integer.compare(a[i], b[i]);
@@ -876,6 +975,9 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		}
 
 		private int compareDoubleArrays(double[] a, double[] b) {
+			if (a == null && b == null) return 0;
+			if (a == null && b != null) return -1;
+			if (a != null && b == null) return 1;
 			int len = Math.min(a.length, b.length);
 			for (int i = 0; i < len; i++) {
 				int result = Double.compare(a[i], b[i]);
@@ -912,6 +1014,14 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 				surfBuilder.upperDepth(rup.upperDepth);
 				surfBuilder.lowerDepth(rup.lowerDepth);
 				surfBuilder.length(rup.length);
+				if (Double.isFinite(rup.hypocentralDepth))
+					surfBuilder.hypocentralDepth(rup.hypocentralDepth);
+				else
+					surfBuilder.fractionalHypocentralDepth(0.5d);
+				if (Double.isFinite(rup.hypocentralDAS))
+					surfBuilder.das(rup.hypocentralDAS);
+				else
+					surfBuilder.fractionalDAS(0.5d);
 				RuptureSurface[] surfs = surfBuilder.build(bgRupType);
 				double rate = rup.rate;
 				if (aftershockFilter != null)
@@ -1175,10 +1285,16 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 			double latSpacing = unionGridReg.getLatSpacing();
 			double lonSpacing = unionGridReg.getLonSpacing();
 			Location anchor = unionGridReg.getLocation(0);
+			List<String> unionedNames = new ArrayList<>();
+			unionedNames.add(unionGridReg.getName());
 			for (int i=1; unionGridReg != null && i<gridLists.length; i++) {
 				GriddedRegion myReg = gridLists[i].getGriddedRegion();
-				if (myReg == null || (float)myReg.getLatSpacing() != (float)latSpacing
+				if (myReg == null) {
+					System.err.println("WARNING: region "+i+" is null, won't use regions when combining");
+					unionGridReg = null;
+				} else if ((float)myReg.getLatSpacing() != (float)latSpacing
 							|| (float)myReg.getLonSpacing() != (float)lonSpacing) {
+					System.err.println("WARNING: region "+i+" ("+myReg.getName()+") has different spacing than previous region(s)");
 					unionGridReg = null;
 				} else {
 					if (myReg.equals(unionGridReg))
@@ -1197,8 +1313,11 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 					Region unionReg = Region.union(unionGridReg, myReg);
 					if (unionReg == null) {
 						unionGridReg = null;
+						System.err.println("WARNING: couldn't union region "+i+" ("+myReg.getName()+") with prior region(s): "
+								+Joiner.on("; ").join(unionedNames));
 						break;
 					}
+					unionedNames.add(myReg.getName());
 					unionGridReg = new GriddedRegion(unionReg, latSpacing, lonSpacing, anchor);
 				}
 			}
