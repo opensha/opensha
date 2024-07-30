@@ -9,6 +9,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.DoubleBinaryOperator;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -89,44 +90,58 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	@Override
 	default ProbEqkSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType) {
-		return getSource(getTectonicRegionType(), gridIndex, duration, aftershockFilter, bgRupType);
+		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType())
+			return getSource(gridIndex, duration, aftershockFilter, bgRupType);
+		return null;
 	}
 
 	@Override
 	default ProbEqkSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType) {
-		return getSourceSubSeisOnFault(getTectonicRegionType(), gridIndex, duration, aftershockFilter, bgRupType);
+		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType())
+			return getSourceSubSeisOnFault(gridIndex, duration, aftershockFilter, bgRupType);
+		return null;
 	}
 
 	@Override
 	default ProbEqkSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType) {
-		return getSourceUnassociated(getTectonicRegionType(), gridIndex, duration, aftershockFilter, bgRupType);
+		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType())
+			return getSourceUnassociated(gridIndex, duration, aftershockFilter, bgRupType);
+		return null;
 	}
 
 	@Override
-	default EnumSet<TectonicRegionType> getTectonicRegionTypes() {
+	default Set<TectonicRegionType> getTectonicRegionTypes() {
 		return EnumSet.of(getTectonicRegionType());
 	}
 
 	@Override
 	default IncrementalMagFreqDist getMFD_Unassociated(TectonicRegionType tectonicRegionType, int gridIndex) {
-		return getMFD_Unassociated(getTectonicRegionType(), gridIndex);
+		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType())
+			return getMFD_Unassociated( gridIndex);
+		return null;
 	}
 
 	@Override
 	default IncrementalMagFreqDist getMFD_SubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex) {
-		return getMFD_SubSeisOnFault(getTectonicRegionType(), gridIndex);
+		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType())
+			return getMFD_SubSeisOnFault(gridIndex);
+		return null;
 	}
 
 	@Override
 	default IncrementalMagFreqDist getMFD(TectonicRegionType tectonicRegionType, int gridIndex, double minMag) {
-		return getMFD(getTectonicRegionType(), gridIndex, minMag);
+		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType())
+			return getMFD(gridIndex, minMag);
+		return null;
 	}
 
 	@Override
 	default IncrementalMagFreqDist getMFD(TectonicRegionType tectonicRegionType, int gridIndex) {
-		return getMFD(getTectonicRegionType(), gridIndex);
+		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType())
+			return getMFD( gridIndex);
+		return null;
 	}
 
 	@Override
