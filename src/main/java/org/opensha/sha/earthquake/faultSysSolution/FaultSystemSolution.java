@@ -30,11 +30,13 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Maps;
@@ -811,8 +813,27 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return IncrementalMagFreqDist
 	 */
 	public IncrementalMagFreqDist calcNucleationMFD_forRegion(Region region, double minMag, double maxMag, double delta, boolean traceOnly) {
+		return calcNucleationMFD_forRegion(region, minMag, maxMag, delta, traceOnly, null);
+	}
+	
+
+
+	/**
+	 * This gives the total nucleation Mag Freq Dist inside the supplied region.  
+	 * If <code>traceOnly == true</code>, only the rupture trace is examined in computing the fraction of the rupture 
+	 * inside the region.  This preserves rates rather than moRates (can't have both).
+	 * @param region - a Region object
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param delta - width of each mfd bin
+	 * @param traceOnly - if true only fault traces will be used for fraction inside region calculations, otherwise the
+	 * entire rupture surfaces will be used (slower)
+	 * @param trt - tectonic region type, will be compared against a {@link RupSetTectonicRegimes} module if non-null
+	 * @return IncrementalMagFreqDist
+	 */
+	public IncrementalMagFreqDist calcNucleationMFD_forRegion(Region region, double minMag, double maxMag, double delta, boolean traceOnly, TectonicRegionType trt) {
 		int numMag = (int)((maxMag - minMag) / delta+0.5) + 1;
-		return calcNucleationMFD_forRegion(region, minMag, maxMag, numMag, traceOnly);
+		return calcNucleationMFD_forRegion(region, minMag, maxMag, numMag, traceOnly, trt);
 	}
 
 	/**
@@ -827,16 +848,42 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * entire rupture surfaces will be used (slower)
 	 * @return IncrementalMagFreqDist
 	 */
-	public IncrementalMagFreqDist calcNucleationMFD_forRegion(Region region, double minMag, double maxMag, int numMag, boolean traceOnly) {
+	public IncrementalMagFreqDist calcNucleationMFD_forRegion(Region region, double minMag, double maxMag, int numMag,
+			boolean traceOnly) {
+		return calcNucleationMFD_forRegion(region, minMag, maxMag, numMag, traceOnly, null);
+	}
+	
+
+
+	/**
+	 * This gives the total nucleation Mag Freq Dist inside the supplied region.  
+	 * If <code>traceOnly == true</code>, only the rupture trace is examined in computing the fraction of the rupture
+	 * inside the region.  This preserves rates rather than moRates (can't have both).
+	 * @param region - a Region object
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param numMag - number of mags in MFD
+	 * @param traceOnly - if true only fault traces will be used for fraction inside region calculations, otherwise the
+	 * entire rupture surfaces will be used (slower)
+	 * @param trt - tectonic region type, will be compared against a {@link RupSetTectonicRegimes} module if non-null
+	 * @return IncrementalMagFreqDist
+	 */
+	public IncrementalMagFreqDist calcNucleationMFD_forRegion(Region region, double minMag, double maxMag, int numMag,
+			boolean traceOnly, TectonicRegionType trt) {
 		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
 		double[] fractRupsInside = null;
 		if (region != null)
 			fractRupsInside = rupSet.getFractRupsInsideRegion(region, traceOnly);
+		RupSetTectonicRegimes trts = null;
+		if (trt != null)
+			trts = getRupSet().requireModule(RupSetTectonicRegimes.class);
 		RupMFDsModule mfds = getModule(RupMFDsModule.class);
 		for(int r=0;r<rupSet.getNumRuptures();r++) {
 			double fractInside = 1;
 			if (region != null)
 				fractInside = fractRupsInside[r];
+			if (trt != null && trt != trts.get(r))
+				continue;
 //			if (fractInside < 1)
 //				System.out.println("inside: "+fractInside+"\trate: "+rateInside+"\tID: "+r);
 			if (fractInside > 0d) {
