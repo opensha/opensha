@@ -22,6 +22,7 @@ import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
@@ -88,15 +89,17 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 			for (int r=-1; r<numROI; r++) {
 				Region region = r < 0 ? null : roi.getRegions().get(r);
 				
+				TectonicRegionType trt = r < 0 || roi.getTRTs() == null ? null : roi.getTRTs().get(r);
+				
 				IncrementalMagFreqDist supraMFD = sol.calcNucleationMFD_forRegion(
-						region, refMFD.getMinX(), refMFD.getMaxX(), refMFD.getDelta(), false);
+						region, refMFD.getMinX(), refMFD.getMaxX(), refMFD.getDelta(), false, trt);
 				if (r < 0)
 					addProcess(supraTotalMFDs, supraMFD, true);
 				else
 					addProcess(supraRegionalMFDs.get(r), supraMFD, true);
 				
 				if (gridTotalMFDs != null) {
-					IncrementalMagFreqDist gridMFD = calcGridMFD(gridProv, region);
+					IncrementalMagFreqDist gridMFD = calcGridMFD(gridProv, region, trt);
 					IncrementalMagFreqDist sumMFD = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
 					
 					for (int i=0; i<sumMFD.size(); i++)
@@ -156,6 +159,10 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 				}
 			}
 		}
+		
+		public int getNumBranches() {
+			return weights == null ? 0 : weights.size();
+		}
 
 		public synchronized void process(BranchRegionalMFDs mfds) {
 			int numROI = mfds.supraRegionalBranchMFDs == null ? 0 : mfds.supraRegionalBranchMFDs.size();
@@ -196,14 +203,14 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 			}
 		}
 		
-		private IncrementalMagFreqDist calcGridMFD(GridSourceProvider prov, Region region) {
+		private IncrementalMagFreqDist calcGridMFD(GridSourceProvider prov, Region region, TectonicRegionType trt) {
 			SummedMagFreqDist gridMFD = new SummedMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
 			GriddedRegion gridReg = prov.getGriddedRegion();
 			for (int i=0; i<gridReg.getNodeCount(); i++) {
-				IncrementalMagFreqDist nodeMFD = prov.getMFD(i);
-				if (nodeMFD == null)
-					continue;
 				if (region != null && !region.contains(gridReg.getLocation(i)))
+					continue;
+				IncrementalMagFreqDist nodeMFD = prov.getMFD(trt, i);
+				if (nodeMFD == null)
 					continue;
 				gridMFD.addIncrementalMagFreqDist(nodeMFD);
 			}
