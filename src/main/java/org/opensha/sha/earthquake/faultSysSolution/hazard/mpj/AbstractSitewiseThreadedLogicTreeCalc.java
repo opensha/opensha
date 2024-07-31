@@ -8,7 +8,9 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -31,17 +33,19 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
+import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
-import org.opensha.sha.imr.logicTree.ScalarIMR_LogicTreeNode;
+import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
 import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGV_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -55,7 +59,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	private SolutionLogicTree solTree;
 	private LogicTree<?> tree;
 	private boolean hasGMMLevels;
-	private AttenRelRef gmmRef;
+	private Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmmRefs;
 	private double[] periods;
 	private IncludeBackgroundOption gridSeisOp;
 	private boolean cacheGridSources = false;
@@ -73,11 +77,18 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	private NSHMP_GMM_Wrapper[] gmmSiteCaches;
 
 	public AbstractSitewiseThreadedLogicTreeCalc(ExecutorService exec, int numSites, SolutionLogicTree solTree,
-			AttenRelRef gmmRef, double[] periods, IncludeBackgroundOption gridSeisOp, double maxDistance) {
+			Supplier<ScalarIMR> gmmRef, double[] periods,
+					IncludeBackgroundOption gridSeisOp, double maxDistance) {
+		this(exec, numSites, solTree, SolHazardMapCalc.wrapInTRTMap(gmmRef), periods, gridSeisOp, maxDistance);
+	}
+
+	public AbstractSitewiseThreadedLogicTreeCalc(ExecutorService exec, int numSites, SolutionLogicTree solTree,
+			Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmmRefs, double[] periods,
+					IncludeBackgroundOption gridSeisOp, double maxDistance) {
 		this.exec = exec;
 		this.numSites = numSites;
 		this.solTree = solTree;
-		this.gmmRef = gmmRef;
+		this.gmmRefs = gmmRefs;
 		this.periods = periods;
 		this.gridSeisOp = gridSeisOp;
 		this.maxDistance = maxDistance;
@@ -116,11 +127,11 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	}
 	
 	private static boolean isGMMLevel(LogicTreeLevel<?> level) {
-		return ScalarIMR_LogicTreeNode.class.isAssignableFrom(level.getType()) ||
+		return ScalarIMRsLogicTreeNode.class.isAssignableFrom(level.getType()) ||
 				ScalarIMR_ParamsLogicTreeNode.class.isAssignableFrom(level.getType());
 	}
 	
-	public abstract Site siteForIndex(int siteIndex, ScalarIMR gmm);
+	public abstract Site siteForIndex(int siteIndex, Map<TectonicRegionType, ScalarIMR> gmms);
 	
 	public abstract void debug(String message);
 	
@@ -186,13 +197,20 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 			erf.updateForecast();
 		}
 		
-		Supplier<ScalarIMR> gmmSupplier = MPJ_LogicTreeHazardCalc.getGMM_Supplier(branch, gmmRef);
+		Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmmSuppliers = MPJ_LogicTreeHazardCalc.getGMM_Suppliers(branch, gmmRefs);
 		
 		boolean doGmmInputCache = false;
 		if (hasGMMLevels && this.doGmmInputCache) {
 			// see if we're a nshmp-haz wrapped gmm
-			ScalarIMR gmm = gmmSupplier.get();
-			doGmmInputCache = gmm instanceof NSHMP_GMM_Wrapper;
+			for (Supplier<ScalarIMR> gmmSupplier : gmmSuppliers.values()) {
+				ScalarIMR gmm = gmmSupplier.get();
+				if (gmm instanceof NSHMP_GMM_Wrapper) {
+					doGmmInputCache = true;
+				} else {
+					doGmmInputCache = false;
+					break;
+				}
+			}
 		}
 		
 		Deque<DistCachedERFWrapper> erfDeque = new ArrayDeque<>();
@@ -229,7 +247,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 		List<Future<DiscretizedFunc[]>> futures = new ArrayList<>(siteIndexes.length);
 		for (int s=0; s<siteIndexes.length; s++) {
 			int siteIndex = siteIndexes[s];
-			SiteCalcCall call = new SiteCalcCall(erf, siteIndex, gmmSupplier, erfDeque);
+			SiteCalcCall call = new SiteCalcCall(erf, siteIndex, gmmSuppliers, erfDeque);
 			if (doGmmInputCache)
 				call.cacheSupplier = gmmSiteCaches[s];
 			
@@ -276,7 +294,9 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 			// TODO: support more complicated filters
 			Collection<SourceFilter> sourceFilters = Collections.singleton(new FixedDistanceCutoffFilter(maxDistance));
 			
-			Site site = siteForIndex(siteIndex, cache);
+			EnumMap<TectonicRegionType, ScalarIMR> gmmMap = new EnumMap<>(TectonicRegionType.class);
+			gmmMap.put(TectonicRegionType.ACTIVE_SHALLOW, cache);
+			Site site = siteForIndex(siteIndex, gmmMap);
 			
 			cache.setSite(site);
 			
@@ -298,34 +318,38 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 		
 		private FaultSystemSolutionERF fssERF;
 		private int siteIndex;
-		private Supplier<ScalarIMR> gmmSupplier;
+		private Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmmSuppliers;
 		private Deque<DistCachedERFWrapper> erfDeque;
 		
 		private NSHMP_GMM_Wrapper cacheSupplier;
 
-		private SiteCalcCall(FaultSystemSolutionERF fssERF, int siteIndex, Supplier<ScalarIMR> gmmSupplier, Deque<DistCachedERFWrapper> erfDeque) {
+		private SiteCalcCall(FaultSystemSolutionERF fssERF, int siteIndex,
+				Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmmSuppliers,
+				Deque<DistCachedERFWrapper> erfDeque) {
 			this.fssERF = fssERF;
 			this.siteIndex = siteIndex;
-			this.gmmSupplier = gmmSupplier;
+			this.gmmSuppliers = gmmSuppliers;
 			this.erfDeque = erfDeque;
 		}
 
 		@Override
 		public DiscretizedFunc[] call() throws Exception {
-			ScalarIMR gmm = gmmSupplier.get();
-			Site site = siteForIndex(siteIndex, gmm);
-			AbstractERF erf;
-			if (cacheSupplier != null && gmm instanceof NSHMP_GMM_Wrapper) {
-				gmm.setSite(site);
-				NSHMP_GMM_Wrapper nshmpGmm = (NSHMP_GMM_Wrapper)gmm;
-				nshmpGmm.setCacheInputsPerRupture(true);
-				nshmpGmm.copyPerRuptureCacheFrom(cacheSupplier);
-				erf = fssERF; // just use the FSS ERF as everything is already cached anyway
-			} else {
-				erf = checkOutERF(fssERF, erfDeque);
+			Map<TectonicRegionType, ScalarIMR> gmms = SolHazardMapCalc.getGmmInstances(gmmSuppliers);
+			Site site = siteForIndex(siteIndex, gmms);
+			AbstractERF erf = null;
+			for (ScalarIMR gmm : gmms.values()) {
+				if (cacheSupplier != null && gmm instanceof NSHMP_GMM_Wrapper) {
+					gmm.setSite(site);
+					NSHMP_GMM_Wrapper nshmpGmm = (NSHMP_GMM_Wrapper)gmm;
+					nshmpGmm.setCacheInputsPerRupture(true);
+					nshmpGmm.copyPerRuptureCacheFrom(cacheSupplier);
+					if (erf == null)
+						// just use the FSS ERF as everything is already cached anyway
+						erf = fssERF;
+				} else {
+					erf = checkOutERF(fssERF, erfDeque);
+				}
 			}
-			
-			ScalarIMR gmpe = gmmSupplier.get();
 			
 			DiscretizedFunc[] curves = new DiscretizedFunc[periods.length];
 			
@@ -333,25 +357,17 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 			calc.setMaxSourceDistance(maxDistance); // TODO: support more complicated filters (here and above when caching)
 			
 			for (int p=0; p<periods.length; p++) {
-				if (periods[p] == -1d) {
-					gmpe.setIntensityMeasure(PGV_Param.NAME);
-				} else if (periods[p] == 0d) {
-					gmpe.setIntensityMeasure(PGA_Param.NAME);
-				} else {
-					Preconditions.checkState(periods[p] > 0d);
-					gmpe.setIntensityMeasure(SA_Param.NAME);
-					SA_Param.setPeriodInSA_Param(gmpe.getIntensityMeasure(), periods[p]);
-				}
+				SolHazardMapCalc.setIMforPeriod(gmms, periods[p]);
 				
 				DiscretizedFunc logHazCurve = logXVals[p].deepClone();
 				
-				calc.getHazardCurve(logHazCurve, site, gmpe, erf);
+				calc.getHazardCurve(logHazCurve, site, gmms, erf);
 				
 				double sumY = logHazCurve.calcSumOfY_Vals();
 				if (!Double.isFinite(sumY) || sumY <= 0d) {
 					System.err.println("Hazard curve is non-finite or zero. sumY="+sumY);
 					System.err.println("\tSite: "+site.getName()+", "+site.getLocation());
-					System.err.println("\tGMPE: "+gmpe.getName());
+//					System.err.println("\tGMPE: "+gmpe.getName());
 					System.err.println("\tLog Curve:\n"+logHazCurve);
 				}
 				Preconditions.checkState(Double.isFinite(sumY), "Non-finite hazard curve");

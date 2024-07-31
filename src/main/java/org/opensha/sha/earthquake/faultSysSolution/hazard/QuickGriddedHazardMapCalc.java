@@ -6,7 +6,9 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -23,6 +25,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -41,6 +44,7 @@ import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -68,7 +72,7 @@ import com.google.common.base.Stopwatch;
  */
 public class QuickGriddedHazardMapCalc {
 	
-	private Supplier<ScalarIMR> gmpeSupplier;
+	private Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeSuppliers;
 	private double period;
 	private DiscretizedFunc xVals;
 	private double maxDist;
@@ -93,7 +97,22 @@ public class QuickGriddedHazardMapCalc {
 	 */
 	public QuickGriddedHazardMapCalc(Supplier<ScalarIMR> gmpeSupplier, double period, DiscretizedFunc xVals,
 			double maxDist) {
-		this(gmpeSupplier, period, xVals, maxDist, NUM_DISCR_DEFAULT);
+		this(SolHazardMapCalc.wrapInTRTMap(gmpeSupplier), period, xVals, maxDist);
+	}
+	
+
+
+	/**
+	 * This constructor uses the default number of interpolation points (see {@link #NUM_DISCR_DEFAULT})
+	 * 
+	 * @param gmpeSupplier GMM suplier, such as an {@link AttenRelRef}
+	 * @param period calculation period
+	 * @param xVals x values
+	 * @param maxDist maximum site-source distance in km
+	 */
+	public QuickGriddedHazardMapCalc(Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeSuppliers, double period, DiscretizedFunc xVals,
+			double maxDist) {
+		this(gmpeSuppliers, period, xVals, maxDist, NUM_DISCR_DEFAULT);
 	}
 
 	/**
@@ -106,7 +125,20 @@ public class QuickGriddedHazardMapCalc {
 	 */
 	public QuickGriddedHazardMapCalc(Supplier<ScalarIMR> gmpeSupplier, double period, DiscretizedFunc xVals,
 			double maxDist, int numDiscr) {
-		this.gmpeSupplier = gmpeSupplier;
+		this(SolHazardMapCalc.wrapInTRTMap(gmpeSupplier), period, xVals, maxDist, numDiscr);
+	}
+
+	/**
+	 * 
+	 * @param gmpeSupplier GMM suplier, such as an {@link AttenRelRef}
+	 * @param period calculation period
+	 * @param xVals x values
+	 * @param maxDist maximum site-source distance in km
+	 * @param numDiscr number of interpolation points
+	 */
+	public QuickGriddedHazardMapCalc(Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeSuppliers, double period, DiscretizedFunc xVals,
+			double maxDist, int numDiscr) {
+		this.gmpeSuppliers = gmpeSuppliers;
 		this.period = period;
 		this.xVals = xVals;
 		this.maxDist = maxDist;
@@ -263,18 +295,18 @@ public class QuickGriddedHazardMapCalc {
 		@Override
 		public void run() {
 			try {
-				ScalarIMR gmpe = gmpeSupplier.get();
-				if (period == 0d) {
-					gmpe.setIntensityMeasure(PGA_Param.NAME);
-				} else {
-					gmpe.setIntensityMeasure(SA_Param.NAME);
-					SA_Param.setPeriodInSA_Param(gmpe.getIntensityMeasure(), period);
-				}
+				Map<TectonicRegionType, ScalarIMR> gmpeMap = new EnumMap<>(TectonicRegionType.class);
 				
-				Site testSite = new Site(new Location(0d, 0d));
-				for (Parameter<?> param : gmpe.getSiteParams())
-					testSite.addParameter(param);
-				gmpe.setSite(testSite);
+				for (TectonicRegionType trt : gridProv.getTectonicRegionTypes()) {
+					Supplier<ScalarIMR> gmmSupplier = gmpeSuppliers.get(trt);
+					Preconditions.checkNotNull(gmmSupplier, "No GMPE supplied for TRT: %s", trt);
+					ScalarIMR gmm = gmmSupplier.get();
+					SolHazardMapCalc.setIMforPeriod(gmm, period);
+					Site testSite = new Site(new Location(0d, 0d));
+					testSite.addParameterList(gmm.getSiteParams());
+					gmm.setSite(testSite);
+					gmpeMap.put(trt, gmm);
+				}
 				
 				double[] xValArray = new double[logXVals.size()];
 				for (int i=0; i<xValArray.length; i++)
@@ -297,6 +329,9 @@ public class QuickGriddedHazardMapCalc {
 						sourceID = sourceIndexes.pop();
 					}
 					ProbEqkSource source = gridProv.getSource(sourceID, 1d, null, BackgroundRupType.POINT);
+					
+					TectonicRegionType trt = source.getTectonicRegionType();
+					ScalarIMR gmpe = gmpeMap.get(trt);
 					
 					quickSourceCalc(gridReg, source, gmpe, curves);
 				}

@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -57,8 +58,9 @@ import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnP
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
-import org.opensha.sha.imr.logicTree.ScalarIMR_LogicTreeNode;
+import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
 import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
@@ -84,8 +86,11 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	static final double SKIP_MAX_DIST_DEFAULT = 300;
 	private double skipMaxSiteDist = SKIP_MAX_DIST_DEFAULT;
 	
-	static AttenRelRef GMPE_DEFAULT = AttenRelRef.ASK_2014;
-	private AttenRelRef gmpeRef = GMPE_DEFAULT;
+	static AttenRelRef CRUSTAL_GMPE_DEFAULT = AttenRelRef.ASK_2014;
+	static AttenRelRef STABLE_GMPE_DEFAULT = AttenRelRef.ASK_2014; // TODO
+	static AttenRelRef INTERFACE_GMPE_DEFAULT = AttenRelRef.PSBAH_2020_GLOBAL_INTERFACE;
+	static AttenRelRef SLAB_GMPE_DEFAULT = AttenRelRef.PSBAH_2020_GLOBAL_SLAB;
+	private Map<TectonicRegionType, AttenRelRef> gmmRefs;
 	
 //	static final double[] PERIODS_DEFAULT = { 0d, 0.2d, 1d };
 	public static final double[] PERIODS_DEFAULT = { 0d, 1d };
@@ -161,8 +166,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		if (cmd.hasOption("skip-max-distance"))
 			skipMaxSiteDist = Double.parseDouble(cmd.getOptionValue("skip-max-distance"));
 		
-		if (cmd.hasOption("gmpe"))
-			gmpeRef = AttenRelRef.valueOf(cmd.getOptionValue("gmpe"));
+		gmmRefs = getGMMs(cmd);
 		
 		if (cmd.hasOption("periods")) {
 			List<Double> periodsList = new ArrayList<>();
@@ -253,7 +257,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				|| gridSeisOp == IncludeBackgroundOption.ONLY)) {
 			quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
 			for (int p=0; p<quickGridCalcs.length; p++)
-				quickGridCalcs[p] = new QuickGriddedHazardMapCalc(gmpeRef, periods[p],
+				quickGridCalcs[p] = new QuickGriddedHazardMapCalc(gmmRefs, periods[p],
 						SolHazardMapCalc.getDefaultXVals(periods[p]), maxDistance);
 		}
 
@@ -283,6 +287,39 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			}
 		}
 		myAverageDir = new File(nodesAverageDir, "rank_"+rank);
+	}
+	
+	static Map<TectonicRegionType, AttenRelRef> getGMMs(CommandLine cmd) {
+		if (cmd.hasOption("gmpe")) {
+			// single
+			AttenRelRef gmpeRef = AttenRelRef.valueOf(cmd.getOptionValue("gmpe"));
+			EnumMap<TectonicRegionType, AttenRelRef> ret = new EnumMap<>(TectonicRegionType.class);
+			ret.put(TectonicRegionType.ACTIVE_SHALLOW, gmpeRef);
+			return ret;
+		}
+		
+		Map<TectonicRegionType, AttenRelRef> gmmRefs = getDefaultGMMs();
+		if (cmd.hasOption("trt-gmpe")) {
+			for (String val : cmd.getOptionValues("gmmRefs")) {
+				Preconditions.checkState(val.contains(":"), "Expected <trt>:<gmm>, can't parse argument: %s", val);
+				int index = val.indexOf(":");
+				String trtName = val.substring(0, index);
+				TectonicRegionType trt = TectonicRegionType.valueOf(trtName);
+				String gmmName = val.substring(index+1);
+				AttenRelRef gmm = AttenRelRef.valueOf(gmmName);
+				gmmRefs.put(trt, gmm);
+			}
+		}
+		return gmmRefs;
+	}
+	
+	static Map<TectonicRegionType, AttenRelRef> getDefaultGMMs() {
+		EnumMap<TectonicRegionType, AttenRelRef> ret = new EnumMap<>(TectonicRegionType.class);
+		ret.put(TectonicRegionType.ACTIVE_SHALLOW, CRUSTAL_GMPE_DEFAULT);
+		ret.put(TectonicRegionType.STABLE_SHALLOW, STABLE_GMPE_DEFAULT);
+		ret.put(TectonicRegionType.SUBDUCTION_INTERFACE, INTERFACE_GMPE_DEFAULT);
+		ret.put(TectonicRegionType.SUBDUCTION_SLAB, SLAB_GMPE_DEFAULT);
+		return ret;
 	}
 	
 	public static final String GRID_REGION_ENTRY_NAME = "gridded_region.geojson";
@@ -590,35 +627,44 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		return ret;
 	}
 	
-	public static Supplier<ScalarIMR> getGMM_Supplier(LogicTreeBranch<?> branch, Supplier<ScalarIMR> upstream) {
+	public static Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> getGMM_Suppliers(
+			LogicTreeBranch<?> branch, Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> upstream) {
 		if (branch == null)
 			return upstream;
 		
-		Supplier<ScalarIMR> supplier;
-		if (branch.hasValue(ScalarIMR_LogicTreeNode.class))
-			supplier = branch.requireValue(ScalarIMR_LogicTreeNode.class);
+		Map<TectonicRegionType, Supplier<ScalarIMR>> suppliers;
+		if (branch.hasValue(ScalarIMRsLogicTreeNode.class))
+			suppliers = new EnumMap<>(branch.requireValue(ScalarIMRsLogicTreeNode.class).getSuppliers());
 		else
-			supplier = upstream;
+			suppliers = new EnumMap<>(upstream);
 		
 		// see if we have any GMM parameter logic tree branches
 		for (int i=0; i<branch.size(); i++) {
 			LogicTreeNode node = branch.getValue(i);
 			if (node instanceof ScalarIMR_ParamsLogicTreeNode) {
 				ScalarIMR_ParamsLogicTreeNode params = (ScalarIMR_ParamsLogicTreeNode)node;
-				Supplier<ScalarIMR> myUpstream = supplier;
-				supplier = new Supplier<ScalarIMR>() {
+				for (TectonicRegionType trt : List.copyOf(suppliers.keySet())) { // wrap in a list as we will be modifying the map
+					Supplier<ScalarIMR> myUpstream = suppliers.get(trt);
+					suppliers.put(trt, new Supplier<ScalarIMR>() {
 
-					@Override
-					public ScalarIMR get() {
-						ScalarIMR imr = myUpstream.get();
-						params.setParams(imr);
-						return imr;
-					}
-				};
+						@Override
+						public ScalarIMR get() {
+							ScalarIMR imr = myUpstream.get();
+							if (params.isApplicableTo(imr)) {
+								params.setParams(imr);
+							} else if (suppliers.size() == 1) {
+								throw new IllegalStateException(
+										"Only have 1 GMM ("+imr.getShortName()+"), and the ScalarIMR_ParamsLogicTreeNode ("
+												+node.getShortName()+") isn't applicable to it?");
+							}
+							return imr;
+						}
+					});
+				}
 			}
 		}
 		
-		return supplier;
+		return suppliers;
 	}
 	
 	private GriddedRegion detectRegion(FaultSystemSolution sol) {
@@ -737,7 +783,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						FaultSystemSolution extSol = new FaultSystemSolution(sol.getRupSet(), sol.getRateForAllRups());
 						extSol.setGridSourceProvider(externalGridProv);
 						
-						externalGriddedCurveCalc = new SolHazardMapCalc(extSol, getGMM_Supplier(branch, gmpeRef), gridRegion,
+						externalGriddedCurveCalc = new SolHazardMapCalc(extSol, getGMM_Suppliers(branch, gmmRefs), gridRegion,
 								IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
 						
 						externalGriddedCurveCalc.setMaxSourceSiteDist(maxDistance);
@@ -752,13 +798,12 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				if (quickGridCalcs != null && combineWithOnlyCurves == null) {
 					if (sol == null)
 						sol = solTree.forBranch(branch);
-					Supplier<ScalarIMR> supplier = getGMM_Supplier(branch, gmpeRef);
 					QuickGriddedHazardMapCalc[] quickGridCalcs = this.quickGridCalcs;
-					if (supplier != gmpeRef) {
+					if (branch.hasValue(ScalarIMRsLogicTreeNode.class) || branch.hasValue(ScalarIMR_ParamsLogicTreeNode.class)) {
 						// need to make custom Ones
 						quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
 						for (int p=0; p<periods.length; p++)
-							quickGridCalcs[p] = new QuickGriddedHazardMapCalc(supplier, periods[p],
+							quickGridCalcs[p] = new QuickGriddedHazardMapCalc(getGMM_Suppliers(branch, gmmRefs), periods[p],
 									SolHazardMapCalc.getDefaultXVals(periods[p]), maxDistance);
 					}
 					debug("Doing quick gridded seismicity calc for "+index);
@@ -815,29 +860,32 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			if (calc == null) {
 				if (sol == null)
 					sol = solTree.forBranch(branch);
-				Supplier<ScalarIMR> gmpeSupplier = getGMM_Supplier(branch, gmpeRef);
-				ScalarIMR gmpe = gmpeSupplier.get();
-				String paramStr = "";
-				for (Parameter<?> param : gmpe.getOtherParams())
-					paramStr += "; "+param.getName()+": "+param.getValue();
+				Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeSuppliers = getGMM_Suppliers(branch, gmmRefs);
+				String gmpeParamsStr = "";
+				if (gmpeSuppliers.size() == 1) {
+					ScalarIMR gmpe = gmpeSuppliers.values().iterator().next().get();
+					gmpeParamsStr = "\n\tGMPE: "+gmpe.getName();
+					for (Parameter<?> param : gmpe.getOtherParams())
+						gmpeParamsStr += "; "+param.getName()+": "+param.getValue();
+				}
 				debug("Calculating hazard curves for "+index+", bgOption="+gridSeisOp.name()
 						+", combineExclude="+(combineWithExcludeCurves != null)
 						+", combineOnly="+(combineWithOnlyCurves != null)
 						+"\n\tBranch: "+branch
-						+"\n\tGMPE: "+gmpe.getName()+paramStr);
+						+gmpeParamsStr);
 				SolHazardMapCalc combineWithCurves = null;
 				if (combineWithExcludeCurves == null && combineWithOnlyCurves == null) {
-					calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, gridSeisOp, applyAftershockFilter, periods);
+					calc = new SolHazardMapCalc(sol, gmpeSuppliers, gridRegion, gridSeisOp, applyAftershockFilter, periods);
 				} else if (combineWithExcludeCurves != null) {
 					// calculate with only gridded seismicity, we'll add in the curves excluding it
 					debug("Reusing fault-based hazard for "+index+", will only compute gridded hazard");
 					combineWithCurves = combineWithExcludeCurves;
-					calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
+					calc = new SolHazardMapCalc(sol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
 				} else if (combineWithOnlyCurves != null) {
 					// calculate without gridded seismicity, we'll add in the curves with it
 					debug("Reusing fault-based hazard for "+index+", will only compute gridded hazard");
 					combineWithCurves = combineWithOnlyCurves;
-					calc = new SolHazardMapCalc(sol, gmpeSupplier, gridRegion, IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
+					calc = new SolHazardMapCalc(sol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
 				}
 				calc.setMaxSourceSiteDist(maxDistance);
 				calc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
@@ -884,8 +932,19 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		}
 	}
 	
+	public static void addCommonOptions(Options ops) {
+		ops.addOption("gm", "gmpe", true, "Sets a single GMPE. Note that this will be overriden if the Logic Tree "
+				+ "supplies GMPE choices. Default is TectonicRegionType-specific.");
+		ops.addOption(null, "trt-gmpe", true, "Sets the GMPE for the given TectonicRegionType in the format :<TRT>:<GMM>. "
+				+ "For example: ACTIVE_SHALLOW:ASK_2014. Note that this will be overriden if the Logic Tree "
+				+ "supplies GMPE choices.");
+		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
+	}
+	
 	public static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
+		
+		addCommonOptions(ops);
 		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "
@@ -898,9 +957,6 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				+ "Default: "+(float)SKIP_MAX_DIST_DEFAULT);
 		ops.addOption("gs", "gridded-seis", true, "Gridded seismicity option. One of "
 				+FaultSysTools.enumOptions(IncludeBackgroundOption.class)+". Default: "+GRID_SEIS_DEFAULT.name());
-		ops.addOption("gm", "gmpe", true, "Sets GMPE. Note that this will be overriden if the Logic Tree "
-				+ "supplies GMPE choices. Default: "+GMPE_DEFAULT.name());
-		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
 		ops.addOption("r", "region", true, "Optional path to GeoJSON file containing a region for which we should compute hazard. "
 				+ "Can be a gridded region or an outline. If not supplied, then one will be detected from the model. If "
 				+ "a zip file is supplied, then it is assumed that the file is a prior hazard calculation zip file and the "

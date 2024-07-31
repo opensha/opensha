@@ -7,7 +7,9 @@ import java.io.File;
 import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.Supplier;
 
@@ -37,6 +39,7 @@ import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.ReturnPeriodUtils;
@@ -69,6 +72,7 @@ import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGV_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
@@ -93,7 +97,7 @@ public class SolHazardMapCalc {
 	}
 	
 	private FaultSystemSolution sol;
-	private Supplier<ScalarIMR> gmpeRef;
+	private Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap;
 	private GriddedRegion region;
 	private double[] periods;
 	
@@ -149,13 +153,57 @@ public class SolHazardMapCalc {
 
 	public SolHazardMapCalc(FaultSystemSolution sol, Supplier<ScalarIMR> gmpeRef, GriddedRegion region,
 			IncludeBackgroundOption backSeisOption, double... periods) {
-		this(sol, gmpeRef, region, backSeisOption, false, periods);
+		this(sol, wrapInTRTMap(gmpeRef), region, backSeisOption, periods);
+	}
+
+	public SolHazardMapCalc(FaultSystemSolution sol, Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap, GriddedRegion region,
+			IncludeBackgroundOption backSeisOption, double... periods) {
+		this(sol, gmpeRefMap, region, backSeisOption, false, periods);
 	}
 
 	public SolHazardMapCalc(FaultSystemSolution sol, Supplier<ScalarIMR> gmpeRef, GriddedRegion region,
 			IncludeBackgroundOption backSeisOption, boolean applyAftershockFilter, double... periods) {
+		this(sol, wrapInTRTMap(gmpeRef), region, backSeisOption, applyAftershockFilter, periods);
+	}
+	
+	public static Map<TectonicRegionType, Supplier<ScalarIMR>> wrapInTRTMap(Supplier<ScalarIMR> gmpeRef) {
+		if (gmpeRef == null)
+			return null;
+		EnumMap<TectonicRegionType, Supplier<ScalarIMR>> ret = new EnumMap<>(TectonicRegionType.class);
+		ret.put(TectonicRegionType.ACTIVE_SHALLOW, gmpeRef);
+		return ret;
+	}
+	
+	public static Map<TectonicRegionType, ScalarIMR> getGmmInstances(Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap) {
+		EnumMap<TectonicRegionType, ScalarIMR> ret = new EnumMap<>(TectonicRegionType.class);
+		for (TectonicRegionType trt : gmpeRefMap.keySet())
+			ret.put(trt, gmpeRefMap.get(trt).get());
+		return ret;
+	}
+	
+	public static ParameterList getDefaultRefSiteParams(Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap) {
+		return getDefaultSiteParams(getGmmInstances(gmpeRefMap));
+	}
+	
+	public static ParameterList getDefaultSiteParams(Map<TectonicRegionType, ScalarIMR> gmpeMap) {
+		if (gmpeMap.size() == 1) {
+			return gmpeMap.values().iterator().next().getSiteParams();
+		} else {
+			ParameterList siteParams = new ParameterList();
+			for (ScalarIMR gmpe: gmpeMap.values()) {
+				for (Parameter<?> param : gmpe.getSiteParams()) {
+					if (!siteParams.containsParameter(param.getName()))
+						siteParams.addParameter(param);
+				}
+			}
+			return siteParams;
+		}
+	}
+
+	public SolHazardMapCalc(FaultSystemSolution sol, Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap, GriddedRegion region,
+			IncludeBackgroundOption backSeisOption, boolean applyAftershockFilter, double... periods) {
 		this.sol = sol;
-		this.gmpeRef = gmpeRef;
+		this.gmpeRefMap = gmpeRefMap;
 		this.region = region;
 		this.backSeisOption = backSeisOption;
 		this.applyAftershockFilter = applyAftershockFilter;
@@ -165,12 +213,13 @@ public class SolHazardMapCalc {
 			Preconditions.checkState(period == -1d || period >= 0d,
 					"supplied map calculation periods must be -1 (PGV), 0 (PGA), or a positive value");
 		
-		if (gmpeRef != null) {
+		if (gmpeRefMap != null) {
 			sites = new ArrayList<>();
-			ScalarIMR gmpe = gmpeRef.get();
+			ParameterList siteParams = getDefaultRefSiteParams(gmpeRefMap);
+			
 			for (Location loc : region.getNodeList()) {
 				Site site = new Site(loc);
-				for (Parameter<?> param : gmpe.getSiteParams())
+				for (Parameter<?> param : siteParams)
 					site.addParameter((Parameter<?>) param.clone());
 				sites.add(site);
 			}
@@ -410,7 +459,9 @@ public class SolHazardMapCalc {
 
 		@Override
 		public void run() {
-			ScalarIMR gmpe = gmpeRef.get();
+			EnumMap<TectonicRegionType, ScalarIMR> gmpeMap = new EnumMap<>(TectonicRegionType.class);
+			for (TectonicRegionType trt : gmpeRefMap.keySet())
+				gmpeMap.put(trt, gmpeRefMap.get(trt).get());
 			
 			HazardCurveCalculator calc = new HazardCurveCalculator();
 			calc.setMaxSourceDistance(maxSiteDist);
@@ -443,7 +494,7 @@ public class SolHazardMapCalc {
 					}
 				}
 				
-				List<DiscretizedFunc> curves = calcSiteCurves(calc, erf, gmpe, site, combineWith, index);
+				List<DiscretizedFunc> curves = calcSiteCurves(calc, erf, gmpeMap, site, combineWith, index);
 				
 				for (int p=0; p<periods.length; p++)
 					curvesList.get(p)[index] = curves.get(p);
@@ -475,15 +526,16 @@ public class SolHazardMapCalc {
 		return !hasSourceWithin;
 	}
 	
-	private List<DiscretizedFunc> calcSiteCurves(HazardCurveCalculator calc, AbstractERF erf, ScalarIMR gmpe, Site site,
+	private List<DiscretizedFunc> calcSiteCurves(HazardCurveCalculator calc, AbstractERF erf,
+			EnumMap<TectonicRegionType, ScalarIMR> gmpeMap, Site site,
 			SolHazardMapCalc combineWith, int index) {
 		checkInitXVals();
 		List<DiscretizedFunc> ret = new ArrayList<>(periods.length);
 		
 		for (int p=0; p<periods.length; p++) {
-			setIMforPeriod(gmpe, periods[p]);
+			setIMforPeriod(gmpeMap, periods[p]);
 			DiscretizedFunc logCurve = logXVals[p].deepClone();
-			calc.getHazardCurve(logCurve, site, gmpe, erf);
+			calc.getHazardCurve(logCurve, site, gmpeMap, erf);
 			DiscretizedFunc curve = xVals[p].deepClone();
 			for (int i=0; i<curve.size(); i++)
 				curve.set(i, logCurve.getY(i));
@@ -498,6 +550,11 @@ public class SolHazardMapCalc {
 			ret.add(curve);
 		}
 		return ret;
+	}
+	
+	public static void setIMforPeriod(Map<TectonicRegionType, ScalarIMR> gmpeMap, double period) {
+		for (ScalarIMR gmpe : gmpeMap.values())
+			setIMforPeriod(gmpe, period);
 	}
 	
 	public static void setIMforPeriod(ScalarIMR gmpe, double period) {
