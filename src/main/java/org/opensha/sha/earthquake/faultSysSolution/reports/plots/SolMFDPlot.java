@@ -730,8 +730,16 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 						continue;
 					if (regionTest && !region.contains(gridReg.getLocation(i)))
 						continue;
-					if (gridMFD == null)
+					if (gridMFD == null) {
 						gridMFD = new SummedMagFreqDist(nodeMFD.getMinX(), nodeMFD.getMaxX(), nodeMFD.size());
+					} else {
+						Preconditions.checkState((float)gridMFD.getMinX() == (float)nodeMFD.getMinX());
+						if (gridMFD.size() < nodeMFD.size()) {
+							SummedMagFreqDist tempMFD = new SummedMagFreqDist(nodeMFD.getMinX(), nodeMFD.getMaxX(), nodeMFD.size());
+							tempMFD.addIncrementalMagFreqDist(gridMFD);
+							gridMFD = tempMFD;
+						}
+					}
 					gridMFD.addIncrementalMagFreqDist(nodeMFD);
 				}
 				if (gridMFD != null) {
