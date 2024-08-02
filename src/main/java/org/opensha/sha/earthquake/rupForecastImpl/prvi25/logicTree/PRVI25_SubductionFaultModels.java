@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 
+import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
+import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.LogicTreeBranch;
@@ -25,6 +27,8 @@ import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoade
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
+
+import com.google.common.base.Preconditions;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
@@ -124,9 +128,24 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 					maxMinMag = Math.max(maxMinMag, rupSet.getMinMagForSection(s));
 				IncrementalMagFreqDist interfaceRefMFD = FaultSysTools.initEmptyMFD(maxMinMag);
 				for (SeismicityRegions seisReg : interfaceRegions) {
-					regions.add(seisReg.load());
+					List<Double> minMags = new ArrayList<>();
+					Region reg = seisReg.load();
+					for (FaultSection sect : rupSet.getFaultSectionDataList()) {
+						boolean contained = false;
+						for (Location loc : sect.getFaultSurface(10d).getPerimeter()) {
+							if (reg.contains(loc)) {
+								contained = true;
+								break;
+							}
+						}
+						if (contained)
+							minMags.add(rupSet.getMinMagForSection(sect.getSectionId()));
+					}
+					Preconditions.checkState(!minMags.isEmpty());
+					double avgMinMag = minMags.stream().mapToDouble(D->D).average().getAsDouble();
+					regions.add(reg);
 					regionMFDs.add(PRVI25_RegionalSeismicity.getBounded(seisReg,
-							interfaceRefMFD, interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(maxMinMag))));
+							interfaceRefMFD, interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(avgMinMag))));
 					regionTRTs.add(TectonicRegionType.SUBDUCTION_INTERFACE);
 				}
 				
@@ -137,8 +156,13 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 				IncrementalMagFreqDist slabRefMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.SLAB_MMAX);
 				for (SeismicityRegions seisReg : slabRegions) {
 					regions.add(seisReg.load());
-					regionMFDs.add(PRVI25_RegionalSeismicity.getBounded(seisReg,
-							slabRefMFD, slabRefMFD.getX(interfaceRefMFD.getClosestXIndex(PRVI25_GridSourceBuilder.SLAB_MMAX))));
+					UncertainBoundedIncrMagFreqDist mfd = PRVI25_RegionalSeismicity.getBounded(seisReg,
+							slabRefMFD, slabRefMFD.getX(slabRefMFD.getClosestXIndex(PRVI25_GridSourceBuilder.SLAB_MMAX)));
+//					System.out.println("MFD for "+seisReg
+//							+"; lowM5="+(float)mfd.getLower().getCumRateDistWithOffset().getY(5d)
+//							+"; prefM5="+(float)mfd.getCumRateDistWithOffset().getY(5d)
+//							+"; highM5="+(float)mfd.getUpper().getCumRateDistWithOffset().getY(5d));
+					regionMFDs.add(mfd);
 					regionTRTs.add(TectonicRegionType.SUBDUCTION_SLAB);
 				}
 				return new RegionsOfInterest(regions, regionMFDs, regionTRTs);
