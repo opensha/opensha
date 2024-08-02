@@ -769,9 +769,10 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			List<LogicTreeLevel<? extends LogicTreeNode>> gridOnlyLevels = new ArrayList<>();
 			File subDir = getBranchSubDir(branch, gridOnlyNodes, gridOnlyLevels);
 			File solFile = new File(subDir, "solution.zip");
-			if (solFile.equals(prevSolFile)) {
-				if (prevGridProv != null)
+			if (gridOnlyLevels.isEmpty() && solFile.equals(prevSolFile)) {
+				if (prevGridProv != null) {
 					return prevGridProv;
+				}
 				if (prevSol != null && prevSol.hasAvailableModule(GridSourceProvider.class))
 					return prevSol.getGridSourceProvider();
 			} else {
@@ -1023,8 +1024,6 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		} else if (prov instanceof GridSourceList) {
 			GridSourceList gridSources = (GridSourceList)prov;
 			
-			Class<? extends ArchivableModule> loadingClass = gridSources.getLoadingClass();
-			
 			if (gridSources.getGriddedRegion() != null) {
 				String gridRegFile = getRecordBranchFileName(branch, prefix,
 						GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false, mappings);
@@ -1175,7 +1174,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 				}
 			}
 
-			String sourcesFile = getBranchFileName(branch, GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, false);
+			String sourcesFile = getBranchFileName(branch, GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, true);
 			CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(zip, null, sourcesFile);
 			
 			EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists = GridSourceList.loadGridSourcesCSV(rupSectsCSV, locs);
@@ -1324,6 +1323,12 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		String gridRegFile = getBranchFileName(branch, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false);
 		String mechFile = getBranchFileName(branch, MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false);
 		String locsFile = getBranchFileName(branch, GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, false);
+//		System.out.println("Trying to load GridSoruceProv");
+//		System.out.println("\tregFile: "+gridRegFile+"; null ? "+(zip.getEntry(gridRegFile) == null));
+//		System.out.println("\tregFile: "+mechFile+"; null ? "+(zip.getEntry(mechFile) == null));
+//		System.out.println("\tregFile: "+locsFile+"; null ? "+(zip.getEntry(locsFile) == null));
+//		String gridSourcesFile = getBranchFileName(branch, GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, true);
+//		System.out.println("\tsourcesFile: "+gridSourcesFile+"; null ? "+(zip.getEntry(gridSourcesFile) == null));
 		if ((gridRegFile != null && zip.getEntry(gridRegFile) != null && mechFile != null && zip.getEntry(mechFile) != null)
 				|| (locsFile != null && zip.getEntry(locsFile) != null)) {
 			sol.addAvailableModule(new Callable<GridSourceProvider>() {
