@@ -636,9 +636,13 @@ public class PointSurfaceBuilder {
 	 * @return
 	 */
 	public PointSurface buildTruePointSurface() {
+		PointSurface surf;
 		if (loc.depth == zTop)
-			return new PointSurface(loc);
-		return new PointSurface(loc.lat, loc.lon, zTop);
+			surf = new PointSurface(loc);
+		else
+			surf = new PointSurface(loc.lat, loc.lon, zTop);
+		surf.setAveDip(dip);
+		return surf;
 	}
 	
 	/**
