@@ -160,6 +160,11 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		return getGriddedRegion().getLocation(index);
 	}
 	
+	@Override
+	default Location getLocationForSource(int sourceIndex) {
+		return getLocation(sourceIndex);
+	}
+
 	public default int getNumSources() {
 		return getNumLocations();
 	}

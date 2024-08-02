@@ -42,10 +42,17 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	
 	/**
 	 * Returns the location for the given grid index.
-	 * @param index
+	 * @param gridIndex
 	 * @return
 	 */
-	public Location getLocation(int index);
+	public Location getLocation(int gridIndex);
+	
+	/**
+	 * Returns the location for the given source index
+	 * @param sourceIndex
+	 * @return
+	 */
+	public Location getLocationForSource(int sourceIndex);
 	
 	/**
 	 * Sets the minimum magnitude of ruptures to include when building sources for hazard calculation
