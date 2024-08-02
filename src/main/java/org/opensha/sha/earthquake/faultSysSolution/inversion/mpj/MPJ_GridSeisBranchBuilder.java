@@ -239,17 +239,17 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				for (LogicTreeLevel<?> level : branch.getLevels())
 					levels.add(level);
 				List<? extends LogicTreeLevel<?>> levelsForGridReg = SolutionLogicTree.getLevelsAffectingFile(
-						GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false, levels);
+						GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false, levels); // false: not affected by default
 				List<? extends LogicTreeLevel<?>> levelsForGridMechs = SolutionLogicTree.getLevelsAffectingFile(
-						MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false, levels);
+						MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false, levels); // false: not affected by default
 				List<? extends LogicTreeLevel<?>> levelsForSubSeisMFDs = SolutionLogicTree.getLevelsAffectingFile(
-						MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true, levels);
+						MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true, levels); // false: not affected by default
 				List<? extends LogicTreeLevel<?>> levelsForSubUnassociatedMFDs = SolutionLogicTree.getLevelsAffectingFile(
-						MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true, levels);
+						MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true, levels); // true: affected by default
 				List<? extends LogicTreeLevel<?>> levelsForGridLocs = SolutionLogicTree.getLevelsAffectingFile(
-						GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, true, levels);
+						GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, false, levels); // false: not affected by default
 				List<? extends LogicTreeLevel<?>> levelsForGridSources = SolutionLogicTree.getLevelsAffectingFile(
-						GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, true, levels);
+						GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, true, levels); // true: affected by default
 				if (full) {
 					this.fullLevelIndexes = new HashMap<>();
 					for (int i=0; i<levels.size(); i++)
@@ -451,17 +451,19 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 						HashSet<String> writtenFiles) throws IOException {
 			if (!(prov instanceof ArchivableModule) || prov instanceof MFDGridSourceProvider.Default)
 				return;
-			String avgInstanceFileName = getBranchFileName(branch, sltPrefix,
-					SolutionLogicTree.GRID_PROV_INSTANCE_FILE_NAME, levelsAffecting);
-			if (!writtenFiles.contains(avgInstanceFileName)) {
-				Class<? extends ArchivableModule> loadingClass = ((ArchivableModule)prov).getLoadingClass();
-				out.putArchiveEntry(new ZipArchiveEntry(avgInstanceFileName));
-				SolutionLogicTree.writeGridSourceProvInstanceFile(out, loadingClass);
-				out.flush();
-				out.closeArchiveEntry();
-				writtenFiles.add(avgInstanceFileName);
+			if (prov instanceof MFDGridSourceProvider) {
+				// only write instance file for MFD implementation
+				String avgInstanceFileName = getBranchFileName(branch, sltPrefix,
+						SolutionLogicTree.GRID_PROV_INSTANCE_FILE_NAME, levelsAffecting);
+				if (!writtenFiles.contains(avgInstanceFileName)) {
+					Class<? extends ArchivableModule> loadingClass = ((ArchivableModule)prov).getLoadingClass();
+					out.putArchiveEntry(new ZipArchiveEntry(avgInstanceFileName));
+					SolutionLogicTree.writeGridSourceProvInstanceFile(out, loadingClass);
+					out.flush();
+					out.closeArchiveEntry();
+					writtenFiles.add(avgInstanceFileName);
+				}
 			}
-			
 		}
 		
 		private Map<String, String> getNameMappings(LogicTreeBranch<?> branch, boolean full, GridSourceProvider gridProv) {
