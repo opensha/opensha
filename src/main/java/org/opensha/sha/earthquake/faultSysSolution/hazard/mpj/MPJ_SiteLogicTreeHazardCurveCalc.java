@@ -35,6 +35,7 @@ import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.sha.calc.params.filters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
@@ -55,9 +56,6 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	private CSVFile<String> inputSitesCSV;
 	private List<Site> sites;
 	
-	private static final double MAX_DIST_DEFAULT = 500;
-	private double maxDistance = MAX_DIST_DEFAULT;
-	
 //	private static final double[] PERIODS_DEFAULT = { 0d, 0.2d, 1d };
 	private static final double[] PERIODS_DEFAULT = { 0d, 1d };
 	private double[] periods = PERIODS_DEFAULT;
@@ -66,6 +64,8 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	private IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
 	
 	private Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmms;
+	
+	private SourceFilterManager sourceFilters;
 	
 	private SolutionLogicTree solTree;
 	private LogicTree<?> tree;
@@ -124,8 +124,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		if (cmd.hasOption("gridded-seis"))
 			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
 		
-		if (cmd.hasOption("max-distance"))
-			maxDistance = Double.parseDouble(cmd.getOptionValue("max-distance"));
+		sourceFilters = MPJ_LogicTreeHazardCalc.getSourceFilters(cmd);
 		
 		gmms = MPJ_LogicTreeHazardCalc.getGMMs(cmd);
 		
@@ -183,7 +182,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
                 0L, TimeUnit.MILLISECONDS,
                 new ArrayBlockingQueue<Runnable>(threads), new ThreadPoolExecutor.CallerRunsPolicy());
 		
-		calc = new AbstractSitewiseThreadedLogicTreeCalc(exec, sites.size(), solTree, gmms, periods, gridSeisOp, maxDistance) {
+		calc = new AbstractSitewiseThreadedLogicTreeCalc(exec, sites.size(), solTree, gmms, periods, gridSeisOp, sourceFilters) {
 			
 			@Override
 			public Site siteForIndex(int siteIndex, Map<TectonicRegionType, ScalarIMR> gmms) {
@@ -573,7 +572,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	public static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
 		
-		MPJ_LogicTreeHazardCalc.addCommonOptions(ops);
+		MPJ_LogicTreeHazardCalc.addCommonOptions(ops, false);
 		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "
@@ -581,7 +580,6 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		ops.addRequiredOption("sf", "sites-file", true, "Path to sites CSV file");
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption("of", "output-file", true, "Path to output zip file. Default will be based on the output directory");
-		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default: "+(float)MAX_DIST_DEFAULT);
 		ops.addOption("gs", "gridded-seis", true, "Gridded seismicity option. One of "
 				+FaultSysTools.enumOptions(IncludeBackgroundOption.class)+". Default: "+GRID_SEIS_DEFAULT.name());
 		ops.addOption(null, "recalc", false, "Flag to force recalculation (ignore checkpoints)");

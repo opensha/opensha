@@ -34,6 +34,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
+import org.opensha.sha.calc.params.filters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
@@ -67,10 +68,6 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	
 	private double gridSpacing = MPJ_LogicTreeHazardCalc.GRID_SPACING_DEFAULT;
 	
-	private double maxDistance = MPJ_LogicTreeHazardCalc.MAX_DIST_DEFAULT;
-	
-	private double skipMaxSiteDist = MPJ_LogicTreeHazardCalc.SKIP_MAX_DIST_DEFAULT;
-	
 	private Map<TectonicRegionType, AttenRelRef> gmmRefs;
 	
 	private double[] periods = MPJ_LogicTreeHazardCalc.PERIODS_DEFAULT;
@@ -82,6 +79,10 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	private boolean applyAftershockFilter = MPJ_LogicTreeHazardCalc.AFTERSHOCK_FILTER_DEFAULT;
 	
 	private boolean aseisReducesArea = MPJ_LogicTreeHazardCalc.ASEIS_REDUCES_AREA_DEFAULT;
+	
+	private SourceFilterManager sourceFilter;
+	
+	private SourceFilterManager siteSkipSourceFilter;
 	
 	private GriddedRegion gridRegion;
 
@@ -148,11 +149,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		if (cmd.hasOption("grid-spacing"))
 			gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
 		
-		if (cmd.hasOption("max-distance"))
-			maxDistance = Double.parseDouble(cmd.getOptionValue("max-distance"));
-		
-		if (cmd.hasOption("skip-max-distance"))
-			skipMaxSiteDist = Double.parseDouble(cmd.getOptionValue("skip-max-distance"));
+		sourceFilter = MPJ_LogicTreeHazardCalc.getSourceFilters(cmd);
+		siteSkipSourceFilter = MPJ_LogicTreeHazardCalc.getSiteSkipSourceFilters(sourceFilter, cmd);
 		
 		gmmRefs = MPJ_LogicTreeHazardCalc.getGMMs(cmd);
 		
@@ -560,8 +558,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 					externalGriddedCurveCalc = new SolHazardMapCalc(extSol, MPJ_LogicTreeHazardCalc.getGMM_Suppliers(branch, gmmRefs), gridRegion,
 							IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
 					
-					externalGriddedCurveCalc.setMaxSourceSiteDist(maxDistance);
-					externalGriddedCurveCalc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
+					externalGriddedCurveCalc.setSourceFilter(sourceFilter);
+					externalGriddedCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 					
 					externalGriddedCurveCalc.calcHazardCurves(getNumThreads());
 				}
@@ -638,8 +636,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				combineWithCurves = combineWithOnlyCurves;
 				calc = new SolHazardMapCalc(singleSol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
 			}
-			calc.setMaxSourceSiteDist(maxDistance);
-			calc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
+			calc.setSourceFilter(sourceFilter);
+			calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 			calc.setAseisReducesArea(aseisReducesArea);
 			calc.setNoMFDs(noMFDs);
 			calc.setUseProxyRups(!noProxyRups);
@@ -660,7 +658,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	public static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
 		
-		MPJ_LogicTreeHazardCalc.addCommonOptions(ops);
+		MPJ_LogicTreeHazardCalc.addCommonOptions(ops, true);
 		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "
@@ -668,9 +666,6 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption("of", "output-file", true, "Path to output zip file. Default will be based on the output directory");
 		ops.addOption("sp", "grid-spacing", true, "Grid spacing in decimal degrees. Default: "+(float)MPJ_LogicTreeHazardCalc.GRID_SPACING_DEFAULT);
-		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default: "+(float)MPJ_LogicTreeHazardCalc.MAX_DIST_DEFAULT);
-		ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
-				+ "Default: "+(float)MPJ_LogicTreeHazardCalc.SKIP_MAX_DIST_DEFAULT);
 		ops.addOption("gs", "gridded-seis", true, "Gridded seismicity option. One of "
 				+FaultSysTools.enumOptions(IncludeBackgroundOption.class)+". Default: "+MPJ_LogicTreeHazardCalc.GRID_SEIS_DEFAULT.name());
 		ops.addOption("r", "region", true, "Optional path to GeoJSON file containing a region for which we should compute hazard. "

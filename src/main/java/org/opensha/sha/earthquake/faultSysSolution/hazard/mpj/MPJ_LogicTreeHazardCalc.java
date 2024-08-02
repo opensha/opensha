@@ -45,6 +45,11 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
+import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.params.filters.SourceFilterManager;
+import org.opensha.sha.calc.params.filters.SourceFilters;
+import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
+import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.LogicTreeCurveAverager;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.QuickGriddedHazardMapCalc;
@@ -80,11 +85,10 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	static final double GRID_SPACING_DEFAULT = 0.1d;
 	private double gridSpacing = GRID_SPACING_DEFAULT;
 	
-	static final double MAX_DIST_DEFAULT = 500;
-	private double maxDistance = MAX_DIST_DEFAULT;
+	private SourceFilterManager sourceFilter;
 	
-	static final double SKIP_MAX_DIST_DEFAULT = 300;
-	private double skipMaxSiteDist = SKIP_MAX_DIST_DEFAULT;
+	static final double SITE_SKIP_FRACT = 0.8;
+	private SourceFilterManager siteSkipSourceFilter;
 	
 	static AttenRelRef CRUSTAL_GMPE_DEFAULT = AttenRelRef.ASK_2014;
 	static AttenRelRef STABLE_GMPE_DEFAULT = AttenRelRef.ASK_2014; // TODO
@@ -160,11 +164,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		if (cmd.hasOption("grid-spacing"))
 			gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
 		
-		if (cmd.hasOption("max-distance"))
-			maxDistance = Double.parseDouble(cmd.getOptionValue("max-distance"));
+		sourceFilter = getSourceFilters(cmd);
 		
-		if (cmd.hasOption("skip-max-distance"))
-			skipMaxSiteDist = Double.parseDouble(cmd.getOptionValue("skip-max-distance"));
+		siteSkipSourceFilter = getSiteSkipSourceFilters(sourceFilter, cmd);
 		
 		gmmRefs = getGMMs(cmd);
 		
@@ -258,7 +260,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
 			for (int p=0; p<quickGridCalcs.length; p++)
 				quickGridCalcs[p] = new QuickGriddedHazardMapCalc(gmmRefs, periods[p],
-						SolHazardMapCalc.getDefaultXVals(periods[p]), maxDistance);
+						SolHazardMapCalc.getDefaultXVals(periods[p]), sourceFilter);
 		}
 
 		noMFDs = cmd.hasOption("no-mfds");
@@ -287,6 +289,60 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			}
 		}
 		myAverageDir = new File(nodesAverageDir, "rank_"+rank);
+	}
+	
+	static SourceFilterManager getDefaultSourceFilters() {
+		SourceFilterManager sourceFilters = new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
+		return sourceFilters;
+	}
+	
+	static SourceFilterManager getSourceFilters(CommandLine cmd) {
+		SourceFilterManager sourceFilters;
+		if (cmd.hasOption("max-distance")) {
+			sourceFilters = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
+			double maxDist = Double.parseDouble(cmd.getOptionValue("max-distance"));
+			((FixedDistanceCutoffFilter)sourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF)).setMaxDistance(maxDist);
+		} else {
+			sourceFilters = getDefaultSourceFilters();
+		}
+		return sourceFilters;
+	}
+	
+	static SourceFilterManager getDefaultSiteSkipSourceFilters(SourceFilterManager sourceFilters) {
+		SourceFilterManager ret = null;
+		if (sourceFilters.isEnabled(SourceFilters.TRT_DIST_CUTOFFS)) {
+			TectonicRegionDistCutoffFilter fullFilter = (TectonicRegionDistCutoffFilter)
+					sourceFilters.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS);
+			TectonicRegionDistanceCutoffs fullCutoffs = fullFilter.getCutoffs();
+			ret = new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
+			TectonicRegionDistCutoffFilter skipFilter = (TectonicRegionDistCutoffFilter)
+					ret.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS);
+			TectonicRegionDistanceCutoffs skipCutoffs = skipFilter.getCutoffs();
+			for (TectonicRegionType trt : TectonicRegionType.values())
+				skipCutoffs.setCutoffDist(trt, fullCutoffs.getCutoffDist(trt)*SITE_SKIP_FRACT);
+		}
+		if (sourceFilters.isEnabled(SourceFilters.FIXED_DIST_CUTOFF)) {
+			if (ret == null)
+				ret = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
+			else
+				ret.setEnabled(SourceFilters.FIXED_DIST_CUTOFF, true);
+			FixedDistanceCutoffFilter fullFilter = (FixedDistanceCutoffFilter)sourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF);
+			FixedDistanceCutoffFilter skipFilter = (FixedDistanceCutoffFilter)ret.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF);
+			skipFilter.setMaxDistance(fullFilter.getMaxDistance()*SITE_SKIP_FRACT);
+		}
+		return ret;
+	}
+	
+	static SourceFilterManager getSiteSkipSourceFilters(SourceFilterManager sourceFilters, CommandLine cmd) {
+		SourceFilterManager siteSkipSourceFilters;
+		if (cmd.hasOption("skip-max-distance")) {
+			siteSkipSourceFilters = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
+			double maxDist = Double.parseDouble(cmd.getOptionValue("skip-max-distance"));
+			((FixedDistanceCutoffFilter)siteSkipSourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF)).setMaxDistance(maxDist);
+		} else {
+			siteSkipSourceFilters = getDefaultSiteSkipSourceFilters(sourceFilters);
+		}
+		return siteSkipSourceFilters;
 	}
 	
 	static Map<TectonicRegionType, AttenRelRef> getGMMs(CommandLine cmd) {
@@ -786,8 +842,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						externalGriddedCurveCalc = new SolHazardMapCalc(extSol, getGMM_Suppliers(branch, gmmRefs), gridRegion,
 								IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
 						
-						externalGriddedCurveCalc.setMaxSourceSiteDist(maxDistance);
-						externalGriddedCurveCalc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
+						externalGriddedCurveCalc.setSourceFilter(sourceFilter);
+						externalGriddedCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 						
 						externalGriddedCurveCalc.calcHazardCurves(getNumThreads());
 					}
@@ -804,7 +860,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
 						for (int p=0; p<periods.length; p++)
 							quickGridCalcs[p] = new QuickGriddedHazardMapCalc(getGMM_Suppliers(branch, gmmRefs), periods[p],
-									SolHazardMapCalc.getDefaultXVals(periods[p]), maxDistance);
+									SolHazardMapCalc.getDefaultXVals(periods[p]), sourceFilter);
 					}
 					debug("Doing quick gridded seismicity calc for "+index);
 					List<DiscretizedFunc[]> curves = new ArrayList<>();
@@ -887,8 +943,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					combineWithCurves = combineWithOnlyCurves;
 					calc = new SolHazardMapCalc(sol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
 				}
-				calc.setMaxSourceSiteDist(maxDistance);
-				calc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
+				calc.setSourceFilter(sourceFilter);
+				calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 				calc.setAseisReducesArea(aseisReducesArea);
 				calc.setNoMFDs(noMFDs);
 				calc.setUseProxyRups(!noProxyRups);
@@ -932,19 +988,23 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		}
 	}
 	
-	public static void addCommonOptions(Options ops) {
+	public static void addCommonOptions(Options ops, boolean includeSiteSkip) {
 		ops.addOption("gm", "gmpe", true, "Sets a single GMPE. Note that this will be overriden if the Logic Tree "
 				+ "supplies GMPE choices. Default is TectonicRegionType-specific.");
 		ops.addOption(null, "trt-gmpe", true, "Sets the GMPE for the given TectonicRegionType in the format :<TRT>:<GMM>. "
 				+ "For example: ACTIVE_SHALLOW:ASK_2014. Note that this will be overriden if the Logic Tree "
 				+ "supplies GMPE choices.");
 		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
+		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default is TectonicRegionType-specific.");
+		if (includeSiteSkip)
+			ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
+					+ "Default is "+(int)(SITE_SKIP_FRACT*100d)+"% of the TectonicRegionType-specific default maximum distance.");
 	}
 	
 	public static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
 		
-		addCommonOptions(ops);
+		addCommonOptions(ops, true);
 		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "
@@ -952,9 +1012,6 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption("of", "output-file", true, "Path to output zip file. Default will be based on the output directory");
 		ops.addOption("sp", "grid-spacing", true, "Grid spacing in decimal degrees. Default: "+(float)GRID_SPACING_DEFAULT);
-		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default: "+(float)MAX_DIST_DEFAULT);
-		ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
-				+ "Default: "+(float)SKIP_MAX_DIST_DEFAULT);
 		ops.addOption("gs", "gridded-seis", true, "Gridded seismicity option. One of "
 				+FaultSysTools.enumOptions(IncludeBackgroundOption.class)+". Default: "+GRID_SEIS_DEFAULT.name());
 		ops.addOption("r", "region", true, "Optional path to GeoJSON file containing a region for which we should compute hazard. "

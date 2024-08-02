@@ -27,6 +27,7 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
 import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.params.filters.SourceFilterManager;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -64,7 +65,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	private IncludeBackgroundOption gridSeisOp;
 	private boolean cacheGridSources = false;
 	private boolean doGmmInputCache = false;
-	private double maxDistance;
+	private SourceFilterManager sourceFilters;
 	
 	private DiscretizedFunc[] xVals;
 	private DiscretizedFunc[] logXVals;
@@ -78,20 +79,20 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 
 	public AbstractSitewiseThreadedLogicTreeCalc(ExecutorService exec, int numSites, SolutionLogicTree solTree,
 			Supplier<ScalarIMR> gmmRef, double[] periods,
-					IncludeBackgroundOption gridSeisOp, double maxDistance) {
-		this(exec, numSites, solTree, SolHazardMapCalc.wrapInTRTMap(gmmRef), periods, gridSeisOp, maxDistance);
+					IncludeBackgroundOption gridSeisOp, SourceFilterManager sourceFilters) {
+		this(exec, numSites, solTree, SolHazardMapCalc.wrapInTRTMap(gmmRef), periods, gridSeisOp, sourceFilters);
 	}
 
 	public AbstractSitewiseThreadedLogicTreeCalc(ExecutorService exec, int numSites, SolutionLogicTree solTree,
 			Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmmRefs, double[] periods,
-					IncludeBackgroundOption gridSeisOp, double maxDistance) {
+					IncludeBackgroundOption gridSeisOp, SourceFilterManager sourceFilters) {
 		this.exec = exec;
 		this.numSites = numSites;
 		this.solTree = solTree;
 		this.gmmRefs = gmmRefs;
 		this.periods = periods;
 		this.gridSeisOp = gridSeisOp;
-		this.maxDistance = maxDistance;
+		this.sourceFilters = sourceFilters;
 		this.tree = solTree.getLogicTree();
 		for (LogicTreeLevel<?> level : tree.getLevels()) {
 			if (isGMMLevel(level) && level.getNodes().size() > 1) {
@@ -291,8 +292,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 			
 			NSHMP_GMM_Wrapper cache = new NSHMP_GMM_Wrapper(null, false);
 			
-			// TODO: support more complicated filters
-			Collection<SourceFilter> sourceFilters = Collections.singleton(new FixedDistanceCutoffFilter(maxDistance));
+			Collection<SourceFilter> filters = sourceFilters.getEnabledFilters();
 			
 			EnumMap<TectonicRegionType, ScalarIMR> gmmMap = new EnumMap<>(TectonicRegionType.class);
 			gmmMap.put(TectonicRegionType.ACTIVE_SHALLOW, cache);
@@ -301,7 +301,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 			cache.setSite(site);
 			
 			for (ProbEqkSource source : erf) {
-				if (HazardCurveCalculator.canSkipSource(sourceFilters, source, site))
+				if (HazardCurveCalculator.canSkipSource(filters, source, site))
 					continue;
 				
 				for (ProbEqkRupture rup : source)
@@ -353,8 +353,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 			
 			DiscretizedFunc[] curves = new DiscretizedFunc[periods.length];
 			
-			HazardCurveCalculator calc = new HazardCurveCalculator();
-			calc.setMaxSourceDistance(maxDistance); // TODO: support more complicated filters (here and above when caching)
+			HazardCurveCalculator calc = new HazardCurveCalculator(sourceFilters);
 			
 			for (int p=0; p<periods.length; p++) {
 				SolHazardMapCalc.setIMforPeriod(gmms, periods[p]);
