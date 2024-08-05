@@ -861,6 +861,37 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 					length, hypocentralDepth, hypocentralDAS, tectonicRegionType, associatedSections, associatedSectionFracts);
 		}
 		
+		/**
+		 * Get's the hypocentral depth, calculating it (assuming middle depth) if the stored hypocentralDepth parameter is not set
+		 * @return
+		 */
+		public double getHypocentralDepth() {
+			if (Double.isFinite(hypocentralDepth))
+				return hypocentralDepth;
+			if (lowerDepth == upperDepth)
+				return upperDepth;
+			return upperDepth + 0.5*(lowerDepth - upperDepth);
+		}
+		
+		/**
+		 * @return the fractional DAS value, or 0.5 if not set
+		 */
+		public double getFractionalHypocentralDAS() {
+			if (Double.isFinite(hypocentralDAS))
+				return hypocentralDAS/length;
+			return 0.5;
+		}
+		
+		/**
+		 * Get's the hypocentral DAS, calculating it (assuming middle along strike) if the stored hypocentralDAS parameter is not set
+		 * @return
+		 */
+		public double getHypocentralDAS() {
+			if (Double.isFinite(hypocentralDAS))
+				return hypocentralDAS;
+			return 0.5*length;
+		}
+		
 		public double getFractAssociated(int sectionIndex) {
 			if (associatedSections == null)
 				return 0d;
@@ -959,6 +990,12 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 				result = rup1.strikeRange.upperEndpoint().compareTo(rup2.strikeRange.upperEndpoint());
 				if (result != 0) return result;
 			}
+			
+			// treat each unique hypocentral depth as separate, but we'll average quantities that affect DDW (and length)
+			result = Double.compare(rup1.getHypocentralDepth(), rup2.getHypocentralDepth());
+			if (result != 0) return result;
+			// same with fractional DAS--we don't want to average explicitly set DAS values
+			result = Double.compare(rup1.getFractionalHypocentralDAS(), rup2.getFractionalHypocentralDAS());
 
 			if (!averageQuantitiesOnly) {
 				result = Double.compare(rup1.upperDepth, rup2.upperDepth);
@@ -1041,18 +1078,9 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 				surfBuilder.upperDepth(rup.upperDepth);
 				surfBuilder.lowerDepth(rup.lowerDepth);
 				surfBuilder.length(rup.length);
-				double hypoDepth;
-				if (Double.isFinite(rup.hypocentralDepth)) {
-					hypoDepth = rup.hypocentralDepth;
-					surfBuilder.hypocentralDepth(hypoDepth);
-				} else {
-					hypoDepth = rup.upperDepth + 0.5*(rup.lowerDepth - rup.upperDepth);
-					surfBuilder.fractionalHypocentralDepth(0.5d);
-				}
-				if (Double.isFinite(rup.hypocentralDAS))
-					surfBuilder.das(rup.hypocentralDAS);
-				else
-					surfBuilder.fractionalDAS(0.5d);
+				double hypoDepth = rup.getHypocentralDepth();
+				surfBuilder.hypocentralDepth(hypoDepth);
+				surfBuilder.das(rup.getHypocentralDAS());
 				RuptureSurface[] surfs = surfBuilder.build(bgRupType);
 				double rate = rup.rate;
 				if (aftershockFilter != null)
@@ -1123,6 +1151,7 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 			upperDepthAverager.add(rup.upperDepth, weight);
 			lowerDepthAverager.add(rup.lowerDepth, weight);
 			lengthAverager.add(rup.length, weight);
+			
 			double halfLength = 0.5*rup.length;
 			if (Double.isNaN(rup.hypocentralDAS)) {
 				dasAverager.add(halfLength, weight);
@@ -1131,6 +1160,7 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 					explicitHalfDAS = true;
 				dasAverager.add(rup.hypocentralDAS, weight);
 			}
+			
 			double midDepth = rup.upperDepth + 0.5*(rup.lowerDepth - rup.upperDepth);
 			if (Double.isNaN(rup.hypocentralDepth)) {
 				hypoDepthAverager.add(midDepth, weight);
