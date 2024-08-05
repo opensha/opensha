@@ -389,6 +389,38 @@ public class GridSourceList implements GridSourceProvider, ArchivableModule {
 		return gridReg;
 	}
 	
+	public GridSourceList getFilteredForMinMag(float minMag) {
+		EnumMap<TectonicRegionType, List<List<GriddedRupture>>> filteredMap = new EnumMap<>(TectonicRegionType.class);
+		
+		for (TectonicRegionType trt : getTectonicRegionTypes()) {
+			List<List<GriddedRupture>> filteredLists = new ArrayList<>(getNumLocations());
+			for (int gridIndex=0; gridIndex<getNumLocations(); gridIndex++) {
+				ImmutableList<GriddedRupture> rups = getRuptures(trt, gridIndex);
+				if (rups.isEmpty()) {
+					filteredLists.add(null);
+					continue;
+				}
+				List<GriddedRupture> filteredRups = new ArrayList<>();
+				
+				for (GriddedRupture rup : rups)
+					if ((float)rup.magnitude >= minMag)
+						filteredRups.add(rup);
+				
+				if (filteredRups.isEmpty())
+					filteredLists.add(null);
+				else
+					filteredLists.add(filteredRups);
+			}
+			filteredMap.put(trt, filteredLists);
+		}
+		
+		GridSourceList ret = new GridSourceList();
+		ret.setAll(gridReg, locs, filteredMap);
+		if (minMag > (float)ret.sourceMinMag)
+			ret.setSourceMinMagCutoff(minMag);
+		return ret;
+	}
+	
 	private static List<Range<Double>> SS_RANGES = List.of(
 			Range.closedOpen(-180d, -135d),
 			Range.open(-45d, 45d),
