@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,7 +27,10 @@ import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -695,7 +699,8 @@ public class RSQSimUtils {
 //		File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
 //		File dir = new File("/data/kevin/simulators/catalogs/rundir2194_long");
 //		File geomFile = new File(dir, "zfault_Deepen.in");
-		File dir = new File("/data/kevin/simulators/catalogs/bruce/rundir5133");
+		int catID = 5844;
+		File dir = new File("/data/kevin/simulators/catalogs/bruce/rundir"+catID);
 		File geomFile = new File(dir, "zfault_Deepen.in");
 		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'N');
 		System.out.println("Loaded "+elements.size()+" elements");
@@ -705,12 +710,14 @@ public class RSQSimUtils {
 				Lists.newArrayList(new LogicalAndRupIden(new SkipYearsLoadIden(skipYears),
 						new MagRangeRuptureIdentifier(minMag, 10d))));
 		
-		File nshmDir = new File("/home/kevin/OpenSHA/UCERF4/fault_models/NSHM2023_FaultSectionsEQGeoDB_08March2021");
-		File sectsFile = new File(nshmDir, "FaultSections/NSHM2023_FaultSections_v1p1.geojson");
-		File geoDBFile = new File(nshmDir, "EQGeoDB/NSHM2023_EQGeoDB_v1p1.geojson");
-		List<FaultSection> subSects = GeoJSONFaultReader.buildSubSects(sectsFile, geoDBFile, null);
-		U3SlipEnabledSolution sol = buildFaultSystemSolution(subSects, elements, events, minMag, 0.5);
-		U3FaultSystemIO.writeSol(sol, new File(dir, "rsqsim_5133_m6_skip"+skipYears+"_sectArea0.5.zip"));
+		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.WUS_FM_v3);
+		System.out.println("read "+subSects.size()+" sub sects");
+		System.exit(0);
+		double sectFract = 0.5;
+		FaultSystemSolution sol = buildFaultSystemSolution(subSects, elements, events, minMag, sectFract);
+		sol.write(new File(dir, "rsqsim_"+catID+"_m"+new DecimalFormat("0.#").format(minMag)+"_skip"+skipYears+"_sectArea"+(float)sectFract+".zip"));
+//		U3SlipEnabledSolution sol = buildFaultSystemSolution(subSects, elements, events, minMag, 0.5);
+//		U3FaultSystemIO.writeSol(sol, new File(dir, "rsqsim_5133_m6_skip"+skipYears+"_sectArea0.5.zip"));
 		
 //		File stlFile = new File("/home/kevin/markdown/rsqsim-analysis/catalogs/"+dir.getName(), "geometry.stl");
 //		writeSTLFile(elements, stlFile);
