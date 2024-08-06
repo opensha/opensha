@@ -47,6 +47,8 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 	 */
 	CubedGriddedRegion getCubedGriddedRegion();
 	
+	public int getNumCubes();
+	
 	/**
 	 * @param cubeIndex
 	 * @return section indexes associated with this cube, or null if none
@@ -393,6 +395,12 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 			this.sourceZip = zip;
 			this.sourceZipEntryPrefix = entryPrefix;
 		}
+
+		@Override
+		public int getNumCubes() {
+			checkLazyInit();
+			return sectsAtCubes.length;
+		}
 		
 	}
 	
@@ -622,7 +630,7 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 			if (cgr == null)
 				this.cgr = module.getCubedGriddedRegion();
 			else
-				Preconditions.checkState(module.getCubedGriddedRegion().getNumCubes() == this.cgr.getNumCubes());
+				Preconditions.checkState(module.getNumCubes() == this.cgr.getNumCubes());
 			
 			gridAverager.process(module, relWeight);
 			
@@ -908,6 +916,11 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 		 */
 		public List<? extends FaultCubeAssociations> getRegionalAssociations() {
 			return regionalAssociations;
+		}
+
+		@Override
+		public int getNumCubes() {
+			return cgr.getNumCubes();
 		}
 		
 	}
