@@ -214,24 +214,29 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		return colVals;
 	}
 	
+	private static final String NULL_STR = null+"";
+	
 	public static String getLineStr(Object[] line) {
-		String lineStr = null;
+		StringBuilder lineStr = null;
 		for (Object val : line) {
 			if (lineStr == null)
-				lineStr = "";
+				lineStr = new StringBuilder();
 			else
-				lineStr += ",";
-			String valStr;
-			if (val == null)
-				valStr = ""+null;
-			else
-				valStr = val.toString();
-			// if it contains a comma, surround it in quotation marks if not already
-			if (valStr.contains(",") && !(valStr.startsWith("\"") && valStr.endsWith("\"")))
-				valStr = "\""+valStr+"\"";
-			lineStr += valStr;
+				lineStr.append(",");
+			if (val == null) {
+				lineStr.append(NULL_STR);
+			} else {
+				String valStr = val.toString();
+				// if it contains a comma, surround it in quotation marks if not already
+				boolean wrap = valStr.contains(",") && !(valStr.startsWith("\"") && valStr.endsWith("\""));
+				if (wrap)
+					lineStr.append("\"");
+				lineStr.append(valStr);
+				if (wrap)
+					lineStr.append("\"");
+			}
 		}
-		return lineStr;
+		return lineStr.toString();
 	}
 	
 	public String getHeader() {
@@ -329,23 +334,24 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		line = line.trim();
 		ArrayList<String> vals = expectedNum > 0 ? new ArrayList<>(expectedNum) : new ArrayList<>();
 		boolean inside = false;
-		String cur = "";
-		for (int i=0; i<line.length(); i++) {
-			char c = line.charAt(i);
-			if (!inside && c == ',') {
+		StringBuilder cur = new StringBuilder();
+		char[] chars = line.toCharArray();
+		for (int i=0; i<chars.length; i++) {
+//			char c = line.charAt(i);
+			if (!inside && chars[i] == ',') {
 				// we're done with a value
-				vals.add(cur);
-				cur = "";
+				vals.add(cur.toString());
+				cur = new StringBuilder();
 				continue;
 			}
-			if (c == '"') {
+			if (chars[i] == '"') {
 				inside = !inside;
 				continue;
 			}
-			cur += c;
+			cur.append(chars[i]);
 		}
 		if (!cur.isEmpty())
-			vals.add(cur);
+			vals.add(cur.toString());
 		while (vals.size() < padToLength)
 			vals.add("");
 		return vals;
