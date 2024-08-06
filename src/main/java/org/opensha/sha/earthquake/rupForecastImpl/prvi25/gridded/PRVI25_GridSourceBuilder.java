@@ -91,37 +91,14 @@ public class PRVI25_GridSourceBuilder {
 		}
 	}
 	
-	public static class NSHM23_WUS_FiniteRuptureConverter implements FiniteRuptureConverter {
-		
-		private WC1994_MagLengthRelationship WC94 = new WC1994_MagLengthRelationship();
-
-		@Override
-		public GriddedRupture buildFiniteRupture(int gridIndex, Location loc, double magnitude, double rate,
-				FocalMech focalMech, int[] associatedSections, double[] associatedSectionFracts) {
-			double dipRad = Math.toRadians(focalMech.dip());
-			
-			double depth = (float)magnitude < 6.5f ? 5d : 1d;
-			double length = WC94.getMedianLength(magnitude);
-			double aspectWidth = length / 1.5;
-			double ddWidth = (14.0 - depth) / Math.sin(dipRad);
-			ddWidth = Math.min(aspectWidth, ddWidth);
-			double lower = depth + ddWidth * Math.sin(dipRad);
-			
-			return new GriddedRupture(gridIndex, loc, magnitude, rate, focalMech.rake(), focalMech.dip(), Double.NaN,
-					null, depth, lower, length, Double.NaN, Double.NaN,
-					TectonicRegionType.ACTIVE_SHALLOW,associatedSections, associatedSectionFracts);
-		}
-		
-	}
-	
 	public static GridSourceList buildCrustalGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
 		doPreGridBuildHook(sol, branch);
 		FaultSystemRupSet rupSet = sol.getRupSet();
-		Preconditions.checkState(branch.hasValue(PRVI25_CrustalFaultModels.class), "Only crustal supported (so far)");
+		Preconditions.checkState(branch.hasValue(PRVI25_CrustalFaultModels.class), "This should only be used to build crustal models");
 		FaultCubeAssociations cubeAssociations = rupSet.requireModule(FaultCubeAssociations.class);
 		NSHM23_SingleRegionGridSourceProvider gridProv = buildCrustalGridSourceProv(sol, branch, SeismicityRegions.CRUSTAL, cubeAssociations);
 		
-		return GridSourceList.convert(gridProv, cubeAssociations, new NSHM23_WUS_FiniteRuptureConverter());
+		return gridProv.convertToGridSourceList();
 	}
 	
 	public static NSHM23_SingleRegionGridSourceProvider buildCrustalGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch,
