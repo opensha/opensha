@@ -14,6 +14,9 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.CSVReader;
+import org.opensha.commons.data.CSVReader.Row;
+import org.opensha.commons.data.CSVWriter;
 import org.opensha.commons.geo.CubedGriddedRegion;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
@@ -190,10 +193,9 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 				synchronized (this) {
 					if (sectsAtCubes == null) {
 						System.out.println("Lazily loading cube associations...");
-						CSVFile<String> csv;
+						CSVReader csv;
 						try {
-							csv = CSV_BackedModule.loadFromArchive(
-									sourceZip, sourceZipEntryPrefix, ARCHIVE_CUBE_ASSOC_FILE_NAME);
+							csv = CSV_BackedModule.loadLargeFileFromArchive(sourceZip, sourceZipEntryPrefix, ARCHIVE_CUBE_ASSOC_FILE_NAME);
 						} catch (IOException e) {
 							throw ExceptionUtils.asRuntimeException(e);
 						}
@@ -202,8 +204,12 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 						double[][] sectScaledDistWeightsAtCubes = new double[sectsAtCubes.length][];
 						
 						int maxSectIndex = 0;
-						for (int row=1; row<csv.getNumRows(); row++) {
-							List<String> line = csv.getLine(row);
+						csv.read(); // skip header row
+						while (true) {
+							Row row = csv.read();
+							if (row == null)
+								break;
+							List<String> line = row.getLine();
 							int cubeIndex = Integer.parseInt(line.get(0));
 							Preconditions.checkState(cubeIndex < sectsAtCubes.length,
 									"Unexpected cubeIndex=%s with numCubes=%s", cubeIndex, sectsAtCubes.length);
@@ -253,21 +259,22 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 							}
 						}
 						
+						CSVFile<String> sectCSV;
 						try {
-							csv = CSV_BackedModule.loadFromArchive(
+							sectCSV = CSV_BackedModule.loadFromArchive(
 									sourceZip, sourceZipEntryPrefix, ARCHIVE_CUBE_SECT_ASSOC_SUM_FILE_NAME);
 						} catch (IOException e) {
 							throw ExceptionUtils.asRuntimeException(e);
 						}
 						
-						int numSects = Integer.max(maxSectIndex+1, csv.getNumRows()-1);
+						int numSects = Integer.max(maxSectIndex+1, sectCSV.getNumRows()-1);
 						
 						double[] totOrigDistWtsAtCubesForSectArray = new double[numSects];
 						double[] totScaledDistWtsAtCubesForSectArray = new double[numSects];
-						for (int row=1; row<csv.getNumRows(); row++) {
-							int sectIndex = csv.getInt(row, 0);
-							totOrigDistWtsAtCubesForSectArray[sectIndex] = csv.getDouble(row, 1);
-							totScaledDistWtsAtCubesForSectArray[sectIndex] = csv.getDouble(row, 2);
+						for (int row=1; row<sectCSV.getNumRows(); row++) {
+							int sectIndex = sectCSV.getInt(row, 0);
+							totOrigDistWtsAtCubesForSectArray[sectIndex] = sectCSV.getDouble(row, 1);
+							totScaledDistWtsAtCubesForSectArray[sectIndex] = sectCSV.getDouble(row, 2);
 						}
 						
 						this.sectOrigDistWeightsAtCubes = sectOrigDistWeightsAtCubes;
@@ -347,8 +354,9 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 			}
 			
 			// write cube data CSV
-			CSVFile<String> csv = new CSVFile<>(false);
-			csv.addLine("Cube Index", "Sect Index 1", "Original Dist Weight 1", "Scaled Dist Weight 1 (if different)", "...");
+			FileBackedModule.initEntry(zout, entryPrefix, ARCHIVE_CUBE_ASSOC_FILE_NAME);
+			CSVWriter csvWriter = new CSVWriter(zout, false);
+			csvWriter.write(List.of("Cube Index", "Sect Index 1", "Original Dist Weight 1", "Scaled Dist Weight 1 (if different)", "..."));
 			for (int c=0; c<sectsAtCubes.length; c++) {
 				if (sectsAtCubes[c] != null && sectsAtCubes[c].length > 0) {
 					// this cube has mappings
@@ -362,14 +370,14 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 						else
 							row.add("");
 					}
-					csv.addLine(row);
+					csvWriter.write(row);
 				}
 			}
-			
-			CSV_BackedModule.writeToArchive(csv, zout, entryPrefix, ARCHIVE_CUBE_ASSOC_FILE_NAME);
+			csvWriter.flush();
+			zout.closeEntry();
 			
 			// write sect sum CSV
-			csv = new CSVFile<>(false);
+			CSVFile<String> csv = new CSVFile<>(false);
 			csv.addLine("Sect Index", "Total Original Dist Weight", "Total Scaled Dist Weight");
 			for (int s=0; s<totOrigDistWtsAtCubesForSectArray.length; s++)
 				csv.addLine(s+"", totOrigDistWtsAtCubesForSectArray[s]+"", totScaledDistWtsAtCubesForSectArray[s]+"");
