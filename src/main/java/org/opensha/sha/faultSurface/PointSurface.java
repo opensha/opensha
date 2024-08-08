@@ -44,8 +44,8 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	
 	// variables for the point-source distance correction; these
 	// are set by HazardCurveCalcs
-	private PtSrcDistCorr.Type corrType = PtSrcDistCorr.Type.NONE;
-	private double corrMag = Double.NaN;
+	protected PtSrcDistCorr.Type corrType = PtSrcDistCorr.Type.NONE;
+	protected double corrMag = Double.NaN;
 
 	/**
 	 * The average strike of this surface on the Earth. Even though this is a
@@ -235,7 +235,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	 * @param type
 	 */
 	public void setDistCorrMagAndType(double mag, PtSrcDistCorr.Type type) {
-		corrMag=mag;
+		corrMag = mag;
 		corrType = type;
 	}
 

@@ -42,6 +42,7 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupOrigTimeComparator;
@@ -1159,16 +1160,16 @@ public class ETAS_Simulator {
 	public static void correctGriddedSeismicityRatesInERF(FaultSystemSolution sol, boolean plotRateRatio,
 			double[] gridSeisCorrValsArray) {
 		GridSourceProvider gridSources = sol.getGridSourceProvider();
-		gridSources.scaleAllMFDs(gridSeisCorrValsArray);
+		gridSources.scaleAll(gridSeisCorrValsArray);
 		
 		double totalRate=0;
-		double[] nodeRateArray = new double[gridSources.size()];
+		double[] nodeRateArray = new double[gridSources.getNumLocations()];
 		for(int i=0;i<nodeRateArray.length;i++) {
 			nodeRateArray[i] = gridSources.getMFD(i).getCumRate(2.55);
 			totalRate+=nodeRateArray[i];
 		}
 				
-		double[] nodeRatePDF = new double[gridSources.size()];
+		double[] nodeRatePDF = new double[gridSources.getNumLocations()];
 		for(int i=0;i<nodeRateArray.length;i++) {
 			nodeRatePDF[i] = nodeRateArray[i]/totalRate;
 		}

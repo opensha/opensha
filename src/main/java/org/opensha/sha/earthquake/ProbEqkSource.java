@@ -38,8 +38,10 @@ public abstract class ProbEqkSource implements EqkSource, Named, Iterable<ProbEq
 	 */
 	protected String name = new String("ProbEqkSource");
 
-	// This represents the tectonic region type for this source (as well as the default)
-	private TectonicRegionType tectonicRegionType = TectonicRegionType.ACTIVE_SHALLOW;
+	// Default tectonic region type, used if never set
+	public static final TectonicRegionType TECTONIC_REGION_TYPE_DEFAULT = TectonicRegionType.ACTIVE_SHALLOW;
+	// This represents the tectonic region type for this source
+	private TectonicRegionType tectonicRegionType = TECTONIC_REGION_TYPE_DEFAULT;
 
 	//index of the source as defined by the Earthquake Rupture Forecast
 	private int sourceIndex;

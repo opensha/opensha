@@ -27,7 +27,7 @@ public class UCERF2_FM2pt1_FSS_ERFupdate extends FaultSystemSolutionERF {
 	
 	public UCERF2_FM2pt1_FSS_ERFupdate() {
 		super(UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(FaultModels.FM2_1));
-		gridSrcGen = new NSHMP08_GridSourceGenerator(GridSources.ALL);
+		gridSrcGen = new NSHMP08_GridSourceGenerator(U2GridSources.ALL);
 		setParameter(AleatoryMagAreaStdDevParam.NAME, 0.12);
 		setParameter(IncludeBackgroundParam.NAME, IncludeBackgroundOption.INCLUDE);
 	}

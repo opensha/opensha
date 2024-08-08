@@ -149,12 +149,9 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 			return;
 		}
 		
-		Gson gson = new GsonBuilder().create();
 		
 		InputStream zin = zip.getInputStream(modulesEntry);
-		BufferedReader reader = new BufferedReader(new InputStreamReader(zin));
-		List<ModuleRecord> records = gson.fromJson(reader,
-				TypeToken.getParameterized(List.class, ModuleRecord.class).getType());
+		List<ModuleRecord> records = loadModulesManifest(zin);
 		for (ModuleRecord record : records) {
 			if (verbose)
 				System.out.println("\tFound available module '"+record.name+"' with path='"+record.path+"'");
@@ -508,7 +505,19 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		return false;
 	}
 	
-	private static class ModuleRecord {
+	private static Gson manifestGson = null;
+	
+	public synchronized static List<ModuleRecord> loadModulesManifest(InputStream is) throws IOException {
+		if (manifestGson == null)
+			manifestGson = new GsonBuilder().create();
+		BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+		List<ModuleRecord> records = manifestGson.fromJson(reader,
+				TypeToken.getParameterized(List.class, ModuleRecord.class).getType());
+		reader.close();
+		return records;
+	}
+	
+	public static class ModuleRecord {
 		public String name;
 		public String className;
 		

@@ -47,6 +47,17 @@ public class SourceFilterManager {
 		return filterEnableds[filter.ordinal()];
 	}
 	
+	public <E extends SourceFilter> E getFilterInstance(Class<E> clazz) {
+		for (SourceFilters filter : SourceFilters.values()) {
+			if (clazz.isAssignableFrom(filter.getFilterClass())) {
+				SourceFilter instance = getFilterInstance(filter);
+				Preconditions.checkState(clazz.isAssignableFrom(instance.getClass()));
+				return clazz.cast(instance);
+			}
+		}
+		throw new IllegalStateException("Unexpected filter class: "+clazz.getName());
+	}
+	
 	public SourceFilter getFilterInstance(SourceFilters filter) {
 		if (filterInstances[filter.ordinal()] == null)
 			filterInstances[filter.ordinal()] = filter.initFilter();

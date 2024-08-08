@@ -1,6 +1,7 @@
 package org.opensha.sha.util;
 
 import java.util.Collection;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -17,10 +18,10 @@ public class TRTUtils {
 	 * @return mapping of IMR's to TRT's with only a single mapping of active shallow to the 
 	 * given IMR.
 	 */
-	public static HashMap<TectonicRegionType, ScalarIMR>
+	public static Map<TectonicRegionType, ScalarIMR>
 	wrapInHashMap(ScalarIMR imr) {
-		HashMap<TectonicRegionType, ScalarIMR> imrMap =
-			new HashMap<TectonicRegionType, ScalarIMR>();
+		Map<TectonicRegionType, ScalarIMR> imrMap =
+			new EnumMap<TectonicRegionType, ScalarIMR>(TectonicRegionType.class);
 		// The type of tectonic region here is of no consequence (it just a dummy value)
 		imrMap.put(TectonicRegionType.ACTIVE_SHALLOW, imr);
 		return imrMap;

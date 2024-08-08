@@ -26,7 +26,7 @@ public class MeanUCERF2update extends MeanUCERF2 {
 
 	private NSHMP08_GridSourceGenerator gridSrcGen;
 
-	public MeanUCERF2update(GridSources id) {
+	public MeanUCERF2update(U2GridSources id) {
 		gridSrcGen = new NSHMP08_GridSourceGenerator(id);
 	}
 	

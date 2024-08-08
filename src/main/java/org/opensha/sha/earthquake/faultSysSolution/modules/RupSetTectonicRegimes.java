@@ -2,10 +2,13 @@ package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import java.text.DecimalFormat;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
@@ -27,6 +30,8 @@ BranchAverageableModule<RupSetTectonicRegimes>, AverageableModule.ConstantAverag
 	private TectonicRegionType[] regimes;
 	
 	private static final String FILE_NAME = "tectonic_regimes.csv";
+	
+	private EnumSet<TectonicRegionType> regimeSet;
 	
 	public RupSetTectonicRegimes(FaultSystemRupSet rupSet, TectonicRegionType[] regimes) {
 		if (rupSet != null)
@@ -108,6 +113,15 @@ BranchAverageableModule<RupSetTectonicRegimes>, AverageableModule.ConstantAverag
 		}
 		
 		return new RupSetTectonicRegimes(rupSet, regimes);
+	}
+	
+	public synchronized Set<TectonicRegionType> getSet() {
+		if (regimeSet == null) {
+			regimeSet = EnumSet.noneOf(TectonicRegionType.class);
+			for (TectonicRegionType trt : regimes)
+				regimeSet.add(trt);
+		}
+		return Collections.unmodifiableSet(regimeSet);
 	}
 	
 	private static final DecimalFormat pDF = new DecimalFormat("0.00%");

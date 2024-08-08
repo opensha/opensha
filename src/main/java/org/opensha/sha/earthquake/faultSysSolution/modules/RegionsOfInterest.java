@@ -13,7 +13,9 @@ import org.opensha.commons.geo.json.FeatureCollection.FeatureCollectionAdapter;
 import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.helpers.JSON_TypeAdapterBackedModule;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
+import com.google.common.base.Objects;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.gson.GsonBuilder;
@@ -29,6 +31,7 @@ BranchAverageableModule<RegionsOfInterest> {
 	
 	private List<Region> regions;
 	private List<IncrementalMagFreqDist> regionalMFDs;
+	private List<TectonicRegionType> regionalTRTs;
 
 	@SuppressWarnings("unused") // for deserialization
 	private RegionsOfInterest() {}
@@ -42,11 +45,18 @@ BranchAverageableModule<RegionsOfInterest> {
 	}
 	
 	public RegionsOfInterest(List<Region> regions, List<IncrementalMagFreqDist> regionalMFDs) {
+		this(regions, regionalMFDs, null);
+	}
+	
+	public RegionsOfInterest(List<Region> regions, List<IncrementalMagFreqDist> regionalMFDs, List<TectonicRegionType> regionalTRTs) {
 		Preconditions.checkState(!regions.isEmpty(), "Must supply at least 1 region");
 		this.regions = regions;
 		Preconditions.checkState(regionalMFDs == null || regionalMFDs.size() == regions.size(),
 				"If regional MFDs are supplied, there must be exactly one for each region");
 		this.regionalMFDs = regionalMFDs;
+		Preconditions.checkState(regionalTRTs == null || regionalTRTs.size() == regions.size(),
+				"If regional TRTs are supplied, there must be exactly one for each region");
+		this.regionalTRTs = regionalTRTs;
 	}
 
 	@Override
@@ -63,6 +73,9 @@ BranchAverageableModule<RegionsOfInterest> {
 	public Type getType() {
 		return FeatureCollection.class;
 	}
+	
+	public static final String MFD_PROPERTY_NAME = "MFD";
+	public static final String TRT_PROPERTY_NAME = "TectonicRegionType";
 
 	@Override
 	public FeatureCollection get() {
@@ -73,7 +86,12 @@ BranchAverageableModule<RegionsOfInterest> {
 			if (regionalMFDs != null) {
 				IncrementalMagFreqDist mfd = regionalMFDs.get(i);
 				if (mfd != null)
-					feature.properties.set("MFD", mfd);
+					feature.properties.set(MFD_PROPERTY_NAME, mfd);
+			}
+			if (regionalTRTs != null) {
+				TectonicRegionType trt = regionalTRTs.get(i);
+				if (trt != null)
+					feature.properties.set(TRT_PROPERTY_NAME, trt.name());
 			}
 			features.add(feature);
 		}
@@ -94,6 +112,15 @@ BranchAverageableModule<RegionsOfInterest> {
 				while (regionalMFDs.size() < regions.size())
 					regionalMFDs.add(null);
 				regionalMFDs.add(mfd);
+			}
+			String trtName = feature.properties.getString(TRT_PROPERTY_NAME, null);
+			if (trtName != null) {
+				TectonicRegionType trt = TectonicRegionType.valueOf(trtName);
+				if (regionalTRTs == null)
+					regionalTRTs = new ArrayList<>();
+				while (regionalTRTs.size() < regions.size())
+					regionalTRTs.add(null);
+				regionalTRTs.add(trt);
 			}
 			regions.add(region);
 		}
@@ -121,6 +148,13 @@ BranchAverageableModule<RegionsOfInterest> {
 		return regionalMFDs == null ? null : Collections.unmodifiableList(regionalMFDs);
 	}
 	
+	/**
+	 * @return immutable view of TRTs if they exist, or null
+	 */
+	public List<TectonicRegionType> getTRTs() {
+		return regionalTRTs == null ? null : Collections.unmodifiableList(regionalTRTs);
+	}
+	
 	public boolean areRegionsIdenticalTo(RegionsOfInterest o) {
 		if (regions.size() != o.regions.size())
 			return false;
@@ -139,6 +173,7 @@ BranchAverageableModule<RegionsOfInterest> {
 			private List<IncrementalMagFreqDist> regionalMFDs;
 			private List<String> mfdNames;
 			private List<String> mfdBoundNames;
+			private List<TectonicRegionType> regionalTRTs;
 			private double weightSum = 0d;
 			
 			@Override
@@ -180,11 +215,21 @@ BranchAverageableModule<RegionsOfInterest> {
 					} else {
 						regionalMFDs = null;
 					}
+					if (module.regionalTRTs != null) {
+						regionalTRTs = new ArrayList<>();
+						for (TectonicRegionType trt : module.regionalTRTs)
+							regionalTRTs.add(trt);
+					} else {
+						regionalMFDs = null;
+					}
 				}
 				Preconditions.checkState(regions.size() == module.regions.size());
 				if (regionalMFDs != null)
 					if (module.regionalMFDs == null)
 						regionalMFDs = null;
+				if (regionalTRTs != null)
+					if (module.regionalTRTs == null)
+						regionalTRTs = null;
 				for (int r=0; r<regions.size(); r++) {
 					Preconditions.checkState(regions.get(r).equalsRegion(module.regions.get(r)));
 					if (regionalMFDs != null) {
@@ -206,6 +251,16 @@ BranchAverageableModule<RegionsOfInterest> {
 							}
 						}
 					}
+					if (regionalTRTs != null) {
+						if (module.regionalTRTs == null) {
+							regionalTRTs = null;
+						} else {
+							TectonicRegionType prevTRT = regionalTRTs.get(r);
+							TectonicRegionType newTRT = module.regionalTRTs.get(r);
+							if (!Objects.equal(prevTRT, newTRT))
+								regionalTRTs.set(r, null);
+						}
+					}
 				}
 				weightSum += relWeight;
 			}
@@ -215,7 +270,7 @@ BranchAverageableModule<RegionsOfInterest> {
 				boolean hasNonNullMFD = false;
 				if (regionalMFDs != null)
 					for (IncrementalMagFreqDist mfd : regionalMFDs)
-						hasNonNullMFD = hasNonNullMFD || mfd != null;
+						hasNonNullMFD |= mfd != null;
 				if (hasNonNullMFD) {
 					for (int r=0; r<regionalMFDs.size(); r++) {
 						IncrementalMagFreqDist mfd = regionalMFDs.get(r);
@@ -227,9 +282,16 @@ BranchAverageableModule<RegionsOfInterest> {
 							InversionTargetMFDs.Precomputed.scaleToTotWeight(mfd, weightSum);
 						}
 					}
-					return new RegionsOfInterest(regions, regionalMFDs);
+				} else {
+					regionalMFDs = null;
 				}
-				return new RegionsOfInterest(regions);
+				boolean hasNonNullTRT = false;
+				if (regionalTRTs != null)
+					for (TectonicRegionType trt : regionalTRTs)
+						hasNonNullTRT |= trt != null;
+				if (!hasNonNullTRT)
+					regionalTRTs = null;
+				return new RegionsOfInterest(regions, regionalMFDs, regionalTRTs);
 			}
 			
 		};

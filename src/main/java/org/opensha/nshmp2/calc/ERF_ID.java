@@ -14,7 +14,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2
 
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.utils.ModUCERF2.ModMeanUCERF2;
-import scratch.UCERF3.utils.UpdatedUCERF2.GridSources;
+import scratch.UCERF3.utils.UpdatedUCERF2.U2GridSources;
 import scratch.UCERF3.utils.UpdatedUCERF2.MeanUCERF2update;
 import scratch.UCERF3.utils.UpdatedUCERF2.MeanUCERF2update_FM2p1;
 import scratch.UCERF3.utils.UpdatedUCERF2.ModMeanUCERF2update_FM2p1;
@@ -151,27 +151,27 @@ public enum ERF_ID {
 	public abstract EpistemicListERF instance();
 
 	private static EpistemicListERF getMeanUC2() {
-		final MeanUCERF2 erf = new MeanUCERF2update(GridSources.ALL);
+		final MeanUCERF2 erf = new MeanUCERF2update(U2GridSources.ALL);
 		setParams(erf);
 		return wrapInList(erf);
 	}
 	
 	private static EpistemicListERF getMeanUC2_GRD() {
-		final MeanUCERF2 erf = new MeanUCERF2update(GridSources.ALL);
+		final MeanUCERF2 erf = new MeanUCERF2update(U2GridSources.ALL);
 		setParams(erf);
 		erf.setParameter(UCERF2.BACK_SEIS_NAME, UCERF2.BACK_SEIS_ONLY);
 		return wrapInList(erf);
 	}
 
 	private static EpistemicListERF getMeanUC2_FIX() {
-		final MeanUCERF2 erf = new MeanUCERF2update(GridSources.FIX_STRK);
+		final MeanUCERF2 erf = new MeanUCERF2update(U2GridSources.FIX_STRK);
 		setParams(erf);
 		erf.setParameter(UCERF2.BACK_SEIS_NAME, UCERF2.BACK_SEIS_ONLY);
 		return wrapInList(erf);
 	}
 
 	private static EpistemicListERF getMeanUC2_PT() {
-		final MeanUCERF2 erf = new MeanUCERF2update(GridSources.PT_SRC);
+		final MeanUCERF2 erf = new MeanUCERF2update(U2GridSources.PT_SRC);
 		setParams(erf);
 		erf.setParameter(UCERF2.BACK_SEIS_NAME, UCERF2.BACK_SEIS_ONLY);
 		return wrapInList(erf);

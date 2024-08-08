@@ -19,6 +19,7 @@ public class PRVI25_LogicTreeBranch {
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsOnFault;
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsCrustalOffFault;
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsSubduction;
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsSubductionGridded;
 	
 	/*
 	 * Core crustal FSS branch levels
@@ -59,6 +60,7 @@ public class PRVI25_LogicTreeBranch {
 		levelsOnFault = List.of(CRUSTAL_FM, CRUSTAL_DM, CRUSTAL_SCALE, SUPRA_B, SEG);
 		levelsCrustalOffFault = List.of(SEIS_RATE, SEIS_DECLUSTER, SEIS_SMOOTH, MMAX_OFF);
 		levelsSubduction = List.of(SUB_FM, SUB_DM, SUB_SCALE, SUB_SUPRA_B);
+		levelsSubductionGridded = List.of(SEIS_RATE, SEIS_DECLUSTER, SEIS_SMOOTH);
 	}
 	
 	/**

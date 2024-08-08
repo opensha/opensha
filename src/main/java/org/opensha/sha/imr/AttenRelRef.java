@@ -187,13 +187,35 @@ public enum AttenRelRef implements AttenRelSupplier {
 		
 	},
 	
-	AG_2020_GLOBAL(null, "AG (2020) Global Interfase",
+	AG_2020_GLOBAL_INTERFACE(null, "AG (2020) Global Interface",
 			"AG2020", DEVELOPMENT) {
 		
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
 			return new NSHMP_GMM_Wrapper(Gmm.AG_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	PSBAH_2020_GLOBAL_INTERFACE(null, "PSBAH (2020) Global Interface",
+			"PSBAH2020-Interface", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.PSBAH_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	PSBAH_2020_GLOBAL_SLAB(null, "PSBAH (2020) Global Slab",
+			"PSBAH2020-Slab", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.PSBAH_20_GLOBAL_SLAB, getName(), getShortName(), false, null);
 		}
 		
 	},

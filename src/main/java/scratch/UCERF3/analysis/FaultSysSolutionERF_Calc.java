@@ -93,6 +93,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
@@ -5381,7 +5382,7 @@ public class FaultSysSolutionERF_Calc {
 	}
 	
 	public static void testTotSubSeisMFD(FaultSystemSolutionERF erf) {
-		GridSourceProvider gridSrcProvider = erf.getGridSourceProvider();
+		MFDGridSourceProvider gridSrcProvider = (MFDGridSourceProvider)erf.getGridSourceProvider();
 		SummedMagFreqDist mfd1 = new SummedMagFreqDist(2.05,8.95,70);
 		for(int i=0;i<gridSrcProvider.getGriddedRegion().getNumLocations(); i++) {
 			IncrementalMagFreqDist mfd = gridSrcProvider.getMFD_SubSeisOnFault(i);

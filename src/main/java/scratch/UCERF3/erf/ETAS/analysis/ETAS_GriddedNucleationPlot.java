@@ -179,7 +179,7 @@ public class ETAS_GriddedNucleationPlot extends ETAS_AbstractPlot {
 				for (int i=0; i<mags.length; i++) {
 					if (mags[i] >= modalMag && mags[i] >= 5d) {
 						fssXYZs[i] = new GriddedGeoDataSet(gridReg, false);
-						for (int j=0; j<gridProv.size(); j++) {
+						for (int j=0; j<gridProv.getNumLocations(); j++) {
 							IncrementalMagFreqDist mfd = gridProv.getMFD(j);
 							for (int k=0; k<mfd.size(); k++)
 								if (mfd.getX(k) >= mags[i])

@@ -7,7 +7,7 @@ package scratch.UCERF3.utils.UpdatedUCERF2;
  * @author Peter Powers
  * @version $Id:$
  */
-public enum GridSources {
+public enum U2GridSources {
 	ALL,
 	PT_SRC,
 	FIX_STRK;
