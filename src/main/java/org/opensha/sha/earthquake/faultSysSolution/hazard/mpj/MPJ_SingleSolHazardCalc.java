@@ -149,10 +149,10 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		if (cmd.hasOption("grid-spacing"))
 			gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
 		
-		sourceFilter = MPJ_LogicTreeHazardCalc.getSourceFilters(cmd);
-		siteSkipSourceFilter = MPJ_LogicTreeHazardCalc.getSiteSkipSourceFilters(sourceFilter, cmd);
+		sourceFilter = SolHazardMapCalc.getSourceFilters(cmd);
+		siteSkipSourceFilter = SolHazardMapCalc.getSiteSkipSourceFilters(sourceFilter, cmd);
 		
-		gmmRefs = MPJ_LogicTreeHazardCalc.getGMMs(cmd);
+		gmmRefs = SolHazardMapCalc.getGMMs(cmd);
 		
 		if (cmd.hasOption("periods")) {
 			List<Double> periodsList = new ArrayList<>();
@@ -658,7 +658,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	public static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
 		
-		MPJ_LogicTreeHazardCalc.addCommonOptions(ops, true);
+		SolHazardMapCalc.addCommonOptions(ops, true);
 		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "

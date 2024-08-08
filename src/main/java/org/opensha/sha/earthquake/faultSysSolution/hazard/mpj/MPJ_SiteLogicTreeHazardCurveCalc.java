@@ -124,9 +124,9 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		if (cmd.hasOption("gridded-seis"))
 			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
 		
-		sourceFilters = MPJ_LogicTreeHazardCalc.getSourceFilters(cmd);
+		sourceFilters = SolHazardMapCalc.getSourceFilters(cmd);
 		
-		gmms = MPJ_LogicTreeHazardCalc.getGMMs(cmd);
+		gmms = SolHazardMapCalc.getGMMs(cmd);
 		
 		if (cmd.hasOption("periods")) {
 			List<Double> periodsList = new ArrayList<>();
@@ -572,7 +572,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	public static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
 		
-		MPJ_LogicTreeHazardCalc.addCommonOptions(ops, false);
+		SolHazardMapCalc.addCommonOptions(ops, false);
 		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "

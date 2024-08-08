@@ -102,6 +102,98 @@ public class SolHazardMapCalc {
 		}
 	}
 	
+	static AttenRelRef CRUSTAL_GMPE_DEFAULT = AttenRelRef.ASK_2014;
+	static AttenRelRef STABLE_GMPE_DEFAULT = AttenRelRef.ASK_2014; // TODO
+	static AttenRelRef INTERFACE_GMPE_DEFAULT = AttenRelRef.PSBAH_2020_GLOBAL_INTERFACE;
+	static AttenRelRef SLAB_GMPE_DEFAULT = AttenRelRef.PSBAH_2020_GLOBAL_SLAB;
+	
+	public static Map<TectonicRegionType, AttenRelRef> getGMMs(CommandLine cmd) {
+		if (cmd.hasOption("gmpe")) {
+			// single
+			AttenRelRef gmpeRef = AttenRelRef.valueOf(cmd.getOptionValue("gmpe"));
+			EnumMap<TectonicRegionType, AttenRelRef> ret = new EnumMap<>(TectonicRegionType.class);
+			ret.put(TectonicRegionType.ACTIVE_SHALLOW, gmpeRef);
+			return ret;
+		}
+		
+		Map<TectonicRegionType, AttenRelRef> gmmRefs = getDefaultGMMs();
+		if (cmd.hasOption("trt-gmpe")) {
+			for (String val : cmd.getOptionValues("gmmRefs")) {
+				Preconditions.checkState(val.contains(":"), "Expected <trt>:<gmm>, can't parse argument: %s", val);
+				int index = val.indexOf(":");
+				String trtName = val.substring(0, index);
+				TectonicRegionType trt = TectonicRegionType.valueOf(trtName);
+				String gmmName = val.substring(index+1);
+				AttenRelRef gmm = AttenRelRef.valueOf(gmmName);
+				gmmRefs.put(trt, gmm);
+			}
+		}
+		return gmmRefs;
+	}
+	
+	public static Map<TectonicRegionType, AttenRelRef> getDefaultGMMs() {
+		EnumMap<TectonicRegionType, AttenRelRef> ret = new EnumMap<>(TectonicRegionType.class);
+		ret.put(TectonicRegionType.ACTIVE_SHALLOW, CRUSTAL_GMPE_DEFAULT);
+		ret.put(TectonicRegionType.STABLE_SHALLOW, STABLE_GMPE_DEFAULT);
+		ret.put(TectonicRegionType.SUBDUCTION_INTERFACE, INTERFACE_GMPE_DEFAULT);
+		ret.put(TectonicRegionType.SUBDUCTION_SLAB, SLAB_GMPE_DEFAULT);
+		return ret;
+	}
+	
+	public static SourceFilterManager getDefaultSourceFilters() {
+		SourceFilterManager sourceFilters = new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
+		return sourceFilters;
+	}
+	
+	public static SourceFilterManager getSourceFilters(CommandLine cmd) {
+		SourceFilterManager sourceFilters;
+		if (cmd.hasOption("max-distance")) {
+			sourceFilters = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
+			double maxDist = Double.parseDouble(cmd.getOptionValue("max-distance"));
+			((FixedDistanceCutoffFilter)sourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF)).setMaxDistance(maxDist);
+		} else {
+			sourceFilters = getDefaultSourceFilters();
+		}
+		return sourceFilters;
+	}
+	
+	public static SourceFilterManager getDefaultSiteSkipSourceFilters(SourceFilterManager sourceFilters) {
+		SourceFilterManager ret = null;
+		if (sourceFilters.isEnabled(SourceFilters.TRT_DIST_CUTOFFS)) {
+			TectonicRegionDistCutoffFilter fullFilter = (TectonicRegionDistCutoffFilter)
+					sourceFilters.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS);
+			TectonicRegionDistanceCutoffs fullCutoffs = fullFilter.getCutoffs();
+			ret = new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
+			TectonicRegionDistCutoffFilter skipFilter = (TectonicRegionDistCutoffFilter)
+					ret.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS);
+			TectonicRegionDistanceCutoffs skipCutoffs = skipFilter.getCutoffs();
+			for (TectonicRegionType trt : TectonicRegionType.values())
+				skipCutoffs.setCutoffDist(trt, fullCutoffs.getCutoffDist(trt)*SITE_SKIP_FRACT);
+		}
+		if (sourceFilters.isEnabled(SourceFilters.FIXED_DIST_CUTOFF)) {
+			if (ret == null)
+				ret = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
+			else
+				ret.setEnabled(SourceFilters.FIXED_DIST_CUTOFF, true);
+			FixedDistanceCutoffFilter fullFilter = (FixedDistanceCutoffFilter)sourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF);
+			FixedDistanceCutoffFilter skipFilter = (FixedDistanceCutoffFilter)ret.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF);
+			skipFilter.setMaxDistance(fullFilter.getMaxDistance()*SITE_SKIP_FRACT);
+		}
+		return ret;
+	}
+	
+	public static SourceFilterManager getSiteSkipSourceFilters(SourceFilterManager sourceFilters, CommandLine cmd) {
+		SourceFilterManager siteSkipSourceFilters;
+		if (cmd.hasOption("skip-max-distance")) {
+			siteSkipSourceFilters = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
+			double maxDist = Double.parseDouble(cmd.getOptionValue("skip-max-distance"));
+			((FixedDistanceCutoffFilter)siteSkipSourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF)).setMaxDistance(maxDist);
+		} else {
+			siteSkipSourceFilters = getDefaultSiteSkipSourceFilters(sourceFilters);
+		}
+		return siteSkipSourceFilters;
+	}
+	
 	private FaultSystemSolution sol;
 	private Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap;
 	private GriddedRegion region;
@@ -1077,6 +1169,20 @@ public class SolHazardMapCalc {
 						i, region.locationForIndex(i));
 		}
 		return curves;
+	}
+
+	static final double SITE_SKIP_FRACT = 0.8;
+	public static void addCommonOptions(Options ops, boolean includeSiteSkip) {
+		ops.addOption("gm", "gmpe", true, "Sets a single GMPE. Note that this will be overriden if the Logic Tree "
+				+ "supplies GMPE choices. Default is TectonicRegionType-specific.");
+		ops.addOption(null, "trt-gmpe", true, "Sets the GMPE for the given TectonicRegionType in the format :<TRT>:<GMM>. "
+				+ "For example: ACTIVE_SHALLOW:ASK_2014. Note that this will be overriden if the Logic Tree "
+				+ "supplies GMPE choices.");
+		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
+		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default is TectonicRegionType-specific.");
+		if (includeSiteSkip)
+			ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
+					+ "Default is "+(int)(SITE_SKIP_FRACT*100d)+"% of the TectonicRegionType-specific default maximum distance.");
 	}
 	
 	private static Options createOptions() {

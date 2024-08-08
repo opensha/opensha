@@ -9,6 +9,8 @@ import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -62,7 +64,12 @@ import org.opensha.sha.calc.disaggregation.DisaggregationCalculator.EpsilonCateg
 import org.opensha.sha.calc.disaggregation.DisaggregationPlotData;
 import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
 import org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter;
+import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
 import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.params.filters.SourceFilterManager;
+import org.opensha.sha.calc.params.filters.SourceFilters;
+import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
+import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -71,6 +78,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.GeneralInfoPlot;
@@ -95,6 +103,7 @@ import org.opensha.sha.imr.param.SiteParams.DepthTo1pt0kmPerSecParam;
 import org.opensha.sha.imr.param.SiteParams.DepthTo2pt5kmPerSecParam;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 import org.opensha.sha.util.NEHRP_TestCity;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -110,10 +119,6 @@ public class SolSiteHazardCalc {
 	private static final String VS30_HEADER = Vs30_Param.NAME;
 	private static final String Z10_HEADER = "Z1.0";
 	private static final String Z25_HEADER = "Z2.5";
-	
-	private static final AttenRelRef GMM_DEFAULT = AttenRelRef.ASK_2014;
-	
-	private static final double MAX_DIST_DEFAULT = 200d;
 	
 	private static final String SOL_NAME_DEFAULT = "Solution";
 	private static final String COMP_SOL_NAME_DEFAULT = "Comparison Solution";
@@ -180,20 +185,12 @@ public class SolSiteHazardCalc {
 		
 		// calculation parameters
 		
+		SolHazardMapCalc.addCommonOptions(ops, false);
+		
 		ops.addOption(null, "spectra", false, "Flag to calculate and plot hazard spectra. Usually used in conjunction "
 				+ "with --all-periods. Also see --return-periods.");
 		
-		ops.addOption("p", "periods", true, "Calculation spectral period(s). Mutliple can be comma separated; supply 0 "
-				+ "for PGA, or -1 for PGV.");
-		
 		ops.addOption(null, "all-periods", false, "Flag to calculate all available periods (alternative to --periods).");
-		
-		ops.addOption(null, "gmpe", true, "GMPE name. Default is `"+GMM_DEFAULT.name()+"`, "
-				+ "and the full list can be found at https://github.com/opensha/opensha/blob/master/src/main/java/org/"
-				+ "opensha/sha/imr/AttenRelRef.java");
-		
-		ops.addOption(null, "max-distance", true, "Maximum distance for hazard curve calculations in km. Default is "
-				+(int)MAX_DIST_DEFAULT+" km.");
 		
 		ops.addOption(null, "gridded-seis", true, "By default, gridded seismicity will be included in calculations "
 				+ "if gridded sources are present in the input fault system solution. You can override this behavior "
@@ -266,12 +263,70 @@ public class SolSiteHazardCalc {
 			outputDir = null;
 		}
 		
-		Supplier<ScalarIMR> gmmSupplier = cmd.hasOption("gmpe") ? AttenRelRef.valueOf(cmd.getOptionValue("gmpe")) : GMM_DEFAULT;
+		IncludeBackgroundOption mainGridOp = getGridOp(cmd, sol);
+		IncludeBackgroundOption compGridOp = compSol == null ? null : getGridOp(cmd, sol);
 		
-		ScalarIMR gmm0 = gmmSupplier.get();
+		Map<TectonicRegionType, AttenRelRef> gmmSuppliers = SolHazardMapCalc.getGMMs(cmd);
 		
-		double maxDist = cmd.hasOption("max-distance") ?
-				Double.parseDouble(cmd.getOptionValue("max-distance")) : MAX_DIST_DEFAULT;
+		if (gmmSuppliers.size() > 1) {
+			// see which ones we actually need
+			RupSetTectonicRegimes rupSetTRTs = sol.getRupSet().getModule(RupSetTectonicRegimes.class);
+			EnumSet<TectonicRegionType> trts;
+			if (rupSetTRTs == null) {
+				trts = EnumSet.of(TectonicRegionType.ACTIVE_SHALLOW);
+			} else {
+				trts = EnumSet.copyOf(rupSetTRTs.getSet());
+			}
+			
+			if (mainGridOp == IncludeBackgroundOption.INCLUDE || mainGridOp == IncludeBackgroundOption.ONLY) {
+				GridSourceProvider prov = sol.getGridSourceProvider();
+				Preconditions.checkNotNull(prov);
+				trts.addAll(prov.getTectonicRegionTypes());
+			}
+			
+			if (compGridOp != null) {
+				GridSourceProvider prov = compSol.getGridSourceProvider();
+				Preconditions.checkNotNull(prov);
+				trts.addAll(prov.getTectonicRegionTypes());
+			}
+			
+			// make sure we have GMMs for each TRT
+			for (TectonicRegionType trt : trts)
+				Preconditions.checkState(gmmSuppliers.containsKey(trt),
+						"Solution has %s sources but we don't have a GMM for it", trt);
+			
+			// remove any that we don't need
+			if (trts.size() < gmmSuppliers.size())
+				for (TectonicRegionType trt : List.copyOf(gmmSuppliers.keySet()))
+					if (!trts.contains(trt))
+						gmmSuppliers.remove(trt);
+		}
+
+		SourceFilterManager sourceFilters = SolHazardMapCalc.getSourceFilters(cmd);
+		double largestMaxDist = Double.NaN;
+		double smallestMaxDist = Double.NaN;
+		if (sourceFilters.isEnabled(SourceFilters.FIXED_DIST_CUTOFF)) {
+			largestMaxDist = sourceFilters.getFilterInstance(FixedDistanceCutoffFilter.class).getMaxDistance();
+			smallestMaxDist = largestMaxDist;
+		}
+		if (sourceFilters.isEnabled(SourceFilters.TRT_DIST_CUTOFFS)) {
+			TectonicRegionDistanceCutoffs cutoffs = sourceFilters.getFilterInstance(
+					TectonicRegionDistCutoffFilter.class).getCutoffs();
+			if (Double.isNaN(largestMaxDist)) {
+				largestMaxDist = 0d;
+				largestMaxDist = 1000d;
+			}
+			for (TectonicRegionType trt : gmmSuppliers.keySet()) {
+				largestMaxDist = Double.max(largestMaxDist, cutoffs.getCutoffDist(trt));
+				smallestMaxDist = Double.min(smallestMaxDist, cutoffs.getCutoffDist(trt));
+			}
+		}
+		if (Double.isNaN(largestMaxDist)) {
+			largestMaxDist = TectonicRegionType.ACTIVE_SHALLOW.defaultCutoffDist();
+			smallestMaxDist = largestMaxDist;
+		}
+		
+		Map<TectonicRegionType, ScalarIMR> gmms0 = SolHazardMapCalc.getGmmInstances(gmmSuppliers);
 		
 		List<Site> sites = new ArrayList<>();
 		if (cmd.hasOption("site-location")) {
@@ -288,7 +343,7 @@ public class SolSiteHazardCalc {
 			String siteName = cmd.hasOption("site-name") ? cmd.getOptionValue("site-name") : "Site ("+locStr+")";
 			
 			Site site = new Site(loc, siteName);
-			addDefaultSiteParams(site, gmm0, cmd);
+			addDefaultSiteParams(site, gmms0, cmd);
 			sites.add(site);
 		} else if (cmd.hasOption("nehrp-sites")) {
 			Preconditions.checkArgument(!cmd.hasOption("sites"), "Can't supply both --nehrpsites and --sites");
@@ -311,7 +366,7 @@ public class SolSiteHazardCalc {
 					boolean include = false;
 					for (FaultSection sect : sol.getRupSet().getFaultSectionDataList()) {
 						for (Location loc : sect.getFaultTrace()) {
-							if (LocationUtils.horzDistanceFast(loc, nehrp.location()) < maxDist) {
+							if (LocationUtils.horzDistanceFast(loc, nehrp.location()) < largestMaxDist) {
 								include = true;
 								break;
 							}
@@ -328,7 +383,7 @@ public class SolSiteHazardCalc {
 						boolean include = false;
 						for (FaultSection sect : compSol.getRupSet().getFaultSectionDataList()) {
 							for (Location loc : sect.getFaultTrace()) {
-								if (LocationUtils.horzDistanceFast(loc, nehrp.location()) < maxDist) {
+								if (LocationUtils.horzDistanceFast(loc, nehrp.location()) < largestMaxDist) {
 									include = true;
 									break;
 								}
@@ -342,7 +397,7 @@ public class SolSiteHazardCalc {
 					}
 				}
 				Site site = new Site(nehrp.location(), nehrp.toString());
-				addDefaultSiteParams(site, gmm0, cmd);
+				addDefaultSiteParams(site, gmms0, cmd);
 				sites.add(site);
 			}
 			sites.sort(new NamedComparator());
@@ -387,7 +442,7 @@ public class SolSiteHazardCalc {
 			
 			for (int row=1; row<csv.getNumRows(); row++) {
 				Site site = new Site(new Location(csv.getDouble(row, 1), csv.getDouble(row, 2)), csv.get(row, 0));
-				addDefaultSiteParams(site, gmm0, cmd);
+				addDefaultSiteParams(site, gmms0, cmd);
 				if (vsCol >= 0 && site.containsParameter(Vs30_Param.NAME))
 					setDoubleParam(site.getParameter(Vs30_Param.NAME), csv.getDouble(row, vsCol));
 				if (z10Col >= 0 && site.containsParameter(DepthTo1pt0kmPerSecParam.NAME))
@@ -414,14 +469,23 @@ public class SolSiteHazardCalc {
 			}
 		} else {
 			Preconditions.checkArgument(cmd.hasOption("all-periods"), "Must supply either --periods or --all-periods");
-			List<Double> periodsList = new ArrayList<>();
-			if (gmm0.getSupportedIntensityMeasures().containsParameter(PGV_Param.NAME))
-				periodsList.add(-1d);
-			if (gmm0.getSupportedIntensityMeasures().containsParameter(PGA_Param.NAME))
-				periodsList.add(0d);
-			if (gmm0.getSupportedIntensityMeasures().containsParameter(SA_Param.NAME)) {
-				SA_Param saParam = (SA_Param)gmm0.getSupportedIntensityMeasures().getParameter(SA_Param.NAME);
-				periodsList.addAll(saParam.getPeriodParam().getSupportedPeriods());
+			List<Double> periodsList = null;
+			for (ScalarIMR gmm0 : gmms0.values()) {
+				List<Double> gmmPeriodsList = new ArrayList<>();
+				if (gmm0.getSupportedIntensityMeasures().containsParameter(PGV_Param.NAME))
+					gmmPeriodsList.add(-1d);
+				if (gmm0.getSupportedIntensityMeasures().containsParameter(PGA_Param.NAME))
+					gmmPeriodsList.add(0d);
+				if (gmm0.getSupportedIntensityMeasures().containsParameter(SA_Param.NAME)) {
+					SA_Param saParam = (SA_Param)gmm0.getSupportedIntensityMeasures().getParameter(SA_Param.NAME);
+					gmmPeriodsList.addAll(saParam.getPeriodParam().getSupportedPeriods());
+				}
+				if (periodsList == null) {
+					periodsList = gmmPeriodsList;
+				} else {
+					// retain only common periods between all GMMs
+					periodsList.retainAll(gmmPeriodsList);
+				}
 			}
 			Collections.sort(periodsList);
 			periods = Doubles.toArray(periodsList);
@@ -450,14 +514,15 @@ public class SolSiteHazardCalc {
 		else if (!THREAD_LOCAL_ERFS)
 			SurfaceCachingPolicy.force(CacheTypes.THREAD_LOCAL);
 		
+		double duration = cmd.hasOption("duration") ? Double.parseDouble(cmd.getOptionValue("duration")) : 1d;
+		
 		System.out.println("Building ERF for "+name);
-		FaultSystemSolutionERF erf = buildERF(sol, cmd);
+		FaultSystemSolutionERF erf = buildERF(sol, mainGridOp, duration);
 		
 		List<HazardCalcThread> calcThreads = new ArrayList<>(threads);		
 		for (int i=0; i<threads; i++) {
-			HazardCurveCalculator calc = new HazardCurveCalculator();
-			calc.setMaxSourceDistance(maxDist);
-			calcThreads.add(new HazardCalcThread(calc, i == 0 ? gmm0 : gmmSupplier.get()));
+			HazardCurveCalculator calc = new HazardCurveCalculator(sourceFilters);
+			calcThreads.add(new HazardCalcThread(calc, i == 0 ? gmms0 : SolHazardMapCalc.getGmmInstances(gmmSuppliers)));
 		}
 		
 		List<DiscretizedFunc[]> curves = calcHazardCurves(calcThreads, sites, erf, periods, periodXVals);
@@ -484,12 +549,12 @@ public class SolSiteHazardCalc {
 		List<DiscretizedFunc[]> compCurves = null;
 		if (compSol != null) {
 			System.out.println("Building ERF for "+compName);
-			compERF = buildERF(compSol, cmd);
+			compERF = buildERF(compSol, compGridOp, duration);
 			
 			// can't re-use threads, but can copy over previous curve calc and gmm
 			ArrayList<HazardCalcThread> compCalcThreads = new ArrayList<>(threads);		
 			for (int i=0; i<threads; i++)
-				compCalcThreads.add(new HazardCalcThread(calcThreads.get(i).calc, calcThreads.get(i).gmm));
+				compCalcThreads.add(new HazardCalcThread(calcThreads.get(i).calc, calcThreads.get(i).gmms));
 			
 			compCurves = calcHazardCurves(compCalcThreads, sites, compERF, periods, periodXVals);
 			
@@ -664,7 +729,7 @@ public class SolSiteHazardCalc {
 			magRange = disaggRange(minMag, maxMag, 0.5, false);
 			
 			double disaggMaxDist = cmd.hasOption("disagg-max-dist") ?
-					Double.parseDouble(cmd.getOptionValue("disagg-max-dist")) : Math.min(maxDist, 200d);
+					Double.parseDouble(cmd.getOptionValue("disagg-max-dist")) : Math.min(largestMaxDist, 200d);
 			double minDist, distDelta;
 			if (disaggMaxDist > 150d) {
 				minDist = 10d;
@@ -678,16 +743,14 @@ public class SolSiteHazardCalc {
 //			System.out.println("Dist range:\n"+distRange);
 			
 			List<DisaggCalcThread> disaggThreads = new ArrayList<>(threads);
-			HazardCurveCalculator curveCalc = new HazardCurveCalculator();
-			curveCalc.setMaxSourceDistance(maxDist);
+			HazardCurveCalculator curveCalc = new HazardCurveCalculator(sourceFilters);
 			ParameterList calcParams = curveCalc.getAdjustableParams();
-			List<SourceFilter> sourceFilters = curveCalc.getSourceFilters();
 			for (int i=0; i<threads; i++) {
 				DisaggregationCalculator calc = new DisaggregationCalculator();
 				calc.setMagRange(magRange.getMinX(), magRange.size(), magRange.getDelta());
 				calc.setDistanceRange(distRange.getMinX(), distRange.size(), distRange.getDelta());
-				disaggThreads.add(new DisaggCalcThread(calc, sourceFilters, calcParams,
-						calcThreads.get(i).gmm, disaggProbs, disaggIMLs));
+				disaggThreads.add(new DisaggCalcThread(calc, sourceFilters.getEnabledFilters(), calcParams,
+						calcThreads.get(i).gmms, disaggProbs, disaggIMLs));
 			}
 			
 			disaggResults = calcDisagg(disaggThreads, sites, erf, periods, curves);
@@ -822,15 +885,18 @@ public class SolSiteHazardCalc {
 		int tocIndex = lines.size();
 		String topLink = "_[(top)](#table-of-contents)_";
 		
-		double duration = erf.getTimeSpan().getDuration();
-		
 		lines.add("## Calculation Parameters");
 		lines.add(topLink); lines.add("");
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		table.addLine("_Calculation Parameters_", "_Values_");
-		table.addLine("Ground Motion Model", gmm0.getName());
-		table.addLine("Maximum Source-Site Distance", oDF.format(maxDist)+" km");
+		for (TectonicRegionType trt : gmms0.keySet()) {
+			ScalarIMR gmm = gmms0.get(trt);
+			
+			if (gmms0.size() > 1)
+				table.addLine("_"+trt+"_", "");
+			addTRTParamLines(table, trt, gmm, sourceFilters);
+		}
 		String gridSeisStr = gridSeisOp.toString();
 		if (compERF != null && !compERF.getParameter(IncludeBackgroundParam.NAME).getValue().equals(gridSeisOp))
 			gridSeisStr = name+": "+gridSeisOp+", "+compName+": "+compERF.getParameter(IncludeBackgroundParam.NAME).getValue();
@@ -1031,7 +1097,7 @@ public class SolSiteHazardCalc {
 					for (int d=0; d<numDisagg; d++) {
 						String disaggPrefix = "disagg_"+prefix+"_"+periodPrefix(periods[p])
 								+"_"+disaggPrefix(results[p][d], rps)+"_source_map";
-						plotFutures.add(plotDisaggMap(resourcesDir, disaggPrefix, disaggMapMaker, site, maxDist,
+						plotFutures.add(plotDisaggMap(resourcesDir, disaggPrefix, disaggMapMaker, site, smallestMaxDist,
 								results[p][d], erf, gridSeisOp, exec, writePDFs));
 						table.addColumn("![Disagg Source Map]("+resourcesDir.getName()+"/"+disaggPrefix+".png)");
 					}
@@ -1165,8 +1231,26 @@ public class SolSiteHazardCalc {
 		return valStr;
 	}
 	
-	private static void addDefaultSiteParams(Site site, ScalarIMR gmm, CommandLine cmd) {
-		for (Parameter<?> param : gmm.getSiteParams()) {
+	private static void addTRTParamLines(TableBuilder table, TectonicRegionType trt, ScalarIMR gmm, SourceFilterManager sourceFilters) {
+		table.addLine("Ground Motion Model:", gmm.getName());
+		double maxDist = Double.NaN;
+		if (sourceFilters.isEnabled(SourceFilters.FIXED_DIST_CUTOFF))
+			maxDist = sourceFilters.getFilterInstance(FixedDistanceCutoffFilter.class).getMaxDistance();
+		if (sourceFilters.isEnabled(SourceFilters.TRT_DIST_CUTOFFS)) {
+			double trtDist = sourceFilters.getFilterInstance(TectonicRegionDistCutoffFilter.class).getCutoffs().getCutoffDist(trt);
+			if (Double.isFinite(maxDist))
+				maxDist = Math.min(maxDist, trtDist);
+			else
+				maxDist = trtDist;
+		}
+		if (Double.isFinite(maxDist))
+			table.addLine("Maximum Source-Site Distance", oDF.format(maxDist)+" km");
+		else if (sourceFilters.isEnabled(SourceFilters.MAG_DIST_CUTOFFS))
+			table.addLine("Maximum Source-Site Distance", "Magnitude-dependent");
+	}
+	
+	private static void addDefaultSiteParams(Site site, Map<TectonicRegionType, ScalarIMR> gmms0, CommandLine cmd) {
+		for (Parameter<?> param : SolHazardMapCalc.getDefaultSiteParams(gmms0)) {
 			param = (Parameter<?>) param.clone();
 			if (param.getName().equals(Vs30_Param.NAME) && cmd.hasOption("vs30"))
 				setDoubleParam(param, Double.parseDouble(cmd.getOptionValue("vs30")));
@@ -1191,9 +1275,7 @@ public class SolSiteHazardCalc {
 		}
 	}
 	
-	private static FaultSystemSolutionERF buildERF(FaultSystemSolution sol, CommandLine cmd) {
-		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(sol);
-		
+	private static IncludeBackgroundOption getGridOp(CommandLine cmd, FaultSystemSolution sol) {
 		boolean hasGridProv = sol.getGridSourceProvider() != null;
 		IncludeBackgroundOption gridOp;
 		if (cmd.hasOption("gridded-seis")) {
@@ -1201,12 +1283,17 @@ public class SolSiteHazardCalc {
 			if (gridOp != IncludeBackgroundOption.EXCLUDE)
 				Preconditions.checkState(hasGridProv, "Gridded seismicity enabled via --gridded-seis %s, but solution "
 						+ "doesn't have gridded sources", gridOp.name());
+			return gridOp;
 		} else {
-			gridOp = hasGridProv ? IncludeBackgroundOption.INCLUDE : IncludeBackgroundOption.EXCLUDE;
+			return hasGridProv ? IncludeBackgroundOption.INCLUDE : IncludeBackgroundOption.EXCLUDE;
 		}
+	}
+	
+	private static FaultSystemSolutionERF buildERF(FaultSystemSolution sol, IncludeBackgroundOption gridOp, double duration) {
+		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(sol);
+		
 		erf.setParameter(IncludeBackgroundParam.NAME, gridOp);
 		
-		double duration = cmd.hasOption("duration") ? Double.parseDouble(cmd.getOptionValue("duration")) : 1d;
 		erf.getTimeSpan().setDuration(duration);
 		
 		erf.updateForecast();
@@ -1463,13 +1550,13 @@ public class SolSiteHazardCalc {
 		
 		private HazardCurveCalculator calc;
 		private AbstractERF erf;
-		private ScalarIMR gmm;
+		private Map<TectonicRegionType, ScalarIMR> gmms;
 		private SiteHazardTaskDistributor tasks;
 		private ProgressTrack track;
 
-		public HazardCalcThread(HazardCurveCalculator calc, ScalarIMR gmm) {
+		public HazardCalcThread(HazardCurveCalculator calc, Map<TectonicRegionType, ScalarIMR> gmms) {
 			this.calc = calc;
-			this.gmm = gmm;
+			this.gmms = gmms;
 		}
 		
 		public void init(AbstractERF erf, SiteHazardTaskDistributor tasks) {
@@ -1494,9 +1581,9 @@ public class SolSiteHazardCalc {
 				
 				LightFixedXFunc logCurve = new LightFixedXFunc(logXVals, new double[logXVals.length]);
 				
-				SolHazardMapCalc.setIMforPeriod(gmm, task.period);
+				SolHazardMapCalc.setIMforPeriod(gmms, task.period);
 				
-				calc.getHazardCurve(logCurve, task.site, gmm, erf);
+				calc.getHazardCurve(logCurve, task.site, gmms, erf);
 				
 				LightFixedXFunc linearCurve = new LightFixedXFunc(linearXVals, logCurve.getYVals());
 				task.setResult(linearCurve);
@@ -1837,18 +1924,18 @@ public class SolSiteHazardCalc {
 		private List<SourceFilter> sourceFilters;
 		private ParameterList calcParams;
 		private AbstractERF erf;
-		private ScalarIMR gmm;
+		private Map<TectonicRegionType, ScalarIMR> gmms;
 		private SiteDisaggCalcTaskDistributor tasks;
 		private double[] disaggProbs;
 		private double[] disaggIMLs;
 		private ProgressTrack track;
 
 		public DisaggCalcThread(DisaggregationCalculator calc, List<SourceFilter> sourceFilters, ParameterList calcParams,
-				ScalarIMR gmm, double[] disaggProbs, double[] disaggIMLs) {
+				Map<TectonicRegionType, ScalarIMR> gmms, double[] disaggProbs, double[] disaggIMLs) {
 			this.calc = calc;
 			this.sourceFilters = sourceFilters;
 			this.calcParams = calcParams;
-			this.gmm = gmm;
+			this.gmms = gmms;
 			this.disaggProbs = disaggProbs;
 			this.disaggIMLs = disaggIMLs;
 		}
@@ -1870,7 +1957,7 @@ public class SolSiteHazardCalc {
 				numDisagg += disaggIMLs.length;
 			
 			while (task != null) {
-				SolHazardMapCalc.setIMforPeriod(gmm, task.period);
+				SolHazardMapCalc.setIMforPeriod(gmms, task.period);
 				
 				DisaggResult[] results = new DisaggResult[numDisagg];
 				for (int i=0; i<numDisagg; i++) {
@@ -1894,7 +1981,7 @@ public class SolSiteHazardCalc {
 						isFromProb = false;
 					}
 					
-					calc.disaggregate(Math.log(iml), task.site, gmm, erf, sourceFilters, calcParams);
+					calc.disaggregate(Math.log(iml), task.site, gmms, erf, sourceFilters, calcParams);
 					results[i] = new DisaggResult(iml, prob, isFromProb, calc.getDisaggPlotData(), calc.getTotalRate(),
 							calc.getDisaggregationSourceList(), calc.getConsolidatedDisaggregationSourceList());
 				}
