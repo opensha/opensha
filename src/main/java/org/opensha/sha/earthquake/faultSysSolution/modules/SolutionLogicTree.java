@@ -1179,8 +1179,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			
 			EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists = GridSourceList.loadGridSourcesCSV(rupSectsCSV, locs);
 			if (region == null)
-				return new GridSourceList(region, trtRuptureLists);
-			return new GridSourceList(locs, trtRuptureLists);
+				return new GridSourceList.Precomputed(region, trtRuptureLists);
+			return new GridSourceList.Precomputed(locs, trtRuptureLists);
 		} else {
 			// MFDGridSourceProvider
 			if (gridRegFile == null || zip.getEntry(gridRegFile) == null || mechFile == null || zip.getEntry(mechFile) == null)

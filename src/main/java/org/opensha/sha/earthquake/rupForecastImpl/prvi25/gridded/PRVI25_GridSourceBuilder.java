@@ -33,6 +33,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.FiniteRuptureConverter;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRupture;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRuptureProperties;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
@@ -98,7 +99,7 @@ public class PRVI25_GridSourceBuilder {
 		FaultCubeAssociations cubeAssociations = rupSet.requireModule(FaultCubeAssociations.class);
 		NSHM23_SingleRegionGridSourceProvider gridProv = buildCrustalGridSourceProv(sol, branch, SeismicityRegions.CRUSTAL, cubeAssociations);
 		
-		return gridProv.convertToGridSourceList();
+		return gridProv.convertToGridSourceList(OVERALL_MMIN);
 	}
 	
 	public static NSHM23_SingleRegionGridSourceProvider buildCrustalGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch,
@@ -301,7 +302,7 @@ public class PRVI25_GridSourceBuilder {
 				double mag = totalGR.getX(i);
 				double rate = totalGR.getY(i)*fract;
 				
-				if (rate == 0d)
+				if (rate == 0d || (float)mag < (float)OVERALL_MMIN)
 					continue;
 				
 				double length, lower;
@@ -322,12 +323,13 @@ public class PRVI25_GridSourceBuilder {
 						lower = upper + ddw*Math.sin(Math.toRadians(dip));
 				}
 				
-				ruptureList.add(new GriddedRupture(gridIndex, loc, mag, rate, rake, dip, strike, null,
-						upper, lower, length, hypocentralDepth, hypocentralDAS, TectonicRegionType.SUBDUCTION_SLAB, null, null));
+				GriddedRuptureProperties props = new GriddedRuptureProperties(gridIndex, loc, mag, rake, dip, strike, null,
+						upper, lower, length, hypocentralDepth, hypocentralDAS, TectonicRegionType.SUBDUCTION_SLAB);
+				ruptureList.add(new GriddedRupture(props, rate));
 			}
 		}
 		
-		return new GridSourceList(pdf.getRegion(), TectonicRegionType.SUBDUCTION_SLAB, ruptureLists);
+		return new GridSourceList.Precomputed(pdf.getRegion(), TectonicRegionType.SUBDUCTION_SLAB, ruptureLists);
 	}
 	
 	public static GridSourceList buildInterfaceGridSourceList(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch) throws IOException {
@@ -527,7 +529,7 @@ public class PRVI25_GridSourceBuilder {
 				double mag = mfd.getX(i);
 				double rate = mfd.getY(i);
 				
-				if (rate == 0d)
+				if (rate == 0d || (float)mag < (float)OVERALL_MMIN)
 					continue;
 				
 				double area = scale.getMedianArea(mag);
@@ -574,16 +576,17 @@ public class PRVI25_GridSourceBuilder {
 
 				Preconditions.checkState(Double.isFinite(upper));
 				Preconditions.checkState(Double.isFinite(lower), "lower=%s? sectLower=%s, ddw=%s", lower, sectLower, ddw);
-				
-				ruptureList.add(new GriddedRupture(gridIndex, pdf.getLocation(gridIndex), mag, rate, rake, dip, strike, null,
+				GriddedRuptureProperties props = new GriddedRuptureProperties(
+						gridIndex, pdf.getLocation(gridIndex), mag, rake, dip, strike, null,
 						upper, lower, length, hypocentralDepth, hypocentralDAS,
-						TectonicRegionType.SUBDUCTION_INTERFACE, assocIDs, assocFracts));
+						TectonicRegionType.SUBDUCTION_INTERFACE);
+				ruptureList.add(new GriddedRupture(props, rate, assocIDs, assocFracts));
 			}
 		}
 		
 		System.out.println("Done building gridded provider for "+seisRegion+"; worst grid-to-interface distance: "+(float)overallFurthestMatch+"km");
 		
-		return new GridSourceList(pdf.getRegion(), TectonicRegionType.SUBDUCTION_INTERFACE, ruptureLists);
+		return new GridSourceList.Precomputed(pdf.getRegion(), TectonicRegionType.SUBDUCTION_INTERFACE, ruptureLists);
 	}
 
 	public static void main(String[] args) throws IOException {
@@ -630,7 +633,7 @@ public class PRVI25_GridSourceBuilder {
 		for (int gridIndex=0; gridIndex<interfaceModel.getNumLocations(); gridIndex++) {
 			if (region.contains(interfaceModel.getLocation(gridIndex))) {
 				for (GriddedRupture rup : interfaceModel.getRuptures(TectonicRegionType.SUBDUCTION_INTERFACE, gridIndex))
-					if (rup.magnitude >= 5d)
+					if (rup.properties.magnitude >= 5d)
 						rateM5 += rup.rate;
 			}
 		}

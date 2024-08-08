@@ -1517,7 +1517,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 							IncrementalMagFreqDist refMFD = ((GridSourceList)gridProv).getRefMFD();
 							griddedMFD = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
 						}
-						griddedMFD.add(griddedMFD.getClosestXIndex(rup.magnitude), assocRate);
+						griddedMFD.add(griddedMFD.getClosestXIndex(rup.properties.magnitude), assocRate);
 					}
 				} else {
 					Map<Integer, Double> scaledNodeFracts = gridAssoc.getScaledNodeFractions(sect.getSectionId());

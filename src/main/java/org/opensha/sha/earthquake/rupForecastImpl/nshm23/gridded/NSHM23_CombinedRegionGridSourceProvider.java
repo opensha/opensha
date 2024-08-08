@@ -23,6 +23,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SeisSm
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 
 /**
  * {@link NSHM23_AbstractGridSourceProvider} instance that stitches together multiple {@link GridSourceProvider}
@@ -90,6 +91,10 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 		}
 		System.out.println("Mapped "+numMapped+"/"+nodeGridIndexes.length
 				+" model region grid locations to sub-region grid locations");
+	}
+	
+	public List<? extends GridSourceProvider> getRegionalProviders() {
+		return ImmutableList.copyOf(this.regionalProviders);
 	}
 	
 	@Override

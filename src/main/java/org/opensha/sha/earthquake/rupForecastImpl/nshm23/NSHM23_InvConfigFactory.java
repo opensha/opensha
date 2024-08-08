@@ -60,6 +60,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations.StitchedFaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
@@ -1076,8 +1077,24 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	}
 	
 	@Override
-	public NSHM23_AbstractGridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
-		return buildGridSourceProv(sol, branch);
+	public GridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
+		NSHM23_AbstractGridSourceProvider prov = buildGridSourceProv(sol, branch);
+		
+		double minMag = 2.55d;
+		if (prov instanceof NSHM23_SingleRegionGridSourceProvider) {
+			return ((NSHM23_SingleRegionGridSourceProvider)prov).convertToGridSourceList(minMag);
+		} else {
+			Preconditions.checkState(prov instanceof NSHM23_CombinedRegionGridSourceProvider);
+			NSHM23_CombinedRegionGridSourceProvider combProv = (NSHM23_CombinedRegionGridSourceProvider)prov;
+			List<? extends GridSourceProvider> regionalProviders = combProv.getRegionalProviders();
+			GridSourceList[] gridLists = new GridSourceList[regionalProviders.size()];
+			for (int i=0; i<gridLists.length; i++) {
+				GridSourceProvider regionalProv = regionalProviders.get(i);
+				Preconditions.checkState(regionalProv instanceof NSHM23_SingleRegionGridSourceProvider);
+				gridLists[i] = ((NSHM23_SingleRegionGridSourceProvider)regionalProv).convertToGridSourceList(minMag);
+			}
+			return GridSourceList.combine(combProv.getGriddedRegion(), gridLists);
+		}
 	}
 	
 	@Override
