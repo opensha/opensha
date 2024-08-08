@@ -350,7 +350,7 @@ public class CSVFile<E> implements Iterable<List<E>> {
 			}
 			cur.append(chars[i]);
 		}
-		if (!cur.isEmpty())
+		if (cur.length() > 0)
 			vals.add(cur.toString());
 		while (vals.size() < padToLength)
 			vals.add("");
