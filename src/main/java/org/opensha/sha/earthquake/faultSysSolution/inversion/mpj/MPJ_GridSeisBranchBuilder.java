@@ -3,7 +3,6 @@ package org.opensha.sha.earthquake.faultSysSolution.inversion.mpj;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -17,8 +16,6 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
@@ -39,13 +36,11 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.GridSourceProviderFactory;
-import org.opensha.sha.earthquake.faultSysSolution.modules.BranchAveragingOrder;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchRegionalMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
-import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 
 import com.google.common.base.Joiner;
@@ -127,9 +122,15 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			debug("Will build "+gridSeisOnlyTree.size()+" grid-seis branches per fault branch, "+totBranches+" in total");
 		
 		int threads = getNumThreads();
-		if (rank == 0)
+		if (rank == 0) {
 			// subtract a thread, we've got other stuff to do
-			threads = Integer.max(1, threads-1);
+			if (threads >= 16)
+				threads -= 4;
+			else if (threads >= 8)
+				threads -= 2;
+			else if (threads > 2)
+				threads -= 1;
+		}
 		if (threads > 1)
 			exec = Executors.newFixedThreadPool(threads);
 		else
@@ -554,6 +555,11 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 	protected int getNumTasks() {
 		return tree.size();
 	}
+	
+	private static class BranchOutputs {
+		AveragingAccumulator<GridSourceProvider> accumulator = null;
+		BranchRegionalMFDs.Builder mfdBuilder = new BranchRegionalMFDs.Builder();
+	}
 
 	@Override
 	protected void calculateBatch(int[] batch) throws Exception {
@@ -584,40 +590,17 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			
 			String baPrefix = AbstractAsyncLogicTreeWriter.getBA_prefix(origBranch);
 
-			AveragingAccumulator<GridSourceProvider> accumulator = null;
-			BranchRegionalMFDs.Builder mfdBuilder = new BranchRegionalMFDs.Builder();
+			BranchOutputs outputs = new BranchOutputs();
 			
 			double faultWeight = tree.getBranchWeight(origBranch);
 			
 			// use a deque so that we can clear them out of memory as they roll off the line
-			ArrayDeque<Future<CalcCallable>> futures = new ArrayDeque<>(gridSeisOnlyTree.size());
+			List<Future<?>> futures = new ArrayList<>(gridSeisOnlyTree.size());
 			for (int gridIndex=0; gridIndex<gridSeisOnlyTree.size(); gridIndex++)
-				futures.add(exec.submit(new CalcCallable(origBranch, gridIndex, gridSeisDir, sol)));
+				futures.add(exec.submit(new CalcRunnable(origBranch, gridIndex, gridSeisDir, sol, baPrefix, outputs)));
 			
-			while (!futures.isEmpty()) {
-				Future<CalcCallable> future = futures.removeFirst();
-				
-				CalcCallable call = future.get();
-				
-				GridSourceProvider prov = call.gridProv;
-				Preconditions.checkNotNull(prov);
-				// full average
-				if (accumulator == null)
-					accumulator = prov.averagingAccumulator();
-				double griddedWeight = call.gridSeisBranch.getOrigBranchWeight();
-				accumulator.process(prov, griddedWeight);
-				// branch-specific average
-				String gridPrefix = call.gridSeisBranch.buildFileName();
-				AveragingAccumulator<GridSourceProvider> branchAccumulator = gridSeisAveragers.get(baPrefix, gridPrefix);
-				
-				if (branchAccumulator == null) {
-					branchAccumulator = prov.averagingAccumulator();
-					gridSeisAveragers.put(baPrefix, gridPrefix, branchAccumulator);
-				}
-				branchAccumulator.process(prov, griddedWeight);
-				
-				mfdBuilder.process(sol, prov, call.combinedBranch, faultWeight * griddedWeight);
-			}
+			for (Future<?> future : futures)
+				future.get();
 			
 			if (postProcess != null) {
 				try {
@@ -628,11 +611,10 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				}
 			}
 			
-			GridSourceProvider avgGridProv = accumulator.getAverage();
-			accumulator = null;
+			GridSourceProvider avgGridProv = outputs.accumulator.getAverage();
 			
-			BranchRegionalMFDs regionalMFDs = mfdBuilder.build();
-			mfdBuilder = null;
+			BranchRegionalMFDs regionalMFDs = outputs.mfdBuilder.build();
+			outputs = null;
 			
 			postProcess = CompletableFuture.runAsync(new Runnable() {
 				
@@ -734,58 +716,81 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		return combinedBranch;
 	}
 	
-	private class CalcCallable implements Callable<CalcCallable> {
+	private class CalcRunnable implements Runnable {
 		
 		// inputs
 		private LogicTreeBranch<?> origBranch;
 		private File gridSeisDir;
 		private FaultSystemSolution sol;
 		private int gridIndex;
-		
-		// outputs
-		private LogicTreeBranch<?> gridSeisBranch;
-		private LogicTreeBranch<?> combinedBranch;
-		private GridSourceProvider gridProv;
+		private BranchOutputs outputs;
+		private String baPrefix;
 
-		public CalcCallable(LogicTreeBranch<?> origBranch, int gridIndex, File gridSeisDir,
-				FaultSystemSolution sol) {
+		public CalcRunnable(LogicTreeBranch<?> origBranch, int gridIndex, File gridSeisDir,
+				FaultSystemSolution sol, String baPrefix, BranchOutputs outputs) {
 			this.origBranch = origBranch;
 			this.gridIndex = gridIndex;
 			this.gridSeisDir = gridSeisDir;
 			this.sol = sol;
+			this.baPrefix = baPrefix;
+			this.outputs = outputs;
 		}
 
 		@Override
-		public CalcCallable call() {
-			gridSeisBranch = gridSeisOnlyTree.getBranch(gridIndex);
-			combinedBranch = getCombinedBranch(origBranch, gridSeisBranch);
+		public void run() {
+			LogicTreeBranch<?> gridSeisBranch = gridSeisOnlyTree.getBranch(gridIndex);
+			LogicTreeBranch<?> combinedBranch = getCombinedBranch(origBranch, gridSeisBranch);
 			
 			debug("Building for combined branch "+gridIndex+"/"+gridSeisOnlyTree.size()+": "+combinedBranch);
 			
 			File outputFile = new File(gridSeisDir, gridSeisBranch.buildFileName()+".zip");
 			
+			GridSourceProvider gridProv = null;
 			if (outputFile.exists() && !rebuild) {
 				// try loading it instead
 				try {
 					ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(outputFile);
 					gridProv = archive.getModule(GridSourceProvider.class);
-					return this;
 				} catch (Exception e) {
 					// rebuild it
 					debug("Couldn't load prior, will rebuild: "+e.getMessage());
 				}
 			}
 			
-			try {
-				gridProv = factory.buildGridSourceProvider(sol, combinedBranch);
-				
-				ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
-				archive.addModule(gridProv);
-				archive.write(outputFile);
-			} catch (Exception e) {
-				throw ExceptionUtils.asRuntimeException(e);
+			if (gridProv == null) {
+				try {
+					gridProv = factory.buildGridSourceProvider(sol, combinedBranch);
+					
+					ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
+					archive.addModule(gridProv);
+					archive.write(outputFile);
+				} catch (Exception e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
 			}
-			return this;
+			
+			synchronized (outputs) {
+				// full average
+				if (outputs.accumulator == null)
+					outputs.accumulator = gridProv.averagingAccumulator();
+				double griddedWeight = gridSeisBranch.getOrigBranchWeight();
+				outputs.accumulator.process(gridProv, griddedWeight);
+				// branch-specific average
+				String gridPrefix = gridSeisBranch.buildFileName();
+				AveragingAccumulator<GridSourceProvider> branchAccumulator = gridSeisAveragers.get(baPrefix, gridPrefix);
+				
+				if (branchAccumulator == null) {
+					branchAccumulator = gridProv.averagingAccumulator();
+					gridSeisAveragers.put(baPrefix, gridPrefix, branchAccumulator);
+				}
+				branchAccumulator.process(gridProv, griddedWeight);
+				
+				double faultWeight = origBranch.getBranchWeight();
+				
+				outputs.mfdBuilder.process(sol, gridProv, combinedBranch, faultWeight * griddedWeight);
+				gridProv = null;
+				System.gc();
+			}
 		}
 		
 	}
