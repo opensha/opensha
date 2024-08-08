@@ -26,6 +26,7 @@ import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.PaleoProbabilityModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BuildInfoModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
@@ -262,10 +263,17 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		if (archive != null && zip.getEntry(entryPrefix+"modules.json") == null) {
 			// we're missing an index, see if any common modules are present that we can manually load
 			
-			if (zip.getEntry(entryPrefix+GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME) != null) {
+			if (zip.getEntry(entryPrefix+MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME) != null) {
 				try {
-					System.out.println("Trying to load unlisted GridSourceProvider module");
+					System.out.println("Trying to load unlisted MFDGridSourceProvider module");
 					archive.loadUnlistedModule(MFDGridSourceProvider.Default.class, entryPrefix, this);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			} else if (zip.getEntry(entryPrefix+GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) != null) {
+				try {
+					System.out.println("Trying to load unlisted GridSourceList module");
+					archive.loadUnlistedModule(GridSourceList.Precomputed.class, entryPrefix, this);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
