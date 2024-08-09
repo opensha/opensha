@@ -19,6 +19,7 @@ import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.CubedGriddedRegion;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
@@ -126,23 +127,25 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 
 	private double[] fracStrikeSlip,fracNormal,fracReverse;
 
+	private TectonicRegionType[] trts;
+
 	public NSHM23_SingleRegionGridSourceProvider(FaultSystemSolution fss, CubedGriddedRegion cgr, 
 			double[] spatialPDF, IncrementalMagFreqDist totGriddedSeisMFD, EvenlyDiscretizedFunc depthNuclProbHist,
-			double[] fracStrikeSlip, double[] fracNormal, double[] fracReverse) {
+			double[] fracStrikeSlip, double[] fracNormal, double[] fracReverse, Map<TectonicRegionType, Region> trtRegions) {
 		this(fss, cgr, spatialPDF, totGriddedSeisMFD, depthNuclProbHist, fracStrikeSlip, fracNormal, fracReverse,
-				DEFAULT_MAX_FAULT_NUCL_DIST);
+				DEFAULT_MAX_FAULT_NUCL_DIST, trtRegions);
 	}
 
 	public NSHM23_SingleRegionGridSourceProvider(FaultSystemSolution fss, CubedGriddedRegion cgr, 
 			double[] spatialPDF, IncrementalMagFreqDist totGriddedSeisMFD, EvenlyDiscretizedFunc depthNuclProbHist, 
-			double[] fracStrikeSlip, double[] fracNormal, double[] fracReverse, double maxFaultNuclDist) {
+			double[] fracStrikeSlip, double[] fracNormal, double[] fracReverse, double maxFaultNuclDist, Map<TectonicRegionType, Region> trtRegions) {
 		this(fss, new NSHM23_FaultCubeAssociations(fss.getRupSet(), cgr, maxFaultNuclDist),
-				spatialPDF, totGriddedSeisMFD, depthNuclProbHist, fracStrikeSlip, fracNormal, fracReverse);
+				spatialPDF, totGriddedSeisMFD, depthNuclProbHist, fracStrikeSlip, fracNormal, fracReverse, trtRegions);
 	}
 
 	public NSHM23_SingleRegionGridSourceProvider(FaultSystemSolution fss, FaultCubeAssociations faultCubeassociations,
 			double[] spatialPDF, IncrementalMagFreqDist totGriddedSeisMFD, EvenlyDiscretizedFunc depthNuclProbHist, 
-			double[] fracStrikeSlip, double[] fracNormal, double[] fracReverse) {
+			double[] fracStrikeSlip, double[] fracNormal, double[] fracReverse, Map<TectonicRegionType, Region> trtRegions) {
 		this.fss = fss;
 		this.faultCubeassociations = faultCubeassociations;
 		this.cgr = faultCubeassociations.getCubedGriddedRegion();
@@ -154,6 +157,21 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 		this.fracStrikeSlip = fracStrikeSlip;
 		this.fracNormal = fracNormal;
 		this.fracReverse = fracReverse;
+		
+		trts = new TectonicRegionType[griddedRegion.getNodeCount()];
+		for (int i=0; i<trts.length; i++)
+			trts[i] = TectonicRegionType.ACTIVE_SHALLOW;
+		if (trtRegions != null) {
+			for (int i=0; i<trts.length; i++) {
+				Location loc = griddedRegion.getLocation(i);
+				for (TectonicRegionType trt : trtRegions.keySet()) {
+					if (trtRegions.get(trt).contains(loc)) {
+						trts[i] = trt;
+						break;
+					}
+				}
+			}
+		}
 
 		Preconditions.checkState(griddedRegion.getNodeCount() == spatialPDF.length,
 				"griddedRegion and spatialPDF have differe sizes: %s vs %s", griddedRegion.getNodeCount(), spatialPDF.length);
@@ -412,7 +430,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 
 		@Override
 		public GriddedRupture buildFiniteRupture(int gridIndex, Location loc, double magnitude, double rate,
-				FocalMech focalMech, int[] associatedSections, double[] associatedSectionFracts) {
+				FocalMech focalMech, TectonicRegionType trt, int[] associatedSections, double[] associatedSectionFracts) {
 			double dipRad = Math.toRadians(focalMech.dip());
 			
 			double depth = (float)magnitude < 6.5f ? 5d : 1d;
@@ -424,7 +442,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 			
 			GriddedRuptureProperties props = new GriddedRuptureProperties(gridIndex, loc, magnitude,
 					focalMech.rake(), focalMech.dip(), Double.NaN, null, depth, lower, length, Double.NaN, Double.NaN,
-					TectonicRegionType.ACTIVE_SHALLOW);
+					trt);
 			
 			return new GriddedRupture(props, rate, associatedSections, associatedSectionFracts);
 		}
@@ -474,7 +492,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 
 		@Override
 		public TectonicRegionType tectonicRegionTypeForSourceIndex(int sourceIndex) {
-			return gridProv.getTectonicRegionType();
+			return gridProv.getTectonicRegionType(sourceIndex);
 		}
 
 		@Override
@@ -483,7 +501,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 			double fractN = gridProv.getFracNormal(gridIndex);
 			double fractR = gridProv.getFracReverse(gridIndex);
 			
-			IncrementalMagFreqDist mfd = gridProv.getMFD(gridIndex);
+			IncrementalMagFreqDist mfd = gridProv.getMFD(tectonicRegionType, gridIndex);
 			if (mfd == null) {
 				return null;
 			}
@@ -541,7 +559,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 						continue;
 					
 					ruptureList.add(converter.buildFiniteRupture(gridIndex, loc,
-							mag, mechRate, mech, associatedSections, associatedSectionFracts));
+							mag, mechRate, mech, tectonicRegionType, associatedSections, associatedSectionFracts));
 				}
 			}
 			return ruptureList;
@@ -816,6 +834,11 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 				}
 			}
 		}
+	}
+
+	@Override
+	public TectonicRegionType getTectonicRegionType(int gridIndex) {
+		return trts[gridIndex];
 	}
 
 }

@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -133,6 +134,7 @@ import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SparseGutenbergRichterSolver;
 import org.opensha.sha.magdist.SparseGutenbergRichterSolver.SpreadingMethod;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
@@ -1223,6 +1225,17 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		return ret;
 	}
 	
+	private static EnumMap<TectonicRegionType, Region> trtRegions = null;
+	
+	private static synchronized EnumMap<TectonicRegionType, Region> getTRT_Regions() throws IOException {
+		if (trtRegions == null) {
+			trtRegions = new EnumMap<>(TectonicRegionType.class);
+			trtRegions.put(TectonicRegionType.ACTIVE_SHALLOW, NSHM23_RegionLoader.GridSystemRegions.WUS_ACTIVE.load());
+			trtRegions.put(TectonicRegionType.STABLE_SHALLOW, NSHM23_RegionLoader.GridSystemRegions.CEUS_STABLE.load());
+		}
+		return trtRegions;
+	}
+	
 	private static NSHM23_SingleRegionGridSourceProvider buildSingleGridSourceProv(FaultSystemSolution sol,
 			SeismicityRegions region, NSHM23_RegionalSeismicity seisBranch, NSHM23_DeclusteringAlgorithms declusteringAlg,
 			NSHM23_SeisSmoothingAlgorithms seisSmooth, double maxMagOff, EvenlyDiscretizedFunc refMFD,
@@ -1271,7 +1284,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 //		EvenlyDiscretizedFunc depthNuclDistFunc = NSHM23_SeisDepthDistributions.load(region);
 		
 		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, binnedDepthDistFunc,
-				fractStrikeSlip, fractNormal, fractReverse);
+				fractStrikeSlip, fractNormal, fractReverse, getTRT_Regions());
 	}
 	
 	public static NSHM23_FaultCubeAssociations buildU3IngredientsFaultCubeAssociations(FaultSystemRupSet rupSet) throws IOException {
@@ -1341,7 +1354,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		}
 
 		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, binnedDepthDistFunc,
-				fractStrikeSlip, fractNormal, fractReverse);
+				fractStrikeSlip, fractNormal, fractReverse, null);
 	}
 
 	@Override

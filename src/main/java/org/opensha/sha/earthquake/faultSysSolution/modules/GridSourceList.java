@@ -1391,7 +1391,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	public interface FiniteRuptureConverter {
 		
 		public GriddedRupture buildFiniteRupture(int gridIndex, Location loc, double magnitude, double rate,
-				FocalMech focalMech, int[] associatedSections, double[] associatedSectionFracts);
+				FocalMech focalMech, TectonicRegionType trt, int[] associatedSections, double[] associatedSectionFracts);
 	}
 	
 	private static List<GriddedRupture> convertGridIndex(MFDGridSourceProvider mfdGridProv, FaultGridAssociations associations,
@@ -1399,8 +1399,9 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		double fractSS = mfdGridProv.getFracStrikeSlip(gridIndex);
 		double fractN = mfdGridProv.getFracNormal(gridIndex);
 		double fractR = mfdGridProv.getFracReverse(gridIndex);
+		TectonicRegionType trt = mfdGridProv.getTectonicRegionType(gridIndex);
 		
-		IncrementalMagFreqDist mfd = mfdGridProv.getMFD(gridIndex);
+		IncrementalMagFreqDist mfd = mfdGridProv.getMFD(trt, gridIndex);
 		if (mfd == null)
 			return null;
 		IncrementalMagFreqDist mfdAssoc = mfdGridProv.getMFD_SubSeisOnFault(gridIndex);
@@ -1464,7 +1465,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 					}
 				}
 				ruptureList.add(converter.buildFiniteRupture(gridIndex, mfdGridProv.getLocation(gridIndex),
-						mag, mechRate, mech, associatedSections, associatedSectionFracts));
+						mag, mechRate, mech, trt, associatedSections, associatedSectionFracts));
 			}
 		}
 		return ruptureList;
@@ -1473,12 +1474,20 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	public static GridSourceList convert(MFDGridSourceProvider mfdGridProv, FaultGridAssociations associations,
 			FiniteRuptureConverter converter) {
 		int numLocs = mfdGridProv.getNumLocations();
-		List<List<GriddedRupture>> ruptureLists = new ArrayList<>(numLocs);
-		for (int gridIndex=0; gridIndex<numLocs; gridIndex++)
-			ruptureLists.add(convertGridIndex(mfdGridProv, associations, converter, gridIndex));
 		
 		EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists = new EnumMap<>(TectonicRegionType.class);
-		trtRuptureLists.put(mfdGridProv.getTectonicRegionType(), ruptureLists);
+		for (int gridIndex=0; gridIndex<numLocs; gridIndex++) {
+			TectonicRegionType trt = mfdGridProv.getTectonicRegionType(gridIndex);
+			List<List<GriddedRupture>> ruptureLists = trtRuptureLists.get(trt);
+			if (ruptureLists == null) {
+				ruptureLists = new ArrayList<>(numLocs);
+				for (int i=0; i<numLocs; i++)
+					ruptureLists.add(null);
+				trtRuptureLists.put(trt, ruptureLists);
+			}
+			
+			ruptureLists.set(gridIndex, convertGridIndex(mfdGridProv, associations, converter, gridIndex));
+		}
 		return new GridSourceList.Precomputed(mfdGridProv.getGriddedRegion(), trtRuptureLists);
 	}
 	
@@ -1927,13 +1936,14 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 
 		@Override
 		public TectonicRegionType tectonicRegionTypeForSourceIndex(int sourceIndex) {
-			return mfdGridProv.getTectonicRegionType();
+			return mfdGridProv.getTectonicRegionType(sourceIndex);
 		}
 
 		@Override
 		protected List<GriddedRupture> buildRuptures(TectonicRegionType tectonicRegionType, int gridIndex) {
-			Preconditions.checkState(tectonicRegionType == mfdGridProv.getTectonicRegionType());
-			return convertGridIndex(mfdGridProv, associations, converter, gridIndex);
+			if (tectonicRegionType == mfdGridProv.getTectonicRegionType(gridIndex))
+				return convertGridIndex(mfdGridProv, associations, converter, gridIndex);
+			return null;
 		}
 
 		@Override

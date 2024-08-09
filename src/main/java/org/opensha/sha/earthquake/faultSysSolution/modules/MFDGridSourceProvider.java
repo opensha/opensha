@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
@@ -39,9 +40,16 @@ import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 public interface MFDGridSourceProvider extends GridSourceProvider {
 	
 	/**
-	 * @return the single {@link TectonicRegionType} supplied by this {@link MFDGridSourceProvider}
+	 * @return the {@link TectonicRegionType} at the given grid location
 	 */
-	public TectonicRegionType getTectonicRegionType();
+	public TectonicRegionType getTectonicRegionType(int gridIndex);
+	
+	public default TectonicRegionType[] getTectonicRegionTypeArray() {
+		TectonicRegionType[] ret = new TectonicRegionType[getNumLocations()];
+		for (int i=0; i<ret.length; i++)
+			ret[i] = getTectonicRegionType(i);
+		return ret;
+	}
 	
 	/**
 	 * Return the source at {@code gridIndex}.
@@ -90,7 +98,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	@Override
 	default ProbEqkSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType) {
-		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType())
+		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
 			return getSource(gridIndex, duration, aftershockFilter, bgRupType);
 		return null;
 	}
@@ -98,7 +106,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	@Override
 	default ProbEqkSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType) {
-		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType())
+		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
 			return getSourceSubSeisOnFault(gridIndex, duration, aftershockFilter, bgRupType);
 		return null;
 	}
@@ -106,47 +114,69 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	@Override
 	default ProbEqkSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType) {
-		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType())
+		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
 			return getSourceUnassociated(gridIndex, duration, aftershockFilter, bgRupType);
 		return null;
 	}
 
 	@Override
 	default Set<TectonicRegionType> getTectonicRegionTypes() {
-		return EnumSet.of(getTectonicRegionType());
+		TectonicRegionType firstTRT = getTectonicRegionType(0);
+		EnumSet<TectonicRegionType> trts = EnumSet.of(firstTRT);
+		for (int i=1; i<getNumLocations(); i++) {
+			TectonicRegionType trt = getTectonicRegionType(i);
+			if (trt != firstTRT)
+				trts.add(trt);
+		}
+		return trts;
 	}
 
 	@Override
 	default IncrementalMagFreqDist getMFD_Unassociated(TectonicRegionType tectonicRegionType, int gridIndex) {
-		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType())
+		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
 			return getMFD_Unassociated( gridIndex);
 		return null;
 	}
 
 	@Override
 	default IncrementalMagFreqDist getMFD_SubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex) {
-		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType())
+		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
 			return getMFD_SubSeisOnFault(gridIndex);
 		return null;
 	}
 
 	@Override
 	default IncrementalMagFreqDist getMFD(TectonicRegionType tectonicRegionType, int gridIndex, double minMag) {
-		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType())
+		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
 			return getMFD(gridIndex, minMag);
 		return null;
 	}
 
 	@Override
 	default IncrementalMagFreqDist getMFD(TectonicRegionType tectonicRegionType, int gridIndex) {
-		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType())
-			return getMFD( gridIndex);
+		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
+			return getMFD(gridIndex);
 		return null;
 	}
 
 	@Override
 	default void scaleAll(TectonicRegionType tectonicRegionType, double[] valuesArray) {
-		Preconditions.checkState(tectonicRegionType == null || tectonicRegionType == getTectonicRegionType());
+		if (tectonicRegionType != null && getTectonicRegionTypes().size() > 1) {
+			// make sure it's unity or NaN anywhere not of this trt
+			
+			// start by making a copy
+			valuesArray = Arrays.copyOf(valuesArray, valuesArray.length);
+			for (int i=0; i<valuesArray.length; i++) {
+				TectonicRegionType trt = getTectonicRegionType(i);
+				if (trt != tectonicRegionType) {
+					Preconditions.checkState(Double.isNaN(valuesArray[i]) || valuesArray[i] == 1d || valuesArray[i] == 0d,
+							"Gave a non-placeholder scalar for node %s, but it has a TRT type of %s rather than the specified %s",
+							i, trt, tectonicRegionType);
+					if (valuesArray[i] != 1d)
+						valuesArray[i] = 1d;
+				}
+			}
+		}
 		scaleAll(valuesArray);
 	}
 
@@ -187,7 +217,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	 */
 	public MFDGridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip,
-				double[] fracNormal, double[] fracReverse);
+				double[] fracNormal, double[] fracReverse, TectonicRegionType[] trts);
 	
 	/**
 	 * Abstract implementation of a {@link GridSourceProvider} that handles trimming MFDs to a minimum magnitude,
@@ -393,6 +423,8 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		private double totWeight = 0;
 
 		private double[] fractSS, fractR, fractN;
+		
+		private TectonicRegionType[] trts;
 
 		@Override
 		public void process(GridSourceProvider module, double relWeight) {
@@ -410,10 +442,11 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 				fractSS = new double[gridProv.getNumLocations()];
 				fractR = new double[fractSS.length];
 				fractN = new double[fractSS.length];
+				trts = new TectonicRegionType[fractSS.length];
+				for (int i=0; i<trts.length; i++)
+					trts[i] = gridProv.getTectonicRegionType(i);
 			} else {
 				Preconditions.checkState(gridReg.equalsRegion(gridProv.getGriddedRegion()));
-				Preconditions.checkState(gridProv.getTectonicRegionType() == null
-						|| gridProv.getTectonicRegionType() == refGridProv.getTectonicRegionType());
 			}
 			totWeight += relWeight;
 			for (int i=0; i<gridReg.getNodeCount(); i++) {
@@ -422,6 +455,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 				fractSS[i] += gridProv.getFracStrikeSlip(i)*relWeight;
 				fractR[i] += gridProv.getFracReverse(i)*relWeight;
 				fractN[i] += gridProv.getFracNormal(i)*relWeight;
+				Preconditions.checkState(trts[i] == gridProv.getTectonicRegionType(i));
 			}
 		}
 
@@ -440,7 +474,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 				fractN[i] *= scale;
 			}
 
-			MFDGridSourceProvider ret = refGridProv.newInstance(subSeisMFDs, unassociatedMFDs, fractSS, fractN, fractR);
+			MFDGridSourceProvider ret = refGridProv.newInstance(subSeisMFDs, unassociatedMFDs, fractSS, fractN, fractR, trts);
 			// can't reuse this
 			subSeisMFDs = null;
 			unassociatedMFDs = null;
@@ -478,6 +512,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		private double[] fracStrikeSlip;
 		private double[] fracNormal;
 		private double[] fracReverse;
+		private TectonicRegionType[] trts;
 		
 		private boolean round = true;
 		
@@ -488,7 +523,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	
 		public AbstractPrecomputed(GriddedRegion region, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip,
-				double[] fracNormal, double[] fracReverse, double minMagCutoff) {
+				double[] fracNormal, double[] fracReverse, TectonicRegionType[] trts, double minMagCutoff) {
 			super(minMagCutoff);
 			this.region = region;
 			this.nodeSubSeisMFDs = ImmutableMap.copyOf(nodeSubSeisMFDs);
@@ -496,6 +531,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 			this.fracStrikeSlip = fracStrikeSlip;
 			this.fracNormal = fracNormal;
 			this.fracReverse = fracReverse;
+			this.trts = trts;
 		}
 	
 		public AbstractPrecomputed(GriddedRegion region, CSVFile<String> subSeisCSV,
@@ -517,6 +553,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 			fracStrikeSlip = new double[nodeCount];
 			fracNormal = new double[nodeCount];
 			fracReverse = new double[nodeCount];
+			trts = new TectonicRegionType[nodeCount];
 			for (int i=0; i<nodeCount; i++) {
 				IncrementalMagFreqDist subSeis = prov.getMFD_SubSeisOnFault(i);
 				if (subSeis != null)
@@ -527,6 +564,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 				fracStrikeSlip[i] = prov.getFracStrikeSlip(i);
 				fracNormal[i] = prov.getFracNormal(i);
 				fracReverse[i] = prov.getFracReverse(i);
+				trts[i] = prov.getTectonicRegionType(i);
 			}
 			this.nodeSubSeisMFDs = subSeisBuilder.build();
 			this.nodeUnassociatedMFDs = unassociatedBuilder.build();
@@ -588,6 +626,14 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 			if (nodeUnassociatedMFDs == null)
 				return null;
 			return buildCSV(nodeUnassociatedMFDs);
+		}
+		
+		private CSVFile<String> buildTRTCSV() {
+			CSVFile<String> csv = new CSVFile<>(true);
+			csv.addLine("Node Index", "Tectonic Regime");
+			for (int i=0; i<getNumLocations(); i++)
+				csv.addLine(i+"", getTectonicRegionType(i).name()+"");
+			return csv;
 		}
 		
 		private CSVFile<String> buildCSV(Map<Integer, IncrementalMagFreqDist> mfds) {
@@ -662,6 +708,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 			header.add("Fraction Strike-Slip");
 			header.add("Fraction Reverse");
 			header.add("Fraction Normal");
+			header.add("Tectonic Regime");
 			csv.addLine(header);
 			
 			GriddedRegion region = getGriddedRegion();
@@ -681,6 +728,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 					line.add(getFracReverse(i)+"");
 					line.add(getFracNormal(i)+"");
 				}
+				line.add(getTectonicRegionType(i).name());
 				csv.addLine(line);
 			}
 			return csv;
@@ -758,6 +806,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 			fracStrikeSlip = new double[region.getNodeCount()];
 			fracReverse = new double[region.getNodeCount()];
 			fracNormal = new double[region.getNodeCount()];
+			trts = new TectonicRegionType[region.getNodeCount()];
 			for (int i=0; i<region.getNodeCount(); i++) {
 				int row = i+1;
 				int index = mechCSV.getInt(row, 0);
@@ -772,6 +821,11 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 				fracStrikeSlip[i] = mechCSV.getDouble(row, 3);
 				fracReverse[i] = mechCSV.getDouble(row, 4);
 				fracNormal[i] = mechCSV.getDouble(row, 5);
+				List<String> line = mechCSV.getLine(row);
+				if (line.size() < 7)
+					trts[i] = TectonicRegionType.ACTIVE_SHALLOW;
+				else
+					trts[i] = TectonicRegionType.valueOf(line.get(6));
 			}
 		}
 		
@@ -828,6 +882,11 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 				}
 			}
 		}
+
+		@Override
+		public TectonicRegionType getTectonicRegionType(int gridIndex) {
+			return trts[gridIndex];
+		}
 		
 	}
 
@@ -854,8 +913,8 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	
 		public Default(GriddedRegion region, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
-				double[] fracReverse) {
-			super(region, nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse,
+				double[] fracReverse, TectonicRegionType[] trts) {
+			super(region, nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse, trts,
 					AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF);
 		}
 	
@@ -880,12 +939,12 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		@Override
 		public MFDGridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
-				double[] fracReverse) {
-			return new Default(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse);
+				double[] fracReverse, TectonicRegionType[] trts) {
+			return new Default(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse, trts);
 		}
 
 		@Override
-		public TectonicRegionType getTectonicRegionType() {
+		public TectonicRegionType getTectonicRegionType(int gridIndex) {
 			return TectonicRegionType.ACTIVE_SHALLOW;
 		}
 		

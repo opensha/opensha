@@ -78,11 +78,6 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 
 		return buildSource(mfd, duration, bgRupType, loc, fracStrikeSlip, fracNormal, fracReverse);
 	}
-	
-	@Override
-	public TectonicRegionType getTectonicRegionType() {
-		return TectonicRegionType.ACTIVE_SHALLOW;
-	}
 
 	/**
 	 * Builds NSHM23 source
@@ -124,9 +119,9 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 	@Override
 	public MFDGridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 			Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
-			double[] fracReverse) {
+			double[] fracReverse, TectonicRegionType[] trts) {
 		return new Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
-				fracStrikeSlip, fracNormal, fracReverse);
+				fracStrikeSlip, fracNormal, fracReverse, trts);
 	}
 	
 	public static class Precomputed extends MFDGridSourceProvider.AbstractPrecomputed {
@@ -144,8 +139,8 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 
 		public Precomputed(GriddedRegion region, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
-				double[] fracReverse) {
-			super(region, nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse,
+				double[] fracReverse, TectonicRegionType[] trts) {
+			super(region, nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse, trts,
 					DEFAULT_SOURCE_MIN_MAG_CUTOFF);
 		}
 
@@ -173,14 +168,9 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 		@Override
 		public MFDGridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
-				double[] fracReverse) {
+				double[] fracReverse, TectonicRegionType[] trts) {
 			return new Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
-					fracStrikeSlip, fracNormal, fracReverse);
-		}
-		
-		@Override
-		public TectonicRegionType getTectonicRegionType() {
-			return TectonicRegionType.ACTIVE_SHALLOW;
+					fracStrikeSlip, fracNormal, fracReverse, trts);
 		}
 		
 	}

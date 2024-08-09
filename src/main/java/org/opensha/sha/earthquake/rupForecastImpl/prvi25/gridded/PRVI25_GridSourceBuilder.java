@@ -169,7 +169,7 @@ public class PRVI25_GridSourceBuilder {
 		//				EvenlyDiscretizedFunc depthNuclDistFunc = NSHM23_SeisDepthDistributions.load(region);
 
 		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, binnedDepthDistFunc,
-				fractStrikeSlip, fractNormal, fractReverse);
+				fractStrikeSlip, fractNormal, fractReverse, null); // last null means all active
 	}
 	
 	public static GridSourceList buildCombinedSubductionGridSourceList(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch) throws IOException {

@@ -121,7 +121,7 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 	}
 	
 	@Override
-	public TectonicRegionType getTectonicRegionType() {
+	public TectonicRegionType getTectonicRegionType(int gridIndex) {
 		return TectonicRegionType.ACTIVE_SHALLOW;
 	}
 
@@ -129,6 +129,13 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 	public static final String ARCHIVE_MECH_WEIGHT_FILE_NAME = "grid_mech_weights.csv";
 	public static final String ARCHIVE_SUB_SEIS_FILE_NAME = "grid_sub_seis_mfds.csv";
 	public static final String ARCHIVE_UNASSOCIATED_FILE_NAME = "grid_unassociated_mfds.csv";
+	
+	static TectonicRegionType[] getActiveShallowArray(int size) {
+		TectonicRegionType[] trts = new TectonicRegionType[size];
+		for (int i=0; i<trts.length; i++)
+			trts[i] = TectonicRegionType.ACTIVE_SHALLOW;
+		return trts;
+	}
 
 	public static class Precomputed extends MFDGridSourceProvider.AbstractPrecomputed {
 		
@@ -148,7 +155,15 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 		public Precomputed(GriddedRegion region, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
 				double[] fracReverse) {
-			super(region, nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse, SOURCE_MIN_MAG_CUTOFF);
+			this(region, nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse,
+					getActiveShallowArray(region.getNodeCount()));
+		}
+
+		public Precomputed(GriddedRegion region, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
+				double[] fracReverse, TectonicRegionType[] trts) {
+			super(region, nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse,
+					trts, SOURCE_MIN_MAG_CUTOFF);
 		}
 
 		@Override
@@ -172,13 +187,13 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 		@Override
 		public MFDGridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
-				double[] fracReverse) {
+				double[] fracReverse, TectonicRegionType[] trts) {
 			return new Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
-					fracStrikeSlip, fracNormal, fracReverse);
+					fracStrikeSlip, fracNormal, fracReverse, trts);
 		}
 
 		@Override
-		public TectonicRegionType getTectonicRegionType() {
+		public TectonicRegionType getTectonicRegionType(int gridIndex) {
 			return TectonicRegionType.ACTIVE_SHALLOW;
 		}
 		
