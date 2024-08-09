@@ -331,24 +331,37 @@ public class CSVFile<E> implements Iterable<List<E>> {
 	 * @return
 	 */
 	public static List<String> loadLine(String line, int padToLength, int expectedNum) {
-		line = line.trim();
 		ArrayList<String> vals = expectedNum > 0 ? new ArrayList<>(expectedNum) : new ArrayList<>();
 		boolean inside = false;
 		StringBuilder cur = new StringBuilder();
-		char[] chars = line.toCharArray();
-		for (int i=0; i<chars.length; i++) {
-//			char c = line.charAt(i);
-			if (!inside && chars[i] == ',') {
+		int length = line.length();
+		
+		// trim witespace without having to call line.trim()
+		int start = 0;
+		if (Character.isWhitespace(line.charAt(start))) {
+			while (start<length && Character.isWhitespace(line.charAt(start)))
+				start++;
+		}
+		int end = length-1;
+		if (Character.isWhitespace(line.charAt(end))) {
+			while (end > start && Character.isWhitespace(line.charAt(end)))
+				end--;
+		}
+		
+		char c;
+		for (int i=start; i<=end; i++) {
+			c = line.charAt(i);
+			if (!inside && c == ',') {
 				// we're done with a value
 				vals.add(cur.toString());
-				cur = new StringBuilder();
+				cur.setLength(0); // clear it
 				continue;
 			}
-			if (chars[i] == '"') {
+			if (c == '"') {
 				inside = !inside;
 				continue;
 			}
-			cur.append(chars[i]);
+			cur.append(c);
 		}
 		if (cur.length() > 0)
 			vals.add(cur.toString());
