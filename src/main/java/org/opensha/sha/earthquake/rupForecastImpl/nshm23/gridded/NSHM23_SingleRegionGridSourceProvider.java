@@ -468,7 +468,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 		}
 
 		@Override
-		public int locationIndexForSourceIndex(int sourceIndex) {
+		public int getLocationIndexForSource(int sourceIndex) {
 			return sourceIndex;
 		}
 

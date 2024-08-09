@@ -115,10 +115,8 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 
 	@Override
 	public Location getLocationForSource(int sourceIndex) {
-		return getLocation(locationIndexForSourceIndex(sourceIndex));
+		return getLocation(getLocationIndexForSource(sourceIndex));
 	}
-	
-	public abstract int locationIndexForSourceIndex(int sourceIndex);
 	
 	public abstract TectonicRegionType tectonicRegionTypeForSourceIndex(int sourceIndex);
 
@@ -170,7 +168,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	@Override
 	public ProbEqkSource getSource(int sourceIndex, double duration, DoubleBinaryOperator aftershockFilter,
 			BackgroundRupType bgRupType) {
-		return getSource(tectonicRegionTypeForSourceIndex(sourceIndex), locationIndexForSourceIndex(sourceIndex),
+		return getSource(tectonicRegionTypeForSourceIndex(sourceIndex), getLocationIndexForSource(sourceIndex),
 				duration, aftershockFilter, bgRupType);
 	}
 
@@ -1768,7 +1766,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		}
 
 		@Override
-		public int locationIndexForSourceIndex(int sourceIndex) {
+		public int getLocationIndexForSource(int sourceIndex) {
 			return sourceGridIndexes[sourceIndex];
 		}
 
@@ -1923,7 +1921,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		}
 
 		@Override
-		public int locationIndexForSourceIndex(int sourceIndex) {
+		public int getLocationIndexForSource(int sourceIndex) {
 			return sourceIndex;
 		}
 

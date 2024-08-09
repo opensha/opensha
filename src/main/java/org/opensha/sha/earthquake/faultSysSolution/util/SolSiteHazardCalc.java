@@ -314,7 +314,7 @@ public class SolSiteHazardCalc {
 					TectonicRegionDistCutoffFilter.class).getCutoffs();
 			if (Double.isNaN(largestMaxDist)) {
 				largestMaxDist = 0d;
-				largestMaxDist = 1000d;
+				smallestMaxDist = 1000d;
 			}
 			for (TectonicRegionType trt : gmmSuppliers.keySet()) {
 				largestMaxDist = Double.max(largestMaxDist, cutoffs.getCutoffDist(trt));
@@ -2159,6 +2159,7 @@ public class SolSiteHazardCalc {
 			GeographicMapMaker mapMaker, Site site, double maxDist, DisaggResult result,
 			FaultSystemSolutionERF erf, IncludeBackgroundOption gridSeisOp, ExecutorService exec, boolean writePDFs)
 					throws IOException {
+		Preconditions.checkState(maxDist > 0d, "Bad maxDist=%s", maxDist);
 		return exec.submit(new Runnable() {
 			
 			@Override
@@ -2254,7 +2255,8 @@ public class SolSiteHazardCalc {
 					for (DisaggregationSourceRuptureInfo source : result.sourceInfo) {
 						int sourceID = source.getId();
 						if (sourceID > 0 && sourceID >= numFaultSources) {
-							int gridIndex = sourceID - numFaultSources;
+							int sourceIndex = sourceID - numFaultSources;
+							int gridIndex = gridProv.getLocationIndexForSource(sourceIndex);
 							Preconditions.checkState(gridIndex < xyz.size());
 							xyz.set(gridIndex, xyz.get(gridIndex)+source.getRate());
 						}
