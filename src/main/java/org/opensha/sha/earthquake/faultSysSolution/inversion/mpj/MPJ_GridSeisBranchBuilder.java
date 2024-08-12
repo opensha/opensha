@@ -794,58 +794,43 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		}
 		
 	}
-	
-	private Map<String, GridSourceProvider> rank0_avgProv = null;
-	private Map<String, FaultGridAssociations> rank0_associations = null;
-	private Map<String, BranchRegionalMFDs> rank0_regionalMFDs = null;
 
 	@Override
 	protected void doFinalAssembly() throws Exception {
+		System.gc();
 		Preconditions.checkState(myAverageDir.exists() || myAverageDir.mkdir());
 		// write out node averages
 		if (nodeGridSourceAveragers != null) {
 			// this means we processed at least some
-			if (rank == 0) {
-				rank0_avgProv = new HashMap<>(nodeGridSourceAveragers.keySet().size());
-				rank0_associations = new HashMap<>(nodeGridSourceAveragers.keySet().size());
-				rank0_regionalMFDs = new HashMap<>(nodeGridSourceAveragers.keySet().size());
-			}
 			for (String baPrefix : nodeGridSourceAveragers.keySet()) {
 				String baOutPrefix = baPrefix;
 				debug("Writing node averages for "+baPrefix);
 				if (!baPrefix.isBlank())
 					baOutPrefix += "_";
 				
+				// need to write out even if we're rank=0, as the serialized type can be different than the
+				// in memory (which can mess up the averaging step that follows)
 				GridSourceProvider avgProv = nodeGridSourceAveragers.get(baPrefix).getAverage();
-				if (rank == 0) {
-					rank0_avgProv.put(baPrefix, avgProv);
-				} else {
-					ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
-					archive.addModule(avgProv);
-					archive.write(new File(myAverageDir, baOutPrefix+AVG_GRID_SIE_PROV_ARCHIVE_NAME));
-				}
+				ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
+				archive.addModule(avgProv);
+				archive.write(new File(myAverageDir, baOutPrefix+AVG_GRID_SIE_PROV_ARCHIVE_NAME));
 				
 				if (nodeFaultGridAveragers != null) {
 					FaultGridAssociations associations = nodeFaultGridAveragers.get(baPrefix).getAverage();
-					if (rank == 0) {
-						rank0_associations.put(baPrefix, associations);
-					} else {
-						ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
-						archive.addModule(associations);
-						archive.write(new File(myAverageDir, baOutPrefix+GRID_ASSOCIATIONS_ARCHIVE_NAME));
-					}
+					archive = new ModuleArchive<>();
+					archive.addModule(associations);
+					archive.write(new File(myAverageDir, baOutPrefix+GRID_ASSOCIATIONS_ARCHIVE_NAME));
 				}
 				
 				BranchRegionalMFDs regionalMFDs = nodeRegionalMFDsBuilders.get(baPrefix).build();
-				if (rank == 0) {
-					rank0_regionalMFDs.put(baPrefix, regionalMFDs);
-				} else {
-					ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
-					archive.addModule(regionalMFDs);
-					archive.write(new File(myAverageDir, baOutPrefix+GRID_BRANCH_REGIONAL_MFDS_NAME));
-				}
+				archive = new ModuleArchive<>();
+				archive.addModule(regionalMFDs);
+				archive.write(new File(myAverageDir, baOutPrefix+GRID_BRANCH_REGIONAL_MFDS_NAME));
 			}
 		}
+		nodeGridSourceAveragers = null;
+		nodeFaultGridAveragers = null;
+		nodeRegionalMFDsBuilders = null;
 
 		Map<String, LogicTreeBranch<LogicTreeNode>> baCommonBranches = null;
 		if (rank == 0) {
@@ -904,70 +889,54 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 				List<Future<FaultGridAssociations>> assocFutures = new ArrayList<>();
 				List<Future<BranchRegionalMFDs>> mfdFutures = new ArrayList<>();
 				for (int rank=0; rank<size; rank++) {
-					if (rank == 0) {
-						if (rank0_avgProv == null)
-							// never did any on the root node
-							continue;
-						// already in memory
-						provFutures.add(CompletableFuture.completedFuture(rank0_avgProv.get(baPrefix)));
-						if (rank0_associations.containsKey(baPrefix)) {
-							assocFutures.add(CompletableFuture.completedFuture(rank0_associations.get(baPrefix)));
-						} else {
-							// don't have any
-							assocFutures = null;
-						}
-						mfdFutures.add(CompletableFuture.completedFuture(rank0_regionalMFDs.get(baPrefix)));
+					// load them
+					File rankDir = new File(nodesAverageDir, "rank_"+rank);
+					Preconditions.checkState(rankDir.exists(), "Dir doesn't exist: %s", rankDir.getAbsolutePath());
+					
+					File avgFile = new File(rankDir, loadPrefix+AVG_GRID_SIE_PROV_ARCHIVE_NAME);
+					if (avgFile.exists()) {
 						numNodes++;
-					} else {
-						// load them
-						File rankDir = new File(nodesAverageDir, "rank_"+rank);
-						Preconditions.checkState(rankDir.exists(), "Dir doesn't exist: %s", rankDir.getAbsolutePath());
-						
-						File avgFile = new File(rankDir, loadPrefix+AVG_GRID_SIE_PROV_ARCHIVE_NAME);
-						if (avgFile.exists()) {
-							numNodes++;
-							provFutures.add(exec.submit(new Callable<GridSourceProvider>() {
+						provFutures.add(exec.submit(new Callable<GridSourceProvider>() {
 
-								@Override
-								public GridSourceProvider call() throws Exception {
-									ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(avgFile);
-									return archive.requireModule(GridSourceProvider.class);
-								}
-							}));
-							
-							if (assocFutures != null) {
-								File assocFile = new File(rankDir, loadPrefix+GRID_ASSOCIATIONS_ARCHIVE_NAME);
-								if (assocFile.exists()) {
-									assocFutures.add(exec.submit(new Callable<FaultGridAssociations>() {
-
-										@Override
-										public FaultGridAssociations call() throws Exception {
-											ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(assocFile);
-											return archive.requireModule(FaultGridAssociations.class);
-										}
-									}));
-								} else {
-									// not all have them, stop trying to load them
-									assocFutures = null;
-								}
+							@Override
+							public GridSourceProvider call() throws Exception {
+								ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(avgFile);
+								return archive.requireModule(GridSourceProvider.class);
 							}
-							
-							File mfdFile = new File(rankDir, loadPrefix+GRID_BRANCH_REGIONAL_MFDS_NAME);
-							mfdFutures.add(exec.submit(new Callable<BranchRegionalMFDs>() {
+						}));
+						
+						if (assocFutures != null) {
+							File assocFile = new File(rankDir, loadPrefix+GRID_ASSOCIATIONS_ARCHIVE_NAME);
+							if (assocFile.exists()) {
+								assocFutures.add(exec.submit(new Callable<FaultGridAssociations>() {
 
-								@Override
-								public BranchRegionalMFDs call() throws Exception {
-									ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(mfdFile);
-									return archive.requireModule(BranchRegionalMFDs.class);
-								}
-							}));
-						} else {
-							// this rank didn't process any
-							provFutures.add(null);
-							if (assocFutures != null)
-								assocFutures.add(null);
-							mfdFutures.add(null);
+									@Override
+									public FaultGridAssociations call() throws Exception {
+										ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(assocFile);
+										return archive.requireModule(FaultGridAssociations.class);
+									}
+								}));
+							} else {
+								// not all have them, stop trying to load them
+								assocFutures = null;
+							}
 						}
+						
+						File mfdFile = new File(rankDir, loadPrefix+GRID_BRANCH_REGIONAL_MFDS_NAME);
+						mfdFutures.add(exec.submit(new Callable<BranchRegionalMFDs>() {
+
+							@Override
+							public BranchRegionalMFDs call() throws Exception {
+								ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(mfdFile);
+								return archive.requireModule(BranchRegionalMFDs.class);
+							}
+						}));
+					} else {
+						// this rank didn't process any
+						provFutures.add(null);
+						if (assocFutures != null)
+							assocFutures.add(null);
+						mfdFutures.add(null);
 					}
 				}
 				debug("Processing providers for baPrefix="+baPrefix+" from "+numNodes+" nodes");

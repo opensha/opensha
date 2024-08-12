@@ -28,6 +28,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.FiniteRuptureConverter;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRupture;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRuptureProperties;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRupturePropertiesCache;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
@@ -44,6 +45,7 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
+import com.google.common.primitives.Floats;
 import com.google.common.primitives.Ints;
 
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
@@ -430,7 +432,8 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 
 		@Override
 		public GriddedRupture buildFiniteRupture(int gridIndex, Location loc, double magnitude, double rate,
-				FocalMech focalMech, TectonicRegionType trt, int[] associatedSections, double[] associatedSectionFracts) {
+				FocalMech focalMech, TectonicRegionType trt, int[] associatedSections, float[] associatedSectionFracts,
+				GriddedRupturePropertiesCache cache) {
 			double dipRad = Math.toRadians(focalMech.dip());
 			
 			double depth = (float)magnitude < 6.5f ? 5d : 1d;
@@ -440,11 +443,11 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 			ddWidth = Math.min(aspectWidth, ddWidth);
 			double lower = depth + ddWidth * Math.sin(dipRad);
 			
-			GriddedRuptureProperties props = new GriddedRuptureProperties(gridIndex, loc, magnitude,
+			GriddedRuptureProperties props = cache.getCached(new GriddedRuptureProperties(magnitude,
 					focalMech.rake(), focalMech.dip(), Double.NaN, null, depth, lower, length, Double.NaN, Double.NaN,
-					trt);
+					trt));
 			
-			return new GriddedRupture(props, rate, associatedSections, associatedSectionFracts);
+			return new GriddedRupture(gridIndex, loc, props, rate, associatedSections, associatedSectionFracts);
 		}
 		
 	}
@@ -506,6 +509,8 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 				return null;
 			}
 			
+			GriddedRupturePropertiesCache cache = new GriddedRupturePropertiesCache();
+			
 			Location loc = gridProv.getLocation(gridIndex);
 			Map<Integer, double[]> sectAssocs = gridSectMappedAssocatedMFDs.get(gridIndex);
 			List<GriddedRupture> ruptureList = new ArrayList<>();
@@ -517,10 +522,10 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 				
 				double associatedRate = 0d;
 				int[] associatedSections = null;
-				double[] associatedSectionFracts = null;
+				float[] associatedSectionFracts = null;
 				if (sectAssocs != null) {
 					List<Integer> associatedSectionsList = new ArrayList<>(sectAssocs.size());
-					List<Double> associatedSectionFractsList = new ArrayList<>(sectAssocs.size());
+					List<Float> associatedSectionFractsList = new ArrayList<>(sectAssocs.size());
 					for (int sectID : sectAssocs.keySet()) {
 						double[] sectAssocRates = sectAssocs.get(sectID);
 						Preconditions.checkState(sectAssocRates.length == mfd.size());
@@ -528,7 +533,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 						if (sectAssocRate > 0d) {
 							associatedRate += sectAssocRate;
 							associatedSectionsList.add(sectID);
-							associatedSectionFractsList.add(sectAssocRate/totRate);
+							associatedSectionFractsList.add((float)(sectAssocRate/totRate));
 						}
 					}
 					if (!associatedSectionFractsList.isEmpty()) {
@@ -536,7 +541,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 								"Associated rate (%s) exceeds the total rate (%s) for gridIndex=%s, M=%s",
 								associatedRate, totRate, gridIndex, mag);
 						associatedSections = Ints.toArray(associatedSectionsList);
-						associatedSectionFracts = Doubles.toArray(associatedSectionFractsList);
+						associatedSectionFracts = Floats.toArray(associatedSectionFractsList);
 					}
 				}
 				for (FocalMech mech : FocalMech.values()) {
@@ -558,8 +563,8 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 					if (mechRate == 0d)
 						continue;
 					
-					ruptureList.add(converter.buildFiniteRupture(gridIndex, loc,
-							mag, mechRate, mech, tectonicRegionType, associatedSections, associatedSectionFracts));
+					ruptureList.add(converter.buildFiniteRupture(gridIndex, loc, mag, mechRate, mech,
+							tectonicRegionType, associatedSections, associatedSectionFracts, cache));
 				}
 			}
 			return ruptureList;
@@ -828,12 +833,19 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 				Preconditions.checkState((rup1.associatedSections == null) == (rup2.associatedSections == null));
 				if (rup1.associatedSections != null) {
 					Preconditions.checkState(rup2.associatedSections.length >= rup1.associatedSections.length);
-					double fract1 = StatUtils.sum(rup1.associatedSectionFracts);
-					double fract2 = StatUtils.sum(rup2.associatedSectionFracts);
-					Preconditions.checkState((float)fract1 == (float)fract2);
+					float fract1 = floatSum(rup1.associatedSectionFracts);
+					float fract2 = floatSum(rup2.associatedSectionFracts);
+					Preconditions.checkState(fract1 == fract2);
 				}
 			}
 		}
+	}
+	
+	static float floatSum(float[] array) {
+		double val = 0d;
+		for (float value : array)
+			val += value;
+		return (float)val;
 	}
 
 	@Override

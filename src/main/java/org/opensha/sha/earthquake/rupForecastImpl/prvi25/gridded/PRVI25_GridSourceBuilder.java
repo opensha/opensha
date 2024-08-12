@@ -323,9 +323,9 @@ public class PRVI25_GridSourceBuilder {
 						lower = upper + ddw*Math.sin(Math.toRadians(dip));
 				}
 				
-				GriddedRuptureProperties props = new GriddedRuptureProperties(gridIndex, loc, mag, rake, dip, strike, null,
+				GriddedRuptureProperties props = new GriddedRuptureProperties(mag, rake, dip, strike, null,
 						upper, lower, length, hypocentralDepth, hypocentralDAS, TectonicRegionType.SUBDUCTION_SLAB);
-				ruptureList.add(new GriddedRupture(props, rate));
+				ruptureList.add(new GriddedRupture(gridIndex, loc, props, rate));
 			}
 		}
 		
@@ -501,7 +501,7 @@ public class PRVI25_GridSourceBuilder {
 			FaultSection matchingSection = matchingSubSects.get(sectMappings[gridIndex]);
 			
 			int[] assocIDs = { matchingSection.getSectionId() };
-			double[] assocFracts = { 1d };
+			float[] assocFracts = { 1f };
 				
 			double dip = matchingSection.getAveDip();
 			double dipRad = Math.toRadians(dip);
@@ -577,10 +577,10 @@ public class PRVI25_GridSourceBuilder {
 				Preconditions.checkState(Double.isFinite(upper));
 				Preconditions.checkState(Double.isFinite(lower), "lower=%s? sectLower=%s, ddw=%s", lower, sectLower, ddw);
 				GriddedRuptureProperties props = new GriddedRuptureProperties(
-						gridIndex, pdf.getLocation(gridIndex), mag, rake, dip, strike, null,
+						mag, rake, dip, strike, null,
 						upper, lower, length, hypocentralDepth, hypocentralDAS,
 						TectonicRegionType.SUBDUCTION_INTERFACE);
-				ruptureList.add(new GriddedRupture(props, rate, assocIDs, assocFracts));
+				ruptureList.add(new GriddedRupture(gridIndex, pdf.getLocation(gridIndex), props, rate, assocIDs, assocFracts));
 			}
 		}
 		
