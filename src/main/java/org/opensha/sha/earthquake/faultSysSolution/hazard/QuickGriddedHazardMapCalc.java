@@ -282,6 +282,8 @@ public class QuickGriddedHazardMapCalc {
 		return curves;
 	}
 	
+	private boolean trtWarned = false;
+	
 	private class CalcThread extends Thread {
 		
 		private DiscretizedFunc[] curves;
@@ -307,6 +309,18 @@ public class QuickGriddedHazardMapCalc {
 				
 				for (TectonicRegionType trt : gridProv.getTectonicRegionTypes()) {
 					Supplier<ScalarIMR> gmmSupplier = gmpeSuppliers.get(trt);
+					if (gmmSupplier == null && gmpeSuppliers.size() == 1) {
+						TectonicRegionType trtWeHave = gmpeSuppliers.keySet().iterator().next();
+						if (!trtWarned) {
+							synchronized (QuickGriddedHazardMapCalc.this) {
+								if (!trtWarned) {
+									System.err.println("WARNING: no GMPE supplied for TRT "+trt+", using the only one we have (for "+trtWeHave+")");
+									trtWarned = true;
+								}
+							}
+						}
+						gmmSupplier = gmpeSuppliers.get(trtWeHave);
+					}
 					Preconditions.checkNotNull(gmmSupplier, "No GMPE supplied for TRT: %s", trt);
 					ScalarIMR gmm = gmmSupplier.get();
 					SolHazardMapCalc.setIMforPeriod(gmm, period);
@@ -357,6 +371,10 @@ public class QuickGriddedHazardMapCalc {
 		LightFixedXFunc exceedFunc = new LightFixedXFunc(xValsArray, new double[xValsArray.length]);
 		
 		TectonicRegionType trt = source.getTectonicRegionType();
+		if (!trtMaxDists.containsKey(trt)) {
+			Preconditions.checkState(trtMaxDists.keySet().size() == 1);
+			trt = trtMaxDists.keySet().iterator().next();
+		}
 		double maxDist = trtMaxDists.get(trt);
 		double[] distVals = trtDistVals.get(trt);
 		EvenlyDiscretizedFunc logSpacedDiscr = trtLogSpacedDiscrs.get(trt);

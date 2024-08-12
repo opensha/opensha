@@ -140,6 +140,14 @@ public class SolHazardMapCalc {
 		return ret;
 	}
 	
+	public static Map<TectonicRegionType, Supplier<ScalarIMR>> wrapInTRTMap(Supplier<ScalarIMR> gmpeRef) {
+		if (gmpeRef == null)
+			return null;
+		EnumMap<TectonicRegionType, Supplier<ScalarIMR>> ret = new EnumMap<>(TectonicRegionType.class);
+		ret.put(TectonicRegionType.ACTIVE_SHALLOW, gmpeRef);
+		return ret;
+	}
+	
 	public static SourceFilterManager getDefaultSourceFilters() {
 		SourceFilterManager sourceFilters = new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
 		return sourceFilters;
@@ -272,14 +280,6 @@ public class SolHazardMapCalc {
 	public SolHazardMapCalc(FaultSystemSolution sol, Supplier<ScalarIMR> gmpeRef, GriddedRegion region,
 			IncludeBackgroundOption backSeisOption, boolean applyAftershockFilter, double... periods) {
 		this(sol, wrapInTRTMap(gmpeRef), region, backSeisOption, applyAftershockFilter, periods);
-	}
-	
-	public static Map<TectonicRegionType, Supplier<ScalarIMR>> wrapInTRTMap(Supplier<ScalarIMR> gmpeRef) {
-		if (gmpeRef == null)
-			return null;
-		EnumMap<TectonicRegionType, Supplier<ScalarIMR>> ret = new EnumMap<>(TectonicRegionType.class);
-		ret.put(TectonicRegionType.ACTIVE_SHALLOW, gmpeRef);
-		return ret;
 	}
 	
 	public static Map<TectonicRegionType, ScalarIMR> getGmmInstances(Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap) {
