@@ -37,7 +37,10 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
+import org.opensha.commons.data.xyz.ArbDiscrGeoDataSet;
+import org.opensha.commons.data.xyz.GeoDataSet;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
+import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
@@ -2228,7 +2231,7 @@ public class SolSiteHazardCalc {
 					sectCPT = null;
 				}
 				
-				GriddedGeoDataSet gridXYZ;
+				GeoDataSet gridXYZ;
 				CPT gridCPT;
 				
 				if (gridSeisOp != IncludeBackgroundOption.EXCLUDE && erf.getNumSources() > erf.getNumFaultSystemSources()) {
@@ -2250,7 +2253,16 @@ public class SolSiteHazardCalc {
 					
 					GridSourceProvider gridProv = erf.getSolution().getGridSourceProvider();
 					
-					GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridProv.getGriddedRegion());
+					GriddedRegion gridReg = gridProv.getGriddedRegion();
+					GeoDataSet xyz;
+					if (gridReg == null) {
+						xyz = new ArbDiscrGeoDataSet(false);
+						for (int i=0; i<gridProv.getNumLocations(); i++)
+							xyz.set(gridProv.getLocation(i), 0d);
+						Preconditions.checkState(xyz.size() == gridProv.getNumLocations());
+					} else {
+						xyz = new GriddedGeoDataSet(gridProv.getGriddedRegion());
+					}
 					
 					for (DisaggregationSourceRuptureInfo source : result.sourceInfo) {
 						int sourceID = source.getId();

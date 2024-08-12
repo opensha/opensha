@@ -79,20 +79,21 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		Range xRange = xRange(defaultMFD);
 		
 		// see if we have a model region
+		GridSourceProvider gridProv = sol == null ? null : sol.getGridSourceProvider();
 		Region modelRegion = null;
-		if (sol != null && sol.getGridSourceProvider() != null)
-			modelRegion = sol.getGridSourceProvider().getGriddedRegion();
+		if (gridProv != null && gridProv.getGriddedRegion() != null)
+			modelRegion = gridProv.getGriddedRegion();
 		else if (rupSet.hasModule(ModelRegion.class))
 			modelRegion = rupSet.getModule(ModelRegion.class).getRegion();
 		
 		boolean allInside = false;
 		if (modelRegion != null) {
 			allInside = true;
-			if (sol != null && sol.getGridSourceProvider() != null) {
+			if (gridProv != null) {
 				GriddedRegion gridReg = sol.getGridSourceProvider().getGriddedRegion();
-				if (!modelRegion.equalsRegion(gridReg)) {
-					for (int n=0; allInside && n<gridReg.getNodeCount(); n++)
-						allInside = modelRegion.contains(gridReg.getLocation(n));
+				if (gridReg == null || !modelRegion.equalsRegion(gridReg)) {
+					for (int n=0; allInside && n<gridProv.getNumLocations(); n++)
+						allInside = modelRegion.contains(gridProv.getLocation(n));
 				}
 			}
 			double[] fracts = rupSet.getFractSectsInsideRegion(modelRegion, false);
@@ -723,12 +724,13 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			if (trt == null || prov.getTectonicRegionTypes().contains(trt)) {
 				SummedMagFreqDist gridMFD = null;
 				GriddedRegion gridReg = prov.getGriddedRegion();
-				boolean regionTest = region != null && region != gridReg && !region.getBorder().equals(gridReg.getBorder());
-				for (int i=0; i<gridReg.getNodeCount(); i++) {
+				boolean regionTest = region != null &&
+						(gridReg == null || region != gridReg && !region.getBorder().equals(gridReg.getBorder()));
+				for (int i=0; i<prov.getNumLocations(); i++) {
 					IncrementalMagFreqDist nodeMFD = prov.getMFD(trt, i);
 					if (nodeMFD == null)
 						continue;
-					if (regionTest && !region.contains(gridReg.getLocation(i)))
+					if (regionTest && !region.contains(prov.getLocation(i)))
 						continue;
 					if (gridMFD == null) {
 						gridMFD = new SummedMagFreqDist(nodeMFD.getMinX(), nodeMFD.getMaxX(), nodeMFD.size());

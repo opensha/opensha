@@ -70,7 +70,7 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 	@Override
 	protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
 			BackgroundRupType bgRupType) {
-		Location loc = getGriddedRegion().locationForIndex(gridIndex);
+		Location loc = getLocation(gridIndex);
 		
 		double fracStrikeSlip = getFracStrikeSlip(gridIndex);
 		double fracNormal = getFracNormal(gridIndex);

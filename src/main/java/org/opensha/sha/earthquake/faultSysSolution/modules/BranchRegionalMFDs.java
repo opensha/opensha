@@ -205,9 +205,8 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 		
 		private IncrementalMagFreqDist calcGridMFD(GridSourceProvider prov, Region region, TectonicRegionType trt) {
 			SummedMagFreqDist gridMFD = new SummedMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
-			GriddedRegion gridReg = prov.getGriddedRegion();
-			for (int i=0; i<gridReg.getNodeCount(); i++) {
-				if (region != null && !region.contains(gridReg.getLocation(i)))
+			for (int i=0; i<prov.getNumLocations(); i++) {
+				if (region != null && !region.contains(prov.getLocation(i)))
 					continue;
 				IncrementalMagFreqDist nodeMFD = prov.getMFD(trt, i);
 				if (nodeMFD == null)

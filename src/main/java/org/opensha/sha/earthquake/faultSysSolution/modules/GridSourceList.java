@@ -130,50 +130,13 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		if (encompassingRegion == null) {
 			synchronized (this) {
 				if (encompassingRegion == null)
-					inferEncompassingRegion();
+					encompassingRegion = GriddedRegion.inferEncompassingRegion(locs);
 			}
 		}
 		int encompassingIndex = encompassingRegion.indexForLocation(location);
 		if (encompassingIndex >= 0)
 			return encompassingIndexesToLocIndexes[encompassingIndex];
 		return -1;
-	}
-	
-	private void inferEncompassingRegion() {
-		Location anchor = getLocation(0);
-		double latSpacing = GriddedRegion.inferLatSpacing(locs);
-		double lonSpacing = GriddedRegion.inferLonSpacing(locs);
-		double minLat = Double.POSITIVE_INFINITY;
-		double maxLat = Double.NEGATIVE_INFINITY;
-		double minLon = Double.POSITIVE_INFINITY;
-		double maxLon = Double.NEGATIVE_INFINITY;
-		for (Location loc : locs) {
-			minLat = Math.min(minLat, loc.lat);
-			maxLat = Math.max(maxLat, loc.lat);
-			minLon = Math.min(minLon, loc.lon);
-			maxLon = Math.max(maxLon, loc.lon);
-		}
-		// buffer by a bit to make sure we enclose each node (none on the boundary)
-		minLat = Math.max(-90d, minLat-0.5*latSpacing);
-		maxLat = Math.min(90d, maxLat+0.5*latSpacing);
-		if (minLon < 0d) {
-			Preconditions.checkState(minLon >= -180d);
-			Preconditions.checkState(maxLon <= 180d);
-			minLon = Math.max(-180d, minLon-0.5*lonSpacing);
-			maxLon = Math.min(180d, maxLon+0.5*lonSpacing);
-		} else {
-			Preconditions.checkState(maxLon <= 360d);
-			minLon = Math.max(0d, minLon-0.5*lonSpacing);
-			maxLon = Math.min(360d, maxLon+0.5*lonSpacing);
-		}
-		Region encompassing = new Region(new Location(minLat, minLon), new Location(maxLat, maxLon));
-		encompassingRegion = new GriddedRegion(encompassing, latSpacing, lonSpacing, anchor);
-		encompassingIndexesToLocIndexes = new int[encompassingRegion.getNodeCount()];
-		for (int i=0; i<locs.size(); i++) {
-			int index = encompassingRegion.indexForLocation(locs.get(i));
-			Preconditions.checkState(index >= 0);
-			encompassingIndexesToLocIndexes[index] = i;
-		}
 	}
 
 	public abstract TectonicRegionType tectonicRegionTypeForSourceIndex(int sourceIndex);

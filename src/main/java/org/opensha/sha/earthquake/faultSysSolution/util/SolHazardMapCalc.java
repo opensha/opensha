@@ -635,6 +635,8 @@ public class SolHazardMapCalc {
 			GriddedRegion gridReg = gridProv.getGriddedRegion();
 			for (TectonicRegionType trt : gridProv.getTectonicRegionTypes()) {
 				double maxDist = getMaxDistForTRT(siteSkipSourceFilter, trt);
+				if (Double.isInfinite(maxDist))
+					return false;
 				if (gridReg != null && gridProv.getNumSources() == gridProv.getNumLocations()*gridProv.getTectonicRegionTypes().size()) {
 					// we have a region and every location has every TRT
 					hasSourceWithin = gridReg.contains(siteLoc) ||
