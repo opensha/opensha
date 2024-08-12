@@ -1229,12 +1229,12 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		if (Double.isNaN(latSpacing)) {
 			System.err.println("Warning: "+JSON_LAT_SPACING+" not specified in GriddedRegion GeoJSON properties, "
 					+ "inferring from nodes");
-			latSpacing = inferSpacing(latNodeCenters);
+			latSpacing = inferSpacing(latNodeCenters, false);
 		}
 		if (Double.isNaN(lonSpacing)) {
 			System.err.println("Warning: "+JSON_LON_SPACING+" not specified in GriddedRegion GeoJSON properties, "
 					+ "inferring from nodes");
-			lonSpacing = inferSpacing(lonNodeCenters);
+			lonSpacing = inferSpacing(lonNodeCenters, false);
 		}
 		GriddedRegion gridRegion = new GriddedRegion(
 				region, latNodeCenters, lonNodeCenters, latSpacing, lonSpacing, anchor, nodeList);
@@ -1259,22 +1259,64 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		double[] array = Doubles.toArray(values);
 		
 		// verify that it is evenly spaced
-		inferSpacing(array);
+		inferSpacing(array, true);
 		
 		return array;
 	}
 	
-	private static double inferSpacing(double[] values) {
+	private static double inferSpacing(double[] values, boolean allowHoles) {
 		if (values.length < 1)
 			return 0d;
-		double spacing = Math.abs(values[values.length-1] - values[0])/(values.length-1);
-		for (int i=1; i<values.length; i++) {
-			float calcSpacing = (float)Math.abs(values[i] - values[i-1]);
-			Preconditions.checkState(calcSpacing == (float)spacing, 
-					"Cannot infer spacing. Implied spacing from whole node array is %s, "
-					+ "but spacing between elements %s and %s is %s", (float)spacing, i-1, i, calcSpacing);
+		double spacing;
+		if (allowHoles) {
+			// spacing should be the smallest gap between consecutive; all gaps should be a multiple of this
+			spacing = Double.POSITIVE_INFINITY;
+			boolean allEqual = true;
+			for (int i=1; i<values.length; i++) {
+				double mySpacing = Math.abs(values[i] - values[i-1]);
+				Preconditions.checkState(Double.isFinite(mySpacing) && mySpacing > 0d,
+						"Spacing between consecutive grid nodes must be >0 and finite: %s", mySpacing);
+				if (i == 1) {
+					spacing = mySpacing;
+				} else {
+					allEqual &= (float)mySpacing == (float)spacing;
+					if (!allEqual)
+						spacing = Math.min(spacing, mySpacing);
+				}
+			}
+			if (!allEqual) {
+				// validate that all gaps are multiple of spacing
+				for (int i=1; i<values.length; i++) {
+					double mySpacing = Math.abs(values[i] - values[i-1]);
+					if ((float)mySpacing != (float)spacing) {
+						double multiple = mySpacing / spacing;
+						Preconditions.checkState((float)multiple == (float)Math.round(multiple),
+								"Does list contains holes (or is irregular). Spacing should be an exact multiple of the "
+								+ "smallest spacing (%s), but spacing between elements %s and %s is %s.",
+								(float)spacing, i-1, i, (float)mySpacing);
+					}
+				}
+			}
+		} else {
+			spacing = Math.abs(values[values.length-1] - values[0])/(values.length-1);
+			for (int i=1; i<values.length; i++) {
+				float calcSpacing = (float)Math.abs(values[i] - values[i-1]);
+				Preconditions.checkState(calcSpacing == (float)spacing, 
+						"Cannot infer spacing. Implied spacing from whole node array is %s, "
+						+ "but spacing between elements %s and %s is %s", (float)spacing, i-1, i, calcSpacing);
+			}
 		}
 		return spacing;
+	}
+	
+	public static double inferLatSpacing(LocationList gridLocs) {
+		double[] centers = inferNodeCenters(gridLocs, true);
+		return inferSpacing(centers, true);
+	}
+	
+	public static double inferLonSpacing(LocationList gridLocs) {
+		double[] centers = inferNodeCenters(gridLocs, false);
+		return inferSpacing(centers, true);
 	}
 	
 	public static class Adapter extends TypeAdapter<GriddedRegion> {
@@ -1320,8 +1362,8 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 	public static GriddedRegion inferRegion(LocationList nodeList) throws IllegalStateException {
 		double[] latNodes = inferNodeCenters(nodeList, true);
 		double[] lonNodes = inferNodeCenters(nodeList, false);
-		double latSpacing = inferSpacing(latNodes);
-		double lonSpacing = inferSpacing(lonNodes);
+		double latSpacing = inferSpacing(latNodes, false);
+		double lonSpacing = inferSpacing(lonNodes, false);
 		
 		double latBuffer = latSpacing*0.25;
 		double lonBuffer = lonSpacing*0.25;
