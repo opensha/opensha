@@ -123,6 +123,8 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 
 	private IncrementalMagFreqDist[] longTermSupraSeisMFD_OnSectArray;
 	
+	// for each grid node in the region
+	// map of associated sections, to the associated 
 	private List<Map<Integer, double[]>> gridSectMappedAssocatedMFDs;
 
 	//	private List<Integer> sectionsThatNucleateOutsideRegionList;
@@ -432,7 +434,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 
 		@Override
 		public GriddedRupture buildFiniteRupture(int gridIndex, Location loc, double magnitude, double rate,
-				FocalMech focalMech, TectonicRegionType trt, int[] associatedSections, float[] associatedSectionFracts,
+				FocalMech focalMech, TectonicRegionType trt, int[] associatedSections, double[] associatedSectionFracts,
 				GriddedRupturePropertiesCache cache) {
 			double dipRad = Math.toRadians(focalMech.dip());
 			
@@ -522,10 +524,10 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 				
 				double associatedRate = 0d;
 				int[] associatedSections = null;
-				float[] associatedSectionFracts = null;
+				double[] associatedSectionFracts = null;
 				if (sectAssocs != null) {
 					List<Integer> associatedSectionsList = new ArrayList<>(sectAssocs.size());
-					List<Float> associatedSectionFractsList = new ArrayList<>(sectAssocs.size());
+					List<Double> associatedSectionFractsList = new ArrayList<>(sectAssocs.size());
 					for (int sectID : sectAssocs.keySet()) {
 						double[] sectAssocRates = sectAssocs.get(sectID);
 						Preconditions.checkState(sectAssocRates.length == mfd.size());
@@ -533,7 +535,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 						if (sectAssocRate > 0d) {
 							associatedRate += sectAssocRate;
 							associatedSectionsList.add(sectID);
-							associatedSectionFractsList.add((float)(sectAssocRate/totRate));
+							associatedSectionFractsList.add(sectAssocRate/totRate);
 						}
 					}
 					if (!associatedSectionFractsList.isEmpty()) {
@@ -541,7 +543,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 								"Associated rate (%s) exceeds the total rate (%s) for gridIndex=%s, M=%s",
 								associatedRate, totRate, gridIndex, mag);
 						associatedSections = Ints.toArray(associatedSectionsList);
-						associatedSectionFracts = Floats.toArray(associatedSectionFractsList);
+						associatedSectionFracts = Doubles.toArray(associatedSectionFractsList);
 					}
 				}
 				for (FocalMech mech : FocalMech.values()) {
@@ -833,19 +835,12 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 				Preconditions.checkState((rup1.associatedSections == null) == (rup2.associatedSections == null));
 				if (rup1.associatedSections != null) {
 					Preconditions.checkState(rup2.associatedSections.length >= rup1.associatedSections.length);
-					float fract1 = floatSum(rup1.associatedSectionFracts);
-					float fract2 = floatSum(rup2.associatedSectionFracts);
+					double fract1 = StatUtils.sum(rup1.associatedSectionFracts);
+					double fract2 = StatUtils.sum(rup2.associatedSectionFracts);
 					Preconditions.checkState(fract1 == fract2);
 				}
 			}
 		}
-	}
-	
-	static float floatSum(float[] array) {
-		double val = 0d;
-		for (float value : array)
-			val += value;
-		return (float)val;
 	}
 
 	@Override

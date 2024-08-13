@@ -501,7 +501,7 @@ public class PRVI25_GridSourceBuilder {
 			FaultSection matchingSection = matchingSubSects.get(sectMappings[gridIndex]);
 			
 			int[] assocIDs = { matchingSection.getSectionId() };
-			float[] assocFracts = { 1f };
+			double[] assocFracts = { 1d };
 				
 			double dip = matchingSection.getAveDip();
 			double dipRad = Math.toRadians(dip);

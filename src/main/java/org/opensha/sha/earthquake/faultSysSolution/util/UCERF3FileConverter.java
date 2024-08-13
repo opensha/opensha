@@ -148,7 +148,7 @@ class UCERF3FileConverter {
 	
 	private static void writeSimplifiedAndFull(FaultSystemSolution sol, File fullFile, File simplifiedFile) throws IOException {
 		sol.write(fullFile);
-		sol = SolModuleStripper.stripModules(sol);
+		sol = SolModuleStripper.stripModules(sol, 0d);
 		sol.write(simplifiedFile);
 	}
 	
