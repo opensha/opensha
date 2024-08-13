@@ -253,6 +253,15 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	public abstract double getFracNormal(int gridIndex);
 	
 	/**
+	 * Get a filtered version of this GridSourceProvider with ruptures filtered out that
+	 * are below the specified minimum magnitude. Useful for serializing when smaller
+	 * magnitudes are not needed.
+	 * @param gridIndex
+	 * @return
+	 */
+	public abstract GridSourceProvider getAboveMinMag(float minMag);
+	
+	/**
 	 * Scales all rates by the given values, and throws an exception if the array size is not equal to the
 	 * number of locations in the grid source provider.
 	 * 

@@ -209,6 +209,62 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		return getNumLocations();
 	}
 
+	@Override
+	default GridSourceProvider getAboveMinMag(float minMag) {
+		Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = new HashMap<>();
+		Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = new HashMap<>(getNumLocations());
+		double[] fracStrikeSlip = new double[getNumLocations()];
+		double[] fracNormal = new double[fracStrikeSlip.length];
+		double[] fracReverse = new double[fracStrikeSlip.length];
+		TectonicRegionType[] trts = new TectonicRegionType[fracStrikeSlip.length];
+		
+		boolean alreadyAbove = true;
+		double snappedMinMag = Double.NaN;
+		for (int i=0; i<fracStrikeSlip.length; i++) {
+			fracStrikeSlip[i] = getFracStrikeSlip(i);
+			fracNormal[i] = getFracNormal(i);
+			fracReverse[i] = getFracReverse(i);
+			trts[i] = getTectonicRegionType(i);
+			IncrementalMagFreqDist subSeisMFD = getMFD_SubSeisOnFault(i);
+			IncrementalMagFreqDist unassocMFD = getMFD_Unassociated(i);
+			if (subSeisMFD != null || unassocMFD != null) {
+				double myMin = Double.POSITIVE_INFINITY;
+				if (subSeisMFD != null)
+					myMin = subSeisMFD.getMinX();
+				if (unassocMFD != null)
+					myMin = Math.min(myMin, unassocMFD.getMinX());
+				if ((float)myMin < minMag) {
+					// need to filter
+					if (alreadyAbove) {
+						// first time we're below
+						alreadyAbove = false;
+						// snap the minimum magnitude to our MFD gridding
+						IncrementalMagFreqDist mfd = unassocMFD == null ? subSeisMFD : unassocMFD;
+						int index = mfd.getClosestXIndex((double)minMag);
+						snappedMinMag = mfd.getX(index);
+						if ((float)snappedMinMag < minMag) {
+							snappedMinMag = mfd.getX(index+1);
+							Preconditions.checkState((float)snappedMinMag >= minMag);
+						}
+					}
+					if (subSeisMFD != null)
+						nodeSubSeisMFDs.put(i, trimMFD(subSeisMFD, snappedMinMag));
+					if (unassocMFD != null)
+						nodeUnassociatedMFDs.put(i, trimMFD(unassocMFD, snappedMinMag));
+				} else {
+					if (subSeisMFD != null)
+						nodeSubSeisMFDs.put(i, subSeisMFD);
+					if (unassocMFD != null)
+						nodeUnassociatedMFDs.put(i, unassocMFD);
+				}
+			}
+		}
+		if (alreadyAbove)
+			return this;
+		
+		return newInstance(nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse, trts);
+	}
+
 	/**
 	 * Creates a new instance of this same type, but with the given data. Used primarily to create new instances when
 	 * branch averaging by {@link MFDGridSourceProvider.Averager}.
@@ -414,7 +470,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 			runningMFD = ret;
 		}
 		for (int i=0; i<newMFD.size(); i++)
-			runningMFD.add(i, newMFD.getY(i)*weight);
+			runningMFD.set(i, Math.fma(newMFD.getY(i), weight, runningMFD.getY(i)));
 		return runningMFD;
 	}
 	
