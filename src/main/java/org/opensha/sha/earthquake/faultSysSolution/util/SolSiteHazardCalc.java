@@ -44,6 +44,7 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
@@ -82,7 +83,6 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
-import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.GeneralInfoPlot;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
@@ -112,6 +112,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.primitives.Doubles;
 
+import net.mahdilamb.colormap.Colors;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
 public class SolSiteHazardCalc {
@@ -220,6 +221,10 @@ public class SolSiteHazardCalc {
 		ops.addOption(null, "return-periods", true, "Sets custom return periods (in years) to highlight in plots (or use in "
 				+ "disaggregations if --disagg-rps is supplied). Default are those corresponding to 2% and 10% "
 				+ "probability in 50 years.");
+		
+		// TODO: add to documentation
+		ops.addOption(null, "disagg-by-source", false, "Flag to enable disaggregation into source-specific hazard curves. "
+				+ "This is automatically done if any of the traditional disaggregations are enabled, but can be enabled separately via this flag.");
 		
 		// mixc
 		
@@ -664,11 +669,13 @@ public class SolSiteHazardCalc {
 		
 		// disaggs
 		double[] disaggProbs = null;
+		String firstDisaggName = null;
 		if (cmd.hasOption("disagg-rps")) {
 			disaggProbs = new double[rps.length];
 			for (int r=0; r<rps.length; r++)
 				disaggProbs[r] = rps[r].prob;
 			numDisagg += disaggProbs.length;
+			firstDisaggName = rps[0].label;
 		}
 		if (cmd.hasOption("disagg-prob")) {
 			String dStr = cmd.getOptionValue("disagg-prob");
@@ -690,6 +697,8 @@ public class SolSiteHazardCalc {
 			} else {
 				disaggProbs = newDisaggProbs;
 			}
+			if (firstDisaggName == null)
+				firstDisaggName = "P="+(float)disaggProbs[0];
 		}
 		double[] disaggIMLs = null;
 		if (cmd.hasOption("disagg-iml")) {
@@ -703,11 +712,24 @@ public class SolSiteHazardCalc {
 				disaggIMLs = new double[] { Double.parseDouble(dStr) };
 			}
 			numDisagg += disaggIMLs.length;
+			if (firstDisaggName == null)
+				firstDisaggName = "IML="+(float)disaggIMLs[0];
 		}
 		
 		IncludeBackgroundOption gridSeisOp = (IncludeBackgroundOption)erf.getParameter(IncludeBackgroundParam.NAME).getValue();
 		
 		List<DisaggResult[][]> disaggResults = null;
+		
+		boolean disaggBySourceOnly = false;
+		if (cmd.hasOption("disagg-by-source")) {
+			if (numDisagg == 0) {
+				// we weren't going to otherwise
+				disaggBySourceOnly = true;
+				// do it at 2 in 50
+				disaggProbs = new double[] { rps[0].prob };
+				numDisagg = disaggProbs.length;
+			}
+		}
 		
 		if (numDisagg > 0) {
 			System.out.println("Disaggregating at "+numDisagg+" levels per site/period");
@@ -792,6 +814,23 @@ public class SolSiteHazardCalc {
 		lines.add("# "+name +" Site Hazard Calculations");
 		lines.add("");
 		
+		List<Future<?>> plotFutures = new ArrayList<>();
+		GeographicMapMaker mapMaker = new GeographicMapMaker(sol.getRupSet().getFaultSectionDataList());
+		
+		// this will block to make sure the queue is never too large
+		ExecutorService exec = new ThreadPoolExecutor(threads, threads,
+				0L, TimeUnit.MILLISECONDS,
+				new ArrayBlockingQueue<Runnable>(Integer.min(threads*2, threads+4)), new ThreadPoolExecutor.CallerRunsPolicy());
+		
+		TableBuilder table = MarkdownUtils.tableBuilder();
+		
+		plotFutures.add(plotSitesMap(resourcesDir, "sites_map", mapMaker, sites, smallestMaxDist,
+				exec, writePDFs, true));
+		table.addLine("![Sites Map]("+resourcesDir.getName()+"/sites_map.png)");
+		table.addLine(GeographicMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", resourcesDir.getName()+"/sites_map.geojson")
+				+" [Download GeoJSON]("+resourcesDir.getName()+"/sites_map.geojson)");
+		lines.addAll(table.build());
+		
 		if (compSol == null) {
 			lines.add("Hazard calculations for _"+name+"_:");
 			lines.add("");
@@ -802,9 +841,8 @@ public class SolSiteHazardCalc {
 					lines.add("");
 				}
 				
-				TableBuilder table = MarkdownUtils.tableBuilder();
-				
 				// columns here are periods
+				table = MarkdownUtils.tableBuilder();
 				
 				table.initNewLine();
 				for (double period : periods)
@@ -830,7 +868,7 @@ public class SolSiteHazardCalc {
 				lines.add("");
 			}
 			
-			TableBuilder table = MarkdownUtils.tableBuilder();
+			table = MarkdownUtils.tableBuilder();
 			
 			// columns here are model
 			// rows here are periods
@@ -858,7 +896,7 @@ public class SolSiteHazardCalc {
 			lines.add("__Spectra CSV Files:__");
 			lines.add("");
 			
-			TableBuilder table = MarkdownUtils.tableBuilder();
+			table = MarkdownUtils.tableBuilder();
 			
 			table.initNewLine();
 			if (compSol != null)
@@ -891,7 +929,7 @@ public class SolSiteHazardCalc {
 		lines.add("## Calculation Parameters");
 		lines.add(topLink); lines.add("");
 		
-		TableBuilder table = MarkdownUtils.tableBuilder();
+		table = MarkdownUtils.tableBuilder();
 		table.addLine("_Calculation Parameters_", "_Values_");
 		for (TectonicRegionType trt : gmms0.keySet()) {
 			ScalarIMR gmm = gmms0.get(trt);
@@ -937,21 +975,25 @@ public class SolSiteHazardCalc {
 			lines.add("");
 		}
 		
-		// this will block to make sure the queue is never too large
-		ExecutorService exec = new ThreadPoolExecutor(threads, threads,
-				0L, TimeUnit.MILLISECONDS,
-				new ArrayBlockingQueue<Runnable>(Integer.min(threads*2, threads+4)), new ThreadPoolExecutor.CallerRunsPolicy());
-		
-		List<Future<?>> plotFutures = new ArrayList<>();
-		
 		int numDisaggSources = 10;
 		
-		GeographicMapMaker disaggMapMaker = null;
-		if (numDisagg > 0)
-			disaggMapMaker = new GeographicMapMaker(sol.getRupSet().getFaultSectionDataList());
-		
-
 		ProgressTrack siteTrack = new ProgressTrack(sites.size());
+		
+		CPT contribCPT = null;
+		EnumMap<TectonicRegionType, Color> trtColors = null;
+		if (numDisagg > 0) {
+			contribCPT = GMT_CPT_Files.CATEGORICAL_TAB10_NOGRAY.instance();
+			if (gmmSuppliers.keySet().size() > 1) {
+				// reserve colors for TRTs
+				trtColors = new EnumMap<>(TectonicRegionType.class);
+				for (TectonicRegionType trt : gmmSuppliers.keySet()) {
+					Color color = contribCPT.remove(0).minColor;
+					trtColors.put(trt, color);
+				}
+			}
+		}
+		PlotLineType griddedContribPLT = gridSeisOp == IncludeBackgroundOption.INCLUDE ? PlotLineType.DASHED : PlotLineType.SOLID;
+		PlotLineType faultContribPLT = PlotLineType.SOLID;
 		
 		for (int s=0; s<sites.size(); s++) {
 			Site site = sites.get(s);
@@ -962,6 +1004,11 @@ public class SolSiteHazardCalc {
 			
 			lines.add("## "+site.getName());
 			lines.add(topLink); lines.add("");
+			
+			plotFutures.add(plotSiteMap(resourcesDir, prefix+"_map", mapMaker, site, smallestMaxDist,
+					exec, writePDFs));
+			lines.add("![Site Map]("+resourcesDir.getName()+"/"+prefix+"_map.png)");
+			lines.add("");
 			
 			table = MarkdownUtils.tableBuilder();
 			table.addLine("_Parameter_", "_Value_");
@@ -1052,109 +1099,261 @@ public class SolSiteHazardCalc {
 			lines.add("");
 			
 			if (numDisagg > 0) {
-				lines.add("### "+site.getName()+" Disaggregations");
-				lines.add(topLink); lines.add("");
-				
 				DisaggResult[][] results = disaggResults.get(s);
 				
+				if (disaggBySourceOnly) {
+					// source contribution curve disaggregations
+					lines.add("### "+site.getName()+" Source Contribution Curves");
+					lines.add(topLink); lines.add("");
+				} else {
+					lines.add("### "+site.getName()+" Disaggregations");
+					lines.add(topLink); lines.add("");
+					
+					// source contribution curve disaggregations
+					lines.add("#### "+site.getName()+" Source Contribution Curves");
+					lines.add(topLink); lines.add("");
+				}
+				
+				int maxNumContribs = 6;
+				
+				boolean[] doSourceTypes;
+				String sourceTypeStr;
+				if (gridSeisOp == IncludeBackgroundOption.INCLUDE || gmmSuppliers.size() > 1) {
+					// we have multiple source types
+					doSourceTypes = new boolean[] {false,true};
+					sourceTypeStr = "source and source type";
+				} else {
+					// only one source type
+					doSourceTypes = new boolean[] {false};
+					sourceTypeStr = "source";
+				}
+				String varyStr = periods.length > 1 ? " Colors and order vary for each spectral period." : "";
+				String gridStr = "";
+				if (gridSeisOp == IncludeBackgroundOption.INCLUDE)
+					gridStr = " Gridded seismicity sources are plotted with "+griddedContribPLT.toString().toLowerCase()
+							+" lines and fault sources with "+faultContribPLT.toString().toLowerCase()+" lines.";
+				lines.add("This section includes hazard curves disaggregated by "+sourceTypeStr+". "
+						+"At most "+maxNumContribs+" individual sources are included in order of their "+firstDisaggName
+						+" contribution."+gridStr+varyStr);
+				lines.add("");
+				
 				table = MarkdownUtils.tableBuilder();
-				for (int p=0; p<periods.length; p++) {
-					if (periods.length > 1) {
+				
+				table.initNewLine();
+				for (double period : periods)
+					table.addColumn(MarkdownUtils.boldCentered(periodLabel(period)));
+				table.finalizeLine();
+				
+				for (boolean doSourceType : doSourceTypes) {
+					if (doSourceTypes.length > 1) {
 						table.initNewLine();
-						table.addColumn(MarkdownUtils.boldCentered(periodLabel(periods[p])));
-						for (int i=0; i<numDisagg-1; i++)
+						table.addColumn(doSourceType ? "__Aggregated by Source Type__" : "__Aggregated by Source__");
+						for (int p=1; p<periods.length; p++)
 							table.addColumn("");
 						table.finalizeLine();
 					}
-					
 					table.initNewLine();
-					for (int d=0; d<numDisagg; d++) {
-						String label = disaggLabel(results[p][d], periods[p], rps);
-						table.addColumn(MarkdownUtils.boldCentered(label));
-					}
-					table.finalizeLine();
-					
-					table.initNewLine();
-					for (int d=0; d<numDisagg; d++) {
-						String disaggPrefix = "disagg_"+prefix+"_"+periodPrefix(periods[p])
-								+"_"+disaggPrefix(results[p][d], rps);
-						DisaggResult result = results[p][d];
-						plotFutures.add(exec.submit(new Runnable() {
-							
-							@Override
-							public void run() {
-								try {
-									PureJavaDisaggPlotter.writeChartPlot(resourcesDir, disaggPrefix,
-											result.plotData, 800, 800, true, writePDFs);
-								} catch (IOException e) {
-									throw ExceptionUtils.asRuntimeException(e);
+					for (int p=0; p<periods.length; p++) {
+						DisaggResult result = results[p][0];
+						
+						List<DiscretizedFunc> contribCurves = new ArrayList<>();
+						List<PlotCurveCharacterstics> contribChars = new ArrayList<>();
+						
+						String disaggPrefix = "disagg_contrib_"+prefix+"_"+periodPrefix(periods[p]);
+						
+						if (doSourceType) {
+							List<DisaggregationSourceRuptureInfo> consolidated = new SolutionDisaggSourceTypeConsolidator(erf).apply(result.sourceInfo);
+							disaggPrefix += "_sourceType";
+							int cptIndex = 0;
+							for (DisaggregationSourceRuptureInfo info : consolidated) {
+								DiscretizedFunc consolidatedCurve = toLinear(info.getExceedProbs());
+								String type = info.getName();
+								consolidatedCurve.setName(type);
+								PlotCurveCharacterstics consolidatedChar;
+								if (type.equals(SolutionDisaggSourceTypeConsolidator.NAME_ALL_FAULT_SOURCES)) {
+									consolidatedChar = new PlotCurveCharacterstics(faultContribPLT, 3f, Colors.DARK_GRAY);
+								} else if (type.equals(SolutionDisaggSourceTypeConsolidator.NAME_ALL_GRIDDED_SOURCES)) {
+									consolidatedChar = new PlotCurveCharacterstics(griddedContribPLT, 3f, Colors.DARK_GRAY);
+								} else {
+									Color color = null;
+									if (trtColors != null) {
+										for (TectonicRegionType trt : trtColors.keySet()) {
+											if (type.contains(trt.toString())) {
+												color = trtColors.get(trt);
+												break;
+											}
+										}
+									}
+									if (color == null)
+										color = contribCPT.get(cptIndex++ % contribCPT.size()).minColor;
+									PlotLineType plt = type.startsWith(SolutionDisaggSourceTypeConsolidator.PREFIX_TRT_GRIDDED_SOURCES) ? griddedContribPLT : faultContribPLT;
+									consolidatedChar = new PlotCurveCharacterstics(plt, 2f, color);
 								}
+								contribCurves.add(consolidatedCurve);
+								contribChars.add(consolidatedChar);
 							}
-						}));
-						table.addColumn("![Disagg Plot]("+resourcesDir.getName()+"/"+disaggPrefix+".png)");
+						} else {
+							List<DisaggregationSourceRuptureInfo> consolidated = new ArrayList<>(result.consolidatedSourceInfo);
+							// remove those with zero contribution
+							for (int c=consolidated.size(); --c>=0;)
+								if (consolidated.get(c).getRate() == 0d)
+									consolidated.remove(c);
+							DisaggregationSourceRuptureInfo other = null;
+							if (consolidated.size() > maxNumContribs) {
+								List<DisaggregationSourceRuptureInfo> otherSources = consolidated.subList(maxNumContribs, consolidated.size());
+								other = DisaggregationSourceRuptureInfo.consolidate(otherSources, -1, "Other");
+								consolidated = consolidated.subList(0, maxNumContribs);
+							}
+							
+							int cptIndex = 0;
+							for (int i=0; i<consolidated.size(); i++) {
+								DisaggregationSourceRuptureInfo info = consolidated.get(i);
+								DiscretizedFunc consolidatedCurve = info.getExceedProbs();
+								String type = info.getName();
+								consolidatedCurve.setName(type);
+								PlotLineType plt;
+								if (type.equals(SolutionDisaggConsolidator.NAME_SINGLE_GRIDDED_SOURCES) || type.startsWith(SolutionDisaggConsolidator.PREFIX_TRT_GRIDDED_SOURCES))
+									plt = griddedContribPLT;
+								else
+									plt = faultContribPLT;
+								Color color = null;
+								if (trtColors != null) {
+									for (TectonicRegionType trt : trtColors.keySet()) {
+										if (type.contains(trt.toString())) {
+											color = trtColors.get(trt);
+											break;
+										}
+									}
+								}
+								if (color == null)
+									color = contribCPT.get(cptIndex++ % contribCPT.size()).minColor;
+								
+								contribCurves.add(toLinear(consolidatedCurve));
+								contribChars.add(new PlotCurveCharacterstics(plt, 2f, color));
+							}
+							
+							if (other != null) {
+								DiscretizedFunc otherCurve = other.getExceedProbs();
+								otherCurve.setName(other.getName());
+								contribCurves.add(toLinear(otherCurve));
+								contribChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Colors.tab_grey));
+							}
+						}
+//						result.consolidatedSourceInfo
+						plotFutures.add(plotContributionCurve(resourcesDir, disaggPrefix, periods[p], site.getName(), duration, rps,
+								curves.get(s)[p], name, contribCurves, contribChars, exec, writePDFs));
+						table.addColumn("!["+periodLabel(periods[p])+" Curves]("+resourcesDir.getName()+"/"+disaggPrefix+".png)");
 					}
 					table.finalizeLine();
+				}
+				
+				lines.addAll(table.build());
+				lines.add("");
+				
+				if (!disaggBySourceOnly) {
+					// traditional disaggregations and maps
+					lines.add("#### "+site.getName()+" Traditional Disaggregations & Contribution Maps");
+					lines.add(topLink); lines.add("");
 					
-					// plot maps
-					table.initNewLine();
-					for (int d=0; d<numDisagg; d++) {
-						String disaggPrefix = "disagg_"+prefix+"_"+periodPrefix(periods[p])
-								+"_"+disaggPrefix(results[p][d], rps)+"_source_map";
-						plotFutures.add(plotDisaggMap(resourcesDir, disaggPrefix, disaggMapMaker, site, smallestMaxDist,
-								results[p][d], erf, gridSeisOp, exec, writePDFs));
-						table.addColumn("![Disagg Source Map]("+resourcesDir.getName()+"/"+disaggPrefix+".png)");
-					}
-					table.finalizeLine();
-
-					int maxDisaggSources = 0;
-					for (DisaggResult result : results[p])
-						maxDisaggSources = Integer.max(maxDisaggSources,
-								result.consolidatedSourceInfo == null ? 0 : result.consolidatedSourceInfo.size());
-					
-					int myNumSources = Integer.min(numDisaggSources, maxDisaggSources);
-					
-					if (myNumSources > 1) {
+					table = MarkdownUtils.tableBuilder();
+					for (int p=0; p<periods.length; p++) {
+						if (periods.length > 1) {
+							table.initNewLine();
+							table.addColumn(MarkdownUtils.boldCentered(periodLabel(periods[p])));
+							for (int i=0; i<numDisagg-1; i++)
+								table.addColumn("");
+							table.finalizeLine();
+						}
+						
 						table.initNewLine();
 						for (int d=0; d<numDisagg; d++) {
-							String disaggPrefix = getDisaggCSV_Prefix("disagg",
-									sites, site, periods[p], results[p][d], rps);
-							table.addColumn("Download CSVs: [Dist/Mag Binned]("+disaggPrefix+".csv), [Source List]("+disaggPrefix+"_sources.csv)");
+							String label = disaggLabel(results[p][d], periods[p], rps);
+							table.addColumn(MarkdownUtils.boldCentered(label));
 						}
 						table.finalizeLine();
 						
-						// now add sources
 						table.initNewLine();
-						table.addColumn(MarkdownUtils.boldCentered("Top Contributing Participating Sources"));
-						for (int i=0; i<numDisagg-1; i++)
-							table.addColumn("");
+						for (int d=0; d<numDisagg; d++) {
+							String disaggPrefix = "disagg_"+prefix+"_"+periodPrefix(periods[p])
+									+"_"+disaggPrefix(results[p][d], rps);
+							DisaggResult result = results[p][d];
+							plotFutures.add(exec.submit(new Runnable() {
+								
+								@Override
+								public void run() {
+									try {
+										PureJavaDisaggPlotter.writeChartPlot(resourcesDir, disaggPrefix,
+												result.plotData, 800, 800, true, writePDFs);
+									} catch (IOException e) {
+										throw ExceptionUtils.asRuntimeException(e);
+									}
+								}
+							}));
+							table.addColumn("![Disagg Plot]("+resourcesDir.getName()+"/"+disaggPrefix+".png)");
+						}
 						table.finalizeLine();
 						
-						for (int i=0; i<numDisaggSources; i++) {
+						// plot maps
+						table.initNewLine();
+						for (int d=0; d<numDisagg; d++) {
+							String disaggPrefix = "disagg_"+prefix+"_"+periodPrefix(periods[p])
+									+"_"+disaggPrefix(results[p][d], rps)+"_source_map";
+							plotFutures.add(plotDisaggMap(resourcesDir, disaggPrefix, mapMaker, site, smallestMaxDist,
+									results[p][d], erf, gridSeisOp, exec, writePDFs));
+							table.addColumn("![Disagg Source Map]("+resourcesDir.getName()+"/"+disaggPrefix+".png)");
+						}
+						table.finalizeLine();
+
+						int maxDisaggSources = 0;
+						for (DisaggResult result : results[p])
+							maxDisaggSources = Integer.max(maxDisaggSources,
+									result.consolidatedSourceInfo == null ? 0 : result.consolidatedSourceInfo.size());
+						
+						int myNumSources = Integer.min(numDisaggSources, maxDisaggSources);
+						
+						if (myNumSources > 1) {
 							table.initNewLine();
 							for (int d=0; d<numDisagg; d++) {
-								List<DisaggregationSourceRuptureInfo> sources = results[p][d].consolidatedSourceInfo;
-								if (sources == null || sources.size() < i) {
-									table.addColumn("");
-									continue;
+								String disaggPrefix = getDisaggCSV_Prefix("disagg",
+										sites, site, periods[p], results[p][d], rps);
+								table.addColumn("Download CSVs: [Dist/Mag Binned]("+disaggPrefix+".csv), [Source List]("+disaggPrefix+"_sources.csv)");
+							}
+							table.finalizeLine();
+							
+							// now add sources
+							table.initNewLine();
+							table.addColumn(MarkdownUtils.boldCentered("Top Contributing Participating Sources"));
+							for (int i=0; i<numDisagg-1; i++)
+								table.addColumn("");
+							table.finalizeLine();
+							
+							for (int i=0; i<numDisaggSources; i++) {
+								table.initNewLine();
+								for (int d=0; d<numDisagg; d++) {
+									List<DisaggregationSourceRuptureInfo> sources = results[p][d].consolidatedSourceInfo;
+									if (sources == null || sources.size() < i) {
+										table.addColumn("");
+										continue;
+									}
+									DisaggregationSourceRuptureInfo source = sources.get(i);
+									table.addColumn(source.getName()+" ("+pDF.format(source.getRate()/results[p][d].totRate)+")"); 
 								}
-								DisaggregationSourceRuptureInfo source = sources.get(i);
-								table.addColumn(source.getName()+" ("+pDF.format(source.getRate()/results[p][d].totRate)+")"); 
+								table.finalizeLine();
+							}
+						} else {
+							table.initNewLine();
+							for (int d=0; d<numDisagg; d++) {
+								String disaggPrefix = getDisaggCSV_Prefix("disagg",
+										sites, site, periods[p], results[p][d], rps);
+								table.addColumn("Download CSV: [Dist/Mag Binned]("+disaggPrefix+".csv)");
 							}
 							table.finalizeLine();
 						}
-					} else {
-						table.initNewLine();
-						for (int d=0; d<numDisagg; d++) {
-							String disaggPrefix = getDisaggCSV_Prefix("disagg",
-									sites, site, periods[p], results[p][d], rps);
-							table.addColumn("Download CSV: [Dist/Mag Binned]("+disaggPrefix+".csv)");
-						}
-						table.finalizeLine();
 					}
-				}
 
-				lines.addAll(table.build());
-				lines.add("");
+					lines.addAll(table.build());
+					lines.add("");
+				}
 			}
 			
 			if (site.size() > 1)
@@ -1724,12 +1923,12 @@ public class SolSiteHazardCalc {
 		
 		curve.setName(name);
 		funcs.add(curve);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.RED.darker()));
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Colors.tab_blue));
 		
 		if (compCurve != null) {
 			compCurve.setName(compName);
 			funcs.add(compCurve);
-			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, Color.BLUE.darker()));
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Colors.tab_orange));
 		}
 		
 		Range yRange = new Range(1e-6, 1e0);
@@ -1749,7 +1948,7 @@ public class SolSiteHazardCalc {
 		Range xRange = new Range(minX, maxX);
 		
 		String yAxisLabel;
-		List<XYAnnotation> anns = addRPAnnotations(funcs, chars, xRange, rps);
+		List<XYAnnotation> anns = addRPAnnotations(funcs, chars, xRange, yRange, rps, false);
 		if (duration == 1d)
 			yAxisLabel = "Annual Probability of Exceedance";
 		else
@@ -1779,8 +1978,80 @@ public class SolSiteHazardCalc {
 		});
 	}
 	
+	private static Future<?> plotContributionCurve(File outputDir, String prefix, double period, String siteName, double duration,
+			CustomReturnPeriod[] rps, DiscretizedFunc curve, String name, List<DiscretizedFunc> contribCurves,
+			List<PlotCurveCharacterstics> contribChars, ExecutorService exec, boolean writePDFs) throws IOException {
+		List<DiscretizedFunc> funcs = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		
+		curve.setName(name);
+		funcs.add(curve);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 4f, Color.BLACK));
+		
+		funcs.addAll(contribCurves);
+		chars.addAll(contribChars);
+		
+		// add the curve again at the end so that it plots on top
+		curve = curve.deepClone();
+		curve.setName(null);
+		funcs.add(curve);
+		chars.add(chars.get(0));
+		
+		Range yRange = new Range(1e-6, 1e0);
+		double minX = Double.POSITIVE_INFINITY;
+		double maxX = 0d;
+		for (DiscretizedFunc func : funcs) {
+			for (Point2D pt : func) {
+				if (pt.getX() > 1e-2 && (float)pt.getY() < (float)yRange.getUpperBound()
+						&& (float)pt.getY() > (float)yRange.getLowerBound()) {
+					minX = Math.min(minX, pt.getX());
+					maxX = Math.max(maxX, pt.getX());
+				}
+			}
+		}
+		minX = Math.pow(10, Math.floor(Math.log10(minX)));
+		maxX = Math.pow(10, Math.ceil(Math.log10(maxX)));
+		Range xRange = new Range(minX, maxX);
+		
+		String yAxisLabel;
+		List<XYAnnotation> anns = addRPAnnotations(funcs, chars, xRange, yRange, rps, true);
+		if (duration == 1d)
+			yAxisLabel = "Annual Probability of Exceedance";
+		else
+			yAxisLabel = oDF.format(duration)+"-Year Probability of Exceedance";
+		
+		PlotSpec spec = new PlotSpec(funcs, chars, siteName, periodLabel(period)+" "+periodUnits(period), yAxisLabel);
+		spec.setLegendInset(true);
+		if (anns != null)
+			spec.setPlotAnnotations(anns);
+		
+		return exec.submit(new Runnable() {
+			
+			@Override
+			public void run() {
+				HeadlessGraphPanel gp = PlotUtils.initHeadless();
+				
+				gp.drawGraphPanel(spec, true, true, xRange, yRange);
+				
+				try {
+					PlotUtils.writePlots(outputDir, prefix, gp, 1000, 800, true, writePDFs, false);
+				} catch (IOException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}
+		});
+	}
+	
+	private static DiscretizedFunc toLinear(DiscretizedFunc curve) {
+		DiscretizedFunc ret = new ArbitrarilyDiscretizedFunc();
+		for (Point2D pt : curve)
+			ret.set(Math.exp(pt.getX()), pt.getY());
+		ret.setName(curve.getName());
+		return ret;
+	}
+	
 	public static List<XYAnnotation> addRPAnnotations(List<? super DiscretizedFunc> funcs,
-			List<PlotCurveCharacterstics> chars, Range xRange, CustomReturnPeriod[] rps) {
+			List<PlotCurveCharacterstics> chars, Range xRange, Range yRange, CustomReturnPeriod[] rps, boolean first) {
 		List<XYAnnotation> anns = new ArrayList<>();
 		
 		for (CustomReturnPeriod rp : rps) {
@@ -1788,10 +2059,22 @@ public class SolSiteHazardCalc {
 			func.set(xRange.getLowerBound(), rp.prob);
 			func.set(xRange.getUpperBound(), rp.prob);
 			
-			funcs.add(0, func);
-			chars.add(0, new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Color.DARK_GRAY));
+			PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(PlotLineType.DOTTED, 1f, Color.DARK_GRAY);
+			if (first) {
+				funcs.add(0, func);
+				chars.add(0, pChar);
+			} else {
+				funcs.add(func);
+				chars.add(pChar);
+			}
 			
-			XYTextAnnotation ann = new XYTextAnnotation(" "+rp.label, xRange.getUpperBound(), rp.prob);
+			Range logXRange = new Range(Math.log10(xRange.getLowerBound()), Math.log10(xRange.getUpperBound()));
+			Range logYRange = new Range(Math.log10(yRange.getLowerBound()), Math.log10(yRange.getUpperBound()));
+			
+			double annX = Math.pow(10, logXRange.getLowerBound() + 0.99*logXRange.getLength());
+			double annY = Math.pow(10, Math.log10(rp.prob) + 0.01*logYRange.getLength());
+			
+			XYTextAnnotation ann = new XYTextAnnotation(rp.label, annX, annY);
 			ann.setTextAnchor(TextAnchor.BASELINE_RIGHT);
 			ann.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 20));
 			anns.add(ann);
@@ -1984,6 +2267,15 @@ public class SolSiteHazardCalc {
 						isFromProb = false;
 					}
 					
+					// calculate source exceedances for the first return period
+					if (i == 0) {
+						DiscretizedFunc xVals = new ArbitrarilyDiscretizedFunc();
+						for (Point2D pt : task.siteCurve)
+							xVals.set(Math.log(pt.getX()), 0d);
+						calc.setCalculateSourceExceedanceCurves(xVals);
+					} else {
+						calc.setSkipCalculateSourceExceedanceCurves();
+					}
 					calc.disaggregate(Math.log(iml), task.site, gmms, erf, sourceFilters, calcParams);
 					results[i] = new DisaggResult(iml, prob, isFromProb, calc.getDisaggPlotData(), calc.getTotalRate(),
 							calc.getDisaggregationSourceList(), calc.getConsolidatedDisaggregationSourceList());
@@ -2158,6 +2450,56 @@ public class SolSiteHazardCalc {
 		}
 	}
 	
+	private static Future<?> plotSiteMap(File resourcesDir, String prefix,
+			GeographicMapMaker mapMaker, Site site, double maxDist, ExecutorService exec, boolean writePDFs)
+					throws IOException {
+		return plotSitesMap(resourcesDir, prefix, mapMaker, List.of(site), maxDist, exec, writePDFs, false);
+	}
+	
+	private static Future<?> plotSitesMap(File resourcesDir, String prefix,
+			GeographicMapMaker mapMaker, List<Site> sites, double maxDist, ExecutorService exec, boolean writePDFs, boolean writeGeoJSON)
+					throws IOException {
+		Preconditions.checkState(maxDist > 0d, "Bad maxDist=%s", maxDist);
+		return exec.submit(new Runnable() {
+			
+			@Override
+			public void run() {
+				double minLat = Double.POSITIVE_INFINITY;
+				double minLon = Double.POSITIVE_INFINITY;
+				double maxLat = Double.NEGATIVE_INFINITY;
+				double maxLon = Double.NEGATIVE_INFINITY;
+				double buffer = 10d;
+				for (Site site : sites) {
+					double latDelta = LocationUtils.location(site.getLocation(), 0d, maxDist+buffer).getLatitude() - site.getLocation().getLatitude();
+					double lonDelta = LocationUtils.location(site.getLocation(), Math.PI/2, maxDist+buffer).getLongitude() - site.getLocation().getLongitude();
+					minLat = Math.min(minLat, site.getLocation().lat - latDelta);
+					maxLat = Math.max(maxLat, site.getLocation().lat + latDelta);
+					minLon = Math.min(minLon, site.getLocation().lon - lonDelta);
+					maxLon = Math.max(maxLon, site.getLocation().lon + lonDelta);
+				}
+				Region mapRegion = new Region(new Location(minLat, minLon), new Location(maxLat, maxLon));
+				
+				synchronized (mapMaker) {
+					mapMaker.setRegion(mapRegion);
+					mapMaker.setSkipNaNs(false);
+					mapMaker.clearScatters();
+					mapMaker.clearSectScalars();
+					mapMaker.clearXYZData();
+					
+					plotSiteScatters(mapMaker, sites, writeGeoJSON);
+					
+					mapMaker.setWriteGeoJSON(writeGeoJSON);
+					mapMaker.setWritePDFs(writePDFs);
+					try {
+						mapMaker.plot(resourcesDir, prefix, sites.size() == 1 ? sites.get(0).getName() : " ");
+					} catch (IOException e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
+				}
+			}
+		});
+	}
+	
 	private static Future<?> plotDisaggMap(File resourcesDir, String prefix,
 			GeographicMapMaker mapMaker, Site site, double maxDist, DisaggResult result,
 			FaultSystemSolutionERF erf, IncludeBackgroundOption gridSeisOp, ExecutorService exec, boolean writePDFs)
@@ -2183,10 +2525,13 @@ public class SolSiteHazardCalc {
 				double[] sectScalars;
 				CPT sectCPT;
 				
+				double overallCPTMax = 0d;
+				
 				if (gridSeisOp != IncludeBackgroundOption.ONLY && numFaultSources > 0) {
 					CPT cpt;
 					try {
-						cpt = GMT_CPT_Files.BLACK_RED_YELLOW_UNIFORM.instance().reverse().rescale(0d, 100d);
+//						cpt = GMT_CPT_Files.BLACK_RED_YELLOW_UNIFORM.instance().reverse().rescale(0d, 100d);
+						cpt = GMT_CPT_Files.SEQUENTIAL_LAJOLLA_UNIFORM.instance().reverse().rescale(0d, 100d);
 					} catch (IOException e) {
 						throw ExceptionUtils.asRuntimeException(e);
 					}
@@ -2213,16 +2558,8 @@ public class SolSiteHazardCalc {
 					}
 					// round cptMax
 					cptMax = Math.ceil(cptMax/20d)*20d;
+					overallCPTMax = cptMax;
 					cpt = cpt.rescale(0d, cptMax);
-					
-					double zTick;
-					if ((float)cptMax >= 40f)
-						zTick = 10d;
-					else if ((float)cptMax >= 10f)
-						zTick = 5d;
-					else
-						zTick = 1d;
-					cpt.setPreferredTickInterval(zTick);
 					
 					sectScalars = scalars;
 					sectCPT = cpt;
@@ -2248,7 +2585,13 @@ public class SolSiteHazardCalc {
 //					CPT cpt = new CPT(0d, 100d, new Color(0, 0, 0, 0), new Color(0, 0, 0, 100));
 //					cpt.setNanColor(new Color(0, 0, 0, 0));
 					
-					CPT cpt = new CPT(0d, 100d, Color.WHITE, Color.GRAY);
+//					CPT cpt = new CPT(0d, 100d, Color.WHITE, Color.GRAY);
+					CPT cpt;
+					try {
+						cpt = GMT_CPT_Files.SEQUENTIAL_OSLO_UNIFORM.instance().reverse().rescale(0d, 100d);
+					} catch (IOException e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
 					cpt.setNanColor(Color.WHITE);
 					
 					GridSourceProvider gridProv = erf.getSolution().getGridSourceProvider();
@@ -2289,16 +2632,8 @@ public class SolSiteHazardCalc {
 							cptMax = Math.ceil(cptMax/20d)*20d;
 						else
 							cptMax = Math.ceil(cptMax);
+						overallCPTMax = Math.max(overallCPTMax, cptMax);
 						cpt = cpt.rescale(0d, cptMax);
-						
-						double zTick;
-						if ((float)cptMax >= 40f)
-							zTick = 10d;
-						else if ((float)cptMax >= 10f)
-							zTick = 5d;
-						else
-							zTick = 1d;
-						cpt.setPreferredTickInterval(zTick);
 						
 						gridXYZ = xyz;
 						gridCPT = cpt;
@@ -2309,6 +2644,22 @@ public class SolSiteHazardCalc {
 				} else {
 					gridXYZ = null;
 					gridCPT = null;
+				}
+				double zTick;
+				if ((float)overallCPTMax >= 40f)
+					zTick = 10d;
+				else if ((float)overallCPTMax >= 10f)
+					zTick = 5d;
+				else
+					zTick = 1d;
+				
+				if (gridCPT != null) {
+					gridCPT = gridCPT.rescale(0d, overallCPTMax);
+					gridCPT.setPreferredTickInterval(zTick);
+				}
+				if (sectCPT != null) {
+					sectCPT = sectCPT.rescale(0d, overallCPTMax);
+					sectCPT.setPreferredTickInterval(zTick);
 				}
 				
 				PlotSpec spec;
@@ -2329,10 +2680,7 @@ public class SolSiteHazardCalc {
 						mapMaker.plotXYZData(gridXYZ, gridCPT, "Grid Source Cell Contribution (%)");
 					}
 					
-					Color siteColor = Color.BLUE.darker();
-					siteColor = new Color(siteColor.getRed(), siteColor.getGreen(), siteColor.getBlue(), 180);
-					mapMaker.plotScatters(List.of(site.getLocation()), siteColor);
-					mapMaker.setScatterSymbol(PlotSymbol.FILLED_INV_TRIANGLE, 7f);
+					plotSiteScatters(mapMaker, List.of(site), false);
 					
 					spec = mapMaker.buildPlot(" ");
 					xRange = mapMaker.getXRange();
@@ -2364,6 +2712,34 @@ public class SolSiteHazardCalc {
 				}
 			}
 		});
+	}
+	
+	private static void plotSiteScatters(GeographicMapMaker mapMaker, List<Site> sites, boolean writeGeoJSON) {
+		Color siteColor = modAlpha(Colors.tab_green.darker(), 180);
+		List<Location> siteLocs = new ArrayList<>(sites.size());
+		List<FeatureProperties> siteProps = writeGeoJSON ? new ArrayList<>(sites.size()) : null;
+		for (Site site : sites) {
+			siteLocs.add(site.getLocation());
+			if (writeGeoJSON) {
+				FeatureProperties props = new FeatureProperties();
+				props.set("Name", site.getName());
+				props.set("Latitude", (float)site.getLocation().lat);
+				props.set("Longitude", (float)site.getLocation().lon);
+				siteProps.add(props);
+			}
+		}
+		mapMaker.plotScatters(siteLocs, siteColor);
+		if (writeGeoJSON)
+			mapMaker.setScatterProperties(siteProps);
+		
+		float size;
+		if (sites.size() > 10)
+			size = 3f;
+		else if (sites.size() > 1)
+			size = 5f;
+		else
+			size = 7f;
+		mapMaker.setScatterSymbol(PlotSymbol.FILLED_INV_TRIANGLE, size, PlotSymbol.INV_TRIANGLE, Color.BLACK);
 	}
 	
 	private static Color modAlpha(Color c, int alpha) {
