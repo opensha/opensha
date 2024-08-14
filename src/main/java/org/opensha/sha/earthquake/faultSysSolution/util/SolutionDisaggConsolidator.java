@@ -15,6 +15,9 @@ import org.opensha.sha.util.TectonicRegionType;
 
 public class SolutionDisaggConsolidator implements UnaryOperator<List<DisaggregationSourceRuptureInfo>> {
 	
+	public static final String NAME_SINGLE_GRIDDED_SOURCES = "Gridded Sources";
+	public static final String PREFIX_TRT_GRIDDED_SOURCES = "Gridded Sources, ";
+	
 	private BaseFaultSystemSolutionERF erf;
 
 	public SolutionDisaggConsolidator(BaseFaultSystemSolutionERF erf) {
@@ -76,30 +79,22 @@ public class SolutionDisaggConsolidator implements UnaryOperator<List<Disaggrega
 		List<DisaggregationSourceRuptureInfo> ret = new ArrayList<>();
 		
 		for (int parentID : parentSectContribs.keySet())
-			ret.add(consolidate(parentSectContribs.get(parentID), parentID, parentNames.get(parentID)));
+			ret.add(DisaggregationSourceRuptureInfo.consolidate(parentSectContribs.get(parentID), parentID, parentNames.get(parentID)));
 		
 		for (int sectID : noParentSectContribs.keySet())
-			ret.add(consolidate(noParentSectContribs.get(sectID), sectID, rupSet.getFaultSectionData(sectID).getName()));
+			ret.add(DisaggregationSourceRuptureInfo.consolidate(noParentSectContribs.get(sectID), sectID, rupSet.getFaultSectionData(sectID).getName()));
 		
 		if (!trtGridSourceContribs.isEmpty()) {
 			for (TectonicRegionType trt : trtGridSourceContribs.keySet()) {
 				List<DisaggregationSourceRuptureInfo> gridSourceContribs = trtGridSourceContribs.get(trt);
 				if (trtGridSourceContribs.size() == 1)
-					ret.add(consolidate(gridSourceContribs, -1, "Gridded Sources"));
+					ret.add(DisaggregationSourceRuptureInfo.consolidate(gridSourceContribs, -1, NAME_SINGLE_GRIDDED_SOURCES));
 				else
-					ret.add(consolidate(gridSourceContribs, -1, "Gridded Sources, "+trt));
+					ret.add(DisaggregationSourceRuptureInfo.consolidate(gridSourceContribs, -1, PREFIX_TRT_GRIDDED_SOURCES+trt));
 			}
 		}
 		
 		return ret;
-	}
-	
-	private static DisaggregationSourceRuptureInfo consolidate(List<DisaggregationSourceRuptureInfo> contribs,
-			int index, String name) {
-		double rate = 0d;
-		for (DisaggregationSourceRuptureInfo contrib : contribs)
-			rate += contrib.getRate();
-		return new DisaggregationSourceRuptureInfo(name, rate, index, null);
 	}
 
 }
