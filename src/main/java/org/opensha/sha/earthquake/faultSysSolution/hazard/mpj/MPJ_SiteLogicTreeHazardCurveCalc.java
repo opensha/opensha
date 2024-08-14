@@ -11,10 +11,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -28,15 +30,19 @@ import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.sha.calc.params.filters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
@@ -50,18 +56,16 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	private CSVFile<String> inputSitesCSV;
 	private List<Site> sites;
 	
-	private static final double MAX_DIST_DEFAULT = 500;
-	private double maxDistance = MAX_DIST_DEFAULT;
-	
-	private static AttenRelRef GMPE_DEFAULT = AttenRelRef.ASK_2014;
-	private AttenRelRef gmpeRef = GMPE_DEFAULT;
-	
 //	private static final double[] PERIODS_DEFAULT = { 0d, 0.2d, 1d };
 	private static final double[] PERIODS_DEFAULT = { 0d, 1d };
 	private double[] periods = PERIODS_DEFAULT;
 	
 	private static final IncludeBackgroundOption GRID_SEIS_DEFAULT = IncludeBackgroundOption.INCLUDE;
 	private IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
+	
+	private Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmms;
+	
+	private SourceFilterManager sourceFilters;
 	
 	private SolutionLogicTree solTree;
 	private LogicTree<?> tree;
@@ -120,11 +124,9 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		if (cmd.hasOption("gridded-seis"))
 			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
 		
-		if (cmd.hasOption("max-distance"))
-			maxDistance = Double.parseDouble(cmd.getOptionValue("max-distance"));
+		sourceFilters = SolHazardMapCalc.getSourceFilters(cmd);
 		
-		if (cmd.hasOption("gmpe"))
-			gmpeRef = AttenRelRef.valueOf(cmd.getOptionValue("gmpe"));
+		gmms = SolHazardMapCalc.getGMMs(cmd);
 		
 		if (cmd.hasOption("periods")) {
 			List<Double> periodsList = new ArrayList<>();
@@ -142,9 +144,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		File sitesFile = new File(cmd.getOptionValue("sites-file"));
 		Preconditions.checkState(sitesFile.exists());
 		inputSitesCSV = CSVFile.readFile(sitesFile, true);
-		ScalarIMR gmpe = gmpeRef.instance(null);
-		gmpe.setParamDefaults();
-		sites = parseSitesCSV(inputSitesCSV, gmpe);
+		sites = parseSitesCSV(inputSitesCSV, SolHazardMapCalc.getDefaultRefSiteParams(gmms));
 		sitePrefixes = new ArrayList<>();
 		siteCSVs = new ArrayList<>();
 		for (Site site : sites) {
@@ -182,10 +182,10 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
                 0L, TimeUnit.MILLISECONDS,
                 new ArrayBlockingQueue<Runnable>(threads), new ThreadPoolExecutor.CallerRunsPolicy());
 		
-		calc = new AbstractSitewiseThreadedLogicTreeCalc(exec, sites.size(), solTree, gmpeRef, periods, gridSeisOp, maxDistance) {
+		calc = new AbstractSitewiseThreadedLogicTreeCalc(exec, sites.size(), solTree, gmms, periods, gridSeisOp, sourceFilters) {
 			
 			@Override
-			public Site siteForIndex(int siteIndex, ScalarIMR gmm) {
+			public Site siteForIndex(int siteIndex, Map<TectonicRegionType, ScalarIMR> gmms) {
 				return sites.get(siteIndex);
 			}
 
@@ -204,7 +204,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		return doneIndexes;
 	}
 
-	public static List<Site> parseSitesCSV(CSVFile<String> sitesCSV, ScalarIMR gmpe) {
+	public static List<Site> parseSitesCSV(CSVFile<String> sitesCSV, ParameterList siteParams) {
 		List<Site> sites = new ArrayList<>();
 		for (int row=0; row<sitesCSV.getNumRows(); row++) {
 			if (row == 0) {
@@ -221,8 +221,8 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			double lon = sitesCSV.getDouble(row, 2);
 			Location loc = new Location(lat, lon);
 			Site site = new Site(loc, siteName);
-			if (gmpe != null) {
-				for (Parameter<?> param : gmpe.getSiteParams())
+			if (siteParams != null) {
+				for (Parameter<?> param : siteParams)
 					site.addParameter((Parameter<?>)param.clone());
 				
 				for (int col=3; col<sitesCSV.getNumCols(); col++) {
@@ -572,18 +572,16 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	public static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
 		
+		SolHazardMapCalc.addCommonOptions(ops, false);
+		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "
 				+ "supplied with --input-file");
 		ops.addRequiredOption("sf", "sites-file", true, "Path to sites CSV file");
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption("of", "output-file", true, "Path to output zip file. Default will be based on the output directory");
-		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default: "+(float)MAX_DIST_DEFAULT);
 		ops.addOption("gs", "gridded-seis", true, "Gridded seismicity option. One of "
 				+FaultSysTools.enumOptions(IncludeBackgroundOption.class)+". Default: "+GRID_SEIS_DEFAULT.name());
-		ops.addOption("gm", "gmpe", true, "Sets GMPE. Note that this will be overriden if the Logic Tree "
-				+ "supplies GMPE choices. Default: "+GMPE_DEFAULT.name());
-		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
 		ops.addOption(null, "recalc", false, "Flag to force recalculation (ignore checkpoints)");
 		ops.addOption(null, "cache-gmm-inputs", false, "Flag to enable caching of GMM inputs (for nshmp-haz GMMs)");
 		

@@ -279,7 +279,7 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		double valWeightSum = 0d;
 		for (Branch<GroundMotion> branch : gmTree) {
 			weightSum += branch.weight();
-			valWeightSum += branch.weight()*branch.value().mean();
+			valWeightSum = Math.fma(branch.weight(), branch.value().mean(), valWeightSum);
 		}
 
 		if (weightSum == 1d)
@@ -297,7 +297,7 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		double valWeightSum = 0d;
 		for (Branch<GroundMotion> branch : gmTree) {
 			weightSum += branch.weight();
-			valWeightSum += branch.weight()*branch.value().sigma();
+			valWeightSum = Math.fma(branch.weight(), branch.value().sigma(), valWeightSum);
 		}
 		
 		if (weightSum == 1d)
@@ -339,13 +339,13 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			IMRException {
 		double weightSum = 0d;
 		double weightValSum = 0d;
-		for (Branch<GroundMotion> branch : gmTree) {
+		for (Branch<GroundMotion> branch : getGroundMotionTree()) {
 			double weight = branch.weight();
 			weightSum += weight;
 			double mean = branch.value().mean();
 			double stdDev = branch.value().sigma();
 			double prob = getExceedProbability(mean, stdDev, iml)*weight;
-			weightValSum += prob*weight;
+			weightValSum = Math.fma(prob, weight, weightValSum);
 		}
 		if (weightSum == 1d)
 			return weightValSum;
@@ -366,13 +366,13 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		
 		double weightSum = 0d;
 		double weightValSum = 0d;
-		for (Branch<GroundMotion> branch : gmTree) {
+		for (Branch<GroundMotion> branch : getGroundMotionTree()) {
 			double weight = branch.weight();
 			weightSum += weight;
 			double mean = branch.value().mean();
 			double stdDev = branch.value().sigma();
 			double val = getIML_AtExceedProb(mean, stdDev, exceedProb, sigmaTruncTypeParam, sigmaTruncLevelParam);
-			weightValSum += val*weight;
+			weightValSum = Math.fma(val, weight, weightValSum);
 		}
 		if (weightSum == 1d)
 			return weightValSum;

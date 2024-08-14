@@ -6,6 +6,7 @@ import java.io.FileWriter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.DoubleBinaryOperator;
 
 import javax.swing.JOptionPane;
 
@@ -32,6 +33,7 @@ import org.opensha.sha.magdist.GaussianMagFreqDist;
 import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
+import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
 
 /**
@@ -446,8 +448,8 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	}
 
 	@Override
-	protected boolean isGridSourceApplyAftershockFilter() {
-		return applyAftershockFilter;
+	protected DoubleBinaryOperator getGridSourceAftershockFilter() {
+		return applyAftershockFilter ? AbstractGridSourceProvider.GK_AFTERSHOCK_FILTER : null;
 	}
 
 	@Override

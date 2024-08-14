@@ -100,6 +100,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	// minimum MFD uncertainty
 	public static double MFD_MIN_FRACT_UNCERT = 0.1;
 	
+	public static double SUB_SECT_DDW_FRACT = Double.NaN; // use default
+	
 	public static SubSectConstraintModels SUB_SECT_CONSTR_DEFAULT = SubSectConstraintModels.TOT_NUCL_RATE;
 	
 	public static SlipAlongRuptureModelBranchNode SLIP_ALONG_DEFAULT = NSHM23_SlipAlongRuptureModels.UNIFORM;
@@ -148,7 +150,10 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetDeformationModel dm = fm.getDefaultDeformationModel();
 		List<? extends FaultSection> subSects;
 		try {
-			subSects = dm.build(fm);
+			if (Double.isFinite(SUB_SECT_DDW_FRACT))
+				subSects = dm.build(fm, 2, SUB_SECT_DDW_FRACT, Double.NaN);
+			else
+				subSects = dm.build(fm);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -275,6 +280,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetDeformationModel dm = branch.requireValue(RupSetDeformationModel.class);
 		Preconditions.checkState(dm.isApplicableTo(fm),
 				"Fault and deformation models are not compatible: %s, %s", fm.getName(), dm.getName());
+		if (Double.isFinite(SUB_SECT_DDW_FRACT))
+			return dm.build(fm, 2, SUB_SECT_DDW_FRACT, Double.NaN);
 		return dm.build(fm);
 	}
 
@@ -917,13 +924,19 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	public LogicTree<?> getGridSourceTree(LogicTree<?> faultTree) {
 		if (faultTree.getBranch(0).hasValue(PRVI25_CrustalFaultModels.class))
 			return LogicTree.buildExhaustive(PRVI25_LogicTreeBranch.levelsCrustalOffFault, true);
+		if (faultTree.getBranch(0).hasValue(PRVI25_SubductionFaultModels.class))
+			return LogicTree.buildExhaustive(PRVI25_LogicTreeBranch.levelsSubductionGridded, true);
 		return null;
 	}
 
 	@Override
 	public GridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch)
 			throws IOException {
-		return PRVI25_GridSourceBuilder.buildCrustalGridSourceProv(sol, fullBranch);
+		if (fullBranch.hasValue(PRVI25_CrustalFaultModels.class))
+			return PRVI25_GridSourceBuilder.buildCrustalGridSourceProv(sol, fullBranch);
+		if (fullBranch.hasValue(PRVI25_SubductionFaultModels.class))
+			return PRVI25_GridSourceBuilder.buildCombinedSubductionGridSourceList(sol, fullBranch);
+		throw new IllegalStateException("Unexpected logic tree branch: "+fullBranch);
 	}
 	
 	@Override

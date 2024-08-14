@@ -214,24 +214,29 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		return colVals;
 	}
 	
+	private static final String NULL_STR = null+"";
+	
 	public static String getLineStr(Object[] line) {
-		String lineStr = null;
+		StringBuilder lineStr = null;
 		for (Object val : line) {
 			if (lineStr == null)
-				lineStr = "";
+				lineStr = new StringBuilder();
 			else
-				lineStr += ",";
-			String valStr;
-			if (val == null)
-				valStr = ""+null;
-			else
-				valStr = val.toString();
-			// if it contains a comma, surround it in quotation marks if not already
-			if (valStr.contains(",") && !(valStr.startsWith("\"") && valStr.endsWith("\"")))
-				valStr = "\""+valStr+"\"";
-			lineStr += valStr;
+				lineStr.append(",");
+			if (val == null) {
+				lineStr.append(NULL_STR);
+			} else {
+				String valStr = val.toString();
+				// if it contains a comma, surround it in quotation marks if not already
+				boolean wrap = valStr.contains(",") && !(valStr.startsWith("\"") && valStr.endsWith("\""));
+				if (wrap)
+					lineStr.append("\"");
+				lineStr.append(valStr);
+				if (wrap)
+					lineStr.append("\"");
+			}
 		}
-		return lineStr;
+		return lineStr.toString();
 	}
 	
 	public String getHeader() {
@@ -326,26 +331,40 @@ public class CSVFile<E> implements Iterable<List<E>> {
 	 * @return
 	 */
 	public static List<String> loadLine(String line, int padToLength, int expectedNum) {
-		line = line.trim();
 		ArrayList<String> vals = expectedNum > 0 ? new ArrayList<>(expectedNum) : new ArrayList<>();
 		boolean inside = false;
-		String cur = "";
-		for (int i=0; i<line.length(); i++) {
-			char c = line.charAt(i);
+		StringBuilder cur = new StringBuilder();
+		int length = line.length();
+		
+		// trim witespace without having to call line.trim()
+		int start = 0;
+		if (Character.isWhitespace(line.charAt(start))) {
+			while (start<length && Character.isWhitespace(line.charAt(start)))
+				start++;
+		}
+		int end = length-1;
+		if (Character.isWhitespace(line.charAt(end))) {
+			while (end > start && Character.isWhitespace(line.charAt(end)))
+				end--;
+		}
+		
+		char c;
+		for (int i=start; i<=end; i++) {
+			c = line.charAt(i);
 			if (!inside && c == ',') {
 				// we're done with a value
-				vals.add(cur);
-				cur = "";
+				vals.add(cur.toString());
+				cur.setLength(0); // clear it
 				continue;
 			}
 			if (c == '"') {
 				inside = !inside;
 				continue;
 			}
-			cur += c;
+			cur.append(c);
 		}
-		if (!cur.isEmpty())
-			vals.add(cur);
+		if (cur.length() > 0)
+			vals.add(cur.toString());
 		while (vals.size() < padToLength)
 			vals.add("");
 		return vals;

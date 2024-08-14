@@ -50,8 +50,9 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 	
 	private int annealingThreads;
 	private int runsPerBundle = 1;
-	
+
 	private boolean reprocess = false;
+	private boolean reprocessOnly = false;
 
 	public MPJ_LogicTreeInversionRunner(CommandLine cmd) throws IOException {
 		super(cmd);
@@ -85,7 +86,14 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
 		
-		reprocess = factory.getSolutionLogicTreeProcessor() != null && cmd.hasOption("reprocess-existing");
+		if (cmd.hasOption("reprocess-only")) {
+			Preconditions.checkState(factory.getSolutionLogicTreeProcessor() != null,
+					"Can't reprocess if we don't have a solution processor");
+			reprocess = true;
+			reprocessOnly = true;
+		} else {
+			reprocess = factory.getSolutionLogicTreeProcessor() != null && cmd.hasOption("reprocess-existing");
+		}
 		
 		File cacheDir = FaultSysTools.getCacheDir(cmd);
 		if (cacheDir != null) {
@@ -312,7 +320,11 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 			
 			File solFile = getSolFile(branch, run);
 			
-			if (solFile.exists()) {
+			boolean exists = solFile.exists();
+			Preconditions.checkState(!reprocessOnly || exists,
+					"--reprocess-only was supplied but no solution exists for breanch %s: %s", branch, solFile.getAbsolutePath());
+			
+			if (exists) {
 				debug(solFile.getAbsolutePath()+" exists, testing loading...");
 				try {
 					FaultSystemSolution sol = FaultSystemSolution.load(solFile);
@@ -343,6 +355,10 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 					}
 					return;
 				} catch (Exception e) {
+					if (reprocessOnly) {
+						debug("Failed to reprocess "+index+", and --reprocess-only is enabled: "+e.getMessage());
+						abortAndExit(e);
+					}
 					debug("Failed to load, re-inverting: "+e.getMessage());
 				}
 			}
@@ -383,6 +399,8 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 		ops.addRequiredOption("ifc", "inversion-factory", true, "Inversion configuration factory classname");
 		ops.addOption("rpe", "reprocess-existing", false, "Flag to enable re-processing of already completed solutions"
 				+ "with the factory's SolutionProcessor before branch averaging");
+		ops.addOption(null, "reprocess-only", false, "Flag to only re-process already completed solutions "
+				+ "with the factory's SolutionProcessor before branch averaging, ensuring that all inversions are already completed");
 		
 		for (Option op : InversionConfiguration.createSAOptions().getOptions())
 			ops.addOption(op);

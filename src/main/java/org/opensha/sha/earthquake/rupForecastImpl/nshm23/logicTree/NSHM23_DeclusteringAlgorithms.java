@@ -14,7 +14,9 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.SeismicityRegions;
 
 import com.google.common.base.Preconditions;
@@ -24,9 +26,11 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @DoesNotAffect(FaultSystemSolution.RATES_FILE_NAME)
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
-@DoesNotAffect(GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME)
-@Affects(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
-@Affects(GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
+@DoesNotAffect(MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME)
+@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
+@Affects(MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
+@Affects(MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
+@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum NSHM23_DeclusteringAlgorithms implements LogicTreeNode {
 	
 	GK("Gardner-Knopoff", "GK", 0.4d),

@@ -2,25 +2,25 @@ package org.opensha.sha.calc.params.filters;
 
 public enum SourceFilters {
 	
-	FIXED_DIST_CUTOFF("Fixed Distance Cutoff") {
+	FIXED_DIST_CUTOFF(FixedDistanceCutoffFilter.class, "Fixed Distance Cutoff") {
 		@Override
 		public synchronized SourceFilter initFilter() {
 			return new FixedDistanceCutoffFilter();
 		}
 	},
-	TRT_DIST_CUTOFFS("Tectonic Regime-Specific Distance Cutoffs") {
+	TRT_DIST_CUTOFFS(TectonicRegionDistCutoffFilter.class, "Tectonic Regime-Specific Distance Cutoffs") {
 		@Override
 		public synchronized SourceFilter initFilter() {
 			return new TectonicRegionDistCutoffFilter();
 		}
 	},
-	MAG_DIST_CUTOFFS("Magnitude-Dependent Distance Cutoffs") {
+	MAG_DIST_CUTOFFS(MagDependentDistCutoffFilter.class, "Magnitude-Dependent Distance Cutoffs") {
 		@Override
 		public synchronized SourceFilter initFilter() {
 			return new MagDependentDistCutoffFilter();
 		}
 	},
-	MIN_MAG("Minimum Magnitude") {
+	MIN_MAG(MinMagFilter.class, "Minimum Magnitude") {
 		@Override
 		public synchronized SourceFilter initFilter() {
 			return new MinMagFilter();
@@ -28,8 +28,10 @@ public enum SourceFilters {
 	};
 	
 	private String label;
+	private Class<? extends SourceFilter> filterClass;
 
-	private SourceFilters(String label) {
+	private SourceFilters(Class<? extends SourceFilter> filterClass, String label) {
+		this.filterClass = filterClass;
 		this.label = label;
 	}
 	
@@ -40,6 +42,8 @@ public enum SourceFilters {
 
 	public abstract SourceFilter initFilter();
 	
-	
+	public Class<? extends SourceFilter> getFilterClass() {
+		return filterClass;
+	}
 
 }

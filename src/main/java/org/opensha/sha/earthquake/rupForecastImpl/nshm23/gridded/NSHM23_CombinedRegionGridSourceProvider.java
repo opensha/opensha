@@ -14,6 +14,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.NucleationRatePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SolMFDPlot;
@@ -21,8 +22,10 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SeisSmoothingAlgorithms;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableList;
 
 /**
  * {@link NSHM23_AbstractGridSourceProvider} instance that stitches together multiple {@link GridSourceProvider}
@@ -40,7 +43,7 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 	private FaultCubeAssociations combinedFaultCubeAssociations;
 	
 	// mapping of grid node indexes to grid source providers
-	private GridSourceProvider[] nodeGridProvs;
+	private MFDGridSourceProvider[] nodeGridProvs;
 	// mapping of grid node indexes to the corresponding index in the source provider
 	private int[] nodeGridIndexes;
 
@@ -60,18 +63,18 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 
 	public NSHM23_CombinedRegionGridSourceProvider(FaultSystemSolution sol,
 			FaultCubeAssociations combinedFaultCubeAssociations,
-			List<? extends GridSourceProvider> regionalProviders) {
+			List<? extends MFDGridSourceProvider> regionalProviders) {
 		this.combinedFaultCubeAssociations = combinedFaultCubeAssociations;
 		this.gridReg = combinedFaultCubeAssociations.getRegion();
 		this.regionalProviders = regionalProviders;
-		nodeGridProvs = new GridSourceProvider[gridReg.getNodeCount()];
+		nodeGridProvs = new MFDGridSourceProvider[gridReg.getNodeCount()];
 		nodeGridIndexes = new int[nodeGridProvs.length];
 		int numMapped = 0;
 		for (int gridIndex=0; gridIndex<nodeGridProvs.length; gridIndex++) {
 			Location loc = gridReg.locationForIndex(gridIndex);
-			GridSourceProvider match = null;
+			MFDGridSourceProvider match = null;
 			int matchIndex = -1;
-			for (GridSourceProvider prov : regionalProviders) {
+			for (MFDGridSourceProvider prov : regionalProviders) {
 				int myIndex = prov.getGriddedRegion().indexForLocation(loc);
 				if (myIndex >= 0) {
 					Preconditions.checkState(match == null,
@@ -90,6 +93,10 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 		}
 		System.out.println("Mapped "+numMapped+"/"+nodeGridIndexes.length
 				+" model region grid locations to sub-region grid locations");
+	}
+	
+	public List<? extends GridSourceProvider> getRegionalProviders() {
+		return ImmutableList.copyOf(this.regionalProviders);
 	}
 	
 	@Override
@@ -138,8 +145,15 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 	}
 
 	@Override
-	public void scaleAllMFDs(double[] valuesArray) {
-		Preconditions.checkState(valuesArray.length == size());
+	public TectonicRegionType getTectonicRegionType(int gridIndex) {
+		if (nodeGridProvs[gridIndex] != null)
+			return nodeGridProvs[gridIndex].getTectonicRegionType(nodeGridIndexes[gridIndex]);
+		return TectonicRegionType.ACTIVE_SHALLOW;
+	}
+
+	@Override
+	public void scaleAll(double[] valuesArray) {
+		Preconditions.checkState(valuesArray.length == getNumLocations());
 		for (GridSourceProvider prov : regionalProviders) {
 			GriddedRegion provReg = prov.getGriddedRegion();
 			double[] scalars = new double[provReg.getNumLocations()];
@@ -156,7 +170,7 @@ public class NSHM23_CombinedRegionGridSourceProvider extends NSHM23_AbstractGrid
 				}
 			}
 			if (anyMapped)
-				prov.scaleAllMFDs(scalars);
+				prov.scaleAll(scalars);
 		}
 	}
 	

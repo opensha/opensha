@@ -413,7 +413,7 @@ public class ETAS_MFD_Plot extends ETAS_AbstractPlot {
 		GridSourceProvider gridProv = fss.getGridSourceProvider();
 		if (gridProv != null) {
 			double minMag = 5d;
-			for (int i=0; i<gridProv.size(); i++) {
+			for (int i=0; i<gridProv.getNumLocations(); i++) {
 				IncrementalMagFreqDist nodeMFD = gridProv.getMFD(i);
 				for (int j=0; j<nodeMFD.size(); j++) {
 					double x = nodeMFD.getX(j);

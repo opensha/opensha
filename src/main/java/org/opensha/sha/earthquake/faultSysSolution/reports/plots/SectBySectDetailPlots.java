@@ -78,6 +78,8 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectParticMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchParentSectParticMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRupture;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
@@ -1483,7 +1485,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		GridSourceProvider gridProv = sol.getGridSourceProvider();
 		FaultGridAssociations gridAssoc = rupSet.getModule(FaultGridAssociations.class);
-		boolean hasGridded = gridProv != null && gridAssoc != null;
+		boolean hasGridded = gridProv != null && (gridProv instanceof GridSourceList || gridAssoc != null);
 		if (hasGridded)
 			minMag = Math.min(minMag, 5d);
 		
@@ -1507,30 +1509,42 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		if (hasGridded) {
 			IncrementalMagFreqDist griddedMFD = null;
 			for (FaultSection sect : faultSects) {
-				Map<Integer, Double> scaledNodeFracts = gridAssoc.getScaledNodeFractions(sect.getSectionId());
-				for (int nodeIndex : scaledNodeFracts.keySet()) {
-					double fract = scaledNodeFracts.get(nodeIndex);
-					IncrementalMagFreqDist nodeMFD = gridProv.getMFD_SubSeisOnFault(nodeIndex);
-					
-					if (fract > 0 && nodeMFD != null) {
-						for (int i=0; i<nodeMFD.size(); i++) {
-							double y = nodeMFD.getY(i);
-							if (y > 0) {
-								if (griddedMFD == null) {
-									griddedMFD = new IncrementalMagFreqDist(nodeMFD.getMinX(), nodeMFD.size(), nodeMFD.getDelta());
-								} else {
-									Preconditions.checkState((float)griddedMFD.getMinX() == (float)nodeMFD.getMinX());
-									Preconditions.checkState((float)griddedMFD.getDelta() == (float)nodeMFD.getDelta());
-									if (griddedMFD.size() <= i) {
-										// need to elarge it
-										IncrementalMagFreqDist newMFD = new IncrementalMagFreqDist(
-												nodeMFD.getMinX(), nodeMFD.size(), nodeMFD.getDelta());
-										for (int j=0; j<griddedMFD.size(); j++)
-											newMFD.set(j, griddedMFD.getY(j));
-										griddedMFD = newMFD;
+				if (gridProv instanceof GridSourceList) {
+					for (GriddedRupture rup : ((GridSourceList)gridProv).getAssociatedRuptures(sect.getSectionId())) {
+						double assocFract = rup.getFractAssociated(sect.getSectionId());
+						double assocRate = assocFract * rup.rate;
+						if (griddedMFD == null) {
+							IncrementalMagFreqDist refMFD = ((GridSourceList)gridProv).getRefMFD();
+							griddedMFD = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+						}
+						griddedMFD.add(griddedMFD.getClosestXIndex(rup.properties.magnitude), assocRate);
+					}
+				} else {
+					Map<Integer, Double> scaledNodeFracts = gridAssoc.getScaledNodeFractions(sect.getSectionId());
+					for (int nodeIndex : scaledNodeFracts.keySet()) {
+						double fract = scaledNodeFracts.get(nodeIndex);
+						IncrementalMagFreqDist nodeMFD = gridProv.getMFD_SubSeisOnFault(nodeIndex);
+						
+						if (fract > 0 && nodeMFD != null) {
+							for (int i=0; i<nodeMFD.size(); i++) {
+								double y = nodeMFD.getY(i);
+								if (y > 0) {
+									if (griddedMFD == null) {
+										griddedMFD = new IncrementalMagFreqDist(nodeMFD.getMinX(), nodeMFD.size(), nodeMFD.getDelta());
+									} else {
+										Preconditions.checkState((float)griddedMFD.getMinX() == (float)nodeMFD.getMinX());
+										Preconditions.checkState((float)griddedMFD.getDelta() == (float)nodeMFD.getDelta());
+										if (griddedMFD.size() <= i) {
+											// need to elarge it
+											IncrementalMagFreqDist newMFD = new IncrementalMagFreqDist(
+													nodeMFD.getMinX(), nodeMFD.size(), nodeMFD.getDelta());
+											for (int j=0; j<griddedMFD.size(); j++)
+												newMFD.set(j, griddedMFD.getY(j));
+											griddedMFD = newMFD;
+										}
 									}
+									griddedMFD.add(i, y);
 								}
-								griddedMFD.add(i, y);
 							}
 						}
 					}
