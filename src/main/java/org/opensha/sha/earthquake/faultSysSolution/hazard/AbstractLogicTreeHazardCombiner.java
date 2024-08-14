@@ -42,6 +42,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_LogicTreeHazardCalc;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
@@ -49,6 +50,7 @@ import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -659,6 +661,7 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		double[] rupAreas = new double[totNumRups];
 		double[] rupLengths = new double[totNumRups];
 		double[] rates = new double[totNumRups];
+		TectonicRegionType[] trts = new TectonicRegionType[totNumRups];
 		
 		int sectIndex = 0;
 		int rupIndex = 0;
@@ -679,6 +682,10 @@ public abstract class AbstractLogicTreeHazardCombiner {
 				sectIndex++;
 			}
 			
+			RupSetTectonicRegimes myTRTs = trts == null ? null : rupSet.getModule(RupSetTectonicRegimes.class);
+			if (myTRTs == null)
+				trts = null;
+			
 			ClusterRuptures myCrups = null;
 			if (clusterRups)
 				myCrups = rupSet.requireModule(ClusterRuptures.class);
@@ -694,6 +701,8 @@ public abstract class AbstractLogicTreeHazardCombiner {
 				rupAreas[rupIndex] = rupSet.getAreaForRup(r);
 				rupAreas[rupIndex] = rupSet.getLengthForRup(r);
 				rates[rupIndex] = sol.getRateForRup(r);
+				if (trts != null)
+					trts[rupIndex] = myTRTs.get(r);
 				
 				if (clusterRups)
 					cRups.add(myCrups.get(r));
@@ -705,6 +714,8 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		FaultSystemRupSet mergedRupSet = new FaultSystemRupSet(mergedSects, sectionForRups, mags, rakes, rupAreas, rupLengths);
 		if (clusterRups)
 			mergedRupSet.addModule(ClusterRuptures.instance(mergedRupSet, cRups, false));
+		if (trts != null)
+			mergedRupSet.addModule(new RupSetTectonicRegimes(mergedRupSet, trts));
 		return new FaultSystemSolution(mergedRupSet, rates);
 	}
 	
