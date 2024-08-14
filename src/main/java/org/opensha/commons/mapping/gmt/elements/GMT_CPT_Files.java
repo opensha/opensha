@@ -109,6 +109,11 @@ public enum GMT_CPT_Files {
 	 */
 	SEQUENTIAL_NAVIA_UNIFORM("navia.cpt"),
 	/**
+	 * oslo from https://www.fabiocrameri.ch/colourmaps/ and GMT 6
+	 * Dark blue through to light blue to white
+	 */
+	SEQUENTIAL_OSLO_UNIFORM("oslo.cpt"),
+	/**
 	 * lajolla from https://www.fabiocrameri.ch/colourmaps/ and GMT 6
 	 * Dark red through to light yellow
 	 */
@@ -129,6 +134,14 @@ public enum GMT_CPT_Files {
 	 */
 	CATEGORICAL_TAB10_LIGHT("tab10_light.cpt"),
 	/**
+	 * Same as {@link GMT_CPT_Files#CATEGORICAL_TAB10}, except omitting the gray color.
+	 */
+	CATEGORICAL_TAB10_NOGRAY("tab10_nogray.cpt"),
+	/**
+	 * Same as {@link GMT_CPT_Files#CATEGORICAL_TAB10_LIGHT}, except omitting the gray color.
+	 */
+	CATEGORICAL_TAB10_LIGHT_NOGRAY("tab10_light_nogray.cpt"),
+	/**
 	 * Categorical colormap from Tableau, commonly used in matplotlib (called TAB10), with 20 distinct colors.
 	 * <p>
 	 * This is similar to {@link GMT_CPT_Files#CATEGORICAL_TAB10}, except that it has light versions interspersed (see
@@ -143,6 +156,7 @@ public enum GMT_CPT_Files {
 	CATEGORICAL_TAB20("tab20.cpt");
 	
 	private String fname;
+	private CPT instance;
 	
 	private GMT_CPT_Files(String fname) {
 		this.fname = fname;
@@ -153,9 +167,12 @@ public enum GMT_CPT_Files {
 	}
 	
 	public CPT instance() throws IOException {
-		CPT cpt = CPT.loadFromStream(this.getClass().getResourceAsStream("/cpt/"+fname));
-		cpt.setName(fname);
-		return cpt;
+		if (instance == null) {
+			CPT cpt = CPT.loadFromStream(this.getClass().getResourceAsStream("/cpt/"+fname));
+			cpt.setName(fname);
+			instance = cpt;
+		}
+		return (CPT)instance.clone();
 	}
 	
 	public static ArrayList<CPT> instances() throws IOException {
