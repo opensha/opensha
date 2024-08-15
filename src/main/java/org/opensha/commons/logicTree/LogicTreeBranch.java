@@ -139,6 +139,26 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule
 	}
 	
 	/**
+	 * Gets a list of all branch value matching the given type, or null if none exist
+	 * 
+	 * @param <T>
+	 * @param clazz
+	 * @return
+	 */
+	@SuppressWarnings("unchecked") // it is checked through isAssignableFrom
+	public <T extends LogicTreeNode> List<T> getValues(Class<? extends T> clazz) {
+		List<T> matches = null;
+		for (LogicTreeNode node : values) {
+			if (node != null && clazz.isAssignableFrom(node.getClass())) {
+				if (matches == null)
+					matches = new ArrayList<>();
+				matches.add((T)node);
+			}
+		}
+		return matches;
+	}
+	
+	/**
 	 * Shortcut to getValue(clazz) != null
 	 * 
 	 * @param clazz
