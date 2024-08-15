@@ -644,7 +644,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					}
 					
 					// average in fault grid associations
-					if (gridAssoc == null) {
+					if (gridAssoc == null && nodeFaultGridAveragers != null) {
 						if (nodeFaultGridAveragers.isEmpty())
 							debug("We don't have fault grid associations; skipping consolidation");
 						else
