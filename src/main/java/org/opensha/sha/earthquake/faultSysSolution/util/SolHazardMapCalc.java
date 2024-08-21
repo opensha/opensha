@@ -121,7 +121,7 @@ public class SolHazardMapCalc {
 			String[] gmmStrs = cmd.getOptionValues("gmpe");
 			EnumMap<TectonicRegionType, AttenRelRef> ret = new EnumMap<>(TectonicRegionType.class);
 			for (String gmmStr : gmmStrs) {
-				AttenRelRef gmpeRef = AttenRelRef.valueOf(cmd.getOptionValue(gmmStr));
+				AttenRelRef gmpeRef = AttenRelRef.valueOf(gmmStr);
 				if (gmmStrs.length > 1) {
 					// TRT specific
 					TectonicRegionTypeParam trtParam = (TectonicRegionTypeParam)gmpeRef.get().getParameter(TectonicRegionTypeParam.NAME);
@@ -563,6 +563,7 @@ public class SolHazardMapCalc {
 	
 	protected static DecimalFormat percentDF = new DecimalFormat("0.00%");
 	protected static DecimalFormat twoDigitsDF = new DecimalFormat("0.00");
+	protected static DecimalFormat periodDF = new DecimalFormat("0.####");
 	protected static DecimalFormat oDF = new DecimalFormat("0.#");
 	
 	private class CalcThread extends Thread {
@@ -1021,7 +1022,7 @@ public class SolHazardMapCalc {
 		else if (period == 0d)
 			fileName += "_pga";
 		else
-			fileName += "_sa_"+oDF.format(period);
+			fileName += "_sa_"+periodDF.format(period);
 		return fileName+".csv";
 	}
 	
@@ -1121,8 +1122,10 @@ public class SolHazardMapCalc {
 			}
 			
 			DiscretizedFunc curve = curves[curIndex];
-			if (allowNull && curve == null)
+			if (allowNull && curve == null) {
+				curIndex++;
 				return null;
+			}
 			Preconditions.checkNotNull(curve, "Curve not calculated at index %s", curIndex);
 			
 			List<String> line = new ArrayList<>(cols);
