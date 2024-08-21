@@ -3,15 +3,22 @@ package org.opensha.sha.earthquake.faultSysSolution.util;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.geom.Point2D;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.Supplier;
+import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -78,6 +85,7 @@ import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGV_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
+import org.opensha.sha.imr.param.OtherParams.TectonicRegionTypeParam;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -109,10 +117,22 @@ public class SolHazardMapCalc {
 	
 	public static Map<TectonicRegionType, AttenRelRef> getGMMs(CommandLine cmd) {
 		if (cmd.hasOption("gmpe")) {
-			// single
-			AttenRelRef gmpeRef = AttenRelRef.valueOf(cmd.getOptionValue("gmpe"));
+			Preconditions.checkState(!cmd.hasOption("trt-gmpe"), "Can't specify both --gmpe and --trt-gmpe");
+			String[] gmmStrs = cmd.getOptionValues("gmpe");
 			EnumMap<TectonicRegionType, AttenRelRef> ret = new EnumMap<>(TectonicRegionType.class);
-			ret.put(TectonicRegionType.ACTIVE_SHALLOW, gmpeRef);
+			for (String gmmStr : gmmStrs) {
+				AttenRelRef gmpeRef = AttenRelRef.valueOf(cmd.getOptionValue(gmmStr));
+				if (gmmStrs.length > 1) {
+					// TRT specific
+					TectonicRegionTypeParam trtParam = (TectonicRegionTypeParam)gmpeRef.get().getParameter(TectonicRegionTypeParam.NAME);
+					Preconditions.checkState(trtParam != null, "Multiple GMPEs supplied, but GMPE "+gmpeRef.getShortName()+" doesn't have a TRT");
+					TectonicRegionType trt = trtParam.getValueAsTRT();
+					ret.put(trt, gmpeRef);
+				} else {
+					// single, just use ACTIVE_SHALLOW (will be used for all)
+					ret.put(TectonicRegionType.ACTIVE_SHALLOW, gmpeRef);
+				}
+			}
 			return ret;
 		}
 		
@@ -1040,42 +1060,84 @@ public class SolHazardMapCalc {
 	}
 	
 	public static CSVFile<String> buildCurvesCSV(DiscretizedFunc[] curves, LocationList locs, boolean allowNull) {
+		CurveCSVLineIterator iterator = new CurveCSVLineIterator(curves, locs, allowNull);
+		
 		CSVFile<String> csv = new CSVFile<>(true);
 		
-		List<String> header = new ArrayList<>();
-		header.add("Index");
-		header.add("Latitude");
-		header.add("Longitude");
-		DiscretizedFunc refCurve = null;
-		for (DiscretizedFunc curve : curves) {
-			if (curve != null) {
-				refCurve = curve;
-				break;
-			}
+		while (iterator.hasNext()) {
+			List<String> line = iterator.next();
+			if (line != null)
+				csv.addLine(line);
 		}
-		Preconditions.checkNotNull(refCurve, "All curves are null");
-		for (int i=0; i<refCurve.size(); i++)
-			header.add((float)refCurve.getX(i)+"");
 		
-		csv.addLine(header);
-		
-		for (int i=0; i<curves.length; i++) {
-			DiscretizedFunc curve = curves[i];
-			if (allowNull && curve == null)
-				continue;
-			Preconditions.checkNotNull(curve, "Curve not calculated at index %s", i);
-			
-			List<String> line = new ArrayList<>();
-			line.add(i+"");
-			Location loc = locs.get(i);
-			line.add(loc.getLatitude()+"");
-			line.add(loc.getLongitude()+"");
-			for (int j=0; j<curve.size(); j++)
-				line.add(curve.getY(j)+"");
-			csv.addLine(line);
-		}
+		Preconditions.checkState(allowNull || csv.getNumRows() == locs.size()+1);
 		
 		return csv;
+	}
+	
+	private static class CurveCSVLineIterator implements Iterator<List<String>> {
+		
+		private int curIndex;
+		private DiscretizedFunc[] curves;
+		private LocationList locs;
+		private boolean allowNull;
+		
+		private int cols = -1;
+
+		public CurveCSVLineIterator(DiscretizedFunc[] curves, LocationList locs, boolean allowNull) {
+			this.curves = curves;
+			this.locs = locs;
+			this.allowNull = allowNull;
+			this.curIndex = -1; // start at the header
+		}
+
+		@Override
+		public boolean hasNext() {
+			return curIndex < locs.size();
+		}
+
+		@Override
+		public List<String> next() {
+			Preconditions.checkState(curIndex >= -1 && curIndex < locs.size());
+			if (curIndex == -1) {
+				// header
+				List<String> header = new ArrayList<>();
+				header.add("Index");
+				header.add("Latitude");
+				header.add("Longitude");
+				DiscretizedFunc refCurve = null;
+				for (DiscretizedFunc curve : curves) {
+					if (curve != null) {
+						refCurve = curve;
+						break;
+					}
+				}
+				Preconditions.checkNotNull(refCurve, "All curves are null");
+				for (int i=0; i<refCurve.size(); i++)
+					header.add(String.valueOf((float)refCurve.getX(i)));
+				cols = header.size();
+				curIndex++;
+				return header;
+			}
+			
+			DiscretizedFunc curve = curves[curIndex];
+			if (allowNull && curve == null)
+				return null;
+			Preconditions.checkNotNull(curve, "Curve not calculated at index %s", curIndex);
+			
+			List<String> line = new ArrayList<>(cols);
+			line.add(String.valueOf(curIndex)+"");
+			Location loc = locs.get(curIndex);
+			line.add(String.valueOf(loc.lat)+"");
+			line.add(String.valueOf(loc.lon)+"");
+			for (int j=0; j<curve.size(); j++)
+				line.add(String.valueOf(curve.getY(j)));
+			
+			curIndex++;
+			
+			return line;
+		}
+		
 	}
 	
 	public static void writeCurvesCSV(File outputFile, DiscretizedFunc[] curves, LocationList locs) throws IOException {
@@ -1083,9 +1145,21 @@ public class SolHazardMapCalc {
 	}
 	
 	public static void writeCurvesCSV(File outputFile, DiscretizedFunc[] curves, LocationList locs, boolean allowNull) throws IOException {
-		CSVFile<String> csv = buildCurvesCSV(curves, locs, allowNull);
+		CurveCSVLineIterator iterator = new CurveCSVLineIterator(curves, locs, allowNull);
 		
-		csv.writeToFile(outputFile);
+		Writer fw;
+		if (outputFile.getName().toLowerCase().endsWith(".gz"))
+			fw = new OutputStreamWriter(new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(outputFile))));
+		else
+			fw = new FileWriter(outputFile);
+		
+		while (iterator.hasNext()) {
+			List<String> line = iterator.next();
+			if (line != null)
+				CSVFile.writeLine(fw, line);
+		}
+		
+		fw.close();
 	}
 	
 	public static SolHazardMapCalc loadCurves(FaultSystemSolution sol, GriddedRegion region, double[] periods,
@@ -1175,11 +1249,11 @@ public class SolHazardMapCalc {
 
 	static final double SITE_SKIP_FRACT = 0.8;
 	public static void addCommonOptions(Options ops, boolean includeSiteSkip) {
-		ops.addOption("gm", "gmpe", true, "Sets a single GMPE. Note that this will be overriden if the Logic Tree "
-				+ "supplies GMPE choices. Default is TectonicRegionType-specific.");
-		ops.addOption(null, "trt-gmpe", true, "Sets the GMPE for the given TectonicRegionType in the format :<TRT>:<GMM>. "
-				+ "For example: ACTIVE_SHALLOW:ASK_2014. Note that this will be overriden if the Logic Tree "
-				+ "supplies GMPE choices.");
+		ops.addOption("gm", "gmpe", true, "Sets a single GMPE that will be used for all TectonicRegionTypes. If this is supplied "
+				+ "multiple times, then each gmpe must have a TectonicRegionTypeParameter that will be used to determine the GMPE "
+				+ "for each TRT. Note that this will be overriden if the Logic Tree supplies GMPE choices. Default is TectonicRegionType-specific.");
+		ops.addOption(null, "trt-gmpe", true, "Sets the GMPE for the given TectonicRegionType in the format: <TRT>:<GMM>. "
+				+ "For example: ACTIVE_SHALLOW:ASK_2014. Note that this will be overriden if the Logic Tree supplies GMPE choices.");
 		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
 		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default is TectonicRegionType-specific.");
 		if (includeSiteSkip)
