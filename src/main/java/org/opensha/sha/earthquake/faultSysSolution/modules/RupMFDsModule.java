@@ -5,6 +5,7 @@ import java.awt.geom.Point2D;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
@@ -83,7 +84,9 @@ public class RupMFDsModule implements CSV_BackedModule, SubModule<FaultSystemSol
 					"Duplicate magntiude encountered for rupture %s: %s", r+"", mag);
 			rupMFDs[r].set(mag, rate);
 		}
-		// TODO turn them into light fixed-x functions?
+		for (int r=0; r<rupMFDs.length; r++)
+			if (rupMFDs[r] != null)
+				rupMFDs[r] = new LightFixedXFunc(rupMFDs[r]);
 		this.rupMFDs = rupMFDs;
 	}
 	
@@ -98,7 +101,14 @@ public class RupMFDsModule implements CSV_BackedModule, SubModule<FaultSystemSol
 	@Override
 	public void setParent(FaultSystemSolution parent) throws IllegalStateException {
 		if (parent != null && this.parent != null)
-			Preconditions.checkState(this.parent.getRupSet().isEquivalentTo(parent.getRupSet()));
+			Preconditions.checkState(this.parent.getRupSet().isEquivalentTo(parent.getRupSet()),
+					"Can't update parent! New rupture set with numSects=%s and numRups=%s isn't compatible with "
+					+ "previous with numSects=%s and numRups=%s",
+					parent.getRupSet().getNumSections(), parent.getRupSet().getNumRuptures(),
+					this.parent.getRupSet().getNumSections(), this.parent.getRupSet().getNumRuptures());
+		if (rupMFDs != null)
+			Preconditions.checkState(rupMFDs.length == parent.getRupSet().getNumRuptures(), "RupMFDs has %s ruptures, but new parent has %s",
+					rupMFDs.length, parent.getRupSet().getNumRuptures());
 		this.parent = parent;
 	}
 
