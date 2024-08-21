@@ -59,6 +59,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_PaleoU
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.Builder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.SupraSeisBValInversionTargetMFDs.SubSeisMoRateReduction;
@@ -142,6 +143,10 @@ public class NSHM23_ConstraintBuilder {
 		return sumProduct/sumMoment;
 	}
 	
+	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, SectionSupraSeisBValues bValues) {
+		this(rupSet, bValues.getB(), bValues.getSectBValues(rupSet));
+	}
+	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB, double[] sectSpecificBValues) {
 		this(rupSet, supraSeisB, sectSpecificBValues, SupraSeisBValInversionTargetMFDs.APPLY_DEF_MODEL_UNCERTAINTIES_DEFAULT,
 				SupraSeisBValInversionTargetMFDs.ADD_SECT_COUNT_UNCERTAINTIES_DEFAULT, ADJ_FOR_INCOMPATIBLE_DATA_DEFAULT);
@@ -151,7 +156,10 @@ public class NSHM23_ConstraintBuilder {
 			boolean applyDefModelUncertaintiesToNucl, boolean addSectCountUncertaintiesToMFD,
 			boolean adjustForIncompatibleData) {
 		this.rupSet = rupSet;
-		Preconditions.checkState(Double.isFinite(supraBVal));
+		if (!Double.isFinite(supraBVal)) {
+			Preconditions.checkNotNull(sectSpecificBValues, "b=%s but not section-specific values");
+			supraBVal = momentWeightedAverage(rupSet, sectSpecificBValues);;
+		}
 		this.supraBVal = supraBVal;
 		this.sectSpecificBValues = sectSpecificBValues;
 		this.applyDefModelUncertaintiesToNucl = applyDefModelUncertaintiesToNucl;
