@@ -34,6 +34,7 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
+import org.opensha.commons.util.ExecutorUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.calc.params.filters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
@@ -178,9 +179,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		
 		// blocking queue
 		int threads = getNumThreads();
-		exec = new ThreadPoolExecutor(threads, threads,
-                0L, TimeUnit.MILLISECONDS,
-                new ArrayBlockingQueue<Runnable>(threads), new ThreadPoolExecutor.CallerRunsPolicy());
+		exec = ExecutorUtils.newBlockingThreadPool(threads);
 		
 		calc = new AbstractSitewiseThreadedLogicTreeCalc(exec, sites.size(), solTree, gmms, periods, gridSeisOp, sourceFilters) {
 			

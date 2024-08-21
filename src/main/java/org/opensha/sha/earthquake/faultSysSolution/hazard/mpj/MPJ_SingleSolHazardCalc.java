@@ -457,10 +457,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		if (tree == null)
 			return outputDir;
 		Preconditions.checkNotNull(branch, "We have a tree but branch is null?");
-		String dirName = branch.buildFileName();
-		File runDir = new File(outputDir, dirName);
-		
-		return runDir;
+		return branch.getBranchDirectory(outputDir, true);
 	}
 	
 	private GriddedRegion detectRegion(FaultSystemSolution sol) {

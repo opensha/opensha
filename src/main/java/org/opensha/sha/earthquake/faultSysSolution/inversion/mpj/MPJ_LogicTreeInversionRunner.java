@@ -222,11 +222,10 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 	}
 	
 	protected File getSolFile(LogicTreeBranch<?> branch, int run) {
-		String dirName = branch.buildFileName();
+		String suffix = "";
 		if (runsPerBranch > 1)
-			dirName += "_run"+run;
-		File runDir = new File(outputDir, dirName);
-		Preconditions.checkState(runDir.exists() || runDir.mkdir());
+			suffix = "_run"+run;
+		File runDir = branch.getBranchDirectory(outputDir, true, suffix);
 		
 		return new File(runDir, "solution.zip");
 	}
@@ -290,9 +289,7 @@ public class MPJ_LogicTreeInversionRunner extends MPJTaskCalculator {
 					if (allDone) {
 						Preconditions.checkState(solFiles.size() == runsPerBranch);
 						debug("Branch index "+branchIndex+" is all done, doing a compute node average for "+branch);
-						String dirName = branch.buildFileName();
-						File runDir = new File(outputDir, dirName);
-						Preconditions.checkState(runDir.exists() || runDir.mkdir());
+						File runDir = branch.getBranchDirectory(outputDir, true);
 						File outputFile = new File(runDir, "average_solution.zip");
 						AverageSolutionCreator.average(outputFile, solFiles);
 					}
