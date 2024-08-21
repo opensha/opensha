@@ -1,10 +1,12 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
+import java.util.Collection;
 import java.util.Set;
 import java.util.function.DoubleBinaryOperator;
 
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
@@ -279,5 +281,46 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	public void scaleAll(TectonicRegionType tectonicRegionType, double[] valuesArray);
 	
 	public static final String ARCHIVE_GRID_REGION_FILE_NAME = "grid_region.geojson";
+	
+	public static boolean affectedByLevel(LogicTreeLevel<?> level) {
+		// common to both
+		boolean gridRegAffectedByDefault = false;
+		
+		// for MFDs
+		boolean mechsAffectedByDefault = true;
+		boolean unassocAffectedByDefault = true;
+		boolean subSeisAffectedByDefault = true;
+		
+		// for lists
+		boolean sourcesLocsAffectedByDefault = false;
+		boolean sourcesAffectedByDefault = true;
+		Collection<String> notAffected = level.getNotAffected();
+		if (!notAffected.isEmpty()) {
+			// this level explicitly states that it doesn't affect some things
+			// if we explicitly state no for any category, change the affected by default flag
+			// this makes it so that we don't have to explicitly say we don't affect MFD files if we only provide lists, and vice versa
+			
+			if (notAffected.contains(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)) {
+				// we are explicit about grid source list, don't need to check MFD prov files
+				mechsAffectedByDefault = false;
+				unassocAffectedByDefault = false;
+				subSeisAffectedByDefault = false;
+			}
+			
+			if (notAffected.contains(MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME)
+					|| notAffected.contains(MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
+					|| notAffected.contains(MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)) {
+				// we are explicit about MFD prov files, don't need to check grid source lists
+				sourcesAffectedByDefault = false;
+				sourcesLocsAffectedByDefault = false;
+			}
+		}
+		return level.affects(ARCHIVE_GRID_REGION_FILE_NAME, gridRegAffectedByDefault)
+				|| level.affects(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, sourcesLocsAffectedByDefault)
+				|| level.affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, sourcesAffectedByDefault)
+				|| level.affects(MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, mechsAffectedByDefault)
+				|| level.affects(MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, unassocAffectedByDefault)
+				|| level.affects(MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, subSeisAffectedByDefault);
+	}
 
 }
