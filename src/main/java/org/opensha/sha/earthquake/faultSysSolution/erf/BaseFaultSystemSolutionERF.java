@@ -420,6 +420,12 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 				fileParam.addParameterChangeListener(this);
 			}
 		}
+		// clear out any cached values
+		mfdsModuleOptional = null;
+		proxySectsModuleOptional = null;
+		gridSourceCache = null;
+		
+		// set flags
 		faultSysSolutionChanged = true;
 		bgIncludeChanged = true;
 		bgRupTypeChanged = true;  // because the background ruptures come from the FSS
@@ -549,7 +555,11 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		if (mfdsModuleOptional.isEmpty())
 			// don't have rupture MFDs
 			return null;
-		DiscretizedFunc rupMFD = mfdsModuleOptional.get().getRuptureMFD(fltSystRupIndex);	// this exists for multi-branch mean solutions
+		RupMFDsModule rupMFDs = mfdsModuleOptional.get();
+		if (rupMFDs.getParent() != faultSysSolution)
+			// this will do a bounds check
+			rupMFDs.setParent(faultSysSolution);
+		DiscretizedFunc rupMFD = rupMFDs.getRuptureMFD(fltSystRupIndex);	// this exists for multi-branch mean solutions
 		if (rupMFD == null || rupMFD.size() < 2)
 			// no MFD for this rupture, or it only has 1 value
 			return null;
