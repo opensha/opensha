@@ -1794,7 +1794,8 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 						ruptureListsBuilder.add(ImmutableList.of());
 					} else {
 						for (GriddedRupture rup : ruptures) {
-							Preconditions.checkState(rup.properties.tectonicRegionType == trt);
+							Preconditions.checkState(rup.properties.tectonicRegionType == trt, "Rupture says TRT is %s, but we're in the list for %s",
+									rup.properties.tectonicRegionType, trt);
 							Preconditions.checkState(LocationUtils.areSimilar(rup.location, gridLoc));
 							numRups++;
 							minMag = Math.min(minMag, rup.properties.magnitude);
