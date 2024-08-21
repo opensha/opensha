@@ -197,6 +197,10 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		return getLineStr(getLine(i));
 	}
 	
+	/**
+	 * @param line
+	 * @return String representation of the given line (not including a trailing newline)
+	 */
 	public static String getLineStr(List<?> line) {
 		return getLineStr(line.toArray());
 	}
@@ -216,27 +220,92 @@ public class CSVFile<E> implements Iterable<List<E>> {
 	
 	private static final String NULL_STR = null+"";
 	
+	private static boolean shouldWrap(String valStr) {
+		return valStr.contains(",") && !(valStr.startsWith("\"") && valStr.endsWith("\""));
+	}
+	
+	/**
+	 * @param line
+	 * @return String representation of the given line (not including a trailing newline)
+	 */
 	public static String getLineStr(Object[] line) {
 		StringBuilder lineStr = null;
 		for (Object val : line) {
 			if (lineStr == null)
 				lineStr = new StringBuilder();
 			else
-				lineStr.append(",");
+				lineStr.append(',');
 			if (val == null) {
 				lineStr.append(NULL_STR);
 			} else {
 				String valStr = val.toString();
 				// if it contains a comma, surround it in quotation marks if not already
-				boolean wrap = valStr.contains(",") && !(valStr.startsWith("\"") && valStr.endsWith("\""));
+				boolean wrap = shouldWrap(valStr);
 				if (wrap)
-					lineStr.append("\"");
+					lineStr.append('"');
 				lineStr.append(valStr);
 				if (wrap)
-					lineStr.append("\"");
+					lineStr.append('"');
 			}
 		}
 		return lineStr.toString();
+	}
+	
+	/**
+	 * Writes the given line to the given writer. Unlike {@link #getLineStr(Object[])}, this will write a trailing newline.
+	 * The given writer will not be closed nor flushed.
+	 * @param fw
+	 * @param line
+	 * @throws IOException
+	 */
+	public static void writeLine(Writer fw, Object[] line) throws IOException {
+		for (int i=0; i<line.length; i++) {
+			Object val = line[i];
+			if (i > 0)
+				fw.write(',');
+			if (val == null) {
+				fw.write(NULL_STR);
+			} else {
+				String valStr = val.toString();
+				// if it contains a comma, surround it in quotation marks if not already
+				boolean wrap = shouldWrap(valStr);
+				if (wrap)
+					fw.write('"');
+				fw.write(valStr);
+				if (wrap)
+					fw.write('"');
+			}
+		}
+		fw.write('\n');
+	}
+	
+	/**
+	 * Writes the given line to the given writer. Unlike {@link #getLineStr(List)}, this will write a trailing newline.
+	 * The given writer will not be closed nor flushed.
+	 * @param fw
+	 * @param line
+	 * @throws IOException
+	 */
+	public static void writeLine(Writer fw, List<?> line) throws IOException {
+		int length = line.size();
+		for (int i=0; i<length; i++) {
+			Object val = line.get(i);
+			if (i > 0)
+				fw.write(',');
+			if (val == null) {
+				fw.write(NULL_STR);
+			} else {
+				String valStr = val.toString();
+				// if it contains a comma, surround it in quotation marks if not already
+				boolean wrap = shouldWrap(valStr);
+				if (wrap)
+					fw.write('"');
+				fw.write(valStr);
+				if (wrap)
+					fw.write('"');
+			}
+		}
+		fw.write('\n');
 	}
 	
 	public String getHeader() {
@@ -271,9 +340,8 @@ public class CSVFile<E> implements Iterable<List<E>> {
 	}
 	
 	private void writeWriter(Writer w) throws IOException {
-		for (int i=0; i<getNumRows(); i++) {
-			w.write(getLineStr(i) + "\n");
-		}
+		for (int i=0; i<getNumRows(); i++)
+			writeLine(w, getLine(i));
 		w.flush();
 	}
 	
