@@ -449,11 +449,11 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule
 				parentDir = subDir;
 				fileName.setLength(0); // clear it
 			}
-			if (!fileName.isEmpty())
+			if (fileName.length() > 0)
 				fileName.append('_');
 			fileName.append(prefix);
 		}
-		Preconditions.checkState(!fileName.isEmpty());
+		Preconditions.checkState(fileName.length() > 0);
 		fileName.append(suffix);
 		File dir = new File(parentDir, fileName.toString());
 		Preconditions.checkState(!mkdir || dir.exists() || dir.mkdir(),
