@@ -23,24 +23,10 @@ public interface ScalarIMRsLogicTreeNode extends LogicTreeNode {
 	
 	public Supplier<ScalarIMR> getSupplier(TectonicRegionType trt);
 	
-	public AttenRelSupplier getSupplier();
-	
-	public default ScalarIMR get() {
-		ScalarIMR imr = getSupplier().get();
-		return imr;
-	}
-
-	@Override
-	public default String getShortName() {
-		return getSupplier().getShortName();
-	}
-
-	@Override
-	public default String getName() {
-		return getSupplier().getName();
-	}
-	
-	public static interface Single extends ScalarIMRsLogicTreeNode, Supplier<ScalarIMR> {
+	/**
+	 * 
+	 */
+	public static interface SingleTRT extends ScalarIMRsLogicTreeNode, Supplier<ScalarIMR> {
 		
 		public AttenRelSupplier getSupplier();
 		
@@ -48,12 +34,48 @@ public interface ScalarIMRsLogicTreeNode extends LogicTreeNode {
 			ScalarIMR imr = getSupplier().get();
 			return imr;
 		}
+		
+		public TectonicRegionType getTectonicRegion();
 
 		@Override
 		default Map<TectonicRegionType, Supplier<ScalarIMR>> getSuppliers() {
 			EnumMap<TectonicRegionType, Supplier<ScalarIMR>> ret = new EnumMap<>(TectonicRegionType.class);
-			ret.put(TectonicRegionType.ACTIVE_SHALLOW, getSupplier());
+			ret.put(getTectonicRegion(), getSupplier());
 			return ret;
+		}
+
+		@Override
+		default Supplier<ScalarIMR> getSupplier(TectonicRegionType trt) {
+			if (trt == getTectonicRegion())
+				return getSupplier();
+			return null;
+		}
+		
+		@Override
+		public default String getShortName() {
+			return getSupplier().getShortName();
+		}
+
+		@Override
+		public default String getName() {
+			return getSupplier().getName();
+		}
+	}
+	
+	/**
+	 * Use this for a single model to be used with any and all {@link TectonicRegionType}s
+	 */
+	public static interface SingleModel extends SingleTRT {
+		
+		public AttenRelSupplier getSupplier();
+		
+		public default ScalarIMR get() {
+			ScalarIMR imr = getSupplier().get();
+			return imr;
+		}
+		
+		default TectonicRegionType getTectonicRegion() {
+			return TectonicRegionType.ACTIVE_SHALLOW;
 		}
 
 		@Override
