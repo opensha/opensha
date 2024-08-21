@@ -58,6 +58,7 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.WarningDoubleParameter;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.ExecutorUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.ReturnPeriodUtils;
@@ -818,9 +819,7 @@ public class SolSiteHazardCalc {
 		GeographicMapMaker mapMaker = new GeographicMapMaker(sol.getRupSet().getFaultSectionDataList());
 		
 		// this will block to make sure the queue is never too large
-		ExecutorService exec = new ThreadPoolExecutor(threads, threads,
-				0L, TimeUnit.MILLISECONDS,
-				new ArrayBlockingQueue<Runnable>(Integer.min(threads*2, threads+4)), new ThreadPoolExecutor.CallerRunsPolicy());
+		ExecutorService exec = ExecutorUtils.newBlockingThreadPool(threads, Integer.min(threads*2, threads+4));
 		
 		TableBuilder table = MarkdownUtils.tableBuilder();
 		
@@ -2048,6 +2047,14 @@ public class SolSiteHazardCalc {
 			ret.set(Math.exp(pt.getX()), pt.getY());
 		ret.setName(curve.getName());
 		return ret;
+	}
+	
+	public static List<XYAnnotation> addRPAnnotations(List<? super DiscretizedFunc> funcs,
+			List<PlotCurveCharacterstics> chars, Range xRange, Range yRange, ReturnPeriods[] rps, boolean first) {
+		CustomReturnPeriod[] crps = new CustomReturnPeriod[rps.length];
+		for (int i=0; i<rps.length; i++)
+			crps[i] = new CustomReturnPeriod(rps[i], 1d);
+		return addRPAnnotations(funcs, chars, xRange, yRange, crps, first);
 	}
 	
 	public static List<XYAnnotation> addRPAnnotations(List<? super DiscretizedFunc> funcs,
