@@ -4,6 +4,9 @@ import java.io.Serializable;
 
 import org.opensha.commons.data.ShortNamed;
 
+import com.google.gson.TypeAdapter;
+import com.google.gson.annotations.JsonAdapter;
+
 public interface LogicTreeNode extends ShortNamed, Serializable {
 	
 	/**
@@ -98,6 +101,23 @@ public interface LogicTreeNode extends ShortNamed, Serializable {
 			return true;
 		}
 		
+	}
+	
+	/**
+	 * This interface indicates that this LogicTreeNode can be written via a {@link TypeAdapter} and allows for the properties
+	 * (names, prefix, weight) to be initialized. You must also specify the TypeAdapter via the {@link JsonAdapter} annotation.
+	 */
+	public static interface AdapterBackedNode extends LogicTreeNode {
+		
+		/**
+		 * Initializes this node with the given properties
+		 * 
+		 * @param name
+		 * @param shortName
+		 * @param prefix
+		 * @param weight
+		 */
+		public void init(String name, String shortName, String prefix, double weight);
 	}
 	
 	/**
