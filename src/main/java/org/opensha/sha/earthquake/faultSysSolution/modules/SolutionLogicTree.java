@@ -54,6 +54,8 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.BranchAverageSolutionCreator;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
+import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -622,7 +624,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		private File getBranchSubDir(LogicTreeBranch<?> branch, List<LogicTreeNode> gridOnlyNodes,
 				List<LogicTreeLevel<? extends LogicTreeNode>> gridOnlyLevels) {
-			File subDir = new File(resultsDir, branch.buildFileName());
+			File subDir = branch.getBranchDirectory(resultsDir, false);
 			if (!subDir.exists()) {
 				// see if we have branch levels that don't affect the raw solution
 				List<LogicTreeLevel<? extends LogicTreeNode>> levelsAffecting = new ArrayList<>();
@@ -682,6 +684,31 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			if (!sol.hasAvailableModule(GridSourceProvider.class)) {
 				// see if we have one available
 				File gridProvsDir = new File(subDir, "grid_source_providers");
+//				System.out.println("Looking for GridSourceProviders in "+gridProvsDir.getAbsolutePath()+" (exists? "+gridProvsDir.exists()+")");
+				if (!gridProvsDir.exists()) {
+					List<LogicTreeLevel<? extends LogicTreeNode>> gridLevels = new ArrayList<>();
+					List<LogicTreeNode> gridNodes = new ArrayList<>();
+					for (int i=0; i<branch.size(); i++) {
+						LogicTreeLevel<?> level = branch.getLevel(i);
+						LogicTreeNode node = branch.getValue(i);
+						if (gridOnlyLevels.contains(level))
+							continue;
+						if (GridSourceProvider.affectedByLevel(level)
+								|| node instanceof ScalarIMRsLogicTreeNode || node instanceof ScalarIMR_ParamsLogicTreeNode) {
+							gridLevels.add(level);
+							gridNodes.add(branch.getValue(i));
+						}
+					}
+					if (gridLevels.size() < branch.size()) {
+						LogicTreeBranch<LogicTreeNode> subBranch = new LogicTreeBranch<>(gridLevels, gridNodes);
+						File subRunDir = subBranch.getBranchDirectory(resultsDir, false);
+//						System.out.println("Testing subRunDir="+subRunDir.getAbsolutePath()+" (exists? "+subRunDir.exists()+")");
+						if (subRunDir.exists()) {
+							gridProvsDir = new File(subRunDir, "grid_source_providers");
+//							System.out.println("Looking for GridSourceProviders in "+gridProvsDir.getAbsolutePath()+" (exists? "+gridProvsDir.exists()+")");
+						}
+					}
+				}
 				if (gridProvsDir.exists()) {
 					File gridProvFile;
 					if (gridOnlyLevels.isEmpty()) {
@@ -1178,7 +1205,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(zip, null, sourcesFile);
 			
 			EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists = GridSourceList.loadGridSourcesCSV(rupSectsCSV, locs);
-			if (region == null)
+			if (region != null)
 				return new GridSourceList.Precomputed(region, trtRuptureLists);
 			return new GridSourceList.Precomputed(locs, trtRuptureLists);
 		} else {
@@ -1329,15 +1356,19 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 //		System.out.println("\tregFile: "+locsFile+"; null ? "+(zip.getEntry(locsFile) == null));
 //		String gridSourcesFile = getBranchFileName(branch, GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, true);
 //		System.out.println("\tsourcesFile: "+gridSourcesFile+"; null ? "+(zip.getEntry(gridSourcesFile) == null));
-		if ((gridRegFile != null && zip.getEntry(gridRegFile) != null && mechFile != null && zip.getEntry(mechFile) != null)
-				|| (locsFile != null && zip.getEntry(locsFile) != null)) {
+		Class<? extends GridSourceProvider> provClass = null;
+		if (gridRegFile != null && zip.getEntry(gridRegFile) != null && mechFile != null && zip.getEntry(mechFile) != null)
+			provClass = MFDGridSourceProvider.class;
+		else if (locsFile != null && zip.getEntry(locsFile) != null)
+			provClass = GridSourceList.class;
+		if (provClass != null) {
 			sol.addAvailableModule(new Callable<GridSourceProvider>() {
 
 				@Override
 				public GridSourceProvider call() throws Exception {
 					return loadGridProvForBranch(branch);
 				}
-			}, GridSourceProvider.class);
+			}, provClass);
 		}
 		
 		String statsFile = getBranchFileName(branch, InversionMisfitStats.MISFIT_STATS_FILE_NAME, true);
