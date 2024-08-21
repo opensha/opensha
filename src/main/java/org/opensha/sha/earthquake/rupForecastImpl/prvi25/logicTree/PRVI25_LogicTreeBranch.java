@@ -20,6 +20,10 @@ public class PRVI25_LogicTreeBranch {
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsCrustalOffFault;
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsSubduction;
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsSubductionGridded;
+
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsCrustalGMM;
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsInterfaceGMM;
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsSlabGMM;
 	
 	/*
 	 * Core crustal FSS branch levels
@@ -53,7 +57,22 @@ public class PRVI25_LogicTreeBranch {
 			LogicTreeLevel.forEnum(PRVI25_SubductionDeformationModels.class, "Deformation Model", "DM");
 	public static LogicTreeLevel<PRVI25_SubductionScalingRelationships> SUB_SCALE = 
 			LogicTreeLevel.forEnum(PRVI25_SubductionScalingRelationships.class, "Scaling Relationship", "Scale");
-	public static LogicTreeLevel<SupraSeisBValues> SUB_SUPRA_B = NSHM23_LogicTreeBranch.SUPRA_B;
+	public static LogicTreeLevel<PRVI25_SubductionBValues> SUB_SUPRA_B =
+			LogicTreeLevel.forEnum(PRVI25_SubductionBValues.class, "Subduction b-value", "B");
+	
+	/**
+	 * GMM branch levels
+	 */
+	public static LogicTreeLevel<PRVI25_CrustalGMMs> CRUSTAL_GMM =
+			LogicTreeLevel.forEnum(PRVI25_CrustalGMMs.class, "Crustal GMM", "GMM");
+	public static LogicTreeLevel<PRVI25_SubductionInterfaceGMMs> INTERFACE_GMM =
+			LogicTreeLevel.forEnum(PRVI25_SubductionInterfaceGMMs.class, "Interface GMM", "GMM");
+	public static LogicTreeLevel<PRVI25_SubductionSlabGMMs> SLAB_GMM =
+			LogicTreeLevel.forEnum(PRVI25_SubductionSlabGMMs.class, "Slab GMM", "GMM");
+	public static LogicTreeLevel<PRVI25_GMM_EpistemicModel> GMM_EPISTEMIC =
+			LogicTreeLevel.forEnum(PRVI25_GMM_EpistemicModel.class, "GMM Epistemic Model", "Epistemic Model");
+	public static LogicTreeLevel<PRVI25_GMM_SigmaModel> GMM_SIGMA =
+			LogicTreeLevel.forEnum(PRVI25_GMM_SigmaModel.class, "GMM Sigma Model", "Sigma Model");
 	
 	static {
 		// exhaustive for now, can trim down later
@@ -61,6 +80,9 @@ public class PRVI25_LogicTreeBranch {
 		levelsCrustalOffFault = List.of(SEIS_RATE, SEIS_DECLUSTER, SEIS_SMOOTH, MMAX_OFF);
 		levelsSubduction = List.of(SUB_FM, SUB_DM, SUB_SCALE, SUB_SUPRA_B);
 		levelsSubductionGridded = List.of(SEIS_RATE, SEIS_DECLUSTER, SEIS_SMOOTH);
+		levelsCrustalGMM = List.of(CRUSTAL_GMM, GMM_EPISTEMIC, GMM_SIGMA);
+		levelsInterfaceGMM = List.of(INTERFACE_GMM, GMM_EPISTEMIC, GMM_SIGMA);
+		levelsSlabGMM = List.of(SLAB_GMM, GMM_EPISTEMIC, GMM_SIGMA);
 	}
 	
 	/**
@@ -80,7 +102,7 @@ public class PRVI25_LogicTreeBranch {
 			PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE,
 			PRVI25_SubductionDeformationModels.FULL,
 			PRVI25_SubductionScalingRelationships.LOGA_C4p0,
-			SupraSeisBValues.B_0p5);
+			PRVI25_SubductionBValues.B_0p5);
 	
 	public static LogicTreeBranch<LogicTreeNode> fromValues(List<LogicTreeLevel<? extends LogicTreeNode>> levels, LogicTreeNode... vals) {
 		Preconditions.checkState(levels.size() == vals.length);

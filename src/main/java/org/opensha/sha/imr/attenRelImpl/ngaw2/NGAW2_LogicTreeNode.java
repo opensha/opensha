@@ -18,7 +18,7 @@ import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 @DoesNotAffect(AbstractGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME)
 @DoesNotAffect(AbstractGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
 @DoesNotAffect(AbstractGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
-public enum NGAW2_LogicTreeNode implements ScalarIMRsLogicTreeNode.Single {
+public enum NGAW2_LogicTreeNode implements ScalarIMRsLogicTreeNode.SingleModel {
 	ASK_2014(AttenRelRef.ASK_2014, 0.22),
 	BSSA_2014(AttenRelRef.BSSA_2014, 0.22),
 	CB_2014(AttenRelRef.CB_2014, 0.22),

@@ -42,19 +42,7 @@ import com.google.common.base.Preconditions;
 @Affects(MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
-	PREFFERRED("Preffered Seismicity Rate", "PrefSeis", 0.74d) {
-		@Override
-		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
-			if (hasRegion(region)) {
-				// preferred is index 0
-				double rate = loadRate(region, 0);
-				double b = loadBVal(region, 0);
-				return gr(refMFD, mMax, rate, b);
-			}
-			return null;
-		}
-	},
-	LOW("Lower Seismicity Bound (p2.5)", "LowSeis", 0.13d) {
+	LOW("Lower Seismicity Bound (p2.5)", "Low", 0.13d) {
 		@Override
 		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			if (hasRegion(region)) {
@@ -66,7 +54,19 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 			return null;
 		}
 	},
-	HIGH("Upper Seismicity Bound (p97.5)", "HighSeis", 0.13d) {
+	PREFFERRED("Preffered Seismicity Rate", "Preferred", 0.74d) {
+		@Override
+		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
+			if (hasRegion(region)) {
+				// preferred is index 0
+				double rate = loadRate(region, 0);
+				double b = loadBVal(region, 0);
+				return gr(refMFD, mMax, rate, b);
+			}
+			return null;
+		}
+	},
+	HIGH("Upper Seismicity Bound (p97.5)", "High", 0.13d) {
 		@Override
 		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			if (hasRegion(region)) {
