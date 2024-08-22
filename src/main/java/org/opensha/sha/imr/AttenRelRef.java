@@ -219,6 +219,39 @@ public enum AttenRelRef implements AttenRelSupplier {
 		}
 		
 	},
+	
+	USGS_PRVI_AVTIVE(null, "USGS PRVI25 Active Crustal",
+			"PRVI25-Active", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.USGS_PRVI_ACTIVE_CRUST_COMBINED_TREE, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_PRVI_INTERFACE(null, "USGS PRVI25 Interface",
+			"PRVI25-Interface", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.USGS_PRVI_INTERFACE_COMBINED_TREE, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_PRVI_SLAB(null, "USGS PRVI25 Slab",
+			"PRVI25-Slab", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.USGS_PRVI_INTRASLAB_COMBINED_TREE, getName(), getShortName(), false, null);
+		}
+		
+	},
 
 	/** Interpolation between periods using BA. */
 	BA_2008_INTERP(InterpolatedBA_2008_AttenRel.class,
