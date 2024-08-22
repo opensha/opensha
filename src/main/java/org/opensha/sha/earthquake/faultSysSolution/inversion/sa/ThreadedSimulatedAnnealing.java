@@ -16,7 +16,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadFactory;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
@@ -33,6 +32,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.IntegerSampler;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.ExecutorUtils;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionInputGenerator;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.AnnealingProgress;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
@@ -385,8 +385,12 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 				estCriteria = (EstimationCompletionCriteria)wrapped;
 		}
 		
-		if (exec == null)
-			exec = Executors.newFixedThreadPool(numThreads, new DaemonThreadFactory(average));
+		if (exec == null) {
+			String nameAdd = "TSA-"+(average ? "avg" : "worker");
+			// the executor isn't shut down (because we don't know at all layers when we're actually done)
+			// so we use a daemon thread pool to not block shutdown
+			exec = ExecutorUtils.newDaemonThreadPool(numThreads, nameAdd);
+		}
 		
 		int rounds = 0;
 		long iter = startIter;
@@ -571,36 +575,6 @@ public class ThreadedSimulatedAnnealing implements SimulatedAnnealing {
 		return state;
 	}
 	
-	private static class DaemonThreadFactory implements ThreadFactory {
-		
-		private static int poolCount = 0;
-		private int myPool;
-		private int threadCount = 0;
-		private boolean average;
-
-	    public DaemonThreadFactory(boolean average) {
-	    	synchronized (DaemonThreadFactory.class) {
-	    		poolCount++;
-	    	}
-	    	this.myPool = poolCount;
-			this.average = average;
-		}
-
-		@Override
-	    public synchronized Thread newThread(final Runnable r) {
-	        Thread t = new Thread(r);
-	        String name = "TSA-pool-"+myPool;
-	        threadCount++;
-	        if (average)
-	        	name += "-avg-"+threadCount;
-	        else
-	        	name += "-worker-"+threadCount;
-	        t.setName(name);
-	        t.setDaemon(true);
-	        return t;
-	    }
-	}
-
 	/**
 	 * Shuts down the thread pool.
 	 */

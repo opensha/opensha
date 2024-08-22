@@ -446,4 +446,9 @@ public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, Arch
 		throw new IllegalStateException("Should be serialized back in as Precomputed");
 	}
 
+	@Override
+	public int getNumCubes() {
+		return cgr.getNumCubes();
+	}
+
 }

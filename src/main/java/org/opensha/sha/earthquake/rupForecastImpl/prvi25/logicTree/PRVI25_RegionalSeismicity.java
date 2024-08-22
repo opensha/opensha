@@ -20,7 +20,9 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.PRVI25_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.SeismicityRegions;
@@ -34,23 +36,13 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @DoesNotAffect(FaultSystemSolution.RATES_FILE_NAME)
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
-@DoesNotAffect(GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME)
-@Affects(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
-@Affects(GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
+@DoesNotAffect(MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME)
+@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
+@Affects(MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
+@Affects(MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
+@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
-	PREFFERRED("Preffered Seismicity Rate", "PrefSeis", 0.74d) {
-		@Override
-		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
-			if (hasRegion(region)) {
-				// preferred is index 0
-				double rate = loadRate(region, 0);
-				double b = loadBVal(region, 0);
-				return gr(refMFD, mMax, rate, b);
-			}
-			return null;
-		}
-	},
-	LOW("Lower Seismicity Bound (p2.5)", "LowSeis", 0.13d) {
+	LOW("Lower Seismicity Bound (p2.5)", "Low", 0.13d) {
 		@Override
 		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			if (hasRegion(region)) {
@@ -62,7 +54,19 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 			return null;
 		}
 	},
-	HIGH("Upper Seismicity Bound (p97.5)", "HighSeis", 0.13d) {
+	PREFFERRED("Preffered Seismicity Rate", "Preferred", 0.74d) {
+		@Override
+		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
+			if (hasRegion(region)) {
+				// preferred is index 0
+				double rate = loadRate(region, 0);
+				double b = loadBVal(region, 0);
+				return gr(refMFD, mMax, rate, b);
+			}
+			return null;
+		}
+	},
+	HIGH("Upper Seismicity Bound (p97.5)", "High", 0.13d) {
 		@Override
 		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			if (hasRegion(region)) {

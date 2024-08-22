@@ -91,6 +91,8 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	private final boolean parameterize;
 	private Component component;
 	
+	private GroundMotionLogicTreeFilter treeFilter;
+	
 	// instances/caches
 	// most recently used IMT, reset whenever IMT changes
 	private Imt imt;
@@ -255,6 +257,24 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	}
 	
 	/**
+	 * Set a custom {@link GroundMotionLogicTreeFilter} to filter the nshmp-haz logic tree to only contain certain elements.
+	 * Useful for isolating a sub-model.
+	 * @param treeFilter
+	 */
+	public void setGroundMotionTreeFilter(GroundMotionLogicTreeFilter treeFilter) {
+		this.treeFilter = treeFilter;
+		clearCachedGmmInputs();
+	}
+	
+	/**
+	 * @return the custom {@link GroundMotionLogicTreeFilter} used to filter the nshmp-haz logic tree to only contain 
+	 * certain elements, if set, otherwise null.
+	 */
+	public GroundMotionLogicTreeFilter getGroundMotionTreeFilter() {
+		return treeFilter;
+	}
+	
+	/**
 	 * @return nshmp-lib ground motion logic tree for the current IMT and inputs
 	 */
 	public LogicTree<GroundMotion> getGroundMotionTree() {
@@ -264,7 +284,10 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		
 		GroundMotionModel gmmInstance = getCurrentGMM_Instance();
 		
-		gmTree = gmmInstance.calc(getCurrentGmmInput());
+		LogicTree<GroundMotion> gmTree = gmmInstance.calc(getCurrentGmmInput());
+		if (treeFilter != null)
+			gmTree = treeFilter.filter(gmTree);
+		this.gmTree = gmTree;
 
 		return gmTree;
 	}
@@ -279,7 +302,7 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		double valWeightSum = 0d;
 		for (Branch<GroundMotion> branch : gmTree) {
 			weightSum += branch.weight();
-			valWeightSum += branch.weight()*branch.value().mean();
+			valWeightSum = Math.fma(branch.weight(), branch.value().mean(), valWeightSum);
 		}
 
 		if (weightSum == 1d)
@@ -297,7 +320,7 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		double valWeightSum = 0d;
 		for (Branch<GroundMotion> branch : gmTree) {
 			weightSum += branch.weight();
-			valWeightSum += branch.weight()*branch.value().sigma();
+			valWeightSum = Math.fma(branch.weight(), branch.value().sigma(), valWeightSum);
 		}
 		
 		if (weightSum == 1d)
@@ -339,13 +362,13 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			IMRException {
 		double weightSum = 0d;
 		double weightValSum = 0d;
-		for (Branch<GroundMotion> branch : gmTree) {
+		for (Branch<GroundMotion> branch : getGroundMotionTree()) {
 			double weight = branch.weight();
 			weightSum += weight;
 			double mean = branch.value().mean();
 			double stdDev = branch.value().sigma();
 			double prob = getExceedProbability(mean, stdDev, iml)*weight;
-			weightValSum += prob*weight;
+			weightValSum = Math.fma(prob, weight, weightValSum);
 		}
 		if (weightSum == 1d)
 			return weightValSum;
@@ -366,13 +389,13 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		
 		double weightSum = 0d;
 		double weightValSum = 0d;
-		for (Branch<GroundMotion> branch : gmTree) {
+		for (Branch<GroundMotion> branch : getGroundMotionTree()) {
 			double weight = branch.weight();
 			weightSum += weight;
 			double mean = branch.value().mean();
 			double stdDev = branch.value().sigma();
 			double val = getIML_AtExceedProb(mean, stdDev, exceedProb, sigmaTruncTypeParam, sigmaTruncLevelParam);
-			weightValSum += val*weight;
+			weightValSum = Math.fma(val, weight, weightValSum);
 		}
 		if (weightSum == 1d)
 			return weightValSum;
@@ -684,30 +707,29 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			// tectonic region type
 			Type type = gmm.type();
 			if (type != null) {
-				String typeStr;
-				switch (type) {
-				case ACTIVE_CRUST:
-					typeStr = TectonicRegionType.ACTIVE_SHALLOW.toString();
-					break;
-				case STABLE_CRUST:
-					typeStr = TectonicRegionType.STABLE_SHALLOW.toString();
-					break;
-				case SUBDUCTION_INTERFACE:
-					typeStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
-					break;
-				case SUBDUCTION_SLAB:
-					typeStr = TectonicRegionType.SUBDUCTION_SLAB.toString();
-					break;
-
-				default:
-					throw new IllegalStateException("Unexpected TRT: "+type);
-				}
+				String typeStr = trtForType(type).toString();
 				StringConstraint options = new StringConstraint();
 				options.addString(typeStr);
 				tectonicRegionTypeParam.setConstraint(options);
 			    tectonicRegionTypeParam.setDefaultValue(typeStr);
 			    tectonicRegionTypeParam.setValueAsDefault();
 			}
+		}
+	}
+	
+	public static TectonicRegionType trtForType(Type type) {
+		switch (type) {
+		case ACTIVE_CRUST:
+			return TectonicRegionType.ACTIVE_SHALLOW;
+		case STABLE_CRUST:
+			return TectonicRegionType.STABLE_SHALLOW;
+		case SUBDUCTION_INTERFACE:
+			return TectonicRegionType.SUBDUCTION_INTERFACE;
+		case SUBDUCTION_SLAB:
+			return TectonicRegionType.SUBDUCTION_SLAB;
+
+		default:
+			throw new IllegalStateException("Unexpected TRT: "+type);
 		}
 	}
 

@@ -133,7 +133,12 @@ public abstract class AbstractXYZ_DataSet implements XYZ_DataSet {
 			Point2D point = xyz.getPoint(i);
 			double z = xyz.get(i);
 			
-			write.write(point.getX() + "\t" + point.getY() + "\t" + z + "\n");
+			write.write(String.valueOf(point.getX()));
+			write.write('\t');
+			write.write(String.valueOf(point.getY()));
+			write.write('\t');
+			write.write(String.valueOf(z));
+			write.write('\n');
 		}
 		write.flush();
 	}

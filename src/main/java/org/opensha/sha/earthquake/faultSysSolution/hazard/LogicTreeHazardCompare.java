@@ -85,6 +85,7 @@ import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.ExecutorUtils;
 import org.opensha.commons.util.Interpolate;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
@@ -683,11 +684,8 @@ public class LogicTreeHazardCompare {
 		}
 		
 		int threads = Integer.max(2, Integer.min(16, FaultSysTools.defaultNumThreads()));
-//		exec = Executors.newFixedThreadPool(threads);
 		// this will block to make sure the queue is never too large
-		exec = new ThreadPoolExecutor(threads, threads,
-                0L, TimeUnit.MILLISECONDS,
-                new ArrayBlockingQueue<Runnable>(Integer.max(threads*4, threads+10)), new ThreadPoolExecutor.CallerRunsPolicy());
+		exec = ExecutorUtils.newBlockingThreadPool(threads, Integer.max(threads*4, threads+10));
 		
 		System.out.println(branches.size()+" branches, total weight: "+totWeight);
 	}
@@ -710,14 +708,14 @@ public class LogicTreeHazardCompare {
 		LogicTreeBranch<?> branch0 = branches.get(0);
 		if (branch0 != null) {
 			FaultSystemSolution sol = null;
-			if (mapper == null)
+			if (mapper == null && solLogicTree != null)
 				sol = solLogicTree.forBranch(branch0, false);
 			
 			if (gridReg == null) {
 				if (spacing <= 0d) {
 					// detect spacing
 
-					String dirName = branch0.buildFileName();
+					String dirName = branch0.getBranchZipPath();
 					String name = dirName+"/"+MPJ_LogicTreeHazardCalc.mapPrefix(periods[0], rps[0])+".txt";
 					ZipEntry entry = zip.getEntry(name);
 					Preconditions.checkNotNull(entry, "Entry is null for %s", name);
@@ -842,7 +840,7 @@ public class LogicTreeHazardCompare {
 			} else {
 //				System.out.println("Processing maps for "+branch);
 				
-				String dirName = branch.buildFileName();
+				String dirName = branch.getBranchZipPath();
 				
 				if (readFuture != null)
 					// finish reading prior one

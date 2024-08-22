@@ -3,13 +3,22 @@ package org.opensha.sha.earthquake.faultSysSolution.util;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.geom.Point2D;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.function.Supplier;
+import java.util.zip.GZIPOutputStream;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
@@ -37,11 +46,18 @@ import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.ReturnPeriodUtils;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.sha.calc.HazardCurveCalculator;
+import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.params.filters.SourceFilterManager;
+import org.opensha.sha.calc.params.filters.SourceFilters;
+import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
+import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.DistCachedERFWrapper;
 import org.opensha.sha.earthquake.ProbEqkSource;
@@ -69,6 +85,8 @@ import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGV_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
+import org.opensha.sha.imr.param.OtherParams.TectonicRegionTypeParam;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
@@ -92,8 +110,120 @@ public class SolHazardMapCalc {
 		}
 	}
 	
+	static AttenRelRef CRUSTAL_GMPE_DEFAULT = AttenRelRef.ASK_2014;
+	static AttenRelRef STABLE_GMPE_DEFAULT = AttenRelRef.ASK_2014; // TODO
+	static AttenRelRef INTERFACE_GMPE_DEFAULT = AttenRelRef.PSBAH_2020_GLOBAL_INTERFACE;
+	static AttenRelRef SLAB_GMPE_DEFAULT = AttenRelRef.PSBAH_2020_GLOBAL_SLAB;
+	
+	public static Map<TectonicRegionType, AttenRelRef> getGMMs(CommandLine cmd) {
+		if (cmd.hasOption("gmpe")) {
+			Preconditions.checkState(!cmd.hasOption("trt-gmpe"), "Can't specify both --gmpe and --trt-gmpe");
+			String[] gmmStrs = cmd.getOptionValues("gmpe");
+			EnumMap<TectonicRegionType, AttenRelRef> ret = new EnumMap<>(TectonicRegionType.class);
+			for (String gmmStr : gmmStrs) {
+				AttenRelRef gmpeRef = AttenRelRef.valueOf(gmmStr);
+				if (gmmStrs.length > 1) {
+					// TRT specific
+					TectonicRegionTypeParam trtParam = (TectonicRegionTypeParam)gmpeRef.get().getParameter(TectonicRegionTypeParam.NAME);
+					Preconditions.checkState(trtParam != null, "Multiple GMPEs supplied, but GMPE "+gmpeRef.getShortName()+" doesn't have a TRT");
+					TectonicRegionType trt = trtParam.getValueAsTRT();
+					ret.put(trt, gmpeRef);
+				} else {
+					// single, just use ACTIVE_SHALLOW (will be used for all)
+					ret.put(TectonicRegionType.ACTIVE_SHALLOW, gmpeRef);
+				}
+			}
+			return ret;
+		}
+		
+		Map<TectonicRegionType, AttenRelRef> gmmRefs = getDefaultGMMs();
+		if (cmd.hasOption("trt-gmpe")) {
+			for (String val : cmd.getOptionValues("gmmRefs")) {
+				Preconditions.checkState(val.contains(":"), "Expected <trt>:<gmm>, can't parse argument: %s", val);
+				int index = val.indexOf(":");
+				String trtName = val.substring(0, index);
+				TectonicRegionType trt = TectonicRegionType.valueOf(trtName);
+				String gmmName = val.substring(index+1);
+				AttenRelRef gmm = AttenRelRef.valueOf(gmmName);
+				gmmRefs.put(trt, gmm);
+			}
+		}
+		return gmmRefs;
+	}
+	
+	public static Map<TectonicRegionType, AttenRelRef> getDefaultGMMs() {
+		EnumMap<TectonicRegionType, AttenRelRef> ret = new EnumMap<>(TectonicRegionType.class);
+		ret.put(TectonicRegionType.ACTIVE_SHALLOW, CRUSTAL_GMPE_DEFAULT);
+		ret.put(TectonicRegionType.STABLE_SHALLOW, STABLE_GMPE_DEFAULT);
+		ret.put(TectonicRegionType.SUBDUCTION_INTERFACE, INTERFACE_GMPE_DEFAULT);
+		ret.put(TectonicRegionType.SUBDUCTION_SLAB, SLAB_GMPE_DEFAULT);
+		return ret;
+	}
+	
+	public static Map<TectonicRegionType, Supplier<ScalarIMR>> wrapInTRTMap(Supplier<ScalarIMR> gmpeRef) {
+		if (gmpeRef == null)
+			return null;
+		EnumMap<TectonicRegionType, Supplier<ScalarIMR>> ret = new EnumMap<>(TectonicRegionType.class);
+		ret.put(TectonicRegionType.ACTIVE_SHALLOW, gmpeRef);
+		return ret;
+	}
+	
+	public static SourceFilterManager getDefaultSourceFilters() {
+		SourceFilterManager sourceFilters = new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
+		return sourceFilters;
+	}
+	
+	public static SourceFilterManager getSourceFilters(CommandLine cmd) {
+		SourceFilterManager sourceFilters;
+		if (cmd.hasOption("max-distance")) {
+			sourceFilters = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
+			double maxDist = Double.parseDouble(cmd.getOptionValue("max-distance"));
+			((FixedDistanceCutoffFilter)sourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF)).setMaxDistance(maxDist);
+		} else {
+			sourceFilters = getDefaultSourceFilters();
+		}
+		return sourceFilters;
+	}
+	
+	public static SourceFilterManager getDefaultSiteSkipSourceFilters(SourceFilterManager sourceFilters) {
+		SourceFilterManager ret = null;
+		if (sourceFilters.isEnabled(SourceFilters.TRT_DIST_CUTOFFS)) {
+			TectonicRegionDistCutoffFilter fullFilter = (TectonicRegionDistCutoffFilter)
+					sourceFilters.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS);
+			TectonicRegionDistanceCutoffs fullCutoffs = fullFilter.getCutoffs();
+			ret = new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
+			TectonicRegionDistCutoffFilter skipFilter = (TectonicRegionDistCutoffFilter)
+					ret.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS);
+			TectonicRegionDistanceCutoffs skipCutoffs = skipFilter.getCutoffs();
+			for (TectonicRegionType trt : TectonicRegionType.values())
+				skipCutoffs.setCutoffDist(trt, fullCutoffs.getCutoffDist(trt)*SITE_SKIP_FRACT);
+		}
+		if (sourceFilters.isEnabled(SourceFilters.FIXED_DIST_CUTOFF)) {
+			if (ret == null)
+				ret = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
+			else
+				ret.setEnabled(SourceFilters.FIXED_DIST_CUTOFF, true);
+			FixedDistanceCutoffFilter fullFilter = (FixedDistanceCutoffFilter)sourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF);
+			FixedDistanceCutoffFilter skipFilter = (FixedDistanceCutoffFilter)ret.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF);
+			skipFilter.setMaxDistance(fullFilter.getMaxDistance()*SITE_SKIP_FRACT);
+		}
+		return ret;
+	}
+	
+	public static SourceFilterManager getSiteSkipSourceFilters(SourceFilterManager sourceFilters, CommandLine cmd) {
+		SourceFilterManager siteSkipSourceFilters;
+		if (cmd.hasOption("skip-max-distance")) {
+			siteSkipSourceFilters = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
+			double maxDist = Double.parseDouble(cmd.getOptionValue("skip-max-distance"));
+			((FixedDistanceCutoffFilter)siteSkipSourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF)).setMaxDistance(maxDist);
+		} else {
+			siteSkipSourceFilters = getDefaultSiteSkipSourceFilters(sourceFilters);
+		}
+		return siteSkipSourceFilters;
+	}
+	
 	private FaultSystemSolution sol;
-	private Supplier<ScalarIMR> gmpeRef;
+	private Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap;
 	private GriddedRegion region;
 	private double[] periods;
 	
@@ -109,8 +239,18 @@ public class SolHazardMapCalc {
 	private List<XY_DataSet> extraFuncs;
 	private List<PlotCurveCharacterstics> extraChars;
 
-	private double maxSiteDist = 200d;
-	private double skipMaxSiteDist = 300d;
+	static final SourceFilterManager SOURCE_FILTER_DEFAULT = new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
+	private SourceFilterManager sourceFilter = SOURCE_FILTER_DEFAULT;
+	
+	static final SourceFilterManager SITE_SKIP_SOURCE_FILTER_DEFAULT = new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
+	static {
+		TectonicRegionDistCutoffFilter filter = (TectonicRegionDistCutoffFilter)
+				SITE_SKIP_SOURCE_FILTER_DEFAULT.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS);
+		TectonicRegionDistanceCutoffs cutoffs = filter.getCutoffs();
+		for (TectonicRegionType trt : TectonicRegionType.values())
+			cutoffs.setCutoffDist(trt, cutoffs.getCutoffDist(trt)*0.8);
+	}
+	private SourceFilterManager siteSkipSourceFilter = SITE_SKIP_SOURCE_FILTER_DEFAULT;
 	
 	// ERF params
 	private IncludeBackgroundOption backSeisOption;
@@ -149,13 +289,49 @@ public class SolHazardMapCalc {
 
 	public SolHazardMapCalc(FaultSystemSolution sol, Supplier<ScalarIMR> gmpeRef, GriddedRegion region,
 			IncludeBackgroundOption backSeisOption, double... periods) {
-		this(sol, gmpeRef, region, backSeisOption, false, periods);
+		this(sol, wrapInTRTMap(gmpeRef), region, backSeisOption, periods);
+	}
+
+	public SolHazardMapCalc(FaultSystemSolution sol, Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap, GriddedRegion region,
+			IncludeBackgroundOption backSeisOption, double... periods) {
+		this(sol, gmpeRefMap, region, backSeisOption, false, periods);
 	}
 
 	public SolHazardMapCalc(FaultSystemSolution sol, Supplier<ScalarIMR> gmpeRef, GriddedRegion region,
 			IncludeBackgroundOption backSeisOption, boolean applyAftershockFilter, double... periods) {
+		this(sol, wrapInTRTMap(gmpeRef), region, backSeisOption, applyAftershockFilter, periods);
+	}
+	
+	public static Map<TectonicRegionType, ScalarIMR> getGmmInstances(Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap) {
+		EnumMap<TectonicRegionType, ScalarIMR> ret = new EnumMap<>(TectonicRegionType.class);
+		for (TectonicRegionType trt : gmpeRefMap.keySet())
+			ret.put(trt, gmpeRefMap.get(trt).get());
+		return ret;
+	}
+	
+	public static ParameterList getDefaultRefSiteParams(Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap) {
+		return getDefaultSiteParams(getGmmInstances(gmpeRefMap));
+	}
+	
+	public static ParameterList getDefaultSiteParams(Map<TectonicRegionType, ScalarIMR> gmpeMap) {
+		if (gmpeMap.size() == 1) {
+			return gmpeMap.values().iterator().next().getSiteParams();
+		} else {
+			ParameterList siteParams = new ParameterList();
+			for (ScalarIMR gmpe: gmpeMap.values()) {
+				for (Parameter<?> param : gmpe.getSiteParams()) {
+					if (!siteParams.containsParameter(param.getName()))
+						siteParams.addParameter(param);
+				}
+			}
+			return siteParams;
+		}
+	}
+
+	public SolHazardMapCalc(FaultSystemSolution sol, Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap, GriddedRegion region,
+			IncludeBackgroundOption backSeisOption, boolean applyAftershockFilter, double... periods) {
 		this.sol = sol;
-		this.gmpeRef = gmpeRef;
+		this.gmpeRefMap = gmpeRefMap;
 		this.region = region;
 		this.backSeisOption = backSeisOption;
 		this.applyAftershockFilter = applyAftershockFilter;
@@ -165,12 +341,13 @@ public class SolHazardMapCalc {
 			Preconditions.checkState(period == -1d || period >= 0d,
 					"supplied map calculation periods must be -1 (PGV), 0 (PGA), or a positive value");
 		
-		if (gmpeRef != null) {
+		if (gmpeRefMap != null) {
 			sites = new ArrayList<>();
-			ScalarIMR gmpe = gmpeRef.get();
+			ParameterList siteParams = getDefaultRefSiteParams(gmpeRefMap);
+			
 			for (Location loc : region.getNodeList()) {
 				Site site = new Site(loc);
-				for (Parameter<?> param : gmpe.getSiteParams())
+				for (Parameter<?> param : siteParams)
 					site.addParameter((Parameter<?>) param.clone());
 				sites.add(site);
 			}
@@ -247,12 +424,12 @@ public class SolHazardMapCalc {
 		}
 	}
 	
-	public void setMaxSourceSiteDist(double maxDist) {
-		this.maxSiteDist = maxDist;
+	public void setSourceFilter(SourceFilterManager sourceFilter) {
+		this.sourceFilter = sourceFilter;
 	}
 	
-	public void setSkipMaxSourceSiteDist(double skipMaxSiteDist) {
-		this.skipMaxSiteDist = skipMaxSiteDist;
+	public void setSiteSkipSourceFilter(SourceFilterManager siteSkipSourceFilter) {
+		this.siteSkipSourceFilter = siteSkipSourceFilter;
 	}
 	
 	public static DiscretizedFunc getDefaultXVals(double period) {
@@ -386,13 +563,14 @@ public class SolHazardMapCalc {
 	
 	protected static DecimalFormat percentDF = new DecimalFormat("0.00%");
 	protected static DecimalFormat twoDigitsDF = new DecimalFormat("0.00");
+	protected static DecimalFormat periodDF = new DecimalFormat("0.####");
 	protected static DecimalFormat oDF = new DecimalFormat("0.#");
 	
 	private class CalcThread extends Thread {
 		private ConcurrentLinkedDeque<Integer> calcIndexes;
 		private AbstractERF erf;
 		private int numFaultSysSources;
-		private GriddedRegion gridSourceReg;
+		private GridSourceProvider gridProv;
 		private CalcTracker track;
 		private SolHazardMapCalc combineWith;
 		
@@ -404,25 +582,26 @@ public class SolHazardMapCalc {
 			this.numFaultSysSources = erf.getNumFaultSystemSources();
 			IncludeBackgroundOption bgOption = (IncludeBackgroundOption) erf.getParameter(IncludeBackgroundParam.NAME).getValue();
 			if (bgOption == IncludeBackgroundOption.INCLUDE || bgOption == IncludeBackgroundOption.ONLY)
-				gridSourceReg = erf.getSolution().requireModule(GridSourceProvider.class).getGriddedRegion();
+				gridProv = erf.getSolution().requireModule(GridSourceProvider.class);
 			this.erf = new DistCachedERFWrapper(erf);
 		}
 
 		@Override
 		public void run() {
-			ScalarIMR gmpe = gmpeRef.get();
+			EnumMap<TectonicRegionType, ScalarIMR> gmpeMap = new EnumMap<>(TectonicRegionType.class);
+			for (TectonicRegionType trt : gmpeRefMap.keySet())
+				gmpeMap.put(trt, gmpeRefMap.get(trt).get());
 			
-			HazardCurveCalculator calc = new HazardCurveCalculator();
-			calc.setMaxSourceDistance(maxSiteDist);
+			HazardCurveCalculator calc = new HazardCurveCalculator(sourceFilter);
 			while (true) {
 				Integer index = calcIndexes.pollFirst();
 				if (index == null)
 					break;
 				Site site = sites.get(index);
 				
-				if (skipMaxSiteDist > 0d && Double.isFinite(skipMaxSiteDist)) {
+				if (siteSkipSourceFilter != null) {
 					// see if we should just skip this site
-					if (shouldSkipSite(site, skipMaxSiteDist, erf, numFaultSysSources, gridSourceReg)) {
+					if (shouldSkipSite(site, siteSkipSourceFilter, erf, numFaultSysSources, gridProv)) {
 						// can skip this site, no sources within skipMaxSiteDist
 						checkInitXVals();
 						for (int p=0; p<periods.length; p++) {
@@ -443,7 +622,7 @@ public class SolHazardMapCalc {
 					}
 				}
 				
-				List<DiscretizedFunc> curves = calcSiteCurves(calc, erf, gmpe, site, combineWith, index);
+				List<DiscretizedFunc> curves = calcSiteCurves(calc, erf, gmpeMap, site, combineWith, index);
 				
 				for (int p=0; p<periods.length; p++)
 					curvesList.get(p)[index] = curves.get(p);
@@ -453,20 +632,47 @@ public class SolHazardMapCalc {
 		}
 	}
 	
-	public static boolean shouldSkipSite(Site site, double skipMaxSiteDist, AbstractERF erf,
-			int numFaultSysSources, GriddedRegion gridSourceReg) {
-		if (!(skipMaxSiteDist > 0d && Double.isFinite(skipMaxSiteDist)))
+	public static double getMaxDistForTRT(SourceFilterManager sourceFilters, TectonicRegionType trt) {
+		FixedDistanceCutoffFilter fixedCutoffFilter = sourceFilters.isEnabled(SourceFilters.FIXED_DIST_CUTOFF) ?
+				(FixedDistanceCutoffFilter)sourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF) : null;
+		TectonicRegionDistCutoffFilter trtCutoffFilter = sourceFilters.isEnabled(SourceFilters.TRT_DIST_CUTOFFS) ?
+				(TectonicRegionDistCutoffFilter)sourceFilters.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS) : null;
+		double maxDist = Double.POSITIVE_INFINITY;
+		if (fixedCutoffFilter != null)
+			maxDist = fixedCutoffFilter.getMaxDistance();
+		if (trtCutoffFilter != null)
+			maxDist = Math.min(maxDist, trtCutoffFilter.getCutoffs().getCutoffDist(trt));
+		return maxDist;
+	}
+	
+	public static boolean shouldSkipSite(Site site, SourceFilterManager siteSkipSourceFilter, AbstractERF erf,
+			int numFaultSysSources, GridSourceProvider gridProv) {
+		if (siteSkipSourceFilter == null)
 			return false;
 		boolean hasSourceWithin = false;
-		if (gridSourceReg != null) {
+		List<SourceFilter> fitlers = siteSkipSourceFilter.getEnabledFilters();
+		if (gridProv != null) {
 			Location siteLoc = site.getLocation();
-			hasSourceWithin = gridSourceReg.contains(siteLoc) ||
-					gridSourceReg.distanceToLocation(siteLoc) <= skipMaxSiteDist;
+			GriddedRegion gridReg = gridProv.getGriddedRegion();
+			for (TectonicRegionType trt : gridProv.getTectonicRegionTypes()) {
+				double maxDist = getMaxDistForTRT(siteSkipSourceFilter, trt);
+				if (Double.isInfinite(maxDist))
+					return false;
+				if (gridReg != null && gridProv.getNumSources() == gridProv.getNumLocations()*gridProv.getTectonicRegionTypes().size()) {
+					// we have a region and every location has every TRT
+					hasSourceWithin = gridReg.contains(siteLoc) ||
+							gridReg.distanceToLocation(siteLoc) <= maxDist;
+				} else {
+					// have to check them all
+					for (int gridIndex=0; !hasSourceWithin && gridIndex<gridProv.getNumLocations(); gridIndex++)
+						hasSourceWithin = LocationUtils.horzDistanceFast(siteLoc, gridProv.getLocation(gridIndex)) <= maxDist;
+				}
+			}
 		}
 		
 		for (int sourceID=0; !hasSourceWithin && sourceID<numFaultSysSources; sourceID++) {
 			ProbEqkSource source = erf.getSource(sourceID);
-			if (source.getMinDistance(site) < skipMaxSiteDist) {
+			if (!HazardCurveCalculator.canSkipSource(fitlers, source, site)) {
 				hasSourceWithin = true;
 				break;
 			}
@@ -475,15 +681,16 @@ public class SolHazardMapCalc {
 		return !hasSourceWithin;
 	}
 	
-	private List<DiscretizedFunc> calcSiteCurves(HazardCurveCalculator calc, AbstractERF erf, ScalarIMR gmpe, Site site,
+	private List<DiscretizedFunc> calcSiteCurves(HazardCurveCalculator calc, AbstractERF erf,
+			EnumMap<TectonicRegionType, ScalarIMR> gmpeMap, Site site,
 			SolHazardMapCalc combineWith, int index) {
 		checkInitXVals();
 		List<DiscretizedFunc> ret = new ArrayList<>(periods.length);
 		
 		for (int p=0; p<periods.length; p++) {
-			setIMforPeriod(gmpe, periods[p]);
+			setIMforPeriod(gmpeMap, periods[p]);
 			DiscretizedFunc logCurve = logXVals[p].deepClone();
-			calc.getHazardCurve(logCurve, site, gmpe, erf);
+			calc.getHazardCurve(logCurve, site, gmpeMap, erf);
 			DiscretizedFunc curve = xVals[p].deepClone();
 			for (int i=0; i<curve.size(); i++)
 				curve.set(i, logCurve.getY(i));
@@ -498,6 +705,11 @@ public class SolHazardMapCalc {
 			ret.add(curve);
 		}
 		return ret;
+	}
+	
+	public static void setIMforPeriod(Map<TectonicRegionType, ScalarIMR> gmpeMap, double period) {
+		for (ScalarIMR gmpe : gmpeMap.values())
+			setIMforPeriod(gmpe, period);
 	}
 	
 	public static void setIMforPeriod(ScalarIMR gmpe, double period) {
@@ -810,7 +1022,7 @@ public class SolHazardMapCalc {
 		else if (period == 0d)
 			fileName += "_pga";
 		else
-			fileName += "_sa_"+oDF.format(period);
+			fileName += "_sa_"+periodDF.format(period);
 		return fileName+".csv";
 	}
 	
@@ -849,42 +1061,86 @@ public class SolHazardMapCalc {
 	}
 	
 	public static CSVFile<String> buildCurvesCSV(DiscretizedFunc[] curves, LocationList locs, boolean allowNull) {
+		CurveCSVLineIterator iterator = new CurveCSVLineIterator(curves, locs, allowNull);
+		
 		CSVFile<String> csv = new CSVFile<>(true);
 		
-		List<String> header = new ArrayList<>();
-		header.add("Index");
-		header.add("Latitude");
-		header.add("Longitude");
-		DiscretizedFunc refCurve = null;
-		for (DiscretizedFunc curve : curves) {
-			if (curve != null) {
-				refCurve = curve;
-				break;
-			}
+		while (iterator.hasNext()) {
+			List<String> line = iterator.next();
+			if (line != null)
+				csv.addLine(line);
 		}
-		Preconditions.checkNotNull(refCurve, "All curves are null");
-		for (int i=0; i<refCurve.size(); i++)
-			header.add((float)refCurve.getX(i)+"");
 		
-		csv.addLine(header);
-		
-		for (int i=0; i<curves.length; i++) {
-			DiscretizedFunc curve = curves[i];
-			if (allowNull && curve == null)
-				continue;
-			Preconditions.checkNotNull(curve, "Curve not calculated at index %s", i);
-			
-			List<String> line = new ArrayList<>();
-			line.add(i+"");
-			Location loc = locs.get(i);
-			line.add(loc.getLatitude()+"");
-			line.add(loc.getLongitude()+"");
-			for (int j=0; j<curve.size(); j++)
-				line.add(curve.getY(j)+"");
-			csv.addLine(line);
-		}
+		Preconditions.checkState(allowNull || csv.getNumRows() == locs.size()+1);
 		
 		return csv;
+	}
+	
+	private static class CurveCSVLineIterator implements Iterator<List<String>> {
+		
+		private int curIndex;
+		private DiscretizedFunc[] curves;
+		private LocationList locs;
+		private boolean allowNull;
+		
+		private int cols = -1;
+
+		public CurveCSVLineIterator(DiscretizedFunc[] curves, LocationList locs, boolean allowNull) {
+			this.curves = curves;
+			this.locs = locs;
+			this.allowNull = allowNull;
+			this.curIndex = -1; // start at the header
+		}
+
+		@Override
+		public boolean hasNext() {
+			return curIndex < locs.size();
+		}
+
+		@Override
+		public List<String> next() {
+			Preconditions.checkState(curIndex >= -1 && curIndex < locs.size());
+			if (curIndex == -1) {
+				// header
+				List<String> header = new ArrayList<>();
+				header.add("Index");
+				header.add("Latitude");
+				header.add("Longitude");
+				DiscretizedFunc refCurve = null;
+				for (DiscretizedFunc curve : curves) {
+					if (curve != null) {
+						refCurve = curve;
+						break;
+					}
+				}
+				Preconditions.checkNotNull(refCurve, "All curves are null");
+				for (int i=0; i<refCurve.size(); i++)
+					header.add(String.valueOf((float)refCurve.getX(i)));
+				cols = header.size();
+				curIndex++;
+				return header;
+			}
+			
+			DiscretizedFunc curve = curves[curIndex];
+			if (allowNull && curve == null) {
+				curIndex++;
+				return null;
+			}
+			Preconditions.checkNotNull(curve, "Curve not calculated at index %s", curIndex);
+			
+			List<String> line = new ArrayList<>(cols);
+			line.add(String.valueOf(curIndex)+"");
+			Location loc = locs.get(curIndex);
+			line.add(String.valueOf(loc.lat)+"");
+			line.add(String.valueOf(loc.lon)+"");
+			for (int j=0; j<curve.size(); j++)
+				line.add(String.valueOf(curve.getY(j)));
+			
+			curIndex++;
+			
+			return line;
+		}
+		
 	}
 	
 	public static void writeCurvesCSV(File outputFile, DiscretizedFunc[] curves, LocationList locs) throws IOException {
@@ -892,9 +1148,21 @@ public class SolHazardMapCalc {
 	}
 	
 	public static void writeCurvesCSV(File outputFile, DiscretizedFunc[] curves, LocationList locs, boolean allowNull) throws IOException {
-		CSVFile<String> csv = buildCurvesCSV(curves, locs, allowNull);
+		CurveCSVLineIterator iterator = new CurveCSVLineIterator(curves, locs, allowNull);
 		
-		csv.writeToFile(outputFile);
+		Writer fw;
+		if (outputFile.getName().toLowerCase().endsWith(".gz"))
+			fw = new OutputStreamWriter(new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(outputFile))));
+		else
+			fw = new FileWriter(outputFile);
+		
+		while (iterator.hasNext()) {
+			List<String> line = iterator.next();
+			if (line != null)
+				CSVFile.writeLine(fw, line);
+		}
+		
+		fw.close();
 	}
 	
 	public static SolHazardMapCalc loadCurves(FaultSystemSolution sol, GriddedRegion region, double[] periods,
@@ -980,6 +1248,20 @@ public class SolHazardMapCalc {
 						i, region.locationForIndex(i));
 		}
 		return curves;
+	}
+
+	static final double SITE_SKIP_FRACT = 0.8;
+	public static void addCommonOptions(Options ops, boolean includeSiteSkip) {
+		ops.addOption("gm", "gmpe", true, "Sets a single GMPE that will be used for all TectonicRegionTypes. If this is supplied "
+				+ "multiple times, then each gmpe must have a TectonicRegionTypeParameter that will be used to determine the GMPE "
+				+ "for each TRT. Note that this will be overriden if the Logic Tree supplies GMPE choices. Default is TectonicRegionType-specific.");
+		ops.addOption(null, "trt-gmpe", true, "Sets the GMPE for the given TectonicRegionType in the format: <TRT>:<GMM>. "
+				+ "For example: ACTIVE_SHALLOW:ASK_2014. Note that this will be overriden if the Logic Tree supplies GMPE choices.");
+		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
+		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default is TectonicRegionType-specific.");
+		if (includeSiteSkip)
+			ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
+					+ "Default is "+(int)(SITE_SKIP_FRACT*100d)+"% of the TectonicRegionType-specific default maximum distance.");
 	}
 	
 	private static Options createOptions() {
@@ -1068,16 +1350,17 @@ public class SolHazardMapCalc {
 			}
 		}
 		
-		Double maxDistance = null;
-		if (cmd.hasOption("max-distance"))
-			maxDistance = Double.parseDouble(cmd.getOptionValue("max-distance"));
+		SourceFilterManager sourceFilters = SITE_SKIP_SOURCE_FILTER_DEFAULT;
+		if (cmd.hasOption("max-distance")) {
+			double maxDistance = Double.parseDouble(cmd.getOptionValue("max-distance"));
+			sourceFilters = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
+			((FixedDistanceCutoffFilter)sourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF)).setMaxDistance(maxDistance);
+		}
 		
 		if (calc == null) {
 			// need to calculate
 			calc = new SolHazardMapCalc(sol, gmpe, gridReg, periods);
-			
-			if (maxDistance != null)
-				calc.setMaxSourceSiteDist(maxDistance);
+			calc.setSourceFilter(sourceFilters);
 			
 			calc.calcHazardCurves(FaultSysTools.getNumThreads(cmd));
 			
@@ -1099,9 +1382,7 @@ public class SolHazardMapCalc {
 			if (compCalc == null) {
 				// need to calculate
 				compCalc = new SolHazardMapCalc(compSol, gmpe, gridReg, periods);
-				
-				if (maxDistance != null)
-					compCalc.setMaxSourceSiteDist(maxDistance);
+				compCalc.setSourceFilter(sourceFilters);
 				
 				compCalc.calcHazardCurves(FaultSysTools.getNumThreads(cmd));
 				

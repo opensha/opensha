@@ -39,6 +39,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchRegionalMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectNuclMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
@@ -49,6 +50,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -77,20 +79,21 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		Range xRange = xRange(defaultMFD);
 		
 		// see if we have a model region
+		GridSourceProvider gridProv = sol == null ? null : sol.getGridSourceProvider();
 		Region modelRegion = null;
-		if (sol != null && sol.getGridSourceProvider() != null)
-			modelRegion = sol.getGridSourceProvider().getGriddedRegion();
+		if (gridProv != null && gridProv.getGriddedRegion() != null)
+			modelRegion = gridProv.getGriddedRegion();
 		else if (rupSet.hasModule(ModelRegion.class))
 			modelRegion = rupSet.getModule(ModelRegion.class).getRegion();
 		
 		boolean allInside = false;
 		if (modelRegion != null) {
 			allInside = true;
-			if (sol != null && sol.getGridSourceProvider() != null) {
+			if (gridProv != null) {
 				GriddedRegion gridReg = sol.getGridSourceProvider().getGriddedRegion();
-				if (!modelRegion.equalsRegion(gridReg)) {
-					for (int n=0; allInside && n<gridReg.getNodeCount(); n++)
-						allInside = modelRegion.contains(gridReg.getLocation(n));
+				if (gridReg == null || !modelRegion.equalsRegion(gridReg)) {
+					for (int n=0; allInside && n<gridProv.getNumLocations(); n++)
+						allInside = modelRegion.contains(gridProv.getLocation(n));
 				}
 			}
 			double[] fracts = rupSet.getFractSectsInsideRegion(modelRegion, false);
@@ -100,9 +103,9 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		
 		MFD_Plot totalPlot;
 		if (allInside)
-			totalPlot = new MFD_Plot("Total Model Region MFDs", modelRegion);
+			totalPlot = new MFD_Plot("Total Model Region MFDs", modelRegion, null);
 		else
-			totalPlot = new MFD_Plot("Total MFDs", null);
+			totalPlot = new MFD_Plot("Total MFDs", null, null);
 		plots.add(totalPlot);
 		
 		double minY = 1e-6;
@@ -134,7 +137,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					// skip it, but set region if applicable
 					totalPlot.region = region;
 				} else {
-					MFD_Plot plot = new MFD_Plot(name, region);
+					MFD_Plot plot = new MFD_Plot(name, region, null);
 					plot.addComp(constraint, SUPRA_SEIS_TARGET_COLOR, "Target Supra-Seis");
 					plots.add(plot);
 				}
@@ -153,7 +156,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			String name = modelRegion.getName();
 			if (modelRegion.getName() == null || modelRegion.getName().isBlank())
 				name = "Model Region";
-			MFD_Plot plot = new MFD_Plot(name, modelRegion);
+			MFD_Plot plot = new MFD_Plot(name, modelRegion, null);
 			addImpliedTargets(rupSet, supraSeisSectNuclMFDs, subSeisSectMFDs, modelRegion, plot);
 		}
 		
@@ -161,6 +164,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			RegionsOfInterest roi = rupSet.getModule(RegionsOfInterest.class);
 			List<Region> regions = roi.getRegions();
 			List<IncrementalMagFreqDist> regionMFDs = roi.getMFDs();
+			List<TectonicRegionType> regionTRTs = roi.getTRTs();
 			for (int i=0; i<regions.size(); i++) {
 				Region region = regions.get(i);
 				String name = region.getName();
@@ -177,7 +181,8 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 				if (duplicate) {
 					System.out.println("Skipping duplicate region from ROI list: "+name);
 				} else {
-					MFD_Plot plot = new MFD_Plot(name, region);
+					TectonicRegionType trt = regionTRTs == null ? null : regionTRTs.get(i);
+					MFD_Plot plot = new MFD_Plot(name, region, trt);
 					if (regionMFDs != null) {
 						IncrementalMagFreqDist mfd = regionMFDs.get(i);
 						if (mfd != null) {
@@ -254,7 +259,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			
 			if (meta.comparison != null && meta.comparison.sol != null)
 				addSolMFDs(meta.comparison.sol, "Comparison", COMP_COLOR, plot.region,
-						incrFuncs, cmlFuncs, incrChars, cmlChars, defaultMFD, xRange, null, null, null, -1);
+						incrFuncs, cmlFuncs, incrChars, cmlChars, defaultMFD, xRange, null, null, null, -1, plot.trt);
 			if (sol != null) {
 				List<IncrementalMagFreqDist> origIncrFuncs = new ArrayList<>(incrFuncs);
 				List<PlotCurveCharacterstics> origIncrChars = new ArrayList<>(incrChars);
@@ -296,7 +301,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 				
 				double myMax = addSolMFDs(sol, "Solution", MAIN_COLOR, plot.region,
 						incrFuncs, cmlFuncs, incrChars, cmlChars, defaultMFD, xRange, sectDists, branchMFDsModule,
-						MFDType.SUPRA_ONLY, regionalIndex);
+						MFDType.SUPRA_ONLY, regionalIndex, plot.trt);
 				maxY = Math.max(maxY, Math.pow(10, Math.ceil(Math.log10(myMax)-0.1)));
 				
 				if (branchMFDsModule != null && branchMFDsModule.hasGridded()) {
@@ -309,7 +314,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					myMax = addSolMFDs(sol, "Solution", MAIN_COLOR, plot.region,
 							gridOnlyIncrFuncs, gridOnlyCmlFuncs, gridOnlyIncrChars, gridOnlyCmlChars,
 							defaultMFD, xRange, sectDists, branchMFDsModule,
-							MFDType.GRID_ONLY, regionalIndex);
+							MFDType.GRID_ONLY, regionalIndex, plot.trt);
 					maxY = Math.max(maxY, Math.pow(10, Math.ceil(Math.log10(myMax)-0.1)));
 					
 					PlotSpec gridOnlyIncrSpec = new PlotSpec(gridOnlyIncrFuncs, gridOnlyIncrChars, plot.name, "Magnitude", "Incremental Rate (per yr)");
@@ -325,7 +330,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 					myMax = addSolMFDs(sol, "Solution", MAIN_COLOR, plot.region,
 							totalIncrFuncs, totalCmlFuncs, totalIncrChars, totalCmlChars,
 							defaultMFD, xRange, sectDists, branchMFDsModule,
-							MFDType.SUM, regionalIndex);
+							MFDType.SUM, regionalIndex, plot.trt);
 					maxY = Math.max(maxY, Math.pow(10, Math.ceil(Math.log10(myMax)-0.1)));
 					
 					PlotSpec totalIncrSpec = new PlotSpec(totalIncrFuncs, totalIncrChars, plot.name, "Magnitude", "Incremental Rate (per yr)");
@@ -564,7 +569,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			Region region, MFD_Plot plot) {
 		if (subSeisSectMFDs != null && subSeisSectMFDs.size() == rupSet.getNumSections()) {
 			System.out.println("Looking for subsection sub-seis MFDs in region: "+region.getName());
-			SummedMagFreqDist target = sumSectMFDsInRegion(region, rupSet, subSeisSectMFDs.getAll());
+			SummedMagFreqDist target = sumSectMFDsInRegion(region, rupSet, subSeisSectMFDs.getAll(), plot.trt);
 			if (target != null) {
 				System.out.println("Found total sub-seis rate of "+target.calcSumOfY_Vals());
 				plot.addComp(target, SUB_SEIS_TARGET_COLOR, "Implied Target Sub-Seis");
@@ -572,7 +577,7 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		}
 		if (supraSeisSectNuclMFDs != null && supraSeisSectNuclMFDs.size() == rupSet.getNumSections()) {
 			System.out.println("Looking for subsection nucleation MFDs in region: "+region.getName());
-			SummedMagFreqDist target = sumSectMFDsInRegion(region, rupSet, supraSeisSectNuclMFDs);
+			SummedMagFreqDist target = sumSectMFDsInRegion(region, rupSet, supraSeisSectNuclMFDs, plot.trt);
 			if (target != null) {
 				System.out.println("Found total supra-seis rate of "+target.calcSumOfY_Vals());
 				plot.addComp(target, SUPRA_SEIS_TARGET_COLOR, "Implied Target Supra-Seis");
@@ -612,14 +617,26 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 	}
 	
 	private static SummedMagFreqDist sumSectMFDsInRegion(Region region, FaultSystemRupSet rupSet,
-			List<? extends IncrementalMagFreqDist> sectMFDs) {
+			List<? extends IncrementalMagFreqDist> sectMFDs, TectonicRegionType targetTRT) {
 		// build our own custom target by summing up section nucleation MFDs
 		double[] fracts = rupSet.getFractSectsInsideRegion(region, false);
 		Preconditions.checkState(fracts.length == sectMFDs.size());
 		double minX = Double.NaN;
 		int maxSize = 0;
-		for (IncrementalMagFreqDist sectMFD : sectMFDs) {
-			if (sectMFD != null) {
+		boolean[] sectTRTmatch = null;
+		if (targetTRT != null) {
+			RupSetTectonicRegimes rupTRTs = rupSet.getModule(RupSetTectonicRegimes.class);
+			if (rupTRTs == null)
+				return null;
+			sectTRTmatch = new boolean[rupSet.getNumSections()];
+			for (int rupIndex=0; rupIndex<rupSet.getNumRuptures(); rupIndex++)
+				if (rupTRTs.get(rupIndex) == targetTRT)
+					for (int sectIndex : rupSet.getSectionsIndicesForRup(rupIndex))
+						sectTRTmatch[sectIndex] = true;
+		}
+		for (int s=0; s<sectMFDs.size(); s++) {
+			IncrementalMagFreqDist sectMFD = sectMFDs.get(s);
+			if (sectMFD != null && (targetTRT == null || sectTRTmatch[s])) {
 				if (Double.isNaN(minX))
 					minX = sectMFD.getMinX();
 				else
@@ -629,11 +646,9 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 		}
 		if (maxSize > 0) {
 			SummedMagFreqDist target = null;
-			double sectsInReg = 0d;
 			for (int s=0; s<sectMFDs.size(); s++) {
 				IncrementalMagFreqDist sectMFD = sectMFDs.get(s);
-				sectsInReg += fracts[s];
-				if (fracts[s] > 0d && sectMFD != null) {
+				if (fracts[s] > 0d && sectMFD != null && (targetTRT == null || sectTRTmatch[s])) {
 					if (target == null)
 						target = new SummedMagFreqDist(minX, maxSize, sectMFD.getDelta());
 					if (fracts[s] != 1d) {
@@ -668,13 +683,15 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 	private static class MFD_Plot {
 		private String name;
 		private Region region;
+		private TectonicRegionType trt;
 		private List<IncrementalMagFreqDist> comps;
 		private List<Color> compColors;
 		private List<String> compNames;
 		
-		public MFD_Plot(String name, Region region) {
+		public MFD_Plot(String name, Region region, TectonicRegionType trt) {
 			this.name = name;
 			this.region = region;
+			this.trt = trt;
 			this.comps = new ArrayList<>();
 			this.compColors = new ArrayList<>();
 			this.compNames = new ArrayList<>();
@@ -698,70 +715,81 @@ public class SolMFDPlot extends AbstractRupSetPlot {
 			List<IncrementalMagFreqDist> incrFuncs, List<DiscretizedFunc> cmlFuncs,
 			List<PlotCurveCharacterstics> incrChars, List<PlotCurveCharacterstics> cmlChars,
 			IncrementalMagFreqDist defaultMFD, Range rangeForMax, BranchSectNuclMFDs sectDists,
-			BranchRegionalMFDs regMFDModule, MFDType regType, int regionalIndex) {
+			BranchRegionalMFDs regMFDModule, MFDType regType, int regionalIndex, TectonicRegionType trt) {
 		int transAlpha = 30;
 		IncrementalMagFreqDist mfd = sol.calcNucleationMFD_forRegion(
-				region, defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size(), false);
+				region, defaultMFD.getMinX(), defaultMFD.getMaxX(), defaultMFD.size(), false, trt);
 		if (sol.hasModule(GridSourceProvider.class)) {
 			GridSourceProvider prov = sol.getGridSourceProvider();
-			SummedMagFreqDist gridMFD = null;
-			GriddedRegion gridReg = prov.getGriddedRegion();
-			boolean regionTest = region != null && region != gridReg && !region.getBorder().equals(gridReg.getBorder());
-			for (int i=0; i<gridReg.getNodeCount(); i++) {
-				IncrementalMagFreqDist nodeMFD = prov.getMFD(i);
-				if (nodeMFD == null)
-					continue;
-				if (regionTest && !region.contains(gridReg.getLocation(i)))
-					continue;
-				if (gridMFD == null)
-					gridMFD = new SummedMagFreqDist(nodeMFD.getMinX(), nodeMFD.getMaxX(), nodeMFD.size());
-				gridMFD.addIncrementalMagFreqDist(nodeMFD);
-			}
-			if (gridMFD != null) {
-				boolean includeTotal = true;
-				boolean includeGridOnly = true;
-				
-				if (regMFDModule != null && regMFDModule.hasGridded()) {
-					// we have distributions and will be plotting each, only include the relevant one in each plot
-					includeTotal = regType == MFDType.SUM;
-					includeGridOnly = regType == MFDType.GRID_ONLY;
+			if (trt == null || prov.getTectonicRegionTypes().contains(trt)) {
+				SummedMagFreqDist gridMFD = null;
+				GriddedRegion gridReg = prov.getGriddedRegion();
+				boolean regionTest = region != null &&
+						(gridReg == null || region != gridReg && !region.getBorder().equals(gridReg.getBorder()));
+				for (int i=0; i<prov.getNumLocations(); i++) {
+					IncrementalMagFreqDist nodeMFD = prov.getMFD(trt, i);
+					if (nodeMFD == null)
+						continue;
+					if (regionTest && !region.contains(prov.getLocation(i)))
+						continue;
+					if (gridMFD == null) {
+						gridMFD = new SummedMagFreqDist(nodeMFD.getMinX(), nodeMFD.getMaxX(), nodeMFD.size());
+					} else {
+						Preconditions.checkState((float)gridMFD.getMinX() == (float)nodeMFD.getMinX());
+						if (gridMFD.size() < nodeMFD.size()) {
+							SummedMagFreqDist tempMFD = new SummedMagFreqDist(nodeMFD.getMinX(), nodeMFD.getMaxX(), nodeMFD.size());
+							tempMFD.addIncrementalMagFreqDist(gridMFD);
+							gridMFD = tempMFD;
+						}
+					}
+					gridMFD.addIncrementalMagFreqDist(nodeMFD);
 				}
-				
-				if (includeGridOnly) {
-					gridMFD.setName(name+" Gridded");
-					incrFuncs.add(gridMFD);
-					EvenlyDiscretizedFunc cmlFunc = gridMFD.getCumRateDistWithOffset();
-					cmlFuncs.add(cmlFunc);
-					Color myColor = avg(color, Color.WHITE);
-					PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(
-							PlotLineType.DASHED, regType == MFDType.GRID_ONLY ? 5f : 3f, myColor);
-					incrChars.add(pChar);
-					cmlChars.add(pChar);
-//					chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, color.brighter()));
-					if (regMFDModule != null && regType == MFDType.GRID_ONLY && regMFDModule.hasGridded())
-						addFromRegMFDs(color, incrFuncs, cmlFuncs, incrChars, cmlChars, regMFDModule, regType,
-								regionalIndex, gridMFD, cmlFunc, pChar, myColor, transAlpha);
+				if (gridMFD != null) {
+					boolean includeTotal = true;
+					boolean includeGridOnly = true;
+					
+					if (regMFDModule != null && regMFDModule.hasGridded()) {
+						// we have distributions and will be plotting each, only include the relevant one in each plot
+						includeTotal = regType == MFDType.SUM;
+						includeGridOnly = regType == MFDType.GRID_ONLY;
+					}
+					
+					if (includeGridOnly) {
+						gridMFD.setName(name+" Gridded");
+						incrFuncs.add(gridMFD);
+						EvenlyDiscretizedFunc cmlFunc = gridMFD.getCumRateDistWithOffset();
+						cmlFuncs.add(cmlFunc);
+						Color myColor = avg(color, Color.WHITE);
+						PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(
+								PlotLineType.DASHED, regType == MFDType.GRID_ONLY ? 5f : 3f, myColor);
+						incrChars.add(pChar);
+						cmlChars.add(pChar);
+//						chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, color.brighter()));
+						if (regMFDModule != null && regType == MFDType.GRID_ONLY && regMFDModule.hasGridded())
+							addFromRegMFDs(color, incrFuncs, cmlFuncs, incrChars, cmlChars, regMFDModule, regType,
+									regionalIndex, gridMFD, cmlFunc, pChar, myColor, transAlpha);
+					}
+					
+					if (includeTotal) {
+						SummedMagFreqDist totalMFD = new SummedMagFreqDist(mfd.getMinX(), mfd.getMaxX(), mfd.size());
+						totalMFD.addIncrementalMagFreqDist(mfd);
+						totalMFD.addIncrementalMagFreqDist(gridMFD);
+						totalMFD.setName(name+" Total");
+						incrFuncs.add(totalMFD);
+						EvenlyDiscretizedFunc cmlFunc = totalMFD.getCumRateDistWithOffset();
+						cmlFuncs.add(cmlFunc);
+						Color myColor = color.darker();
+						PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(
+								PlotLineType.DASHED, regType == MFDType.SUM ? 5f : 3f, myColor);
+						incrChars.add(pChar);
+						cmlChars.add(pChar);
+						if (regMFDModule != null && regType == MFDType.SUM && regMFDModule.hasGridded())
+							addFromRegMFDs(color, incrFuncs, cmlFuncs, incrChars, cmlChars, regMFDModule, regType,
+									regionalIndex, totalMFD, cmlFunc, pChar, myColor, transAlpha);
+					}
+					
+					name = name+" Supra-Seis";
 				}
-				
-				if (includeTotal) {
-					SummedMagFreqDist totalMFD = new SummedMagFreqDist(mfd.getMinX(), mfd.getMaxX(), mfd.size());
-					totalMFD.addIncrementalMagFreqDist(mfd);
-					totalMFD.addIncrementalMagFreqDist(gridMFD);
-					totalMFD.setName(name+" Total");
-					incrFuncs.add(totalMFD);
-					EvenlyDiscretizedFunc cmlFunc = totalMFD.getCumRateDistWithOffset();
-					cmlFuncs.add(cmlFunc);
-					Color myColor = color.darker();
-					PlotCurveCharacterstics pChar = new PlotCurveCharacterstics(
-							PlotLineType.DASHED, regType == MFDType.SUM ? 5f : 3f, myColor);
-					incrChars.add(pChar);
-					cmlChars.add(pChar);
-					if (regMFDModule != null && regType == MFDType.SUM && regMFDModule.hasGridded())
-						addFromRegMFDs(color, incrFuncs, cmlFuncs, incrChars, cmlChars, regMFDModule, regType,
-								regionalIndex, totalMFD, cmlFunc, pChar, myColor, transAlpha);
-				}
-				
-				name = name+" Supra-Seis";
 			}
 		}
 		mfd.setName(name);

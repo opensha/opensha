@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -60,6 +61,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations.StitchedFaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfitStats.MisfitStats;
@@ -111,6 +113,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SlipAl
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_U3_HybridLogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupsThroughCreepingSectBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModelBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
@@ -132,6 +135,7 @@ import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SparseGutenbergRichterSolver;
 import org.opensha.sha.magdist.SparseGutenbergRichterSolver.SpreadingMethod;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
@@ -607,8 +611,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 						RandomBValSampler sampler = rupSet.requireModule(BranchSamplingManager.class).getSampler(bValNode);
 						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, sampler.getBValues());
 					} else {
-						double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
-						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, bVal);
+						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, branch.requireValue(SectionSupraSeisBValues.class));
 					}
 					return builder.subSeisMoRateReduction(moRateRed).buildSlipRatesOnly();
 				}
@@ -747,11 +750,11 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	private static NSHM23_ConstraintBuilder getAveragedConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		// TODO maybe add sampling support?
-		SupraSeisBValues[] bVals;
+		SectionSupraSeisBValues[] bVals;
 		if (branch.hasValue(SupraSeisBValues.AVERAGE))
 			bVals = SupraSeisBValues.values();
 		else
-			bVals = new SupraSeisBValues[] { branch.requireValue(SupraSeisBValues.class) };
+			bVals = new SectionSupraSeisBValues[] { branch.requireValue(SectionSupraSeisBValues.class) };
 		
 		NSHM23_SegmentationModels[] segModels;
 		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE))
@@ -768,7 +771,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		LogicTreeBranch<LogicTreeNode> branchCopy = new LogicTreeBranch<>(levels);
 		for (LogicTreeNode node : branch)
 			branchCopy.setValue(node);
-		for (SupraSeisBValues bVal : bVals) {
+		for (SectionSupraSeisBValues bVal : bVals) {
 			for (NSHM23_SegmentationModels segModel : segModels) {
 				// create copy of the branch
 				LogicTreeBranch<LogicTreeNode> subBranch = branchCopy.copy();
@@ -798,7 +801,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			
 			String branchStr = null;
 			if (bVals.length > 1)
-				branchStr = avgBranch.requireValue(SupraSeisBValues.class).getShortName();
+				branchStr = avgBranch.requireValue(SectionSupraSeisBValues.class).getShortName();
 			if (segModels.length > 1) {
 				if (branchStr == null)
 					branchStr = "";
@@ -838,7 +841,12 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					"Have %s sections but %s section b-values", rupSet.getNumSections(), sectSpecificBValues.length);
 			bVal = NSHM23_ConstraintBuilder.momentWeightedAverage(rupSet, sectSpecificBValues);
 		} else {
-			bVal = branch.requireValue(SupraSeisBValues.class).bValue;
+			SectionSupraSeisBValues bValues = branch.requireValue(SectionSupraSeisBValues.class);
+			sectSpecificBValues = bValues.getSectBValues(rupSet);
+			if (Double.isFinite(bValues.getB()))
+				bVal = bValues.getB();
+			else
+				bVal = SectionSupraSeisBValues.momentWeightedAverage(rupSet, sectSpecificBValues);
 		}
 		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
 		
@@ -1076,8 +1084,24 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	}
 	
 	@Override
-	public NSHM23_AbstractGridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
-		return buildGridSourceProv(sol, branch);
+	public GridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
+		NSHM23_AbstractGridSourceProvider prov = buildGridSourceProv(sol, branch);
+		
+		double minMag = 2.55d;
+		if (prov instanceof NSHM23_SingleRegionGridSourceProvider) {
+			return ((NSHM23_SingleRegionGridSourceProvider)prov).convertToGridSourceList(minMag);
+		} else {
+			Preconditions.checkState(prov instanceof NSHM23_CombinedRegionGridSourceProvider);
+			NSHM23_CombinedRegionGridSourceProvider combProv = (NSHM23_CombinedRegionGridSourceProvider)prov;
+			List<? extends GridSourceProvider> regionalProviders = combProv.getRegionalProviders();
+			GridSourceList[] gridLists = new GridSourceList[regionalProviders.size()];
+			for (int i=0; i<gridLists.length; i++) {
+				GridSourceProvider regionalProv = regionalProviders.get(i);
+				Preconditions.checkState(regionalProv instanceof NSHM23_SingleRegionGridSourceProvider);
+				gridLists[i] = ((NSHM23_SingleRegionGridSourceProvider)regionalProv).convertToGridSourceList(minMag);
+			}
+			return GridSourceList.combine(combProv.getGriddedRegion(), gridLists);
+		}
 	}
 	
 	@Override
@@ -1206,6 +1230,17 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		return ret;
 	}
 	
+	private static EnumMap<TectonicRegionType, Region> trtRegions = null;
+	
+	private static synchronized EnumMap<TectonicRegionType, Region> getTRT_Regions() throws IOException {
+		if (trtRegions == null) {
+			trtRegions = new EnumMap<>(TectonicRegionType.class);
+			trtRegions.put(TectonicRegionType.ACTIVE_SHALLOW, NSHM23_RegionLoader.GridSystemRegions.WUS_ACTIVE.load());
+			trtRegions.put(TectonicRegionType.STABLE_SHALLOW, NSHM23_RegionLoader.GridSystemRegions.CEUS_STABLE.load());
+		}
+		return trtRegions;
+	}
+	
 	private static NSHM23_SingleRegionGridSourceProvider buildSingleGridSourceProv(FaultSystemSolution sol,
 			SeismicityRegions region, NSHM23_RegionalSeismicity seisBranch, NSHM23_DeclusteringAlgorithms declusteringAlg,
 			NSHM23_SeisSmoothingAlgorithms seisSmooth, double maxMagOff, EvenlyDiscretizedFunc refMFD,
@@ -1254,7 +1289,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 //		EvenlyDiscretizedFunc depthNuclDistFunc = NSHM23_SeisDepthDistributions.load(region);
 		
 		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, binnedDepthDistFunc,
-				fractStrikeSlip, fractNormal, fractReverse);
+				fractStrikeSlip, fractNormal, fractReverse, getTRT_Regions());
 	}
 	
 	public static NSHM23_FaultCubeAssociations buildU3IngredientsFaultCubeAssociations(FaultSystemRupSet rupSet) throws IOException {
@@ -1324,7 +1359,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		}
 
 		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, binnedDepthDistFunc,
-				fractStrikeSlip, fractNormal, fractReverse);
+				fractStrikeSlip, fractNormal, fractReverse, null);
 	}
 
 	@Override

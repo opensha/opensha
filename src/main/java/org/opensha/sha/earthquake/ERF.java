@@ -70,10 +70,11 @@ public interface ERF extends BaseERF, Iterable<ProbEqkSource> {
 	public List<EqkRupture> drawRandomEventSet(Site site, Collection<SourceFilter> sourceFilters);
 	
 	/**
-	 * If non null, this can be used to consolidate disaggregation results into a consolidatd (and potentially more useful)
+	 * If non null, this can be used to consolidate disaggregation results into a consolidated (and potentially more useful)
 	 * list; this is most useful when many sources in an ERF rupture the same fault, and you want that fault to only
 	 * be listed once. The default implementation returns null.
 	 * @return consolidator or null
+	 * @see {@link DisaggregationSourceRuptureInfo#consolidate(Collection, int, String)}
 	 */
 	public default UnaryOperator<List<DisaggregationSourceRuptureInfo>> getDisaggSourceConsolidator() {
 		return null;

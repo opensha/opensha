@@ -58,6 +58,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilde
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SlipAlongRuptureModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.RupturePlausibilityModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationMFD_Adjustment;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SegmentationModelBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SubSectConstraintModels;
@@ -74,6 +75,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.ClassicModelInvers
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionFaultModels;
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -99,6 +101,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	// minimum MFD uncertainty
 	public static double MFD_MIN_FRACT_UNCERT = 0.1;
+	
+	public static double SUB_SECT_DDW_FRACT = Double.NaN; // use default
 	
 	public static SubSectConstraintModels SUB_SECT_CONSTR_DEFAULT = SubSectConstraintModels.TOT_NUCL_RATE;
 	
@@ -148,7 +152,10 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetDeformationModel dm = fm.getDefaultDeformationModel();
 		List<? extends FaultSection> subSects;
 		try {
-			subSects = dm.build(fm);
+			if (Double.isFinite(SUB_SECT_DDW_FRACT))
+				subSects = dm.build(fm, 2, SUB_SECT_DDW_FRACT, Double.NaN);
+			else
+				subSects = dm.build(fm);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -275,6 +282,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetDeformationModel dm = branch.requireValue(RupSetDeformationModel.class);
 		Preconditions.checkState(dm.isApplicableTo(fm),
 				"Fault and deformation models are not compatible: %s, %s", fm.getName(), dm.getName());
+		if (Double.isFinite(SUB_SECT_DDW_FRACT))
+			return dm.build(fm, 2, SUB_SECT_DDW_FRACT, Double.NaN);
 		return dm.build(fm);
 	}
 
@@ -402,8 +411,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 						RandomBValSampler sampler = rupSet.requireModule(BranchSamplingManager.class).getSampler(bValNode);
 						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, sampler.getBValues());
 					} else {
-						double bVal = branch.requireValue(SupraSeisBValues.class).bValue;
-						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, bVal);
+						builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet,  branch.requireValue(SectionSupraSeisBValues.class));
 					}
 					return builder.subSeisMoRateReduction(moRateRed).buildSlipRatesOnly();
 				}
@@ -478,11 +486,13 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	private static NSHM23_ConstraintBuilder getAveragedConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
 		// TODO maybe add sampling support?
-		SupraSeisBValues[] bVals;
+		SectionSupraSeisBValues[] bVals;
 		if (branch.hasValue(SupraSeisBValues.AVERAGE))
 			bVals = SupraSeisBValues.values();
+		else if (branch.hasValue(PRVI25_SubductionBValues.AVERAGE))
+			bVals = PRVI25_SubductionBValues.values();
 		else
-			bVals = new SupraSeisBValues[] { branch.requireValue(SupraSeisBValues.class) };
+			bVals = new SectionSupraSeisBValues[] { branch.requireValue(SectionSupraSeisBValues.class) };
 		
 		NSHM23_SegmentationModels[] segModels;
 		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE))
@@ -499,7 +509,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		LogicTreeBranch<LogicTreeNode> branchCopy = new LogicTreeBranch<>(levels);
 		for (LogicTreeNode node : branch)
 			branchCopy.setValue(node);
-		for (SupraSeisBValues bVal : bVals) {
+		for (SectionSupraSeisBValues bVal : bVals) {
 			for (NSHM23_SegmentationModels segModel : segModels) {
 				// create copy of the branch
 				LogicTreeBranch<LogicTreeNode> subBranch = branchCopy.copy();
@@ -529,7 +539,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			
 			String branchStr = null;
 			if (bVals.length > 1)
-				branchStr = avgBranch.requireValue(SupraSeisBValues.class).getShortName();
+				branchStr = avgBranch.requireValue(SectionSupraSeisBValues.class).getShortName();
 			if (segModels.length > 1) {
 				if (branchStr == null)
 					branchStr = "";
@@ -552,7 +562,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	}
 	
 	private static NSHM23_ConstraintBuilder getConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE) || branch.hasValue(SupraSeisBValues.AVERAGE))
+		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE) || branch.hasValue(SupraSeisBValues.AVERAGE) || branch.hasValue(PRVI25_SubductionBValues.AVERAGE))
 			// return averaged instance, looping over b-values and/or segmentation branches
 			return getAveragedConstraintBuilder(rupSet, branch);
 		return doGetConstraintBuilder(rupSet, branch);
@@ -569,11 +579,14 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 					"Have %s sections but %s section b-values", rupSet.getNumSections(), sectSpecificBValues.length);
 			bVal = NSHM23_ConstraintBuilder.momentWeightedAverage(rupSet, sectSpecificBValues);
 		} else {
-			bVal = branch.requireValue(SupraSeisBValues.class).bValue;
+			SectionSupraSeisBValues bValues = branch.requireValue(SectionSupraSeisBValues.class);
+			sectSpecificBValues = bValues.getSectBValues(rupSet);
+			if (Double.isFinite(bValues.getB()))
+				bVal = bValues.getB();
+			else
+				bVal = SectionSupraSeisBValues.momentWeightedAverage(rupSet, sectSpecificBValues);
 		}
 		NSHM23_ConstraintBuilder constrBuilder = new NSHM23_ConstraintBuilder(rupSet, bVal, sectSpecificBValues);
-		
-		RupSetFaultModel fm = branch.getValue(RupSetFaultModel.class);
 		
 		SubSeisMoRateReduction reduction = SupraSeisBValInversionTargetMFDs.SUB_SEIS_MO_RATE_REDUCTION_DEFAULT;
 		if (branch.hasValue(SubSeisMoRateReductions.class))
@@ -917,13 +930,19 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	public LogicTree<?> getGridSourceTree(LogicTree<?> faultTree) {
 		if (faultTree.getBranch(0).hasValue(PRVI25_CrustalFaultModels.class))
 			return LogicTree.buildExhaustive(PRVI25_LogicTreeBranch.levelsCrustalOffFault, true);
+		if (faultTree.getBranch(0).hasValue(PRVI25_SubductionFaultModels.class))
+			return LogicTree.buildExhaustive(PRVI25_LogicTreeBranch.levelsSubductionGridded, true);
 		return null;
 	}
 
 	@Override
 	public GridSourceProvider buildGridSourceProvider(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch)
 			throws IOException {
-		return PRVI25_GridSourceBuilder.buildCrustalGridSourceProv(sol, fullBranch);
+		if (fullBranch.hasValue(PRVI25_CrustalFaultModels.class))
+			return PRVI25_GridSourceBuilder.buildCrustalGridSourceProv(sol, fullBranch);
+		if (fullBranch.hasValue(PRVI25_SubductionFaultModels.class))
+			return PRVI25_GridSourceBuilder.buildCombinedSubductionGridSourceList(sol, fullBranch);
+		throw new IllegalStateException("Unexpected logic tree branch: "+fullBranch);
 	}
 	
 	@Override

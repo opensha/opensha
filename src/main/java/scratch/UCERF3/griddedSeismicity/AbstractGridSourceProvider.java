@@ -2,6 +2,7 @@ package scratch.UCERF3.griddedSeismicity;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.function.DoubleBinaryOperator;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -14,12 +15,14 @@ import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
-import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider.Abstract;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider.Abstract;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.Point2Vert_FaultPoisSource;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.collect.Maps;
 
@@ -31,7 +34,7 @@ import scratch.UCERF3.utils.GardnerKnopoffAftershockFilter;
  * @author Peter Powers
  * @version $Id:$
  */
-public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abstract implements ArchivableModule {
+public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.Abstract implements ArchivableModule {
 
 	private static final WC1994_MagLengthRelationship magLenRel = new WC1994_MagLengthRelationship();
 	private static final double ptSrcCutoff = 6.0;
@@ -59,11 +62,6 @@ public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abst
 
 		return buildSource(mfd, duration, bgRupType, loc, fracStrikeSlip, fracNormal, fracReverse);
 	}
-	
-	@Override
-	public void applyAftershockFilter(IncrementalMagFreqDist mfd) {
-		applyGK_AftershockFilter(mfd);
-	}
 
 	public static ProbEqkSource buildSource(IncrementalMagFreqDist mfd, double duration, BackgroundRupType bgRupType,
 			Location loc, double fracStrikeSlip, double fracNormal, double fracReverse) {
@@ -88,16 +86,8 @@ public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abst
 		}
 	}
 	
-	/*
-	 * Applies gardner Knopoff aftershock filter scaling to MFD in place.
-	 */
-	public static void applyGK_AftershockFilter(IncrementalMagFreqDist mfd) {
-		double scale;
-		for (int i=0; i<mfd.size(); i++) {
-			scale = GardnerKnopoffAftershockFilter.scaleForMagnitude(mfd.getX(i));
-			mfd.set(i, mfd.getY(i) * scale);
-		}
-	}
+	public static DoubleBinaryOperator GK_AFTERSHOCK_FILTER =
+			(M,R) -> R*GardnerKnopoffAftershockFilter.scaleForMagnitude(M);
 
 	@Override
 	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
@@ -115,7 +105,7 @@ public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abst
 	}
 	
 	@Override
-	public void scaleAllMFDs(double[] valuesArray) {
+	public void scaleAll(double[] valuesArray) {
 		if(valuesArray.length != getGriddedRegion().getNodeCount())
 			throw new RuntimeException("Error: valuesArray must have same length as getGriddedRegion().getNodeCount()");
 		for(int i=0;i<valuesArray.length;i++) {
@@ -129,19 +119,31 @@ public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abst
 			}
 		}
 	}
+	
+	@Override
+	public TectonicRegionType getTectonicRegionType(int gridIndex) {
+		return TectonicRegionType.ACTIVE_SHALLOW;
+	}
 
 	public static final String ARCHIVE_GRID_REGION_FILE_NAME = "grid_region.geojson";
 	public static final String ARCHIVE_MECH_WEIGHT_FILE_NAME = "grid_mech_weights.csv";
 	public static final String ARCHIVE_SUB_SEIS_FILE_NAME = "grid_sub_seis_mfds.csv";
 	public static final String ARCHIVE_UNASSOCIATED_FILE_NAME = "grid_unassociated_mfds.csv";
+	
+	static TectonicRegionType[] getActiveShallowArray(int size) {
+		TectonicRegionType[] trts = new TectonicRegionType[size];
+		for (int i=0; i<trts.length; i++)
+			trts[i] = TectonicRegionType.ACTIVE_SHALLOW;
+		return trts;
+	}
 
-	public static class Precomputed extends GridSourceProvider.AbstractPrecomputed {
+	public static class Precomputed extends MFDGridSourceProvider.AbstractPrecomputed {
 		
 		private Precomputed() {
 			super(SOURCE_MIN_MAG_CUTOFF);
 		}
 		
-		public Precomputed(GridSourceProvider prov) {
+		public Precomputed(MFDGridSourceProvider prov) {
 			super(prov, SOURCE_MIN_MAG_CUTOFF);
 		}
 
@@ -153,17 +155,20 @@ public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abst
 		public Precomputed(GriddedRegion region, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
 				double[] fracReverse) {
-			super(region, nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse, SOURCE_MIN_MAG_CUTOFF);
+			this(region, nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse,
+					getActiveShallowArray(region.getNodeCount()));
+		}
+
+		public Precomputed(GriddedRegion region, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
+				double[] fracReverse, TectonicRegionType[] trts) {
+			super(region, nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse,
+					trts, SOURCE_MIN_MAG_CUTOFF);
 		}
 
 		@Override
 		public String getName() {
 			return "Precomputed UCERF3 Grid Source Provider";
-		}
-
-		@Override
-		public void applyAftershockFilter(IncrementalMagFreqDist mfd) {
-			applyGK_AftershockFilter(mfd);
 		}
 
 		@Override
@@ -180,12 +185,16 @@ public abstract class AbstractGridSourceProvider extends GridSourceProvider.Abst
 		}
 
 		@Override
-		public GridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+		public MFDGridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
-				double[] fracReverse) {
-			// TODO Auto-generated method stub
+				double[] fracReverse, TectonicRegionType[] trts) {
 			return new Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
-					fracStrikeSlip, fracNormal, fracReverse);
+					fracStrikeSlip, fracNormal, fracReverse, trts);
+		}
+
+		@Override
+		public TectonicRegionType getTectonicRegionType(int gridIndex) {
+			return TectonicRegionType.ACTIVE_SHALLOW;
 		}
 		
 	}

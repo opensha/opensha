@@ -18,6 +18,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
@@ -146,7 +147,7 @@ public class CacheFileGen {
 				Preconditions.checkNotNull(regionForGridded);
 			}
 		}
-		GridSourceProvider origGridProv = origFSS.getGridSourceProvider();
+		MFDGridSourceProvider origGridProv = origFSS.requireModule(MFDGridSourceProvider.class);
 		GriddedRegion region = origGridProv.getGriddedRegion();
 		Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs = new HashMap<>();
 		Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs = new HashMap<>();
@@ -187,8 +188,8 @@ public class CacheFileGen {
 			}
 			Preconditions.checkState(nodeUnassociatedMFDs.get(index) != null || nodeSubSeisMFDs.get(index) != null);
 		}
-		GridSourceProvider gridProv = new GridSourceFileReader(region, nodeSubSeisMFDs, nodeUnassociatedMFDs);
-		for (int i=0; i<gridProv.size(); i++) {
+		MFDGridSourceProvider gridProv = new GridSourceFileReader(region, nodeSubSeisMFDs, nodeUnassociatedMFDs);
+		for (int i=0; i<gridProv.getNumLocations(); i++) {
 			IncrementalMagFreqDist totMFD = gridProv.getMFD(i);
 			IncrementalMagFreqDist assocMFD = gridProv.getMFD_SubSeisOnFault(i);
 			IncrementalMagFreqDist offMFD = gridProv.getMFD_Unassociated(i);

@@ -54,6 +54,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SectNucleationMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.SegmentationImpliedSectNuclMFD_Estimator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.ThresholdAveragingSectNuclMFD_Estimator;
@@ -201,6 +202,15 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		private UncertaintyBoundType uncertAdjDataTargetBound;
 		
 		private List<Region> constrainedRegions;
+
+		public Builder(FaultSystemRupSet rupSet, SectionSupraSeisBValues bValues) {
+			this.rupSet = rupSet;
+			this.sectSpecificBValues = bValues.getSectBValues(rupSet);
+			if (sectSpecificBValues == null)
+				this.supraSeisBValue = bValues.getB();
+			else
+				this.supraSeisBValue = Double.NaN;
+		}
 
 		public Builder(FaultSystemRupSet rupSet, double supraSeisBValue) {
 			this.rupSet = rupSet;

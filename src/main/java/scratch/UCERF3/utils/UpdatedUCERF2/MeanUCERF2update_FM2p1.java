@@ -20,7 +20,7 @@ public class MeanUCERF2update_FM2p1 extends MeanUCERF2_FM2pt1 {
 	private NSHMP08_GridSourceGenerator gridSrcGen;
 
 	public MeanUCERF2update_FM2p1() {
-		gridSrcGen = new NSHMP08_GridSourceGenerator(GridSources.ALL);
+		gridSrcGen = new NSHMP08_GridSourceGenerator(U2GridSources.ALL);
 	}
 	
 	@Override

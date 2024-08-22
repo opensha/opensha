@@ -14,6 +14,8 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.util.minisections.MinisectionMappings;
 import org.opensha.sha.earthquake.faultSysSolution.util.minisections.MinisectionSlipRecord;
@@ -27,6 +29,9 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
+@DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
+@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
+@DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum PRVI25_SubductionDeformationModels implements RupSetDeformationModel {
 	FULL("Full Rate", "Full", 0.5,
 			Map.of(PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE, "PRVI_sub_v1_large_full_rate_minisections.txt",

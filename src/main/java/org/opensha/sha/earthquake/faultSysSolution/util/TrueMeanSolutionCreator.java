@@ -130,6 +130,7 @@ public class TrueMeanSolutionCreator {
 		private double area;
 		
 		private Object[] comp;
+		private int hashCode;
 		
 		// not part of unique checks
 		private int globalID;
@@ -151,6 +152,7 @@ public class TrueMeanSolutionCreator {
 			comp[cnt++] = area;
 			for (int sectID : sectIDs)
 				comp[cnt++] = sectID;
+			hashCode = Arrays.hashCode(comp);
 			
 			rupMFD = new ArbitrarilyDiscretizedFunc();
 			this.length = length;
@@ -211,7 +213,7 @@ public class TrueMeanSolutionCreator {
 
 		@Override
 		public int hashCode() {
-			return Arrays.hashCode(comp);
+			return hashCode;
 		}
 
 		@Override
@@ -286,15 +288,17 @@ public class TrueMeanSolutionCreator {
 			
 			if (gridProv != null)
 				gridProvAvg = gridProv.averagingAccumulator();
-			if (myRupTRTs != null)
+			if (myRupTRTs != null) {
+				System.out.println("Will track rupture tectonic region types");
 				rupTRTs = new ArrayList<>();
+			}
 		} else {
 			if (gridProvAvg != null && gridProv == null) {
 				System.err.println("WARNING: not all solutions contain grid source providers, disabling averaging");
 				gridProvAvg = null;
 			}
 			if (rupTRTs != null && myRupTRTs == null) {
-				System.err.println("WARNING: not all rupture sets contain tectonic region types, won't track");
+				System.err.println("WARNING: not all rupture sets contain tectonic region types, no longer tracking");
 				rupTRTs = null;
 			}
 		}

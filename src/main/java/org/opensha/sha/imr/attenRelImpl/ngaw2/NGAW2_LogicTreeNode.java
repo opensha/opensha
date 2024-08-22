@@ -5,7 +5,7 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.imr.AttenRelRef;
-import org.opensha.sha.imr.logicTree.ScalarIMR_LogicTreeNode;
+import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
 
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 
@@ -18,7 +18,7 @@ import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 @DoesNotAffect(AbstractGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME)
 @DoesNotAffect(AbstractGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
 @DoesNotAffect(AbstractGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
-public enum NGAW2_LogicTreeNode implements ScalarIMR_LogicTreeNode {
+public enum NGAW2_LogicTreeNode implements ScalarIMRsLogicTreeNode.SingleModel {
 	ASK_2014(AttenRelRef.ASK_2014, 0.22),
 	BSSA_2014(AttenRelRef.BSSA_2014, 0.22),
 	CB_2014(AttenRelRef.CB_2014, 0.22),

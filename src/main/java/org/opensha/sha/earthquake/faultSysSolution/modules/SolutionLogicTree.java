@@ -12,6 +12,7 @@ import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -28,6 +29,7 @@ import org.opensha.commons.data.CSVWriter;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.CSVReader;
 import org.opensha.commons.geo.GriddedRegion;
+import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
@@ -46,11 +48,15 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet.RuptureProperties;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.AnnealingProgress;
-import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider.AbstractPrecomputed;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRupture;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider.AbstractPrecomputed;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.BranchAverageSolutionCreator;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
+import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;
@@ -618,7 +624,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		private File getBranchSubDir(LogicTreeBranch<?> branch, List<LogicTreeNode> gridOnlyNodes,
 				List<LogicTreeLevel<? extends LogicTreeNode>> gridOnlyLevels) {
-			File subDir = new File(resultsDir, branch.buildFileName());
+			File subDir = branch.getBranchDirectory(resultsDir, false);
 			if (!subDir.exists()) {
 				// see if we have branch levels that don't affect the raw solution
 				List<LogicTreeLevel<? extends LogicTreeNode>> levelsAffecting = new ArrayList<>();
@@ -629,8 +635,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 					if (level.affects(FaultSystemSolution.RATES_FILE_NAME, true)) {
 						levelsAffecting.add(level);
 						nodesAffecting.add(node);
-					} else if (level.affects(GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true)
-							|| level.affects(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true)) {
+					} else if (level.affects(MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true)
+							|| level.affects(MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true)) {
 						if (gridOnlyLevels != null)
 							gridOnlyLevels.add(level);
 						if (gridOnlyNodes != null)
@@ -678,6 +684,31 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			if (!sol.hasAvailableModule(GridSourceProvider.class)) {
 				// see if we have one available
 				File gridProvsDir = new File(subDir, "grid_source_providers");
+//				System.out.println("Looking for GridSourceProviders in "+gridProvsDir.getAbsolutePath()+" (exists? "+gridProvsDir.exists()+")");
+				if (!gridProvsDir.exists()) {
+					List<LogicTreeLevel<? extends LogicTreeNode>> gridLevels = new ArrayList<>();
+					List<LogicTreeNode> gridNodes = new ArrayList<>();
+					for (int i=0; i<branch.size(); i++) {
+						LogicTreeLevel<?> level = branch.getLevel(i);
+						LogicTreeNode node = branch.getValue(i);
+						if (gridOnlyLevels.contains(level))
+							continue;
+						if (GridSourceProvider.affectedByLevel(level)
+								|| node instanceof ScalarIMRsLogicTreeNode || node instanceof ScalarIMR_ParamsLogicTreeNode) {
+							gridLevels.add(level);
+							gridNodes.add(branch.getValue(i));
+						}
+					}
+					if (gridLevels.size() < branch.size()) {
+						LogicTreeBranch<LogicTreeNode> subBranch = new LogicTreeBranch<>(gridLevels, gridNodes);
+						File subRunDir = subBranch.getBranchDirectory(resultsDir, false);
+//						System.out.println("Testing subRunDir="+subRunDir.getAbsolutePath()+" (exists? "+subRunDir.exists()+")");
+						if (subRunDir.exists()) {
+							gridProvsDir = new File(subRunDir, "grid_source_providers");
+//							System.out.println("Looking for GridSourceProviders in "+gridProvsDir.getAbsolutePath()+" (exists? "+gridProvsDir.exists()+")");
+						}
+					}
+				}
 				if (gridProvsDir.exists()) {
 					File gridProvFile;
 					if (gridOnlyLevels.isEmpty()) {
@@ -765,9 +796,10 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			List<LogicTreeLevel<? extends LogicTreeNode>> gridOnlyLevels = new ArrayList<>();
 			File subDir = getBranchSubDir(branch, gridOnlyNodes, gridOnlyLevels);
 			File solFile = new File(subDir, "solution.zip");
-			if (solFile.equals(prevSolFile)) {
-				if (prevGridProv != null)
+			if (gridOnlyLevels.isEmpty() && solFile.equals(prevSolFile)) {
+				if (prevGridProv != null) {
 					return prevGridProv;
+				}
 				if (prevSol != null && prevSol.hasAvailableModule(GridSourceProvider.class))
 					return prevSol.getGridSourceProvider();
 			} else {
@@ -957,64 +989,99 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	public Map<String, String> writeGridProvToArchive(GridSourceProvider prov, ZipOutputStream zout, String prefix,
 			LogicTreeBranch<?> branch, HashSet<String> writtenFiles) throws IOException {
 		Map<String, String> mappings = new LinkedHashMap<>();
-		GridSourceProvider.AbstractPrecomputed precomputed;
-		if (prov instanceof GridSourceProvider.AbstractPrecomputed)
-			precomputed = (GridSourceProvider.AbstractPrecomputed)prov;
-		else
-			precomputed = new GridSourceProvider.Default(prov);
-		
-		Class<? extends ArchivableModule> loadingClass = precomputed.getLoadingClass();
-		if (!GridSourceProvider.AbstractPrecomputed.class.isAssignableFrom(loadingClass))
-			loadingClass = GridSourceProvider.Default.class;
-		
-		String gridRegFile = getRecordBranchFileName(branch, prefix,
-				GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false, mappings);
-		if (gridRegFile != null && !writtenFiles.contains(gridRegFile)) {
-			FileBackedModule.initEntry(zout, null, gridRegFile);
-			Feature regFeature = precomputed.getGriddedRegion().toFeature();
-			OutputStreamWriter writer = new OutputStreamWriter(zout);
-			Feature.write(regFeature, writer);
-			writer.flush();
-			zout.flush();
-			zout.closeEntry();
-			writtenFiles.add(gridRegFile);
-		}
+		if (prov instanceof MFDGridSourceProvider) {
+			MFDGridSourceProvider.AbstractPrecomputed precomputed;
+			if (prov instanceof MFDGridSourceProvider.AbstractPrecomputed)
+				precomputed = (MFDGridSourceProvider.AbstractPrecomputed)prov;
+			else
+				precomputed = new MFDGridSourceProvider.Default((MFDGridSourceProvider)prov);
+			
+			Class<? extends ArchivableModule> loadingClass = precomputed.getLoadingClass();
+			if (!MFDGridSourceProvider.AbstractPrecomputed.class.isAssignableFrom(loadingClass))
+				loadingClass = MFDGridSourceProvider.Default.class;
+			
+			String gridRegFile = getRecordBranchFileName(branch, prefix,
+					GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false, mappings);
+			if (gridRegFile != null && !writtenFiles.contains(gridRegFile)) {
+				FileBackedModule.initEntry(zout, null, gridRegFile);
+				Feature regFeature = precomputed.getGriddedRegion().toFeature();
+				OutputStreamWriter writer = new OutputStreamWriter(zout);
+				Feature.write(regFeature, writer);
+				writer.flush();
+				zout.flush();
+				zout.closeEntry();
+				writtenFiles.add(gridRegFile);
+			}
 
-		String mechFile = getRecordBranchFileName(branch, prefix,
-				GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false, mappings);
-		if (mechFile != null && !writtenFiles.contains(mechFile)) {
-			CSV_BackedModule.writeToArchive(precomputed.buildWeightsCSV(), zout, null, mechFile);
-			writtenFiles.add(mechFile);
-		}
-		String subSeisFile = getRecordBranchFileName(branch, prefix,
-				GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true, mappings);
-		if (subSeisFile != null && !writtenFiles.contains(subSeisFile)) {
-			CSVFile<String> csv = precomputed.buildSubSeisCSV();
-			if (csv != null) {
-				CSV_BackedModule.writeToArchive(csv, zout, null, subSeisFile);
-				writtenFiles.add(subSeisFile);
+			String mechFile = getRecordBranchFileName(branch, prefix,
+					MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false, mappings);
+			if (mechFile != null && !writtenFiles.contains(mechFile)) {
+				CSV_BackedModule.writeToArchive(precomputed.buildWeightsCSV(), zout, null, mechFile);
+				writtenFiles.add(mechFile);
 			}
-		}
-		String unassociatedFile = getRecordBranchFileName(branch, prefix,
-				GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true, mappings);
-		if (unassociatedFile != null && !writtenFiles.contains(unassociatedFile)) {
-			CSVFile<String> csv = precomputed.buildUnassociatedCSV();
-			if (csv != null) {
-				CSV_BackedModule.writeToArchive(csv, zout, null, unassociatedFile);
-				writtenFiles.add(unassociatedFile);
+			String subSeisFile = getRecordBranchFileName(branch, prefix,
+					MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true, mappings);
+			if (subSeisFile != null && !writtenFiles.contains(subSeisFile)) {
+				CSVFile<String> csv = precomputed.buildSubSeisCSV();
+				if (csv != null) {
+					CSV_BackedModule.writeToArchive(csv, zout, null, subSeisFile);
+					writtenFiles.add(subSeisFile);
+				}
 			}
+			String unassociatedFile = getRecordBranchFileName(branch, prefix,
+					MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true, mappings);
+			if (unassociatedFile != null && !writtenFiles.contains(unassociatedFile)) {
+				CSVFile<String> csv = precomputed.buildUnassociatedCSV();
+				if (csv != null) {
+					CSV_BackedModule.writeToArchive(csv, zout, null, unassociatedFile);
+					writtenFiles.add(unassociatedFile);
+				}
+			}
+			
+			// write the implementing class
+			List<? extends LogicTreeLevel<?>> mappingLevels = getLevelsAffectingFile(MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true);
+			String gridProvFile = getRecordBranchFileName(branch, prefix,
+					GRID_PROV_INSTANCE_FILE_NAME, mappingLevels, mappings);
+			if (!writtenFiles.contains(gridProvFile)) {
+				FileBackedModule.initEntry(zout, null, gridProvFile);
+				writeGridSourceProvInstanceFile(zout, loadingClass);
+				zout.closeEntry();
+				writtenFiles.add(gridProvFile);
+			}
+		} else if (prov instanceof GridSourceList) {
+			GridSourceList gridSources = (GridSourceList)prov;
+			
+			if (gridSources.getGriddedRegion() != null) {
+				String gridRegFile = getRecordBranchFileName(branch, prefix,
+						GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false, mappings);
+				if (gridRegFile != null && !writtenFiles.contains(gridRegFile)) {
+					FileBackedModule.initEntry(zout, null, gridRegFile);
+					Feature regFeature = gridSources.getGriddedRegion().toFeature();
+					OutputStreamWriter writer = new OutputStreamWriter(zout);
+					Feature.write(regFeature, writer);
+					writer.flush();
+					zout.flush();
+					zout.closeEntry();
+					writtenFiles.add(gridRegFile);
+				}
+			}
+
+			String locsFile = getRecordBranchFileName(branch, prefix,
+					GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, false, mappings);
+			if (locsFile != null && !writtenFiles.contains(locsFile)) {
+				CSV_BackedModule.writeToArchive(gridSources.buildGridLocsCSV(), zout, null, locsFile);
+				writtenFiles.add(locsFile);
+			}
+			String sourcesFile = getRecordBranchFileName(branch, prefix,
+					GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, true, mappings);
+			if (sourcesFile != null && !writtenFiles.contains(sourcesFile)) {
+				gridSources.writeGridSourcesCSV(zout, sourcesFile);
+				writtenFiles.add(sourcesFile);
+			}
+		} else {
+			throw new UnsupportedOperationException("Don't yet support writing grid source provider of type: "+prov.getClass().getName());
 		}
 		
-		// write the implementing class
-		List<? extends LogicTreeLevel<?>> mappingLevels = getLevelsAffectingFile(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true);
-		String gridProvFile = getRecordBranchFileName(branch, prefix,
-				GRID_PROV_INSTANCE_FILE_NAME, mappingLevels, mappings);
-		if (!writtenFiles.contains(gridProvFile)) {
-			FileBackedModule.initEntry(zout, null, gridProvFile);
-			writeGridSourceProvInstanceFile(zout, loadingClass);
-			zout.closeEntry();
-			writtenFiles.add(unassociatedFile);
-		}
 		
 		return mappings;
 	}
@@ -1048,6 +1115,9 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	
 	private GriddedRegion prevGridReg;
 	private String prevGridRegFile;
+	
+	private LocationList prevGridLocs;
+	private String prevGridLocsFile;
 	
 	private CSVFile<String> prevGridMechs;
 	private String prevGridMechFile;
@@ -1095,75 +1165,118 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	
 	public synchronized GridSourceProvider loadGridProvForBranch(LogicTreeBranch<?> branch) throws IOException {
 		String gridRegFile = getBranchFileName(branch, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false);
-		String mechFile = getBranchFileName(branch, GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false);
-		
+		String mechFile = getBranchFileName(branch, MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false);
+		String locsFile = getBranchFileName(branch, GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, false);
+
 		ZipFile zip = getZipFile();
-		if (gridRegFile == null || zip.getEntry(gridRegFile) == null || mechFile == null || zip.getEntry(mechFile) == null)
-			return null;
-		GriddedRegion region;
-		CSVFile<String> mechCSV;
-		synchronized (SolutionLogicTree.this) {
-			if (prevGridReg != null && gridRegFile.equals(prevGridRegFile)) {
-				region = prevGridReg;
-			} else {
-				BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, null, gridRegFile);
-				InputStreamReader regionReader = new InputStreamReader(regionIS);
-				Feature regFeature = Feature.read(regionReader);
-				region = GriddedRegion.fromFeature(regFeature);
-				prevGridReg = region;
-				prevGridRegFile = gridRegFile;
+		if (locsFile != null) {
+			// GridSourceList
+			GriddedRegion region;
+			synchronized (SolutionLogicTree.this) {
+				if (prevGridReg != null && gridRegFile.equals(prevGridRegFile)) {
+					region = prevGridReg;
+				} else {
+					BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, null, gridRegFile);
+					InputStreamReader regionReader = new InputStreamReader(regionIS);
+					Feature regFeature = Feature.read(regionReader);
+					region = GriddedRegion.fromFeature(regFeature);
+					prevGridReg = region;
+					prevGridRegFile = gridRegFile;
+				}
 			}
 			
-			// load mechanisms
-			if (prevGridMechs != null && mechFile.equals(prevGridMechFile)) {
-				mechCSV = prevGridMechs;
+			LocationList locs;
+			if (region != null) {
+				locs = region.getNodeList();
 			} else {
-				mechCSV = CSV_BackedModule.loadFromArchive(zip, null, mechFile);
-				prevGridMechs = mechCSV;
-				prevGridMechFile = mechFile;
+				synchronized (SolutionLogicTree.this) {
+					if (prevGridLocs != null && locsFile.equals(prevGridLocsFile)) {
+						locs = prevGridLocs;
+					} else {
+						CSVFile<String> locsCSV = CSV_BackedModule.loadFromArchive(zip, null, locsFile);
+						locs = GridSourceList.loadGridLocsCSV(locsCSV, region);
+						prevGridLocs = locs;
+						prevGridLocsFile = locsFile;
+					}
+				}
 			}
-		}
-		
-		CSVFile<String> subSeisCSV = null;
-		CSVFile<String> nodeUnassociatedCSV = null;
-		
-		String subSeisFile = getBranchFileName(branch, GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true);
-		String nodeUnassociatedFile = getBranchFileName(branch, GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true);
-		if (subSeisFile != null && zip.getEntry(subSeisFile) != null)
-			subSeisCSV = GridSourceProvider.AbstractPrecomputed.loadCSV(zip, null, subSeisFile);
-		if (nodeUnassociatedFile != null && zip.getEntry(nodeUnassociatedFile) != null)
-			nodeUnassociatedCSV = GridSourceProvider.AbstractPrecomputed.loadCSV(zip, null, nodeUnassociatedFile);
-		
-		List<? extends LogicTreeLevel<?>> mappingLevels = getLevelsAffectingFile(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true);
-		String gridProvFile = getBranchFileName(branch, GRID_PROV_INSTANCE_FILE_NAME, mappingLevels);
-		ZipEntry gridProvEntry = zip.getEntry(gridProvFile);
-		if (gridProvEntry != null) {
-			// try to read the actual implementing class
-			try {
-				BufferedReader bRead = new BufferedReader(new InputStreamReader(zip.getInputStream(gridProvEntry)));
-				JsonReader reader = new JsonReader(bRead);
-				reader.beginObject();
-				reader.nextName();
-				String className = reader.nextString();
-				reader.endObject();
-				reader.close();
-				bRead.close();
-				Class<? extends GridSourceProvider.AbstractPrecomputed> loadingClass =
-						(Class<? extends AbstractPrecomputed>) Class.forName(className);
 
-				Constructor<? extends GridSourceProvider.AbstractPrecomputed> constructor = loadingClass.getDeclaredConstructor();
+			String sourcesFile = getBranchFileName(branch, GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, true);
+			CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(zip, null, sourcesFile);
+			
+			EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists = GridSourceList.loadGridSourcesCSV(rupSectsCSV, locs);
+			if (region != null)
+				return new GridSourceList.Precomputed(region, trtRuptureLists);
+			return new GridSourceList.Precomputed(locs, trtRuptureLists);
+		} else {
+			// MFDGridSourceProvider
+			if (gridRegFile == null || zip.getEntry(gridRegFile) == null || mechFile == null || zip.getEntry(mechFile) == null)
+				return null;
+			GriddedRegion region;
+			CSVFile<String> mechCSV;
+			synchronized (SolutionLogicTree.this) {
+				if (prevGridReg != null && gridRegFile.equals(prevGridRegFile)) {
+					region = prevGridReg;
+				} else {
+					BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, null, gridRegFile);
+					InputStreamReader regionReader = new InputStreamReader(regionIS);
+					Feature regFeature = Feature.read(regionReader);
+					region = GriddedRegion.fromFeature(regFeature);
+					prevGridReg = region;
+					prevGridRegFile = gridRegFile;
+				}
 				
-				constructor.setAccessible(true);
-				
-				GridSourceProvider.AbstractPrecomputed module = constructor.newInstance();
-				module.init(region, subSeisCSV, nodeUnassociatedCSV, mechCSV);
-				return module;
-			} catch (Exception e) {
-				System.err.println("Warning: couldn't load specified GridSourceProvider instance: "+e.getMessage());
+				// load mechanisms
+				if (prevGridMechs != null && mechFile.equals(prevGridMechFile)) {
+					mechCSV = prevGridMechs;
+				} else {
+					mechCSV = CSV_BackedModule.loadFromArchive(zip, null, mechFile);
+					prevGridMechs = mechCSV;
+					prevGridMechFile = mechFile;
+				}
 			}
+			
+			CSVFile<String> subSeisCSV = null;
+			CSVFile<String> nodeUnassociatedCSV = null;
+			
+			String subSeisFile = getBranchFileName(branch, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true);
+			String nodeUnassociatedFile = getBranchFileName(branch, MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME, true);
+			if (subSeisFile != null && zip.getEntry(subSeisFile) != null)
+				subSeisCSV = MFDGridSourceProvider.AbstractPrecomputed.loadCSV(zip, null, subSeisFile);
+			if (nodeUnassociatedFile != null && zip.getEntry(nodeUnassociatedFile) != null)
+				nodeUnassociatedCSV = MFDGridSourceProvider.AbstractPrecomputed.loadCSV(zip, null, nodeUnassociatedFile);
+			
+			List<? extends LogicTreeLevel<?>> mappingLevels = getLevelsAffectingFile(MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME, true);
+			String gridProvFile = getBranchFileName(branch, GRID_PROV_INSTANCE_FILE_NAME, mappingLevels);
+			ZipEntry gridProvEntry = zip.getEntry(gridProvFile);
+			if (gridProvEntry != null) {
+				// try to read the actual implementing class
+				try {
+					BufferedReader bRead = new BufferedReader(new InputStreamReader(zip.getInputStream(gridProvEntry)));
+					JsonReader reader = new JsonReader(bRead);
+					reader.beginObject();
+					reader.nextName();
+					String className = reader.nextString();
+					reader.endObject();
+					reader.close();
+					bRead.close();
+					Class<? extends MFDGridSourceProvider.AbstractPrecomputed> loadingClass =
+							(Class<? extends MFDGridSourceProvider.AbstractPrecomputed>) Class.forName(className);
+
+					Constructor<? extends MFDGridSourceProvider.AbstractPrecomputed> constructor = loadingClass.getDeclaredConstructor();
+					
+					constructor.setAccessible(true);
+					
+					MFDGridSourceProvider.AbstractPrecomputed module = constructor.newInstance();
+					module.init(region, subSeisCSV, nodeUnassociatedCSV, mechCSV);
+					return module;
+				} catch (Exception e) {
+					System.err.println("Warning: couldn't load specified GridSourceProvider instance: "+e.getMessage());
+				}
+			}
+			// defer to default
+			return new MFDGridSourceProvider.Default(region, subSeisCSV, nodeUnassociatedCSV, mechCSV);
 		}
-		// defer to default
-		return new GridSourceProvider.Default(region, subSeisCSV, nodeUnassociatedCSV, mechCSV);
 	}
 	
 	/**
@@ -1235,15 +1348,27 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		sol.addModule(branch);
 		
 		String gridRegFile = getBranchFileName(branch, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME, false);
-		String mechFile = getBranchFileName(branch, GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false);
-		if (gridRegFile != null && zip.getEntry(gridRegFile) != null && mechFile != null && zip.getEntry(mechFile) != null) {
+		String mechFile = getBranchFileName(branch, MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME, false);
+		String locsFile = getBranchFileName(branch, GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, false);
+//		System.out.println("Trying to load GridSoruceProv");
+//		System.out.println("\tregFile: "+gridRegFile+"; null ? "+(zip.getEntry(gridRegFile) == null));
+//		System.out.println("\tregFile: "+mechFile+"; null ? "+(zip.getEntry(mechFile) == null));
+//		System.out.println("\tregFile: "+locsFile+"; null ? "+(zip.getEntry(locsFile) == null));
+//		String gridSourcesFile = getBranchFileName(branch, GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, true);
+//		System.out.println("\tsourcesFile: "+gridSourcesFile+"; null ? "+(zip.getEntry(gridSourcesFile) == null));
+		Class<? extends GridSourceProvider> provClass = null;
+		if (gridRegFile != null && zip.getEntry(gridRegFile) != null && mechFile != null && zip.getEntry(mechFile) != null)
+			provClass = MFDGridSourceProvider.class;
+		else if (locsFile != null && zip.getEntry(locsFile) != null)
+			provClass = GridSourceList.class;
+		if (provClass != null) {
 			sol.addAvailableModule(new Callable<GridSourceProvider>() {
 
 				@Override
 				public GridSourceProvider call() throws Exception {
 					return loadGridProvForBranch(branch);
 				}
-			}, GridSourceProvider.class);
+			}, provClass);
 		}
 		
 		String statsFile = getBranchFileName(branch, InversionMisfitStats.MISFIT_STATS_FILE_NAME, true);

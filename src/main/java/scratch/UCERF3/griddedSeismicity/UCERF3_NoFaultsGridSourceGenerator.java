@@ -11,10 +11,12 @@ import org.opensha.commons.util.DataUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.commons.gui.plot.GraphWindow;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
@@ -149,11 +151,11 @@ public class UCERF3_NoFaultsGridSourceGenerator extends AbstractGridSourceProvid
 	}
 
 	@Override
-	public GridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+	public MFDGridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 			Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
-			double[] fracReverse) {
+			double[] fracReverse, TectonicRegionType[] trts) {
 		return new AbstractGridSourceProvider.Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
-				fracStrikeSlip, fracNormal, fracReverse);
+				fracStrikeSlip, fracNormal, fracReverse, trts);
 	}
 
 }

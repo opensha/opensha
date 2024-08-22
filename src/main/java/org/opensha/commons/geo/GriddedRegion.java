@@ -1229,12 +1229,12 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		if (Double.isNaN(latSpacing)) {
 			System.err.println("Warning: "+JSON_LAT_SPACING+" not specified in GriddedRegion GeoJSON properties, "
 					+ "inferring from nodes");
-			latSpacing = inferSpacing(latNodeCenters);
+			latSpacing = inferSpacing(latNodeCenters, false);
 		}
 		if (Double.isNaN(lonSpacing)) {
 			System.err.println("Warning: "+JSON_LON_SPACING+" not specified in GriddedRegion GeoJSON properties, "
 					+ "inferring from nodes");
-			lonSpacing = inferSpacing(lonNodeCenters);
+			lonSpacing = inferSpacing(lonNodeCenters, false);
 		}
 		GriddedRegion gridRegion = new GriddedRegion(
 				region, latNodeCenters, lonNodeCenters, latSpacing, lonSpacing, anchor, nodeList);
@@ -1259,22 +1259,64 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		double[] array = Doubles.toArray(values);
 		
 		// verify that it is evenly spaced
-		inferSpacing(array);
+		inferSpacing(array, true);
 		
 		return array;
 	}
 	
-	private static double inferSpacing(double[] values) {
+	private static double inferSpacing(double[] values, boolean allowHoles) {
 		if (values.length < 1)
 			return 0d;
-		double spacing = Math.abs(values[values.length-1] - values[0])/(values.length-1);
-		for (int i=1; i<values.length; i++) {
-			float calcSpacing = (float)Math.abs(values[i] - values[i-1]);
-			Preconditions.checkState(calcSpacing == (float)spacing, 
-					"Cannot infer spacing. Implied spacing from whole node array is %s, "
-					+ "but spacing between elements %s and %s is %s", (float)spacing, i-1, i, calcSpacing);
+		double spacing;
+		if (allowHoles) {
+			// spacing should be the smallest gap between consecutive; all gaps should be a multiple of this
+			spacing = Double.POSITIVE_INFINITY;
+			boolean allEqual = true;
+			for (int i=1; i<values.length; i++) {
+				double mySpacing = Math.abs(values[i] - values[i-1]);
+				Preconditions.checkState(Double.isFinite(mySpacing) && mySpacing > 0d,
+						"Spacing between consecutive grid nodes must be >0 and finite: %s", mySpacing);
+				if (i == 1) {
+					spacing = mySpacing;
+				} else {
+					allEqual &= (float)mySpacing == (float)spacing;
+					if (!allEqual)
+						spacing = Math.min(spacing, mySpacing);
+				}
+			}
+			if (!allEqual) {
+				// validate that all gaps are multiple of spacing
+				for (int i=1; i<values.length; i++) {
+					double mySpacing = Math.abs(values[i] - values[i-1]);
+					if ((float)mySpacing != (float)spacing) {
+						double multiple = mySpacing / spacing;
+						Preconditions.checkState((float)multiple == (float)Math.round(multiple),
+								"Does list contains holes (or is irregular). Spacing should be an exact multiple of the "
+								+ "smallest spacing (%s), but spacing between elements %s and %s is %s.",
+								(float)spacing, i-1, i, (float)mySpacing);
+					}
+				}
+			}
+		} else {
+			spacing = Math.abs(values[values.length-1] - values[0])/(values.length-1);
+			for (int i=1; i<values.length; i++) {
+				float calcSpacing = (float)Math.abs(values[i] - values[i-1]);
+				Preconditions.checkState(calcSpacing == (float)spacing, 
+						"Cannot infer spacing. Implied spacing from whole node array is %s, "
+						+ "but spacing between elements %s and %s is %s", (float)spacing, i-1, i, calcSpacing);
+			}
 		}
 		return spacing;
+	}
+	
+	public static double inferLatSpacing(LocationList gridLocs) {
+		double[] centers = inferNodeCenters(gridLocs, true);
+		return inferSpacing(centers, true);
+	}
+	
+	public static double inferLonSpacing(LocationList gridLocs) {
+		double[] centers = inferNodeCenters(gridLocs, false);
+		return inferSpacing(centers, true);
 	}
 	
 	public static class Adapter extends TypeAdapter<GriddedRegion> {
@@ -1320,8 +1362,8 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 	public static GriddedRegion inferRegion(LocationList nodeList) throws IllegalStateException {
 		double[] latNodes = inferNodeCenters(nodeList, true);
 		double[] lonNodes = inferNodeCenters(nodeList, false);
-		double latSpacing = inferSpacing(latNodes);
-		double lonSpacing = inferSpacing(lonNodes);
+		double latSpacing = inferSpacing(latNodes, false);
+		double lonSpacing = inferSpacing(lonNodes, false);
 		
 		double latBuffer = latSpacing*0.25;
 		double lonBuffer = lonSpacing*0.25;
@@ -1397,6 +1439,54 @@ public class GriddedRegion extends Region implements Iterable<Location> {
 		}
 		Preconditions.checkState(Double.isFinite(min) && Double.isFinite(max), "No nodes found at lat=%s", lat);
 		return Range.closed(min, max);
+	}
+	
+	/**
+	 * Infers a gridded region from a node list. The node list *must* be evenly spaced (to 4-byte floating point
+	 * precision) in latitude and longitude, and can be irregularly shaped. Unlike {@link #inferRegion(LocationList)},
+	 * it can contain holes, in which case the returned gridded region will contain extra nodes..
+	 * 
+	 * If any of these criteria are not met, an {@link IllegalStateException} will be thrown.
+	 * 
+	 * @param nodeList
+	 * @return inferred gridded region for the given node list
+	 * @throws IllegalStateException if the node list is not evenly spaced in both latitude and longitude
+	 */
+	public static GriddedRegion inferEncompassingRegion(LocationList nodeList) {
+		Location anchor = nodeList.get(0);
+		double latSpacing = inferLatSpacing(nodeList);
+		double lonSpacing = inferLonSpacing(nodeList);
+		double minLat = Double.POSITIVE_INFINITY;
+		double maxLat = Double.NEGATIVE_INFINITY;
+		double minLon = Double.POSITIVE_INFINITY;
+		double maxLon = Double.NEGATIVE_INFINITY;
+		for (Location loc : nodeList) {
+			minLat = Math.min(minLat, loc.lat);
+			maxLat = Math.max(maxLat, loc.lat);
+			minLon = Math.min(minLon, loc.lon);
+			maxLon = Math.max(maxLon, loc.lon);
+		}
+		// buffer by a bit to make sure we enclose each node (none on the boundary)
+		minLat = Math.max(-90d, minLat-0.5*latSpacing);
+		maxLat = Math.min(90d, maxLat+0.5*latSpacing);
+		if (minLon < 0d) {
+			Preconditions.checkState(minLon >= -180d);
+			Preconditions.checkState(maxLon <= 180d);
+			minLon = Math.max(-180d, minLon-0.5*lonSpacing);
+			maxLon = Math.min(180d, maxLon+0.5*lonSpacing);
+		} else {
+			Preconditions.checkState(maxLon <= 360d);
+			minLon = Math.max(0d, minLon-0.5*lonSpacing);
+			maxLon = Math.min(360d, maxLon+0.5*lonSpacing);
+		}
+		Region encompassing = new Region(new Location(minLat, minLon), new Location(maxLat, maxLon));
+		GriddedRegion encompassingRegion = new GriddedRegion(encompassing, latSpacing, lonSpacing, anchor);
+		for (Location loc : nodeList) {
+			int index = encompassingRegion.indexForLocation(loc);
+			Preconditions.checkState(index >= 0, "Failed to build an encompassing region for the give node list. This "
+					+ "location is in the original list, but doesn't map to a grid node: %s", loc);
+		}
+		return encompassingRegion;
 	}
 	
 	public static void main(String[] args) throws IOException {

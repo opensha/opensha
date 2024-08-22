@@ -38,6 +38,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.ConnectivityCluster;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SectionSupraSeisBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -78,8 +79,8 @@ public class ClassicModelInversionSolver extends ClusterSpecificInversionSolver 
 	
 	private AnalyticalSingleFaultInversionSolver getAnalyiticalSolver(boolean includeExclusionModel) {
 		BinaryRuptureProbabilityCalc exclusionModel = includeExclusionModel ? this.exclusionModel : null;
-		if (branch.hasValue(SupraSeisBValues.class))
-			return new AnalyticalSingleFaultInversionSolver(branch.requireValue(SupraSeisBValues.class).bValue, exclusionModel);
+		if (branch.hasValue(SectionSupraSeisBValues.Constant.class))
+			return new AnalyticalSingleFaultInversionSolver(branch.requireValue(SectionSupraSeisBValues.class).getB(), exclusionModel);
 		return new AnalyticalSingleFaultInversionSolver(exclusionModel);
 	}
 

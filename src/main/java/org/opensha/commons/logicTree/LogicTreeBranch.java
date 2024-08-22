@@ -1,5 +1,6 @@
 package org.opensha.commons.logicTree;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
@@ -11,6 +12,7 @@ import java.util.Objects;
 
 import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomlySampledLevel;
+import org.opensha.commons.logicTree.LogicTreeNode.AdapterBackedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.RandomlySampledNode;
 import org.opensha.commons.util.ClassUtils;
@@ -136,6 +138,26 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule
 			if (node != null && clazz.isAssignableFrom(node.getClass()))
 				return (T)node;
 		return null;
+	}
+	
+	/**
+	 * Gets a list of all branch value matching the given type, or null if none exist
+	 * 
+	 * @param <T>
+	 * @param clazz
+	 * @return
+	 */
+	@SuppressWarnings("unchecked") // it is checked through isAssignableFrom
+	public <T extends LogicTreeNode> List<T> getValues(Class<? extends T> clazz) {
+		List<T> matches = null;
+		for (LogicTreeNode node : values) {
+			if (node != null && clazz.isAssignableFrom(node.getClass())) {
+				if (matches == null)
+					matches = new ArrayList<>();
+				matches.add((T)node);
+			}
+		}
+		return matches;
 	}
 	
 	/**
@@ -389,19 +411,78 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule
 	 * @return
 	 */
 	public String buildFileName() {
-		String str = null;
+		StringBuilder fileName = new StringBuilder();
 		for (int i=0; i<size(); i++) {
 			LogicTreeNode value = values.get(i);
 			if (value == null)
 				throw new IllegalStateException("Must be fully specified to build file name! (missing="
 						+levels.get(i).getName()+")");
-			if (str == null)
-				str = "";
-			else
-				str += "_";
-			str += value.getFilePrefix();
+			if (i > 0)
+				fileName.append('_');
+			fileName.append(value.getFilePrefix());
 		}
-		return str;
+		return fileName.toString();
+	}
+	
+	private static final int NAME_LENGTH_LIMIT = 255;
+	
+	public File getBranchDirectory(File parentDir, boolean mkdir) {
+		return getBranchDirectory(parentDir, mkdir, "");
+	}
+	
+	public File getBranchDirectory(File parentDir, boolean mkdir, String suffix) {
+		if (suffix == null)
+			suffix = "";
+		StringBuilder fileName = new StringBuilder();
+		for (int i=0; i<size(); i++) {
+			LogicTreeNode value = values.get(i);
+			if (value == null)
+				throw new IllegalStateException("Must be fully specified to build file name! (missing="
+						+levels.get(i).getName()+")");
+			String prefix = value.getFilePrefix();
+			int newLen = fileName.length()+prefix.length()+1+suffix.length();
+			if (newLen >= NAME_LENGTH_LIMIT) {
+				// need to break it up
+				File subDir = new File(parentDir, fileName.toString());
+				Preconditions.checkState(!mkdir || subDir.exists() || subDir.mkdir(),
+						"Directory doesn't exist and couldn't be created: %s", subDir.getAbsolutePath());
+				parentDir = subDir;
+				fileName.setLength(0); // clear it
+			}
+			if (fileName.length() > 0)
+				fileName.append('_');
+			fileName.append(prefix);
+		}
+		Preconditions.checkState(fileName.length() > 0);
+		fileName.append(suffix);
+		File dir = new File(parentDir, fileName.toString());
+		Preconditions.checkState(!mkdir || dir.exists() || dir.mkdir(),
+				"Directory doesn't exist and couldn't be created: %s", dir.getAbsolutePath());
+		return dir;
+	}
+	
+	public String getBranchZipPath() {
+		StringBuilder fileName = new StringBuilder();
+		int length = 0;
+		for (int i=0; i<size(); i++) {
+			LogicTreeNode value = values.get(i);
+			if (value == null)
+				throw new IllegalStateException("Must be fully specified to build file name! (missing="
+						+levels.get(i).getName()+")");
+			String prefix = value.getFilePrefix();
+			int newLen = fileName.length()+prefix.length()+1;
+			if (newLen >= NAME_LENGTH_LIMIT) {
+				fileName.append('/');
+				length = 0;
+			}
+			if (length > 0) {
+				fileName.append('_');
+				length++;
+			}
+			length += prefix.length();
+			fileName.append(prefix);
+		}
+		return fileName.toString();
 	}
 	
 	@Override
@@ -700,7 +781,7 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule
 			} else if (JsonAdapterHelper.hasTypeAdapter(value)) {
 				out.name("adapterValue");
 				JsonAdapterHelper.writeAdapterValue(out, value);
-			}else if (!(value instanceof FileBackedNode)) {
+			} else if (!(value instanceof FileBackedNode)) {
 				out.name("class").value(value.getClass().getName());
 			}
 			
@@ -780,7 +861,9 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule
 			
 			in.endObject();
 
-			if(adapterNode != null){
+			if (adapterNode != null) {
+				if (adapterNode instanceof AdapterBackedNode)
+					((AdapterBackedNode)adapterNode).init(name, shortName, prefix, weight);
 				return adapterNode;
 			}
 			

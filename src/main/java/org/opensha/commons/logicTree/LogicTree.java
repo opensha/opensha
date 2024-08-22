@@ -301,10 +301,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		Preconditions.checkArgument(numSamples > 0);
 		Preconditions.checkState(!redrawDuplicates || numSamples <= size(),
 				"Cannot randomly sample %s branches from %s values without any duplicates!", numSamples, size());
-		double[] weights = new double[size()];
-		for (int i=0; i<weights.length; i++)
-			weights[i] = getBranchWeight(i);
-		IntegerPDF_FunctionSampler sampler = new IntegerPDF_FunctionSampler(weights);
+		IntegerPDF_FunctionSampler sampler = getSampler();
 		int[] indexCounts = new int[branches.size()];
 		int sampleCountSum = 0;
 		int uniqueBranches = 0;
@@ -340,8 +337,14 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				continue;
 			mostSamples = Integer.max(mostSamples, count);
 			LogicTreeBranch<E> branch = getBranch(index).copy();
-			branch.setOrigBranchWeight((double)count*weightEach);
-			samples.add(branch);
+			if (redrawDuplicates) {
+				branch.setOrigBranchWeight((double)count*weightEach);
+				samples.add(branch);
+			} else {
+				branch.setOrigBranchWeight(weightEach);
+				for (int i=0; i<count; i++)
+					samples.add(branch);
+			}
 			for (LogicTreeNode node : branch) {
 				if (sampledNodeCounts.containsKey(node))
 					sampledNodeCounts.put(node, sampledNodeCounts.get(node)+count);
@@ -362,7 +365,6 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 		if (verbose) {
 			System.out.println("\tSampled "+uniqueBranches+" unique branches a total of "+sampleCountSum
 					+" times. The most any single branch was sampled is "+mostSamples+" time(s).");
-			System.out.println("Sampled Logic Tree:");
 			Map<LogicTreeNode, Integer> origNodeCounts = new HashMap<>();
 			Map<LogicTreeNode, Double> origNodeWeights = new HashMap<>();
 			double totWeight = 0d;
@@ -379,55 +381,103 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 					}
 				}
 			}
-			DecimalFormat weightDF = new DecimalFormat("0.0000");
-			for (LogicTreeLevel<? extends E> level : levels) {
-				List<LogicTreeNode> origNodes = new ArrayList<>();
-				for (E node : level.getNodes())
-					if (origNodeCounts.containsKey(node))
-						origNodes.add(node);
-				if (origNodes.size() < 2)
-					continue;
-				System.out.println("\t"+level.getName());
-				for (int i=0; i<origNodes.size(); i++) {
-					LogicTreeNode node = origNodes.get(i);
-					int origCount = origNodeCounts.get(node);
-					double origWeight = origNodeWeights.get(node)/totWeight;
-					Integer sampleCount = sampledNodeCounts.get(node);
-					if (sampleCount == null)
-						sampleCount = 0;
-					double sampledWeight = sampleCount*weightEach;
-					System.out.println("\t\t"+node.getShortName()+":\tORIG count="+origCount
-								+", weight="+weightDF.format(origWeight)+";\tSAMPLED count="+sampleCount
-								+", weight="+weightDF.format(sampledWeight));
-					if (origNodes.size() > 20 && i == 9) {
-						int skipped = 0;
-						int skippedOrigCount = 0;
-						double skippedOrigWeight = 0d;
-						int skippedSampledCount = 0;
-						double skippedSampledWeight = 0d;
-						for (; i<origNodes.size()-2; i++) {
-							node = origNodes.get(i);
-							origCount = origNodeCounts.get(node);
-							origWeight = origNodeWeights.get(node)/totWeight;
-							sampleCount = sampledNodeCounts.get(node);
-							if (sampleCount == null)
-								sampleCount = 0;
-							sampledWeight = sampleCount*weightEach;
-
-							skipped++;
-							skippedOrigCount += origCount;
-							skippedOrigWeight += origWeight;
-							skippedSampledCount += sampleCount;
-							skippedSampledWeight += sampledWeight;
-						}
-						System.out.println("\t\t...(Skipping "+skipped+" branches with:\tORIG count="+skippedOrigCount
-								+", weight="+weightDF.format(skippedOrigWeight)+";\tSAMPLED count="+skippedSampledCount
-								+", weight="+weightDF.format(skippedSampledWeight)+")...");
-					}
-				}
-			}
+			if (totWeight != 1d)
+				for (LogicTreeNode node : List.copyOf(origNodeWeights.keySet()))
+					origNodeWeights.put(node, origNodeWeights.get(node)/totWeight);
+			printSamplingStats(levels, weightEach, sampledNodeCounts, origNodeCounts, origNodeWeights);
+				
 		}
 		return ret;
+	}
+
+	public static void printSamplingStats(List<? extends LogicTreeLevel<?>> levels,
+			double sampledWeightEach, Map<LogicTreeNode, Integer> sampledNodeCounts,
+			Map<LogicTreeNode, Integer> origNodeCounts, Map<LogicTreeNode, Double> origNodeWeights) {
+		Map<LogicTreeNode, Double> sampledNodeWeights = new HashMap<>(sampledNodeCounts.size());
+		for (LogicTreeNode node : sampledNodeCounts.keySet())
+			sampledNodeWeights.put(node, sampledNodeCounts.get(node)*sampledWeightEach);
+		printSamplingStats(levels, sampledNodeCounts, sampledNodeWeights, origNodeCounts, origNodeWeights);
+	}
+
+	public static void printSamplingStats(List<? extends LogicTreeLevel<?>> levels,
+			Map<LogicTreeNode, Integer> sampledNodeCounts, Map<LogicTreeNode, Double> sampledNodeWeights,
+			Map<LogicTreeNode, Integer> origNodeCounts, Map<LogicTreeNode, Double> origNodeWeights) {
+		System.out.println("Sampled Logic Tree:");
+		DecimalFormat weightDF = new DecimalFormat("0.0000");
+		DecimalFormat countDF = new DecimalFormat("0.#");
+		countDF.setGroupingSize(3);
+		countDF.setGroupingUsed(true);
+		for (LogicTreeLevel<?> level : levels) {
+			List<LogicTreeNode> origNodes = new ArrayList<>();
+			for (LogicTreeNode node : level.getNodes())
+				if (origNodeCounts.containsKey(node))
+					origNodes.add(node);
+			if (origNodes.size() < 2)
+				continue;
+			System.out.println("\t"+level.getName());
+			int minNumSamples = Integer.MAX_VALUE;
+			int maxNumSamples = 0;
+			int totNumSamples = 0;
+			boolean abbreviate = origNodes.size() > 20;
+			int abbrevPrintCount = 10;
+			for (int i=0; i<origNodes.size(); i++) {
+				LogicTreeNode node = origNodes.get(i);
+				int origCount = origNodeCounts.get(node);
+				double origWeight = origNodeWeights.get(node);
+				Integer sampleCount = sampledNodeCounts.get(node);
+				if (sampleCount == null)
+					sampleCount = 0;
+				double sampledWeight = sampledNodeWeights.get(node);
+				System.out.println("\t\t"+node.getShortName()+":\tORIG count="+countDF.format(origCount)
+							+" weight="+weightDF.format(origWeight)+";\tSAMPLED count="+countDF.format(sampleCount)
+							+" weight="+weightDF.format(sampledWeight));
+				if (abbreviate && i == abbrevPrintCount-1) {
+					int skipped = 0;
+					int skippedOrigCount = 0;
+					double skippedOrigWeight = 0d;
+					int skippedSampledCount = 0;
+					double skippedSampledWeight = 0d;
+					for (; i<origNodes.size()-2; i++) {
+						node = origNodes.get(i);
+						origCount = origNodeCounts.get(node);
+						origWeight = origNodeWeights.get(node);
+						sampleCount = sampledNodeCounts.get(node);
+						if (sampleCount == null)
+							sampleCount = 0;
+						sampledWeight = sampledNodeWeights.get(node);
+
+						skipped++;
+						skippedOrigCount += origCount;
+						skippedOrigWeight += origWeight;
+						skippedSampledCount += sampleCount;
+						skippedSampledWeight += sampledWeight;
+						minNumSamples = Integer.min(minNumSamples, sampleCount);
+						maxNumSamples = Integer.max(maxNumSamples, sampleCount);
+						totNumSamples += sampleCount;
+					}
+					System.out.println("\t\t(...Skipping "+skipped+" branches with:\tORIG count="+skippedOrigCount
+							+", weight="+weightDF.format(skippedOrigWeight)+";\tSAMPLED count="+skippedSampledCount
+							+", weight="+weightDF.format(skippedSampledWeight)+"...)");
+				} else {
+					minNumSamples = Integer.min(minNumSamples, sampleCount);
+					maxNumSamples = Integer.max(maxNumSamples, sampleCount);
+					totNumSamples += sampleCount;
+				}
+			}
+			System.out.println("\t\t\tSAMPLE COUNTS: ["+minNumSamples+", "+maxNumSamples+"]; avg="
+					+countDF.format((double)totNumSamples/(origNodes.size())));
+		}
+	}
+	
+	private transient IntegerPDF_FunctionSampler sampler = null;
+	public IntegerPDF_FunctionSampler getSampler() {
+		if (sampler == null) {
+			double[] weights = new double[size()];
+			for (int i=0; i<weights.length; i++)
+				weights[i] = getBranchWeight(i);
+			sampler = new IntegerPDF_FunctionSampler(weights);
+		}
+		return sampler;
 	}
 	
 	public static <E extends LogicTreeNode> LogicTree<E> buildExhaustive(
@@ -699,7 +749,7 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 									}
 								}
 							}
-							Preconditions.checkNotNull(node, "No matching node found with shortName=%s for level %s",
+							Preconditions.checkNotNull(node, "No matching node found for intputName=%s for level %s",
 									choice, level.getName());
 							Preconditions.checkState(perfectMatch || numFuzzyMatches == 1,
 									"%s choices for %s match %s", numFuzzyMatches, level.getName(), choice);
