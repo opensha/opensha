@@ -15,7 +15,7 @@ import gov.usgs.earthquake.nshmp.gmm.UsgsPrviBackbone2025;
 
 @AffectsNone
 public enum PRVI25_GMM_SigmaModel implements ScalarIMR_ParamsLogicTreeNode {
-	SIGMA_NGA("NGA Sigma Model", "NGA", UsgsPrviBackbone2025.SIGMA_REF_ID, 0.5d),
+	SIGMA_NGA("NGA Sigma Model", "NGA", UsgsPrviBackbone2025.SIGMA_NGA_ID, 0.5d),
 	SIGMA_PRVI("PRVI Sigma Model", "PRVI", UsgsPrviBackbone2025.SIGMA_PRVI_ID, 0.5d);
 	
 	private String name;

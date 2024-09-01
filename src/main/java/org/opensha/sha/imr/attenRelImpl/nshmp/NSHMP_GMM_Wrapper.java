@@ -9,8 +9,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.opensha.commons.calc.GaussianDistCalc;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
@@ -39,6 +41,7 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import org.opensha.sha.imr.param.OtherParams.Component;
 import org.opensha.sha.imr.param.OtherParams.ComponentParam;
+import org.opensha.sha.imr.param.OtherParams.SigmaTruncTypeParam;
 import org.opensha.sha.imr.param.PropagationEffectParams.DistanceJBParameter;
 import org.opensha.sha.imr.param.PropagationEffectParams.DistanceRupParameter;
 import org.opensha.sha.imr.param.PropagationEffectParams.DistanceX_Parameter;
@@ -334,25 +337,61 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			throws ParameterException {
 		LogicTree<GroundMotion> gmTree = getGroundMotionTree();
 		
+		// compute exceedance probability based on truncation type
+		final int sigmaTruncType;
+		if (sigmaTruncTypeParam == null ||
+				sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_NONE))
+			sigmaTruncType = 0; // none
+		else if (sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED))
+			sigmaTruncType = 1;
+		else if (sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_2SIDED))
+			sigmaTruncType = 2;
+		else
+			throw new IllegalStateException();
+		double numSig = sigmaTruncLevelParam.getValue();
+		
+		final int size = intensityMeasureLevels.size();
 		double weightSum = 0d;
 		boolean first = true;
+		double weight, mean, stdDev, x, y, stRndVar;
+		int i;
+		
+		double[] xVals, yVals;
+		if (intensityMeasureLevels instanceof LightFixedXFunc) {
+			xVals = ((LightFixedXFunc)intensityMeasureLevels).getXVals();
+			yVals = ((LightFixedXFunc)intensityMeasureLevels).getYVals();
+		} else {
+			xVals = new double[size];
+			yVals = new double[size];
+			for (i=0; i<size; i++)
+				xVals[i] = intensityMeasureLevels.getX(i);
+		}
+		
 		for (Branch<GroundMotion> branch : gmTree) {
-			double weight = branch.weight();
+			weight = branch.weight();
 			weightSum += weight;
-			double mean = branch.value().mean();
-			double stdDev = branch.value().sigma();
-			for (int i=0; i<intensityMeasureLevels.size(); i++) {
-				double x = intensityMeasureLevels.getX(i);
-				double y = getExceedProbability(mean, stdDev, x)*weight;
-				if (first)
-					intensityMeasureLevels.set(i, y);
+			mean = branch.value().mean();
+			stdDev = branch.value().sigma();
+			for (i=0; i<size; i++) {
+				stRndVar = (xVals[i] - mean) / stdDev;
+				if (sigmaTruncType == 0)
+					y = GaussianDistCalc.getExceedProb(stRndVar);
 				else
-					intensityMeasureLevels.set(i, intensityMeasureLevels.getY(i) + y);
+					y = GaussianDistCalc.getExceedProb(stRndVar, sigmaTruncType, numSig);
+				if (first)
+					yVals[i] = y*weight;
+				else
+					yVals[i] = Math.fma(y, weight, yVals[i]);
 			}
 			first = false;
 		}
 		if (weightSum != 1d)
-			intensityMeasureLevels.scale(1d/weightSum);
+			for (i=0; i<size; i++)
+				yVals[i] /= weightSum;
+		if (!(intensityMeasureLevels instanceof LightFixedXFunc))
+			// this means we didn't modify in place, need to set
+			for (i=0; i<size; i++)
+				intensityMeasureLevels.set(i, yVals[i]);
 		
 		return intensityMeasureLevels;
 	}
