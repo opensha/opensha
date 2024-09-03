@@ -220,7 +220,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		
 	},
 	
-	USGS_PRVI_AVTIVE(null, "USGS PRVI25 Active Crustal",
+	USGS_PRVI_ACTIVE(null, "USGS PRVI25 Active Crustal",
 			"PRVI25-Active", DEVELOPMENT) {
 		
 		@Override
