@@ -449,7 +449,7 @@ public class RuptureConnectionSearch implements SubModule<FaultSystemRupSet> {
 		if (debug) {
 			System.out.println("\tHave "+rupClusters.size()+" clusters:");
 			for (FaultSubsectionCluster cluster : rupClusters)
-				System.out.println("\t\t"+cluster);
+				System.out.println("\t\t"+cluster+": "+rupSet.getFaultSectionData(cluster.startSect.getSectionId()).getParentSectionName());
 		}
 		
 		List<Jump> jumps = calcRuptureJumps(rupClusters, debug);
@@ -475,11 +475,12 @@ public class RuptureConnectionSearch implements SubModule<FaultSystemRupSet> {
 			List<Jump> jumps, final boolean debug, FaultSubsectionCluster startCluster) {
 		
 		Multimap<FaultSubsectionCluster, Jump> jumpsFromMap = HashMultimap.create();
-		if (debug) {
+//		if (debug) {
+		// now always do this; turns out it was affecting things?
 			Collections.sort(jumps, Jump.id_comparator);
 			rupClusters = new ArrayList<>(rupClusters);
 			Collections.sort(rupClusters);
-		}
+//		}
 		for (Jump jump : jumps) {
 			jumpsFromMap.put(jump.fromCluster, jump);
 			Jump reversed = jump.reverse();
