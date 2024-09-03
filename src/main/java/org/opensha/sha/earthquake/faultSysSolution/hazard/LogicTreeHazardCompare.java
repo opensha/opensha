@@ -494,6 +494,16 @@ public class LogicTreeHazardCompare {
 				System.out.println("Ignoring any pre-computed mean maps");
 			mapper.ignorePrecomputed = ignorePrecomputed;
 			
+			if (cmd.hasOption("cpt-range")) {
+				String rangeStr = cmd.getOptionValue("cpt-range");
+				Preconditions.checkArgument(rangeStr.contains(","));
+				String[] split = rangeStr.split(",");
+				double lower = Double.parseDouble(split[0]);
+				double upper = Double.parseDouble(split[1]);
+				System.out.println("CPT range: ["+(float)lower+", "+(float)upper+"]");
+				mapper.setCPTRange(lower, upper);
+			}
+			
 			if (compHazardFile != null) {
 				SolutionLogicTree compSolTree;
 				if (compResultsFile == null) {
@@ -549,6 +559,7 @@ public class LogicTreeHazardCompare {
 		ops.addOption("ipm", "ignore-precomputed-maps", false,
 				"Flag to ignore precomputed mean maps");
 		ops.addOption("pdf", "write-pdfs", false, "Flag to write PDFs of top level maps");
+		ops.addOption(null, "cpt-range", true, "Custom CPT range for hazard maps, in log10 units. Specify as min,max");
 		
 		return ops;
 	}
@@ -688,6 +699,14 @@ public class LogicTreeHazardCompare {
 		exec = ExecutorUtils.newBlockingThreadPool(threads, Integer.max(threads*4, threads+10));
 		
 		System.out.println(branches.size()+" branches, total weight: "+totWeight);
+	}
+	
+	public void setCPTRange(double lower, double upper) {
+		try {
+			logCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().rescale(lower, upper);
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
 	}
 	
 	public SolHazardMapCalc getMapper() {
