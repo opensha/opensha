@@ -172,6 +172,11 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		siteSkipSourceFilter = SolHazardMapCalc.getSiteSkipSourceFilters(sourceFilter, cmd);
 		
 		gmmRefs = SolHazardMapCalc.getGMMs(cmd);
+		if (rank == 0) {
+			debug("GMMs:");
+			for (TectonicRegionType trt : gmmRefs.keySet())
+				debug("\tGMM for "+trt.name()+": "+gmmRefs.get(trt).getName());
+		}
 		
 		if (cmd.hasOption("periods")) {
 			List<Double> periodsList = new ArrayList<>();
@@ -715,18 +720,25 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					if (gridSeisOp != IncludeBackgroundOption.ONLY) {
 						for (File sourceDir : combineFromDirs) {
 							File combineFromRunDir;
-							if (sourceDir == null)
+							boolean verbose;
+							if (sourceDir == null) {
+								verbose = false; // don't print that we're trying, it's our own directory that we just created so of course it exists
 								combineFromRunDir = runDir;
-							else
+							} else {
+								verbose = true; // if it exists, state that we're trying to load
 								combineFromRunDir = getSolDir(sourceDir, branch, false);
+							}
 							File combineWithSubDir = new File(combineFromRunDir, combineWithHazardExcludingSubDirName);
 							
 							if (combineWithSubDir.exists()) {
-								debug("Seeing if we can reuse existing curves excluding gridded seismicity from "+combineWithSubDir.getAbsolutePath());
+								if (verbose)
+									debug("Seeing if we can reuse existing curves excluding gridded seismicity from "
+											+combineWithSubDir.getAbsolutePath());
 								try {
 									combineWithExcludeCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, combineWithSubDir, curvesPrefix);
 								} catch (Exception e) {
-									debug("Can't reuse: "+e.getMessage());
+									if (verbose)
+										debug("Can't reuse: "+e.getMessage());
 								}
 							}
 							if (combineWithExcludeCurves == null) {
@@ -749,10 +761,13 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 									File subHazardDir = new File(subRunDir, combineWithHazardExcludingSubDirName);
 									if (subHazardDir.exists()) {
 										try {
-											debug("Seeing if we can reuse existing curves excluding gridded seismicity from "+subHazardDir.getAbsolutePath());
+											if (verbose)
+												debug("Seeing if we can reuse existing curves excluding gridded seismicity from "
+														+subHazardDir.getAbsolutePath());
 											combineWithExcludeCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, subHazardDir, curvesPrefix);
 										} catch (Exception e) {
-											debug("Can't reuse: "+e.getMessage());
+											if (verbose)
+												debug("Can't reuse: "+e.getMessage());
 										}
 									}
 								}
