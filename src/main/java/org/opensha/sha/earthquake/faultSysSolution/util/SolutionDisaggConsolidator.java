@@ -19,9 +19,15 @@ public class SolutionDisaggConsolidator implements UnaryOperator<List<Disaggrega
 	public static final String PREFIX_TRT_GRIDDED_SOURCES = "Gridded Sources, ";
 	
 	private BaseFaultSystemSolutionERF erf;
+	private boolean participation;
 
 	public SolutionDisaggConsolidator(BaseFaultSystemSolutionERF erf) {
+		this(erf, true);
+	}
+
+	public SolutionDisaggConsolidator(BaseFaultSystemSolutionERF erf, boolean participation) {
 		this.erf = erf;
+		this.participation = participation;
 	}
 
 	@Override
@@ -38,17 +44,28 @@ public class SolutionDisaggConsolidator implements UnaryOperator<List<Disaggrega
 		Map<TectonicRegionType, List<DisaggregationSourceRuptureInfo>> trtGridSourceContribs =
 				new EnumMap<>(TectonicRegionType.class);
 		
+		double duration = participation ? Double.NaN : erf.getTimeSpan().getDuration();
+		
 		for (DisaggregationSourceRuptureInfo contrib : input) {
 			int sourceID = contrib.getId();
 			if (sourceID < numFSS) {
 				// fss rupture
 				int prevParent = -1;
+				double rupArea = participation ? Double.NaN : rupSet.getAreaForRup(erf.getFltSysRupIndexForSource(sourceID));
 				for (FaultSection sect : rupSet.getFaultSectionDataForRupture(erf.getFltSysRupIndexForSource(sourceID))) {
+					DisaggregationSourceRuptureInfo sectContrib;
+					if (participation) {
+						sectContrib = contrib;
+					} else {
+						// scale for nucleation
+						double nuclFract = rupSet.getAreaForSection(sect.getSectionId()) / rupArea;
+						sectContrib = contrib.getScaled(nuclFract, duration);
+					}
 					int parentID = sect.getParentSectionId();
 					if (parentID < 0) {
 						if (!noParentSectContribs.containsKey(sect.getSectionId()))
 							noParentSectContribs.put(sect.getSectionId(), new ArrayList<>());
-						noParentSectContribs.get(sect.getSectionId()).add(contrib);
+						noParentSectContribs.get(sect.getSectionId()).add(sectContrib);
 					} else if (parentID != prevParent) {
 						// likely (but not necessarily) new
 						List<DisaggregationSourceRuptureInfo> parentContribs = parentSectContribs.get(parentID);
@@ -56,11 +73,11 @@ public class SolutionDisaggConsolidator implements UnaryOperator<List<Disaggrega
 							parentContribs = new ArrayList<>();
 							parentSectContribs.put(parentID, parentContribs);
 							parentNames.put(parentID, sect.getParentSectionName());
-						} else if (parentSectContribs.get(parentSectContribs.size()-1) == contrib) {
-							// rupture jumps back to the same parent, don't count it twice
+						} else if (participation && parentSectContribs.get(parentSectContribs.size()-1) == sectContrib) {
+							// rupture jumps back to the same parent, don't count it twice (participation)
 							continue;
 						}
-						parentContribs.add(contrib);
+						parentContribs.add(sectContrib);
 					}
 					prevParent = sect.getParentSectionId();
 				}

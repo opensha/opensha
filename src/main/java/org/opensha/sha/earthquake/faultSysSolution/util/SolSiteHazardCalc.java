@@ -12,6 +12,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -273,7 +274,7 @@ public class SolSiteHazardCalc {
 		}
 		
 		IncludeBackgroundOption mainGridOp = getGridOp(cmd, sol);
-		IncludeBackgroundOption compGridOp = compSol == null ? null : getGridOp(cmd, sol);
+		IncludeBackgroundOption compGridOp = compSol == null ? null : getGridOp(cmd, compSol);
 		
 		Map<TectonicRegionType, AttenRelRef> gmmSuppliers = SolHazardMapCalc.getGMMs(cmd);
 		
@@ -293,7 +294,7 @@ public class SolSiteHazardCalc {
 				trts.addAll(prov.getTectonicRegionTypes());
 			}
 			
-			if (compGridOp != null) {
+			if (compGridOp == IncludeBackgroundOption.INCLUDE || compGridOp == IncludeBackgroundOption.ONLY) {
 				GridSourceProvider prov = compSol.getGridSourceProvider();
 				Preconditions.checkNotNull(prov);
 				trts.addAll(prov.getTectonicRegionTypes());
@@ -852,7 +853,7 @@ public class SolSiteHazardCalc {
 					table.addColumn("[_"+csvName+"_]("+csvName+")");
 				}
 				table.finalizeLine();
-				lines.addAll(table.wrap(perWrap, 0).build());
+				lines.addAll(table.wrap(5, 0).build());
 			} else {
 				String csvName = SolHazardMapCalc.getCSV_FileName("curves", periods[0]);
 				lines.add("Curve CSV File: [_"+csvName+"_]("+csvName+")");
@@ -1199,9 +1200,19 @@ public class SolSiteHazardCalc {
 									consolidated.remove(c);
 							DisaggregationSourceRuptureInfo other = null;
 							if (consolidated.size() > maxNumContribs) {
-								List<DisaggregationSourceRuptureInfo> otherSources = consolidated.subList(maxNumContribs, consolidated.size());
-								other = DisaggregationSourceRuptureInfo.consolidate(otherSources, -1, "Other");
+								// create "other" -- but need to sum in nucleation space
+								SolutionDisaggConsolidator nuclConsolodate = new SolutionDisaggConsolidator(erf, false);
+								List<DisaggregationSourceRuptureInfo> nuclConsolidated = nuclConsolodate.apply(result.sourceInfo);
+								HashSet<Integer> prevParents = new HashSet<>();
 								consolidated = consolidated.subList(0, maxNumContribs);
+								for (DisaggregationSourceRuptureInfo orig : consolidated)
+									if (orig.getId() >= 0)
+										prevParents.add(orig.getId());
+								List<DisaggregationSourceRuptureInfo> otherSources = new ArrayList<>();
+								for (DisaggregationSourceRuptureInfo nuclSect : nuclConsolidated)
+									if (!prevParents.contains(nuclSect.getId()))
+										otherSources.add(nuclSect);
+								other = DisaggregationSourceRuptureInfo.consolidate(otherSources, -1, "Other Faults");
 							}
 							
 							int cptIndex = 0;
@@ -1860,19 +1871,20 @@ public class SolSiteHazardCalc {
 
 	private static final DecimalFormat pDF = new DecimalFormat("0.##%");
 	private static final DecimalFormat oDF = new DecimalFormat("0.##");
+	private static final DecimalFormat periodDF = new DecimalFormat("0.####");
 	private static String periodLabel(double period) {
 		if (period == 0d)
 			return "PGA";
 		if (period == -1d)
 			return "PGV";
-		return oDF.format(period)+"s SA";
+		return periodDF.format(period)+"s SA";
 	}
 	private static String periodPrefix(double period) {
 		if (period == 0d)
 			return "pga";
 		if (period == -1d)
 			return "pgv";
-		return "sa_"+oDF.format(period)+"s";
+		return "sa_"+periodDF.format(period)+"s";
 	}
 	private static String periodUnits(double period) {
 		if (period == -1d)
@@ -1914,6 +1926,40 @@ public class SolSiteHazardCalc {
 			return curve.getFirstInterpolatedX_inLogXLogYDomain(curveLevel);
 	}
 	
+	private static Range calcXRange(List<DiscretizedFunc> funcs, Range yRange) {
+		// first find the maximum
+		double maxX = 0d;
+		for (DiscretizedFunc func : funcs) {
+			for (Point2D pt : func) {
+				if ((float)pt.getY() < (float)yRange.getUpperBound()
+						&& (float)pt.getY() > (float)yRange.getLowerBound()) {
+					maxX = Math.max(maxX, pt.getX());
+				}
+			}
+		}
+		
+		double threshold;
+		if (maxX > 1e0)
+			threshold = 1e-2;
+		else if (maxX > 1e-1)
+			threshold = 1e-3;
+		else
+			threshold = 1e-4;
+		
+		double minX = Double.POSITIVE_INFINITY;
+		for (DiscretizedFunc func : funcs) {
+			for (Point2D pt : func) {
+				if (pt.getX() > threshold && (float)pt.getY() < (float)yRange.getUpperBound()
+						&& (float)pt.getY() > (float)yRange.getLowerBound()) {
+					minX = Math.min(minX, pt.getX());;
+				}
+			}
+		}
+		minX = Math.pow(10, Math.floor(Math.log10(minX)));
+		maxX = Math.pow(10, Math.ceil(Math.log10(maxX)));
+		return new Range(minX, maxX);
+	}
+	
 	private static Future<?> plotCurve(File outputDir, String prefix, double period, String siteName, double duration,
 			CustomReturnPeriod[] rps, DiscretizedFunc curve, String name, DiscretizedFunc compCurve, String compName,
 			ExecutorService exec, boolean writePDFs) throws IOException {
@@ -1931,20 +1977,7 @@ public class SolSiteHazardCalc {
 		}
 		
 		Range yRange = new Range(1e-6, 1e0);
-		double minX = Double.POSITIVE_INFINITY;
-		double maxX = 0d;
-		for (DiscretizedFunc func : funcs) {
-			for (Point2D pt : func) {
-				if (pt.getX() > 1e-2 && (float)pt.getY() < (float)yRange.getUpperBound()
-						&& (float)pt.getY() > (float)yRange.getLowerBound()) {
-					minX = Math.min(minX, pt.getX());
-					maxX = Math.max(maxX, pt.getX());
-				}
-			}
-		}
-		minX = Math.pow(10, Math.floor(Math.log10(minX)));
-		maxX = Math.pow(10, Math.ceil(Math.log10(maxX)));
-		Range xRange = new Range(minX, maxX);
+		Range xRange = calcXRange(funcs, yRange);
 		
 		String yAxisLabel;
 		List<XYAnnotation> anns = addRPAnnotations(funcs, chars, xRange, yRange, rps, false);
@@ -1997,20 +2030,7 @@ public class SolSiteHazardCalc {
 		chars.add(chars.get(0));
 		
 		Range yRange = new Range(1e-6, 1e0);
-		double minX = Double.POSITIVE_INFINITY;
-		double maxX = 0d;
-		for (DiscretizedFunc func : funcs) {
-			for (Point2D pt : func) {
-				if (pt.getX() > 1e-2 && (float)pt.getY() < (float)yRange.getUpperBound()
-						&& (float)pt.getY() > (float)yRange.getLowerBound()) {
-					minX = Math.min(minX, pt.getX());
-					maxX = Math.max(maxX, pt.getX());
-				}
-			}
-		}
-		minX = Math.pow(10, Math.floor(Math.log10(minX)));
-		maxX = Math.pow(10, Math.ceil(Math.log10(maxX)));
-		Range xRange = new Range(minX, maxX);
+		Range xRange = calcXRange(funcs, yRange);
 		
 		String yAxisLabel;
 		List<XYAnnotation> anns = addRPAnnotations(funcs, chars, xRange, yRange, rps, true);
