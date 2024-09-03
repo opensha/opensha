@@ -32,6 +32,7 @@ import org.opensha.commons.geo.json.Geometry;
 import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -652,6 +653,119 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 	@Override
 	public AveragingAccumulator<ProxyFaultSectionInstances> averagingAccumulator() {
 		return new Averager();
+	}
+	
+	public FaultSystemRupSet getSplitRuptureSet(FaultSystemRupSet origRupSet) {
+		Map<Integer, List<FaultSection>> proxySectsMap = new HashMap<>();
+		for (FaultSection proxySect : proxySects) {
+			int origID = proxySect.getParentSectionId();
+			List<FaultSection> sectProxies = proxySectsMap.get(origID);
+			if (sectProxies == null) {
+				sectProxies = new ArrayList<>();
+				proxySectsMap.put(origID, sectProxies);
+			}
+			sectProxies.add(proxySect);
+		}
+		
+		Map<Integer, Integer> proxyIDs_toNew = new HashMap<>(proxySects.size());
+		Map<Integer, List<Integer>> sectIDs_oldToNew = new HashMap<>();
+		List<FaultSection> modSects = new ArrayList<>();
+		for (int s=0; s<origRupSet.getNumSections(); s++) {
+			FaultSection origSect = origRupSet.getFaultSectionData(s);
+			int origID = origSect.getSectionId();
+			List<Integer> newIDs = new ArrayList<>();
+			if (proxySectsMap.containsKey(origID)) {
+				for (FaultSection proxySect : proxySectsMap.get(origID)) {
+					FaultSection copy = proxySect.clone();
+					copy.setParentSectionId(origSect.getParentSectionId());
+					copy.setParentSectionName(origSect.getParentSectionName());
+					int modID = modSects.size();
+					newIDs.add(modID);
+					copy.setSectionId(modID);
+					modSects.add(copy);
+					proxyIDs_toNew.put(proxySect.getSectionId(), modID);
+				}
+			} else {
+				FaultSection copy = origSect.clone();
+				int modID = modSects.size();
+				newIDs.add(modID);
+				copy.setSectionId(modID);
+				modSects.add(copy);
+			}
+			sectIDs_oldToNew.put(origID, newIDs);
+		}
+		
+		int rupIndex = 0;
+		Map<Integer, List<Integer>> rupIDs_oldToNew = new HashMap<>();
+		Map<Integer, Integer> rupIDs_newToOld = new HashMap<>();
+		List<List<Integer>> modSectionForRups = new ArrayList<>();
+		for (int origID=0; origID<origRupSet.getNumRuptures(); origID++) {
+			if (rupHasProxies(origID)) {
+				List<List<FaultSection>> proxies = getRupProxySects(origID);
+				List<Integer> newIDs = new ArrayList<>(proxies.size());
+				for (int i=0; i<proxies.size(); i++) {
+					rupIDs_newToOld.put(rupIndex, origID);
+					newIDs.add(rupIndex++);
+					List<FaultSection> rupProxies = proxies.get(i);
+					List<Integer> sectsForRups = new ArrayList<>(rupProxies.size());
+					for (FaultSection proxy : rupProxies)
+						sectsForRups.add(proxyIDs_toNew.get(proxy.getSectionId()));
+					modSectionForRups.add(sectsForRups);
+				}
+				rupIDs_oldToNew.put(origID, newIDs);
+			} else {
+				rupIDs_newToOld.put(rupIndex, origID);
+				rupIDs_oldToNew.put(origID, List.of(rupIndex++));
+				List<Integer> origSectsForRups = origRupSet.getSectionsIndicesForRup(origID);
+				List<Integer> sectsForRups = new ArrayList<>();
+				for (int sectID : origSectsForRups) {
+					List<Integer> newSectIDs = sectIDs_oldToNew.get(sectID);
+					Preconditions.checkState(newSectIDs.size() == 1);
+					sectsForRups.add(newSectIDs.get(0));
+				}
+				modSectionForRups.add(sectsForRups);
+			}
+		}
+		
+		double[] rupLengths = origRupSet.getLengthForAllRups();
+		double[] modMags = new double[rupIndex];
+		double[] modRakes = new double[rupIndex];
+		double[] modRupAreas = new double[rupIndex];
+		double[] modRupLengths = rupLengths == null ? null : new double[rupIndex];
+		for (rupIndex=0; rupIndex<rupIDs_newToOld.size(); rupIndex++) {
+			int origID = rupIDs_newToOld.get(rupIndex);
+			modMags[rupIndex] = origRupSet.getMagForRup(origID);
+			modRakes[rupIndex] = origRupSet.getAveRakeForRup(origID);
+			modRupAreas[rupIndex] = origRupSet.getAreaForRup(origID);
+			if (modRupLengths != null)
+				modRupLengths[rupIndex] = rupLengths[origID];
+		}
+		
+		FaultSystemRupSet modRupSet = new FaultSystemRupSet(modSects, modSectionForRups,
+				modMags, modRakes, modRupAreas, modRupLengths);
+		
+		System.out.println("Split from "+origRupSet.getNumSections()+" sects to "+modRupSet.getNumSections());
+		System.out.println("Split from "+origRupSet.getNumRuptures()+" rups to "+modRupSet.getNumRuptures());
+		
+		// add mappings module
+		RuptureSetSplitMappings mappings = new RuptureSetSplitMappings(sectIDs_oldToNew, rupIDs_oldToNew);
+		modRupSet.addModule(mappings);
+		
+		// now copy over any modules we can
+		for (OpenSHA_Module module : origRupSet.getModulesAssignableTo(SplittableRuptureModule.class, true)) {
+			OpenSHA_Module modModule;
+			try {
+				modModule = ((SplittableRuptureModule<?>)module).getForSplitRuptureSet(
+						modRupSet, mappings);
+			} catch (Exception e) {
+				System.out.println("Couldn't split module "+module.getName()+", skipping: "+e.getMessage());
+				continue;
+			}
+			if (modModule != null)
+				modRupSet.addModule(modModule);
+		}
+		
+		return modRupSet;
 	}
 	
 	private static class Averager implements AveragingAccumulator<ProxyFaultSectionInstances> {

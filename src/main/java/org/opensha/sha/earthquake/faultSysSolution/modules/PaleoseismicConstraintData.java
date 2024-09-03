@@ -43,7 +43,7 @@ import scratch.UCERF3.utils.paleoRateConstraints.UCERF3_PaleoRateConstraintFetch
  */
 public class PaleoseismicConstraintData implements SubModule<FaultSystemRupSet>,
 JSON_TypeAdapterBackedModule<PaleoseismicConstraintData>, BranchAverageableModule<PaleoseismicConstraintData>,
-SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
+SplittableRuptureModule<PaleoseismicConstraintData> {
 	
 	private transient FaultSystemRupSet rupSet;
 	private List<? extends SectMappedUncertainDataConstraint> paleoRateConstraints;
@@ -343,6 +343,33 @@ SplittableRuptureSubSetModule<PaleoseismicConstraintData> {
 		for (SectMappedUncertainDataConstraint constraint : constraints)
 			if (mappings.isSectRetained(constraint.sectionIndex))
 				remapped.add(constraint.forRemappedSectionIndex(mappings.getNewSectID(constraint.sectionIndex)));
+		if (remapped.isEmpty())
+			return null;
+		return remapped;
+	}
+
+	@Override
+	public PaleoseismicConstraintData getForSplitRuptureSet(FaultSystemRupSet splitRupSet,
+			RuptureSetSplitMappings mappings) {
+		List<SectMappedUncertainDataConstraint> filteredRateConstraints = getRemapped(paleoRateConstraints, mappings);
+		List<SectMappedUncertainDataConstraint> filteredSlipConstraints = getRemapped(paleoSlipConstraints, mappings);
+		if (filteredRateConstraints == null && filteredSlipConstraints == null)
+			return null;
+		return new PaleoseismicConstraintData(splitRupSet, filteredRateConstraints, paleoProbModel,
+				filteredSlipConstraints, paleoSlipProbModel);
+	}
+	
+	private static List<SectMappedUncertainDataConstraint> getRemapped(
+			List<? extends SectMappedUncertainDataConstraint> constraints, RuptureSetSplitMappings mappings) {
+		if (constraints == null || constraints.isEmpty())
+			return null;
+		List<SectMappedUncertainDataConstraint> remapped = new ArrayList<>();
+		for (SectMappedUncertainDataConstraint constraint : constraints) {
+			List<Integer> newIDs = mappings.getNewSectIDs(constraint.sectionIndex);
+			Preconditions.checkState(newIDs.size() == 1,
+					"Can't split paleo constraints");
+			remapped.add(constraint.forRemappedSectionIndex(newIDs.get(0)));
+		}
 		if (remapped.isEmpty())
 			return null;
 		return remapped;

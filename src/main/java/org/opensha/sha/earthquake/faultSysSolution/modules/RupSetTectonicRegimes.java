@@ -24,7 +24,8 @@ import org.opensha.sha.util.TectonicRegionType;
 import com.google.common.base.Preconditions;
 
 public class RupSetTectonicRegimes implements CSV_BackedModule, SubModule<FaultSystemRupSet>,
-BranchAverageableModule<RupSetTectonicRegimes>, AverageableModule.ConstantAverageable<RupSetTectonicRegimes> {
+BranchAverageableModule<RupSetTectonicRegimes>, AverageableModule.ConstantAverageable<RupSetTectonicRegimes>,
+SplittableRuptureModule<RupSetTectonicRegimes>{
 	
 	private FaultSystemRupSet rupSet;
 	private TectonicRegionType[] regimes;
@@ -197,6 +198,23 @@ BranchAverageableModule<RupSetTectonicRegimes>, AverageableModule.ConstantAverag
 	@Override
 	public boolean isIdentical(RupSetTectonicRegimes module) {
 		return Arrays.equals(regimes, module.regimes);
+	}
+
+	@Override
+	public RupSetTectonicRegimes getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
+		TectonicRegionType[] trts = new TectonicRegionType[rupSubSet.getNumRuptures()];
+		for (int r=0; r<trts.length; r++)
+			trts[r] = this.regimes[mappings.getOrigRupID(r)];
+		return new RupSetTectonicRegimes(rupSubSet, trts);
+	}
+
+	@Override
+	public RupSetTectonicRegimes getForSplitRuptureSet(FaultSystemRupSet splitRupSet,
+			RuptureSetSplitMappings mappings) {
+		TectonicRegionType[] trts = new TectonicRegionType[splitRupSet.getNumRuptures()];
+		for (int r=0; r<trts.length; r++)
+			trts[r] = this.regimes[mappings.getOrigRupID(r)];
+		return new RupSetTectonicRegimes(splitRupSet, trts);
 	}
 
 }

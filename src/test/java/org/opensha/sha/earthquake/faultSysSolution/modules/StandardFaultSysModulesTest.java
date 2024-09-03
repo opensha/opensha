@@ -344,7 +344,7 @@ public class StandardFaultSysModulesTest {
 		for (int origRupID=0; origRupID<1000; origRupID++)
 			if (Math.random() < 0.05)
 				rupIDs_newToOld.put(origRupID, newRupID++);
-		RuptureSubSetMappings module = new RuptureSubSetMappings(sectIDs_newToOld, rupIDs_newToOld);
+		RuptureSubSetMappings module = new RuptureSubSetMappings(sectIDs_newToOld, rupIDs_newToOld, null);
 		
 		testModuleSerialization(demoRupSet.getArchive(), demoRupSet, module, RuptureSubSetMappings.class);
 	}

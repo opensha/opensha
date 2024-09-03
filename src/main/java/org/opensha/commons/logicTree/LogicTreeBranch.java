@@ -18,8 +18,9 @@ import org.opensha.commons.logicTree.LogicTreeNode.RandomlySampledNode;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSetSplitMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SplittableRuptureSubSetModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SplittableRuptureModule;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -37,7 +38,7 @@ import scratch.UCERF3.enumTreeBranches.InversionModels;
 
 @JsonAdapter(LogicTreeBranch.Adapter.class)
 public class LogicTreeBranch<E extends LogicTreeNode> implements Iterable<E>, Cloneable, Serializable,
-Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule<LogicTreeBranch<E>> {
+Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureModule<LogicTreeBranch<E>> {
 	
 	private ImmutableList<LogicTreeLevel<? extends E>> levels;
 	private List<E> values;
@@ -1008,6 +1009,11 @@ Comparable<LogicTreeBranch<E>>, JSON_BackedModule, SplittableRuptureSubSetModule
 
 	@Override
 	public LogicTreeBranch<E> getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
+		return this;
+	}
+
+	@Override
+	public LogicTreeBranch<E> getForSplitRuptureSet(FaultSystemRupSet splitRupSet, RuptureSetSplitMappings mappings) {
 		return this;
 	}
 	
