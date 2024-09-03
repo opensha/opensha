@@ -111,6 +111,7 @@ public abstract class AbstractLogicTreeHazardCombiner {
 	private List<LogicTreeLevel<? extends LogicTreeNode>> combLevels;
 	private int expectedNum;
 	private List<LogicTreeLevel<? extends LogicTreeNode>> commonLevels;
+	private List<LogicTreeLevel<? extends LogicTreeNode>> averageAcrossLevels;
 	private Map<LogicTreeBranch<LogicTreeNode>, LogicTree<?>> commonSubtrees;
 	private List<LogicTreeBranch<LogicTreeNode>> combBranches;
 	private List<Integer> combBranchesOuterIndexes;
@@ -129,7 +130,15 @@ public abstract class AbstractLogicTreeHazardCombiner {
 	private double[] periods = MPJ_LogicTreeHazardCalc.PERIODS_DEFAULT;
 	private ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
 	
+	private LogicTree<?> origOuterTree = null;
+	private LogicTree<?> origInnerTree = null;
+	
 	public AbstractLogicTreeHazardCombiner(LogicTree<?> outerLT, LogicTree<?> innerLT) {
+		this(outerLT, innerLT, null, null);
+	}
+	
+	public AbstractLogicTreeHazardCombiner(LogicTree<?> outerLT, LogicTree<?> innerLT,
+			List<LogicTreeLevel<? extends LogicTreeNode>> commonLevels, List<LogicTreeLevel<?>> averageAcrossLevels) {
 		System.out.println("Remapping outer logic tree levels");
 		outerLevelRemaps = new HashMap<>();
 		outerNodeRemaps = new HashMap<>();
@@ -142,7 +151,6 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		outerTree = outerLT;
 		innerTree = innerLT;
 		
-		commonLevels = getCommonLevels();
 		int innerTreeSize = innerTree.size();
 		if (commonLevels == null) {
 			commonLevels = List.of();
@@ -182,13 +190,30 @@ public abstract class AbstractLogicTreeHazardCombiner {
 				}
 			}
 		}
+		if (averageAcrossLevels == null) {
+			averageAcrossLevels = List.of();
+		} else if (!averageAcrossLevels.isEmpty()) {
+			// remove average across levels from each tree
+			System.out.println("Averaging across "+averageAcrossLevels.size()+" levels");
+			origOuterTree = outerTree;
+			origInnerTree = innerTree;
+			outerTree = removeAveragedOutLevels(outerTree, averageAcrossLevels);
+			innerTree = removeAveragedOutLevels(innerTree, averageAcrossLevels);
+			System.out.println("Reduced outerTree from "+origOuterTree.size()+" to "+outerTree.size()+" branches");
+			System.out.println("Reduced innerTree from "+origInnerTree.size()+" to "+innerTree.size()+" branches");
+			Preconditions.checkState(origOuterTree != outerTree || origInnerTree != innerTree);
+		}
 		combLevels = new ArrayList<>();
 		for (LogicTreeLevel<?> level : outerTree.getLevels()) {
+			if (averageAcrossLevels.contains(level))
+				continue;
 			if (outerLevelRemaps.containsKey(level))
 				level = outerLevelRemaps.get(level);
 			combLevels.add(level);
 		}
 		for (LogicTreeLevel<?> level : innerTree.getLevels()) {
+			if (averageAcrossLevels.contains(level))
+				continue;
 			if (innerLevelRemaps.containsKey(level))
 				level = innerLevelRemaps.get(level);
 			if (!commonLevels.contains(level))
@@ -202,8 +227,47 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		
 		expectedNum = outerTree.size() * innerTreeSize;
 		System.out.println("Total number of combinations: "+countDF.format(expectedNum));
+		
+		this.commonLevels = commonLevels;
+		this.averageAcrossLevels = averageAcrossLevels;
 	}
 	
+	private static LogicTree<?> removeAveragedOutLevels(LogicTree<?> tree, List<LogicTreeLevel<? extends LogicTreeNode>> averageAcrossLevels) {
+		List<LogicTreeLevel<? extends LogicTreeNode>> retainedLevels = new ArrayList<>();
+		for (LogicTreeLevel<?> level : tree.getLevels())
+			if (!averageAcrossLevels.contains(level))
+				retainedLevels.add(level);
+		Preconditions.checkState(!retainedLevels.isEmpty());
+		if (retainedLevels.size() == tree.getLevels().size())
+			return tree;
+		Map<LogicTreeBranch<LogicTreeNode>, Integer> retainedBranchesMap = new HashMap<>();
+		List<LogicTreeBranch<LogicTreeNode>> retainedBranches = new ArrayList<>();
+		List<Double> retainedWeights = new ArrayList<>();
+		for (LogicTreeBranch<?> branch : tree) {
+			LogicTreeBranch<LogicTreeNode> retainedBranch = new LogicTreeBranch<>(retainedLevels);
+			for (LogicTreeLevel<?> level : retainedLevels)
+				retainedBranch.setValue(branch.getValue(level.getType()));
+			for (int l=0; l<branch.size(); l++)
+				Preconditions.checkNotNull(branch.getValue(l));
+			Integer prevIndex = retainedBranchesMap.get(retainedBranch);
+			if (prevIndex == null) {
+				retainedBranchesMap.put(retainedBranch, retainedBranches.size());
+				retainedBranches.add(retainedBranch);
+				retainedWeights.add(tree.getBranchWeight(branch));
+			} else {
+				// duplicate
+				retainedWeights.set(prevIndex, retainedWeights.get(prevIndex) + tree.getBranchWeight(branch));
+			}
+		}
+		
+		// set weights
+		for (int i=0; i<retainedBranches.size(); i++)
+			retainedBranches.get(i).setOrigBranchWeight(retainedWeights.get(i));
+		
+		LogicTree<LogicTreeNode> ret = LogicTree.fromExisting(retainedLevels, retainedBranches);
+		ret.setWeightProvider(new BranchWeightProvider.OriginalWeights());
+		return ret;
+	}
 	
 	public void setCombineHazardMaps(File outerHazardMapDir, IncludeBackgroundOption outerBGOp,
 			File innerHazardMapDir, IncludeBackgroundOption innerBGOp, File outputFile,
@@ -252,11 +316,6 @@ public abstract class AbstractLogicTreeHazardCombiner {
 	protected abstract boolean doesInnerSupplySols();
 	
 	protected abstract boolean isSerializeGridded();
-	
-	/**
-	 * @return list of {@link LogicTreeLevel}'s that exist on both the inner and outer logic tree, and thus must be matched up
-	 */
-	protected abstract List<LogicTreeLevel<?>> getCommonLevels();
 	
 	public LogicTree<?> getOuterTree() {
 		return outerTree;
@@ -349,7 +408,7 @@ public abstract class AbstractLogicTreeHazardCombiner {
 					outerTotalWeights.put(outerBranch, prevOuterWeight + outerTree.getBranchWeight(o));
 					// register that this branch has been sampled 1 time
 					branchSampleCounts.add(1);
-					weight = 1d; // will do fill in later
+					weight = 1d; // will fill in later
 				} else {
 					innerBranch = matchingInnerTree.getBranch(i);
 					weight = outerTree.getBranchWeight(o) * innerTree.getBranchWeight(i);
@@ -422,7 +481,7 @@ public abstract class AbstractLogicTreeHazardCombiner {
 				int outerTotSamples = outerSampleCounts.get(outerBranch);
 				// the total weight (across all instances) allocated to this outer branch
 				double outerWeight = outerTotalWeights.get(outerBranch);
-				// the fraction of that weight allocated to this branch
+				// the fraction of that weight allocated to this inner branch
 				double thisBranchFract = (double)branchSamples / (double)outerTotSamples;
 				double weight = outerWeight * thisBranchFract;
 				branch.setOrigBranchWeight(weight);
@@ -555,6 +614,77 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		numPairwiseSamples = 0;
 	}
 	
+	private static class AveragedMapCurveLoader implements MapCurveLoader {
+		
+		private LogicTree<?> origTree;
+		private MapCurveLoader origLoader;
+		private ExecutorService exec;
+
+		public AveragedMapCurveLoader(LogicTree<?> origTree, MapCurveLoader origLoader, ExecutorService exec) {
+			this.origTree = origTree;
+			this.origLoader = origLoader;
+			this.exec = exec;
+		}
+		
+		@Override
+		public DiscretizedFunc[][] loadCurves(String hazardSubDirName, LogicTreeBranch<?> branch,
+				double[] periods) throws IOException {
+			double sumWeight = 0d;
+			List<Future<BranchCurves>> loadFutures = new ArrayList<>();
+			List<Double> weights = new ArrayList<>();
+			for (LogicTreeBranch<?> origBranch : origTree) {
+				boolean match = true;
+				for (LogicTreeNode node : branch) {
+					if (!origBranch.hasValue(node)) {
+						match = false;
+						break;
+					}
+				}
+				if (match) {
+					double weight = origTree.getBranchWeight(origBranch);
+					sumWeight += weight;
+					weights.add(weight);
+					loadFutures.add(curveLoadFuture(origLoader, hazardSubDirName, origBranch, periods, exec));
+				}
+			}
+			System.out.println("Waiting on "+loadFutures.size()+" load futures to average curves for "+branch);
+			DiscretizedFunc[][] avgCurves = null;
+			for (int i=0; i<loadFutures.size(); i++) {
+				DiscretizedFunc[][] curves;
+				try {
+					curves = loadFutures.get(i).get().curves;
+				} catch (InterruptedException | ExecutionException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+				double weight = weights.get(i)/sumWeight;
+				if (avgCurves == null)
+					avgCurves = new DiscretizedFunc[curves.length][];
+				else
+					Preconditions.checkState(curves.length == avgCurves.length);
+				for (int j=0; j<curves.length; j++) {
+					if (avgCurves[j] == null)
+						avgCurves[j] = new DiscretizedFunc[curves[j].length];
+					else
+						Preconditions.checkState(curves[j].length == avgCurves[j].length);
+					for (int k=0; k<curves[j].length; k++) {
+						if (avgCurves[j][k] == null) {
+							double[] xVals = new double[curves[j][k].size()];
+							for (int l=0; l<xVals.length; l++)
+								xVals[l] = curves[j][k].getX(l);
+							avgCurves[j][k] = new LightFixedXFunc(xVals, new double[xVals.length]);
+						} else {
+							Preconditions.checkState(avgCurves[j][k].size() == curves[j][k].size());
+							for (int l=0; l<avgCurves[j][k].size(); l++)
+								avgCurves[j][k].set(l, avgCurves[j][k].getY(l) + weight*curves[j][k].getY(l));
+						}
+					}
+				}
+			}
+			return avgCurves;
+		}
+		
+	}
+	
 	protected String getHazardDirName(double gridSpacing, IncludeBackgroundOption bgOp) {
 		return "hazard_"+(float)gridSpacing+"deg_grid_seis_"+bgOp.name();
 	}
@@ -569,7 +699,15 @@ public abstract class AbstractLogicTreeHazardCombiner {
 			buildCominedTree();
 		
 		boolean doHazardMaps = outputHazardFile != null;
-		Map<LogicTreeBranch<?>, DiscretizedFunc[][]> innerCurvesMap = null;
+		boolean doHazardCurves = hazardCurvesOutputFile != null;
+		
+		ExecutorService curveIOExec = null;
+		int ioThreadCount = Integer.min(20, Integer.max(3, FaultSysTools.defaultNumThreads()));
+		int readDequeSize = Integer.max(5, ioThreadCount);
+		if (doHazardMaps || doHazardCurves)
+			curveIOExec = ExecutorUtils.newNamedThreadPool(ioThreadCount, "curveIO");
+		
+		Map<LogicTreeBranch<?>, BranchCurves> innerCurvesMap = null;
 		File hazardZipOutTmp = null;
 		File hazardZipOutFinal = null;
 		File hazardOutDir;
@@ -578,6 +716,8 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		String outerHazardSubDirName = null;
 		String innerHazardSubDirName = null;
 		String outputHazardSubDirName = null;
+		MapCurveLoader outerHazardMapLoader = this.outerHazardMapLoader;
+		MapCurveLoader innerHazardMapLoader = this.innerHazardMapLoader;
 		if (doHazardMaps) {
 			outerHazardSubDirName = getHazardDirName(gridReg.getSpacing(), outerBGOp);
 			innerHazardSubDirName = getHazardDirName(gridReg.getSpacing(), innerBGOp);
@@ -616,13 +756,20 @@ public abstract class AbstractLogicTreeHazardCombiner {
 			LogicTreeCurveAverager.populateVariableNodes(innerTree, variableNodes, nodeLevels, innerLevelRemaps, innerNodeRemaps);
 			for (int p=0; p<periods.length; p++)
 				meanCurves[p] = new LogicTreeCurveAverager(gridReg.getNodeList(), variableNodes, nodeLevels);
+			
+			if (!averageAcrossLevels.isEmpty()) {
+				if (origInnerTree != innerTree)
+					innerHazardMapLoader = new AveragedMapCurveLoader(origInnerTree, innerHazardMapLoader, curveIOExec);
+				if (origOuterTree != outerTree)
+					outerHazardMapLoader = new AveragedMapCurveLoader(origOuterTree, outerHazardMapLoader, curveIOExec);
+				readDequeSize = 2;
+			}
 		} else {
 			hazardOutDir = null;
 		}
 		ZipOutputStream hazardOutZip = doHazardMaps ? new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(hazardZipOutTmp))) : null;
 		WriteCounter writeCounter = doHazardMaps ? new WriteCounter() : null;
 		
-		boolean doHazardCurves = hazardCurvesOutputFile != null;
 		CSVFile<String> sitesCSV = null;
 		List<Site> sites = null;
 		List<List<String>> siteOutNames = null;
@@ -633,6 +780,7 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		List<double[]> sitePerXVals = null;
 		File curveOutDir = null;
 		if (doHazardCurves) {
+			Preconditions.checkState(averageAcrossLevels.isEmpty(), "Averaging not yet supported");
 			ZipFile innerZip = new ZipFile(innerHazardCurvesFile);
 			CSVFile<String> innerSitesCSV = CSVFile.readStream(innerZip.getInputStream(
 					innerZip.getEntry(MPJ_SiteLogicTreeHazardCurveCalc.SITES_CSV_FILE_NAME)), true);
@@ -724,6 +872,7 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		Map<LogicTreeBranch<?>, FaultSystemSolution> innerSols;
 		SolutionLogicTree.FileBuilder combTreeWriter = doSLT ? new SolutionLogicTree.FileBuilder(outputSLTFile) : null;
 		if (doSLT) {
+			Preconditions.checkState(averageAcrossLevels.isEmpty(), "Averaging not yet supported");
 			if (numPairwiseSamples < 1 && doesInnerSupplySols()) {
 				System.out.println("Pre-loading "+innerTree.size()+" inner solutions");
 				innerSols = new HashMap<>();
@@ -740,16 +889,11 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		}
 		
 		int expectedNum = combTree.size();
-		
-		ExecutorService curveIOExec = null;
-		int ioThreadCount = Integer.min(20, FaultSysTools.defaultNumThreads());
-		if (doHazardMaps || doHazardCurves)
-			curveIOExec = ExecutorUtils.newNamedThreadPool(ioThreadCount, "curveIO");
 
-		ArrayDeque<Future<DiscretizedFunc[][]>> outerCurveLoadFutures = null;
+		ArrayDeque<Future<BranchCurves>> outerCurveLoadFutures = null;
 		ArrayDeque<Integer> outerCurveLoadIndexes = null;
-		ArrayDeque<Future<DiscretizedFunc[][]>> innerCurveLoadFutures = null;
-		int readDequeSize = Integer.max(5, ioThreadCount);
+		ArrayDeque<Future<BranchCurves>> innerCurveLoadFutures = null;
+		ArrayDeque<Integer> innerCurveLoadCombinedIndexes = null;
 		int outerCurveLoadIndex = -1;
 		if (doHazardMaps) {
 			outerCurveLoadFutures = new ArrayDeque<>(readDequeSize);
@@ -767,9 +911,12 @@ public abstract class AbstractLogicTreeHazardCombiner {
 			if (innerCurvesMap == null) {
 				// need to do the inner curves as well
 				innerCurveLoadFutures = new ArrayDeque<>(readDequeSize);
-				for (int i=0; i<readDequeSize && i<combTree.size(); i++)
+				innerCurveLoadCombinedIndexes = new ArrayDeque<>(readDequeSize);
+				for (int i=0; i<readDequeSize && i<combTree.size(); i++) {
 					innerCurveLoadFutures.add(curveLoadFuture(innerHazardMapLoader, innerHazardSubDirName,
 							combBranchesInnerPortion.get(i), periods, curveIOExec));
+					innerCurveLoadCombinedIndexes.add(i);
+				}
 			}
 		}
 		CompletableFuture<FaultSystemSolution> nextOuterSolLoadFuture = null;
@@ -803,8 +950,8 @@ public abstract class AbstractLogicTreeHazardCombiner {
 			System.out.println("Processing branch "+n+"/"+expectedNum+": "+combBranch);
 			Preconditions.checkState(combBranches.get(n).equals(combTree.getBranch(n)));
 			final double combWeight = combBranch.getOrigBranchWeight();
-			final LogicTreeBranch<?> innerBranch = combBranchesInnerPortion.get(n);
 			final LogicTreeBranch<?> outerBranch = combBranchesOuterPortion.get(n);
+			final LogicTreeBranch<?> innerBranch = combBranchesInnerPortion.get(n);
 			final int outerIndex = combBranchesOuterIndexes.get(n);
 			final int innerIndex = combBranchesInnerIndexes.get(n);
 			System.out.println("\tOuter branch "+outerIndex+": "+outerBranch);
@@ -843,7 +990,11 @@ public abstract class AbstractLogicTreeHazardCombiner {
 					Preconditions.checkState(nextOuterIndex == outerIndex,
 							"Future outerIndex=%s, we need %s", nextOuterIndex, outerIndex);
 					try {
-						outerCurves = outerCurveLoadFutures.removeFirst().get();
+						BranchCurves outerBranchCurves = outerCurveLoadFutures.removeFirst().get();
+						Preconditions.checkState(outerBranch.equals(outerBranchCurves.branch),
+								"Curve load mismatch for outer %s; expected %s, was %s",
+								outerIndex, outerBranch, outerBranchCurves.branch);
+						outerCurves = outerBranchCurves.curves;
 					} catch (InterruptedException | ExecutionException e) {
 						throw ExceptionUtils.asRuntimeException(e);
 					}
@@ -957,23 +1108,39 @@ public abstract class AbstractLogicTreeHazardCombiner {
 			}
 			
 			if (doHazardMaps) {
-				DiscretizedFunc[][] innerCurves;
+				BranchCurves innerBranchCurves;
 				if (innerCurvesMap != null) {
-					innerCurves = innerCurvesMap.get(innerBranch);
+					innerBranchCurves = innerCurvesMap.get(innerBranch);
 				} else {
 					curveReadWatch.start();
 //					innerCurves = nextInnerCurveLoadFuture.join();
 					try {
-						innerCurves = innerCurveLoadFutures.removeFirst().get();
+						int loadInnerIndex = innerCurveLoadCombinedIndexes.removeFirst();
+						Preconditions.checkState(loadInnerIndex == n, "Load inner index was %s but I'm on branch %s", loadInnerIndex, n);
+						innerBranchCurves = innerCurveLoadFutures.removeFirst().get();
 					} catch (InterruptedException | ExecutionException e) {
 						throw ExceptionUtils.asRuntimeException(e);
 					}
 					curveReadWatch.stop();
 					
-					for (int m=n+1; m<combTree.size() && innerCurveLoadFutures.size() < readDequeSize; m++)
-						innerCurveLoadFutures.add(curveLoadFuture(innerHazardMapLoader, innerHazardSubDirName,
-								combBranchesInnerPortion.get(m), periods, curveIOExec));
+//					for (int i=0; i<readDequeSize && i<combTree.size(); i++)
+//						innerCurveLoadFutures.add(curveLoadFuture(innerHazardMapLoader, innerHazardSubDirName,
+//								combBranchesInnerPortion.get(i), periods, curveIOExec));
+					if (innerCurveLoadCombinedIndexes.isEmpty()) {
+						Preconditions.checkState(n == combTree.size()-1, "No load indexes left, but not on last branch: %s", n);
+					} else {
+						int lastRunningInnerIndex = innerCurveLoadCombinedIndexes.getLast();
+						for (int m=lastRunningInnerIndex+1; m<combTree.size() && innerCurveLoadFutures.size() < readDequeSize; m++) {
+							innerCurveLoadFutures.add(curveLoadFuture(innerHazardMapLoader, innerHazardSubDirName,
+									combBranchesInnerPortion.get(m), periods, curveIOExec));
+							innerCurveLoadCombinedIndexes.add(m);
+						}
+					}
 				}
+				Preconditions.checkState(innerBranch.equals(innerBranchCurves.branch),
+						"Curve load mismatch for inner %s; expected %s, was %s",
+						innerIndex, innerBranch, innerBranchCurves.branch);
+				DiscretizedFunc[][] innerCurves = innerBranchCurves.curves;
 				
 				Map<String, GriddedGeoDataSet> writeMap = new HashMap<>(gridReg.getNodeCount()*periods.length);
 				
@@ -1370,7 +1537,12 @@ public abstract class AbstractLogicTreeHazardCombiner {
 	
 	public static interface MapCurveLoader {
 		public DiscretizedFunc[][] loadCurves(String hazardSubDirName,
-				LogicTreeBranch<?> combinedBranch, double[] periods) throws IOException;
+				LogicTreeBranch<?> branch, double[] periods) throws IOException;
+		
+		public default BranchCurves getCurveBranchResult(String hazardSubDirName,
+				LogicTreeBranch<?> branch, double[] periods) throws IOException {
+			return new BranchCurves(loadCurves(hazardSubDirName, branch, periods), branch);
+		}
 	}
 	
 	public static class FileBasedCurveLoader implements MapCurveLoader {
@@ -1391,14 +1563,14 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		
 	}
 	
-	private static CompletableFuture<DiscretizedFunc[][]> curveLoadFuture(MapCurveLoader loader, String hazardSubDirName,
+	private static CompletableFuture<BranchCurves> curveLoadFuture(MapCurveLoader loader, String hazardSubDirName,
 			LogicTreeBranch<?> branch, double[] periods) {
-		return CompletableFuture.supplyAsync(new Supplier<DiscretizedFunc[][]>() {
+		return CompletableFuture.supplyAsync(new Supplier<BranchCurves>() {
 
 			@Override
-			public DiscretizedFunc[][] get() {
+			public BranchCurves get() {
 				try {
-					return loader.loadCurves(hazardSubDirName, branch, periods);
+					return loader.getCurveBranchResult(hazardSubDirName, branch, periods);
 				} catch (IOException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
@@ -1406,14 +1578,24 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		});
 	}
 	
-	private static Future<DiscretizedFunc[][]> curveLoadFuture(MapCurveLoader loader, String hazardSubDirName,
+	private static class BranchCurves {
+		public final DiscretizedFunc[][] curves;
+		public final LogicTreeBranch<?> branch;
+		private BranchCurves(DiscretizedFunc[][] curves, LogicTreeBranch<?> branch) {
+			super();
+			this.curves = curves;
+			this.branch = branch;
+		}
+	}
+	
+	private static Future<BranchCurves> curveLoadFuture(MapCurveLoader loader, String hazardSubDirName,
 			LogicTreeBranch<?> branch, double[] periods, ExecutorService exec) {
-		return exec.submit(new Callable<DiscretizedFunc[][]>() {
+		return exec.submit(new Callable<BranchCurves>() {
 
 			@Override
-			public DiscretizedFunc[][] call() {
+			public BranchCurves call() {
 				try {
-					return loader.loadCurves(hazardSubDirName, branch, periods);
+					return loader.getCurveBranchResult(hazardSubDirName, branch, periods);
 				} catch (IOException e) {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
