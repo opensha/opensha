@@ -26,7 +26,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultRea
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.SeismicityRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
@@ -125,15 +125,15 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 				regionMFDs.add(null);
 				regionTRTs.add(null);
 				
-				SeismicityRegions[] interfaceRegions = {
-						SeismicityRegions.CAR_INTERFACE,
-						SeismicityRegions.MUE_INTERFACE,
+				PRVI25_SeismicityRegions[] interfaceRegions = {
+						PRVI25_SeismicityRegions.CAR_INTERFACE,
+						PRVI25_SeismicityRegions.MUE_INTERFACE,
 				};
 				double maxMinMag = 0d;
 				for (int s=0; s<rupSet.getNumSections(); s++)
 					maxMinMag = Math.max(maxMinMag, rupSet.getMinMagForSection(s));
 				IncrementalMagFreqDist interfaceRefMFD = FaultSysTools.initEmptyMFD(maxMinMag);
-				for (SeismicityRegions seisReg : interfaceRegions) {
+				for (PRVI25_SeismicityRegions seisReg : interfaceRegions) {
 					List<Double> minMags = new ArrayList<>();
 					Region reg = seisReg.load();
 					for (FaultSection sect : rupSet.getFaultSectionDataList()) {
@@ -155,12 +155,12 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 					regionTRTs.add(TectonicRegionType.SUBDUCTION_INTERFACE);
 				}
 				
-				SeismicityRegions[] slabRegions = {
-						SeismicityRegions.CAR_INTRASLAB,
-						SeismicityRegions.MUE_INTRASLAB,
+				PRVI25_SeismicityRegions[] slabRegions = {
+						PRVI25_SeismicityRegions.CAR_INTRASLAB,
+						PRVI25_SeismicityRegions.MUE_INTRASLAB,
 				};
 				IncrementalMagFreqDist slabRefMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.SLAB_MMAX);
-				for (SeismicityRegions seisReg : slabRegions) {
+				for (PRVI25_SeismicityRegions seisReg : slabRegions) {
 					regions.add(seisReg.load());
 					UncertainBoundedIncrMagFreqDist mfd = PRVI25_RegionalSeismicity.getBounded(seisReg,
 							slabRefMFD, slabRefMFD.getX(slabRefMFD.getClosestXIndex(PRVI25_GridSourceBuilder.SLAB_MMAX)));
