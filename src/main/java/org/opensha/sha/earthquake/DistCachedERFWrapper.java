@@ -51,6 +51,10 @@ public class DistCachedERFWrapper extends AbstractERF {
 		return erf.getNumSources();
 	}
 	
+	public AbstractERF getOriginalERF() {
+		return erf;
+	}
+	
 	private void initSources() {
 		List<ProbEqkSource> sources = new ArrayList<>();
 		Map<RuptureSurface, CustomCacheWrappedSurface> wrappedMap = new HashMap<>();
