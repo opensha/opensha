@@ -211,17 +211,37 @@ public interface HazardCurveCalculatorAPI {
 			Site site, ScalarIMR imr, EqkRupture rupture);
 
 
+	/**
+	 * Enables progress tracking
+	 * 
+	 * @see {@link #getCurrRuptures()}
+	 * @see {@link #getTotRuptures()}
+	 * @param trackProgress
+	 */
+	public void setTrackProgress(boolean trackProgress);
+	
+	/**
+	 * Returns the status of progress tracking
+	 * 
+	 * @see {@link #setTrackProgress(boolean)}
+	 * @return true if progress tracking is enabled
+	 */
+	public boolean isTrackProgress();
 
 	/**
-	 * gets the current rupture that is being processed
+	 * gets the current rupture that is being processed, or -1 if progress tracking disabled
 	 * 
-	 * @returncurrent rupture that is being processed
+	 * @see {@link #setTrackProgress(boolean)}
+	 * @see {@link #isTrackProgress()}
+	 * @return current rupture that is being processed
 	 */
 	public int getCurrRuptures();
 
 	/**
-	 * gets the total number of ruptures.
+	 * gets the total number of ruptures, or -1 if progress tracking disabled
 	 * 
+	 * @see {@link #setTrackProgress(boolean)}
+	 * @see {@link #isTrackProgress()}
 	 * @return total number of ruptures.
 	 */
 	public int getTotRuptures();

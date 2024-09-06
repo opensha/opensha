@@ -771,6 +771,19 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		if (includeMagDistFilterParam.getValue())
 			filters.add(magDistFilter);
 		return filters;
+	}
+
+
+	@Override
+	public void setTrackProgress(boolean trackProgress) {
+		// always enabled
+	}
+
+
+	@Override
+	public boolean isTrackProgress() {
+		// always enabled
+		return true;
 	};
 
 

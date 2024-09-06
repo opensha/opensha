@@ -16,16 +16,9 @@ import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.commons.param.event.ParameterChangeEvent;
-import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.event.ParameterChangeWarningEvent;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
-import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.sha.calc.params.IncludeMagDistFilterParam;
-import org.opensha.sha.calc.params.MagDistCutoffParam;
-import org.opensha.sha.calc.params.MaxDistanceParam;
-import org.opensha.sha.calc.params.MinMagnitudeParam;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.NumStochasticEventSetsParam;
 import org.opensha.sha.calc.params.PtSrcDistanceCorrectionParam;
@@ -38,12 +31,12 @@ import org.opensha.sha.calc.params.filters.SourceFilterManager;
 import org.opensha.sha.calc.params.filters.SourceFilters;
 import org.opensha.sha.calc.params.filters.SourceFiltersParam;
 import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
-import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.SiteAdaptiveProbEqkSource;
 import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_EqkRupForecast;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
@@ -108,8 +101,9 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	private ParameterList adjustableParams;
 
 	// misc counting and index variables
+	protected boolean trackProgress = false;
 	protected int currRuptures = -1;
-	protected int totRuptures=0;
+	protected int totRuptures = 0;
 	protected int sourceIndex;
 	protected int numSources;
 
@@ -312,10 +306,16 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 
 
 		// compute the total number of ruptures for updating the progress bar
-		totRuptures = 0;
-		sourceIndex =0;
-		for(sourceIndex=0;sourceIndex<numSources;++sourceIndex)
-			totRuptures+=eqkRupForecast.getSource(sourceIndex).getNumRuptures();
+		if (trackProgress) {
+			totRuptures = 0;
+			sourceIndex =0;
+			for(sourceIndex=0;sourceIndex<numSources;++sourceIndex) {
+				ProbEqkSource source = eqkRupForecast.getSource(sourceIndex);
+				if (source instanceof SiteAdaptiveProbEqkSource)
+					source = ((SiteAdaptiveProbEqkSource)source).getForSite(site);
+				totRuptures += source.getNumRuptures();
+			}
+		}
 		//System.out.println("Total number of ruptures:"+ totRuptures);
 
 
@@ -340,6 +340,9 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 			// get the ith source
 			ProbEqkSource source = eqkRupForecast.getSource(sourceIndex);
 			TectonicRegionType trt = source.getTectonicRegionType();
+			
+			if (source instanceof SiteAdaptiveProbEqkSource)
+				source = ((SiteAdaptiveProbEqkSource)source).getForSite(site);
 			
 			// get the IMR
 			ScalarIMR imr = TRTUtils.getIMRforTRT(imrMap, trt);
@@ -932,15 +935,29 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 
 		return hazFunction;
 	}
-
+	
 	@Override
-	public int getCurrRuptures(){
-		return this.currRuptures;
+	public void setTrackProgress(boolean trackProgress) {
+		this.trackProgress = trackProgress;
+	}
+	
+	@Override
+	public boolean isTrackProgress() {
+		return trackProgress;
 	}
 
 	@Override
-	public int getTotRuptures(){
-		return this.totRuptures;
+	public int getCurrRuptures() {
+		if (trackProgress)
+			return this.currRuptures;
+		return -1;
+	}
+
+	@Override
+	public int getTotRuptures() {
+		if (trackProgress)
+			return this.totRuptures;
+		return -1;
 	}
 
 	@Override
