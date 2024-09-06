@@ -336,6 +336,11 @@ public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, Arch
 		public SectCubeMapper call() throws Exception {
 			FaultSection fltSection = subSects.get(sectIndex);
 			
+			// will be non null if this is a proxy section with an associated polygon
+			Region proxyReg = null;
+			if (fltSection.isProxyFault())
+				proxyReg = fltSection.getZonePolygon();
+			
 			// first see if we can skip this section
 			boolean skip = true;
 			FaultTrace trace = fltSection.getFaultTrace();
@@ -364,6 +369,15 @@ public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, Arch
 						break;
 					}
 				}
+				
+				if (skip && proxyReg != null) {
+					for (Location gridLoc : griddedRegion.getNodeList()) {
+						if (proxyReg.distanceToLocation(gridLoc) < regCheckDist) {
+							skip = false;
+							break;
+						}
+					}
+				}
 				if (skip)
 					// can actually skip it
 					return null;
@@ -373,52 +387,107 @@ public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, Arch
 			totWeight = 0d;
 			
 			boolean aseisReducesArea = true; // TODO
-			RuptureSurface sectSurf = fltSection.getFaultSurface(0.25, false, aseisReducesArea);
-			
-//			Region fltPolygon = getSectionPolygonRegion(fltSection, maxFaultNuclDist, true);
-			Region fltPolygon = NSHM23_FaultPolygonBuilder.buildPoly(fltSection, sectSurf, aseisReducesArea, maxFaultNuclDist);
-			
-//			System.out.println(fltSection.getName()+"\nsectIndex = "+sectIndex+"\ndip = "+fltSection.getAveDip()
-//			+"\ndipDir = "+fltSection.getDipDirection()+
-//			"\nupSeisDep = "+fltSection.getOrigAveUpperDepth()+
-//			"\nddw = "+fltSection.getOrigDownDipWidth()+"\nTrace:\n");
-//			for(Location loc:fltSection.getFaultTrace())
-//				System.out.println(loc);
-//			System.out.println("\nPolygonRegion:\n");
-//			for(Location loc:fltPolygon.getBorder())
-//				System.out.println(loc);
-			
-//			System.out.println("\nGriddedSurface:\n");
-//			RuptureSurface sectSurf = fltSection.getFaultSurface(1.0, false, false);
-//			for(int i=0;i<sectSurf.getEvenlyDiscretizedNumLocs();i++) {
-//				System.out.println(sectSurf.getEvenlyDiscretizedLocation(i));
-//			}
-//			QuadSurface sectSurf = new QuadSurface(fltSection,false);
 
-			GriddedRegion griddedPolygonReg = new GriddedRegion(fltPolygon, cgr.getCubeLatLonSpacing(), cgr.getCubeLocationForIndex(0));
-			double testWt=0;
-			for(int i=0;i<griddedPolygonReg.getNumLocations();i++) {
-				Location loc = griddedPolygonReg.getLocation(i);
-				double depthDiscr = cgr.getCubeDepthDiscr();
-				for(double depth = depthDiscr/2;depth<cgr.getMaxDepth();depth+=depthDiscr) {
-					Location loc2 = new Location(loc.getLatitude(),loc.getLongitude(),depth);
-					double dist = LocationUtils.distanceToSurfFast(loc2, sectSurf);
-					if(dist<=maxFaultNuclDist) { 
-						totWeight += getDistWt(dist); // this will includes cubes outside the region where the section could nucleate
-						int cubeIndex = cgr.getCubeIndexForLocation(loc2);
-						if(cubeIndex>=0) {// make sure it's in the region
-							mappedCubeDistances.put(cubeIndex, (float)dist);
-							testWt += getDistWt(dist);
+			double depthDiscr = cgr.getCubeDepthDiscr();
+			List<Double> depths = new ArrayList<>();
+			for(double depth = depthDiscr/2;depth<cgr.getMaxDepth();depth+=depthDiscr)
+				depths.add(depth);
+			
+			if (proxyReg != null) {
+				// proxy section with an associated polygon
+				// fully associate within that polygon, ramp at the edges (including below)
+				
+				// build buffered polygon
+				Location topRight = new Location(proxyReg.getMaxLat(), proxyReg.getMaxLon());
+				Location botLeft = new Location(proxyReg.getMinLat(), proxyReg.getMinLon());
+				topRight = LocationUtils.location(topRight, Math.PI*0.25, maxFaultNuclDist);
+				botLeft = LocationUtils.location(botLeft, Math.PI*1.25, maxFaultNuclDist);
+				Region bufferedPoly = new Region(botLeft, topRight);
+				GriddedRegion griddedPolygonReg = new GriddedRegion(bufferedPoly, cgr.getCubeLatLonSpacing(), cgr.getCubeLocationForIndex(0));
+				
+				double upperDepth = aseisReducesArea ? fltSection.getReducedAveUpperDepth() : fltSection.getOrigAveUpperDepth();
+				double lowerDepth = fltSection.getAveLowerDepth();
+				
+				for(int i=0;i<griddedPolygonReg.getNumLocations();i++) {
+					Location loc = griddedPolygonReg.getLocation(i);
+					double horzDist;
+					if (proxyReg.contains(loc))
+						horzDist = 0d;
+					else
+						horzDist = proxyReg.distanceToLocation(loc);
+					if (horzDist > maxFaultNuclDist)
+						continue;
+					for(double depth : depths) {
+						double vertDist;
+						if (depth <= upperDepth)
+							vertDist = upperDepth - depth;
+						else if (depth >= lowerDepth)
+							vertDist = depth = lowerDepth;
+						else
+							vertDist = 0d;
+						double dist;
+						if (vertDist == 0d)
+							dist = horzDist;
+						else if (horzDist == 0d)
+							dist = vertDist;
+						else
+							dist = Math.hypot(horzDist, vertDist); // sqrt(horzDist^2 + vertDist^2)
+						if(dist<=maxFaultNuclDist) { 
+							totWeight += getDistWt(dist); // this will includes cubes outside the region where the section could nucleate
+							int cubeIndex = cgr.getCubeIndexForLocation(new Location(loc.getLatitude(),loc.getLongitude(),depth));
+							if(cubeIndex>=0) {// make sure it's in the region
+								mappedCubeDistances.put(cubeIndex, (float)dist);
+							}
 						}
 					}
 				}
-			}
+			} else {
+				RuptureSurface sectSurf = fltSection.getFaultSurface(0.25, false, aseisReducesArea);
+				
+//				Region fltPolygon = getSectionPolygonRegion(fltSection, maxFaultNuclDist, true);
+				Region fltPolygon = NSHM23_FaultPolygonBuilder.buildPoly(fltSection, sectSurf, aseisReducesArea, maxFaultNuclDist);
+				
+//				System.out.println(fltSection.getName()+"\nsectIndex = "+sectIndex+"\ndip = "+fltSection.getAveDip()
+//				+"\ndipDir = "+fltSection.getDipDirection()+
+//				"\nupSeisDep = "+fltSection.getOrigAveUpperDepth()+
+//				"\nddw = "+fltSection.getOrigDownDipWidth()+"\nTrace:\n");
+//				for(Location loc:fltSection.getFaultTrace())
+//					System.out.println(loc);
+//				System.out.println("\nPolygonRegion:\n");
+//				for(Location loc:fltPolygon.getBorder())
+//					System.out.println(loc);
+				
+//				System.out.println("\nGriddedSurface:\n");
+//				RuptureSurface sectSurf = fltSection.getFaultSurface(1.0, false, false);
+//				for(int i=0;i<sectSurf.getEvenlyDiscretizedNumLocs();i++) {
+//					System.out.println(sectSurf.getEvenlyDiscretizedLocation(i));
+//				}
+//				QuadSurface sectSurf = new QuadSurface(fltSection,false);
 
-			fractInRegion = testWt/totWeight;
-			if((float)fractInRegion != 1.0) {
-//				sectionsThatNucleateOutsideRegionList.add(sectIndex);
-				if(D) System.out.println((float)(1d-fractInRegion)+" of "+sectIndex+". "
-						+subSects.get(sectIndex).getName()+ " nucleates outside the region");
+				GriddedRegion griddedPolygonReg = new GriddedRegion(fltPolygon, cgr.getCubeLatLonSpacing(), cgr.getCubeLocationForIndex(0));
+				double testWt=0;
+				for(int i=0;i<griddedPolygonReg.getNumLocations();i++) {
+					Location loc = griddedPolygonReg.getLocation(i);
+					for(double depth : depths) {
+						Location loc2 = new Location(loc.getLatitude(),loc.getLongitude(),depth);
+						double dist = LocationUtils.distanceToSurfFast(loc2, sectSurf);
+						if(dist<=maxFaultNuclDist) { 
+							totWeight += getDistWt(dist); // this will includes cubes outside the region where the section could nucleate
+							int cubeIndex = cgr.getCubeIndexForLocation(loc2);
+							if(cubeIndex>=0) {// make sure it's in the region
+								mappedCubeDistances.put(cubeIndex, (float)dist);
+								testWt += getDistWt(dist);
+							}
+						}
+					}
+				}
+				
+				fractInRegion = testWt/totWeight;
+				if((float)fractInRegion != 1.0) {
+//					sectionsThatNucleateOutsideRegionList.add(sectIndex);
+					if(D) System.out.println((float)(1d-fractInRegion)+" of "+sectIndex+". "
+							+subSects.get(sectIndex).getName()+ " nucleates outside the region");
+				}
 			}
 			
 			if (mappedCubeDistances.isEmpty())
