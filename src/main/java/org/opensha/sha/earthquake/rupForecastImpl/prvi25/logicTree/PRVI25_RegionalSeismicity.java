@@ -79,7 +79,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 		}
 	};
 	
-	public static String RATE_FILE_NAME = "rates_2024_07_03.csv";
+	public static String RATE_FILE_NAME = "rates_2024_09_04.csv";
 	private static final String RATES_PATH_PREFIX = "/data/erf/prvi25/seismicity/rates/";
 	
 	private static Map<String, double[]> ratesMap;
