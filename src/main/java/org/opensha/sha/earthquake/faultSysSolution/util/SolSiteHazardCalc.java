@@ -82,6 +82,7 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
@@ -1002,13 +1003,18 @@ public class SolSiteHazardCalc {
 			while (prefix.contains("__"))
 				prefix = prefix.replace("__", "_");
 			
-			lines.add("## "+site.getName());
+			if (sites.size() == 1)
+				lines.add("## Results");
+			else
+				lines.add("## "+site.getName());
 			lines.add(topLink); lines.add("");
-			
-			plotFutures.add(plotSiteMap(resourcesDir, prefix+"_map", mapMaker, site, smallestMaxDist,
-					exec, writePDFs));
-			lines.add("![Site Map]("+resourcesDir.getName()+"/"+prefix+"_map.png)");
-			lines.add("");
+
+			if (sites.size() > 1) {
+				plotFutures.add(plotSiteMap(resourcesDir, prefix+"_map", mapMaker, site, smallestMaxDist,
+						exec, writePDFs));
+				lines.add("![Site Map]("+resourcesDir.getName()+"/"+prefix+"_map.png)");
+				lines.add("");
+			}
 			
 			table = MarkdownUtils.tableBuilder();
 			table.addLine("_Parameter_", "_Value_");
@@ -1077,8 +1083,18 @@ public class SolSiteHazardCalc {
 			boolean[] comps = compSol == null ? new boolean[] {false} : new boolean[] {false,true};
 			for (CustomReturnPeriod rp : rps) {
 				if (compSol != null) {
-					// add line with just the return period
-					table.addLine("__"+rp.label+"__");
+					// add line with the return period and % change
+					table.initNewLine();
+					table.addColumn("__"+rp.label+"__");
+					for (int p=0; p<periods.length; p++) {
+						double val = curveVal(curves.get(s)[p], rp);
+						double compVal = curveVal(compCurves.get(s)[p], rp);
+						double pDiff = 100d*(val - compVal)/compVal;
+						String str = oDF.format(pDiff)+"%";
+						if (pDiff >= 0d)
+							str = "+"+str;
+						table.addColumn("_("+str+")_");
+					}
 				}
 				for (boolean isComp : comps) {
 					table.initNewLine();
@@ -1114,7 +1130,7 @@ public class SolSiteHazardCalc {
 					lines.add(topLink); lines.add("");
 				}
 				
-				int maxNumContribs = 6;
+				int maxNumContribs = 5;
 				
 				boolean[] doSourceTypes;
 				String sourceTypeStr;
@@ -1133,7 +1149,7 @@ public class SolSiteHazardCalc {
 					gridStr = " Gridded seismicity sources are plotted with "+griddedContribPLT.toString().toLowerCase()
 							+" lines and fault sources with "+faultContribPLT.toString().toLowerCase()+" lines.";
 				lines.add("This section includes hazard curves disaggregated by "+sourceTypeStr+". "
-						+"At most "+maxNumContribs+" individual sources are included in order of their "+firstDisaggName
+						+"At most "+maxNumContribs+" individual fault sources are included in order of their "+firstDisaggName
 						+" contribution."+gridStr+varyStr);
 				lines.add("");
 				
@@ -1171,9 +1187,9 @@ public class SolSiteHazardCalc {
 								consolidatedCurve.setName(type);
 								PlotCurveCharacterstics consolidatedChar;
 								if (type.equals(SolutionDisaggSourceTypeConsolidator.NAME_ALL_FAULT_SOURCES)) {
-									consolidatedChar = new PlotCurveCharacterstics(faultContribPLT, 3f, Colors.DARK_GRAY);
+									consolidatedChar = new PlotCurveCharacterstics(faultContribPLT, 3f, Color.DARK_GRAY);
 								} else if (type.equals(SolutionDisaggSourceTypeConsolidator.NAME_ALL_GRIDDED_SOURCES)) {
-									consolidatedChar = new PlotCurveCharacterstics(griddedContribPLT, 3f, Colors.DARK_GRAY);
+									consolidatedChar = new PlotCurveCharacterstics(griddedContribPLT, 3f, Color.DARK_GRAY);
 								} else {
 									Color color = null;
 									if (trtColors != null) {
@@ -1194,24 +1210,34 @@ public class SolSiteHazardCalc {
 							}
 						} else {
 							List<DisaggregationSourceRuptureInfo> consolidated = new ArrayList<>(result.consolidatedSourceInfo);
-							// remove those with zero contribution
-							for (int c=consolidated.size(); --c>=0;)
-								if (consolidated.get(c).getRate() == 0d)
+							List<DisaggregationSourceRuptureInfo> consolidatedGridded = new ArrayList<>();
+							// remove those with zero contribution, and move gridded to their own list
+							for (int c=consolidated.size(); --c>=0;) {
+								DisaggregationSourceRuptureInfo contrib = consolidated.get(c);
+								if (contrib.getRate() == 0d) {
 									consolidated.remove(c);
+								} else if (contrib.getId() < 0) {
+									consolidated.remove(c);
+									consolidatedGridded.add(contrib);
+								}
+							}
 							DisaggregationSourceRuptureInfo other = null;
 							if (consolidated.size() > maxNumContribs) {
 								// create "other" -- but need to sum in nucleation space
-								SolutionDisaggConsolidator nuclConsolodate = new SolutionDisaggConsolidator(erf, false);
-								List<DisaggregationSourceRuptureInfo> nuclConsolidated = nuclConsolodate.apply(result.sourceInfo);
+//								System.out.println("Consolidating OTHER for "+site.getName());
+								List<DisaggregationSourceRuptureInfo> nuclConsolidated = result.consolidatedNucleationSourceInfo;
 								HashSet<Integer> prevParents = new HashSet<>();
 								consolidated = consolidated.subList(0, maxNumContribs);
 								for (DisaggregationSourceRuptureInfo orig : consolidated)
 									if (orig.getId() >= 0)
 										prevParents.add(orig.getId());
 								List<DisaggregationSourceRuptureInfo> otherSources = new ArrayList<>();
-								for (DisaggregationSourceRuptureInfo nuclSect : nuclConsolidated)
-									if (!prevParents.contains(nuclSect.getId()))
+								for (DisaggregationSourceRuptureInfo nuclSect : nuclConsolidated) {
+									if (nuclSect.getId() >= 0 && !prevParents.contains(nuclSect.getId())) {
 										otherSources.add(nuclSect);
+//										System.out.println("adding from "+nuclSect.getId()+". "+nuclSect.getName());
+									}
+								}
 								other = DisaggregationSourceRuptureInfo.consolidate(otherSources, -1, "Other Faults");
 							}
 							
@@ -1247,6 +1273,28 @@ public class SolSiteHazardCalc {
 								otherCurve.setName(other.getName());
 								contribCurves.add(toLinear(otherCurve));
 								contribChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 2f, Colors.tab_grey));
+							}
+							
+							if (!consolidatedGridded.isEmpty()) {
+								for (DisaggregationSourceRuptureInfo info : consolidatedGridded) {
+									DiscretizedFunc consolidatedCurve = info.getExceedProbs();
+									String type = info.getName();
+									consolidatedCurve.setName(type);
+									Color color = null;
+									if (trtColors != null) {
+										for (TectonicRegionType trt : trtColors.keySet()) {
+											if (type.contains(trt.toString())) {
+												color = trtColors.get(trt);
+												break;
+											}
+										}
+									}
+									if (color == null)
+										color = Color.DARK_GRAY;
+									
+									contribCurves.add(toLinear(consolidatedCurve));
+									contribChars.add(new PlotCurveCharacterstics(griddedContribPLT, 2f, color));
+								}
 							}
 						}
 //						result.consolidatedSourceInfo
@@ -2201,9 +2249,11 @@ public class SolSiteHazardCalc {
 		private final double totRate;
 		private final List<DisaggregationSourceRuptureInfo> sourceInfo;
 		private final List<DisaggregationSourceRuptureInfo> consolidatedSourceInfo;
+		private final List<DisaggregationSourceRuptureInfo> consolidatedNucleationSourceInfo;
 		
 		public DisaggResult(double iml, double prob, boolean isFromProb, DisaggregationPlotData plotData, double totRate,
-				List<DisaggregationSourceRuptureInfo> sourceInfo, List<DisaggregationSourceRuptureInfo> consolidatedSourceInfo) {
+				List<DisaggregationSourceRuptureInfo> sourceInfo, List<DisaggregationSourceRuptureInfo> consolidatedSourceInfo,
+				List<DisaggregationSourceRuptureInfo> consolidatedNucleationSourceInfo) {
 			super();
 			this.iml = iml;
 			this.prob = prob;
@@ -2212,6 +2262,7 @@ public class SolSiteHazardCalc {
 			this.totRate = totRate;
 			this.sourceInfo = sourceInfo;
 			this.consolidatedSourceInfo = consolidatedSourceInfo;
+			this.consolidatedNucleationSourceInfo = consolidatedNucleationSourceInfo;
 		}
 	}
 	
@@ -2304,8 +2355,22 @@ public class SolSiteHazardCalc {
 						calc.setSkipCalculateSourceExceedanceCurves();
 					}
 					calc.disaggregate(Math.log(iml), task.site, gmms, erf, sourceFilters, calcParams);
+					List<DisaggregationSourceRuptureInfo> consolidatedNucleationSourceInfo = null;
+					if (i == 0) {
+						// calculate nucleation
+						BaseFaultSystemSolutionERF fssERF;
+						if (erf instanceof BaseFaultSystemSolutionERF) {
+							fssERF = (BaseFaultSystemSolutionERF)erf;
+						} else {
+							Preconditions.checkState(erf instanceof DistCachedERFWrapper);
+							fssERF = (BaseFaultSystemSolutionERF)((DistCachedERFWrapper)erf).getOriginalERF();
+						}
+						SolutionDisaggConsolidator nuclConsolodate = new SolutionDisaggConsolidator(fssERF, false);
+						consolidatedNucleationSourceInfo = nuclConsolodate.apply(calc.getDisaggregationSourceList());
+					}
 					results[i] = new DisaggResult(iml, prob, isFromProb, calc.getDisaggPlotData(), calc.getTotalRate(),
-							calc.getDisaggregationSourceList(), calc.getConsolidatedDisaggregationSourceList());
+							calc.getDisaggregationSourceList(), calc.getConsolidatedDisaggregationSourceList(),
+							consolidatedNucleationSourceInfo);
 				}
 				
 				task.setResult(results);

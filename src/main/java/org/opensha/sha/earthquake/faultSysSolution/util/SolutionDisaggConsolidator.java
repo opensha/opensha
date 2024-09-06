@@ -5,6 +5,8 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
 import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
@@ -12,6 +14,8 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.util.TectonicRegionType;
+
+import com.google.common.base.Preconditions;
 
 public class SolutionDisaggConsolidator implements UnaryOperator<List<DisaggregationSourceRuptureInfo>> {
 	
@@ -46,20 +50,68 @@ public class SolutionDisaggConsolidator implements UnaryOperator<List<Disaggrega
 		
 		double duration = participation ? Double.NaN : erf.getTimeSpan().getDuration();
 		
+		Map<Integer, List<DisaggregationSourceRuptureInfo>> nucleationContributions = null;
+		if (!participation) {
+			// need to rescale to nucleation
+			// this can be slow, do it in parallel
+			Map<Integer, CompletableFuture<List<DisaggregationSourceRuptureInfo>>> nucleationRescaleFutures = new HashMap<>();
+			for (DisaggregationSourceRuptureInfo contrib : input) {
+				int sourceID = contrib.getId();
+				if (sourceID < numFSS) {
+					nucleationRescaleFutures.put(sourceID, CompletableFuture.supplyAsync(new Supplier<List<DisaggregationSourceRuptureInfo>>() {
+
+						@Override
+						public List<DisaggregationSourceRuptureInfo> get() {
+							// safer to calculate rupArea as sum of section areas (in case anything is screwy with rupAreas,
+							// which could be intentional in the case of branch averaging while retaining multiple copies).
+							double rupArea = 0d;
+							int fssIndex = erf.getFltSysRupIndexForSource(sourceID);
+							int numSects = 0;
+							for (int s : rupSet.getSectionsIndicesForRup(fssIndex)) {
+								rupArea += rupSet.getAreaForSection(s);
+								numSects++;
+							}
+							List<DisaggregationSourceRuptureInfo> ret = new ArrayList<>(numSects);
+							for (FaultSection sect : rupSet.getFaultSectionDataForRupture(fssIndex)) {
+								// scale for nucleation
+								double sectArea = rupSet.getAreaForSection(sect.getSectionId());
+								double nuclFract = sectArea / rupArea;
+								if (nuclFract > 1d && nuclFract > 1.001d)
+									// assume rounding error
+									nuclFract = 1d;
+								Preconditions.checkState((float)nuclFract <= 1f, "Nucleation fraction = %s / %s = %s for %s. %s",
+										(float)sectArea, (float)rupArea, (float)nuclFract, contrib.getId(), contrib.getName());
+								if ((float)nuclFract == 1f)
+									// don't bother
+									ret.add(contrib);
+								else
+									ret.add(contrib.getScaled(nuclFract, duration));
+							}
+							return ret;
+						}
+					}));
+				}
+			}
+			nucleationContributions = new HashMap<>();
+			for (Integer sourceID : nucleationRescaleFutures.keySet())
+				nucleationContributions.put(sourceID, nucleationRescaleFutures.get(sourceID).join());
+		}
+		
 		for (DisaggregationSourceRuptureInfo contrib : input) {
 			int sourceID = contrib.getId();
 			if (sourceID < numFSS) {
 				// fss rupture
 				int prevParent = -1;
-				double rupArea = participation ? Double.NaN : rupSet.getAreaForRup(erf.getFltSysRupIndexForSource(sourceID));
-				for (FaultSection sect : rupSet.getFaultSectionDataForRupture(erf.getFltSysRupIndexForSource(sourceID))) {
+				int fssIndex = erf.getFltSysRupIndexForSource(sourceID);
+				List<DisaggregationSourceRuptureInfo> nuclContribs = participation ? null : nucleationContributions.get(sourceID);
+				List<FaultSection> sects = rupSet.getFaultSectionDataForRupture(fssIndex);
+				for (int s=0; s<sects.size(); s++) {
+					FaultSection sect = sects.get(s);
 					DisaggregationSourceRuptureInfo sectContrib;
 					if (participation) {
 						sectContrib = contrib;
 					} else {
-						// scale for nucleation
-						double nuclFract = rupSet.getAreaForSection(sect.getSectionId()) / rupArea;
-						sectContrib = contrib.getScaled(nuclFract, duration);
+						sectContrib = nuclContribs.get(s);
 					}
 					int parentID = sect.getParentSectionId();
 					if (parentID < 0) {
