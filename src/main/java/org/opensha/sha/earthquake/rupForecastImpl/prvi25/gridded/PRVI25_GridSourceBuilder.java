@@ -66,7 +66,7 @@ public class PRVI25_GridSourceBuilder {
 	/**
 	 * if true, will subtract on-fault supra-seis rates from gridded MFDs
 	 */
-	public static final boolean RATE_BALANCE_GRIDDED = true;
+	public static final boolean RATE_BALANCE_CRUSTAL_GRIDDED = false;
 	
 	public static final double OVERALL_MMIN= 2.55;
 	// TODO: preliminary; logic tree branch(es)?
@@ -95,7 +95,7 @@ public class PRVI25_GridSourceBuilder {
 	public static GridSourceList buildCrustalGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
 		doPreGridBuildHook(sol, branch);
 		FaultSystemRupSet rupSet = sol.getRupSet();
-		Preconditions.checkState(branch.hasValue(PRVI25_CrustalFaultModels.class), "This should only be used to build crustal models");
+		Preconditions.checkState(!branch.hasValue(PRVI25_SubductionFaultModels.class), "This should only be used to build crustal models");
 		FaultCubeAssociations cubeAssociations = rupSet.requireModule(FaultCubeAssociations.class);
 		NSHM23_SingleRegionGridSourceProvider gridProv = buildCrustalGridSourceProv(sol, branch, PRVI25_SeismicityRegions.CRUSTAL, cubeAssociations);
 		
@@ -127,7 +127,7 @@ public class PRVI25_GridSourceBuilder {
 		for (int i=0; i<totalGR.size(); i++) {
 			double totalRate = totalGR.getY(i);
 			if (totalRate > 0) {
-				if (RATE_BALANCE_GRIDDED) {
+				if (RATE_BALANCE_CRUSTAL_GRIDDED) {
 					double solRate = solNuclMFD.getY(i);
 					if (solRate > totalRate) {
 						System.err.println("WARNING: MFD bulge at M="+(float)refMFD.getX(i)
