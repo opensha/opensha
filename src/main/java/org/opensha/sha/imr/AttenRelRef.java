@@ -252,6 +252,39 @@ public enum AttenRelRef implements AttenRelSupplier {
 		}
 		
 	},
+	
+	USGS_NSHM23_ACTIVE(null, "USGS NSHM23 Active Crustal",
+			"NSHM23-Active", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_NSHM23_ACTIVE_LA(null, "USGS NSHM23 Active Crustal (Los Angeles)",
+			"NSHM23-Active-LA", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023_LOS_ANGELES, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_NSHM23_ACTIVE_SF(null, "USGS NSHM23 Active Crustal (San Francisco)",
+			"NSHM23-Active-SF", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023_SAN_FRANCISCO, getName(), getShortName(), false, null);
+		}
+		
+	},
 
 	/** Interpolation between periods using BA. */
 	BA_2008_INTERP(InterpolatedBA_2008_AttenRel.class,
