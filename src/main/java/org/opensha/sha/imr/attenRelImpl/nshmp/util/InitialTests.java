@@ -24,6 +24,7 @@ class InitialTests {
 		GroundMotionLogicTreeFilter filter = null;
 		
 //		Gmm[] gmms = Gmm.values();
+		
 //		Gmm[] gmms = {
 //				Gmm.ASK_14,
 //				Gmm.ASK_14_BASE,
@@ -31,21 +32,25 @@ class InitialTests {
 //				Gmm.ASK_14_CYBERSHAKE,
 //				Gmm.ASK_14_VS30_MEASURED
 //		};
-//		Gmm[] gmms = {
-//				Gmm.COMBINED_ACTIVE_CRUST_2023,
-//				Gmm.COMBINED_ACTIVE_CRUST_2023_LOS_ANGELES,
-//				Gmm.COMBINED_ACTIVE_CRUST_2023_SAN_FRANCISCO,
-//		};
+		
+		Gmm[] gmms = {
+				Gmm.COMBINED_ACTIVE_CRUST_2023,
+				Gmm.COMBINED_ACTIVE_CRUST_2023_LOS_ANGELES,
+				Gmm.COMBINED_ACTIVE_CRUST_2023_SAN_FRANCISCO,
+		};
+		
 //		Gmm[] gmms = {
 //				Gmm.COMBINED_INTERFACE_2023_SEATTLE
 //		};
-		Gmm[] gmms = {
-				Gmm.USGS_PRVI_ACTIVE_CRUST,
-				Gmm.USGS_PRVI_ACTIVE_CRUST_ADJUSTED,
-				Gmm.USGS_PRVI_INTERFACE,
-				Gmm.USGS_PRVI_INTRASLAB,
-		};
-		filter = new GroundMotionLogicTreeFilter.StringMatching(GroundMotions.EPI_LO, UsgsPrviBackbone2025.SIGMA_PRVI_ID);
+		
+//		Gmm[] gmms = {
+//				Gmm.USGS_PRVI_ACTIVE_CRUST,
+//				Gmm.USGS_PRVI_ACTIVE_CRUST_ADJUSTED,
+//				Gmm.USGS_PRVI_INTERFACE,
+//				Gmm.USGS_PRVI_INTRASLAB,
+//		};
+//		filter = new GroundMotionLogicTreeFilter.StringMatching(GroundMotions.EPI_LO, UsgsPrviBackbone2025.SIGMA_PRVI_ID);
+		
 //		GroundMotionModel gmm = Gmm.ASK_14.instance(Imt.PGA);
 //		GroundMotionModel gmm = Gmm.ASK_14_BASE.instance(Imt.PGA);
 		
