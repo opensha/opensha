@@ -1680,7 +1680,7 @@ public abstract class AbstractLogicTreeHazardCombiner {
 				mags[rupIndex] = rupSet.getMagForRup(r);
 				rakes[rupIndex] = rupSet.getAveRakeForRup(r);
 				rupAreas[rupIndex] = rupSet.getAreaForRup(r);
-				rupAreas[rupIndex] = rupSet.getLengthForRup(r);
+				rupLengths[rupIndex] = rupSet.getLengthForRup(r);
 				rates[rupIndex] = sol.getRateForRup(r);
 				if (trts != null)
 					trts[rupIndex] = myTRTs.get(r);
