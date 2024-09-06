@@ -855,12 +855,12 @@ public class InversionFaultSystemSolution extends U3SlipEnabledSolution {
 	 * @return
 	 */
 	public MFDGridSourceProvider getGridSourceProvider() {
-		MFDGridSourceProvider gridSourceProvider = super.requireModule(MFDGridSourceProvider.class);
+		GridSourceProvider gridSourceProvider = super.requireModule(GridSourceProvider.class);
 		if (gridSourceProvider == null) {
 			gridSourceProvider = new UCERF3_GridSourceGenerator(this);
 			super.setGridSourceProvider(gridSourceProvider);
 		}
-		return gridSourceProvider;
+		return (MFDGridSourceProvider)gridSourceProvider;
 	}
 	
 	/**
