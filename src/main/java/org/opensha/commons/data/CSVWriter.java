@@ -50,9 +50,7 @@ public class CSVWriter implements Flushable {
      */
     public void write(List<String> line) throws IOException {
         validateLine(line);
-        String row = CSVFile.getLineStr(line);
-        writer.write(row);
-        writer.write('\n');
+        CSVFile.writeLine(writer, line);
     }
 
     @Override

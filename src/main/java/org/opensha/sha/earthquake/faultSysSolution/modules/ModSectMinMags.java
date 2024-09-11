@@ -14,7 +14,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 import com.google.common.base.Preconditions;
 
 public abstract class ModSectMinMags implements SubModule<FaultSystemRupSet>, BranchAverageableModule<ModSectMinMags>,
-SplittableRuptureSubSetModule<ModSectMinMags> {
+SplittableRuptureModule<ModSectMinMags> {
 	
 	FaultSystemRupSet rupSet;
 
@@ -236,6 +236,14 @@ SplittableRuptureSubSetModule<ModSectMinMags> {
 			for (int s=0; s<remapped.length; s++)
 				remapped[s] = sectMinMags[mappings.getOrigSectID(s)];
 			return new Precomputed(rupSubSet, remapped);
+		}
+
+		@Override
+		public ModSectMinMags getForSplitRuptureSet(FaultSystemRupSet splitRupSet, RuptureSetSplitMappings mappings) {
+			double[] remapped = new double[splitRupSet.getNumSections()];
+			for (int s=0; s<remapped.length; s++)
+				remapped[s] = sectMinMags[mappings.getOrigSectID(s)];
+			return new Precomputed(splitRupSet, remapped);
 		}
 
 	}

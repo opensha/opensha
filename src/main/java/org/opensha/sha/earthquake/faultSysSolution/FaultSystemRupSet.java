@@ -33,12 +33,13 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.BuildInfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectAreas;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SplittableRuptureSubSetModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SplittableRuptureModule;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
@@ -293,12 +294,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				readme.write("This solution has optional gridded seismicity information. Files related to that are:\n");
 				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME
 						+": GeoJSON file giving the location of each gridded seismicity node\n"));
-				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME
+				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME
 						+": CSV file giving the relative weights of each gridded seismicity focal mechanism at each grid node\n"));
-				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
+				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
 						+": CSV file giving the magnitude-frequency distribution of sub-seismogenic ruptures at each gridded "
 						+ "seismicity node that are associated with at least one fault\n"));
-				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
+				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
 						+": CSV file giving the magnitude-frequency distribution of off-fault ruptures at each gridded "
 						+ "seismicity node (those that are not associated with at any fault)\n"));
 			}
@@ -1414,7 +1415,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * new section IDs in the returned rupture set, and only ruptures involving those sections will be retained. If any
 	 * ruptures utilize both retained and non-retained section IDs, an {@link IllegalStateException} will be thrown.
 	 * <br>
-	 * All modules that implement {@link SplittableRuptureSubSetModule} will be copied over to the returned rupture set.
+	 * All modules that implement {@link SplittableRuptureModule} will be copied over to the returned rupture set.
 	 * <br>
 	 * Mappings between original and new section/rupture IDs can be retrieved via the {@link RuptureSubSetMappings} module
 	 * that will be attached to the rupture subset.
@@ -1432,7 +1433,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * new section IDs in the returned rupture set, and only ruptures involving those sections will be retained. If any
 	 * ruptures utilize both retained and non-retained section IDs, an {@link IllegalStateException} will be thrown.
 	 * <br>
-	 * All modules that implement {@link SplittableRuptureSubSetModule} will be copied over to the returned rupture set.
+	 * All modules that implement {@link SplittableRuptureModule} will be copied over to the returned rupture set.
 	 * <br>
 	 * Mappings between original and new section/rupture IDs can be retrieved via the {@link RuptureSubSetMappings} module
 	 * that will be attached to the rupture subset.
@@ -1514,12 +1515,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				modMags, modRakes, modRupAreas, modRupLengths);
 		
 		// add mappings module
-		RuptureSubSetMappings mappings = new RuptureSubSetMappings(sectIDs_newToOld, rupIDs_newToOld);
+		RuptureSubSetMappings mappings = new RuptureSubSetMappings(sectIDs_newToOld, rupIDs_newToOld, this);
 		modRupSet.addModule(mappings);
 		
 		// now copy over any modules we can
-		for (OpenSHA_Module module : getModulesAssignableTo(SplittableRuptureSubSetModule.class, true)) {
-			OpenSHA_Module modModule = ((SplittableRuptureSubSetModule<?>)module).getForRuptureSubSet(
+		for (OpenSHA_Module module : getModulesAssignableTo(SplittableRuptureModule.class, true)) {
+			OpenSHA_Module modModule = ((SplittableRuptureModule<?>)module).getForRuptureSubSet(
 					modRupSet, mappings);
 			if (modModule != null)
 				modRupSet.addModule(modModule);
@@ -1531,7 +1532,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	/**
 	 * Builds a rupture subset keeping only the given ruptures.
 	 * <br>
-	 * All modules that implement {@link SplittableRuptureSubSetModule} will be copied over to the returned rupture set.
+	 * All modules that implement {@link SplittableRuptureModule} will be copied over to the returned rupture set.
 	 * <br>
 	 * Mappings between original and new rupture IDs can be retrieved via the {@link RuptureSubSetMappings} module
 	 * that will be attached to the rupture subset.
@@ -1575,12 +1576,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				modMags, modRakes, modRupAreas, modRupLengths);
 		
 		// add mappings module
-		RuptureSubSetMappings mappings = new RuptureSubSetMappings(sectIDs_newToOld, rupIDs_newToOld);
+		RuptureSubSetMappings mappings = new RuptureSubSetMappings(sectIDs_newToOld, rupIDs_newToOld, this);
 		modRupSet.addModule(mappings);
 		
 		// now copy over any modules we can
-		for (OpenSHA_Module module : getModulesAssignableTo(SplittableRuptureSubSetModule.class, true)) {
-			OpenSHA_Module modModule = ((SplittableRuptureSubSetModule<?>)module).getForRuptureSubSet(
+		for (OpenSHA_Module module : getModulesAssignableTo(SplittableRuptureModule.class, true)) {
+			OpenSHA_Module modModule = ((SplittableRuptureModule<?>)module).getForRuptureSubSet(
 					modRupSet, mappings);
 			if (modModule != null)
 				modRupSet.addModule(modModule);

@@ -760,7 +760,7 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 		for (int srcIndex=fssSources; srcIndex<erf.getNumSources(); srcIndex++) {
 			// returned in nodeList order
 			int nodeIndex = srcIndex - fssSources;
-			Location loc = prov.getGriddedRegion().locationForIndex(nodeIndex);
+			Location loc = prov.getLocation(nodeIndex);
 			
 			// write location to be safe in case gridding changes in the future
 			out.writeDouble(loc.getLatitude());

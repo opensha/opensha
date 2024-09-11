@@ -69,7 +69,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	 * 	* Creeping section segmentation P=0.75 (applies to jumps to/from, not just ruptures that go through it)
 	 * 	* Ruptures allowed through creeping section
 	 */
-	LOW("Low Segmentation", "LowSeg",
+	LOW("Low Segmentation", "Low",
 			0.2, // weight
 			4d, // R0
 			3d,  // shift
@@ -92,7 +92,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	 * 	* Creeping section segmentation P=0.5 (applies to jumps to/from, not just ruptures that go through it)
 	 * 	* Ruptures allowed through creeping section
 	 */
-	MID("Middle Segmentation", "MidSeg",
+	MID("Middle Segmentation", "Middle",
 			0.3, // weight
 			3d, // R0
 			2d, // shift
@@ -115,7 +115,7 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 	 * 	* Creeping section segmentation P=0.25 (applies to jumps to/from, not just ruptures that go through it)
 	 * 	* Ruptures prohibited through creeping section
 	 */
-	HIGH("High Segmentation", "HighSeg",
+	HIGH("High Segmentation", "High",
 			0.3, // weight
 			2d, // R0
 			1d, // shift
@@ -430,11 +430,14 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 			// we're on the "classic full" branch: exclude all ruptures that don't rupture a full section
 			exclusions.add(new FullSectionsSegmentationModel(rupSet));
 		
-		if (this == CLASSIC && branch.hasValue(SupraSeisBValues.B_0p0)) {
-			// we're on the "classic" branch and b=0: exclude all ruptures that don't rupture a full section,
-			// except on special faults
-			boolean excludeNamed = rupSet.hasModule(NamedFaults.class);
-			exclusions.add(new FullSectionsSegmentationModel(rupSet, excludeNamed));
+		if (this == CLASSIC && branch.hasValue(SectionSupraSeisBValues.class)) {
+			// see if we're on the b=0 branch
+			if (branch.hasValue(SupraSeisBValues.B_0p0) || branch.requireValue(SectionSupraSeisBValues.class).getB() == 0d) {
+				// we're on the "classic" branch and b=0: exclude all ruptures that don't rupture a full section,
+				// except on special faults
+				boolean excludeNamed = rupSet.hasModule(NamedFaults.class);
+				exclusions.add(new FullSectionsSegmentationModel(rupSet, excludeNamed));
+			}
 		}
 		
 		double maxRupLength = getMaxRuptureLength();

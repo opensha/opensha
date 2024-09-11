@@ -187,13 +187,101 @@ public enum AttenRelRef implements AttenRelSupplier {
 		
 	},
 	
-	AG_2020_GLOBAL(null, "AG (2020) Global Interfase",
+	AG_2020_GLOBAL_INTERFACE(null, "AG (2020) Global Interface",
 			"AG2020", DEVELOPMENT) {
 		
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
 			return new NSHMP_GMM_Wrapper(Gmm.AG_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	PSBAH_2020_GLOBAL_INTERFACE(null, "PSBAH (2020) Global Interface",
+			"PSBAH2020-Interface", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.PSBAH_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	PSBAH_2020_GLOBAL_SLAB(null, "PSBAH (2020) Global Slab",
+			"PSBAH2020-Slab", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.PSBAH_20_GLOBAL_SLAB, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_PRVI_ACTIVE(null, "USGS PRVI25 Active Crustal",
+			"PRVI25-Active", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.USGS_PRVI_ACTIVE_CRUST_COMBINED_TREE, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_PRVI_INTERFACE(null, "USGS PRVI25 Interface",
+			"PRVI25-Interface", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.USGS_PRVI_INTERFACE_COMBINED_TREE, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_PRVI_SLAB(null, "USGS PRVI25 Slab",
+			"PRVI25-Slab", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.USGS_PRVI_INTRASLAB_COMBINED_TREE, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_NSHM23_ACTIVE(null, "USGS NSHM23 Active Crustal",
+			"NSHM23-Active", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_NSHM23_ACTIVE_LA(null, "USGS NSHM23 Active Crustal (Los Angeles)",
+			"NSHM23-Active-LA", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023_LOS_ANGELES, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_NSHM23_ACTIVE_SF(null, "USGS NSHM23 Active Crustal (San Francisco)",
+			"NSHM23-Active-SF", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023_SAN_FRANCISCO, getName(), getShortName(), false, null);
 		}
 		
 	},

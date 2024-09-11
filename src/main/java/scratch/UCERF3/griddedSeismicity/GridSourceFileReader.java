@@ -24,8 +24,11 @@ import org.opensha.commons.metadata.XMLSaveable;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
+import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 import scratch.UCERF3.utils.MatrixIO;
@@ -137,9 +140,9 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 	 * @throws IOException
 	 */
 	public static void writeGriddedSeisBinFile(
-			File binFile, File regXMLFile, GridSourceProvider gridProv, double minMag) throws IOException {
+			File binFile, File regXMLFile, MFDGridSourceProvider gridProv, double minMag) throws IOException {
 		DiscretizedFunc refFunc = null;
-		for (int i=0; i<gridProv.size(); i++) {
+		for (int i=0; i<gridProv.getNumLocations(); i++) {
 			if (gridProv.getMFD_Unassociated(i) != null) {
 				refFunc = gridProv.getMFD_Unassociated(i);
 				break;
@@ -154,7 +157,7 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 		// add x values for ref function
 		arrays.add(funcToArray(true, refFunc, minMag));
 		
-		for (int i=0; i<gridProv.size(); i++) {
+		for (int i=0; i<gridProv.getNumLocations(); i++) {
 			DiscretizedFunc unMFD = gridProv.getMFD_Unassociated(i);
 			if (unMFD != null && unMFD.getMaxY()>0) {
 				Preconditions.checkState(unMFD.getMinX() == refFunc.getMinX()
@@ -237,7 +240,7 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 	 * @param nodeUnassociatedMFDs
 	 * @throws IOException
 	 */
-	public static void writeGriddedSeisFile(File file, GridSourceProvider gridProv) throws IOException {
+	public static void writeGriddedSeisFile(File file, MFDGridSourceProvider gridProv) throws IOException {
 		GridSourceFileReader fileBased;
 		
 		if (gridProv instanceof GridSourceFileReader) {
@@ -331,8 +334,8 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 //		File solFile = new File(dataDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_2_MEAN_BRANCH_AVG_SOL.zip");
 		File solFile = new File(dataDir, "2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_TRUE_HAZARD_MEAN_SOL.zip");
 		File outputFile = new File(dataDir, solFile.getName().replaceAll(".zip", "")+"_grid_sources.xml");
-		FaultSystemSolution fss = U3FaultSystemIO.loadSol(solFile);
-		writeGriddedSeisFile(outputFile, fss.getGridSourceProvider());
+		U3FaultSystemSolution fss = U3FaultSystemIO.loadSol(solFile);
+		writeGriddedSeisFile(outputFile, fss.requireModule(MFDGridSourceProvider.class));
 ////		File fssFile = new File("/tmp/FM3_1_ZENGBB_Shaw09Mod_DsrTap_CharConst_M5Rate8.7_MMaxOff7.6_" +
 ////				"NoFix_SpatSeisU3_VarPaleo0.6_VarSmoothPaleoSect1000_VarSectNuclMFDWt0.01_sol.zip");
 //		File fssFile = new File("/home/kevin/workspace/OpenSHA/dev/scratch/UCERF3/data/scratch/"
@@ -405,11 +408,11 @@ public class GridSourceFileReader extends AbstractGridSourceProvider implements 
 	}
 
 	@Override
-	public GridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+	public MFDGridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 			Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
-			double[] fracReverse) {
+			double[] fracReverse, TectonicRegionType[] trts) {
 		return new AbstractGridSourceProvider.Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
-				fracStrikeSlip, fracNormal, fracReverse);
+				fracStrikeSlip, fracNormal, fracReverse, trts);
 	}
 
 }

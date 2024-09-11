@@ -126,7 +126,7 @@ public class PoliticalBoundariesData {
 	}
 
 	public synchronized static XY_DataSet[] loadUSState(String stateName) throws IOException {
-		stateName = stateName.trim().toLowerCase().replace(" ", "_");
+		stateName = stateName.trim().replace(" ", "_");
 		while (stateName.contains("__"))
 			stateName = stateName.replace("__", "_");
 		return checkLoadFile(US_PREFIX+stateName+".txt");

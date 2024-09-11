@@ -197,6 +197,10 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		return getLineStr(getLine(i));
 	}
 	
+	/**
+	 * @param line
+	 * @return String representation of the given line (not including a trailing newline)
+	 */
 	public static String getLineStr(List<?> line) {
 		return getLineStr(line.toArray());
 	}
@@ -214,24 +218,94 @@ public class CSVFile<E> implements Iterable<List<E>> {
 		return colVals;
 	}
 	
+	private static final String NULL_STR = null+"";
+	
+	private static boolean shouldWrap(String valStr) {
+		return valStr.contains(",") && !(valStr.startsWith("\"") && valStr.endsWith("\""));
+	}
+	
+	/**
+	 * @param line
+	 * @return String representation of the given line (not including a trailing newline)
+	 */
 	public static String getLineStr(Object[] line) {
-		String lineStr = null;
+		StringBuilder lineStr = null;
 		for (Object val : line) {
 			if (lineStr == null)
-				lineStr = "";
+				lineStr = new StringBuilder();
 			else
-				lineStr += ",";
-			String valStr;
-			if (val == null)
-				valStr = ""+null;
-			else
-				valStr = val.toString();
-			// if it contains a comma, surround it in quotation marks if not already
-			if (valStr.contains(",") && !(valStr.startsWith("\"") && valStr.endsWith("\"")))
-				valStr = "\""+valStr+"\"";
-			lineStr += valStr;
+				lineStr.append(',');
+			if (val == null) {
+				lineStr.append(NULL_STR);
+			} else {
+				String valStr = val.toString();
+				// if it contains a comma, surround it in quotation marks if not already
+				boolean wrap = shouldWrap(valStr);
+				if (wrap)
+					lineStr.append('"');
+				lineStr.append(valStr);
+				if (wrap)
+					lineStr.append('"');
+			}
 		}
-		return lineStr;
+		return lineStr.toString();
+	}
+	
+	/**
+	 * Writes the given line to the given writer. Unlike {@link #getLineStr(Object[])}, this will write a trailing newline.
+	 * The given writer will not be closed nor flushed.
+	 * @param fw
+	 * @param line
+	 * @throws IOException
+	 */
+	public static void writeLine(Writer fw, Object[] line) throws IOException {
+		for (int i=0; i<line.length; i++) {
+			Object val = line[i];
+			if (i > 0)
+				fw.write(',');
+			if (val == null) {
+				fw.write(NULL_STR);
+			} else {
+				String valStr = val.toString();
+				// if it contains a comma, surround it in quotation marks if not already
+				boolean wrap = shouldWrap(valStr);
+				if (wrap)
+					fw.write('"');
+				fw.write(valStr);
+				if (wrap)
+					fw.write('"');
+			}
+		}
+		fw.write('\n');
+	}
+	
+	/**
+	 * Writes the given line to the given writer. Unlike {@link #getLineStr(List)}, this will write a trailing newline.
+	 * The given writer will not be closed nor flushed.
+	 * @param fw
+	 * @param line
+	 * @throws IOException
+	 */
+	public static void writeLine(Writer fw, List<?> line) throws IOException {
+		int length = line.size();
+		for (int i=0; i<length; i++) {
+			Object val = line.get(i);
+			if (i > 0)
+				fw.write(',');
+			if (val == null) {
+				fw.write(NULL_STR);
+			} else {
+				String valStr = val.toString();
+				// if it contains a comma, surround it in quotation marks if not already
+				boolean wrap = shouldWrap(valStr);
+				if (wrap)
+					fw.write('"');
+				fw.write(valStr);
+				if (wrap)
+					fw.write('"');
+			}
+		}
+		fw.write('\n');
 	}
 	
 	public String getHeader() {
@@ -266,9 +340,8 @@ public class CSVFile<E> implements Iterable<List<E>> {
 	}
 	
 	private void writeWriter(Writer w) throws IOException {
-		for (int i=0; i<getNumRows(); i++) {
-			w.write(getLineStr(i) + "\n");
-		}
+		for (int i=0; i<getNumRows(); i++)
+			writeLine(w, getLine(i));
 		w.flush();
 	}
 	
@@ -326,26 +399,40 @@ public class CSVFile<E> implements Iterable<List<E>> {
 	 * @return
 	 */
 	public static List<String> loadLine(String line, int padToLength, int expectedNum) {
-		line = line.trim();
 		ArrayList<String> vals = expectedNum > 0 ? new ArrayList<>(expectedNum) : new ArrayList<>();
 		boolean inside = false;
-		String cur = "";
-		for (int i=0; i<line.length(); i++) {
-			char c = line.charAt(i);
+		StringBuilder cur = new StringBuilder();
+		int length = line.length();
+		
+		// trim witespace without having to call line.trim()
+		int start = 0;
+		if (Character.isWhitespace(line.charAt(start))) {
+			while (start<length && Character.isWhitespace(line.charAt(start)))
+				start++;
+		}
+		int end = length-1;
+		if (Character.isWhitespace(line.charAt(end))) {
+			while (end > start && Character.isWhitespace(line.charAt(end)))
+				end--;
+		}
+		
+		char c;
+		for (int i=start; i<=end; i++) {
+			c = line.charAt(i);
 			if (!inside && c == ',') {
 				// we're done with a value
-				vals.add(cur);
-				cur = "";
+				vals.add(cur.toString());
+				cur.setLength(0); // clear it
 				continue;
 			}
 			if (c == '"') {
 				inside = !inside;
 				continue;
 			}
-			cur += c;
+			cur.append(c);
 		}
-		if (!cur.isEmpty())
-			vals.add(cur);
+		if (cur.length() > 0)
+			vals.add(cur.toString());
 		while (vals.size() < padToLength)
 			vals.add("");
 		return vals;

@@ -29,7 +29,7 @@ public class ModMeanUCERF2update_FM2p1 extends ModMeanUCERF2 {
 	private NSHMP08_GridSourceGenerator gridSrcGen;
 
 	public ModMeanUCERF2update_FM2p1() {
-		gridSrcGen = new NSHMP08_GridSourceGenerator(GridSources.ALL);
+		gridSrcGen = new NSHMP08_GridSourceGenerator(U2GridSources.ALL);
 	}
 	
 	@Override

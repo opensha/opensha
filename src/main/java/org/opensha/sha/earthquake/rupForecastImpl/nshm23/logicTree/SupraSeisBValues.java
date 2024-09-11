@@ -11,7 +11,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum SupraSeisBValues implements LogicTreeNode {
+public enum SupraSeisBValues implements LogicTreeNode, SectionSupraSeisBValues.Constant {
 	
 //	B_0p0(0d,	0.04),
 //	B_0p2(0.2,	0.06),
@@ -76,6 +76,11 @@ public enum SupraSeisBValues implements LogicTreeNode {
 	@Override
 	public String getFilePrefix() {
 		return "SupraB"+(float)bValue;
+	}
+
+	@Override
+	public double getB() {
+		return bValue;
 	}
 	
 	public static void main(String[] args) {

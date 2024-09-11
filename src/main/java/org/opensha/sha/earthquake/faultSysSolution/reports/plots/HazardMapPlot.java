@@ -97,11 +97,11 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 		
 		int numThreads = getNumThreads();
 		
-		// use longer maximum distance for comparisons to avoid high ratios in low rate regions at the cutoff boundary
-		double maxDist = meta.hasComparisonSol() ? 500d : 200d;
+//		// use longer maximum distance for comparisons to avoid high ratios in low rate regions at the cutoff boundary
+//		double maxDist = meta.hasComparisonSol() ? 500d : 200d;
 		
 		SolHazardMapCalc calc = new SolHazardMapCalc(sol, gmpeRef, gridReg, periods);
-		calc.setMaxSourceSiteDist(maxDist);
+//		calc.setMaxSourceSiteDist(maxDist);
 		
 		ArbitrarilyDiscretizedFunc xVals = new ArbitrarilyDiscretizedFunc();
 		for (Point2D pt : IMT_Info.getUSGS_SA_Function())
@@ -123,7 +123,7 @@ public class HazardMapPlot extends AbstractSolutionPlot {
 			}
 			if (compCalc == null) {
 				compCalc = new SolHazardMapCalc(meta.comparison.sol, gmpeRef, gridReg, periods);
-				compCalc.setMaxSourceSiteDist(maxDist);
+//				compCalc.setMaxSourceSiteDist(maxDist);
 				
 				compCalc.setXVals(xVals);
 				

@@ -1,10 +1,12 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Set;
 
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
+import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
@@ -15,7 +17,7 @@ import com.google.gson.stream.JsonWriter;
 
 /**
  * This class gives mappings between original and subset rupture and section IDs. This is created by
- * {@link FaultSystemRupSet#getForSectionSubSet(java.util.Collection)}, and used by {@link SplittableRuptureSubSetModule}
+ * {@link FaultSystemRupSet#getForSectionSubSet(java.util.Collection)}, and used by {@link SplittableRuptureModule}
  * instances to build module subsets.
  * 
  * @author kevin
@@ -27,16 +29,18 @@ public class RuptureSubSetMappings implements JSON_BackedModule {
 	private BiMap<Integer, Integer> sectIDs_oldToNew;
 	private BiMap<Integer, Integer> rupIDs_newToOld;
 	private BiMap<Integer, Integer> rupIDs_oldToNew;
+	private transient FaultSystemRupSet origRupSet;
 	
 	@SuppressWarnings("unused") // deserialization
 	private RuptureSubSetMappings() {}
 
 	public RuptureSubSetMappings(BiMap<Integer, Integer> sectIDs_newToOld,
-			BiMap<Integer, Integer> rupIDs_newToOld) {
+			BiMap<Integer, Integer> rupIDs_newToOld, FaultSystemRupSet origRupSet) {
 		this.sectIDs_newToOld = sectIDs_newToOld;
 		this.sectIDs_oldToNew = sectIDs_newToOld.inverse();
 		this.rupIDs_newToOld = rupIDs_newToOld;
 		this.rupIDs_oldToNew = rupIDs_newToOld.inverse();
+		this.origRupSet = origRupSet;
 	}
 	
 	/**
@@ -123,6 +127,10 @@ public class RuptureSubSetMappings implements JSON_BackedModule {
 	@Override
 	public String getFileName() {
 		return "rupture_sub_set_mappings.json";
+	}
+	
+	public FaultSystemRupSet getOrigRupSet() {
+		return origRupSet;
 	}
 
 	@Override

@@ -4,11 +4,15 @@ import static org.opensha.commons.geo.GeoTools.TO_RAD;
 
 import java.util.EnumMap;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import org.opensha.commons.calc.GaussianDistCalc;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.exceptions.IMRException;
 import org.opensha.commons.exceptions.ParameterException;
 import org.opensha.commons.geo.Location;
@@ -18,6 +22,7 @@ import org.opensha.commons.param.constraint.impl.DoubleDiscreteConstraint;
 import org.opensha.commons.param.constraint.impl.StringConstraint;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
+import org.opensha.sha.earthquake.DistCachedERFWrapper.DistCacheWrapperRupture;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -36,6 +41,7 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import org.opensha.sha.imr.param.OtherParams.Component;
 import org.opensha.sha.imr.param.OtherParams.ComponentParam;
+import org.opensha.sha.imr.param.OtherParams.SigmaTruncTypeParam;
 import org.opensha.sha.imr.param.PropagationEffectParams.DistanceJBParameter;
 import org.opensha.sha.imr.param.PropagationEffectParams.DistanceRupParameter;
 import org.opensha.sha.imr.param.PropagationEffectParams.DistanceX_Parameter;
@@ -88,6 +94,8 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	private final boolean parameterize;
 	private Component component;
 	
+	private GroundMotionLogicTreeFilter treeFilter;
+	
 	// instances/caches
 	// most recently used IMT, reset whenever IMT changes
 	private Imt imt;
@@ -98,6 +106,10 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	private EnumMap<Imt, GroundMotionModel> instanceMap;
 	private LogicTree<GroundMotion> gmTree;
 	
+	// if enabled, will cache GmmInputs on a per-rupture basis
+	private boolean cacheInputsPerRupture = false;
+	private Map<EqkRupture, GmmInput> perRuptureInputCache;
+	
 	// params not in parent class
 	private DistanceX_Parameter distanceXParam;
 	private SedimentThicknessParam zSedParam;
@@ -106,11 +118,11 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	private Double defaultPeriod = null; // if SA
 	
 	public NSHMP_GMM_Wrapper(Gmm gmm) {
-		this(gmm, gmm.name());
+		this(gmm, gmm == null ? null : gmm.name());
 	}
 	
 	public NSHMP_GMM_Wrapper(Gmm gmm, boolean parameterize) {
-		this(gmm, gmm.name(), parameterize);
+		this(gmm, gmm == null ? null : gmm.name(), parameterize);
 	}
 	
 	public NSHMP_GMM_Wrapper(Gmm gmm, String shortName) {
@@ -221,14 +233,48 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	}
 	
 	/**
-	 * Sets the passed in {@link GmmInput} as the current input for the GMM. Note that this will not set any parameter
-	 * values. If a paremter is changed subsequently, all changes passed in via this method will be blown away (even
-	 * those not affefcted by the parameter update).
+	 * Sets the passed in {@link GmmInput} as the current input for the GMM.
 	 * @param gmmInput
 	 */
 	public void setCurrentGmmInput(GmmInput gmmInput) {
 		clearCachedGmmInputs();
 		this.gmmInput = gmmInput;
+		valueManager.setGmmInput(gmmInput);
+	}
+	
+	/**
+	 * Enables or disables caching of {@link GmmInput} values on a per-rupture basis; that cache will be cleared
+	 * whenever a parameter is set externally, or the {@link Site} is changed.
+	 */
+	public void setCacheInputsPerRupture(boolean cacheInputsPerRupture) {
+		this.cacheInputsPerRupture = cacheInputsPerRupture;
+	}
+	
+	/**
+	 * Copies the current per-rupture {@link GmmInput} cache from the given GMM. This is a shallow copy, so any updates
+	 * made on either GMM will affect the other (until they are cleared by a site or parameter change) 
+	 * @param other
+	 */
+	public void copyPerRuptureCacheFrom(NSHMP_GMM_Wrapper other) {
+		this.perRuptureInputCache = other.perRuptureInputCache;
+	}
+	
+	/**
+	 * Set a custom {@link GroundMotionLogicTreeFilter} to filter the nshmp-haz logic tree to only contain certain elements.
+	 * Useful for isolating a sub-model.
+	 * @param treeFilter
+	 */
+	public void setGroundMotionTreeFilter(GroundMotionLogicTreeFilter treeFilter) {
+		this.treeFilter = treeFilter;
+		clearCachedGmmInputs();
+	}
+	
+	/**
+	 * @return the custom {@link GroundMotionLogicTreeFilter} used to filter the nshmp-haz logic tree to only contain 
+	 * certain elements, if set, otherwise null.
+	 */
+	public GroundMotionLogicTreeFilter getGroundMotionTreeFilter() {
+		return treeFilter;
 	}
 	
 	/**
@@ -241,7 +287,10 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		
 		GroundMotionModel gmmInstance = getCurrentGMM_Instance();
 		
-		gmTree = gmmInstance.calc(getCurrentGmmInput());
+		LogicTree<GroundMotion> gmTree = gmmInstance.calc(getCurrentGmmInput());
+		if (treeFilter != null)
+			gmTree = treeFilter.filter(gmTree);
+		this.gmTree = gmTree;
 
 		return gmTree;
 	}
@@ -256,7 +305,7 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		double valWeightSum = 0d;
 		for (Branch<GroundMotion> branch : gmTree) {
 			weightSum += branch.weight();
-			valWeightSum += branch.weight()*branch.value().mean();
+			valWeightSum = Math.fma(branch.weight(), branch.value().mean(), valWeightSum);
 		}
 
 		if (weightSum == 1d)
@@ -274,7 +323,7 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		double valWeightSum = 0d;
 		for (Branch<GroundMotion> branch : gmTree) {
 			weightSum += branch.weight();
-			valWeightSum += branch.weight()*branch.value().sigma();
+			valWeightSum = Math.fma(branch.weight(), branch.value().sigma(), valWeightSum);
 		}
 		
 		if (weightSum == 1d)
@@ -287,28 +336,62 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			DiscretizedFunc intensityMeasureLevels)
 			throws ParameterException {
 		LogicTree<GroundMotion> gmTree = getGroundMotionTree();
-		if (gmTree.size() == 1)
-			return super.getExceedProbabilities(intensityMeasureLevels);
 		
+		// compute exceedance probability based on truncation type
+		final int sigmaTruncType;
+		if (sigmaTruncTypeParam == null ||
+				sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_NONE))
+			sigmaTruncType = 0; // none
+		else if (sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED))
+			sigmaTruncType = 1;
+		else if (sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_2SIDED))
+			sigmaTruncType = 2;
+		else
+			throw new IllegalStateException();
+		double numSig = sigmaTruncLevelParam.getValue();
+		
+		final int size = intensityMeasureLevels.size();
 		double weightSum = 0d;
 		boolean first = true;
+		double weight, mean, stdDev, x, y, stRndVar;
+		int i;
+		
+		double[] xVals, yVals;
+		if (intensityMeasureLevels instanceof LightFixedXFunc) {
+			xVals = ((LightFixedXFunc)intensityMeasureLevels).getXVals();
+			yVals = ((LightFixedXFunc)intensityMeasureLevels).getYVals();
+		} else {
+			xVals = new double[size];
+			yVals = new double[size];
+			for (i=0; i<size; i++)
+				xVals[i] = intensityMeasureLevels.getX(i);
+		}
+		
 		for (Branch<GroundMotion> branch : gmTree) {
-			double weight = branch.weight();
+			weight = branch.weight();
 			weightSum += weight;
-			double mean = branch.value().mean();
-			double stdDev = branch.value().sigma();
-			for (int i=0; i<intensityMeasureLevels.size(); i++) {
-				double x = intensityMeasureLevels.getX(i);
-				double y = getExceedProbability(mean, stdDev, x)*weight;
-				if (first)
-					intensityMeasureLevels.set(i, y);
+			mean = branch.value().mean();
+			stdDev = branch.value().sigma();
+			for (i=0; i<size; i++) {
+				stRndVar = (xVals[i] - mean) / stdDev;
+				if (sigmaTruncType == 0)
+					y = GaussianDistCalc.getExceedProb(stRndVar);
 				else
-					intensityMeasureLevels.set(i, intensityMeasureLevels.getY(i) + y);
+					y = GaussianDistCalc.getExceedProb(stRndVar, sigmaTruncType, numSig);
+				if (first)
+					yVals[i] = y*weight;
+				else
+					yVals[i] = Math.fma(y, weight, yVals[i]);
 			}
 			first = false;
 		}
 		if (weightSum != 1d)
-			intensityMeasureLevels.scale(1d/weightSum);
+			for (i=0; i<size; i++)
+				yVals[i] /= weightSum;
+		if (!(intensityMeasureLevels instanceof LightFixedXFunc))
+			// this means we didn't modify in place, need to set
+			for (i=0; i<size; i++)
+				intensityMeasureLevels.set(i, yVals[i]);
 		
 		return intensityMeasureLevels;
 	}
@@ -318,13 +401,13 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			IMRException {
 		double weightSum = 0d;
 		double weightValSum = 0d;
-		for (Branch<GroundMotion> branch : gmTree) {
+		for (Branch<GroundMotion> branch : getGroundMotionTree()) {
 			double weight = branch.weight();
 			weightSum += weight;
 			double mean = branch.value().mean();
 			double stdDev = branch.value().sigma();
 			double prob = getExceedProbability(mean, stdDev, iml)*weight;
-			weightValSum += prob*weight;
+			weightValSum = Math.fma(prob, weight, weightValSum);
 		}
 		if (weightSum == 1d)
 			return weightValSum;
@@ -345,13 +428,13 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		
 		double weightSum = 0d;
 		double weightValSum = 0d;
-		for (Branch<GroundMotion> branch : gmTree) {
+		for (Branch<GroundMotion> branch : getGroundMotionTree()) {
 			double weight = branch.weight();
 			weightSum += weight;
 			double mean = branch.value().mean();
 			double stdDev = branch.value().sigma();
 			double val = getIML_AtExceedProb(mean, stdDev, exceedProb, sigmaTruncTypeParam, sigmaTruncLevelParam);
-			weightValSum += val*weight;
+			weightValSum = Math.fma(val, weight, weightValSum);
 		}
 		if (weightSum == 1d)
 			return weightValSum;
@@ -663,30 +746,29 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			// tectonic region type
 			Type type = gmm.type();
 			if (type != null) {
-				String typeStr;
-				switch (type) {
-				case ACTIVE_CRUST:
-					typeStr = TectonicRegionType.ACTIVE_SHALLOW.toString();
-					break;
-				case STABLE_CRUST:
-					typeStr = TectonicRegionType.STABLE_SHALLOW.toString();
-					break;
-				case SUBDUCTION_INTERFACE:
-					typeStr = TectonicRegionType.SUBDUCTION_INTERFACE.toString();
-					break;
-				case SUBDUCTION_SLAB:
-					typeStr = TectonicRegionType.SUBDUCTION_SLAB.toString();
-					break;
-
-				default:
-					throw new IllegalStateException("Unexpected TRT: "+type);
-				}
+				String typeStr = trtForType(type).toString();
 				StringConstraint options = new StringConstraint();
 				options.addString(typeStr);
 				tectonicRegionTypeParam.setConstraint(options);
 			    tectonicRegionTypeParam.setDefaultValue(typeStr);
 			    tectonicRegionTypeParam.setValueAsDefault();
 			}
+		}
+	}
+	
+	public static TectonicRegionType trtForType(Type type) {
+		switch (type) {
+		case ACTIVE_CRUST:
+			return TectonicRegionType.ACTIVE_SHALLOW;
+		case STABLE_CRUST:
+			return TectonicRegionType.STABLE_SHALLOW;
+		case SUBDUCTION_INTERFACE:
+			return TectonicRegionType.SUBDUCTION_INTERFACE;
+		case SUBDUCTION_SLAB:
+			return TectonicRegionType.SUBDUCTION_SLAB;
+
+		default:
+			throw new IllegalStateException("Unexpected TRT: "+type);
 		}
 	}
 
@@ -701,6 +783,8 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		for (Parameter<?> param : otherParams)
 			param.setValueAsDefault();
 		setIntensityMeasure(defaultIMT);
+		
+		perRuptureInputCache = null;
 		
 		clearCachedGmmInputs();
 	}
@@ -717,17 +801,25 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 
 	@Override
 	public void setSite(Site site) {
+		if (site != this.site)
+			perRuptureInputCache = null;
 		super.setSite(site);
 		clearCachedGmmInputs();
 		
+		// the 'if (gmm != null || site.containsParameter(<param>.NAME))' checks make things work if we're using
+		// this just to pre-cache GmmInputs (gmm == null) and we were passed in a site that doesn't have that parameter
 		if (fields.contains(Field.VS30))
-			valueManager.setParameterValue(Field.VS30, site.getParameter(Double.class, Vs30_Param.NAME).getValue());
+			if (gmm != null || site.containsParameter(Vs30_Param.NAME))
+				valueManager.setParameterValue(Field.VS30, site.getParameter(Double.class, Vs30_Param.NAME).getValue());
 		if (fields.contains(Field.Z1P0))
-			valueManager.setParameterValue(Field.Z1P0, site.getParameter(Double.class, DepthTo1pt0kmPerSecParam.NAME).getValue());
+			if (gmm != null || site.containsParameter(DepthTo1pt0kmPerSecParam.NAME))
+				valueManager.setParameterValue(Field.Z1P0, site.getParameter(Double.class, DepthTo1pt0kmPerSecParam.NAME).getValue());
 		if (fields.contains(Field.Z2P5))
-			valueManager.setParameterValue(Field.Z2P5, site.getParameter(Double.class, DepthTo2pt5kmPerSecParam.NAME).getValue());
+			if (gmm != null || site.containsParameter(DepthTo2pt5kmPerSecParam.NAME))
+				valueManager.setParameterValue(Field.Z2P5, site.getParameter(Double.class, DepthTo2pt5kmPerSecParam.NAME).getValue());
 		if (fields.contains(Field.ZSED))
-			valueManager.setParameterValue(Field.ZSED, site.getParameter(Double.class, SedimentThicknessParam.NAME).getValue());
+			if (gmm != null || site.containsParameter(SedimentThicknessParam.NAME))
+				valueManager.setParameterValue(Field.ZSED, site.getParameter(Double.class, SedimentThicknessParam.NAME).getValue());
 		
 		setPropagationEffectParams();
 	}
@@ -736,6 +828,20 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	public void setEqkRupture(EqkRupture eqkRupture) {
 		super.setEqkRupture(eqkRupture);
 		clearCachedGmmInputs();
+		
+		boolean usePerRupCache = cacheInputsPerRupture && site != null;
+		EqkRupture rupForCache = eqkRupture;
+		if (usePerRupCache) {
+			if (perRuptureInputCache == null)
+				perRuptureInputCache = new HashMap<>();
+			if (eqkRupture instanceof DistCacheWrapperRupture)
+				rupForCache = ((DistCacheWrapperRupture)eqkRupture).getOriginalRupture();
+			GmmInput cached = perRuptureInputCache.get(rupForCache);
+			if (cached != null) {
+				setCurrentGmmInput(cached);
+				return;
+			}
+		}
 		
 		RuptureSurface surf = eqkRupture.getRuptureSurface();
 		
@@ -761,6 +867,11 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		}
 		
 		setPropagationEffectParams();
+		
+		if (usePerRupCache) {
+			// cache the GmmInput for future reuse
+			perRuptureInputCache.put(rupForCache, getCurrentGmmInput());
+		}
 	}
 
 	@Override
@@ -781,10 +892,12 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 
 	@Override
 	public void parameterChange(ParameterChangeEvent event) {
-		if (event.getParameter() == saPeriodParam || event.getParameter() == saPeriodParam)
+		if (event.getParameter() == saPeriodParam || event.getParameter() == saPeriodParam) {
 			clearCachedImt();
-		else
+		} else {
 			clearCachedGmmInputs();
+			perRuptureInputCache = null; // this will only be called when set externally, clear any per-rupture input cache
+		}
 	}
 	
 	@Override

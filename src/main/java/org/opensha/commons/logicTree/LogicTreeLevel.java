@@ -50,10 +50,15 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	 * by the choice at this logic tree level
 	 */
 	public boolean affects(String name, boolean affectedByDefault) {
-		for (String affected : getAffected())
+		checkParseAnnotations();
+		if (affectsAll)
+			return true;
+		if (affectsNone)
+			return false;
+		for (String affected : affected)
 			if (name.equals(affected))
 				return true;
-		for (String notAffected : getNotAffected())
+		for (String notAffected : notAffected)
 			if (name.equals(notAffected))
 				return false;
 		return affectedByDefault;
@@ -70,7 +75,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	 * 
 	 * @return collection of affected things, or empty collection if none (should never return null)
 	 */
-	public Collection<String> getAffected() {
+	public final Collection<String> getAffected() {
 		checkParseAnnotations();
 		return Collections.unmodifiableCollection(affected);
 	}
@@ -86,12 +91,13 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	 * 
 	 * @return collection of not affected things, or empty collection if none (should never return null)
 	 */
-	public Collection<String> getNotAffected() {
+	public final Collection<String> getNotAffected() {
 		checkParseAnnotations();
 		return Collections.unmodifiableCollection(notAffected);
 	}
 	
 	private List<String> affected, notAffected;
+	private boolean affectsAll, affectsNone;
 	
 	private void checkParseAnnotations() {
 		if (affected == null) {
@@ -134,6 +140,21 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 									type.getName(), name);
 							notAffected.add(name);
 						}
+					}
+					
+					// now see if we are marked as all/none
+					AffectsNone noneAffected = type.getAnnotation(AffectsNone.class);
+					AffectsAll allAffected = type.getAnnotation(AffectsAll.class);
+					Preconditions.checkState(noneAffected == null || allAffected == null,
+							"Can't specify both none and all affected");
+					if (noneAffected != null) {
+						Preconditions.checkState(affected.isEmpty() && notAffected.isEmpty(),
+								"Supplied buth @AffectsNone and also individual @Affects/@DoesNotAffect annotation(s)");
+						affectsNone = true;
+					} else if (allAffected != null) {
+						Preconditions.checkState(affected.isEmpty() && notAffected.isEmpty(),
+								"Supplied buth @AffectsNone and also individual @Affects/@DoesNotAffect annotation(s)");
+						affectsAll = true;
 					}
 					
 //					System.out.println(getName()+" affected:");
@@ -189,6 +210,20 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			this.affected = new ArrayList<>(affected);
 			this.notAffected = new ArrayList<>(notAffected);
 		}
+	}
+	
+	public void setAffectsAll() {
+		this.affected = List.of();
+		this.notAffected = List.of();
+		affectsAll = true;
+		affectsNone = false;
+	}
+	
+	public void setAffectsNone() {
+		this.affected = List.of();
+		this.notAffected = List.of();
+		affectsAll = false;
+		affectsNone = true;
 	}
 	
 	public String toString() {
@@ -540,6 +575,10 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					out.value(name);
 				out.endArray();
 			}
+			if (level.affectsAll)
+				out.name("affectsAll").value(true);
+			if (level.affectsNone)
+				out.name("affectsNone").value(true);
 			if (writeNodes) {
 				out.name("nodes").beginArray();;
 				for (LogicTreeNode node : level.getNodes())
@@ -558,6 +597,8 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			String className = null;
 			List<String> affected = new ArrayList<>();
 			List<String> notAffected = new ArrayList<>();
+			boolean affectsAll = false;
+			boolean affectsNone = false;
 			List<LogicTreeNode> nodes = new ArrayList<>();
 			in.beginObject();
 			
@@ -587,6 +628,12 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 						notAffected.add(in.nextString());
 					in.endArray();
 					break;
+				case "affectsAll":
+					affectsAll = in.nextBoolean();
+					break;
+				case "affectsNone":
+					affectsNone = in.nextBoolean();
+					break;
 				case "nodes":
 					in.beginArray();
 					while (in.hasNext())
@@ -598,6 +645,12 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					in.skipValue();
 					break;
 				}
+			}
+			
+			if (affectsAll || affectsNone) {
+				Preconditions.checkState(!affectsAll || !affectsNone, "both affectsAll and affectsNone are true?");
+				Preconditions.checkState(affected.isEmpty(), "can't specify individual and blanket affectations");
+				Preconditions.checkState(notAffected.isEmpty(), "can't specify individual and blanket affectations");
 			}
 			
 			LogicTreeLevel<E> level = null;
@@ -623,9 +676,15 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					System.err.println("WARNING: logic tree branch node class '"+enumClassName+"' is of the wrong type, "
 							+ "loading plain/hardcoded version instead");
 				}
-				if (level != null && (!affected.isEmpty() || !notAffected.isEmpty()))
-					// set the serialzed affected/unaffected levels
-					level.setAffected(affected, notAffected, true);
+				if (level != null) {
+					if (affectsAll)
+						level.setAffectsAll();
+					else if (affectsNone)
+						level.setAffectsNone();
+					else if (!affected.isEmpty() || !notAffected.isEmpty())
+						//set the serialzed affected/unaffected levels
+						level.setAffected(affected, notAffected, true);
+				}
 			}
 			if (level == null && className != null) {
 				// try to load it as a class via default constructor
@@ -639,7 +698,11 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 					
 					if (level instanceof RandomlySampledLevel<?>)
 						((RandomlySampledLevel<?>)level).setNodes(nodes);
-					if (!affected.isEmpty() || !notAffected.isEmpty())
+					if (affectsAll)
+						level.setAffectsAll();
+					else if (affectsNone)
+						level.setAffectsNone();
+					else if (!affected.isEmpty() || !notAffected.isEmpty())
 						// set the serialzed affected/unaffected levels
 						level.setAffected(affected, notAffected, true);
 				} catch (ClassNotFoundException e) {
@@ -656,7 +719,12 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 			if (level == null) {
 				// file-backed
 				FileBackedLevel fileLevel = new FileBackedLevel(name, shortName);
-				fileLevel.setAffected(affected, notAffected, false);
+				if (affectsAll)
+					fileLevel.setAffectsAll();
+				else if (affectsNone)
+					fileLevel.setAffectsNone();
+				else
+					fileLevel.setAffected(affected, notAffected, false);
 				level = (LogicTreeLevel<E>) fileLevel;
 				if (nodes != null) {
 					for (LogicTreeNode node : nodes) {

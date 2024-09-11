@@ -14,7 +14,11 @@ public class SourceFiltersParam extends AbstractParameter<SourceFilterManager> {
 	}
 	
 	public SourceFiltersParam() {
-		super(NAME, null, null, getDefault());
+		this(getDefault());
+	}
+	
+	public SourceFiltersParam(SourceFilterManager value) {
+		super(NAME, null, null, value);
 	}
 
 	@Override

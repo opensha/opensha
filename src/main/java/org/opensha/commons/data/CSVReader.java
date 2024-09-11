@@ -10,6 +10,7 @@ import java.util.*;
 public class CSVReader implements Closeable {
 
     protected BufferedReader reader;
+    protected int expectedSize = -1;
 
     public CSVReader(InputStream in) {
         reader = new BufferedReader(new InputStreamReader(in));
@@ -31,7 +32,9 @@ public class CSVReader implements Closeable {
             return null;
         }
 
-        return new Row(line);
+        Row row = new Row(line, expectedSize);
+        expectedSize = row.columns();
+        return row;
     }
 
     @Override
@@ -44,8 +47,8 @@ public class CSVReader implements Closeable {
         // the data of the current row
         protected final List<String> line;
 
-        Row(String row) {
-            this.line = CSVFile.loadLine(row);
+        Row(String row, int expectedSize) {
+            this.line = CSVFile.loadLine(row, -1, expectedSize);
         }
 
         /**
@@ -79,12 +82,31 @@ public class CSVReader implements Closeable {
         }
 
         /**
+         * Get a float value at the specified column.
+         *
+         * @param column the column index, 0-based
+         * @return the float value of the column
+         */
+        public float getFloat(int column) {
+            return Float.parseFloat(get(column).trim());
+        }
+
+        /**
          * Get all values as strings.
          *
          * @return a list of all column values
          */
         public List<String> getLine() {
             return line;
+        }
+        
+        /**
+         * Get the number of columns in this row
+         * 
+         * @return number of columns
+         */
+        public int columns() {
+        	return line.size();
         }
     }
 }

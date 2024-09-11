@@ -227,31 +227,24 @@ abstract class AbstractBranchMFDs implements FileBackedModule {
 		int numSections = branchSectMFDs[0].length;
 		
 		// write counts
-		writer.write(CSVFile.getLineStr(new String[] {"Num Branches", "Num Sections"}));
-		writer.write('\n');
-		writer.write(CSVFile.getLineStr(new String[] {numBranches+"", numSections+""}));
-		writer.write('\n');
+		CSVFile.writeLine(writer, new String[] {"Num Branches", "Num Sections"});
+		CSVFile.writeLine(writer, new String[] {numBranches+"", numSections+""});
 		
 		// write x values
-		writer.write(CSVFile.getLineStr(new String[] {"Magnitudes"}));
-		writer.write('\n');
+		CSVFile.writeLine(writer, new String[] {"Magnitudes"});
 		List<String> xValsHeader = new ArrayList<>(refMFD.size());
 		for (int i=0; i<refMFD.size(); i++)
 			xValsHeader.add((float)refMFD.getX(i)+"");
-		writer.write(CSVFile.getLineStr(xValsHeader));
-		writer.write('\n');
+		CSVFile.writeLine(writer, xValsHeader);
 		
 		String[] commonBranchHeader = {"Branch Index", "Branch Weight"};
 		String indexHeader = isParentSections() ? "Parent Section ID" : "Section Index";
 		String[] commonMFDHeader = {indexHeader, "Min Mag Index", "Rate1", "Rate2", "...", "RateN"};
 		
 		for (int b=0; b<numBranches; b++) {
-			writer.write(CSVFile.getLineStr(commonBranchHeader));
-			writer.write('\n');
-			writer.write(CSVFile.getLineStr(new String[] { b+"", weights[b]+""}));
-			writer.write('\n');
-			writer.write(CSVFile.getLineStr(commonMFDHeader));
-			writer.write('\n');
+			CSVFile.writeLine(writer, commonBranchHeader);
+			CSVFile.writeLine(writer, new String[] { b+"", weights[b]+""});
+			CSVFile.writeLine(writer, commonMFDHeader);
 			Preconditions.checkState(branchSectMFDs[b].length == numSections);
 			for (int s=0; s<numSections; s++) {
 				float[] mfdVals = branchSectMFDs[b][s];
@@ -259,8 +252,7 @@ abstract class AbstractBranchMFDs implements FileBackedModule {
 				int sectID = isParentSections() ? parentIDtoIndexMap.inverse().get(s) : s;
 				if (mfdVals == null || mfdVals.length == 0) {
 					// empty MFD
-					writer.write(CSVFile.getLineStr(new String[] { sectID+"", -1+"" }));
-					writer.write('\n');
+					CSVFile.writeLine(writer, new String[] { sectID+"", -1+"" });
 				} else {
 					String[] line = new String[2+mfdVals.length];
 					int cnt = 0;
@@ -272,8 +264,7 @@ abstract class AbstractBranchMFDs implements FileBackedModule {
 						else
 							line[cnt++] = rateDF.format(mfdVals[i]);
 					}
-					writer.write(CSVFile.getLineStr(line));
-					writer.write('\n');
+					CSVFile.writeLine(writer, line);
 				}
 			}
 		}

@@ -18,6 +18,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.NamedFaults;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
@@ -147,13 +148,13 @@ class UCERF3FileConverter {
 	
 	private static void writeSimplifiedAndFull(FaultSystemSolution sol, File fullFile, File simplifiedFile) throws IOException {
 		sol.write(fullFile);
-		sol = SolModuleStripper.stripModules(sol);
+		sol = SolModuleStripper.stripModules(sol, 0d);
 		sol.write(simplifiedFile);
 	}
 	
 	private static GridSourceProvider exactGridProv(GridSourceProvider prov) {
 		Preconditions.checkNotNull(prov);
-		AbstractGridSourceProvider.Precomputed precomputed = new AbstractGridSourceProvider.Precomputed(prov);
+		AbstractGridSourceProvider.Precomputed precomputed = new AbstractGridSourceProvider.Precomputed((MFDGridSourceProvider)prov);
 		precomputed.setRound(false);
 		return precomputed;
 	}

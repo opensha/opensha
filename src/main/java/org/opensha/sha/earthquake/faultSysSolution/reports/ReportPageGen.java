@@ -39,6 +39,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata.RupSetOverlap;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.BiasiWesnouskyPlots;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.CreepingAndParkfieldReport;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.CumulantMagnitudePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.FaultSectionConnectionsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.GeneralInfoPlot;
@@ -184,6 +185,7 @@ public class ReportPageGen {
 			plots.add(new JumpCountsOverDistancePlot());
 		}
 		if (level == PlotLevel.FULL) {
+			plots.add(new CumulantMagnitudePlot());
 			plots.add(new HazardMapPlot());
 			plots.add(new SegmentationPlot());
 		} else if (level == PlotLevel.DEFAULT || level == PlotLevel.REVIEW) {

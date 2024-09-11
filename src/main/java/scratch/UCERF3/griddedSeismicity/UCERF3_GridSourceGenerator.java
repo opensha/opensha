@@ -14,12 +14,14 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 import scratch.UCERF3.U3FaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.MaxMagOffFault;
@@ -287,11 +289,11 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 		}
 		
 		UCERF3_GridSourceGenerator gridGen = new UCERF3_GridSourceGenerator(invFss);
-		int numSrcs = gridGen.size();
+		int numSrcs = gridGen.getNumLocations();
 		int numRups = 0;
 		System.out.println("numSrcs: " + numSrcs);
 		for (int i=0; i<numSrcs; i++) {
-			numRups += gridGen.getSource(i, 1, false, BackgroundRupType.POINT).getNumRuptures();
+			numRups += gridGen.getSource(i, 1, null, BackgroundRupType.POINT).getNumRuptures();
 		}
 		System.out.println("numRups: " + numRups);
 
@@ -363,11 +365,11 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 	}
 
 	@Override
-	public GridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
+	public MFDGridSourceProvider newInstance(Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 			Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
-			double[] fracReverse) {
+			double[] fracReverse, TectonicRegionType[] trts) {
 		return new AbstractGridSourceProvider.Precomputed(getGriddedRegion(), nodeSubSeisMFDs, nodeUnassociatedMFDs,
-				fracStrikeSlip, fracNormal, fracReverse);
+				fracStrikeSlip, fracNormal, fracReverse, trts);
 	}
 
 }

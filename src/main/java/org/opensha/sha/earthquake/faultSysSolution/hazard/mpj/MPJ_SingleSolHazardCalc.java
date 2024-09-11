@@ -10,6 +10,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -33,6 +34,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
+import org.opensha.sha.calc.params.filters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
@@ -45,6 +47,7 @@ import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnP
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
@@ -65,11 +68,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	
 	private double gridSpacing = MPJ_LogicTreeHazardCalc.GRID_SPACING_DEFAULT;
 	
-	private double maxDistance = MPJ_LogicTreeHazardCalc.MAX_DIST_DEFAULT;
-	
-	private double skipMaxSiteDist = MPJ_LogicTreeHazardCalc.SKIP_MAX_DIST_DEFAULT;
-	
-	private AttenRelRef gmpeRef = MPJ_LogicTreeHazardCalc.GMPE_DEFAULT;
+	private Map<TectonicRegionType, AttenRelRef> gmmRefs;
 	
 	private double[] periods = MPJ_LogicTreeHazardCalc.PERIODS_DEFAULT;
 	
@@ -80,6 +79,10 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	private boolean applyAftershockFilter = MPJ_LogicTreeHazardCalc.AFTERSHOCK_FILTER_DEFAULT;
 	
 	private boolean aseisReducesArea = MPJ_LogicTreeHazardCalc.ASEIS_REDUCES_AREA_DEFAULT;
+	
+	private SourceFilterManager sourceFilter;
+	
+	private SourceFilterManager siteSkipSourceFilter;
 	
 	private GriddedRegion gridRegion;
 
@@ -146,14 +149,15 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		if (cmd.hasOption("grid-spacing"))
 			gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
 		
-		if (cmd.hasOption("max-distance"))
-			maxDistance = Double.parseDouble(cmd.getOptionValue("max-distance"));
+		sourceFilter = SolHazardMapCalc.getSourceFilters(cmd);
+		siteSkipSourceFilter = SolHazardMapCalc.getSiteSkipSourceFilters(sourceFilter, cmd);
 		
-		if (cmd.hasOption("skip-max-distance"))
-			skipMaxSiteDist = Double.parseDouble(cmd.getOptionValue("skip-max-distance"));
-		
-		if (cmd.hasOption("gmpe"))
-			gmpeRef = AttenRelRef.valueOf(cmd.getOptionValue("gmpe"));
+		gmmRefs = SolHazardMapCalc.getGMMs(cmd);
+		if (rank == 0) {
+			debug("GMMs:");
+			for (TectonicRegionType trt : gmmRefs.keySet())
+				debug("\tGMM for "+trt.name()+": "+gmmRefs.get(trt).getName());
+		}
 		
 		if (cmd.hasOption("periods")) {
 			List<Double> periodsList = new ArrayList<>();
@@ -276,9 +280,31 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	@Override
 	protected void doFinalAssembly() throws Exception {
 		// write out branch curves
-		if (!SINGLE_NODE_NO_MPJ && calc != null) {
-			// we have calculated some
-			calc.writeCurvesCSVs(nodesCurveDir, "node_"+rank+"_curves", false, true);
+		if (!SINGLE_NODE_NO_MPJ) {
+			String prefix = "node_"+rank+"_curves";
+			if (calc != null) {
+				// we have calculated some
+				debug("Writing curves CSVs");
+				calc.writeCurvesCSVs(nodesCurveDir, prefix, false, true);
+				debug("DONE writing CSVs");
+			} else {
+				// we've calculated none
+				// write empty CSVs
+				for (double period : periods) {
+					String fileName = SolHazardMapCalc.getCSV_FileName(prefix, period);
+					File outputFile = new File(nodesCurveDir, fileName);
+					
+					CSVFile<String> csv = new CSVFile<>(true);
+					
+					List<String> header = new ArrayList<>();
+					header.add("Index");
+					header.add("Latitude");
+					header.add("Longitude");
+					csv.addLine(header);
+					
+					csv.writeToFile(outputFile);
+				}
+			}
 		}
 		
 		// wait for everyone to finish writing
@@ -302,6 +328,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 				} else {
 					// read it
 					nodeCurves = null;
+					boolean anyEmpty = false;
+					boolean allEmpty = true;
 					for (int p=0; p<periods.length; p++) {
 						File curvesFile = new File(nodesCurveDir,
 								SolHazardMapCalc.getCSV_FileName("node_"+rank+"_curves", periods[p]));
@@ -310,15 +338,24 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 								nodeCurves = new ArrayList<>(periods.length);
 							else
 								Preconditions.checkNotNull(nodeCurves,
-										"Have curves for p=%s rank=%s, but not an earlier perioed",
+										"Have curves for p=%s rank=%s, but not an earlier period",
 										(Double)periods[p], rank);
-							nodeCurves.add(SolHazardMapCalc.loadCurvesCSV(CSVFile.readFile(curvesFile, true),
-									gridRegion, true));
+							CSVFile<String> csv = CSVFile.readFile(curvesFile, true);
+							if (csv.getNumRows() == 1) {
+								anyEmpty = true;
+							} else {
+								allEmpty = false;
+								nodeCurves.add(SolHazardMapCalc.loadCurvesCSV(csv, gridRegion, true));
+							}
 						} else {
 							Preconditions.checkState(curvesFile == null,
-									"Don't have curves for p=%s rank=%s, but did for an earlier perioed",
+									"Don't have curves for p=%s rank=%s, but did for an earlier period",
 									(Double)periods[p], rank);
 						}
+					}
+					if (anyEmpty) {
+						Preconditions.checkState(allEmpty);
+						nodeCurves = null;
 					}
 				}
 				if (nodeCurves != null) {
@@ -427,10 +464,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		if (tree == null)
 			return outputDir;
 		Preconditions.checkNotNull(branch, "We have a tree but branch is null?");
-		String dirName = branch.buildFileName();
-		File runDir = new File(outputDir, dirName);
-		
-		return runDir;
+		return branch.getBranchDirectory(outputDir, true);
 	}
 	
 	private GriddedRegion detectRegion(FaultSystemSolution sol) {
@@ -525,11 +559,11 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 					FaultSystemSolution extSol = new FaultSystemSolution(singleSol.getRupSet(), singleSol.getRateForAllRups());
 					extSol.setGridSourceProvider(externalGridProv);
 					
-					externalGriddedCurveCalc = new SolHazardMapCalc(extSol, MPJ_LogicTreeHazardCalc.getGMM_Supplier(branch, gmpeRef), gridRegion,
+					externalGriddedCurveCalc = new SolHazardMapCalc(extSol, MPJ_LogicTreeHazardCalc.getGMM_Suppliers(branch, gmmRefs), gridRegion,
 							IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
 					
-					externalGriddedCurveCalc.setMaxSourceSiteDist(maxDistance);
-					externalGriddedCurveCalc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
+					externalGriddedCurveCalc.setSourceFilter(sourceFilter);
+					externalGriddedCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 					
 					externalGriddedCurveCalc.calcHazardCurves(getNumThreads());
 				}
@@ -585,27 +619,29 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		}
 		
 		if (calc == null) {
-			Supplier<ScalarIMR> gmpeSupplier = MPJ_LogicTreeHazardCalc.getGMM_Supplier(branch, gmpeRef);
-			ScalarIMR gmpe = gmpeSupplier.get();
-			String paramStr = "";
-			for (Parameter<?> param : gmpe.getOtherParams())
-				paramStr += "; "+param.getName()+": "+param.getValue();
-			debug("GMPE: "+gmpe.getName()+paramStr);
+			Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeSuppliers = MPJ_LogicTreeHazardCalc.getGMM_Suppliers(branch, gmmRefs);
+			if (gmpeSuppliers.size() == 1) {
+				ScalarIMR gmpe = gmpeSuppliers.values().iterator().next().get();
+				String gmpeParamsStr = "GMPE: "+gmpe.getName();
+				for (Parameter<?> param : gmpe.getOtherParams())
+					gmpeParamsStr += "; "+param.getName()+": "+param.getValue();
+				debug(gmpeParamsStr);
+			}
 			if (combineWithExcludeCurves == null && combineWithOnlyCurves == null) {
-				calc = new SolHazardMapCalc(singleSol, gmpeSupplier, gridRegion, gridSeisOp, applyAftershockFilter, periods);
+				calc = new SolHazardMapCalc(singleSol, gmpeSuppliers, gridRegion, gridSeisOp, applyAftershockFilter, periods);
 			} else if (combineWithExcludeCurves != null) {
 				// calculate with only gridded seismicity, we'll add in the curves excluding it
 				debug("Reusing fault-based hazard for "+batch.length+" sites, will only compute gridded hazard");
 				combineWithCurves = combineWithExcludeCurves;
-				calc = new SolHazardMapCalc(singleSol, gmpeSupplier, gridRegion, IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
+				calc = new SolHazardMapCalc(singleSol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.ONLY, applyAftershockFilter, periods);
 			} else if (combineWithOnlyCurves != null) {
 				// calculate without gridded seismicity, we'll add in the curves with it
 				debug("Reusing fault-based hazard for "+batch.length+" sites, will only compute gridded hazard");
 				combineWithCurves = combineWithOnlyCurves;
-				calc = new SolHazardMapCalc(singleSol, gmpeSupplier, gridRegion, IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
+				calc = new SolHazardMapCalc(singleSol, gmpeSuppliers, gridRegion, IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
 			}
-			calc.setMaxSourceSiteDist(maxDistance);
-			calc.setSkipMaxSourceSiteDist(skipMaxSiteDist);
+			calc.setSourceFilter(sourceFilter);
+			calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 			calc.setAseisReducesArea(aseisReducesArea);
 			calc.setNoMFDs(noMFDs);
 			calc.setUseProxyRups(!noProxyRups);
@@ -626,20 +662,16 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	public static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
 		
+		SolHazardMapCalc.addCommonOptions(ops, true);
+		
 		ops.addRequiredOption("if", "input-file", true, "Path to input file (solution logic tree zip)");
 		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file, required if a results directory is "
 				+ "supplied with --input-file");
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption("of", "output-file", true, "Path to output zip file. Default will be based on the output directory");
 		ops.addOption("sp", "grid-spacing", true, "Grid spacing in decimal degrees. Default: "+(float)MPJ_LogicTreeHazardCalc.GRID_SPACING_DEFAULT);
-		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default: "+(float)MPJ_LogicTreeHazardCalc.MAX_DIST_DEFAULT);
-		ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
-				+ "Default: "+(float)MPJ_LogicTreeHazardCalc.SKIP_MAX_DIST_DEFAULT);
 		ops.addOption("gs", "gridded-seis", true, "Gridded seismicity option. One of "
 				+FaultSysTools.enumOptions(IncludeBackgroundOption.class)+". Default: "+MPJ_LogicTreeHazardCalc.GRID_SEIS_DEFAULT.name());
-		ops.addOption("gm", "gmpe", true, "Sets GMPE. Note that this will be overriden if the Logic Tree "
-				+ "supplies GMPE choices. Default: "+MPJ_LogicTreeHazardCalc.GMPE_DEFAULT.name());
-		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
 		ops.addOption("r", "region", true, "Optional path to GeoJSON file containing a region for which we should compute hazard. "
 				+ "Can be a gridded region or an outline. If not supplied, then one will be detected from the model. If "
 				+ "a zip file is supplied, then it is assumed that the file is a prior hazard calculation zip file and the "

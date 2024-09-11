@@ -54,6 +54,7 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.ExecutorUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
@@ -61,6 +62,7 @@ import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_SiteLogicTreeH
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
+import org.opensha.sha.earthquake.faultSysSolution.util.SolSiteHazardCalc;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -91,10 +93,8 @@ public class SiteLogicTreeHazardPageGen {
 		if (args.length > 2)
 			compZipFile = new File(args[2]);
 		
-		int threads = FaultSysTools.defaultNumThreads();
-		ExecutorService exec = new ThreadPoolExecutor(threads, threads,
-                0L, TimeUnit.MILLISECONDS,
-                new ArrayBlockingQueue<Runnable>(threads), new ThreadPoolExecutor.CallerRunsPolicy());
+		int threads = FaultSysTools.getNumThreads(cmd);
+		ExecutorService exec = ExecutorUtils.newBlockingThreadPool(threads);
 		
 		int downsample = -1;
 		if (cmd.hasOption("downsample")) {
@@ -134,6 +134,17 @@ public class SiteLogicTreeHazardPageGen {
 		int tocIndex = lines.size();
 		String topLink = "_[(top)](#table-of-contents)_";
 		
+		boolean levelNameOverlap = false;
+		List<String> levelPrefixes = new ArrayList<>();
+		for (LogicTreeLevel<?> level : tree.getLevels()) {
+			String ltPrefix = level.getShortName().replaceAll("\\W+", "_");
+			levelNameOverlap |= levelPrefixes.contains(ltPrefix);
+			levelPrefixes.add(ltPrefix);
+		}
+		if (levelNameOverlap)
+			for (int i=0; i<levelPrefixes.size(); i++)
+				levelPrefixes.set(i, i+"_"+levelPrefixes.get(i));
+		
 		for (Site site : sites) {
 			List<String> siteLines = new ArrayList<>();
 			siteLines.add("# "+site.getName()+" Logic Tree Hazard Curves");
@@ -154,7 +165,7 @@ public class SiteLogicTreeHazardPageGen {
 					+ "curves for "+site.getName()+"]("+sitePrefix+".md)_");
 			lines.add("");
 			
-			Map<Double, ZipEntry> perEntries = loadSiteCSVs(sitePrefix, zip);
+			Map<Double, ZipEntry> perEntries = locateSiteCurveCSVs(sitePrefix, zip);
 			Preconditions.checkState(!perEntries.isEmpty());
 			
 			List<Double> periods = new ArrayList<>(perEntries.keySet());
@@ -162,7 +173,7 @@ public class SiteLogicTreeHazardPageGen {
 			
 			Map<Double, ZipEntry> compPerEntries = null;
 			if (compZip != null) {
-				compPerEntries = loadSiteCSVs(sitePrefix, compZip);
+				compPerEntries = locateSiteCurveCSVs(sitePrefix, compZip);
 				if (compPerEntries.isEmpty())
 					compPerEntries = null;
 			}
@@ -202,7 +213,7 @@ public class SiteLogicTreeHazardPageGen {
 				List<Double> weights = new ArrayList<>();
 				List<LogicTreeBranch<?>> branches = new ArrayList<>();
 				System.out.println("\tBuilding curve dists");
-				ArbDiscrEmpiricalDistFunc[] dists = loadCurves(curvesCSV, tree, curves, branches, weights);
+				ArbDiscrEmpiricalDistFunc[] dists = loadCurvesAndDists(curvesCSV, tree.getLevels(), curves, branches, weights, true);
 				
 				DiscretizedFunc meanCurve = calcMeanCurve(dists, xVals(curves.get(0)));
 				
@@ -220,7 +231,7 @@ public class SiteLogicTreeHazardPageGen {
 					compCurves = new ArrayList<>();
 					compWeights = new ArrayList<>();
 					System.out.println("\tBuilding comparison curve dists");
-					compDists = loadCurves(compCurvesCSV, null, compCurves, null, compWeights);
+					compDists = loadCurvesAndDists(compCurvesCSV, null, compCurves, null, compWeights, true);
 					compMeanCurve = compCurves.size() == 1 ? compCurves.get(0) : calcMeanCurve(compDists, xVals(compCurves.get(0)));
 				}
 				
@@ -359,6 +370,10 @@ public class SiteLogicTreeHazardPageGen {
 				siteLines.add("");
 				siteLines.addAll(table.build());
 				
+				int siteLinesLevelTableIndex = siteLines.size();
+				List<String> levelLinks = new ArrayList<>();
+				List<String> levelAvgPlotLinks = new ArrayList<>();
+				
 				// value table
 				table = MarkdownUtils.tableBuilder();
 				
@@ -421,11 +436,12 @@ public class SiteLogicTreeHazardPageGen {
 					}
 					if (nodes.size() > 1 && !LogicTreeCurveAverager.shouldSkipLevel(level, nodes.size())) {
 						// we have multiple at this level
-						String ltPrefix = prefix+"_"+level.getShortName().replaceAll("\\W+", "_");
+						String ltPrefix = prefix+"_"+levelPrefixes.get(l);
+						String heading = site.getName()+", "+perLabel+", "+level.getName()+" Hazard";
 						if (periods.size() > 1)
-							siteLines.add("### "+site.getName()+", "+perLabel+", "+level.getName()+" Hazard");
+							siteLines.add("### "+heading);
 						else
-							siteLines.add("## "+site.getName()+", "+perLabel+", "+level.getName()+" Hazard");
+							siteLines.add("## "+heading);
 						siteLines.add(topLink); siteLines.add("");
 						System.out.println("\t\tLogic tree level: "+level.getName());
 						
@@ -437,10 +453,15 @@ public class SiteLogicTreeHazardPageGen {
 						table.initNewLine();
 						plot = curveBranchPlot(resourcesDir, ltPrefix+"_indv", site.getName(), perLabel, perUnits,
 								dists, xVals, Color.BLACK, rps, compDists, Color.GRAY, nodes, nodeCurves, downsample, null, exec, plotFutures);
-						table.addColumn("![Node Individual]("+resourcesDir.getName()+"/"+plot.getName()+")");
+						table.addColumn("!["+level.getShortName()+" Individual]("+resourcesDir.getName()+"/"+plot.getName()+")");
 						plot = curveBranchPlot(resourcesDir, ltPrefix+"_means", site.getName(), perLabel, perUnits,
 								dists, xVals, Color.BLACK, rps, compDists, Color.GRAY, nodes, null, downsample, nodeMeanCurves, exec, plotFutures);
-						table.addColumn("![Node Means]("+resourcesDir.getName()+"/"+plot.getName()+")");
+						String plotEmbed = "!["+level.getShortName()+" Means]("+resourcesDir.getName()+"/"+plot.getName()+")";
+						table.addColumn(plotEmbed);
+						
+						levelLinks.add("["+level.getName()+"](#"+MarkdownUtils.getAnchorName(heading)+")");
+						levelAvgPlotLinks.add(plotEmbed);
+						
 						table.finalizeLine();
 						if (rps.length != 2) {
 							siteLines.addAll(table.build());
@@ -512,6 +533,28 @@ public class SiteLogicTreeHazardPageGen {
 						throw ExceptionUtils.asRuntimeException(e);
 					}
 				}
+				
+				if (!levelLinks.isEmpty()) {
+					TableBuilder summaryTable = MarkdownUtils.tableBuilder();
+					summaryTable.initNewLine();
+					for (String link : levelLinks)
+						summaryTable.addColumn("__"+link+"__");
+					summaryTable.finalizeLine();
+					summaryTable.initNewLine();
+					for (String plotEmbed : levelAvgPlotLinks)
+						summaryTable.addColumn(plotEmbed);
+					summaryTable.finalizeLine();
+					List<String> linesAdd = new ArrayList<>();
+					linesAdd.add("");
+					if (periods.size() > 1)
+						linesAdd.add("### "+site.getName()+", "+perLabel+", Logic Tree Summary");
+					else
+						linesAdd.add("## "+site.getName()+", Logic Tree Summary");
+					linesAdd.add(topLink); linesAdd.add("");
+					linesAdd.addAll(summaryTable.wrap(3, 0).build());
+					linesAdd.add("");
+					siteLines.addAll(siteLinesLevelTableIndex, linesAdd);
+				}
 			}
 			
 			// add TOC
@@ -537,11 +580,12 @@ public class SiteLogicTreeHazardPageGen {
 		
 		ops.addOption(null, "downsample", true,
 				"Maximum number of individual curves to include in plots (will be randomly downsampled to match if more curves exist).");
+		ops.addOption(FaultSysTools.threadsOption());
 		
 		return ops;
 	}
 	
-	private static Map<Double, ZipEntry> loadSiteCSVs(String sitePrefix, ZipFile zip) {
+	public static Map<Double, ZipEntry> locateSiteCurveCSVs(String sitePrefix, ZipFile zip) {
 		Enumeration<? extends ZipEntry> entries = zip.entries();
 		Map<Double, ZipEntry> perEntires = new HashMap<>();
 		while (entries.hasMoreElements()) {
@@ -567,12 +611,74 @@ public class SiteLogicTreeHazardPageGen {
 		return perEntires;
 	}
 	
-	private static ArbDiscrEmpiricalDistFunc[] loadCurves(CSVFile<String> curvesCSV, LogicTree<?> tree,
-			List<DiscretizedFunc> curves, List<LogicTreeBranch<?>> branches, List<Double> weights) {
-		List<LogicTreeLevel<? extends LogicTreeNode>> levels;
+	public static List<DiscretizedFunc> loadCurves(CSVFile<String> curvesCSV, LogicTree<?> tree) {
+		List<DiscretizedFunc> curves = new ArrayList<>(tree.size());
+		List<LogicTreeBranch<?>> branches = new ArrayList<>(tree.size());
+		List<Double> weights = new ArrayList<>(tree.size());
+		loadCurvesAndDists(curvesCSV, tree.getLevels(), curves, branches, weights, false);
+		Preconditions.checkState(curves.size() == branches.size());
+		if (curves.size() != tree.size())
+			System.out.println("WARNING: we have "+curves.size()+" curves but the passed in tree has "
+					+tree.size()+" breanches. It's likely resampled and we will attempt to match.");
+		List<DiscretizedFunc> reordered = null;
+		Map<LogicTreeBranch<?>, Integer> treeBranchIndexes = null;
+		for (int i=0; i<curves.size(); i++) {
+			LogicTreeBranch<?> treeBranch = i < tree.size() ? tree.getBranch(i) : null;
+			LogicTreeBranch<?> curveBranch = branches.get(i);
+			if (reordered != null || treeBranch == null || !treeBranch.equals(curveBranch)) {
+				// out of order
+				if (reordered == null) {
+					// first time
+					treeBranchIndexes = new HashMap<>(tree.size());
+					for (int index=0; index<tree.size(); index++)
+						treeBranchIndexes.put(tree.getBranch(index), index);
+					Preconditions.checkState(treeBranchIndexes.size() == tree.size());
+					reordered = new ArrayList<>(tree.size());
+					// fill in any that we already processed, and nulls after
+					for (int index=0; index<tree.size(); index++) {
+						if (index < i)
+							reordered.add(curves.get(index));
+						else
+							reordered.add(null);
+					}
+					System.out.println("Had to reorder hazard curves to match passed in logic tree; first mismatch i="
+							+i+" -> "+treeBranchIndexes.get(curveBranch)
+							+"\n\ttreeBranch= "+treeBranch+"\n\tcurveBranch="+curveBranch);
+				}
+				Integer index = treeBranchIndexes.get(curveBranch);
+				if (index == null)
+					// this branch doesn't exist in the passed in tree
+					continue;
+				Preconditions.checkState(reordered.set(index, curves.get(i)) == null); // this makes sure it was null previously
+			}
+		}
+		if (reordered != null) {
+			// now see if there are any holes (will be the case if the passed in tree has duplicates)
+			int holes = 00;
+			for (int i=0; i<reordered.size(); i++) {
+				if (reordered.get(i) == null) {
+					holes++;
+					LogicTreeBranch<?> treeBranch = tree.getBranch(i);
+					// this branch should have been already filled in earlier
+					Integer prevIndex = treeBranchIndexes.get(treeBranch);
+					Preconditions.checkState(prevIndex != null && prevIndex < i, "No mappings found for branch %s", treeBranch);
+					reordered.set(i, reordered.get(prevIndex));
+				}
+			}
+			if (holes > 0)
+				System.out.println("Filled in "+holes+" holes (i.e., input tree has duplicates)");
+			return reordered;
+		}
+		return curves;
+	}
+	
+	private static ArbDiscrEmpiricalDistFunc[] loadCurvesAndDists(CSVFile<String> curvesCSV,
+			List<? extends LogicTreeLevel<? extends LogicTreeNode>> levels,
+			List<DiscretizedFunc> curves, List<LogicTreeBranch<?>> branches, List<Double> weights, boolean buildDists) {
+		List<LogicTreeLevel<? extends LogicTreeNode>> levelsCopy;
 		int startCol;
-		if (tree == null) {
-			levels = null;
+		if (levels == null) {
+			levelsCopy = null;
 			List<String> header = curvesCSV.getLine(0);
 			startCol = -1;
 			for (int i=0; i<header.size(); i++) {
@@ -585,18 +691,20 @@ public class SiteLogicTreeHazardPageGen {
 			}
 			Preconditions.checkState(startCol > 2);
 		} else {
-			levels = new ArrayList<>();
-			for (LogicTreeLevel<?> level : tree.getLevels())
-				levels.add(level);
+			levelsCopy = new ArrayList<>(levels);
 			startCol = 3+levels.size();
 		}
 		double[] xVals = new double[curvesCSV.getNumCols()-startCol];
 //		ArbDiscrEmpiricalDistFunc[] dists = new ArbDiscrEmpiricalDistFunc[xVals.length];
-		List<List<Point2D>> distPoints = new ArrayList<>();
+		List<List<Point2D>> distPoints = null;
+		if (buildDists) {
+			distPoints = new ArrayList<>();
+		}
 		for (int i=0; i<xVals.length; i++) {
 			xVals[i] = curvesCSV.getDouble(0, startCol+i);
 //			dists[i] = new ArbDiscrEmpiricalDistFunc();
-			distPoints.add(new ArrayList<>(curvesCSV.getNumRows()-1));
+			if (buildDists)
+				distPoints.add(new ArrayList<>(curvesCSV.getNumRows()-1));
 		}
 		
 		for (int row=1; row<curvesCSV.getNumRows(); row++) {
@@ -605,30 +713,34 @@ public class SiteLogicTreeHazardPageGen {
 			for (int i=0; i<yVals.length; i++) {
 				yVals[i] = curvesCSV.getDouble(row, startCol+i);
 //				dists[i].set(yVals[i], weight);
-				distPoints.get(i).add(new Point2D.Double(yVals[i], weight));
+				if (buildDists)
+					distPoints.get(i).add(new Point2D.Double(yVals[i], weight));
 			}
 			LightFixedXFunc curve = new LightFixedXFunc(xVals, yVals);
 			curves.add(curve);
 			weights.add(weight);
 			if (branches != null) {
-				Preconditions.checkState(levels != null);
+				Preconditions.checkState(levelsCopy != null);
 				List<LogicTreeNode> nodes = new ArrayList<>();
-				for (int i=0; i<levels.size(); i++) {
+				for (int i=0; i<levelsCopy.size(); i++) {
 					String nodeName = curvesCSV.get(row, i+3);
-					LogicTreeLevel<?> level = levels.get(i);
+					LogicTreeLevel<?> level = levelsCopy.get(i);
 					LogicTreeNode match = null;
 					for (LogicTreeNode node : level.getNodes()) {
 						if (nodeName.equals(node.getShortName())) {
+							Preconditions.checkState(match == null, "Multiple nodes match name %s for level %s", nodeName, level.getName());
 							match = node;
-							break;
 						}
 					}
+					Preconditions.checkNotNull(match, "No match found for %s in level %s", nodeName, level.getName());
 					nodes.add(match);
 				}
-				branches.add(new LogicTreeBranch<>(levels, nodes));
+				branches.add(new LogicTreeBranch<>(levelsCopy, nodes));
 			}
 		}
 		
+		if (!buildDists)
+			return null;
 		ArbDiscrEmpiricalDistFunc[] dists = new ArbDiscrEmpiricalDistFunc[xVals.length];
 		for (int i=0; i<dists.length; i++)
 			// this will initialize them more efficiently
@@ -702,7 +814,7 @@ public class SiteLogicTreeHazardPageGen {
 		maxX = Math.pow(10, Math.ceil(Math.log10(maxX)));
 		Range xRange = new Range(minX, maxX);
 		
-		List<XYAnnotation> anns = addRPAnnotations(funcs, chars, xRange, rps);
+		List<XYAnnotation> anns = SolSiteHazardCalc.addRPAnnotations(funcs, chars, xRange, yRange, rps, true);
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, siteName, perLabel+" ("+units+")", "Annual Probability of Exceedance");
 		spec.setLegendInset(true);
@@ -733,27 +845,6 @@ public class SiteLogicTreeHazardPageGen {
 		}));
 		
 		return new File(resourcesDir, prefix+".png");
-	}
-	
-	public static List<XYAnnotation> addRPAnnotations(List<? super DiscretizedFunc> funcs,
-			List<PlotCurveCharacterstics> chars, Range xRange, ReturnPeriods[] rps) {
-		List<XYAnnotation> anns = new ArrayList<>();
-		
-		for (ReturnPeriods rp : rps) {
-			ArbitrarilyDiscretizedFunc func = new ArbitrarilyDiscretizedFunc();
-			func.set(xRange.getLowerBound(), rp.oneYearProb);
-			func.set(xRange.getUpperBound(), rp.oneYearProb);
-			
-			funcs.add(0, func);
-			chars.add(0, new PlotCurveCharacterstics(PlotLineType.DASHED, 1f, Color.DARK_GRAY));
-			
-			XYTextAnnotation ann = new XYTextAnnotation(" "+rp.label, xRange.getUpperBound(), rp.oneYearProb);
-			ann.setTextAnchor(TextAnchor.BASELINE_RIGHT);
-			ann.setFont(new Font(Font.SANS_SERIF, Font.BOLD, 20));
-			anns.add(ann);
-		}
-		
-		return anns;
 	}
 	
 	private static File curveBranchPlot(File resourcesDir, String prefix, String siteName, String perLabel, String units,
@@ -890,7 +981,7 @@ public class SiteLogicTreeHazardPageGen {
 		maxX = Math.pow(10, Math.ceil(Math.log10(maxX)));
 		Range xRange = new Range(minX, maxX);
 		
-		List<XYAnnotation> anns = addRPAnnotations(funcs, chars, xRange, rps);
+		List<XYAnnotation> anns = SolSiteHazardCalc.addRPAnnotations(funcs, chars, xRange, yRange, rps, true);
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, siteName, perLabel+" ("+units+")", "Annual Probability of Exceedance");
 		spec.setLegendInset(true);

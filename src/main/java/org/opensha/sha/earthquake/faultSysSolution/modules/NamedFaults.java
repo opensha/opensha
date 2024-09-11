@@ -30,7 +30,7 @@ import com.google.gson.reflect.TypeToken;
  */
 public class NamedFaults implements SubModule<FaultSystemRupSet>, BranchAverageableModule<NamedFaults>,
 ConstantAverageable<NamedFaults>, JSON_TypeAdapterBackedModule<Map<String, List<Integer>>>,
-SplittableRuptureSubSetModule<NamedFaults> {
+SplittableRuptureModule<NamedFaults> {
 	
 	private transient FaultSystemRupSet rupSet;
 	private Map<String, List<Integer>> namedFaults;
@@ -200,6 +200,11 @@ SplittableRuptureSubSetModule<NamedFaults> {
 	@Override
 	public NamedFaults getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
 		return new NamedFaults(rupSubSet, namedFaults);
+	}
+
+	@Override
+	public NamedFaults getForSplitRuptureSet(FaultSystemRupSet splitRupSet, RuptureSetSplitMappings mappings) {
+		return new NamedFaults(splitRupSet, namedFaults);
 	}
 
 }

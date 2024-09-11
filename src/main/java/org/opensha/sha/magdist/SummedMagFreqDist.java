@@ -117,11 +117,11 @@ public class SummedMagFreqDist extends IncrementalMagFreqDist {
 	 * @param magFreqDist the Magnitude Frequency distribution to be added
 	 */
 	public void addIncrementalMagFreqDist(EvenlyDiscretizedFunc magFreqDist) {
-
-		// check that deltas are within tolorance
-		if(Math.abs(getDelta()-magFreqDist.getDelta()) > tolerance)
+		// check that deltas are within tolerance
+		if(magFreqDist.size() > 1 && Math.abs(getDelta()-magFreqDist.getDelta()) > tolerance)
 			throw new IllegalArgumentException("SummedMagFreqDist.addIncrementalMagFreqDist() error: "+
-					"deltas differ by more then tolerance");
+					"deltas differ by more then tolerance; ours="+(float)getDelta()
+					+", theirs="+(float)magFreqDist.getDelta()+", tol="+(float)tolerance);
 
 		// loop over points of the given dist and add those that are within range
 		for (int i=0;i<magFreqDist.size();++i) {

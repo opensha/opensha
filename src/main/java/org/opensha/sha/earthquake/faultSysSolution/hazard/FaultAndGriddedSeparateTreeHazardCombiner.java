@@ -124,8 +124,7 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 		List<DiscretizedFunc[][]> gridSeisCurves = new ArrayList<>();
 		for (LogicTreeBranch<?> gridBranch : gridTree) {
 			System.out.println("Pre-loading curves for gridded seismicity branch "+gridBranch);
-			File branchResultsDir = new File(griddedHazardDir, gridBranch.buildFileName());
-			Preconditions.checkState(branchResultsDir.exists(), "%s doesn't exist", branchResultsDir.getAbsolutePath());
+			File branchResultsDir = gridBranch.getBranchDirectory(griddedHazardDir, true);
 			File branchHazardDir = new File(branchResultsDir, gridHazardDirName);
 			Preconditions.checkState(branchHazardDir.exists(), "%s doesn't exist", branchHazardDir.getAbsolutePath());
 			
@@ -236,7 +235,7 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 					gridCurves = meanGridSeisCurves;
 				}
 				double combWeight = faultWeight * gridWeight;
-				String combPrefix = combinedBranch.buildFileName();
+				String combPrefix = combinedBranch.getBranchZipPath();
 				combinedBranch.setOrigBranchWeight(faultWeight);
 				
 				Map<String, GriddedGeoDataSet> writeMap = new HashMap<>(gridReg.getNodeCount()*periods.length);
@@ -481,8 +480,7 @@ public class FaultAndGriddedSeparateTreeHazardCombiner {
 	
 	private static CompletableFuture<DiscretizedFunc[][]> curveLoadFuture(File faultHazardDir, String faultHazardDirName,
 			LogicTreeBranch<?> faultBranch, double[] periods) {
-		File branchResultsDir = new File(faultHazardDir, faultBranch.buildFileName());
-		Preconditions.checkState(branchResultsDir.exists(), "%s doesn't exist", branchResultsDir.getAbsolutePath());
+		File branchResultsDir = faultBranch.getBranchDirectory(faultHazardDir, true);
 		File branchHazardDir = new File(branchResultsDir, faultHazardDirName);
 		Preconditions.checkState(branchHazardDir.exists(), "%s doesn't exist", branchHazardDir.getAbsolutePath());
 		

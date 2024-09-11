@@ -341,6 +341,11 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 				return "Custom Surface";
 			return null;
 		}
+
+		@Override
+		public double getMinMag() {
+			return 0;
+		}
 		
 	}
 	
@@ -373,6 +378,11 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 				return "KML Surface";
 			}
 			return null;
+		}
+
+		@Override
+		public double getMinMag() {
+			return 0;
 		}
 		
 	}

@@ -6,7 +6,9 @@ import java.io.IOException;
 import java.text.DecimalFormat;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -22,8 +24,9 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
-import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.sha.calc.params.filters.SourceFilterManager;
+import org.opensha.sha.calc.params.filters.SourceFilters;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
@@ -40,7 +43,7 @@ import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
-import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -68,14 +71,14 @@ import com.google.common.base.Stopwatch;
  */
 public class QuickGriddedHazardMapCalc {
 	
-	private Supplier<ScalarIMR> gmpeSupplier;
+	private Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeSuppliers;
 	private double period;
 	private DiscretizedFunc xVals;
-	private double maxDist;
+	private Map<TectonicRegionType, Double> trtMaxDists;
 	
-	private EvenlyDiscretizedFunc logSpacedDiscr;
-	private double[] distVals;
-	private DiscretizedFunc distDiscr;
+	private Map<TectonicRegionType, EvenlyDiscretizedFunc> trtLogSpacedDiscrs;
+	private Map<TectonicRegionType, double[]> trtDistVals;
+	private Map<TectonicRegionType, DiscretizedFunc> trtDistDiscr;
 	
 	private ConcurrentMap<UniqueRupture, DiscretizedFunc[]> rupExceedsMap = new ConcurrentHashMap<>();
 	
@@ -92,8 +95,23 @@ public class QuickGriddedHazardMapCalc {
 	 * @param maxDist maximum site-source distance in km
 	 */
 	public QuickGriddedHazardMapCalc(Supplier<ScalarIMR> gmpeSupplier, double period, DiscretizedFunc xVals,
-			double maxDist) {
-		this(gmpeSupplier, period, xVals, maxDist, NUM_DISCR_DEFAULT);
+			SourceFilterManager sourceFitlers) {
+		this(SolHazardMapCalc.wrapInTRTMap(gmpeSupplier), period, xVals, sourceFitlers);
+	}
+	
+
+
+	/**
+	 * This constructor uses the default number of interpolation points (see {@link #NUM_DISCR_DEFAULT})
+	 * 
+	 * @param gmpeSupplier GMM suplier, such as an {@link AttenRelRef}
+	 * @param period calculation period
+	 * @param xVals x values
+	 * @param maxDist maximum site-source distance in km
+	 */
+	public QuickGriddedHazardMapCalc(Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeSuppliers,
+			double period, DiscretizedFunc xVals, SourceFilterManager sourceFitlers) {
+		this(gmpeSuppliers, period, xVals, sourceFitlers, NUM_DISCR_DEFAULT);
 	}
 
 	/**
@@ -105,19 +123,41 @@ public class QuickGriddedHazardMapCalc {
 	 * @param numDiscr number of interpolation points
 	 */
 	public QuickGriddedHazardMapCalc(Supplier<ScalarIMR> gmpeSupplier, double period, DiscretizedFunc xVals,
-			double maxDist, int numDiscr) {
-		this.gmpeSupplier = gmpeSupplier;
+			SourceFilterManager sourceFitlers, int numDiscr) {
+		this(SolHazardMapCalc.wrapInTRTMap(gmpeSupplier), period, xVals, sourceFitlers, numDiscr);
+	}
+
+	/**
+	 * 
+	 * @param gmpeSupplier GMM suplier, such as an {@link AttenRelRef}
+	 * @param period calculation period
+	 * @param xVals x values
+	 * @param maxDist maximum site-source distance in km
+	 * @param numDiscr number of interpolation points
+	 */
+	public QuickGriddedHazardMapCalc(Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeSuppliers,
+			double period, DiscretizedFunc xVals, SourceFilterManager sourceFitlers, int numDiscr) {
+		this.gmpeSuppliers = gmpeSuppliers;
 		this.period = period;
 		this.xVals = xVals;
-		this.maxDist = maxDist;
 		
 		minNodeCalcsForSourcewise = 3*numDiscr/2;
-		logSpacedDiscr = new EvenlyDiscretizedFunc(
-				Math.log(0.1), Math.log(maxDist+5d), numDiscr-1);
-		distVals = new double[numDiscr];
-		for (int i=1; i<distVals.length; i++)
-			distVals[i] = Math.exp(logSpacedDiscr.getX(i-1));
-		distDiscr = new LightFixedXFunc(distVals, new double[distVals.length]);
+		trtMaxDists = new EnumMap<>(TectonicRegionType.class);
+		trtLogSpacedDiscrs = new EnumMap<>(TectonicRegionType.class);
+		trtDistVals = new EnumMap<>(TectonicRegionType.class);
+		trtDistDiscr = new EnumMap<>(TectonicRegionType.class);
+		for (TectonicRegionType trt : gmpeSuppliers.keySet()) {
+			double maxDist = SolHazardMapCalc.getMaxDistForTRT(sourceFitlers, trt);
+			trtMaxDists.put(trt, maxDist);
+			EvenlyDiscretizedFunc logSpacedDiscr = new EvenlyDiscretizedFunc(
+					Math.log(0.1), Math.log(maxDist+5d), numDiscr-1);
+			trtLogSpacedDiscrs.put(trt, logSpacedDiscr);
+			double[] distVals = new double[numDiscr];
+			for (int i=1; i<distVals.length; i++)
+				distVals[i] = Math.exp(logSpacedDiscr.getX(i-1));
+			trtDistVals.put(trt, distVals);
+			trtDistDiscr.put(trt, new LightFixedXFunc(distVals, new double[distVals.length]));
+		}
 	}
 	
 	/**
@@ -186,8 +226,8 @@ public class QuickGriddedHazardMapCalc {
 			logXVals.set(Math.log(pt.getX()), 0d);
 		
 		// this will be used to distribute sources to worker threads
-		ArrayDeque<Integer> sourceIndexes = new ArrayDeque<>(gridProv.size());
-		for (int i=0; i<gridProv.size(); i++)
+		ArrayDeque<Integer> sourceIndexes = new ArrayDeque<>(gridProv.getNumSources());
+		for (int i=0; i<gridProv.getNumSources(); i++)
 			sourceIndexes.add(i);
 		
 		// spin up worker threads
@@ -242,6 +282,8 @@ public class QuickGriddedHazardMapCalc {
 		return curves;
 	}
 	
+	private boolean trtWarned = false;
+	
 	private class CalcThread extends Thread {
 		
 		private DiscretizedFunc[] curves;
@@ -263,18 +305,30 @@ public class QuickGriddedHazardMapCalc {
 		@Override
 		public void run() {
 			try {
-				ScalarIMR gmpe = gmpeSupplier.get();
-				if (period == 0d) {
-					gmpe.setIntensityMeasure(PGA_Param.NAME);
-				} else {
-					gmpe.setIntensityMeasure(SA_Param.NAME);
-					SA_Param.setPeriodInSA_Param(gmpe.getIntensityMeasure(), period);
-				}
+				Map<TectonicRegionType, ScalarIMR> gmpeMap = new EnumMap<>(TectonicRegionType.class);
 				
-				Site testSite = new Site(new Location(0d, 0d));
-				for (Parameter<?> param : gmpe.getSiteParams())
-					testSite.addParameter(param);
-				gmpe.setSite(testSite);
+				for (TectonicRegionType trt : gridProv.getTectonicRegionTypes()) {
+					Supplier<ScalarIMR> gmmSupplier = gmpeSuppliers.get(trt);
+					if (gmmSupplier == null && gmpeSuppliers.size() == 1) {
+						TectonicRegionType trtWeHave = gmpeSuppliers.keySet().iterator().next();
+						if (!trtWarned) {
+							synchronized (QuickGriddedHazardMapCalc.this) {
+								if (!trtWarned) {
+									System.err.println("WARNING: no GMPE supplied for TRT "+trt+", using the only one we have (for "+trtWeHave+")");
+									trtWarned = true;
+								}
+							}
+						}
+						gmmSupplier = gmpeSuppliers.get(trtWeHave);
+					}
+					Preconditions.checkNotNull(gmmSupplier, "No GMPE supplied for TRT: %s", trt);
+					ScalarIMR gmm = gmmSupplier.get();
+					SolHazardMapCalc.setIMforPeriod(gmm, period);
+					Site testSite = new Site(new Location(0d, 0d));
+					testSite.addParameterList(gmm.getSiteParams());
+					gmm.setSite(testSite);
+					gmpeMap.put(trt, gmm);
+				}
 				
 				double[] xValArray = new double[logXVals.size()];
 				for (int i=0; i<xValArray.length; i++)
@@ -296,7 +350,10 @@ public class QuickGriddedHazardMapCalc {
 							break;
 						sourceID = sourceIndexes.pop();
 					}
-					ProbEqkSource source = gridProv.getSource(sourceID, 1d, false, BackgroundRupType.POINT);
+					ProbEqkSource source = gridProv.getSource(sourceID, 1d, null, BackgroundRupType.POINT);
+					
+					TectonicRegionType trt = source.getTectonicRegionType();
+					ScalarIMR gmpe = gmpeMap.get(trt);
 					
 					quickSourceCalc(gridReg, source, gmpe, curves);
 				}
@@ -313,11 +370,20 @@ public class QuickGriddedHazardMapCalc {
 			xValsArray[i] = curves[0].getX(i);
 		LightFixedXFunc exceedFunc = new LightFixedXFunc(xValsArray, new double[xValsArray.length]);
 		
+		TectonicRegionType trt = source.getTectonicRegionType();
+		if (!trtMaxDists.containsKey(trt)) {
+			Preconditions.checkState(trtMaxDists.keySet().size() == 1);
+			trt = trtMaxDists.keySet().iterator().next();
+		}
+		double maxDist = trtMaxDists.get(trt);
+		double[] distVals = trtDistVals.get(trt);
+		EvenlyDiscretizedFunc logSpacedDiscr = trtLogSpacedDiscrs.get(trt);
+		DiscretizedFunc distDiscr = trtDistDiscr.get(trt);
+		
 		// figure out locations
-		Location nodeLoc = ((PointSurface)source.getRupture(0).getRuptureSurface()).getLocation();
 		List<Integer> nodeIndexes = new ArrayList<>();
 		List<Double> nodeDists = new ArrayList<>();
-		Site site = new Site(nodeLoc);
+		Site site = new Site(gridReg.getLocation(0));
 		for (int i=0; i<gridReg.getNodeCount(); i++) {
 			Location loc = gridReg.getLocation(i);
 			site.setLocation(loc);
@@ -338,20 +404,47 @@ public class QuickGriddedHazardMapCalc {
 		 * for each site and rupture individually. if we have lots of sites (or lots of ruptures), it's faster to
 		 * calculate distance-dependent source exceedance probabilities (not conditional, taking the rupture probs
 		 * into account)
+		 * 
+		 * but if it's not actually a point source, we need to do it the long way anyway
 		 */
 		int nodeCalcs = nodeIndexes.size() * source.getNumRuptures();
 		
-		if (nodeCalcs < minNodeCalcsForSourcewise) {
-			// do it individually for each rupture at each node
+		boolean truePointSource = true;
+		List<ProbEqkRupture> rups = source.getRuptureList();
+		for (ProbEqkRupture rup : rups) {
+			if (!(rup.getRuptureSurface() instanceof PointSurface)) {
+				truePointSource = false;
+				break;
+			}
+		}
+		
+		if (!truePointSource) {
+			// no shortcut for this one
+			for (ProbEqkRupture rup : source) {
+				gmpe.setEqkRupture(rup);
+				
+				for (int l=0; l<nodeIndexes.size(); l++) {
+					int index = nodeIndexes.get(l);
+					
+					gmpe.setSiteLocation(gridReg.getLocation(index));
+					gmpe.getExceedProbabilities(exceedFunc);
+					
+					double invQkProb = 1d-rup.getProbability();
+					for(int k=0; k<exceedFunc.size(); k++)
+						curves[index].set(k, curves[index].getY(k)*Math.pow(invQkProb, exceedFunc.getY(k)));
+				}
+			}
+		} else if (nodeCalcs < minNodeCalcsForSourcewise) {
+			// do it individually for each rupture at each unique distance
 			
 			for (ProbEqkRupture rup : source) {
-				DiscretizedFunc[] exceeds = getCacheRupExceeds(rup, gmpe, curves[0]);
+				DiscretizedFunc[] exceeds = getCacheRupExceeds(rup, gmpe, curves[0], distVals, distDiscr);
 				
 				for (int l=0; l<nodeIndexes.size(); l++) {
 					int index = nodeIndexes.get(l);
 					double dist = nodeDists.get(l);
 					
-					quickInterp(exceeds, dist, exceedFunc);
+					quickInterp(exceeds, exceedFunc, dist, distVals, logSpacedDiscr, distDiscr);
 					
 					double invQkProb = 1d-rup.getProbability();
 					for(int k=0; k<exceedFunc.size(); k++)
@@ -369,7 +462,7 @@ public class QuickGriddedHazardMapCalc {
 			}
 			
 			for (ProbEqkRupture rup : source) {
-				DiscretizedFunc[] exceeds = getCacheRupExceeds(rup, gmpe, curves[0]);
+				DiscretizedFunc[] exceeds = getCacheRupExceeds(rup, gmpe, curves[0], distVals, distDiscr);
 				
 				double invQkProb = 1d-rup.getProbability();
 				for (int i=0; i<sourceNonExceeds.length; i++)
@@ -382,7 +475,7 @@ public class QuickGriddedHazardMapCalc {
 				int index = nodeIndexes.get(l);
 				double dist = nodeDists.get(l);
 				
-				quickInterp(sourceNonExceeds, dist, exceedFunc);
+				quickInterp(sourceNonExceeds, exceedFunc, dist, distVals, logSpacedDiscr, distDiscr);
 				
 				for(int k=0; k<exceedFunc.size(); k++)
 					curves[index].set(k, curves[index].getY(k)*exceedFunc.getY(k));
@@ -396,7 +489,8 @@ public class QuickGriddedHazardMapCalc {
 	 * @param dist distance in km
 	 * @param exceedFunc function to be filled in
 	 */
-	private void quickInterp(DiscretizedFunc[] exceeds, double dist, DiscretizedFunc exceedFunc) {
+	private void quickInterp(DiscretizedFunc[] exceeds, DiscretizedFunc exceedFunc, double dist,
+			double[] distVals, EvenlyDiscretizedFunc logSpacedDiscr, DiscretizedFunc distDiscr) {
 		if ((float)dist == 0f) {
 			// shortcut
 			for (int i=0; i<exceedFunc.size(); i++)
@@ -458,7 +552,8 @@ public class QuickGriddedHazardMapCalc {
 	private long numCacheMisses = 0;
 	private long numCacheHits = 0;
 	
-	private DiscretizedFunc[] getCacheRupExceeds(ProbEqkRupture rup, ScalarIMR gmpe, DiscretizedFunc xVals) {
+	private DiscretizedFunc[] getCacheRupExceeds(ProbEqkRupture rup, ScalarIMR gmpe, DiscretizedFunc xVals,
+			double[] distVals, DiscretizedFunc distDiscr) {
 		UniqueRupture uRup = new UniqueRupture(rup);
 		DiscretizedFunc[] exceeds = rupExceedsMap.get(uRup);
 		if (exceeds == null) {
@@ -507,9 +602,10 @@ public class QuickGriddedHazardMapCalc {
 		double period = 0d;
 		double spacing = 0.2d;
 		int numPts = 50;
-		double maxDist = 200d;
 		
-		QuickGriddedHazardMapCalc calc = new QuickGriddedHazardMapCalc(gmpeRef, period, xVals, maxDist, numPts);
+		SourceFilterManager sourceFilters = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
+		
+		QuickGriddedHazardMapCalc calc = new QuickGriddedHazardMapCalc(gmpeRef, period, xVals, sourceFilters, numPts);
 //		calc.minNodesForSourcewise = Integer.MAX_VALUE;
 		
 		Region region = NSHM23_RegionLoader.loadFullConterminousWUS();
@@ -538,7 +634,7 @@ public class QuickGriddedHazardMapCalc {
 				+" ("+pDF.format((double)calc.numCacheHits/(double)(calc.numCacheHits+calc.numCacheMisses))+")");
 		
 		SolHazardMapCalc tradCalc = new SolHazardMapCalc(sol, gmpeRef, gridReg, IncludeBackgroundOption.ONLY, period);
-		tradCalc.setMaxSourceSiteDist(maxDist);
+		tradCalc.setSourceFilter(sourceFilters);
 		
 		watch.reset();
 		watch.start();

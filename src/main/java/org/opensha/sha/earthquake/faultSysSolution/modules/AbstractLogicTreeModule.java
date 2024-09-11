@@ -1,10 +1,13 @@
 package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -214,9 +217,19 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		if (verbose) System.out.println("Writing full logic tree");
 		if (verbose) System.out.println("Writing branch file mappings");
 		FileBackedModule.initEntry(zout, prefix, LOGIC_TREE_MAPPINGS_FILE_NAME);
-		Gson gson = new GsonBuilder().setPrettyPrinting()
-				.registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
-		JsonWriter writer = gson.newJsonWriter(new BufferedWriter(new OutputStreamWriter(zout)));
+		
+		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(zout));
+		writeLogicTreeMappings(writer, logicTree, branchMappings);
+		
+		zout.flush();
+		zout.closeEntry();
+	}
+	
+	public static void writeLogicTreeMappings(Writer out, LogicTree<?> logicTree, List<Map<String, String>> branchMappings) throws IOException {
+		if (!(out instanceof BufferedWriter))
+			out = new BufferedWriter(out);
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		JsonWriter writer = gson.newJsonWriter(out);
 		
 		writer.beginArray();
 		for (int i=0; i<logicTree.size(); i++) {
@@ -243,8 +256,66 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		writer.endArray();
 		
 		writer.flush();
-		zout.flush();
-		zout.closeEntry();
+	}
+	
+	public static List<Map<String, String>> loadBranchMappings(Reader read, LogicTree<?> logicTree) throws IOException {
+		if (!(read instanceof BufferedReader))
+			read = new BufferedReader(read);
+		
+		Gson gson = new GsonBuilder().create();
+		JsonReader in = gson.newJsonReader(read);
+		
+		List<Map<String, String>> ret = new ArrayList<>(logicTree.size());
+		
+		in.beginArray();
+		for (int i=0; i<logicTree.size(); i++) {
+			in.beginObject();
+			
+			LogicTreeBranch<?> branch = logicTree.getBranch(i);
+			
+			Map<String, String> mappings = null;
+			while (in.hasNext()) {
+				String name = in.nextName();
+				switch (name) {
+				case "branch":
+					// validate that the tree is as expected
+					in.beginArray();
+					for (int j=0; j<branch.size(); j++) {
+						LogicTreeNode val = branch.getValue(j);
+						if (val == null) {
+							in.nextNull();
+						} else {
+							String nodeName = in.nextString();
+							Preconditions.checkState(nodeName.equals(val.getFilePrefix()));
+						}
+					}
+					in.endArray();
+					break;
+				case "mappings":
+					mappings = new HashMap<>();
+					in.beginObject();
+					while (in.hasNext()) {
+						String key = in.nextName();
+						String value = in.nextString();
+						mappings.put(key, value);
+					}
+					in.endObject();
+					break;
+
+				default:
+					throw new IllegalStateException("Unexpected JSON name: "+name);
+				}
+			}
+			Preconditions.checkNotNull(mappings);
+			ret.add(mappings);
+			
+			in.endObject();
+		}
+		in.endArray();
+		
+		read.close();
+		
+		return ret;
 	}
 
 	@Override
