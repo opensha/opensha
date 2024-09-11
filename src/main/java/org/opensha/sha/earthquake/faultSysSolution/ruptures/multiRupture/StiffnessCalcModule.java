@@ -30,8 +30,13 @@ public class StiffnessCalcModule implements TextBackedModule, SubModule<FaultSys
     }
 
     public StiffnessCalcModule(FaultSystemRupSet rupSet, double stiffGridSpacing) {
+        this(rupSet, stiffGridSpacing, new File("/tmp"));
+    }
+
+    public StiffnessCalcModule(FaultSystemRupSet rupSet, double stiffGridSpacing, File cacheDir) {
         this.rupSet = rupSet;
         this.stiffGridSpacing = stiffGridSpacing;
+        this.cacheDir = cacheDir;
         createStiffnessCalc();
     }
 

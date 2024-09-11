@@ -98,6 +98,8 @@ public enum GMT_CPT_Files {
 	 * dark blues through white to yellow/greenish browns
 	 */
 	DIVERGING_BROC_UNIFORM("broc.cpt"),
+
+	DIVERGING_RAINBOW("CET-R3.cpt"),
 	/**
 	 * batlow from https://www.fabiocrameri.ch/colourmaps/ and GMT 6
 	 * rainbow-ish, but perceptually uniform
@@ -117,7 +119,9 @@ public enum GMT_CPT_Files {
 	 * categorical version of batlow from https://www.fabiocrameri.ch/colourmaps/ and GMT 6
 	 * Grab the first color from each CPT value
 	 */
-	CATEGORICAL_BATLOW_UNIFORM("batlowS.cpt");
+	CATEGORICAL_BATLOW_UNIFORM("batlowS.cpt"),
+
+	DIVERGENT_RYB("RdYlBu.cpt");
 	
 	private String fname;
 	
