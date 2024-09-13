@@ -97,7 +97,16 @@ public class SolModuleStripper {
 		AveSlipModule aveSlip = inputRupSet.getModule(AveSlipModule.class);
 		if (aveSlip != null)
 			strippedRupSet.addModule(aveSlip);
-		if (!updateBuildInfo) {
+		BuildInfoModule updatedBuildInfo = null;
+		try {
+			updatedBuildInfo = updateBuildInfo ? BuildInfoModule.detect() : null;
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		if (updateBuildInfo) {
+			if (updatedBuildInfo != null)
+				strippedRupSet.addModule(updatedBuildInfo);
+		} else {
 			BuildInfoModule buildInfo = inputRupSet.getModule(BuildInfoModule.class);
 			if (buildInfo != null)
 				strippedRupSet.addModule(buildInfo);
@@ -128,12 +137,8 @@ public class SolModuleStripper {
 			strippedSol = new FaultSystemSolution(strippedRupSet, inputSol.getRateForAllRups());
 		}
 		if (updateBuildInfo) {
-			try {
-				BuildInfoModule buildInfo = BuildInfoModule.detect();
-				strippedSol.addModule(buildInfo);
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			if (updatedBuildInfo != null)
+				strippedSol.addModule(updatedBuildInfo);
 		} else {
 			BuildInfoModule buildInfo = inputSol.getModule(BuildInfoModule.class);
 			if (buildInfo != null)
