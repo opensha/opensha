@@ -259,27 +259,39 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		CSVFile<String> ratesCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, RATES_FILE_NAME);
 		rates = loadRatesCSV(ratesCSV);
 		Preconditions.checkState(rates.length == rupSet.getNumRuptures(), "Unexpected number of rows in rates CSV");
-		
-		if (archive != null && zip.getEntry(entryPrefix+"modules.json") == null) {
-			// we're missing an index, see if any common modules are present that we can manually load
+
+		if (archive != null) {
+			// see if any common modules are are present but unlised (either because modules.json is missing, or someone
+			// added them manually)
 			
-			if (zip.getEntry(entryPrefix+MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME) != null) {
-				try {
-					System.out.println("Trying to load unlisted MFDGridSourceProvider module");
-					archive.loadUnlistedModule(MFDGridSourceProvider.Default.class, entryPrefix, this);
-				} catch (Exception e) {
-					e.printStackTrace();
+			if (!hasAvailableModule(GridSourceProvider.class)) {
+				if (zip.getEntry(entryPrefix+MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME) != null) {
+					try {
+						System.out.println("Trying to load unlisted MFDGridSourceProvider module");
+						archive.loadUnlistedModule(MFDGridSourceProvider.Default.class, entryPrefix, this);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				} else if (zip.getEntry(entryPrefix+GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) != null) {
+					try {
+						System.out.println("Trying to load unlisted GridSourceList module");
+						archive.loadUnlistedModule(GridSourceList.Precomputed.class, entryPrefix, this);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				}
-			} else if (zip.getEntry(entryPrefix+GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) != null) {
+			}
+			
+			if (zip.getEntry(entryPrefix+RupMFDsModule.FILE_NAME) != null && !hasAvailableModule(RupMFDsModule.class)) {
 				try {
-					System.out.println("Trying to load unlisted GridSourceList module");
-					archive.loadUnlistedModule(GridSourceList.Precomputed.class, entryPrefix, this);
+					System.out.println("Trying to load unlisted RupMFDsModule module");
+					archive.loadUnlistedModule(RupMFDsModule.class, entryPrefix, this);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}
 			
-			if (zip.getEntry(entryPrefix+SubSeismoOnFaultMFDs.DATA_FILE_NAME) != null) {
+			if (zip.getEntry(entryPrefix+SubSeismoOnFaultMFDs.DATA_FILE_NAME) != null && !hasAvailableModule(SubSeismoOnFaultMFDs.class)) {
 				try {
 					System.out.println("Trying to load unlisted SubSeismoOnFaultMFDs module");
 					archive.loadUnlistedModule(SubSeismoOnFaultMFDs.class, entryPrefix, this);
