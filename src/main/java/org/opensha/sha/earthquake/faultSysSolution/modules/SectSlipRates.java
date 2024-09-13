@@ -120,7 +120,7 @@ SplittableRuptureModule<SectSlipRates>{
 		return parent;
 	}
 	
-	private static class Default extends SectSlipRates implements SubModule<FaultSystemRupSet> {
+	public static class Default extends SectSlipRates implements SubModule<FaultSystemRupSet> {
 		
 		private Default(FaultSystemRupSet rupSet) {
 			super(rupSet);
