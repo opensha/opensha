@@ -30,7 +30,7 @@ SplittableRuptureModule<RupSetTectonicRegimes>{
 	private FaultSystemRupSet rupSet;
 	private TectonicRegionType[] regimes;
 	
-	private static final String FILE_NAME = "tectonic_regimes.csv";
+	public static final String DATA_FILE_NAME = "tectonic_regimes.csv";
 	
 	private EnumSet<TectonicRegionType> regimeSet;
 	
@@ -132,7 +132,7 @@ SplittableRuptureModule<RupSetTectonicRegimes>{
 
 	@Override
 	public String getFileName() {
-		return FILE_NAME;
+		return DATA_FILE_NAME;
 	}
 	
 	public TectonicRegionType get(int rupIndex) {
