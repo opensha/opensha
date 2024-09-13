@@ -161,9 +161,9 @@ SplittableRuptureModule<AveSlipModule> {
 			return new ModelBased(splitRupSet, scale);
 		}
 		
-		
-
 	}
+	
+	public static final String DATA_FILE_NAME = "average_slips.csv";
 
 	public static class Precomputed extends AveSlipModule implements CSV_BackedModule {
 
@@ -192,7 +192,7 @@ SplittableRuptureModule<AveSlipModule> {
 
 		@Override
 		public String getFileName() {
-			return "average_slips.csv";
+			return DATA_FILE_NAME;
 		}
 
 		@Override
