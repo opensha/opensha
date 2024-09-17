@@ -270,8 +270,11 @@ SplittableRuptureModule<ClusterRuptures> {
 						PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class, false);
 						if (plausibility != null)
 							distAzCalc = plausibility.getDistAzCalc();
-						else if (rupSet.hasModule(SectionDistanceAzimuthCalculator.class))
-							distAzCalc = rupSet.getModule(SectionDistanceAzimuthCalculator.class);
+						if (rupSet.hasModule(SectionDistanceAzimuthCalculator.class)) {
+							SectionDistanceAzimuthCalculator distAzCalc2 = rupSet.requireModule(SectionDistanceAzimuthCalculator.class);
+							if (distAzCalc == null || distAzCalc2.getNumCachedDistances() > distAzCalc.getNumCachedDistances())
+								distAzCalc = distAzCalc2;
+						}
 						if (distAzCalc == null) {
 							distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
 							rupSet.addModule(distAzCalc);
