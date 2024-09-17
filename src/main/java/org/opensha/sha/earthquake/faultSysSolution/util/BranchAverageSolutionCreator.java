@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -79,8 +80,9 @@ public class BranchAverageSolutionCreator {
 	private LogicTreeBranch<LogicTreeNode> combBranch = null;
 	
 	private List<Double> weights = new ArrayList<>();
-	
+
 	private Map<LogicTreeNode, Integer> nodeCounts = new HashMap<>();
+	private Map<LogicTreeNode, Double> nodeWeights = new HashMap<>();
 	
 	private boolean skipRupturesBelowSectMin = true;
 	
@@ -190,6 +192,8 @@ public class BranchAverageSolutionCreator {
 					combBranch.clearValue(i);
 				int prevCount = nodeCounts.containsKey(branchVal) ? nodeCounts.get(branchVal) : 0;
 				nodeCounts.put(branchVal, prevCount+1);
+				double prevWeight = nodeWeights.containsKey(branchVal) ? nodeWeights.get(branchVal) : 0d;
+				nodeWeights.put(branchVal, prevWeight + weight);
 			}
 			
 			for (int r=0; r<avgRates.length; r++) {
@@ -478,9 +482,9 @@ public class BranchAverageSolutionCreator {
 		
 		buildBranchModules(solBranchModuleBuilders, sol);
 		
-		String info = "Branch Averaged Fault System Solution, across "+weights.size()
-				+" branches with a total weight of "+totWeight+"."
-				+"\n\nThe utilized branches at each level are (counts in parenthesis):"
+		DecimalFormat weightDF = new DecimalFormat("0.###%");
+		String info = "Branch Averaged Fault System Solution across "+weights.size()+" branches."
+				+"\n\nThe utilized branches at each level are (counts and total relative weights in parenthesis):"
 				+ "\n\n";
 		for (int i=0; i<combBranch.size(); i++) {
 			LogicTreeLevel<? extends LogicTreeNode> level = combBranch.getLevel(i);
@@ -494,7 +498,8 @@ public class BranchAverageSolutionCreator {
 				Integer count = nodeCounts.get(choice);
 				if (count != null) {
 					if (numIncluded < 15) {
-						info += "\t"+choice.getName()+" ("+count+")\n";
+						double weight = nodeWeights.get(choice);
+						info += "\t"+choice.getName()+" ("+count+"; "+weightDF.format(weight/totWeight)+")\n";
 						numIncluded++;
 					} else {
 						lastSkipped = choice;
@@ -507,7 +512,8 @@ public class BranchAverageSolutionCreator {
 			if (lastSkipped != null) {
 				if (numSkipped > 1)
 					info += "\t...(skipping "+(numSkipped-1)+" branches used "+(totalSkippedCount-lastSkippedCount)+" times)...\n";
-				info += "\t"+lastSkipped.getName()+" ("+lastSkippedCount+")\n";
+				double weight = nodeWeights.get(lastSkipped);
+				info += "\t"+lastSkipped.getName()+" ("+lastSkippedCount+"; "+weightDF.format(weight/totWeight)+")\n";
 			}
 		}
 		
