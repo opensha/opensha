@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
@@ -26,6 +28,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSetSplitMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -69,15 +72,28 @@ public class SolModuleStripper {
 		File inputFile = new File(args[0]);
 		Preconditions.checkState(inputFile.exists(), "Input file doesn't exist: %s",
 				inputFile.getAbsolutePath());
-		FaultSystemSolution inputSol = FaultSystemSolution.load(inputFile);
 		
 		File outputFile = new File(args[1]);
 		
 		boolean keepRupMFDs = cmd.hasOption("keep-rup-mfds");
 		boolean updateBuildInfo = cmd.hasOption("update-build-info");
 		
-		FaultSystemSolution strippedSol = stripModules(inputSol, gridMinMag, keepRupMFDs, updateBuildInfo);
-		strippedSol.write(outputFile);
+		try {
+			ZipFile inputZip = new ZipFile(inputFile);
+			if (!FaultSystemSolution.isSolution(inputZip)) {
+				// see if it's a solution logic tree
+				System.out.println("Input file isn't a FaultSystemSolution, trying SolutionLogicTree");
+				SolutionLogicTree slt = SolutionLogicTree.load(inputZip);
+				SolutionLogicTree.simplify(slt, outputFile, keepRupMFDs, updateBuildInfo);
+			}
+			FaultSystemSolution inputSol = FaultSystemSolution.load(inputZip);
+			
+			FaultSystemSolution strippedSol = stripModules(inputSol, gridMinMag, keepRupMFDs, updateBuildInfo);
+			strippedSol.write(outputFile);
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
 	}
 	
 	public static FaultSystemSolution stripModules(FaultSystemSolution inputSol, double gridMinMag) {
