@@ -98,6 +98,8 @@ public enum GMT_CPT_Files {
 	 * dark blues through white to yellow/greenish browns
 	 */
 	DIVERGING_BROC_UNIFORM("broc.cpt"),
+
+	DIVERGING_RAINBOW("CET-R3.cpt"),
 	/**
 	 * batlow from https://www.fabiocrameri.ch/colourmaps/ and GMT 6
 	 * rainbow-ish, but perceptually uniform
@@ -145,7 +147,7 @@ public enum GMT_CPT_Files {
 	 * Categorical colormap from Tableau, commonly used in matplotlib (called TAB10), with 20 distinct colors.
 	 * <p>
 	 * This is similar to {@link GMT_CPT_Files#CATEGORICAL_TAB10}, except that it has light versions interspersed (see
-	 * {@link GMT_CPT_Files#CATEGORICAL_TAB10_LIGHT}). The dark ones (originals from {@link GMT_CPT_Files#CATEGORICAL_TAB10} 
+	 * {@link GMT_CPT_Files#CATEGORICAL_TAB10_LIGHT}). The dark ones (originals from {@link GMT_CPT_Files#CATEGORICAL_TAB10}
 	 * are accessible at integer values (e.g., <code>cpt.getColor(index % cpt.size())</code>), and the light colors
 	 * (same as {@link GMT_CPT_Files#CATEGORICAL_TAB10_LIGHT}) are accessible at half fractions (e.g.,
 	 * <code>cpt.getColor(index % cpt.size() + 0.5f)</code>).
@@ -154,10 +156,13 @@ public enum GMT_CPT_Files {
 	 * moving on to the next color.
 	 */
 	CATEGORICAL_TAB20("tab20.cpt");
-	
+	CATEGORICAL_BATLOW_UNIFORM("batlowS.cpt"),
+
+	DIVERGENT_RYB("RdYlBu.cpt");
+
 	private String fname;
 	private CPT instance;
-	
+
 	private GMT_CPT_Files(String fname) {
 		this.fname = fname;
 	}
