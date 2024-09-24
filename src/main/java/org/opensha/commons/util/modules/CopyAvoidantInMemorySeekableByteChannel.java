@@ -79,7 +79,7 @@ class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
 	 * @param size size of internal buffer to allocate, in bytes.
 	 */
 	public CopyAvoidantInMemorySeekableByteChannel(final int size) {
-		init(new byte[size], 0); // empty buffer, size is zero
+		init(new byte[size], 0); // empty buffer of the pre-allocated size, channel size is set to zero
 	}
 	
 	private void init(byte[] initial, int size) {
@@ -184,7 +184,8 @@ class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
 	}
 
 	/**
-	 * Truncates the entity, to which this channel is connected, to the given size.
+	 * Truncates the entity, to which this channel is connected, to the given size. Does not re-allocate any memory; any
+	 * existing buffers are kept for future writing.
 	 *
 	 * <p>This method violates the contract of {@link SeekableByteChannel#truncate} as it will not throw any exception when
 	 * invoked on a closed channel.</p>
@@ -200,7 +201,7 @@ class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
 			size = (int) newSize;
 		}
 		if (position > newSize) {
-			setPositionInternal(position);
+			setPositionInternal((int)newSize);
 		}
 		return this;
 	}
