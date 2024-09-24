@@ -21,6 +21,8 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule;
+import org.opensha.commons.util.modules.ModuleArchiveInput;
+import org.opensha.commons.util.modules.ModuleArchiveOutput;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -248,12 +250,12 @@ SplittableRuptureModule<ClusterRuptures> {
 		}
 
 		@Override
-		public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+		public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
 			// do nothing
 		}
 
 		@Override
-		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
 			// do nothing
 		}
 

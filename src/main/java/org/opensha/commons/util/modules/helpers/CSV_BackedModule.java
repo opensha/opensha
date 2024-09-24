@@ -9,6 +9,8 @@ import java.util.zip.ZipOutputStream;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.CSVReader;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.ModuleArchiveInput;
+import org.opensha.commons.util.modules.ModuleArchiveOutput;
 import org.opensha.commons.util.modules.ModuleHelper;
 
 /**
@@ -43,17 +45,17 @@ public interface CSV_BackedModule extends FileBackedModule {
 		initFromCSV(csv);
 	}
 	
-	public static void writeToArchive(CSVFile<?> csv, ZipOutputStream zout, String entryPrefix, String fileName)
+	public static void writeToArchive(CSVFile<?> csv, ModuleArchiveOutput output, String entryPrefix, String fileName)
 			throws IOException {
-		FileBackedModule.initEntry(zout, entryPrefix, fileName);
-		BufferedOutputStream out = new BufferedOutputStream(zout);
+		FileBackedModule.initEntry(output, entryPrefix, fileName);
+		BufferedOutputStream out = new BufferedOutputStream(output.getOutputStream());
 		csv.writeToStream(out);
 		out.flush();
-		zout.closeEntry();
+		output.closeEntry();
 	}
 
-	public static CSVFile<String> loadFromArchive(ZipFile zip, String entryPrefix, String fileName) throws IOException {
-		BufferedInputStream zin = FileBackedModule.getInputStream(zip, entryPrefix, fileName);
+	public static CSVFile<String> loadFromArchive(ModuleArchiveInput input, String entryPrefix, String fileName) throws IOException {
+		BufferedInputStream zin = FileBackedModule.getInputStream(input, entryPrefix, fileName);
 		
 		CSVFile<String> csv = CSVFile.readStream(zin, false);
 		
@@ -61,8 +63,8 @@ public interface CSV_BackedModule extends FileBackedModule {
 		return csv;
 	}
 
-	public static CSVReader loadLargeFileFromArchive(ZipFile zip, String entryPrefix, String fileName) throws IOException {
-		BufferedInputStream zin = FileBackedModule.getInputStream(zip, entryPrefix, fileName);
+	public static CSVReader loadLargeFileFromArchive(ModuleArchiveInput input, String entryPrefix, String fileName) throws IOException {
+		BufferedInputStream zin = FileBackedModule.getInputStream(input, entryPrefix, fileName);
 
 		return new CSVReader(zin);
 	}

@@ -34,6 +34,8 @@ import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.ModuleArchiveInput;
+import org.opensha.commons.util.modules.ModuleArchiveOutput;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -379,11 +381,10 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		return gridCSV;
 	}
 	
-	public void writeGridSourcesCSV(ZipOutputStream zout, String entryName) throws IOException {
+	public void writeGridSourcesCSV(ModuleArchiveOutput output, String entryName) throws IOException {
 		// use CSVWriter for efficiency
-		ZipEntry entry = new ZipEntry(entryName);
-		zout.putNextEntry(entry);
-		CSVWriter rupCSV = new CSVWriter(zout, false);
+		output.putNextEntry(entryName);
+		CSVWriter rupCSV = new CSVWriter(output.getOutputStream(), false);
 		List<String> header = new ArrayList<>();
 		header.add("Grid Index");
 		header.add("Magnitude");
@@ -445,27 +446,26 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			}
 		}
 		rupCSV.flush();
-		zout.closeEntry();
+		output.closeEntry();
 	}
 
 	@Override
-	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+	public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
 		if (gridReg != null) {
 			// write the gridded region
-			FileBackedModule.initEntry(zout, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
+			FileBackedModule.initEntry(output, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
 			Feature regFeature = gridReg.toFeature();
-			OutputStreamWriter writer = new OutputStreamWriter(zout);
+			OutputStreamWriter writer = new OutputStreamWriter(output.getOutputStream());
 			Feature.write(regFeature, writer);
 			writer.flush();
-			zout.flush();
-			zout.closeEntry();
+			output.closeEntry();
 		}
 		
 		// write grid locations
-		CSV_BackedModule.writeToArchive(buildGridLocsCSV(), zout, entryPrefix, ARCHIVE_GRID_LOCS_FILE_NAME);
+		CSV_BackedModule.writeToArchive(buildGridLocsCSV(), output, entryPrefix, ARCHIVE_GRID_LOCS_FILE_NAME);
 		
 		// write gridded rupture list
-		writeGridSourcesCSV(zout, ArchivableModule.getEntryName(entryPrefix, ARCHIVE_GRID_SOURCES_FILE_NAME));
+		writeGridSourcesCSV(output, ArchivableModule.getEntryName(entryPrefix, ARCHIVE_GRID_SOURCES_FILE_NAME));
 	}
 
 	@Override
@@ -1914,22 +1914,22 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		}
 
 		@Override
-		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
 			// load gridded region (if supplied)
 			GriddedRegion gridReg = null;
-			if (FileBackedModule.hasEntry(zip, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)) {
-				BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
+			if (FileBackedModule.hasEntry(input, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)) {
+				BufferedInputStream regionIS = FileBackedModule.getInputStream(input, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
 				InputStreamReader regionReader = new InputStreamReader(regionIS);
 				Feature regFeature = Feature.read(regionReader);
 				gridReg = GriddedRegion.fromFeature(regFeature);
 			}
 			
 			// load grid location CSV
-			CSVFile<String> gridCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, ARCHIVE_GRID_LOCS_FILE_NAME);
+			CSVFile<String> gridCSV = CSV_BackedModule.loadFromArchive(input, entryPrefix, ARCHIVE_GRID_LOCS_FILE_NAME);
 			LocationList locs = loadGridLocsCSV(gridCSV, gridReg);
 			
 			// load ruptures themselves
-			CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(zip, entryPrefix, ARCHIVE_GRID_SOURCES_FILE_NAME);
+			CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, ARCHIVE_GRID_SOURCES_FILE_NAME);
 			EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists = loadGridSourcesCSV(rupSectsCSV, locs);
 			setAll(gridReg, locs, trtRuptureLists);
 		}
@@ -1979,7 +1979,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		}
 
 		@Override
-		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
 			throw new UnsupportedOperationException("Not implemented");
 		}
 

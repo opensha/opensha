@@ -41,7 +41,7 @@ import com.google.gson.reflect.TypeToken;
  */
 public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> {
 	
-	private ZipFile zip;
+	private ModuleArchiveInput input;
 	
 	/**
 	 * Create a new module container that can be written to an archive
@@ -69,7 +69,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @throws IOException
 	 */
 	public ModuleArchive(File file, Class<? extends E> preloadClass) throws IOException {
-		this(new ZipFile(file), preloadClass);
+		this(new ModuleArchiveInput.ZipFileInput(file), preloadClass);
 	}
 	
 	/**
@@ -91,13 +91,35 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @throws IOException
 	 */
 	public ModuleArchive(ZipFile zip, Class<? extends E> preloadClass) throws IOException {
+		this(new ModuleArchiveInput.ZipFileInput(zip), preloadClass);
+	}
+	
+	/**
+	 * Load modules from an existing archive. Modules themselves will be lazily loaded on demand
+	 * 
+	 * @param input
+	 * @throws IOException
+	 */
+	public ModuleArchive(ModuleArchiveInput input) throws IOException {
+		this(input, null);
+	}
+	
+	/**
+	 * Load modules from an existing archive. Modules themselves will be lazily loaded on demand, unless they
+	 * are assignable from the given preload class
+	 * 
+	 * @param input
+	 * @param preloadClass class to preload
+	 * @throws IOException
+	 */
+	public ModuleArchive(ModuleArchiveInput input, Class<? extends E> preloadClass) throws IOException {
 		super();
-		this.zip = zip;
+		this.input = input;
 		if (verbose) {
 			System.out.println("------------ LOADING ARCHIVE ------------");
-			System.out.println("Archive: "+zip.getName());
+			System.out.println("Archive: "+input.getName());
 		}
-		loadModules(this, zip, getPrefix(null, getNestingPrefix()), preloadClass, new HashSet<>(), verbose);
+		loadModules(this, input, getPrefix(null, getNestingPrefix()), preloadClass, new HashSet<>(), verbose);
 		List<E> modules = getModules(false);
 		if (verbose && !modules.isEmpty())
 			System.out.println("Loaded "+modules.size()+" top-level modules");
@@ -108,10 +130,12 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 			System.out.println("---------- END LOADING ARCHIVE ----------");
 	}
 	
-	public File getFile() {
-		if (zip == null)
-			return null;
-		return new File(zip.getName());
+	/**
+	 * 
+	 * @return the {@link ModuleArchiveInput} backing this archive, or null if none
+	 */
+	public ModuleArchiveInput getInput() {
+		return input;
 	}
 	
 	public static final String MODULE_FILE_NAME = "modules.json";
@@ -123,13 +147,13 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * 
 	 * @param <E>
 	 * @param container container to load available modules into
-	 * @param zip zip file containing available modules, should not be closed without first calling 
+	 * @param input archive input containing available modules, should not be closed without first calling 
 	 * {@link ModuleContainer#loadAllAvailableModules()}
 	 * @param prefix prefix applied when writing modules for this container to the zip file, or null if top level archive
 	 * @throws IOException
 	 */
 	@SuppressWarnings("unchecked")
-	public static <E extends OpenSHA_Module> void loadModules(ModuleContainer<E> container, ZipFile zip, String prefix,
+	public static <E extends OpenSHA_Module> void loadModules(ModuleContainer<E> container, ModuleArchiveInput input, String prefix,
 			Class<? extends E> preloadClass, HashSet<String> prevPrefixes, boolean verbose) throws IOException {
 //		System.out.println("Loading modules for "+container.getClass().getName()+" with prefix="+prefix);
 		if (prefix ==null)
@@ -142,15 +166,14 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		prevPrefixes.add(prefix);
 		
 		String entryName = prefix+MODULE_FILE_NAME;
-		ZipEntry modulesEntry = zip.getEntry(entryName);
-		if (modulesEntry == null) {
+		if (!input.hasEntry(entryName)) {
 			if (verbose)
 				System.out.println("Modules index not found in zip file, skipping loading sub-modules: "+entryName);
 			return;
 		}
 		
 		
-		InputStream zin = zip.getInputStream(modulesEntry);
+		InputStream zin = input.getInputStream(entryName);
 		List<ModuleRecord> records = loadModulesManifest(zin);
 		for (ModuleRecord record : records) {
 			if (verbose)
@@ -189,7 +212,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 						record.name, record.path);
 			}
 			
-			ZipLoadCallable<E> call = new ZipLoadCallable<E>(record, moduleClass, zip, container, prevPrefixes, verbose);
+			ArchiveLoadCallable<E> call = new ArchiveLoadCallable<E>(record, moduleClass, input, container, prevPrefixes, verbose);
 			if (preloadClass != null && preloadClass.isAssignableFrom(moduleClass)) {
 				// load it now
 				E module = null;
@@ -235,8 +258,8 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	public synchronized <M extends E> M loadUnlistedModule(Class<? extends M> loadingClass, String entryPrefix,
 			ModuleContainer<E> container) {
 		ModuleRecord record = new ModuleRecord("Unlisted Module", loadingClass.getName(), entryPrefix, null);
-		Preconditions.checkNotNull(zip, "Can only unlisted modules for an archives created from a zip file");
-		ZipLoadCallable<E> call = new ZipLoadCallable<>(record, (Class<E>)loadingClass, zip, container, new HashSet<>(), verbose);
+		Preconditions.checkNotNull(input, "Can only unlisted modules for an archives loaded from an existing archives");
+		ArchiveLoadCallable<E> call = new ArchiveLoadCallable<>(record, (Class<E>)loadingClass, input, container, new HashSet<>(), verbose);
 		try {
 			M module = (M)call.call();
 			container.addModule(module);
@@ -248,22 +271,22 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		}
 	}
 	
-	private static class ZipLoadCallable<E extends OpenSHA_Module> implements Callable<E> {
+	private static class ArchiveLoadCallable<E extends OpenSHA_Module> implements Callable<E> {
 		
 		private ModuleRecord record;
 		private Class<E> clazz;
-		private ZipFile zip;
+		private ModuleArchiveInput input;
 		private ModuleContainer<E> container;
 		private HashSet<String> prevPrefixes;
 		
 		private Throwable t;
 		private boolean verbose;
 
-		public ZipLoadCallable(ModuleRecord record, Class<E> clazz, ZipFile zip, ModuleContainer<E> container,
+		public ArchiveLoadCallable(ModuleRecord record, Class<E> clazz, ModuleArchiveInput input, ModuleContainer<E> container,
 				HashSet<String> prevPrefixes, boolean verbose) {
 			this.record = record;
 			this.clazz = clazz;
-			this.zip = zip;
+			this.input = input;
 			this.container = container;
 			this.prevPrefixes = prevPrefixes;
 			this.verbose = verbose;
@@ -310,10 +333,10 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 					}
 					subModule.setParent(container);
 				}
-				((ArchivableModule)module).initFromArchive(zip, record.path);
+				((ArchivableModule)module).initFromArchive(input, record.path);
 				if (module instanceof ModuleContainer<?>) {
 					ModuleContainer<?> moduleContainer = (ModuleContainer<?>)module;
-					loadModules(moduleContainer, zip, record.path, null, prevPrefixes, verbose);
+					loadModules(moduleContainer, input, record.path, null, prevPrefixes, verbose);
 					int availableModules = moduleContainer.getAvailableModules().size();
 					if (availableModules > 0 && verbose)
 						System.out.println("Loaded "+availableModules+" available sub-modules");
@@ -339,7 +362,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @throws IOException
 	 */
 	public void write(File outputFile) throws IOException {
-		write(outputFile, zip != null);
+		write(outputFile, input != null);
 	}
 
 	/**
@@ -354,44 +377,70 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @throws IOException
 	 */
 	public void write(File outputFile, boolean copySourceFiles) throws IOException {
-		if (verbose)
+		write(ModuleArchiveOutput.getDefaultOutput(outputFile, input), copySourceFiles);
+	}
+
+	/**
+	 * Writes this archive to the given file. It will first be written to /path/to/output_file.zip.tmp, and then
+	 * copied to /path/to/output_file.zip after a successful write.
+	 * <p>
+	 * If this archive was initialized with an existing archive, then any unused files from the original archive will
+	 * also be copied over (call {@link ModuleArchive#write(File,boolean)} instead to control this behavior).
+	 * @param outputFile
+	 * @throws IOException
+	 */
+	public void write(ModuleArchiveOutput output) throws IOException {
+		write(output, input != null);
+	}
+
+	/**
+	 * Writes this archive to the given file. It will first be written to /path/to/output_file.zip.tmp, and then
+	 * copied to /path/to/output_file.zip after a successful write.
+	 * <p>
+	 * If this archive was initialized with an existing archive and copySourceFiles is true, then any unused files from
+	 * the original archive will also be copied over.
+	 * 
+	 * @param outputFile
+	 * @param copySourceFiles
+	 * @throws IOException
+	 */
+	public void write(ModuleArchiveOutput output, boolean copySourceFiles) throws IOException {
+		ModuleArchiveOutput.FileBacked fb = null;
+		if (verbose) {
 			System.out.println("------------ WRITING ARCHIVE ------------");
-		File tmpOutput = new File(outputFile.getAbsolutePath()+".tmp");
-		if (verbose)
-			System.out.println("Temporary archive: "+tmpOutput.getAbsolutePath());
-		BufferedOutputStream bout = new BufferedOutputStream(new FileOutputStream(tmpOutput));
+			if (output instanceof ModuleArchiveOutput.FileBacked) {
+				fb = (ModuleArchiveOutput.FileBacked)output;
+				if (!fb.getDestinationFile().equals(fb.getInProgressFile()))
+					System.out.println("Temporary archive: "+fb.getInProgressFile().getAbsolutePath());
+				else
+					System.out.println("Archive: "+output.getName());	
+			} else {
+				System.out.println("Archive: "+output.getName());
+			}
+		}
 		
-		copySourceFiles = copySourceFiles && zip != null;
-		EntryTrackingZOUT zout = new EntryTrackingZOUT(bout);
+		copySourceFiles = copySourceFiles && input != null;
+		EntryTrackingArchiveOutput trackOutput = new EntryTrackingArchiveOutput(output);
 		
 		// no prefix=null for top level container
-		writeModules(this, zout, null, new HashSet<>(), verbose);
+		writeModules(this, trackOutput, null, new HashSet<>(), verbose);
 		
 		if (copySourceFiles) {
-			Enumeration<? extends ZipEntry> entries = zip.entries();
-			while (entries.hasMoreElements()) {
-				ZipEntry entry = entries.nextElement();
-				
-				if (!zout.entries.containsKey(entry.getName())) {
+//			Enumeration<? extends ZipEntry> entries = zip.entries();
+//			while (entries.hasMoreElements()) {
+			for (String entry : input.getEntries()) {
+				if (!trackOutput.writtenEntries.contains(entry)) {
 					// need to copy this over
 					if (verbose)
-						System.out.println("Copying over unknown file from previous archive: "+entry.getName());
-					zout.putNextEntry(new ZipEntry(entry.getName()));
-					
-					BufferedInputStream bin = new BufferedInputStream(zip.getInputStream(entry));
-					bin.transferTo(zout);
-					zout.flush();
-					
-					zout.closeEntry();
+						System.out.println("Copying over unknown file from previous archive: "+entry);
+					trackOutput.transferFrom(input, entry);
 				}
 			}
 		}
 		
-		zout.close();
-		
-		if (verbose)
-			System.out.println("Moving to "+outputFile.getAbsolutePath());
-		Files.move(tmpOutput, outputFile);
+		if (verbose && fb != null && !fb.getDestinationFile().equals(fb.getInProgressFile()))
+			System.out.println("Moving to "+fb.getDestinationFile().getAbsolutePath());
+		trackOutput.close();
 		if (verbose)
 			System.out.println("---------- END WRITING ARCHIVE ----------");
 	}
@@ -407,13 +456,13 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @return
 	 * @throws IOException
 	 */
-	public static <E extends OpenSHA_Module> boolean writeModules(ModuleContainer<E> container, ZipOutputStream zout,
+	public static <E extends OpenSHA_Module> boolean writeModules(ModuleContainer<E> container, ModuleArchiveOutput output,
 			String prefix, HashSet<String> prevPrefixes, boolean verbose) throws IOException {
-		EntryTrackingZOUT ezout;
-		if (zout instanceof EntryTrackingZOUT)
-			ezout = (EntryTrackingZOUT)zout;
+		EntryTrackingArchiveOutput trackOutput;
+		if (output instanceof EntryTrackingArchiveOutput)
+			trackOutput = (EntryTrackingArchiveOutput)output;
 		else
-			ezout = new EntryTrackingZOUT(zout);
+			trackOutput = new EntryTrackingArchiveOutput(output);
 		List<ModuleRecord> records = new ArrayList<>();
 		
 		if (prefix == null)
@@ -465,7 +514,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 //					System.out.println("ds pre: "+downstreamPrefix);
 //					if (downstreamPrefix.length() > 20)
 //						throw new IllegalStateException("here I be");
-					if (writeModules(archive, ezout, downstreamPrefix, prevPrefixes, verbose))
+					if (writeModules(archive, trackOutput, downstreamPrefix, prevPrefixes, verbose))
 						moduleAssets.add(MODULE_FILE_NAME);
 					
 					modulePrefix = downstreamPrefix;
@@ -473,9 +522,9 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 					modulePrefix = prefix;
 				}
 				
-				ezout.initNewModule(modulePrefix);
-				archivable.writeToArchive(ezout, modulePrefix);
-				moduleAssets.addAll(ezout.endCurrentModuleEntries());
+				trackOutput.initNewModule(modulePrefix);
+				archivable.writeToArchive(trackOutput, modulePrefix);
+				moduleAssets.addAll(trackOutput.endCurrentModuleEntries());
 				Collections.sort(moduleAssets);
 				records.add(new ModuleRecord(archivable.getName(), archivable.getLoadingClass().getName(),
 						modulePrefix, moduleAssets));
@@ -491,15 +540,15 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 			String entryName = prefix+MODULE_FILE_NAME;
 			if (verbose)
 				System.out.println("Wrote "+records.size()+" modules, writing index to "+entryName);
-			ezout.putNextEntry(new ZipEntry(entryName));
-			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(ezout));
+			trackOutput.putNextEntry(entryName);
+			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(trackOutput.getOutputStream()));
 //			System.out.println("------ MODULES JSON ------");
 //			System.out.println(gson.toJson(records));
 //			System.out.println("--------------------------");
 			gson.toJson(records, writer);
 			writer.write("\n");
 			writer.flush();
-			ezout.closeEntry();
+			trackOutput.closeEntry();
 			return true;
 		}
 		return false;
@@ -546,16 +595,18 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		return nestingPrefix == null ? ret : ret+nestingPrefix;
 	}
 	
-	private static class EntryTrackingZOUT extends ZipOutputStream {
+	private static class EntryTrackingArchiveOutput implements ModuleArchiveOutput {
 
-		private final HashMap<String, ZipEntry> entries;
+		private ModuleArchiveOutput out;
+		
+		private final HashSet<String> writtenEntries;
 		
 		private String modulePath;
 		private List<String> moduleEntries;
 
-		public EntryTrackingZOUT(OutputStream out) {
-			super(out);
-			this.entries = new HashMap<>();
+		public EntryTrackingArchiveOutput(ModuleArchiveOutput out) {
+			this.out = out;
+			this.writtenEntries = new HashSet<>();
 		}
 		
 		public void initNewModule(String modulePath) {
@@ -570,14 +621,53 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		}
 
 		@Override
-		public void putNextEntry(ZipEntry e) throws IOException {
-			String name = e.getName();
-			this.entries.put(name, e);
+		public void close() throws IOException {
+			out.close();
+		}
+
+		@Override
+		public String getName() {
+			return out.getName();
+		}
+
+		@Override
+		public void putNextEntry(String name) throws IOException {
+			this.writtenEntries.add(name);
 			if (moduleEntries != null && name.startsWith(modulePath)) {
 				String subPath = name.substring(modulePath.length());
 				moduleEntries.add(subPath);
 			}
-			super.putNextEntry(e);
+			out.putNextEntry(name);
+		}
+
+		@Override
+		public OutputStream getOutputStream() throws IOException {
+			return out.getOutputStream();
+		}
+
+		@Override
+		public void closeEntry() throws IOException {
+			out.closeEntry();
+		}
+
+		@Override
+		public void transferFrom(ModuleArchiveInput input, String name) throws IOException {
+			out.transferFrom(input, name);
+		}
+		
+		@Override
+		public void transferFrom(ModuleArchiveInput input, String sourceName, String destName) throws IOException {
+			out.transferFrom(input, sourceName, destName);
+		}
+
+		@Override
+		public void transferFrom(InputStream is, String name) throws IOException {
+			out.transferFrom(is, name);
+		}
+
+		@Override
+		public ModuleArchiveInput getCompletedInput() throws IOException {
+			return out.getCompletedInput();
 		}
 		
 	}

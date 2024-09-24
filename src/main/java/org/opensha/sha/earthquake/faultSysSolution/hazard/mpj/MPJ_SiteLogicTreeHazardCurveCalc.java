@@ -472,7 +472,9 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 			inputSitesCSV.writeToStream(zout);
 			zout.closeEntry();
 			
-			tree.writeToArchive(zout, null);
+			zout.putNextEntry(new ZipEntry(tree.getFileName()));
+			tree.writeToStream(new BufferedOutputStream(zout));
+			zout.closeEntry();
 			
 			OutputStreamWriter zipWriter = new OutputStreamWriter(new BufferedOutputStream(zout));
 			

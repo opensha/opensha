@@ -12,6 +12,8 @@ import java.util.zip.ZipFile;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.util.modules.ModuleArchiveInput;
+import org.opensha.commons.util.modules.ModuleArchiveInput.ApacheZipFileInput;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
@@ -83,13 +85,18 @@ public class SolModuleStripper {
 			if (!FaultSystemSolution.isSolution(inputZip)) {
 				// see if it's a solution logic tree
 				System.out.println("Input file isn't a FaultSystemSolution, trying SolutionLogicTree");
-				SolutionLogicTree slt = SolutionLogicTree.load(inputZip);
+				ApacheZipFileInput sltInput = new ModuleArchiveInput.ApacheZipFileInput(inputFile);
+				SolutionLogicTree slt = SolutionLogicTree.load(sltInput);
 				SolutionLogicTree.simplify(slt, outputFile, keepRupMFDs, updateBuildInfo);
+				inputZip.close();
+				sltInput.close();
+				System.exit(0);
 			}
 			FaultSystemSolution inputSol = FaultSystemSolution.load(inputZip);
 			
 			FaultSystemSolution strippedSol = stripModules(inputSol, gridMinMag, keepRupMFDs, updateBuildInfo);
 			strippedSol.write(outputFile);
+			inputZip.close();
 		} catch (Exception e) {
 			e.printStackTrace();
 			System.exit(1);

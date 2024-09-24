@@ -44,6 +44,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.modules.ModuleArchive;
+import org.opensha.commons.util.modules.ModuleArchiveOutput;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
 import org.opensha.sha.calc.params.filters.SourceFilterManager;
@@ -486,6 +487,11 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	
 	public static void writeMeanCurvesAndMaps(ZipOutputStream zout, LogicTreeCurveAverager[] meanCurves,
 			GriddedRegion gridRegion, double[] periods, ReturnPeriods[] rps) throws IOException {
+		writeMeanCurvesAndMaps(new ModuleArchiveOutput.ZipFileOutput(zout), meanCurves, gridRegion, periods, rps);
+	}
+	
+	public static void writeMeanCurvesAndMaps(ModuleArchiveOutput output, LogicTreeCurveAverager[] meanCurves,
+			GriddedRegion gridRegion, double[] periods, ReturnPeriods[] rps) throws IOException {
 		
 		boolean firstLT = true;
 		for (int p=0; p<periods.length; p++) {
@@ -498,15 +504,15 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					// write out mean curves (but don't write out other ones)
 					CSVFile<String> csv = SolHazardMapCalc.buildCurvesCSV(curves, gridRegion.getNodeList());
 					String fileName = "mean_"+SolHazardMapCalc.getCSV_FileName("curves", periods[p]);
-					zout.putNextEntry(new ZipEntry(fileName));
-					csv.writeToStream(zout);
-					zout.closeEntry();
+					output.putNextEntry(fileName);
+					csv.writeToStream(output.getOutputStream());
+					output.closeEntry();
 					prefix = key;
 				} else {
 					prefix = LEVEL_CHOICE_MAPS_ENTRY_PREFIX;
 					if (firstLT) {
-						zout.putNextEntry(new ZipEntry(prefix));
-						zout.closeEntry();
+						output.putNextEntry(prefix);
+						output.closeEntry();
 						firstLT = false;
 					}
 					prefix += key;
@@ -533,9 +539,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						xyz.set(i, val);
 					}
 					
-					zout.putNextEntry(new ZipEntry(mapFileName));
-					ArbDiscrGeoDataSet.writeXYZStream(xyz, zout);
-					zout.closeEntry();
+					output.putNextEntry(mapFileName);
+					ArbDiscrGeoDataSet.writeXYZStream(xyz, output.getOutputStream());
+					output.closeEntry();
 				}
 			}
 		}

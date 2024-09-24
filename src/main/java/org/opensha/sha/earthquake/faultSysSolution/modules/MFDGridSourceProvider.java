@@ -23,6 +23,8 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.ModuleArchiveInput;
+import org.opensha.commons.util.modules.ModuleArchiveOutput;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.ProbEqkSource;
@@ -796,38 +798,37 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		}
 	
 		@Override
-		public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+		public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
 			CSVFile<String> subSeisCSV = buildCSV(nodeSubSeisMFDs);
 			CSVFile<String> unassociatedCSV = buildCSV(nodeUnassociatedMFDs);
 			
-			FileBackedModule.initEntry(zout, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
 			Feature regFeature = region.toFeature();
-			OutputStreamWriter writer = new OutputStreamWriter(zout);
+			OutputStreamWriter writer = new OutputStreamWriter(FileBackedModule.initOutputStream(
+					output, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME));
 			Feature.write(regFeature, writer);
 			writer.flush();
-			zout.flush();
-			zout.closeEntry();
+			output.closeEntry();
 			
 			if (subSeisCSV != null)
-				CSV_BackedModule.writeToArchive(subSeisCSV, zout, entryPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME);
+				CSV_BackedModule.writeToArchive(subSeisCSV, output, entryPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME);
 			if (unassociatedCSV != null)
-				CSV_BackedModule.writeToArchive(unassociatedCSV, zout, entryPrefix, MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME);
-			CSV_BackedModule.writeToArchive(buildWeightsCSV(), zout, entryPrefix, MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME);
+				CSV_BackedModule.writeToArchive(unassociatedCSV, output, entryPrefix, MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME);
+			CSV_BackedModule.writeToArchive(buildWeightsCSV(), output, entryPrefix, MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME);
 		}
 	
 		@Override
-		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
 			// load MFDs
-			CSVFile<String> subSeisCSV = loadCSV(zip, entryPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME);
-			CSVFile<String> nodeUnassociatedCSV = loadCSV(zip, entryPrefix, MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME);
+			CSVFile<String> subSeisCSV = loadCSV(input, entryPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME);
+			CSVFile<String> nodeUnassociatedCSV = loadCSV(input, entryPrefix, MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME);
 			
 			// load mechanisms
-			CSVFile<String> mechCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME);
+			CSVFile<String> mechCSV = CSV_BackedModule.loadFromArchive(input, entryPrefix, MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME);
 			
 			GriddedRegion region;
-			if (FileBackedModule.hasEntry(zip, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)) {
+			if (FileBackedModule.hasEntry(input, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)) {
 				// load gridded region
-				BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
+				BufferedInputStream regionIS = FileBackedModule.getInputStream(input, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
 				InputStreamReader regionReader = new InputStreamReader(regionIS);
 				Feature regFeature = Feature.read(regionReader);
 				region = GriddedRegion.fromFeature(regFeature);
@@ -890,14 +891,13 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 			}
 		}
 		
-		public static CSVFile<String> loadCSV(ZipFile zip, String entryPrefix, String fileName) throws IOException {
+		public static CSVFile<String> loadCSV(ModuleArchiveInput input, String entryPrefix, String fileName) throws IOException {
 			String entryName = ArchivableModule.getEntryName(entryPrefix, fileName);
 			Preconditions.checkNotNull(entryName, "entryName is null. prefix='%s', fileName='%s'", entryPrefix, fileName);
-			ZipEntry entry = zip.getEntry(entryName);
-			if (entry == null)
+			if (!input.hasEntry(entryName))
 				return null;
 			
-			return CSVFile.readStream(new BufferedInputStream(zip.getInputStream(entry)), true);
+			return CSVFile.readStream(new BufferedInputStream(input.getInputStream(entryName)), true);
 		}
 		
 		private static Map<Integer, IncrementalMagFreqDist> csvToMFDs(GriddedRegion region, CSVFile<String> csv) {

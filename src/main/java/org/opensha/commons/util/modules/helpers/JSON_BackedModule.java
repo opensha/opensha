@@ -16,6 +16,7 @@ import java.util.zip.ZipFile;
 
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.ModuleArchiveInput;
 import org.opensha.commons.util.modules.ModuleHelper;
 
 import com.google.gson.Gson;
@@ -106,9 +107,9 @@ public interface JSON_BackedModule extends FileBackedModule {
 		initFromJSON(jin, gson);
 	}
 	
-	public static <E extends JSON_BackedModule> E loadFromArchive(ZipFile zip, String entryPrefix, String fileName,
+	public static <E extends JSON_BackedModule> E loadFromArchive(ModuleArchiveInput input, String entryPrefix, String fileName,
 			Class<E> type) throws IOException {
-		BufferedInputStream zin = FileBackedModule.getInputStream(zip, entryPrefix, fileName);
+		BufferedInputStream zin = FileBackedModule.getInputStream(input, entryPrefix, fileName);
 		
 		Constructor<E> constructor;
 		try {

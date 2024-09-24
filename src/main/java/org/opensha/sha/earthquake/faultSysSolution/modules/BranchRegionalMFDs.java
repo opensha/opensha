@@ -2,12 +2,16 @@ package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import java.awt.geom.Point2D;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.CSVReader;
+import org.opensha.commons.data.CSVReader.Row;
+import org.opensha.commons.data.CSVWriter;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
@@ -15,6 +19,8 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.ModuleArchiveInput;
+import org.opensha.commons.util.modules.ModuleArchiveOutput;
 import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
@@ -455,31 +461,28 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 	private static final String TOTAL_REG_FLAG = "total";
 
 	@Override
-	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+	public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
 		Preconditions.checkNotNull(supraTotalBranchMFDs);
-		FileBackedModule.initEntry(zout, entryPrefix, SUPRA_FILE_NAME);
-		writeCSV(zout, supraTotalBranchMFDs, supraRegionalBranchMFDs);
-		zout.closeEntry();
+		writeCSV(FileBackedModule.initOutputStream(output, entryPrefix, SUPRA_FILE_NAME), supraTotalBranchMFDs, supraRegionalBranchMFDs);
+		output.closeEntry();
 		
 		if (hasGridded()) {
 			Preconditions.checkNotNull(gridTotalBranchMFDs);
-			FileBackedModule.initEntry(zout, entryPrefix, GRID_FILE_NAME);
-			writeCSV(zout, gridTotalBranchMFDs, gridRegionalBranchMFDs);
-			zout.closeEntry();
+			writeCSV(FileBackedModule.initOutputStream(output, entryPrefix, GRID_FILE_NAME), gridTotalBranchMFDs, gridRegionalBranchMFDs);
+			output.closeEntry();
 			
 			Preconditions.checkNotNull(sumTotalBranchMFDs);
-			FileBackedModule.initEntry(zout, entryPrefix, SUM_FILE_NAME);
-			writeCSV(zout, sumTotalBranchMFDs, sumRegionalBranchMFDs);
-			zout.closeEntry();
+			writeCSV(FileBackedModule.initOutputStream(output, entryPrefix, SUM_FILE_NAME), sumTotalBranchMFDs, sumRegionalBranchMFDs);
+			output.closeEntry();
 		}
 	}
 	
 	/*
 	 * this assumes the entry has already been created externally, and will be closed externally after
 	 */
-	private void writeCSV(ZipOutputStream zout, IncrementalMagFreqDist[] totalMFDs,
+	private void writeCSV(OutputStream zout, IncrementalMagFreqDist[] totalMFDs,
 			List<IncrementalMagFreqDist[]> regionalMFDs) throws IOException {
-		CSVFile<String> csv = new CSVFile<>(true);
+		CSVWriter csv = new CSVWriter(zout, true);
 		List<String> header = new ArrayList<>();
 		header.add("Region Index");
 		header.add("Branch Index");
@@ -487,7 +490,7 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 		IncrementalMagFreqDist refMFD = totalMFDs[0];
 		for (Point2D pt : refMFD)
 			header.add((float)pt.getX()+"");
-		csv.addLine(header);
+		csv.write(header);
 		int numReg = regionalMFDs == null ? 0 : regionalMFDs.size();
 		for (int r=-1; r<numReg; r++) {
 			IncrementalMagFreqDist[] mfds = r < 0 ? totalMFDs : regionalMFDs.get(r);
@@ -507,47 +510,46 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 				Preconditions.checkState((float)mfd.getDelta() == (float)refMFD.getDelta());
 				for (Point2D pt : mfd)
 					line.add((float)pt.getY()+"");
-				csv.addLine(line);
+				csv.write(line);
 			}
 		}
-		csv.writeToStream(zout);
 	}
 
 	@Override
-	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+	public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
 		// always have supra
-		CSVFile<String> csv = CSV_BackedModule.loadFromArchive(zip, entryPrefix, SUPRA_FILE_NAME);
+		CSVReader csv = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, SUPRA_FILE_NAME);
 		readCSV(csv, false, false);
 		
 		// see if we have gridded
-		if (FileBackedModule.hasEntry(zip, entryPrefix, GRID_FILE_NAME)) {
-			csv = CSV_BackedModule.loadFromArchive(zip, entryPrefix, GRID_FILE_NAME);
+		if (FileBackedModule.hasEntry(input, entryPrefix, GRID_FILE_NAME)) {
+			csv = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, GRID_FILE_NAME);
 			readCSV(csv, true, false);
 			
 			// should also have sum
-			csv = CSV_BackedModule.loadFromArchive(zip, entryPrefix, SUM_FILE_NAME);
+			csv = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, SUM_FILE_NAME);
 			readCSV(csv, true, true);
 		}
 	}
 	
-	private void readCSV(CSVFile<String> csv, boolean gridded, boolean sum) {
+	private void readCSV(CSVReader csv, boolean gridded, boolean sum) {
 		int expectedNum = weights == null ? 100 : weights.length;
 		List<IncrementalMagFreqDist> totalMFDs = new ArrayList<>(expectedNum);
 		List<List<IncrementalMagFreqDist>> regionalMFDs = new ArrayList<>(10);
 		List<Double> myWeights = new ArrayList<>(expectedNum);
 		
-		List<String> header = csv.getLine(0);
-		int mfdSize = header.size()-3;
+		Row header = csv.read();
+		int mfdSize = header.columns()-3;
 		EvenlyDiscretizedFunc refMFD = new EvenlyDiscretizedFunc(Double.parseDouble(header.get(3)),
-				Double.parseDouble(header.get(header.size()-1)), mfdSize);
+				Double.parseDouble(header.get(header.columns()-1)), mfdSize);
 		
-		for (int row=1; row<csv.getNumRows(); row++) {
-			String regStr = csv.get(row, 0);
-			int branchIndex = csv.getInt(row, 1);
+		for (Row row : csv) {
+			String regStr = row.get(0);
+			int branchIndex = row.getInt(1);
 			while (myWeights.size() <= branchIndex)
 				myWeights.add(null);
 			
-			double weight = csv.getDouble(row, 2);
+			double weight = row.getDouble(2);
 			Double prevWeight = myWeights.get(branchIndex);
 			if (prevWeight != null)
 				Preconditions.checkState((float)weight == prevWeight.floatValue());
@@ -556,7 +558,7 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 			
 			IncrementalMagFreqDist mfd = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
 			for (int i=0; i<mfd.size(); i++)
-				mfd.set(i, csv.getDouble(row, i+3));
+				mfd.set(i, row.getDouble(i+3));
 			
 			List<IncrementalMagFreqDist> mfdList;
 			if (regStr.equals(TOTAL_REG_FLAG)) {

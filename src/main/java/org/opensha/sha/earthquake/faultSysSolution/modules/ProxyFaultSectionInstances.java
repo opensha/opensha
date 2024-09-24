@@ -32,6 +32,8 @@ import org.opensha.commons.geo.json.Geometry;
 import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.ModuleArchiveInput;
+import org.opensha.commons.util.modules.ModuleArchiveOutput;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
@@ -489,19 +491,17 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 	}
 
 	@Override
-	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-		FileBackedModule.initEntry(zout, entryPrefix, PROXY_SECTS_FILE_NAME);
-		OutputStreamWriter writer = new OutputStreamWriter(zout);
+	public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+		OutputStreamWriter writer = new OutputStreamWriter(
+				FileBackedModule.initOutputStream(output, entryPrefix, PROXY_SECTS_FILE_NAME));
 		GeoJSONFaultReader.writeFaultSections(writer, proxySects);
 		writer.flush();
-		zout.flush();
-		zout.closeEntry();
+		output.closeEntry();
 		
-		FileBackedModule.initEntry(zout, entryPrefix, PROXY_RUP_SECTS_FILE_NAME);
-		CSVWriter csvWriter = new CSVWriter(zout, false);
+		CSVWriter csvWriter = new CSVWriter(FileBackedModule.initOutputStream(output, entryPrefix, PROXY_RUP_SECTS_FILE_NAME), false);
 		buildRupSectsCSV(proxyRupSectIndices, csvWriter);
 		csvWriter.flush();
-		zout.closeEntry();
+		output.closeEntry();
 	}
 	
 	public static void buildRupSectsCSV(Map<Integer, List<List<Integer>>> proxyRupSectIndices, CSVWriter writer) throws IOException {
@@ -541,10 +541,10 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 	}
 
 	@Override
-	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+	public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
 		// fault sections
 		List<GeoJSONFaultSection> sections = GeoJSONFaultReader.readFaultSections(
-				new InputStreamReader(FileBackedModule.getInputStream(zip, entryPrefix, PROXY_SECTS_FILE_NAME)));
+				new InputStreamReader(FileBackedModule.getInputStream(input, entryPrefix, PROXY_SECTS_FILE_NAME)));
 		for (int s=0; s<sections.size(); s++) {
 			FaultSection sect = sections.get(s);
 			Preconditions.checkState(sect.getSectionId() == s,
@@ -554,7 +554,7 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 		}
 		proxySects = sections;
 		
-		CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(zip, entryPrefix, PROXY_RUP_SECTS_FILE_NAME);
+		CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, PROXY_RUP_SECTS_FILE_NAME);
 		proxyRupSectIndices = loadRupSectsCSV(rupSectsCSV, sections.size());
 	}
 	

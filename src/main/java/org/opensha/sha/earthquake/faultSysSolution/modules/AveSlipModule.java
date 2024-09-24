@@ -7,6 +7,8 @@ import java.util.zip.ZipOutputStream;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule;
+import org.opensha.commons.util.modules.ModuleArchiveInput;
+import org.opensha.commons.util.modules.ModuleArchiveOutput;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -53,12 +55,12 @@ SplittableRuptureModule<AveSlipModule> {
 		}
 
 		@Override
-		public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-			new Precomputed(this).writeToArchive(zout, entryPrefix);
+		public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+			new Precomputed(this).writeToArchive(output, entryPrefix);
 		}
 
 		@Override
-		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
 			throw new IllegalStateException("Only pre-computed average slip modules can be loaded");
 		}
 

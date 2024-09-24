@@ -404,7 +404,10 @@ public class LogicTreeHazardCompare {
 			if (cmd.hasOption("logic-tree")) {
 				File treeFile = new File(cmd.getOptionValue("logic-tree"));
 				System.out.println("Reading custom logic tree from: "+treeFile.getAbsolutePath());
-				tree = LogicTree.read(treeFile);
+				if (treeFile.getName().endsWith("zip"))
+					tree = loadTreeFromResults(treeFile);
+				else
+					tree = LogicTree.read(treeFile);
 				ignorePrecomputed = true;
 			} else {
 				// read it from the hazard file if available
@@ -568,13 +571,17 @@ public class LogicTreeHazardCompare {
 		ZipFile zip = new ZipFile(resultsFile);
 		
 		ZipEntry entry = zip.getEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
-		if (entry == null)
+		if (entry == null) {
+			zip.close();
 			return null;
+		}
 		
 		BufferedInputStream logicTreeIS = new BufferedInputStream(zip.getInputStream(entry));
 		Gson gson = new GsonBuilder().registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
 		InputStreamReader reader = new InputStreamReader(logicTreeIS);
-		return gson.fromJson(reader, LogicTree.class);
+		LogicTree<?> tree = gson.fromJson(reader, LogicTree.class);
+		zip.close();
+		return tree;
 	}
 	
 	private ReturnPeriods[] rps;
