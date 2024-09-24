@@ -22,26 +22,56 @@ import java.util.stream.StreamSupport;
 
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarFile;
-import org.apache.commons.compress.utils.SeekableInMemoryByteChannel;
 import org.opensha.commons.data.Named;
 
 import com.google.common.base.Preconditions;
 
+/**
+ * Input interface for a {@link ModuleArchive}. Provides a list of all entries, and random access to their InputStreams.
+ */
 public interface ModuleArchiveInput extends Named, Closeable {
 	
+	/**
+	 * 
+	 * @param name
+	 * @return true if this archive contains an entry with the given name
+	 * @throws IOException
+	 */
 	public boolean hasEntry(String name) throws IOException;
 	
+	/**
+	 * Returns the {@link InputStream} for the given entry. Can check for existance first via {@link #hasEntry(String)},
+	 * otherwise an exception may be thrown.
+	 * 
+	 * @param name
+	 * @return input stream for the given entry
+	 * @throws IOException if the entry doesn't exist, or another I/O exception occurs
+	 */
 	public InputStream getInputStream(String name) throws IOException;
 	
+	/**
+	 * @return iterable view of all entries
+	 * @throws IOException
+	 */
 	public default Iterable<String> getEntries() throws IOException {
 		Stream<String> stream = entryStream();
 		return () -> stream.iterator();
 	}
 	
+	/**
+	 * @return stream of all entries
+	 * @throws IOException
+	 */
 	public Stream<String> entryStream() throws IOException;
 	
+	/**
+	 * Interface for a {@link ModuleArchiveInput} that is backed by an input file
+	 */
 	public interface FileBacked extends ModuleArchiveInput {
 		
+		/**
+		 * @return the input file for this archive
+		 */
 		public File getInputFile();
 
 		@Override
@@ -53,6 +83,11 @@ public interface ModuleArchiveInput extends Named, Closeable {
 		}
 	}
 	
+	/**
+	 * @param file
+	 * @return the default {@link ModuleArchiveInput} for the given file, using the file name extension
+	 * @throws IOException
+	 */
 	public static ModuleArchiveInput getDefaultInput(File file) throws IOException {
 		Preconditions.checkState(file.isFile(), "Only files are supported, not directories (so far)");
 		String name = file.getName().toLowerCase();
@@ -129,7 +164,6 @@ public interface ModuleArchiveInput extends Named, Closeable {
 		}
 		
 	}
-	
 	public abstract class AbstractApacheZipInput implements ModuleArchiveInput {
 		
 		private org.apache.commons.compress.archivers.zip.ZipFile zip;
@@ -186,6 +220,9 @@ public interface ModuleArchiveInput extends Named, Closeable {
 		}
 	}
 	
+	/**
+	 * In-memory zip input
+	 */
 	public static class InMemoryZipFileInput extends AbstractApacheZipInput {
 
 		public InMemoryZipFileInput(SeekableByteChannel byteChannel) throws IOException {
@@ -263,6 +300,9 @@ public interface ModuleArchiveInput extends Named, Closeable {
 		}
 	}
 	
+	/**
+	 * UNIX Tarball (uncompressed) file input
+	 */
 	public class TarFileInput extends AbstractTarInput implements FileBacked {
 
 		private File tarFile;

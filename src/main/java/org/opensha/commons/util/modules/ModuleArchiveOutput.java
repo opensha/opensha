@@ -27,30 +27,91 @@ import org.opensha.commons.data.Named;
 
 import com.google.common.base.Preconditions;
 
+/**
+ * Output interface for a {@link ModuleArchive}. To write data, callers much initialize a new entry via
+ * {@link #putNextEntry(String)}, write the data (if it's not just a directory) via {@link #getOutputStream()}, then
+ * close the entry via {@link #closeEntry()}. Once everything is written, callers must call {@link #close()}.
+ */
 public interface ModuleArchiveOutput extends Closeable, Named {
 	
+	/**
+	 * Begins an entry with the given name
+	 * @param name
+	 * @throws IOException
+	 */
 	public void putNextEntry(String name) throws IOException;
 	
+	/**
+	 * Gets an {@link OutputStream} for the currently entry. Must call {@link #putNextEntry(String)} first, and should
+	 * only call this once. IMPORTANT: never close this output stream as it may be reused for multiple entries, depending
+	 * on the implementation.
+	 * @return {@link OutputStream} for the currently entry
+	 * @throws IOException
+	 */
 	public OutputStream getOutputStream() throws IOException;
 	
+	/**
+	 * Closes the current entry. This will automatically flush the {@link OutputStream}
+	 * @throws IOException
+	 */
 	public void closeEntry() throws IOException;
 	
+	/**
+	 * Once an archive has been fully written and closed via {@link #close()}, this can be used to get a {@link ModuleArchiveInput}
+	 * from the completed output.
+	 * @return
+	 * @throws IOException
+	 */
 	public ModuleArchiveInput getCompletedInput() throws IOException;
 	
+	/**
+	 * Transfer an entry of the given name from the given {@link ModuleArchiveInput} to this {@link ModuleArchiveOutput}.
+	 * 
+	 * This automatically calls {@link #putNextEntry(String)} and {@link #closeEntry()}.
+	 * 
+	 * @param input
+	 * @param name
+	 * @throws IOException
+	 */
 	public default void transferFrom(ModuleArchiveInput input, String name) throws IOException {
 		transferFrom(input, name, name);
 	}
 	
+	/**
+	 * Transfer an entry of the given name from the given {@link ModuleArchiveInput} to this {@link ModuleArchiveOutput},
+	 * possibly renaming the entry.
+	 * 
+	 * This automatically calls {@link #putNextEntry(String)} and {@link #closeEntry()}.
+	 * 
+	 * @param input
+	 * @param sourceName
+	 * @param destName
+	 * @throws IOException
+	 */
 	public default void transferFrom(ModuleArchiveInput input, String sourceName, String destName) throws IOException {
 		transferFrom(input.getInputStream(sourceName), destName);
 	}
 	
+	/**
+	 * Create an entry of the given name with contents from the given input stream.
+	 * 
+	 * This automatically calls {@link #putNextEntry(String)} and {@link #closeEntry()}.
+	 * 
+	 * @param input
+	 * @param name
+	 * @throws IOException
+	 */
 	public default void transferFrom(InputStream is, String name) throws IOException {
 		putNextEntry(name);
 		is.transferTo(getOutputStream());
 		closeEntry();
 	}
 	
+	/**
+	 * {@link ModuleArchiveOutput} that is backed by a {@link File}, possibly with a temporary file while writing
+	 * (see {@link #getInProgressFile()}) that is written to a final file (see {@link #getDestinationFile()}) when
+	 * completed.
+	 */
 	public interface FileBacked extends ModuleArchiveOutput {
 		/**
 		 * This returns the path to the output file representing this archive while it is writing (and before
@@ -78,10 +139,26 @@ public interface ModuleArchiveOutput extends Closeable, Named {
 		
 	}
 	
+	/**
+	 * Gets the default {@link ModuleArchiveOutput} implementation for the given file, using the filename.
+	 * @param outputFile
+	 * @return
+	 * @throws IOException
+	 */
 	public static ModuleArchiveOutput getDefaultOutput(File outputFile) throws IOException {
 		return getDefaultOutput(outputFile, null);
 	}
 	
+	/**
+	 * Gets the default {@link ModuleArchiveOutput} implementation for the given file, using the filename as well
+	 * as the input implementation to see if there is a compatible output. For example, if the input uses the Apache
+	 * Zip library rather than the standard Java library, the output will as well so that transfer operations need not
+	 * re-inflate and then deflate each entry.
+	 * @param outputFile
+	 * @param input
+	 * @return
+	 * @throws IOException
+	 */
 	public static ModuleArchiveOutput getDefaultOutput(File outputFile, ModuleArchiveInput input) throws IOException {
 		String name = outputFile.getName().toLowerCase();
 		if (name.endsWith(".tar")) {
@@ -99,6 +176,9 @@ public interface ModuleArchiveOutput extends Closeable, Named {
 		return new ZipFileOutput(outputFile);
 	}
 	
+	/**
+	 * Output implementation using the standard Java {@link ZipOutputStream}.
+	 */
 	public static class ZipFileOutput implements FileBacked {
 		
 		private File inProgressFile;
@@ -225,6 +305,9 @@ public interface ModuleArchiveOutput extends Closeable, Named {
 		
 	}
 	
+	/**
+	 * In-memory implementation using the Apache libraries, supporting either compressed or uncompressed entries.
+	 */
 	public static class InMemoryZipOutput extends AbstractApacheZipOutput {
 
 		private boolean compressed;
@@ -274,6 +357,10 @@ public interface ModuleArchiveOutput extends Closeable, Named {
 		
 	}
 	
+	/**
+	 * Zip file implementation using the Apeche Common I/O library; this can be used to efficiently transfer data
+	 * from an {@link ModuleArchiveInput.ApacheZipFileInput} without inflating and deflating.
+	 */
 	public static class ApacheZipFileOutput extends AbstractApacheZipOutput implements FileBacked {
 		
 		private File outputFile;
@@ -372,6 +459,9 @@ public interface ModuleArchiveOutput extends Closeable, Named {
 		
 	}
 	
+	/**
+	 * UNIX Tarball (uncompressed) file output implementation
+	 */
 	public static class TarFileOutput extends AbstractTarOutput implements FileBacked {
 		
 		private File outputFile;
@@ -420,6 +510,10 @@ public interface ModuleArchiveOutput extends Closeable, Named {
 		
 	}
 	
+	/**
+	 * This version uses the newer Java NIO {@link FileSystem} implementation. I see no performance difference between
+	 * this and the old ZipOutputStream implementation
+	 */
 	public static class ZipFileSystemOutput implements FileBacked {
 		
 		private Path inProgressPath;
