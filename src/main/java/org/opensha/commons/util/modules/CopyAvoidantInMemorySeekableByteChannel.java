@@ -43,13 +43,24 @@ class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
 	/**
 	 * Constructor taking a byte array.
 	 *
-	 * <p>This constructor is intended to be used with pre-allocated buffer or when
-	 * reading from a given byte array.</p>
+	 * <p>This constructor is intended to be used when reading from a given byte array.</p>
 	 *
 	 * @param data input data or pre-allocated array.
 	 */
 	public CopyAvoidantInMemorySeekableByteChannel(final byte[] data) {
 		init(data, data.length); // passed in data, that is the initial size
+	}
+
+	/**
+	 * Constructor taking a byte array and the initial size (which cannot exceed the array size). Set the size to
+	 * zero if this is simply a pre-allocated array, or to the size of the existing data if data are passed in.
+	 *
+	 * <p>This constructor is intended to be used when reading from a given byte array or when pre-allocated.</p>
+	 *
+	 * @param data input data or pre-allocated array.
+	 */
+	public CopyAvoidantInMemorySeekableByteChannel(final byte[] data, int size) {
+		init(data, size); // passed in data with its own initial size
 	}
 
 	/**
@@ -60,7 +71,8 @@ class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
 	}
 
 	/**
-	 * Constructor taking a size of storage to be allocated.
+	 * Constructor taking a size of storage to be allocated. Although the given size will be pre-allocated, the size
+	 * of the channel will be initialized to zero.
 	 *
 	 * <p>Creates a channel and allocates internal storage of a given size.</p>
 	 *
@@ -72,12 +84,13 @@ class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
 	
 	private void init(byte[] initial, int size) {
 		if (D) System.out.println("CopyAvoidant.init(byte["+initial.length+"], "+size+")");
+		Preconditions.checkState(size <= initial.length);
 		this.curData = initial;
 		this.curDataStartPos = 0;
 		this.size = size;
 		this.position = 0;
-		this.curBlockSize = Integer.max(size, 1024*1024);
-		this.maxBlockSize = curBlockSize * 32;
+		this.curBlockSize = Integer.min(1024*1024*64, Integer.max(size, 1024*1024)); // at least 1 MB, but no more than 64 MB
+		this.maxBlockSize = curBlockSize * 16; // will be no more than 1 GB (64 MB x 16)
 		allData = new ArrayList<>();
 		allData.add(curData);
 		allDataStartPos = new ArrayList<>();
