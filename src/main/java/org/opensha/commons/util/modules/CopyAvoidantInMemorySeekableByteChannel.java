@@ -345,6 +345,10 @@ class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
 	}
 	
 	/**
+	 * This returns an output stream view of this channel, starting at the current position. This does not
+	 * keep its own position, so any seeks, reads, or writes done directly to the channel (or via another nput or
+	 * output stream) will affect this one. Similarly, bytes written here will advance the position in the channel.
+	 * 
 	 * @return output stream representation at the current position
 	 */
 	public OutputStream getOutputStream() {
@@ -369,6 +373,11 @@ class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
 	}
 	
 	/**
+	 * This returns an input stream view of this channel, starting at the current position. This does not
+	 * keep its own position, so any seeks, reads, or writes done directly to the channel (or via another input or 
+	 * output stream) will affect this one. Similarly, bytes read here will advance the position in the channel.
+	 * 
+	 * If you wish to read from the beginning, be sure to reset the position to 0 on the channel beforehand.
 	 * 
 	 * @return input stream representation starting at the current position (reset position to 0 beforehand if needed)
 	 */
@@ -424,11 +433,6 @@ class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
 				long size = CopyAvoidantInMemorySeekableByteChannel.this.size();
 				long position = CopyAvoidantInMemorySeekableByteChannel.this.position();
 				return (int) Math.min(Integer.MAX_VALUE, size - position);
-			}
-
-			@Override
-			public void close() throws IOException {
-				// do nothing
 			}
 		};
 	}
