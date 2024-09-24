@@ -38,6 +38,7 @@ class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
 	private int posIndexInCur;
 	private byte[] curData;
 	private final AtomicBoolean closed = new AtomicBoolean();
+	private final AtomicBoolean closeable = new AtomicBoolean(true);
 	private int position, size;
 
 	/**
@@ -134,6 +135,7 @@ class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
 			curData = allData.get(0);
 			curDataStartPos = 0;
 			posIndexInCur = 0;
+			position = 0;
 			return;
 		}
 		// see if we switched to a new buffer
@@ -219,7 +221,7 @@ class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
 			wanted = possible;
 		}
 		
-		int origWanted = wanted;
+		int read = 0;
 		
 		while (wanted > 0) {
 			int possibleInCur = curData.length - posIndexInCur;
@@ -228,6 +230,7 @@ class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
 				if (DD) System.out.println("\tCopyAvoidant.read: reading all from current");
 				buf.put(curData, posIndexInCur, wanted);
 				setPositionInternal(position + wanted);
+				read += wanted;
 				wanted = 0;
 			} else {
 				// partial read
@@ -236,17 +239,34 @@ class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
 				buf.put(curData, posIndexInCur, readLen);
 				wanted -= readLen;
 				setPositionInternal(position + readLen);
+				read += readLen;
 				if (posIndexInCur > curData.length)
-					// EOF
-					return -1;
+					break;
 			}
 		}
-		return origWanted;
+		return read;
 	}
 
 	@Override
 	public void close() {
-		closed.set(true);
+		if (closeable.get())
+			closed.set(true);
+	}
+	
+	/**
+	 * Can be used to re-open this channel after a close() call, typically to re-use
+	 */
+	public void open() {
+		closed.set(false);
+	}
+	
+	/**
+	 * This can be used to disable the close() functionality, useful it you're re-using this channel. Garbage collection
+	 * operations can auto close channels when pruning old objects, even if you never explicitly closed them.
+	 * @param closeable
+	 */
+	public void setCloseable(boolean closeable) {
+		this.closeable.set(closeable);
 	}
 
 	@Override
