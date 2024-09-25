@@ -1026,7 +1026,8 @@ public interface ArchiveOutput extends Closeable, Named {
 		@Override
 		public OutputStream getOutputStream() throws IOException {
 			Preconditions.checkNotNull(currentPath, "Trying to getOutputStream without first calling initNewEntry");
-			currentOutputStream = Files.newOutputStream(currentPath, fs == null ? StandardOpenOption.CREATE : StandardOpenOption.CREATE_NEW);
+			currentOutputStream = new BufferedOutputStream(Files.newOutputStream(currentPath,
+					fs == null ? StandardOpenOption.CREATE : StandardOpenOption.CREATE_NEW));
 			return currentOutputStream;
 		}
 

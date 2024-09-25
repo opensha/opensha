@@ -1,5 +1,6 @@
 package org.opensha.commons.util.io.archive;
 
+import java.io.BufferedInputStream;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
@@ -371,7 +372,7 @@ public interface ArchiveInput extends Named, Closeable {
 		@Override
 		public InputStream getInputStream(String name) throws IOException {
 			Path path = getPath(name);
-			return Files.newInputStream(path);
+			return new BufferedInputStream(Files.newInputStream(path));
 		}
 
 		@Override
