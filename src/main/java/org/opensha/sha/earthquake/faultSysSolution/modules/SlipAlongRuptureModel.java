@@ -10,8 +10,8 @@ import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule.ConstantAverageable;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -116,12 +116,12 @@ SplittableRuptureModule<SlipAlongRuptureModel> {
 	private static abstract class NamedSlipAlongRuptureModel extends SlipAlongRuptureModel implements ArchivableModule {
 		
 		@Override
-		public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 			// do nothing (no serialization required, just must be listed)
 		}
 
 		@Override
-		public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			// do nothing (no deserialization required, just must be listed)
 		}
 		

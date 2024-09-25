@@ -17,8 +17,8 @@ import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.commons.util.modules.ModuleArchive;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -82,7 +82,7 @@ public interface PolygonFaultGridAssociations extends FaultGridAssociations {
 		private static final String ARCHIVE_SECT_POLYGONS_FILE_NAME = "sect_polygons.geojson";
 
 		@Override
-		public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 			super.writeToArchive(output, entryPrefix);
 			
 			// write polygons
@@ -104,7 +104,7 @@ public interface PolygonFaultGridAssociations extends FaultGridAssociations {
 		}
 
 		@Override
-		public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			super.initFromArchive(input, entryPrefix);
 			
 			BufferedInputStream polysIS = FileBackedModule.getInputStream(input, entryPrefix, ARCHIVE_SECT_POLYGONS_FILE_NAME);

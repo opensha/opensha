@@ -55,7 +55,7 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.ExecutorUtils;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_LogicTreeHazardCalc;
@@ -710,7 +710,6 @@ public abstract class AbstractLogicTreeHazardCombiner {
 			curveIOExec = ExecutorUtils.newNamedThreadPool(ioThreadCount, "curveIO");
 		
 		Map<LogicTreeBranch<?>, BranchCurves> innerCurvesMap = null;
-		File hazardZipOutTmp = null;
 		File hazardZipOutFinal = null;
 		File hazardOutDir;
 		CompletableFuture<Void> writeFuture = null;
@@ -750,7 +749,6 @@ public abstract class AbstractLogicTreeHazardCombiner {
 				hazardOutDir = null;
 				hazardZipOutFinal = outputHazardFile;
 			}
-			hazardZipOutTmp = new File(hazardZipOutFinal.getAbsolutePath()+".tmp");
 			meanCurves = new LogicTreeCurveAverager[periods.length];
 			HashSet<LogicTreeNode> variableNodes = new HashSet<>();
 			HashMap<LogicTreeNode, LogicTreeLevel<?>> nodeLevels = new HashMap<>();
@@ -769,7 +767,8 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		} else {
 			hazardOutDir = null;
 		}
-		ModuleArchiveOutput hazardOutZip = doHazardMaps ? new ModuleArchiveOutput.ZipFileOutput(hazardZipOutTmp) : null;
+		int writeThreads = Integer.max(2, Integer.min(8, FaultSysTools.defaultNumThreads()));
+		ArchiveOutput hazardOutZip = doHazardMaps ? new ArchiveOutput.ParallelZipFileOutput(hazardZipOutFinal, writeThreads) : null;
 		WriteCounter writeCounter = doHazardMaps ? new WriteCounter() : null;
 		
 		CSVFile<String> sitesCSV = null;
@@ -1458,7 +1457,6 @@ public abstract class AbstractLogicTreeHazardCombiner {
 			combTree.writeToArchive(hazardOutZip, null);
 			
 			hazardOutZip.close();
-			Files.move(hazardZipOutTmp, hazardZipOutFinal);
 			blockingZipIOWatch.stop();
 		}
 		
@@ -1481,8 +1479,7 @@ public abstract class AbstractLogicTreeHazardCombiner {
 				curveZipFile = hazardCurvesOutputFile;
 			System.out.println("Building site hazard curve zip file: "+curveZipFile.getAbsolutePath());
 			
-			File tmpFile = new File(curveZipFile.getAbsolutePath()+".tmp");
-			ModuleArchiveOutput output = new ModuleArchiveOutput.ZipFileOutput(tmpFile);
+			ArchiveOutput output = new ArchiveOutput.ZipFileOutput(curveZipFile);
 			
 			output.putNextEntry(MPJ_SiteLogicTreeHazardCurveCalc.SITES_CSV_FILE_NAME);
 			sitesCSV.writeToStream(output.getOutputStream());
@@ -1504,7 +1501,6 @@ public abstract class AbstractLogicTreeHazardCombiner {
 				}
 			}
 			output.close();
-			Files.move(tmpFile, curveZipFile);
 			blockingZipIOWatch.stop();
 		}
 		

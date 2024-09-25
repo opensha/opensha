@@ -11,8 +11,8 @@ import java.util.zip.ZipOutputStream;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
@@ -163,7 +163,7 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 	private static final String RANGES_CSV = "inversion_constraint_ranges.csv";
 
 	@Override
-	public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 		if (misfits != null)
 			writeData(misfits, data, entryPrefix, MISFITS_CSV, output);
 		if (misfits_ineq != null)
@@ -181,7 +181,7 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 	}
 	
 	private static void writeData(double[] misfits, double[] data,
-			String entryPrefix, String fileName, ModuleArchiveOutput output) throws IOException {
+			String entryPrefix, String fileName, ArchiveOutput output) throws IOException {
 		CSVFile<String> csv = new CSVFile<>(true);
 		Preconditions.checkState(misfits.length == data.length, "%s != %s");
 		csv.addLine("Row", "Data", "Misfit");
@@ -190,7 +190,7 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 		CSV_BackedModule.writeToArchive(csv, output, entryPrefix, fileName);
 	}
 	
-	private void readData(ModuleArchiveInput input, String entryPrefix, boolean ineq) throws IOException {
+	private void readData(ArchiveInput input, String entryPrefix, boolean ineq) throws IOException {
 		String fileName = ineq ? MISFITS_INEQ_CSV : MISFITS_CSV;
 		if (!FileBackedModule.hasEntry(input, entryPrefix, fileName))
 			return;
@@ -215,7 +215,7 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 	}
 
 	@Override
-	public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+	public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		readData(input, entryPrefix, false);
 		readData(input, entryPrefix, true);
 		if (FileBackedModule.hasEntry(input, entryPrefix, RANGES_CSV)) {

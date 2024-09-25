@@ -32,8 +32,8 @@ import org.opensha.commons.geo.json.Geometry;
 import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
@@ -491,7 +491,7 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 	}
 
 	@Override
-	public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 		OutputStreamWriter writer = new OutputStreamWriter(
 				FileBackedModule.initOutputStream(output, entryPrefix, PROXY_SECTS_FILE_NAME));
 		GeoJSONFaultReader.writeFaultSections(writer, proxySects);
@@ -541,7 +541,7 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 	}
 
 	@Override
-	public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+	public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		// fault sections
 		List<GeoJSONFaultSection> sections = GeoJSONFaultReader.readFaultSections(
 				new InputStreamReader(FileBackedModule.getInputStream(input, entryPrefix, PROXY_SECTS_FILE_NAME)));

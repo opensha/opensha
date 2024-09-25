@@ -33,7 +33,7 @@ import com.google.gson.reflect.TypeToken;
  */
 public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> {
 	
-	private ModuleArchiveInput input;
+	private ArchiveInput input;
 	
 	/**
 	 * Create a new module container that can be written to an archive
@@ -61,7 +61,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @throws IOException
 	 */
 	public ModuleArchive(File file, Class<? extends E> preloadClass) throws IOException {
-		this(new ModuleArchiveInput.ZipFileInput(file), preloadClass);
+		this(new ArchiveInput.ZipFileInput(file), preloadClass);
 	}
 	
 	/**
@@ -83,7 +83,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @throws IOException
 	 */
 	public ModuleArchive(ZipFile zip, Class<? extends E> preloadClass) throws IOException {
-		this(new ModuleArchiveInput.ZipFileInput(zip), preloadClass);
+		this(new ArchiveInput.ZipFileInput(zip), preloadClass);
 	}
 	
 	/**
@@ -92,7 +92,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @param input
 	 * @throws IOException
 	 */
-	public ModuleArchive(ModuleArchiveInput input) throws IOException {
+	public ModuleArchive(ArchiveInput input) throws IOException {
 		this(input, null);
 	}
 	
@@ -104,7 +104,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @param preloadClass class to preload
 	 * @throws IOException
 	 */
-	public ModuleArchive(ModuleArchiveInput input, Class<? extends E> preloadClass) throws IOException {
+	public ModuleArchive(ArchiveInput input, Class<? extends E> preloadClass) throws IOException {
 		super();
 		this.input = input;
 		if (verbose) {
@@ -124,9 +124,9 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	
 	/**
 	 * 
-	 * @return the {@link ModuleArchiveInput} backing this archive, or null if none
+	 * @return the {@link ArchiveInput} backing this archive, or null if none
 	 */
-	public ModuleArchiveInput getInput() {
+	public ArchiveInput getInput() {
 		return input;
 	}
 	
@@ -145,7 +145,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @throws IOException
 	 */
 	@SuppressWarnings("unchecked")
-	public static <E extends OpenSHA_Module> void loadModules(ModuleContainer<E> container, ModuleArchiveInput input, String prefix,
+	public static <E extends OpenSHA_Module> void loadModules(ModuleContainer<E> container, ArchiveInput input, String prefix,
 			Class<? extends E> preloadClass, HashSet<String> prevPrefixes, boolean verbose) throws IOException {
 //		System.out.println("Loading modules for "+container.getClass().getName()+" with prefix="+prefix);
 		if (prefix ==null)
@@ -267,14 +267,14 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		
 		private ModuleRecord record;
 		private Class<E> clazz;
-		private ModuleArchiveInput input;
+		private ArchiveInput input;
 		private ModuleContainer<E> container;
 		private HashSet<String> prevPrefixes;
 		
 		private Throwable t;
 		private boolean verbose;
 
-		public ArchiveLoadCallable(ModuleRecord record, Class<E> clazz, ModuleArchiveInput input, ModuleContainer<E> container,
+		public ArchiveLoadCallable(ModuleRecord record, Class<E> clazz, ArchiveInput input, ModuleContainer<E> container,
 				HashSet<String> prevPrefixes, boolean verbose) {
 			this.record = record;
 			this.clazz = clazz;
@@ -369,7 +369,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @throws IOException
 	 */
 	public void write(File outputFile, boolean copySourceFiles) throws IOException {
-		write(ModuleArchiveOutput.getDefaultOutput(outputFile, input), copySourceFiles);
+		write(ArchiveOutput.getDefaultOutput(outputFile, input), copySourceFiles);
 	}
 
 	/**
@@ -381,7 +381,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @param outputFile
 	 * @throws IOException
 	 */
-	public void write(ModuleArchiveOutput output) throws IOException {
+	public void write(ArchiveOutput output) throws IOException {
 		write(output, input != null);
 	}
 
@@ -396,12 +396,12 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @param copySourceFiles
 	 * @throws IOException
 	 */
-	public void write(ModuleArchiveOutput output, boolean copySourceFiles) throws IOException {
-		ModuleArchiveOutput.FileBacked fb = null;
+	public void write(ArchiveOutput output, boolean copySourceFiles) throws IOException {
+		ArchiveOutput.FileBacked fb = null;
 		if (verbose) {
 			System.out.println("------------ WRITING ARCHIVE ------------");
-			if (output instanceof ModuleArchiveOutput.FileBacked) {
-				fb = (ModuleArchiveOutput.FileBacked)output;
+			if (output instanceof ArchiveOutput.FileBacked) {
+				fb = (ArchiveOutput.FileBacked)output;
 				if (!fb.getDestinationFile().equals(fb.getInProgressFile()))
 					System.out.println("Temporary archive: "+fb.getInProgressFile().getAbsolutePath());
 				else
@@ -448,7 +448,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 	 * @return
 	 * @throws IOException
 	 */
-	public static <E extends OpenSHA_Module> boolean writeModules(ModuleContainer<E> container, ModuleArchiveOutput output,
+	public static <E extends OpenSHA_Module> boolean writeModules(ModuleContainer<E> container, ArchiveOutput output,
 			String prefix, HashSet<String> prevPrefixes, boolean verbose) throws IOException {
 		EntryTrackingArchiveOutput trackOutput;
 		if (output instanceof EntryTrackingArchiveOutput)
@@ -503,6 +503,8 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 							module.getName(), nestingPrefix);
 					
 					String downstreamPrefix = prefix+nestingPrefix;
+					output.putNextEntry(downstreamPrefix);
+					output.closeEntry();
 //					System.out.println("ds pre: "+downstreamPrefix);
 //					if (downstreamPrefix.length() > 20)
 //						throw new IllegalStateException("here I be");
@@ -587,16 +589,16 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		return nestingPrefix == null ? ret : ret+nestingPrefix;
 	}
 	
-	private static class EntryTrackingArchiveOutput implements ModuleArchiveOutput {
+	private static class EntryTrackingArchiveOutput implements ArchiveOutput {
 
-		private ModuleArchiveOutput out;
+		private ArchiveOutput out;
 		
 		private final HashSet<String> writtenEntries;
 		
 		private String modulePath;
 		private List<String> moduleEntries;
 
-		public EntryTrackingArchiveOutput(ModuleArchiveOutput out) {
+		public EntryTrackingArchiveOutput(ArchiveOutput out) {
 			this.out = out;
 			this.writtenEntries = new HashSet<>();
 		}
@@ -643,12 +645,12 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		}
 
 		@Override
-		public void transferFrom(ModuleArchiveInput input, String name) throws IOException {
+		public void transferFrom(ArchiveInput input, String name) throws IOException {
 			out.transferFrom(input, name);
 		}
 		
 		@Override
-		public void transferFrom(ModuleArchiveInput input, String sourceName, String destName) throws IOException {
+		public void transferFrom(ArchiveInput input, String sourceName, String destName) throws IOException {
 			out.transferFrom(input, sourceName, destName);
 		}
 
@@ -658,7 +660,7 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 		}
 
 		@Override
-		public ModuleArchiveInput getCompletedInput() throws IOException {
+		public ArchiveInput getCompletedInput() throws IOException {
 			return out.getCompletedInput();
 		}
 		

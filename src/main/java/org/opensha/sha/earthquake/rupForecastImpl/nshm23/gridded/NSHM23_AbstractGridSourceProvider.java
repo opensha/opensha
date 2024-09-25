@@ -11,8 +11,8 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
@@ -55,12 +55,12 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 	public abstract FaultCubeAssociations getFaultCubeassociations();
 
 	@Override
-	public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 		new Precomputed(this).writeToArchive(output, entryPrefix);
 	}
 
 	@Override
-	public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+	public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		throw new IllegalStateException("This should not be called (loaded as Precomputed instance)");
 	}
 

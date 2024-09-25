@@ -27,20 +27,29 @@ import org.opensha.commons.data.Named;
 import com.google.common.base.Preconditions;
 
 /**
- * Input interface for a {@link ModuleArchive}. Provides a list of all entries, and random access to their InputStreams.
+ * Input interface/abstraction layer for data stored as entries in an archive, e.g., for use with a {@link ModuleArchive}.
+ * 
+ * @see ArchiveOutput
  */
-public interface ModuleArchiveInput extends Named, Closeable {
+public interface ArchiveInput extends Named, Closeable {
 	
 	/**
-	 * 
-	 * @param name
+	 * @param name the entry name
 	 * @return true if this archive contains an entry with the given name
 	 * @throws IOException
 	 */
 	public boolean hasEntry(String name) throws IOException;
 	
 	/**
-	 * Returns the {@link InputStream} for the given entry. Can check for existance first via {@link #hasEntry(String)},
+	 * @param name the entry name
+	 * @return true if this entry represents a directory (ends with {@link ArchiveOutput#SEPERATOR}, false otherwise
+	 */
+	public default boolean isDirecotry(String name) {
+		return name.endsWith(ArchiveOutput.SEPERATOR);
+	}
+	
+	/**
+	 * Returns the {@link InputStream} for the given entry. Can check for existence first via {@link #hasEntry(String)},
 	 * otherwise an exception may be thrown.
 	 * 
 	 * @param name
@@ -65,9 +74,9 @@ public interface ModuleArchiveInput extends Named, Closeable {
 	public Stream<String> entryStream() throws IOException;
 	
 	/**
-	 * Interface for a {@link ModuleArchiveInput} that is backed by an input file
+	 * Interface for a {@link ArchiveInput} that is backed by an input file
 	 */
-	public interface FileBacked extends ModuleArchiveInput {
+	public interface FileBacked extends ArchiveInput {
 		
 		/**
 		 * @return the input file for this archive
@@ -85,11 +94,12 @@ public interface ModuleArchiveInput extends Named, Closeable {
 	
 	/**
 	 * @param file
-	 * @return the default {@link ModuleArchiveInput} for the given file, using the file name extension
+	 * @return the default {@link ArchiveInput} for the given file, using the file name extension
 	 * @throws IOException
 	 */
-	public static ModuleArchiveInput getDefaultInput(File file) throws IOException {
-		Preconditions.checkState(file.isFile(), "Only files are supported, not directories (so far)");
+	public static ArchiveInput getDefaultInput(File file) throws IOException {
+		if (file.isDirectory())
+			return new DirectoryInput(file.toPath());
 		String name = file.getName().toLowerCase();
 		if (name.endsWith(".tar"))
 			return new TarFileInput(file);
@@ -164,7 +174,7 @@ public interface ModuleArchiveInput extends Named, Closeable {
 		}
 		
 	}
-	public abstract class AbstractApacheZipInput implements ModuleArchiveInput {
+	public abstract class AbstractApacheZipInput implements ArchiveInput {
 		
 		private org.apache.commons.compress.archivers.zip.ZipFile zip;
 		
@@ -240,7 +250,7 @@ public interface ModuleArchiveInput extends Named, Closeable {
 	 * This version uses that Apache Commons Compress library's {@link org.apache.commons.compress.archivers.zip.ZipFile} implementation
 	 * 
 	 * The primary benefit of this implementation is that entries can be directly copied to an
-	 * {@link ModuleArchiveOutput.ApacheZipFileOutput} without deflating and then reinflating, greatly reducing the time
+	 * {@link ArchiveOutput.ApacheZipFileOutput} without deflating and then reinflating, greatly reducing the time
 	 * to copy from one archive to another.
 	 * 
 	 * The primary downside of this implementation is that it iterates over the entire file at the beginning to cache
@@ -262,7 +272,7 @@ public interface ModuleArchiveInput extends Named, Closeable {
 		
 	}
 	
-	public abstract class AbstractTarInput implements ModuleArchiveInput {
+	public abstract class AbstractTarInput implements ArchiveInput {
 		
 		private TarFile tar;
 
@@ -319,22 +329,20 @@ public interface ModuleArchiveInput extends Named, Closeable {
 		
 	}
 	
-	/**
-	 * This version uses the newer Java NIO {@link FileSystem} implementation. I see no performance difference between
-	 * this and the old ZipFile implementation
-	 */
-	public static class ZipFileSystemInput implements FileBacked {
+	public static abstract class AbstractFileSystemInput implements ArchiveInput {
 		
-		private Path zipPath;
-		private FileSystem fs;
+		protected FileSystem fs;
+		private Path upstream;
 		
+		private String prevName;
 		private Path prevPath;
-
-		public ZipFileSystemInput(Path path) throws IOException {
-			this.zipPath = path.toAbsolutePath();
-			URI uri = URI.create("jar:"+zipPath.toUri().toString());
-			Map<String, String> env = Map.of("create", "false");
-			fs = FileSystems.newFileSystem(uri, env);
+		
+		public AbstractFileSystemInput(FileSystem fs) {
+			this.fs = fs;
+		}
+		
+		public AbstractFileSystemInput(Path upstream) {
+			this.upstream = upstream;
 		}
 
 		@Override
@@ -345,11 +353,16 @@ public interface ModuleArchiveInput extends Named, Closeable {
 		
 		private Path getPath(String name) {
 			Path cached = prevPath;
-			if (cached != null && cached.toString().equals(name))
+			if (cached != null && prevName.equals(name))
 				return cached;
-			Path path = fs.getPath(name);
+			Path path;
+			if (upstream != null)
+				path = upstream.resolve(name);
+			else
+				path = fs.getPath(name);
 			if (!Files.exists(path))
 				return null;
+			prevName = name;
 			prevPath = path;
 			return path;
 		}
@@ -362,12 +375,49 @@ public interface ModuleArchiveInput extends Named, Closeable {
 
 		@Override
 		public Stream<String> entryStream() throws IOException {
-			Path root = fs.getRootDirectories().iterator().next();
+			Path root;
+			int trimSize;
+			if (upstream != null) {
+				root = upstream;
+				String rootStr = root.toString();
+				trimSize = rootStr.length() + (!rootStr.endsWith("/") || !rootStr.endsWith("\\") ? 1 : 0);
+			} else {
+				root = fs.getRootDirectories().iterator().next();
+				trimSize = 1;
+			}
 			return Files.walk(root)
 					.filter(P->!Files.isDirectory(P)) // no directories
 					.map(Path::toString)
-					.map(S->S.substring(1)) // strip out the preceding /
+					.map(S->S.substring(trimSize)) // strip out the preceding /
 					.filter(S->!S.isBlank()); // skip empty (will include just '/' which we just turned into an empty string)
+		}
+
+		@Override
+		public void close() throws IOException {
+			if (fs == null)
+				return;
+			fs.close();
+			fs = null;
+		}
+	}
+	
+	/**
+	 * This version uses the newer Java NIO {@link FileSystem} implementation. I see no performance difference between
+	 * this and the old ZipFile implementation
+	 */
+	public static class ZipFileSystemInput extends AbstractFileSystemInput implements FileBacked {
+		
+		private Path zipPath;
+
+		public ZipFileSystemInput(Path path) throws IOException {
+			super(initFS(path));
+			this.zipPath = path.toAbsolutePath();
+		}
+		
+		private static FileSystem initFS(Path path) throws IOException {
+			URI uri = URI.create("jar:"+path.toUri().toString());
+			Map<String, String> env = Map.of("create", "false");
+			return FileSystems.newFileSystem(uri, env);
 		}
 
 		@Override
@@ -376,15 +426,41 @@ public interface ModuleArchiveInput extends Named, Closeable {
 		}
 
 		@Override
-		public void close() throws IOException {
-			fs.close();
-		}
-
-		@Override
 		public File getInputFile() {
 			return zipPath.toFile();
 		}
 		
+	}
+	
+	public static class DirectoryInput extends AbstractFileSystemInput implements FileBacked {
+		private Path dirPath;
+
+		public DirectoryInput(Path path) throws IOException {
+			super(checkPath(path));
+			this.dirPath = path.toAbsolutePath();
+		}
+		
+		private static Path checkPath(Path path) throws IOException {
+			Preconditions.checkState(Files.exists(path) && Files.isDirectory(path),
+						"Path already exists and is not a directory: %s", path);
+			return path.toAbsolutePath();
+		}
+		
+		@Override
+		public String getName() {
+			return dirPath.toString();
+		}
+
+		@Override
+		public File getInputFile() {
+			return dirPath.toFile();
+		}
+
+		@Override
+		public void close() throws IOException {
+			// do not try to close the OS filesystem, just set to null
+			fs = null;
+		}
 	}
 
 }

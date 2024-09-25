@@ -44,7 +44,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.modules.ModuleArchive;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
 import org.opensha.sha.calc.params.filters.SourceFilterManager;
@@ -487,10 +487,10 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	
 	public static void writeMeanCurvesAndMaps(ZipOutputStream zout, LogicTreeCurveAverager[] meanCurves,
 			GriddedRegion gridRegion, double[] periods, ReturnPeriods[] rps) throws IOException {
-		writeMeanCurvesAndMaps(new ModuleArchiveOutput.ZipFileOutput(zout), meanCurves, gridRegion, periods, rps);
+		writeMeanCurvesAndMaps(new ArchiveOutput.ZipFileOutput(zout), meanCurves, gridRegion, periods, rps);
 	}
 	
-	public static void writeMeanCurvesAndMaps(ModuleArchiveOutput output, LogicTreeCurveAverager[] meanCurves,
+	public static void writeMeanCurvesAndMaps(ArchiveOutput output, LogicTreeCurveAverager[] meanCurves,
 			GriddedRegion gridRegion, double[] periods, ReturnPeriods[] rps) throws IOException {
 		
 		boolean firstLT = true;

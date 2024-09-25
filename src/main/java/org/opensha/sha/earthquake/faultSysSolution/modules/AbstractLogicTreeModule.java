@@ -23,8 +23,8 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.ModuleHelper;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 
@@ -45,7 +45,7 @@ import com.google.gson.stream.JsonWriter;
 @ModuleHelper
 public abstract class AbstractLogicTreeModule implements ArchivableModule {
 
-	private ModuleArchiveInput input;
+	private ArchiveInput input;
 	private String prefix;
 	private LogicTree<?> logicTree;
 	private List<LogicTreeLevel<?>> levels;
@@ -56,7 +56,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	public static final String LOGIC_TREE_FILE_NAME = "logic_tree.json";
 	public static final String LOGIC_TREE_MAPPINGS_FILE_NAME = "logic_tree_mappings.json";
 
-	protected AbstractLogicTreeModule(ModuleArchiveInput input, String prefix, LogicTree<?> logicTree) {
+	protected AbstractLogicTreeModule(ArchiveInput input, String prefix, LogicTree<?> logicTree) {
 		this.input = input;
 		this.prefix = prefix;
 		setLogicTree(logicTree);
@@ -192,7 +192,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	 * @return file name mappings for this branch
 	 * @throws IOException 
 	 */
-	protected abstract Map<String, String> writeBranchFilesToArchive(ModuleArchiveOutput output, String prefix, LogicTreeBranch<?> branch,
+	protected abstract Map<String, String> writeBranchFilesToArchive(ArchiveOutput output, String prefix, LogicTreeBranch<?> branch,
 			HashSet<String> writtenFiles) throws IOException;
 	
 	protected String getFilePrefix() {
@@ -200,16 +200,16 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		return prefix;
 	}
 	
-	protected void setArchiveInput(ModuleArchiveInput input) {
+	protected void setArchiveInput(ArchiveInput input) {
 		this.input = input;
 	}
 	
-	protected ModuleArchiveInput getArchiveInput() {
+	protected ArchiveInput getArchiveInput() {
 		Preconditions.checkNotNull(input, "Not yet initialized");
 		return input;
 	}
 	
-	protected void writeLogicTreeToArchive(ModuleArchiveOutput output, String prefix, LogicTree<?> logicTree)
+	protected void writeLogicTreeToArchive(ArchiveOutput output, String prefix, LogicTree<?> logicTree)
 			throws IOException {
 		if (verbose) System.out.println("Writing full logic tree");
 		// write the logic tree
@@ -222,7 +222,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		output.closeEntry();
 	}
 	
-	protected void writeLogicTreeMappingsToArchive(ModuleArchiveOutput output, String prefix, LogicTree<?> logicTree,
+	protected void writeLogicTreeMappingsToArchive(ArchiveOutput output, String prefix, LogicTree<?> logicTree,
 			List<Map<String, String>> branchMappings) throws IOException {
 		if (verbose) System.out.println("Writing full logic tree");
 		if (verbose) System.out.println("Writing branch file mappings");
@@ -340,7 +340,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	}
 
 	@Override
-	public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 		String outPrefix = buildPrefix(entryPrefix);
 
 		writeLogicTreeToArchive(output, outPrefix, logicTree);
@@ -360,7 +360,7 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 	}
 
 	@Override
-	public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+	public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		this.input = input;
 		this.prefix = buildPrefix(entryPrefix);
 		

@@ -593,12 +593,12 @@ public class ModuleArchiveTest {
 		}
 
 		@Override
-		public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 			// do nothing
 		}
 
 		@Override
-		public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			// do nothing
 		}
 
@@ -627,12 +627,12 @@ public class ModuleArchiveTest {
 		}
 
 		@Override
-		public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 			// do nothing
 		}
 
 		@Override
-		public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			// do nothing
 		}
 

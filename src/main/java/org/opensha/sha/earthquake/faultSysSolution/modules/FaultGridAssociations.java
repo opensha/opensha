@@ -21,8 +21,8 @@ import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -226,7 +226,7 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 		}
 
 		@Override
-		public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 			FileBackedModule.initEntry(output, entryPrefix, ARCHIVE_GRID_REGION_FILE_NAME);
 			OutputStreamWriter writer = new OutputStreamWriter(output.getOutputStream());
 			Feature.write(getRegionFeature(), writer);
@@ -259,7 +259,7 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 		}
 
 		@Override
-		public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			BufferedInputStream regionIS = FileBackedModule.getInputStream(input, entryPrefix, ARCHIVE_GRID_REGION_FILE_NAME);
 			InputStreamReader regionReader = new InputStreamReader(regionIS);
 			regionFeature = Feature.read(regionReader);

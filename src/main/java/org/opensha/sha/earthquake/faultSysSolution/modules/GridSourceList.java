@@ -34,8 +34,8 @@ import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -381,7 +381,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		return gridCSV;
 	}
 	
-	public void writeGridSourcesCSV(ModuleArchiveOutput output, String entryName) throws IOException {
+	public void writeGridSourcesCSV(ArchiveOutput output, String entryName) throws IOException {
 		// use CSVWriter for efficiency
 		output.putNextEntry(entryName);
 		CSVWriter rupCSV = new CSVWriter(output.getOutputStream(), false);
@@ -450,7 +450,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	}
 
 	@Override
-	public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 		if (gridReg != null) {
 			// write the gridded region
 			FileBackedModule.initEntry(output, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
@@ -1914,7 +1914,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		}
 
 		@Override
-		public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			// load gridded region (if supplied)
 			GriddedRegion gridReg = null;
 			if (FileBackedModule.hasEntry(input, entryPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)) {
@@ -1979,7 +1979,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		}
 
 		@Override
-		public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			throw new UnsupportedOperationException("Not implemented");
 		}
 

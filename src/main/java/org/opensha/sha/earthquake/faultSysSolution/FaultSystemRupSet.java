@@ -23,8 +23,8 @@ import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleArchive;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.SubModule;
@@ -194,7 +194,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @throws IOException
 	 */
 	public static FaultSystemRupSet load(File file) throws IOException {
-		return load(ModuleArchiveInput.getDefaultInput(file));
+		return load(ArchiveInput.getDefaultInput(file));
 	}
 	
 	/**
@@ -216,7 +216,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 		}
-		return load(new ModuleArchiveInput.ZipFileInput(zip));
+		return load(new ArchiveInput.ZipFileInput(zip));
 	}
 	
 	/**
@@ -226,7 +226,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return
 	 * @throws IOException
 	 */
-	public static FaultSystemRupSet load(ModuleArchiveInput input) throws IOException {
+	public static FaultSystemRupSet load(ArchiveInput input) throws IOException {
 		ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(input, FaultSystemRupSet.class);
 		
 		FaultSystemRupSet rupSet = archive.getModule(FaultSystemRupSet.class);
@@ -259,7 +259,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public static final String SECTS_FILE_NAME = "fault_sections.geojson";
 
 	@Override
-	public final void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+	public final void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 		// CSV Files
 		FileBackedModule.initEntry(output, entryPrefix, RUP_SECTS_FILE_NAME);
 		CSVWriter csvWriter = new CSVWriter(output.getOutputStream(), false);
@@ -495,7 +495,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	@Override
-	public final void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+	public final void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		System.out.println("\tLoading ruptures CSV...");
 		CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, RUP_SECTS_FILE_NAME);
 		CSVFile<String> rupPropsCSV = CSV_BackedModule.loadFromArchive(input, entryPrefix, RUP_PROPS_FILE_NAME);

@@ -9,8 +9,8 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.ModuleHelper;
 
 import com.google.common.base.Preconditions;
@@ -34,11 +34,11 @@ public interface FileBackedModule extends ArchivableModule {
 	public String getFileName();
 
 	@Override
-	public default void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+	public default void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 		writeToArchive(output, entryPrefix, getFileName());
 	}
 
-	public default void writeToArchive(ModuleArchiveOutput output, String entryPrefix, String fileName) throws IOException {
+	public default void writeToArchive(ArchiveOutput output, String entryPrefix, String fileName) throws IOException {
 		initEntry(output, entryPrefix, fileName);
 		
 		OutputStream out = output.getOutputStream();
@@ -53,7 +53,7 @@ public interface FileBackedModule extends ArchivableModule {
 	}
 	
 	/**
-	 * Initializes an entry in the given {@link ModuleArchiveOutput} taking the given prefix into account.
+	 * Initializes an entry in the given {@link ArchiveOutput} taking the given prefix into account.
 	 * 
 	 * @param zout
 	 * @param entryPrefix
@@ -61,7 +61,7 @@ public interface FileBackedModule extends ArchivableModule {
 	 * @return fully qualified entry name
 	 * @throws IOException
 	 */
-	public static String initEntry(ModuleArchiveOutput out, String entryPrefix, String fileName)
+	public static String initEntry(ArchiveOutput out, String entryPrefix, String fileName)
 			throws IOException {
 		String entryName = ArchivableModule.getEntryName(entryPrefix, fileName);
 		Preconditions.checkNotNull(entryName, "entryName is null. prefix='%s', fileName='%s'", entryPrefix, fileName);
@@ -71,7 +71,7 @@ public interface FileBackedModule extends ArchivableModule {
 	}
 	
 	/**
-	 * Calls {@link #initEntry(ModuleArchiveOutput, String, String)} to initialize an entry, then returns an
+	 * Calls {@link #initEntry(ArchiveOutput, String, String)} to initialize an entry, then returns an
 	 * {@link OutputStream} for that entry;
 	 * 
 	 * @param out
@@ -80,7 +80,7 @@ public interface FileBackedModule extends ArchivableModule {
 	 * @return
 	 * @throws IOException 
 	 */
-	public static OutputStream initOutputStream(ModuleArchiveOutput out, String entryPrefix, String fileName)
+	public static OutputStream initOutputStream(ArchiveOutput out, String entryPrefix, String fileName)
 			throws IOException {
 		initEntry(out, entryPrefix, fileName);
 		return out.getOutputStream();
@@ -95,14 +95,14 @@ public interface FileBackedModule extends ArchivableModule {
 	public void writeToStream(BufferedOutputStream out) throws IOException;
 
 	@Override
-	public default void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+	public default void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		BufferedInputStream zin = getInputStream(input, entryPrefix, getFileName());
 		initFromStream(zin);
 		
 		zin.close();
 	}
 	
-	public static boolean hasEntry(ModuleArchiveInput input, String entryPrefix, String fileName) throws IOException {
+	public static boolean hasEntry(ArchiveInput input, String entryPrefix, String fileName) throws IOException {
 		String entryName = ArchivableModule.getEntryName(entryPrefix, fileName);
 		Preconditions.checkNotNull(entryName, "entryName is null. prefix='%s', fileName='%s'", entryPrefix, fileName);
 		return input.hasEntry(entryName);
@@ -110,7 +110,7 @@ public interface FileBackedModule extends ArchivableModule {
 	
 	public static final int DEFAULT_BUFFER_SIZE = 1024 * 32 * 8; // 32 kBytes
 	
-	public static BufferedInputStream getInputStream(ModuleArchiveInput input, String entryPrefix, String fileName) throws IOException {
+	public static BufferedInputStream getInputStream(ArchiveInput input, String entryPrefix, String fileName) throws IOException {
 		String entryName = ArchivableModule.getEntryName(entryPrefix, fileName);
 		Preconditions.checkNotNull(entryName, "entryName is null. prefix='%s', fileName='%s'", entryPrefix, fileName);
 		

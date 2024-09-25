@@ -7,7 +7,7 @@ import java.util.Random;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.opensha.commons.logicTree.LogicTree;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
+import org.opensha.commons.util.modules.ArchiveInput;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 
 public class SolLogicTreeSampler {
@@ -32,7 +32,7 @@ public class SolLogicTreeSampler {
 		File inputFile = new File(cmd.getOptionValue("input-file"));
 		File outputFile = new File(cmd.getOptionValue("output-file"));
 		
-		ModuleArchiveInput input = new ModuleArchiveInput.ApacheZipFileInput(inputFile);
+		ArchiveInput input = new ArchiveInput.ApacheZipFileInput(inputFile);
 		SolutionLogicTree slt = SolutionLogicTree.load(input);
 		
 		LogicTree<?> origTree = slt.getLogicTree();

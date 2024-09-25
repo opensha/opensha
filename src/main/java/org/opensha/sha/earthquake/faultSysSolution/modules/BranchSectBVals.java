@@ -23,8 +23,8 @@ import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -170,7 +170,7 @@ public class BranchSectBVals implements ArchivableModule {
 	private static final String PARENT_TARGET_FILE_NAME = "branch_parent_target_b_vals.csv";
 
 	@Override
-	public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 		writeBValCSV(FileBackedModule.initOutputStream(output, entryPrefix, SECT_FILE_NAME), sectBVals, false);
 		if (parentBVals != null)
 			writeBValCSV(FileBackedModule.initOutputStream(output, entryPrefix, PARENT_FILE_NAME), parentBVals, true);
@@ -209,7 +209,7 @@ public class BranchSectBVals implements ArchivableModule {
 	private static final DecimalFormat bDF = new DecimalFormat("0.##");
 
 	@Override
-	public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+	public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		sectBVals = loadBValCSV(CSV_BackedModule.loadFromArchive(input, entryPrefix, SECT_FILE_NAME), false);
 		if (FileBackedModule.hasEntry(input, entryPrefix, PARENT_FILE_NAME))
 			parentBVals = loadBValCSV(CSV_BackedModule.loadFromArchive(input, entryPrefix, PARENT_FILE_NAME), true);

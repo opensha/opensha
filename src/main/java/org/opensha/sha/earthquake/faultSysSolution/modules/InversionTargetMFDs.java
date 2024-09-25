@@ -17,8 +17,8 @@ import org.opensha.commons.data.uncertainty.UncertainBoundedDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -322,7 +322,7 @@ BranchAverageableModule<InversionTargetMFDs> {
 		}
 
 		@Override
-		public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 			BufferedOutputStream out = new BufferedOutputStream(
 					FileBackedModule.initOutputStream(output, entryPrefix, "inversion_target_mfds.json"));
 			Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -337,7 +337,7 @@ BranchAverageableModule<InversionTargetMFDs> {
 		}
 
 		@Override
-		public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			BufferedInputStream in = FileBackedModule.getInputStream(input, entryPrefix, "inversion_target_mfds.json");
 			Gson gson = new GsonBuilder().setPrettyPrinting().create();
 			InputStreamReader reader = new InputStreamReader(in);

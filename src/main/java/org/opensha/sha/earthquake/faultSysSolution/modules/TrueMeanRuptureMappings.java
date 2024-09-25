@@ -18,8 +18,8 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 
@@ -40,7 +40,7 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 	protected Map<String, int[]> rupFileMappingsCache = new HashMap<>();
 	protected Map<String, double[]> rupFileMagsCache = new HashMap<>();
 	
-	private TrueMeanRuptureMappings(ModuleArchiveInput input, String prefix, LogicTree<?> logicTree) {
+	private TrueMeanRuptureMappings(ArchiveInput input, String prefix, LogicTree<?> logicTree) {
 		super(input, prefix, logicTree);
 	}
 
@@ -111,7 +111,7 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 	public abstract double[] getRuptureMags(LogicTreeBranch<?> branch);
 
 	@Override
-	protected synchronized Map<String, String> writeBranchFilesToArchive(ModuleArchiveOutput output, String prefix, LogicTreeBranch<?> branch,
+	protected synchronized Map<String, String> writeBranchFilesToArchive(ArchiveOutput output, String prefix, LogicTreeBranch<?> branch,
 			HashSet<String> writtenFiles) throws IOException {
 		Map<String, String> mappings = new LinkedHashMap<>();
 		
@@ -247,7 +247,7 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 			super(null, null, null);
 		}
 
-		private FileBacked(ModuleArchiveInput input, String prefix) {
+		private FileBacked(ArchiveInput input, String prefix) {
 			super(input, prefix, null);
 		}
 
@@ -275,7 +275,7 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 				// load it
 				CSVFile<String> csv;
 				try {
-					ModuleArchiveInput input = getArchiveInput();
+					ArchiveInput input = getArchiveInput();
 					Preconditions.checkState(input.hasEntry(fileName), "Entry not found: %s", fileName);
 				
 					csv = CSVFile.readStream(input.getInputStream(fileName), true);
@@ -302,7 +302,7 @@ public abstract class TrueMeanRuptureMappings extends AbstractLogicTreeModule {
 				// load it
 				CSVFile<String> csv;
 				try {
-					ModuleArchiveInput input = getArchiveInput();
+					ArchiveInput input = getArchiveInput();
 					Preconditions.checkState(input.hasEntry(fileName), "Entry not found: %s", fileName);
 					
 					csv = CSVFile.readStream(input.getInputStream(fileName), true);

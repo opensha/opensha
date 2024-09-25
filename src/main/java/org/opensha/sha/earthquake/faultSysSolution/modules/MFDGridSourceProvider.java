@@ -23,8 +23,8 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.ProbEqkSource;
@@ -798,7 +798,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		}
 	
 		@Override
-		public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 			CSVFile<String> subSeisCSV = buildCSV(nodeSubSeisMFDs);
 			CSVFile<String> unassociatedCSV = buildCSV(nodeUnassociatedMFDs);
 			
@@ -817,7 +817,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		}
 	
 		@Override
-		public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			// load MFDs
 			CSVFile<String> subSeisCSV = loadCSV(input, entryPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME);
 			CSVFile<String> nodeUnassociatedCSV = loadCSV(input, entryPrefix, MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME);
@@ -891,7 +891,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 			}
 		}
 		
-		public static CSVFile<String> loadCSV(ModuleArchiveInput input, String entryPrefix, String fileName) throws IOException {
+		public static CSVFile<String> loadCSV(ArchiveInput input, String entryPrefix, String fileName) throws IOException {
 			String entryName = ArchivableModule.getEntryName(entryPrefix, fileName);
 			Preconditions.checkNotNull(entryName, "entryName is null. prefix='%s', fileName='%s'", entryPrefix, fileName);
 			if (!input.hasEntry(entryName))

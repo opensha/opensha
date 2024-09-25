@@ -23,8 +23,8 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 
@@ -100,7 +100,7 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 		
 		private CubedGriddedRegion cgr;
 		
-		private ModuleArchiveInput sourceInput;
+		private ArchiveInput sourceInput;
 		private String sourceZipEntryPrefix;
 		
 		// for each cube, an array of mapped section indexes (or null if none)
@@ -327,7 +327,7 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 		}
 
 		@Override
-		public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 			// this will write the cubed region out automatically (data is stored in the feature)
 			super.writeToArchive(output, entryPrefix);
 			
@@ -375,7 +375,7 @@ public interface FaultCubeAssociations extends FaultGridAssociations {
 		}
 
 		@Override
-		public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			super.initFromArchive(input, entryPrefix);
 			
 			// load associations lazily

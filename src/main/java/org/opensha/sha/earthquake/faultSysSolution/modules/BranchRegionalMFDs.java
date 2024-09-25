@@ -19,8 +19,8 @@ import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
@@ -461,7 +461,7 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 	private static final String TOTAL_REG_FLAG = "total";
 
 	@Override
-	public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 		Preconditions.checkNotNull(supraTotalBranchMFDs);
 		writeCSV(FileBackedModule.initOutputStream(output, entryPrefix, SUPRA_FILE_NAME), supraTotalBranchMFDs, supraRegionalBranchMFDs);
 		output.closeEntry();
@@ -516,7 +516,7 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 	}
 
 	@Override
-	public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+	public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		// always have supra
 		CSVReader csv = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, SUPRA_FILE_NAME);
 		readCSV(csv, false, false);

@@ -22,7 +22,7 @@ public interface ArchivableModule extends OpenSHA_Module {
 	 * system. If non-empty, then each asset should be stored with this prefix.
 	 * @throws IOException
 	 */
-	public void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException;
+	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException;
 	
 	/**
 	 * Initializes this module from the given archive
@@ -32,7 +32,7 @@ public interface ArchivableModule extends OpenSHA_Module {
 	 * system. If non-empty, then each asset should be loaded with this prefix.
 	 * @throws IOException
 	 */
-	public void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException;
+	public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException;
 	
 	/**
 	 * Modules can have different implementations when they are created vs when they are loaded from a zip file.

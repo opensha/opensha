@@ -20,8 +20,8 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleArchive;
-import org.opensha.commons.util.modules.ModuleArchiveInput;
-import org.opensha.commons.util.modules.ModuleArchiveOutput;
+import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.SubModule;
@@ -122,12 +122,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 	
 	/**
-	 * Writes this solution to the give {@link ModuleArchiveOutput} This is an alias to <code>getArchive().write(ModuleArchiveOutput)</code>.
+	 * Writes this solution to the give {@link ArchiveOutput} This is an alias to <code>getArchive().write(ModuleArchiveOutput)</code>.
 	 * See {@link #getArchive()}.
 	 * @param output
 	 * @throws IOException
 	 */
-	public void write(ModuleArchiveOutput output) throws IOException {
+	public void write(ArchiveOutput output) throws IOException {
 		getArchive().write(output);
 	}
 	
@@ -143,7 +143,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @throws IOException
 	 */
 	public static FaultSystemSolution load(File file) throws IOException {
-		return load(ModuleArchiveInput.getDefaultInput(file));
+		return load(ArchiveInput.getDefaultInput(file));
 	}
 	
 	/**
@@ -156,7 +156,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @throws IOException
 	 */
 	public static FaultSystemSolution load(File file, FaultSystemRupSet rupSet) throws IOException {
-		return load(ModuleArchiveInput.getDefaultInput(file), rupSet);
+		return load(ArchiveInput.getDefaultInput(file), rupSet);
 	}
 
 	/**
@@ -191,7 +191,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 		}
-		return load(new ModuleArchiveInput.ZipFileInput(zip), rupSet);
+		return load(new ArchiveInput.ZipFileInput(zip), rupSet);
 	}
 	
 
@@ -203,7 +203,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return
 	 * @throws IOException
 	 */
-	public static FaultSystemSolution load(ModuleArchiveInput input) throws IOException {
+	public static FaultSystemSolution load(ArchiveInput input) throws IOException {
 		return load(input, null);
 	}
 
@@ -216,7 +216,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return
 	 * @throws IOException
 	 */
-	public static FaultSystemSolution load(ModuleArchiveInput input, FaultSystemRupSet rupSet) throws IOException {
+	public static FaultSystemSolution load(ArchiveInput input, FaultSystemRupSet rupSet) throws IOException {
 		ModuleArchive<OpenSHA_Module> archive;
 		if (rupSet == null) {
 			archive = new ModuleArchive<>(input, FaultSystemSolution.class);
@@ -273,7 +273,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	@Override
-	public final void writeToArchive(ModuleArchiveOutput output, String entryPrefix) throws IOException {
+	public final void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 		// CSV Files
 		CSV_BackedModule.writeToArchive(buildRatesCSV(this), output, entryPrefix, RATES_FILE_NAME);
 	}
@@ -288,7 +288,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	@Override
-	public final void initFromArchive(ModuleArchiveInput input, String entryPrefix) throws IOException {
+	public final void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		Preconditions.checkNotNull(archive, "archive must be set before initialization");
 		if (rupSet == null)
 			rupSet = archive.getModule(FaultSystemRupSet.class);
