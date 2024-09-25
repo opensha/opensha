@@ -767,8 +767,8 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		} else {
 			hazardOutDir = null;
 		}
-		int writeThreads = Integer.max(2, Integer.min(8, FaultSysTools.defaultNumThreads()));
-		ArchiveOutput hazardOutZip = doHazardMaps ? new ArchiveOutput.ParallelZipFileOutput(hazardZipOutFinal, writeThreads) : null;
+		int writeThreads = Integer.max(2, Integer.min(16, FaultSysTools.defaultNumThreads())); // at least 2, no more than 16
+		ArchiveOutput hazardOutZip = doHazardMaps ? new ArchiveOutput.ParallelZipFileOutput(hazardZipOutFinal, writeThreads, false) : null;
 		WriteCounter writeCounter = doHazardMaps ? new WriteCounter() : null;
 		
 		CSVFile<String> sitesCSV = null;
