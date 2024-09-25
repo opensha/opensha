@@ -14,6 +14,7 @@ import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
@@ -74,7 +75,7 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		synchronized (dones) {
 			try {
 				if (sltBuilder == null) {
-					sltBuilder = new SolutionLogicTree.FileBuilder(processor, getOutputFile(outputDir));
+					sltBuilder = new SolutionLogicTree.FileBuilder(processor, new ArchiveOutput.ApacheZipFileOutput( getOutputFile(outputDir)));
 					sltBuilder.setWeightProv(weightProv);
 				}
 				
