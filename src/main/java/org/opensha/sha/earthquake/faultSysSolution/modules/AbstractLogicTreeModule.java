@@ -22,9 +22,9 @@ import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ArchiveInput;
-import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.ModuleHelper;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 

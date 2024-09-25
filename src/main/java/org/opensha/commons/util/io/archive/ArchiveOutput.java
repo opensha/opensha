@@ -1,4 +1,4 @@
-package org.opensha.commons.util.modules;
+package org.opensha.commons.util.io.archive;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -32,6 +32,7 @@ import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.util.ExecutorUtils;
+import org.opensha.commons.util.modules.ModuleArchive;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;

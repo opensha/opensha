@@ -22,9 +22,9 @@ import org.opensha.commons.geo.CubedGriddedRegion;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ArchiveInput;
-import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 

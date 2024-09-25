@@ -1,4 +1,4 @@
-package org.opensha.commons.util.modules;
+package org.opensha.commons.util.io.archive;
 
 import java.io.Closeable;
 import java.io.File;
@@ -23,6 +23,7 @@ import java.util.stream.StreamSupport;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarFile;
 import org.opensha.commons.data.Named;
+import org.opensha.commons.util.modules.ModuleArchive;
 
 import com.google.common.base.Preconditions;
 

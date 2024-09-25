@@ -19,10 +19,10 @@ import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.IDPairing;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule;
-import org.opensha.commons.util.modules.ArchiveInput;
-import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.JSON_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;

@@ -55,7 +55,7 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.ExecutorUtils;
-import org.opensha.commons.util.modules.ArchiveOutput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_LogicTreeHazardCalc;

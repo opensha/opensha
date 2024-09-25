@@ -8,10 +8,10 @@ import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.calc.FaultMomentCalc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule.ConstantAverageable;
-import org.opensha.commons.util.modules.ArchiveInput;
-import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;

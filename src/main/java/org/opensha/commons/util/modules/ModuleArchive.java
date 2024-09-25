@@ -17,6 +17,8 @@ import java.util.concurrent.Callable;
 import java.util.zip.ZipFile;
 
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.Gson;

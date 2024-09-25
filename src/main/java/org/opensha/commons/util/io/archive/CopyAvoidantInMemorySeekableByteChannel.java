@@ -1,4 +1,4 @@
-package org.opensha.commons.util.modules;
+package org.opensha.commons.util.io.archive;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -20,7 +20,7 @@ import com.google.common.base.Preconditions;
  * 
  * @NotThreadSafe
  */
-class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
+public class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChannel {
 
 	private static final int DEFAULT_INITIAL_SIZE = 1024*1024*10; // 10 MB
 	

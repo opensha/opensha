@@ -7,7 +7,7 @@ import java.util.Random;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.opensha.commons.logicTree.LogicTree;
-import org.opensha.commons.util.modules.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 
 public class SolLogicTreeSampler {

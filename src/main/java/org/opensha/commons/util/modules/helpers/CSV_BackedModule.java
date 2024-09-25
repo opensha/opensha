@@ -8,9 +8,9 @@ import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.CSVReader;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ArchiveInput;
-import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.commons.util.modules.ModuleHelper;
 
 /**

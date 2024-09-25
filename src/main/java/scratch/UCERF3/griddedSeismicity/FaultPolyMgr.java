@@ -19,10 +19,10 @@ import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleArchive;
-import org.opensha.commons.util.modules.ArchiveInput;
-import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PolygonFaultGridAssociations;
 import org.opensha.sha.faultSurface.FaultSection;
 

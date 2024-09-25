@@ -10,9 +10,9 @@ import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_Mag
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ArchiveInput;
-import org.opensha.commons.util.modules.ArchiveOutput;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;

@@ -19,6 +19,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.helpers.TextBackedModule;
 
 import com.google.common.base.Preconditions;

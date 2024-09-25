@@ -1,8 +1,9 @@
 package org.opensha.commons.util.modules;
 
 import java.io.IOException;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
+
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 
 /**
  * Interface for an {@link OpenSHA_Module} module that can be written to and loaded from a zip archive.

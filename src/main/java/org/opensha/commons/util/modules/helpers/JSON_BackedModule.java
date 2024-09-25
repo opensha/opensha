@@ -15,8 +15,8 @@ import java.lang.reflect.Constructor;
 import java.util.zip.ZipFile;
 
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.ArchiveInput;
 import org.opensha.commons.util.modules.ModuleHelper;
 
 import com.google.gson.Gson;
