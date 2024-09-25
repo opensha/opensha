@@ -381,7 +381,7 @@ public interface ArchiveOutput extends Closeable, Named {
 			super(new ZipArchiveOutputStream(byteChannel), compressed);
 			this.compressed = compressed;
 			this.byteChannel = byteChannel;
-			System.out.println("Initial size: "+(float)(byteChannel.size()/(1024d*1024d))+" mb");
+//			System.out.println("Initial size: "+(float)(byteChannel.size()/(1024d*1024d))+" mb");
 		}
 
 		@Override
@@ -391,14 +391,14 @@ public interface ArchiveOutput extends Closeable, Named {
 
 		@Override
 		public void putNextEntry(String name) throws IOException {
-			System.out.println("STARTING WRITE: "+name);
+//			System.out.println("STARTING WRITE: "+name);
 			super.putNextEntry(name);
 		}
 
 		@Override
 		public void closeEntry() throws IOException {
 			super.closeEntry();
-			System.out.println("Current size: "+(float)(byteChannel.size()/(1024d*1024d))+" mb");
+//			System.out.println("Current size: "+(float)(byteChannel.size()/(1024d*1024d))+" mb");
 		}
 
 		@Override
