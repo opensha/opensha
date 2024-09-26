@@ -513,6 +513,8 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 				csv.write(line);
 			}
 		}
+		csv.flush();
+		zout.flush();
 	}
 
 	@Override
@@ -544,6 +546,8 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 				Double.parseDouble(header.get(header.columns()-1)), mfdSize);
 		
 		for (Row row : csv) {
+			Preconditions.checkState(row.columns() == header.columns(),
+					"Row BranchRegionalMFDs csv file has %s columns but header has %s", row.columns(), header.columns());
 			String regStr = row.get(0);
 			int branchIndex = row.getInt(1);
 			while (myWeights.size() <= branchIndex)

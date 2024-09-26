@@ -538,6 +538,8 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 				writer.write(line);
 			}
 		}
+		
+		writer.flush();
 	}
 
 	@Override

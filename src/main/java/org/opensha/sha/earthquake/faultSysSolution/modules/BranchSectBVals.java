@@ -204,6 +204,7 @@ public class BranchSectBVals implements ArchivableModule {
 				line.add(bDF.format(bVal));
 			csv.write(line);
 		}
+		csv.flush();
 	}
 	
 	private static final DecimalFormat bDF = new DecimalFormat("0.##");

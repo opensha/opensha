@@ -364,6 +364,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				line.add(s + "");
 			writer.write(line);
 		}
+		
+		writer.flush();
 	}
 	
 	public static final String RUP_PROPS_FILE_NAME = "properties.csv";
@@ -442,6 +444,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					line.add(lengths[r] + "");
 				writer.write(line);
 			}
+			
+			writer.flush();
 		}
 	}
 	

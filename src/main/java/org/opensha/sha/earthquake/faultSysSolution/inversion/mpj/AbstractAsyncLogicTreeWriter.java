@@ -208,7 +208,7 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		memoryDebug("AsyncLogicTree: finalizing logic tree zip");
 		try {
 			sltBuilder.sortLogicTreeBranchesToMatchTree(tree);
-			sltBuilder.build();
+			sltBuilder.close();
 		} catch (IOException e) {
 			memoryDebug("AsyncLogicTree: failed to build logic tree zip");
 			e.printStackTrace();

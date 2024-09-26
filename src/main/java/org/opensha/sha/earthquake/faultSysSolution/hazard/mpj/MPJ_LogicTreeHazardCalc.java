@@ -6,7 +6,6 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -311,17 +310,17 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	
 	private class AsyncHazardWriter extends AsyncPostBatchHook {
 		
-		private ZipOutputStream zout;
-		private File workingFile;
+		private ArchiveOutput zout;
 		private File destFile;
 		
 		private double[] rankWeights;
 		
-		public AsyncHazardWriter(File destFile) throws FileNotFoundException {
+		public AsyncHazardWriter(File destFile) throws IOException {
 			super(1);
 			this.destFile = destFile;
-			workingFile = new File(destFile.getAbsolutePath()+".tmp");
-			zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(workingFile)));
+//			workingFile = new File(destFile.getAbsolutePath()+".tmp");
+//			zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(workingFile)));
+			zout = new ArchiveOutput.ParallelZipFileOutput(destFile, 4, false);
 			
 			rankWeights = new double[size];
 		}
@@ -397,28 +396,23 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				
 				// write grid region
 				Feature feature = gridRegion.toFeature();
-				ZipEntry entry = new ZipEntry(GRID_REGION_ENTRY_NAME);
 				
-				zout.putNextEntry(entry);
-				BufferedOutputStream out = new BufferedOutputStream(zout);
-				BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+				zout.putNextEntry(GRID_REGION_ENTRY_NAME);
+				BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(zout.getOutputStream()));
 				Feature.write(feature, writer);
-				out.flush();
+				writer.flush();
 				zout.closeEntry();
 				
 				// write logic tree
 				LogicTree<?> tree = solTree.getLogicTree();
-				entry = new ZipEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
-				zout.putNextEntry(entry);
+				zout.putNextEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
 				Gson gson = new GsonBuilder().setPrettyPrinting()
 						.registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
 				gson.toJson(tree, LogicTree.class, writer);
 				writer.flush();
-				zout.flush();
 				zout.closeEntry();
 				
 				zout.close();
-				Files.move(workingFile, destFile);
 				
 				try {
 					deleteFuture.get();
@@ -440,9 +434,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					File runDir = getSolDir(branch);
 					File hazardOutDir = getHazardOutputDir(runDir, branch);
 					Preconditions.checkState(hazardOutDir.exists());
-					zout.putNextEntry(new ZipEntry(runDir.getName()+"/"));
+					zout.putNextEntry(runDir.getName()+"/");
 					zout.closeEntry();
-					zout.flush();
 					for (ReturnPeriods rp : rps) {
 						for (double period : periods) {
 							String prefix = mapPrefix(period, rp);
@@ -450,14 +443,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 							File mapFile = new File(hazardOutDir, prefix+".txt");
 							Preconditions.checkState(mapFile.exists());
 							
-							ZipEntry mapEntry = new ZipEntry(runDir.getName()+"/"+mapFile.getName());
-							debug("Async: zipping "+mapEntry.getName());
-							zout.putNextEntry(mapEntry);
-							BufferedInputStream inStream = new BufferedInputStream(new FileInputStream(mapFile));
-							inStream.transferTo(zout);
-							inStream.close();
-							zout.flush();
-							zout.closeEntry();
+							String mapEntry = runDir.getName()+"/"+mapFile.getName();
+							debug("Async: zipping "+mapEntry);
+							zout.transferFrom(new BufferedInputStream(new FileInputStream(mapFile)), mapEntry);
 						}
 					}
 					

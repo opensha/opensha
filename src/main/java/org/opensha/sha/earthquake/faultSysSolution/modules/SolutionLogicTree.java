@@ -593,7 +593,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 				
 				solTree.writeREADMEToArchive(output);
 				
-				output = null;
+				// don't need to call output.close(), will be closed by archiveWriteThread
 				entryPrefix = null;
 				solTree = null;
 				if (D) debug("close: endModuleWriteFuture.complete");
@@ -1215,6 +1215,12 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			String outputFileName, boolean useOrigFileName) throws IOException {
 		if (input == null)
 			return false;
+		String testFileName = origFileName;
+		if (origFileName.contains("/"))
+			testFileName = testFileName.substring(testFileName.lastIndexOf('/'));
+		Preconditions.checkState(outputFileName.endsWith(testFileName),
+				"directCopy name mismatch, probably a typo? origFileName='%s'; outputFileName='%s'",
+				origFileName, outputFileName);
 		String inputName = useOrigFileName ? origFileName : outputFileName;
 		if (!input.hasEntry(inputName))
 			return false;

@@ -92,7 +92,7 @@ public interface FileBackedModule extends ArchivableModule {
 	 * @param out
 	 * @throws IOException
 	 */
-	public void writeToStream(BufferedOutputStream out) throws IOException;
+	public void writeToStream(OutputStream out) throws IOException;
 
 	@Override
 	public default void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {

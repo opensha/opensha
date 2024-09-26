@@ -3,6 +3,7 @@ package org.opensha.commons.util.modules.helpers;
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -35,7 +36,7 @@ public interface CSV_BackedModule extends FileBackedModule {
 	public void initFromCSV(CSVFile<String> csv);
 
 	@Override
-	default void writeToStream(BufferedOutputStream out) throws IOException {
+	default void writeToStream(OutputStream out) throws IOException {
 		getCSV().writeToStream(out);
 	}
 

@@ -6,6 +6,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.StringReader;
@@ -71,7 +72,7 @@ public interface JSON_BackedModule extends FileBackedModule {
 	}
 
 	@Override
-	public default void writeToStream(BufferedOutputStream out) throws IOException { 
+	public default void writeToStream(OutputStream out) throws IOException { 
 		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
 		writeToWriter(writer);
 	}
