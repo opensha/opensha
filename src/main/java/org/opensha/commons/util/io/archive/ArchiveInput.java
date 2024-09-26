@@ -118,11 +118,23 @@ public interface ArchiveInput extends Named, Closeable {
 		
 		private java.util.zip.ZipEntry prevEntry;
 
+		/**
+		 * Zip file input for the given file
+		 * 
+		 * @param file input zip file to read
+		 * @throws IOException
+		 */
 		public ZipFileInput(File file) throws IOException {
 			this(new java.util.zip.ZipFile(file));
 			this.inputFile = file;
 		}
 
+		/**
+		 * Zip file input for an already opened {@link java.util.zip.ZipFile}. Closing this {@link ArchiveInput} will
+		 * close the passed in zip file.
+		 * 
+		 * @param zip
+		 */
 		public ZipFileInput(java.util.zip.ZipFile zip) {
 			this.zip = zip;
 			this.inputFile = new File(zip.getName());
@@ -176,6 +188,7 @@ public interface ArchiveInput extends Named, Closeable {
 		}
 		
 	}
+	
 	public abstract class AbstractApacheZipInput implements ArchiveInput {
 		
 		private org.apache.commons.compress.archivers.zip.ZipFile zip;
@@ -237,6 +250,12 @@ public interface ArchiveInput extends Named, Closeable {
 	 */
 	public static class InMemoryZipFileInput extends AbstractApacheZipInput {
 
+		/**
+		 * In-memory zip input
+		 * 
+		 * @param byteChannel
+		 * @throws IOException
+		 */
 		public InMemoryZipFileInput(SeekableByteChannel byteChannel) throws IOException {
 			super(org.apache.commons.compress.archivers.zip.ZipFile.builder().setSeekableByteChannel(byteChannel).get());
 		}
@@ -262,6 +281,12 @@ public interface ArchiveInput extends Named, Closeable {
 
 		private File file;
 
+		/**
+		 * Reads from the given file
+		 * 
+		 * @param file input zip file to be read
+		 * @throws IOException
+		 */
 		public ApacheZipFileInput(File file) throws IOException {
 			super(org.apache.commons.compress.archivers.zip.ZipFile.builder().setFile(file).get());
 			this.file = file;

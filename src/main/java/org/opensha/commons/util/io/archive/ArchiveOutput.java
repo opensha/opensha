@@ -8,6 +8,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.Writer;
 import java.net.URI;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -59,6 +60,7 @@ public interface ArchiveOutput extends Closeable, Named {
 	 * 
 	 * <p>To write a directory, call this with a name that ends in a forward slash (see {@link #SEPERATOR}) and then
 	 * close the entry via {@link #closeEntry()}.
+	 * 
 	 * @param name
 	 * @throws IOException
 	 */
@@ -66,13 +68,14 @@ public interface ArchiveOutput extends Closeable, Named {
 	
 	/**
 	 * Gets an {@link OutputStream} for the currently entry. Must call {@link #putNextEntry(String)} first, and must
-	 * only call this once. After writing to the stream, callers must then call {@link #closeEntry()}.
+	 * only call this once per entry. After writing to the stream, callers must then call {@link #closeEntry()}.
 	 * 
-	 * This does not usually need to be wrapped in a {@link BufferedOutputStream} as all default implementations already
+	 * <p>This does not usually need to be wrapped in a {@link BufferedOutputStream} as all default implementations already
 	 * use buffers.
 	 * 
 	 * <p><b>IMPORTANT: never close this output stream</b> as it may be reused for multiple entries, depending on the
 	 * implementation. Instead, call {@link OutputStream#flush()} when you have finished writing.
+	 * 
 	 * @return {@link OutputStream} for the currently entry
 	 * @throws IOException
 	 */
@@ -81,8 +84,9 @@ public interface ArchiveOutput extends Closeable, Named {
 	/**
 	 * Closes the current entry.
 	 * 
-	 * <p>This will automatically flush the {@link OutputStream}, but if you wrap it in another layer be sure to flush
-	 * the wrapper before calling.
+	 * <p>Implementing classes will automatically flush the {@link OutputStream}, but if you wrap it in another layer
+	 * (e.g., a {@link Writer}), be sure to flush that wrapper before calling.
+	 * 
 	 * @throws IOException
 	 */
 	public void closeEntry() throws IOException;
@@ -99,10 +103,19 @@ public interface ArchiveOutput extends Closeable, Named {
 	/**
 	 * Transfer an entry of the given name from the given {@link ArchiveInput} to this {@link ArchiveOutput}.
 	 * 
-	 * This automatically calls {@link #putNextEntry(String)} and {@link #closeEntry()}.
+	 * <p>This automatically calls {@link #putNextEntry(String)} and {@link #closeEntry()}, do not call them separately.
 	 * 
-	 * @param input
-	 * @param name
+	 * <p>The default implementation simply opens the entry, gets the input stream, calls
+	 * {@link InputStream#transferTo(OutputStream)}, and closes the entry.
+	 * 
+	 * <p>This may be overridden in specific implementations to provide better performance. For example,
+	 * {@link ArchiveOutput.ApacheZipFileOutput} and {@link ArchiveOutput.InMemoryZipOutput} can transfer data from their
+	 * respective {@link ArchiveInput} implementations without unnecessary inflation and deflation of data during the
+	 * transfer. For this reason, it is recommended to use the Apache zip file implementations when transferring many
+	 * files from an {@link ArchiveInput} to an {@link ArchiveOutput}.
+	 * 
+	 * @param input {@link ArchiveInput} from which to fetch the entry
+	 * @param name the name of the entry to copy
 	 * @throws IOException
 	 */
 	public default void transferFrom(ArchiveInput input, String name) throws IOException {
@@ -113,11 +126,20 @@ public interface ArchiveOutput extends Closeable, Named {
 	 * Transfer an entry of the given name from the given {@link ArchiveInput} to this {@link ArchiveOutput},
 	 * possibly renaming the entry.
 	 * 
-	 * This automatically calls {@link #putNextEntry(String)} and {@link #closeEntry()}.
+	 * <p>This automatically calls {@link #putNextEntry(String)} and {@link #closeEntry()}, do not call them separately.
 	 * 
-	 * @param input
-	 * @param sourceName
-	 * @param destName
+	 * <p>The default implementation simply opens the entry, gets the input stream, calls
+	 * {@link InputStream#transferTo(OutputStream)}, and closes the entry.
+	 * 
+	 * <p>This may be overridden in specific implementations to provide better performance. For example,
+	 * {@link ArchiveOutput.ApacheZipFileOutput} and {@link ArchiveOutput.InMemoryZipOutput} can transfer data from their
+	 * respective {@link ArchiveInput} implementations without unnecessary inflation and deflation of data during the
+	 * transfer. For this reason, it is recommended to use the Apache zip file implementations when transferring many
+	 * files from an {@link ArchiveInput} to an {@link ArchiveOutput}.
+	 * 
+	 * @param input {@link ArchiveInput} from which to fetch the entry
+	 * @param sourceName the name of the source entry in the {@link ArchiveInput}
+	 * @param destName the name of the entry to write in the {@link ArchiveOutput}
 	 * @throws IOException
 	 */
 	public default void transferFrom(ArchiveInput input, String sourceName, String destName) throws IOException {
@@ -127,10 +149,18 @@ public interface ArchiveOutput extends Closeable, Named {
 	/**
 	 * Create an entry of the given name with contents from the given input stream.
 	 * 
-	 * This automatically calls {@link #putNextEntry(String)} and {@link #closeEntry()}.
+	 * <p>This automatically calls {@link #putNextEntry(String)} and {@link #closeEntry()}, do not call them separately.
 	 * 
-	 * @param input
-	 * @param name
+	 * <p>The default implementation simply calls:
+	 * 
+	 * <pre>
+	 * putNextEntry(name);
+	 * is.transferTo(getOutputStream());
+	 * closeEntry();
+	 * </pre>
+	 * 
+	 * @param input {@link InputStream} to transfer to this {@link ArchiveOutput}
+	 * @param name the name of the entry to create
 	 * @throws IOException
 	 */
 	public default void transferFrom(InputStream is, String name) throws IOException {
@@ -140,13 +170,13 @@ public interface ArchiveOutput extends Closeable, Named {
 	}
 	
 	/**
-	 * {@link ArchiveOutput} that is backed by a {@link File}, possibly with a temporary file while writing
-	 * (see {@link #getInProgressFile()}) that is written to a final file (see {@link #getDestinationFile()}) when
+	 * {@link ArchiveOutput} that is backed by a {@link File}, possibly with a temporary file during writing
+	 * (see {@link #getInProgressFile()}) that is moved to a final file (see {@link #getDestinationFile()}) when
 	 * completed.
 	 */
 	public interface FileBacked extends ArchiveOutput {
 		/**
-		 * This returns the path to the output file representing this archive while it is writing (and before
+		 * This returns the path to the output file representing this archive while it is being written (and before
 		 * {@link #close()} is called), and may (but doesn't need to) differ from the eventual destination file
 		 * (see {@link #getDestinationFile()}).
 		 * 
@@ -155,7 +185,8 @@ public interface ArchiveOutput extends Closeable, Named {
 		public File getInProgressFile();
 		
 		/**
-		 * This returns the final output file after this writing has completed (by calling {@link #close())}.
+		 * This returns the final output file after writing has completed (by calling {@link #close())}. This may
+		 * (but won't necessarily) differ from {@link #getInProgressFile()}.
 		 * 
 		 * @return the final output file
 		 */
@@ -171,11 +202,15 @@ public interface ArchiveOutput extends Closeable, Named {
 		
 	}
 	
+	public static File getDefaultInProgressFile(File outputFile) {
+		return new File(outputFile.getParentFile(), outputFile.getName()+".tmp");
+	}
+	
 	/**
 	 * Gets the default {@link ArchiveOutput} implementation for the given file, using the filename.
 	 * 
-	 * @param outputFile
-	 * @return
+	 * @param outputFile output file to be written
+	 * @return an {@link ArchiveOutput} for the given file
 	 * @throws IOException
 	 */
 	public static ArchiveOutput getDefaultOutput(File outputFile) throws IOException {
@@ -188,9 +223,10 @@ public interface ArchiveOutput extends Closeable, Named {
 	 * Zip library rather than the standard Java library, the output will as well so that transfer operations need not
 	 * re-inflate and then deflate each entry.
 	 * 
-	 * @param outputFile
-	 * @param input
-	 * @return
+	 * @param outputFile output file to be written
+	 * @param input if non-null, the returned {@link ArchiveOutput} will be chosen to maximize compatibility with the
+	 * supplied {@link ArchiveInput} (so long as the file extension does not require another implementation)
+	 * @return an {@link ArchiveOutput} for the given file
 	 * @throws IOException
 	 */
 	public static ArchiveOutput getDefaultOutput(File outputFile, ArchiveInput input) throws IOException {
@@ -200,13 +236,13 @@ public interface ArchiveOutput extends Closeable, Named {
 		if (name.endsWith(".tar")) {
 			return new TarFileOutput(outputFile);
 		} else if (name.endsWith(".zip")) {
-			if (input instanceof ArchiveInput.ApacheZipFileInput)
+			if (input instanceof ArchiveInput.AbstractApacheZipInput)
 				return new ApacheZipFileOutput(outputFile);
 			if (input instanceof ArchiveInput.ZipFileSystemInput)
 				return new ZipFileSystemOutput(outputFile.toPath());
 			return new ZipFileOutput(outputFile);
 		}
-		// unknown extesion, assume it's probably zip but check if the input is tar
+		// unknown extension, assume it's zip but check if the input is tar
 		if (input instanceof ArchiveInput.TarFileInput)
 			return new TarFileOutput(outputFile);
 		return new ZipFileOutput(outputFile);
@@ -221,16 +257,35 @@ public interface ArchiveOutput extends Closeable, Named {
 		private File outputFile;
 		private ZipOutputStream zout;
 
+		/**
+		 * Initializes a standard Java {@link ZipOutputStream}, first writing to the given file with <code>.tmp</code>
+		 * appended, then moving to the the given file when {@link #close()} is called.
+		 *  
+		 * @param outputFile final destination output file
+		 * @throws IOException
+		 */
 		public ZipFileOutput(File outputFile) throws IOException {
-			this(outputFile, new File(outputFile.getAbsolutePath()+".tmp"));
+			this(outputFile, getDefaultInProgressFile(outputFile));
 		}
 
+		/**
+		 * Initializes a standard Java {@link ZipOutputStream}, first writing to the given <code>outputFile</code>,
+		 * then moving to the <code>inProgressFile</code> when {@link #close()} is called (if different from <code>outputFile</code>).
+		 * 
+		 * @param outputFile final destination output file
+		 * @param inProgressFile output file used while writing
+		 * @throws IOException
+		 */
 		public ZipFileOutput(File outputFile, File inProgressFile) throws IOException {
 			this.outputFile = outputFile;
 			this.inProgressFile = inProgressFile;
 			zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(inProgressFile)));
 		}
 		
+		/**
+		 * Uses the provided {@link ZipOutputStream}. Note that it will be closed when {@link ZipFileOutput#close()} is called.
+		 * @param zout pre-allocated {@link ZipOutputStream}
+		 */
 		public ZipFileOutput(ZipOutputStream zout) {
 			this.outputFile = new File(zout.toString());
 			this.inProgressFile = outputFile;
@@ -420,10 +475,25 @@ public interface ArchiveOutput extends Closeable, Named {
 		private File outputFile;
 		private File inProgressFile;
 
+		/**
+		 * Initializes an Apache {@link ZipArchiveOutputStream}, first writing to the given file with <code>.tmp</code>
+		 * appended, then moving to the the given file when {@link #close()} is called.
+		 * 
+		 * @param outputFile final destination output file
+		 * @throws IOException
+		 */
 		public ApacheZipFileOutput(File outputFile) throws IOException {
-			this(outputFile, new File(outputFile.getAbsolutePath()+".tmp"));
+			this(outputFile, getDefaultInProgressFile(outputFile));
 		}
 
+		/**
+		 * Initializes an Apache {@link ZipArchiveOutputStream}, first writing to the given <code>outputFile</code>,
+		 * then moving to the <code>inProgressFile</code> when {@link #close()} is called (if different from <code>outputFile</code>).
+		 * 
+		 * @param outputFile final destination output file
+		 * @param inProgressFile output file used while writing
+		 * @throws IOException
+		 */
 		public ApacheZipFileOutput(File outputFile, File inProgressFile) throws IOException {
 			super(new ZipArchiveOutputStream(inProgressFile), true);
 			this.outputFile = outputFile;
@@ -487,8 +557,11 @@ public interface ArchiveOutput extends Closeable, Named {
 		 * Parallel zip file output with the given number of parallel workers; contents will be written out in the order
 		 * received.
 		 * 
-		 * @param outputFile
-		 * @param threads
+		 * <p>Contents are first written to the given file with <code>.tmp</code> appended, then moved to the the
+		 * given file when {@link #close()} is called.
+		 * 
+		 * @param outputFile final destination output file
+		 * @param threads the maximum number of parallel zipping threads
 		 * @throws IOException
 		 */
 		public ParallelZipFileOutput(File outputFile, int threads) throws IOException {
@@ -500,9 +573,11 @@ public interface ArchiveOutput extends Closeable, Named {
 		 * contents will be written out in the order received, otherwise they will be written as they complete for
 		 * maximum parallelism.
 		 * 
-		 * @param outputFile
-		 * @param threads
-		 * @param preserveOrder
+		 * @param outputFile final destination output file
+		 * @param threads the maximum number of parallel zipping threads
+		 * @param preserveOrder if true, entries will be written in the order in which they are received (regardless of
+		 * which zipping operations finish first; otherwise, entries will be written in the order at which they complete
+		 * zipping for maximum parallelism.
 		 * @throws IOException
 		 */
 		public ParallelZipFileOutput(File outputFile, int threads, boolean preserveOrder) throws IOException {
@@ -515,10 +590,15 @@ public interface ArchiveOutput extends Closeable, Named {
 		 * contents will be written out in the order received, otherwise they will be written as they complete for
 		 * maximum parallelism.
 		 * 
-		 * @param outputFile
-		 * @param inProgressFile
-		 * @param threads
-		 * @param preserveOrder
+		 * <p>Contents are first written to the given <code>outputFile</code>, then moved to the
+		 * <code>inProgressFile</code> when {@link #close()} is called (if different from <code>outputFile</code>).
+		 * 
+		 * @param outputFile final destination output file
+		 * @param inProgressFile output file used while writing
+		 * @param threads the maximum number of parallel zipping threads
+		 * @param preserveOrder if true, entries will be written in the order in which they are received (regardless of
+		 * which zipping operations finish first; otherwise, entries will be written in the order at which they complete
+		 * zipping for maximum parallelism.
 		 * @throws IOException
 		 */
 		public ParallelZipFileOutput(File outputFile, File inProgressFile, int threads, boolean preserveOrder) throws IOException {
@@ -608,16 +688,6 @@ public interface ArchiveOutput extends Closeable, Named {
 					break;
 				}
 			}
-//			while ((writeFuture == null || writeFuture.isDone()) && !zipFutures.isEmpty()) {
-//				CompletableFuture<Zipper> peek = zipFutures.peek();
-//				if (peek.isDone()) {
-//					Zipper zip = zipFutures.poll().join();
-//					transferZippedData(zip);
-//					break;
-//				} else if (preserveOrder) {
-//					break;
-//				}
-//			}
 		}
 		 
 		/*
@@ -942,10 +1012,25 @@ public interface ArchiveOutput extends Closeable, Named {
 		private File outputFile;
 		private File inProgressFile;
 
+		/**
+		 * Initializes an Apache {@link TarArchiveOutputStream}, first writing to the given file with <code>.tmp</code>
+		 * appended, then moving to the the given file when {@link #close()} is called.
+		 * 
+		 * @param outputFile final destination output file
+		 * @throws IOException
+		 */
 		public TarFileOutput(File outputFile) throws IOException {
 			this(outputFile, new File(outputFile.getAbsolutePath()+".tmp"));
 		}
 
+		/**
+		 * Initializes an Apache {@link TarArchiveOutputStream}, first writing to the given <code>outputFile</code>,
+		 * then moving to the <code>inProgressFile</code> when {@link #close()} is called (if different from <code>outputFile</code>).
+		 * 
+		 * @param outputFile final destination output file
+		 * @param inProgressFile output file used while writing
+		 * @throws IOException
+		 */
 		public TarFileOutput(File outputFile, File inProgressFile) throws IOException {
 			super(new TarArchiveOutputStream(new BufferedOutputStream(new FileOutputStream(inProgressFile))));
 			this.outputFile = outputFile;
