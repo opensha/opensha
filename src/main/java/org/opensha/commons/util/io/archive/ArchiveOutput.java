@@ -1,7 +1,6 @@
 package org.opensha.commons.util.io.archive;
 
 import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -30,6 +29,7 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.util.ExecutorUtils;
@@ -528,6 +528,18 @@ public interface ArchiveOutput extends Closeable, Named {
 		
 	}
 	
+	
+	public static class AsynchronousZipFileOutput extends ParallelZipFileOutput {
+		
+		public AsynchronousZipFileOutput(File outputFile) throws IOException {
+			super(outputFile, 2, true);
+		}
+		
+		public AsynchronousZipFileOutput(File outputFile, File inProgressFile) throws IOException {
+			super(outputFile, inProgressFile, 2, true);
+		}
+	}
+	
 	/**
 	 * Parallel zip file implementation where contents are zipped in memory in parallel, then written to the output
 	 * file as they roll off the line. More throughput can be achieved if preserving the order is not important.
@@ -537,9 +549,9 @@ public interface ArchiveOutput extends Closeable, Named {
 	 */
 	public static class ParallelZipFileOutput extends ApacheZipFileOutput {
 
-		private ArrayDeque<CompletableFuture<Zipper>> zipFutures;
-		private ArrayDeque<Zipper> zippers;
-		private CompletableFuture<Zipper> writeFuture;
+		private ArrayDeque<CompletableFuture<AsynchronousApacheZipper>> zipFutures;
+		private ArrayDeque<AsynchronousApacheZipper> zippers;
+		private CompletableFuture<AsynchronousApacheZipper> writeFuture;
 		private boolean preserveOrder;
 		private int maxThreads;
 		private int threadsInitialized;
@@ -551,7 +563,7 @@ public interface ArchiveOutput extends Closeable, Named {
 		
 		private ExecutorService postProcessExec = ExecutorUtils.singleTaskRejectingExecutor();
 		
-		private Zipper currentZipper;
+		private AsynchronousApacheZipper currentZipper;
 
 		/**
 		 * Parallel zip file output with the given number of parallel workers; contents will be written out in the order
@@ -656,7 +668,7 @@ public interface ArchiveOutput extends Closeable, Named {
 		 */
 		private synchronized void joinAllWriters() throws IOException {
 			while (!zipFutures.isEmpty()) {
-				Zipper zip = zipFutures.remove().join();
+				AsynchronousApacheZipper zip = zipFutures.remove().join();
 				transferZippedData(zip);
 			}
 			if (writeFuture != null) {
@@ -676,12 +688,12 @@ public interface ArchiveOutput extends Closeable, Named {
 		private synchronized void processZipFutures() throws IOException {
 			if (writeFuture != null && !writeFuture.isDone())
 				return;
-			for (CompletableFuture<Zipper> peek : zipFutures) {
+			for (CompletableFuture<AsynchronousApacheZipper> peek : zipFutures) {
 				if (writeFuture != null && !writeFuture.isDone())
 					break;
 				if (peek.isDone()) {
 					Preconditions.checkState(zipFutures.remove(peek));
-					Zipper zip = peek.join();
+					AsynchronousApacheZipper zip = peek.join();
 					transferZippedData(zip);
 					break;
 				} else if (preserveOrder) {
@@ -696,31 +708,28 @@ public interface ArchiveOutput extends Closeable, Named {
 		 * 
 		 * Externally synchronized
 		 */
-		private synchronized void transferZippedData(Zipper zipper) throws IOException {
+		private synchronized void transferZippedData(AsynchronousApacheZipper zipper) throws IOException {
 			if (writeFuture != null) {
 				if (trackBlockingTimes) blockingWriteWatch.start();
-				Zipper prevZipper = writeFuture.join();
+				AsynchronousApacheZipper prevZipper = writeFuture.join();
 				if (trackBlockingTimes) blockingWriteWatch.stop();
 				zippers.add(prevZipper);
 			}
-			Preconditions.checkNotNull(zipper.entryDestName);
-			if (zipper.entryInput == null) {
+			Preconditions.checkState(zipper.hasEntry());
+			if (!zipper.hasEntryData()) {
 				// empty, probably just a directory
-				super.putNextEntry(zipper.entryDestName);
+				super.putNextEntry(zipper.getEntryDestName());
 				super.closeEntry();
 				writeFuture = CompletableFuture.completedFuture(zipper);
 				// see if there's another one ready
 				processZipFutures();
 			} else {
-				writeFuture = CompletableFuture.supplyAsync(new Supplier<Zipper>() {
+				writeFuture = CompletableFuture.supplyAsync(new Supplier<AsynchronousApacheZipper>() {
 
 					@Override
-					public Zipper get() {
+					public AsynchronousApacheZipper get() {
 						try {
-							ParallelZipFileOutput.this.rawTransferApache(zipper.entryInput, zipper.entrySourceName, zipper.entryDestName);
-							if (!zipper.externalInput)
-								zipper.entryInput.close();
-							zipper.entryInput = null;
+							zipper.rawTransferEntryTo(ParallelZipFileOutput.this);
 						} catch (IOException e) {
 							throw ExceptionUtils.asRuntimeException(e);
 						}
@@ -772,16 +781,16 @@ public interface ArchiveOutput extends Closeable, Named {
 				// none ready at the moment
 				if (threadsInitialized < maxThreads) {
 					// can build a new one
-					currentZipper = new Zipper();
+					currentZipper = new AsynchronousApacheZipper();
 					threadsInitialized++;
 				} else {
 					// block until one is ready
 					if (writeFuture == null) {
 						// no one is currently writing, which means we must have some queued
 						Preconditions.checkState(!zipFutures.isEmpty());
-						CompletableFuture<Zipper> future = zipFutures.remove();
+						CompletableFuture<AsynchronousApacheZipper> future = zipFutures.remove();
 						if (trackBlockingTimes) blockingZipWatch.start();
-						Zipper zip = future.join();
+						AsynchronousApacheZipper zip = future.join();
 						if (trackBlockingTimes) blockingZipWatch.stop();
 						transferZippedData(zip); // this populates writeFuture
 					}
@@ -811,139 +820,44 @@ public interface ArchiveOutput extends Closeable, Named {
 		@Override
 		public synchronized void closeEntry() throws IOException {
 			Preconditions.checkNotNull(currentZipper);
-			CompletableFuture<Zipper> future = currentZipper.closeEntry();
+			CompletableFuture<AsynchronousApacheZipper> future = currentZipper.closeEntry();
+			future.thenRunAsync(new Runnable() {
+				
+				@Override
+				public void run() {
+					try {
+						ParallelZipFileOutput.this.processZipFutures();
+					} catch (IOException e) {
+						e.printStackTrace();
+					}
+				}
+			}, postProcessExec);
 			currentZipper = null;
 			zipFutures.add(future);
 		}
 
 		@Override
 		public synchronized void transferFrom(InputStream is, String name) throws IOException {
-			putNextEntry(name);
-			is.transferTo(getOutputStream());
-			is.close();
-			closeEntry();
+			super.transferFrom(is, name);
 		}
 
 		@Override
 		public synchronized void transferFrom(ArchiveInput input, String sourceName, String destName) throws IOException {
 			prepareZipper();
-			currentZipper.transferFrom(input, sourceName, destName);
-		}
-		
-		private class Zipper {
-			
-			private CopyAvoidantInMemorySeekableByteChannel uncompressedData;
-			private CopyAvoidantInMemorySeekableByteChannel compressedData;
-			
-			private String entrySourceName;
-			private String entryDestName;
-			private boolean externalInput;
-			private ArchiveInput.AbstractApacheZipInput entryInput;
-
-			private Zipper() {
-				uncompressedData = new CopyAvoidantInMemorySeekableByteChannel(1024*1024*32); // 32 MB
-				uncompressedData.setCloseable(false);
-				compressedData = new CopyAvoidantInMemorySeekableByteChannel(1024*1024*5); // 5 MB
-				compressedData.setCloseable(false);
-			}
-			
-			public void reset() {
-				entrySourceName = null;
-				entryDestName = null;
-				entryInput = null;
-				externalInput = false;
-				// reset each buffer: size=0 and position=0
-				uncompressedData.truncate(0l);
-				compressedData.truncate(0l);
-			}
-			
-			public void putNextEntry(String name) {
-				Preconditions.checkState(entrySourceName == null, "didn't close prior entry");
-				this.entrySourceName = name;
-				this.entryDestName = name;
-			}
-			
-			public OutputStream getOutputStream() {
-				Preconditions.checkNotNull(entrySourceName, "Not currently writing");
-				return uncompressedData.getOutputStream();
-			}
-			
-			public CompletableFuture<Zipper> transferFrom(ArchiveInput input, String sourceName, String destName) throws IOException {
-				Preconditions.checkState(entrySourceName == null, "didn't close prior entry");
-				if (input instanceof ArchiveInput.AbstractApacheZipInput) {
-					entryInput = (ArchiveInput.AbstractApacheZipInput)input;
-					entrySourceName = sourceName;
-					entryDestName = destName;
-					externalInput = true;
-					return CompletableFuture.completedFuture(this);
-				}
-				putNextEntry(destName);
-				input.getInputStream(sourceName).transferTo(getOutputStream());
-				return closeEntry();
-			}
-			
-			public CompletableFuture<Zipper> closeEntry() {
-				// all uncompressed data has been written, now compress in parallel
-				if (uncompressedData.size() == 0l)
-					// nothing written
-					return CompletableFuture.completedFuture(this);
-				CompletableFuture<Zipper> future = CompletableFuture.supplyAsync(new Supplier<Zipper>() {
-
-					@Override
-					public Zipper get() {
-						try {
-							Preconditions.checkState(compressedData.size() == 0l);
-							Preconditions.checkState(compressedData.position() == 0l);
-							ZipArchiveOutputStream zout = new ZipArchiveOutputStream(compressedData);
-							ZipArchiveEntry entry = new ZipArchiveEntry(entryDestName);
-							zout.putArchiveEntry(entry);
-							long compressedPosPrior = compressedData.position();
-							uncompressedData.position(0l);
-							Preconditions.checkState(uncompressedData.position() == 0l);
-							uncompressedData.getInputStream().transferTo(zout);
-							zout.flush();
-							zout.closeArchiveEntry();
-							zout.close();
-							long compressedPosAfter = compressedData.position();
-							long uncompressedPos = uncompressedData.position();
-							long uncompressedSize = uncompressedData.size();
-//							System.out.println("Wrote "+entryName+";"
-//									+"\n\tuncompressedData.size()="+uncompressedData.size()
-//									+"\n\tentry.getSize()="+entry.getSize()
-//									+"\n\tcompressedData.size()="+compressedData.size()
-//									+"\n\tentry.getCompressedSize()="+entry.getCompressedSize()
-//									+" (implied overhead: "+(compressedData.size()-entry.getCompressedSize())+")");
-							Preconditions.checkState(uncompressedPos == uncompressedSize,
-									"uncompressedData.position()=%s after write, uncompressedData.size()=%s",
-									uncompressedPos, uncompressedSize);
-							Preconditions.checkState(compressedPosAfter > compressedPosPrior,
-									"compressedData.position()=%s after write, compressedData.position()=%s before write",
-									compressedPosAfter, compressedPosPrior);
-							Preconditions.checkState(compressedData.size() > 0l);
-							compressedData.position(0l);
-							entryInput = new ArchiveInput.InMemoryZipFileInput(compressedData);
-							return Zipper.this;
-						} catch (IOException e) {
-							throw new RuntimeException("Exception writing "+entryDestName, e);
-//							throw ExceptionUtils.asRuntimeException(e);
-						}
-					}
-				});
+			CompletableFuture<AsynchronousApacheZipper> future = currentZipper.transferFrom(input, sourceName, destName);
+			future.thenRunAsync(new Runnable() {
 				
-				// this will cause it to start transferring zipped output (if it's not already)
-				future.thenRunAsync(new Runnable() {
-					
-					@Override
-					public void run() {
-						try {
-							ParallelZipFileOutput.this.processZipFutures();
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
+				@Override
+				public void run() {
+					try {
+						ParallelZipFileOutput.this.processZipFutures();
+					} catch (IOException e) {
+						e.printStackTrace();
 					}
-				}, postProcessExec);
-				return future;
-			}
+				}
+			}, postProcessExec);
+			currentZipper = null;
+			zipFutures.add(future);
 		}
 		
 	}
@@ -970,7 +884,7 @@ public interface ArchiveOutput extends Closeable, Named {
 		public OutputStream getOutputStream() throws IOException {
 			Preconditions.checkNotNull(currentEntry, "Must putNextEntry before calling getOutputStream");
 			Preconditions.checkState(currentOutput == null, "Can't call getOutputStream multiple times, must closeEntry and putNextEntry");
-			currentOutput = new ByteArrayOutputStream();
+			currentOutput = new ByteArrayOutputStream(1024*1024*5); // 5 MB
 			return currentOutput;
 		}
 
