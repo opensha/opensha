@@ -132,7 +132,7 @@ public class IMR_MultiGuiBeanDemo extends JPanel implements ActionListener {
 //			bean.setIMT(imt);
 		} else if (e.getSource() == sa10Button) {
 			imtBean.getParameterList().getParameter(IMT_NewGuiBean.IMT_PARAM_NAME).setValue(SA_Param.NAME);
-			imtBean.getParameterList().getParameter(PeriodParam.NAME).setValue(new Double(1.0));
+			imtBean.getParameterList().getParameter(PeriodParam.NAME).setValue(Double.valueOf(1.0));
 			imtBean.refreshParamEditor();
 //			ParameterAPI<Double> imt = getIMT(SA_Param.NAME, 1.0);
 //			bean.setIMT(imt);

@@ -17,6 +17,7 @@ import java.util.List;
 import org.opensha.commons.geo.json.Feature.FeatureAdapter;
 import org.opensha.commons.geo.json.Geometry.DepthSerializationType;
 import org.opensha.commons.geo.json.Geometry.GeometryAdapter;
+import org.opensha.commons.util.ExceptionUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
@@ -145,16 +146,35 @@ public class FeatureCollection implements Iterable<Feature> {
 		}
 		
 	}
-	
+
 	static final Gson gson_default = new GsonBuilder().setPrettyPrinting().serializeNulls().create();
+	static final Gson gson_compact = new GsonBuilder().serializeNulls().create();
 	
 	/**
 	 * @return GeoJSON representation of this FeatureCollection
 	 * @throws IOException
 	 */
-	public String toJSON() throws IOException {
+	public String toJSON() {
 		StringWriter writer = new StringWriter();
-		write(this, writer);
+		try {
+			write(this, writer);
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
+		return writer.toString();
+	}
+	
+	/**
+	 * @return GeoJSON representation of this FeatureCollection
+	 * @throws IOException
+	 */
+	public String toCompactJSON() {
+		StringWriter writer = new StringWriter();
+		try {
+			writeCompact(this, writer);
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
 		return writer.toString();
 	}
 	
@@ -227,6 +247,23 @@ public class FeatureCollection implements Iterable<Feature> {
 		
 		synchronized (gson_default) {
 			gson_default.toJson(features, FeatureCollection.class, writer);
+			writer.flush();
+		}
+	}
+	
+	/**
+	 * Writes a FeatureCollection to the given writer
+	 * 
+	 * @param features
+	 * @param writer
+	 * @throws IOException
+	 */
+	public static void writeCompact(FeatureCollection features, Writer writer) throws IOException {
+		if (!(writer instanceof BufferedWriter))
+			writer = new BufferedWriter(writer);
+		
+		synchronized (gson_compact) {
+			gson_compact.toJson(features, FeatureCollection.class, writer);
 			writer.flush();
 		}
 	}

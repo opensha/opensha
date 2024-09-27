@@ -155,7 +155,7 @@ public class EventSequenceDB_DAO {
 				ArrayList<Double> probsList = new ArrayList<Double>();
 				while(eventsResults.next()){
 					events.add(paleoEventDAO.getEvent(eventsResults.getInt(EVENT_ID)));
-					probsList.add(new Double(eventsResults.getFloat(MISSED_PROB)));
+					probsList.add(Double.valueOf(eventsResults.getFloat(MISSED_PROB)));
 				}
 				events.remove(events.size()-1);
 				eventSequence.setEventsParam(events);

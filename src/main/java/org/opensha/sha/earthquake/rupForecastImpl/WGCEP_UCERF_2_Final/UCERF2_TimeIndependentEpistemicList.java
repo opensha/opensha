@@ -140,22 +140,22 @@ public class UCERF2_TimeIndependentEpistemicList extends AbstractEpistemicListER
 		// Aprioti wt param
 		logicTreeParamNames.add(UCERF2.REL_A_PRIORI_WT_PARAM_NAME);
 		 options = new ParamOptions();
-		options.addValueWeight(new Double(1e-4), 0.5);
-		options.addValueWeight(new Double(1e10), 0.5);
+		options.addValueWeight(Double.valueOf(1e-4), 0.5);
+		options.addValueWeight(Double.valueOf(1e10), 0.5);
 		logicTreeParamValues.add(options);
 		
 		//	Connect More B-Faults?
 		logicTreeParamNames.add(UCERF2.CONNECT_B_FAULTS_PARAM_NAME);
 		options = new ParamOptions();
-		options.addValueWeight(new Boolean(true), 0.5);
-		options.addValueWeight(new Boolean(false), 0.5);
+		options.addValueWeight(Boolean.valueOf(true), 0.5);
+		options.addValueWeight(Boolean.valueOf(false), 0.5);
 		logicTreeParamValues.add(options);
 		
 		// B-Fault bValue=0
 		logicTreeParamNames.add(UCERF2.B_FAULTS_B_VAL_PARAM_NAME);
 		options = new ParamOptions();
-		options.addValueWeight(new Double(0.8), 0.5);
-		options.addValueWeight(new Double(0.0), 0.5);
+		options.addValueWeight(Double.valueOf(0.8), 0.5);
+		options.addValueWeight(Double.valueOf(0.0), 0.5);
 		logicTreeParamValues.add(options);
 	}
 	
@@ -194,8 +194,8 @@ public class UCERF2_TimeIndependentEpistemicList extends AbstractEpistemicListER
 				if(paramName.equalsIgnoreCase(UCERF2.REL_A_PRIORI_WT_PARAM_NAME)) {
 					Parameter param = ucerf2.getParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME);
 					if(((Double)param.getValue()).doubleValue()==1e10) {
-						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_1_PARAM_NAME).setValue(new Double(0.0));
-						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_2_PARAM_NAME).setValue(new Double(0.0));	
+						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_1_PARAM_NAME).setValue(Double.valueOf(0.0));
+						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_2_PARAM_NAME).setValue(Double.valueOf(0.0));	
 					} else {
 						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_1_PARAM_NAME).setValue(UCERF2.MIN_A_FAULT_RATE_1_DEFAULT);
 						ucerf2.getParameter(UCERF2.MIN_A_FAULT_RATE_2_PARAM_NAME).setValue(UCERF2.MIN_A_FAULT_RATE_2_DEFAULT);	

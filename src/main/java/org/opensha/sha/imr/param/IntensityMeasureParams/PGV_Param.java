@@ -14,10 +14,10 @@ public class PGV_Param extends WarningDoubleParameter {
 	public final static String NAME = "PGV";
 	public final static String UNITS = "cm/sec";
 	public final static String INFO = "Peak Ground Velocity";
-	public final static Double MIN = new Double(Math.log(Double.MIN_VALUE));
-	public final static Double MAX = new Double(Double.MAX_VALUE);
-	public final static Double DEFAULT_WARN_MIN = new Double(Math.log(Double.MIN_VALUE));
-	public final static Double DEFAULT_WARN_MAX = new Double(Math.log(500));
+	public final static Double MIN = Double.valueOf(Math.log(Double.MIN_VALUE));
+	public final static Double MAX = Double.valueOf(Double.MAX_VALUE);
+	public final static Double DEFAULT_WARN_MIN = Double.valueOf(Math.log(Double.MIN_VALUE));
+	public final static Double DEFAULT_WARN_MAX = Double.valueOf(Math.log(500));
 
 	/**
 	 * This uses the supplied warning constraint and default (both in natural-log space).

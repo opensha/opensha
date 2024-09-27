@@ -9,6 +9,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -17,6 +18,8 @@ import java.util.function.UnaryOperator;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
+import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
@@ -29,6 +32,10 @@ import org.opensha.sha.calc.params.MaxDistanceParam;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.PtSrcDistanceCorrectionParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
+import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.params.filters.MagDependentDistCutoffFilter;
+import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -148,6 +155,9 @@ implements DisaggregationCalculatorAPI{
 	private List<DisaggregationSourceRuptureInfo> disaggSourceList;
 	private String consolidatedSourceDisaggInfo;
 	private List<DisaggregationSourceRuptureInfo> consolidatedDisaggSourceList;
+	
+	private boolean calcSourceExceedances = false;
+	private DiscretizedFunc exceedXVals = null;
 
 	//Disaggregation Plot Img Name
 	public static final String DISAGGREGATION_PLOT_NAME = "DisaggregationPlot";
@@ -204,8 +214,9 @@ implements DisaggregationCalculatorAPI{
 	public boolean disaggregate(double iml, Site site,
 			ScalarIMR imr,
 			ERF eqkRupForecast,
+			Collection<SourceFilter> sourceFilters,
 			ParameterList calcParams) {
-		return disaggregate(iml, site, TRTUtils.wrapInHashMap(imr), eqkRupForecast, calcParams);
+		return disaggregate(iml, site, TRTUtils.wrapInHashMap(imr), eqkRupForecast, sourceFilters, calcParams);
 	}
 	
 	@Override
@@ -213,7 +224,9 @@ implements DisaggregationCalculatorAPI{
 			double iml,
 			Site site,
 			Map<TectonicRegionType, ScalarIMR> imrMap,
-			ERF eqkRupForecast, ParameterList calcParams) {
+			ERF eqkRupForecast,
+			Collection<SourceFilter> sourceFilters,
+			ParameterList calcParams) {
 		
 		if (Double.isInfinite(iml) || Double.isNaN(iml)) {
 			currRuptures = 0;
@@ -221,15 +234,12 @@ implements DisaggregationCalculatorAPI{
 			return false;
 		}
 		
-		MaxDistanceParam maxDistanceParam = (MaxDistanceParam)calcParams.getParameter(MaxDistanceParam.NAME);
 		PtSrcDistanceCorrectionParam ptSrcDistCorrParam = (PtSrcDistanceCorrectionParam)calcParams.getParameter(PtSrcDistanceCorrectionParam.NAME);
 		PtSrcDistCorr.Type distCorrType = ptSrcDistCorrParam.getValueAsTypePtSrcDistCorr();
 
 //		NumStochasticEventSetsParam numStochEventSetRealizationsParam =
 //			(NumStochasticEventSetsParam)calcParams.getParameter(NumStochasticEventSetsParam.NAME);
-		IncludeMagDistFilterParam includeMagDistFilterParam =
-			(IncludeMagDistFilterParam)calcParams.getParameter(IncludeMagDistFilterParam.NAME);
-		MagDistCutoffParam magDistCutoffParam = (MagDistCutoffParam)calcParams.getParameter(MagDistCutoffParam.NAME);
+		
 		SetTRTinIMR_FromSourceParam setTRTinIMR_FromSourceParam =
 			(SetTRTinIMR_FromSourceParam)calcParams.getParameter(SetTRTinIMR_FromSourceParam.NAME);
 		NonSupportedTRT_OptionsParam nonSupportedTRT_OptionsParam =
@@ -261,28 +271,31 @@ implements DisaggregationCalculatorAPI{
 		//parameter changes.
 //		for (ScalarIMR imr : imrMap.values())
 //			( (AttenuationRelationship) imr).resetParameterEventListeners();
-
-
-		boolean includeMagDistFilter = includeMagDistFilterParam.getValue();
-		ArbitrarilyDiscretizedFunc magDistFilter = null;
-		if (includeMagDistFilter)
-			magDistFilter = magDistCutoffParam.getValue();
-		double magThresh=0.0;
-		double maxDist = maxDistanceParam.getValue();
 		
 		// set the maximum distance in the attenuation relationship
 		// (Note- other types of IMRs may not have this method so we should really check type here)
-		for (ScalarIMR imr : imrMap.values())
-			imr.setUserMaxDistance(maxDist);
+		if (sourceFilters != null && !sourceFilters.isEmpty()) {
+			double maxDist = Double.POSITIVE_INFINITY;
+			for (SourceFilter filter : sourceFilters) {
+				if (filter instanceof FixedDistanceCutoffFilter)
+					maxDist = Math.min(maxDist, ((FixedDistanceCutoffFilter)filter).getMaxDistance());
+				if (filter instanceof MagDependentDistCutoffFilter)
+					maxDist = Math.min(maxDist, ((MagDependentDistCutoffFilter)filter).getMagDistFunc().getMaxX());
+				if (filter instanceof TectonicRegionDistCutoffFilter)
+					maxDist = Math.min(maxDist, ((TectonicRegionDistCutoffFilter)filter).getCutoffs().getLargestCutoffDist());
+			}
+			for (ScalarIMR imr : imrMap.values())
+				imr.setUserMaxDistance(maxDist);
+		}
 
 		// set iml in imrs
 		for (ScalarIMR imr : imrMap.values()) {
 			Parameter<Double> im = imr.getIntensityMeasure();
 			if (im instanceof WarningParameter<?>) {
 				WarningParameter<Double> warnIM = (WarningParameter<Double>)im;
-				warnIM.setValueIgnoreWarning(new Double(iml));
+				warnIM.setValueIgnoreWarning(Double.valueOf(iml));
 			} else {
-				im.setValue(new Double(iml));
+				im.setValue(Double.valueOf(iml));
 			}
 		}
 
@@ -330,6 +343,12 @@ implements DisaggregationCalculatorAPI{
 		if (setTRTinIMR_FromSource)
 			trtDefaults = TRTUtils.getTRTsSetInIMRs(imrMap);
 		
+		DiscretizedFunc condProbFunc = null;
+		if (calcSourceExceedances) {
+			Preconditions.checkNotNull(exceedXVals);
+			condProbFunc = new LightFixedXFunc(exceedXVals);
+		}
+		
 		for (int i = 0; i < numSources; i++) {
 
 			double sourceRate = 0;
@@ -340,15 +359,9 @@ implements DisaggregationCalculatorAPI{
 			int numRuptures = eqkRupForecast.getNumRuptures(i);
 
 			// check the distance of the source
-			double distance = source.getMinDistance(site);
-			if (distance > maxDist) {
+			if (HazardCurveCalculator.canSkipSource(sourceFilters, source, site)) {
 				currRuptures += numRuptures;
 				continue;
-			}
-
-			// get magThreshold if we're to use the mag-dist cutoff filter
-			if(includeMagDistFilter) {
-				magThresh = magDistFilter.getInterpolatedY(distance);
 			}
 			
 			// set the IMR according to the tectonic region of the source (if there is more than one)
@@ -359,6 +372,20 @@ implements DisaggregationCalculatorAPI{
 			if(setTRTinIMR_FromSource) { // (otherwise leave as originally set)
 				TRTUtils.setTRTinIMR(imr, trt, nonSupportedTRT_OptionsParam, trtDefaults.get(imr));
 			}
+			
+			DiscretizedFunc sourceHazFunc = null;
+			boolean poissonSource = source.isPoissonianSource();
+			if (calcSourceExceedances) {
+				double[] xVals = new double[exceedXVals.size()];
+				double[] yVals = new double[exceedXVals.size()];
+				for (int x=0; x<xVals.length; x++) {
+					xVals[x] = exceedXVals.getX(x);
+					// if poisson, we'll aggregate non-exceedances then convert later
+					yVals[x] = poissonSource ? 1d : 0d;
+				}
+				sourceHazFunc = new LightFixedXFunc(xVals, yVals);
+			}
+			
 
 //			if (numSourcesToShow > 0)
 //				sourceDissaggMap.put(sourceName, new ArrayList());
@@ -376,7 +403,7 @@ implements DisaggregationCalculatorAPI{
 				double qkProb = rupture.getProbability();
 				
 			     // apply magThreshold if we're to use the mag-dist cutoff filter
-		        if(includeMagDistFilter && rupture.getMag() < magThresh) {
+				if (HazardCurveCalculator.canSkipRupture(sourceFilters, rupture, site)) {
 		        	numRupRejected+=1;
 		        	continue;
 		        }
@@ -400,7 +427,22 @@ implements DisaggregationCalculatorAPI{
 				// get the equiv. Poisson rate over the time interval (not annualized)
 				rate = -condProb * Math.log(1 - qkProb);
 
+				if (calcSourceExceedances) {
+					imr.getExceedProbabilities(condProbFunc);
+					
+					if(poissonSource) {
+						if(Math.log(1.0-qkProb) < -30.0)
+							throw new RuntimeException("Error: The probability for this ProbEqkRupture ("+qkProb+
+							") is too high for a Possion source (~infinite number of events)");
 
+						for(int k=0;k<condProbFunc.size();k++)
+							sourceHazFunc.set(k,sourceHazFunc.getY(k) * Math.pow(1-qkProb,condProbFunc.getY(k)));
+					}
+					// For non-Poissin source
+					else
+						for(int k=0;k<condProbFunc.size();k++)
+							sourceHazFunc.set(k,sourceHazFunc.getY(k) + qkProb*condProbFunc.getY(k));
+				}
 				/*
                    if( Double.isNaN(epsilon) && testNum < 1) {
           System.out.println("srcName = " + sourceName +
@@ -429,6 +471,8 @@ implements DisaggregationCalculatorAPI{
 
 				// proceed only if rate is greater than zero (avoids NaN epsilons & is faster)
 				if( rate > 0.0) {
+					if (Double.isNaN(epsilon))
+						throw new IllegalStateException("Epsilon is "+epsilon+", rate="+rate+", mean="+imr.getMean()+", stdDev="+imr.getStdDev());
 					// set the 3D array indices & check that all are in bounds
 					setIndices();
 					if (withinBounds)
@@ -458,15 +502,20 @@ implements DisaggregationCalculatorAPI{
             ( (ArrayList) sourceDissaggMap.get(sourceName)).add(rupInfo);
           }*/
 
-			}
+			} // end rupture loop
 //			if (numSourcesToShow > 0) {
 				// sort the ruptures in this source according to contribution
 				//ArrayList sourceRupList = (ArrayList) sourceDissaggMap.get(sourceName);
 				//Collections.sort(sourceRupList,srcRupComparator);
 				// create the total rate info for this source
-				DisaggregationSourceRuptureInfo disaggInfo = new
-						DisaggregationSourceRuptureInfo(sourceName, sourceRate, i, source);
-				disaggSourceList.add(disaggInfo);
+			if (calcSourceExceedances && poissonSource) {
+				// convert from non-exceedances to exceedances
+				for (int k=0; k<sourceHazFunc.size(); k++)
+					sourceHazFunc.set(k, 1d - sourceHazFunc.getY(k));
+			}
+			DisaggregationSourceRuptureInfo disaggInfo = new
+					DisaggregationSourceRuptureInfo(sourceName, sourceRate, i, source, sourceHazFunc);
+			disaggSourceList.add(disaggInfo);
 //			}
 		}
 		
@@ -662,6 +711,16 @@ implements DisaggregationCalculatorAPI{
 	@Override
 	public List<DisaggregationSourceRuptureInfo> getConsolidatedDisaggregationSourceList() {
 		return consolidatedDisaggSourceList;
+	}
+	
+	public void setCalculateSourceExceedanceCurves(DiscretizedFunc xValues) {
+		this.calcSourceExceedances = xValues != null;
+		this.exceedXVals = xValues;
+	}
+	
+	public void setSkipCalculateSourceExceedanceCurves() {
+		this.calcSourceExceedances = false;
+		this.exceedXVals = null;
 	}
 
 	/**

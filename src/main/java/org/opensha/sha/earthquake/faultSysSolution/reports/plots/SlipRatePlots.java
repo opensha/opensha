@@ -34,6 +34,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.reports.AbstractRupSetPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
+import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen.PlotLevel;
 import org.opensha.sha.earthquake.faultSysSolution.reports.SolidFillPlot;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RupSetMapMaker;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -376,6 +377,219 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 			}
 		}
 		
+		// see if we have a comparison model
+		boolean doComp = meta.comparison != null && meta.comparisonHasSameSects && getPlotLevel() != PlotLevel.LIGHT;
+		SectSlipRates compSlipRates = null;
+		double[] compTargets = null;
+		if (doComp) {
+			// only actually do it if we have solutions, or the rupture set slip rates are different
+			compSlipRates = meta.comparison.rupSet.getModule(SectSlipRates.class);
+			if (compSlipRates != null)
+				compTargets = target(meta.comparison.rupSet, compSlipRates);
+			if (!meta.hasPrimarySol() || !meta.hasComparisonSol()) {
+				if (targets == null || compTargets == null) {
+					doComp = false;
+				} else {
+					// see if they're different
+					boolean allSame = true;
+					for (int s=0; allSame && s<targets.length; s++) {
+						if (!Double.isFinite(targets[s]))
+							allSame = !Double.isFinite(compTargets[s]);
+						else
+							allSame = (float)targets[s] == (float)compTargets[s];
+					}
+					doComp = !allSame;
+				}
+			}
+		}
+		if (doComp) {
+			// can do comparison
+			double[] compSolRates = null;
+			if (solRates != null && meta.hasComparisonSol())
+				compSolRates = solution(meta.comparison.sol);
+			
+			boolean[] isTargets;
+			if (solRates != null && compSolRates != null)
+				isTargets = new boolean[] {true,false};
+			else
+				isTargets = new boolean[] {false};
+			
+			boolean[] isLogs = {false,true};
+			
+			for (boolean isTarget : isTargets) {
+				double[] myPrimary, myComparison;
+				if (isTarget) {
+					lines.add(getSubHeading()+" Comparison Model Target Slip Rates");
+					lines.add(topLink); lines.add("");
+					myPrimary = targets;
+					myComparison = compTargets;
+				} else {
+					lines.add(getSubHeading()+" Comparison Model Solution Slip Rates");
+					lines.add(topLink); lines.add("");
+					myPrimary = solRates;
+					myComparison = compSolRates;
+				}
+				
+				TableBuilder table = MarkdownUtils.tableBuilder();
+				
+				for (boolean log : isLogs) {
+					String prefix = rawPrefix;
+					if (isTarget)
+						prefix += "_target";
+					else
+						prefix += "_solution";
+					prefix += "_comp";
+					if (log)
+						prefix += "_log";
+					
+					CPT diffCPT;
+					CPT ratioCPT;
+					
+					if (log) {
+						diffCPT = null;
+						ratioCPT = new CPT(-1d, 1d,
+								new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
+								Color.WHITE,
+								new Color(255, 120, 0), new Color(200, 60, 0), new Color(140, 0, 0));
+					} else {
+						diffCPT = new CPT(-10, 10,
+								new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
+								Color.WHITE,
+								new Color(255, 120, 0), new Color(200, 60, 0), new Color(140, 0, 0));
+						diffCPT.setNanColor(Color.GRAY);
+						diffCPT.setBelowMinColor(diffCPT.getMinColor());
+						diffCPT.setAboveMaxColor(diffCPT.getMaxColor());
+						
+						CPT belowCPT = new CPT(0.5d, 1d,
+								new Color(0, 0, 140), new Color(0, 60, 200 ), new Color(0, 120, 255),
+								Color.WHITE);
+						CPT aboveCPT = new CPT(1d, 2d,
+								Color.WHITE,
+								new Color(255, 120, 0), new Color(200, 60, 0), new Color(140, 0, 0));
+						ratioCPT = new CPT();
+						ratioCPT.addAll(belowCPT);
+						ratioCPT.addAll(aboveCPT);
+						ratioCPT.setNanColor(Color.GRAY);
+						ratioCPT.setBelowMinColor(ratioCPT.getMinColor());
+						ratioCPT.setAboveMaxColor(ratioCPT.getMaxColor());
+					}
+					
+					table.initNewLine();
+					
+					double[] diffs = diff(myPrimary, myComparison);
+					double[] ratios = ratio(myPrimary, myComparison);
+					String diffLabel, ratioLabel;
+					if (isTarget) {
+						if (log) {
+							diffLabel = null;
+							ratioLabel = "Log10(Primary Target / Comparison Target Slip Rate)";
+						} else {
+							diffLabel = "Primary Target - Comparison Target Slip Rate (mm/yr)";
+							ratioLabel = "Primary Target / Comparison Target Slip Rate";
+						}
+					} else {
+						if (log) {
+							diffLabel = null;
+							ratioLabel = "Log10(Primary Solution / Comparison Solution Slip Rate)";
+						} else {
+							diffLabel = "Primary Solution - Comparison Solution Slip Rate (mm/yr)";
+							ratioLabel = "Primary Solution / Comparison Solution Slip Rate";
+						}
+					}
+					
+					if (!log) {
+						mapMaker.plotSectScalars(diffs, diffCPT, diffLabel);
+						mapMaker.plot(resourcesDir, prefix+"_diff", " ");
+						table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_diff.png)");
+					}
+					mapMaker.plotSectScalars(log ? log10(ratios) : ratios, ratioCPT, ratioLabel);
+					mapMaker.plot(resourcesDir, prefix+"_ratio", " ");
+					table.addColumn("![Map]("+relPathToResources+"/"+prefix+"_ratio.png)");
+					
+					HeadlessGraphPanel gp = PlotUtils.initHeadless();
+					if (!log) {
+						table.finalizeLine().initNewLine();
+						table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_diff.geojson")
+								+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_diff.geojson)");
+						table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_ratio.geojson")
+								+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_ratio.geojson)");
+						table.finalizeLine().initNewLine();
+						// now scatters/histograms
+						
+						HistogramFunction diffHist = HistogramFunction.getEncompassingHistogram(-10d, 10d, 1d);
+						for (double diff : diffs)
+							diffHist.add(diffHist.getClosestXIndex(diff), 1d);
+						
+						List<XY_DataSet> funcs = new ArrayList<>();
+						List<PlotCurveCharacterstics> chars = new ArrayList<>();
+						
+						funcs.add(diffHist);
+						chars.add(new PlotCurveCharacterstics(PlotLineType.HISTOGRAM, 1f, Color.BLACK));
+						
+						String myTitle;
+						String myXLabel;
+						if (isTarget) {
+							myTitle = "Comparison Target Slip Rate Differences";
+							myXLabel = "Primary Target - Comparison Target Slip Rate (mm/yr)";
+						} else {
+							myTitle = "Comparison Solution Slip Rate Differences";
+							myXLabel = "Primary Solution - Comparison Solution Slip Rate (mm/yr)";
+						}
+						gp.drawGraphPanel(new PlotSpec(funcs, chars, myTitle, myXLabel, "Count"));
+						
+						PlotUtils.writePlots(resourcesDir, prefix+"_diff_hist", gp, 800, 650, true, true, false);
+						table.addColumn("![Diff hist]("+relPathToResources+"/"+prefix+"_diff_hist.png)");
+					}
+					
+					DefaultXY_DataSet scatter = new DefaultXY_DataSet(myComparison, myPrimary);
+					Range scatterRange;
+					if (log)
+						scatterRange = new Range(1e-3, 1e2);
+					else
+						scatterRange = new Range(0d, Math.max(scatter.getMaxX(), scatter.getMaxY()));
+					
+					List<XY_DataSet> funcs = new ArrayList<>();
+					List<PlotCurveCharacterstics> chars = new ArrayList<>();
+					
+					funcs.add(scatter);
+					chars.add(new PlotCurveCharacterstics(PlotSymbol.CROSS, 4f, Color.BLACK));
+					
+					DefaultXY_DataSet oneToOne = new DefaultXY_DataSet();
+					oneToOne.set(scatterRange.getLowerBound(), scatterRange.getLowerBound());
+					oneToOne.set(scatterRange.getUpperBound(), scatterRange.getUpperBound());
+					funcs.add(oneToOne);
+					chars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 3f, Color.GRAY));
+
+					String myXLabel;
+					String myYLabel;
+					if (isTarget) {
+						myXLabel = "Comparison Target Slip Rate (mm/yr)";
+						myYLabel = "Primary Target Slip Rate (mm/yr)";
+					} else {
+						myXLabel = "Comparison Solution Slip Rate (mm/yr)";
+						myYLabel = "Primary Solution Slip Rate (mm/yr)";
+					}
+					gp.drawGraphPanel(new PlotSpec(funcs, chars,
+							"Slip Rates Scatter", myXLabel, myYLabel),
+							log, log, scatterRange, scatterRange);
+					
+					PlotUtils.writePlots(resourcesDir, prefix+"_scatter", gp, 800, 650, true, true, false);
+					table.addColumn("![Diff hist]("+relPathToResources+"/"+prefix+"_scatter.png)");
+					table.finalizeLine();
+					
+					if (log) {
+						table.initNewLine();
+						table.addColumn(RupSetMapMaker.getGeoJSONViewerRelativeLink("View GeoJSON", relPathToResources+"/"+prefix+"_ratio.geojson")
+								+" "+"[Download GeoJSON]("+relPathToResources+"/"+prefix+"_ratio.geojson)");
+						table.addColumn("");
+						table.finalizeLine();
+					}
+				}
+				lines.addAll(table.build());
+				lines.add("");
+			}
+		}
+		
 		boolean hasAseis = false;
 		boolean hasCoupling = false;
 		boolean hasSubSeis = false;
@@ -649,7 +863,7 @@ public class SlipRatePlots extends AbstractRupSetPlot implements SolidFillPlot {
 		for (int s=0; s<creep.length; s++) {
 			FaultSection sect = rupSet.getFaultSectionData(s);
 			if (sect instanceof GeoJSONFaultSection)
-				creep[s] = ((GeoJSONFaultSection)sect).getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
+				creep[s] = ((GeoJSONFaultSection)sect).getProperties().getDouble(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
 			else
 				creep[s] = Double.NaN;
 		}

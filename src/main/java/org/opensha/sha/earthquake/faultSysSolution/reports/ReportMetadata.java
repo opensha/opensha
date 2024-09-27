@@ -3,6 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution.reports;
 import java.util.HashSet;
 
 import org.opensha.commons.data.region.CaliforniaRegions;
+import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -79,8 +80,12 @@ public class ReportMetadata {
 			return new CaliforniaRegions.RELM_TESTING();
 		if (rupSet.hasModule(FaultGridAssociations.class))
 			return new Region(rupSet.getModule(FaultGridAssociations.class).getRegion());
-		if (sol != null && sol.hasModule(GridSourceProvider.class))
-			return new Region(sol.getModule(GridSourceProvider.class).getGriddedRegion());
+		if (sol != null && sol.hasModule(GridSourceProvider.class)) {
+			GridSourceProvider gridProv = sol.requireModule(GridSourceProvider.class);
+			GriddedRegion gridReg = gridProv.getGriddedRegion();
+			if (gridReg != null)
+				return gridReg;
+		}
 		return null;
 	}
 	

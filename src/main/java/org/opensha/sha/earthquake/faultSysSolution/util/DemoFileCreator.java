@@ -22,6 +22,9 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.Compl
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.TimeCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
@@ -32,11 +35,14 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.Mi
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ExhaustiveUnilateralRuptureGrowingStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider.NSHM23_WUS_FiniteRuptureConverter;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
@@ -56,7 +62,7 @@ class DemoFileCreator {
 		File outputDir = new File("src/test/resources/org/opensha/sha/earthquake/faultSysSolution");
 		
 		FaultSectionPrefData fault1 = new FaultSectionPrefData();
-		fault1.setSectionName("Demo S-S Fault");
+		fault1.setSectionName("Demo Strike-Slip Fault");
 		fault1.setSectionId(11);
 		FaultTrace trace1 = new FaultTrace(null);
 		trace1.add(new Location(34.7, -118));
@@ -89,10 +95,7 @@ class DemoFileCreator {
 		sects.add(fault1);
 		sects.add(fault2);
 		
-		List<FaultSection> subSects = new ArrayList<>();
-		for (FaultSection sect : sects)
-			subSects.addAll(sect.getSubSectionsList(0.5*sect.getOrigDownDipWidth(), subSects.size(), 2));
-		System.out.println("Built "+subSects.size()+" subsections");
+		List<FaultSection> subSects = SubSectionBuilder.buildSubSects(sects);
 		Preconditions.checkState(!subSects.isEmpty());
 		
 		SectionDistanceAzimuthCalculator distAzCalc = new SectionDistanceAzimuthCalculator(subSects);
@@ -108,8 +111,10 @@ class DemoFileCreator {
 		System.out.println("Created "+rups.size()+" ruptures");
 		
 		FaultSystemRupSet rupSet = FaultSystemRupSet.builderForClusterRups(subSects, rups)
-				.forScalingRelationship(ScalingRelationships.SHAW_2009_MOD)
-				.slipAlongRupture(SlipAlongRuptureModels.UNIFORM).build(true);
+				.forScalingRelationship(NSHM23_ScalingRelationships.LOGA_C4p2)
+				.slipAlongRupture(SlipAlongRuptureModels.UNIFORM)
+				.tectonicRegime(TectonicRegionType.ACTIVE_SHALLOW)
+				.build(true);
 		rupSet.getArchive().write(new File(outputDir, "demo_rup_set.zip"));
 		// write old style as well
 		U3FaultSystemRupSet oldRupSet = new U3FaultSystemRupSet(subSects, rupSet.getSlipRateForAllSections(),
@@ -140,14 +145,15 @@ class DemoFileCreator {
 		
 		FaultSystemSolution sol = new FaultSystemSolution(rupSet, rates);
 		
+		// make a fake grid source provider
 		GriddedRegion gridReg = new GriddedRegion(new Location(34, -118), new Location(36, -120), 0.25, null);
+		
+		FaultGridAssociations assoc = FaultGridAssociations.getIntersectionAssociations(oldRupSet, gridReg);
 		
 		IncrementalMagFreqDist demoMFD = new IncrementalMagFreqDist(5.05, 8.45, 35);
 		
 		GutenbergRichterMagFreqDist unassociatedMFD =
 				new GutenbergRichterMagFreqDist(1d, 0.05d, demoMFD.getMinX(), demoMFD.getMaxX(), demoMFD.size());
-		
-		double associationDist = 15d;
 		
 		List<RuptureSurface> sectSurfs = new ArrayList<>();
 		for (FaultSection sect : subSects)
@@ -165,44 +171,47 @@ class DemoFileCreator {
 			fractSS[i] = 0.5;
 			fractN[i] = 0.25;
 			fractR[i] = 0.25;
-			
-			int closestSect = -1;
-			double minDist = Double.POSITIVE_INFINITY;
-			for (int s=0; s<sectSurfs.size(); s++) {
-				RuptureSurface surf = sectSurfs.get(s);
-				double dist = Math.abs(surf.getDistanceX(loc));
-				if (dist < minDist) {
-					minDist = dist;
-					closestSect = s;
+
+			Map<Integer, Double> scaledNodeFracts = assoc.getScaledSectFracsOnNode(i);
+			if (scaledNodeFracts != null && !scaledNodeFracts.isEmpty()) {
+				double sumAssoc = 0d;
+				for (int sectIndex : scaledNodeFracts.keySet()) {
+					double fract = scaledNodeFracts.get(sectIndex);
+					double sectFract = assoc.getScaledNodeFractions(sectIndex).get(i);
+					System.out.println("Grid node "+i+" has a "+(float)fract+" association with section "+sectIndex+" (reverse assoc is "+(float)sectFract+")");
+					sumAssoc += fract;
+					IncrementalMagFreqDist subSeisMFD =
+							new GutenbergRichterMagFreqDist(1d, 0.05d, demoMFD.getMinX(), demoMFD.getMaxX(), demoMFD.size());
+					double minMag = rupSet.getMinMagForSection(sectIndex);
+					int magIndex = subSeisMFD.getClosestXIndex(minMag);
+					double sectTotalRate = 0d;
+					for (int r : rupSet.getRupturesForSection(sectIndex))
+						sectTotalRate += sol.getRateForRup(r);
+					// scale for the fraction that the section is associated with this node
+					sectTotalRate *= sectFract;
+					System.out.println("\tpinning MFD to sectRate="+(float)sectTotalRate+" at minMag="+(float)minMag+", idx="+magIndex);
+					subSeisMFD.scaleToCumRate(subSeisMFD.getX(magIndex), sectTotalRate);
+					for (int j=magIndex; j<subSeisMFD.size(); j++)
+						subSeisMFD.set(j, 0d);
+					if (subSeisMFDs.containsKey(i)) {
+						// sum with previous
+						IncrementalMagFreqDist prev = subSeisMFDs.get(i);
+						Preconditions.checkState(prev.size() == subSeisMFD.size());
+						for (int j=0; j<prev.size(); j++)
+							subSeisMFD.set(j, subSeisMFD.getY(j) + prev.getY(j));
+					}
+					subSeisMFDs.put(i, subSeisMFD);
 				}
-			}
-			
-			if (minDist < associationDist) {
-				// don't use this as a guide for how gridded seismicity should be handled, it's just a demo intended
-				// to look lik a real model might
-				System.out.println("Grid node "+i+" is associated with section "+closestSect+" (dist="+(float)minDist+")");
-				IncrementalMagFreqDist subSeisMFD =
-						new GutenbergRichterMagFreqDist(1d, 0.05d, demoMFD.getMinX(), demoMFD.getMaxX(), demoMFD.size());
-				double minMag = rupSet.getMinMagForSection(closestSect);
-				int magIndex = subSeisMFD.getClosestXIndex(minMag);
-				double sectTotalRate = 0d;
-				for (int r : rupSet.getRupturesForSection(closestSect))
-					sectTotalRate += sol.getRateForRup(r);
-				System.out.println("\tpinning MFD to sectRate="+(float)sectTotalRate+" at minMag="+(float)minMag+", idx="+magIndex);
-				subSeisMFD.scaleToCumRate(subSeisMFD.getX(magIndex), sectTotalRate);
-				for (int j=magIndex; j<subSeisMFD.size(); j++)
-					subSeisMFD.set(j, 0d);
-//				System.out.println(subSeisMFD);
-				subSeisMFDs.put(i, subSeisMFD);
-			} else {
-				System.out.println("Grid node "+i+" is unassociated (closest dist="+(float)minDist+")");
+				Preconditions.checkState((float)sumAssoc <= 1f);
 			}
 		}
-		sol.addModule(new AbstractGridSourceProvider.Precomputed(gridReg, subSeisMFDs, otherMFDs, fractSS, fractN, fractR));
+		MFDGridSourceProvider mfdGridProv = new AbstractGridSourceProvider.Precomputed(gridReg, subSeisMFDs, otherMFDs, fractSS, fractN, fractR);
+		GridSourceList gridSources = GridSourceList.convert(mfdGridProv, assoc, new NSHM23_WUS_FiniteRuptureConverter());
+		sol.addModule(gridSources);
 		
 		sol.getArchive().write(new File(outputDir, "demo_sol.zip"));
 		U3FaultSystemSolution oldSol = new U3FaultSystemSolution(oldRupSet, rates);
-		oldSol.setGridSourceProvider(sol.getGridSourceProvider());
+		oldSol.setGridSourceProvider(mfdGridProv);
 		U3FaultSystemIO.writeSol(oldSol, new File(outputDir, "demo_old_sol.zip"));
 	}
 

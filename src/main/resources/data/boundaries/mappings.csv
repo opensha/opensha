@@ -1,0 +1,287 @@
+Directory,Region,Min Lat,Min Lon,Max Lat,Max Lon
+north_america/Haiti.txt,Haiti,18.021032,-74.478584,20.087822,-71.61336
+north_america/Navassa_Island.txt,Navassa Island,18.396704,-75.02823,18.420996,-75.0
+north_america/St_Pierre.txt,St Pierre,46.753265,-56.42066,47.146286,-56.157368
+north_america/St_Lucia.txt,St Lucia,13.704778,-61.07415,14.103245,-60.874203
+north_america/Antigua.txt,Antigua,16.927221,-62.35241,17.729387,-61.659084
+north_america/Bahamas.txt,Bahamas,20.916067,-79.62301,27.232027,-72.71159
+north_america/Costa_Rica.txt,Costa Rica,5.499074,-87.09465,11.216818,-82.55599
+north_america/Grenada.txt,Grenada,11.992374,-61.799976,12.319394,-61.569077
+north_america/Aleutian.txt,Aleutian,51.349983,172.45468,53.005886,179.77849
+north_america/Clipperton_Island.txt,Clipperton Island,10.28207,-109.23329,10.31345,-109.19932
+north_america/El_Salvador.txt,El Salvador,13.148679,-90.12866,14.445067,-87.69216
+north_america/Montserrat.txt,Montserrat,16.671007,-62.242584,16.81733,-62.14642
+north_america/Trinidad.txt,Trinidad,10.036105,-61.92377,11.338343,-60.48955
+north_america/Guadeloupe.txt,Guadeloupe,15.830973,-63.152767,18.130697,-61.0
+north_america/Panama.txt,Panama,7.197906,-83.051445,9.644431,-77.17411
+north_america/Guatemala.txt,Guatemala,13.737301,-92.24149,17.81522,-88.2232
+north_america/Virgin_Islands.txt,Virgin Islands,17.681725,-65.08628,18.458143,-64.56518
+north_america/Dominican_Rep.txt,Dominican Rep,17.47009,-72.00349,19.92986,-68.32
+north_america/Belize.txt,Belize,15.8893,-89.224815,18.496557,-86.87445
+north_america/Anguilla.txt,Anguilla,18.166815,-63.1729,18.303244,-62.93204
+north_america/Canada.txt,Canada,41.708298,-141.0,83.11062,-52.63629
+north_america/Cuba.txt,Cuba,19.828083,-84.95743,23.283781,-74.131775
+north_america/Barbados.txt,Barbados,13.039844,-59.648922,13.327257,-59.420376
+north_america/Nicaragua.txt,Nicaragua,10.707543,-87.69031,15.025909,-82.59207
+north_america/Honduras.txt,Honduras,12.982411,-89.35079,16.510256,-83.1554
+north_america/Mexico.txt,Mexico,14.532866,-118.45395,32.71676,-86.70339
+north_america/Midway_Islands.txt,Midway Islands,25.752836,-178.3147,28.398392,-171.71892
+north_america/Netherlands_Antilles.txt,Netherlands Antilles,11.973197,-70.0,12.580292,-68.19231
+north_america/Bermuda.txt,Bermuda,32.24664,-64.89605,32.393833,-64.65199
+north_america/Jamaica.txt,Jamaica,17.703554,-78.36664,18.526976,-76.18032
+north_america/St_Vincent.txt,St Vincent,12.40671,-61.500973,13.377834,-61.11388
+north_america/Greenland.txt,Greenland,59.777267,-73.263466,83.62742,-11.312319
+north_america/Dominica.txt,Dominica,15.20169,-61.484108,15.631809,-61.244152
+asia/Gaza_Strip.txt,Gaza Strip,31.223606,34.230457,31.594067,34.546272
+asia/Cambodia.txt,Cambodia,9.283256,102.340004,14.686404,107.627716
+asia/Malaysia.txt,Malaysia,0.855222,98.935036,7.363407,119.2675
+asia/Iraq_Saudi_Arabia_Neutral_Zone.txt,Iraq-Saudi Arabia Neutral Zone,28.777838,44.718735,29.474958,46.557587
+asia/Kazakhstan.txt,Kazakhstan,40.93633,46.491856,55.431812,87.31266
+asia/Oman.txt,Oman,16.645761,51.88201,24.98312,59.83658
+asia/Syria.txt,Syria,32.31068,35.727234,37.319145,42.38504
+asia/North_Korea.txt,North Korea,37.59731,124.18864,43.006042,130.67487
+asia/Armenia.txt,Armenia,38.83052,43.44978,41.301838,46.630035
+asia/Latvia.txt,Latvia,55.668858,20.974266,58.082306,28.241163
+asia/Mongolia.txt,Mongolia,41.56764,87.749664,52.154247,119.9243
+asia/South_Korea.txt,South Korea,33.10611,125.08657,38.612442,129.58466
+asia/Iran.txt,Iran,25.064087,44.047264,39.77722,63.31746
+asia/Johnston_Atoll.txt,Johnston Atoll,16.72655,-169.54349,16.741133,-169.5171
+asia/Iraq.txt,Iraq,29.103054,38.80408,37.37804,48.57591
+asia/Laos.txt,Laos,13.910021,100.093056,22.500399,107.69702
+asia/Nepal.txt,Nepal,26.356712,80.05628,30.433393,88.199326
+asia/Spratly_Islands.txt,Spratly Islands,9.679463,114.02787,11.117983,115.84897
+asia/Japan.txt,Japan,20.528774,122.938515,45.523136,145.82088
+asia/Ukraine.txt,Ukraine,44.39042,22.128899,52.375374,40.21807
+asia/Bahrain.txt,Bahrain,25.796856,50.38585,26.282597,50.66447
+asia/India.txt,India,8.069007,67.390976,35.50421,97.4033
+asia/Maldives.txt,Maldives,-0.692702,72.6839,7.098363,73.70618
+asia/Burma_Myanmar.txt,Burma Myanmar,9.60036,92.18928,28.543259,101.17678
+asia/Taiwan.txt,Taiwan,21.9018,119.30787,25.29826,122.00044
+asia/Turkmenistan.txt,Turkmenistan,35.141094,52.441433,42.79555,66.6843
+asia/Paracel_Islands.txt,Paracel Islands,15.775404,111.19325,15.789304,111.20874
+asia/Yemen.txt,Yemen,11.71359,41.816048,19.00233,54.53054
+asia/Afghanistan.txt,Afghanistan,29.377478,60.478443,38.483425,74.87943
+asia/Singapore.txt,Singapore,1.164038,103.63828,1.471272,104.09004
+asia/Hong_Kong.txt,Hong Kong,22.153242,113.83774,22.559788,114.434746
+asia/Macau.txt,Macau,22.110674,113.528946,22.222342,113.59104
+asia/Thailand.txt,Thailand,5.610009,97.34563,20.463186,105.63938
+asia/Russia.txt,Russia,41.186623,19.788958,81.26332,190.99367
+asia/Saudi_Arabia.txt,Saudi Arabia,15.614254,34.495686,32.221306,55.666588
+asia/Vietnam.txt,Vietnam,8.408259,102.14821,23.388834,109.46464
+asia/Aleutian180.txt,Aleutian180,51.349983,172.45468,53.005886,179.77849
+asia/Pakistan.txt,Pakistan,23.694683,60.878597,37.09701,77.840904
+asia/West_Bank.txt,West Bank,31.344109,34.883945,32.551567,35.575455
+asia/China.txt,China,20.228483,73.5577,53.560856,134.77393
+asia/Qatar.txt,Qatar,24.482944,50.744263,26.177586,52.427586
+asia/Georgia_Country.txt,Georgia Country,41.038513,40.01024,43.58454,46.72136
+asia/Jordan.txt,Jordan,29.185879,34.96001,33.37191,39.31893
+asia/Kuwait.txt,Kuwait,28.524614,46.557587,30.095953,48.43147
+asia/Kyrgyzstan.txt,Kyrgyzstan,39.172844,69.27662,43.238235,80.28318
+asia/Bhutan.txt,Bhutan,26.707632,88.75972,28.323778,92.1252
+asia/Sri_Lanka.txt,Sri Lanka,5.916833,79.65292,9.831354,81.88128
+asia/Philippines.txt,Philippines,4.952925,116.931564,21.12062,126.60154
+asia/Uzbekistan.txt,Uzbekistan,37.18433,55.996635,45.60519,73.13227
+asia/United_Arab_Emirates.txt,United Arab Emirates,22.497065,51.113113,26.078848,56.375072
+asia/Brunei.txt,Brunei,4.003095,114.07146,5.047173,115.35944
+asia/Lebanon.txt,Lebanon,33.053856,35.11427,34.691406,36.63919
+asia/Azerbaijan.txt,Azerbaijan,38.397045,45.0,41.90564,50.607845
+asia/Bangladesh.txt,Bangladesh,20.585249,88.028336,26.631954,92.67366
+asia/Israel.txt,Israel,29.496645,34.26801,33.28218,35.69001
+asia/Tajikistan.txt,Tajikistan,36.674137,67.38713,41.042244,75.13722
+south_america/Colombia.txt,Colombia,-4.230484,-79.047226,12.463308,-66.869835
+south_america/Ecuador.txt,Ecuador,-4.998823,-92.01077,1.664773,-75.184586
+south_america/Argentina.txt,Argentina,-55.061314,-73.57778,-21.781277,-53.591835
+south_america/Falkland_Islands.txt,Falkland Islands,-52.90058,-61.345192,-51.014946,-57.712486
+south_america/French_Guiana.txt,French Guiana,2.127094,-54.54251,5.776496,-51.61395
+south_america/Surinam.txt,Surinam,1.831145,-58.086563,6.004546,-53.977493
+south_america/Uruguay.txt,Uruguay,-34.980816,-58.442722,-30.082224,-53.073933
+south_america/Bolivia.txt,Bolivia,-22.896133,-69.64076,-9.680567,-57.458096
+south_america/Paraguay.txt,Paraguay,-27.608738,-62.647076,-19.29404,-54.259354
+south_america/Venezuela.txt,Venezuela,0.743681,-73.37431,12.201903,-59.80378
+south_america/Brazil.txt,Brazil,-33.750706,-73.985535,5.0,-34.790123
+south_america/Guyana.txt,Guyana,1.17508,-61.39627,8.557567,-56.48025
+south_america/Chile.txt,Chile,-55.979496,-75.71032,-17.507553,-66.41756
+south_america/Peru.txt,Peru,-18.349728,-81.326744,-0.012977,-68.677986
+us_complete/North_Carolina.txt,North Carolina,33.844517,-84.32187,36.588116,-75.45866
+us_complete/Indiana.txt,Indiana,37.77174,-88.0585,41.76059,-84.78458
+us_complete/Wyoming.txt,Wyoming,40.994747,-111.056885,45.0059,-104.05216
+us_complete/Utah.txt,Utah,36.997967,-114.052956,42.001568,-109.04105
+us_complete/Arizona.txt,Arizona,31.332176,-114.81399,37.00426,-109.04522
+us_complete/Montana.txt,Montana,44.35822,-116.05,49.00139,-104.039566
+us_complete/Kentucky.txt,Kentucky,36.497128,-89.57151,39.147457,-81.964966
+us_complete/California.txt,California,32.534157,-124.40959,42.009518,-114.13442
+us_complete/Kansas.txt,Kansas,36.993084,-102.05174,40.003162,-94.58993
+us_complete/Delaware.txt,Delaware,38.45101,-75.78866,39.83901,-75.04894
+us_complete/Florida.txt,Florida,24.5447,-87.63494,31.000889,-80.03136
+us_complete/Pennsylvania.txt,Pennsylvania,39.7198,-80.51989,42.26986,-74.689514
+us_complete/Iowa.txt,Iowa,40.3755,-96.6397,43.501194,-90.14006
+us_complete/Mississippi.txt,Mississippi,30.173943,-91.65501,34.99605,-88.097885
+us_complete/Illinois.txt,Illinois,36.9703,-91.51308,42.5083,-87.4965
+us_complete/Texas.txt,Texas,25.837378,-106.645645,36.500706,-93.51641
+us_complete/Connecticut.txt,Connecticut,40.98517,-73.727776,42.050587,-71.786995
+us_complete/Georgia.txt,Georgia,30.35785,-85.60516,35.00077,-80.84055
+us_complete/Maryland.txt,Maryland,37.911716,-79.48765,39.72304,-75.04894
+us_complete/Virginia.txt,Virginia,36.540737,-83.675415,39.46601,-75.24226
+us_complete/Idaho.txt,Idaho,41.988056,-117.24303,49.001144,-111.043564
+us_complete/Oregon.txt,Oregon,41.991795,-124.552444,46.271004,-116.4635
+us_complete/Vermont.txt,Vermont,42.726852,-73.43774,45.01666,-71.464554
+us_complete/Puerto_Rico.txt,Puerto Rico,17.884813,-67.95412,18.515757,-65.221115
+us_complete/Maine.txt,Maine,43.059826,-71.084335,47.459686,-66.94989
+us_complete/Oklahoma.txt,Oklahoma,33.616566,-103.00256,37.002205,-94.43121
+us_complete/Tennessee.txt,Tennessee,34.982975,-90.3103,36.678116,-81.646904
+us_complete/Alabama.txt,Alabama,30.221132,-88.47322,35.00803,-84.8909
+us_complete/Arkansas.txt,Arkansas,33.004105,-94.61792,36.4996,-89.64484
+us_complete/South_Carolina.txt,South Carolina,32.0346,-83.35324,35.2154,-78.54109
+us_complete/Washington.txt,Washington,45.54354,-124.73317,49.002495,-116.915985
+us_complete/Nebraska.txt,Nebraska,39.999996,-104.05351,43.00171,-95.30829
+us_complete/West_Virginia.txt,West Virginia,37.20148,-82.64474,40.6388,-77.719025
+us_complete/Colorado.txt,Colorado,36.992424,-109.06025,41.003445,-102.04153
+us_complete/Massachusetts.txt,Massachusetts,41.237965,-73.50814,42.88659,-69.92826
+us_complete/Missouri.txt,Missouri,35.99568,-95.774704,40.61364,-89.09884
+us_complete/Alaska.txt,Alaska,51.219864,-179.14734,71.35256,179.77847
+us_complete/North_Dakota.txt,North Dakota,45.93505,-104.0489,49.000687,-96.554504
+us_complete/Wisconsin.txt,Wisconsin,42.49192,-92.888115,47.077568,-86.80541
+us_complete/Nevada.txt,Nevada,35.002087,-120.00575,42.00221,-114.03964
+us_complete/District_of_Columbia.txt,District of Columbia,38.79151,-77.119896,38.99511,-76.90939
+us_complete/New_York.txt,New York,40.4961,-79.76215,45.01585,-71.85622
+us_complete/Rhode_Island.txt,Rhode Island,41.14634,-71.86277,42.0188,-71.120575
+us_complete/Hawaii.txt,Hawaii,18.917467,-178.3421,28.407393,-154.80939
+us_complete/South_Dakota.txt,South Dakota,42.479633,-104.0577,45.94545,-96.43659
+us_complete/Minnesota.txt,Minnesota,43.499355,-97.23921,49.384357,-89.48923
+us_complete/New_Jersey.txt,New Jersey,38.928516,-75.559616,41.35742,-73.893974
+us_complete/Michigan.txt,Michigan,41.69609,-90.41814,48.190975,-82.412964
+us_complete/New_Mexico.txt,New Mexico,31.332302,-109.05017,37.000233,-103.00197
+us_complete/New_Hampshire.txt,New Hampshire,42.696987,-72.55724,45.305477,-70.7038
+us_complete/Louisiana.txt,Louisiana,28.92501,-94.043144,33.019455,-88.81702
+us_complete/Ohio.txt,Ohio,38.403202,-84.82016,41.97752,-80.51869
+oceania/Papua_New_Guinea.txt,Papua New Guinea,-11.657854,140.84286,-0.877892,159.4782
+oceania/Fiji.txt,Fiji,-20.67597,-180.0,-12.480116,180.0
+oceania/American_Samoa.txt,American Samoa,-14.382478,-171.09189,-11.0497,-169.41608
+oceania/Christmas_Island.txt,Christmas Island,-10.575852,105.53895,-10.415787,105.71959
+oceania/Jarvis_Island.txt,Jarvis Island,-0.389006,-160.03313,-0.368995,-160.00458
+oceania/Howland_Island.txt,Howland Island,0.797775,-176.64508,0.812214,-176.63571
+oceania/Trust_Territory.txt,Trust Territory,7.32107,143.84276,7.382185,143.91847
+oceania/Kiribati.txt,Kiribati,-2.673031,172.68001,3.39172,176.85013
+oceania/Western_Samoa.txt,Western Samoa,-14.063534,-172.7986,-13.432207,-171.40932
+oceania/New_Caledonia.txt,New Caledonia,-22.714643,163.56467,-19.549765,168.95386
+oceania/Niue.txt,Niue,-19.152193,-169.951,-18.951069,-169.77518
+oceania/Solomon_Islands.txt,Solomon Islands,-12.291901,155.50862,-5.078295,168.8435
+oceania/Wake_Island.txt,Wake Island,19.269537,166.59332,19.32017,166.65453
+oceania/Baker_Island.txt,Baker Island,0.194291,-176.48479,0.206694,-176.4738
+oceania/Pitcairn_Island.txt,Pitcairn Island,-24.407063,-128.34644,-24.315866,-128.28632
+oceania/Guam.txt,Guam,13.240598,144.61925,13.652323,144.95398
+oceania/Tonga.txt,Tonga,-22.345718,-176.21263,-20.008986,-174.52077
+oceania/Cook_Islands.txt,Cook Islands,-21.944166,-159.83942,-18.826448,-157.31213
+oceania/Tuvalu.txt,Tuvalu,-9.436204,176.06487,-5.641982,179.86337
+oceania/Wallis.txt,Wallis,-14.387791,-178.20679,-13.214251,-176.12878
+oceania/French_Polynesia.txt,French Polynesia,-27.653572,-154.68817,-7.828246,-134.87834
+oceania/Norfolk_Island.txt,Norfolk Island,-29.119368,168.00798,-28.994932,168.0916
+oceania/New_Zealand.txt,New Zealand,-48.01951,166.41972,-34.13552,178.55356
+oceania/Palmyra_Atoll.txt,Palmyra Atoll,5.860231,-162.46092,5.890213,-162.41206
+oceania/Vanuatu.txt,Vanuatu,-20.24895,166.52498,-13.073441,170.23479
+oceania/Mariana.txt,Mariana,14.107359,145.12683,20.02805,146.08122
+oceania/Cocos_Islands.txt,Cocos Islands,-12.18543,96.82127,-11.803915,96.9361
+oceania/Micronesia.txt,Micronesia,5.259845,138.05281,10.022228,163.0349
+oceania/Australia.txt,Australia,-43.643974,112.911064,-10.017428,153.63924
+oceania/Nauru.txt,Nauru,-0.552322,166.89902,-0.504297,166.94527
+oceania/Republic_Of_Palau.txt,Republic Of Palau,4.312472,132.30817,7.732102,134.65372
+oceania/Indonesia.txt,Indonesia,-11.00485,95.00933,5.904409,141.0218
+africa/Benin.txt,Benin,6.225748,0.774575,12.418346,3.851701
+africa/Cameroon.txt,Cameroon,1.652548,8.494763,13.078056,16.192116
+africa/Angola.txt,Angola,-18.042076,11.679219,-4.372592,24.082119
+africa/Sudan.txt,Sudan,3.48639,21.838947,23.623577,38.580036
+africa/Gabon.txt,Gabon,-3.978806,8.695471,2.322612,14.502347
+africa/Morocco.txt,Morocco,27.662115,-13.168586,35.928017,-0.991742
+africa/Zaire.txt,Zaire,-13.455676,12.206631,5.386098,31.305912
+africa/Mali.txt,Mali,10.159513,-12.242614,25.0,4.244968
+africa/Algeria.txt,Algeria,18.960028,-8.673868,37.093735,11.979548
+africa/Lesotho.txt,Lesotho,-30.668964,27.029068,-28.572058,29.465761
+africa/Western_Sahara.txt,Western Sahara,20.774158,-17.103182,27.669674,-8.670276
+africa/Seychelles.txt,Seychelles,-9.543755,50.716152,-3.711519,56.279507
+africa/Tanzania.txt,Tanzania,-11.745696,29.327168,-0.990736,40.443222
+africa/Ghana.txt,Ghana,4.736723,-3.25542,11.173301,1.191781
+africa/Zambia.txt,Zambia,-18.079473,21.99937,-8.22436,33.705704
+africa/Mauritius.txt,Mauritius,-20.525717,57.302628,-16.743279,59.57663
+africa/Congo.txt,Congo,-5.028313,11.205009,3.703082,18.64984
+africa/Senegal.txt,Senegal,12.307275,-17.535236,16.691633,-11.355887
+africa/Guinea_Bissau.txt,Guinea Bissau,10.85997,-16.717535,12.680788,-13.636522
+africa/Namibia.txt,Namibia,-28.97143,11.71563,-16.959894,25.2567
+africa/South_Africa.txt,South Africa,-34.83983,16.458021,-22.126612,32.895973
+africa/Central_African_Republic.txt,Central African Republic,2.220514,14.420097,11.007569,27.46342
+africa/Ethiopia.txt,Ethiopia,3.402422,32.99994,18.003086,47.98618
+africa/Burundi.txt,Burundi,-4.465713,28.993061,-2.310123,30.847729
+africa/Guinea.txt,Guinea,7.193552,-15.086256,12.67622,-7.641071
+africa/Egypt.txt,Egypt,21.72539,24.6981,31.667345,35.817833
+africa/Chad.txt,Chad,7.441068,13.473475,23.450369,24.00266
+africa/Somalia.txt,Somalia,-1.662053,40.988632,11.985203,51.413033
+africa/Madagascar.txt,Madagascar,-25.60895,43.19138,-11.945433,50.48378
+africa/Sierra_Leone.txt,Sierra Leone,6.928689,-13.307631,10.0,-10.284238
+africa/Ivory_Coast.txt,Ivory Coast,4.357067,-8.599302,10.736642,-2.494897
+africa/Equatorial_Guinea.txt,Equatorial Guinea,0.872849,8.423114,3.78598,11.335724
+africa/Libya.txt,Libya,19.508043,9.38702,33.169006,25.15062
+africa/Comoro.txt,Comoro,-12.413821,43.21579,-11.362382,44.538223
+africa/Cape_Verde.txt,Cape Verde,14.802214,-25.358747,17.197178,-22.669443
+africa/Tromelin_Island.txt,Tromelin Island,-15.89351,54.51356,-15.879728,54.526962
+africa/Gambia.txt,Gambia,13.064252,-16.825079,13.826571,-13.797793
+africa/Malawi.txt,Malawi,-17.125,32.67395,-9.367541,35.91682
+africa/Mozam.txt,Mozam,-26.868685,30.21732,-10.471884,40.84447
+africa/Nigeria.txt,Nigeria,4.277144,2.668432,13.892007,14.680073
+africa/Tunisia.txt,Tunisia,30.24043,7.524827,37.54393,11.59827
+africa/Reunion.txt,Reunion,-21.372211,55.219086,-20.856855,55.84504
+africa/Sao_Tome_And_Principe.txt,Sao Tome And Principe,-0.014004,6.47017,1.701323,7.466374
+africa/Togo.txt,Togo,6.104417,-0.147324,11.138977,1.806693
+africa/Niger.txt,Niger,11.696975,0.16625,23.525028,15.995643
+africa/Rwanda.txt,Rwanda,-2.840679,28.856794,-1.053481,30.895958
+africa/Kenya.txt,Kenya,-4.678047,33.90886,4.629333,41.89908
+africa/Djibouti.txt,Djibouti,10.909915,41.77344,12.706836,43.41698
+africa/Liberia.txt,Liberia,4.353057,-11.492083,8.551791,-7.365113
+africa/Burkina_Faso.txt,Burkina Faso,9.401108,-5.518916,15.082593,2.405395
+africa/Mauritania.txt,Mauritania,14.715546,-17.06652,27.298073,-4.835202
+africa/Botswana.txt,Botswana,-26.907246,19.999535,-17.780813,29.36078
+africa/Swaziland.txt,Swaziland,-27.3171,30.794107,-25.719648,32.13726
+africa/Mayotte.txt,Mayotte,-13.000132,45.014618,-12.633837,45.29295
+africa/Uganda.txt,Uganda,-1.48405,29.573252,4.214427,35.03605
+africa/Zimbabwe.txt,Zimbabwe,-22.417738,25.237028,-15.608834,33.056305
+africa/Juan.txt,Juan,-17.06314,42.71862,-17.048178,42.759262
+africa/Saint_Helena.txt,Saint Helena,-16.020315,-5.792052,-15.89719,-5.638753
+europe/Gibraltar.txt,Gibraltar,36.112404,-5.357257,36.159798,-5.339652
+europe/Cyprus.txt,Cyprus,34.56351,32.273087,35.701538,34.59792
+europe/Jan_Mayen.txt,Jan Mayen,70.82737,-9.079889,71.16384,-7.920997
+europe/Portugal.txt,Portugal,36.961258,-9.495944,42.145645,-6.18269
+europe/Iceland.txt,Iceland,63.286755,-24.546524,66.563774,-13.495815
+europe/Malta.txt,Malta,35.81029,14.191582,36.082016,14.577627
+europe/Greece.txt,Greece,34.80964,19.37444,41.757412,28.246399
+europe/Austria.txt,Austria,46.37804,9.535914,49.017063,17.162727
+europe/Netherlands.txt,Netherlands,50.75393,3.36255,53.625237,7.227938
+europe/Sweden.txt,Sweden,55.337124,10.986734,69.0625,24.163282
+europe/Yugoslavia.txt,Yugoslavia,40.860203,13.383071,46.877914,23.038143
+europe/Monaco.txt,Monaco,43.73196,7.395747,43.769516,7.452286
+europe/Andorra.txt,Andorra,42.43509,1.422104,42.658707,1.780386
+europe/Ireland.txt,Ireland,51.424545,-10.618123,55.436504,-6.002382
+europe/Luxembourg.txt,Luxembourg,49.446575,5.73455,50.18495,6.52846
+europe/Liechtenstein.txt,Liechtenstein,47.05586,9.477816,47.27354,9.63219
+europe/Poland.txt,Poland,49.006367,14.122989,54.839138,24.150745
+europe/Svalbard.txt,Svalbard,76.43629,10.490713,80.83405,33.497093
+europe/Jersey.txt,Jersey,49.16983,-2.260019,49.26506,-2.022094
+europe/Bulgaria.txt,Bulgaria,41.242073,22.371159,44.217648,28.61216
+europe/France.txt,France,41.338783,-5.142231,51.09281,9.561553
+europe/Lithuania.txt,Lithuania,53.901302,20.941515,56.4469,26.871943
+europe/Isle_Of_Man.txt,Isle Of Man,54.04464,-4.830181,54.41973,-4.3115
+europe/Romania.txt,Romania,43.627293,20.26995,48.266937,29.691048
+europe/Hungary.txt,Hungary,45.743607,16.111889,48.585655,22.90599
+europe/Faeroe_Islands.txt,Faeroe Islands,61.394936,-7.681248,62.400745,-6.25861
+europe/United_Kingdom.txt,United Kingdom,49.70869,-8.650678,60.8458,1.759002
+europe/Belarus.txt,Belarus,51.256405,23.176876,56.165806,32.770798
+europe/Switzerland.txt,Switzerland,45.825695,5.957461,47.805336,10.491468
+europe/Albania.txt,Albania,39.648357,19.275616,42.665615,21.06846
+europe/Spain.txt,Spain,35.18528,-9.290776,43.79172,4.315392
+europe/Czech_Republic.txt,Czech Republic,47.728107,12.096195,51.058887,22.57044
+europe/Belgium.txt,Belgium,49.493614,2.546947,51.505436,6.403867
+europe/Guernsey.txt,Guernsey,49.41278,-2.682483,49.514698,-2.351274
+europe/Norway.txt,Norway,57.96658,4.650158,71.18811,31.138197
+europe/Denmark.txt,Denmark,54.56238,8.075603,57.74841,15.158836
+europe/Italy.txt,Italy,35.492207,6.614898,47.095207,18.513453
+europe/Republic_of_Moldova.txt,Republic of Moldova,45.468903,26.618887,48.49017,30.16374
+europe/San_Marino.txt,San Marino,43.897907,12.401868,43.999805,12.515565
+europe/Germany.txt,Germany,47.275787,5.865627,55.05565,15.0
+europe/Estonia.txt,Estonia,57.51619,21.773455,59.687958,28.214777

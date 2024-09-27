@@ -53,7 +53,13 @@ public class ConstrainedCPTParameterEditor extends AbstractParameterEditor<CPT> 
 
 	@Override
 	public void setEnabled(boolean enabled) {
-		combo.setEnabled(enabled);
+		if (combo != null)
+			combo.setEnabled(enabled);
+	}
+	
+	@Override
+	public boolean isEnabled() {
+		return combo != null && combo.isEnabled();
 	}
 	
 	private ListBasedConstraint<CPT> getListConst() {

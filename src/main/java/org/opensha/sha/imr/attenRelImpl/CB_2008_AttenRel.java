@@ -112,20 +112,20 @@ public class CB_2008_AttenRel extends AttenuationRelationship implements
 	private boolean magSaturation;
 
 	// values for warning parameters
-	protected final static Double MAG_WARN_MIN = new Double(4.0);
-	protected final static Double MAG_WARN_MAX = new Double(8.5);
-	protected final static Double DISTANCE_RUP_WARN_MIN = new Double(0.0);
-	protected final static Double DISTANCE_RUP_WARN_MAX = new Double(200.0);
-	protected final static Double DISTANCE_MINUS_WARN_MIN = new Double(0.0);
-	protected final static Double DISTANCE_MINUS_WARN_MAX = new Double(50.0);
-	protected final static Double VS30_WARN_MIN = new Double(150.0);
-	protected final static Double VS30_WARN_MAX = new Double(1500.0);
-	protected final static Double DEPTH_2pt5_WARN_MIN = new Double(0);
-	protected final static Double DEPTH_2pt5_WARN_MAX = new Double(10);
-	protected final static Double DIP_WARN_MIN = new Double(15);
-	protected final static Double DIP_WARN_MAX = new Double(90);
-	protected final static Double RUP_TOP_WARN_MIN = new Double(0);
-	protected final static Double RUP_TOP_WARN_MAX = new Double(15);
+	protected final static Double MAG_WARN_MIN = Double.valueOf(4.0);
+	protected final static Double MAG_WARN_MAX = Double.valueOf(8.5);
+	protected final static Double DISTANCE_RUP_WARN_MIN = Double.valueOf(0.0);
+	protected final static Double DISTANCE_RUP_WARN_MAX = Double.valueOf(200.0);
+	protected final static Double DISTANCE_MINUS_WARN_MIN = Double.valueOf(0.0);
+	protected final static Double DISTANCE_MINUS_WARN_MAX = Double.valueOf(50.0);
+	protected final static Double VS30_WARN_MIN = Double.valueOf(150.0);
+	protected final static Double VS30_WARN_MAX = Double.valueOf(1500.0);
+	protected final static Double DEPTH_2pt5_WARN_MIN = Double.valueOf(0);
+	protected final static Double DEPTH_2pt5_WARN_MAX = Double.valueOf(10);
+	protected final static Double DIP_WARN_MIN = Double.valueOf(15);
+	protected final static Double DIP_WARN_MAX = Double.valueOf(90);
+	protected final static Double RUP_TOP_WARN_MIN = Double.valueOf(0);
+	protected final static Double RUP_TOP_WARN_MAX = Double.valueOf(15);
 
 	// style of faulting options
 	public final static String FLT_TYPE_STRIKE_SLIP = "Strike-Slip";
@@ -164,7 +164,7 @@ public class CB_2008_AttenRel extends AttenuationRelationship implements
 		initSupportedIntensityMeasureParams();
 		indexFromPerHashMap = new HashMap();
 		for (int i = 3; i < per.length; i++) {
-			indexFromPerHashMap.put(new Double(per[i]), new Integer(i));
+			indexFromPerHashMap.put(Double.valueOf(per[i]), Integer.valueOf(i));
 		}
 
 		initEqkRuptureParams();
@@ -491,7 +491,7 @@ public class CB_2008_AttenRel extends AttenuationRelationship implements
 		// Create saParam:
 		DoubleDiscreteConstraint periodConstraint = new DoubleDiscreteConstraint();
 		for (int i = 3; i < per.length; i++) {
-			periodConstraint.addDouble(new Double(per[i]));
+			periodConstraint.addDouble(Double.valueOf(per[i]));
 		}
 		periodConstraint.setNonEditable();
 		saPeriodParam = new PeriodParam(periodConstraint);

@@ -31,7 +31,13 @@ public class FileParameterEditor extends AbstractParameterEditor<File> implement
 	
 	@Override
 	public void setEnabled(boolean isEnabled) {
-		browseButton.setEnabled(isEnabled);
+		if (browseButton != null)
+			browseButton.setEnabled(isEnabled);
+	}
+	
+	@Override
+	public boolean isEnabled() {
+		return browseButton != null && browseButton.isEnabled();
 	}
 
 	private JButton getBrowseButton() {

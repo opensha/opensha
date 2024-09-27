@@ -5,11 +5,12 @@ import org.junit.runners.Suite;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-	UniqueRuptureTest.class,
+		UniqueRuptureTest.class,
+		SectIDRangeTest.class
 	})
 
 public class RuptureUtilTestSuite {
 	public static void main(String args[]) {
-		org.junit.runner.JUnitCore.runClasses(RuptureUtilTestSuite.class);
+		org.junit.runner.JUnitCore.runClasses(RuptureUtilTestSuite.class, SectIDRangeTest.class);
 	}
 }

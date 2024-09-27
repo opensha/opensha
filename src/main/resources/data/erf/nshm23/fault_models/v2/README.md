@@ -7,7 +7,7 @@ Manual updates since v2 release:
 * Updated dip of various Wasatch fault dips, see e-mail "Re: Consensus on revised Salt Lake City segment dip" on 10/30/2022
 * Updated lower depth of West Valley fault to 5 km on 11/10/2022 after consensus from geologic review
 * Removed Cheraw fault on 1/10/2022, considered a CEUS fault as it's east of the -104 longitude model boundary
-* Updated lower depth of Pitas Point to 15km on 9/26/2023
+* ~Updated lower depth of Pitas Point to 15km on 9/26/2023~ This has been reverted, now done in v3
 
 Special Faults file (special_faults.json) consists of:
 

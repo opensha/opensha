@@ -12,8 +12,8 @@ public class StressDropParam extends WarningDoubleParameter {
 	public final static String NAME = "Stress Drop";
 	public final static String UNITS = "bar";
 	public final static String INFO = "Rupture Stress Drop";
-	public final static Double MIN = new Double(0.0);		// Test
-	public final static Double MAX = new Double(1000.0); 	// Test
+	public final static Double MIN = Double.valueOf(0.0);		// Test
+	public final static Double MAX = Double.valueOf(1000.0); 	// Test
 	// warning values are set in subclasses
 	private static double defaultValue = 140.0;
 

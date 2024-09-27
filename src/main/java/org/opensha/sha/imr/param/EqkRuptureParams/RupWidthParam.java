@@ -12,8 +12,8 @@ public class RupWidthParam extends WarningDoubleParameter {
 	public final static String NAME = "Down-Dip Width";
 	public final static String UNITS = "km";
 	public final static String INFO = "Down-dip width of the rupture";
-	public final static Double MIN = new Double(0.0);
-	public final static Double MAX = new Double(200.0);
+	public final static Double MIN = Double.valueOf(0.0);
+	public final static Double MAX = Double.valueOf(200.0);
 	// warning values are set in subclasses
 
 	/**

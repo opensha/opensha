@@ -132,7 +132,7 @@ public class PointEqkSource extends ProbEqkSource implements java.io.Serializabl
 
 		// add the one magnitude to the mags list
 		mags = new ArrayList();
-		mags.add(new Double(magnitude));
+		mags.add(Double.valueOf(magnitude));
 
 		this.isPoissonian = false;
 		this.probability = probability;
@@ -172,10 +172,10 @@ public class PointEqkSource extends ProbEqkSource implements java.io.Serializabl
 			IncrementalMagFreqDist magFreqDist = magFreqDists[i];
 			for (int m=0; m<magFreqDist.size(); m++){
 				if(magFreqDist.getY(m) > 0 && magFreqDist.getX(m) >= minMag){
-					mags.add(new Double(magFreqDist.getX(m)));
-					rates.add(new Double(magFreqDist.getY(m)));
-					rakes.add(new Double(focalMech.getRake()));
-					dips.add(new Double(focalMech.getDip()));
+					mags.add(Double.valueOf(magFreqDist.getX(m)));
+					rates.add(Double.valueOf(magFreqDist.getY(m)));
+					rakes.add(Double.valueOf(focalMech.getRake()));
+					dips.add(Double.valueOf(focalMech.getDip()));
 				}
 			}
 		}
@@ -194,8 +194,8 @@ public class PointEqkSource extends ProbEqkSource implements java.io.Serializabl
 		rates = new ArrayList();
 		for (int i=0; i<magFreqDist.size(); ++i){
 			if(magFreqDist.getY(i) > 0 && magFreqDist.getX(i) >= minMag){
-				mags.add(new Double(magFreqDist.getX(i)));
-				rates.add(new Double(magFreqDist.getY(i)));
+				mags.add(Double.valueOf(magFreqDist.getX(i)));
+				rates.add(Double.valueOf(magFreqDist.getY(i)));
 			}
 		}
 

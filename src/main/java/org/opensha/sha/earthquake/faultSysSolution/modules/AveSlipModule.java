@@ -18,7 +18,7 @@ import com.google.common.base.Preconditions;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
 
 public abstract class AveSlipModule implements SubModule<FaultSystemRupSet>, BranchAverageableModule<AveSlipModule>,
-SplittableRuptureSubSetModule<AveSlipModule> {
+SplittableRuptureModule<AveSlipModule> {
 	
 	FaultSystemRupSet rupSet;
 
@@ -156,7 +156,14 @@ SplittableRuptureSubSetModule<AveSlipModule> {
 			return new ModelBased(rupSubSet, scale);
 		}
 
+		@Override
+		public ModelBased getForSplitRuptureSet(FaultSystemRupSet splitRupSet, RuptureSetSplitMappings mappings) {
+			return new ModelBased(splitRupSet, scale);
+		}
+		
 	}
+	
+	public static final String DATA_FILE_NAME = "average_slips.csv";
 
 	public static class Precomputed extends AveSlipModule implements CSV_BackedModule {
 
@@ -185,7 +192,7 @@ SplittableRuptureSubSetModule<AveSlipModule> {
 
 		@Override
 		public String getFileName() {
-			return "average_slips.csv";
+			return DATA_FILE_NAME;
 		}
 
 		@Override
@@ -282,6 +289,16 @@ SplittableRuptureSubSetModule<AveSlipModule> {
 				filteredAveSlips[r] = aveSlips[origID];
 			}
 			return new Precomputed(rupSubSet, filteredAveSlips);
+		}
+
+		@Override
+		public AveSlipModule getForSplitRuptureSet(FaultSystemRupSet splitRupSet, RuptureSetSplitMappings mappings) {
+			double[] splitAveSlips = new double[splitRupSet.getNumRuptures()];
+			for (int r=0; r<splitRupSet.getNumRuptures(); r++) {
+				int origID = mappings.getOrigRupID(r);
+				splitAveSlips[r] = aveSlips[origID] * mappings.getNewRupWeight(r);
+			}
+			return new Precomputed(splitRupSet, splitAveSlips);
 		}
 
 	}

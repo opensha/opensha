@@ -282,7 +282,7 @@ public class IM_EventSetCalc
         BACK_SEIS_NAME).setValue(WGCEP_UCERF1_EqkRupForecast.BACK_SEIS_EXCLUDE);
 
     forecast.getAdjustableParameterList().getParameter(
-        WGCEP_UCERF1_EqkRupForecast.TIME_DEPENDENT_PARAM_NAME).setValue(new Boolean(false));
+        WGCEP_UCERF1_EqkRupForecast.TIME_DEPENDENT_PARAM_NAME).setValue(Boolean.valueOf(false));
 
     forecast.getTimeSpan().setDuration(1.0);
 
@@ -324,13 +324,13 @@ public class IM_EventSetCalc
     if (forecast instanceof Frankel02_AdjustableEqkRupForecast){
       forecast.getAdjustableParameterList().getParameter(
           Frankel02_AdjustableEqkRupForecast.
-          RUP_OFFSET_PARAM_NAME).setValue(new Double(rupOffset));
+          RUP_OFFSET_PARAM_NAME).setValue(Double.valueOf(rupOffset));
       forecast.updateForecast();
     }
     else{
       forecast.getAdjustableParameterList().getParameter(
           Frankel02_AdjustableEqkRupForecast.
-          RUP_OFFSET_PARAM_NAME).setValue(new Double(rupOffset));
+          RUP_OFFSET_PARAM_NAME).setValue(Double.valueOf(rupOffset));
       forecast.updateForecast();
     }
 
@@ -466,7 +466,7 @@ public class IM_EventSetCalc
       if (numTokens == 2) {
         pd = st.nextToken().trim();
         if (pd != null && !pd.equals(""))
-            imr.getParameter(PeriodParam.NAME).setValue(new Double(Double.parseDouble(pd)));
+            imr.getParameter(PeriodParam.NAME).setValue(Double.valueOf(Double.parseDouble(pd)));
         meanSigmaFile = new FileWriter(fileNamePrefixCommon + "_" +
                                        imt + "_" + pd + ".txt");
       }

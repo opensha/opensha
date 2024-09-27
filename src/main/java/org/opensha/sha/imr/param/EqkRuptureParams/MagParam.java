@@ -12,8 +12,8 @@ public class MagParam extends WarningDoubleParameter {
 
 	public final static String NAME = "Magnitude";
 	public final static String INFO = "Earthquake Moment Magnatude";
-	protected final static Double MIN = new Double(0);
-	protected final static Double MAX = new Double(10);
+	protected final static Double MIN = Double.valueOf(0);
+	protected final static Double MAX = Double.valueOf(10);
 	// warning values are set in subclasses
 	
 	/**

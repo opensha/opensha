@@ -60,13 +60,13 @@ public class DiscreteSet implements SetAPI {
 		// Create a Vector initially containing all of this sets values
 		Vector<Double> unionSet = new Vector<Double>();
 		for(int i = 0; i < values.length; ++i) {
-			unionSet.add(new Double(values[i]));
+			unionSet.add(Double.valueOf(values[i]));
 		}
 
 		// Add any new values from the "otherVals" array
 		for(int i = 0; i < otherVals.length; ++i) {
 			if((Arrays.binarySearch(values, otherVals[i])) < 0) {
-				unionSet.add(new Double(otherVals[i]));
+				unionSet.add(Double.valueOf(otherVals[i]));
 			}
 		}
 

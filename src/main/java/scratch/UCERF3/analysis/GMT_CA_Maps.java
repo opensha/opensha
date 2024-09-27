@@ -455,7 +455,7 @@ public class GMT_CA_Maps {
 	public static void testMakeUCERF2_Fig35(String dirName) throws IOException {
 		
 		MeanUCERF2 meanUCERF2 = new MeanUCERF2();
-		meanUCERF2.setParameter(UCERF2.RUP_OFFSET_PARAM_NAME, new Double(5.0));
+		meanUCERF2.setParameter(UCERF2.RUP_OFFSET_PARAM_NAME, Double.valueOf(5.0));
 		meanUCERF2.getParameter(UCERF2.PROB_MODEL_PARAM_NAME).setValue(MeanUCERF2.PROB_MODEL_WGCEP_PREF_BLEND);	
 		meanUCERF2.setParameter(UCERF2.BACK_SEIS_NAME, UCERF2.BACK_SEIS_INCLUDE);
 		meanUCERF2.setParameter(UCERF2.BACK_SEIS_RUP_NAME, UCERF2.BACK_SEIS_RUP_CROSSHAIR);
@@ -505,7 +505,7 @@ public class GMT_CA_Maps {
 	public static void testMakeUCERF2_Fig19(String dirName) throws IOException {
 		
 		MeanUCERF2 meanUCERF2 = new MeanUCERF2();
-		meanUCERF2.setParameter(UCERF2.RUP_OFFSET_PARAM_NAME, new Double(5.0));
+		meanUCERF2.setParameter(UCERF2.RUP_OFFSET_PARAM_NAME, Double.valueOf(5.0));
 		meanUCERF2.getParameter(UCERF2.PROB_MODEL_PARAM_NAME).setValue(MeanUCERF2.PROB_MODEL_WGCEP_PREF_BLEND);	
 		meanUCERF2.setParameter(UCERF2.BACK_SEIS_NAME, UCERF2.BACK_SEIS_ONLY);
 		meanUCERF2.setParameter(UCERF2.BACK_SEIS_RUP_NAME, UCERF2.BACK_SEIS_RUP_CROSSHAIR);
@@ -532,7 +532,7 @@ public class GMT_CA_Maps {
 	public static void tempTestUCERF2(String dirName) throws IOException {
 		
 		MeanUCERF2 meanUCERF2 = new MeanUCERF2();
-		meanUCERF2.setParameter(UCERF2.RUP_OFFSET_PARAM_NAME, new Double(5.0));
+		meanUCERF2.setParameter(UCERF2.RUP_OFFSET_PARAM_NAME, Double.valueOf(5.0));
 		meanUCERF2.getParameter(UCERF2.PROB_MODEL_PARAM_NAME).setValue(MeanUCERF2.PROB_MODEL_WGCEP_PREF_BLEND);	
 		meanUCERF2.setParameter(UCERF2.BACK_SEIS_NAME, UCERF2.BACK_SEIS_INCLUDE);
 		meanUCERF2.setParameter(UCERF2.BACK_SEIS_RUP_NAME, UCERF2.BACK_SEIS_RUP_POINT);

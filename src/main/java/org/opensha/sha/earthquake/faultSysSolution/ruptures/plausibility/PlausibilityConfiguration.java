@@ -31,9 +31,6 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.co
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.path.PathPlausibilityFilter.*;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.*;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayLengthFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.TotalAzimuthChangeFilter;
-import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.U3CompatibleCumulativeRakeChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy.ConnStratTypeAdapter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.DistCutoffClosestSectClusterConnectionStrategy;
@@ -296,6 +293,11 @@ BranchAverageableModule<PlausibilityConfiguration> {
 			return this;
 		}
 		
+		public Builder noProxyConnections() {
+			filters.add(new NoProxyFaultConnectionsFilter());
+			return this;
+		}
+		
 		public Builder cumulativeAzChange(float threshold) {
 			return cumulativeAzChange(new JumpAzimuthChangeFilter.SimpleAzimuthCalc(distAzCalc), threshold);
 		}
@@ -340,6 +342,11 @@ BranchAverageableModule<PlausibilityConfiguration> {
 		
 		public Builder maxNumClusters(int maxNumClusters) {
 			filters.add(new NumClustersFilter(maxNumClusters));
+			return this;
+		}
+		
+		public Builder minAspectRatio(float threshold, boolean allowIfNoDirect, boolean allowChained) {
+			filters.add(new AspectRatioFilter(threshold, allowIfNoDirect, allowChained, connectionStrategy));
 			return this;
 		}
 		

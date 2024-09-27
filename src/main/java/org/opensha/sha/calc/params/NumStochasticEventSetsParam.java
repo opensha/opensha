@@ -14,7 +14,7 @@ public class NumStochasticEventSetsParam extends IntegerParameter {
 	public final static String INFO = "Number of stochastic event sets for those types of calculations";
 	public final static int MIN = 1;
 	public final static int MAX = Integer.MAX_VALUE;
-	public final static Integer DEFAULT = new Integer(1);
+	public final static Integer DEFAULT = Integer.valueOf(1);
 
 	public NumStochasticEventSetsParam() throws ConstraintException {
 		super(NAME, MIN, MAX, DEFAULT);

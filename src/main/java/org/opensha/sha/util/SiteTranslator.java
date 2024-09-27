@@ -599,15 +599,15 @@ implements java.io.Serializable {
 			if (data.getDataType().equals(SiteData.TYPE_WILLS_CLASS)) {
 				String wc = (String)data.getValue();
 				if (wc.equals(WillsMap2000.WILLS_DE) || wc.equals(WillsMap2000.WILLS_D) || wc.equals(WillsMap2000.WILLS_CD)) {
-					setValueIgnoreWarning(param, new Double(5.0));
+					setValueIgnoreWarning(param, Double.valueOf(5.0));
 					return true;
 				}
 				else if (wc.equals(WillsMap2000.WILLS_C)) {
-					setValueIgnoreWarning(param, new Double(1.0));
+					setValueIgnoreWarning(param, Double.valueOf(1.0));
 					return true;
 				}
 				else if (wc.equals(WillsMap2000.WILLS_BC) || wc.equals(WillsMap2000.WILLS_B)) {
-					setValueIgnoreWarning(param, new Double(0.0));
+					setValueIgnoreWarning(param, Double.valueOf(0.0));
 					return true;
 				}
 			} else if (data.getDataType().equals(SiteData.TYPE_DEPTH_TO_2_5)) {
@@ -811,16 +811,16 @@ implements java.io.Serializable {
 			if (data.getDataType().equals(SiteData.TYPE_VS30)) {
 				Double vsVal = (Double)data.getValue();
 				if (isVS30ValueValid(vsVal)) {
-					param.setValue(new Boolean(vsVal < 180));
+					param.setValue(Boolean.valueOf(vsVal < 180));
 					return true;
 				}
 				return false;
 			} else if (data.getDataType().equals(SiteData.TYPE_WILLS_CLASS)) {
 				String wc = (String)data.getValue();
 				if (wc.equals(WillsMap2000.WILLS_E))
-					param.setValue(new Boolean(true));
+					param.setValue(Boolean.valueOf(true));
 				else
-					param.setValue(new Boolean(false));
+					param.setValue(Boolean.valueOf(false));
 				return true;
 			}
 		}

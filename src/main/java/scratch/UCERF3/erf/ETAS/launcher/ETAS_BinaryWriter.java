@@ -2,6 +2,7 @@ package scratch.UCERF3.erf.ETAS.launcher;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
+import java.io.Closeable;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,7 +29,7 @@ import scratch.UCERF3.erf.ETAS.ETAS_SimulationMetadata;
 import scratch.UCERF3.erf.ETAS.launcher.ETAS_Config.BinaryFilteredOutputConfig;
 import scratch.UCERF3.erf.ETAS.launcher.util.ETAS_CatalogIteration;
 
-class ETAS_BinaryWriter {
+class ETAS_BinaryWriter implements Closeable {
 	
 	private List<InProgressWriter> writers;
 	
@@ -114,12 +115,13 @@ class ETAS_BinaryWriter {
 				writer.dOut.flush();
 	}
 	
-	public void finalize() throws IOException {
+	@Override
+	public void close()  throws IOException {
 		for (InProgressWriter writer : writers)
-			writer.finalize();
+			writer.close();
 	}
 	
-	private class InProgressWriter {
+	private class InProgressWriter implements Closeable {
 		
 		private File inProgressFile;
 		private File destFile;
@@ -218,7 +220,8 @@ class ETAS_BinaryWriter {
 //			dOut.flush();
 		}
 		
-		public void finalize() throws IOException {
+		@Override
+		public void close() throws IOException {
 			dOut.close();
 			Files.move(inProgressFile, destFile);
 		}
@@ -258,7 +261,7 @@ class ETAS_BinaryWriter {
 			}
 		});
 		
-		writer.finalize();
+		writer.close();
 		System.out.println("Finished binary consolidation of "+numProcessed+" catalogs");
 	}
 

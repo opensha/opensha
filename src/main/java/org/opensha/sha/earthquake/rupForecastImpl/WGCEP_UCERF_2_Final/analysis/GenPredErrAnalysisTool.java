@@ -76,7 +76,7 @@ public class GenPredErrAnalysisTool {
 						fw.write(magAreaRelParam.getValue()+"\t"+slipModelParam.getValue()+"\t"+models[irup]+"\n");
 						System.out.println(magAreaRelParam.getValue()+"\t"+slipModelParam.getValue()+"\t"+models[irup]+"\n");
 						double aPrioriWt = 0;
-						this.ucerf2.setParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME,new Double(aPrioriWt));
+						this.ucerf2.setParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME,Double.valueOf(aPrioriWt));
 						ucerf2.updateForecast();
 						// do the 0.0 case
 						aFaultSourceGenerators = ucerf2.get_A_FaultSourceGenerators();
@@ -97,7 +97,7 @@ public class GenPredErrAnalysisTool {
 						for(int pow=-20; pow<16;pow++) {
 							aPrioriWt = Math.pow(10,pow);
 							fw.write("1E"+pow+"\t");
-							ucerf2.setParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME,new Double(aPrioriWt));
+							ucerf2.setParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME,Double.valueOf(aPrioriWt));
 							ucerf2.updateForecast();
 							aFaultSourceGenerators = ucerf2.get_A_FaultSourceGenerators();
 							// do for each fault
@@ -185,7 +185,7 @@ public class GenPredErrAnalysisTool {
 		int minPow = -20;
 		int pow1,pow2,pow3;
 		double aPrioriWt = Math.pow(10,pow);
-		ucerf2.setParameter(ucerf2.REL_A_PRIORI_WT_PARAM_NAME,new Double(aPrioriWt));
+		ucerf2.setParameter(ucerf2.REL_A_PRIORI_WT_PARAM_NAME,Double.valueOf(aPrioriWt));
 		ucerf2.updateForecast();
 		double lastError = ucerf2.getNonNormalizedA_PrioriRateErr();
 		double newError, fractChange;
@@ -193,7 +193,7 @@ public class GenPredErrAnalysisTool {
 		while (noChange  && pow >= minPow) {
 			pow -= 1;
 			aPrioriWt = Math.pow(10,pow);
-			ucerf2.setParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME,new Double(aPrioriWt));
+			ucerf2.setParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME,Double.valueOf(aPrioriWt));
 			ucerf2.updateForecast();
 			newError = ucerf2.getNonNormalizedA_PrioriRateErr();
 			fractChange = Math.abs((lastError-newError)/lastError);
@@ -206,7 +206,7 @@ public class GenPredErrAnalysisTool {
 		while (!noChange  && pow >= minPow) {
 			pow -= 1;
 			aPrioriWt = Math.pow(10,pow);
-			ucerf2.setParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME,new Double(aPrioriWt));
+			ucerf2.setParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME,Double.valueOf(aPrioriWt));
 			ucerf2.updateForecast();
 			newError = ucerf2.getNonNormalizedA_PrioriRateErr();
 			fractChange = Math.abs((lastError-newError)/lastError);
@@ -219,7 +219,7 @@ public class GenPredErrAnalysisTool {
 		while (noChange && pow >= minPow) {
 			pow -=1;
 			aPrioriWt = Math.pow(10,pow);
-			ucerf2.setParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME,new Double(aPrioriWt));
+			ucerf2.setParameter(UCERF2.REL_A_PRIORI_WT_PARAM_NAME,Double.valueOf(aPrioriWt));
 			ucerf2.updateForecast();
 			newError = ucerf2.getNonNormalizedA_PrioriRateErr();
 			fractChange = Math.abs((lastError-newError)/lastError);
@@ -247,7 +247,7 @@ public class GenPredErrAnalysisTool {
 		analysisTool.writeResults("PredErrAnalysisResults1.txt");
 		analysisTool.writeAllStableRanges("PredErrStableRangeAnalysis1.txt");
 /**/
-		ucerf2.setParameter(UCERF2.REL_SEG_RATE_WT_PARAM_NAME,new Double(1.0));
+		ucerf2.setParameter(UCERF2.REL_SEG_RATE_WT_PARAM_NAME,Double.valueOf(1.0));
 		analysisTool.writeAllStableRanges("PredErrStableRangeAnalysis2.txt");
 		analysisTool.writeResults("PredErrAnalysisResults2.txt");
 

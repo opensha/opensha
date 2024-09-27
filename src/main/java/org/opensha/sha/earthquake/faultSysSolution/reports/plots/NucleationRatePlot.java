@@ -14,6 +14,7 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.gui.plot.GeographicMapMaker;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ClassUtils;
@@ -47,13 +48,13 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		double maxMag = rupSet.getMaxMag();
 		
 		GridSourceProvider gridProv = sol.requireModule(GridSourceProvider.class);
+		GriddedRegion gridReg = getProvRegion(gridProv);
 		FaultGridAssociations faultAssoc = rupSet.getModule(FaultGridAssociations.class);
 		boolean intersectionAssoc = false;
 		if (faultAssoc == null) {
 			intersectionAssoc = true;
-			faultAssoc = FaultGridAssociations.getIntersectionAssociations(rupSet, gridProv.getGriddedRegion());
+			faultAssoc = FaultGridAssociations.getIntersectionAssociations(rupSet, gridReg);
 		}
-		GriddedRegion gridReg = gridProv.getGriddedRegion();
 		for (int i=0; i<gridReg.getNodeCount(); i++) {
 			IncrementalMagFreqDist mfd = gridProv.getMFD(i);
 			if (mfd != null)
@@ -65,7 +66,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		List<String> lines = new ArrayList<>();
 		lines.add("The gridded seismicity model attached to this solution is of type _"
 		+ClassUtils.getClassNameWithoutPackage(gridProv.getClass())+"_ and has a spatial resolution of "
-				+(float)gridProv.getGriddedRegion().getSpacing()+" degrees.");
+				+(float)gridReg.getSpacing()+" degrees.");
 		lines.add("");
 		lines.add("The following maps show the faulting type at each grid cell from the gridded seismicity model:");
 		lines.add("");
@@ -156,17 +157,16 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		List<IncrementalMagFreqDist> compSolNuclMFDs = null;
 		if (meta.hasComparisonSol()) {
 			compGridProv = meta.comparison.sol.getGridSourceProvider();
+			GriddedRegion compGridReg = getProvRegion(compGridProv);
 			if (compGridProv != null) {
 				// make sure it's the same region
-				GriddedRegion reg1 = gridProv.getGriddedRegion();
-				GriddedRegion reg2 = compGridProv.getGriddedRegion();
-				if (!reg1.equalsRegion(reg2))
+				if (!gridReg.equalsRegion(compGridReg))
 					compGridProv = null;
 			}
 			if (compGridProv != null) {
 				compFaultAssoc = meta.comparison.rupSet.getModule(FaultGridAssociations.class);
 				if (compFaultAssoc == null)
-					compFaultAssoc = FaultGridAssociations.getIntersectionAssociations(meta.comparison.rupSet, compGridProv.getGriddedRegion());
+					compFaultAssoc = FaultGridAssociations.getIntersectionAssociations(meta.comparison.rupSet, compGridReg);
 				compSolNuclMFDs = calcNuclMFDs(meta.comparison.sol);
 			}
 		}
@@ -243,6 +243,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 				table.finalizeLine().initNewLine();
 				table.addColumn(MarkdownUtils.boldCentered(markdownLabel+", Gridded Only"));
 				table.addColumn(MarkdownUtils.boldCentered(markdownLabel+", Fault Only"));
+				table.finalizeLine().initNewLine();
 			}
 			
 			gridXYZ = maskZeroesAsNan(gridXYZ);
@@ -357,16 +358,16 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 	}
 	
 	public static GriddedGeoDataSet calcGriddedNucleationRates(GridSourceProvider gridProv, double minMag) {
-		return calcGriddedNucleationRates(gridProv, gridProv.getGriddedRegion(), minMag);
+		return calcGriddedNucleationRates(gridProv, getProvRegion(gridProv), minMag);
 	}
 	
 	public static GriddedGeoDataSet calcGriddedNucleationRates(GridSourceProvider gridProv, GriddedRegion gridReg, double minMag) {
 		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
 		
-		GriddedRegion provReg = gridProv.getGriddedRegion();
+		boolean sameIndexing = gridProv.getGriddedRegion() == gridReg;
 		for (int i=0; i<xyz.size(); i++) {
 			Location loc = xyz.getLocation(i);
-			int provIndex = provReg.indexForLocation(loc);
+			int provIndex = sameIndexing ? i : gridProv.getLocationIndex(loc);
 			if (provIndex >= 0) {
 				IncrementalMagFreqDist mfd = gridProv.getMFD(provIndex);
 				if (mfd != null && (float)(mfd.getMaxX()+0.5*mfd.getDelta()) >= (float)minMag) {
@@ -402,16 +403,16 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 	}
 	
 	public static GriddedGeoDataSet calcGriddedNucleationMomentRates(GridSourceProvider gridProv) {
-		return calcGriddedNucleationMomentRates(gridProv, gridProv.getGriddedRegion());
+		return calcGriddedNucleationMomentRates(gridProv, getProvRegion(gridProv));
 	}
 	
 	public static GriddedGeoDataSet calcGriddedNucleationMomentRates(GridSourceProvider gridProv, GriddedRegion gridReg) {
 		GriddedGeoDataSet xyz = new GriddedGeoDataSet(gridReg, false);
-		
-		GriddedRegion provReg = gridProv.getGriddedRegion();
+
+		boolean sameIndexing = gridProv.getGriddedRegion() == gridReg;
 		for (int i=0; i<xyz.size(); i++) {
 			Location loc = xyz.getLocation(i);
-			int provIndex = provReg.indexForLocation(loc);
+			int provIndex = sameIndexing ? i : gridProv.getLocationIndex(loc);
 			if (provIndex >= 0) {
 				IncrementalMagFreqDist mfd = gridProv.getMFD(provIndex);
 				if (mfd != null)
@@ -440,6 +441,17 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		}
 		
 		return xyz;
+	}
+	
+	private static GriddedRegion getProvRegion(GridSourceProvider gridProv) {
+		GriddedRegion gridReg = gridProv.getGriddedRegion();
+		if (gridReg == null) {
+			LocationList locs = new LocationList();
+			for (int i=0; i<gridProv.getNumLocations(); i++)
+				locs.add(gridProv.getLocation(i));
+			gridReg = GriddedRegion.inferEncompassingRegion(locs);
+		}
+		return gridReg;
 	}
 	
 	private static GriddedGeoDataSet sum(GriddedGeoDataSet xyz1, GriddedGeoDataSet xyz2) {

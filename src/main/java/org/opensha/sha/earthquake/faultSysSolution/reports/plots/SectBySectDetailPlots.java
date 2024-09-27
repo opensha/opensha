@@ -78,6 +78,8 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectParticMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchParentSectParticMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList.GriddedRupture;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
@@ -443,6 +445,11 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		double maxMag = Double.NEGATIVE_INFINITY;
 		double minLen = Double.POSITIVE_INFINITY;
 		double maxLen = Double.NEGATIVE_INFINITY;
+		boolean hasMultiFault = false;
+		double minSingleFaultMag = Double.POSITIVE_INFINITY;
+		double maxSingleFaultMag = Double.NEGATIVE_INFINITY;
+		double minNonzeroRateMag = Double.POSITIVE_INFINITY;
+		double maxNonzeroRateMag = Double.NEGATIVE_INFINITY;
 		HashSet<Integer> directConnections = new HashSet<>();
 		HashSet<Integer> allConnections = new HashSet<>();
 		double totRate = 0d;
@@ -462,13 +469,22 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			minLen = Math.min(minLen, len);
 			maxLen = Math.max(maxLen, len);
 			ClusterRupture rup = cRups.get(r);
+			if (rup.getTotalNumClusters() > 1) {
+				hasMultiFault = true;
+			} else {
+				minSingleFaultMag = Math.min(minSingleFaultMag, mag);
+				maxSingleFaultMag = Math.max(maxSingleFaultMag, mag);
+			}
 			if (meta.primary.sol != null) {
 				double rate = meta.primary.sol.getRateForRup(r);
 				totRate += rate;
 				if (rup.getTotalNumClusters() > 1)
 					multiRate += rate;
-				if (rate > 0d)
+				if (rate > 0d) {
 					rupCountNonZero++;
+					minNonzeroRateMag = Math.min(minNonzeroRateMag, mag);
+					maxNonzeroRateMag = Math.max(maxNonzeroRateMag, mag);
+				}
 			}
 			if (minMags != null && mag < maxMin) {
 				boolean below = false;
@@ -505,6 +521,12 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		if (meta.primary.sol != null)
 			table.addLine("**Ruptures w/ Nonzero Rates**", countDF.format(rupCountNonZero));
 		table.addLine("**Magnitude Range**", "["+twoDigits.format(minMag)+", "+twoDigits.format(maxMag)+"]");
+		if (hasMultiFault)
+			table.addLine("**Single-Fault Magnitude Range**", "["+twoDigits.format(minSingleFaultMag)
+					+", "+twoDigits.format(maxSingleFaultMag)+"]");
+		if (meta.primary.sol != null)
+			table.addLine("**Magnitude Range w/ Nonzero Rates**", "["+twoDigits.format(minNonzeroRateMag)
+					+", "+twoDigits.format(maxNonzeroRateMag)+"]");
 		table.addLine("**Length Range**", "["+countDF.format(minLen)+", "+countDF.format(maxLen)+"] km");
 		if (meta.primary.sol != null) {
 			table.addLine("**Total Rate**", (float)totRate+" /yr");
@@ -1463,7 +1485,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		
 		GridSourceProvider gridProv = sol.getGridSourceProvider();
 		FaultGridAssociations gridAssoc = rupSet.getModule(FaultGridAssociations.class);
-		boolean hasGridded = gridProv != null && gridAssoc != null;
+		boolean hasGridded = gridProv != null && (gridProv instanceof GridSourceList || gridAssoc != null);
 		if (hasGridded)
 			minMag = Math.min(minMag, 5d);
 		
@@ -1487,30 +1509,42 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		if (hasGridded) {
 			IncrementalMagFreqDist griddedMFD = null;
 			for (FaultSection sect : faultSects) {
-				Map<Integer, Double> scaledNodeFracts = gridAssoc.getScaledNodeFractions(sect.getSectionId());
-				for (int nodeIndex : scaledNodeFracts.keySet()) {
-					double fract = scaledNodeFracts.get(nodeIndex);
-					IncrementalMagFreqDist nodeMFD = gridProv.getMFD_SubSeisOnFault(nodeIndex);
-					
-					if (fract > 0 && nodeMFD != null) {
-						for (int i=0; i<nodeMFD.size(); i++) {
-							double y = nodeMFD.getY(i);
-							if (y > 0) {
-								if (griddedMFD == null) {
-									griddedMFD = new IncrementalMagFreqDist(nodeMFD.getMinX(), nodeMFD.size(), nodeMFD.getDelta());
-								} else {
-									Preconditions.checkState((float)griddedMFD.getMinX() == (float)nodeMFD.getMinX());
-									Preconditions.checkState((float)griddedMFD.getDelta() == (float)nodeMFD.getDelta());
-									if (griddedMFD.size() <= i) {
-										// need to elarge it
-										IncrementalMagFreqDist newMFD = new IncrementalMagFreqDist(
-												nodeMFD.getMinX(), nodeMFD.size(), nodeMFD.getDelta());
-										for (int j=0; j<griddedMFD.size(); j++)
-											newMFD.set(j, griddedMFD.getY(j));
-										griddedMFD = newMFD;
+				if (gridProv instanceof GridSourceList) {
+					for (GriddedRupture rup : ((GridSourceList)gridProv).getAssociatedRuptures(sect.getSectionId())) {
+						double assocFract = rup.getFractAssociated(sect.getSectionId());
+						double assocRate = assocFract * rup.rate;
+						if (griddedMFD == null) {
+							IncrementalMagFreqDist refMFD = ((GridSourceList)gridProv).getRefMFD();
+							griddedMFD = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+						}
+						griddedMFD.add(griddedMFD.getClosestXIndex(rup.properties.magnitude), assocRate);
+					}
+				} else {
+					Map<Integer, Double> scaledNodeFracts = gridAssoc.getScaledNodeFractions(sect.getSectionId());
+					for (int nodeIndex : scaledNodeFracts.keySet()) {
+						double fract = scaledNodeFracts.get(nodeIndex);
+						IncrementalMagFreqDist nodeMFD = gridProv.getMFD_SubSeisOnFault(nodeIndex);
+						
+						if (fract > 0 && nodeMFD != null) {
+							for (int i=0; i<nodeMFD.size(); i++) {
+								double y = nodeMFD.getY(i);
+								if (y > 0) {
+									if (griddedMFD == null) {
+										griddedMFD = new IncrementalMagFreqDist(nodeMFD.getMinX(), nodeMFD.size(), nodeMFD.getDelta());
+									} else {
+										Preconditions.checkState((float)griddedMFD.getMinX() == (float)nodeMFD.getMinX());
+										Preconditions.checkState((float)griddedMFD.getDelta() == (float)nodeMFD.getDelta());
+										if (griddedMFD.size() <= i) {
+											// need to elarge it
+											IncrementalMagFreqDist newMFD = new IncrementalMagFreqDist(
+													nodeMFD.getMinX(), nodeMFD.size(), nodeMFD.getDelta());
+											for (int j=0; j<griddedMFD.size(); j++)
+												newMFD.set(j, griddedMFD.getY(j));
+											griddedMFD = newMFD;
+										}
 									}
+									griddedMFD.add(i, y);
 								}
-								griddedMFD.add(i, y);
 							}
 						}
 					}
@@ -1839,18 +1873,18 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			table.addColumn((float)val+"");
 			if (cmlParticBounds != null && (float)mag <= (float)cmlParticBounds.getMaxX()) {
 				String boundsStr = "[";
-				boundsStr += rangeRateStr(cmlParticBounds.getLower().getInterpolatedY(mag));
+				boundsStr += rangeRateStr(cmlParticBounds.getLower(), mag);
 				boundsStr += ", ";
-				boundsStr += rangeRateStr(cmlParticBounds.getUpper().getInterpolatedY(mag));
+				boundsStr += rangeRateStr(cmlParticBounds.getUpper(), mag);
 				boundsStr += "]";
 				table.addColumn(boundsStr);
 			}
 			table.addColumn(riRateStr(1d/val)+"");
 			if (cmlParticBounds != null && (float)mag <= (float)cmlParticBounds.getMaxX()) {
 				String boundsStr = "[";
-				boundsStr += riRateStr(1d/cmlParticBounds.getUpper().getInterpolatedY(mag));
+				boundsStr += riRateStr(cmlParticBounds.getUpper(), mag);
 				boundsStr += ", ";
-				boundsStr += riRateStr(1d/cmlParticBounds.getLower().getInterpolatedY(mag));
+				boundsStr += riRateStr(cmlParticBounds.getLower(), mag);
 				boundsStr += "]";
 				table.addColumn(boundsStr);
 			}
@@ -2072,10 +2106,30 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 		return lines;
 	}
 	
+	private static String rangeRateStr(DiscretizedFunc func, double mag) {
+		if ((float)mag == (float)func.getMinX())
+			return rangeRateStr(func.getY(0));
+		if ((float)mag == (float)func.getMaxX())
+			return rangeRateStr(func.getY(func.size()-1));
+		if ((float)mag > (float)func.getMaxX() || (float)mag < (float)func.getMinX())
+			return "_N/A_";
+		return rangeRateStr(func.getInterpolatedY(mag));
+	}
+	
 	private static String rangeRateStr(double rate) {
 		if (rate < 1e-1)
 			return expProbDF.format(rate);
 		return (float)rate+"";
+	}
+	
+	private static String riRateStr(DiscretizedFunc func, double mag) {
+		if ((float)mag == (float)func.getMinX())
+			return riRateStr(1d/func.getY(0));
+		if ((float)mag == (float)func.getMaxX())
+			return riRateStr(1d/func.getY(func.size()-1));
+		if ((float)mag > (float)func.getMaxX() || (float)mag < (float)func.getMinX())
+			return "_N/A_";
+		return riRateStr(1d/func.getInterpolatedY(mag));
 	}
 	
 	private static String riRateStr(double ri) {
@@ -3043,7 +3097,7 @@ public class SectBySectDetailPlots extends AbstractRupSetPlot {
 			
 			if (sect instanceof GeoJSONFaultSection) {
 				GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
-				double creepRate = geoSect.getProperty("CreepRate", Double.NaN);
+				double creepRate = geoSect.getProperties().getDouble("CreepRate", Double.NaN);
 				if (Double.isFinite(creepRate)) {
 					XY_DataSet creepFunc = copyAtY(emptyFunc, creepRate);
 					if (firstCreep)

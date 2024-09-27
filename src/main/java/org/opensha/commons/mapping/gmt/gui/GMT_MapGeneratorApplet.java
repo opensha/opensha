@@ -41,7 +41,7 @@ import org.opensha.sha.gui.util.IconFetcher;
  * @version 1.0
  */
 
-public class GMT_MapGeneratorApplet extends Applet{
+public class GMT_MapGeneratorApplet extends JPanel{
 	
 	public static final String APP_NAME = "GMT Map Generator Application";
 	public static final String APP_SHORT_NAME = "GMTMap";
@@ -65,9 +65,6 @@ public class GMT_MapGeneratorApplet extends Applet{
 	private static final String C="GMT_MapGeneratorApplet";
 
 	private static final boolean D= false;
-
-
-	private boolean isStandalone = false;
 	private JPanel mainPanel = new JPanel();
 	private JSplitPane mainSplitPane = new JSplitPane();
 	private JPanel buttonPanel = new JPanel();
@@ -96,8 +93,7 @@ public class GMT_MapGeneratorApplet extends Applet{
 	private BorderLayout borderLayout1 = new BorderLayout();
 	//Get a parameter value
 	public String getParameter(String key, String def) {
-		return isStandalone ? System.getProperty(key, def) :
-			(getParameter(key) != null ? getParameter(key) : def);
+		return System.getProperty(key, def);
 	}
 
 
@@ -182,7 +178,6 @@ public class GMT_MapGeneratorApplet extends Applet{
 	
 	public static GMT_MapGeneratorApplet launch() {
 		GMT_MapGeneratorApplet applet = new GMT_MapGeneratorApplet();
-		applet.isStandalone = true;
 		JFrame frame = new JFrame();
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setTitle("Maps");
@@ -227,9 +222,9 @@ public class GMT_MapGeneratorApplet extends Applet{
 				ListIterator<String> it = fileLines.listIterator();
 				while(it.hasNext()){
 					StringTokenizer st = new StringTokenizer((String)it.next());
-					double lat = new Double(st.nextToken().trim());
-					double lon = new Double(st.nextToken().trim());
-					double z = new Double(st.nextToken().trim());
+					double lat = Double.valueOf(st.nextToken().trim());
+					double lon = Double.valueOf(st.nextToken().trim());
+					double z = Double.valueOf(st.nextToken().trim());
 					xyzData.set(new Location(lat, lon), z);
 				}
 			}catch(Exception ee){

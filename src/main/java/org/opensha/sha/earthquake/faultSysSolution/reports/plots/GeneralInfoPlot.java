@@ -28,11 +28,11 @@ public class GeneralInfoPlot extends AbstractRupSetPlot {
 	@Override
 	public List<String> plot(FaultSystemRupSet rupSet, FaultSystemSolution sol, ReportMetadata meta, File resourcesDir,
 			String relPathToResources, String topLink) throws IOException {
-		String info = null;
+		InfoModule info = null;
 		if (sol != null)
-			info = sol.getModule(InfoModule.class).getText();
+			info = sol.getModule(InfoModule.class);
 		else
-			info = rupSet.getModule(InfoModule.class).getText();
+			info = rupSet.getModule(InfoModule.class);
 		
 		File filePath;
 		if (sol != null)
@@ -58,14 +58,14 @@ public class GeneralInfoPlot extends AbstractRupSetPlot {
 			lines.add("");
 		}
 		
-		if (info != null) {
+		if (info != null && info.getText() != null && !info.getText().isBlank()) {
 			if (buildInfo != null) {
 				lines.add(getSubHeading()+" Attached Metadata");
 				lines.add(topLink); lines.add("");
 			}
 			
 			lines.add("```");
-			lines.add(info);
+			lines.add(info.getText());
 			lines.add("```");
 		}
 		

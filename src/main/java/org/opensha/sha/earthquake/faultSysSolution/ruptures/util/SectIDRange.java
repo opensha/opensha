@@ -2,6 +2,9 @@ package org.opensha.sha.earthquake.faultSysSolution.ruptures.util;
 
 import com.google.common.base.Preconditions;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
  * Range of section IDs, inclusive, for memory efficient tracking of unique ruptures and contains
  * operations
@@ -10,53 +13,74 @@ import com.google.common.base.Preconditions;
  *
  */
 public abstract class SectIDRange implements Comparable<SectIDRange> {
-	
+
+	private final static Map<SectIDRange, SectIDRange> cache = new ConcurrentHashMap<>();
+
 	public static SectIDRange build(int startID, int endID) {
-		if (startID == endID)
-			return new SingleID(endID);
-		if (endID < Short.MAX_VALUE)
+		SectIDRange range = construct(startID, endID);
+		// try to use non-blocking get operation before using blocking putIfAbsent
+		SectIDRange cached = cache.get(range);
+		if (cached == null) {
+			cached = cache.putIfAbsent(range, range);
+		}
+		return cached == null ? range : cached;
+	}
+
+	private static SectIDRange construct(int startID, int endID) {
+		if (endID < Short.MAX_VALUE) {
+			if (startID == endID) {
+				return new ShortSingleID(endID);
+			}
 			return new ShortIDRange(startID, endID);
+		}
+		if (startID == endID) {
+			return new SingleID(endID);
+		}
 		return new IntIDRange(startID, endID);
 	}
-	
+
 	private static class ShortIDRange extends SectIDRange {
-		
-		private final short[] values;
-		
+
+		private final short startID;
+		private final short endID;
+
 		private ShortIDRange(int startID, int endID) {
 			super(startID, endID);
-			values = new short[] { (short)startID, (short)endID };
+			this.startID = (short) startID;
+			this.endID = (short) endID;
 		}
 
 		@Override
 		int getStartID() {
-			return values[0];
+			return startID;
 		}
 
 		@Override
 		int getEndID() {
-			return values[1];
+			return endID;
 		}
-		
+
 	}
-	
+
 	private static class IntIDRange extends SectIDRange {
 		
-		private final int[] values;
+		private final int startID;
+		private final int endID;
 		
 		private IntIDRange(int startID, int endID) {
 			super(startID, endID);
-			values = new int[] { startID, endID };
+			this.startID = startID;
+			this.endID = endID;
 		}
 
 		@Override
 		int getStartID() {
-			return values[0];
+			return startID;
 		}
 
 		@Override
 		int getEndID() {
-			return values[1];
+			return endID;
 		}
 		
 	}
@@ -67,6 +91,25 @@ public abstract class SectIDRange implements Comparable<SectIDRange> {
 		private SingleID(int id) {
 			super(id, id);
 			this.id = id;
+		}
+
+		@Override
+		int getStartID() {
+			return id;
+		}
+
+		@Override
+		int getEndID() {
+			return id;
+		}
+	}
+
+	private static class ShortSingleID extends SectIDRange {
+		private final short id;
+
+		private ShortSingleID(int id) {
+			super(id, id);
+			this.id = (short) id;
 		}
 
 		@Override

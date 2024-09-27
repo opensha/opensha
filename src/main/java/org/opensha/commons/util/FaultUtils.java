@@ -132,7 +132,7 @@ public final class FaultUtils {
 
 	/**
 	 * This subdivides the given fault trace into sub-traces that have the length as given (or less).
-	 * This assumes all fault trace points are at the same depth.
+	 * 
 	 * @param faultTrace 
 	 * @param maxSubSectionLen Maximum length of each subsection
 	 */
@@ -142,16 +142,14 @@ public final class FaultUtils {
 
 	/**
 	 * This subdivides the given fault trace into sub-traces that have the length as given (or less).
-	 * This assumes all fault trace points are at the same depth.
+	 * 
 	 * @param faultTrace 
 	 * @param maxSubSectionLen Maximum length of each subsection
 	 * @param minSubSections minimum number of sub sections to generate
 	 */
 	public static ArrayList<FaultTrace> getEqualLengthSubsectionTraces(
 			FaultTrace faultTrace, double maxSubSectionLen, int minSubSections) {
-
 		int numSubSections;
-		ArrayList<FaultTrace> subSectionTraceList;
 
 		// find the number of sub sections
 		double numSubSec= faultTrace.getTraceLength()/maxSubSectionLen;
@@ -159,12 +157,24 @@ public final class FaultUtils {
 		else numSubSections=(int)numSubSec;
 		if (numSubSections < minSubSections)
 			numSubSections = minSubSections;
+		return getEqualLengthSubsectionTraces(faultTrace, numSubSections);
+	}
+	
+	/**
+	 * This subdivides the given fault trace into the specified number of equal-length sub-traces.
+	 * 
+	 * @param faultTrace 
+	 * @param maxSubSectionLen Maximum length of each subsection
+	 * @param minSubSections minimum number of sub sections to generate
+	 */
+	public static ArrayList<FaultTrace> getEqualLengthSubsectionTraces(
+			FaultTrace faultTrace, int numSubSections) {
 		// find the length of each sub section
 		double subSecLength = faultTrace.getTraceLength()/numSubSections;
-		double distance = 0, distLocs=0;;
+		double distance = 0, distLocs=0;
 		int numLocs = faultTrace.getNumLocations();
 		int index=0;
-		subSectionTraceList = new ArrayList<FaultTrace>();
+		ArrayList<FaultTrace> subSectionTraceList = new ArrayList<FaultTrace>();
 		Location prevLoc = faultTrace.get(index);
 		while(index<numLocs && subSectionTraceList.size()<numSubSections) {
 			FaultTrace subSectionTrace = new FaultTrace(faultTrace.getName()+" "+(subSectionTraceList.size()+1));
@@ -182,7 +192,12 @@ public final class FaultUtils {
 					++index;
 				} else {
 					LocationVector direction = LocationUtils.vector(prevLoc, nextLoc);
-					direction.setHorzDistance(subSecLength-(distance-distLocs));
+					double origHorzDist = direction.getHorzDistance();
+					double modHorzDist = subSecLength-(distance-distLocs);
+					direction.setHorzDistance(modHorzDist);
+					if (direction.getVertDistance() != 0d)
+						// scale vert distance to account for truncated horizontal distance
+						direction.setVertDistance(direction.getVertDistance()*modHorzDist/origHorzDist);
 					prevLoc = LocationUtils.location(prevLoc, direction);
 					subSectionTrace.add(prevLoc);
 					--index;
@@ -213,7 +228,7 @@ public final class FaultUtils {
 		int NextLocIndex = 1;
 		while (NextLocIndex < trace.size()) {
 			Location nextLoc = trace.get(NextLocIndex);
-			double length = LocationUtils.linearDistanceFast(lastLoc, nextLoc);
+			double length = LocationUtils.horzDistance(lastLoc, nextLoc);
 			if (length > remainingLength) {
 				// set the point
 				LocationVector dir = LocationUtils.vector(lastLoc, nextLoc);
@@ -231,9 +246,13 @@ public final class FaultUtils {
 			}
 		}
 
-		// make sure we got the last one (might be missed because of numerical precision issues?)
+		// the last one usually (always?) gets missed in the above, add it if needed
 		double dist = LocationUtils.linearDistanceFast(trace.get(trace.size()-1), resampTrace.get(resampTrace.size()-1));
-		if (dist> resampInt/2) resampTrace.add(trace.get(trace.size()-1));
+		if (dist> resampInt/2)
+			resampTrace.add(trace.get(trace.size()-1));
+		
+		Preconditions.checkState(resampTrace.size() == num+1,
+				"Resampled trace should have %s locations, but has %s", num+1, resampTrace.size());
 
 		/* Debugging Stuff *****************/
 		/*
@@ -443,6 +462,20 @@ public final class FaultUtils {
 		for (int i=0; i<angles.size(); i++)
 			scalars.add(1d);
 		return getScaledAngleAverage(scalars, angles);
+	}
+	
+	/**
+	 * Absolute difference between two angles dealing with any -180/180 or 0/360 cut issues. Note that this
+	 * expects angles in degrees, and will return angles from 0 to 360 degrees.
+	 * @param angle1
+	 * @param angle2
+	 * @return
+	 */
+	public static double getAbsAngleDiff(double angle1, double angle2) {
+		double angleDiff = Math.abs(angle1 - angle2);
+		while (angleDiff > 270)
+			angleDiff -= 360;
+		return Math.abs(angleDiff);
 	}
 
 	/* <b>x</b>-axis unit normal vector [1,0,0]*/ 

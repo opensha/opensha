@@ -5,6 +5,12 @@ package org.opensha.commons.calc;
 
 // The following are needed only for the tests
 import java.text.DecimalFormat;
+import java.util.concurrent.TimeUnit;
+
+import org.apache.commons.math3.util.Precision;
+
+import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 
 //import org.apache.commons.math3.distribution.NormalDistribution;
 //import org.apache.commons.math3.distribution.NormalDistributionImpl;
@@ -31,12 +37,12 @@ public final class GaussianDistCalc {
 	//   static NormalDistribution gauss = new NormalDistribution( 0.0, 1.0 );
 
 	// if computing pdf here (not using above)
-	static double d1= 0.0498673470;
-	static double d2=0.0211410061;
-	static double d3=0.0032776263;
-	static double d4=0.0000380036;
-	static double d5=0.0000488906;
-	static double d6=0.0000053830;
+	static final double d1= 0.0498673470;
+	static final double d2=0.0211410061;
+	static final double d3=0.0032776263;
+	static final double d4=0.0000380036;
+	static final double d5=0.0000488906;
+	static final double d6=0.0000053830;
 
 	/*
 	 * This function calculates the Gaussian exceedance probability for the standardized
@@ -123,6 +129,23 @@ public final class GaussianDistCalc {
 			return ( (pUp - prob) / (pUp - pLow));
 		}
 	}
+	
+	/**
+	 * This was the original CDF calculation. the new version is ~2.9x faster, and they produce identical results
+	 * Orig took 2.033 s (4.9188392E7 /sec)
+	 * Optimized took 0.707 s (1.4144272E8 /sec)
+	 * Speedup factor: 2.8755305
+	 * 	diffs: avg=2.2509882E-17, max=2.1094237E-15
+	 * 	pDiffs: avg=2.334693E-14, max=5.0192766E-13
+	 *
+	 */
+	private static double getCDForig(double standRandVariable) {
+
+		final double val = Math.abs(standRandVariable);
+		double result = 0.5 * Math.pow( (((((d6*val+d5)*val+d4)*val+d3)*val+d2)*val+d1)*val+1, -16);
+		if(standRandVariable < 0) return result;
+		else                      return 1.0-result;
+	}
 
 
 	/**
@@ -140,10 +163,25 @@ public final class GaussianDistCalc {
 	 */
 	public static double getCDF(double standRandVariable) {
 
-		double val;
-		double result;
-		val = Math.abs(standRandVariable);
-		result = 0.5 * Math.pow( (((((d6*val+d5)*val+d4)*val+d3)*val+d2)*val+d1)*val+1, -16);
+		final double val = Math.abs(standRandVariable);
+		double base = d6;
+		base = Math.fma(base, val, d5);
+		base = Math.fma(base, val, d4);
+		base = Math.fma(base, val, d3);
+		base = Math.fma(base, val, d2);
+		base = Math.fma(base, val, d1);
+		base = Math.fma(base, val, 1);
+//		double result = 0.5 * Math.pow(base, -16); // this is slow!
+		// Initialize the result to 1, as we're going to multiply it by base repeatedly.
+		double power = 1.0;
+
+		// Calculate base^16 using a loop
+		for (int i = 0; i < 16; i++) {
+		    power *= base;
+		}
+
+		// Finally, divide 0.5 by the result of base^16
+		double result = 0.5 / power;
 		if(standRandVariable < 0) return result;
 		else                      return 1.0-result;
 	}
@@ -622,12 +660,58 @@ public final class GaussianDistCalc {
 		}
 
 	}
+	
+	private static void testCDFOptimization() {
+		int num = 100000000;
+		double[] rands = new double[num];
+		for (int i=0; i<num; i++)
+			rands[i] = Math.random()*8d - 4d;
+		double[] valuesOrig = new double[num];
+		double[] valuesOptimized = new double[num];
+		for (int j=0; j<3; j++) {
+			Stopwatch origWatch = Stopwatch.createStarted();
+			for (int i=0; i<num; i++) {
+				valuesOrig[i] = getCDForig(rands[i]);
+			}
+			origWatch.stop();
+			Stopwatch optimizedWatch = Stopwatch.createStarted();
+			for (int i=0; i<num; i++) {
+				valuesOptimized[i] = getCDF(rands[i]);
+			}
+			optimizedWatch.stop();
+			double origSecs = origWatch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+			double optimizedSecs = optimizedWatch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+			System.out.println("Orig took "+(float)origSecs+" s ("+(float)(num/origSecs)+" /sec)");
+			System.out.println("Optimized took "+(float)optimizedSecs+" s ("+(float)(num/optimizedSecs)+" /sec)");
+			System.out.println("Speedup factor: "+(float)(origSecs/optimizedSecs));
+			double maxDiff = 0d;
+			double maxPDiff = 0d;
+			double sumDiff = 0d;
+			double sumPDiff = 0d;
+			for (int i=0; i<num; i++) {
+				double diff = valuesOptimized[i] - valuesOrig[i];
+				double pDiff = 100d*diff/valuesOrig[i];
+				maxDiff = Math.max(maxDiff, Math.abs(diff));
+				maxPDiff = Math.max(maxPDiff, Math.abs(pDiff));
+				sumDiff += Math.abs(diff);
+				sumPDiff += Math.abs(pDiff);
+				Preconditions.checkState((float)valuesOptimized[i] == (float)valuesOrig[i],
+						"Mismatch for input=%s: %s != %s; diff=%s, pDiff=%s",
+						rands[i], valuesOrig[i], valuesOptimized[i], diff, pDiff);
+			}
+			double avgDiff = sumDiff/(double)num;
+			double avgPDiff = sumPDiff/(double)num;
+			System.out.println("\tdiffs: avg="+(float)avgDiff+", max="+(float)maxDiff);
+			System.out.println("\tpDiffs: avg="+(float)avgPDiff+", max="+(float)maxPDiff);
+		}
+	}
 
 
 	/**
 	 *  main method for running tests
 	 */
 	public static void main(String args[]) {
+		testCDFOptimization();
 		
 //		// commons.math implementations are still about 5 times slower
 //		double iml = 2.1;

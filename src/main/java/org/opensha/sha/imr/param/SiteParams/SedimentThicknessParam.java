@@ -13,9 +13,9 @@ public class SedimentThicknessParam extends WarningDoubleParameter {
 	public final static String NAME = "Sediment Thickness (zSed)";
 	public final static String UNITS = "km";
 	public final static String INFO = "Thickness of coastal margin sediments";
-//	public final static Double DEFAULT = new Double("1.0");
-	public final static Double MIN = new Double(0.0);
-	public final static Double MAX = new Double(30000.0);
+//	public final static Double DEFAULT = Double.valueOf("1.0");
+	public final static Double MIN = Double.valueOf(0.0);
+	public final static Double MAX = Double.valueOf(30000.0);
 
 
 	/**

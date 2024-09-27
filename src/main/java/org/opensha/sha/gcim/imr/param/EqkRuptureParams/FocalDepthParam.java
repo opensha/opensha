@@ -12,8 +12,8 @@ public class FocalDepthParam extends WarningDoubleParameter {
 
 	public final static String NAME = "Focal Depth";
 	public final static String INFO = "Earthquake Source Focal Depth";
-	protected final static Double MIN = new Double(0);
-	protected final static Double MAX = new Double(500);
+	protected final static Double MIN = Double.valueOf(0);
+	protected final static Double MAX = Double.valueOf(500);
 	// warning values are set in subclasses
 	
 	/**

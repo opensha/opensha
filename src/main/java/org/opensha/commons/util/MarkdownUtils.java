@@ -113,7 +113,7 @@ public class MarkdownUtils {
 		}
 		
 		public TableBuilder finalizeLine() {
-			Preconditions.checkState(curLine != null && !curLine.isEmpty());
+			Preconditions.checkState(curLine != null && !curLine.isEmpty(), "Can't finalize an empty line");
 			addLine(curLine);
 			curLine = null;
 			return this;

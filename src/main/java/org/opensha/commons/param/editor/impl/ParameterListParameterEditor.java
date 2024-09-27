@@ -91,6 +91,11 @@ ActionListener,ParameterChangeListener{
 		if (useButton)
 			this.button.setEnabled(isEnabled);
 	}
+	
+	@Override
+	public boolean isEnabled() {
+		return editor != null && editor.isEnabled();
+	}
 
 
 //	/**

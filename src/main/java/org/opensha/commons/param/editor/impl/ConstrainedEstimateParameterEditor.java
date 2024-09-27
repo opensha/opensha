@@ -364,22 +364,22 @@ ParameterChangeFailListener, ActionListener{
 		this.chooseEstimateParam.setValue(MinMaxPrefEstimate.NAME);
 		// min X
 		double minX = minMaxPrefEstimate.getMinimum();
-		if(!Double.isNaN(minX))  this.minX_Param.setValue(new Double(decimalFormat.format(minX)));
+		if(!Double.isNaN(minX))  this.minX_Param.setValue(Double.valueOf(decimalFormat.format(minX)));
 		// pref X
 		double prefX = minMaxPrefEstimate.getPreferred();
-		if(!Double.isNaN(prefX)) prefferedX_Param.setValue(new Double(decimalFormat.format(prefX)));
+		if(!Double.isNaN(prefX)) prefferedX_Param.setValue(Double.valueOf(decimalFormat.format(prefX)));
 		//max X
 		double maxX = minMaxPrefEstimate.getMaximum();
-		if(!Double.isNaN(maxX)) maxX_Param.setValue(new Double(decimalFormat.format(maxX)));
+		if(!Double.isNaN(maxX)) maxX_Param.setValue(Double.valueOf(decimalFormat.format(maxX)));
 		//min Prob
 		double minProb = minMaxPrefEstimate.getMinimumProb();
-		if(!Double.isNaN(minProb)) minProbParam.setValue(new Double(decimalFormat.format(minProb)));
+		if(!Double.isNaN(minProb)) minProbParam.setValue(Double.valueOf(decimalFormat.format(minProb)));
 		// pref prob
 		double prefProb = minMaxPrefEstimate.getPreferredProb();
-		if(!Double.isNaN(prefProb)) this.prefferedProbParam.setValue(new Double(decimalFormat.format(prefProb)));
+		if(!Double.isNaN(prefProb)) this.prefferedProbParam.setValue(Double.valueOf(decimalFormat.format(prefProb)));
 		// max prob
 		double maxProb = minMaxPrefEstimate.getMaximumProb();
-		if(!Double.isNaN(maxProb)) this.maxProbParam.setValue(new Double(decimalFormat.format(maxProb)));
+		if(!Double.isNaN(maxProb)) this.maxProbParam.setValue(Double.valueOf(decimalFormat.format(maxProb)));
 
 		xValsParamListEditor.refreshParamEditor();
 		probValsParamListEditor.refreshParamEditor();

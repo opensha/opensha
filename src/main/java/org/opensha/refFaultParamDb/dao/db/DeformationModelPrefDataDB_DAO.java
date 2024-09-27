@@ -168,7 +168,7 @@ public class DeformationModelPrefDataDB_DAO {
 	 */
 	public double getSlipRate(int deformationModelId, int faultSectionId) {
 		if(selectedDefModelId!=deformationModelId) this.cache(deformationModelId);
-		Double slipRate =  (Double)slipRateMap.get(new Integer(faultSectionId));
+		Double slipRate =  (Double)slipRateMap.get(Integer.valueOf(faultSectionId));
 		if(slipRate==null) return Double.NaN;
 		else return slipRate.doubleValue();
 	}	
@@ -183,7 +183,7 @@ public class DeformationModelPrefDataDB_DAO {
 	 */
 	public double getSlipStdDev(int deformationModelId, int faultSectionId) {
 		if(selectedDefModelId!=deformationModelId) this.cache(deformationModelId);
-		Double stdDev =  (Double)stdDevMap.get(new Integer(faultSectionId));
+		Double stdDev =  (Double)stdDevMap.get(Integer.valueOf(faultSectionId));
 		if(stdDev==null) return Double.NaN;
 		else return stdDev.doubleValue();
 	}	
@@ -198,7 +198,7 @@ public class DeformationModelPrefDataDB_DAO {
 	 */
 	public double getAseismicSlipFactor(int deformationModelId, int faultSectionId) {
 		if(selectedDefModelId!=deformationModelId) this.cache(deformationModelId);
-		Double aseismicSlip = (Double)aseismicSlipMap.get(new Integer(faultSectionId));
+		Double aseismicSlip = (Double)aseismicSlipMap.get(Integer.valueOf(faultSectionId));
 		if(aseismicSlip == null) return Double.NaN;
 		else return aseismicSlip.doubleValue();
 	}
@@ -229,11 +229,11 @@ public class DeformationModelPrefDataDB_DAO {
 				if(rs.wasNull()) slip = Double.NaN;
 				stdDev = rs.getFloat(SLIP_STD_DEV);
 				if(rs.wasNull()) stdDev = Double.NaN;
-				sectionId = new Integer(rs.getInt(SECTION_ID));
+				sectionId = Integer.valueOf(rs.getInt(SECTION_ID));
 				faultSectionIdList.add(sectionId);
-				slipRateMap.put(sectionId, new Double(slip)) ;
-				aseismicSlipMap.put(sectionId, new Double(aseismicSlipFactor));
-				stdDevMap.put(sectionId, new Double(stdDev));
+				slipRateMap.put(sectionId, Double.valueOf(slip)) ;
+				aseismicSlipMap.put(sectionId, Double.valueOf(aseismicSlipFactor));
+				stdDevMap.put(sectionId, Double.valueOf(stdDev));
 			}
 		} catch (SQLException e) {
 			throw new QueryException(e.getMessage());

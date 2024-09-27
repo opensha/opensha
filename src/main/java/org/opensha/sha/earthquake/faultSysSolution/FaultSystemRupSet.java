@@ -1,21 +1,9 @@
 package org.opensha.sha.earthquake.faultSysSolution;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.util.AbstractList;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.io.*;
+import java.util.*;
 import java.util.concurrent.Callable;
+import java.util.stream.IntStream;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
@@ -24,6 +12,8 @@ import javax.annotation.Nullable;
 import org.apache.commons.math3.stat.StatUtils;
 import org.dom4j.DocumentException;
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.CSVReader;
+import org.opensha.commons.data.CSVWriter;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.RegionUtils;
@@ -41,14 +31,17 @@ import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BuildInfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectAreas;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SplittableRuptureSubSetModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SplittableRuptureModule;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
@@ -59,6 +52,7 @@ import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
@@ -69,8 +63,6 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
 import com.google.common.collect.Table.Cell;
 
-import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
-import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
 import scratch.UCERF3.utils.U3FaultSystemIO;
@@ -226,7 +218,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 			}
-			if (zip.getEntry("modules.json") == null && zip.getEntry("ruptures/"+RUP_SECTS_FILE_NAME) != null) {
+			if (zip.getEntry(ModuleArchive.MODULE_FILE_NAME) == null && zip.getEntry("ruptures/"+RUP_SECTS_FILE_NAME) != null) {
 				// missing modules.json, try to load it as an unlisted module
 				System.err.println("WARNING: rupture set archive is missing modules.json, trying to load it anyway");
 				archive.loadUnlistedModule(FaultSystemRupSet.class, "ruptures/");
@@ -256,8 +248,17 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	@Override
 	public final void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
 		// CSV Files
-		CSV_BackedModule.writeToArchive(buildRupSectsCSV(this), zout, entryPrefix, RUP_SECTS_FILE_NAME);
-		CSV_BackedModule.writeToArchive(new RuptureProperties(this).buildCSV(), zout, entryPrefix, RUP_PROPS_FILE_NAME);
+		FileBackedModule.initEntry(zout, entryPrefix, RUP_SECTS_FILE_NAME);
+		CSVWriter csvWriter = new CSVWriter(zout, false);
+		buildRupSectsCSV(this, csvWriter);
+		csvWriter.flush();
+		zout.closeEntry();
+
+		FileBackedModule.initEntry(zout, entryPrefix, RUP_PROPS_FILE_NAME);
+		csvWriter = new CSVWriter(zout, true);
+		new RuptureProperties(this).buildCSV(csvWriter);
+		csvWriter.flush();
+		zout.closeEntry();
 		
 		// fault sections
 		FileBackedModule.initEntry(zout, entryPrefix, SECTS_FILE_NAME);
@@ -292,18 +293,31 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					+ "Optional files may exist, but there is only one required file:\n");
 			readme.write(" - "+ArchivableModule.getEntryName(solPrefix, FaultSystemSolution.RATES_FILE_NAME
 					+": CSV file giving the annual rate of occurence for each rupture\n"));
-			if (solution.hasAvailableModule(GridSourceProvider.class)) {
+			GridSourceProvider gridProv = solution.getModule(GridSourceProvider.class);
+			if (gridProv != null) {
 				readme.write("This solution has optional gridded seismicity information. Files related to that are:\n");
-				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME
-						+": GeoJSON file giving the location of each gridded seismicity node\n"));
-				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME
-						+": CSV file giving the relative weights of each gridded seismicity focal mechanism at each grid node\n"));
-				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
-						+": CSV file giving the magnitude-frequency distribution of sub-seismogenic ruptures at each gridded "
-						+ "seismicity node that are associated with at least one fault\n"));
-				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
-						+": CSV file giving the magnitude-frequency distribution of off-fault ruptures at each gridded "
-						+ "seismicity node (those that are not associated with at any fault)\n"));
+				if (gridProv instanceof MFDGridSourceProvider) {
+					readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME
+							+": GeoJSON file giving the location of each gridded seismicity node\n"));
+					readme.write(" - "+ArchivableModule.getEntryName(solPrefix, MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME
+							+": CSV file giving the relative weights of each gridded seismicity focal mechanism at each grid node\n"));
+					readme.write(" - "+ArchivableModule.getEntryName(solPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
+							+": CSV file giving the magnitude-frequency distribution of sub-seismogenic ruptures at each gridded "
+							+ "seismicity node that are associated with at least one fault\n"));
+					readme.write(" - "+ArchivableModule.getEntryName(solPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
+							+": CSV file giving the magnitude-frequency distribution of off-fault ruptures at each gridded "
+							+ "seismicity node (those that are not associated with at any fault)\n"));
+				} else if (gridProv instanceof GridSourceList) {
+					if (gridProv.getGriddedRegion() != null)
+						readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME
+								+": Optional GeoJSON defining the region for which this gridded seismicity model applies\n"));
+					
+					readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME
+							+": CSV file giving the index and location and of each gridded seismicity souce\n"));
+					readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME
+							+": CSV file listing each gridded seismicity rupture. Grid indexes in this file reference the "
+							+ "locations listed in "+ArchivableModule.getEntryName(solPrefix, GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)+"\n"));
+				}
 			}
 			
 		}
@@ -314,33 +328,30 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 	
 	public static final String RUP_SECTS_FILE_NAME = "indices.csv";
-	
-	public static CSVFile<String> buildRupSectsCSV(FaultSystemRupSet rupSet) {
-		CSVFile<String> csv = new CSVFile<>(false);
-		
+
+
+	public static void buildRupSectsCSV(FaultSystemRupSet rupSet, CSVWriter writer) throws IOException {
 		int maxNumSects = 0;
-		for (int r=0; r<rupSet.getNumRuptures(); r++)
+		for (int r = 0; r < rupSet.getNumRuptures(); r++)
 			maxNumSects = Integer.max(maxNumSects, rupSet.getSectionsIndicesForRup(r).size());
-		
+
 		List<String> header = new ArrayList<>(List.of("Rupture Index", "Num Sections"));
-		
-		for (int s=0; s<maxNumSects; s++)
-			header.add("# "+(s+1));
-		
-		csv.addLine(header);
-		
-		for (int r=0; r<rupSet.getNumRuptures(); r++) {
+
+		for (int s = 0; s < maxNumSects; s++)
+			header.add("# " + (s + 1));
+
+		writer.write(header);
+
+		for (int r = 0; r < rupSet.getNumRuptures(); r++) {
 			List<Integer> sectIDs = rupSet.getSectionsIndicesForRup(r);
-			List<String> line = new ArrayList<>(2+sectIDs.size());
-			
-			line.add(r+"");
-			line.add(sectIDs.size()+"");
+			List<String> line = new ArrayList<>(2 + sectIDs.size());
+
+			line.add(r + "");
+			line.add(sectIDs.size() + "");
 			for (int s : sectIDs)
-				line.add(s+"");
-			csv.addLine(line);
+				line.add(s + "");
+			writer.write(line);
 		}
-		
-		return csv;
 	}
 	
 	public static final String RUP_PROPS_FILE_NAME = "properties.csv";
@@ -398,61 +409,60 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				areas[r] = rupSet.getAreaForRup(r);
 			}
 		}
-		
-		public CSVFile<String> buildCSV() {
-			CSVFile<String> csv = new CSVFile<>(true);
-			
+
+		public void buildCSV(CSVWriter writer) throws IOException {
+
 			List<String> header = new ArrayList<>(List.of("Rupture Index", "Magnitude", "Average Rake (degrees)",
 					"Area (m^2)", "Length (m)"));
-			
-			csv.addLine(header);
-			
-			for (int r=0; r<mags.length; r++) {
+
+			writer.write(header);
+
+			for (int r = 0; r < mags.length; r++) {
 				List<String> line = new ArrayList<>(5);
-				
-				line.add(r+"");
-				line.add(mags[r]+"");
-				line.add(rakes[r]+"");
-				line.add(areas[r]+"");
+
+				line.add(r + "");
+				line.add(mags[r] + "");
+				line.add(rakes[r] + "");
+				line.add(areas[r] + "");
 				if (lengths == null)
 					line.add("");
 				else
-					line.add(lengths[r]+"");
-				csv.addLine(line);
+					line.add(lengths[r] + "");
+				writer.write(line);
 			}
-			
-			return csv;
 		}
 	}
 	
-	public static List<List<Integer>> loadRupSectsCSV(CSVFile<String> rupSectsCSV, int numSections) {
-		int numRuptures = rupSectsCSV.getNumRows()-1;
+	public static List<List<Integer>> loadRupSectsCSV(CSVReader rupSectsCSV, int numSections, int numRuptures) {
 		List<List<Integer>> rupSectsList = new ArrayList<>(numRuptures);
 		boolean shortSafe = numSections < Short.MAX_VALUE;
+		rupSectsCSV.read(); // skip header row
 		for (int r=0; r<numRuptures; r++) {
 			int row = r+1;
 			int col = 0;
+			CSVReader.Row csvRow = rupSectsCSV.read();
+			Preconditions.checkState(csvRow != null, "Ruptures CSV file has too few rows.");
 			// load rupture sections
-			Preconditions.checkState(r == rupSectsCSV.getInt(row, col++),
+			Preconditions.checkState(r == csvRow.getInt(col++),
 					"Ruptures out of order or not 0-based in CSV file, expected id=%s at row %s", r, row);
-			int numRupSects = rupSectsCSV.getInt(row, col++);
+			int numRupSects = csvRow.getInt(col++);
 			Preconditions.checkState(numRupSects > 0, "Rupture %s has no sections!", r);
 			List<Integer> rupSects;
 			if (shortSafe) {
 				short[] sectIDs = new short[numRupSects];
 				for (int i=0; i<numRupSects; i++)
-					sectIDs[i] = (short)rupSectsCSV.getInt(row, col++);
+					sectIDs[i] = (short)csvRow.getInt(col++);
 				rupSects = new ShortListWrapper(sectIDs);
 			} else {
 				int[] sectIDs = new int[numRupSects];
 				for (int i=0; i<numRupSects; i++)
-					sectIDs[i] = rupSectsCSV.getInt(row, col++);
+					sectIDs[i] = csvRow.getInt(col++);
 				rupSects = new IntListWrapper(sectIDs);
 			}
-			int rowSize = rupSectsCSV.getLine(row).size();
+			int rowSize = csvRow.getLine().size();
 			while (col < rowSize) {
 				// make sure any further columns are empty
-				String str = rupSectsCSV.get(row, col++);
+				String str = csvRow.get(col++);
 				Preconditions.checkState(str.isBlank(),
 						"Rupture has %s sections, but data exists in %s column %s: %s", RUP_SECTS_FILE_NAME, col, str);
 			}
@@ -461,13 +471,21 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 						"Bad sectionID=%s for rupture %s", sectID, r);
 			rupSectsList.add(rupSects);
 		}
+		Preconditions.checkState(rupSectsCSV.read() == null, "Rupture CSV file has too many rows.");
+
+		try {
+			rupSectsCSV.close();
+		}catch(IOException x) {
+			throw new RuntimeException(x);
+		}
+
 		return rupSectsList;
 	}
 
 	@Override
 	public final void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
 		System.out.println("\tLoading ruptures CSV...");
-		CSVFile<String> rupSectsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, RUP_SECTS_FILE_NAME);
+		CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(zip, entryPrefix, RUP_SECTS_FILE_NAME);
 		CSVFile<String> rupPropsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, RUP_PROPS_FILE_NAME);
 		
 		// fault sections
@@ -476,36 +494,63 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		for (int s=0; s<sections.size(); s++)
 			Preconditions.checkState(sections.get(s).getSectionId() == s,
 			"Fault sections must be provided in order starting with ID=0");
-		
-		int numRuptures = rupSectsCSV.getNumRows()-1;
-		Preconditions.checkState(numRuptures > 0, "No ruptures found in CSV file");
-		Preconditions.checkState(rupSectsCSV.getNumRows() == rupPropsCSV.getNumRows(),
-				"Rupture sections and properites CSVs have different lengths");
-		
+
 		// load rupture data
 		System.out.println("\tParsing rupture properties CSV");
 		RuptureProperties props = new RuptureProperties(rupPropsCSV);
 		System.out.println("\tParsing rupture sections CSV");
-		List<List<Integer>> rupSectsList = loadRupSectsCSV(rupSectsCSV, sections.size());
+		List<List<Integer>> rupSectsList = loadRupSectsCSV(rupSectsCSV, sections.size(), props.mags.length);
+
+		int numRuptures = rupSectsList.size();
+		Preconditions.checkState(numRuptures > 0, "No ruptures found in CSV file");
+		Preconditions.checkState(numRuptures + 1 == rupPropsCSV.getNumRows(),
+				"Rupture sections and properites CSVs have different lengths");
 		
 		init(sections, rupSectsList, props.mags, props.rakes, props.areas, props.lengths);
 		
-		if (archive != null && zip.getEntry(entryPrefix+"modules.json") == null) {
-			// we're missing an index, see if any default modules are present that we can manually load
+		boolean hasManifest = zip.getEntry(entryPrefix+ModuleArchive.MODULE_FILE_NAME) != null;
+		if (archive != null) {
+			// see if any common modules are are present but unlised (either because modules.json is missing, or someone
+			// added them manually)
+			if (zip.getEntry(entryPrefix+SectAreas.DATA_FILE_NAME) != null && !hasAvailableModule(SectAreas.Precomputed.class)) {
+				// make sure it really was just the default implementation (and not some other implementation)
+				boolean doLoad = !hasManifest || getModule(SectAreas.class) instanceof SectAreas.Default;
+				if (doLoad) {
+					try {
+						System.out.println("Trying to load unlisted precomputed SectAreas module");
+						archive.loadUnlistedModule(SectAreas.Precomputed.class, entryPrefix, this);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}
 			
-			if (zip.getEntry(entryPrefix+SectAreas.DATA_FILE_NAME) != null) {
+			if (zip.getEntry(entryPrefix+SectSlipRates.DATA_FILE_NAME) != null && !hasAvailableModule(SectSlipRates.Precomputed.class)) {
+				// make sure it really was just the default implementation (and not some other implementation)
+				boolean doLoad = !hasManifest || getModule(SectSlipRates.class) instanceof SectSlipRates.Default;
+				if (doLoad) {
+					try {
+						System.out.println("Trying to load unlisted SectSlipRates module");
+						archive.loadUnlistedModule(SectSlipRates.Precomputed.class, entryPrefix, this);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			
+			if (zip.getEntry(entryPrefix+AveSlipModule.DATA_FILE_NAME) != null && !hasAvailableModule(AveSlipModule.class)) {
 				try {
-					System.out.println("Trying to load unlisted SectAreas module");
-					archive.loadUnlistedModule(SectAreas.Precomputed.class, entryPrefix, this);
+					System.out.println("Trying to load unlisted AveSlipModule module");
+					archive.loadUnlistedModule(AveSlipModule.Precomputed.class, entryPrefix, this);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}
 			
-			if (zip.getEntry(entryPrefix+SectSlipRates.DATA_FILE_NAME) != null) {
+			if (zip.getEntry(entryPrefix+RupSetTectonicRegimes.DATA_FILE_NAME) != null && !hasAvailableModule(RupSetTectonicRegimes.class)) {
 				try {
-					System.out.println("Trying to load unlisted SectSlipRates module");
-					archive.loadUnlistedModule(SectSlipRates.Precomputed.class, entryPrefix, this);
+					System.out.println("Trying to load unlisted RupSetTectonicRegimes module");
+					archive.loadUnlistedModule(RupSetTectonicRegimes.class, entryPrefix, this);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -518,11 +563,11 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @author kevin
 	 *
 	 */
-	private static class ShortListWrapper extends AbstractList<Integer> {
+	public static class ShortListWrapper extends AbstractList<Integer> {
 		
 		private short[] vals;
 		
-		private ShortListWrapper(List<Integer> ints) {
+		public ShortListWrapper(List<Integer> ints) {
 			vals = new short[ints.size()];
 			for (int i=0; i<vals.length; i++) {
 				int val = ints.get(i);
@@ -572,11 +617,11 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @author kevin
 	 *
 	 */
-	private static class IntListWrapper extends AbstractList<Integer> {
+	public static class IntListWrapper extends AbstractList<Integer> {
 		
 		private int[] vals;
 		
-		private IntListWrapper(List<Integer> ints) {
+		public IntListWrapper(List<Integer> ints) {
 			vals = new int[ints.size()];
 			for (int i=0; i<vals.length; i++)
 				vals[i] = ints.get(i);
@@ -699,7 +744,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					return SectAreas.fromFaultSectData(FaultSystemRupSet.this);
 				}
 				
-			}, SectAreas.class);
+			}, SectAreas.Default.class);
 		}
 		if (!hasAvailableModule(SectSlipRates.class)) {
 			addAvailableModule(new Callable<SectSlipRates>() {
@@ -709,7 +754,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					return SectSlipRates.fromFaultSectData(FaultSystemRupSet.this);
 				}
 				
-			}, SectSlipRates.class);
+			}, SectSlipRates.Default.class);
 		}
 		if (!hasAvailableModule(SlipAlongRuptureModel.class)) {
 			addAvailableModule(new Callable<SlipAlongRuptureModel>() {
@@ -967,8 +1012,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			RuptureSurface surf = rupSurfaceCache.get(rupIndex);
 			if (surf != null)
 				return surf;
-			List<RuptureSurface> rupSurfs = Lists.newArrayList();
-			for (FaultSection fltData : getFaultSectionDataForRupture(rupIndex))
+			List<FaultSection> fltDatas =  getFaultSectionDataForRupture(rupIndex);
+			List<RuptureSurface> rupSurfs = new ArrayList<>(fltDatas.size());
+			for (FaultSection fltData : fltDatas)
 				rupSurfs.add(fltData.getFaultSurface(gridSpacing, false, aseisReducesArea));
 			if (rupSurfs.size() == 1)
 				surf = rupSurfs.get(0);
@@ -1412,7 +1458,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * new section IDs in the returned rupture set, and only ruptures involving those sections will be retained. If any
 	 * ruptures utilize both retained and non-retained section IDs, an {@link IllegalStateException} will be thrown.
 	 * <br>
-	 * All modules that implement {@link SplittableRuptureSubSetModule} will be copied over to the returned rupture set.
+	 * All modules that implement {@link SplittableRuptureModule} will be copied over to the returned rupture set.
 	 * <br>
 	 * Mappings between original and new section/rupture IDs can be retrieved via the {@link RuptureSubSetMappings} module
 	 * that will be attached to the rupture subset.
@@ -1430,7 +1476,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * new section IDs in the returned rupture set, and only ruptures involving those sections will be retained. If any
 	 * ruptures utilize both retained and non-retained section IDs, an {@link IllegalStateException} will be thrown.
 	 * <br>
-	 * All modules that implement {@link SplittableRuptureSubSetModule} will be copied over to the returned rupture set.
+	 * All modules that implement {@link SplittableRuptureModule} will be copied over to the returned rupture set.
 	 * <br>
 	 * Mappings between original and new section/rupture IDs can be retrieved via the {@link RuptureSubSetMappings} module
 	 * that will be attached to the rupture subset.
@@ -1512,12 +1558,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				modMags, modRakes, modRupAreas, modRupLengths);
 		
 		// add mappings module
-		RuptureSubSetMappings mappings = new RuptureSubSetMappings(sectIDs_newToOld, rupIDs_newToOld);
+		RuptureSubSetMappings mappings = new RuptureSubSetMappings(sectIDs_newToOld, rupIDs_newToOld, this);
 		modRupSet.addModule(mappings);
 		
 		// now copy over any modules we can
-		for (OpenSHA_Module module : getModulesAssignableTo(SplittableRuptureSubSetModule.class, true)) {
-			OpenSHA_Module modModule = ((SplittableRuptureSubSetModule<?>)module).getForRuptureSubSet(
+		for (OpenSHA_Module module : getModulesAssignableTo(SplittableRuptureModule.class, true)) {
+			OpenSHA_Module modModule = ((SplittableRuptureModule<?>)module).getForRuptureSubSet(
 					modRupSet, mappings);
 			if (modModule != null)
 				modRupSet.addModule(modModule);
@@ -1529,7 +1575,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	/**
 	 * Builds a rupture subset keeping only the given ruptures.
 	 * <br>
-	 * All modules that implement {@link SplittableRuptureSubSetModule} will be copied over to the returned rupture set.
+	 * All modules that implement {@link SplittableRuptureModule} will be copied over to the returned rupture set.
 	 * <br>
 	 * Mappings between original and new rupture IDs can be retrieved via the {@link RuptureSubSetMappings} module
 	 * that will be attached to the rupture subset.
@@ -1573,12 +1619,12 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				modMags, modRakes, modRupAreas, modRupLengths);
 		
 		// add mappings module
-		RuptureSubSetMappings mappings = new RuptureSubSetMappings(sectIDs_newToOld, rupIDs_newToOld);
+		RuptureSubSetMappings mappings = new RuptureSubSetMappings(sectIDs_newToOld, rupIDs_newToOld, this);
 		modRupSet.addModule(mappings);
 		
 		// now copy over any modules we can
-		for (OpenSHA_Module module : getModulesAssignableTo(SplittableRuptureSubSetModule.class, true)) {
-			OpenSHA_Module modModule = ((SplittableRuptureSubSetModule<?>)module).getForRuptureSubSet(
+		for (OpenSHA_Module module : getModulesAssignableTo(SplittableRuptureModule.class, true)) {
+			OpenSHA_Module modModule = ((SplittableRuptureModule<?>)module).getForRuptureSubSet(
 					modRupSet, mappings);
 			if (modModule != null)
 				modRupSet.addModule(modModule);
@@ -1647,11 +1693,25 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public static Builder builderForClusterRups(List<? extends FaultSection> faultSectionData,
 			List<ClusterRupture> rups) {
 		List<List<Integer>> sectionForRups = new ArrayList<>();
-		for (ClusterRupture rup : rups) {
-			List<Integer> ids = new ArrayList<>();
-			for (FaultSection sect : rup.buildOrderedSectionList())
-				ids.add(sect.getSectionId());
-			sectionForRups.add(ids);
+		boolean shortSafe = faultSectionData.get(faultSectionData.size()-1).getSectionId() < Short.MAX_VALUE;
+		if(shortSafe) {
+			for (ClusterRupture rup : rups) {
+				List<FaultSection> sections= rup.buildOrderedSectionList();
+				short[] ids = new short[sections.size()];
+				for(int s = 0; s < ids.length; s++) {
+					ids[s] = (short) sections.get(s).getSectionId();
+				}
+				sectionForRups.add(new ShortListWrapper(ids));
+			}
+		} else {
+			for (ClusterRupture rup : rups) {
+				List<FaultSection> sections= rup.buildOrderedSectionList();
+				int[] ids = new int[sections.size()];
+				for(int s = 0; s < ids.length; s++) {
+					ids[s] = sections.get(s).getSectionId();
+				}
+				sectionForRups.add(new IntListWrapper(ids));
+			}
 		}
 		Builder builder = new Builder(faultSectionData, sectionForRups);
 		builder.setClusterRuptures(rups);
@@ -1788,7 +1848,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					for (int r=0; r<numRups; r++)
 						rupAreas[r] = Double.NaN;
 				}
-				for (int r=0; r<numRups; r++) {
+				double[] finalRakes = rakes;
+				double[] finalRupAreas = rupAreas;
+				IntStream.range(0, numRups).parallel().forEach(r -> {
 					List<Double> mySectAreas = new ArrayList<>();
 					List<Double> mySectRakes = new ArrayList<>();
 					double totArea = 0d;
@@ -1799,11 +1861,11 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 						mySectAreas.add(area);
 						mySectRakes.add(sect.getAveRake());
 					}
-					if (Double.isNaN(rupAreas[r]))
-						rupAreas[r] = totArea;
-					if (Double.isNaN(rakes[r]))
-						rakes[r] = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(mySectAreas, mySectRakes));
-				}
+					if (Double.isNaN(finalRupAreas[r]))
+						finalRupAreas[r] = totArea;
+					if (Double.isNaN(finalRakes[r]))
+						finalRakes[r] = FaultUtils.getInRakeRange(FaultUtils.getScaledAngleAverage(mySectAreas, mySectRakes));
+				});
 				this.rakes = rakes;
 				this.rupAreas = rupAreas;
 			}
@@ -1844,6 +1906,41 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				public Class<? extends OpenSHA_Module> getType() {
 					return AveSlipModule.class;
 				}
+			});
+			return this;
+		}
+		
+		public Builder tectonicRegime(TectonicRegionType regime) {
+			modules.add(new ModuleBuilder() {
+
+				@Override
+				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
+					return RupSetTectonicRegimes.constant(rupSet, regime);
+				}
+
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return RupSetTectonicRegimes.class;
+				}
+				
+			});
+			return this;
+		}
+		
+		public Builder tectonicRegimes(TectonicRegionType[] regimes) {
+			Preconditions.checkState(sectionForRups.size() == regimes.length);
+			modules.add(new ModuleBuilder() {
+
+				@Override
+				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
+					return new RupSetTectonicRegimes(rupSet, regimes);
+				}
+
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return RupSetTectonicRegimes.class;
+				}
+				
 			});
 			return this;
 		}

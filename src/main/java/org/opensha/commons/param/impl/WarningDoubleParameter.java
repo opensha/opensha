@@ -636,7 +636,7 @@ WarningParameter<Double> {
 
 		WarningDoubleParameter param = null;
 		if( value == null ) param = new WarningDoubleParameter( name, c1, units);
-		else param = new WarningDoubleParameter( name, c1, units, new Double( this.value.toString() )  );
+		else param = new WarningDoubleParameter( name, c1, units, Double.valueOf( this.value.toString() )  );
 		if( param == null ) return null;
 
 		param.setWarningConstraint(c2);

@@ -180,7 +180,7 @@ ParameterChangeListener {
 			// create the missed events prob parameters (they are equal to number of events in sequence)
 			for(int i=0; i<=numEvents; ++i)  {
 				probParameter = new DoubleParameter((String)paramNames.get(i), this.MISSED_EVENT_PROB_MIN,
-						this.MISSED_EVENT_PROB_MAX, new Double(eachProb));
+						this.MISSED_EVENT_PROB_MAX, Double.valueOf(eachProb));
 				missedEventsProbParamList.addParameter(probParameter);
 			}
 		}
@@ -280,7 +280,7 @@ ParameterChangeListener {
 	private void addProbParams() {
 		sequenceProbParamList = new ParameterList();
 		int numSequences = this.sequenceList.size();
-		Double seqProbDefault = new Double(1.0/numSequences);
+		Double seqProbDefault = Double.valueOf(1.0/numSequences);
 		for(int i=0; i<numSequences; ++i) {
 			// sequence probability
 			DoubleParameter sequenceProbParam = new DoubleParameter(this.SEQUENCE_PROB_PARAM_NAME+i,

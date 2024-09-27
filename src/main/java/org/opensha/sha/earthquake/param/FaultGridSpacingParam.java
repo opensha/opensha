@@ -13,8 +13,8 @@ public class FaultGridSpacingParam extends DoubleParameter {
 	public final static String NAME = "Fault Grid Spacing";
 	public final static String INFO = "For discretization of faults";
 	private static final String UNITS = "km";
-	protected final static Double MIN = new Double(0.1d);
-	protected final static Double MAX = new Double(10d);
+	protected final static Double MIN = Double.valueOf(0.1d);
+	protected final static Double MAX = Double.valueOf(10d);
 	
 
 	/**

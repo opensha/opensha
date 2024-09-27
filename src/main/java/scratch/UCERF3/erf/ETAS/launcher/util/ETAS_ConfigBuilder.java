@@ -48,7 +48,7 @@ public class ETAS_ConfigBuilder {
 	
 	public enum HPC_Sites {
 		USC_CARC("usc_carc_mpj_express.slurm", "usc_carc_plot.slurm"),
-		TACC_STAMPEDE2("tacc_stampede2_fastmpj.slurm", "tacc_stampede2_plot.slurm"),
+		TACC_STAMPEDE3("tacc_stampede3_fastmpj.slurm", "tacc_stampede3_plot.slurm"),
 		TACC_FRONTERA("tacc_frontera_fastmpj.slurm", "tacc_frontera_plot.slurm");
 
 		private String plotFileName;
@@ -191,7 +191,7 @@ public class ETAS_ConfigBuilder {
 		cOption.setRequired(false);
 		ops.addOption(cOption);
 		
-		Option kCOVOption = new Option("ek", "etas-k-cov", true, "COV of ETAS productivity parameter parameter, k");
+		Option kCOVOption = new Option("ek", "etas-k-cov", true, "COV of ETAS productivity parameter, k");
 		kCOVOption.setRequired(false);
 		ops.addOption(kCOVOption);
 		
@@ -206,8 +206,8 @@ public class ETAS_ConfigBuilder {
 		ops.addOption(completenessOption);
 		
 		Option maxPtSrcMagOption = new Option("ptm", "max-point-src-mag", true,
-				"Maximum magnitude for point source ruptures. Random finite rupture surfaces will be assigned above "
-				+ "this threshold. (DEFAULT: "+U3ETAS_MaxPointSourceMagParam.DEFAULT_VALUE.floatValue()+")");
+				"Maximum magnitude for point source ruptures. Random finite rupture surfaces will be assigned for all "
+				+ "off-fault ruptures above this magnitude threshold. (DEFAULT: "+U3ETAS_MaxPointSourceMagParam.DEFAULT_VALUE.floatValue()+")");
 		maxPtSrcMagOption.setRequired(false);
 		ops.addOption(maxPtSrcMagOption);
 		
@@ -418,30 +418,48 @@ public class ETAS_ConfigBuilder {
 		Integer threads = cmd.hasOption("threads") ? Integer.parseInt(cmd.getOptionValue("threads")) : null;
 		String queue = cmd.hasOption("queue") ? cmd.getOptionValue("queue") : null;
 		
-		updateSlurmScript(inputFile, outputFile, nodes, threads, hours, queue, configFile);
+		updateSlurmScript(inputFile, outputFile, nodes, null, threads, hours, queue, configFile);
 		
 		File plotFile = site.getSlurmPlotFile();
 		if (plotFile.exists()) {
 			System.out.println("Building SLURM plot file for "+site.name());
 			outputFile = new File(outputDir, "plot_results.slurm");
 			
-			updateSlurmScript(plotFile, outputFile, null, null, null, queue, configFile);
+			updateSlurmScript(plotFile, outputFile, null, null, null, null, queue, configFile);
 		}
 	}
 	
-	public static void updateSlurmScript(File inputFile, File outputFile, Integer nodes, Integer threads, Integer hours, String queue, File configFile)
-			throws IOException {
-		updateSlurmScript(inputFile, outputFile, nodes, threads, hours, queue, configFile.getPath());
+	public static void updateSlurmScript(File inputFile, File outputFile, Integer nodes, Integer nodeThreads, Integer calcThreads,
+			Integer hours, String queue, File configFile) throws IOException {
+		updateSlurmScript(inputFile, outputFile, nodes, nodeThreads, calcThreads, hours, queue, configFile.getPath());
 	}
 	
-	public static void updateSlurmScript(File inputFile, File outputFile, Integer nodes, Integer threads, Integer hours, String queue, String configFile)
-			throws IOException {
+	public static void updateSlurmScript(File inputFile, File outputFile, Integer nodes, Integer nodeThreads, Integer calcThreads,
+			Integer hours, String queue, String configFile) throws IOException {
 		List<String> lines = new ArrayList<>();
 		
 		boolean nodeLineFound = true;
 		int lastIndexSBATCH = -1;
 		
-		for (String line : Files.readLines(inputFile, Charset.defaultCharset())) {
+		List<String> inLines = Files.readLines(inputFile, Charset.defaultCharset());
+		if (nodeThreads == null) {
+			// see if we can determine from -N and -n
+			int origNodes = -1;
+			int origTasks = -1;
+			for (String line : inLines) {
+				String tline = line.trim();
+				if (tline.startsWith("#SBATCH -N") && nodes != null)
+					origNodes = Integer.parseInt(tline.substring(tline.lastIndexOf(" ")+1));
+				else if (tline.startsWith("#SBATCH -n") && nodes != null)
+					origTasks = Integer.parseInt(tline.substring(tline.lastIndexOf(" ")+1));
+			}
+			if (origNodes > 0 && origTasks > 0 && origTasks >= origNodes) {
+				nodeThreads = origTasks / origNodes;
+				System.out.println("Detected nodeThreads = "+origTasks+" / "+origNodes+" = "+nodeThreads);
+			}
+		}
+		
+		for (String line : inLines) {
 			String tline = line.trim();
 			if (tline.startsWith("#SBATCH -t") && hours != null)
 				line = "#SBATCH -t "+hours+":00:00";
@@ -450,7 +468,7 @@ public class ETAS_ConfigBuilder {
 				line = "#SBATCH -N "+nodes;
 			
 			if (tline.startsWith("#SBATCH -n ") && nodes != null) {
-				int cores = threads == null ? nodes : nodes*threads;
+				int cores = nodeThreads == null ? nodes : nodes*nodeThreads;
 				line = "#SBATCH -n "+cores;
 			}
 			
@@ -486,8 +504,8 @@ public class ETAS_ConfigBuilder {
 			if (tline.startsWith("#SBATCH"))
 				lastIndexSBATCH = lines.size();
 			
-			if (threads != null && tline.startsWith("THREADS="))
-				line = "THREADS="+threads;
+			if (calcThreads != null && tline.startsWith("THREADS="))
+				line = "THREADS="+calcThreads;
 			
 			lines.add(line);
 		}

@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+  { "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+            [-70.95, 21.20],
+            [-70.95, 15.00],
+            [-61.70, 15.00],
+            [-61.70, 21.20],
+            [-70.95, 21.20]
+        ]]
+      },
+      "properties": {
+        "name": "PRVI - Crustal Grid",
+        "stroke": "#6d0fba"
+      }
+    }
+  ]
+}

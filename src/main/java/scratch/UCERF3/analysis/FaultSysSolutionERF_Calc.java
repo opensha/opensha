@@ -93,6 +93,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultGridAssociations;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
@@ -484,7 +485,7 @@ public class FaultSysSolutionERF_Calc {
 				}
 				
 				// convert minMag to string for filename
-				Double tempDouble = new Double(minMag);
+				Double tempDouble = Double.valueOf(minMag);
 				String magString = tempDouble.toString();
 				String dirName = fileName+"_Part_"+magString.replace(".", "pt");
 				
@@ -544,7 +545,7 @@ public class FaultSysSolutionERF_Calc {
 			String scaleLabel = "Nucleation Rate";
 			String metadata ="magThresh="+magThresh+"\nincludeAftershocks="+includeAftershocks+"\nmagAreaAleatory="+magAreaAleatory+"\n";
 			// convert minMag to string for filename
-			Double tempDouble = new Double(magThresh);
+			Double tempDouble = Double.valueOf(magThresh);
 			String magString = tempDouble.toString();
 			String dirName = fileName+"_Nucl_"+magString.replace(".", "pt");
 			System.out.println(dirName);
@@ -2394,7 +2395,7 @@ public class FaultSysSolutionERF_Calc {
 			int ss1 = Integer.parseInt(o1.substring(ss1_index));
 			int ss2 = Integer.parseInt(o2.substring(ss2_index));
 			Preconditions.checkState(ss1 >= 0 && ss2 >= 0);
-			return new Integer(ss1).compareTo(ss2);
+			return Integer.valueOf(ss1).compareTo(ss2);
 		}
 		
 	}
@@ -5381,7 +5382,7 @@ public class FaultSysSolutionERF_Calc {
 	}
 	
 	public static void testTotSubSeisMFD(FaultSystemSolutionERF erf) {
-		GridSourceProvider gridSrcProvider = erf.getGridSourceProvider();
+		MFDGridSourceProvider gridSrcProvider = (MFDGridSourceProvider)erf.getGridSourceProvider();
 		SummedMagFreqDist mfd1 = new SummedMagFreqDist(2.05,8.95,70);
 		for(int i=0;i<gridSrcProvider.getGriddedRegion().getNumLocations(); i++) {
 			IncrementalMagFreqDist mfd = gridSrcProvider.getMFD_SubSeisOnFault(i);

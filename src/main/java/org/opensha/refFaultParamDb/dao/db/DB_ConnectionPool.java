@@ -189,7 +189,7 @@ public class DB_ConnectionPool implements Runnable, DB_AccessAPI {
 			int maxConns = Integer.parseInt( (String) p.get("maxConns"));
 			String logFileString = (String) p.get("logFileString");
 			double maxConnTime =
-				(new Double( (String) p.get("maxConnTime"))).doubleValue();
+				(Double.valueOf( (String) p.get("maxConnTime"))).doubleValue();
 
 			p.clear();
 			setupBroker(dbDriver, dbServer, dbLogin, dbPassword, minConns,
@@ -221,7 +221,7 @@ public class DB_ConnectionPool implements Runnable, DB_AccessAPI {
 			int maxConns = Integer.parseInt( (String) p.get("maxConns"));
 			String logFileString = (String) p.get("logFileString");
 			double maxConnTime =
-				(new Double( (String) p.get("maxConnTime"))).doubleValue();
+				(Double.valueOf( (String) p.get("maxConnTime"))).doubleValue();
 
 			p.clear();
 			setupBroker(dbDriver, dbServer, dbLogin, dbPassword, minConns,

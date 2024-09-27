@@ -24,6 +24,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
+import javax.swing.UIManager;
 import javax.swing.plaf.basic.BasicComboBoxRenderer;
 
 import org.opensha.commons.gui.LabeledBoxPanel;
@@ -82,6 +83,8 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 	private int maxChooserChars = Integer.MAX_VALUE;
 	
 	private int defaultIMRIndex = 0;
+	
+	private Color backgroundColor;
 
 	/**
 	 * Initializes the GUI with the given list of IMRs
@@ -92,6 +95,16 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 		this.imrs = imrs;
 		Preconditions.checkNotNull(imrs, "IMR list cannot be null!");
 		Preconditions.checkArgument(!imrs.isEmpty(), "IMR list cannot be empty!");
+		
+		Color defaultBackground = UIManager.getColor ( "Panel.background" );
+		double avgColor = (defaultBackground.getRed() + defaultBackground.getGreen() + defaultBackground.getBlue())/3d;
+		if (avgColor > 127d) {
+			// light theme
+			backgroundColor = Color.WHITE;
+		} else {
+			// dark theme
+			backgroundColor = defaultBackground;
+		}
 		
 		// check no duplicate names
 		ArrayList<String> names = new ArrayList<String>();
@@ -104,7 +117,7 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 		
 		imrEnables = new ArrayList<Boolean>();
 		for (int i=0; i<imrs.size(); i++) {
-			imrEnables.add(new Boolean(true));
+			imrEnables.add(Boolean.valueOf(true));
 		}
 
 		// TODO add make the multi imr bean handle warnings
@@ -204,7 +217,7 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 				chooser.resetRenderer();
 			} else {
 				chooser = new ChooserComboBox(0);
-				chooser.setBackground(Color.WHITE);
+				chooser.setBackground(backgroundColor);
 //				chooser.addActionListener(this);
 				chooserBoxes.add(chooser);
 			}
@@ -361,7 +374,7 @@ public class IMR_MultiGuiBean extends LabeledBoxPanel implements ActionListener,
 				int index, boolean isSelected, boolean cellHasFocus) {
 			Component comp = super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
 			if (!isSelected)
-				comp.setBackground(Color.white);
+				comp.setBackground(backgroundColor);
 			if (index >= 0) {
 				comp.setEnabled(imrEnables.get(index));
 				setFont(comp, index);

@@ -189,6 +189,17 @@ public class PlotUtils {
 		axis.setStandardTickUnits(tus);
 	}
 	
+	public static void setSubplotGap(GraphPanel gp, double gap) {
+		XYPlot plot = gp.getPlot();
+		if (plot instanceof CombinedDomainXYPlot) {
+			((CombinedDomainXYPlot)plot).setGap(gap);
+		} else if (plot instanceof CombinedRangeXYPlot) {
+			((CombinedRangeXYPlot)plot).setGap(gap);
+		} else {
+			throw new IllegalStateException("Can only set gap for CombinedDomainXYPlot or CombinedRangeXYPlot");
+		}
+	}
+	
 	public static void setSubPlotWeights(GraphPanel gp, int... weights) {
 		List<XYPlot> subPlots = getSubPlots(gp);
 		Preconditions.checkState(subPlots.size() == weights.length, "Have %s subplots but %s weights", subPlots.size(), weights.length);

@@ -48,10 +48,10 @@ implements ParameterChangeFailListener, ParameterChangeListener{
 
 	//Disaggregation Parameter
 	private DoubleParameter disaggregationProbParam =
-		new DoubleParameter(DISAGGREGATION_PROB_PARAM_NAME, 0, 1, new Double(.01));
+		new DoubleParameter(DISAGGREGATION_PROB_PARAM_NAME, 0, 1, Double.valueOf(.01));
 
 	private DoubleParameter disaggregationIMLParam =
-		new DoubleParameter(DISAGGREGATION_IML_PARAM_NAME, 0, 11, new Double(.1));
+		new DoubleParameter(DISAGGREGATION_IML_PARAM_NAME, 0, 11, Double.valueOf(.1));
 
 	private StringParameter disaggregationParameter ;
 
@@ -64,10 +64,10 @@ implements ParameterChangeFailListener, ParameterChangeListener{
 	//Shows the source disaggregation only if this parameter is selected
 	private final static String SOURCE_DISAGGR_PARAM_NAME = "Show Source Disaggregation List";
 	private BooleanParameter sourceDisaggregationParam = new BooleanParameter
-	(SOURCE_DISAGGR_PARAM_NAME,new Boolean(false));
+	(SOURCE_DISAGGR_PARAM_NAME,Boolean.valueOf(false));
 
 	private final static String NUM_SOURCE_PARAM_NAME = "Num Sources in List";
-	private IntegerParameter numSourcesToShow = new IntegerParameter(NUM_SOURCE_PARAM_NAME,new Integer(100));
+	private IntegerParameter numSourcesToShow = new IntegerParameter(NUM_SOURCE_PARAM_NAME,Integer.valueOf(100));
 
 	private final static String SHOW_DISTANCES_PARAM_NAME = "Include Source Distances";
 	private BooleanParameter showDistancesParam = new BooleanParameter(SHOW_DISTANCES_PARAM_NAME, false);
@@ -75,7 +75,7 @@ implements ParameterChangeFailListener, ParameterChangeListener{
 	//show the bin data only if this parameter is selected
 	private final static String SHOW_DISAGGR_BIN_RATE_PARAM_NAME = "Show Disaggregation Bin Rate Data";
 	private BooleanParameter binRateDisaggregationParam = new BooleanParameter
-	(SHOW_DISAGGR_BIN_RATE_PARAM_NAME,new Boolean(false));
+	(SHOW_DISAGGR_BIN_RATE_PARAM_NAME,Boolean.valueOf(false));
 
 
 
@@ -83,9 +83,9 @@ implements ParameterChangeFailListener, ParameterChangeListener{
 	private static final String MIN_MAG_PARAM_NAME = "Min Mag (bin center)";
 	private static final String NUM_MAG_PARAM_NAME = "Num Mag";
 	private static final String DELTA_MAG_PARAM_NAME = "Delta Mag";
-	private DoubleParameter minMagParam = new DoubleParameter(MIN_MAG_PARAM_NAME,0,10,new Double(5));
-	private IntegerParameter numMagParam = new IntegerParameter(NUM_MAG_PARAM_NAME,new Integer(10));
-	private DoubleParameter deltaMagParam = new DoubleParameter(DELTA_MAG_PARAM_NAME,new Double(0.5));
+	private DoubleParameter minMagParam = new DoubleParameter(MIN_MAG_PARAM_NAME,0,10,Double.valueOf(5));
+	private IntegerParameter numMagParam = new IntegerParameter(NUM_MAG_PARAM_NAME,Integer.valueOf(10));
+	private DoubleParameter deltaMagParam = new DoubleParameter(DELTA_MAG_PARAM_NAME,Double.valueOf(0.5));
 
 	//sets the Dist range for Disaggregation calculation
 	private static final String DIST_TYPE_PARAM_NAME = "Distance Binning Type";
@@ -98,14 +98,14 @@ implements ParameterChangeFailListener, ParameterChangeListener{
 	private static final String MIN_DIST_PARAM_NAME = "Min Dist (bin center)";
 	private static final String NUM_DIST_PARAM_NAME = "Num Dist";
 	private static final String DELTA_DIST_PARAM_NAME = "Delta Dist";
-	private DoubleParameter minDistParam = new DoubleParameter(MIN_DIST_PARAM_NAME,new Double(5));
-	private IntegerParameter numDistParam = new IntegerParameter(NUM_DIST_PARAM_NAME,new Integer(11));
-	private DoubleParameter deltaDistParam = new DoubleParameter(DELTA_DIST_PARAM_NAME,new Double(10));
+	private DoubleParameter minDistParam = new DoubleParameter(MIN_DIST_PARAM_NAME,Double.valueOf(5));
+	private IntegerParameter numDistParam = new IntegerParameter(NUM_DIST_PARAM_NAME,Integer.valueOf(11));
+	private DoubleParameter deltaDistParam = new DoubleParameter(DELTA_DIST_PARAM_NAME,Double.valueOf(10));
 
 	//If the manual range for the Z-Axis Max is selected, then user can set the value in this parameter 
 	private static final String Z_AXIS_MAX_NAME = "Z-Axis Max";
 	private static final String Z_AXIS_MAX_INFO ="Set the max value for the Z -Axis in percentage";
-	private DoubleParameter zMaxParam = new DoubleParameter(Z_AXIS_MAX_NAME,0,100,new Double(50));
+	private DoubleParameter zMaxParam = new DoubleParameter(Z_AXIS_MAX_NAME,0,100,Double.valueOf(50));
 
 	//Parameter to allow to select if the Z-Axis max to be set manually or from data
 	private StringParameter zMaxChoiceParam;

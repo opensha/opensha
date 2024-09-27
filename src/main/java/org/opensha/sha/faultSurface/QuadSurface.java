@@ -761,13 +761,23 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		return areaInside;
 	}
 
+	private LocationList surfLocs;
+
 	@Override
 	public LocationList getEvenlyDiscritizedListOfLocsOnSurface() {
-		LocationList locs = new LocationList();
-		int numDDW = getNumDiscrDownDip();
-		for (int i=0; i<numDDW; i++)
-			locs.addAll(getEvenlyDiscretizedHorizontalSpan(i));
-		return locs;
+		if (surfLocs == null) {
+			synchronized (this) {
+				if (surfLocs == null) {
+					int numDDW = getNumDiscrDownDip();
+					int size = getNumDiscrAlongStrike()*numDDW;
+					LocationList locList = new LocationList(size);
+					for (int i=0; i<numDDW; i++)
+						locList.addAll(getEvenlyDiscretizedHorizontalSpan(i));
+					surfLocs = locList.unmodifiableList();
+				}
+			}
+		}
+		return surfLocs;
 	}
 
 	@Override

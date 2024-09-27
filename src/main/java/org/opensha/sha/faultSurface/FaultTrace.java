@@ -50,7 +50,8 @@ public class FaultTrace extends LocationList implements Named {
 	public int getNumLocations() { return size(); }
 
 	/**
-	 * This returns the total fault-trace length in km
+	 * This returns the total fault-trace length in km. This is computed as the sum of horizontal distances between
+	 * each trace location (depths are ignored).
 	 * @return
 	 */
 	public double getTraceLength() {

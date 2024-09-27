@@ -64,15 +64,15 @@ public class DahleEtAl_1995_AttenRel extends AttenuationRelationship {
 	private static final long serialVersionUID = 1234567890987654361L;
 
 	// warning constraint fields:
-	protected final static Double MAG_WARN_MIN = new Double(5.);
-	protected final static Double MAG_WARN_MAX = new Double(8.);
+	protected final static Double MAG_WARN_MIN = Double.valueOf(5.);
+	protected final static Double MAG_WARN_MAX = Double.valueOf(8.);
 
 	// Standard Deviation type options
 	public final static String STD_DEV_TYPE_BAY = "Bayesian";
 	public final static String STD_DEV_TYPE_LS = "Least Squares";
 	public final static String STD_DEV_TYPE_DEFAULT = STD_DEV_TYPE_BAY;
-	protected final static Double DISTANCE_RUP_WARN_MIN = new Double(0.0);
-	protected final static Double DISTANCE_RUP_WARN_MAX = new Double(400.0);
+	protected final static Double DISTANCE_RUP_WARN_MIN = Double.valueOf(0.0);
+	protected final static Double DISTANCE_RUP_WARN_MAX = Double.valueOf(400.0);
 
 	/**
 	 * Site Type Parameter ("Rock" versus "Soil")
@@ -107,7 +107,7 @@ public class DahleEtAl_1995_AttenRel extends AttenuationRelationship {
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 
-		magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
 		this.eqkRupture = eqkRupture;
 		setPropagationEffectParams();
 	}
@@ -382,7 +382,7 @@ public class DahleEtAl_1995_AttenRel extends AttenuationRelationship {
 			DahleEtAl_AttenRelCoefficients coeff = (DahleEtAl_AttenRelCoefficients)
 			coefficients.get(keys.nextElement());
 			if (coeff.period >= 0) {
-				set.add(new Double(coeff.period));
+				set.add(Double.valueOf(coeff.period));
 			}
 		}
 		Iterator it = set.iterator();
@@ -477,39 +477,39 @@ public class DahleEtAl_1995_AttenRel extends AttenuationRelationship {
 
 		// SA/0.00
 		DahleEtAl_AttenRelCoefficients coeff0 = new DahleEtAl_AttenRelCoefficients(
-				SA_Param.NAME + '/' + (new Double("0.00")).doubleValue(),
+				SA_Param.NAME + '/' + (Double.valueOf("0.00")).doubleValue(),
 				0.00, -1.579, 0.554, -0.560, -0.00302, 0.326, 6.0, 0.75, 0.73);
 		// SA/0.025
 		DahleEtAl_AttenRelCoefficients coeff1 = new DahleEtAl_AttenRelCoefficients(
-				"SA/" + (new Double("0.025")).doubleValue(),
+				"SA/" + (Double.valueOf("0.025")).doubleValue(),
 				0.025, -7.106, 0.554, -0.560, -0.00302, 0.326, 6.0, 0.75, 0.73);
 		// SA/0.05
 		DahleEtAl_AttenRelCoefficients coeff2 = new DahleEtAl_AttenRelCoefficients(
-				"SA/" + (new Double("0.05")).doubleValue(),
+				"SA/" + (Double.valueOf("0.05")).doubleValue(),
 				0.05, -5.375, 0.449, -0.575, -0.00246, 0.308, 6.0, 0.78, 0.76);
 		// SA/0.1
 		DahleEtAl_AttenRelCoefficients coeff3 = new DahleEtAl_AttenRelCoefficients(
-				"SA/" + (new Double("0.1")).doubleValue(),
+				"SA/" + (Double.valueOf("0.1")).doubleValue(),
 				0.1, -4.608, 0.486, -0.609, -0.00198, 0.381, 6.0, 0.81, 0.79);
 		// SA/0.2
 		DahleEtAl_AttenRelCoefficients coeff4 = new DahleEtAl_AttenRelCoefficients(
-				"SA/" + (new Double("0.2")).doubleValue(),
+				"SA/" + (Double.valueOf("0.2")).doubleValue(),
 				0.2, -4.746, 0.645, -0.674, -0.00155, 0.470, 6.0, 0.82, 0.80);
 		// SA/0.5
 		DahleEtAl_AttenRelCoefficients coeff5 = new DahleEtAl_AttenRelCoefficients(
-				"SA/" + (new Double("0.5")).doubleValue(),
+				"SA/" + (Double.valueOf("0.5")).doubleValue(),
 				0.5, -5.717, 0.920, -0.761, -0.00106, 0.566, 6.0, 0.83, 0.81);
 		// SA/1.0
 		DahleEtAl_AttenRelCoefficients coeff6 = new DahleEtAl_AttenRelCoefficients(
-				"SA/" + (new Double("1.0")).doubleValue(),
+				"SA/" + (Double.valueOf("1.0")).doubleValue(),
 				1.0, -6.595, 1.084, -0.792, -0.00075, 0.588, 6.0, 0.82, 0.79);
 		// SA/2.0
 		DahleEtAl_AttenRelCoefficients coeff7 = new DahleEtAl_AttenRelCoefficients(
-				"SA/" + (new Double("2.0")).doubleValue(),
+				"SA/" + (Double.valueOf("2.0")).doubleValue(),
 				2.0, -7.205, 1.131, -0.762, -0.00051, 0.536, 6.0, 0.79, 0.75);
 		// SA/4.0
 		DahleEtAl_AttenRelCoefficients coeff8 = new DahleEtAl_AttenRelCoefficients(
-				"SA/" + (new Double("4.0")).doubleValue(),
+				"SA/" + (Double.valueOf("4.0")).doubleValue(),
 				4.0, -7.324, 1.009, -0.629, -0.00038, 0.496, 6.0, 0.73, 0.67);
 
 		coefficients.put(coeff.getName(), coeff);

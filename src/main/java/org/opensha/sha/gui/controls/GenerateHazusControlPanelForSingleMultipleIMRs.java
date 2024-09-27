@@ -400,7 +400,7 @@ implements Runnable{
 	private void setSA_PeriodForSelectedIMRs(ArrayList selectedAttenRels, double period) {
 		int size = selectedAttenRels.size();
 		for(int i=0;i<size;++i)
-			((ScalarIMR)selectedAttenRels.get(i)).getParameter(PeriodParam.NAME).setValue(new Double(period));
+			((ScalarIMR)selectedAttenRels.get(i)).getParameter(PeriodParam.NAME).setValue(Double.valueOf(period));
 	}
 
 

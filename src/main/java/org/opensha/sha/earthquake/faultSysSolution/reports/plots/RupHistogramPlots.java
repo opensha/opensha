@@ -1361,7 +1361,7 @@ public class RupHistogramPlots extends AbstractRupSetPlot {
 			CumulativeRakeChangeFilter filter = null;
 			@Override
 			public HistogramFunction getHistogram(MinMaxAveTracker scalarTrack) {
-				return HistogramFunction.getEncompassingHistogram(0d, scalarTrack.getMax(), 60d);
+				return HistogramFunction.getEncompassingHistogram(0d, Math.max(180d, scalarTrack.getMax()), 60d);
 			}
 
 			@Override

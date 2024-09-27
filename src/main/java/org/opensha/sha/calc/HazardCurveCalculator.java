@@ -2,6 +2,7 @@ package org.opensha.sha.calc;
 
 
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
@@ -15,8 +16,11 @@ import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
+import org.opensha.commons.param.event.ParameterChangeEvent;
+import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.event.ParameterChangeWarningEvent;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
+import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.calc.params.IncludeMagDistFilterParam;
 import org.opensha.sha.calc.params.MagDistCutoffParam;
@@ -26,6 +30,15 @@ import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.NumStochasticEventSetsParam;
 import org.opensha.sha.calc.params.PtSrcDistanceCorrectionParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
+import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
+import org.opensha.sha.calc.params.filters.MagDependentDistCutoffFilter;
+import org.opensha.sha.calc.params.filters.MinMagFilter;
+import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.calc.params.filters.SourceFilterManager;
+import org.opensha.sha.calc.params.filters.SourceFilters;
+import org.opensha.sha.calc.params.filters.SourceFiltersParam;
+import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
+import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
@@ -55,8 +68,7 @@ import com.google.common.base.Preconditions;
  * @version 1.0
  */
 
-public class HazardCurveCalculator
-implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
+public class HazardCurveCalculator implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 
 	/**
 	 * 
@@ -65,18 +77,21 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	protected final static String C = "HazardCurveCalculator";
 	protected final static boolean D = false;
 
-	//Info for parameter that sets the maximum distance considered
-	private MaxDistanceParam maxDistanceParam;
-
-	//Info for parameter that sets the maximum distance considered
-	private MinMagnitudeParam minMagnitudeParam;
-
-	//Info for parameter tells whether to apply a magnitude-dependent distance cutoff
-	private IncludeMagDistFilterParam includeMagDistFilterParam;
+	/*
+	 * Source filters
+	 */
 	
-	//Info for parameter that specifies a magnitude-dependent distance cutoff
-	// (distance on x-axis and mag on y-axis)
-	private MagDistCutoffParam magDistCutoffParam;
+	private SourceFilterManager sourceFilters;
+	private SourceFiltersParam sourceFilterParam;
+	
+	private FixedDistanceCutoffFilter fixedDistanceFilter;
+	private MagDependentDistCutoffFilter magDependentFilter;
+	private TectonicRegionDistCutoffFilter trtDependentFilter;
+	private MinMagFilter minMagFilter;
+	
+	/*
+	 * Other params
+	 */
 	
 	//Info for parameter that sets the maximum distance considered
 	private NumStochasticEventSetsParam numStochEventSetRealizationsParam;
@@ -89,7 +104,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	
 	// This tell what type of point-source distance correction to apply
 	private PtSrcDistanceCorrectionParam ptSrcDistCorrParam;
-	
 
 	private ParameterList adjustableParams;
 
@@ -104,18 +118,21 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	 * creates the HazardCurveCalculator object
 	 */
 	public HazardCurveCalculator() {
+		this(SourceFiltersParam.getDefault());
+	}
 
+	/**
+	 * creates the HazardCurveCalculator object
+	 */
+	public HazardCurveCalculator(SourceFilterManager sourceFilters) {
 		// Create adjustable parameters and add to list
-
-		// Max Distance Parameter
-		maxDistanceParam = new MaxDistanceParam();
-
-		// Include Mag-Distance Filter Parameter
-		includeMagDistFilterParam = new IncludeMagDistFilterParam();
-
-		magDistCutoffParam = new MagDistCutoffParam();
+		this.sourceFilters = sourceFilters;
+		sourceFilterParam = new SourceFiltersParam(sourceFilters);
 		
-		minMagnitudeParam = new MinMagnitudeParam();
+		fixedDistanceFilter = (FixedDistanceCutoffFilter) sourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF);
+		magDependentFilter = (MagDependentDistCutoffFilter) sourceFilters.getFilterInstance(SourceFilters.MAG_DIST_CUTOFFS);
+		trtDependentFilter = (TectonicRegionDistCutoffFilter) sourceFilters.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS);
+		minMagFilter = (MinMagFilter) sourceFilters.getFilterInstance(SourceFilters.MIN_MAG);
 
 		// Max Distance Parameter
 		numStochEventSetRealizationsParam = new NumStochasticEventSetsParam();
@@ -127,17 +144,22 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		ptSrcDistCorrParam = new PtSrcDistanceCorrectionParam();
 
 		adjustableParams = new ParameterList();
-		adjustableParams.addParameter(maxDistanceParam);
-		adjustableParams.addParameter(minMagnitudeParam);
+		adjustableParams.addParameter(sourceFilterParam);
 		adjustableParams.addParameter(numStochEventSetRealizationsParam);
-		adjustableParams.addParameter(includeMagDistFilterParam);
-		adjustableParams.addParameter(magDistCutoffParam);
 		adjustableParams.addParameter(setTRTinIMR_FromSourceParam);
 		adjustableParams.addParameter(nonSupportedTRT_OptionsParam);
 		adjustableParams.addParameter(ptSrcDistCorrParam);
 
 	}
 	
+	public SourceFilterManager getSourceFilterManager() {
+		return sourceFilters;
+	}
+	
+	@Override
+	public List<SourceFilter> getSourceFilters() {
+		return sourceFilters.getEnabledFilters();
+	}
 	
 //	@Override
 	public void setPtSrcDistCorrType(PtSrcDistCorr.Type type) {
@@ -152,8 +174,11 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 
 
 	@Override
-	public void setMaxSourceDistance(double distance){
-		maxDistanceParam.setValue(distance);
+	public void setMaxSourceDistance(double distance) {
+		sourceFilters.setEnabled(SourceFilters.FIXED_DIST_CUTOFF, true);
+		fixedDistanceFilter.setMaxDistance(distance);
+		if (sourceFilterParam.isEditorBuilt())
+			sourceFilterParam.getEditor().refreshParamEditor();
 	}
 	
 	/**
@@ -164,10 +189,11 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	 */
 	@Override
 	public void setMinMagnitude(double magnitude) {
-		minMagnitudeParam.setValue(magnitude);
+		sourceFilters.setEnabled(SourceFilters.MIN_MAG, true);
+		minMagFilter.setMinMagnitude(magnitude);
+		if (sourceFilterParam.isEditorBuilt())
+			sourceFilterParam.getEditor().refreshParamEditor();
 	}
-
-
 
 	@Override
 	public void setNumStochEventSetRealizations(int numRealizations) {
@@ -176,28 +202,36 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 
 	@Override
 	public double getMaxSourceDistance() { 
-		return maxDistanceParam.getValue().doubleValue(); 
+		double maxDist = Double.POSITIVE_INFINITY;
+		if (sourceFilters.isEnabled(SourceFilters.FIXED_DIST_CUTOFF))
+			maxDist = fixedDistanceFilter.getMaxDistance();
+		if (sourceFilters.isEnabled(SourceFilters.MAG_DIST_CUTOFFS))
+			maxDist = Math.min(maxDist, magDependentFilter.getMagDistFunc().getMaxX());
+		if (sourceFilters.isEnabled(SourceFilters.TRT_DIST_CUTOFFS))
+			maxDist = Math.min(maxDist, trtDependentFilter.getCutoffs().getLargestCutoffDist());
+		return maxDist;
 	}
 
 	@Override
 	public void setMagDistCutoffFunc(ArbitrarilyDiscretizedFunc magDistfunc) {
-		includeMagDistFilterParam.setValue(true);
-		magDistCutoffParam.setValue(magDistfunc);
+		sourceFilters.setEnabled(SourceFilters.MAG_DIST_CUTOFFS, true);
+		magDependentFilter.setMagDistFunc(magDistfunc);
+		if (sourceFilterParam.isEditorBuilt())
+			sourceFilterParam.getEditor().refreshParamEditor();
 	}
 
 	@Override
 	public void setIncludeMagDistCutoff(boolean include) {
-		this.includeMagDistFilterParam.setValue(include);
+		sourceFilters.setEnabled(SourceFilters.MAG_DIST_CUTOFFS, include);
 	}
 
 	@Override
 	public ArbitrarilyDiscretizedFunc getMagDistCutoffFunc() {
-		if(includeMagDistFilterParam.getValue())
-			return magDistCutoffParam.getValue();
+		if (sourceFilters.isEnabled(SourceFilters.MAG_DIST_CUTOFFS))
+			return magDependentFilter.getMagDistFunc();
 		else
 			return null;
 	}
-
 
 	@Override
 	public DiscretizedFunc getAnnualizedRates(DiscretizedFunc hazFunction, double years) {
@@ -208,9 +242,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		}
 		return annualizedRateFunc;
 	}
-
-
-
 
 	@Override
 	public DiscretizedFunc getHazardCurve(DiscretizedFunc hazFunction,
@@ -229,8 +260,8 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		//	  System.out.println("Haz Curv Calc: maxDistanceParam.getValue()="+maxDistanceParam.getValue().toString());
 		//	  System.out.println("Haz Curv Calc: numStochEventSetRealizationsParam.getValue()="+numStochEventSetRealizationsParam.getValue().toString());
 		//	  System.out.println("Haz Curv Calc: includeMagDistFilterParam.getValue()="+includeMagDistFilterParam.getValue().toString());
-		if(includeMagDistFilterParam.getValue() && D)
-			System.out.println("Haz Curv Calc: magDistCutoffParam.getValue()="+magDistCutoffParam.getValue().toString());
+//		if(includeMagDistFilterParam.getValue() && D)
+//			System.out.println("Haz Curv Calc: magDistCutoffParam.getValue()="+magDistCutoffParam.getValue().toString());
 		
 		boolean setTRTinIMR_FromSource = setTRTinIMR_FromSourceParam.getValue();
 		HashMap<ScalarIMR, TectonicRegionType> trtOrigVals = null;
@@ -256,16 +287,15 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		DiscretizedFunc sourceHazFunc = new LightFixedXFunc(hazFunction);
 
 		// declare some varibles used in the calculation
-		double qkProb, distance;
+		double qkProb;
 		int k;
 
 		// get the number of points
 		int numPoints = hazFunction.size();
 
-		// define distance filtering stuff
-		double maxDistance = maxDistanceParam.getValue();
-		boolean includeMagDistFilter = includeMagDistFilterParam.getValue();
-		double magThresh=0.0;
+		// define source/rup filtering stuff
+		double maxDistance = getMaxSourceDistance();
+		List<SourceFilter> filters = getSourceFilters();
 
 		// initialize IMRs w/ max distance, site, and reset parameter listeners 
 		// (the latter allows server versions to listen to parameter changes)
@@ -319,19 +349,10 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 				TRTUtils.setTRTinIMR(imr, trt, nonSupportedTRT_OptionsParam, trtOrigVals.get(imr));
 			}
 
-			// compute the source's distance from the site and skip if it's too far away
-			distance = source.getMinDistance(site);
-
-			// apply distance cutoff to source
-			if(distance > maxDistance) {
+			// apply any filters
+			if (canSkipSource(filters, source, site)) {
 				currRuptures += source.getNumRuptures();  //update progress bar for skipped ruptures
 				continue;
-			}
-			//System.out.println(" dist: " + distance);
-
-			// get magThreshold if we're to use the mag-dist cutoff filter
-			if(includeMagDistFilter) {
-				magThresh = magDistCutoffParam.getValue().getInterpolatedY(distance);
 			}
 
 			// determine whether it's poissonian (calcs depend on this)
@@ -356,15 +377,9 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 					if (qkProb == 0d)
 						continue;
 					
-					// skip small magnitudes
-					if(rupture.getMag() < minMagnitudeParam.getValue()) {
-						numRupRejected += 1;
-						continue;
-					}
-
-					// apply magThreshold if we're to use the mag-dist cutoff filter
-					if(includeMagDistFilter && rupture.getMag() < magThresh) {
-						numRupRejected += 1;
+					// apply any filters
+					if (canSkipRupture(filters, rupture, site)) {
+						numRupRejected ++;
 						continue;
 					}
 					
@@ -372,7 +387,7 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 					if(rupture.getRuptureSurface() instanceof PointSurface)
 						((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
 					
-					// indicate that a source has been used (put here because of above filter)
+					// indicate that a source has been used (put here because of above filters)
 					sourceUsed = true;
 
 					// set the EqkRup in the IMR
@@ -446,6 +461,31 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 
 		return hazFunction;
 	}
+	
+	public static boolean canSkipSource(Collection<SourceFilter> filters, ProbEqkSource source, Site site) {
+		if (filters == null || filters.isEmpty())
+			return false;
+		if (!filters.isEmpty()) {
+			// source-site distance
+			double distance = source.getMinDistance(site);
+			
+			for (SourceFilter filter : filters)
+				if (filter.canSkipSource(source, site, distance))
+					return true;
+		}
+		return false;
+	}
+	
+	public static boolean canSkipRupture(Collection<SourceFilter> filters, EqkRupture rupture, Site site) {
+		if (filters == null || filters.isEmpty())
+			return false;
+		if (!filters.isEmpty()) {
+			for (SourceFilter filter : filters)
+				if (filter.canSkipRupture(rupture, site))
+					return true;
+		}
+		return false;
+	}
 
 	@Override
 	public DiscretizedFunc getAverageEventSetHazardCurve(DiscretizedFunc hazFunction,
@@ -468,7 +508,7 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		//	  totRuptures=numEventSets;
 
 		for(int i=0;i<numEventSets;i++) {
-			List<EqkRupture> events = eqkRupForecast.drawRandomEventSet();
+			List<EqkRupture> events = eqkRupForecast.drawRandomEventSet(site, getSourceFilters());
 			if(i==0) totRuptures = events.size()*numEventSets; // this is an approximate total number of events
 			currRuptures+=events.size();
 			getEventSetHazardCurve( hazCurve,site, imr, events, false);
@@ -500,7 +540,8 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		int numPoints = hazFunction.size();
 
 		// define distance filtering stuff
-		double maxDistance = maxDistanceParam.getValue();
+		double maxDistance = getMaxSourceDistance();
+		List<SourceFilter> filters = getSourceFilters();
 
 		// set the maximum distance in the attenuation relationship
 		imr.setUserMaxDistance(maxDistance);
@@ -532,24 +573,13 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
-			// skip small magnitudes
-			if(rupture.getMag() < minMagnitudeParam.getValue())
+			// apply any filters
+			if (canSkipRupture(filters, rupture, site))
 				continue;
 			
 			// set point-source distance correction type (& mag) if it's a pointSurface
 			if(rupture.getRuptureSurface() instanceof PointSurface)
 				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
-
-
-			/*
-    		// apply mag-dist cutoff filter
-    		if(includeMagDistFilter) {
-    			//distance=??; // NEED TO COMPUTE THIS DISTANCE
-     			if(rupture.getMag() < magDistCutoffParam.getValue().getInterpolatedY(distance) {
-    			numRupRejected += 1;
-    			continue;
-    		}
-			 */
 
 			// set the EqkRup in the IMR
 			imr.setEqkRupture(rupture);
@@ -607,7 +637,8 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		int numPoints = hazFunction.size();
 
 		// define distance filtering stuff
-		double maxDistance = maxDistanceParam.getValue();
+		double maxDistance = getMaxSourceDistance();
+		List<SourceFilter> filters = getSourceFilters();
 
 		// set the maximum distance in the attenuation relationship
 		imr.setUserMaxDistance(maxDistance);
@@ -639,8 +670,8 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
-			// skip small magnitudes
-			if(rupture.getMag() < minMagnitudeParam.getValue())
+			// apply any filters
+			if (canSkipRupture(filters, rupture, site))
 				continue;
 			
 			// set point-source distance correction type (& mag) if it's a pointSurface
@@ -706,7 +737,8 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		int numPoints = hazFunction.size();
 
 		// define distance filtering stuff
-		double maxDistance = maxDistanceParam.getValue();
+		double maxDistance = getMaxSourceDistance();
+		List<SourceFilter> filters = getSourceFilters();
 
 		// set the maximum distance in the attenuation relationship
 		imr.setUserMaxDistance(maxDistance);
@@ -736,8 +768,8 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
-			// skip small magnitudes
-			if(rupture.getMag() < minMagnitudeParam.getValue())
+			// apply any filters
+			if (canSkipRupture(filters, rupture, site))
 				continue;
 			
 			// set point-source distance correction type (& mag) if it's a pointSurface
@@ -793,7 +825,8 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		((AttenuationRelationship)imr).resetParameterEventListeners();
 
 		// define distance filtering stuff
-		double maxDistance = maxDistanceParam.getValue();
+		double maxDistance = getMaxSourceDistance();
+		List<SourceFilter> filters = getSourceFilters();
 
 		// set the maximum distance in the attenuation relationship
 		imr.setUserMaxDistance(maxDistance);
@@ -821,8 +854,8 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 
 			EqkRupture rupture = eqkRupList.get(n);
 			
-			// skip small magnitudes
-			if(rupture.getMag() < minMagnitudeParam.getValue())
+			// apply any filters
+			if (canSkipRupture(filters, rupture, site))
 				continue;
 			
 			// set point-source distance correction type (& mag) if it's a pointSurface
@@ -867,13 +900,13 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 //		System.out.println("Haz Curv Calc: includeMagDistFilterParam.getValue()="+includeMagDistFilterParam.getValue().toString());
 //		if(includeMagDistFilterParam.getValue())
 //			System.out.println("Haz Curv Calc: magDistCutoffParam.getValue()="+magDistCutoffParam.getValue().toString());
+		
+		List<SourceFilter> filters = getSourceFilters();
 
-		// skip small magnitudes
-		if(rupture.getMag() < minMagnitudeParam.getValue()) {
-			hazFunction.scale(0.0);;
+		if (canSkipRupture(filters, rupture, site)) {
+			hazFunction.scale(0.0);
 			return hazFunction;
 		}
-
 
 		// resetting the Parameter change Listeners on the AttenuationRelationship parameters,
 		// allowing the Server version of our application to listen to the parameter changes.
@@ -936,13 +969,15 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	@Override
 	public void setAdjustableParams(ParameterList paramList) {
 		this.adjustableParams = paramList;
-		this.maxDistanceParam = (MaxDistanceParam)paramList.getParameter(MaxDistanceParam.NAME);
-		this.minMagnitudeParam = (MinMagnitudeParam)paramList.getParameter(MinMagnitudeParam.NAME);
+		this.sourceFilterParam = (SourceFiltersParam)paramList.getParameter(SourceFiltersParam.NAME);
+		sourceFilters = sourceFilterParam.getValue();
+		
+		fixedDistanceFilter = (FixedDistanceCutoffFilter) sourceFilters.getFilterInstance(SourceFilters.FIXED_DIST_CUTOFF);
+		magDependentFilter = (MagDependentDistCutoffFilter) sourceFilters.getFilterInstance(SourceFilters.MAG_DIST_CUTOFFS);
+		trtDependentFilter = (TectonicRegionDistCutoffFilter) sourceFilters.getFilterInstance(SourceFilters.TRT_DIST_CUTOFFS);
+		minMagFilter = (MinMagFilter) sourceFilters.getFilterInstance(SourceFilters.MIN_MAG);
 		this.numStochEventSetRealizationsParam =
 			(NumStochasticEventSetsParam)paramList.getParameter(NumStochasticEventSetsParam.NAME);
-		this.includeMagDistFilterParam =
-			(IncludeMagDistFilterParam)paramList.getParameter(IncludeMagDistFilterParam.NAME);
-		this.magDistCutoffParam = (MagDistCutoffParam)paramList.getParameter(MagDistCutoffParam.NAME);
 		this.setTRTinIMR_FromSourceParam =
 			(SetTRTinIMR_FromSourceParam)paramList.getParameter(SetTRTinIMR_FromSourceParam.NAME);
 		this.nonSupportedTRT_OptionsParam =
@@ -960,9 +995,9 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	 */
 	public void testEventSetHazardCurve(int numIterations) {
 		// set distance filter large since these are handled slightly differently in each calc
-		maxDistanceParam.setValue(300);
+//		maxDistanceParam.setValue(300);
+		setMaxSourceDistance(300d);
 		// do not apply mag-dist fileter
-		includeMagDistFilterParam.setValue(false);
 		numStochEventSetRealizationsParam.setValue(numIterations);
 
 		ScalarIMR imr = new BJF_1997_AttenRel(this); 

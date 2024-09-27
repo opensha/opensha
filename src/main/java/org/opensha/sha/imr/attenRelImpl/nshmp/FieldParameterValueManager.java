@@ -168,6 +168,27 @@ class FieldParameterValueManager {
 	}
 	
 	/**
+	 * This sets all values to those from the given GmmInput, updating any parameters as needed
+	 * 
+	 * @param externalInput
+	 */
+	void setGmmInput(GmmInput externalInput) {
+		gmmInputBuilder.setAll(externalInput);
+		
+		// see if we need to update any parameters
+		for (Field field : fieldParamMap.keySet()) {
+			Double value = nshmpToOpenSHA(field, MutableGmmInputBuilder.valueForField(externalInput, field));
+			Parameter<Double> param = fieldParamMap.get(field);
+			FieldParameterChangeListener listener = fieldParamListenerMap.get(field);
+			listener.valueChangeInternal = value;
+			if (param instanceof WarningParameter<?>)
+				((WarningParameter<Double>)param).setValueIgnoreWarning(value);
+			else
+				param.setValue(value);
+		}
+	}
+	
+	/**
 	 * This builds a {@link GmmInput} for the current set of {@link Field} values. All Fields that have never been set,
 	 * e.g. those that are unused by a model, will be set to NaN.
 	 * 

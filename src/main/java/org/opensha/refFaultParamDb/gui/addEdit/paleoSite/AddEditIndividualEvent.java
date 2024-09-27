@@ -200,7 +200,7 @@ ActionListener, DbAdditionListener {
 		slipEstParamEditor = new ConstrainedEstimateParameterEditor(slipEstParam, true);
 
 		// whether displacement is shared with other events
-		this.displacementSharedParam = new BooleanParameter(this.DISPLACEMENT_SHARED_PARAM_NAME, new Boolean(false));
+		this.displacementSharedParam = new BooleanParameter(this.DISPLACEMENT_SHARED_PARAM_NAME, Boolean.valueOf(false));
 		displacementSharedParam.addParameterChangeListener(this);
 		ParameterList paramList  = new ParameterList();
 		paramList.addParameter(displacementSharedParam);

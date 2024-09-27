@@ -99,13 +99,19 @@ implements ActionListener, DocumentListener, TableModelListener
 		// TODO: fix this
 		//		this.xValsTextArea.setEnabled(isEnabled);
 		//		this.yValsTextArea.setEnabled(isEnabled);
-
 		this.table.setEnabled(isEnabled);
 		this.tableModel.setEnabled(isEnabled);
+		xField.setEnabled(isEnabled);
+		yField.setEnabled(isEnabled);
 		this.addButton.setEnabled(isEnabled);
 		this.removeButton.setEnabled(isEnabled);
 
 		//		super.setEnabled(isEnabled);
+	}
+	
+	@Override
+	public boolean isEnabled() {
+		return table != null && this.table.isEnabled();
 	}
 
 	public void actionPerformed(ActionEvent e) {

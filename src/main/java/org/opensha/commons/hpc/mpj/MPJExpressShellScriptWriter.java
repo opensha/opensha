@@ -91,7 +91,7 @@ public class MPJExpressShellScriptWriter extends JavaShellScriptWriter {
 		
 		if (useLaunchWrapper) {
 			script.add("");
-			script.addAll(getJVMSetupLines());
+			script.addAll(getAllSetupLines());
 			for (int i=0; i<classNames.size(); i++) {
 				script.add("");
 				script.add("date");

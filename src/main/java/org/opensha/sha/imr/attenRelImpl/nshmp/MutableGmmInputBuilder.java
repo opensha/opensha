@@ -31,6 +31,45 @@ class MutableGmmInputBuilder {
 		bitSet.set(index);
 	}
 	
+	static double valueForField(GmmInput input, Field field) {
+		switch (field) {
+		case DIP:
+			return input.dip;
+		case MW:
+			return input.Mw;
+		case RAKE:
+			return input.rake;
+		case RJB:
+			return input.rJB;
+		case RRUP:
+			return input.rRup;
+		case RX:
+			return input.rX;
+		case VS30:
+			return input.vs30;
+		case WIDTH:
+			return input.width;
+		case Z1P0:
+			return input.z1p0;
+		case Z2P5:
+			return input.z2p5;
+		case ZHYP:
+			return input.zHyp;
+		case ZSED:
+			return input.zSed;
+		case ZTOR:
+			return input.zTor;
+
+		default:
+			throw new IllegalStateException("Unsupported field: "+field);
+		}
+	}
+	
+	void setAll(GmmInput input) {
+		for (Field field : FIELDS)
+			setValue(field, valueForField(input, field));
+	}
+	
 	/**
 	 * 
 	 * @return GmmInput containing all fields that have been set, and anything else set to NaN

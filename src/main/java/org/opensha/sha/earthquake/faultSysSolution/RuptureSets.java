@@ -30,6 +30,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.Plausib
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NoJumpsFilter;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.NoProxyFaultConnectionsFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.JumpAzimuthChangeFilter.AzimuthCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.SplayConnectionsOnlyFilter;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.coulomb.NetRuptureCoulombFilter;
@@ -192,6 +193,10 @@ public class RuptureSets {
 		// if nonzero, apply thinning to growing strategy
 		@Expose	private float adaptiveSectFract = 0f;
 
+		public SimpleAzimuthalRupSetConfig(RupSetFaultModel fm, RupSetScalingRelationship scale) throws IOException {
+			this(fm.getDefaultDeformationModel().build(fm), scale);
+		}
+
 		public SimpleAzimuthalRupSetConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
 			init(subSects, scale);
 		}
@@ -278,6 +283,100 @@ public class RuptureSets {
 		
 	}
 	
+	public static class SimpleSubductionRupSetConfig extends RupSetConfig {
+		
+		private List<? extends FaultSection> subSects;
+		private RupSetScalingRelationship scale;
+		
+		@Expose	private float jumpAzimuthChange = 60f;
+		@Expose	private int minSectsPerParent = 0;
+		// minim aspect ratio
+		@Expose	private float minAspectRatio = 0.67f;
+		// maximum individual jump distance
+		@Expose	private double maxJumpDist = 5d;
+		// if nonzero, apply thinning to growing strategy
+		@Expose	private float adaptiveSectFract = 0f;
+
+		public SimpleSubductionRupSetConfig(RupSetFaultModel fm, RupSetScalingRelationship scale) throws IOException {
+			this(fm.getDefaultDeformationModel().build(fm), scale);
+		}
+
+		public SimpleSubductionRupSetConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			init(subSects, scale);
+		}
+
+		@Override
+		protected void init(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			this.subSects = subSects;
+			this.scale = scale;
+		}
+
+		@Override
+		public List<? extends FaultSection> getSubSects() {
+			return subSects;
+		}
+
+		@Override
+		public PlausibilityConfiguration getPlausibilityConfig() {
+			SectionDistanceAzimuthCalculator distAzCalc = getDistAzCalc();
+			if (distAzCalc.getNumCachedDistances() == 0)
+				// increase discretization for subduction sources
+				distAzCalc.setDiscretization(5d);
+			ClusterConnectionStrategy connStrat = new DistCutoffClosestSectClusterConnectionStrategy(
+					getSubSects(), distAzCalc, maxJumpDist);
+			Builder builder = PlausibilityConfiguration.builder(connStrat, subSects);
+			if (minSectsPerParent > 1)
+				builder.minSectsPerParent(minSectsPerParent, true, true);
+			AzimuthCalc azCalc = new JumpAzimuthChangeFilter.SimpleAzimuthCalc(distAzCalc);
+			if (jumpAzimuthChange > 0f)
+				builder.jumpAzChange(azCalc, jumpAzimuthChange);
+			if (minAspectRatio > 0f)
+				builder.minAspectRatio(minAspectRatio, true, true);
+			return builder.build();
+		}
+
+		@Override
+		public RuptureGrowingStrategy getGrowingStrategy() {
+			RuptureGrowingStrategy strat = new ExhaustiveUnilateralRuptureGrowingStrategy();
+			if (adaptiveSectFract > 0f)
+				strat = new SectCountAdaptiveRuptureGrowingStrategy(strat, adaptiveSectFract, true, minSectsPerParent);
+			return strat;
+		}
+
+		@Override
+		public String getRupSetFileName() {
+			List<String> elements = new ArrayList<>();
+			if (minAspectRatio > 0f)
+				elements.add("aspect"+(int)minAspectRatio);
+			if (jumpAzimuthChange > 0f)
+				elements.add("jumpAz"+(int)jumpAzimuthChange);
+			if (minSectsPerParent > 0)
+				elements.add(minSectsPerParent+"sectsPerParent");
+			if (adaptiveSectFract > 0f)
+				elements.add("fractGrow"+adaptiveSectFract);
+			return Joiner.on("_").join(elements)+".zip";
+		}
+
+		@Override
+		public RupSetScalingRelationship getScalingRelationship() {
+			return scale;
+		}
+
+		@Override
+		public void setMaxJumpDist(double maxJumpDist) {
+			this.maxJumpDist = maxJumpDist;
+		}
+		
+		public void setMinSectsPerParent(int minSectsPerParent) {
+			this.minSectsPerParent = minSectsPerParent;
+		}
+
+		public void setAdaptiveSectFract(float adaptiveSectFract) {
+			this.adaptiveSectFract = adaptiveSectFract;
+		}
+		
+	}
+	
 	public static class CoulombRupSetConfig extends RupSetConfig {
 		
 		private List<? extends FaultSection> subSects;
@@ -322,14 +421,17 @@ public class RuptureSets {
 		// GROWING STRATEGY
 		// if nonzero, apply thinning to growing strategy
 		@Expose	private float adaptiveSectFract = 0.1f;
-		// if true, allow bilateral rupture growing (using default settings)
+		// if true, allow bilateral rupture growing (see bilateralMode)
 		@Expose	private boolean bilateral = false;
+		// this controls how the secondary end of bilateral ruptures varies
+		@Expose private SecondaryVariations bilateralMode = SecondaryVariations.EQUAL_LEN;
 		// if true, allow splays (using default settings)
 		@Expose	private boolean splays = false;
 		// grid spacing for coulomb calculations
 		@Expose	private double stiffGridSpacing = 2d;
 		// coefficient of friction for coulomb calculations
 		@Expose	private double coeffOfFriction = 0.5;
+		@Expose private boolean connectProxyFaults = true;
 
 		public CoulombRupSetConfig(RupSetFaultModel fm, RupSetScalingRelationship scale) throws IOException {
 			this(fm.getDefaultDeformationModel().build(fm), fm.getFilePrefix().toLowerCase(), scale);
@@ -457,6 +559,11 @@ public class RuptureSets {
 			this.bilateral = bilateral;
 		}
 
+		public void setBilateralVariationMode(SecondaryVariations bilateralMode) {
+			clear();
+			this.bilateralMode = bilateralMode;
+		}
+
 		public void setSplays(boolean splays) {
 			clear();
 			this.splays = splays;
@@ -470,6 +577,11 @@ public class RuptureSets {
 		public void setCoeffOfFriction(double coeffOfFriction) {
 			clear();
 			this.coeffOfFriction = coeffOfFriction;
+		}
+		
+		public void setConnectProxyFaults(boolean connectProxyFaults) {
+			clear();
+			this.connectProxyFaults = connectProxyFaults;
 		}
 		
 		private synchronized void clear() {
@@ -560,6 +672,8 @@ public class RuptureSets {
 						new DistCutoffClosestSectClusterConnectionStrategy(subSects, distAzCalc, 0.1d);
 				neighborsConnStrat.checkBuildThreaded(getNumThreads());
 				List<PlausibilityFilter> connFilters = new ArrayList<>();
+				if (!connectProxyFaults)
+					connFilters.add(new NoProxyFaultConnectionsFilter());
 				if (cffRatioThresh > 0f) {
 					connFilters.add(new CumulativeProbabilityFilter(cffRatioThresh, new CoulombSectRatioProb(
 							sumAgg, cffRatioN, favorableJumps, (float)maxJumpDist, distAzCalc)));
@@ -620,6 +734,14 @@ public class RuptureSets {
 //			configBuilder.cumulativeRakeChange(360f); outputName += "_cmlRake360"; // cml rake only
 //			configBuilder.u3Azimuth(); outputName += "_u3Az";
 //			configBuilder.u3Coulomb(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_u3CFF";
+			
+			/*
+			 * No proxy connnections
+			 */
+			if (!connectProxyFaults) {
+				outputName += "_noProxyConn";
+				configBuilder.noProxyConnections();
+			}
 			
 			/*
 			 * Cumulative jump prob
@@ -752,7 +874,7 @@ public class RuptureSets {
 			 */
 			if (bilateral) {
 				growingStrat = new ExhaustiveBilateralRuptureGrowingStrategy(
-						SecondaryVariations.EQUAL_LEN, false);
+						bilateralMode, false);
 				outputName += "_bilateral";
 			} else {
 				growingStrat = new ExhaustiveUnilateralRuptureGrowingStrategy();
@@ -925,6 +1047,7 @@ public class RuptureSets {
 			else
 				config.getConnectionStrategy().getClusters();
 			ClusterRuptureBuilder builder = new ClusterRuptureBuilder(config);
+//			builder.setDebugCriteria(new ClusterRuptureBuilder.StartEndSectRupDebugCriteria(20, 22, false, false), false);
 			System.out.println("Building ruptures with "+numThreads+" threads...");
 			Stopwatch watch = Stopwatch.createStarted();
 			List<ClusterRupture> rups = builder.build(getGrowingStrategy(), numThreads);
@@ -977,25 +1100,42 @@ public class RuptureSets {
 	private enum Presets {
 		UCERF3(U3RupSetConfig.class) {
 			@Override
-			public RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			public RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale,
+					CommandLine cmd) {
 				return new U3RupSetConfig(subSects, scale);
 			}
 		},
 		COULOMB(CoulombRupSetConfig.class) {
 			@Override
-			public RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
-				return new CoulombRupSetConfig(subSects, null, scale);
+			public RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale,
+					CommandLine cmd) {
+				CoulombRupSetConfig config = new CoulombRupSetConfig(subSects, null, scale);
+				
+				config.setBilateral(cmd.hasOption("bilateral"));
+				if (cmd.hasOption("bilateral-variation-mode"))
+					config.setBilateralVariationMode(SecondaryVariations.valueOf(cmd.getOptionValue("bilateral-variation-mode")));
+				
+				return config;
+			}
+
+			@Override
+			public void addExtraOptions(Options ops) {
+				ops.addOption(null, "bilateral", false, "Flag to enable bilateral rupture. Also see --bilateral-variation-mode.");
+				ops.addOption(null, "bilateral-variation-mode", true, "Bilateral variation mode, see figure 13 of Milner et al. (2022). Options:"
+						+FaultSysTools.enumOptions(SecondaryVariations.class));
 			}
 		},
 		SIMPLE_AZIMUTHAL(SimpleAzimuthalRupSetConfig.class) {
 			@Override
-			public RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			public RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale,
+					CommandLine cmd) {
 				return new SimpleAzimuthalRupSetConfig(subSects, scale);
 			}
 		},
 		SEGMENTED(FullySegmentedRupSetConfig.class) {
 			@Override
-			public RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
+			public RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale,
+					CommandLine cmd) {
 				return new FullySegmentedRupSetConfig(subSects, scale);
 			}
 		};
@@ -1004,10 +1144,14 @@ public class RuptureSets {
 
 		private Presets(Class<? extends RupSetConfig> configClass) {
 			this.configClass = configClass;
-			
 		}
 		
-		public abstract RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale);
+		public abstract RupSetConfig build(List<? extends FaultSection> subSects, RupSetScalingRelationship scale,
+				CommandLine cmd);
+		
+		public void addExtraOptions(Options ops) {
+			// do nothing (can be overridden)
+		}
 		
 		public RupSetConfig deserialize(List<? extends FaultSection> subSects, RupSetScalingRelationship scale,
 				Reader jsonReader) {
@@ -1048,7 +1192,7 @@ public class RuptureSets {
 		return scaleOptions;
 	}
 	
-	private static Options createOptions() {
+	private static Options createOptions(Presets preset) {
 		Options ops = new Options();
 
 		ops.addOption(FaultSysTools.helpOption());
@@ -1074,10 +1218,14 @@ public class RuptureSets {
 		ops.addOption(scaleOption);
 
 		Option presetOption = new Option("p", "preset", true,
-				"Rupture set plausibility configuration preset. "
+				"Rupture set plausibility configuration preset. Presets may have their own command line options, "
+				+ "which can be seen by selecting them and supplying the --help argument. "
 				+ "Options: "+FaultSysTools.enumOptions(Presets.class));
 		presetOption.setRequired(true);
 		ops.addOption(presetOption);
+		
+		if (preset != null)
+			preset.addExtraOptions(ops);
 
 		Option configOption = new Option("c", "config", true,
 				"Rupture set plausibility configuration JSON file to override default parameters for the selected preset.");
@@ -1106,29 +1254,48 @@ public class RuptureSets {
 		return ops;
 	}
 	
-	private static void writePresetDefaults(Presets preset, File file) throws IOException {
+	private static void writePresetDefaults(Presets preset, File file, CommandLine cmd) throws IOException {
 		if (file.exists() && file.isDirectory())
 			file = new File(file, preset.name()+".json");
 		System.out.println("Writing default configuration for "+preset+" to: "+file.getAbsolutePath());
 		RupSetScalingRelationship scale = ScalingRelationships.MEAN_UCERF3;
 		List<? extends FaultSection> subSects = List.of();
-		RupSetConfig config = preset.build(subSects, scale);
+		RupSetConfig config = preset.build(subSects, scale, cmd);
 		serializeConfig(config, file);
 	}
 	
 	public static void main(String[] args) {
-		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, RuptureSets.class);
+		Presets preset = null;
+		// see if a preset was supplied, and if so create model-specific options
+		for (int i=0; i<args.length; i++) {
+			if (args[i].trim().equals("-p") || args[i].trim().equals("--preset")) {
+				if (i < args.length-1) {
+					// next one should be the preset
+					String arg = args[i+1].trim().toUpperCase();
+					for (Presets testPreset : Presets.values()) {
+						if (arg.equals(testPreset.name())) {
+							preset = testPreset;
+							break;
+						}
+					}
+				}
+			}
+		}
 		
-		FaultSysTools.checkPrintHelp(null, cmd, RuptureSets.class);
+		Options options = createOptions(preset);
+		CommandLine cmd = FaultSysTools.parseOptions(options, args, RuptureSets.class);
+		
+		FaultSysTools.checkPrintHelp(options, cmd, RuptureSets.class);
 		
 		try {
-			Presets preset = Presets.valueOf(cmd.getOptionValue("preset").trim().toUpperCase());
+			if (preset == null)
+				preset = Presets.valueOf(cmd.getOptionValue("preset").trim().toUpperCase());
 			System.out.println("Rupture plausibility preset: "+preset);
 			
 			File outputFile = new File(cmd.getOptionValue("output-file"));
 			
 			if (cmd.hasOption("write-config")) {
-				writePresetDefaults(preset, outputFile);
+				writePresetDefaults(preset, outputFile, cmd);
 				System.exit(0);
 			}
 //			writePresetDefaults(new File("/tmp/presets")); System.exit(0);
@@ -1178,7 +1345,7 @@ public class RuptureSets {
 				config = preset.deserialize(sects, scale, jsonFile);
 			} else {
 				// use default values
-				config = preset.build(sects, scale);
+				config = preset.build(sects, scale, cmd);
 			}
 			if (cmd.hasOption("jump-distance"))
 				config.setMaxJumpDist(Double.parseDouble(cmd.getOptionValue("jump-distance")));

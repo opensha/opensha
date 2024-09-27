@@ -278,7 +278,7 @@ public class XY_DataSetList extends ArrayList<XY_DataSet> implements Serializabl
                 }
 
                 double y1 = point.getY();
-                model[counter][i] = new Double(y1);
+                model[counter][i] = Double.valueOf(y1);
 
                 i++;
             }

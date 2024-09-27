@@ -91,8 +91,9 @@ public class TrueMeanSolutionCreator {
 		
 		public FaultSection buildGlobalInstance(int instanceNum, double totWeight) {
 			FaultSection sect = this.sect.clone();
-			sect.setSectionName(sect.getSectionName()+" (Instance "+instanceNum+", "
-					+weightDF.format(weightUsed/totWeight)+" weight)");
+			if (instanceNum > 0 || weightUsed != totWeight)
+				sect.setSectionName(sect.getSectionName()+" (Instance "+instanceNum+", "
+						+weightDF.format(weightUsed/totWeight)+" weight)");
 			sect.setSectionId(globalID);
 			sect.setAveSlipRate(weightedSlip/totWeight);
 			sect.setSlipRateStdDev(weightedSlipStdDev/totWeight);
@@ -130,6 +131,7 @@ public class TrueMeanSolutionCreator {
 		private double area;
 		
 		private Object[] comp;
+		private int hashCode;
 		
 		// not part of unique checks
 		private int globalID;
@@ -151,6 +153,7 @@ public class TrueMeanSolutionCreator {
 			comp[cnt++] = area;
 			for (int sectID : sectIDs)
 				comp[cnt++] = sectID;
+			hashCode = Arrays.hashCode(comp);
 			
 			rupMFD = new ArbitrarilyDiscretizedFunc();
 			this.length = length;
@@ -211,7 +214,7 @@ public class TrueMeanSolutionCreator {
 
 		@Override
 		public int hashCode() {
-			return Arrays.hashCode(comp);
+			return hashCode;
 		}
 
 		@Override
@@ -286,15 +289,17 @@ public class TrueMeanSolutionCreator {
 			
 			if (gridProv != null)
 				gridProvAvg = gridProv.averagingAccumulator();
-			if (myRupTRTs != null)
+			if (myRupTRTs != null) {
+				System.out.println("Will track rupture tectonic region types");
 				rupTRTs = new ArrayList<>();
+			}
 		} else {
 			if (gridProvAvg != null && gridProv == null) {
 				System.err.println("WARNING: not all solutions contain grid source providers, disabling averaging");
 				gridProvAvg = null;
 			}
 			if (rupTRTs != null && myRupTRTs == null) {
-				System.err.println("WARNING: not all rupture sets contain tectonic region types, won't track");
+				System.err.println("WARNING: not all rupture sets contain tectonic region types, no longer tracking");
 				rupTRTs = null;
 			}
 		}
@@ -528,10 +533,16 @@ public class TrueMeanSolutionCreator {
 			FaultSystemSolution sol = slt.forBranch(branch);
 			if (cRups != null && cRups.size() != sol.getRupSet().getNumRuptures())
 				cRups = null;
-			if (cRups == null)
-				cRups = sol.getRupSet().requireModule(ClusterRuptures.class);
-			else
+			if (cRups == null) {
+				cRups = sol.getRupSet().getModule(ClusterRuptures.class);
+				if (cRups == null) {
+					System.err.println("WARNING: Building ClusterRuptures and assuming single-stranded");
+					cRups = ClusterRuptures.singleStranged(sol.getRupSet());
+					sol.getRupSet().addModule(cRups);
+				}
+			} else {
 				sol.getRupSet().addModule(cRups);
+			}
 			creator.addSolution(sol, branch);
 		}
 		

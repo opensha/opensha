@@ -43,6 +43,7 @@ public class WeeklyScriptWriter {
 		
 		int batchSize = 50;
 		int batchNodes = 40;
+		int nodeThreads = 48;
 		int batchHours = 14;
 //		int batchSize = 80;
 //		int batchNodes = 30;
@@ -176,7 +177,7 @@ public class WeeklyScriptWriter {
 			curBatch.add(outputDir+"/config.json");
 			if (curBatch.size() == batchSize) {
 				File outputFile = new File(batchDir, curBatchName+".slurm");
-				writeBatch(curBatch, outputFile, batchNodes, batchHours, batchThreads, "skx-normal");
+				writeBatch(curBatch, outputFile, batchNodes, batchHours, nodeThreads, batchThreads, "skx-normal");
 				curBatch.clear();
 				batchNum++;
 				curBatchName = "batch_"+batchDF.format(batchNum);
@@ -190,15 +191,15 @@ public class WeeklyScriptWriter {
 		}
 		if (!curBatch.isEmpty()) {
 			File outputFile = new File(batchDir, curBatchName+".slurm");
-			writeBatch(curBatch, outputFile, batchNodes, batchHours, batchThreads, "skx-normal");
+			writeBatch(curBatch, outputFile, batchNodes, batchHours, nodeThreads, batchThreads, "skx-normal");
 		}
 	}
 	
 	private static void writeBatch(List<String> configs, File outputFile,
-			int nodes, int hours, int threads, String queue) throws IOException {
+			int nodes, int hours, int nodeThreads, int threads, String queue) throws IOException {
 		String configFile = Joiner.on(" ").join(configs);
-		File inputFile = HPC_Sites.TACC_STAMPEDE2.getSlurmFile();
-		ETAS_ConfigBuilder.updateSlurmScript(inputFile, outputFile, nodes, threads,
+		File inputFile = HPC_Sites.TACC_STAMPEDE3.getSlurmFile();
+		ETAS_ConfigBuilder.updateSlurmScript(inputFile, outputFile, nodes, nodeThreads, threads,
 				hours, queue, configFile);
 	}
 

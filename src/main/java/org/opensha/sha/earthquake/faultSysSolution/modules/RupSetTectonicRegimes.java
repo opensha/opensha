@@ -2,10 +2,13 @@ package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import java.text.DecimalFormat;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.Location;
@@ -21,18 +24,28 @@ import org.opensha.sha.util.TectonicRegionType;
 import com.google.common.base.Preconditions;
 
 public class RupSetTectonicRegimes implements CSV_BackedModule, SubModule<FaultSystemRupSet>,
-BranchAverageableModule<RupSetTectonicRegimes>, AverageableModule.ConstantAverageable<RupSetTectonicRegimes> {
+BranchAverageableModule<RupSetTectonicRegimes>, AverageableModule.ConstantAverageable<RupSetTectonicRegimes>,
+SplittableRuptureModule<RupSetTectonicRegimes>{
 	
 	private FaultSystemRupSet rupSet;
 	private TectonicRegionType[] regimes;
 	
-	private static final String FILE_NAME = "tectonic_regimes.csv";
+	public static final String DATA_FILE_NAME = "tectonic_regimes.csv";
+	
+	private EnumSet<TectonicRegionType> regimeSet;
 	
 	public RupSetTectonicRegimes(FaultSystemRupSet rupSet, TectonicRegionType[] regimes) {
 		if (rupSet != null)
 			Preconditions.checkState(rupSet.getNumRuptures() == regimes.length);
 		this.rupSet = rupSet;
 		this.regimes = regimes;
+	}
+	
+	public static RupSetTectonicRegimes constant(FaultSystemRupSet rupSet, TectonicRegionType regime) {
+		TectonicRegionType[] regimes = new TectonicRegionType[rupSet.getNumRuptures()];
+		for (int i=0; i<regimes.length; i++)
+			regimes[i] = regime;
+		return new RupSetTectonicRegimes(rupSet, regimes);
 	}
 	
 	public static RupSetTectonicRegimes forRegions(FaultSystemRupSet rupSet, Map<Region, TectonicRegionType> regRegimes,
@@ -103,6 +116,15 @@ BranchAverageableModule<RupSetTectonicRegimes>, AverageableModule.ConstantAverag
 		return new RupSetTectonicRegimes(rupSet, regimes);
 	}
 	
+	public synchronized Set<TectonicRegionType> getSet() {
+		if (regimeSet == null) {
+			regimeSet = EnumSet.noneOf(TectonicRegionType.class);
+			for (TectonicRegionType trt : regimes)
+				regimeSet.add(trt);
+		}
+		return Collections.unmodifiableSet(regimeSet);
+	}
+	
 	private static final DecimalFormat pDF = new DecimalFormat("0.00%");
 	
 	@SuppressWarnings("unused") // for deserialization
@@ -110,7 +132,7 @@ BranchAverageableModule<RupSetTectonicRegimes>, AverageableModule.ConstantAverag
 
 	@Override
 	public String getFileName() {
-		return FILE_NAME;
+		return DATA_FILE_NAME;
 	}
 	
 	public TectonicRegionType get(int rupIndex) {
@@ -176,6 +198,23 @@ BranchAverageableModule<RupSetTectonicRegimes>, AverageableModule.ConstantAverag
 	@Override
 	public boolean isIdentical(RupSetTectonicRegimes module) {
 		return Arrays.equals(regimes, module.regimes);
+	}
+
+	@Override
+	public RupSetTectonicRegimes getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
+		TectonicRegionType[] trts = new TectonicRegionType[rupSubSet.getNumRuptures()];
+		for (int r=0; r<trts.length; r++)
+			trts[r] = this.regimes[mappings.getOrigRupID(r)];
+		return new RupSetTectonicRegimes(rupSubSet, trts);
+	}
+
+	@Override
+	public RupSetTectonicRegimes getForSplitRuptureSet(FaultSystemRupSet splitRupSet,
+			RuptureSetSplitMappings mappings) {
+		TectonicRegionType[] trts = new TectonicRegionType[splitRupSet.getNumRuptures()];
+		for (int r=0; r<trts.length; r++)
+			trts[r] = this.regimes[mappings.getOrigRupID(r)];
+		return new RupSetTectonicRegimes(splitRupSet, trts);
 	}
 
 }

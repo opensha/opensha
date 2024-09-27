@@ -38,7 +38,7 @@ public class EdgeRuptureSurface extends AbstractEvenlyGriddedSurface {
 		// both traces should be in the average strke direction
 		double traceStrike = upperTrace.getStrikeDirection();
 		double lowerStrike = LocationUtils.azimuth(lowerTrace.first(), lowerTrace.last());
-		double strikeDiff = angleDiff(traceStrike, lowerStrike);
+		double strikeDiff = FaultUtils.getAbsAngleDiff(traceStrike, lowerStrike);
 		if (D) System.out.println("*** Building ShakeMap Finite Surface ***");
 		if (D) System.out.println("SM Surface strikes: "+(float)traceStrike+", "+(float)lowerStrike
 				+". diff: "+(float)strikeDiff);
@@ -58,13 +58,6 @@ public class EdgeRuptureSurface extends AbstractEvenlyGriddedSurface {
 		this.lowerTrace.addAll(lowerTrace);
 		buildSurface();
 		if (D) System.out.println("*** DONE Building ShakeMap Finite Surface ***");
-	}
-	
-	private static double angleDiff(double angle1, double angle2) {
-		double angleDiff = Math.abs(angle1 - angle2);
-		while (angleDiff > 270)
-			angleDiff -= 360;
-		return Math.abs(angleDiff);
 	}
 	
 	private void buildSurface() {

@@ -10,7 +10,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import com.google.common.base.Preconditions;
 
 public abstract class SectSlipRates implements SubModule<FaultSystemRupSet>, BranchAverageableModule<SectSlipRates>,
-SplittableRuptureSubSetModule<SectSlipRates>{
+SplittableRuptureModule<SectSlipRates>{
 	
 	protected FaultSystemRupSet parent;
 
@@ -120,7 +120,7 @@ SplittableRuptureSubSetModule<SectSlipRates>{
 		return parent;
 	}
 	
-	private static class Default extends SectSlipRates implements SubModule<FaultSystemRupSet> {
+	public static class Default extends SectSlipRates implements SubModule<FaultSystemRupSet> {
 		
 		private Default(FaultSystemRupSet rupSet) {
 			super(rupSet);
@@ -150,6 +150,11 @@ SplittableRuptureSubSetModule<SectSlipRates>{
 		@Override
 		public SectSlipRates getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
 			return this.copy(rupSubSet);
+		}
+
+		@Override
+		public SectSlipRates getForSplitRuptureSet(FaultSystemRupSet splitRupSet, RuptureSetSplitMappings mappings) {
+			return this.copy(splitRupSet);
 		}
 		
 	}
@@ -296,6 +301,23 @@ SplittableRuptureSubSetModule<SectSlipRates>{
 					filteredSlipRateStdDevs[s] = this.slipRateStdDevs[origID];
 			}
 			return new Precomputed(rupSubSet, filteredSlipRates, filteredSlipRateStdDevs);
+		}
+
+		@Override
+		public SectSlipRates getForSplitRuptureSet(FaultSystemRupSet splitRupSet, RuptureSetSplitMappings mappings) {
+			double[] filteredSlipRates = slipRates == null ? null : new double[splitRupSet.getNumSections()];
+			double[] filteredSlipRateStdDevs = slipRateStdDevs == null ? null : new double[splitRupSet.getNumSections()];
+			if (filteredSlipRates == null && filteredSlipRateStdDevs == null)
+				return null;
+			for (int s=0; s<splitRupSet.getNumSections(); s++) {
+				int origID = mappings.getOrigSectID(s);
+				double weight = mappings.getNewSectWeight(s);
+				if (filteredSlipRates != null)
+					filteredSlipRates[s] = weight*this.slipRates[origID];
+				if (filteredSlipRateStdDevs != null)
+					filteredSlipRateStdDevs[s] = weight*this.slipRateStdDevs[origID];
+			}
+			return new Precomputed(splitRupSet, filteredSlipRates, filteredSlipRateStdDevs);
 		}
 
 	}

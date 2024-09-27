@@ -5,7 +5,9 @@ import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 
 @DoesNotAffect(FaultSystemRupSet.SECTS_FILE_NAME)
@@ -13,9 +15,11 @@ import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode
 @DoesNotAffect(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @DoesNotAffect(FaultSystemSolution.RATES_FILE_NAME)
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
-@DoesNotAffect(GridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME)
-@Affects(GridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
-@Affects(GridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
+@DoesNotAffect(MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME)
+@DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
+@Affects(MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME)
+@Affects(MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME)
+@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum NSHM23_MaxMagOffFault implements MaxMagOffFaultBranchNode {
 	MAG_7p3(7.3, 0.1d),
 	MAG_7p6(7.6, 0.8d),

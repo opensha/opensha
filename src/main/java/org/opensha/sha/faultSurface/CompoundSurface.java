@@ -337,18 +337,25 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 		throw new IllegalStateException("No point at index "+index+", have "+getEvenlyDiscretizedNumLocs());
 	}
 
-
 	@Override
 	/**
 	 * This simply adds what's returned from the getEvenlyDiscritizedListOfLocsOnSurface() 
 	 * method of each surface to a big master list.
 	 */
 	public LocationList getEvenlyDiscritizedListOfLocsOnSurface() {
-		LocationList locList = new LocationList();
+		// modified to use an expected size
+		// not caching in order to avoid memory bloat, but individual surfaces should already be cached, making this quick
+		int count = 0;
+		List<LocationList> surfLists = new ArrayList<>(surfaces.size());
 		for(RuptureSurface surf:surfaces) {
-			locList.addAll(surf.getEvenlyDiscritizedListOfLocsOnSurface());
+			LocationList surfList = surf.getEvenlyDiscritizedListOfLocsOnSurface();
+			count += surfList.size();
+			surfLists.add(surfList);
 		}
-		return locList;
+		LocationList locs = new LocationList(count);
+		for (LocationList surfList : surfLists)
+			locs.addAll(surfList);
+		return locs;
 	}
 
 	@Override

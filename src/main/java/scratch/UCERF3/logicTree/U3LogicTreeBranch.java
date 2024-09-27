@@ -125,6 +125,10 @@ implements XMLSaveable {
 		super(getLogicTreeLevels(), branch);
 	}
 	
+	protected U3LogicTreeBranch(List<LogicTreeLevel<? extends U3LogicTreeBranchNode<?>>> levels, List<U3LogicTreeBranchNode<?>> branch) {
+		super(levels, branch);
+	}
+	
 	protected U3LogicTreeBranch() {
 		super();
 	}

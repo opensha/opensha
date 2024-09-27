@@ -8,7 +8,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 
 import com.google.common.base.Preconditions;
 
-public abstract class SectAreas implements SubModule<FaultSystemRupSet>, SplittableRuptureSubSetModule<SectAreas> {
+public abstract class SectAreas implements SubModule<FaultSystemRupSet>, SplittableRuptureModule<SectAreas> {
 	
 	protected FaultSystemRupSet parent;
 
@@ -59,7 +59,7 @@ public abstract class SectAreas implements SubModule<FaultSystemRupSet>, Splitta
 		return parent;
 	}
 	
-	private static class Default extends SectAreas implements SubModule<FaultSystemRupSet> {
+	public static class Default extends SectAreas implements SubModule<FaultSystemRupSet> {
 		
 		private double[] data = null;
 		
@@ -91,6 +91,11 @@ public abstract class SectAreas implements SubModule<FaultSystemRupSet>, Splitta
 		@Override
 		public SectAreas getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
 			return copy(rupSubSet);
+		}
+
+		@Override
+		public SectAreas getForSplitRuptureSet(FaultSystemRupSet splitRupSet, RuptureSetSplitMappings mappings) {
+			return copy(splitRupSet);
 		}
 		
 	}
@@ -185,6 +190,14 @@ public abstract class SectAreas implements SubModule<FaultSystemRupSet>, Splitta
 			for (int s=0; s<rupSubSet.getNumSections(); s++)
 				filtered[s] = sectAreas[mappings.getOrigSectID(s)];
 			return new Precomputed(rupSubSet, filtered);
+		}
+
+		@Override
+		public SectAreas getForSplitRuptureSet(FaultSystemRupSet splitRupSet, RuptureSetSplitMappings mappings) {
+			double[] filtered = new double[splitRupSet.getNumSections()];
+			for (int s=0; s<splitRupSet.getNumSections(); s++)
+				filtered[s] = sectAreas[mappings.getOrigSectID(s)];
+			return new Precomputed(splitRupSet, filtered);
 		}
 
 	}

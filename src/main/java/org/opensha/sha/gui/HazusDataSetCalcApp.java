@@ -433,8 +433,8 @@ public class HazusDataSetCalcApp extends JFrame
    timer.start();
    try{
      step =1;
-     if(distanceControlPanel == null ) maxDistance = new Double(MaxDistanceParam.DEFAULT);
-     else maxDistance = new Double(distanceControlPanel.getDistance());
+     if(distanceControlPanel == null ) maxDistance = Double.valueOf(MaxDistanceParam.DEFAULT);
+     else maxDistance = Double.valueOf(distanceControlPanel.getDistance());
      //starting the Hazus calculation in the new thread, make the call to the HazusMapCalculator Object.
      HazusMapCalculator hazusCalc = new HazusMapCalculator();
      hazusCalc.setMaxSourceDistance(maxDistance.doubleValue());

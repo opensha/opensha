@@ -12,8 +12,9 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.logicTree.LogicTreeNode.RandomlySampledNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionSolver;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSetSplitMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SplittableRuptureSubSetModule;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SplittableRuptureModule;
 
 import com.google.common.base.Preconditions;
 
@@ -21,7 +22,7 @@ import com.google.common.base.Preconditions;
  * This class manages instances of and random seeds used by {@link AbstractSamplingNode}. It also handles building
  * subsets of those instances for the case of a {@link ClusterSpecificInversionSolver}.
  */
-public class BranchSamplingManager implements SplittableRuptureSubSetModule<BranchSamplingManager> {
+public class BranchSamplingManager implements SplittableRuptureModule<BranchSamplingManager> {
 	
 	private FaultSystemRupSet rupSet;
 	private LogicTreeBranch<?> branch;
@@ -157,6 +158,12 @@ public class BranchSamplingManager implements SplittableRuptureSubSetModule<Bran
 				subsetSamplers.add(sampler.getForRuptureSubSet(rupSubSet, mappings));
 		}
 		return new BranchSamplingManager(rupSubSet, branch, nodeSpecificSeeds, branchNodeUniqueSeeds, subsetSamplers);
+	}
+
+	@Override
+	public BranchSamplingManager getForSplitRuptureSet(FaultSystemRupSet splitRupSet,
+			RuptureSetSplitMappings mappings) {
+		throw new UnsupportedOperationException();
 	}
 
 }

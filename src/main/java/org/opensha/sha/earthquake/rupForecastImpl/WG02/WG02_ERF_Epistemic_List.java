@@ -70,7 +70,7 @@ public class WG02_ERF_Epistemic_List extends AbstractEpistemicListERF{
 
   // For rupture offset along fault parameter
   private final static String RUP_OFFSET_PARAM_NAME ="Rupture Offset";
-  private Double DEFAULT_RUP_OFFSET_VAL= new Double(5);
+  private Double DEFAULT_RUP_OFFSET_VAL= Double.valueOf(5);
   private final static String RUP_OFFSET_PARAM_UNITS = "km";
   private final static String RUP_OFFSET_PARAM_INFO = "Length of offset for floating ruptures";
   private final static double RUP_OFFSET_PARAM_MIN = 1;
@@ -79,7 +79,7 @@ public class WG02_ERF_Epistemic_List extends AbstractEpistemicListERF{
 
   // Grid spacing for fault discretization
   private final static String GRID_SPACING_PARAM_NAME ="Fault Discretization";
-  private Double DEFAULT_GRID_SPACING_VAL= new Double(1.0);
+  private Double DEFAULT_GRID_SPACING_VAL= Double.valueOf(1.0);
   private final static String GRID_SPACING_PARAM_UNITS = "km";
   private final static String GRID_SPACING_PARAM_INFO = "Grid spacing of fault surface";
   private final static double GRID_SPACING_PARAM_MIN = 0.1;
@@ -88,7 +88,7 @@ public class WG02_ERF_Epistemic_List extends AbstractEpistemicListERF{
 
   // For delta mag parameter (magnitude discretization)
   private final static String DELTA_MAG_PARAM_NAME ="Delta Mag";
-  private Double DEFAULT_DELTA_MAG_VAL= new Double(0.1);
+  private Double DEFAULT_DELTA_MAG_VAL= Double.valueOf(0.1);
   private final static String DELTA_MAG_PARAM_INFO = "Discretization of magnitude frequency distributions";
   private final static double DELTA_MAG_PARAM_MIN = 0.005;
   private final static double DELTA_MAG_PARAM_MAX = 0.5;
@@ -96,7 +96,7 @@ public class WG02_ERF_Epistemic_List extends AbstractEpistemicListERF{
 
   // For num realizations parameter
   private final static String NUM_REALIZATIONS_PARAM_NAME ="Num Realizations";
-  private Integer DEFAULT_NUM_REALIZATIONS_VAL= new Integer(10);
+  private Integer DEFAULT_NUM_REALIZATIONS_VAL= Integer.valueOf(10);
   private int NUM_REALIZATIONS_MIN = 1;
   private int NUM_REALIZATIONS_MAX = 100;
   private final static String NUM_REALIZATIONS_PARAM_INFO = "Number of Monte Carlo ERF realizations";
@@ -113,11 +113,11 @@ public class WG02_ERF_Epistemic_List extends AbstractEpistemicListERF{
     timeSpan = new TimeSpan(TimeSpan.YEARS,TimeSpan.YEARS);
     // set the duration constraint as a list of Doubles
     ArrayList durationOptions = new ArrayList();
-    durationOptions.add(new Double(1));
-    durationOptions.add(new Double(5));
-    durationOptions.add(new Double(10));
-    durationOptions.add(new Double(20));
-    durationOptions.add(new Double(30));
+    durationOptions.add(Double.valueOf(1));
+    durationOptions.add(Double.valueOf(5));
+    durationOptions.add(Double.valueOf(10));
+    durationOptions.add(Double.valueOf(20));
+    durationOptions.add(Double.valueOf(30));
     timeSpan.setDurationConstraint(durationOptions);
     // set the start year - hard coded for now
     timeSpan.setStartTimeConstraint(TimeSpan.START_YEAR,2002,2002);
@@ -238,7 +238,7 @@ public class WG02_ERF_Epistemic_List extends AbstractEpistemicListERF{
          if(st.hasMoreTokens()) {
            test = st.nextToken();
            if(test.equals("ITERATIONS"))
-             iterationLineNumbers.add(new Integer(lineNum));
+             iterationLineNumbers.add(Integer.valueOf(lineNum));
          }
        }
 
@@ -306,7 +306,7 @@ public class WG02_ERF_Epistemic_List extends AbstractEpistemicListERF{
   public ArrayList getRelativeWeightsList() {
     ArrayList relativeWeight  = new ArrayList();
     for(int i=0; i<numIterations; i++)
-      relativeWeight.add(new Double(1.0));
+      relativeWeight.add(Double.valueOf(1.0));
     return relativeWeight;
   }
 

@@ -716,7 +716,7 @@ public class RSQSimSubSectionMapper {
 
 		@Override
 		public int compare(FaultSection o1, FaultSection o2) {
-			return new Integer(o1.getSectionId()).compareTo(o2.getSectionId());
+			return Integer.valueOf(o1.getSectionId()).compareTo(o2.getSectionId());
 		}
 	};
 	

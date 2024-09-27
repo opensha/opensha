@@ -87,7 +87,6 @@ public abstract class AbstractNthRupERF extends AbstractERF {
 		// make temp array lists to avoid making each source twice
 		ArrayList<Integer> tempSrcIndexForNthRup = new ArrayList<Integer>();
 		ArrayList<Integer> tempRupIndexForNthRup = new ArrayList<Integer>();
-		ArrayList<Integer> tempFltSysRupIndexForNthRup = new ArrayList<Integer>();
 		int n=0;
 		
 		for(int s=0; s<getNumSources(); s++) {	// this includes gridded sources

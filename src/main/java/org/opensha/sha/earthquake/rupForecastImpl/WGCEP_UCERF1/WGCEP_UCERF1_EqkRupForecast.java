@@ -121,7 +121,7 @@ public class WGCEP_UCERF1_EqkRupForecast extends AbstractERF{
 
   // For rupture offset lenth along fault parameter
   public final static String RUP_OFFSET_PARAM_NAME ="Rupture Offset";
-  private Double DEFAULT_RUP_OFFSET_VAL= new Double(5);
+  private Double DEFAULT_RUP_OFFSET_VAL= Double.valueOf(5);
   private final static String RUP_OFFSET_PARAM_UNITS = "km";
   private final static String RUP_OFFSET_PARAM_INFO = "Length of offset for floating ruptures";
   public final static double RUP_OFFSET_PARAM_MIN = 1;
@@ -187,7 +187,7 @@ public class WGCEP_UCERF1_EqkRupForecast extends AbstractERF{
         RUP_OFFSET_PARAM_MAX,RUP_OFFSET_PARAM_UNITS,DEFAULT_RUP_OFFSET_VAL);
     rupOffset_Param.setInfo(RUP_OFFSET_PARAM_INFO);
 
-    timeDependentParam = new BooleanParameter(TIME_DEPENDENT_PARAM_NAME, new Boolean(true));
+    timeDependentParam = new BooleanParameter(TIME_DEPENDENT_PARAM_NAME, Boolean.valueOf(true));
     timeDependentParam.setInfo(TIME_DEPENDENT_PARAM_INFO);
 
 // add adjustable parameters to the list
@@ -437,11 +437,11 @@ public class WGCEP_UCERF1_EqkRupForecast extends AbstractERF{
 
     // get the dMags from the 3rd line
     st = new StringTokenizer(it.next().toString());
-    for(int n=0;n<numBranches;n++) branchDmags.add(new Double(st.nextToken()));
+    for(int n=0;n<numBranches;n++) branchDmags.add(Double.valueOf(st.nextToken()));
 
     // get branch wts from the 4rd line
     st = new StringTokenizer(it.next().toString());
-    for(int n=0;n<numBranches;n++) branchWts.add(new Double(st.nextToken()));
+    for(int n=0;n<numBranches;n++) branchWts.add(Double.valueOf(st.nextToken()));
 
     // get aleatory stddev and truncation width from 5th line
     st = new StringTokenizer(it.next().toString());
@@ -797,8 +797,8 @@ public class WGCEP_UCERF1_EqkRupForecast extends AbstractERF{
       for(int i=0;i<numOfDataLines;++i) {
         if( !it.hasNext() ) throw ERR;
         st =new StringTokenizer(it.next().toString().trim());
-        lat = new Double(st.nextToken()).doubleValue();
-        lon = new Double(st.nextToken()).doubleValue();
+        lat = Double.valueOf(st.nextToken()).doubleValue();
+        lon = Double.valueOf(st.nextToken()).doubleValue();
         Location loc = new Location(lat, lon, upperSeismoDepth);
         faultTrace.add(loc.clone());
       }
@@ -1171,7 +1171,7 @@ public class WGCEP_UCERF1_EqkRupForecast extends AbstractERF{
 			   "Concord-GreenValley", "San Gregorio", "Greenville","Mt Diablo" };
 	   
 	   // make it time dependent
-	   timeDependentParam.setValue(new Boolean(true));
+	   timeDependentParam.setValue(Boolean.valueOf(true));
 	   getTimeSpan().setDuration(30);
 	   updateForecast();
 	   ProbEqkSource probSrc;
@@ -1392,8 +1392,8 @@ Mount Diablo (no floater here)
      WGCEP_UCERF1_EqkRupForecast frankCast = new WGCEP_UCERF1_EqkRupForecast();
      frankCast.writeA_FaultTotalProbs();
 /*     
-     frankCast.timeDependentParam.setValue(new Boolean(true));
-//     frankCast.timeDependentParam.setValue(new Boolean(false));
+     frankCast.timeDependentParam.setValue(Boolean.valueOf(true));
+//     frankCast.timeDependentParam.setValue(Boolean.valueOf(false));
      frankCast.getTimeSpan().setDuration(30);
      frankCast.updateForecast();
 
@@ -1630,8 +1630,8 @@ Mount Diablo (no floater here)
       timeSpan = new TimeSpan(TimeSpan.YEARS, TimeSpan.YEARS);
       // set the duration constraint as a list of Doubles
       ArrayList durationOptions = new ArrayList();
-      durationOptions.add(new Double(5));
-      durationOptions.add(new Double(30));
+      durationOptions.add(Double.valueOf(5));
+      durationOptions.add(Double.valueOf(30));
       timeSpan.setDurationConstraint(durationOptions);
       // set the start year - hard coded at 2006
       timeSpan.setStartTimeConstraint(TimeSpan.START_YEAR, 2006, 2006);

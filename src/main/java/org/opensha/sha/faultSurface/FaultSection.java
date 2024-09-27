@@ -146,6 +146,14 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	public FaultTrace getFaultTrace();
 	
 	/**
+	 * This returns the lower fault trace if the surface is not a simple fault, otherwise null.
+	 * @return
+	 */
+	public default FaultTrace getLowerFaultTrace() {
+		return null;
+	}
+	
+	/**
 	 * This returns the section ID 
 	 * @return
 	 */
@@ -191,7 +199,8 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	public void setParentSectionName(String parentSectionName);
 	
 	/**
-	 * this returns the length of the trace in km.
+	 * this returns the length of the upper trace in km.
+	 * TODO: should this return the average trace length if a lower trace is supplied?
 	 * @return
 	 */
 	public default double getTraceLength() {
@@ -274,6 +283,11 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	 * @return true if this is a connector fault
 	 */
 	public boolean isConnector();
+	
+	/**
+	 * @return true if this is a proxy fault
+	 */
+	public boolean isProxyFault();
 
 	public Region getZonePolygon();
 	
@@ -288,7 +302,10 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 	 */
 	public default double getArea(boolean creepReduced) {
 		double ddw = creepReduced ? getReducedDownDipWidth() : getOrigDownDipWidth();
-		return ddw * getTraceLength() * 1e6;
+		double len = getTraceLength();
+		if (getLowerFaultTrace() != null)
+			len = 0.5*len + 0.5*getLowerFaultTrace().getTraceLength();
+		return ddw * len * 1e6;
 	}
 	
 	/**
@@ -403,7 +420,7 @@ public interface FaultSection extends Named, XMLSaveable, Cloneable {
 		 * and ddw exactly (otherwise trimming occurs)
 		 * @return
 		 */
-		public synchronized ApproxEvenlyGriddedSurface getStirlingGriddedSurface(
+		public synchronized ApproxEvenlyGriddedSurface getApproxEvenlyGriddedSurface(
 				double gridSpacing, boolean aseisReducesArea) {
 			// return cached surface?
 			if( (gridSpacing==lastGridSpacing && approxGriddedSurface != null)

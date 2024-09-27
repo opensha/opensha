@@ -83,7 +83,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
   // minimum magnitude parameter stuff
   private final static String MIN_MAG_PARAM_NAME ="Minimum Magnitude";
-  private Double MIN_MAG_PARAM_DEFAULT = new Double(4.0);
+  private Double MIN_MAG_PARAM_DEFAULT = Double.valueOf(4.0);
   private final static String MIN_MAG_PARAM_UNITS = null;
   private final static String MIN_MAG_PARAM_INFO = "The minimum magnitude to be considered (those below are ignored)";
   private final static double MIN_MAG_PARAM_MIN = 4.0;
@@ -105,18 +105,18 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
     // Create the timeSpan & set its constraints
     StringTokenizer st = new StringTokenizer(deltaRateFileLines.get(0).toString());
-    int year =  (new Integer(st.nextToken())).intValue();
-    int month =  (new Integer(st.nextToken())).intValue();
-    int day =  (new Integer(st.nextToken())).intValue();
-    int hour =  (new Integer(st.nextToken())).intValue();
-    int minute =  (new Integer(st.nextToken())).intValue();
-    int second =  (new Integer(st.nextToken())).intValue();
+    int year =  (Integer.valueOf(st.nextToken())).intValue();
+    int month =  (Integer.valueOf(st.nextToken())).intValue();
+    int day =  (Integer.valueOf(st.nextToken())).intValue();
+    int hour =  (Integer.valueOf(st.nextToken())).intValue();
+    int minute =  (Integer.valueOf(st.nextToken())).intValue();
+    int second =  (Integer.valueOf(st.nextToken())).intValue();
 
     if(D) System.out.println("year="+year+"; month="+month+"; day="+day+"; hour="+
                              hour+"; minute="+minute+"; second="+second);
 
     st = new StringTokenizer(deltaRateFileLines.get(1).toString());
-    double duration = (new Double(st.nextToken())).doubleValue();
+    double duration = (Double.valueOf(st.nextToken())).doubleValue();
     if(D) System.out.println("duration="+duration);
 
     this.timeSpan = new TimeSpan(TimeSpan.SECONDS,TimeSpan.DAYS);

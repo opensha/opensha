@@ -385,7 +385,7 @@ implements Serializable {
 		Iterator<Point2D> it =iterator();
 		try{
 			s.writeObject(points.getComparator());
-			s.writeObject(new Integer(size()));
+			s.writeObject(Integer.valueOf(size()));
 			while(it.hasNext()){
 				Point2D data = (Point2D)it.next();
 				//System.out.println("Data: "+data.toString());

@@ -98,10 +98,10 @@ public class ZhaoEtAl_2006_test {
 		if (fochMech != null)
 			imr.getParameter(FaultTypeParam.NAME).setValue(fochMech);
 		// Magnitude
-		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(new Double(rup.getMag()));
+		((WarningDoubleParameter)imr.getParameter(MagParam.NAME)).setValueIgnoreWarning(Double.valueOf(rup.getMag()));
 		// Distance 
 		((AbstractDoublePropEffectParam)imr.getParameter(DistanceRupParameter.NAME))
-		.setValueIgnoreWarning(new Double(distance));
+		.setValueIgnoreWarning(Double.valueOf(distance));
 
 		System.out.println("Testing: "+fName);
 		URL url = this.getClass().getResource("AttenRelResultSetFiles/ZhaoEtAl_2006/"+fName);

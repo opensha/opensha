@@ -89,11 +89,11 @@ public final class ConnectToCVM {
     ObjectOutputStream outputToServlet = new ObjectOutputStream(servletConnection.getOutputStream());
 
 
-    outputToServlet.writeObject(new Double(lonMin));
-    outputToServlet.writeObject(new Double(lonMax));
-    outputToServlet.writeObject(new Double(latMin));
-    outputToServlet.writeObject(new Double(latMax));
-    outputToServlet.writeObject(new Double(gridSpacing));
+    outputToServlet.writeObject(Double.valueOf(lonMin));
+    outputToServlet.writeObject(Double.valueOf(lonMax));
+    outputToServlet.writeObject(Double.valueOf(latMin));
+    outputToServlet.writeObject(Double.valueOf(latMax));
+    outputToServlet.writeObject(Double.valueOf(gridSpacing));
 
     outputToServlet.flush();
     outputToServlet.close();
@@ -174,11 +174,11 @@ public final class ConnectToCVM {
     // send the student object to the servlet using serialization
     ObjectOutputStream outputToServlet = new ObjectOutputStream(servletConnection.getOutputStream());
 
-    outputToServlet.writeObject(new Double(lonMin));
-    outputToServlet.writeObject(new Double(lonMax));
-    outputToServlet.writeObject(new Double(latMin));
-    outputToServlet.writeObject(new Double(latMax));
-    outputToServlet.writeObject(new Double(gridSpacing));
+    outputToServlet.writeObject(Double.valueOf(lonMin));
+    outputToServlet.writeObject(Double.valueOf(lonMax));
+    outputToServlet.writeObject(Double.valueOf(latMin));
+    outputToServlet.writeObject(Double.valueOf(latMax));
+    outputToServlet.writeObject(Double.valueOf(gridSpacing));
 
     outputToServlet.flush();
     outputToServlet.close();

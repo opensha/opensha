@@ -125,17 +125,17 @@ java.io.Serializable{
 	private static final String DIP_DIRECTION_PARAM_UNITS = "degrees";
 	private static final String DIP_DIRECTION_INFO = "Leave blank to make this perpendicular to fault-Strike";
 	private DoubleParameter dipDirectionParam = new DoubleParameter(DIP_DIRECTION_PARAM_NAME,
-			new Double(0),new Double(360),DIP_DIRECTION_PARAM_UNITS,DEFAULT_DIP_DIRECTION);
+			Double.valueOf(0),Double.valueOf(360),DIP_DIRECTION_PARAM_UNITS,DEFAULT_DIP_DIRECTION);
 
 	//creating the Double parameter for the Dips
-	private IntegerParameter numDipParam = new IntegerParameter(NUM_DIPS,new Integer(this.DEFAULT_DIPS));
+	private IntegerParameter numDipParam = new IntegerParameter(NUM_DIPS,Integer.valueOf(this.DEFAULT_DIPS));
 
 	//Fault Name param
 	StringParameter faultName= new StringParameter(this.FAULT_NAME);
 	//Grid Spacing Param
-	DoubleParameter gridSpacing = new DoubleParameter(this.GRID_SPACING,0.01,5,GRID_SPACING_UNITS,new Double(this.DEFAULT_GRID_SPACING));
+	DoubleParameter gridSpacing = new DoubleParameter(this.GRID_SPACING,0.01,5,GRID_SPACING_UNITS,Double.valueOf(this.DEFAULT_GRID_SPACING));
 	//FaultTrace Param
-	IntegerParameter numFltTrace = new IntegerParameter(this.NUMBER_OF_FAULT_TRACE,2,100,new Integer(this.DEFAULT_NUM_FAULT_TRACE));
+	IntegerParameter numFltTrace = new IntegerParameter(this.NUMBER_OF_FAULT_TRACE,2,100,Integer.valueOf(this.DEFAULT_NUM_FAULT_TRACE));
 
 	//creating the StringParameter for the FaultType
 	StringParameter faultTypeParam;
@@ -391,7 +391,7 @@ java.io.Serializable{
 				lat[i] = new DoubleParameter(LAT_PARAM_NAME+(i+1),-90.0,90.0,"Degrees");
 			else if(size ==0)
 				lat[i] = new DoubleParameter(LAT_PARAM_NAME+(i+1),-90.0,90.0,"Degrees",
-						new Double(38.2248 - i/2.0));
+						Double.valueOf(38.2248 - i/2.0));
 			else
 				lat[i] = new DoubleParameter(LAT_PARAM_NAME+(i+1),-90.0,90.0,"Degrees", (Double)prevLats.get(i));
 			lat[i].addParameterChangeListener(this);
@@ -410,7 +410,7 @@ java.io.Serializable{
 				lon[i] = new DoubleParameter(LON_PARAM_NAME+(i+1),-360.0,360.0,"Degrees");
 			else if(size ==0)
 				lon[i] = new DoubleParameter(LON_PARAM_NAME+(i+1),-360.0,360.0,"Degrees",
-						new Double(-122.0 - i/2.0));
+						Double.valueOf(-122.0 - i/2.0));
 			else
 				lon[i] = new DoubleParameter(this.LON_PARAM_NAME+(i+1),-360.0,360.0,"Degrees",(Double)prevLons.get(i));
 			lon[i].addParameterChangeListener(this);
@@ -455,7 +455,7 @@ java.io.Serializable{
 				dip[i] = new DoubleParameter(DIP_PARAM_NAME+(i+1),0.0,90.0,"Degrees");
 			else if(size ==0)
 				dip[i] = new DoubleParameter(DIP_PARAM_NAME+(i+1),0.0,90.0,"Degrees",
-						new Double(90-(i+30)));
+						Double.valueOf(90-(i+30)));
 			else
 				dip[i] = new DoubleParameter(DIP_PARAM_NAME+(i+1),0.0,90.0,"Degrees",(Double)prevDips.get(i));
 			dip[i].addParameterChangeListener(this);
@@ -497,7 +497,7 @@ java.io.Serializable{
 				depth[i] = new DoubleParameter(DEPTH_PARAM_NAME+(i+1),0.0,99999.0,"km");
 			else if( size ==0)
 				depth[i] = new DoubleParameter(DEPTH_PARAM_NAME+(i+1),0.0,99999.0,"km",
-						new Double(0+(i+6)));
+						Double.valueOf(0+(i+6)));
 			else
 				depth[i] = new DoubleParameter(DEPTH_PARAM_NAME+(i+1),0.0,99999.0,"km",(Double)prevDepths.get(i));
 			parameterListForDepths.addParameter(depth[i]);
@@ -692,7 +692,7 @@ java.io.Serializable{
 	 * @param numPoints number of locations on the fault trace
 	 */
 	public void setNumFaultTracePoints(int numPoints){
-		this.numFltTrace.setValue(new Integer(numPoints));
+		this.numFltTrace.setValue(Integer.valueOf(numPoints));
 		this.initLatLonParamList();
 	}
 
@@ -701,7 +701,7 @@ java.io.Serializable{
 	 * @param numDips
 	 */
 	public void setNumDips(int numDips){
-		this.numDipParam.setValue(new Integer(numDips));
+		this.numDipParam.setValue(Integer.valueOf(numDips));
 		this.initDipParamList();
 		this.initDepthParamList();
 	}
@@ -721,7 +721,7 @@ java.io.Serializable{
 	 */
 	public void setDipDirection(double value){
 		if(((String)faultTypeParam.getValue()).equals(STIRLING))
-			dipDirectionParam.setValue(new Double(value));
+			dipDirectionParam.setValue(Double.valueOf(value));
 	}
 
 
@@ -770,9 +770,9 @@ java.io.Serializable{
 		prevLons = lons;
 		prevDepths = depths;
 		prevDips = dips;
-		parameterList.getParameter(SimpleFaultParameter.GRID_SPACING).setValue(new Double(gridSpacing));
-		parameterList.getParameter(SimpleFaultParameter.NUMBER_OF_FAULT_TRACE).setValue(new Integer(numFltPts));
-		numDipParam.setValue(new Integer(numDips));
+		parameterList.getParameter(SimpleFaultParameter.GRID_SPACING).setValue(Double.valueOf(gridSpacing));
+		parameterList.getParameter(SimpleFaultParameter.NUMBER_OF_FAULT_TRACE).setValue(Integer.valueOf(numFltPts));
+		numDipParam.setValue(Integer.valueOf(numDips));
 		initLatLonParamList();
 		
 		// NOTE added during Peer Test build

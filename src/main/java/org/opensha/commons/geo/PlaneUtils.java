@@ -69,7 +69,7 @@ public final class PlaneUtils {
         // recast float centroid as long centroid
         long[] centroid = new long[3];
         for (int i=0; i<3; i++) {
-            //centroid[i] = (new Double(input[i])).longValue();
+            //centroid[i] = (Double.valueOf(input[i])).longValue();
             centroid[i] = (long)input[i]; // alternate recast 
         }
         return centroid;

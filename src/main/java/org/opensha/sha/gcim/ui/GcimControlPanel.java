@@ -85,10 +85,10 @@ public class GcimControlPanel extends ControlPanel
 	
 	//Gcim Parameter
 	private DoubleParameter gcimProbParam =
-		new DoubleParameter(GCIM_PROB_PARAM_NAME, 0, 1, new Double(.01));
+		new DoubleParameter(GCIM_PROB_PARAM_NAME, 0, 1, Double.valueOf(.01));
 
 	private DoubleParameter gcimIMLParam =
-		new DoubleParameter(GCIM_IML_PARAM_NAME, 0, 11, new Double(.1));
+		new DoubleParameter(GCIM_IML_PARAM_NAME, 0, 11, Double.valueOf(.1));
 
 	public boolean gcimSupportedIMj = false;
 	private StringParameter gcimSupportParameter;
@@ -109,13 +109,13 @@ public class GcimControlPanel extends ControlPanel
 	private static final String MIN_APPROXZ_PARAM_NAME = "Min Approx. Z value for CDF";
 	private static final String MAX_APPROXZ_PARAM_NAME = "Max Approx. Z value for CDF";
 	private static final String DELTA_APPROXZ_PARAM_NAME = "Delta Approx. Z value for CDF";
-	private DoubleParameter minApproxZParam = new DoubleParameter(MIN_APPROXZ_PARAM_NAME,new Double(-3));
-	private DoubleParameter maxApproxZParam = new DoubleParameter(MAX_APPROXZ_PARAM_NAME,new Double(3));
-	private DoubleParameter deltaApproxZParam = new DoubleParameter(DELTA_APPROXZ_PARAM_NAME,new Double(0.2));
+	private DoubleParameter minApproxZParam = new DoubleParameter(MIN_APPROXZ_PARAM_NAME,Double.valueOf(-3));
+	private DoubleParameter maxApproxZParam = new DoubleParameter(MAX_APPROXZ_PARAM_NAME,Double.valueOf(3));
+	private DoubleParameter deltaApproxZParam = new DoubleParameter(DELTA_APPROXZ_PARAM_NAME,Double.valueOf(0.2));
 	
 	//Set the number of GCIM realizations variable
 	private static final String NUM_GCIM_REALIZATIONS_NAME =  "Num. GCIM realizations";
-	private IntegerParameter numGcimRealizationsParam = new IntegerParameter(NUM_GCIM_REALIZATIONS_NAME,new Integer(0));
+	private IntegerParameter numGcimRealizationsParam = new IntegerParameter(NUM_GCIM_REALIZATIONS_NAME,Integer.valueOf(0));
 	
 	//Main four Array lists for storing IMT, IMR, IMCorrRel details
 	private ArrayList<String> imiTypes = new ArrayList<String>();

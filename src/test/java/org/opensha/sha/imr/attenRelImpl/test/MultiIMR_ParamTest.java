@@ -100,13 +100,13 @@ public class MultiIMR_ParamTest {
 			testParamConsistancy(multi, bundle);
 			trySet(multi, SigmaTruncTypeParam.NAME, SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED);
 			testParamConsistancy(multi, bundle);
-			trySet(multi, SigmaTruncLevelParam.NAME, new Double(3.0));
+			trySet(multi, SigmaTruncLevelParam.NAME, Double.valueOf(3.0));
 			testParamConsistancy(multi, bundle);
-			trySet(multi, SigmaTruncLevelParam.NAME, new Double(2.0));
+			trySet(multi, SigmaTruncLevelParam.NAME, Double.valueOf(2.0));
 			testParamConsistancy(multi, bundle);
-			trySet(multi, Vs30_Param.NAME, new Double(200.0));
+			trySet(multi, Vs30_Param.NAME, Double.valueOf(200.0));
 			testParamConsistancy(multi, bundle);
-			trySet(multi, DepthTo2pt5kmPerSecParam.NAME, new Double(1.33));
+			trySet(multi, DepthTo2pt5kmPerSecParam.NAME, Double.valueOf(1.33));
 			testParamConsistancy(multi, bundle);
 		}
 	}

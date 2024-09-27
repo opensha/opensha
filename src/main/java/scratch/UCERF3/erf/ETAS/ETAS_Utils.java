@@ -47,6 +47,7 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupOrigTimeComparator;
@@ -2546,9 +2547,9 @@ System.out.println(sectID+"\t"+primaryFromSupraArray[sectID]+"\t"+resultArray[se
 		
 		// make total truly off-fault MFD
 		SummedMagFreqDist trulyOffMFD = new SummedMagFreqDist(2.55, 8.45, 60);
-		GridSourceProvider gridProvider = erf.getGridSourceProvider();
-		for(int n=0;n<gridProvider.getGriddedRegion().getNodeCount();n++) {
-			ProbEqkSource src = erf.getGridSourceProvider().getSourceUnassociated(n, 1.0, false, BackgroundRupType.POINT);
+		MFDGridSourceProvider gridProvider = erf.getSolution().requireModule(MFDGridSourceProvider.class);
+		for(int n=0; n<gridProvider.getNumLocations(); n++) {
+			ProbEqkSource src = gridProvider.getSourceUnassociated(n, 1.0, null, BackgroundRupType.POINT);
 			if(src != null) {
 				for(ProbEqkRupture rup : src) {
 					trulyOffMFD.add(rup.getMag(), rup.getMeanAnnualRate(1.0));

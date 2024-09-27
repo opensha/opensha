@@ -34,6 +34,8 @@ import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuilder {
+	
+	private static final double MIN_WC_RADIUS = 20d;
 
 	public static void main(String[] args) {
 		if (args.length == 1 && args[0].equals("--hardcoded")) {
@@ -341,6 +343,11 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 				return "Custom Surface";
 			return null;
 		}
+
+		@Override
+		public double getMinMag() {
+			return 0;
+		}
 		
 	}
 	
@@ -374,6 +381,11 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 			}
 			return null;
 		}
+
+		@Override
+		public double getMinMag() {
+			return 0;
+		}
 		
 	}
 	
@@ -397,7 +409,7 @@ public class ETAS_ComcatEventConfigBuilder extends ETAS_AbstractComcatConfigBuil
 		if (cmd.hasOption("radius")) {
 			radius = Double.parseDouble(cmd.getOptionValue("radius"));
 		} else {
-			radius = new WC1994_MagLengthRelationship().getMedianLength(primaryRupture.getMag());
+			radius = Math.max(MIN_WC_RADIUS, new WC1994_MagLengthRelationship().getMedianLength(primaryRupture.getMag()));
 			System.out.println("W-C 1994 Radius: "+(float)radius);
 		}
 		Region region;

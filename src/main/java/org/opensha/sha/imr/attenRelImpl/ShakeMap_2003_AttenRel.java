@@ -118,13 +118,13 @@ public class ShakeMap_2003_AttenRel extends AttenuationRelationship {
 	public final static String FLT_TYPE_REVERSE = "Reverse";
 
 	// warning constraint fields:
-	protected final static Double MAG_WARN_MIN = new Double(3.3);
-	protected final static Double MAG_WARN_MAX = new Double(7.5);
+	protected final static Double MAG_WARN_MIN = Double.valueOf(3.3);
+	protected final static Double MAG_WARN_MAX = Double.valueOf(7.5);
 
 
 	// Joyner-Boore Distance parameter
-	protected final static Double DISTANCE_JB_WARN_MIN = new Double(0.0);
-	protected final static Double DISTANCE_JB_WARN_MAX = new Double(80.0);
+	protected final static Double DISTANCE_JB_WARN_MIN = Double.valueOf(0.0);
+	protected final static Double DISTANCE_JB_WARN_MAX = Double.valueOf(80.0);
 
 	private StringParameter willsSiteParam = null;
 	public final static String WILLS_SITE_NAME = "Wills Site Class";
@@ -208,7 +208,7 @@ public class ShakeMap_2003_AttenRel extends AttenuationRelationship {
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 
-		magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
 		setFaultTypeFromRake(eqkRupture.getAveRake());
 		this.eqkRupture = eqkRupture;
 		setPropagationEffectParams();
@@ -937,7 +937,7 @@ public class ShakeMap_2003_AttenRel extends AttenuationRelationship {
 			BJF_1997_AttenRelCoefficients coeff = (BJF_1997_AttenRelCoefficients)
 			coefficientsBJF.get(keys.nextElement());
 			if (coeff.period >= 0) {
-				set.add(new Double(coeff.period));
+				set.add(Double.valueOf(coeff.period));
 			}
 		}
 		Iterator it = set.iterator();
@@ -1048,7 +1048,7 @@ public class ShakeMap_2003_AttenRel extends AttenuationRelationship {
 				0.660, 0.328, 0.737, 0.3948, 0.836);
 		// SA/0.00
 		BJF_1997_AttenRelCoefficients coeffSM1 = new BJF_1997_AttenRelCoefficients(
-				SA_Param.NAME + '/' + (new Double("0.00")).doubleValue(),
+				SA_Param.NAME + '/' + (Double.valueOf("0.00")).doubleValue(),
 				0.00, 2.408, 2.408, 2.408, 1.3171, 0.000, -1.757, -0.473, 760, 6.0,
 				0.660, 0.328, 0.737, 0.3948, 0.836);
 		// Note: no sigma values were available for those below (Vince needs to recompute them)
@@ -1058,7 +1058,7 @@ public class ShakeMap_2003_AttenRel extends AttenuationRelationship {
 		//       with no further explanation; using the ratios seems reasonable.
 		// SA/0.30
 		BJF_1997_AttenRelCoefficients coeffSM2 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.30")).doubleValue(),
+				"SA/" + (Double.valueOf("0.30")).doubleValue(),
 				0.30, 0.835318, 0.835318, 0.835318, 1.71773, 0.000, -1.827, -0.608, 760,
 				6.0,
 				(0.842 / 0.836) * 0.660, (0.842 / 0.836) * 0.328,
@@ -1066,7 +1066,7 @@ public class ShakeMap_2003_AttenRel extends AttenuationRelationship {
 				(0.842 / 0.836) * 0.836);
 		// SA/1.00
 		BJF_1997_AttenRelCoefficients coeffSM3 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("1.00")).doubleValue(),
+				"SA/" + (Double.valueOf("1.00")).doubleValue(),
 				1.00, -1.82877, -1.82877, -1.82877, 2.20818, 0.000, -1.211, -0.974, 760,
 				6.0,
 				(0.988 / 0.836) * 0.660, (0.988 / 0.836) * 0.328,
@@ -1074,7 +1074,7 @@ public class ShakeMap_2003_AttenRel extends AttenuationRelationship {
 				(0.988 / 0.836) * 0.836);
 		// SA/3.00 - actually these are BJF's 2-second values
 		BJF_1997_AttenRelCoefficients coeffSM4 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("3.00")).doubleValue(),
+				"SA/" + (Double.valueOf("3.00")).doubleValue(),
 				3.00, -4.63102, -4.63102, -4.63102, 2.09305, 0.000, -0.848, -0.890, 760,
 				6.0,
 				(1.082 / 0.836) * 0.660, (1.082 / 0.836) * 0.328,
@@ -1105,22 +1105,22 @@ public class ShakeMap_2003_AttenRel extends AttenuationRelationship {
 				0.431, 0.226, 0.486, 0.184, 0.520);
 		// SA/0.00
 		BJF_1997_AttenRelCoefficients coeff1 = new BJF_1997_AttenRelCoefficients(
-				SA_Param.NAME + '/' + (new Double("0.00")).doubleValue(),
+				SA_Param.NAME + '/' + (Double.valueOf("0.00")).doubleValue(),
 				0.00, -0.313, -0.117, -0.242, 0.527, 0, -0.778, -0.371, 1396, 5.57,
 				0.431, 0.226, 0.486, 0.184, 0.520);
 		// SA/0.30
 		BJF_1997_AttenRelCoefficients coeff2 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.30")).doubleValue(),
+				"SA/" + (Double.valueOf("0.30")).doubleValue(),
 				0.30, 0.598, 0.803, 0.7, 0.769, -0.161, -0.893, -0.401, 2133, 5.94,
 				0.440, 0.276, 0.519, 0.048, 0.522);
 		// SA/1.00
 		BJF_1997_AttenRelCoefficients coeff3 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("1.00")).doubleValue(),
+				"SA/" + (Double.valueOf("1.00")).doubleValue(),
 				1.00, -1.133, -1.009, -1.08, 1.036, -0.032, -0.798, -0.698, 1406, 2.9,
 				0.474, 0.325, 0.575, 0.214, 0.613);
 		// SA/3.00 - actually these are BJF's 2-second values
 		BJF_1997_AttenRelCoefficients coeff4 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("3.00")).doubleValue(),
+				"SA/" + (Double.valueOf("3.00")).doubleValue(),
 				3.00, -1.699, -1.801, -1.743, 1.085, -0.085, -0.812, -0.655, 1795, 5.85,
 				0.495, 0.362, 0.613, 0.276, 0.672);
 		// PGV - these are actually from 1-sec SA using the Newmark & Hall (1982).  According to the ShakeMap docs this

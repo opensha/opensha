@@ -438,7 +438,7 @@ public class DoubleParameter extends AbstractParameter<Double> {
 	 * @throws  ConstraintException  Thrown if the object value is not allowed.
 	 */
 	public void setValue( double value ) throws ConstraintException, ParameterException {
-		setValue( new Double( value ) );
+		setValue( Double.valueOf( value ) );
 	}
 
 	/**
@@ -492,7 +492,7 @@ public class DoubleParameter extends AbstractParameter<Double> {
 			c1 = ( DoubleConstraint ) constraint.clone();
 		DoubleParameter param = null;
 		if( value == null ) param = new DoubleParameter( name, c1, units);
-		else param = new DoubleParameter( name, c1, units, new Double( this.value.toString() )  );
+		else param = new DoubleParameter( name, c1, units, Double.valueOf( this.value.toString() )  );
 		if( param == null ) return null;
 		param.editable = true;
 		param.info = info;

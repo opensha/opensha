@@ -76,18 +76,18 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
     // Create the timeSpan & set its constraints
     StringTokenizer st = new StringTokenizer(inputFileLines.get(0).toString());
-    int year =  (new Integer(st.nextToken())).intValue();
-    int month =  (new Integer(st.nextToken())).intValue();
-    int day =  (new Integer(st.nextToken())).intValue();
-    int hour =  (new Integer(st.nextToken())).intValue();
-    int minute =  (new Integer(st.nextToken())).intValue();
-    int second =  (new Integer(st.nextToken())).intValue();
+    int year =  (Integer.valueOf(st.nextToken())).intValue();
+    int month =  (Integer.valueOf(st.nextToken())).intValue();
+    int day =  (Integer.valueOf(st.nextToken())).intValue();
+    int hour =  (Integer.valueOf(st.nextToken())).intValue();
+    int minute =  (Integer.valueOf(st.nextToken())).intValue();
+    int second =  (Integer.valueOf(st.nextToken())).intValue();
 
     if(D) System.out.println("year="+year+"; month="+month+"; day="+day+"; hour="+
                              hour+"; minute="+minute+"; second="+second);
 
     st = new StringTokenizer(inputFileLines.get(1).toString());
-    double duration = (new Double(st.nextToken())).doubleValue();
+    double duration = (Double.valueOf(st.nextToken())).doubleValue();
     if(D) System.out.println("duration="+duration);
 
     this.timeSpan = new TimeSpan(TimeSpan.SECONDS,TimeSpan.DAYS);

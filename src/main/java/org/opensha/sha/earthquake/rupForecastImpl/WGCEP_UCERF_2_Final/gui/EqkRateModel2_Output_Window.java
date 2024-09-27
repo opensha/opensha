@@ -482,7 +482,7 @@ public class EqkRateModel2_Output_Window extends JFrame implements ActionListene
 		for(int i=0; i<sourceGeneratorList.size(); ++i) {
 			A_FaultSegmentedSourceGenerator source = sourceGeneratorList.get(i);
 			double normModResids[] = source.getNormModSlipRateResids();
-			for(int segIndex = 0; segIndex<normModResids.length; ++segIndex) normModlSlipRateRatioList.add(new Double(normModResids[segIndex]));
+			for(int segIndex = 0; segIndex<normModResids.length; ++segIndex) normModlSlipRateRatioList.add(Double.valueOf(normModResids[segIndex]));
 		}
 	}
 	
@@ -498,7 +498,7 @@ public class EqkRateModel2_Output_Window extends JFrame implements ActionListene
 			A_FaultSegmentedSourceGenerator source = sourceGeneratorList.get(i);
 			double normDataER_Resids[] = source.getNormDataER_Resids();
 			for(int segIndex = 0; segIndex<normDataER_Resids.length; ++segIndex) 
-				if(!Double.isNaN(normDataER_Resids[segIndex])) normDataER_RatioList.add(new Double(normDataER_Resids[segIndex]));
+				if(!Double.isNaN(normDataER_Resids[segIndex])) normDataER_RatioList.add(Double.valueOf(normDataER_Resids[segIndex]));
 		}
 	}
 	

@@ -102,13 +102,13 @@ public class WeightedFuncListforPlotting extends WeightedFuncList implements Plo
 	public List<Integer> getPlotNumColorList() {
 		List<Integer> numColorArray = Lists.newArrayList();
 		if (areIndividualCurvesToPlot()) {
-			numColorArray.add(new Integer(getWeightedFunctionList().size()));
+			numColorArray.add(Integer.valueOf(getWeightedFunctionList().size()));
 		}
 		if (areFractilesToPlot()) {
-			numColorArray.add(new Integer(getFractileList().size()));
+			numColorArray.add(Integer.valueOf(getFractileList().size()));
 		}
 		if (isMeanToPlot()) {
-			numColorArray.add(new Integer(1));
+			numColorArray.add(Integer.valueOf(1));
 		}
 		return numColorArray;
 	}

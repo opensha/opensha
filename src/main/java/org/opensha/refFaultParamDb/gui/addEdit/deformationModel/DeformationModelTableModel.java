@@ -41,7 +41,7 @@ public class DeformationModelTableModel  extends DefaultTableModel  {
 		faultSectionSummries = faultSectionDB_DAO.getAllFaultSectionsSummary();
 		for(int i=0; i<faultSectionSummries.size(); ++i) {
 			FaultSectionSummary faultSectionSummary = (FaultSectionSummary)faultSectionSummries.get(i);
-			faultSectionsSummaryMap.put(new Integer(faultSectionSummary.getSectionId()), faultSectionSummary.getSectionName());
+			faultSectionsSummaryMap.put(Integer.valueOf(faultSectionSummary.getSectionId()), faultSectionSummary.getSectionName());
 		}
 	}
 
@@ -51,8 +51,8 @@ public class DeformationModelTableModel  extends DefaultTableModel  {
 		faultSectionsInModel = new ArrayList();
 		for(int i=0; i<faultSectionSummries.size(); ++i) {
 			FaultSectionSummary faultSectionSummary = (FaultSectionSummary)faultSectionSummries.get(i);
-			if(faultSectionIdList.contains(new Integer(faultSectionSummary.getSectionId())))
-				faultSectionsInModel.add(new Integer(faultSectionSummary.getSectionId()));
+			if(faultSectionIdList.contains(Integer.valueOf(faultSectionSummary.getSectionId())))
+				faultSectionsInModel.add(Integer.valueOf(faultSectionSummary.getSectionId()));
 		}
 	}
 
@@ -86,7 +86,7 @@ public class DeformationModelTableModel  extends DefaultTableModel  {
 
 	public Object getValueAt(int row, int col) {
 		int faultSectionId= ((Integer)faultSectionsInModel.get(row)).intValue();
-		return faultSectionsSummaryMap.get(new Integer(faultSectionId));
+		return faultSectionsSummaryMap.get(Integer.valueOf(faultSectionId));
 	}
 
 	public Object getValueForSlipAndAseismicFactor(int row, int col) {

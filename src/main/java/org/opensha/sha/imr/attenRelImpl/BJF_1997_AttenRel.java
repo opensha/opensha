@@ -76,16 +76,16 @@ public class BJF_1997_AttenRel extends AttenuationRelationship {
 	public final static String FLT_TYPE_REVERSE = "Reverse";
 
 	// warning constraint fields:
-	protected final static Double VS30_WARN_MIN = new Double(180.0);
-	protected final static Double VS30_WARN_MAX = new Double(3500.0);
-	protected final static Double MAG_WARN_MIN = new Double(5.5);
-	protected final static Double MAG_WARN_MAX = new Double(7.5);
+	protected final static Double VS30_WARN_MIN = Double.valueOf(180.0);
+	protected final static Double VS30_WARN_MAX = Double.valueOf(3500.0);
+	protected final static Double MAG_WARN_MIN = Double.valueOf(5.5);
+	protected final static Double MAG_WARN_MAX = Double.valueOf(7.5);
 
 	/**
 	 * Joyner-Boore Distance parameter
 	 */
-	protected final static Double DISTANCE_JB_WARN_MIN = new Double(0.0);
-	protected final static Double DISTANCE_JB_WARN_MAX = new Double(80.0);
+	protected final static Double DISTANCE_JB_WARN_MIN = Double.valueOf(0.0);
+	protected final static Double DISTANCE_JB_WARN_MAX = Double.valueOf(80.0);
 
 	/**
 	 * The current set of coefficients based on the selected intensityMeasure
@@ -132,7 +132,7 @@ public class BJF_1997_AttenRel extends AttenuationRelationship {
 	 */
 	public void setEqkRupture(EqkRupture eqkRupture) throws InvalidRangeException {
 
-		magParam.setValueIgnoreWarning(new Double(eqkRupture.getMag()));
+		magParam.setValueIgnoreWarning(Double.valueOf(eqkRupture.getMag()));
 		setFaultTypeFromRake(eqkRupture.getAveRake());
 		this.eqkRupture = eqkRupture;
 		setPropagationEffectParams();
@@ -469,7 +469,7 @@ public class BJF_1997_AttenRel extends AttenuationRelationship {
 			BJF_1997_AttenRelCoefficients coeff = (BJF_1997_AttenRelCoefficients)
 			coefficients.get(keys.nextElement());
 			if (coeff.period >= 0) {
-				set.add(new Double(coeff.period));
+				set.add(Double.valueOf(coeff.period));
 			}
 		}
 		Iterator it = set.iterator();
@@ -565,237 +565,237 @@ public class BJF_1997_AttenRel extends AttenuationRelationship {
 
 		// SA/0.00
 		BJF_1997_AttenRelCoefficients coeff0 = new BJF_1997_AttenRelCoefficients(
-				SA_Param.NAME + '/' + (new Double("0.00")).doubleValue(),
+				SA_Param.NAME + '/' + (Double.valueOf("0.00")).doubleValue(),
 				0.00, -0.313, -0.117, -0.242, 0.527, 0, -0.778, -0.371, 1396, 5.57,
 				0.431, 0.226, 0.486, 0.184, 0.520);
 		// SA/0.10
 		BJF_1997_AttenRelCoefficients coeff1 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.10")).doubleValue(),
+				"SA/" + (Double.valueOf("0.10")).doubleValue(),
 				0.10, 1.006, 1.087, 1.059, 0.753, -0.226, -0.934, -0.212, 1112, 6.27,
 				0.440, 0.189, 0.479, 0.000, 0.479);
 		// SA/0.11
 		BJF_1997_AttenRelCoefficients coeff2 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.11")).doubleValue(),
+				"SA/" + (Double.valueOf("0.11")).doubleValue(),
 				0.11, 1.072, 1.164, 1.13, 0.732, -0.23, -0.937, -0.211, 1291, 6.65,
 				0.437, 0.200, 0.481, 0.000, 0.481);
 		// SA/0.12
 		BJF_1997_AttenRelCoefficients coeff3 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.12")).doubleValue(),
+				"SA/" + (Double.valueOf("0.12")).doubleValue(),
 				0.12, 1.109, 1.215, 1.174, 0.721, -0.233, -0.939, -0.215, 1452, 6.91,
 				0.437, 0.210, 0.485, 0.000, 0.485);
 		// SA/0.13
 		BJF_1997_AttenRelCoefficients coeff4 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.13")).doubleValue(),
+				"SA/" + (Double.valueOf("0.13")).doubleValue(),
 				0.13, 1.128, 1.246, 1.2, 0.711, -0.233, -0.939, -0.221, 1596, 7.08,
 				0.435, 0.216, 0.486, 0.000, 0.486);
 		// SA/0.14
 		BJF_1997_AttenRelCoefficients coeff5 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.14")).doubleValue(),
+				"SA/" + (Double.valueOf("0.14")).doubleValue(),
 				0.14, 1.135, 1.261, 1.208, 0.707, -0.23, -0.938, -0.228, 1718, 7.18,
 				0.435, 0.223, 0.489, 0.000, 0.489);
 		// SA/0.15
 		BJF_1997_AttenRelCoefficients coeff6 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.15")).doubleValue(),
+				"SA/" + (Double.valueOf("0.15")).doubleValue(),
 				0.15, 1.128, 1.264, 1.204, 0.702, -0.228, -0.937, -0.238, 1820, 7.23,
 				0.435, 0.230, 0.492, 0.000, 0.492);
 		// SA/0.16
 		BJF_1997_AttenRelCoefficients coeff7 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.16")).doubleValue(),
+				"SA/" + (Double.valueOf("0.16")).doubleValue(),
 				0.16, 1.112, 1.257, 1.192, 0.702, -0.226, -0.935, -0.248, 1910, 7.24,
 				0.435, 0.235, 0.495, 0.000, 0.495);
 		// SA/0.17
 		BJF_1997_AttenRelCoefficients coeff8 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.17")).doubleValue(),
+				"SA/" + (Double.valueOf("0.17")).doubleValue(),
 				0.17, 1.09, 1.242, 1.173, 0.702, -0.221, -0.933, -0.258, 1977, 7.21,
 				0.435, 0.293, 0.497, 0.000, 0.497);
 		// SA/0.18
 		BJF_1997_AttenRelCoefficients coeff9 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.18")).doubleValue(),
+				"SA/" + (Double.valueOf("0.18")).doubleValue(),
 				0.18, 1.063, 1.222, 1.151, 0.705, -0.216, -0.93, -0.27, 2037, 7.16,
 				0.435, 0.244, 0.499, 0.002, 0.499);
 		// SA/0.19
 		BJF_1997_AttenRelCoefficients coeff10 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.19")).doubleValue(),
+				"SA/" + (Double.valueOf("0.19")).doubleValue(),
 				0.19, 1.032, 1.198, 1.122, 0.709, -0.212, -0.927, -0.281, 2080, 7.1,
 				0.435, 0.294, 0.501, 0.005, 0.501);
 		// SA/0.20
 		BJF_1997_AttenRelCoefficients coeff11 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.20")).doubleValue(),
+				"SA/" + (Double.valueOf("0.20")).doubleValue(),
 				0.20, 0.999, 1.17, 1.089, 0.711, -0.207, -0.924, -0.292, 2118, 7.02,
 				0.435, 0.251, 0.502, 0.009, 0.502);
 		// SA/0.22
 		BJF_1997_AttenRelCoefficients coeff12 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.22")).doubleValue(),
+				"SA/" + (Double.valueOf("0.22")).doubleValue(),
 				0.22, 0.925, 1.104, 1.019, 0.721, -0.198, -0.918, -0.315, 2158, 6.83,
 				0.437, 0.285, 0.508, 0.016, 0.508);
 		// SA/0.24
 		BJF_1997_AttenRelCoefficients coeff13 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.24")).doubleValue(),
+				"SA/" + (Double.valueOf("0.24")).doubleValue(),
 				0.24, 0.847, 1.033, 0.941, 0.732, -0.189, -0.912, -0.338, 2178, 6.62,
 				0.437, 0.262, 0.510, 0.025, 0.511);
 		// SA/0.26
 		BJF_1997_AttenRelCoefficients coeff14 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.26")).doubleValue(),
+				"SA/" + (Double.valueOf("0.26")).doubleValue(),
 				0.26, 0.764, 0.958, 0.861, 0.744, -0.18, -0.906, -0.36, 2173, 6.39,
 				0.437, 0.267, 0.513, 0.032, 0.514);
 		// SA/0.28
 		BJF_1997_AttenRelCoefficients coeff15 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.28")).doubleValue(),
+				"SA/" + (Double.valueOf("0.28")).doubleValue(),
 				0.28, 0.681, 0.881, 0.78, 0.758, -0.168, -0.899, -0.381, 2158, 6.17,
 				0.440, 0.272, 0.517, 0.039, 0.518);
 		// SA/0.30
 		BJF_1997_AttenRelCoefficients coeff16 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.30")).doubleValue(),
+				"SA/" + (Double.valueOf("0.30")).doubleValue(),
 				0.30, 0.598, 0.803, 0.7, 0.769, -0.161, -0.893, -0.401, 2133, 5.94,
 				0.440, 0.276, 0.519, 0.048, 0.522);
 		// SA/0.32
 		BJF_1997_AttenRelCoefficients coeff17 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.32")).doubleValue(),
+				"SA/" + (Double.valueOf("0.32")).doubleValue(),
 				0.32, 0.518, 0.725, 0.619, 0.783, -0.152, -0.888, -0.42, 2104, 5.72,
 				0.442, 0.279, 0.523, 0.055, 0.525);
 		// SA/0.34
 		BJF_1997_AttenRelCoefficients coeff18 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.34")).doubleValue(),
+				"SA/" + (Double.valueOf("0.34")).doubleValue(),
 				0.34, 0.439, 0.648, 0.54, 0.794, -0.143, -0.882, -0.438, 2070, 5.5,
 				0.444, 0.281, 0.526, 0.064, 0.530);
 		// SA/0.36
 		BJF_1997_AttenRelCoefficients coeff19 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.36")).doubleValue(),
+				"SA/" + (Double.valueOf("0.36")).doubleValue(),
 				0.36, 0.361, 0.57, 0.462, 0.806, -0.136, -0.877, -0.456, 2032, 5.3,
 				0.444, 0.283, 0.527, 0.071, 0.532);
 		// SA/0.38
 		BJF_1997_AttenRelCoefficients coeff20 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.38")).doubleValue(),
+				"SA/" + (Double.valueOf("0.38")).doubleValue(),
 				0.38, 0.286, 0.495, 0.385, 0.82, -0.127, -0.872, -0.472, 1995, 5.1,
 				0.447, 0.286, 0.530, 0.078, 0.536);
 		// SA/0.40
 		BJF_1997_AttenRelCoefficients coeff21 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.40")).doubleValue(),
+				"SA/" + (Double.valueOf("0.40")).doubleValue(),
 				0.40, 0.212, 0.423, 0.311, 0.831, -0.12, -0.867, -0.487, 1954, 4.91,
 				0.447, 0.288, 0.531, 0.085, 0.538);
 		// SA/0.42
 		BJF_1997_AttenRelCoefficients coeff22 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.42")).doubleValue(),
+				"SA/" + (Double.valueOf("0.42")).doubleValue(),
 				0.42, 0.14, 0.352, 0.239, 0.84, -0.113, -0.862, -0.502, 1919, 4.74,
 				0.449, 0.290, 0.535, 0.092, 0.542);
 		// SA/0.44
 		BJF_1997_AttenRelCoefficients coeff23 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.44")).doubleValue(),
+				"SA/" + (Double.valueOf("0.44")).doubleValue(),
 				0.44, 0.073, 0.282, 0.169, 0.852, -0.108, -0.858, -0.516, 1884, 4.57,
 				0.449, 0.292, 0.536, 0.099, 0.545);
 		// SA/0.46
 		BJF_1997_AttenRelCoefficients coeff24 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.46")).doubleValue(),
+				"SA/" + (Double.valueOf("0.46")).doubleValue(),
 				0.46, 0.005, 0.217, 0.102, 0.863, -0.101, -0.854, -0.529, 1849, 4.41,
 				0.451, 0.295, 0.539, 0.104, 0.549);
 		// SA/0.48
 		BJF_1997_AttenRelCoefficients coeff25 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.48")).doubleValue(),
+				"SA/" + (Double.valueOf("0.48")).doubleValue(),
 				0.48, -0.058, 0.151, 0.036, 0.873, -0.097, -0.85, -0.541, 1816, 4.26,
 				0.451, 0.297, 0.540, 0.111, 0.551);
 		// SA/0.50
 		BJF_1997_AttenRelCoefficients coeff26 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.50")).doubleValue(),
+				"SA/" + (Double.valueOf("0.50")).doubleValue(),
 				0.50, -0.122, 0.087, -0.025, 0.884, -0.09, -0.846, -0.553, 1782, 4.13,
 				0.454, 0.299, 0.543, 0.115, 0.556);
 		// SA/0.55
 		BJF_1997_AttenRelCoefficients coeff27 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.55")).doubleValue(),
+				"SA/" + (Double.valueOf("0.55")).doubleValue(),
 				0.55, -0.268, -0.063, -0.176, 0.907, -0.078, -0.837, -0.579, 1710, 3.82,
 				0.456, 0.302, 0.547, 0.129, 0.562);
 		// SA/0.60
 		BJF_1997_AttenRelCoefficients coeff28 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.60")).doubleValue(),
+				"SA/" + (Double.valueOf("0.60")).doubleValue(),
 				0.60, -0.401, -0.203, -0.314, 0.928, -0.069, -0.83, -0.602, 1644, 3.57,
 				0.458, 0.306, 0.551, 0.143, 0.569);
 		// SA/0.65
 		BJF_1997_AttenRelCoefficients coeff29 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.65")).doubleValue(),
+				"SA/" + (Double.valueOf("0.65")).doubleValue(),
 				0.65, -0.523, -0.331, -0.44, 0.946, -0.06, -0.823, -0.622, 1592, 3.36,
 				0.461, 0.309, 0.554, 0.154, 0.575);
 		// SA/0.70
 		BJF_1997_AttenRelCoefficients coeff30 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.70")).doubleValue(),
+				"SA/" + (Double.valueOf("0.70")).doubleValue(),
 				0.70, -0.634, -0.452, -0.555, 0.962, -0.053, -0.818, -0.639, 1545, 3.2,
 				0.463, 0.311, 0.558, 0.166, 0.582);
 		// SA/0.75
 		BJF_1997_AttenRelCoefficients coeff31 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.75")).doubleValue(),
+				"SA/" + (Double.valueOf("0.75")).doubleValue(),
 				0.75, -0.737, -0.562, -0.661, 0.979, -0.046, -0.813, -0.653, 1507, 3.07,
 				0.465, 0.313, 0.561, 0.175, 0.587);
 		// SA/0.80
 		BJF_1997_AttenRelCoefficients coeff32 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.80")).doubleValue(),
+				"SA/" + (Double.valueOf("0.80")).doubleValue(),
 				0.80, -0.829, -0.666, -0.76, 0.992, -0.041, -0.809, -0.666, 1476, 2.98,
 				0.467, 0.315, 0.564, 0.184, 0.593);
 		// SA/0.85
 		BJF_1997_AttenRelCoefficients coeff33 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.85")).doubleValue(),
+				"SA/" + (Double.valueOf("0.85")).doubleValue(),
 				0.85, -0.915, -0.761, -0.851, 1.006, -0.037, -0.805, -0.676, 1452, 2.92,
 				0.467, 0.320, 0.567, 0.191, 0.598);
 		// SA/0.90
 		BJF_1997_AttenRelCoefficients coeff34 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.90")).doubleValue(),
+				"SA/" + (Double.valueOf("0.90")).doubleValue(),
 				0.90, -0.993, -0.848, -0.933, 1.018, -0.035, -0.802, -0.685, 1432, 2.89,
 				0.470, 0.322, 0.570, 0.200, 0.604);
 		// SA/0.95
 		BJF_1997_AttenRelCoefficients coeff35 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("0.95")).doubleValue(),
+				"SA/" + (Double.valueOf("0.95")).doubleValue(),
 				0.95, -1.066, -0.932, -1.01, 1.027, -0.032, -0.8, -0.692, 1416, 2.88,
 				0.472, 0.325, 0.573, 0.207, 0.609);
 		// SA/1.00
 		BJF_1997_AttenRelCoefficients coeff36 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("1.00")).doubleValue(),
+				"SA/" + (Double.valueOf("1.00")).doubleValue(),
 				1.00, -1.133, -1.009, -1.08, 1.036, -0.032, -0.798, -0.698, 1406, 2.9,
 				0.474, 0.325, 0.575, 0.214, 0.613);
 		// SA/1.10
 		BJF_1997_AttenRelCoefficients coeff37 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("1.10")).doubleValue(),
+				"SA/" + (Double.valueOf("1.10")).doubleValue(),
 				1.10, -1.249, -1.145, -1.208, 1.052, -0.03, -0.795, -0.706, 1396, 2.99,
 				0.477, 0.329, 0.579, 0.226, 0.622);
 		// SA/1.20
 		BJF_1997_AttenRelCoefficients coeff38 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("1.20")).doubleValue(),
+				"SA/" + (Double.valueOf("1.20")).doubleValue(),
 				1.20, -1.345, -1.265, -1.315, 1.064, -0.032, -0.794, -0.71, 1400, 3.14,
 				0.479, 0.334, 0.584, 0.235, 0.629);
 		// SA/1.30
 		BJF_1997_AttenRelCoefficients coeff39 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("1.30")).doubleValue(),
+				"SA/" + (Double.valueOf("1.30")).doubleValue(),
 				1.30, -1.428, -1.37, -1.407, 1.073, -0.035, -0.793, -0.711, 1416, 3.36,
 				0.481, 0.338, 0.588, 0.244, 0.637);
 		// SA/1.40
 		BJF_1997_AttenRelCoefficients coeff40 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("1.40")).doubleValue(),
+				"SA/" + (Double.valueOf("1.40")).doubleValue(),
 				1.40, -1.495, -1.46, -1.483, 1.08, -0.039, -0.794, -0.709, 1442, 3.62,
 				0.484, 0.341, 0.592, 0.251, 0.643);
 		// SA/1.50
 		BJF_1997_AttenRelCoefficients coeff41 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("1.50")).doubleValue(),
+				"SA/" + (Double.valueOf("1.50")).doubleValue(),
 				1.50, -1.552, -1.538, -1.55, 1.085, -0.044, -0.796, -0.704, 1479, 3.92,
 				0.486, 0.345, 0.596, 0.256, 0.649);
 		// SA/1.60
 		BJF_1997_AttenRelCoefficients coeff42 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("1.60")).doubleValue(),
+				"SA/" + (Double.valueOf("1.60")).doubleValue(),
 				1.60, -1.598, -1.608, -1.605, 1.087, -0.051, -0.798, -0.697, 1524, 4.26,
 				0.488, 0.348, 0.599, 0.262, 0.654);
 		// SA/1.70
 		BJF_1997_AttenRelCoefficients coeff43 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("1.70")).doubleValue(),
+				"SA/" + (Double.valueOf("1.70")).doubleValue(),
 				1.70, -1.634, -1.668, -1.652, 1.089, -0.058, -0.801, -0.689, 1581, 4.62,
 				0.490, 0.352, 0.604, 0.267, 0.66);
 		// SA/1.80
 		BJF_1997_AttenRelCoefficients coeff44 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("1.80")).doubleValue(),
+				"SA/" + (Double.valueOf("1.80")).doubleValue(),
 				1.80, -1.663, -1.718, -1.689, 1.087, -0.067, -0.804, -0.679, 1644, 5.01,
 				0.493, 0.355, 0.607, 0.269, 0.664);
 		// SA/1.90
 		BJF_1997_AttenRelCoefficients coeff45 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("1.90")).doubleValue(),
+				"SA/" + (Double.valueOf("1.90")).doubleValue(),
 				1.90, -1.685, -1.763, -1.72, 1.087, -0.074, -0.808, -0.667, 1714, 5.42,
 				0.493, 0.359, 0.610, 0.274, 0.669);
 		// SA/2.00
 		BJF_1997_AttenRelCoefficients coeff46 = new BJF_1997_AttenRelCoefficients(
-				"SA/" + (new Double("2.00")).doubleValue(),
+				"SA/" + (Double.valueOf("2.00")).doubleValue(),
 				2.00, -1.699, -1.801, -1.743, 1.085, -0.085, -0.812, -0.655, 1795, 5.85,
 				0.495, 0.362, 0.613, 0.276, 0.672);
 

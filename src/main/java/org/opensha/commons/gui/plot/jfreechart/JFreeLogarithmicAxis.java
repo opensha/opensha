@@ -416,7 +416,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 //					System.out.println("adding tick with val="+tickVal+", label="+tickLabel);
 					Tick tick = new NumberTick(tickVal, tickLabel, anchor, rotationAnchor,angle);
 					ticks.add(tick);
-					ticksXVals.add(new Double(x));
+					ticksXVals.add(Double.valueOf(x));
 				}
 			}
 		}
@@ -593,7 +593,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 					}
 					//create tick object and add to list:
 					ticks.add(new NumberTick(tickVal, tickLabel, anchor,rotationAnchor,angle));
-					ticksYVals.add(new Double(y));
+					ticksYVals.add(Double.valueOf(y));
 				}
 			}
 		}

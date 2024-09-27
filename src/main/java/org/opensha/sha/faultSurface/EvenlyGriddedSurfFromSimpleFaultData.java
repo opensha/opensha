@@ -212,7 +212,7 @@ extends AbstractEvenlyGriddedSurfaceWithSubsets{
 
 		double depth = faultTrace.get(0).getDepth();
 		if(depth > upperSeismogenicDepth)
-			throw new FaultException(C + "depth on faultTrace locations must be < upperSeisDepth; depth="+
+			throw new FaultException(C + " depth on faultTrace ("+faultTrace.getName()+") locations must be < upperSeisDepth; depth="+
 		depth+"; upperSeismogenicDepth="+upperSeismogenicDepth);
 
 		Iterator<Location> it = faultTrace.iterator();

@@ -15,9 +15,9 @@ public class ETAS_MinDistanceParam_d extends DoubleParameter {
 	public final static String NAME = "d - ETAS Min Distance";
 	public final static String INFO = "The ETAS d value in the linear distance decay: (r+d)^-q";
 	private static final String UNITS = "km";
-	protected final static Double MIN = new Double(0.63);
-	protected final static Double MAX = new Double(4.00);
-	public final static Double DEFAULT_VALUE = new Double(0.79);
+	protected final static Double MIN = Double.valueOf(0.63);
+	protected final static Double MAX = Double.valueOf(4.00);
+	public final static Double DEFAULT_VALUE = Double.valueOf(0.79);
 
 
 	/**

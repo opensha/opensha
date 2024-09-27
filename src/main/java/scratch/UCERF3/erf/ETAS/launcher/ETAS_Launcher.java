@@ -41,6 +41,7 @@ import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.AbstractNthRupERF;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupList;
@@ -136,7 +137,7 @@ public class ETAS_Launcher {
 	private int[] isCubeInsideFaultPolygon;
 	
 	private Deque<FaultSystemSolution> fssDeque = new ArrayDeque<>();
-	private Deque<AbstractERF> erfDeque = new ArrayDeque<>();
+	private Deque<AbstractNthRupERF> erfDeque = new ArrayDeque<>();
 	
 	// last event data
 	private Map<Integer, List<LastEventData>> lastEventData;
@@ -609,7 +610,12 @@ public class ETAS_Launcher {
 	}
 	
 	/**
-	 * Creates ERF for use with ETAS simulations. Will not be updated
+	 * Creates ERF for use with ETAS simulations. Will not be updated.
+	 * 
+	 * Note that the timeIndep boolean only affects whether or not the historical open interval is set; the ERF is still
+	 * set to BPT either way. If you want to do a time-independent ETAS simulation you should also (externally) clear
+	 * the date of last event on all fault sections.
+	 * 
 	 * @param sol
 	 * @param timeIndep
 	 * @param duration
@@ -621,6 +627,19 @@ public class ETAS_Launcher {
 		return buildERF_millis(sol, timeIndep, duration, ot);
 	}
 	
+	/**
+	 * Creates ERF for use with ETAS simulations. Will not be updated.
+	 * 
+	 * Note that the timeIndep boolean only affects whether or not the historical open interval is set; the ERF is still
+	 * set to BPT either way. If you want to do a time-independent ETAS simulation you should also (externally) clear
+	 * the date of last event on all fault sections.
+	 * 
+	 * @param sol
+	 * @param timeIndep
+	 * @param duration
+	 * @param ot
+	 * @return
+	 */
 	@SuppressWarnings("unchecked")
 	public static FaultSystemSolutionERF_ETAS buildERF_millis(FaultSystemSolution sol, boolean timeIndep, double duration,
 			long ot) {
@@ -660,8 +679,8 @@ public class ETAS_Launcher {
 		return erf;
 	}
 
-	public AbstractERF checkOutERF() {
-		AbstractERF erf = null;
+	public AbstractNthRupERF checkOutERF() {
+		AbstractNthRupERF erf = null;
 		synchronized (erfDeque) {
 			if (!erfDeque.isEmpty())
 				erf = erfDeque.pop();
@@ -701,7 +720,7 @@ public class ETAS_Launcher {
 		return erf;
 	}
 	
-	public void checkInERF(AbstractERF erf) {
+	public void checkInERF(AbstractNthRupERF erf) {
 		synchronized (erfDeque) {
 			erfDeque.push(erf);
 		}
@@ -834,7 +853,7 @@ public class ETAS_Launcher {
 			debug("calculating "+index);
 
 			debug("Instantiating ERF");
-			AbstractERF erf = checkOutERF();
+			AbstractNthRupERF erf = checkOutERF();
 			FaultSystemSolution sol = config.isGriddedOnly() ? null : ((FaultSystemSolutionERF_ETAS)erf).getSolution();
 			
 			if (index == 0 && dateLastDebug && sol != null) {
@@ -1037,7 +1056,7 @@ public class ETAS_Launcher {
 		if (binaryWriter != null) {
 			try {
 				debug(DebugLevel.FINE, "finalizing");
-				binaryWriter.finalize();
+				binaryWriter.close();
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}

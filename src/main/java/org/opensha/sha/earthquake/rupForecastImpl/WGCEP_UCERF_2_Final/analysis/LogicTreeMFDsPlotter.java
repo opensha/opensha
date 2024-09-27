@@ -551,16 +551,16 @@ public class LogicTreeMFDsPlotter {
 		// Aprioti wt param
 		paramName = UCERF2.REL_A_PRIORI_WT_PARAM_NAME;
 		values = new ArrayList();
-		values.add(new Double(1e-4));
-		values.add(new Double(1e10));
+		values.add(Double.valueOf(1e-4));
+		values.add(Double.valueOf(1e10));
 		plotMFDs(paramName, values, true, false, false, false, false, false); // plot A-faults  only
 		
 
 		//	Connect More B-Faults?
 		 paramName = UCERF2.CONNECT_B_FAULTS_PARAM_NAME;
 		 values = new ArrayList();
-		values.add(new Boolean(true));
-		values.add(new Boolean(false));
+		values.add(Boolean.valueOf(true));
+		values.add(Boolean.valueOf(false));
 		plotMFDs(paramName, values, false, true, false, false, false, false); // plot B-faults
 		
 		
@@ -569,13 +569,13 @@ public class LogicTreeMFDsPlotter {
 //		B-faults b-values
 		paramName = UCERF2.B_FAULTS_B_VAL_PARAM_NAME;
 		values = new ArrayList();
-		values.add(new Double(0.0));
+		values.add(Double.valueOf(0.0));
 		//plotMFDs(paramName, values, false, true, false, false, false, false); // plot B-faults
 
 //		fraction MoRate to Background
 		paramName = UCERF2.ABC_MO_RATE_REDUCTION_PARAM_NAME;
 		values = new ArrayList();
-		values.add(new Double(0.1));
+		values.add(Double.valueOf(0.1));
 		//plotMFDs(paramName, values, true, true, false, false, false, false); // plot A & B-faults
 	
 	}

@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -13,10 +14,8 @@ import java.util.concurrent.Future;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
-import org.dom4j.Element;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
-import org.opensha.commons.geo.Region;
 import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
@@ -35,23 +34,19 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchAverageableModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchAveragingOrder;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchModuleBuilder;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchParentSectParticMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchRegionalMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectBVals;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectNuclMFDs;
+import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectParticMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.LogicTreeRateStatistics;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
-import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectNuclMFDs;
-import org.opensha.sha.earthquake.faultSysSolution.modules.BranchSectParticMFDs;
-import org.opensha.sha.earthquake.faultSysSolution.modules.BranchParentSectParticMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionSlipRates;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.FaultTrace;
-import org.opensha.sha.faultSurface.GeoJSONFaultSection;
-import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
 import com.google.common.math.DoubleMath;
@@ -78,22 +73,16 @@ public class BranchAverageSolutionCreator {
 	private List<DiscretizedFunc> rupMFDs = null;
 	
 	private FaultSystemRupSet refRupSet = null;
-	private double[] avgSectAseis = null;
-	private double[] avgSectCoupling = null;
-	private boolean[] sectAnyCreeps = null;
-	private double[] avgSectCreep = null;
-	private double[] avgSectSlipRates = null;
-	private double[] avgSectSlipRateStdDevs = null;
-	private double[] avgSectOrigFractUncert = null;
-	private List<AngleAverager> avgSectRakes = null;
+	private FaultSectionBranchAverager sectAverager = null;
 	
 //	private List<? extends LogicTreeBranch<?>> branches = getLogicTree().getBranches();
 	
 	private LogicTreeBranch<LogicTreeNode> combBranch = null;
 	
 	private List<Double> weights = new ArrayList<>();
-	
+
 	private Map<LogicTreeNode, Integer> nodeCounts = new HashMap<>();
+	private Map<LogicTreeNode, Double> nodeWeights = new HashMap<>();
 	
 	private boolean skipRupturesBelowSectMin = true;
 	
@@ -159,35 +148,7 @@ public class BranchAverageSolutionCreator {
 			
 			refRupSet = rupSet;
 			
-			avgSectAseis = new double[rupSet.getNumSections()];
-			avgSectCreep = null;
-			avgSectOrigFractUncert = new double[rupSet.getNumSections()];
-			for (int i=0; i<avgSectOrigFractUncert.length; i++)
-				avgSectOrigFractUncert[i] = Double.NaN;
-			for (FaultSection sect : rupSet.getFaultSectionDataList()) {
-				if (sect instanceof GeoJSONFaultSection) {
-					GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
-					double creepRate = geoSect.getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
-					if (Double.isFinite(creepRate)) {
-						// have creep data
-						avgSectCreep = new double[rupSet.getNumSections()];
-						sectAnyCreeps = new boolean[rupSet.getNumSections()];
-						break;
-					}
-					
-					double origFractUncert = geoSect.getProperty(
-							NSHM23_DeformationModels.ORIG_FRACT_STD_DEV_PROPERTY_NAME, Double.NaN);
-					if (Double.isFinite(origFractUncert))
-						// will average this one
-						avgSectOrigFractUncert[sect.getSectionId()] = 0d;
-				}
-			}
-			avgSectSlipRates = new double[rupSet.getNumSections()];
-			avgSectSlipRateStdDevs = new double[rupSet.getNumSections()];
-			avgSectCoupling = new double[rupSet.getNumSections()];
-			avgSectRakes = new ArrayList<>();
-			for (int s=0; s<rupSet.getNumSections(); s++)
-				avgSectRakes.add(new AngleAverager());
+			sectAverager = new FaultSectionBranchAverager(rupSet.getFaultSectionDataList());
 			
 			// initialize accumulators
 			rupSetAvgAccumulators = initAccumulators(rupSet);
@@ -231,6 +192,8 @@ public class BranchAverageSolutionCreator {
 					combBranch.clearValue(i);
 				int prevCount = nodeCounts.containsKey(branchVal) ? nodeCounts.get(branchVal) : 0;
 				nodeCounts.put(branchVal, prevCount+1);
+				double prevWeight = nodeWeights.containsKey(branchVal) ? nodeWeights.get(branchVal) : 0d;
+				nodeWeights.put(branchVal, prevWeight + weight);
 			}
 			
 			for (int r=0; r<avgRates.length; r++) {
@@ -255,29 +218,7 @@ public class BranchAverageSolutionCreator {
 			addWeighted(avgAreas, rupSet.getAreaForAllRups(), weight);
 			addWeighted(avgLengths, rupSet.getLengthForAllRups(), weight);
 			
-			for (int s=0; s<rupSet.getNumSections(); s++) {
-				FaultSection sect = rupSet.getFaultSectionData(s);
-				avgSectAseis[s] += sect.getAseismicSlipFactor()*weight;
-				avgSectSlipRates[s] += sect.getOrigAveSlipRate()*weight;
-				avgSectSlipRateStdDevs[s] += sect.getOrigSlipRateStdDev()*weight;
-				avgSectCoupling[s] += sect.getCouplingCoeff()*weight;
-				avgSectRakes.get(s).add(sect.getAveRake(), weight);
-				if (sect instanceof GeoJSONFaultSection) {
-					GeoJSONFaultSection geoSect = (GeoJSONFaultSection)sect;
-					
-					if (avgSectCreep != null) {
-						double creepRate = geoSect.getProperty(GeoJSONFaultSection.CREEP_RATE, Double.NaN);
-						if (Double.isFinite(creepRate)) {
-							sectAnyCreeps[s] = true;
-							avgSectCreep[s] += Math.max(0d, creepRate)*weight;
-						}
-					}
-					
-					if (Double.isFinite(avgSectOrigFractUncert[s]))
-						avgSectOrigFractUncert[s] += weight*geoSect.getProperty(
-								NSHM23_DeformationModels.ORIG_FRACT_STD_DEV_PROPERTY_NAME, Double.NaN);
-				}
-			}
+			sectAverager.addWeighted(rupSet.getFaultSectionDataList(), weight);
 			
 			// join all of the build futures
 			for (Future<?> future : futures)
@@ -478,28 +419,7 @@ public class BranchAverageSolutionCreator {
 			rakes[r] = FaultUtils.getInRakeRange(avgRakes.get(r).getAverage());
 		}
 		
-		List<FaultSection> subSects = new ArrayList<>();
-		for (int s=0; s<refRupSet.getNumSections(); s++) {
-			FaultSection refSect = refRupSet.getFaultSectionData(s);
-			
-			avgSectAseis[s] /= totWeight;
-			avgSectCoupling[s] /= totWeight;
-			avgSectSlipRates[s] /= totWeight;
-			avgSectSlipRateStdDevs[s] /= totWeight;
-			double avgRake = FaultUtils.getInRakeRange(avgSectRakes.get(s).getAverage());
-			
-			GeoJSONFaultSection avgSect = new GeoJSONFaultSection(new AvgFaultSection(refSect, avgSectAseis[s],
-					avgSectCoupling[s], avgRake, avgSectSlipRates[s], avgSectSlipRateStdDevs[s]));
-			if (avgSectCreep != null && sectAnyCreeps[s]) {
-				avgSectCreep[s] /= totWeight;
-				avgSect.setProperty(GeoJSONFaultSection.CREEP_RATE, avgSectCreep[s]);
-			}
-			if (Double.isFinite(avgSectOrigFractUncert[s])) {
-				avgSectOrigFractUncert[s] /= totWeight;
-				avgSect.setProperty(NSHM23_DeformationModels.ORIG_FRACT_STD_DEV_PROPERTY_NAME, avgSectOrigFractUncert[s]);
-			}
-			subSects.add(avgSect);
-		}
+		List<FaultSection> subSects = sectAverager.buildAverageSects();
 		
 //		FaultSystemRupSet avgRupSet = FaultSystemRupSet.builder(subSects, sectIndices).forU3Branch(combBranch).rupMags(avgMags).build();
 //		// remove these as they're not correct for branch-averaged
@@ -562,9 +482,9 @@ public class BranchAverageSolutionCreator {
 		
 		buildBranchModules(solBranchModuleBuilders, sol);
 		
-		String info = "Branch Averaged Fault System Solution, across "+weights.size()
-				+" branches with a total weight of "+totWeight+"."
-				+"\n\nThe utilized branches at each level are (counts in parenthesis):"
+		DecimalFormat weightDF = new DecimalFormat("0.###%");
+		String info = "Branch Averaged Fault System Solution across "+weights.size()+" branches."
+				+"\n\nThe utilized branches at each level are (counts and total relative weights in parenthesis):"
 				+ "\n\n";
 		for (int i=0; i<combBranch.size(); i++) {
 			LogicTreeLevel<? extends LogicTreeNode> level = combBranch.getLevel(i);
@@ -578,7 +498,8 @@ public class BranchAverageSolutionCreator {
 				Integer count = nodeCounts.get(choice);
 				if (count != null) {
 					if (numIncluded < 15) {
-						info += "\t"+choice.getName()+" ("+count+")\n";
+						double weight = nodeWeights.get(choice);
+						info += "\t"+choice.getName()+" ("+count+"; "+weightDF.format(weight/totWeight)+")\n";
 						numIncluded++;
 					} else {
 						lastSkipped = choice;
@@ -591,7 +512,8 @@ public class BranchAverageSolutionCreator {
 			if (lastSkipped != null) {
 				if (numSkipped > 1)
 					info += "\t...(skipping "+(numSkipped-1)+" branches used "+(totalSkippedCount-lastSkippedCount)+" times)...\n";
-				info += "\t"+lastSkipped.getName()+" ("+lastSkippedCount+")\n";
+				double weight = nodeWeights.get(lastSkipped);
+				info += "\t"+lastSkipped.getName()+" ("+lastSkippedCount+"; "+weightDF.format(weight/totWeight)+")\n";
 			}
 		}
 		
@@ -615,212 +537,6 @@ public class BranchAverageSolutionCreator {
 				return false;
 		}
 		return true;
-	}
-	
-	private class AvgFaultSection implements FaultSection {
-		
-		private FaultSection refSect;
-		private double avgAseis;
-		private double avgCoupling;
-		private double avgRake;
-		private double avgSlip;
-		private double avgSlipStdDev;
-
-		public AvgFaultSection(FaultSection refSect, double avgAseis, double avgCoupling, double avgRake, double avgSlip, double avgSlipStdDev) {
-			this.refSect = refSect;
-			this.avgAseis = avgAseis;
-			this.avgCoupling = avgCoupling;
-			this.avgRake = avgRake;
-			this.avgSlip = avgSlip;
-			this.avgSlipStdDev = avgSlipStdDev;
-		}
-
-		@Override
-		public String getName() {
-			return refSect.getName();
-		}
-
-		@Override
-		public Element toXMLMetadata(Element root) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public long getDateOfLastEvent() {
-			return refSect.getDateOfLastEvent();
-		}
-
-		@Override
-		public void setDateOfLastEvent(long dateOfLastEventMillis) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public void setSlipInLastEvent(double slipInLastEvent) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public double getSlipInLastEvent() {
-			return refSect.getSlipInLastEvent();
-		}
-
-		@Override
-		public double getAseismicSlipFactor() {
-			if ((float)avgCoupling == 0f)
-				return 0d;
-			return avgAseis;
-		}
-
-		@Override
-		public void setAseismicSlipFactor(double aseismicSlipFactor) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public double getCouplingCoeff() {
-			if ((float)avgCoupling == 1f)
-				return 1d;
-			return avgCoupling;
-		}
-
-		@Override
-		public void setCouplingCoeff(double couplingCoeff) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public double getAveDip() {
-			return refSect.getAveDip();
-		}
-
-		@Override
-		public double getOrigAveSlipRate() {
-			return avgSlip;
-		}
-
-		@Override
-		public void setAveSlipRate(double aveLongTermSlipRate) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public double getAveLowerDepth() {
-			return refSect.getAveLowerDepth();
-		}
-
-		@Override
-		public double getAveRake() {
-			return avgRake;
-		}
-
-		@Override
-		public void setAveRake(double aveRake) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public double getOrigAveUpperDepth() {
-			return refSect.getOrigAveUpperDepth();
-		}
-
-		@Override
-		public float getDipDirection() {
-			return refSect.getDipDirection();
-		}
-
-		@Override
-		public FaultTrace getFaultTrace() {
-			return refSect.getFaultTrace();
-		}
-
-		@Override
-		public int getSectionId() {
-			return refSect.getSectionId();
-		}
-
-		@Override
-		public void setSectionId(int sectID) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public void setSectionName(String sectName) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public int getParentSectionId() {
-			return refSect.getParentSectionId();
-		}
-
-		@Override
-		public void setParentSectionId(int parentSectionId) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public String getParentSectionName() {
-			return refSect.getParentSectionName();
-		}
-
-		@Override
-		public void setParentSectionName(String parentSectionName) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public List<? extends FaultSection> getSubSectionsList(double maxSubSectionLen, int startId,
-				int minSubSections) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public double getOrigSlipRateStdDev() {
-			return avgSlipStdDev;
-		}
-
-		@Override
-		public void setSlipRateStdDev(double slipRateStdDev) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public boolean isConnector() {
-			return refSect.isConnector();
-		}
-
-		@Override
-		public Region getZonePolygon() {
-			return refSect.getZonePolygon();
-		}
-
-		@Override
-		public void setZonePolygon(Region zonePolygon) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public Element toXMLMetadata(Element root, String name) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public RuptureSurface getFaultSurface(double gridSpacing) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public RuptureSurface getFaultSurface(double gridSpacing, boolean preserveGridSpacingExactly,
-				boolean aseisReducesArea) {
-			throw new UnsupportedOperationException();
-		}
-
-		@Override
-		public FaultSection clone() {
-			throw new UnsupportedOperationException();
-		}
-		
 	}
 	
 	private static void addWeighted(double[] running, double[] vals, double weight) {

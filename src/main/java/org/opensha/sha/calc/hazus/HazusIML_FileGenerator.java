@@ -97,10 +97,10 @@ public class HazusIML_FileGenerator {
     for(int i=0;i<dirListPGA.length;++i){
       imlVector.clear();
       if(dirListPGA[i].endsWith(".txt")){
-        imlVector.add(new Double(getIML(Hazus+"pga/"+dirListPGA[i],rate)));
-        imlVector.add(new Double(getIML(Hazus+"pgv/"+dirListPGV[i],rate)/2.5));
-        imlVector.add(new Double(getIML(Hazus+"sa_.3/"+dirListSA[i],rate)));
-        imlVector.add(new Double(getIML(Hazus+"sa_1/"+dirListSA_1[i],rate)));
+        imlVector.add(Double.valueOf(getIML(Hazus+"pga/"+dirListPGA[i],rate)));
+        imlVector.add(Double.valueOf(getIML(Hazus+"pgv/"+dirListPGV[i],rate)/2.5));
+        imlVector.add(Double.valueOf(getIML(Hazus+"sa_.3/"+dirListSA[i],rate)));
+        imlVector.add(Double.valueOf(getIML(Hazus+"sa_1/"+dirListSA_1[i],rate)));
       }
 
       String lat = dirListPGA[i].substring(0,dirListPGA[i].indexOf("_"));
@@ -126,11 +126,11 @@ public class HazusIML_FileGenerator {
       StringTokenizer st =null;
       while(currLine!=null){
         st = new StringTokenizer(prevLine);
-        double prevIML = new Double(st.nextToken()).doubleValue();
-        double prevRate = new Double(st.nextToken()).doubleValue();
+        double prevIML = Double.valueOf(st.nextToken()).doubleValue();
+        double prevRate = Double.valueOf(st.nextToken()).doubleValue();
         st = new StringTokenizer(currLine);
-        double currIML = new Double(st.nextToken()).doubleValue();
-        double currRate = new Double(st.nextToken()).doubleValue();
+        double currIML = Double.valueOf(st.nextToken()).doubleValue();
+        double currRate = Double.valueOf(st.nextToken()).doubleValue();
         //System.out.println("CurrProb: "+currProb+" PrevProb: "+prevProb+" prob: "+prob);
         if(rate >=currRate && rate <=prevRate){
           double logCurrRate = Math.log(currRate);

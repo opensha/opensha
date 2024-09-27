@@ -56,7 +56,7 @@ public class FloatingPoissonFaultERF extends AbstractERF{
   private final static String OFFSET_PARAM_UNITS = "km";
   private final static double OFFSET_PARAM_MIN = .01;
   private final static double OFFSET_PARAM_MAX = 100;
-  private Double OFFSET_PARAM_DEFAULT = new Double(1);
+  private Double OFFSET_PARAM_DEFAULT = Double.valueOf(1);
 
   // Mag-scaling relationship parameter stuff
   public final static String MAG_SCALING_REL_PARAM_NAME = "Mag-Scaling Relationship";
@@ -67,31 +67,31 @@ public class FloatingPoissonFaultERF extends AbstractERF{
   // Mag-scaling sigma parameter stuff
   public final static String SIGMA_PARAM_NAME =  "Mag Scaling Sigma";
   private final static String SIGMA_PARAM_INFO =  "The standard deviation of the Area(mag) or Length(M) relationship";
-  private Double SIGMA_PARAM_MIN = new Double(0);
-  private Double SIGMA_PARAM_MAX = new Double(1);
-  private Double SIGMA_PARAM_DEFAULT = new Double(0.0);
+  private Double SIGMA_PARAM_MIN = Double.valueOf(0);
+  private Double SIGMA_PARAM_MAX = Double.valueOf(1);
+  private Double SIGMA_PARAM_DEFAULT = Double.valueOf(0.0);
 
   // rupture aspect ratio parameter stuff
   public final static String ASPECT_RATIO_PARAM_NAME = "Rupture Aspect Ratio";
   private final static String ASPECT_RATIO_PARAM_INFO = "The ratio of rupture length to rupture width";
-  private Double ASPECT_RATIO_PARAM_MIN = new Double(Double.MIN_VALUE);
-  private Double ASPECT_RATIO_PARAM_MAX = new Double(Double.MAX_VALUE);
-  private Double ASPECT_RATIO_PARAM_DEFAULT = new Double(1.0);
+  private Double ASPECT_RATIO_PARAM_MIN = Double.valueOf(Double.MIN_VALUE);
+  private Double ASPECT_RATIO_PARAM_MAX = Double.valueOf(Double.MAX_VALUE);
+  private Double ASPECT_RATIO_PARAM_DEFAULT = Double.valueOf(1.0);
 
   // rake parameter stuff
   public final static String RAKE_PARAM_NAME = "Rake";
   private final static String RAKE_PARAM_INFO = "The rake of the rupture (direction of slip)";
   private final static String RAKE_PARAM_UNITS = "degrees";
-  private Double RAKE_PARAM_MIN = new Double(-180);
-  private Double RAKE_PARAM_MAX = new Double(180);
-  private Double RAKE_PARAM_DEFAULT = new Double(0.0);
+  private Double RAKE_PARAM_MIN = Double.valueOf(-180);
+  private Double RAKE_PARAM_MAX = Double.valueOf(180);
+  private Double RAKE_PARAM_DEFAULT = Double.valueOf(0.0);
 
   // min mag parameter stuff
   public final static String MIN_MAG_PARAM_NAME = "Min Mag";
   private final static String MIN_MAG_PARAM_INFO = "The minimum mag to be considered from the mag freq dist";
-  private Double MIN_MAG_PARAM_MIN = new Double(0);
-  private Double MIN_MAG_PARAM_MAX = new Double(10);
-  private Double MIN_MAG_PARAM_DEFAULT = new Double(5);
+  private Double MIN_MAG_PARAM_MIN = Double.valueOf(0);
+  private Double MIN_MAG_PARAM_MAX = Double.valueOf(10);
+  private Double MIN_MAG_PARAM_DEFAULT = Double.valueOf(5);
   
 	// Floater Type
 	public final static String FLOATER_TYPE_PARAM_NAME = "Floater Type";
@@ -103,9 +103,9 @@ public class FloatingPoissonFaultERF extends AbstractERF{
 	  // min mag parameter stuff
 	  public final static String MAX_FLOAT_MAG_PARAM_NAME = "Max Floater Mag";
 	  private final static String MAX_FLOAT_MAG_PARAM_INFO = "This forces full-fault rupture for mags greater than or equal to this value";
-	  private Double MAX_FLOAT_MAG_PARAM_MIN = new Double(0);
-	  private Double MAX_FLOAT_MAG_PARAM_MAX = new Double(10);
-	  private Double MAX_FLOAT_MAG_PARAM_DEFAULT = new Double(10);
+	  private Double MAX_FLOAT_MAG_PARAM_MIN = Double.valueOf(0);
+	  private Double MAX_FLOAT_MAG_PARAM_MAX = Double.valueOf(10);
+	  private Double MAX_FLOAT_MAG_PARAM_DEFAULT = Double.valueOf(10);
 
 
   // parameter declarations

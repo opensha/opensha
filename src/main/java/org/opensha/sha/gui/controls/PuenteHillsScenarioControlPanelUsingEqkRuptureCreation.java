@@ -346,7 +346,7 @@ public class PuenteHillsScenarioControlPanelUsingEqkRuptureCreation extends Conf
 
 
 		// Set rake value to 90 degrees
-		erfPanel.getParameter(EqkRuptureCreationPanel.RAKE_PARAM_NAME).setValue(new Double(90));
+		erfPanel.getParameter(EqkRuptureCreationPanel.RAKE_PARAM_NAME).setValue(Double.valueOf(90));
 
 
 		double dip = 27;
@@ -359,18 +359,18 @@ public class PuenteHillsScenarioControlPanelUsingEqkRuptureCreation extends Conf
 		ArrayList<Double> lats = new ArrayList<Double>();
 		ArrayList<Double> lons = new ArrayList<Double>();
 		for(int i = 0; i<faultTrace.getNumLocations(); i++) {
-			lats.add(new Double(faultTrace.get(i).getLatitude()));
-			lons.add(new Double(faultTrace.get(i).getLongitude()));
+			lats.add(Double.valueOf(faultTrace.get(i).getLatitude()));
+			lons.add(Double.valueOf(faultTrace.get(i).getLongitude()));
 		}
 
 		//creating the dip vector for the SimpleFaultParameter
 		ArrayList<Double> dips = new ArrayList<Double>();
-		dips.add(new Double(dip));
+		dips.add(Double.valueOf(dip));
 
 		//creating the depth vector for the SimpleFaultParameter
 		ArrayList<Double> depths = new ArrayList<Double>();
-		depths.add(new Double(depth1));
-		depths.add(new Double(depth2));
+		depths.add(Double.valueOf(depth1));
+		depths.add(Double.valueOf(depth2));
 
 		//setting the FaultParameterEditor with the default values for Puente Hills Scenario
 		faultPanel.setAll(((SimpleFaultParameter)faultPanel.getParameter()).DEFAULT_GRID_SPACING,lats,
@@ -383,7 +383,7 @@ public class PuenteHillsScenarioControlPanelUsingEqkRuptureCreation extends Conf
 		//updaing the faultParameter to update the faultSurface
 		faultPanel.setEvenlyGriddedSurfaceFromParams();
 
-		erfPanel.getParameter(EqkRuptureCreationPanel.MAG_PARAM_NAME).setValue(new Double(magnitude));
+		erfPanel.getParameter(EqkRuptureCreationPanel.MAG_PARAM_NAME).setValue(Double.valueOf(magnitude));
 		erfPanel.getParameterListEditor().refreshParamEditor();
 
 
@@ -402,18 +402,18 @@ public class PuenteHillsScenarioControlPanelUsingEqkRuptureCreation extends Conf
 		imrGuiBean.getSingleAttenRelParamListEditor().refreshParamEditor();
 
 		//Updating the SitesInGriddedRectangularRegionGuiBean with the Puente Hills resion setting
-		regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MIN_LATITUDE).setValue(new Double(33.2));
-		regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MAX_LATITUDE).setValue(new Double(35.0));
-		regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MIN_LONGITUDE).setValue(new Double(-119.5));
-		regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MAX_LONGITUDE).setValue(new Double(-116.18));
-		//    regionGuiBean.getParameterList().getParameter(regionGuiBean.GRID_SPACING).setValue(new Double(.1));
-		regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.GRID_SPACING).setValue(new Double(.016667));
+		regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MIN_LATITUDE).setValue(Double.valueOf(33.2));
+		regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MAX_LATITUDE).setValue(Double.valueOf(35.0));
+		regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MIN_LONGITUDE).setValue(Double.valueOf(-119.5));
+		regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MAX_LONGITUDE).setValue(Double.valueOf(-116.18));
+		//    regionGuiBean.getParameterList().getParameter(regionGuiBean.GRID_SPACING).setValue(Double.valueOf(.1));
+		regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.GRID_SPACING).setValue(Double.valueOf(.016667));
 		regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.SITE_PARAM_NAME).setValue(SitesInGriddedRectangularRegionGuiBean.USE_SITE_DATA);
 
 
 		// Set some of the mapping params:
-		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.GMT_WEBSERVICE_NAME).setValue(new Boolean(true));
-		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.LOG_PLOT_NAME).setValue(new Boolean(false));
+		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.GMT_WEBSERVICE_NAME).setValue(Boolean.valueOf(true));
+		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.LOG_PLOT_NAME).setValue(Boolean.valueOf(false));
 		mapGuiBean.getParameterList().getParameter(GMT_MapGenerator.COLOR_SCALE_MODE_NAME).setValue(GMT_MapGenerator.COLOR_SCALE_MODE_FROMDATA);
 		mapGuiBean.refreshParamEditor();
 	}

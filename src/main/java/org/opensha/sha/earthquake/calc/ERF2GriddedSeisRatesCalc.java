@@ -606,7 +606,7 @@ for(int m=0;m<testFunc.getNum();m++)
         setValue(Frankel02_AdjustableEqkRupForecast.BACK_SEIS_RUP_POINT);*/
     frankelForecast.getAdjustableParameterList().getParameter(
         Frankel02_AdjustableEqkRupForecast.
-        RUP_OFFSET_PARAM_NAME).setValue(new Double(10.0));
+        RUP_OFFSET_PARAM_NAME).setValue(Double.valueOf(10.0));
     frankelForecast.getTimeSpan().setDuration(50.0);
     frankelForecast.updateForecast();
     int numSources = frankelForecast.getNumSources();

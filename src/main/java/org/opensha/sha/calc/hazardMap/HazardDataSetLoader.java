@@ -145,8 +145,8 @@ public class HazardDataSetLoader {
 			if(firstIndex != lastIndex){
 
 				//getting the lat and Lon values from file names
-				Double latVal = new Double(fileName.substring(0,index).trim());
-				Double lonVal = new Double(fileName.substring(index+1,lastIndex).trim());
+				Double latVal = Double.valueOf(fileName.substring(0,index).trim());
+				Double lonVal = Double.valueOf(fileName.substring(index+1,lastIndex).trim());
 				return new Location(latVal, lonVal);
 			} else {
 				return null;

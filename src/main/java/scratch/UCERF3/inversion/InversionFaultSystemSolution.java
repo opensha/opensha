@@ -24,6 +24,7 @@ import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -853,13 +854,13 @@ public class InversionFaultSystemSolution extends U3SlipEnabledSolution {
 	 * Returns GridSourceProvider - creates on demand if necessary
 	 * @return
 	 */
-	public GridSourceProvider getGridSourceProvider() {
-		GridSourceProvider gridSourceProvider = super.getGridSourceProvider();
+	public MFDGridSourceProvider getGridSourceProvider() {
+		GridSourceProvider gridSourceProvider = super.requireModule(GridSourceProvider.class);
 		if (gridSourceProvider == null) {
 			gridSourceProvider = new UCERF3_GridSourceGenerator(this);
 			super.setGridSourceProvider(gridSourceProvider);
 		}
-		return gridSourceProvider;
+		return (MFDGridSourceProvider)gridSourceProvider;
 	}
 	
 	/**

@@ -92,9 +92,9 @@ public class WG02_EqkRupForecast extends AbstractERF{
     st.nextToken();
     st.nextToken();
     st.nextToken();
-    int year = new Double(st.nextToken()).intValue();
-    double duration = new Double(st.nextToken()).doubleValue();
-    int numIterations = new Double(st.nextToken()).intValue();
+    int year = Double.valueOf(st.nextToken()).intValue();
+    double duration = Double.valueOf(st.nextToken()).doubleValue();
+    int numIterations = Double.valueOf(st.nextToken()).intValue();
 
     inputFileLines =null ;
 
@@ -186,11 +186,11 @@ public class WG02_EqkRupForecast extends AbstractERF{
 
     // make the background source if it's desired
     if(backSeisValue.equals(WG02_ERF_Epistemic_List.SEIS_INCLUDE)) {
-      back_N = new Double(st.nextToken()).doubleValue();
-      back_b = new Double(st.nextToken()).doubleValue();
-      back_M1 = new Double(st.nextToken()).doubleValue();
+      back_N = Double.valueOf(st.nextToken()).doubleValue();
+      back_b = Double.valueOf(st.nextToken()).doubleValue();
+      back_M1 = Double.valueOf(st.nextToken()).doubleValue();
       back_M1 = ((double)Math.round(back_M1*100))/100.0; // round it to nice value
-      back_M2 = new Double(st.nextToken()).doubleValue();
+      back_M2 = Double.valueOf(st.nextToken()).doubleValue();
       back_num = Math.round((float)((back_M2-5.0)/back_deltaMag)) + 1;
       GutenbergRichterMagFreqDist back_GR_dist = new GutenbergRichterMagFreqDist(5.0, back_num, back_deltaMag,
                                                                                  1.0, back_b);
@@ -238,13 +238,13 @@ public class WG02_EqkRupForecast extends AbstractERF{
 
       // line with number of fault-trace points
       st = new StringTokenizer(it.next().toString());
-      numPts = new Integer(st.nextToken()).intValue();
+      numPts = Integer.valueOf(st.nextToken()).intValue();
 
       // make the fault trace from the next numPts lines
       for(i=0;i<numPts;i++) {
         st = new StringTokenizer(it.next().toString());
-        lon = new Double(st.nextToken()).doubleValue();
-        lat = new Double(st.nextToken()).doubleValue();
+        lon = Double.valueOf(st.nextToken()).doubleValue();
+        lat = Double.valueOf(st.nextToken()).doubleValue();
         faultTrace.add(new Location(lat,lon));
       }
 
@@ -255,11 +255,11 @@ public class WG02_EqkRupForecast extends AbstractERF{
 
       // line with dip, seisUpper, ddw, and rupArea
       st = new StringTokenizer(it.next().toString());
-      dip = new Double(st.nextToken()).doubleValue();
-      upperSeismoDepth = new Double(st.nextToken()).doubleValue();
-      downDipWidth = new Double(st.nextToken()).doubleValue();
+      dip = Double.valueOf(st.nextToken()).doubleValue();
+      upperSeismoDepth = Double.valueOf(st.nextToken()).doubleValue();
+      downDipWidth = Double.valueOf(st.nextToken()).doubleValue();
       lowerSeismoDepth = upperSeismoDepth+downDipWidth*Math.sin(dip*Math.PI/180);
-      rupArea = new Double(st.nextToken()).doubleValue();
+      rupArea = Double.valueOf(st.nextToken()).doubleValue();
 
       // line with the GR tail stuff
       st = new StringTokenizer(it.next().toString());
@@ -267,12 +267,12 @@ public class WG02_EqkRupForecast extends AbstractERF{
       // vals are M1, M2, N(M ≥ M1), b_val
       if(grTailValue.equals(WG02_ERF_Epistemic_List.SEIS_INCLUDE)) {
 
-        tail_M1 = new Double(st.nextToken()).doubleValue();
+        tail_M1 = Double.valueOf(st.nextToken()).doubleValue();
         if(tail_M1 != 5.0)
           throw new RuntimeException("tail_M1 must equal 5.0!");
-        tail_M2 = new Double(st.nextToken()).doubleValue();
-        tail_N = new Double(st.nextToken()).doubleValue();
-        tail_b = new Double(st.nextToken()).doubleValue();
+        tail_M2 = Double.valueOf(st.nextToken()).doubleValue();
+        tail_N = Double.valueOf(st.nextToken()).doubleValue();
+        tail_b = Double.valueOf(st.nextToken()).doubleValue();
         tail_num = Math.round((float)((tail_M2-tail_M1)/tail_deltaMag)) + 1;
         // note: the above means M2 won't be exactly the same in what's next
         tail_GR_dist = new GutenbergRichterMagFreqDist(tail_M1, tail_num, tail_deltaMag, 1.0, tail_b);
@@ -292,10 +292,10 @@ public class WG02_EqkRupForecast extends AbstractERF{
 
       // line with prob, meanMag, magSigma, nSigmaTrunc
       st = new StringTokenizer(it.next().toString());
-      prob = new Double(st.nextToken()).doubleValue();
-      meanMag = new Double(st.nextToken()).doubleValue();
-      magSigma = new Double(st.nextToken()).doubleValue();
-      nSigmaTrunc = new Double(st.nextToken()).doubleValue();
+      prob = Double.valueOf(st.nextToken()).doubleValue();
+      meanMag = Double.valueOf(st.nextToken()).doubleValue();
+      magSigma = Double.valueOf(st.nextToken()).doubleValue();
+      nSigmaTrunc = Double.valueOf(st.nextToken()).doubleValue();
 
       faultSurface = new StirlingGriddedSurface(faultTrace,dip,upperSeismoDepth,lowerSeismoDepth,gridSpacing);
 

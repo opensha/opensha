@@ -196,14 +196,10 @@ public class NumericPlainDocument extends PlainDocument
      * Helper function that converts the String
      * representation model data into an Long.
      */
-    public Long getLongValue() throws ParseException {
+    public long getLongValue() throws ParseException {
 
         Number result = getNumberValue();
-        if (result instanceof Long == false) {
-            String S = "NumericPlainDocument: getLongValue(): ";
-            throw new ParseException( S + "Not a valid Long: " + result, 0);
-        }
-        return (Long) result;
+        return result.longValue();
 
     }
 
@@ -211,14 +207,10 @@ public class NumericPlainDocument extends PlainDocument
      * Helper function that converts the String representation model data into
      * an Double, i.e. what the model represents
      */
-    public Double getDoubleValue() throws ParseException {
+    public double getDoubleValue() throws ParseException {
 
         Number result = getNumberValue();
-        if (result instanceof Double == false) {
-            String S = "NumericPlainDocument: getDoubleValue(): ";
-            throw new ParseException(S + "Not a valid Double: " + result, 0);
-        }
-        return (Double) result;
+        return result.doubleValue();
     }
 
 

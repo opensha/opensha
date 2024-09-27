@@ -45,7 +45,7 @@ public class DoubleValueWeightConstraint extends AbstractParameterConstraint {
      * @param  maxWt   The max weight allowed  
      */
     public DoubleValueWeightConstraint( double minVal, double maxVal, double minWt, double maxWt) {
-        this(new Double(minVal), new Double(maxVal), new Double(minWt), new Double(maxWt));    
+        this(Double.valueOf(minVal), Double.valueOf(maxVal), Double.valueOf(minWt), Double.valueOf(maxWt));    
     }
 
 
@@ -77,7 +77,7 @@ public class DoubleValueWeightConstraint extends AbstractParameterConstraint {
      * containing this constraint has been made non-editable.
      */
     public void setMinMax( double minVal, double maxVal, double minWt, double maxWt) throws EditableException {
-        setMinMax(new Double(minVal), new Double(maxVal), new Double(minWt), new Double(maxWt));
+        setMinMax(Double.valueOf(minVal), Double.valueOf(maxVal), Double.valueOf(minWt), Double.valueOf(maxWt));
     }
 
 

@@ -79,11 +79,11 @@ public class SF_BayAreaScenarioControlPanel {
 
 
       //Updating the SitesInGriddedRectangularRegionGuiBean with the Puente Hills resion setting
-      regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MIN_LATITUDE).setValue(new Double(36.5500));
-      regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MAX_LATITUDE).setValue(new Double(39.6167));
-      regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MIN_LONGITUDE).setValue(new Double(-124.7333));
-      regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MAX_LONGITUDE).setValue(new Double(-120.1333));
-      regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.GRID_SPACING).setValue(new Double(.016667));
+      regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MIN_LATITUDE).setValue(Double.valueOf(36.5500));
+      regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MAX_LATITUDE).setValue(Double.valueOf(39.6167));
+      regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MIN_LONGITUDE).setValue(Double.valueOf(-124.7333));
+      regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.MAX_LONGITUDE).setValue(Double.valueOf(-120.1333));
+      regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.GRID_SPACING).setValue(Double.valueOf(.016667));
       regionGuiBean.getParameterList().getParameter(SitesInGriddedRectangularRegionGuiBean.SITE_PARAM_NAME).setValue(SitesInGriddedRectangularRegionGuiBean.USE_SITE_DATA);
       
       regionGuiBean.refreshParamEditor();
@@ -133,7 +133,7 @@ public class SF_BayAreaScenarioControlPanel {
         fileLines = br.readLine();
 
         // Set rake value to 90 degrees
-        erfParamGuiBean.getERFParameterList().getParameter(Frankel02_AdjustableEqkRupForecast.RUP_OFFSET_PARAM_NAME).setValue(new Double(rupOffset));
+        erfParamGuiBean.getERFParameterList().getParameter(Frankel02_AdjustableEqkRupForecast.RUP_OFFSET_PARAM_NAME).setValue(Double.valueOf(rupOffset));
         //updating the forecast with the changed parameter settings.
         erfParamGuiBean.getSelectedERF().updateForecast();
 

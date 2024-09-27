@@ -43,7 +43,7 @@ public class CheckAuthorizationServlet extends HttpServlet {
 		if(userInfo==null)
 			//name of the image file as the URL
 			outputToApplet.writeObject(Boolean.FALSE);
-		else outputToApplet.writeObject(new Boolean(dao.isUserAuthorized(userInfo)));
+		else outputToApplet.writeObject(Boolean.valueOf(dao.isUserAuthorized(userInfo)));
 		outputToApplet.close();
 	}
 

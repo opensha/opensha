@@ -373,21 +373,25 @@ public class PointSourceNshm extends ProbEqkSource {
     public double getDistanceRup(Location loc) {
       double rJB = getDistanceJB(loc);
 
-      if (footwall) return hypot2(rJB, zTop);
+      return getDistanceRup(rJB);
+    }
+    
+    public double getDistanceRup(double rJB) {
+        if (footwall) return hypot2(rJB, zTop);
 
-      double dipRad = aveDip * TO_RAD;
-      double rCut = zBot * tan(dipRad);
+        double dipRad = aveDip * TO_RAD;
+        double rCut = zBot * tan(dipRad);
 
-      if (rJB > rCut) return hypot2(rJB, zBot);
+        if (rJB > rCut) return hypot2(rJB, zBot);
 
-      // rRup when rJB is 0 -- we take the minimum the site-to-top-edge
-      // and site-to-normal of rupture for the site being directly over
-      // the down-dip edge of the rupture
-      double rRup0 = min(hypot2(widthH, zTop), zBot * cos(dipRad));
-      // rRup at cutoff rJB
-      double rRupC = zBot / cos(dipRad);
-      // scale linearly with rJB distance
-      return (rRupC - rRup0) * rJB / rCut + rRup0;
+        // rRup when rJB is 0 -- we take the minimum the site-to-top-edge
+        // and site-to-normal of rupture for the site being directly over
+        // the down-dip edge of the rupture
+        double rRup0 = min(hypot2(widthH, zTop), zBot * cos(dipRad));
+        // rRup at cutoff rJB
+        double rRupC = zBot / cos(dipRad);
+        // scale linearly with rJB distance
+        return (rRupC - rRup0) * rJB / rCut + rRup0;
     }
 
     public boolean isOnFootwall() {

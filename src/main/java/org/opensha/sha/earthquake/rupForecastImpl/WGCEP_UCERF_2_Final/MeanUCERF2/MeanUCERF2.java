@@ -83,7 +83,7 @@ public class MeanUCERF2 extends AbstractERF {
 
 	// For rupture offset length along fault parameter
 	public final static String RUP_OFFSET_PARAM_NAME ="Rupture Offset";
-	protected Double DEFAULT_RUP_OFFSET_VAL= new Double(UCERF2.RUP_OFFSET);
+	protected Double DEFAULT_RUP_OFFSET_VAL= Double.valueOf(UCERF2.RUP_OFFSET);
 	protected final static String RUP_OFFSET_PARAM_UNITS = "km";
 	protected final static String RUP_OFFSET_PARAM_INFO = "Length of offset for floating ruptures";
 	public final static double RUP_OFFSET_PARAM_MIN = 1;
@@ -95,7 +95,7 @@ public class MeanUCERF2 extends AbstractERF {
 	
 	// for Cybershake Correction
 	public final static String CYBERSHAKE_DDW_CORR_PARAM_NAME ="Apply CyberShake DDW Corr";
-	public final static Boolean CYBERSHAKE_DDW_CORR_PARAM_DEFAULT= new Boolean(false);
+	public final static Boolean CYBERSHAKE_DDW_CORR_PARAM_DEFAULT= Boolean.valueOf(false);
 	protected final static String CYBERSHAKE_DDW_CORR_PARAM_INFO = "Apply Down Dip Width Correction";
 	protected BooleanParameter cybershakeDDW_CorrParam;
 
@@ -702,6 +702,9 @@ public class MeanUCERF2 extends AbstractERF {
 					sourceMFDMapping.put(key, new SummedMagFreqDist(UCERF2.MIN_MAG, UCERF2.MAX_MAG, UCERF2.NUM_MAG));
 
 					sourceRakeMapping.put(key, aFaultSourceGenerator.getAveRakeForSource(srcIndex));
+					// TODO: this is a bug, it always hits for Ellsworth-B first and then keeps the cached corrected 
+					// surface using the Ellsworth-B magnitude rather than using the average magnitude.
+					// See issue #111 (https://github.com/opensha/opensha/issues/111)
 					this.sourceGriddedSurfaceMapping.put(key, aFaultSourceGenerator.getCombinedGriddedSurfaceForSource(srcIndex, ddwCorr));
 
 // Debugging tests:		
@@ -736,7 +739,7 @@ public class MeanUCERF2 extends AbstractERF {
 	 */
 	private void fillAdjustableParamsForA_Faults() {
 		if(ucerf2.getAdjustableParameterList().containsParameter(UCERF2.SEG_DEP_APERIODICITY_PARAM_NAME))
-			ucerf2.getParameter(UCERF2.SEG_DEP_APERIODICITY_PARAM_NAME).setValue(new Boolean(false));
+			ucerf2.getParameter(UCERF2.SEG_DEP_APERIODICITY_PARAM_NAME).setValue(Boolean.valueOf(false));
 		this.aFaultsBranchParamNames = new ArrayList<String>();
 		this.aFaultsBranchParamValues = new ArrayList<ParamOptions>();
 		
@@ -764,8 +767,8 @@ public class MeanUCERF2 extends AbstractERF {
 		// Apriori wt param
 		aFaultsBranchParamNames.add(UCERF2.REL_A_PRIORI_WT_PARAM_NAME);
 		options = new ParamOptions();
-		options.addValueWeight(new Double(1e-4), 0.5);
-		options.addValueWeight(new Double(1e10), 0.5);
+		options.addValueWeight(Double.valueOf(1e-4), 0.5);
+		options.addValueWeight(Double.valueOf(1e10), 0.5);
 		aFaultsBranchParamValues.add(options);
 		
 		
@@ -792,9 +795,9 @@ public class MeanUCERF2 extends AbstractERF {
 		//	BPT parameter setting
 		aFaultsBranchParamNames.add(UCERF2.APERIODICITY_PARAM_NAME);
 		options = new ParamOptions();
-		options.addValueWeight(new Double(0.3), 0.2);
-		options.addValueWeight(new Double(0.5), 0.5);
-		options.addValueWeight(new Double(0.7), 0.3);
+		options.addValueWeight(Double.valueOf(0.3), 0.2);
+		options.addValueWeight(Double.valueOf(0.5), 0.5);
+		options.addValueWeight(Double.valueOf(0.7), 0.3);
 		aFaultsBranchParamValues.add(options);
 		
 		lastParamIndex = aFaultsBranchParamNames.size()-1;

@@ -55,8 +55,8 @@ public class IntegerConstraint extends AbstractParameterConstraint<Integer>  {
      * @param  max  The max value allowed
      */
     public IntegerConstraint( int min, int max ) {
-        this.min = new Integer( min );
-        this.max = new Integer( max );
+        this.min = Integer.valueOf( min );
+        this.max = Integer.valueOf( max );
     }
 
     /**
@@ -100,7 +100,7 @@ public class IntegerConstraint extends AbstractParameterConstraint<Integer>  {
      * containing this constraint has been made non-editable.
      */
     public void setMinMax( int min, int max ) throws EditableException {
-        setMinMax( new Integer( min ), new Integer( max ) );
+        setMinMax( Integer.valueOf( min ), Integer.valueOf( max ) );
     }
 
 
@@ -143,7 +143,7 @@ public class IntegerConstraint extends AbstractParameterConstraint<Integer>  {
      * @return      True if this is one of the allowed values.
      */
     public boolean isAllowed( int i ) {
-        return isAllowed( new Integer( i ) );
+        return isAllowed( Integer.valueOf( i ) );
     }
 
 

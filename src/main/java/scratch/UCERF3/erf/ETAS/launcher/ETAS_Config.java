@@ -307,7 +307,7 @@ public class ETAS_Config {
 		
 	}
 	
-	private static class TriggerRuptureTypeAdapter extends TypeAdapter<TriggerRupture> {
+	public static class TriggerRuptureTypeAdapter extends TypeAdapter<TriggerRupture> {
 
 		@Override
 		public void write(JsonWriter out, TriggerRupture value) throws IOException {
