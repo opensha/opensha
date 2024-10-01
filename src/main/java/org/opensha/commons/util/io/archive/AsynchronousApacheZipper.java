@@ -7,6 +7,7 @@ import java.util.function.Supplier;
 
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipArchiveOutputStream;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.util.io.archive.ArchiveOutput.AbstractApacheZipOutput;
 
 import com.google.common.base.Preconditions;
@@ -55,11 +56,42 @@ class AsynchronousApacheZipper {
 		return entrySourceName;
 	}
 	
+	CopyAvoidantInMemorySeekableByteChannel swapCompressedDataBuffer(CopyAvoidantInMemorySeekableByteChannel newBuffer) {
+		if (newBuffer == null) {
+			newBuffer = new CopyAvoidantInMemorySeekableByteChannel(Integer.max(1024*1024*5, (int)compressedData.size()));
+			newBuffer.setCloseable(false);
+		}
+		CopyAvoidantInMemorySeekableByteChannel oldBuffer = this.compressedData;
+		this.compressedData = newBuffer;
+		return oldBuffer;
+	}
+	
 	public void rawTransferEntryTo(AbstractApacheZipOutput output) throws IOException {
 		output.rawTransferApache(entryInput, entrySourceName, entryDestName);
 		if (!externalInput)
 			entryInput.close();
 		entryInput = null;
+	}
+	
+	public CompletableFuture<Void> rawTransferFuture(AbstractApacheZipOutput output) {
+		boolean externalInput = this.externalInput;
+		ArchiveInput.AbstractApacheZipInput myInput = this.entryInput;
+		String entrySourceName = this.entrySourceName;
+		String entryDestName = this.entryDestName;
+		entryInput = null;
+		return CompletableFuture.runAsync(new Runnable() {
+			
+			@Override
+			public void run() {
+				try {
+					output.rawTransferApache(myInput, entrySourceName, entryDestName);
+					if (!externalInput)
+						myInput.close();
+				} catch (IOException e) {
+					throw ExceptionUtils.asRuntimeException(e);
+				}
+			}
+		});
 	}
 	
 	public void putNextEntry(String name) {
@@ -130,24 +162,9 @@ class AsynchronousApacheZipper {
 					return AsynchronousApacheZipper.this;
 				} catch (IOException e) {
 					throw new RuntimeException("Exception writing "+entryDestName, e);
-//					throw ExceptionUtils.asRuntimeException(e);
 				}
 			}
 		});
-		
-//		// this will cause it to start transferring zipped output (if it's not already)
-//		future.thenRunAsync(new Runnable() {
-//			
-//			@Override
-//			public void run() {
-//				try {
-//					ParallelZipFileOutput.this.processZipFutures();
-//				} catch (IOException e) {
-//					e.printStackTrace();
-//				}
-//			}
-//		}, postProcessExec);
-//		return future;
 	}
 
 }
