@@ -532,9 +532,10 @@ public interface ArchiveOutput extends Closeable, Named {
 	 * Asynchronous zip file writer where zipping operations are done to memory as the stream is written, and block when
 	 * {@link #closeEntry()} is called. Writing is done asynchronously, and contents are written in order.
 	 * 
-	 * <p>Memory requirements of this are twice the zipped size of the largest file.
+	 * <p>Memory requirements of this are the zipped size of the two largest files.
 	 * 
-	 * <p>See {@link ParallelZipFileOutput} if you want increased parallelism at the expense of significant memory usage.
+	 * <p>See {@link ParallelZipFileOutput} if you want increased parallelism at the expense of potentially-significant
+	 * memory usage.
 	 */
 	public static class AsynchronousZipFileOutput extends ApacheZipFileOutput {
 		
@@ -651,13 +652,16 @@ public interface ArchiveOutput extends Closeable, Named {
 	 * file as they roll off the line. More throughput can be achieved if preserving the order is not important.
 	 * 
 	 * <p>This can require significant memory and no resources are released until it is closed. Contents are first
-	 * written to an uncompressed in-memory buffer, then zipped in parallel, and finally written asynchronously.
-	 * Be sure to have at least <code>threads x (largest uncompressed file size + largest compressed file size)</code> available.
+	 * written to an uncompressed in-memory buffer, zipped in parallel to additional in-memory-buffers, and finally
+	 * written asynchronously. Be sure to have at least <code>threads x (largest uncompressed file size + largest
+	 * compressed file size)</code> available.
 	 * 
 	 * <p>If only 1 parallel thread is needed or you are I/O bound, {@link AsynchronousZipFileOutput} may be faster and
 	 * is significantly more memory efficient.
 	 */
 	public static class ParallelZipFileOutput extends ApacheZipFileOutput {
+		
+		private static final boolean D = false;
 
 		private ArrayDeque<CompletableFuture<AsynchronousApacheZipper>> zipFutures;
 		private ArrayDeque<AsynchronousApacheZipper> zippers;
@@ -905,18 +909,21 @@ public interface ArchiveOutput extends Closeable, Named {
 
 		@Override
 		public synchronized void putNextEntry(String name) throws IOException {
+			if (D) System.out.println("putNextEntry("+name+")");
 			prepareZipper();
 			currentZipper.putNextEntry(name);
 		}
 
 		@Override
 		public synchronized OutputStream getOutputStream() throws IOException {
+			if (D) System.out.println("getOutputStream()");
 			Preconditions.checkNotNull(currentZipper);
 			return currentZipper.getOutputStream();
 		}
 
 		@Override
 		public synchronized void closeEntry() throws IOException {
+			if (D) System.out.println("closeEntry()");
 			Preconditions.checkNotNull(currentZipper);
 			CompletableFuture<AsynchronousApacheZipper> future = currentZipper.closeEntry();
 			future.thenRunAsync(postProcessRun, postProcessExec);
@@ -926,6 +933,7 @@ public interface ArchiveOutput extends Closeable, Named {
 
 		@Override
 		public synchronized void transferFrom(ArchiveInput input, String sourceName, String destName) throws IOException {
+			if (D) System.out.println("transferFrom("+input.getName()+", "+sourceName+", "+destName+")");
 			prepareZipper();
 			CompletableFuture<AsynchronousApacheZipper> future = currentZipper.transferFrom(input, sourceName, destName);
 			future.thenRunAsync(postProcessRun, postProcessExec);
