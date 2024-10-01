@@ -457,11 +457,11 @@ public interface ArchiveOutput extends Closeable, Named {
 		}
 
 		@Override
-		public ArchiveInput getCompletedInput() throws IOException {
+		public ArchiveInput.InMemoryZipInput getCompletedInput() throws IOException {
 			Preconditions.checkState(zout == null, "Not closed?");
 			CopyAvoidantInMemorySeekableByteChannel copy = byteChannel.copy();
 			copy.position(0l);
-			return new ArchiveInput.InMemoryZipFileInput(copy);
+			return new ArchiveInput.InMemoryZipInput(copy);
 		}
 		
 	}
@@ -529,54 +529,109 @@ public interface ArchiveOutput extends Closeable, Named {
 	}
 	
 	/**
-	 * Simpler and more memory-efficient alternative to {@link ParallelZipFileOutput} when you only want 1 thread.
-	 * Zipping operations are done in memory and block when [{@link #closeEntry()} is called. Writing is done
-	 * asynchronously, and contents are written in order.
+	 * Asynchronous zip file writer where zipping operations are done to memory as the stream is written, and block when
+	 * {@link #closeEntry()} is called. Writing is done asynchronously, and contents are written in order.
+	 * 
+	 * <p>Memory requirements of this are twice the zipped size of the largest file.
+	 * 
+	 * <p>See {@link ParallelZipFileOutput} if you want increased parallelism at the expense of significant memory usage.
 	 */
 	public static class AsynchronousZipFileOutput extends ApacheZipFileOutput {
 		
-		private AsynchronousApacheZipper zipper = new AsynchronousApacheZipper();
-		private CopyAvoidantInMemorySeekableByteChannel secondaryZipBuffer;
+		private CopyAvoidantInMemorySeekableByteChannel zippingBuffer;
+		private CopyAvoidantInMemorySeekableByteChannel writingBuffer;
+		
+		private String currentEntry;
+		private InMemoryZipOutput currentOutput;
 		
 		private CompletableFuture<?> writeFuture;
 		
 		public AsynchronousZipFileOutput(File outputFile) throws IOException {
 			super(outputFile);
+			init();
 		}
 		
 		public AsynchronousZipFileOutput(File outputFile, File inProgressFile) throws IOException {
 			super(outputFile, inProgressFile);
+			init();
 		}
 		
-		private void startAsyncWrite() {
+		private void init() {
+			zippingBuffer = new CopyAvoidantInMemorySeekableByteChannel(1024*1024*5);
+			zippingBuffer.setCloseable(false);
+			writingBuffer = new CopyAvoidantInMemorySeekableByteChannel(1024*1024*5);
+			writingBuffer.setCloseable(false);
+		}
+		
+		private void startAsyncWrite() throws IOException {
 			if (writeFuture != null)
 				writeFuture.join();
-			writeFuture = zipper.rawTransferFuture(this);
+			Preconditions.checkNotNull(currentEntry);
+//			writeFuture = zipper.rawTransferFuture(this);
+			String entryName = currentEntry;
+			if (currentOutput == null) {
+				// nothing written, presumably a directory
+				super.putNextEntry(entryName);
+				super.closeEntry();
+				writeFuture = CompletableFuture.completedFuture(null);
+			} else {
+				currentOutput.close();
+				zippingBuffer.position(0l); // reset to read from the beginning
+				ArchiveInput.InMemoryZipInput input = new ArchiveInput.InMemoryZipInput(zippingBuffer);
+				writeFuture = CompletableFuture.runAsync(new Runnable() {
+					
+					@Override
+					public void run() {
+						try {
+							rawTransferApache(input, entryName, entryName);
+						} catch (IOException e) {
+							throw ExceptionUtils.asRuntimeException(e);
+						}
+					}
+				});
+			}
+			currentEntry = null;
+			currentOutput = null;
 			// swap the buffers as the current compressed data buffer is being written to disk
-			secondaryZipBuffer = zipper.swapCompressedDataBuffer(secondaryZipBuffer);
+			// this buffer is now available (finished writing via writeFuture.join() at the beginning of this method)
+			CopyAvoidantInMemorySeekableByteChannel tmpBuffer = writingBuffer;
+			// the one that was zipping is now in the process of writing
+			writingBuffer = zippingBuffer;
+			zippingBuffer = tmpBuffer; // can be for reused
 		}
 
 		@Override
 		public synchronized void putNextEntry(String name) throws IOException {
-			zipper.reset();
-			zipper.putNextEntry(name);
+			Preconditions.checkState(currentEntry == null);
+			Preconditions.checkState(currentOutput == null);
+			zippingBuffer.truncate(0l); // reset to the beginning
+			currentEntry = name;
 		}
 
 		@Override
 		public synchronized OutputStream getOutputStream() throws IOException {
-			return zipper.getOutputStream();
+			Preconditions.checkNotNull(currentEntry, "Called getOutputStream() without first calling putNextEntry()");
+			Preconditions.checkState(currentOutput == null, "Can't call getOutputStream() twice on the same entry");
+			currentOutput = new InMemoryZipOutput(true, zippingBuffer);
+			currentOutput.putNextEntry(currentEntry);
+			return currentOutput.getOutputStream();
 		}
 
 		@Override
 		public synchronized void closeEntry() throws IOException {
-			zipper.closeEntry().join();
+			Preconditions.checkNotNull(currentEntry, "Called closeEntry() without first calling putNextEntry()");
+			if (currentOutput != null) // null if it's a directory
+				currentOutput.closeEntry();
 			startAsyncWrite();
 		}
 
 		@Override
 		public synchronized void transferFrom(ArchiveInput input, String sourceName, String destName) throws IOException {
-			zipper.reset();
-			zipper.transferFrom(input, sourceName, destName).join();
+			Preconditions.checkState(currentEntry == null && currentOutput == null,
+					"Called transferFrom(..) when another entry was open?");
+			putNextEntry(destName);
+			currentOutput = new InMemoryZipOutput(true, zippingBuffer);
+			currentOutput.transferFrom(input, sourceName, destName);
 			startAsyncWrite();
 		}
 
@@ -585,6 +640,8 @@ public interface ArchiveOutput extends Closeable, Named {
 			if (writeFuture != null)
 				writeFuture.join();
 			writeFuture = null;
+			zippingBuffer = null;
+			writingBuffer = null;
 			super.close();
 		}
 	}
@@ -593,8 +650,12 @@ public interface ArchiveOutput extends Closeable, Named {
 	 * Parallel zip file implementation where contents are zipped in memory in parallel, then written to the output
 	 * file as they roll off the line. More throughput can be achieved if preserving the order is not important.
 	 * 
-	 * <p>This can require significant memory and no resources are released until it is closed. Be sure to have at least
-	 * <code>threads x (largest uncompressed file size + largest compressed file size)</code> available.
+	 * <p>This can require significant memory and no resources are released until it is closed. Contents are first
+	 * written to an uncompressed in-memory buffer, then zipped in parallel, and finally written asynchronously.
+	 * Be sure to have at least <code>threads x (largest uncompressed file size + largest compressed file size)</code> available.
+	 * 
+	 * <p>If only 1 parallel thread is needed or you are I/O bound, {@link AsynchronousZipFileOutput} may be faster and
+	 * is significantly more memory efficient.
 	 */
 	public static class ParallelZipFileOutput extends ApacheZipFileOutput {
 

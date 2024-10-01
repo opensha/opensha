@@ -248,7 +248,7 @@ public interface ArchiveInput extends Named, Closeable {
 	/**
 	 * In-memory zip input
 	 */
-	public static class InMemoryZipFileInput extends AbstractApacheZipInput {
+	public static class InMemoryZipInput extends AbstractApacheZipInput {
 
 		/**
 		 * In-memory zip input
@@ -256,7 +256,7 @@ public interface ArchiveInput extends Named, Closeable {
 		 * @param byteChannel
 		 * @throws IOException
 		 */
-		public InMemoryZipFileInput(SeekableByteChannel byteChannel) throws IOException {
+		public InMemoryZipInput(SeekableByteChannel byteChannel) throws IOException {
 			super(org.apache.commons.compress.archivers.zip.ZipFile.builder().setSeekableByteChannel(byteChannel).get());
 		}
 

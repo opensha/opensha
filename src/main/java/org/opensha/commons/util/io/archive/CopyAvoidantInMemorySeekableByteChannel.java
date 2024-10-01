@@ -375,6 +375,7 @@ public class CopyAvoidantInMemorySeekableByteChannel implements SeekableByteChan
 		}
 		ret.size = size;
 		ret.setPositionInternal(position);
+		ret.setCloseable(closeable.get());
 		return ret;
 	}
 	

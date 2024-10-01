@@ -158,7 +158,7 @@ class AsynchronousApacheZipper {
 							compressedPosAfter, compressedPosPrior);
 					Preconditions.checkState(compressedData.size() > 0l);
 					compressedData.position(0l);
-					entryInput = new ArchiveInput.InMemoryZipFileInput(compressedData);
+					entryInput = new ArchiveInput.InMemoryZipInput(compressedData);
 					return AsynchronousApacheZipper.this;
 				} catch (IOException e) {
 					throw new RuntimeException("Exception writing "+entryDestName, e);
