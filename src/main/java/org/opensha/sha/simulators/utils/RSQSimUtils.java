@@ -28,7 +28,15 @@ import org.opensha.commons.util.IDPairing;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.Jump;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.ClusterConnectionStrategy;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.InputJumpsOrDistClusterConnectionStrategy;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.RuptureConnectionSearch;
+import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_DeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_FaultModels;
 import org.opensha.sha.faultSurface.CompoundSurface;
@@ -340,6 +348,25 @@ public class RSQSimUtils {
 			
 			init(subSects, sectSlipRates, sectSlipRateStdDevs, sectAreas,
 					sectionForRups, mags, rupRakes, rupAreas, rupLengths, info);
+			
+			SectionDistanceAzimuthCalculator distCalc = new SectionDistanceAzimuthCalculator(subSects);
+			RuptureConnectionSearch search = new RuptureConnectionSearch(this, distCalc, 200d, false);
+			addModule(ClusterRuptures.instance(this, search));
+			
+			HashSet<Jump> jumps = new HashSet<>();
+			int maxSplays = 0;
+			for (ClusterRupture rup : getModule(ClusterRuptures.class)) {
+				for (Jump jump : rup.getJumpsIterable()) {
+					jumps.add(jump);
+					jumps.add(jump.reverse());
+				}
+				maxSplays = Integer.max(maxSplays, rup.getTotalNumSplays());
+			}
+			
+			ClusterConnectionStrategy connStrat = new InputJumpsOrDistClusterConnectionStrategy(
+					distCalc.getSubSections(), distCalc, 15d, jumps);
+			PlausibilityConfiguration config = new PlausibilityConfiguration(new ArrayList<>(), maxSplays, connStrat, distCalc);
+			addModule(config);
 		}
 		
 		private int getSectIndex(int elemSectionID) {
@@ -699,20 +726,19 @@ public class RSQSimUtils {
 //		File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
 //		File dir = new File("/data/kevin/simulators/catalogs/rundir2194_long");
 //		File geomFile = new File(dir, "zfault_Deepen.in");
-		int catID = 5844;
+		int catID = 5892;
 		File dir = new File("/data/kevin/simulators/catalogs/bruce/rundir"+catID);
 		File geomFile = new File(dir, "zfault_Deepen.in");
 		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'N');
 		System.out.println("Loaded "+elements.size()+" elements");
 		double minMag = 6d;
-		int skipYears = 50000;
+		int skipYears = 20000;
 		List<RSQSimEvent> events = RSQSimFileReader.readEventsFile(dir, elements,
 				Lists.newArrayList(new LogicalAndRupIden(new SkipYearsLoadIden(skipYears),
 						new MagRangeRuptureIdentifier(minMag, 10d))));
 		
-		List<? extends FaultSection> subSects = NSHM23_DeformationModels.GEOLOGIC.build(NSHM23_FaultModels.WUS_FM_v3);
+		List<? extends FaultSection> subSects = NSHM23_DeformationModels.AVERAGE.build(NSHM23_FaultModels.WUS_FM_v3);
 		System.out.println("read "+subSects.size()+" sub sects");
-		System.exit(0);
 		double sectFract = 0.5;
 		FaultSystemSolution sol = buildFaultSystemSolution(subSects, elements, events, minMag, sectFract);
 		sol.write(new File(dir, "rsqsim_"+catID+"_m"+new DecimalFormat("0.#").format(minMag)+"_skip"+skipYears+"_sectArea"+(float)sectFract+".zip"));

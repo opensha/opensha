@@ -9,6 +9,7 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.lang.reflect.Constructor;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -41,6 +43,7 @@ import org.opensha.commons.util.ComparablePairing;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleArchive;
+import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
@@ -53,12 +56,14 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.BranchAverageSolutionCreator;
+import org.opensha.sha.earthquake.faultSysSolution.util.SolModuleStripper;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
 import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Stopwatch;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.stream.JsonReader;
@@ -83,6 +88,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	private static final boolean SERIALIZE_GRIDDED_DEFAULT = true;
 	private boolean serializeGridded = SERIALIZE_GRIDDED_DEFAULT;
 	private SolutionProcessor processor;
+	
+	protected ModuleArchive<OpenSHA_Module> archive;
 	
 	/**
 	 * Class that can be used to attach any necessary modules to an already loaded rupture set/solution
@@ -309,7 +316,8 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		private SolutionProcessor processor;
 		private File outputFile;
 		
-		private ModuleArchive<SolutionLogicTree> archive;
+		private ModuleArchive<OpenSHA_Module> archive;
+		private BuildInfoModule buildInfo;
 
 		private CompletableFuture<Void> startModuleWriteFuture = null;
 		private CompletableFuture<Void> endModuleWriteFuture = null;
@@ -326,8 +334,9 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		private List<LogicTreeBranch<LogicTreeNode>> branches = new ArrayList<>();
 		private List<Map<String, String>> branchMappings = new ArrayList<>();
 		private List<LogicTreeLevel<? extends LogicTreeNode>> levels = null;
-		
+
 		private boolean serializeGridded = SERIALIZE_GRIDDED_DEFAULT;
+		private ZipFile directCopyGriddedFrom = null;
 		
 		public FileBuilder(File outputFile) throws IOException {
 			this(null, outputFile);
@@ -395,8 +404,21 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		public void setSerializeGridded(boolean serializeGridded) {
 			this.serializeGridded = serializeGridded;
+			if (serializeGridded)
+				Preconditions.checkState(directCopyGriddedFrom == null,
+				"Cannot set serialize gridded to true when directCopyGriddedFrom != null");
 			if (solTree != null)
 				solTree.setSerializeGridded(serializeGridded);
+		}
+		
+		public void setDirectCopyGriddedFrom(ZipFile zipFile) {
+			if (zipFile != null)
+				serializeGridded = false;
+			this.directCopyGriddedFrom = zipFile;
+		}
+		
+		public void setBuildInfo(BuildInfoModule buildInfo) {
+			this.buildInfo = buildInfo;
 		}
 		
 		private void initSolTree(LogicTreeBranch<?> branch) {
@@ -436,6 +458,15 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			solTree.setLogicTreeLevels(levels);
 			solTree.setSerializeGridded(serializeGridded);
 			archive.addModule(solTree);
+			if (buildInfo == null) {
+				try {
+					archive.addModule(BuildInfoModule.detect());
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			} else {
+				archive.addModule(buildInfo);
+			}
 			// begin asynchronous module archive write
 			if (D) debug("initSolTree starting async write");
 			endArchiveWriteFuture = new CompletableFuture<>();
@@ -497,8 +528,14 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			
 			String outPrefix = solTree.buildPrefix(entryPrefix);
 
-			System.out.println("Writing branch: "+branch);
+			if (D) System.out.println("Writing branch: "+branch);
 			branchMappings.add(solTree.writeBranchFilesToArchive(zout, outPrefix, branch, writtenFiles, sol));
+
+			if (directCopyGriddedFrom != null) {
+				Preconditions.checkState(!serializeGridded);
+				if (D) System.out.println("Direct copying gridded for: "+branch);
+				solTree.directCopyGridProvToArchive(directCopyGriddedFrom, zout, outPrefix, branch, writtenFiles);
+			}
 			if (D) debug("solution: DONE for "+branch);
 		}
 		
@@ -1085,6 +1122,57 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		
 		return mappings;
 	}
+
+	protected Map<String, String> directCopyGridProvToArchive(ZipFile sourceZip, ZipOutputStream zout, String prefix,
+			LogicTreeBranch<?> branch, HashSet<String> writtenFiles) throws IOException {
+		
+		List<String> inputFileNames = new ArrayList<>(6);
+		List<Boolean> inputAffectedByDefaults = new ArrayList<>(6);
+		
+		inputFileNames.add(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME);
+		inputAffectedByDefaults.add(false);
+		inputFileNames.add(MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME);
+		inputAffectedByDefaults.add(false);
+		inputFileNames.add(MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME);
+		inputAffectedByDefaults.add(true);
+		inputFileNames.add(MFDGridSourceProvider.ARCHIVE_UNASSOCIATED_FILE_NAME);
+		inputAffectedByDefaults.add(true);
+		inputFileNames.add(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME);
+		inputAffectedByDefaults.add(false);
+		inputFileNames.add(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME);
+		inputAffectedByDefaults.add(true);
+		
+		Map<String, String> possibleFiles = new LinkedHashMap<>(inputFileNames.size());
+		for (int i=0; i<inputFileNames.size(); i++) {
+			String fileName = inputFileNames.get(i);
+			String branchFileName = getBranchFileName(branch, prefix, fileName, inputAffectedByDefaults.get(i));
+			if (branchFileName != null)
+				possibleFiles.put(fileName, branchFileName);
+		}
+		
+		Map<String, String> mappings = new LinkedHashMap<>(possibleFiles.size());
+		
+		boolean anyPresent = false;
+		for (String fileName : possibleFiles.keySet()) {
+			String branchFileName = possibleFiles.get(fileName);
+			if (writtenFiles.contains(branchFileName)) {
+				// already written
+				anyPresent = true;
+				mappings.put(fileName, branchFileName);
+				continue;
+			}
+			ZipEntry sourceEntry = sourceZip.getEntry(branchFileName);
+			if (sourceEntry != null) {
+				copyEntry(sourceZip, sourceEntry, zout);
+				writtenFiles.add(branchFileName);
+				mappings.put(fileName, branchFileName);
+				anyPresent = true;
+			}
+		}
+		Preconditions.checkState(anyPresent, "Couldn't direct-copy a GridSourceProvider (no matching entries found in zip)");
+		
+		return mappings;
+	}
 	
 	/**
 	 * Writes a grid source provider instance JSON file to the given output stream, which is probably a zip outputstream,
@@ -1448,9 +1536,16 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	}
 	
 	public void write(File outputFile) throws IOException {
-		ModuleArchive<SolutionLogicTree> archive = new ModuleArchive<>();
+		ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
 		
 		archive.addModule(this);
+		
+		try {
+			archive.addModule(BuildInfoModule.detect());
+		} catch (IOException e) {
+			// don't fail on a BuildInfoModule
+			e.printStackTrace();
+		}
 		
 		writeREADME = true;
 		archive.write(outputFile);
@@ -1470,9 +1565,10 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 	}
 	
 	public static SolutionLogicTree load(ZipFile treeZip, LogicTree<?> logicTree) throws IOException {
-		ModuleArchive<SolutionLogicTree> archive = new ModuleArchive<>(treeZip, SolutionLogicTree.class);
+		ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(treeZip, SolutionLogicTree.class);
 		
 		SolutionLogicTree ret = archive.requireModule(SolutionLogicTree.class);
+		ret.archive = archive;
 		
 		if (logicTree != null)
 			// override the logic tree
@@ -1515,17 +1611,17 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		readme.write("Unlike a regular Fault System Solution, this archive contains information for multiple solutions "
 				+ "across multiple logic tree branches. Individual files that make up a solution are often only affected "
 				+ "by some logic tree branching levels. For example, fault section data ('"+FaultSystemRupSet.SECTS_FILE_NAME
-				+ "')is often affected by fault and deformation model branching levels, but not scaling relationships "
+				+ "') is often affected by fault and deformation model branching levels, but not scaling relationships "
 				+ "nor rate model branches. We store information efficiently for each branch by not duplicating those "
 				+ "files that are constant across multiple branches.\n\n");
 		
 		readme.write("All relevant files are stored in the '"+SUB_DIRECTORY_NAME+"' directory. Solution and rupture "
 				+ "set files will be stored in branch-specific subdirectories, and information on the logic tree "
-				+ "branches available and their file mapping structure are avilable in the following files:\n\n");
+				+ "branches available and their file mapping structure are available in the following files:\n\n");
 		
 		readme.write(" - "+SUB_DIRECTORY_NAME+"/"+LOGIC_TREE_FILE_NAME+": Logic Tree JSON file listing all logic tree "
 				+ "branches, weights, and details of the branch levels.\n");
-		readme.write(" - "+SUB_DIRECTORY_NAME+"/"+LOGIC_TREE_MAPPINGS_FILE_NAME+": File name mappings for each logic "
+		readme.write(" - "+SUB_DIRECTORY_NAME+"/"+LOGIC_TREE_MAPPINGS_FILE_NAME+": File name mappings and weights for each logic "
 				+ "tree branch. This file is not used by OpenSHA, but is written to help external users quickly identify "
 				+ "the location of each solution or rupture set file for individual logic tree branches.\n");
 		readme.write(" - "+SUB_DIRECTORY_NAME+"/"+PROCESSOR_FILE_NAME+": This file format does not support all optional "
@@ -1631,36 +1727,158 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			}
 		}
 	}
-
-	public static void main(String[] args) throws IOException {
-		File dir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
-				+ "2021_11_23-u3_branches-FM3_1-5h/");
-		SolutionLogicTree tree = SolutionLogicTree.load(new File(dir, "results.zip"));
-//		
-//		FaultSystemSolution ba = tree.calcBranchAveraged();
-//		
-//		ba.write(new File(dir, "branch_averaged.zip"));
+	
+	/**
+	 * Removes extraneous data not needed for hazard, such as plausibility configuration and misfit stats
+	 * 
+	 * @param slt
+	 * @param outputFile
+	 * @throws IOException 
+	 */
+	public static void simplify(SolutionLogicTree slt, File outputFile) throws IOException {
+		simplify(slt, outputFile, false, false);
+	}
+	
+	/**
+	 * Removes extraneous data not needed for hazard, such as plausibility configuration and misfit stats
+	 * 
+	 * @param slt
+	 * @param outputFile
+	 * @throws IOException 
+	 */
+	public static void simplify(SolutionLogicTree slt, File outputFile, boolean keepRupMFDs, boolean updateBuildInfo) throws IOException {
+		LogicTree<?> tree = slt.getLogicTree();
+		FileBuilder builder = new FileBuilder(slt.getProcessor(), outputFile);
+		builder.setWeightProv(tree.getWeightProvider());
 		
-//		SolutionLogicTree tree = SolutionLogicTree.load(new File("/tmp/results.zip"));
-		if (tree.processor == null)
-			System.out.println("No solution processor");
-		else
-			System.out.println("Solution processor type: "+tree.processor.getClass().getName());
+		boolean directCopyGridded = false;
+		if (slt.forBranch(tree.getBranch(0), false).hasModule(GridSourceProvider.class)) {
+			try {
+				ZipFile zip = slt.getZipFile();
+				System.out.println("Will directly copy gridded seismicity data");
+				builder.setDirectCopyGriddedFrom(zip);
+				directCopyGridded = true;
+			} catch (Exception e) {
+				System.out.println("Will load and write gridded seismicity data (if applicable)");
+				builder.setSerializeGridded(true);
+			}			
+		} else {
+			builder.setSerializeGridded(false);
+		}
+		if (!updateBuildInfo && slt.archive != null)
+			// copy existing build info over
+			builder.setBuildInfo(slt.archive.getModule(BuildInfoModule.class));
 		
-		FileBuilder builder = new FileBuilder(tree.processor, new File("/tmp/sol_tree_test.zip"));
-		BranchAverageSolutionCreator avgBuilder = new BranchAverageSolutionCreator(tree.getLogicTree().getWeightProvider());
-		for (LogicTreeBranch<?> branch : tree.getLogicTree()) {
-			if (Math.random() < 0.05) {
-				FaultSystemSolution sol = tree.forBranch(branch);
-				builder.solution(sol, branch);
-				if (branch.getValue(FaultModels.class) == FaultModels.FM3_1)
-					avgBuilder.addSolution(sol, branch);
+		boolean prevVerbose = ModuleContainer.VERBOSE_DEFAULT;
+		Stopwatch totalWatch = Stopwatch.createStarted();
+		Stopwatch blockingWriteWatch = Stopwatch.createUnstarted();
+		ModuleContainer.VERBOSE_DEFAULT = false;
+		CompletableFuture<Void> writeFuture = null;
+		DecimalFormat pDF = new DecimalFormat("0.0%");
+		DecimalFormat tDF = new DecimalFormat("0.##");
+		for (int i=0; i<tree.size(); i++) {
+			LogicTreeBranch<?> branch = tree.getBranch(i);
+			FaultSystemSolution sol = slt.forBranch(branch, false);
+			if (directCopyGridded)
+				sol.removeAvailableModuleInstances(GridSourceList.class);
+			
+			FaultSystemSolution simplifiedSol = SolModuleStripper.stripModules(sol, 5d, keepRupMFDs, false);
+			
+			if (writeFuture != null) {
+				blockingWriteWatch.start();
+				writeFuture.join();
+				blockingWriteWatch.stop();
 			}
+			
+			int myIndex = i;
+			writeFuture = CompletableFuture.runAsync(new Runnable() {
+				
+				@Override
+				public void run() {
+					try {
+						builder.solution(simplifiedSol, branch);
+						
+						double elapsedSecs = totalWatch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+						double blockWritingSecs = blockingWriteWatch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+						double estSecs = elapsedSecs*(double)tree.size()/(myIndex+1d);
+						double estSecsRemaining = estSecs-elapsedSecs;
+						String timeStr;
+						if (estSecs > 90d) {
+							double elapsedMins = elapsedSecs/60d;
+							double estMins = estSecs/60d;
+							double estMinsRemaining = estSecsRemaining/60d;
+							
+							if (estMins > 60d) {
+								double elapsedHours = elapsedMins/60d;
+								double estHoursRemaining = estMinsRemaining/60d;
+								timeStr = tDF.format(elapsedHours)+" h";
+								if (myIndex < tree.size()-1)
+									timeStr += ", "+tDF.format(estHoursRemaining)+" h remaining";
+							} else {
+								timeStr = tDF.format(elapsedMins)+" m";
+								if (myIndex < tree.size()-1)
+									timeStr += ", "+tDF.format(estMinsRemaining)+" m remaining";
+							}
+						} else {
+							timeStr = tDF.format(elapsedSecs)+" s";
+							if (myIndex < tree.size()-1)
+								timeStr += ", "+tDF.format(estSecsRemaining)+" s remaining";
+						}
+						
+						System.out.println("DONE branch "+myIndex+"/"+tree.size()+" in "+timeStr
+								+" ("+pDF.format(blockWritingSecs/elapsedSecs)+" waiting on blocking write)");
+					} catch (IOException e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
+				}
+			});
 		}
 		
-		builder.build();
-		FaultSystemSolution avgSol = avgBuilder.build();
-		avgSol.write(new File("/tmp/sol_tree_test_ba.zip"));
+		if (writeFuture != null) {
+			blockingWriteWatch.start();
+			writeFuture.join();
+			blockingWriteWatch.stop();
+		}
+		
+		ModuleContainer.VERBOSE_DEFAULT = prevVerbose;
+		
+		builder.close();
+	}
+
+	public static void main(String[] args) throws IOException {
+		File dir = new File("/home/kevin/OpenSHA/nshm23/batch_inversions/2024_02_02-nshm23_branches-WUS_FM_v3");
+		File inSLTfile = new File(dir, "results.zip");
+		File outSLTfile = new File(dir, "results_simplified.zip");
+		SolutionLogicTree inSLT = SolutionLogicTree.load(inSLTfile);
+		simplify(inSLT, outSLTfile);
+//		File dir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions/"
+//				+ "2021_11_23-u3_branches-FM3_1-5h/");
+//		SolutionLogicTree tree = SolutionLogicTree.load(new File(dir, "results.zip"));
+////		
+////		FaultSystemSolution ba = tree.calcBranchAveraged();
+////		
+////		ba.write(new File(dir, "branch_averaged.zip"));
+//		
+////		SolutionLogicTree tree = SolutionLogicTree.load(new File("/tmp/results.zip"));
+//		if (tree.processor == null)
+//			System.out.println("No solution processor");
+//		else
+//			System.out.println("Solution processor type: "+tree.processor.getClass().getName());
+//		
+//		FileBuilder builder = new FileBuilder(tree.processor, new File("/tmp/sol_tree_test.zip"));
+//		BranchAverageSolutionCreator avgBuilder = new BranchAverageSolutionCreator(tree.getLogicTree().getWeightProvider());
+//		for (LogicTreeBranch<?> branch : tree.getLogicTree()) {
+//			if (Math.random() < 0.05) {
+//				FaultSystemSolution sol = tree.forBranch(branch);
+//				builder.solution(sol, branch);
+//				if (branch.getValue(FaultModels.class) == FaultModels.FM3_1)
+//					avgBuilder.addSolution(sol, branch);
+//			}
+//		}
+//		
+//		builder.build();
+//		FaultSystemSolution avgSol = avgBuilder.build();
+//		avgSol.write(new File("/tmp/sol_tree_test_ba.zip"));
 	}
 
 }

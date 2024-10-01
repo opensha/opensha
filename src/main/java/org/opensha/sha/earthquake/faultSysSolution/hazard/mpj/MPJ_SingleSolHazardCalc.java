@@ -153,6 +153,11 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		siteSkipSourceFilter = SolHazardMapCalc.getSiteSkipSourceFilters(sourceFilter, cmd);
 		
 		gmmRefs = SolHazardMapCalc.getGMMs(cmd);
+		if (rank == 0) {
+			debug("GMMs:");
+			for (TectonicRegionType trt : gmmRefs.keySet())
+				debug("\tGMM for "+trt.name()+": "+gmmRefs.get(trt).getName());
+		}
 		
 		if (cmd.hasOption("periods")) {
 			List<Double> periodsList = new ArrayList<>();
@@ -279,7 +284,9 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			String prefix = "node_"+rank+"_curves";
 			if (calc != null) {
 				// we have calculated some
+				debug("Writing curves CSVs");
 				calc.writeCurvesCSVs(nodesCurveDir, prefix, false, true);
+				debug("DONE writing CSVs");
 			} else {
 				// we've calculated none
 				// write empty CSVs

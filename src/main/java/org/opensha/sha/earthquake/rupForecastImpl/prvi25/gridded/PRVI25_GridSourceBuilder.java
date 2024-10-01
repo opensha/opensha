@@ -48,7 +48,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_Region
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SeisSmoothingAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionScalingRelationships;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.SeismicityRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -66,7 +66,7 @@ public class PRVI25_GridSourceBuilder {
 	/**
 	 * if true, will subtract on-fault supra-seis rates from gridded MFDs
 	 */
-	public static final boolean RATE_BALANCE_GRIDDED = true;
+	public static final boolean RATE_BALANCE_CRUSTAL_GRIDDED = false;
 	
 	public static final double OVERALL_MMIN= 2.55;
 	// TODO: preliminary; logic tree branch(es)?
@@ -95,15 +95,15 @@ public class PRVI25_GridSourceBuilder {
 	public static GridSourceList buildCrustalGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch) throws IOException {
 		doPreGridBuildHook(sol, branch);
 		FaultSystemRupSet rupSet = sol.getRupSet();
-		Preconditions.checkState(branch.hasValue(PRVI25_CrustalFaultModels.class), "This should only be used to build crustal models");
+		Preconditions.checkState(!branch.hasValue(PRVI25_SubductionFaultModels.class), "This should only be used to build crustal models");
 		FaultCubeAssociations cubeAssociations = rupSet.requireModule(FaultCubeAssociations.class);
-		NSHM23_SingleRegionGridSourceProvider gridProv = buildCrustalGridSourceProv(sol, branch, SeismicityRegions.CRUSTAL, cubeAssociations);
+		NSHM23_SingleRegionGridSourceProvider gridProv = buildCrustalGridSourceProv(sol, branch, PRVI25_SeismicityRegions.CRUSTAL, cubeAssociations);
 		
 		return gridProv.convertToGridSourceList(OVERALL_MMIN);
 	}
 	
 	public static NSHM23_SingleRegionGridSourceProvider buildCrustalGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch,
-			SeismicityRegions seisRegion, FaultCubeAssociations cubeAssociations)  throws IOException {
+			PRVI25_SeismicityRegions seisRegion, FaultCubeAssociations cubeAssociations)  throws IOException {
 		GriddedRegion gridReg = cubeAssociations.getRegion();
 		
 		double maxMagOff = branch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
@@ -127,7 +127,7 @@ public class PRVI25_GridSourceBuilder {
 		for (int i=0; i<totalGR.size(); i++) {
 			double totalRate = totalGR.getY(i);
 			if (totalRate > 0) {
-				if (RATE_BALANCE_GRIDDED) {
+				if (RATE_BALANCE_CRUSTAL_GRIDDED) {
 					double solRate = solNuclMFD.getY(i);
 					if (solRate > totalRate) {
 						System.err.println("WARNING: MFD bulge at M="+(float)refMFD.getX(i)
@@ -173,14 +173,14 @@ public class PRVI25_GridSourceBuilder {
 	}
 	
 	public static GridSourceList buildCombinedSubductionGridSourceList(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch) throws IOException {
-		GridSourceList muertosSlab = buildSlabGridSourceList(fullBranch, SeismicityRegions.MUE_INTRASLAB);
-		GridSourceList carSlab = buildSlabGridSourceList(fullBranch, SeismicityRegions.CAR_INTRASLAB);
-		GridSourceList muertosInterface = buildInterfaceGridSourceList(sol, fullBranch, SeismicityRegions.MUE_INTERFACE);
-		GridSourceList carInterface = buildInterfaceGridSourceList(sol, fullBranch, SeismicityRegions.CAR_INTERFACE);
+		GridSourceList muertosSlab = buildSlabGridSourceList(fullBranch, PRVI25_SeismicityRegions.MUE_INTRASLAB);
+		GridSourceList carSlab = buildSlabGridSourceList(fullBranch, PRVI25_SeismicityRegions.CAR_INTRASLAB);
+		GridSourceList muertosInterface = buildInterfaceGridSourceList(sol, fullBranch, PRVI25_SeismicityRegions.MUE_INTERFACE);
+		GridSourceList carInterface = buildInterfaceGridSourceList(sol, fullBranch, PRVI25_SeismicityRegions.CAR_INTERFACE);
 		
 		// for some reason, doing them one by one in the combine method doesn't work; do it ahead of time pairwise
-		Region muertosUnionRegion = Region.union(SeismicityRegions.MUE_INTRASLAB.load(), SeismicityRegions.MUE_INTERFACE.load());
-		Region carUnionRegion = Region.union(SeismicityRegions.CAR_INTRASLAB.load(), SeismicityRegions.CAR_INTERFACE.load());
+		Region muertosUnionRegion = Region.union(PRVI25_SeismicityRegions.MUE_INTRASLAB.load(), PRVI25_SeismicityRegions.MUE_INTERFACE.load());
+		Region carUnionRegion = Region.union(PRVI25_SeismicityRegions.CAR_INTRASLAB.load(), PRVI25_SeismicityRegions.CAR_INTERFACE.load());
 		Preconditions.checkNotNull(muertosUnionRegion, "Couldn't union Muertos regions");
 		Preconditions.checkNotNull(carUnionRegion, "Couldn't union CAR regions");
 		Region unionRegion = Region.union(muertosUnionRegion, carUnionRegion);
@@ -190,14 +190,14 @@ public class PRVI25_GridSourceBuilder {
 		return GridSourceList.combine(griddedUnionRegion, carInterface, carSlab, muertosInterface, muertosSlab);
 	}
 	
-	private static EnumMap<SeismicityRegions, GriddedGeoDataSet> gridDepths;
-	private static EnumMap<SeismicityRegions, GriddedGeoDataSet> gridStrikes;
+	private static EnumMap<PRVI25_SeismicityRegions, GriddedGeoDataSet> gridDepths;
+	private static EnumMap<PRVI25_SeismicityRegions, GriddedGeoDataSet> gridStrikes;
 	private static final String DEPTHS_DIR = "/data/erf/prvi25/seismicity/depths/";
 	
-	private synchronized static void loadRegionDepthStrikeData(SeismicityRegions seisReg) throws IOException {
+	private synchronized static void loadRegionDepthStrikeData(PRVI25_SeismicityRegions seisReg) throws IOException {
 		if (gridDepths == null) {
-			gridDepths = new EnumMap<>(SeismicityRegions.class);
-			gridStrikes = new EnumMap<>(SeismicityRegions.class);
+			gridDepths = new EnumMap<>(PRVI25_SeismicityRegions.class);
+			gridStrikes = new EnumMap<>(PRVI25_SeismicityRegions.class);
 		}
 		
 		if (!gridDepths.containsKey(seisReg)) {
@@ -241,14 +241,14 @@ public class PRVI25_GridSourceBuilder {
 	}
 	
 	public static GridSourceList buildSlabGridSourceList(LogicTreeBranch<?> branch) throws IOException {
-		GridSourceList muertos = buildSlabGridSourceList(branch, SeismicityRegions.MUE_INTRASLAB);
-		GridSourceList car = buildSlabGridSourceList(branch, SeismicityRegions.CAR_INTRASLAB);
+		GridSourceList muertos = buildSlabGridSourceList(branch, PRVI25_SeismicityRegions.MUE_INTRASLAB);
+		GridSourceList car = buildSlabGridSourceList(branch, PRVI25_SeismicityRegions.CAR_INTRASLAB);
 		return GridSourceList.combine(car, muertos);
 	}
 	
-	public static GridSourceList buildSlabGridSourceList(LogicTreeBranch<?> branch, SeismicityRegions seisRegion) throws IOException {
-		Preconditions.checkState(seisRegion == SeismicityRegions.CAR_INTRASLAB
-				|| seisRegion == SeismicityRegions.MUE_INTRASLAB);
+	public static GridSourceList buildSlabGridSourceList(LogicTreeBranch<?> branch, PRVI25_SeismicityRegions seisRegion) throws IOException {
+		Preconditions.checkState(seisRegion == PRVI25_SeismicityRegions.CAR_INTRASLAB
+				|| seisRegion == PRVI25_SeismicityRegions.MUE_INTRASLAB);
 		
 		double maxMagOff = SLAB_MMAX;
 		
@@ -333,13 +333,13 @@ public class PRVI25_GridSourceBuilder {
 	}
 	
 	public static GridSourceList buildInterfaceGridSourceList(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch) throws IOException {
-		GridSourceList muertos = buildInterfaceGridSourceList(sol, fullBranch, SeismicityRegions.MUE_INTERFACE);
-		GridSourceList car = buildInterfaceGridSourceList(sol, fullBranch, SeismicityRegions.CAR_INTERFACE);
+		GridSourceList muertos = buildInterfaceGridSourceList(sol, fullBranch, PRVI25_SeismicityRegions.MUE_INTERFACE);
+		GridSourceList car = buildInterfaceGridSourceList(sol, fullBranch, PRVI25_SeismicityRegions.CAR_INTERFACE);
 		return GridSourceList.combine(car, muertos);
 	}
 	
 	public static GridSourceList buildInterfaceGridSourceList(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch,
-			SeismicityRegions seisRegion) throws IOException {
+			PRVI25_SeismicityRegions seisRegion) throws IOException {
 		int[] parentIDs;
 		switch (seisRegion) {
 		case CAR_INTERFACE:
@@ -621,7 +621,7 @@ public class PRVI25_GridSourceBuilder {
 //					rateM5 += rup.rate;
 //		System.out.println(seisReg+" rate M>5: "+(float)rateM5);
 		
-		SeismicityRegions seisReg = SeismicityRegions.CAR_INTERFACE;
+		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.CAR_INTERFACE;
 		Region region = seisReg.load();
 //		GridSourceList interfaceModel = buildInterfaceGridSourceList(sol, branch, seisReg);
 		GridSourceList interfaceModel = buildInterfaceGridSourceList(sol, branch);

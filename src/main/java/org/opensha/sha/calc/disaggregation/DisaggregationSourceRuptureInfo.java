@@ -58,6 +58,32 @@ public class DisaggregationSourceRuptureInfo {
 	}
 	
 	/**
+	 * Returns a copy where the rate (and exceedance probabilities, if applicable) are scaled by the given scalar.
+	 * For exceedance probabilities, they are converted to poisson-equivalent rates (using the supplied duration),
+	 * scaled, and then converted back to probabilities.
+	 * 
+	 * This is useful when converting from participation to nucleation as part of the consolidation process
+	 * 
+	 * @param scalar
+	 * @param duration
+	 * @return scaled view of this {@link DisaggregationSourceRuptureInfo}
+	 */
+	public DisaggregationSourceRuptureInfo getScaled(double scalar, double duration) {
+		DiscretizedFunc exceedProbs = this.exceedProbs;
+		if (exceedProbs != null) {
+			exceedProbs = exceedProbs.deepClone();
+			for (int i=0; i<exceedProbs.size(); i++) {
+				double origProb = exceedProbs.getY(i);
+				double origRate = -Math.log(1.0 - origProb)/duration;
+				double modRate = origRate*scalar;
+				double modProb = 1d - Math.exp(-modRate*duration);
+				exceedProbs.set(i, modProb);
+			}
+		}
+		return new DisaggregationSourceRuptureInfo(name, rate*scalar, id, source, exceedProbs);
+	}
+	
+	/**
 	 * Utility method to consolidate source-rupture info objects from multiple sources into a single contribution
 	 * @param contribs
 	 * @param consolidatedIndex

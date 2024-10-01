@@ -1750,6 +1750,10 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			setAll(gridReg, locs, trtRuptureLists);
 		}
 		
+		public Precomputed(GridSourceList original, EnumMap<TectonicRegionType, ? extends List<? extends List<GriddedRupture>>> trtRuptureLists) {
+			setAll(original.gridReg, original.locs, trtRuptureLists);
+		}
+		
 		public Precomputed(GriddedRegion gridReg, TectonicRegionType trt, List<? extends List<GriddedRupture>> ruptureLists) {
 			EnumMap<TectonicRegionType, List<? extends List<GriddedRupture>>> trtRuptureLists = new EnumMap<>(TectonicRegionType.class);
 			trtRuptureLists.put(trt, ruptureLists);

@@ -25,7 +25,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultRea
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.SeismicityRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
@@ -111,7 +111,7 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 				
 				// overall seismicity regions
 //				for (SeismicityRegions seisReg : SeismicityRegions.values()) {
-				for (SeismicityRegions seisReg : new SeismicityRegions[] {SeismicityRegions.CRUSTAL}) {
+				for (PRVI25_SeismicityRegions seisReg : new PRVI25_SeismicityRegions[] {PRVI25_SeismicityRegions.CRUSTAL}) {
 					Region region = seisReg.load();
 					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
 						continue;
@@ -161,7 +161,7 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 		// TODO: named faults?
 	}
 	
-	private static UncertainBoundedIncrMagFreqDist getRegionalMFD(Region region, SeismicityRegions seisRegion,
+	private static UncertainBoundedIncrMagFreqDist getRegionalMFD(Region region, PRVI25_SeismicityRegions seisRegion,
 			LogicTreeBranch<?> branch) throws IOException {
 		PRVI25_DeclusteringAlgorithms declustering = PRVI25_DeclusteringAlgorithms.AVERAGE;
 		if (branch != null && branch.hasValue(PRVI25_DeclusteringAlgorithms.class))

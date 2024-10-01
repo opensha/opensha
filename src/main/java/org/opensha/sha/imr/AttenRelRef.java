@@ -220,7 +220,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		
 	},
 	
-	USGS_PRVI_AVTIVE(null, "USGS PRVI25 Active Crustal",
+	USGS_PRVI_ACTIVE(null, "USGS PRVI25 Active Crustal",
 			"PRVI25-Active", DEVELOPMENT) {
 		
 		@Override
@@ -249,6 +249,39 @@ public enum AttenRelRef implements AttenRelSupplier {
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
 			return new NSHMP_GMM_Wrapper(Gmm.USGS_PRVI_INTRASLAB_COMBINED_TREE, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_NSHM23_ACTIVE(null, "USGS NSHM23 Active Crustal",
+			"NSHM23-Active", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_NSHM23_ACTIVE_LA(null, "USGS NSHM23 Active Crustal (Los Angeles)",
+			"NSHM23-Active-LA", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023_LOS_ANGELES, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_NSHM23_ACTIVE_SF(null, "USGS NSHM23 Active Crustal (San Francisco)",
+			"NSHM23-Active-SF", DEVELOPMENT) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			return new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023_SAN_FRANCISCO, getName(), getShortName(), false, null);
 		}
 		
 	},

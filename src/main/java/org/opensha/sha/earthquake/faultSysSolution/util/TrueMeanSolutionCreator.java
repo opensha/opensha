@@ -91,8 +91,9 @@ public class TrueMeanSolutionCreator {
 		
 		public FaultSection buildGlobalInstance(int instanceNum, double totWeight) {
 			FaultSection sect = this.sect.clone();
-			sect.setSectionName(sect.getSectionName()+" (Instance "+instanceNum+", "
-					+weightDF.format(weightUsed/totWeight)+" weight)");
+			if (instanceNum > 0 || weightUsed != totWeight)
+				sect.setSectionName(sect.getSectionName()+" (Instance "+instanceNum+", "
+						+weightDF.format(weightUsed/totWeight)+" weight)");
 			sect.setSectionId(globalID);
 			sect.setAveSlipRate(weightedSlip/totWeight);
 			sect.setSlipRateStdDev(weightedSlipStdDev/totWeight);

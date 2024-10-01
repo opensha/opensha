@@ -191,7 +191,7 @@ public class ETAS_ConfigBuilder {
 		cOption.setRequired(false);
 		ops.addOption(cOption);
 		
-		Option kCOVOption = new Option("ek", "etas-k-cov", true, "COV of ETAS productivity parameter parameter, k");
+		Option kCOVOption = new Option("ek", "etas-k-cov", true, "COV of ETAS productivity parameter, k");
 		kCOVOption.setRequired(false);
 		ops.addOption(kCOVOption);
 		
@@ -206,8 +206,8 @@ public class ETAS_ConfigBuilder {
 		ops.addOption(completenessOption);
 		
 		Option maxPtSrcMagOption = new Option("ptm", "max-point-src-mag", true,
-				"Maximum magnitude for point source ruptures. Random finite rupture surfaces will be assigned above "
-				+ "this threshold. (DEFAULT: "+U3ETAS_MaxPointSourceMagParam.DEFAULT_VALUE.floatValue()+")");
+				"Maximum magnitude for point source ruptures. Random finite rupture surfaces will be assigned for all "
+				+ "off-fault ruptures above this magnitude threshold. (DEFAULT: "+U3ETAS_MaxPointSourceMagParam.DEFAULT_VALUE.floatValue()+")");
 		maxPtSrcMagOption.setRequired(false);
 		ops.addOption(maxPtSrcMagOption);
 		

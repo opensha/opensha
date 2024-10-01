@@ -459,7 +459,7 @@ public class SiteLogicTreeHazardPageGen {
 						String plotEmbed = "!["+level.getShortName()+" Means]("+resourcesDir.getName()+"/"+plot.getName()+")";
 						table.addColumn(plotEmbed);
 						
-						levelLinks.add("["+level.getShortName()+"](#"+MarkdownUtils.getAnchorName(heading)+")");
+						levelLinks.add("["+level.getName()+"](#"+MarkdownUtils.getAnchorName(heading)+")");
 						levelAvgPlotLinks.add(plotEmbed);
 						
 						table.finalizeLine();
@@ -546,7 +546,13 @@ public class SiteLogicTreeHazardPageGen {
 					summaryTable.finalizeLine();
 					List<String> linesAdd = new ArrayList<>();
 					linesAdd.add("");
+					if (periods.size() > 1)
+						linesAdd.add("### "+site.getName()+", "+perLabel+", Logic Tree Summary");
+					else
+						linesAdd.add("## "+site.getName()+", Logic Tree Summary");
+					linesAdd.add(topLink); linesAdd.add("");
 					linesAdd.addAll(summaryTable.wrap(3, 0).build());
+					linesAdd.add("");
 					siteLines.addAll(siteLinesLevelTableIndex, linesAdd);
 				}
 			}

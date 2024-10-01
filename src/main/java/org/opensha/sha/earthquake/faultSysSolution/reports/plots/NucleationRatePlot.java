@@ -243,6 +243,7 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 				table.finalizeLine().initNewLine();
 				table.addColumn(MarkdownUtils.boldCentered(markdownLabel+", Gridded Only"));
 				table.addColumn(MarkdownUtils.boldCentered(markdownLabel+", Fault Only"));
+				table.finalizeLine().initNewLine();
 			}
 			
 			gridXYZ = maskZeroesAsNan(gridXYZ);

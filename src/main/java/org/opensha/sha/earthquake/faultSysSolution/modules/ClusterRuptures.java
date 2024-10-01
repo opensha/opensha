@@ -41,7 +41,7 @@ import com.google.gson.stream.JsonWriter;
 
 public abstract class ClusterRuptures implements SubModule<FaultSystemRupSet>, Iterable<ClusterRupture>,
 BranchAverageableModule<ClusterRuptures>, AverageableModule.ConstantAverageable<ClusterRuptures>,
-SplittableRuptureSubSetModule<ClusterRuptures> {
+SplittableRuptureModule<ClusterRuptures> {
 	
 	protected FaultSystemRupSet rupSet;
 
@@ -126,11 +126,20 @@ SplittableRuptureSubSetModule<ClusterRuptures> {
 					System.err.flush();
 					System.out.flush();
 					ClusterRupCalc calc = new ClusterRupCalc(search, r, maintainOrder, true);
+					Exception secondary = null;
+					ClusterRupture ret = null;
 					try {
-						calc.call();
-					} catch (Exception e1) {}
+						ret = calc.call();
+					} catch (Exception e1) {
+						secondary = e1;
+					}
+					if (secondary == null)
+						System.err.println("Weird: didn't get an exception on retry with debug=true");
+					if (ret != null)
+						System.err.println("Weird: got this rupture on retry with debug=true: "+ret);
 					System.err.flush();
 					System.out.flush();
+					
 				}
 				throw ExceptionUtils.asRuntimeException(e);
 			}
@@ -217,7 +226,7 @@ SplittableRuptureSubSetModule<ClusterRuptures> {
 		return new SingleStranded(rupSet, null);
 	}
 
-	private static class SingleStranded extends ClusterRuptures implements ArchivableModule {
+	public static class SingleStranded extends ClusterRuptures implements ArchivableModule {
 		
 		private List<ClusterRupture> clusterRuptures;
 		
@@ -261,8 +270,11 @@ SplittableRuptureSubSetModule<ClusterRuptures> {
 						PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class, false);
 						if (plausibility != null)
 							distAzCalc = plausibility.getDistAzCalc();
-						else if (rupSet.hasModule(SectionDistanceAzimuthCalculator.class))
-							distAzCalc = rupSet.getModule(SectionDistanceAzimuthCalculator.class);
+						if (rupSet.hasModule(SectionDistanceAzimuthCalculator.class)) {
+							SectionDistanceAzimuthCalculator distAzCalc2 = rupSet.requireModule(SectionDistanceAzimuthCalculator.class);
+							if (distAzCalc == null || distAzCalc2.getNumCachedDistances() > distAzCalc.getNumCachedDistances())
+								distAzCalc = distAzCalc2;
+						}
 						if (distAzCalc == null) {
 							distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
 							rupSet.addModule(distAzCalc);
@@ -344,6 +356,12 @@ SplittableRuptureSubSetModule<ClusterRuptures> {
 		public SingleStranded getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
 			// don't keep cache, new ruptures will have new IDs and FaultSection indexes
 			return new SingleStranded(rupSubSet, null);
+		}
+
+		@Override
+		public ClusterRuptures getForSplitRuptureSet(FaultSystemRupSet splitRupSet, RuptureSetSplitMappings mappings) {
+			// don't keep cache, new ruptures will have new IDs and FaultSection indexes
+			return new SingleStranded(splitRupSet, null);
 		}
 		
 	}
@@ -448,6 +466,11 @@ SplittableRuptureSubSetModule<ClusterRuptures> {
 //				
 //			}
 //			return subSet;
+		}
+
+		@Override
+		public ClusterRuptures getForSplitRuptureSet(FaultSystemRupSet splitRupSet, RuptureSetSplitMappings mappings) {
+			throw new UnsupportedOperationException("Not yet supported");
 		}
 	}
 

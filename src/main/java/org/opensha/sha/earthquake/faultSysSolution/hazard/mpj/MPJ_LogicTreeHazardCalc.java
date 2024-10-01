@@ -172,6 +172,11 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		siteSkipSourceFilter = SolHazardMapCalc.getSiteSkipSourceFilters(sourceFilter, cmd);
 		
 		gmmRefs = SolHazardMapCalc.getGMMs(cmd);
+		if (rank == 0) {
+			debug("GMMs:");
+			for (TectonicRegionType trt : gmmRefs.keySet())
+				debug("\tGMM for "+trt.name()+": "+gmmRefs.get(trt).getName());
+		}
 		
 		if (cmd.hasOption("periods")) {
 			List<Double> periodsList = new ArrayList<>();
@@ -430,9 +435,10 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			debug("Async: processing batch of size "+batch.length+" from "+processIndex+": "+getCountsString());
 			try {
 				for (int index : batch) {
-					File runDir = getSolDir(solTree.getLogicTree().getBranch(index));
-					File hazardSubDir = new File(runDir, hazardSubDirName);
-					Preconditions.checkState(hazardSubDir.exists());
+					LogicTreeBranch<?> branch = solTree.getLogicTree().getBranch(index);
+					File runDir = getSolDir(branch);
+					File hazardOutDir = getHazardOutputDir(runDir, branch);
+					Preconditions.checkState(hazardOutDir.exists());
 					zout.putNextEntry(new ZipEntry(runDir.getName()+"/"));
 					zout.closeEntry();
 					zout.flush();
@@ -440,7 +446,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						for (double period : periods) {
 							String prefix = mapPrefix(period, rp);
 							
-							File mapFile = new File(hazardSubDir, prefix+".txt");
+							File mapFile = new File(hazardOutDir, prefix+".txt");
 							Preconditions.checkState(mapFile.exists());
 							
 							ZipEntry mapEntry = new ZipEntry(runDir.getName()+"/"+mapFile.getName());
@@ -657,6 +663,24 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		Region region = ReportMetadata.detectRegion(sol);
 		return new GriddedRegion(region, gridSpacing, GriddedRegion.ANCHOR_0_0);
 	}
+	
+	private File getHazardOutputDir(File runDir, LogicTreeBranch<?> branch) {
+		File hazardOutDir = new File(runDir, hazardSubDirName);
+		
+		if (gridSeisOp == IncludeBackgroundOption.ONLY) {
+			// we're gridded seismicity only, see if there's an upstream directory we should be writing to
+			// that will be true if not all fault-based branches affect gridded seismicity
+			File onlyHazardDir = getGriddedOnlyHazardDir(branch, outputDir, null);
+			if (onlyHazardDir != null) {
+				debug("Will write any outputs to upstream gridded-only hazard directory: "+onlyHazardDir.getAbsolutePath());
+				// make sure the upstream directory exist (create if not)
+				File parentDir = onlyHazardDir.getParentFile();
+				Preconditions.checkState(parentDir.exists() || parentDir.mkdir());
+				hazardOutDir = onlyHazardDir;
+			}
+		}
+		return hazardOutDir;
+	}
 
 	@Override
 	protected void calculateBatch(int[] batch) throws Exception {
@@ -675,16 +699,16 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			
 			File runDir = getSolDir(branch);
 			
-			File hazardSubDir = new File(runDir, hazardSubDirName);
-			Preconditions.checkState(hazardSubDir.exists() || hazardSubDir.mkdir());
+			File hazardOutDir = getHazardOutputDir(runDir, branch);
+			Preconditions.checkState(hazardOutDir.exists() || hazardOutDir.mkdir());
 			
 			String curvesPrefix = "curves";
 			
 			SolHazardMapCalc calc = null;
-			if (hazardSubDir.exists()) {
+			if (hazardOutDir.exists()) {
 				// see if it's already done
 				try {
-					calc = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, hazardSubDir, curvesPrefix);
+					calc = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, hazardOutDir, curvesPrefix);
 				} catch (Exception e) {
 					debug("Hazard subdir ('"+hazardSubDirName+"') exsists, but couldn't be reused: "+e.getMessage());
 				}
@@ -715,18 +739,25 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					if (gridSeisOp != IncludeBackgroundOption.ONLY) {
 						for (File sourceDir : combineFromDirs) {
 							File combineFromRunDir;
-							if (sourceDir == null)
+							boolean verbose;
+							if (sourceDir == null) {
+								verbose = false; // don't print that we're trying, it's our own directory that we just created so of course it exists
 								combineFromRunDir = runDir;
-							else
+							} else {
+								verbose = true; // if it exists, state that we're trying to load
 								combineFromRunDir = getSolDir(sourceDir, branch, false);
+							}
 							File combineWithSubDir = new File(combineFromRunDir, combineWithHazardExcludingSubDirName);
 							
 							if (combineWithSubDir.exists()) {
-								debug("Seeing if we can reuse existing curves excluding gridded seismicity from "+combineWithSubDir.getAbsolutePath());
+								if (verbose)
+									debug("Seeing if we can reuse existing curves excluding gridded seismicity from "
+											+combineWithSubDir.getAbsolutePath());
 								try {
 									combineWithExcludeCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, combineWithSubDir, curvesPrefix);
 								} catch (Exception e) {
-									debug("Can't reuse: "+e.getMessage());
+									if (verbose)
+										debug("Can't reuse: "+e.getMessage());
 								}
 							}
 							if (combineWithExcludeCurves == null) {
@@ -749,10 +780,13 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 									File subHazardDir = new File(subRunDir, combineWithHazardExcludingSubDirName);
 									if (subHazardDir.exists()) {
 										try {
-											debug("Seeing if we can reuse existing curves excluding gridded seismicity from "+subHazardDir.getAbsolutePath());
+											if (verbose)
+												debug("Seeing if we can reuse existing curves excluding gridded seismicity from "
+														+subHazardDir.getAbsolutePath());
 											combineWithExcludeCurves = SolHazardMapCalc.loadCurves(sol, gridRegion, periods, subHazardDir, curvesPrefix);
 										} catch (Exception e) {
-											debug("Can't reuse: "+e.getMessage());
+											if (verbose)
+												debug("Can't reuse: "+e.getMessage());
 										}
 									}
 								}
@@ -782,28 +816,10 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						
 						if (combineWithOnlyCurves == null) {
 							// see if this gridded seismicity exists already in an upstream branch
-							List<LogicTreeLevel<? extends LogicTreeNode>> gridLevels = new ArrayList<>();
-							List<LogicTreeNode> gridNodes = new ArrayList<>();
-							for (int i=0; i<branch.size(); i++) {
-								LogicTreeLevel<?> level = branch.getLevel(i);
-								LogicTreeNode node = branch.getValue(i);
-								if (GridSourceProvider.affectedByLevel(level)
-										|| node instanceof ScalarIMRsLogicTreeNode || node instanceof ScalarIMR_ParamsLogicTreeNode) {
-									gridLevels.add(level);
-									gridNodes.add(branch.getValue(i));
-								}
-							}
-							if (gridLevels.size() < branch.size()) {
+							File subHazardDir = getGriddedOnlyHazardDir(branch, sourceDir, combineFromRunDir);
+							if (subHazardDir != null) {
 								// gridded siesmicity might exist upstream
-								LogicTreeBranch<LogicTreeNode> subBranch = new LogicTreeBranch<>(gridLevels, gridNodes);
-								File subRunDir = getSolDir(sourceDir == null ? outputDir : sourceDir, subBranch, false);
-								File subHazardDir = new File(subRunDir, combineWithHazardBGOnlySubDirName);
-								if (combineFromRunDir != null && !subHazardDir.exists()) {
-									// try our dir, we were probably combining with a fault run and might have gridded here
-									subRunDir = getSolDir(outputDir, subBranch, false);
-									subHazardDir = new File(subRunDir, combineWithHazardBGOnlySubDirName);
-								}
-								debug("gridLevels: "+gridLevels.size()+"/"+branch.size()+"; testing dir: "+subHazardDir.getAbsolutePath());
+								debug("testing gridLevels dir: "+subHazardDir.getAbsolutePath());
 								if (subHazardDir.exists()) {
 									try {
 										debug("Seeing if we can reuse existing curves with only gridded seismicity from "+subHazardDir.getAbsolutePath());
@@ -862,7 +878,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					combineWithOnlyCurves = SolHazardMapCalc.forCurves(sol, gridRegion, periods, curves);
 					if (gridSeisOp == IncludeBackgroundOption.ONLY)
 						// we'll probably be combining later, write out the curves
-						combineWithOnlyCurves.writeCurvesCSVs(hazardSubDir, curvesPrefix, true);
+						combineWithOnlyCurves.writeCurvesCSVs(hazardOutDir, curvesPrefix, true);
 				}
 				
 				if (gridSeisOp == IncludeBackgroundOption.INCLUDE && combineWithOnlyCurves != null && combineWithExcludeCurves != null) {
@@ -903,7 +919,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						combCurvesList.add(combCurves);
 					}
 					calc = SolHazardMapCalc.forCurves(sol, gridRegion, periods, combCurvesList);
-					calc.writeCurvesCSVs(hazardSubDir, curvesPrefix, true);
+					calc.writeCurvesCSVs(hazardOutDir, curvesPrefix, true);
 				} else if (calc == null && gridSeisOp == IncludeBackgroundOption.ONLY && combineWithOnlyCurves != null) {
 					calc = combineWithOnlyCurves;
 				}
@@ -947,7 +963,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				calc.setUseProxyRups(!noProxyRups);
 				
 				calc.calcHazardCurves(getNumThreads(), combineWithCurves);
-				calc.writeCurvesCSVs(hazardSubDir, curvesPrefix, true);
+				calc.writeCurvesCSVs(hazardOutDir, curvesPrefix, true);
 			}
 			
 			checkInitRunningMean();
@@ -979,10 +995,38 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					
 					String prefix = mapPrefix(period, rp);
 					
-					AbstractXYZ_DataSet.writeXYZFile(map, new File(hazardSubDir, prefix+".txt"));
+					AbstractXYZ_DataSet.writeXYZFile(map, new File(hazardOutDir, prefix+".txt"));
 				}
 			}
 		}
+	}
+	
+	private File getGriddedOnlyHazardDir(LogicTreeBranch<?> branch, File sourceDir, File combineFromRunDir) {
+		// see if this gridded seismicity exists already in an upstream branch
+		List<LogicTreeLevel<? extends LogicTreeNode>> gridLevels = new ArrayList<>();
+		List<LogicTreeNode> gridNodes = new ArrayList<>();
+		for (int i=0; i<branch.size(); i++) {
+			LogicTreeLevel<?> level = branch.getLevel(i);
+			LogicTreeNode node = branch.getValue(i);
+			if (GridSourceProvider.affectedByLevel(level)
+					|| node instanceof ScalarIMRsLogicTreeNode || node instanceof ScalarIMR_ParamsLogicTreeNode) {
+				gridLevels.add(level);
+				gridNodes.add(branch.getValue(i));
+			}
+		}
+		if (gridLevels.size() < branch.size()) {
+			// gridded siesmicity might exist upstream
+			LogicTreeBranch<LogicTreeNode> subBranch = new LogicTreeBranch<>(gridLevels, gridNodes);
+			File subRunDir = getSolDir(sourceDir == null ? outputDir : sourceDir, subBranch, false);
+			File subHazardDir = new File(subRunDir, combineWithHazardBGOnlySubDirName);
+			if (combineFromRunDir != null && !subHazardDir.exists()) {
+				// try our dir, we were probably combining with a fault run and might have gridded here
+				subRunDir = getSolDir(outputDir, subBranch, false);
+				subHazardDir = new File(subRunDir, combineWithHazardBGOnlySubDirName);
+			}
+			return subHazardDir;
+		}
+		return null;
 	}
 	
 	public static Options createOptions() {

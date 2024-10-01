@@ -22,7 +22,7 @@ public class PRVI25_RegionLoader {
 	 * @see NSHM23_SeisSmoothingAlgorithms
 	 * 
 	 */
-	public enum SeismicityRegions implements NSHM23_BaseRegion {
+	public enum PRVI25_SeismicityRegions implements NSHM23_BaseRegion {
 		CAR_INTERFACE("CAR_Interface.geojson"),
 		CAR_INTRASLAB("CAR_Intraslab.geojson"),
 		CRUSTAL("PRVI_Crustal_Grid.geojson"),
@@ -31,7 +31,7 @@ public class PRVI25_RegionLoader {
 		
 		private String fileName;
 
-		private SeismicityRegions(String fileName) {
+		private PRVI25_SeismicityRegions(String fileName) {
 			this.fileName = fileName;
 		}
 		
@@ -56,11 +56,11 @@ public class PRVI25_RegionLoader {
 	
 	public static Region loadPRVI_ModelBroad() throws IOException {
 //		return new Region(new Location(16.5d, -70d), new Location(20, -62));
-		return SeismicityRegions.CRUSTAL.load();
+		return PRVI25_SeismicityRegions.CRUSTAL.load();
 	}
 
 	public static void main(String[] args) throws IOException {
-		for (SeismicityRegions seisReg : SeismicityRegions.values())
+		for (PRVI25_SeismicityRegions seisReg : PRVI25_SeismicityRegions.values())
 			seisReg.load();
 	}
 

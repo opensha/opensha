@@ -26,7 +26,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.SeismicityRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
@@ -44,10 +44,10 @@ import com.google.common.collect.Table;
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum PRVI25_SeisSmoothingAlgorithms implements LogicTreeNode {
 	
-	ADAPTIVE("Adaptive Kernel", "Adaptive", 0.6d),
-	FIXED("Fixed Kernel", "Fixed", 0.4d),
+	ADAPTIVE("Adaptive Kernel", "Adaptive", 0.5d),
+	FIXED("Fixed Kernel", "Fixed", 0.5d),
 	AVERAGE("Average", "Average", 0d) {
-		public GriddedGeoDataSet loadXYZ(SeismicityRegions region,
+		public GriddedGeoDataSet loadXYZ(PRVI25_SeismicityRegions region,
 				PRVI25_DeclusteringAlgorithms declusteringAlg) throws IOException {
 			List<GriddedGeoDataSet> xyzs = new ArrayList<>();
 			List<Double> weights = new ArrayList<>();
@@ -75,7 +75,7 @@ public enum PRVI25_SeisSmoothingAlgorithms implements LogicTreeNode {
 	
 	public static String MODEL_DATE = "2024_07_12";
 	
-	private String getResourceName(SeismicityRegions region, PRVI25_DeclusteringAlgorithms declusteringAlg) {
+	private String getResourceName(PRVI25_SeismicityRegions region, PRVI25_DeclusteringAlgorithms declusteringAlg) {
 		return NSHM23_SS_PATH_PREFIX+MODEL_DATE+"/"+region.name()+"/"+declusteringAlg.name()+"_"+name()+".csv";
 	}
 	
@@ -99,12 +99,12 @@ public enum PRVI25_SeisSmoothingAlgorithms implements LogicTreeNode {
 		return avg;
 	}
 	
-	public double[] load(SeismicityRegions region,
+	public double[] load(PRVI25_SeismicityRegions region,
 			PRVI25_DeclusteringAlgorithms declusteringAlg) throws IOException {
 		return loadXYZ(region, declusteringAlg).getValues();
 	}
 	
-	private Table<SeismicityRegions, PRVI25_DeclusteringAlgorithms, GriddedGeoDataSet> xyzCache;
+	private Table<PRVI25_SeismicityRegions, PRVI25_DeclusteringAlgorithms, GriddedGeoDataSet> xyzCache;
 	
 	public static void clearCache() {
 		for (PRVI25_SeisSmoothingAlgorithms smooth : values()) {
@@ -118,7 +118,7 @@ public enum PRVI25_SeisSmoothingAlgorithms implements LogicTreeNode {
 	private boolean WRITE_UNMAPPED_GRIDS = false;
 	private boolean WRITE_UNMAPPED_ALWAYS = false;
 	
-	public synchronized GriddedGeoDataSet loadXYZ(SeismicityRegions region,
+	public synchronized GriddedGeoDataSet loadXYZ(PRVI25_SeismicityRegions region,
 			PRVI25_DeclusteringAlgorithms declusteringAlg) throws IOException {
 		if (xyzCache == null)
 			xyzCache = HashBasedTable.create();
@@ -231,7 +231,7 @@ public enum PRVI25_SeisSmoothingAlgorithms implements LogicTreeNode {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		for (SeismicityRegions region : SeismicityRegions.values()) {
+		for (PRVI25_SeismicityRegions region : PRVI25_SeismicityRegions.values()) {
 			for (PRVI25_DeclusteringAlgorithms alg : PRVI25_DeclusteringAlgorithms.values()) {
 				if (alg == PRVI25_DeclusteringAlgorithms.AVERAGE)
 					continue;

@@ -64,7 +64,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	private static final IncludeBackgroundOption GRID_SEIS_DEFAULT = IncludeBackgroundOption.INCLUDE;
 	private IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
 	
-	private Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmms;
+	private Map<TectonicRegionType, AttenRelRef> gmms;
 	
 	private SourceFilterManager sourceFilters;
 	
@@ -128,6 +128,11 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		sourceFilters = SolHazardMapCalc.getSourceFilters(cmd);
 		
 		gmms = SolHazardMapCalc.getGMMs(cmd);
+		if (rank == 0) {
+			debug("GMMs:");
+			for (TectonicRegionType trt : gmms.keySet())
+				debug("\tGMM for "+trt.name()+": "+gmms.get(trt).getName());
+		}
 		
 		if (cmd.hasOption("periods")) {
 			List<Double> periodsList = new ArrayList<>();

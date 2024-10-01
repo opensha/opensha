@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 
 import org.opensha.commons.data.IntegerSampler.ExclusionIntegerSampler;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
@@ -27,8 +28,10 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInve
 import org.opensha.sha.earthquake.faultSysSolution.inversion.GridSourceProviderFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionConfiguration;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.InversionSolver;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.ConstraintWeightingType;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.InversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.JumpProbabilityConstraint;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.constraints.impl.MFDInversionConstraint;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.GenerationFunctionType;
@@ -36,6 +39,7 @@ import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.params.Nonnegati
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
 import org.opensha.sha.earthquake.faultSysSolution.modules.PaleoseismicConstraintData;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
@@ -53,6 +57,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.prob.RuptureProbabilityCalc.BinaryRuptureProbabilityCalc;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
@@ -75,9 +80,12 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.ClassicModelInvers
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTreeBranch;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_RegionalSeismicity;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionFaultModels;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
@@ -948,6 +956,51 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	@Override
 	public void preGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
 		PRVI25_GridSourceBuilder.doPreGridBuildHook(sol, faultBranch);
+	}
+	
+	public static class LimitCrustalBelowObserved extends PRVI25_InvConfigFactory {
+		
+		static double LIMIT_FRACT = 0.9;
+		static double WEIGHT = 1000d;
+
+		@Override
+		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
+				int threads) {
+			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
+			
+			EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(rupSet.getMaxMag());
+			IncrementalMagFreqDist obsMFD = PRVI25_RegionalSeismicity.PREFFERRED.build(PRVI25_SeismicityRegions.CRUSTAL, refMFD,
+					refMFD.getX(refMFD.getClosestXIndex(rupSet.getMaxMag())));
+			RuptureSubSetMappings subsetMappings = rupSet.getModule(RuptureSubSetMappings.class);
+			if (LIMIT_FRACT != 1d)
+				obsMFD.scale(LIMIT_FRACT);
+			if (subsetMappings != null) {
+				// we're inverting a subset, need to reduce
+				IncrementalMagFreqDist subsetTargets = rupSet.requireModule(InversionTargetMFDs.class).getTotalOnFaultSupraSeisMFD();
+				IncrementalMagFreqDist origTargets = subsetMappings.getOrigRupSet().requireModule(InversionTargetMFDs.class).getTotalOnFaultSupraSeisMFD();
+				Preconditions.checkState(subsetTargets.getMinX() == origTargets.getMinX());
+				Preconditions.checkState(subsetTargets.getMinX() == obsMFD.getMinX());
+				for (int i=0; i<obsMFD.size()&&i<subsetTargets.size(); i++) {
+					double subsetRate = subsetTargets.getY(i);
+					if (subsetRate > 0d) {
+						double origRate = origTargets.getY(i);
+						double obsRate = obsMFD.getY(i);
+//						if (origRate > obsRate) {
+							// need to reduce
+							obsMFD.set(i, obsRate * subsetRate/origRate);
+//						}
+					}
+				}
+			}
+			
+			MFDInversionConstraint constraint = new MFDInversionConstraint(
+					rupSet, WEIGHT, true, ConstraintWeightingType.NORMALIZED, List.of(obsMFD));
+			
+			config = InversionConfiguration.builder(config).add(constraint).build();
+			
+			return config;
+		}
+		
 	}
 
 }

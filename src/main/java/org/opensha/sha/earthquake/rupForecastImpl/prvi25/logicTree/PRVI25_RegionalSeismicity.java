@@ -25,7 +25,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.PRVI25_InvConfigFactory;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.SeismicityRegions;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -44,7 +44,7 @@ import com.google.common.base.Preconditions;
 public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 	LOW("Lower Seismicity Bound (p2.5)", "Low", 0.13d) {
 		@Override
-		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
+		public IncrementalMagFreqDist build(PRVI25_SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			if (hasRegion(region)) {
 				// lower is index 1
 				double rate = loadRate(region, 1);
@@ -56,7 +56,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 	},
 	PREFFERRED("Preffered Seismicity Rate", "Preferred", 0.74d) {
 		@Override
-		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
+		public IncrementalMagFreqDist build(PRVI25_SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			if (hasRegion(region)) {
 				// preferred is index 0
 				double rate = loadRate(region, 0);
@@ -68,7 +68,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 	},
 	HIGH("Upper Seismicity Bound (p97.5)", "High", 0.13d) {
 		@Override
-		public IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
+		public IncrementalMagFreqDist build(PRVI25_SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 			if (hasRegion(region)) {
 				// upper is index 2
 				double rate = loadRate(region, 2);
@@ -79,7 +79,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 		}
 	};
 	
-	public static String RATE_FILE_NAME = "rates_2024_07_03.csv";
+	public static String RATE_FILE_NAME = "rates_2024_09_04.csv";
 	private static final String RATES_PATH_PREFIX = "/data/erf/prvi25/seismicity/rates/";
 	
 	private static Map<String, double[]> ratesMap;
@@ -126,17 +126,17 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 		}
 	}
 	
-	private static boolean hasRegion(SeismicityRegions region) {
+	private static boolean hasRegion(PRVI25_SeismicityRegions region) {
 		checkLoadRates();
 		return ratesMap.containsKey(region.name());
 	}
 	
-	private static double loadRate(SeismicityRegions region, int index) {
+	private static double loadRate(PRVI25_SeismicityRegions region, int index) {
 		checkLoadRates();
 		return ratesMap.get(region.name())[index];
 	}
 	
-	private static double loadBVal(SeismicityRegions region, int index) {
+	private static double loadBVal(PRVI25_SeismicityRegions region, int index) {
 		checkLoadRates();
 		return bValsMap.get(region.name())[index];
 	}
@@ -151,7 +151,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 	 * @return
 	 */
 	private static IncrementalMagFreqDist adjustForCrossover(GutenbergRichterMagFreqDist gr, boolean lower,
-			SeismicityRegions region, double mMax) {
+			PRVI25_SeismicityRegions region, double mMax) {
 		IncrementalMagFreqDist pref = PREFFERRED.build(region, gr, mMax);
 		IncrementalMagFreqDist ret = new IncrementalMagFreqDist(gr.getMinX(), gr.getMaxX(), gr.size());
 		
@@ -191,11 +191,11 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 		this.weight = weight;
 	}
 	
-	public abstract IncrementalMagFreqDist build(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax);
+	public abstract IncrementalMagFreqDist build(PRVI25_SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax);
 	
 	private static final DecimalFormat oDF = new DecimalFormat("0.##");
 	
-	public static UncertainBoundedIncrMagFreqDist getBounded(SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
+	public static UncertainBoundedIncrMagFreqDist getBounded(PRVI25_SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax) {
 		IncrementalMagFreqDist upper = HIGH.build(region, refMFD, mMax);
 		IncrementalMagFreqDist lower = LOW.build(region, refMFD, mMax);
 		IncrementalMagFreqDist pref = PREFFERRED.build(region, refMFD, mMax);
@@ -218,7 +218,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 		return boundName;
 	}
 	
-	public static UncertainBoundedIncrMagFreqDist getRemapped(Region region, SeismicityRegions seisRegion, PRVI25_DeclusteringAlgorithms declustering,
+	public static UncertainBoundedIncrMagFreqDist getRemapped(Region region, PRVI25_SeismicityRegions seisRegion, PRVI25_DeclusteringAlgorithms declustering,
 			PRVI25_SeisSmoothingAlgorithms smoothing, EvenlyDiscretizedFunc refMFD, double mMax) throws IOException {
 		IncrementalMagFreqDist upper = null;
 		IncrementalMagFreqDist lower = null;
@@ -333,7 +333,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 	public static void main(String[] args) throws IOException {
 		double mMax = 7.6;
 		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(mMax);
-		for (SeismicityRegions seisReg : SeismicityRegions.values()) {
+		for (PRVI25_SeismicityRegions seisReg : PRVI25_SeismicityRegions.values()) {
 			IncrementalMagFreqDist pref = PREFFERRED.build(seisReg, refMFD, mMax);
 			IncrementalMagFreqDist low = LOW.build(seisReg, refMFD, mMax);
 			IncrementalMagFreqDist high = HIGH.build(seisReg, refMFD, mMax);

@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -100,6 +101,9 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 	private Map<String, AveragingAccumulator<FaultGridAssociations>> nodeFaultGridAveragers;
 	private Map<String, BranchRegionalMFDs.Builder> nodeRegionalMFDsBuilders;
 	
+	private float sltMinMag = 0f;
+	private String sltMagSuffix;
+	
 	public MPJ_GridSeisBranchBuilder(CommandLine cmd) throws IOException {
 		super(cmd);
 		
@@ -111,6 +115,13 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		
 		solsDir = new File(cmd.getOptionValue("sol-dir"));
 		Preconditions.checkState(solsDir.exists());
+		
+		if (cmd.hasOption("slt-min-mag"))
+			sltMinMag = Float.parseFloat(cmd.getOptionValue("slt-min-mag"));
+		if (sltMinMag > 0f)
+			sltMagSuffix = "_m"+new DecimalFormat("0.##").format(sltMinMag);
+		else
+			sltMagSuffix = "";
 		
 		try {
 			@SuppressWarnings("unchecked")
@@ -221,6 +232,16 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		} else {
 			debug("All "+levelsAffecting.size()+" levels affect gridded seismicity");
 		}
+	}
+	
+	private File getFilteredAvgFile(File dir) {
+		String name = AVG_GRID_SIE_PROV_ARCHIVE_NAME;
+		if (sltMagSuffix.isBlank())
+			return new File(dir, name);
+		int zipIndex = name.indexOf(".zip");
+		Preconditions.checkState(zipIndex > 0);
+		name = name.substring(0, zipIndex)+sltMagSuffix+name.substring(zipIndex);
+		return new File(dir, name);
 	}
 	
 	private class AsyncGridSeisCopier extends AsyncPostBatchHook {
@@ -441,7 +462,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					}
 					Preconditions.checkState(gridSeisDir.exists());
 					
-					File avgGridFile = new File(gridSeisDir, AVG_GRID_SIE_PROV_ARCHIVE_NAME);
+					File avgGridFile = sltMinMag > 0f ? getFilteredAvgFile(gridSeisDir) : new File(gridSeisDir, AVG_GRID_SIE_PROV_ARCHIVE_NAME);
 					
 					String baPrefix = AbstractAsyncLogicTreeWriter.getBA_prefix(origBranch);
 					Preconditions.checkNotNull(baPrefix);
@@ -487,7 +508,10 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 							int fullIndex = index*gridSeisOnlyTree.size() + g;
 							Map<String, String> fullMappings = fullBranchMappings == null ? null : fullBranchMappings.get(fullIndex);
 							debug("AsyncLogicTree: copying branch grid source provider: "+gridSeisBranch);
-							File gridSeisFile = new File(gridSeisDir, gridSeisBranch.buildFileName()+".zip");
+							String branchFileName = gridSeisBranch.buildFileName();
+							if (sltMinMag > 0f)
+								branchFileName += sltMagSuffix;
+							File gridSeisFile = new File(gridSeisDir, branchFileName+".zip");
 							
 							ZipFile sourceZip = new ZipFile(gridSeisFile);
 							
@@ -775,6 +799,14 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 							archive.addModule(avgGridProv);
 							archive.write(avgFile);
 							
+							if (sltMinMag > 0f) {
+								// write filtered average
+								File filteredAvgFile = getFilteredAvgFile(gridSeisDir);
+								archive = new ModuleArchive<>();
+								archive.addModule(avgGridProv.getAboveMinMag(sltMinMag));
+								archive.write(filteredAvgFile);
+							}
+							
 							// write regional mfds
 							File mfdsFile = new File(gridSeisDir, GRID_BRANCH_REGIONAL_MFDS_NAME);
 							archive = new ModuleArchive<>();
@@ -905,7 +937,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 			LogicTreeBranch<?> combinedBranch = getCombinedBranch(origBranch, gridSeisBranch);
 			
 			debug("Building for combined branch "+gridIndex+"/"+gridSeisOnlyTree.size()+": "+combinedBranch);
-			
+
 			File outputFile = new File(gridSeisDir, gridSeisBranch.buildFileName()+".zip");
 			
 			GridSourceProvider gridProv = null;
@@ -935,6 +967,42 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					throw ExceptionUtils.asRuntimeException(e);
 				}
 			}
+
+			
+			if (sltMinMag > 0f) {
+				GridSourceProvider filteredGridProv = null;
+				File filteredOutputFile = new File(gridSeisDir, gridSeisBranch.buildFileName()+sltMagSuffix+".zip");
+				if (filteredOutputFile.exists() && !rebuild) {
+					// try loading the filtered view
+					try {
+						ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(filteredOutputFile);
+						filteredGridProv = archive.getModule(GridSourceProvider.class);
+					} catch (Exception e) {
+						// rebuild it
+						debug("Couldn't load prior filtered, will rebuild: "+e.getMessage());
+					}
+				}
+				
+				if (filteredGridProv == null)
+					filteredGridProv = gridProv.getAboveMinMag(sltMinMag);
+				
+				if (write) {
+					ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>();
+					archive.addModule(filteredGridProv);
+					try {
+						archive.write(filteredOutputFile);
+					} catch (Exception e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
+				}
+			}
+			
+//			GridSourceProvider filteredGridProv;
+//			if (sltMinMag > 0f) {
+//				filtere
+//			} else {
+//				filteredGridProv = gridProv;
+//			}
 			
 			synchronized (outputs) {
 				double griddedWeight = gridSeisBranch.getOrigBranchWeight();
@@ -1259,7 +1327,10 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 								@Override
 								public GridSourceProvider call() throws Exception {
 									ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(avgFile);
-									return archive.requireModule(GridSourceProvider.class);
+									GridSourceProvider gridProv = archive.requireModule(GridSourceProvider.class);
+									if (sltMinMag > 0d)
+										gridProv = gridProv.getAboveMinMag(sltMinMag);
+									return gridProv;
 								}
 							}));
 						} else {
@@ -1445,6 +1516,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 		ops.addOption(null, "num-samples-per-sol", true, "If --write-rand-tree is enabled, will write this many random "
 				+ "gridded seismicity samples for each solution");
 		ops.addOption(null, "rebuild", false, "Flag to force rebuild of all providers");
+		ops.addOption(null, "slt-min-mag", true, "Minimum magnitude written in solution logic tree files (default is unfiltered)");
 		
 		return ops;
 	}

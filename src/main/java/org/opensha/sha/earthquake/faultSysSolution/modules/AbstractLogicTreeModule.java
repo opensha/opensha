@@ -231,6 +231,10 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		Gson gson = new GsonBuilder().setPrettyPrinting().create();
 		JsonWriter writer = gson.newJsonWriter(out);
 		
+		double sumWeight = 0d;
+		for (int i=0; i<logicTree.size(); i++)
+			sumWeight += logicTree.getBranchWeight(i);
+		
 		writer.beginArray();
 		for (int i=0; i<logicTree.size(); i++) {
 			writer.beginObject();
@@ -244,6 +248,11 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 					writer.value(node.getFilePrefix());
 			}
 			writer.endArray();
+			
+			double weight = logicTree.getBranchWeight(i);
+			if ((float)sumWeight != 1f)
+				weight /= sumWeight;
+			writer.name("weight").value(weight);
 			
 			Map<String, String> mappings = branchMappings.get(i);
 			writer.name("mappings").beginObject();
@@ -301,6 +310,9 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 					}
 					in.endObject();
 					break;
+				case "weight":
+					in.skipValue();
+					break;
 
 				default:
 					throw new IllegalStateException("Unexpected JSON name: "+name);
@@ -348,6 +360,14 @@ public abstract class AbstractLogicTreeModule implements ArchivableModule {
 		Gson gson = new GsonBuilder().registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
 		InputStreamReader reader = new InputStreamReader(logicTreeIS);
 		setLogicTree(gson.fromJson(reader, LogicTree.class));
+	}
+	
+	protected static void copyEntry(ZipFile zip, ZipEntry entry, ZipOutputStream zout) throws IOException {
+		zout.putNextEntry(entry);
+		BufferedInputStream bin = new BufferedInputStream(zip.getInputStream(entry));
+		bin.transferTo(zout);
+		zout.flush();
+		zout.closeEntry();
 	}
 	
 	protected LogicTreeLevel<?> getLevelForType(Class<? extends LogicTreeNode> type) {
