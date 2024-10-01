@@ -311,15 +311,11 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private class AsyncHazardWriter extends AsyncPostBatchHook {
 		
 		private ArchiveOutput zout;
-		private File destFile;
 		
 		private double[] rankWeights;
 		
 		public AsyncHazardWriter(File destFile) throws IOException {
 			super(1);
-			this.destFile = destFile;
-//			workingFile = new File(destFile.getAbsolutePath()+".tmp");
-//			zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(workingFile)));
 			zout = new ArchiveOutput.ParallelZipFileOutput(destFile, 4, false);
 			
 			rankWeights = new double[size];
