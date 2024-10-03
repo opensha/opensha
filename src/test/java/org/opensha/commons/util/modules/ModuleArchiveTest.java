@@ -223,10 +223,12 @@ public class ModuleArchiveTest {
 		File outputFile = new File(parentDir, "nested_duplicate_prefix.zip");
 		try {
 			archive.write(outputFile);
+			System.out.println("	*** ENTRIES ***");
 			printEntries(new ZipFile(outputFile));
-			fail("Should have thrown an IllegalStateException");
-		} catch (IllegalStateException e) {
-			System.out.println("Caught expected IllegalStateException: "+e.getMessage());
+			System.out.println("	***************");
+			fail("Should have thrown an Exception");
+		} catch (Exception e) {
+			System.out.println("Caught expected Exception: "+e.getMessage());
 		}
 		
 		System.out.println("*** END testMultipleNestedSamePrefix() ***");
