@@ -648,16 +648,19 @@ public class ModuleArchive<E extends OpenSHA_Module> extends ModuleContainer<E> 
 
 		@Override
 		public void transferFrom(ArchiveInput input, String name) throws IOException {
+			this.writtenEntries.add(name);
 			out.transferFrom(input, name);
 		}
 		
 		@Override
 		public void transferFrom(ArchiveInput input, String sourceName, String destName) throws IOException {
+			this.writtenEntries.add(destName);
 			out.transferFrom(input, sourceName, destName);
 		}
 
 		@Override
 		public void transferFrom(InputStream is, String name) throws IOException {
+			this.writtenEntries.add(name);
 			out.transferFrom(is, name);
 		}
 
