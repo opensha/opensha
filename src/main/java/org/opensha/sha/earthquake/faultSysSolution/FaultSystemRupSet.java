@@ -227,6 +227,19 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @throws IOException
 	 */
 	public static FaultSystemRupSet load(ArchiveInput input) throws IOException {
+		if (input.hasEntry("rup_sections.bin")) {
+			System.err.println("WARNING: this is a legacy fault system rupture set, that file format is deprecated. "
+					+ "Will attempt to load it using the legacy file loader. "
+					+ "See https://opensha.org/File-Formats for more information.");
+			Preconditions.checkState(input instanceof ArchiveInput.FileBacked,
+					"Can only do a deprecated load from zip files (this isn't file-backed)");
+			try {
+				return U3FaultSystemIO.loadRupSetAsApplicable(((ArchiveInput.FileBacked)input).getInputFile());
+			} catch (Exception e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+		
 		ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(input, FaultSystemRupSet.class);
 		
 		FaultSystemRupSet rupSet = archive.getModule(FaultSystemRupSet.class);

@@ -185,7 +185,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 */
 	public static FaultSystemSolution load(ZipFile zip, FaultSystemRupSet rupSet) throws IOException {
 		// see if it's an old rupture set
-		if (rupSet != null && zip.getEntry("rup_sections.bin") != null && zip.getEntry("rates.bin") != null) {
+		if (rupSet == null && zip.getEntry("rup_sections.bin") != null && zip.getEntry("rates.bin") != null) {
 			System.err.println("WARNING: this is a legacy fault sytem solution, that file format is deprecated. "
 					+ "Will attempt to load it using the legacy file loader. "
 					+ "See https://opensha.org/File-Formats for more information.");
@@ -221,6 +221,19 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @throws IOException
 	 */
 	public static FaultSystemSolution load(ArchiveInput input, FaultSystemRupSet rupSet) throws IOException {
+		if (rupSet == null && input.hasEntry("rup_sections.bin") && input.hasEntry("rates.bin")) {
+			System.err.println("WARNING: this is a legacy fault sytem solution, that file format is deprecated. "
+					+ "Will attempt to load it using the legacy file loader. "
+					+ "See https://opensha.org/File-Formats for more information.");
+			Preconditions.checkState(input instanceof ArchiveInput.FileBacked,
+					"Can only do a deprecated load from zip files (this isn't file-backed)");
+			try {
+				return U3FaultSystemIO.loadSolAsApplicable(((ArchiveInput.FileBacked)input).getInputFile());
+			} catch (DocumentException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+		
 		ModuleArchive<OpenSHA_Module> archive;
 		if (rupSet == null) {
 			archive = new ModuleArchive<>(input, FaultSystemSolution.class);
