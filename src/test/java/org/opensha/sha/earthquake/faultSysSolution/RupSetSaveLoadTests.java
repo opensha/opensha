@@ -112,32 +112,42 @@ public class RupSetSaveLoadTests {
 
 	@Test
 	public void testLoadOldRupSetAsNew() {
-		FaultSystemRupSet rupSet = null;
-		try {
-			rupSet = FaultSystemRupSet.load(demoOldRupSetZip);
-		} catch (Exception e) {
-			fail("Failed to load old rupture set with new load method: "+e.getMessage());
+		for (boolean directZip : new boolean[] {false, true}) {
+			FaultSystemRupSet rupSet = null;
+			try {
+				if (directZip)
+					rupSet = FaultSystemRupSet.load(demoOldRupSetZip);
+				else
+					rupSet = FaultSystemRupSet.load(new File(demoOldRupSetZip.getName()));
+			} catch (Exception e) {
+				fail("Failed to load old rupture set with new load method: "+e.getMessage());
+			}
+			assertNotNull(rupSet);
+			assertTrue("Old rupture set should have been loaded in as a U3 rup set", rupSet instanceof U3FaultSystemRupSet);
+			assertTrue("Old isn't compatible with new", demoRupSet.isEquivalentTo(rupSet));
 		}
-		assertNotNull(rupSet);
-		assertTrue("Old rupture set should have been loaded in as a U3 rup set", rupSet instanceof U3FaultSystemRupSet);
-		assertTrue("Old isn't compatible with new", demoRupSet.isEquivalentTo(rupSet));
 	}
 
 	@Test
 	public void testLoadSolSetAsNew() {
-		FaultSystemSolution sol = null;
-		try {
-			sol = FaultSystemSolution.load(demoOldSolZip);
-		} catch (Exception e) {
-			fail("Failed to load old solution with new load method: "+e.getMessage());
+		for (boolean directZip : new boolean[] {false, true}) {
+			FaultSystemSolution sol = null;
+			try {
+				if (directZip)
+					sol = FaultSystemSolution.load(demoOldSolZip);
+				else
+					sol = FaultSystemSolution.load(new File(demoOldSolZip.getName()));
+			} catch (Exception e) {
+				fail("Failed to load old solution with new load method: "+e.getMessage());
+			}
+			assertNotNull(sol);
+			assertTrue("Old solution set should have been loaded in as a U3 sol", sol instanceof U3FaultSystemSolution);
+			assertTrue("Old isn't compatible with new", demoRupSet.isEquivalentTo(sol.getRupSet()));
+			double[] oldRates = sol.getRateForAllRups();
+			double[] newRates = demoSol.getRateForAllRups();
+			for (int r=0; r<oldRates.length; r++)
+				assertEquals("Old vs new rate mismatch for rupture "+r, oldRates[r], newRates[r], 1e-16);
 		}
-		assertNotNull(sol);
-		assertTrue("Old solution set should have been loaded in as a U3 sol", sol instanceof U3FaultSystemSolution);
-		assertTrue("Old isn't compatible with new", demoRupSet.isEquivalentTo(sol.getRupSet()));
-		double[] oldRates = sol.getRateForAllRups();
-		double[] newRates = demoSol.getRateForAllRups();
-		for (int r=0; r<oldRates.length; r++)
-			assertEquals("Old vs new rate mismatch for rupture "+r, oldRates[r], newRates[r], 1e-16);
 	}
 
 	@Test

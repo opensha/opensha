@@ -5,6 +5,7 @@ import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -220,7 +221,7 @@ abstract class AbstractBranchMFDs implements FileBackedModule {
 	}
 
 	@Override
-	public void writeToStream(BufferedOutputStream out) throws IOException {
+	public void writeToStream(OutputStream out) throws IOException {
 		OutputStreamWriter writer = new OutputStreamWriter(out);
 		
 		int numBranches = branchSectMFDs.length;

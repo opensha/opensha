@@ -18,6 +18,8 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.ModuleContainer;
@@ -119,8 +121,22 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		getArchive().write(file);
 	}
 	
+	/**
+	 * Writes this solution to the give {@link ArchiveOutput} This is an alias to <code>getArchive().write(ModuleArchiveOutput)</code>.
+	 * See {@link #getArchive()}.
+	 * @param output
+	 * @throws IOException
+	 */
+	public void write(ArchiveOutput output) throws IOException {
+		getArchive().write(output);
+	}
+	
 	public static boolean isSolution(ZipFile zip) {
 		return zip.getEntry("solution/"+RATES_FILE_NAME) != null || zip.getEntry("rates.bin") != null;
+	}
+	
+	public static boolean isSolution(ArchiveInput input) throws IOException {
+		return input.hasEntry("solution/"+RATES_FILE_NAME) || input.hasEntry("rates.bin");
 	}
 	
 	/**
@@ -131,7 +147,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @throws IOException
 	 */
 	public static FaultSystemSolution load(File file) throws IOException {
-		return load(new ZipFile(file));
+		return load(ArchiveInput.getDefaultInput(file));
 	}
 	
 	/**
@@ -144,7 +160,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @throws IOException
 	 */
 	public static FaultSystemSolution load(File file, FaultSystemRupSet rupSet) throws IOException {
-		return load(new ZipFile(file), rupSet);
+		return load(ArchiveInput.getDefaultInput(file), rupSet);
 	}
 
 	/**
@@ -168,30 +184,70 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @throws IOException
 	 */
 	public static FaultSystemSolution load(ZipFile zip, FaultSystemRupSet rupSet) throws IOException {
+		// see if it's an old rupture set
+		if (rupSet == null && zip.getEntry("rup_sections.bin") != null && zip.getEntry("rates.bin") != null) {
+			System.err.println("WARNING: this is a legacy fault sytem solution, that file format is deprecated. "
+					+ "Will attempt to load it using the legacy file loader. "
+					+ "See https://opensha.org/File-Formats for more information.");
+			try {
+				return U3FaultSystemIO.loadSolAsApplicable(zip, null);
+			} catch (DocumentException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+		return load(new ArchiveInput.ZipFileInput(zip), rupSet);
+	}
+	
+
+
+	/**
+	 * Loads a FaultSystemSolution from the given input
+	 * 
+	 * @param zip
+	 * @return
+	 * @throws IOException
+	 */
+	public static FaultSystemSolution load(ArchiveInput input) throws IOException {
+		return load(input, null);
+	}
+
+	/**
+	 * Loads a FaultSystemSolution from the given input, using the existing rupture set instead of the attached rupture set.
+	 * This can be useful for quickly loading many solutions based on the same rupture set.
+	 * 
+	 * @param zip
+	 * @param rupSet
+	 * @return
+	 * @throws IOException
+	 */
+	public static FaultSystemSolution load(ArchiveInput input, FaultSystemRupSet rupSet) throws IOException {
+		if (rupSet == null && input.hasEntry("rup_sections.bin") && input.hasEntry("rates.bin")) {
+			System.err.println("WARNING: this is a legacy fault sytem solution, that file format is deprecated. "
+					+ "Will attempt to load it using the legacy file loader. "
+					+ "See https://opensha.org/File-Formats for more information.");
+			Preconditions.checkState(input instanceof ArchiveInput.FileBacked,
+					"Can only do a deprecated load from zip files (this isn't file-backed)");
+			try {
+				return U3FaultSystemIO.loadSolAsApplicable(((ArchiveInput.FileBacked)input).getInputFile());
+			} catch (DocumentException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+		
 		ModuleArchive<OpenSHA_Module> archive;
 		if (rupSet == null) {
-			archive = new ModuleArchive<>(zip, FaultSystemSolution.class);
+			archive = new ModuleArchive<>(input, FaultSystemSolution.class);
 		} else {
-			archive = new ModuleArchive<>(zip);
+			archive = new ModuleArchive<>(input);
 			archive.addModule(rupSet);
 		}
 		
 		FaultSystemSolution sol = archive.getModule(FaultSystemSolution.class);
 		if (sol == null) {
-			// see if it's an old rupture set
-			if (zip.getEntry("rup_sections.bin") != null && zip.getEntry("rates.bin") != null) {
-				System.err.println("WARNING: this is a legacy fault sytem solution, that file format is deprecated. "
-						+ "Will attempt to load it using the legacy file loader. "
-						+ "See https://opensha.org/File-Formats for more information.");
-				try {
-					return U3FaultSystemIO.loadSolAsApplicable(zip, null);
-				} catch (DocumentException e) {
-					throw ExceptionUtils.asRuntimeException(e);
-				}
-			}
-			if (zip.getEntry("modules.json") == null
-					&& zip.getEntry("ruptures/"+FaultSystemRupSet.RUP_SECTS_FILE_NAME) != null
-					&& zip.getEntry("solution/rates.csv") != null) {
+			if (!input.hasEntry("modules.json") // doesn't have modules
+					// but does have rup sections and solution rates
+					&& input.hasEntry("ruptures/"+FaultSystemRupSet.RUP_SECTS_FILE_NAME)
+					&& input.hasEntry("solution/rates.csv")) {
 				// missing modules.json, try to load it as an unlisted module
 				System.err.println("WARNING: solution archive is missing modules.json, trying to load it anyway");
 				archive.loadUnlistedModule(FaultSystemRupSet.class, "ruptures/");
@@ -234,9 +290,9 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	@Override
-	public final void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+	public final void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 		// CSV Files
-		CSV_BackedModule.writeToArchive(buildRatesCSV(this), zout, entryPrefix, RATES_FILE_NAME);
+		CSV_BackedModule.writeToArchive(buildRatesCSV(this), output, entryPrefix, RATES_FILE_NAME);
 	}
 	
 	public static double[] loadRatesCSV(CSVFile<String> ratesCSV) {
@@ -249,14 +305,14 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	@Override
-	public final void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+	public final void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		Preconditions.checkNotNull(archive, "archive must be set before initialization");
 		if (rupSet == null)
 			rupSet = archive.getModule(FaultSystemRupSet.class);
 		Preconditions.checkNotNull(rupSet, "Rupture set not found in archive");
 		
 		System.out.println("\tLoading rates CSV...");
-		CSVFile<String> ratesCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, RATES_FILE_NAME);
+		CSVFile<String> ratesCSV = CSV_BackedModule.loadFromArchive(input, entryPrefix, RATES_FILE_NAME);
 		rates = loadRatesCSV(ratesCSV);
 		Preconditions.checkState(rates.length == rupSet.getNumRuptures(), "Unexpected number of rows in rates CSV");
 
@@ -265,14 +321,14 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			// added them manually)
 			
 			if (!hasAvailableModule(GridSourceProvider.class)) {
-				if (zip.getEntry(entryPrefix+MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME) != null) {
+				if (input.hasEntry(entryPrefix+MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME)) {
 					try {
 						System.out.println("Trying to load unlisted MFDGridSourceProvider module");
 						archive.loadUnlistedModule(MFDGridSourceProvider.Default.class, entryPrefix, this);
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
-				} else if (zip.getEntry(entryPrefix+GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME) != null) {
+				} else if (input.hasEntry(entryPrefix+GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)) {
 					try {
 						System.out.println("Trying to load unlisted GridSourceList module");
 						archive.loadUnlistedModule(GridSourceList.Precomputed.class, entryPrefix, this);
@@ -282,7 +338,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				}
 			}
 			
-			if (zip.getEntry(entryPrefix+RupMFDsModule.FILE_NAME) != null && !hasAvailableModule(RupMFDsModule.class)) {
+			if (input.hasEntry(entryPrefix+RupMFDsModule.FILE_NAME) && !hasAvailableModule(RupMFDsModule.class)) {
 				try {
 					System.out.println("Trying to load unlisted RupMFDsModule module");
 					archive.loadUnlistedModule(RupMFDsModule.class, entryPrefix, this);
@@ -291,7 +347,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				}
 			}
 			
-			if (zip.getEntry(entryPrefix+SubSeismoOnFaultMFDs.DATA_FILE_NAME) != null && !hasAvailableModule(SubSeismoOnFaultMFDs.class)) {
+			if (input.hasEntry(entryPrefix+SubSeismoOnFaultMFDs.DATA_FILE_NAME) && !hasAvailableModule(SubSeismoOnFaultMFDs.class)) {
 				try {
 					System.out.println("Trying to load unlisted SubSeismoOnFaultMFDs module");
 					archive.loadUnlistedModule(SubSeismoOnFaultMFDs.class, entryPrefix, this);
