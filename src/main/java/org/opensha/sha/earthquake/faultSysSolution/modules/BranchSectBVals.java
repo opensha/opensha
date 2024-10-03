@@ -172,12 +172,19 @@ public class BranchSectBVals implements ArchivableModule {
 	@Override
 	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 		writeBValCSV(FileBackedModule.initOutputStream(output, entryPrefix, SECT_FILE_NAME), sectBVals, false);
-		if (parentBVals != null)
+		output.closeEntry();
+		if (parentBVals != null) {
 			writeBValCSV(FileBackedModule.initOutputStream(output, entryPrefix, PARENT_FILE_NAME), parentBVals, true);
-		if (sectTargetBVals != null)
+			output.closeEntry();
+		}
+		if (sectTargetBVals != null) {
 			writeBValCSV(FileBackedModule.initOutputStream(output, entryPrefix, SECT_TARGET_FILE_NAME), sectTargetBVals, false);
-		if (parentTargetBVals != null)
+			output.closeEntry();
+		}
+		if (parentTargetBVals != null) {
 			writeBValCSV(FileBackedModule.initOutputStream(output, entryPrefix, PARENT_TARGET_FILE_NAME), parentTargetBVals, true);
+			output.closeEntry();
+		}
 	}
 	
 	private void writeBValCSV(OutputStream out, float[][] sectBVals, boolean parents) throws IOException {
