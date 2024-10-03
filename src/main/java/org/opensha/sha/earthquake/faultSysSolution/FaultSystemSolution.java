@@ -135,6 +135,10 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		return zip.getEntry("solution/"+RATES_FILE_NAME) != null || zip.getEntry("rates.bin") != null;
 	}
 	
+	public static boolean isSolution(ArchiveInput input) throws IOException {
+		return input.hasEntry("solution/"+RATES_FILE_NAME) || input.hasEntry("rates.bin");
+	}
+	
 	/**
 	 * Loads a FaultSystemSolution from a zip file
 	 * 

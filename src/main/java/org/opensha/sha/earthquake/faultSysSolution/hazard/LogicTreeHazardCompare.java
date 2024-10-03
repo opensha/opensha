@@ -90,6 +90,7 @@ import org.opensha.commons.util.Interpolate;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
+import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_LogicTreeHazardCalc;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
@@ -461,13 +462,13 @@ public class LogicTreeHazardCompare {
 		if (resultsFile == null) {
 			solTree = null;
 		} else {
-			ZipFile resultsZip = new ZipFile(resultsFile);
-			if (FaultSystemSolution.isSolution(resultsZip)) {
+			ArchiveInput resultsInput = ArchiveInput.getDefaultInput(resultsFile);
+			if (FaultSystemSolution.isSolution(resultsInput)) {
 				// single solution
-				FaultSystemSolution sol = FaultSystemSolution.load(resultsZip);
+				FaultSystemSolution sol = FaultSystemSolution.load(resultsInput);
 				solTree = new SolutionLogicTree.InMemory(sol, null);
 			} else {
-				solTree = SolutionLogicTree.load(resultsZip);
+				solTree = SolutionLogicTree.load(resultsInput);
 			}
 		}
 		

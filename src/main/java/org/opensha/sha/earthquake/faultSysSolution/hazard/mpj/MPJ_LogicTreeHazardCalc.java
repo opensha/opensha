@@ -42,6 +42,7 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
@@ -235,18 +236,18 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		if (cmd.hasOption("external-grid-prov")) {
 			File gpFile = new File(cmd.getOptionValue("external-grid-prov"));
 			Preconditions.checkState(gpFile.exists());
-			ZipFile zip = new ZipFile(gpFile);
+			ArchiveInput resultsInput = ArchiveInput.getDefaultInput(gpFile);
 			
-			if (FaultSystemSolution.isSolution(zip)) {
-				externalGridProv = FaultSystemSolution.load(zip).requireModule(GridSourceProvider.class);
+			if (FaultSystemSolution.isSolution(resultsInput)) {
+				externalGridProv = FaultSystemSolution.load(resultsInput).requireModule(GridSourceProvider.class);
 			} else {
-				ModuleArchive<OpenSHA_Module> avgArchive = new ModuleArchive<>(zip);
+				ModuleArchive<OpenSHA_Module> avgArchive = new ModuleArchive<>(resultsInput);
 				externalGridProv = avgArchive.requireModule(GridSourceProvider.class);
 			}
 			Preconditions.checkArgument(gridSeisOp != IncludeBackgroundOption.EXCLUDE,
 					"External grid provider was supplied, but background seismicity is disabled?");
 			
-			zip.close();
+			resultsInput.close();
 		}
 		
 		if (gridSeisOp != IncludeBackgroundOption.EXCLUDE) {
