@@ -22,6 +22,8 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.modules.FaultCubeAssociations;
@@ -506,12 +508,12 @@ public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, Arch
 	}
 
 	@Override
-	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-		new FaultCubeAssociations.Precomputed(this).writeToArchive(zout, entryPrefix);
+	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
+		new FaultCubeAssociations.Precomputed(this).writeToArchive(output, entryPrefix);
 	}
 
 	@Override
-	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+	public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		throw new IllegalStateException("Should be serialized back in as Precomputed");
 	}
 

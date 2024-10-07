@@ -37,7 +37,7 @@ public interface TextBackedModule extends FileBackedModule {
 	public void setText(String text);
 
 	@Override
-	default void writeToStream(BufferedOutputStream out) throws IOException {
+	default void writeToStream(OutputStream out) throws IOException {
 		writeToStream(out, getText());
 	}
 	

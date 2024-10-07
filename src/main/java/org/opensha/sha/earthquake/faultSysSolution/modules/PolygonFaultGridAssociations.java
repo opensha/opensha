@@ -16,6 +16,8 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
@@ -80,8 +82,8 @@ public interface PolygonFaultGridAssociations extends FaultGridAssociations {
 		private static final String ARCHIVE_SECT_POLYGONS_FILE_NAME = "sect_polygons.geojson";
 
 		@Override
-		public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-			super.writeToArchive(zout, entryPrefix);
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
+			super.writeToArchive(output, entryPrefix);
 			
 			// write polygons
 			List<Feature> features = new ArrayList<>();
@@ -94,19 +96,18 @@ public interface PolygonFaultGridAssociations extends FaultGridAssociations {
 				features.add(feature);
 			}
 			FeatureCollection collection = new FeatureCollection(features);
-			FileBackedModule.initEntry(zout, entryPrefix, ARCHIVE_SECT_POLYGONS_FILE_NAME);
-			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(zout));
+			BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(
+					FileBackedModule.initOutputStream(output, entryPrefix, ARCHIVE_SECT_POLYGONS_FILE_NAME)));
 			FeatureCollection.write(collection, writer);
 			writer.flush();
-			zout.flush();
-			zout.closeEntry();
+			output.closeEntry();
 		}
 
 		@Override
-		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
-			super.initFromArchive(zip, entryPrefix);
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
+			super.initFromArchive(input, entryPrefix);
 			
-			BufferedInputStream polysIS = FileBackedModule.getInputStream(zip, entryPrefix, ARCHIVE_SECT_POLYGONS_FILE_NAME);
+			BufferedInputStream polysIS = FileBackedModule.getInputStream(input, entryPrefix, ARCHIVE_SECT_POLYGONS_FILE_NAME);
 			InputStreamReader regionReader = new InputStreamReader(polysIS);
 			FeatureCollection features = FeatureCollection.read(regionReader);
 			

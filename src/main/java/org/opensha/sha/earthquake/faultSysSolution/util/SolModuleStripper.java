@@ -6,10 +6,14 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveInput.ApacheZipFileInput;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
@@ -26,6 +30,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSetSplitMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SlipAlongRuptureModel;
+import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -45,9 +50,13 @@ public class SolModuleStripper {
 	
 	public static Options createOptions() {
 		Options ops = new Options();
-		
+
 		ops.addOption(null, "grid-min-mag", true,
 				"Filter grid source provider to only include ruptures above this magnitude. Default is M"+(float)GRID_MIN_MAG_DEFAULT);
+		ops.addOption(null, "keep-rup-mfds", false,
+				"Flag to keep rupture MFDs (if present)");
+		ops.addOption(null, "update-build-info", false,
+				"Flag to update OpenSHA build info rather than retaining the version in the original file");
 		
 		return ops;
 	}
@@ -65,14 +74,40 @@ public class SolModuleStripper {
 		File inputFile = new File(args[0]);
 		Preconditions.checkState(inputFile.exists(), "Input file doesn't exist: %s",
 				inputFile.getAbsolutePath());
-		FaultSystemSolution inputSol = FaultSystemSolution.load(inputFile);
 		
 		File outputFile = new File(args[1]);
-		FaultSystemSolution strippedSol = stripModules(inputSol, gridMinMag);
-		strippedSol.write(outputFile);
+		
+		boolean keepRupMFDs = cmd.hasOption("keep-rup-mfds");
+		boolean updateBuildInfo = cmd.hasOption("update-build-info");
+		
+		try {
+			ZipFile inputZip = new ZipFile(inputFile);
+			if (!FaultSystemSolution.isSolution(inputZip)) {
+				// see if it's a solution logic tree
+				System.out.println("Input file isn't a FaultSystemSolution, trying SolutionLogicTree");
+				ApacheZipFileInput sltInput = new ArchiveInput.ApacheZipFileInput(inputFile);
+				SolutionLogicTree slt = SolutionLogicTree.load(sltInput);
+				SolutionLogicTree.simplify(slt, outputFile, keepRupMFDs, updateBuildInfo);
+				inputZip.close();
+				sltInput.close();
+				System.exit(0);
+			}
+			FaultSystemSolution inputSol = FaultSystemSolution.load(inputZip);
+			
+			FaultSystemSolution strippedSol = stripModules(inputSol, gridMinMag, keepRupMFDs, updateBuildInfo);
+			strippedSol.write(outputFile);
+			inputZip.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+			System.exit(1);
+		}
 	}
 	
 	public static FaultSystemSolution stripModules(FaultSystemSolution inputSol, double gridMinMag) {
+		return stripModules(inputSol, gridMinMag, false, false);
+	}
+	
+	public static FaultSystemSolution stripModules(FaultSystemSolution inputSol, double gridMinMag, boolean keepRupMFDs, boolean updateBuildInfo) {
 		FaultSystemRupSet inputRupSet = inputSol.getRupSet();
 		
 		FaultSystemRupSet strippedRupSet = FaultSystemRupSet.buildFromExisting(inputRupSet, false).build();
@@ -85,9 +120,20 @@ public class SolModuleStripper {
 		AveSlipModule aveSlip = inputRupSet.getModule(AveSlipModule.class);
 		if (aveSlip != null)
 			strippedRupSet.addModule(aveSlip);
-		BuildInfoModule buildInfo = inputRupSet.getModule(BuildInfoModule.class);
-		if (buildInfo != null)
-			strippedRupSet.addModule(buildInfo);
+		BuildInfoModule updatedBuildInfo = null;
+		try {
+			updatedBuildInfo = updateBuildInfo ? BuildInfoModule.detect() : null;
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		if (updateBuildInfo) {
+			if (updatedBuildInfo != null)
+				strippedRupSet.addModule(updatedBuildInfo);
+		} else {
+			BuildInfoModule buildInfo = inputRupSet.getModule(BuildInfoModule.class);
+			if (buildInfo != null)
+				strippedRupSet.addModule(buildInfo);
+		}
 		InfoModule info = inputRupSet.getModule(InfoModule.class);
 		if (info != null)
 			strippedRupSet.addModule(info);
@@ -113,9 +159,14 @@ public class SolModuleStripper {
 		} else {
 			strippedSol = new FaultSystemSolution(strippedRupSet, inputSol.getRateForAllRups());
 		}
-		buildInfo = inputSol.getModule(BuildInfoModule.class);
-		if (buildInfo != null)
-			strippedSol.addModule(buildInfo);
+		if (updateBuildInfo) {
+			if (updatedBuildInfo != null)
+				strippedSol.addModule(updatedBuildInfo);
+		} else {
+			BuildInfoModule buildInfo = inputSol.getModule(BuildInfoModule.class);
+			if (buildInfo != null)
+				strippedSol.addModule(buildInfo);
+		}
 		info = inputSol.getModule(InfoModule.class);
 		if (info != null)
 			strippedSol.addModule(info);
@@ -162,29 +213,31 @@ public class SolModuleStripper {
 			}
 			strippedSol.addModule(gridProv);
 		}
-		RupMFDsModule mfds = inputSol.getModule(RupMFDsModule.class);
-		if (mfds != null) {
-			if (splitMappings != null) {
-				DiscretizedFunc[] modMFDs = new DiscretizedFunc[strippedRupSet.getNumRuptures()];
-				for (int r=0; r<modMFDs.length; r++) {
-					int origID = splitMappings.getOrigRupID(r);
-					DiscretizedFunc origMFD = mfds.getRuptureMFD(origID);
-					if (origMFD != null) {
-						double weight = splitMappings.getNewRupWeight(r);
-						if (weight == 1d) {
-							// copy directly
-							modMFDs[r] = origMFD;
-						} else {
-							// scale it
-							DiscretizedFunc modMFD = origMFD.deepClone();
-							modMFD.scale(weight);
-							modMFDs[r] = modMFD;
+		if (keepRupMFDs) {
+			RupMFDsModule mfds = inputSol.getModule(RupMFDsModule.class);
+			if (mfds != null) {
+				if (splitMappings != null) {
+					DiscretizedFunc[] modMFDs = new DiscretizedFunc[strippedRupSet.getNumRuptures()];
+					for (int r=0; r<modMFDs.length; r++) {
+						int origID = splitMappings.getOrigRupID(r);
+						DiscretizedFunc origMFD = mfds.getRuptureMFD(origID);
+						if (origMFD != null) {
+							double weight = splitMappings.getNewRupWeight(r);
+							if (weight == 1d) {
+								// copy directly
+								modMFDs[r] = origMFD;
+							} else {
+								// scale it
+								DiscretizedFunc modMFD = origMFD.deepClone();
+								modMFD.scale(weight);
+								modMFDs[r] = modMFD;
+							}
 						}
 					}
+					mfds = new RupMFDsModule(strippedSol, modMFDs);
 				}
-				mfds = new RupMFDsModule(strippedSol, modMFDs);
+				strippedSol.addModule(mfds);
 			}
-			strippedSol.addModule(mfds);
 		}
 		
 		return strippedSol;

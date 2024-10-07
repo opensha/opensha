@@ -59,7 +59,7 @@ public abstract class SectAreas implements SubModule<FaultSystemRupSet>, Splitta
 		return parent;
 	}
 	
-	private static class Default extends SectAreas implements SubModule<FaultSystemRupSet> {
+	public static class Default extends SectAreas implements SubModule<FaultSystemRupSet> {
 		
 		private double[] data = null;
 		

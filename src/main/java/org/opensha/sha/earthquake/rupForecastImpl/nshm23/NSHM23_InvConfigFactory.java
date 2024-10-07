@@ -198,6 +198,27 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	public void setSolveClustersIndividually(boolean solveClustersIndividually) {
 		this.solveClustersIndividually = solveClustersIndividually;
 	}
+	
+	private synchronized void checkAddDistAzCalc(FaultSystemRupSet rupSet, RupSetFaultModel fm) {
+		SectionDistanceAzimuthCalculator distAzCalc = distAzCache.get(fm);
+		if (distAzCalc != null && rupSet.areSectionsEquivalentTo(distAzCalc.getSubSections())) {
+			rupSet.addModule(distAzCalc);
+		} else {
+			// see if we have it in a cache file
+			distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
+			String name = distAzCalc.getDefaultCacheFileName();
+			File distAzCacheFile = new File(cacheDir, name);
+			if (distAzCacheFile.exists()) {
+				try {
+					distAzCalc.loadCacheFile(distAzCacheFile);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+			rupSet.addModule(distAzCalc);
+			distAzCache.put(fm, distAzCalc);
+		}
+	}
 
 	protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
@@ -256,24 +277,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 					rupSet = null;
 				} else {
 					// see if we have section distances/azimuths already cached to copy over
-					SectionDistanceAzimuthCalculator distAzCalc = distAzCache.get(fm);
-					if (distAzCalc != null && rupSet.areSectionsEquivalentTo(distAzCalc.getSubSections())) {
-						rupSet.addModule(distAzCalc);
-					} else {
-						// see if we have it in a cache file
-						distAzCalc = new SectionDistanceAzimuthCalculator(rupSet.getFaultSectionDataList());
-						String name = distAzCalc.getDefaultCacheFileName();
-						File distAzCacheFile = new File(cacheDir, name);
-						if (distAzCacheFile.exists()) {
-							try {
-								distAzCalc.loadCacheFile(distAzCacheFile);
-							} catch (IOException e) {
-								e.printStackTrace();
-							}
-						}
-						rupSet.addModule(distAzCalc);
-						distAzCache.put(fm, distAzCalc);
-					}
+					checkAddDistAzCalc(rupSet, fm);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -385,6 +389,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		ClusterRuptures cRups = rupSet.getModule(ClusterRuptures.class);
 		
 		PlausibilityConfiguration plausibility = rupSet.getModule(PlausibilityConfiguration.class);
+		checkAddDistAzCalc(rupSet, branch.requireValue(RupSetFaultModel.class));
 		RupSetScalingRelationship scale = branch.requireValue(RupSetScalingRelationship.class);
 		
 		if (cRups == null) {

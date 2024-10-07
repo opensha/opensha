@@ -6,6 +6,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.StringReader;
@@ -15,6 +16,7 @@ import java.lang.reflect.Constructor;
 import java.util.zip.ZipFile;
 
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleHelper;
 
@@ -70,7 +72,7 @@ public interface JSON_BackedModule extends FileBackedModule {
 	}
 
 	@Override
-	public default void writeToStream(BufferedOutputStream out) throws IOException { 
+	public default void writeToStream(OutputStream out) throws IOException { 
 		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
 		writeToWriter(writer);
 	}
@@ -106,9 +108,9 @@ public interface JSON_BackedModule extends FileBackedModule {
 		initFromJSON(jin, gson);
 	}
 	
-	public static <E extends JSON_BackedModule> E loadFromArchive(ZipFile zip, String entryPrefix, String fileName,
+	public static <E extends JSON_BackedModule> E loadFromArchive(ArchiveInput input, String entryPrefix, String fileName,
 			Class<E> type) throws IOException {
-		BufferedInputStream zin = FileBackedModule.getInputStream(zip, entryPrefix, fileName);
+		BufferedInputStream zin = FileBackedModule.getInputStream(input, entryPrefix, fileName);
 		
 		Constructor<E> constructor;
 		try {

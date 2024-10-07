@@ -5,6 +5,8 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.SubModule;
@@ -53,12 +55,12 @@ SplittableRuptureModule<AveSlipModule> {
 		}
 
 		@Override
-		public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-			new Precomputed(this).writeToArchive(zout, entryPrefix);
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
+			new Precomputed(this).writeToArchive(output, entryPrefix);
 		}
 
 		@Override
-		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			throw new IllegalStateException("Only pre-computed average slip modules can be loaded");
 		}
 
@@ -161,9 +163,9 @@ SplittableRuptureModule<AveSlipModule> {
 			return new ModelBased(splitRupSet, scale);
 		}
 		
-		
-
 	}
+	
+	public static final String DATA_FILE_NAME = "average_slips.csv";
 
 	public static class Precomputed extends AveSlipModule implements CSV_BackedModule {
 
@@ -192,7 +194,7 @@ SplittableRuptureModule<AveSlipModule> {
 
 		@Override
 		public String getFileName() {
-			return "average_slips.csv";
+			return DATA_FILE_NAME;
 		}
 
 		@Override

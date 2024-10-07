@@ -21,6 +21,8 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.ModuleContainer;
@@ -31,10 +33,12 @@ import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AveSlipModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.BuildInfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
+import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InfoModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModSectMinMags;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RuptureSubSetMappings;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectAreas;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SectSlipRates;
@@ -50,6 +54,7 @@ import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.BiMap;
@@ -189,7 +194,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @throws IOException
 	 */
 	public static FaultSystemRupSet load(File file) throws IOException {
-		return load(new ZipFile(file));
+		return load(ArchiveInput.getDefaultInput(file));
 	}
 	
 	/**
@@ -200,22 +205,46 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @throws IOException
 	 */
 	public static FaultSystemRupSet load(ZipFile zip) throws IOException {
-		ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(zip, FaultSystemRupSet.class);
+		// see if it's an old rupture set
+		if (zip.getEntry("rup_sections.bin") != null) {
+			System.err.println("WARNING: this is a legacy fault system rupture set, that file format is deprecated. "
+					+ "Will attempt to load it using the legacy file loader. "
+					+ "See https://opensha.org/File-Formats for more information.");
+			try {
+				return U3FaultSystemIO.loadRupSetAsApplicable(zip, null);
+			} catch (DocumentException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+		return load(new ArchiveInput.ZipFileInput(zip));
+	}
+	
+	/**
+	 * Loads a FaultSystemRupSet from the given input
+	 * 
+	 * @param zip
+	 * @return
+	 * @throws IOException
+	 */
+	public static FaultSystemRupSet load(ArchiveInput input) throws IOException {
+		if (input.hasEntry("rup_sections.bin")) {
+			System.err.println("WARNING: this is a legacy fault system rupture set, that file format is deprecated. "
+					+ "Will attempt to load it using the legacy file loader. "
+					+ "See https://opensha.org/File-Formats for more information.");
+			Preconditions.checkState(input instanceof ArchiveInput.FileBacked,
+					"Can only do a deprecated load from zip files (this isn't file-backed)");
+			try {
+				return U3FaultSystemIO.loadRupSetAsApplicable(((ArchiveInput.FileBacked)input).getInputFile());
+			} catch (Exception e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}
+		
+		ModuleArchive<OpenSHA_Module> archive = new ModuleArchive<>(input, FaultSystemRupSet.class);
 		
 		FaultSystemRupSet rupSet = archive.getModule(FaultSystemRupSet.class);
 		if (rupSet == null) {
-			// see if it's an old rupture set
-			if (zip.getEntry("rup_sections.bin") != null) {
-				System.err.println("WARNING: this is a legacy fault system rupture set, that file format is deprecated. "
-						+ "Will attempt to load it using the legacy file loader. "
-						+ "See https://opensha.org/File-Formats for more information.");
-				try {
-					return U3FaultSystemIO.loadRupSetAsApplicable(zip, null);
-				} catch (DocumentException e) {
-					throw ExceptionUtils.asRuntimeException(e);
-				}
-			}
-			if (zip.getEntry("modules.json") == null && zip.getEntry("ruptures/"+RUP_SECTS_FILE_NAME) != null) {
+			if (!input.hasEntry(ModuleArchive.MODULE_FILE_NAME) && input.hasEntry("ruptures/"+RUP_SECTS_FILE_NAME)) {
 				// missing modules.json, try to load it as an unlisted module
 				System.err.println("WARNING: rupture set archive is missing modules.json, trying to load it anyway");
 				archive.loadUnlistedModule(FaultSystemRupSet.class, "ruptures/");
@@ -243,30 +272,30 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	public static final String SECTS_FILE_NAME = "fault_sections.geojson";
 
 	@Override
-	public final void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+	public final void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 		// CSV Files
-		FileBackedModule.initEntry(zout, entryPrefix, RUP_SECTS_FILE_NAME);
-		CSVWriter csvWriter = new CSVWriter(zout, false);
+		FileBackedModule.initEntry(output, entryPrefix, RUP_SECTS_FILE_NAME);
+		CSVWriter csvWriter = new CSVWriter(output.getOutputStream(), false);
 		buildRupSectsCSV(this, csvWriter);
 		csvWriter.flush();
-		zout.closeEntry();
+		output.closeEntry();
 
-		FileBackedModule.initEntry(zout, entryPrefix, RUP_PROPS_FILE_NAME);
-		csvWriter = new CSVWriter(zout, true);
+		FileBackedModule.initEntry(output, entryPrefix, RUP_PROPS_FILE_NAME);
+		csvWriter = new CSVWriter(output.getOutputStream(), true);
 		new RuptureProperties(this).buildCSV(csvWriter);
 		csvWriter.flush();
-		zout.closeEntry();
+		output.closeEntry();
 		
 		// fault sections
-		FileBackedModule.initEntry(zout, entryPrefix, SECTS_FILE_NAME);
-		OutputStreamWriter writer = new OutputStreamWriter(zout);
+		FileBackedModule.initEntry(output, entryPrefix, SECTS_FILE_NAME);
+		OutputStreamWriter writer = new OutputStreamWriter(output.getOutputStream());
 		GeoJSONFaultReader.writeFaultSections(writer, faultSectionData);
 		writer.flush();
-		zout.flush();
-		zout.closeEntry();
+		output.closeEntry();
 		
 		// write README
-		FileBackedModule.initEntry(zout, null, "README");
+		FileBackedModule.initEntry(output, null, "README");
+		writer = new OutputStreamWriter(output.getOutputStream());
 		BufferedWriter readme = new BufferedWriter(writer);
 		FaultSystemSolution solution = this.archive == null ? null : this.archive.getModule(FaultSystemSolution.class);
 		if (solution != null) {
@@ -289,26 +318,38 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			readme.write("Rate information is stored in the '"+solPrefix+"' sub-directory. "
 					+ "Optional files may exist, but there is only one required file:\n");
 			readme.write(" - "+ArchivableModule.getEntryName(solPrefix, FaultSystemSolution.RATES_FILE_NAME
-					+": CSV file giving the annual rate of occurence for each rupture\n"));
-			if (solution.hasAvailableModule(GridSourceProvider.class)) {
+					+": CSV file giving the annual rate of occurrence for each rupture\n"));
+			GridSourceProvider gridProv = solution.getModule(GridSourceProvider.class);
+			if (gridProv != null) {
 				readme.write("This solution has optional gridded seismicity information. Files related to that are:\n");
-				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME
-						+": GeoJSON file giving the location of each gridded seismicity node\n"));
-				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME
-						+": CSV file giving the relative weights of each gridded seismicity focal mechanism at each grid node\n"));
-				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
-						+": CSV file giving the magnitude-frequency distribution of sub-seismogenic ruptures at each gridded "
-						+ "seismicity node that are associated with at least one fault\n"));
-				readme.write(" - "+ArchivableModule.getEntryName(solPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
-						+": CSV file giving the magnitude-frequency distribution of off-fault ruptures at each gridded "
-						+ "seismicity node (those that are not associated with at any fault)\n"));
+				if (gridProv instanceof MFDGridSourceProvider) {
+					readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME
+							+": GeoJSON file giving the location of each gridded seismicity node\n"));
+					readme.write(" - "+ArchivableModule.getEntryName(solPrefix, MFDGridSourceProvider.ARCHIVE_MECH_WEIGHT_FILE_NAME
+							+": CSV file giving the relative weights of each gridded seismicity focal mechanism at each grid node\n"));
+					readme.write(" - "+ArchivableModule.getEntryName(solPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
+							+": CSV file giving the magnitude-frequency distribution of sub-seismogenic ruptures at each gridded "
+							+ "seismicity node that are associated with at least one fault\n"));
+					readme.write(" - "+ArchivableModule.getEntryName(solPrefix, MFDGridSourceProvider.ARCHIVE_SUB_SEIS_FILE_NAME
+							+": CSV file giving the magnitude-frequency distribution of off-fault ruptures at each gridded "
+							+ "seismicity node (those that are not associated with at any fault)\n"));
+				} else if (gridProv instanceof GridSourceList) {
+					if (gridProv.getGriddedRegion() != null)
+						readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME
+								+": Optional GeoJSON defining the region for which this gridded seismicity model applies\n"));
+					
+					readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME
+							+": CSV file giving the index and location and of each gridded seismicity source\n"));
+					readme.write(" - "+ArchivableModule.getEntryName(solPrefix, GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME
+							+": CSV file listing each gridded seismicity rupture. Grid indexes in this file reference the "
+							+ "locations listed in "+ArchivableModule.getEntryName(solPrefix, GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)+"\n"));
+				}
 			}
 			
 		}
 		readme.flush();
 		writer.flush();
-		zout.flush();
-		zout.closeEntry();
+		output.closeEntry();
 	}
 	
 	public static final String RUP_SECTS_FILE_NAME = "indices.csv";
@@ -336,6 +377,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				line.add(s + "");
 			writer.write(line);
 		}
+		
+		writer.flush();
 	}
 	
 	public static final String RUP_PROPS_FILE_NAME = "properties.csv";
@@ -414,6 +457,8 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					line.add(lengths[r] + "");
 				writer.write(line);
 			}
+			
+			writer.flush();
 		}
 	}
 	
@@ -467,14 +512,14 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	}
 
 	@Override
-	public final void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+	public final void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		System.out.println("\tLoading ruptures CSV...");
-		CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(zip, entryPrefix, RUP_SECTS_FILE_NAME);
-		CSVFile<String> rupPropsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, RUP_PROPS_FILE_NAME);
+		CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, RUP_SECTS_FILE_NAME);
+		CSVFile<String> rupPropsCSV = CSV_BackedModule.loadFromArchive(input, entryPrefix, RUP_PROPS_FILE_NAME);
 		
 		// fault sections
 		List<GeoJSONFaultSection> sections = GeoJSONFaultReader.readFaultSections(
-				new InputStreamReader(FileBackedModule.getInputStream(zip, entryPrefix, SECTS_FILE_NAME)));
+				new InputStreamReader(FileBackedModule.getInputStream(input, entryPrefix, SECTS_FILE_NAME)));
 		for (int s=0; s<sections.size(); s++)
 			Preconditions.checkState(sections.get(s).getSectionId() == s,
 			"Fault sections must be provided in order starting with ID=0");
@@ -492,22 +537,49 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 		
 		init(sections, rupSectsList, props.mags, props.rakes, props.areas, props.lengths);
 		
-		if (archive != null && zip.getEntry(entryPrefix+"modules.json") == null) {
-			// we're missing an index, see if any default modules are present that we can manually load
+		boolean hasManifest = input.hasEntry(entryPrefix+ModuleArchive.MODULE_FILE_NAME);
+		if (archive != null) {
+			// see if any common modules are are present but unlised (either because modules.json is missing, or someone
+			// added them manually)
+			if (input.hasEntry(entryPrefix+SectAreas.DATA_FILE_NAME) && !hasAvailableModule(SectAreas.Precomputed.class)) {
+				// make sure it really was just the default implementation (and not some other implementation)
+				boolean doLoad = !hasManifest || getModule(SectAreas.class) instanceof SectAreas.Default;
+				if (doLoad) {
+					try {
+						System.out.println("Trying to load unlisted precomputed SectAreas module");
+						archive.loadUnlistedModule(SectAreas.Precomputed.class, entryPrefix, this);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}
 			
-			if (zip.getEntry(entryPrefix+SectAreas.DATA_FILE_NAME) != null) {
+			if (input.hasEntry(entryPrefix+SectSlipRates.DATA_FILE_NAME) && !hasAvailableModule(SectSlipRates.Precomputed.class)) {
+				// make sure it really was just the default implementation (and not some other implementation)
+				boolean doLoad = !hasManifest || getModule(SectSlipRates.class) instanceof SectSlipRates.Default;
+				if (doLoad) {
+					try {
+						System.out.println("Trying to load unlisted SectSlipRates module");
+						archive.loadUnlistedModule(SectSlipRates.Precomputed.class, entryPrefix, this);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			
+			if (input.hasEntry(entryPrefix+AveSlipModule.DATA_FILE_NAME) && !hasAvailableModule(AveSlipModule.class)) {
 				try {
-					System.out.println("Trying to load unlisted SectAreas module");
-					archive.loadUnlistedModule(SectAreas.Precomputed.class, entryPrefix, this);
+					System.out.println("Trying to load unlisted AveSlipModule module");
+					archive.loadUnlistedModule(AveSlipModule.Precomputed.class, entryPrefix, this);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}
 			
-			if (zip.getEntry(entryPrefix+SectSlipRates.DATA_FILE_NAME) != null) {
+			if (input.hasEntry(entryPrefix+RupSetTectonicRegimes.DATA_FILE_NAME) && !hasAvailableModule(RupSetTectonicRegimes.class)) {
 				try {
-					System.out.println("Trying to load unlisted SectSlipRates module");
-					archive.loadUnlistedModule(SectSlipRates.Precomputed.class, entryPrefix, this);
+					System.out.println("Trying to load unlisted RupSetTectonicRegimes module");
+					archive.loadUnlistedModule(RupSetTectonicRegimes.class, entryPrefix, this);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -701,7 +773,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					return SectAreas.fromFaultSectData(FaultSystemRupSet.this);
 				}
 				
-			}, SectAreas.class);
+			}, SectAreas.Default.class);
 		}
 		if (!hasAvailableModule(SectSlipRates.class)) {
 			addAvailableModule(new Callable<SectSlipRates>() {
@@ -711,7 +783,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 					return SectSlipRates.fromFaultSectData(FaultSystemRupSet.this);
 				}
 				
-			}, SectSlipRates.class);
+			}, SectSlipRates.Default.class);
 		}
 		if (!hasAvailableModule(SlipAlongRuptureModel.class)) {
 			addAvailableModule(new Callable<SlipAlongRuptureModel>() {
@@ -1863,6 +1935,41 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 				public Class<? extends OpenSHA_Module> getType() {
 					return AveSlipModule.class;
 				}
+			});
+			return this;
+		}
+		
+		public Builder tectonicRegime(TectonicRegionType regime) {
+			modules.add(new ModuleBuilder() {
+
+				@Override
+				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
+					return RupSetTectonicRegimes.constant(rupSet, regime);
+				}
+
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return RupSetTectonicRegimes.class;
+				}
+				
+			});
+			return this;
+		}
+		
+		public Builder tectonicRegimes(TectonicRegionType[] regimes) {
+			Preconditions.checkState(sectionForRups.size() == regimes.length);
+			modules.add(new ModuleBuilder() {
+
+				@Override
+				public OpenSHA_Module build(FaultSystemRupSet rupSet) {
+					return new RupSetTectonicRegimes(rupSet, regimes);
+				}
+
+				@Override
+				public Class<? extends OpenSHA_Module> getType() {
+					return RupSetTectonicRegimes.class;
+				}
+				
 			});
 			return this;
 		}

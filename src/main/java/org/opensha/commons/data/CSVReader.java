@@ -7,7 +7,7 @@ import java.util.*;
  * CSV reader that allows for CSV files to be read directly instead of
  * having to load a potentially large intermediate structure into memory.
  */
-public class CSVReader implements Closeable {
+public class CSVReader implements Closeable, Iterable<CSVReader.Row> {
 
     protected BufferedReader reader;
     protected int expectedSize = -1;
@@ -41,6 +41,42 @@ public class CSVReader implements Closeable {
     public void close() throws IOException {
         reader.close();
     }
+
+	@Override
+	public Iterator<Row> iterator() {
+		return new Iterator<CSVReader.Row>() {
+			
+			private Row next = null;
+			private boolean done = false;
+			
+			@Override
+			public Row next() {
+				if (next != null || hasNext()) {
+					Row result = next;
+					next = null;
+					return result;
+				}
+				throw new NoSuchElementException();
+			}
+
+			@Override
+			public boolean hasNext() {
+				if (done) {
+					return false;
+				}
+				if (next != null) {
+					return true;
+				}
+				next = read();
+				if (next == null) {
+					done = true;
+					return false;
+				}
+				return true;
+			}
+			
+		};
+	}
 
     public static class Row {
 

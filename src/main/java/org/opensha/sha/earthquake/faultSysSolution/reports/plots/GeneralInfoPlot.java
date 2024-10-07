@@ -34,11 +34,11 @@ public class GeneralInfoPlot extends AbstractRupSetPlot {
 		else
 			info = rupSet.getModule(InfoModule.class);
 		
-		File filePath;
-		if (sol != null)
-			filePath = sol.getArchive().getFile();
+		String inputName = null;
+		if (sol != null && sol.getArchive().getInput() != null)
+			inputName = sol.getArchive().getInput().getName();
 		else
-			filePath = rupSet.getArchive().getFile();
+			inputName = rupSet.getArchive().getInput().getName();
 		
 		BuildInfoModule buildInfo = null;
 		if (sol != null)
@@ -46,15 +46,24 @@ public class GeneralInfoPlot extends AbstractRupSetPlot {
 		else
 			buildInfo = rupSet.getModule(BuildInfoModule.class);
 		
-		if (info == null && buildInfo == null && filePath == null)
+		if (info == null && buildInfo == null && inputName == null)
 			return null;
 		
 		List<String> lines = new ArrayList<>();
 		
 		String solOrRS = sol == null ? "Rupture Set" : "Solution";
 		
-		if (filePath != null) {
-			lines.add(solOrRS+" File Path: `"+filePath.getAbsolutePath()+"`");
+		if (inputName != null && !inputName.isBlank()) {
+			File file = null;
+			try {
+				file = new File(inputName);
+				if (!file.exists())
+					file = null;
+			} catch (Exception e) {}
+			if (file == null)
+				lines.add(solOrRS+" Input: `"+inputName+"`");
+			else
+				lines.add(solOrRS+" File Path: `"+file.getAbsolutePath()+"`");
 			lines.add("");
 		}
 		

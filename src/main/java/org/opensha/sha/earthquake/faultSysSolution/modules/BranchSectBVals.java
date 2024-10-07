@@ -2,6 +2,7 @@ package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -16,10 +17,13 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.CSVWriter;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
@@ -166,18 +170,25 @@ public class BranchSectBVals implements ArchivableModule {
 	private static final String PARENT_TARGET_FILE_NAME = "branch_parent_target_b_vals.csv";
 
 	@Override
-	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-		CSV_BackedModule.writeToArchive(buildBValCSV(sectBVals, false), zout, entryPrefix, SECT_FILE_NAME);
-		if (parentBVals != null)
-			CSV_BackedModule.writeToArchive(buildBValCSV(parentBVals, true), zout, entryPrefix, PARENT_FILE_NAME);
-		if (sectTargetBVals != null)
-			CSV_BackedModule.writeToArchive(buildBValCSV(sectTargetBVals, false), zout, entryPrefix, SECT_TARGET_FILE_NAME);
-		if (parentTargetBVals != null)
-			CSV_BackedModule.writeToArchive(buildBValCSV(parentTargetBVals, true), zout, entryPrefix, PARENT_TARGET_FILE_NAME);
+	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
+		writeBValCSV(FileBackedModule.initOutputStream(output, entryPrefix, SECT_FILE_NAME), sectBVals, false);
+		output.closeEntry();
+		if (parentBVals != null) {
+			writeBValCSV(FileBackedModule.initOutputStream(output, entryPrefix, PARENT_FILE_NAME), parentBVals, true);
+			output.closeEntry();
+		}
+		if (sectTargetBVals != null) {
+			writeBValCSV(FileBackedModule.initOutputStream(output, entryPrefix, SECT_TARGET_FILE_NAME), sectTargetBVals, false);
+			output.closeEntry();
+		}
+		if (parentTargetBVals != null) {
+			writeBValCSV(FileBackedModule.initOutputStream(output, entryPrefix, PARENT_TARGET_FILE_NAME), parentTargetBVals, true);
+			output.closeEntry();
+		}
 	}
 	
-	private CSVFile<String> buildBValCSV(float[][] sectBVals, boolean parents) {
-		CSVFile<String> csv = new CSVFile<>(true);
+	private void writeBValCSV(OutputStream out, float[][] sectBVals, boolean parents) throws IOException {
+		CSVWriter csv = new CSVWriter(out, true);
 		List<String> header = new ArrayList<>(sectBVals.length+2);
 		header.add("Branch Index");
 		header.add("Branch Weight");
@@ -188,7 +199,7 @@ public class BranchSectBVals implements ArchivableModule {
 			for (int s=0; s<sectBVals[0].length; s++)
 				header.add(s+"");
 		}
-		csv.addLine(header);
+		csv.write(header);
 		
 		Preconditions.checkState(sectBVals.length == weights.length);
 		
@@ -198,23 +209,22 @@ public class BranchSectBVals implements ArchivableModule {
 			line.add(weights[b]+"");
 			for (double bVal : sectBVals[b])
 				line.add(bDF.format(bVal));
-			csv.addLine(line);
+			csv.write(line);
 		}
-		
-		return csv;
+		csv.flush();
 	}
 	
 	private static final DecimalFormat bDF = new DecimalFormat("0.##");
 
 	@Override
-	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
-		sectBVals = loadBValCSV(CSV_BackedModule.loadFromArchive(zip, entryPrefix, SECT_FILE_NAME), false);
-		if (FileBackedModule.hasEntry(zip, entryPrefix, PARENT_FILE_NAME))
-			parentBVals = loadBValCSV(CSV_BackedModule.loadFromArchive(zip, entryPrefix, PARENT_FILE_NAME), true);
-		if (FileBackedModule.hasEntry(zip, entryPrefix, SECT_TARGET_FILE_NAME))
-			sectTargetBVals = loadBValCSV(CSV_BackedModule.loadFromArchive(zip, entryPrefix, SECT_TARGET_FILE_NAME), false);
-		if (FileBackedModule.hasEntry(zip, entryPrefix, PARENT_TARGET_FILE_NAME))
-			parentTargetBVals = loadBValCSV(CSV_BackedModule.loadFromArchive(zip, entryPrefix, PARENT_TARGET_FILE_NAME), true);
+	public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
+		sectBVals = loadBValCSV(CSV_BackedModule.loadFromArchive(input, entryPrefix, SECT_FILE_NAME), false);
+		if (FileBackedModule.hasEntry(input, entryPrefix, PARENT_FILE_NAME))
+			parentBVals = loadBValCSV(CSV_BackedModule.loadFromArchive(input, entryPrefix, PARENT_FILE_NAME), true);
+		if (FileBackedModule.hasEntry(input, entryPrefix, SECT_TARGET_FILE_NAME))
+			sectTargetBVals = loadBValCSV(CSV_BackedModule.loadFromArchive(input, entryPrefix, SECT_TARGET_FILE_NAME), false);
+		if (FileBackedModule.hasEntry(input, entryPrefix, PARENT_TARGET_FILE_NAME))
+			parentTargetBVals = loadBValCSV(CSV_BackedModule.loadFromArchive(input, entryPrefix, PARENT_TARGET_FILE_NAME), true);
 	}
 	
 	private float[][] loadBValCSV(CSVFile<String> csv, boolean parents) {

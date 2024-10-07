@@ -29,6 +29,18 @@ public class LocationList extends ArrayList<Location> implements XMLSaveable, Se
 
 	public static final String XML_METADATA_NAME = "LocationList";
 
+	public LocationList() {
+		super();
+	}
+
+	public LocationList(Collection<? extends Location> c) {
+		super(c);
+	}
+
+	public LocationList(int initialCapacity) {
+		super(initialCapacity);
+	}
+
 	/**
 	 * Convenience method to reverse the <code>Location</code>s in this list.
 	 * Simply calls <code>Collections.reverse()</code>.

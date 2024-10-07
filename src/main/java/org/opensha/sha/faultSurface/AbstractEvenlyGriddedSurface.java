@@ -90,17 +90,24 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 			sameGridSpacing = false;
 	}
 
-
+	private LocationList surfLocs;
 
 	@Override
 	public LocationList getEvenlyDiscritizedListOfLocsOnSurface() {
-		LocationList locList = new LocationList();
-		Iterator<Location> it = listIterator();
-		while(it.hasNext()) locList.add((Location)it.next());
-		return locList;
+		if (surfLocs == null) {
+			synchronized (this) {
+				if (surfLocs == null) {
+					long size = size();
+					Preconditions.checkState(size < Integer.MAX_VALUE, "Can't create a list with mroe that Integer.MAX_VALUE items");
+					LocationList locList = new LocationList((int)size);
+					Iterator<Location> it = listIterator();
+					while(it.hasNext()) locList.add((Location)it.next());
+					surfLocs = locList.unmodifiableList();
+				}
+			}
+		}
+		return surfLocs;
 	}
-
-
 
 	/**
 	 * Returns the grid spacing along strike

@@ -593,19 +593,28 @@ public class GeographicMapMaker {
 		this.scatterColor = color;
 	}
 	
-	public void plotScatters(List<Location> locs, List<PlotCurveCharacterstics> chars, String label) {
-		clearScatters();
-		Preconditions.checkState(locs.size() == chars.size());
-		this.scatterLocs = locs;
-		this.scatterChars = chars;
-		this.scatterScalarLabel = label;
+	public void plotScatters(List<Location> locs, List<PlotCurveCharacterstics> chars) {
+		plotScatters(locs, chars, null, null);
 	}
 	
-	public void plotScatters(List<Location> locs, List<PlotCurveCharacterstics> chars, PlotSymbol outlineSymbol, String label) {
+	public void plotScatters(List<Location> locs, List<PlotCurveCharacterstics> chars, CPT cptForLegend, String label) {
+		plotScatters(locs, chars, null, cptForLegend, label);
+	}
+	
+	public void plotScatters(List<Location> locs, List<PlotCurveCharacterstics> chars, PlotSymbol outlineSymbol) {
+		plotScatters(locs, chars, outlineSymbol, null, null);
+	}
+	
+	public void plotScatters(List<Location> locs, List<PlotCurveCharacterstics> chars, PlotSymbol outlineSymbol, CPT cptForLegend, String label) {
 		clearScatters();
 		Preconditions.checkState(locs.size() == chars.size());
 		this.scatterLocs = locs;
 		this.scatterChars = chars;
+		this.scatterOutline = outlineSymbol;
+		if (label != null)
+			Preconditions.checkState(cptForLegend != null && label != null, "If you specify a label, must also specify a CPT");
+		this.scatterScalarLabel = label;
+		this.scatterScalarCPT = cptForLegend;
 		this.scatterScalarLabel = label;
 	}
 	
@@ -1215,7 +1224,7 @@ public class GeographicMapMaker {
 					}
 				}
 				
-				if (sectScalarLabel != null)
+				if (sectScalarLabel != null && sectScalarCPT != null)
 					cptLegend.add(buildCPTLegend(sectScalarCPT, sectScalarLabel));
 			} else if (sectColors != null || sectChars != null) {
 				List<? extends Double> comps = null;
@@ -1390,7 +1399,7 @@ public class GeographicMapMaker {
 					chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, jumpLineThickness, color));
 				}
 
-				if (scalarJumpsLabel != null)
+				if (scalarJumpsLabel != null && scalarJumpsCPT != null)
 					cptLegend.add(buildCPTLegend(scalarJumpsCPT, scalarJumpsLabel));
 			}
 		}
@@ -1444,7 +1453,7 @@ public class GeographicMapMaker {
 					chars.add(new PlotCurveCharacterstics(scatterOutline, scatterSymbolWidth, scatterOutlineColor));
 				}
 				
-				if (scatterScalarLabel != null)
+				if (scatterScalarLabel != null && scatterScalarCPT != null)
 					cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel));
 			} else if (scatterChars != null) {
 				for (int j=0; j<scatterLocs.size(); j++) {
@@ -1477,7 +1486,7 @@ public class GeographicMapMaker {
 					}
 				}
 				
-				if (scatterScalarLabel != null)
+				if (scatterScalarLabel != null && scatterScalarCPT != null)
 					cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel));
 			} else {
 				XY_DataSet outlines = scatterOutline == null ? null : new DefaultXY_DataSet();

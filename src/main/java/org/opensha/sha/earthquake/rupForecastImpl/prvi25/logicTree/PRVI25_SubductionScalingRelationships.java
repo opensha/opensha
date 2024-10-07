@@ -31,7 +31,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
-@DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
+@Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum PRVI25_SubductionScalingRelationships implements RupSetScalingRelationship {
 	
 	LOGA_C4p1("LogA+4.1", "LogA+4.1", "LogA_C4p1") {

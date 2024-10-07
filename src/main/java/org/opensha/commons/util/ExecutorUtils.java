@@ -1,8 +1,12 @@
 package org.opensha.commons.util;
 
+import java.util.List;
+import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -106,6 +110,65 @@ public class ExecutorUtils {
 			if (t.getPriority() != Thread.NORM_PRIORITY)
 				t.setPriority(Thread.NORM_PRIORITY);
 			return t;
+		}
+	}
+	
+	/**
+	 * Creates an {@link ExecutorService} that can only run a single task at once, and silently ignores all submissions
+	 * when a task is already running.
+	 * @return
+	 */
+	public static ExecutorService singleTaskRejectingExecutor() {
+		return new SingleTaskRejectingExecutor();
+	}
+	
+	private static class SingleTaskRejectingExecutor extends AbstractExecutorService {
+
+		private final ThreadPoolExecutor executor;
+
+		public SingleTaskRejectingExecutor() {
+			// Create an executor with a single thread and no queue
+			executor = new ThreadPoolExecutor(
+					1,                      // Core pool size (single thread)
+					1,                      // Max pool size (single thread)
+					0L, TimeUnit.MILLISECONDS, // Keep-alive time
+					new SynchronousQueue<>(), // No queue: rejects if one task is running
+					new ThreadPoolExecutor.AbortPolicy() // Rejects additional tasks
+					);
+		}
+
+		@Override
+		public void execute(Runnable command) {
+			try {
+				executor.execute(command);
+			} catch (RejectedExecutionException e) {
+//				System.out.println("Task rejected: " + e.getMessage());
+			}
+		}
+
+		@Override
+		public void shutdown() {
+			executor.shutdown();
+		}
+
+		@Override
+		public List<Runnable> shutdownNow() {
+			return executor.shutdownNow();
+		}
+
+		@Override
+		public boolean isShutdown() {
+			return executor.isShutdown();
+		}
+
+		@Override
+		public boolean isTerminated() {
+			return executor.isTerminated();
+		}
+
+		@Override
+		public boolean awaitTermination(long timeout, TimeUnit unit) throws InterruptedException {
+			return executor.awaitTermination(timeout, unit);
 		}
 	}
 
