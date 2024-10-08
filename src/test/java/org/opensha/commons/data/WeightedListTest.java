@@ -190,7 +190,7 @@ public class WeightedListTest {
 	
 	@Test(expected=java.lang.IllegalStateException.class)
 	public void testSetObjectsBad() {
-		testList.setObjects(new ArrayList<String>());
+		testList.setValues(new ArrayList<String>());
 	}
 	
 	@Test
@@ -198,14 +198,14 @@ public class WeightedListTest {
 		ArrayList<String> objs = new ArrayList<String>();
 		for (int i=0; i<testList.size(); i++)
 			objs.add("asdf");
-		testList.setObjects(objs);
+		testList.setValues(objs);
 		for (int i=0; i<testList.size(); i++)
 			assertEquals("setObjects didn't set", "asdf", testList.get(i));
 	}
 	
 	@Test(expected=java.lang.IllegalArgumentException.class)
 	public void testSetObjectsNull() {
-		testList.setObjects(null);
+		testList.setValues(null);
 	}
 	
 	@Test

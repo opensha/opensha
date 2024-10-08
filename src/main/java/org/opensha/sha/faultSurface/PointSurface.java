@@ -1,7 +1,5 @@
 package org.opensha.sha.faultSurface;
 
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.ListIterator;
 
 import org.opensha.commons.exceptions.InvalidRangeException;
@@ -14,7 +12,6 @@ import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
-import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
 
 
 /**
@@ -41,7 +38,6 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 
 	private Location pointLocation;
 	
-	
 	final static double SEIS_DEPTH = GriddedSurfaceUtils.SEIS_DEPTH;   // minimum depth for Campbell model
 	
 	// variables for the point-source distance correction; these
@@ -51,19 +47,19 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	/**
 	 * The average strike of this surface on the Earth. Even though this is a
 	 * point source, an average strike can be assigned to it to assist with
-	 * particular scientific caculations. Initially set to NaN.
+	 * particular scientific calculations. Initially set to NaN.
 	 */
 	protected double aveStrike=Double.NaN;
 
 	/**
 	 * The average dip of this surface into the Earth. Even though this is a
 	 * point source, an average dip can be assigned to it to assist with
-	 * particular scientific caculations. Initially set to NaN.
+	 * particular scientific calculations. Initially set to NaN.
 	 */
 	protected double aveDip=Double.NaN;
 	
 	/**
-	 * The average width of the surface. Although most ground motion models
+	 * The average width of the surface. Although older ground motion models
 	 * are not concerned with rupture width, some newer models require a
 	 * reasonable estimate to function properly (e.g. ASK_2014). */
 	protected double aveWidth = 0.0;
@@ -214,7 +210,6 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 
 	@Override
 	public LocationList getPerimeter() {
-		// TODO Auto-generated method stub
 		return getEvenlyDiscritizedPerimeter();
 	}
 	

@@ -834,7 +834,7 @@ public class PointSurfaceBuilder {
 	 * <p><b>Special cases:</b>
 	 * 
 	 * <p>If the strike has been set and length>0, a single finite surface will be returned even if
-	 * {@link BackgroundRupType#POINT} is chosen.
+	 * {@link BackgroundRupType#POINT} or {@link BackgroundRupType#CROSSHAIR} is chosen.
 	 * 
 	 * <p>If the length is zero, then a point source will be returned regardless of the {@link BackgroundRupType} setting.
 	 * If <code>zTop ==  zBot && footwall == null</code>, then a true point source will be returned, otherwise an

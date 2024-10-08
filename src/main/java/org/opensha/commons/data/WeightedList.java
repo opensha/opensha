@@ -31,19 +31,19 @@ public class WeightedList<E> implements XMLSaveable {
 	 * This checks that the weight and object lists are non null and have the same number of items.
 	 * If normalization is forced, then it is checked here.
 	 * 
-	 * @param objects
+	 * @param values
 	 * @param weights
 	 * @throws IllegalStateException if lists are of different sizes
 	 * @throws IllegalArgumentException if lists are null
 	 */
-	private void validate(List<?> objects, List<Double> weights)
+	private void validate(List<?> values, List<Double> weights)
 	throws IllegalStateException, IllegalArgumentException {
-		if (objects == null)
+		if (values == null)
 			throw new IllegalArgumentException("object list cannot be null!");
 		if (weights == null)
 			throw new IllegalArgumentException("weights list cannot be null!");
 		
-		if (objects.size() != weights.size())
+		if (values.size() != weights.size())
 			throw new IllegalStateException("object and weight lists must be the same size!");
 		
 		if (forceNormalization && weights.size() > 0) {
@@ -82,13 +82,13 @@ public class WeightedList<E> implements XMLSaveable {
 	}
 	
 	/**
-	 * Set the list of objects
+	 * Set the list of values
 	 * 
-	 * @param objects
+	 * @param values
 	 * @throws IllegalStateException if the objects and weights are invalid
 	 */
-	public void setObjects(List<E> objects) throws IllegalStateException {
-		set(objects, weights);
+	public void setValues(List<E> values) throws IllegalStateException {
+		set(values, weights);
 	}
 	
 	public void setWeight(int i, double weight) {

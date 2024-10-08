@@ -1026,6 +1026,11 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			for (GriddedRupture rup : gridRups) {
 				if (rup.properties.magnitude < minMag)
 					continue;
+				double rate = rup.rate;
+				if (aftershockFilter != null)
+					rate = aftershockFilter.getFilteredRate(rup.properties.magnitude, rup.rate);
+				if (rate == 0d)
+					continue;
 				Preconditions.checkState(tectonicRegionType == rup.properties.tectonicRegionType);
 				surfBuilder.magnitude(rup.properties.magnitude);
 				surfBuilder.dip(rup.properties.dip);
@@ -1043,18 +1048,12 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 				surfBuilder.hypocentralDepth(hypoDepth);
 				surfBuilder.das(rup.properties.getHypocentralDAS());
 				RuptureSurface[] surfs = surfBuilder.build(bgRupType);
-				double rate = rup.rate;
-				if (aftershockFilter != null)
-					rate = aftershockFilter.getFilteredRate(rup.properties.magnitude, rup.rate);
-				if (rate == 0d)
-					continue;
 				double rateEach = surfs.length == 1 ? rate : rate/(double)surfs.length;
 				double probEach = 1 - Math.exp(-rateEach * duration);
 				for (RuptureSurface surf : surfs) {
 					ProbEqkRupture eqkRup = new ProbEqkRupture(rup.properties.magnitude, rup.properties.rake, probEach, surf,
 							new Location(rup.location.lat, rup.location.lon, hypoDepth));
 					if (surf instanceof PointSurface)
-						// TODO: hack to get nshmp corrected rJB until we revamp the framework
 						((PointSurface)surf).setDistanceCorrection(distCorr, eqkRup);
 					ruptures.add(eqkRup);
 				}
