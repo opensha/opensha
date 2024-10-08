@@ -34,6 +34,7 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b.PointSurface13b;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
 
@@ -102,6 +103,7 @@ public class PointSourceNshm extends ProbEqkSource {
   private int mechCount; // mechs with weight 1-3;
   private int ssIdx, revIdx; // normal not needed
   private int fwIdxLo, fwIdxHi;
+  private PointSourceDistanceCorrection distCorr;
 
   // Rupture indexing: no array index out of bounds are checked, it is assumed
   // that users will only request values in the range getNumRuptures()-1
@@ -119,9 +121,10 @@ public class PointSourceNshm extends ProbEqkSource {
    * @param mechWtMap <code>Map</code> of focal mechanism weights
    */
   public PointSourceNshm(Location loc, IncrementalMagFreqDist mfd,
-      double duration, Map<FocalMech, Double> mechWtMap) {
+      double duration, Map<FocalMech, Double> mechWtMap, PointSourceDistanceCorrection distCorr) {
 
-    name = NAME; // super
+    this.distCorr = distCorr;
+	name = NAME; // super
     this.loc = loc;
     this.mfd = mfd;
     this.duration = duration;
@@ -160,6 +163,8 @@ public class PointSourceNshm extends ProbEqkSource {
     surface.zBot = zTop + widthDD * sin(dipRad);
     surface.footwall = isOnFootwall(idx);
     surface.mag = mag; // KLUDGY needed for distance correction
+    
+    surface.setDistanceCorrection(distCorr, probEqkRupture);
 
     probEqkRupture.setPointSurface(surface);
     probEqkRupture.setMag(mag);
@@ -342,25 +347,6 @@ public class PointSourceNshm extends ProbEqkSource {
     @Override
     public double getAveWidth() {
       return widthDD;
-    }
-
-    @Override
-    public double getDistanceJB(Location loc) {
-      /*
-       * In debugging point sources, found that updated PointSourceNshm had
-       * synchronization issues with respect to setting rupture properties on a
-       * single shared instance of the corrsponding surface. Reverted to
-       * PointSource13b-like implementation that creates a new surface for each
-       * rupture when iterating.
-       *
-       * Also found that an update to the point source distance correction
-       * algorithm (by Steve Harmsen) never made it's way into OpenSHA. This
-       * class now loads and uses the updated rjb correction file instead of
-       * delegating to the parent class as before. This could be refactored as a
-       * new PtSrcDistanceCorr type.
-       */
-      double djb = LocationUtils.horzDistanceFast(getLocation(), loc);
-      return correctedRjb(mag, djb);
     }
 
     @Override

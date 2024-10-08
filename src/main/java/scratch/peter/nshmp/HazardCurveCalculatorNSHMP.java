@@ -139,18 +139,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		adjustableParams.addParameter(ptSrcDistCorrParam);
 
 	}
-	
-	
-//	@Override
-	public void setPtSrcDistCorrType(PtSrcDistCorr.Type type) {
-		ptSrcDistCorrParam.setValueFromTypePtSrcDistCorr(type);
-	}
-	
-
-//	@Override
-	public PtSrcDistCorr.Type getPtSrcDistCorrType(){
-		return ptSrcDistCorrParam.getValueAsTypePtSrcDistCorr();
-	}
 
 
 	@Override
@@ -248,8 +236,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 			trtOrigVals = TRTUtils.getTRTsSetInIMRs(imrMap);
 
 		this.currRuptures = -1;
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 		/* this determines how the calucations are done (doing it the way it's outlined
     in our original SRL paper gives probs greater than 1 if the total rate of events for the
@@ -363,10 +349,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 						numRupRejected += 1;
 						continue;
 					}
-					
-					// set point-source distance correction type & mag if it's a pointSurface
-					if(rupture.getRuptureSurface() instanceof PointSurface)
-						((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
 
 					// indicate that a source has been used (put here because of above filter)
 					sourceUsed = true;
@@ -556,8 +538,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		if (D) System.out.println(C+": starting hazard curve calculation");
 
 		//	  System.out.println("totRuptures="+totRuptures);
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 
 		// loop over ruptures
@@ -566,10 +546,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 			if(updateCurrRuptures)++currRuptures;
 
 			EqkRupture rupture = eqkRupList.get(n);
-			
-			// set point-source distance correction type (& mag) if it's a pointSurface
-			if(rupture.getRuptureSurface() instanceof PointSurface)
-				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
 
 
 			/*
@@ -625,10 +601,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		// resetting the Parameter change Listeners on the AttenuationRelationship parameters,
 		// allowing the Server version of our application to listen to the parameter changes.
 		( (AttenuationRelationship) imr).resetParameterEventListeners();
-		
-		// set point-source distance correction type (& mag) if it's a pointSurface
-		if(rupture.getRuptureSurface() instanceof PointSurface)
-			((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), getPtSrcDistCorrType());
 
 
 		// set the Site in IMR

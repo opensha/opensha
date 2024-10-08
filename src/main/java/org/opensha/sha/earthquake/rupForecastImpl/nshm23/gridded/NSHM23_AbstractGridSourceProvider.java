@@ -22,6 +22,7 @@ import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.Point2Vert_FaultPoisSource;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.TectonicRegionType;
@@ -71,14 +72,14 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 
 	@Override
 	protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
-			BackgroundRupType bgRupType) {
+			BackgroundRupType bgRupType, PointSourceDistanceCorrection distCorr) {
 		Location loc = getLocation(gridIndex);
 		
 		double fracStrikeSlip = getFracStrikeSlip(gridIndex);
 		double fracNormal = getFracNormal(gridIndex);
 		double fracReverse = getFracReverse(gridIndex);
 
-		return buildSource(mfd, duration, bgRupType, loc, fracStrikeSlip, fracNormal, fracReverse);
+		return buildSource(mfd, duration, bgRupType, distCorr, loc, fracStrikeSlip, fracNormal, fracReverse);
 	}
 
 	/**
@@ -94,7 +95,7 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 	 * @return
 	 */
 	public static ProbEqkSource buildSource(IncrementalMagFreqDist mfd, double duration, BackgroundRupType bgRupType,
-			Location loc, double fracStrikeSlip, double fracNormal, double fracReverse) {
+			PointSourceDistanceCorrection distCorr,	Location loc, double fracStrikeSlip, double fracNormal, double fracReverse) {
 		switch (bgRupType) {
 		case CROSSHAIR:
 			return new Point2Vert_FaultPoisSource(loc, mfd, magLenRel, duration,
@@ -109,9 +110,7 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 			mechMap.put(FocalMech.STRIKE_SLIP, fracStrikeSlip);
 			mechMap.put(FocalMech.REVERSE, fracReverse);
 			mechMap.put(FocalMech.NORMAL, fracNormal);
-			// TODO still the best implementation?
-//			return new PointSource13b(loc, mfd, duration, DEPTHS, mechMap);
-			return new PointSourceNshm(loc, mfd, duration, mechMap);
+			return new PointSourceNshm(loc, mfd, duration, mechMap, distCorr);
 
 		default:
 			throw new IllegalStateException("Unknown Background Rup Type: "+bgRupType);
@@ -157,14 +156,15 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 
 		@Override
 		protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
-				BackgroundRupType bgRupType) {
+				BackgroundRupType bgRupType, PointSourceDistanceCorrection distCorr) {
 			Location loc = getGriddedRegion().locationForIndex(gridIndex);
 			
 			double fracStrikeSlip = getFracStrikeSlip(gridIndex);
 			double fracNormal = getFracNormal(gridIndex);
 			double fracReverse = getFracReverse(gridIndex);
 
-			return NSHM23_AbstractGridSourceProvider.buildSource(mfd, duration, bgRupType, loc, fracStrikeSlip, fracNormal, fracReverse);
+			return NSHM23_AbstractGridSourceProvider.buildSource(
+					mfd, duration, bgRupType, distCorr, loc, fracStrikeSlip, fracNormal, fracReverse);
 		}
 
 		@Override

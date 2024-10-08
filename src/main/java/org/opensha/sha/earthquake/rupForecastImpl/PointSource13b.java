@@ -21,6 +21,7 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SingleMagFreqDist;
@@ -94,6 +95,8 @@ public class PointSource13b extends ProbEqkSource {
 	private int ssIdx, revIdx; // normal not needed
 	private int fwIdxLo, fwIdxHi;
 	
+	private PointSourceDistanceCorrection distCorr;
+	
 	// Rupture indexing: no array index out of bounds are checked, it is assumed
 	// that users will only request values in the range getNumRuptures()-1
 	// Focal mech is determined using the max indices for each type of mech
@@ -121,8 +124,9 @@ public class PointSource13b extends ProbEqkSource {
 	 * @param mechWtMap <code>Map</code> of focal mechanism weights
 	 */
 	public PointSource13b(Location loc, IncrementalMagFreqDist mfd,
-		double duration, double[] depths, Map<FocalMech, Double> mechWtMap) {
+		double duration, double[] depths, Map<FocalMech, Double> mechWtMap, PointSourceDistanceCorrection distCorr) {
 
+		this.distCorr = distCorr;
 		name = NAME; // super
 		this.loc = loc;
 		this.mfd = mfd;
@@ -143,6 +147,7 @@ public class PointSource13b extends ProbEqkSource {
 			throw new RuntimeException("index out of bounds");
 		ProbEqkRupture probEqkRupture = new ProbEqkRupture();
 		PointSurface13b surface = new PointSurface13b(loc); // mutable, possibly depth varying
+		surface.setDistanceCorrection(distCorr, probEqkRupture);
 
 		FocalMech mech = mechForIndex(idx);
 		double wt = mechWts.get(mech);
@@ -424,9 +429,8 @@ public class PointSource13b extends ProbEqkSource {
 		mechMap.put(FocalMech.STRIKE_SLIP, 0.0);
 		mechMap.put(FocalMech.REVERSE, 0.0);
 		mechMap.put(FocalMech.NORMAL, 1.0);
-
 		
-		PointSource13b ptSrc = new PointSource13b(srcLoc, mfd, 1.0, depths, mechMap);
+		PointSource13b ptSrc = new PointSource13b(srcLoc, mfd, 1.0, depths, mechMap, null);
 		Joiner J = Joiner.on(" ");
 		for (ProbEqkRupture rup : ptSrc) {
 			PointSurface13b surf = (PointSurface13b) rup.getRuptureSurface();

@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.EventObject;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.DoubleBinaryOperator;
 import java.util.function.UnaryOperator;
 
 import org.apache.commons.lang3.StringUtils;
@@ -20,6 +19,7 @@ import org.opensha.commons.param.impl.FileParameter;
 import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
 import org.opensha.sha.earthquake.AbstractNthRupERF;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
@@ -33,10 +33,12 @@ import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.FaultGridSpacingParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
+import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.earthquake.param.UseProxySectionsParam;
 import org.opensha.sha.earthquake.param.UseRupMFDsParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -60,17 +62,28 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	protected FaultGridSpacingParam faultGridSpacingParam;
 	protected IncludeBackgroundParam bgIncludeParam;
 	protected BackgroundRupParam bgRupTypeParam;
+	protected PointSourceDistanceCorrectionParam distCorrTypeParam;
 	protected AseismicityAreaReductionParam aseisParam;
 	protected UseRupMFDsParam useRupMFDsParam;
 	protected UseProxySectionsParam useProxyRupturesParam;
 	
+	// default parameter values
+	public static final double FAULT_GRID_SPACING_DEFAULT = 1d;
+	public static final IncludeBackgroundOption INCLUDE_BG_DEFAULT = IncludeBackgroundOption.INCLUDE;
+	public static final BackgroundRupType BG_RUP_TYPE_DEFAULT = BackgroundRupType.POINT;
+	public static final PointSourceDistanceCorrections DIST_CORR_TYPE_DEFAULT = PointSourceDistanceCorrections.NSHM_2013;
+	public static final boolean ASEIS_REDUCES_AREA_DEAFULT = true;
+	public static final boolean USE_RUP_MFDS_DEAFULT = true;
+	public static final boolean USE_PROXY_RUPS_DEAFULT = true;
+	
 	// The primitive versions of parameters; and values here are the param defaults: (none for fileParam)
-	protected double faultGridSpacing = 1.0;
-	protected IncludeBackgroundOption bgInclude = IncludeBackgroundOption.INCLUDE;
-	protected BackgroundRupType bgRupType = BackgroundRupType.POINT;
-	protected boolean aseisReducesArea = true;
-	protected boolean useRupMFDs = true;
-	protected boolean useProxyRuptures = true;
+	protected double faultGridSpacing = FAULT_GRID_SPACING_DEFAULT;
+	protected IncludeBackgroundOption bgInclude = INCLUDE_BG_DEFAULT;
+	protected BackgroundRupType bgRupType = BG_RUP_TYPE_DEFAULT;
+	protected PointSourceDistanceCorrections distCorrType = DIST_CORR_TYPE_DEFAULT;
+	protected boolean aseisReducesArea = ASEIS_REDUCES_AREA_DEAFULT;
+	protected boolean useRupMFDs = USE_RUP_MFDS_DEAFULT;
+	protected boolean useProxyRuptures = USE_PROXY_RUPS_DEAFULT;
 	
 	// Parameter change flags:
 	protected boolean fileParamChanged=false;	// set as false since most subclasses ignore this parameter
@@ -134,6 +147,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		faultGridSpacingParam = new FaultGridSpacingParam();
 		bgIncludeParam = new IncludeBackgroundParam();
 		bgRupTypeParam = new BackgroundRupParam();
+		distCorrTypeParam = new PointSourceDistanceCorrectionParam(distCorrType);
 		aseisParam = new AseismicityAreaReductionParam();
 		useRupMFDsParam = new UseRupMFDsParam(useRupMFDs);
 		useProxyRupturesParam = new UseProxySectionsParam(useProxyRuptures);
@@ -144,6 +158,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		faultGridSpacingParam.addParameterChangeListener(this);
 		bgIncludeParam.addParameterChangeListener(this);
 		bgRupTypeParam.addParameterChangeListener(this);
+		distCorrTypeParam.addParameterChangeListener(this);
 		aseisParam.addParameterChangeListener(this);
 		useRupMFDsParam.addParameterChangeListener(this);
 		useProxyRupturesParam.addParameterChangeListener(this);
@@ -154,6 +169,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		faultGridSpacingParam.setValue(faultGridSpacing);
 		bgIncludeParam.setValue(bgInclude);
 		bgRupTypeParam.setValue(bgRupType);
+		distCorrTypeParam.setValue(distCorrType);
 		aseisParam.setValue(aseisReducesArea);
 		useRupMFDsParam.setValue(useRupMFDs);
 		useProxyRupturesParam.setValue(useProxyRuptures);
@@ -169,8 +185,10 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		if(includeFileParam)
 			adjustableParams.addParameter(fileParam);
 		adjustableParams.addParameter(bgIncludeParam);
-		if(!bgIncludeParam.getValue().equals(IncludeBackgroundOption.EXCLUDE)) {
+		if (!bgIncludeParam.getValue().equals(IncludeBackgroundOption.EXCLUDE)) {
 			adjustableParams.addParameter(bgRupTypeParam);
+			if (bgRupTypeParam.getValue() == BackgroundRupType.POINT)
+				adjustableParams.addParameter(distCorrTypeParam);
 		}
 		adjustableParams.addParameter(faultGridSpacingParam);
 		adjustableParams.addParameter(aseisParam);
@@ -212,6 +230,10 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 				bgRupTypeChanged = true;
 		} else if (paramName.equalsIgnoreCase(bgRupTypeParam.getName())) {
 			bgRupType = bgRupTypeParam.getValue();
+			createParamList();
+			bgRupTypeChanged = true;
+		} else if (paramName.equalsIgnoreCase(distCorrTypeParam.getName())) {
+			distCorrType = distCorrTypeParam.getValue();
 			bgRupTypeChanged = true;
 		} else if (paramName.equalsIgnoreCase(aseisParam.getName())) {
 			aseisReducesArea = aseisParam.getValue();
@@ -458,7 +480,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		}
 	}
 	
-	protected DoubleBinaryOperator getGridSourceAftershockFilter() {
+	protected MagnitudeDependentAftershockFilter getGridSourceAftershockFilter() {
 		return null;
 	}
 	
@@ -724,11 +746,11 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			}
 			// if we made it here, it's not cached
 			gridSourceCache[iSource] = gridSources.getSource(iSource, timeSpan.getDuration(),
-					getGridSourceAftershockFilter(), bgRupType);
+					getGridSourceAftershockFilter(), bgRupType, distCorrType.get());
 			return gridSourceCache[iSource];
 		}
 		return gridSources.getSource(iSource, timeSpan.getDuration(),
-				getGridSourceAftershockFilter(), bgRupType);
+				getGridSourceAftershockFilter(), bgRupType, distCorrType.get());
 	}
 	
 	public void setCacheGridSources(boolean cacheGridSources) {

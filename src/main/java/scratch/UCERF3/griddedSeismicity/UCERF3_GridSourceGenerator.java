@@ -293,7 +293,7 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 		int numRups = 0;
 		System.out.println("numSrcs: " + numSrcs);
 		for (int i=0; i<numSrcs; i++) {
-			numRups += gridGen.getSource(i, 1, null, BackgroundRupType.POINT).getNumRuptures();
+			numRups += gridGen.getSource(i, 1, null, BackgroundRupType.POINT, null).getNumRuptures();
 		}
 		System.out.println("numRups: " + numRups);
 

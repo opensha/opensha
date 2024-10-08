@@ -16,12 +16,14 @@ import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider.Abstract;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.Point2Vert_FaultPoisSource;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.TectonicRegionType;
@@ -55,18 +57,19 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 	private static final double[] DEPTHS = new double[] {5.0, 1.0};
 
 	@Override
-	protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration, BackgroundRupType bgRupType) {
+	protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
+			BackgroundRupType bgRupType, PointSourceDistanceCorrection distCorr) {
 		Location loc = getGriddedRegion().locationForIndex(gridIndex);
 		
 		double fracStrikeSlip = getFracStrikeSlip(gridIndex);
 		double fracNormal = getFracNormal(gridIndex);
 		double fracReverse = getFracReverse(gridIndex);
 
-		return buildSource(mfd, duration, bgRupType, loc, fracStrikeSlip, fracNormal, fracReverse);
+		return buildSource(mfd, duration, bgRupType, loc, fracStrikeSlip, fracNormal, fracReverse, distCorr);
 	}
 
 	public static ProbEqkSource buildSource(IncrementalMagFreqDist mfd, double duration, BackgroundRupType bgRupType,
-			Location loc, double fracStrikeSlip, double fracNormal, double fracReverse) {
+			Location loc, double fracStrikeSlip, double fracNormal, double fracReverse, PointSourceDistanceCorrection distCorr) {
 		switch (bgRupType) {
 		case CROSSHAIR:
 			return new Point2Vert_FaultPoisSource(loc, mfd, magLenRel, duration,
@@ -81,15 +84,15 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 			mechMap.put(FocalMech.STRIKE_SLIP, fracStrikeSlip);
 			mechMap.put(FocalMech.REVERSE, fracReverse);
 			mechMap.put(FocalMech.NORMAL, fracNormal);
-			return new PointSource13b(loc, mfd, duration, DEPTHS, mechMap);
+			return new PointSource13b(loc, mfd, duration, DEPTHS, mechMap, distCorr);
 
 		default:
 			throw new IllegalStateException("Unknown Background Rup Type: "+bgRupType);
 		}
 	}
 	
-	public static DoubleBinaryOperator GK_AFTERSHOCK_FILTER =
-			(M,R) -> R*GardnerKnopoffAftershockFilter.scaleForMagnitude(M);
+	public static MagnitudeDependentAftershockFilter GK_AFTERSHOCK_FILTER =
+			MagnitudeDependentAftershockFilter.forFunction((M,R) -> R*GardnerKnopoffAftershockFilter.scaleForMagnitude(M));
 
 	@Override
 	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
@@ -175,7 +178,7 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 
 		@Override
 		protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
-				BackgroundRupType bgRupType) {
+				BackgroundRupType bgRupType, PointSourceDistanceCorrection distCorr) {
 			Location loc = getGriddedRegion().locationForIndex(gridIndex);
 			
 			double fracStrikeSlip = getFracStrikeSlip(gridIndex);
@@ -183,7 +186,7 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 			double fracReverse = getFracReverse(gridIndex);
 
 			return AbstractGridSourceProvider.buildSource(
-					mfd, duration, bgRupType, loc, fracStrikeSlip, fracNormal, fracReverse);
+					mfd, duration, bgRupType, loc, fracStrikeSlip, fracNormal, fracReverse, distCorr);
 		}
 
 		@Override

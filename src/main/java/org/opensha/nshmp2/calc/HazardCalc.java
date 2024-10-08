@@ -119,7 +119,6 @@ public class HazardCalc implements Callable<HazardResult> {
 		curve = period.getFunction(); // init output function
 		Utils.zeroFunc(curve);
 		calc = new HazardCurveCalculatorNSHMP(); // init calculator
-		calc.setPtSrcDistCorrType(PtSrcDistCorr.Type.NSHMP08);
 		
 		calc.getAdjustableParams().getParameter(MaxDistanceParam.NAME).setValue(300.0);
 		

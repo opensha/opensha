@@ -15,10 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.DoubleBinaryOperator;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.CSVReader;
@@ -40,10 +36,11 @@ import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
-import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
@@ -189,31 +186,34 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	}
 
 	@Override
-	public ProbEqkSource getSource(int sourceIndex, double duration, DoubleBinaryOperator aftershockFilter,
-			BackgroundRupType bgRupType) {
+	public ProbEqkSource getSource(int sourceIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
+			BackgroundRupType bgRupType, PointSourceDistanceCorrection distCorr) {
 		return getSource(tectonicRegionTypeForSourceIndex(sourceIndex), getLocationIndexForSource(sourceIndex),
-				duration, aftershockFilter, bgRupType);
+				duration, aftershockFilter, bgRupType, distCorr);
 	}
 
 	@Override
 	public ProbEqkSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
-			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType) {
+			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
+			PointSourceDistanceCorrection distCorr) {
 		return new GriddedRuptureSource(getLocation(gridIndex), getRuptures(tectonicRegionType, gridIndex),
-				duration, sourceMinMag, aftershockFilter, bgRupType, tectonicRegionType);
+				duration, sourceMinMag, aftershockFilter, bgRupType, distCorr, tectonicRegionType);
 	}
 
 	@Override
-	public ProbEqkSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration, DoubleBinaryOperator aftershockFilter,
-			BackgroundRupType bgRupType) {
+	public ProbEqkSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
+			PointSourceDistanceCorrection distCorr) {
 		return new GriddedRuptureSource(getLocation(gridIndex), getRupturesSubSeisOnFault(tectonicRegionType, gridIndex),
-				duration, sourceMinMag, aftershockFilter, bgRupType, tectonicRegionType);
+				duration, sourceMinMag, aftershockFilter, bgRupType, distCorr, tectonicRegionType);
 	}
 
 	@Override
-	public ProbEqkSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration, DoubleBinaryOperator aftershockFilter,
-			BackgroundRupType bgRupType) {
+	public ProbEqkSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
+			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
+			PointSourceDistanceCorrection distCorr) {
 		return new GriddedRuptureSource(getLocation(gridIndex), getRupturesUnassociated(tectonicRegionType, gridIndex),
-				duration, sourceMinMag, aftershockFilter, bgRupType, tectonicRegionType);
+				duration, sourceMinMag, aftershockFilter, bgRupType, distCorr, tectonicRegionType);
 	}
 
 	@Override
@@ -1017,7 +1017,8 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		private List<ProbEqkRupture> ruptures;
 		
 		public GriddedRuptureSource(Location gridLoc, List<GriddedRupture> gridRups, double duration, double minMag,
-				DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType, TectonicRegionType tectonicRegionType) {
+				MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
+				PointSourceDistanceCorrection distCorr, TectonicRegionType tectonicRegionType) {
 			this.gridLoc = gridLoc;
 			this.sourceSurf = new PointSurface(gridLoc);
 			PointSurfaceBuilder surfBuilder = new PointSurfaceBuilder(gridLoc);
@@ -1044,17 +1045,18 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 				RuptureSurface[] surfs = surfBuilder.build(bgRupType);
 				double rate = rup.rate;
 				if (aftershockFilter != null)
-					rate = aftershockFilter.applyAsDouble(rup.properties.magnitude, rup.rate);
+					rate = aftershockFilter.getFilteredRate(rup.properties.magnitude, rup.rate);
 				if (rate == 0d)
 					continue;
 				double rateEach = surfs.length == 1 ? rate : rate/(double)surfs.length;
 				double probEach = 1 - Math.exp(-rateEach * duration);
 				for (RuptureSurface surf : surfs) {
-					if (surf instanceof FiniteApproxPointSurface)
+					ProbEqkRupture eqkRup = new ProbEqkRupture(rup.properties.magnitude, rup.properties.rake, probEach, surf,
+							new Location(rup.location.lat, rup.location.lon, hypoDepth));
+					if (surf instanceof PointSurface)
 						// TODO: hack to get nshmp corrected rJB until we revamp the framework
-						((FiniteApproxPointSurface)surf).setDistCorrMagAndType(rup.properties.magnitude, null);
-					ruptures.add(new ProbEqkRupture(rup.properties.magnitude, rup.properties.rake, probEach, surf,
-							new Location(rup.location.lat, rup.location.lon, hypoDepth)));
+						((PointSurface)surf).setDistanceCorrection(distCorr, eqkRup);
+					ruptures.add(eqkRup);
 				}
 			}
 			this.setTectonicRegionType(tectonicRegionType);

@@ -20,6 +20,7 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
@@ -288,11 +289,11 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 	 * @param duration
 	 * @return
 	 */ 
-	public List<ProbEqkSource> getAllNSHMP13_GriddedSources(double duration) {
+	public List<ProbEqkSource> getAllNSHMP13_GriddedSources(double duration, PointSourceDistanceCorrection distCorr) {
 		int numSources =  region.getNodeCount();
 		ArrayList<ProbEqkSource> sources = new ArrayList<ProbEqkSource>();
 		for(int i=0; i<numSources; ++i) {
-			sources.add(this.getNSHMP13_GriddedSource(i, duration));
+			sources.add(this.getNSHMP13_GriddedSource(i, duration, distCorr));
 		}
 		return sources;
 	}
@@ -332,7 +333,7 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 	 * @param duration
 	 * @return the source
 	 */
-	public ProbEqkSource getNSHMP13_GriddedSource(int srcIndex, double duration) {
+	public ProbEqkSource getNSHMP13_GriddedSource(int srcIndex, double duration, PointSourceDistanceCorrection distCorr) {
 		boolean includeDeeps = false;
 		//boolean includeDeeps = true;
 		SummedMagFreqDist mfdAtLoc = getTotMFD_atLoc(srcIndex,  false, true,  true, false, includeDeeps);
@@ -341,7 +342,7 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 		mechMap.put(FocalMech.NORMAL, fracNormal[srcIndex]);
 		mechMap.put(FocalMech.REVERSE, fracReverse[srcIndex]);
 		return new PointSource13b(region.locationForIndex(srcIndex), mfdAtLoc,
-			duration, DEPTHS, mechMap);
+			duration, DEPTHS, mechMap, distCorr);
 	}
 	
 

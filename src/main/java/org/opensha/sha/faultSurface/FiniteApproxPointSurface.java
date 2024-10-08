@@ -108,9 +108,10 @@ public class FiniteApproxPointSurface extends PointSurface {
 	private static boolean HACK_WARN_FIRST = true;
 	@Override
 	public double getDistanceJB(Location siteLoc) {
-		if (corrType == null) {
+		if (distCorr == null) {
 			// TODO: currently hardcoded  to PointSourceNshm, pending revamp of point source correction framework
 			double rEpi = LocationUtils.horzDistanceFast(getLocation(), siteLoc);
+			double corrMag = distCorr.rupture.getMag();
 			Preconditions.checkState(Double.isFinite(corrMag));
 			if (HACK_WARN_FIRST) {
 				System.err.println("WARNING: FiniteApproxPointSurface currently hardcoded to use PointSourceNshm corrected RJB");

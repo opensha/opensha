@@ -11,7 +11,9 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
 
 
@@ -44,8 +46,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	
 	// variables for the point-source distance correction; these
 	// are set by HazardCurveCalcs
-	protected PtSrcDistCorr.Type corrType = PtSrcDistCorr.Type.NONE;
-	protected double corrMag = Double.NaN;
+	protected PointSourceDistanceCorrection.RuptureSpecificCorrection distCorr = null;
 
 	/**
 	 * The average strike of this surface on the Earth. Even though this is a
@@ -228,15 +229,24 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		return getFaultTrace();
 	}
 	
+	/**
+	 * This sets the point-source distance correction and rupture
+	 * @param correction
+	 * @param rupture
+	 */
+	public void setDistanceCorrection(PointSourceDistanceCorrection correction, EqkRupture rupture) {
+		if (correction == null)
+			setDistanceCorrection(null);
+		else
+			setDistanceCorrection(new PointSourceDistanceCorrection.RuptureSpecificCorrection(rupture, correction));
+	}
 	
 	/**
-	 * This sets the magnitude and type for the point-source distance corrections
-	 * @param mag
-	 * @param type
+	 * This sets the point-source distance correction
+	 * @param correction correction & rupture pair
 	 */
-	public void setDistCorrMagAndType(double mag, PtSrcDistCorr.Type type) {
-		corrMag = mag;
-		corrType = type;
+	public void setDistanceCorrection(PointSourceDistanceCorrection.RuptureSpecificCorrection correction) {
+		this.distCorr = correction;
 	}
 
 
@@ -276,9 +286,10 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 
 	@Override
 	public double getDistanceJB(Location siteLoc){
-		double djb = LocationUtils.horzDistanceFast(pointLocation, siteLoc);
-		double corr = PtSrcDistCorr.getCorrection(djb, corrMag, corrType);
-		return djb * corr;
+		double horzDist = LocationUtils.horzDistanceFast(pointLocation, siteLoc);
+		if (distCorr == null)
+			return horzDist;
+		return distCorr.getCorrectedDistanceJB(horzDist);
 	}
 
 	@Override
@@ -428,8 +439,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	@Override
 	public PointSurface copyShallow() {
 		PointSurface o = new PointSurface(pointLocation);
-		o.corrType = corrType;
-		o.corrMag = corrMag;
+		o.distCorr = distCorr;
 		o.aveStrike = aveStrike;
 		o.aveDip = aveDip;
 		o.aveWidth = aveWidth;

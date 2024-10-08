@@ -2,14 +2,15 @@ package org.opensha.sha.earthquake.faultSysSolution.modules;
 
 import java.util.Collection;
 import java.util.Set;
-import java.util.function.DoubleBinaryOperator;
 
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -93,10 +94,12 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * @param aftershockFilter if non-null, function that will be used to scale rupture rates for aftershocks in the
 	 * form scaledRate = aftershockFilter(magnitude, rate)
 	 * @param bgRupType type of source to build
+	 * @param distCorr point source distance correction to apply
 	 * @return the source at {@code index}
 	 */
 	public ProbEqkSource getSource(int sourceIndex, double duration,
-			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType);
+			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
+			PointSourceDistanceCorrection distCorr);
 
 	/**
 	 * Return the source at {@code gridIndex}.
@@ -107,10 +110,12 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * @param aftershockFilter if non-null, function that will be used to scale rupture rates for aftershocks in the
 	 * form scaledRate = aftershockFilter(magnitude, rate)
 	 * @param bgRupType type of source to build
+	 * @param distCorr point source distance correction to apply
 	 * @return the source at {@code index}
 	 */
 	public ProbEqkSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
-			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType);
+			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
+			PointSourceDistanceCorrection distCorr);
 	
 
 	/**
@@ -124,10 +129,12 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * @param aftershockFilter if non-null, function that will be used to scale rupture rates for aftershocks in the
 	 * form scaledRate = aftershockFilter(magnitude, rate)
 	 * @param bgRupType type of source to build
+	 * @param distCorr point source distance correction to apply
 	 * @return the source at {@code index}
 	 */
 	public ProbEqkSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
-			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType);
+			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
+			PointSourceDistanceCorrection distCorr);
 
 	/**
 	 * Return the source at {@code gridIndex}, where only the component that is unassociated with modeled faults
@@ -140,10 +147,12 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * @param aftershockFilter if non-null, function that will be used to scale rupture rates for aftershocks in the
 	 * form scaledRate = aftershockFilter(magnitude, rate)
 	 * @param bgRupType type of source to build
+	 * @param distCorr point source distance correction to apply
 	 * @return the source at {@code index}
 	 */
 	public ProbEqkSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
-			DoubleBinaryOperator aftershockFilter, BackgroundRupType bgRupType);
+			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
+			PointSourceDistanceCorrection distCorr);
 	
 	/**
 	 * @return set of each {@link TectonicRegionType} supplied by this {@link GridSourceProvider}

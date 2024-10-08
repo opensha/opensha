@@ -8,7 +8,6 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
 import org.opensha.sha.imr.ScalarIMR;
 
 public interface SpectrumCalculatorAPI {
@@ -104,20 +103,6 @@ public interface SpectrumCalculatorAPI {
 	 * @return
 	 */
 	public ListIterator getAdjustableParamsIterator();
-
-	/**
-	 * This sets the type of point-source distance correction that is desired
-	 * (see the class PtSrcDistCorr for options)
-	 * @param ptSrcDistCorrType
-	 */
-	public void setPtSrcDistCorrType(PtSrcDistCorr.Type ptSrcDistCorrType);
-
-	/**
-	 * This gets the type of point-source distance correction that is desired
-	 * (see the class PtSrcDistCorr for options)
-	 * @param ptSrcDistCorrType
-	 */
-	public PtSrcDistCorr.Type getPtSrcDistCorrType();
 
 
 }

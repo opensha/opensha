@@ -19,6 +19,7 @@ import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.MaximumMagnitudeParam;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
@@ -63,6 +64,7 @@ public class UCERF3_GriddedSeisOnlyERF_ETAS extends AbstractNthRupERF {
 	// primitives
 	protected boolean applyAftershockFilter = false;
 	protected BackgroundRupType bgRupType = BackgroundRupType.POINT;
+	protected PointSourceDistanceCorrections distCorrType = PointSourceDistanceCorrections.NSHM_2013;
 	protected double maxMag = 8.3;
 	protected TotalMag5Rate totalMag5Rate = TotalMag5Rate.RATE_7p9;
 	protected SpatialSeisPDF spatialSeisPDF = SpatialSeisPDF.UCERF3;
@@ -231,7 +233,7 @@ public class UCERF3_GriddedSeisOnlyERF_ETAS extends AbstractNthRupERF {
 	@Override
 	public ProbEqkSource getSource(int iSource) {
 		return gridSources.getSource(iSource, timeSpan.getDuration(),
-				applyAftershockFilter ? AbstractGridSourceProvider.GK_AFTERSHOCK_FILTER : null, bgRupType);
+				applyAftershockFilter ? AbstractGridSourceProvider.GK_AFTERSHOCK_FILTER : null, bgRupType, distCorrType.get());
 	}
 
 	@Override

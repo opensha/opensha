@@ -94,9 +94,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	
 	// This tells the calculator what to do if the TRT is not supported by the IMR
 	private NonSupportedTRT_OptionsParam nonSupportedTRT_OptionsParam;
-	
-	// This tell what type of point-source distance correction to apply
-	private PtSrcDistanceCorrectionParam ptSrcDistCorrParam;
 
 	private ParameterList adjustableParams;
 
@@ -134,15 +131,12 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		setTRTinIMR_FromSourceParam = new SetTRTinIMR_FromSourceParam();
 		
 		nonSupportedTRT_OptionsParam = new NonSupportedTRT_OptionsParam();
-		
-		ptSrcDistCorrParam = new PtSrcDistanceCorrectionParam();
 
 		adjustableParams = new ParameterList();
 		adjustableParams.addParameter(sourceFilterParam);
 		adjustableParams.addParameter(numStochEventSetRealizationsParam);
 		adjustableParams.addParameter(setTRTinIMR_FromSourceParam);
 		adjustableParams.addParameter(nonSupportedTRT_OptionsParam);
-		adjustableParams.addParameter(ptSrcDistCorrParam);
 
 	}
 	
@@ -153,17 +147,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	@Override
 	public List<SourceFilter> getSourceFilters() {
 		return sourceFilters.getEnabledFilters();
-	}
-	
-//	@Override
-	public void setPtSrcDistCorrType(PtSrcDistCorr.Type type) {
-		ptSrcDistCorrParam.setValueFromTypePtSrcDistCorr(type);
-	}
-	
-
-//	@Override
-	public PtSrcDistCorr.Type getPtSrcDistCorrType(){
-		return ptSrcDistCorrParam.getValueAsTypePtSrcDistCorr();
 	}
 
 
@@ -263,8 +246,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 			trtOrigVals = TRTUtils.getTRTsSetInIMRs(imrMap);
 
 		this.currRuptures = -1;
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 		/* this determines how the calucations are done (doing it the way it's outlined
     in our original SRL paper gives probs greater than 1 if the total rate of events for the
@@ -385,10 +366,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 						numRupRejected ++;
 						continue;
 					}
-					
-					// set point-source distance correction type & mag if it's a pointSurface
-					if(rupture.getRuptureSurface() instanceof PointSurface)
-						((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
 					
 					// indicate that a source has been used (put here because of above filters)
 					sourceUsed = true;
@@ -565,8 +542,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		if (D) System.out.println(C+": starting hazard curve calculation");
 
 		//	  System.out.println("totRuptures="+totRuptures);
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 
 		// loop over ruptures
@@ -579,10 +554,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 			// apply any filters
 			if (canSkipRupture(filters, rupture, site))
 				continue;
-			
-			// set point-source distance correction type (& mag) if it's a pointSurface
-			if(rupture.getRuptureSurface() instanceof PointSurface)
-				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
 
 			// set the EqkRup in the IMR
 			imr.setEqkRupture(rupture);
@@ -662,8 +633,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		if (D) System.out.println(C+": starting hazard curve calculation");
 
 		//	  System.out.println("totRuptures="+totRuptures);
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 
 		// loop over ruptures
@@ -676,11 +645,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 			// apply any filters
 			if (canSkipRupture(filters, rupture, site))
 				continue;
-			
-			// set point-source distance correction type (& mag) if it's a pointSurface
-			if(rupture.getRuptureSurface() instanceof PointSurface)
-				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
-
 
 			/*
     		// apply mag-dist cutoff filter
@@ -759,8 +723,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		if (D) System.out.println(C+": starting hazard curve calculation");
 
 		//	  System.out.println("totRuptures="+totRuptures);
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 		double maxIML = Double.NEGATIVE_INFINITY;
 		
@@ -774,11 +736,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 			// apply any filters
 			if (canSkipRupture(filters, rupture, site))
 				continue;
-			
-			// set point-source distance correction type (& mag) if it's a pointSurface
-			if(rupture.getRuptureSurface() instanceof PointSurface)
-				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
-
 
 			/*
     		// apply mag-dist cutoff filter
@@ -847,8 +804,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		if (D) System.out.println(C+": starting hazard curve calculation");
 
 		//	  System.out.println("totRuptures="+totRuptures);
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 		// loop over ruptures
 		for(int n=0; n < totRups ; n++) {
@@ -860,10 +815,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 			// apply any filters
 			if (canSkipRupture(filters, rupture, site))
 				continue;
-			
-			// set point-source distance correction type (& mag) if it's a pointSurface
-			if(rupture.getRuptureSurface() instanceof PointSurface)
-				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
 
 
 			/*
@@ -914,10 +865,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		// resetting the Parameter change Listeners on the AttenuationRelationship parameters,
 		// allowing the Server version of our application to listen to the parameter changes.
 		( (AttenuationRelationship) imr).resetParameterEventListeners();
-		
-		// set point-source distance correction type (& mag) if it's a pointSurface
-		if(rupture.getRuptureSurface() instanceof PointSurface)
-			((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), getPtSrcDistCorrType());
 
 
 		// set the Site in IMR

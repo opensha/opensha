@@ -12,7 +12,6 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.params.filters.SourceFilter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -39,20 +38,6 @@ public interface HazardCurveCalculatorAPI {
 	 * @return parameter iterator
 	 */
 	public ListIterator<Parameter<?>> getAdjustableParamsIterator();
-	
-	/**
-	 * This sets the type of point-source distance correction that is desired
-	 * (see the class PtSrcDistCorr for options)
-	 * @param ptSrcDistCorrType
-	 */
-	public void setPtSrcDistCorrType(PtSrcDistCorr.Type ptSrcDistCorrType);
-
-	/**
-	 * This gets the type of point-source distance correction that is desired
-	 * (see the class PtSrcDistCorr for options)
-	 * @param ptSrcDistCorrType
-	 */
-	public PtSrcDistCorr.Type getPtSrcDistCorrType();
 	
 	/**
 	 * This gets a list of source filters (e.g., distance, magnitude, etc) used to speed up

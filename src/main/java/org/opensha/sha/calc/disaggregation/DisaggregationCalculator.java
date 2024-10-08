@@ -395,10 +395,6 @@ implements DisaggregationCalculatorAPI{
 
 				// get the rupture
 				ProbEqkRupture rupture = source.getRupture(n);
-				
-				// set point-source distance correction type & mag if it's a pointSurface
-				if(rupture.getRuptureSurface() instanceof PointSurface)
-					((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
 
 				double qkProb = rupture.getProbability();
 				

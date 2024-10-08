@@ -33,6 +33,7 @@ import org.opensha.sha.earthquake.EqkSource;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.EmpiricalModel;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.FaultSegmentData;
@@ -46,6 +47,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.final
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.NSHMP_GridSourceGenerator;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.oldClasses.UCERF2_Final_StirlingGriddedSurface;
 import org.opensha.sha.earthquake.util.EqkSourceNameComparator;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
@@ -80,6 +82,8 @@ public class MeanUCERF2 extends AbstractERF {
 
 	// background seismicity treated as param
 	protected StringParameter backSeisRupParam;
+	
+	protected PointSourceDistanceCorrectionParam distCorrParam;
 
 	// For rupture offset length along fault parameter
 	public final static String RUP_OFFSET_PARAM_NAME ="Rupture Offset";
@@ -174,6 +178,7 @@ public class MeanUCERF2 extends AbstractERF {
 		//faultModelParam.addParameterChangeListener(this);
 		rupOffsetParam.addParameterChangeListener(this);
 		backSeisParam.addParameterChangeListener(this);
+		distCorrParam.addParameterChangeListener(this);
 		backSeisRupParam.addParameterChangeListener(this);
 		this.cybershakeDDW_CorrParam.addParameterChangeListener(this);
 		this.probModelParam.addParameterChangeListener(this);
@@ -205,7 +210,8 @@ public class MeanUCERF2 extends AbstractERF {
 		backSeisRupStrings.add(UCERF2.BACK_SEIS_RUP_CROSSHAIR);
 		backSeisRupParam = new StringParameter(UCERF2.BACK_SEIS_RUP_NAME, backSeisRupStrings, UCERF2.BACK_SEIS_RUP_DEFAULT);
 
-
+		distCorrParam = new PointSourceDistanceCorrectionParam(PointSourceDistanceCorrections.NSHM_2008);
+		
 		// rup offset
 		rupOffsetParam = new DoubleParameter(RUP_OFFSET_PARAM_NAME,RUP_OFFSET_PARAM_MIN,
 				RUP_OFFSET_PARAM_MAX,RUP_OFFSET_PARAM_UNITS,DEFAULT_RUP_OFFSET_VAL);
@@ -239,6 +245,7 @@ public class MeanUCERF2 extends AbstractERF {
 		backSeisParam.setValue(UCERF2.BACK_SEIS_DEFAULT);
 		// backgroud treated as point sources/finite soource
 		backSeisRupParam.setValue(UCERF2.BACK_SEIS_RUP_DEFAULT);
+		distCorrParam.setValue(PointSourceDistanceCorrections.NSHM_2008);
 		// rup offset
 		rupOffsetParam.setValue(DEFAULT_RUP_OFFSET_VAL);
 		// floater type
@@ -256,8 +263,11 @@ public class MeanUCERF2 extends AbstractERF {
 		adjustableParams.addParameter(rupOffsetParam);		
 		adjustableParams.addParameter(floaterTypeParam);
 		adjustableParams.addParameter(backSeisParam);	
-		if(!backSeisParam.getValue().equals(UCERF2.BACK_SEIS_EXCLUDE))
+		if(!backSeisParam.getValue().equals(UCERF2.BACK_SEIS_EXCLUDE)) {
 			adjustableParams.addParameter(backSeisRupParam);
+			if (backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_POINT))
+				adjustableParams.addParameter(distCorrParam);
+		}
 		adjustableParams.addParameter(cybershakeDDW_CorrParam);
 		adjustableParams.addParameter(probModelParam);		
 	}
@@ -291,7 +301,8 @@ public class MeanUCERF2 extends AbstractERF {
 // Debugging */
 				return nshmp_gridSrcGen.getRandomStrikeGriddedSource(iSource - allSources.size(), timeSpan.getDuration());
 			} else {
-				return nshmp_gridSrcGen.getNSHMP13_GriddedSource(iSource - allSources.size(), timeSpan.getDuration());
+				return nshmp_gridSrcGen.getNSHMP13_GriddedSource(iSource - allSources.size(), timeSpan.getDuration(),
+						distCorrParam.getValue().get());
 			}
 		}
 	}
@@ -330,7 +341,8 @@ public class MeanUCERF2 extends AbstractERF {
 			} else if(this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_CROSSHAIR)) {
 				sourceList.addAll(nshmp_gridSrcGen.getAllRandomStrikeGriddedSources(timeSpan.getDuration()));
 			} else {
-				sourceList.addAll(nshmp_gridSrcGen.getAllNSHMP13_GriddedSources(timeSpan.getDuration()));
+				sourceList.addAll(nshmp_gridSrcGen.getAllNSHMP13_GriddedSources(timeSpan.getDuration(),
+						distCorrParam.getValue().get()));
 			}
 
 		}
