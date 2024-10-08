@@ -831,15 +831,24 @@ public class PointSurfaceBuilder {
 	 * Builds surfaces for the given {@link BackgroundRupType}. If a finite option has been chosen and the strike
 	 * direction has not been set, then random a strike (or random strikes for crosshair) will be chosen.
 	 * 
-	 * Note: if the strike has been set, a single finite surface will be returned even if {@link BackgroundRupType#POINT}
-	 * is chosen.
+	 * <p><b>Special cases:</b>
+	 * 
+	 * <p>If the strike has been set and length>0, a single finite surface will be returned even if
+	 * {@link BackgroundRupType#POINT} is chosen.
+	 * 
+	 * <p>If the length is zero, then a point source will be returned regardless of the {@link BackgroundRupType} setting.
+	 * If <code>zTop ==  zBot && footwall == null</code>, then a true point source will be returned, otherwise an
+	 * {@link FiniteApproxPointSurface} will be returned.
 	 * @return
 	 */
 	public RuptureSurface[] build(BackgroundRupType bgRupType) {
 		// special cases
-		if ((float)length == 0f && (float)zTop == (float)zBot && footwall == null) {
-			// true point source
-			return new RuptureSurface[] { buildTruePointSurface() };
+		if ((float)length == 0f) {
+			if ((float)zTop == (float)zBot && footwall == null)
+				// true point source
+				return new RuptureSurface[] { buildTruePointSurface() };
+			// zero length, force it to return FiniteApproxPointSurface
+			bgRupType = BackgroundRupType.POINT;
 		} else if (Double.isFinite(strike) && (float)length > 0f) {
 			// we have a finite surface
 			return new RuptureSurface[] { buildQuadSurface() };
