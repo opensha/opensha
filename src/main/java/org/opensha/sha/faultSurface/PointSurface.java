@@ -269,7 +269,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	
 	@Override
 	public double getDistanceRup(Location siteLoc){
-		double depth = pointLocation.getDepth();
+		double depth = getDepth();
 		double djb = getDistanceJB(siteLoc);
 		return Math.sqrt(depth * depth + djb * djb);
 	}
@@ -290,7 +290,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	
 	@Override
 	public double getQuickDistance(Location siteLoc) {
-		return getDistanceRup(siteLoc);
+		return LocationUtils.horzDistanceFast(pointLocation, siteLoc);
 	}
 
 	/**
