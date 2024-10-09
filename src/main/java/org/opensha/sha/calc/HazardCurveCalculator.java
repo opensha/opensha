@@ -36,7 +36,7 @@ import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.SiteAdaptiveProbEqkSource;
+import org.opensha.sha.earthquake.SiteAdaptiveSource;
 import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_EqkRupForecast;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
@@ -292,8 +292,8 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 			sourceIndex =0;
 			for(sourceIndex=0;sourceIndex<numSources;++sourceIndex) {
 				ProbEqkSource source = eqkRupForecast.getSource(sourceIndex);
-				if (source instanceof SiteAdaptiveProbEqkSource)
-					source = ((SiteAdaptiveProbEqkSource)source).getForSite(site);
+				if (source instanceof SiteAdaptiveSource)
+					source = ((SiteAdaptiveSource)source).getForSite(site);
 				totRuptures += source.getNumRuptures();
 			}
 		}
@@ -322,8 +322,8 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 			ProbEqkSource source = eqkRupForecast.getSource(sourceIndex);
 			TectonicRegionType trt = source.getTectonicRegionType();
 			
-			if (source instanceof SiteAdaptiveProbEqkSource)
-				source = ((SiteAdaptiveProbEqkSource)source).getForSite(site);
+			if (source instanceof SiteAdaptiveSource)
+				source = ((SiteAdaptiveSource)source).getForSite(site);
 			
 			// get the IMR
 			ScalarIMR imr = TRTUtils.getIMRforTRT(imrMap, trt);
