@@ -268,6 +268,8 @@ public abstract class AbstractERF implements
 		ArrayList<EqkRupture> rupList = new ArrayList<EqkRupture>();
 		for(int s=0; s<this.getNumSources(); s++) {
 			ProbEqkSource source = getSource(s);
+			if (site != null && source instanceof SiteAdaptiveProbEqkSource)
+				source = ((SiteAdaptiveProbEqkSource)source).getForSite(site);
 			if (doFilter) {
 				boolean skip = false;
 				double dist = source.getMinDistance(site);
