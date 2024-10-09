@@ -10,7 +10,7 @@ import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -99,7 +99,7 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 */
 	public ProbEqkSource getSource(int sourceIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrection distCorr);
+			PointSourceDistanceCorrections distCorrType);
 
 	/**
 	 * Return the source at {@code gridIndex}.
@@ -115,7 +115,7 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 */
 	public ProbEqkSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrection distCorr);
+			PointSourceDistanceCorrections distCorrType);
 	
 
 	/**
@@ -134,7 +134,7 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 */
 	public ProbEqkSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrection distCorr);
+			PointSourceDistanceCorrections distCorrType);
 
 	/**
 	 * Return the source at {@code gridIndex}, where only the component that is unassociated with modeled faults
@@ -152,7 +152,7 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 */
 	public ProbEqkSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrection distCorr);
+			PointSourceDistanceCorrections distCorrType);
 	
 	/**
 	 * @return set of each {@link TectonicRegionType} supplied by this {@link GridSourceProvider}

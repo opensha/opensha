@@ -1,17 +1,28 @@
 package org.opensha.sha.faultSurface.utils;
 
+import java.util.List;
 import java.util.function.Supplier;
 
-import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
+import org.opensha.commons.data.WeightedList;
+import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm.DistanceCorrection2013;
+import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.util.NSHMP_Util;
 
-public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistanceCorrection> {
+import com.google.common.base.Preconditions;
+
+/**
+ * {@link PointSourceDistanceCorrection} implementation enum.
+ * 
+ * Implementations return one or more correction via a {@link WeightedList}. If multiple corrections are returned,
+ * then a rupture should be split into multiple realizations with the given weight. Weights will always be normalized
+ * to sum to 1.
+ */
+public enum PointSourceDistanceCorrections implements Supplier<WeightedList<PointSourceDistanceCorrection>> {
 	
 	NONE("None", new PointSourceDistanceCorrection() {
 
 		@Override
-		public double getCorrectedDistanceJB(EqkRupture rup, double horzDist) {
+		public double getCorrectedDistanceJB(double mag, PointSurface surf, double horzDist) {
 			return horzDist;
 		}
 		
@@ -20,12 +31,12 @@ public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistan
 		// TODO is there a reference? more specific name?
 
 		@Override
-		public double getCorrectedDistanceJB(EqkRupture rup, double horzDist) {
+		public double getCorrectedDistanceJB(double mag, PointSurface surf, double horzDist) {
 			// Wells and Coppersmith L(M) for "all" focal mechanisms
 			// this correction comes from work by Ned Field and Bruce Worden
 			// it assumes a vertically dipping straight fault with random
 			// hypocenter and strike
-			double rupLen =  Math.pow(10.0,-3.22+0.69*rup.getMag());
+			double rupLen =  Math.pow(10.0,-3.22+0.69*mag);
 			double corrFactor = 0.7071 + (1.0-0.7071)/(1 + Math.pow(rupLen/(horzDist*0.87),1.1));
 			return horzDist*corrFactor;
 		}
@@ -34,8 +45,7 @@ public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistan
 	NSHM_2008("USGS NSHM (2008)", new PointSourceDistanceCorrection() {
 
 		@Override
-		public double getCorrectedDistanceJB(EqkRupture rup, double horzDist) {
-			double mag = rup.getMag();
+		public double getCorrectedDistanceJB(double mag, PointSurface surf, double horzDist) {
 			if(mag<=6) {
 				return horzDist;
 			} else if (horzDist == 0d) {
@@ -57,21 +67,19 @@ public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistan
 		}
 		
 	}),
-	NSHM_2013("USGS NSHM (2013)", new PointSourceDistanceCorrection() {
-
-		@Override
-		public double getCorrectedDistanceJB(EqkRupture rup, double horzDist) {
-			return PointSourceNshm.correctedRjb(rup.getMag(), horzDist);
-		}
-		
-	});
+	NSHM_2013("USGS NSHM (2013)", new DistanceCorrection2013());
 	
 	private String name;
-	private PointSourceDistanceCorrection corr;
+	private WeightedList<PointSourceDistanceCorrection> corrs;
 
 	private PointSourceDistanceCorrections(String name, PointSourceDistanceCorrection corr) {
+		this(name, new WeightedList<>(List.of(corr), List.of(1d)));
+	}
+
+	private PointSourceDistanceCorrections(String name, WeightedList<PointSourceDistanceCorrection> corrs) {
 		this.name = name;
-		this.corr = corr;
+		Preconditions.checkState(corrs.isNormalized(), "Weights not normalized for %s", name);
+		this.corrs = corrs;
 	}
 	
 	@Override
@@ -80,8 +88,8 @@ public enum PointSourceDistanceCorrections implements Supplier<PointSourceDistan
 	}
 
 	@Override
-	public PointSourceDistanceCorrection get() {
-		return corr;
+	public WeightedList<PointSourceDistanceCorrection> get() {
+		return corrs;
 	}
 
 }

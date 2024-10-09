@@ -104,7 +104,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
 	
 	// TODO make an option
-	private PointSourceDistanceCorrection distCorr = BaseFaultSystemSolutionERF.DIST_CORR_TYPE_DEFAULT.get();
+	private PointSourceDistanceCorrections distCorrType = BaseFaultSystemSolutionERF.DIST_CORR_TYPE_DEFAULT;
 	
 	static final boolean AFTERSHOCK_FILTER_DEFAULT = false;
 	private boolean applyAftershockFilter = AFTERSHOCK_FILTER_DEFAULT;
@@ -282,7 +282,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
 			for (int p=0; p<quickGridCalcs.length; p++)
 				quickGridCalcs[p] = new QuickGriddedHazardMapCalc(gmmRefs, periods[p],
-						SolHazardMapCalc.getDefaultXVals(periods[p]), sourceFilter, distCorr);
+						SolHazardMapCalc.getDefaultXVals(periods[p]), sourceFilter, distCorrType);
 		}
 
 		noMFDs = cmd.hasOption("no-mfds");
@@ -849,7 +849,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						
 						externalGriddedCurveCalc.setSourceFilter(sourceFilter);
 						externalGriddedCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
-						externalGriddedCurveCalc.setPointSourceDistanceCorrection(distCorr);
+						externalGriddedCurveCalc.setPointSourceDistanceCorrection(distCorrType);
 						
 						externalGriddedCurveCalc.calcHazardCurves(getNumThreads());
 					}
@@ -866,7 +866,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
 						for (int p=0; p<periods.length; p++)
 							quickGridCalcs[p] = new QuickGriddedHazardMapCalc(getGMM_Suppliers(branch, gmmRefs), periods[p],
-									SolHazardMapCalc.getDefaultXVals(periods[p]), sourceFilter, distCorr);
+									SolHazardMapCalc.getDefaultXVals(periods[p]), sourceFilter, distCorrType);
 					}
 					debug("Doing quick gridded seismicity calc for "+index);
 					Preconditions.checkState(!combineOnly, "Combine-only flag is set, but we need to calculate gridded only for "+branch);
@@ -956,7 +956,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				}
 				calc.setSourceFilter(sourceFilter);
 				calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
-				calc.setPointSourceDistanceCorrection(distCorr);
+				calc.setPointSourceDistanceCorrection(distCorrType);
 				calc.setAseisReducesArea(aseisReducesArea);
 				calc.setNoMFDs(noMFDs);
 				calc.setUseProxyRups(!noProxyRups);

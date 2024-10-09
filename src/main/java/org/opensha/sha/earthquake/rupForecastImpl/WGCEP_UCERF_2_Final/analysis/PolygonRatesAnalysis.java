@@ -177,7 +177,7 @@ public class PolygonRatesAnalysis {
 	 *
 	 */
 	public void mkC_ZonesFile() {
-		NSHMP_GridSourceGenerator nshmpGridSrcGen = new NSHMP_GridSourceGenerator();
+		NSHMP_GridSourceGenerator nshmpGridSrcGen = new NSHMP_GridSourceGenerator(null);
 		String PATH = "org/opensha/sha/earthquake/rupForecastImpl/WGCEP_UCERF_2_Final/griddedSeis/";
 		try {
 			FileWriter fw = new FileWriter(C_ZONES_FILENAME);

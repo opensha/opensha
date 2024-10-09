@@ -29,6 +29,7 @@ import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.Site;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -258,7 +259,7 @@ public class SolHazardMapCalc {
 	// ERF params
 	private IncludeBackgroundOption backSeisOption;
 	private BackgroundRupType backSeisType = BaseFaultSystemSolutionERF.BG_RUP_TYPE_DEFAULT;
-	private PointSourceDistanceCorrection distCorr = BaseFaultSystemSolutionERF.DIST_CORR_TYPE_DEFAULT.get();
+	private PointSourceDistanceCorrections distCorrType = BaseFaultSystemSolutionERF.DIST_CORR_TYPE_DEFAULT;
 	private boolean applyAftershockFilter;
 	private boolean aseisReducesArea = BaseFaultSystemSolutionERF.ASEIS_REDUCES_AREA_DEAFULT;
 	private boolean noMFDs = !BaseFaultSystemSolutionERF.USE_RUP_MFDS_DEAFULT;
@@ -408,7 +409,7 @@ public class SolHazardMapCalc {
 			if (backSeisOption != IncludeBackgroundOption.EXCLUDE) {
 				fssERF.setParameter(BackgroundRupParam.NAME, backSeisType);
 				if (backSeisType == BackgroundRupType.POINT)
-					fssERF.setParameter(PointSourceDistanceCorrectionParam.NAME, distCorr);
+					fssERF.setParameter(PointSourceDistanceCorrectionParam.NAME, distCorrType);
 			}
 			
 			fssERF.setParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME, applyAftershockFilter);
@@ -439,8 +440,8 @@ public class SolHazardMapCalc {
 		this.siteSkipSourceFilter = siteSkipSourceFilter;
 	}
 	
-	public void setPointSourceDistanceCorrection(PointSourceDistanceCorrection distCorr) {
-		this.distCorr = distCorr;
+	public void setPointSourceDistanceCorrection(PointSourceDistanceCorrections distCorrType) {
+		this.distCorrType = distCorrType;
 	}
 	
 	public static DiscretizedFunc getDefaultXVals(double period) {

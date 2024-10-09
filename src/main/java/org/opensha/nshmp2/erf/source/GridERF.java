@@ -18,6 +18,7 @@ import java.util.logging.Logger;
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
 import org.opensha.commons.data.TimeSpan;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -68,7 +69,7 @@ public class GridERF extends NSHMP_ERF {
 	private double weight;
 	private double maxR, dR;
 	
-	private static PointSourceDistanceCorrection distCorr = PointSourceDistanceCorrections.NSHM_2008.get();
+	private static WeightedList<PointSourceDistanceCorrection> distCorrs = PointSourceDistanceCorrections.NSHM_2008.get();
 
 	private final static MagLengthRelationship MLR = new WC1994_MagLengthRelationship();
 
@@ -249,7 +250,7 @@ public class GridERF extends NSHMP_ERF {
 				? new FixedStrikeSource(locs.get(idx), mfds.get(idx), MLR,
 					timeSpan.getDuration(), depths, mechWtMap, strike)
 				: new PointSource13b(locs.get(idx), mfds.get(idx),
-					timeSpan.getDuration(), depths, mechWtMap, distCorr);
+					timeSpan.getDuration(), depths, mechWtMap, distCorrs);
 		// @formatter:on
 	}
 

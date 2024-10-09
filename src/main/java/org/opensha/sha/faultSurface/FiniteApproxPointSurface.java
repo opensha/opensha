@@ -31,7 +31,8 @@ public class FiniteApproxPointSurface extends PointSurface {
 	private double dipRad;
 	private double horzWidth;
 
-	public FiniteApproxPointSurface(Location loc, double dip, double zTop, double zBot, boolean footwall, double length) {
+	public FiniteApproxPointSurface(Location loc, double dip, double zTop, double zBot, boolean footwall,
+			double length) {
 		super(loc);
 		this.aveDip = dip;
 		this.zTop = zTop;

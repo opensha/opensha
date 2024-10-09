@@ -90,7 +90,7 @@ public class NSHMP_UCERF3_ERF extends FaultSystemSolutionERF {
 	protected ProbEqkSource getOtherSource(int iSource) {
 		return gridSources.getSource(indices.get(iSource), timeSpan.getDuration(),
 			applyAftershockFilter ? AbstractGridSourceProvider.GK_AFTERSHOCK_FILTER : null,
-					BackgroundRupType.POINT, distCorrType.get());
+					BackgroundRupType.POINT, distCorrType);
 	}
 
 

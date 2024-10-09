@@ -84,7 +84,7 @@ public class QuickGriddedHazardMapCalc {
 	
 	private ConcurrentMap<UniqueRupture, DiscretizedFunc[]> rupExceedsMap = new ConcurrentHashMap<>();
 	
-	private PointSourceDistanceCorrection distCorr;
+	private PointSourceDistanceCorrections distCorrType;
 	
 	private int minNodeCalcsForSourcewise;
 	
@@ -100,8 +100,8 @@ public class QuickGriddedHazardMapCalc {
 	 * @param distCorr point source distance correction
 	 */
 	public QuickGriddedHazardMapCalc(Supplier<ScalarIMR> gmpeSupplier, double period, DiscretizedFunc xVals,
-			SourceFilterManager sourceFitlers, PointSourceDistanceCorrection distCorr) {
-		this(SolHazardMapCalc.wrapInTRTMap(gmpeSupplier), period, xVals, sourceFitlers, distCorr);
+			SourceFilterManager sourceFitlers, PointSourceDistanceCorrections distCorrType) {
+		this(SolHazardMapCalc.wrapInTRTMap(gmpeSupplier), period, xVals, sourceFitlers, distCorrType);
 	}
 	
 
@@ -117,8 +117,8 @@ public class QuickGriddedHazardMapCalc {
 	 */
 	public QuickGriddedHazardMapCalc(Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeSuppliers,
 			double period, DiscretizedFunc xVals, SourceFilterManager sourceFitlers,
-			PointSourceDistanceCorrection distCorr) {
-		this(gmpeSuppliers, period, xVals, sourceFitlers, distCorr, NUM_DISCR_DEFAULT);
+			PointSourceDistanceCorrections distCorrType) {
+		this(gmpeSuppliers, period, xVals, sourceFitlers, distCorrType, NUM_DISCR_DEFAULT);
 	}
 
 	/**
@@ -131,8 +131,8 @@ public class QuickGriddedHazardMapCalc {
 	 * @param numDiscr number of interpolation points
 	 */
 	public QuickGriddedHazardMapCalc(Supplier<ScalarIMR> gmpeSupplier, double period, DiscretizedFunc xVals,
-			SourceFilterManager sourceFitlers, PointSourceDistanceCorrection distCorr, int numDiscr) {
-		this(SolHazardMapCalc.wrapInTRTMap(gmpeSupplier), period, xVals, sourceFitlers, distCorr, numDiscr);
+			SourceFilterManager sourceFitlers, PointSourceDistanceCorrections distCorrType, int numDiscr) {
+		this(SolHazardMapCalc.wrapInTRTMap(gmpeSupplier), period, xVals, sourceFitlers, distCorrType, numDiscr);
 	}
 
 	/**
@@ -146,11 +146,11 @@ public class QuickGriddedHazardMapCalc {
 	 */
 	public QuickGriddedHazardMapCalc(Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeSuppliers,
 			double period, DiscretizedFunc xVals, SourceFilterManager sourceFitlers,
-			PointSourceDistanceCorrection distCorr, int numDiscr) {
+			PointSourceDistanceCorrections distCorrType, int numDiscr) {
 		this.gmpeSuppliers = gmpeSuppliers;
 		this.period = period;
 		this.xVals = xVals;
-		this.distCorr = distCorr;
+		this.distCorrType = distCorrType;
 		
 		minNodeCalcsForSourcewise = 3*numDiscr/2;
 		trtMaxDists = new EnumMap<>(TectonicRegionType.class);
@@ -361,7 +361,7 @@ public class QuickGriddedHazardMapCalc {
 							break;
 						sourceID = sourceIndexes.pop();
 					}
-					ProbEqkSource source = gridProv.getSource(sourceID, 1d, null, BackgroundRupType.POINT, distCorr);
+					ProbEqkSource source = gridProv.getSource(sourceID, 1d, null, BackgroundRupType.POINT, distCorrType);
 					
 					TectonicRegionType trt = source.getTectonicRegionType();
 					ScalarIMR gmpe = gmpeMap.get(trt);
@@ -616,7 +616,7 @@ public class QuickGriddedHazardMapCalc {
 		
 		SourceFilterManager sourceFilters = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
 		
-		PointSourceDistanceCorrection distCorr = PointSourceDistanceCorrections.NSHM_2013.get();
+		PointSourceDistanceCorrections distCorr = PointSourceDistanceCorrections.NSHM_2013;
 		
 		QuickGriddedHazardMapCalc calc = new QuickGriddedHazardMapCalc(gmpeRef, period, xVals, sourceFilters, distCorr, numPts);
 //		calc.minNodesForSourcewise = Integer.MAX_VALUE;

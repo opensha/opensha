@@ -5,6 +5,7 @@ import static org.opensha.sha.util.FocalMech.*;
 import static org.opensha.commons.geo.GeoTools.TO_RAD;
 import static java.lang.Math.*;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,7 @@ import java.util.Map;
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
 import org.opensha.commons.data.Site;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.GeoTools;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -22,6 +24,7 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SingleMagFreqDist;
@@ -29,6 +32,7 @@ import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.NSHMP_Util;
 
 import com.google.common.base.Joiner;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Range;
@@ -91,12 +95,13 @@ public class PointSource13b extends ProbEqkSource {
 	private double smMagDepth;
 	public Map<FocalMech, Double> mechWts;
 
-	private int mechCount; // mechs with weight 1-3;
-	private int ssIdx, revIdx; // normal not needed
-	private int fwIdxLo, fwIdxHi;
+	private WeightedList<PointSourceDistanceCorrection> distCorrs;
 	
-	private PointSourceDistanceCorrection distCorr;
-	
+	private short[] mfdIndexes;
+	private short[] distCorrIndexes;
+	private boolean[] footwalls;
+	private FocalMech[] mechs;
+
 	// Rupture indexing: no array index out of bounds are checked, it is assumed
 	// that users will only request values in the range getNumRuptures()-1
 	// Focal mech is determined using the max indices for each type of mech
@@ -122,11 +127,29 @@ public class PointSource13b extends ProbEqkSource {
 	 *        <code>depths[0]</code> used for M&lt;6.5, <code>depths[1]</code>
 	 *        used for M&ge;6.5
 	 * @param mechWtMap <code>Map</code> of focal mechanism weights
+	 * @param distCorrType rJB distance correction type
 	 */
 	public PointSource13b(Location loc, IncrementalMagFreqDist mfd,
-		double duration, double[] depths, Map<FocalMech, Double> mechWtMap, PointSourceDistanceCorrection distCorr) {
+		double duration, double[] depths, Map<FocalMech, Double> mechWtMap, PointSourceDistanceCorrections distCorrType) {
+		this(loc, mfd, duration, depths, mechWtMap, distCorrType == null ? null : distCorrType.get());
+	}
+	
+	/**
+	 * Constructs a new point earthquake source.
+	 * 
+	 * @param loc <code>Location</code> of the point source
+	 * @param mfd magnitude frequency distribution of the source
+	 * @param duration of the parent forecast
+	 * @param depths 2 element array of rupture top depths;
+	 *        <code>depths[0]</code> used for M&lt;6.5, <code>depths[1]</code>
+	 *        used for M&ge;6.5
+	 * @param mechWtMap <code>Map</code> of focal mechanism weights
+	 * @param distCorrs rJB distance correction(s)
+	 */
+	public PointSource13b(Location loc, IncrementalMagFreqDist mfd,
+		double duration, double[] depths, Map<FocalMech, Double> mechWtMap, WeightedList<PointSourceDistanceCorrection> distCorrs) {
 
-		this.distCorr = distCorr;
+		this.distCorrs = distCorrs;
 		name = NAME; // super
 		this.loc = loc;
 		this.mfd = mfd;
@@ -135,8 +158,7 @@ public class PointSource13b extends ProbEqkSource {
 		lgMagDepth = depths[1];
 		this.mechWts = mechWtMap;
 
-		// rupture indexing
-		mechCount = countMechs(mechWtMap);
+		// rupture indexing, now simpler and set explicitly rather than calculated from index
 		setIndices();
 
 	}
@@ -147,12 +169,11 @@ public class PointSource13b extends ProbEqkSource {
 			throw new RuntimeException("index out of bounds");
 		ProbEqkRupture probEqkRupture = new ProbEqkRupture();
 		PointSurface13b surface = new PointSurface13b(loc); // mutable, possibly depth varying
-		surface.setDistanceCorrection(distCorr, probEqkRupture);
 
 		FocalMech mech = mechForIndex(idx);
 		double wt = mechWts.get(mech);
 		if (mech != STRIKE_SLIP) wt *= 0.5;
-		int magIdx = idx % mfd.size();
+		int magIdx = mfdIndexes[idx];
 		double mag = mfd.getX(magIdx);
 		double zTop = depthForMag(mag);
 		double dipRad = mech.dip() * TO_RAD;
@@ -165,6 +186,13 @@ public class PointSource13b extends ProbEqkSource {
 		surface.zTop = zTop;
 		surface.zBot = zTop + widthDD * sin(dipRad);
 		surface.footwall = isOnFootwall(idx);
+		
+		if (distCorrs != null) {
+			int distCorrIdx = distCorrIndexes[idx];
+			PointSourceDistanceCorrection distCorr = distCorrs.getValue(distCorrIdx);
+			wt *= distCorrs.getWeight(distCorrIdx);
+			surface.setDistanceCorrection(distCorr, mag);
+		}
 
 		probEqkRupture.setPointSurface(surface);
 		probEqkRupture.setMag(mag);
@@ -224,7 +252,7 @@ public class PointSource13b extends ProbEqkSource {
 
 	@Override
 	public int getNumRuptures() {
-		return mfd.size() * mechCount;
+		return mfdIndexes.length;
 	}
 
 	@Override
@@ -264,7 +292,7 @@ public class PointSource13b extends ProbEqkSource {
 	 */
 	private FocalMech mechForIndex(int idx) {
 		// iteration order is always SS -> REV -> NOR
-		return (idx < ssIdx) ? STRIKE_SLIP : (idx < revIdx) ? REVERSE : NORMAL;
+		return mechs[idx];
 	}
 	
 	/**
@@ -274,9 +302,7 @@ public class PointSource13b extends ProbEqkSource {
 	 * 		SS-FW RV-FW RV-HW NR-FW NR-HW
 	 */
 	private boolean isOnFootwall(int idx) {
-		return (idx < fwIdxLo) ? true : 
-			   (idx < revIdx) ? false : 
-			   (idx < fwIdxHi) ? true : false;
+		return footwalls[idx];
 	}
 	
 	/**
@@ -303,14 +329,61 @@ public class PointSource13b extends ProbEqkSource {
 	}
 
 	private void setIndices() {
-		int nMag = mfd.size();
-		int ssCount = (int) ceil(mechWts.get(STRIKE_SLIP)) * nMag;
-		int revCount = (int) ceil(mechWts.get(REVERSE)) * nMag * 2;
-		int norCount = (int) ceil(mechWts.get(NORMAL)) * nMag * 2;
-		ssIdx = ssCount;
-		revIdx = ssCount + revCount;
-		fwIdxLo = ssCount + revCount / 2;
-		fwIdxHi = ssCount + revCount + norCount / 2;
+		int nMag = 0;
+		for (int i=0; i<mfd.size(); i++)
+			if (mfd.getY(i) > 0d)
+				nMag++;
+		int nCorr = distCorrs == null ? 1 : distCorrs.size();
+		
+		List<FocalMech> nonZeroMechWeights = new ArrayList<>(3);
+		int batchCount = 0;
+		if (mechWts.get(STRIKE_SLIP) > 0d) {
+			nonZeroMechWeights.add(STRIKE_SLIP);
+			batchCount++;
+		}
+		if (mechWts.get(REVERSE) > 0d) {
+			nonZeroMechWeights.add(REVERSE);
+			batchCount += 2; // one each for hanging and foot
+		}
+		if (mechWts.get(NORMAL) > 0d) {
+			nonZeroMechWeights.add(NORMAL);
+			batchCount += 2; // one each for hanging and foot
+		}
+		
+		int rupCount = nMag * nCorr * batchCount;
+		Preconditions.checkState(rupCount > 0);
+		
+		Preconditions.checkState(mfd.size() < Short.MAX_VALUE);
+		mfdIndexes = new short[rupCount];
+		distCorrIndexes = distCorrs == null ? null : new short[rupCount];
+		footwalls = new boolean[rupCount];
+		mechs = new FocalMech[rupCount];
+		
+		int index = 0;
+		for (FocalMech mech : FocalMech.values()) {
+			if (mechWts.get(mech) > 0) {
+				boolean[] myFootwalls;
+				if (mech == STRIKE_SLIP)
+					myFootwalls = new boolean[] {true};
+				else
+					myFootwalls = new boolean[] {true, false};
+				for (boolean footwall : myFootwalls) {
+					for (int c=0; c<nCorr; c++) {
+						for (int m=0; m<mfd.size(); m++) {
+							if (mfd.getY(m) == 0d)
+								continue;
+							Preconditions.checkState(index < rupCount);
+							mfdIndexes[index] = (short)m;
+							distCorrIndexes[index] = (short)c;
+							footwalls[index] = footwall;
+							mechs[index] = mech;
+							index++;
+						}
+					}
+				}
+			}
+		}
+		Preconditions.checkState(index == rupCount);
 	}
 	
 	/*
@@ -430,7 +503,7 @@ public class PointSource13b extends ProbEqkSource {
 		mechMap.put(FocalMech.REVERSE, 0.0);
 		mechMap.put(FocalMech.NORMAL, 1.0);
 		
-		PointSource13b ptSrc = new PointSource13b(srcLoc, mfd, 1.0, depths, mechMap, null);
+		PointSource13b ptSrc = new PointSource13b(srcLoc, mfd, 1.0, depths, mechMap, PointSourceDistanceCorrections.NONE);
 		Joiner J = Joiner.on(" ");
 		for (ProbEqkRupture rup : ptSrc) {
 			PointSurface13b surf = (PointSurface13b) rup.getRuptureSurface();

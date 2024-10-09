@@ -13,6 +13,8 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 
+import com.google.common.base.Preconditions;
+
 
 /**
  * <b>Title:</b> PointSurface<p>
@@ -42,7 +44,8 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	
 	// variables for the point-source distance correction; these
 	// are set by HazardCurveCalcs
-	protected PointSourceDistanceCorrection.RuptureSpecificCorrection distCorr = null;
+	protected double magForDistCorr = Double.NaN;
+	protected PointSourceDistanceCorrection distCorr = null;
 
 	/**
 	 * The average strike of this surface on the Earth. Even though this is a
@@ -230,18 +233,19 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	 * @param rupture
 	 */
 	public void setDistanceCorrection(PointSourceDistanceCorrection correction, EqkRupture rupture) {
-		if (correction == null)
-			setDistanceCorrection(null);
-		else
-			setDistanceCorrection(new PointSourceDistanceCorrection.RuptureSpecificCorrection(rupture, correction));
+		setDistanceCorrection(correction, rupture.getMag());
 	}
 	
 	/**
 	 * This sets the point-source distance correction
-	 * @param correction correction & rupture pair
+	 * @param correction
+	 * @param mag
 	 */
-	public void setDistanceCorrection(PointSourceDistanceCorrection.RuptureSpecificCorrection correction) {
+	public void setDistanceCorrection(PointSourceDistanceCorrection correction, double mag) {
+		Preconditions.checkState(distCorr == null || Double.isFinite(mag),
+				"Magnitude must be finite if a distance correction is supplied");
 		this.distCorr = correction;
+		this.magForDistCorr = mag;
 	}
 
 
@@ -284,7 +288,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		double horzDist = LocationUtils.horzDistanceFast(pointLocation, siteLoc);
 		if (distCorr == null)
 			return horzDist;
-		return distCorr.getCorrectedDistanceJB(horzDist);
+		return distCorr.getCorrectedDistanceJB(magForDistCorr, this, horzDist);
 	}
 
 	@Override

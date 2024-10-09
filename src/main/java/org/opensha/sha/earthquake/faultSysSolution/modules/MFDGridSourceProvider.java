@@ -26,7 +26,9 @@ import org.opensha.commons.util.modules.helpers.FileBackedModule;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm.PointSurfaceNshm;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_AbstractGridSourceProvider;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
@@ -37,6 +39,13 @@ import com.google.common.collect.ImmutableMap.Builder;
 
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 
+/**
+ * {link {@link GridSourceProvider} implementation based on MFDs at each grid node in a {@link GriddedRegion}.
+ * Conceptually simple, but relies upon custom implementing classes to provide any finite surface implementation
+ * (e.g., {@link PointSurface13b} or {@link PointSurfaceNshm}). None of the finite rupture assumptions will be
+ * serialized to data files and are left up to the user (if outside of OpenSHA), therefore the more verbose but fully
+ * explicit{@link GridSourceList} is preferred.
+ */
 public interface MFDGridSourceProvider extends GridSourceProvider {
 	
 	/**
@@ -64,7 +73,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	 */
 	public ProbEqkSource getSource(int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrection distCorr);
+			PointSourceDistanceCorrections distCorrType);
 	
 
 	/**
@@ -82,7 +91,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	 */
 	public ProbEqkSource getSourceSubSeisOnFault(int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrection distCorr);
+			PointSourceDistanceCorrections distCorrType);
 
 	/**
 	 * Return the source at {@code gridIndex}, where only the component that is unassociated with modeled faults
@@ -99,32 +108,32 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	 */
 	public ProbEqkSource getSourceUnassociated(int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrection distCorr);
+			PointSourceDistanceCorrections distCorrType);
 
 	@Override
 	default ProbEqkSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrection distCorr) {
+			PointSourceDistanceCorrections distCorrType) {
 		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
-			return getSource(gridIndex, duration, aftershockFilter, bgRupType, distCorr);
+			return getSource(gridIndex, duration, aftershockFilter, bgRupType, distCorrType);
 		return null;
 	}
 
 	@Override
 	default ProbEqkSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrection distCorr) {
+			PointSourceDistanceCorrections distCorrType) {
 		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
-			return getSourceSubSeisOnFault(gridIndex, duration, aftershockFilter, bgRupType, distCorr);
+			return getSourceSubSeisOnFault(gridIndex, duration, aftershockFilter, bgRupType, distCorrType);
 		return null;
 	}
 
 	@Override
 	default ProbEqkSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
 			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrection distCorr) {
+			PointSourceDistanceCorrections distCorrType) {
 		if (tectonicRegionType == null || tectonicRegionType == getTectonicRegionType(gridIndex))
-			return getSourceUnassociated(gridIndex, duration, aftershockFilter, bgRupType, distCorr);
+			return getSourceUnassociated(gridIndex, duration, aftershockFilter, bgRupType, distCorrType);
 		return null;
 	}
 
@@ -335,7 +344,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 		 * @return source
 		 */
 		protected abstract ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd,
-				double duration, BackgroundRupType bgRupType, PointSourceDistanceCorrection distCorr);
+				double duration, BackgroundRupType bgRupType, PointSourceDistanceCorrections distCorrType);
 	
 		@Override
 		public int getNumLocations() {
@@ -363,18 +372,18 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	
 		@Override
 		public ProbEqkSource getSource(int gridIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
-				BackgroundRupType bgRupType, PointSourceDistanceCorrection distCorr) {
+				BackgroundRupType bgRupType, PointSourceDistanceCorrections distCorrType) {
 			IncrementalMagFreqDist mfd = getMFD(gridIndex, minMagCutoff);
 			if (mfd == null)
 				return null;
 			if (aftershockFilter != null)
 				applyAftershockFilter(mfd, aftershockFilter);
-			return buildSource(gridIndex, mfd, duration, bgRupType, distCorr);
+			return buildSource(gridIndex, mfd, duration, bgRupType, distCorrType);
 		}
 	
 		@Override
 		public ProbEqkSource getSourceSubSeisOnFault(int gridIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
-				BackgroundRupType bgRupType, PointSourceDistanceCorrection distCorr) {
+				BackgroundRupType bgRupType, PointSourceDistanceCorrections distCorrType) {
 			IncrementalMagFreqDist mfd = getMFD_SubSeisOnFault(gridIndex);
 			if(mfd == null)
 				return null;
@@ -382,12 +391,12 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 			mfd = trimMFD(mfd, minMagCutoff);
 			if (aftershockFilter != null)
 				applyAftershockFilter(mfd, aftershockFilter);
-			return buildSource(gridIndex, mfd, duration, bgRupType, distCorr);
+			return buildSource(gridIndex, mfd, duration, bgRupType, distCorrType);
 		}
 	
 		@Override
 		public ProbEqkSource getSourceUnassociated(int gridIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
-				BackgroundRupType bgRupType, PointSourceDistanceCorrection distCorr) {
+				BackgroundRupType bgRupType, PointSourceDistanceCorrections distCorrType) {
 			IncrementalMagFreqDist mfd = getMFD_Unassociated(gridIndex);
 			if(mfd == null)
 				return null;
@@ -395,7 +404,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 			mfd = trimMFD(mfd, minMagCutoff);
 			if (aftershockFilter != null)
 				applyAftershockFilter(mfd, aftershockFilter);
-			return buildSource(gridIndex, mfd, duration, bgRupType, distCorr);
+			return buildSource(gridIndex, mfd, duration, bgRupType, distCorrType);
 		}
 		
 		@Override
@@ -961,7 +970,7 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 
 	/**
 	 * Default MFDGridSourceProvider instance that will be loaded if no implementation is specifies. Currently defaults
-	 * to UCERF3 grid source treatment, but that is subject to change (will likely when NSHM23 is released).
+	 * to NSHM23 grid source treatment.
 	 * 
 	 * @author kevin
 	 */
@@ -994,15 +1003,15 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 	
 		@Override
 		protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
-				BackgroundRupType bgRupType, PointSourceDistanceCorrection distCorr) {
+				BackgroundRupType bgRupType, PointSourceDistanceCorrections distCorrType) {
 			Location loc = getGriddedRegion().locationForIndex(gridIndex);
 			
 			double fracStrikeSlip = getFracStrikeSlip(gridIndex);
 			double fracNormal = getFracNormal(gridIndex);
 			double fracReverse = getFracReverse(gridIndex);
-	
-			return AbstractGridSourceProvider.buildSource(
-					mfd, duration, bgRupType, loc, fracStrikeSlip, fracNormal, fracReverse, distCorr);
+			
+			return NSHM23_AbstractGridSourceProvider.buildSource(mfd, duration, bgRupType, distCorrType, loc,
+					fracStrikeSlip, fracNormal, fracReverse);
 		}
 	
 		@Override

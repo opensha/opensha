@@ -140,7 +140,7 @@ public class MeanUCERF2 extends AbstractERF {
 	protected HashMap<String, Double> sourceRakeMapping;
 	protected HashMap<String, UCERF2_Final_StirlingGriddedSurface> sourceGriddedSurfaceMapping;
 
-	protected NSHMP_GridSourceGenerator nshmp_gridSrcGen = new NSHMP_GridSourceGenerator();
+	protected NSHMP_GridSourceGenerator nshmp_gridSrcGen;
 	protected UCERF2 ucerf2 = new UCERF2();
 //	protected DeformationModelSummaryDB_DAO defModelSummaryDAO = new DeformationModelSummaryDB_DAO(DB_AccessAPI.dbConnection);
 	protected DeformationModelSummaryFinal defModelSummaryFinal = new DeformationModelSummaryFinal();
@@ -184,6 +184,8 @@ public class MeanUCERF2 extends AbstractERF {
 		this.probModelParam.addParameterChangeListener(this);
 		this.floaterTypeParam.addParameterChangeListener(this);
 		this.parameterChangeFlag = true;
+		
+		nshmp_gridSrcGen = new NSHMP_GridSourceGenerator(distCorrParam.getValue().get());
 	}
 
 	/**
@@ -265,8 +267,8 @@ public class MeanUCERF2 extends AbstractERF {
 		adjustableParams.addParameter(backSeisParam);	
 		if(!backSeisParam.getValue().equals(UCERF2.BACK_SEIS_EXCLUDE)) {
 			adjustableParams.addParameter(backSeisRupParam);
-			if (backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_POINT))
-				adjustableParams.addParameter(distCorrParam);
+			// include even with finite and crosshair because used for M<6
+			adjustableParams.addParameter(distCorrParam);
 		}
 		adjustableParams.addParameter(cybershakeDDW_CorrParam);
 		adjustableParams.addParameter(probModelParam);		
@@ -284,10 +286,11 @@ public class MeanUCERF2 extends AbstractERF {
 		if(iSource<allSources.size()) // everything but the grid sources
 			return (ProbEqkSource) allSources.get(iSource);
 		else {
-			if(this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_CROSSHAIR)) {
+			if (this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_CROSSHAIR)) {
 				return nshmp_gridSrcGen.getCrosshairGriddedSource(iSource - allSources.size(), timeSpan.getDuration());				
-			}
-			else if(this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_FINITE)) {
+			} else if (this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_FINITE)
+					|| this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_POINT)) {
+				// UCERF2 point sources use Point2Vert_FaultPoisSource by setting the mag cutoff to 10 (all point, none finite)
 /*/ Debugging 
 				Location locOfInterest = new Location(37,-121.4);
 				int indexOfInterest = nshmp_gridSrcGen.getNearestLocationIndex(locOfInterest);
@@ -301,8 +304,8 @@ public class MeanUCERF2 extends AbstractERF {
 // Debugging */
 				return nshmp_gridSrcGen.getRandomStrikeGriddedSource(iSource - allSources.size(), timeSpan.getDuration());
 			} else {
-				return nshmp_gridSrcGen.getNSHMP13_GriddedSource(iSource - allSources.size(), timeSpan.getDuration(),
-						distCorrParam.getValue().get());
+				// NSHM 2013 point sources
+				return nshmp_gridSrcGen.getNSHMP13_GriddedSource(iSource - allSources.size(), timeSpan.getDuration());
 			}
 		}
 	}
@@ -329,7 +332,7 @@ public class MeanUCERF2 extends AbstractERF {
 	 * @return ArrayList of Prob Earthquake sources
 	 */
 	public ArrayList<ProbEqkSource>  getSourceList(){
-		ArrayList sourceList = new ArrayList();
+		ArrayList<ProbEqkSource> sourceList = new ArrayList<>();
 		sourceList.addAll(allSources);
 		
 		boolean isBackground = backSeisParam.getValue().equals(UCERF2.BACK_SEIS_INCLUDE) ||
@@ -338,11 +341,12 @@ public class MeanUCERF2 extends AbstractERF {
 		if( isBackground ) {
 			if (this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_CROSSHAIR)) {
 				sourceList.addAll(nshmp_gridSrcGen.getAllCrosshairGriddedSources(timeSpan.getDuration()));
-			} else if(this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_CROSSHAIR)) {
+			} else if(this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_FINITE)
+					|| this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_POINT)) {
+				// UCERF2 point sources use Point2Vert_FaultPoisSource by setting the mag cutoff to 10 (all point, none finite)
 				sourceList.addAll(nshmp_gridSrcGen.getAllRandomStrikeGriddedSources(timeSpan.getDuration()));
 			} else {
-				sourceList.addAll(nshmp_gridSrcGen.getAllNSHMP13_GriddedSources(timeSpan.getDuration(),
-						distCorrParam.getValue().get()));
+				sourceList.addAll(nshmp_gridSrcGen.getAllNSHMP13_GriddedSources(timeSpan.getDuration()));
 			}
 
 		}
@@ -971,9 +975,11 @@ public class MeanUCERF2 extends AbstractERF {
 			timeSpanChange(new EventObject(timeSpan));
 		} else if (paramName.equalsIgnoreCase(UCERF2.BACK_SEIS_NAME)) {
 			createParamList();
-		} else if(paramName.equalsIgnoreCase(UCERF2.BACK_SEIS_RUP_NAME)) { 
-
-		} 
+		} else if( paramName.equalsIgnoreCase(UCERF2.BACK_SEIS_RUP_NAME)) { 
+			createParamList();
+		} else if (paramName.equalsIgnoreCase(PointSourceDistanceCorrectionParam.NAME)) {
+			nshmp_gridSrcGen.setDistanceCorrections(distCorrParam.getValue().get());
+		}
 		parameterChangeFlag = true;
 	}
 

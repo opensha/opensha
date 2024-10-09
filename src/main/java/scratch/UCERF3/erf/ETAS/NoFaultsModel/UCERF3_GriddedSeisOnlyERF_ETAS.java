@@ -233,7 +233,7 @@ public class UCERF3_GriddedSeisOnlyERF_ETAS extends AbstractNthRupERF {
 	@Override
 	public ProbEqkSource getSource(int iSource) {
 		return gridSources.getSource(iSource, timeSpan.getDuration(),
-				applyAftershockFilter ? AbstractGridSourceProvider.GK_AFTERSHOCK_FILTER : null, bgRupType, distCorrType.get());
+				applyAftershockFilter ? AbstractGridSourceProvider.GK_AFTERSHOCK_FILTER : null, bgRupType, distCorrType);
 	}
 
 	@Override

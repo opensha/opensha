@@ -124,7 +124,7 @@ public class Point2Vert_FaultPoisSource extends ProbEqkSource implements java.io
 	public Point2Vert_FaultPoisSource(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
 			double duration, double magCutOff,double fracStrikeSlip,
-			double fracNormal,double fracReverse, boolean isCrossHair){
+			double fracNormal,double fracReverse, boolean isCrossHair) {
 		this.magCutOff = magCutOff;
 		// whether to simulate it as 2 perpendicular faults
 		this.isCrossHair = isCrossHair;

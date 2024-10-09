@@ -746,11 +746,11 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			}
 			// if we made it here, it's not cached
 			gridSourceCache[iSource] = gridSources.getSource(iSource, timeSpan.getDuration(),
-					getGridSourceAftershockFilter(), bgRupType, distCorrType.get());
+					getGridSourceAftershockFilter(), bgRupType, distCorrType);
 			return gridSourceCache[iSource];
 		}
 		return gridSources.getSource(iSource, timeSpan.getDuration(),
-				getGridSourceAftershockFilter(), bgRupType, distCorrType.get());
+				getGridSourceAftershockFilter(), bgRupType, distCorrType);
 	}
 	
 	public void setCacheGridSources(boolean cacheGridSources) {
