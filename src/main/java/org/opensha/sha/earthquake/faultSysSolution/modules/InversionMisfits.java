@@ -9,6 +9,8 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
@@ -161,11 +163,11 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 	private static final String RANGES_CSV = "inversion_constraint_ranges.csv";
 
 	@Override
-	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 		if (misfits != null)
-			writeData(misfits, data, entryPrefix, MISFITS_CSV, zout);
+			writeData(misfits, data, entryPrefix, MISFITS_CSV, output);
 		if (misfits_ineq != null)
-			writeData(misfits_ineq, data_ineq, entryPrefix, MISFITS_INEQ_CSV, zout);
+			writeData(misfits_ineq, data_ineq, entryPrefix, MISFITS_INEQ_CSV, output);
 		if (constraintRanges != null && !constraintRanges.isEmpty()) {
 			CSVFile<String> rangesCSV = new CSVFile<>(true);
 			rangesCSV.addLine("Name", "Short Name", "Start Row (inclusive)", "End Row (exclusive)",
@@ -174,25 +176,25 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 				rangesCSV.addLine(range.name, range.shortName, range.startRow+"", range.endRow+"",
 						range.inequality+"", range.weight+"",
 						range.weightingType == null ? "" : range.weightingType.name());
-			CSV_BackedModule.writeToArchive(rangesCSV, zout, entryPrefix, RANGES_CSV);
+			CSV_BackedModule.writeToArchive(rangesCSV, output, entryPrefix, RANGES_CSV);
 		}
 	}
 	
 	private static void writeData(double[] misfits, double[] data,
-			String entryPrefix, String fileName, ZipOutputStream zout) throws IOException {
+			String entryPrefix, String fileName, ArchiveOutput output) throws IOException {
 		CSVFile<String> csv = new CSVFile<>(true);
 		Preconditions.checkState(misfits.length == data.length, "%s != %s");
 		csv.addLine("Row", "Data", "Misfit");
 		for (int i=0; i<misfits.length; i++)
 			csv.addLine(i+"", data[i]+"", misfits[i]+"");
-		CSV_BackedModule.writeToArchive(csv, zout, entryPrefix, fileName);
+		CSV_BackedModule.writeToArchive(csv, output, entryPrefix, fileName);
 	}
 	
-	private void readData(ZipFile zip, String entryPrefix, boolean ineq) throws IOException {
+	private void readData(ArchiveInput input, String entryPrefix, boolean ineq) throws IOException {
 		String fileName = ineq ? MISFITS_INEQ_CSV : MISFITS_CSV;
-		if (!FileBackedModule.hasEntry(zip, entryPrefix, fileName))
+		if (!FileBackedModule.hasEntry(input, entryPrefix, fileName))
 			return;
-		CSVFile<String> csv = CSV_BackedModule.loadFromArchive(zip, entryPrefix, fileName);
+		CSVFile<String> csv = CSV_BackedModule.loadFromArchive(input, entryPrefix, fileName);
 		double[] data = new double[csv.getNumRows()-1];
 		double[] misfits = new double[csv.getNumRows()-1];
 		for (int i=0; i<data.length; i++) {
@@ -213,11 +215,11 @@ public class InversionMisfits implements ArchivableModule, AverageableModule<Inv
 	}
 
 	@Override
-	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
-		readData(zip, entryPrefix, false);
-		readData(zip, entryPrefix, true);
-		if (FileBackedModule.hasEntry(zip, entryPrefix, RANGES_CSV)) {
-			CSVFile<String> rangesCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, RANGES_CSV);
+	public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
+		readData(input, entryPrefix, false);
+		readData(input, entryPrefix, true);
+		if (FileBackedModule.hasEntry(input, entryPrefix, RANGES_CSV)) {
+			CSVFile<String> rangesCSV = CSV_BackedModule.loadFromArchive(input, entryPrefix, RANGES_CSV);
 			constraintRanges = new ArrayList<>();
 			for (int row=1; row<rangesCSV.getNumRows(); row++) {
 				List<String> line = rangesCSV.getLine(row);

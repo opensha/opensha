@@ -19,6 +19,8 @@ import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.IDPairing;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.SubModule;
@@ -248,12 +250,12 @@ SplittableRuptureModule<ClusterRuptures> {
 		}
 
 		@Override
-		public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 			// do nothing
 		}
 
 		@Override
-		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			// do nothing
 		}
 

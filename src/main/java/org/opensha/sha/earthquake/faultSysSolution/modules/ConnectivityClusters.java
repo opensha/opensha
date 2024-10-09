@@ -12,6 +12,8 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule;
 import org.opensha.commons.util.modules.SubModule;
@@ -148,7 +150,7 @@ BranchAverageableModule<ConnectivityClusters>, AverageableModule.ConstantAverage
 		private ConnectivityClusterSolutionMisfits() {}
 
 		@Override
-		public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 			CSVFile<String> progressCSV = null;
 			
 			for (int i=0; i<clusters.size(); i++) {
@@ -181,10 +183,10 @@ BranchAverageableModule<ConnectivityClusters>, AverageableModule.ConstantAverage
 			}
 			
 			if (progressCSV != null)
-				CSV_BackedModule.writeToArchive(progressCSV, zout, entryPrefix, CLUSTER_MISFITS_FILE_NAME);
+				CSV_BackedModule.writeToArchive(progressCSV, output, entryPrefix, CLUSTER_MISFITS_FILE_NAME);
 			
 			if (largestClusterProgress != null)
-				CSV_BackedModule.writeToArchive(largestClusterProgress.getCSV(), zout, entryPrefix,
+				CSV_BackedModule.writeToArchive(largestClusterProgress.getCSV(), output, entryPrefix,
 						LARGEST_CLUSTER_MISFIT_PROGRESS_FILE_NAME);
 		}
 
@@ -194,11 +196,11 @@ BranchAverageableModule<ConnectivityClusters>, AverageableModule.ConstantAverage
 		}
 
 		@Override
-		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			this.clusterStats = null;
 			
-			if (FileBackedModule.hasEntry(zip, entryPrefix, CLUSTER_MISFITS_FILE_NAME)) {
-				CSVFile<String> allStatsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, CLUSTER_MISFITS_FILE_NAME);
+			if (FileBackedModule.hasEntry(input, entryPrefix, CLUSTER_MISFITS_FILE_NAME)) {
+				CSVFile<String> allStatsCSV = CSV_BackedModule.loadFromArchive(input, entryPrefix, CLUSTER_MISFITS_FILE_NAME);
 				Preconditions.checkState(allStatsCSV.getNumRows() > 0);
 				
 				List<CSVFile<String>> clusterCSVs = new ArrayList<>();
@@ -236,8 +238,8 @@ BranchAverageableModule<ConnectivityClusters>, AverageableModule.ConstantAverage
 			}
 			
 			this.largestClusterProgress = null;
-			if (FileBackedModule.hasEntry(zip, entryPrefix, LARGEST_CLUSTER_MISFIT_PROGRESS_FILE_NAME)) {
-				CSVFile<String> progressCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix,
+			if (FileBackedModule.hasEntry(input, entryPrefix, LARGEST_CLUSTER_MISFIT_PROGRESS_FILE_NAME)) {
+				CSVFile<String> progressCSV = CSV_BackedModule.loadFromArchive(input, entryPrefix,
 						LARGEST_CLUSTER_MISFIT_PROGRESS_FILE_NAME);
 				largestClusterProgress = new InversionMisfitProgress(progressCSV);
 			}

@@ -6,7 +6,6 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -43,6 +42,8 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ModuleArchive;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
@@ -235,18 +236,18 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		if (cmd.hasOption("external-grid-prov")) {
 			File gpFile = new File(cmd.getOptionValue("external-grid-prov"));
 			Preconditions.checkState(gpFile.exists());
-			ZipFile zip = new ZipFile(gpFile);
+			ArchiveInput resultsInput = ArchiveInput.getDefaultInput(gpFile);
 			
-			if (FaultSystemSolution.isSolution(zip)) {
-				externalGridProv = FaultSystemSolution.load(zip).requireModule(GridSourceProvider.class);
+			if (FaultSystemSolution.isSolution(resultsInput)) {
+				externalGridProv = FaultSystemSolution.load(resultsInput).requireModule(GridSourceProvider.class);
 			} else {
-				ModuleArchive<OpenSHA_Module> avgArchive = new ModuleArchive<>(zip);
+				ModuleArchive<OpenSHA_Module> avgArchive = new ModuleArchive<>(resultsInput);
 				externalGridProv = avgArchive.requireModule(GridSourceProvider.class);
 			}
 			Preconditions.checkArgument(gridSeisOp != IncludeBackgroundOption.EXCLUDE,
 					"External grid provider was supplied, but background seismicity is disabled?");
 			
-			zip.close();
+			resultsInput.close();
 		}
 		
 		if (gridSeisOp != IncludeBackgroundOption.EXCLUDE) {
@@ -310,17 +311,13 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	
 	private class AsyncHazardWriter extends AsyncPostBatchHook {
 		
-		private ZipOutputStream zout;
-		private File workingFile;
-		private File destFile;
+		private ArchiveOutput zout;
 		
 		private double[] rankWeights;
 		
-		public AsyncHazardWriter(File destFile) throws FileNotFoundException {
+		public AsyncHazardWriter(File destFile) throws IOException {
 			super(1);
-			this.destFile = destFile;
-			workingFile = new File(destFile.getAbsolutePath()+".tmp");
-			zout = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(workingFile)));
+			zout = new ArchiveOutput.ParallelZipFileOutput(destFile, 4, false);
 			
 			rankWeights = new double[size];
 		}
@@ -396,28 +393,23 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				
 				// write grid region
 				Feature feature = gridRegion.toFeature();
-				ZipEntry entry = new ZipEntry(GRID_REGION_ENTRY_NAME);
 				
-				zout.putNextEntry(entry);
-				BufferedOutputStream out = new BufferedOutputStream(zout);
-				BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out));
+				zout.putNextEntry(GRID_REGION_ENTRY_NAME);
+				BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(zout.getOutputStream()));
 				Feature.write(feature, writer);
-				out.flush();
+				writer.flush();
 				zout.closeEntry();
 				
 				// write logic tree
 				LogicTree<?> tree = solTree.getLogicTree();
-				entry = new ZipEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
-				zout.putNextEntry(entry);
+				zout.putNextEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
 				Gson gson = new GsonBuilder().setPrettyPrinting()
 						.registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
 				gson.toJson(tree, LogicTree.class, writer);
 				writer.flush();
-				zout.flush();
 				zout.closeEntry();
 				
 				zout.close();
-				Files.move(workingFile, destFile);
 				
 				try {
 					deleteFuture.get();
@@ -439,9 +431,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					File runDir = getSolDir(branch);
 					File hazardOutDir = getHazardOutputDir(runDir, branch);
 					Preconditions.checkState(hazardOutDir.exists());
-					zout.putNextEntry(new ZipEntry(runDir.getName()+"/"));
+					zout.putNextEntry(runDir.getName()+"/");
 					zout.closeEntry();
-					zout.flush();
 					for (ReturnPeriods rp : rps) {
 						for (double period : periods) {
 							String prefix = mapPrefix(period, rp);
@@ -449,14 +440,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 							File mapFile = new File(hazardOutDir, prefix+".txt");
 							Preconditions.checkState(mapFile.exists());
 							
-							ZipEntry mapEntry = new ZipEntry(runDir.getName()+"/"+mapFile.getName());
-							debug("Async: zipping "+mapEntry.getName());
-							zout.putNextEntry(mapEntry);
-							BufferedInputStream inStream = new BufferedInputStream(new FileInputStream(mapFile));
-							inStream.transferTo(zout);
-							inStream.close();
-							zout.flush();
-							zout.closeEntry();
+							String mapEntry = runDir.getName()+"/"+mapFile.getName();
+							debug("Async: zipping "+mapEntry);
+							zout.transferFrom(new BufferedInputStream(new FileInputStream(mapFile)), mapEntry);
 						}
 					}
 					
@@ -486,6 +472,11 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	
 	public static void writeMeanCurvesAndMaps(ZipOutputStream zout, LogicTreeCurveAverager[] meanCurves,
 			GriddedRegion gridRegion, double[] periods, ReturnPeriods[] rps) throws IOException {
+		writeMeanCurvesAndMaps(new ArchiveOutput.ZipFileOutput(zout), meanCurves, gridRegion, periods, rps);
+	}
+	
+	public static void writeMeanCurvesAndMaps(ArchiveOutput output, LogicTreeCurveAverager[] meanCurves,
+			GriddedRegion gridRegion, double[] periods, ReturnPeriods[] rps) throws IOException {
 		
 		boolean firstLT = true;
 		for (int p=0; p<periods.length; p++) {
@@ -498,15 +489,15 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					// write out mean curves (but don't write out other ones)
 					CSVFile<String> csv = SolHazardMapCalc.buildCurvesCSV(curves, gridRegion.getNodeList());
 					String fileName = "mean_"+SolHazardMapCalc.getCSV_FileName("curves", periods[p]);
-					zout.putNextEntry(new ZipEntry(fileName));
-					csv.writeToStream(zout);
-					zout.closeEntry();
+					output.putNextEntry(fileName);
+					csv.writeToStream(output.getOutputStream());
+					output.closeEntry();
 					prefix = key;
 				} else {
 					prefix = LEVEL_CHOICE_MAPS_ENTRY_PREFIX;
 					if (firstLT) {
-						zout.putNextEntry(new ZipEntry(prefix));
-						zout.closeEntry();
+						output.putNextEntry(prefix);
+						output.closeEntry();
 						firstLT = false;
 					}
 					prefix += key;
@@ -533,9 +524,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						xyz.set(i, val);
 					}
 					
-					zout.putNextEntry(new ZipEntry(mapFileName));
-					ArbDiscrGeoDataSet.writeXYZStream(xyz, zout);
-					zout.closeEntry();
+					output.putNextEntry(mapFileName);
+					ArbDiscrGeoDataSet.writeXYZStream(xyz, output.getOutputStream());
+					output.closeEntry();
 				}
 			}
 		}

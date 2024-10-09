@@ -19,6 +19,8 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.opensha.commons.util.FileUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.helpers.TextBackedModule;
 
 import com.google.common.base.Preconditions;
@@ -221,10 +223,12 @@ public class ModuleArchiveTest {
 		File outputFile = new File(parentDir, "nested_duplicate_prefix.zip");
 		try {
 			archive.write(outputFile);
+			System.out.println("	*** ENTRIES ***");
 			printEntries(new ZipFile(outputFile));
-			fail("Should have thrown an IllegalStateException");
-		} catch (IllegalStateException e) {
-			System.out.println("Caught expected IllegalStateException: "+e.getMessage());
+			System.out.println("	***************");
+			fail("Should have thrown an Exception");
+		} catch (Exception e) {
+			System.out.println("Caught expected Exception: "+e.getMessage());
 		}
 		
 		System.out.println("*** END testMultipleNestedSamePrefix() ***");
@@ -593,12 +597,12 @@ public class ModuleArchiveTest {
 		}
 
 		@Override
-		public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 			// do nothing
 		}
 
 		@Override
-		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			// do nothing
 		}
 
@@ -627,12 +631,12 @@ public class ModuleArchiveTest {
 		}
 
 		@Override
-		public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
 			// do nothing
 		}
 
 		@Override
-		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			// do nothing
 		}
 

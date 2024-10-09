@@ -10,6 +10,8 @@ import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_Mag
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.commons.util.modules.OpenSHA_Module;
@@ -90,12 +92,12 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 			(M,R) -> R*GardnerKnopoffAftershockFilter.scaleForMagnitude(M);
 
 	@Override
-	public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-		new Precomputed(this).writeToArchive(zout, entryPrefix);
+	public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
+		new Precomputed(this).writeToArchive(output, entryPrefix);
 	}
 
 	@Override
-	public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
+	public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		throw new IllegalStateException("This should not be called (loaded as Precomputed instance)");
 	}
 

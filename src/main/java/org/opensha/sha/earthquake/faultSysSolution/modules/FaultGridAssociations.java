@@ -18,6 +18,8 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.json.Feature;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
@@ -224,20 +226,19 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 		}
 
 		@Override
-		public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-			FileBackedModule.initEntry(zout, entryPrefix, ARCHIVE_GRID_REGION_FILE_NAME);
-			OutputStreamWriter writer = new OutputStreamWriter(zout);
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
+			FileBackedModule.initEntry(output, entryPrefix, ARCHIVE_GRID_REGION_FILE_NAME);
+			OutputStreamWriter writer = new OutputStreamWriter(output.getOutputStream());
 			Feature.write(getRegionFeature(), writer);
 			writer.flush();
-			zout.flush();
-			zout.closeEntry();
+			output.closeEntry();
 			
 			CSVFile<String> extentsCSV = new CSVFile<>(true);
 			extentsCSV.addLine("Grid Node Index", "Fraction Associated With Fault");
 			GriddedRegion region = getRegion();
 			for (int nodeIndex=0; nodeIndex<region.getNodeCount(); nodeIndex++)
 				extentsCSV.addLine(nodeIndex+"", getNodeFraction(nodeIndex)+"");
-			CSV_BackedModule.writeToArchive(extentsCSV, zout, entryPrefix, ARCHIVE_NODE_EXTENTS_FILE_NAME);
+			CSV_BackedModule.writeToArchive(extentsCSV, output, entryPrefix, ARCHIVE_NODE_EXTENTS_FILE_NAME);
 			
 			CSVFile<String> mappingsCSV = new CSVFile<>(true);
 			mappingsCSV.addLine("Section Index", "Grid Node Index", "Node Fraction", "Scaled Node Fraction");
@@ -254,22 +255,22 @@ public interface FaultGridAssociations extends OpenSHA_Module, BranchAverageable
 					mappingsCSV.addLine(sectIndex+"", nodeIndex+"", sectFract.toString(), scaledFract.toString());
 				}
 			}
-			CSV_BackedModule.writeToArchive(mappingsCSV, zout, entryPrefix, ARCHIVE_SECT_NODE_ASSOCIATIONS_FILE_NAME);
+			CSV_BackedModule.writeToArchive(mappingsCSV, output, entryPrefix, ARCHIVE_SECT_NODE_ASSOCIATIONS_FILE_NAME);
 		}
 
 		@Override
-		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
-			BufferedInputStream regionIS = FileBackedModule.getInputStream(zip, entryPrefix, ARCHIVE_GRID_REGION_FILE_NAME);
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
+			BufferedInputStream regionIS = FileBackedModule.getInputStream(input, entryPrefix, ARCHIVE_GRID_REGION_FILE_NAME);
 			InputStreamReader regionReader = new InputStreamReader(regionIS);
 			regionFeature = Feature.read(regionReader);
 			
-			CSVFile<String> extentsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, ARCHIVE_NODE_EXTENTS_FILE_NAME);
+			CSVFile<String> extentsCSV = CSV_BackedModule.loadFromArchive(input, entryPrefix, ARCHIVE_NODE_EXTENTS_FILE_NAME);
 			ImmutableMap.Builder<Integer, Double> extentsBuilder = ImmutableMap.builderWithExpectedSize(extentsCSV.getNumRows()-1);
 			for (int row=1; row<extentsCSV.getNumRows(); row++)
 				extentsBuilder.put(extentsCSV.getInt(row, 0), extentsCSV.getDouble(row, 1));
 			nodeExtents = extentsBuilder.build();
 			
-			CSVFile<String> mappingsCSV = CSV_BackedModule.loadFromArchive(zip, entryPrefix, ARCHIVE_SECT_NODE_ASSOCIATIONS_FILE_NAME);
+			CSVFile<String> mappingsCSV = CSV_BackedModule.loadFromArchive(input, entryPrefix, ARCHIVE_SECT_NODE_ASSOCIATIONS_FILE_NAME);
 			ImmutableTable.Builder<Integer, Integer, Double> nodeInSectParticBuilder = ImmutableTable.builder();
 			ImmutableTable.Builder<Integer, Integer, Double> sectInNodeParticBuilder = ImmutableTable.builder();
 			for (int row=1; row<mappingsCSV.getNumRows(); row++) {

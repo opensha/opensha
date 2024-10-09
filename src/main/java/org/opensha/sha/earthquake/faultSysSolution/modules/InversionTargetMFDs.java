@@ -16,6 +16,8 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.data.uncertainty.UncertainIncrMagFreqDist;
+import org.opensha.commons.util.io.archive.ArchiveInput;
+import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
@@ -320,31 +322,30 @@ BranchAverageableModule<InversionTargetMFDs> {
 		}
 
 		@Override
-		public void writeToArchive(ZipOutputStream zout, String entryPrefix) throws IOException {
-			FileBackedModule.initEntry(zout, entryPrefix, "inversion_target_mfds.json");
-			BufferedOutputStream out = new BufferedOutputStream(zout);
+		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
+			BufferedOutputStream out = new BufferedOutputStream(
+					FileBackedModule.initOutputStream(output, entryPrefix, "inversion_target_mfds.json"));
 			Gson gson = new GsonBuilder().setPrettyPrinting().create();
 			OutputStreamWriter writer = new OutputStreamWriter(out);
 			writeToJSON(gson.newJsonWriter(writer));
 			writer.flush();
 			out.flush();
-			zout.closeEntry();
+			output.closeEntry();
 			
 			if (subSeisOnFaultMFDs != null)
-				subSeisOnFaultMFDs.writeToArchive(zout, entryPrefix);
+				subSeisOnFaultMFDs.writeToArchive(output, entryPrefix);
 		}
 
 		@Override
-		public void initFromArchive(ZipFile zip, String entryPrefix) throws IOException {
-			BufferedInputStream in = FileBackedModule.getInputStream(zip, entryPrefix, "inversion_target_mfds.json");
+		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
+			BufferedInputStream in = FileBackedModule.getInputStream(input, entryPrefix, "inversion_target_mfds.json");
 			Gson gson = new GsonBuilder().setPrettyPrinting().create();
 			InputStreamReader reader = new InputStreamReader(in);
 			initFromJSON(gson.newJsonReader(reader));
 			
 			String subSeisName = ArchivableModule.getEntryName(entryPrefix, SubSeismoOnFaultMFDs.DATA_FILE_NAME);
-			ZipEntry subSeismoEntry = zip.getEntry(subSeisName);
-			if (subSeismoEntry != null) {
-				CSVFile<String> csv = CSVFile.readStream(zip.getInputStream(subSeismoEntry), false);
+			if (input.hasEntry(subSeisName)) {
+				CSVFile<String> csv = CSVFile.readStream(input.getInputStream(subSeisName), false);
 				subSeisOnFaultMFDs = SubSeismoOnFaultMFDs.fromCSV(csv);
 			}
 		}
