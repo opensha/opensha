@@ -516,11 +516,6 @@ public class NSHMP14_WUS extends AttenuationRelationship implements
 	}
 
 	@Override
-	public double getTotExceedProbability(PointEqkSource ptSrc, double iml) {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
 	public void setIntensityMeasureLevel(Double iml) throws ParameterException {
 		throw new UnsupportedOperationException();
 	}

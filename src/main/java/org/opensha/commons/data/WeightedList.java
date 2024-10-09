@@ -63,12 +63,6 @@ public class WeightedList<E> extends AbstractList<WeightedValue<E>> implements X
 		return new WeightedList<>(list);
 	}
 	
-	/**
-	 * Convenience constructor for pre-specified evenly-weighted values. Note that, when using this constructor,
-	 * the list is unmodifiable.
-	 * 
-	 * @param evenlyWeighted varargs of evenly-weighted values
-	 */
 	public WeightedList(List<WeightedValue<E>> list) {
 		setAll(list);
 	}

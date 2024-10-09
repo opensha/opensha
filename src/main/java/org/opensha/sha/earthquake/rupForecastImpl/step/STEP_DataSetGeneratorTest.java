@@ -1492,7 +1492,7 @@ public class STEP_DataSetGeneratorTest implements ParameterChangeWarningListener
 
           // indicate that a source has been used
           sourceUsed = true;
-          hazVal *= (1.0 - imr.getTotExceedProbability((PointEqkSource)source,IML_VALUE));
+          hazVal *= (1.0 - STEP_DataSetGenerator.getTotExceedProbability(imr, (PointEqkSource)source,IML_VALUE));
         }
 
         // finalize the hazard function
