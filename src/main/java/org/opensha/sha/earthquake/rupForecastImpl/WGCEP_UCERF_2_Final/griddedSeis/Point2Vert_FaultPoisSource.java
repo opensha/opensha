@@ -44,7 +44,7 @@ public class Point2Vert_FaultPoisSource extends ProbEqkSource implements java.io
 
 
 	//for Debug purposes
-	private static String  C = new String("Point2Vert_SS_FaultPoisSource");
+	private static String  C = new String("Point2Vert_FaultPoisSource");
 	private String name = C;
 	private boolean D = false;
 
@@ -94,7 +94,7 @@ public class Point2Vert_FaultPoisSource extends ProbEqkSource implements java.io
 	public Point2Vert_FaultPoisSource(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
 			double strike, double duration, double magCutOff
-			,double fracStrikeSlip, double fracNormal,double fracReverse){
+			,double fracStrikeSlip, double fracNormal,double fracReverse) {
 		this.magCutOff = magCutOff;
 
 		if(D) {
@@ -180,6 +180,7 @@ public class Point2Vert_FaultPoisSource extends ProbEqkSource implements java.io
 
 		if(D) System.out.println("duration="+duration);
 		if(D) System.out.println("strike="+strike);
+		this.strike = strike;
 		this.duration = duration;
 		this.loc = loc;
 		this.magFreqDist = magFreqDist;
@@ -227,16 +228,13 @@ public class Point2Vert_FaultPoisSource extends ProbEqkSource implements java.io
 		double maxMag = magFreqDist.getX(magFreqDist.size()-1);
 		// make finite source if necessary
 		if(maxMag > magCutOff && finiteFaultSurface1 == null) {
-			Location loc1, loc2;
-			LocationVector dir;
 			double halfLength = magLengthRelationship.getMedianLength(maxMag)/2.0;
 			if(this.isCrossHair) strike = 0;
 			//      loc1 = LocationUtils.getLocation(loc,new LocationVector(0.0,halfLength,strike,Double.NaN));
-			loc1 = LocationUtils.location(loc,
-					new LocationVector(strike, halfLength, 0.0));
-			dir = LocationUtils.vector(loc1,loc);
-			dir.setHorzDistance(dir.getHorzDistance()*2.0);
-			loc2 = LocationUtils.location(loc1,dir);
+			// NOTE from Kevin on 10/9/2024: this was producing surfaces in the opposite trace direction, which doesn't
+			// actually matter since they're all vertical, but it is confusing so I fixed it
+			Location loc1 = LocationUtils.location(loc, Math.toRadians(strike+180d), halfLength); // this is before it
+			Location loc2 = LocationUtils.location(loc, Math.toRadians(strike), halfLength); // this is after it
 			FaultTrace fault = new FaultTrace("");
 			fault.add(loc1);
 			fault.add(loc2);
@@ -245,12 +243,8 @@ public class Point2Vert_FaultPoisSource extends ProbEqkSource implements java.io
 			// Make second surface for cross Hair option
 			if(this.isCrossHair) {
 				strike = 90;
-				//    	  loc1 = LocationUtils.getLocation(loc,new LocationVector(0.0,halfLength,strike,Double.NaN));
-				loc1 = LocationUtils.location(loc,
-						new LocationVector(strike, halfLength, 0.0));
-				dir = LocationUtils.vector(loc1,loc);
-				dir.setHorzDistance(dir.getHorzDistance()*2.0);
-				loc2 = LocationUtils.location(loc1,dir);
+				loc1 = LocationUtils.location(loc, Math.toRadians(strike+180d), halfLength); // this is before it
+				loc2 = LocationUtils.location(loc, Math.toRadians(strike), halfLength); // this is after it
 				fault = new FaultTrace("");
 				fault.add(loc1);
 				fault.add(loc2);
@@ -409,9 +403,12 @@ public class Point2Vert_FaultPoisSource extends ProbEqkSource implements java.io
 			else {
 				double rupLen = magLengthRelationship.getMedianLength(mag);
 				double startPoint = (double)finiteFault.getNumCols()/2.0 - 0.5 - rupLen/2.0;
-				GriddedSubsetSurface rupSurf = new GriddedSubsetSurface(1,Math.round((float)rupLen+1),
-						0,Math.round((float)startPoint),
-						finiteFault);
+				int cols = Math.round((float)rupLen+1);
+				int startCol = Math.round((float)startPoint);
+//				System.out.println("Gridded subset for M="+(float)mag+", len="+(float)rupLen+", startPoint="+(float)startPoint);
+//				System.out.println("\tstartCol="+startCol+", endCol="+(startCol+cols-1)+", origCols="+finiteFault.getNumCols());
+				GriddedSubsetSurface rupSurf = new GriddedSubsetSurface(1, cols,
+						0, startCol, finiteFault);
 				probEqkRupture.setRuptureSurface(rupSurf);
 			}
 		}
