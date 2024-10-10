@@ -5,6 +5,8 @@ import java.util.EnumSet;
 import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 
+import com.google.common.base.Preconditions;
+
 /**
  * 
  * 
@@ -14,9 +16,15 @@ public class PointSourceDistanceCorrectionParam extends EnumParameter<PointSourc
 	
 	public static final String NAME = "Point Source Distance Correction";
 
+	public PointSourceDistanceCorrectionParam(EnumSet<PointSourceDistanceCorrections> choices,
+			PointSourceDistanceCorrections defaultValue) {
+		super(NAME, choices, defaultValue, null);
+		Preconditions.checkState(defaultValue == null || choices.contains(defaultValue),
+				"Default value (%s) not contined in allowed choices", defaultValue);
+	}
+
 	public PointSourceDistanceCorrectionParam(PointSourceDistanceCorrections defaultValue) {
-		super(NAME, EnumSet
-			.allOf(PointSourceDistanceCorrections.class), defaultValue, null);
+		super(NAME, EnumSet.allOf(PointSourceDistanceCorrections.class), defaultValue, null);
 	}
 
 }
