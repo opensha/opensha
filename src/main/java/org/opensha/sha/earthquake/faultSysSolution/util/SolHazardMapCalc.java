@@ -29,6 +29,7 @@ import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.Site;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -74,11 +75,14 @@ import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
+import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.earthquake.param.UseProxySectionsParam;
 import org.opensha.sha.earthquake.param.UseRupMFDsParam;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
@@ -254,11 +258,12 @@ public class SolHazardMapCalc {
 	
 	// ERF params
 	private IncludeBackgroundOption backSeisOption;
-	private BackgroundRupType backSeisType;
+	private BackgroundRupType backSeisType = BaseFaultSystemSolutionERF.BG_RUP_TYPE_DEFAULT;
+	private PointSourceDistanceCorrections distCorrType = BaseFaultSystemSolutionERF.DIST_CORR_TYPE_DEFAULT;
 	private boolean applyAftershockFilter;
-	private boolean aseisReducesArea = true;
-	private boolean noMFDs = false;
-	private boolean useProxyRuptures = true;
+	private boolean aseisReducesArea = BaseFaultSystemSolutionERF.ASEIS_REDUCES_AREA_DEAFULT;
+	private boolean noMFDs = !BaseFaultSystemSolutionERF.USE_RUP_MFDS_DEAFULT;
+	private boolean useProxyRuptures = BaseFaultSystemSolutionERF.USE_PROXY_RUPS_DEAFULT;
 	
 	public static ReturnPeriods[] MAP_RPS = { ReturnPeriods.TWO_IN_50, ReturnPeriods.TEN_IN_50 };
 	
@@ -401,8 +406,11 @@ public class SolHazardMapCalc {
 			fssERF.setParameter(UseProxySectionsParam.NAME, useProxyRuptures);
 			fssERF.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 			fssERF.setParameter(IncludeBackgroundParam.NAME, backSeisOption);
-			if (backSeisOption != IncludeBackgroundOption.EXCLUDE && backSeisType != null)
+			if (backSeisOption != IncludeBackgroundOption.EXCLUDE) {
 				fssERF.setParameter(BackgroundRupParam.NAME, backSeisType);
+				if (backSeisType == BackgroundRupType.POINT)
+					fssERF.setParameter(PointSourceDistanceCorrectionParam.NAME, distCorrType);
+			}
 			
 			fssERF.setParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME, applyAftershockFilter);
 			fssERF.setParameter(AseismicityAreaReductionParam.NAME, aseisReducesArea);
@@ -430,6 +438,10 @@ public class SolHazardMapCalc {
 	
 	public void setSiteSkipSourceFilter(SourceFilterManager siteSkipSourceFilter) {
 		this.siteSkipSourceFilter = siteSkipSourceFilter;
+	}
+	
+	public void setPointSourceDistanceCorrection(PointSourceDistanceCorrections distCorrType) {
+		this.distCorrType = distCorrType;
 	}
 	
 	public static DiscretizedFunc getDefaultXVals(double period) {

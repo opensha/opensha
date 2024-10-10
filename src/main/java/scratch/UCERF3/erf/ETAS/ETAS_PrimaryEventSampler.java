@@ -4234,10 +4234,10 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 					ProbEqkSource filteredSrc;
 					if(isSubSeismo == 1)
 						filteredSrc = gridProv.getSourceSubSeisOnFault(gridRegionIndex,
-								erf.getTimeSpan().getDuration(), null, BackgroundRupType.POINT);
+								erf.getTimeSpan().getDuration(), null, BackgroundRupType.POINT, null);
 					else
 						filteredSrc = gridProv.getSourceUnassociated(gridRegionIndex,
-								erf.getTimeSpan().getDuration(), null, BackgroundRupType.POINT);
+								erf.getTimeSpan().getDuration(), null, BackgroundRupType.POINT, null);
 					int filteredR = filteredSrc.drawSingleRandomEqkRuptureIndex(etas_utils.getRandomDouble());
 					ProbEqkRupture filteredRup = filteredSrc.getRupture(filteredR);
 					randRupIndex = -1;
@@ -4943,10 +4943,10 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 					int gridRegionIndex = s-numFltSystSources;
 					if(origGridSeisTrulyOffVsSubSeisStatus[gridRegionIndex] == 2) {	// it has both truly off and sub-seismo components
 						mfdForSrcSubSeisOnlyArray[s] = ERF_Calculator.getTotalMFD_ForSource(
-								mfdGridProv.getSourceSubSeisOnFault(gridRegionIndex, duration, null, BackgroundRupType.POINT),
+								mfdGridProv.getSourceSubSeisOnFault(gridRegionIndex, duration, null, BackgroundRupType.POINT, null),
 								duration, minMag, maxMag, numMag, true);;
 						mfdForTrulyOffOnlyArray[s] = ERF_Calculator.getTotalMFD_ForSource(
-								mfdGridProv.getSourceUnassociated(gridRegionIndex, duration, null, BackgroundRupType.POINT),
+								mfdGridProv.getSourceUnassociated(gridRegionIndex, duration, null, BackgroundRupType.POINT, null),
 								duration, minMag, maxMag, numMag, true);;					}
 					else if (origGridSeisTrulyOffVsSubSeisStatus[gridRegionIndex] == 1) { // it's all subseismo
 						mfdForSrcSubSeisOnlyArray[s] = mfdForSrcArray[s];

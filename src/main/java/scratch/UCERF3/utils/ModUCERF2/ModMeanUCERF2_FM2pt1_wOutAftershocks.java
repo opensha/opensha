@@ -10,6 +10,7 @@ import java.util.Collections;
 
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.FaultSegmentData;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
 import scratch.UCERF3.utils.ModUCERF2.UnsegmentedSource;
@@ -39,7 +40,7 @@ public class ModMeanUCERF2_FM2pt1_wOutAftershocks extends ModMeanUCERF2_FM2pt1 {
  	
 	public ModMeanUCERF2_FM2pt1_wOutAftershocks() {
 		super();
-	 	nshmp_gridSrcGen = new NSHMP_GridSourceGenerator();
+	 	nshmp_gridSrcGen = new NSHMP_GridSourceGenerator(distCorrParam.getValue().get());
 
 	}
 

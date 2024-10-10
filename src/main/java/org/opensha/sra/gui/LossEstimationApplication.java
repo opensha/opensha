@@ -633,6 +633,7 @@ implements Runnable, ParameterChangeListener, CurveDisplayAppAPI, IMR_GuiBeanAPI
 	protected void createCalcInstance(){
 		try {
 			calc = new HazardCurveCalculator();
+			calc.setTrackProgress(true);
 		}
 		catch (Exception ex) {
 			ex.printStackTrace();

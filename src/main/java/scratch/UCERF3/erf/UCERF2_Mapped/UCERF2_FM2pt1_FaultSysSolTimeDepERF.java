@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.observedEarthquake.ObsEqkRupture;
@@ -39,7 +40,7 @@ public class UCERF2_FM2pt1_FaultSysSolTimeDepERF extends FaultSystemSolutionERF 
 	
 	public UCERF2_FM2pt1_FaultSysSolTimeDepERF() {
 		super(UCERF2_ComparisonSolutionFetcher.getUCERF2Solution(FaultModels.FM2_1));
-		nshmp_gridSrcGen = new NSHMP_GridSourceGeneratorMod2();
+		nshmp_gridSrcGen = new NSHMP_GridSourceGeneratorMod2(distCorrTypeParam.getValue().get());
 		// treat as point sources
 		nshmp_gridSrcGen.setAsPointSources(true);
 		numOtherSources = nshmp_gridSrcGen.getNumSources();
@@ -49,6 +50,14 @@ public class UCERF2_FM2pt1_FaultSysSolTimeDepERF extends FaultSystemSolutionERF 
 	}
 	
 	
+	@Override
+	public void parameterChange(ParameterChangeEvent event) {
+		super.parameterChange(event);
+		if (event.getParameter() == distCorrTypeParam)
+			nshmp_gridSrcGen.setDistanceCorrections(distCorrTypeParam.getValue().get());
+	}
+
+
 	@Override
 	protected ProbEqkSource getOtherSource(int iSource) {
 		return nshmp_gridSrcGen.getRandomStrikeGriddedSource(iSource, timeSpan.getDuration());
