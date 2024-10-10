@@ -1,9 +1,14 @@
 package org.opensha.sha.faultSurface.utils;
 
+import static java.lang.Math.min;
+import static java.lang.Math.round;
+
+import java.util.EnumSet;
 import java.util.List;
 import java.util.function.Supplier;
 
 import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm.DistanceCorrection2013;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.util.NSHMP_Util;
@@ -43,6 +48,8 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<Poin
 		
 	}),
 	NSHM_2008("USGS NSHM (2008)", new PointSourceDistanceCorrection() {
+		
+		private EvenlyDiscretizedFunc magBinFunc = new EvenlyDiscretizedFunc(6.05, 26, 0.1);
 
 		@Override
 		public double getCorrectedDistanceJB(double mag, PointSurface surf, double horzDist) {
@@ -58,16 +65,39 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<Poin
 				
 				// this was Peter's original correction, but it explodes if it's given say 6.449999999999999 (which converts to 6.39999999999999)
 //				double adjMagAlt = ((int) (mag*100) % 10 != 5) ? mag - 0.05 : mag;
-				double adjMag = ((double)Math.round(mag/0.05))*0.05;
-				if (adjMag > 8.6) adjMag = 8.55;
+				// this doesn't work either for values like 6.0 and 6.1 (only works when close to an 0.x5)
+//				double adjMag = ((double)Math.round(mag/0.05))*0.05;
+//				if (adjMag > 8.6) adjMag = 8.55;
+				// this works
+				double nearestTenth = Math.round(mag*10)/10d;
+//				System.out.println("Nearest 10th to "+mag+" is "+nearestTenth);
+				if ((float)nearestTenth > 6f && (float)nearestTenth == (float)mag)
+					// we're right at a 10th and want it to always round down
+					// e.g., we don't want 6.449999999999999 to round down, but 6.450000000000001 to round up
+					// so subtract a tiny bit from the nearest tenth to force it to always round down
+					mag = nearestTenth - 0.0001;
+				double adjMag = magBinFunc.getX(magBinFunc.getClosestXIndex(mag));
 //				if(adjMagAlt != adjMag)
 //					System.out.println("mag,adj,alt:\t"+mag+"\t"+adjMag+"\t"+adjMagAlt);
+//				System.out.println("\tadjMag="+(float)adjMag);
 				return NSHMP_Util.getMeanRJB(adjMag, horzDist);
 			}
 		}
 		
 	}),
 	NSHM_2013("USGS NSHM (2013)", new DistanceCorrection2013());
+	
+	/**
+	 * Set of all {@link PointSourceDistanceCorrections} that produce a single {@link PointSourceDistanceCorrection}.
+	 */
+	public static final EnumSet<PointSourceDistanceCorrections> SINGLE_CORRS;
+	static {
+		SINGLE_CORRS = EnumSet.noneOf(PointSourceDistanceCorrections.class);
+		for (PointSourceDistanceCorrections corr : values()) {
+			if (corr.corrs.size() == 1)
+				SINGLE_CORRS.add(corr);
+		}
+	}
 	
 	private String name;
 	private WeightedList<PointSourceDistanceCorrection> corrs;
