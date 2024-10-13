@@ -69,4 +69,10 @@ public class InversionState {
 		this.misfits_ineq = misfits_ineq;
 		this.constraintRanges = constraintRanges;
 	}
+	
+	@Override
+	public String toString() {
+		return "InversionState["+elapsedTimeMillis+" ms; "+iterations+" iters; E[0]="+(float)energy[0]
+				+"; "+numPerturbsKept+" kept; "+numWorseValuesKept+" worse kept; "+numNonZero+" >0]";
+	}
 }
