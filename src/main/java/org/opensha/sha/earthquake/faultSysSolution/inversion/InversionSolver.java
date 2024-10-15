@@ -7,9 +7,11 @@ import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ReweightEvenFitSimulatedAnnealing;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SerialSimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.SimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.ThreadedSimulatedAnnealing;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.CompletionCriteria;
+import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.IterationCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.sa.completion.ProgressTrackingCompletionCriteria;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InitialSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.InversionMisfits;
@@ -64,17 +66,36 @@ public interface InversionSolver {
 
 		@Override
 		public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config, String info) {
+			InversionInputGenerator inputs = new InversionInputGenerator(rupSet, config);
+			inputs.generateInputs(true);
+			
+			return run(rupSet, config, inputs, info);
+		}
+		
+		public FaultSystemSolution run(FaultSystemRupSet rupSet, InversionConfiguration config, InversionInputGenerator inputs, String info) {
 			CompletionCriteria completion = config.getCompletionCriteria();
 			if (completion == null)
 				throw new IllegalArgumentException("Must supply total inversion time or iteration count");
-			
-			InversionInputGenerator inputs = new InversionInputGenerator(rupSet, config);
-			inputs.generateInputs(true);
+
 			inputs.columnCompress();
 			
-			ProgressTrackingCompletionCriteria progress = new ProgressTrackingCompletionCriteria(completion);
-			
 			SimulatedAnnealing sa = config.buildSA(inputs);
+			
+			ProgressTrackingCompletionCriteria progress = new ProgressTrackingCompletionCriteria(completion);
+			if (sa instanceof SerialSimulatedAnnealing) {
+				// don't track every iteration
+				if (completion instanceof IterationCompletionCriteria) {
+					long targetNum = 10000l;
+					long iters = ((IterationCompletionCriteria)completion).getMinIterations();
+					if (iters > targetNum*2l) {
+						long mod = iters/targetNum;
+						progress.setIterationModulus(mod);
+					}
+				} else {
+					// just guess, set to 100
+					progress.setIterationModulus(100l);
+				}
+			}
 			
 			System.out.println("SA Parameters:");
 			System.out.println("\tImplementation: "+sa.getClass().getName());

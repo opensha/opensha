@@ -1,6 +1,9 @@
 package org.opensha.commons.data.uncertainty;
 
 import java.awt.geom.Point2D;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +15,9 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.UnmodifiableDiscrFunc;
 
 import com.google.common.base.Preconditions;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
@@ -23,6 +29,7 @@ import com.google.gson.stream.JsonWriter;
  * @author kevin
  *
  */
+@JsonAdapter(UncertainArbDiscFunc.Adapter.class)
 public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements UncertainBoundedDiscretizedFunc {
 	
 	/**
@@ -363,6 +370,35 @@ public class UncertainArbDiscFunc extends UnmodifiableDiscrFunc implements Uncer
 			return UncertainArbDiscFunc.class;
 		}
 
+	}
+	
+	public static void main(String[] args) throws IOException {
+		Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		
+		ArbitrarilyDiscretizedFunc meanFunc = new ArbitrarilyDiscretizedFunc();
+		ArbitrarilyDiscretizedFunc upperFunc = new ArbitrarilyDiscretizedFunc();
+		ArbitrarilyDiscretizedFunc lowerFunc = new ArbitrarilyDiscretizedFunc();
+		for (int i=0; i<10; i++) {
+			double x = Math.random();
+			double lowY = Math.random();
+			double highY = lowY + Math.random();
+			double mean = 0.5*(lowY+highY);
+			meanFunc.set(x, mean);
+			upperFunc.set(x, highY);
+			lowerFunc.set(x, lowY);
+		}
+		
+		UncertainArbDiscFunc uncertain = new UncertainArbDiscFunc(meanFunc, lowerFunc, upperFunc);
+		System.out.println("Original function:\n"+uncertain);
+		
+		File outFile = new File("/tmp/json_func_test.json");
+		FileWriter fw = new FileWriter(outFile);
+		gson.toJson(uncertain, fw);
+		fw.close();
+		
+		FileReader fr = new FileReader(outFile);
+		uncertain = gson.fromJson(fr, UncertainArbDiscFunc.class);
+		System.out.println("Deserialized function:\n"+uncertain);
 	}
 	
 }
