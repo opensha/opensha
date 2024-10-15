@@ -135,7 +135,6 @@ public class JordanMadridHazardCalc implements Callable<HazardResult> {
 		curve = period.getFunction(); // init output function
 		Utils.zeroFunc(curve);
 		calc = new HazardCurveCalculatorNSHMP(); // init calculator
-		calc.setPtSrcDistCorrType(PtSrcDistCorr.Type.NSHMP08);
 		// callCalc();
 		if (erfList instanceof NSHMP_ListERF) {
 			callNSHMP((NSHMP_ListERF) erfList);

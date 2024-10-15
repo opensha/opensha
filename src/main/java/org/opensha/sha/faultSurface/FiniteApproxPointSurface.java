@@ -1,17 +1,12 @@
 package org.opensha.sha.faultSurface;
 
-import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
 import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b.PointSurface13b;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm.PointSurfaceNshm;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
-
-import com.google.common.base.Preconditions;
 
 /**
  * Point surface implementation that approximates finite surfaces when calculating 3-D distances (e.g., rRup and
@@ -36,7 +31,8 @@ public class FiniteApproxPointSurface extends PointSurface {
 	private double dipRad;
 	private double horzWidth;
 
-	public FiniteApproxPointSurface(Location loc, double dip, double zTop, double zBot, boolean footwall, double length) {
+	public FiniteApproxPointSurface(Location loc, double dip, double zTop, double zBot, boolean footwall,
+			double length) {
 		super(loc);
 		this.aveDip = dip;
 		this.zTop = zTop;
@@ -105,23 +101,7 @@ public class FiniteApproxPointSurface extends PointSurface {
 			return getArea();
 		return 0d;
 	}
-
-	private static boolean HACK_WARN_FIRST = true;
-	@Override
-	public double getDistanceJB(Location siteLoc) {
-		if (corrType == null) {
-			// TODO: currently hardcoded  to PointSourceNshm, pending revamp of point source correction framework
-			double rEpi = LocationUtils.horzDistanceFast(getLocation(), siteLoc);
-			Preconditions.checkState(Double.isFinite(corrMag));
-			if (HACK_WARN_FIRST) {
-				System.err.println("WARNING: FiniteApproxPointSurface currently hardcoded to use PointSourceNshm corrected RJB");
-				HACK_WARN_FIRST = false;
-			}
-			return PointSourceNshm.correctedRjb(corrMag, rEpi);
-		}
-		return super.getDistanceJB(siteLoc);
-	}
-
+	
 	@Override
 	public double getDistanceX(Location loc) {
 		double rJB = getDistanceJB(loc);

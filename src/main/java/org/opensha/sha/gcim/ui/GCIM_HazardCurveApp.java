@@ -910,6 +910,7 @@ public class GCIM_HazardCurveApp  extends HazardCurveApplication {
 		try{
 			if(calc == null) {
 				calc = new HazardCurveCalculator();
+				calc.setTrackProgress(true);
 				if(this.calcParamsControl != null)
 					calc.setAdjustableParams(calcParamsControl.getAdjustableCalcParams());
 //System.out.println("Created new calc from LocalModeApp");

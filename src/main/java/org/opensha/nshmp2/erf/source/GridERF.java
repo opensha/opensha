@@ -18,6 +18,7 @@ import java.util.logging.Logger;
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
 import org.opensha.commons.data.TimeSpan;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -31,6 +32,8 @@ import org.opensha.nshmp2.util.SourceRegion;
 import org.opensha.nshmp2.util.SourceType;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.NEHRP_TestCity;
@@ -65,6 +68,8 @@ public class GridERF extends NSHMP_ERF {
 	private SourceIMR srcIMR;
 	private double weight;
 	private double maxR, dR;
+	
+	private static WeightedList<PointSourceDistanceCorrection> distCorrs = PointSourceDistanceCorrections.NSHM_2008.get();
 
 	private final static MagLengthRelationship MLR = new WC1994_MagLengthRelationship();
 
@@ -245,7 +250,7 @@ public class GridERF extends NSHMP_ERF {
 				? new FixedStrikeSource(locs.get(idx), mfds.get(idx), MLR,
 					timeSpan.getDuration(), depths, mechWtMap, strike)
 				: new PointSource13b(locs.get(idx), mfds.get(idx),
-					timeSpan.getDuration(), depths, mechWtMap);
+					timeSpan.getDuration(), depths, mechWtMap, distCorrs);
 		// @formatter:on
 	}
 

@@ -457,11 +457,6 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	}
 
 	@Override
-	public double getTotExceedProbability(PointEqkSource ptSrc, double iml) {
-		throw new UnsupportedOperationException("getTotExceedProbability is unsupported for "+C);
-	}
-
-	@Override
 	protected void initSupportedIntensityMeasureParams() {
 		supportedIMParams.clear();
 		
