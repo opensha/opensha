@@ -444,6 +444,7 @@ public class StandardFaultSysModulesTest {
 		withoutZip.close();
 		withZip.close();
 		rewrittenZip.close();
+		loaded.getInput().close();
 		
 		assertTrue("No unique files found for "+module.getName(), numTests > 0);
 	}
