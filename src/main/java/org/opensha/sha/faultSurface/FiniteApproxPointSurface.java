@@ -154,4 +154,11 @@ public class FiniteApproxPointSurface extends PointSurface {
 	private static final double hypot2(double v1, double v2) {
 		return Math.sqrt(v1 * v1 + v2 * v2);
 	}
+
+	@Override
+	public FiniteApproxPointSurface copyShallow() {
+		FiniteApproxPointSurface copy = new FiniteApproxPointSurface(
+				getLocation(), getAveDip(), zTop, zBot, footwall, length);
+		return copy;
+	}
 }

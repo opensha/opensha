@@ -133,7 +133,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 	public double getAveDip() { return aveDip; }
 
 
-	/** Since this is a point source, the single Location can be set without indexes. Does a clone copy. */
+	/** Since this is a point source, the single Location can be set without indexes. */
 	public void setLocation(Location location) {
 		pointLocation = location;
 	}

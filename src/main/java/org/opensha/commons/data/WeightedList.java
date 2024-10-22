@@ -17,7 +17,7 @@ public class WeightedList<E> extends AbstractList<WeightedValue<E>> implements X
 	
 	public static final String XML_METADATA_NAME = "WeightedList";
 	
-	private List<WeightedValue<E>> list;
+	protected List<WeightedValue<E>> list;
 	
 	private boolean forceNormalization = false;
 	
@@ -25,6 +25,93 @@ public class WeightedList<E> extends AbstractList<WeightedValue<E>> implements X
 	private double weightValueMax = 1;
 	
 	private IntegerPDF_FunctionSampler sampler = null;
+	
+	public static class Unmodifiable<E> extends WeightedList<E> {
+		
+		public Unmodifiable(WeightedList<E> list) {
+			super(list, false);
+		}
+
+		@Override
+		public void add(E object, double weight) throws IllegalStateException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setWeights(List<Double> newWeights) throws IllegalStateException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setValues(List<E> values) throws IllegalStateException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setWeight(int i, double weight) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setAll(List<WeightedValue<E>> list) {
+			if (this.list == null) {
+				super.setAll(list);
+			} else {
+				throw new UnsupportedOperationException();
+			}
+		}
+
+		@Override
+		public void setAll(List<E> objects, List<Double> weights) throws IllegalStateException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public WeightedValue<E> set(int index, WeightedValue<E> element) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void add(int index, WeightedValue<E> element) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setWeightsEqual() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setWeightsToConstant(double weight) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void normalize() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setForceNormalization(boolean forceNormalization) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setWeightValueMin(double weightValueMin) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setWeightValueMax(double weightValueMax) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setWeightsFromXMLMetadata(Element el) {
+			throw new UnsupportedOperationException();
+		}
+		
+	}
 
 	/**
 	 * Convenience method for pre-specified evenly-weighted values. Note that, when using this method,
@@ -60,19 +147,23 @@ public class WeightedList<E> extends AbstractList<WeightedValue<E>> implements X
 			break;
 		}
 		
-		return new WeightedList<>(list);
+		return new WeightedList<>(list, false);
 	}
 	
 	public WeightedList(List<WeightedValue<E>> list) {
 		setAll(list);
 	}
 	
+	private WeightedList(List<WeightedValue<E>> list, boolean validate) {
+		setAll(list, validate);
+	}
+	
 	public WeightedList(int initialCapacity) {
-		this(new ArrayList<>(initialCapacity));
+		setAll(new ArrayList<>(initialCapacity), false);
 	}
 	
 	public WeightedList() {
-		this(new ArrayList<>());
+		setAll(new ArrayList<>(), false);
 	}
 	
 	public WeightedList(List<E> objects, List<Double> weights) {
@@ -168,7 +259,12 @@ public class WeightedList<E> extends AbstractList<WeightedValue<E>> implements X
 	}
 	
 	public void setAll(List<WeightedValue<E>> list) {
-		validate(list);
+		this.setAll(list, true);
+	}
+	
+	private void setAll(List<WeightedValue<E>> list, boolean validate) {
+		if (validate)
+			validate(list);
 		this.list = list;
 		this.sampler = null;
 	}

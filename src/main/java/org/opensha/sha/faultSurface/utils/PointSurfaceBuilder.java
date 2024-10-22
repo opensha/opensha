@@ -672,6 +672,8 @@ public class PointSurfaceBuilder {
 	public WeightedList<PointSurface> buildTruePointSurfaces(WeightedList<PointSourceDistanceCorrection> distCorrs) {
 		if (distCorrs == null)
 			return WeightedList.evenlyWeighted(buildTruePointSurface(null));
+		else if (distCorrs.size() == 1)
+			return WeightedList.evenlyWeighted(buildTruePointSurface(distCorrs.getValue(0)));
 		WeightedList<PointSurface> ret = new WeightedList<>(distCorrs.size());
 		for (int i=0; i<distCorrs.size(); i++) {
 			PointSurface surf = buildTruePointSurface(distCorrs.getValue(i));
@@ -733,27 +735,30 @@ public class PointSurfaceBuilder {
 	 */
 	public WeightedList<FiniteApproxPointSurface> buildFiniteApproxPointSurfaces(
 			WeightedList<PointSourceDistanceCorrection> distCorrs) {
-		boolean[] footwalls;
+		PointSourceDistanceCorrection singleCorr = distCorrs != null && distCorrs.size() == 1 ? distCorrs.getValue(0) : null;
+		FiniteApproxPointSurface[] surfs;
 		if (dip == 90d || footwall != null)
-			footwalls = new boolean[] { footwall == null ? true : footwall };
+			surfs = new FiniteApproxPointSurface[] {
+					buildFiniteApproxPointSurface(singleCorr, footwall == null ? true : footwall) };
 		else
-			footwalls = new boolean[] { true, false };
-		double weightEachFootwall = 1d/(double)footwalls.length;
-		if (distCorrs == null) {
-			// multiple footwalls
-			WeightedList<FiniteApproxPointSurface> ret = new WeightedList<>(footwalls.length);
-			for (boolean footwall : footwalls)
-				ret.add(buildFiniteApproxPointSurface(null, footwall), weightEachFootwall);
-			return ret;
-		}
-		WeightedList<FiniteApproxPointSurface> ret = new WeightedList<>(distCorrs.size()*footwalls.length);
-		for (boolean footwall : footwalls) {
-			for (int i=0; i<distCorrs.size(); i++) {
-				FiniteApproxPointSurface surf = buildFiniteApproxPointSurface(distCorrs.getValue(i), footwall);
-				ret.add(surf, distCorrs.getWeight(i)*weightEachFootwall);
+			surfs = new FiniteApproxPointSurface[] {
+					buildFiniteApproxPointSurface(singleCorr, true),
+					buildFiniteApproxPointSurface(singleCorr, false) };
+		if (distCorrs != null && distCorrs.size() > 1) {
+			// need multiple copies
+			double weightEach = 1d/(double)surfs.length;
+			WeightedList<FiniteApproxPointSurface> ret = new WeightedList<>(distCorrs.size()*surfs.length);
+			for (FiniteApproxPointSurface surf : surfs) {
+				for (int i=0; i<distCorrs.size(); i++) {
+					FiniteApproxPointSurface surfCopy = surf.copyShallow();
+					surfCopy.setDistanceCorrection(singleCorr, mag);
+					ret.add(surfCopy, distCorrs.getWeight(i)*weightEach);
+				}
 			}
+			return ret;
+		} else {
+			return WeightedList.evenlyWeighted(surfs);
 		}
-		return ret;
 	}
 	
 	private FaultTrace buildTrace(double strike) {
