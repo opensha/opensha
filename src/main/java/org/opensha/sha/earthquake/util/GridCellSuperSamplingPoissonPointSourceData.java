@@ -40,13 +40,13 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 	 * @param data original {@link PoissonPointSourceData}
 	 * @param centerLoc location of original grid node
 	 * @param gridCell cell that this grid node represents
-	 * @param samplesPerKM target number of samples per kilometer
+	 * @param targetSpacingKM target sample spacing (km)
 	 * @param fullDist site-to-center distance (km) below which we should use the full resampled grid node
 	 * @param borderDist site-to-center distance (km) below which we should use just the exterior of the resampled grid node
 	 * @param cornerDist site-to-center distance (km) below which we should use all 4 corners of the grid cell
 	 */
 	public GridCellSuperSamplingPoissonPointSourceData(PoissonPointSourceData data, Location centerLoc, Region gridCell,
-			double samplesPerKM, double fullDist, double borderDist, double cornerDist) {
+			double targetSpacingKM, double fullDist, double borderDist, double cornerDist) {
 		Preconditions.checkState(gridCell.contains(centerLoc), "CenterLoc=%s not contined in cell region", centerLoc);
 		double cellWidth = LocationUtils.horzDistanceFast(
 				new Location(centerLoc.getLatitude(), gridCell.getMinLon()),
@@ -54,8 +54,8 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 		double cellHeight = LocationUtils.horzDistanceFast(
 				new Location(gridCell.getMinLat(), centerLoc.getLongitude()),
 				new Location(gridCell.getMaxLat(), centerLoc.getLongitude()));
-		double samplesPerWidth = cellWidth * samplesPerKM;
-		double samplesPerHeight = cellHeight * samplesPerKM;
+		double samplesPerWidth = cellWidth / targetSpacingKM;
+		double samplesPerHeight = cellHeight / targetSpacingKM;
 		
 		int latSamples = (int)Math.round(samplesPerHeight);
 		int lonSamples = (int)Math.round(samplesPerWidth);
@@ -66,8 +66,8 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 			lonSamples++;
 		int maxSamples = Integer.max(latSamples, lonSamples);
 		Preconditions.checkState(maxSamples > 1,
-				"maxSamples must be >1; was calculated as %s=max(%s,%s) for %s samples/km and cell dimensions of %s x %s km",
-				maxSamples, latSamples, lonSamples, samplesPerKM, cellWidth, cellHeight);
+				"maxSamples must be >1; was calculated as %s=max(%s,%s) for %s km sample spacing and cell dimensions of %s x %s km",
+				maxSamples, latSamples, lonSamples, targetSpacingKM, cellWidth, cellHeight);
 		
 		GriddedRegion sampled = buildSampled(gridCell, latSamples, lonSamples);
 		
@@ -273,7 +273,7 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 		double gridSpacing = 0.1d;
 		Region gridCell = new Region(new Location(centerLoc.getLatitude() - 0.5*gridSpacing, centerLoc.getLongitude() - 0.5*gridSpacing),
 				new Location(centerLoc.getLatitude() + 0.5*gridSpacing, centerLoc.getLongitude() + 0.5*gridSpacing));
-		double samplesPerKM = 1d;
+		double spacing = 1d;
 		double fullDist = 30d;
 		double borderDist = 80d;
 		double cornerDist = 160d;
@@ -316,7 +316,7 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 			}
 		};
 		GridCellSuperSamplingPoissonPointSourceData sampler = new GridCellSuperSamplingPoissonPointSourceData(
-				fakeData, centerLoc, gridCell, samplesPerKM, fullDist, borderDist, cornerDist);
+				fakeData, centerLoc, gridCell, spacing, fullDist, borderDist, cornerDist);
 		
 		DecimalFormat distDF = new DecimalFormat("0.0");
 		double prevDist = 0d;

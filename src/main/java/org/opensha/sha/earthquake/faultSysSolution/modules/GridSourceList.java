@@ -68,7 +68,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	private int[] encompassingIndexesToLocIndexes = null;
 	
 	private double sourceMinMag = 5d;
-	private double supersamplesPerKM;
+	private double supersampleTargetSpacingKM;
 	private double supersampleFullDist;
 	private double supersampleBorderDist;
 	private double supersampleCornerDist;
@@ -152,15 +152,15 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		return getLocation(getLocationIndexForSource(sourceIndex));
 	}
 	
-	public void setSupersamplingParams(double samplesPerKM, double fullDist, double borderDist, double cornerDist) {
-		if (samplesPerKM > 0d) {
+	public void setSupersamplingParams(double supersampleTargetSpacingKM, double fullDist, double borderDist, double cornerDist) {
+		if (supersampleTargetSpacingKM > 0d) {
 			Preconditions.checkState(fullDist > 0d || borderDist > 0 || cornerDist > 0);
-			this.supersamplesPerKM = samplesPerKM;
+			this.supersampleTargetSpacingKM = supersampleTargetSpacingKM;
 			this.supersampleFullDist = fullDist;
 			this.supersampleBorderDist = borderDist;
 			this.supersampleCornerDist = cornerDist;
 		} else {
-			this.supersamplesPerKM = Double.NaN;
+			this.supersampleTargetSpacingKM = Double.NaN;
 			this.supersampleFullDist = Double.NaN;
 			this.supersampleBorderDist = Double.NaN;
 			this.supersampleCornerDist = Double.NaN;
@@ -1162,11 +1162,11 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		builder.distCorrs(distCorrType);
 		builder.duration(duration);
 		
-		if (supersamplesPerKM > 0d) {
+		if (supersampleTargetSpacingKM > 0d) {
 			Preconditions.checkState(latGridSpacing > 0d && lonGridSpacing > 0d);
 			Region gridCell = new Region(new Location(gridLoc.lat - 0.5*latGridSpacing, gridLoc.lon - 0.5*lonGridSpacing),
 					new Location(gridLoc.lat + 0.5*latGridSpacing, gridLoc.lon + 0.5*lonGridSpacing));
-			builder.siteAdaptiveSupersampled(gridCell, supersamplesPerKM,
+			builder.siteAdaptiveSupersampled(gridCell, supersampleTargetSpacingKM,
 					supersampleFullDist, supersampleBorderDist, supersampleCornerDist);
 		}
 		

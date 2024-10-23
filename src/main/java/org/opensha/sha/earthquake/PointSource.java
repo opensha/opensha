@@ -577,6 +577,10 @@ public abstract class PointSource extends ProbEqkSource {
 		 * @return the builder
 		 */
 		public PoissonBuilder distCorrs(PointSourceDistanceCorrections distCorrs) {
+			if (distCorrs == null) {
+				this.distCorrs = null;
+				return this;
+			}
 			return distCorrs(distCorrs.get());
 		}
 		
@@ -610,16 +614,16 @@ public abstract class PointSource extends ProbEqkSource {
 		 * approximation. This is fast (only 4 locations) and most appropriate at larger distances.
 		 * 
 		 * @param gridCell cell that this grid node represents
-		 * @param samplesPerKM target number of samples per kilometer
+		 * @param targetSpacingKM target sample spacing (km)
 		 * @param fullDist site-to-center distance (km) below which we should use the full resampled grid node
 		 * @param borderDist site-to-center distance (km) below which we should use just the exterior of the resampled grid node
 		 * @param cornerDist site-to-center distance (km) below which we should use all 4 corners of the grid cell
 		 */
-		public PoissonBuilder siteAdaptiveSupersampled(Region gridCell, double samplesPerKM,
+		public PoissonBuilder siteAdaptiveSupersampled(Region gridCell, double targetSpacingKM,
 				double fullDist, double borderDist, double cornerDist) {
 			Preconditions.checkState(data != null, "Must set point source data first");
 			data = new GridCellSuperSamplingPoissonPointSourceData(data, loc,
-					gridCell, samplesPerKM, fullDist, borderDist, cornerDist);
+					gridCell, targetSpacingKM, fullDist, borderDist, cornerDist);
 			return this;
 		}
 		
