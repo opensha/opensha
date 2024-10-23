@@ -753,10 +753,24 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 				getGridSourceAftershockFilter(), bgRupType, distCorrType);
 	}
 	
+	/**
+	 * This enables caching of grid sources which is often faster when re-using an ERF, but can be more memory intensive.
+	 * 
+	 * The cache will be cleared if an internal grid-source related parameter is changed, but you can also call
+	 * {@link #clearCachedGridSources()} if you change something externally and need to clear the cache.
+	 * @param cacheGridSources
+	 */
 	public void setCacheGridSources(boolean cacheGridSources) {
 		this.cacheGridSources = cacheGridSources;
 		if (!cacheGridSources)
 			gridSourceCache = null;
+	}
+	
+	/**
+	 * Clears the grid sources cache (if enabled). See {@link #setCacheGridSources(boolean)}.
+	 */
+	public void clearCachedGridSources() {
+		gridSourceCache = null;
 	}
 	
 	/**
