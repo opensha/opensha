@@ -153,7 +153,7 @@ public abstract class PointSource extends ProbEqkSource {
 		
 	}
 	
-	private static class PoissonPointSourceImpl extends PoissonPointSource {
+	public static class PoissonPointSourceImpl extends PoissonPointSource {
 		
 		private PoissonPointSourceData data;
 		
@@ -369,7 +369,20 @@ public abstract class PointSource extends ProbEqkSource {
 		
 	}
 	
-	private static class MFDandMechData implements PoissonPointSourceData {
+	/**
+	 * Builds point source data for the given MFD, focal mechanism weights, and {@link FocalMechSurfaceBuilder}
+	 * 
+	 * @param mfd
+	 * @param mechWeights
+	 * @param surfaceBuilder
+	 * @return the builder
+	 */
+	public static PoissonPointSourceData dataForMFDandFocalMechs(IncrementalMagFreqDist mfd, Map<FocalMech, Double> mechWeights,
+			FocalMechSurfaceBuilder surfaceBuilder) {
+		return new MFDandMechPoissonPointSourceData(mfd, mechWeights, surfaceBuilder);
+	} 
+	
+	private static class MFDandMechPoissonPointSourceData implements PoissonPointSourceData {
 		
 		private IncrementalMagFreqDist mfd;
 		private FocalMechSurfaceBuilder surfBuilder;
@@ -379,7 +392,7 @@ public abstract class PointSource extends ProbEqkSource {
 		private short[] surfIndexes;
 		private FocalMech[] mechs;
 		
-		private MFDandMechData(IncrementalMagFreqDist mfd, Map<FocalMech, Double> mechWeights,
+		private MFDandMechPoissonPointSourceData(IncrementalMagFreqDist mfd, Map<FocalMech, Double> mechWeights,
 				FocalMechSurfaceBuilder surfBuilder) {
 			this.mechWeights = mechWeights;
 			this.surfBuilder = surfBuilder;
@@ -566,7 +579,7 @@ public abstract class PointSource extends ProbEqkSource {
 		 */
 		public PoissonBuilder forMFDandFocalMechs(IncrementalMagFreqDist mfd, Map<FocalMech, Double> mechWeights,
 				FocalMechSurfaceBuilder surfaceBuilder) {
-			return data(new MFDandMechData(mfd, mechWeights, surfaceBuilder));
+			return data(new MFDandMechPoissonPointSourceData(mfd, mechWeights, surfaceBuilder));
 		}
 		
 		/**

@@ -263,6 +263,32 @@ public class PointSurfaceBuilder {
 	}
 	
 	/**
+	 * Convenience method to set the upper depth, width, and dip. This calculates the lower depth automatically.
+	 * @param zTop
+	 * @param width
+	 * @param dip
+	 * @return
+	 */
+	public PointSurfaceBuilder upperDepthWidthAndDip(double zTop, double width, double dip) {
+		FaultUtils.assertValidDepth(zTop);
+		FaultUtils.assertValidDip(dip);
+		Preconditions.checkState(width > 0d);
+		
+		double zBot;
+		if (dip == 90d)
+			zBot = zTop + width;
+		else
+			zBot = zTop + width * Math.sin(Math.toRadians(dip));
+		FaultUtils.assertValidDepth(zBot);
+		
+		this.zTop = zTop;
+		this.zBot = zBot;
+		this.width = width;
+		this.dip = dip;
+		return this;
+	}
+	
+	/**
 	 * Sets the fractional hypocentral depth to this value, such that {@code zHyp = zTop + zHypFract*(zBot-zTop)}. Values of
 	 * zero are trace-centered (the trace is coincident with the cell location), and values of 0.5 are surface-centered.
 	 * 

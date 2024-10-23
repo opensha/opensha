@@ -64,6 +64,10 @@ public class FiniteApproxPointSurface extends PointSurface {
 		// overridden to not key depth to point location
 		return zTop;
 	}
+	
+	public double getLowerDepth() {
+		return zBot;
+	}
 
 	@Override
 	public void setDepth(double depth) {
