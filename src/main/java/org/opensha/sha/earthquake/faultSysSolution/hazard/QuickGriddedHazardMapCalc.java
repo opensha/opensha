@@ -35,8 +35,8 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm.PointSurfaceNshm;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
+import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
@@ -192,8 +192,8 @@ public class QuickGriddedHazardMapCalc {
 			this.zTOR = surf.getAveRupTopDepth();
 			this.width = surf.getAveWidth();
 			this.dip = surf.getAveDip();
-			if (surf instanceof PointSurfaceNshm) {
-				footwall = ((PointSurfaceNshm)surf).isOnFootwall();
+			if (surf instanceof FiniteApproxPointSurface) {
+				footwall = ((FiniteApproxPointSurface)surf).isOnFootwall();
 			} else {
 				Location ptLoc = ((PointSurface)surf).getLocation();
 				Location loc = LocationUtils.location(ptLoc, 0d, 50d);

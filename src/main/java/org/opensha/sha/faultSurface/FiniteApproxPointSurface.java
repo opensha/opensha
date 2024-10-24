@@ -3,8 +3,6 @@ package org.opensha.sha.faultSurface;
 import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b.PointSurface13b;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm.PointSurfaceNshm;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
 
@@ -14,9 +12,9 @@ import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
  * 
  * Sign of rX is set according to the passed in footwall boolean.
  * 
- * Based on {@link PointSurface13b}.
+ * Based on the now-deleted PointSurface13b.
  * 
- * NOTE: This, like {@link PointSurface13b} and {@link PointSurfaceNshm}, seems to have a bug in calculating Rrup.
+ * NOTE: This, like the now-deleted PointSurface13b and PointSurfaceNshm, seems to have a bug in calculating Rrup.
  * See issue #121
  */
 public class FiniteApproxPointSurface extends PointSurface {

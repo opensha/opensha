@@ -64,11 +64,10 @@ import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b.PointSurface13b;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm.PointSurfaceNshm;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
@@ -4379,8 +4378,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		RuptureSurface surf = rup.getRuptureSurface();
 		if (surf.getAveDip() == 90d)
 			return false;
-		if (surf instanceof PointSurfaceNshm)
-			return ((PointSurfaceNshm)surf).isOnFootwall();
+		if (surf instanceof FiniteApproxPointSurface)
+			return ((FiniteApproxPointSurface)surf).isOnFootwall();
 		if (surf instanceof PointSurface13b)
 			return ((PointSurface13b)surf).isOnFootwall();
 		return surf.getDistanceX(ptStrFootwallTestLoc) < 0;
