@@ -348,12 +348,6 @@ public class NSHMP08_SUB_Slab extends AttenuationRelationship implements
 	}
 
 	@Override
-	public double getTotExceedProbability(PointEqkSource ptSrc, double iml) {
-		throw new UnsupportedOperationException(
-			"getTotExceedProbability is unsupported for " + C);
-	}
-
-	@Override
 	public void setIntensityMeasureLevel(Double iml) throws ParameterException {
 		for (ScalarIMR imr : imrMap.keySet()) {
 			imr.setIntensityMeasureLevel(iml);

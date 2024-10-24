@@ -1,13 +1,14 @@
 package scratch.UCERF3.erf;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.EnumSet;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -19,10 +20,8 @@ import org.junit.Test;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.eq.MagUtils;
-import org.opensha.commons.geo.Location;
-import org.opensha.commons.param.Parameter;
 import org.opensha.commons.util.IDPairing;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
+import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -30,7 +29,6 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.AleatoryMagAreaStdDevParam;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
-import org.opensha.sha.earthquake.param.BPT_AperiodicityParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.FaultGridSpacingParam;
@@ -42,28 +40,19 @@ import org.opensha.sha.earthquake.param.MagDependentAperiodicityParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.Point2Vert_FaultPoisSource;
-import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.FaultTrace;
-import org.opensha.sha.faultSurface.QuadSurface;
-import org.opensha.sha.faultSurface.RuptureSurface;
-import org.opensha.sha.magdist.GaussianMagFreqDist;
 
-import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
-import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.utils.ProbabilityModelsCalc;
 import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
-import scratch.UCERF3.inversion.InversionFaultSystemRupSetFactory;
 import scratch.UCERF3.inversion.InversionFaultSystemSolution;
+import scratch.UCERF3.inversion.OldSectionConnectionStrategy;
 import scratch.UCERF3.inversion.SectionCluster;
 import scratch.UCERF3.inversion.SectionClusterList;
-import scratch.UCERF3.inversion.OldSectionConnectionStrategy;
 import scratch.UCERF3.inversion.UCERF3SectionConnectionStrategy;
 import scratch.UCERF3.inversion.laughTest.UCERF3PlausibilityConfig;
 import scratch.UCERF3.logicTree.U3LogicTreeBranch;
@@ -541,7 +530,7 @@ public class FSS_ERF_ParamTest {
 				assertTrue(applyMessage, numSources > numFaultSources);
 				for (int i=numFaultSources; i<numSources; i++) {
 					ProbEqkSource source = erf.getSource(i);
-					assertTrue(applyMessage, source instanceof PointSource13b
+					assertTrue(applyMessage, source instanceof PointSource
 							|| source instanceof Point2Vert_FaultPoisSource);
 				}
 				break;
@@ -550,7 +539,7 @@ public class FSS_ERF_ParamTest {
 				assertTrue(applyMessage, numSources > 0);
 				for (int i=0; i<numSources; i++) {
 					ProbEqkSource source = erf.getSource(i);
-					assertTrue(applyMessage, source instanceof PointSource13b
+					assertTrue(applyMessage, source instanceof PointSource
 							|| source instanceof Point2Vert_FaultPoisSource);
 				}
 				break;
@@ -575,7 +564,7 @@ public class FSS_ERF_ParamTest {
 					switch (type) {
 					case POINT:
 						assertTrue(applyMessage+". instance: "+source.getClass().getName(),
-								source instanceof PointSource13b);
+								source instanceof PointSource);
 						break;
 					case FINITE:
 						assertTrue(applyMessage+". instance: "+source.getClass().getName(),

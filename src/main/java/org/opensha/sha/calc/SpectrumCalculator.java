@@ -10,13 +10,11 @@ import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.sha.calc.params.MaxDistanceParam;
-import org.opensha.sha.calc.params.PtSrcDistanceCorrectionParam;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.faultSurface.PointSurface;
-import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
@@ -41,7 +39,6 @@ implements SpectrumCalculatorAPI {
 
 	//Info for parameter that sets the maximum distance considered
 	private MaxDistanceParam maxDistanceParam;
-	private PtSrcDistanceCorrectionParam ptSrcDistCorrParam;
 
 	private ParameterList adjustableParams;
 
@@ -63,9 +60,7 @@ implements SpectrumCalculatorAPI {
 		// Create adjustable parameters and add to list
 		adjustableParams = new ParameterList();
 		maxDistanceParam = new MaxDistanceParam();
-		ptSrcDistCorrParam = new PtSrcDistanceCorrectionParam();
 		adjustableParams.addParameter(maxDistanceParam);
-		adjustableParams.addParameter(ptSrcDistCorrParam);
 	}
 
 	/**
@@ -85,7 +80,6 @@ implements SpectrumCalculatorAPI {
 	public void setAdjustableParams(ParameterList paramList) {
 		this.adjustableParams = paramList;
 		this.maxDistanceParam= (MaxDistanceParam)paramList.getParameter(MaxDistanceParam.NAME);
-		this.ptSrcDistCorrParam= (PtSrcDistanceCorrectionParam)paramList.getParameter(PtSrcDistanceCorrectionParam.NAME);
 	}
 
 	/**
@@ -139,8 +133,6 @@ implements SpectrumCalculatorAPI {
 			List supportedSA_Periods) {
 
 		this.currRuptures = -1;
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 		/* this determines how the calucations are done (doing it the way it's outlined
      in the paper SRL gives probs greater than 1 if the total rate of events for the
@@ -248,10 +240,6 @@ implements SpectrumCalculatorAPI {
 			for (int n = 0; n < numRuptures; n++, ++currRuptures) {
 
 				EqkRupture rupture = source.getRupture(n);
-				
-				// set point-source distance correction type & mag if it's a pointSurface
-				if(rupture.getRuptureSurface() instanceof PointSurface)
-					((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
 
 				// get the rupture probability
 				qkProb = ( (ProbEqkRupture) rupture).getProbability();
@@ -384,8 +372,6 @@ implements SpectrumCalculatorAPI {
 		DiscretizedFunc hazFunction = new ArbitrarilyDiscretizedFunc();
 		initDiscretizeValues(hazFunction, supportedSA_Periods, 1.0);
 		int numPoints = hazFunction.size();
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 		this.currRuptures = -1;
 
@@ -477,10 +463,6 @@ implements SpectrumCalculatorAPI {
 			for(int n=0; n < numRuptures ; n++,++currRuptures) {
 
 				EqkRupture rupture = source.getRupture(n);
-				
-				// set point-source distance correction type & mag if it's a pointSurface
-				if(rupture.getRuptureSurface() instanceof PointSurface)
-					((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
 
 				// get the rupture probability
 				qkProb = ((ProbEqkRupture)rupture).getProbability();
@@ -585,10 +567,6 @@ implements SpectrumCalculatorAPI {
 		//parameters. This allows the Server version of our application to listen to the
 		//parameter changes.
 		( (AttenuationRelationship) imr).resetParameterEventListeners();
-		
-		// set point-source distance correction type (& mag) if it's a pointSurface
-		if(rupture.getRuptureSurface() instanceof PointSurface)
-			((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), getPtSrcDistCorrType());
 
 
 		//System.out.println("hazFunction: "+hazFunction.toString());
@@ -616,18 +594,4 @@ implements SpectrumCalculatorAPI {
 		if (D) System.out.println(C + "hazFunction.toString" + hazFunction.toString());
 		return hazFunction;
 	}
-	
-//	@Override
-	public void setPtSrcDistCorrType(PtSrcDistCorr.Type type) {
-		ptSrcDistCorrParam.setValueFromTypePtSrcDistCorr(type);
-	}
-	
-
-//	@Override
-	public PtSrcDistCorr.Type getPtSrcDistCorrType(){
-		return ptSrcDistCorrParam.getValueAsTypePtSrcDistCorr();
-	}
-
-
-
 }

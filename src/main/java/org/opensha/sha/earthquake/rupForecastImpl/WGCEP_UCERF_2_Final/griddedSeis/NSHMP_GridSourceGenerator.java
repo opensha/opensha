@@ -12,14 +12,15 @@ import java.util.Map;
 import java.util.StringTokenizer;
 
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
-import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b;
+import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
@@ -31,8 +32,8 @@ import com.google.common.collect.Maps;
 
 
 /**
- * Read NSHMP backgroud seismicity files.  This trims the western edge of the RELM
- * region so there are no zero rate bins (i.e., the number of locationis is the same
+ * Read NSHMP background seismicity files.  This trims the western edge of the RELM
+ * region so there are no zero rate bins (i.e., the number of locations is the same
  * as the number of non-zero rate cells).  The number of locations in the result is
  * numLocs=7654.
  * 
@@ -71,9 +72,12 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 	private double maxFromMaxMagFiles;
 	
 	private double magCutOff = Double.NaN;
+	
+	private WeightedList<PointSourceDistanceCorrection> distCorrs;
 
-	public NSHMP_GridSourceGenerator() {
+	public NSHMP_GridSourceGenerator(WeightedList<PointSourceDistanceCorrection> distCorrs) {
 		region = new CaliforniaRegions.RELM_GRIDDED();
+		this.distCorrs = distCorrs;
 		//LocationList locList = getLocationList();
 
 		// make polygon from the location list
@@ -112,6 +116,10 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 	public void setAsPointSources(boolean areAllPointSources) {
 		if(areAllPointSources) this.magCutOff = 10.0;
 		else this.magCutOff = 6.0;
+	}
+	
+	public void setDistanceCorrections(WeightedList<PointSourceDistanceCorrection> distCorrs) {
+		this.distCorrs = distCorrs;
 	}
 	
 	/**
@@ -323,8 +331,6 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 				fracStrikeSlip[srcIndex],fracNormal[srcIndex],fracReverse[srcIndex], true);
 	}
 	
-	private static final double[] DEPTHS = new double[] {5.0, 1.0};
-	
 	/**
 	 * Returns a NSHMP 2013 style gridded source that is compatible with all
 	 * NGAW2 relationships.
@@ -340,8 +346,8 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 		mechMap.put(FocalMech.STRIKE_SLIP, fracStrikeSlip[srcIndex]);
 		mechMap.put(FocalMech.NORMAL, fracNormal[srcIndex]);
 		mechMap.put(FocalMech.REVERSE, fracReverse[srcIndex]);
-		return new PointSource13b(region.locationForIndex(srcIndex), mfdAtLoc,
-			duration, DEPTHS, mechMap);
+		return new PointSourceNshm(region.locationForIndex(srcIndex), mfdAtLoc,
+			duration, mechMap, distCorrs);
 	}
 	
 
@@ -818,7 +824,7 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 		 * include "agrd_deeps" for making sources. 
 		 * 
 		 */
-		NSHMP_GridSourceGenerator srcGen = new NSHMP_GridSourceGenerator();
+		NSHMP_GridSourceGenerator srcGen = new NSHMP_GridSourceGenerator(null);
 		
 		srcGen.writeMomentRateOfFixedStrikeSources();
 		

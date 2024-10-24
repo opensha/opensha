@@ -241,6 +241,7 @@ public class Asset implements Cloneable {
 		// Setup for the HazardCurveCalculator
 		try {
 			calc = new HazardCurveCalculator();
+			calc.setTrackProgress(true);
 			wait(5000);
 		} catch( Exception e ) {
 		}
