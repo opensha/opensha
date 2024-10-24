@@ -24,7 +24,6 @@ import org.opensha.sha.calc.params.MagDistCutoffParam;
 import org.opensha.sha.calc.params.MaxDistanceParam;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.NumStochasticEventSetsParam;
-import org.opensha.sha.calc.params.PtSrcDistanceCorrectionParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
 import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
 import org.opensha.sha.calc.params.filters.MagDependentDistCutoffFilter;
@@ -36,7 +35,6 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_EqkRupForecast;
 import org.opensha.sha.faultSurface.PointSurface;
-import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.BJF_1997_AttenRel;
@@ -89,9 +87,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	// This tells the calculator what to do if the TRT is not supported by the IMR
 	private NonSupportedTRT_OptionsParam nonSupportedTRT_OptionsParam;
 	
-	// This tell what type of point-source distance correction to apply
-	private PtSrcDistanceCorrectionParam ptSrcDistCorrParam;
-	
 
 	private ParameterList adjustableParams;
 
@@ -126,8 +121,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		setTRTinIMR_FromSourceParam = new SetTRTinIMR_FromSourceParam();
 		
 		nonSupportedTRT_OptionsParam = new NonSupportedTRT_OptionsParam();
-		
-		ptSrcDistCorrParam = new PtSrcDistanceCorrectionParam();
 
 		adjustableParams = new ParameterList();
 		adjustableParams.addParameter(maxDistanceParam);
@@ -136,7 +129,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		adjustableParams.addParameter(magDistCutoffParam);
 		adjustableParams.addParameter(setTRTinIMR_FromSourceParam);
 		adjustableParams.addParameter(nonSupportedTRT_OptionsParam);
-		adjustableParams.addParameter(ptSrcDistCorrParam);
 
 	}
 

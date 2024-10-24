@@ -17,7 +17,6 @@ import java.util.Map;
 import java.util.function.UnaryOperator;
 
 import org.opensha.commons.data.Site;
-import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
@@ -26,23 +25,16 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.calc.HazardCurveCalculator;
-import org.opensha.sha.calc.params.IncludeMagDistFilterParam;
-import org.opensha.sha.calc.params.MagDistCutoffParam;
-import org.opensha.sha.calc.params.MaxDistanceParam;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
-import org.opensha.sha.calc.params.PtSrcDistanceCorrectionParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
 import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
 import org.opensha.sha.calc.params.filters.MagDependentDistCutoffFilter;
 import org.opensha.sha.calc.params.filters.SourceFilter;
 import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
-import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
-import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.PropagationEffectParams.DistanceRupParameter;
 import org.opensha.sha.util.TRTUtils;
@@ -233,9 +225,6 @@ implements DisaggregationCalculatorAPI{
 			totRuptures = 0;
 			return false;
 		}
-		
-		PtSrcDistanceCorrectionParam ptSrcDistCorrParam = (PtSrcDistanceCorrectionParam)calcParams.getParameter(PtSrcDistanceCorrectionParam.NAME);
-		PtSrcDistCorr.Type distCorrType = ptSrcDistCorrParam.getValueAsTypePtSrcDistCorr();
 
 //		NumStochasticEventSetsParam numStochEventSetRealizationsParam =
 //			(NumStochasticEventSetsParam)calcParams.getParameter(NumStochasticEventSetsParam.NAME);

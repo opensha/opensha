@@ -1,21 +1,19 @@
 package org.opensha.nshmp2.calc;
 
+import static org.opensha.nshmp2.util.Period.GM0P20;
 import static org.opensha.nshmp2.util.SourceType.CLUSTER;
 import static org.opensha.nshmp2.util.SourceType.GRIDDED;
-import static org.opensha.sha.util.NEHRP_TestCity.*;
-import static org.opensha.nshmp2.util.Period.*;
+import static org.opensha.sha.util.NEHRP_TestCity.LOS_ANGELES;
 
 import java.awt.geom.Point2D;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.IOUtils;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
-import org.opensha.commons.geo.Location;
 import org.opensha.nshmp2.erf.NSHMP2008;
 import org.opensha.nshmp2.erf.NSHMP_ListERF;
 import org.opensha.nshmp2.erf.source.ClusterERF;
@@ -33,11 +31,9 @@ import org.opensha.nshmp2.util.SiteTypeParam;
 import org.opensha.nshmp2.util.SourceIMR;
 import org.opensha.nshmp2.util.SourceType;
 import org.opensha.nshmp2.util.Utils;
-import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.params.MaxDistanceParam;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EpistemicListERF;
-import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.EqkRuptureParams.FaultTypeParam;
 import org.opensha.sha.imr.param.EqkRuptureParams.RupTopDepthParam;
@@ -48,14 +44,13 @@ import org.opensha.sha.imr.param.SiteParams.Vs30_TypeParam;
 import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.NEHRP_TestCity;
 
+import com.google.common.base.Function;
+import com.google.common.base.Throwables;
+import com.google.common.collect.Lists;
+
 import scratch.UCERF3.utils.ProbOfExceed;
 import scratch.peter.nshmp.DeterministicResult;
 import scratch.peter.nshmp.HazardCurveCalculatorNSHMP;
-
-import com.google.common.base.Function;
-import com.google.common.base.Stopwatch;
-import com.google.common.base.Throwables;
-import com.google.common.collect.Lists;
 
 /**
  * Standalone calculator class for NSHMP_ListERFs. Assumes Poissonian.

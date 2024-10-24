@@ -20,7 +20,6 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.AbstractParameter;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.sha.calc.params.PtSrcDistanceCorrectionParam;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.faultSurface.PointSurface;
