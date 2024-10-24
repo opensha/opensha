@@ -2,9 +2,6 @@ package scratch.UCERF3.griddedSeismicity;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.function.DoubleBinaryOperator;
-import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
 import org.opensha.commons.data.CSVFile;
@@ -13,15 +10,11 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
-import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
-import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
-import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
-import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider.Abstract;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b;
+import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.Point2Vert_FaultPoisSource;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -54,8 +47,6 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 		return "UCERF3 Grid Source Provider";
 	}
 
-	private static final double[] DEPTHS = new double[] {5.0, 1.0};
-
 	@Override
 	protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
 			BackgroundRupType bgRupType, PointSourceDistanceCorrections distCorrType) {
@@ -84,7 +75,7 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 			mechMap.put(FocalMech.STRIKE_SLIP, fracStrikeSlip);
 			mechMap.put(FocalMech.REVERSE, fracReverse);
 			mechMap.put(FocalMech.NORMAL, fracNormal);
-			return new PointSource13b(loc, mfd, duration, DEPTHS, mechMap, distCorrType);
+			return new PointSourceNshm(loc, mfd, duration, mechMap, distCorrType);
 
 		default:
 			throw new IllegalStateException("Unknown Background Rup Type: "+bgRupType);

@@ -2,41 +2,25 @@ package org.opensha.sha.earthquake.rupForecastImpl;
 
 import static com.google.common.io.Resources.getResource;
 import static com.google.common.io.Resources.readLines;
-import static java.lang.Math.ceil;
-import static java.lang.Math.cos;
 import static java.lang.Math.floor;
 import static java.lang.Math.min;
 import static java.lang.Math.round;
 import static java.lang.Math.sin;
-import static java.lang.Math.sqrt;
-import static java.lang.Math.tan;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.opensha.commons.geo.GeoTools.TO_RAD;
-import static org.opensha.nshmp2.util.NSHMP_Utils.rateToProb;
-import static org.opensha.sha.util.FocalMech.NORMAL;
-import static org.opensha.sha.util.FocalMech.REVERSE;
 import static org.opensha.sha.util.FocalMech.STRIKE_SLIP;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
-import org.opensha.commons.data.Site;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.geo.LocationList;
-import org.opensha.commons.geo.LocationUtils;
 import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSourceImpl;
-import org.opensha.sha.earthquake.ProbEqkRupture;
-import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b.PointSurface13b;
 import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -94,8 +78,9 @@ public class PointSourceNshm extends PoissonPointSourceImpl {
 	// at which point M_FINITE_CUT will be used (and set on invocation)
 
 	private static final String NAME = "NSHMP Point Source";
-	private static final double M_DEPTH_CUT = 6.5;
-	private static final double[] DEPTHS = new double[] { 5.0, 1.0 };
+	public static final double M_DEPTH_CUT_DEFAULT = 6.5;
+	public static final double DEPTH_BELOW_M_CUT_DEFAULT = 5d;
+	public static final double DEPTH_ABOVE_M_CUT_DEFAULT = 1d;
 
 	/** Minimum magnitude for finite fault representation. */
 	// public static final double M_FINITE_CUT = 6.0;
@@ -120,22 +105,31 @@ public class PointSourceNshm extends PoissonPointSourceImpl {
 	
 	public PointSourceNshm(Location loc, IncrementalMagFreqDist mfd,
 			double duration, Map<FocalMech, Double> mechWtMap, WeightedList<PointSourceDistanceCorrection> distCorrs) {
+		this(loc, mfd, duration, mechWtMap, M_DEPTH_CUT_DEFAULT, DEPTH_BELOW_M_CUT_DEFAULT, DEPTH_ABOVE_M_CUT_DEFAULT, distCorrs);
+	}
+	
+	public PointSourceNshm(Location loc, IncrementalMagFreqDist mfd,
+			double duration, Map<FocalMech, Double> mechWtMap,
+			double magCut, double depthBelowMagCut, double depthAboveMagCut,
+			WeightedList<PointSourceDistanceCorrection> distCorrs) {
 		super(loc, TectonicRegionType.ACTIVE_SHALLOW, duration,
-				PointSource.dataForMFDandFocalMechs(mfd, mechWtMap, new SurfaceBuilder(loc, DEPTHS[0], DEPTHS[1])), distCorrs);
+				PointSource.dataForMFDandFocalMechs(mfd, mechWtMap, new SurfaceBuilder(loc, magCut, depthBelowMagCut, depthAboveMagCut)), distCorrs);
 		this.name = NAME;
 	}
 	
 	private static class SurfaceBuilder implements FocalMechSurfaceBuilder {
 
 		private Location loc;
-		private double smMagDepth;
-		private double lgMagDepth;
+		private double depthBelowMagCut;
+		private double depthAboveMagCut;
+		private double magCut;
 
-		private SurfaceBuilder(Location loc, double smMagDepth, double lgMagDepth) {
+		private SurfaceBuilder(Location loc, double magCut, double depthBelowMagCut, double depthAboveMagCut) {
 			super();
 			this.loc = loc;
-			this.smMagDepth = smMagDepth;
-			this.lgMagDepth = lgMagDepth;
+			this.magCut = magCut;
+			this.depthBelowMagCut = depthBelowMagCut;
+			this.depthAboveMagCut = depthAboveMagCut;
 		}
 
 		@Override
@@ -185,7 +179,7 @@ public class PointSourceNshm extends PoissonPointSourceImpl {
 		 * @return the associated depth of rupture
 		 */
 		private double depthForMag(double mag) {
-			return (mag >= M_DEPTH_CUT) ? lgMagDepth : smMagDepth;
+			return (mag >= magCut) ? depthAboveMagCut : depthBelowMagCut;
 		}
 
 		/**

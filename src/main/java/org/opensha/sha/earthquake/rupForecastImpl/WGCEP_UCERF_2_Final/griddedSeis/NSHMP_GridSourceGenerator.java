@@ -17,9 +17,8 @@ import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
-import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b;
+import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
@@ -332,8 +331,6 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 				fracStrikeSlip[srcIndex],fracNormal[srcIndex],fracReverse[srcIndex], true);
 	}
 	
-	private static final double[] DEPTHS = new double[] {5.0, 1.0};
-	
 	/**
 	 * Returns a NSHMP 2013 style gridded source that is compatible with all
 	 * NGAW2 relationships.
@@ -349,8 +346,8 @@ public class NSHMP_GridSourceGenerator implements Serializable {
 		mechMap.put(FocalMech.STRIKE_SLIP, fracStrikeSlip[srcIndex]);
 		mechMap.put(FocalMech.NORMAL, fracNormal[srcIndex]);
 		mechMap.put(FocalMech.REVERSE, fracReverse[srcIndex]);
-		return new PointSource13b(region.locationForIndex(srcIndex), mfdAtLoc,
-			duration, DEPTHS, mechMap, distCorrs);
+		return new PointSourceNshm(region.locationForIndex(srcIndex), mfdAtLoc,
+			duration, mechMap, distCorrs);
 	}
 	
 
