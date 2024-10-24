@@ -969,8 +969,13 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
 			
 			EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(rupSet.getMaxMag());
-			IncrementalMagFreqDist obsMFD = PRVI25_RegionalSeismicity.PREFFERRED.build(PRVI25_SeismicityRegions.CRUSTAL, refMFD,
-					refMFD.getX(refMFD.getClosestXIndex(rupSet.getMaxMag())));
+			IncrementalMagFreqDist obsMFD;
+			try {
+				obsMFD = PRVI25_RegionalSeismicity.PREFFERRED.build(PRVI25_SeismicityRegions.CRUSTAL, refMFD,
+						refMFD.getX(refMFD.getClosestXIndex(rupSet.getMaxMag())));
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
 			RuptureSubSetMappings subsetMappings = rupSet.getModule(RuptureSubSetMappings.class);
 			if (LIMIT_FRACT != 1d)
 				obsMFD.scale(LIMIT_FRACT);

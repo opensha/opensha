@@ -62,25 +62,7 @@ public enum PRVI25_SubductionDeformationModels implements RupSetDeformationModel
 	 */
 	public static double HARDCODED_FRACTIONAL_STD_DEV_UPPER_BOUND = 0.1;
 	
-	/**
-	 * For a given creep fractional moment reduction, creepRed:
-	 * 
-	 * if (creepRed <= ASEIS_CEILING) {
-	 * 	aseis = creepRed
-	 * 	coupling = 1
-	 * } else {
-	 * 	aseis = ASEIS_CEILING
-	 * 	coupling = 1 - (1/(1-ASEIS_CEILING))*(creepRed - ASEIS_CEILING)
-	 * }
-	 * 
-	 * In UCERF3, this was set to 0.9.
-	 */
-	public static double ASEIS_CEILING = 0.4;
-	
-	/**
-	 * If no creep value is available, use the given default creep reduction value
-	 */
-	public static double CREEP_FRACT_DEFAULT = 0.1;
+	public static double ASEIS = 0.0;
 	
 	private String name;
 	private String shortName;
@@ -254,15 +236,8 @@ public enum PRVI25_SubductionDeformationModels implements RupSetDeformationModel
 	}
 	
 	private void applyCreepDefaults(List<? extends FaultSection> subSects) {
-		double creepFract = CREEP_FRACT_DEFAULT;
-		double aseis, coupling;
-		if (creepFract < ASEIS_CEILING) {
-			aseis = creepFract;
-			coupling = 1d;
-		} else {
-			aseis = ASEIS_CEILING;
-			coupling = 1 - (1/(1-ASEIS_CEILING))*(creepFract - ASEIS_CEILING);
-		}
+		double aseis = ASEIS;
+		double coupling = 1d;
 		for (FaultSection subSect : subSects) {
 			subSect.setAseismicSlipFactor(aseis);
 			subSect.setCouplingCoeff(coupling);
