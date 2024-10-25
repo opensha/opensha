@@ -403,6 +403,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				// write logic tree
 				LogicTree<?> tree = solTree.getLogicTree();
 				zout.putNextEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
+				writer = new BufferedWriter(new OutputStreamWriter(zout.getOutputStream()));
 				Gson gson = new GsonBuilder().setPrettyPrinting()
 						.registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
 				gson.toJson(tree, LogicTree.class, writer);
