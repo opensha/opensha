@@ -220,7 +220,7 @@ BranchAverageableModule<RegionsOfInterest> {
 						for (TectonicRegionType trt : module.regionalTRTs)
 							regionalTRTs.add(trt);
 					} else {
-						regionalMFDs = null;
+						regionalTRTs = null;
 					}
 				}
 				Preconditions.checkState(regions.size() == module.regions.size());
@@ -234,20 +234,29 @@ BranchAverageableModule<RegionsOfInterest> {
 					Preconditions.checkState(regions.get(r).equalsRegion(module.regions.get(r)));
 					if (regionalMFDs != null) {
 						if (module.regionalMFDs == null) {
+							System.err.println("ROI-Average: encountered an ROI w/o MFDs, clearing all");
 							regionalMFDs = null;
 						} else {
 							IncrementalMagFreqDist mfd = module.regionalMFDs.get(r);
 							IncrementalMagFreqDist runningMFD = regionalMFDs.get(r);
 							if (mfd == null) {
+								if (runningMFD != null)
+									System.err.println("ROI-Average: encountered an ROI w/o MFD for region "+r+", clearing");
 								regionalMFDs.set(r, null);
 							} else if (runningMFD != null) {
 								regionalMFDs.set(r, InversionTargetMFDs.Precomputed.averageInWeighted(
 										runningMFD, mfd, "Regional MFD", relWeight));
-								if (mfdNames.get(r) != null && !mfdNames.get(r).equals(mfd.getName()))
+								if (mfdNames.get(r) != null && !mfdNames.get(r).equals(mfd.getName())) {
+									System.err.println("ROI-Average: MFD name mismatch, clearing MFD for region "+r+": '"
+											+mfdNames.get(r)+"' != '"+mfd.getName()+"'");
 									mfdNames.set(r, null);
+								}
 								if (mfdBoundNames.get(r) != null && mfd instanceof UncertainBoundedIncrMagFreqDist
-										&& !mfdBoundNames.get(r).equals(((UncertainBoundedIncrMagFreqDist)mfd).getBoundName()))
+										&& !mfdBoundNames.get(r).equals(((UncertainBoundedIncrMagFreqDist)mfd).getBoundName())) {
+									System.err.println("ROI-Average: MFD bound name mismatch, clearing MFD for region "+r+": '"
+											+mfdBoundNames.get(r)+"' != '"+((UncertainBoundedIncrMagFreqDist)mfd).getBoundName()+"'");
 									mfdBoundNames.set(r, null);
+								}
 							}
 						}
 					}
