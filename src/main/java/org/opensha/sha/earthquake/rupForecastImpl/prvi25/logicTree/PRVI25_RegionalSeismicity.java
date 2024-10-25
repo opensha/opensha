@@ -1,10 +1,5 @@
 package org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree;
 
-import static org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader.buildIncrementalMFD;
-import static org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader.loadRecords;
-import static org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader.locateMean;
-import static org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader.locateQuantile;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.DecimalFormat;
@@ -28,6 +23,8 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader.RateRecord;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader.RateType;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
@@ -80,7 +77,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 		if (rates != null)
 			return rates;
 		CSVFile<String> csv = loadCSV(regionName);
-		rates = loadRecords(csv, type);
+		rates = SeismicityRateFileLoader.loadRecords(csv, type);
 		regionRates.put(regionName, type, rates);
 		return rates;
 	}
@@ -148,11 +145,19 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 	public IncrementalMagFreqDist build(PRVI25_SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax)
 			throws IOException {
 		List<? extends RateRecord> records = loadRates(region.name(), TYPE);
-		RateRecord record = Double.isNaN(qwuantile) ? locateMean(records) : locateQuantile(records, qwuantile);
-		IncrementalMagFreqDist mfd = buildIncrementalMFD(record, refMFD, mMax);
+		RateRecord record = Double.isNaN(qwuantile) ?
+				SeismicityRateFileLoader.locateMean(records) : SeismicityRateFileLoader.locateQuantile(records, qwuantile);
+		IncrementalMagFreqDist mfd = SeismicityRateFileLoader.buildIncrementalMFD(record, refMFD, mMax);
 		
 		if (TYPE != RateType.EXACT && this != PREFFERRED)
 			mfd = adjustForCrossover(mfd, PREFFERRED.build(region, refMFD, mMax), this == LOW);
+		
+		String name = "Observed";
+		if (this != PREFFERRED)
+			name += " ("+this.shortName+")";
+		name += ", N"+oDF.format(record.M1)+"="+oDF.format(record.rateAboveM1);
+		
+		mfd.setName(name);
 		
 		return mfd;
 	};
@@ -165,7 +170,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 		IncrementalMagFreqDist lower = LOW.build(region, refMFD, mMax);
 		IncrementalMagFreqDist pref = PREFFERRED.build(region, refMFD, mMax);
 		
-		double M1 = locateMean(loadRates(region.name(), TYPE)).M1;
+		double M1 = SeismicityRateFileLoader.locateMean(loadRates(region.name(), TYPE)).M1;
 		
 		UncertainBoundedIncrMagFreqDist bounded = new UncertainBoundedIncrMagFreqDist(pref, lower, upper, BOUND_TYPE);
 		bounded.setName(pref.getName());
@@ -216,7 +221,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 			myLower.scale(fractN);
 			
 			// now further scale bounds to account for less data
-			for (int i=0; i<refMFD.size(); i++) {
+			for (int i=0; i<myPref.size(); i++) {
 				double prefVal = myPref.getY(i);
 				if (prefVal > 0d) {
 					double origUpper = myUpper.getY(i);
@@ -251,7 +256,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 //		}
 		Preconditions.checkNotNull(pref);
 		
-		double M1 = locateMean(loadRates(seisRegion.name(), TYPE)).M1;
+		double M1 = SeismicityRateFileLoader.locateMean(loadRates(seisRegion.name(), TYPE)).M1;
 		
 		double prefN = pref.getCumRateDistWithOffset().getInterpolatedY(M1);
 		String name = "Remmapped Observed [pdfFractN="+oDF.format(sumFractN/sumTotalN)+", N"+oDF.format(M1)+"="+oDF.format(prefN)+"]";
@@ -286,7 +291,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 	
 	public static void main(String[] args) throws IOException {
 		double mMax = 7.6;
-		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(mMax);
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, mMax);
 		for (PRVI25_SeismicityRegions seisReg : PRVI25_SeismicityRegions.values()) {
 			IncrementalMagFreqDist pref = PREFFERRED.build(seisReg, refMFD, mMax);
 			IncrementalMagFreqDist low = LOW.build(seisReg, refMFD, mMax);

@@ -968,7 +968,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 				int threads) {
 			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
 			
-			EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(rupSet.getMaxMag());
+			EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, rupSet.getMaxMag());
 			IncrementalMagFreqDist obsMFD;
 			try {
 				obsMFD = PRVI25_RegionalSeismicity.PREFFERRED.build(PRVI25_SeismicityRegions.CRUSTAL, refMFD,

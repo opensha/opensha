@@ -129,10 +129,14 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 						PRVI25_SeismicityRegions.CAR_INTERFACE,
 						PRVI25_SeismicityRegions.MUE_INTERFACE,
 				};
-				double maxMinMag = 0d;
+//				double maxMinMag = 0d;
+//				for (int s=0; s<rupSet.getNumSections(); s++)
+//					maxMinMag = Math.max(maxMinMag, rupSet.getMinMagForSection(s));
+				// this is just for plots, we want the "data" portion to extend past the right of the rupture data
+				double mMax = 0d;
 				for (int s=0; s<rupSet.getNumSections(); s++)
-					maxMinMag = Math.max(maxMinMag, rupSet.getMinMagForSection(s));
-				IncrementalMagFreqDist interfaceRefMFD = FaultSysTools.initEmptyMFD(maxMinMag);
+					mMax = Math.max(mMax, rupSet.getMaxMagForSection(s));
+				IncrementalMagFreqDist interfaceRefMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, mMax+0.1);
 				for (PRVI25_SeismicityRegions seisReg : interfaceRegions) {
 					List<Double> minMags = new ArrayList<>();
 					Region reg = seisReg.load();
@@ -159,7 +163,7 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 						PRVI25_SeismicityRegions.CAR_INTRASLAB,
 						PRVI25_SeismicityRegions.MUE_INTRASLAB,
 				};
-				IncrementalMagFreqDist slabRefMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.SLAB_MMAX);
+				IncrementalMagFreqDist slabRefMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, PRVI25_GridSourceBuilder.SLAB_MMAX);
 				for (PRVI25_SeismicityRegions seisReg : slabRegions) {
 					regions.add(seisReg.load());
 					UncertainBoundedIncrMagFreqDist mfd = PRVI25_RegionalSeismicity.getBounded(seisReg,
