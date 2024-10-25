@@ -245,9 +245,10 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 
 		this.currRuptures = -1;
 
-		/* this determines how the calucations are done (doing it the way it's outlined
-    in our original SRL paper gives probs greater than 1 if the total rate of events for the
-    source exceeds 1.0, even if the rates of individual ruptures are << 1).
+		/*
+		 * this determines how the calculations are done (doing it the way it's outlined
+		 * in our original SRL paper gives probs greater than 1 if the total rate of events for the
+		 * source exceeds 1.0, even if the rates of individual ruptures are << 1).
 		 */
 		boolean poissonSource = false;
 
