@@ -6,12 +6,12 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSourceData;
-import org.opensha.sha.earthquake.PointSource.SiteAdaptivePoissonPointSourceData;
+import org.opensha.sha.earthquake.PointSource.SiteAdaptivePointSourceData;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
 
-public class SiteDistanceDependentPoissonPointSourceData implements SiteAdaptivePoissonPointSourceData {
+public class SiteDistanceDependentPoissonPointSourceData implements SiteAdaptivePointSourceData<PoissonPointSourceData>, PoissonPointSourceData {
 
 	protected Location centerLoc;
 	protected List<PoissonPointSourceData> datas;

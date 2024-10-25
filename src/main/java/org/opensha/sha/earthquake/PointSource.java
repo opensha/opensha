@@ -1,9 +1,10 @@
 package org.opensha.sha.earthquake;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.function.BiFunction;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.WeightedList;
@@ -11,9 +12,11 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
-import org.opensha.sha.earthquake.PointSource.PoissonPointSourceData;
+import org.opensha.sha.earthquake.griddedForecast.HypoMagFreqDistAtLoc;
 import org.opensha.sha.earthquake.util.GridCellSuperSamplingPoissonPointSourceData;
+import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.faultSurface.QuadSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
@@ -24,6 +27,10 @@ import org.opensha.sha.util.TectonicRegionType;
 import com.google.common.base.Preconditions;
 
 public abstract class PointSource extends ProbEqkSource {
+	
+	/*
+	 * Basic source
+	 */
 	
 	private Location loc;
 	private PointSurface pointSurf; // lazily initialized, used for getSourceSurface()
@@ -76,95 +83,171 @@ public abstract class PointSource extends ProbEqkSource {
 		return loc;
 	}
 	
-	public static abstract class PoissonPointSource extends PointSource {
-
-		private double duration;
-
-		private PoissonPointSource(Location loc, double duration) {
-			super(loc);
-			this.duration = duration;
-		}
-
-		private PoissonPointSource(Location loc, TectonicRegionType tectonicRegionType,
-				double duration, WeightedList<PointSourceDistanceCorrection> distCorrs) {
-			super(loc, tectonicRegionType, distCorrs);
-			this.duration = duration;
-		}
-
-		/**
-		 * This sets the duration used in computing Poisson probabilities.  This assumes
-		 * the same units as in the magFreqDist rates.
-		 * @param duration
-		 */
-		public void setDuration(double duration) {
-			this.duration=duration;
-		}
-
-		/**
-		 * This gets the duration used in computing Poisson probabilities
-		 * @param duration
-		 */
-		public double getDuration() {
-			return duration;
-		}
-
-		/**
-		 * Given an observed annual rate of occurrence of some event (in num/yr),
-		 * method returns the Poisson probability of occurence over the specified
-		 * time period.
-		 * @param rate (annual) of occurence of some event
-		 * @param time period of interest
-		 * @return the Poisson probability of occurrence in the specified
-		 *         <code>time</code>
-		 */
-		public static double rateToProb(double rate, double time) {
-			return 1 - Math.exp(-rate * time);
-		}
-
-		/**
-		 * Given the Poisson probability of the occurence of some event over a
-		 * specified time period, method returns the annual rate of occurrence of
-		 * that event.
-		 * @param P the Poisson probability of an event's occurrence
-		 * @param time period of interest
-		 * @return the annnual rate of occurrence of the event
-		 */
-		public static double probToRate(double P, double time) {
-			return -Math.log(1 - P) / time;
-		}
-		
-	}
+	/*
+	 * Source data interfaces
+	 */
 	
-	public static interface PoissonPointSourceData {
+	/**
+	 * Base interface for point source data
+	 */
+	public static interface PointSourceData {
 		
+		/**
+		 * @return the number of ruptures represented by this source
+		 */
 		public int getNumRuptures();
 		
+		/**
+		 * 
+		 * @param rupIndex index for the rupture
+		 * @return magnitude for the given rupture
+		 */
 		public double getMagnitude(int rupIndex);
 		
+		/**
+		 * 
+		 * @param rupIndex index for the rupture
+		 * @return rake for the given rupture
+		 */
 		public double getAveRake(int rupIndex);
 		
-		public double getRate(int rupIndex);
-		
+		/**
+		 * 
+		 * @param rupIndex index for the rupture
+		 * @return surface for the given rupture
+		 */
 		public RuptureSurface getSurface(int rupIndex);
 		
+		/**
+		 * This tells the source if the given rupture uses a finite surface (e.g., {@link EvenlyGriddedSurface} or
+		 * {@link QuadSurface}) if true, or a {@link PointSurface} if false. This is used to determine if any
+		 * {@link PointSourceDistanceCorrection} should be applied.
+		 * 
+		 * @param rupIndex
+		 * @return true if the given rupture uses a finite surface, false if it uses a {@link PointSurface} 
+		 */
 		public boolean isFinite(int rupIndex);
 		
+		/**
+		 * This returns the hypocenter location to be set in the rupture object
+		 * 
+		 * @param sourceLoc original source location
+		 * @param rupSurface already-built surface for the rupture
+		 * @param rupIndex index for the rupture
+		 * @return
+		 */
 		public Location getHypocenter(Location sourceLoc, RuptureSurface rupSurface, int rupIndex);
 		
 	}
 	
-	public static class PoissonPointSourceImpl extends PoissonPointSource {
+	/**
+	 * Point source data for a non-Poisson source
+	 */
+	public static interface NonPoissonPointSourceData extends PointSourceData {
 		
-		private PoissonPointSourceData data;
+		/**
+		 * 
+		 * @param rupIndex index for the rupture
+		 * @return probability for the given rupture
+		 */
+		public double getProbability(int rupIndex);
+		
+	}
+	
+	/**
+	 * Point source data for a Poisson source
+	 */
+	public static interface PoissonPointSourceData extends PointSourceData {
+		
+		/**
+		 * 
+		 * @param rupIndex index for the rupture
+		 * @return rate for the given rupture
+		 */
+		public double getRate(int rupIndex);
+		
+	}
+	
+	/**
+	 * Site-Adaptive variant of {@link PointSourceData} for use with a {@link SiteAdaptiveSource}.
+	 */
+	public static interface SiteAdaptivePointSourceData<E extends PointSourceData> extends PointSourceData {
+		
+		/**
+		 * Site-specific version of the {@link PointSourceData}
+		 * @param site
+		 * @return
+		 */
+		public E getForSite(Site site);
+		
+		/**
+		 * If true, sources will be cached. Default returns false
+		 * 
+		 * @return true if there are a few fixed versions (e.g., different resolutions) for which sources should be
+		 * cached, false if data is unique to each site and sources should be rebuilt every time
+		 */
+		public default boolean isDiscrete() {
+			return false;
+		}
+		
+	}
+
+	
+	/**
+	 * Interface for building surfaces for a given magnitude and the supplied data (generic, but will often be a
+	 * {@link FocalMech} or {@link FocalMechanism}).
+	 */
+	public static interface RuptureSurfaceBuilder<E> {
+
+		public int getNumSurfaces(double magnitude, E ruptureData);
+		
+		public RuptureSurface getSurface(Location sourceLoc, double magnitude, E ruptureData, int surfaceIndex);
+		
+		public double getSurfaceWeight(double magnitude, E ruptureData, int surfaceIndex);
+		
+		public boolean isSurfaceFinite(double magnitude, E ruptureData, int surfaceIndex);
+		
+		public default WeightedList<RuptureSurface> getSurfaces(Location sourceLoc, double magnitude, E ruptureData) {
+			int num = getNumSurfaces(magnitude, ruptureData);
+			if (num == 1)
+				return WeightedList.evenlyWeighted(getSurface(sourceLoc, magnitude, ruptureData, 0));
+			WeightedList<RuptureSurface> ret = new WeightedList<>(num);
+			for (int i=0; i<num; i++)
+				ret.add(getSurface(sourceLoc, magnitude, ruptureData, i), getSurfaceWeight(magnitude, ruptureData, i));
+			Preconditions.checkState(ret.isNormalized(),
+					"Surface weights aren't normalized for mag=%s, mech=%s", magnitude, ruptureData);
+			return ret;
+		}
+		
+		public Location getHypocenter(Location sourceLoc, RuptureSurface rupSurface);
+		
+		public double getRake(E ruptureData);
+	}
+	
+	/*
+	 * Implementations
+	 */
+	
+	/**
+	 * This is a basic implementation that takes a {@link PointSourceData} implementation and build ruptures for the
+	 * given distance correction(s).
+	 * 
+	 * It keeps track of rupture indexes in the source as well as those in the higher level data object. These indexes
+	 * differ when there are multiple point source distance implementations
+	 * 
+	 * @param <E> data type
+	 */
+	private static abstract class BaseImplementation<E extends PointSourceData> extends PointSource {
+		
+		protected final E data;
 		
 		private int numRuptures;
 		private short[] dataIndexes;
 		private short[] corrIndexes;
 
-		public PoissonPointSourceImpl(Location loc, TectonicRegionType tectonicRegionType,
-				double duration, PoissonPointSourceData data,
-				WeightedList<PointSourceDistanceCorrection> distCorrs) {
-			super(loc, tectonicRegionType, duration, distCorrs);
+		public BaseImplementation(Location loc, TectonicRegionType tectonicRegionType,
+				E data, WeightedList<PointSourceDistanceCorrection> distCorrs) {
+			super(loc, tectonicRegionType, distCorrs);
 			this.data = data;
 			updateCountAndIndexes();
 		}
@@ -224,6 +307,16 @@ public abstract class PointSource extends ProbEqkSource {
 			Preconditions.checkState(numRuptures > 0);
 			return numRuptures;
 		}
+		
+		/**
+		 * 
+		 * @param sourceRuptureIndex rupture index in the source
+		 * @param dataRuptureIndex rupture index in the {@link PointSourceData} data object
+		 * @param distCorrWeight weight for the distance correction (if any). Will be 1 unless there are multiple
+		 * distance corrections
+		 * @return probability for this rupture
+		 */
+		protected abstract double getProbability(int sourceRuptureIndex, int dataRuptureIndex, double distCorrWeight);
 
 		@Override
 		public ProbEqkRupture getRupture(int nRupture) {
@@ -231,7 +324,7 @@ public abstract class PointSource extends ProbEqkSource {
 			// we have multiple distance corrections per rupture
 			int dataIndex;
 			PointSourceDistanceCorrection distCorr;
-			double rate;
+			double distCorrWeight;
 			if (dataIndexes == null) {
 				// simple case: no distance corrections, or 1 per rupture
 				dataIndex = nRupture;
@@ -241,18 +334,18 @@ public abstract class PointSource extends ProbEqkSource {
 					Preconditions.checkState(distCorrs.size() == 1);
 					distCorr = distCorrs.getValue(0);
 				}
-				rate = data.getRate(dataIndex);
+				distCorrWeight = 1d;
 			} else {
 				dataIndex = dataIndexes[nRupture];
 				int corrIndex = corrIndexes[nRupture];
-				rate = data.getRate(dataIndex);
 				if (corrIndex < 0) {
 					// finite rupture, no correction
 					distCorr = null;
+					distCorrWeight = 1d;
 				} else {
 					Preconditions.checkState(corrIndex < distCorrs.size());
 					distCorr = distCorrs.getValue(corrIndex);
-					rate *= distCorrs.getWeight(corrIndex);
+					distCorrWeight = distCorrs.getWeight(corrIndex);
 				}
 			}
 			double mag = data.getMagnitude(dataIndex);
@@ -275,168 +368,446 @@ public abstract class PointSource extends ProbEqkSource {
 			}
 			Location hypo = data.getHypocenter(getLocation(), surf, dataIndex);
 			
-			double prob = rateToProb(rate, getDuration());
+			double prob = getProbability(nRupture, dataIndex, distCorrWeight);
 			return new ProbEqkRupture(mag, rake, prob, surf, hypo);
 		}
 		
 	}
 	
-	public static interface SiteAdaptivePoissonPointSourceData extends PoissonPointSourceData {
-		
-		public PoissonPointSourceData getForSite(Site site);
-		
-	}
-	
-	private static class SiteAdaptivePoissonPointSourceImpl extends PoissonPointSourceImpl implements SiteAdaptiveSource {
+	public static class NonPoissonPointSource extends BaseImplementation<NonPoissonPointSourceData> {
 
-		private SiteAdaptivePoissonPointSourceData data;
-
-		public SiteAdaptivePoissonPointSourceImpl(Location loc, TectonicRegionType tectonicRegionType, double duration,
-				SiteAdaptivePoissonPointSourceData data,
-				WeightedList<PointSourceDistanceCorrection> distCorrs) {
-			super(loc, tectonicRegionType, duration, data, distCorrs);
-			this.data = data;
+		public NonPoissonPointSource(Location loc, TectonicRegionType tectonicRegionType,
+				NonPoissonPointSourceData data, WeightedList<PointSourceDistanceCorrection> distCorrs) {
+			super(loc, tectonicRegionType, data, distCorrs);
+			super.isPoissonian = false;
 		}
 
 		@Override
-		public synchronized ProbEqkSource getForSite(Site site) {
+		protected double getProbability(int sourceRuptureIndex, int dataRuptureIndex, double distCorrWeight) {
+			// if there are multiple distance correlations, just partition the probability across them
+			return data.getProbability(dataRuptureIndex) * distCorrWeight;
+		}
+		
+	}
+	
+	private static class SiteAdaptiveNonPoissonPointSourceImpl
+	<E extends SiteAdaptivePointSourceData<NonPoissonPointSourceData> & NonPoissonPointSourceData>
+	extends NonPoissonPointSource implements SiteAdaptiveSource {
+
+		private E data;
+		private ConcurrentMap<NonPoissonPointSourceData, NonPoissonPointSource> sourceCache;
+
+		public SiteAdaptiveNonPoissonPointSourceImpl(Location loc, TectonicRegionType tectonicRegionType,
+				E data, WeightedList<PointSourceDistanceCorrection> distCorrs) {
+			super(loc, tectonicRegionType, data, distCorrs);
+			this.data = data;
+			if (data.isDiscrete())
+				sourceCache = new ConcurrentHashMap<>();
+		}
+
+		@Override
+		public void setDistCorrs(WeightedList<PointSourceDistanceCorrection> distCorrs) {
+			super.setDistCorrs(distCorrs);
+			if (sourceCache != null)
+				sourceCache.clear();
+		}
+
+		@Override
+		public NonPoissonPointSource getForSite(Site site) {
+			NonPoissonPointSourceData dataForSite = data.getForSite(site);
+			if (dataForSite == data)
+				// it returned itself, nothing for this site
+				return this;
+			NonPoissonPointSource ret = null;
+			if (sourceCache != null) {
+				// see if cached
+				ret = sourceCache.get(dataForSite);
+				if (ret != null)
+					return ret;
+			}
+			ret = new NonPoissonPointSource(getLocation(), getTectonicRegionType(), dataForSite, getDistCorrs());
+			if (sourceCache != null)
+				sourceCache.putIfAbsent(dataForSite, ret);
+			return ret;
+		}
+		
+	}
+	
+	public static class PoissonPointSource extends BaseImplementation<PoissonPointSourceData> {
+
+		private double duration;
+
+		public PoissonPointSource(Location loc, TectonicRegionType tectonicRegionType,
+				double duration, PoissonPointSourceData data,
+				WeightedList<PointSourceDistanceCorrection> distCorrs) {
+			super(loc, tectonicRegionType, data, distCorrs);
+			this.duration = duration;
+			super.isPoissonian = true;
+		}
+
+		/**
+		 * This sets the duration used in computing Poisson probabilities.  This assumes
+		 * the same units as in the magFreqDist rates.
+		 * @param duration
+		 */
+		public void setDuration(double duration) {
+			this.duration=duration;
+		}
+
+		/**
+		 * This gets the duration used in computing Poisson probabilities
+		 * @param duration
+		 */
+		public double getDuration() {
+			return duration;
+		}
+
+		/**
+		 * Given an observed annual rate of occurrence of some event (in num/yr),
+		 * method returns the Poisson probability of occurence over the specified
+		 * time period.
+		 * @param rate (annual) of occurence of some event
+		 * @param time period of interest
+		 * @return the Poisson probability of occurrence in the specified
+		 *         <code>time</code>
+		 */
+		public static double rateToProb(double rate, double time) {
+			return 1 - Math.exp(-rate * time);
+		}
+
+		/**
+		 * Given the Poisson probability of the occurence of some event over a
+		 * specified time period, method returns the annual rate of occurrence of
+		 * that event.
+		 * @param P the Poisson probability of an event's occurrence
+		 * @param time period of interest
+		 * @return the annnual rate of occurrence of the event
+		 */
+		public static double probToRate(double P, double time) {
+			return -Math.log(1 - P) / time;
+		}
+
+		@Override
+		protected double getProbability(int nRupture, int dataIndex, double distCorrWeight) {
+			double rate = data.getRate(dataIndex) * distCorrWeight;
+			return rateToProb(rate, duration);
+		}
+		
+	}
+	
+	private static class SiteAdaptivePoissonPointSourceImpl
+	<E extends SiteAdaptivePointSourceData<PoissonPointSourceData> & PoissonPointSourceData>
+	extends PoissonPointSource implements SiteAdaptiveSource {
+
+		private E data;
+		private ConcurrentMap<PoissonPointSourceData, PoissonPointSource> sourceCache;
+
+		public SiteAdaptivePoissonPointSourceImpl(Location loc, TectonicRegionType tectonicRegionType, double duration,
+				E data, WeightedList<PointSourceDistanceCorrection> distCorrs) {
+			super(loc, tectonicRegionType, duration, data, distCorrs);
+			this.data = data;
+			if (data.isDiscrete())
+				sourceCache = new ConcurrentHashMap<>();
+		}
+
+		@Override
+		public void setDistCorrs(WeightedList<PointSourceDistanceCorrection> distCorrs) {
+			super.setDistCorrs(distCorrs);
+			if (sourceCache != null)
+				sourceCache.clear();
+		}
+
+		@Override
+		public PoissonPointSource getForSite(Site site) {
 			PoissonPointSourceData dataForSite = data.getForSite(site);
 			if (dataForSite == data)
 				// it returned itself, nothing for this site
 				return this;
-			return new PoissonPointSourceImpl(getLocation(), getTectonicRegionType(),
+			PoissonPointSource ret = null;
+			if (sourceCache != null) {
+				// see if cached
+				ret = sourceCache.get(dataForSite);
+				if (ret != null)
+					return ret;
+			}
+			ret = new PoissonPointSource(getLocation(), getTectonicRegionType(),
 					getDuration(), dataForSite, getDistCorrs());
-		}
-		
-	}
-	
-	private static class DistanceDependentSiteAdaptiveData implements SiteAdaptivePoissonPointSourceData {
-		
-		private PoissonPointSourceData standardData;
-		private PoissonPointSourceData nearbyData;
-		private Location sourceLoc;
-		private float distCutoff;
-
-		private DistanceDependentSiteAdaptiveData(PoissonPointSourceData standardData,
-				PoissonPointSourceData nearbyData, Location sourceLoc, float distCutoff) {
-			this.standardData = standardData;
-			this.nearbyData = nearbyData;
-			this.sourceLoc = sourceLoc;
-			this.distCutoff = distCutoff;
-		}
-
-		@Override
-		public int getNumRuptures() {
-			return standardData.getNumRuptures();
-		}
-
-		@Override
-		public double getMagnitude(int rupIndex) {
-			return standardData.getMagnitude(rupIndex);
-		}
-
-		@Override
-		public double getAveRake(int rupIndex) {
-			return standardData.getAveRake(rupIndex);
-		}
-
-		@Override
-		public double getRate(int rupIndex) {
-			return standardData.getRate(rupIndex);
-		}
-
-		@Override
-		public RuptureSurface getSurface(int rupIndex) {
-			return standardData.getSurface(rupIndex);
-		}
-
-		@Override
-		public boolean isFinite(int rupIndex) {
-			return standardData.isFinite(rupIndex);
-		}
-
-		@Override
-		public Location getHypocenter(Location sourceLoc, RuptureSurface rupSurface, int rupIndex) {
-			return standardData.getHypocenter(sourceLoc, rupSurface, rupIndex);
-		}
-
-		@Override
-		public PoissonPointSourceData getForSite(Site site) {
-			if ((float)LocationUtils.horzDistanceFast(sourceLoc, site.getLocation()) <= distCutoff)
-				return nearbyData;
-			return this;
+			if (sourceCache != null)
+				sourceCache.putIfAbsent(dataForSite, ret);
+			return ret;
 		}
 		
 	}
 	
 	/**
-	 * Builds point source data for the given MFD, focal mechanism weights, and {@link FocalMechSurfaceBuilder}
+	 * Builds point source data for the given MFD, type, and {@link RuptureSurfaceBuilder}
 	 * 
+	 * @param loc
 	 * @param mfd
-	 * @param mechWeights
+	 * @param type
 	 * @param surfaceBuilder
 	 * @return the builder
 	 */
-	public static PoissonPointSourceData dataForMFDandFocalMechs(IncrementalMagFreqDist mfd, Map<FocalMech, Double> mechWeights,
-			FocalMechSurfaceBuilder surfaceBuilder) {
-		return new MFDandMechPoissonPointSourceData(mfd, mechWeights, surfaceBuilder);
-	} 
+	public static <E> PoissonPointSourceData dataForMFD(Location loc, IncrementalMagFreqDist mfd, E type,
+			RuptureSurfaceBuilder<? super E> surfaceBuilder) {
+		Set<E> set = Set.of(type);
+		MFDData<E> data = new MFDData<E>() {
+
+			@Override
+			public Set<E> data() {
+				return set;
+			}
+
+			@Override
+			public int size(E data) {
+				return mfd.size();
+			}
+
+			@Override
+			public double magnitude(E data, int index) {
+				return mfd.getX(index);
+			}
+
+			@Override
+			public double rate(E data, int index) {
+				return mfd.getY(index);
+			}
+		};
+		return new MFDPoissonPointSourceData<>(loc, data, surfaceBuilder);
+	}
 	
-	private static class MFDandMechPoissonPointSourceData implements PoissonPointSourceData {
+	/**
+	 * Builds point source data for the given MFD, weights, and {@link RuptureSurfaceBuilder}
+	 * 
+	 * @param loc
+	 * @param mfd
+	 * @param weights
+	 * @param surfaceBuilder
+	 * @return the builder
+	 */
+	public static <E> PoissonPointSourceData dataForMFDs(Location loc, IncrementalMagFreqDist mfd,
+			Map<E, Double> weights, RuptureSurfaceBuilder<? super E> surfaceBuilder) {
+		double weightSum = 0d;
+		for (E mech : weights.keySet()) {
+			double weight = weights.get(mech);
+			Preconditions.checkState(weight >= 0d && weight <= 1d, "Bad weight for %s: %s", mech, weight);
+			weightSum += weight;
+		}
+		Preconditions.checkState((float)weightSum == 1f, "FocalMech weights don't sum to 1: %s", (float)weightSum);
+		MFDData<E> data = new MFDData<E>() {
+
+			@Override
+			public Set<E> data() {
+				return weights.keySet();
+			}
+
+			@Override
+			public int size(E data) {
+				return mfd.size();
+			}
+
+			@Override
+			public double magnitude(E data, int index) {
+				return mfd.getX(index);
+			}
+
+			@Override
+			public double rate(E data, int index) {
+				return mfd.getY(index) * weights.get(data);
+			}
+		};
+		return new MFDPoissonPointSourceData<>(loc, data, surfaceBuilder);
+	}
+	
+	/**
+	 * Builds point source data for the given MFDs and {@link RuptureSurfaceBuilder}
+	 * 
+	 * @param loc
+	 * @param mfds
+	 * @param surfaceBuilder
+	 * @return the builder
+	 */
+	public static <E> PoissonPointSourceData dataForMFDs(Location loc, Map<E, IncrementalMagFreqDist> mfds,
+			RuptureSurfaceBuilder<? super E> surfaceBuilder) {
+		MFDData<E> data = new MFDData<E>() {
+
+			@Override
+			public Set<E> data() {
+				return mfds.keySet();
+			}
+
+			@Override
+			public int size(E data) {
+				return mfds.get(data).size();
+			}
+
+			@Override
+			public double magnitude(E data, int index) {
+				return mfds.get(data).getX(index);
+			}
+
+			@Override
+			public double rate(E data, int index) {
+				return mfds.get(data).getY(index);
+			}
+		};
+		return new MFDPoissonPointSourceData<>(loc, data, surfaceBuilder);
+	}
+	
+	/**
+	 * Builds point source data for the given MFDs and {@link RuptureSurfaceBuilder}
+	 * 
+	 * @param loc
+	 * @param magnitude
+	 * @param rate
+	 * @param ruptureData
+	 * @param surfaceBuilder
+	 * @return the builder
+	 */
+	public static <E> PoissonPointSourceData dataForMagRate(Location loc, double magnitude, double rate, E ruptureData,
+			RuptureSurfaceBuilder<? super E> surfaceBuilder) {
+		Set<E> set = Set.of(ruptureData);
+		MFDData<E> data = new MFDData<E>() {
+
+			@Override
+			public Set<E> data() {
+				return set;
+			}
+
+			@Override
+			public int size(E data) {
+				return 1;
+			}
+
+			@Override
+			public double magnitude(E data, int index) {
+				return magnitude;
+			}
+
+			@Override
+			public double rate(E data, int index) {
+				return rate;
+			}
+		};
+		return new MFDPoissonPointSourceData<>(loc, data, surfaceBuilder);
+	}
+	
+	/**
+	 * Builds point source data for the given MFDs and {@link RuptureSurfaceBuilder}
+	 * 
+	 * @param loc
+	 * @param mfds
+	 * @param surfaceBuilder
+	 * @return the builder
+	 */
+	public static <E> PoissonPointSourceData dataForMagRates(Location loc, double magnitude, Map<E, Double> ruptureRates,
+			RuptureSurfaceBuilder<? super E> surfaceBuilder) {
+		MFDData<E> data = new MFDData<E>() {
+
+			@Override
+			public Set<E> data() {
+				return ruptureRates.keySet();
+			}
+
+			@Override
+			public int size(E data) {
+				return 1;
+			}
+
+			@Override
+			public double magnitude(E data, int index) {
+				return magnitude;
+			}
+
+			@Override
+			public double rate(E data, int index) {
+				return ruptureRates.get(data);
+			}
+		};
+		return new MFDPoissonPointSourceData<>(loc, data, surfaceBuilder);
+	}
+	
+	/**
+	 * Builds point source data for the given {@link HypoMagFreqDistAtLoc} and {@link RuptureSurfaceBuilder}
+	 * 
+	 * @param hypoMFDs
+	 * @param surfaceBuilder
+	 * @return the builder
+	 */
+	public static PoissonPointSourceData dataForHypoMFDs(HypoMagFreqDistAtLoc hypoMFDs,
+			RuptureSurfaceBuilder<FocalMechanism> surfaceBuilder) {
+		FocalMechanism[] mechs = hypoMFDs.getFocalMechanismList();
+		IncrementalMagFreqDist[] mfds = hypoMFDs.getMagFreqDistList();
+		Preconditions.checkNotNull(mechs, "Mechanisms can't be null");
+		Preconditions.checkNotNull(mfds, "MFDs can't be null");
+		Preconditions.checkState(mfds.length > 0, "Must have at least 1 MFD");
+		Preconditions.checkState(mfds.length == mechs.length, "Mech and MFD size mismatch");
+		HashMap<FocalMechanism, IncrementalMagFreqDist> map = new HashMap<>(mechs.length);
+		for (int i=0; i<mechs.length; i++) {
+			Preconditions.checkNotNull(mechs[i], "Mechanism %s is null", i);
+			Preconditions.checkNotNull(mfds[i], "MFD %s is null", i);
+			Preconditions.checkState(map.put(mechs[i], mfds[i]) == null, "Duplicate FocalMechanism encountered at %s", i);
+		}
+		return dataForMFDs(hypoMFDs.getLocation(), map, surfaceBuilder);
+	}
+	
+	private interface MFDData<E> {
 		
-		private IncrementalMagFreqDist mfd;
-		private FocalMechSurfaceBuilder surfBuilder;
-		private Map<FocalMech, Double> mechWeights;
+		public Set<E> data();
 		
-		private short[] mfdIndexes;
-		private short[] surfIndexes;
-		private FocalMech[] mechs;
+		public int size(E data);
 		
-		private MFDandMechPoissonPointSourceData(IncrementalMagFreqDist mfd, Map<FocalMech, Double> mechWeights,
-				FocalMechSurfaceBuilder surfBuilder) {
-			this.mechWeights = mechWeights;
-			this.surfBuilder = surfBuilder;
-			Preconditions.checkState(mfd.size() < Short.MAX_VALUE);
+		public double magnitude(E data, int index);
+		
+		public double rate(E data, int index);
+	}
+	
+	private static class MFDPoissonPointSourceData<E> implements PoissonPointSourceData {
+
+		private Location loc;
+		private RuptureSurfaceBuilder<? super E> surfaceBuilder;
+		
+		private final double[] magnitudes;
+		private final double[] rates;
+		private final short[] surfIndexes;
+		private final Object[] data;
+		private final int numRuptures;
+		private MFDPoissonPointSourceData(Location loc, MFDData<E> mfdData, RuptureSurfaceBuilder<? super E> surfaceBuilder) {
+			this.loc = loc;
 			int numRups = 0;
-			List<FocalMech> nonzeroMechs = new ArrayList<>(mechWeights.size());
-			double weightSum = 0d;
-			for (FocalMech mech : mechWeights.keySet()) {
-				double weight = mechWeights.get(mech);
-				Preconditions.checkState(weight >= 0d && weight <= 1d, "Bad weight for %s: %s", mech, weight);
-				if (weight > 0d) {
-					weightSum += weight;
-					nonzeroMechs.add(mech);
-				}
-			}
-			Preconditions.checkState(!nonzeroMechs.isEmpty(), "All FocalMech weights are zero?");
-			Preconditions.checkState((float)weightSum == 1f, "FocalMech weights don't sum to 1: %s", (float)weightSum);
 			boolean anyMultiple = false;
-			for (int m=0; m<mfd.size(); m++) {
-				if (mfd.getY(m) == 0d)
-					continue;
-				double mag = mfd.getX(m);
-				for (FocalMech mech : nonzeroMechs) {
-					int magMechCount = surfBuilder.getNumSurfaces(mag, mech);
-					Preconditions.checkState(magMechCount > 0,
-							"Surface count is %s for mech=%s and mag=%s", magMechCount, mech, mag);
-					numRups += magMechCount;
-					anyMultiple |= magMechCount > 1;
+			for (E data : mfdData.data()) {
+				int size = mfdData.size(data);
+				for (int m=0; m<size; m++) {
+					double rate = mfdData.rate(data, m);
+					if (rate == 0d)
+						continue;
+					double mag = mfdData.magnitude(data, m);
+					int magDataCount = surfaceBuilder.getNumSurfaces(mag, data);
+					Preconditions.checkState(magDataCount > 0,
+							"Surface count is %s for mech=%s and mag=%s", magDataCount, data, mag);
+					numRups += magDataCount;
+					anyMultiple |= magDataCount > 1;
 				}
 			}
-			Preconditions.checkState(numRups > 0, "No ruptures for MFD; all zeros?\n%s", mfd);
-			mfdIndexes = new short[numRups];
-			mechs = new FocalMech[numRups];
+			Preconditions.checkState(numRups > 0, "No ruptures; MFDs all zeros?");
+			
+			magnitudes = new double[numRups];
+			rates = new double[numRups];
+			data = new Object[numRups];
 			surfIndexes = anyMultiple ? new short[numRups] : null;
 			int index = 0;
-			for (int m=0; m<mfd.size(); m++) {
-				if (mfd.getY(m) == 0d)
-					continue;
-				double mag = mfd.getX(m);
-				for (FocalMech mech : nonzeroMechs) {
-					int magMechCount = surfBuilder.getNumSurfaces(mag, mech);
-					for (int i=0; i<magMechCount; i++) {
-						mfdIndexes[index] = (short)m;
-						mechs[index] = mech;
+			for (E d : mfdData.data()) {
+				int size = mfdData.size(d);
+				for (int m=0; m<size; m++) {
+					double rate = mfdData.rate(d, m);
+					if (rate == 0d)
+						continue;
+					double mag = mfdData.magnitude(d, m);
+					int magDataCount = surfaceBuilder.getNumSurfaces(mag, d);
+					for (int i=0; i<magDataCount; i++) {
+						rates[index] = magDataCount == 1 ? rate : rate *  surfaceBuilder.getSurfaceWeight(mag, d, i);
+						data[index] = d;
 						if (anyMultiple)
 							surfIndexes[index] = (short)i;
 						index++;
@@ -444,74 +815,119 @@ public abstract class PointSource extends ProbEqkSource {
 				}
 			}
 			Preconditions.checkState(index == numRups);
+			this.numRuptures = numRups;
 		}
 
 		@Override
 		public int getNumRuptures() {
-			return mechs.length;
+			return numRuptures;
+		}
+		
+		@SuppressWarnings("unchecked")
+		private E data(int rupIndex) {
+			return (E)data[rupIndex];
 		}
 
 		@Override
 		public double getMagnitude(int rupIndex) {
-			return mfd.getX(mfdIndexes[rupIndex]);
+			return magnitudes[rupIndex];
 		}
 
 		@Override
 		public double getAveRake(int rupIndex) {
-			return mechs[rupIndex].rake();
+			return surfaceBuilder.getRake(data(rupIndex));
 		}
 
 		@Override
 		public double getRate(int rupIndex) {
-			double weight = mfd.getY(mfdIndexes[rupIndex]) * mechWeights.get(mechs[rupIndex]);
-			if (surfIndexes != null)
-				weight *= surfBuilder.getSurfaceWeight(mfd.getX(mfdIndexes[rupIndex]), mechs[rupIndex],
-						surfIndexes == null ? 0 : surfIndexes[rupIndex]);
-			return weight;
+			return rates[rupIndex];
 		}
 
 		@Override
 		public RuptureSurface getSurface(int rupIndex) {
-			return surfBuilder.getSurface(mfd.getX(mfdIndexes[rupIndex]), mechs[rupIndex],
+			return surfaceBuilder.getSurface(loc, magnitudes[rupIndex], data(rupIndex),
 					surfIndexes == null ? 0 : surfIndexes[rupIndex]);
 		}
 
 		@Override
 		public Location getHypocenter(Location sourceLoc, RuptureSurface rupSurface, int rupIndex) {
-			return surfBuilder.getHypocenter(sourceLoc, rupSurface);
+			return surfaceBuilder.getHypocenter(sourceLoc, rupSurface);
 		}
 
 		@Override
 		public boolean isFinite(int rupIndex) {
-			return surfBuilder.isSurfaceFinite(mfd.getX(mfdIndexes[rupIndex]), mechs[rupIndex],
+			return surfaceBuilder.isSurfaceFinite(magnitudes[rupIndex], data(rupIndex),
 					surfIndexes == null ? 0 : surfIndexes[rupIndex]);
 		}
 	}
 	
-	public static interface FocalMechSurfaceBuilder {
-		public int getNumSurfaces(double magnitude, FocalMech mech);
-		
-		public RuptureSurface getSurface(double magnitude, FocalMech mech, int surfaceIndex);
-		
-		public double getSurfaceWeight(double magnitude, FocalMech mech, int surfaceIndex);
-		
-		public boolean isSurfaceFinite(double magnitude, FocalMech mech, int surfaceIndex);
-		
-		public default WeightedList<RuptureSurface> getSurfaces(double magnitude, FocalMech mech) {
-			int num = getNumSurfaces(magnitude, mech);
-			if (num == 1)
-				return WeightedList.evenlyWeighted(getSurface(magnitude, mech, 0));
-			WeightedList<RuptureSurface> ret = new WeightedList<>(num);
-			for (int i=0; i<num; i++)
-				ret.add(getSurface(magnitude, mech, i), getSurfaceWeight(magnitude, mech, i));
-			Preconditions.checkState(ret.isNormalized(),
-					"Surface weights aren't normalized for mag=%s, mech=%s", magnitude, mech);
-			return ret;
-		}
-		
-		public Location getHypocenter(Location sourceLoc, RuptureSurface rupSurface);
+	public static RuptureSurfaceBuilder<Object> truePointSurfaceGenerator(double depth, double dip, double rake) {
+		return new SingleMechTruePointSurfaceGenerator(depth, dip, rake);
 	}
 	
+	private static class SingleMechTruePointSurfaceGenerator implements RuptureSurfaceBuilder<Object> {
+
+		private double depth;
+		private double dip;
+		private double rake;
+
+		public SingleMechTruePointSurfaceGenerator(double depth, double dip, double rake) {
+			this.depth = depth;
+			this.dip = dip;
+			this.rake = rake;
+		}
+
+		@Override
+		public int getNumSurfaces(double magnitude, Object ruptureData) {
+			return 1;
+		}
+
+		@Override
+		public RuptureSurface getSurface(Location loc, double magnitude, Object ruptureData, int surfaceIndex) {
+			loc = new Location(loc.lat, loc.lon, depth);
+			PointSurface surf = new PointSurface(loc);
+			surf.setAveDip(dip);
+			return surf;
+		}
+
+		@Override
+		public double getSurfaceWeight(double magnitude, Object ruptureData, int surfaceIndex) {
+			return 1d;
+		}
+
+		@Override
+		public boolean isSurfaceFinite(double magnitude, Object ruptureData, int surfaceIndex) {
+			return false;
+		}
+
+		@Override
+		public Location getHypocenter(Location sourceLoc, RuptureSurface rupSurface) {
+			return sourceLoc;
+		}
+
+		@Override
+		public double getRake(Object ruptureData) {
+			return rake;
+		}
+		
+	}
+	
+	/**
+	 * Initializes a {@link PoissonPointSource} builder for the given location and the default tectonic regime
+	 * ({@link ProbEqkSource#TECTONIC_REGION_TYPE_DEFAULT})
+	 * @param loc point source location
+	 * @return builder
+	 */
+	public static PoissonBuilder poissonBuilder(Location loc) {
+		return new PoissonBuilder(loc);
+	}
+	/**
+	 * Initializes a {@link PoissonPointSource} builder for the given location and tectonic regime
+	 * 
+	 * @param loc point source location
+	 * @param trt tectonic regime
+	 * @return builder
+	 */
 	public static PoissonBuilder poissonBuilder(Location loc, TectonicRegionType trt) {
 		return new PoissonBuilder(loc).tectonicRegionType(trt);
 	}
@@ -570,16 +986,83 @@ public abstract class PointSource extends ProbEqkSource {
 		}
 		
 		/**
-		 * Builds point source data for the given MFD, focal mechanism weights, and {@link FocalMechSurfaceBuilder}
+		 * Builds point source data for the given magnitude, rate, focal mechanism, and {@link RuptureSurfaceBuilder}
+		 * 
+		 * @param mfd
+		 * @param mech
+		 * @param surfaceBuilder
+		 * @return the builder
+		 */
+		public PoissonBuilder forMagRateAndFocalMech(double magnitude, double rate, FocalMech mech,
+				RuptureSurfaceBuilder<? super FocalMech> surfaceBuilder) {
+			return data(dataForMagRate(loc, magnitude, rate, mech, surfaceBuilder));
+		}
+		
+		/**
+		 * Builds point source data for the given magnitude, rate, focal mechanism, and {@link RuptureSurfaceBuilder}
+		 * 
+		 * @param mfd
+		 * @param mech
+		 * @param surfaceBuilder
+		 * @return the builder
+		 */
+		public PoissonBuilder forMFDAndFocalMech(IncrementalMagFreqDist mfd, FocalMech mech,
+				RuptureSurfaceBuilder<? super FocalMech> surfaceBuilder) {
+			return data(dataForMFD(loc, mfd, mech, surfaceBuilder));
+		}
+		
+		/**
+		 * Builds point source data for the given MFD, focal mechanism, and {@link RuptureSurfaceBuilder}
+		 * 
+		 * @param mfd
+		 * @param mech
+		 * @param surfaceBuilder
+		 * @return the builder
+		 */
+		public PoissonBuilder forMagRateAndFocalMech(double magnitude, double rate, FocalMechanism mech,
+				RuptureSurfaceBuilder<? super FocalMechanism> surfaceBuilder) {
+			return data(dataForMagRate(loc, magnitude, rate, mech, surfaceBuilder));
+		}
+		
+		/**
+		 * Builds point source data for the given MFD, focal mechanism, and {@link RuptureSurfaceBuilder}
+		 * 
+		 * @param mfd
+		 * @param mech
+		 * @param surfaceBuilder
+		 * @return the builder
+		 */
+		public PoissonBuilder forMFDAndFocalMech(IncrementalMagFreqDist mfd, FocalMechanism mech,
+				RuptureSurfaceBuilder<? super FocalMechanism> surfaceBuilder) {
+			return data(dataForMFD(loc, mfd, mech, surfaceBuilder));
+		}
+		
+		/**
+		 * Builds point source data for the given MFD, data (probably of type {@link FocalMech} or 
+		 * {@link FocalMechanism}, and {@link RuptureSurfaceBuilder}
+		 * 
+		 * @param mfd
+		 * @param data
+		 * @param surfaceBuilder
+		 * @return the builder
+		 */
+		public <E> PoissonBuilder forMFDAndData(IncrementalMagFreqDist mfd, E data,
+				RuptureSurfaceBuilder<? super E> surfaceBuilder) {
+			return data(dataForMFD(loc, mfd, data, surfaceBuilder));
+		}
+		
+		/**
+		 * Builds point source data for the given MFD, weighted data (probably of type {@link FocalMech} or 
+		 * {@link FocalMechanism}, and {@link RuptureSurfaceBuilder}
 		 * 
 		 * @param mfd
 		 * @param mechWeights
 		 * @param surfaceBuilder
 		 * @return the builder
 		 */
-		public PoissonBuilder forMFDandFocalMechs(IncrementalMagFreqDist mfd, Map<FocalMech, Double> mechWeights,
-				FocalMechSurfaceBuilder surfaceBuilder) {
-			return data(new MFDandMechPoissonPointSourceData(mfd, mechWeights, surfaceBuilder));
+		public <E> PoissonBuilder forMFDsAndData(IncrementalMagFreqDist mfd, Map<E, Double> mechWeights,
+				RuptureSurfaceBuilder<? super E> surfaceBuilder) {
+			return data(dataForMFDs(loc, mfd, mechWeights, surfaceBuilder));
 		}
 		
 		/**
@@ -645,16 +1128,17 @@ public abstract class PointSource extends ProbEqkSource {
 		 * @return {@link PoissonPointSource} implementation
 		 * @throws IllegalStateException if the location, point source data, or duration have not been set
 		 */
+		@SuppressWarnings("unchecked")
 		public PoissonPointSource build() {
 			Preconditions.checkState(loc != null);
 			Preconditions.checkState(data != null);
 			
 			Preconditions.checkState(Double.isFinite(duration) && duration > 0d, "Must set duration");
 			
-			if (data instanceof SiteAdaptivePoissonPointSourceData)
-				return new SiteAdaptivePoissonPointSourceImpl(loc, trt, duration,
-						(SiteAdaptivePoissonPointSourceData)data, distCorrs);
-			return new PoissonPointSourceImpl(loc, trt, duration, data, distCorrs);
+			if (data instanceof SiteAdaptivePointSourceData<?>)
+				return new SiteAdaptivePoissonPointSourceImpl<>(loc, trt, duration,
+						(SiteAdaptivePointSourceData<PoissonPointSourceData> & PoissonPointSourceData)data, distCorrs);
+			return new PoissonPointSource(loc, trt, duration, data, distCorrs);
 		}
 	}
 

@@ -6,8 +6,6 @@ import org.apache.commons.lang3.text.WordUtils;
 /**
  * Identifier for different focal mechanism types.
  * 
- * TODO this could move to commons
- * 
  * @author Peter Powers
  * @version $Id:$
  */

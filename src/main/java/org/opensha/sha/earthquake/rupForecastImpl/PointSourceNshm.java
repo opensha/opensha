@@ -20,7 +20,7 @@ import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_Mag
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.Location;
 import org.opensha.sha.earthquake.PointSource;
-import org.opensha.sha.earthquake.PointSource.PoissonPointSourceImpl;
+import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -72,7 +72,7 @@ import com.google.common.collect.Iterables;
  * @author P. Powers
  * @version: $Id$
  */
-public class PointSourceNshm extends PoissonPointSourceImpl {
+public class PointSourceNshm extends PoissonPointSource {
 
 	// TODO class will eventually be reconfigured to supply distance metrics
 	// at which point M_FINITE_CUT will be used (and set on invocation)
@@ -81,6 +81,9 @@ public class PointSourceNshm extends PoissonPointSourceImpl {
 	public static final double M_DEPTH_CUT_DEFAULT = 6.5;
 	public static final double DEPTH_BELOW_M_CUT_DEFAULT = 5d;
 	public static final double DEPTH_ABOVE_M_CUT_DEFAULT = 1d;
+	
+	private static final SurfaceBuilder SURF_BUILDER_DEFAULT = new SurfaceBuilder(
+			M_DEPTH_CUT_DEFAULT, DEPTH_BELOW_M_CUT_DEFAULT, DEPTH_ABOVE_M_CUT_DEFAULT);
 
 	/** Minimum magnitude for finite fault representation. */
 	// public static final double M_FINITE_CUT = 6.0;
@@ -105,28 +108,32 @@ public class PointSourceNshm extends PoissonPointSourceImpl {
 	
 	public PointSourceNshm(Location loc, IncrementalMagFreqDist mfd,
 			double duration, Map<FocalMech, Double> mechWtMap, WeightedList<PointSourceDistanceCorrection> distCorrs) {
-		this(loc, mfd, duration, mechWtMap, M_DEPTH_CUT_DEFAULT, DEPTH_BELOW_M_CUT_DEFAULT, DEPTH_ABOVE_M_CUT_DEFAULT, distCorrs);
+		this(loc, mfd, duration, mechWtMap, SURF_BUILDER_DEFAULT, distCorrs);
 	}
 	
 	public PointSourceNshm(Location loc, IncrementalMagFreqDist mfd,
 			double duration, Map<FocalMech, Double> mechWtMap,
 			double magCut, double depthBelowMagCut, double depthAboveMagCut,
 			WeightedList<PointSourceDistanceCorrection> distCorrs) {
-		super(loc, TectonicRegionType.ACTIVE_SHALLOW, duration,
-				PointSource.dataForMFDandFocalMechs(mfd, mechWtMap, new SurfaceBuilder(loc, magCut, depthBelowMagCut, depthAboveMagCut)), distCorrs);
+		this(loc, mfd, duration, mechWtMap, new SurfaceBuilder(magCut, depthBelowMagCut, depthAboveMagCut), distCorrs);
+	}
+	
+	private PointSourceNshm(Location loc, IncrementalMagFreqDist mfd,
+			double duration, Map<FocalMech, Double> mechWtMap,
+			SurfaceBuilder surfaceBuilder, WeightedList<PointSourceDistanceCorrection> distCorrs) {
+		super(loc, TectonicRegionType.ACTIVE_SHALLOW, duration, 
+				PointSource.dataForMFDs(loc, mfd, mechWtMap, surfaceBuilder), distCorrs);
 		this.name = NAME;
 	}
 	
-	private static class SurfaceBuilder implements FocalMechSurfaceBuilder {
+	private static class SurfaceBuilder implements RuptureSurfaceBuilder<FocalMech> {
 
-		private Location loc;
 		private double depthBelowMagCut;
 		private double depthAboveMagCut;
 		private double magCut;
 
-		private SurfaceBuilder(Location loc, double magCut, double depthBelowMagCut, double depthAboveMagCut) {
+		private SurfaceBuilder(double magCut, double depthBelowMagCut, double depthAboveMagCut) {
 			super();
-			this.loc = loc;
 			this.magCut = magCut;
 			this.depthBelowMagCut = depthBelowMagCut;
 			this.depthAboveMagCut = depthAboveMagCut;
@@ -139,7 +146,7 @@ public class PointSourceNshm extends PoissonPointSourceImpl {
 		}
 
 		@Override
-		public RuptureSurface getSurface(double magnitude, FocalMech mech, int surfaceIndex) {
+		public RuptureSurface getSurface(Location loc, double magnitude, FocalMech mech, int surfaceIndex) {
 			Preconditions.checkState(surfaceIndex < 2);
 
 			double zTop = depthForMag(magnitude);
@@ -196,6 +203,11 @@ public class PointSourceNshm extends PoissonPointSourceImpl {
 			double aspectWidth = length / 1.5;
 			double ddWidth = (14.0 - depth) / sin(dipRad);
 			return min(aspectWidth, ddWidth);
+		}
+
+		@Override
+		public double getRake(FocalMech ruptureData) {
+			return ruptureData.rake();
 		}
 		
 	}
