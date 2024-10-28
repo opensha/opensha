@@ -108,6 +108,7 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 			public RegionsOfInterest call() throws Exception {
 				List<Region> regions = new ArrayList<>();
 				List<IncrementalMagFreqDist> regionMFDs = new ArrayList<>();
+				List<TectonicRegionType> regionTRTs = new ArrayList<>();
 				List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
 				
 				// overall seismicity regions
@@ -119,6 +120,7 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 					
 					regionMFDs.add(getRegionalMFD(seisReg, branch));
 					regions.add(region);
+					regionTRTs.add(TectonicRegionType.ACTIVE_SHALLOW);
 				}
 				
 //				// analysis regions
@@ -149,7 +151,8 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 					}
 				}
 //				System.exit(0);
-				return new RegionsOfInterest(regions, regionMFDs);
+//				return new RegionsOfInterest(regions, regionMFDs);
+				return new RegionsOfInterest(regions, regionMFDs, regionTRTs);
 			}
 		}, RegionsOfInterest.class);
 		rupSet.addAvailableModule(new Callable<RupSetTectonicRegimes>() {
@@ -164,13 +167,13 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 	
 	private static UncertainBoundedIncrMagFreqDist getRegionalMFD(PRVI25_SeismicityRegions seisRegion,
 			LogicTreeBranch<?> branch) throws IOException {
-		PRVI25_DeclusteringAlgorithms declustering = PRVI25_DeclusteringAlgorithms.AVERAGE;
-		if (branch != null && branch.hasValue(PRVI25_DeclusteringAlgorithms.class))
-			declustering = branch.requireValue(PRVI25_DeclusteringAlgorithms.class);
-		
-		PRVI25_SeisSmoothingAlgorithms smooth = PRVI25_SeisSmoothingAlgorithms.AVERAGE;
-		if (branch != null && branch.hasValue(PRVI25_SeisSmoothingAlgorithms.class))
-			smooth = branch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
+//		PRVI25_DeclusteringAlgorithms declustering = PRVI25_DeclusteringAlgorithms.AVERAGE;
+//		if (branch != null && branch.hasValue(PRVI25_DeclusteringAlgorithms.class))
+//			declustering = branch.requireValue(PRVI25_DeclusteringAlgorithms.class);
+//		
+//		PRVI25_SeisSmoothingAlgorithms smooth = PRVI25_SeisSmoothingAlgorithms.AVERAGE;
+//		if (branch != null && branch.hasValue(PRVI25_SeisSmoothingAlgorithms.class))
+//			smooth = branch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
 		
 		// this is just for plots, we want the "data" portion to extend past the right of the MFD plots
 		double mMax = 9.01;

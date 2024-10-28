@@ -56,7 +56,10 @@ public class PRVI25_RegionLoader {
 	
 	public static Region loadPRVI_ModelBroad() throws IOException {
 //		return new Region(new Location(16.5d, -70d), new Location(20, -62));
-		return PRVI25_SeismicityRegions.CRUSTAL.load();
+		Region reg = PRVI25_SeismicityRegions.CRUSTAL.load();
+		reg = reg.clone();
+		reg.setName("PRVI - Model Region");
+		return reg;
 	}
 
 	public static void main(String[] args) throws IOException {

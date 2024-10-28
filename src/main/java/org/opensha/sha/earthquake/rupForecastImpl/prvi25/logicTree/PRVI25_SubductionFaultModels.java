@@ -139,6 +139,7 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 				IncrementalMagFreqDist interfaceRefMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, mMax+0.1);
 				for (PRVI25_SeismicityRegions seisReg : interfaceRegions) {
 					List<Double> minMags = new ArrayList<>();
+					List<Double> maxMags = new ArrayList<>();
 					Region reg = seisReg.load();
 					for (FaultSection sect : rupSet.getFaultSectionDataList()) {
 						boolean contained = false;
@@ -148,14 +149,17 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 								break;
 							}
 						}
-						if (contained)
+						if (contained) {
 							minMags.add(rupSet.getMinMagForSection(sect.getSectionId()));
+							maxMags.add(rupSet.getMaxMagForSection(sect.getSectionId()));
+						}
 					}
 					Preconditions.checkState(!minMags.isEmpty());
-					double avgMinMag = minMags.stream().mapToDouble(D->D).average().getAsDouble();
+//					double avgMinMag = minMags.stream().mapToDouble(D->D).average().getAsDouble();
+					double dataMmax = maxMags.stream().mapToDouble(D->D).max().getAsDouble();
 					regions.add(reg);
 					regionMFDs.add(PRVI25_RegionalSeismicity.getBounded(seisReg,
-							interfaceRefMFD, interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(avgMinMag))));
+							interfaceRefMFD, interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(dataMmax))));
 					regionTRTs.add(TectonicRegionType.SUBDUCTION_INTERFACE);
 				}
 				
