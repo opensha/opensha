@@ -87,6 +87,9 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<Poin
 	}),
 	NSHM_2013("USGS NSHM (2013)", new DistanceCorrection2013());
 	
+	// TODO: decide on default
+	public static final PointSourceDistanceCorrections DEFAULT = NONE;
+	
 	/**
 	 * Set of all {@link PointSourceDistanceCorrections} that produce a single {@link PointSourceDistanceCorrection}.
 	 */

@@ -23,6 +23,13 @@ public class PointSourceDistanceCorrectionParam extends EnumParameter<PointSourc
 				"Default value (%s) not contined in allowed choices", defaultValue);
 	}
 
+	/**
+	 * Initializes the param, initially set to {@link PointSourceDistanceCorrections#DEFAULT}
+	 */
+	public PointSourceDistanceCorrectionParam() {
+		this (PointSourceDistanceCorrections.DEFAULT);
+	}
+
 	public PointSourceDistanceCorrectionParam(PointSourceDistanceCorrections defaultValue) {
 		super(NAME, EnumSet.allOf(PointSourceDistanceCorrections.class), defaultValue, null);
 	}
