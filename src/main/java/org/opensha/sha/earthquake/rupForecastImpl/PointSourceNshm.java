@@ -12,6 +12,7 @@ import static org.opensha.sha.util.FocalMech.STRIKE_SLIP;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -19,6 +20,7 @@ import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.Location;
+import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
@@ -122,11 +124,18 @@ public class PointSourceNshm extends PoissonPointSource {
 			double duration, Map<FocalMech, Double> mechWtMap,
 			SurfaceBuilder surfaceBuilder, WeightedList<PointSourceDistanceCorrection> distCorrs) {
 		super(loc, TectonicRegionType.ACTIVE_SHALLOW, duration, 
-				PointSource.dataForMFDs(loc, mfd, mechWtMap, surfaceBuilder), distCorrs);
+				PointSource.dataForMFDs(loc, mfd, weightsMap(mechWtMap), surfaceBuilder), distCorrs);
 		this.name = NAME;
 	}
 	
-	private static class SurfaceBuilder implements RuptureSurfaceBuilder<FocalMech> {
+	private static Map<FocalMechanism, Double> weightsMap(Map<FocalMech, Double> map) {
+		Map<FocalMechanism, Double> ret = new HashMap<>(map.size());
+		for (FocalMech mech : map.keySet())
+			ret.put(mech.mechanism, map.get(mech));
+		return ret;
+	}
+	
+	private static class SurfaceBuilder implements FocalMechRuptureSurfaceBuilder {
 
 		private double depthBelowMagCut;
 		private double depthAboveMagCut;
@@ -203,11 +212,6 @@ public class PointSourceNshm extends PoissonPointSource {
 			double aspectWidth = length / 1.5;
 			double ddWidth = (14.0 - depth) / sin(dipRad);
 			return min(aspectWidth, ddWidth);
-		}
-
-		@Override
-		public double getRake(FocalMech ruptureData) {
-			return ruptureData.rake();
 		}
 		
 	}
