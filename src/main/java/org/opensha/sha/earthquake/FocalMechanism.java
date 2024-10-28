@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * <p>Title: FocalMechanism</p>
@@ -68,6 +69,65 @@ public class FocalMechanism implements Serializable {
 	public FocalMechanism copy() {
 		return new FocalMechanism(strike,dip,rake);
 	}
+	
+	public Unmodifiable unmodifiable() {
+		return new Unmodifiable(strike, dip, rake);
+	}
 
+	@Override
+	public int hashCode() {
+		return Objects.hash(dip, rake, strike);
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (!(obj instanceof FocalMechanism)) // can be a subclass
+			return false;
+		FocalMechanism other = (FocalMechanism) obj;
+		return Double.doubleToLongBits(dip) == Double.doubleToLongBits(other.dip)
+				&& Double.doubleToLongBits(rake) == Double.doubleToLongBits(other.rake)
+				&& Double.doubleToLongBits(strike) == Double.doubleToLongBits(other.strike);
+	}
+	
+	@Override
+	public String toString() {
+		return "FocalMechanism [strike=" + strike + ", dip=" + dip + ", rake=" + rake + "]";
+	}
+
+	public static class Unmodifiable extends FocalMechanism {
+
+		public Unmodifiable(FocalMechanism mech) {
+			super(mech.strike, mech.dip, mech.rake);
+		}
+
+		public Unmodifiable(double strike, double dip, double rake) {
+			super(strike, dip, rake);
+		}
+
+		@Override
+		public void setDip(double dip) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setRake(double rake) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setStrike(double strike) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setFocalMechanism(double dip, double rake, double strike) {
+			throw new UnsupportedOperationException();
+		}
+		
+	}
 
 }
