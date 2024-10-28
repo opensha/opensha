@@ -32,8 +32,8 @@ public class FocalMechanism implements Serializable {
 	 */
 	public FocalMechanism(double strike, double dip, double rake){
 		this.strike = strike;
-		this.rake = rake;
 		this.dip = dip;
+		this.rake = rake;
 	}
 
 	public double getDip() {
@@ -60,10 +60,10 @@ public class FocalMechanism implements Serializable {
 		this.strike = strike;
 	}
 
-	public void setFocalMechanism(double dip, double rake, double strike){
+	public void setAll(double strike, double dip, double rake) {
+		this.strike = strike;
 		this.dip = dip;
 		this.rake = rake;
-		this.strike = strike;
 	}
 
 	public FocalMechanism copy() {
@@ -124,7 +124,7 @@ public class FocalMechanism implements Serializable {
 		}
 
 		@Override
-		public void setFocalMechanism(double dip, double rake, double strike) {
+		public void setAll(double strike, double dip, double rake) {
 			throw new UnsupportedOperationException();
 		}
 		
