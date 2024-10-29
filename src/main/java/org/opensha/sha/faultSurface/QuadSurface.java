@@ -160,28 +160,7 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	}
 	
 	public QuadSurface(FaultSection sect, boolean aseisReducesArea) {
-		this.trace = getTraceBelowSeismogenic(sect, aseisReducesArea);
-		this.dipDeg = getAveDip();
-		this.dipRad = dipDeg * TO_RAD;
-		this.width = calcWidth(sect, aseisReducesArea);
-		rots = new ArrayList<Rotation>();
-		surfs = new ArrayList<Path2D>();
-		
-		avgDipDirDeg = sect.getDipDirection();
-		avgDipDirRad = avgDipDirDeg * TO_RAD;
-		
-		
-		initSegments(dipRad, avgDipDirRad, width, trace, rots, surfs);
-		
-		traceBelowSeis = true;
-		avgUpperDepth = 0d;
-		// TODO weight average
-		for (Location loc : trace) {
-			if (loc.getDepth() <= GriddedSurfaceUtils.SEIS_DEPTH)
-				traceBelowSeis = false;
-			avgUpperDepth += loc.getDepth();
-		}
-		avgUpperDepth /= (double)trace.size();
+		this(getTraceBelowSeismogenic(sect, aseisReducesArea), sect.getAveDip(), sect.getDipDirection(), calcWidth(sect, aseisReducesArea));
 	}
 
 	/**
@@ -191,6 +170,11 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	 * @param width down dip width in km
 	 */
 	public QuadSurface(FaultTrace trace, double dip, double width) {
+		this(trace, dip, trace.getStrikeDirection() + 90d, width);
+	}
+	
+	private QuadSurface(FaultTrace trace, double dip, double dipDir, double width) {
+		Preconditions.checkState(width > 0d, "Width must be >0 (distance calculations fail otherwise)");
 		this.trace = trace;
 		this.dipDeg = dip;
 		this.dipRad = dip * TO_RAD;
@@ -198,8 +182,8 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		rots = new ArrayList<Rotation>();
 		surfs = new ArrayList<Path2D>();
 		
-		avgDipDirRad = (trace.getStrikeDirection() * TO_RAD) + PI_BY_2;
-		avgDipDirDeg = avgDipDirRad * TO_DEG;
+		this.avgDipDirRad = dipDir * TO_RAD;
+		this.avgDipDirDeg = dipDir;
 		
 		initSegments(dipRad, avgDipDirRad, width, trace, rots, surfs);
 		

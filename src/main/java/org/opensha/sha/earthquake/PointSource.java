@@ -279,15 +279,21 @@ public abstract class PointSource extends ProbEqkSource {
 	 */
 	private static abstract class BaseImplementation<E extends PointSourceData> extends PointSource {
 		
-		protected final E data;
+		protected E data;
 		
 		private int numRuptures;
 		private short[] dataIndexes;
 		private short[] corrIndexes;
-
+		
 		public BaseImplementation(Location loc, TectonicRegionType tectonicRegionType,
 				E data, WeightedList<PointSourceDistanceCorrection> distCorrs) {
 			super(loc, tectonicRegionType, distCorrs);
+			this.data = data;
+			if (data != null)
+				updateCountAndIndexes();
+		}
+		
+		public void setData(E data) {
 			this.data = data;
 			updateCountAndIndexes();
 		}
