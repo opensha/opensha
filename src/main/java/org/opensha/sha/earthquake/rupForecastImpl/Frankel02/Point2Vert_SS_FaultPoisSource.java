@@ -7,6 +7,8 @@ import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
+import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
@@ -24,7 +26,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
  * rates), MagLengthRelationship, and duration, this creates a vertically dipping,
  * strike-slip ProbEqkRupture for each magnitude (that has a non-zero rate).  Each finite
  * rupture is centered on the given Location.  A user-defined strike will be used if given,
- * otherwise an random stike will be computed and applied.  One can also specify a
+ * otherwise a single random stike will be computed and applied to all ruptures.  One can also specify a
  * magCutOff (magnitudes less than or equal to this will be treated as point sources).
  * This assumes that the duration
  * units are the same as those for the rates in the IncrementalMagFreqDist.</p>
@@ -40,7 +42,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
  * @version 1.0
  */
 
-public class Point2Vert_SS_FaultPoisSource extends ProbEqkSource implements java.io.Serializable{
+public class Point2Vert_SS_FaultPoisSource extends PointSource implements java.io.Serializable{
 
 
 	//for Debug purposes
@@ -101,6 +103,46 @@ public class Point2Vert_SS_FaultPoisSource extends ProbEqkSource implements java
 		// set the mags, rates, and rupture surfaces
 		setAll(loc,magFreqDist,magLengthRelationship,duration);
 
+	}
+	
+	private static class SurfaceGenerator implements RuptureSurfaceBuilder {
+		
+		private Location loc;
+		private double strike;
+		
+		public SurfaceGenerator(Location loc, double strike) {
+			if (Double.isNaN(strike))
+				strike = Math.random()*360d;
+		}
+
+		@Override
+		public int getNumSurfaces(double magnitude, FocalMechanism mech) {
+			return 1;
+		}
+
+		@Override
+		public RuptureSurface getSurface(Location sourceLoc, double magnitude, FocalMechanism mech, int surfaceIndex) {
+			// TODO Auto-generated method stub
+			return null;
+		}
+
+		@Override
+		public double getSurfaceWeight(double magnitude, FocalMechanism mech, int surfaceIndex) {
+			// TODO Auto-generated method stub
+			return 0;
+		}
+
+		@Override
+		public boolean isSurfaceFinite(double magnitude, FocalMechanism mech, int surfaceIndex) {
+			// TODO Auto-generated method stub
+			return false;
+		}
+
+		@Override
+		public Location getHypocenter(Location sourceLoc, RuptureSurface rupSurface) {
+			return null;
+		}
+		
 	}
 
 	/**
