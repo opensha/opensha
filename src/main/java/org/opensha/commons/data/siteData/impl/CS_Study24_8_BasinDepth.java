@@ -15,6 +15,7 @@ import org.opensha.commons.data.siteData.SiteData;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
+import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.XMLUtils;
 
@@ -126,8 +127,9 @@ public class CS_Study24_8_BasinDepth extends AbstractBinarySiteDataLoader {
 	}
 	
 	public static void main(String[] args) throws IOException {
-		CS_Study24_8_BasinDepth z1 = new CS_Study24_8_BasinDepth(SiteData.TYPE_DEPTH_TO_1_0, false);
-		CS_Study24_8_BasinDepth z25 = new CS_Study24_8_BasinDepth(SiteData.TYPE_DEPTH_TO_2_5, false);
+		boolean servlet = true;
+		CS_Study24_8_BasinDepth z1 = new CS_Study24_8_BasinDepth(SiteData.TYPE_DEPTH_TO_1_0, servlet);
+		CS_Study24_8_BasinDepth z25 = new CS_Study24_8_BasinDepth(SiteData.TYPE_DEPTH_TO_2_5, servlet);
 		
 //		ArrayList<Location> testLocs = new ArrayList<>();
 //		testLocs.add(new Location(35.8, -121.25));
@@ -137,7 +139,11 @@ public class CS_Study24_8_BasinDepth extends AbstractBinarySiteDataLoader {
 //		testLocs.add(new Location(35.5, -120));
 //		testLocs.add(new Location(35, -119.5));
 //		testLocs.add(new Location(36, -121.0));
-		LocationList testLocs = new GriddedRegion(z1.getApplicableRegion(), 0.25, GriddedRegion.ANCHOR_0_0).getNodeList();
+		Region reg = z1.getApplicableRegion();
+		LocationList testLocs = new GriddedRegion(reg, 0.25, GriddedRegion.ANCHOR_0_0).getNodeList();
+		
+		System.out.println(reg.getMinLat()+", "+reg.getMinLon());
+		System.out.println(reg.getMaxLat()+", "+reg.getMaxLon());
 		
 		for (Location loc : testLocs)
 			System.out.println((float)loc.getLongitude()+"\t"+(float)loc.getLatitude()

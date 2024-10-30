@@ -1,24 +1,30 @@
 {
   "type": "Feature",
-  "id": "CyberShake Bay Area Map Region (Small)",
+  "id": "CyberShake Bay Area Map Region (small)",
+  "properties": {},
   "geometry": {
     "type": "Polygon",
     "coordinates": [
       [
         [
-          -122.39, 36.96
+          -122.39,
+          36.96
         ],
         [
-          -123.32,38.41
+          -121.38,
+          37.36
         ],
         [
-          -122.29,38.82
+          -122.29,
+          38.82
         ],
         [
-          -121.38,37.36
+          -123.32,
+          38.41
         ],
         [
-          -122.39, 36.96
+          -122.39,
+          36.96
         ]
       ]
     ]

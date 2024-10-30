@@ -504,6 +504,7 @@ public class CaliforniaRegions {
 				new CYBERSHAKE_MAP_REGION(),
 				new CYBERSHAKE_CCA_MAP_REGION(),
 				new CYBERSHAKE_BAY_AREA_MAP_REGION(),
+				new CYBERSHAKE_BAY_AREA_SMALL_MAP_REGION(),
 		};
 		
 		for (Region region : regions) {
