@@ -421,6 +421,38 @@
     <servlet-name>CS18_8_1_0</servlet-name>
     <url-pattern>/SiteData/CS18_8_1_0</url-pattern>
   </servlet-mapping>
+  
+  <!-- * CS 24.8 2.5 * -->
+  <servlet>
+    <servlet-name>CS24_8_2_5</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CS_Study24_8_BasinDepthTo2_5_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CS24_8_2_5</servlet-name>
+    <url-pattern>/SiteData/CS24_8_2_5</url-pattern>
+  </servlet-mapping>
+  
+  <!-- * CS 24.8 1.0 * -->
+  <servlet>
+    <servlet-name>CS24_8_1_0</servlet-name>
+    <servlet-class>org.opensha.commons.data.siteData.servlet.impl.CS_Study24_8_BasinDepthTo1_0_Servlet</servlet-class>
+    <init-param>
+      <param-name>debug</param-name>
+      <param-value>2</param-value>
+    </init-param>
+  </servlet>
+
+  <!-- Mapping -->
+  <servlet-mapping>
+    <servlet-name>CS24_8_1_0</servlet-name>
+    <url-pattern>/SiteData/CS24_8_1_0</url-pattern>
+  </servlet-mapping>
 
   <!-- * CVM Vs30 * -->
   <servlet>
