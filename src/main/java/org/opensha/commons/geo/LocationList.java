@@ -40,6 +40,13 @@ public class LocationList extends ArrayList<Location> implements XMLSaveable, Se
 	public LocationList(int initialCapacity) {
 		super(initialCapacity);
 	}
+	
+	public static LocationList of(Location... locs) {
+		LocationList ret = new LocationList(locs.length);
+		for (Location loc : locs)
+			ret.add(loc);
+		return ret;
+	}
 
 	/**
 	 * Convenience method to reverse the <code>Location</code>s in this list.
