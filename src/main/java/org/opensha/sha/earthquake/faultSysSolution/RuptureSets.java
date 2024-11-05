@@ -591,6 +591,7 @@ public class RuptureSets {
 			stiffnessCache = null;
 			stiffnessCacheFile = null;
 			stiffnessCacheSize = -1;
+			stiffnessCalc = null;
 		}
 		
 		@Override
@@ -614,12 +615,20 @@ public class RuptureSets {
 		private File stiffnessCacheFile;
 		private AggregatedStiffnessCache stiffnessCache; 
 		private int stiffnessCacheSize;
+		private SubSectStiffnessCalculator stiffnessCalc;
+		
+		public SubSectStiffnessCalculator getStiffnessCalc() {
+			if (stiffnessCalc == null) {
+				stiffnessCalc = new SubSectStiffnessCalculator(
+						subSects, stiffGridSpacing, 3e4, 3e4, coeffOfFriction, PatchAlignment.FILL_OVERLAP, 1d);
+				stiffnessCache = stiffnessCalc.getAggregationCache(StiffnessType.CFF);
+			}
+			return stiffnessCalc;
+		}
 		
 		private synchronized void update() {
 			// build stiffness calculator (used for new Coulomb)
-			SubSectStiffnessCalculator stiffnessCalc = new SubSectStiffnessCalculator(
-					subSects, stiffGridSpacing, 3e4, 3e4, coeffOfFriction, PatchAlignment.FILL_OVERLAP, 1d);
-			stiffnessCache = stiffnessCalc.getAggregationCache(StiffnessType.CFF);
+			SubSectStiffnessCalculator stiffnessCalc = getStiffnessCalc();
 			
 			File cacheDir = getCacheDir();
 			if (cacheDir != null && cacheDir.exists()) {

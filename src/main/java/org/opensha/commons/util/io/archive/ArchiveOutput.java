@@ -33,6 +33,7 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.data.Named;
 import org.opensha.commons.util.ExecutorUtils;
+import org.opensha.commons.util.io.archive.AsynchronousApacheZipper.WriteShieldAfterCloseOutputStream;
 import org.opensha.commons.util.modules.ModuleArchive;
 
 import com.google.common.base.Preconditions;
@@ -165,7 +166,9 @@ public interface ArchiveOutput extends Closeable, Named {
 	 */
 	public default void transferFrom(InputStream is, String name) throws IOException {
 		putNextEntry(name);
-		is.transferTo(getOutputStream());
+		OutputStream os = getOutputStream();
+		is.transferTo(os);
+		os.flush();
 		closeEntry();
 	}
 	
@@ -387,6 +390,7 @@ public interface ArchiveOutput extends Closeable, Named {
 			outEntry.setSize(sourceEntry.getSize());
 			
 			zout.addRawArchiveEntry(outEntry, apache.getRawInputStream(sourceEntry));
+			zout.flush();
 		}
 
 		@Override
@@ -544,6 +548,7 @@ public interface ArchiveOutput extends Closeable, Named {
 		
 		private String currentEntry;
 		private InMemoryZipOutput currentOutput;
+		private WriteShieldAfterCloseOutputStream currentOutputStream;
 		
 		private CompletableFuture<?> writeFuture;
 		
@@ -615,14 +620,19 @@ public interface ArchiveOutput extends Closeable, Named {
 			Preconditions.checkState(currentOutput == null, "Can't call getOutputStream() twice on the same entry");
 			currentOutput = new InMemoryZipOutput(true, zippingBuffer);
 			currentOutput.putNextEntry(currentEntry);
-			return currentOutput.getOutputStream();
+			currentOutputStream = new WriteShieldAfterCloseOutputStream(currentOutput.getOutputStream());
+			return currentOutputStream;
 		}
 
 		@Override
 		public synchronized void closeEntry() throws IOException {
 			Preconditions.checkNotNull(currentEntry, "Called closeEntry() without first calling putNextEntry()");
-			if (currentOutput != null) // null if it's a directory
+			if (currentOutput != null) {
+				// null if it's a directory
 				currentOutput.closeEntry();
+				currentOutputStream.lock();
+				currentOutputStream = null;
+			}
 			startAsyncWrite();
 		}
 

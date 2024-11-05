@@ -102,8 +102,7 @@ public class SeismicityRateFileLoader {
 	}
 	
 	public static IncrementalMagFreqDist buildIncrementalMFD(Exact exactRecord, EvenlyDiscretizedFunc refMFD, double mMax) {
-		Preconditions.checkState(mMax-0.001 < refMFD.getMaxX()+0.5*refMFD.getDelta());
-		// make sure they have the same spacing
+		// make sure the reference and data MFDs have the same spacing
 		double delta = refMFD.getDelta();
 		Preconditions.checkState((float)exactRecord.cumulativeDist.getDelta() == (float)delta,
 				"MFD spacing mismatch between reference (%s) and data (%s)",
@@ -112,40 +111,31 @@ public class SeismicityRateFileLoader {
 		// reference mfd should be incremental, so check against the bin edge
 		Preconditions.checkState(mMax-0.001 < refMFD.getMaxX()+0.5*refMFD.getDelta(),
 				"Reference incremental MFD doesn't have a bin for mMax=%s", mMax);
-		// data MFD is cumulative, so check values directly
+		// data MFD is cumulative, so check Mmax values directly
 		Preconditions.checkState((float)mMax < (float)exactRecord.cumulativeDist.getMaxX(),
 				"Data cumulative MFD doesn't have a bin for mMax=%s", mMax);
+		// make sure the reference Mmin is above the data Mmin (above because it's incremental)
+		double mMinData = exactRecord.cumulativeDist.getMinX();
+		double mMinIncr = refMFD.getMinX();
+		Preconditions.checkState(mMinIncr > mMinData, "Reference MFD Mmin=%s must be > data cumulative Mmin=%s",
+				mMinIncr, mMinData);
 		// make sure the data cumulative is offset from the reference incremental
 		// e.g., incremental should be at 5.05, 5.15, 5.25, etc
 		// but cumulative should be at 5.0, 5.1, 5.2, etc
-		double middleIncr = refMFD.getX(refMFD.size()/2);
-		double middleIncrLowerEdge = middleIncr - 0.5*delta;
-		double matchingCumulative = exactRecord.cumulativeDist.getX(exactRecord.cumulativeDist.getClosestXIndex(middleIncrLowerEdge));
-		Preconditions.checkState((float)matchingCumulative == (float)middleIncrLowerEdge,
+		double minIncrLowerEdge = mMinIncr - 0.5*delta;
+		double mMinMatchingData = exactRecord.cumulativeDist.getX(exactRecord.cumulativeDist.getClosestXIndex(minIncrLowerEdge));
+		Preconditions.checkState((float)mMinMatchingData == (float)minIncrLowerEdge,
 				"Discretization mismatch; incremental should be offset by a half bin from the cumulative. e.g.,"
-				+ "incremental has a value at %s representing bin [%s, %s]; cumulative should have a bin a %s, but closest is %s",
-				(float)middleIncr, (float)middleIncrLowerEdge, (float)(middleIncr+0.5*delta), (float)middleIncrLowerEdge, (float)matchingCumulative);
-		// figure out the maximum minimum incremental value
-		double maxMinIncr = Math.max(refMFD.getMinX(), exactRecord.cumulativeDist.getMinX()+0.5*delta);
-		int mMinRefBin = refMFD.getClosestXIndex(maxMinIncr);
-		Preconditions.checkState((float)maxMinIncr == (float)refMFD.getX(mMinRefBin));
-		// use the exact from the reference MFD in case there are any slight double precision differences
-		double mMinIncr = refMFD.getX(mMinRefBin);
-		// find the max incremental value; it's probably (hopefully) supplied at a cumulative bin edge 
+				+ "incremental min value at %s representing bin [%s, %s]; cumulative should have a bin a %s, but closest is %s",
+				(float)mMinIncr, (float)minIncrLowerEdge, (float)(mMinIncr+0.5*delta), (float)minIncrLowerEdge, (float)mMinMatchingData);
+		// find incremental index of Mmax; it's probably (hopefully) supplied at a cumulative bin edge 
 		int mMaxRefBin = refMFD.getClosestXIndex(mMax-0.001);
-		// number of incremental bins we'll use
-		int numIncr = 1 + mMaxRefBin - mMinRefBin;
-		// but still return up to the reference Mmax
-		int incrRetSize = refMFD.size() - mMinRefBin;
 		// find the data bin corresponding to the first incremental
 		int dataBin0 = exactRecord.cumulativeDist.getClosestXIndex(mMinIncr-0.01);
-		// make sure it's below (it's cumulative)
-		double testDataBin0 = exactRecord.cumulativeDist.getX(dataBin0);
-		Preconditions.checkState((float)testDataBin0 == (float)(mMinIncr - 0.5*delta));
 		
 		// ok, got all of the binning and tests out of the way, lets build the thing
-		IncrementalMagFreqDist incr = new IncrementalMagFreqDist(mMinIncr, incrRetSize, delta);
-		for (int i=0; i<numIncr; i++) {
+		IncrementalMagFreqDist incr = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.size(), delta);
+		for (int i=0; i<=mMaxRefBin; i++) {
 			int cmlI = dataBin0 + i;
 			Preconditions.checkState(cmlI < exactRecord.cumulativeDist.size());
 			double binStart = exactRecord.cumulativeDist.getY(cmlI);
@@ -352,7 +342,7 @@ public class SeismicityRateFileLoader {
 		
 		System.out.println();
 		double testMmax = 7.6;
-		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(8.45);
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, 8.45);
 		PureGR meanM1 = locateMean(m1Branches);
 		IncrementalMagFreqDist m1GR = buildIncrementalMFD(meanM1, refMFD, testMmax);
 		PureGR meanM1toMmax = locateMean(m1toMmaxBranches);

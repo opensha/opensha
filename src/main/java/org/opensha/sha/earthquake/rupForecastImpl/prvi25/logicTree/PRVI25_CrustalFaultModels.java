@@ -24,6 +24,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -107,6 +108,7 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 			public RegionsOfInterest call() throws Exception {
 				List<Region> regions = new ArrayList<>();
 				List<IncrementalMagFreqDist> regionMFDs = new ArrayList<>();
+				List<TectonicRegionType> regionTRTs = new ArrayList<>();
 				List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
 				
 				// overall seismicity regions
@@ -116,8 +118,9 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 					if (!FaultSectionUtils.anySectInRegion(region, subSects, true))
 						continue;
 					
-					regionMFDs.add(getRegionalMFD(region, seisReg, branch));
+					regionMFDs.add(getRegionalMFD(seisReg, branch));
 					regions.add(region);
+					regionTRTs.add(TectonicRegionType.ACTIVE_SHALLOW);
 				}
 				
 //				// analysis regions
@@ -148,7 +151,8 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 					}
 				}
 //				System.exit(0);
-				return new RegionsOfInterest(regions, regionMFDs);
+//				return new RegionsOfInterest(regions, regionMFDs);
+				return new RegionsOfInterest(regions, regionMFDs, regionTRTs);
 			}
 		}, RegionsOfInterest.class);
 		rupSet.addAvailableModule(new Callable<RupSetTectonicRegimes>() {
@@ -161,23 +165,23 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 		// TODO: named faults?
 	}
 	
-	private static UncertainBoundedIncrMagFreqDist getRegionalMFD(Region region, PRVI25_SeismicityRegions seisRegion,
+	private static UncertainBoundedIncrMagFreqDist getRegionalMFD(PRVI25_SeismicityRegions seisRegion,
 			LogicTreeBranch<?> branch) throws IOException {
-		PRVI25_DeclusteringAlgorithms declustering = PRVI25_DeclusteringAlgorithms.AVERAGE;
-		if (branch != null && branch.hasValue(PRVI25_DeclusteringAlgorithms.class))
-			declustering = branch.requireValue(PRVI25_DeclusteringAlgorithms.class);
+//		PRVI25_DeclusteringAlgorithms declustering = PRVI25_DeclusteringAlgorithms.AVERAGE;
+//		if (branch != null && branch.hasValue(PRVI25_DeclusteringAlgorithms.class))
+//			declustering = branch.requireValue(PRVI25_DeclusteringAlgorithms.class);
+//		
+//		PRVI25_SeisSmoothingAlgorithms smooth = PRVI25_SeisSmoothingAlgorithms.AVERAGE;
+//		if (branch != null && branch.hasValue(PRVI25_SeisSmoothingAlgorithms.class))
+//			smooth = branch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
 		
-		PRVI25_SeisSmoothingAlgorithms smooth = PRVI25_SeisSmoothingAlgorithms.AVERAGE;
-		if (branch != null && branch.hasValue(PRVI25_SeisSmoothingAlgorithms.class))
-			smooth = branch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
-		
-		// double hardcode mMax
-		double mMax = 7.99;
-		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(mMax);
-		if (region != null)
-			return PRVI25_RegionalSeismicity.getRemapped(region, seisRegion, declustering, smooth, refMFD, mMax);
-		else
-			return PRVI25_RegionalSeismicity.getBounded(seisRegion, refMFD, mMax);
+		// this is just for plots, we want the "data" portion to extend past the right of the MFD plots
+		double mMax = 9.01;
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, mMax);
+//		if (region != null)
+//			return PRVI25_RegionalSeismicity.getRemapped(region, seisRegion, declustering, smooth, refMFD, mMax);
+//		else
+		return PRVI25_RegionalSeismicity.getBounded(seisRegion, refMFD, mMax);
 	}
 
 	@Override

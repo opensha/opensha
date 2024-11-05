@@ -1158,6 +1158,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 					}
 					File mfdFile = new File(rankDir, loadPrefix+GRID_BRANCH_REGIONAL_MFDS_NAME);
 					if (mfdFile.exists()) {
+						debug("Will load regional MFDs from rank "+rank+": "+mfdFile.getAbsolutePath());
 						mfdFutures.add(exec.submit(new Callable<BranchRegionalMFDs>() {
 
 							@Override
@@ -1167,6 +1168,7 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 							}
 						}));
 					} else {
+						debug("No regional MFDs found for rank "+rank+": "+mfdFile.getAbsolutePath()+" doesn't exist");
 						mfdFutures.add(null);
 					}
 				}
@@ -1199,15 +1201,17 @@ public class MPJ_GridSeisBranchBuilder extends MPJTaskCalculator {
 							// clear it from memory
 							assocFutures.set(rank, null);
 						}
-						
-						Future<BranchRegionalMFDs> mfdsFuture = mfdFutures.get(rank);
+					}
+					
+					Future<BranchRegionalMFDs> mfdsFuture = mfdFutures.get(rank);
+					if (mfdsFuture != null) {
 						BranchRegionalMFDs mfds = mfdsFuture.get();
 						if (mfdBuilder == null)
 							mfdBuilder = new BranchRegionalMFDs.Builder();
 						mfdBuilder.process(mfds);
-						// clear it from memory
-						mfdFutures.set(rank, null);
 					}
+					// clear it from memory
+					mfdFutures.set(rank, null);
 				}
 				Preconditions.checkNotNull(provAccumulator);
 				GridSourceProvider avgProv = provAccumulator.getAverage();

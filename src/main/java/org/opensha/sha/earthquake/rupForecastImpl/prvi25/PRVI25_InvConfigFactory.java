@@ -78,6 +78,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.targetMFDs.estimators.G
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.AnalyticalSingleFaultInversionSolver;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.ClassicModelInversionSolver;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader.RateType;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_RegionalSeismicity;
@@ -968,7 +969,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 				int threads) {
 			InversionConfiguration config = super.buildInversionConfig(rupSet, branch, threads);
 			
-			EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(rupSet.getMaxMag());
+			EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, rupSet.getMaxMag());
 			IncrementalMagFreqDist obsMFD;
 			try {
 				obsMFD = PRVI25_RegionalSeismicity.PREFFERRED.build(PRVI25_SeismicityRegions.CRUSTAL, refMFD,
@@ -1004,6 +1005,30 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			config = InversionConfiguration.builder(config).add(constraint).build();
 			
 			return config;
+		}
+		
+	}
+	
+	public static class GriddedUseM1Bounds extends PRVI25_InvConfigFactory {
+		
+		public GriddedUseM1Bounds() {
+			PRVI25_RegionalSeismicity.TYPE = RateType.M1;
+		}
+		
+	}
+	
+	public static class GriddedUseM1toMmaxBounds extends PRVI25_InvConfigFactory {
+		
+		public GriddedUseM1toMmaxBounds() {
+			PRVI25_RegionalSeismicity.TYPE = RateType.M1_TO_MMAX;
+		}
+		
+	}
+	
+	public static class GriddedUseExactBounds extends PRVI25_InvConfigFactory {
+		
+		public GriddedUseExactBounds() {
+			PRVI25_RegionalSeismicity.TYPE = RateType.EXACT;
 		}
 		
 	}
