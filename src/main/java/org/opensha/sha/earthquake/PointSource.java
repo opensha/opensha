@@ -1109,6 +1109,10 @@ public abstract class PointSource extends ProbEqkSource {
 			return castThis();
 		}
 		
+		public B truePointSources() {
+			return truePointSources(loc.depth);
+		}
+		
 		public B truePointSources(double depth) {
 			return surfaceBuilder(truePointSurfaceGenerator(depth));
 		}

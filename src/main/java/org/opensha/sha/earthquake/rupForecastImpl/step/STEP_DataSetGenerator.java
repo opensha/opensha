@@ -29,7 +29,6 @@ import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.gui.infoTools.ConnectToCVM;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.attenRelImpl.ShakeMap_2003_AttenRel;
@@ -1493,7 +1492,7 @@ public class STEP_DataSetGenerator implements ParameterChangeWarningListener{
 
           // indicate that a source has been used
           sourceUsed = true;
-          hazVal *= (1.0 - getTotExceedProbability(imr, (PointEqkSource)source,IML_VALUE));
+          hazVal *= (1.0 - getTotExceedProbability(imr, source,IML_VALUE));
         }
 
         // finalize the hazard function
@@ -1531,7 +1530,7 @@ public class STEP_DataSetGenerator implements ParameterChangeWarningListener{
 	 * @param iml
 	 * @return
 	 */
-	static double getTotExceedProbability(AttenuationRelationship imr, PointEqkSource ptSrc, double iml) {
+	static double getTotExceedProbability(AttenuationRelationship imr, ProbEqkSource ptSrc, double iml) {
 
 		double totProb = 1.0, qkProb;
 		ProbEqkRupture tempRup;

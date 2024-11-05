@@ -1,7 +1,5 @@
 package org.opensha.nshmp2.imr;
 
-import static org.opensha.sha.imr.PropagationEffect.*;
-
 import java.util.List;
 import java.util.Map;
 
@@ -24,7 +22,6 @@ import org.opensha.nshmp2.util.NSHMP_IMR_Util;
 import org.opensha.nshmp2.util.Period;
 import org.opensha.nshmp2.util.Utils;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;

@@ -1,8 +1,6 @@
 package org.opensha.nshmp2.imr;
 
-import static org.opensha.sha.imr.PropagationEffect.NSHMP_PT_SRC_CORR_PARAM_NAME;
-import static org.opensha.sha.imr.PropagationEffect.POINT_SRC_CORR_PARAM_NAME;
-import static org.opensha.sha.util.TectonicRegionType.*;
+import static org.opensha.sha.util.TectonicRegionType.SUBDUCTION_SLAB;
 
 import java.util.List;
 import java.util.Map;
@@ -18,19 +16,14 @@ import org.opensha.commons.param.constraint.impl.DoubleDiscreteConstraint;
 import org.opensha.commons.param.constraint.impl.StringConstraint;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
-import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.nshmp2.imr.impl.AB2003_AttenRel;
 import org.opensha.nshmp2.imr.impl.YoungsEtAl_1997_AttenRel;
-import org.opensha.nshmp2.util.CurveTable;
-import org.opensha.nshmp2.util.FaultCode;
 import org.opensha.nshmp2.util.Period;
 import org.opensha.nshmp2.util.Utils;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.imr.AttenuationRelationship;
-import org.opensha.sha.imr.PropagationEffect;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.EqkRuptureParams.MagParam;
 import org.opensha.sha.imr.param.EqkRuptureParams.RupTopDepthParam;
