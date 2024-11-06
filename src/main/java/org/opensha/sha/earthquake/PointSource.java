@@ -820,6 +820,7 @@ public abstract class PointSource extends ProbEqkSource {
 		private final int numRuptures;
 		private MFDPoissonPointSourceData(Location loc, MFDData mfdData, RuptureSurfaceBuilder surfaceBuilder) {
 			this.loc = loc;
+			this.surfaceBuilder = surfaceBuilder;
 			int numRups = 0;
 			boolean anyMultiple = false;
 			for (FocalMechanism mech : mfdData.mechanisms()) {
@@ -853,6 +854,7 @@ public abstract class PointSource extends ProbEqkSource {
 					int magMechCount = surfaceBuilder.getNumSurfaces(mag, mech);
 					for (int i=0; i<magMechCount; i++) {
 						rates[index] = magMechCount == 1 ? rate : rate *  surfaceBuilder.getSurfaceWeight(mag, mech, i);
+						magnitudes[index] = mag;
 						mechs[index] = mech;
 						if (anyMultiple)
 							surfIndexes[index] = (short)i;
