@@ -163,7 +163,7 @@ public class PointSourceNshm extends PoissonPointSource {
 			double widthDD = calcWidth(magnitude, zTop, dipRad);
 			
 			PointSurfaceBuilder builder = new PointSurfaceBuilder(loc);
-			builder.upperDepthWidthAndDip(zTop, widthDD, dipRad);
+			builder.upperDepthWidthAndDip(zTop, widthDD, mech.dip());
 			builder.footwall(surfaceIndex == 0); // always true for SS, true for one rup for N & R
 			builder.magnitude(magnitude);
 			
