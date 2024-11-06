@@ -190,8 +190,6 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 		double sum = fracNormal+fracReverse+fracStrikeSlip;
 		if(Math.abs(1-sum) > 1e-5)
 			throw new RuntimeException("fractions must sum to 1.0: "+sum);
-
-		int numMags = magFreqDist.size();
 		
 		Map<FocalMechanism, Double> mechWeights = new HashMap<>();
 		if (fracStrikeSlip > 0d)
@@ -222,7 +220,7 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 		public RuptureSurface getSurface(Location sourceLoc, double magnitude, FocalMech mech, int surfaceIndex) {
 			Preconditions.checkState(surfaceIndex == 0 || (isCrossHair && surfaceIndex == 1));
 			// set the rupture surface
-			double depth = 1.0;
+			double depth = magnitude <= 6.5 ? 5.0 : 1.0;
 
 			if(magnitude <= magCutOff) { // set the point surface
 				PointSurface ptSurface = new PointSurface(
