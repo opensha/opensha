@@ -46,6 +46,13 @@ import com.google.common.base.Preconditions;
 
 public class Point2Vert_FaultPoisSource extends PoissonPointSource implements java.io.Serializable{
 
+	/*
+	 * if mag<magCutOff and isCrosshair, should you have 2 identical ruptures (with half rates) or a single rupture?
+	 * 
+	 * true: original UCERF2 configuration
+	 * false: faster and identical hazard (fewer ruptures) 
+	 */
+	public static boolean DUPLICATE_PT_SRC_FOR_CROSSHAIR = true;
 
 	//for Debug purposes
 	private static String  C = new String("Point2Vert_FaultPoisSource");
@@ -54,10 +61,6 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 
 	private IncrementalMagFreqDist magFreqDist;
 	private static final double aveDip=90;
-	private double fracStrikeSlip=0.0;
-	private double fracNormal=0.0;
-	private double fracReverse=0.0;
-	private double duration;
 	private MagLengthRelationship magLengthRelationship;
 	private double magCutOff;
 	private FrankelGriddedSurface finiteFaultSurface1;
@@ -100,7 +103,7 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 		}
 
 		// set the mags, rates, and rupture surfaces
-		setAll(loc,magFreqDist,magLengthRelationship,strike,duration, fracStrikeSlip,
+		setAll(loc, magFreqDist, magLengthRelationship, strike, fracStrikeSlip,
 				fracNormal, fracReverse);
 	}
 
@@ -121,14 +124,14 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 	public Point2Vert_FaultPoisSource(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
 			double duration, double magCutOff,double fracStrikeSlip,
-			double fracNormal,double fracReverse, boolean isCrossHair) {
+			double fracNormal, double fracReverse, boolean isCrossHair) {
 		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null, null); // TODO: dist corrs
 		this.magCutOff = magCutOff;
 		// whether to simulate it as 2 perpendicular faults
 		this.isCrossHair = isCrossHair;
 
 		// set the mags, rates, and rupture surfaces
-		setAll(loc,magFreqDist,magLengthRelationship,duration, fracStrikeSlip, fracNormal, fracReverse);
+		setAll(loc,magFreqDist,magLengthRelationship, fracStrikeSlip, fracNormal, fracReverse);
 
 	}
 
@@ -139,21 +142,19 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 	 * @param loc
 	 * @param magFreqDist
 	 * @param magLengthRelationship
-	 * @param duration
 	 * @param fracStrikeSlip - 
 	 * @param fracNormal - 
 	 * @param fracReverse - 
 	 */
 	public void setAll(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
-			double duration,double fracStrikeSlip,
-			double fracNormal,double fracReverse) {
+			double fracStrikeSlip, double fracNormal, double fracReverse) {
 
 		// If isCrosssHair is true, this strike is only used for point sources. Finite sources get strike of 0 and 90
 		double strike = (Math.random()-0.5)*180.0;
 		if (strike < 0.0) strike +=360;
 		// System.out.println(C+" random strike = "+strike);
-		setAll(loc,magFreqDist,magLengthRelationship,strike,duration,fracStrikeSlip, fracNormal, fracReverse);
+		setAll(loc,magFreqDist,magLengthRelationship,strike,fracStrikeSlip, fracNormal, fracReverse);
 	}
 
 
@@ -165,7 +166,6 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 	 * @param magFreqDist
 	 * @param magLengthRelationship
 	 * @param strike
-	 * @param duration
 	 * @param fracStrikeSlip - 
 	 * @param fracNormal - 
 	 * @param fracReverse - 
@@ -173,19 +173,14 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 	 */
 	public void setAll(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
-			double strike, double duration,double fracStrikeSlip,
+			double strike,double fracStrikeSlip,
 			double fracNormal,double fracReverse) {
 
-		if(D) System.out.println("duration="+duration);
 		if(D) System.out.println("strike="+strike);
 		this.strike = strike;
-		this.duration = duration;
 		this.loc = loc;
 		this.magFreqDist = magFreqDist;
 		this.magLengthRelationship = magLengthRelationship;
-		this.fracNormal =fracNormal;
-		this.fracReverse=fracReverse;
-		this.fracStrikeSlip=fracStrikeSlip;
 
 		double sum = fracNormal+fracReverse+fracStrikeSlip;
 		if(Math.abs(1-sum) > 1e-5)
@@ -213,7 +208,12 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 
 		@Override
 		public int getNumSurfaces(double magnitude, FocalMech mech) {
-			return isCrossHair ? 2 : 1;
+			if (isCrossHair) {
+				if (DUPLICATE_PT_SRC_FOR_CROSSHAIR || magnitude > magCutOff)
+					return 2;
+				return 1;
+			}
+			return 1;
 		}
 
 		@Override
