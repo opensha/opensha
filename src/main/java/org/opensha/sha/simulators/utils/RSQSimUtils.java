@@ -283,11 +283,14 @@ public class RSQSimUtils {
 		
 		private RSQSimFaultSystemRupSet(List<? extends FaultSection> subSects,
 				List<SimulatorElement> elements, List<RSQSimEvent> events, double minFractForInclusion) {
+			this(subSects, elements, events, new RSQSimSubSectionMapper(subSects, elements, minFractForInclusion));
+		}
+		
+		private RSQSimFaultSystemRupSet(List<? extends FaultSection> subSects,
+				List<SimulatorElement> elements, List<RSQSimEvent> events, RSQSimSubSectionMapper mapper) {
 			this.elements = elements;
 			this.events = events;
 			minElemSectID = getSubSectIndexOffset(elements, subSects);
-			
-			RSQSimSubSectionMapper mapper = new RSQSimSubSectionMapper(subSects, elements, minFractForInclusion);
 			
 			// for each rup
 			double[] mags = new double[events.size()];
@@ -295,6 +298,8 @@ public class RSQSimUtils {
 			double[] rupAreas = new double[events.size()];
 			double[] rupLengths = new double[events.size()];
 			List<List<Integer>> sectionForRups = Lists.newArrayList();
+			
+			double minFractForInclusion = mapper.getMinFractForInclusion();
 
 			System.out.print("Building ruptures...");
 			for (int i=0; i<events.size(); i++) {
@@ -480,11 +485,17 @@ public class RSQSimUtils {
 
 	public static U3SlipEnabledSolution buildFaultSystemSolution(List<? extends FaultSection> subSects,
 			List<SimulatorElement> elements, List<RSQSimEvent> events, double minMag, double minFractForInclusion) {
+		return buildFaultSystemSolution(subSects, elements, events, minMag,
+				new RSQSimSubSectionMapper(subSects, elements, minFractForInclusion));
+	}
+
+	public static U3SlipEnabledSolution buildFaultSystemSolution(List<? extends FaultSection> subSects,
+			List<SimulatorElement> elements, List<RSQSimEvent> events, double minMag, RSQSimSubSectionMapper mapper) {
 		
 		if (minMag > 0)
 			events = new MagRangeRuptureIdentifier(minMag, 10d).getMatches(events);
 		
-		RSQSimFaultSystemRupSet rupSet = new RSQSimFaultSystemRupSet(subSects, elements, events, minFractForInclusion);
+		RSQSimFaultSystemRupSet rupSet = new RSQSimFaultSystemRupSet(subSects, elements, events, mapper);
 		return new RSQSimFaultSystemSolution(rupSet);
 	}
 	
@@ -726,13 +737,14 @@ public class RSQSimUtils {
 //		File geomFile = new File(dir, "UCERF3.D3.1.1km.tri.2.flt");
 //		File dir = new File("/data/kevin/simulators/catalogs/rundir2194_long");
 //		File geomFile = new File(dir, "zfault_Deepen.in");
-		int catID = 5892;
+		int catID = 5895;
 		File dir = new File("/data/kevin/simulators/catalogs/bruce/rundir"+catID);
 		File geomFile = new File(dir, "zfault_Deepen.in");
 		List<SimulatorElement> elements = RSQSimFileReader.readGeometryFile(geomFile, 11, 'N');
 		System.out.println("Loaded "+elements.size()+" elements");
 		double minMag = 6d;
-		int skipYears = 20000;
+//		int skipYears = 20000;
+		int skipYears = 10000;
 		List<RSQSimEvent> events = RSQSimFileReader.readEventsFile(dir, elements,
 				Lists.newArrayList(new LogicalAndRupIden(new SkipYearsLoadIden(skipYears),
 						new MagRangeRuptureIdentifier(minMag, 10d))));
