@@ -113,7 +113,7 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 	public abstract double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet,
 			int rthRup, double[] sectArea, double aveSlip);
 	
-	private static abstract class NamedSlipAlongRuptureModel extends SlipAlongRuptureModel implements ArchivableModule,
+	public static abstract class NamedSlipAlongRuptureModel extends SlipAlongRuptureModel implements ArchivableModule,
 		ConstantAverageable<NamedSlipAlongRuptureModel>, SplittableRuptureModule<NamedSlipAlongRuptureModel>{
 		
 		@Override
@@ -176,7 +176,7 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 		
 	}
 	
-	private static double[] calcUniformSlipAlong(int numSects, double aveSlip) {
+	protected static double[] calcUniformSlipAlong(int numSects, double aveSlip) {
 		double[] slipsForRup = new double[numSects];
 		
 		for(int s=0; s<slipsForRup.length; s++)
@@ -230,6 +230,10 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 		@Override
 		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
 				double[] sectArea, double aveSlip) {
+			return calcSlipOnSectionsForRup(sectArea, rupSet.getAreaForRup(rthRup), aveSlip);
+		}
+
+		public double[] calcSlipOnSectionsForRup(double[] sectArea, double rupArea, double aveSlip) {
 			double[] slipsForRup = new double[sectArea.length];
 			
 			// note that the ave slip is partitioned by area, not length; this is so the final model is moment balanced.
@@ -263,7 +267,7 @@ public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 			}
 			double normBegin=0, normEnd, scaleFactor;
 			for(int s=0; s<slipsForRup.length; s++) {
-				normEnd = normBegin + sectArea[s]/rupSet.getAreaForRup(rthRup);
+				normEnd = normBegin + sectArea[s]/rupArea;
 				// fix normEnd values that are just past 1.0
 				//					if(normEnd > 1 && normEnd < 1.00001) normEnd = 1.0;
 				if(normEnd > 1 && normEnd < 1.01) normEnd = 1.0;
