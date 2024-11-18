@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.jfree.chart.ChartPanel;
@@ -103,25 +104,75 @@ public class PlotUtils {
 //		double targetAspect = lonSpan / latSpan;
 //		System.out.println("Target aspect: "+aspectRatio);
 		Plot plot = cp.getChart().getPlot();
-		
-		double heightMult = 1d;
+
+		List<Double> plotHeights = new ArrayList<>();
+		List<Double> plotWidths = new ArrayList<>();
+		List<XYPlot> subPlots = null;
 		if (plot instanceof CombinedRangeXYPlot) {
 			// multiple plots arranged horizontally
 			CombinedRangeXYPlot combPlot = (CombinedRangeXYPlot)plot;
-			int num = combPlot.getSubplots().size();
+			subPlots = getSubPlots(combPlot);
+			int num = subPlots.size();
+			int sumWeights = 0;
+			for (XYPlot subPlot : subPlots)
+				sumWeights += subPlot.getWeight();
+			
 			double gap = combPlot.getGap();
-			myWidth = (int)(((double)myWidth/(double)num) - (num*gap) + 0.5);
+			double widthMinusGaps = myWidth - gap * (num-1);
+			
+			for (XYPlot subPlot : subPlots) {
+				int weight = subPlot.getWeight();
+				double subWidth = widthMinusGaps * (double)weight / (double)sumWeights;
+				plotWidths.add(subWidth);
+			}
+			plotHeights.add(myHeight);
 		} else if (plot instanceof CombinedDomainXYPlot) {
 			// multiple plots arranged vertically
 			CombinedDomainXYPlot combPlot = (CombinedDomainXYPlot)plot;
-			int num = combPlot.getSubplots().size();
+			subPlots = getSubPlots(combPlot);
+			int num = subPlots.size();
+			int sumWeights = 0;
+			for (XYPlot subPlot : subPlots)
+				sumWeights += subPlot.getWeight();
 			double gap = combPlot.getGap();
-			myHeight = (int)(((double)myHeight/(double)num) - (num*gap) + 0.5);
-			heightMult = num;
+
+			double heightMinusGaps = myHeight - gap * (num-1);
+			
+			for (XYPlot subPlot : subPlots) {
+				int weight = subPlot.getWeight();
+				double subHeight = heightMinusGaps * (double)weight / (double)sumWeights;
+				plotHeights.add(subHeight);
+			}
+			plotWidths.add(myWidth);
+		} else {
+			// single plot
+			plotHeights.add(myHeight);
+			plotWidths.add(myWidth);
 		}
-		double extraHeight = height - myHeight;
-		double plotHeight = myWidth / aspectRatio;
-		return (int)(extraHeight + plotHeight*heightMult + 0.5);
+		
+		double totalPlotHeight = plotHeights.stream().mapToDouble(D->D).sum();
+		double totalPlotWidth = plotWidths.stream().mapToDouble(D->D).sum();
+		
+		boolean evenlyWeighted = true;
+		if (subPlots != null) {
+			int weight0 = subPlots.get(0).getWeight();
+			for (int i=1; evenlyWeighted && i<subPlots.size(); i++)
+				evenlyWeighted = weight0 == subPlots.get(i).getWeight();
+		}
+		
+		double extraHeight = height - totalPlotHeight; // height that's related to gaps, labels, legends, and padding
+		if (evenlyWeighted) {
+			double plotHeight = totalPlotWidth / aspectRatio;
+			return (int)(extraHeight + plotHeight + 0.5);
+		} else {
+			// just do the first subplot
+			double origHeight1 = plotHeights.get(0);
+			double targetHeight1 = plotWidths.get(0) / aspectRatio;
+			// scale the height
+			double heightScale1 = targetHeight1 / origHeight1;
+			Preconditions.checkState(heightScale1 > 0d);
+			return (int)(extraHeight + myHeight*heightScale1 + 0.5);
+		}
 	}
 	
 	// TODO untested, verify and uncomment if needed
@@ -207,9 +258,12 @@ public class PlotUtils {
 			subPlots.get(i).setWeight(weights[i]);
 	}
 
-	@SuppressWarnings("unchecked")
 	public static List<XYPlot> getSubPlots(GraphPanel gp) {
-		XYPlot plot = gp.getPlot();
+		return getSubPlots(gp.getPlot());
+	}
+
+	@SuppressWarnings("unchecked")
+	public static List<XYPlot> getSubPlots(XYPlot plot) {
 		if (plot instanceof CombinedDomainXYPlot) {
 			return ((CombinedDomainXYPlot)plot).getSubplots();
 		} else if (plot instanceof CombinedRangeXYPlot) {
