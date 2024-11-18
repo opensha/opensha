@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
@@ -43,6 +44,16 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 		@Override
 		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
 			applyGeologicSlipRates(subSects, fullSects, "LowRate");
+		}
+	},
+	GEOLOGIC_DIST_AVG("Geologic Distribution Average", "GeolDistAvg", 0d) {
+		@Override
+		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
+			try {
+				PRVI25_CrustalRandomlySampledDeformationModels.applyDistAvgSlipRates(subSects, fullSects);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
 		}
 	};
 	

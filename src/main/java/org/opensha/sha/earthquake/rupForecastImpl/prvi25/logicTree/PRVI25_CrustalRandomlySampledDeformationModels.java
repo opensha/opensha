@@ -1,5 +1,6 @@
 package org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree;
 
+import java.awt.geom.Point2D;
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.DecimalFormat;
@@ -141,6 +142,25 @@ public class PRVI25_CrustalRandomlySampledDeformationModels implements RandomlyS
 		
 		for (FaultSection sect : subSects) {
 			double slip = randSlips.get(sect.getParentSectionId());
+			sect.setAveSlipRate(slip);
+		}
+	}
+	
+	public static void applyDistAvgSlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) throws IOException {
+		checkLoadPDFs(fullSects);
+		
+		Map<Integer, Double> avgSlips = new HashMap<>(fullSects.size());
+		for (FaultSection sect : fullSects) {
+			DiscretizedFunc pdf = pdfs.get(sect.getSectionId());
+			Preconditions.checkState((float)pdf.calcSumOfY_Vals() == 1f);
+			double slip = 0d;
+			for (Point2D pt : pdf)
+				slip += pt.getX() * pt.getY();
+			avgSlips.put(sect.getSectionId(), slip);
+		}
+		
+		for (FaultSection sect : subSects) {
+			double slip = avgSlips.get(sect.getParentSectionId());
 			sect.setAveSlipRate(slip);
 		}
 	}
