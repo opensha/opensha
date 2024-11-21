@@ -2,7 +2,12 @@
 
 set -o errexit
 
-SRC=/tmp/prvi_grids/v2
+if [[ $# -ne 1 ]];then
+	echo "USAGE: <source-dir>"
+	exit 1
+fi
+
+SRC=$1
 
 echo "REGULAR"
 declare -a prefixes=("apdf_pmmx_car_interface" "apdf_pmmx_car_intraslab" "apdf_pmmx_crustal" "apdf_pmmx_mue_interface" "apdf_pmmx_mue_intraslab")

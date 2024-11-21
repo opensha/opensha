@@ -474,6 +474,17 @@ public class LogicTreeHazardCompare {
 		
 		ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
 		double[] periods = { 0d, 1d };
+		if (cmd.hasOption("periods")) {
+			String perStr = cmd.getOptionValue("periods");
+			if (perStr.contains(",")) {
+				String[] split = perStr.split(",");
+				periods = new double[split.length];
+				for (int i=0; i<split.length; i++)
+					periods[i] = Double.parseDouble(split[i]);
+			} else {
+				periods = new double[] {Double.parseDouble(perStr)};
+			}
+		}
 		double spacing = -1; // detect
 //		double spacing = 0.1;
 //		double spacing = 0.25;
@@ -564,6 +575,7 @@ public class LogicTreeHazardCompare {
 				"Flag to ignore precomputed mean maps");
 		ops.addOption("pdf", "write-pdfs", false, "Flag to write PDFs of top level maps");
 		ops.addOption(null, "cpt-range", true, "Custom CPT range for hazard maps, in log10 units. Specify as min,max");
+		ops.addOption(null, "periods", true, "Custom spectral periods, comma separated");
 		
 		return ops;
 	}

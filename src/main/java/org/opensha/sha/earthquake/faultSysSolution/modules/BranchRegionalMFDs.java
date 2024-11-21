@@ -25,6 +25,7 @@ import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.SubModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
+import org.opensha.commons.util.modules.helpers.LargeCSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
@@ -520,16 +521,16 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 	@Override
 	public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 		// always have supra
-		CSVReader csv = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, SUPRA_FILE_NAME);
+		CSVReader csv = LargeCSV_BackedModule.loadFromArchive(input, entryPrefix, SUPRA_FILE_NAME);
 		readCSV(csv, false, false);
 		
 		// see if we have gridded
 		if (FileBackedModule.hasEntry(input, entryPrefix, GRID_FILE_NAME)) {
-			csv = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, GRID_FILE_NAME);
+			csv = LargeCSV_BackedModule.loadFromArchive(input, entryPrefix, GRID_FILE_NAME);
 			readCSV(csv, true, false);
 			
 			// should also have sum
-			csv = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, SUM_FILE_NAME);
+			csv = LargeCSV_BackedModule.loadFromArchive(input, entryPrefix, SUM_FILE_NAME);
 			readCSV(csv, true, true);
 		}
 	}

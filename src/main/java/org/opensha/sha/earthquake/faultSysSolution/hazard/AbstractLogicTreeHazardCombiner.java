@@ -371,6 +371,8 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		for (int i=0; i<innerTree.size(); i++)
 			innerBranchIndexes.put(innerTree.getBranch(i), i);
 		
+		int debugMax = 100;
+		
 		for (int o=0; o<outerTree.size(); o++) {
 			LogicTreeBranch<?> outerBranch = outerTree.getBranch(o);
 			LogicTree<?> matchingInnerTree;
@@ -448,6 +450,13 @@ public abstract class AbstractLogicTreeHazardCombiner {
 					combNodeIndex++;
 				}
 				combBranch.setOrigBranchWeight(weight);
+				
+				if (combBranches.size() < debugMax) {
+					System.out.println("Build debug for branch "+combBranches.size());
+					System.out.println("\tCombined: "+combBranch);
+					System.out.println("\tOuter "+o+": "+outerBranch);
+					System.out.println("\tInner "+innerBranchIndexes.get(innerBranch)+": "+innerBranch);
+				}
 				
 				combBranches.add(combBranch);
 				combBranchesOuterPortion.add(outerBranch);
@@ -902,7 +911,11 @@ public abstract class AbstractLogicTreeHazardCombiner {
 			for (int i=0; i<combBranchesOuterIndexes.size() && outerCurveLoadFutures.size()<readDequeSize; i++) {
 				int outerIndex = this.combBranchesOuterIndexes.get(i);
 				outerCurveLoadIndex = i;
-				if (outerCurveLoadIndexes.isEmpty() || outerCurveLoadIndexes.getLast() != outerIndex) {
+				int prevOutlerIndex = outerCurveLoadIndexes.isEmpty() ? -1 : outerCurveLoadIndexes.getLast();
+				if (prevOutlerIndex < 0 || 
+						(prevOutlerIndex != outerIndex
+						// the latter can happen if the outer tree is resampled with duplicates
+						&& !outerTree.getBranch(prevOutlerIndex).equals(outerTree.getBranch(outerIndex)))) {
 					outerCurveLoadFutures.add(curveLoadFuture(outerHazardMapLoader, outerHazardSubDirName,
 							outerTree.getBranch(outerIndex), periods, curveIOExec));
 					outerCurveLoadIndexes.add(outerIndex);
@@ -981,7 +994,7 @@ public abstract class AbstractLogicTreeHazardCombiner {
 			DiscretizedFunc[][] outerCurves = null;
 			FaultSystemSolution outerSol = null;
 			
-			if (prevOuter == null || outerBranch != prevOuter) {
+			if (prevOuter == null || !outerBranch.equals(prevOuter)) {
 				System.out.println("New outer branch: "+n+"/"+outerTree.size()+": "+outerBranch);
 				// new outer branch
 				if (doHazardMaps) {
@@ -1002,7 +1015,11 @@ public abstract class AbstractLogicTreeHazardCombiner {
 					for (int i=outerCurveLoadIndex+1; i<combBranchesOuterIndexes.size() && outerCurveLoadFutures.size()<readDequeSize; i++) {
 						int nextSubmitOuterIndex = this.combBranchesOuterIndexes.get(i);
 						outerCurveLoadIndex = i;
-						if (outerCurveLoadIndexes.getLast() != nextSubmitOuterIndex) {
+						int prevOutlerIndex = outerCurveLoadIndexes.isEmpty() ? -1 : outerCurveLoadIndexes.getLast();
+						if (prevOutlerIndex < 0 || 
+								(prevOutlerIndex != nextSubmitOuterIndex
+								// the latter can happen if the outer tree is resampled with duplicates
+								&& !outerTree.getBranch(prevOutlerIndex).equals(outerTree.getBranch(nextSubmitOuterIndex)))) {
 							System.out.println("Adding outer read future for "+nextSubmitOuterIndex);
 							outerCurveLoadFutures.add(curveLoadFuture(outerHazardMapLoader, outerHazardSubDirName,
 									outerTree.getBranch(nextSubmitOuterIndex), periods, curveIOExec));

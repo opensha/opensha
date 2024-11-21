@@ -38,6 +38,7 @@ import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
+import org.opensha.commons.util.modules.helpers.LargeCSV_BackedModule;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
@@ -1929,7 +1930,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			LocationList locs = loadGridLocsCSV(gridCSV, gridReg);
 			
 			// load ruptures themselves
-			CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, ARCHIVE_GRID_SOURCES_FILE_NAME);
+			CSVReader rupSectsCSV = LargeCSV_BackedModule.loadFromArchive(input, entryPrefix, ARCHIVE_GRID_SOURCES_FILE_NAME);
 			EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists = loadGridSourcesCSV(rupSectsCSV, locs);
 			setAll(gridReg, locs, trtRuptureLists);
 		}

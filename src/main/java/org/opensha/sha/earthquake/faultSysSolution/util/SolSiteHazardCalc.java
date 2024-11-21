@@ -101,6 +101,7 @@ import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy;
 import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy.CacheTypes;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
+import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGV_Param;
@@ -277,7 +278,7 @@ public class SolSiteHazardCalc {
 		IncludeBackgroundOption mainGridOp = getGridOp(cmd, sol);
 		IncludeBackgroundOption compGridOp = compSol == null ? null : getGridOp(cmd, compSol);
 		
-		Map<TectonicRegionType, AttenRelRef> gmmSuppliers = SolHazardMapCalc.getGMMs(cmd);
+		Map<TectonicRegionType, ? extends AttenRelSupplier> gmmSuppliers = SolHazardMapCalc.getGMMs(cmd);
 		
 		if (gmmSuppliers.size() > 1) {
 			// see which ones we actually need

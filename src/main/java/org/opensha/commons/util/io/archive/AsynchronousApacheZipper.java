@@ -17,6 +17,8 @@ class AsynchronousApacheZipper {
 	private CopyAvoidantInMemorySeekableByteChannel uncompressedData;
 	private CopyAvoidantInMemorySeekableByteChannel compressedData;
 	
+	private WriteShieldAfterCloseOutputStream currentOutput;
+	
 	private String entrySourceName;
 	private String entryDestName;
 	private boolean externalInput;
@@ -96,13 +98,16 @@ class AsynchronousApacheZipper {
 	
 	public void putNextEntry(String name) {
 		Preconditions.checkState(entrySourceName == null, "didn't close prior entry");
+		Preconditions.checkState(currentOutput == null, "didn't close prior entry");
 		this.entrySourceName = name;
 		this.entryDestName = name;
 	}
 	
 	public OutputStream getOutputStream() {
 		Preconditions.checkNotNull(entrySourceName, "Not currently writing");
-		return uncompressedData.getOutputStream();
+		Preconditions.checkState(currentOutput == null, "Already called getOutputStream() for entry '%s'", entryDestName);
+		currentOutput = new WriteShieldAfterCloseOutputStream(uncompressedData.getOutputStream());
+		return currentOutput;
 	}
 	
 	public CompletableFuture<AsynchronousApacheZipper> transferFrom(ArchiveInput input, String sourceName, String destName) throws IOException {
@@ -119,8 +124,13 @@ class AsynchronousApacheZipper {
 		return closeEntry();
 	}
 	
-	public CompletableFuture<AsynchronousApacheZipper> closeEntry() {
+	public CompletableFuture<AsynchronousApacheZipper> closeEntry() throws IOException {
 		// all uncompressed data has been written, now compress in parallel
+		if (currentOutput != null) {
+			currentOutput.flush();
+			currentOutput.lock();
+			currentOutput = null;
+		}
 		if (uncompressedData.size() == 0l)
 			// nothing written
 			return CompletableFuture.completedFuture(this);
@@ -165,6 +175,51 @@ class AsynchronousApacheZipper {
 				}
 			}
 		});
+	}
+	
+	static class WriteShieldAfterCloseOutputStream extends OutputStream {
+
+		private OutputStream out;
+		private boolean locked = false;
+
+		public WriteShieldAfterCloseOutputStream(OutputStream out) {
+			this.out = out;
+		}
+		
+		public void lock() {
+			locked = true;
+		}
+		
+		public boolean isLocked() {
+			return locked;
+		}
+
+		@Override
+		public void write(int b) throws IOException {
+			Preconditions.checkState(!locked,
+					"Tried to write to an entry's OutputStream after it was already closed?");
+			out.write(b);
+		}
+
+		@Override
+		public void write(byte[] b, int off, int len) throws IOException {
+			Preconditions.checkState(!locked,
+					"Tried to write to an entry's OutputStream after it was already closed?");
+			out.write(b, off, len);
+		}
+
+		@Override
+		public void flush() throws IOException {
+			Preconditions.checkState(!locked,
+					"Tried to flush an entry's OutputStream after it was already closed?");
+			out.flush();
+		}
+
+		@Override
+		public void close() throws IOException {
+			throw new IllegalStateException("Should never call close() on the archive's OutputStream, only flush()");
+		}
+
 	}
 
 }

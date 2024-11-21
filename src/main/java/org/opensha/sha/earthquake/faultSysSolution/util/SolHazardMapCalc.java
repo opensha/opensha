@@ -81,11 +81,13 @@ import org.opensha.sha.earthquake.param.UseRupMFDsParam;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
+import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGV_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import org.opensha.sha.imr.param.OtherParams.TectonicRegionTypeParam;
+import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -115,11 +117,11 @@ public class SolHazardMapCalc {
 	static AttenRelRef INTERFACE_GMPE_DEFAULT = AttenRelRef.PSBAH_2020_GLOBAL_INTERFACE;
 	static AttenRelRef SLAB_GMPE_DEFAULT = AttenRelRef.PSBAH_2020_GLOBAL_SLAB;
 	
-	public static Map<TectonicRegionType, AttenRelRef> getGMMs(CommandLine cmd) {
+	public static Map<TectonicRegionType, AttenRelSupplier> getGMMs(CommandLine cmd) {
+		Map<TectonicRegionType, AttenRelSupplier> ret = new EnumMap<>(TectonicRegionType.class);
 		if (cmd.hasOption("gmpe")) {
 			Preconditions.checkState(!cmd.hasOption("trt-gmpe"), "Can't specify both --gmpe and --trt-gmpe");
 			String[] gmmStrs = cmd.getOptionValues("gmpe");
-			EnumMap<TectonicRegionType, AttenRelRef> ret = new EnumMap<>(TectonicRegionType.class);
 			for (String gmmStr : gmmStrs) {
 				AttenRelRef gmpeRef = AttenRelRef.valueOf(gmmStr);
 				if (gmmStrs.length > 1) {
@@ -133,22 +135,50 @@ public class SolHazardMapCalc {
 					ret.put(TectonicRegionType.ACTIVE_SHALLOW, gmpeRef);
 				}
 			}
-			return ret;
-		}
-		
-		Map<TectonicRegionType, AttenRelRef> gmmRefs = getDefaultGMMs();
-		if (cmd.hasOption("trt-gmpe")) {
-			for (String val : cmd.getOptionValues("gmmRefs")) {
-				Preconditions.checkState(val.contains(":"), "Expected <trt>:<gmm>, can't parse argument: %s", val);
-				int index = val.indexOf(":");
-				String trtName = val.substring(0, index);
-				TectonicRegionType trt = TectonicRegionType.valueOf(trtName);
-				String gmmName = val.substring(index+1);
-				AttenRelRef gmm = AttenRelRef.valueOf(gmmName);
-				gmmRefs.put(trt, gmm);
+		} else {
+			ret.putAll(getDefaultGMMs());
+			if (cmd.hasOption("trt-gmpe")) {
+				for (String val : cmd.getOptionValues("gmmRefs")) {
+					Preconditions.checkState(val.contains(":"), "Expected <trt>:<gmm>, can't parse argument: %s", val);
+					int index = val.indexOf(":");
+					String trtName = val.substring(0, index);
+					TectonicRegionType trt = TectonicRegionType.valueOf(trtName);
+					String gmmName = val.substring(index+1);
+					AttenRelRef gmm = AttenRelRef.valueOf(gmmName);
+					ret.put(trt, gmm);
+				}
 			}
 		}
-		return gmmRefs;
+		
+		if (cmd.hasOption("vs30")) {
+			double vs30 = Double.parseDouble(cmd.getOptionValue("vs30"));
+			System.out.println("Setting GMM Vs30="+(float)vs30);
+			List<TectonicRegionType> trts = List.copyOf(ret.keySet());
+			for (TectonicRegionType trt : trts) {
+				AttenRelSupplier supplier = ret.get(trt);
+				ret.put(trt, new AttenRelSupplier() {
+					
+					@Override
+					public String getName() {
+						return supplier.getName();
+					}
+					
+					@Override
+					public String getShortName() {
+						return supplier.getShortName();
+					}
+					
+					@Override
+					public ScalarIMR get() {
+						ScalarIMR gmm = supplier.get();
+						gmm.getParameter(Vs30_Param.NAME).setValue(vs30);
+						return gmm;
+					}
+				});
+			}
+		}
+		
+		return ret;
 	}
 	
 	public static Map<TectonicRegionType, AttenRelRef> getDefaultGMMs() {
@@ -724,17 +754,30 @@ public class SolHazardMapCalc {
 		}
 	}
 	
-	private static void combineIn(DiscretizedFunc curve, DiscretizedFunc oCurve) {
-		Preconditions.checkState(oCurve.size() == curve.size());
+	public static void combineIn(DiscretizedFunc curve, DiscretizedFunc oCurve) {
+		boolean equal = oCurve.size() == curve.size() && (float)oCurve.getMinX() == (float)curve.getMinX()
+				&& (float)oCurve.getMaxX() == (float)curve.getMaxX();
 		for (int i=0; i<curve.size(); i++) {
 			Point2D pt1 = curve.get(i);
-			Point2D pt2 = oCurve.get(i);
-			Preconditions.checkState((float)pt1.getX() == (float)pt2.getX());
-			if (pt2.getY() > 0) {
-				if (pt1.getY() == 0)
-					curve.set(i, pt2.getY());
+			double y1 = pt1.getY();
+			double y2;
+			if (equal) {
+				Point2D pt2 = oCurve.get(i);
+				Preconditions.checkState((float)pt1.getX() == (float)pt2.getX());
+				y2 = pt2.getY();
+			} else {
+				if ((float)pt1.getX() <= (float)oCurve.getMinX())
+					y2 = oCurve.getY(0);
+				else if ((float)pt1.getX() >= (float)oCurve.getMaxX())
+					y2 = oCurve.getY(oCurve.size()-1);
 				else
-					curve.set(i, 1d - (1d - pt1.getY())*(1d - pt2.getY()));
+					y2 = oCurve.getInterpolatedY_inLogYDomain(pt1.getX());
+			}
+			if (y2 > 0) {
+				if (y1 == 0)
+					curve.set(i, y2);
+				else
+					curve.set(i, 1d - (1d - y1)*(1d - y2));
 			}
 		}
 	}
@@ -1082,6 +1125,7 @@ public class SolHazardMapCalc {
 		private DiscretizedFunc[] curves;
 		private LocationList locs;
 		private boolean allowNull;
+		private DiscretizedFunc refCurve = null;
 		
 		private int cols = -1;
 
@@ -1106,7 +1150,6 @@ public class SolHazardMapCalc {
 				header.add("Index");
 				header.add("Latitude");
 				header.add("Longitude");
-				DiscretizedFunc refCurve = null;
 				for (DiscretizedFunc curve : curves) {
 					if (curve != null) {
 						refCurve = curve;
@@ -1127,6 +1170,9 @@ public class SolHazardMapCalc {
 				return null;
 			}
 			Preconditions.checkNotNull(curve, "Curve not calculated at index %s", curIndex);
+			Preconditions.checkState(refCurve.size() == curve.size(), "Curve size mismatch");
+			Preconditions.checkState((float)curve.getX(0) == (float)refCurve.getX(0));
+			Preconditions.checkState((float)curve.getX(refCurve.size()-1) == (float)refCurve.getX(refCurve.size()-1));
 			
 			List<String> line = new ArrayList<>(cols);
 			line.add(String.valueOf(curIndex)+"");
@@ -1259,6 +1305,7 @@ public class SolHazardMapCalc {
 				+ "For example: ACTIVE_SHALLOW:ASK_2014. Note that this will be overriden if the Logic Tree supplies GMPE choices.");
 		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
 		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default is TectonicRegionType-specific.");
+		ops.addOption(null, "vs30", true, "Site Vs30 value (uses GMM default otherwise)");
 		if (includeSiteSkip)
 			ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
 					+ "Default is "+(int)(SITE_SKIP_FRACT*100d)+"% of the TectonicRegionType-specific default maximum distance.");

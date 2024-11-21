@@ -21,6 +21,8 @@ sourceSets {
             exclude '**/scratchData'
             exclude '**/data/erf/new_zealand_2010'
             exclude '**/data/erf/step/AllCal96ModelDaily.txt'
+            exclude '**/data/erf/ucerf3/EarthquakeCatalog'
+            exclude '**/data/erf/nshm23/seismicity/spatial_seis_pdfs/*/CONUS_EAST'
         }
     }
 }

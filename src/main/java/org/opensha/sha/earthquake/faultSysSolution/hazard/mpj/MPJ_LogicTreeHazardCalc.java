@@ -63,6 +63,7 @@ import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.imr.AttenRelRef;
+import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
 import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
@@ -89,7 +90,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private SourceFilterManager sourceFilter;
 	
 	private SourceFilterManager siteSkipSourceFilter;
-	private Map<TectonicRegionType, AttenRelRef> gmmRefs;
+	private Map<TectonicRegionType, AttenRelSupplier> gmmRefs;
 	
 //	static final double[] PERIODS_DEFAULT = { 0d, 0.2d, 1d };
 	public static final double[] PERIODS_DEFAULT = { 0d, 1d };
@@ -403,6 +404,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				// write logic tree
 				LogicTree<?> tree = solTree.getLogicTree();
 				zout.putNextEntry(AbstractLogicTreeModule.LOGIC_TREE_FILE_NAME);
+				writer = new BufferedWriter(new OutputStreamWriter(zout.getOutputStream()));
 				Gson gson = new GsonBuilder().setPrettyPrinting()
 						.registerTypeAdapter(LogicTree.class, new LogicTree.Adapter<>()).create();
 				gson.toJson(tree, LogicTree.class, writer);
@@ -929,7 +931,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				}
 				debug("Calculating hazard curves for "+index+", bgOption="+gridSeisOp.name()
 						+", combineExclude="+(combineWithExcludeCurves != null)
-						+", combineOnly="+(combineWithOnlyCurves != null)
+						+", combineOnly="+combineOnly
 						+"\n\tBranch: "+branch
 						+gmpeParamsStr);
 				Preconditions.checkState(!combineOnly, "Combine-only flag is set, but we need to calculate for "+branch);

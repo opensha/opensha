@@ -274,10 +274,11 @@ public class MeanUCERF2 extends AbstractERF {
 		if(iSource<allSources.size()) // everything but the grid sources
 			return (ProbEqkSource) allSources.get(iSource);
 		else {
-			if(this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_CROSSHAIR)) {
+			if (this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_CROSSHAIR)) {
 				return nshmp_gridSrcGen.getCrosshairGriddedSource(iSource - allSources.size(), timeSpan.getDuration());				
-			}
-			else if(this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_FINITE)) {
+			} else if (this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_FINITE)
+					|| this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_POINT)) {
+				// UCERF2 point sources use Point2Vert_FaultPoisSource by setting the mag cutoff to 10 (all point, none finite)
 /*/ Debugging 
 				Location locOfInterest = new Location(37,-121.4);
 				int indexOfInterest = nshmp_gridSrcGen.getNearestLocationIndex(locOfInterest);
@@ -291,6 +292,7 @@ public class MeanUCERF2 extends AbstractERF {
 // Debugging */
 				return nshmp_gridSrcGen.getRandomStrikeGriddedSource(iSource - allSources.size(), timeSpan.getDuration());
 			} else {
+				// NSHM 2013 point sources
 				return nshmp_gridSrcGen.getNSHMP13_GriddedSource(iSource - allSources.size(), timeSpan.getDuration());
 			}
 		}
@@ -318,7 +320,7 @@ public class MeanUCERF2 extends AbstractERF {
 	 * @return ArrayList of Prob Earthquake sources
 	 */
 	public ArrayList<ProbEqkSource>  getSourceList(){
-		ArrayList sourceList = new ArrayList();
+		ArrayList<ProbEqkSource> sourceList = new ArrayList<>();
 		sourceList.addAll(allSources);
 		
 		boolean isBackground = backSeisParam.getValue().equals(UCERF2.BACK_SEIS_INCLUDE) ||
@@ -327,7 +329,9 @@ public class MeanUCERF2 extends AbstractERF {
 		if( isBackground ) {
 			if (this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_CROSSHAIR)) {
 				sourceList.addAll(nshmp_gridSrcGen.getAllCrosshairGriddedSources(timeSpan.getDuration()));
-			} else if(this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_CROSSHAIR)) {
+			} else if(this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_FINITE)
+					|| this.backSeisRupParam.getValue().equals(UCERF2.BACK_SEIS_RUP_POINT)) {
+				// UCERF2 point sources use Point2Vert_FaultPoisSource by setting the mag cutoff to 10 (all point, none finite)
 				sourceList.addAll(nshmp_gridSrcGen.getAllRandomStrikeGriddedSources(timeSpan.getDuration()));
 			} else {
 				sourceList.addAll(nshmp_gridSrcGen.getAllNSHMP13_GriddedSources(timeSpan.getDuration()));

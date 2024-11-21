@@ -50,6 +50,7 @@ import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
+import org.opensha.commons.util.modules.helpers.LargeCSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet.RuptureProperties;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -1410,7 +1411,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			}
 
 			String sourcesFile = getBranchFileName(branch, GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME, true);
-			CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(input, null, sourcesFile);
+			CSVReader rupSectsCSV = LargeCSV_BackedModule.loadFromArchive(input, null, sourcesFile);
 			
 			EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists = GridSourceList.loadGridSourcesCSV(rupSectsCSV, locs);
 			if (region != null)
@@ -1532,7 +1533,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 			rupIndices = prevRupIndices;
 		} else {
 			if (verbose) System.out.println("\tLoading rupture indices from "+indicesFile);
-			CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, indicesFile);
+			CSVReader rupSectsCSV = LargeCSV_BackedModule.loadFromArchive(input, entryPrefix, indicesFile);
 			rupIndices = FaultSystemRupSet.loadRupSectsCSV(rupSectsCSV, subSects.size(), props.mags.length);
 			prevRupIndices = rupIndices;
 			prevIndicesFile = indicesFile;

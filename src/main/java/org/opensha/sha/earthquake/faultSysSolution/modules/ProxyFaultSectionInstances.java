@@ -37,6 +37,7 @@ import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
+import org.opensha.commons.util.modules.helpers.LargeCSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
@@ -556,7 +557,7 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 		}
 		proxySects = sections;
 		
-		CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, PROXY_RUP_SECTS_FILE_NAME);
+		CSVReader rupSectsCSV = LargeCSV_BackedModule.loadFromArchive(input, entryPrefix, PROXY_RUP_SECTS_FILE_NAME);
 		proxyRupSectIndices = loadRupSectsCSV(rupSectsCSV, sections.size());
 	}
 	
