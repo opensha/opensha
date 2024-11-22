@@ -10,12 +10,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
-import org.netlib.util.intW;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
-import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
@@ -27,6 +25,7 @@ import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 
 import com.google.common.base.Preconditions;
 
@@ -240,9 +239,12 @@ public class PRVI25_CrustalRandomlySampledDeformationModels implements RandomlyS
 	}
 	
 	public static void main(String[] args) throws IOException {
-		int numSamples = 100000;
+		int numSamples = 750;
+		long randSeed = 12345678l;
+		Random rand = new Random(randSeed);
 		
-		PRVI25_CrustalRandomlySampledDeformationModelLevel level = new PRVI25_CrustalRandomlySampledDeformationModelLevel(numSamples);
+//		PRVI25_CrustalRandomlySampledDeformationModelLevel level = new PRVI25_CrustalRandomlySampledDeformationModelLevel(numSamples);
+		PRVI25_CrustalRandomlySampledDeformationModelLevel level = new PRVI25_CrustalRandomlySampledDeformationModelLevel(numSamples, rand);
 		List<PRVI25_CrustalRandomlySampledDeformationModels> nodes = level.getNodes();
 		PRVI25_CrustalFaultModels fm = PRVI25_CrustalFaultModels.PRVI_CRUSTAL_FM_V1p1;
 		List<? extends FaultSection> fullSects = fm.getFaultSections();
@@ -260,17 +262,45 @@ public class PRVI25_CrustalRandomlySampledDeformationModels implements RandomlyS
 		}
 		
 		DecimalFormat slipDF = new DecimalFormat("0.000");
-		DecimalFormat pDF = new DecimalFormat("0.00%");
 		for (int i=0; i<fullSects.size(); i++) {
 			FaultSection sect = fullSects.get(i);
 			double origMean = sect.getOrigAveSlipRate();
+			double origUpper = ((GeoJSONFaultSection)sect).getProperties().getDouble(PRVI25_CrustalFaultModels.HIGH_RATE_PROP_NAME, Double.NaN);
+			double origLower = ((GeoJSONFaultSection)sect).getProperties().getDouble(PRVI25_CrustalFaultModels.LOW_RATE_PROP_NAME, Double.NaN);
+			DiscretizedFunc pdf = pdfs.get(sect.getSectionId());
 			MinMaxAveTracker track = parentTracks.get(i);
 			double sampleMean = track.getAverage();
-			System.out.println(sect.getSectionId()+". "+sect.getSectionName()+":\torigMean="+
-					slipDF.format(origMean)+"\tsampleMean="+slipDF.format(sampleMean)
-					+"\tpDiff="+pDF.format((sampleMean - origMean)/origMean)
-					+"\trange=["+slipDF.format(track.getMin())+","+slipDF.format(track.getMax())+"]");
+			
+			double pdfMean = 0d;
+			double pdfMin = Double.POSITIVE_INFINITY;
+			double pdfMax = Double.NEGATIVE_INFINITY;
+			for (Point2D pt : pdf) {
+				if (pt.getY() > 0d) {
+					pdfMean += pt.getX() * pt.getY();
+					pdfMin = Math.min(pdfMin, pt.getX());
+					pdfMax = Math.max(pdfMax, pt.getX());
+				}
+			}
+			
+			System.out.println(sect.getSectionId()+". "+sect.getSectionName());
+			System.out.println("\tOriginal mean and range:\t"+slipDF.format(origMean)
+					+"\t["+slipDF.format(origLower)+","+slipDF.format(origUpper)+"]\tmeanFract="+slipDF.format((origMean - origLower)/(origUpper - origLower)));
+//			System.out.println("\tSampled mean and range:\t"+slipDF.format(sampleMean)
+//					+"\t["+slipDF.format(track.getMin())+","+slipDF.format(track.getMax())+"]");
+//			System.out.println("\tCompared to original:\t"+compPercentStr(sampleMean, origMean)
+//					+"\t["+compPercentStr(track.getMin(), origLower)+","+compPercentStr(track.getMax(), origUpper)+"]");
+			System.out.println("\tPDF mean and range:\t"+slipDF.format(pdfMean)
+					+"\t["+slipDF.format(pdfMin)+","+slipDF.format(pdfMax)+"]");
+			System.out.println("\tCompared to original:\t"+compPercentStr(sampleMean, origMean)
+					+"\t["+compPercentStr(pdfMin, origLower)+","+compPercentStr(pdfMax, origUpper)+"]");
 		}
+	}
+	
+	private static final DecimalFormat pDF = new DecimalFormat("0.00%");
+	
+	private static String compPercentStr(double testVal, double refVal) {
+		String plus = testVal > refVal ? "+" : "";
+		return plus+pDF.format((testVal-refVal)/refVal);
 	}
 
 }
