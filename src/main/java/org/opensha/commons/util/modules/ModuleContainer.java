@@ -165,14 +165,24 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 				return (M)module;
 			if (call != null) {
 				// actually have to synchronize (expensive) here as we have a callable for it and haven't yet loaded it
+				debug("Need to load module of type '"+clazz+"' and have a callable, waiting for synchronization lock");
 				synchronized (this) {
 					// see if another thread loaded it while we were waiting on this synchronized block
 					module = mappings.get(clazz);
-					if (module != null)
+					if (module != null) {
+						debug("In syncrhonized lock for '"+clazz+"' loading, it was already loaded before I got in");
 						return (M)module;
+					}
 					// actually have to load it
+					debug("In syncrhonized lock for '"+clazz+"' loading and still need to load it");
 					module = getLoadAvailableModule(call);
+					debug("Done loading '"+clazz+"' in synchronized lock; null ? "+(module == null));
 				}
+			}
+			if (module == null) {
+				// try one more time? there may be a synchronization bug somewhere, I've seen it return null after
+				// successfully loading and mapping
+				module = mappings.get(clazz);
 			}
 		}
 		return (M)module;
@@ -546,9 +556,9 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 			module = call.call();
 			double secs = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
 			debug("Took "+secsDF.format(secs)+" s to load "+(module == null ? "null" : module.getName()));
-		} catch (Exception e) {
+		} catch (Throwable e) {
 			e.printStackTrace();
-			debug("WARNING: failed to lazily load a module (see exception above)", true);
+			debug("WARNING: failed to lazily load a module (see exception above): "+e.getMessage(), true);
 		}
 		watch.stop();
 		
@@ -745,12 +755,47 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	private void debug(String message, boolean err) {
 		if (!err && !verbose)
 			return;
+		if (debug_common_prefix == null) {
+			synchronized (ModuleContainer.class) {
+				if (debug_common_prefix == null) {
+					try {
+						// see if we're in MPJ mode and include a more useful prefix
+						int rank =  mpi.MPI.COMM_WORLD.Rank();
+						String hostname = java.net.InetAddress.getLocalHost().getHostName();
+						if (hostname != null && !hostname.isBlank())
+							debug_common_prefix = hostname+", "+rank+": ";
+						else
+							debug_common_prefix = rank+": ";
+					} catch (Throwable t) {
+						debug_common_prefix = "";
+					}
+				}
+			}
+		}
+		if (debugPrefix == null) {
+			String debugPrefix = debug_common_prefix;
+			if (this instanceof Named) {
+				String name = ((Named)this).getName();
+				if (name != null && !name.isBlank()) {
+					debugPrefix = name;
+					if (!debug_common_prefix.isBlank())
+						debugPrefix += " ("+debug_common_prefix+")";
+				}
+			}
+			if (!debugPrefix.isBlank())
+				debugPrefix += ":\t";
+			this.debugPrefix = debugPrefix;
+		}
 		if (this instanceof Named)
-			message = ((Named)this).getName()+":\t"+message;
+			message = debugPrefix+message;
+		
 		if (err)
 			System.err.println(message);
 		else
 			System.out.println(message);
 	}
+	private String debugPrefix;
+	
+	private static String debug_common_prefix = null;
 
 }
