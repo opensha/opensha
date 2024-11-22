@@ -13,11 +13,13 @@ import com.google.gson.GsonBuilder;
 public class BuildInfoModule implements JSON_TypeAdapterBackedModule<BuildInfoModule> {
 	
 	private Long buildTime;
+	private String buildTimeHuman;
 	private String gitHash;
 	private String branch;
 	private String remoteUrl;
 	private ApplicationVersion openshaVersion;
 	private Long creationTime;
+	private String creationTimeHuman;
 	private List<Map<String, String>> extra;
 
 	@SuppressWarnings("unused") // used in deserialization
@@ -25,11 +27,15 @@ public class BuildInfoModule implements JSON_TypeAdapterBackedModule<BuildInfoMo
 	
 	public BuildInfoModule(Long buildTime, String gitHash, String branch, String remoteUrl, ApplicationVersion openshaVersion) {
 		this.buildTime = buildTime;
+		if(buildTime != null) {
+			this.buildTimeHuman = new Date(buildTime).toString();
+		}
 		this.gitHash = gitHash;
 		this.branch = branch;
 		this.remoteUrl = remoteUrl;
 		this.openshaVersion = openshaVersion;
 		this.creationTime = System.currentTimeMillis();
+		this.creationTimeHuman = new Date(creationTime).toString();
 	}
 
 	public static BuildInfoModule fromGitVersion(GitVersion git) throws IOException{
@@ -91,11 +97,17 @@ public class BuildInfoModule implements JSON_TypeAdapterBackedModule<BuildInfoMo
 	@Override
 	public void set(BuildInfoModule value) {
 		this.buildTime = value.buildTime;
+		if (buildTime != null) {
+			buildTimeHuman = new Date(buildTime).toString();
+		}
 		this.gitHash = value.gitHash;
 		this.branch = value.branch;
 		this.remoteUrl = value.remoteUrl;
 		this.openshaVersion = value.openshaVersion;
 		this.creationTime = value.creationTime;
+		if (creationTime != null) {
+			creationTimeHuman = new Date(creationTime).toString();
+		}
 		this.extra = value.extra;
 	}
 
