@@ -46,6 +46,7 @@ import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.imr.AttenRelRef;
+import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -68,7 +69,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	
 	private double gridSpacing = MPJ_LogicTreeHazardCalc.GRID_SPACING_DEFAULT;
 	
-	private Map<TectonicRegionType, AttenRelRef> gmmRefs;
+	private Map<TectonicRegionType, AttenRelSupplier> gmmRefs;
 	
 	private double[] periods = MPJ_LogicTreeHazardCalc.PERIODS_DEFAULT;
 	
@@ -593,15 +594,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 						} else if (curve2 == null) {
 							combCurve = curve1;
 						} else {
-							Preconditions.checkState(curve1.size() == curve2.size());
-							combCurve = new ArbitrarilyDiscretizedFunc();
-							for (int j=0; j<curve1.size(); j++) {
-								double x = curve1.getX(j);
-								Preconditions.checkState((float)x == (float)curve2.getX(j));
-								double y1 = curve1.getY(j);
-								double y2 = curve2.getY(j);
-								combCurve.set(x, 1d - (1d-y1)*(1d-y2));
-							}
+							combCurve = curve1.deepClone();
+							SolHazardMapCalc.combineIn(combCurve, curve2);
 						}
 						
 						combCurves[i] = combCurve;

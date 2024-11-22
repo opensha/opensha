@@ -23,6 +23,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
+import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
@@ -122,6 +123,13 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 				// overall seismicity regions
 				
 				regions.add(PRVI25_RegionLoader.loadPRVI_ModelBroad());
+				regionMFDs.add(null);
+				regionTRTs.add(null);
+				
+				// smaller map map region
+				Region mapRegion = PRVI25_RegionLoader.loadPRVI_MapExtents();
+				mapRegion.setName("PRVI - NSHMP Map Region");
+				regions.add(mapRegion);
 				regionMFDs.add(null);
 				regionTRTs.add(null);
 				

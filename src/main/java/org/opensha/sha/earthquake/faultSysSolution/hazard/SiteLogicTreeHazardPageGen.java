@@ -630,16 +630,20 @@ public class SiteLogicTreeHazardPageGen {
 				if (reordered == null) {
 					// first time
 					treeBranchIndexes = new HashMap<>(tree.size());
-					for (int index=0; index<tree.size(); index++)
-						treeBranchIndexes.put(tree.getBranch(index), index);
-					Preconditions.checkState(treeBranchIndexes.size() == tree.size());
+					for (int index=0; index<tree.size(); index++) {
+						LogicTreeBranch<?> tempBranch = tree.getBranch(index);
+						treeBranchIndexes.put(tempBranch, index);
+						Preconditions.checkState(treeBranchIndexes.containsKey(tempBranch));
+					}
+//					Preconditions.checkState(treeBranchIndexes.size() == tree.size());
 					reordered = new ArrayList<>(tree.size());
 					// fill in any that we already processed, and nulls after
 					for (int index=0; index<tree.size(); index++) {
-						if (index < i)
+						if (index < i) {
 							reordered.add(curves.get(index));
-						else
+						} else {
 							reordered.add(null);
+						}
 					}
 					System.out.println("Had to reorder hazard curves to match passed in logic tree; first mismatch i="
 							+i+" -> "+treeBranchIndexes.get(curveBranch)
@@ -654,14 +658,15 @@ public class SiteLogicTreeHazardPageGen {
 		}
 		if (reordered != null) {
 			// now see if there are any holes (will be the case if the passed in tree has duplicates)
-			int holes = 00;
+			int holes = 0;
 			for (int i=0; i<reordered.size(); i++) {
 				if (reordered.get(i) == null) {
 					holes++;
 					LogicTreeBranch<?> treeBranch = tree.getBranch(i);
 					// this branch should have been already filled in earlier
 					Integer prevIndex = treeBranchIndexes.get(treeBranch);
-					Preconditions.checkState(prevIndex != null && prevIndex < i, "No mappings found for branch %s", treeBranch);
+					Preconditions.checkState(prevIndex != null,
+							"No mappings found for branch %s; i=%s, prevIndex=%s", treeBranch, i, prevIndex);
 					reordered.set(i, reordered.get(prevIndex));
 				}
 			}

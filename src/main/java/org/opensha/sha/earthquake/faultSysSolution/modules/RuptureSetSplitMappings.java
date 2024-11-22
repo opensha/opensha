@@ -127,6 +127,20 @@ public class RuptureSetSplitMappings implements JSON_BackedModule {
 	public int getOrigRupID(int newRupID) {
 		return rupIDs_newToOld.get(newRupID);
 	}
+	
+	/**
+	 *  @return the new total number of rupture IDs after the splitting
+	 */
+	public int getNewNumRuptures() {
+		return rupIDs_newToOld.size();
+	}
+	
+	/**
+	 *  @return the new total number of section IDs after the splitting
+	 */
+	public int getNewNumSections() {
+		return sectIDs_newToOld.size();
+	}
 
 	@Override
 	public String getName() {

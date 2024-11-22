@@ -66,6 +66,7 @@ import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.imr.AttenRelRef;
+import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.logicTree.ScalarIMRsLogicTreeNode;
 import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
@@ -92,7 +93,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private SourceFilterManager sourceFilter;
 	
 	private SourceFilterManager siteSkipSourceFilter;
-	private Map<TectonicRegionType, AttenRelRef> gmmRefs;
+	private Map<TectonicRegionType, AttenRelSupplier> gmmRefs;
 	
 //	static final double[] PERIODS_DEFAULT = { 0d, 0.2d, 1d };
 	public static final double[] PERIODS_DEFAULT = { 0d, 1d };
@@ -937,7 +938,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				}
 				debug("Calculating hazard curves for "+index+", bgOption="+gridSeisOp.name()
 						+", combineExclude="+(combineWithExcludeCurves != null)
-						+", combineOnly="+(combineWithOnlyCurves != null)
+						+", combineOnly="+combineOnly
 						+"\n\tBranch: "+branch
 						+gmpeParamsStr);
 				Preconditions.checkState(!combineOnly, "Combine-only flag is set, but we need to calculate for "+branch);

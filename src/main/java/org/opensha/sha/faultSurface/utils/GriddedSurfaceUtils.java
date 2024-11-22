@@ -219,7 +219,7 @@ public class GriddedSurfaceUtils {
 					System.out.println("==== region ====");
 					System.out.println(locsForRegion);
 //					RegionUtils.locListToKML(locsForRegion, "distX_region", Color.RED);
-					System.exit(0);
+//					System.exit(0);
 				}
 				boolean isInside = polygon.contains(siteLoc);
 

@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
@@ -27,7 +28,7 @@ import com.google.common.base.Preconditions;
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
-	GEOLOGIC("Geologic Preferred", "Geologic", 0.9) {
+	GEOLOGIC("Geologic Preferred", "Geologic", 0.0) {
 		@Override
 		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
 			applyGeologicSlipRates(subSects, fullSects, GeoJSONFaultSection.SLIP_RATE);
@@ -36,13 +37,23 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 	GEOLOGIC_HIGH("Geologic High", "HighGeologic", 0.05) {
 		@Override
 		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
-			applyGeologicSlipRates(subSects, fullSects, "HighRate");
+			applyGeologicSlipRates(subSects, fullSects, PRVI25_CrustalFaultModels.HIGH_RATE_PROP_NAME);
 		}
 	},
 	GEOLOGIC_LOW("Geologic Low", "LowGeologic", 0.05) {
 		@Override
 		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
-			applyGeologicSlipRates(subSects, fullSects, "LowRate");
+			applyGeologicSlipRates(subSects, fullSects, PRVI25_CrustalFaultModels.LOW_RATE_PROP_NAME);
+		}
+	},
+	GEOLOGIC_DIST_AVG("Geologic Distribution Average", "GeologicDistAvg", 0.9d) {
+		@Override
+		protected void applySlipRates(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) {
+			try {
+				PRVI25_CrustalRandomlySampledDeformationModels.applyDistAvgSlipRates(subSects, fullSects);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
 		}
 	};
 	

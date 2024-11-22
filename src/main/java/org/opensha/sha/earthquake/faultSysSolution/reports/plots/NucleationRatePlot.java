@@ -64,8 +64,8 @@ public class NucleationRatePlot extends AbstractSolutionPlot {
 		}
 		
 		List<String> lines = new ArrayList<>();
-		lines.add("The gridded seismicity model attached to this solution is of type _"
-		+ClassUtils.getClassNameWithoutPackage(gridProv.getClass())+"_ and has a spatial resolution of "
+		lines.add("The gridded seismicity model attached to this solution is of type `"
+		+ClassUtils.getClassNameWithoutPackage(gridProv.getClass())+"` and has a spatial resolution of "
 				+(float)gridReg.getSpacing()+" degrees.");
 		lines.add("");
 		lines.add("The following maps show the faulting type at each grid cell from the gridded seismicity model:");

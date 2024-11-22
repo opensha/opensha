@@ -43,6 +43,7 @@ import org.opensha.sha.earthquake.faultSysSolution.reports.plots.CumulantMagnitu
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.FaultSectionConnectionsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.GeneralInfoPlot;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.GriddedDiagnosticPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionConfigurationPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionMisfitsPlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.InversionProgressPlot;
@@ -168,8 +169,10 @@ public class ReportPageGen {
 			plots.add(new InversionMisfitsPlot());
 		plots.add(new ParticipationRatePlot());
 		plots.add(new NucleationRatePlot());
-		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL || level == PlotLevel.REVIEW)
+		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL || level == PlotLevel.REVIEW) {
+			plots.add(new GriddedDiagnosticPlot());
 			plots.add(new SectBValuePlot());
+		}
 		if (level != PlotLevel.REVIEW)
 			plots.add(new PlausibilityConfigurationReport());
 		if (level == PlotLevel.DEFAULT || level == PlotLevel.FULL || level == PlotLevel.REVIEW) {

@@ -55,6 +55,7 @@ import com.google.common.primitives.Doubles;
 public class GeographicMapMaker {
 	
 	protected Region region;
+	protected Location regionCenter;
 	
 	/*
 	 * General line styles
@@ -163,6 +164,20 @@ public class GeographicMapMaker {
 	protected List<PlotCurveCharacterstics> lineChars;
 	protected float lineThickness = 2f;
 	
+	/**
+	 * Arrows
+	 */
+	protected List<LocationList> arrows;
+	protected Color arrowColor;
+	protected Color arrowheadColor;
+	protected double arrowheadLenKM;
+	protected List<Color> arrowColors;
+	protected float arrowThickness = 2f;
+	protected float arrowheadThickness = 2f;
+	protected double arrowAngle = 45d;
+	protected boolean fillArrowheads = false;
+	protected boolean closeArrowheads = false;
+	
 	/*
 	 * Gridded (XYZ) data
 	 */
@@ -183,6 +198,8 @@ public class GeographicMapMaker {
 	 */
 	protected List<String> customLegendLabels;
 	protected List<PlotCurveCharacterstics> customLegendChars;
+	
+	protected RectangleEdge cptEdge = RectangleEdge.BOTTOM;
 	
 	/**
 	 * Annotations
@@ -205,12 +222,16 @@ public class GeographicMapMaker {
 	}
 	
 	public GeographicMapMaker(List<? extends FaultSection> sects) {
-		this(buildBufferedRegion(sects));
+		this(buildBufferedRegion(sects), sects);
+	}
+	
+	public GeographicMapMaker(Region region, List<? extends FaultSection> sects) {
+		this(region);
 		setFaultSections(sects);
 	}
 	
 	public GeographicMapMaker(Region region, XY_DataSet[] politicalBoundaries) {
-		this.region = region;
+		setRegion(region);
 		this.politicalBoundaries = politicalBoundaries;
 	}
 	
@@ -307,6 +328,7 @@ public class GeographicMapMaker {
 	
 	public void setRegion(Region region) {
 		this.region = region;
+		this.regionCenter = new Location(0.5*(region.getMinLat()+region.getMaxLat()), 0.5*(region.getMinLon()+region.getMaxLon()));
 	}
 
 	public void setPoliticalBoundaryChar(PlotCurveCharacterstics politicalBoundaryChar) {
@@ -377,6 +399,10 @@ public class GeographicMapMaker {
 	public void clearCustomLegendItems() {
 		this.customLegendLabels = null;
 		this.customLegendChars = null;
+	}
+	
+	public void setCPTLocation(RectangleEdge cptEdge) {
+		this.cptEdge = cptEdge;
 	}
 	
 	public void setAnnotations(List<? extends XYAnnotation> anns) {
@@ -688,6 +714,62 @@ public class GeographicMapMaker {
 		lineColors = null;
 		linesColor = null;
 		lineChars = null;
+	}
+	
+	public void plotArrows(List<LocationList> arrows, double arrowheadLenKM, Color color, float thickness) {
+		plotArrows(arrows, arrowheadLenKM, color, thickness, null, thickness);
+	}
+	
+	public void plotArrows(List<LocationList> arrows, double arrowheadLenKM, Color color, float thickness,
+			Color headColor, float headThickness) {
+		clearArrows();
+		Preconditions.checkState(arrowheadLenKM > 0d);
+		Preconditions.checkNotNull(arrows);
+		Preconditions.checkNotNull(color);
+		this.arrows = arrows;
+		this.arrowheadLenKM = arrowheadLenKM;
+		this.arrowColor = color;
+		this.arrowThickness = thickness;
+		this.arrowheadColor = headColor;
+		this.arrowheadThickness = headThickness;
+	}
+	
+	public void plotArrows(List<LocationList> arrows, double arrowheadLenKM, List<Color> colors, float thickness) {
+		plotArrows(arrows, arrowheadLenKM, colors, thickness, null, thickness);
+	}
+	
+	public void plotArrows(List<LocationList> arrows, double arrowheadLenKM, List<Color> colors, float thickness,
+			Color headColor, float headThickness) {
+		clearArrows();
+		Preconditions.checkState(arrowheadLenKM > 0d);
+		Preconditions.checkNotNull(arrows);
+		Preconditions.checkNotNull(colors);
+		Preconditions.checkState(arrows.size() == colors.size());
+		this.arrows = arrows;
+		this.arrowheadLenKM = arrowheadLenKM;
+		this.arrowColors = colors;
+		this.arrowThickness = thickness;
+		this.arrowheadColor = headColor;
+		this.arrowheadThickness = headThickness;
+	}
+	
+	public void setArrowAngle(double arrowAngle) {
+		this.arrowAngle = arrowAngle;
+	}
+	
+	public void setFillArrowheads(boolean fillArrowheads) {
+		this.fillArrowheads = fillArrowheads;
+	}
+	
+	public void setCloseArrowheads(boolean closeArrowheads) {
+		this.closeArrowheads = closeArrowheads;
+	}
+	
+	public void clearArrows() {
+		arrows = null;
+		arrowColors = null;
+		arrowheadColor = null;
+		arrowColor = null;
 	}
 	
 	public void plotXYZData(GeoDataSet xyzData, CPT xyzCPT, String xyzLabel) {
@@ -1225,7 +1307,7 @@ public class GeographicMapMaker {
 				}
 				
 				if (sectScalarLabel != null && sectScalarCPT != null)
-					cptLegend.add(buildCPTLegend(sectScalarCPT, sectScalarLabel));
+					cptLegend.add(buildCPTLegend(sectScalarCPT, sectScalarLabel, cptEdge));
 			} else if (sectColors != null || sectChars != null) {
 				List<? extends Double> comps = null;
 				boolean colors;
@@ -1296,9 +1378,9 @@ public class GeographicMapMaker {
 				}
 				
 				if (colors && sectColorsCPT != null)
-					cptLegend.add(buildCPTLegend(sectColorsCPT, sectColorsLabel));
+					cptLegend.add(buildCPTLegend(sectColorsCPT, sectColorsLabel, cptEdge));
 				if (!colors && sectCharsCPT != null)
-					cptLegend.add(buildCPTLegend(sectCharsCPT, sectCharsLabel));
+					cptLegend.add(buildCPTLegend(sectCharsCPT, sectCharsLabel, cptEdge));
 			}
 			
 			if (highlightSections != null && highlightTraceChar != null) {
@@ -1400,7 +1482,7 @@ public class GeographicMapMaker {
 				}
 
 				if (scalarJumpsLabel != null && scalarJumpsCPT != null)
-					cptLegend.add(buildCPTLegend(scalarJumpsCPT, scalarJumpsLabel));
+					cptLegend.add(buildCPTLegend(scalarJumpsCPT, scalarJumpsLabel, cptEdge));
 			}
 		}
 		
@@ -1454,7 +1536,7 @@ public class GeographicMapMaker {
 				}
 				
 				if (scatterScalarLabel != null && scatterScalarCPT != null)
-					cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel));
+					cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel, cptEdge));
 			} else if (scatterChars != null) {
 				for (int j=0; j<scatterLocs.size(); j++) {
 					Location loc = scatterLocs.get(j);
@@ -1487,7 +1569,7 @@ public class GeographicMapMaker {
 				}
 				
 				if (scatterScalarLabel != null && scatterScalarCPT != null)
-					cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel));
+					cptLegend.add(buildCPTLegend(scatterScalarCPT, scatterScalarLabel, cptEdge));
 			} else {
 				XY_DataSet outlines = scatterOutline == null ? null : new DefaultXY_DataSet();
 				Preconditions.checkNotNull(scatterColor);
@@ -1539,6 +1621,49 @@ public class GeographicMapMaker {
 			}
 		}
 		
+		protected void plotLine(LocationList line, Color color, float lineThickness) {
+			plotLine(line, new PlotCurveCharacterstics(PlotLineType.SOLID, lineThickness, color));
+		}
+		
+		protected void plotLine(LocationList line, PlotCurveCharacterstics lineChar) {
+			plotLines(List.of(line), List.of(lineChar));
+		}
+		
+		protected void plotLines(List<LocationList> lines, List<PlotCurveCharacterstics> lineChars) {
+			for (int i=0; i<lines.size(); i++) {
+				LocationList line = lines.get(i);
+				PlotCurveCharacterstics lineChar = lineChars.size() == 1 ? lineChars.get(0) : lineChars.get(i);
+				XY_DataSet xy = new DefaultXY_DataSet();
+				for (Location loc : line)
+					xy.set(loc.getLongitude(), loc.getLatitude());
+				
+				funcs.add(xy);
+				chars.add(lineChar);
+			}
+			
+			if (writeGeoJSON) {
+				if (lines.size() > 1 && lineChars.size() == 1) {
+					// bundle them
+					PlotCurveCharacterstics lineChar = lineChars.get(0);
+					FeatureProperties props = new FeatureProperties();
+					float width = lineChar.getLineWidth();
+					props.set(FeatureProperties.STROKE_WIDTH_PROP, width);
+					props.set(FeatureProperties.STROKE_COLOR_PROP, lineChar.getColor());
+					features.add(new Feature(new Geometry.MultiLineString(lines), props));
+				} else {
+					for (int i=0; i<lines.size(); i++) {
+						LocationList line = lines.get(i);
+						PlotCurveCharacterstics lineChar = lineChars.get(i);
+						FeatureProperties props = new FeatureProperties();
+						float width = lineChar.getLineWidth();
+						props.set(FeatureProperties.STROKE_WIDTH_PROP, width);
+						props.set(FeatureProperties.STROKE_COLOR_PROP, lineChar.getColor());
+						features.add(new Feature(new Geometry.LineString(line), props));
+					}
+				}
+			}
+		}
+		
 		protected void plotLines() {
 			if (lines == null || lines.isEmpty())
 				return;
@@ -1546,63 +1671,78 @@ public class GeographicMapMaker {
 				for (int j=0; j<lines.size(); j++) {
 					LocationList line = lines.get(j);
 					Color color = lineColors.get(j);
-					PlotCurveCharacterstics xyChar = new PlotCurveCharacterstics(PlotLineType.SOLID, lineThickness, color);
 					
-					XY_DataSet xy = new DefaultXY_DataSet();
-					for (Location loc : line)
-						xy.set(loc.getLongitude(), loc.getLatitude());
-					
-					funcs.add(xy);
-					chars.add(xyChar);
-					
-					if (writeGeoJSON) {
-						FeatureProperties props = new FeatureProperties();
-						float width = xyChar.getLineWidth();
-						props.set(FeatureProperties.STROKE_WIDTH_PROP, width);
-						props.set(FeatureProperties.STROKE_COLOR_PROP, color);
-						features.add(new Feature(new Geometry.LineString(line), props));
-					}
+					plotLine(line, color, lineThickness);
 				}
 			} else if (lineChars != null) {
 				for (int j=0; j<lines.size(); j++) {
 					LocationList line = lines.get(j);
 					PlotCurveCharacterstics xyChar = lineChars.get(j);
 					
-					XY_DataSet xy = new DefaultXY_DataSet();
-					for (Location loc : line)
-						xy.set(loc.getLongitude(), loc.getLatitude());
+					plotLine(line, xyChar);
+				}
+			} else {
+				plotLines(lines, List.of(new PlotCurveCharacterstics(PlotLineType.SOLID, lineThickness, linesColor)));
+			}
+		}
+		
+		protected void plotArrows() {
+			if (arrows == null || arrows.isEmpty())
+				return;
+			if (arrowColors != null) {
+				// multiple colors
+				for (int j=0; j<arrows.size(); j++) {
+					LocationList arrow = arrows.get(j);
+					Color color = arrowColors.get(j);
+					PlotCurveCharacterstics xyChar = new PlotCurveCharacterstics(PlotLineType.SOLID, arrowThickness, color);
 					
-					funcs.add(xy);
-					chars.add(xyChar);
+					plotLine(arrow, xyChar);
+					Color headColor = arrowheadColor == null ? color : arrowheadColor;
 					
-					if (writeGeoJSON) {
-						FeatureProperties props = new FeatureProperties();
-						float width = xyChar.getLineWidth();
-						props.set(FeatureProperties.STROKE_WIDTH_PROP, width);
-						props.set(FeatureProperties.STROKE_COLOR_PROP, xyChar.getColor());
-						features.add(new Feature(new Geometry.LineString(line), props));
+					LocationList arrowhead = buildArrowhead(arrow);
+					if (fillArrowheads) {
+						plotLine(arrowhead, new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 1f, headColor));
+					} else {
+						plotLine(arrowhead, new PlotCurveCharacterstics(PlotLineType.SOLID, arrowheadThickness, headColor));
 					}
 				}
 			} else {
-				PlotCurveCharacterstics xyChar = new PlotCurveCharacterstics(PlotLineType.SOLID, lineThickness, linesColor);
-				for (int j=0; j<lines.size(); j++) {
-					LocationList line = lines.get(j);
-					
-					XY_DataSet xy = new DefaultXY_DataSet();
-					for (Location loc : line)
-						xy.set(loc.getLongitude(), loc.getLatitude());
-					
-					funcs.add(xy);
-					chars.add(xyChar);
-				}
-				if (writeGeoJSON) {
-					FeatureProperties props = new FeatureProperties();
-					float width = xyChar.getLineWidth();
-					props.set(FeatureProperties.STROKE_WIDTH_PROP, width);
-					props.set(FeatureProperties.STROKE_COLOR_PROP, linesColor);
-					features.add(new Feature(new Geometry.MultiLineString(lines), props));
+				// single color
+				
+				// first plot all of the lines
+				plotLines(arrows, List.of(new PlotCurveCharacterstics(PlotLineType.SOLID, arrowThickness, arrowColor)));
+				
+				// plot all arrowheads
+				List<LocationList> arrowheads = new ArrayList<>(arrows.size());
+				for (LocationList arrow : arrows)
+					arrowheads.add(buildArrowhead(arrow));
+				Color headColor = arrowheadColor == null ? arrowColor : arrowheadColor;
+				if (fillArrowheads) {
+					plotLines(arrowheads, List.of(new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 1f, headColor)));
+				} else {
+					plotLines(arrowheads, List.of(new PlotCurveCharacterstics(PlotLineType.SOLID, arrowheadThickness, headColor)));
 				}
 			}
+		}
+		
+		protected LocationList buildArrowhead(LocationList arrowLine) {
+			Preconditions.checkState(arrowLine.size() > 1);
+			Location end = arrowLine.last();
+			Location prev = arrowLine.get(arrowLine.size()-2);
+			return buildArrowhead(end, LocationUtils.azimuth(prev, end));
+		}
+		
+		protected LocationList buildArrowhead(Location end, double lineAzimuth) {
+			if (fillArrowheads) {
+				// move end to middle of arrowhead
+				double middleDist = 0.5 * arrowheadLenKM * Math.cos(Math.toRadians(arrowAngle));
+				end = getLocationWithConstantProjectedDistance(end, lineAzimuth, middleDist);
+			}
+			Location arrowStart = getLocationWithConstantProjectedDistance(end, lineAzimuth - 180 + arrowAngle, arrowheadLenKM);
+			Location arrowEnd = getLocationWithConstantProjectedDistance(end, lineAzimuth + 180 - arrowAngle, arrowheadLenKM);
+			if (closeArrowheads || fillArrowheads)
+				return LocationList.of(arrowStart, end, arrowEnd, arrowStart);
+			return LocationList.of(arrowStart, end, arrowEnd);
 		}
 		
 		protected void plotLast() {
@@ -1633,6 +1773,8 @@ public class GeographicMapMaker {
 			plotJumps();
 			
 			plotLines();
+			
+			plotArrows();
 			
 			plotScatters();
 			
@@ -1734,6 +1876,10 @@ public class GeographicMapMaker {
 	}
 	
 	public static PaintScaleLegend buildCPTLegend(CPT cpt, String label) {
+		return buildCPTLegend(cpt, label, RectangleEdge.BOTTOM);
+	}
+	
+	public static PaintScaleLegend buildCPTLegend(CPT cpt, String label, RectangleEdge edge) {
 		double cptLen = cpt.getMaxValue() - cpt.getMinValue();
 		double cptTick = cpt.getPreferredTickInterval();
 		if (!Double.isFinite(cptTick)) {
@@ -1761,7 +1907,7 @@ public class GeographicMapMaker {
 				cptTick = cptLen / 10d;
 		}
 		return GraphPanel.getLegendForCPT(cpt, label, PLOT_PREFS_DEFAULT.getAxisLabelFontSize(),
-				PLOT_PREFS_DEFAULT.getTickLabelFontSize(), cptTick, RectangleEdge.BOTTOM);
+				PLOT_PREFS_DEFAULT.getTickLabelFontSize(), cptTick, edge);
 	}
 	
 	public void setDefaultPlotWidth(int widthDefault) {
@@ -1778,6 +1924,26 @@ public class GeographicMapMaker {
 
 	public void setAxisTicksVisible(boolean axisTicks) {
 		this.axisTicks = axisTicks;
+	}
+	
+	public Location getLocationWithConstantProjectedDistance(Location fromLoc, double azimuthDeg, double distance) {
+		return getLocationWithConstantProjectedDistance(fromLoc, regionCenter, azimuthDeg, distance);
+	}
+	
+	public static Location getLocationWithConstantProjectedDistance(Location fromLoc, Location refCenterLoc, double azimuthDeg, double distance) {
+		// calculate the length in the middle of the region so we don't get any distortion with large regions
+		Location toLoc = LocationUtils.location(refCenterLoc, Math.toRadians(azimuthDeg), distance);
+		// now move to the correct spot
+		return new Location(fromLoc.lat - (refCenterLoc.lat - toLoc.lat), fromLoc.lon - (refCenterLoc.lon - toLoc.lon));
+	}
+	
+	public double getRotationAngleCorrectedForAspectRatio(double angleRad) {
+		return getRotationAngleCorrectedForAspectRatio(angleRad, regionCenter);
+	}
+	
+	public static double getRotationAngleCorrectedForAspectRatio(double angleRad, Location refCenterLoc) {
+		// double correct for aspect ratio effects
+		return Math.atan(Math.tan(angleRad) * Math.cos(refCenterLoc.getLatRad()));
 	}
 
 	public void plot(File outputDir, String prefix, String title) throws IOException {
