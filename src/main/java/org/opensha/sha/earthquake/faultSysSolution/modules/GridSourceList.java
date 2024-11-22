@@ -35,6 +35,7 @@ import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
 import org.opensha.commons.util.modules.helpers.CSV_BackedModule;
 import org.opensha.commons.util.modules.helpers.FileBackedModule;
+import org.opensha.commons.util.modules.helpers.LargeCSV_BackedModule;
 import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSourceData;
@@ -356,6 +357,14 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			Range.openClosed(135d, 180d));
 	private static Range<Double> REV_RANGE = Range.closed(45d, 135d);
 	private static Range<Double> NORM_RANGE = Range.closed(-135d, -45d);
+	
+	public static FocalMech getMechForRake(double rake) {
+		if (REV_RANGE.contains(rake))
+			return FocalMech.REVERSE;
+		if (NORM_RANGE.contains(rake))
+			return FocalMech.NORMAL;
+		return FocalMech.STRIKE_SLIP;
+	}
 
 	@Override
 	public double getFracStrikeSlip(int gridIndex) {
@@ -735,10 +744,25 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		public final double strike;
 		public final Range<Double> strikeRange;
 		// FINITE PROPERTIES
+		/**
+		 * Rupture upper depth in km
+		 */
 		public final double upperDepth;
+		/**
+		 * Rupture lower depth in km
+		 */
 		public final double lowerDepth;
+		/**
+		 * Rupture length in km
+		 */
 		public final double length;
+		/**
+		 * Rupture hypocentral depth in km, or NaN (assumed halfway)
+		 */
 		public final double hypocentralDepth;
+		/**
+		 * Rupture hypocentral distance along strike in km, or NaN (assumed halfway)
+		 */
 		public final double hypocentralDAS;
 		// TECTONIC REGIME
 		public final TectonicRegionType tectonicRegionType;
@@ -1006,16 +1030,16 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		public int compare(GriddedRuptureProperties rup1, GriddedRuptureProperties rup2) {
 			int result;
 
-			result = Double.compare(rup1.magnitude, rup2.magnitude);
+			result = doubleCompAsFloat(rup1.magnitude, rup2.magnitude);
 			if (result != 0) return result;
 
-			result = Double.compare(rup1.rake, rup2.rake);
+			result = doubleCompAsFloat(rup1.rake, rup2.rake);
 			if (result != 0) return result;
 
-			result = Double.compare(rup1.dip, rup2.dip);
+			result = doubleCompAsFloat(rup1.dip, rup2.dip);
 			if (result != 0) return result;
 
-			result = Double.compare(rup1.strike, rup2.strike);
+			result = doubleCompAsFloat(rup1.strike, rup2.strike);
 			if (result != 0) return result;
 
 			if (rup1.strikeRange == null && rup2.strikeRange != null) return -1;
@@ -1028,30 +1052,34 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			}
 			
 			// treat each unique hypocentral depth as separate, but we'll average quantities that affect DDW (and length)
-			result = Double.compare(rup1.getHypocentralDepth(), rup2.getHypocentralDepth());
+			result = doubleCompAsFloat(rup1.getHypocentralDepth(), rup2.getHypocentralDepth());
 			if (result != 0) return result;
 			// same with fractional DAS--we don't want to average explicitly set DAS values
-			result = Double.compare(rup1.getFractionalHypocentralDAS(), rup2.getFractionalHypocentralDAS());
+			result = doubleCompAsFloat(rup1.getFractionalHypocentralDAS(), rup2.getFractionalHypocentralDAS());
 
 			if (!averageQuantitiesOnly) {
-				result = Double.compare(rup1.upperDepth, rup2.upperDepth);
+				result = doubleCompAsFloat(rup1.upperDepth, rup2.upperDepth);
 				if (result != 0) return result;
 
-				result = Double.compare(rup1.lowerDepth, rup2.lowerDepth);
+				result = doubleCompAsFloat(rup1.lowerDepth, rup2.lowerDepth);
 				if (result != 0) return result;
 
-				result = Double.compare(rup1.length, rup2.length);
+				result = doubleCompAsFloat(rup1.length, rup2.length);
 				if (result != 0) return result;
 
-				result = Double.compare(rup1.hypocentralDAS, rup2.hypocentralDAS);
+				result = doubleCompAsFloat(rup1.hypocentralDAS, rup2.hypocentralDAS);
 				if (result != 0) return result;
 
-				result = Double.compare(rup1.hypocentralDepth, rup2.hypocentralDepth);
+				result = doubleCompAsFloat(rup1.hypocentralDepth, rup2.hypocentralDepth);
 				if (result != 0) return result;
 			}
 
 			result = rup1.tectonicRegionType.compareTo(rup2.tectonicRegionType);
 			return result;
+		}
+		
+		private int doubleCompAsFloat(double val1, double val2) {
+			return Float.compare((float)val1, (float)val2);
 		}
 		
 	}
@@ -1247,7 +1275,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	}
 	
 	private static class RuptureAverager {
-		private double rateWeightedSum = 0d;;
+		private double rateWeightedSum = 0d;
 		private int[] associatedSectIDs = null;
 		private double[] associatedWeightedRates = null;
 		
@@ -1305,6 +1333,11 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		}
 		
 		public GriddedRupture build(int gridIndex, Location loc, double sumWeights, GriddedRupturePropertiesCache cache) {
+//			boolean D =  gridIndex == 246 && (float)firstProps.magnitude == 7.85f;
+//			boolean D =  gridIndex == 416 && (float)firstProps.magnitude == 7.75f;
+			boolean D = false;
+			if (D) System.out.println("DEBUG build(gridIndex="+gridIndex+", mag="+(float)firstProps.magnitude
+						+", sumWeights="+(float)sumWeights+"); processedSumWeights="+(float)processedSumWeights);
 			double[] associatedFracts = null;
 			if (associatedWeightedRates != null) {
 				associatedFracts = new double[associatedWeightedRates.length];
@@ -1315,6 +1348,8 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			GriddedRuptureProperties properties = allPropsIdentical ?
 					firstProps : cache.getCached(propAverager.build(firstProps, processedSumWeights, sumWeights));
 			// rate needs to be normalized by the overall sum of weights (i.e., 0-weight assigned on branches where this rupture doesn't exist)
+			if (D) System.out.println("\tfirst props: "+firstProps);
+			if (D) System.out.println("\tbuilt props: "+properties);
 			double rate = rateWeightedSum/sumWeights;
 			return new GriddedRupture(gridIndex, loc, properties, rate, associatedSectIDs, associatedFracts);
 		}
@@ -1322,6 +1357,8 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	
 	private static class PropAverager {
 		private double weightedSum = 0d;
+		// keep the first value in case they're all the same, in which case we'll use it directly
+		// to avoid introducing floating point errors
 		private Double firstVal;
 		private boolean allSame;
 		
@@ -1347,8 +1384,10 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 				// every single branch (not just those processed here) had the same value, just return it
 				return firstVal;
 			}
-			Preconditions.checkState(overallSumWeights > 0d);
-			return weightedSum/overallSumWeights;
+			// this is a property (e.g., depth, length, etc), normalize by the weight of matching ruptures
+			// and not the overall weight (as we would if there were a rate quantity)
+			Preconditions.checkState(processedSumWeights > 0d);
+			return weightedSum/processedSumWeights;
 		}
 	}
 	
@@ -2013,7 +2052,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			LocationList locs = loadGridLocsCSV(gridCSV, gridReg);
 			
 			// load ruptures themselves
-			CSVReader rupSectsCSV = CSV_BackedModule.loadLargeFileFromArchive(input, entryPrefix, ARCHIVE_GRID_SOURCES_FILE_NAME);
+			CSVReader rupSectsCSV = LargeCSV_BackedModule.loadFromArchive(input, entryPrefix, ARCHIVE_GRID_SOURCES_FILE_NAME);
 			EnumMap<TectonicRegionType, List<List<GriddedRupture>>> trtRuptureLists = loadGridSourcesCSV(rupSectsCSV, locs);
 			setAll(gridReg, locs, trtRuptureLists);
 		}

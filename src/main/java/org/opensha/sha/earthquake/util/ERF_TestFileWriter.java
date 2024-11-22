@@ -635,7 +635,7 @@ public class ERF_TestFileWriter {
 		File refDir = new File(outputBaseDir, "master");
 		File testDir = new File(outputBaseDir, "point_source_refactor");
 		
-		boolean write = true;
+		boolean write = false;
 		boolean compare = !write;
 		String debugName = null;
 		int debugSourceID = -1;
@@ -754,10 +754,11 @@ public class ERF_TestFileWriter {
 						if (params.containsParameter(MeanUCERF2.CYBERSHAKE_DDW_CORR_PARAM_NAME)) {
 							ERF erf2 = (ERF)ref.instance();
 							// don't bother enabling background for CS DDW
+							setBackgroudEnabled(erf2, false);
 							erf2.setParameter(MeanUCERF2.CYBERSHAKE_DDW_CORR_PARAM_NAME, true);
 							erf2.updateForecast();
 							erfInstances.add(erf2);
-							erfSuffixes.add("_ds_ddw");
+							erfSuffixes.add("_cs_ddw");
 						}
 						
 						for (int e=0; e<erfInstances.size(); e++) {
@@ -826,6 +827,8 @@ public class ERF_TestFileWriter {
 		
 		if (compare)
 			compareDirs(refDir, testDir);
+		
+		System.out.println("\nDONE");
 		
 		System.exit(0);
 	}

@@ -7,12 +7,18 @@ import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import org.opensha.commons.calc.FaultMomentCalc;
+import org.opensha.commons.data.CSVReader;
+import org.opensha.commons.data.CSVReader.Row;
+import org.opensha.commons.data.CSVWriter;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.ArchivableModule;
+import org.opensha.commons.util.modules.AverageableModule;
+import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.commons.util.modules.AverageableModule.ConstantAverageable;
 import org.opensha.commons.util.modules.OpenSHA_Module;
+import org.opensha.commons.util.modules.helpers.LargeCSV_BackedModule;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
@@ -21,16 +27,10 @@ import com.google.common.base.Preconditions;
 
 import scratch.UCERF3.enumTreeBranches.SlipAlongRuptureModels;
 
-public abstract class SlipAlongRuptureModel implements OpenSHA_Module, ConstantAverageable<SlipAlongRuptureModel>,
-SplittableRuptureModule<SlipAlongRuptureModel> {
+public abstract class SlipAlongRuptureModel implements OpenSHA_Module {
 
 	public static SlipAlongRuptureModel forModel(SlipAlongRuptureModelBranchNode slipAlong) {
 		return slipAlong.getModel();
-	}
-
-	@Override
-	public Class<SlipAlongRuptureModel> getAveragingType() {
-		return SlipAlongRuptureModel.class;
 	}
 	
 	/**
@@ -113,7 +113,8 @@ SplittableRuptureModule<SlipAlongRuptureModel> {
 	public abstract double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet,
 			int rthRup, double[] sectArea, double aveSlip);
 	
-	private static abstract class NamedSlipAlongRuptureModel extends SlipAlongRuptureModel implements ArchivableModule {
+	public static abstract class NamedSlipAlongRuptureModel extends SlipAlongRuptureModel implements ArchivableModule,
+		ConstantAverageable<NamedSlipAlongRuptureModel>, SplittableRuptureModule<NamedSlipAlongRuptureModel>{
 		
 		@Override
 		public void writeToArchive(ArchiveOutput output, String entryPrefix) throws IOException {
@@ -123,6 +124,27 @@ SplittableRuptureModule<SlipAlongRuptureModel> {
 		@Override
 		public void initFromArchive(ArchiveInput input, String entryPrefix) throws IOException {
 			// do nothing (no deserialization required, just must be listed)
+		}
+
+		@Override
+		public Class<NamedSlipAlongRuptureModel> getAveragingType() {
+			return NamedSlipAlongRuptureModel.class;
+		}
+
+		@Override
+		public boolean isIdentical(NamedSlipAlongRuptureModel module) {
+			return this.getClass().equals(module.getClass());
+		}
+
+		@Override
+		public NamedSlipAlongRuptureModel getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
+			return this;
+		}
+
+		@Override
+		public NamedSlipAlongRuptureModel getForSplitRuptureSet(FaultSystemRupSet splitRupSet,
+				RuptureSetSplitMappings mappings) {
+			return this;
 		}
 		
 	}
@@ -154,7 +176,7 @@ SplittableRuptureModule<SlipAlongRuptureModel> {
 		
 	}
 	
-	private static double[] calcUniformSlipAlong(int numSects, double aveSlip) {
+	protected static double[] calcUniformSlipAlong(int numSects, double aveSlip) {
 		double[] slipsForRup = new double[numSects];
 		
 		for(int s=0; s<slipsForRup.length; s++)
@@ -208,6 +230,10 @@ SplittableRuptureModule<SlipAlongRuptureModel> {
 		@Override
 		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup,
 				double[] sectArea, double aveSlip) {
+			return calcSlipOnSectionsForRup(sectArea, rupSet.getAreaForRup(rthRup), aveSlip);
+		}
+
+		public double[] calcSlipOnSectionsForRup(double[] sectArea, double rupArea, double aveSlip) {
 			double[] slipsForRup = new double[sectArea.length];
 			
 			// note that the ave slip is partitioned by area, not length; this is so the final model is moment balanced.
@@ -241,7 +267,7 @@ SplittableRuptureModule<SlipAlongRuptureModel> {
 			}
 			double normBegin=0, normEnd, scaleFactor;
 			for(int s=0; s<slipsForRup.length; s++) {
-				normEnd = normBegin + sectArea[s]/rupSet.getAreaForRup(rthRup);
+				normEnd = normBegin + sectArea[s]/rupArea;
 				// fix normEnd values that are just past 1.0
 				//					if(normEnd > 1 && normEnd < 1.00001) normEnd = 1.0;
 				if(normEnd > 1 && normEnd < 1.01) normEnd = 1.0;
@@ -341,21 +367,147 @@ SplittableRuptureModule<SlipAlongRuptureModel> {
 		}
 		
 	}
+	
+	public static class Precomputed extends SlipAlongRuptureModel implements LargeCSV_BackedModule,
+		AverageableModule<Precomputed>, SplittableRuptureModule<Precomputed> {
+		
+		public static final String FILE_NAME = "slip_along_ruptures.csv";
+		
+		private List<double[]> slipsAlong;
+		
+		@SuppressWarnings("unused") // used for deserialization, just not directly
+		private Precomputed() {};
+		
+		public Precomputed(List<double[]> slipsAlong) {
+			this.slipsAlong = slipsAlong;
+		}
 
-	@Override
-	public boolean isIdentical(SlipAlongRuptureModel module) {
-		return this.getClass().equals(module.getClass());
+		@Override
+		public String getName() {
+			return "Precomputed Slip Along Ruptures";
+		}
+
+		@Override
+		public double[] calcSlipOnSectionsForRup(FaultSystemRupSet rupSet, int rthRup, double[] sectArea,
+				double aveSlip) {
+			Preconditions.checkState(rupSet == null || rupSet.getNumRuptures() == slipsAlong.size(),
+					"Rupture set has a different rupture count than we do");
+			return slipsAlong.get(rthRup);
+		}
+
+		@Override
+		public Precomputed getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
+			List<double[]> subset = new ArrayList<>(mappings.getNumRetainedRuptures());
+			for (int r=0; r<mappings.getNumRetainedRuptures(); r++)
+				subset.add(slipsAlong.get(mappings.getOrigRupID(r)));
+			return new Precomputed(subset);
+		}
+
+		@Override
+		public Precomputed getForSplitRuptureSet(FaultSystemRupSet splitRupSet, RuptureSetSplitMappings mappings) {
+			List<double[]> splitSet = new ArrayList<>(mappings.getNewNumRuptures());
+			for (int r=0; r<mappings.getNewNumRuptures(); r++)
+				splitSet.add(slipsAlong.get(mappings.getOrigRupID(r)));
+			return new Precomputed(splitSet);
+		}
+
+		@Override
+		public AveragingAccumulator<Precomputed> averagingAccumulator() {
+			return new PrecomputedAverager();
+		}
+
+		@Override
+		public String getFileName() {
+			return FILE_NAME;
+		}
+
+		@Override
+		public void writeCSV(CSVWriter writer) throws IOException {
+			writer.write(List.of("Rupture Index", "Section Slip 1 (m)", "...", "Section Slip N (m)"));
+			for (int r=0; r<slipsAlong.size(); r++) {
+				double[] slips = slipsAlong.get(r);
+				List<String> line = new ArrayList<>(slips.length+1);
+				line.add(r+"");
+				for (double slip : slips)
+					line.add(slip+"");
+				writer.write(line);
+			}
+		}
+
+		@Override
+		public void initFromCSV(CSVReader csv) {
+			List<double[]> slipsAlong = new ArrayList<>();
+			csv.read(); // skip the first line
+			for (Row row : csv) {
+				int index = row.getInt(0);
+				Preconditions.checkState(index == slipsAlong.size(),
+						"Rows out of order? Encountered rupture index %s, expected %s", index, slipsAlong.size());
+				double[] slips = new double[row.columns()-1];
+				for (int i=0; i<slips.length; i++)
+					slips[i] = row.getDouble(i+1);
+				slipsAlong.add(slips);
+			}
+			this.slipsAlong = slipsAlong;
+		}
+		
 	}
+	
+	private static class PrecomputedAverager implements AveragingAccumulator<Precomputed> {
+		
+		private double sumWeights;
+		private List<double[]> weightedSlipsAlong;
 
-	@Override
-	public SlipAlongRuptureModel getForRuptureSubSet(FaultSystemRupSet rupSubSet, RuptureSubSetMappings mappings) {
-		return this;
-	}
+		@Override
+		public Class<Precomputed> getType() {
+			return Precomputed.class;
+		}
 
-	@Override
-	public SlipAlongRuptureModel getForSplitRuptureSet(FaultSystemRupSet splitRupSet,
-			RuptureSetSplitMappings mappings) {
-		return this;
+		@Override
+		public void process(Precomputed module, double relWeight) {
+			// TODO Auto-generated method stub
+			if (weightedSlipsAlong == null) {
+				weightedSlipsAlong = new ArrayList<>(module.slipsAlong.size());
+				for (int i=0; i<module.slipsAlong.size(); i++)
+					weightedSlipsAlong.add(new double[module.slipsAlong.get(i).length]);
+				sumWeights = 0d;
+			}
+			if (relWeight == 0d)
+				return;
+			
+			Preconditions.checkState(module.slipsAlong.size() == weightedSlipsAlong.size(),
+					"Passed in module has a different rupture count: %s != %s",
+					module.slipsAlong.size(), weightedSlipsAlong.size());
+			for (int r=0; r<weightedSlipsAlong.size(); r++) {
+				double[] weightedSlips = weightedSlipsAlong.get(r);
+				double[] moduleSlips = module.slipsAlong.get(r);
+				Preconditions.checkState(moduleSlips.length == weightedSlips.length,
+						"Passed in module has a different section count for rupture %s: %s != %s",
+						r, moduleSlips.length, weightedSlips.length);
+				for (int s=0; s<weightedSlips.length; s++)
+					weightedSlips[s] += relWeight*moduleSlips[s];
+			}
+		}
+
+		@Override
+		public Precomputed getAverage() {
+			Preconditions.checkNotNull(weightedSlipsAlong, "Never initialized (or was reused?)");
+			Preconditions.checkState(sumWeights > 0d, "All weights were zero");
+			
+			if (sumWeights != 1d) {
+				double scalar = 1d/sumWeights;
+				for (int r=0; r<weightedSlipsAlong.size(); r++) {
+					double[] weightedSlips = weightedSlipsAlong.get(r);
+					for (int s=0; s<weightedSlips.length; s++)
+						weightedSlips[s] *= scalar;
+				}
+			}
+			Precomputed ret = new Precomputed(weightedSlipsAlong);
+			
+			weightedSlipsAlong = null;
+			sumWeights = Double.NaN;
+			return ret;
+		}
+		
 	}
 
 }

@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.geom.Rectangle2D;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.jfree.chart.ChartPanel;
@@ -90,38 +91,108 @@ public class PlotUtils {
 		return calcHeight(gp.getChartPanel(), width, calcAspectRatio(gp.getX_AxisRange(), gp.getY_AxisRange(), isLatLon));
 	}
 	
+	private static final int ASPECT_CALC_ITERATIONS = 2;
+	private static boolean HEIGHT_D = false;
 	public static int calcHeight(ChartPanel cp, int width, double aspectRatio) {
 		ChartRenderingInfo chartInfo = new ChartRenderingInfo();
 		int height = width; // start with height = width
-		// this forces it to actually render
-		cp.getChart().createBufferedImage(width, height, chartInfo);
-		Rectangle2D plotArea = chartInfo.getPlotInfo().getDataArea();
-		double myWidth = plotArea.getWidth();
-		double myHeight = plotArea.getHeight();
-//		double myAspect = myWidth/myHeight;
-//		System.out.println("Actual plot area: "+myWidth+" x "+myHeight+", aspect="+myAspect);
-//		double targetAspect = lonSpan / latSpan;
-//		System.out.println("Target aspect: "+aspectRatio);
-		Plot plot = cp.getChart().getPlot();
 		
-		double heightMult = 1d;
-		if (plot instanceof CombinedRangeXYPlot) {
-			// multiple plots arranged horizontally
-			CombinedRangeXYPlot combPlot = (CombinedRangeXYPlot)plot;
-			int num = combPlot.getSubplots().size();
-			double gap = combPlot.getGap();
-			myWidth = (int)(((double)myWidth/(double)num) - (num*gap) + 0.5);
-		} else if (plot instanceof CombinedDomainXYPlot) {
-			// multiple plots arranged vertically
-			CombinedDomainXYPlot combPlot = (CombinedDomainXYPlot)plot;
-			int num = combPlot.getSubplots().size();
-			double gap = combPlot.getGap();
-			myHeight = (int)(((double)myHeight/(double)num) - (num*gap) + 0.5);
-			heightMult = num;
+		// do multiple iterations because actual spacing can change when changing the dimensions
+		// e.g., a legend or axis label can take up additional space when the height is updated.
+		for (int i=0; i<ASPECT_CALC_ITERATIONS; i++) {
+			if (HEIGHT_D) System.out.println("Height calc iteration "+i+", currently "+width+" x "+height
+					+"; AR="+(float)((double)width/(double)height)+"; targetAR="+(float)aspectRatio);
+			// this forces it to actually render
+			cp.getChart().createBufferedImage(width, height, chartInfo);
+			Rectangle2D plotArea = chartInfo.getPlotInfo().getDataArea();
+			double myWidth = plotArea.getWidth();
+			double myHeight = plotArea.getHeight();
+//			double myAspect = myWidth/myHeight;
+//			System.out.println("Actual plot area: "+myWidth+" x "+myHeight+", aspect="+myAspect);
+//			double targetAspect = lonSpan / latSpan;
+//			System.out.println("Target aspect: "+aspectRatio);
+			Plot plot = cp.getChart().getPlot();
+
+			List<Double> plotHeights = new ArrayList<>();
+			List<Double> plotWidths = new ArrayList<>();
+			List<XYPlot> subPlots = null;
+			if (plot instanceof CombinedRangeXYPlot) {
+				// multiple plots arranged horizontally
+				CombinedRangeXYPlot combPlot = (CombinedRangeXYPlot)plot;
+				subPlots = getSubPlots(combPlot);
+				int num = subPlots.size();
+				int sumWeights = 0;
+				for (XYPlot subPlot : subPlots)
+					sumWeights += subPlot.getWeight();
+				
+				double gap = combPlot.getGap();
+				double widthMinusGaps = myWidth - gap * (num-1);
+				
+				for (XYPlot subPlot : subPlots) {
+					int weight = subPlot.getWeight();
+					double subWidth = widthMinusGaps * (double)weight / (double)sumWeights;
+					plotWidths.add(subWidth);
+				}
+				plotHeights.add(myHeight);
+			} else if (plot instanceof CombinedDomainXYPlot) {
+				// multiple plots arranged vertically
+				CombinedDomainXYPlot combPlot = (CombinedDomainXYPlot)plot;
+				subPlots = getSubPlots(combPlot);
+				int num = subPlots.size();
+				int sumWeights = 0;
+				for (XYPlot subPlot : subPlots)
+					sumWeights += subPlot.getWeight();
+				double gap = combPlot.getGap();
+
+				double heightMinusGaps = myHeight - gap * (num-1);
+				
+				for (XYPlot subPlot : subPlots) {
+					int weight = subPlot.getWeight();
+					double subHeight = heightMinusGaps * (double)weight / (double)sumWeights;
+					plotHeights.add(subHeight);
+				}
+				plotWidths.add(myWidth);
+			} else {
+				// single plot
+				plotHeights.add(myHeight);
+				plotWidths.add(myWidth);
+			}
+			
+			double totalPlotHeight = plotHeights.stream().mapToDouble(D->D).sum();
+			double totalPlotWidth = plotWidths.stream().mapToDouble(D->D).sum();
+			
+			boolean evenlyWeighted = true;
+			if (subPlots != null) {
+				int weight0 = subPlots.get(0).getWeight();
+				for (int j=1; evenlyWeighted && j<subPlots.size(); j++)
+					evenlyWeighted = weight0 == subPlots.get(j).getWeight();
+			}
+			
+			double extraHeight = height - totalPlotHeight; // height that's related to gaps, labels, legends, and padding
+			if (HEIGHT_D) {
+				System.out.println("\tCurrent plot area dimensions: "+(float)totalPlotWidth+" x "
+						+(float)totalPlotHeight+"; AR="+(float)(totalPlotWidth/totalPlotHeight));
+				System.out.println("\tExtra height: "+extraHeight);
+			}
+			if (evenlyWeighted) {
+				double plotHeight = totalPlotWidth / aspectRatio;
+				height = (int)(extraHeight + plotHeight*plotHeights.size() + 0.5);
+			} else {
+				// just do the first subplot
+				double origHeight1 = plotHeights.get(0);
+				double targetHeight1 = plotWidths.get(0) / aspectRatio;
+				System.out.println("\tFirst subplot is currently "+plotWidths.get(0).floatValue()+" x "
+						+(float)origHeight1+"; AR="+(float)(plotWidths.get(0)/origHeight1));
+				// scale the height
+				double heightScale1 = targetHeight1 / origHeight1;
+				System.out.println("\tScaling height by "+(float)heightScale1+" to get to "+plotWidths.get(0).floatValue()+" x "
+						+(float)targetHeight1+"; AR="+(float)(plotWidths.get(0)/targetHeight1));
+				Preconditions.checkState(heightScale1 > 0d);
+				
+				height = (int)(extraHeight + totalPlotHeight*heightScale1 + 0.5);
+			}
 		}
-		double extraHeight = height - myHeight;
-		double plotHeight = myWidth / aspectRatio;
-		return (int)(extraHeight + plotHeight*heightMult + 0.5);
+		return height;
 	}
 	
 	// TODO untested, verify and uncomment if needed
@@ -207,9 +278,12 @@ public class PlotUtils {
 			subPlots.get(i).setWeight(weights[i]);
 	}
 
-	@SuppressWarnings("unchecked")
 	public static List<XYPlot> getSubPlots(GraphPanel gp) {
-		XYPlot plot = gp.getPlot();
+		return getSubPlots(gp.getPlot());
+	}
+
+	@SuppressWarnings("unchecked")
+	public static List<XYPlot> getSubPlots(XYPlot plot) {
 		if (plot instanceof CombinedDomainXYPlot) {
 			return ((CombinedDomainXYPlot)plot).getSubplots();
 		} else if (plot instanceof CombinedRangeXYPlot) {

@@ -646,11 +646,11 @@ public class ETAS_Simulator {
 					hypoLoc = new Location(ptLoc.getLatitude()+(etas_utils.getRandomDouble()-0.5)*0.1*0.99,
 							ptLoc.getLongitude()+(etas_utils.getRandomDouble()-0.5)*0.1*0.99,
 							seisDepthDistribution.getRandomDepth(etas_utils));
-					
+
+					double aveDip = erf_rup.getRuptureSurface().getAveDip(); // confirm this works
 					if(erf_rup.getMag()<maxPointSourceMag)
-						rup.setPointSurface(hypoLoc);
+						rup.setPointSurface(hypoLoc, aveDip);
 					else {
-						double aveDip = erf_rup.getRuptureSurface().getAveDip(); // confirm this works
 						rup.setRuptureSurface(etas_utils.getRandomFiniteRupSurface(erf_rup.getMag(), hypoLoc, aveDip));
 					}
 					

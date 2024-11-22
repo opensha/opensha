@@ -602,6 +602,9 @@ public class GraphPanel extends JSplitPane {
 				myYAxis = yAxis;
 			}
 			
+			myXAxis.setInverted(plotSpec.isXAxisInverted());
+			myYAxis.setInverted(plotSpec.isYAxisInverted());
+			
 			boolean xLog = xLogs.size() > 1 ? xLogs.get(p) : xLogs.get(0);
 			boolean yLog = yLogs.size() > 1 ? yLogs.get(p) : yLogs.get(0);
 			
