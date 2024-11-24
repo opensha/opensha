@@ -212,118 +212,7 @@ public class ApplicationVersion implements Comparable<ApplicationVersion> {
 		}
 		return new ApplicationVersion(major, minor, build);
 	}
-	
-	private static final String[] possible_githash_files = {}; // don't use a file for a local clone, use git to find it
-	private static final String[] possible_githash_resources = { "/build.githash"};
-	
-	public static String loadGitHash() throws IOException {
-		try {
-			URL url = locateURL(possible_githash_files, possible_githash_resources);
-			if (url != null) {
-//				System.out.println("URL: "+url);
-				for (String line : FileUtils.loadFile(url)) {
-					line = line.trim();
-					if (!line.isEmpty())
-						return line;
-				}
-			}
-		} catch (FileNotFoundException e) {}
-		// see if we can detect it
-		File cwd = new File("");
-		String[] command = { "/bin/bash", "-c",
-				"cd "+cwd.getAbsolutePath()+"; git log -n 1 --pretty='%H'" };
-		
-		try {
-			Process p = Runtime.getRuntime().exec(command);
-			int exit;
-			try {
-				exit = p.waitFor();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-				return null;
-			}
-			if (exit != 0)
-				return null;
-			
-			BufferedReader b = new BufferedReader(new InputStreamReader(p.getInputStream()));
-			String line;
-			while ((line = b.readLine()) != null)
-				if (line.trim().length() > 0)
-					return line;
-		} catch (Exception e) {
-			System.err.println("Exception detecting git hash: "+e.getMessage());
-//			e.printStackTrace();
-		}
-		return null;
-	}
-	
-	private static final String[] possible_gitbranch_files = {}; // don't use a file for a local clone, use git to find it
-	private static final String[] possible_gitbranch_resources = { "/build.gitbranch"};
-	
-	public static String loadGitBranch() throws IOException {
-		try {
-			URL url = locateURL(possible_gitbranch_files, possible_gitbranch_resources);
-			if (url != null) {
-//				System.out.println("URL: "+url);
-				for (String line : FileUtils.loadFile(url)) {
-					line = line.trim();
-					if (!line.isEmpty())
-						return line;
-				}
-			}
-		} catch (FileNotFoundException e) {}
-		// see if we can detect it
-		File cwd = new File("");
-		String[] command = { "/bin/bash", "-c",
-				"cd "+cwd.getAbsolutePath()+"; git rev-parse --abbrev-ref HEAD" };
-		
-		try {
-			Process p = Runtime.getRuntime().exec(command);
-			int exit;
-			try {
-				exit = p.waitFor();
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-				return null;
-			}
-			if (exit != 0)
-				return null;
-			
-			BufferedReader b = new BufferedReader(new InputStreamReader(p.getInputStream()));
-			String line;
-			while ((line = b.readLine()) != null)
-				if (line.trim().length() > 0)
-					return line;
-		} catch (Exception e) {
-			System.err.println("Exception detecting git hash: "+e.getMessage());
-//			e.printStackTrace();
-		}
-		return null;
-	}
-	
-	private static final String[] possible_date_files = {}; // don't use a file for a local clone
-	private static final String[] possible_date_resources = { "/build.date"};
-	
-	public static Date loadBuildDate() throws IOException {
-		try {
-			URL url = locateURL(possible_date_files, possible_date_resources);
-			if (url != null) {
-//				System.out.println("URL: "+url);
-				for (String line : FileUtils.loadFile(url)) {
-					line = line.trim();
-					if (!line.isEmpty()) {
-						try {
-							long date = Long.parseLong(line);
-							if (date > 0l)
-								return new Date(date);
-						} catch(NumberFormatException e) {}
-					}
-				}
-			}
-		} catch (FileNotFoundException e) {}
-		return null;
-	}
-	
+
 	private static void testCompare(ApplicationVersion v1, ApplicationVersion v2) {
 		System.out.println("Comparing " + v1 + " to " + v2);
 		System.out.println(v1 + " > " + v2 + " ? " + v1.isGreaterThan(v2));
@@ -332,8 +221,6 @@ public class ApplicationVersion implements Comparable<ApplicationVersion> {
 	}
 	
 	public static void main(String args[]) throws IOException {
-		System.out.println(loadGitHash());
-		System.out.println(loadGitBranch());
 		System.exit(0);
 		System.out.println(loadBuildVersion());
 		System.out.println(fromString("0.4.2"));

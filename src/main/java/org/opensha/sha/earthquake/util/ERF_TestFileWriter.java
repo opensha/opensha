@@ -18,9 +18,9 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.impl.StringParameter;
-import org.opensha.commons.util.ApplicationVersion;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.FileNameComparator;
+import org.opensha.commons.util.GitVersion;
 import org.opensha.sha.earthquake.BaseERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ERF_Ref;
@@ -645,7 +645,7 @@ public class ERF_TestFileWriter {
 		
 		String branch;
 		try {
-			branch = ApplicationVersion.loadGitBranch();
+			branch = new GitVersion().loadGitBranch();
 		} catch (Exception e) {
 			branch = null;
 		}

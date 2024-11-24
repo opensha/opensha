@@ -11,6 +11,8 @@ java {
 }
 compileJava.options.encoding = "UTF-8"
 
+apply from: 'build-git.gradle'
+
 repositories {
     mavenCentral()
     maven {
@@ -41,60 +43,6 @@ ext.getDate = {
     new Date().format('yyyy_MM_dd')
 }
 
-ext.getGitHash = { ->
-    try {
-        def stdout = new ByteArrayOutputStream()
-        exec {
-            commandLine 'git', 'rev-parse', '--short', 'HEAD'
-            standardOutput = stdout
-        }
-        return stdout.toString().trim()
-    } catch (Exception e) {
-        return ""
-    }
-}
-
-ext.getGitLongHash = { ->
-    try {
-        def stdout = new ByteArrayOutputStream()
-        exec {
-            commandLine 'git', 'rev-parse', 'HEAD'
-            standardOutput = stdout
-        }
-        return stdout.toString().trim()
-    } catch (Exception e) {
-        return ""
-    }
-}
-
-ext.getGitBranch = { ->
-    try {
-        def stdout = new ByteArrayOutputStream()
-        exec {
-            commandLine 'git', 'rev-parse', '--abbrev-ref', 'HEAD'
-            standardOutput = stdout
-        }
-        return stdout.toString().trim()
-    } catch (Exception e) {
-        return ""
-    }
-}
-
-void writeBuildFiles() {
-    logger.info("Writing build.date file")
-    new File(projectDir, "build.date").text = new Date().toString()+"\n"+System.currentTimeMillis()+"\n"
-    String hash = getGitLongHash()
-    if (hash?.trim()) {
-        logger.info("Writing build.githash file: "+hash)
-        new File(projectDir, "build.githash").text = hash+"\n"
-    }
-    String branch = getGitBranch()
-    if (branch?.trim()) {
-        logger.info("Writing build.gitbranch file: "+branch)
-        new File(projectDir, "build.gitbranch").text = branch+"\n"
-    }
-}
-
 logger.info('running settings with project='+project.name+' and rootProject.name='+rootProject.name)
 if (project.parentProject != null) {
     logger.info(project.name+" is a child of: "+project.parentProject)
@@ -111,6 +59,7 @@ if (project.parentProject != null) {
         from(project.projectDir) {
             include 'build.githash'
             include 'build.gitbranch'
+            include 'build.gitremoteurl'
             include 'build.date'
         }
     }
@@ -132,6 +81,7 @@ if (project.parentProject != null) {
         from zipTree(file('../'+project.parentProject+'/build/libs/'+project.parentProject+'-all.jar')).matching {
             exclude 'build.githash'
             exclude 'build.gitbranch'
+            exclude 'build.gitremoteurl'
             exclude 'build.date'
         }
     
@@ -145,12 +95,19 @@ if (project.parentProject != null) {
             include 'build.version'
             include 'build.githash'
             include 'build.gitbranch'
+            include 'build.gitremoteurl'
             include 'build.date'
         }
     }
     task fatJar(type: Jar) {
         doFirst {
             writeBuildFiles()
+        }
+        doLast {
+            delete new File(projectDir, "build.githash")
+            delete new File(projectDir, "build.gitbranch")
+            delete new File(projectDir, "build.gitremoteurl")
+            delete new File(projectDir, "build.date")
         }
         archiveBaseName = project.name + '-all'
         // include all 'api' dependencies
@@ -186,6 +143,7 @@ void createAppTask(String taskName, String prefix, String mainClass) {
             from zipTree(file('../'+project.parentProject+'/build/libs/'+project.parentProject+'-all.jar')).matching {
                 exclude 'build.githash'
                 exclude 'build.gitbranch'
+                exclude 'build.gitremoteurl'
                 exclude 'build.date'
                 exclude { it.path.contains('META-INF') }
             }
@@ -196,6 +154,7 @@ void createAppTask(String taskName, String prefix, String mainClass) {
             from(project.projectDir) {
                 include 'build.githash'
                 include 'build.gitbranch'
+                include 'build.gitremoteurl'
                 include 'build.date'
             }
             manifest {
@@ -228,6 +187,7 @@ void createAppTask(String taskName, String prefix, String mainClass) {
             from(project.projectDir) {
                 include 'build.githash'
                 include 'build.gitbranch'
+                include 'build.gitremoteurl'
                 include 'build.date'
             }
             manifest {

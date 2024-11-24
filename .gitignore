@@ -19,3 +19,4 @@ db_log.log
 FaultSystemRupSets
 *.swp
 .~lock*
+build.gitremoteurl
