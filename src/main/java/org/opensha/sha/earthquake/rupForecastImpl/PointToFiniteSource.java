@@ -37,6 +37,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
  * @author Edward Field
  * @version 1.0
  */
+@Deprecated
 public class PointToFiniteSource extends ProbEqkSource implements java.io.Serializable{
 
 	//for Debug purposes

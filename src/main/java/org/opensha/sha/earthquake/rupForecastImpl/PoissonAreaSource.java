@@ -22,7 +22,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
  * @author Edward Field
  * @version 1.0
  */
-
+@Deprecated
 public class PoissonAreaSource extends PointToFiniteSource implements java.io.Serializable{
 
 	private static final long serialVersionUID = 1L;
