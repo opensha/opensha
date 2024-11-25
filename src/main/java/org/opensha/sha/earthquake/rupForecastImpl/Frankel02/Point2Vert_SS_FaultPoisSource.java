@@ -196,7 +196,7 @@ public class Point2Vert_SS_FaultPoisSource extends PoissonPointSource implements
 
 		@Override
 		public boolean isSurfaceFinite(double magnitude, FocalMechanism mech, int surfaceIndex) {
-			return magnitude <= magCutOff;
+			return magnitude > magCutOff;
 		}
 
 		@Override
