@@ -15,6 +15,7 @@ import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -49,6 +50,7 @@ public class PointSurfaceBuilder {
 	private double dip = 90d;
 	private double length = Double.NaN;
 	private Boolean footwall = null;
+	private double rake = Double.NaN; // only used for scaling relationships
 	
 	private double zHyp = Double.NaN;
 	private double zHypFract = 0.5;
@@ -568,6 +570,28 @@ public class PointSurfaceBuilder {
 	}
 	
 	/**
+	 * Sets the strike and dip from the given {@link FocalMechanism}. The rake will be stored and only used if
+	 * properties are set from a scaling relationships that is rake-dependent
+	 * @param mech
+	 * @return
+	 */
+	public PointSurfaceBuilder mechanism(FocalMechanism mech) {
+		strike(mech.getStrike());
+		dip(mech.getDip());
+		return this;
+	}
+	
+	/**
+	 * Draws a and sets a random strike; note that this same strike will be used until this method is called again,
+	 * or the strike is otherwise set
+	 * @return
+	 */
+	public PointSurfaceBuilder randomStrike() {
+		strike(getRandStrikes(1, strikeRange)[0]);
+		return this;
+	}
+	
+	/**
 	 * Sets the strike direction in decimal degrees, or NaN for no direction. This clears any previously set strike
 	 * range.
 	 * 
@@ -629,6 +653,15 @@ public class PointSurfaceBuilder {
 			return length;
 		if (Double.isFinite(mag)) {
 			// calculate from scaling relationship
+			if (Double.isFinite(rake)) {
+				if (scale == WC94)
+					// we have a custom rake, don't set it in the static WC94 instance
+					scale = new WC1994_MagLengthRelationship();
+				scale.setRake(rake);
+			} else if (scale != WC94) {
+				// custom scaling relationship, clear the rake param
+				scale.setRake(rake);
+			}
 			if (scale instanceof MagLengthRelationship) {
 				return ((MagLengthRelationship)scale).getMedianLength(mag);
 			} else {
@@ -893,8 +926,62 @@ public class PointSurfaceBuilder {
 	}
 	
 	/**
-	 * Builds a gridded surface representation. Distance calculations will always performs worse than
-	 * {@link #buildQuadSurface()}, so use this only if you actually need a gridded surface.
+	 * Builds a gridded surface representation with only one row (at the upper depth). Distance calculations will
+	 * always performs worse (both in accuracy and speed) than {@link #buildQuadSurface()}, so use this only if you
+	 * actually need a gridded line surface.
+	 * @return
+	 */
+	public EvenlyGriddedSurface buildLineSurface() {
+		return buildLineSurface(strike);
+	}
+	
+	/**
+	 * Builds a gridded surface representation with only one row (at the upper depth). Distance calculations will
+	 * always performs worse (both in accuracy and speed) than {@link #buildQuadSurface()}, so use this only if you
+	 * actually need a gridded line surface.
+	 * @return
+	 */
+	public EvenlyGriddedSurface buildLineSurface(double strike) {
+		FaultTrace trace = buildTrace(strike);
+		
+		return new FrankelGriddedSurface(trace, dip, zTop, zTop, gridSpacing);
+	}
+	
+	/**
+	 * Builds the given number of random strike gridded line surfaces.
+	 * 
+	 * If a fixed strike angle has previously been set, then that strike angle will be used for the first surface
+	 * and any additional surfaces will be evenly distributed.
+	 * 
+	 * If a strike range has been previously set then orientations will be randomly sampled within that range.
+	 * 
+	 * If neither a fixed strike nor a strike range has been set, then the initial orientation will be randomly sampled
+	 * and any additional strikes will be evenly distributed.
+	 * @param num
+	 * @return
+	 */
+	public EvenlyGriddedSurface[] buildRandLineSurfaces(int num) {
+		return buildRandLineSurfaces(num, null);
+	}
+	
+	/**
+	 * Builds the given number of random strike gridded line surfaces. If strikeRange is non null, orientations will be randomly
+	 * sampled from the given range.
+	 * @param num
+	 * @param strikeRange
+	 * @return
+	 */
+	public EvenlyGriddedSurface[] buildRandLineSurfaces(int num, Range<Double> strikeRange) {
+		EvenlyGriddedSurface[] ret = new EvenlyGriddedSurface[num];
+		double[] strikes = getRandStrikes(num, strikeRange);
+		for (int i=0; i<num; i++)
+			ret[i] = buildLineSurface(strikes[i]);
+		return ret;
+	}
+	
+	/**
+	 * Builds a gridded surface representation. Distance calculations will always performs worse (both in accuracy and
+	 * speed) than {@link #buildQuadSurface()}, so use this only if you actually need a gridded surface.
 	 * @return
 	 */
 	public EvenlyGriddedSurface buildGriddedSurface() {
@@ -902,7 +989,7 @@ public class PointSurfaceBuilder {
 	}
 	
 	/**
-	 * Builds a gridded surface representation. Distance calculations will always performs worse than
+	 * Builds a gridded surface representation. Distance calculations will always performs worse (both in accuracy and speed) than
 	 * {@link #buildQuadSurface()}, so use this only if you actually need a gridded surface.
 	 * @return
 	 */
