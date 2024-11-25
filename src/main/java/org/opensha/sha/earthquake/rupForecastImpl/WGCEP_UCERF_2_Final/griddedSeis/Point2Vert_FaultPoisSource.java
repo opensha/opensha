@@ -10,6 +10,7 @@ import java.util.Map;
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
 import org.opensha.commons.data.Site;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.GeoTools;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -23,6 +24,7 @@ import org.opensha.sha.faultSurface.FrankelGriddedSurface;
 import org.opensha.sha.faultSurface.GriddedSubsetSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
@@ -89,12 +91,14 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 	 * @param fracStrikeSlip - 
 	 * @param fracNormal - 
 	 * @param fracReverse - 
+	 * @param distance corrections
 	 */
 	public Point2Vert_FaultPoisSource(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
-			double strike, double duration, double magCutOff
-			,double fracStrikeSlip, double fracNormal,double fracReverse) {
-		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null, null); // TODO: dist corrs
+			double strike, double duration, double magCutOff,
+			double fracStrikeSlip, double fracNormal, double fracReverse,
+			WeightedList<PointSourceDistanceCorrection> distCorrs) {
+		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null, distCorrs); // TODO: dist corrs
 		this.magCutOff = magCutOff;
 
 		if(D) {
@@ -120,12 +124,14 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 	 * @param fracNormal - 
 	 * @param fracReverse - 
 	 * @param isCrossHair - tells whether to apply random strike or cross-hair source
+	 * @param distance corrections
 	 */
 	public Point2Vert_FaultPoisSource(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
 			double duration, double magCutOff,double fracStrikeSlip,
-			double fracNormal, double fracReverse, boolean isCrossHair) {
-		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null, null); // TODO: dist corrs
+			double fracNormal, double fracReverse, boolean isCrossHair,
+			WeightedList<PointSourceDistanceCorrection> distCorrs) {
+		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null, distCorrs); // TODO: dist corrs
 		this.magCutOff = magCutOff;
 		// whether to simulate it as 2 perpendicular faults
 		this.isCrossHair = isCrossHair;
@@ -267,7 +273,7 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 		@Override
 		public boolean isSurfaceFinite(double magnitude, FocalMech mech, int surfaceIndex) {
 			Preconditions.checkState(surfaceIndex == 0 || (isCrossHair && surfaceIndex == 1));
-			return magnitude <= magCutOff;
+			return magnitude > magCutOff;
 		}
 
 //		@Override
@@ -427,7 +433,7 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 		//    Point2Vert_SS_FaultPoisSource src = new Point2Vert_SS_FaultPoisSource(loc, dist,
 		//                                       wc_rel,45, 1.0, 6.0, 5.0);
 		Point2Vert_FaultPoisSource src = new Point2Vert_FaultPoisSource(loc, dist,
-				wc_rel, duration, 6.0,fracStrikeSlip,fracNormal,fracReverse, false);
+				wc_rel, duration, 6.0,fracStrikeSlip,fracNormal,fracReverse, false, null);
 
 		System.out.println("num rups ="+src.getNumRuptures()+"\ttotProb="+src.computeTotalProb());
 		ProbEqkRupture rup;
