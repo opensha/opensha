@@ -65,11 +65,11 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 		case CROSSHAIR:
 			return new Point2Vert_FaultPoisSource(loc, mfd, magLenRel, duration,
 					ptSrcCutoff, fracStrikeSlip, fracNormal,
-					fracReverse, true);
+					fracReverse, true, distCorrType.get());
 		case FINITE:
 			return new Point2Vert_FaultPoisSource(loc, mfd, magLenRel, duration,
 					ptSrcCutoff, fracStrikeSlip, fracNormal,
-					fracReverse, false);
+					fracReverse, false, distCorrType.get());
 		case POINT:
 			Map<FocalMech, Double> mechMap = Maps.newHashMap();
 			mechMap.put(FocalMech.STRIKE_SLIP, fracStrikeSlip);
