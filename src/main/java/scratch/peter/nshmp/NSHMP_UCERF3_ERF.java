@@ -41,8 +41,6 @@ public class NSHMP_UCERF3_ERF extends FaultSystemSolutionERF {
 	public NSHMP_UCERF3_ERF(FaultSystemSolution fss) {
 		super(fss);
 		
-		distCorrTypeParam.setValue(PointSourceDistanceCorrections.NSHM_2013);
-		
 		// manipulate fss prior to updateForecast being called which will build
 		// all the required fault sources
 		double[] rates = fss.getRateForAllRups();
@@ -90,7 +88,7 @@ public class NSHMP_UCERF3_ERF extends FaultSystemSolutionERF {
 	protected ProbEqkSource getOtherSource(int iSource) {
 		return gridSources.getSource(indices.get(iSource), timeSpan.getDuration(),
 			applyAftershockFilter ? AbstractGridSourceProvider.GK_AFTERSHOCK_FILTER : null,
-					BackgroundRupType.POINT, distCorrType);
+					bgSettings);
 	}
 
 

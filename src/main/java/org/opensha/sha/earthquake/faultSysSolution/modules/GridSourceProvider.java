@@ -9,8 +9,7 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
-import org.opensha.sha.earthquake.param.BackgroundRupType;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -24,8 +23,8 @@ import org.opensha.sha.util.TectonicRegionType;
  * <p>
  * Focal mechanisms at each grid location are available via the {@link #getFracStrikeSlip(int)},
  * {@link #getFracReverse(int)}, and {@link #getFracNormal(int)} methods. {@link ProbEqkSource} implementations for are
- * available via the {@link #getSource(int, double, boolean, BackgroundRupType)} method, and also via related methods
- * for sub-seismogenic and/or unassociated sources only.
+ * available via the {@link #getSource(int, double, MagnitudeDependentAftershockFilter, GriddedSeismicitySettings)} method,
+ * and also via related methods for sub-seismogenic and/or unassociated sources only.
  * 
  * @author Peter Powers
  */
@@ -75,31 +74,17 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	public int getLocationIndex(Location location);
 	
 	/**
-	 * Sets the minimum magnitude of ruptures to include when building sources for hazard calculation
-	 * 
-	 * @param minMagCutoff
-	 */
-	public void setSourceMinMagCutoff(double minMagCutoff);
-	
-	/**
-	 * @return the minimum magnitude of ruptures to include when building sources for hazard calculation
-	 */
-	public double getSourceMinMagCutoff();
-	
-	/**
 	 * Return the source at {@code gridIndex}.
 	 * 
 	 * @param sourceIndex index of source to retrieve
 	 * @param duration duration of forecast
 	 * @param aftershockFilter if non-null, function that will be used to scale rupture rates for aftershocks in the
 	 * form scaledRate = aftershockFilter(magnitude, rate)
-	 * @param bgRupType type of source to build
-	 * @param distCorr point source distance correction to apply
+	 * @param gridSourceSettings gridded seismicity settings (rupture type, distance corrections, etc)
 	 * @return the source at {@code index}
 	 */
 	public ProbEqkSource getSource(int sourceIndex, double duration,
-			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrections distCorrType);
+			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings);
 
 	/**
 	 * Return the source at {@code gridIndex}.
@@ -109,13 +94,11 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * @param duration of forecast
 	 * @param aftershockFilter if non-null, function that will be used to scale rupture rates for aftershocks in the
 	 * form scaledRate = aftershockFilter(magnitude, rate)
-	 * @param bgRupType type of source to build
-	 * @param distCorr point source distance correction to apply
+	 * @param gridSourceSettings gridded seismicity settings (rupture type, distance corrections, etc)
 	 * @return the source at {@code index}
 	 */
 	public ProbEqkSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
-			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrections distCorrType);
+			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings);
 	
 
 	/**
@@ -128,13 +111,11 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * @param duration of forecast
 	 * @param aftershockFilter if non-null, function that will be used to scale rupture rates for aftershocks in the
 	 * form scaledRate = aftershockFilter(magnitude, rate)
-	 * @param bgRupType type of source to build
-	 * @param distCorr point source distance correction to apply
+	 * @param gridSourceSettings gridded seismicity settings (rupture type, distance corrections, etc)
 	 * @return the source at {@code index}
 	 */
 	public ProbEqkSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
-			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrections distCorrType);
+			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings supersamplingSettings);
 
 	/**
 	 * Return the source at {@code gridIndex}, where only the component that is unassociated with modeled faults
@@ -146,13 +127,11 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * @param duration of forecast
 	 * @param aftershockFilter if non-null, function that will be used to scale rupture rates for aftershocks in the
 	 * form scaledRate = aftershockFilter(magnitude, rate)
-	 * @param bgRupType type of source to build
-	 * @param distCorr point source distance correction to apply
+	 * @param gridSourceSettings gridded seismicity settings (rupture type, distance corrections, etc)
 	 * @return the source at {@code index}
 	 */
 	public ProbEqkSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
-			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrections distCorrType);
+			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings supersamplingSettings);
 	
 	/**
 	 * @return set of each {@link TectonicRegionType} supplied by this {@link GridSourceProvider}

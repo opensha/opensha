@@ -23,6 +23,8 @@ import org.opensha.commons.geo.Location;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
+import org.opensha.sha.earthquake.util.GridCellSuperSamplingPoissonPointSourceData;
+import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -127,6 +129,16 @@ public class PointSourceNshm extends PoissonPointSource {
 				PointSource.dataForMFDs(loc, mfd, weightsMap(mechWtMap), surfaceBuilder), distCorrs);
 		this.name = NAME;
 	}
+	
+	// TODO: Add supersampling support
+//	private static PoissonPointSourceData buildData(Location loc, IncrementalMagFreqDist mfd,
+//			Map<FocalMech, Double> mechWtMap, SurfaceBuilder surfaceBuilder,
+//			GridCellSupersamplingSettings supersamplingSettings) {
+//		PoissonPointSourceData data = PointSource.dataForMFDs(loc, mfd, weightsMap(mechWtMap), surfaceBuilder);
+//		if (supersamplingSettings != null)
+//			data = new GridCellSuperSamplingPoissonPointSourceData(data, loc, cell, supersamplingSettings);
+//		return data;
+//	}
 	
 	private static Map<FocalMechanism, Double> weightsMap(Map<FocalMech, Double> map) {
 		Map<FocalMechanism, Double> ret = new HashMap<>(map.size());

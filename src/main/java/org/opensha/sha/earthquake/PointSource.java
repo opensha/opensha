@@ -16,6 +16,7 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.griddedForecast.HypoMagFreqDistAtLoc;
 import org.opensha.sha.earthquake.util.GridCellSuperSamplingPoissonPointSourceData;
+import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.QuadSurface;
@@ -350,7 +351,7 @@ public abstract class PointSource extends ProbEqkSource {
 
 		@Override
 		public int getNumRuptures() {
-			Preconditions.checkState(numRuptures > 0);
+//			Preconditions.checkState(numRuptures > 0); // can be zero if min mag filter is set high
 			return numRuptures;
 		}
 		
@@ -1348,6 +1349,32 @@ public abstract class PointSource extends ProbEqkSource {
 		public <E> PoissonBuilder forMFDsAndFocalMechs(Map<FocalMechanism, IncrementalMagFreqDist> mfds) {
 			checkHasSurfBuilder();
 			return data(dataForMFDs(loc, mfds, surfaceBuilder));
+		}
+		
+		/**
+		 * This enables distance-dependent supersampling of point sources. The cell represented by this point source will
+		 * be divided up into a supersampled grid cell with at least <code>samplesPerKM</code> samples per kilometer.
+		 * 
+		 * <p>Three sampling levels are supported, each with decreasing computational demands:
+		 * 
+		 * <p>Full supersampling, up to the supplied <code>fullDist</code>, uses the full set of supersampled grid nodes
+		 * and is most expensive but most accurate, especially nearby.
+		 * 
+		 * <p>Border sampling, up to the supplied <code>borderDist</code>, uses just the exterior grid nodes from
+		 * the supersampled region, and is best when the site is a little further away and just sensitive to the size
+		 * of the grid cell without integrating over the entire cell.
+		 * 
+		 * <p>Corder sampling, up to the supplied <code>cornerDist</code>, uses the corners of the grid cell as a crude
+		 * approximation. This is fast (only 4 locations) and most appropriate at larger distances.
+		 * 
+		 * @param gridCell cell that this grid node represents
+		 * @param supersampleSettings supersampling settings
+		 */
+		public PoissonBuilder siteAdaptiveSupersampled(Region gridCell, GridCellSupersamplingSettings supersampleSettings) {
+			Preconditions.checkState(data != null, "Must set point source data first");
+			data = new GridCellSuperSamplingPoissonPointSourceData(data, loc,
+					gridCell, supersampleSettings);
+			return this;
 		}
 		
 		/**

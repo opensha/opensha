@@ -17,6 +17,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.InversionTargetMFDs;
 import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -293,7 +294,7 @@ public class UCERF3_GridSourceGenerator extends AbstractGridSourceProvider {
 		int numRups = 0;
 		System.out.println("numSrcs: " + numSrcs);
 		for (int i=0; i<numSrcs; i++) {
-			numRups += gridGen.getSource(i, 1, null, BackgroundRupType.POINT, null).getNumRuptures();
+			numRups += gridGen.getSource(i, 1, null, GriddedSeismicitySettings.DEFAULT).getNumRuptures();
 		}
 		System.out.println("numRups: " + numRups);
 

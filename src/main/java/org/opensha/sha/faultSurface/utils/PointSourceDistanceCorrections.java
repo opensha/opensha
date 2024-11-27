@@ -106,12 +106,15 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<Poin
 	private WeightedList<PointSourceDistanceCorrection> corrs;
 
 	private PointSourceDistanceCorrections(String name, PointSourceDistanceCorrection corr) {
-		this(name, new WeightedList<>(List.of(corr), List.of(1d)));
+//		this(name, new WeightedList<>(List.of(corr), List.of(1d)));
+		this(name, WeightedList.evenlyWeighted(corr));
 	}
 
 	private PointSourceDistanceCorrections(String name, WeightedList<PointSourceDistanceCorrection> corrs) {
 		this.name = name;
 		Preconditions.checkState(corrs.isNormalized(), "Weights not normalized for %s", name);
+		if (!(corrs instanceof WeightedList.Unmodifiable<?>))
+			corrs = new WeightedList.Unmodifiable<>(corrs);
 		this.corrs = corrs;
 	}
 	
@@ -123,6 +126,21 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<Poin
 	@Override
 	public WeightedList<PointSourceDistanceCorrection> get() {
 		return corrs;
+	}
+	
+	/**
+	 * Finds the enum that generated this list (if any), otherwise null
+	 * @param corrs
+	 * @return
+	 */
+	public static PointSourceDistanceCorrections forCorrections(WeightedList<PointSourceDistanceCorrection> corrs) {
+		if (corrs == null || corrs.isEmpty())
+			return NONE;
+		for (PointSourceDistanceCorrections corr : values()) {
+			if (corr.corrs == corrs)
+				return corr;
+		}
+		return null;
 	}
 
 }

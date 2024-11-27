@@ -14,16 +14,20 @@ import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.AbstractNthRupERF;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
+import org.opensha.sha.earthquake.param.GriddedSeismicitySettingsParam;
 import org.opensha.sha.earthquake.param.MaximumMagnitudeParam;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
 import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
 import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
+import scratch.UCERF3.erf.ETAS.FaultSystemSolutionERF_ETAS;
 import scratch.UCERF3.griddedSeismicity.AbstractGridSourceProvider;
 import scratch.UCERF3.griddedSeismicity.UCERF3_NoFaultsGridSourceGenerator;
 
@@ -45,6 +49,7 @@ public class UCERF3_GriddedSeisOnlyERF_ETAS extends AbstractNthRupERF {
 	// Adjustable parameters
 	protected ApplyGardnerKnopoffAftershockFilterParam applyAftershockFilterParam;
 	protected BackgroundRupParam bgRupTypeParam;
+	protected GriddedSeismicitySettingsParam bgSettingsParam;
 	protected MaximumMagnitudeParam maxMagParam;
 	protected EnumParameter<TotalMag5Rate> totalRateParam;
 	/**
@@ -62,9 +67,8 @@ public class UCERF3_GriddedSeisOnlyERF_ETAS extends AbstractNthRupERF {
 	 */
 	
 	// primitives
+	protected GriddedSeismicitySettings bgSettings = FaultSystemSolutionERF_ETAS.GRID_SEIS_SETTINGS;
 	protected boolean applyAftershockFilter = false;
-	protected BackgroundRupType bgRupType = BackgroundRupType.POINT;
-	protected PointSourceDistanceCorrections distCorrType = PointSourceDistanceCorrections.NSHM_2013;
 	protected double maxMag = 8.3;
 	protected TotalMag5Rate totalMag5Rate = TotalMag5Rate.RATE_7p9;
 	protected SpatialSeisPDF spatialSeisPDF = SpatialSeisPDF.UCERF3;
@@ -117,6 +121,8 @@ public class UCERF3_GriddedSeisOnlyERF_ETAS extends AbstractNthRupERF {
 	protected void initParams() {
 		applyAftershockFilterParam= new ApplyGardnerKnopoffAftershockFilterParam();  // default is false
 		bgRupTypeParam = new BackgroundRupParam();
+		bgRupTypeParam.setValue(bgSettings.surfaceType); // needs to be here, checked immediately below for consistency
+		bgSettingsParam = new GriddedSeismicitySettingsParam(bgSettings, bgRupTypeParam);
 		maxMagParam = new MaximumMagnitudeParam();
 		totalRateParam = new EnumParameter<TotalMag5Rate>("Total Regional Rate", EnumSet
 				.of(TotalMag5Rate.RATE_6p5,TotalMag5Rate.RATE_7p9,TotalMag5Rate.RATE_9p6),
@@ -133,13 +139,14 @@ public class UCERF3_GriddedSeisOnlyERF_ETAS extends AbstractNthRupERF {
 		// set listeners
 		applyAftershockFilterParam.addParameterChangeListener(this);
 		bgRupTypeParam.addParameterChangeListener(this);
+		bgSettingsParam.addParameterChangeListener(this);
 		maxMagParam.addParameterChangeListener(this);
 		totalRateParam.addParameterChangeListener(this);
 		spatialSeisPDF_Param.addParameterChangeListener(this);
 
 		// set parameters to the primitive values
 		applyAftershockFilterParam.setValue(applyAftershockFilter);
-		bgRupTypeParam.setValue(bgRupType);
+		bgRupTypeParam.setValue(bgSettings.surfaceType);
 		maxMagParam.setValue(maxMag);
 		totalRateParam.setValue(totalMag5Rate);
 		spatialSeisPDF_Param.setValue(spatialSeisPDF);
@@ -154,6 +161,7 @@ public class UCERF3_GriddedSeisOnlyERF_ETAS extends AbstractNthRupERF {
 		adjustableParams = new ParameterList();
 		adjustableParams.addParameter(applyAftershockFilterParam);
 		adjustableParams.addParameter(bgRupTypeParam);
+		adjustableParams.addParameter(bgSettingsParam);
 		adjustableParams.addParameter(maxMagParam);
 		adjustableParams.addParameter(totalRateParam);
 		adjustableParams.addParameter(spatialSeisPDF_Param);
@@ -203,7 +211,10 @@ public class UCERF3_GriddedSeisOnlyERF_ETAS extends AbstractNthRupERF {
 			applyAftershockFilter = applyAftershockFilterParam.getValue();
 			applyAftershockFilterChanged = true;
 		} else if (paramName.equalsIgnoreCase(bgRupTypeParam.getName())) {
-			bgRupType = bgRupTypeParam.getValue();
+//			bgRupType = bgRupTypeParam.getValue(); // will be propagated to a settings update
+			bgRupTypeChanged = true;
+		} else if (paramName.equalsIgnoreCase(bgSettingsParam.getName())) {
+			bgSettings = bgSettingsParam.getValue();
 			bgRupTypeChanged = true;
 		} else if (paramName.equalsIgnoreCase(maxMagParam.getName())) {
 			maxMag = maxMagParam.getValue();
@@ -233,7 +244,7 @@ public class UCERF3_GriddedSeisOnlyERF_ETAS extends AbstractNthRupERF {
 	@Override
 	public ProbEqkSource getSource(int iSource) {
 		return gridSources.getSource(iSource, timeSpan.getDuration(),
-				applyAftershockFilter ? AbstractGridSourceProvider.GK_AFTERSHOCK_FILTER : null, bgRupType, distCorrType);
+				applyAftershockFilter ? AbstractGridSourceProvider.GK_AFTERSHOCK_FILTER : null, bgSettings);
 	}
 
 	@Override
@@ -249,8 +260,6 @@ public class UCERF3_GriddedSeisOnlyERF_ETAS extends AbstractNthRupERF {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		
-		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;	// TODO do this better
 
 		UCERF3_GriddedSeisOnlyERF_ETAS erf = new UCERF3_GriddedSeisOnlyERF_ETAS();
 		erf.getTimeSpan().setDuration(1.0);

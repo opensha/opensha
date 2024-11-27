@@ -18,6 +18,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.Point2Vert_FaultPoisSource;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
@@ -33,14 +34,11 @@ import org.opensha.sha.util.TectonicRegionType;
  *
  */
 public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourceProvider.Abstract implements ArchivableModule {
-
-	// TODO these are all from UCERF3 and may be changed
-	public static final double DEFAULT_SOURCE_MIN_MAG_CUTOFF = 5.05;
+	
 	private static final WC1994_MagLengthRelationship magLenRel = new WC1994_MagLengthRelationship();
-	private static final double ptSrcCutoff = 6.0;
 	
 	public NSHM23_AbstractGridSourceProvider() {
-		super(DEFAULT_SOURCE_MIN_MAG_CUTOFF);
+		super();
 	}
 
 	@Override
@@ -67,14 +65,14 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 
 	@Override
 	protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
-			BackgroundRupType bgRupType, PointSourceDistanceCorrections distCorrType) {
+			GriddedSeismicitySettings gridSourceSettings) {
 		Location loc = getLocation(gridIndex);
 		
 		double fracStrikeSlip = getFracStrikeSlip(gridIndex);
 		double fracNormal = getFracNormal(gridIndex);
 		double fracReverse = getFracReverse(gridIndex);
 
-		return buildSource(mfd, duration, bgRupType, distCorrType, loc, fracStrikeSlip, fracNormal, fracReverse);
+		return buildSource(mfd, duration, gridSourceSettings, loc, fracStrikeSlip, fracNormal, fracReverse);
 	}
 
 	/**
@@ -89,26 +87,27 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 	 * @param fracReverse
 	 * @return
 	 */
-	public static ProbEqkSource buildSource(IncrementalMagFreqDist mfd, double duration, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrections distCorrType, Location loc, double fracStrikeSlip, double fracNormal, double fracReverse) {
-		switch (bgRupType) {
+	public static ProbEqkSource buildSource(IncrementalMagFreqDist mfd, double duration,
+			GriddedSeismicitySettings gridSourceSettings, Location loc,
+			double fracStrikeSlip, double fracNormal, double fracReverse) {
+		switch (gridSourceSettings.surfaceType) {
 		case CROSSHAIR:
 			return new Point2Vert_FaultPoisSource(loc, mfd, magLenRel, duration,
-					ptSrcCutoff, fracStrikeSlip, fracNormal,
-					fracReverse, true, distCorrType.get());
+					gridSourceSettings.pointSourceMagnitudeCutoff, fracStrikeSlip, fracNormal,
+					fracReverse, true, gridSourceSettings.distanceCorrections);
 		case FINITE:
 			return new Point2Vert_FaultPoisSource(loc, mfd, magLenRel, duration,
-					ptSrcCutoff, fracStrikeSlip, fracNormal,
-					fracReverse, false, distCorrType.get());
+					gridSourceSettings.pointSourceMagnitudeCutoff, fracStrikeSlip, fracNormal,
+					fracReverse, false, gridSourceSettings.distanceCorrections);
 		case POINT:
 			Map<FocalMech, Double> mechMap = new EnumMap<>(FocalMech.class);
 			mechMap.put(FocalMech.STRIKE_SLIP, fracStrikeSlip);
 			mechMap.put(FocalMech.REVERSE, fracReverse);
 			mechMap.put(FocalMech.NORMAL, fracNormal);
-			return new PointSourceNshm(loc, mfd, duration, mechMap, distCorrType);
+			return new PointSourceNshm(loc, mfd, duration, mechMap, gridSourceSettings.distanceCorrections);
 
 		default:
-			throw new IllegalStateException("Unknown Background Rup Type: "+bgRupType);
+			throw new IllegalStateException("Unknown Background Rup Type: "+gridSourceSettings.surfaceType);
 		}
 	}
 
@@ -122,26 +121,24 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 	
 	public static class Precomputed extends MFDGridSourceProvider.AbstractPrecomputed {
 		
+		@SuppressWarnings("unused") // for deserialization
 		private Precomputed() {
-			super(DEFAULT_SOURCE_MIN_MAG_CUTOFF);
-			// for deserialization
+			super();
 		}
 
 		public Precomputed(GriddedRegion region, CSVFile<String> subSeisCSV, CSVFile<String> unassociatedCSV,
 				CSVFile<String> mechCSV) {
-			super(region, subSeisCSV, unassociatedCSV, mechCSV,
-					DEFAULT_SOURCE_MIN_MAG_CUTOFF);
+			super(region, subSeisCSV, unassociatedCSV, mechCSV);
 		}
 
 		public Precomputed(GriddedRegion region, Map<Integer, IncrementalMagFreqDist> nodeSubSeisMFDs,
 				Map<Integer, IncrementalMagFreqDist> nodeUnassociatedMFDs, double[] fracStrikeSlip, double[] fracNormal,
 				double[] fracReverse, TectonicRegionType[] trts) {
-			super(region, nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse, trts,
-					DEFAULT_SOURCE_MIN_MAG_CUTOFF);
+			super(region, nodeSubSeisMFDs, nodeUnassociatedMFDs, fracStrikeSlip, fracNormal, fracReverse, trts);
 		}
 
 		public Precomputed(MFDGridSourceProvider prov) {
-			super(prov, DEFAULT_SOURCE_MIN_MAG_CUTOFF);
+			super(prov);
 		}
 
 		@Override
@@ -151,7 +148,7 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 
 		@Override
 		protected ProbEqkSource buildSource(int gridIndex, IncrementalMagFreqDist mfd, double duration,
-				BackgroundRupType bgRupType, PointSourceDistanceCorrections distCorrType) {
+				GriddedSeismicitySettings gridSourceSettings) {
 			Location loc = getGriddedRegion().locationForIndex(gridIndex);
 			
 			double fracStrikeSlip = getFracStrikeSlip(gridIndex);
@@ -159,7 +156,7 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 			double fracReverse = getFracReverse(gridIndex);
 
 			return NSHM23_AbstractGridSourceProvider.buildSource(
-					mfd, duration, bgRupType, distCorrType, loc, fracStrikeSlip, fracNormal, fracReverse);
+					mfd, duration, gridSourceSettings, loc, fracStrikeSlip, fracNormal, fracReverse);
 		}
 
 		@Override

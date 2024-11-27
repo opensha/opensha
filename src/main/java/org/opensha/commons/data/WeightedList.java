@@ -31,6 +31,10 @@ public class WeightedList<E> extends AbstractList<WeightedValue<E>> implements X
 		public Unmodifiable(WeightedList<E> list) {
 			super(list, false);
 		}
+		
+		public Unmodifiable(List<WeightedValue<E>> list, boolean validate) {
+			super(list, validate);
+		}
 
 		@Override
 		public void add(E object, double weight) throws IllegalStateException {
@@ -120,7 +124,7 @@ public class WeightedList<E> extends AbstractList<WeightedValue<E>> implements X
 	 * @param evenlyWeighted varargs of evenly-weighted values
 	 */
 	@SafeVarargs
-	public static <E> WeightedList<E> evenlyWeighted(E... values) {
+	public static <E> Unmodifiable<E> evenlyWeighted(E... values) {
 		List<WeightedValue<E>> list;
 		switch (values.length) {
 		// more memory-efficient common special cases
@@ -147,7 +151,7 @@ public class WeightedList<E> extends AbstractList<WeightedValue<E>> implements X
 			break;
 		}
 		
-		return new WeightedList<>(list, false);
+		return new Unmodifiable<>(list, false);
 	}
 	
 	public WeightedList(List<WeightedValue<E>> list) {

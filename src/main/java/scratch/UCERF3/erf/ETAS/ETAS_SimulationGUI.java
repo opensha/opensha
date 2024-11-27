@@ -90,8 +90,6 @@ public class ETAS_SimulationGUI extends JFrame implements ParameterChangeListene
 		setDefaultCloseOperation(EXIT_ON_CLOSE);
 		console = new ConsoleWindow();
 		
-		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
-		
 		etasParams = new ETAS_ParameterList();
 		paramList = new ParameterList();
 		

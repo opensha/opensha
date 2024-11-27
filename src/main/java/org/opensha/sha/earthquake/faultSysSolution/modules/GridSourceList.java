@@ -43,6 +43,7 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
@@ -67,12 +68,6 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	// these are used for getLocationIndex(Location) if gridReg == null
 	private transient GriddedRegion encompassingRegion = null;
 	private int[] encompassingIndexesToLocIndexes = null;
-	
-	private double sourceMinMag = 5d;
-	private double supersampleTargetSpacingKM;
-	private double supersampleFullDist;
-	private double supersampleBorderDist;
-	private double supersampleCornerDist;
 	
 	private GridSourceList() {}
 	
@@ -119,16 +114,6 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	}
 
 	@Override
-	public void setSourceMinMagCutoff(double minMagCutoff) {
-		this.sourceMinMag = minMagCutoff;
-	}
-
-	@Override
-	public double getSourceMinMagCutoff() {
-		return getSourceMinMagCutoff();
-	}
-
-	@Override
 	public String getName() {
 		return "Grid Source List";
 	}
@@ -151,21 +136,6 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	@Override
 	public Location getLocationForSource(int sourceIndex) {
 		return getLocation(getLocationIndexForSource(sourceIndex));
-	}
-	
-	public void setSupersamplingParams(double supersampleTargetSpacingKM, double fullDist, double borderDist, double cornerDist) {
-		if (supersampleTargetSpacingKM > 0d) {
-			Preconditions.checkState(fullDist > 0d || borderDist > 0 || cornerDist > 0);
-			this.supersampleTargetSpacingKM = supersampleTargetSpacingKM;
-			this.supersampleFullDist = fullDist;
-			this.supersampleBorderDist = borderDist;
-			this.supersampleCornerDist = cornerDist;
-		} else {
-			this.supersampleTargetSpacingKM = Double.NaN;
-			this.supersampleFullDist = Double.NaN;
-			this.supersampleBorderDist = Double.NaN;
-			this.supersampleCornerDist = Double.NaN;
-		}
 	}
 	
 	@Override
@@ -234,33 +204,30 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 
 	@Override
 	public ProbEqkSource getSource(int sourceIndex, double duration, MagnitudeDependentAftershockFilter aftershockFilter,
-			BackgroundRupType bgRupType, PointSourceDistanceCorrections distCorrType) {
+			GriddedSeismicitySettings gridSourceSettings) {
 		return getSource(tectonicRegionTypeForSourceIndex(sourceIndex), getLocationIndexForSource(sourceIndex),
-				duration, aftershockFilter, bgRupType, distCorrType);
+				duration, aftershockFilter, gridSourceSettings);
 	}
 
 	@Override
 	public ProbEqkSource getSource(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
-			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrections distCorrType) {
+			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 		return buildSource(getLocation(gridIndex), getRuptures(tectonicRegionType, gridIndex),
-				duration, sourceMinMag, aftershockFilter, bgRupType, distCorrType, tectonicRegionType);
+				duration, aftershockFilter, gridSourceSettings, tectonicRegionType);
 	}
 
 	@Override
 	public ProbEqkSource getSourceSubSeisOnFault(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
-			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrections distCorrType) {
+			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 		return buildSource(getLocation(gridIndex), getRupturesSubSeisOnFault(tectonicRegionType, gridIndex),
-				duration, sourceMinMag, aftershockFilter, bgRupType, distCorrType, tectonicRegionType);
+				duration, aftershockFilter, gridSourceSettings, tectonicRegionType);
 	}
 
 	@Override
 	public ProbEqkSource getSourceUnassociated(TectonicRegionType tectonicRegionType, int gridIndex, double duration,
-			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrections distCorrType) {
+			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 		return buildSource(getLocation(gridIndex), getRupturesUnassociated(tectonicRegionType, gridIndex),
-				duration, sourceMinMag, aftershockFilter, bgRupType, distCorrType, tectonicRegionType);
+				duration, aftershockFilter, gridSourceSettings, tectonicRegionType);
 	}
 
 	@Override
@@ -1090,13 +1057,13 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		private List<Double> rates;
 		private final List<RuptureSurface> surfs;
 		
-		public GriddedRuptureSourceData(Location gridLoc, List<GriddedRupture> gridRups, double minMag,
-				MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType) {
+		public GriddedRuptureSourceData(Location gridLoc, List<GriddedRupture> gridRups,
+				MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 			Preconditions.checkState(!gridRups.isEmpty());
-			if (gridRups.get(0).properties.magnitude >= minMag) {
+			if (gridRups.get(0).properties.magnitude >= gridSourceSettings.minimumMagnitude) {
 				// probably not mag-filtering, build lists with initial capacity
 				int expectedSize = gridRups.size(); 
-				if (bgRupType == BackgroundRupType.CROSSHAIR)
+				if (gridSourceSettings.surfaceType == BackgroundRupType.CROSSHAIR)
 					expectedSize *= 2;
 				rups = new ArrayList<>(expectedSize);
 				rates = new ArrayList<>(expectedSize);
@@ -1109,8 +1076,9 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			}
 			PointSurfaceBuilder surfBuilder = new PointSurfaceBuilder(gridLoc);
 			for (GriddedRupture rup : gridRups) {
-				if (rup.properties.magnitude < minMag)
+				if (rup.properties.magnitude < gridSourceSettings.minimumMagnitude)
 					continue;
+				boolean forcePointSurf = rup.properties.magnitude < gridSourceSettings.pointSourceMagnitudeCutoff;
 				double rate = rup.rate;
 				if (aftershockFilter != null)
 					rate = aftershockFilter.getFilteredRate(rup.properties.magnitude, rup.rate);
@@ -1118,20 +1086,22 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 					continue;
 				surfBuilder.magnitude(rup.properties.magnitude);
 				surfBuilder.dip(rup.properties.dip);
-				if (Double.isFinite(rup.properties.strike)) {
-					surfBuilder.strike(rup.properties.strike);
-				} else if (rup.properties.strikeRange != null) {
-					surfBuilder.strikeRange(rup.properties.strikeRange);
-				} else {
+				if (forcePointSurf)
 					surfBuilder.strike(Double.NaN);
-				}
+				else if (Double.isFinite(rup.properties.strike))
+					surfBuilder.strike(rup.properties.strike);
+				else if (rup.properties.strikeRange != null)
+					surfBuilder.strikeRange(rup.properties.strikeRange);
+				else
+					surfBuilder.strike(Double.NaN);
 				surfBuilder.upperDepth(rup.properties.upperDepth);
 				surfBuilder.lowerDepth(rup.properties.lowerDepth);
 				surfBuilder.length(rup.properties.length);
 				double hypoDepth = rup.properties.getHypocentralDepth();
 				surfBuilder.hypocentralDepth(hypoDepth);
 				surfBuilder.das(rup.properties.getHypocentralDAS());
-				WeightedList<? extends RuptureSurface> rupSurfs = surfBuilder.build(bgRupType, null);
+				WeightedList<? extends RuptureSurface> rupSurfs = surfBuilder.build(
+						forcePointSurf ? BackgroundRupType.POINT : gridSourceSettings.surfaceType, null);
 				for (int i=0; i<rupSurfs.size(); i++) {
 					RuptureSurface surf = rupSurfs.getValue(i);
 					double weight = rupSurfs.getWeight(i);
@@ -1179,23 +1149,22 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		
 	}
 	
-	private PoissonPointSource buildSource(Location gridLoc, List<GriddedRupture> gridRups, double duration, double minMag,
-			MagnitudeDependentAftershockFilter aftershockFilter, BackgroundRupType bgRupType,
-			PointSourceDistanceCorrections distCorrType, TectonicRegionType tectonicRegionType) {
+	private PoissonPointSource buildSource(Location gridLoc, List<GriddedRupture> gridRups, double duration,
+			MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings,
+			TectonicRegionType tectonicRegionType) {
 		if (gridRups.isEmpty())
 			return null;
 		PointSource.PoissonBuilder builder = PointSource.poissonBuilder(gridLoc, tectonicRegionType);
 		
-		builder.data(new GriddedRuptureSourceData(gridLoc, gridRups, minMag, aftershockFilter, bgRupType));
-		builder.distCorrs(distCorrType);
+		builder.data(new GriddedRuptureSourceData(gridLoc, gridRups, aftershockFilter, gridSourceSettings));
+		builder.distCorrs(gridSourceSettings.distanceCorrections);
 		builder.duration(duration);
 		
-		if (supersampleTargetSpacingKM > 0d) {
+		if (gridSourceSettings.supersamplingSettings != null) {
 			Preconditions.checkState(latGridSpacing > 0d && lonGridSpacing > 0d);
 			Region gridCell = new Region(new Location(gridLoc.lat - 0.5*latGridSpacing, gridLoc.lon - 0.5*lonGridSpacing),
 					new Location(gridLoc.lat + 0.5*latGridSpacing, gridLoc.lon + 0.5*lonGridSpacing));
-			builder.siteAdaptiveSupersampled(gridCell, supersampleTargetSpacingKM,
-					supersampleFullDist, supersampleBorderDist, supersampleCornerDist);
+			builder.siteAdaptiveSupersampled(gridCell, gridSourceSettings.supersamplingSettings);
 		}
 		
 		return builder.build();

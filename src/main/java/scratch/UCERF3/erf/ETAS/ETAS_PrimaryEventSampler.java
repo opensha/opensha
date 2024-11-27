@@ -57,12 +57,14 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -4220,10 +4222,10 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 					ProbEqkSource filteredSrc;
 					if(isSubSeismo == 1)
 						filteredSrc = gridProv.getSourceSubSeisOnFault(gridRegionIndex,
-								erf.getTimeSpan().getDuration(), null, BackgroundRupType.POINT, null);
+								erf.getTimeSpan().getDuration(), null, FaultSystemSolutionERF_ETAS.GRID_SEIS_SETTINGS);
 					else
 						filteredSrc = gridProv.getSourceUnassociated(gridRegionIndex,
-								erf.getTimeSpan().getDuration(), null, BackgroundRupType.POINT, null);
+								erf.getTimeSpan().getDuration(), null, FaultSystemSolutionERF_ETAS.GRID_SEIS_SETTINGS);
 					int filteredR = filteredSrc.drawSingleRandomEqkRuptureIndex(etas_utils.getRandomDouble());
 					ProbEqkRupture filteredRup = filteredSrc.getRupture(filteredR);
 					randRupIndex = -1;
@@ -4927,10 +4929,10 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 					int gridRegionIndex = s-numFltSystSources;
 					if(origGridSeisTrulyOffVsSubSeisStatus[gridRegionIndex] == 2) {	// it has both truly off and sub-seismo components
 						mfdForSrcSubSeisOnlyArray[s] = ERF_Calculator.getTotalMFD_ForSource(
-								mfdGridProv.getSourceSubSeisOnFault(gridRegionIndex, duration, null, BackgroundRupType.POINT, null),
+								mfdGridProv.getSourceSubSeisOnFault(gridRegionIndex, duration, null, FaultSystemSolutionERF_ETAS.GRID_SEIS_SETTINGS),
 								duration, minMag, maxMag, numMag, true);;
 						mfdForTrulyOffOnlyArray[s] = ERF_Calculator.getTotalMFD_ForSource(
-								mfdGridProv.getSourceUnassociated(gridRegionIndex, duration, null, BackgroundRupType.POINT, null),
+								mfdGridProv.getSourceUnassociated(gridRegionIndex, duration, null, FaultSystemSolutionERF_ETAS.GRID_SEIS_SETTINGS),
 								duration, minMag, maxMag, numMag, true);;					}
 					else if (origGridSeisTrulyOffVsSubSeisStatus[gridRegionIndex] == 1) { // it's all subseismo
 						mfdForSrcSubSeisOnlyArray[s] = mfdForSrcArray[s];

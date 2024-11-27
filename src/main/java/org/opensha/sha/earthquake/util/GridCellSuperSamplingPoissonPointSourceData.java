@@ -40,6 +40,33 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 	 * @param data original {@link PoissonPointSourceData}
 	 * @param centerLoc location of original grid node
 	 * @param gridCell cell that this grid node represents
+	 * @param supersampleSettings supersampling settings
+	 */
+	public GridCellSuperSamplingPoissonPointSourceData(PoissonPointSourceData data, Location centerLoc, Region gridCell,
+			GridCellSupersamplingSettings supersampleSettings) {
+		this(data, centerLoc, gridCell, supersampleSettings.targetSpacingKM, supersampleSettings.fullDist,
+				supersampleSettings.borderDist, supersampleSettings.cornerDist);
+	}
+	
+	/**
+	 * This enables distance-dependent supersampling of point sources. The cell represented by this point source will
+	 * be divided up into a supersampled grid cell with at least <code>samplesPerKM</code> samples per kilometer.
+	 * 
+	 * <p>Three sampling levels are supported, each with decreasing computational demands:
+	 * 
+	 * <p>Full supersampling, up to the supplied <code>fullDist</code>, uses the full set of supersampled grid nodes
+	 * and is most expensive but most accurate, especially nearby.
+	 * 
+	 * <p>Border sampling, up to the supplied <code>borderDist</code>, uses just the exterior grid nodes from
+	 * the supersampled region, and is best when the site is a little further away and just sensitive to the size
+	 * of the grid cell without integrating over the entire cell.
+	 * 
+	 * <p>Corder sampling, up to the supplied <code>cornerDist</code>, uses the corners of the grid cell as a crude
+	 * approximation. This is fast (only 4 locations) and most appropriate at larger distances.
+	 * 
+	 * @param data original {@link PoissonPointSourceData}
+	 * @param centerLoc location of original grid node
+	 * @param gridCell cell that this grid node represents
 	 * @param targetSpacingKM target sample spacing (km)
 	 * @param fullDist site-to-center distance (km) below which we should use the full resampled grid node
 	 * @param borderDist site-to-center distance (km) below which we should use just the exterior of the resampled grid node
