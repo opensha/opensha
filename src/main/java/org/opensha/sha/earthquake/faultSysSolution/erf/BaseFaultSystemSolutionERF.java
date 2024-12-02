@@ -242,6 +242,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			clearCachedGridSources();
 		} else if (paramName.equalsIgnoreCase(bgSettingsParam.getName())) {
 			bgSettings = bgSettingsParam.getValue();
+			System.out.println("FSS ERF updated grid seis settings: "+bgSettings);
 			bgRupSettingsChanged = true;
 			clearCachedGridSources();
 		} else if (paramName.equalsIgnoreCase(aseisParam.getName())) {

@@ -16,8 +16,9 @@ public class GriddedSeismicitySettings {
 	public static GriddedSeismicitySettings DEFAULT = new GriddedSeismicitySettings(
 			5d, // M>5
 			BackgroundRupType.POINT, // point sources
-			6d, // always finite <6 (if set to a finite option, or point sources have strikes)
-			PointSourceDistanceCorrections.NSHM_2013.get(), // NSHM 2013 distance correction
+			6d, // always finite >6 (if set to a finite option, or point sources have strikes)
+//			5d,
+			PointSourceDistanceCorrections.DEFAULT, // NSHM 2013 distance correction
 			null); // no supersampling
 
 	/**
@@ -133,6 +134,13 @@ public class GriddedSeismicitySettings {
 			return this;
 		return new GriddedSeismicitySettings(minimumMagnitude, surfaceType,
 				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings);
+	}
+
+	@Override
+	public String toString() {
+		return "GriddedSeismicitySettings [minMag=" + minimumMagnitude + ", type=" + surfaceType
+				+ ", ptSrcMagCut=" + pointSourceMagnitudeCutoff + ", distCorrs="
+				+ distanceCorrections + ", superssample=" + supersamplingSettings + "]";
 	}
 
 }

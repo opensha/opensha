@@ -296,6 +296,11 @@ public class PointSourceNshm extends PoissonPointSource {
 			return RJB_WC94LENGTH[mIndex][rIndex];
 		}
 		
+		@Override
+		public String toString() {
+			return "USGS NSHM (2013)";
+		}
+		
 	}
 
 }

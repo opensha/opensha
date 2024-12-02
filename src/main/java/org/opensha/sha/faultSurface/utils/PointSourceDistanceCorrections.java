@@ -1,10 +1,6 @@
 package org.opensha.sha.faultSurface.utils;
 
-import static java.lang.Math.min;
-import static java.lang.Math.round;
-
 import java.util.EnumSet;
-import java.util.List;
 import java.util.function.Supplier;
 
 import org.opensha.commons.data.WeightedList;
@@ -24,14 +20,20 @@ import com.google.common.base.Preconditions;
  */
 public enum PointSourceDistanceCorrections implements Supplier<WeightedList<PointSourceDistanceCorrection>> {
 	
-	NONE("None", new PointSourceDistanceCorrection() {
-
-		@Override
-		public double getCorrectedDistanceJB(double mag, PointSurface surf, double horzDist) {
-			return horzDist;
-		}
-		
-	}),
+	NONE("None"),
+//	NONE("None", new PointSourceDistanceCorrection() {
+//
+//		@Override
+//		public double getCorrectedDistanceJB(double mag, PointSurface surf, double horzDist) {
+//			return horzDist;
+//		}
+//		
+//		@Override
+//		public String toString() {
+//			return PointSourceDistanceCorrections.NONE.name;
+//		}
+//		
+//	}),
 	FIELD("Field", new PointSourceDistanceCorrection() {
 		// TODO is there a reference? more specific name?
 
@@ -44,6 +46,11 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<Poin
 			double rupLen =  Math.pow(10.0,-3.22+0.69*mag);
 			double corrFactor = 0.7071 + (1.0-0.7071)/(1 + Math.pow(rupLen/(horzDist*0.87),1.1));
 			return horzDist*corrFactor;
+		}
+		
+		@Override
+		public String toString() {
+			return PointSourceDistanceCorrections.FIELD.name;
 		}
 		
 	}),
@@ -84,11 +91,16 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<Poin
 			}
 		}
 		
+		@Override
+		public String toString() {
+			return PointSourceDistanceCorrections.NSHM_2008.name;
+		}
+		
 	}),
 	NSHM_2013("USGS NSHM (2013)", new DistanceCorrection2013());
 	
 	// TODO: decide on default
-	public static final PointSourceDistanceCorrections DEFAULT = NONE;
+	public static final PointSourceDistanceCorrections DEFAULT = NSHM_2013;
 	
 	/**
 	 * Set of all {@link PointSourceDistanceCorrections} that produce a single {@link PointSourceDistanceCorrection}.
@@ -97,13 +109,17 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<Poin
 	static {
 		SINGLE_CORRS = EnumSet.noneOf(PointSourceDistanceCorrections.class);
 		for (PointSourceDistanceCorrections corr : values()) {
-			if (corr.corrs.size() == 1)
+			if (corr.corrs == null || corr.corrs.size() == 1)
 				SINGLE_CORRS.add(corr);
 		}
 	}
 	
 	private String name;
 	private WeightedList<PointSourceDistanceCorrection> corrs;
+
+	private PointSourceDistanceCorrections(String name) {
+		this.name = name;
+	}
 
 	private PointSourceDistanceCorrections(String name, PointSourceDistanceCorrection corr) {
 //		this(name, new WeightedList<>(List.of(corr), List.of(1d)));

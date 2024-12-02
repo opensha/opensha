@@ -174,6 +174,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		
 		griddedSettings = SolHazardMapCalc.getGridSeisSettings(cmd);
 		
+		if (gridSeisOp != IncludeBackgroundOption.EXCLUDE)
+			debug("Gridded settings: "+griddedSettings);
+		
 		if (cmd.hasOption("grid-spacing"))
 			gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
 		
