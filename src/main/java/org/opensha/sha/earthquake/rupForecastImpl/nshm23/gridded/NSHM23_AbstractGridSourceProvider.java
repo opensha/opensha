@@ -104,6 +104,9 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 			mechMap.put(FocalMech.STRIKE_SLIP, fracStrikeSlip);
 			mechMap.put(FocalMech.REVERSE, fracReverse);
 			mechMap.put(FocalMech.NORMAL, fracNormal);
+			if (gridSourceSettings.supersamplingSettings != null)
+				return new PointSourceNshm.Supersampled(loc, mfd, duration, mechMap,
+						gridSourceSettings.distanceCorrections, gridSourceSettings.supersamplingSettings);
 			return new PointSourceNshm(loc, mfd, duration, mechMap, gridSourceSettings.distanceCorrections);
 
 		default:

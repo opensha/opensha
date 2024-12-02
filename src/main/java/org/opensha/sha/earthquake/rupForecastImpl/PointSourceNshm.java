@@ -15,21 +15,26 @@ import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
+import org.opensha.commons.data.Site;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
+import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.SiteAdaptiveSource;
 import org.opensha.sha.earthquake.util.GridCellSuperSamplingPoissonPointSourceData;
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
@@ -92,53 +97,112 @@ public class PointSourceNshm extends PoissonPointSource {
 	/** Minimum magnitude for finite fault representation. */
 	// public static final double M_FINITE_CUT = 6.0;
 
-	private static final MagLengthRelationship WC94 =
-			new WC1994_MagLengthRelationship();
-
-	/**
-	 * Constructs a new point earthquake source.
-	 *
-	 * @param loc <code>Location</code> of the point source
-	 * @param mfd magnitude frequency distribution of the source
-	 * @param duration of the parent forecast
-	 * @param depths 2 element array of rupture top depths; <code>depths[0]</code>
-	 *        used for M&lt;6.5, <code>depths[1]</code> used for M&ge;6.5
-	 * @param mechWtMap <code>Map</code> of focal mechanism weights
-	 */
-	public PointSourceNshm(Location loc, IncrementalMagFreqDist mfd,
-			double duration, Map<FocalMech, Double> mechWtMap, PointSourceDistanceCorrections distCorrType) {
-		this(loc, mfd, duration, mechWtMap, distCorrType == null ? null : distCorrType.get());
-	}
+	private static final MagLengthRelationship WC94 = new WC1994_MagLengthRelationship();
 	
-	public PointSourceNshm(Location loc, IncrementalMagFreqDist mfd,
-			double duration, Map<FocalMech, Double> mechWtMap, WeightedList<PointSourceDistanceCorrection> distCorrs) {
-		this(loc, mfd, duration, mechWtMap, SURF_BUILDER_DEFAULT, distCorrs);
-	}
-	
-	public PointSourceNshm(Location loc, IncrementalMagFreqDist mfd,
-			double duration, Map<FocalMech, Double> mechWtMap,
-			double magCut, double depthBelowMagCut, double depthAboveMagCut,
+	public PointSourceNshm(Location loc,
+			IncrementalMagFreqDist mfd,
+			double duration,
+			Map<FocalMech, Double> mechWtMap,
 			WeightedList<PointSourceDistanceCorrection> distCorrs) {
-		this(loc, mfd, duration, mechWtMap, new SurfaceBuilder(magCut, depthBelowMagCut, depthAboveMagCut), distCorrs);
+		this(loc, mfd, duration, mechWtMap, SURF_BUILDER_DEFAULT, distCorrs, null);
 	}
 	
-	private PointSourceNshm(Location loc, IncrementalMagFreqDist mfd,
-			double duration, Map<FocalMech, Double> mechWtMap,
-			SurfaceBuilder surfaceBuilder, WeightedList<PointSourceDistanceCorrection> distCorrs) {
-		super(loc, TectonicRegionType.ACTIVE_SHALLOW, duration, 
-				PointSource.dataForMFDs(loc, mfd, weightsMap(mechWtMap), surfaceBuilder), distCorrs);
+	public PointSourceNshm(Location loc,
+			IncrementalMagFreqDist mfd,
+			double duration,
+			Map<FocalMech, Double> mechWtMap,
+			double magCut,
+			double depthBelowMagCut,
+			double depthAboveMagCut,
+			WeightedList<PointSourceDistanceCorrection> distCorrs) {
+		this(loc, mfd, duration, mechWtMap, new SurfaceBuilder(magCut, depthBelowMagCut, depthAboveMagCut), distCorrs, null);
+	}
+	
+	private PointSourceNshm(Location loc,
+			IncrementalMagFreqDist mfd,
+			double duration, 
+			Map<FocalMech, Double> mechWtMap,
+			SurfaceBuilder surfaceBuilder,
+			WeightedList<PointSourceDistanceCorrection> distCorrs,
+			GridCellSupersamplingSettings supersamplingSettings) {
+		super(loc, TectonicRegionType.ACTIVE_SHALLOW, duration,
+				buildData(loc, mfd, mechWtMap, surfaceBuilder, supersamplingSettings), distCorrs);
 		this.name = NAME;
 	}
 	
-	// TODO: Add supersampling support
-//	private static PoissonPointSourceData buildData(Location loc, IncrementalMagFreqDist mfd,
-//			Map<FocalMech, Double> mechWtMap, SurfaceBuilder surfaceBuilder,
-//			GridCellSupersamplingSettings supersamplingSettings) {
-//		PoissonPointSourceData data = PointSource.dataForMFDs(loc, mfd, weightsMap(mechWtMap), surfaceBuilder);
-//		if (supersamplingSettings != null)
-//			data = new GridCellSuperSamplingPoissonPointSourceData(data, loc, cell, supersamplingSettings);
-//		return data;
-//	}
+	public static class Supersampled extends PointSourceNshm implements SiteAdaptiveSource {
+		
+		private SiteAdaptivePointSourceData<PoissonPointSourceData> adaptiveData;
+		
+		private ConcurrentMap<PoissonPointSourceData, PoissonPointSource> sourceCache;
+		
+		public Supersampled(Location loc,
+				IncrementalMagFreqDist mfd,
+				double duration,
+				Map<FocalMech, Double> mechWtMap,
+				WeightedList<PointSourceDistanceCorrection> distCorrs,
+				GridCellSupersamplingSettings supersamplingSettings) {
+			super(loc, mfd, duration, mechWtMap, SURF_BUILDER_DEFAULT, distCorrs, supersamplingSettings);
+			initAdaptive();
+		}
+		
+		public Supersampled(Location loc,
+				IncrementalMagFreqDist mfd,
+				double duration,
+				Map<FocalMech, Double> mechWtMap,
+				double magCut,
+				double depthBelowMagCut,
+				double depthAboveMagCut,
+				WeightedList<PointSourceDistanceCorrection> distCorrs,
+				GridCellSupersamplingSettings supersamplingSettings) {
+			super(loc, mfd, duration, mechWtMap, new SurfaceBuilder(magCut, depthBelowMagCut, depthAboveMagCut), distCorrs, supersamplingSettings);
+			initAdaptive();
+		}
+		
+		@SuppressWarnings("unchecked")
+		private void initAdaptive() {
+			Preconditions.checkState(data instanceof SiteAdaptivePointSourceData<?>);
+			adaptiveData = (SiteAdaptivePointSourceData<PoissonPointSourceData>) data;
+			sourceCache = new ConcurrentHashMap<>();
+		}
+
+		@Override
+		public ProbEqkSource getForSite(Site site) {
+			PoissonPointSourceData dataForSite = adaptiveData.getForSite(site);
+			if (dataForSite == adaptiveData)
+				// it returned itself, nothing for this site
+				return this;
+			PoissonPointSource ret = sourceCache.get(dataForSite);
+			if (ret != null)
+				return ret;
+			ret = new PoissonPointSource(getLocation(), getTectonicRegionType(),
+					getDuration(), dataForSite, getDistCorrs());
+			sourceCache.putIfAbsent(dataForSite, ret);
+			return ret;
+		}
+		
+	}
+	
+	private static PoissonPointSourceData buildData(Location loc, IncrementalMagFreqDist mfd,
+			Map<FocalMech, Double> mechWtMap, SurfaceBuilder surfaceBuilder,
+			GridCellSupersamplingSettings supersamplingSettings) {
+		PoissonPointSourceData data = PointSource.dataForMFDs(loc, mfd, weightsMap(mechWtMap), surfaceBuilder);
+		if (supersamplingSettings != null) {
+			// assume 0.1 degree gridding (but verify)
+			Preconditions.checkState(multipleOf0p1(loc.lat) && multipleOf0p1(loc.lon),
+					"Assuming gridding of 0.1 degrees for supersampling, but not all locations are on a 0.1 degree grid: %s", loc);
+			Region cell = new Region(new Location(loc.lat-0.05, loc.lon-0.05), new Location(loc.lat+0.05, loc.lon+0.05));
+			data = new GridCellSuperSamplingPoissonPointSourceData(data, loc, cell, supersamplingSettings);
+		}
+		return data;
+	}
+	
+	private static boolean multipleOf0p1(double number) {
+		double factor = number / 0.1;
+		double roundedFactor = Math.round(factor);
+		double reconstructed = roundedFactor * 0.1;
+		return Math.abs(number - reconstructed) < 0.001;
+	}
 	
 	private static Map<FocalMechanism, Double> weightsMap(Map<FocalMech, Double> map) {
 		Map<FocalMechanism, Double> ret = new HashMap<>(map.size());

@@ -1398,12 +1398,13 @@ public abstract class PointSource extends ProbEqkSource {
 		 * @param fullDist site-to-center distance (km) below which we should use the full resampled grid node
 		 * @param borderDist site-to-center distance (km) below which we should use just the exterior of the resampled grid node
 		 * @param cornerDist site-to-center distance (km) below which we should use all 4 corners of the grid cell
+		 * @param applyToFinite if false, will only apply to point surfaces (not finite surfaces)
 		 */
 		public PoissonBuilder siteAdaptiveSupersampled(Region gridCell, double targetSpacingKM,
-				double fullDist, double borderDist, double cornerDist) {
+				double fullDist, double borderDist, double cornerDist, boolean applyToFinite) {
 			Preconditions.checkState(data != null, "Must set point source data first");
 			data = new GridCellSuperSamplingPoissonPointSourceData(data, loc,
-					gridCell, targetSpacingKM, fullDist, borderDist, cornerDist);
+					gridCell, targetSpacingKM, fullDist, borderDist, cornerDist, applyToFinite);
 			return this;
 		}
 		

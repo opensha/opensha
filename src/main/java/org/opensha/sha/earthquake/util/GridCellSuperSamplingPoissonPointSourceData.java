@@ -45,7 +45,7 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 	public GridCellSuperSamplingPoissonPointSourceData(PoissonPointSourceData data, Location centerLoc, Region gridCell,
 			GridCellSupersamplingSettings supersampleSettings) {
 		this(data, centerLoc, gridCell, supersampleSettings.targetSpacingKM, supersampleSettings.fullDist,
-				supersampleSettings.borderDist, supersampleSettings.cornerDist);
+				supersampleSettings.borderDist, supersampleSettings.cornerDist, supersampleSettings.applyToFinite);
 	}
 	
 	/**
@@ -73,7 +73,18 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 	 * @param cornerDist site-to-center distance (km) below which we should use all 4 corners of the grid cell
 	 */
 	public GridCellSuperSamplingPoissonPointSourceData(PoissonPointSourceData data, Location centerLoc, Region gridCell,
-			double targetSpacingKM, double fullDist, double borderDist, double cornerDist) {
+			double targetSpacingKM, double fullDist, double borderDist, double cornerDist, boolean applyToFinite) {
+		if (!applyToFinite) {
+			// see if all are finite and we can skip everything
+			boolean allFinite = true;
+			for (int r=0; allFinite && r<data.getNumRuptures(); r++)
+				allFinite = data.isFinite(r);
+			if (allFinite) {
+				// skipping finite and all are finite
+				init(centerLoc, List.of(data), List.of(Double.POSITIVE_INFINITY), data);
+				return;
+			}
+		}
 		Preconditions.checkState(gridCell.contains(centerLoc), "CenterLoc=%s not contined in cell region", centerLoc);
 		double cellWidth = LocationUtils.horzDistanceFast(
 				new Location(centerLoc.getLatitude(), gridCell.getMinLon()),
@@ -121,12 +132,12 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 		List<Double> cutoffDists = new ArrayList<>(count);
 		
 		if (fullDist > 0d) {
-			datas.add(new LocSamplingWrapper(data, centerLoc, sampled.getNodeList()));
+			datas.add(new LocSamplingWrapper(data, centerLoc, sampled.getNodeList(), applyToFinite));
 			cutoffDists.add(fullDist);
 		}
 		
 		if (borderDist > 0d) {
-			datas.add(new LocSamplingWrapper(data, centerLoc, getExteriorNodes(sampled)));
+			datas.add(new LocSamplingWrapper(data, centerLoc, getExteriorNodes(sampled), applyToFinite));
 			cutoffDists.add(borderDist);
 		}
 		
@@ -139,7 +150,7 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 				// bump up the resolution a bit from 4 corners to midpoints as well (if it were rectangular)
 				locs = getResampledExterior(gridCell, 8);
 			}
-			datas.add(new LocSamplingWrapper(data, centerLoc, locs));
+			datas.add(new LocSamplingWrapper(data, centerLoc, locs, applyToFinite));
 			cutoffDists.add(cornerDist);
 		}
 		super.init(centerLoc, datas, cutoffDists, data);
@@ -217,52 +228,91 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 		private Location centerLoc;
 		private LocationList samples;
 		
-		private int numRuptures;
 		private int numNodes;
 		private double nodeRateScalar;
+		
+		private short[] rupDataIndexes;
+		private short[] rupNodeIndexes;
 
-		public LocSamplingWrapper(PoissonPointSourceData data, Location centerLoc, LocationList samples) {
+		public LocSamplingWrapper(PoissonPointSourceData data, Location centerLoc, LocationList samples, boolean applyToFinite) {
 			this.data = data;
 			this.centerLoc = centerLoc;
 			this.samples = samples;
 			
 			this.numNodes = samples.size();
+			Preconditions.checkState(numNodes < Short.MAX_VALUE);
+			Preconditions.checkState(data.getNumRuptures() < Short.MAX_VALUE);
 			this.nodeRateScalar = 1d/(double)numNodes;
-			this.numRuptures = data.getNumRuptures() * numNodes;
-		}
-
-		private int dataRupIndex(int rupIndex) {
-			return rupIndex / numNodes;
-		}
-		
-		private int nodeIndex(int rupIndex) {
-			return rupIndex % numNodes;
+			
+			if (applyToFinite) {
+				int numRuptures = data.getNumRuptures() * numNodes;
+				rupDataIndexes = new short[numRuptures];
+				rupNodeIndexes = new short[numRuptures];
+				for (int r=0; r<numRuptures; r++) {
+					rupDataIndexes[r] = (short)(r / numNodes);
+					rupNodeIndexes[r] = (short)(r % numNodes);
+				}
+			} else {
+				// only apply to gridded ruptures
+				int sampledNumRuptures = 0;
+				int dataNumRuptures = data.getNumRuptures();
+				for (int r=0; r<dataNumRuptures; r++) {
+					if (data.isFinite(r))
+						sampledNumRuptures++;
+					else
+						sampledNumRuptures += numNodes;
+				}
+				
+				rupDataIndexes = new short[sampledNumRuptures];
+				rupNodeIndexes = new short[sampledNumRuptures];
+				int rupIndex = 0;
+				for (int dataIndex=0; dataIndex<dataNumRuptures; dataIndex++) {
+					if (data.isFinite(dataIndex)) {
+						rupDataIndexes[rupIndex] = (short)dataIndex;
+						rupNodeIndexes[rupIndex] = -1; // not sampled
+						rupIndex++;
+					} else {
+						for (int n=0; n<numNodes; n++) {
+							rupDataIndexes[rupIndex] = (short)dataIndex;
+							rupNodeIndexes[rupIndex] = (short)n;
+							rupIndex++;
+						}
+					}
+				}
+				Preconditions.checkState(rupIndex == sampledNumRuptures);
+			}
 		}
 
 		@Override
 		public int getNumRuptures() {
-			return numRuptures;
+			return rupDataIndexes.length;
 		}
 
 		@Override
 		public double getMagnitude(int rupIndex) {
-			return data.getMagnitude(dataRupIndex(rupIndex));
+			return data.getMagnitude(rupDataIndexes[rupIndex]);
 		}
 
 		@Override
 		public double getAveRake(int rupIndex) {
-			return data.getAveRake(dataRupIndex(rupIndex));
+			return data.getAveRake(rupDataIndexes[rupIndex]);
 		}
 
 		@Override
 		public double getRate(int rupIndex) {
-			return data.getRate(dataRupIndex(rupIndex)) * nodeRateScalar;
+			if (rupNodeIndexes[rupIndex] < 0)
+				// not sampled (finite)
+				return data.getRate(rupDataIndexes[rupIndex]);
+			return data.getRate(rupDataIndexes[rupIndex]) * nodeRateScalar;
 		}
 
 		@Override
 		public RuptureSurface getSurface(int rupIndex) {
-			RuptureSurface surf = data.getSurface(dataRupIndex(rupIndex));
-			Location destLoc = samples.get(nodeIndex(rupIndex));
+			RuptureSurface surf = data.getSurface(rupDataIndexes[rupIndex]);
+			if (rupNodeIndexes[rupIndex] < 0)
+				// not sampled
+				return surf;
+			Location destLoc = samples.get(rupNodeIndexes[rupIndex]);
 			if (surf instanceof PointSurface) {
 				// shortcut to avoid the more costly LocationVector creation
 				PointSurface moved = ((PointSurface)surf).copyShallow();
@@ -277,16 +327,17 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 
 		@Override
 		public boolean isFinite(int rupIndex) {
-			return data.isFinite(dataRupIndex(rupIndex));
+			return data.isFinite(rupDataIndexes[rupIndex]);
 		}
 
 		@Override
 		public Location getHypocenter(Location sourceLoc, RuptureSurface rupSurface, int rupIndex) {
-			Location hypo = data.getHypocenter(sourceLoc, rupSurface, dataRupIndex(rupIndex));
-			if (hypo == null)
-				return null;
+			Location hypo = data.getHypocenter(sourceLoc, rupSurface, rupDataIndexes[rupIndex]);
+			if (hypo == null || rupNodeIndexes[rupIndex] < 0)
+				return hypo;
+			
 			// move it but keep the original depth
-			Location nodeLoc = samples.get(nodeIndex(rupIndex));
+			Location nodeLoc = samples.get(rupNodeIndexes[rupIndex]);
 			if (hypo.depth != nodeLoc.depth)
 				nodeLoc = new Location(nodeLoc.lat, nodeLoc.lon, hypo.depth);
 			return nodeLoc;
@@ -343,7 +394,7 @@ public class GridCellSuperSamplingPoissonPointSourceData extends SiteDistanceDep
 			}
 		};
 		GridCellSuperSamplingPoissonPointSourceData sampler = new GridCellSuperSamplingPoissonPointSourceData(
-				fakeData, centerLoc, gridCell, spacing, fullDist, borderDist, cornerDist);
+				fakeData, centerLoc, gridCell, spacing, fullDist, borderDist, cornerDist, false);
 		
 		DecimalFormat distDF = new DecimalFormat("0.0");
 		double prevDist = 0d;

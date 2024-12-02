@@ -1339,7 +1339,7 @@ public class SolHazardMapCalc {
 		GriddedSeismicitySettings settings = BaseFaultSystemSolutionERF.GRID_SETTINGS_DEFAULT;
 		
 		if (cmd.hasOption("supersample"))
-			settings = settings.forSupersamplingSettings(GridCellSupersamplingSettings.getDefault());
+			settings = settings.forSupersamplingSettings(GridCellSupersamplingSettings.DEFAULT);
 		else
 			settings = settings.forSupersamplingSettings(null);
 		

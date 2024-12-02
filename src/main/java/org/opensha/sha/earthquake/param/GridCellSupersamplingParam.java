@@ -66,6 +66,7 @@ public class GridCellSupersamplingParam extends AbstractParameter<GridCellSupers
 		private DoubleParameter fullDistParam;
 		private DoubleParameter borderDistParam;
 		private DoubleParameter cornerDistParam;
+		private BooleanParameter applyToFiniteParam;
 		
 		private ParameterListParameter settingsListParam;
 		
@@ -144,6 +145,12 @@ public class GridCellSupersamplingParam extends AbstractParameter<GridCellSupers
 			cornerDistParam.setUnits("km");
 			settingsList.addParameter(cornerDistParam);
 			
+			applyToFiniteParam = new BooleanParameter("Apply To Finite Ruptures", GridCellSupersamplingSettings.APPLY_TO_FINITE_DEFAULT);
+			applyToFiniteParam.setInfo("If checked, supersampling will also be applied to finite ruptures (randomly "
+					+ "generated or otherwise). Note that not all models implement supersampling of random finite "
+					+ "surfaces, so this setting may be ignored.");
+			settingsList.addParameter(applyToFiniteParam);
+			
 			settingsListParam = new ParameterListParameter("Sampling Parameters", settingsList);
 			settingsListParam.addParameterChangeListener(this);
 			paramList.addParameter(settingsListParam);
@@ -166,6 +173,7 @@ public class GridCellSupersamplingParam extends AbstractParameter<GridCellSupers
 				fullDistParam.setValue(getCutoffParamValue(value.fullDist));
 				borderDistParam.setValue(getCutoffParamValue(value.borderDist));
 				cornerDistParam.setValue(getCutoffParamValue(value.cornerDist));
+				applyToFiniteParam.setValue(value.applyToFinite);
 				paramEdit.setParameterVisible(settingsListParam.getName(), true);
 			} else {
 				paramEdit.setParameterVisible(settingsListParam.getName(), false);
@@ -197,7 +205,7 @@ public class GridCellSupersamplingParam extends AbstractParameter<GridCellSupers
 		private GridCellSupersamplingSettings buildCurrentValue() {
 			if (enabledParam.getValue()) {
 				return new GridCellSupersamplingSettings(paramValueToCutoff(targetSpacingParam), paramValueToCutoff(fullDistParam),
-						paramValueToCutoff(borderDistParam), paramValueToCutoff(cornerDistParam));
+						paramValueToCutoff(borderDistParam), paramValueToCutoff(cornerDistParam), applyToFiniteParam.getValue());
 			}
 			return null;
 		}
