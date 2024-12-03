@@ -2,16 +2,19 @@ package scratch.UCERF3.erf.mean;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.zip.ZipException;
 import java.util.zip.ZipFile;
 
 import javax.swing.JOptionPane;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.event.ParameterChangeEvent;
@@ -20,23 +23,21 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.commons.util.FileUtils;
-import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
+import org.scec.getfile.GetFile;
+
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
 
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.utils.LastEventData;
 import scratch.UCERF3.utils.UCERF3_DataUtils;
-
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.google.common.io.Files;
 
 /**
  * This is the MeanUCERF3 ERF. It extends UCERF3_FaultSysSol_ERF, but allows and facilitates creation
@@ -62,11 +63,21 @@ import com.google.common.io.Files;
  */
 public class MeanUCERF3 extends FaultSystemSolutionERF {
 	
-	private static final boolean D = true;
+	// private static final boolean D = true;
 	
 	public static final String NAME = "Mean UCERF3";
 	
-	static final String DOWNLOAD_URL = "https://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/ftp/ucerf3_erf_modular/";
+	private static final GetFile GF_UPDATER = new GetFile(
+			/*clientMetaFile=*/new File("lib/getfile_client.json"),
+			/*serverMetaURI=*/URI.create(GetFile.LATEST_JAR_URL));
+	// TODO: Update ServerPrefs and ServerPrefUtils with new server
+	private static final String DOWNLOAD_URL = "https://g-c662a6.a78b8.36fe.data.globus.org/getfile/ucerf3_erf_modular/ucerf3_erf_modular.json";
+	// static final String DOWNLOAD_URL = "https://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/ftp/ucerf3_erf_modular/";
+	private static final GetFile U3ETAS_UPDATER = new GetFile(
+			/*clientMetaFile=*/new File(
+					getStoreDir().getPath(), "ucerf3_erf_modular_client.json"),
+			/*serverMetaURI=*/URI.create(DOWNLOAD_URL));
+	
 	static final String RAKE_BASIS_FILE_NAME = "rake_basis.zip";
 	static final String TRUE_MEAN_FILE_NAME = "mean_ucerf3_sol.zip";
 	
@@ -193,6 +204,9 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		this.storeDir = storeDir;
 		System.out.println("MeanUCERF3 store dir: "+storeDir);
 		Preconditions.checkState(storeDir.exists(), "Store dir doesn't exist: "+storeDir.getAbsolutePath());
+		
+		GF_UPDATER.updateFile("getfile-all");
+		// TODO: Prompt to restart or dynamically load new jar file
 		
 		presetsParam = new EnumParameter<MeanUCERF3.Presets>("Mean UCERF3 Presets",
 				EnumSet.allOf(Presets.class), Presets.FM3_1_BRANCH_AVG, "(custom)");
@@ -592,6 +606,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	 * This downloads the selected file from the OpenSHA server if not already cached locally
 	 * 
 	 * @param fName
+	 * @param ignoreErrors
 	 */
 	private File checkDownload(String fName, boolean ignoreErrors) {
 		File file = new File(storeDir, fName);
@@ -599,12 +614,12 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	}
 	
 	/**
-	 * This downloads the selected file from the OpenSHA server if not already cached locally
+	 * This downloads the selected file from the server if not already cached locally
 	 * 
-	 * @param fName
+	 * @param file
+	 * @param ignoreErrors
 	 */
 	public static File checkDownload(File file, boolean ignoreErrors) {
-		// TODO allow some sort of server side versioning so that clients know to update
 		if (file.exists()) {
 			if (!ignoreErrors) {
 				// check to make sure that it isn't corrupted
@@ -626,7 +641,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 						cause = cause.getCause();
 					String title = "Corrupted UCERF3 data file detected. Re-download?";
 					String message = "The UCERF3 model downloads data files upon first run.\n"
-							+ "The following file was downlaoded previously but appears\n"
+							+ "The following file was downloaded previously but appears\n"
 							+ "to be corrupted:\n\n"
 							+ file.getAbsolutePath()+"\n\n"
 							+ "Would you like to delete and re-download the file?";
@@ -635,7 +650,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 					if (choice == JOptionPane.YES_OPTION) {
 						if (!file.delete()) {
 							JOptionPane.showMessageDialog(null, "Error deleting",
-									"Could not delete the corrupted file. Delte it manually and then "
+									"Could not delete the corrupted file. Delete it manually and then "
 									+ "re-run the application:\n\n"+file.getAbsolutePath(),
 									JOptionPane.ERROR_MESSAGE);
 						}
@@ -646,27 +661,29 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 				return file;
 			}
 		}
-		String fName = file.getName();
+		String fileKey = FilenameUtils.getBaseName(file.getName());
 		CalcProgressBar progress = null;
 		// try to show progress bar
 		try {
 			if (show_progress)
-				progress = new CalcProgressBar("Downloading MeanUCERF3 Files", "downloading "+fName);
+				progress = new CalcProgressBar("Downloading MeanUCERF3 Files", "downloading "+fileKey);
 		} catch (Throwable t) {}
-		String url = DOWNLOAD_URL+fName;
-//		if (!ignoreErrors)
-//			System.out.println("Downloading "+url+" to "+file.getAbsolutePath());
 		try {
-			File tmpFile = new File(file.getAbsolutePath()+".tmp");
-			FileUtils.downloadURL(url, tmpFile);
-			Files.move(tmpFile, file);
+			Pair<Boolean, File> result = U3ETAS_UPDATER.updateFile(fileKey);
+			if (result.getLeft()) {
+				File dwnLoc = result.getRight();
+				if (!dwnLoc.equals(file)) {
+					// File must be downloaded at param specified file path
+					FileUtils.moveFile(dwnLoc, file);
+				}
+			}
 		} catch (Exception e) {
 			if (progress != null) {
 				// not headless
 				progress.setVisible(false);
 				progress.dispose();
 				if (!ignoreErrors) {
-					String message = "Error downloading "+fName+".\nServer down or file moved, try again later.";
+					String message = "Error downloading "+fileKey+".\nServer down or file moved, try again later.";
 					JOptionPane.showMessageDialog(null, message, "Download Error", JOptionPane.ERROR_MESSAGE);
 				}
 			}
@@ -685,6 +702,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	
 	public static void main(String[] args) {
 		File solFile = new File(getStoreDir(), "mean_ucerf3_sol.zip");
+		MeanUCERF3.checkDownload(solFile, false);
 		FaultSystemSolution sol;
 		try {
 			sol = FaultSystemSolution.load(solFile);
