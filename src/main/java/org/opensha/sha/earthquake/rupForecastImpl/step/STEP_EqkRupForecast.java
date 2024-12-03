@@ -15,9 +15,11 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.PointSource;
+import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 /**
@@ -188,7 +190,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
     double minMag = ((Double)minMagParam.getValue()).doubleValue();
 
     IncrementalMagFreqDist magFreqDist;
-    PointEqkSource ptSource;
+    PoissonPointSource ptSource;
 
     // Get iterator over input-file lines
     ListIterator it = deltaRateFileLines.listIterator();
@@ -213,7 +215,12 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
         magFreqDist.set(i,rate);
       }
 
-      ptSource = new PointEqkSource(new Location(lat,lon,DEPTH),magFreqDist,duration,RAKE,DIP,minMag);
+//      ptSource = new PointEqkSource(new Location(lat,lon,DEPTH),magFreqDist,duration,RAKE,DIP,minMag);
+      ptSource = PointSource.poissonBuilder(new Location(lat,lon,DEPTH))
+    		  .truePointSources()
+    		  .forMFDAndFocalMech(magFreqDist.getAboveMagnitude(minMag), new FocalMechanism(Double.NaN, DIP, RAKE))
+    		  .duration(duration)
+    		  .build();
       if(ptSource.getNumRuptures() > 0) {
           deltaRateSources.add(ptSource);
           if(D) System.out.println(C+"makeDeltaRateSources(): numRups="+ptSource.getNumRuptures()+
@@ -251,7 +258,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
     double minMag = ((Double)minMagParam.getValue()).doubleValue();
 
     IncrementalMagFreqDist magFreqDist;
-    PointEqkSource ptSource;
+    PoissonPointSource ptSource;
 
     // Get iterator over input-file lines
     ListIterator it = backgroundRateFileLines.listIterator();
@@ -280,7 +287,12 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
         magFreqDist.set(i,rate);
       }
 
-      ptSource = new PointEqkSource(new Location(lat,lon,DEPTH),magFreqDist,duration,RAKE,DIP,minMag);
+//      ptSource = new PointEqkSource(new Location(lat,lon,DEPTH),magFreqDist,duration,RAKE,DIP,minMag);
+      ptSource = PointSource.poissonBuilder(new Location(lat,lon,DEPTH))
+    		  .truePointSources()
+    		  .forMFDAndFocalMech(magFreqDist.getAboveMagnitude(minMag), new FocalMechanism(Double.NaN, DIP, RAKE))
+    		  .duration(duration)
+    		  .build();
       if(ptSource.getNumRuptures() > 0) {
           backgroundRateSources.add(ptSource);
 
@@ -403,7 +415,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
      // check first one
      int index = 0;
-     PointEqkSource qkSrc = (PointEqkSource) forecast.getSource(index);
+     PoissonPointSource qkSrc = (PoissonPointSource)forecast.getSource(index);
      System.out.println("getNumRuptures(): "+qkSrc.getNumRuptures());
      double duration = qkSrc.getDuration();
      for(int i=0;i<qkSrc.getNumRuptures();i++) {
@@ -415,7 +427,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
      }
      // check last one
      index = forecast.getNumSources()-1;
-     qkSrc = (PointEqkSource) forecast.getSource(index);
+     qkSrc = (PoissonPointSource) forecast.getSource(index);
      System.out.println("getNumRuptures(): "+qkSrc.getNumRuptures());
      duration = qkSrc.getDuration();
      for(int i=0;i<qkSrc.getNumRuptures();i++) {

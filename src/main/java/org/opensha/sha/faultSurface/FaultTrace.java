@@ -37,6 +37,12 @@ public class FaultTrace extends LocationList implements Named {
 	private String faultName;
 
 
+	public FaultTrace(String faultName, int initialCapacity){
+		super(initialCapacity);
+		this.faultName = faultName;
+	}
+
+
 	public FaultTrace(String faultName){
 		super();
 		this.faultName = faultName;

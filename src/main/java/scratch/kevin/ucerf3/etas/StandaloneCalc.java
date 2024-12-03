@@ -91,7 +91,6 @@ public class StandaloneCalc {
 		 * prepare simulation
 		 */
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
-		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
 		ETAS_Simulator.D = debug;
 		if (griddedOnly)
 			ETAS_Simulator_NoFaults.D = debug;

@@ -41,6 +41,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
@@ -64,6 +65,8 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 	
 	private static final IncludeBackgroundOption GRID_SEIS_DEFAULT = IncludeBackgroundOption.INCLUDE;
 	private IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
+	
+	private GriddedSeismicitySettings griddedSettings;
 	
 	private Map<TectonicRegionType, AttenRelSupplier> gmms;
 	
@@ -126,6 +129,11 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		if (cmd.hasOption("gridded-seis"))
 			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
 		
+		griddedSettings = SolHazardMapCalc.getGridSeisSettings(cmd);
+		
+		if (gridSeisOp != IncludeBackgroundOption.EXCLUDE)
+			debug("Gridded settings: "+griddedSettings);
+		
 		sourceFilters = SolHazardMapCalc.getSourceFilters(cmd);
 		
 		gmms = SolHazardMapCalc.getGMMs(cmd);
@@ -187,7 +195,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 		int threads = getNumThreads();
 		exec = ExecutorUtils.newBlockingThreadPool(threads);
 		
-		calc = new AbstractSitewiseThreadedLogicTreeCalc(exec, sites.size(), solTree, gmms, periods, gridSeisOp, sourceFilters) {
+		calc = new AbstractSitewiseThreadedLogicTreeCalc(exec, sites.size(), solTree, gmms, periods, gridSeisOp, griddedSettings, sourceFilters) {
 			
 			@Override
 			public Site siteForIndex(int siteIndex, Map<TectonicRegionType, ScalarIMR> gmms) {

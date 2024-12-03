@@ -1,57 +1,214 @@
 package org.opensha.commons.data;
 
+import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Random;
 
 import org.dom4j.Element;
+import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.metadata.XMLSaveable;
 
-public class WeightedList<E> implements XMLSaveable {
+import com.google.common.base.Preconditions;
+
+public class WeightedList<E> extends AbstractList<WeightedValue<E>> implements XMLSaveable {
 	
 	public static final String XML_METADATA_NAME = "WeightedList";
 	
-	private List<E> objects;
-	private List<Double> weights;
+	protected List<WeightedValue<E>> list;
 	
 	private boolean forceNormalization = false;
 	
 	private double weightValueMin = 0;
 	private double weightValueMax = 1;
 	
+	private IntegerPDF_FunctionSampler sampler = null;
+	
+	public static class Unmodifiable<E> extends WeightedList<E> {
+		
+		public Unmodifiable(WeightedList<E> list) {
+			super(list, false);
+		}
+		
+		public Unmodifiable(List<WeightedValue<E>> list, boolean validate) {
+			super(list, validate);
+		}
+
+		@Override
+		public void add(E object, double weight) throws IllegalStateException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setWeights(List<Double> newWeights) throws IllegalStateException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setValues(List<E> values) throws IllegalStateException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setWeight(int i, double weight) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setAll(List<WeightedValue<E>> list) {
+			if (this.list == null) {
+				super.setAll(list);
+			} else {
+				throw new UnsupportedOperationException();
+			}
+		}
+
+		@Override
+		public void setAll(List<E> objects, List<Double> weights) throws IllegalStateException {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public WeightedValue<E> set(int index, WeightedValue<E> element) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void add(int index, WeightedValue<E> element) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setWeightsEqual() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setWeightsToConstant(double weight) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void normalize() {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setForceNormalization(boolean forceNormalization) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setWeightValueMin(double weightValueMin) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setWeightValueMax(double weightValueMax) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setWeightsFromXMLMetadata(Element el) {
+			throw new UnsupportedOperationException();
+		}
+		
+	}
+
+	/**
+	 * Convenience method for pre-specified evenly-weighted values. Note that, when using this method,
+	 * the returned list is unmodifiable.
+	 * 
+	 * @param evenlyWeighted varargs of evenly-weighted values
+	 */
+	@SafeVarargs
+	public static <E> Unmodifiable<E> evenlyWeighted(E... values) {
+		List<WeightedValue<E>> list;
+		switch (values.length) {
+		// more memory-efficient common special cases
+		case 0:
+			list = List.of();
+			break;
+		case 1:
+			list = List.of(
+					new WeightedValue<>(values[0], 1d));
+			break;
+		case 2:
+			list = List.of(
+					new WeightedValue<>(values[0], 0.5d),
+					new WeightedValue<>(values[1], 0.5d));
+			break;
+
+		// default case when size > 2
+		default:
+			list = new ArrayList<>(values.length);
+			double weightEach = 1d/(double)values.length;
+			for (E val : values)
+				list.add(new WeightedValue<>(val, weightEach));
+			list = Collections.unmodifiableList(list);
+			break;
+		}
+		
+		return new Unmodifiable<>(list, false);
+	}
+	
+	public WeightedList(List<WeightedValue<E>> list) {
+		setAll(list);
+	}
+	
+	private WeightedList(List<WeightedValue<E>> list, boolean validate) {
+		setAll(list, validate);
+	}
+	
+	public WeightedList(int initialCapacity) {
+		setAll(new ArrayList<>(initialCapacity), false);
+	}
+	
 	public WeightedList() {
-		this(new ArrayList<E>(), new ArrayList<Double>());
+		setAll(new ArrayList<>(), false);
 	}
 	
 	public WeightedList(List<E> objects, List<Double> weights) {
-		set(objects, weights);
+		List<WeightedValue<E>> list = buildList(objects, weights);
+		setAll(list);
+	}
+	
+	private static <E> List<WeightedValue<E>> buildList(List<E> values, List<Double> weights) {
+		if (values == null)
+			throw new IllegalArgumentException("values cannot be null!");
+		if (weights == null)
+			throw new IllegalArgumentException("weights list cannot be null!");
+		if (values.size() != weights.size())
+			throw new IllegalStateException("object and weight lists must be the same size!");
+		List<WeightedValue<E>> ret = new ArrayList<>(values.size());
+		for (int i=0; i<values.size(); i++)
+			ret.add(new WeightedValue<>(values.get(i), weights.get(i)));
+		return ret;
 	}
 	
 	/**
 	 * This checks that the weight and object lists are non null and have the same number of items.
 	 * If normalization is forced, then it is checked here.
 	 * 
-	 * @param objects
+	 * @param values
 	 * @param weights
 	 * @throws IllegalStateException if lists are of different sizes
 	 * @throws IllegalArgumentException if lists are null
 	 */
-	private void validate(List<?> objects, List<Double> weights)
+	private void validate(List<? extends WeightedValue<?>> list)
 	throws IllegalStateException, IllegalArgumentException {
-		if (objects == null)
-			throw new IllegalArgumentException("object list cannot be null!");
-		if (weights == null)
-			throw new IllegalArgumentException("weights list cannot be null!");
+		if (list == null)
+			throw new IllegalArgumentException("list cannot be null!");
 		
-		if (objects.size() != weights.size())
-			throw new IllegalStateException("object and weight lists must be the same size!");
-		
-		if (forceNormalization && weights.size() > 0) {
-			if (!isNormalized(weights))
+		if (forceNormalization && list.size() > 0) {
+			if (!isNormalized(list))
 				throw new IllegalStateException("wights must sum to 1 (current sum: "+getWeightSum()+")");
 		}
 		
-		for (double weight : weights) {
+		for (WeightedValue<?> value : list) {
+			double weight = value.weight;
 			if (!isWeightWithinRange(weight))
 				throw new IllegalArgumentException("weight of '"+weight+"' is outside of range " +
 						+weightValueMin+" <= weight <= "+weightValueMax);
@@ -59,16 +216,7 @@ public class WeightedList<E> implements XMLSaveable {
 	}
 	
 	public void add(E object, double weight) throws IllegalStateException {
-		this.objects.add(object);
-		this.weights.add(weight);
-		
-		try {
-			validate(objects, weights);
-		} catch (RuntimeException e) {
-			this.objects.remove(objects.size()-1);
-			this.weights.remove(weights.size()-1);
-			throw e;
-		}
+		this.add(new WeightedValue<E>(object, weight));
 	}
 	
 	/**
@@ -78,28 +226,51 @@ public class WeightedList<E> implements XMLSaveable {
 	 * @throws IllegalStateException if the weights are invalid
 	 */
 	public void setWeights(List<Double> newWeights) throws IllegalStateException {
-		set(objects, newWeights);
+		Preconditions.checkState(newWeights.size() == this.list.size(), "Passed in weights is of unexpected size");
+		List<WeightedValue<E>> modList = new ArrayList<>();
+		for (int i=0; i<list.size(); i++)
+			modList.add(new WeightedValue<>(this.list.get(i).value, newWeights.get(i)));
+		setAll(modList);
 	}
 	
 	/**
-	 * Set the list of objects
+	 * Set the list of values
 	 * 
-	 * @param objects
+	 * @param values
 	 * @throws IllegalStateException if the objects and weights are invalid
+	 * @throws IllegalArgumentException if the passed in values are null
 	 */
-	public void setObjects(List<E> objects) throws IllegalStateException {
-		set(objects, weights);
+	public void setValues(List<E> values) throws IllegalStateException {
+		if (values == null)
+			throw new IllegalArgumentException("Values cannot be null");
+		Preconditions.checkState(values.size() == this.list.size(), "Passed in values is of unexpected size");
+		List<WeightedValue<E>> modList = new ArrayList<>();
+		for (int i=0; i<list.size(); i++)
+			modList.add(new WeightedValue<>(values.get(i), this.list.get(i).weight));
+		setAll(modList);
 	}
 	
 	public void setWeight(int i, double weight) {
-		double orig = weights.get(i);
-		this.weights.set(i, weight);
+		WeightedValue<E> orig = list.get(i);
+		this.list.set(i, new WeightedValue<>(orig.value, weight));
 		try {
-			validate(objects, weights);
+			validate(list);
+			sampler = null;
 		} catch (RuntimeException e) {
-			this.weights.set(i, orig);
+			this.list.set(i, orig);
 			throw e;
 		}
+	}
+	
+	public void setAll(List<WeightedValue<E>> list) {
+		this.setAll(list, true);
+	}
+	
+	private void setAll(List<WeightedValue<E>> list, boolean validate) {
+		if (validate)
+			validate(list);
+		this.list = list;
+		this.sampler = null;
 	}
 	
 	/**
@@ -109,43 +280,80 @@ public class WeightedList<E> implements XMLSaveable {
 	 * @param weights
 	 * @throws IllegalStateException if the objects and weights are invalid
 	 */
-	public void set(List<E> objects, List<Double> weights) throws IllegalStateException {
-		validate(objects, weights);
-		
-		this.objects = objects;
-		this.weights = weights;
+	public void setAll(List<E> objects, List<Double> weights) throws IllegalStateException {
+		List<WeightedValue<E>> list = buildList(objects, weights);
+		setAll(list);
 		
 //		System.out.println("***** Set called *****");
 //		for (double weight : weights)
 //			System.out.println(weight);
 	}
 	
+	@Override
 	public int size() {
-		return objects.size();
+		return list.size();
 	}
 	
 	public double getWeight(int i) {
-		return weights.get(i);
+		return list.get(i).weight;
 	}
 	
 	public double getWeight(E object) {
-		int ind = objects.indexOf(object);
-		if (ind < 0)
+		if (object == null)
 			throw new NoSuchElementException();
-		return getWeight(ind);
+		for (int i=0; i<list.size(); i++)
+			if (object.equals(list.get(i).value))
+				return getWeight(i);
+		throw new NoSuchElementException();
 	}
 	
-	public E get(int i) {
-		return objects.get(i);
+	public E getValue(int i) {
+		return list.get(i).value;
+	}
+
+	@Override
+	public WeightedValue<E> get(int index) {
+		return list.get(index);
 	}
 	
+	@Override
+	public WeightedValue<E> set(int index, WeightedValue<E> element) {
+		WeightedValue<E> prev = list.set(index, element);
+		try {
+			validate(list);
+			sampler = null;
+		} catch (RuntimeException e) {
+			// roll back
+			list.set(index, prev);
+			throw e;
+		}
+		return prev;
+	}
+
+	@Override
+	public void add(int index, WeightedValue<E> element) {
+		list.add(index, element);
+		try {
+			validate(list);
+			sampler = null;
+		} catch (RuntimeException e) {
+			// roll back
+			list.remove(index);
+			throw e;
+		}
+	}
+
+	/**
+	 * 
+	 * @return true if list is empty or all weights are equal, false otherwise
+	 */
 	public boolean areWeightsEqual() {
-		if (weights.size() == 0)
-			return false;
-		double wt0 = weights.get(0);
+		if (list.size() == 0)
+			return true;
+		double wt0 = list.get(0).weight;
 		
-		for (double weight : weights)
-			if (weight != wt0)
+		for (WeightedValue<E> val : list)
+			if (val.weight != wt0)
 				return false;
 		return true;
 	}
@@ -168,38 +376,36 @@ public class WeightedList<E> implements XMLSaveable {
 	}
 	
 	public void normalize() {
-		if (isNormalized())
-			return;
-		
 		double sum = getWeightSum();
-		ArrayList<Double> newWeights = new ArrayList<Double>();
+		if (sum == 1f)
+			return; // already normalized
 		
-		for (double weight : weights) {
-			double newWeight = weight / sum;
-			newWeights.add(newWeight);
+		List<WeightedValue<E>> normalized = new ArrayList<>(list.size());
+		for (int i=0; i<list.size(); i++) {
+			WeightedValue<E> orig = list.get(i);
+			normalized.add(new WeightedValue<>(orig.value, orig.weight/sum));
 		}
-		
-		setWeights(newWeights);
+		setAll(normalized);
 	}
 	
 	
 	public double getWeightSum() {
-		return getWeightSum(weights);
+		return getWeightSum(list);
 	}
 	
-	private static double getWeightSum(List<Double> weights) {
+	private static double getWeightSum(List<? extends WeightedValue<?>> list) {
 		double sum = 0;
-		for (double weight : weights)
-			sum += weight;
+		for (WeightedValue<?> val: list)
+			sum += val.weight;
 		return sum;
 	}
 	
 	public boolean isNormalized() {
-		return isNormalized(weights);
+		return isNormalized(list);
 	}
 	
-	private static boolean isNormalized(List<Double> weights) {
-		float sum = (float)getWeightSum(weights);
+	private static boolean isNormalized(List<? extends WeightedValue<?>> list) {
+		float sum = (float)getWeightSum(list);
 		return sum == 1f;
 	}
 	
@@ -221,43 +427,16 @@ public class WeightedList<E> implements XMLSaveable {
 	}
 
 	@Override
-	public Element toXMLMetadata(Element root) {
-		Element el = root.addElement(XML_METADATA_NAME);
-		
-		for (int i=0; i<size(); i++) {
-			Element valEl = el.addElement("Element");
-			valEl.addAttribute("index", i+"");
-			valEl.addAttribute("name", getName(objects.get(i)));
-			valEl.addAttribute("weight", getWeight(i)+"");
-		}
-		
-		return root;
-	}
-	
-	public void setWeightsFromXMLMetadata(Element el) {
-		ArrayList<Double> weights = new ArrayList<Double>();
-		for (int i=0; i<size(); i++) {
-			weights.add(null);
-		}
-		for (Element valEl : (List<Element>)el.elements()) {
-			int valI = Integer.parseInt(valEl.attributeValue("index"));
-			double weight = Double.parseDouble(valEl.attributeValue("weight"));
-			
-			weights.set(valI, weight);
-		}
-		for (Double weight : weights)
-			if (weight == null)
-				throw new IllegalArgumentException("Given XML element doesn't have a mapping for each element!");
-		setWeights(weights);
-	}
-
-	@Override
 	public String toString() {
-		String str = "Weighted List: "+size()+" elements";
+		StringBuilder str = new StringBuilder("WeightedList[");
 		for (int i=0; i<size(); i++) {
-			str += "\n* "+getName(get(i))+":\t"+getWeight(i);
+			WeightedValue<E> val = get(i);
+			if (i > 0)
+				str.append("; ");
+			str.append(getName(val.value)).append(", ").append((float)val.weight);
 		}
-		return str;
+		str.append("]");
+		return str.toString();
 	}
 
 	/**
@@ -280,7 +459,7 @@ public class WeightedList<E> implements XMLSaveable {
 		double oldVal = this.weightValueMin;
 		this.weightValueMin = weightValueMin;
 		try {
-			validate(objects, weights);
+			validate(list);
 		} catch (RuntimeException e) {
 			this.weightValueMin = oldVal;
 			throw e;
@@ -307,7 +486,7 @@ public class WeightedList<E> implements XMLSaveable {
 		double oldVal = this.weightValueMax;
 		this.weightValueMax = weightValueMax;
 		try {
-			validate(objects, weights);
+			validate(list);
 		} catch (RuntimeException e) {
 			this.weightValueMax = oldVal;
 			throw e;
@@ -327,12 +506,12 @@ public class WeightedList<E> implements XMLSaveable {
 	 * the size of this list.
 	 */
 	public double getWeightedAverage(List<Double> values) {
-		if (values.size() != weights.size())
+		if (values.size() != list.size())
 			throw new IllegalArgumentException("values.size() != weights.size()");
 		double weighted = 0;
 		for (int i=0; i<values.size(); i++) {
 			double val = values.get(i);
-			double weight = weights.get(i);
+			double weight = list.get(i).weight;
 			weighted += val * weight;
 		}
 		return weighted;
@@ -347,15 +526,68 @@ public class WeightedList<E> implements XMLSaveable {
 	 * the size of this list.
 	 */
 	public double getWeightedAverage(double[] values) {
-		if (values.length != weights.size())
+		if (values.length != list.size())
 			throw new IllegalArgumentException("values.size() != weights.size()");
 		double weighted = 0;
 		for (int i=0; i<values.length; i++) {
 			double val = values[i];
-			double weight = weights.get(i);
+			double weight = list.get(i).weight;
 			weighted += val * weight;
 		}
 		return weighted;
+	}
+
+	@Override
+	public Element toXMLMetadata(Element root) {
+		Element el = root.addElement(XML_METADATA_NAME);
+		
+		for (int i=0; i<size(); i++) {
+			Element valEl = el.addElement("Element");
+			valEl.addAttribute("index", i+"");
+			valEl.addAttribute("name", getName(getValue(i)));
+			valEl.addAttribute("weight", getWeight(i)+"");
+		}
+		
+		return root;
+	}
+	
+	public void setWeightsFromXMLMetadata(Element el) {
+		ArrayList<Double> weights = new ArrayList<Double>();
+		for (int i=0; i<size(); i++) {
+			weights.add(null);
+		}
+		for (Element valEl : (List<Element>)el.elements()) {
+			int valI = Integer.parseInt(valEl.attributeValue("index"));
+			double weight = Double.parseDouble(valEl.attributeValue("weight"));
+			
+			weights.set(valI, weight);
+		}
+		for (Double weight : weights)
+			if (weight == null)
+				throw new IllegalArgumentException("Given XML element doesn't have a mapping for each element!");
+		setWeights(weights);
+	}
+	
+	public E sample() {
+		return sample(Math.random());
+	}
+	
+	public E sample(Random rand) {
+		return sample(rand.nextDouble());
+	}
+	
+	public E sample(double randDouble) {
+		Preconditions.checkState(size() > 0);
+		if (size() == 1)
+			return list.get(0).value;
+		if (sampler == null) {
+			double[] weights = new double[list.size()];
+			for (int i=0; i<weights.length; i++)
+				weights[i] = list.get(i).weight;
+			sampler = new IntegerPDF_FunctionSampler(weights);
+		}
+		int index = sampler.getRandomInt(randDouble);
+		return list.get(index).value;
 	}
 
 }

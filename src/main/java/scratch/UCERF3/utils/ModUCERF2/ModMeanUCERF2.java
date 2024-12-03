@@ -33,6 +33,7 @@ import org.opensha.sha.earthquake.EqkSource;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.calc.ERF_Calculator;
+import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.EmpiricalModel;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.FaultSegmentData;
@@ -46,6 +47,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.final
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.NSHMP_GridSourceGenerator;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.oldClasses.UCERF2_Final_StirlingGriddedSurface;
 import org.opensha.sha.earthquake.util.EqkSourceNameComparator;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
@@ -105,6 +107,8 @@ public class ModMeanUCERF2 extends AbstractERF {
 
 	// background seismicity treated as param
 	protected StringParameter backSeisRupParam;
+	
+	protected PointSourceDistanceCorrectionParam distCorrParam;
 
 	// For rupture offset length along fault parameter
 	public final static String RUP_OFFSET_PARAM_NAME ="Rupture Offset";
@@ -161,7 +165,7 @@ public class ModMeanUCERF2 extends AbstractERF {
 	protected HashMap<String, Double> sourceRakeMapping;
 	protected HashMap<String, UCERF2_Final_StirlingGriddedSurface> sourceGriddedSurfaceMapping;
 
-	protected NSHMP_GridSourceGenerator nshmp_gridSrcGen = new NSHMP_GridSourceGeneratorMod2();
+	protected NSHMP_GridSourceGenerator nshmp_gridSrcGen;
 	protected UCERF2 ucerf2 = new UCERF2();
 //	protected DeformationModelSummaryDB_DAO defModelSummaryDAO = new DeformationModelSummaryDB_DAO(DB_AccessAPI.dbConnection);
 	protected DeformationModelSummaryFinal defModelSummaryFinal = new DeformationModelSummaryFinal();
@@ -192,6 +196,8 @@ public class ModMeanUCERF2 extends AbstractERF {
 //		create the timespan parameter, to allow the user to set the timespan to be
 		//time independent or time dependent.
 		setTimespanParameter();
+		
+		nshmp_gridSrcGen = new NSHMP_GridSourceGeneratorMod2(distCorrParam.getValue().get());
 
 		// add the change listener to parameters so that forecast can be updated
 		// whenever any paramater changes
@@ -228,6 +234,7 @@ public class ModMeanUCERF2 extends AbstractERF {
 		backSeisRupStrings.add(UCERF2.BACK_SEIS_RUP_CROSSHAIR);
 		backSeisRupParam = new StringParameter(UCERF2.BACK_SEIS_RUP_NAME, backSeisRupStrings, UCERF2.BACK_SEIS_RUP_DEFAULT);
 
+		distCorrParam = new PointSourceDistanceCorrectionParam(PointSourceDistanceCorrections.NSHM_2008);
 
 		// rup offset
 		rupOffsetParam = new DoubleParameter(RUP_OFFSET_PARAM_NAME,RUP_OFFSET_PARAM_MIN,
@@ -262,6 +269,7 @@ public class ModMeanUCERF2 extends AbstractERF {
 		backSeisParam.setValue(UCERF2.BACK_SEIS_DEFAULT);
 		// backgroud treated as point sources/finite soource
 		backSeisRupParam.setValue(UCERF2.BACK_SEIS_RUP_DEFAULT);
+		distCorrParam.setValue(PointSourceDistanceCorrections.NSHM_2008);
 		// rup offset
 		rupOffsetParam.setValue(DEFAULT_RUP_OFFSET_VAL);
 		// floater type
@@ -279,8 +287,10 @@ public class ModMeanUCERF2 extends AbstractERF {
 		adjustableParams.addParameter(rupOffsetParam);		
 		adjustableParams.addParameter(floaterTypeParam);
 		adjustableParams.addParameter(backSeisParam);	
-		if(!backSeisParam.getValue().equals(UCERF2.BACK_SEIS_EXCLUDE))
+		if(!backSeisParam.getValue().equals(UCERF2.BACK_SEIS_EXCLUDE)) {
 			adjustableParams.addParameter(backSeisRupParam);
+			adjustableParams.addParameter(distCorrParam);
+		}
 		adjustableParams.addParameter(cybershakeDDW_CorrParam);
 		adjustableParams.addParameter(probModelParam);		
 	}
@@ -982,7 +992,9 @@ public class ModMeanUCERF2 extends AbstractERF {
 			createParamList();
 		} else if(paramName.equalsIgnoreCase(UCERF2.BACK_SEIS_RUP_NAME)) { 
 
-		} 
+		} else if (paramName.equalsIgnoreCase(distCorrParam.getName())) {
+			nshmp_gridSrcGen.setDistanceCorrections(distCorrParam.getValue().get());
+		}
 		parameterChangeFlag = true;
 	}
 

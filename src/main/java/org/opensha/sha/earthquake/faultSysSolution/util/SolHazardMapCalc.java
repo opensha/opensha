@@ -29,6 +29,7 @@ import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.Range;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.Site;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -74,11 +75,16 @@ import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
+import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.earthquake.param.UseProxySectionsParam;
 import org.opensha.sha.earthquake.param.UseRupMFDsParam;
+import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenRelSupplier;
@@ -284,11 +290,11 @@ public class SolHazardMapCalc {
 	
 	// ERF params
 	private IncludeBackgroundOption backSeisOption;
-	private BackgroundRupType backSeisType;
+	private GriddedSeismicitySettings backSeisSettings = BaseFaultSystemSolutionERF.GRID_SETTINGS_DEFAULT;
 	private boolean applyAftershockFilter;
-	private boolean aseisReducesArea = true;
-	private boolean noMFDs = false;
-	private boolean useProxyRuptures = true;
+	private boolean aseisReducesArea = BaseFaultSystemSolutionERF.ASEIS_REDUCES_AREA_DEAFULT;
+	private boolean noMFDs = !BaseFaultSystemSolutionERF.USE_RUP_MFDS_DEAFULT;
+	private boolean useProxyRuptures = BaseFaultSystemSolutionERF.USE_PROXY_RUPS_DEAFULT;
 	
 	public static ReturnPeriods[] MAP_RPS = { ReturnPeriods.TWO_IN_50, ReturnPeriods.TEN_IN_50 };
 	
@@ -390,8 +396,20 @@ public class SolHazardMapCalc {
 	}
 
 	public void setBackSeisType(BackgroundRupType backSeisType) {
+		setGriddedSeismicitySettings(backSeisSettings.forSurfaceType(backSeisType));
+	}
+	
+	public void setPointSourceDistanceCorrection(PointSourceDistanceCorrections distCorrType) {
+		setGriddedSeismicitySettings(backSeisSettings.forDistanceCorrections(distCorrType));
+	}
+	
+	public void setSupersamplingSettings(GridCellSupersamplingSettings supersamplingSettings) {
+		setGriddedSeismicitySettings(backSeisSettings.forSupersamplingSettings(supersamplingSettings));
+	}
+	
+	public void setGriddedSeismicitySettings(GriddedSeismicitySettings backSeisSettings) {
 		Preconditions.checkState(fssERF == null, "ERF already initialized");
-		this.backSeisType = backSeisType;
+		this.backSeisSettings = backSeisSettings;
 	}
 
 	public void setApplyAftershockFilter(boolean applyAftershockFilter) {
@@ -431,8 +449,9 @@ public class SolHazardMapCalc {
 			fssERF.setParameter(UseProxySectionsParam.NAME, useProxyRuptures);
 			fssERF.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 			fssERF.setParameter(IncludeBackgroundParam.NAME, backSeisOption);
-			if (backSeisOption != IncludeBackgroundOption.EXCLUDE && backSeisType != null)
-				fssERF.setParameter(BackgroundRupParam.NAME, backSeisType);
+			if (backSeisOption != IncludeBackgroundOption.EXCLUDE) {
+				fssERF.setGriddedSeismicitySettings(backSeisSettings);
+			}
 			
 			fssERF.setParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME, applyAftershockFilter);
 			fssERF.setParameter(AseismicityAreaReductionParam.NAME, aseisReducesArea);
@@ -1306,9 +1325,31 @@ public class SolHazardMapCalc {
 		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
 		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default is TectonicRegionType-specific.");
 		ops.addOption(null, "vs30", true, "Site Vs30 value (uses GMM default otherwise)");
+		ops.addOption(null, "supersample", false, "Flag to enable grid cell supersampling (default is disabled)");
+		ops.addOption(null, "dist-corr", true, "Set the point-source distance correction method. Default is "
+				+BaseFaultSystemSolutionERF.DIST_CORR_TYPE_DEFAULT.name()+"; options are: "+FaultSysTools.enumOptions(PointSourceDistanceCorrections.class));
+		ops.addOption(null, "point-source-type", true, "Sets the point source surface type. Default is "
+				+BaseFaultSystemSolutionERF.BG_RUP_TYPE_DEFAULT.name()+"; options are: "+FaultSysTools.enumOptions(BackgroundRupType.class));
 		if (includeSiteSkip)
 			ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
 					+ "Default is "+(int)(SITE_SKIP_FRACT*100d)+"% of the TectonicRegionType-specific default maximum distance.");
+	}
+	
+	public static GriddedSeismicitySettings getGridSeisSettings(CommandLine cmd) {
+		GriddedSeismicitySettings settings = BaseFaultSystemSolutionERF.GRID_SETTINGS_DEFAULT;
+		
+		if (cmd.hasOption("supersample"))
+			settings = settings.forSupersamplingSettings(GridCellSupersamplingSettings.DEFAULT);
+		else
+			settings = settings.forSupersamplingSettings(null);
+		
+		if (cmd.hasOption("dist-corr"))
+			settings = settings.forDistanceCorrections(PointSourceDistanceCorrections.valueOf(cmd.getOptionValue("dist-corr")));
+		
+		if (cmd.hasOption("point-source-type"))
+			settings = settings.forSurfaceType(BackgroundRupType.valueOf(cmd.getOptionValue("point-source-type")));
+		
+		return settings;
 	}
 	
 	private static Options createOptions() {

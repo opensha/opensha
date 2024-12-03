@@ -21,7 +21,6 @@ import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.nshmp2.util.Period;
 import org.opensha.nshmp2.util.Utils;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.attenRelImpl.BA_2008_AttenRel;
@@ -427,11 +426,6 @@ public class NSHMP14_WUS_ASK extends AttenuationRelationship implements
 	@Override
 	public DiscretizedFunc getSA_IML_AtExceedProbSpectrum(double exceedProb)
 			throws ParameterException, IMRException {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public double getTotExceedProbability(PointEqkSource ptSrc, double iml) {
 		throw new UnsupportedOperationException();
 	}
 

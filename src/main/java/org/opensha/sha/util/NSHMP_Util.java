@@ -55,7 +55,9 @@ public class NSHMP_Util {
 				if (line.startsWith(magID)) {
 					double mag = Double.parseDouble(line.substring(
 						magID.length() + 1).trim());
-					int magKey = Double.valueOf(mag * 100).intValue();
+//					int magKey = Double.valueOf(mag * 100).intValue(); // this failed for 8.45
+					int magKey = (int)Math.round(mag*100d);
+//					System.out.println(mag+" -> "+magKey);
 					magMap = new HashMap<Integer, Double>();
 					rjb_map.put(magKey, magMap);
 					continue;
@@ -120,7 +122,7 @@ public class NSHMP_Util {
 	 */
 	public static double getMeanRJB(double M, double D) {
 		int magKey = (int) Math.round(M * 100);
-		checkArgument(rjb_map.containsKey(magKey), "Invalid mag value: " + M);
+		checkArgument(rjb_map.containsKey(magKey), "Invalid mag value: " + M+" (key="+magKey+")");
 		int distKey = (int) Math.floor(D);
 		return (D <= 1000) ? rjb_map.get(magKey).get(distKey) : D;
 	}

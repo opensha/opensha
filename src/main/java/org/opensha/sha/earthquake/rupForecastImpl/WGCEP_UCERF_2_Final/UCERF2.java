@@ -34,6 +34,7 @@ import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.refFaultParamDb.vo.DeformationModelSummary;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.A_Faults.A_FaultSegmentedSourceGenerator;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.A_FaultsFetcher;
@@ -42,6 +43,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.Event
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.NonCA_FaultsFetcher;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.data.finalReferenceFaultParamDb.DeformationModelSummaryFinal;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.NSHMP_GridSourceGenerator;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.magdist.ArbIncrementalMagFreqDist;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
@@ -113,6 +115,8 @@ public class UCERF2 extends AbstractERF {
 	public final static String BACK_SEIS_RUP_DEFAULT = BACK_SEIS_RUP_CROSSHAIR;
 	private ArrayList backSeisRupStrings = new ArrayList();
 	private StringParameter backSeisRupParam;
+	
+	protected PointSourceDistanceCorrectionParam distCorrParam;
 
 	// background seismicity max-mag param
 	public final static String BACK_SEIS_MAG_NAME = "Backgroud Seis Mmax";
@@ -406,7 +410,7 @@ public class UCERF2 extends AbstractERF {
 
 	private B_FaultFixes bFaultFixes = new B_FaultFixes(); 
 
-	private NSHMP_GridSourceGenerator nshmp_gridSrcGen = new NSHMP_GridSourceGenerator();
+	private NSHMP_GridSourceGenerator nshmp_gridSrcGen;
 
 	private boolean reCalcB_Faults=true, reCalcBck=true, reCalcA_Faults=true;
 	private boolean reCalcC_Zones=true, updateA_FaultsFetcher=true, updateB_FaultsFetcher=true, reCalcNonCA_B_Fauts=true;
@@ -429,6 +433,8 @@ public class UCERF2 extends AbstractERF {
 //		create the timespan parameter, to allow the user to set the timespan to be
 		//time independent or time dependent.
 		setTimespanParameter();
+		
+		nshmp_gridSrcGen = new NSHMP_GridSourceGenerator(distCorrParam.getValue().get());
 
 		// add the change listener to parameters so that forecast can be updated
 		// whenever any paramater changes
@@ -436,6 +442,7 @@ public class UCERF2 extends AbstractERF {
 		rupOffset_Param.addParameterChangeListener(this);
 		backSeisParam.addParameterChangeListener(this);
 		backSeisRupParam.addParameterChangeListener(this);
+		distCorrParam.addParameterChangeListener(this);
 		deformationModelsParam.addParameterChangeListener(this);
 		rupModelParam.addParameterChangeListener(this);
 		connectMoreB_FaultsParam.addParameterChangeListener(this);
@@ -472,6 +479,8 @@ public class UCERF2 extends AbstractERF {
 		backSeisRupStrings.add(BACK_SEIS_RUP_FINITE);
 		backSeisRupStrings.add(BACK_SEIS_RUP_CROSSHAIR);
 		backSeisRupParam = new StringParameter(BACK_SEIS_RUP_NAME, backSeisRupStrings,BACK_SEIS_RUP_DEFAULT);
+		
+		distCorrParam = new PointSourceDistanceCorrectionParam(PointSourceDistanceCorrections.NSHM_2008);
 
 		// back seis Mmax
 		backSeisMaxMagParam = new DoubleParameter(BACK_SEIS_MAG_NAME, BACK_SEIS_MAG_MIN, BACK_SEIS_MAG_MAX,
@@ -691,6 +700,7 @@ public class UCERF2 extends AbstractERF {
 		backSeisParam.setValue(BACK_SEIS_DEFAULT);
 		// backgroud treated as point sources/finite soource
 		backSeisRupParam.setValue(BACK_SEIS_RUP_DEFAULT);
+		distCorrParam.setValue(PointSourceDistanceCorrections.NSHM_2008);
 		// back seis Mmax
 		backSeisMaxMagParam.setValue(BACK_SEIS_MAG_DEFAULT);
 		// rup offset
@@ -816,8 +826,11 @@ public class UCERF2 extends AbstractERF {
 		adjustableParams.addParameter(bFaultsMinMagParam);
 		adjustableParams.addParameter(connectMoreB_FaultsParam);
 		adjustableParams.addParameter(backSeisParam);	
-		if(!backSeisParam.getValue().equals(BACK_SEIS_EXCLUDE))
+		if(!backSeisParam.getValue().equals(BACK_SEIS_EXCLUDE)) {
 			adjustableParams.addParameter(backSeisRupParam);
+			// include even with finite and crosshair because used for M<6
+			adjustableParams.addParameter(distCorrParam);
+		}
 		adjustableParams.addParameter(c_ZoneWtParam);
 		adjustableParams.addParameter(setForBckParam);
 		String setForBackground = (String)setForBckParam.getValue();
@@ -2191,7 +2204,9 @@ public class UCERF2 extends AbstractERF {
 			this.updateA_FaultsFetcher = true;
 			this.updateB_FaultsFetcher = true;
 			//bFaultsFetcher.test_writeFileAfterCombiningB_Faults();
-		} 
+		}  else if (paramName.equalsIgnoreCase(distCorrParam.getName())) {
+			nshmp_gridSrcGen.setDistanceCorrections(distCorrParam.getValue().get());
+		}
 	}
 
 

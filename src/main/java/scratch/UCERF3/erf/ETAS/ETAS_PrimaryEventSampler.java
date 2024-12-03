@@ -13,14 +13,11 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.math3.util.Precision;
-import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
-import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -30,7 +27,6 @@ import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.exceptions.GMT_MapException;
-import org.opensha.commons.geo.BorderType;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -45,11 +41,9 @@ import org.opensha.commons.mapping.gmt.GMT_MapGenerator;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.mapping.gmt.gui.GMT_MapGuiBean;
 import org.opensha.commons.mapping.gmt.gui.ImageViewerWindow;
-import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.impl.CPTParameter;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.commons.util.cpt.CPT;
-import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
 import org.opensha.sha.earthquake.AbstractNthRupERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
@@ -63,35 +57,29 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SubSeismoOnFaultMFDs;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSource13b.PointSurface13b;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
-import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm.PointSurfaceNshm;
-import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Maps;
+
 import scratch.UCERF3.analysis.FaultBasedMapGen;
-import scratch.UCERF3.analysis.FaultSysSolutionERF_Calc;
 import scratch.UCERF3.analysis.GMT_CA_Maps;
 import scratch.UCERF3.erf.FaultSystemSolutionERF;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.ETAS_ParameterList;
 import scratch.UCERF3.erf.ETAS.ETAS_Params.U3ETAS_ProbabilityModelOptions;
-import scratch.UCERF3.griddedSeismicity.FaultPolyMgr;
-import scratch.UCERF3.griddedSeismicity.UCERF3_GridSourceGenerator;
-import scratch.UCERF3.inversion.InversionFaultSystemRupSet;
-import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 import scratch.UCERF3.utils.MatrixIO;
 import scratch.UCERF3.utils.RELM_RegionUtils;
-
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Maps;
 
 /**
  * This class divides the supplied gridded region (and specified depth extent) into cubes, and computes
@@ -4234,10 +4222,10 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 					ProbEqkSource filteredSrc;
 					if(isSubSeismo == 1)
 						filteredSrc = gridProv.getSourceSubSeisOnFault(gridRegionIndex,
-								erf.getTimeSpan().getDuration(), null, BackgroundRupType.POINT);
+								erf.getTimeSpan().getDuration(), null, FaultSystemSolutionERF_ETAS.GRID_SEIS_SETTINGS);
 					else
 						filteredSrc = gridProv.getSourceUnassociated(gridRegionIndex,
-								erf.getTimeSpan().getDuration(), null, BackgroundRupType.POINT);
+								erf.getTimeSpan().getDuration(), null, FaultSystemSolutionERF_ETAS.GRID_SEIS_SETTINGS);
 					int filteredR = filteredSrc.drawSingleRandomEqkRuptureIndex(etas_utils.getRandomDouble());
 					ProbEqkRupture filteredRup = filteredSrc.getRupture(filteredR);
 					randRupIndex = -1;
@@ -4379,10 +4367,8 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 		RuptureSurface surf = rup.getRuptureSurface();
 		if (surf.getAveDip() == 90d)
 			return false;
-		if (surf instanceof PointSurfaceNshm)
-			return ((PointSurfaceNshm)surf).isOnFootwall();
-		if (surf instanceof PointSurface13b)
-			return ((PointSurface13b)surf).isOnFootwall();
+		if (surf instanceof FiniteApproxPointSurface)
+			return ((FiniteApproxPointSurface)surf).isOnFootwall();
 		return surf.getDistanceX(ptStrFootwallTestLoc) < 0;
 	}
 	
@@ -4943,10 +4929,10 @@ double maxCharFactor = maxRate/cubeRateBeyondDistThresh;
 					int gridRegionIndex = s-numFltSystSources;
 					if(origGridSeisTrulyOffVsSubSeisStatus[gridRegionIndex] == 2) {	// it has both truly off and sub-seismo components
 						mfdForSrcSubSeisOnlyArray[s] = ERF_Calculator.getTotalMFD_ForSource(
-								mfdGridProv.getSourceSubSeisOnFault(gridRegionIndex, duration, null, BackgroundRupType.POINT),
+								mfdGridProv.getSourceSubSeisOnFault(gridRegionIndex, duration, null, FaultSystemSolutionERF_ETAS.GRID_SEIS_SETTINGS),
 								duration, minMag, maxMag, numMag, true);;
 						mfdForTrulyOffOnlyArray[s] = ERF_Calculator.getTotalMFD_ForSource(
-								mfdGridProv.getSourceUnassociated(gridRegionIndex, duration, null, BackgroundRupType.POINT),
+								mfdGridProv.getSourceUnassociated(gridRegionIndex, duration, null, FaultSystemSolutionERF_ETAS.GRID_SEIS_SETTINGS),
 								duration, minMag, maxMag, numMag, true);;					}
 					else if (origGridSeisTrulyOffVsSubSeisStatus[gridRegionIndex] == 1) { // it's all subseismo
 						mfdForSrcSubSeisOnlyArray[s] = mfdForSrcArray[s];

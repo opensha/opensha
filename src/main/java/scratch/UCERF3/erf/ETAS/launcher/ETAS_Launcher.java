@@ -171,7 +171,6 @@ public class ETAS_Launcher {
 		ETAS_Simulator.D = false;
 		if (config.isGriddedOnly())
 			ETAS_Simulator_NoFaults.D = false;
-		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
 		this.config = config;
 		
 		this.simulationOT = config.getSimulationStartTimeMillis();

@@ -6,10 +6,11 @@ import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.sha.earthquake.AbstractERF;
-import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.PointSource;
+import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.magdist.GaussianMagFreqDist;
 import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
-import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SingleMagFreqDist;
 import org.opensha.sha.param.MagFreqDistParameter;
 
@@ -26,6 +27,8 @@ import org.opensha.sha.param.MagFreqDistParameter;
  * <LI>timeSpan - the duration of the forecast (in same units as in the magFreqDist)
  * </UL><p>
  * The source is Poissonain, and the timeSpan is in years.
+ * 
+ * TODO: this is unused, should it be deleted?
  * @author Ned Field
  * Date : June , 2004
  * @version 1.0
@@ -41,7 +44,7 @@ public class PointPoissonSourceERF extends AbstractERF{
   public final static String  NAME = "Point Poisson Source ERF";
 
   // this is the source (only 1 for this ERF)
-  private PointEqkSource source;
+  private PointSource source;
 
   //mag-freq dist parameter Name
   public final static String MAG_DIST_PARAM_NAME = "Mag Freq Dist";
@@ -92,6 +95,7 @@ public class PointPoissonSourceERF extends AbstractERF{
   DoubleParameter srcLatParam;
   DoubleParameter srcLonParam;
   DoubleParameter srcDepthParam;
+  PointSourceDistanceCorrectionParam distCorrParam;
 
 
   /**
@@ -130,6 +134,7 @@ public class PointPoissonSourceERF extends AbstractERF{
     srcDepthParam = new DoubleParameter(SRC_DEPTH_PARAM_NAME,SRC_DEPTH_PARAM_MIN,
         SRC_DEPTH_PARAM_MAX,SRC_DEPTH_PARAM_UNITS,SRC_DEPTH_PARAM_DEFAULT);
     srcDepthParam.setInfo(SRC_DEPTH_PARAM_INFO);
+    distCorrParam = new PointSourceDistanceCorrectionParam();
 
     // add the adjustable parameters to the list
     adjustableParams.addParameter(srcLatParam);
@@ -138,6 +143,7 @@ public class PointPoissonSourceERF extends AbstractERF{
     adjustableParams.addParameter(rakeParam);
     adjustableParams.addParameter(dipParam);
     adjustableParams.addParameter(magDistParam);
+    adjustableParams.addParameter(distCorrParam);
 
     // register the parameters that need to be listened to
     rakeParam.addParameterChangeListener(this);
@@ -146,6 +152,7 @@ public class PointPoissonSourceERF extends AbstractERF{
     srcLonParam.addParameterChangeListener(this);
     srcDepthParam.addParameterChangeListener(this);
     magDistParam.addParameterChangeListener(this);
+    distCorrParam.addParameterChangeListener(this);
   }
 
 
@@ -161,11 +168,13 @@ public class PointPoissonSourceERF extends AbstractERF{
        Location loc = new Location( ((Double)srcLatParam.getValue()).doubleValue(),
                                     ((Double)srcLonParam.getValue()).doubleValue(),
                                     ((Double)srcDepthParam.getValue()).doubleValue());
-       source = new PointEqkSource(loc,
-                                          (IncrementalMagFreqDist) magDistParam.getValue(),
-                                          timeSpan.getDuration(),
-                                          ((Double)rakeParam.getValue()).doubleValue(),
-                                          ((Double)dipParam.getValue()).doubleValue());
+       source = PointSource.poissonBuilder(loc)
+    		   .truePointSources(srcDepthParam.getValue())
+    		   .duration(timeSpan.getDuration())
+    		   .forMFDAndFocalMech(magDistParam.getValue(),
+    				   new FocalMechanism(Double.NaN, dipParam.getValue(), rakeParam.getValue()))
+    		   .distCorrs(distCorrParam.getValue())
+    		   .build();
        parameterChangeFlag = false;
      }
 
@@ -193,7 +202,7 @@ public class PointPoissonSourceERF extends AbstractERF{
     * @return Returns the ProbEqkSource at index i
     *
     */
-   public ProbEqkSource getSource(int iSource) {
+   public PointSource getSource(int iSource) {
 
      // we have only one source
     if(iSource!=0)
@@ -211,18 +220,6 @@ public class PointPoissonSourceERF extends AbstractERF{
    public int getNumSources(){
      return 1;
    }
-
-
-    /**
-     *  This returns a list of sources (contains only one here)
-     *
-     * @return ArrayList of Prob Earthquake sources
-     */
-    public ArrayList  getSourceList(){
-      ArrayList v =new ArrayList();
-      v.add(source);
-      return v;
-    }
 
 
   /**

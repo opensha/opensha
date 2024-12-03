@@ -1070,9 +1070,6 @@ public class ETAS_Simulator {
 		System.out.println("Starting ERF instantiation");
 		long st = System.currentTimeMillis();
 		
-		// temporary hack
-		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
-		
 //		String fileName="src/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_MEAN_BRANCH_AVG_SOL.zip";
 		String fileName="src/scratch/UCERF3/data/scratch/InversionSolutions/2013_05_10-ucerf3p3-production-10runs_COMPOUND_SOL_FM3_1_SpatSeisU3_MEAN_BRANCH_AVG_SOL.zip";
 		FaultSystemSolution fss;

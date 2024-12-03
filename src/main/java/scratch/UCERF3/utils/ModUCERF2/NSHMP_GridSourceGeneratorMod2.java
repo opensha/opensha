@@ -3,8 +3,10 @@
  */
 package scratch.UCERF3.utils.ModUCERF2;
 
+import org.opensha.commons.data.WeightedList;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.NSHMP_GridSourceGenerator;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 
 
@@ -15,8 +17,8 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
  */
 public class NSHMP_GridSourceGeneratorMod2 extends NSHMP_GridSourceGenerator {
 
-	public NSHMP_GridSourceGeneratorMod2() {
-		super();
+	public NSHMP_GridSourceGeneratorMod2(WeightedList<PointSourceDistanceCorrection> distCorrs) {
+		super(distCorrs);
 	}
 
 	
