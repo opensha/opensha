@@ -4,14 +4,7 @@ import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
-<<<<<<< HEAD
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
-=======
-import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
-import org.opensha.sha.faultSurface.utils.PtSrcDistCorr.Type;
-
-import com.google.common.base.Preconditions;
->>>>>>> master
 
 /**
  * Point surface implementation that approximates finite surfaces when calculating 3-D distances (e.g., rRup and
