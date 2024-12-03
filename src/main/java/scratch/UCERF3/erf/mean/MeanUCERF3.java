@@ -204,7 +204,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		this.storeDir = storeDir;
 		System.out.println("MeanUCERF3 store dir: "+storeDir);
 		Preconditions.checkState(storeDir.exists(), "Store dir doesn't exist: "+storeDir.getAbsolutePath());
-		
+
 		GF_UPDATER.updateFile("getfile-all");
 		// TODO: Prompt to restart or dynamically load new jar file
 		
@@ -665,10 +665,10 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		CalcProgressBar progress = null;
 		// try to show progress bar
 		try {
-			if (show_progress)
+			if (show_progress) {
 				progress = new CalcProgressBar("Downloading MeanUCERF3 Files", "downloading "+fileKey);
-		} catch (Throwable t) {}
-		try {
+				progress.setVisible(true);
+			}
 			Pair<Boolean, File> result = U3ETAS_UPDATER.updateFile(fileKey);
 			if (result.getLeft()) {
 				File dwnLoc = result.getRight();
@@ -676,7 +676,10 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 					// File must be downloaded at param specified file path
 					FileUtils.moveFile(dwnLoc, file);
 				}
+			} else {
+				throw new Exception("Failed to download file");
 			}
+			progress.setVisible(false);
 		} catch (Exception e) {
 			if (progress != null) {
 				// not headless
