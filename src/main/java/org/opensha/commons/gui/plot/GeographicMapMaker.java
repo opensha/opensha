@@ -75,6 +75,7 @@ public class GeographicMapMaker {
 	protected boolean skipNaNs = false;
 	protected boolean writePDFs = true;
 	protected boolean writeGeoJSON = true;
+	protected boolean sort = true;
 	protected boolean reverseSort = false;
 	protected Boolean absoluteSort = null;
 	protected int widthDefault = 800;
@@ -90,6 +91,7 @@ public class GeographicMapMaker {
 	protected List<LocationList> sectPerimeters;
 	protected boolean plotAseisReducedSurfaces = false;
 	protected boolean fillSurfaces = false;
+	protected boolean plotTracesForFilledSurfaces = true;
 	protected boolean plotAllSectPolys = false;
 	protected boolean plotProxySectPolys = true;
 	
@@ -102,7 +104,8 @@ public class GeographicMapMaker {
 	 * Fault section colors/scalars
 	 */
 	// section scalars
-	protected double[] sectScalars;
+	protected List<Double> sectScalars;
+	protected List<Double> sectSortables;
 	protected CPT sectScalarCPT;
 	protected String sectScalarLabel;
 	protected float sectScalarThickness = 3f;
@@ -110,13 +113,13 @@ public class GeographicMapMaker {
 
 	// section colors
 	protected List<Color> sectColors = null;
-	protected List<? extends Double> sectColorComparables;
+	protected List<Double> sectColorComparables;
 	protected CPT sectColorsCPT;
 	protected String sectColorsLabel;
 
 	// section chars
 	protected List<PlotCurveCharacterstics> sectChars = null;
-	protected List<? extends Double> sectCharsComparables;
+	protected List<Double> sectCharsComparables;
 	protected CPT sectCharsCPT;
 	protected String sectCharsLabel;
 
@@ -461,6 +464,10 @@ public class GeographicMapMaker {
 		this.fillSurfaces = fillSurfaces;
 	}
 
+	public void setPlotTracesForFilledSurfaces(boolean plotTracesForFilledSurfaces) {
+		this.plotTracesForFilledSurfaces = plotTracesForFilledSurfaces;
+	}
+
 	public void setPlotAseisReducedSurfaces(boolean plotAseisReducedSurfaces) {
 		this.plotAseisReducedSurfaces = plotAseisReducedSurfaces;
 	}
@@ -480,20 +487,38 @@ public class GeographicMapMaker {
 	public boolean isReverseSort() {
 		return reverseSort;
 	}
+
+	public void setSort(boolean sort) { 
+		this.sort = sort;
+	}
+	
+	public boolean isSort() {
+		return sort;
+	}
 	
 	public void setAbsoluteSort(boolean absoluteSort) {
 		this.absoluteSort = absoluteSort;
 	}
 	
-	public void plotSectScalars(List<Double> scalars, CPT cpt, String label) {
-		plotSectScalars(Doubles.toArray(scalars), cpt, label);
+	public void plotSectScalars(double[] scalars, CPT cpt, String label) {
+		plotSectScalars(Doubles.asList(scalars), cpt, label);
 	}
 	
-	public void plotSectScalars(double[] scalars, CPT cpt, String label) {
+	public void plotSectScalars(double[] scalars, double[] sortables, CPT cpt, String label) {
+		plotSectScalars(Doubles.asList(scalars), sortables == null ? null : Doubles.asList(sortables), cpt, label);
+	}
+	
+	public void plotSectScalars(List<Double> scalars, CPT cpt, String label) {
+		plotSectScalars(scalars, null, cpt, label);
+	}
+	
+	public void plotSectScalars(List<Double> scalars, List<Double> sortables, CPT cpt, String label) {
 		checkHasSections();
-		Preconditions.checkState(scalars.length == sects.size());
+		Preconditions.checkState(scalars.size() == sects.size());
+		Preconditions.checkState(sortables == null || scalars.size() == sortables.size());
 		Preconditions.checkNotNull(cpt);
 		this.sectScalars = scalars;
+		this.sectSortables = sortables;
 		this.sectScalarCPT = cpt;
 		this.sectScalarLabel = label;
 		this.sectColors = null;
@@ -501,6 +526,7 @@ public class GeographicMapMaker {
 	
 	public void clearSectScalars() {
 		this.sectScalars = null;
+		this.sectSortables = null;
 		this.sectScalarCPT = null;
 		this.sectScalarLabel = null;
 	}
@@ -514,7 +540,7 @@ public class GeographicMapMaker {
 	}
 	
 	public void plotSectColors(List<Color> sectColors, CPT colorsCPT, String colorsLabel,
-			List<? extends Double> sectColorComparables) {
+			List<Double> sectColorComparables) {
 		if (sectColors != null) {
 			clearSectScalars();
 			clearSectChars();
@@ -538,7 +564,7 @@ public class GeographicMapMaker {
 	}
 	
 	public void plotSectChars(List<PlotCurveCharacterstics> sectChars, CPT cpt, String label,
-			List<? extends Double> sectCharComparables) {
+			List<Double> sectCharComparables) {
 		if (sectChars != null) {
 			clearSectScalars();
 			clearSectColors();
@@ -1149,30 +1175,44 @@ public class GeographicMapMaker {
 			XY_DataSet prevTrace = null;
 			XY_DataSet prevNanTrace = null;
 			XY_DataSet prevOutline = null;
+			List<XY_DataSet> traces = new ArrayList<>();
 			Map<Integer, Feature> outlineFeatures = writeGeoJSON ? new HashMap<>() : null;
 			for (int s=0; s<sects.size(); s++) {
 				FaultSection sect = sects.get(s);
-				if (!plotSects.contains(sect))
+				if (!plotSects.contains(sect)) {
+					traces.add(null);
 					continue;
+				}
 				
 				XY_DataSet trace = new DefaultXY_DataSet();
 				for (Location loc : getUpperEdge(sect))
 					trace.set(loc.getLongitude(), loc.getLatitude());
 				
-				if (s == 0)
+				if (traces.isEmpty())
 					trace.setName("Fault Sections");
 				
+				traces.add(trace);
+				
 				// we'll plot fault traces if we don't have scalar values
-				boolean doTraces = sectScalars == null && sectColors == null && sectChars == null;
+				boolean sectsAreColored = sectScalars != null || sectColors != null || sectChars != null;
+				boolean doTraces = !sectsAreColored;
 				boolean isNaN = false;
 				if (sectScalars != null)
-					isNaN = Double.isNaN(sectScalars[s]);
+					isNaN = Double.isNaN(sectScalars.get(s));
 				else if (sectColors != null)
 					isNaN = sectColors.get(s) == null;
 				else if (sectChars != null)
 					isNaN = sectChars.get(s) == null;
+				// special cases
 				if (!doTraces && (!skipNaNs || sectNaNChar != null))
-					doTraces = true;
+					// plot the trace anyway if it's NaN
+					doTraces = isNaN;
+				if (sectsAreColored && fillSurfaces && plotTracesForFilledSurfaces && sect.getAveDip() != 90d) {
+					// plot the trace if we're filling the surface
+					// if we're not doing custom sorting, do it here as the fills will be put on bottom
+					// if we're doing custom sorting, we'll add them in on top later instead
+					doTraces = !isNaN && sectSortables == null && sectColorComparables == null && sectCharsComparables == null;
+				}
 				
 				if (sectOutlineChar != null && (sect.getAveDip() != 90d)) {
 					XY_DataSet outline = new DefaultXY_DataSet();
@@ -1264,16 +1304,23 @@ public class GeographicMapMaker {
 			
 			// plot sect scalars
 			if (sectScalars != null) {
-				List<ComparablePairing<Double, FaultSection>> sortables = new ArrayList<>();
-				for (int s=0; s<sectScalars.length; s++)
-					sortables.add(new ComparablePairing<>(sectScalars[s], sects.get(s)));
-				Collections.sort(sortables, buildComparator(sectScalarCPT));
-				for (ComparablePairing<Double, FaultSection> val : sortables) {
-					float scalar = val.getComparable().floatValue();
+				List<Integer> sectOrder = new ArrayList<>(sects.size());
+				for (int s=0; s<sects.size(); s++)
+					sectOrder.add(s);
+				if (sort) {
+					// we're sorting
+					List<Double> comps = sectSortables == null ? sectScalars : sectSortables;
+					sectOrder = ComparablePairing.getSortedData(comps, sectOrder);
+//					System.out.println("Sorted sect order: "+sectOrder);
+				}
+				for (int s : sectOrder) {
+					FaultSection sect = sects.get(s);
+					float scalar = sectScalars.get(s).floatValue();
 					Color color = sectScalarCPT.getColor(scalar);
-					FaultSection sect = val.getData();
-					if (!plotSects.contains(sect) || (skipNaNs && Double.isNaN(val.getComparable())))
+					if (!plotSects.contains(sect) || (skipNaNs && Double.isNaN(scalar)))
 						continue;
+					if (Double.isNaN(scalar) && sectNaNChar != null)
+						color = sectNaNChar.getColor();
 
 					if (fillSurfaces && sect.getAveDip() != 90d) {
 						XY_DataSet outline = new DefaultXY_DataSet();
@@ -1282,8 +1329,20 @@ public class GeographicMapMaker {
 
 						PlotCurveCharacterstics fillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 0.5f, color);
 
-						funcs.add(0, outline);
-						chars.add(0, fillChar);
+						if (sectSortables == null) {
+							// put fills on bottom
+							funcs.add(0, outline);
+							chars.add(0, fillChar);
+						} else {
+							// assume already sorted as desired
+							funcs.add(outline);
+							chars.add(fillChar);
+							if (plotTracesForFilledSurfaces && sectTraceChar != null && !Double.isNaN(scalar)) {
+								// plot the trace again on top
+								funcs.add(traces.get(s));
+								chars.add(sectTraceChar);
+							}
+						}
 					} else {
 						XY_DataSet trace = new DefaultXY_DataSet();
 						for (Location loc : getUpperEdge(sect))
@@ -1326,7 +1385,8 @@ public class GeographicMapMaker {
 					List<ComparablePairing<Double, Integer>> sortables = new ArrayList<>();
 					for (int s=0; s<comps.size(); s++)
 						sortables.add(new ComparablePairing<>(comps.get(s), s));
-					Collections.sort(sortables, buildComparator(colors ? sectColorsCPT : sectCharsCPT));
+					if (sort)
+						Collections.sort(sortables, buildComparator(colors ? sectColorsCPT : sectCharsCPT));
 					sectOrder = new ArrayList<>(sects.size());
 					for (ComparablePairing<Double, Integer> sort : sortables)
 						sectOrder.add(sort.getData());
@@ -1361,8 +1421,20 @@ public class GeographicMapMaker {
 
 						PlotCurveCharacterstics fillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 0.5f, color);
 
-						funcs.add(0, outline);
-						chars.add(0, fillChar);
+						if (comps == null) {
+							// put fills on bottom
+							funcs.add(0, outline);
+							chars.add(0, fillChar);
+						} else {
+							// assume already sorted as desired
+							funcs.add(outline);
+							chars.add(fillChar);
+							if (plotTracesForFilledSurfaces && sectTraceChar != null) {
+								// plot the trace again on top
+								funcs.add(traces.get(s));
+								chars.add(sectTraceChar);
+							}
+						}
 					}
 
 					XY_DataSet trace = new DefaultXY_DataSet();
@@ -1472,7 +1544,8 @@ public class GeographicMapMaker {
 						features.add(new Feature(line, props));
 					}
 				}
-				Collections.sort(sortables, buildComparator(scalarJumpsCPT));
+				if (sort)
+					Collections.sort(sortables, buildComparator(scalarJumpsCPT));
 				for (ComparablePairing<Double, XY_DataSet> val : sortables) {
 					float scalar = val.getComparable().floatValue();
 					Color color = scalarJumpsCPT.getColor(scalar);
@@ -1522,7 +1595,8 @@ public class GeographicMapMaker {
 					if (outlines != null)
 						outlines.set(xy.get(0));
 				}
-				Collections.sort(sortables, buildComparator(scatterScalarCPT));
+				if (sort)
+					Collections.sort(sortables, buildComparator(scatterScalarCPT));
 				for (ComparablePairing<Double, XY_DataSet> val : sortables) {
 					float scalar = val.getComparable().floatValue();
 					Color color = scatterScalarCPT.getColor(scalar);
