@@ -67,16 +67,8 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	
 	public static final String NAME = "Mean UCERF3";
 	
-	private static final GetFile GF_UPDATER = new GetFile(
-			/*clientMetaFile=*/new File("lib/getfile_client.json"),
-			/*serverMetaURI=*/URI.create(GetFile.LATEST_JAR_URL));
-	// TODO: Update ServerPrefs and ServerPrefUtils with new server
 	private static final String DOWNLOAD_URL = "https://g-c662a6.a78b8.36fe.data.globus.org/getfile/ucerf3_erf_modular/ucerf3_erf_modular.json";
 	// static final String DOWNLOAD_URL = "https://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/ftp/ucerf3_erf_modular/";
-	private static final GetFile U3ETAS_UPDATER = new GetFile(
-			/*clientMetaFile=*/new File(
-					getStoreDir().getPath(), "ucerf3_erf_modular_client.json"),
-			/*serverMetaURI=*/URI.create(DOWNLOAD_URL));
 	
 	static final String RAKE_BASIS_FILE_NAME = "rake_basis.zip";
 	static final String TRUE_MEAN_FILE_NAME = "mean_ucerf3_sol.zip";
@@ -204,8 +196,11 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		this.storeDir = storeDir;
 		System.out.println("MeanUCERF3 store dir: "+storeDir);
 		Preconditions.checkState(storeDir.exists(), "Store dir doesn't exist: "+storeDir.getAbsolutePath());
-
-		GF_UPDATER.updateFile("getfile-all");
+		
+		final GetFile GF_UPDATER = new GetFile(
+				/*clientMetaFile=*/new File("lib/getfile_client.json"),
+				/*serverMetaURI=*/URI.create(GetFile.LATEST_JAR_URL));
+		updateFile(GF_UPDATER, "getfile-all", /*ignoreErrors=*/true);
 		// TODO: Prompt to restart or dynamically load new jar file
 		
 		presetsParam = new EnumParameter<MeanUCERF3.Presets>("Mean UCERF3 Presets",
@@ -662,24 +657,44 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 			}
 		}
 		String fileKey = FilenameUtils.getBaseName(file.getName());
+		final GetFile UCERF3_UPDATER = new GetFile(
+				/*clientMetaFile=*/new File(
+						getStoreDir().getPath(), "ucerf3_erf_modular_client.json"),
+				/*serverMetaURI=*/URI.create(DOWNLOAD_URL));
+		var result = updateFile(UCERF3_UPDATER, fileKey, ignoreErrors);
+		if (result.getLeft()) {
+			File dwnLoc = result.getRight();
+			if (!dwnLoc.equals(file)) {
+				// File must be downloaded at param specified file path
+				try {
+					FileUtils.moveFile(dwnLoc, file);
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return file;
+	}
+	
+	/**
+	 * Wraps a GetFile instance with CalcProgressBar and try/catch on a GetFile
+	 * updateFile invocation.
+	 * @param gf			Instance of GetFile for server connection
+	 * @param fileKey		Key corresponding to file to download from server
+	 * @param ignoreErrors  Whether to show user download errors
+	 * @return boolean if file is updated or unchanged, Reference to file updated
+	 */
+	private static Pair<Boolean, File> updateFile(GetFile gf,
+			String fileKey, boolean ignoreErrors) {
 		CalcProgressBar progress = null;
+		Pair<Boolean, File> result = null;
 		// try to show progress bar
 		try {
 			if (show_progress) {
 				progress = new CalcProgressBar("Downloading MeanUCERF3 Files", "downloading "+fileKey);
 				progress.setVisible(true);
 			}
-			Pair<Boolean, File> result = U3ETAS_UPDATER.updateFile(fileKey);
-			if (result.getLeft()) {
-				File dwnLoc = result.getRight();
-				if (!dwnLoc.equals(file)) {
-					// File must be downloaded at param specified file path
-					FileUtils.moveFile(dwnLoc, file);
-				}
-			} else {
-				throw new Exception("Failed to download file");
-			}
-			progress.setVisible(false);
+			result = gf.updateFile(fileKey);
 		} catch (Exception e) {
 			if (progress != null) {
 				// not headless
@@ -695,12 +710,11 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 			else
 				ExceptionUtils.throwAsRuntimeException(e);
 		}
-		System.out.println("DONE.");
 		if (progress != null) {
 			progress.setVisible(false);
 			progress.dispose();
 		}
-		return file;
+		return result;
 	}
 	
 	public static void main(String[] args) {
