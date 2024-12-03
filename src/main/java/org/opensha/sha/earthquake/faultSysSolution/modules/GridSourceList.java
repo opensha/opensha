@@ -1051,6 +1051,31 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		
 	}
 	
+	public static PointSurfaceBuilder surfBuilderForRup(GriddedRupture rup) {
+		PointSurfaceBuilder builder = new PointSurfaceBuilder(rup.location);
+		return updateSurfBuilderForLoc(builder, rup, false);
+	}
+	
+	private static PointSurfaceBuilder updateSurfBuilderForLoc(PointSurfaceBuilder surfBuilder, GriddedRupture rup, boolean forcePointSurf) {
+		surfBuilder.magnitude(rup.properties.magnitude);
+		surfBuilder.dip(rup.properties.dip);
+		if (forcePointSurf)
+			surfBuilder.strike(Double.NaN);
+		else if (Double.isFinite(rup.properties.strike))
+			surfBuilder.strike(rup.properties.strike);
+		else if (rup.properties.strikeRange != null)
+			surfBuilder.strikeRange(rup.properties.strikeRange);
+		else
+			surfBuilder.strike(Double.NaN);
+		surfBuilder.upperDepth(rup.properties.upperDepth);
+		surfBuilder.lowerDepth(rup.properties.lowerDepth);
+		surfBuilder.length(rup.properties.length);
+		double hypoDepth = rup.properties.getHypocentralDepth();
+		surfBuilder.hypocentralDepth(hypoDepth);
+		surfBuilder.das(rup.properties.getHypocentralDAS());
+		return surfBuilder;
+	}
+	
 	private static class GriddedRuptureSourceData implements PoissonPointSourceData {
 		
 		private List<GriddedRupture> rups;
@@ -1084,22 +1109,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 					rate = aftershockFilter.getFilteredRate(rup.properties.magnitude, rup.rate);
 				if (rate == 0d)
 					continue;
-				surfBuilder.magnitude(rup.properties.magnitude);
-				surfBuilder.dip(rup.properties.dip);
-				if (forcePointSurf)
-					surfBuilder.strike(Double.NaN);
-				else if (Double.isFinite(rup.properties.strike))
-					surfBuilder.strike(rup.properties.strike);
-				else if (rup.properties.strikeRange != null)
-					surfBuilder.strikeRange(rup.properties.strikeRange);
-				else
-					surfBuilder.strike(Double.NaN);
-				surfBuilder.upperDepth(rup.properties.upperDepth);
-				surfBuilder.lowerDepth(rup.properties.lowerDepth);
-				surfBuilder.length(rup.properties.length);
-				double hypoDepth = rup.properties.getHypocentralDepth();
-				surfBuilder.hypocentralDepth(hypoDepth);
-				surfBuilder.das(rup.properties.getHypocentralDAS());
+				updateSurfBuilderForLoc(surfBuilder, rup, forcePointSurf);
 				WeightedList<? extends RuptureSurface> rupSurfs = surfBuilder.build(
 						forcePointSurf ? BackgroundRupType.POINT : gridSourceSettings.surfaceType, null);
 				for (int i=0; i<rupSurfs.size(); i++) {
