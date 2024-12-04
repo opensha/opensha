@@ -23,6 +23,7 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.GetFileWrapper;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
@@ -197,10 +198,12 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		System.out.println("MeanUCERF3 store dir: "+storeDir);
 		Preconditions.checkState(storeDir.exists(), "Store dir doesn't exist: "+storeDir.getAbsolutePath());
 		
-		final GetFile GF_UPDATER = new GetFile(
+		final GetFileWrapper GF_UPDATER = new GetFileWrapper(
 				/*clientMetaFile=*/new File("lib/getfile_client.json"),
-				/*serverMetaURI=*/URI.create(GetFile.LATEST_JAR_URL));
-		updateFile(GF_UPDATER, "getfile-all", /*ignoreErrors=*/true);
+				/*serverMetaURI=*/URI.create(GetFile.LATEST_JAR_URL),
+				/*showProgress=*/true,
+				/*ignoreErrors=*/true);
+		GF_UPDATER.updateFile(new File("lib/getfile-all.jar"));
 		// TODO: Prompt to restart or dynamically load new jar file
 		
 		presetsParam = new EnumParameter<MeanUCERF3.Presets>("Mean UCERF3 Presets",
@@ -656,12 +659,13 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 				return file;
 			}
 		}
-		String fileKey = FilenameUtils.getBaseName(file.getName());
-		final GetFile UCERF3_UPDATER = new GetFile(
+		final GetFileWrapper UCERF3_UPDATER = new GetFileWrapper(
 				/*clientMetaFile=*/new File(
-						getStoreDir().getPath(), "ucerf3_erf_modular_client.json"),
-				/*serverMetaURI=*/URI.create(DOWNLOAD_URL));
-		var result = updateFile(UCERF3_UPDATER, fileKey, ignoreErrors);
+						file.getParent(), "ucerf3_erf_modular_client.json"),
+				/*serverMetaURI=*/URI.create(DOWNLOAD_URL),
+				/*showProgress=*/true,
+				/*ignoreErrors=*/ignoreErrors);
+		Pair<Boolean, File> result = UCERF3_UPDATER.updateFile(file);
 		if (result.getLeft()) {
 			File dwnLoc = result.getRight();
 			if (!dwnLoc.equals(file)) {
@@ -675,48 +679,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		}
 		return file;
 	}
-	
-	/**
-	 * Wraps a GetFile instance with CalcProgressBar and try/catch on a GetFile
-	 * updateFile invocation.
-	 * @param gf			Instance of GetFile for server connection
-	 * @param fileKey		Key corresponding to file to download from server
-	 * @param ignoreErrors  Whether to show user download errors
-	 * @return boolean if file is updated or unchanged, Reference to file updated
-	 */
-	private static Pair<Boolean, File> updateFile(GetFile gf,
-			String fileKey, boolean ignoreErrors) {
-		CalcProgressBar progress = null;
-		Pair<Boolean, File> result = null;
-		// try to show progress bar
-		try {
-			if (show_progress) {
-				progress = new CalcProgressBar("Downloading MeanUCERF3 Files", "downloading "+fileKey);
-				progress.setVisible(true);
-			}
-			result = gf.updateFile(fileKey);
-		} catch (Exception e) {
-			if (progress != null) {
-				// not headless
-				progress.setVisible(false);
-				progress.dispose();
-				if (!ignoreErrors) {
-					String message = "Error downloading "+fileKey+".\nServer down or file moved, try again later.";
-					JOptionPane.showMessageDialog(null, message, "Download Error", JOptionPane.ERROR_MESSAGE);
-				}
-			}
-			if (ignoreErrors)
-				return null;
-			else
-				ExceptionUtils.throwAsRuntimeException(e);
-		}
-		if (progress != null) {
-			progress.setVisible(false);
-			progress.dispose();
-		}
-		return result;
-	}
-	
+		
 	public static void main(String[] args) {
 		File solFile = new File(getStoreDir(), "mean_ucerf3_sol.zip");
 		MeanUCERF3.checkDownload(solFile, false);
