@@ -23,7 +23,6 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.EnumParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ExceptionUtils;
-import org.opensha.commons.util.GetFileWrapper;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
@@ -198,12 +197,11 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		System.out.println("MeanUCERF3 store dir: "+storeDir);
 		Preconditions.checkState(storeDir.exists(), "Store dir doesn't exist: "+storeDir.getAbsolutePath());
 		
-		final GetFileWrapper GF_UPDATER = new GetFileWrapper(
+		final GetFile GF_UPDATER = new GetFile(
+				/*name=*/"MeanUCERF3",
 				/*clientMetaFile=*/new File("lib/getfile_client.json"),
-				/*serverMetaURI=*/URI.create(GetFile.LATEST_JAR_URL),
-				/*showProgress=*/true,
-				/*ignoreErrors=*/true);
-		GF_UPDATER.updateFile(new File("lib/getfile-all.jar"));
+				/*serverMetaURI=*/URI.create(GetFile.LATEST_JAR_URL));
+		GF_UPDATER.updateFile("getfile-all");
 		// TODO: Prompt to restart or dynamically load new jar file
 		
 		presetsParam = new EnumParameter<MeanUCERF3.Presets>("Mean UCERF3 Presets",
@@ -659,13 +657,15 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 				return file;
 			}
 		}
-		final GetFileWrapper UCERF3_UPDATER = new GetFileWrapper(
+		final GetFile UCERF3_UPDATER = new GetFile(
+				/*name=*/"MeanUCERF3",
 				/*clientMetaFile=*/new File(
 						file.getParent(), "ucerf3_erf_modular_client.json"),
 				/*serverMetaURI=*/URI.create(DOWNLOAD_URL),
 				/*showProgress=*/true,
 				/*ignoreErrors=*/ignoreErrors);
-		Pair<Boolean, File> result = UCERF3_UPDATER.updateFile(file);
+		String fileKey = FilenameUtils.getBaseName(file.getName());
+		Pair<Boolean, File> result = UCERF3_UPDATER.updateFile(fileKey);
 		if (result.getLeft()) {
 			File dwnLoc = result.getRight();
 			if (!dwnLoc.equals(file)) {
