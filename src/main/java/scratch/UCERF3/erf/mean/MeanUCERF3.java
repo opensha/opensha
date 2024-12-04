@@ -67,7 +67,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	
 	public static final String NAME = "Mean UCERF3";
 	
-	private static final String DOWNLOAD_URL = "https://g-c662a6.a78b8.36fe.data.globus.org/getfile/ucerf3_erf_modular/ucerf3_erf_modular.json";
+	private static final String DOWNLOAD_URL = "https://g-c662a6.a78b8.36fe.data.globus.org/getfile/ucerf3/ucerf3.json";
 	// static final String DOWNLOAD_URL = "https://"+ServerPrefUtils.SERVER_PREFS.getHostName()+"/ftp/ucerf3_erf_modular/";
 	
 	static final String RAKE_BASIS_FILE_NAME = "rake_basis.zip";
@@ -662,7 +662,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		final GetFile UCERF3_UPDATER = new GetFile(
 				/*name=*/"MeanUCERF3",
 				/*clientMetaFile=*/new File(
-						file.getParent(), "ucerf3_erf_modular_client.json"),
+						file.getParent(), "ucerf3_client.json"),
 				/*serverMetaURI=*/URI.create(DOWNLOAD_URL),
 				/*showProgress=*/true,
 				/*ignoreErrors=*/ignoreErrors);
