@@ -200,7 +200,9 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		final GetFile GF_UPDATER = new GetFile(
 				/*name=*/"MeanUCERF3",
 				/*clientMetaFile=*/new File("lib/getfile_client.json"),
-				/*serverMetaURI=*/URI.create(GetFile.LATEST_JAR_URL));
+				/*serverMetaURI=*/URI.create(GetFile.LATEST_JAR_URL),
+				/*showProgress=*/true,
+				/*ignoreErrors=*/true);
 		GF_UPDATER.updateFile("getfile-all");
 		// TODO: Prompt to restart or dynamically load new jar file
 		
