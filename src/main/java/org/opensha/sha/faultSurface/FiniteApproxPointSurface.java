@@ -10,6 +10,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm.PointSurfaceNshm;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
+import org.opensha.sha.faultSurface.utils.PtSrcDistCorr.Type;
 
 import com.google.common.base.Preconditions;
 
@@ -109,17 +110,14 @@ public class FiniteApproxPointSurface extends PointSurface {
 	private static boolean HACK_WARN_FIRST = true;
 	@Override
 	public double getDistanceJB(Location siteLoc) {
-		if (corrType == null) {
-			// TODO: currently hardcoded  to PointSourceNshm, pending revamp of point source correction framework
-			double rEpi = LocationUtils.horzDistanceFast(getLocation(), siteLoc);
-			Preconditions.checkState(Double.isFinite(corrMag));
-			if (HACK_WARN_FIRST) {
-				System.err.println("WARNING: FiniteApproxPointSurface currently hardcoded to use PointSourceNshm corrected RJB");
-				HACK_WARN_FIRST = false;
-			}
-			return PointSourceNshm.correctedRjb(corrMag, rEpi);
+		// TODO: currently hardcoded  to PointSourceNshm, pending revamp of point source correction framework
+		double rEpi = LocationUtils.horzDistanceFast(getLocation(), siteLoc);
+		Preconditions.checkState(Double.isFinite(corrMag));
+		if (HACK_WARN_FIRST) {
+			System.err.println("WARNING: FiniteApproxPointSurface currently hardcoded to use PointSourceNshm corrected RJB");
+			HACK_WARN_FIRST = false;
 		}
-		return super.getDistanceJB(siteLoc);
+		return PointSourceNshm.correctedRjb(corrMag, rEpi);
 	}
 
 	@Override

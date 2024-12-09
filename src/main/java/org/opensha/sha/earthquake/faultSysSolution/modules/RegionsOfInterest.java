@@ -127,6 +127,9 @@ BranchAverageableModule<RegionsOfInterest> {
 		if (regionalMFDs != null)
 			while (regionalMFDs.size() < regions.size())
 				regionalMFDs.add(null);
+		if (regionalTRTs != null)
+			while (regionalTRTs.size() < regions.size())
+				regionalTRTs.add(null);
 	}
 
 	@Override
@@ -219,6 +222,8 @@ BranchAverageableModule<RegionsOfInterest> {
 						regionalTRTs = new ArrayList<>();
 						for (TectonicRegionType trt : module.regionalTRTs)
 							regionalTRTs.add(trt);
+						Preconditions.checkState(regionalTRTs.size() == regions.size(),
+								"Region has %s regions but TRTs list has only %s", regions.size(), regionalTRTs.size());
 					} else {
 						regionalTRTs = null;
 					}
