@@ -57,6 +57,8 @@ public class GeographicMapMaker {
 	protected Region region;
 	protected Location regionCenter;
 	
+	public static final int PLOT_WIDTH_DEFAULT = 800;
+	
 	/*
 	 * General line styles
 	 */
@@ -78,7 +80,7 @@ public class GeographicMapMaker {
 	protected boolean sort = true;
 	protected boolean reverseSort = false;
 	protected Boolean absoluteSort = null;
-	protected int widthDefault = 800;
+	protected int widthDefault = PLOT_WIDTH_DEFAULT;
 	protected boolean axisLabels = true;
 	protected boolean axisTicks = true;
 	
@@ -177,7 +179,7 @@ public class GeographicMapMaker {
 	protected List<Color> arrowColors;
 	protected float arrowThickness = 2f;
 	protected float arrowheadThickness = 2f;
-	protected double arrowAngle = 45d;
+	protected double arrowAngle = 35d;
 	protected boolean fillArrowheads = false;
 	protected boolean closeArrowheads = false;
 	
@@ -410,6 +412,13 @@ public class GeographicMapMaker {
 	
 	public void setAnnotations(List<? extends XYAnnotation> anns) {
 		this.annotations = new ArrayList<>(anns);
+	}
+	
+	public void addAnnotations(List<? extends XYAnnotation> anns) {
+		if (this.annotations == null)
+			this.annotations = new ArrayList<>(anns);
+		else
+			this.annotations.addAll(anns);
 	}
 	
 	public void addAnnotation(XYAnnotation ann) {
@@ -1862,7 +1871,10 @@ public class GeographicMapMaker {
 				// XYZ data
 				Preconditions.checkNotNull(xyzCPT);
 				spec = new XYZPlotSpec(xyzData, funcs, chars, xyzCPT, title, xAxisLabel, yAxisLabel, xyzLabel);
-				((XYZPlotSpec)spec).setCPTPosition(RectangleEdge.BOTTOM);
+				if (xyzLabel == null)
+					((XYZPlotSpec)spec).setCPTVisible(false);
+				else
+					((XYZPlotSpec)spec).setCPTPosition(RectangleEdge.BOTTOM);
 			} else {
 				spec = new PlotSpec(funcs, chars, title, xAxisLabel, yAxisLabel);
 			}
