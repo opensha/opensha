@@ -49,7 +49,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 	PREFFERRED("Preffered Seismicity Rate", "Preferred", Double.NaN, 0.74d),
 	HIGH("Upper Seismicity Bound (p97.5)", "High", 0.975, 0.13d);
 	
-	public static String RATE_DATE = "2024_10_23";
+	public static String RATE_DATE = "2024_11_21";
 	private static final String RATES_PATH_PREFIX = "/data/erf/prvi25/seismicity/rates/";
 	public static RateType TYPE = RateType.EXACT;
 	
@@ -68,6 +68,10 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 	public synchronized static void clearCache() {
 		regionRateCSVs = null;
 		regionRates = null;
+	}
+	
+	public synchronized static List<? extends RateRecord> loadRates(PRVI25_SeismicityRegions region, RateType type) throws IOException {
+		return loadRates(region.name(), type);
 	}
 	
 	private synchronized static List<? extends RateRecord> loadRates(String regionName, RateType type) throws IOException {
@@ -132,21 +136,21 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 	
 	private String name;
 	private String shortName;
-	private double qwuantile;
+	private double quantile;
 	private double weight;
 
 	private PRVI25_RegionalSeismicity(String name, String shortName, double qwuantile, double weight) {
 		this.name = name;
 		this.shortName = shortName;
-		this.qwuantile = qwuantile;
+		this.quantile = qwuantile;
 		this.weight = weight;
 	}
 	
 	public IncrementalMagFreqDist build(PRVI25_SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax)
 			throws IOException {
-		List<? extends RateRecord> records = loadRates(region.name(), TYPE);
-		RateRecord record = Double.isNaN(qwuantile) ?
-				SeismicityRateFileLoader.locateMean(records) : SeismicityRateFileLoader.locateQuantile(records, qwuantile);
+		List<? extends RateRecord> records = loadRates(region, TYPE);
+		RateRecord record = Double.isNaN(quantile) ?
+				SeismicityRateFileLoader.locateMean(records) : SeismicityRateFileLoader.locateQuantile(records, quantile);
 		IncrementalMagFreqDist mfd = SeismicityRateFileLoader.buildIncrementalMFD(record, refMFD, mMax);
 		
 		if (TYPE != RateType.EXACT && this != PREFFERRED)
@@ -170,7 +174,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 		IncrementalMagFreqDist lower = LOW.build(region, refMFD, mMax);
 		IncrementalMagFreqDist pref = PREFFERRED.build(region, refMFD, mMax);
 		
-		double M1 = SeismicityRateFileLoader.locateMean(loadRates(region.name(), TYPE)).M1;
+		double M1 = SeismicityRateFileLoader.locateMean(loadRates(region, TYPE)).M1;
 		
 		UncertainBoundedIncrMagFreqDist bounded = new UncertainBoundedIncrMagFreqDist(pref, lower, upper, BOUND_TYPE);
 		bounded.setName(pref.getName());
