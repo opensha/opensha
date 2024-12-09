@@ -243,7 +243,7 @@ public class PureJavaDisaggPlotter {
 				BaseColor bc = new BaseColor(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha());
 				para.add(new Phrase( (String) metadata,
 						FontFactory.getFont(
-								PDF_UTF8_FontMapper.LIBERATION_SANS, 10, Font.PLAIN, bc)));
+								PDF_UTF8_FontMapper.SANS, 10, Font.PLAIN, bc)));
 				metadataDocument.add(para);
 			}
 		}
