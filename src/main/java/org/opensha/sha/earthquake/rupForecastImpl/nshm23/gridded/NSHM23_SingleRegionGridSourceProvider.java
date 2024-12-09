@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -12,10 +11,9 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.math3.stat.StatUtils;
+import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.data.function.HistogramFunction;
-import org.opensha.commons.data.region.CaliforniaRegions;
 import org.opensha.commons.geo.CubedGriddedRegion;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
@@ -34,10 +32,8 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.MFDGridSourceProvider
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportPageGen;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.NucleationRatePlot;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.SolMFDPlot;
-import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicTreeBranch;
-import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.opensha.sha.util.FocalMech;
@@ -45,13 +41,7 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 import com.google.common.primitives.Doubles;
-import com.google.common.primitives.Floats;
 import com.google.common.primitives.Ints;
-
-import scratch.UCERF3.enumTreeBranches.SpatialSeisPDF;
-import scratch.UCERF3.enumTreeBranches.TotalMag5Rate;
-import scratch.UCERF3.erf.ETAS.SeisDepthDistribution;
-import scratch.UCERF3.griddedSeismicity.GridReader;
 
 /**
  * This class represents a grid source provider where, rather than in UCERF3 where a fault represented 
@@ -117,7 +107,9 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 
 	private IncrementalMagFreqDist totGriddedSeisMFD; // supplied as input
 
-	private SummedMagFreqDist totalSubSeisOnFaultMFD, totalTrulyOffFaultMFD, totalSupraSeisOnFaultMFD; // all computed
+	// all computed
+	private IncrementalMagFreqDist totalTrulyOffFaultMFD, totalSupraSeisOnFaultMFD;
+	private SummedMagFreqDist totalSubSeisOnFaultMFD;
 
 	private SummedMagFreqDist[] subSeisOnFaultMFD_ForGridArray, unassociatedMFD_ForGridArray;
 
@@ -133,25 +125,28 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 
 	private TectonicRegionType[] trts;
 
-	public NSHM23_SingleRegionGridSourceProvider(FaultSystemSolution fss, CubedGriddedRegion cgr, 
-			double[] spatialPDF, IncrementalMagFreqDist totGriddedSeisMFD, EvenlyDiscretizedFunc depthNuclProbHist,
-			double[] fracStrikeSlip, double[] fracNormal, double[] fracReverse, Map<TectonicRegionType, Region> trtRegions) {
-		this(fss, cgr, spatialPDF, totGriddedSeisMFD, depthNuclProbHist, fracStrikeSlip, fracNormal, fracReverse,
-				DEFAULT_MAX_FAULT_NUCL_DIST, trtRegions);
-	}
-
-	public NSHM23_SingleRegionGridSourceProvider(FaultSystemSolution fss, CubedGriddedRegion cgr, 
-			double[] spatialPDF, IncrementalMagFreqDist totGriddedSeisMFD, EvenlyDiscretizedFunc depthNuclProbHist, 
-			double[] fracStrikeSlip, double[] fracNormal, double[] fracReverse, double maxFaultNuclDist, Map<TectonicRegionType, Region> trtRegions) {
-		this(fss, new NSHM23_FaultCubeAssociations(fss.getRupSet(), cgr, maxFaultNuclDist),
-				spatialPDF, totGriddedSeisMFD, depthNuclProbHist, fracStrikeSlip, fracNormal, fracReverse, trtRegions);
-	}
+	/**
+	 * If true (default), ruptures in the supra-seis mag range carved out at cubes are redistriubted elsewhere such
+	 * that the total passed in MFD is exactly preserved. Use this if you have already rate-balanced the input MFD.
+	 * 
+	 * If false, associated ruptures in the supra-seis mag range are discarded
+	 */
+	private boolean preserveTotalMFD;
 
 	public NSHM23_SingleRegionGridSourceProvider(FaultSystemSolution fss, FaultCubeAssociations faultCubeassociations,
 			double[] spatialPDF, IncrementalMagFreqDist totGriddedSeisMFD, EvenlyDiscretizedFunc depthNuclProbHist, 
 			double[] fracStrikeSlip, double[] fracNormal, double[] fracReverse, Map<TectonicRegionType, Region> trtRegions) {
+		this(fss, faultCubeassociations, spatialPDF, totGriddedSeisMFD, true, depthNuclProbHist,
+				fracStrikeSlip, fracNormal, fracReverse, trtRegions);
+	}
+
+	public NSHM23_SingleRegionGridSourceProvider(FaultSystemSolution fss, FaultCubeAssociations faultCubeassociations,
+			double[] spatialPDF, IncrementalMagFreqDist totGriddedSeisMFD, boolean preserveTotalMFD, EvenlyDiscretizedFunc depthNuclProbHist, 
+			double[] fracStrikeSlip, double[] fracNormal, double[] fracReverse,
+			Map<TectonicRegionType, Region> trtRegions) {
 		this.fss = fss;
 		this.faultCubeassociations = faultCubeassociations;
+		this.preserveTotalMFD = preserveTotalMFD;
 		this.cgr = faultCubeassociations.getCubedGriddedRegion();
 		this.rupSet = fss.getRupSet();
 		this.modMinMags = rupSet.getModule(ModSectMinMags.class);
@@ -179,6 +174,12 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 
 		Preconditions.checkState(griddedRegion.getNodeCount() == spatialPDF.length,
 				"griddedRegion and spatialPDF have differe sizes: %s vs %s", griddedRegion.getNodeCount(), spatialPDF.length);
+		
+		Preconditions.checkState(fracStrikeSlip.length == spatialPDF.length);
+		for (int i=0; i<fracStrikeSlip.length; i++) {
+			double sum = fracNormal[i]+fracStrikeSlip[i]+fracReverse[i];
+			Preconditions.checkState(Precision.equals(1d, sum, 0.001));
+		}
 
 		// test some things
 		double testSum=0;
@@ -188,17 +189,17 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 		// check normalization and binning of depthNuclProbHist
 		this.depthNuclProbHist = validateOrUpdateDepthDistr(depthNuclProbHist, cgr);
 
-		// compute on and off fault total and grid node MFDs
+		// compute on fault supra MFDs
 		long time = System.currentTimeMillis();
-		computeOnAndOffFaultGriddedSeisMFDs();
-		long runtime = System.currentTimeMillis()-time;
-		if(D) System.out.println("computeOnAndOffFaultGriddedSeisMFDs() took "+(runtime/1000)+" seconds");
-
-		// compute total MFDs
-		time = System.currentTimeMillis();
 		computeLongTermSupraSeisMFD_OnSectArray();
-		runtime = System.currentTimeMillis()-time;
+		long runtime = System.currentTimeMillis()-time;
 		if(D) System.out.println("computeLongTermSupraSeisMFD_OnSectArray() took "+(runtime/1000)+" seconds");
+
+		// compute on and off fault total and grid node MFDs
+		time = System.currentTimeMillis();
+		computeOnAndOffFaultGriddedSeisMFDs();
+		runtime = System.currentTimeMillis()-time;
+		if(D) System.out.println("computeOnAndOffFaultGriddedSeisMFDs() took "+(runtime/1000)+" seconds");
 
 		if(D) System.out.println("Done with constructor");
 
@@ -253,23 +254,33 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 	 * this creates a blank (zero y-axis values) MFD with the same discretization as the constructor supplied totGriddedSeisMFD.
 	 * @return
 	 */
-	public SummedMagFreqDist initSummedMFD() {
+	private SummedMagFreqDist initSummedMFD() {
 		return new SummedMagFreqDist(totGriddedSeisMFD.getMinX(), totGriddedSeisMFD.size(),totGriddedSeisMFD.getDelta());
+	}
+
+	/**
+	 * this creates a blank (zero y-axis values) MFD with the same discretization as the constructor supplied totGriddedSeisMFD.
+	 * @return
+	 */
+	private IncrementalMagFreqDist initIncrMFD() {
+		return new IncrementalMagFreqDist(totGriddedSeisMFD.getMinX(), totGriddedSeisMFD.size(),totGriddedSeisMFD.getDelta());
 	}
 
 	private void computeOnAndOffFaultGriddedSeisMFDs() {
 
 		totalSubSeisOnFaultMFD = initSummedMFD();
 		totalSubSeisOnFaultMFD.setName("totalSubSeisMFD");
-		totalTrulyOffFaultMFD = initSummedMFD();
-		totalTrulyOffFaultMFD.setName("totalTrulyOffFaultMFD");
 
 		gridSectMappedAssocatedMFDs = new ArrayList<>(griddedRegion.getNodeCount());
 		for (int i=0; i<griddedRegion.getNodeCount(); i++)
 			gridSectMappedAssocatedMFDs.add(null);
 		subSeisOnFaultMFD_ForGridArray = new SummedMagFreqDist[spatialPDF.length];
+		
+		// if !preserveTotalMFD, keep track of the ruptures that have been carved out at individual cubes due to 
+		// supra-seis association and remove them from the total MFD
+		SummedMagFreqDist associatedSupraSeisMFD = preserveTotalMFD ? null : initSummedMFD();
 		for(int c=0;c<cgr.getNumCubes();c++) {
-			SummedMagFreqDist mfd = getSubSeismoMFD_ForCube(c, true);
+			SummedMagFreqDist mfd = getSubSeismoMFD_ForCube(c, true, associatedSupraSeisMFD);
 			if(mfd != null) {
 				// add to the total
 				totalSubSeisOnFaultMFD.addIncrementalMagFreqDist(mfd);
@@ -282,8 +293,17 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 			}
 		}
 
+		totalTrulyOffFaultMFD = initIncrMFD();
+		totalTrulyOffFaultMFD.setName("totalTrulyOffFaultMFD");
 		for(int i=0;i<totGriddedSeisMFD.size();i++) {
-			totalTrulyOffFaultMFD.add(i, totGriddedSeisMFD.getY(i) - totalSubSeisOnFaultMFD.getY(i));
+			double rate = totGriddedSeisMFD.getY(i)  - totalSubSeisOnFaultMFD.getY(i);
+			if (!preserveTotalMFD) {
+				double supraOverlapRate = associatedSupraSeisMFD.getY(i);
+				Preconditions.checkState((float)supraOverlapRate <= (float)rate,
+						"supra-overlap rate for M=%s is %s but total rate is %s?", totGriddedSeisMFD.getX(i), supraOverlapRate, rate);
+				rate -= supraOverlapRate;
+			}
+			totalTrulyOffFaultMFD.set(i, rate);
 		}
 		
 		// now build the unassociated grid node MFDs
@@ -333,11 +353,11 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 	}
 
 	public SummedMagFreqDist getSubSeismoMFD_ForCube(int cubeIndex) {
-		return getSubSeismoMFD_ForCube(cubeIndex, false);
+		return getSubSeismoMFD_ForCube(cubeIndex, false, null);
 		
 	}
 
-	private SummedMagFreqDist getSubSeismoMFD_ForCube(int cubeIndex, boolean trackAssociations) {
+	private SummedMagFreqDist getSubSeismoMFD_ForCube(int cubeIndex, boolean trackAssociations, SummedMagFreqDist carvedOutMFD) {
 		double[] sectDistWeights = faultCubeassociations.getScaledSectDistWeightsAtCube(cubeIndex);
 		if (sectDistWeights == null) // no sections nucleate here
 			return null;
@@ -356,7 +376,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 			Preconditions.checkState(s < sectDistWeights.length);
 			double wt = sectDistWeights[s]*spatialPDF[gridIndex]*depthNuclProbHist.getY(depIndex)/(cgr.getNumCubesPerGridEdge()*cgr.getNumCubesPerGridEdge());
 			double minMag = minMagForSect(sects[s]);
-			double minMagIndex = totGriddedSeisMFD.getClosestXIndex(minMag);
+			int minMagIndex = totGriddedSeisMFD.getClosestXIndex(minMag);
 			double[] gridAssoc = trackAssociations ? gridAssocatedMFDs.get(sects[s]) : null;
 			if (trackAssociations && gridAssoc == null) {
 				gridAssoc = new double[subSeisMFD.size()];
@@ -367,6 +387,11 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 				subSeisMFD.add(i, sectCubeRate);
 				if (trackAssociations)
 					gridAssoc[i] += sectCubeRate;
+			}
+			if (carvedOutMFD != null) {
+				// track what we carved out for this fault
+				for (int i=minMagIndex; i<carvedOutMFD.size(); i++)
+					carvedOutMFD.add(i, wt*totGriddedSeisMFD.getY(i));
 			}
 		}
 		return subSeisMFD;
@@ -743,7 +768,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 	 * This returns the total unassociated (truly off-fault) MFD
 	 * @return
 	 */
-	public SummedMagFreqDist getTotalUnassociatedMFD() {
+	public IncrementalMagFreqDist getTotalUnassociatedMFD() {
 		return totalTrulyOffFaultMFD;
 	}
 
@@ -751,7 +776,7 @@ public class NSHM23_SingleRegionGridSourceProvider extends NSHM23_AbstractGridSo
 	 * This returns the total supraseismogenic on-fault MFD
 	 * @return
 	 */
-	public SummedMagFreqDist getTotalSupraSeisOnFaultMFD() {
+	public IncrementalMagFreqDist getTotalSupraSeisOnFaultMFD() {
 		return totalSupraSeisOnFaultMFD;
 	}
 
