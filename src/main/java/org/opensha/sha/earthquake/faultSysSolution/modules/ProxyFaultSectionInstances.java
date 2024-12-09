@@ -30,6 +30,9 @@ import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.geo.json.Geometry;
 import org.opensha.commons.gui.plot.GeographicMapMaker;
+import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
+import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.io.archive.ArchiveOutput;
@@ -69,6 +72,7 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 	private static final int TRACE_BUF_LENGTHS_ALONG_STRIKE_DEFAULT = 5;
 	private static final int TRACE_BUF_LENGTHS_FAULT_NORMAL_DEFAULT = 10;
 	private static final double MIN_FRACT_TRACE_LEN_DEFAULT = 0.25;
+	private static final boolean SHEAR_TO_CONNECT_DEFAULT = true;
 	
 	private static final boolean D = false;
 	
@@ -83,7 +87,8 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 	public static ProxyFaultSectionInstances build(FaultSystemRupSet rupSet, int minNumProxySectsPerPoly,
 			double maxProxySpacing) {
 		return build(rupSet, minNumProxySectsPerPoly, maxProxySpacing, MIN_FRACT_TRACE_LEN_DEFAULT,
-				TRACE_BUF_LENGTHS_ALONG_STRIKE_DEFAULT, TRACE_BUF_LENGTHS_FAULT_NORMAL_DEFAULT);
+				TRACE_BUF_LENGTHS_ALONG_STRIKE_DEFAULT, TRACE_BUF_LENGTHS_FAULT_NORMAL_DEFAULT,
+				SHEAR_TO_CONNECT_DEFAULT);
 	}
 	
 	/**
@@ -95,13 +100,15 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 	 * @param minFractTraceLen the shortest fraction of the original trace length that a proxy instance can be
 	 * @param traceBufLengthsAlongStrike how many trace lengths along strike before and after the original proxy trace
 	 * should we try extending the traces?
-	 * @param traceBufLengthsFaultNormal how many trace lenghts should we look in the fault-normal direction to find the
+	 * @param traceBufLengthsFaultNormal how many trace lengths should we look in the fault-normal direction to find the
 	 * width of the polygon?
+	 * @param shearToConnect if true, fualt sections will be sheared such that they always connect removing any discontinuities
+	 * in the resulting ruptures.
 	 * @return proxy instances module
 	 */
 	public static ProxyFaultSectionInstances build(FaultSystemRupSet rupSet, int minNumProxySectsPerPoly,
 			double maxProxySpacing, double minFractTraceLen, int traceBufLengthsAlongStrike,
-			int traceBufLengthsFaultNormal) {
+			int traceBufLengthsFaultNormal, boolean shearToConnect) {
 		List<FaultSection> allProxySects = new ArrayList<>();
 
 		Preconditions.checkArgument(minNumProxySectsPerPoly > 1);
@@ -208,10 +215,18 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 				}
 			}
 		}
-		
-		Map<Integer, List<FaultSection>> subProxySects = new HashMap<>();
+
+		Map<Integer, List<FaultTrace>> subProxyExtendedTraces = new HashMap<>();
+		Map<Integer, List<FaultTrace>> subProxyTraces = new HashMap<>();
+		Map<Integer, List<FaultSection>> proxySectsByParent = new HashMap<>();
+		Map<Integer, Double> proxySectsRightAzimuths = new HashMap<>();
 		for (int sectID : proxySectIDs) {
 			FaultSection sect = rupSet.getFaultSectionData(sectID);
+			if (sect.getParentSectionId() >= 0) {
+				if (!proxySectsByParent.containsKey(sect.getParentSectionId()))
+					proxySectsByParent.put(sect.getParentSectionId(), new ArrayList<>());
+				proxySectsByParent.get(sect.getParentSectionId()).add(sect);
+			}
 			double[] leftRightDists = proxyMaxRelocationDists.get(sectID);
 			double maxDistForLeft = leftRightDists[0];
 			double maxDistForRight = leftRightDists[1];
@@ -223,6 +238,7 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 			double traceLen = trace.getTraceLength();
 			LocationVector traceVect = LocationUtils.vector(trace.first(), trace.last());
 			double rightAz = traceVect.getAzimuth() + 90d;
+			proxySectsRightAzimuths.put(sect.getSectionId(), rightAz);
 			
 			EvenlyDiscretizedFunc distBins = new EvenlyDiscretizedFunc(-maxDistForLeft, maxDistForRight, numProxySectsPerPoly);
 			Preconditions.checkState(distBins.size() == numProxySectsPerPoly);
@@ -238,6 +254,10 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 			Preconditions.checkState((float)spacing <= (float)maxProxySpacing,
 					"Spacing=%s for %s with %s proxies exceeds the max of %s",
 					(float)spacing, sect.getSectionName(), numProxySectsPerPoly, (float)maxProxySpacing);
+			
+			
+			
+			List<FaultTrace> extendedProxyTraces = new ArrayList<>();
 			List<FaultTrace> proxyTraces = new ArrayList<>();
 			for (int p=0; p<numProxySectsPerPoly; p++) {
 				double dist = distBins.getX(p);
@@ -249,84 +269,167 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 				extended.addAll(relocatedTrace);
 				extended.add(LocationUtils.location(relocatedTrace.last(),
 						traceVect.getAzimuthRad(), traceLen*traceBufLengthsAlongStrike));
-					
+				
 //				if (D) System.out.println("\tBuilding proxy trace "+p+"/"+numProxySectsPerPoly
 //						+" at dist="+(float)dist);
 				
-				FaultTrace proxyTrace = new FaultTrace(null);
-				boolean polyContainedPrev = false;
-				for (int i=0; i<extended.size(); i++) {
-					Location loc = extended.get(i);
+				FaultTrace proxyTrace = trimTraceToRegion(poly, extended);
+				
+				proxyTraces.add(proxyTrace);
+				extendedProxyTraces.add(extended);
+			}
+			
+			subProxyExtendedTraces.put(sect.getSectionId(), extendedProxyTraces);
+			subProxyTraces.put(sect.getSectionId(), proxyTraces);
+		}
+		
+		if (shearToConnect && !proxySectsByParent.isEmpty()) {
+			int shearIters = 3;
+			int insideShearDiscr = 5; // want it be odd so we try the exact middle
+			for (List<FaultSection> parentBundle : proxySectsByParent.values()) {
+				if (parentBundle.size() == 1)
+					continue;
+				// make sure they have the same count
+				int numProxySectsPerPoly = -1;
+				for (FaultSection sect : parentBundle) {
+					int myNum = numProxySectsPerPolys.get(sect.getSectionId());
+					if (numProxySectsPerPoly < 0)
+						numProxySectsPerPoly = myNum;
+					else
+						Preconditions.checkState(numProxySectsPerPoly == myNum);
+				}
+				
+//				if (!parentBundle.get(0).getParentSectionName().equals("Anegada Passage SW PROXY"))
+//					continue;
+				
+				if (D) System.out.println("Shearing "+parentBundle.get(0).getParentSectionName());
+				for (int p=0; p<numProxySectsPerPoly; p++) {
+//					if (p > 0)
+//						break;
 					
-					boolean polyContainsLoc = poly.contains(loc);
-					if (i > 0) {
-						// add any points between the previous one and this one that cross the boundary
-						Location prev = extended.get(i-1);
-						FaultTrace seg = new FaultTrace(null);
-						seg.add(prev);
-						seg.add(loc);
-						int numSamples = Integer.max(100, (int)(seg.getTraceLength()*10d));
-						FaultTrace resampled = FaultUtils.resampleTrace(seg, numSamples);
-						// sometimes the original location may not pass poly.contains(loc), but the resampled one
-						// will due to precision issues. if either are true, we should include the location
-						boolean polyContainsResampledLoc = poly.contains(resampled.last());
-						if (polyContainsLoc != polyContainsResampledLoc) {
-							// one of them is inside, force this point to be included
-							polyContainsLoc = true;
-						}
-						boolean[] resampledInsides = new boolean[resampled.size()];
-						for (int j=0; j<resampledInsides.length; j++) {
-							if (j == 0)
-								resampledInsides[j] = polyContainedPrev;
-							else if (j == resampledInsides.length-1)
-								resampledInsides[j] = polyContainsLoc;
-							else
-								resampledInsides[j] = poly.contains(resampled.get(j));
-						}
-						for (int j=1; j<resampled.size(); j++) {
-							if (resampledInsides[j-1] != resampledInsides[j]) {
-								// crosses a boundary
-								// lets really narrow in on the location
-								FaultTrace seg2 = new FaultTrace(null);
-								seg2.add(resampled.get(j-1));
-								seg2.add(resampled.get(j));
-								FaultTrace resampled2 = FaultUtils.resampleTrace(seg2,
-										Integer.max(10, (int)(seg2.getTraceLength()*10d)));
-								boolean[] resampledInsides2 = new boolean[resampled2.size()];
-								for (int k=0; k<resampledInsides2.length; k++) {
-									if (k == 0)
-										resampledInsides2[k] = resampledInsides[j-1];
-									else if (k == resampledInsides2.length-1)
-										resampledInsides2[k] = resampledInsides[j];
-									else
-										resampledInsides2[k] = poly.contains(resampled2.get(k));
+					for (int iter=0; iter<shearIters; iter++) {
+						for (int b=0; b<parentBundle.size()-1; b++) {
+							FaultSection sect1 = parentBundle.get(b);
+							FaultSection sect2 = parentBundle.get(b+1);
+							
+							int sectID1 = sect1.getSectionId();
+							int sectID2 = sect2.getSectionId();
+							
+							if (D) System.out.println("\tShearing proxy "+p+" sects "+b+" and "+(b+1)+" (iter="+iter+")");
+							
+							FaultTrace trimmedTrace1 = subProxyTraces.get(sectID1).get(p);
+							FaultTrace extendedTrace1 = subProxyExtendedTraces.get(sectID1).get(p);
+							Location sect1L1 = sect1.getFaultTrace().first();
+							Location sect1L2 = sect1.getFaultTrace().last();
+							double sect1End = LocationUtils.distanceToLineFast(sect1L1, sect1L2, trimmedTrace1.last());
+							
+							FaultTrace trimmedTrace2 = subProxyTraces.get(sectID2).get(p);
+							FaultTrace extendedTrace2 = subProxyExtendedTraces.get(sectID2).get(p);
+							Location sect2L1 = sect2.getFaultTrace().first();
+							Location sect2L2 = sect2.getFaultTrace().last();
+							double sect2Start = LocationUtils.distanceToLineFast(sect2L1, sect2L2, trimmedTrace2.first());
+							
+							if ((float)sect1End == (float)sect2Start)
+								continue;
+							
+							// first, don't just split the difference because the extended trace could get cut off or extend
+							// further after trimming; splitting the difference might not actually connect them
+							double maxShear = Math.abs(sect1End - sect2Start);
+							double avgRightAngle = FaultUtils.getAngleAverage(List.of(proxySectsRightAzimuths.get(sectID1),
+									proxySectsRightAzimuths.get(sectID2)));
+							
+							double angle1, angle2;
+							if (Math.abs(sect1End) > Math.abs(sect2Start)) {
+								// 1 is further away than 2
+								if (sect1End >= 0) {
+									// 1 is on the right
+									angle1 = avgRightAngle + 180; // bring 1 in to the left
+									angle2 = avgRightAngle; // push 2 further to the right
+								} else {
+									// 1 is on the left
+									angle1 = avgRightAngle; // bring 1 in to the right
+									angle2 = avgRightAngle + 180; // push 2 further to the right
 								}
-								boolean found = false;
-								for (int k=1; k<resampled2.size(); k++) {
-									if (resampledInsides2[k-1] != resampledInsides2[k]) {
-										if (resampledInsides2[k-1])
-											proxyTrace.add(resampled2.get(k-1));
-										else
-											proxyTrace.add(resampled2.get(k));
-										found = true;
-										break;
-									}
+							} else {
+								// 2 is further away than 1
+								if (sect2Start >= 0) {
+									// 2 is on the right
+									angle1 = avgRightAngle; // push 1 further to the right
+									angle2 = avgRightAngle + 180; // bring 2 in to the left
+								} else {
+									// 2 is on the left
+									angle1 = avgRightAngle + 180; // push 1 further to the left
+									angle2 = avgRightAngle; // bring 2 in to the right
 								}
-								Preconditions.checkState(found);
+							}
+							EvenlyDiscretizedFunc shearTries = new EvenlyDiscretizedFunc(0d, maxShear, insideShearDiscr);
+							
+							FaultTrace closestTrimmedTrace1 = null;
+							FaultTrace closestTrimmedTrace2 = null;
+							FaultTrace closestExtendedTrace1 = null;
+							FaultTrace closestExtendedTrace2 = null;
+							int closestIndex = -1;
+							double closestDist = Double.POSITIVE_INFINITY;
+							
+							Region poly1 = sect1.getZonePolygon();
+							Region poly2 = sect2.getZonePolygon();
+							
+							for (int i=0; i<insideShearDiscr; i++) {
+								double shearDist = shearTries.getX(i);
+								
+								FaultTrace shearedExtendedTrace1 = shearTrace(extendedTrace1,
+										trimmedTrace1.first(), trimmedTrace1.last(), shearDist, angle1);
+								FaultTrace shearedExtendedTrace2 = shearTrace(extendedTrace2,
+										trimmedTrace2.last(), trimmedTrace2.first(), shearDist, angle2);
+								FaultTrace shearedTrimmedTrace1;
+								FaultTrace shearedTrimmedTrace2;
+								try {
+									shearedTrimmedTrace1 = trimTraceToRegion(poly1, shearedExtendedTrace1);
+									shearedTrimmedTrace2 = trimTraceToRegion(poly2, shearedExtendedTrace2);
+								} catch (Exception e) {
+									if (D) System.err.println("A sheared trace doesn't intersect region");
+									continue;
+								}
+								
+								double dist = LocationUtils.horzDistanceFast(shearedTrimmedTrace1.last(), shearedTrimmedTrace2.first());
+								
+//								if (D && i == insideShearDiscr/2) {
+//									System.out.println("Middle shear "+i+"/"+insideShearDiscr
+//											+" results; shearDist="+(float)shearDist+", angle1="+(float)angle1
+//											+", angle2="+(float)angle2+", trimmedDist="+(float)dist);
+//								}
+								
+								if (dist < closestDist) {
+									closestDist = dist;
+									closestIndex = i;
+									closestTrimmedTrace1 = shearedTrimmedTrace1;
+									closestTrimmedTrace2 = shearedTrimmedTrace2;
+									closestExtendedTrace1 = shearedExtendedTrace1;
+									closestExtendedTrace2 = shearedExtendedTrace2;
+								}
+							}
+							
+							if (D) System.out.println("\t\tClosest distance after shearing was a distance of "+(float)closestDist
+									+" for shearIndex="+closestIndex+"/"+insideShearDiscr+", shearDist="+(float)shearTries.getX(closestIndex));
+							if (closestIndex > 0) { // >0 means we actually sheared
+								subProxyTraces.get(sectID1).set(p, closestTrimmedTrace1);
+								subProxyExtendedTraces.get(sectID1).set(p, closestExtendedTrace1);
+								subProxyTraces.get(sectID2).set(p, closestTrimmedTrace2);
+								subProxyExtendedTraces.get(sectID2).set(p, closestExtendedTrace2);
 							}
 						}
 					}
-					
-					if (polyContainsLoc) {
-						proxyTrace.add(loc);
-					}
-					polyContainedPrev = polyContainsLoc;
 				}
-				Preconditions.checkState(proxyTrace.size() > 1);
-				proxyTraces.add(proxyTrace);
 			}
+		}
+		
+		// build proxy sects using those traces
+		Map<Integer, List<FaultSection>> subProxySects = new HashMap<>();
+		for (int sectID : proxySectIDs) {
+			FaultSection sect = rupSet.getFaultSectionData(sectID);
+			List<FaultTrace> proxyTraces = subProxyTraces.get(sectID);
+			int numProxySectsPerPoly = numProxySectsPerPolys.get(sectID);
 			
-			// build proxy sects using those traces
 			Preconditions.checkState(proxyTraces.size() == numProxySectsPerPoly);
 			GeoJSONFaultSection geoSect = sect instanceof GeoJSONFaultSection ? (GeoJSONFaultSection)sect : new GeoJSONFaultSection(sect);
 			Feature origFeature = geoSect.toFeature();
@@ -388,6 +491,122 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 		}
 		
 		return new ProxyFaultSectionInstances(allProxySects, proxyRupSectIndices);
+	}
+	
+	private static FaultTrace shearTrace(FaultTrace trace, Location anchor, Location reference, double distance, double azimuthDegrees) {
+		double azimuth = Math.toRadians(azimuthDegrees);
+
+		// Calculate new reference location
+		Location newReference = LocationUtils.location(reference, azimuth, distance);
+
+		// Compute shear factors
+		double distAR = LocationUtils.horzDistance(anchor, reference);
+		double azimuthAR = LocationUtils.azimuthRad(anchor, reference); // Use radians
+
+		double distAR_new = LocationUtils.horzDistance(anchor, newReference);
+		double azimuthAR_new = LocationUtils.azimuthRad(anchor, newReference); // Use radians
+
+		double shearFactor = distAR_new / distAR;
+		double azimuthDelta = azimuthAR_new - azimuthAR;
+
+		// Transform other points
+		FaultTrace shearedTrace = new FaultTrace(null);
+		for (Location point : trace) {
+			double distAP = LocationUtils.horzDistance(anchor, point);
+			double azimuthAP = LocationUtils.azimuthRad(anchor, point); // Use radians
+
+			// Adjust azimuth and distance
+			double newDistAP = distAP * shearFactor;
+			double newAzimuthAP = azimuthAP + azimuthDelta;
+
+			// Compute new location
+			Location newPoint = LocationUtils.location(anchor, newAzimuthAP, newDistAP);
+			shearedTrace.add(newPoint);
+		}
+		return shearedTrace;
+	}
+
+	private static final double min_dist_to_resample = 0.1;
+	
+	private static FaultTrace trimTraceToRegion(Region poly, FaultTrace extended) {
+		FaultTrace proxyTrace = new FaultTrace(null);
+		boolean polyContainedPrev = false;
+//		System.out.println("Trimming "+extended);
+		for (int i=0; i<extended.size(); i++) {
+			Location loc = extended.get(i);
+			
+			boolean polyContainsLoc = poly.contains(loc);
+			if (i > 0 && LocationUtils.horzDistanceFast(loc, extended.get(i-1)) > min_dist_to_resample) {
+				// add any points between the previous one and this one that cross the boundary
+				Location prev = extended.get(i-1);
+				
+				FaultTrace seg = new FaultTrace(null);
+				seg.add(prev);
+				seg.add(loc);
+				Preconditions.checkState(!prev.equals(loc) && !LocationUtils.areSimilar(prev, loc),
+						"Trace contains duplicates: %s == %s", prev, loc);
+				int numSamples = Integer.max(100, (int)(seg.getTraceLength()*10d));
+//				System.out.println("Resampling for i="+i+" with "+numSamples+" samples: "+seg);
+				FaultTrace resampled = FaultUtils.resampleTrace(seg, numSamples);
+				// sometimes the original location may not pass poly.contains(loc), but the resampled one
+				// will due to precision issues. if either are true, we should include the location
+				boolean polyContainsResampledLoc = poly.contains(resampled.last());
+				if (polyContainsLoc != polyContainsResampledLoc) {
+					// one of them is inside, force this point to be included
+					polyContainsLoc = true;
+				}
+				boolean[] resampledInsides = new boolean[resampled.size()];
+				for (int j=0; j<resampledInsides.length; j++) {
+					if (j == 0)
+						resampledInsides[j] = polyContainedPrev;
+					else if (j == resampledInsides.length-1)
+						resampledInsides[j] = polyContainsLoc;
+					else
+						resampledInsides[j] = poly.contains(resampled.get(j));
+				}
+				for (int j=1; j<resampled.size(); j++) {
+					if (resampledInsides[j-1] != resampledInsides[j]) {
+						// crosses a boundary
+						// lets really narrow in on the location
+						FaultTrace seg2 = new FaultTrace(null);
+						seg2.add(resampled.get(j-1));
+						seg2.add(resampled.get(j));
+						FaultTrace resampled2 = FaultUtils.resampleTrace(seg2,
+								Integer.max(10, (int)(seg2.getTraceLength()*10d)));
+						boolean[] resampledInsides2 = new boolean[resampled2.size()];
+						for (int k=0; k<resampledInsides2.length; k++) {
+							if (k == 0)
+								resampledInsides2[k] = resampledInsides[j-1];
+							else if (k == resampledInsides2.length-1)
+								resampledInsides2[k] = resampledInsides[j];
+							else
+								resampledInsides2[k] = poly.contains(resampled2.get(k));
+						}
+						boolean found = false;
+						for (int k=1; k<resampled2.size(); k++) {
+							if (resampledInsides2[k-1] != resampledInsides2[k]) {
+								Location newLoc;
+								if (resampledInsides2[k-1])
+									newLoc = resampled2.get(k-1);
+								else
+									newLoc = resampled2.get(k);
+								proxyTrace.add(newLoc);
+								found = true;
+								break;
+							}
+						}
+						Preconditions.checkState(found);
+					}
+				}
+			}
+			
+			if (polyContainsLoc) {
+				proxyTrace.add(loc);
+			}
+			polyContainedPrev = polyContainsLoc;
+		}
+		Preconditions.checkState(proxyTrace.size() > 1, "Only found %s locations within poly?", proxyTrace.size());
+		return proxyTrace;
 	}
 	
 	private static FaultTrace relocate(FaultTrace trace, LocationVector vect) {
@@ -810,6 +1029,33 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 	}
 	
 	public static void main(String[] args) throws IOException {
+		FaultTrace testOrigTrace = new FaultTrace(null);
+		testOrigTrace.add(new Location(0.3, 0.1));
+		testOrigTrace.add(new Location(0.3, 0.2));
+//		testOrigTrace.add(new Location(0.6, 0.5));
+		testOrigTrace.add(new Location(0.7, 0.8));
+		testOrigTrace.add(new Location(0.7, 0.9));
+		GeographicMapMaker mapMaker = new GeographicMapMaker(new Region(new Location(0d, 0d), new Location(1d, 1d)));
+		mapMaker.setWriteGeoJSON(false);
+		mapMaker.setWritePDFs(false);
+		
+		List<LocationList> lines = new ArrayList<>();
+		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+		lines.add(testOrigTrace);
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, PlotSymbol.FILLED_CIRCLE, 5f, Color.BLACK));
+		lines.add(shearTrace(testOrigTrace, testOrigTrace.first(), testOrigTrace.last(), 10d, 0d));
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, PlotSymbol.CIRCLE, 5f, Color.BLUE));
+		lines.add(shearTrace(testOrigTrace, testOrigTrace.first(), testOrigTrace.last(), 10d, 180d));
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, PlotSymbol.CIRCLE, 5f, Color.RED));
+		lines.add(shearTrace(testOrigTrace, testOrigTrace.last(), testOrigTrace.first(), 10d, 0d));
+		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, PlotSymbol.CIRCLE, 5f, Color.GREEN));
+		for (LocationList trace : lines)
+			System.out.println(trace);
+//		mapMaker.plotLines(lines, Color.BLUE, 3f);
+		mapMaker.plotLines(lines, chars);
+		
+		mapMaker.plot(new File("/tmp"), "proxy_shear_test", " ");
+		
 //		File solFile = new File("C:\\Users\\kmilner\\Downloads\\"
 //				+ "results_PRVI_FM_INITIAL_branch_averaged.zip");
 //		File solFile = new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
@@ -817,35 +1063,35 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 //		FaultSystemSolution sol = FaultSystemSolution.load(solFile);
 //		FaultSystemRupSet rupSet = sol.getRupSet();
 		
-		FaultSystemSolution sol = null;
-		File solFile = null;
-		FaultSystemRupSet rupSet = new PRVI25_InvConfigFactory().buildRuptureSet(
-				PRVI25_LogicTreeBranch.DEFAULT_CRUSTAL_ON_FAULT, FaultSysTools.defaultNumThreads());
-		ProxyFaultSectionInstances proxySects = build(rupSet, 5, 5d);
-		rupSet.addModule(proxySects);
-		
-		if (sol != null) {
-			File modSolFile = new File(solFile.getParentFile(), solFile.getName().substring(0, solFile.getName().indexOf(".zip"))+"_mod.zip");
-			sol.write(modSolFile);
-			proxySects = FaultSystemRupSet.load(modSolFile).requireModule(ProxyFaultSectionInstances.class);
-		}
-		
-		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
-		
-//		List<FaultSection> filteredSects = new ArrayList<>();
-//		for (FaultSection sect : subSects)
-//			if (sect.getName().startsWith("Anegada Passage"))
-//				filteredSects.add(sect);
-//		subSects = filteredSects;
-		
-		GeographicMapMaker mapMaker = new GeographicMapMaker(subSects);
-		
-		List<LocationList> lines = new ArrayList<>();
-		for (FaultSection sect : proxySects.proxySects)
-			lines.add(sect.getFaultTrace());
-		mapMaker.plotLines(lines, Color.BLUE, 1f);
-		
-		mapMaker.plot(new File("/tmp"), "proxy_finite_sect_test", " ");
+//		FaultSystemSolution sol = null;
+//		File solFile = null;
+//		FaultSystemRupSet rupSet = new PRVI25_InvConfigFactory().buildRuptureSet(
+//				PRVI25_LogicTreeBranch.DEFAULT_CRUSTAL_ON_FAULT, FaultSysTools.defaultNumThreads());
+//		ProxyFaultSectionInstances proxySects = build(rupSet, 5, 5d);
+//		rupSet.addModule(proxySects);
+//		
+//		if (sol != null) {
+//			File modSolFile = new File(solFile.getParentFile(), solFile.getName().substring(0, solFile.getName().indexOf(".zip"))+"_mod.zip");
+//			sol.write(modSolFile);
+//			proxySects = FaultSystemRupSet.load(modSolFile).requireModule(ProxyFaultSectionInstances.class);
+//		}
+//		
+//		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+//		
+////		List<FaultSection> filteredSects = new ArrayList<>();
+////		for (FaultSection sect : subSects)
+////			if (sect.getName().startsWith("Anegada Passage"))
+////				filteredSects.add(sect);
+////		subSects = filteredSects;
+//		
+//		GeographicMapMaker mapMaker = new GeographicMapMaker(subSects);
+//		
+//		List<LocationList> lines = new ArrayList<>();
+//		for (FaultSection sect : proxySects.proxySects)
+//			lines.add(sect.getFaultTrace());
+//		mapMaker.plotLines(lines, Color.BLUE, 1f);
+//		
+//		mapMaker.plot(new File("/tmp"), "proxy_finite_sect_test", " ");
 //		mapMaker.plot(new File("C:\\Users\\kmilner\\Downloads"), "proxy_finite_sect_test", " ");
 	}
 
