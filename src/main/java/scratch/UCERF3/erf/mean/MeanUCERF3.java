@@ -2,15 +2,23 @@ package scratch.UCERF3.erf.mean;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.CompletableFuture;
 import java.util.zip.ZipFile;
 
 import javax.swing.JOptionPane;
+import javax.swing.SwingUtilities;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
@@ -204,7 +212,6 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 				/*showProgress=*/true,
 				/*ignoreErrors=*/true);
 		GF_UPDATER.updateFile("getfile-all");
-		// TODO: Prompt to restart or dynamically load new jar file
 		
 		presetsParam = new EnumParameter<MeanUCERF3.Presets>("Mean UCERF3 Presets",
 				EnumSet.allOf(Presets.class), Presets.FM3_1_BRANCH_AVG, "(custom)");
@@ -438,24 +445,25 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 			return;
 		}
 		
-		File rakeBasisFile = checkDownload(RAKE_BASIS_FILE_NAME, false);
-		
-		DeformationModels dm = null;
-		for (DeformationModels testDM : DeformationModels.values()) {
-			if (testDM.name().equals(rakeBasisStr)) {
-				dm = testDM;
-				break;
-			}
-		}
-		Preconditions.checkState(dm != null, "Couldn't find DM: "+rakeBasisStr);
-		
-		try {
-			ZipFile zip = new ZipFile(rakeBasisFile);
+		checkDownload(RAKE_BASIS_FILE_NAME, false).thenAccept(rakeBasisFile -> {
 			
-			rakeBasis = RakeBasisWriter.loadRakeBasis(zip, dm);
-		} catch (Exception e) {
-			ExceptionUtils.throwAsRuntimeException(e);
-		}
+			DeformationModels dm = null;
+			for (DeformationModels testDM : DeformationModels.values()) {
+				if (testDM.name().equals(rakeBasisStr)) {
+					dm = testDM;
+					break;
+				}
+			}
+			Preconditions.checkState(dm != null, "Couldn't find DM: "+rakeBasisStr);
+			
+			try {
+				ZipFile zip = new ZipFile(rakeBasisFile);
+				
+				rakeBasis = RakeBasisWriter.loadRakeBasis(zip, dm);
+			} catch (Exception e) {
+				ExceptionUtils.throwAsRuntimeException(e);
+			}
+		});
 	}
 	
 	public boolean isTrueMean() {
@@ -505,36 +513,40 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		
 		File solFile = new File(storeDir, "cached_"+fName+".zip");
 		
+		// Only download if not already cached. Not ignoreCache means ignore updates.
+		// The latest version is only downloaded if there is no cached version.
 		if (!ignoreCache) {
-			if (!solFile.exists()) {
-				// see if we can download it (precomputed)
-				checkDownload(solFile.getName(), true);
-			}
-			if (solFile.exists()) {
-				// already cached or we just downloaded it
-				if (D) System.out.println("already cached: "+solFile.getName());
+			CompletableFuture<File> future = solFile.exists()
+					? CompletableFuture.completedFuture(solFile)
+					: checkDownload(solFile.getName(), true);
+				future.thenAccept(solutionFile -> {
 				try {
-					FaultSystemSolution sol = FaultSystemSolution.load(solFile);
+					FaultSystemSolution sol = FaultSystemSolution.load(solutionFile);
 					checkCombineMags(sol);
 					setSolution(sol);
 					return;
 				} catch (Exception e) {
 					ExceptionUtils.throwAsRuntimeException(e);
 				}
-			}
+			});
 		}
 		
 		// if we've gotten this far, we'll need the mean
 		if (meanTotalSol == null) {
 			// not loaded yet
 			if (D) System.out.println("loading mean sol");
-			File meanSolFile = checkDownload(prefix+TRUE_MEAN_FILE_NAME, false);
-			
-			try {
-				setTrueMeanSol(FaultSystemSolution.load(meanSolFile));
-			} catch (Exception e) {
-				ExceptionUtils.throwAsRuntimeException(e);
-			}
+		}
+		File meanSolFile;
+		try {
+			// Blocks main thread, ok as file is very small
+			// If file gets too large and UI hangs, consider a new Thread
+			// or multiple .thenAccept calls inside FetchSolution.
+			meanSolFile = checkDownload(prefix+TRUE_MEAN_FILE_NAME, false).get();
+			setTrueMeanSol(FaultSystemSolution.load(meanSolFile));
+		} catch (InterruptedException | ExecutionException | IOException e) {
+			if (D) System.err.println("Failed to download meanSolFile");
+			e.printStackTrace();
+			ExceptionUtils.throwAsRuntimeException(e);
 		}
 		
 		if (isTrueMean()) {
@@ -543,7 +555,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 			setSolution(meanTotalSol);
 			return;
 		}
-		
+
 		boolean combineRakes = !rakeBasisStr.equals(RAKE_BASIS_NONE);
 		
 		FaultSystemSolution reducedSol;
@@ -606,7 +618,8 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	 * @param fName
 	 * @param ignoreErrors
 	 */
-	private File checkDownload(String fName, boolean ignoreErrors) {
+	private CompletableFuture<File> checkDownload(String fName,
+			boolean ignoreErrors) {
 		File file = new File(storeDir, fName);
 		return checkDownload(file, ignoreErrors);
 	}
@@ -617,7 +630,8 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	 * @param file
 	 * @param ignoreErrors
 	 */
-	public static File checkDownload(File file, boolean ignoreErrors) {
+	public static CompletableFuture<File> checkDownload(File file,
+			boolean ignoreErrors) {
 		if (file.exists()) {
 			if (!ignoreErrors) {
 				// check to make sure that it isn't corrupted
@@ -626,7 +640,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 					zip = new ZipFile(file);
 					Preconditions.checkState(zip.entries().hasMoreElements());
 					zip.close();
-					return file;
+					return CompletableFuture.completedFuture(file);
 				} catch (Exception e) {
 					e.printStackTrace();
 					if (zip != null) {
@@ -656,7 +670,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 				}
 			} else {
 				// don't test for errors
-				return file;
+				return CompletableFuture.completedFuture(file);
 			}
 		}
 		final GetFile UCERF3_UPDATER = new GetFile(
@@ -667,31 +681,19 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 				/*showProgress=*/true,
 				/*ignoreErrors=*/ignoreErrors);
 		String fileKey = FilenameUtils.getBaseName(file.getName());
-		Pair<Boolean, File> result = UCERF3_UPDATER.updateFile(fileKey);
-		if (result.getLeft()) {
-			File dwnLoc = result.getRight();
-			if (!dwnLoc.equals(file)) {
-				// File must be downloaded at param specified file path
-				try {
-					FileUtils.moveFile(dwnLoc, file);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
-			}
-		}
-		return file;
+		return UCERF3_UPDATER.updateFile(fileKey);
 	}
 		
 	public static void main(String[] args) {
-		File solFile = new File(getStoreDir(), "mean_ucerf3_sol.zip");
-		MeanUCERF3.checkDownload(solFile, false);
-		FaultSystemSolution sol;
-		try {
-			sol = FaultSystemSolution.load(solFile);
-		} catch (Exception e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		}
-		MeanUCERF3 muc3 = new MeanUCERF3(sol);
+		MeanUCERF3.checkDownload(new File(getStoreDir(),
+				"mean_ucerf3_sol.zip"), false).thenAccept(solFile -> {
+			FaultSystemSolution sol;
+			try {
+				sol = FaultSystemSolution.load(solFile);
+			} catch (Exception e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			MeanUCERF3 muc3 = new MeanUCERF3(sol);
+		});
 	}
-
 }
