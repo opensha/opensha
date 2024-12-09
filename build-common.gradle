@@ -11,8 +11,6 @@ java {
 }
 compileJava.options.encoding = "UTF-8"
 
-apply from: 'build-git.gradle'
-
 repositories {
     mavenCentral()
     maven {
@@ -46,8 +44,10 @@ ext.getDate = {
 logger.info('running settings with project='+project.name+' and rootProject.name='+rootProject.name)
 if (project.parentProject != null) {
     logger.info(project.name+" is a child of: "+project.parentProject)
+	apply from: '../opensha/build-git.gradle'
 } else {
     logger.info(project.name+" is top level")
+	apply from: 'build-git.gradle'
 }
 
 if (project.parentProject != null) {
