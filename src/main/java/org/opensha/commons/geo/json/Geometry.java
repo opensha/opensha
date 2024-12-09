@@ -243,6 +243,10 @@ public class Geometry {
 		
 		public final ImmutableList<Geometry> geometries;
 		
+		public GeometryCollection(Geometry... geometries) {
+			this(List.of(geometries));
+		}
+		
 		public GeometryCollection(List<Geometry> geometries) {
 			super(GeoJSON_Type.GeometryCollection, geomsHaveDepths(geometries));
 			
