@@ -157,7 +157,7 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 
 			@Override
 			public ProxyFaultSectionInstances call() throws Exception {
-				return ProxyFaultSectionInstances.build(rupSet, 5, 5d, 0.25, 5, 10);
+				return ProxyFaultSectionInstances.build(rupSet, 5, 5d, 0.25, 5, 10, true);
 			}
 		}, ProxyFaultSectionInstances.class);
 		

@@ -11,9 +11,11 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.PointSource;
+import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurfaceWithSubsets;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
@@ -160,8 +162,14 @@ public class NewZealandERF0909 extends AbstractERF {
 	
 	private void mkBackRegion(){
 		for(int srcIndex=0; srcIndex<bkSourceNames.size(); ++srcIndex) {
-			PointEqkSource rupSource = new PointEqkSource(this.bkSourceLocation.get(srcIndex),this.bkMagFD.get(srcIndex),
-					timeSpan.getDuration(),this.bkRake.get(srcIndex),this.bkDip.get(srcIndex),this.bkMinMag.get(srcIndex));
+//			PointEqkSource rupSource = new PointEqkSource(this.bkSourceLocation.get(srcIndex),this.bkMagFD.get(srcIndex),
+//					timeSpan.getDuration(),this.bkRake.get(srcIndex),this.bkDip.get(srcIndex),this.bkMinMag.get(srcIndex));
+			PoissonPointSource rupSource = PointSource.poissonBuilder(this.bkSourceLocation.get(srcIndex))
+	        		.truePointSources(0d)
+	        		.forMFDAndFocalMech(this.bkMagFD.get(srcIndex).getAboveMagnitude(this.bkMinMag.get(srcIndex)),
+	        				new FocalMechanism(Double.NaN, this.bkDip.get(srcIndex), this.bkRake.get(srcIndex)))
+	        		.duration(timeSpan.getDuration())
+	        		.build();
 			allSources.add(rupSource);
 		}
 	}

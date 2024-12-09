@@ -210,7 +210,6 @@ public class CacheFileGen {
 	}
 
 	public static void main(String[] args) throws IOException, DocumentException {
-		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
 //		File solFile = new File(args[0]);
 		
 //		FaultSystemSolution fss = FaultSystemSolution.load(

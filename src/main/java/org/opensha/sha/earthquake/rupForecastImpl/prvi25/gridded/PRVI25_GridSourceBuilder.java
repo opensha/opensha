@@ -41,6 +41,7 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_FaultCubeAssociations;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_MaxMagOffFault;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_DeclusteringAlgorithms;
@@ -230,7 +231,7 @@ public class PRVI25_GridSourceBuilder {
 		}
 		//				EvenlyDiscretizedFunc depthNuclDistFunc = NSHM23_SeisDepthDistributions.load(region);
 
-		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, binnedDepthDistFunc,
+		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, true, binnedDepthDistFunc,
 				fractStrikeSlip, fractNormal, fractReverse, null); // last null means all active
 	}
 	
@@ -879,61 +880,113 @@ public class PRVI25_GridSourceBuilder {
 //		calcCrustalFaultCategories();
 //		System.exit(0);
 		
+		FaultSystemSolution crustalSol = FaultSystemSolution.load(new File("/data/kevin/nshm23/batch_inversions/"
+				+ "2024_11_19-prvi25_crustal_branches-dmSample5x/results_PRVI_CRUSTAL_FM_V1p1_branch_averaged.zip"));
 		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
-		levels.addAll(PRVI25_LogicTreeBranch.levelsSubduction);
-		levels.addAll(PRVI25_LogicTreeBranch.levelsSubductionGridded);
+		levels.addAll(PRVI25_LogicTreeBranch.levelsOnFault);
+		levels.addAll(PRVI25_LogicTreeBranch.levelsCrustalOffFault);
 		LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>(levels);
-		
-		branch.setValue(PRVI25_SubductionScalingRelationships.AVERAGE);
-//		branch.setValue(PRVI25_RegionalSeismicity.LOW);
-		branch.setValue(PRVI25_RegionalSeismicity.PREFFERRED);
-//		branch.setValue(PRVI25_RegionalSeismicity.HIGH);
-		branch.setValue(PRVI25_SeisSmoothingAlgorithms.AVERAGE);
-		branch.setValue(PRVI25_DeclusteringAlgorithms.AVERAGE);
-		
-//		buildSlabGridSourceList(branch);
-		
-		INTERFACE_USE_SECT_PROPERTIES = false;
-//		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
-//				+ "2024_10_24-prvi25_subduction_branches/results_PRVI_SUB_FM_LARGE_branch_averaged.zip"));
-//		branch.setValue(PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE);
-		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
-				+ "2024_10_24-prvi25_subduction_branches/results_PRVI_SUB_FM_SMALL_branch_averaged.zip"));
-		branch.setValue(PRVI25_SubductionFaultModels.PRVI_SUB_FM_SMALL);
-		
-//		GridSourceList slabModel = buildSlabGridSourceList(branch);
-//		SeismicityRegions seisReg = SeismicityRegions.CAR_INTRASLAB;
-//		GridSourceList slabModel = buildSlabGridSourceList(branch, seisReg);
-//		double rateM5 = 0d;
-//		for (int gridIndex=0; gridIndex<slabModel.getNumLocations(); gridIndex++)
-//			for (GriddedRupture rup : slabModel.getRuptures(TectonicRegionType.SUBDUCTION_SLAB, gridIndex))
-//				if (rup.magnitude >= 5d)
-//					rateM5 += rup.rate;
-//		System.out.println(seisReg+" rate M>5: "+(float)rateM5);
-		
-		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.CAR_INTERFACE;
-//		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.MUE_INTERFACE;
-		Region region = seisReg.load();
-		GridSourceList interfaceModel = buildInterfaceGridSourceList(sol, branch, seisReg);
-//		GridSourceList interfaceModel = buildInterfaceGridSourceList(sol, branch);
-		AveragingAccumulator<GridSourceProvider> averager = interfaceModel.averagingAccumulator();
-		for (int i=0; i<10; i++)
-			averager.process(interfaceModel, 1d);
-		interfaceModel = (GridSourceList) averager.getAverage();
-		double rateM5 = 0d;
-		for (int gridIndex=0; gridIndex<interfaceModel.getNumLocations(); gridIndex++) {
-			if (region.contains(interfaceModel.getLocation(gridIndex))) {
-				for (GriddedRupture rup : interfaceModel.getRuptures(TectonicRegionType.SUBDUCTION_INTERFACE, gridIndex))
-					if (rup.properties.magnitude >= 5d)
-						rateM5 += rup.rate;
+		for (LogicTreeNode node : PRVI25_LogicTreeBranch.DEFAULT_CRUSTAL_ON_FAULT)
+			branch.setValue(node);
+		PRVI25_RegionalSeismicity rateBranch = PRVI25_RegionalSeismicity.PREFFERRED;
+		PRVI25_DeclusteringAlgorithms declusteringBranch = PRVI25_DeclusteringAlgorithms.AVERAGE;
+		PRVI25_SeisSmoothingAlgorithms smoothingBranch = PRVI25_SeisSmoothingAlgorithms.AVERAGE;
+		NSHM23_MaxMagOffFault mMaxBranch = NSHM23_MaxMagOffFault.MAG_7p6;
+		branch.setValue(rateBranch);
+		branch.setValue(declusteringBranch);
+		branch.setValue(smoothingBranch);
+		branch.setValue(mMaxBranch);
+		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.CRUSTAL;
+		GridSourceList gridSources = buildCrustalGridSourceProv(crustalSol, branch);
+		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, 8.01);
+		IncrementalMagFreqDist fullDataMFD = rateBranch.build(seisReg, refMFD, mMaxBranch.getMaxMagOffFault());
+		Location testLoc = new Location(18.3, -66); // not in a polygon
+		for (boolean entireRegion : new boolean[] {false,true}) {
+			IncrementalMagFreqDist gridMFD = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
+			IncrementalMagFreqDist dataMFD;
+			if (entireRegion) {
+				System.out.println("ENTIRE REGION");
+				for (int l=0; l<gridSources.getNumLocations(); l++)
+					for (GriddedRupture rup : gridSources.getRuptures(TectonicRegionType.ACTIVE_SHALLOW, l))
+						gridMFD.add(gridMFD.getClosestXIndex(rup.properties.magnitude), rup.rate);
+				dataMFD = fullDataMFD;
+			} else {
+				System.out.println("Grid-only location "+testLoc);
+				int l = gridSources.getLocationIndex(testLoc);
+				for (GriddedRupture rup : gridSources.getRuptures(TectonicRegionType.ACTIVE_SHALLOW, l)) {
+					Preconditions.checkState(rup.associatedSections == null);
+					gridMFD.add(gridMFD.getClosestXIndex(rup.properties.magnitude), rup.rate);
+				}
+				double pdfScalar = smoothingBranch.loadXYZ(seisReg, declusteringBranch).get(l);
+				dataMFD = fullDataMFD.deepClone();
+				dataMFD.scale(pdfScalar);
+			}
+			System.out.println("Mag\tInput\tOutput\tDiff\t% Diff");
+			for (int i=0; i<refMFD.size(); i++) {
+				double mag = refMFD.getX(i);
+				double data = dataMFD.getY(i);
+				double model = gridMFD.getY(i);
+				double diff = model - data;
+				double pDiff = 100d*diff/data;
+				System.out.println((float)mag+"\t"+(float)data+"\t"+(float)model+"\t\t"+(float)diff+"\t"+(float)pDiff);
 			}
 		}
-		System.out.println(seisReg+" rate M>5: "+(float)rateM5);
-		sol.setGridSourceProvider(interfaceModel);
-		String name = "sol_"+branch.requireValue(PRVI25_SubductionFaultModels.class).getFilePrefix()+"_with_"+seisReg.name()+"_gridded";
-		if (!INTERFACE_USE_SECT_PROPERTIES)
-			name += "_slab_depths";
-		sol.write(new File("/tmp/", name+".zip"));
+		
+//		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
+//		levels.addAll(PRVI25_LogicTreeBranch.levelsSubduction);
+//		levels.addAll(PRVI25_LogicTreeBranch.levelsSubductionGridded);
+//		LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>(levels);
+//		
+//		branch.setValue(PRVI25_SubductionScalingRelationships.AVERAGE);
+////		branch.setValue(PRVI25_RegionalSeismicity.LOW);
+//		branch.setValue(PRVI25_RegionalSeismicity.PREFFERRED);
+////		branch.setValue(PRVI25_RegionalSeismicity.HIGH);
+//		branch.setValue(PRVI25_SeisSmoothingAlgorithms.AVERAGE);
+//		branch.setValue(PRVI25_DeclusteringAlgorithms.AVERAGE);
+//		
+////		buildSlabGridSourceList(branch);
+//		
+//		INTERFACE_USE_SECT_PROPERTIES = false;
+////		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
+////				+ "2024_10_24-prvi25_subduction_branches/results_PRVI_SUB_FM_LARGE_branch_averaged.zip"));
+////		branch.setValue(PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE);
+//		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
+//				+ "2024_10_24-prvi25_subduction_branches/results_PRVI_SUB_FM_SMALL_branch_averaged.zip"));
+//		branch.setValue(PRVI25_SubductionFaultModels.PRVI_SUB_FM_SMALL);
+//		
+////		GridSourceList slabModel = buildSlabGridSourceList(branch);
+////		SeismicityRegions seisReg = SeismicityRegions.CAR_INTRASLAB;
+////		GridSourceList slabModel = buildSlabGridSourceList(branch, seisReg);
+////		double rateM5 = 0d;
+////		for (int gridIndex=0; gridIndex<slabModel.getNumLocations(); gridIndex++)
+////			for (GriddedRupture rup : slabModel.getRuptures(TectonicRegionType.SUBDUCTION_SLAB, gridIndex))
+////				if (rup.magnitude >= 5d)
+////					rateM5 += rup.rate;
+////		System.out.println(seisReg+" rate M>5: "+(float)rateM5);
+//		
+//		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.CAR_INTERFACE;
+////		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.MUE_INTERFACE;
+//		Region region = seisReg.load();
+//		GridSourceList interfaceModel = buildInterfaceGridSourceList(sol, branch, seisReg);
+////		GridSourceList interfaceModel = buildInterfaceGridSourceList(sol, branch);
+//		AveragingAccumulator<GridSourceProvider> averager = interfaceModel.averagingAccumulator();
+//		for (int i=0; i<10; i++)
+//			averager.process(interfaceModel, 1d);
+//		interfaceModel = (GridSourceList) averager.getAverage();
+//		double rateM5 = 0d;
+//		for (int gridIndex=0; gridIndex<interfaceModel.getNumLocations(); gridIndex++) {
+//			if (region.contains(interfaceModel.getLocation(gridIndex))) {
+//				for (GriddedRupture rup : interfaceModel.getRuptures(TectonicRegionType.SUBDUCTION_INTERFACE, gridIndex))
+//					if (rup.properties.magnitude >= 5d)
+//						rateM5 += rup.rate;
+//			}
+//		}
+//		System.out.println(seisReg+" rate M>5: "+(float)rateM5);
+//		sol.setGridSourceProvider(interfaceModel);
+//		String name = "sol_"+branch.requireValue(PRVI25_SubductionFaultModels.class).getFilePrefix()+"_with_"+seisReg.name()+"_gridded";
+//		if (!INTERFACE_USE_SECT_PROPERTIES)
+//			name += "_slab_depths";
+//		sol.write(new File("/tmp/", name+".zip"));
 		
 //		buildInterfaceGridSourceList(sol, branch);
 		

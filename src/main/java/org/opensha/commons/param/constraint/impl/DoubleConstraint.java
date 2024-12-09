@@ -34,12 +34,18 @@ public class DoubleConstraint extends AbstractParameterConstraint<Double> {
 
 
     /** The minimum value allowed in this constraint, inclusive */
-    protected Double min = null;
+    protected double min;
     /** The maximum value allowed in this constraint, inclusive */
-    protected Double max = null;
+    protected double max;
+    protected boolean hasMin;
+    protected boolean hasMax;
 
     /** No-Arg Constructor, constraints are null so all values allowed */
-    public DoubleConstraint() { super(); }
+    public DoubleConstraint() {
+    	super();
+    	hasMin = false;
+    	hasMax = false;
+    }
 
 
     /**
@@ -51,8 +57,7 @@ public class DoubleConstraint extends AbstractParameterConstraint<Double> {
      * @param  max  The max value allowed
      */
     public DoubleConstraint( double min, double max ) {
-        this.min = Double.valueOf(min);
-        this.max = Double.valueOf(max);
+        this.setMinMax(min, max);
     }
 
 
@@ -65,8 +70,7 @@ public class DoubleConstraint extends AbstractParameterConstraint<Double> {
      * @param  max  The max value allowed
      */
     public DoubleConstraint( Double min, Double max ) {
-        this.min = min;
-        this.max = max;
+    	this.setMinMax(min, max);
     }
 
     /**
@@ -81,8 +85,10 @@ public class DoubleConstraint extends AbstractParameterConstraint<Double> {
     public void setMinMax( double min, double max ) throws EditableException {
         String S = C + ": setMinMax(double, double): ";
         checkEditable(S);
-        this.min = Double.valueOf( min ) ;
-        this.max = Double.valueOf( max ) ;
+        this.min = min;
+        this.max = max;
+        this.hasMin = Double.isFinite(min) || min < 0d;
+        this.hasMax = Double.isFinite(max) || max > 0d;
     }
 
 
@@ -97,16 +103,17 @@ public class DoubleConstraint extends AbstractParameterConstraint<Double> {
     public void setMinMax( Double min, Double max ) throws EditableException {
         String S = C + ": setMinMax(Double, Double): ";
         checkEditable(S);
-        this.min = min;
-        this.max = max;
+        double mind = min == null ? Double.NaN : min.doubleValue();
+        double maxd = max == null ? Double.NaN : max.doubleValue();
+        this.setMinMax(mind, maxd);
     }
 
 
     /** Returns the min allowed value of this constraint. */
-    public Double getMin() { return min; }
+    public Double getMin() { return hasMin ? min : null; }
 
     /** Gets the max allowed value of this constraint */
-    public Double getMax() { return max; }
+    public Double getMax() { return hasMax ? max : null; }
 
     /**
      * Checks if the passed in value is within the min and max, inclusive of
@@ -121,9 +128,10 @@ public class DoubleConstraint extends AbstractParameterConstraint<Double> {
      */
     public boolean isAllowed( Double d ) {
         if( d == null ) return nullAllowed;
-        if( ( min == null ) || ( max == null ) ) return true;
-        else if( ( d.compareTo(min) >= 0 ) && ( d.compareTo(max) <= 0 ) ) return true;
-        return false;
+        double dv = d.doubleValue();
+        if ((hasMin && dv < min) || (hasMax && dv > max))
+        	return false;
+        return true;
     }
 
 
@@ -145,8 +153,8 @@ public class DoubleConstraint extends AbstractParameterConstraint<Double> {
         String TAB = "    ";
         StringBuffer b = new StringBuffer();
         if( name != null ) b.append( TAB + "Name = " + name + '\n' );
-        if( min != null ) b.append( TAB + "Min = " + min.toString() + '\n' );
-        if( max != null ) b.append( TAB + "Max = " + max.toString() + '\n' );
+        if( hasMin ) b.append( TAB + "Min = " + min + '\n' );
+        if( hasMax ) b.append( TAB + "Max = " + max + '\n' );
         b.append( TAB + "Null Allowed = " + this.nullAllowed+ '\n' );
         return b.toString();
     }

@@ -12,9 +12,11 @@ import org.opensha.commons.geo.LocationList;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.PointSource;
+import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.rupForecastImpl.FloatingPoissonFaultSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurfaceWithSubsets;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -76,9 +78,6 @@ public class PEER_MultiSourceForecast extends AbstractERF{
 
   private static final double DIP = 90.0;
   private static final double RAKE = 0.0;
-
-  // this is the source used for the area-source points
-  private PointEqkSource pointPoissonEqkSource;
 
   // lat & lon data that define the Area source
   private static final double LAT_TOP= 38.901;
@@ -235,11 +234,8 @@ DoubleParameter offsetParam = new DoubleParameter(OFFSET_PARAM_NAME,OFFSET_PARAM
       cumRate /= numLocs;
       dist_GR.scaleToCumRate((int) 0,cumRate);
 
-      pointPoissonEqkSource = new PointEqkSource(new Location(0,0,0),
-          dist_GR, timeSpan.getDuration(), RAKE, DIP);
-
-      if (D) System.out.println(C+" updateForecast(): rake="+pointPoissonEqkSource.getRupture(0).getAveRake() +
-                          "; dip="+ pointPoissonEqkSource.getRupture(0).getRuptureSurface().getAveDip());
+      if (D) System.out.println(C+" updateForecast(): rake="+RAKE +
+                          "; dip="+ DIP);
 
       // now make the fault sources
       double seisUpper = 0;
@@ -291,7 +287,11 @@ DoubleParameter offsetParam = new DoubleParameter(OFFSET_PARAM_NAME,OFFSET_PARAM
     int numSrc = this.getNumSources();
 
     if(iSource < numSrc-2 && iSource >= 0) {
-      pointPoissonEqkSource.setLocation(locationList.get(iSource));
+    	PoissonPointSource pointPoissonEqkSource = PointSource.poissonBuilder(locationList.get(iSource))
+      		  .truePointSources()
+      		  .forMFDAndFocalMech(dist_GR, new FocalMechanism(Double.NaN, DIP, RAKE))
+      		  .duration(timeSpan.getDuration())
+      		  .build();
       return pointPoissonEqkSource;
     }
     else if(iSource == numSrc-2)

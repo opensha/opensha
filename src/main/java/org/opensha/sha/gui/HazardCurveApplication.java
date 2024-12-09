@@ -892,6 +892,7 @@ ScalarIMRChangeListener {
 		try{
 			if(calc == null) {
 				calc = new HazardCurveCalculator();
+				calc.setTrackProgress(true);
 //System.out.println("Created new calc from LocalModeApp");
 			}
 			if(disaggregationFlag)

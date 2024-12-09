@@ -48,7 +48,7 @@ import org.opensha.sha.util.FocalMech;
  * @author P. Powers
  * @version: $Id$
  */
-public class PointSource extends ProbEqkSource {
+class NSHMPPointSource extends ProbEqkSource {
 
 	// TODO class will eventually be reconfigured to supply distance metrics
 	// at which point M_FINITE_CUT will be used (and set on invocation)
@@ -97,7 +97,7 @@ public class PointSource extends ProbEqkSource {
 	 * @param faultCode identifies how to handle point source as well as
 	 *        indicates an magnitude conversion
 	 */
-	public PointSource(Location loc, IncrementalMagFreqDist mfd,
+	public NSHMPPointSource(Location loc, IncrementalMagFreqDist mfd,
 		double duration, double[] depths, Map<FocalMech, Double> mechWtMap) {
 
 		name = NAME; // super

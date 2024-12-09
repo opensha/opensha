@@ -424,7 +424,7 @@ public class NSHM23_FaultCubeAssociations implements FaultCubeAssociations, Arch
 						if (depth <= upperDepth)
 							vertDist = upperDepth - depth;
 						else if (depth >= lowerDepth)
-							vertDist = depth = lowerDepth;
+							vertDist = depth - lowerDepth;
 						else
 							vertDist = 0d;
 						double dist;

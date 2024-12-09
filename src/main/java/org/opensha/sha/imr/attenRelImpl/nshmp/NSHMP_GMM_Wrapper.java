@@ -24,7 +24,6 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.sha.earthquake.DistCachedERFWrapper.DistCacheWrapperRupture;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.gcim.imr.param.EqkRuptureParams.FocalDepthParam;
 import org.opensha.sha.imr.AttenuationRelationship;
@@ -454,11 +453,6 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			throws ParameterException, IMRException {
 		// TODO implement?
 		throw new UnsupportedOperationException("getSA_IML_AtExceedProbSpectrum is unsupported for "+C);
-	}
-
-	@Override
-	public double getTotExceedProbability(PointEqkSource ptSrc, double iml) {
-		throw new UnsupportedOperationException("getTotExceedProbability is unsupported for "+C);
 	}
 
 	@Override

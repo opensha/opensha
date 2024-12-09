@@ -24,7 +24,6 @@ import org.opensha.sha.calc.params.MagDistCutoffParam;
 import org.opensha.sha.calc.params.MaxDistanceParam;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.NumStochasticEventSetsParam;
-import org.opensha.sha.calc.params.PtSrcDistanceCorrectionParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
 import org.opensha.sha.calc.params.filters.FixedDistanceCutoffFilter;
 import org.opensha.sha.calc.params.filters.MagDependentDistCutoffFilter;
@@ -36,7 +35,6 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_EqkRupForecast;
 import org.opensha.sha.faultSurface.PointSurface;
-import org.opensha.sha.faultSurface.utils.PtSrcDistCorr;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.BJF_1997_AttenRel;
@@ -89,9 +87,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 	// This tells the calculator what to do if the TRT is not supported by the IMR
 	private NonSupportedTRT_OptionsParam nonSupportedTRT_OptionsParam;
 	
-	// This tell what type of point-source distance correction to apply
-	private PtSrcDistanceCorrectionParam ptSrcDistCorrParam;
-	
 
 	private ParameterList adjustableParams;
 
@@ -126,8 +121,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		setTRTinIMR_FromSourceParam = new SetTRTinIMR_FromSourceParam();
 		
 		nonSupportedTRT_OptionsParam = new NonSupportedTRT_OptionsParam();
-		
-		ptSrcDistCorrParam = new PtSrcDistanceCorrectionParam();
 
 		adjustableParams = new ParameterList();
 		adjustableParams.addParameter(maxDistanceParam);
@@ -136,20 +129,7 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		adjustableParams.addParameter(magDistCutoffParam);
 		adjustableParams.addParameter(setTRTinIMR_FromSourceParam);
 		adjustableParams.addParameter(nonSupportedTRT_OptionsParam);
-		adjustableParams.addParameter(ptSrcDistCorrParam);
 
-	}
-	
-	
-//	@Override
-	public void setPtSrcDistCorrType(PtSrcDistCorr.Type type) {
-		ptSrcDistCorrParam.setValueFromTypePtSrcDistCorr(type);
-	}
-	
-
-//	@Override
-	public PtSrcDistCorr.Type getPtSrcDistCorrType(){
-		return ptSrcDistCorrParam.getValueAsTypePtSrcDistCorr();
 	}
 
 
@@ -248,8 +228,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 			trtOrigVals = TRTUtils.getTRTsSetInIMRs(imrMap);
 
 		this.currRuptures = -1;
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 		/* this determines how the calucations are done (doing it the way it's outlined
     in our original SRL paper gives probs greater than 1 if the total rate of events for the
@@ -363,10 +341,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 						numRupRejected += 1;
 						continue;
 					}
-					
-					// set point-source distance correction type & mag if it's a pointSurface
-					if(rupture.getRuptureSurface() instanceof PointSurface)
-						((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
 
 					// indicate that a source has been used (put here because of above filter)
 					sourceUsed = true;
@@ -556,8 +530,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		if (D) System.out.println(C+": starting hazard curve calculation");
 
 		//	  System.out.println("totRuptures="+totRuptures);
-		
-		PtSrcDistCorr.Type distCorrType = getPtSrcDistCorrType();
 
 
 		// loop over ruptures
@@ -566,10 +538,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 			if(updateCurrRuptures)++currRuptures;
 
 			EqkRupture rupture = eqkRupList.get(n);
-			
-			// set point-source distance correction type (& mag) if it's a pointSurface
-			if(rupture.getRuptureSurface() instanceof PointSurface)
-				((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), distCorrType);
 
 
 			/*
@@ -625,10 +593,6 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		// resetting the Parameter change Listeners on the AttenuationRelationship parameters,
 		// allowing the Server version of our application to listen to the parameter changes.
 		( (AttenuationRelationship) imr).resetParameterEventListeners();
-		
-		// set point-source distance correction type (& mag) if it's a pointSurface
-		if(rupture.getRuptureSurface() instanceof PointSurface)
-			((PointSurface)rupture.getRuptureSurface()).setDistCorrMagAndType(rupture.getMag(), getPtSrcDistCorrType());
 
 
 		// set the Site in IMR
@@ -771,6 +735,19 @@ implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
 		if (includeMagDistFilterParam.getValue())
 			filters.add(magDistFilter);
 		return filters;
+	}
+
+
+	@Override
+	public void setTrackProgress(boolean trackProgress) {
+		// always enabled
+	}
+
+
+	@Override
+	public boolean isTrackProgress() {
+		// always enabled
+		return true;
 	};
 
 
