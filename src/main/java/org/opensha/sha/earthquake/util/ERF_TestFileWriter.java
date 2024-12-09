@@ -20,12 +20,15 @@ import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ClassUtils;
 import org.opensha.commons.util.FileNameComparator;
+import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.commons.util.GitVersion;
 import org.opensha.sha.earthquake.BaseERF;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
@@ -38,6 +41,8 @@ import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Preconditions;
+
+import scratch.UCERF3.erf.FaultSystemSolutionERF;
 
 public class ERF_TestFileWriter {
 	
@@ -198,22 +203,26 @@ public class ERF_TestFileWriter {
 		public RuptureComparison(RuptureRecord r1, RuptureRecord r2) {
 			this.r1 = r1;
 			this.r2 = r2;
-			mag = Precision.equals(r1.mag, r2.mag, 1e-3);
-			prob = Precision.equals(r1.prob, r2.prob, 1e-6);
-			rake = Precision.equals(r1.rake, r2.rake, 1e-3);
+			mag = equals(r1.mag, r2.mag, 1e-3);
+			prob = equals(r1.prob, r2.prob, 1e-6);
+			rake = equals(r1.rake, r2.rake, 1e-3);
 			surfType = r1.surfType.equals(r2.surfType);
-			length = Precision.equals(r1.length, r2.length, 1e-3);
-			width = Precision.equals(r1.width, r2.width, 1e-3);
-			topDepth = Precision.equals(r1.topDepth, r2.topDepth, 1e-3);
-			strike = Precision.equals(r1.strike, r2.strike, 1e-3);
-			dip = Precision.equals(r1.dip, r2.dip, 1e-3);
-			firstSurfLat = Precision.equals(r1.firstSurfLoc.lat, r2.firstSurfLoc.lat, 1e-3);
-			firstSurfLon = Precision.equals(r1.firstSurfLoc.lon, r2.firstSurfLoc.lon, 1e-3);
-			firstSurfDepth = Precision.equals(r1.firstSurfLoc.depth, r2.firstSurfLoc.depth, 1e-3);
+			length = equals(r1.length, r2.length, 1e-3);
+			width = equals(r1.width, r2.width, 1e-3);
+			topDepth = equals(r1.topDepth, r2.topDepth, 1e-3);
+			strike = equals(r1.strike, r2.strike, 1e-3);
+			dip = equals(r1.dip, r2.dip, 1e-3);
+			firstSurfLat = equals((float)r1.firstSurfLoc.lat, (float)r2.firstSurfLoc.lat, 1e-3);
+			firstSurfLon = equals((float)r1.firstSurfLoc.lon, (float)r2.firstSurfLoc.lon, 1e-3);
+			firstSurfDepth = equals((float)r1.firstSurfLoc.depth, (float)r2.firstSurfLoc.depth, 1e-3);
 			rJB_100 = distEquals(r1.rJB_100, r2.rJB_100);
 			rRup_100 = distEquals(r1.rRup_100, r2.rRup_100);
 			rSeis_100 = distEquals(r1.rSeis_100, r2.rSeis_100);
 			rX_100 = distEquals(r1.rX_100, r2.rX_100);
+		}
+		
+		private boolean equals(float val1, float val2, double precision) {
+			return Float.floatToIntBits(val1) == Float.floatToIntBits(val2) || Precision.equals(val1, val2, precision);
 		}
 		
 		private static boolean distEquals(double dist1, double dist2) {
@@ -461,14 +470,14 @@ public class ERF_TestFileWriter {
 			for (int r=0; r<maxSize; r++) {
 				if (r == refSourceRecs.size()) {
 					int extra = testSourceRecs.size() - refSourceRecs.size();
-					System.err.println("\tTest has "+extra+" extra ruptures; first: "+testSourceRecs.get(s));
+					System.err.println("\tTest has "+extra+" extra ruptures; first: "+testSourceRecs.get(r));
 					numExtraTestRuptures += extra;
 					System.err.flush();
 					pass = false;
 					break;
 				} else if (r == testSourceRecs.size()) {
 					int extra = refSourceRecs.size() - testSourceRecs.size();
-					System.err.println("\tRef has "+extra+" extra ruptures; first: "+refSourceRecs.get(s));
+					System.err.println("\tRef has "+extra+" extra ruptures; first: "+refSourceRecs.get(r));
 					numExtraRefRuptures += extra;
 					System.err.flush();
 					pass = false;
@@ -631,7 +640,9 @@ public class ERF_TestFileWriter {
 
 	public static void main(String[] args) throws IOException {
 		System.setProperty("java.awt.headless", "true");
-		File outputBaseDir = new File("/home/kevin/OpenSHA/erf_test_files/2024_11_06/");
+//		File outputBaseDir = new File("/home/kevin/OpenSHA/erf_test_files/2024_11_06/");
+		File outputBaseDir = new File("/home/kevin/OpenSHA/erf_test_files/2024_11_27/");
+		Preconditions.checkState(outputBaseDir.exists() || outputBaseDir.mkdir());
 		File refDir = new File(outputBaseDir, "master");
 		File testDir = new File(outputBaseDir, "point_source_refactor");
 		
@@ -654,8 +665,30 @@ public class ERF_TestFileWriter {
 		System.out.println("On branch '"+branch+"'; ref ? "+thisIsRef);
 		
 		File outputDir = thisIsRef ? refDir : testDir;
+		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 		
 		if (write) {
+			List<AbstractERF> extraERFs = new ArrayList<>();
+			List<String> extraERFnames = new ArrayList<>();
+			
+			FaultSystemSolution testSol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
+					+ "2024_11_19-prvi25_crustal_subduction_combined_branches/combined_branch_averaged_solution.zip"));
+			FaultSystemSolutionERF fssERF1 = new FaultSystemSolutionERF(testSol);
+			fssERF1.setParameter(IncludeBackgroundParam.NAME, IncludeBackgroundOption.INCLUDE);
+			fssERF1.updateForecast();
+			extraERFs.add(fssERF1);
+			extraERFnames.add("PRVI_Draft");
+			FaultSystemSolutionERF fssERF2 = new FaultSystemSolutionERF(testSol);
+			fssERF2.setParameter(IncludeBackgroundParam.NAME, IncludeBackgroundOption.EXCLUDE);
+			fssERF2.updateForecast();
+			extraERFs.add(fssERF2);
+			extraERFnames.add("PRVI_Draft_bg_exclude");
+			FaultSystemSolutionERF fssERF3 = new FaultSystemSolutionERF(testSol);
+			fssERF3.setParameter(IncludeBackgroundParam.NAME, IncludeBackgroundOption.ONLY);
+			fssERF3.updateForecast();
+			extraERFs.add(fssERF3);
+			extraERFnames.add("PRVI_Draft_bg_only");
+			
 			for (ERF_Ref ref : ERF_Ref.values()) {
 				System.out.println(ref.name()+": "+ref+" ("+ref.getERFClass()+")");
 				System.out.flush();
@@ -793,6 +826,21 @@ public class ERF_TestFileWriter {
 				} catch (InterruptedException e) {
 					e.printStackTrace();
 				}
+			}
+			for (int i=0; i<extraERFs.size(); i++) {
+				AbstractERF erf = extraERFs.get(i);
+				String name = extraERFnames.get(i);
+				System.out.println("Processing extra erf "+i+": "+name);
+				
+				File outputFile = new File(outputDir, name+".csv");
+				System.out.println("Writing "+outputFile.getName());
+				
+				System.out.println("Parameters:");
+				for (Parameter<?> param : erf.getAdjustableParameterList())
+					System.out.println("\t"+param.getName()+":\t"+param.getValue());
+				
+				writeCSV(erf, outputFile);
+				System.out.println();
 			}
 		}
 		

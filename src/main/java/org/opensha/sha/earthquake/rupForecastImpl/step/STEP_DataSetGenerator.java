@@ -29,9 +29,10 @@ import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.gui.infoTools.ConnectToCVM;
+import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.attenRelImpl.ShakeMap_2003_AttenRel;
+import org.opensha.sha.imr.param.EqkRuptureParams.MagParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.util.SiteTranslator;
 
@@ -1491,7 +1492,7 @@ public class STEP_DataSetGenerator implements ParameterChangeWarningListener{
 
           // indicate that a source has been used
           sourceUsed = true;
-          hazVal *= (1.0 - imr.getTotExceedProbability((PointEqkSource)source,IML_VALUE));
+          hazVal *= (1.0 - getTotExceedProbability(imr, source,IML_VALUE));
         }
 
         // finalize the hazard function
@@ -1515,6 +1516,50 @@ public class STEP_DataSetGenerator implements ParameterChangeWarningListener{
 
     return probVals;
   }
+  
+
+
+	/**
+	 * This method will compute the total probability of exceedance for a PointEqkSource
+	 * (including the probability of each rupture).  It is assumed that this
+	 * source is Poissonian (not checked).  This saves time by computing distance only
+	 * once for all ruptures in this source.  This could be extended to include the
+	 * point-source distance correction as well (a boolean in the constructor?), although
+	 * this would have to check for each distance type.
+	 * @param ptSrc
+	 * @param iml
+	 * @return
+	 */
+	static double getTotExceedProbability(AttenuationRelationship imr, ProbEqkSource ptSrc, double iml) {
+
+		double totProb = 1.0, qkProb;
+		ProbEqkRupture tempRup;
+
+		//set the IML
+		imr.setIntensityMeasureLevel(Double.valueOf(iml));
+
+		// set the eqRup- and propEffect-params from the first rupture
+		imr.setEqkRupture(ptSrc.getRupture(0));
+		
+		MagParam magParam = (MagParam) imr.getParameter(MagParam.NAME);
+
+		//now loop over ruptures changing only the magnitude parameter.
+		for (int i = 0; i < ptSrc.getNumRuptures(); i++) {
+			tempRup = ptSrc.getRupture(i);
+			magParam.setValueIgnoreWarning(Double.valueOf(tempRup.getMag()));
+			qkProb = tempRup.getProbability();
+
+			// check for numerical problems
+			if (Math.log(1.0 - qkProb) < -30.0) {
+				throw new RuntimeException(
+						"Error: The probability for this ProbEqkRupture (" + qkProb +
+				") is too high for a Possion source (~infinite number of events)");
+			}
+
+			totProb *= Math.pow(1.0 - qkProb, imr.getExceedProbability());
+		}
+		return 1 - totProb;
+	}
 
 
   /**

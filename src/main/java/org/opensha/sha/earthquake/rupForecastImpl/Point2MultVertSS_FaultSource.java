@@ -37,6 +37,7 @@ import org.opensha.sha.faultSurface.FrankelGriddedSurface;
  * @date Sept 1, 2004
  * @version 1.0
  */
+@Deprecated
 public class Point2MultVertSS_FaultSource extends ProbEqkSource implements java.io.Serializable{
 
 	//for Debug purposes

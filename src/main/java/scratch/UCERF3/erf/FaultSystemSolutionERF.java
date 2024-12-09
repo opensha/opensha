@@ -14,6 +14,7 @@ import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.eq.MagUtils;
 import org.opensha.commons.param.event.ParameterChangeEvent;
+import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
@@ -448,7 +449,7 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	}
 
 	@Override
-	protected DoubleBinaryOperator getGridSourceAftershockFilter() {
+	protected MagnitudeDependentAftershockFilter getGridSourceAftershockFilter() {
 		return applyAftershockFilter ? AbstractGridSourceProvider.GK_AFTERSHOCK_FILTER : null;
 	}
 
