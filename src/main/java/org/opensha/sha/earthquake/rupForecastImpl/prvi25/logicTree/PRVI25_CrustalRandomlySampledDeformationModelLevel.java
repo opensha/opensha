@@ -5,6 +5,8 @@ import java.util.Random;
 import org.opensha.commons.logicTree.LogicTreeLevel.RandomlySampledLevel;
 
 public class PRVI25_CrustalRandomlySampledDeformationModelLevel extends RandomlySampledLevel<PRVI25_CrustalRandomlySampledDeformationModels> {
+	
+	public static String NAME = "PRVI Crustal Def Model Sample";
 
 	public PRVI25_CrustalRandomlySampledDeformationModelLevel() {
 		
@@ -25,7 +27,7 @@ public class PRVI25_CrustalRandomlySampledDeformationModelLevel extends Randomly
 
 	@Override
 	public String getName() {
-		return "PRVI Crustal Def Model Sample";
+		return NAME;
 	}
 
 	@Override
