@@ -640,7 +640,11 @@ public abstract class PointSource extends ProbEqkSource {
 			Preconditions.checkState(weight >= 0d && weight <= 1d, "Bad weight for %s: %s", mech, weight);
 			weightSum += weight;
 		}
-		Preconditions.checkState((float)weightSum == 1f, "FocalMech weights don't sum to 1: %s", (float)weightSum);
+		// Preconditions.checkState((float)weightSum == 1f, "FocalMech weights don't sum to 1: %s", (float)weightSum);
+		// Use a tolerance range to account for floating point precision errors.
+		Preconditions.checkState(
+				((float)weightSum >= 0.999999f && (float)weightSum <= 1.000001),
+				"FocalMech weights don't sum to 1: %s", (float)weightSum);
 		MFDData data = new MFDData() {
 
 			@Override
