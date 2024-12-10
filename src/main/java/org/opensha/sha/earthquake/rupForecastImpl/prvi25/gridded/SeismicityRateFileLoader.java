@@ -26,6 +26,11 @@ public class SeismicityRateFileLoader {
 		private RateType(String fileHeading) {
 			this.fileHeading = fileHeading;
 		}
+		
+		@Override
+		public String toString() {
+			return fileHeading;
+		}
 	}
 	
 	public static abstract class RateRecord {

@@ -7,9 +7,7 @@ import java.util.StringTokenizer;
 
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.HanksBakun2002_MagAreaRel;
 import org.opensha.commons.data.TimeSpan;
-import org.opensha.commons.data.estimate.DiscreteValueEstimate;
 import org.opensha.commons.data.estimate.NormalEstimate;
-import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.ParameterList;
@@ -19,13 +17,11 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.PointSource;
+import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
-import org.opensha.sha.earthquake.rupForecastImpl.GriddedRegionPoissonEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
-import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.analysis.ParamOptions;
-import org.opensha.sha.earthquake.rupForecastImpl.YuccaMountain.YuccaMountainERF_List;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.StirlingGriddedSurface;
@@ -349,11 +345,18 @@ public class NewZealandERF2010 extends AbstractERF{
 	private void mkBackRegion(){
 		for(int srcIndex=0; srcIndex<bkSourceNames.size(); ++srcIndex) {
 				
-			PointEqkSource rupSource = new PointEqkSource(this.bkSourceLocation.get(srcIndex),this.bkMagFD.get(srcIndex),
-					timeSpan.getDuration(),this.bkRake.get(srcIndex),this.bkDip.get(srcIndex),this.bkMMins.get(srcIndex));
-			//Tectonic type of source
-			String tectType = this.bkSourceTectonicTypes.get(srcIndex);
-			setTectonicTypeOfSource(rupSource,tectType);
+//			PointEqkSource rupSource = new PointEqkSource(this.bkSourceLocation.get(srcIndex),this.bkMagFD.get(srcIndex),
+//					timeSpan.getDuration(),this.bkRake.get(srcIndex),this.bkDip.get(srcIndex),this.bkMMins.get(srcIndex));
+//			//Tectonic type of source
+//			String tectType = this.bkSourceTectonicTypes.get(srcIndex);
+//			setTectonicTypeOfSource(rupSource,tectType);
+			PoissonPointSource rupSource = PointSource.poissonBuilder(this.bkSourceLocation.get(srcIndex))
+					.tectonicRegionType(trtForType(this.bkSourceTectonicTypes.get(srcIndex)))
+	        		.truePointSources(0d)
+	        		.forMFDAndFocalMech(this.bkMagFD.get(srcIndex).getAboveMagnitude(this.bkMMins.get(srcIndex)),
+	        				new FocalMechanism(Double.NaN, this.bkDip.get(srcIndex), this.bkRake.get(srcIndex)))
+	        		.duration(timeSpan.getDuration())
+	        		.build();
 			
 			
 			allSources.add(rupSource);
@@ -692,20 +695,15 @@ public class NewZealandERF2010 extends AbstractERF{
 		else throw new RuntimeException("The tectonic region type is not supported");
 	}
 	
-	/**
-	 * This method assigns the tectonic type to a FaultRuptureSource
-	 * @param rupSource - the source to assign a tect type to
-	 * @param tectType - the tectonic type as a string
-	 */
-	public void setTectonicTypeOfSource(FaultRuptureSource rupSource,String tectType) {
+	private static TectonicRegionType trtForType(String tectType) {
 		if (tectType.equals(ACTIVE_SHALLOW)) 
-			rupSource.setTectonicRegionType(TectonicRegionType.ACTIVE_SHALLOW);
+			return TectonicRegionType.ACTIVE_SHALLOW;
 		else if (tectType.equals(VOLCANIC)) 
-			rupSource.setTectonicRegionType(TectonicRegionType.VOLCANIC);
+			return TectonicRegionType.VOLCANIC;
 		else if (tectType.equals(SUBDUCTION_INTERFACE)) 
-			rupSource.setTectonicRegionType(TectonicRegionType.SUBDUCTION_INTERFACE);
+			return TectonicRegionType.SUBDUCTION_INTERFACE;
 		else if (tectType.equals(SUBDUCTION_SLAB)) 
-			rupSource.setTectonicRegionType(TectonicRegionType.SUBDUCTION_SLAB);
+			return TectonicRegionType.SUBDUCTION_SLAB;
 		else throw new RuntimeException("The tectonic region type is not supported");
 	}
 	
@@ -714,16 +712,8 @@ public class NewZealandERF2010 extends AbstractERF{
 	 * @param rupSource - the source to assign a tect type to
 	 * @param tectType - the tectonic type as a string
 	 */
-	public void setTectonicTypeOfSource(PointEqkSource rupSource,String tectType) {
-		if (tectType.equals(ACTIVE_SHALLOW)) 
-			rupSource.setTectonicRegionType(TectonicRegionType.ACTIVE_SHALLOW);
-		else if (tectType.equals(VOLCANIC)) 
-			rupSource.setTectonicRegionType(TectonicRegionType.VOLCANIC);
-		else if (tectType.equals(SUBDUCTION_INTERFACE)) 
-			rupSource.setTectonicRegionType(TectonicRegionType.SUBDUCTION_INTERFACE);
-		else if (tectType.equals(SUBDUCTION_SLAB)) 
-			rupSource.setTectonicRegionType(TectonicRegionType.SUBDUCTION_SLAB);
-		else throw new RuntimeException("The tectonic region type is not supported");
+	public void setTectonicTypeOfSource(ProbEqkSource rupSource,String tectType) {
+		rupSource.setTectonicRegionType(trtForType(tectType));
 	}
 	
 	/**

@@ -1,11 +1,19 @@
 package org.opensha.commons.gui.plot;
 
 import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
+import java.io.BufferedOutputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.imageio.ImageIO;
 
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.ChartRenderingInfo;
@@ -13,15 +21,26 @@ import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnit;
 import org.jfree.chart.axis.TickUnits;
 import org.jfree.chart.axis.ValueAxis;
+import org.jfree.chart.block.RectangleConstraint;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.CombinedRangeXYPlot;
 import org.jfree.chart.plot.Plot;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.title.PaintScaleLegend;
+import org.jfree.chart.ui.Size2D;
 import org.jfree.data.Range;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.gui.plot.pdf.PDF_UTF8_FontMapper;
 
 import com.google.common.base.Preconditions;
+import com.itextpdf.awt.FontMapper;
+import com.itextpdf.awt.PdfGraphics2D;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.DocumentException;
+import com.itextpdf.text.pdf.PdfContentByte;
+import com.itextpdf.text.pdf.PdfTemplate;
+import com.itextpdf.text.pdf.PdfWriter;
 
 public class PlotUtils {
 	
@@ -290,6 +309,77 @@ public class PlotUtils {
 			return ((CombinedRangeXYPlot)plot).getSubplots();
 		} else {
 			throw new IllegalStateException("Can only get sub plots for CombinedDomainXYPlot or CombinedRangeXYPlot");
+		}
+	}
+	
+	public static void writeScaleLegendOnly(File outputDir, String prefix, PaintScaleLegend legend, int width,
+			boolean writePNG, boolean writePDF) throws IOException {
+		// Find the preferred height
+		Graphics2D dummyGraphics = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics();
+		RectangleConstraint constraint = new RectangleConstraint(new Range(width, width), new Range(0.05*width, width));
+		Size2D preferredSize = legend.arrange(dummyGraphics, constraint);
+		int height = (int) Math.ceil(preferredSize.getHeight());
+
+		// Print the preferred height
+        System.out.println("Preferred height: " + height);
+
+        // Clean up dummy graphics
+        dummyGraphics.dispose();
+		
+		BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g2 = image.createGraphics();
+
+		// Enable anti-aliasing for better quality
+		g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+		// Draw the PaintScaleLegend onto the Graphics2D context
+		legend.draw(g2, new Rectangle(0, 0, width, height));
+		g2.dispose();
+
+		if (writePNG) {
+			// Write the BufferedImage to a PNG file
+			File outputFile = new File(outputDir, prefix+".png");
+			ImageIO.write(image, "png", outputFile);
+		}
+		
+		if (writePDF) {
+			// step 1
+			Document metadataDocument = new Document(new com.itextpdf.text.Rectangle(
+					width, height));
+			metadataDocument.addAuthor("OpenSHA");
+			metadataDocument.addCreationDate();
+//			HeaderFooter footer = new HeaderFooter(new Phrase("Powered by OpenSHA"), true);
+//			metadataDocument.setFooter(footer);
+			try {
+				// step 2
+				PdfWriter writer;
+
+				writer = PdfWriter.getInstance(metadataDocument,
+						new BufferedOutputStream(new FileOutputStream(new File(outputDir, prefix+".pdf"))));
+				// step 3
+				metadataDocument.open();
+				// step 4
+				PdfContentByte cb = writer.getDirectContent();
+				PdfTemplate tp = cb.createTemplate(width, height);
+//				tp.creategraphics
+//				new 
+//				FontMapper fontMapper = new DefaultFontMapper();
+				FontMapper fontMapper = new PDF_UTF8_FontMapper();
+				Graphics2D g2d = new PdfGraphics2D(tp, width, height, fontMapper);
+				g2d.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_NORMALIZE);
+				g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+//				Graphics2D g2d = tp.createGraphics(width, height,
+//						new DefaultFontMapper());
+				Rectangle2D r2d = new Rectangle2D.Double(0, 0, width, height);
+				legend.draw(g2d, r2d);
+				g2d.dispose();
+				cb.addTemplate(tp, 0, 0);
+			}
+			catch (DocumentException de) {
+				de.printStackTrace();
+			}
+			// step 5
+			metadataDocument.close();
 		}
 	}
 

@@ -168,8 +168,6 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 	protected IM_EventSetCEA_ControlPanel imSetScenarioControl;
 	//protected PuenteHillsScenarioControlPanelForSingleMultipleAttenRel puenteHillsControl;
 	protected GenerateHazusControlPanelForSingleMultipleIMRs hazusControl;
-	private GMTMapCalcOptionControl calcControl;
-	protected CalculationSettingsControlPanel calcParamsControl;
 	//private SF_BayAreaScenarioControlPanel bayAreaControl;
 
 	// instances of the GUI Beans which will be shown in this applet
@@ -208,7 +206,7 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 	protected GridLayout gridLayout1 = new GridLayout();
 	protected GridBagLayout gridBagLayout1 = new GridBagLayout();
 	protected GridBagLayout gridBagLayout5 = new GridBagLayout();
-	protected JComboBox controlComboBox = new JComboBox();
+	protected JComboBox<String> controlComboBox = new JComboBox<>();
 	protected GridBagLayout gridBagLayout6 = new GridBagLayout();
 	protected BorderLayout borderLayout1 = new BorderLayout();
 	protected CalcProgressBar calcProgress;
@@ -830,7 +828,10 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 	 * @return the Metadata string for the Calculation Settings Adjustable Params
 	 */
 	public String getCalcParamMetadataString(){
-		return getCalcAdjustableParams().getParameterListMetadataString();
+		ParameterList params = getCalcAdjustableParams();
+		if (params == null || params.size() == 0)
+			return "";
+		return params.getParameterListMetadataString();
 	}
 
 
@@ -872,8 +873,11 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 //		controlPanels.add(new GMTMapCalcOptionControl(this));
 		
 		/*		Calc Params Control				*/
-		controlComboBox.addItem(CalculationSettingsControlPanel.NAME);
-		controlPanels.add(new CalculationSettingsControlPanel(this,this));
+		ParameterList params = getCalcAdjustableParams();
+		if (params != null && params.size() > 0) {
+			controlComboBox.addItem(CalculationSettingsControlPanel.NAME);
+			controlPanels.add(new CalculationSettingsControlPanel(this,this));
+		}
 	}
 	
 	protected void showControlPanel(String controlName) {
