@@ -205,14 +205,6 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		System.out.println("MeanUCERF3 store dir: "+storeDir);
 		Preconditions.checkState(storeDir.exists(), "Store dir doesn't exist: "+storeDir.getAbsolutePath());
 		
-		final GetFile GF_UPDATER = new GetFile(
-				/*name=*/"MeanUCERF3",
-				/*clientMetaFile=*/new File("lib/getfile_client.json"),
-				/*serverMetaURI=*/URI.create(GetFile.LATEST_JAR_URL),
-				/*showProgress=*/true,
-				/*ignoreErrors=*/true);
-		GF_UPDATER.updateFile("getfile-all");
-		
 		presetsParam = new EnumParameter<MeanUCERF3.Presets>("Mean UCERF3 Presets",
 				EnumSet.allOf(Presets.class), Presets.FM3_1_BRANCH_AVG, "(custom)");
 		presetsParam.addParameterChangeListener(this);
