@@ -13,7 +13,9 @@ import java.io.Writer;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
@@ -98,6 +100,8 @@ import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PGV_Param;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
+import org.opensha.sha.imr.param.OtherParams.SigmaTruncLevelParam;
+import org.opensha.sha.imr.param.OtherParams.SigmaTruncTypeParam;
 import org.opensha.sha.imr.param.OtherParams.TectonicRegionTypeParam;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 import org.opensha.sha.util.TectonicRegionType;
@@ -162,9 +166,33 @@ public class SolHazardMapCalc {
 			}
 		}
 		
+		Map<String, Object> parameterOverrides = new LinkedHashMap<>(); // linked preserves order, which could be important
+		
 		if (cmd.hasOption("vs30")) {
 			double vs30 = Double.parseDouble(cmd.getOptionValue("vs30"));
 			System.out.println("Setting GMM Vs30="+(float)vs30);
+			parameterOverrides.put(Vs30_Param.NAME, vs30);
+		}
+		
+		if (cmd.hasOption("gmm-sigma-trunc-one-sided") || cmd.hasOption("gmm-sigma-trunc-two-sided")) {
+			double sigma;
+			boolean twoSided;
+			if (cmd.hasOption("gmm-sigma-trunc-one-sided")) {
+				Preconditions.checkState(!cmd.hasOption("gmm-sigma-trunc-two-sided"), "can't enable both one- and two-sided truncation");
+				sigma = Double.parseDouble(cmd.getOptionValue("gmm-sigma-trunc-one-sided"));
+				twoSided = false;
+				System.out.println("Enabling GMM one-sided sigma truncation at "+(float)sigma+" sigma");
+			} else {
+				sigma = Double.parseDouble(cmd.getOptionValue("gmm-sigma-trunc-two-sided"));
+				twoSided = true;
+				System.out.println("Enabling GMM two-sided sigma truncation at "+(float)sigma+" sigma");
+			}
+			parameterOverrides.put(SigmaTruncTypeParam.NAME, twoSided ?
+					SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_2SIDED : SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED);
+			parameterOverrides.put(SigmaTruncLevelParam.NAME, sigma);
+		}
+		
+		if (!parameterOverrides.isEmpty()) {
 			List<TectonicRegionType> trts = List.copyOf(ret.keySet());
 			for (TectonicRegionType trt : trts) {
 				AttenRelSupplier supplier = ret.get(trt);
@@ -183,7 +211,8 @@ public class SolHazardMapCalc {
 					@Override
 					public ScalarIMR get() {
 						ScalarIMR gmm = supplier.get();
-						gmm.getParameter(Vs30_Param.NAME).setValue(vs30);
+						for (String paramName : parameterOverrides.keySet())
+							gmm.getParameter(paramName).setValue(parameterOverrides.get(paramName));
 						return gmm;
 					}
 				});
@@ -1430,6 +1459,8 @@ public class SolHazardMapCalc {
 		ops.addOption("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
 		ops.addOption("md", "max-distance", true, "Maximum source-site distance in km. Default is TectonicRegionType-specific.");
 		ops.addOption(null, "vs30", true, "Site Vs30 value (uses GMM default otherwise)");
+		ops.addOption(null, "gmm-sigma-trunc-one-sided", true, "Enables one-sided GMM sigma truncation; default is disabled.");
+		ops.addOption(null, "gmm-sigma-trunc-two-sided", true, "Enables two-sided GMM sigma truncation; default is disabled.");
 		ops.addOption(null, "supersample", false, "Flag to enable grid cell supersampling (default is disabled)");
 		ops.addOption(null, "dist-corr", true, "Set the point-source distance correction method. Default is "
 				+BaseFaultSystemSolutionERF.DIST_CORR_TYPE_DEFAULT.name()+"; options are: "+FaultSysTools.enumOptions(PointSourceDistanceCorrections.class));
