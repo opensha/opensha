@@ -165,18 +165,18 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 				return (M)module;
 			if (call != null) {
 				// actually have to synchronize (expensive) here as we have a callable for it and haven't yet loaded it
-				debug("Need to load module of type '"+clazz+"' and have a callable, waiting for synchronization lock");
+//				debug("Need to load module of type '"+clazz+"' and have a callable, waiting for synchronization lock");
 				synchronized (this) {
 					// see if another thread loaded it while we were waiting on this synchronized block
 					module = mappings.get(clazz);
 					if (module != null) {
-						debug("In syncrhonized lock for '"+clazz+"' loading, it was already loaded before I got in");
+//						debug("In syncrhonized lock for '"+clazz+"' loading, it was already loaded before I got in");
 						return (M)module;
 					}
 					// actually have to load it
-					debug("In synchronized lock for '"+clazz+"' loading and still need to load it");
+//					debug("In synchronized lock for '"+clazz+"' loading and still need to load it");
 					module = getLoadAvailableModule(call);
-					debug("Done loading '"+clazz+"' in synchronized lock; null ? "+(module == null)+", mapped ? "+(mappings.containsKey(clazz)));
+//					debug("Done loading '"+clazz+"' in synchronized lock; null ? "+(module == null)+", mapped ? "+(mappings.containsKey(clazz)));
 				}
 			}
 		}
