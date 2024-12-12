@@ -331,6 +331,26 @@ public interface MFDGridSourceProvider extends GridSourceProvider {
 			// MFD is safe from alteration.
 		}
 		
+		@Override
+		public double getCumulativeNucleationRate(int gridIndex, double minMag) {
+			IncrementalMagFreqDist mfd = getMFD(gridIndex);
+			if (mfd == null)
+				return 0;
+			int magIndex = mfd.getClosestXIndex(minMag);
+			if ((float)mfd.getX(magIndex) < (float)minMag)
+				magIndex++;
+			if (magIndex < mfd.size())
+				return mfd.getCumRate(magIndex);
+			return 0;
+		}
+
+		@Override
+		public double getCumulativeNucleationRate(TectonicRegionType tectonicRegionType, int gridIndex, double minMag) {
+			if (tectonicRegionType == null || getTectonicRegionType(gridIndex) == tectonicRegionType)
+				return getCumulativeNucleationRate(gridIndex, minMag);
+			return 0;
+		}
+
 		private void applyAftershockFilter(IncrementalMagFreqDist mfd, MagnitudeDependentAftershockFilter aftershockFilter) {
 			for (int i=0; i<mfd.size(); i++) {
 				double rate = mfd.getY(i);
