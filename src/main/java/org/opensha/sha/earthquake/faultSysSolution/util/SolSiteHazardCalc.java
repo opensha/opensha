@@ -1563,6 +1563,8 @@ public class SolSiteHazardCalc {
 		erf.setParameter(IncludeBackgroundParam.NAME, gridOp);
 		erf.setGriddedSeismicitySettings(gridSettings);
 		
+		erf.setCacheGridSources(true);
+		
 		erf.getTimeSpan().setDuration(duration);
 		
 		erf.updateForecast();

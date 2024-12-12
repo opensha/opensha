@@ -326,6 +326,7 @@ public class SolHazardMapCalc {
 	// ERF params
 	private IncludeBackgroundOption backSeisOption;
 	private GriddedSeismicitySettings backSeisSettings = BaseFaultSystemSolutionERF.GRID_SETTINGS_DEFAULT;
+	private boolean cacheGridSources = true;
 	private boolean applyAftershockFilter;
 	private boolean aseisReducesArea = BaseFaultSystemSolutionERF.ASEIS_REDUCES_AREA_DEAFULT;
 	private boolean noMFDs = !BaseFaultSystemSolutionERF.USE_RUP_MFDS_DEAFULT;
@@ -446,6 +447,11 @@ public class SolHazardMapCalc {
 		Preconditions.checkState(fssERF == null, "ERF already initialized");
 		this.backSeisSettings = backSeisSettings;
 	}
+	
+	public void setCacheGridSources(boolean cacheGridSources) {
+		Preconditions.checkState(fssERF == null, "ERF already initialized");
+		this.cacheGridSources = cacheGridSources;
+	}
 
 	public void setApplyAftershockFilter(boolean applyAftershockFilter) {
 		Preconditions.checkState(fssERF == null, "ERF already initialized");
@@ -486,6 +492,7 @@ public class SolHazardMapCalc {
 			fssERF.setParameter(IncludeBackgroundParam.NAME, backSeisOption);
 			if (backSeisOption != IncludeBackgroundOption.EXCLUDE) {
 				fssERF.setGriddedSeismicitySettings(backSeisSettings);
+				fssERF.setCacheGridSources(cacheGridSources);
 			}
 			
 			fssERF.setParameter(ApplyGardnerKnopoffAftershockFilterParam.NAME, applyAftershockFilter);
