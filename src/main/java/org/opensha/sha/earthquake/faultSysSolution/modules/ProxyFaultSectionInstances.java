@@ -284,8 +284,11 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 		}
 		
 		if (shearToConnect && !proxySectsByParent.isEmpty()) {
-			int shearIters = 3;
-			int insideShearDiscr = 5; // want it be odd so we try the exact middle
+			// the length of this array is the number of iterations
+			// the contents are the number of discretizations for that iteration
+			// start out big and then reduce as we hone in
+			// should always be odd in order to try the exact middle
+			int[] shearIters = { 11, 5, 3};
 			for (List<FaultSection> parentBundle : proxySectsByParent.values()) {
 				if (parentBundle.size() == 1)
 					continue;
@@ -307,7 +310,7 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 //					if (p > 0)
 //						break;
 					
-					for (int iter=0; iter<shearIters; iter++) {
+					for (int iter=0; iter<shearIters.length; iter++) {
 						for (int b=0; b<parentBundle.size()-1; b++) {
 							FaultSection sect1 = parentBundle.get(b);
 							FaultSection sect2 = parentBundle.get(b+1);
@@ -315,16 +318,27 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 							int sectID1 = sect1.getSectionId();
 							int sectID2 = sect2.getSectionId();
 							
+							Region poly1 = sect1.getZonePolygon();
+							Region poly2 = sect2.getZonePolygon();
+							
 							if (D) System.out.println("\tShearing proxy "+p+" sects "+b+" and "+(b+1)+" (iter="+iter+")");
 							
 							FaultTrace trimmedTrace1 = subProxyTraces.get(sectID1).get(p);
 							FaultTrace extendedTrace1 = subProxyExtendedTraces.get(sectID1).get(p);
+							if (b == 0)
+								// don't let it extend beyond the start of the polygon; if we did, large shears can occur
+								// that rotate it too much
+								extendedTrace1 = trimTraceToRegion(poly1, extendedTrace1, true, false);
 							Location sect1L1 = sect1.getFaultTrace().first();
 							Location sect1L2 = sect1.getFaultTrace().last();
 							double sect1End = LocationUtils.distanceToLineFast(sect1L1, sect1L2, trimmedTrace1.last());
 							
 							FaultTrace trimmedTrace2 = subProxyTraces.get(sectID2).get(p);
 							FaultTrace extendedTrace2 = subProxyExtendedTraces.get(sectID2).get(p);
+							if (b == parentBundle.size()-2)
+								// don't let it extend beyond the end of the polygon; if we did, large shears can occur
+								// that rotate it too much
+								extendedTrace2 = trimTraceToRegion(poly2, extendedTrace2, false, true);
 							Location sect2L1 = sect2.getFaultTrace().first();
 							Location sect2L2 = sect2.getFaultTrace().last();
 							double sect2Start = LocationUtils.distanceToLineFast(sect2L1, sect2L2, trimmedTrace2.first());
@@ -362,7 +376,7 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 									angle2 = avgRightAngle; // bring 2 in to the right
 								}
 							}
-							EvenlyDiscretizedFunc shearTries = new EvenlyDiscretizedFunc(0d, maxShear, insideShearDiscr);
+							EvenlyDiscretizedFunc shearTries = new EvenlyDiscretizedFunc(0d, maxShear, shearIters[iter]);
 							
 							FaultTrace closestTrimmedTrace1 = null;
 							FaultTrace closestTrimmedTrace2 = null;
@@ -371,10 +385,7 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 							int closestIndex = -1;
 							double closestDist = Double.POSITIVE_INFINITY;
 							
-							Region poly1 = sect1.getZonePolygon();
-							Region poly2 = sect2.getZonePolygon();
-							
-							for (int i=0; i<insideShearDiscr; i++) {
+							for (int i=0; i<shearIters[iter]; i++) {
 								double shearDist = shearTries.getX(i);
 								
 								FaultTrace shearedExtendedTrace1 = shearTrace(extendedTrace1,
@@ -410,7 +421,7 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 							}
 							
 							if (D) System.out.println("\t\tClosest distance after shearing was a distance of "+(float)closestDist
-									+" for shearIndex="+closestIndex+"/"+insideShearDiscr+", shearDist="+(float)shearTries.getX(closestIndex));
+									+" for shearIndex="+closestIndex+"/"+shearIters[iter]+", shearDist="+(float)shearTries.getX(closestIndex));
 							if (closestIndex > 0) { // >0 means we actually sheared
 								subProxyTraces.get(sectID1).set(p, closestTrimmedTrace1);
 								subProxyExtendedTraces.get(sectID1).set(p, closestExtendedTrace1);
@@ -529,8 +540,14 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 	private static final double min_dist_to_resample = 0.1;
 	
 	private static FaultTrace trimTraceToRegion(Region poly, FaultTrace extended) {
+		return trimTraceToRegion(poly, extended, true, true);
+	}
+	
+	private static FaultTrace trimTraceToRegion(Region poly, FaultTrace extended, boolean trimBefore, boolean trimAfter) {
 		FaultTrace proxyTrace = new FaultTrace(null);
 		boolean polyContainedPrev = false;
+		List<Location> origLocsBefore = new ArrayList<>();
+		List<Location> origLocsAfter = new ArrayList<>();
 //		System.out.println("Trimming "+extended);
 		for (int i=0; i<extended.size(); i++) {
 			Location loc = extended.get(i);
@@ -602,9 +619,20 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 			
 			if (polyContainsLoc) {
 				proxyTrace.add(loc);
+				origLocsAfter.clear();
+			} else if (proxyTrace.isEmpty()) {
+				origLocsBefore.add(loc);
+			} else {
+				origLocsAfter.add(loc);
 			}
 			polyContainedPrev = polyContainsLoc;
 		}
+		if (!trimBefore && !origLocsBefore.isEmpty())
+			// add the original locations from before the polygon back in
+			proxyTrace.addAll(0, origLocsBefore);
+		if (!trimAfter && !origLocsAfter.isEmpty())
+			// add the original locations from after the polygon back in
+			proxyTrace.addAll(origLocsAfter);
 		Preconditions.checkState(proxyTrace.size() > 1, "Only found %s locations within poly?", proxyTrace.size());
 		return proxyTrace;
 	}
@@ -1028,71 +1056,71 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 		
 	}
 	
-	public static void main(String[] args) throws IOException {
-		FaultTrace testOrigTrace = new FaultTrace(null);
-		testOrigTrace.add(new Location(0.3, 0.1));
-		testOrigTrace.add(new Location(0.3, 0.2));
-//		testOrigTrace.add(new Location(0.6, 0.5));
-		testOrigTrace.add(new Location(0.7, 0.8));
-		testOrigTrace.add(new Location(0.7, 0.9));
-		GeographicMapMaker mapMaker = new GeographicMapMaker(new Region(new Location(0d, 0d), new Location(1d, 1d)));
-		mapMaker.setWriteGeoJSON(false);
-		mapMaker.setWritePDFs(false);
-		
-		List<LocationList> lines = new ArrayList<>();
-		List<PlotCurveCharacterstics> chars = new ArrayList<>();
-		lines.add(testOrigTrace);
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, PlotSymbol.FILLED_CIRCLE, 5f, Color.BLACK));
-		lines.add(shearTrace(testOrigTrace, testOrigTrace.first(), testOrigTrace.last(), 10d, 0d));
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, PlotSymbol.CIRCLE, 5f, Color.BLUE));
-		lines.add(shearTrace(testOrigTrace, testOrigTrace.first(), testOrigTrace.last(), 10d, 180d));
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, PlotSymbol.CIRCLE, 5f, Color.RED));
-		lines.add(shearTrace(testOrigTrace, testOrigTrace.last(), testOrigTrace.first(), 10d, 0d));
-		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, PlotSymbol.CIRCLE, 5f, Color.GREEN));
-		for (LocationList trace : lines)
-			System.out.println(trace);
-//		mapMaker.plotLines(lines, Color.BLUE, 3f);
-		mapMaker.plotLines(lines, chars);
-		
-		mapMaker.plot(new File("/tmp"), "proxy_shear_test", " ");
-		
-//		File solFile = new File("C:\\Users\\kmilner\\Downloads\\"
-//				+ "results_PRVI_FM_INITIAL_branch_averaged.zip");
-//		File solFile = new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
-//				+ "2024_05_21-prvi25_crustal_branches-GEOLOGIC/results_PRVI_FM_INITIAL_branch_averaged.zip");
-//		FaultSystemSolution sol = FaultSystemSolution.load(solFile);
-//		FaultSystemRupSet rupSet = sol.getRupSet();
-		
-//		FaultSystemSolution sol = null;
-//		File solFile = null;
-//		FaultSystemRupSet rupSet = new PRVI25_InvConfigFactory().buildRuptureSet(
-//				PRVI25_LogicTreeBranch.DEFAULT_CRUSTAL_ON_FAULT, FaultSysTools.defaultNumThreads());
-//		ProxyFaultSectionInstances proxySects = build(rupSet, 5, 5d);
-//		rupSet.addModule(proxySects);
-//		
-//		if (sol != null) {
-//			File modSolFile = new File(solFile.getParentFile(), solFile.getName().substring(0, solFile.getName().indexOf(".zip"))+"_mod.zip");
-//			sol.write(modSolFile);
-//			proxySects = FaultSystemRupSet.load(modSolFile).requireModule(ProxyFaultSectionInstances.class);
-//		}
-//		
-//		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
-//		
-////		List<FaultSection> filteredSects = new ArrayList<>();
-////		for (FaultSection sect : subSects)
-////			if (sect.getName().startsWith("Anegada Passage"))
-////				filteredSects.add(sect);
-////		subSects = filteredSects;
-//		
-//		GeographicMapMaker mapMaker = new GeographicMapMaker(subSects);
+//	public static void main(String[] args) throws IOException {
+//		FaultTrace testOrigTrace = new FaultTrace(null);
+//		testOrigTrace.add(new Location(0.3, 0.1));
+//		testOrigTrace.add(new Location(0.3, 0.2));
+////		testOrigTrace.add(new Location(0.6, 0.5));
+//		testOrigTrace.add(new Location(0.7, 0.8));
+//		testOrigTrace.add(new Location(0.7, 0.9));
+//		GeographicMapMaker mapMaker = new GeographicMapMaker(new Region(new Location(0d, 0d), new Location(1d, 1d)));
+//		mapMaker.setWriteGeoJSON(false);
+//		mapMaker.setWritePDFs(false);
 //		
 //		List<LocationList> lines = new ArrayList<>();
-//		for (FaultSection sect : proxySects.proxySects)
-//			lines.add(sect.getFaultTrace());
-//		mapMaker.plotLines(lines, Color.BLUE, 1f);
+//		List<PlotCurveCharacterstics> chars = new ArrayList<>();
+//		lines.add(testOrigTrace);
+//		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, PlotSymbol.FILLED_CIRCLE, 5f, Color.BLACK));
+//		lines.add(shearTrace(testOrigTrace, testOrigTrace.first(), testOrigTrace.last(), 10d, 0d));
+//		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, PlotSymbol.CIRCLE, 5f, Color.BLUE));
+//		lines.add(shearTrace(testOrigTrace, testOrigTrace.first(), testOrigTrace.last(), 10d, 180d));
+//		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, PlotSymbol.CIRCLE, 5f, Color.RED));
+//		lines.add(shearTrace(testOrigTrace, testOrigTrace.last(), testOrigTrace.first(), 10d, 0d));
+//		chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, PlotSymbol.CIRCLE, 5f, Color.GREEN));
+//		for (LocationList trace : lines)
+//			System.out.println(trace);
+////		mapMaker.plotLines(lines, Color.BLUE, 3f);
+//		mapMaker.plotLines(lines, chars);
 //		
-//		mapMaker.plot(new File("/tmp"), "proxy_finite_sect_test", " ");
-//		mapMaker.plot(new File("C:\\Users\\kmilner\\Downloads"), "proxy_finite_sect_test", " ");
-	}
+//		mapMaker.plot(new File("/tmp"), "proxy_shear_test", " ");
+//		
+////		File solFile = new File("C:\\Users\\kmilner\\Downloads\\"
+////				+ "results_PRVI_FM_INITIAL_branch_averaged.zip");
+////		File solFile = new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
+////				+ "2024_05_21-prvi25_crustal_branches-GEOLOGIC/results_PRVI_FM_INITIAL_branch_averaged.zip");
+////		FaultSystemSolution sol = FaultSystemSolution.load(solFile);
+////		FaultSystemRupSet rupSet = sol.getRupSet();
+//		
+////		FaultSystemSolution sol = null;
+////		File solFile = null;
+////		FaultSystemRupSet rupSet = new PRVI25_InvConfigFactory().buildRuptureSet(
+////				PRVI25_LogicTreeBranch.DEFAULT_CRUSTAL_ON_FAULT, FaultSysTools.defaultNumThreads());
+////		ProxyFaultSectionInstances proxySects = build(rupSet, 5, 5d);
+////		rupSet.addModule(proxySects);
+////		
+////		if (sol != null) {
+////			File modSolFile = new File(solFile.getParentFile(), solFile.getName().substring(0, solFile.getName().indexOf(".zip"))+"_mod.zip");
+////			sol.write(modSolFile);
+////			proxySects = FaultSystemRupSet.load(modSolFile).requireModule(ProxyFaultSectionInstances.class);
+////		}
+////		
+////		List<? extends FaultSection> subSects = rupSet.getFaultSectionDataList();
+////		
+//////		List<FaultSection> filteredSects = new ArrayList<>();
+//////		for (FaultSection sect : subSects)
+//////			if (sect.getName().startsWith("Anegada Passage"))
+//////				filteredSects.add(sect);
+//////		subSects = filteredSects;
+////		
+////		GeographicMapMaker mapMaker = new GeographicMapMaker(subSects);
+////		
+////		List<LocationList> lines = new ArrayList<>();
+////		for (FaultSection sect : proxySects.proxySects)
+////			lines.add(sect.getFaultTrace());
+////		mapMaker.plotLines(lines, Color.BLUE, 1f);
+////		
+////		mapMaker.plot(new File("/tmp"), "proxy_finite_sect_test", " ");
+////		mapMaker.plot(new File("C:\\Users\\kmilner\\Downloads"), "proxy_finite_sect_test", " ");
+//	}
 
 }
