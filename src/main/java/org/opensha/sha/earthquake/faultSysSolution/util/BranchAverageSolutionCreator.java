@@ -88,8 +88,8 @@ public class BranchAverageSolutionCreator {
 	
 	private boolean accumulatingSlipRates = true;
 	
-	private List<AveragingAccumulator<? extends BranchAverageableModule<?>>> rupSetAvgAccumulators;
-	private List<AveragingAccumulator<? extends BranchAverageableModule<?>>> solAvgAccumulators;
+	private List<TypedAccumulator<?>> rupSetAvgAccumulators;
+	private List<TypedAccumulator<?>> solAvgAccumulators;
 	
 	private List<Class<? extends OpenSHA_Module>> skipModules = new ArrayList<>();
 	
@@ -233,14 +233,31 @@ public class BranchAverageSolutionCreator {
 		
 	}
 	
-	private List<AveragingAccumulator<? extends BranchAverageableModule<?>>> initAccumulators(
+	class TypedAccumulator<T extends BranchAverageableModule<T>> {
+		private final AveragingAccumulator<T> accumulator;
+
+		public TypedAccumulator(AveragingAccumulator<T> accumulator) {
+			this.accumulator = accumulator;
+		}
+
+		public AveragingAccumulator<T> getAccumulator() {
+			return accumulator;
+		}
+	}
+	private <T extends BranchAverageableModule<T>> TypedAccumulator<T> getTypedAccumulator(BranchAverageableModule<T> module) {
+		AveragingAccumulator<T> accumulator = module.averagingAccumulator();
+		if (accumulator == null)
+			return null;
+		return new TypedAccumulator<>(accumulator);
+	}
+	
+	private List<TypedAccumulator<?>> initAccumulators(
 			ModuleContainer<OpenSHA_Module> container) {
-		List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators = new ArrayList<>();
+		List<TypedAccumulator<?>> accumulators = new ArrayList<>();
 		for (OpenSHA_Module module : container.getModulesAssignableTo(BranchAverageableModule.class, true, skipModules)) {
 			Preconditions.checkState(module instanceof BranchAverageableModule<?>);
 			System.out.println("Building branch-averaging accumulator for: "+module.getName());
-			AveragingAccumulator<? extends BranchAverageableModule<?>> accumulator =
-					((BranchAverageableModule<?>)module).averagingAccumulator();
+			TypedAccumulator<?> accumulator = getTypedAccumulator((BranchAverageableModule<?>)module);
 			if (accumulator == null) {
 				System.err.println("WARNING: accumulator is null for module "+module.getName()+", skipping averaging");
 				continue;
@@ -250,11 +267,16 @@ public class BranchAverageSolutionCreator {
 		return accumulators;
 	}
 	
-	private List<Future<?>> processAccumulators(List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators, 
+	private List<Future<?>> processAccumulators(List<TypedAccumulator<?>> accumulators, 
 			ModuleContainer<OpenSHA_Module> container, LogicTreeBranch<?> branch, double weight) {
 		List<Runnable> runs = new ArrayList<>(accumulators.size());
-		for (AveragingAccumulator<? extends BranchAverageableModule<?>> accumulator : accumulators)
-			runs.add(new AccumulateRunnable(accumulators, accumulator, container, branch, weight));
+		for (TypedAccumulator<?> accumulator : new ArrayList<>(accumulators)) {
+			Runnable run = initAccumulatorRunnable(accumulators, accumulator, container, branch, weight);
+			if (run != null)
+				runs.add(run);
+		}
+		if (runs.isEmpty())
+			return List.of();
 		
 		List<Future<?>> futures = new ArrayList<>(runs.size());
 		
@@ -264,20 +286,47 @@ public class BranchAverageSolutionCreator {
 		return futures;
 	}
 	
-	private class AccumulateRunnable implements Runnable {
+	private <E extends BranchAverageableModule<E>> AccumulateRunnable<E> initAccumulatorRunnable(
+			List<TypedAccumulator<?>> accumulators,
+			TypedAccumulator<E> accumulator, ModuleContainer<OpenSHA_Module> container, LogicTreeBranch<?> branch, double weight) {
+		// no use doing this in parallel because calls are loaded in a synchronized block anyway
+		E module = container.getModule(accumulator.accumulator.getType());
 		
-		private List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators;
-		private AveragingAccumulator<? extends BranchAverageableModule<?>> accumulator;
-		private ModuleContainer<OpenSHA_Module> container;
+		if (module == null) {
+			synchronized (accumulators) {
+				stopTrackingAccumulator(accumulators, accumulator, branch, "Module not loaded (null)");
+			}
+			return null;
+		}
+		
+		return new AccumulateRunnable<>(accumulators, accumulator, module, branch, weight);
+	}
+	
+	private void stopTrackingAccumulator(List<TypedAccumulator<?>> accumulators,
+			TypedAccumulator<?> accumulator, LogicTreeBranch<?> branch, String error) {
+		System.err.println("Error processing accumulator, will no longer average "+accumulator.accumulator.getType().getName()
+				+".\n\tFailed on branch: "+branch
+				+"\n\tError message: "+error);
+		System.err.flush();
+		accumulators.remove(accumulator);
+		if (accumulatingSlipRates && SolutionSlipRates.class.isAssignableFrom(accumulator.accumulator.getType()))
+			// stop calculating slip rates
+			accumulatingSlipRates = false;
+	}
+	
+	private class AccumulateRunnable<E extends BranchAverageableModule<E>> implements Runnable {
+		
+		private List<TypedAccumulator<?>> accumulators;
+		private TypedAccumulator<E> accumulator;
+		private E module;
 		private LogicTreeBranch<?> branch;
 		private double weight;
 
-		public AccumulateRunnable(List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators,
-				AveragingAccumulator<? extends BranchAverageableModule<?>> accumulator,
-				ModuleContainer<OpenSHA_Module> container, LogicTreeBranch<?> branch, double weight) {
+		public AccumulateRunnable(List<TypedAccumulator<?>> accumulators,
+				TypedAccumulator<E> accumulator, E module, LogicTreeBranch<?> branch, double weight) {
 			this.accumulators = accumulators;
 			this.accumulator = accumulator;
-			this.container = container;
+			this.module = module;
 			this.branch = branch;
 			this.weight = weight;
 		}
@@ -285,32 +334,24 @@ public class BranchAverageSolutionCreator {
 		@Override
 		public void run() {
 			try {
-				accumulator.processContainer(container, weight);
+				accumulator.accumulator.process(module, weight);
 			} catch (Exception e) {
 				synchronized (accumulators) {
-//					e.printStackTrace();
-					System.err.println("Error processing accumulator, will no longer average "+accumulator.getType().getName()
-							+".\n\tFailed on branch: "+branch
-							+"\n\tError message: "+e.getMessage());
-					System.err.flush();
-					accumulators.remove(accumulator);
-					if (accumulatingSlipRates && SolutionSlipRates.class.isAssignableFrom(accumulator.getType()))
-						// stop calculating slip rates
-						accumulatingSlipRates = false;
+					stopTrackingAccumulator(accumulators, accumulator, branch, e.getMessage());
 				}
 			}
 		}
 		
 	}
 	
-	private static void buildAverageModules(List<AveragingAccumulator<? extends BranchAverageableModule<?>>> accumulators, 
+	private static void buildAverageModules(List<TypedAccumulator<?>> accumulators, 
 			ModuleContainer<OpenSHA_Module> container) {
-		for (AveragingAccumulator<? extends BranchAverageableModule<?>> accumulator : accumulators) {
+		for (TypedAccumulator<?> accumulator : accumulators) {
 			try {
-				container.addModule(accumulator.getAverage());
+				container.addModule(accumulator.accumulator.getAverage());
 			} catch (Exception e) {
 				e.printStackTrace();
-				System.err.println("Error building average module of type "+accumulator.getType().getName());
+				System.err.println("Error building average module of type "+accumulator.accumulator.getType().getName());
 				System.err.flush();
 			}
 		}
