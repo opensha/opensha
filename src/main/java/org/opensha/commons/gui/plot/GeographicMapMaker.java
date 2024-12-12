@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import org.jfree.chart.annotations.XYAnnotation;
@@ -97,6 +98,7 @@ public class GeographicMapMaker {
 	protected boolean plotTracesForFilledSurfaces = true;
 	protected boolean plotAllSectPolys = false;
 	protected boolean plotProxySectPolys = true;
+	protected boolean plotSectPolysOnTop = false;
 	
 	/*
 	 * General plot items
@@ -511,6 +513,10 @@ public class GeographicMapMaker {
 
 	public void setPlotProxySectPolys(boolean plotProxySectPolys) {
 		this.plotProxySectPolys = plotProxySectPolys;
+	}
+
+	public void setPlotSectPolysOnTop(boolean plotSectPolysOnTop) {
+		this.plotSectPolysOnTop = plotSectPolysOnTop;
 	}
 
 	public void setReverseSort(boolean reverseSort) { 
@@ -1142,79 +1148,8 @@ public class GeographicMapMaker {
 					plotSects.add(subSect);
 			}
 			
-			if (plotAllSectPolys || plotProxySectPolys) {
-				// plot any polygons first
-				boolean first = true;
-				boolean hasNonProxy = false;
-				for (FaultSection sect : sects)
-					hasNonProxy = !sect.isProxyFault() && sect.getZonePolygon() != null;
-				Region prevPoly = null;
-				for (int s=0; s<sects.size(); s++) {
-					FaultSection sect = sects.get(s);
-					Region poly = sect.getZonePolygon();
-					if (!plotSects.contains(sect) || poly == null)
-						// outside of the region or no polygon, skip
-						continue;
-					if (!plotAllSectPolys && !sect.isProxyFault())
-						// we're only plotting polys for proxies, and this isn't one, skip
-						continue;
-					if (prevPoly != null && prevPoly.equals(poly))
-						// duplicate (sometimes subsects keep the same parent poly)
-						continue;
-					prevPoly = poly;
-					
-					// we need to plot it
-					XY_DataSet xy = new DefaultXY_DataSet();
-					for (Location loc : poly.getBorder())
-						xy.set(loc.lon, loc.lat);
-					if (!xy.get(0).equals(xy.get(xy.size()-1)))
-						// close it
-						xy.set(xy.get(0));
-					
-					if (first) {
-						if (hasNonProxy && plotAllSectPolys)
-							xy.setName("Fault Polygons");
-						else
-							xy.setName("Proxy Fault Polygons");
-						first = false;
-					}
-					
-					funcs.add(xy);
-					chars.add(sectPolyChar);
-					
-					if (writeGeoJSON) {
-						Feature feature = poly.toFeature();
-						FeatureProperties props = feature.properties;
-						props.set("name", sect.getSectionName());
-						props.set("id", sect.getSectionId());
-						if (sect.getParentSectionId() >= 0)
-							props.set("parentID", sect.getParentSectionId());
-						if (sectPolyChar.getLineType() == PlotLineType.POLYGON_SOLID) {
-							props.set(FeatureProperties.STROKE_OPACITY_PROP, 0d);
-							Color color = sectPolyChar.getColor();
-							if (color.getAlpha() == 255) {
-								props.set(FeatureProperties.FILL_COLOR_PROP, color);
-							} else {
-								double opacity = (double)color.getAlpha()/255d;
-								props.set(FeatureProperties.FILL_OPACITY_PROP, opacity);
-								props.set(FeatureProperties.FILL_COLOR_PROP, new Color(color.getRed(), color.getGreen(), color.getBlue()));
-							}
-						} else if (sectPolyChar.getLineType() != null) {
-							props.set(FeatureProperties.FILL_OPACITY_PROP, 0d);
-							props.set(FeatureProperties.STROKE_WIDTH_PROP, sectPolyChar.getLineWidth());
-							Color color = sectPolyChar.getColor();
-							if (color.getAlpha() == 255) {
-								props.set(FeatureProperties.STROKE_COLOR_PROP, color);
-							} else {
-								double opacity = (double)color.getAlpha()/255d;
-								props.set(FeatureProperties.STROKE_OPACITY_PROP, opacity);
-								props.set(FeatureProperties.STROKE_COLOR_PROP, new Color(color.getRed(), color.getGreen(), color.getBlue()));
-							}
-						}
-						features.add(feature);
-					}
-				}
-			}
+			if (!plotSectPolysOnTop)
+				plotSectPolys(plotSects);
 
 			// plot section outlines on bottom
 			XY_DataSet prevTrace = null;
@@ -1509,6 +1444,85 @@ public class GeographicMapMaker {
 					chars.add(highlightTraceChar);
 					if (writeGeoJSON)
 						features.add(traceFeature(hightlight, highlightTraceChar));
+				}
+			}
+			
+			if (plotSectPolysOnTop)
+				plotSectPolys(plotSects);
+		}
+		
+		protected void plotSectPolys(Set<FaultSection> plotSects) {
+			if (plotAllSectPolys || plotProxySectPolys) {
+				// plot any polygons first
+				boolean first = true;
+				boolean hasNonProxy = false;
+				for (FaultSection sect : sects)
+					hasNonProxy = !sect.isProxyFault() && sect.getZonePolygon() != null;
+				Region prevPoly = null;
+				for (int s=0; s<sects.size(); s++) {
+					FaultSection sect = sects.get(s);
+					Region poly = sect.getZonePolygon();
+					if (!plotSects.contains(sect) || poly == null)
+						// outside of the region or no polygon, skip
+						continue;
+					if (!plotAllSectPolys && !sect.isProxyFault())
+						// we're only plotting polys for proxies, and this isn't one, skip
+						continue;
+					if (prevPoly != null && prevPoly.equals(poly))
+						// duplicate (sometimes subsects keep the same parent poly)
+						continue;
+					prevPoly = poly;
+					
+					// we need to plot it
+					XY_DataSet xy = new DefaultXY_DataSet();
+					for (Location loc : poly.getBorder())
+						xy.set(loc.lon, loc.lat);
+					if (!xy.get(0).equals(xy.get(xy.size()-1)))
+						// close it
+						xy.set(xy.get(0));
+					
+					if (first) {
+						if (hasNonProxy && plotAllSectPolys)
+							xy.setName("Fault Polygons");
+						else
+							xy.setName("Proxy Fault Polygons");
+						first = false;
+					}
+					
+					funcs.add(xy);
+					chars.add(sectPolyChar);
+					
+					if (writeGeoJSON) {
+						Feature feature = poly.toFeature();
+						FeatureProperties props = feature.properties;
+						props.set("name", sect.getSectionName());
+						props.set("id", sect.getSectionId());
+						if (sect.getParentSectionId() >= 0)
+							props.set("parentID", sect.getParentSectionId());
+						if (sectPolyChar.getLineType() == PlotLineType.POLYGON_SOLID) {
+							props.set(FeatureProperties.STROKE_OPACITY_PROP, 0d);
+							Color color = sectPolyChar.getColor();
+							if (color.getAlpha() == 255) {
+								props.set(FeatureProperties.FILL_COLOR_PROP, color);
+							} else {
+								double opacity = (double)color.getAlpha()/255d;
+								props.set(FeatureProperties.FILL_OPACITY_PROP, opacity);
+								props.set(FeatureProperties.FILL_COLOR_PROP, new Color(color.getRed(), color.getGreen(), color.getBlue()));
+							}
+						} else if (sectPolyChar.getLineType() != null) {
+							props.set(FeatureProperties.FILL_OPACITY_PROP, 0d);
+							props.set(FeatureProperties.STROKE_WIDTH_PROP, sectPolyChar.getLineWidth());
+							Color color = sectPolyChar.getColor();
+							if (color.getAlpha() == 255) {
+								props.set(FeatureProperties.STROKE_COLOR_PROP, color);
+							} else {
+								double opacity = (double)color.getAlpha()/255d;
+								props.set(FeatureProperties.STROKE_OPACITY_PROP, opacity);
+								props.set(FeatureProperties.STROKE_COLOR_PROP, new Color(color.getRed(), color.getGreen(), color.getBlue()));
+							}
+						}
+						features.add(feature);
+					}
 				}
 			}
 		}
