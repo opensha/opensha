@@ -47,7 +47,32 @@ import com.google.common.collect.Table;
 public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 	LOW("Lower Seismicity Bound (p2.5)", "Low", 0.025, 0.13d),
 	PREFFERRED("Preffered Seismicity Rate", "Preferred", Double.NaN, 0.74d),
-	HIGH("Upper Seismicity Bound (p97.5)", "High", 0.975, 0.13d);
+	HIGH("Upper Seismicity Bound (p97.5)", "High", 0.975, 0.13d),
+	AVERAGE("Average Seismicity Rate", "Average", Double.NaN, 0d) {
+
+		@Override
+		public IncrementalMagFreqDist build(PRVI25_SeismicityRegions region, EvenlyDiscretizedFunc refMFD, double mMax)
+				throws IOException {
+			IncrementalMagFreqDist ret = null;
+			double weightSum = 0d;
+			for (PRVI25_RegionalSeismicity seis : values()) {
+				if (seis == this || seis.weight == 0d)
+					continue;
+				weightSum += seis.weight;
+				IncrementalMagFreqDist mfd = seis.build(region, refMFD, mMax);
+				if (ret == null)
+					ret = new IncrementalMagFreqDist(mfd.getMinX(), mfd.getMaxX(), mfd.size());
+				else
+					Preconditions.checkState(mfd.size() == ret.size());
+				for (int i=0; i<ret.size(); i++)
+					ret.add(i, mfd.getY(i)*seis.weight);
+			}
+			if ((float)weightSum != 1f)
+				ret.scale(1d/weightSum);
+			return ret;
+		}
+		
+	};
 	
 	public static String RATE_DATE = "2024_11_21";
 	private static final String RATES_PATH_PREFIX = "/data/erf/prvi25/seismicity/rates/";
@@ -191,86 +216,53 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 		return boundName;
 	}
 	
+	public static UncertainBoundedIncrMagFreqDist getRescaled(PRVI25_SeismicityRegions seisRegion,
+			double fractN, EvenlyDiscretizedFunc refMFD, double mMax) throws IOException {
+		IncrementalMagFreqDist pref = PREFFERRED.build(seisRegion, refMFD, mMax);
+		pref.scale(fractN);
+		IncrementalMagFreqDist uppper = HIGH.build(seisRegion, refMFD, mMax);
+		uppper.scale(fractN);
+		IncrementalMagFreqDist lower = LOW.build(seisRegion, refMFD, mMax);
+		lower.scale(fractN);
+		
+		// now further scale bounds to account for less data
+		for (int i=0; i<pref.size(); i++) {
+			double prefVal = pref.getY(i);
+			if (prefVal > 0d) {
+				double origUpper = uppper.getY(i);
+				double origLower = lower.getY(i);
+				
+				double upperRatio = origUpper/prefVal;
+				double lowerRatio = origLower/prefVal;
+				
+				upperRatio *= 1/Math.sqrt(fractN);
+				lowerRatio /= 1/Math.sqrt(fractN);
+				uppper.set(i, prefVal*upperRatio);
+				lower.set(i, prefVal*lowerRatio);
+			}
+		}
+		UncertainBoundedIncrMagFreqDist rescaled = new UncertainBoundedIncrMagFreqDist(pref, lower, uppper, BOUND_TYPE);
+		double M1 = SeismicityRateFileLoader.locateMean(loadRates(seisRegion.name(), TYPE)).M1;
+		
+		double prefN = rescaled.getCumRateDistWithOffset().getInterpolatedY(M1);
+		String name = "Remmapped Observed [pdfFractN="+oDF.format(fractN)+", N"+oDF.format(M1)+"="+oDF.format(prefN)+"]";
+		
+		rescaled.setName(name);
+		rescaled.setBoundName(getBoundName(rescaled.getLower(), rescaled.getUpper(), M1));
+		return rescaled;
+	}
+	
 	public static UncertainBoundedIncrMagFreqDist getRemapped(Region region, PRVI25_SeismicityRegions seisRegion,
 			PRVI25_DeclusteringAlgorithms declustering, PRVI25_SeisSmoothingAlgorithms smoothing,
 			EvenlyDiscretizedFunc refMFD, double mMax) throws IOException {
-		IncrementalMagFreqDist upper = null;
-		IncrementalMagFreqDist lower = null;
-		IncrementalMagFreqDist pref = null;
+		GriddedGeoDataSet pdf = smoothing.loadXYZ(seisRegion, declustering);
 		
-		double sumTotalN = 0d;
-		double sumFractN = 0d;
+		double fractN = 0d;
+		for (int i=0; i<pdf.size(); i++)
+			if (region.contains(pdf.getLocation(i)))
+				fractN += pdf.get(i);
 		
-//		for (SeismicityRegions seisRegion : seisRegions) {
-			// get pdf
-			GriddedGeoDataSet pdf = smoothing.loadXYZ(seisRegion, declustering);
-			
-			double fractN = 0d;
-			for (int i=0; i<pdf.size(); i++)
-				if (region.contains(pdf.getLocation(i)))
-					fractN += pdf.get(i);
-			
-//			if (fractN == 0d)
-//				continue;
-			
-			sumTotalN += 1d;
-			sumFractN += fractN;
-			
-			// rescale for this fractional N
-			IncrementalMagFreqDist myPref = PREFFERRED.build(seisRegion, refMFD, mMax);
-			myPref.scale(fractN);
-			IncrementalMagFreqDist myUpper = HIGH.build(seisRegion, refMFD, mMax);
-			myUpper.scale(fractN);
-			IncrementalMagFreqDist myLower = LOW.build(seisRegion, refMFD, mMax);
-			myLower.scale(fractN);
-			
-			// now further scale bounds to account for less data
-			for (int i=0; i<myPref.size(); i++) {
-				double prefVal = myPref.getY(i);
-				if (prefVal > 0d) {
-					double origUpper = myUpper.getY(i);
-					double origLower = myLower.getY(i);
-					
-					double upperRatio = origUpper/prefVal;
-					double lowerRatio = origLower/prefVal;
-					
-					upperRatio *= 1/Math.sqrt(fractN);
-					lowerRatio /= 1/Math.sqrt(fractN);
-					myUpper.set(i, prefVal*upperRatio);
-					myLower.set(i, prefVal*lowerRatio);
-				}
-			}
-			
-//			if (upper == null) {
-				upper = myUpper;
-				lower = myLower;
-				pref = myPref;
-//			} else {
-//				// add them
-//				// now further scale bounds to account for less data
-//				for (int i=0; i<refMFD.size(); i++) {
-//					double prefVal = myPref.getY(i);
-//					if (prefVal > 0d) {
-//						upper.add(i, myUpper.getY(i));
-//						lower.add(i, myLower.getY(i));
-//						pref.add(i, myPref.getY(i));
-//					}
-//				}
-//			}
-//		}
-		Preconditions.checkNotNull(pref);
-		
-		double M1 = SeismicityRateFileLoader.locateMean(loadRates(seisRegion.name(), TYPE)).M1;
-		
-		double prefN = pref.getCumRateDistWithOffset().getInterpolatedY(M1);
-		String name = "Remmapped Observed [pdfFractN="+oDF.format(sumFractN/sumTotalN)+", N"+oDF.format(M1)+"="+oDF.format(prefN)+"]";
-		
-		
-		
-		UncertainBoundedIncrMagFreqDist ret = new UncertainBoundedIncrMagFreqDist(pref, lower, upper, BOUND_TYPE);
-		ret.setName(name);
-		ret.setBoundName(getBoundName(lower, upper, M1));
-		return ret;
+		return getRescaled(seisRegion, fractN, refMFD, mMax);
 	}
 	
 	@Override
