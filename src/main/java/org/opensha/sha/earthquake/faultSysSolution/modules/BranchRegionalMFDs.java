@@ -308,6 +308,137 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 			return ret;
 		}
 	}
+	
+	public static BranchRegionalMFDs combine(List<BranchRegionalMFDs> regMFDsList, List<Double> weightsList) {
+		Preconditions.checkState(regMFDsList.size() > 1);
+		double sumWeight;
+		if (weightsList == null) {
+			double weightEach = 1d/regMFDsList.size();
+			weightsList = new ArrayList<>(regMFDsList.size());
+			for (int i=0; i<regMFDsList.size(); i++)
+				weightsList.add(weightEach);
+			sumWeight = 1d;
+		} else {
+			Preconditions.checkState(regMFDsList.size() == weightsList.size());
+			sumWeight = weightsList.stream().mapToDouble(D->D).sum();
+		}
+		
+		int numCombBranches = 0;
+		for (BranchRegionalMFDs regMFDs : regMFDsList)
+			numCombBranches += regMFDs.weights.length;
+		
+		BranchRegionalMFDs ref = regMFDsList.get(0);
+		
+		IncrementalMagFreqDist[] supraTotalBranchMFDs = ref.supraTotalBranchMFDs == null ? null : new IncrementalMagFreqDist[numCombBranches];
+		List<IncrementalMagFreqDist[]> supraRegionalBranchMFDs = initNewRegional(ref.supraRegionalBranchMFDs, numCombBranches);
+		IncrementalMagFreqDist[] gridTotalBranchMFDs = ref.gridTotalBranchMFDs == null ? null : new IncrementalMagFreqDist[numCombBranches];
+		List<IncrementalMagFreqDist[]> gridRegionalBranchMFDs = initNewRegional(ref.gridRegionalBranchMFDs, numCombBranches);
+		IncrementalMagFreqDist[] sumTotalBranchMFDs = ref.sumTotalBranchMFDs == null ? null : new IncrementalMagFreqDist[numCombBranches];
+		List<IncrementalMagFreqDist[]> sumRegionalBranchMFDs = initNewRegional(ref.sumRegionalBranchMFDs, numCombBranches);
+		
+		double[] weights = new double[numCombBranches];
+		int index = 0;
+		
+		for (int r=0; r<regMFDsList.size(); r++) {
+			BranchRegionalMFDs regMFDs = regMFDsList.get(r);
+			double myWeight = weightsList.get(r)/sumWeight;
+			for (int i=0; i<regMFDs.weights.length; i++) {
+				weights[index] = regMFDs.weights[i]*myWeight;
+//				if (r == 1)
+//					weights[index] = 0d;
+				
+				if (supraTotalBranchMFDs != null)
+					supraTotalBranchMFDs[index] = regMFDs.supraTotalBranchMFDs[i];
+				if (gridTotalBranchMFDs != null)
+					gridTotalBranchMFDs[index] = regMFDs.gridTotalBranchMFDs[i];
+				if (supraTotalBranchMFDs != null)
+					sumTotalBranchMFDs[index] = regMFDs.sumTotalBranchMFDs[i];
+				
+				addIntoRegional(supraRegionalBranchMFDs, index, regMFDs.supraRegionalBranchMFDs, i);
+				addIntoRegional(gridRegionalBranchMFDs, index, regMFDs.gridRegionalBranchMFDs, i);
+				addIntoRegional(sumRegionalBranchMFDs, index, regMFDs.sumRegionalBranchMFDs, i);
+				
+				index++;
+			}
+		}
+		Preconditions.checkState(index == numCombBranches);
+		
+		BranchRegionalMFDs ret = new BranchRegionalMFDs();
+		
+		ret.weights = weights;
+		
+		ret.supraTotalBranchMFDs = expandToSameSize(supraTotalBranchMFDs);
+		ret.supraRegionalBranchMFDs = expandToSameSize(supraRegionalBranchMFDs);
+		
+		ret.gridTotalBranchMFDs = expandToSameSize(gridTotalBranchMFDs);
+		ret.gridRegionalBranchMFDs = expandToSameSize(gridRegionalBranchMFDs);
+		
+		ret.sumTotalBranchMFDs = expandToSameSize(sumTotalBranchMFDs);
+		ret.sumRegionalBranchMFDs = expandToSameSize(sumRegionalBranchMFDs);
+		
+		return ret;
+	}
+	
+	private static IncrementalMagFreqDist[] expandToSameSize(IncrementalMagFreqDist[] mfds) {
+		if (mfds == null)
+			return null;
+		double overallMinX = Double.POSITIVE_INFINITY;
+		double overallMaxX = 0d;
+		boolean allSame = true;
+		for (IncrementalMagFreqDist mfd : mfds) {
+			overallMinX = Math.min(overallMinX, mfd.getMinX());
+			overallMaxX = Math.max(overallMaxX, mfd.getMaxX());
+			allSame &= overallMinX == mfd.getMinX();
+			allSame &= overallMaxX == mfd.getMaxX();
+		}
+		if (allSame)
+			return mfds;
+		EvenlyDiscretizedFunc refMFD = new EvenlyDiscretizedFunc(overallMinX, overallMaxX,
+				(int)((overallMaxX - overallMinX)/mfds[0].getDelta() + 0.5) + 1);
+//		System.out.println("Resizing MFDs to range ["+(float)overallMinX+", "+(float)overallMaxX+"]; size="+refMFD.size());
+		Preconditions.checkState((float)refMFD.getDelta() == (float)mfds[0].getDelta(),
+				"Bad delta for min=%s, max=%s, delta=%s, calcDelta=%s, size=%s",
+				overallMinX, overallMaxX, mfds[0].getDelta(), refMFD.getDelta(), refMFD.size());
+		for (int i=0; i<mfds.length; i++) {
+			IncrementalMagFreqDist expanded = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
+			for (Point2D pt : mfds[i])
+				expanded.set(refMFD.getClosestXIndex(pt.getX()), pt.getY());
+			mfds[i] = expanded;
+		}
+		return mfds;
+	}
+	
+	private static List<IncrementalMagFreqDist[]> expandToSameSize(List<IncrementalMagFreqDist[]> mfdsList) {
+		if (mfdsList == null)
+			return null;
+		for (IncrementalMagFreqDist[] mfds : mfdsList)
+			expandToSameSize(mfds);
+		return mfdsList;
+	}
+	
+	private static List<IncrementalMagFreqDist[]> initNewRegional(List<IncrementalMagFreqDist[]> refRegional, int newSize) {
+		if (refRegional == null)
+			return null;
+		List<IncrementalMagFreqDist[]> ret = new ArrayList<>();
+		for (int i=0; i<refRegional.size(); i++) {
+			if (refRegional.get(i) == null)
+				ret.add(null);
+			else
+				ret.add(new IncrementalMagFreqDist[newSize]);
+		}
+		return ret;
+	}
+	
+	private static void addIntoRegional(List<IncrementalMagFreqDist[]> to, int toIndex, List<IncrementalMagFreqDist[]> from, int fromIndex) {
+		if (to == null)
+			return;
+		for (int i=0; i<to.size(); i++) {
+			IncrementalMagFreqDist[] toMFDs = to.get(i);
+			if (toMFDs == null)
+				continue;
+			toMFDs[toIndex] = from.get(i)[fromIndex];
+		}
+	}
 
 	@Override
 	public String getName() {
@@ -635,7 +766,14 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 	}
 	
 	private EvenlyDiscretizedFunc[] calcFractiles(IncrementalMagFreqDist[] mfds, double[] fractiles, boolean cumulative) {
-		EvenlyDiscretizedFunc refMFD = cumulative ? mfds[0].getCumRateDistWithOffset() : mfds[0];
+		EvenlyDiscretizedFunc refMFD = mfds[0];
+		for (int i=1; i<mfds.length; i++) {
+			Preconditions.checkState((float)mfds[i].getMinX() == (float)refMFD.getMinX());
+			if (mfds[i].size() > refMFD.size())
+				refMFD = mfds[i];
+		}
+		if (cumulative)
+			refMFD = ((IncrementalMagFreqDist)refMFD).getCumRateDistWithOffset();
 		 
 		double[][] branchVals = new double[refMFD.size()][mfds.length];
 		
@@ -643,9 +781,13 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 			IncrementalMagFreqDist branchMFD = mfds[b];
 			if (cumulative) {
 				EvenlyDiscretizedFunc branchCmlMFD = branchMFD.getCumRateDistWithOffset();
+				Preconditions.checkState(branchCmlMFD.size() <= refMFD.size());
+				Preconditions.checkState(branchCmlMFD.getMinX() == refMFD.getMinX());
 				for (int i=0; i<branchCmlMFD.size(); i++)
 					branchVals[i][b] = branchCmlMFD.getY(i);
 			} else {
+				Preconditions.checkState(branchMFD.getMinX() == refMFD.getMinX());
+				Preconditions.checkState(branchMFD.size() <= refMFD.size(), "MFD size mismatch: %s != %s", branchMFD.size(), refMFD.size());
 				for (int i=0; i<branchMFD.size(); i++)
 					branchVals[i][b] = branchMFD.getY(i);
 			}
