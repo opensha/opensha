@@ -83,6 +83,7 @@ public class GeographicMapMaker {
 	protected int widthDefault = PLOT_WIDTH_DEFAULT;
 	protected boolean axisLabels = true;
 	protected boolean axisTicks = true;
+	private boolean plotRegionsAboveFaults = false;
 	
 	/*
 	 * Fault sections and cached surfaces/traces
@@ -193,9 +194,9 @@ public class GeographicMapMaker {
 	/*
 	 * Inset region outlies
 	 */
-	protected Collection<Region> insetRegions;
-	protected PlotCurveCharacterstics insetRegionOutlineChar;
-	protected Color insetRegionFillColor;
+	protected List<Region> insetRegions;
+	protected List<PlotCurveCharacterstics> insetRegionOutlineChars;
+	protected List<Color> insetRegionFillColors;
 	protected double insetRegionFillOpacity;
 
 	/*
@@ -441,23 +442,46 @@ public class GeographicMapMaker {
 		this.highlightTraceChar = null;
 	}
 	
-	public void plotInsetRegions(Collection<Region> regions, PlotCurveCharacterstics outlineChar,
+	public void plotInsetRegions(List<Region> regions, PlotCurveCharacterstics outlineChar,
 			Color fillColor, double fillOpacity) {
+		List<PlotCurveCharacterstics> chars = null;
+		if (outlineChar != null) {
+			chars = new ArrayList<>(regions.size());
+			for (int i=0; i<regions.size(); i++)
+				chars.add(outlineChar);
+		}
+		List<Color> colors = null;
+		if (fillColor != null) {
+			colors = new ArrayList<>(regions.size());
+			for (int i=0; i<regions.size(); i++)
+				colors.add(fillColor);
+		}
+		plotInsetRegions(regions, chars, colors, fillOpacity);
+	}
+	
+	public void plotInsetRegions(List<Region> regions, List<PlotCurveCharacterstics> outlineChars,
+			List<Color> fillColors, double fillOpacity) {
 		if (regions == null || regions.isEmpty()) {
 			clearInsetRegions();
 		} else {
-			Preconditions.checkState(outlineChar != null || insetRegionFillColor != null);
+			Preconditions.checkState(outlineChars != null || fillColors != null);
 			this.insetRegions = regions;
-			this.insetRegionOutlineChar = outlineChar;
-			this.insetRegionFillColor = fillColor;
+			Preconditions.checkState(outlineChars == null || outlineChars.size() == regions.size());
+			this.insetRegionOutlineChars = outlineChars;
+			Preconditions.checkState(fillColors == null || fillColors.size() == regions.size());
+			this.insetRegionFillColors = fillColors;
 			this.insetRegionFillOpacity = fillOpacity;
 		}
 	}
 	
+	public void setPlotRegionsAboveFaults(boolean plotRegionsAboveFaults) {
+		this.plotRegionsAboveFaults = plotRegionsAboveFaults;
+	}
+	
 	public void clearInsetRegions() {
 		this.insetRegions = null;
-		this.insetRegionOutlineChar = null;
-		this.insetRegionFillColor = null;
+		this.insetRegionOutlineChars = null;
+		this.insetRegionFillColors = null;
 		this.insetRegionFillOpacity = Double.NaN;
 	}
 	
@@ -1033,17 +1057,19 @@ public class GeographicMapMaker {
 			}
 			
 			if (insetRegions != null) {
-				Preconditions.checkNotNull(insetRegionOutlineChar);
+				Preconditions.checkState(insetRegionOutlineChars != null || insetRegionFillColors != null);
 				
-				PlotCurveCharacterstics regFillChar = null;
-				if (insetRegionFillColor != null) {
-					Color color = insetRegionFillColor;
-					if (insetRegionFillOpacity != 1d)
-						color = new Color(color.getRed(), color.getGreen(), color.getBlue(), (int)(255d*insetRegionFillOpacity + 0.5d));
-					regFillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 1f, color);
-				}
+//				PlotCurveCharacterstics regFillChar = null;
+//				if (insetRegionFillColor != null) {
+//					Color color = insetRegionFillColor;
+//					if (insetRegionFillOpacity != 1d)
+//						color = new Color(color.getRed(), color.getGreen(), color.getBlue(), (int)(255d*insetRegionFillOpacity + 0.5d));
+//					regFillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 1f, color);
+//				}
 				
-				for (Region region : insetRegions) {
+				for (int r=0; r<insetRegions.size(); r++) {
+					Region region = insetRegions.get(r);
+					
 					DefaultXY_DataSet outline = new DefaultXY_DataSet();
 					for (Location loc : region.getBorder())
 						outline.set(loc.getLongitude(), loc.getLatitude());
@@ -1052,9 +1078,19 @@ public class GeographicMapMaker {
 //					funcs.add(outline);
 //					charsasdf
 					
+					PlotCurveCharacterstics insetRegionOutlineChar = insetRegionOutlineChars.get(r);
+					Color insetRegionFillColor = insetRegionFillColors == null ? null : insetRegionFillColors.get(r);
+					PlotCurveCharacterstics insetRegionFillChar = null;
 					if (insetRegionFillColor != null) {
+						if (insetRegionFillOpacity != 1d)
+							insetRegionFillColor = new Color(insetRegionFillColor.getRed(), insetRegionFillColor.getGreen(),
+									insetRegionFillColor.getBlue(), (int)(255d*insetRegionFillOpacity + 0.5d));
+						insetRegionFillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 1f, insetRegionFillColor);
+					}
+					
+					if (insetRegionFillChar != null) {
 						funcs.add(0, outline);
-						chars.add(0, regFillChar);
+						chars.add(0, insetRegionFillChar);
 					}
 					
 					if (insetRegionOutlineChar != null) {
@@ -1847,11 +1883,15 @@ public class GeographicMapMaker {
 			
 			plotPoliticalBoundaries();
 			
-			plotRegionOutlines();
+			if (!plotRegionsAboveFaults)
+				plotRegionOutlines();
 			
 			plotBeforeSects();
 			plotSects();
 			plotAfterSects();
+			
+			if (plotRegionsAboveFaults)
+				plotRegionOutlines();
 			
 			plotJumps();
 			
