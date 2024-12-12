@@ -74,7 +74,7 @@ public enum PRVI25_RegionalSeismicity implements LogicTreeNode {
 		
 	};
 	
-	public static String RATE_DATE = "2024_11_21";
+	public static String RATE_DATE = "2024_12_11";
 	private static final String RATES_PATH_PREFIX = "/data/erf/prvi25/seismicity/rates/";
 	public static RateType TYPE = RateType.EXACT;
 	
