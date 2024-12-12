@@ -367,38 +367,62 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 		
 		ret.weights = weights;
 		
-		ret.supraTotalBranchMFDs = expandToSameSize(supraTotalBranchMFDs);
-		ret.supraRegionalBranchMFDs = expandToSameSize(supraRegionalBranchMFDs);
+		EvenlyDiscretizedFunc refMFD = getLargestRefMFD(List.of(
+				supraTotalBranchMFDs, gridTotalBranchMFDs, sumTotalBranchMFDs));
 		
-		ret.gridTotalBranchMFDs = expandToSameSize(gridTotalBranchMFDs);
-		ret.gridRegionalBranchMFDs = expandToSameSize(gridRegionalBranchMFDs);
+		ret.supraTotalBranchMFDs = expandToSameSize(supraTotalBranchMFDs, refMFD);
+		ret.supraRegionalBranchMFDs = expandToSameSize(supraRegionalBranchMFDs, refMFD);
 		
-		ret.sumTotalBranchMFDs = expandToSameSize(sumTotalBranchMFDs);
-		ret.sumRegionalBranchMFDs = expandToSameSize(sumRegionalBranchMFDs);
+		ret.gridTotalBranchMFDs = expandToSameSize(gridTotalBranchMFDs, refMFD);
+		ret.gridRegionalBranchMFDs = expandToSameSize(gridRegionalBranchMFDs, refMFD);
+		
+		ret.sumTotalBranchMFDs = expandToSameSize(sumTotalBranchMFDs, refMFD);
+		ret.sumRegionalBranchMFDs = expandToSameSize(sumRegionalBranchMFDs, refMFD);
 		
 		return ret;
 	}
 	
-	private static IncrementalMagFreqDist[] expandToSameSize(IncrementalMagFreqDist[] mfds) {
-		if (mfds == null)
-			return null;
+	private static EvenlyDiscretizedFunc getLargestRefMFD(List<IncrementalMagFreqDist[]> mfdsList) {
 		double overallMinX = Double.POSITIVE_INFINITY;
 		double overallMaxX = 0d;
 		boolean allSame = true;
+		EvenlyDiscretizedFunc first = null;
+		for (IncrementalMagFreqDist[] mfds  : mfdsList) {
+			if (mfds == null)
+				continue;
+			for (IncrementalMagFreqDist mfd : mfds) {
+				if (first == null)
+					first = mfd;
+				overallMinX = Math.min(overallMinX, mfd.getMinX());
+				overallMaxX = Math.max(overallMaxX, mfd.getMaxX());
+				allSame &= overallMinX == mfd.getMinX();
+				allSame &= overallMaxX == mfd.getMaxX();
+			}
+		}
+		if (allSame)
+			return first;
+		EvenlyDiscretizedFunc refMFD = new EvenlyDiscretizedFunc(overallMinX, overallMaxX,
+				(int)((overallMaxX - overallMinX)/first.getDelta() + 0.5) + 1);
+//		System.out.println("Resizing MFDs to range ["+(float)overallMinX+", "+(float)overallMaxX+"]; size="+refMFD.size());
+		Preconditions.checkState((float)refMFD.getDelta() == (float)first.getDelta(),
+				"Bad delta for min=%s, max=%s, delta=%s, calcDelta=%s, size=%s",
+				overallMinX, overallMaxX, first.getDelta(), refMFD.getDelta(), refMFD.size());
+		return refMFD;
+	}
+	
+	private static IncrementalMagFreqDist[] expandToSameSize(IncrementalMagFreqDist[] mfds, EvenlyDiscretizedFunc refMFD) {
+		if (mfds == null)
+			return null;
+		boolean allSame = true;
 		for (IncrementalMagFreqDist mfd : mfds) {
-			overallMinX = Math.min(overallMinX, mfd.getMinX());
-			overallMaxX = Math.max(overallMaxX, mfd.getMaxX());
-			allSame &= overallMinX == mfd.getMinX();
-			allSame &= overallMaxX == mfd.getMaxX();
+			allSame &= refMFD.size() == mfd.size();
+			allSame &= (float)refMFD.getMinX() == (float)mfd.getMinX();
+			allSame &= (float)refMFD.getMaxX() == (float)mfd.getMaxX();
+			if (!allSame)
+				break;
 		}
 		if (allSame)
 			return mfds;
-		EvenlyDiscretizedFunc refMFD = new EvenlyDiscretizedFunc(overallMinX, overallMaxX,
-				(int)((overallMaxX - overallMinX)/mfds[0].getDelta() + 0.5) + 1);
-//		System.out.println("Resizing MFDs to range ["+(float)overallMinX+", "+(float)overallMaxX+"]; size="+refMFD.size());
-		Preconditions.checkState((float)refMFD.getDelta() == (float)mfds[0].getDelta(),
-				"Bad delta for min=%s, max=%s, delta=%s, calcDelta=%s, size=%s",
-				overallMinX, overallMaxX, mfds[0].getDelta(), refMFD.getDelta(), refMFD.size());
 		for (int i=0; i<mfds.length; i++) {
 			IncrementalMagFreqDist expanded = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
 			for (Point2D pt : mfds[i])
@@ -408,11 +432,11 @@ public class BranchRegionalMFDs implements SubModule<ModuleContainer<?>>, Archiv
 		return mfds;
 	}
 	
-	private static List<IncrementalMagFreqDist[]> expandToSameSize(List<IncrementalMagFreqDist[]> mfdsList) {
+	private static List<IncrementalMagFreqDist[]> expandToSameSize(List<IncrementalMagFreqDist[]> mfdsList, EvenlyDiscretizedFunc refMFD) {
 		if (mfdsList == null)
 			return null;
 		for (IncrementalMagFreqDist[] mfds : mfdsList)
-			expandToSameSize(mfds);
+			expandToSameSize(mfds, refMFD);
 		return mfdsList;
 	}
 	
