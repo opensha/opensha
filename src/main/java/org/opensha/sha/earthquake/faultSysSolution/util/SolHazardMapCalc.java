@@ -24,8 +24,13 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.jfree.chart.annotations.XYTextAnnotation;
+import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.title.TextTitle;
+import org.jfree.chart.ui.HorizontalAlignment;
 import org.jfree.chart.ui.RectangleEdge;
+import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.chart.ui.TextAnchor;
+import org.jfree.chart.ui.VerticalAlignment;
 import org.jfree.data.Range;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.Site;
@@ -43,6 +48,7 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
 import org.opensha.commons.gui.plot.PlotLineType;
+import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotUtils;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
@@ -854,6 +860,70 @@ public class SolHazardMapCalc {
 		return new File(plot.outputDir, prefix+".png");
 	}
 	
+	private void checkInitExtraFuncs(double maxSpan) {
+		if (extraFuncs == null) {
+			synchronized (this) {
+				if (extraFuncs == null) {
+					List<XY_DataSet> extraFuncs = new ArrayList<>();
+					List<PlotCurveCharacterstics> extraChars = new ArrayList<>();
+					
+					Color outlineColor = new Color(0, 0, 0, 180);
+					Color faultColor = new Color(0, 0, 0, 100);
+					
+					float outlineWidth = maxSpan > 30d ? 1f : 2f;
+					
+					if (!region.isRectangular()) {
+						DefaultXY_DataSet outline = new DefaultXY_DataSet();
+						for (Location loc : region.getBorder())
+							outline.set(loc.getLongitude(), loc.getLatitude());
+						outline.set(outline.get(0));
+						
+						extraFuncs.add(outline);
+						extraChars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, outlineColor));
+					}
+					
+					XY_DataSet[] boundaries = PoliticalBoundariesData.loadDefaultOutlines(region);
+					if (boundaries != null) {
+						for (XY_DataSet boundary : boundaries) {
+							extraFuncs.add(boundary);
+							extraChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, outlineWidth, outlineColor));
+						}
+					}
+					
+					if (sol != null) {
+						PlotCurveCharacterstics traceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, faultColor);
+						
+						DefaultXY_DataSet prevTrace = null;
+						for (FaultSection sect : sol.getRupSet().getFaultSectionDataList()) {
+							DefaultXY_DataSet trace = new DefaultXY_DataSet();
+							for (Location loc : sect.getFaultTrace())
+								trace.set(loc.getLongitude(), loc.getLatitude());
+							
+							boolean reused = false;
+							if (prevTrace != null) {
+								Point2D prevLast = prevTrace.get(prevTrace.size()-1);
+								Point2D newFirst = trace.get(0);
+								if ((float)prevLast.getX() == (float)newFirst.getX() && (float)prevLast.getY() == (float)newFirst.getY()) {
+									// reuse
+									for (int i=1; i<trace.size(); i++)
+										prevTrace.set(trace.get(i));
+									reused = true;
+								}
+							}
+							if (!reused) {
+								extraFuncs.add(trace);
+								prevTrace = trace;
+								extraChars.add(traceChar);
+							}
+						}
+					}
+					this.extraChars = extraChars;
+					this.extraFuncs = extraFuncs;
+				}
+			}
+		}
+	}
+	
 	public MapPlot buildMapPlot(File outputDir, String prefix, GriddedGeoDataSet xyz, CPT cpt,
 			String title, String zLabel, boolean diffStats) throws IOException {
 		GriddedRegion gridReg = xyz.getRegion();
@@ -866,65 +936,7 @@ public class SolHazardMapCalc {
 		double latSpan = latRange.getLength();
 		double lonSpan = lonRange.getLength();
 		double maxSpan = Math.max(latSpan, lonSpan);
-		synchronized (this) {
-			if (extraFuncs == null) {
-				List<XY_DataSet> extraFuncs = new ArrayList<>();
-				List<PlotCurveCharacterstics> extraChars = new ArrayList<>();
-				
-				Color outlineColor = new Color(0, 0, 0, 180);
-				Color faultColor = new Color(0, 0, 0, 100);
-				
-				float outlineWidth = maxSpan > 30d ? 1f : 2f;
-				
-				if (!region.isRectangular()) {
-					DefaultXY_DataSet outline = new DefaultXY_DataSet();
-					for (Location loc : region.getBorder())
-						outline.set(loc.getLongitude(), loc.getLatitude());
-					outline.set(outline.get(0));
-					
-					extraFuncs.add(outline);
-					extraChars.add(new PlotCurveCharacterstics(PlotLineType.DASHED, 2f, outlineColor));
-				}
-				
-				XY_DataSet[] boundaries = PoliticalBoundariesData.loadDefaultOutlines(region);
-				if (boundaries != null) {
-					for (XY_DataSet boundary : boundaries) {
-						extraFuncs.add(boundary);
-						extraChars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, outlineWidth, outlineColor));
-					}
-				}
-				
-				if (sol != null) {
-					PlotCurveCharacterstics traceChar = new PlotCurveCharacterstics(PlotLineType.SOLID, 1f, faultColor);
-					
-					DefaultXY_DataSet prevTrace = null;
-					for (FaultSection sect : sol.getRupSet().getFaultSectionDataList()) {
-						DefaultXY_DataSet trace = new DefaultXY_DataSet();
-						for (Location loc : sect.getFaultTrace())
-							trace.set(loc.getLongitude(), loc.getLatitude());
-						
-						boolean reused = false;
-						if (prevTrace != null) {
-							Point2D prevLast = prevTrace.get(prevTrace.size()-1);
-							Point2D newFirst = trace.get(0);
-							if ((float)prevLast.getX() == (float)newFirst.getX() && (float)prevLast.getY() == (float)newFirst.getY()) {
-								// reuse
-								for (int i=1; i<trace.size(); i++)
-									prevTrace.set(trace.get(i));
-								reused = true;
-							}
-						}
-						if (!reused) {
-							extraFuncs.add(trace);
-							prevTrace = trace;
-							extraChars.add(traceChar);
-						}
-					}
-				}
-				this.extraChars = extraChars;
-				this.extraFuncs = extraFuncs;
-			}
-		}
+		checkInitExtraFuncs(maxSpan);
 		HeadlessGraphPanel gp = PlotUtils.initHeadless();
 		
 		XYZPlotSpec spec = new XYZPlotSpec(xyz, cpt, title, "Longitude", "Latitude", zLabel);
@@ -1053,6 +1065,99 @@ public class SolHazardMapCalc {
 			gp.saveAsPDF(new File(outputDir, prefix+".pdf").getAbsolutePath());
 		
 		return new MapPlot(spec, lonRange, latRange, tick, tick, outputDir, prefix);
+	}
+	
+	public void plotMultiMap(File outputDir, String prefix, List<GriddedGeoDataSet> xyzs, CPT cpt,
+			String title, int titleFontSize, List<String> subtitles, int subtitleFontSize,
+			String zLabel, boolean horizontal, int shorterDimension, boolean axisLables, boolean axesTicks) throws IOException {
+		GriddedGeoDataSet refXYZ = xyzs.get(0);		
+		GriddedRegion gridReg = refXYZ.getRegion();
+		Range lonRange = new Range(
+				Math.min(gridReg.getMinLon()-0.05, refXYZ.getMinLon()-0.75*gridReg.getLonSpacing()),
+				Math.max(gridReg.getMaxLon()+0.05, refXYZ.getMaxLon()+0.75*gridReg.getLonSpacing()));
+		Range latRange = new Range(
+				Math.min(gridReg.getMinLat()-0.05, refXYZ.getMinLat()-0.75*gridReg.getLatSpacing()),
+				Math.max(gridReg.getMaxLat()+0.05, refXYZ.getMaxLat()+0.75*gridReg.getLatSpacing()));
+		double latSpan = latRange.getLength();
+		double lonSpan = lonRange.getLength();
+		double maxSpan = Math.max(latSpan, lonSpan);
+		checkInitExtraFuncs(maxSpan);
+		HeadlessGraphPanel gp = PlotUtils.initHeadless();
+		
+		gp.getPlotPrefs().setPlotLabelFontSize(titleFontSize);
+		
+		List<PlotSpec> specs = new ArrayList<>();
+		List<Range> lonRanges = new ArrayList<>();
+		List<Range> latRanges = new ArrayList<>();
+		String xLabel = axisLables ? "Longitude" : " ";
+		String yLabel = axisLables ? "Latitutde" : " ";
+		if (!axesTicks)
+			gp.getPlotPrefs().setAxisLabelFontSize(10); // just want a small buffer
+		
+		for (int i=0; i<xyzs.size(); i++) {
+			GriddedGeoDataSet xyz = xyzs.get(i);
+			XYZPlotSpec spec = new XYZPlotSpec(xyz, cpt, title, xLabel, yLabel, zLabel);
+			if (zLabel == null)
+				spec.setCPTVisible(false);
+			else if (horizontal)
+				spec.setCPTPosition(RectangleEdge.RIGHT);
+			else
+				spec.setCPTPosition(RectangleEdge.BOTTOM);
+			
+			spec.setXYElems(extraFuncs);
+			spec.setXYChars(extraChars);
+			
+			specs.add(spec);
+			if (horizontal) {
+				lonRanges.add(lonRange);
+				if (latRanges.isEmpty())
+					latRanges.add(latRange);
+			} else {
+				latRanges.add(latRange);
+				if (lonRanges.isEmpty())
+					lonRanges.add(lonRange);
+			}
+		}
+		
+		gp.drawGraphPanel(specs, false, false, lonRanges, latRanges);
+		
+		if (subtitles != null) {
+			Font subtitleFont = new Font(Font.SANS_SERIF, Font.PLAIN, subtitleFontSize);
+			PlotUtils.addSubplotTitles(gp, subtitles, subtitleFont);
+		}
+		
+		if (axesTicks) {
+			double tick;
+			if (maxSpan > 20)
+				tick = 5d;
+			else if (maxSpan > 8)
+				tick = 2d;
+			else if (maxSpan > 3)
+				tick = 1d;
+			else if (maxSpan > 1)
+				tick = 0.5d;
+			else
+				tick = 0.2;
+			PlotUtils.setXTick(gp, tick);
+			PlotUtils.setYTick(gp, tick);
+		} else {
+			for (XYPlot subplot : PlotUtils.getSubPlots(gp)) {
+				subplot.getDomainAxis().setTickLabelsVisible(false);
+				subplot.getRangeAxis().setTickLabelsVisible(false);
+			}
+		}
+		
+		int width;
+		int height;
+		if (horizontal) {
+			width = -1;
+			height = shorterDimension;
+		} else {
+			width = shorterDimension;
+			height = -1;
+		}
+		
+		PlotUtils.writePlots(outputDir, prefix, gp, width, height, true, true, PDFS, false);
 	}
 	
 	public static class MapPlot {
