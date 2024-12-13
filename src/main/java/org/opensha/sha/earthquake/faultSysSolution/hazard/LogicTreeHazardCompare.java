@@ -1829,8 +1829,10 @@ public class LogicTreeHazardCompare {
 				}
 				
 				if (cmean == null) {
-					lines.add("### Mean and median hazard maps, "+unitlessLabel);
-					lines.add(topLink); lines.add("");
+					if (multi) {
+						lines.add("### Mean and median hazard maps, "+unitlessLabel);
+						lines.add(topLink); lines.add("");
+					}
 					
 					TableBuilder table = MarkdownUtils.tableBuilder();
 					// no comparison, simple table
@@ -1855,8 +1857,10 @@ public class LogicTreeHazardCompare {
 						continue;
 					}
 				} else {
-					lines.add("### Mean hazard maps and comparisons, "+unitlessLabel);
-					lines.add(topLink); lines.add("");
+					if (multi) {
+						lines.add("### Mean hazard maps and comparisons, "+unitlessLabel);
+						lines.add(topLink); lines.add("");
+					}
 					
 					TableBuilder table = MarkdownUtils.tableBuilder();
 					
