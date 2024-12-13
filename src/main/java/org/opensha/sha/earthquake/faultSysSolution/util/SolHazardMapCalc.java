@@ -128,7 +128,7 @@ public class SolHazardMapCalc {
 		}
 	}
 	
-	static AttenRelRef CRUSTAL_GMPE_DEFAULT = AttenRelRef.ASK_2014;
+	static AttenRelRef CRUSTAL_GMPE_DEFAULT = AttenRelRef.WRAPPED_ASK_2014;
 	static AttenRelRef STABLE_GMPE_DEFAULT = AttenRelRef.ASK_2014; // TODO
 	static AttenRelRef INTERFACE_GMPE_DEFAULT = AttenRelRef.PSBAH_2020_GLOBAL_INTERFACE;
 	static AttenRelRef SLAB_GMPE_DEFAULT = AttenRelRef.PSBAH_2020_GLOBAL_SLAB;
@@ -323,6 +323,7 @@ public class SolHazardMapCalc {
 	}
 	private SourceFilterManager siteSkipSourceFilter = SITE_SKIP_SOURCE_FILTER_DEFAULT;
 	
+	private static IncludeBackgroundOption GRID_SEIS_DEFAULT = IncludeBackgroundOption.EXCLUDE;
 	// ERF params
 	private IncludeBackgroundOption backSeisOption;
 	private GriddedSeismicitySettings backSeisSettings = BaseFaultSystemSolutionERF.GRID_SETTINGS_DEFAULT;
@@ -356,7 +357,7 @@ public class SolHazardMapCalc {
 
 	public SolHazardMapCalc(FaultSystemSolution sol, Supplier<ScalarIMR> gmpeRef, GriddedRegion region,
 			double... periods) {
-		this(sol, gmpeRef, region, IncludeBackgroundOption.EXCLUDE, periods);
+		this(sol, gmpeRef, region, GRID_SEIS_DEFAULT, periods);
 	}
 
 	public SolHazardMapCalc(FaultSystemSolution sol, Supplier<ScalarIMR> gmpeRef, GriddedRegion region,
@@ -1500,6 +1501,8 @@ public class SolHazardMapCalc {
 		
 		ops.addOption(FaultSysTools.threadsOption());
 		
+		addCommonOptions(ops, true);
+		
 		Option inputOption = new Option("if", "input-file", true, "Input solution file");
 		inputOption.setRequired(true);
 		ops.addOption(inputOption);
@@ -1520,20 +1523,14 @@ public class SolHazardMapCalc {
 		recalcOption.setRequired(false);
 		ops.addOption(recalcOption);
 		
-		Option periodsOption = new Option("p", "periods", true, "Calculation period(s). Mutliple can be comma separated");
-		periodsOption.setRequired(true);
-		ops.addOption(periodsOption);
+		ops.addOption("gs", "gridded-seis", true, "Gridded seismicity option. One of "
+				+FaultSysTools.enumOptions(IncludeBackgroundOption.class)+". Default: "+GRID_SEIS_DEFAULT.name());
 		
-		Option gmpeOption = new Option("g", "gmpe", true, "GMPE name. Default is "+AttenRelRef.ASK_2014.name());
-		gmpeOption.setRequired(false);
-		ops.addOption(gmpeOption);
-		
-		Option distOption = new Option("md", "max-distance", true, "Maximum distance for hazard curve calculations in km. Default is 200 km");
-		distOption.setRequired(false);
-		ops.addOption(distOption);
+		ops.getOption("periods").setRequired(true);
 		
 		return ops;
 	}
+	
 	
 	public static void main(String[] args) throws IOException {
 		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, SolHazardMapCalc.class);
@@ -1546,15 +1543,29 @@ public class SolHazardMapCalc {
 		
 		Region region = new ReportMetadata(new RupSetMetadata(null, sol)).region;
 		
+		IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
+		if (cmd.hasOption("gridded-seis"))
+			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
+		
+		GriddedSeismicitySettings griddedSettings = getGridSeisSettings(cmd);
+		
+		if (gridSeisOp != IncludeBackgroundOption.EXCLUDE)
+			System.out.println("Gridded settings: "+griddedSettings);
+		
+		SourceFilterManager sourceFilter = getSourceFilters(cmd);
+		
+		SourceFilterManager siteSkipSourceFilter = getSiteSkipSourceFilters(sourceFilter, cmd);
+		
+		Map<TectonicRegionType, AttenRelSupplier> gmmRefs = getGMMs(cmd);
+		System.out.println("GMMs:");
+		for (TectonicRegionType trt : gmmRefs.keySet())
+			System.out.println("\tGMM for "+trt.name()+": "+gmmRefs.get(trt).getName());
+		
 		double gridSpacing = SPACING_DEFAULT;
 		if (cmd.hasOption("grid-spacing"))
 			gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
 		
 		GriddedRegion gridReg = new GriddedRegion(region, gridSpacing, GriddedRegion.ANCHOR_0_0);
-		
-		AttenRelRef gmpe = AttenRelRef.ASK_2014;
-		if (cmd.hasOption("gmpe"))
-			gmpe = AttenRelRef.valueOf(cmd.getOptionValue("gmpe"));
 		
 		List<Double> periodsList = new ArrayList<>();
 		String periodsStr = cmd.getOptionValue("periods");
@@ -1590,8 +1601,10 @@ public class SolHazardMapCalc {
 		
 		if (calc == null) {
 			// need to calculate
-			calc = new SolHazardMapCalc(sol, gmpe, gridReg, periods);
+//			calc = new SolHazardMapCalc(sol, gmpe, gridReg, periods);
+			calc = new SolHazardMapCalc(sol, gmmRefs, gridReg, gridSeisOp, periods);
 			calc.setSourceFilter(sourceFilters);
+			calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 			
 			calc.calcHazardCurves(FaultSysTools.getNumThreads(cmd));
 			
@@ -1612,8 +1625,9 @@ public class SolHazardMapCalc {
 			}
 			if (compCalc == null) {
 				// need to calculate
-				compCalc = new SolHazardMapCalc(compSol, gmpe, gridReg, periods);
+				compCalc = new SolHazardMapCalc(compSol, gmmRefs, gridReg, gridSeisOp, periods);
 				compCalc.setSourceFilter(sourceFilters);
+				compCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 				
 				compCalc.calcHazardCurves(FaultSysTools.getNumThreads(cmd));
 				
@@ -1621,7 +1635,7 @@ public class SolHazardMapCalc {
 			}
 		}
 		
-		HazardMapPlot plot = new HazardMapPlot(gmpe, gridSpacing, periods);
+		HazardMapPlot plot = new HazardMapPlot(null, gridSpacing, periods);
 		
 		File resourcesDir = new File(outputDir, "resources");
 		Preconditions.checkState(resourcesDir.exists() || resourcesDir.mkdir());
