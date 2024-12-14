@@ -208,6 +208,10 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 		return imt;
 	}
 	
+	public TectonicRegionType getTRT() {
+		return trtForType(gmm.type());
+	}
+	
 	private GroundMotionModel getBuildGMM(Imt imt) {
 		Preconditions.checkNotNull(imt);
 		GroundMotionModel gmmInstance = instanceMap.get(imt);

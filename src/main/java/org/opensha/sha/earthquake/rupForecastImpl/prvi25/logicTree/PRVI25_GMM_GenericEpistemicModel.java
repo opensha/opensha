@@ -8,23 +8,24 @@ import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.nshmp.GroundMotionLogicTreeFilter;
 import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 import org.opensha.sha.imr.logicTree.ScalarIMR_ParamsLogicTreeNode;
+import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
 
 import gov.usgs.earthquake.nshmp.gmm.GroundMotions;
 
 @AffectsNone
-public enum PRVI25_GMM_EpistemicModel implements ScalarIMR_ParamsLogicTreeNode {
+public enum PRVI25_GMM_GenericEpistemicModel implements ScalarIMR_ParamsLogicTreeNode {
 	EPI_LOW("Low", "Low", GroundMotions.EPI_LO, 0.185d),
 	EPI_OFF("Off", "Off", GroundMotions.EPI_OFF, 0.63d),
 	EPI_HIGH("High", "High", GroundMotions.EPI_HI, 0.185d),;
 	
-	private String name;
-	private String shortName;
-	private String matchStr;
-	private double weight;
+	final String name;
+	final String shortName;
+	final String matchStr;
+	final double weight;
 
-	private PRVI25_GMM_EpistemicModel(String name, String shortName, String matchStr, double weight) {
+	private PRVI25_GMM_GenericEpistemicModel(String name, String shortName, String matchStr, double weight) {
 		this.name = name;
 		this.shortName = shortName;
 		this.matchStr = matchStr;
@@ -58,7 +59,14 @@ public enum PRVI25_GMM_EpistemicModel implements ScalarIMR_ParamsLogicTreeNode {
 
 	@Override
 	public void setParams(ScalarIMR imr) {
+		setParams(imr, matchStr, null);
+	}
+	
+	public static void setParams(ScalarIMR imr, String matchStr, TectonicRegionType trt) {
 		NSHMP_GMM_Wrapper gmm = (NSHMP_GMM_Wrapper)imr;
+		if (trt != null && gmm.getTRT() != trt)
+			// doesn't apply to this one, do nothing
+			return;
 		GroundMotionLogicTreeFilter upstream = gmm.getGroundMotionTreeFilter();
 		GroundMotionLogicTreeFilter filter;
 		if (upstream == null) {

@@ -31,7 +31,7 @@ public enum PRVI25_SubductionSlabGMMs implements ScalarIMRsLogicTreeNode.SingleT
 
 	@Override
 	public String getFilePrefix() {
-		return name();
+		return "SLAB_"+name();
 	}
 
 	@Override
