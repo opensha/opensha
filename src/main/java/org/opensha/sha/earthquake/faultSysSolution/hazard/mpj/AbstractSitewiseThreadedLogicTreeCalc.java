@@ -65,7 +65,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	private double[] periods;
 	private IncludeBackgroundOption gridSeisOp;
 	private GriddedSeismicitySettings griddedSettings;
-	private boolean cacheGridSources = false;
+	private boolean cacheGridSources = true;
 	private boolean doGmmInputCache = false;
 	private SourceFilterManager sourceFilters;
 	

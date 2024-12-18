@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import org.jfree.chart.annotations.XYAnnotation;
@@ -83,6 +84,7 @@ public class GeographicMapMaker {
 	protected int widthDefault = PLOT_WIDTH_DEFAULT;
 	protected boolean axisLabels = true;
 	protected boolean axisTicks = true;
+	private boolean plotRegionsAboveFaults = false;
 	
 	/*
 	 * Fault sections and cached surfaces/traces
@@ -96,6 +98,7 @@ public class GeographicMapMaker {
 	protected boolean plotTracesForFilledSurfaces = true;
 	protected boolean plotAllSectPolys = false;
 	protected boolean plotProxySectPolys = true;
+	protected boolean plotSectPolysOnTop = false;
 	
 	/*
 	 * General plot items
@@ -193,9 +196,9 @@ public class GeographicMapMaker {
 	/*
 	 * Inset region outlies
 	 */
-	protected Collection<Region> insetRegions;
-	protected PlotCurveCharacterstics insetRegionOutlineChar;
-	protected Color insetRegionFillColor;
+	protected List<Region> insetRegions;
+	protected List<PlotCurveCharacterstics> insetRegionOutlineChars;
+	protected List<Color> insetRegionFillColors;
 	protected double insetRegionFillOpacity;
 
 	/*
@@ -441,23 +444,46 @@ public class GeographicMapMaker {
 		this.highlightTraceChar = null;
 	}
 	
-	public void plotInsetRegions(Collection<Region> regions, PlotCurveCharacterstics outlineChar,
+	public void plotInsetRegions(List<Region> regions, PlotCurveCharacterstics outlineChar,
 			Color fillColor, double fillOpacity) {
+		List<PlotCurveCharacterstics> chars = null;
+		if (outlineChar != null) {
+			chars = new ArrayList<>(regions.size());
+			for (int i=0; i<regions.size(); i++)
+				chars.add(outlineChar);
+		}
+		List<Color> colors = null;
+		if (fillColor != null) {
+			colors = new ArrayList<>(regions.size());
+			for (int i=0; i<regions.size(); i++)
+				colors.add(fillColor);
+		}
+		plotInsetRegions(regions, chars, colors, fillOpacity);
+	}
+	
+	public void plotInsetRegions(List<Region> regions, List<PlotCurveCharacterstics> outlineChars,
+			List<Color> fillColors, double fillOpacity) {
 		if (regions == null || regions.isEmpty()) {
 			clearInsetRegions();
 		} else {
-			Preconditions.checkState(outlineChar != null || insetRegionFillColor != null);
+			Preconditions.checkState(outlineChars != null || fillColors != null);
 			this.insetRegions = regions;
-			this.insetRegionOutlineChar = outlineChar;
-			this.insetRegionFillColor = fillColor;
+			Preconditions.checkState(outlineChars == null || outlineChars.size() == regions.size());
+			this.insetRegionOutlineChars = outlineChars;
+			Preconditions.checkState(fillColors == null || fillColors.size() == regions.size());
+			this.insetRegionFillColors = fillColors;
 			this.insetRegionFillOpacity = fillOpacity;
 		}
 	}
 	
+	public void setPlotRegionsAboveFaults(boolean plotRegionsAboveFaults) {
+		this.plotRegionsAboveFaults = plotRegionsAboveFaults;
+	}
+	
 	public void clearInsetRegions() {
 		this.insetRegions = null;
-		this.insetRegionOutlineChar = null;
-		this.insetRegionFillColor = null;
+		this.insetRegionOutlineChars = null;
+		this.insetRegionFillColors = null;
 		this.insetRegionFillOpacity = Double.NaN;
 	}
 	
@@ -487,6 +513,10 @@ public class GeographicMapMaker {
 
 	public void setPlotProxySectPolys(boolean plotProxySectPolys) {
 		this.plotProxySectPolys = plotProxySectPolys;
+	}
+
+	public void setPlotSectPolysOnTop(boolean plotSectPolysOnTop) {
+		this.plotSectPolysOnTop = plotSectPolysOnTop;
 	}
 
 	public void setReverseSort(boolean reverseSort) { 
@@ -1033,17 +1063,19 @@ public class GeographicMapMaker {
 			}
 			
 			if (insetRegions != null) {
-				Preconditions.checkNotNull(insetRegionOutlineChar);
+				Preconditions.checkState(insetRegionOutlineChars != null || insetRegionFillColors != null);
 				
-				PlotCurveCharacterstics regFillChar = null;
-				if (insetRegionFillColor != null) {
-					Color color = insetRegionFillColor;
-					if (insetRegionFillOpacity != 1d)
-						color = new Color(color.getRed(), color.getGreen(), color.getBlue(), (int)(255d*insetRegionFillOpacity + 0.5d));
-					regFillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 1f, color);
-				}
+//				PlotCurveCharacterstics regFillChar = null;
+//				if (insetRegionFillColor != null) {
+//					Color color = insetRegionFillColor;
+//					if (insetRegionFillOpacity != 1d)
+//						color = new Color(color.getRed(), color.getGreen(), color.getBlue(), (int)(255d*insetRegionFillOpacity + 0.5d));
+//					regFillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 1f, color);
+//				}
 				
-				for (Region region : insetRegions) {
+				for (int r=0; r<insetRegions.size(); r++) {
+					Region region = insetRegions.get(r);
+					
 					DefaultXY_DataSet outline = new DefaultXY_DataSet();
 					for (Location loc : region.getBorder())
 						outline.set(loc.getLongitude(), loc.getLatitude());
@@ -1052,9 +1084,19 @@ public class GeographicMapMaker {
 //					funcs.add(outline);
 //					charsasdf
 					
+					PlotCurveCharacterstics insetRegionOutlineChar = insetRegionOutlineChars.get(r);
+					Color insetRegionFillColor = insetRegionFillColors == null ? null : insetRegionFillColors.get(r);
+					PlotCurveCharacterstics insetRegionFillChar = null;
 					if (insetRegionFillColor != null) {
+						if (insetRegionFillOpacity != 1d)
+							insetRegionFillColor = new Color(insetRegionFillColor.getRed(), insetRegionFillColor.getGreen(),
+									insetRegionFillColor.getBlue(), (int)(255d*insetRegionFillOpacity + 0.5d));
+						insetRegionFillChar = new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 1f, insetRegionFillColor);
+					}
+					
+					if (insetRegionFillChar != null) {
 						funcs.add(0, outline);
-						chars.add(0, regFillChar);
+						chars.add(0, insetRegionFillChar);
 					}
 					
 					if (insetRegionOutlineChar != null) {
@@ -1106,79 +1148,8 @@ public class GeographicMapMaker {
 					plotSects.add(subSect);
 			}
 			
-			if (plotAllSectPolys || plotProxySectPolys) {
-				// plot any polygons first
-				boolean first = true;
-				boolean hasNonProxy = false;
-				for (FaultSection sect : sects)
-					hasNonProxy = !sect.isProxyFault() && sect.getZonePolygon() != null;
-				Region prevPoly = null;
-				for (int s=0; s<sects.size(); s++) {
-					FaultSection sect = sects.get(s);
-					Region poly = sect.getZonePolygon();
-					if (!plotSects.contains(sect) || poly == null)
-						// outside of the region or no polygon, skip
-						continue;
-					if (!plotAllSectPolys && !sect.isProxyFault())
-						// we're only plotting polys for proxies, and this isn't one, skip
-						continue;
-					if (prevPoly != null && prevPoly.equals(poly))
-						// duplicate (sometimes subsects keep the same parent poly)
-						continue;
-					prevPoly = poly;
-					
-					// we need to plot it
-					XY_DataSet xy = new DefaultXY_DataSet();
-					for (Location loc : poly.getBorder())
-						xy.set(loc.lon, loc.lat);
-					if (!xy.get(0).equals(xy.get(xy.size()-1)))
-						// close it
-						xy.set(xy.get(0));
-					
-					if (first) {
-						if (hasNonProxy && plotAllSectPolys)
-							xy.setName("Fault Polygons");
-						else
-							xy.setName("Proxy Fault Polygons");
-						first = false;
-					}
-					
-					funcs.add(xy);
-					chars.add(sectPolyChar);
-					
-					if (writeGeoJSON) {
-						Feature feature = poly.toFeature();
-						FeatureProperties props = feature.properties;
-						props.set("name", sect.getSectionName());
-						props.set("id", sect.getSectionId());
-						if (sect.getParentSectionId() >= 0)
-							props.set("parentID", sect.getParentSectionId());
-						if (sectPolyChar.getLineType() == PlotLineType.POLYGON_SOLID) {
-							props.set(FeatureProperties.STROKE_OPACITY_PROP, 0d);
-							Color color = sectPolyChar.getColor();
-							if (color.getAlpha() == 255) {
-								props.set(FeatureProperties.FILL_COLOR_PROP, color);
-							} else {
-								double opacity = (double)color.getAlpha()/255d;
-								props.set(FeatureProperties.FILL_OPACITY_PROP, opacity);
-								props.set(FeatureProperties.FILL_COLOR_PROP, new Color(color.getRed(), color.getGreen(), color.getBlue()));
-							}
-						} else if (sectPolyChar.getLineType() != null) {
-							props.set(FeatureProperties.FILL_OPACITY_PROP, 0d);
-							props.set(FeatureProperties.STROKE_WIDTH_PROP, sectPolyChar.getLineWidth());
-							Color color = sectPolyChar.getColor();
-							if (color.getAlpha() == 255) {
-								props.set(FeatureProperties.STROKE_COLOR_PROP, color);
-							} else {
-								double opacity = (double)color.getAlpha()/255d;
-								props.set(FeatureProperties.STROKE_OPACITY_PROP, opacity);
-								props.set(FeatureProperties.STROKE_COLOR_PROP, new Color(color.getRed(), color.getGreen(), color.getBlue()));
-							}
-						}
-						features.add(feature);
-					}
-				}
-			}
+			if (!plotSectPolysOnTop)
+				plotSectPolys(plotSects);
 
 			// plot section outlines on bottom
 			XY_DataSet prevTrace = null;
@@ -1473,6 +1444,85 @@ public class GeographicMapMaker {
 					chars.add(highlightTraceChar);
 					if (writeGeoJSON)
 						features.add(traceFeature(hightlight, highlightTraceChar));
+				}
+			}
+			
+			if (plotSectPolysOnTop)
+				plotSectPolys(plotSects);
+		}
+		
+		protected void plotSectPolys(Set<FaultSection> plotSects) {
+			if (plotAllSectPolys || plotProxySectPolys) {
+				// plot any polygons first
+				boolean first = true;
+				boolean hasNonProxy = false;
+				for (FaultSection sect : sects)
+					hasNonProxy = !sect.isProxyFault() && sect.getZonePolygon() != null;
+				Region prevPoly = null;
+				for (int s=0; s<sects.size(); s++) {
+					FaultSection sect = sects.get(s);
+					Region poly = sect.getZonePolygon();
+					if (!plotSects.contains(sect) || poly == null)
+						// outside of the region or no polygon, skip
+						continue;
+					if (!plotAllSectPolys && !sect.isProxyFault())
+						// we're only plotting polys for proxies, and this isn't one, skip
+						continue;
+					if (prevPoly != null && prevPoly.equals(poly))
+						// duplicate (sometimes subsects keep the same parent poly)
+						continue;
+					prevPoly = poly;
+					
+					// we need to plot it
+					XY_DataSet xy = new DefaultXY_DataSet();
+					for (Location loc : poly.getBorder())
+						xy.set(loc.lon, loc.lat);
+					if (!xy.get(0).equals(xy.get(xy.size()-1)))
+						// close it
+						xy.set(xy.get(0));
+					
+					if (first) {
+						if (hasNonProxy && plotAllSectPolys)
+							xy.setName("Fault Polygons");
+						else
+							xy.setName("Proxy Fault Polygons");
+						first = false;
+					}
+					
+					funcs.add(xy);
+					chars.add(sectPolyChar);
+					
+					if (writeGeoJSON) {
+						Feature feature = poly.toFeature();
+						FeatureProperties props = feature.properties;
+						props.set("name", sect.getSectionName());
+						props.set("id", sect.getSectionId());
+						if (sect.getParentSectionId() >= 0)
+							props.set("parentID", sect.getParentSectionId());
+						if (sectPolyChar.getLineType() == PlotLineType.POLYGON_SOLID) {
+							props.set(FeatureProperties.STROKE_OPACITY_PROP, 0d);
+							Color color = sectPolyChar.getColor();
+							if (color.getAlpha() == 255) {
+								props.set(FeatureProperties.FILL_COLOR_PROP, color);
+							} else {
+								double opacity = (double)color.getAlpha()/255d;
+								props.set(FeatureProperties.FILL_OPACITY_PROP, opacity);
+								props.set(FeatureProperties.FILL_COLOR_PROP, new Color(color.getRed(), color.getGreen(), color.getBlue()));
+							}
+						} else if (sectPolyChar.getLineType() != null) {
+							props.set(FeatureProperties.FILL_OPACITY_PROP, 0d);
+							props.set(FeatureProperties.STROKE_WIDTH_PROP, sectPolyChar.getLineWidth());
+							Color color = sectPolyChar.getColor();
+							if (color.getAlpha() == 255) {
+								props.set(FeatureProperties.STROKE_COLOR_PROP, color);
+							} else {
+								double opacity = (double)color.getAlpha()/255d;
+								props.set(FeatureProperties.STROKE_OPACITY_PROP, opacity);
+								props.set(FeatureProperties.STROKE_COLOR_PROP, new Color(color.getRed(), color.getGreen(), color.getBlue()));
+							}
+						}
+						features.add(feature);
+					}
 				}
 			}
 		}
@@ -1847,11 +1897,15 @@ public class GeographicMapMaker {
 			
 			plotPoliticalBoundaries();
 			
-			plotRegionOutlines();
+			if (!plotRegionsAboveFaults)
+				plotRegionOutlines();
 			
 			plotBeforeSects();
 			plotSects();
 			plotAfterSects();
+			
+			if (plotRegionsAboveFaults)
+				plotRegionOutlines();
 			
 			plotJumps();
 			

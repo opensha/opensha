@@ -165,24 +165,19 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 				return (M)module;
 			if (call != null) {
 				// actually have to synchronize (expensive) here as we have a callable for it and haven't yet loaded it
-				debug("Need to load module of type '"+clazz+"' and have a callable, waiting for synchronization lock");
+//				debug("Need to load module of type '"+clazz+"' and have a callable, waiting for synchronization lock");
 				synchronized (this) {
 					// see if another thread loaded it while we were waiting on this synchronized block
 					module = mappings.get(clazz);
 					if (module != null) {
-						debug("In syncrhonized lock for '"+clazz+"' loading, it was already loaded before I got in");
+//						debug("In syncrhonized lock for '"+clazz+"' loading, it was already loaded before I got in");
 						return (M)module;
 					}
 					// actually have to load it
-					debug("In syncrhonized lock for '"+clazz+"' loading and still need to load it");
+//					debug("In synchronized lock for '"+clazz+"' loading and still need to load it");
 					module = getLoadAvailableModule(call);
-					debug("Done loading '"+clazz+"' in synchronized lock; null ? "+(module == null));
+//					debug("Done loading '"+clazz+"' in synchronized lock; null ? "+(module == null)+", mapped ? "+(mappings.containsKey(clazz)));
 				}
-			}
-			if (module == null) {
-				// try one more time? there may be a synchronization bug somewhere, I've seen it return null after
-				// successfully loading and mapping
-				module = mappings.get(clazz);
 			}
 		}
 		return (M)module;
@@ -540,14 +535,6 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 	 * @throws IllegalStateException if call is not already registered as an available module
 	 */
 	private synchronized E getLoadAvailableModule(Callable<? extends E> call) {
-		/*
-		 * TODO: does this need to be synchronized? could maybe do the call portion asynchronously and just
-		 * synchronize for the list/map operations, which would allow for parallel loading.
-		 * 
-		 * would also need to synchronize on only the call in getModule for that efficiency to be realized
-		 * 
-		 * need to check other methods, could get tricky
-		 */
 		Preconditions.checkState(availableModules.remove(call));
 		E module = null;
 		Stopwatch watch = Stopwatch.createStarted();
@@ -562,18 +549,18 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 		}
 		watch.stop();
 		
-		// remove mappings to this available module, whether or not it was successful
-		List<Class<? extends E>> oldMappings = new ArrayList<>();
-		for (Class<? extends E> oClazz : availableMappings.keySet())
-			if (availableMappings.get(oClazz).equals(call))
-				oldMappings.add(oClazz);
-		for (Class<? extends E> oldMapping : oldMappings)
-			availableMappings.remove(oldMapping);
-		
 		if (module != null) {
-			// register it
+			// map it
+			
+			// this will remove available module mappings, but only after it was mapped; that order is important because
+			// another thread might be in getModule right now using the order of "available?" then "mapped?" to determine
+			// if it needs to synchronize
 			addModule(module);
+		} else {
+			// wasn't successful, now need to remove mappings to this (failed) available module
+			removeAvailableMappings(call);
 		}
+		
 		// will return null if failed
 		return module;
 	}
@@ -621,14 +608,16 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 		return ret;
 	}
 	
-	private boolean removeAvailableMappings(Callable<E> call) {
+	private boolean removeAvailableMappings(Callable<? extends E> call) {
 		List<Class<? extends E>> oldMappings = new ArrayList<>();
 		for (Class<? extends E> clazz : availableMappings.keySet())
 			if (availableMappings.get(clazz).equals(call))
 				oldMappings.add(clazz);
 		boolean ret = false;
-		for (Class<? extends E> oldMapping : oldMappings)
-			ret |= availableMappings.remove(oldMapping) != null;
+		for (Class<? extends E> oldMapping : oldMappings) {
+			boolean removed = availableMappings.remove(oldMapping) != null;
+			ret |= removed;
+		}
 		return ret;
 	}
 	
@@ -763,9 +752,9 @@ public class ModuleContainer<E extends OpenSHA_Module> {
 						int rank =  mpi.MPI.COMM_WORLD.Rank();
 						String hostname = java.net.InetAddress.getLocalHost().getHostName();
 						if (hostname != null && !hostname.isBlank())
-							debug_common_prefix = hostname+", "+rank+": ";
+							debug_common_prefix = hostname+", "+rank;
 						else
-							debug_common_prefix = rank+": ";
+							debug_common_prefix = rank+"";
 					} catch (Throwable t) {
 						debug_common_prefix = "";
 					}

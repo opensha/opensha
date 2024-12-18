@@ -231,7 +231,11 @@ public class PRVI25_GridSourceBuilder {
 		}
 		//				EvenlyDiscretizedFunc depthNuclDistFunc = NSHM23_SeisDepthDistributions.load(region);
 
-		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, true, binnedDepthDistFunc,
+		// only preserve the total MFD (i.e., re-distribute carved out near fault ruptures in the supra mag range to other grid nodes)
+		// if we're doing rate balancing. in that case, the passed in MFD already accounts for faults and should be preserved exactly.
+		// otherwise if we're not rate balancing, just lop off the gridded rate near faults without redistributing
+		boolean preserveTotalMFD = RATE_BALANCE_CRUSTAL_GRIDDED;
+		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, preserveTotalMFD, binnedDepthDistFunc,
 				fractStrikeSlip, fractNormal, fractReverse, null); // last null means all active
 	}
 	

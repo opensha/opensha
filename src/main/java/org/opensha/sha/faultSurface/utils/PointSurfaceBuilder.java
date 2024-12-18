@@ -24,6 +24,7 @@ import org.opensha.sha.faultSurface.FrankelGriddedSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.QuadSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy.CacheTypes;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
@@ -890,7 +891,9 @@ public class PointSurfaceBuilder {
 	public QuadSurface buildQuadSurface(double strike)  {
 		FaultTrace trace = buildTrace(strike);
 		
-		return new QuadSurface(trace, dip, getCalcWidth());
+		// a single cache is appropriate for point sources, they're not reused by multiple sources
+		// and not worth the memory and caching overhead of storing distances for multiple sites
+		return new QuadSurface(trace, dip, getCalcWidth(), CacheTypes.DISABLED);
 	}
 	
 	/**

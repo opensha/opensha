@@ -749,16 +749,21 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			return null;
 		
 		if (cacheGridSources) {
-			synchronized (this) {
-				if (gridSourceCache == null)
-					gridSourceCache = new ProbEqkSource[numOtherSources];
-				if (gridSourceCache[iSource] != null)
-					return gridSourceCache[iSource];
+			if (gridSourceCache == null) {
+				// need to create it, do so in a synchronized block
+				synchronized (this) {
+					if (gridSourceCache == null)
+						gridSourceCache = new ProbEqkSource[numOtherSources];
+				}
 			}
-			// if we made it here, it's not cached
-			gridSourceCache[iSource] = gridSources.getSource(iSource, timeSpan.getDuration(),
-					getGridSourceAftershockFilter(), bgSettings);
-			return gridSourceCache[iSource];
+			ProbEqkSource cached = gridSourceCache[iSource];
+			if (cached == null) {
+				// it's not cached
+				cached = gridSources.getSource(iSource, timeSpan.getDuration(),
+						getGridSourceAftershockFilter(), bgSettings);
+				gridSourceCache[iSource] = cached;
+			}
+			return cached;
 		}
 		return gridSources.getSource(iSource, timeSpan.getDuration(),
 				getGridSourceAftershockFilter(), bgSettings);

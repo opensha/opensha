@@ -3,6 +3,7 @@ package org.opensha.sha.earthquake.faultSysSolution.modules;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collection;
+import java.util.List;
 
 import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
@@ -45,6 +46,11 @@ public class BranchSectParticMFDs extends AbstractBranchMFDs {
 				EvenlyDiscretizedFunc refMFD) {
 			return sol.calcParticipationMFD_forSect(sectID, refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
 		}
+	}
+	
+	public static void combine(List<BranchSectParticMFDs> mfdsList, List<Double> weights) {
+		BranchSectParticMFDs ret = new BranchSectParticMFDs();
+		combine(ret, mfdsList, weights);
 	}
 	
 	/**

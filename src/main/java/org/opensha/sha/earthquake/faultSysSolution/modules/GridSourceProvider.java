@@ -193,7 +193,7 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	
 	/**
 	 * Returns the MFD associated with a grid location. This is the sum of any
-	 * unassociated and sub-seismogenic MFDs for the location.
+	 * unassociated and sub-seismogenic MFDs for the location across all {@link TectonicRegionType}s
 	 * 
 	 * @param gridIndex grid index
 	 * @return the MFD
@@ -213,6 +213,27 @@ public interface GridSourceProvider extends OpenSHA_Module, BranchAverageableMod
 	 * @see #getMFD_SubSeisOnFault(int)
 	 */
 	public IncrementalMagFreqDist getMFD(TectonicRegionType tectonicRegionType, int gridIndex);
+	
+	/**
+	 * Returns the total nucleation rate at or above the given magnitude and for the given grid node and across all
+	 * {@link TectonicRegionType}s
+	 * 
+	 * @param gridIndex
+	 * @param minMag
+	 * @return
+	 */
+	public double getCumulativeNucleationRate(int gridIndex, double minMag);
+	
+	/**
+	 * Returns the total nucleation rate at or above the given magnitude and for the given grid node for the given
+	 * {@link TectonicRegionType}
+	 * 
+	 * @param tectonicRegionType tectonic region type
+	 * @param gridIndex
+	 * @param minMag
+	 * @return
+	 */
+	public double getCumulativeNucleationRate(TectonicRegionType tectonicRegionType, int gridIndex, double minMag);
 	
 	/**
 	 * Returns the gridded region associated with these grid sources, or null if no single contiguous region exists.

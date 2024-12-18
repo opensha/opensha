@@ -7,7 +7,9 @@ package org.opensha.commons.calc;
 import java.text.DecimalFormat;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.math3.util.FastMath;
 import org.apache.commons.math3.util.Precision;
+import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -31,7 +33,7 @@ import com.google.common.base.Stopwatch;
  * @version 1.0
  */
 
-public final class GaussianDistCalc {
+public abstract class GaussianDistCalc {
 
 	// if using edu.uah.math.psol.distributions package:
 	//   static NormalDistribution gauss = new NormalDistribution( 0.0, 1.0 );
@@ -51,8 +53,6 @@ public final class GaussianDistCalc {
 	public static double getExceedProb(double standRandVariable) {
 		return 1.0 - getCDF(standRandVariable);
 	}
-
-
 
 	/**
 	 * This function calculates the exceedance probability for a truncated Gaussian
@@ -76,7 +76,7 @@ public final class GaussianDistCalc {
 				throw new RuntimeException("GaussianDistCalc.getExceedProb(): truncLevel cannot be negative");
 		}
 
-		double prob = getCDF( standRandVariable );
+		double cdf = getCDF( standRandVariable );
 
 		// compute probability based on truncation type
 		if (  truncType == 1 ) {  // upper truncation
@@ -84,7 +84,7 @@ public final class GaussianDistCalc {
 				return  0.0;
 			else {
 				double pUp = getCDF( truncLevel );
-				return  (1.0 - prob/pUp) ;
+				return  (1.0 - cdf/pUp) ;
 			}
 		}
 		else if ( truncType == 2 ) {  // the two sided case
@@ -95,11 +95,11 @@ public final class GaussianDistCalc {
 			else {
 				double pUp = getCDF( truncLevel );
 				double pLow = getCDF( -truncLevel );
-				return ( (pUp-prob)/(pUp-pLow) );
+				return ( (pUp-cdf)/(pUp-pLow) );
 			}
 		}
 		else if (truncType == 0)
-			return (1.0 - prob );  // no truncation
+			return (1.0 - cdf );  // no truncation
 		else
 			throw new RuntimeException("GaussianDistCalc.getExceedProb(): truncType must be 0, 1, or 2");
 	}
@@ -711,7 +711,7 @@ public final class GaussianDistCalc {
 	 *  main method for running tests
 	 */
 	public static void main(String args[]) {
-		testCDFOptimization();
+//		testCDFOptimization();
 		
 //		// commons.math implementations are still about 5 times slower
 //		double iml = 2.1;

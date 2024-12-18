@@ -979,7 +979,7 @@ public class SegmentationCalculator {
 		for (int m=0; m<minMags.length; m++) {
 			plotter.clearJumpScalars();
 			
-			String label = "Passthrough Rate";
+			String label = PASSTHROUGH_LABEL;
 			if (combiner != null || minMags[m] > 0)
 				label = getMagLabel(minMags[m])+" "+label;
 			if (combiner != null)
@@ -1020,7 +1020,7 @@ public class SegmentationCalculator {
 		for (int m=0; m<minMags.length; m++) {
 			plotter.clearJumpScalars();
 			
-			String label = getMagLabel(minMags[m])+" Passthrough Rate Difference";
+			String label = getMagLabel(minMags[m])+" "+PASSTHROUGH_LABEL+" Difference";
 			Map<Jump, Double> primary = calcJumpPassthroughs(m, combiner);
 			Map<Jump, Double> comp = compCalc.calcJumpPassthroughs(m, combiner);
 			HashSet<Jump> allJumps = new HashSet<>();
@@ -1060,7 +1060,7 @@ public class SegmentationCalculator {
 		for (int m=0; m<minMags.length; m++) {
 			plotter.clearJumpScalars();
 			
-			String label = "Log10 "+getMagLabel(minMags[m])+" Passthrough Rate Ratio";
+			String label = "Log10 "+getMagLabel(minMags[m])+" "+PASSTHROUGH_LABEL+" Ratio";
 			Map<Jump, Double> primary = calcJumpPassthroughs(m, combiner);
 			Map<Jump, Double> comp = compCalc.calcJumpPassthroughs(m, combiner);
 			HashSet<Jump> allJumps = new HashSet<>();
@@ -1100,7 +1100,7 @@ public class SegmentationCalculator {
 		for (int m=0; m<minMags.length; m++) {
 			plotter.clearJumpScalars();
 			
-			String label = getMagLabel(minMags[m])+" Passthrough Rate Difference";
+			String label = getMagLabel(minMags[m])+" "+PASSTHROUGH_LABEL+" Difference";
 			Map<Jump, Double> primary = calcJumpPassthroughs(m, combiner);
 			List<Jump> jumps = new ArrayList<>();
 			List<Double> values = new ArrayList<>();
@@ -1134,7 +1134,7 @@ public class SegmentationCalculator {
 		for (int m=0; m<minMags.length; m++) {
 			plotter.clearJumpScalars();
 			
-			String label = "Log10 "+getMagLabel(minMags[m])+" Passthrough Rate Ratio";
+			String label = "Log10 "+getMagLabel(minMags[m])+" "+PASSTHROUGH_LABEL+" Ratio";
 			Map<Jump, Double> primary = calcJumpPassthroughs(m, combiner);
 			List<Jump> jumps = new ArrayList<>();
 			List<Double> values = new ArrayList<>();
@@ -1394,7 +1394,7 @@ public class SegmentationCalculator {
 				}
 				
 				PlotSpec spec = new PlotSpec(funcs, chars, scalar.name+" Dependence", scalar.toString(),
-						"Passthrough Rate (Rel. "+combiner+")");
+						PASSTHROUGH_LABEL+" (Rel. "+combiner+")");
 				spec.setLegendVisible(specs.isEmpty());
 				specs.add(spec);
 			}
@@ -1513,8 +1513,8 @@ public class SegmentationCalculator {
 			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 2f, new Color(0, 0, 0, 127)));
 			
 			specs.add(new PlotSpec(funcs, chars, getMagLabel(minMags[index1])+" vs "+getMagLabel(minMags[index2]),
-					getMagLabel(minMags[index1])+" Passthrough Rate",
-					getMagLabel(minMags[index2])+" Passthrough Rate (Rel. "+combiner+")"));
+					getMagLabel(minMags[index1])+" "+PASSTHROUGH_LABEL,
+					getMagLabel(minMags[index2])+" "+PASSTHROUGH_LABEL+" (Rel. "+combiner+")"));
 		}
 		
 		HeadlessGraphPanel gp = new HeadlessGraphPanel();
@@ -1592,8 +1592,8 @@ public class SegmentationCalculator {
 		chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 2f, new Color(0, 0, 0, 127)));
 		
 		PlotSpec spec = new PlotSpec(funcs, chars, getMagLabel(minMags[magIndex])+" Relative Rate Combiners: "
-				+combiner1+" vs "+combiner2, "Passthrough Rate (Rel. "+combiner1+")",
-				"Passthrough Rate (Rel. "+combiner2+")");
+				+combiner1+" vs "+combiner2, PASSTHROUGH_LABEL+" (Rel. "+combiner1+")",
+				PASSTHROUGH_LABEL+" (Rel. "+combiner2+")");
 		
 		HeadlessGraphPanel gp = new HeadlessGraphPanel();
 		gp.setTickLabelFontSize(18);
@@ -1619,6 +1619,8 @@ public class SegmentationCalculator {
 		return plotDistDependComparison(outputDir, prefix, logY, combiner, title);
 	}
 	
+	public static String PASSTHROUGH_LABEL = "Passthrough Rate";
+	
 	public File[] plotDistDependComparison(File outputDir, String prefix, boolean logY, RateCombiner combiner, String title) throws IOException {
 		File[] ret = new File[minMags.length];
 		
@@ -1635,7 +1637,7 @@ public class SegmentationCalculator {
 		
 		Scalars scalar = Scalars.JUMP_DIST;
 		
-		String yAxisLabel = "Passthrough Rate";
+		String yAxisLabel = PASSTHROUGH_LABEL;
 		if (combiner == null)
 			combiner = RateCombiner.MIN;
 		else
@@ -1736,8 +1738,6 @@ public class SegmentationCalculator {
 				
 				DefaultXY_DataSet zerosScatter = new DefaultXY_DataSet();
 				zerosScatter.setName("Zero-Rate");
-				funcs.add(zerosScatter);
-				chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, Color.GRAY));
 
 				List<Double> fracts = new ArrayList<>();
 				List<Double> detrendFracts = detrendProb == null ? null : new ArrayList<>();
@@ -1832,15 +1832,18 @@ public class SegmentationCalculator {
 				}
 				
 				// add fake values so that the legend works
-				if (binnedMeans.size() == 0) {
-					binnedMeans.set(0d, -1d);
-					binnedMedians.set(0d, -1d);
+//				if (binnedMeans.size() == 0) {
+//					binnedMeans.set(0d, -1d);
+//					binnedMedians.set(0d, -1d);
+//				}
+//				if (zerosScatter.size() == 0)
+//					zerosScatter.set(0d, -1d);
+
+				if (zerosScatter.size() > 1) {
+					funcs.add(zerosScatter);
+					chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, Color.GRAY));
 				}
-				if (zerosScatter.size() == 0)
-					zerosScatter.set(0d, -1d);
 			}
-			
-			
 			
 			funcs.addAll(compCurves);
 			for (int i=0; i<compColors.length; i++) {
@@ -1851,10 +1854,14 @@ public class SegmentationCalculator {
 			}
 			
 			if (binnedMeans != null) {
-				funcs.add(binnedMeans);
-				chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 10f, new Color(0, 0, 0, 150)));
-				funcs.add(binnedMedians);
-				chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_SQUARE, 10f, new Color(0, 0, 150, 150)));
+				if (binnedMeans.size() > 0) {
+					funcs.add(binnedMeans);
+					chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, 10f, new Color(0, 0, 0, 150)));
+				}
+				if (binnedMedians.size() > 0) {
+					funcs.add(binnedMedians);
+					chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_SQUARE, 10f, new Color(0, 0, 150, 150)));
+				}
 			}
 			
 			PlotSpec spec = new PlotSpec(funcs, chars, title, scalar.toString(), yAxisLabel);
@@ -2099,7 +2106,7 @@ public class SegmentationCalculator {
 //			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_TRIANGLE, 6f, new Color(150, 0, 0, 150)));
 			
 			PlotSpec spec = new PlotSpec(funcs, chars, scalar.name+" Max-Dist Comparison", scalar.toString(),
-					"Passthrough Rate (Rel. "+combiner+")");
+					PASSTHROUGH_LABEL+" (Rel. "+combiner+")");
 			spec.setLegendVisible(true);
 			
 			System.out.println(getMagLabel(minMags[m])+" "+scalar+": "+scalarTrack);

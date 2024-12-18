@@ -117,10 +117,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	public static SlipAlongRuptureModelBranchNode SLIP_ALONG_DEFAULT = NSHM23_SlipAlongRuptureModels.UNIFORM;
 	
-	public static boolean ALLOW_CONNECTED_PROXY_FAULTS_DEFAULT = false;
-	private static boolean allowConnectedProxyFaults = ALLOW_CONNECTED_PROXY_FAULTS_DEFAULT;
-	public static final double MAX_PROXY_FAULT_RUP_LEN_DEFAULT = 75d;
-	private static double maxProxyFaultRupLen = MAX_PROXY_FAULT_RUP_LEN_DEFAULT;
+	public static boolean ALLOW_CONNECTED_PROXY_FAULTS = false;
+	public static double MAX_PROXY_FAULT_RUP_LEN = 75d;
 	
 	public PRVI25_InvConfigFactory() {
 		numItersPerRup = NUM_ITERS_PER_RUP_DEFAULT;
@@ -171,7 +169,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		RupSetConfig config = model.getConfig(subSects, scale);
 		if (config instanceof CoulombRupSetConfig)
-			((CoulombRupSetConfig)config).setConnectProxyFaults(allowConnectedProxyFaults);
+			((CoulombRupSetConfig)config).setConnectProxyFaults(ALLOW_CONNECTED_PROXY_FAULTS);
 		
 		File cachedRupSetFile = null;
 		if (cacheDir != null) {
@@ -184,7 +182,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 				dmMoment += sect.calcMomentRate(false);
 			String momentStr = ((float)dmMoment+"").replace('.', 'p');
 			String rupSetFileName = "rup_set_"+model.getFilePrefix()+"_"
-				+SectionDistanceAzimuthCalculator.getUniqueSectCacheFileStr(subSects)+"_"+momentStr+"_moment.zip";
+				+SectionDistanceAzimuthCalculator.getUniqueSectCacheFileStr(subSects)+"_"+momentStr+"_moment"
+				+(ALLOW_CONNECTED_PROXY_FAULTS ? "_connProxies" : "")+ ".zip";
 			
 			cachedRupSetFile = new File(subDir, rupSetFileName);
 			config.setCacheDir(subDir);
@@ -794,14 +793,14 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 				exclusionModels.add(exclusionModel);
 		}
 		
-		if (!allowConnectedProxyFaults) {
+		if (!ALLOW_CONNECTED_PROXY_FAULTS) {
 			System.out.println("Excluding jumps to/from proxy faults");
 			exclusionModels.add(new ProxyConnectionExclusionModel());
 		}
 		
-		if (maxProxyFaultRupLen > 0d) {
-			System.out.println("Excluding proxy fault ruptures longer than "+(float)maxProxyFaultRupLen+" km");
-			exclusionModels.add(new ProxyMaxLenExclusionModel(maxProxyFaultRupLen));
+		if (MAX_PROXY_FAULT_RUP_LEN > 0d) {
+			System.out.println("Excluding proxy fault ruptures longer than "+(float)MAX_PROXY_FAULT_RUP_LEN+" km");
+			exclusionModels.add(new ProxyMaxLenExclusionModel(MAX_PROXY_FAULT_RUP_LEN));
 		}
 		
 		if (exclusionModels.isEmpty())
@@ -1085,6 +1084,15 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		public GriddedForceSlab2Depths() {
 			PRVI25_GridSourceBuilder.INTERFACE_USE_SECT_PROPERTIES = false;
+		}
+		
+	}
+
+	
+	public static class NoProxyLengthLimit extends PRVI25_InvConfigFactory {
+		
+		public NoProxyLengthLimit() {
+			MAX_PROXY_FAULT_RUP_LEN = 0d;
 		}
 		
 	}

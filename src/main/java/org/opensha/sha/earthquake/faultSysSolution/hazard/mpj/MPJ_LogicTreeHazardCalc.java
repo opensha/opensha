@@ -131,6 +131,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private SolHazardMapCalc externalGriddedCurveCalc;
 	
 	private QuickGriddedHazardMapCalc[] quickGridCalcs;
+	private ExecutorService quickGridExec;
 
 	private boolean noMFDs;
 	private boolean noProxyRups;
@@ -547,6 +548,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 
 	@Override
 	protected void doFinalAssembly() throws Exception {
+		if (quickGridExec != null)
+			quickGridExec.shutdown();
+		
 		// write out mean curves
 		// write out branch-specific averages
 		Preconditions.checkState(myAverageDir.exists() || myAverageDir.mkdir());
@@ -857,6 +861,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						externalGriddedCurveCalc.setSourceFilter(sourceFilter);
 						externalGriddedCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 						externalGriddedCurveCalc.setGriddedSeismicitySettings(griddedSettings);
+						externalGriddedCurveCalc.setCacheGridSources(true);
 						
 						externalGriddedCurveCalc.calcHazardCurves(getNumThreads());
 					}
@@ -878,8 +883,10 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					debug("Doing quick gridded seismicity calc for "+index);
 					Preconditions.checkState(!combineOnly, "Combine-only flag is set, but we need to calculate gridded only for "+branch);
 					List<DiscretizedFunc[]> curves = new ArrayList<>();
+					if (quickGridExec == null)
+						quickGridExec = Executors.newFixedThreadPool(getNumThreads());
 					for (int p=0; p<periods.length; p++)
-						curves.add(quickGridCalcs[p].calc(sol.getGridSourceProvider(), gridRegion, getNumThreads()));
+						curves.add(quickGridCalcs[p].calc(sol.getGridSourceProvider(), gridRegion, quickGridExec, getNumThreads()));
 					combineWithOnlyCurves = SolHazardMapCalc.forCurves(sol, gridRegion, periods, curves);
 					if (gridSeisOp == IncludeBackgroundOption.ONLY)
 						// we'll probably be combining later, write out the curves
@@ -964,6 +971,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				calc.setSourceFilter(sourceFilter);
 				calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 				calc.setGriddedSeismicitySettings(griddedSettings);
+				calc.setCacheGridSources(true);
 				calc.setAseisReducesArea(aseisReducesArea);
 				calc.setNoMFDs(noMFDs);
 				calc.setUseProxyRups(!noProxyRups);

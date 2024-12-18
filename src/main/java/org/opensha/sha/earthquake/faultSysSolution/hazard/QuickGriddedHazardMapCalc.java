@@ -10,8 +10,13 @@ import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -36,6 +41,8 @@ import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
+import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.PointSurface;
@@ -201,7 +208,7 @@ public class QuickGriddedHazardMapCalc {
 	 * @param threads number of calculation threads, must be >=1
 	 * @return hazard curves (linear x-values) for this grid source provider, computed at every location
 	 */
-	public DiscretizedFunc[] calc(GridSourceProvider gridProv, GriddedRegion gridReg, int threads) {
+	public DiscretizedFunc[] calc(GridSourceProvider gridProv, GriddedRegion gridReg, ExecutorService exec, int threads) {
 		// calculation done in log-x space
 		DiscretizedFunc logXVals = new ArbitrarilyDiscretizedFunc();
 		for (Point2D pt : xVals)
@@ -213,37 +220,32 @@ public class QuickGriddedHazardMapCalc {
 			sourceIndexes.add(i);
 		
 		// spin up worker threads
-		List<CalcThread> calcThreads = new ArrayList<>(threads);
+		List<Future<DiscretizedFunc[]>> calcFutures = new ArrayList<>(threads);
 		
-		for (int i=0; i<threads; i++) {
-			CalcThread thread = new CalcThread(gridProv, logXVals, gridReg, sourceIndexes);
-			thread.start();
-			calcThreads.add(thread);
-		}
+		for (int i=0; i<threads; i++)
+			calcFutures.add(exec.submit(new CalcCallable(gridProv, logXVals, gridReg, sourceIndexes)));
 		
 		// join them
 		DiscretizedFunc[] curves = null;
-		for (CalcThread thread : calcThreads) {
+		for (Future<DiscretizedFunc[]> future : calcFutures) {
+			DiscretizedFunc[] threadCurves;
 			try {
-				thread.join();
-				if (thread.exception != null)
-					throw ExceptionUtils.asRuntimeException(thread.exception);
-			} catch (InterruptedException e) {
+				threadCurves = future.get();
+			} catch (InterruptedException | ExecutionException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 			
-			
-			if (thread.curves == null)
+			if (threadCurves == null)
 				continue;
 			
 			if (curves == null) {
 				// use curves from this calc thread
-				curves = thread.curves;
+				curves = threadCurves;
 			} else {
 				// add them (actually multiply, these are 1-P curves)
 				for (int i=0; i<curves.length; i++)
 					for (int k=0; k<curves[i].size(); k++)
-						curves[i].set(k, curves[i].getY(k)*thread.curves[i].getY(k));
+						curves[i].set(k, curves[i].getY(k)*threadCurves[i].getY(k));
 			}
 		}
 		
@@ -266,7 +268,7 @@ public class QuickGriddedHazardMapCalc {
 	
 	private boolean trtWarned = false;
 	
-	private class CalcThread extends Thread {
+	private class CalcCallable implements Callable<DiscretizedFunc[]> {
 		
 		private DiscretizedFunc[] curves;
 		private GridSourceProvider gridProv;
@@ -274,9 +276,7 @@ public class QuickGriddedHazardMapCalc {
 		private GriddedRegion gridReg;
 		private ArrayDeque<Integer> sourceIndexes;
 		
-		private Throwable exception;
-		
-		public CalcThread(GridSourceProvider gridProv, DiscretizedFunc logXVals,
+		public CalcCallable(GridSourceProvider gridProv, DiscretizedFunc logXVals,
 				GriddedRegion gridReg, ArrayDeque<Integer> sourceIndexes) {
 			this.gridProv = gridProv;
 			this.logXVals = logXVals;
@@ -285,7 +285,7 @@ public class QuickGriddedHazardMapCalc {
 		}
 
 		@Override
-		public void run() {
+		public DiscretizedFunc[] call() {
 			try {
 				Map<TectonicRegionType, ScalarIMR> gmpeMap = new EnumMap<>(TectonicRegionType.class);
 				
@@ -340,10 +340,11 @@ public class QuickGriddedHazardMapCalc {
 					quickSourceCalc(gridReg, source, gmpe, curves);
 				}
 			} catch (Throwable t) {
-				exception = t;
-				return;
+				throw ExceptionUtils.asRuntimeException(t);
 			}
+			return curves;
 		}
+		
 	}
 	
 	private void quickSourceCalc(GriddedRegion gridReg, ProbEqkSource source, ScalarIMR gmpe, DiscretizedFunc[] curves) {
@@ -571,33 +572,46 @@ public class QuickGriddedHazardMapCalc {
 	}
 
 	public static void main(String[] args) throws IOException {
+//		FaultSystemSolution sol = FaultSystemSolution.load(new File("/data/kevin/nshm23/batch_inversions/"
+//				+ "2023_03_01-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR/"
+//				+ "results_NSHM23_v2_CoulombRupSet_branch_averaged_gridded.zip"));
+//		Region region = NSHM23_RegionLoader.loadFullConterminousWUS();
+//		double spacing = 0.2d;
+		
 		FaultSystemSolution sol = FaultSystemSolution.load(new File("/data/kevin/nshm23/batch_inversions/"
-				+ "2023_03_01-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR/"
-				+ "results_NSHM23_v2_CoulombRupSet_branch_averaged_gridded.zip"));
+				+ "2024_12_12-prvi25_crustal_subduction_combined_branches/combined_branch_averaged_solution.zip"));
+		Region region = PRVI25_RegionLoader.loadPRVI_Tight();
+		double spacing = 0.025d;
 		
 		GridSourceProvider gridProv = sol.getGridSourceProvider();
 		
 		DiscretizedFunc xVals = new IMT_Info().getDefaultHazardCurve(PGA_Param.NAME);
 		
-		AttenRelRef gmpeRef = AttenRelRef.ASK_2014;
-		int threads = 20;
+//		AttenRelRef gmpeRef = AttenRelRef.ASK_2014;
+//		Map<TectonicRegionType, Supplier<ScalarIMR>> trtGMMs = SolHazardMapCalc.wrapInTRTMap(gmpeRef);
+		Map<TectonicRegionType, Supplier<ScalarIMR>> trtGMMs = Map.of(
+				TectonicRegionType.ACTIVE_SHALLOW, AttenRelRef.USGS_PRVI_ACTIVE,
+				TectonicRegionType.SUBDUCTION_INTERFACE, AttenRelRef.USGS_PRVI_INTERFACE,
+				TectonicRegionType.SUBDUCTION_SLAB, AttenRelRef.USGS_PRVI_SLAB);
+		int threads = 32;
 		double period = 0d;
-		double spacing = 0.2d;
-		int numPts = 50;
 		
-		SourceFilterManager sourceFilters = new SourceFilterManager(SourceFilters.FIXED_DIST_CUTOFF);
+		SourceFilterManager sourceFilters = new SourceFilterManager(SourceFilters.TRT_DIST_CUTOFFS);
 		
 		GriddedSeismicitySettings gridSettings = GriddedSeismicitySettings.DEFAULT;
+		gridSettings.forSupersamplingSettings(GridCellSupersamplingSettings.DEFAULT);
 		
-		QuickGriddedHazardMapCalc calc = new QuickGriddedHazardMapCalc(SolHazardMapCalc.wrapInTRTMap(gmpeRef),
-				period, xVals, sourceFilters, gridSettings, numPts);
+		QuickGriddedHazardMapCalc calc = new QuickGriddedHazardMapCalc(trtGMMs,
+				period, xVals, sourceFilters, gridSettings);
 //		calc.minNodesForSourcewise = Integer.MAX_VALUE;
 		
-		Region region = NSHM23_RegionLoader.loadFullConterminousWUS();
+		
 		GriddedRegion gridReg = new GriddedRegion(region, spacing, GriddedRegion.ANCHOR_0_0);
 		
+		ExecutorService exec = Executors.newFixedThreadPool(threads);
+		
 		Stopwatch watch = Stopwatch.createStarted();
-		DiscretizedFunc[] quickCurves = calc.calc(gridProv, gridReg, threads);
+		DiscretizedFunc[] quickCurves = calc.calc(gridProv, gridReg, exec, threads);
 		watch.stop();
 		double quickSecs1 = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
 		
@@ -610,15 +624,17 @@ public class QuickGriddedHazardMapCalc {
 		calc.numCacheMisses = 0;
 		watch.reset();
 		watch.start();
-		calc.calc(gridProv, gridReg, threads);
+		calc.calc(gridProv, gridReg, exec, threads);
 		watch.stop();
 		double quickSecs2 = watch.elapsed(TimeUnit.MILLISECONDS)/1000d;
+		
+		exec.shutdown();
 		
 		System.out.println("Quick 2 took "+(float)quickSecs2+" s");
 		System.out.println("Calc #1 hits = "+calc.numCacheHits+"/"+(calc.numCacheHits+calc.numCacheMisses)
 				+" ("+pDF.format((double)calc.numCacheHits/(double)(calc.numCacheHits+calc.numCacheMisses))+")");
 		
-		SolHazardMapCalc tradCalc = new SolHazardMapCalc(sol, gmpeRef, gridReg, IncludeBackgroundOption.ONLY, period);
+		SolHazardMapCalc tradCalc = new SolHazardMapCalc(sol, trtGMMs, gridReg, IncludeBackgroundOption.ONLY, period);
 		tradCalc.setSourceFilter(sourceFilters);
 		
 		watch.reset();

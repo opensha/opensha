@@ -574,6 +574,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 					externalGriddedCurveCalc.setSourceFilter(sourceFilter);
 					externalGriddedCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 					externalGriddedCurveCalc.setGriddedSeismicitySettings(griddedSettings);
+					externalGriddedCurveCalc.setCacheGridSources(true);
 					
 					externalGriddedCurveCalc.calcHazardCurves(getNumThreads());
 				}
@@ -649,6 +650,7 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			calc.setNoMFDs(noMFDs);
 			calc.setUseProxyRups(!noProxyRups);
 			calc.setGriddedSeismicitySettings(griddedSettings);
+			calc.setCacheGridSources(true);
 			
 			if (erf != null)
 				calc.setERF(erf);

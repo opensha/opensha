@@ -249,6 +249,20 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	public IncrementalMagFreqDist getMFD(TectonicRegionType tectonicRegionType, int gridIndex) {
 		return getMFD(tectonicRegionType, gridIndex, Double.NEGATIVE_INFINITY, true, true); 
 	}
+	
+	@Override
+	public double getCumulativeNucleationRate(int gridIndex, double minMag) {
+		return getCumulativeNucleationRate(null, gridIndex, minMag);
+	}
+
+	@Override
+	public double getCumulativeNucleationRate(TectonicRegionType tectonicRegionType, int gridIndex, double minMag) {
+		double sum = 0d;
+		for (GriddedRupture rup : getRuptures(tectonicRegionType, gridIndex))
+			if ((float)rup.properties.magnitude >= (float)minMag)
+				sum += rup.rate;
+		return sum;
+	}
 
 	@Override
 	public IncrementalMagFreqDist getMFD_Unassociated(int gridIndex) {

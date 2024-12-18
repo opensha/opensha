@@ -20,6 +20,7 @@ public enum PlotLineType {
 	SOLID("Solid"),
 	DOTTED("Dotted"),
 	DASHED("Dashed"),
+	SHORT_DASHED("Short Dashed"),
 	DOTTED_AND_DASHED("Dotted & Dashed"),
 	HISTOGRAM("Histogram"),
 	STACKED_BAR("Stacked Bar"),
@@ -58,6 +59,9 @@ public enum PlotLineType {
 		else if (this == DASHED)
 			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
 					BasicStroke.JOIN_BEVEL,0,new float[] {9},0);
+		else if (this == SHORT_DASHED)
+			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
+					BasicStroke.JOIN_BEVEL,0,new float[] {4},0);
 		else if (this == DOTTED_AND_DASHED)
 			return new BasicStroke(lineWidth, BasicStroke.CAP_BUTT,
 					BasicStroke.JOIN_BEVEL,0,new float[] {5,3,2,3},0);

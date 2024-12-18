@@ -9,7 +9,8 @@ import org.junit.runners.Suite;
 	TestFractileCurveCalculator.class,
 	TestFunctionListCalc.class,
 	TestGaussianDistCalc.class,
-	TestWeightedSampler.class
+	TestWeightedSampler.class,
+	TestGaussianExceedProbCalculator.class
 })
 
 public class CalcSuite

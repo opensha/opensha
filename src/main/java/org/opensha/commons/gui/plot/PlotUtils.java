@@ -1,6 +1,7 @@
 package org.opensha.commons.gui.plot;
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
@@ -17,6 +18,7 @@ import javax.imageio.ImageIO;
 
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.ChartRenderingInfo;
+import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.axis.NumberTickUnit;
 import org.jfree.chart.axis.TickUnit;
 import org.jfree.chart.axis.TickUnits;
@@ -78,12 +80,30 @@ public class PlotUtils {
 		gp.getPlot().setRangeGridlinesVisible(yVisible);
 	}
 	
-	public static void fixAspectRatio(GraphPanel gp, int width,  boolean isLatLon) {
-		fixAspectRatio(gp, width, calcAspectRatio(gp.getX_AxisRange(), gp.getY_AxisRange(), isLatLon));
+	public static void fixAspectRatio(GraphPanel gp, int width, boolean isLatLon) {
+		fixAspectRatio(gp, width, true, isLatLon);
+	}
+	
+	public static void fixAspectRatio(GraphPanel gp, int dimension, boolean haveWidth, boolean isLatLon) {
+		fixAspectRatio(gp, dimension, haveWidth, calcAspectRatio(gp.getX_AxisRange(), gp.getY_AxisRange(), isLatLon));
 	}
 	
 	public static void fixAspectRatio(GraphPanel gp, int width, double aspectRatio) {
-		int height = calcHeight(gp.getChartPanel(), width, aspectRatio);
+//		int height = calcHeight(gp.getChartPanel(), width, aspectRatio);
+//		gp.getChartPanel().setSize(width, height);
+		fixAspectRatio(gp, width, true, aspectRatio);
+	}
+	
+	public static void fixAspectRatio(GraphPanel gp, int dimension, boolean haveWidth, double aspectRatio) {
+		int calculated = calcDimension(gp.getChartPanel(), dimension, haveWidth, aspectRatio);
+		int width, height;
+		if (haveWidth) {
+			width = dimension;
+			height = calculated;
+		} else {
+			height = dimension;
+			width = calculated;
+		}
 		gp.getChartPanel().setSize(width, height);
 	}
 	
@@ -111,15 +131,26 @@ public class PlotUtils {
 	}
 	
 	private static final int ASPECT_CALC_ITERATIONS = 2;
-	private static boolean HEIGHT_D = false;
+	public static boolean HEIGHT_ASPECT_D = false;
+	
 	public static int calcHeight(ChartPanel cp, int width, double aspectRatio) {
+		return calcDimension(cp, width, true, aspectRatio);
+	}
+	
+	public static int calcWidth(ChartPanel cp, int height, double aspectRatio) {
+		return calcDimension(cp, height, false, aspectRatio);
+	}
+	
+	private static int calcDimension(ChartPanel cp, int fixed, boolean haveWidth, double aspectRatio) {
 		ChartRenderingInfo chartInfo = new ChartRenderingInfo();
-		int height = width; // start with height = width
+		// start with height = width
+		int height = fixed;
+		int width = fixed;
 		
 		// do multiple iterations because actual spacing can change when changing the dimensions
 		// e.g., a legend or axis label can take up additional space when the height is updated.
 		for (int i=0; i<ASPECT_CALC_ITERATIONS; i++) {
-			if (HEIGHT_D) System.out.println("Height calc iteration "+i+", currently "+width+" x "+height
+			if (HEIGHT_ASPECT_D) System.out.println("Height calc iteration "+i+", currently "+width+" x "+height
 					+"; AR="+(float)((double)width/(double)height)+"; targetAR="+(float)aspectRatio);
 			// this forces it to actually render
 			cp.getChart().createBufferedImage(width, height, chartInfo);
@@ -150,8 +181,10 @@ public class PlotUtils {
 				for (XYPlot subPlot : subPlots) {
 					int weight = subPlot.getWeight();
 					double subWidth = widthMinusGaps * (double)weight / (double)sumWeights;
+					// 1 width for each subplot
 					plotWidths.add(subWidth);
 				}
+				// 1 single height
 				plotHeights.add(myHeight);
 			} else if (plot instanceof CombinedDomainXYPlot) {
 				// multiple plots arranged vertically
@@ -168,8 +201,10 @@ public class PlotUtils {
 				for (XYPlot subPlot : subPlots) {
 					int weight = subPlot.getWeight();
 					double subHeight = heightMinusGaps * (double)weight / (double)sumWeights;
+					// 1 height for each subplot
 					plotHeights.add(subHeight);
 				}
+				// 1 single width
 				plotWidths.add(myWidth);
 			} else {
 				// single plot
@@ -187,31 +222,69 @@ public class PlotUtils {
 					evenlyWeighted = weight0 == subPlots.get(j).getWeight();
 			}
 			
-			double extraHeight = height - totalPlotHeight; // height that's related to gaps, labels, legends, and padding
-			if (HEIGHT_D) {
-				System.out.println("\tCurrent plot area dimensions: "+(float)totalPlotWidth+" x "
-						+(float)totalPlotHeight+"; AR="+(float)(totalPlotWidth/totalPlotHeight));
-				System.out.println("\tExtra height: "+extraHeight);
-			}
-			if (evenlyWeighted) {
-				double plotHeight = totalPlotWidth / aspectRatio;
-				height = (int)(extraHeight + plotHeight*plotHeights.size() + 0.5);
+			if (haveWidth) {
+				// calculate height
+				double extraHeight = height - totalPlotHeight; // height that's related to gaps, labels, legends, and padding
+				if (HEIGHT_ASPECT_D) {
+					System.out.println("\tCurrent plot area dimensions: "+(float)totalPlotWidth+" x "
+							+(float)totalPlotHeight+"; AR="+(float)(totalPlotWidth/totalPlotHeight));
+					System.out.println("\tExtra height: "+extraHeight);
+				}
+				if (evenlyWeighted) {
+					double plotHeight = plotWidths.get(0) / aspectRatio;
+					height = (int)(extraHeight + plotHeight*plotHeights.size() + 0.5);
+				} else {
+					// just do the first subplot
+					double origHeight1 = plotHeights.get(0);
+					double targetHeight1 = plotWidths.get(0) / aspectRatio;
+					if (HEIGHT_ASPECT_D) System.out.println("\tFirst subplot is currently "+plotWidths.get(0).floatValue()+" x "
+							+(float)origHeight1+"; AR="+(float)(plotWidths.get(0)/origHeight1));
+					// scale the height
+					double heightScale1 = targetHeight1 / origHeight1;
+					if (HEIGHT_ASPECT_D) System.out.println("\tScaling height by "+(float)heightScale1+" to get to "+plotWidths.get(0).floatValue()+" x "
+							+(float)targetHeight1+"; AR="+(float)(plotWidths.get(0)/targetHeight1));
+					Preconditions.checkState(heightScale1 > 0d);
+					
+					height = (int)(extraHeight + totalPlotHeight*heightScale1 + 0.5);
+				}
 			} else {
-				// just do the first subplot
-				double origHeight1 = plotHeights.get(0);
-				double targetHeight1 = plotWidths.get(0) / aspectRatio;
-				System.out.println("\tFirst subplot is currently "+plotWidths.get(0).floatValue()+" x "
-						+(float)origHeight1+"; AR="+(float)(plotWidths.get(0)/origHeight1));
-				// scale the height
-				double heightScale1 = targetHeight1 / origHeight1;
-				System.out.println("\tScaling height by "+(float)heightScale1+" to get to "+plotWidths.get(0).floatValue()+" x "
-						+(float)targetHeight1+"; AR="+(float)(plotWidths.get(0)/targetHeight1));
-				Preconditions.checkState(heightScale1 > 0d);
-				
-				height = (int)(extraHeight + totalPlotHeight*heightScale1 + 0.5);
+				double extraWidth = width - totalPlotWidth; // width that's related to gaps, labels, legends, and padding
+				if (evenlyWeighted) {
+					double plotWidth = plotHeights.get(0) * aspectRatio;
+					width = (int)(extraWidth + plotWidth*plotWidths.size() + 0.5);
+				} else {
+					// just do the first subplot
+					double origWidth1 = plotWidths.get(0);
+					double targetWidth1 = plotHeights.get(0) * aspectRatio;
+					// scale the width
+					double widthScale1 = targetWidth1 / origWidth1;
+					Preconditions.checkState(widthScale1 > 0d);
+					
+					width = (int)(extraWidth + totalPlotWidth*widthScale1 + 0.5);
+				}
 			}
 		}
-		return height;
+		return haveWidth ? height : width;
+	}
+	
+	public static void addSubplotTitles(GraphPanel gp, List<String> names, Font font) {
+		addSubplotTitles(getSubPlots(gp), names, font);
+	}
+	
+	public static void addSubplotTitles(List<XYPlot> subplots, List<String> names, Font font) {
+		Preconditions.checkState(subplots.size() == names.size());
+		for (int i=0; i<subplots.size(); i++) {
+			String name = names.get(i);
+			if (name != null) {
+				// do it as an axis, but it'll be on top
+				NumberAxis title = new NumberAxis(name);
+				title.setLabelFont(font);
+				title.setTickLabelsVisible(false);
+				title.setTickMarksVisible(false);
+				title.setAxisLineVisible(false);
+				subplots.get(i).setDomainAxis(1, title); // 1 puts it as the 2nd axis
+			}
+		}
 	}
 	
 	// TODO untested, verify and uncomment if needed
@@ -246,13 +319,15 @@ public class PlotUtils {
 		writePlots(outputDir, prefix, gp, width, -1, isLatLon, writePNG, writePDF, writeTXT);
 	}
 	
-	private static void writePlots(File outputDir, String prefix, GraphPanel gp, int width, int height,
+	public static void writePlots(File outputDir, String prefix, GraphPanel gp, int width, int height,
 			boolean isLatLon, boolean writePNG, boolean writePDF, boolean writeTXT) throws IOException {
 		File file = new File(outputDir, prefix);
 		
-		Preconditions.checkArgument(width > 0, "");
+		Preconditions.checkArgument(width > 0 || height > 0, "must specify either width or height");
 		if (height <= 0)
 			fixAspectRatio(gp, width, isLatLon);
+		else if (width <= 0)
+			fixAspectRatio(gp, height, false, isLatLon);
 		else
 			gp.getChartPanel().setSize(width, height);
 		
@@ -265,11 +340,21 @@ public class PlotUtils {
 	}
 	
 	public static void setXTick(GraphPanel gp, double tick) {
-		setTick(gp.getXAxis(), tick);
+		if (isCombinedPlot(gp.getPlot())) {
+			for (XYPlot subPlot : getSubPlots(gp))
+				setTick(subPlot.getDomainAxis(), tick);
+		} else {
+			setTick(gp.getXAxis(), tick);
+		}
 	}
 	
 	public static void setYTick(GraphPanel gp, double tick) {
-		setTick(gp.getYAxis(), tick);
+		if (isCombinedPlot(gp.getPlot())) {
+			for (XYPlot subPlot : getSubPlots(gp))
+				setTick(subPlot.getRangeAxis(), tick);
+		} else {
+			setTick(gp.getYAxis(), tick);
+		}
 	}
 	
 	public static void setTick(ValueAxis axis, double tick) {
@@ -299,6 +384,10 @@ public class PlotUtils {
 
 	public static List<XYPlot> getSubPlots(GraphPanel gp) {
 		return getSubPlots(gp.getPlot());
+	}
+	
+	private static boolean isCombinedPlot(XYPlot plot) {
+		return plot instanceof CombinedDomainXYPlot || plot instanceof CombinedRangeXYPlot;
 	}
 
 	@SuppressWarnings("unchecked")
