@@ -525,6 +525,24 @@ public class LogicTreeHazardCompare {
 			if (cmd.hasOption("diff-range"))
 				mapper.setDiffRange(Double.parseDouble(cmd.getOptionValue("diff-range")));
 			
+			if (cmd.hasOption("plot-region")) {
+				String plotRegStr = cmd.getOptionValue("plot-region");
+				// see if it's a file
+				File regFile = new File(plotRegStr);
+				if (regFile.exists()) {
+					Feature feature = Feature.read(regFile);
+					mapper.mapRegion = Region.fromFeature(feature);
+				} else {
+					String[] commaSplit = plotRegStr.split(",");
+					Preconditions.checkState(commaSplit.length == 4, "--plot-region must be either a GeoJSON file, or minLat,minLon,maxLat,maxLon");
+					double minLat = Double.parseDouble(commaSplit[0]);
+					double minLon = Double.parseDouble(commaSplit[1]);
+					double maxLat = Double.parseDouble(commaSplit[2]);
+					double maxLon = Double.parseDouble(commaSplit[3]);
+					mapper.mapRegion = new Region(new Location(minLat, minLon), new Location(maxLat, maxLon));
+				}
+			}
+			
 			if (compHazardFile != null) {
 				SolutionLogicTree compSolTree;
 				if (compResultsFile == null) {
@@ -579,6 +597,8 @@ public class LogicTreeHazardCompare {
 				"Path to alternative logic tree JSON file for the comparison model. Implies --ignore-precomputed-maps");
 		ops.addOption("ipm", "ignore-precomputed-maps", false,
 				"Flag to ignore precomputed mean maps");
+		ops.addOption(null, "plot-region", true,
+				"Custom plotting region. Must be either a path to a geojson file, or specified as minLat,minLon,maxLat,maxLon");
 		ops.addOption("pdf", "write-pdfs", false, "Flag to write PDFs of top level maps");
 		ops.addOption(null, "cpt-range", true, "Custom CPT range for hazard maps, in log10 units. Specify as min,max");
 		ops.addOption(null, "pdiff-range", true, "Maximum % difference to plot");
@@ -630,6 +650,8 @@ public class LogicTreeHazardCompare {
 	private SolHazardMapCalc mapper;
 	private ExecutorService exec;
 	private List<Future<?>> futures;
+	
+	private Region mapRegion;
 	
 	private GriddedRegion forceRemapRegion;
 	
@@ -817,8 +839,11 @@ public class LogicTreeHazardCompare {
 				System.out.println("Loading maps at 4-byte floating precision for "+branches.size()
 					+" branches and "+gridReg.getNodeCount()+" grid locs");
 			
-			if (mapper == null)
+			if (mapper == null) {
 				mapper = new SolHazardMapCalc(sol, null, gridReg, periods);
+				if (mapRegion != null)
+					mapper.setMapPlotRegion(mapRegion);
+			}
 		}
 		
 		if (mapper == null) {
@@ -832,6 +857,8 @@ public class LogicTreeHazardCompare {
 				// build mapper without a solution (no faults will be shown)
 				mapper = new SolHazardMapCalc(null, null, gridReg, periods);
 			}
+			if (mapRegion != null)
+				mapper.setMapPlotRegion(mapRegion);
 		}
 		
 		Stopwatch watch = Stopwatch.createStarted();
