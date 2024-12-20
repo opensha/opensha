@@ -410,7 +410,7 @@ public class PlotUtils {
 		int height = (int) Math.ceil(preferredSize.getHeight());
 
 		// Print the preferred height
-        System.out.println("Preferred height: " + height);
+//        System.out.println("Preferred height: " + height);
 
         // Clean up dummy graphics
         dummyGraphics.dispose();
