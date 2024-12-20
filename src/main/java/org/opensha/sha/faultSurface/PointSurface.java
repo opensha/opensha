@@ -248,6 +248,9 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		this.magForDistCorr = mag;
 	}
 
+	public PointSourceDistanceCorrection getDistanceCorrection() {
+		return distCorr;
+	}
 
 	/**
 	 * This sets the three propagation distances (distanceJB, distanceRup, & distanceSeis)
