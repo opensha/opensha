@@ -333,6 +333,46 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		return combTree;
 	}
 	
+	public static LogicTree<?> pairwiseSampleLogicTrees(LogicTree<?> outerTree, LogicTree<?> innerTree, int numPairwiseSamples) {
+		return pairwiseSampleLogicTrees(outerTree, innerTree, numPairwiseSamples, 1);
+	}
+	
+	public static LogicTree<?> pairwiseSampleLogicTrees(LogicTree<?> outerTree, LogicTree<?> innerTree, int numOuterSamples, int numInnerPerOuter) {
+		AbstractLogicTreeHazardCombiner comb = new AbstractLogicTreeHazardCombiner(outerTree, innerTree) {
+
+			@Override
+			protected void remapOuterTree(LogicTree<?> tree, Map<LogicTreeLevel<?>, LogicTreeLevel<?>> levelRemaps,
+					Map<LogicTreeNode, LogicTreeNode> nodeRemaps) {}
+
+			@Override
+			protected void remapInnerTree(LogicTree<?> tree, Map<LogicTreeLevel<?>, LogicTreeLevel<?>> levelRemaps,
+					Map<LogicTreeNode, LogicTreeNode> nodeRemaps) {}
+
+			@Override
+			protected boolean doesOuterSupplySols() {
+				return false;
+			}
+
+			@Override
+			protected boolean doesInnerSupplySols() {
+				return false;
+			}
+
+			@Override
+			protected boolean isSerializeGridded() {
+				return false;
+			}
+			
+		};
+		
+		long rand = (long)comb.expectedNum*(long)numOuterSamples*(long)numInnerPerOuter;
+		
+		comb.pairwiseSampleTree(numOuterSamples, numInnerPerOuter, rand);
+		comb.buildCominedTree();
+		
+		return comb.combTree;
+	}
+	
 	private void buildCominedTree() {
 		System.out.println("Building combined tree");
 		if (commonLevels.isEmpty()) {
@@ -397,6 +437,9 @@ public abstract class AbstractLogicTreeHazardCombiner {
 					int prevOuterSampleCount = outerSampleCounts.containsKey(outerBranch) ? outerSampleCounts.get(outerBranch) : 0;
 					while (prevPairs.contains(outerBranch, innerBranch)) {
 						// duplicate
+						Preconditions.checkState(prevPairs.row(outerBranch).size() < matchingInnerTree.size(),
+								"Already sampled all %s inner branches for outer branch %s: %s",
+								matchingInnerTree.size(), o, outerBranch);
 						int prevIndex = prevPairs.get(outerBranch, innerBranch);
 						// register that we sampled this one again
 						branchSampleCounts.set(prevIndex, branchSampleCounts.get(prevIndex)+1);
@@ -570,7 +613,7 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		pairwiseSampleRand = new Random(randSeed);
 		if (numOuterSamples != 0 && numOuterSamples != outerTree.size()) {
 			// first sample the outer tree
-			System.out.println("Pairwise-sampling outer tree to "+numOuterSamples+" samples");
+			System.out.println("Pre-sampling outer tree to "+numOuterSamples+" samples for pairwise");
 			
 			// redraw duplicates if we have almost as many (or more) samples than exist in the outer tree
 			boolean redrawDuplicates = numOuterSamples < (int)(0.95*outerTree.size());
