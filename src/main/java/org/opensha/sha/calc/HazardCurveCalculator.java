@@ -387,9 +387,16 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 						if(Math.log(1.0-qkProb) < -30.0)
 							throw new RuntimeException("Error: The probability for this ProbEqkRupture ("+qkProb+
 							") is too high for a Possion source (~infinite number of events)");
-
-						for(k=0;k<numPoints;k++)
-							hazFunction.set(k,hazFunction.getY(k)*Math.pow(1-qkProb,condProbFunc.getY(k)));
+						// we're going to do a bunch of (1-prob)^value
+						// Math.pow(a, b) is about 3 times slower than Math.exp(a*b)
+						// we can speed this up by replacing the power with this log equivalence and precomputing ln(a):
+						// a^b = exp(b*ln(a))
+						double lnBase = Math.log(1-qkProb);
+						Preconditions.checkState(Double.isFinite(lnBase), "Bad lnBase=%s for qkProb=%s", lnBase, qkProb);
+						for(k=0;k<numPoints;k++) {
+							hazFunction.set(k,hazFunction.getY(k)*Math.exp(lnBase*condProbFunc.getY(k)));
+//							hazFunction.set(k,hazFunction.getY(k)*Math.pow(1-qkProb,condProbFunc.getY(k)));
+						}
 					}
 					// For non-Poissin source
 					else
