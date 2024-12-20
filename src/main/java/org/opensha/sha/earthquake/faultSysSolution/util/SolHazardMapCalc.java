@@ -296,6 +296,7 @@ public class SolHazardMapCalc {
 	private FaultSystemSolution sol;
 	private Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmpeRefMap;
 	private GriddedRegion region;
+	private Region mapPlotRegion;
 	private double[] periods;
 	
 	private BaseFaultSystemSolutionERF fssERF;
@@ -886,6 +887,10 @@ public class SolHazardMapCalc {
 		return xyz;
 	}
 	
+	public void setMapPlotRegion(Region mapPlotRegion) {
+		this.mapPlotRegion = mapPlotRegion;
+	}
+	
 	public File plotMap(File outputDir, String prefix, GriddedGeoDataSet xyz, CPT cpt,
 			String title, String zLabel) throws IOException {
 		return plotMap(outputDir, prefix, xyz, cpt, title, zLabel, false);
@@ -963,13 +968,19 @@ public class SolHazardMapCalc {
 	
 	public MapPlot buildMapPlot(File outputDir, String prefix, GriddedGeoDataSet xyz, CPT cpt,
 			String title, String zLabel, boolean diffStats) throws IOException {
-		GriddedRegion gridReg = xyz.getRegion();
-		Range lonRange = new Range(
-				Math.min(gridReg.getMinLon()-0.05, xyz.getMinLon()-0.75*gridReg.getLonSpacing()),
-				Math.max(gridReg.getMaxLon()+0.05, xyz.getMaxLon()+0.75*gridReg.getLonSpacing()));
-		Range latRange = new Range(
-				Math.min(gridReg.getMinLat()-0.05, xyz.getMinLat()-0.75*gridReg.getLatSpacing()),
-				Math.max(gridReg.getMaxLat()+0.05, xyz.getMaxLat()+0.75*gridReg.getLatSpacing()));
+		Range lonRange, latRange;
+		if (mapPlotRegion == null) {
+			GriddedRegion gridReg = xyz.getRegion();
+			lonRange = new Range(
+					Math.min(gridReg.getMinLon()-0.05, xyz.getMinLon()-0.75*gridReg.getLonSpacing()),
+					Math.max(gridReg.getMaxLon()+0.05, xyz.getMaxLon()+0.75*gridReg.getLonSpacing()));
+			latRange = new Range(
+					Math.min(gridReg.getMinLat()-0.05, xyz.getMinLat()-0.75*gridReg.getLatSpacing()),
+					Math.max(gridReg.getMaxLat()+0.05, xyz.getMaxLat()+0.75*gridReg.getLatSpacing()));
+		} else {
+			lonRange = new Range(mapPlotRegion.getMinLon(), mapPlotRegion.getMaxLon());
+			latRange = new Range(mapPlotRegion.getMinLat(), mapPlotRegion.getMaxLat());
+		}
 		double latSpan = latRange.getLength();
 		double lonSpan = lonRange.getLength();
 		double maxSpan = Math.max(latSpan, lonSpan);
@@ -1108,13 +1119,19 @@ public class SolHazardMapCalc {
 			String title, int titleFontSize, List<String> subtitles, int subtitleFontSize,
 			String zLabel, boolean horizontal, int shorterDimension, boolean axisLables, boolean axesTicks) throws IOException {
 		GriddedGeoDataSet refXYZ = xyzs.get(0);		
-		GriddedRegion gridReg = refXYZ.getRegion();
-		Range lonRange = new Range(
-				Math.min(gridReg.getMinLon()-0.05, refXYZ.getMinLon()-0.75*gridReg.getLonSpacing()),
-				Math.max(gridReg.getMaxLon()+0.05, refXYZ.getMaxLon()+0.75*gridReg.getLonSpacing()));
-		Range latRange = new Range(
-				Math.min(gridReg.getMinLat()-0.05, refXYZ.getMinLat()-0.75*gridReg.getLatSpacing()),
-				Math.max(gridReg.getMaxLat()+0.05, refXYZ.getMaxLat()+0.75*gridReg.getLatSpacing()));
+		Range lonRange, latRange;
+		if (mapPlotRegion == null) {
+			GriddedRegion gridReg = refXYZ.getRegion();
+			lonRange = new Range(
+					Math.min(gridReg.getMinLon()-0.05, refXYZ.getMinLon()-0.75*gridReg.getLonSpacing()),
+					Math.max(gridReg.getMaxLon()+0.05, refXYZ.getMaxLon()+0.75*gridReg.getLonSpacing()));
+			latRange = new Range(
+					Math.min(gridReg.getMinLat()-0.05, refXYZ.getMinLat()-0.75*gridReg.getLatSpacing()),
+					Math.max(gridReg.getMaxLat()+0.05, refXYZ.getMaxLat()+0.75*gridReg.getLatSpacing()));
+		} else {
+			lonRange = new Range(mapPlotRegion.getMinLon(), mapPlotRegion.getMaxLon());
+			latRange = new Range(mapPlotRegion.getMinLat(), mapPlotRegion.getMaxLat());
+		}
 		double latSpan = latRange.getLength();
 		double lonSpan = lonRange.getLength();
 		double maxSpan = Math.max(latSpan, lonSpan);
@@ -1470,6 +1487,7 @@ public class SolHazardMapCalc {
 		ops.addOption(null, "gmm-sigma-trunc-one-sided", true, "Enables one-sided GMM sigma truncation; default is disabled.");
 		ops.addOption(null, "gmm-sigma-trunc-two-sided", true, "Enables two-sided GMM sigma truncation; default is disabled.");
 		ops.addOption(null, "supersample", false, "Flag to enable grid cell supersampling (default is disabled)");
+		ops.addOption(null, "supersample-quick", false, "Flag to enable grid cell supersampling with faster parameters (default is disabled)");
 		ops.addOption(null, "dist-corr", true, "Set the point-source distance correction method. Default is "
 				+BaseFaultSystemSolutionERF.DIST_CORR_TYPE_DEFAULT.name()+"; options are: "+FaultSysTools.enumOptions(PointSourceDistanceCorrections.class));
 		ops.addOption(null, "point-source-type", true, "Sets the point source surface type. Default is "
@@ -1484,6 +1502,8 @@ public class SolHazardMapCalc {
 		
 		if (cmd.hasOption("supersample"))
 			settings = settings.forSupersamplingSettings(GridCellSupersamplingSettings.DEFAULT);
+		else if (cmd.hasOption("supersample-quick"))
+			settings = settings.forSupersamplingSettings(GridCellSupersamplingSettings.QUICK);
 		else
 			settings = settings.forSupersamplingSettings(null);
 		
