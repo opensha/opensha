@@ -743,7 +743,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 					+") subsection slip rate standard deviations to the floor value of "+(float)STD_DEV_FLOOR+" (mm/yr)");
 	}
 	
-	private List<? extends FaultSection> applyCreepModel(MinisectionMappings mappings,
+	public List<? extends FaultSection> applyCreepModel(MinisectionMappings mappings,
 			List<? extends FaultSection> subSects) throws IOException {
 		String creepPath = NSHM23_DM_PATH_PREFIX+"creep/"+CREEP_DATE+"/"+name()+".csv";
 		

@@ -31,7 +31,7 @@ public enum PRVI25_CrustalGMMs implements ScalarIMRsLogicTreeNode.SingleTRT {
 
 	@Override
 	public String getFilePrefix() {
-		return name();
+		return "CRUSTAL_"+name();
 	}
 
 	@Override

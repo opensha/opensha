@@ -386,17 +386,17 @@ public class ArbDiscrEmpiricalDistFunc extends ArbitrarilyDiscretizedFunc
 	 * Quick way to get a normalized CDF if that's all you need, which will be faster for large datasets
 	 * than using an actual {@link ArbDiscrEmpiricalDistFunc}.
 	 * @param values
-	 * @param weights
+	 * @param weights (can be null for even-weighting)
 	 * @return
 	 */
 	public static LightFixedXFunc calcQuickNormCDF(double[] values, double[] weights) {
-		Preconditions.checkState(values.length == weights.length);
+		Preconditions.checkState(weights == null || values.length == weights.length);
 		Preconditions.checkState(values.length > 0);
 		
 		ValWeights[] valWeights = new ValWeights[values.length];
 		double totWeight = 0d;
 		for (int j=0; j<valWeights.length; j++) {
-			double weight = weights[j];
+			double weight = weights == null ? 1d : weights[j];
 			totWeight += weight;
 			valWeights[j] = new ValWeights(values[j], weight);
 		}

@@ -45,6 +45,7 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
@@ -76,6 +77,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 	private ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
 	
 	private IncludeBackgroundOption gridSeisOp = MPJ_LogicTreeHazardCalc.GRID_SEIS_DEFAULT;
+	
+	private GriddedSeismicitySettings griddedSettings;
 	
 	private boolean applyAftershockFilter = MPJ_LogicTreeHazardCalc.AFTERSHOCK_FILTER_DEFAULT;
 	
@@ -146,6 +149,11 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 		
 		if (cmd.hasOption("gridded-seis"))
 			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
+		
+		griddedSettings = SolHazardMapCalc.getGridSeisSettings(cmd);
+		
+		if (gridSeisOp != IncludeBackgroundOption.EXCLUDE)
+			debug("Gridded settings: "+griddedSettings);
 		
 		if (cmd.hasOption("grid-spacing"))
 			gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
@@ -565,6 +573,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 					
 					externalGriddedCurveCalc.setSourceFilter(sourceFilter);
 					externalGriddedCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
+					externalGriddedCurveCalc.setGriddedSeismicitySettings(griddedSettings);
+					externalGriddedCurveCalc.setCacheGridSources(true);
 					
 					externalGriddedCurveCalc.calcHazardCurves(getNumThreads());
 				}
@@ -639,6 +649,8 @@ public class MPJ_SingleSolHazardCalc extends MPJTaskCalculator {
 			calc.setAseisReducesArea(aseisReducesArea);
 			calc.setNoMFDs(noMFDs);
 			calc.setUseProxyRups(!noProxyRups);
+			calc.setGriddedSeismicitySettings(griddedSettings);
+			calc.setCacheGridSources(true);
 			
 			if (erf != null)
 				calc.setERF(erf);

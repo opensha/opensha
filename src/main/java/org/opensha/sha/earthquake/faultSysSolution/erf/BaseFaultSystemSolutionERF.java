@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.EventObject;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.DoubleBinaryOperator;
 import java.util.function.UnaryOperator;
 
 import org.apache.commons.lang3.StringUtils;
@@ -20,6 +19,7 @@ import org.opensha.commons.param.impl.FileParameter;
 import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
 import org.opensha.sha.earthquake.AbstractNthRupERF;
 import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
@@ -31,12 +31,18 @@ import org.opensha.sha.earthquake.param.AseismicityAreaReductionParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.FaultGridSpacingParam;
+import org.opensha.sha.earthquake.param.GridCellSupersamplingParam;
+import org.opensha.sha.earthquake.param.GriddedSeismicitySettingsParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
+import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.earthquake.param.UseProxySectionsParam;
 import org.opensha.sha.earthquake.param.UseRupMFDsParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
+import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.base.Preconditions;
@@ -60,23 +66,38 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	protected FaultGridSpacingParam faultGridSpacingParam;
 	protected IncludeBackgroundParam bgIncludeParam;
 	protected BackgroundRupParam bgRupTypeParam;
+	protected GriddedSeismicitySettingsParam bgSettingsParam;
 	protected AseismicityAreaReductionParam aseisParam;
 	protected UseRupMFDsParam useRupMFDsParam;
 	protected UseProxySectionsParam useProxyRupturesParam;
 	
+	// default parameter values
+	public static final double FAULT_GRID_SPACING_DEFAULT = 1d;
+	public static final IncludeBackgroundOption INCLUDE_BG_DEFAULT = IncludeBackgroundOption.INCLUDE;
+	public static final BackgroundRupType BG_RUP_TYPE_DEFAULT = BackgroundRupType.POINT;
+	public static final PointSourceDistanceCorrections DIST_CORR_TYPE_DEFAULT = PointSourceDistanceCorrections.NSHM_2013;
+	public static final GridCellSupersamplingSettings GRID_SUPERSAMPLE_DEFAULT = null;
+	public static final GriddedSeismicitySettings GRID_SETTINGS_DEFAULT = GriddedSeismicitySettings.DEFAULT
+			.forSurfaceType(BG_RUP_TYPE_DEFAULT)
+			.forDistanceCorrections(DIST_CORR_TYPE_DEFAULT)
+			.forSupersamplingSettings(GRID_SUPERSAMPLE_DEFAULT);
+	public static final boolean ASEIS_REDUCES_AREA_DEAFULT = true;
+	public static final boolean USE_RUP_MFDS_DEAFULT = true;
+	public static final boolean USE_PROXY_RUPS_DEAFULT = true;
+	
 	// The primitive versions of parameters; and values here are the param defaults: (none for fileParam)
-	protected double faultGridSpacing = 1.0;
-	protected IncludeBackgroundOption bgInclude = IncludeBackgroundOption.INCLUDE;
-	protected BackgroundRupType bgRupType = BackgroundRupType.POINT;
-	protected boolean aseisReducesArea = true;
-	protected boolean useRupMFDs = true;
-	protected boolean useProxyRuptures = true;
+	protected double faultGridSpacing = FAULT_GRID_SPACING_DEFAULT;
+	protected IncludeBackgroundOption bgInclude = INCLUDE_BG_DEFAULT;
+	protected GriddedSeismicitySettings bgSettings = GRID_SETTINGS_DEFAULT;
+	protected boolean aseisReducesArea = ASEIS_REDUCES_AREA_DEAFULT;
+	protected boolean useRupMFDs = USE_RUP_MFDS_DEAFULT;
+	protected boolean useProxyRuptures = USE_PROXY_RUPS_DEAFULT;
 	
 	// Parameter change flags:
 	protected boolean fileParamChanged=false;	// set as false since most subclasses ignore this parameter
 	protected boolean faultGridSpacingChanged=true;
 	protected boolean bgIncludeChanged=true;
-	protected boolean bgRupTypeChanged=true;
+	protected boolean bgRupSettingsChanged=true;
 	protected boolean quadSurfacesChanged=true;
 	protected boolean aseisReducesAreaChanged=true;
 	protected boolean useProxyRupturesChanged=true;
@@ -134,6 +155,8 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		faultGridSpacingParam = new FaultGridSpacingParam();
 		bgIncludeParam = new IncludeBackgroundParam();
 		bgRupTypeParam = new BackgroundRupParam();
+		bgRupTypeParam.setValue(bgSettings.surfaceType); // needs to be here, checked immediately below for consistency
+		bgSettingsParam = new GriddedSeismicitySettingsParam(bgSettings, bgRupTypeParam);
 		aseisParam = new AseismicityAreaReductionParam();
 		useRupMFDsParam = new UseRupMFDsParam(useRupMFDs);
 		useProxyRupturesParam = new UseProxySectionsParam(useProxyRuptures);
@@ -144,6 +167,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		faultGridSpacingParam.addParameterChangeListener(this);
 		bgIncludeParam.addParameterChangeListener(this);
 		bgRupTypeParam.addParameterChangeListener(this);
+		bgSettingsParam.addParameterChangeListener(this);
 		aseisParam.addParameterChangeListener(this);
 		useRupMFDsParam.addParameterChangeListener(this);
 		useProxyRupturesParam.addParameterChangeListener(this);
@@ -153,7 +177,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		// don't do anything here for fileParam 
 		faultGridSpacingParam.setValue(faultGridSpacing);
 		bgIncludeParam.setValue(bgInclude);
-		bgRupTypeParam.setValue(bgRupType);
+		bgSettingsParam.setValue(bgSettings);
 		aseisParam.setValue(aseisReducesArea);
 		useRupMFDsParam.setValue(useRupMFDs);
 		useProxyRupturesParam.setValue(useProxyRuptures);
@@ -169,8 +193,9 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		if(includeFileParam)
 			adjustableParams.addParameter(fileParam);
 		adjustableParams.addParameter(bgIncludeParam);
-		if(!bgIncludeParam.getValue().equals(IncludeBackgroundOption.EXCLUDE)) {
+		if (!bgIncludeParam.getValue().equals(IncludeBackgroundOption.EXCLUDE)) {
 			adjustableParams.addParameter(bgRupTypeParam);
+			adjustableParams.addParameter(bgSettingsParam);
 		}
 		adjustableParams.addParameter(faultGridSpacingParam);
 		adjustableParams.addParameter(aseisParam);
@@ -209,10 +234,17 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			createParamList();
 			bgIncludeChanged = true;
 			if (bgInclude != EXCLUDE && numOtherSources == 0)
-				bgRupTypeChanged = true;
+				bgRupSettingsChanged = true;
 		} else if (paramName.equalsIgnoreCase(bgRupTypeParam.getName())) {
-			bgRupType = bgRupTypeParam.getValue();
-			bgRupTypeChanged = true;
+			// this will propagate to the gridded seismicity settings automatically
+			createParamList();
+			bgRupSettingsChanged = true;
+			clearCachedGridSources();
+		} else if (paramName.equalsIgnoreCase(bgSettingsParam.getName())) {
+			bgSettings = bgSettingsParam.getValue();
+			System.out.println("FSS ERF updated grid seis settings: "+bgSettings);
+			bgRupSettingsChanged = true;
+			clearCachedGridSources();
 		} else if (paramName.equalsIgnoreCase(aseisParam.getName())) {
 			aseisReducesArea = aseisParam.getValue();
 			aseisReducesAreaChanged = true;
@@ -262,7 +294,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		
 		// update other sources if needed
 		boolean numOtherRupsChanged=false;	// this is needed below
-		if (bgIncludeChanged || bgRupTypeChanged || timeSpanChangeFlag) {
+		if (bgIncludeChanged || bgRupSettingsChanged || timeSpanChangeFlag) {
 			updateHookBeforeOtherBuild();
 			numOtherRupsChanged = initOtherSources();	// these are created even if not used; this sets numOtherSources
 			gridSourceCache = null;
@@ -294,7 +326,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		useRupMFDsChanged = false;
 		useProxyRupturesChanged = false;
 		bgIncludeChanged = false;
-		bgRupTypeChanged = false;			
+		bgRupSettingsChanged = false;			
 		quadSurfacesChanged= false;
 		timeSpanChangeFlag = false;
 		
@@ -428,7 +460,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		// set flags
 		faultSysSolutionChanged = true;
 		bgIncludeChanged = true;
-		bgRupTypeChanged = true;  // because the background ruptures come from the FSS
+		bgRupSettingsChanged = true;  // because the background ruptures come from the FSS
 		// have to set fileParamChanged to false in case you set the file param and then call
 		// setSolution manually before doing an update forecast
 		fileParamChanged = false;
@@ -458,7 +490,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		}
 	}
 	
-	protected DoubleBinaryOperator getGridSourceAftershockFilter() {
+	protected MagnitudeDependentAftershockFilter getGridSourceAftershockFilter() {
 		return null;
 	}
 	
@@ -715,26 +747,54 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		GridSourceProvider gridSources = faultSysSolution.getGridSourceProvider();
 		if (gridSources == null)
 			return null;
+		
 		if (cacheGridSources) {
-			synchronized (this) {
-				if (gridSourceCache == null)
-					gridSourceCache = new ProbEqkSource[numOtherSources];
-				if (gridSourceCache[iSource] != null)
-					return gridSourceCache[iSource];
+			if (gridSourceCache == null) {
+				// need to create it, do so in a synchronized block
+				synchronized (this) {
+					if (gridSourceCache == null)
+						gridSourceCache = new ProbEqkSource[numOtherSources];
+				}
 			}
-			// if we made it here, it's not cached
-			gridSourceCache[iSource] = gridSources.getSource(iSource, timeSpan.getDuration(),
-					getGridSourceAftershockFilter(), bgRupType);
-			return gridSourceCache[iSource];
+			ProbEqkSource cached = gridSourceCache[iSource];
+			if (cached == null) {
+				// it's not cached
+				cached = gridSources.getSource(iSource, timeSpan.getDuration(),
+						getGridSourceAftershockFilter(), bgSettings);
+				gridSourceCache[iSource] = cached;
+			}
+			return cached;
 		}
 		return gridSources.getSource(iSource, timeSpan.getDuration(),
-				getGridSourceAftershockFilter(), bgRupType);
+				getGridSourceAftershockFilter(), bgSettings);
 	}
 	
+	public void setGriddedSeismicitySettings(GriddedSeismicitySettings settings) {
+		this.bgSettingsParam.setValue(settings);
+	}
+	
+	public GriddedSeismicitySettings getGriddedSeismicitySettings() {
+		return bgSettings;
+	}
+	
+	/**
+	 * This enables caching of grid sources which is often faster when re-using an ERF, but can be more memory intensive.
+	 * 
+	 * The cache will be cleared if an internal grid-source related parameter is changed, but you can also call
+	 * {@link #clearCachedGridSources()} if you change something externally and need to clear the cache.
+	 * @param cacheGridSources
+	 */
 	public void setCacheGridSources(boolean cacheGridSources) {
 		this.cacheGridSources = cacheGridSources;
 		if (!cacheGridSources)
 			gridSourceCache = null;
+	}
+	
+	/**
+	 * Clears the grid sources cache (if enabled). See {@link #setCacheGridSources(boolean)}.
+	 */
+	public void clearCachedGridSources() {
+		gridSourceCache = null;
 	}
 	
 	/**
@@ -748,7 +808,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 			// getGridSourceProvider() below if we're not going to use them
 			return false;
 		}
-		if(bgRupTypeChanged || bgIncludeChanged) {
+		if(bgRupSettingsChanged || bgIncludeChanged) {
 			int prevOther = numOtherSources;
 			GridSourceProvider gridSources = faultSysSolution.getGridSourceProvider();
 			if (gridSources == null) {

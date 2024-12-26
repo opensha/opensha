@@ -24,6 +24,7 @@ public class PRVI25_LogicTreeBranch {
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsCrustalGMM;
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsInterfaceGMM;
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsSlabGMM;
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsCombinedGMM;
 	
 	/*
 	 * Core crustal FSS branch levels
@@ -65,14 +66,24 @@ public class PRVI25_LogicTreeBranch {
 	 */
 	public static LogicTreeLevel<PRVI25_CrustalGMMs> CRUSTAL_GMM =
 			LogicTreeLevel.forEnum(PRVI25_CrustalGMMs.class, "Crustal GMM", "GMM");
+	public static LogicTreeLevel<PRVI25_GMM_CrustalEpistemicModel> CRUSTAL_GMM_EPISTEMIC =
+			LogicTreeLevel.forEnum(PRVI25_GMM_CrustalEpistemicModel.class, "Crustal GMM Epistemic Model", "Epistemic Model");
+	public static LogicTreeLevel<PRVI25_GMM_CrustalSigmaModel> CRUSTAL_GMM_SIGMA =
+			LogicTreeLevel.forEnum(PRVI25_GMM_CrustalSigmaModel.class, "Crustal GMM Sigma Model", "Sigma Model");
+	
 	public static LogicTreeLevel<PRVI25_SubductionInterfaceGMMs> INTERFACE_GMM =
 			LogicTreeLevel.forEnum(PRVI25_SubductionInterfaceGMMs.class, "Interface GMM", "GMM");
+	public static LogicTreeLevel<PRVI25_GMM_InterfaceEpistemicModel> INTERFACE_GMM_EPISTEMIC =
+			LogicTreeLevel.forEnum(PRVI25_GMM_InterfaceEpistemicModel.class, "Interface GMM Epistemic Model", "Epistemic Model");
+	public static LogicTreeLevel<PRVI25_GMM_InterfaceSigmaModel> INTERFACE_GMM_SIGMA =
+			LogicTreeLevel.forEnum(PRVI25_GMM_InterfaceSigmaModel.class, "Interface GMM Sigma Model", "Sigma Model");
+	
 	public static LogicTreeLevel<PRVI25_SubductionSlabGMMs> SLAB_GMM =
-			LogicTreeLevel.forEnum(PRVI25_SubductionSlabGMMs.class, "Slab GMM", "GMM");
-	public static LogicTreeLevel<PRVI25_GMM_EpistemicModel> GMM_EPISTEMIC =
-			LogicTreeLevel.forEnum(PRVI25_GMM_EpistemicModel.class, "GMM Epistemic Model", "Epistemic Model");
-	public static LogicTreeLevel<PRVI25_GMM_SigmaModel> GMM_SIGMA =
-			LogicTreeLevel.forEnum(PRVI25_GMM_SigmaModel.class, "GMM Sigma Model", "Sigma Model");
+			LogicTreeLevel.forEnum(PRVI25_SubductionSlabGMMs.class, "Intraslab GMM", "GMM");
+	public static LogicTreeLevel<PRVI25_GMM_SlabEpistemicModel> SLAB_GMM_EPISTEMIC =
+			LogicTreeLevel.forEnum(PRVI25_GMM_SlabEpistemicModel.class, "Intraslab GMM Epistemic Model", "Epistemic Model");
+	public static LogicTreeLevel<PRVI25_GMM_SlabSigmaModel> SLAB_GMM_SIGMA =
+			LogicTreeLevel.forEnum(PRVI25_GMM_SlabSigmaModel.class, "Intraslab GMM Sigma Model", "Sigma Model");
 	
 	static {
 		// exhaustive for now, can trim down later
@@ -80,9 +91,13 @@ public class PRVI25_LogicTreeBranch {
 		levelsCrustalOffFault = List.of(SEIS_RATE, SEIS_DECLUSTER, SEIS_SMOOTH, MMAX_OFF);
 		levelsSubduction = List.of(SUB_FM, SUB_DM, SUB_SCALE, SUB_SUPRA_B);
 		levelsSubductionGridded = List.of(SEIS_RATE, SEIS_DECLUSTER, SEIS_SMOOTH);
-		levelsCrustalGMM = List.of(CRUSTAL_GMM, GMM_EPISTEMIC, GMM_SIGMA);
-		levelsInterfaceGMM = List.of(INTERFACE_GMM, GMM_EPISTEMIC, GMM_SIGMA);
-		levelsSlabGMM = List.of(SLAB_GMM, GMM_EPISTEMIC, GMM_SIGMA);
+		levelsCrustalGMM = List.of(CRUSTAL_GMM, CRUSTAL_GMM_EPISTEMIC, CRUSTAL_GMM_SIGMA);
+		levelsInterfaceGMM = List.of(INTERFACE_GMM, INTERFACE_GMM_EPISTEMIC, INTERFACE_GMM_SIGMA);
+		levelsSlabGMM = List.of(SLAB_GMM, SLAB_GMM_EPISTEMIC, SLAB_GMM_SIGMA);
+		levelsCombinedGMM = List.of(
+				CRUSTAL_GMM, CRUSTAL_GMM_EPISTEMIC, CRUSTAL_GMM_SIGMA,
+				INTERFACE_GMM, INTERFACE_GMM_EPISTEMIC, INTERFACE_GMM_SIGMA,
+				SLAB_GMM, SLAB_GMM_EPISTEMIC, SLAB_GMM_SIGMA);
 	}
 	
 	/**

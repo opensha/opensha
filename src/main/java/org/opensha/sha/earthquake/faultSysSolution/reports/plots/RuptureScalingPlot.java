@@ -15,9 +15,11 @@ import java.util.concurrent.Future;
 import org.jfree.chart.plot.DatasetRenderingOrder;
 import org.jfree.data.Range;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
+import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.gui.plot.HeadlessGraphPanel;
 import org.opensha.commons.gui.plot.PlotCurveCharacterstics;
+import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
@@ -105,11 +107,11 @@ public class RuptureScalingPlot extends AbstractRupSetPlot {
 			table.initNewLine();
 			plot = plot(resourcesDir, "slip_area_scaling", " ", primary.slipAreas, meta.primary.name,
 					comp == null ? null : comp.slipAreas, comp == null ? null : meta.comparison.name,
-							"Area (m²)", false, "Slip (m)", false, exec, futures);
+							"Area (km²)", false, "Slip (m)", false, exec, futures);
 			table.addColumn("![Slip/Area]("+relPathToResources+"/"+plot.getName()+")");
 			plot = plot(resourcesDir, "slip_log_area_scaling", " ", primary.slipAreas, meta.primary.name,
 					comp == null ? null : comp.slipAreas, comp == null ? null : meta.comparison.name,
-							"Area (m²)", true, "Slip (m)", false, exec, futures);
+							"Area (km²)", true, "Slip (m)", false, exec, futures);
 			table.addColumn("![Slip/Area]("+relPathToResources+"/"+plot.getName()+")");
 			table.finalizeLine();
 			
@@ -117,11 +119,11 @@ public class RuptureScalingPlot extends AbstractRupSetPlot {
 				table.initNewLine();
 				plot = plot(resourcesDir, "slip_length_scaling", " ", primary.slipLengths, meta.primary.name,
 						comp == null ? null : comp.slipLengths, comp == null ? null : meta.comparison.name,
-								"Length (m)", false, "Slip (m)", false, exec, futures);
+								"Length (km)", false, "Slip (m)", false, exec, futures);
 				table.addColumn("![Slip/Length]("+relPathToResources+"/"+plot.getName()+")");
 				plot = plot(resourcesDir, "slip_log_length_scaling", " ", primary.slipLengths, meta.primary.name,
 						comp == null ? null : comp.slipLengths, comp == null ? null : meta.comparison.name,
-								"Length (m)", true, "Slip (m)", false, exec, futures);
+								"Length (km)", true, "Slip (m)", false, exec, futures);
 				table.addColumn("![Slip/Length]("+relPathToResources+"/"+plot.getName()+")");
 				table.finalizeLine();
 			}
@@ -176,23 +178,30 @@ public class RuptureScalingPlot extends AbstractRupSetPlot {
 			slipMags = aveSlips == null ? null : new DefaultXY_DataSet();
 			
 			for (int r=0; r<rupSet.getNumRuptures(); r++) {
-				magAreas.set(areas[r], mags[r]);
+				magAreas.set(areas[r]*1e-6, mags[r]);
 				if (magLengths != null)
-					magLengths.set(lengths[r], mags[r]);
+					magLengths.set(lengths[r]*1e-3, mags[r]);
 				if (aveSlips != null) {
 					double aveSlip = aveSlips.getAveSlip(r);
-					slipAreas.set(areas[r], aveSlip);
+					slipAreas.set(areas[r]*1e-6, aveSlip);
 					if (slipLengths != null)
-						slipLengths.set(lengths[r], aveSlip);
+						slipLengths.set(lengths[r]*1e-3, aveSlip);
 					slipMags.set(mags[r], aveSlip);
 				}
 			}
 		}
 	}
 	
-	private static File plot(File resourcesDir, String prefix, String title, XY_DataSet scatter, String name,
+	static File plot(File resourcesDir, String prefix, String title, XY_DataSet scatter, String name,
 			XY_DataSet compScatter, String compName, String xAxisLabel, boolean xLog, String yAxisLabel, boolean yLog,
 			ExecutorService exec, List<Future<?>> futures) throws IOException {
+		return plot(resourcesDir, prefix, title, scatter, name, compScatter, compName,
+				xAxisLabel, xLog, yAxisLabel, yLog, null, exec, futures);
+	}
+	
+	static File plot(File resourcesDir, String prefix, String title, XY_DataSet scatter, String name,
+			XY_DataSet compScatter, String compName, String xAxisLabel, boolean xLog, String yAxisLabel, boolean yLog,
+			DiscretizedFunc meanFunc, ExecutorService exec, List<Future<?>> futures) throws IOException {
 		List<XY_DataSet> funcs = new ArrayList<>();
 		List<PlotCurveCharacterstics> chars = new ArrayList<>();
 		
@@ -206,6 +215,15 @@ public class RuptureScalingPlot extends AbstractRupSetPlot {
 		if (compScatter != null) {
 			funcs.add(compScatter);
 			chars.add(new PlotCurveCharacterstics(symbol, thickness, color(compScatter.size(), COMP_COLOR)));
+		}
+		
+		if (meanFunc != null) {
+			if (name == null)
+				meanFunc.setName("Mean");
+			else
+				meanFunc.setName(name+" Mean");
+			funcs.add(meanFunc);
+			chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, MAIN_COLOR));
 		}
 		
 		double minX = Double.POSITIVE_INFINITY;

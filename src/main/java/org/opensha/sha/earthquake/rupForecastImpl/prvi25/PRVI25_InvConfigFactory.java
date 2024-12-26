@@ -117,10 +117,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	
 	public static SlipAlongRuptureModelBranchNode SLIP_ALONG_DEFAULT = NSHM23_SlipAlongRuptureModels.UNIFORM;
 	
-	public static boolean ALLOW_CONNECTED_PROXY_FAULTS_DEFAULT = false;
-	private static boolean allowConnectedProxyFaults = ALLOW_CONNECTED_PROXY_FAULTS_DEFAULT;
-	private static final double MAX_PROXY_FAULT_RUP_LEN_DEFAULT = 75d;
-	private static double maxProxyFaultRupLen = MAX_PROXY_FAULT_RUP_LEN_DEFAULT;
+	public static boolean ALLOW_CONNECTED_PROXY_FAULTS = false;
+	public static double MAX_PROXY_FAULT_RUP_LEN = 75d;
 	
 	public PRVI25_InvConfigFactory() {
 		numItersPerRup = NUM_ITERS_PER_RUP_DEFAULT;
@@ -171,7 +169,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		RupSetConfig config = model.getConfig(subSects, scale);
 		if (config instanceof CoulombRupSetConfig)
-			((CoulombRupSetConfig)config).setConnectProxyFaults(allowConnectedProxyFaults);
+			((CoulombRupSetConfig)config).setConnectProxyFaults(ALLOW_CONNECTED_PROXY_FAULTS);
 		
 		File cachedRupSetFile = null;
 		if (cacheDir != null) {
@@ -184,7 +182,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 				dmMoment += sect.calcMomentRate(false);
 			String momentStr = ((float)dmMoment+"").replace('.', 'p');
 			String rupSetFileName = "rup_set_"+model.getFilePrefix()+"_"
-				+SectionDistanceAzimuthCalculator.getUniqueSectCacheFileStr(subSects)+"_"+momentStr+"_moment.zip";
+				+SectionDistanceAzimuthCalculator.getUniqueSectCacheFileStr(subSects)+"_"+momentStr+"_moment"
+				+(ALLOW_CONNECTED_PROXY_FAULTS ? "_connProxies" : "")+ ".zip";
 			
 			cachedRupSetFile = new File(subDir, rupSetFileName);
 			config.setCacheDir(subDir);
@@ -794,14 +793,14 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 				exclusionModels.add(exclusionModel);
 		}
 		
-		if (!allowConnectedProxyFaults) {
+		if (!ALLOW_CONNECTED_PROXY_FAULTS) {
 			System.out.println("Excluding jumps to/from proxy faults");
 			exclusionModels.add(new ProxyConnectionExclusionModel());
 		}
 		
-		if (maxProxyFaultRupLen > 0d) {
-			System.out.println("Excluding proxy fault ruptures longer than "+(float)maxProxyFaultRupLen+" km");
-			exclusionModels.add(new ProxyMaxLenExclusionModel(maxProxyFaultRupLen));
+		if (MAX_PROXY_FAULT_RUP_LEN > 0d) {
+			System.out.println("Excluding proxy fault ruptures longer than "+(float)MAX_PROXY_FAULT_RUP_LEN+" km");
+			exclusionModels.add(new ProxyMaxLenExclusionModel(MAX_PROXY_FAULT_RUP_LEN));
 		}
 		
 		if (exclusionModels.isEmpty())
@@ -959,10 +958,16 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		PRVI25_GridSourceBuilder.doPreGridBuildHook(sol, faultBranch);
 	}
 	
-	public static class LimitCrustalBelowObserved extends PRVI25_InvConfigFactory {
+	private static abstract class LimitCrustalBelowObserved extends PRVI25_InvConfigFactory {
 		
-		static double LIMIT_FRACT = 0.9;
-		static double WEIGHT = 1000d;
+		private double limitFract;
+		private double weight;
+
+		protected LimitCrustalBelowObserved(double limitFract, double weight) {
+			this.limitFract = limitFract;
+			this.weight = weight;
+			
+		}
 
 		@Override
 		public InversionConfiguration buildInversionConfig(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch,
@@ -978,35 +983,67 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 				throw ExceptionUtils.asRuntimeException(e);
 			}
 			RuptureSubSetMappings subsetMappings = rupSet.getModule(RuptureSubSetMappings.class);
-			if (LIMIT_FRACT != 1d)
-				obsMFD.scale(LIMIT_FRACT);
+			if (limitFract != 1d)
+				obsMFD.scale(limitFract);
 			if (subsetMappings != null) {
 				// we're inverting a subset, need to reduce
 				IncrementalMagFreqDist subsetTargets = rupSet.requireModule(InversionTargetMFDs.class).getTotalOnFaultSupraSeisMFD();
 				IncrementalMagFreqDist origTargets = subsetMappings.getOrigRupSet().requireModule(InversionTargetMFDs.class).getTotalOnFaultSupraSeisMFD();
-				Preconditions.checkState(subsetTargets.getMinX() == origTargets.getMinX());
-				Preconditions.checkState(subsetTargets.getMinX() == obsMFD.getMinX());
-				for (int i=0; i<obsMFD.size()&&i<subsetTargets.size(); i++) {
-					double subsetRate = subsetTargets.getY(i);
+				Preconditions.checkState(subsetTargets.getMinX() == origTargets.getMinX(),
+						"%s != %s", subsetTargets.getMinX(), origTargets.getMinX());
+				
+				int mfdOffset = 0;
+				if ((float)subsetTargets.getMinX() != (float)obsMFD.getMinX()) {
+					Preconditions.checkState(subsetTargets.getMinX() <= obsMFD.getMinX(),
+							"Targets MFD minX=%s must be <= obs MFD minX=%s", subsetTargets.getMinX(), obsMFD.getMinX());
+					mfdOffset = subsetTargets.getClosestXIndex(obsMFD.getMinX());
+				}
+				for (int i=0; i<obsMFD.size(); i++) {
+					int targetIndex = i+mfdOffset;
+					if (targetIndex >= subsetTargets.size())
+						break;
+					double targetX = subsetTargets.getX(targetIndex);
+					double obsX = obsMFD.getX(i);
+					Preconditions.checkState((float)obsX == (float)targetX);
+					double subsetRate = subsetTargets.getY(targetIndex);
 					if (subsetRate > 0d) {
-						double origRate = origTargets.getY(i);
+						double origRate = origTargets.getY(targetIndex);
 						double obsRate = obsMFD.getY(i);
-//						if (origRate > obsRate) {
-							// need to reduce
-							obsMFD.set(i, obsRate * subsetRate/origRate);
-//						}
+						// always scale, even if we're not below in this region
+						obsMFD.set(i, obsRate * subsetRate/origRate);
 					}
 				}
 			}
 			
 			MFDInversionConstraint constraint = new MFDInversionConstraint(
-					rupSet, WEIGHT, true, ConstraintWeightingType.NORMALIZED, List.of(obsMFD));
+					rupSet, weight, true, ConstraintWeightingType.NORMALIZED, List.of(obsMFD));
 			
 			config = InversionConfiguration.builder(config).add(constraint).build();
 			
 			return config;
 		}
 		
+	}
+	
+	public static class LimitCrustalBelowObserved_0p9 extends LimitCrustalBelowObserved {
+		
+		static double LIMIT_FRACT = 0.9;
+		static double WEIGHT = 1000d;
+		
+		public LimitCrustalBelowObserved_0p9() {
+			super(LIMIT_FRACT, WEIGHT);
+		}
+	}
+	
+	public static class RateBalanceAndLimitCrustalBelowObserved_0p9 extends LimitCrustalBelowObserved {
+		
+		static double LIMIT_FRACT = 0.9;
+		static double WEIGHT = 1000d;
+		
+		public RateBalanceAndLimitCrustalBelowObserved_0p9() {
+			super(LIMIT_FRACT, WEIGHT);
+			PRVI25_GridSourceBuilder.RATE_BALANCE_CRUSTAL_GRIDDED = true;
+		}
 	}
 	
 	public static class GriddedUseM1Bounds extends PRVI25_InvConfigFactory {
@@ -1029,6 +1066,33 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		public GriddedUseExactBounds() {
 			PRVI25_RegionalSeismicity.TYPE = RateType.EXACT;
+		}
+		
+	}
+
+	
+	public static class GriddedForceCrustalRateBalancing extends PRVI25_InvConfigFactory {
+		
+		public GriddedForceCrustalRateBalancing() {
+			PRVI25_GridSourceBuilder.RATE_BALANCE_CRUSTAL_GRIDDED = true;
+		}
+		
+	}
+
+	
+	public static class GriddedForceSlab2Depths extends PRVI25_InvConfigFactory {
+		
+		public GriddedForceSlab2Depths() {
+			PRVI25_GridSourceBuilder.INTERFACE_USE_SECT_PROPERTIES = false;
+		}
+		
+	}
+
+	
+	public static class NoProxyLengthLimit extends PRVI25_InvConfigFactory {
+		
+		public NoProxyLengthLimit() {
+			MAX_PROXY_FAULT_RUP_LEN = 0d;
 		}
 		
 	}

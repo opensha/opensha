@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.opensha.commons.calc.GaussianExceedProbCalculator;
 import org.opensha.commons.calc.GaussianDistCalc;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -24,7 +25,6 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.sha.earthquake.DistCachedERFWrapper.DistCacheWrapperRupture;
 import org.opensha.sha.earthquake.EqkRupture;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.gcim.imr.param.EqkRuptureParams.FocalDepthParam;
 import org.opensha.sha.imr.AttenuationRelationship;
@@ -117,6 +117,8 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	private String defaultIMT = null;
 	private Double defaultPeriod = null; // if SA
 	
+	private GaussianExceedProbCalculator exceedCalc;
+	
 	public NSHMP_GMM_Wrapper(Gmm gmm) {
 		this(gmm, gmm == null ? null : gmm.name());
 	}
@@ -204,6 +206,10 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 				throw new IllegalStateException("Unexpected IM: "+imName);
 		}
 		return imt;
+	}
+	
+	public TectonicRegionType getTRT() {
+		return trtForType(gmm.type());
 	}
 	
 	private GroundMotionModel getBuildGMM(Imt imt) {
@@ -337,23 +343,10 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			throws ParameterException {
 		LogicTree<GroundMotion> gmTree = getGroundMotionTree();
 		
-		// compute exceedance probability based on truncation type
-		final int sigmaTruncType;
-		if (sigmaTruncTypeParam == null ||
-				sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_NONE))
-			sigmaTruncType = 0; // none
-		else if (sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED))
-			sigmaTruncType = 1;
-		else if (sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_2SIDED))
-			sigmaTruncType = 2;
-		else
-			throw new IllegalStateException();
-		double numSig = sigmaTruncLevelParam.getValue();
-		
 		final int size = intensityMeasureLevels.size();
 		double weightSum = 0d;
 		boolean first = true;
-		double weight, mean, stdDev, x, y, stRndVar;
+		double weight, mean, invStdDev, y, stRndVar;
 		int i;
 		
 		double[] xVals, yVals;
@@ -371,23 +364,23 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			weight = branch.weight();
 			weightSum += weight;
 			mean = branch.value().mean();
-			stdDev = branch.value().sigma();
+			invStdDev = 1d/branch.value().sigma();
 			for (i=0; i<size; i++) {
-				stRndVar = (xVals[i] - mean) / stdDev;
-				if (sigmaTruncType == 0)
-					y = GaussianDistCalc.getExceedProb(stRndVar);
-				else
-					y = GaussianDistCalc.getExceedProb(stRndVar, sigmaTruncType, numSig);
+				stRndVar = invStdDev*(xVals[i] - mean);
+				y = exceedCalc.getExceedProb(stRndVar);
 				if (first)
 					yVals[i] = y*weight;
 				else
+					// fma = a*b + c
 					yVals[i] = Math.fma(y, weight, yVals[i]);
 			}
 			first = false;
 		}
-		if (weightSum != 1d)
+		if (weightSum != 1d) {
+			weightSum = 1d/weightSum;
 			for (i=0; i<size; i++)
-				yVals[i] /= weightSum;
+				yVals[i] *= weightSum;
+		}
 		if (!(intensityMeasureLevels instanceof LightFixedXFunc))
 			// this means we didn't modify in place, need to set
 			for (i=0; i<size; i++)
@@ -454,11 +447,6 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			throws ParameterException, IMRException {
 		// TODO implement?
 		throw new UnsupportedOperationException("getSA_IML_AtExceedProbSpectrum is unsupported for "+C);
-	}
-
-	@Override
-	public double getTotExceedProbability(PointEqkSource ptSrc, double iml) {
-		throw new UnsupportedOperationException("getTotExceedProbability is unsupported for "+C);
 	}
 
 	@Override
@@ -735,6 +723,10 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	protected void initOtherParams() {
 		super.initOtherParams();
 		
+		sigmaTruncTypeParam.addParameterChangeListener(this);
+		sigmaTruncLevelParam.addParameterChangeListener(this);
+		updateExceedProbCalc();
+		
 		if (component != null) {
 			componentParam = new ComponentParam(component, component);
 			componentParam.setValueAsDefault();
@@ -754,6 +746,21 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			    tectonicRegionTypeParam.setValueAsDefault();
 			}
 		}
+	}
+	
+	private void updateExceedProbCalc() {
+		final int sigmaTruncType;
+		if (sigmaTruncTypeParam == null ||
+				sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_NONE))
+			sigmaTruncType = 0; // none
+		else if (sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_1SIDED))
+			sigmaTruncType = 1;
+		else if (sigmaTruncTypeParam.getValue().equals(SigmaTruncTypeParam.SIGMA_TRUNC_TYPE_2SIDED))
+			sigmaTruncType = 2;
+		else
+			throw new IllegalStateException();
+		exceedCalc = GaussianExceedProbCalculator.getPrecomputedExceedProbCalc(sigmaTruncType, sigmaTruncLevelParam.getValue());
+//		exceedCalc = new GaussianExceedProbCalculator.Dynamic(sigmaTruncType, sigmaTruncLevelParam.getValue());
 	}
 	
 	public static TectonicRegionType trtForType(Type type) {
@@ -892,8 +899,11 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 
 	@Override
 	public void parameterChange(ParameterChangeEvent event) {
-		if (event.getParameter() == saPeriodParam || event.getParameter() == saPeriodParam) {
+		Parameter<?> param = event.getParameter();
+		if (param == saPeriodParam || param == saPeriodParam) {
 			clearCachedImt();
+		} else if (param == sigmaTruncLevelParam || param == sigmaTruncTypeParam) {
+			updateExceedProbCalc();
 		} else {
 			clearCachedGmmInputs();
 			perRuptureInputCache = null; // this will only be called when set externally, clear any per-rupture input cache

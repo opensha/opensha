@@ -807,7 +807,12 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 				+clusters.get(0).getNumRuptures()+" ruptures");
 		
 		Color isolatedColor = Color.BLACK;
-		CPT clusterCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().reverse().rescale(0d, MAX_PLOT_CLUSTERS-1d);
+		int numNonIsolated = 0;
+		for (ConnectivityCluster cluster : clusters)
+			if (cluster.getParentSectIDs().size() > 1)
+				numNonIsolated++;
+		int cptNumToPlot = Integer.min(MAX_PLOT_CLUSTERS, Integer.max(2, numNonIsolated));
+		CPT clusterCPT = GMT_CPT_Files.RAINBOW_UNIFORM.instance().reverse().rescale(0d, cptNumToPlot-1d);
 		
 		List<Color> sectColors = new ArrayList<>();
 		List<Double> sectColorSortables = new ArrayList<>();
@@ -946,7 +951,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 						}
 					}
 				}
-			} else if (tableIndex < MAX_PLOT_CLUSTERS) {
+			} else if (tableIndex < cptNumToPlot) {
 				color = clusterCPT.getColor((float)tableIndex);
 				
 				// make it a bit darker
@@ -1043,7 +1048,7 @@ public class FaultSectionConnectionsPlot extends AbstractRupSetPlot {
 				
 				prevRands.put(cluster, myRand);
 				
-				Color c = clusterCPT.getColor((float)(myRand*(MAX_PLOT_CLUSTERS-1d)));
+				Color c = clusterCPT.getColor((float)(myRand*(cptNumToPlot-1d)));
 				int r = c.getRed();
 				int g = c.getGreen();
 				int b = c.getBlue();

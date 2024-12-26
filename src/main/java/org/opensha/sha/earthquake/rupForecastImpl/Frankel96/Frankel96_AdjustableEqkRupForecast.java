@@ -14,8 +14,10 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.PointSource;
+import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurfaceWithSubsets;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -422,7 +424,7 @@ public class Frankel96_AdjustableEqkRupForecast
     // GR dist between mag 5 and 7, delta=0.2
     GutenbergRichterMagFreqDist grDist2;
 
-    PointEqkSource pointPoissonSource;
+    PoissonPointSource pointPoissonSource;
 
     // set timespan
     double timeDuration = timeSpan.getDuration();
@@ -460,9 +462,14 @@ public class Frankel96_AdjustableEqkRupForecast
         grDist2.scaleToIncrRate( (int) (0), rateAtMag5);
 
         // now make the source
-        pointPoissonSource = new PointEqkSource(new Location(lat, lon),
-                                                grDist2, timeDuration, aveRake,
-                                                aveDip);
+//        pointPoissonSource = new PointEqkSource(new Location(lat, lon),
+//                                                grDist2, timeDuration, aveRake,
+//                                                aveDip);
+        pointPoissonSource = PointSource.poissonBuilder(new Location(lat, lon))
+        		.truePointSources(0d)
+        		.forMFDAndFocalMech(grDist2, new FocalMechanism(Double.NaN, aveDip, aveRake))
+        		.duration(timeDuration)
+        		.build();
 
         // add the source
         FrankelBackgrSeisSources.add(pointPoissonSource);

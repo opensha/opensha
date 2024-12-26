@@ -31,7 +31,7 @@ public enum PRVI25_SubductionInterfaceGMMs implements ScalarIMRsLogicTreeNode.Si
 
 	@Override
 	public String getFilePrefix() {
-		return name();
+		return "INTERFACE_"+name();
 	}
 
 	@Override

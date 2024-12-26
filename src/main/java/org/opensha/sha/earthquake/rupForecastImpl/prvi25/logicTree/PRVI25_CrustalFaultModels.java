@@ -11,8 +11,10 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedDiscretizedFunc;
 import org.opensha.commons.data.uncertainty.UncertainBoundedIncrMagFreqDist;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.json.FeatureProperties;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
@@ -28,8 +30,11 @@ import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSour
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.TectonicRegionType;
+
+import com.google.common.base.Preconditions;
 
 @Affects(FaultSystemRupSet.SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
@@ -43,6 +48,14 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 	private String shortName;
 	private String jsonPath;
 	private double weight;
+	
+	/**
+	 * if true, then slip rates are vertical and need to be projected onto the plane
+	 */
+	public static final boolean PROJECT_TO_PLANE = true;
+	
+	public static final String HIGH_RATE_PROP_NAME = "HighRate";
+	public static final String LOW_RATE_PROP_NAME = "LowRate";
 
 	private PRVI25_CrustalFaultModels(String name, String shortName, String jsonPath, double weight) {
 		this.name = name;
@@ -75,7 +88,53 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 	@Override
 	public List<? extends FaultSection> getFaultSections() throws IOException {
 		BufferedReader reader = new BufferedReader(new InputStreamReader(PRVI25_CrustalFaultModels.class.getResourceAsStream(jsonPath)));
-		return GeoJSONFaultReader.readFaultSections(reader);
+		List<GeoJSONFaultSection> sects = GeoJSONFaultReader.readFaultSections(reader);
+		
+		if (PROJECT_TO_PLANE) {
+			// slip rates need to be projected
+			for (GeoJSONFaultSection sect : sects) {
+				sect.setAveSlipRate(projectSlip(sect.getOrigAveSlipRate(), sect.getAveDip(), sect.getAveRake()));
+				FeatureProperties props = sect.getProperties();
+				props.set(HIGH_RATE_PROP_NAME, projectSlip(
+						props.getDouble(HIGH_RATE_PROP_NAME, Double.NaN), sect.getAveDip(), sect.getAveRake()));
+				props.set(LOW_RATE_PROP_NAME, projectSlip(
+						props.getDouble(LOW_RATE_PROP_NAME, Double.NaN), sect.getAveDip(), sect.getAveRake()));
+			}
+		}
+		
+		return sects;
+	}
+	
+	public static double projectSlip(double origSlipRate, double dip, double rake) {
+		FaultUtils.assertValidRake(rake); // -180 to 180
+		double absRake = Math.abs(rake);
+		boolean oblique = (float)absRake != (float)180
+				&& (float)absRake != (float)90
+				&& (float)absRake != (float)0;
+		// is this closer to SS or thrust? if exactly 45 degrees (or less) from thrust, assume we have a vertical
+		// rate that needs to be projected down dip
+		boolean origIsHorizontal = (float)absRake > 135f || (float)absRake < 45f;
+		double slipRate = origSlipRate;
+		if (dip != 90d && !origIsHorizontal)
+			// we have a vertical slip rate that needs to be projected down dip
+			slipRate /= Math.sin(Math.toRadians(dip));
+		if (oblique) {
+			// we have oblique slip
+			// if it's closer to thrust, we'll assume that we have vertical slip rates and we need to add the horizontal component
+			// if it's closer to SS, we'll assume that we have horizontal slip rates and we need to add the vertical component
+			double obliqueAngle;
+			if (origIsHorizontal)
+				// difference between the rake and pure SS
+				obliqueAngle = Math.min(absRake, Math.abs(absRake - 180));
+			else
+				// difference between the rake and pure thrust
+				obliqueAngle = Math.abs(absRake - 90);
+			Preconditions.checkState((float)obliqueAngle <= 45f,
+					"Oblique angle should never be >45: %s", (float)obliqueAngle);
+			if (obliqueAngle > 0d)
+				slipRate /= Math.cos(Math.toRadians(obliqueAngle));
+		}
+		return slipRate;
 	}
 	
 	public static ModelRegion getDefaultRegion(LogicTreeBranch<?> branch) throws IOException {
@@ -98,7 +157,7 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 
 			@Override
 			public ProxyFaultSectionInstances call() throws Exception {
-				return ProxyFaultSectionInstances.build(rupSet, 5, 5d, 0.25, 5, 10);
+				return ProxyFaultSectionInstances.build(rupSet, 5, 5d, 0.25, 5, 10, true);
 			}
 		}, ProxyFaultSectionInstances.class);
 		
@@ -121,6 +180,15 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 					regionMFDs.add(getRegionalMFD(seisReg, branch));
 					regions.add(region);
 					regionTRTs.add(TectonicRegionType.ACTIVE_SHALLOW);
+				}
+				
+				// smaller map map region
+				Region mapRegion = PRVI25_RegionLoader.loadPRVI_MapExtents();
+				if (FaultSectionUtils.anySectInRegion(mapRegion, subSects, true)) {
+					mapRegion.setName("PRVI - NSHMP Map Region");
+					regions.add(mapRegion);
+					regionMFDs.add(null);
+					regionTRTs.add(null);
 				}
 				
 //				// analysis regions

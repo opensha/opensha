@@ -37,6 +37,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
@@ -63,7 +64,8 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 	private Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmmRefs;
 	private double[] periods;
 	private IncludeBackgroundOption gridSeisOp;
-	private boolean cacheGridSources = false;
+	private GriddedSeismicitySettings griddedSettings;
+	private boolean cacheGridSources = true;
 	private boolean doGmmInputCache = false;
 	private SourceFilterManager sourceFilters;
 	
@@ -79,19 +81,20 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 
 	public AbstractSitewiseThreadedLogicTreeCalc(ExecutorService exec, int numSites, SolutionLogicTree solTree,
 			Supplier<ScalarIMR> gmmRef, double[] periods,
-					IncludeBackgroundOption gridSeisOp, SourceFilterManager sourceFilters) {
-		this(exec, numSites, solTree, SolHazardMapCalc.wrapInTRTMap(gmmRef), periods, gridSeisOp, sourceFilters);
+			IncludeBackgroundOption gridSeisOp, GriddedSeismicitySettings griddedSettings, SourceFilterManager sourceFilters) {
+		this(exec, numSites, solTree, SolHazardMapCalc.wrapInTRTMap(gmmRef), periods, gridSeisOp, griddedSettings, sourceFilters);
 	}
 
 	public AbstractSitewiseThreadedLogicTreeCalc(ExecutorService exec, int numSites, SolutionLogicTree solTree,
 			Map<TectonicRegionType, ? extends Supplier<ScalarIMR>> gmmRefs, double[] periods,
-					IncludeBackgroundOption gridSeisOp, SourceFilterManager sourceFilters) {
+			IncludeBackgroundOption gridSeisOp, GriddedSeismicitySettings griddedSettings, SourceFilterManager sourceFilters) {
 		this.exec = exec;
 		this.numSites = numSites;
 		this.solTree = solTree;
 		this.gmmRefs = gmmRefs;
 		this.periods = periods;
 		this.gridSeisOp = gridSeisOp;
+		this.griddedSettings = griddedSettings;
 		this.sourceFilters = sourceFilters;
 		this.tree = solTree.getLogicTree();
 		for (LogicTreeLevel<?> level : tree.getLevels()) {
@@ -194,6 +197,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 						"Grid source provider is null, but gridded seis option is %s", gridSeisOp);
 			erf.setParameter(IncludeBackgroundParam.NAME, gridSeisOp);
 			erf.getTimeSpan().setDuration(1d);
+			erf.setGriddedSeismicitySettings(griddedSettings);
 			erf.setCacheGridSources(cacheGridSources);
 			erf.updateForecast();
 		}

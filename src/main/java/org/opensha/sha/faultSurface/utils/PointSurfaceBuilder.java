@@ -9,11 +9,13 @@ import org.opensha.commons.calc.magScalingRelations.MagAreaRelationship;
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.MagScalingRelationship;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
@@ -22,6 +24,7 @@ import org.opensha.sha.faultSurface.FrankelGriddedSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.QuadSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy.CacheTypes;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Range;
@@ -48,6 +51,7 @@ public class PointSurfaceBuilder {
 	private double dip = 90d;
 	private double length = Double.NaN;
 	private Boolean footwall = null;
+	private double rake = Double.NaN; // only used for scaling relationships
 	
 	private double zHyp = Double.NaN;
 	private double zHypFract = 0.5;
@@ -258,6 +262,32 @@ public class PointSurfaceBuilder {
 		FaultUtils.assertValidDepth(zBot);
 		this.zBot = zBot;
 		this.width = Double.NaN;
+		return this;
+	}
+	
+	/**
+	 * Convenience method to set the upper depth, width, and dip. This calculates the lower depth automatically.
+	 * @param zTop
+	 * @param width
+	 * @param dip
+	 * @return
+	 */
+	public PointSurfaceBuilder upperDepthWidthAndDip(double zTop, double width, double dip) {
+		FaultUtils.assertValidDepth(zTop);
+		FaultUtils.assertValidDip(dip);
+		Preconditions.checkState(width > 0d);
+		
+		double zBot;
+		if (dip == 90d)
+			zBot = zTop + width;
+		else
+			zBot = zTop + width * Math.sin(Math.toRadians(dip));
+		FaultUtils.assertValidDepth(zBot);
+		
+		this.zTop = zTop;
+		this.zBot = zBot;
+		this.width = width;
+		this.dip = dip;
 		return this;
 	}
 	
@@ -541,6 +571,28 @@ public class PointSurfaceBuilder {
 	}
 	
 	/**
+	 * Sets the strike and dip from the given {@link FocalMechanism}. The rake will be stored and only used if
+	 * properties are set from a scaling relationships that is rake-dependent
+	 * @param mech
+	 * @return
+	 */
+	public PointSurfaceBuilder mechanism(FocalMechanism mech) {
+		strike(mech.getStrike());
+		dip(mech.getDip());
+		return this;
+	}
+	
+	/**
+	 * Draws a and sets a random strike; note that this same strike will be used until this method is called again,
+	 * or the strike is otherwise set
+	 * @return
+	 */
+	public PointSurfaceBuilder randomStrike() {
+		strike(getRandStrikes(1, strikeRange)[0]);
+		return this;
+	}
+	
+	/**
 	 * Sets the strike direction in decimal degrees, or NaN for no direction. This clears any previously set strike
 	 * range.
 	 * 
@@ -602,6 +654,15 @@ public class PointSurfaceBuilder {
 			return length;
 		if (Double.isFinite(mag)) {
 			// calculate from scaling relationship
+			if (Double.isFinite(rake)) {
+				if (scale == WC94)
+					// we have a custom rake, don't set it in the static WC94 instance
+					scale = new WC1994_MagLengthRelationship();
+				scale.setRake(rake);
+			} else if (scale != WC94) {
+				// custom scaling relationship, clear the rake param
+				scale.setRake(rake);
+			}
 			if (scale instanceof MagLengthRelationship) {
 				return ((MagLengthRelationship)scale).getMedianLength(mag);
 			} else {
@@ -632,41 +693,132 @@ public class PointSurfaceBuilder {
 	}
 	
 	/**
-	 * Builds true point surface representation where all distances are set from the 3D distance to the epicenter 
+	 * Builds a true point surface representation without any finite rupture parameters
 	 * @return
 	 */
 	public PointSurface buildTruePointSurface() {
+		return buildTruePointSurface(null);
+	}
+	
+	/**
+	 * Builds a true point surface representation without any finite rupture parameters
+	 * @return
+	 */
+	public PointSurface buildTruePointSurface(PointSourceDistanceCorrection corr) {
 		PointSurface surf;
 		if (loc.depth == zTop)
 			surf = new PointSurface(loc);
 		else
 			surf = new PointSurface(loc.lat, loc.lon, zTop);
 		surf.setAveDip(dip);
+		surf.setDistanceCorrection(corr, mag);
 		return surf;
 	}
 	
 	/**
-	 * Builds a point surface representation where rJB is calculated according to the chosen {@link PtSrcDistCorr},
-	 * and other distances are calculated using the (possibly corrected) rJB, the footwall setting, and zTop/zBot/dip. 
+	 * Builds true point surface representations without any finite rupture parameters and for the given
+	 * {@link PointSourceDistanceCorrections}.
 	 * @return
 	 */
-	public FiniteApproxPointSurface buildFiniteApproxPointSurface() {
-		Preconditions.checkState(footwall != null || dip == 90, "Footwall boolean must be specified if dip != 90");
-		boolean footwall = this.footwall == null ? true : this.footwall;
-		return buildFiniteApproxPointSurface(footwall);
+	public WeightedList<PointSurface> buildTruePointSurfaces(PointSourceDistanceCorrections distCorrType) {
+		return buildTruePointSurfaces(distCorrType == null ? null : distCorrType.get());
 	}
 	
 	/**
-	 * Builds a point surface representation where rJB is calculated according to the chosen {@link PtSrcDistCorr},
+	 * Builds true point surface representations without any finite rupture parameters and for the given
+	 * {@link WeightedList} of {@link PointSourceDistanceCorrection}s.
+	 * @return
+	 */
+	public WeightedList<PointSurface> buildTruePointSurfaces(WeightedList<PointSourceDistanceCorrection> distCorrs) {
+		if (distCorrs == null)
+			return WeightedList.evenlyWeighted(buildTruePointSurface(null));
+		else if (distCorrs.size() == 1)
+			return WeightedList.evenlyWeighted(buildTruePointSurface(distCorrs.getValue(0)));
+		WeightedList<PointSurface> ret = new WeightedList<>(distCorrs.size());
+		for (int i=0; i<distCorrs.size(); i++) {
+			PointSurface surf = buildTruePointSurface(distCorrs.getValue(i));
+			ret.add(surf, distCorrs.getWeight(i));
+		}
+		return ret;
+	}
+	
+	/**
+	 * Builds a point surface representation without any {@link PointSourceDistanceCorrection} (rJB == rEpi, although
+	 * you can set a {@link PointSourceDistanceCorrection} after bulding), and other distances are calculated using the
+	 * rJB, the footwall setting, and zTop/zBot/dip.
+	 * @return
+	 */
+	public FiniteApproxPointSurface buildFiniteApproxPointSurface() {
+		return buildFiniteApproxPointSurface(null);
+	}
+	
+	/**
+	 * Builds a point surface representation where rJB is calculated according to the given {@link PointSourceDistanceCorrection},
 	 * and other distances are calculated using the (possibly corrected) rJB, the footwall setting, and zTop/zBot/dip. 
 	 * @return
 	 */
-	public FiniteApproxPointSurface buildFiniteApproxPointSurface(boolean footwall) {
+	public FiniteApproxPointSurface buildFiniteApproxPointSurface(PointSourceDistanceCorrection corr) {
+		Preconditions.checkState(footwall != null || dip == 90, "Footwall boolean must be specified if dip != 90");
+		boolean footwall = this.footwall == null ? true : this.footwall;
+		return buildFiniteApproxPointSurface(corr, footwall);
+	}
+	
+	/**
+	 * Builds a point surface representation where rJB is calculated according to the given {@link PointSourceDistanceCorrection},
+	 * and other distances are calculated using the (possibly corrected) rJB, the footwall setting, and zTop/zBot/dip. 
+	 * @return
+	 */
+	public FiniteApproxPointSurface buildFiniteApproxPointSurface(PointSourceDistanceCorrection corr, boolean footwall) {
 		Preconditions.checkState(zBot >= zTop, "zBOT must be >= zTOR"); 
 		
 		double length = getCalcLength();
 		
-		return new FiniteApproxPointSurface(getLoc(), dip, zTop, zBot, footwall, length);
+		FiniteApproxPointSurface surf = new FiniteApproxPointSurface(getLoc(), dip, zTop, zBot, footwall, length);
+		surf.setDistanceCorrection(corr, mag);
+		return surf;
+	}
+	
+	/**
+	 * Builds point surface representations where rJB is calculated according to the given {@link PointSourceDistanceCorrections},
+	 * and other distances are calculated using the (possibly corrected) rJB, the footwall setting, and zTop/zBot/dip. 
+	 * @return
+	 */
+	public WeightedList<FiniteApproxPointSurface> buildFiniteApproxPointSurfaces(
+			PointSourceDistanceCorrections distCorrType) {
+		return buildFiniteApproxPointSurfaces(distCorrType == null ? null : distCorrType.get());
+	}
+	
+	/**
+	 * Builds point surface representations where rJB is calculated according to the given {@link PointSourceDistanceCorrections},
+	 * and other distances are calculated using the (possibly corrected) rJB, the footwall setting, and zTop/zBot/dip. 
+	 * @return
+	 */
+	public WeightedList<FiniteApproxPointSurface> buildFiniteApproxPointSurfaces(
+			WeightedList<PointSourceDistanceCorrection> distCorrs) {
+		PointSourceDistanceCorrection singleCorr = distCorrs != null && distCorrs.size() == 1 ? distCorrs.getValue(0) : null;
+		FiniteApproxPointSurface[] surfs;
+		if (dip == 90d || footwall != null)
+			surfs = new FiniteApproxPointSurface[] {
+					buildFiniteApproxPointSurface(singleCorr, footwall == null ? true : footwall) };
+		else
+			surfs = new FiniteApproxPointSurface[] {
+					buildFiniteApproxPointSurface(singleCorr, true),
+					buildFiniteApproxPointSurface(singleCorr, false) };
+		if (distCorrs != null && distCorrs.size() > 1) {
+			// need multiple copies
+			double weightEach = 1d/(double)surfs.length;
+			WeightedList<FiniteApproxPointSurface> ret = new WeightedList<>(distCorrs.size()*surfs.length);
+			for (FiniteApproxPointSurface surf : surfs) {
+				for (int i=0; i<distCorrs.size(); i++) {
+					FiniteApproxPointSurface surfCopy = surf.copyShallow();
+					surfCopy.setDistanceCorrection(singleCorr, mag);
+					ret.add(surfCopy, distCorrs.getWeight(i)*weightEach);
+				}
+			}
+			return ret;
+		} else {
+			return WeightedList.evenlyWeighted(surfs);
+		}
 	}
 	
 	private FaultTrace buildTrace(double strike) {
@@ -739,7 +891,9 @@ public class PointSurfaceBuilder {
 	public QuadSurface buildQuadSurface(double strike)  {
 		FaultTrace trace = buildTrace(strike);
 		
-		return new QuadSurface(trace, dip, getCalcWidth());
+		// a single cache is appropriate for point sources, they're not reused by multiple sources
+		// and not worth the memory and caching overhead of storing distances for multiple sites
+		return new QuadSurface(trace, dip, getCalcWidth(), CacheTypes.DISABLED);
 	}
 	
 	/**
@@ -775,8 +929,62 @@ public class PointSurfaceBuilder {
 	}
 	
 	/**
-	 * Builds a gridded surface representation. Distance calculations will always performs worse than
-	 * {@link #buildQuadSurface()}, so use this only if you actually need a gridded surface.
+	 * Builds a gridded surface representation with only one row (at the upper depth). Distance calculations will
+	 * always performs worse (both in accuracy and speed) than {@link #buildQuadSurface()}, so use this only if you
+	 * actually need a gridded line surface.
+	 * @return
+	 */
+	public EvenlyGriddedSurface buildLineSurface() {
+		return buildLineSurface(strike);
+	}
+	
+	/**
+	 * Builds a gridded surface representation with only one row (at the upper depth). Distance calculations will
+	 * always performs worse (both in accuracy and speed) than {@link #buildQuadSurface()}, so use this only if you
+	 * actually need a gridded line surface.
+	 * @return
+	 */
+	public EvenlyGriddedSurface buildLineSurface(double strike) {
+		FaultTrace trace = buildTrace(strike);
+		
+		return new FrankelGriddedSurface(trace, dip, zTop, zTop, gridSpacing);
+	}
+	
+	/**
+	 * Builds the given number of random strike gridded line surfaces.
+	 * 
+	 * If a fixed strike angle has previously been set, then that strike angle will be used for the first surface
+	 * and any additional surfaces will be evenly distributed.
+	 * 
+	 * If a strike range has been previously set then orientations will be randomly sampled within that range.
+	 * 
+	 * If neither a fixed strike nor a strike range has been set, then the initial orientation will be randomly sampled
+	 * and any additional strikes will be evenly distributed.
+	 * @param num
+	 * @return
+	 */
+	public EvenlyGriddedSurface[] buildRandLineSurfaces(int num) {
+		return buildRandLineSurfaces(num, null);
+	}
+	
+	/**
+	 * Builds the given number of random strike gridded line surfaces. If strikeRange is non null, orientations will be randomly
+	 * sampled from the given range.
+	 * @param num
+	 * @param strikeRange
+	 * @return
+	 */
+	public EvenlyGriddedSurface[] buildRandLineSurfaces(int num, Range<Double> strikeRange) {
+		EvenlyGriddedSurface[] ret = new EvenlyGriddedSurface[num];
+		double[] strikes = getRandStrikes(num, strikeRange);
+		for (int i=0; i<num; i++)
+			ret[i] = buildLineSurface(strikes[i]);
+		return ret;
+	}
+	
+	/**
+	 * Builds a gridded surface representation. Distance calculations will always performs worse (both in accuracy and
+	 * speed) than {@link #buildQuadSurface()}, so use this only if you actually need a gridded surface.
 	 * @return
 	 */
 	public EvenlyGriddedSurface buildGriddedSurface() {
@@ -784,7 +992,7 @@ public class PointSurfaceBuilder {
 	}
 	
 	/**
-	 * Builds a gridded surface representation. Distance calculations will always performs worse than
+	 * Builds a gridded surface representation. Distance calculations will always performs worse (both in accuracy and speed) than
 	 * {@link #buildQuadSurface()}, so use this only if you actually need a gridded surface.
 	 * @return
 	 */
@@ -828,50 +1036,44 @@ public class PointSurfaceBuilder {
 	}
 	
 	/**
-	 * Builds surfaces for the given {@link BackgroundRupType}. If a finite option has been chosen and the strike
-	 * direction has not been set, then random a strike (or random strikes for crosshair) will be chosen.
+	 * Builds surfaces for the given {@link BackgroundRupType} and {@link PointSourceDistanceCorrections}.
+	 * If a finite option has been chosen and the strike direction has not been set, then random a strike (or random
+	 * strikes for crosshair) will be chosen.
 	 * 
-	 * Note: if the strike has been set, a single finite surface will be returned even if {@link BackgroundRupType#POINT}
-	 * is chosen.
+	 * <p><b>Special cases:</b>
+	 * 
+	 * <p>If the strike has been set and length>0, a single finite surface will be returned even if
+	 * {@link BackgroundRupType#POINT} or {@link BackgroundRupType#CROSSHAIR} is chosen.
+	 * 
+	 * <p>If the length is zero, then a point source will be returned regardless of the {@link BackgroundRupType} setting.
+	 * If <code>zTop ==  zBot && footwall == null</code>, then a true point source will be returned, otherwise an
+	 * {@link FiniteApproxPointSurface} will be returned.
 	 * @return
 	 */
-	public RuptureSurface[] build(BackgroundRupType bgRupType) {
+	public WeightedList<? extends RuptureSurface> build(BackgroundRupType bgRupType, PointSourceDistanceCorrections distCorrType) {
 		// special cases
-		if ((float)length == 0f && (float)zTop == (float)zBot && footwall == null) {
-			// true point source
-			return new RuptureSurface[] { buildTruePointSurface() };
+		if ((float)length == 0f) {
+			if ((float)zTop == (float)zBot && footwall == null)
+				// true point source
+				return buildTruePointSurfaces(distCorrType);
+			// zero length but some other finite information, return FiniteApproxPointSurface
+			return buildFiniteApproxPointSurfaces(distCorrType);
 		} else if (Double.isFinite(strike) && (float)length > 0f) {
 			// we have a finite surface
-			return new RuptureSurface[] { buildQuadSurface() };
+			return WeightedList.evenlyWeighted(buildQuadSurface());
 		}
 		switch (bgRupType) {
 		case POINT:
-			if (dip == 90d || footwall != null)
-				// either vertical, or footwall parameter explicitly set
-				return new RuptureSurface[] {buildFiniteApproxPointSurface()};
-			return new RuptureSurface[] {
-					// sample both footwall settings
-					buildFiniteApproxPointSurface(true), buildFiniteApproxPointSurface(false)};
+			return buildFiniteApproxPointSurfaces(distCorrType);
 		case FINITE:
 			// this will use the given strike or strikeRange if previously supplied
-			return buildRandQuadSurfaces(1);
+			return WeightedList.evenlyWeighted(buildRandQuadSurfaces(1));
 		case CROSSHAIR:
 			// this will use the given strike or strikeRange if previously supplied
-			return buildRandQuadSurfaces(2);
+			return WeightedList.evenlyWeighted(buildRandQuadSurfaces(2));
 		default:
 			throw new IllegalStateException("Unsupported BackgroundRupType: "+bgRupType);
 		}
-	}
-	
-	/**
-	 * Builds a surface for the given inputs. This returns {@link #buildQuadSurface()} if the strike direction has
-	 * been set, and {@link #buildFiniteApproxPointSurface()} otherwise.
-	 * @return
-	 */
-	public RuptureSurface build() {
-		if (Double.isFinite(strike))
-			return buildQuadSurface();
-		return buildFiniteApproxPointSurface();
 	}
 	
 	public static void main(String[] args) {

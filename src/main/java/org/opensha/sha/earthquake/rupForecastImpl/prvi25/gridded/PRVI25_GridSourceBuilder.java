@@ -41,14 +41,18 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.MaxMagOffFaultBranchNode;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_FaultCubeAssociations;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRegionGridSourceProvider;
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_MaxMagOffFault;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_DeclusteringAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_RegionalSeismicity;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SeisSmoothingAlgorithms;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
+import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -66,7 +70,13 @@ public class PRVI25_GridSourceBuilder {
 	/**
 	 * if true, will subtract on-fault supra-seis rates from gridded MFDs
 	 */
-	public static final boolean RATE_BALANCE_CRUSTAL_GRIDDED = false;
+	public static boolean RATE_BALANCE_CRUSTAL_GRIDDED = false;
+	
+	/**
+	 * if true, depths and strikes are taken from the mapped subsection
+	 * otherwise, they use Slab2 (which won't match for Muertos)
+	 */
+	public static boolean INTERFACE_USE_SECT_PROPERTIES = true;
 	
 	public static final double OVERALL_MMIN= 2.55;
 	// TODO: preliminary; logic tree branch(es)?
@@ -100,6 +110,58 @@ public class PRVI25_GridSourceBuilder {
 		NSHM23_SingleRegionGridSourceProvider gridProv = buildCrustalGridSourceProv(sol, branch, PRVI25_SeismicityRegions.CRUSTAL, cubeAssociations);
 		
 		return gridProv.convertToGridSourceList(OVERALL_MMIN);
+	}
+	
+	private static Double CRUSTAL_FRACT_SS;
+	private static Double CRUSTAL_FRACT_REV;
+	private static Double CRUSTAL_FRACT_NORM;
+	
+	private static void checkCalcCrustalFaultCategories() throws IOException {
+		if (CRUSTAL_FRACT_SS == null) {
+			synchronized (PRVI25_GridSourceBuilder.class) {
+				if (CRUSTAL_FRACT_SS == null)
+					calcCrustalFaultCategories();
+			}
+		}
+	}
+	
+	private static void calcCrustalFaultCategories() throws IOException {
+		PRVI25_CrustalFaultModels fm = PRVI25_CrustalFaultModels.PRVI_CRUSTAL_FM_V1p1;
+		PRVI25_CrustalDeformationModels dm = PRVI25_CrustalDeformationModels.GEOLOGIC_DIST_AVG;
+		
+		List<? extends FaultSection> sects = dm.build(fm);
+		
+		double momentSS = 0d;
+		double momentRev = 0d;
+		double momentNorm = 0d;
+		double momentTot = 0d;
+		
+		for (FaultSection sect : sects) {
+			double moment = sect.calcMomentRate(false);
+			double rake = sect.getAveRake();
+//			System.out.println(sect.getSectionId()+". "+sect.getSectionName()+": rake="+(int)rake+", moment="+(float)rake);
+			if ((int)rake == -135 || (int)rake == -45) {
+				momentNorm += 0.5*moment;
+				momentSS += 0.5*moment;
+			} else if ((int)rake == 45 || (int)rake == 135) {
+				momentRev += 0.5*moment;
+				momentSS += 0.5*moment;
+			} else if (rake >= -135 && rake < -45d) {
+				momentNorm += moment;
+			} else if (rake >= 45 && rake < 135d) {
+				momentRev += moment;
+			} else {
+				momentSS += moment;
+			}
+			momentTot += moment;
+		}
+		CRUSTAL_FRACT_SS = momentSS/momentTot;
+		CRUSTAL_FRACT_REV = momentRev/momentTot;
+		CRUSTAL_FRACT_NORM = momentNorm/momentTot;
+		System.out.println("Crustal fractional moments:");
+		System.out.println("\tSS:\t"+(float)(momentSS/momentTot));
+		System.out.println("\tRev:\t"+(float)(momentRev/momentTot));
+		System.out.println("\tNorm:\t"+(float)(momentNorm/momentTot));
 	}
 	
 	public static NSHM23_SingleRegionGridSourceProvider buildCrustalGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch,
@@ -146,11 +208,12 @@ public class PRVI25_GridSourceBuilder {
 		double[] fractStrikeSlip = new double[gridReg.getNodeCount()];
 		double[] fractReverse = new double[gridReg.getNodeCount()];
 		double[] fractNormal = new double[gridReg.getNodeCount()];
+		checkCalcCrustalFaultCategories();
 		for (int i=0; i<fractStrikeSlip.length; i++) {
 			// these moment fractions from the crustal DM
-			fractStrikeSlip[i] = 0.63;
-			fractReverse[i] = 0.11;
-			fractNormal[i] = 0.26;
+			fractStrikeSlip[i] = CRUSTAL_FRACT_SS;
+			fractReverse[i] = CRUSTAL_FRACT_REV;
+			fractNormal[i] = CRUSTAL_FRACT_NORM;
 		}
 
 		// spatial seismicity PDF
@@ -168,7 +231,11 @@ public class PRVI25_GridSourceBuilder {
 		}
 		//				EvenlyDiscretizedFunc depthNuclDistFunc = NSHM23_SeisDepthDistributions.load(region);
 
-		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, binnedDepthDistFunc,
+		// only preserve the total MFD (i.e., re-distribute carved out near fault ruptures in the supra mag range to other grid nodes)
+		// if we're doing rate balancing. in that case, the passed in MFD already accounts for faults and should be preserved exactly.
+		// otherwise if we're not rate balancing, just lop off the gridded rate near faults without redistributing
+		boolean preserveTotalMFD = RATE_BALANCE_CRUSTAL_GRIDDED;
+		return new NSHM23_SingleRegionGridSourceProvider(sol, cubeAssociations, pdf, totalGridded, preserveTotalMFD, binnedDepthDistFunc,
 				fractStrikeSlip, fractNormal, fractReverse, null); // last null means all active
 	}
 	
@@ -355,57 +422,23 @@ public class PRVI25_GridSourceBuilder {
 		
 		final boolean D = true;
 		
-		System.out.println("Building interface GridSourceList for "+seisRegion);
+		System.out.println("Building interface GridSourceList for "+seisRegion+", useSectProps="+INTERFACE_USE_SECT_PROPERTIES);
 		
 		FaultSystemRupSet rupSet = sol.getRupSet();
-		
-		List<FaultSection> matchingSubSects = new ArrayList<>();
-		List<Region> matchingSubSectOutlines = new ArrayList<>();
-		List<Double> matchingSubSectMMins = new ArrayList<>();
-		List<Location[]> matchingSubSectFirstEdges = new ArrayList<>();
-		List<Location[]> matchingSubSectLastEdges = new ArrayList<>();
-		double maxSectMinMag = 0d;
-		for (FaultSection sect : rupSet.getFaultSectionDataList()) {
-			int sectParentID = sect.getParentSectionId();
-			if (Ints.contains(parentIDs, sectParentID)) {
-				matchingSubSects.add(sect);
-				RuptureSurface surf = sect.getFaultSurface(2d, false, false);
-				matchingSubSectOutlines.add(new Region(surf.getPerimeter(), BorderType.MERCATOR_LINEAR));
-				FaultTrace upper = surf.getUpperEdge();
-				LocationList lower = surf.getEvenlyDiscritizedLowerEdge();
-				Location[] firstEdge = {lower.first(), upper.first()};
-				Location[] lastEdge = {lower.last(), upper.last()};
-				matchingSubSectFirstEdges.add(firstEdge);
-				matchingSubSectLastEdges.add(lastEdge);
-				double sectMinMag = rupSet.getMinMagForSection(sect.getSectionId());
-				if (D) {
-					System.out.println(sect.getSectionId()+". "+sect.getSectionName()+": Mmin="+(float)sectMinMag);
-					System.out.println("\tStrike="+sect.getFaultTrace().getAveStrike()
-							+", firstEdgeAz="+(float)LocationUtils.azimuth(firstEdge[0], firstEdge[1])
-							+", lastEdgeAz="+(float)LocationUtils.azimuth(lastEdge[0], lastEdge[1]));
-					System.out.println("\tDepths: "+(float)sect.getOrigAveUpperDepth()+" "+(float)sect.getAveLowerDepth());
-				}
-				matchingSubSectMMins.add(sectMinMag);
-				maxSectMinMag = Math.max(maxSectMinMag, sectMinMag);
-//			} else {
-//				System.out.println("Skipping section (not a parentID match): "+sect.getSectionId()
-//					+". "+sect.getSectionName()+" (parentID="+sectParentID+")");
-			}
+		List<? extends FaultSection> sectsForMinMag = rupSet.getFaultSectionDataList();
+		List<? extends FaultSection> sectsForGeom = sectsForMinMag;
+		if (INTERFACE_USE_SECT_PROPERTIES && seisRegion == PRVI25_SeismicityRegions.CAR_INTERFACE && !fullBranch.hasValue(PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE)) {
+			// use the large fault model for rupture properties
+			PRVI25_SubductionFaultModels fm = PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE;
+			PRVI25_SubductionDeformationModels dm = fullBranch.getValue(PRVI25_SubductionDeformationModels.class);
+			if (dm == null)
+				dm = PRVI25_SubductionDeformationModels.FULL;
+			sectsForGeom = dm.build(fm);
 		}
 		
 		PRVI25_RegionalSeismicity seisBranch = fullBranch.requireValue(PRVI25_RegionalSeismicity.class);
 		PRVI25_DeclusteringAlgorithms declusteringAlg = fullBranch.requireValue(PRVI25_DeclusteringAlgorithms.class);
 		PRVI25_SeisSmoothingAlgorithms seisSmooth = fullBranch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
-		
-		IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, maxSectMinMag);
-		System.out.println("MFD Gridding Mmmax="+(float)refMFD.getMaxX());
-		
-		// total G-R up to Mmax
-//		IncrementalMagFreqDist totalGR = seisBranch.build(seisRegion, refMFD, maxMagOff);
-		
-		GriddedGeoDataSet pdf = seisSmooth.loadXYZ(seisRegion, declusteringAlg);
-		
-		List<List<GriddedRupture>> ruptureLists = new ArrayList<>(pdf.size());
 		
 		PRVI25_SubductionScalingRelationships scaleBranch = fullBranch.requireValue(PRVI25_SubductionScalingRelationships.class);
 		MagAreaRelationship scale = scaleBranch.getMagAreaRelationship();
@@ -416,78 +449,171 @@ public class PRVI25_GridSourceBuilder {
 		GriddedGeoDataSet strikeData = gridStrikes.get(seisRegion);
 		Preconditions.checkNotNull(strikeData);
 		
-		// find section mappings
-		int[] sectMappings = new int[pdf.size()];
-		double[] sectMinDepths = new double[matchingSubSects.size()];
-		for (int i=0; i<sectMinDepths.length; i++)
-			sectMinDepths[i] = Double.POSITIVE_INFINITY;
-		double[] sectMaxDepths = new double[matchingSubSects.size()];
+		// total G-R up to Mmax
+//		IncrementalMagFreqDist totalGR = seisBranch.build(seisRegion, refMFD, maxMagOff);
 		
-		double overallFurthestMatch = 0d;
-		for (int gridIndex=0; gridIndex<pdf.size(); gridIndex++) {
-			if (pdf.get(gridIndex) == 0d)
-				continue;
-			Location loc = pdf.getLocation(gridIndex);
-			
-			int matchingSectIndex = -1;
-			// first check region.contains
-			for (int i=0; i<matchingSubSects.size(); i++) {
-				if (matchingSubSectOutlines.get(i).contains(loc)) {
-					matchingSectIndex = i;
-					break;
+		GriddedGeoDataSet pdf = seisSmooth.loadXYZ(seisRegion, declusteringAlg);
+		GriddedRegion region = pdf.getRegion();
+		
+		List<FaultSection> minMagMatchingSubSects = null;
+		List<Double> minMagMatchingSubSectMMins = null;
+		List<RuptureSurface> minMagMatchingSectSurfs = null;
+		double maxSectMinMag = 0d;
+		int[] minMagSectMappings = null;
+		
+		List<FaultSection> geomMatchingSubSects = null;
+		List<RuptureSurface> geomMatchingSectSurfs = null;
+		int[] geomSectMappings = null;
+
+		double overallFurthestMinMagMatch = 0d;
+		double overallFurthestGeomMatch = 0d;
+		
+		for (boolean geom : new boolean[] { false, true }) {
+			List<FaultSection> matchingSubSects;
+			List<Double> matchingSubSectMMins;
+			List<RuptureSurface> matchingSectSurfs;
+			int[] sectMappings;
+			double overallFurthestMatch;
+			if (geom && sectsForGeom == sectsForMinMag) {
+				// don't need to recalculate
+				matchingSubSects = minMagMatchingSubSects;
+				matchingSubSectMMins = null;
+				matchingSectSurfs = minMagMatchingSectSurfs;
+				sectMappings = minMagSectMappings;
+				overallFurthestMatch = overallFurthestMinMagMatch;
+			} else {
+				// need to calculate
+				
+				List<? extends FaultSection> sects = geom ? sectsForGeom : sectsForMinMag;
+				matchingSubSects = new ArrayList<>();
+				List<Region> matchingSubSectOutlines = new ArrayList<>();
+				matchingSubSectMMins = geom ? null : new ArrayList<>();
+				List<Location[]> matchingSubSectFirstEdges = new ArrayList<>();
+				List<Location[]> matchingSubSectLastEdges = new ArrayList<>();
+				matchingSectSurfs = new ArrayList<>();
+				for (FaultSection sect : sects) {
+					int sectParentID = sect.getParentSectionId();
+					if (Ints.contains(parentIDs, sectParentID)) {
+						matchingSubSects.add(sect);
+						RuptureSurface surf = sect.getFaultSurface(2d, false, false);
+						matchingSectSurfs.add(surf);
+						matchingSubSectOutlines.add(new Region(surf.getPerimeter(), BorderType.MERCATOR_LINEAR));
+						FaultTrace upper = surf.getUpperEdge();
+						LocationList lower = surf.getEvenlyDiscritizedLowerEdge();
+						Location[] firstEdge = {lower.first(), upper.first()};
+						Location[] lastEdge = {lower.last(), upper.last()};
+						matchingSubSectFirstEdges.add(firstEdge);
+						matchingSubSectLastEdges.add(lastEdge);
+						double sectMinMag = geom ? Double.NaN : rupSet.getMinMagForSection(sect.getSectionId());
+						if (D) {
+							System.out.println(sect.getSectionId()+". "+sect.getSectionName()+": Mmin="+(float)sectMinMag);
+							System.out.println("\tStrike="+sect.getFaultTrace().getAveStrike()
+									+", firstEdgeAz="+(float)LocationUtils.azimuth(firstEdge[0], firstEdge[1])
+									+", lastEdgeAz="+(float)LocationUtils.azimuth(lastEdge[0], lastEdge[1]));
+							System.out.println("\tDepths: "+(float)sect.getOrigAveUpperDepth()+" "+(float)sect.getAveLowerDepth());
+						}
+						if (!geom) {
+							matchingSubSectMMins.add(sectMinMag);
+							maxSectMinMag = Math.max(maxSectMinMag, sectMinMag);
+						}
+//					} else {
+//						System.out.println("Skipping section (not a parentID match): "+sect.getSectionId()
+//							+". "+sect.getSectionName()+" (parentID="+sectParentID+")");
+					}
 				}
-			}
-			
-			if (matchingSectIndex < 0) {
-				// see if we're between the extended edge lines of any section
-				if (D) System.out.println("Location "+gridIndex+" ("+loc+") not contained, searching for nearest");
-				double minEdgeDist = Double.POSITIVE_INFINITY;
-				int minEdgeIndex = -1;
-				for (int i=0; i<matchingSubSects.size(); i++) {
-					Location[] firstEdge = matchingSubSectFirstEdges.get(i);
-					Location[] lastEdge = matchingSubSectLastEdges.get(i);
-					double dist1 = LocationUtils.distanceToLineFast(firstEdge[0], firstEdge[1], loc);
-					boolean pos1 = dist1 >= 0d;
-					double dist2 = LocationUtils.distanceToLineFast(lastEdge[0], lastEdge[1], loc);
-					boolean pos2 = dist2 >= 0d;
-//					if (D) System.out.println("\t\t"+matchingSubSects.get(i).getSectionName()+" edge dists:\t"+(float)dist1+"\t"+(float)dist2);
-					if (pos1 != pos2) {
-						if (D) System.out.println("\tEdge positivity test matched with "+matchingSubSects.get(i).getSectionName());
-						// between the two lines
-						Preconditions.checkState(matchingSectIndex < 0, "Edge positivity test matched multiple sections!");
-						matchingSectIndex = i;
-					} else {
-						double dist = Math.min(Math.abs(dist1), Math.abs(dist2));
-						if (dist < minEdgeDist) {
-							minEdgeDist = dist;
-							minEdgeIndex = i;
+				
+				sectMappings = new int[pdf.size()];
+				
+				overallFurthestMatch = 0d;
+				for (int gridIndex=0; gridIndex<pdf.size(); gridIndex++) {
+					if (pdf.get(gridIndex) == 0d)
+						continue;
+					Location loc = pdf.getLocation(gridIndex);
+					
+					int matchingSectIndex = -1;
+					// first check region.contains
+					for (int i=0; i<matchingSubSects.size(); i++) {
+						if (matchingSubSectOutlines.get(i).contains(loc)) {
+							matchingSectIndex = i;
+							break;
 						}
 					}
-				}
-				if (matchingSectIndex < 0) {
-					// use closest edge distance
-					matchingSectIndex = minEdgeIndex;
-					if (D) {
-						System.out.flush();
-						System.err.println("\tEdge positivity failed on all, using closest with dist="
-								+(float)minEdgeDist+": "+matchingSubSects.get(matchingSectIndex).getSectionName());
-						System.err.flush();
+					
+					if (matchingSectIndex < 0) {
+						// see if we're between the extended edge lines of any section
+						if (D) System.out.println("Location "+gridIndex+" ("+loc+") not contained, searching for nearest");
+						double minEdgeDist = Double.POSITIVE_INFINITY;
+						int minEdgeIndex = -1;
+						for (int i=0; i<matchingSubSects.size(); i++) {
+							Location[] firstEdge = matchingSubSectFirstEdges.get(i);
+							Location[] lastEdge = matchingSubSectLastEdges.get(i);
+							double dist1 = LocationUtils.distanceToLineFast(firstEdge[0], firstEdge[1], loc);
+							boolean pos1 = dist1 >= 0d;
+							double dist2 = LocationUtils.distanceToLineFast(lastEdge[0], lastEdge[1], loc);
+							boolean pos2 = dist2 >= 0d;
+//							if (D) System.out.println("\t\t"+matchingSubSects.get(i).getSectionName()+" edge dists:\t"+(float)dist1+"\t"+(float)dist2);
+							if (pos1 != pos2) {
+								if (D) System.out.println("\tEdge positivity test matched with "+matchingSubSects.get(i).getSectionName());
+								// between the two lines
+								Preconditions.checkState(matchingSectIndex < 0, "Edge positivity test matched multiple sections!");
+								matchingSectIndex = i;
+							} else {
+								double dist = Math.min(Math.abs(dist1), Math.abs(dist2));
+								if (dist < minEdgeDist) {
+									minEdgeDist = dist;
+									minEdgeIndex = i;
+								}
+							}
+						}
+						if (matchingSectIndex < 0) {
+							// use closest edge distance
+							matchingSectIndex = minEdgeIndex;
+							if (D) {
+								System.out.flush();
+								System.err.println("\tEdge positivity failed on all, using closest with dist="
+										+(float)minEdgeDist+": "+matchingSubSects.get(matchingSectIndex).getSectionName());
+								System.err.flush();
+							}
+						}
+						double dist = matchingSubSectOutlines.get(matchingSectIndex).distanceToLocation(loc);
+						overallFurthestMatch = Math.max(overallFurthestMatch, dist);
+						if (D) System.out.println("\tDistance to section: "+(float)dist+"\n");
 					}
+					
+					FaultSection matchingSection = matchingSubSects.get(matchingSectIndex);
+					sectMappings[gridIndex] = matchingSectIndex;
+					
+					// find the depth at this location
+					Preconditions.checkState(LocationUtils.areSimilar(loc, depthData.getLocation(gridIndex)));
+//					double depth = depthData.get(gridIndex);
+//					sectMinDepths[matchingSectIndex] = Math.min(sectMinDepths[matchingSectIndex], Math.min(depth, matchingSection.getOrigAveUpperDepth()));
+//					sectMaxDepths[matchingSectIndex] = Math.max(sectMaxDepths[matchingSectIndex], Math.max(depth, matchingSection.getAveLowerDepth()));
 				}
-				double dist = matchingSubSectOutlines.get(matchingSectIndex).distanceToLocation(loc);
-				overallFurthestMatch = Math.max(overallFurthestMatch, dist);
-				if (D) System.out.println("\tDistance to section: "+(float)dist+"\n");
 			}
 			
-			FaultSection matchingSection = matchingSubSects.get(matchingSectIndex);
-			sectMappings[gridIndex] = matchingSectIndex;
-			
-			// find the depth at this location
-			Preconditions.checkState(LocationUtils.areSimilar(loc, depthData.getLocation(gridIndex)));
-			double depth = depthData.get(gridIndex);
-			sectMinDepths[matchingSectIndex] = Math.min(sectMinDepths[matchingSectIndex], Math.min(depth, matchingSection.getOrigAveUpperDepth()));
-			sectMaxDepths[matchingSectIndex] = Math.max(sectMaxDepths[matchingSectIndex], Math.max(depth, matchingSection.getAveLowerDepth()));
+			if (geom) {
+				geomMatchingSubSects = matchingSubSects;
+				geomMatchingSectSurfs = matchingSectSurfs;
+				geomSectMappings = sectMappings;
+				overallFurthestGeomMatch = overallFurthestMatch;
+			} else {
+				minMagMatchingSubSects = matchingSubSects;
+				minMagMatchingSubSectMMins = matchingSubSectMMins;
+				minMagMatchingSectSurfs = matchingSectSurfs;
+				minMagSectMappings = sectMappings;
+				overallFurthestMinMagMatch = overallFurthestMatch;
+			}
 		}
+		
+		IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, maxSectMinMag);
+		System.out.println("MFD Gridding Mmmax="+(float)refMFD.getMaxX());
+		
+		List<List<GriddedRupture>> ruptureLists = new ArrayList<>(pdf.size());
+		
+		double overallMinDepth = depthData.getMinZ();
+		double overallMaxDepth = depthData.getMaxZ();
+		double minDepthRangeLimit = 0.2*(overallMaxDepth - overallMinDepth);
+		if (D) System.out.println("Overall Slab2 depth range: ["+(float)overallMinDepth+", "+(float)overallMaxDepth+"]");
 			
 		for (int gridIndex=0; gridIndex<pdf.size(); gridIndex++) {
 			double fractRate = pdf.get(gridIndex);
@@ -495,30 +621,191 @@ public class PRVI25_GridSourceBuilder {
 				ruptureLists.add(new ArrayList<>());
 				continue;
 			}
-			double depth = depthData.get(gridIndex);
-			double strike = strikeData.get(gridIndex);
 			
-			FaultSection matchingSection = matchingSubSects.get(sectMappings[gridIndex]);
+			Location gridLoc = pdf.getLocation(gridIndex);
+			
+//			boolean DD = D && gridIndex == 66;
+			boolean DD = D && gridIndex == 416;
+			
+			if (DD) System.out.println("DEBUG for grid "+gridIndex+" at "+gridLoc);
+
+			double sectMmin = minMagMatchingSubSectMMins.get(minMagSectMappings[gridIndex]);
+			FaultSection matchingSection = geomMatchingSubSects.get(geomSectMappings[gridIndex]);
+			
+			double strike;
+			double dip;
+			double depth;
+			double depthUpperLimit;
+			double depthLowerLimit;
+			if (INTERFACE_USE_SECT_PROPERTIES) {
+				RuptureSurface surf = geomMatchingSectSurfs.get(geomSectMappings[gridIndex]);
+				
+				if (surf instanceof EvenlyGriddedSurface) {
+					EvenlyGriddedSurface gridSurf = (EvenlyGriddedSurface)surf;
+					double closest = Double.POSITIVE_INFINITY;
+					int closestRow = -1;
+					int closestCol = -1;
+					for (int row=0; row<gridSurf.getNumRows(); row++) {
+						for (int col=0; col<gridSurf.getNumCols(); col++) {
+							Location loc = gridSurf.get(row, col);
+							double dist = LocationUtils.horzDistanceFast(loc, gridLoc);
+							if (dist < closest) {
+								closest = dist;
+								closestRow = row;
+								closestCol = col;
+							}
+						}
+					}
+					depth = gridSurf.get(closestRow, closestCol).depth;
+					depthUpperLimit = gridSurf.get(0, closestCol).depth;
+					depthLowerLimit = gridSurf.get(gridSurf.getNumRows()-1, closestCol).depth;
+				} else {
+					double closest = Double.POSITIVE_INFINITY;
+					Location closestLoc = null;
+					depthUpperLimit = Double.POSITIVE_INFINITY;
+					depthLowerLimit = Double.NEGATIVE_INFINITY;
+					for (Location loc : surf.getEvenlyDiscritizedListOfLocsOnSurface()) {
+						depthUpperLimit = Math.min(depthUpperLimit, loc.depth);
+						depthLowerLimit = Math.max(depthLowerLimit, loc.depth);
+						double dist = LocationUtils.horzDistanceFast(loc, gridLoc);
+						if (dist < closest) {
+							closest = dist;
+							closestLoc = loc;
+						}
+					}
+					depth = closestLoc.depth;
+				}
+				strike = surf.getAveStrike();
+				dip = matchingSection.getAveDip();
+				if (DD) {
+					System.out.println("\tOriginal sect depth is "+(float)depthData.get(gridIndex));
+					System.out.println("\tClosest sect depth is "+(float)depth);
+					System.out.println("\tSect depth limits are ["+(float)depthUpperLimit+", "+(float)depthLowerLimit+"]");
+				}
+			} else {
+				strike = strikeData.get(gridIndex);
+				depth = depthData.get(gridIndex);
+				// find the depth limits at this point on the surface
+				// first find the edges of the seismicity region in the strike-normal direction
+				Location leftEdgeLoc = null;
+				Location rightEdgeLoc = null;
+				for (boolean left : new boolean[] {true, false}) {
+					double azRad = left ? Math.toRadians(strike-90d) : Math.toRadians(strike+90d);
+					
+					Location lastInsideLoc = gridLoc;
+					double lastInsideLocDist = 0d;
+					
+					Location firstOutsideLoc = null;
+					double firstOutsideLocDist = 10d;
+					
+					while (firstOutsideLoc == null) {
+						Location testLoc = LocationUtils.location(gridLoc, azRad, firstOutsideLocDist);
+						if (region.indexForLocation(testLoc) >= 0) {
+							// still inside
+							lastInsideLocDist = firstOutsideLocDist;
+							firstOutsideLocDist += 10d;
+							lastInsideLoc = testLoc;
+						} else {
+							firstOutsideLoc = testLoc;
+						}
+					}
+					
+					// now we have a location that's inside and outside, figure out where the boundary actually is
+					// do a binary search
+					for (int i=0; i<10; i++) {
+						double testDist = 0.5*(lastInsideLocDist + firstOutsideLocDist);
+						Location testLoc = LocationUtils.location(gridLoc, azRad, testDist);
+						if (region.indexForLocation(testLoc) >= 0) {
+							lastInsideLoc = testLoc;
+							lastInsideLocDist = testDist;
+						} else {
+							firstOutsideLoc = testLoc;
+							firstOutsideLocDist = testDist;
+						}
+					}
+					
+					if (left)
+						leftEdgeLoc = lastInsideLoc;
+					else
+						rightEdgeLoc = lastInsideLoc;
+				}
+				int leftIndex = region.indexForLocation(leftEdgeLoc);
+				int rightIndex = region.indexForLocation(rightEdgeLoc);
+				double leftDepth = depthData.get(leftIndex);
+				double rightDepth = depthData.get(rightIndex);
+				if (leftIndex == rightIndex || leftDepth == rightDepth) {
+					// just use section dip
+					dip = matchingSection.getAveDip();
+				} else {
+					// calculate dip from the surface
+					double horzDist = LocationUtils.horzDistanceFast(leftEdgeLoc, rightEdgeLoc);
+					double vertDist = Math.abs(leftDepth - rightDepth);
+					Preconditions.checkState(horzDist > 0d);
+					Preconditions.checkState(vertDist > 0d);
+					// tan(dip) = vert / horz
+					// dip = arctan(vert/horz)
+					dip = Math.toDegrees(Math.atan(vertDist/horzDist));
+					FaultUtils.assertValidDip(dip);
+				}
+				// left *should* be above right
+				depthUpperLimit = Math.min(leftDepth, rightDepth);
+				depthLowerLimit = Math.max(leftDepth, rightDepth);
+				Preconditions.checkState(depthUpperLimit <= depth, "depthUpperLimit=%s but depth=%s", depthUpperLimit, depth);
+				Preconditions.checkState(depthLowerLimit >= depth, "depthLowerLimit=%s but depth=%s", depthLowerLimit, depth);
+				
+				double myMaxDepth = overallMaxDepth;
+				double myMinDepth = overallMinDepth;
+				
+				// this uses section depths, but it can extend past the section horizontally to achieve those depths
+//				double sectLowerDepth = matchingSection.getAveLowerDepth();
+//				myMaxDepth = Math.max(sectLowerDepth, myMaxDepth);
+//				if (sectLowerDepth > depthLowerLimit)
+//					depthLowerLimit = sectLowerDepth;
+//				double sectUpperDepth = matchingSection.getOrigAveUpperDepth();
+//				myMinDepth = Math.min(sectUpperDepth, myMinDepth);
+//				if (sectUpperDepth < depthUpperLimit)
+//					depthUpperLimit = sectUpperDepth;
+				
+				double delta = depthLowerLimit - depthUpperLimit;
+				if (delta < minDepthRangeLimit) {
+					// too narrow, probably right at the skinny end, expand to a sensible value
+					System.out.println("Delta="+(float)delta+" is too narrow, expanding to "+(float)minDepthRangeLimit+" for depth="+(float)depth);
+					depthUpperLimit = depth - 0.5*minDepthRangeLimit;
+					depthLowerLimit = depth + 0.5*minDepthRangeLimit;
+					System.out.println("\tUpdated limits: ["+(float)depthUpperLimit+", "+(float)depthLowerLimit+"]");
+					if (depthLowerLimit > myMaxDepth) {
+						depthLowerLimit = overallMaxDepth;
+						depthUpperLimit = depthLowerLimit - minDepthRangeLimit;
+						System.out.println("\twould have extended beyond overall max depth; updated limits: ["
+								+(float)depthUpperLimit+", "+(float)depthLowerLimit+"]");
+					} else if (depthUpperLimit < myMinDepth) {
+						depthUpperLimit = myMinDepth;
+						depthLowerLimit = depthUpperLimit + minDepthRangeLimit;
+						System.out.println("\twould have extended above overall min depth; updated limits: ["
+								+(float)depthUpperLimit+", "+(float)depthLowerLimit+"]");
+					}
+				}
+				Preconditions.checkState(depthLowerLimit <= myMaxDepth,
+						"Bad depthLowerLimit=%s with myMaxDepth=%s", depthLowerLimit, myMaxDepth);
+				Preconditions.checkState(depthUpperLimit >= myMinDepth,
+						"Bad depthUpperLimit=%s with overallMinDepth=%s", depthUpperLimit, myMinDepth);
+			}
 			
 			int[] assocIDs = { matchingSection.getSectionId() };
 			double[] assocFracts = { 1d };
-				
-			double dip = matchingSection.getAveDip();
+			
 			double dipRad = Math.toRadians(dip);
 //			double rake = matchingSection.getAveRake();
 			double rake = 90d; // fix it to 90: don't want multiple instances of each rupture after branch averaging
 //			double strike = matchingSection.getFaultTrace().getAveStrike();
 			
-			double sectMmin = matchingSubSectMMins.get(sectMappings[gridIndex]);
 			int sectMminIndex = refMFD.getClosestXIndex(sectMmin);
 			Preconditions.checkState(sectMminIndex > 0);
 			// set Mmax to one bin below the matching section Mmin
 			double mMax = refMFD.getX(sectMminIndex-1);
 			
 			// modify to use our actual closest depth as these are average and not rectangular
-			double sectUpper = sectMinDepths[sectMappings[gridIndex]];
-			double sectLower = sectMaxDepths[sectMappings[gridIndex]];
-			double sectDDW = (sectLower - sectUpper)/Math.sin(dipRad);
+			double maxDDW = (depthLowerLimit - depthUpperLimit)/Math.sin(dipRad);
 			
 			IncrementalMagFreqDist mfd = seisBranch.build(seisRegion, refMFD, mMax);
 			mfd.scale(fractRate);
@@ -540,7 +827,7 @@ public class PRVI25_GridSourceBuilder {
 				Preconditions.checkState(Double.isFinite(depth), "closestDepth=%s?", depth);
 				
 				double length, ddw, upper, lower;
-				if (sqRtArea <= sectDDW) {
+				if (sqRtArea <= maxDDW) {
 					// make a square
 					ddw = sqRtArea;
 					length = sqRtArea;
@@ -550,16 +837,16 @@ public class PRVI25_GridSourceBuilder {
 					Preconditions.checkState(Double.isFinite(vertDDW),
 							"vertDDW=%s with ddw=%s, dip=%s, dipRad=%s", vertDDW, ddw, dip, dipRad);
 					double calcUpper = hypocentralDepth - 0.5*vertDDW;
-					if (calcUpper < sectUpper) {
+					if (calcUpper < depthUpperLimit) {
 						// snap upper edge
-						upper = sectUpper;
+						upper = depthUpperLimit;
 						lower = upper + vertDDW;
 					} else {
 						double calcLower = hypocentralDepth + 0.5*vertDDW;
-						if (calcLower > sectLower) {
+						if (calcLower > depthLowerLimit) {
 							// snap to lower edge
-							lower = sectLower;
-							upper = sectLower - vertDDW;
+							lower = depthLowerLimit;
+							upper = depthLowerLimit - vertDDW;
 						} else {
 							// no issue
 							upper = calcUpper;
@@ -568,28 +855,87 @@ public class PRVI25_GridSourceBuilder {
 					}
 				} else {
 					// make a rectangle that matches sectDDW
-					ddw = sectDDW;
+					ddw = maxDDW;
 					length = area/ddw;
-					upper = sectUpper;
-					lower = sectLower;
+					upper = depthUpperLimit;
+					lower = depthLowerLimit;
+				}
+				
+				if (DD) {
+					System.out.println("\tM"+(float)mag+" with depth="+(float)hypocentralDepth+", range=["+(float)upper+", "+(float)lower+"]");
 				}
 
 				Preconditions.checkState(Double.isFinite(upper));
-				Preconditions.checkState(Double.isFinite(lower), "lower=%s? sectLower=%s, ddw=%s", lower, sectLower, ddw);
+				Preconditions.checkState(Double.isFinite(lower), "lower=%s? depthLowerLimit=%s, ddw=%s", lower, depthLowerLimit, ddw);
 				GriddedRuptureProperties props = new GriddedRuptureProperties(
 						mag, rake, dip, strike, null,
 						upper, lower, length, hypocentralDepth, hypocentralDAS,
 						TectonicRegionType.SUBDUCTION_INTERFACE);
-				ruptureList.add(new GriddedRupture(gridIndex, pdf.getLocation(gridIndex), props, rate, assocIDs, assocFracts));
+				ruptureList.add(new GriddedRupture(gridIndex, gridLoc, props, rate, assocIDs, assocFracts));
 			}
 		}
 		
-		System.out.println("Done building gridded provider for "+seisRegion+"; worst grid-to-interface distance: "+(float)overallFurthestMatch+"km");
+		System.out.println("Done building gridded provider for "+seisRegion+"; worst grid-to-interface distance: "+(float)overallFurthestGeomMatch+"km");
 		
 		return new GridSourceList.Precomputed(pdf.getRegion(), TectonicRegionType.SUBDUCTION_INTERFACE, ruptureLists);
 	}
 
 	public static void main(String[] args) throws IOException {
+//		calcCrustalFaultCategories();
+//		System.exit(0);
+		
+//		FaultSystemSolution crustalSol = FaultSystemSolution.load(new File("/data/kevin/nshm23/batch_inversions/"
+//				+ "2024_11_19-prvi25_crustal_branches-dmSample5x/results_PRVI_CRUSTAL_FM_V1p1_branch_averaged.zip"));
+//		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
+//		levels.addAll(PRVI25_LogicTreeBranch.levelsOnFault);
+//		levels.addAll(PRVI25_LogicTreeBranch.levelsCrustalOffFault);
+//		LogicTreeBranch<LogicTreeNode> branch = new LogicTreeBranch<>(levels);
+//		for (LogicTreeNode node : PRVI25_LogicTreeBranch.DEFAULT_CRUSTAL_ON_FAULT)
+//			branch.setValue(node);
+//		PRVI25_RegionalSeismicity rateBranch = PRVI25_RegionalSeismicity.PREFFERRED;
+//		PRVI25_DeclusteringAlgorithms declusteringBranch = PRVI25_DeclusteringAlgorithms.AVERAGE;
+//		PRVI25_SeisSmoothingAlgorithms smoothingBranch = PRVI25_SeisSmoothingAlgorithms.AVERAGE;
+//		NSHM23_MaxMagOffFault mMaxBranch = NSHM23_MaxMagOffFault.MAG_7p6;
+//		branch.setValue(rateBranch);
+//		branch.setValue(declusteringBranch);
+//		branch.setValue(smoothingBranch);
+//		branch.setValue(mMaxBranch);
+//		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.CRUSTAL;
+//		GridSourceList gridSources = buildCrustalGridSourceProv(crustalSol, branch);
+//		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, 8.01);
+//		IncrementalMagFreqDist fullDataMFD = rateBranch.build(seisReg, refMFD, mMaxBranch.getMaxMagOffFault());
+//		Location testLoc = new Location(18.3, -66); // not in a polygon
+//		for (boolean entireRegion : new boolean[] {false,true}) {
+//			IncrementalMagFreqDist gridMFD = new IncrementalMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
+//			IncrementalMagFreqDist dataMFD;
+//			if (entireRegion) {
+//				System.out.println("ENTIRE REGION");
+//				for (int l=0; l<gridSources.getNumLocations(); l++)
+//					for (GriddedRupture rup : gridSources.getRuptures(TectonicRegionType.ACTIVE_SHALLOW, l))
+//						gridMFD.add(gridMFD.getClosestXIndex(rup.properties.magnitude), rup.rate);
+//				dataMFD = fullDataMFD;
+//			} else {
+//				System.out.println("Grid-only location "+testLoc);
+//				int l = gridSources.getLocationIndex(testLoc);
+//				for (GriddedRupture rup : gridSources.getRuptures(TectonicRegionType.ACTIVE_SHALLOW, l)) {
+//					Preconditions.checkState(rup.associatedSections == null);
+//					gridMFD.add(gridMFD.getClosestXIndex(rup.properties.magnitude), rup.rate);
+//				}
+//				double pdfScalar = smoothingBranch.loadXYZ(seisReg, declusteringBranch).get(l);
+//				dataMFD = fullDataMFD.deepClone();
+//				dataMFD.scale(pdfScalar);
+//			}
+//			System.out.println("Mag\tInput\tOutput\tDiff\t% Diff");
+//			for (int i=0; i<refMFD.size(); i++) {
+//				double mag = refMFD.getX(i);
+//				double data = dataMFD.getY(i);
+//				double model = gridMFD.getY(i);
+//				double diff = model - data;
+//				double pDiff = 100d*diff/data;
+//				System.out.println((float)mag+"\t"+(float)data+"\t"+(float)model+"\t\t"+(float)diff+"\t"+(float)pDiff);
+//			}
+//		}
+		
 		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
 		levels.addAll(PRVI25_LogicTreeBranch.levelsSubduction);
 		levels.addAll(PRVI25_LogicTreeBranch.levelsSubductionGridded);
@@ -604,12 +950,13 @@ public class PRVI25_GridSourceBuilder {
 		
 //		buildSlabGridSourceList(branch);
 		
-//		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
-//				+ "2024_07_31-prvi25_subduction_branches/results_PRVI_SUB_FM_LARGE_branch_averaged.zip"));
-//		branch.setValue(PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE);
+//		INTERFACE_USE_SECT_PROPERTIES = false;
 		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
-				+ "2024_07_31-prvi25_subduction_branches/results_PRVI_SUB_FM_SMALL_branch_averaged.zip"));
-		branch.setValue(PRVI25_SubductionFaultModels.PRVI_SUB_FM_SMALL);
+				+ "2024_12_12-prvi25_subduction_branches/results_PRVI_SUB_FM_LARGE_branch_averaged.zip"));
+		branch.setValue(PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE);
+//		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
+//				+ "2024_12_12-prvi25_subduction_branches/results_PRVI_SUB_FM_SMALL_branch_averaged.zip"));
+//		branch.setValue(PRVI25_SubductionFaultModels.PRVI_SUB_FM_SMALL);
 		
 //		GridSourceList slabModel = buildSlabGridSourceList(branch);
 //		SeismicityRegions seisReg = SeismicityRegions.CAR_INTRASLAB;
@@ -621,10 +968,11 @@ public class PRVI25_GridSourceBuilder {
 //					rateM5 += rup.rate;
 //		System.out.println(seisReg+" rate M>5: "+(float)rateM5);
 		
-		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.CAR_INTERFACE;
+//		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.CAR_INTERFACE;
+		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.MUE_INTERFACE;
 		Region region = seisReg.load();
-//		GridSourceList interfaceModel = buildInterfaceGridSourceList(sol, branch, seisReg);
-		GridSourceList interfaceModel = buildInterfaceGridSourceList(sol, branch);
+		GridSourceList interfaceModel = buildInterfaceGridSourceList(sol, branch, seisReg);
+//		GridSourceList interfaceModel = buildInterfaceGridSourceList(sol, branch);
 		AveragingAccumulator<GridSourceProvider> averager = interfaceModel.averagingAccumulator();
 		for (int i=0; i<10; i++)
 			averager.process(interfaceModel, 1d);
@@ -638,6 +986,11 @@ public class PRVI25_GridSourceBuilder {
 			}
 		}
 		System.out.println(seisReg+" rate M>5: "+(float)rateM5);
+		sol.setGridSourceProvider(interfaceModel);
+		String name = "sol_"+branch.requireValue(PRVI25_SubductionFaultModels.class).getFilePrefix()+"_with_"+seisReg.name()+"_gridded";
+		if (!INTERFACE_USE_SECT_PROPERTIES)
+			name += "_slab_depths";
+		sol.write(new File("/tmp/", name+".zip"));
 		
 //		buildInterfaceGridSourceList(sol, branch);
 		

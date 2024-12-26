@@ -6,8 +6,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import org.apache.commons.math3.stat.StatUtils;
+import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
@@ -73,7 +77,7 @@ public enum PRVI25_SeisSmoothingAlgorithms implements LogicTreeNode {
 	
 	private static final String NSHM23_SS_PATH_PREFIX = "/data/erf/prvi25/seismicity/spatial_seis_pdfs/";
 	
-	public static String MODEL_DATE = "2024_10_18";
+	public static String MODEL_DATE = "2024_12_11";
 	
 	private String getResourceName(PRVI25_SeismicityRegions region, PRVI25_DeclusteringAlgorithms declusteringAlg) {
 		return NSHM23_SS_PATH_PREFIX+MODEL_DATE+"/"+region.name()+"/"+declusteringAlg.name()+"_"+name()+".csv";
@@ -182,6 +186,8 @@ public enum PRVI25_SeisSmoothingAlgorithms implements LogicTreeNode {
 				+pDF.format((double)numMapped/(double)csv.getNumRows())+") of locations from input CSV mapped");
 		System.out.println("\t"+numMapped+"/"+gridReg.getNodeCount()+" ("
 				+pDF.format((double)numMapped/(double)gridReg.getNodeCount())+") of gridded region mapped");
+		Preconditions.checkState(Precision.equals(sumMapped, 1d, 0.01),
+				"PDF (%s) doesn't sum to 1 when mapped to region: sum=%s, sumMapped=%s", resource, (float)sum, (float)sumMapped);
 		xyz.scale(1d/sumMapped);
 		xyzCache.put(region, declusteringAlg, xyz);
 		
@@ -231,18 +237,22 @@ public enum PRVI25_SeisSmoothingAlgorithms implements LogicTreeNode {
 	}
 	
 	public static void main(String[] args) throws IOException {
+		Map<PRVI25_SeismicityRegions, Double> fracts = new HashMap<>();
 		for (PRVI25_SeismicityRegions region : PRVI25_SeismicityRegions.values()) {
 			for (PRVI25_DeclusteringAlgorithms alg : PRVI25_DeclusteringAlgorithms.values()) {
-				if (alg == PRVI25_DeclusteringAlgorithms.AVERAGE)
+				if (alg != PRVI25_DeclusteringAlgorithms.AVERAGE)
 					continue;
 				for (PRVI25_SeisSmoothingAlgorithms smooth : values()) {
-					if (smooth == AVERAGE)
+					if (smooth != AVERAGE)
 						continue;
 					System.out.println(region.name()+",\t"+alg.name()+",\t"+smooth.name());
-					smooth.load(region, alg);
+					double[] xyz = smooth.load(region, alg);
+					fracts.put(region, StatUtils.sum(xyz));
 				}
 			}
 		}
+		for (PRVI25_SeismicityRegions region : PRVI25_SeismicityRegions.values())
+			System.out.println(region+":\t"+fracts.get(region).floatValue());
 	}
 
 }

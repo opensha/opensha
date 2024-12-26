@@ -9,6 +9,7 @@ import java.util.ListIterator;
 
 import javax.swing.JPanel;
 
+import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
@@ -21,10 +22,15 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.LocationParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.param.SimpleFaultParameter;
+
+import com.google.common.base.Preconditions;
 
 /**
  * <p>Title: EqkRuptureCreationPanel</p>
@@ -110,8 +116,9 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 	private LocationParameter locationParam;
 	private LocationParameter hypocenterLocationParam;
 	private BooleanParameter showHypocenterLocationParam = new
-	BooleanParameter(SHOW_HYPOCENTER_LOCATION_PARAM_NAME,Boolean.valueOf(false));
+			BooleanParameter(SHOW_HYPOCENTER_LOCATION_PARAM_NAME,Boolean.valueOf(false));
 	private SimpleFaultParameter faultParam;
+	private PointSourceDistanceCorrectionParam distCorrParam;
 
 	//boolean to check if any parameter has been changed
 	private boolean parameterChangeFlag = true;
@@ -168,6 +175,10 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 		sourceTypeParam = new StringParameter(SRC_TYP_PARAM_NAME, ruptureTypeList,
 				(String) ruptureTypeList.get(0));
 		sourceTypeParam.setInfo(SRC_TYP_PARAM_INFO);
+		
+		distCorrParam = new PointSourceDistanceCorrectionParam(
+				// only supports single corrections (not a list of corrections) as we return a single rupture
+				PointSourceDistanceCorrections.SINGLE_CORRS, PointSourceDistanceCorrections.NONE);
 
 		parameterList = new ParameterList();
 		// add the adjustable parameters to the list
@@ -178,6 +189,7 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 		parameterList.addParameter(faultParam);
 		parameterList.addParameter(locationParam);
 		parameterList.addParameter(showHypocenterLocationParam);
+		parameterList.addParameter(distCorrParam);
 
 		sourceTypeParam.addParameterChangeListener(this);
 		magParam.addParameterChangeListener(this);
@@ -186,6 +198,7 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 		dipParam.addParameterChangeListener(this);
 		faultParam.addParameterChangeListener(this);
 		showHypocenterLocationParam.addParameterChangeListener(this);
+		distCorrParam.addParameterChangeListener(this);
 
 		createGriddedRuptureSurface();
 		listEditor = new ParameterListEditor(parameterList);
@@ -216,7 +229,7 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 	/*
 	 * Creates the griddded surface area for the rupture
 	 */
-	private void createGriddedRuptureSurface(){
+	private void createGriddedRuptureSurface() {
 		//if(parameterChangeFlag){
 		String ruptureType = (String) sourceTypeParam.getValue();
 
@@ -224,8 +237,16 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 			ruptureSurface = new PointSurface( (Location) locationParam.getValue());
 			double aveDip = ( (Double) dipParam.getValue()).doubleValue();
 			((PointSurface)ruptureSurface).setAveDip(aveDip);
-		}
-		else if (ruptureType.equals(FINITE_SRC_NAME)) {
+			WeightedList<PointSourceDistanceCorrection> corrs = distCorrParam.getValue().get();
+			PointSourceDistanceCorrection corr;
+			if (corrs == null) {
+				corr = null;
+			} else {
+				Preconditions.checkState(corrs == null || corrs.size() == 1, "Should only have a single correction");
+				corr = corrs.getValue(0);
+			}
+			((PointSurface)ruptureSurface).setDistanceCorrection(corr, magParam.getValue());
+		} else if (ruptureType.equals(FINITE_SRC_NAME)) {
 			faultParam.setEvenlyGriddedSurfaceFromParams();
 			ruptureSurface = (AbstractEvenlyGriddedSurface) faultParam.getValue();
 		}
@@ -301,11 +322,12 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 			setParameterVisibleBasedOnSelectedRuptureType();
 			createGriddedRuptureSurface();
 			this.updateUI();
-		}
-		else if (name1.equals(LOCATION_PARAM_NAME) ||
-				name1.equals(FAULT_PARAM_NAME))
+		} else if (name1.equals(LOCATION_PARAM_NAME)
+				|| name1.equals(FAULT_PARAM_NAME)
+				|| name1.equals(distCorrParam.getName())
+				|| name1.equals(MAG_PARAM_NAME)) { // mag param influences distance correction, thus needed here
 			createGriddedRuptureSurface();
-		else if (name1.equals(SHOW_HYPOCENTER_LOCATION_PARAM_NAME)) {
+		} else if (name1.equals(SHOW_HYPOCENTER_LOCATION_PARAM_NAME)) {
 			setHypocenterLocationParamVisible();
 		}
 		parameterChangeFlag = true;
@@ -363,11 +385,13 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 			listEditor.setParameterVisible(LOCATION_PARAM_NAME, true);
 			listEditor.setParameterVisible(DIP_PARAM_NAME, true);
 			listEditor.setParameterVisible(FAULT_PARAM_NAME, false);
+			listEditor.setParameterVisible(distCorrParam.getName(), true);
 		}
 		else if (selectedRuptureType.equals(FINITE_SRC_NAME)) {
 			listEditor.setParameterVisible(LOCATION_PARAM_NAME, false);
 			listEditor.setParameterVisible(DIP_PARAM_NAME, false);
 			listEditor.setParameterVisible(FAULT_PARAM_NAME, true);
+			listEditor.setParameterVisible(distCorrParam.getName(), false);
 		}
 		listEditor.refreshParamEditor();
 		this.validate();

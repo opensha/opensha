@@ -115,9 +115,7 @@ public class MPJ_ETAS_Simulator extends MPJTaskCalculator {
 		this.inputDir = inputDir;
 		this.outputDir = outputDir;
 		
-		// nasty kludgy setup
 		ETAS_Simulator.D = false;
-		AbstractGridSourceProvider.SOURCE_MIN_MAG_CUTOFF = 2.55;
 		
 		lastEventData = LastEventData.load();
 		

@@ -52,6 +52,7 @@ import org.opensha.sha.calc.params.filters.SourceFilters;
 import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter;
 import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
+import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.LogicTreeCurveAverager;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.QuickGriddedHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
@@ -62,6 +63,9 @@ import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc;
 import org.opensha.sha.earthquake.faultSysSolution.util.SolHazardMapCalc.ReturnPeriods;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
+import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.AttenRelSupplier;
 import org.opensha.sha.imr.ScalarIMR;
@@ -101,6 +105,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	static final IncludeBackgroundOption GRID_SEIS_DEFAULT = IncludeBackgroundOption.EXCLUDE;
 	private IncludeBackgroundOption gridSeisOp = GRID_SEIS_DEFAULT;
 	
+	private GriddedSeismicitySettings griddedSettings;
+	
 	static final boolean AFTERSHOCK_FILTER_DEFAULT = false;
 	private boolean applyAftershockFilter = AFTERSHOCK_FILTER_DEFAULT;
 	
@@ -125,6 +131,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private SolHazardMapCalc externalGriddedCurveCalc;
 	
 	private QuickGriddedHazardMapCalc[] quickGridCalcs;
+	private ExecutorService quickGridExec;
 
 	private boolean noMFDs;
 	private boolean noProxyRups;
@@ -135,7 +142,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		this.shuffle = false;
 		
 		File inputFile = new File(cmd.getOptionValue("input-file"));
-		Preconditions.checkState(inputFile.exists());
+		Preconditions.checkState(inputFile.exists(), "Input file doesn't exist: %s", inputFile.getAbsolutePath());
 		if (inputFile.isDirectory()) {
 			Preconditions.checkArgument(cmd.hasOption("logic-tree"), "Must supply logic tree file if input-file is"
 					+ " a results directory");
@@ -165,6 +172,11 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		
 		if (cmd.hasOption("gridded-seis"))
 			gridSeisOp = IncludeBackgroundOption.valueOf(cmd.getOptionValue("gridded-seis"));
+		
+		griddedSettings = SolHazardMapCalc.getGridSeisSettings(cmd);
+		
+		if (gridSeisOp != IncludeBackgroundOption.EXCLUDE)
+			debug("Gridded settings: "+griddedSettings);
 		
 		if (cmd.hasOption("grid-spacing"))
 			gridSpacing = Double.parseDouble(cmd.getOptionValue("grid-spacing"));
@@ -277,7 +289,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 			quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
 			for (int p=0; p<quickGridCalcs.length; p++)
 				quickGridCalcs[p] = new QuickGriddedHazardMapCalc(gmmRefs, periods[p],
-						SolHazardMapCalc.getDefaultXVals(periods[p]), sourceFilter);
+						SolHazardMapCalc.getDefaultXVals(periods[p]), sourceFilter, griddedSettings);
 		}
 
 		noMFDs = cmd.hasOption("no-mfds");
@@ -536,6 +548,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 
 	@Override
 	protected void doFinalAssembly() throws Exception {
+		if (quickGridExec != null)
+			quickGridExec.shutdown();
+		
 		// write out mean curves
 		// write out branch-specific averages
 		Preconditions.checkState(myAverageDir.exists() || myAverageDir.mkdir());
@@ -845,6 +860,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						
 						externalGriddedCurveCalc.setSourceFilter(sourceFilter);
 						externalGriddedCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
+						externalGriddedCurveCalc.setGriddedSeismicitySettings(griddedSettings);
+						externalGriddedCurveCalc.setCacheGridSources(true);
 						
 						externalGriddedCurveCalc.calcHazardCurves(getNumThreads());
 					}
@@ -853,6 +870,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				}
 				
 				if (quickGridCalcs != null && combineWithOnlyCurves == null) {
+					Preconditions.checkState(!combineOnly, "Combine-only flag is set, but we need to calculate gridded only for "+branch);
 					if (sol == null)
 						sol = solTree.forBranch(branch);
 					QuickGriddedHazardMapCalc[] quickGridCalcs = this.quickGridCalcs;
@@ -861,13 +879,14 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						quickGridCalcs = new QuickGriddedHazardMapCalc[periods.length];
 						for (int p=0; p<periods.length; p++)
 							quickGridCalcs[p] = new QuickGriddedHazardMapCalc(getGMM_Suppliers(branch, gmmRefs), periods[p],
-									SolHazardMapCalc.getDefaultXVals(periods[p]), sourceFilter);
+									SolHazardMapCalc.getDefaultXVals(periods[p]), sourceFilter, griddedSettings);
 					}
 					debug("Doing quick gridded seismicity calc for "+index);
-					Preconditions.checkState(!combineOnly, "Combine-only flag is set, but we need to calculate gridded only for "+branch);
 					List<DiscretizedFunc[]> curves = new ArrayList<>();
+					if (quickGridExec == null)
+						quickGridExec = Executors.newFixedThreadPool(getNumThreads());
 					for (int p=0; p<periods.length; p++)
-						curves.add(quickGridCalcs[p].calc(sol.getGridSourceProvider(), gridRegion, getNumThreads()));
+						curves.add(quickGridCalcs[p].calc(sol.getGridSourceProvider(), gridRegion, quickGridExec, getNumThreads()));
 					combineWithOnlyCurves = SolHazardMapCalc.forCurves(sol, gridRegion, periods, curves);
 					if (gridSeisOp == IncludeBackgroundOption.ONLY)
 						// we'll probably be combining later, write out the curves
@@ -951,6 +970,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				}
 				calc.setSourceFilter(sourceFilter);
 				calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
+				calc.setGriddedSeismicitySettings(griddedSettings);
+				calc.setCacheGridSources(true);
 				calc.setAseisReducesArea(aseisReducesArea);
 				calc.setNoMFDs(noMFDs);
 				calc.setUseProxyRups(!noProxyRups);

@@ -93,6 +93,7 @@ import org.opensha.sha.earthquake.param.AseismicityAreaReductionParam;
 import org.opensha.sha.earthquake.param.FaultGridSpacingParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.CompoundSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -529,7 +530,12 @@ public class SolSiteHazardCalc {
 		double duration = cmd.hasOption("duration") ? Double.parseDouble(cmd.getOptionValue("duration")) : 1d;
 		
 		System.out.println("Building ERF for "+name);
-		FaultSystemSolutionERF erf = buildERF(sol, mainGridOp, duration);
+		GriddedSeismicitySettings griddedSettings = GriddedSeismicitySettings.DEFAULT;
+		if (mainGridOp != IncludeBackgroundOption.EXCLUDE || (compGridOp != null && compGridOp != IncludeBackgroundOption.EXCLUDE)) {
+			griddedSettings = SolHazardMapCalc.getGridSeisSettings(cmd);
+			System.out.println("Gridded seismicity settings: "+griddedSettings);
+		}
+		FaultSystemSolutionERF erf = buildERF(sol, mainGridOp, griddedSettings, duration);
 		
 		List<HazardCalcThread> calcThreads = new ArrayList<>(threads);		
 		for (int i=0; i<threads; i++) {
@@ -561,7 +567,7 @@ public class SolSiteHazardCalc {
 		List<DiscretizedFunc[]> compCurves = null;
 		if (compSol != null) {
 			System.out.println("Building ERF for "+compName);
-			compERF = buildERF(compSol, compGridOp, duration);
+			compERF = buildERF(compSol, compGridOp, griddedSettings, duration);
 			
 			// can't re-use threads, but can copy over previous curve calc and gmm
 			ArrayList<HazardCalcThread> compCalcThreads = new ArrayList<>(threads);		
@@ -1550,10 +1556,14 @@ public class SolSiteHazardCalc {
 		}
 	}
 	
-	private static FaultSystemSolutionERF buildERF(FaultSystemSolution sol, IncludeBackgroundOption gridOp, double duration) {
+	private static FaultSystemSolutionERF buildERF(FaultSystemSolution sol, IncludeBackgroundOption gridOp,
+			GriddedSeismicitySettings gridSettings, double duration) {
 		FaultSystemSolutionERF erf = new FaultSystemSolutionERF(sol);
 		
 		erf.setParameter(IncludeBackgroundParam.NAME, gridOp);
+		erf.setGriddedSeismicitySettings(gridSettings);
+		
+		erf.setCacheGridSources(true);
 		
 		erf.getTimeSpan().setDuration(duration);
 		

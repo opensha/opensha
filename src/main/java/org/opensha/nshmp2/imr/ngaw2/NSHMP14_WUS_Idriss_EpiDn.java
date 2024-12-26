@@ -9,7 +9,6 @@ import static org.opensha.sha.imr.attenRelImpl.ngaw2.FaultStyle.STRIKE_SLIP;
 import static org.opensha.sha.imr.attenRelImpl.ngaw2.FaultStyle.UNKNOWN;
 
 import java.util.List;
-import java.util.Map;
 
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.exceptions.IMRException;
@@ -21,7 +20,6 @@ import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.nshmp2.util.Period;
 import org.opensha.nshmp2.util.Utils;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.attenRelImpl.BA_2008_AttenRel;
@@ -39,7 +37,6 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import org.opensha.sha.imr.param.SiteParams.Vs30_Param;
 
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 //@formatter:off
 /**
@@ -322,11 +319,6 @@ public class NSHMP14_WUS_Idriss_EpiDn extends AttenuationRelationship implements
 	@Override
 	public DiscretizedFunc getSA_IML_AtExceedProbSpectrum(double exceedProb)
 			throws ParameterException, IMRException {
-		throw new UnsupportedOperationException();
-	}
-
-	@Override
-	public double getTotExceedProbability(PointEqkSource ptSrc, double iml) {
 		throw new UnsupportedOperationException();
 	}
 

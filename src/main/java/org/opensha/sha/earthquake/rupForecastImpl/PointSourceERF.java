@@ -5,11 +5,13 @@ import java.util.ArrayList;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.sha.earthquake.AbstractERF;
-import org.opensha.sha.earthquake.ProbEqkSource;
+import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.PointSource;
+import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 
 
 /**
- * <p>Title: PointPoissonERF</p>
+ * <p>Title: PointSourceERF</p>
  * <p>Description: This ERF creates a single point source with a single rupture
  * for the following user-defined parameters:  </p>
  * <UL>
@@ -35,7 +37,7 @@ public class PointSourceERF extends AbstractERF{
   public final static String  NAME = "Point Source ERF";
 
   // this is the source (only 1 for this ERF)
-  private PointEqkSource source;
+  private PointSource source;
 
   // mag parameter stuff
   public final static String MAG_PARAM_NAME = "Magnitude";
@@ -100,6 +102,7 @@ public class PointSourceERF extends AbstractERF{
   DoubleParameter srcLatParam;
   DoubleParameter srcLonParam;
   DoubleParameter srcDepthParam;
+  PointSourceDistanceCorrectionParam distCorrParam;
 
 
   /**
@@ -140,6 +143,8 @@ public class PointSourceERF extends AbstractERF{
     srcDepthParam = new DoubleParameter(SRC_DEPTH_PARAM_NAME,SRC_DEPTH_PARAM_MIN,
         SRC_DEPTH_PARAM_MAX,SRC_DEPTH_PARAM_UNITS,SRC_DEPTH_PARAM_DEFAULT);
     srcDepthParam.setInfo(SRC_DEPTH_PARAM_INFO);
+    
+    distCorrParam = new PointSourceDistanceCorrectionParam();
 
     // add the adjustable parameters to the list
     adjustableParams.addParameter(magParam);
@@ -149,6 +154,7 @@ public class PointSourceERF extends AbstractERF{
     adjustableParams.addParameter(srcDepthParam);
     adjustableParams.addParameter(rakeParam);
     adjustableParams.addParameter(dipParam);
+    adjustableParams.addParameter(distCorrParam);
 
     // register the parameters that need to be listened to
     magParam.addParameterChangeListener(this);
@@ -158,6 +164,7 @@ public class PointSourceERF extends AbstractERF{
     srcLatParam.addParameterChangeListener(this);
     srcLonParam.addParameterChangeListener(this);
     srcDepthParam.addParameterChangeListener(this);
+    distCorrParam.addParameterChangeListener(this);
   }
 
 
@@ -172,11 +179,12 @@ public class PointSourceERF extends AbstractERF{
        Location loc = new Location( ((Double)srcLatParam.getValue()).doubleValue(),
                                     ((Double)srcLonParam.getValue()).doubleValue(),
                                     ((Double)srcDepthParam.getValue()).doubleValue());
-       source = new PointEqkSource(loc,
-                                   ((Double) magParam.getValue()).doubleValue(),
-                                   ((Double) probParam.getValue()).doubleValue(),
-                                   ((Double)rakeParam.getValue()).doubleValue(),
-                                   ((Double)dipParam.getValue()).doubleValue());
+       source = PointSource.nonPoissonBuilder(loc)
+    		   .truePointSources(srcDepthParam.getValue())
+    		   .forMagProbAndFocalMech(magParam.getValue(), probParam.getValue(),
+    				   new FocalMechanism(Double.NaN, dipParam.getValue(), rakeParam.getValue()))
+    		   .distCorrs(distCorrParam.getValue())
+    		   .build();
        parameterChangeFlag = false;
      }
 
@@ -204,7 +212,7 @@ public class PointSourceERF extends AbstractERF{
     * @return Returns the ProbEqkSource at index i
     *
     */
-   public ProbEqkSource getSource(int iSource) {
+   public PointSource getSource(int iSource) {
 
      // we have only one source
     if(iSource!=0)

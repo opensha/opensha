@@ -1,0 +1,12 @@
+id,FaultName,FaultDesc,RateFull,RateF_Proj,RateF_Unc,RakeRateF,RatePart,RateP_Proj,RateP_Unc,RakeRateP,blockmodel_rate_full_mmyr,angle_blockmodelvector_wrt_strike_deg,blockmodel_trenchnormal_mmyr,blockmodel_trenchparallel_mmyr,blockmodel_azimuth,E_velocity,N_velocity,coupling,coupling_unc_percent
+7501,NH,Northern Hispaniola subduction section,1.70,1.76,0.88,11,1.7,1.76,0.88,90,1.7,90,1.7,0.0,210,-0.9,-1.5,1,0.5
+7502,PR1,Puerto Rico-Virgin Islands subuction section 1,1.58,1.59,1.45,11,0.3,0.33,0.30,90,15.8,11,3.0,15.5,254,-15.2,-4.4,0.1,0.9
+7503,PR2,Puerto Rico-Virgin Islands subuction section 2,1.60,1.61,1.47,12,0.33,0.36,0.33,90,16,12,3.3,15.7,252,-15.2,-4.9,0.1,0.9
+7504,PR3,Puerto Rico-Virgin Islands subuction section 3,1.61,1.61,1.47,10,0.28,0.3,0.27,90,16.1,10,2.8,15.9,253,-15.4,-4.7,0.1,0.9
+7505,PR4,Puerto Rico-Virgin Islands subuction section 4,1.64,1.65,1.50,22,0.61,0.65,0.59,90,16.4,22,6.1,15.2,250,-15.4,-5.6,0.1,0.9
+7506,PR5,Puerto Rico-Virgin Islands subuction section 5,1.67,1.69,1.54,26,0.73,0.77,0.70,90,16.7,26,7.3,15.0,247,-15.4,-6.5,0.1,0.9
+7507,PR6,Puerto Rico-Virgin Islands subuction section 6,3.42,3.47,2.85,37,2.06,2.14,1.75,90,17.1,37,10.3,13.7,244,-15.4,-7.5,0.2,0.9
+7508,LA,Lesser Antilles subduction section,3.64,3.69,3.03,43,2.48,2.56,2.10,90,18.2,43,12.4,13.3,252,-17.3,-5.6,0.2,0.9
+7551,MT1,Muertos Thrust section 1,2.20,2.24,1.68,90,2.2,2.24,1.68,90,4.4,90,4.4,0.0,178,0.2,-4.4,0.5,0.5
+7552,MT2,Muertos Thrust section 2,0.65,0.66,0.50,90,0.65,0.66,0.50,90,1.3,90,1.3,0.0,178,0.0,-1.3,0.5,0.5
+7553,MT3,Muertos Thrust section 3,0.65,0.66,0.50,90,0.65,0.66,0.50,90,1.3,90,1.3,0.0,204,-0.5,-1.2,0.5,0.5

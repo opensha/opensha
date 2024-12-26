@@ -60,6 +60,9 @@ public class PlotSpec implements Serializable {
 	private double insetLegendMaxWidth = 0.35;
 	private boolean insetLegendSingleColumn = true;
 	
+	private boolean xAxisInverted = false;
+	private boolean yAxisInverted = false;
+	
 	/**
 	 * 
 	 * @param elems	list of elements to plot
@@ -297,6 +300,24 @@ public class PlotSpec implements Serializable {
 		}
 	}
 	
+	
+	
+	public boolean isXAxisInverted() {
+		return xAxisInverted;
+	}
+
+	public void setXAxisInverted(boolean xAxisInverted) {
+		this.xAxisInverted = xAxisInverted;
+	}
+
+	public boolean isYAxisInverted() {
+		return yAxisInverted;
+	}
+
+	public void setYAxisInverted(boolean yAxisInverted) {
+		this.yAxisInverted = yAxisInverted;
+	}
+
 	/**
 	 * Creates a legend that is inset in the plot. Function names will be used to populate the legend
 	 * (null names will be skipped unless you call setLegendSkipBlank(true)). Coordinates are relative
@@ -355,9 +376,13 @@ public class PlotSpec implements Serializable {
 		lt.setPosition(edge);
 		
 		double relX = insetLegendRelX;
+		if (xAxisInverted)
+			relX = 1d - relX;
 		if (xLog)
 			relX = relLogPos(relX, xRange);
 		double relY = insetLegendRelY;
+		if (yAxisInverted)
+			relY = 1d - relY;
 		if (yLog)
 			relY = relLogPos(relY, yRange);
 		

@@ -12,6 +12,7 @@ import java.awt.Stroke;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.awt.print.PrinterException;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -601,6 +602,9 @@ public class GraphPanel extends JSplitPane {
 				myXAxis = xAxis;
 				myYAxis = yAxis;
 			}
+			
+			myXAxis.setInverted(plotSpec.isXAxisInverted());
+			myYAxis.setInverted(plotSpec.isYAxisInverted());
 			
 			boolean xLog = xLogs.size() > 1 ? xLogs.get(p) : xLogs.get(0);
 			boolean yLog = yLogs.size() > 1 ? yLogs.get(p) : yLogs.get(0);
@@ -1570,7 +1574,7 @@ public class GraphPanel extends JSplitPane {
 			PdfWriter writer;
 
 			writer = PdfWriter.getInstance(metadataDocument,
-					new FileOutputStream(fileName));
+					new BufferedOutputStream(new FileOutputStream(fileName)));
 			// step 3
 			metadataDocument.open();
 			// step 4
@@ -1597,7 +1601,7 @@ public class GraphPanel extends JSplitPane {
 				if (weightedfuncListIndexes != null && weightedfuncListIndexes.contains(i)) {
 					para.add(new Phrase( (String) legendString.get(i),
 							FontFactory.getFont(
-									PDF_UTF8_FontMapper.LIBERATION_SANS, 10, Font.PLAIN,
+									PDF_UTF8_FontMapper.SANS, 10, Font.PLAIN,
 									BaseColor.BLACK)));
 					--legendColor;
 				}
@@ -1606,7 +1610,7 @@ public class GraphPanel extends JSplitPane {
 					BaseColor bc = new BaseColor(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha());
 					para.add(new Phrase( (String) legendString.get(i),
 							FontFactory.getFont(
-									PDF_UTF8_FontMapper.LIBERATION_SANS, 10, Font.PLAIN, bc)));
+									PDF_UTF8_FontMapper.SANS, 10, Font.PLAIN, bc)));
 				}
 				metadataDocument.add(para);
 			}

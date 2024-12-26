@@ -2,26 +2,15 @@ package org.opensha.sha.earthquake.rupForecastImpl;
 
 import java.util.ArrayList;
 
-import org.opensha.commons.calc.magScalingRelations.MagAreaRelationship;
-import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.MagScalingRelationship;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.geo.GriddedRegion;
-import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Location;
-import org.opensha.commons.geo.LocationList;
-import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.ProbEqkRupture;
-import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.griddedForecast.HypoMagFreqDistAtLoc;
 import org.opensha.sha.earthquake.griddedForecast.MagFreqDistsForFocalMechs;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
-import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
-import org.opensha.sha.faultSurface.FaultTrace;
-import org.opensha.sha.faultSurface.StirlingGriddedSurface;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
 /**
@@ -33,7 +22,7 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
  * @author Edward Field
  * @version 1.0
  */
-
+@Deprecated
 public class PoissonAreaSource extends PointToFiniteSource implements java.io.Serializable{
 
 	private static final long serialVersionUID = 1L;

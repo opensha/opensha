@@ -4,7 +4,6 @@ import static org.junit.Assert.*;
 
 import java.awt.geom.Point2D;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 import org.junit.BeforeClass;
@@ -19,9 +18,11 @@ import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.params.filters.TectonicRegionDistCutoffFilter.TectonicRegionDistanceCutoffs;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.earthquake.FocalMechanism;
+import org.opensha.sha.earthquake.PointSource;
+import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.earthquake.rupForecastImpl.PointEqkSource;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
@@ -119,7 +120,7 @@ public class SourceFilterTests {
 	
 	private static class AccessTrackingPointEqkSource extends ProbEqkSource {
 		
-		private PointEqkSource source;
+		private PoissonPointSource source;
 		private List<AccessTrackingPointEqkRup> rups;
 		
 		boolean sourceAccessed = false;
@@ -127,7 +128,12 @@ public class SourceFilterTests {
 		public AccessTrackingPointEqkSource(Location loc, IncrementalMagFreqDist magFreqDist,double duration,
 				double aveRake, double aveDip){
 			super();
-			source = new PointEqkSource(loc, magFreqDist, duration, aveRake, aveDip);
+//			source = new PointEqkSource(loc, magFreqDist, duration, aveRake, aveDip);
+			source = PointSource.poissonBuilder(loc)
+					.truePointSources()
+					.forMFDAndFocalMech(magFreqDist, new FocalMechanism(Double.NaN, aveDip, aveRake))
+					.duration(duration)
+					.build();
 			rups = new ArrayList<>(source.getNumRuptures());
 			for (ProbEqkRupture rup : source)
 				rups.add(new AccessTrackingPointEqkRup(rup));
