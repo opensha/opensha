@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.Location;
@@ -640,7 +641,8 @@ public abstract class PointSource extends ProbEqkSource {
 			Preconditions.checkState(weight >= 0d && weight <= 1d, "Bad weight for %s: %s", mech, weight);
 			weightSum += weight;
 		}
-		Preconditions.checkState((float)weightSum == 1f, "FocalMech weights don't sum to 1: %s", (float)weightSum);
+		Preconditions.checkState(Precision.equals(weightSum, 1d, 0.001),
+				"FocalMech weights don't sum to 1: %s", (float)weightSum);
 		MFDData data = new MFDData() {
 
 			@Override
