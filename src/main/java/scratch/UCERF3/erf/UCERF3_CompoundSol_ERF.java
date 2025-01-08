@@ -77,8 +77,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	
 	private static CompletableFuture<U3FaultSystemSolutionFetcher> loadFetcher() throws ZipException, IOException {
 		File storeDir = MeanUCERF3.getStoreDir();
-		// allow errors so that app doesn't crash if can't download
-		return MeanUCERF3.checkDownload(new File(storeDir, COMPOUND_FILE_NAME), false)
+		return MeanUCERF3.checkDownload(new File(storeDir, COMPOUND_FILE_NAME))
 			.thenApply(compoundFile -> {
 			if (!compoundFile.exists())
 				return null;

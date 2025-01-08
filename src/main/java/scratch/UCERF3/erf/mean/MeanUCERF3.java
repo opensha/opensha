@@ -437,7 +437,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 			return;
 		}
 		
-		checkDownload(RAKE_BASIS_FILE_NAME, false).thenAccept(rakeBasisFile -> {
+		checkDownload(RAKE_BASIS_FILE_NAME).thenAccept(rakeBasisFile -> {
 			
 			DeformationModels dm = null;
 			for (DeformationModels testDM : DeformationModels.values()) {
@@ -505,13 +505,11 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		
 		File solFile = new File(storeDir, "cached_"+fName+".zip");
 		
-		// Only download if not already cached. Not ignoreCache means ignore updates.
-		// The latest version is only downloaded if there is no cached version.
+		// If not ignoreCache, we download the reduced solution via GetFile.
+		// Otherwise, it's built locally. As such, it won't update client meta.
 		if (!ignoreCache) {
-			CompletableFuture<File> future = solFile.exists()
-					? CompletableFuture.completedFuture(solFile)
-					: checkDownload(solFile.getName(), true);
-				future.thenAccept(solutionFile -> {
+				checkDownload(solFile.getName())
+					.thenAccept(solutionFile -> {
 				try {
 					FaultSystemSolution sol = FaultSystemSolution.load(solutionFile);
 					checkCombineMags(sol);
@@ -533,7 +531,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 			// Blocks main thread, ok as file is very small
 			// If file gets too large and UI hangs, consider a new Thread
 			// or multiple .thenAccept calls inside FetchSolution.
-			meanSolFile = checkDownload(prefix+TRUE_MEAN_FILE_NAME, false).get();
+			meanSolFile = checkDownload(prefix+TRUE_MEAN_FILE_NAME).get();
 			setTrueMeanSol(FaultSystemSolution.load(meanSolFile));
 		} catch (InterruptedException | ExecutionException | IOException e) {
 			if (D) System.err.println("Failed to download meanSolFile");
@@ -605,80 +603,34 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	}
 	
 	/**
-	 * This downloads the selected file from the OpenSHA server if not already cached locally
+	 * This downloads the selected file from the server if not already cached locally
 	 * 
 	 * @param fName
-	 * @param ignoreErrors
 	 */
-	private CompletableFuture<File> checkDownload(String fName,
-			boolean ignoreErrors) {
+	private CompletableFuture<File> checkDownload(String fName) {
 		File file = new File(storeDir, fName);
-		return checkDownload(file, ignoreErrors);
+		return checkDownload(file);
 	}
 	
 	/**
 	 * This downloads the selected file from the server if not already cached locally
 	 * 
 	 * @param file
-	 * @param ignoreErrors
 	 */
-	public static CompletableFuture<File> checkDownload(File file,
-			boolean ignoreErrors) {
-		if (file.exists()) {
-			if (!ignoreErrors) {
-				// check to make sure that it isn't corrupted
-				ZipFile zip = null;
-				try {
-					zip = new ZipFile(file);
-					Preconditions.checkState(zip.entries().hasMoreElements());
-					zip.close();
-					return CompletableFuture.completedFuture(file);
-				} catch (Exception e) {
-					e.printStackTrace();
-					if (zip != null) {
-						try {
-							zip.close();
-						} catch (IOException e1) {}
-					}
-					Throwable cause = e;
-					while (cause.getCause() != null)
-						cause = cause.getCause();
-					String title = "Corrupted UCERF3 data file detected. Re-download?";
-					String message = "The UCERF3 model downloads data files upon first run.\n"
-							+ "The following file was downloaded previously but appears\n"
-							+ "to be corrupted:\n\n"
-							+ file.getAbsolutePath()+"\n\n"
-							+ "Would you like to delete and re-download the file?";
-					int choice = JOptionPane.showConfirmDialog(null, message, title,
-							JOptionPane.YES_NO_OPTION, JOptionPane.ERROR_MESSAGE);
-					if (choice == JOptionPane.YES_OPTION) {
-						if (!file.delete()) {
-							JOptionPane.showMessageDialog(null, "Error deleting",
-									"Could not delete the corrupted file. Delete it manually and then "
-									+ "re-run the application:\n\n"+file.getAbsolutePath(),
-									JOptionPane.ERROR_MESSAGE);
-						}
-					}
-				}
-			} else {
-				// don't test for errors
-				return CompletableFuture.completedFuture(file);
-			}
-		}
+	public static CompletableFuture<File> checkDownload(File file) {
 		final GetFile UCERF3_UPDATER = new GetFile(
 				/*name=*/"MeanUCERF3",
 				/*clientMetaFile=*/new File(
 						file.getParent(), "ucerf3_client.json"),
 				/*serverMetaURI=*/URI.create(DOWNLOAD_URL),
-				/*showProgress=*/true,
-				/*ignoreErrors=*/ignoreErrors);
+				/*showProgress=*/true);
 		String fileKey = FilenameUtils.getBaseName(file.getName());
 		return UCERF3_UPDATER.updateFile(fileKey);
 	}
 		
 	public static void main(String[] args) {
-		MeanUCERF3.checkDownload(new File(getStoreDir(),
-				"mean_ucerf3_sol.zip"), false).thenAccept(solFile -> {
+		MeanUCERF3.checkDownload(new File(getStoreDir(), "mean_ucerf3_sol.zip"))
+			.thenAccept(solFile -> {
 			FaultSystemSolution sol;
 			try {
 				sol = FaultSystemSolution.load(solFile);

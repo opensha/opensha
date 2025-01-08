@@ -78,7 +78,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 	private static CompletableFuture<SolutionLogicTree> loadFetcher() throws ZipException, IOException {
 		File storeDir = MeanUCERF3.getStoreDir();
 		// allow errors so that app doesn't crash if can't download
-		return MeanUCERF3.checkDownload(new File(storeDir, COMPOUND_FILE_NAME), true)
+		return MeanUCERF3.checkDownload(new File(storeDir, COMPOUND_FILE_NAME))
 			.thenApply(treeFile -> {
 			if (!treeFile.exists())
 				return null;
