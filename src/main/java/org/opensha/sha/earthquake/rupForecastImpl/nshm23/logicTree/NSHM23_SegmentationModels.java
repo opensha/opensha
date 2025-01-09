@@ -25,6 +25,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.impl.pr
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.data.NSHM23_WasatchSegmentationData;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels.ExcludeRupsThroughCreepingSegmentationModel;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -435,8 +436,15 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 			if (branch.hasValue(SupraSeisBValues.B_0p0) || branch.requireValue(SectionSupraSeisBValues.class).getB() == 0d) {
 				// we're on the "classic" branch and b=0: exclude all ruptures that don't rupture a full section,
 				// except on special faults
-				boolean excludeNamed = rupSet.hasModule(NamedFaults.class);
-				exclusions.add(new FullSectionsSegmentationModel(rupSet, excludeNamed));
+				boolean excludeNamed, excludeProxies;
+				if (branch.hasValue(PRVI25_CrustalFaultModels.class)) {
+					excludeNamed = false;
+					excludeProxies = true;
+				} else {
+					excludeNamed = rupSet.hasModule(NamedFaults.class);
+					excludeProxies = false;
+				}
+				exclusions.add(new FullSectionsSegmentationModel(rupSet, excludeNamed, excludeProxies));
 			}
 		}
 		
@@ -548,21 +556,27 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		private Map<Integer, List<FaultSection>> parentSectsMap;
 		private boolean excludeNamed;
 		private NamedFaults namedFaults;
+		private boolean excludeProxies;
 
 		public FullSectionsSegmentationModel(FaultSystemRupSet rupSet) {
 			this(rupSet, false);
 		}
 
 		public FullSectionsSegmentationModel(FaultSystemRupSet rupSet, boolean excludeNamed) {
+			this(rupSet, excludeNamed, false);
+		}
+
+		public FullSectionsSegmentationModel(FaultSystemRupSet rupSet, boolean excludeNamed, boolean excludeProxies) {
 			this(rupSet.getFaultSectionDataList().stream().collect(
 					Collectors.groupingBy(S -> S.getParentSectionId())),
-					excludeNamed, rupSet.getModule(NamedFaults.class));
+					excludeNamed, excludeProxies, rupSet.getModule(NamedFaults.class));
 		}
 		
 		public FullSectionsSegmentationModel(Map<Integer, List<FaultSection>> parentSectsMap, boolean excludeNamed,
-				NamedFaults namedFaults) {
+				boolean excludeProxies, NamedFaults namedFaults) {
 			this.parentSectsMap = parentSectsMap;
 			this.excludeNamed = excludeNamed;
+			this.excludeProxies = excludeProxies;
 			if (excludeNamed)
 				Preconditions.checkNotNull(namedFaults, "excludeNamed == true but NamedFaults are null");
 			this.namedFaults = namedFaults;
@@ -582,6 +596,8 @@ public enum NSHM23_SegmentationModels implements SegmentationModelBranchNode, Ru
 		public boolean isRupAllowed(ClusterRupture fullRupture, boolean verbose) {
 			for (FaultSubsectionCluster cluster : fullRupture.getClustersIterable()) {
 				if (excludeNamed && namedFaults.getFaultName(cluster.parentSectionID) != null)
+					continue;
+				if (excludeProxies && cluster.startSect.isProxyFault())
 					continue;
 				List<FaultSection> fullCluster = parentSectsMap.get(cluster.parentSectionID);
 				Preconditions.checkNotNull(fullCluster);

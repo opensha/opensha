@@ -96,6 +96,7 @@ public class GeographicMapMaker {
 	protected boolean plotAseisReducedSurfaces = false;
 	protected boolean fillSurfaces = false;
 	protected boolean plotTracesForFilledSurfaces = true;
+	protected boolean plotOutlinesForFilledSurfaces = true;
 	protected boolean plotAllSectPolys = false;
 	protected boolean plotProxySectPolys = true;
 	protected boolean plotSectPolysOnTop = false;
@@ -501,6 +502,10 @@ public class GeographicMapMaker {
 
 	public void setPlotTracesForFilledSurfaces(boolean plotTracesForFilledSurfaces) {
 		this.plotTracesForFilledSurfaces = plotTracesForFilledSurfaces;
+	}
+
+	public void setPlotOutlinesForFilledSurfaces(boolean plotOutlinesForFilledSurfaces) {
+		this.plotOutlinesForFilledSurfaces = plotOutlinesForFilledSurfaces;
 	}
 
 	public void setPlotAseisReducedSurfaces(boolean plotAseisReducedSurfaces) {
@@ -1317,6 +1322,11 @@ public class GeographicMapMaker {
 							// assume already sorted as desired
 							funcs.add(outline);
 							chars.add(fillChar);
+							if (plotOutlinesForFilledSurfaces && sectOutlineChar != null && !Double.isNaN(scalar)) {
+								// plot the outline again on top
+								funcs.add(outline);
+								chars.add(sectOutlineChar);
+							}
 							if (plotTracesForFilledSurfaces && sectTraceChar != null && !Double.isNaN(scalar)) {
 								// plot the trace again on top
 								funcs.add(traces.get(s));
@@ -1409,6 +1419,11 @@ public class GeographicMapMaker {
 							// assume already sorted as desired
 							funcs.add(outline);
 							chars.add(fillChar);
+							if (plotOutlinesForFilledSurfaces && sectOutlineChar != null) {
+								// plot the outline again on top
+								funcs.add(outline);
+								chars.add(sectOutlineChar);
+							}
 							if (plotTracesForFilledSurfaces && sectTraceChar != null) {
 								// plot the trace again on top
 								funcs.add(traces.get(s));

@@ -10,6 +10,9 @@ public class GridCellSupersamplingSettings {
 	
 	public static final GridCellSupersamplingSettings DEFAULT = new GridCellSupersamplingSettings(
 			TARGET_SPACING_DEFAULT, FULL_DISTANCE_DEFAULT, BORDER_DISTANCE_DEFAULT, CORNER_DISTANCE_DEFAULT, APPLY_TO_FINITE_DEFAULT);
+	
+	public static final GridCellSupersamplingSettings QUICK = new GridCellSupersamplingSettings(
+			TARGET_SPACING_DEFAULT*1.5, FULL_DISTANCE_DEFAULT*0.666, BORDER_DISTANCE_DEFAULT*0.75, CORNER_DISTANCE_DEFAULT, APPLY_TO_FINITE_DEFAULT);
 
 	public final double targetSpacingKM;
 	public final double fullDist;

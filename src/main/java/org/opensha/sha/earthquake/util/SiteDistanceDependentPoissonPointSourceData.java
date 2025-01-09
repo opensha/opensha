@@ -100,4 +100,9 @@ public class SiteDistanceDependentPoissonPointSourceData implements SiteAdaptive
 		throw new IllegalStateException("Distance ("+(float)dist+") not found and < maxCutoffDistance ("+(float)maxCutoffDist+")?");
 	}
 
+	@Override
+	public boolean isDiscrete() {
+		return true;
+	}
+
 }

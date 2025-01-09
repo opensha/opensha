@@ -311,7 +311,7 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 			rupSet = archive.getModule(FaultSystemRupSet.class);
 		Preconditions.checkNotNull(rupSet, "Rupture set not found in archive");
 		
-		System.out.println("\tLoading rates CSV...");
+		if (verbose) System.out.println("\tLoading rates CSV...");
 		CSVFile<String> ratesCSV = CSV_BackedModule.loadFromArchive(input, entryPrefix, RATES_FILE_NAME);
 		rates = loadRatesCSV(ratesCSV);
 		Preconditions.checkState(rates.length == rupSet.getNumRuptures(), "Unexpected number of rows in rates CSV");

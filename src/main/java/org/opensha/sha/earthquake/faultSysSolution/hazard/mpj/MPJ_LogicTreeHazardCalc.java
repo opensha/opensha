@@ -142,7 +142,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		this.shuffle = false;
 		
 		File inputFile = new File(cmd.getOptionValue("input-file"));
-		Preconditions.checkState(inputFile.exists());
+		Preconditions.checkState(inputFile.exists(), "Input file doesn't exist: %s", inputFile.getAbsolutePath());
 		if (inputFile.isDirectory()) {
 			Preconditions.checkArgument(cmd.hasOption("logic-tree"), "Must supply logic tree file if input-file is"
 					+ " a results directory");
@@ -870,6 +870,7 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				}
 				
 				if (quickGridCalcs != null && combineWithOnlyCurves == null) {
+					Preconditions.checkState(!combineOnly, "Combine-only flag is set, but we need to calculate gridded only for "+branch);
 					if (sol == null)
 						sol = solTree.forBranch(branch);
 					QuickGriddedHazardMapCalc[] quickGridCalcs = this.quickGridCalcs;
@@ -881,7 +882,6 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 									SolHazardMapCalc.getDefaultXVals(periods[p]), sourceFilter, griddedSettings);
 					}
 					debug("Doing quick gridded seismicity calc for "+index);
-					Preconditions.checkState(!combineOnly, "Combine-only flag is set, but we need to calculate gridded only for "+branch);
 					List<DiscretizedFunc[]> curves = new ArrayList<>();
 					if (quickGridExec == null)
 						quickGridExec = Executors.newFixedThreadPool(getNumThreads());
