@@ -71,7 +71,7 @@ import scratch.UCERF3.utils.UCERF3_DataUtils;
  */
 public class MeanUCERF3 extends FaultSystemSolutionERF {
 	
-	// private static final boolean D = true;
+	 private static final boolean D = false;
 	
 	public static final String NAME = "Mean UCERF3";
 	
@@ -438,6 +438,10 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		}
 		
 		checkDownload(RAKE_BASIS_FILE_NAME).thenAccept(rakeBasisFile -> {
+			if (rakeBasisFile == null || !rakeBasisFile.exists()) {
+				if (D) System.out.println("Failed to download " + RAKE_BASIS_FILE_NAME);
+				return;
+			}
 			
 			DeformationModels dm = null;
 			for (DeformationModels testDM : DeformationModels.values()) {
@@ -532,7 +536,14 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 			// If file gets too large and UI hangs, consider a new Thread
 			// or multiple .thenAccept calls inside FetchSolution.
 			meanSolFile = checkDownload(prefix+TRUE_MEAN_FILE_NAME).get();
-			setTrueMeanSol(FaultSystemSolution.load(meanSolFile));
+			if (meanSolFile == null || !meanSolFile.exists()) {
+				JOptionPane.showMessageDialog(null,
+						"Failed to download " + prefix+TRUE_MEAN_FILE_NAME +
+						". Verify internet connection and restart. Server may be down.",
+						"MeanUCERF3", JOptionPane.ERROR_MESSAGE);
+			} else {
+				setTrueMeanSol(FaultSystemSolution.load(meanSolFile));
+			}
 		} catch (InterruptedException | ExecutionException | IOException e) {
 			if (D) System.err.println("Failed to download meanSolFile");
 			e.printStackTrace();

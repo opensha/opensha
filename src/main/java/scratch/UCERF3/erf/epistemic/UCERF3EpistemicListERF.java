@@ -15,6 +15,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipException;
 
+import javax.swing.JOptionPane;
+
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.TimeSpan;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
@@ -80,13 +82,20 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 		// allow errors so that app doesn't crash if can't download
 		return MeanUCERF3.checkDownload(new File(storeDir, COMPOUND_FILE_NAME))
 			.thenApply(treeFile -> {
-			if (!treeFile.exists())
+			if (treeFile == null || !treeFile.exists()) {
+				JOptionPane.showMessageDialog(null,
+						"Failed to download " + COMPOUND_FILE_NAME +
+						". Verify internet connection and restart. Server may be down.",
+						"UCERF3EpistemicListERF", JOptionPane.ERROR_MESSAGE);
 				return null;
+			}
 			try {
 				return new ModuleArchive<>(treeFile, SolutionLogicTree.class)
 						.requireModule(SolutionLogicTree.class);
 			} catch (IOException e) {
 				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, e.getMessage(),
+						"UCERF3EpistemicListERF", JOptionPane.ERROR_MESSAGE);
 				return null;
 			}
 		});

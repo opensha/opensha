@@ -11,6 +11,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.zip.ZipException;
 
+import javax.swing.JOptionPane;
+
 import scratch.UCERF3.U3CompoundFaultSystemSolution;
 import scratch.UCERF3.U3FaultSystemSolutionFetcher;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
@@ -79,12 +81,19 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		File storeDir = MeanUCERF3.getStoreDir();
 		return MeanUCERF3.checkDownload(new File(storeDir, COMPOUND_FILE_NAME))
 			.thenApply(compoundFile -> {
-			if (!compoundFile.exists())
+			if (compoundFile == null || !compoundFile.exists()) {
+				JOptionPane.showMessageDialog(null,
+						"Failed to download " + COMPOUND_FILE_NAME +
+						". Verify internet connection and restart. Server may be down.",
+						"UCERF3_CompoundSol_ERF", JOptionPane.ERROR_MESSAGE);
 				return null;
+			}
 			try {
 				return U3CompoundFaultSystemSolution.fromZipFile(compoundFile);
 			} catch (IOException e) {
 				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, e.getMessage(),
+						"UCERF3_CompoundSol_ERF", JOptionPane.ERROR_MESSAGE);
 				return null;
 			}
 		});
