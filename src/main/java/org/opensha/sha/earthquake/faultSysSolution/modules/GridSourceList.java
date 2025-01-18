@@ -403,7 +403,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	
 	private boolean round = true;
 	
-	public void setArhiveRounding(boolean round) {
+	public void setArchiveRounding(boolean round) {
 		this.round = true;
 	}
 	
@@ -796,6 +796,15 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			if (Double.isFinite(hypocentralDAS))
 				return hypocentralDAS;
 			return 0.5*length;
+		}
+		
+		/**
+		 * Get's the down-dip width of the rupture in km
+		 * @return
+		 */
+		public double getDownDipWidth() {
+			double height = lowerDepth - upperDepth;
+			return height/Math.sin(Math.toRadians(dip));
 		}
 
 		@Override
