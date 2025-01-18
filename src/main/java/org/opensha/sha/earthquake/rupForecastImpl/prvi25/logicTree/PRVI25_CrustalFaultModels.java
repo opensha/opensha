@@ -87,10 +87,14 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 
 	@Override
 	public List<? extends FaultSection> getFaultSections() throws IOException {
+		return getFaultSections(PROJECT_TO_PLANE);
+	}
+
+	public List<? extends FaultSection> getFaultSections(boolean projectToPlane) throws IOException {
 		BufferedReader reader = new BufferedReader(new InputStreamReader(PRVI25_CrustalFaultModels.class.getResourceAsStream(jsonPath)));
 		List<GeoJSONFaultSection> sects = GeoJSONFaultReader.readFaultSections(reader);
 		
-		if (PROJECT_TO_PLANE) {
+		if (projectToPlane) {
 			// slip rates need to be projected
 			for (GeoJSONFaultSection sect : sects) {
 				sect.setAveSlipRate(projectSlip(sect.getOrigAveSlipRate(), sect.getAveDip(), sect.getAveRake()));
@@ -157,7 +161,7 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 
 			@Override
 			public ProxyFaultSectionInstances call() throws Exception {
-				return ProxyFaultSectionInstances.build(rupSet, 5, 5d, 0.25, 5, 10, true);
+				return ProxyFaultSectionInstances.build(rupSet, 5, 3d, 0.25, 5, 10, true);
 			}
 		}, ProxyFaultSectionInstances.class);
 		
@@ -249,7 +253,7 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 //		if (region != null)
 //			return PRVI25_RegionalSeismicity.getRemapped(region, seisRegion, declustering, smooth, refMFD, mMax);
 //		else
-		return PRVI25_RegionalSeismicity.getBounded(seisRegion, refMFD, mMax);
+		return PRVI25_CrustalSeismicityRate.loadRateModel().getBounded(refMFD, mMax);
 	}
 
 	@Override
