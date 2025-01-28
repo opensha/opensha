@@ -63,6 +63,7 @@ import org.opensha.sha.magdist.GutenbergRichterMagFreqDist;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.magdist.SparseGutenbergRichterSolver;
 import org.opensha.sha.magdist.SummedMagFreqDist;
+import org.opensha.sha.magdist.TaperedGR_MagFreqDist;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
@@ -178,6 +179,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 		private FaultSystemRupSet rupSet;
 		private double supraSeisBValue;
 		private double[] sectSpecificBValues;
+		private double supraSeisMagCorner;
+		private double[] sectSpecificMagCorners;
 		
 		private IncrementalMagFreqDist totalTargetMFD;
 
@@ -418,6 +421,18 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			return this;
 		}
 		
+		public Builder supraSeisMagCorner(double magCorner) {
+			this.supraSeisMagCorner = magCorner;
+			this.sectSpecificMagCorners = null;
+			return this;
+		}
+		
+		public Builder sectSpecificMagCorner(double[] magCorners) {
+			this.supraSeisMagCorner = Double.NaN;
+			this.sectSpecificMagCorners = magCorners;
+			return this;
+		}
+		
 		/**
 		 * Build target slip rates only
 		 * 
@@ -500,7 +515,7 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				rupSet.addModule(calc.sectSlipRates);
 			if (slipOnly)
 				return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, sectSpecificBValues,
-						null, null, null, null, null, null, calc.sectSlipRates, null);
+						null, null, null, null, null, null, calc.sectSlipRates, null, Double.NaN, null);
 			
 			SectMFDCalculator dmLowerCalc = null;
 			SectMFDCalculator dmUpperCalc = null;
@@ -645,7 +660,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				exec.shutdown();
 			
 			return new SupraSeisBValInversionTargetMFDs(rupSet, supraSeisBValue, sectSpecificBValues, totalTargetMFD, totalOnFaultSupra,
-					totalOnFaultSub, mfdConstraints, subSeismoMFDs, uncertSectSupraSeisMFDs, calc.sectSlipRates, calc.sectRupUtilizations);
+					totalOnFaultSub, mfdConstraints, subSeismoMFDs, uncertSectSupraSeisMFDs, calc.sectSlipRates, calc.sectRupUtilizations,
+					supraSeisMagCorner, sectSpecificMagCorners);
 		}
 		
 		private class SectMFDCalculator {
@@ -803,6 +819,10 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 
 						minMagIndex = refMFD.getClosestXIndex(sectMinMag);
 						maxMagIndex = refMFD.getClosestXIndex(sectMaxMag);
+						
+						double magCorner = sectSpecificMagCorners == null ? supraSeisMagCorner : sectSpecificMagCorners[s];
+						if (minMagIndex == maxMagIndex)
+							magCorner = Double.NaN;
 
 						// create a supra-seismogenic MFD between these two mags
 						// we won't bother setting the a-value here, this is only the relative shape consistent with:
@@ -811,8 +831,14 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 						// 1e16 below is a placeholder moment and doesn't matter, we're only using the shape
 						// 
 						// the first bin in the MFD is the min section supra-seis mag
-						supraGR_shape = new GutenbergRichterMagFreqDist(refMFD.getX(minMagIndex),
-								1+maxMagIndex-minMagIndex, refMFD.getDelta(), 1e16, supraSeisBValue);
+						if (magCorner  > 0d) {
+							supraGR_shape = new TaperedGR_MagFreqDist(refMFD.getX(minMagIndex),
+									1+maxMagIndex-minMagIndex, refMFD.getDelta());
+							((TaperedGR_MagFreqDist)supraGR_shape).setAllButTotCumRate(supraGR_shape.getMinX(), magCorner, 1e16, supraSeisBValue);
+						} else {
+							supraGR_shape = new GutenbergRichterMagFreqDist(refMFD.getX(minMagIndex),
+									1+maxMagIndex-minMagIndex, refMFD.getDelta(), 1e16, supraSeisBValue);
+						}
 
 						if (sparseGR) {
 							// re-distribute to only bins that actually have ruptures available
@@ -829,9 +855,10 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 								}
 							}
 							supraGR_shape = SparseGutenbergRichterSolver.getEquivGR(supraGR_shape, mags,
-									groupBinEdges, true, supraGR_shape.getTotalMomentRate(), supraSeisBValue);
+									groupBinEdges, true, supraGR_shape.getTotalMomentRate(), supraSeisBValue, magCorner);
 							SparseGutenbergRichterSolver.D = false;
 						}
+						Preconditions.checkState(supraGR_shape.calcSumOfY_Vals() > 0d, "Bad supraGR shape:\n%s", supraGR_shape);
 					}
 
 					sectMinMagIndexes[s] = minMagIndex;
@@ -1504,6 +1531,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 	
 	private double supraSeisBValue;
 	private double[] sectSpecificBValues;
+	private double supraSeisMagCorner;
+	private double[] sectSpecificMagCorners;
 	private List<UncertainIncrMagFreqDist> supraSeismoOnFaultMFDs;
 
 	private SectSlipRates sectSlipRates;
@@ -1514,19 +1543,22 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			IncrementalMagFreqDist totalRegionalMFD, UncertainIncrMagFreqDist onFaultSupraSeisMFD,
 			IncrementalMagFreqDist onFaultSubSeisMFD, List<UncertainIncrMagFreqDist> mfdConstraints,
 			SubSeismoOnFaultMFDs subSeismoOnFaultMFDs, List<UncertainIncrMagFreqDist> supraSeismoOnFaultMFDs,
-			SectSlipRates sectSlipRates, List<BitSet> sectRupUtilizations) {
+			SectSlipRates sectSlipRates, List<BitSet> sectRupUtilizations,
+			double supraSeisMagCorner, double[] sectSpecificMagCorners) {
 		super(rupSet, totalRegionalMFD, onFaultSupraSeisMFD, onFaultSubSeisMFD, null, mfdConstraints,
 				subSeismoOnFaultMFDs, supraSeismoOnFaultMFDs);
 		if (sectSpecificBValues == null) {
 			this.supraSeisBValue = supraSeisBValue;
 		} else {
 			this.sectSpecificBValues = sectSpecificBValues;
-			Preconditions.checkState(sectSpecificBValues.length == rupSet.getNumSections());
+			Preconditions.checkState(rupSet == null || sectSpecificBValues.length == rupSet.getNumSections());
 			if (Double.isFinite(supraSeisBValue))
 				this.supraSeisBValue = supraSeisBValue;
 			else
 				this.supraSeisBValue = StatUtils.mean(sectSpecificBValues);
 		}
+		this.supraSeisMagCorner = supraSeisMagCorner;
+		this.sectSpecificMagCorners = sectSpecificMagCorners;
 		this.supraSeismoOnFaultMFDs = supraSeismoOnFaultMFDs;
 		this.sectSlipRates = sectSlipRates;
 		this.sectRupUtilizations = sectRupUtilizations;
@@ -1575,6 +1607,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 
 		private double weightedBValSum = 0d;
 		private double[] weightedSectSpecificBValsSum;
+		private double weightedMagCorner = 0d;
+		private double[] weightedSectSpecificMagCornerSum;
 		private AveragingAccumulator<SectSlipRates> slipAvg;
 		private List<BitSet> sectRupUtilizations;
 
@@ -1586,23 +1620,42 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 			if (allSupra) {
 				SupraSeisBValInversionTargetMFDs mfds = (SupraSeisBValInversionTargetMFDs)module;
 				weightedBValSum += relWeight*mfds.supraSeisBValue;
+				weightedMagCorner += relWeight*mfds.supraSeisMagCorner;
 				if (mfds.sectSpecificBValues != null) {
 					if (weightedSectSpecificBValsSum == null) {
 						if (first) {
 							weightedSectSpecificBValsSum = new double[mfds.sectSpecificBValues.length];
 						} else {
-							// not all have sect-specific, bail
-							allSupra = false;
-							return;
+							weightedSectSpecificBValsSum = new double[mfds.sectSpecificBValues.length];
+							for (int i=0; i<weightedSectSpecificBValsSum.length; i++)
+								weightedSectSpecificBValsSum[i] = weightedBValSum;
 						}
 					}
 					Preconditions.checkState(weightedSectSpecificBValsSum.length == mfds.sectSpecificBValues.length);
 					for (int s=0; s<weightedSectSpecificBValsSum.length; s++)
 						weightedSectSpecificBValsSum[s] += relWeight*mfds.sectSpecificBValues[s];
 				} else if (weightedSectSpecificBValsSum != null) {
-					// not all have sect-specific, bail
-					allSupra = false;
-					return;
+					// add in our fixed b-value
+					for (int i=0; i<weightedSectSpecificBValsSum.length; i++)
+						weightedSectSpecificBValsSum[i] = relWeight*mfds.supraSeisBValue;
+				}
+				if (mfds.sectSpecificMagCorners != null){
+					if (weightedSectSpecificMagCornerSum == null) {
+						if (first) {
+							weightedSectSpecificMagCornerSum = new double[mfds.sectSpecificMagCorners.length];
+						} else {
+							weightedSectSpecificMagCornerSum = new double[mfds.sectSpecificMagCorners.length];
+							for (int i=0; i<weightedSectSpecificMagCornerSum.length; i++)
+								weightedSectSpecificMagCornerSum[i] = weightedMagCorner;
+						}
+					}
+					Preconditions.checkState(weightedSectSpecificMagCornerSum.length == mfds.sectSpecificMagCorners.length);
+					for (int s=0; s<weightedSectSpecificMagCornerSum.length; s++)
+						weightedSectSpecificMagCornerSum[s] += relWeight*mfds.sectSpecificMagCorners[s];
+				} else if (weightedSectSpecificMagCornerSum != null) {
+					// add in our fixed mag-corner
+					for (int i=0; i<weightedSectSpecificBValsSum.length; i++)
+						weightedSectSpecificBValsSum[i] = relWeight*mfds.supraSeisMagCorner;
 				}
 				if (slipAvg == null) {
 					slipAvg = mfds.sectSlipRates.averagingAccumulator();
@@ -1654,9 +1707,16 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 				for (int i=0; i<sectSpecificBValues.length; i++)
 					sectSpecificBValues[i] = weightedSectSpecificBValsSum[i]/totWeight;
 			}
+			double magCorner = weightedMagCorner/totWeight;
+			double[] sectSpecificMagCorners = null;
+			if (weightedSectSpecificMagCornerSum != null) {
+				sectSpecificMagCorners = new double[weightedSectSpecificMagCornerSum.length];
+				for (int i=0; i<sectSpecificMagCorners.length; i++)
+					sectSpecificMagCorners[i] = weightedSectSpecificMagCornerSum[i]/totWeight;
+			}
 			return new SupraSeisBValInversionTargetMFDs(
 					null, supraSeisBValue, sectSpecificBValues, totalRegionalMFD, onFaultSupraSeisMFD, onFaultSubSeisMFD, mfdConstraints,
-					subSeismoOnFaultMFDs, supraSeismoOnFaultMFDs, sectSlipRates, sectRupUtilizations);
+					subSeismoOnFaultMFDs, supraSeismoOnFaultMFDs, sectSlipRates, sectRupUtilizations, magCorner, sectSpecificMagCorners);
 		}
 		
 	}

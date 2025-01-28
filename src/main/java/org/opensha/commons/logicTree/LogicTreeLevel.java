@@ -30,6 +30,17 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	
 	public abstract boolean isMember(LogicTreeNode node);
 	
+	public String getFilePrefix() {
+		String prefix = getShortName().replaceAll("\\W+", "_");
+		while (prefix.contains("__"))
+			prefix = prefix.replace("__", "_");
+		while (prefix.startsWith("_"))
+			prefix = prefix.substring(1);
+		while (prefix.endsWith("_"))
+			prefix = prefix.substring(0, prefix.length()-1);
+		return prefix;
+	}
+	
 	/**
 	 * Determines if this level affects the given thing (e.g., a file name or some sort of property key).
 	 * If this level does not know anything about this thing, then the given default value will be returned.

@@ -3,10 +3,16 @@ package org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.calc.magScalingRelations.MagAreaRelationship;
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.MagScalingRelationship;
@@ -25,7 +31,9 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.FaultUtils;
+import org.opensha.commons.util.modules.ModuleContainer;
 import org.opensha.commons.util.modules.AverageableModule.AveragingAccumulator;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
@@ -44,12 +52,14 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.gridded.NSHM23_SingleRe
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_MaxMagOffFault;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_DeclusteringAlgorithms;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTreeBranch;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_RegionalSeismicity;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SeisSmoothingAlgorithms;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionCaribbeanSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionFaultModels;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionMuertosSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
@@ -57,6 +67,7 @@ import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
+import org.opensha.sha.magdist.SummedMagFreqDist;
 import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.TectonicRegionType;
 
@@ -71,6 +82,15 @@ public class PRVI25_GridSourceBuilder {
 	 * if true, will subtract on-fault supra-seis rates from gridded MFDs
 	 */
 	public static boolean RATE_BALANCE_CRUSTAL_GRIDDED = false;
+	
+	/**
+	 * if true, will subtract interface supra-seis rates from gridded MFDs
+	 * 
+	 * this gets complicated because gridded mMax and sect mMin varies, so we calculate the section nucleation rate
+	 * and scale that to the number of mapped grid nodes, then subtract that from the total M5 rate for each mapped
+	 * grid node.
+	 */
+	public static boolean RATE_BALANCE_INTERFACE_GRIDDED = false;
 	
 	/**
 	 * if true, depths and strikes are taken from the mapped subsection
@@ -107,7 +127,7 @@ public class PRVI25_GridSourceBuilder {
 		FaultSystemRupSet rupSet = sol.getRupSet();
 		Preconditions.checkState(!branch.hasValue(PRVI25_SubductionFaultModels.class), "This should only be used to build crustal models");
 		FaultCubeAssociations cubeAssociations = rupSet.requireModule(FaultCubeAssociations.class);
-		NSHM23_SingleRegionGridSourceProvider gridProv = buildCrustalGridSourceProv(sol, branch, PRVI25_SeismicityRegions.CRUSTAL, cubeAssociations);
+		NSHM23_SingleRegionGridSourceProvider gridProv = buildCrustalGridSourceProv(sol, branch, cubeAssociations);
 		
 		return gridProv.convertToGridSourceList(OVERALL_MMIN);
 	}
@@ -123,6 +143,33 @@ public class PRVI25_GridSourceBuilder {
 					calcCrustalFaultCategories();
 			}
 		}
+	}
+	
+	public static double getCrustalFractSS() {
+		try {
+			checkCalcCrustalFaultCategories();
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
+		return CRUSTAL_FRACT_SS;
+	}
+	
+	public static double getCrustalFractRev() {
+		try {
+			checkCalcCrustalFaultCategories();
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
+		return CRUSTAL_FRACT_REV;
+	}
+	
+	public static double getCrustalFractNorm() {
+		try {
+			checkCalcCrustalFaultCategories();
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
+		return CRUSTAL_FRACT_NORM;
 	}
 	
 	private static void calcCrustalFaultCategories() throws IOException {
@@ -165,7 +212,7 @@ public class PRVI25_GridSourceBuilder {
 	}
 	
 	public static NSHM23_SingleRegionGridSourceProvider buildCrustalGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch,
-			PRVI25_SeismicityRegions seisRegion, FaultCubeAssociations cubeAssociations)  throws IOException {
+			FaultCubeAssociations cubeAssociations)  throws IOException {
 		GriddedRegion gridReg = cubeAssociations.getRegion();
 		
 		double maxMagOff = branch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
@@ -173,12 +220,12 @@ public class PRVI25_GridSourceBuilder {
 		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(
 				OVERALL_MMIN, Math.max(maxMagOff, sol.getRupSet().getMaxMag()));
 		
-		PRVI25_RegionalSeismicity seisBranch = branch.requireValue(PRVI25_RegionalSeismicity.class);
+		PRVI25_CrustalSeismicityRate seisBranch = branch.requireValue(PRVI25_CrustalSeismicityRate.class);
 		PRVI25_DeclusteringAlgorithms declusteringAlg = branch.requireValue(PRVI25_DeclusteringAlgorithms.class);
 		PRVI25_SeisSmoothingAlgorithms seisSmooth = branch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
 		
 		// total G-R up to Mmax
-		IncrementalMagFreqDist totalGR = seisBranch.build(seisRegion, refMFD, maxMagOff);
+		IncrementalMagFreqDist totalGR = seisBranch.build(refMFD, maxMagOff);
 
 		// figure out what's left for gridded seismicity
 		IncrementalMagFreqDist totalGridded = new IncrementalMagFreqDist(
@@ -217,7 +264,7 @@ public class PRVI25_GridSourceBuilder {
 		}
 
 		// spatial seismicity PDF
-		double[] pdf = seisSmooth.load(seisRegion, declusteringAlg);
+		double[] pdf = seisSmooth.load(PRVI25_SeismicityRegions.CRUSTAL, declusteringAlg);
 
 		// seismicity depth distribution
 
@@ -319,12 +366,20 @@ public class PRVI25_GridSourceBuilder {
 		
 		double maxMagOff = SLAB_MMAX;
 		
-		PRVI25_RegionalSeismicity seisBranch = branch.requireValue(PRVI25_RegionalSeismicity.class);
 		PRVI25_DeclusteringAlgorithms declusteringAlg = branch.requireValue(PRVI25_DeclusteringAlgorithms.class);
 		PRVI25_SeisSmoothingAlgorithms seisSmooth = branch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
 		
 		// total G-R up to Mmax
-		IncrementalMagFreqDist totalGR = seisBranch.build(seisRegion, FaultSysTools.initEmptyMFD(OVERALL_MMIN, maxMagOff), maxMagOff);
+		IncrementalMagFreqDist totalGR;
+		if (seisRegion == PRVI25_SeismicityRegions.MUE_INTRASLAB) {
+			PRVI25_SubductionMuertosSeismicityRate seisBranch = branch.requireValue(PRVI25_SubductionMuertosSeismicityRate.class);
+			totalGR = seisBranch.build(FaultSysTools.initEmptyMFD(OVERALL_MMIN, maxMagOff), maxMagOff, true);
+		} else if (seisRegion == PRVI25_SeismicityRegions.CAR_INTRASLAB) {
+			PRVI25_SubductionCaribbeanSeismicityRate seisBranch = branch.requireValue(PRVI25_SubductionCaribbeanSeismicityRate.class);
+			totalGR = seisBranch.build(FaultSysTools.initEmptyMFD(OVERALL_MMIN, maxMagOff), maxMagOff, true);
+		} else {
+			throw new IllegalStateException("Not a slab region: "+seisRegion);
+		}
 		
 		GriddedGeoDataSet pdf = seisSmooth.loadXYZ(seisRegion, declusteringAlg);
 		
@@ -420,11 +475,17 @@ public class PRVI25_GridSourceBuilder {
 			throw new IllegalStateException("Not an interface SeismicityRegion: "+seisRegion);
 		}
 		
-		final boolean D = true;
+		final boolean D = false;
 		
 		System.out.println("Building interface GridSourceList for "+seisRegion+", useSectProps="+INTERFACE_USE_SECT_PROPERTIES);
 		
 		FaultSystemRupSet rupSet = sol.getRupSet();
+		
+		double supraMMax = 0d;
+		for (FaultSection sect : rupSet.getFaultSectionDataList())
+			if (Ints.contains(parentIDs, sect.getParentSectionId()))
+				supraMMax = Math.max(supraMMax, rupSet.getMaxMagForSection(sect.getSectionId()));
+		
 		List<? extends FaultSection> sectsForMinMag = rupSet.getFaultSectionDataList();
 		List<? extends FaultSection> sectsForGeom = sectsForMinMag;
 		if (INTERFACE_USE_SECT_PROPERTIES && seisRegion == PRVI25_SeismicityRegions.CAR_INTERFACE && !fullBranch.hasValue(PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE)) {
@@ -435,8 +496,40 @@ public class PRVI25_GridSourceBuilder {
 				dm = PRVI25_SubductionDeformationModels.FULL;
 			sectsForGeom = dm.build(fm);
 		}
-		
-		PRVI25_RegionalSeismicity seisBranch = fullBranch.requireValue(PRVI25_RegionalSeismicity.class);
+
+		IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, 9d);
+		Function<Double, IncrementalMagFreqDist> mfdBuilderFunc;
+		Map<Double, IncrementalMagFreqDist> mMaxMFDCache = new HashMap<>();
+		if (seisRegion == PRVI25_SeismicityRegions.MUE_INTERFACE) {
+			PRVI25_SubductionMuertosSeismicityRate seisBranch = fullBranch.requireValue(PRVI25_SubductionMuertosSeismicityRate.class);
+			mfdBuilderFunc = new Function<Double, IncrementalMagFreqDist>() {
+				
+				@Override
+				public IncrementalMagFreqDist apply(Double mMax) {
+					try {
+						return seisBranch.build(refMFD, mMax, false);
+					} catch (IOException e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
+				}
+			};
+		} else if (seisRegion == PRVI25_SeismicityRegions.CAR_INTERFACE) {
+			PRVI25_SubductionCaribbeanSeismicityRate seisBranch = fullBranch.requireValue(PRVI25_SubductionCaribbeanSeismicityRate.class);
+			mfdBuilderFunc = new Function<Double, IncrementalMagFreqDist>() {
+				
+				@Override
+				public IncrementalMagFreqDist apply(Double mMax) {
+					try {
+						return seisBranch.build(refMFD, mMax, false);
+					} catch (IOException e) {
+						throw ExceptionUtils.asRuntimeException(e);
+					}
+				}
+			};
+		} else {
+			throw new IllegalStateException("Not an interface region: "+seisRegion);
+		}
+//		PRVI25_RegionalSeismicity seisBranch = fullBranch.requireValue(PRVI25_RegionalSeismicity.class);
 		PRVI25_DeclusteringAlgorithms declusteringAlg = fullBranch.requireValue(PRVI25_DeclusteringAlgorithms.class);
 		PRVI25_SeisSmoothingAlgorithms seisSmooth = fullBranch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
 		
@@ -457,6 +550,7 @@ public class PRVI25_GridSourceBuilder {
 		
 		List<FaultSection> minMagMatchingSubSects = null;
 		List<Double> minMagMatchingSubSectMMins = null;
+		List<Double> minMagMatchingSubSectMMaxs = null;
 		List<RuptureSurface> minMagMatchingSectSurfs = null;
 		double maxSectMinMag = 0d;
 		int[] minMagSectMappings = null;
@@ -471,6 +565,7 @@ public class PRVI25_GridSourceBuilder {
 		for (boolean geom : new boolean[] { false, true }) {
 			List<FaultSection> matchingSubSects;
 			List<Double> matchingSubSectMMins;
+			List<Double> matchingSubSectMMaxs;
 			List<RuptureSurface> matchingSectSurfs;
 			int[] sectMappings;
 			double overallFurthestMatch;
@@ -478,6 +573,7 @@ public class PRVI25_GridSourceBuilder {
 				// don't need to recalculate
 				matchingSubSects = minMagMatchingSubSects;
 				matchingSubSectMMins = null;
+				matchingSubSectMMaxs = null;
 				matchingSectSurfs = minMagMatchingSectSurfs;
 				sectMappings = minMagSectMappings;
 				overallFurthestMatch = overallFurthestMinMagMatch;
@@ -488,6 +584,7 @@ public class PRVI25_GridSourceBuilder {
 				matchingSubSects = new ArrayList<>();
 				List<Region> matchingSubSectOutlines = new ArrayList<>();
 				matchingSubSectMMins = geom ? null : new ArrayList<>();
+				matchingSubSectMMaxs = geom ? null : new ArrayList<>();
 				List<Location[]> matchingSubSectFirstEdges = new ArrayList<>();
 				List<Location[]> matchingSubSectLastEdges = new ArrayList<>();
 				matchingSectSurfs = new ArrayList<>();
@@ -505,6 +602,7 @@ public class PRVI25_GridSourceBuilder {
 						matchingSubSectFirstEdges.add(firstEdge);
 						matchingSubSectLastEdges.add(lastEdge);
 						double sectMinMag = geom ? Double.NaN : rupSet.getMinMagForSection(sect.getSectionId());
+						double sectMaxMag = geom ? Double.NaN : rupSet.getMaxMagForSection(sect.getSectionId());
 						if (D) {
 							System.out.println(sect.getSectionId()+". "+sect.getSectionName()+": Mmin="+(float)sectMinMag);
 							System.out.println("\tStrike="+sect.getFaultTrace().getAveStrike()
@@ -514,6 +612,7 @@ public class PRVI25_GridSourceBuilder {
 						}
 						if (!geom) {
 							matchingSubSectMMins.add(sectMinMag);
+							matchingSubSectMMaxs.add(sectMaxMag);
 							maxSectMinMag = Math.max(maxSectMinMag, sectMinMag);
 						}
 //					} else {
@@ -599,13 +698,13 @@ public class PRVI25_GridSourceBuilder {
 			} else {
 				minMagMatchingSubSects = matchingSubSects;
 				minMagMatchingSubSectMMins = matchingSubSectMMins;
+				minMagMatchingSubSectMMaxs = matchingSubSectMMaxs;
 				minMagMatchingSectSurfs = matchingSectSurfs;
 				minMagSectMappings = sectMappings;
 				overallFurthestMinMagMatch = overallFurthestMatch;
 			}
 		}
 		
-		IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, maxSectMinMag);
 		System.out.println("MFD Gridding Mmmax="+(float)refMFD.getMaxX());
 		
 		List<List<GriddedRupture>> ruptureLists = new ArrayList<>(pdf.size());
@@ -614,7 +713,25 @@ public class PRVI25_GridSourceBuilder {
 		double overallMaxDepth = depthData.getMaxZ();
 		double minDepthRangeLimit = 0.2*(overallMaxDepth - overallMinDepth);
 		if (D) System.out.println("Overall Slab2 depth range: ["+(float)overallMinDepth+", "+(float)overallMaxDepth+"]");
-			
+		
+		double[] gridRateSubtracts = null;
+		if (RATE_BALANCE_INTERFACE_GRIDDED) {
+			double[] sectNuclRates = sol.calcNucleationRateForAllSects(0d, Double.POSITIVE_INFINITY);
+			int[] sectMappingCounts = new int[sectsForMinMag.size()];
+			for (int gridIndex=0; gridIndex<pdf.size(); gridIndex++) {
+				int sectIndex = geomSectMappings[gridIndex];
+				sectMappingCounts[sectIndex]++;
+			}
+			// split the section supra-seis nucleation rate evenly across all mapped grid nodes
+			gridRateSubtracts = new double[pdf.size()];
+			for (int gridIndex=0; gridIndex<pdf.size(); gridIndex++) {
+				int sectIndex = geomSectMappings[gridIndex];
+				gridRateSubtracts[gridIndex] = sectNuclRates[sectIndex]/(double)sectMappingCounts[sectIndex];
+			}
+		}
+		
+		double totRateM5 = 0d;
+		MinMaxAveTracker reductionPDiffStats = RATE_BALANCE_INTERFACE_GRIDDED ? new MinMaxAveTracker() : null;
 		for (int gridIndex=0; gridIndex<pdf.size(); gridIndex++) {
 			double fractRate = pdf.get(gridIndex);
 			if (fractRate == 0d) {
@@ -629,7 +746,6 @@ public class PRVI25_GridSourceBuilder {
 			
 			if (DD) System.out.println("DEBUG for grid "+gridIndex+" at "+gridLoc);
 
-			double sectMmin = minMagMatchingSubSectMMins.get(minMagSectMappings[gridIndex]);
 			FaultSection matchingSection = geomMatchingSubSects.get(geomSectMappings[gridIndex]);
 			
 			double strike;
@@ -799,16 +915,58 @@ public class PRVI25_GridSourceBuilder {
 			double rake = 90d; // fix it to 90: don't want multiple instances of each rupture after branch averaging
 //			double strike = matchingSection.getFaultTrace().getAveStrike();
 			
+			double sectMmin = minMagMatchingSubSectMMins.get(minMagSectMappings[gridIndex]);
 			int sectMminIndex = refMFD.getClosestXIndex(sectMmin);
 			Preconditions.checkState(sectMminIndex > 0);
-			// set Mmax to one bin below the matching section Mmin
-			double mMax = refMFD.getX(sectMminIndex-1);
+
+			double mMax;
+			if (RATE_BALANCE_INTERFACE_GRIDDED) {
+				// build MFD to section Mmax, then carve out and truncate in the next step
+				double sectMmax = minMagMatchingSubSectMMaxs.get(minMagSectMappings[gridIndex]);
+				int sectMmaxIndex = refMFD.getClosestXIndex(sectMmax);
+				Preconditions.checkState(sectMmaxIndex > 0);
+				mMax = refMFD.getX(sectMmaxIndex);
+			} else {
+				// build MFD to sect Mmin, no carve out
+				// set Mmax to one bin below the matching section Mmin
+				mMax = refMFD.getX(sectMminIndex-1);
+			}
 			
 			// modify to use our actual closest depth as these are average and not rectangular
 			double maxDDW = (depthLowerLimit - depthUpperLimit)/Math.sin(dipRad);
 			
-			IncrementalMagFreqDist mfd = seisBranch.build(seisRegion, refMFD, mMax);
+			IncrementalMagFreqDist mfd = mMaxMFDCache.get(mMax);
+			if (mfd == null) {
+				mfd = mfdBuilderFunc.apply(mMax);
+				mMaxMFDCache.put(mMax, mfd);
+			}
+			mfd = mfd.deepClone();
 			mfd.scale(fractRate);
+			if (RATE_BALANCE_INTERFACE_GRIDDED) {
+				double subtract = gridRateSubtracts[gridIndex];
+				if (subtract > 0d) {
+					int m5Index = mfd.getClosestXIndex(5.01);
+					// this is up to interface Mmax
+					double origRateM5 = mfd.getCumRate(m5Index);
+					double targetRateM5 = origRateM5 - subtract;
+					if (targetRateM5 <= 0) {
+						System.err.println("WARNING: subtractRate="+(float)subtract+" > gridM5["+gridIndex+"]="
+								+origRateM5+", setting grid rate to zero");
+						ruptureLists.add(new ArrayList<>());
+						reductionPDiffStats.addValue(100d);
+						continue;
+					}
+					// now clear out all bins at or above sect mMin
+					Preconditions.checkState(sectMminIndex > 0);
+					for (int i=sectMminIndex; i<mfd.size(); i++)
+						mfd.set(i, 0d);
+					double afterCarveRateM5 = mfd.getCumRate(m5Index);
+					double scalar = targetRateM5/afterCarveRateM5;
+					reductionPDiffStats.addValue(100d*subtract/origRateM5);
+					mfd.scale(scalar);
+					Preconditions.checkState(Precision.equals(targetRateM5, mfd.getCumRate(m5Index), 0.00001));
+				}
+			}
 			
 			List<GriddedRupture> ruptureList = new ArrayList<>(sectMminIndex);
 			ruptureLists.add(ruptureList);
@@ -818,6 +976,9 @@ public class PRVI25_GridSourceBuilder {
 				
 				if (rate == 0d || (float)mag < (float)OVERALL_MMIN)
 					continue;
+				
+				if (mag >= 5d)
+					totRateM5 += rate;
 				
 				double area = scale.getMedianArea(mag);
 				double sqRtArea = Math.sqrt(area);
@@ -876,6 +1037,16 @@ public class PRVI25_GridSourceBuilder {
 		}
 		
 		System.out.println("Done building gridded provider for "+seisRegion+"; worst grid-to-interface distance: "+(float)overallFurthestGeomMatch+"km");
+		
+		if (RATE_BALANCE_INTERFACE_GRIDDED) {
+			IncrementalMagFreqDist mfd = mMaxMFDCache.values().iterator().next();
+			double origM5 = mfd.getCumRate(mfd.getClosestXIndex(5.001));
+			double origM6 = mfd.getCumRate(mfd.getClosestXIndex(6.001));
+			System.out.println("Rate balance for "+seisRegion+":");
+			System.out.println("\treduced origM5="+(float)origM5+" to "+(float)totRateM5
+					+" ("+new DecimalFormat("0.000%").format((totRateM5-origM5)/origM5)+")");
+			System.out.println("\tReduction %diff stats: "+reductionPDiffStats);
+		}
 		
 		return new GridSourceList.Precomputed(pdf.getRegion(), TectonicRegionType.SUBDUCTION_INTERFACE, ruptureLists);
 	}
@@ -936,6 +1107,7 @@ public class PRVI25_GridSourceBuilder {
 //			}
 //		}
 		
+		ModuleContainer.VERBOSE_DEFAULT = false;
 		List<LogicTreeLevel<? extends LogicTreeNode>> levels = new ArrayList<>();
 		levels.addAll(PRVI25_LogicTreeBranch.levelsSubduction);
 		levels.addAll(PRVI25_LogicTreeBranch.levelsSubductionGridded);
@@ -943,7 +1115,8 @@ public class PRVI25_GridSourceBuilder {
 		
 		branch.setValue(PRVI25_SubductionScalingRelationships.AVERAGE);
 //		branch.setValue(PRVI25_RegionalSeismicity.LOW);
-		branch.setValue(PRVI25_RegionalSeismicity.PREFFERRED);
+		branch.setValue(PRVI25_SubductionMuertosSeismicityRate.LOW);
+		branch.setValue(PRVI25_SubductionCaribbeanSeismicityRate.PREFFERRED);
 //		branch.setValue(PRVI25_RegionalSeismicity.HIGH);
 		branch.setValue(PRVI25_SeisSmoothingAlgorithms.AVERAGE);
 		branch.setValue(PRVI25_DeclusteringAlgorithms.AVERAGE);
@@ -952,7 +1125,7 @@ public class PRVI25_GridSourceBuilder {
 		
 //		INTERFACE_USE_SECT_PROPERTIES = false;
 		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
-				+ "2024_12_12-prvi25_subduction_branches/results_PRVI_SUB_FM_LARGE_branch_averaged.zip"));
+				+ "2025_01_02-prvi25_subduction_branches/results_PRVI_SUB_FM_LARGE_branch_averaged.zip"));
 		branch.setValue(PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE);
 //		FaultSystemSolution sol = FaultSystemSolution.load(new File("/home/kevin/OpenSHA/nshm23/batch_inversions/"
 //				+ "2024_12_12-prvi25_subduction_branches/results_PRVI_SUB_FM_SMALL_branch_averaged.zip"));
@@ -968,6 +1141,7 @@ public class PRVI25_GridSourceBuilder {
 //					rateM5 += rup.rate;
 //		System.out.println(seisReg+" rate M>5: "+(float)rateM5);
 		
+		RATE_BALANCE_INTERFACE_GRIDDED = true;
 //		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.CAR_INTERFACE;
 		PRVI25_SeismicityRegions seisReg = PRVI25_SeismicityRegions.MUE_INTERFACE;
 		Region region = seisReg.load();
@@ -991,6 +1165,31 @@ public class PRVI25_GridSourceBuilder {
 		if (!INTERFACE_USE_SECT_PROPERTIES)
 			name += "_slab_depths";
 		sol.write(new File("/tmp/", name+".zip"));
+		if (RATE_BALANCE_INTERFACE_GRIDDED) {
+			IncrementalMagFreqDist refMFD = interfaceModel.getRefMFD();
+			SummedMagFreqDist balancedMFD = new SummedMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
+			for (int l=0; l<interfaceModel.getNumLocations(); l++)
+				balancedMFD.addIncrementalMagFreqDist(interfaceModel.getMFD(l));
+			
+			// do it again without rate balancing
+			RATE_BALANCE_INTERFACE_GRIDDED = false;
+			interfaceModel = buildInterfaceGridSourceList(sol, branch, seisReg);
+			SummedMagFreqDist unbalancedMFD = new SummedMagFreqDist(refMFD.getMinX(), refMFD.getMaxX(), refMFD.size());
+			for (int l=0; l<interfaceModel.getNumLocations(); l++)
+				unbalancedMFD.addIncrementalMagFreqDist(interfaceModel.getMFD(l));
+			DecimalFormat pDF = new DecimalFormat("0.000%");
+			for (int i=0; i<balancedMFD.size(); i++) {
+				double mag = balancedMFD.getX(i);
+				if (mag < 5d)
+					continue;
+				double rateBalanced = balancedMFD.getY(i);
+				double rateUnbalanced = unbalancedMFD.getY(i);
+				if (rateBalanced == 0 && rateUnbalanced == 0)
+					break;
+				System.out.println((float)mag+"\t"+(float)rateUnbalanced+"\t"+(float)rateBalanced+"\t("
+						+pDF.format((rateBalanced - rateUnbalanced)/rateUnbalanced)+")");
+			}
+		}
 		
 //		buildInterfaceGridSourceList(sol, branch);
 		

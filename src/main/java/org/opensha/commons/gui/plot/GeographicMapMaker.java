@@ -1089,7 +1089,7 @@ public class GeographicMapMaker {
 //					funcs.add(outline);
 //					charsasdf
 					
-					PlotCurveCharacterstics insetRegionOutlineChar = insetRegionOutlineChars.get(r);
+					PlotCurveCharacterstics insetRegionOutlineChar = insetRegionOutlineChars == null ? null : insetRegionOutlineChars.get(r);
 					Color insetRegionFillColor = insetRegionFillColors == null ? null : insetRegionFillColors.get(r);
 					PlotCurveCharacterstics insetRegionFillChar = null;
 					if (insetRegionFillColor != null) {

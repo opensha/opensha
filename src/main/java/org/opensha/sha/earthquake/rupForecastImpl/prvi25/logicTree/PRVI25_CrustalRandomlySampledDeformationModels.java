@@ -247,7 +247,8 @@ public class PRVI25_CrustalRandomlySampledDeformationModels implements RandomlyS
 		PRVI25_CrustalRandomlySampledDeformationModelLevel level = new PRVI25_CrustalRandomlySampledDeformationModelLevel(numSamples, rand);
 		List<PRVI25_CrustalRandomlySampledDeformationModels> nodes = level.getNodes();
 		PRVI25_CrustalFaultModels fm = PRVI25_CrustalFaultModels.PRVI_CRUSTAL_FM_V1p1;
-		List<? extends FaultSection> fullSects = fm.getFaultSections();
+		List<? extends FaultSection> fullSects = fm.getFaultSections(true);
+		List<? extends FaultSection> fullSectsUnprojected = fm.getFaultSections(false);
 		
 		List<MinMaxAveTracker> parentTracks = new ArrayList<>();
 		for (int i=0; i<fullSects.size(); i++)
@@ -282,16 +283,27 @@ public class PRVI25_CrustalRandomlySampledDeformationModels implements RandomlyS
 				}
 			}
 			
-			System.out.println(sect.getSectionId()+". "+sect.getSectionName());
-			System.out.println("\tOrig mean and range:\t"+slipDF.format(origMean)
-					+"\t["+slipDF.format(origLower)+","+slipDF.format(origUpper)+"]\tmeanFract="+slipDF.format((origMean - origLower)/(origUpper - origLower)));
+			FaultSection unprojectedSect = fullSectsUnprojected.get(i);
+			double unprojectedMean = unprojectedSect.getOrigAveSlipRate();
+			double unprojectedUpper = ((GeoJSONFaultSection)unprojectedSect).getProperties().getDouble(PRVI25_CrustalFaultModels.HIGH_RATE_PROP_NAME, Double.NaN);
+			double unprojectedLower = ((GeoJSONFaultSection)unprojectedSect).getProperties().getDouble(PRVI25_CrustalFaultModels.LOW_RATE_PROP_NAME, Double.NaN);
+			boolean projected = (float)unprojectedMean != (float)origMean;
+			
+			System.out.println(sect.getSectionId()+". "+sect.getSectionName()+"\t(dip="+(float)sect.getAveDip()+", rake="+(float)sect.getAveRake()+")");
+			if ((float)unprojectedMean != (float)origMean) {
+				System.out.println("\tOriginal mean and range:\t"+slipDF.format(unprojectedMean)
+						+"\t["+slipDF.format(unprojectedLower)+","+slipDF.format(unprojectedUpper)+"]");
+			}
+			System.out.println("\t"+(projected ? "Projected" : "Original")+" mean and range:\t"+slipDF.format(origMean)
+					+"\t["+slipDF.format(origLower)+","+slipDF.format(origUpper)
+					+"]\tmeanFract="+slipDF.format((origMean - origLower)/(origUpper - origLower)));
 //			System.out.println("\tSampled mean and range:\t"+slipDF.format(sampleMean)
 //					+"\t["+slipDF.format(track.getMin())+","+slipDF.format(track.getMax())+"]");
 //			System.out.println("\tCompared to original:\t"+compPercentStr(sampleMean, origMean)
 //					+"\t["+compPercentStr(track.getMin(), origLower)+","+compPercentStr(track.getMax(), origUpper)+"]");
-			System.out.println("\tPDF mean and range:\t"+slipDF.format(pdfMean)
+			System.out.println("\tGeo DM PDF mean and range:\t"+slipDF.format(pdfMean)
 					+"\t["+slipDF.format(pdfMin)+","+slipDF.format(pdfMax)+"]");
-			System.out.println("\tCompared to original:\t"+compPercentStr(sampleMean, origMean)
+			System.out.println("\tCompared to "+(projected ? "projected" : "original")+":\t"+compPercentStr(sampleMean, origMean)
 					+"\t["+compPercentStr(pdfMin, origLower)+","+compPercentStr(pdfMax, origUpper)+"]");
 		}
 	}

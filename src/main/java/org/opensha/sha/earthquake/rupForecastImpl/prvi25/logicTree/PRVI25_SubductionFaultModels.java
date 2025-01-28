@@ -166,8 +166,12 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 //					double avgMinMag = minMags.stream().mapToDouble(D->D).average().getAsDouble();
 					double dataMmax = maxMags.stream().mapToDouble(D->D).max().getAsDouble();
 					regions.add(reg);
-					regionMFDs.add(PRVI25_RegionalSeismicity.getBounded(seisReg,
-							interfaceRefMFD, interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(dataMmax))));
+					if (seisReg == PRVI25_SeismicityRegions.CAR_INTERFACE)
+						regionMFDs.add(PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(false).getBounded(
+								interfaceRefMFD, interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(dataMmax))));
+					else
+						regionMFDs.add(PRVI25_SubductionMuertosSeismicityRate.loadRateModel(false).getBounded(
+								interfaceRefMFD, interfaceRefMFD.getX(interfaceRefMFD.getClosestXIndex(dataMmax))));
 					regionTRTs.add(TectonicRegionType.SUBDUCTION_INTERFACE);
 				}
 				
@@ -178,8 +182,13 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 				IncrementalMagFreqDist slabRefMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, PRVI25_GridSourceBuilder.SLAB_MMAX);
 				for (PRVI25_SeismicityRegions seisReg : slabRegions) {
 					regions.add(seisReg.load());
-					UncertainBoundedIncrMagFreqDist mfd = PRVI25_RegionalSeismicity.getBounded(seisReg,
-							slabRefMFD, slabRefMFD.getX(slabRefMFD.getClosestXIndex(PRVI25_GridSourceBuilder.SLAB_MMAX)));
+					UncertainBoundedIncrMagFreqDist mfd;
+					if (seisReg == PRVI25_SeismicityRegions.CAR_INTRASLAB)
+						mfd = PRVI25_SubductionCaribbeanSeismicityRate.loadRateModel(true).getBounded(
+								slabRefMFD, slabRefMFD.getX(slabRefMFD.getClosestXIndex(PRVI25_GridSourceBuilder.SLAB_MMAX)));
+					else
+						mfd = PRVI25_SubductionMuertosSeismicityRate.loadRateModel(true).getBounded(
+								slabRefMFD, slabRefMFD.getX(slabRefMFD.getClosestXIndex(PRVI25_GridSourceBuilder.SLAB_MMAX)));
 //					System.out.println("MFD for "+seisReg
 //							+"; lowM5="+(float)mfd.getLower().getCumRateDistWithOffset().getY(5d)
 //							+"; prefM5="+(float)mfd.getCumRateDistWithOffset().getY(5d)

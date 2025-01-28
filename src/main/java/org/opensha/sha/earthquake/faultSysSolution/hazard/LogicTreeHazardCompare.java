@@ -2178,6 +2178,9 @@ public class LogicTreeHazardCompare {
 						+ "the mean map considering subsets of the model holding each branch choice constant, and the "
 						+ "overall mean map.");
 				lines.add("");
+				lines.add("Summary CSVs: [Branch Mean % Change]("+resourcesDir.getName()+"/"+prefix+"_branch_mean_summary.csv) "
+						+ "&nbsp;|&nbsp; [Branch Abs Mean % Change]("+resourcesDir.getName()+"/"+prefix+"_branch_mean_abs_summary.csv)");
+				lines.add("");
 				
 				int combinedMapIndex = lines.size();
 				
@@ -2293,6 +2296,9 @@ public class LogicTreeHazardCompare {
 							GeographicMapMaker.buildCPTLegend(diffCPT, "Branch Choice - Mean "+perUnits), cptWidth, true, true);
 				}
 				
+				CSVFile<String> choiceMeanSummaryCSV = new CSVFile<>(false);
+				CSVFile<String> choiceMeanAbsSummaryCSV = new CSVFile<>(false);
+				
 				for (int l=0; l<choiceMapsList.size(); l++) {
 					LogicTreeLevel<?> level = tree.getLevels().get(l);
 					String levelPrefix = prefix+"_"+levelPrefix(level);
@@ -2320,10 +2326,23 @@ public class LogicTreeHazardCompare {
 //						List<LogicTreeNode> choices = new ArrayList<>(choiceMaps.keySet());
 //						Collections.sort(choices, nodeNameCompare);
 						
+						if (choiceMeanSummaryCSV.getNumRows() > 0) {
+							choiceMeanSummaryCSV.addLine("");
+							choiceMeanAbsSummaryCSV.addLine("");
+						}
+						int summaryRow = choiceMeanSummaryCSV.getNumRows();
+						choiceMeanSummaryCSV.addLine(level.getName());
+						choiceMeanAbsSummaryCSV.addLine(level.getName(), "Overall average absolute difference:", "");
+						List<String> csvHeader = new ArrayList<>();
+						csvHeader.add("Choice");
+						csvHeader.add("Vs Mean");
 						for (LogicTreeNode choice : choices) {
+							csvHeader.add("Vs "+choice.getShortName());
 							table.addColumn("**Vs "+choice.getShortName()+"**");
 							mapVsChoiceTable.addColumn("**Vs "+choice.getShortName()+"**");
 						}
+						choiceMeanSummaryCSV.addLine(csvHeader);
+						choiceMeanAbsSummaryCSV.addLine(csvHeader);
 						table.finalizeLine();
 						mapVsChoiceTable.finalizeLine();
 						
@@ -2372,16 +2391,23 @@ public class LogicTreeHazardCompare {
 							table.initNewLine().addColumn("**"+choice.getShortName()+"**");
 							mapVsChoiceTable.initNewLine().addColumn("**"+choice.getShortName()+"**");
 							
+							List<String> meanCSVLine = new ArrayList<>(csvHeader.size());
+							List<String> meanAbsCSVLine = new ArrayList<>(csvHeader.size());
+							meanCSVLine.add(choice.getShortName());
+							meanAbsCSVLine.add(choice.getShortName());
+							
 							GriddedGeoDataSet choiceMap = choiceMeans.get(choice);
-							table.addColumn(mapPDiffStr(choiceMap, mean, null, null));
+							table.addColumn(mapPDiffStr(choiceMap, mean, null, null, meanCSVLine, meanAbsCSVLine));
 							
 							for (LogicTreeNode oChoice : choices) {
 								if (choice == oChoice) {
 									table.addColumn("");
 									mapVsChoiceTable.addColumn("");
+									meanCSVLine.add("");
+									meanAbsCSVLine.add("");
 								} else {
 									table.addColumn(mapPDiffStr(choiceMap, choiceMeans.get(oChoice),
-											runningDiffAvg, runningAbsDiffAvg));
+											runningDiffAvg, runningAbsDiffAvg, meanCSVLine, meanAbsCSVLine));
 									// plot choice vs choice map
 									GriddedGeoDataSet oChoiceMap = choiceMeans.get(oChoice);
 									GriddedGeoDataSet pDiff = buildPDiff(oChoiceMap, choiceMap);
@@ -2394,6 +2420,8 @@ public class LogicTreeHazardCompare {
 							
 							table.finalizeLine();
 							mapVsChoiceTable.finalizeLine();
+							choiceMeanSummaryCSV.addLine(meanCSVLine);
+							choiceMeanAbsSummaryCSV.addLine(meanAbsCSVLine);
 							
 							// now maps
 							
@@ -2473,7 +2501,11 @@ public class LogicTreeHazardCompare {
 						writeChoiceHazardCSV(choicesCSV, mean, choices, choiceMeans);
 						lines.add("![Combined "+level.getShortName()+" % difference plot]("+resourcesDir.getName()+"/"+pDiffMulti.getName()+")");
 						lines.add("");
+						lines.add("![% Diff CPT]("+resourcesDir.getName()+"/cpt_branch_pDiff.png)");
+						lines.add("");
 						lines.add("![Combined "+level.getShortName()+" difference plot]("+resourcesDir.getName()+"/"+diffMulti.getName()+")");
+						lines.add("");
+						lines.add("![Diff CPT]("+resourcesDir.getName()+"/cpt_branch_diff.png)");
 						lines.add("");
 						lines.add("Download Choice Hazard CSV: ["+choicesCSV.getName()+"]("+resourcesDir.getName()+"/"+choicesCSV.getName()+")");
 						lines.add("");
@@ -2488,6 +2520,7 @@ public class LogicTreeHazardCompare {
 								+ "choice, a decent summary measure of how much hazard varies due to this branch choice, "
 								+ "is: **"+twoDigits.format(runningAbsDiffAvg.getAverage())+"%**");
 						System.out.println("\tOverall MAD: "+twoDigits.format(runningAbsDiffAvg.getAverage())+" %");
+						choiceMeanAbsSummaryCSV.set(summaryRow, 2, runningAbsDiffAvg.getAverage()+"%");
 						lines.add("");
 						lines.addAll(table.build());
 						lines.add("");
@@ -2581,6 +2614,9 @@ public class LogicTreeHazardCompare {
 							"Branch Choice - Mean (g)");
 					table.addLine("![Combined Map]("+resourcesDir.getName()+"/"+combPrefix+".png)");
 					lines.addAll(combinedMapIndex, table.build());
+					
+					choiceMeanSummaryCSV.writeToFile(new File(resourcesDir, prefix+"_branch_mean_summary.csv"));
+					choiceMeanAbsSummaryCSV.writeToFile(new File(resourcesDir, prefix+"_branch_mean_abs_summary.csv"));
 				}
 				
 				if (intermediateWrite)
@@ -2726,7 +2762,8 @@ public class LogicTreeHazardCompare {
 	}
 	
 	private static String mapPDiffStr(GriddedGeoDataSet map, GriddedGeoDataSet ref,
-			MinMaxAveTracker runningDiffAvg, MinMaxAveTracker runningAbsDiffAvg) {
+			MinMaxAveTracker runningDiffAvg, MinMaxAveTracker runningAbsDiffAvg,
+			List<String> meanCSVLine, List<String> meanAbsCSVLine) {
 		double mean = 0d;
 		double meanAbs = 0d;
 		int numFinite = 0;;
@@ -2748,6 +2785,9 @@ public class LogicTreeHazardCompare {
 		}
 		mean /= (double)numFinite;
 		meanAbs /= (double)numFinite;
+		
+		meanCSVLine.add(mean+"%");
+		meanAbsCSVLine.add(meanAbs+"%");
 		
 		return "Mean: "+twoDigits.format(mean)+"%, Mean Abs: "+twoDigits.format(meanAbs)+"%";
 	}
