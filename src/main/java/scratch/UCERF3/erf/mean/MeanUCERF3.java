@@ -617,6 +617,7 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	 * This downloads the selected file from the server if not already cached locally
 	 * 
 	 * @param fName
+	 * @return
 	 */
 	private CompletableFuture<File> checkDownload(String fName) {
 		File file = new File(storeDir, fName);
@@ -624,21 +625,35 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	}
 	
 	/**
-	 * This downloads the selected file from the server if not already cached locally
+	 * This downloads the selected file from the server if not already cached locally.
+	 * Shows download progress by default.
 	 * 
 	 * @param file
+	 * @return
 	 */
 	public static CompletableFuture<File> checkDownload(File file) {
+		return checkDownload(file, /*showProgress=*/true);
+	}
+		
+	/**
+	 * This downloads the selected file from the server if not already cached locally.
+	 * 
+	 * @param file Location where files will be downloaded
+	 * @param showProgress Boolean to show download progress with GUI popup
+	 * @return A future that will resolve into a downloaded file or null
+	 */
+	public static CompletableFuture<File> checkDownload(
+			File file, boolean showProgress) {
 		final GetFile UCERF3_UPDATER = new GetFile(
 				/*name=*/"MeanUCERF3",
 				/*clientMetaFile=*/new File(
 						file.getParent(), "ucerf3_client.json"),
 				/*serverMetaURI=*/URI.create(DOWNLOAD_URL),
-				/*showProgress=*/true);
+				/*showProgress=*/showProgress);
 		String fileKey = FilenameUtils.getBaseName(file.getName());
 		return UCERF3_UPDATER.updateFile(fileKey);
 	}
-		
+
 	public static void main(String[] args) {
 		MeanUCERF3.checkDownload(new File(getStoreDir(), "mean_ucerf3_sol.zip"))
 			.thenAccept(solFile -> {
