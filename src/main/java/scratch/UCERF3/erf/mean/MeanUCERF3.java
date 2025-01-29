@@ -2,7 +2,6 @@ package scratch.UCERF3.erf.mean;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -11,18 +10,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.CompletableFuture;
 import java.util.zip.ZipFile;
 
 import javax.swing.JOptionPane;
-import javax.swing.SwingUtilities;
-
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.event.ParameterChangeEvent;
@@ -35,7 +26,6 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
-import org.opensha.sha.gui.infoTools.CalcProgressBar;
 import org.scec.getfile.GetFile;
 
 import com.google.common.base.Preconditions;
