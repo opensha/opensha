@@ -6,7 +6,7 @@ Primary [OpenSHA](https://opensha.org) code repository
 
 | ![Build Status](https://github.com/opensha/opensha/actions/workflows/build_only.yml/badge.svg) | ![Test Status](https://github.com/opensha/opensha/actions/workflows/build_test.yml/badge.svg) | ![Server Status](https://github.com/opensha/opensha/actions/workflows/operational_tests.yml/badge.svg) |
 | --- | --- | --- |
-| This tests for compile errors on the master branch | This runs our standard test suite on the master branch | This runs every 6 hours and tests that our server at opensha.usc.edu is accessible and web services are working |
+| This tests for compile errors on the master branch | This runs our standard test suite on the master branch | This runs every 6 hours and tests that our servers at opensha.usc.edu and globus.org CARC is accessible and web services are working |
 
 ## Compilation and project configuration
 
