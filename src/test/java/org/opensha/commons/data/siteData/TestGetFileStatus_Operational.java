@@ -33,7 +33,6 @@ public class TestGetFileStatus_Operational {
 		} catch (IOException e) {
 			if (D) e.printStackTrace();
 		}
-		
 	}
 	
 	/**
