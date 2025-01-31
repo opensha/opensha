@@ -239,7 +239,6 @@ public class Location implements
 		if (this == obj) return true;
 		if (!(obj instanceof Location)) return false;
 		Location loc = (Location) obj;
-		// return LocationUtils.areSimilar(this, loc); // Should we use tolerance?
 		if (lat != loc.lat) return false;
 		if (lon != loc.lon) return false;
 		if (depth != loc.depth) return false;
