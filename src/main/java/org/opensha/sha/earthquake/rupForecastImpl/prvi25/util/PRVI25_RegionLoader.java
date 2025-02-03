@@ -3,11 +3,16 @@ package org.opensha.sha.earthquake.rupForecastImpl.prvi25.util;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
+import org.opensha.commons.data.CSVFile;
+import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.NSHM23_BaseRegion;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
 
 public class PRVI25_RegionLoader {
 	
@@ -54,12 +59,27 @@ public class PRVI25_RegionLoader {
 		return Region.fromFeature(features.features.get(0));
 	}
 	
+	public static Region loadPRVI_IntermediateModelMapExtents() throws IOException {
+		return new Region(new Location(16.4,-70), new Location(20.2,-62));
+	}
+	
 	public static Region loadPRVI_ModelBroad() throws IOException {
 //		return new Region(new Location(16.5d, -70d), new Location(20, -62));
 		Region reg = PRVI25_SeismicityRegions.CRUSTAL.load();
 		reg = reg.clone();
 		reg.setName("PRVI - Model Region");
 		return reg;
+	}
+	
+	public static List<Site> loadHazardSites() throws IOException {
+		CSVFile<String> csv = CSVFile.readStream(PRVI25_CrustalFaultModels.class.getResourceAsStream("/data/erf/prvi25/sites/prvi_sites.csv"), true);
+		List<Site> sites = new ArrayList<>();
+		for (int row=1; row<csv.getNumRows(); row++) {
+			String name = csv.get(row, 0);
+			Location loc = new Location(csv.getDouble(row, 1), csv.getDouble(row, 2));
+			sites.add(new Site(loc, name));
+		}
+		return sites;
 	}
 
 	public static void main(String[] args) throws IOException {

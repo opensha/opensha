@@ -320,6 +320,10 @@ public class Inversions {
 				+ "and passthrough rates should be in the range [0,1]. Passthrough rates are assumed to be 1 for all "
 				+ "jumps not included in the file.");
 
+		ops.addOption(null, "seg-parent-rates", false,
+				"Flag to specify that the segmentation rates specified via --seg-rages <csv-file> use parent section "
+				+ "IDs rather than subsection IDs.");
+
 		ops.addOption(null, "seg-dist-d0", true,
 				"Use Shaw and Dieterich (2007) distance-dependent segmentation rate model. Sets D0 (referred to as R0 "
 				+ "in their model) in km, where D0=3 is the preferred value. Also see --seg-dist-delta.");

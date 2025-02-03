@@ -42,7 +42,9 @@ import com.google.common.base.Preconditions;
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
 public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 	PRVI_CRUSTAL_FM_V1p1("PRVI25 Crustal FM v1.1", "Crustal FM v1.1",
-			"/data/erf/prvi25/fault_models/crustal/NSHM2025_GeoDefModel_PRVI_v1-1_mod.geojson", 1d);
+			"/data/erf/prvi25/fault_models/crustal/NSHM2025_GeoDefModel_PRVI_v1-1_mod.geojson", 1d),
+	PRVI_CRUSTAL_FM_V1p2("PRVI25 Crustal FM v1.2", "Crustal FM v1.2",
+			"/data/erf/prvi25/fault_models/crustal/NSHM2025_GeoDefModel_PRVI_v1-2_ProjRates_mod.geojson", 0d);
 	
 	private String name;
 	private String shortName;
@@ -50,9 +52,9 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 	private double weight;
 	
 	/**
-	 * if true, then slip rates are vertical and need to be projected onto the plane
+	 * if true, then slip rates are unprojected and need to be projected onto the plane
 	 */
-	public static final boolean PROJECT_TO_PLANE = true;
+	public static final boolean PROJECT_TO_PLANE = false;
 	
 	public static final String HIGH_RATE_PROP_NAME = "HighRate";
 	public static final String LOW_RATE_PROP_NAME = "LowRate";

@@ -246,6 +246,8 @@ public class SiteLogicTreeHazardPageGen {
 				if (compDists == null || compCurves.size() < 2) {
 					lines.add("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 					siteLines.add("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
+					lines.add("");
+					lines.add("[__Download CSV__]("+resourcesDir.getName()+"/"+prefix+"_curve_dists.csv)");
 				} else {
 					// we have a comparison distribution
 					TableBuilder table = MarkdownUtils.tableBuilder();
@@ -259,6 +261,12 @@ public class SiteLogicTreeHazardPageGen {
 							exec, plotFutures);
 					table.addColumn("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 					table.finalizeLine();
+					
+					table.initNewLine();
+					table.addColumn("[__Download CSV__]("+resourcesDir.getName()+"/"+prefix+"_curve_dists.csv)");
+					table.addColumn("[__Download CSV__]("+resourcesDir.getName()+"/"+prefix+"_comp_curve_dists.csv)");
+					table.finalizeLine();
+					
 					
 					lines.addAll(table.build());
 					siteLines.addAll(table.build());
@@ -492,6 +500,8 @@ public class SiteLogicTreeHazardPageGen {
 						table.finalizeLine();
 						
 						siteLines.addAll(table.build());
+						siteLines.add("");
+						siteLines.add("[__Download Choice Mean Curves CSV__]("+resourcesDir.getName()+"/"+ltPrefix+"_means.csv)");
 						siteLines.add("");
 						
 						// value table
@@ -795,6 +805,15 @@ public class SiteLogicTreeHazardPageGen {
 		funcs.add(bounds68);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, transColor));
 		
+		CSVFile<String> csv = new CSVFile<>(true);
+		csv.addLine(perLabel+" ("+units+")", "Mean", "Median", "Min", "p2.5", "p16", "p84", "p97.5", "Max");
+		Preconditions.checkState(meanCurve.size() == medianCurve.size());
+		for (int i=0; i<meanCurve.size(); i++)
+			csv.addLine(meanCurve.getX(i)+"", meanCurve.getY(i)+"", medianCurve.getY(i)+"",
+					minMax.getLowerY(i)+"",	bounds95.getLowerY(i)+"", bounds68.getLowerY(i)+"",
+					bounds68.getUpperY(i)+"", bounds95.getUpperY(i)+"", minMax.getUpperY(i)+"");
+		csv.writeToFile(new File(resourcesDir, prefix+".csv"));
+		
 		Range yRange = new Range(1e-6, 1e0);
 		double minX = Double.POSITIVE_INFINITY;
 		double maxX = 0d;
@@ -884,6 +903,25 @@ public class SiteLogicTreeHazardPageGen {
 				funcs.add(nodeCurve);
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, nodeColor));
 			}
+			
+			CSVFile<String> csv = new CSVFile<>(true);
+			List<String> header = new ArrayList<>();
+			header.add(perLabel+" ("+units+")");
+			header.add("Mean");
+			for (int i=0; i<nodes.size(); i++)
+				header.add(nodes.get(i).getShortName());
+			csv.addLine(header);
+			for (int i=0; i<meanCurve.size(); i++) {
+				List<String> line = new ArrayList<>(header.size());
+				line.add((float)meanCurve.getX(i)+"");
+				line.add(meanCurve.getY(i)+"");
+				for (DiscretizedFunc nodeCurve : nodeMeanCurves) {
+					Preconditions.checkState((float)nodeCurve.getX(i) == (float)meanCurve.getX(i));
+					line.add(nodeCurve.getY(i)+"");
+				}
+				csv.addLine(line);
+			}
+			csv.writeToFile(new File(resourcesDir, prefix+".csv"));
 		}
 		
 		if (nodeIndvCurves != null) {

@@ -13,7 +13,6 @@ import java.io.Writer;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -27,19 +26,15 @@ import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.plot.XYPlot;
-import org.jfree.chart.title.TextTitle;
-import org.jfree.chart.ui.HorizontalAlignment;
 import org.jfree.chart.ui.RectangleEdge;
-import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.chart.ui.TextAnchor;
-import org.jfree.chart.ui.VerticalAlignment;
 import org.jfree.data.Range;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.Site;
-import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DefaultXY_DataSet;
 import org.opensha.commons.data.function.DiscretizedFunc;
+import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.data.function.XY_DataSet;
 import org.opensha.commons.data.xyz.GriddedGeoDataSet;
 import org.opensha.commons.geo.GriddedRegion;
@@ -73,17 +68,14 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
-import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
 import org.opensha.sha.earthquake.param.ApplyGardnerKnopoffAftershockFilterParam;
 import org.opensha.sha.earthquake.param.AseismicityAreaReductionParam;
-import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
-import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.earthquake.param.ProbabilityModelOptions;
 import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.earthquake.param.UseProxySectionsParam;
@@ -91,7 +83,6 @@ import org.opensha.sha.earthquake.param.UseRupMFDsParam;
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.FaultSection;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
@@ -1422,9 +1413,9 @@ public class SolHazardMapCalc {
 	}
 	
 	public static DiscretizedFunc[] loadCurvesCSV(CSVFile<String> csv, GriddedRegion region, boolean allowNull) {
-		ArbitrarilyDiscretizedFunc xVals = new ArbitrarilyDiscretizedFunc();
-		for (int col=3; col<csv.getNumCols(); col++)
-			xVals.set(csv.getDouble(0, col), 0d);
+		double[] xVals = new double[csv.getNumCols()-3];
+		for (int i=0; i<xVals.length; i++)
+			xVals[i] = csv.getDouble(0, i+3);
 		
 		boolean remap = !allowNull && region != null && region.getNodeCount() != csv.getNumRows()-1;
 		if (remap)
@@ -1459,10 +1450,10 @@ public class SolHazardMapCalc {
 				int csvIndex = csv.getInt(row, 0);
 				Preconditions.checkState(index == csvIndex, "CSV index mismatch: %s != %s", index, csvIndex);
 			}
-			DiscretizedFunc curve = new ArbitrarilyDiscretizedFunc();
-			for (int i=0; i<xVals.size(); i++)
-				curve.set(xVals.getX(i), csv.getDouble(row, i+3));
-			curves[index] = curve;
+			double[] yVals = new double[xVals.length];
+			for (int i=0; i<xVals.length; i++)
+				yVals[i] = csv.getDouble(row, i+3);
+			curves[index] = new LightFixedXFunc(xVals, yVals);
 		}
 		if (remap) {
 			// make sure they were all mapped
