@@ -630,7 +630,10 @@ public class SiteLogicTreeHazardPageGen {
 		if (curves.size() != tree.size())
 			System.out.println("WARNING: we have "+curves.size()+" curves but the passed in tree has "
 					+tree.size()+" breanches. It's likely resampled and we will attempt to match.");
+		// if the passed in tree doesn't match that loaded from the CSV file, this list will contain curves
+		// remapped to the passed in tree
 		List<DiscretizedFunc> reordered = null;
+		// this is a map of each passed in logic tree branch to the (first) index in the passed in tree
 		Map<LogicTreeBranch<?>, Integer> treeBranchIndexes = null;
 		for (int i=0; i<curves.size(); i++) {
 			LogicTreeBranch<?> treeBranch = i < tree.size() ? tree.getBranch(i) : null;
@@ -642,8 +645,11 @@ public class SiteLogicTreeHazardPageGen {
 					treeBranchIndexes = new HashMap<>(tree.size());
 					for (int index=0; index<tree.size(); index++) {
 						LogicTreeBranch<?> tempBranch = tree.getBranch(index);
-						treeBranchIndexes.put(tempBranch, index);
-						Preconditions.checkState(treeBranchIndexes.containsKey(tempBranch));
+						if (!treeBranchIndexes.containsKey(tempBranch)) {
+							// that check was to make sure we only keep the first mapping
+							treeBranchIndexes.put(tempBranch, index);
+							Preconditions.checkState(treeBranchIndexes.containsKey(tempBranch));
+						}
 					}
 //					Preconditions.checkState(treeBranchIndexes.size() == tree.size());
 					reordered = new ArrayList<>(tree.size());
@@ -677,7 +683,11 @@ public class SiteLogicTreeHazardPageGen {
 					Integer prevIndex = treeBranchIndexes.get(treeBranch);
 					Preconditions.checkState(prevIndex != null,
 							"No mappings found for branch %s; i=%s, prevIndex=%s", treeBranch, i, prevIndex);
-					reordered.set(i, reordered.get(prevIndex));
+					DiscretizedFunc curve = reordered.get(prevIndex);
+					Preconditions.checkNotNull(curve,
+							"Filling in a hole at %s, found prevIndex=%s but the curve at the index was null? branch: %s",
+							i, prevIndex, treeBranch);
+					reordered.set(i, curve);
 				}
 			}
 			if (holes > 0)
