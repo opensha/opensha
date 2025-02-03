@@ -93,6 +93,36 @@ public interface XYZ_DataSet extends java.io.Serializable, Cloneable {
 	public void set(int index, double z);
 	
 	/**
+	 * Adds to the value at the given point. If the point doesn't exist, it will be added
+	 * to the dataset.
+	 * 
+	 * @param point - the point at which to set
+	 * @param z - the value to set
+	 * @throws NullPointerException if <code>point</code> is null
+	 */
+	public void add(Point2D point, double z);
+	
+	/**
+	 * Adds to the value at the given point. If the point doesn't exist, it will be added
+	 * to the dataset.
+	 * 
+	 * @param x - the x value of the point at which to set
+	 * @param y - the y value of the point at which to set
+	 * @param z - the value to set
+	 */
+	public void add(double x, double y, double z);
+	
+	/**
+	 * Adds to the value at the given index. If index < 0 or index >= size(),
+	 * then an exception is thrown.
+	 * 
+	 * @param index - the index of the point to be set
+	 * @param z - the value to set
+	 * @throws IndexOutOfBoundsException if <code>index < 0</code> or <code>index >= size()</code>
+	 */
+	public void add(int index, double z);
+	
+	/**
 	 * Gets the value at the given point. If the point doesn't exist, null will be returned.
 	 * 
 	 * @param point - the point at which to get
