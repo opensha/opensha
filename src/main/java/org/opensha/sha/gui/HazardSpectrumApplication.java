@@ -406,10 +406,14 @@ extends HazardCurveApplication {
 		String name1 = event.getParameterName();
 
 		if (name1.equalsIgnoreCase(this.erfGuiBean.ERF_PARAM_NAME)) {
+			// Load new parameters after ERF downloads
+			erfGuiBean.refreshAfterDownload();
 
 			String plottingOption = null;
-			if (plotOptionControl != null)
+			if (plotOptionControl != null) {
 				plottingOption = this.plotOptionControl.getSelectedOption();
+			}
+
 			// add the Epistemic control panel option if Epistemic ERF is selected
 			if (erfGuiBean.isEpistemicList()) {
 				showControlPanel(ERF_EpistemicListControlPanel.NAME);

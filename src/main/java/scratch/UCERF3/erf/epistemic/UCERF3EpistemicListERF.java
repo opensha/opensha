@@ -111,7 +111,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 		fetchFuture.thenAccept(fetch -> {
 			this.tree = fetch.getLogicTree().sorted(new ReadOptimizedBranchComparator());
 			Preconditions.checkState(fetch != null && !tree.getBranches().isEmpty());
-			// build enum paramters, allow every option in the fetcher
+			// build enum parameters, allow every option in the fetcher
 			for (LogicTreeLevel<?> level : tree.getLevels()) {
 				EnumParameter<?> param = buildParam(tree, level);
 				param.addParameterChangeListener(this);
@@ -166,7 +166,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 			}
 		}
 		
-		fetchFuture.thenAccept(fetch -> {
+		fetchFuture.thenRun(() -> {
 			for (LogicTreeLevel<?> level : tree.getLevels()) {
 				EnumParameter<?> param = enumParamsMap.get(level);
 				if (param != null)
@@ -243,9 +243,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 	@SuppressWarnings("unchecked")
 	@Override
 	public void setParameter(String name, Object value) {
-		fetchFuture.thenRun(() -> {
-			paramList.getParameter(name).setValue(value);
-		});
+		paramList.getParameter(name).setValue(value);
 	}
 
 	@Override
@@ -353,6 +351,11 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 			branches = null;
 		}
 		createParamList();
+	}
+	
+	@Override
+	public void runAfterDownload(Runnable callback) {
+		fetchFuture.thenRun(callback);
 	}
 	
 	public static void main(String[] args) throws ZipException, IOException {

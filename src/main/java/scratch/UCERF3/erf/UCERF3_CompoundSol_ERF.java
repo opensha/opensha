@@ -58,12 +58,9 @@ import com.google.common.collect.Maps;
  */
 public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 
-	private static final boolean D = true;
+	private static final boolean D = false;
 	
 	public static final String NAME = "UCERF3 Single Branch ERF";
 	
@@ -199,7 +196,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	
 	@Override
 	public void updateForecast() {
-		if (D) System.out.println("updateForecast called");
+		System.out.println("updateForecast called");
 		if (solutionStale) {
 			// this means that we have to load the solution (parameter change or never loaded)
 			fetchSolution();
@@ -233,6 +230,11 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		} else {
 			super.parameterChange(event);
 		}
+	}
+
+	@Override
+	public void runAfterDownload(Runnable callback) {
+		fetchFuture.thenRun(callback);
 	}
 	
 	public static void main(String[] args) {
