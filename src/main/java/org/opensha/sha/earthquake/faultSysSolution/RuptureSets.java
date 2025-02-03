@@ -1143,7 +1143,7 @@ public class RuptureSets {
 
 			@Override
 			public void addExtraOptions(Options ops) {
-				ops.addOption(null, "max-length", false, "Maximum rupture length (in km).");
+				ops.addOption(null, "max-length", true, "Maximum rupture length (in km).");
 				ops.addOption(null, "bilateral", false, "Flag to enable bilateral rupture. Also see --bilateral-variation-mode.");
 				ops.addOption(null, "bilateral-variation-mode", true, "Bilateral variation mode, see figure 13 of Milner et al. (2022). Options:"
 						+FaultSysTools.enumOptions(SecondaryVariations.class));
