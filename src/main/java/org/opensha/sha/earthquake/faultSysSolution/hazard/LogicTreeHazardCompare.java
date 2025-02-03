@@ -22,7 +22,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.StringReader;
 import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -31,25 +30,22 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.StringTokenizer;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 import javax.imageio.ImageIO;
 import javax.swing.JLabel;
 import javax.swing.JLayeredPane;
-import javax.swing.JPanel;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
@@ -80,7 +76,6 @@ import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
-import org.opensha.commons.logicTree.LogicTreeLevel.RandomlySampledLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils;
@@ -474,7 +469,7 @@ public class LogicTreeHazardCompare {
 		}
 		
 		ReturnPeriods[] rps = SolHazardMapCalc.MAP_RPS;
-		double[] periods = { 0d, 1d };
+		double[] periods;
 		if (cmd.hasOption("periods")) {
 			String perStr = cmd.getOptionValue("periods");
 			if (perStr.contains(",")) {
@@ -484,6 +479,17 @@ public class LogicTreeHazardCompare {
 					periods[i] = Double.parseDouble(split[i]);
 			} else {
 				periods = new double[] {Double.parseDouble(perStr)};
+			}
+		} else {
+			// detect periods in each zip file
+			ArchiveInput hazardZip = ArchiveInput.getDefaultInput(hazardFile);
+			
+			if (compHazardFile == null) {
+				periods = detectHazardPeriods(rps, hazardZip);
+			} else {
+				ArchiveInput compHazardZip = ArchiveInput.getDefaultInput(compHazardFile);
+				periods = detectHazardPeriods(rps, hazardZip, compHazardZip);
+				compHazardZip.close();
 			}
 		}
 		double spacing = -1; // detect
@@ -584,6 +590,38 @@ public class LogicTreeHazardCompare {
 				comp.close();
 		}
 		System.exit(exit);
+	}
+	
+	public static double[] detectHazardPeriods(ReturnPeriods[] rps, ArchiveInput... archives) throws IOException {
+		Preconditions.checkState(archives.length > 0);
+		List<Double> periods = null;
+		for (ArchiveInput archive : archives) {
+			Set<String> uniqueMapNames = archive.entryStream()
+					.map(s -> s.contains("/") ? s.substring(s.lastIndexOf('/') + 1) : s)
+	                .filter(s -> s.startsWith("map_"))
+	                .filter(s -> s.contains(rps[0].name()))
+	                .collect(Collectors.toSet());
+			System.out.println("Detecting periods for "+archive.getName()+" with "+uniqueMapNames.size()
+					+" unique map names detected for "+rps[0].name());
+			Preconditions.checkState(!uniqueMapNames.isEmpty(), "No map files found in %s", archive.getName());
+			List<Double> myPeriods = new ArrayList<>();
+			for (double period=0d; period<=10.00001; period+=0.01) {
+				period = DataUtils.roundFixed(period, 3);
+				String fileName = MPJ_LogicTreeHazardCalc.mapPrefix(period, rps[0])+".txt";
+				if (uniqueMapNames.contains(fileName))
+					myPeriods.add(period);
+			}
+			Preconditions.checkState(!myPeriods.isEmpty(), "No periods detected for %s", archive.getName());
+			System.out.println("\tDetected periods: "+myPeriods);
+			if (periods == null) {
+				periods = myPeriods;
+			} else {
+				periods.retainAll(myPeriods);
+				Preconditions.checkState(!periods.isEmpty(),
+						"No common periods detected after adding %s from %s", myPeriods, archive.getName());
+			}
+		}
+		return Doubles.toArray(periods);
 	}
 	
 	public static Options createOptions() {
@@ -1788,10 +1826,11 @@ public class LogicTreeHazardCompare {
 				GriddedGeoDataSet sd = new GriddedGeoDataSet(region);
 				GriddedGeoDataSet cov = new GriddedGeoDataSet(region);
 				calcSD_COV(maps, weights, mean, sd, cov);
+				GriddedGeoDataSet meanPercentile = calcPercentileWithinDist(mapNCDFs, mean);
 				
 				File hazardCSV = new File(resourcesDir, prefix+".csv");
 				System.out.println("Writing CSV: "+hazardCSV.getAbsolutePath());
-				writeHazardCSV(hazardCSV, mean, median, min, max, cov);
+				writeHazardCSV(hazardCSV, mean, median, min, max, cov, meanPercentile, null, null);
 				
 //				table.addLine(meanMinMaxSpreadMaps(mean, min, max, spread, name, label, prefix, resourcesDir));
 				
@@ -1804,6 +1843,10 @@ public class LogicTreeHazardCompare {
 				GriddedGeoDataSet ciqr = null;
 				GriddedGeoDataSet csd = null;
 				GriddedGeoDataSet ccov = null;
+				GriddedGeoDataSet cMeanPercentile = null;
+				GriddedGeoDataSet cMedianPercentile = null;
+				
+				boolean multi = branches.size() > 1;
 				
 				if (comp != null) {
 					comp.setRemapToRegion(region);
@@ -1830,9 +1873,14 @@ public class LogicTreeHazardCompare {
 					calcSD_COV(cmaps, comp.weights, cmean, csd, ccov);
 //					table.addLine(meanMinMaxSpreadMaps(cmean, cmin, cmax, cspread, compName, label, prefix+"_comp", resourcesDir));
 					
+					if (multi) {
+						cMeanPercentile = calcPercentileWithinDist(mapNCDFs, cmean);
+						cMedianPercentile = calcPercentileWithinDist(mapNCDFs, cmedian);
+					}
+					
 					File compHazardCSV = new File(resourcesDir, prefix+"_comp.csv");
 					System.out.println("Writing CSV: "+compHazardCSV.getAbsolutePath());
-					writeHazardCSV(compHazardCSV, cmean, cmedian, cmin, cmax, ccov);
+					writeHazardCSV(compHazardCSV, cmean, cmedian, cmin, cmax, ccov, null, cMeanPercentile, cMedianPercentile);
 					
 					lines.add("Download Mean Hazard CSVs: ["+hazardCSV.getName()+"]("+resourcesDir.getName()+"/"+hazardCSV.getName()
 						+")  ["+compHazardCSV.getName()+"]("+resourcesDir.getName()+"/"+compHazardCSV.getName()+")");
@@ -1841,7 +1889,6 @@ public class LogicTreeHazardCompare {
 				}
 				lines.add("");
 				
-				boolean multi = branches.size() > 1;
 				boolean cmulti = comp != null && comp.branches != null && comp.branches.size() > 1;
 				
 				MapPlot meanMapPlot = mapper.buildMapPlot(resourcesDir, prefix+"_mean", log10(mean),
@@ -1975,8 +2022,6 @@ public class LogicTreeHazardCompare {
 						
 						table.addLine(MarkdownUtils.boldCentered("Comparison Mean Percentile"),
 								MarkdownUtils.boldCentered("Comparison Median Percentile"));
-						GriddedGeoDataSet cMeanPercentile = calcPercentileWithinDist(mapNCDFs, cmean);
-						GriddedGeoDataSet cMedianPercentile = calcPercentileWithinDist(mapNCDFs, cmedian);
 						if (comp.gridReg.getNodeCount() < gridReg.getNodeCount()) {
 							// see if we should shrink them to comparison
 							GriddedGeoDataSet remappedMeanPercentile = new GriddedGeoDataSet(comp.gridReg, false);
@@ -2028,7 +2073,6 @@ public class LogicTreeHazardCompare {
 				
 				// plot mean percentile
 				TableBuilder table = MarkdownUtils.tableBuilder();
-				GriddedGeoDataSet meanPercentile = calcPercentileWithinDist(mapNCDFs, mean);
 				File meanPercentileMap = submitMapFuture(mapper, exec, futures, resourcesDir, prefix+"_mean_percentile",
 						meanPercentile, percentileCPT, TITLES ? "Branch-Averaged Percentiles" : " ",
 						"Branch Averaged %-ile, "+unitlessLabel);
@@ -2299,9 +2343,20 @@ public class LogicTreeHazardCompare {
 				CSVFile<String> choiceMeanSummaryCSV = new CSVFile<>(false);
 				CSVFile<String> choiceMeanAbsSummaryCSV = new CSVFile<>(false);
 				
+				boolean levelNameOverlap = false;
+				List<String> levelPrefixes = new ArrayList<>();
+				for (LogicTreeLevel<?> level : tree.getLevels()) {
+					String ltPrefix = levelPrefix(level);
+					levelNameOverlap |= levelPrefixes.contains(ltPrefix);
+					levelPrefixes.add(ltPrefix);
+				}
+				if (levelNameOverlap)
+					for (int i=0; i<levelPrefixes.size(); i++)
+						levelPrefixes.set(i, i+"_"+levelPrefixes.get(i));
+				
 				for (int l=0; l<choiceMapsList.size(); l++) {
 					LogicTreeLevel<?> level = tree.getLevels().get(l);
-					String levelPrefix = prefix+"_"+levelPrefix(level);
+					String levelPrefix = prefix+"_"+levelPrefixes.get(l);
 					HashMap<LogicTreeNode, List<GriddedGeoDataSet>> choiceMaps = choiceMapsList.get(l);
 					if (choiceMaps != null) {
 						System.out.println(level.getName()+" has "+choiceMaps.size()+" choices");
@@ -2714,17 +2769,44 @@ public class LogicTreeHazardCompare {
 	}
 	
 	private void writeHazardCSV(File outputFile, GriddedGeoDataSet mean, GriddedGeoDataSet median,
-			GriddedGeoDataSet min, GriddedGeoDataSet max, GriddedGeoDataSet cov) throws IOException {
+			GriddedGeoDataSet min, GriddedGeoDataSet max, GriddedGeoDataSet cov, GriddedGeoDataSet meanPercentile,
+			GriddedGeoDataSet meanPercentileInComparison, GriddedGeoDataSet medianPercentileInComparison) throws IOException {
 		CSVFile<String> csv = new CSVFile<>(true);
 		
-		csv.addLine("Location Index", "Latitutde", "Longitude", "Weighted Mean", "Weighted Median", "Min", "Max", "COV");
+		List<String> header = new ArrayList<>();
+		header.addAll(List.of("Location Index", "Latitutde", "Longitude", "Weighted Mean", "Weighted Median", "Min", "Max", "COV"));
+		if (meanPercentile != null) {
+			if (meanPercentileInComparison == null)
+				header.add("Mean Map Percentile");
+			else
+				header.add("Mean Map Percentile (within own distribution)");
+		}
+		if (meanPercentileInComparison != null)
+			header.add("Mean Map Percentile (within comparison distribution)");
+		if (medianPercentileInComparison != null)
+			header.add("Median Map Percentile (within comparison distribution)");
+		csv.addLine(header);
 		
 		GriddedRegion reg = mean.getRegion();
 		for (int i=0; i<reg.getNodeCount(); i++) {
 			Location loc = reg.getLocation(i);
 			
-			csv.addLine(i+"", (float)loc.getLatitude()+"", (float)loc.getLongitude()+"", mean.get(i)+"",
-					median.get(i)+"", min.get(i)+"", max.get(i)+"", cov.get(i)+"");
+			List<String> line = new ArrayList<>(header.size());
+			line.add(i+"");
+			line.add((float)loc.getLatitude()+"");
+			line.add((float)loc.getLongitude()+"");
+			line.add(mean.get(i)+"");
+			line.add(median.get(i)+"");
+			line.add(min.get(i)+"");
+			line.add(max.get(i)+"");
+			line.add(cov.get(i)+"");
+			if (meanPercentile != null)
+				line.add((float)meanPercentile.get(i)+"");
+			if (meanPercentileInComparison != null)
+				line.add((float)meanPercentileInComparison.get(i)+"");
+			if (medianPercentileInComparison != null)
+				line.add((float)medianPercentileInComparison.get(i)+"");
+			csv.addLine(line);
 		}
 		
 		csv.writeToFile(outputFile);
