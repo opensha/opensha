@@ -410,6 +410,8 @@ public class RuptureSets {
 		@Expose	private float jumpProbThresh = 0.001f;
 		// cumulative rake change threshold
 		@Expose	private float cmlRakeThresh = 360f;
+		// maximum rupture length
+		@Expose	private double maxLength = Double.NaN;
 		// CONNECTION STRATEGY
 		// maximum individual jump distance
 		@Expose	private double maxJumpDist = 15d;
@@ -532,6 +534,11 @@ public class RuptureSets {
 		public void setCmlRakeThresh(float cmlRakeThresh) {
 			clear();
 			this.cmlRakeThresh = cmlRakeThresh;
+		}
+
+		public void setMaxRupLength(double maxLength) {
+			clear();
+			this.maxLength = maxLength;
 		}
 
 		public void setMaxJumpDist(double maxJumpDist) {
@@ -743,6 +750,11 @@ public class RuptureSets {
 //			configBuilder.cumulativeRakeChange(360f); outputName += "_cmlRake360"; // cml rake only
 //			configBuilder.u3Azimuth(); outputName += "_u3Az";
 //			configBuilder.u3Coulomb(CoulombRates.loadUCERF3CoulombRates(fm)); outputName += "_u3CFF";
+			
+			if (maxLength > 0) {
+				configBuilder.maxLength(maxLength);
+				outputName += "_maxLen"+(int)maxLength;
+			}
 			
 			/*
 			 * No proxy connnections
@@ -1123,12 +1135,15 @@ public class RuptureSets {
 				config.setBilateral(cmd.hasOption("bilateral"));
 				if (cmd.hasOption("bilateral-variation-mode"))
 					config.setBilateralVariationMode(SecondaryVariations.valueOf(cmd.getOptionValue("bilateral-variation-mode")));
+				if (cmd.hasOption("max-length"))
+					config.setMaxRupLength(Double.parseDouble(cmd.getOptionValue("max-length")));
 				
 				return config;
 			}
 
 			@Override
 			public void addExtraOptions(Options ops) {
+				ops.addOption(null, "max-length", true, "Maximum rupture length (in km).");
 				ops.addOption(null, "bilateral", false, "Flag to enable bilateral rupture. Also see --bilateral-variation-mode.");
 				ops.addOption(null, "bilateral-variation-mode", true, "Bilateral variation mode, see figure 13 of Milner et al. (2022). Options:"
 						+FaultSysTools.enumOptions(SecondaryVariations.class));

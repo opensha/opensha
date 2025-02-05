@@ -779,15 +779,19 @@ public class Inversions {
 				int sect2 = csv.getInt(row, 1);
 				Preconditions.checkState(sect1 != sect2, "Both section IDs the same? %s == %s", sect1, sect2);
 				if (parents) {
-					Preconditions.checkState(parentsSet.contains(sect1), "Bad parent section ID: %s", sect1);
-					Preconditions.checkState(parentsSet.contains(sect2), "Bad parent section ID: %s", sect2);
+					Preconditions.checkState(parentsSet.contains(sect1),
+							"--seg-parent-rates was supplied, but no sections have the specified parent section ID: %s", sect1);
+					Preconditions.checkState(parentsSet.contains(sect2),
+							"--seg-parent-rates was supplied, but no sections have the specified parent section ID: %s", sect2);
 				} else {
 					Preconditions.checkState(sect1 >= 0 && sect1 < rupSet.getNumSections(), "Bad section ID: %s", sect1);
 					Preconditions.checkState(sect2 >= 0 && sect2 < rupSet.getNumSections(), "Bad section ID: %s", sect2);
 					int parent1 = rupSet.getFaultSectionData(sect1).getParentSectionId();
 					int parent2 = rupSet.getFaultSectionData(sect2).getParentSectionId();
 					if (parent1 >= 0 || parent2 >= 0)
-						Preconditions.checkState(parent1 != parent2, "Cannot constraint segmentation on the same parent section.");
+						Preconditions.checkState(parent1 != parent2, "Cannot constrain segmentation between two subsections "
+								+ "on the same parent section. You must split the parent fault section at any segmentation "
+								+ "points before subsectioning (and building the rupture set).");
 				}
 				double rate = csv.getDouble(row, 2);
 				Preconditions.checkState(rate >= 0 && rate <= 1, "Passthrough rates must be in the range [0,1]: %s", rate);
