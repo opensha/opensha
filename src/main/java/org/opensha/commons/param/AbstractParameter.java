@@ -346,7 +346,6 @@ public abstract class AbstractParameter<E> implements Parameter<E> {
 	 *        be different.
 	 */
 	public void firePropertyChange(ParameterChangeEvent event) {
-
 		String S = C + ": firePropertyChange(): ";
 		if (D)
 			System.out.println(S + "Firing change event for parameter = " +

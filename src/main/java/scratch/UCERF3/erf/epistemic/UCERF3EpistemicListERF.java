@@ -50,7 +50,6 @@ import org.opensha.sha.util.TectonicRegionType;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 
-import scratch.UCERF3.U3CompoundFaultSystemSolution;
 import scratch.UCERF3.enumTreeBranches.DeformationModels;
 import scratch.UCERF3.enumTreeBranches.FaultModels;
 import scratch.UCERF3.enumTreeBranches.ScalingRelationships;
@@ -351,11 +350,6 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 			branches = null;
 		}
 		createParamList();
-	}
-	
-	@Override
-	public void runAfterDownload(Runnable callback) {
-		fetchFuture.thenRun(callback);
 	}
 	
 	public static void main(String[] args) throws ZipException, IOException {

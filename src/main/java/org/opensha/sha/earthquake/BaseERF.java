@@ -83,15 +83,4 @@ public interface BaseERF extends Named, Serializable, Comparable<BaseERF> {
 	 * @return : ArrayList<TectonicRegionType>
 	 */
 	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes();
-	
-	/**
-	 * For large BaseERF downloads, GUI applications may need to be reloaded
-	 * after parameter retrieval. This method enables subclasses to manage
-	 * downloads and run arbitrary logic post-download from the calling GUI.
-	 * Does nothing by default and does not need to be implemented where ERFs
-	 * do not have large downloads.
-	 * @param callback Logic to execute afterwards
-	 */
-	public default void runAfterDownload(Runnable callback) { }
-
 }

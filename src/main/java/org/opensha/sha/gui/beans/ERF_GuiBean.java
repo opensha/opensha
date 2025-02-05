@@ -23,6 +23,8 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.Border;
 import javax.swing.border.TitledBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.exceptions.ParameterException;
@@ -62,7 +64,7 @@ import com.google.common.base.Preconditions;
  */
 
 public class ERF_GuiBean extends JPanel implements ParameterChangeFailListener,
-ParameterChangeListener {
+ParameterChangeListener, ChangeListener {
 
 	private final static String C = "ERF_GuiBean";
 
@@ -141,7 +143,7 @@ ParameterChangeListener {
 		catch(Exception e) {
 			e.printStackTrace();
 		}
-		// save the class names of ERFs to be shown\
+		// save the class names of ERFs to be shown
 		this.erfRefs = erfRefs;
 
 		// create the instance of ERFs
@@ -194,8 +196,7 @@ ParameterChangeListener {
 	 * selected by the user. Based on the selected Forecast it also creates
 	 * timespan and add that to the same panel window that shows the ERF parameters.
 	 */
-	private void setParamsInForecast() throws InvocationTargetException{
-
+	private void setParamsInForecast() throws InvocationTargetException {
 		Parameter chooseERF_Param = parameterList.getParameter(this.ERF_PARAM_NAME);
 		parameterList = new ParameterList();
 		parameterList.addParameter(chooseERF_Param);
@@ -203,6 +204,7 @@ ParameterChangeListener {
 		getSelectedERF_Instance();
 		// getting the EqkRupForecast param List and its iterator
 		ParameterList paramList = eqkRupForecast.getAdjustableParameterList();
+		paramList.addChangeListener(this);
 		Iterator it = paramList.getParametersIterator();
 
 		// make the parameters visible based on selected forecast
@@ -664,15 +666,6 @@ ParameterChangeListener {
 		return null;
 	}
 	
-	/**
-	 * Refresh the GUI after ERF downloads.
-	 * This is requires for long downloads to show retrieved parameters.
-	 */
-	public void refreshAfterDownload() {
-		eqkRupForecast.runAfterDownload(this::refreshGUI);
-		
-	}
-
 	private void jbInit() throws Exception {
 
 		//setLayout(new GridBagLayout());
@@ -693,6 +686,11 @@ ParameterChangeListener {
 		add(erfScrollPane,  BorderLayout.CENTER);
 
 		//erfScrollPane.getViewport().add(erfAndTimespanPanel, null);
+	}
+
+	@Override
+	public void stateChanged(ChangeEvent e) {
+		refreshGUI();
 	}
 
 }

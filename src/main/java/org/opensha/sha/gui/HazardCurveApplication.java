@@ -1097,9 +1097,6 @@ ScalarIMRChangeListener {
 			updateSiteParams();
 		}
 		if (name1.equalsIgnoreCase(ERF_GuiBean.ERF_PARAM_NAME)) {
-			// Load new parameters after ERF downloads
-			erfGuiBean.refreshAfterDownload();
-
 			String plottingOption = null;
 			if (plotOptionControl != null)
 				plottingOption = this.plotOptionControl.getSelectedOption();

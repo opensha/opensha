@@ -8,7 +8,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.zip.ZipException;
 
 import javax.swing.JOptionPane;
@@ -116,10 +115,8 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		this.fetchFuture = fetchFuture;
 		fetchFuture.thenAccept(fetch -> {
 			enumParamsMap = Maps.newHashMap();
-			
 			Preconditions.checkState(initial == null || initial.isFullySpecified(),
-					"Initial branch must be null or fully specified");
-			
+				"Initial branch must be null or fully specified");
 			if (fetch != null && !fetch.getBranches().isEmpty()) {
 				// build enum paramters, allow every option in the fetcher
 				// note that not-present combinations may still be possible
@@ -141,7 +138,6 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		super.createParamList();
 		if (enumParamsMap == null)
 			return;
-
 		List<Class<? extends U3LogicTreeBranchNode<?>>> logicTreeNodeClasses = U3LogicTreeBranch.getLogicTreeNodeClasses();
 		for (int i=0; i < logicTreeNodeClasses.size(); i++) {
 			Class<? extends U3LogicTreeBranchNode<?>> clazz = logicTreeNodeClasses.get(i);
@@ -149,7 +145,6 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 			if (param != null)
 				adjustableParams.addParameter(i, param);
 		}
-		
 		if (adjustableParams.containsParameter(FILE_PARAM_NAME))
 			adjustableParams.removeParameter(fileParam);
 	}
@@ -163,7 +158,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 				setParameter(node.getBranchLevelName(), node);
 		});
 	}
-	
+
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private static EnumParameter buildParam(
 			Class<? extends U3LogicTreeBranchNode<?>> clazz, Collection<U3LogicTreeBranch> branches,
@@ -232,11 +227,6 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		}
 	}
 
-	@Override
-	public void runAfterDownload(Runnable callback) {
-		fetchFuture.thenRun(callback);
-	}
-	
 	public static void main(String[] args) {
 		UCERF3_CompoundSol_ERF erf;
 		try {
