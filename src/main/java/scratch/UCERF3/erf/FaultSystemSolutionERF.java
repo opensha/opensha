@@ -441,7 +441,7 @@ public class FaultSystemSolutionERF extends BaseFaultSystemSolutionERF {
 	protected boolean isRuptureIncluded(int fltSystRupIndex) {
 		FaultSystemRupSet rupSet = faultSysSolution.getRupSet();
 		if (rupSet instanceof InversionFaultSystemRupSet)
-			return ((InversionFaultSystemRupSet)rupSet).isRuptureBelowSectMinMag(fltSystRupIndex);
+			return !((InversionFaultSystemRupSet)rupSet).isRuptureBelowSectMinMag(fltSystRupIndex);
 		ModSectMinMags minMags = rupSet.getModule(ModSectMinMags.class);
 		if (minMags != null)
 			return !minMags.isRupBelowSectMinMag(fltSystRupIndex);
