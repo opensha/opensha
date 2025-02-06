@@ -194,6 +194,41 @@ public final class LocationUtils {
 		double v = vertDistance(p1, p2);
 		return Math.sqrt(h * h + v * v);
 	}
+	
+	/**
+	 * Calculates the 3D cartesian distance between two locations, useful if you only
+	 * need a quick distance metric to determine the relative distance between
+	 * various objects. For any other use case, use {@link #linearDistance(Location, Location)}
+	 * or {@link #linearDistanceFast(Location, Location)}.
+	 * 
+	 * @param p1 the first <code>Location</code> point
+	 * @param p2 the second <code>Location</code> point
+	 * @return the cartesian distance between the points
+	 */
+	public static double cartesianDistance(Location p1, Location p2) {
+		return Math.sqrt(cartesianDistanceSq(p1, p2));
+	}
+	
+	/**
+	 * Calculates the squared 3D cartesian distance between two locations, useful if you only
+	 * need a quick distance metric to determine the relative distance between various objects.
+	 * This version is faster than {@link #cartesianDistance(Location, Location)} because it
+	 * skips the square-root step, and may be equally useful if you just need to find the
+	 * closest point.
+	 * 
+	 * <p>For any other use case, use {@link #linearDistance(Location, Location)}
+	 * or {@link #linearDistanceFast(Location, Location)}.
+	 * 
+	 * @param p1 the first <code>Location</code> point
+	 * @param p2 the second <code>Location</code> point
+	 * @return the cartesian distance between the points
+	 */
+	public static double cartesianDistanceSq(Location p1, Location p2) {
+		double latDiff = p1.lat - p2.lat;
+		double lonDiff = p1.lon - p2.lon;
+		double vDiff = p1.depth - p2.depth;
+		return latDiff*latDiff + lonDiff*lonDiff + vDiff*vDiff;
+	}
 
 	/**
 	 * Computes the shortest distance between a point and a line (great-circle).
