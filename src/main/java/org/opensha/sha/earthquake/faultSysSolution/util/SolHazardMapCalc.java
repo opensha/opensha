@@ -51,6 +51,7 @@ import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYZPlotSpec;
 import org.opensha.commons.mapping.PoliticalBoundariesData;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
+import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.ReturnPeriodUtils;
@@ -202,8 +203,14 @@ public class SolHazardMapCalc {
 					@Override
 					public ScalarIMR get() {
 						ScalarIMR gmm = supplier.get();
-						for (String paramName : parameterOverrides.keySet())
-							gmm.getParameter(paramName).setValue(parameterOverrides.get(paramName));
+						for (String paramName : parameterOverrides.keySet()) {
+							Parameter param = gmm.getParameter(paramName);
+							Object value = parameterOverrides.get(paramName);
+							if (param instanceof WarningParameter<?>)
+								((WarningParameter)param).setValueIgnoreWarning(value);
+							else
+								param.setValue(value);
+						}
 						return gmm;
 					}
 				});
