@@ -185,6 +185,8 @@ public class GeographicMapMaker {
 	protected float arrowheadThickness = 2f;
 	protected double arrowAngle = 35d;
 	protected boolean fillArrowheads = false;
+	protected Color arrowheadOutlineColor;
+	protected float arrowheadOutlineThickness;
 	protected boolean closeArrowheads = false;
 	
 	/*
@@ -828,7 +830,13 @@ public class GeographicMapMaker {
 	}
 	
 	public void setFillArrowheads(boolean fillArrowheads) {
+		setFillArrowheads(fillArrowheads, null, 0f);
+	}
+	
+	public void setFillArrowheads(boolean fillArrowheads, Color outlineColor, float outlineThickness) {
 		this.fillArrowheads = fillArrowheads;
+		this.arrowheadOutlineColor = outlineColor;
+		this.arrowheadOutlineThickness = outlineThickness;
 	}
 	
 	public void setCloseArrowheads(boolean closeArrowheads) {
@@ -1850,6 +1858,9 @@ public class GeographicMapMaker {
 					LocationList arrowhead = buildArrowhead(arrow);
 					if (fillArrowheads) {
 						plotLine(arrowhead, new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 1f, headColor));
+						if (arrowheadOutlineColor != null)
+							plotLine(arrowhead, new PlotCurveCharacterstics(PlotLineType.SOLID,
+									arrowheadOutlineThickness, arrowheadOutlineColor));
 					} else {
 						plotLine(arrowhead, new PlotCurveCharacterstics(PlotLineType.SOLID, arrowheadThickness, headColor));
 					}
@@ -1867,6 +1878,9 @@ public class GeographicMapMaker {
 				Color headColor = arrowheadColor == null ? arrowColor : arrowheadColor;
 				if (fillArrowheads) {
 					plotLines(arrowheads, List.of(new PlotCurveCharacterstics(PlotLineType.POLYGON_SOLID, 1f, headColor)));
+					if (arrowheadOutlineColor != null)
+						plotLines(arrowheads, List.of(new PlotCurveCharacterstics(PlotLineType.SOLID,
+								arrowheadOutlineThickness, arrowheadOutlineColor)));
 				} else {
 					plotLines(arrowheads, List.of(new PlotCurveCharacterstics(PlotLineType.SOLID, arrowheadThickness, headColor)));
 				}
