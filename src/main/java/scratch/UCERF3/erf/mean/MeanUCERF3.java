@@ -646,16 +646,15 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 
 	public static void main(String[] args) {
 		
-//		MeanUCERF3.checkDownload(new File(getStoreDir(), "mean_ucerf3_sol.zip"))
-		new MeanUCERF3().updateForecast();
-//			.thenAccept(solFile -> {
-//			FaultSystemSolution sol;
-//			try {
-//				sol = FaultSystemSolution.load(solFile);
-//			} catch (Exception e) {
-//				throw ExceptionUtils.asRuntimeException(e);
-//			}
-//			MeanUCERF3 muc3 = new MeanUCERF3(sol);
-//		}).join();
+		MeanUCERF3.checkDownload(new File(getStoreDir(), "mean_ucerf3_sol.zip"))
+			.thenAccept(solFile -> {
+			FaultSystemSolution sol;
+			try {
+				sol = FaultSystemSolution.load(solFile);
+			} catch (Exception e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+			MeanUCERF3 muc3 = new MeanUCERF3(sol);
+		}).join();
 	}
 }
