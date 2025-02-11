@@ -500,19 +500,19 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		File solFile = new File(storeDir, "cached_"+fName+".zip");
 		
 		// If not ignoreCache, we download the reduced solution via GetFile.
-		// Otherwise, it's built locally. As such, it won't update client meta.
+		// Otherwise, download mean sol to build locally.
+		// As such, it won't update client meta.
 		if (!ignoreCache) {
-				checkDownload(solFile.getName())
-					.thenAccept(solutionFile -> {
-				try {
-					FaultSystemSolution sol = FaultSystemSolution.load(solutionFile);
-					checkCombineMags(sol);
-					setSolution(sol);
-					return;
-				} catch (Exception e) {
-					ExceptionUtils.throwAsRuntimeException(e);
-				}
-			});
+			CompletableFuture<File> solFileDownloader = checkDownload(solFile.getName());
+			File solutionFile = solFileDownloader.join();
+			try {
+				FaultSystemSolution sol = FaultSystemSolution.load(solutionFile);
+				checkCombineMags(sol);
+				setSolution(sol);
+				return;
+			} catch (Exception e) {
+				ExceptionUtils.throwAsRuntimeException(e);
+			}
 		}
 		
 		// if we've gotten this far, we'll need the mean
@@ -645,15 +645,17 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 	}
 
 	public static void main(String[] args) {
-		MeanUCERF3.checkDownload(new File(getStoreDir(), "mean_ucerf3_sol.zip"))
-			.thenAccept(solFile -> {
-			FaultSystemSolution sol;
-			try {
-				sol = FaultSystemSolution.load(solFile);
-			} catch (Exception e) {
-				throw ExceptionUtils.asRuntimeException(e);
-			}
-			MeanUCERF3 muc3 = new MeanUCERF3(sol);
-		});
+		
+//		MeanUCERF3.checkDownload(new File(getStoreDir(), "mean_ucerf3_sol.zip"))
+		new MeanUCERF3().updateForecast();
+//			.thenAccept(solFile -> {
+//			FaultSystemSolution sol;
+//			try {
+//				sol = FaultSystemSolution.load(solFile);
+//			} catch (Exception e) {
+//				throw ExceptionUtils.asRuntimeException(e);
+//			}
+//			MeanUCERF3 muc3 = new MeanUCERF3(sol);
+//		}).join();
 	}
 }
