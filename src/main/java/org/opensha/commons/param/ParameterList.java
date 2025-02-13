@@ -268,7 +268,6 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 		if (index != -1) {
 			Parameter param = (Parameter)params.get(index);
 			param.setValue(value);
-			fireChangeEvent(new ChangeEvent(this));
 		} else {
 			throw new ParameterException(S + "No parameter exists named " + name);
 		}
@@ -679,7 +678,10 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	}
 	
 	/**
-	 * Signal to listeners that a change has occured to the ParameterList
+	 * Signal to listeners that a change has occured to the ParameterList.
+	 * Listeners will be notified when the contents of the parameter list are
+	 *  changed (e.g., parameters added or removed), but will not be notified
+	 *  when parameter values themselves are changed.
 	 * @param event Event that occured (i.e. add/remove parameter)
 	 */
 	private void fireChangeEvent(ChangeEvent event) {
