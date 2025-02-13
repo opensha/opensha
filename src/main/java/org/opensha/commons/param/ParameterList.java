@@ -263,19 +263,15 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 		String S = C + ": setValue(): ";
 		if(D) System.out.println(S + "Starting");
 
-		name = getParameterName( name );
+		name = getParameterName(name);
 		int index = getIndexOf(name);
-		if( index !=-1 ) {
+		if (index != -1) {
 			Parameter param = (Parameter)params.get(index);
 			param.setValue(value);
-		}
-		else{
-
+			fireChangeEvent(new ChangeEvent(this));
+		} else {
 			throw new ParameterException(S + "No parameter exists named " + name);
 		}
-
-		if(D) System.out.println(S + "Ending");
-
 	}
 
 	/** Returns parameter type of named parameter in list, if not exist throws exception. */
@@ -670,8 +666,6 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 			ChangeListener listener) {
 		if (changeListeners == null) changeListeners = new ArrayList<ChangeListener>();
 		if (!changeListeners.contains(listener)) changeListeners.add(listener);
-		if (D) System.out.println(C + ": addChangeListener(): ChangeListeners: "
-				+ changeListeners.toString());
 	}
 
 	/**
