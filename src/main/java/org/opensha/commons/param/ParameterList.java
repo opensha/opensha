@@ -658,7 +658,9 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	
 	
 	/**
-	 * Add a listener to notify about ParameterList events (i.e. add/remove)
+	 * Add a listener to notify about ParameterList events. Listeners will be notified
+	 * when the contents of the parameter list are changed (e.g., parameters added or
+	 * removed), but will not be notified when parameter values themselves are changed.
 	 * @param listener Listener to add
 	 */
 	public synchronized void addChangeListener(
@@ -680,8 +682,8 @@ public class ParameterList implements Serializable, Iterable<Parameter<?>> {
 	/**
 	 * Signal to listeners that a change has occured to the ParameterList.
 	 * Listeners will be notified when the contents of the parameter list are
-	 *  changed (e.g., parameters added or removed), but will not be notified
-	 *  when parameter values themselves are changed.
+	 * changed (e.g., parameters added or removed), but will not be notified
+	 * when parameter values themselves are changed.
 	 * @param event Event that occured (i.e. add/remove parameter)
 	 */
 	private void fireChangeEvent(ChangeEvent event) {
