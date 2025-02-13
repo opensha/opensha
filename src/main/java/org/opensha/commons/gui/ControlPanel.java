@@ -53,5 +53,4 @@ public abstract class ControlPanel implements Named {
 		this.getComponent().setVisible(true);
 		this.getComponent().pack();
 	}
-
 }

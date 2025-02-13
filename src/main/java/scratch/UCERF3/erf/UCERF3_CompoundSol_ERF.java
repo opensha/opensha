@@ -7,7 +7,10 @@ import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.zip.ZipException;
+
+import javax.swing.JOptionPane;
 
 import scratch.UCERF3.U3CompoundFaultSystemSolution;
 import scratch.UCERF3.U3FaultSystemSolutionFetcher;
@@ -54,12 +57,9 @@ import com.google.common.collect.Maps;
  */
 public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	
-	/**
-	 * 
-	 */
 	private static final long serialVersionUID = 1L;
 
-	private static final boolean D = true;
+	private static final boolean D = false;
 	
 	public static final String NAME = "UCERF3 Single Branch ERF";
 	
@@ -71,18 +71,28 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	
 	private static final String COMPOUND_FILE_NAME = "full_ucerf3_compound_sol.zip";
 	
-	private static U3FaultSystemSolutionFetcher loadFetcher() throws ZipException, IOException {
+	private CompletableFuture<U3FaultSystemSolutionFetcher> fetchFuture;
+	
+	private static CompletableFuture<U3FaultSystemSolutionFetcher> loadFetcher() throws ZipException, IOException {
 		File storeDir = MeanUCERF3.getStoreDir();
-		
-		File compoundFile = new File(storeDir, COMPOUND_FILE_NAME);
-		
-		// allow errors so that app doesn't crash if can't download
-		MeanUCERF3.checkDownload(compoundFile, false);
-		
-		if (!compoundFile.exists())
-			return null;
-		
-		return U3CompoundFaultSystemSolution.fromZipFile(compoundFile);
+		return MeanUCERF3.checkDownload(new File(storeDir, COMPOUND_FILE_NAME))
+			.thenApply(compoundFile -> {
+			if (compoundFile == null || !compoundFile.exists()) {
+				JOptionPane.showMessageDialog(null,
+						"Failed to download " + COMPOUND_FILE_NAME +
+						". Verify internet connection and restart. Server may be down.",
+						"UCERF3_CompoundSol_ERF", JOptionPane.ERROR_MESSAGE);
+				return null;
+			}
+			try {
+				return U3CompoundFaultSystemSolution.fromZipFile(compoundFile);
+			} catch (IOException e) {
+				e.printStackTrace();
+				JOptionPane.showMessageDialog(null, e.getMessage(),
+						"UCERF3_CompoundSol_ERF", JOptionPane.ERROR_MESSAGE);
+				return null;
+			}
+		});
 	}
 	
 	/**
@@ -101,28 +111,26 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	 * @param fetch
 	 * @param initial
 	 */
-	public UCERF3_CompoundSol_ERF(U3FaultSystemSolutionFetcher fetch, U3LogicTreeBranch initial) {
-		
-		this.fetch = fetch;
-		
-		enumParamsMap = Maps.newHashMap();
-		
-		Preconditions.checkState(initial == null || initial.isFullySpecified(),
+	public UCERF3_CompoundSol_ERF(CompletableFuture<U3FaultSystemSolutionFetcher> fetchFuture, U3LogicTreeBranch initial) {
+		this.fetchFuture = fetchFuture;
+		fetchFuture.thenAccept(fetch -> {
+			enumParamsMap = Maps.newHashMap();
+			Preconditions.checkState(initial == null || initial.isFullySpecified(),
 				"Initial branch must be null or fully specified");
-		
-		if (fetch != null && !fetch.getBranches().isEmpty()) {
-			// build enum paramters, allow every option in the fetcher
-			// note that not-present combinations may still be possible
-			Collection<U3LogicTreeBranch> branches = fetch.getBranches();
-			List<Class<? extends U3LogicTreeBranchNode<?>>> logicTreeNodeClasses = U3LogicTreeBranch.getLogicTreeNodeClasses();
-			for (int i=0; i < logicTreeNodeClasses.size(); i++) {
-				Class<? extends U3LogicTreeBranchNode<?>> clazz = logicTreeNodeClasses.get(i);
-				EnumParameter<?> param = buildParam(clazz, branches, initial);
-				param.addParameterChangeListener(this);
-				enumParamsMap.put(clazz, param);
+			if (fetch != null && !fetch.getBranches().isEmpty()) {
+				// build enum paramters, allow every option in the fetcher
+				// note that not-present combinations may still be possible
+				Collection<U3LogicTreeBranch> branches = fetch.getBranches();
+				List<Class<? extends U3LogicTreeBranchNode<?>>> logicTreeNodeClasses = U3LogicTreeBranch.getLogicTreeNodeClasses();
+				for (int i=0; i < logicTreeNodeClasses.size(); i++) {
+					Class<? extends U3LogicTreeBranchNode<?>> clazz = logicTreeNodeClasses.get(i);
+					EnumParameter<?> param = buildParam(clazz, branches, initial);
+					param.addParameterChangeListener(this);
+					enumParamsMap.put(clazz, param);
+				}
 			}
-		}
-		createParamList();
+			createParamList();
+		});
 	}
 	
 	@Override
@@ -130,7 +138,6 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 		super.createParamList();
 		if (enumParamsMap == null)
 			return;
-
 		List<Class<? extends U3LogicTreeBranchNode<?>>> logicTreeNodeClasses = U3LogicTreeBranch.getLogicTreeNodeClasses();
 		for (int i=0; i < logicTreeNodeClasses.size(); i++) {
 			Class<? extends U3LogicTreeBranchNode<?>> clazz = logicTreeNodeClasses.get(i);
@@ -138,19 +145,20 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 			if (param != null)
 				adjustableParams.addParameter(i, param);
 		}
-		
 		if (adjustableParams.containsParameter(FILE_PARAM_NAME))
 			adjustableParams.removeParameter(fileParam);
 	}
 	
 	public void setLogicTreeBranch(U3LogicTreeBranch branch) {
-		Preconditions.checkArgument(branch.isFullySpecified(), "Branch must be fully specified");
-		Preconditions.checkArgument(fetch.getBranches().contains(branch), "Branch not present in compound solution");
-		
-		for (U3LogicTreeBranchNode<? extends Enum<?>> node : branch)
-			setParameter(node.getBranchLevelName(), node);
+		fetchFuture.thenAccept(fetch -> {
+			Preconditions.checkArgument(branch.isFullySpecified(), "Branch must be fully specified");
+			Preconditions.checkArgument(fetch.getBranches().contains(branch), "Branch not present in compound solution");
+			
+			for (U3LogicTreeBranchNode<? extends Enum<?>> node : branch)
+				setParameter(node.getBranchLevelName(), node);
+		});
 	}
-	
+
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private static EnumParameter buildParam(
 			Class<? extends U3LogicTreeBranchNode<?>> clazz, Collection<U3LogicTreeBranch> branches,
@@ -183,7 +191,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	
 	@Override
 	public void updateForecast() {
-		if (D) System.out.println("updateForecast called");
+		System.out.println("updateForecast called");
 		if (solutionStale) {
 			// this means that we have to load the solution (parameter change or never loaded)
 			fetchSolution();
@@ -192,19 +200,21 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 	}
 	
 	private void fetchSolution() {
-		if (fetch == null)
-			return;
-		
-		List<U3LogicTreeBranchNode<?>> vals = Lists.newArrayList();
-		for (EnumParameter<?> param : enumParamsMap.values()) {
-			vals.add((U3LogicTreeBranchNode<?>) param.getValue());
-		}
-		U3LogicTreeBranch branch = U3LogicTreeBranch.fromValues(vals);
-		Preconditions.checkState(branch.isFullySpecified(), "Somehow branch from enums isn't fully specified");
-		
-		FaultSystemSolution sol = fetch.getSolution(branch);
-		setSolution(sol);
-		solutionStale = false;
+		fetchFuture.thenAccept(fetch -> {
+			if (fetch == null)
+				return;
+			
+			List<U3LogicTreeBranchNode<?>> vals = Lists.newArrayList();
+			for (EnumParameter<?> param : enumParamsMap.values()) {
+				vals.add((U3LogicTreeBranchNode<?>) param.getValue());
+			}
+			U3LogicTreeBranch branch = U3LogicTreeBranch.fromValues(vals);
+			Preconditions.checkState(branch.isFullySpecified(), "Somehow branch from enums isn't fully specified");
+			
+			FaultSystemSolution sol = fetch.getSolution(branch);
+			setSolution(sol);
+			solutionStale = false;
+		});
 	}
 
 	@Override
@@ -216,7 +226,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 			super.parameterChange(event);
 		}
 	}
-	
+
 	public static void main(String[] args) {
 		UCERF3_CompoundSol_ERF erf;
 		try {

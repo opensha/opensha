@@ -189,7 +189,11 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	 * Put parameters in theParameterList
 	 */
 	protected void createParamList() {
-		adjustableParams = new ParameterList();
+		if (adjustableParams == null) {
+			adjustableParams = new ParameterList();
+		} else {
+			adjustableParams.clear();
+		}
 		if(includeFileParam)
 			adjustableParams.addParameter(fileParam);
 		adjustableParams.addParameter(bgIncludeParam);
