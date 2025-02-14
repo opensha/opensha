@@ -9,8 +9,6 @@ import java.nio.file.Paths;
 
 import org.scec.getfile.GetFile;
 
-import scratch.UCERF3.erf.mean.MeanUCERF3;
-
 /**
  * GetFile wrapper for downloading NSHM 2023 ERFs.
  */
@@ -36,7 +34,6 @@ public class NSHM23_Downloader extends GetFile {
 	 * @return	Default store directory to use in default constructor.
 	 */
 	private static File getStoreDir() {
-		// TODO: Migrate to utilility method `getOpenSHADir` and share
 		Path storeDir = Paths.get(
 				System.getProperty("user.home"), ".opensha", "nshm23");
 		try {

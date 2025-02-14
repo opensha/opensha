@@ -1,13 +1,14 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 
 import javax.swing.JOptionPane;
 
-import org.opensha.commons.util.modules.ModuleArchive;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
-import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_Downloader;
 
 /**
@@ -17,10 +18,17 @@ public class NSHM23_WUS_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 
 	private static final long serialVersionUID = 277613161331416141L;
 	private static final String MODEL = "WUS_branch_averaged_gridded_simplified";
+	private static final boolean D = false;
 	
-	private CompletableFuture<SolutionLogicTree> future;
+	private CompletableFuture<File> fetchFuture;
 
-	private static CompletableFuture<SolutionLogicTree> loadFetcher() {
+	/**
+	 * The loadFetcher allows the download to begin in the background at
+	 * the time of construction. This speeds up our wait time when the
+	 * file is needed.
+	 * @return		A future that will resolve with the solution file.
+	 */
+	private static CompletableFuture<File> loadFetcher() {
 		return new NSHM23_Downloader()
 				.updateFile(MODEL)
 				.thenApply(treeFile -> {
@@ -31,25 +39,16 @@ public class NSHM23_WUS_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 						"NSHM23_WUS_BranchAveragedERF", JOptionPane.ERROR_MESSAGE);
 				return null;
 			}
-			try {
-				return new ModuleArchive<>(treeFile, SolutionLogicTree.class)
-						.requireModule(SolutionLogicTree.class);
-			} catch (IOException e) {
-				e.printStackTrace();
-				JOptionPane.showMessageDialog(null, e.getMessage(),
-						"NSHM23_WUS_BranchAveragedERF", JOptionPane.ERROR_MESSAGE);
-				return null;
-			}
+			return treeFile;
 		});
 	}
 
 	/**
 	 * Initializes FaulSystemSolutionERF with provided solution
-	 * @param future	A future for the WUS model. Will resolve once available.
+	 * @param fetchFuture	A future for the WUS model file. Will resolve once available.
 	 */
-	public NSHM23_WUS_BranchAveragedERF(CompletableFuture<SolutionLogicTree> future) {
-		this.future = future;
-		// TODO
+	public NSHM23_WUS_BranchAveragedERF(CompletableFuture<File> fetchFuture) {
+		this.fetchFuture = fetchFuture;
 	}
 	
 	/**
@@ -57,5 +56,24 @@ public class NSHM23_WUS_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 	 */
 	public NSHM23_WUS_BranchAveragedERF() {
 		this(loadFetcher());
+	}
+	
+	@Override
+	public void updateForecast() {
+		if (D) System.out.println("NSHM23_WUS_BranchAveragedERF.updateForecast()");
+		// First fetch and load our solution, then update the forecast.
+		fetchFuture.thenAccept(solFile -> {
+			try {
+				FaultSystemSolution sol = FaultSystemSolution.load(solFile);
+				setSolution(sol);
+			} catch (IOException e) {
+				throw ExceptionUtils.asRuntimeException(e);
+			}
+		}).join();
+		super.updateForecast();
+	}
+	
+	public static void main(String[] args) {
+		new NSHM23_WUS_BranchAveragedERF().updateForecast();
 	}
 }
