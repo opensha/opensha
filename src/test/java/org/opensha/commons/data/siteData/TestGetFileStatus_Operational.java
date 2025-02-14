@@ -68,7 +68,6 @@ public class TestGetFileStatus_Operational {
 		new NSHM23_Downloader(/*showProgress=*/false);
 		File serverMeta = new File(
 				System.getProperty("user.home"), ".opensha/nshm23/nshm23_client.json");
-		System.out.println(serverMeta);
 		assertTrue(serverMeta.exists());
 	}
 }
