@@ -1,7 +1,11 @@
 package org.opensha.sha.earthquake.rupForecastImpl.nshm23.util;
 
 import java.io.File;
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import org.scec.getfile.GetFile;
 
@@ -28,11 +32,36 @@ public class NSHM23_Downloader extends GetFile {
 	}
 	
 	/**
-	 * Default noarg constructor uses the same store as MeanUCERF3.
+	 * Get the default store directory for NSHM23 file downloads
+	 * @return	Default store directory to use in default constructor.
+	 */
+	private static File getStoreDir() {
+		// TODO: Migrate to utilility method `getOpenSHADir` and share
+		Path storeDir = Paths.get(
+				System.getProperty("user.home"), ".opensha", "nshm23");
+		try {
+			Files.createDirectories(storeDir);
+		} catch (IOException e) {
+			System.err.println(
+					"NSHM23_Downloader failed to create storeDir at " + storeDir);
+			e.printStackTrace();
+		}
+		return storeDir.toFile();
+	}
+	
+	/**
+	 * Use default storeDirectory and specify to show progress.
+	 */
+	public NSHM23_Downloader(boolean showProgress) {
+		this(getStoreDir(), showProgress);
+	}
+	
+	/**
+	 * Noarg default storeDirectory and shows progress constructor.
+	 * (Recommended Constructor)
 	 */
 	public NSHM23_Downloader() {
-		// TODO: Migrate getStoreDir out of MeanUCERF3 and into a utility class
-		this(MeanUCERF3.getStoreDir(), /*showProgress=*/true);
+		this(/*showProgress=*/true);
 	}
 }
 
