@@ -30,6 +30,29 @@ public class NSHM23_Downloader extends GetFile {
 	}
 	
 	/**
+	 * Use default storeDirectory and specify to show progress.
+	 */
+	public NSHM23_Downloader(boolean showProgress) {
+		this(getStoreDir(), showProgress);
+	}
+	
+	/**
+	 * Use specified storeDirectory and show progress.
+	 * @param storeDir
+	 */
+	public NSHM23_Downloader(File storeDir) {
+		this(storeDir, /*showProgress=*/true);
+	}
+
+	/**
+	 * Noarg default storeDirectory and shows progress constructor.
+	 * (Recommended Constructor)
+	 */
+	public NSHM23_Downloader() {
+		this(/*showProgress=*/true);
+	}
+
+	/**
 	 * Get the default store directory for NSHM23 file downloads
 	 * @return	Default store directory to use in default constructor.
 	 */
@@ -45,21 +68,5 @@ public class NSHM23_Downloader extends GetFile {
 		}
 		return storeDir.toFile();
 	}
-	
-	/**
-	 * Use default storeDirectory and specify to show progress.
-	 */
-	public NSHM23_Downloader(boolean showProgress) {
-		this(getStoreDir(), showProgress);
-	}
-	
-	/**
-	 * Noarg default storeDirectory and shows progress constructor.
-	 * (Recommended Constructor)
-	 */
-	public NSHM23_Downloader() {
-		this(/*showProgress=*/true);
-	}
 }
-
 	
