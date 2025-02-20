@@ -11,6 +11,8 @@ import org.junit.Test;
 
 import org.apache.commons.io.FileUtils;
 
+import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_Downloader;
+
 import scratch.UCERF3.erf.mean.MeanUCERF3;
 
 /**
@@ -55,5 +57,17 @@ public class TestGetFileStatus_Operational {
 		assertTrue(solFile != null);
 		assertTrue(solFile.isFile());
 		assertTrue(solFile.length() > 0);
+	}
+
+	/**
+	 * Should be able to download NSHM23 metadata.
+	 */
+	@Test(timeout = 20000)
+	public void testNSHM23() {
+		if (D) System.out.println("TestGetFileStatus_Operational.testNSHM23()");
+		new NSHM23_Downloader(/*showProgress=*/false);
+		File serverMeta = new File(
+				System.getProperty("user.home"), ".opensha/nshm23/nshm23_client.json");
+		assertTrue(serverMeta.exists());
 	}
 }
