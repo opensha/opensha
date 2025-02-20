@@ -17,7 +17,7 @@ public class NSHM23_WUS_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 
 	private static final long serialVersionUID = 277613161331416141L;
 	private static final String MODEL = "WUS_branch_averaged_gridded_simplified";
-	public static final String NAME = "NSHM23 WUS Branch Avg ERF";
+	public static final String NAME = "NSHM23-WUS (crustal only, excl. Cascadia) Branch Avg ERF";
 	private static final boolean D = false;
 	private NSHM23_Downloader downloader;
 	
@@ -40,7 +40,18 @@ public class NSHM23_WUS_BranchAveragedERF extends BaseFaultSystemSolutionERF {
 		} else {
 			this.downloader = new NSHM23_Downloader(storeDir);
 		}
-		this.setName("USGS 2023 NSHM ERF, Western U.S., Branch Averaged");
+		this.setName(NAME);
+	}
+	
+	/**
+	 * Put parameters in the ParameterList
+	 */
+	@Override
+	protected void createParamList() {
+		super.createParamList();
+		if (adjustableParams.containsParameter(FILE_PARAM_NAME)) {
+			adjustableParams.removeParameter(fileParam);
+		}
 	}
 	
 	/**
