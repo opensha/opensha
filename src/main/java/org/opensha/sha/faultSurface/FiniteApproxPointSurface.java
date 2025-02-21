@@ -2,6 +2,7 @@ package org.opensha.sha.faultSurface;
 
 import org.opensha.commons.exceptions.InvalidRangeException;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.Region;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
@@ -109,6 +110,14 @@ public class FiniteApproxPointSurface extends PointSurface {
 	public double getDistanceX(Location loc) {
 		double rJB = getDistanceJB(loc);
 		return footwall ? -rJB : rJB + horzWidth;
+	}
+
+	@Override
+	public double getDistanceJB(Location siteLoc) {
+		if ((float)length == 0f)
+			// zero length, bypass any distance corrections
+			return LocationUtils.horzDistanceFast(getLocation(), siteLoc);
+		return super.getDistanceJB(siteLoc);
 	}
 
 	@Override
