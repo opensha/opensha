@@ -50,6 +50,19 @@ import com.google.common.io.Files;
  */
 public class MarkdownUtils {
 	
+	public static enum TableTextAlignment {
+		DEFAULT("-----"),
+		LEFT(":----"),
+		CENTER(":---:"),
+		RIGHT("----:");
+		
+		private final String dashes;
+
+		private TableTextAlignment(String dashes) {
+			this.dashes = dashes;
+		}
+	}
+	
 	/**
 	 * Builder model for genearting Markdown tables
 	 * @author kevin
@@ -57,12 +70,55 @@ public class MarkdownUtils {
 	 */
 	public static class TableBuilder {
 		
+		private TableTextAlignment colAlignment = TableTextAlignment.DEFAULT;
+		private TableTextAlignment[] colSpecificAlignments = null;
+		
 		private List<String[]> lines;
 		
 		private List<String> curLine;
 		
 		private TableBuilder() {
 			lines = new LinkedList<>();
+		}
+		
+		/**
+		 * Sets the default text alignment for all columns
+		 * 
+		 * @param alignment
+		 * @return
+		 */
+		public TableBuilder textAlign(TableTextAlignment colAlignment) {
+			this.colAlignment = colAlignment;
+			return this;
+		}
+		
+		/**
+		 * Sets text alignment on a column-by-column basis; if the number of given alignments is less than the number
+		 * of columns or any values are null, then the default alignment will be used.
+		 * 
+		 * @param alignment
+		 * @return
+		 */
+		public TableBuilder textAlign(TableTextAlignment[] colSpecificAlignments) {
+			this.colSpecificAlignments = colSpecificAlignments;
+			return this;
+		}
+		
+		/**
+		 * Sets text alignment on for the specified column only. Subsequent calls to {@link #textAlign(TableTextAlignment)}
+		 * will not reset this, it can only be reset by manually setting it to null
+		 * 
+		 * @param alignment
+		 * @return
+		 */
+		public TableBuilder textAlign(int colIndex, TableTextAlignment colSpecificAlignment) {
+			Preconditions.checkState(colIndex >= 0);
+			if (colSpecificAlignments == null)
+				colSpecificAlignments = new TableTextAlignment[colIndex+1];
+			else if (colSpecificAlignments.length <= colIndex)
+				colSpecificAlignments = Arrays.copyOf(colSpecificAlignments, colIndex+1);
+			colSpecificAlignments[colIndex] = colSpecificAlignment;
+			return this;
 		}
 		
 		public TableBuilder addLine(List<String> vals) {
@@ -192,7 +248,7 @@ public class MarkdownUtils {
 			for (int i=0; i<lines.size(); i++) {
 				strings.add(tableLine(lines.get(i)));
 				if (i == 0)
-					strings.add(generateTableDashLine(lines.get(i).length));
+					strings.add(generateTableDashLine(lines.get(i).length, colAlignment, colSpecificAlignments));
 			}
 			
 			return strings;
@@ -206,7 +262,7 @@ public class MarkdownUtils {
 					str.append("\n");
 				str.append(tableLine(lines.get(i)));
 				if (i == 0)
-					str.append("\n").append(generateTableDashLine(lines.get(i).length));
+					str.append("\n").append(generateTableDashLine(lines.get(i).length, colAlignment, colSpecificAlignments));
 			}
 			return str.toString();
 		}
@@ -261,11 +317,16 @@ public class MarkdownUtils {
 		return table;
 	}
 	
-	private static String generateTableDashLine(int numVals) {
+	private static String generateTableDashLine(int numVals, TableTextAlignment defaultAlignment,
+			TableTextAlignment[] colSpecificAlignments) {
 		Preconditions.checkState(numVals >= 1);
 		String[] vals = new String[numVals];
-		for (int i=0; i<vals.length; i++)
-			vals[i] = "-----";
+		for (int i=0; i<vals.length; i++) {
+			TableTextAlignment alignment = defaultAlignment;
+			if (colSpecificAlignments != null && colSpecificAlignments.length > i && colSpecificAlignments[i] != null)
+				alignment = colSpecificAlignments[i];
+			vals[i] = alignment.dashes;
+		}
 		return tableLine(vals).replaceAll(" ", "");
 	}
 	
