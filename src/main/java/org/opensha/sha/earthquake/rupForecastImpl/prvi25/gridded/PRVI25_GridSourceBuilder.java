@@ -99,8 +99,8 @@ public class PRVI25_GridSourceBuilder {
 	public static boolean INTERFACE_USE_SECT_PROPERTIES = true;
 	
 	public static final double OVERALL_MMIN= 2.55;
-	// TODO: preliminary; logic tree branch(es)?
-	public static final double SLAB_MMAX = 7.95;
+	
+	public static double SLAB_MMAX = 7.95;
 	
 	public static void doPreGridBuildHook(FaultSystemSolution sol, LogicTreeBranch<?> faultBranch) throws IOException {
 		if (faultBranch.hasValue(PRVI25_CrustalFaultModels.class)) {
@@ -862,6 +862,14 @@ public class PRVI25_GridSourceBuilder {
 					// dip = arctan(vert/horz)
 					dip = Math.toDegrees(Math.atan(vertDist/horzDist));
 					FaultUtils.assertValidDip(dip);
+//					if ((float)gridLoc.lat == 17.9f && (float)gridLoc.lon == -66.3f) {
+//						System.out.println("Debug for gridLoc="+gridLoc);
+//						System.out.println("\tleftDepth="+leftDepth);
+//						System.out.println("\trightDepth="+rightDepth);
+//						System.out.println("\tvertDist="+vertDist);
+//						System.out.println("\thorzDist="+horzDist);
+//						System.out.println("\tdip="+dip);
+//					}
 				}
 				// left *should* be above right
 				depthUpperLimit = Math.min(leftDepth, rightDepth);
