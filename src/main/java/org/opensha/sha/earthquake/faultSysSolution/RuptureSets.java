@@ -410,8 +410,8 @@ public class RuptureSets {
 		@Expose	private float jumpProbThresh = 0.001f;
 		// cumulative rake change threshold
 		@Expose	private float cmlRakeThresh = 360f;
-		// maximum rupture length
-		@Expose	private double maxLength = Double.NaN;
+		// maximum rupture length (if >0)
+		@Expose	private double maxLength = 0d;
 		// CONNECTION STRATEGY
 		// maximum individual jump distance
 		@Expose	private double maxJumpDist = 15d;
@@ -1115,7 +1115,8 @@ public class RuptureSets {
 	}
 	
 	private static Gson buildGson() {
-		return new GsonBuilder().setPrettyPrinting().excludeFieldsWithoutExposeAnnotation().create();
+		return new GsonBuilder().setPrettyPrinting().excludeFieldsWithoutExposeAnnotation()
+				.serializeSpecialFloatingPointValues().create();
 	}
 	
 	private enum Presets {
