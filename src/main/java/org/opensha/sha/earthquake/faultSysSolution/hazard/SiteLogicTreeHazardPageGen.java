@@ -233,6 +233,8 @@ public class SiteLogicTreeHazardPageGen {
 					System.out.println("\tBuilding comparison curve dists");
 					compDists = loadCurvesAndDists(compCurvesCSV, null, compCurves, null, compWeights, true);
 					compMeanCurve = compCurves.size() == 1 ? compCurves.get(0) : calcMeanCurve(compDists, xVals(compCurves.get(0)));
+					if (compCurves.size() == 1)
+						compDists = null;
 				}
 				
 				String prefix = sitePrefix+"_"+perPrefix;
@@ -308,8 +310,10 @@ public class SiteLogicTreeHazardPageGen {
 //						compMean = mean(compWeights, compBranchVals);
 						compMean = curveVal(compMeanCurve, rp);
 						rpCompMeans.add(compMean);
-						compHist = buildHist(compWeights, compBranchVals, refHist);
-						compHist.setName("Comparison Distribution");
+						if (compCurves.size() > 1) {
+							compHist = buildHist(compWeights, compBranchVals, refHist);
+							compHist.setName("Comparison Distribution");
+						}
 						rpCompHists.add(compHist);
 					} else {
 						refHist = initHist(branchVals);
@@ -1085,7 +1089,7 @@ public class SiteLogicTreeHazardPageGen {
 	}
 	
 	private static DiscretizedFunc calcMeanCurve(ArbDiscrEmpiricalDistFunc[] dists, double[] xVals) {
-		Preconditions.checkState(dists.length == xVals.length);
+		Preconditions.checkState(dists.length == xVals.length, "have %s dists but %s xVals", dists.length, xVals.length);
 		double[] yVals = new double[xVals.length];
 		for (int i=0; i<dists.length; i++)
 			yVals[i] = dists[i].getMean();
@@ -1093,7 +1097,7 @@ public class SiteLogicTreeHazardPageGen {
 	}
 	
 	private static DiscretizedFunc calcFractileCurve(ArbDiscrEmpiricalDistFunc[] dists, double[] xVals, double fractile) {
-		Preconditions.checkState(dists.length == xVals.length);
+		Preconditions.checkState(dists.length == xVals.length, "have %s dists but %s xVals", dists.length, xVals.length);
 		double[] yVals = new double[xVals.length];
 		for (int i=0; i<dists.length; i++)
 			yVals[i] = dists[i].getInterpolatedFractile(fractile);
