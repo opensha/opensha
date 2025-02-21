@@ -1,6 +1,7 @@
 package org.opensha.sha.earthquake.rupForecastImpl.prvi25.util;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -10,6 +11,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.Region;
+import org.opensha.commons.geo.json.Feature;
 import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.NSHM23_RegionLoader.NSHM23_BaseRegion;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
@@ -52,9 +54,23 @@ public class PRVI25_RegionLoader {
 		return Region.fromFeature(features.features.get(1));
 	}
 	
+	public static Region loadPRVI_TightOld() throws IOException {
+		BufferedReader reader = new BufferedReader(new InputStreamReader(
+				PRVI25_RegionLoader.class.getResourceAsStream(DIR+"/prvi-map-original.geojson")));
+		FeatureCollection features = FeatureCollection.read(reader);
+		return Region.fromFeature(features.features.get(1));
+	}
+	
 	public static Region loadPRVI_MapExtents() throws IOException {
 		BufferedReader reader = new BufferedReader(new InputStreamReader(
 				PRVI25_RegionLoader.class.getResourceAsStream(DIR+"/prvi-map.geojson")));
+		FeatureCollection features = FeatureCollection.read(reader);
+		return Region.fromFeature(features.features.get(0));
+	}
+	
+	public static Region loadPRVI_MapExtentsOld() throws IOException {
+		BufferedReader reader = new BufferedReader(new InputStreamReader(
+				PRVI25_RegionLoader.class.getResourceAsStream(DIR+"/prvi-map-original.geojson")));
 		FeatureCollection features = FeatureCollection.read(reader);
 		return Region.fromFeature(features.features.get(0));
 	}
@@ -85,6 +101,10 @@ public class PRVI25_RegionLoader {
 	public static void main(String[] args) throws IOException {
 		for (PRVI25_SeismicityRegions seisReg : PRVI25_SeismicityRegions.values())
 			seisReg.load();
+		
+		File origDir = new File("/data/kevin/nshm23/batch_inversions/2025_01_28-prvi03_original_model/");
+		Feature.write(loadPRVI_TightOld().toFeature(), new File(origDir, "orig_tight.geojson"));
+		Feature.write(loadPRVI_MapExtentsOld().toFeature(), new File(origDir, "orig_extents.geojson"));
 	}
 
 }
