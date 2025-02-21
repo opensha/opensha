@@ -2254,7 +2254,7 @@ public class SolSiteHazardCalc {
 		});
 	}
 	
-	private static EvenlyDiscretizedFunc disaggRange(double min, double max, double delta, boolean recenter) {
+	public static EvenlyDiscretizedFunc disaggRange(double min, double max, double delta, boolean recenter) {
 		int num = 1;
 		Preconditions.checkArgument(max >= min);
 		double halfDelta = 0.5*delta;
