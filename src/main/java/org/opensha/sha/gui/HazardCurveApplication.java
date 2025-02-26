@@ -69,7 +69,7 @@ import org.opensha.commons.util.ListUtils;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
-import org.opensha.commons.util.bugReports.DefaultExceptoinHandler;
+import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.HazardCurveCalculatorAPI;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
@@ -714,13 +714,13 @@ ScalarIMRChangeListener {
 	// Main method
 	public static void main(String[] args) throws IOException {
 		new DisclaimerDialog(APP_NAME, APP_SHORT_NAME, getAppVersion());
-		DefaultExceptoinHandler exp = new DefaultExceptoinHandler(
+		DefaultExceptionHandler exp = new DefaultExceptionHandler(
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
 		launch(exp);
 	}
 	
-	public static HazardCurveApplication launch(DefaultExceptoinHandler handler) {
+	public static HazardCurveApplication launch(DefaultExceptionHandler handler) {
 		HazardCurveApplication applet = new HazardCurveApplication(APP_SHORT_NAME);
 		if (handler != null) {
 			handler.setApp(applet);
@@ -859,9 +859,9 @@ ScalarIMRChangeListener {
 
 	/**
 	 * Implementing the run method in the Runnable interface that creates a new
-	 * thread to do Hazard Curve Calculation, this thread created is seperate
-	 * from the timer thread, so that progress bar updation does not conflicts
-	 * with Calculations.
+	 * thread to do Hazard Curve Calculation, this thread created is separate
+	 * from the timer thread, so that progress bar updates do not conflict
+	 * with calculations.
 	 */
 	public void run() {
 		try {

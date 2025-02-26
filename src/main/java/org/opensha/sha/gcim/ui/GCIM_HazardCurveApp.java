@@ -67,7 +67,7 @@ import org.opensha.commons.util.ListUtils;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
-import org.opensha.commons.util.bugReports.DefaultExceptoinHandler;
+import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.HazardCurveCalculatorAPI;
 import org.opensha.sha.calc.disaggregation.chart3d.PureJavaDisaggPlotter;
@@ -738,7 +738,7 @@ public class GCIM_HazardCurveApp  extends HazardCurveApplication {
 // NOTE New from local
 	public static void main(String[] args) throws IOException {
 		new DisclaimerDialog(APP_NAME, APP_SHORT_NAME, getAppVersion());
-		DefaultExceptoinHandler exp = new DefaultExceptoinHandler(
+		DefaultExceptionHandler exp = new DefaultExceptionHandler(
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
 		GCIM_HazardCurveApp applet = new GCIM_HazardCurveApp(APP_SHORT_NAME);

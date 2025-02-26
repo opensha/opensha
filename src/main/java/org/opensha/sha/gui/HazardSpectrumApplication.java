@@ -24,7 +24,7 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.impl.DoubleDiscreteParameter;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
-import org.opensha.commons.util.bugReports.DefaultExceptoinHandler;
+import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.SpectrumCalculator;
 import org.opensha.sha.calc.SpectrumCalculatorAPI;
 import org.opensha.sha.earthquake.ERF;
@@ -157,20 +157,17 @@ extends HazardCurveApplication {
 	 * is required for it.
 	 */
 	protected void createCalcInstance(){
-		try{
-			if(calc == null) {
+		try {
+			if (calc == null) {
 				calc = new SpectrumCalculator();
 			}
-
 			/*if(disaggregationFlag)
         if(disaggCalc == null)
           disaggCalc = new DisaggregationCalculator();*/
-		}catch(Exception e){
-
+		} catch (Exception e) {
 			BugReport bug = new BugReport(e, getParametersInfoAsString(), appShortName, getAppVersion(), this);
 			BugReportDialog bugDialog = new BugReportDialog(this, bug, true);
 			bugDialog.setVisible(true);
-			//     e.printStackTrace();
 		}
 	}
 
@@ -209,7 +206,6 @@ extends HazardCurveApplication {
 		if (this.progressCheckBox.isSelected()) {
 			progressClass = new CalcProgressBar("Response-Spectrum Calc Status",
 			"Beginning Calculation ");
-			progressClass.displayProgressBar();
 			timer.start();
 		}
 
@@ -678,13 +674,13 @@ extends HazardCurveApplication {
 	//Main method
 	public static void main(String[] args) throws IOException {
 		new DisclaimerDialog(APP_NAME, APP_SHORT_NAME, getAppVersion());
-		DefaultExceptoinHandler exp = new DefaultExceptoinHandler(
+		DefaultExceptionHandler exp = new DefaultExceptionHandler(
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
 		launch(exp);
 	}
 	
-	public static HazardSpectrumApplication launch(DefaultExceptoinHandler handler) {
+	public static HazardSpectrumApplication launch(DefaultExceptionHandler handler) {
 		HazardSpectrumApplication applet = new
 				HazardSpectrumApplication(APP_SHORT_NAME);
 		if (handler != null) {

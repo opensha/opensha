@@ -46,7 +46,7 @@ import org.opensha.commons.util.ListUtils;
 import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
-import org.opensha.commons.util.bugReports.DefaultExceptoinHandler;
+import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.ScenarioShakeMapCalculator;
 import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.EqkRupture;
@@ -384,13 +384,13 @@ AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Ru
 	//Main method
 	public static void main(String[] args) throws IOException {
 		new DisclaimerDialog(APP_NAME, APP_SHORT_NAME, getAppVersion());
-		DefaultExceptoinHandler exp = new DefaultExceptoinHandler(
+		DefaultExceptionHandler exp = new DefaultExceptionHandler(
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
 		launch(exp);
 	}
 	
-	public static ScenarioShakeMapApp launch(DefaultExceptoinHandler handler) {
+	public static ScenarioShakeMapApp launch(DefaultExceptionHandler handler) {
 		ScenarioShakeMapApp applet = new ScenarioShakeMapApp(APP_SHORT_NAME);
 		if (handler != null) {
 			handler.setApp(applet);

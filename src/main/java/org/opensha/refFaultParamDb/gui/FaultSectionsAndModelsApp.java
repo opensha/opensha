@@ -11,7 +11,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 
 import org.opensha.commons.util.ApplicationVersion;
-import org.opensha.commons.util.bugReports.DefaultExceptoinHandler;
+import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.refFaultParamDb.dao.db.DB_AccessAPI;
 import org.opensha.refFaultParamDb.dao.db.DB_ConnectionPool;
 import org.opensha.refFaultParamDb.dao.db.ServerDB_Access;
@@ -38,7 +38,7 @@ public class FaultSectionsAndModelsApp extends JFrame {
 	
 	private static ApplicationVersion version;
 	
-	private static DefaultExceptoinHandler eh;
+	private static DefaultExceptionHandler eh;
 	
 	/**
 	 * Returns the Application version
@@ -84,7 +84,7 @@ public class FaultSectionsAndModelsApp extends JFrame {
 	}
 	
 	public static void main(String args[]) {
-		eh = new DefaultExceptoinHandler(APP_SHORT_NAME, getAppVersion(), null, null);
+		eh = new DefaultExceptionHandler(APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(eh);
 		new LoginWindow(dbConnection, FaultSectionsAndModelsApp.class.getName());
 	}
