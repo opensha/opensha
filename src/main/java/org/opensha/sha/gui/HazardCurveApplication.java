@@ -888,17 +888,18 @@ ScalarIMRChangeListener {
 	 * Calculations are performed on the user's own machine, no internet connection
 	 * is required for it.
 	 */
-	protected void createCalcInstance(){
-		try{
-			if(calc == null) {
+	protected void createCalcInstance() {
+		try {
+			if (calc == null) {
 				calc = new HazardCurveCalculator();
 				calc.setTrackProgress(true);
-//System.out.println("Created new calc from LocalModeApp");
 			}
-			if(disaggregationFlag)
-				if(disaggCalc == null)
+			if (disaggregationFlag) {
+				if (disaggCalc == null) {
 					disaggCalc = new DisaggregationCalculator();
-		}catch(Exception e){
+				}
+			}
+		} catch (Exception e) {
 			e.printStackTrace();
 			BugReport bug = new BugReport(e, this.getParametersInfoAsString(), appShortName, getAppVersion(), this);
 			BugReportDialog bugDialog = new BugReportDialog(this, bug, true);
@@ -912,16 +913,9 @@ ScalarIMRChangeListener {
 	 */
 	protected void calculate() {
 		setButtonsEnable(false);
-		// do not show warning messages in IMR gui bean. this is needed
-		// so that warning messages for site parameters are not shown when Add
-		// graph is clicked
-		//		imrGuiBean.showWarningMessages(false); // TODO should we add this to the multi imr bean?
 		if (plotOptionControl != null) {
-			if (this.plotOptionControl.getSelectedOption().equals(
-					PlottingOptionControl.PLOT_ON_TOP))
-				addData = true;
-			else
-				addData = false;
+			addData = this.plotOptionControl.getSelectedOption().equals(
+					PlottingOptionControl.PLOT_ON_TOP);
 		}
 		try {
 			createCalcInstance();
@@ -965,7 +959,6 @@ ScalarIMRChangeListener {
 							drawGraph();
 						}
 					} catch (Exception e) {
-						// e.printStackTrace();
 						timer.stop();
 						setButtonsEnable(true);
 						e.printStackTrace();
@@ -1021,10 +1014,7 @@ ScalarIMRChangeListener {
 	 * to draw the graph
 	 */
 	protected void drawGraph() {
-		// you can show warning messages now
-		//		imrGuiBean.showWarningMessages(true); // TODO should we add this to the multi imr bean?
 		runInEDT(new Runnable() {
-			
 			@Override
 			public void run() {
 				addGraphPanel();
@@ -1252,7 +1242,6 @@ ScalarIMRChangeListener {
 							hazFunction, site, imrGuiBean.getSelectedIMR(), (ERF) forecast);
 				} else { // deterministic
 					runInEDT(new Runnable() {
-						
 						@Override
 						public void run() {
 							progressCheckBox.setSelected(false);
@@ -1263,7 +1252,6 @@ ScalarIMRChangeListener {
 					EqkRupture rupture = this.erfRupSelectorGuiBean.getRupture();
 					hazFunction = (ArbitrarilyDiscretizedFunc) calc.getHazardCurve(hazFunction, site, imr, rupture);
 					runInEDT(new Runnable() {
-						
 						@Override
 						public void run() {
 							progressCheckBox.setSelected(true);
@@ -1296,7 +1284,6 @@ ScalarIMRChangeListener {
 		final String xAxisName = imt + " (" + firstIMRFromMap.getParameter(imt).getUnits() + ")";
 		final String yAxisName = "Probability of Exceedance";
 		runInEDT(new Runnable() {
-			
 			@Override
 			public void run() {
 				graphWidget.setXAxisLabel(xAxisName);
@@ -1311,7 +1298,6 @@ ScalarIMRChangeListener {
 		if (disaggregationFlag && isStochasticCurve) {
 			final Component parent = this;
 			runInEDT(new Runnable() {
-				
 				@Override
 				public void run() {
 					JOptionPane.showMessageDialog(parent,
@@ -1455,7 +1441,6 @@ ScalarIMRChangeListener {
 						"Disaggregation Message", JOptionPane.OK_OPTION);
 		}
 		runInEDT(new Runnable() {
-			
 			@Override
 			public void run() {
 				setButtonsEnable(true);
@@ -1472,9 +1457,7 @@ ScalarIMRChangeListener {
 		} else {
 			try {
 				SwingUtilities.invokeAndWait(run);
-			} catch (InvocationTargetException e) {
-				ExceptionUtils.throwAsRuntimeException(e);
-			} catch (InterruptedException e) {
+			} catch (InvocationTargetException | InterruptedException e) {
 				ExceptionUtils.throwAsRuntimeException(e);
 			}
 		}
