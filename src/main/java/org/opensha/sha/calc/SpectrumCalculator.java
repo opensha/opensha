@@ -15,6 +15,7 @@ import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.gui.HazardCurveApplication;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
@@ -204,7 +205,10 @@ implements SpectrumCalculatorAPI {
 
 		// loop over sources
 		for (sourceIndex = 0; sourceIndex < numSources; sourceIndex++) {
-
+			// quit if user cancelled the calculation
+			if (HazardCurveApplication.isCancelled())
+				return new ArbitrarilyDiscretizedFunc();
+			
 			// get the ith source
 			ProbEqkSource source = eqkRupForecast.getSource(sourceIndex);
 
@@ -432,6 +436,9 @@ implements SpectrumCalculatorAPI {
 
 		// loop over sources
 		for(sourceIndex=0;sourceIndex < numSources ;sourceIndex++) {
+			// quit if user cancelled the calculation
+			if (HazardCurveApplication.isCancelled())
+				return new ArbitrarilyDiscretizedFunc();
 
 			// get the ith source
 			ProbEqkSource source = eqkRupForecast.getSource(sourceIndex);

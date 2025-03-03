@@ -7,6 +7,7 @@ import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.concurrent.CompletableFuture;
 
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -45,9 +46,9 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
  * @author nitingupta
  *
  */
-public class HazardSpectrumApplication
-extends HazardCurveApplication {
+public class HazardSpectrumApplication extends HazardCurveApplication {
 
+	private static final long serialVersionUID = 1L;
 	public static final String APP_NAME = "Hazard Spectrum Application";
 	public static final String APP_SHORT_NAME = "HazardSpectrumLocal";
 
@@ -184,6 +185,10 @@ extends HazardCurveApplication {
 		numERFsInEpistemicList = 0;
 		BaseERF forecast = null;
 		EqkRupture rupture = null;
+
+		// Check for interrupts before updating the forecast
+		if (isCancelled()) return;
+
 		if (!this.isProbabilisticCurve)
 			rupture = this.erfRupSelectorGuiBean.getRupture();
 
@@ -208,6 +213,9 @@ extends HazardCurveApplication {
 			"Beginning Calculation ");
 			timer.start();
 		}
+
+		// Check for interrupts after updating the forecast
+		if (isCancelled()) return;
 
 		// get the selected IMR
 		ScalarIMR imr = imrGuiBean.getSelectedIMR();
@@ -430,18 +438,15 @@ extends HazardCurveApplication {
 	 */
 	protected void calculate() {
 		setButtonsEnable(false);
-		// do not show warning messages in IMR gui bean. this is needed
-		// so that warning messages for site parameters are not shown when Add graph is clicked
-		//		imrGuiBean.showWarningMessages(false); // TODO need to add this back in
-		if(plotOptionControl !=null){
-			if(this.plotOptionControl.getSelectedOption().equals(PlottingOptionControl.PLOT_ON_TOP))
+		if (plotOptionControl != null) {
+			if (this.plotOptionControl.getSelectedOption().equals(PlottingOptionControl.PLOT_ON_TOP))
 				addData = true;
 			else
 				addData = false;
 		}
-		try{
+		try {
 			createCalcInstance();
-		}catch(Exception e){
+		} catch (Exception e) {
 			setButtonsEnable(true);
 			BugReport bug = new BugReport(e, getParametersInfoAsString(), appShortName, getAppVersion(), this);
 			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
@@ -449,20 +454,35 @@ extends HazardCurveApplication {
 		}
 
 		// check if progress bar is desired and set it up if so
-		if(this.progressCheckBox.isSelected())  {
+		if (this.progressCheckBox.isSelected())  {
+			calcFuture = CompletableFuture.runAsync(() -> {
+				try {
+					computeHazardCurve();
+					cancelButton.setEnabled(false);
+				} catch (Throwable t) {
+					t.printStackTrace();
+					BugReport bug = new BugReport(t, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+					BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+					bugDialog.setVisible(true);
+					setButtonsEnable(true);
+				} finally {
+					if (isCancelled()) {
+						setButtonsEnable(true);
+						signalReset();
+					}
+				}
+			});
 
 			timer = new Timer(500, new ActionListener() {
 				public void actionPerformed(ActionEvent evt) {
-					try{
-						if(!isEqkList){
+					try {
+						if (!isEqkList) {
 
 							int totRupture = calc.getTotRuptures();
 							int currRupture = calc.getCurrRuptures();
 							if (currRupture != -1)
 								progressClass.updateProgress(currRupture, totRupture);
-
-						}
-						else{
+						} else {
 							if((numERFsInEpistemicList+1) !=0 && !isHazardCalcDone)
 								progressClass.updateProgress(currentERFInEpistemicListForHazardCurve,numERFsInEpistemicList);
 						}
@@ -471,8 +491,7 @@ extends HazardCurveApplication {
 							progressClass.dispose();
 							drawGraph();
 						}
-					}catch(Exception e){
-						//e.printStackTrace();
+					} catch (Exception e) {
 						timer.stop();
 						setButtonsEnable(true);
 						e.printStackTrace();
@@ -483,11 +502,7 @@ extends HazardCurveApplication {
 					}
 				}
 			});
-
-			calcThread = new Thread(this);
-			calcThread.start();
-		}
-		else {
+		} else {
 			this.computeHazardCurve();
 			this.drawGraph();
 		}
@@ -539,7 +554,8 @@ extends HazardCurveApplication {
 
 		XY_DataSetList hazardFuncList = new XY_DataSetList();
 		for (int i = 0; i < numERFsInEpistemicList; ++i) {
-			//current ERF's being used to calculated Hazard Curve
+			if (isCancelled()) return;
+			// current ERF's being used to calculated Hazard Curve
 			currentERFInEpistemicListForHazardCurve = i;
 			DiscretizedFunc hazFunction = null;
 
@@ -555,12 +571,9 @@ extends HazardCurveApplication {
 					// initialize the values in condProbfunc with log values as passed in hazFunction
 					initX_Values(hazFunction);
 
-
 					hazFunction = calc.getIML_SpectrumCurve(hazFunction, site, imr,
 							erfList.getERF(i),
 							imlProbValue, saPeriodVector);
-
-
 				}
 			} catch (RuntimeException e) {
 				//e.printStackTrace();

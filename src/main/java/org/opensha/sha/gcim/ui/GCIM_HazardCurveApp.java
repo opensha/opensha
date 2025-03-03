@@ -21,6 +21,7 @@ import java.security.AccessControlException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -150,7 +151,7 @@ import com.google.common.collect.Lists;
  * @version 1.0
  */
 
-public class GCIM_HazardCurveApp  extends HazardCurveApplication {
+public class GCIM_HazardCurveApp extends HazardCurveApplication {
 
 	/**
 	 * 
@@ -932,10 +933,6 @@ public class GCIM_HazardCurveApp  extends HazardCurveApplication {
 	 */
 	protected void calculate() {
 		setButtonsEnable(false);
-		// do not show warning messages in IMR gui bean. this is needed
-		// so that warning messages for site parameters are not shown when Add
-		// graph is clicked
-		//		imrGuiBean.showWarningMessages(false); // TODO should we add this to the multi imr bean?
 		if (plotOptionControl != null) {
 			if (this.plotOptionControl.getSelectedOption().equals(
 					PlottingOptionControl.PLOT_ON_TOP))
@@ -955,8 +952,24 @@ public class GCIM_HazardCurveApp  extends HazardCurveApplication {
 
 		// check if progress bar is desired and set it up if so
 		if (this.progressCheckBox.isSelected()) {
-			calcThread = new Thread(this);
-			calcThread.start();
+			calcFuture = CompletableFuture.runAsync(() -> {
+				try {
+					computeHazardCurve();
+					cancelButton.setEnabled(false);
+				} catch (Throwable t) {
+					t.printStackTrace();
+					BugReport bug = new BugReport(t, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+					BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+					bugDialog.setVisible(true);
+					setButtonsEnable(true);
+				} finally {
+					if (isCancelled()) {
+						setButtonsEnable(true);
+						signalReset();
+					}
+				}
+			});
+
 			timer = new Timer(200, new ActionListener() {
 				public void actionPerformed(ActionEvent evt) {
 					try {
@@ -2587,47 +2600,6 @@ public class GCIM_HazardCurveApp  extends HazardCurveApplication {
 
 	public GraphWidget getGraphWidget() {
 		return graphWidget;
-	}
-
-	/**
-	 * This function stops the hazard curve calculation if started, so that user
-	 * does not have to wait for the calculation to finish. Note: This function
-	 * has one advantage , it starts over the calculation again, but if user has
-	 * not changed any other parameter for the forecast, that won't be updated,
-	 * so saves time and memory for not updating the forecast everytime, cancel
-	 * is pressed.
-	 * 
-	 * @param e
-	 */
-	private void cancelCalculation() {
-		// stopping the Hazard Curve calculation thread
-		calcThread.stop(); // TODO remove dependency on depricated "stop" method
-		calcThread = null;
-		// close the progress bar for the ERF GuiBean that displays
-		// "Updating Forecast".
-		erfGuiBean.closeProgressBar();
-		// stoping the timer thread that updates the progress bar
-		if (timer != null && progressClass != null) {
-			timer.stop();
-			timer = null;
-			progressClass.dispose();
-		}
-		// stopping the Hazard Curve calculations on server
-		if (calc != null) {
-			try {
-				calc.stopCalc();
-				calc = null;
-			} catch (RuntimeException ee) {
-				ee.printStackTrace();
-				BugReport bug = new BugReport(ee, getParametersInfoAsString(), appShortName, getAppVersion(), this);
-				BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
-				bugDialog.setVisible(true);
-			}
-		}
-		this.isHazardCalcDone = false;
-		// making the buttons to be visible
-		setButtonsEnable(true);
-		cancelButton.setEnabled(false);
 	}
 
 	/**

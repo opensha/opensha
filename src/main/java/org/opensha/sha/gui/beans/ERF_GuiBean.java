@@ -351,7 +351,7 @@ ParameterChangeListener, ChangeListener {
 	 * It returns the ERF after updating its forecast
 	 * @return
 	 */
-	public BaseERF getSelectedERF() throws InvocationTargetException{
+	public BaseERF getSelectedERF() throws InvocationTargetException {
 		getSelectedERF_Instance();
 		if(this.showProgressBar) {
 			// also show the progress bar while the forecast is being updated
@@ -376,7 +376,7 @@ ParameterChangeListener, ChangeListener {
 				if (count == 10)
 					break;
 			}
-			
+	
 			try {
 				isNewERF_Instance = false;
 				ERF_Ref fallbackRef = erfRefs.get(0);
@@ -388,7 +388,7 @@ ParameterChangeListener, ChangeListener {
 			} catch (Exception e1) {}
 			throw e;
 		}
-		if (showProgressBar) {
+		if (showProgressBar && progress != null) {
 			progress.dispose();
 			progress = null;
 		}

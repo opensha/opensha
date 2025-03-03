@@ -20,6 +20,7 @@ import java.rmi.RemoteException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -138,13 +139,8 @@ import com.google.common.collect.Lists;
  */
 
 public class HazardCurveApplication extends JFrame implements
-Runnable, ParameterChangeListener,
-CurveDisplayAppAPI, CalculationSettingsControlPanelAPI, ActionListener,
-ScalarIMRChangeListener {
-
-	/**
-	 * 
-	 */
+ParameterChangeListener, CurveDisplayAppAPI, CalculationSettingsControlPanelAPI,
+ActionListener, ScalarIMRChangeListener {
 	private static final long serialVersionUID = 1L;
 	
 	private static ApplicationVersion version;
@@ -162,7 +158,7 @@ ScalarIMRChangeListener {
 	 */
 	private final static String C = "HazardCurveServerModeApplication";
 	// for debug purpose
-	protected final static boolean D = false;
+	protected final static boolean D = true;
 
 	// Strings for choosing ERFGuiBean or ERF_RupSelectorGUIBean
 	public final static String PROBABILISTIC = "Probabilistic";
@@ -243,7 +239,7 @@ ScalarIMRChangeListener {
 	//	private JButton closeButton;
 
 	private JButton computeButton;
-	private JButton cancelButton;
+	protected JButton cancelButton;
 	private JButton clearButton;
 	private JButton peelButton;
 	protected JCheckBox progressCheckBox; // TODO make private
@@ -277,12 +273,10 @@ ScalarIMRChangeListener {
 	// timer threads to show the progress of calculations
 	Timer timer;
 	Timer disaggTimer;
-	// calculation thead
-	Thread calcThread;
 	// checks to see if HazardCurveCalculations are done
 	boolean isHazardCalcDone = false;
-
-
+	protected CompletableFuture<Void> calcFuture = null;
+	private static volatile boolean cancelled = false;
 
 	//	private final static String POWERED_BY_IMAGE = TODO clean
 	//			"logos/PoweredByOpenSHA_Agua.jpg";
@@ -858,32 +852,6 @@ ScalarIMRChangeListener {
 	}
 
 	/**
-	 * Implementing the run method in the Runnable interface that creates a new
-	 * thread to do Hazard Curve Calculation, this thread created is separate
-	 * from the timer thread, so that progress bar updates do not conflict
-	 * with calculations.
-	 */
-	public void run() {
-		try {
-			computeHazardCurve();
-			cancelButton.setEnabled(false);
-			// disaggCalc = null;
-			calcThread = null;
-		} catch (ThreadDeath t) {
-			// expected if you cancelled it
-//			System.out.println("Caught ThreadDeath");
-			setButtonsEnable(true);
-		} catch (Throwable t) {
-			t.printStackTrace();
-			BugReport bug = new BugReport(t, getParametersInfoAsString(), appShortName, getAppVersion(), this);
-			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
-			bugDialog.setVisible(true);
-			setButtonsEnable(true);
-		}
-
-	}
-
-	/**
 	 * This method creates the HazardCurveCalc and Disaggregation Calc(if selected) instances.
 	 * Calculations are performed on the user's own machine, no internet connection
 	 * is required for it.
@@ -929,8 +897,24 @@ ScalarIMRChangeListener {
 
 		// check if progress bar is desired and set it up if so
 		if (this.progressCheckBox.isSelected()) {
-			calcThread = new Thread(this);
-			calcThread.start();
+			calcFuture = CompletableFuture.runAsync(() -> {
+				try {
+					computeHazardCurve();
+					cancelButton.setEnabled(false);
+				} catch (Throwable t) {
+					t.printStackTrace();
+					BugReport bug = new BugReport(t, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+					BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+					bugDialog.setVisible(true);
+					setButtonsEnable(true);
+				} finally {
+					if (isCancelled()) {
+						setButtonsEnable(true);
+						signalReset();
+					}
+				}
+			});
+
 			timer = new Timer(200, new ActionListener() {
 				public void actionPerformed(ActionEvent evt) {
 					try {
@@ -1143,12 +1127,16 @@ ScalarIMRChangeListener {
 	/**
 	 * Gets the probabilities functiion based on selected parameters this
 	 * function is called when add Graph is clicked
+	 * @throws InterruptedException 
 	 */
 	protected void computeHazardCurve() {
 		// starting the calculation
 		isHazardCalcDone = false;
 
 		BaseERF forecast = null;
+
+		// Check for interrupts before updating the forecast
+		if (isCancelled()) return;
 
 		// get the selected forecast model
 		try {
@@ -1170,6 +1158,9 @@ ScalarIMRChangeListener {
 				"Starting\u2026");
 			timer.start();
 		}
+		
+		// Check for interrupts after updating the forecast
+		if (isCancelled()) return;
 
 		// get the selected IMR
 		Map<TectonicRegionType, ScalarIMR> imrMap = imrGuiBean.getIMRMap();
@@ -1205,7 +1196,7 @@ ScalarIMRChangeListener {
 						"Input Error", JOptionPane.INFORMATION_MESSAGE);
 				return;
 			}
-			this.isEqkList = true; // set the flag to indicate thatwe are
+			this.isEqkList = true; // set the flag to indicate that we are
 			// dealing with Eqk list
 			handleForecastList(site, imrMap, forecast);
 			// initializing the counters for ERF List to 0, for other ERF List
@@ -1228,7 +1219,6 @@ ScalarIMRChangeListener {
 		// intialize the hazard function
 		ArbitrarilyDiscretizedFunc hazFunction = new ArbitrarilyDiscretizedFunc();
 		initX_Values(hazFunction);
-		// System.out.println("22222222HazFunction: "+hazFunction.toString());
 		try {
 			// calculate the hazard curve
 			// eqkRupForecast =
@@ -1555,6 +1545,7 @@ ScalarIMRChangeListener {
 
 		XY_DataSetList hazardFuncList = new XY_DataSetList();
 		for (int i = 0; i < numERFsInEpistemicList; ++i) {
+			if (isCancelled()) return;
 			// current ERF's being used to calculated Hazard Curve
 			currentERFInEpistemicListForHazardCurve = i;
 			ArbitrarilyDiscretizedFunc hazFunction = new ArbitrarilyDiscretizedFunc();
@@ -2250,7 +2241,28 @@ ScalarIMRChangeListener {
 	public GraphWidget getGraphWidget() {
 		return graphWidget;
 	}
-
+	
+	/**
+	 * An isCancelled getter is used to abstract the implementation.
+	 * Currently this is a volatile boolean, but alternative signallers
+	 * may be considered if we need multiple concurrent writers.
+	 * @return If the signal to cancel the Hazard Curve calculation is sent
+	 */
+	public static boolean isCancelled() {
+		if (D && cancelled) {
+			System.out.println("Caught cancellation signal");
+		}
+		return cancelled;
+	}
+	
+	protected static void signalCancel() {
+		cancelled = true;
+	}
+	
+	protected static void signalReset() {
+		cancelled = false;
+	}
+	
 	/**
 	 * This function stops the hazard curve calculation if started, so that user
 	 * does not have to wait for the calculation to finish. Note: This function
@@ -2258,38 +2270,42 @@ ScalarIMRChangeListener {
 	 * not changed any other parameter for the forecast, that won't be updated,
 	 * so saves time and memory for not updating the forecast everytime, cancel
 	 * is pressed.
-	 * 
-	 * @param e
 	 */
-	private void cancelCalculation() {
+	protected void cancelCalculation() {
+		if (calcFuture == null) {
+			if (D) System.out.println(
+					"Failed to cancel calculation. calculation thread is null. Has it started?");
+			return;
+		}
 		// stopping the Hazard Curve calculation thread
-		calcThread.stop(); // TODO remove dependency on depricated "stop" method
-		calcThread = null;
-		// close the progress bar for the ERF GuiBean that displays
-		// "Updating Forecast".
-		erfGuiBean.closeProgressBar();
-		// stoping the timer thread that updates the progress bar
-		if (timer != null && progressClass != null) {
-			timer.stop();
-			timer = null;
-			progressClass.dispose();
-		}
-		// stopping the Hazard Curve calculations on server
-		if (calc != null) {
-			try {
-				calc.stopCalc();
-				calc = null;
-			} catch (RuntimeException ee) {
-				ee.printStackTrace();
-				BugReport bug = new BugReport(ee, getParametersInfoAsString(), appShortName, getAppVersion(), this);
-				BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
-				bugDialog.setVisible(true);
+		signalCancel();
+		calcFuture.thenRun(() -> {
+			// close the progress bar for the ERF GuiBean that displays
+			// "Updating Forecast".
+			erfGuiBean.closeProgressBar();
+			// stoping the timer thread that updates the progress bar
+			if (timer != null && progressClass != null) {
+				timer.stop();
+				timer = null;
+				progressClass.dispose();
 			}
-		}
-		this.isHazardCalcDone = false;
-		// making the buttons to be visible
-		setButtonsEnable(true);
-		cancelButton.setEnabled(false);
+			// stopping the Hazard Curve calculations on server
+			if (calc != null) {
+				try {
+					calc.stopCalc();
+					calc = null;
+				} catch (RuntimeException ee) {
+					ee.printStackTrace();
+					BugReport bug = new BugReport(ee, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+					BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+					bugDialog.setVisible(true);
+				}
+			}
+			this.isHazardCalcDone = false;
+			// making the buttons to be visible
+			setButtonsEnable(true);
+			cancelButton.setEnabled(false);
+		});
 	}
 
 	/**
