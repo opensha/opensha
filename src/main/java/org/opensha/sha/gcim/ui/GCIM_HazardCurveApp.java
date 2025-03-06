@@ -293,8 +293,6 @@ public class GCIM_HazardCurveApp extends HazardCurveApplication {
 	Timer timer;
 	Timer disaggTimer;
 	Timer gcimTimer;
-	// calculation thead
-	Thread calcThread;
 	// checks to see if HazardCurveCalculations are done
 	boolean isHazardCalcDone = false;
 
@@ -874,32 +872,6 @@ public class GCIM_HazardCurveApp extends HazardCurveApplication {
 			cancelButton.setEnabled(true);
 			calculate();
 		}
-	}
-
-	/**
-	 * Implementing the run method in the Runnable interface that creates a new
-	 * thread to do Hazard Curve Calculation, this thread created is seperate
-	 * from the timer thread, so that progress bar updation does not conflicts
-	 * with Calculations.
-	 */
-	public void run() {
-		try {
-			computeHazardCurve();
-			cancelButton.setEnabled(false);
-			// disaggCalc = null;
-			calcThread = null;
-		} catch (ThreadDeath t) {
-			// expected if you cancelled it
-//			System.out.println("Caught ThreadDeath");
-			setButtonsEnable(true);
-		} catch (Throwable t) {
-			t.printStackTrace();
-			BugReport bug = new BugReport(t, getParametersInfoAsString(), appShortName, getAppVersion(), this);
-			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
-			bugDialog.setVisible(true);
-			setButtonsEnable(true);
-		}
-
 	}
 
 	/**
