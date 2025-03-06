@@ -233,6 +233,8 @@ public class SiteLogicTreeHazardPageGen {
 					System.out.println("\tBuilding comparison curve dists");
 					compDists = loadCurvesAndDists(compCurvesCSV, null, compCurves, null, compWeights, true);
 					compMeanCurve = compCurves.size() == 1 ? compCurves.get(0) : calcMeanCurve(compDists, xVals(compCurves.get(0)));
+					if (compCurves.size() == 1)
+						compDists = null;
 				}
 				
 				String prefix = sitePrefix+"_"+perPrefix;
@@ -246,6 +248,8 @@ public class SiteLogicTreeHazardPageGen {
 				if (compDists == null || compCurves.size() < 2) {
 					lines.add("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 					siteLines.add("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
+					lines.add("");
+					lines.add("[__Download CSV__]("+resourcesDir.getName()+"/"+prefix+"_curve_dists.csv)");
 				} else {
 					// we have a comparison distribution
 					TableBuilder table = MarkdownUtils.tableBuilder();
@@ -259,6 +263,12 @@ public class SiteLogicTreeHazardPageGen {
 							exec, plotFutures);
 					table.addColumn("![Curve Dist]("+resourcesDir.getName()+"/"+plot.getName()+")");
 					table.finalizeLine();
+					
+					table.initNewLine();
+					table.addColumn("[__Download CSV__]("+resourcesDir.getName()+"/"+prefix+"_curve_dists.csv)");
+					table.addColumn("[__Download CSV__]("+resourcesDir.getName()+"/"+prefix+"_comp_curve_dists.csv)");
+					table.finalizeLine();
+					
 					
 					lines.addAll(table.build());
 					siteLines.addAll(table.build());
@@ -300,8 +310,10 @@ public class SiteLogicTreeHazardPageGen {
 //						compMean = mean(compWeights, compBranchVals);
 						compMean = curveVal(compMeanCurve, rp);
 						rpCompMeans.add(compMean);
-						compHist = buildHist(compWeights, compBranchVals, refHist);
-						compHist.setName("Comparison Distribution");
+						if (compCurves.size() > 1) {
+							compHist = buildHist(compWeights, compBranchVals, refHist);
+							compHist.setName("Comparison Distribution");
+						}
 						rpCompHists.add(compHist);
 					} else {
 						refHist = initHist(branchVals);
@@ -493,6 +505,8 @@ public class SiteLogicTreeHazardPageGen {
 						
 						siteLines.addAll(table.build());
 						siteLines.add("");
+						siteLines.add("[__Download Choice Mean Curves CSV__]("+resourcesDir.getName()+"/"+ltPrefix+"_means.csv)");
+						siteLines.add("");
 						
 						// value table
 						table = MarkdownUtils.tableBuilder();
@@ -620,7 +634,10 @@ public class SiteLogicTreeHazardPageGen {
 		if (curves.size() != tree.size())
 			System.out.println("WARNING: we have "+curves.size()+" curves but the passed in tree has "
 					+tree.size()+" breanches. It's likely resampled and we will attempt to match.");
+		// if the passed in tree doesn't match that loaded from the CSV file, this list will contain curves
+		// remapped to the passed in tree
 		List<DiscretizedFunc> reordered = null;
+		// this is a map of each passed in logic tree branch to the (first) index in the passed in tree
 		Map<LogicTreeBranch<?>, Integer> treeBranchIndexes = null;
 		for (int i=0; i<curves.size(); i++) {
 			LogicTreeBranch<?> treeBranch = i < tree.size() ? tree.getBranch(i) : null;
@@ -632,8 +649,11 @@ public class SiteLogicTreeHazardPageGen {
 					treeBranchIndexes = new HashMap<>(tree.size());
 					for (int index=0; index<tree.size(); index++) {
 						LogicTreeBranch<?> tempBranch = tree.getBranch(index);
-						treeBranchIndexes.put(tempBranch, index);
-						Preconditions.checkState(treeBranchIndexes.containsKey(tempBranch));
+						if (!treeBranchIndexes.containsKey(tempBranch)) {
+							// that check was to make sure we only keep the first mapping
+							treeBranchIndexes.put(tempBranch, index);
+							Preconditions.checkState(treeBranchIndexes.containsKey(tempBranch));
+						}
 					}
 //					Preconditions.checkState(treeBranchIndexes.size() == tree.size());
 					reordered = new ArrayList<>(tree.size());
@@ -667,7 +687,11 @@ public class SiteLogicTreeHazardPageGen {
 					Integer prevIndex = treeBranchIndexes.get(treeBranch);
 					Preconditions.checkState(prevIndex != null,
 							"No mappings found for branch %s; i=%s, prevIndex=%s", treeBranch, i, prevIndex);
-					reordered.set(i, reordered.get(prevIndex));
+					DiscretizedFunc curve = reordered.get(prevIndex);
+					Preconditions.checkNotNull(curve,
+							"Filling in a hole at %s, found prevIndex=%s but the curve at the index was null? branch: %s",
+							i, prevIndex, treeBranch);
+					reordered.set(i, curve);
 				}
 			}
 			if (holes > 0)
@@ -795,6 +819,15 @@ public class SiteLogicTreeHazardPageGen {
 		funcs.add(bounds68);
 		chars.add(new PlotCurveCharacterstics(PlotLineType.SHADED_UNCERTAIN, 1f, transColor));
 		
+		CSVFile<String> csv = new CSVFile<>(true);
+		csv.addLine(perLabel+" ("+units+")", "Mean", "Median", "Min", "p2.5", "p16", "p84", "p97.5", "Max");
+		Preconditions.checkState(meanCurve.size() == medianCurve.size());
+		for (int i=0; i<meanCurve.size(); i++)
+			csv.addLine(meanCurve.getX(i)+"", meanCurve.getY(i)+"", medianCurve.getY(i)+"",
+					minMax.getLowerY(i)+"",	bounds95.getLowerY(i)+"", bounds68.getLowerY(i)+"",
+					bounds68.getUpperY(i)+"", bounds95.getUpperY(i)+"", minMax.getUpperY(i)+"");
+		csv.writeToFile(new File(resourcesDir, prefix+".csv"));
+		
 		Range yRange = new Range(1e-6, 1e0);
 		double minX = Double.POSITIVE_INFINITY;
 		double maxX = 0d;
@@ -884,6 +917,25 @@ public class SiteLogicTreeHazardPageGen {
 				funcs.add(nodeCurve);
 				chars.add(new PlotCurveCharacterstics(PlotLineType.SOLID, 3f, nodeColor));
 			}
+			
+			CSVFile<String> csv = new CSVFile<>(true);
+			List<String> header = new ArrayList<>();
+			header.add(perLabel+" ("+units+")");
+			header.add("Mean");
+			for (int i=0; i<nodes.size(); i++)
+				header.add(nodes.get(i).getShortName());
+			csv.addLine(header);
+			for (int i=0; i<meanCurve.size(); i++) {
+				List<String> line = new ArrayList<>(header.size());
+				line.add((float)meanCurve.getX(i)+"");
+				line.add(meanCurve.getY(i)+"");
+				for (DiscretizedFunc nodeCurve : nodeMeanCurves) {
+					Preconditions.checkState((float)nodeCurve.getX(i) == (float)meanCurve.getX(i));
+					line.add(nodeCurve.getY(i)+"");
+				}
+				csv.addLine(line);
+			}
+			csv.writeToFile(new File(resourcesDir, prefix+".csv"));
 		}
 		
 		if (nodeIndvCurves != null) {
@@ -1037,7 +1089,7 @@ public class SiteLogicTreeHazardPageGen {
 	}
 	
 	private static DiscretizedFunc calcMeanCurve(ArbDiscrEmpiricalDistFunc[] dists, double[] xVals) {
-		Preconditions.checkState(dists.length == xVals.length);
+		Preconditions.checkState(dists.length == xVals.length, "have %s dists but %s xVals", dists.length, xVals.length);
 		double[] yVals = new double[xVals.length];
 		for (int i=0; i<dists.length; i++)
 			yVals[i] = dists[i].getMean();
@@ -1045,7 +1097,7 @@ public class SiteLogicTreeHazardPageGen {
 	}
 	
 	private static DiscretizedFunc calcFractileCurve(ArbDiscrEmpiricalDistFunc[] dists, double[] xVals, double fractile) {
-		Preconditions.checkState(dists.length == xVals.length);
+		Preconditions.checkState(dists.length == xVals.length, "have %s dists but %s xVals", dists.length, xVals.length);
 		double[] yVals = new double[xVals.length];
 		for (int i=0; i<dists.length; i++)
 			yVals[i] = dists[i].getInterpolatedFractile(fractile);

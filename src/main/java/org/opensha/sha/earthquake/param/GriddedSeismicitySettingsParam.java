@@ -183,7 +183,7 @@ public class GriddedSeismicitySettingsParam extends AbstractParameter<GriddedSei
 				return;
 			Parameter<?> source = event.getParameter();
 			Parameter<GriddedSeismicitySettings> param = getParameter();
-			System.out.println("GriddedSeismicitySettingsParam: param change, updating parent: "+source.getName()+" to "+source.getValue());
+//			System.out.println("GriddedSeismicitySettingsParam: param change, updating parent: "+source.getName()+" to "+source.getValue());
 			GriddedSeismicitySettings value = getValue();
 			if (source == surfTypeParam)
 				param.setValue(value.forSurfaceType(surfTypeParam.getValue()));

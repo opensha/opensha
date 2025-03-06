@@ -23,6 +23,8 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.border.Border;
 import javax.swing.border.TitledBorder;
+import javax.swing.event.ChangeEvent;
+import javax.swing.event.ChangeListener;
 
 import org.opensha.commons.exceptions.ConstraintException;
 import org.opensha.commons.exceptions.ParameterException;
@@ -62,7 +64,7 @@ import com.google.common.base.Preconditions;
  */
 
 public class ERF_GuiBean extends JPanel implements ParameterChangeFailListener,
-ParameterChangeListener{
+ParameterChangeListener, ChangeListener {
 
 	private final static String C = "ERF_GuiBean";
 
@@ -81,10 +83,10 @@ ParameterChangeListener{
 	
 	private BaseERF fallbackERF;
 
-	//instance of the selected ERF
+	// instance of the selected ERF
 	BaseERF eqkRupForecast = null;
 	//instance of progress bar to show the progress of updation of forecast
-	CalcProgressBar progress= null;
+	CalcProgressBar progress = null;
 
 
 	//parameter List to hold the selected ERF parameters
@@ -141,7 +143,7 @@ ParameterChangeListener{
 		catch(Exception e) {
 			e.printStackTrace();
 		}
-		// save the class names of ERFs to be shown\
+		// save the class names of ERFs to be shown
 		this.erfRefs = erfRefs;
 
 		// create the instance of ERFs
@@ -188,26 +190,25 @@ ParameterChangeListener{
 		erfSelectionParam.addParameterChangeListener(this);
 		parameterList.addParameter(erfSelectionParam);
 	}
-
-
+	
 	/**
-	 * this function is called to add the paramters based on the forecast
+	 * this function is called to add the parameters based on the forecast
 	 * selected by the user. Based on the selected Forecast it also creates
 	 * timespan and add that to the same panel window that shows the ERF parameters.
 	 */
-	private void setParamsInForecast() throws InvocationTargetException{
-
+	private void setParamsInForecast() throws InvocationTargetException {
 		Parameter chooseERF_Param = parameterList.getParameter(this.ERF_PARAM_NAME);
 		parameterList = new ParameterList();
 		parameterList.addParameter(chooseERF_Param);
 		// get the selected forecast
 		getSelectedERF_Instance();
-		//getting the EqkRupForecast param List and its iterator
+		// getting the EqkRupForecast param List and its iterator
 		ParameterList paramList = eqkRupForecast.getAdjustableParameterList();
+		paramList.addChangeListener(this);
 		Iterator it = paramList.getParametersIterator();
 
 		// make the parameters visible based on selected forecast
-		while(it.hasNext()){
+		while (it.hasNext()) {
 			Parameter param = (Parameter)it.next();
 			//System.out.println("Param Name: "+param.getName());
 			//if(param.getName().equals(EqkRupForecast.TIME_DEPENDENT_PARAM_NAME))
@@ -218,14 +219,12 @@ ParameterChangeListener{
 		}
 
 		//remove the parameters if they already exists in the panel.
-		if(listEditor !=null){
+		if (listEditor != null) {
 			erfAndTimespanPanel.remove(listEditor);
 			listEditor = null;
 		}
 
-
-
-		//creating the new instance of ERF parameter list editors
+		// creating the new instance of ERF parameter list editors
 		listEditor = new ParameterListEditor(parameterList);
 
 		// show the ERF gui Bean in JPanel
@@ -489,7 +488,7 @@ ParameterChangeListener{
 
 	/**
 	 *  This is the main function of this interface. Any time a control
-	 *  paramater or independent paramater is changed by the user in a GUI this
+	 *  parameter or independent parameter is changed by the user in a GUI this
 	 *  function is called, and a paramater change event is passed in. This
 	 *  function then determines what to do with the information ie. show some
 	 *  paramaters, set some as invisible, basically control the paramater
@@ -497,17 +496,17 @@ ParameterChangeListener{
 	 *
 	 * @param  event
 	 */
-	public void parameterChange( ParameterChangeEvent event ) {
+	public void parameterChange(ParameterChangeEvent event) {
 
 
 		String name1 = event.getParameterName();
 
 		// if ERF selected by the user  changes
-		if( name1.equals(ERF_PARAM_NAME) && !isNewERF_Instance){
+		if (name1.equals(ERF_PARAM_NAME) && !isNewERF_Instance) {
 			String value = event.getNewValue().toString();
 			int size = this.erfNamesVector.size();
-			try{
-				for(int i=0;i<size;++i){
+			try {
+				for (int i=0;i<size;++i) {
 					if(value.equalsIgnoreCase((String)erfNamesVector.get(i))) {
 						try {
 							eqkRupForecast = getERFInstance(erfRefs.get(i));
@@ -523,7 +522,7 @@ ParameterChangeListener{
 						break;
 					}
 				}
-			}catch(Exception e){
+			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
@@ -535,7 +534,6 @@ ParameterChangeListener{
 		try {
 			setParamsInForecast();
 		} catch (InvocationTargetException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		createTimeSpanPanel();
@@ -667,8 +665,7 @@ ParameterChangeListener{
 		}
 		return null;
 	}
-
-
+	
 	private void jbInit() throws Exception {
 
 		//setLayout(new GridBagLayout());
@@ -689,6 +686,11 @@ ParameterChangeListener{
 		add(erfScrollPane,  BorderLayout.CENTER);
 
 		//erfScrollPane.getViewport().add(erfAndTimespanPanel, null);
+	}
+
+	@Override
+	public void stateChanged(ChangeEvent e) {
+		refreshGUI();
 	}
 
 }

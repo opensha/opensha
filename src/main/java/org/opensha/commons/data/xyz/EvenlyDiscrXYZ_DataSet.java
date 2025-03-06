@@ -236,6 +236,25 @@ public class EvenlyDiscrXYZ_DataSet extends AbstractXYZ_DataSet {
 //		System.out.println("set: index="+index+", x="+getXIndex(index)+", y="+getYIndex(index));
 		this.set(getXIndex(index), getYIndex(index), z);
 	}
+	
+	@Override
+	public void add(Point2D point, double z) {
+		this.add(point.getX(), point.getY(), z);
+	}
+	
+	@Override
+	public void add(double x, double y, double z) {
+		if (!contains(x, y))
+			throw new InvalidRangeException("point ("+x+", "+y+") is out of range: ("+minX+"=>"+maxX+", "+minY+"=>"+maxY+")");
+		this.add(getXIndex(x), getYIndex(y), z);
+	}
+
+	@Override
+	public void add(int index, double z) {
+//		System.out.println("nx: " + nx + ", ny: " + ny);
+//		System.out.println("set: index="+index+", x="+getXIndex(index)+", y="+getYIndex(index));
+		this.add(getXIndex(index), getYIndex(index), z);
+	}
 
 	@Override
 	public double get(double x, double y) {
@@ -300,6 +319,10 @@ public class EvenlyDiscrXYZ_DataSet extends AbstractXYZ_DataSet {
 	
 	public void set(int xInd, int yInd, double z) {
 		this.data[yInd][xInd] = z;
+	}
+	
+	public void add(int xInd, int yInd, double z) {
+		this.data[yInd][xInd] += z;
 	}
 	
 	public double get(int xInd, int yInd) {

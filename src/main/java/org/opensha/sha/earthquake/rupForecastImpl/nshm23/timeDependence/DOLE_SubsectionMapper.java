@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -30,9 +31,11 @@ import com.google.common.base.Preconditions;
 
 public class DOLE_SubsectionMapper {
 	
-	public static final String REL_PATH = "/data/erf/nshm23/fault_models/v3";
-	public static final String PALEO_DOLE_PATH = REL_PATH+"/PaleoDOLEv1_April26.geojson";
-	public static final String HIST_PATH = REL_PATH+"/HistDOLEv1_April26.geojson";
+	public static final String REL_PATH = "/data/erf/nshm23/date_of_last_event/2024_11_04_v1";
+	public static final String PALEO_DOLE_PATH = REL_PATH+"/PaleoDOLE_v1.geojson";
+	public static final String HIST_PATH = REL_PATH+"/HistDOLE_v1.geojson";
+	
+	private static final String YEAR_PROP_NAME = "CalYear";
 	
 	private static final FeatureCollection loadGeoJSON(String path) throws IOException {
 		BufferedReader bRead = new BufferedReader(
@@ -50,19 +53,21 @@ public class DOLE_SubsectionMapper {
 		public final int year;
 		public final long epochMillis;
 		public final int faultID;
+		public final String faultName;
 		public final Feature feature;
 		private List<FaultSection> mappedSubSects;
 		private List<MappingType> mappedTypes;
 		
 		public AbstractDOLE_Data(Feature feature) {
 			this.feature = feature;
-			year = feature.properties.getInt("DOLEcal", Integer.MIN_VALUE);
+			year = feature.properties.getInt(YEAR_PROP_NAME, Integer.MIN_VALUE);
 			Preconditions.checkState(year > Integer.MIN_VALUE,
-					"DOLEcal is missing or malformatted: %s", feature.properties.get("DOLEcal"));
+					"%s property is missing or malformatted: %s", YEAR_PROP_NAME, feature.properties.get(YEAR_PROP_NAME));
 			epochMillis = new GregorianCalendar(year, 0, 1).getTimeInMillis();
 			faultID = feature.properties.getInt("FaultID", -1);
 			Preconditions.checkState(faultID >= 0,
 					"FaultID is missing or malformatted: %s", feature.properties.get("FaultID"));
+			faultName = feature.properties.getString("FaultName");
 			mappedSubSects = new ArrayList<>();
 			mappedTypes = new ArrayList<>();
 		}
@@ -207,10 +212,23 @@ public class DOLE_SubsectionMapper {
 		allParents.addAll(rupParentsMap.keySet());
 		allParents.addAll(doleParentsMap.keySet());
 		
+		List<AbstractDOLE_Data> allData = new ArrayList<>();
+		allData.addAll(doleData);
+		allData.addAll(histRups);
+		Map<Integer, String> parentNames = new HashMap<>();
+		for (AbstractDOLE_Data data : allData)
+			if (!parentNames.containsKey(data.faultID))
+				parentNames.put(data.faultID, data.faultName);
+		
 		for (int parentID : allParents) {
 			List<FaultSection> parentSects = parentSectsMap.get(parentID);
 			if (parentSects == null) {
-				System.err.println("WARNING: no section found with faultID="+parentID+", skipping DOLE mapping");
+				if (verbose) System.out.flush();
+				System.err.println("WARNING: no section found with faultID="+parentID+" and name='"+parentNames.get(parentID)+"', skipping DOLE mapping");
+				if (verbose) {
+					System.err.println();
+					System.err.flush();
+				}
 				continue;
 			}
 			

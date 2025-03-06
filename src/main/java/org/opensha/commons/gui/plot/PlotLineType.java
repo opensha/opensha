@@ -1,11 +1,20 @@
 package org.opensha.commons.gui.plot;
 
 import java.awt.BasicStroke;
+import java.awt.Graphics2D;
+import java.awt.Paint;
 import java.awt.Shape;
 import java.awt.Stroke;
+import java.awt.geom.Path2D;
+import java.awt.geom.Rectangle2D;
 import java.util.NoSuchElementException;
 
+import org.jfree.chart.axis.ValueAxis;
+import org.jfree.chart.plot.CrosshairState;
+import org.jfree.chart.plot.PlotRenderingInfo;
+import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.*;
+import org.jfree.data.xy.XYDataset;
 
 import com.google.common.base.Preconditions;
 
@@ -145,7 +154,8 @@ public enum PlotLineType {
 			} else if (plt == SHADED_UNCERTAIN_TRANS) {
 				renderer = new XYShadedUncertainLineRenderer(0.5);
 			} else if (plt == POLYGON_SOLID){
-				renderer = new XYAreaRenderer(XYAreaRenderer.AREA);
+//				renderer = new XYAreaRenderer(XYAreaRenderer.AREA);
+				renderer = new CustomXYAreaRenderer();
 			} else {
 				renderer = lineShpRend;
 				Stroke stroke = plt.buildStroke(lineWidth);
@@ -174,6 +184,63 @@ public enum PlotLineType {
 			
 		}
 		return renderer;
+	}
+	
+	/**
+	 * The default JFreeChart XYAreaRenderer is meant to fill areas down to the baseline axis, as in you're defining
+	 * the top of the polygon and the bottom is always the axis. That makes sense for some charts, but not as we're
+	 * using it. This just draws the passed in polygon instead.
+	 */
+	public static class CustomXYAreaRenderer extends XYLineAndShapeRenderer {
+
+		@Override
+		public void drawItem(Graphics2D g2, XYItemRendererState state,
+				Rectangle2D dataArea, PlotRenderingInfo info,
+				XYPlot plot, ValueAxis domainAxis, ValueAxis rangeAxis,
+				XYDataset dataset, int series, int item,
+				CrosshairState crosshairState, int pass) {
+			// Only render once per series (on the first item)
+			if (item != 0) {
+				return;
+			}
+
+			// Prepare the path for the polygon
+			Path2D polygon = new Path2D.Double();
+			boolean firstPoint = true;
+
+			int pointCount = dataset.getItemCount(series);
+			double firstX = Double.NaN, firstY = Double.NaN;
+
+			for (int i = 0; i < pointCount; i++) {
+				double xValue = dataset.getXValue(series, i);
+				double yValue = dataset.getYValue(series, i);
+
+				// Convert data to screen coordinates
+				double xScreen = domainAxis.valueToJava2D(xValue, dataArea, plot.getDomainAxisEdge());
+				double yScreen = rangeAxis.valueToJava2D(yValue, dataArea, plot.getRangeAxisEdge());
+
+				if (firstPoint) {
+					polygon.moveTo(xScreen, yScreen);
+					firstX = xScreen;
+					firstY = yScreen;
+					firstPoint = false;
+				} else {
+					polygon.lineTo(xScreen, yScreen);
+				}
+			}
+
+			// Ensure the polygon is closed
+			if (pointCount > 2) {
+				polygon.closePath();
+			}
+
+			// Get the series paint for the fill color
+			Paint seriesPaint = getItemPaint(series, 0);
+			g2.setPaint(seriesPaint);
+
+			// Fill the polygon
+			g2.fill(polygon);
+		}
 	}
 
 }

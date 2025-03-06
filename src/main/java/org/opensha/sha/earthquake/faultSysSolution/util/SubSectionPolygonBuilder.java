@@ -15,8 +15,11 @@ import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.geo.LocationVector;
 import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.DataUtils;
+import org.opensha.commons.util.FaultUtils;
+import org.opensha.commons.util.Interpolate;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.FaultTrace;
+import org.opensha.sha.faultSurface.GeoJSONFaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
 
 import com.google.common.base.Preconditions;
@@ -30,135 +33,263 @@ import com.google.common.primitives.Doubles;
 public class SubSectionPolygonBuilder {
 	
 	public static void buildSubsectionPolygons(List<? extends FaultSection> subSects, Region polygon) {
+		buildSubsectionPolygons(subSects, polygon, true);
+	}
+	
+	public static void buildSubsectionPolygons(List<? extends FaultSection> subSects, Region polygon, boolean shear) {
 		if (subSects.size() == 1)
 			subSects.get(0).setZonePolygon(polygon);
 		Preconditions.checkState(subSects.size() > 0);
 		
-		Area area = polygon.getShape();
-		List<Area> subSectAreas = new ArrayList<>();
+		int iters = shear ? 2 : 1;
 		
-		for (int i=0; i<subSects.size(); i++) {
-			FaultSection ss1 = subSects.get(i);
+		for (int iter=0; iter<iters; iter++) {
+			Area area = polygon.getShape();
+			List<Area> subSectAreas = new ArrayList<>();
+			
+			double[] shearAngles = null;
+			if (iter > 0) {
+				// figure out the width of the polygon halfway between the trace and the edge
+				double firstAngle = Double.NaN;
+				double lastAngle = Double.NaN;
+				for (boolean first : new boolean[] {true, false}) {
+					FaultSection sect = first ? subSects.get(0) : subSects.get(subSects.size()-1);
+					double sectLen = sect.getTraceLength();
+					FaultTrace trace = sect.getFaultTrace();
+					double traceAz = trace.getStrikeDirection();
+					Location middleTraceLoc = new Location(
+							0.5 * (trace.first().getLatitude() + trace.last().getLatitude()),
+							0.5 * (trace.first().getLongitude() + trace.last().getLongitude()));
+					Region curPoly = sect.getZonePolygon();
+					double minWidth = 0.5*sectLen;
+					
+					double leftWidth = Double.NaN;
+					double rightWidth = Double.NaN;
+					double leftDist = Double.NaN;
+					double rightDist = Double.NaN;
+					for (boolean left : new boolean[] {true, false}) {
+						double perpAz;
+						if (left)
+							perpAz = traceAz - 90d;
+						else
+							perpAz = traceAz + 90d;
+						Location perpLoc = LocationUtils.location(middleTraceLoc, Math.toRadians(perpAz), BUF);
+						FaultTrace perpLine = new FaultTrace(null);
+						perpLine.add(middleTraceLoc);
+						perpLine.add(perpLoc);
+						perpLine = FaultUtils.resampleTrace(perpLine, 1000);
+						int lastInsideIndex = -1;
+						for (int p=0; p<perpLine.size(); p++)
+							if (curPoly.contains(perpLine.get(p)))
+								lastInsideIndex = p;
+						double width, dist;
+						if (lastInsideIndex <= 1) {
+							width = sectLen;
+							dist = 0d;
+						} else {
+							int middleInsideIndex;
+							if (lastInsideIndex > 4)
+								middleInsideIndex = (int)(3d*lastInsideIndex / 4d + 0.5);
+							else
+								middleInsideIndex = lastInsideIndex / 2;
+							Location middleInsideLoc = perpLine.get(middleInsideIndex);
+							// now figure out the width of the region in the trace azimuth direction
+							FaultTrace parallelLine = new FaultTrace(null);
+							Location startLoc = LocationUtils.location(middleInsideLoc, Math.toRadians(traceAz+180), BUF);
+							parallelLine.add(startLoc);
+							Location endLoc = LocationUtils.location(middleInsideLoc, Math.toRadians(traceAz), BUF);
+							parallelLine.add(endLoc);
+							parallelLine = FaultUtils.resampleTrace(parallelLine, 1000);
+							Location firstInside = null;
+							Location lastInside = null;
+							for (Location loc : parallelLine) {
+								if (curPoly.contains(loc)) {
+									if (firstInside == null)
+										firstInside = loc;
+									lastInside = loc;
+								}
+							}
+							if (firstInside == null || firstInside == lastInside) {
+								width = minWidth;
+								dist = 0d;
+							} else {
+								width = Math.max(minWidth, LocationUtils.horzDistanceFast(firstInside, lastInside));
+								dist = LocationUtils.linearDistanceFast(middleInsideLoc, middleTraceLoc);
+							}
+						}
+						if (left) {
+							leftWidth = width;
+							leftDist = dist;
+						} else {
+							rightWidth = width;
+							rightDist = dist;
+						}
+					}
+					double delta = Math.abs(leftWidth - rightWidth);
+					double sumDist = leftDist + rightDist;
+					double angle;
+					if (sumDist > 0d && delta > 0.01) {
+						// tan(delta/subDist) = angle
+						angle = Math.abs(Math.toDegrees(Math.atan(delta/sumDist)));
+						angle = Math.min(angle, 22.5);
+						if (leftWidth > rightWidth) {
+//							shearAngles[i] = angle;
+							if (first)
+								angle = -angle;
+						} else {
+							if (!first)
+								angle = -angle;
+						}
+					} else {
+						angle = 0d;
+					}
+					System.out.println(sect.getSectionName()+" shear iter "+iter+"; leftFractWidth="
+							+(float)(leftWidth/sectLen)+", rightFractWidth="+(float)(rightWidth/sectLen)
+							+", shearAngle="+(float)angle);
+					if (first)
+						firstAngle = angle;
+					else
+						lastAngle = angle;
+				}
+				// interpolate them from first to last to spread it out
+				shearAngles = new double[subSects.size()];
+				for (int i=0; i<shearAngles.length; i++) {
+					shearAngles[i] = Interpolate.findY(0, firstAngle, shearAngles.length-1, lastAngle, i);
+					FaultSection sect = subSects.get(i);
+					if (sect instanceof GeoJSONFaultSection)
+						((GeoJSONFaultSection) sect).getProperties().set(SECT_POLY_DIRECTION_PROP_NAME, sect.getDipDirection()+shearAngles[i]);
+				}
+				System.out.println("Shear angles for "+subSects.get(0).getParentSectionName()+": "+Doubles.asList(shearAngles));
+			}
+			
+			for (int i=0; i<subSects.size(); i++) {
+				FaultSection ss1 = subSects.get(i);
 
-			// if on last segment, use remaining fPoly and quit
-			Area subSectArea = null;
-			if (i == subSects.size() - 1) {
-				if (area.isSingular()) {
-					subSectArea = area;
-				} else {
-					// multi part polys need to have some attributed back
-					// to the previous section
-					List<LocationList> locLists = areaToLocLists(area);
+				// if on last segment, use remaining fPoly and quit
+				Area subSectArea = null;
+				if (i == subSects.size() - 1) {
+					if (area.isSingular()) {
+						subSectArea = area;
+					} else {
+						// multi part polys need to have some attributed back
+						// to the previous section
+						List<LocationList> locLists = areaToLocLists(area);
+						for (LocationList locs : locLists) {
+							Area polyPart = new Area(locs.toPath());
+							FaultTrace trace = ss1.getFaultTrace();
+							if (intersects(trace, polyPart)) {
+								// this is the poly associated with the fault trace
+								if (subSectArea == null) {
+									subSectArea = area;
+								} else {
+									subSectArea.add(area);
+									if (!subSectArea.isSingular())
+										subSectArea = hardMerge(subSectArea);
+								}
+							} else {
+								Area leftover = polyPart;
+								Area prev = subSectAreas.get(i-1);
+								if (prev == null)
+									prev = leftover;
+								else
+									prev.add(leftover);
+								prev = cleanBorder(prev);
+								if (!prev.isSingular()) prev = hardMerge(prev);
+								if (prev == null) System.out.println(
+									"merge problem last segment");
+								subSectAreas.set(i-1, prev);
+							}
+						}
+					}
+					subSectAreas.add(subSectArea);
+					break;
+				}
+				
+				FaultSection ss2 = subSects.get(i + 1);
+				double shearAngle = 0d;
+				if (shearAngles != null) {
+//					shearAngle = shearAngles[i];
+					shearAngle = 0.5*(shearAngles[i] + shearAngles[i+1]);
+				}
+				LocationList envelope = createSubSecEnvelope(ss1, ss2, shearAngle);
+				
+				// intersect with copy of parent
+				Area envPoly = new Area(envelope.toPath());
+				subSectArea = (Area) area.clone();
+				subSectArea.intersect(envPoly);
+				
+				// keep moving if nothing happened
+				if (subSectArea.isEmpty()) {
+					subSectAreas.add(null);
+					continue;
+				}
+				
+				// get rid of dead weight
+				subSectArea = cleanBorder(subSectArea);
+				
+				// determine if there is a secondary poly not associated with
+				// the fault trace that must be added back to parent
+				Area leftover = null;
+				if (!subSectArea.isSingular()) {
+					List<LocationList> locLists = areaToLocLists(subSectArea);
+					subSectArea = null;
 					for (LocationList locs : locLists) {
 						Area polyPart = new Area(locs.toPath());
 						FaultTrace trace = ss1.getFaultTrace();
 						if (intersects(trace, polyPart)) {
 							// this is the poly associated with the fault trace
 							if (subSectArea == null) {
-								subSectArea = area;
+								subSectArea = polyPart;
 							} else {
-								subSectArea.add(area);
+								subSectArea.add(polyPart);
 								if (!subSectArea.isSingular())
 									subSectArea = hardMerge(subSectArea);
 							}
 						} else {
-							Area leftover = polyPart;
+							leftover = polyPart;
+						}
+					}
+				}
+				
+				// trim parent poly for next slice
+				area.subtract(envPoly);
+				area = cleanBorder(area);
+				
+				// try adding back into fault poly
+				if (leftover != null) {
+					Area fCopy = (Area) area.clone();
+					fCopy.add(leftover);
+					fCopy = cleanBorder(fCopy);
+					if (!fCopy.isSingular()) {
+						// try hard merge
+						fCopy = hardMerge(fCopy);
+						// hard merge failed, go to previous section
+						if (fCopy == null) {
 							Area prev = subSectAreas.get(i-1);
-							if (prev == null)
-								prev = leftover;
-							else
-								prev.add(leftover);
+							prev.add(leftover);
 							prev = cleanBorder(prev);
 							if (!prev.isSingular()) prev = hardMerge(prev);
-							if (prev == null) System.out.println(
-								"merge problem last segment");
+							if (prev == null) System.out.println("merge problem");
 							subSectAreas.set(i-1, prev);
-						}
-					}
-				}
-				subSectAreas.add(subSectArea);
-				break;
-			}
-			
-			FaultSection ss2 = subSects.get(i + 1);
-			LocationList envelope = createSubSecEnvelope(ss1, ss2);
-			
-			// intersect with copy of parent
-			Area envPoly = new Area(envelope.toPath());
-			subSectArea = (Area) area.clone();
-			subSectArea.intersect(envPoly);
-			
-			// keep moving if nothing happened
-			if (subSectArea.isEmpty()) {
-				subSectAreas.add(null);
-				continue;
-			}
-			
-			// get rid of dead weight
-			subSectArea = cleanBorder(subSectArea);
-			
-			// determine if there is a secondary poly not associated with
-			// the fault trace that must be added back to parent
-			Area leftover = null;
-			if (!subSectArea.isSingular()) {
-				List<LocationList> locLists = areaToLocLists(subSectArea);
-				subSectArea = null;
-				for (LocationList locs : locLists) {
-					Area polyPart = new Area(locs.toPath());
-					FaultTrace trace = ss1.getFaultTrace();
-					if (intersects(trace, polyPart)) {
-						// this is the poly associated with the fault trace
-						if (subSectArea == null) {
-							subSectArea = polyPart;
 						} else {
-							subSectArea.add(polyPart);
-							if (!subSectArea.isSingular())
-								subSectArea = hardMerge(subSectArea);
+							area = fCopy;
 						}
-					} else {
-						leftover = polyPart;
-					}
-				}
-			}
-			
-			// trim parent poly for next slice
-			area.subtract(envPoly);
-			area = cleanBorder(area);
-			
-			// try adding back into fault poly
-			if (leftover != null) {
-				Area fCopy = (Area) area.clone();
-				fCopy.add(leftover);
-				fCopy = cleanBorder(fCopy);
-				if (!fCopy.isSingular()) {
-					// try hard merge
-					fCopy = hardMerge(fCopy);
-					// hard merge failed, go to previous section
-					if (fCopy == null) {
-						Area prev = subSectAreas.get(i-1);
-						prev.add(leftover);
-						prev = cleanBorder(prev);
-						if (!prev.isSingular()) prev = hardMerge(prev);
-						if (prev == null) System.out.println("merge problem");
-						subSectAreas.set(i-1, prev);
 					} else {
 						area = fCopy;
 					}
-				} else {
-					area = fCopy;
 				}
+				subSectAreas.add(subSectArea);
 			}
-			subSectAreas.add(subSectArea);
-		}
-		
-		Preconditions.checkState(subSectAreas.size() == subSects.size());
-		for (int i=0; i<subSects.size(); i++) {
-			FaultSection subSect = subSects.get(i);
-			Area subSectArea = subSectAreas.get(i);
-			if (subSectArea == null)
-				subSect.setZonePolygon(null);
-			else
-				subSect.setZonePolygon(areaToRegion(cleanBorder(subSectArea)));
+			
+			Preconditions.checkState(subSectAreas.size() == subSects.size());
+			for (int i=0; i<subSects.size(); i++) {
+				FaultSection subSect = subSects.get(i);
+				Area subSectArea = subSectAreas.get(i);
+				if (subSectArea == null)
+					subSect.setZonePolygon(null);
+				else
+					subSect.setZonePolygon(areaToRegion(cleanBorder(subSectArea)));
+			}
 		}
 	}
 
@@ -171,7 +302,7 @@ public class SubSectionPolygonBuilder {
 	 * bisector if the two supplied subsections.
 	 */
 	private static LocationList createSubSecEnvelope(
-			FaultSection sec1, FaultSection sec2) {
+			FaultSection sec1, FaultSection sec2, double shearAngle) {
 
 		FaultTrace t1 = sec1.getFaultTrace();
 		FaultTrace t2 = sec2.getFaultTrace();
@@ -184,7 +315,8 @@ public class SubSectionPolygonBuilder {
 		LocationVector vBackAz = LocationUtils.vector(p2, p1);
 		vBackAz.setHorzDistance(BUF);
 		LocationVector vBisect = new LocationVector();
-		vBisect.setAzimuth(sec1.getDipDirection());
+		double polyDipDir = sec1.getDipDirection() + shearAngle;
+		vBisect.setAzimuth(polyDipDir);
 		vBisect.setHorzDistance(BUF);
 		
 		// assemble location list that is a U shape starting on one side of
@@ -208,6 +340,8 @@ public class SubSectionPolygonBuilder {
 		
 		return locs;
 	}
+	
+	public static final String SECT_POLY_DIRECTION_PROP_NAME = "SectPolyDir";
 	
 	/*
 	 * Cleans polygon of empty sub-polys and duplicate vertices

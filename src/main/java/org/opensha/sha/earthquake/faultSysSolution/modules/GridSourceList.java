@@ -20,7 +20,6 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.CSVReader;
 import org.opensha.commons.data.CSVReader.Row;
 import org.opensha.commons.data.CSVWriter;
-import org.opensha.commons.data.Site;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.GriddedRegion;
 import org.opensha.commons.geo.Location;
@@ -39,14 +38,12 @@ import org.opensha.commons.util.modules.helpers.LargeCSV_BackedModule;
 import org.opensha.sha.earthquake.PointSource;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSource;
 import org.opensha.sha.earthquake.PointSource.PoissonPointSourceData;
-import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.aftershocks.MagnitudeDependentAftershockFilter;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
-import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
@@ -403,7 +400,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 	
 	private boolean round = true;
 	
-	public void setArhiveRounding(boolean round) {
+	public void setArchiveRounding(boolean round) {
 		this.round = true;
 	}
 	
@@ -796,6 +793,15 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			if (Double.isFinite(hypocentralDAS))
 				return hypocentralDAS;
 			return 0.5*length;
+		}
+		
+		/**
+		 * Get's the down-dip width of the rupture in km
+		 * @return
+		 */
+		public double getDownDipWidth() {
+			double height = lowerDepth - upperDepth;
+			return height/Math.sin(Math.toRadians(dip));
 		}
 
 		@Override
@@ -2148,6 +2154,80 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		@Override
 		public Set<Integer> getAssociatedGridIndexes(int sectionIndex) {
 			return gridSources.getAssociatedGridIndexes(sectionIndex);
+		}
+		
+	}
+	
+	public static GridSourceList remapAssociations(GridSourceList original, int[] sectRemappings) {
+		Map<Integer, Integer> map = new HashMap<>(sectRemappings.length);
+		for (int s=0; s<sectRemappings.length; s++)
+			map.put(s, sectRemappings[s]);
+		return remapAssociations(original, map);
+	}
+	
+	public static GridSourceList remapAssociations(GridSourceList original, Map<Integer, Integer> sectRemappings) {
+		return new GridSourceListAssocRemapper(original, sectRemappings);
+	}
+	
+	private static class GridSourceListAssocRemapper extends GridSourceList.DynamicallyBuilt {
+
+		private GridSourceList orig;
+		private Map<Integer, Integer> sectRemappings;
+		private Map<Integer, Integer> sectRemappingsReversed;
+
+		public GridSourceListAssocRemapper(GridSourceList orig, Map<Integer, Integer> sectRemappings) {
+			super(orig.getTectonicRegionTypes(), orig.getGriddedRegion(), orig.locs, orig.getRefMFD());
+			this.orig = orig;
+			this.sectRemappings = sectRemappings;
+			sectRemappingsReversed = new HashMap<>(sectRemappings.size());
+			for (int key : sectRemappings.keySet())
+				sectRemappingsReversed.put(sectRemappings.get(key), key);
+		}
+
+		@Override
+		public int getNumSources() {
+			return orig.getNumSources();
+		}
+
+		@Override
+		public int getLocationIndexForSource(int sourceIndex) {
+			return orig.getLocationIndexForSource(sourceIndex);
+		}
+
+		@Override
+		protected List<GriddedRupture> buildRuptures(TectonicRegionType tectonicRegionType, int gridIndex) {
+			List<GriddedRupture> origRups = orig.getRuptures(tectonicRegionType, gridIndex);
+			if (origRups.isEmpty())
+				return origRups;
+			List<GriddedRupture> ret = new ArrayList<>(origRups.size());
+			for (GriddedRupture rup : origRups) {
+				if (rup.associatedSections != null && rup.associatedSections.length > 0) {
+					int[] remapped = new int[rup.associatedSections.length];
+					for (int i=0; i<rup.associatedSections.length; i++) {
+						int origIndex = rup.associatedSections[i];
+						Preconditions.checkState(sectRemappings.containsKey(origIndex),
+								"No remapping exists for sectIndex=%s", origIndex);
+						remapped[i] = sectRemappings.get(rup.associatedSections[i]);
+					}
+					ret.add(new GriddedRupture(rup.gridIndex, rup.location, rup.properties, rup.rate, remapped, rup.associatedSectionFracts));
+				} else {
+					ret.add(rup);
+				}
+			}
+			return ret;
+		}
+
+		@Override
+		public TectonicRegionType tectonicRegionTypeForSourceIndex(int sourceIndex) {
+			return orig.tectonicRegionTypeForSourceIndex(sourceIndex);
+		}
+
+		@Override
+		public Set<Integer> getAssociatedGridIndexes(int sectionIndex) {
+			// sectionIndex here is the new index, need to find the corresponding old one
+			Integer origIndex = sectRemappingsReversed.get(sectionIndex);
+			Preconditions.checkNotNull(origIndex, "No mapping found for new sectionIndex=%s", sectionIndex);
+			return orig.getAssociatedGridIndexes(origIndex);
 		}
 		
 	}

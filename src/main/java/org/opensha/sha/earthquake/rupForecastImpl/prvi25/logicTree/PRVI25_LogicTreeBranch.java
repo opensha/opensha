@@ -40,8 +40,8 @@ public class PRVI25_LogicTreeBranch {
 	/*
 	 * Crustal Gridded seismicity branch levels
 	 */
-	public static LogicTreeLevel<PRVI25_RegionalSeismicity> SEIS_RATE =
-			LogicTreeLevel.forEnum(PRVI25_RegionalSeismicity.class, "Regional Seismicity Rate", "SeisRate");
+	public static LogicTreeLevel<PRVI25_CrustalSeismicityRate> CRUSTAL_SEIS_RATE =
+			LogicTreeLevel.forEnum(PRVI25_CrustalSeismicityRate.class, "Crustal Regional Seismicity Rate", "CrustalSeisRate");
 	public static LogicTreeLevel<PRVI25_DeclusteringAlgorithms> SEIS_DECLUSTER =
 			LogicTreeLevel.forEnum(PRVI25_DeclusteringAlgorithms.class, "Seismicity Declustering Algorithm", "SeisDecluster");
 	public static LogicTreeLevel<PRVI25_SeisSmoothingAlgorithms> SEIS_SMOOTH =
@@ -60,6 +60,14 @@ public class PRVI25_LogicTreeBranch {
 			LogicTreeLevel.forEnum(PRVI25_SubductionScalingRelationships.class, "Scaling Relationship", "Scale");
 	public static LogicTreeLevel<PRVI25_SubductionBValues> SUB_SUPRA_B =
 			LogicTreeLevel.forEnum(PRVI25_SubductionBValues.class, "Subduction b-value", "B");
+	
+	/*
+	 * Subduction Regional Gridded seismicity branch levels
+	 */
+	public static LogicTreeLevel<PRVI25_SubductionCaribbeanSeismicityRate> CAR_SEIS_RATE =
+			LogicTreeLevel.forEnum(PRVI25_SubductionCaribbeanSeismicityRate.class, "Caribbean Trench Regional Seismicity Rate", "CarSeisRate");
+	public static LogicTreeLevel<PRVI25_SubductionMuertosSeismicityRate> MUE_SEIS_RATE =
+			LogicTreeLevel.forEnum(PRVI25_SubductionMuertosSeismicityRate.class, "Muertos Trough Regional Seismicity Rate", "MueSeisRate");
 	
 	/**
 	 * GMM branch levels
@@ -88,9 +96,9 @@ public class PRVI25_LogicTreeBranch {
 	static {
 		// exhaustive for now, can trim down later
 		levelsOnFault = List.of(CRUSTAL_FM, CRUSTAL_DM, CRUSTAL_SCALE, SUPRA_B, SEG);
-		levelsCrustalOffFault = List.of(SEIS_RATE, SEIS_DECLUSTER, SEIS_SMOOTH, MMAX_OFF);
+		levelsCrustalOffFault = List.of(CRUSTAL_SEIS_RATE, SEIS_DECLUSTER, SEIS_SMOOTH, MMAX_OFF);
 		levelsSubduction = List.of(SUB_FM, SUB_DM, SUB_SCALE, SUB_SUPRA_B);
-		levelsSubductionGridded = List.of(SEIS_RATE, SEIS_DECLUSTER, SEIS_SMOOTH);
+		levelsSubductionGridded = List.of(CAR_SEIS_RATE, MUE_SEIS_RATE, SEIS_DECLUSTER, SEIS_SMOOTH);
 		levelsCrustalGMM = List.of(CRUSTAL_GMM, CRUSTAL_GMM_EPISTEMIC, CRUSTAL_GMM_SIGMA);
 		levelsInterfaceGMM = List.of(INTERFACE_GMM, INTERFACE_GMM_EPISTEMIC, INTERFACE_GMM_SIGMA);
 		levelsSlabGMM = List.of(SLAB_GMM, SLAB_GMM_EPISTEMIC, SLAB_GMM_SIGMA);

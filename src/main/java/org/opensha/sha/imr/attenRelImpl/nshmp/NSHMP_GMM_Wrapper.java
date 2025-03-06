@@ -303,7 +303,10 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 
 	@Override
 	public double getMean() {
-		LogicTree<GroundMotion> gmTree = getGroundMotionTree();
+		return getWeightedMean(getGroundMotionTree());
+	}
+	
+	public static double getWeightedMean(LogicTree<GroundMotion> gmTree) {
 		if (gmTree.size() == 1)
 			return gmTree.get(0).value().mean();
 		
@@ -321,7 +324,10 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 
 	@Override
 	public double getStdDev() {
-		LogicTree<GroundMotion> gmTree = getGroundMotionTree();
+		return getWeightedStdDev(getGroundMotionTree());
+	}
+
+	public static double getWeightedStdDev(LogicTree<GroundMotion> gmTree) {
 		if (gmTree.size() == 1)
 			return gmTree.get(0).value().sigma();
 		
@@ -341,7 +347,12 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 	public DiscretizedFunc getExceedProbabilities(
 			DiscretizedFunc intensityMeasureLevels)
 			throws ParameterException {
-		LogicTree<GroundMotion> gmTree = getGroundMotionTree();
+		return getWeightedExceedProbabilities(getGroundMotionTree(), exceedCalc, intensityMeasureLevels);
+	}
+	
+	public static DiscretizedFunc getWeightedExceedProbabilities(
+			LogicTree<GroundMotion> gmTree, GaussianExceedProbCalculator exceedCalc, DiscretizedFunc intensityMeasureLevels)
+			throws ParameterException {
 		
 		final int size = intensityMeasureLevels.size();
 		double weightSum = 0d;
@@ -399,7 +410,7 @@ public class NSHMP_GMM_Wrapper extends AttenuationRelationship implements Parame
 			weightSum += weight;
 			double mean = branch.value().mean();
 			double stdDev = branch.value().sigma();
-			double prob = getExceedProbability(mean, stdDev, iml)*weight;
+			double prob = getExceedProbability(mean, stdDev, iml);
 			weightValSum = Math.fma(prob, weight, weightValSum);
 		}
 		if (weightSum == 1d)

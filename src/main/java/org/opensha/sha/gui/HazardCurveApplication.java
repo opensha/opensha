@@ -1074,8 +1074,8 @@ ScalarIMRChangeListener {
 	 */
 
 	/**
-	 * Any time a control paramater or independent paramater is changed by the
-	 * user in a GUI this function is called, and a paramater change event is
+	 * Any time a control parameter or independent parameter is changed by the
+	 * user in a GUI this function is called, and a parameter change event is
 	 * passed in. This function then determines what to do with the information
 	 * ie. show some paramaters, set some as invisible, basically control the
 	 * paramater lists.
@@ -1085,18 +1085,18 @@ ScalarIMRChangeListener {
 	public void parameterChange(ParameterChangeEvent event) {
 
 		String S = C + ": parameterChange(): ";
-		if (D)
-			System.out.println("\n" + S + "starting: ");
+		if (D) System.out.println("\n" + S + "starting: ");
 
 		String name1 = event.getParameterName();
+		if (D) System.out.println("Event: " + name1);
 
+		
 		// if IMR selection changed, update the site parameter list and
 		// supported IMT
 		if (name1.equalsIgnoreCase(IMR_GuiBean.IMR_PARAM_NAME)) {
 			updateSiteParams();
 		}
 		if (name1.equalsIgnoreCase(ERF_GuiBean.ERF_PARAM_NAME)) {
-
 			String plottingOption = null;
 			if (plotOptionControl != null)
 				plottingOption = this.plotOptionControl.getSelectedOption();
@@ -1155,7 +1155,6 @@ ScalarIMRChangeListener {
 	 * function is called when add Graph is clicked
 	 */
 	protected void computeHazardCurve() {
-
 		// starting the calculation
 		isHazardCalcDone = false;
 
@@ -1865,7 +1864,7 @@ ScalarIMRChangeListener {
 		controlComboBox.addItem(XY_ValuesControlPanel.NAME);
 		controlPanels.add(new XY_ValuesControlPanel(this, this));
 		
-		/*		Epistempic list Control		*/
+		/*		Epistemic List Control		*/
 		controlComboBox.addItem(ERF_EpistemicListControlPanel.NAME);
 		epistemicControlPanel = new ERF_EpistemicListControlPanel(this, this);
 		System.out.println("init: " + epistemicControlPanel.getName());
@@ -1949,7 +1948,7 @@ ScalarIMRChangeListener {
 			cvmControlPanel.init();
 		return cvmControlPanel;
 	}
-
+	
 	protected void showControlPanel(String controlName) {
 		ControlPanel control = (ControlPanel)ListUtils.getObjectByName(controlPanels, controlName);
 		System.out.println("controlName: " + controlName);
@@ -2466,7 +2465,7 @@ ScalarIMRChangeListener {
 	}
 
 	/**
-	 * Updates the Site_GuiBean to reflect the chnaged SiteParams for the
+	 * Updates the Site_GuiBean to reflect the changed SiteParams for the
 	 * selected AttenuationRelationship. This method is called from the
 	 * IMR_GuiBean to update the application with the Attenuation's Site Params.
 	 * 

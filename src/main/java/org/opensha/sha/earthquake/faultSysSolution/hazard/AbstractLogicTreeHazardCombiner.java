@@ -2,11 +2,8 @@ package org.opensha.sha.earthquake.faultSysSolution.hazard;
 
 import java.awt.geom.Point2D;
 import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,7 +19,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -33,11 +29,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-import java.util.zip.ZipOutputStream;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang3.stream.Streams;
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.DiscretizedFunc;
@@ -55,12 +49,13 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.ExecutorUtils;
+import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.io.archive.ArchiveOutput;
+import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_LogicTreeHazardCalc;
 import org.opensha.sha.earthquake.faultSysSolution.hazard.mpj.MPJ_SiteLogicTreeHazardCurveCalc;
-import org.opensha.sha.earthquake.faultSysSolution.modules.AbstractLogicTreeModule;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ClusterRuptures;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
@@ -76,9 +71,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Table;
-import com.google.common.io.Files;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 public abstract class AbstractLogicTreeHazardCombiner {
 	
@@ -488,8 +480,9 @@ public abstract class AbstractLogicTreeHazardCombiner {
 					combBranch.setValue(node);
 					LogicTreeNode getNode = combBranch.getValue(combNodeIndex);
 					Preconditions.checkState(getNode == node,
-							"Set didn't work for node %s of combined branch: %s, has %s",
-							combNodeIndex, node, getNode);
+							"Set didn't work for node %s of combined branch: %s, has %s;\n\tInner branch: %s"
+							+ "\n\tOuter branch: %s\n\tCombined branch: %s",
+							combNodeIndex, node, getNode, innerBranch, outerBranch, combBranch);
 					combNodeIndex++;
 				}
 				combBranch.setOrigBranchWeight(weight);
@@ -782,6 +775,15 @@ public abstract class AbstractLogicTreeHazardCombiner {
 			else if (outerBGOp == IncludeBackgroundOption.EXCLUDE && innerBGOp == IncludeBackgroundOption.ONLY)
 				outBGOp = IncludeBackgroundOption.INCLUDE;
 			outputHazardSubDirName = getHazardDirName(gridReg.getSpacing(), outBGOp);
+			
+			if (outerHazardMapLoader instanceof FileBasedCurveLoader && innerHazardMapLoader instanceof FileBasedCurveLoader) {
+				// detected periods
+				ArchiveInput innerInput = ArchiveInput.getDefaultInput(((FileBasedCurveLoader)innerHazardMapLoader).hazardDir);
+				ArchiveInput outerInput = ArchiveInput.getDefaultInput(((FileBasedCurveLoader)outerHazardMapLoader).hazardDir);
+				periods = LogicTreeHazardCompare.detectHazardPeriods(rps, innerInput, outerInput);
+				innerInput.close();
+				outerInput.close();
+			}
 			
 			if (preloadInnerCurves && numPairwiseSamples < 1) {
 				System.out.println("Pre-loading inner curves");
@@ -1680,12 +1682,10 @@ public abstract class AbstractLogicTreeHazardCombiner {
 	}
 	
 	public static FaultSystemSolution combineSols(FaultSystemSolution innerlSol, FaultSystemSolution outerSol, boolean clusterRups) {
-		List<FaultSystemSolution> sols = List.of(innerlSol, outerSol);
-		
 		int totNumSects = 0;
 		int totNumRups = 0;
-		for (int i=0; i<sols.size(); i++) {
-			FaultSystemSolution sol = sols.get(i);
+		for (boolean outer : new boolean[] {false, true}) {
+			FaultSystemSolution sol = outer ? outerSol : innerlSol;
 			FaultSystemRupSet rupSet = sol.getRupSet();
 //			System.out.println("RupSet "+i+" has "+rupSet.getNumSections()+" sects, "+rupSet.getNumRuptures()+" rups");
 			totNumSects += rupSet.getNumSections();
@@ -1707,7 +1707,13 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		
 		List<ClusterRupture> cRups = clusterRups ? new ArrayList<>() : null;
 		
-		for (FaultSystemSolution sol : sols) {
+		Map<Integer, Integer> outerSectMappings = new HashMap<>();
+		Map<Integer, Integer> innerSectMappings = new HashMap<>();
+		Map<Integer, Integer> outerRupMappings = new HashMap<>();
+		Map<Integer, Integer> innerRupMappings = new HashMap<>();
+		
+		for (boolean outer : new boolean[] {false, true}) {
+			FaultSystemSolution sol = outer ? outerSol : innerlSol;
 			FaultSystemRupSet rupSet = sol.getRupSet();
 			int[] sectMappings = new int[rupSet.getNumSections()];
 //			System.out.println("Merging sol with "+rupSet.getNumSections()+" sects and "+rupSet.getNumRuptures()+" rups");
@@ -1716,6 +1722,10 @@ public abstract class AbstractLogicTreeHazardCombiner {
 				sect = sect.clone();
 				sectMappings[s] = sectIndex;
 				sect.setSectionId(sectIndex);
+				if (outer)
+					outerSectMappings.put(s, sectIndex);
+				else
+					innerSectMappings.put(s, sectIndex);
 				mergedSects.add(sect);
 				
 				sectIndex++;
@@ -1746,6 +1756,11 @@ public abstract class AbstractLogicTreeHazardCombiner {
 				if (clusterRups)
 					cRups.add(myCrups.get(r));
 				
+				if (outer)
+					outerRupMappings.put(r, rupIndex);
+				else
+					innerRupMappings.put(r, rupIndex);
+				
 				rupIndex++;
 			}
 		}
@@ -1755,7 +1770,62 @@ public abstract class AbstractLogicTreeHazardCombiner {
 			mergedRupSet.addModule(ClusterRuptures.instance(mergedRupSet, cRups, false));
 		if (trts != null)
 			mergedRupSet.addModule(new RupSetTectonicRegimes(mergedRupSet, trts));
+		mergedRupSet.addModule(new CombinedRupSetMappings(innerSectMappings, outerSectMappings, innerRupMappings, outerRupMappings));
 		return new FaultSystemSolution(mergedRupSet, rates);
+	}
+	
+	public static class CombinedRupSetMappings implements OpenSHA_Module {
+
+		private Map<Integer, Integer> innerSectMappings;
+		private Map<Integer, Integer> outerSectMappings;
+		private Map<Integer, Integer> innerRupMappings;
+		private Map<Integer, Integer> outerRupMappings;
+
+		public CombinedRupSetMappings(Map<Integer, Integer> innerSectMappings, Map<Integer, Integer> outerSectMappings,
+				Map<Integer, Integer> innerRupMappings, Map<Integer, Integer> outerRupMappings) {
+			this.innerSectMappings = innerSectMappings;
+			this.outerSectMappings = outerSectMappings;
+			this.innerRupMappings = innerRupMappings;
+			this.outerRupMappings = outerRupMappings;
+		}
+		
+		public Map<Integer, Integer> getInnerSectMappings() {
+			return Collections.unmodifiableMap(innerSectMappings);
+		}
+		
+		public Map<Integer, Integer> getOuterSectMappings() {
+			return Collections.unmodifiableMap(outerSectMappings);
+		}
+		
+		public Map<Integer, Integer> getInnerRupMappings() {
+			return Collections.unmodifiableMap(innerRupMappings);
+		}
+		
+		public Map<Integer, Integer> getOuterRupMappings() {
+			return Collections.unmodifiableMap(outerRupMappings);
+		}
+		
+		public int getCombinedSectIDForInner(int origInnerSectID) {
+			return innerSectMappings.get(origInnerSectID);
+		}
+		
+		public int getCombinedSectIDForOuter(int origOuterSectID) {
+			return outerSectMappings.get(origOuterSectID);
+		}
+		
+		public int getCombinedRupIDForInner(int origInnerRupID) {
+			return innerRupMappings.get(origInnerRupID);
+		}
+		
+		public int getCombinedRupIDForOuter(int origOuterRupID) {
+			return outerRupMappings.get(origOuterRupID);
+		}
+
+		@Override
+		public String getName() {
+			return "Combined Rup Set Mappings";
+		}
+		
 	}
 	
 	public static class CurveCombineResult {

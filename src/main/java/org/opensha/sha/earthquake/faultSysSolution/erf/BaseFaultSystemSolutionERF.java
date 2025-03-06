@@ -31,11 +31,9 @@ import org.opensha.sha.earthquake.param.AseismicityAreaReductionParam;
 import org.opensha.sha.earthquake.param.BackgroundRupParam;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.FaultGridSpacingParam;
-import org.opensha.sha.earthquake.param.GridCellSupersamplingParam;
 import org.opensha.sha.earthquake.param.GriddedSeismicitySettingsParam;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
-import org.opensha.sha.earthquake.param.PointSourceDistanceCorrectionParam;
 import org.opensha.sha.earthquake.param.UseProxySectionsParam;
 import org.opensha.sha.earthquake.param.UseRupMFDsParam;
 import org.opensha.sha.earthquake.rupForecastImpl.FaultRuptureSource;
@@ -151,6 +149,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	}
 	
 	protected void initParams() {
+//		System.out.println("initParams()");
 		fileParam = new FileParameter(FILE_PARAM_NAME);
 		faultGridSpacingParam = new FaultGridSpacingParam();
 		bgIncludeParam = new IncludeBackgroundParam();
@@ -160,7 +159,16 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		aseisParam = new AseismicityAreaReductionParam();
 		useRupMFDsParam = new UseRupMFDsParam(useRupMFDs);
 		useProxyRupturesParam = new UseProxySectionsParam(useProxyRuptures);
-
+		
+		// set parameters to the primitive values
+		// do so before adding listeners because the change events will trigger createParamList()
+		// don't do anything here for fileParam 
+		faultGridSpacingParam.setValue(faultGridSpacing);
+		bgIncludeParam.setValue(bgInclude);
+		bgSettingsParam.setValue(bgSettings);
+		aseisParam.setValue(aseisReducesArea);
+		useRupMFDsParam.setValue(useRupMFDs);
+		useProxyRupturesParam.setValue(useProxyRuptures);
 
 		// set listeners
 		fileParam.addParameterChangeListener(this);
@@ -172,16 +180,6 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		useRupMFDsParam.addParameterChangeListener(this);
 		useProxyRupturesParam.addParameterChangeListener(this);
 
-		
-		// set parameters to the primitive values
-		// don't do anything here for fileParam 
-		faultGridSpacingParam.setValue(faultGridSpacing);
-		bgIncludeParam.setValue(bgInclude);
-		bgSettingsParam.setValue(bgSettings);
-		aseisParam.setValue(aseisReducesArea);
-		useRupMFDsParam.setValue(useRupMFDs);
-		useProxyRupturesParam.setValue(useProxyRuptures);
-
 		createParamList();
 	}
 	
@@ -189,7 +187,12 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	 * Put parameters in theParameterList
 	 */
 	protected void createParamList() {
-		adjustableParams = new ParameterList();
+//		System.out.println("createParamList()");
+		if (adjustableParams == null) {
+			adjustableParams = new ParameterList();
+		} else {
+			adjustableParams.clear();
+		}
 		if(includeFileParam)
 			adjustableParams.addParameter(fileParam);
 		adjustableParams.addParameter(bgIncludeParam);
@@ -199,8 +202,29 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		}
 		adjustableParams.addParameter(faultGridSpacingParam);
 		adjustableParams.addParameter(aseisParam);
-		adjustableParams.addParameter(useRupMFDsParam);
-		adjustableParams.addParameter(useProxyRupturesParam);
+		if (faultSysSolution != null) {
+			if (faultSysSolution.hasAvailableModule(RupMFDsModule.class)) {
+				adjustableParams.addParameter(useRupMFDsParam);
+				useRupMFDs = useRupMFDsParam.getValue();
+			} else {
+				// parameter not showing, disable it here without setting the value in the parameter; if we change solutions
+				// and the new solution has it, we will revert to the parameter value.
+				useRupMFDs = false;
+			}
+			if (faultSysSolution.getRupSet().hasAvailableModule(ProxyFaultSectionInstances.class)) {
+				adjustableParams.addParameter(useProxyRupturesParam);
+				useProxyRuptures = useProxyRupturesParam.getValue();
+			} else {
+				// parameter not showing, disable it here without setting the value in the parameter; if we change solutions
+				// and the new solution has it, we will revert to the parameter value.
+				useProxyRuptures = false;
+			}
+		} else {
+			// parameters not showing, disable them here without setting the value in the parameter; if we change solutions
+			// and the new solution has them, we will revert to the parameter value.
+			useRupMFDs = false;
+			useProxyRuptures = false;
+		}
 	}
 	
 	/**
@@ -226,6 +250,14 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		String paramName = event.getParameterName();
 		if(paramName.equalsIgnoreCase(fileParam.getName())) {
 			fileParamChanged=true;
+			// read it in immediately as it may change the visible parameters
+			File solFile = fileParam.getValue();
+			if (solFile == null) {
+				setSolution(null, false);
+			} else {
+				readFaultSysSolutionFromFile();
+			}
+			fileParamChanged = false;
 		} else if(paramName.equalsIgnoreCase(faultGridSpacingParam.getName())) {
 			faultGridSpacing = faultGridSpacingParam.getValue();
 			faultGridSpacingChanged=true;
@@ -464,6 +496,9 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		// have to set fileParamChanged to false in case you set the file param and then call
 		// setSolution manually before doing an update forecast
 		fileParamChanged = false;
+		
+		// rebuild the parameter list
+		createParamList();
 	}
 	
 	public FaultSystemSolution getSolution() {

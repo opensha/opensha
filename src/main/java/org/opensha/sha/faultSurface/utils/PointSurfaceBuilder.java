@@ -721,7 +721,12 @@ public class PointSurfaceBuilder {
 	 * @return
 	 */
 	public WeightedList<PointSurface> buildTruePointSurfaces(PointSourceDistanceCorrections distCorrType) {
-		return buildTruePointSurfaces(distCorrType == null ? null : distCorrType.get());
+		WeightedList<PointSourceDistanceCorrection> distCorrs;
+		if (distCorrType == null || distCorrType == PointSourceDistanceCorrections.NONE)
+			distCorrs = null;
+		else
+			distCorrs = distCorrType.get();
+		return buildTruePointSurfaces(distCorrs);
 	}
 	
 	/**
@@ -785,7 +790,12 @@ public class PointSurfaceBuilder {
 	 */
 	public WeightedList<FiniteApproxPointSurface> buildFiniteApproxPointSurfaces(
 			PointSourceDistanceCorrections distCorrType) {
-		return buildFiniteApproxPointSurfaces(distCorrType == null ? null : distCorrType.get());
+		WeightedList<PointSourceDistanceCorrection> distCorrs;
+		if (distCorrType == null || distCorrType == PointSourceDistanceCorrections.NONE)
+			distCorrs = null;
+		else
+			distCorrs = distCorrType.get();
+		return buildFiniteApproxPointSurfaces(distCorrs);
 	}
 	
 	/**
@@ -1053,9 +1063,10 @@ public class PointSurfaceBuilder {
 	public WeightedList<? extends RuptureSurface> build(BackgroundRupType bgRupType, PointSourceDistanceCorrections distCorrType) {
 		// special cases
 		if ((float)length == 0f) {
-			if ((float)zTop == (float)zBot && footwall == null)
-				// true point source
-				return buildTruePointSurfaces(distCorrType);
+			// zero length; still return a finite aprox because we want to make sure to bypass any distance corrections,
+			// which would be applied as rJB. It's not safe to only set distance corrections to NONE because they could
+			// be attached downstream of here.
+			distCorrType = PointSourceDistanceCorrections.NONE;
 			// zero length but some other finite information, return FiniteApproxPointSurface
 			return buildFiniteApproxPointSurfaces(distCorrType);
 		} else if (Double.isFinite(strike) && (float)length > 0f) {

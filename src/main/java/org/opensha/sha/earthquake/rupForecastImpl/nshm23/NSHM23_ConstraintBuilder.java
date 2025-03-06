@@ -120,6 +120,9 @@ public class NSHM23_ConstraintBuilder {
 	private ParkfieldSelectionCriteria parkfieldSelect = PARKFIELD_SELECT_DEFAULT;
 	
 	private NSHM23_PaleoUncertainties paleoUncert;
+
+	private double proxyFaultMagCorner = Double.NaN;
+	private double proxyFaultBValue = Double.NaN;
 	
 	public NSHM23_ConstraintBuilder(FaultSystemRupSet rupSet, double supraSeisB) {
 		this(rupSet, supraSeisB, null);
@@ -274,6 +277,18 @@ public class NSHM23_ConstraintBuilder {
 		return this;
 	}
 	
+	public NSHM23_ConstraintBuilder proxyFaultMagCorner(double proxyFaultMagCorner) {
+		this.proxyFaultMagCorner = proxyFaultMagCorner;
+		targetCache = null;
+		return this;
+	}
+	
+	public NSHM23_ConstraintBuilder proxyFaultBValue(double proxyFaultBValue) {
+		this.proxyFaultBValue = proxyFaultBValue;
+		targetCache = null;
+		return this;
+	}
+	
 	public JumpProbabilityCalc getSegmentationModel() {
 		return segModel;
 	}
@@ -330,6 +345,19 @@ public class NSHM23_ConstraintBuilder {
 				&& Objects.equals(targetCache.getSectSpecificBValues(), sectSpecificBValues))
 			return targetCache;
 		
+		if (Double.isFinite(proxyFaultBValue)) {
+			if (sectSpecificBValues == null) {
+				sectSpecificBValues = new double[rupSet.getNumSections()];
+				for (int i=0; i<sectSpecificBValues.length; i++)
+					sectSpecificBValues[i] = supraBVal;
+			} else {
+				sectSpecificBValues = Arrays.copyOf(sectSpecificBValues, sectSpecificBValues.length);
+			}
+			for (int i=0; i<sectSpecificBValues.length; i++)
+				if (rupSet.getFaultSectionData(i).isProxyFault())
+					sectSpecificBValues[i] = proxyFaultBValue;
+		}
+		
 		SupraSeisBValInversionTargetMFDs.Builder builder;
 		if (sectSpecificBValues == null)
 			builder = new SupraSeisBValInversionTargetMFDs.Builder(rupSet, supraBVal);
@@ -340,6 +368,14 @@ public class NSHM23_ConstraintBuilder {
 		builder.addSectCountUncertainties(addSectCountUncertaintiesToMFD);
 		builder.subSeisMoRateReduction(subSeisMoRateReduction);
 		builder.maxNumZeroSlipSectsPerRup(MAX_NUM_ZERO_SLIP_SECTS_PER_RUP);
+		if (proxyFaultMagCorner > 0d) {
+			double[] magCorners = new double[rupSet.getNumSections()];
+			for (int s=0; s<magCorners.length; s++)
+				magCorners[s] = rupSet.getFaultSectionData(s).isProxyFault() ? proxyFaultMagCorner : Double.NaN;
+			builder.sectSpecificMagCorner(magCorners);
+		} else {
+			builder.supraSeisMagCorner(Double.NaN);
+		}
 		if (segModel != null) {
 			if (segModel instanceof BinaryRuptureProbabilityCalc) {
 				builder.forBinaryRupProbModel((BinaryRuptureProbabilityCalc)segModel);

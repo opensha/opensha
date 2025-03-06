@@ -345,7 +345,7 @@ public class PointSourceNshm extends PoissonPointSource {
 	 * supplied distance. For M>8.6, lookups return the corrected distance for
 	 * M=8.55. NOTE that no NaN or ±INFINITY checking is done in this class. This
 	 * would have to be added for a public api, but we are operating on the
-	 * assumption that data from mfds and upstream distance calulations and
+	 * assumption that data from mfds and upstream distance calculations and
 	 * dimensioning will have already been checked for odd values.
 	 */
 	public static class DistanceCorrection2013 implements PointSourceDistanceCorrection {

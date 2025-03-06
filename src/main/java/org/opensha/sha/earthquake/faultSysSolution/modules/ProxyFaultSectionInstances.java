@@ -46,6 +46,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionBranchAverager;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionPolygonBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.PRVI25_InvConfigFactory;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTreeBranch;
 import org.opensha.sha.faultSurface.FaultSection;
@@ -119,15 +120,15 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 		
 		DiscretizedFunc improvementWorthItFunc = new ArbitrarilyDiscretizedFunc();
 		if (minFractTraceLen < 0.5)
-			improvementWorthItFunc.set(0.5, 0.08);
+			improvementWorthItFunc.set(0.5, 0.06);
 		if (minFractTraceLen < 0.75)
-			improvementWorthItFunc.set(0.75, 0.10);
+			improvementWorthItFunc.set(0.75, 0.065);
 		if (minFractTraceLen < 0.9)
-			improvementWorthItFunc.set(0.9, 0.11);
+			improvementWorthItFunc.set(0.9, 0.07);
 		if (minFractTraceLen < 0.95)
-			improvementWorthItFunc.set(0.95, 0.12);
+			improvementWorthItFunc.set(0.95, 0.075);
 		if (minFractTraceLen < 1d)
-			improvementWorthItFunc.set(1d, 0.13);
+			improvementWorthItFunc.set(1d, 0.08);
 		if (improvementWorthItFunc.size() == 0)
 			improvementWorthItFunc = null;
 		
@@ -145,7 +146,6 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 				FaultTrace trace = sect.getFaultTrace();
 				
 				double traceLen = trace.getTraceLength();
-				LocationVector traceVect = LocationUtils.vector(trace.first(), trace.last());
 				
 				double maxTraceOrWidth = traceLen;
 				if (sect.getAveDip() < 90d && sect.getOrigDownDipWidth() > 0d)
@@ -155,8 +155,11 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 				
 				double maxDistFaultNorm = maxTraceOrWidth*traceBufLengthsFaultNormal;
 				
-				double leftAz = traceVect.getAzimuth() - 90d;
-				double rightAz = traceVect.getAzimuth() + 90d;
+				double rightAz = sect.getDipDirection();
+				if (sect instanceof GeoJSONFaultSection)
+					rightAz = ((GeoJSONFaultSection)sect).getProperties().getDouble(SubSectionPolygonBuilder.SECT_POLY_DIRECTION_PROP_NAME, rightAz);
+				if (D) System.out.println("\trightAz="+(float)rightAz+" (dipDir="+sect.getDipDirection()+")");
+				double leftAz = rightAz + 180;
 				
 				double maxDistForLeft = findFurtherstViableRelocatedTrace(trace, poly, leftAz,
 						maxDistFaultNorm, minFractTraceLen, improvementWorthItFunc);
@@ -236,8 +239,10 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 			FaultTrace trace = sect.getFaultTrace();
 			
 			double traceLen = trace.getTraceLength();
+			double rightAz = sect.getDipDirection();
+			if (sect instanceof GeoJSONFaultSection)
+				rightAz = ((GeoJSONFaultSection)sect).getProperties().getDouble(SubSectionPolygonBuilder.SECT_POLY_DIRECTION_PROP_NAME, rightAz);
 			LocationVector traceVect = LocationUtils.vector(trace.first(), trace.last());
-			double rightAz = traceVect.getAzimuth() + 90d;
 			proxySectsRightAzimuths.put(sect.getSectionId(), rightAz);
 			
 			EvenlyDiscretizedFunc distBins = new EvenlyDiscretizedFunc(-maxDistForLeft, maxDistForRight, numProxySectsPerPoly);
@@ -254,8 +259,6 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 			Preconditions.checkState((float)spacing <= (float)maxProxySpacing,
 					"Spacing=%s for %s with %s proxies exceeds the max of %s",
 					(float)spacing, sect.getSectionName(), numProxySectsPerPoly, (float)maxProxySpacing);
-			
-			
 			
 			List<FaultTrace> extendedProxyTraces = new ArrayList<>();
 			List<FaultTrace> proxyTraces = new ArrayList<>();
@@ -669,8 +672,9 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 			distFractFunc.set(i, fract);
 		}
 		
+		if (D) System.out.println("\tmaxCoarse="+maxCoarse+" for maxDistAway="+(float)maxDistAway+" and azimuth="+(float)azimuth);
 		// now resample just up to that distance
-		distFractFunc = new EvenlyDiscretizedFunc(0d, maxCoarse+1d, 100);
+		distFractFunc = new EvenlyDiscretizedFunc(0d, maxCoarse+2*distFractFunc.getDelta(), 100);
 		for (int i=0; i<distFractFunc.size(); i++) {
 			double dist = distFractFunc.getX(i);
 			LocationVector vector = new LocationVector(azimuth, dist, 0d);

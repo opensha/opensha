@@ -1176,6 +1176,7 @@ public class SolSiteHazardCalc {
 						table.finalizeLine();
 					}
 					table.initNewLine();
+					List<String> csvLinks = new ArrayList<>();
 					for (int p=0; p<periods.length; p++) {
 						DisaggResult result = results[p][0];
 						
@@ -1308,8 +1309,10 @@ public class SolSiteHazardCalc {
 						plotFutures.add(plotContributionCurve(resourcesDir, disaggPrefix, periods[p], site.getName(), duration, rps,
 								curves.get(s)[p], name, contribCurves, contribChars, exec, writePDFs));
 						table.addColumn("!["+periodLabel(periods[p])+" Curves]("+resourcesDir.getName()+"/"+disaggPrefix+".png)");
+						csvLinks.add("[Download CSV]("+resourcesDir.getName()+"/"+disaggPrefix+".csv)");
 					}
 					table.finalizeLine();
+					table.addLine(csvLinks);
 				}
 				
 				lines.addAll(table.build());
@@ -1927,6 +1930,30 @@ public class SolSiteHazardCalc {
 		System.out.println("Writing "+csvFile.getAbsolutePath());
 		csv.writeToFile(csvFile);
 	}
+	
+	private static void writeSourceTypeCurvesCSV(File csvFile, List<DiscretizedFunc> curves) throws IOException {
+		CSVFile<String> csv = new CSVFile<>(true);
+		
+		DiscretizedFunc curve0 = curves.get(0);
+		List<String> header = new ArrayList<>(curve0.size()+1);
+		
+		header.add("Type");
+		for (int i=0; i<curve0.size(); i++)
+			header.add((float)curve0.getX(i)+"");
+		csv.addLine(header);
+		
+		for (DiscretizedFunc curve : curves) {
+			List<String> line = new ArrayList<>(header.size());
+			line.add(curve.getName());
+			Preconditions.checkState(curve.size() == curve0.size());
+			for (int i=0; i<curve.size(); i++)
+				line.add(curve.getY(i)+"");
+			csv.addLine(line);
+		}
+		
+		System.out.println("Writing "+csvFile.getAbsolutePath());
+		csv.writeToFile(csvFile);
+	}
 
 	private static final DecimalFormat pDF = new DecimalFormat("0.##%");
 	private static final DecimalFormat oDF = new DecimalFormat("0.##");
@@ -2082,6 +2109,8 @@ public class SolSiteHazardCalc {
 		funcs.addAll(contribCurves);
 		chars.addAll(contribChars);
 		
+		writeSourceTypeCurvesCSV(new File(outputDir, prefix+".csv"), funcs);
+		
 		// add the curve again at the end so that it plots on top
 		curve = curve.deepClone();
 		curve.setName(null);
@@ -2225,7 +2254,7 @@ public class SolSiteHazardCalc {
 		});
 	}
 	
-	private static EvenlyDiscretizedFunc disaggRange(double min, double max, double delta, boolean recenter) {
+	public static EvenlyDiscretizedFunc disaggRange(double min, double max, double delta, boolean recenter) {
 		int num = 1;
 		Preconditions.checkArgument(max >= min);
 		double halfDelta = 0.5*delta;
