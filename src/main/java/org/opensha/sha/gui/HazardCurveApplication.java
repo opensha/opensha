@@ -114,7 +114,6 @@ import org.opensha.sha.util.TectonicRegionType;
 
 import com.google.common.collect.Lists;
 
-
 /**
  * <p>
  * Title: HazardCurveServerModeApplication
@@ -1037,7 +1036,7 @@ ActionListener, ScalarIMRChangeListener {
 	public void setDisaggregationSelected(boolean isSelected) {
 		disaggregationFlag = isSelected;
 	}
-
+	
 	/*
 	 * void imgLabel_mouseClicked(MouseEvent e) { try{
 	 * this.getAppletContext().showDocument(new URL(OPENSHA_WEBSITE),
@@ -1057,7 +1056,6 @@ ActionListener, ScalarIMRChangeListener {
 	 * @param event
 	 */
 	public void parameterChange(ParameterChangeEvent event) {
-
 		String S = C + ": parameterChange(): ";
 		if (D) System.out.println("\n" + S + "starting: ");
 

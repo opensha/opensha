@@ -276,13 +276,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 	@Override
 	public ERF getERF(int index) {
 		updateBranches();
-		try {
-			fetchFuture.get();
-		} catch (InterruptedException | ExecutionException e) {
-			e.printStackTrace();
-			System.err.println("Could not get SolutionLogicTree");
-			return null;
-		}
+		fetchFuture.join();
 		LogicTreeBranch<?> branch = branches.get(index);
 		// EpistemicListERF	interface requires evaluation here. As lazy as it gets.
 		try {
