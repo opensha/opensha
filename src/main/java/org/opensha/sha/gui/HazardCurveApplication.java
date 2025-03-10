@@ -900,6 +900,8 @@ ActionListener, ScalarIMRChangeListener {
 				try {
 					computeHazardCurve();
 					cancelButton.setEnabled(false);
+					erfGuiBean.closeProgressBar();
+					
 				} catch (Throwable t) {
 					t.printStackTrace();
 					BugReport bug = new BugReport(t, getParametersInfoAsString(), appShortName, getAppVersion(), this);
@@ -1146,7 +1148,10 @@ ActionListener, ScalarIMRChangeListener {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			JOptionPane.showMessageDialog(this, e.getMessage(),
+			String message = (e.getMessage() != null)
+					? e.getMessage()
+					: e.toString();
+			JOptionPane.showMessageDialog(this, message,
 					"Incorrect Values", JOptionPane.ERROR_MESSAGE);
 			setButtonsEnable(true);
 			return;
