@@ -1,7 +1,5 @@
 package org.opensha.commons.data;
 
-import org.opensha.sha.imr.IntensityMeasureRelationship;
-
 public class WeightedValue<E> {
 	public final E value;
 	public final double weight;
@@ -14,9 +12,12 @@ public class WeightedValue<E> {
 	
 	@Override
 	public String toString() {
-		if (value instanceof IntensityMeasureRelationship) {
-			return ((IntensityMeasureRelationship) value).getName();
+		if (value instanceof ShortNamed) {
+			return ((ShortNamed) value).getShortName();
 		}
-		return value.getClass().getName();
+		if (value instanceof Named) {
+			return ((Named) value).getName();
+		}
+		return value.toString();
 	}
 }
