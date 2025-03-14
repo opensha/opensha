@@ -1,11 +1,11 @@
 package org.opensha.sha.gcim.calc;
 
-import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.Map;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
+import org.opensha.sha.calc.CalculatorAPI;
 import org.opensha.sha.calc.disaggregation.DisaggregationPlotData;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.imr.ScalarIMR;
@@ -22,7 +22,7 @@ import org.opensha.sha.util.TectonicRegionType;
  * @created Oct 01,2004
  * @version 1.0
  */
-public interface GCIM_DisaggregationCalculatorAPI {
+public interface GCIM_DisaggregationCalculatorAPI extends CalculatorAPI {
 
 	/**
 	 * Sets the Max Z Axis Range value fro the plotting purposes

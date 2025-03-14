@@ -168,7 +168,7 @@ public class GCIM_HazardCurveApp extends HazardCurveApplication {
 	 */
 	private final static String C = "GCIM_HazardCurveApplication";
 	// for debug purpose
-	protected final static boolean D = false;
+	protected final static boolean D = true;
 
 	// Strings for choosing ERFGuiBean or ERF_RupSelectorGUIBean
 	public final static String PROBABILISTIC = "Probabilistic";
@@ -295,7 +295,6 @@ public class GCIM_HazardCurveApp extends HazardCurveApplication {
 	Timer gcimTimer;
 	// checks to see if HazardCurveCalculations are done
 	boolean isHazardCalcDone = false;
-
 
 
 	//	private final static String POWERED_BY_IMAGE = TODO clean
@@ -1037,6 +1036,42 @@ public class GCIM_HazardCurveApp extends HazardCurveApplication {
 			computeHazardCurve();
 			drawGraph();
 		}
+	}
+	
+	@Override
+	protected void cancelCalculation() {
+		super.cancelCalculation();
+		try {
+			if (calc != null) {
+				calc.stopCalc();
+			}
+			if (disaggCalc != null) {
+				disaggCalc.stopCalc();
+			}
+		} catch (RuntimeException ee) {
+			ee.printStackTrace();
+			BugReport bug = new BugReport(ee, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+			bugDialog.setVisible(true);
+		}
+		calcFuture.thenRun(() -> {
+			// stoping the timer thread that updates the progress bar
+			if (timer != null && progressClass != null) {
+				timer.stop();
+				timer = null;
+				progressClass.dispose();
+			}
+			if (disaggTimer != null && disaggProgressClass != null) {
+				disaggTimer.stop();
+				disaggTimer = null;
+				disaggProgressClass.dispose();
+			}
+			if (gcimTimer != null && gcimProgressClass != null) {
+				gcimTimer.stop();
+				gcimTimer = null;
+				gcimProgressClass.dispose();
+			}
+		});
 	}
 
 	/**

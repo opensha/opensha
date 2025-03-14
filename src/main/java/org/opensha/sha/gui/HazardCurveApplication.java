@@ -275,7 +275,7 @@ ActionListener, ScalarIMRChangeListener {
 	// checks to see if HazardCurveCalculations are done
 	boolean isHazardCalcDone = false;
 	protected CompletableFuture<Void> calcFuture = null;
-	private static volatile boolean cancelled = false;
+	protected volatile boolean cancelled = false;
 
 	//	private final static String POWERED_BY_IMAGE = TODO clean
 	//			"logos/PoweredByOpenSHA_Agua.jpg";
@@ -1263,9 +1263,11 @@ ActionListener, ScalarIMRChangeListener {
 			hazFunction = toggleHazFuncLogValues(hazFunction);
 			hazFunction.setInfo(getParametersInfoAsString());
 		} catch (RuntimeException e) {
-			JOptionPane.showMessageDialog(this, e.getMessage(),
-					"Parameters Invalid", JOptionPane.INFORMATION_MESSAGE);
-			// e.printStackTrace();
+			if (!isCancelled()) {
+				JOptionPane.showMessageDialog(this, e.getMessage(),
+						"Parameters Invalid", JOptionPane.INFORMATION_MESSAGE);
+			}
+			 e.printStackTrace();
 			setButtonsEnable(true);
 			return;
 		}
@@ -1424,7 +1426,7 @@ ActionListener, ScalarIMRChangeListener {
 			if (disaggSuccessFlag)
 				showDisaggregationResults(numSourcesForDisag, disaggrAtIML,
 						imlVal, probVal);
-			else
+			else if (!isCancelled())
 				JOptionPane
 				.showMessageDialog(
 						this,
@@ -2246,23 +2248,24 @@ ActionListener, ScalarIMRChangeListener {
 	}
 	
 	/**
-	 * An isCancelled getter is used to abstract the implementation.
-	 * Currently this is a volatile boolean, but alternative signallers
-	 * may be considered if we need multiple concurrent writers.
-	 * @return If the signal to cancel the Hazard Curve calculation is sent
+	 * Checks if cancellation signal was issued. Unlike in `AbstractCalculator`,
+	 * this signal isn't reset in this method, but instead in `signalReset`.
 	 */
-	public static boolean isCancelled() {
+	protected boolean isCancelled() {
 		if (D && cancelled) {
-			System.out.println("Caught cancellation signal");
+			System.out.println("Cancellation signal caught in " + C);
 		}
 		return cancelled;
 	}
 	
-	protected static void signalCancel() {
+	protected void signalCancel() {
+		if (D) {
+			System.out.println("Cancellation signal sent");
+		}
 		cancelled = true;
 	}
 	
-	protected static void signalReset() {
+	protected void signalReset() {
 		cancelled = false;
 	}
 	
@@ -2282,6 +2285,20 @@ ActionListener, ScalarIMRChangeListener {
 		}
 		// stopping the Hazard Curve calculation thread
 		signalCancel();
+		// stopping the Hazard Curve calculations on server
+		try {
+			if (calc != null) {
+				calc.stopCalc();
+			}
+			if (disaggCalc != null) {
+				disaggCalc.stopCalc();
+			}
+		} catch (RuntimeException ee) {
+			ee.printStackTrace();
+			BugReport bug = new BugReport(ee, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+			bugDialog.setVisible(true);
+		}
 		calcFuture.thenRun(() -> {
 			// close the progress bar for the ERF GuiBean that displays
 			// "Updating Forecast".
@@ -2292,17 +2309,10 @@ ActionListener, ScalarIMRChangeListener {
 				timer = null;
 				progressClass.dispose();
 			}
-			// stopping the Hazard Curve calculations on server
-			if (calc != null) {
-				try {
-					calc.stopCalc();
-					calc = null;
-				} catch (RuntimeException ee) {
-					ee.printStackTrace();
-					BugReport bug = new BugReport(ee, getParametersInfoAsString(), appShortName, getAppVersion(), this);
-					BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
-					bugDialog.setVisible(true);
-				}
+			if (disaggTimer != null && disaggProgressClass != null) {
+				disaggTimer.stop();
+				disaggTimer = null;
+				disaggProgressClass.dispose();
 			}
 			this.isHazardCalcDone = false;
 			// making the buttons to be visible

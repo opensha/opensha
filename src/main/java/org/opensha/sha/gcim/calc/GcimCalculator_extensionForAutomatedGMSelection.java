@@ -12,6 +12,7 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.Parameter;
+import org.opensha.sha.calc.AbstractCalculator;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
@@ -38,20 +39,19 @@ import org.opensha.sha.util.TectonicRegionType;
  * @version 1.0 - this is a work in progress - see GCIM_thingstodo
  */
 
-public class GcimCalculator_extensionForAutomatedGMSelection {
-//public class GcimCalculator extends UnicastRemoteObject
-//implements GcimCalculatorAPI{
+public class GcimCalculator_extensionForAutomatedGMSelection extends AbstractCalculator 
+implements GcimCalculatorAPI {
 	//Debugging
 	protected final static String C = "GcimCalculator";
-	protected final static boolean D = false;
+	protected final static boolean D = true;
 	
 	private Map<TectonicRegionType, ScalarIMR> imrjMap;
 	private double[][] pRup_IMj, epsilonIMj;
 	private int numIMi = 0;
 	private int currentIMi = -1;
-	private ArrayList<HashMap<TectonicRegionType, ScalarIMR>> imiAttenRels;
+	private ArrayList<? extends Map<TectonicRegionType, ScalarIMR>> imiAttenRels;
 	private ArrayList<String> imiTypes;
-	private ArrayList<HashMap<TectonicRegionType, ImCorrelationRelationship>> imijCorrRels;
+	private ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> imijCorrRels;
 	private double[][] imiArray, cdfIMi_IMjArray;
 	private double[][][] mulnIMi_RupIMjArray, stdlnIMi_RupIMjArray;
 	private double[][] rhoIMiIMk_IMj;
@@ -83,7 +83,7 @@ public class GcimCalculator_extensionForAutomatedGMSelection {
 	 * @throws IOException
 	 */
 	public void getRuptureContributions(double iml, Site site,
-			HashMap<TectonicRegionType, ScalarIMR> imrjMap, AbstractERF eqkRupForecast,
+			Map<TectonicRegionType, ScalarIMR> imrjMap, AbstractERF eqkRupForecast,
 			double maxDist, ArbitrarilyDiscretizedFunc magDistFilter) throws java.rmi.RemoteException {
 		
 		//IMj the GCIM is to be conditioned on
@@ -149,8 +149,8 @@ public class GcimCalculator_extensionForAutomatedGMSelection {
 	 * @return boolean
 	 */
 	public boolean getMultipleGcims(int numIMi,	
-			ArrayList<HashMap<TectonicRegionType, ScalarIMR>> imiAttenRels,
-			ArrayList<String> imiTypes, ArrayList<HashMap<TectonicRegionType, ImCorrelationRelationship>> imijCorrRels,
+			ArrayList<? extends Map<TectonicRegionType, ScalarIMR>> imiAttenRels,
+			ArrayList<String> imiTypes, ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> imijCorrRels,
 			double maxDist, ArbitrarilyDiscretizedFunc magDistFilter) {
 		
 		this.numIMi = numIMi;
@@ -166,8 +166,8 @@ public class GcimCalculator_extensionForAutomatedGMSelection {
 			this.currentIMi = i+1;  //For updating the progress bar
 			
 			//Get the IMi, AttenRel, CorrRel, (and period later if IMi is SA)
-			HashMap<TectonicRegionType, ScalarIMR> imriMap = imiAttenRels.get(i);
-			HashMap<TectonicRegionType, ImCorrelationRelationship> corrImijMap = imijCorrRels.get(i);
+			Map<TectonicRegionType, ScalarIMR> imriMap = imiAttenRels.get(i);
+			Map<TectonicRegionType, ImCorrelationRelationship> corrImijMap = imijCorrRels.get(i);
 			
 			//Calculate the GCIM distribution for the given IMi
 			getSingleGcim(i, imriMap, corrImijMap, maxDist, magDistFilter);
@@ -194,8 +194,8 @@ public class GcimCalculator_extensionForAutomatedGMSelection {
 	 * @param magDistFilter: Magnitude-Distance filter for sources
 	 * @return boolean
 	 */
-	public boolean getSingleGcim(int imiNumber, HashMap<TectonicRegionType, ScalarIMR> imriMap,
-			HashMap<TectonicRegionType, ImCorrelationRelationship> imijCorrRelMap,
+	public boolean getSingleGcim(int imiNumber, Map<TectonicRegionType, ScalarIMR> imriMap,
+			Map<TectonicRegionType, ImCorrelationRelationship> imijCorrRelMap,
 			double maxDist, ArbitrarilyDiscretizedFunc magDistFilter) {	
 		
 		//Set the site in imri
@@ -220,9 +220,10 @@ public class GcimCalculator_extensionForAutomatedGMSelection {
 		else includeMagDistFilter=true;
 		double magThresh=0.0;
 			
-		int numRupRejected =0;
+		int numRupRejected = 0;
 		//loop over all of the ruptures
 		for (int i = 0; i < numSources; i++) {
+			if (isCancelled()) return false;
 			// get source and all its details 
 			ProbEqkSource source = eqkRupForecast.getSource(i);
 
@@ -507,7 +508,7 @@ public class GcimCalculator_extensionForAutomatedGMSelection {
 		
 		for (int i=0; i<numIMi; i++) {
 			
-			HashMap<TectonicRegionType, ScalarIMR> imriMap = imiAttenRels.get(i);
+			Map<TectonicRegionType, ScalarIMR> imriMap = imiAttenRels.get(i);
 			ScalarIMR firstIMRiFromMap = TRTUtils.getFirstIMR(imriMap);
 			
 			GcimResultsString += "----------------------" + "\n";
@@ -566,6 +567,4 @@ public class GcimCalculator_extensionForAutomatedGMSelection {
 	public boolean done() throws java.rmi.RemoteException{
 		return gcimComplete;
 	}
-	
-	
 }

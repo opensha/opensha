@@ -24,6 +24,7 @@ import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.util.ServerPrefUtils;
+import org.opensha.sha.calc.AbstractCalculator;
 import org.opensha.sha.calc.HazardCurveCalculator;
 import org.opensha.sha.calc.params.NonSupportedTRT_OptionsParam;
 import org.opensha.sha.calc.params.SetTRTinIMR_FromSourceParam;
@@ -57,8 +58,8 @@ import com.google.common.base.Preconditions;
  * @version 1.0
  */
 
-public class DisaggregationCalculator
-implements DisaggregationCalculatorAPI{
+public class DisaggregationCalculator extends AbstractCalculator
+implements DisaggregationCalculatorAPI {
 
 	/**
 	 * 
@@ -66,7 +67,7 @@ implements DisaggregationCalculatorAPI{
 	private static final long serialVersionUID = 1L;
 	
 	protected final static String C = "DisaggregationCalculator";
-	protected final static boolean D = false;
+	protected final static boolean D = true;
 
 
 	public static final String OPENSHA_SERVLET_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "DisaggregationPlotServlet";
@@ -339,7 +340,8 @@ implements DisaggregationCalculatorAPI{
 		}
 		
 		for (int i = 0; i < numSources; i++) {
-
+			if (isCancelled()) return false;
+			
 			double sourceRate = 0;
 			// get source and get its distance from the site
 			ProbEqkSource source = eqkRupForecast.getSource(i);
@@ -1219,6 +1221,12 @@ implements DisaggregationCalculatorAPI{
 		return webaddr;
 	}
 
+	@Override
+	protected boolean isCancelled() {
+		boolean cancelled = super.isCancelled();
+		if (D && cancelled) System.out.println("Signal caught in " + C);
+		return cancelled;
+	}
 
 	/**
 	 * Sets the number of sources to be shown in the Disaggregation.
@@ -1235,5 +1243,4 @@ implements DisaggregationCalculatorAPI{
 	public void setShowDistances(boolean showDistances) {
 		this.showDistances = showDistances;
 	}
-
 }

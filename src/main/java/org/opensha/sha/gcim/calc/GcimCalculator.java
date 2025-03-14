@@ -2,6 +2,7 @@ package org.opensha.sha.gcim.calc;
 
 
 import java.io.IOException;
+import java.rmi.RemoteException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -16,6 +17,7 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.Parameter;
+import org.opensha.sha.calc.AbstractCalculator;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
@@ -48,9 +50,8 @@ import java.util.Random;
  * @version 1.0 - this is a work in progress - see GCIM_thingstodo
  */
 
-public class GcimCalculator {
-//public class GcimCalculator extends UnicastRemoteObject
-//implements GcimCalculatorAPI{
+public class GcimCalculator extends AbstractCalculator
+implements GcimCalculatorAPI {
 	//Debugging
 	protected final static String C = "GcimCalculator";
 	protected final static boolean D = true;
@@ -241,9 +242,10 @@ public class GcimCalculator {
 		else includeMagDistFilter=true;
 		double magThresh=0.0;
 			
-		int numRupRejected =0;
+		int numRupRejected = 0;
 		//loop over all of the sources
 		for (int i = 0; i < numSources; i++) {
+			if (isCancelled()) return false;
 			// get source and all its details 
 			ProbEqkSource source = eqkRupForecast.getSource(i);
 
@@ -762,6 +764,4 @@ public class GcimCalculator {
 	public boolean done() throws java.rmi.RemoteException{
 		return gcimComplete;
 	}
-	
-	
 }

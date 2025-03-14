@@ -4,9 +4,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.rmi.RemoteException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.concurrent.CompletableFuture;
 
 import javax.swing.JOptionPane;
@@ -527,6 +525,21 @@ public class HazardSpectrumApplication extends HazardCurveApplication {
 					}
 				}
 			}
+		}
+	}
+	
+	@Override
+	protected void cancelCalculation() {
+		super.cancelCalculation();
+		try {
+			if (calc != null) {
+				calc.stopCalc();
+			}
+		} catch (RuntimeException ee) {
+			ee.printStackTrace();
+			BugReport bug = new BugReport(ee, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+			bugDialog.setVisible(true);
 		}
 	}
 

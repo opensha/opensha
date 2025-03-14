@@ -37,7 +37,6 @@ import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.SiteAdaptiveSource;
 import org.opensha.sha.earthquake.rupForecastImpl.Frankel96.Frankel96_EqkRupForecast;
-import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.BJF_1997_AttenRel;
@@ -59,14 +58,15 @@ import com.google.common.base.Preconditions;
  * @version 1.0
  */
 
-public class HazardCurveCalculator implements HazardCurveCalculatorAPI, ParameterChangeWarningListener{
+public class HazardCurveCalculator extends AbstractCalculator
+implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
 	protected final static String C = "HazardCurveCalculator";
-	protected final static boolean D = false;
+	protected final static boolean D = true;
 
 	/*
 	 * Source filters
@@ -231,7 +231,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 			Site site,
 			Map<TectonicRegionType, ScalarIMR> imrMap, 
 			ERF eqkRupForecast){
-
 		//	  System.out.println("Haz Curv Calc: maxDistanceParam.getValue()="+maxDistanceParam.getValue().toString());
 		//	  System.out.println("Haz Curv Calc: numStochEventSetRealizationsParam.getValue()="+numStochEventSetRealizationsParam.getValue().toString());
 		//	  System.out.println("Haz Curv Calc: includeMagDistFilterParam.getValue()="+includeMagDistFilterParam.getValue().toString());
@@ -301,7 +300,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 
 		// init the current rupture number (also for progress bar)
 		currRuptures = 0;
-		int numRupRejected =0;
+		int numRupRejected = 0;
 
 		// initialize the hazard function to 1.0
 		initDiscretizeValues(hazFunction, 1.0);
@@ -314,7 +313,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 
 		// loop over sources
 		for(sourceIndex=0;sourceIndex < numSources ;sourceIndex++) {
-
+			if (isCancelled()) return null;
 			//if (sourceIndex%1000 ==0) System.out.println("SourceIdx: " + sourceIndex);
 			
 			// get the ith source
@@ -494,6 +493,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		//	  totRuptures=numEventSets;
 
 		for(int i=0;i<numEventSets;i++) {
+			if (isCancelled()) return null;
 			List<EqkRupture> events = eqkRupForecast.drawRandomEventSet(site, getSourceFilters());
 			if(i==0) totRuptures = events.size()*numEventSets; // this is an approximate total number of events
 			currRuptures+=events.size();
@@ -510,7 +510,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	public DiscretizedFunc getEventSetHazardCurve(DiscretizedFunc hazFunction,
 			Site site, ScalarIMR imr, 
 			List<EqkRupture> eqkRupList, boolean updateCurrRuptures) {
-
 
 		DiscretizedFunc condProbFunc = hazFunction.deepClone();
 
@@ -552,6 +551,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 
 		// loop over ruptures
 		for(int n=0; n < totRups ; n++) {
+			if (isCancelled()) return null;
 
 			if(updateCurrRuptures)++currRuptures;
 
@@ -602,7 +602,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	public DiscretizedFunc getEventSetExpNumExceedCurve(DiscretizedFunc hazFunction,
 			Site site, ScalarIMR imr, List<EqkRupture> eqkRupList, boolean updateCurrRuptures) {
 
-
 		DiscretizedFunc condProbFunc = hazFunction.deepClone();
 
 		//resetting the Parameter change Listeners on the AttenuationRelationship
@@ -643,7 +642,8 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 
 		// loop over ruptures
 		for(int n=0; n < totRups ; n++) {
-
+			if (isCancelled()) return null;
+			
 			if(updateCurrRuptures)++currRuptures;
 
 			EqkRupture rupture = eqkRupList.get(n);
@@ -734,6 +734,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		
 		// loop over ruptures
 		for(int n=0; n < totRups ; n++) {
+			if (isCancelled()) return null;
 
 			if(updateCurrRuptures)++currRuptures;
 
@@ -784,7 +785,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	public DiscretizedFunc getEventSetNumExceedCurveRandomIML(DiscretizedFunc hazFunction,
 			Site site, ScalarIMR imr, List<EqkRupture> eqkRupList, boolean updateCurrRuptures, Random random) {
 
-
 		//resetting the Parameter change Listeners on the AttenuationRelationship
 		//parameters. This allows the Server version of our application to listen to the
 		//parameter changes.
@@ -813,6 +813,7 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 
 		// loop over ruptures
 		for(int n=0; n < totRups ; n++) {
+			if (isCancelled()) return null;
 
 			if(updateCurrRuptures)++currRuptures;
 
@@ -911,11 +912,6 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 		if (trackProgress)
 			return this.totRuptures;
 		return -1;
-	}
-
-	@Override
-	public void stopCalc(){
-		sourceIndex = numSources;
 	}
 
 	/**
@@ -1022,6 +1018,12 @@ public class HazardCurveCalculator implements HazardCurveCalculatorAPI, Paramete
 	// added this and the associated API implementation to instantiate BJF_1997_AttenRel in the above
 	public void parameterChangeWarning( ParameterChangeWarningEvent event ) {};
 
+	@Override
+	protected boolean isCancelled() {
+		boolean cancelled = super.isCancelled();
+		if (D && cancelled) System.out.println("Signal caught in " + C);
+		return cancelled;
+	}
 
 	// this is temporary for testing purposes
 	public static void main(String[] args) {

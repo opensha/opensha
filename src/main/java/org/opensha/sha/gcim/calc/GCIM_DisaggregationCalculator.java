@@ -16,6 +16,7 @@ import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.WarningParameter;
 import org.opensha.commons.util.ServerPrefUtils;
+import org.opensha.sha.calc.AbstractCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationPlotData;
 import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureComparator;
 import org.opensha.sha.calc.disaggregation.DisaggregationSourceRuptureInfo;
@@ -43,7 +44,7 @@ import org.opensha.sha.util.TectonicRegionType;
  * @version 1.0
  */
 
-public class GCIM_DisaggregationCalculator
+public class GCIM_DisaggregationCalculator extends AbstractCalculator
 implements GCIM_DisaggregationCalculatorAPI {
 
 	/**
@@ -52,7 +53,7 @@ implements GCIM_DisaggregationCalculatorAPI {
 	private static final long serialVersionUID = 1L;
 	
 	protected final static String C = "DisaggregationCalculator";
-	protected final static boolean D = false;
+	protected final static boolean D = true;
 	
 	// boolean to store rupture probabilities and epsilon for use in GCIM calc
 	private boolean storeRupProbEpsilons = false;
@@ -247,6 +248,7 @@ implements GCIM_DisaggregationCalculatorAPI {
 
 		
 		for (int i = 0; i < numSources; i++) {
+			if (isCancelled()) return false;
 
 			double sourceRate = 0;
 			// get source and get its distance from the site
