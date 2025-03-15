@@ -237,7 +237,7 @@ ActionListener, ScalarIMRChangeListener {
 	//	private JButton printButton;
 	//	private JButton closeButton;
 
-	private JButton computeButton;
+	protected JButton computeButton;
 	protected JButton cancelButton;
 	private JButton clearButton;
 	private JButton peelButton;
@@ -874,7 +874,74 @@ ActionListener, ScalarIMRChangeListener {
 		}
 		
 	}
+	
+	protected void initTimers() {
+		timer = new Timer(200, new ActionListener() {
+			public void actionPerformed(ActionEvent evt) {
+				try {
+					if (!isEqkList) {
+						int totRupture = calc.getTotRuptures();
+						int currRupture = calc.getCurrRuptures();
+						boolean totCurCalculated = true;
+						if (currRupture == -1) {
+							progressClass
+							.setProgressMessage("Calculating total ruptures\u2026");
+							totCurCalculated = false;
+						}
+						if (!isHazardCalcDone && totCurCalculated)
+							progressClass.updateProgress(currRupture,
+									totRupture);
+					} else {
+						if ((numERFsInEpistemicList) != 0)
+							progressClass
+							.updateProgress(
+									currentERFInEpistemicListForHazardCurve,
+									numERFsInEpistemicList);
+					}
+					if (isHazardCalcDone) {
+						timer.stop();
+						progressClass.dispose();
+						drawGraph();
+					}
+				} catch (Exception e) {
+					timer.stop();
+					setButtonsEnable(true);
+					e.printStackTrace();
+					BugReport bug = new BugReport(e, getParametersInfoAsString(), APP_NAME,
+							getAppVersion(), getApplicationComponent());
+					BugReportDialog bugDialog = new BugReportDialog(getApplicationComponent(), bug, false);
+					bugDialog.setVisible(true);
+				}
+			}
+		});
 
+		// timer for disaggregation progress bar
+		disaggTimer = new Timer(200, new ActionListener() {
+			public void actionPerformed(ActionEvent evt) {
+				try {
+					int totalRupture = disaggCalc.getTotRuptures();
+					int currRupture = disaggCalc.getCurrRuptures();
+					boolean calcDone = disaggCalc.done();
+					if (!calcDone)
+						disaggProgressClass.updateProgress(currRupture,
+								totalRupture);
+					if (calcDone) {
+						disaggTimer.stop();
+						disaggProgressClass.dispose();
+					}
+				} catch (Exception e) {
+					disaggTimer.stop();
+					setButtonsEnable(true);
+					e.printStackTrace();
+					BugReport bug = new BugReport(e, getParametersInfoAsString(), APP_NAME,
+							getAppVersion(), getApplicationComponent());
+					BugReportDialog bugDialog = new BugReportDialog(getApplicationComponent(), bug, false);
+					bugDialog.setVisible(true);
+				}
+			}
+		});
+	}
+	
 	/**
 	 * this function is called to draw the graph
 	 */
@@ -901,7 +968,6 @@ ActionListener, ScalarIMRChangeListener {
 					computeHazardCurve();
 					cancelButton.setEnabled(false);
 					erfGuiBean.closeProgressBar();
-					
 				} catch (Throwable t) {
 					t.printStackTrace();
 					BugReport bug = new BugReport(t, getParametersInfoAsString(), appShortName, getAppVersion(), this);
@@ -915,72 +981,7 @@ ActionListener, ScalarIMRChangeListener {
 					}
 				}
 			});
-
-			timer = new Timer(200, new ActionListener() {
-				public void actionPerformed(ActionEvent evt) {
-					try {
-						if (!isEqkList) {
-							int totRupture = calc.getTotRuptures();
-							int currRupture = calc.getCurrRuptures();
-							boolean totCurCalculated = true;
-							if (currRupture == -1) {
-								progressClass
-								.setProgressMessage("Calculating total ruptures\u2026");
-								totCurCalculated = false;
-							}
-							if (!isHazardCalcDone && totCurCalculated)
-								progressClass.updateProgress(currRupture,
-										totRupture);
-						} else {
-							if ((numERFsInEpistemicList) != 0)
-								progressClass
-								.updateProgress(
-										currentERFInEpistemicListForHazardCurve,
-										numERFsInEpistemicList);
-						}
-						if (isHazardCalcDone) {
-							timer.stop();
-							progressClass.dispose();
-							drawGraph();
-						}
-					} catch (Exception e) {
-						timer.stop();
-						setButtonsEnable(true);
-						e.printStackTrace();
-						BugReport bug = new BugReport(e, getParametersInfoAsString(), APP_NAME,
-								getAppVersion(), getApplicationComponent());
-						BugReportDialog bugDialog = new BugReportDialog(getApplicationComponent(), bug, false);
-						bugDialog.setVisible(true);
-					}
-				}
-			});
-
-			// timer for disaggregation progress bar
-			disaggTimer = new Timer(200, new ActionListener() {
-				public void actionPerformed(ActionEvent evt) {
-					try {
-						int totalRupture = disaggCalc.getTotRuptures();
-						int currRupture = disaggCalc.getCurrRuptures();
-						boolean calcDone = disaggCalc.done();
-						if (!calcDone)
-							disaggProgressClass.updateProgress(currRupture,
-									totalRupture);
-						if (calcDone) {
-							disaggTimer.stop();
-							disaggProgressClass.dispose();
-						}
-					} catch (Exception e) {
-						disaggTimer.stop();
-						setButtonsEnable(true);
-						e.printStackTrace();
-						BugReport bug = new BugReport(e, getParametersInfoAsString(), APP_NAME,
-								getAppVersion(), getApplicationComponent());
-						BugReportDialog bugDialog = new BugReportDialog(getApplicationComponent(), bug, false);
-						bugDialog.setVisible(true);
-					}
-				}
-			});
-
+			initTimers();
 		} else {
 			computeHazardCurve();
 			drawGraph();
@@ -1446,7 +1447,7 @@ ActionListener, ScalarIMRChangeListener {
 		disaggregationString = null;
 	}
 	
-	static void runInEDT(Runnable run) {
+	protected static void runInEDT(Runnable run) {
 		if (SwingUtilities.isEventDispatchThread()) {
 			run.run();
 		} else {
