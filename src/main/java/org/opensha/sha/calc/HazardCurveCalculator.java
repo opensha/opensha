@@ -236,6 +236,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		//	  System.out.println("Haz Curv Calc: includeMagDistFilterParam.getValue()="+includeMagDistFilterParam.getValue().toString());
 //		if(includeMagDistFilterParam.getValue() && D)
 //			System.out.println("Haz Curv Calc: magDistCutoffParam.getValue()="+magDistCutoffParam.getValue().toString());
+		signalReset();
 		
 		boolean setTRTinIMR_FromSource = setTRTinIMR_FromSourceParam.getValue();
 		HashMap<ScalarIMR, TectonicRegionType> trtOrigVals = null;
@@ -476,6 +477,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 	public DiscretizedFunc getAverageEventSetHazardCurve(DiscretizedFunc hazFunction,
 			Site site, ScalarIMR imr, 
 			ERF eqkRupForecast) {
+		signalReset();
 
 //		System.out.println("Haz Curv Calc: maxDistanceParam.getValue()="+maxDistanceParam.getValue().toString());
 //		System.out.println("Haz Curv Calc: numStochEventSetRealizationsParam.getValue()="+numStochEventSetRealizationsParam.getValue().toString());
@@ -510,6 +512,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 	public DiscretizedFunc getEventSetHazardCurve(DiscretizedFunc hazFunction,
 			Site site, ScalarIMR imr, 
 			List<EqkRupture> eqkRupList, boolean updateCurrRuptures) {
+		signalReset();
 
 		DiscretizedFunc condProbFunc = hazFunction.deepClone();
 
@@ -601,6 +604,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 	 */
 	public DiscretizedFunc getEventSetExpNumExceedCurve(DiscretizedFunc hazFunction,
 			Site site, ScalarIMR imr, List<EqkRupture> eqkRupList, boolean updateCurrRuptures) {
+		signalReset();
 
 		DiscretizedFunc condProbFunc = hazFunction.deepClone();
 
@@ -694,6 +698,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 	 */
 	public DiscretizedFunc getEventSetHazardCurveRandomIML(DiscretizedFunc hazFunction,
 			Site site, ScalarIMR imr, List<EqkRupture> eqkRupList, boolean updateCurrRuptures, Random random) {
+		signalReset();
 
 		if(random == null)
 			random = new Random();
@@ -784,6 +789,7 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 	 */
 	public DiscretizedFunc getEventSetNumExceedCurveRandomIML(DiscretizedFunc hazFunction,
 			Site site, ScalarIMR imr, List<EqkRupture> eqkRupList, boolean updateCurrRuptures, Random random) {
+		signalReset();
 
 		//resetting the Parameter change Listeners on the AttenuationRelationship
 		//parameters. This allows the Server version of our application to listen to the

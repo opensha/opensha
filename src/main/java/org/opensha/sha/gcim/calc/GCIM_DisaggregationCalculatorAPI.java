@@ -6,6 +6,7 @@ import java.util.Map;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.sha.calc.CalculatorAPI;
+import org.opensha.sha.calc.disaggregation.DisaggregationCalculatorAPI;
 import org.opensha.sha.calc.disaggregation.DisaggregationPlotData;
 import org.opensha.sha.earthquake.AbstractERF;
 import org.opensha.sha.imr.ScalarIMR;
@@ -69,7 +70,7 @@ public interface GCIM_DisaggregationCalculatorAPI extends CalculatorAPI {
 	 * Sets the number of sources to be shown in the Disaggregation.
 	 * @param numSources int
 	 */
-	public void setNumSourcestoShow(int numSources);
+	public void setNumSourcesToShow(int numSources);
 	
 	/**
 	 * Enables/disables calculation and display of source distances in source data list.

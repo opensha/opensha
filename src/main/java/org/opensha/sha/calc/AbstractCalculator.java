@@ -14,6 +14,14 @@ public abstract class AbstractCalculator implements CalculatorAPI {
 	}
 	
 	/**
+	 * Resets a cancellation request for the calculator.
+	 * This is required at the start of any computation.
+	 */
+	protected void signalReset() {
+		cancelled = false;
+	}
+	
+	/**
 	 * Returns cancellation state and then resets to false.
 	 * isCancelled is only used inside the calculator, so it
 	 * doesn't need to be exposed in the Calculator interface.

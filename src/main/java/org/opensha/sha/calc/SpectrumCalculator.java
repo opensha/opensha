@@ -128,6 +128,7 @@ implements SpectrumCalculatorAPI {
 			ERF eqkRupForecast,
 			double probVal,
 			List supportedSA_Periods) {
+		signalReset();
 
 		this.currRuptures = -1;
 
@@ -365,6 +366,7 @@ implements SpectrumCalculatorAPI {
 			ERF eqkRupForecast,
 			double imlVal,
 			List supportedSA_Periods) {
+		signalReset();
 
 		//creating the Master function that initializes the Function with supported SA Periods Vals
 		DiscretizedFunc hazFunction = new ArbitrarilyDiscretizedFunc();

@@ -179,10 +179,7 @@ ActionListener, ScalarIMRChangeListener {
 	protected PlottingOptionControl plotOptionControl;
 	protected XY_ValuesControlPanel xyPlotControl;
 
-	private ArrayList<ControlPanel> controlPanels;
-
-	// default insets
-	protected Insets defaultInsets = new Insets(4, 4, 4, 4); ///TODO remove
+	protected ArrayList<ControlPanel> controlPanels;
 
 	/**
 	 * List of ArbitrarilyDiscretized functions and Weighted funstions
@@ -217,7 +214,7 @@ ActionListener, ScalarIMRChangeListener {
 
 	// flag to check for the disaggregation functionality
 	protected boolean disaggregationFlag = false;
-	private String disaggregationString;
+	protected String disaggregationString;
 
 	// These keep track of which type of calculation is chosen (only one should be true at any time);
 	protected boolean isProbabilisticCurve = true;
@@ -246,17 +243,13 @@ ActionListener, ScalarIMRChangeListener {
 	protected JComboBox<String> probDeterComboBox;
 
 	private JPanel plotPanel;
-	//private JPanel sitePanel;
-	//protected JPanel imrPanel; // TODO make private
-	//protected JPanel imtPanel; // TODO make private
-	//protected JPanel erfPanel; // TODO make private
 
 	private JSplitPane imrImtSplitPane;
 	private JTabbedPane paramsTabbedPane;
 	protected GraphWidget graphWidget; // actual plot widget
 
 	protected IMR_MultiGuiBean imrGuiBean;
-	private IMT_NewGuiBean imtGuiBean;
+	protected IMT_NewGuiBean imtGuiBean;
 	protected Site_GuiBean siteGuiBean;
 	protected ERF_GuiBean erfGuiBean;
 	protected EqkRupSelectorGuiBean erfRupSelectorGuiBean;
@@ -266,14 +259,14 @@ ActionListener, ScalarIMRChangeListener {
 	// instances of various calculators
 	protected HazardCurveCalculatorAPI calc;
 	protected DisaggregationCalculatorAPI disaggCalc;
-	CalcProgressBar progressClass;
-	CalcProgressBar disaggProgressClass;
+	protected CalcProgressBar progressClass;
+	protected CalcProgressBar disaggProgressClass;
 	protected CalcProgressBar startAppProgressClass;
 	// timer threads to show the progress of calculations
-	Timer timer;
-	Timer disaggTimer;
+	protected Timer timer;
+	protected Timer disaggTimer;
 	// checks to see if HazardCurveCalculations are done
-	boolean isHazardCalcDone = false;
+	protected boolean isHazardCalcDone = false;
 	protected CompletableFuture<Void> calcFuture = null;
 	protected volatile boolean cancelled = false;
 
@@ -296,7 +289,7 @@ ActionListener, ScalarIMRChangeListener {
 	 * of existing data, but if it is false then add new data to the existing
 	 * data(this option only works if it is ERF_List).
 	 * */
-	boolean addData = true;
+	protected boolean addData = true;
 	
 	protected static String errorInInitializationMessage = "Problem occured " +
 				"during initialization the ERF's. All parameters are set to default.";
@@ -540,11 +533,6 @@ ActionListener, ScalarIMRChangeListener {
 		// creating the GraphWidget
 		buildGraphWidget();
 
-		// IMR, IMT & Site panel
-		//imrPanel = new JPanel(new GridBagLayout());
-
-		//imtPanel = new JPanel(new GridBagLayout());
-
 		imrImtSplitPane = new JSplitPane(
 				JSplitPane.VERTICAL_SPLIT, true, 
 				imtGuiBean, imrGuiBean);
@@ -555,10 +543,6 @@ ActionListener, ScalarIMRChangeListener {
 		imrImtSplitPane.setMinimumSize(new Dimension(200,100));
 		imrImtSplitPane.setPreferredSize(new Dimension(280,100));
 
-		//sitePanel = new JPanel(new GridBagLayout());
-		//sitePanel.setBorder(BorderFactory.createEmptyBorder()); TODO clean
-		//sitePanel.setBackground(Color.white);
-
 		JSplitPane imrImtSiteSplitPane = new JSplitPane(
 				JSplitPane.HORIZONTAL_SPLIT, true, 
 				imrImtSplitPane, siteGuiBean);
@@ -568,9 +552,6 @@ ActionListener, ScalarIMRChangeListener {
 		imrImtSiteSplitPane.setOpaque(false);
 		//imrImtSiteSplitPane.setDividerLocation(0.5); //TODO revisit
 		//imrImtSiteSplitPane.setBorder(null);
-
-		// ERF panel
-		//erfPanel = new JPanel(new GridBagLayout());
 
 		// tabbed
 		paramsTabbedPane = new JTabbedPane();
@@ -597,24 +578,6 @@ ActionListener, ScalarIMRChangeListener {
 		//content.add(toolbar, BorderLayout.NORTH); TODO clean delay
 		content.add(contentSplitPane, BorderLayout.CENTER);
 		content.add(buttonPanel, BorderLayout.SOUTH);
-
-
-
-		// erfPanel.setLayout(new GridBagLayout());
-		//		erfPanel.validate();
-		//		erfPanel.repaint();
-		//		contentSplitPane.setDividerLocation(590);
-
-		//		JPanel contentPanel = new JPanel(new GridBagLayout());
-		//		contentPanel.add(contentSplitPane, new GridBagConstraints(
-		//				0, 0, 1, 1,
-		//				1.0, 1.0, 
-		//				GridBagConstraints.CENTER, 
-		//				GridBagConstraints.BOTH,
-		//				new Insets(11, 4, 5, 6), 
-		//				243, 231));
-
-		// assemble frame
 
 		// frame setup
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -721,7 +684,6 @@ ActionListener, ScalarIMRChangeListener {
 		}
 		applet.init();
 		applet.setIconImages(IconFetcher.fetchIcons(APP_SHORT_NAME));
-		//		applet.pack();
 		applet.setVisible(true);
 		applet.computeButton.requestFocusInWindow();
 		return applet;
@@ -872,10 +834,20 @@ ActionListener, ScalarIMRChangeListener {
 			BugReportDialog bugDialog = new BugReportDialog(this, bug, true);
 			bugDialog.setVisible(true);
 		}
-		
 	}
 	
+	/**
+	 * Start all the timers for all calculators.
+	 */
 	protected void initTimers() {
+		startPrimaryTimer();
+		startDisaggTimer();
+	}
+	
+	/**
+	 * Timer for primary hazard calculator
+	 */
+	protected void startPrimaryTimer() {
 		timer = new Timer(200, new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
 				try {
@@ -914,8 +886,12 @@ ActionListener, ScalarIMRChangeListener {
 				}
 			}
 		});
-
-		// timer for disaggregation progress bar
+	}
+	
+	/**
+	 * Timer for disaggregation progress bar
+	 */
+	protected void startDisaggTimer() {
 		disaggTimer = new Timer(200, new ActionListener() {
 			public void actionPerformed(ActionEvent evt) {
 				try {
@@ -946,6 +922,7 @@ ActionListener, ScalarIMRChangeListener {
 	 * this function is called to draw the graph
 	 */
 	protected void calculate() {
+		signalReset();
 		setButtonsEnable(false);
 		if (plotOptionControl != null) {
 			addData = this.plotOptionControl.getSelectedOption().equals(
@@ -974,11 +951,6 @@ ActionListener, ScalarIMRChangeListener {
 					BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
 					bugDialog.setVisible(true);
 					setButtonsEnable(true);
-				} finally {
-					if (isCancelled()) {
-						setButtonsEnable(true);
-						signalReset();
-					}
 				}
 			});
 			initTimers();
@@ -1054,7 +1026,7 @@ ActionListener, ScalarIMRChangeListener {
 	 * user in a GUI this function is called, and a parameter change event is
 	 * passed in. This function then determines what to do with the information
 	 * ie. show some paramaters, set some as invisible, basically control the
-	 * paramater lists.
+	 * parameter lists.
 	 * 
 	 * @param event
 	 */
@@ -1259,7 +1231,6 @@ ActionListener, ScalarIMRChangeListener {
 				BugReport bug = new BugReport(e, getParametersInfoAsString(), appShortName, getAppVersion(), this);
 				BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
 				bugDialog.setVisible(true);
-
 			}
 			hazFunction = toggleHazFuncLogValues(hazFunction);
 			hazFunction.setInfo(getParametersInfoAsString());
@@ -1361,7 +1332,6 @@ ActionListener, ScalarIMRChangeListener {
 				bugDialog.setVisible(true);
 			}
 			try {
-
 				if (disaggregationParamVal
 						.equals(DisaggregationControlPanel.DISAGGREGATE_USING_PROB)) {
 					disaggrAtIML = false;
@@ -1423,7 +1393,6 @@ ActionListener, ScalarIMRChangeListener {
 				BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
 				bugDialog.setVisible(true);
 			}
-			// }
 			if (disaggSuccessFlag)
 				showDisaggregationResults(numSourcesForDisag, disaggrAtIML,
 						imlVal, probVal);
@@ -1473,7 +1442,8 @@ ActionListener, ScalarIMRChangeListener {
 	 * @param probVal
 	 *            double if disaggregation is done based on prob. then its value
 	 */
-	private void showDisaggregationResults(int numSourceToShow,
+	// TODO: Make this private after disaggCalc migration
+	protected void showDisaggregationResults(int numSourceToShow,
 			boolean imlBasedDisaggr, double imlVal, double probVal) {
 		boolean binDataToShow = disaggregationControlPanel.isShowDisaggrBinDataSelected();
 
@@ -1581,10 +1551,12 @@ ActionListener, ScalarIMRChangeListener {
 				}
 				hazFunction = toggleHazFuncLogValues(hazFunction);
 			} catch (RuntimeException e) {
-				JOptionPane.showMessageDialog(this, e.getMessage(),
-						"Parameters Invalid", JOptionPane.INFORMATION_MESSAGE);
+				if (!isCancelled()) {
+					JOptionPane.showMessageDialog(this, e.getMessage(),
+							"Parameters Invalid", JOptionPane.INFORMATION_MESSAGE);
+				}
 				setButtonsEnable(true);
-				// e.printStackTrace();
+				e.printStackTrace();
 				return;
 			}
 			hazardFuncList.add(hazFunction);
@@ -1729,7 +1701,7 @@ ActionListener, ScalarIMRChangeListener {
 	/**
 	 * Initialize the IMT Gui Bean
 	 */
-	private void initIMT_GuiBean() {
+	protected void initIMT_GuiBean() {
 		// create the IMT Gui Bean object
 
 		imtGuiBean = new IMT_NewGuiBean(imrGuiBean);
@@ -1775,10 +1747,6 @@ ActionListener, ScalarIMRChangeListener {
 				erfGuiBean.setERF(eqkRupForecast);
 			}
 		}
-//		erfPanel.removeAll(); TODO clean
-//		erfPanel.add(erfGuiBean, new GridBagConstraints( 0, 0, 1, 1, 1.0, 1.0,
-//				GridBagConstraints.CENTER,GridBagConstraints.BOTH, new Insets(0,0,0,0), 0, 0 ));
-//		erfPanel.updateUI();
 	}
 
 	/**
@@ -1805,11 +1773,6 @@ ActionListener, ScalarIMRChangeListener {
 		}
 		else
 			erfRupSelectorGuiBean.setEqkRupForecastModel(erf);
-//		erfPanel.removeAll(); TODO clean
-//		//erfGuiBean = null;
-//		erfPanel.add(erfRupSelectorGuiBean, new GridBagConstraints( 0, 0, 1, 1, 1.0, 1.0,
-//				GridBagConstraints.CENTER,GridBagConstraints.BOTH, defaultInsets, 0, 0 ));
-//		erfPanel.updateUI();
 	}
 
 	protected void initCommonControlList() {
@@ -1877,7 +1840,7 @@ ActionListener, ScalarIMRChangeListener {
 
 	}
 
-	private void selectControlPanel() {
+	protected void selectControlPanel() {
 		if (controlComboBox.getItemCount() <= 0)
 			return;
 		String selectedControl = controlComboBox.getSelectedItem().toString();
@@ -1908,9 +1871,6 @@ ActionListener, ScalarIMRChangeListener {
 			return "";
 		return params.getParameterListMetadataString();
 	}
-
-
-
 
 	/**
 	 * 
@@ -2008,7 +1968,7 @@ ActionListener, ScalarIMRChangeListener {
 	 * @param originalFunc
 	 *            : this is the function with X values set
 	 */
-	private void initX_Values(DiscretizedFunc arb) {
+	protected void initX_Values(DiscretizedFunc arb) {
 
 		// if not using custom values get the function according to IMT.
 		if (!useCustomX_Values)
@@ -2032,7 +1992,7 @@ ActionListener, ScalarIMRChangeListener {
 	 * @param hazFunction
 	 *            : this is the function with X values set
 	 */
-	private ArbitrarilyDiscretizedFunc toggleHazFuncLogValues(
+	protected ArbitrarilyDiscretizedFunc toggleHazFuncLogValues(
 			ArbitrarilyDiscretizedFunc hazFunc) {
 		int numPoints = hazFunc.size();
 		DiscretizedFunc tempFunc = hazFunc.deepClone();
@@ -2088,7 +2048,7 @@ ActionListener, ScalarIMRChangeListener {
 	 */
 	public String getParametersInfoAsString() {
 		return getMapParametersInfoAsHTML().replaceAll("<br>",
-				SystemUtils.LINE_SEPARATOR);
+				System.lineSeparator());
 	}
 	
 	public String getERFParametersInfoAsHTML() {
@@ -2249,24 +2209,30 @@ ActionListener, ScalarIMRChangeListener {
 	}
 	
 	/**
-	 * Checks if cancellation signal was issued. Unlike in `AbstractCalculator`,
-	 * this signal isn't reset in this method, but instead in `signalReset`.
+	 * Checks if cancellation signal was issued. See `AbstractCalculator`.
+	 * Unlike in calculators, we want our `cancelled` boolean to be protected,
+	 * so we can share with child applications.
+	 * We don't reset the cancellation state here, but in `signalReset`.
+	 * This allows for application hooks to detect the cancellation state.
 	 */
-	protected boolean isCancelled() {
+	final protected boolean isCancelled() {
 		if (D && cancelled) {
 			System.out.println("Cancellation signal caught in " + C);
 		}
 		return cancelled;
 	}
 	
-	protected void signalCancel() {
+	final protected void signalCancel() {
 		if (D) {
 			System.out.println("Cancellation signal sent");
 		}
 		cancelled = true;
 	}
 	
-	protected void signalReset() {
+	/**
+	 * Cancellation signals should be reset prior to any new computations
+	 */
+	final protected void signalReset() {
 		cancelled = false;
 	}
 	
@@ -2300,7 +2266,8 @@ ActionListener, ScalarIMRChangeListener {
 			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
 			bugDialog.setVisible(true);
 		}
-		calcFuture.thenRun(() -> {
+		calcFuture.thenRun(() ->  {
+			setButtonsEnable(true);
 			// close the progress bar for the ERF GuiBean that displays
 			// "Updating Forecast".
 			erfGuiBean.closeProgressBar();

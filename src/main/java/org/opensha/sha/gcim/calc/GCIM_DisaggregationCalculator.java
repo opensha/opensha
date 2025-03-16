@@ -155,7 +155,8 @@ implements GCIM_DisaggregationCalculatorAPI {
 			Map<TectonicRegionType, ScalarIMR> imrMap,
 			AbstractERF eqkRupForecast, double maxDist,
 			ArbitrarilyDiscretizedFunc magDistFilter) {
-
+		signalReset();
+		
 		double rate, condProb;
 
 		DecimalFormat f1 = new DecimalFormat("000000");
@@ -890,7 +891,7 @@ System.out.println("numRupRejected="+numRupRejected);
 	 * @param numSources int
 	 * @throws RemoteException
 	 */
-	public void setNumSourcestoShow(int numSources) {
+	public void setNumSourcesToShow(int numSources) {
 		numSourcesToShow = numSources;
 	}
 	

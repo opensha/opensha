@@ -220,6 +220,7 @@ implements DisaggregationCalculatorAPI {
 			ERF eqkRupForecast,
 			Collection<SourceFilter> sourceFilters,
 			ParameterList calcParams) {
+		signalReset();
 		
 		if (Double.isInfinite(iml) || Double.isNaN(iml)) {
 			currRuptures = 0;

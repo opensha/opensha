@@ -222,6 +222,7 @@ implements GcimCalculatorAPI {
 	public boolean getSingleGcim(int imiNumber, Map<TectonicRegionType, ScalarIMR> imriMap,
 			Map<TectonicRegionType, ImCorrelationRelationship> imijCorrRelMap,
 			double maxDist, ArbitrarilyDiscretizedFunc magDistFilter) {	
+		signalReset();
 		
 		//Set the site in imri
 		for (ScalarIMR imri:imriMap.values()) {
