@@ -55,6 +55,7 @@ import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.ExecutorUtils;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.cpt.CPT;
@@ -137,7 +138,7 @@ public class SiteLogicTreeHazardPageGen {
 		boolean levelNameOverlap = false;
 		List<String> levelPrefixes = new ArrayList<>();
 		for (LogicTreeLevel<?> level : tree.getLevels()) {
-			String ltPrefix = level.getShortName().replaceAll("\\W+", "_");
+			String ltPrefix = level.getFilePrefix();
 			levelNameOverlap |= levelPrefixes.contains(ltPrefix);
 			levelPrefixes.add(ltPrefix);
 		}
@@ -159,7 +160,7 @@ public class SiteLogicTreeHazardPageGen {
 			
 			System.out.println("Site: "+site.getName());
 			
-			String sitePrefix = site.getName().replaceAll("\\W+", "_");
+			String sitePrefix = FileNameUtils.simplify(site.getName());
 			
 			lines.add("Summary figures across all branches are shown here. _[Click here for detailed branch-specific hazard "
 					+ "curves for "+site.getName()+"]("+sitePrefix+".md)_");

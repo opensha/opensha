@@ -2346,7 +2346,7 @@ public class LogicTreeHazardCompare {
 				boolean levelNameOverlap = false;
 				List<String> levelPrefixes = new ArrayList<>();
 				for (LogicTreeLevel<?> level : tree.getLevels()) {
-					String ltPrefix = levelPrefix(level);
+					String ltPrefix = level.getFilePrefix();
 					levelNameOverlap |= levelPrefixes.contains(ltPrefix);
 					levelPrefixes.add(ltPrefix);
 				}
@@ -2695,17 +2695,6 @@ public class LogicTreeHazardCompare {
 		
 		// write markdown
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
-	}
-	
-	public static String levelPrefix(LogicTreeLevel<?> level) {
-		String prefix = level.getShortName().replaceAll("\\W+", "_");
-		while (prefix.contains("__"))
-			prefix = prefix.replace("__", "_");
-		while (prefix.startsWith("_"))
-			prefix = prefix.substring(1);
-		while (prefix.endsWith("_"))
-			prefix = prefix.substring(0, prefix.length()-1);
-		return prefix;
 	}
 	
 	private static void writeIntermediate(File outputDir, List<String> lines, int tocIndex) throws IOException {

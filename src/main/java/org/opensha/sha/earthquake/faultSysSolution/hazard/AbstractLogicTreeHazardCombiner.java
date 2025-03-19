@@ -49,6 +49,7 @@ import org.opensha.commons.logicTree.LogicTreeLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.ExecutorUtils;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.io.archive.ArchiveInput;
 import org.opensha.commons.util.io.archive.ArchiveOutput;
 import org.opensha.commons.util.modules.OpenSHA_Module;
@@ -856,7 +857,7 @@ public abstract class AbstractLogicTreeHazardCombiner {
 			for (int s=0; s<sites.size(); s++) {
 				Site site = sites.get(s);
 				Preconditions.checkState(LocationUtils.areSimilar(site.getLocation(), outerSites.get(s).getLocation()));
-				String sitePrefix = site.getName().replaceAll("\\W+", "_");
+				String sitePrefix = FileNameUtils.simplify(site.getName());
 				
 				System.out.println("Pre-loading site hazard curves for site "+s+"/"+sites.size()+": "+site.getName());
 				
