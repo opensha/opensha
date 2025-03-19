@@ -24,6 +24,8 @@ import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.TectonicRegionType;
 
+import com.google.common.base.Preconditions;
+
 /**
  * Abstract base class for an NSHM23 {@link GridSourceProvider}. This class handles serialization, averaging, and building
  * a source from an input MFD.
@@ -91,14 +93,11 @@ public abstract class NSHM23_AbstractGridSourceProvider extends MFDGridSourcePro
 			GriddedSeismicitySettings gridSourceSettings, Location loc,
 			double fracStrikeSlip, double fracNormal, double fracReverse) {
 		switch (gridSourceSettings.surfaceType) {
-		case CROSSHAIR:
-			return new Point2Vert_FaultPoisSource(loc, mfd, magLenRel, duration,
-					gridSourceSettings.pointSourceMagnitudeCutoff, fracStrikeSlip, fracNormal,
-					fracReverse, true, gridSourceSettings.distanceCorrections);
 		case FINITE:
+			Preconditions.checkState(gridSourceSettings.finiteRuptureSettings.numSurfaces <= 2, "Only support 1 or 2 finite surfaces here");
 			return new Point2Vert_FaultPoisSource(loc, mfd, magLenRel, duration,
 					gridSourceSettings.pointSourceMagnitudeCutoff, fracStrikeSlip, fracNormal,
-					fracReverse, false, gridSourceSettings.distanceCorrections);
+					fracReverse, gridSourceSettings.finiteRuptureSettings.numSurfaces > 1, gridSourceSettings.distanceCorrections);
 		case POINT:
 			Map<FocalMech, Double> mechMap = new EnumMap<>(FocalMech.class);
 			mechMap.put(FocalMech.STRIKE_SLIP, fracStrikeSlip);

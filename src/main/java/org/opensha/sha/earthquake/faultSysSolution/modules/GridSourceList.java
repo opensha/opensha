@@ -1105,11 +1105,18 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		public GriddedRuptureSourceData(Location gridLoc, List<GriddedRupture> gridRups,
 				MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
 			Preconditions.checkState(!gridRups.isEmpty());
-			if (gridRups.get(0).properties.magnitude >= gridSourceSettings.minimumMagnitude) {
-				// probably not mag-filtering, build lists with initial capacity
+			// should we initialize lists with expected size? better if we're likely to be correct, but unnecessary
+			// overhead if we're not
+			if (
+					// we're (probably) not filtering by magnitude
+					gridRups.get(0).properties.magnitude >= gridSourceSettings.minimumMagnitude
+					// or we have point sources (and thus 1 surf per rup regardless of filtering)
+					|| gridSourceSettings.surfaceType == BackgroundRupType.POINT
+					// or we have 1 finite surf per rup regardless of filtering
+					|| gridSourceSettings.finiteRuptureSettings.numSurfaces == 1) {
 				int expectedSize = gridRups.size(); 
-				if (gridSourceSettings.surfaceType == BackgroundRupType.CROSSHAIR)
-					expectedSize *= 2;
+				if (gridSourceSettings.finiteRuptureSettings != null)
+					expectedSize *= gridSourceSettings.finiteRuptureSettings.numSurfaces;
 				rups = new ArrayList<>(expectedSize);
 				rates = new ArrayList<>(expectedSize);
 				surfs = new ArrayList<>(expectedSize);
@@ -1131,7 +1138,9 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 					continue;
 				updateSurfBuilderForLoc(surfBuilder, rup, forcePointSurf);
 				WeightedList<? extends RuptureSurface> rupSurfs = surfBuilder.build(
-						forcePointSurf ? BackgroundRupType.POINT : gridSourceSettings.surfaceType, null);
+						forcePointSurf ? BackgroundRupType.POINT : gridSourceSettings.surfaceType,
+								null, // null here is the point-source distance correction, which gets set downstream
+								gridSourceSettings.finiteRuptureSettings);
 				for (int i=0; i<rupSurfs.size(); i++) {
 					RuptureSurface surf = rupSurfs.getValue(i);
 					double weight = rupSurfs.getWeight(i);

@@ -19,7 +19,8 @@ public class GriddedSeismicitySettings {
 			6d, // always finite >6 (if set to a finite option, or point sources have strikes)
 //			5d,
 			PointSourceDistanceCorrections.DEFAULT, // NSHM 2013 distance correction
-			null); // no supersampling
+			null, // no supersampling
+			null); // no finite settings (point-only)
 
 	/**
 	 * Minimum magnitude; ruptures below this magnitude will be ignored
@@ -44,15 +45,20 @@ public class GriddedSeismicitySettings {
 	 * nearby sites.
 	 */
 	public final GridCellSupersamplingSettings supersamplingSettings;
+	/**
+	 * Finite rupture settings (used if surfaceType == FINITE)
+	 */
+	public final GriddedFiniteRuptureSettings finiteRuptureSettings;
 	
 	private GriddedSeismicitySettings(
 			double minimumMagnitude,
 			BackgroundRupType surfaceType,
 			double pointSourceMagnitudeCutoff,
 			PointSourceDistanceCorrections distanceCorrs,
-			GridCellSupersamplingSettings supersamplingSettings) {
+			GridCellSupersamplingSettings supersamplingSettings,
+			GriddedFiniteRuptureSettings finiteRuptureSettings) {
 		this(minimumMagnitude, surfaceType, pointSourceMagnitudeCutoff,
-				distanceCorrs == null ? null : distanceCorrs.get(), supersamplingSettings);
+				distanceCorrs == null ? null : distanceCorrs.get(), supersamplingSettings, finiteRuptureSettings);
 	}
 	
 	private GriddedSeismicitySettings(
@@ -60,7 +66,8 @@ public class GriddedSeismicitySettings {
 			BackgroundRupType surfaceType,
 			double pointSourceMagnitudeCutoff,
 			WeightedList<PointSourceDistanceCorrection> distanceCorrs,
-			GridCellSupersamplingSettings supersamplingSettings) {
+			GridCellSupersamplingSettings supersamplingSettings,
+			GriddedFiniteRuptureSettings finiteRuptureSettings) {
 		super();
 		Preconditions.checkState(surfaceType != null, "Surface type cannot be null");
 		this.minimumMagnitude = minimumMagnitude;
@@ -68,6 +75,8 @@ public class GriddedSeismicitySettings {
 		this.pointSourceMagnitudeCutoff = pointSourceMagnitudeCutoff;
 		this.distanceCorrections = distanceCorrs;
 		this.supersamplingSettings = supersamplingSettings;
+		Preconditions.checkState(surfaceType == BackgroundRupType.POINT || finiteRuptureSettings != null);
+		this.finiteRuptureSettings = finiteRuptureSettings;
 	}
 	
 	/**
@@ -78,7 +87,7 @@ public class GriddedSeismicitySettings {
 		if (this.minimumMagnitude == minimumMagnitude)
 			return this;
 		return new GriddedSeismicitySettings(minimumMagnitude, surfaceType,
-				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings);
+				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings, finiteRuptureSettings);
 	}
 	
 	/**
@@ -88,8 +97,11 @@ public class GriddedSeismicitySettings {
 	public GriddedSeismicitySettings forSurfaceType(BackgroundRupType surfaceType) {
 		if (this.surfaceType == surfaceType)
 			return this;
+		GriddedFiniteRuptureSettings finiteRuptureSettings = this.finiteRuptureSettings;
+		if (surfaceType == BackgroundRupType.FINITE && finiteRuptureSettings == null)
+			finiteRuptureSettings = GriddedFiniteRuptureSettings.DEFAULT;
 		return new GriddedSeismicitySettings(minimumMagnitude, surfaceType,
-				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings);
+				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings, finiteRuptureSettings);
 	}
 	
 	/**
@@ -100,7 +112,7 @@ public class GriddedSeismicitySettings {
 		if (this.pointSourceMagnitudeCutoff == pointSourceMagnitudeCutoff)
 			return this;
 		return new GriddedSeismicitySettings(minimumMagnitude, surfaceType,
-				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings);
+				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings, finiteRuptureSettings);
 	}
 	
 	/**
@@ -111,7 +123,7 @@ public class GriddedSeismicitySettings {
 		if (distanceCorrs != null && this.distanceCorrections == distanceCorrs.get())
 			return this;
 		return new GriddedSeismicitySettings(minimumMagnitude, surfaceType,
-				pointSourceMagnitudeCutoff, distanceCorrs, supersamplingSettings);
+				pointSourceMagnitudeCutoff, distanceCorrs, supersamplingSettings, finiteRuptureSettings);
 	}
 	
 	/**
@@ -122,7 +134,7 @@ public class GriddedSeismicitySettings {
 		if (this.distanceCorrections == distanceCorrections)
 			return this;
 		return new GriddedSeismicitySettings(minimumMagnitude, surfaceType,
-				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings);
+				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings, finiteRuptureSettings);
 	}
 	
 	/**
@@ -133,14 +145,26 @@ public class GriddedSeismicitySettings {
 		if (this.supersamplingSettings == supersamplingSettings)
 			return this;
 		return new GriddedSeismicitySettings(minimumMagnitude, surfaceType,
-				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings);
+				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings, finiteRuptureSettings);
+	}
+	
+	/**
+	 * @param supersamplingSettings
+	 * @return a copy with the supersampling settings changed to that passed in
+	 */
+	public GriddedSeismicitySettings forFiniteRuptureSettings(GriddedFiniteRuptureSettings finiteRuptureSettings) {
+		if (this.finiteRuptureSettings == finiteRuptureSettings)
+			return this;
+		return new GriddedSeismicitySettings(minimumMagnitude, surfaceType,
+				pointSourceMagnitudeCutoff, distanceCorrections, supersamplingSettings, finiteRuptureSettings);
 	}
 
 	@Override
 	public String toString() {
-		return "GriddedSeismicitySettings [minMag=" + minimumMagnitude + ", type=" + surfaceType
+		return "GriddedSeismicitySettings [minMag=" + minimumMagnitude + ", type=" + surfaceType.name()
 				+ ", ptSrcMagCut=" + pointSourceMagnitudeCutoff + ", distCorrs="
-				+ distanceCorrections + ", superssample=" + supersamplingSettings + "]";
+				+ distanceCorrections + ", superssample=" + supersamplingSettings
+				+ ", finiteRuptureSettings=" + finiteRuptureSettings + "]";
 	}
 
 }

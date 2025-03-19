@@ -1,15 +1,19 @@
 package org.opensha.sha.earthquake.param;
 
+import org.opensha.sha.earthquake.util.GriddedFiniteRuptureSettings;
+
 /**
  * Rupture type for background events.
+ * 
+ * Note: previously there were separate entries for FINITE (single) and CROSSHAIR (2), now it's just a single FINITE
+ * enum choice and settings therein are handled by {@link GriddedFiniteRuptureSettings}
  * @author Peter Powers
  * @version $Id:$
  */
 @SuppressWarnings("javadoc")
 public enum BackgroundRupType {
-	POINT("Point Sources"),
-	FINITE("Single Random Strike Faults"),
-	CROSSHAIR("Two Perpendicular Faults");
+	POINT("Point sources"),
+	FINITE("One (or more) random-strike faults");
 	
 	private String label;
 	private BackgroundRupType(String label) {

@@ -17,6 +17,7 @@ import org.opensha.commons.geo.Region;
 import org.opensha.commons.util.FaultUtils;
 import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.param.BackgroundRupType;
+import org.opensha.sha.earthquake.util.GriddedFiniteRuptureSettings;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
@@ -859,23 +860,28 @@ public class PointSurfaceBuilder {
 	}
 	
 	private double[] getRandStrikes(int num, Range<Double> strikeRange) {
-		double[] strikes = new double[num];
 		if (strikeRange == null) {
 			// pick a random strike as the initial orientation, then evenly space relatively to that
 			double origStrike = Double.isFinite(strike) ? strike : getRand().nextDouble()*360d;
-			double delta = 360d/(double)num;
-			for (int i=0; i<num; i++)
-				strikes[i] = origStrike + i*delta;
-		} else {
-			// randomly sample within the given range
-			double lower = strikeRange.lowerEndpoint();
-			double upper = strikeRange.upperEndpoint();
-			double span = upper - lower;
-			Preconditions.checkState(span > 0d);
-			Random rand = getRand();
-			for (int i=0; i<num; i++)
-				strikes[i] = lower + rand.nextDouble()*span;
+			return getEvenlySpanningStrikes(num, origStrike);
 		}
+		double[] strikes = new double[num];
+		// randomly sample within the given range
+		double lower = strikeRange.lowerEndpoint();
+		double upper = strikeRange.upperEndpoint();
+		double span = upper - lower;
+		Preconditions.checkState(span > 0d);
+		Random rand = getRand();
+		for (int i=0; i<num; i++)
+			strikes[i] = lower + rand.nextDouble()*span;
+		return strikes;
+	}
+	
+	private static double[] getEvenlySpanningStrikes(int num, double origStrike) {
+		double[] strikes = new double[num];
+		double delta = 360d/(double)num;
+		for (int i=0; i<num; i++)
+			strikes[i] = origStrike + i*delta;
 		return strikes;
 	}
 	
@@ -931,9 +937,12 @@ public class PointSurfaceBuilder {
 	 * @return
 	 */
 	public QuadSurface[] buildRandQuadSurfaces(int num, Range<Double> strikeRange) {
-		QuadSurface[] ret = new QuadSurface[num];
-		double[] strikes = getRandStrikes(num, strikeRange);
-		for (int i=0; i<num; i++)
+		return buildRandQuadSurfaces(getRandStrikes(num, strikeRange));
+	}
+	
+	private QuadSurface[] buildRandQuadSurfaces(double[] strikes) {
+		QuadSurface[] ret = new QuadSurface[strikes.length];
+		for (int i=0; i<strikes.length; i++)
 			ret[i] = buildQuadSurface(strikes[i]);
 		return ret;
 	}
@@ -1055,33 +1064,51 @@ public class PointSurfaceBuilder {
 	 * <p>If the strike has been set and length>0, a single finite surface will be returned even if
 	 * {@link BackgroundRupType#POINT} or {@link BackgroundRupType#CROSSHAIR} is chosen.
 	 * 
-	 * <p>If the length is zero, then a point source will be returned regardless of the {@link BackgroundRupType} setting.
-	 * If <code>zTop ==  zBot && footwall == null</code>, then a true point source will be returned, otherwise an
-	 * {@link FiniteApproxPointSurface} will be returned.
+	 * <p>If the length is zero, then a {@link FiniteApproxPointSurface} source will be returned regardless of the
+	 * {@link BackgroundRupType} setting.
 	 * @return
 	 */
-	public WeightedList<? extends RuptureSurface> build(BackgroundRupType bgRupType, PointSourceDistanceCorrections distCorrType) {
+	public WeightedList<? extends RuptureSurface> build(BackgroundRupType bgRupType,
+			PointSourceDistanceCorrections distCorrType, GriddedFiniteRuptureSettings finiteSettings) {
 		// special cases
 		if ((float)length == 0f) {
-			// zero length; still return a finite aprox because we want to make sure to bypass any distance corrections,
+			// zero length; still return a finite approx because we want to make sure to bypass any distance corrections,
 			// which would be applied as rJB. It's not safe to only set distance corrections to NONE because they could
 			// be attached downstream of here.
 			distCorrType = PointSourceDistanceCorrections.NONE;
-			// zero length but some other finite information, return FiniteApproxPointSurface
-			return buildFiniteApproxPointSurfaces(distCorrType);
+			bgRupType = BackgroundRupType.POINT;
 		} else if (Double.isFinite(strike) && (float)length > 0f) {
-			// we have a finite surface
-			return WeightedList.evenlyWeighted(buildQuadSurface());
+			// we have a finite surface, use that even if set to point
+			bgRupType = BackgroundRupType.FINITE;
 		}
 		switch (bgRupType) {
 		case POINT:
 			return buildFiniteApproxPointSurfaces(distCorrType);
 		case FINITE:
 			// this will use the given strike or strikeRange if previously supplied
-			return WeightedList.evenlyWeighted(buildRandQuadSurfaces(1));
-		case CROSSHAIR:
-			// this will use the given strike or strikeRange if previously supplied
-			return WeightedList.evenlyWeighted(buildRandQuadSurfaces(2));
+			if (finiteSettings != null) {
+				if (finiteSettings.sampleAlongStrike)
+					sampleDASs();
+				else
+					fractionalDAS(0.5);
+				if (finiteSettings.sampleDownDip)
+					sampleHypocentralDepths();
+				else
+					fractionalHypocentralDepth(0.5);
+			}
+			
+			QuadSurface[] surfs;
+			if (Double.isFinite(strike)) {
+				// we have a strike that's specific to this source, use it (even if a global default strike was passed in)
+				surfs = new QuadSurface[] { buildQuadSurface(strike) };
+			} else if (finiteSettings.strike != null) {
+				// a default strike was passed in, use that
+				surfs = buildRandQuadSurfaces(getEvenlySpanningStrikes(finiteSettings.numSurfaces, finiteSettings.strike));
+			} else {
+				// random
+				surfs = buildRandQuadSurfaces(finiteSettings.numSurfaces);
+			}
+			return WeightedList.evenlyWeighted(surfs);
 		default:
 			throw new IllegalStateException("Unsupported BackgroundRupType: "+bgRupType);
 		}

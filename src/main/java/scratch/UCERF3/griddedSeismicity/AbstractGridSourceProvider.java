@@ -59,14 +59,10 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 	public static ProbEqkSource buildSource(IncrementalMagFreqDist mfd, double duration,
 			GriddedSeismicitySettings gridSourceSettings, Location loc, double fracStrikeSlip, double fracNormal, double fracReverse) {
 		switch (gridSourceSettings.surfaceType) {
-		case CROSSHAIR:
-			return new Point2Vert_FaultPoisSource(loc, mfd, magLenRel, duration,
-					gridSourceSettings.pointSourceMagnitudeCutoff, fracStrikeSlip, fracNormal,
-					fracReverse, true, gridSourceSettings.distanceCorrections);
 		case FINITE:
 			return new Point2Vert_FaultPoisSource(loc, mfd, magLenRel, duration,
 					gridSourceSettings.pointSourceMagnitudeCutoff, fracStrikeSlip, fracNormal,
-					fracReverse, false, gridSourceSettings.distanceCorrections);
+					fracReverse, gridSourceSettings.finiteRuptureSettings.numSurfaces > 1, gridSourceSettings.distanceCorrections);
 		case POINT:
 			Map<FocalMech, Double> mechMap = Maps.newHashMap();
 			mechMap.put(FocalMech.STRIKE_SLIP, fracStrikeSlip);

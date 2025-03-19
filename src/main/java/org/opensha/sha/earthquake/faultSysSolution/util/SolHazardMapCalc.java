@@ -82,6 +82,7 @@ import org.opensha.sha.earthquake.param.ProbabilityModelParam;
 import org.opensha.sha.earthquake.param.UseProxySectionsParam;
 import org.opensha.sha.earthquake.param.UseRupMFDsParam;
 import org.opensha.sha.earthquake.util.GridCellSupersamplingSettings;
+import org.opensha.sha.earthquake.util.GriddedFiniteRuptureSettings;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
@@ -486,8 +487,10 @@ public class SolHazardMapCalc {
 		if (fssERF == null) {
 			System.out.println("Building ERF");
 			fssERF = new FaultSystemSolutionERF(sol);
-			fssERF.setParameter(UseRupMFDsParam.NAME, !noMFDs);
-			fssERF.setParameter(UseProxySectionsParam.NAME, useProxyRuptures);
+			if (fssERF.getAdjustableParameterList().containsParameter(UseRupMFDsParam.NAME))
+				fssERF.setParameter(UseRupMFDsParam.NAME, !noMFDs);
+			if (fssERF.getAdjustableParameterList().containsParameter(UseProxySectionsParam.NAME))
+				fssERF.setParameter(UseProxySectionsParam.NAME, useProxyRuptures);
 			fssERF.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 			fssERF.setParameter(IncludeBackgroundParam.NAME, backSeisOption);
 			if (backSeisOption != IncludeBackgroundOption.EXCLUDE) {
@@ -1490,6 +1493,12 @@ public class SolHazardMapCalc {
 				+BaseFaultSystemSolutionERF.DIST_CORR_TYPE_DEFAULT.name()+"; options are: "+FaultSysTools.enumOptions(PointSourceDistanceCorrections.class));
 		ops.addOption(null, "point-source-type", true, "Sets the point source surface type. Default is "
 				+BaseFaultSystemSolutionERF.BG_RUP_TYPE_DEFAULT.name()+"; options are: "+FaultSysTools.enumOptions(BackgroundRupType.class));
+		ops.addOption(null, "point-finite-num-rand-surfaces", true, "If --point-source-type FINITE is supplied, this can be used "
+				+ "to set the number of random-strike finite surfaces for each gridded rupture. Default is "+GriddedFiniteRuptureSettings.DEFAULT.numSurfaces);
+		ops.addOption(null, "point-finite-sample-along-strike", false, "If --point-source-type FINITE is supplied, this can be used "
+				+ "to enable random sampling of the position of the grid cell along-strike of the rupture.");
+		ops.addOption(null, "point-finite-sample-down-dip", false, "If --point-source-type FINITE is supplied, this can be used "
+				+ "to enable random sampling of the position of the grid cell down-dip of the rupture.");
 		if (includeSiteSkip)
 			ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
 					+ "Default is "+(int)(SITE_SKIP_FRACT*100d)+"% of the TectonicRegionType-specific default maximum distance.");
@@ -1510,6 +1519,18 @@ public class SolHazardMapCalc {
 		
 		if (cmd.hasOption("point-source-type"))
 			settings = settings.forSurfaceType(BackgroundRupType.valueOf(cmd.getOptionValue("point-source-type")));
+		
+		if (settings.surfaceType == BackgroundRupType.FINITE) {
+			GriddedFiniteRuptureSettings finiteSettings = settings.finiteRuptureSettings;
+			if (cmd.hasOption("point-finite-num-rand-surfaces"))
+				finiteSettings = finiteSettings.forNumSurfaces(Integer.parseInt(cmd.getOptionValue("point-finite-num-rand-surfaces")));
+			if (cmd.hasOption("point-finite-sample-along-strike"))
+				finiteSettings = finiteSettings.forSampleAlongStrike(true);
+			if (cmd.hasOption("point-finite-sample-down-dip"))
+				finiteSettings = finiteSettings.forSampleDownDip(true);
+			
+			settings = settings.forFiniteRuptureSettings(finiteSettings);
+		}
 		
 		return settings;
 	}

@@ -48,6 +48,7 @@ import org.opensha.sha.earthquake.param.BackgroundRupType;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.griddedSeis.Point2Vert_FaultPoisSource;
+import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.imr.AbstractIMR;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sra.gui.portfolioeal.Asset;
@@ -655,7 +656,7 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 		if (numGridded <= 0)
 			return null;
 		
-		BackgroundRupType bgType = (BackgroundRupType)erf.getParameter(BackgroundRupParam.NAME).getValue();
+		GriddedSeismicitySettings gridSettings = erf.getGriddedSeismicitySettings();
 		
 		GridSourceProvider prov = erf.getSolution().getGridSourceProvider();
 		
@@ -698,10 +699,10 @@ public class MPJ_CondLossCalc extends MPJTaskCalculator implements CalculationEx
 					fract = fractSS;
 				else
 					throw new IllegalStateException("Unkown rake: "+rake);
-				if (bgType == BackgroundRupType.CROSSHAIR)
+				if (gridSettings.surfaceType == BackgroundRupType.FINITE)
 					// there are twice as many ruptures in the crosshair case
-					fract *= 0.5;
-				else if (bgType == BackgroundRupType.POINT && (float)rake != 0f)
+					fract /= gridSettings.finiteRuptureSettings.numSurfaces;
+				else if (gridSettings.surfaceType == BackgroundRupType.POINT && (float)rake != 0f)
 					// non SS rups have 2 for each mech type
 					fract *= 0.5;
 				

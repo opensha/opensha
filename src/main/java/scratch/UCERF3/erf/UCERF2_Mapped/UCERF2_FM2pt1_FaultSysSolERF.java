@@ -46,10 +46,14 @@ public class UCERF2_FM2pt1_FaultSysSolERF extends FaultSystemSolutionERF {
 	protected ProbEqkSource getOtherSource(int iSource) {
 		
 		if(iSource < numGridSources) {
-			if(bgSettings.surfaceType.equals(BackgroundRupType.CROSSHAIR))
+			if (bgSettings.surfaceType == BackgroundRupType.POINT)
+				return nshmp_gridSrcGen.getNSHMP13_GriddedSource(iSource, timeSpan.getDuration());
+			else if (bgSettings.finiteRuptureSettings.numSurfaces == 1)
+				return nshmp_gridSrcGen.getRandomStrikeGriddedSource(iSource, timeSpan.getDuration());
+			else if (bgSettings.finiteRuptureSettings.numSurfaces == 2)
 				return nshmp_gridSrcGen.getCrosshairGriddedSource(iSource, timeSpan.getDuration());	
 			else
-				return nshmp_gridSrcGen.getRandomStrikeGriddedSource(iSource, timeSpan.getDuration());			
+				throw new IllegalStateException("Bad grid settings: "+bgSettings);
 		}
 		else {
 			return fixedStrikeSources.get(iSource - numGridSources);
