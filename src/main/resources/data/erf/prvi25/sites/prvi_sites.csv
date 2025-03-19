@@ -1,17 +1,87 @@
-name,latitude,longitude
-"Arecibo PR",18.47,-66.72
-"Bayamon PR",18.4,-66.16
-"Caguas PR",18.24,-66.04
-"Culebra Barrio PR",18.3,-65.3
-"Fajardo PR",18.34,-65.65
-"Isabel II PR",18.15,-65.44
-"Mayaguez PR",18.2,-67.14
-"Ponce PR",18,-66.62
-"San Juan (ATC) PR",18.45,-66.1
-"San Juan PR",18.47,-66.12
-"Utuado PR",18.27,-66.7
-"Yabucoa PR",18.05,-65.88
-"Charlotte Amalie (1) VI",18.34,-64.93
-"Charlotte Amalie (2) VI",18.35,-64.95
-"Christiansted VI",17.75,-64.7
-"Cruz Bay VI",18.33,-64.79
+name,                            lon,    lat
+Adjuntas PR,                -66.7231,18.1626
+Aguada PR,                  -67.1888,18.3797
+Aguadilla PR,               -67.1542,18.4299
+Aguas Buenas PR,            -66.1030,18.2567
+Aibonito PR,                -66.2664,18.1393
+Arecibo PR,                 -66.7160,18.4720
+Arroyo PR,                  -66.0617,17.9643
+Añasco PR,                  -67.1403,18.2823
+Barceloneta PR,             -66.5387,18.4549
+Barranquitas PR,            -66.3065,18.1864
+Bayamón PR,                 -66.1559,18.3988
+Cabo Rojo PR,               -67.1461,18.0870
+Caguas PR,                  -66.0351,18.2346
+Camuy PR,                   -66.1662,18.1127
+Canóvanas PR,               -65.9010,18.3791
+Carolina PR,                -65.9567,18.3810
+Cataño PR,                  -66.1192,18.4410
+Cayey PR,                   -66.1662,18.1127
+Ceiba PR,                   -65.6483,18.2647
+Ciales PR,                  -66.4682,18.3366
+Cidra PR,                   -66.1608,18.1758
+Coamo PR,                   -66.3563,18.0807
+Comerio PR,                 -66.2265,18.2184
+Corozal PR,                 -66.3172,18.3408
+Culebra PR,                 -65.3025,18.3018
+Dorado PR,                  -66.2621,18.4596
+Fajardo PR,                 -65.6531,18.3245
+Florida PR,                 -66.5670,18.3630
+Guajataca Lake PR,          -66.9200,18.4000
+Guayama PR,                 -66.1136,17.9852
+Guayanilla PR,              -66.7901,18.0177
+Guaynabo PR,                -66.1121,18.3579
+Gurabo PR,                  -65.9724,18.2556
+Guánica PR,                 -66.9079,17.9724
+Hatillo PR,                 -66.8258,18.4864
+Hormigueros PR,             -67.1276,18.1402
+Humacao PR,                 -65.8266,18.1502
+Isabel II PR,               -65.4400,18.1500
+Isabela PR,                 -67.0237,18.5009
+Jayuya PR,                  -66.5923,18.2189
+Juana Díaz PR,              -66.5058,18.0531
+Juncos PR,                  -65.9219,18.2279
+Lajas PR,                   -67.0597,18.0505
+Lares PR,                   -66.8777,18.2948
+Las Marías PR,              -66.9919,18.2522
+Las Piedras PR,             -65.8728,18.1856
+Loíza PR,                   -65.8799,18.4327
+Luquillo PR,                -65.7158,18.3759
+Manatí PR,                  -66.4932,18.4271
+Maricao PR,                 -66.9799,18.1808
+Maunabo PR,                 -65.8995,18.0073
+Mayagüez PR,                -67.1391,18.2011
+Moca PR,                    -67.1138,18.3948
+Morovis PR,                 -66.4076,18.3260
+Naguabo PR,                 -65.7350,18.2121
+Naranjito PR,               -66.2453,18.3010
+Orocovis PR,                -66.3917,18.2271
+Patillas PR,                -66.0145,18.0059
+Peñuelas PR,                -66.7224,18.0572
+Ponce PR,                   -66.6139,18.0117
+Quebradillas PR,            -66.9382,18.4737
+Rincón PR,                  -67.2506,18.3397
+Río Grande PR,              -65.8298,18.3809
+Sabana Grande PR,           -66.9597,18.0794
+Salinas PR,                 -66.2981,17.9767
+San Germán PR,              -67.0437,18.0823
+San Juan (ATC) PR,          -66.1000,18.4500
+San Juan PR,                -66.1167,18.4653
+San Lorenzo PR,             -65.9611,18.1906
+San Sebastian PR,           -66.9926,18.3365
+Santa Isabel PR,            -66.4044,17.9653
+Toa Alta PR,                -66.2480,18.3884
+Toa Baja PR,                -66.2544,18.4425
+Trujillo Alto PR,           -66.0062,18.3521
+Utuado PR,                  -66.7000,18.2653
+Vega Alta PR,               -66.3306,18.4137
+Vega Baja PR,               -66.3873,18.4446
+Vieques PR,                 -65.4413,18.1493
+Villalba PR,                -66.4925,18.1284
+Yabucoa PR,                 -65.8806,18.0473
+Yauco PR,                   -66.8487,18.0353
+Brookman VI,                -64.8800,18.3200
+Charlotte Amalie (1) VI,    -64.9300,18.3400
+Charlotte Amalie (2) VI,    -64.9500,18.3500
+Christiansted VI,           -64.7000,17.7500
+Cruz Bay VI,                -64.7900,18.3300
