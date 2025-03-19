@@ -10,6 +10,7 @@ import java.util.List;
 
 import org.jfree.data.Range;
 import org.opensha.commons.data.Named;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.modules.OpenSHA_Module;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
@@ -173,14 +174,7 @@ public abstract class AbstractRupSetPlot implements Named {
 	}
 	
 	protected static String getFileSafe(String name) {
-		String safe = name.replaceAll("\\W+", "_");
-		while (safe.contains("__"))
-			safe.replaceAll("__", "_");
-		if (safe.startsWith("_"))
-			safe = safe.substring(1);
-		if (safe.endsWith("_"))
-			safe = safe.substring(0, safe.length()-1);
-		return safe;
+		return FileNameUtils.simplify(name);
 	}
 	
 	protected static Range calcEncompassingLog10Range(double min, double max) {

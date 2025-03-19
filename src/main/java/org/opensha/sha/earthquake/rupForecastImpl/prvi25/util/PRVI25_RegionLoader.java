@@ -92,7 +92,7 @@ public class PRVI25_RegionLoader {
 		List<Site> sites = new ArrayList<>();
 		for (int row=1; row<csv.getNumRows(); row++) {
 			String name = csv.get(row, 0);
-			Location loc = new Location(csv.getDouble(row, 1), csv.getDouble(row, 2));
+			Location loc = new Location(csv.getDouble(row, 2), csv.getDouble(row, 1));
 			sites.add(new Site(loc, name));
 		}
 		return sites;

@@ -147,17 +147,6 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 		return combinations.size();
 	}
 	
-	public static String levelPrefix(LogicTreeLevel<?> level) {
-		String ret = level.getShortName().replaceAll("\\W+", "_");
-		while (ret.contains("__"))
-			ret = ret.replace("__", "_");
-		if (ret.startsWith("_"))
-			ret = ret.substring(1);
-		if (ret.endsWith("_"))
-			ret = ret.substring(0, ret.length()-1);
-		return ret;
-	}
-	
 	private String getPrefix(LogicTreeNode[] fixedNodes) {
 		String str = null;
 		for (LogicTreeNode node : fixedNodes) {
@@ -166,7 +155,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 			else
 				str += "_";
 			LogicTreeLevel<?> level = levelsMap.get(node);
-			str += levelPrefix(level)+"_"+node.getFilePrefix();
+			str += level.getFilePrefix()+"_"+node.getFilePrefix();
 		}
 		return str;
 	}
@@ -412,7 +401,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 				TableBuilder plotTable = MarkdownUtils.tableBuilder();
 				plotTable.addLine("Incremental", "Cumulative");
 				
-				String plotPrefix = levelPrefix(level)+"_mfds";
+				String plotPrefix = level.getFilePrefix()+"_mfds";
 				
 				HeadlessGraphPanel gp = PlotUtils.initHeadless();
 

@@ -11,6 +11,7 @@ import java.util.Date;
 import java.util.List;
 
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.util.FileNameUtils;
 
 import com.google.common.base.Preconditions;
 import com.google.common.io.Files;
@@ -139,7 +140,7 @@ public class ETAS_HardCodedConfigGenerator {
 		
 		Preconditions.checkNotNull(scenarioName);
 		
-		String scenarioFileName = scenarioName.replaceAll(" ", "-").replaceAll("\\W+", "");
+		String scenarioFileName = FileNameUtils.simplify(scenarioName.replaceAll(" ", "-"));
 		if (u2) {
 			if (fm == FaultModels.FM2_1)
 				scenarioFileName += "-u2";

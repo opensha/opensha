@@ -15,6 +15,7 @@ import org.opensha.commons.logicTree.DoesNotAffect.NotAffected;
 import org.opensha.commons.logicTree.LogicTreeBranch.NodeTypeAdapter;
 import org.opensha.commons.logicTree.LogicTreeNode.FileBackedNode;
 import org.opensha.commons.logicTree.LogicTreeNode.RandomlySampledNode;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 
 import com.google.common.base.Preconditions;
@@ -31,14 +32,7 @@ public abstract class LogicTreeLevel<E extends LogicTreeNode> implements ShortNa
 	public abstract boolean isMember(LogicTreeNode node);
 	
 	public String getFilePrefix() {
-		String prefix = getShortName().replaceAll("\\W+", "_");
-		while (prefix.contains("__"))
-			prefix = prefix.replace("__", "_");
-		while (prefix.startsWith("_"))
-			prefix = prefix.substring(1);
-		while (prefix.endsWith("_"))
-			prefix = prefix.substring(0, prefix.length()-1);
-		return prefix;
+		return FileNameUtils.simplify(getShortName());
 	}
 	
 	/**

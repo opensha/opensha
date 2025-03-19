@@ -29,6 +29,7 @@ import javax.swing.SwingUtilities;
 import org.jfree.data.Range;
 import org.opensha.commons.util.CustomFileFilter;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.FileUtils;
 
 import com.google.common.base.Preconditions;
@@ -362,7 +363,7 @@ public class GraphWindow extends JFrame {
 				File dir = chooser.getSelectedFile();
 				for (GraphWidget widget : widgets) {
 					String title = widget.getPlotLabel();
-					String fname = title.replaceAll("\\W+", "_");
+					String fname = FileNameUtils.simplify(title);
 					String prefix = new File(dir, fname).getAbsolutePath();
 					widget.saveAsPNG(prefix+".png");
 					widget.saveAsPDF(prefix+".pdf");

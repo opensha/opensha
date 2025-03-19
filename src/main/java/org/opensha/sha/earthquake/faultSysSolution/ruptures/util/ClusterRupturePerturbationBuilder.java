@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.zip.ZipException;
 
 import org.dom4j.DocumentException;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
@@ -515,9 +516,7 @@ public class ClusterRupturePerturbationBuilder {
 		str = str.replace(">", "GT");
 		str = str.replace("<", "LT");
 		str = str.replace(".", "p");
-		while (str.contains("__"))
-			str = str.replace("__", "_");
-		return str.replaceAll("\\W+", "");
+		return FileNameUtils.simplify(str);
 	}
 	
 	private static void checkUpdateProbCalcJumpDist(float newJumpDist, RuptureProbabilityCalc calc) {
