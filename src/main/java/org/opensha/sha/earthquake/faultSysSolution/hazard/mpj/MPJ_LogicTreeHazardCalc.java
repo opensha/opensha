@@ -861,7 +861,6 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 						externalGriddedCurveCalc.setSourceFilter(sourceFilter);
 						externalGriddedCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 						externalGriddedCurveCalc.setGriddedSeismicitySettings(griddedSettings);
-						externalGriddedCurveCalc.setCacheGridSources(true);
 						
 						externalGriddedCurveCalc.calcHazardCurves(getNumThreads());
 					}
@@ -971,7 +970,6 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				calc.setSourceFilter(sourceFilter);
 				calc.setSiteSkipSourceFilter(siteSkipSourceFilter);
 				calc.setGriddedSeismicitySettings(griddedSettings);
-				calc.setCacheGridSources(true);
 				calc.setAseisReducesArea(aseisReducesArea);
 				calc.setNoMFDs(noMFDs);
 				calc.setUseProxyRups(!noProxyRups);

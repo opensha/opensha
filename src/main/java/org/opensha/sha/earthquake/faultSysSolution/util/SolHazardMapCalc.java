@@ -327,7 +327,7 @@ public class SolHazardMapCalc {
 	// ERF params
 	private IncludeBackgroundOption backSeisOption;
 	private GriddedSeismicitySettings backSeisSettings = BaseFaultSystemSolutionERF.GRID_SETTINGS_DEFAULT;
-	private boolean cacheGridSources = true;
+	private Boolean cacheGridSources = null; // if left null, will be determined by rupture type
 	private boolean applyAftershockFilter;
 	private boolean aseisReducesArea = BaseFaultSystemSolutionERF.ASEIS_REDUCES_AREA_DEAFULT;
 	private boolean noMFDs = !BaseFaultSystemSolutionERF.USE_RUP_MFDS_DEAFULT;
@@ -495,6 +495,16 @@ public class SolHazardMapCalc {
 			fssERF.setParameter(IncludeBackgroundParam.NAME, backSeisOption);
 			if (backSeisOption != IncludeBackgroundOption.EXCLUDE) {
 				fssERF.setGriddedSeismicitySettings(backSeisSettings);
+				if (cacheGridSources == null) {
+					// cacheGridSources hasn't been explicitly set
+					if (backSeisSettings.surfaceType == BackgroundRupType.POINT)
+						// always enable caching for point sources
+						cacheGridSources = true;
+					else
+						// enable caching for finite if 1 or 2 representations, otherwise we might hit
+						// memory limits for higher counts
+						cacheGridSources = backSeisSettings.finiteRuptureSettings.numSurfaces <= 2;
+				}
 				fssERF.setCacheGridSources(cacheGridSources);
 			}
 			
