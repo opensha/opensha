@@ -91,8 +91,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.UCERF2_TimeIndependentEpistemicList;
 import org.opensha.sha.earthquake.rupForecastImpl.WGCEP_UCERF_2_Final.MeanUCERF2.MeanUCERF2;
 import org.opensha.sha.earthquake.rupForecastImpl.step.STEP_AlaskanPipeForecast;
-import org.opensha.sha.gcim.calc.GCIM_DisaggregationCalculator;
-import org.opensha.sha.gcim.calc.GCIM_DisaggregationCalculatorAPI;
 import org.opensha.sha.gcim.calc.GcimCalculator;
 import org.opensha.sha.gcim.imCorrRel.ImCorrelationRelationship;
 import org.opensha.sha.gcim.ui.infoTools.AttenuationRelationshipsInstance;
@@ -107,6 +105,8 @@ import org.opensha.sha.gui.beans.IMT_NewGuiBean;
 import org.opensha.sha.gui.beans.Site_GuiBean;
 import org.opensha.sha.gui.controls.CalculationSettingsControlPanel;
 import org.opensha.sha.gui.controls.DisaggregationControlPanel;
+import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
+import org.opensha.sha.calc.disaggregation.DisaggregationCalculatorAPI;
 import org.opensha.sha.gui.controls.ERF_EpistemicListControlPanel;
 import org.opensha.sha.gui.controls.PEER_TestCaseSelectorControlPanel;
 import org.opensha.sha.gui.controls.PlottingOptionControl;
@@ -131,7 +131,7 @@ import com.google.common.collect.Lists;
 
 /**
  * <p>
- * Title: HazardCurveServerModeApplication
+ * Title: GCIM_HazardCurveApplication
  * </p>
  * <p>
  * Description: This application computes Hazard Curve for selected
@@ -146,6 +146,8 @@ import com.google.common.collect.Lists;
  * calls to the server similar to if things are existing on user's own machine.
  * If network connection is not available to user then it will create all the
  * objects on users local machine and do all computation there itself.
+ * 
+ * The GCIM Enabled HazardCurveApplication 
  * </p>
  * 
  * @author Nitin Gupta and Vipin Gupta Date : Sept 23 , 2002
@@ -179,7 +181,7 @@ public class GCIM_HazardCurveApp extends HazardCurveApplication {
 	private JPanel plotPanel;
 
 	// instances of various calculators
-	protected GCIM_DisaggregationCalculatorAPI disaggCalc;
+	protected DisaggregationCalculatorAPI disaggCalc;
 	protected GcimCalculator gcimCalc;
 	// Reuse the `disaggProgressClass` for our disaggCalc
 	CalcProgressBar gcimProgressClass;
@@ -237,7 +239,7 @@ public class GCIM_HazardCurveApp extends HazardCurveApplication {
 			}
 			if (disaggregationFlag) {
 				if (disaggCalc == null) {
-					disaggCalc = new GCIM_DisaggregationCalculator();
+					disaggCalc = new DisaggregationCalculator();
 				}
 			}
 		} catch (Exception e) {
@@ -628,12 +630,9 @@ public class GCIM_HazardCurveApp extends HazardCurveApplication {
 						.getInterpolatedY_inLogXLogYDomain(disaggregationVal);
 					}
 				}
-//				disaggSuccessFlag = disaggCalc.disaggregate(Math.log(imlVal),
-//						site, imrMap, (EqkRupForecast) forecast,
-//						this.calc.getAdjustableParams());
 				disaggSuccessFlag = disaggCalc.disaggregate(Math.log(imlVal),
-					site, imrMap, (AbstractERF) forecast,
-					this.calc.getMaxSourceDistance(), calc.getMagDistCutoffFunc());
+					site, imrMap, (ERF) forecast,
+					this.calc.getSourceFilters(), calc.getAdjustableParams());
 				
 				disaggCalc.setMaxZAxisForPlot(maxZAxis);
 				disaggregationString = disaggCalc.getMeanAndModeInfo();
@@ -754,10 +753,9 @@ public class GCIM_HazardCurveApp extends HazardCurveApplication {
 						.getInterpolatedY_inLogXLogYDomain(gcimVal);
 					}
 				}
-				//TODO fix API problem
 				gcimCalc.getRuptureContributions(Math.log(imlVal), gcimSite, imrMap,
-							 	(AbstractERF) forecast, this.calc.getMaxSourceDistance(),
-							 	calc.getMagDistCutoffFunc());
+							 	(ERF) forecast, this.calc.getSourceFilters(),
+							 	calc.getAdjustableParams());
 				
 				gcimSuccessFlag = gcimCalc.getMultipleGcims(gcimNumIMi, imiMapAttenRels, imiTypes,
 										imijCorrRels, this.calc.getMaxSourceDistance(),
@@ -893,7 +891,7 @@ public class GCIM_HazardCurveApp extends HazardCurveApplication {
 			// metadata,binData,sourceDisaggregationList);isaggCalc, metadata,
 //					disaggregationControlPanel.isShowDisaggrBinDataSelected());\
 			String addr = disaggregationPlotWebAddr
-					+ GCIM_DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME;
+					+ DisaggregationCalculator.DISAGGREGATION_PLOT_PDF_NAME;
 			new DisaggregationPlotViewerWindow(null, addr, modeString, metadata, binData, sourceDisaggregationList, null);
 		} else {
 			new DisaggregationPlotViewerWindow(PureJavaDisaggPlotter.buildChartPanel(disaggCalc.getDisaggPlotData()),

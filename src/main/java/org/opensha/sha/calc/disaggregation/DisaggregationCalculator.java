@@ -69,6 +69,10 @@ implements DisaggregationCalculatorAPI {
 	protected final static String C = "DisaggregationCalculator";
 	protected final static boolean D = true;
 
+	// boolean to store rupture probabilities and epsilon for use in GCIM calc
+	private boolean storeRupProbEpsilons = false;
+	private double[][][] rupProbEpsilons;
+
 
 	public static final String OPENSHA_SERVLET_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "DisaggregationPlotServlet";
 
@@ -293,6 +297,9 @@ implements DisaggregationCalculatorAPI {
 		// get total number of sources
 		int numSources = eqkRupForecast.getNumSources();
 
+		if (storeRupProbEpsilons)
+			rupProbEpsilons = new double[numSources][][];
+
 //		HashMap<String, ArrayList<?>> sourceDissaggMap = new HashMap<String, ArrayList<?>>();
 
 		// compute the total number of ruptures for updating the progress bar
@@ -349,6 +356,9 @@ implements DisaggregationCalculatorAPI {
 
 			String sourceName = source.getName();
 			int numRuptures = eqkRupForecast.getNumRuptures(i);
+
+			if (storeRupProbEpsilons)
+				rupProbEpsilons[i] = new double[numRuptures][2];
 
 			// check the distance of the source
 			if (HazardCurveCalculator.canSkipSource(sourceFilters, source, site)) {
@@ -414,6 +424,11 @@ implements DisaggregationCalculatorAPI {
 
 				// get the equiv. Poisson rate over the time interval (not annualized)
 				rate = -condProb * Math.log(1 - qkProb);
+
+				if (storeRupProbEpsilons) {
+					rupProbEpsilons[i][n][0] = rate;
+					rupProbEpsilons[i][n][1] = epsilon;
+				}
 
 				if (calcSourceExceedances) {
 					imr.getExceedProbabilities(condProbFunc);
@@ -611,6 +626,14 @@ implements DisaggregationCalculatorAPI {
 		if (D) System.out.println(S + "Mbar = " + Mbar);
 		if (D) System.out.println(S + "Dbar = " + Dbar);
 		if (D) System.out.println(S + "Ebar = " + Ebar);
+		// normalise the rates for each source by the total rate to get probability
+		if (storeRupProbEpsilons) {
+			for (int i=0; i<numSources; i++) {
+				for (int j=0; j<eqkRupForecast.getNumRuptures(i); j++) {
+					rupProbEpsilons[i][j][0] = rupProbEpsilons[i][j][0] / totalRate;
+				}
+			}
+		}
 
 		maxContrEpsilonForDisaggrPlot = -1;
 		int modeMagBin = -1, modeDistBin = -1, modeEpsilonBin = -1;
@@ -965,8 +988,6 @@ implements DisaggregationCalculatorAPI {
 	 * Creates the GMT_Script lines
 	 */
 	public static ArrayList<String> createGMTScriptForDisaggregationPlot(DisaggregationPlotData data, String dir){
-		if (D) System.out.println(1);
-
 		double x_axis_length = 4.5; // in inches
 		double y_axis_length = 4.0; // in inches
 		double z_axis_length = 2.5; // in inches
@@ -978,8 +999,6 @@ implements DisaggregationCalculatorAPI {
 		Preconditions.checkState(maxZVal > 0, "disagg max z val must be greater than 0!");
 		ArrayList<String> gmtScriptLines = new ArrayList<String>();
 		// System.out.println(maxContrEpsilonForDisaggrPlot+"\t"+z_grid+"\t"+maxZVal);
-		
-		if (D) System.out.println(2);
 		
 		double dist_binEdges[] = data.getDist_binEdges();
 		double mag_binEdges[] = data.getMag_binEdges();
@@ -997,8 +1016,6 @@ implements DisaggregationCalculatorAPI {
 		float min_mag = (float) mag_binEdges[0];
 		float max_mag = (float) mag_binEdges[mag_binEdges.length-1];
 		
-		if (D) System.out.println(3);
-
 		double totDist = dist_binEdges[dist_binEdges.length-1]-dist_binEdges[0];
 		double x_tick;
 		if(totDist<115) x_tick = 10;
@@ -1017,8 +1034,6 @@ implements DisaggregationCalculatorAPI {
 
 		double magBinWidthToInches = y_axis_length/totMag;
 		
-		if (D) System.out.println(4);
-
 		gmtScriptLines.add("#!/bin/bash");
 		gmtScriptLines.add("");
 		gmtScriptLines.add("cd " + dir);
@@ -1028,7 +1043,6 @@ implements DisaggregationCalculatorAPI {
 		gmtScriptLines.add("");
 		
 		try{
-			if (D) System.out.println(5);
 			String region = "-R"+min_dist+"/"+max_dist+"/"+min_mag+"/"+max_mag+"/"+0+"/"+maxZVal;
 			String projection = "-JX"+x_axis_length+"i/"+y_axis_length+"i";
 			String viewAngle = "-p150/30";
@@ -1048,7 +1062,6 @@ implements DisaggregationCalculatorAPI {
 			gmtScriptLines.add("${COMMAND_PATH}cat << END > temp_segments");
 			//creating the grid lines on Z axis.
 			//System.out.println(z_tick+"   "+maxZVal+"   "+maxContrEpsilonForDisaggrPlot);
-			if (D) System.out.println(6);
 			for (double k = z_tick; k <= maxZVal; k += z_tick) {
 				gmtScriptLines.add(">");
 				gmtScriptLines.add(min_dist+"  "+ min_mag+" "+k);
@@ -1057,7 +1070,6 @@ implements DisaggregationCalculatorAPI {
 				gmtScriptLines.add(min_dist+"  "+ max_mag+"  "+k);
 				gmtScriptLines.add(+max_dist+"   "+max_mag+"  "+k);
 			}
-			if (D) System.out.println(7);
 			gmtScriptLines.add(">");
 			gmtScriptLines.add(min_dist +"   "+ max_mag+"  " + 0);
 			gmtScriptLines.add( min_dist + "  "+max_mag + "  " + maxZVal);
@@ -1074,12 +1086,9 @@ implements DisaggregationCalculatorAPI {
 
 			float contribution, base, top;
 			gmtScriptLines.add("${COMMAND_PATH}echo \"plotting disagg\"");
-			if (D) System.out.println(8);
 			for (int i = 0; i < dist_center.length; ++i) {
-				if (D) System.out.println(9);
 				gmtScriptLines.add("${COMMAND_PATH}echo \"plotting dist bin " + i + "\"");
 				for (int j = mag_center.length - 1; j >= 0; --j) {   // ordering here is important
-//					System.out.println(10);
 					double box_x_width = (dist_binEdges[i+1]- dist_binEdges[i])*distBinWidthToInches - 0.05; // lst term leaves some space
 					double box_y_width = (mag_binEdges[j+1]- mag_binEdges[j])*magBinWidthToInches - 0.05;
 					String symbol = " -So"+box_x_width+"i/"+box_y_width+"ib";
@@ -1104,7 +1113,6 @@ implements DisaggregationCalculatorAPI {
 					}
 				}
 			}
-			if (D) System.out.println(11);
 			
 			gmtScriptLines.add("");
 			gmtScriptLines.add("${COMMAND_PATH}echo \"plotting legend\"");
@@ -1119,7 +1127,6 @@ implements DisaggregationCalculatorAPI {
 					" >> " + img_ps_file);
 
 			// each now has origin offset in the X direction
-			if (D) System.out.println(12);
 			for (int k = 1; k < numE; ++k) {
 				gmtScriptLines.add("${COMMAND_PATH}echo " + "\"" + dist_binEdges[dist_binEdges.length-1] + " " + mag_binEdges[0] + " " + (0.8*z_tick) +
 						"\"" + " | ${GMT_PATH}psxyz " + "-P -X0.9i " +
@@ -1129,8 +1136,6 @@ implements DisaggregationCalculatorAPI {
 						epsilonColors[k] + "  " + viewAngle + "  " + boxPenWidth +
 						" >> " + img_ps_file);
 			}
-			if (D) System.out.println(13);
-
 
 			gmtScriptLines.add("${COMMAND_PATH}echo " + "\"0.0 0.75 13,12 0.0 CB e<-2\" > temp_label");
 			gmtScriptLines.add("${COMMAND_PATH}echo " + "\"0.9 0.75 13,12 0.0 CB -2<e<-1\" >> temp_label");
@@ -1150,8 +1155,7 @@ implements DisaggregationCalculatorAPI {
 			gmtScriptLines.add("${CONVERT_PATH} -chop 0x300 "+img_ps_file+" "+DISAGGREGATION_PLOT_JPG_NAME);
 			gmtScriptLines.add("${CONVERT_PATH} -chop 0x300 "+img_ps_file+" "+DISAGGREGATION_PLOT_PNG_NAME);
 			gmtScriptLines.add("${COMMAND_PATH}rm temp_segments");
-			if (D) System.out.println(14);
-		}catch(Exception e){
+		} catch(Exception e) {
 			e.printStackTrace();
 		}
 
@@ -1243,5 +1247,21 @@ implements DisaggregationCalculatorAPI {
 	
 	public void setShowDistances(boolean showDistances) {
 		this.showDistances = showDistances;
+	}
+
+	/**
+	 * The rupture probability epsilons are used in GCIM calculations
+	 * @param storeRupProbEpsilons
+	 */
+	public void setStoreRupProbEpsilons(boolean storeRupProbEpsilons) {
+		this.storeRupProbEpsilons = storeRupProbEpsilons;
+	}
+	
+	public boolean isStoreRupProbEpsilons() {
+		return this.storeRupProbEpsilons;
+	}
+	
+	public double[][][] getRupProbEpsilons() {
+		return rupProbEpsilons;
 	}
 }

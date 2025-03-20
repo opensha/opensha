@@ -67,8 +67,6 @@ public class HardCodedGCIMTest {
 			}
 				
 	}
-	
-	
 
 	/**
 	 * @param args
@@ -228,9 +226,11 @@ public class HardCodedGCIMTest {
 		//4) GCIM calculations
 		// initiate the GcimCalculator
 		//TODO currently in getMultipleGcims() results are printed to screen - modify 
-//		GcimCalculator gcimCalc = new GcimCalculator();
 		GcimCalculator gcimCalc = new GcimCalculator();
-		gcimCalc.getRuptureContributions(iml, site, imrMap, erf, maxDist, magDistFilter);
+		// TODO breaks in getImCorrelation, imi is null
+		HazardCurveCalculator hazardCalc = new HazardCurveCalculator();
+		gcimCalc.getRuptureContributions(iml, site, imrMap, erf,
+			hazardCalc.getSourceFilters(), hazardCalc.getAdjustableParams());
 		
 //		gcimCalc.getMultipleGcims(numIMi, imiMapAttenRels, imiTypes, imijCorrRels, 
 //				maxDist, magDistFilter);

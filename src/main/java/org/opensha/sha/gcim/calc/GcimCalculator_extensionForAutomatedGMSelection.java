@@ -4,6 +4,7 @@ package org.opensha.sha.gcim.calc;
 import java.io.IOException;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -11,9 +12,12 @@ import org.opensha.commons.calc.GaussianDistCalc;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.param.Parameter;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.Parameter;
 import org.opensha.sha.calc.AbstractCalculator;
-import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
+import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.gcim.Utils;
@@ -63,7 +67,7 @@ implements GcimCalculatorAPI {
 	private boolean gcimComplete = false;
 	
 	private Site site;
-	private AbstractERF eqkRupForecast;
+	private ERF eqkRupForecast;
 	
 	//public static final String OPENSHA_SERVLET_URL = ServletPrefs.OPENSHA_SERVLET_URL + "GcimPlotServlet";
 	
@@ -83,8 +87,8 @@ implements GcimCalculatorAPI {
 	 * @throws IOException
 	 */
 	public void getRuptureContributions(double iml, Site site,
-			Map<TectonicRegionType, ScalarIMR> imrjMap, AbstractERF eqkRupForecast,
-			double maxDist, ArbitrarilyDiscretizedFunc magDistFilter) throws java.rmi.RemoteException {
+			Map<TectonicRegionType, ScalarIMR> imrjMap, ERF eqkRupForecast,
+			Collection<SourceFilter> sourceFilters, ParameterList calcParams) throws java.rmi.RemoteException {
 		
 		//IMj the GCIM is to be conditioned on
 		this.imrjMap = imrjMap;
@@ -95,13 +99,13 @@ implements GcimCalculatorAPI {
 		this.eqkRupForecast = eqkRupForecast;
 		
 		//Call DisaggregationCalculator twice for IMj = imj and imj + deltaimj
-		GCIM_DisaggregationCalculator disaggCalc = new GCIM_DisaggregationCalculator();
+		DisaggregationCalculator disaggCalc = new DisaggregationCalculator();
 		disaggCalc.setStoreRupProbEpsilons(true);
-		disaggCalc.disaggregate(iml, site, imrjMap, eqkRupForecast, maxDist, magDistFilter);
+		disaggCalc.disaggregate(iml, site, imrjMap, eqkRupForecast, sourceFilters, calcParams);
 		double disaggRupDetails1[][][] = disaggCalc.getRupProbEpsilons();
 		double trate_imj = disaggCalc.getTotalRate();
 		
-		disaggCalc.disaggregate(iml * 1.01, site, imrjMap, eqkRupForecast, maxDist, magDistFilter);
+		disaggCalc.disaggregate(iml * 1.01, site, imrjMap, eqkRupForecast, sourceFilters, calcParams);
 		double disaggRupDetails2[][][] = disaggCalc.getRupProbEpsilons();
 		double trate_imj2 = disaggCalc.getTotalRate();
 		

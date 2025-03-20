@@ -4,13 +4,16 @@ import java.io.IOException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
+import org.opensha.commons.param.ParameterList;
 import org.opensha.sha.calc.CalculatorAPI;
-import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.gcim.imCorrRel.ImCorrelationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.util.TectonicRegionType;
@@ -35,8 +38,8 @@ public interface GcimCalculatorAPI extends Remote, CalculatorAPI {
 	 * @throws IOException
 	 */
 	public void getRuptureContributions(double iml, Site site,
-			Map<TectonicRegionType, ScalarIMR> imrjMap, AbstractERF eqkRupForecast,
-			double maxDist, ArbitrarilyDiscretizedFunc magDistFilter) throws java.rmi.RemoteException;
+			Map<TectonicRegionType, ScalarIMR> imrjMap, ERF eqkRupForecast,
+			Collection<SourceFilter> sourceFilters, ParameterList calcParams) throws java.rmi.RemoteException;
 			
 	/**
 	 * this function obtains the GCIM distributions for multiple IMs by successively calling

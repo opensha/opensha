@@ -317,18 +317,18 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		
 		if (D) System.out.println("Updating forecast");
 		long runTime = System.currentTimeMillis();
+
+		// read FSS solution from file if specified;
+		// this sets faultSysSolutionChanged and bgRupTypeChanged (since this is obtained from the FSS) as true
+		if (fileParamChanged) {
+			readFaultSysSolutionFromFile();	// this will not re-read the file if the name has not changed
+		}
 		
 		if (faultSysSolution == null) {
 			if (D) System.out.println("Failed to update forecast, faultSysSolution == null.");
 			throw new NullPointerException(
 					"Failed to update forecast. Fault system solution is unavailable. "
 					+ "Ensure the ERF is provided prior to computation.");
-		}
-		
-		// read FSS solution from file if specified;
-		// this sets faultSysSolutionChanged and bgRupTypeChanged (since this is obtained from the FSS) as true
-		if (fileParamChanged) {
-			readFaultSysSolutionFromFile();	// this will not re-read the file if the name has not changed
 		}
 		
 		// update other sources if needed
