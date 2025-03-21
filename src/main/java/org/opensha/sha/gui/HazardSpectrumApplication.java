@@ -5,7 +5,6 @@ import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.rmi.RemoteException;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
 
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -370,6 +369,7 @@ public class HazardSpectrumApplication extends HazardCurveApplication {
 	/**
 	 * Initialize the items to be added to the control list
 	 */
+	@Override
 	protected void initControlList() {
 		initCommonControlList();
 	}
@@ -438,7 +438,7 @@ public class HazardSpectrumApplication extends HazardCurveApplication {
 	}
 
 	/**
-	 * Must override the timer to read progressfrom SpectrumCalculatorAPI
+	 * Must override the timer to read progress from SpectrumCalculatorAPI
 	 * instead of HazardCurveCalculatorAPI.
 	 */
 	@Override

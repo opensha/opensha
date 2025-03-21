@@ -2,7 +2,6 @@ package org.opensha.sha.gcim.calc;
 
 
 import java.io.IOException;
-import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -13,7 +12,6 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.commons.param.Parameter;
 import org.opensha.sha.calc.AbstractCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
 import org.opensha.sha.calc.params.filters.SourceFilter;
@@ -46,8 +44,8 @@ import org.opensha.sha.util.TectonicRegionType;
 public class GcimCalculator_extensionForAutomatedGMSelection extends AbstractCalculator 
 implements GcimCalculatorAPI {
 	//Debugging
-	protected final static String C = "GcimCalculator";
-	protected final static boolean D = true;
+	private final static String C = "GcimCalculator";
+	private final static boolean D = false;
 	
 	private Map<TectonicRegionType, ScalarIMR> imrjMap;
 	private double[][] pRup_IMj, epsilonIMj;

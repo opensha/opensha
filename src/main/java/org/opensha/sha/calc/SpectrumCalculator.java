@@ -31,8 +31,8 @@ public class SpectrumCalculator extends AbstractCalculator
 implements SpectrumCalculatorAPI {
 
 
-	protected final static String C = "SpectrumCalculator";
-	protected final static boolean D = true;
+	private final static String C = "SpectrumCalculator";
+	private final static boolean D = false;
 
 	//Info for parameter that sets the maximum distance considered
 	private MaxDistanceParam maxDistanceParam;
@@ -40,13 +40,13 @@ implements SpectrumCalculatorAPI {
 	private ParameterList adjustableParams;
 
 
-	protected int currRuptures = -1;
-	protected int totRuptures = 0;
+	private int currRuptures = -1;
+	private int totRuptures = 0;
 
 	//index to keep track how many sources have been traversed
-	protected int sourceIndex;
+	private int sourceIndex;
 	// get total number of sources
-	protected int numSources;
+	private int numSources;
 
 
 	/**

@@ -66,15 +66,15 @@ implements DisaggregationCalculatorAPI {
 	 */
 	private static final long serialVersionUID = 1L;
 	
-	protected final static String C = "DisaggregationCalculator";
-	protected final static boolean D = true;
+	private final static String C = "DisaggregationCalculator";
+	private final static boolean D = false;
 
 	// boolean to store rupture probabilities and epsilon for use in GCIM calc
 	private boolean storeRupProbEpsilons = false;
 	private double[][][] rupProbEpsilons;
 
 
-	public static final String OPENSHA_SERVLET_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "DisaggregationPlotServlet";
+	private static final String OPENSHA_SERVLET_URL = ServerPrefUtils.SERVER_PREFS.getServletBaseURL() + "DisaggregationPlotServlet";
 
 	// disaggregation stuff
 
@@ -216,7 +216,6 @@ implements DisaggregationCalculatorAPI {
 		return disaggregate(iml, site, TRTUtils.wrapInHashMap(imr), eqkRupForecast, sourceFilters, calcParams);
 	}
 	
-	@Override
 	public boolean disaggregate(
 			double iml,
 			Site site,

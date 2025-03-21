@@ -1,7 +1,5 @@
 package org.opensha.sha.calc;
 
-
-
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -61,12 +59,8 @@ import com.google.common.base.Preconditions;
 public class HazardCurveCalculator extends AbstractCalculator
 implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
-	protected final static String C = "HazardCurveCalculator";
-	protected final static boolean D = true;
+	private final static String C = "HazardCurveCalculator";
+	private final static boolean D = false;
 
 	/*
 	 * Source filters
@@ -96,11 +90,11 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 	private ParameterList adjustableParams;
 
 	// misc counting and index variables
-	protected boolean trackProgress = false;
-	protected int currRuptures = -1;
-	protected int totRuptures = 0;
-	protected int sourceIndex;
-	protected int numSources;
+	private boolean trackProgress = false;
+	private int currRuptures = -1;
+	private int totRuptures = 0;
+	private int sourceIndex;
+	private int numSources;
 
 
 	/**
@@ -301,8 +295,6 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 
 		// init the current rupture number (also for progress bar)
 		currRuptures = 0;
-		int numRupRejected = 0;
-
 		// initialize the hazard function to 1.0
 		initDiscretizeValues(hazFunction, 1.0);
 
@@ -362,7 +354,6 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 					
 					// apply any filters
 					if (canSkipRupture(filters, rupture, site)) {
-						numRupRejected ++;
 						continue;
 					}
 					
@@ -707,9 +698,6 @@ implements ParameterChangeWarningListener, HazardCurveCalculatorAPI {
 		//parameters. This allows the Server version of our application to listen to the
 		//parameter changes.
 		((AttenuationRelationship)imr).resetParameterEventListeners();
-
-		// declare some varibles used in the calculation
-		int k;
 
 		// get the number of points
 		int numPoints = hazFunction.size();

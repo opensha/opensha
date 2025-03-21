@@ -94,6 +94,7 @@ import org.opensha.sha.imr.event.ScalarIMRChangeListener;
 public class ScenarioShakeMapApp extends JFrame implements ParameterChangeListener,
 AttenuationRelationshipSiteParamsRegionAPI,CalculationSettingsControlPanelAPI,Runnable, ScalarIMRChangeListener{
 	
+	private static final long serialVersionUID = 1L;
 	public static final String APP_NAME = "Scenario ShakeMap Application";
 	public static final String APP_SHORT_NAME = "ScenarioShakeMapLocal";
 	

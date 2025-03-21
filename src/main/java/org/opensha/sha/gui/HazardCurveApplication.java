@@ -41,7 +41,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.UIManager;
 
-import org.apache.commons.lang3.SystemUtils;
 import org.jfree.data.Range;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
@@ -82,7 +81,6 @@ import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.EpistemicListERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.gcim.calc.GcimCalculator;
-import org.opensha.sha.gcim.calc.GcimCalculatorAPI;
 import org.opensha.sha.gcim.imCorrRel.ImCorrelationRelationship;
 import org.opensha.sha.gcim.ui.GcimControlPanel;
 import org.opensha.sha.gcim.ui.infoTools.GcimPlotViewerWindow;
@@ -163,7 +161,7 @@ ActionListener, ScalarIMRChangeListener {
 	 */
 	private final static String C = "HazardCurveServerModeApplication";
 	// for debug purpose
-	protected final static boolean D = true;
+	protected final static boolean D = false;
 
 	// Strings for choosing ERFGuiBean or ERF_RupSelectorGUIBean
 	public final static String PROBABILISTIC = "Probabilistic";
@@ -174,23 +172,23 @@ ActionListener, ScalarIMRChangeListener {
 	protected final static String CONTROL_PANELS = "Select";
 
 	// objects for control panels
-	protected PEER_TestCaseSelectorControlPanel peerTestsControlPanel;
-	protected DisaggregationControlPanel disaggregationControlPanel;
+	private PEER_TestCaseSelectorControlPanel peerTestsControlPanel;
+	private DisaggregationControlPanel disaggregationControlPanel;
 	protected ERF_EpistemicListControlPanel epistemicControlPanel;
 	//	protected SetMinSourceSiteDistanceControlPanel distanceControlPanel;
-	protected SitesOfInterestControlPanel sitesOfInterest;
-	protected SiteDataControlPanel cvmControlPanel;
-	protected X_ValuesInCurveControlPanel xValuesPanel;
+//	private SitesOfInterestControlPanel sitesOfInterest;
+	private SiteDataControlPanel cvmControlPanel;
+//	private X_ValuesInCurveControlPanel xValuesPanel;
 	private RunAll_PEER_TestCasesControlPanel runAllPeerTestsCP;
 	protected PlottingOptionControl plotOptionControl;
-	protected XY_ValuesControlPanel xyPlotControl;
-	protected CalculationSettingsControlPanel calcParamsControl;
-	protected GcimControlPanel gcimControlPanel;
+//	private XY_ValuesControlPanel xyPlotControl;
+	private CalculationSettingsControlPanel calcParamsControl;
+	private GcimControlPanel gcimControlPanel;
 
-	protected ArrayList<ControlPanel> controlPanels;
+	private ArrayList<ControlPanel> controlPanels;
 
 	// flag to check for the gcim functionality
-	protected boolean gcimFlag = false;
+	private boolean gcimFlag = false;
 
 	/**
 	 * List of ArbitrarilyDiscretized functions and Weighted funstions
@@ -225,12 +223,12 @@ ActionListener, ScalarIMRChangeListener {
 
 	// flag to check for the disaggregation functionality
 	protected boolean disaggregationFlag = false;
-	protected String disaggregationString;
+	private String disaggregationString;
 
 	// These keep track of which type of calculation is chosen (only one should be true at any time);
 	protected boolean isProbabilisticCurve = true;
 	protected boolean isDeterministicCurve = false;
-	protected boolean isStochasticCurve = false;
+	private boolean isStochasticCurve = false;
 
 	// PEER Test Cases
 	private static final String DEFAULT_TITLE = new String("Hazard Curves");
@@ -240,8 +238,8 @@ ActionListener, ScalarIMRChangeListener {
 	private JMenuItem printMenuItem;
 	private JMenuItem closeMenuItem;
 
-	protected JButton computeButton;
-	protected JButton cancelButton;
+	private JButton computeButton;
+	private JButton cancelButton;
 	private JButton clearButton;
 	private JButton peelButton;
 	protected JCheckBox progressCheckBox; // TODO make private
@@ -254,30 +252,30 @@ ActionListener, ScalarIMRChangeListener {
 	private JTabbedPane paramsTabbedPane;
 	protected GraphWidget graphWidget; // actual plot widget
 
+	// GuiBeans
 	protected IMR_MultiGuiBean imrGuiBean;
-	protected IMT_NewGuiBean imtGuiBean;
+	private IMT_NewGuiBean imtGuiBean;
 	protected Site_GuiBean siteGuiBean;
 	protected ERF_GuiBean erfGuiBean;
 	protected EqkRupSelectorGuiBean erfRupSelectorGuiBean;
 
 
-
 	// instances of various calculators
 	protected HazardCurveCalculatorAPI calc;
 	protected DisaggregationCalculatorAPI disaggCalc;
-	protected GcimCalculator gcimCalc;
+	private GcimCalculator gcimCalc;
 	protected CalcProgressBar progressClass;
-	protected CalcProgressBar disaggProgressClass;
-	protected CalcProgressBar gcimProgressClass;
+	private CalcProgressBar disaggProgressClass;
+	private CalcProgressBar gcimProgressClass;
 	protected CalcProgressBar startAppProgressClass;
 	// timer threads to show the progress of calculations
 	protected Timer timer;
-	protected Timer disaggTimer;
-	protected Timer gcimTimer;
+	private Timer disaggTimer;
+	private Timer gcimTimer;
 	// checks to see if HazardCurveCalculations are done
 	protected boolean isHazardCalcDone = false;
-	protected CompletableFuture<Void> calcFuture = null;
-	protected volatile boolean cancelled = false;
+	private CompletableFuture<Void> calcFuture = null;
+	private volatile boolean cancelled = false;
 
 	// maintains which ERFList was previously selected
 	protected String prevSelectedERF_List = null;
@@ -295,7 +293,7 @@ ActionListener, ScalarIMRChangeListener {
 	 * */
 	protected boolean addData = true;
 	
-	protected static String errorInInitializationMessage = "Problem occured " +
+	private static String errorInInitializationMessage = "Problem occured " +
 				"during initialization the ERF's. All parameters are set to default.";
 
 	// Construct the applet
@@ -1455,10 +1453,8 @@ ActionListener, ScalarIMRChangeListener {
 			boolean gcimRealizationSuccessFlag = false;
 			boolean gcimAtIML = false;
 			Site gcimSite = gcimControlPanel.getGcimSite();
-			double gcimVal = gcimControlPanel
-			.getGcimVal();
-			String gcimParamVal = gcimControlPanel
-			.getGcimParamValue();
+			double gcimVal = gcimControlPanel.getGcimVal();
+			String gcimParamVal = gcimControlPanel.getGcimParamValue();
 			int gcimNumIMi = gcimControlPanel.getNumIMi();
 			double minApproxZVal = gcimControlPanel.getMinApproxZ();
 			double maxApproxZVal = gcimControlPanel.getMaxApproxZ();
@@ -1960,7 +1956,7 @@ ActionListener, ScalarIMRChangeListener {
 
 		/*		X Values Control				*/
 		controlComboBox.addItem(X_ValuesInCurveControlPanel.NAME);
-		controlPanels.add(xValuesPanel = new X_ValuesInCurveControlPanel(this, this));
+		controlPanels.add(new X_ValuesInCurveControlPanel(this, this));
 
 		/*		Plotting Prefs Control			*/
 		controlComboBox.addItem(PlottingOptionControl.NAME);

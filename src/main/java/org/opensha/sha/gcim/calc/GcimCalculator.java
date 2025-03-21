@@ -2,15 +2,10 @@ package org.opensha.sha.gcim.calc;
 
 
 import java.io.IOException;
-import java.rmi.RemoteException;
-import java.rmi.server.UnicastRemoteObject;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.commons.math3.random.GaussianRandomGenerator;
-import org.apache.commons.math3.random.NormalizedRandomGenerator;
 import org.opensha.commons.calc.GaussianDistCalc;
 import org.opensha.commons.calc.cholesky.CholeskyDecomposition;
 import org.opensha.commons.calc.cholesky.NearPD;
@@ -18,7 +13,6 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.commons.param.Parameter;
 import org.opensha.sha.calc.AbstractCalculator;
 import org.opensha.sha.calc.disaggregation.DisaggregationCalculator;
 import org.opensha.sha.calc.params.filters.SourceFilter;
@@ -31,11 +25,9 @@ import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_InterpolatedParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
-import org.opensha.sha.imr.param.PropagationEffectParams.DistanceRupParameter;
 import org.opensha.sha.util.TRTUtils;
 import org.opensha.sha.util.TectonicRegionType;
 
-//import Jama.CholeskyDecomposition; //This JAMA one doesnt work!  
 import Jama.Matrix;
 
 import java.util.Random;
@@ -57,8 +49,8 @@ import java.util.Random;
 public class GcimCalculator extends AbstractCalculator
 implements GcimCalculatorAPI {
 	//Debugging
-	protected final static String C = "GcimCalculator";
-	protected final static boolean D = true;
+	private final static String C = "GcimCalculator";
+	private final static boolean D = true;
 	
 	private Map<TectonicRegionType, ScalarIMR> imrjMap;
 	private double[][] pRup_IMj, rupCdf, epsilonIMj;
