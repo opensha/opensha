@@ -196,6 +196,7 @@ public class UCERF3_CompoundSol_ERF extends FaultSystemSolutionERF {
 			// this means that we have to load the solution (parameter change or never loaded)
 			fetchSolution();
 		}
+		fetchFuture.join();
 		super.updateForecast();
 	}
 	

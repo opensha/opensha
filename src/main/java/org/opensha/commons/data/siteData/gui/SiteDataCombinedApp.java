@@ -7,7 +7,7 @@ import javax.swing.JTabbedPane;
 
 import org.opensha.commons.gui.DisclaimerDialog;
 import org.opensha.commons.util.ApplicationVersion;
-import org.opensha.commons.util.bugReports.DefaultExceptoinHandler;
+import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 
 public class SiteDataCombinedApp extends JFrame {
 	
@@ -68,13 +68,13 @@ public class SiteDataCombinedApp extends JFrame {
 	 */
 	public static void main(String[] args) {
 		new DisclaimerDialog(APP_NAME, APP_SHORT_NAME, getAppVersion());
-		DefaultExceptoinHandler exp = new DefaultExceptoinHandler(
+		DefaultExceptionHandler exp = new DefaultExceptionHandler(
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
 		launch(exp);
 	}
 	
-	public static SiteDataCombinedApp launch(DefaultExceptoinHandler handler) {
+	public static SiteDataCombinedApp launch(DefaultExceptionHandler handler) {
 		SiteDataCombinedApp app = new SiteDataCombinedApp();
 		if (handler != null) {
 			handler.setApp(app);

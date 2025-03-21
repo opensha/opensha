@@ -3,20 +3,14 @@ package org.opensha.sha.gcim.ui;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.Insets;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.ListIterator;
 import java.util.Map;
-import java.util.StringTokenizer;
-
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -26,36 +20,22 @@ import javax.swing.JPanel;
 import org.opensha.commons.data.Site;
 import org.opensha.commons.gui.ControlPanel;
 import org.opensha.commons.param.Parameter;
-import org.opensha.commons.param.Parameter;
 import org.opensha.commons.param.ParameterList;
 import org.opensha.commons.param.constraint.ParameterConstraint;
-import org.opensha.commons.param.constraint.impl.IntegerConstraint;
 import org.opensha.commons.param.constraint.impl.StringConstraint;
 import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeFailEvent;
 import org.opensha.commons.param.event.ParameterChangeFailListener;
 import org.opensha.commons.param.event.ParameterChangeListener;
-import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.IntegerParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.sha.gui.HazardCurveApplication;
-import org.opensha.sha.gui.beans.event.IMTChangeEvent;
-import org.opensha.sha.gui.beans.event.IMTChangeListener;
 import org.opensha.sha.gcim.ui.infoTools.AttenuationRelationshipsInstance;
 import org.opensha.sha.gcim.imCorrRel.ImCorrelationRelationship;
-import org.opensha.sha.gcim.imCorrRel.imCorrRelImpl.BakerJayaram08_ImCorrRel;
-import org.opensha.sha.gcim.imr.attenRelImpl.ASI_WrapperAttenRel.BA_2008_ASI_AttenRel;
-import org.opensha.sha.gcim.imr.attenRelImpl.SI_WrapperAttenRel.BA_2008_SI_AttenRel;
-import org.opensha.sha.gcim.imr.param.IntensityMeasureParams.ASI_Param;
-import org.opensha.sha.gcim.imr.param.IntensityMeasureParams.SI_Param;
 import org.opensha.sha.gcim.ui.infoTools.ImCorrelationRelationshipsInstance;
 import org.opensha.sha.imr.ScalarIMR;
-import org.opensha.sha.imr.attenRelImpl.CB_2008_AttenRel;
-import org.opensha.sha.imr.param.IntensityMeasureParams.PGA_Param;
-import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodInterpolatedParam;
-import org.opensha.sha.imr.param.IntensityMeasureParams.PeriodParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_InterpolatedParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import org.opensha.sha.util.TRTUtils;
@@ -77,13 +57,13 @@ public class GcimControlPanel extends ControlPanel
 	implements ParameterChangeFailListener, ParameterChangeListener, ActionListener{
 
 	public static final String NAME = "GCIM distributions";
-	public static final boolean D = false; //debugging
+	private static final boolean D = false;
 
 	private final static String GCIM_SUPPORTED_PARAM_NAME = "Gcim Support";
 	private final static String GCIM_PROB_PARAM_NAME = "Gcim Prob";
 	private final static String GCIM_IML_PARAM_NAME = "Gcim IML";
 	
-	//Gcim Parameter
+	// Gcim Parameter
 	private DoubleParameter gcimProbParam =
 		new DoubleParameter(GCIM_PROB_PARAM_NAME, 0, 1, Double.valueOf(.01));
 
@@ -145,7 +125,7 @@ public class GcimControlPanel extends ControlPanel
 	private GcimEditIMiControlPanel gcimEditIMiControlPanel;
 
 	// applet which called this control panel
-	GCIM_HazardCurveApp parent;
+	HazardCurveApplication parent;
 	private GridBagLayout gridBagLayout1 = new GridBagLayout();
 	
 	private JFrame frame;
@@ -156,7 +136,7 @@ public class GcimControlPanel extends ControlPanel
 	private JButton removeButton = new JButton("Remove IMi");
 	private JButton editButton = new JButton("Edit IMi");
 
-	public GcimControlPanel(GCIM_HazardCurveApp parent,
+	public GcimControlPanel(HazardCurveApplication parent,
 			Component parentComponent) {
 		super(NAME);
 		this.parent = parent;

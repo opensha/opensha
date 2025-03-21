@@ -313,15 +313,22 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 	}
 	
 	@Override
-	public void updateForecast() {
+	public void updateForecast() throws NullPointerException {
 		
 		if (D) System.out.println("Updating forecast");
 		long runTime = System.currentTimeMillis();
-		
+
 		// read FSS solution from file if specified;
 		// this sets faultSysSolutionChanged and bgRupTypeChanged (since this is obtained from the FSS) as true
-		if(fileParamChanged) {
+		if (fileParamChanged) {
 			readFaultSysSolutionFromFile();	// this will not re-read the file if the name has not changed
+		}
+		
+		if (faultSysSolution == null) {
+			if (D) System.out.println("Failed to update forecast, faultSysSolution == null.");
+			throw new NullPointerException(
+					"Failed to update forecast. Fault system solution is unavailable. "
+					+ "Ensure the ERF is provided prior to computation.");
 		}
 		
 		// update other sources if needed
@@ -845,6 +852,7 @@ public class BaseFaultSystemSolutionERF extends AbstractNthRupERF {
 		}
 		if(bgRupSettingsChanged || bgIncludeChanged) {
 			int prevOther = numOtherSources;
+			System.out.println("faultSysSolution: " + faultSysSolution);
 			GridSourceProvider gridSources = faultSysSolution.getGridSourceProvider();
 			if (gridSources == null) {
 				numOtherSources = 0;

@@ -23,7 +23,7 @@ import org.opensha.sha.util.TectonicRegionType;
  * @version 1.0
  */
 
-public interface HazardCurveCalculatorAPI {
+public interface HazardCurveCalculatorAPI extends CalculatorAPI {
 
 	/**
 	 * Get the adjustable parameter list of calculation parameters
@@ -230,11 +230,6 @@ public interface HazardCurveCalculatorAPI {
 	 * @return total number of ruptures.
 	 */
 	public int getTotRuptures();
-
-	/**
-	 * stops the Hazard Curve calculations.
-	 */
-	public void stopCalc();
 
 	/**
 	 * This function computes an average hazard curve from a number of stochastic event sets

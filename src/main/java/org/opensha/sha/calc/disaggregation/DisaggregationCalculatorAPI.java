@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.param.ParameterList;
+import org.opensha.sha.calc.CalculatorAPI;
 import org.opensha.sha.calc.params.filters.SourceFilter;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.imr.ScalarIMR;
@@ -23,7 +24,7 @@ import org.opensha.sha.util.TectonicRegionType;
  * @version 1.0
  * TODO: delete this?
  */
-public interface DisaggregationCalculatorAPI {
+public interface DisaggregationCalculatorAPI extends CalculatorAPI {
 
 	/**
 	 * Sets the Max Z Axis Range value fro the plotting purposes
@@ -116,7 +117,6 @@ public interface DisaggregationCalculatorAPI {
 	 * @return
 	 */
 	public boolean done();
-
 
 	/**
 	 * Creates the disaggregation plot using the GMT and return Disaggregation plot
