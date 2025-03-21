@@ -145,7 +145,7 @@ public class GcimControlPanel extends ControlPanel
 	private GcimEditIMiControlPanel gcimEditIMiControlPanel;
 
 	// applet which called this control panel
-	GCIM_HazardCurveApp parent;
+	HazardCurveApplication parent;
 	private GridBagLayout gridBagLayout1 = new GridBagLayout();
 	
 	private JFrame frame;
@@ -156,7 +156,7 @@ public class GcimControlPanel extends ControlPanel
 	private JButton removeButton = new JButton("Remove IMi");
 	private JButton editButton = new JButton("Edit IMi");
 
-	public GcimControlPanel(GCIM_HazardCurveApp parent,
+	public GcimControlPanel(HazardCurveApplication parent,
 			Component parentComponent) {
 		super(NAME);
 		this.parent = parent;

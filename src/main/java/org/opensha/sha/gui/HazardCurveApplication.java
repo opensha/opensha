@@ -81,6 +81,11 @@ import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.ERF_Ref;
 import org.opensha.sha.earthquake.EpistemicListERF;
 import org.opensha.sha.earthquake.EqkRupture;
+import org.opensha.sha.gcim.calc.GcimCalculator;
+import org.opensha.sha.gcim.calc.GcimCalculatorAPI;
+import org.opensha.sha.gcim.imCorrRel.ImCorrelationRelationship;
+import org.opensha.sha.gcim.ui.GcimControlPanel;
+import org.opensha.sha.gcim.ui.infoTools.GcimPlotViewerWindow;
 import org.opensha.sha.gui.beans.ERF_GuiBean;
 import org.opensha.sha.gui.beans.EqkRupSelectorGuiBean;
 import org.opensha.sha.gui.beans.IMR_GuiBean;
@@ -108,6 +113,7 @@ import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.imr.attenRelImpl.CB_2008_AttenRel;
 import org.opensha.sha.imr.event.ScalarIMRChangeEvent;
 import org.opensha.sha.imr.event.ScalarIMRChangeListener;
+import org.opensha.sha.imr.param.IntensityMeasureParams.SA_InterpolatedParam;
 import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
 import org.opensha.sha.util.TRTUtils;
 import org.opensha.sha.util.TectonicRegionType;
@@ -178,8 +184,13 @@ ActionListener, ScalarIMRChangeListener {
 	private RunAll_PEER_TestCasesControlPanel runAllPeerTestsCP;
 	protected PlottingOptionControl plotOptionControl;
 	protected XY_ValuesControlPanel xyPlotControl;
+	protected CalculationSettingsControlPanel calcParamsControl;
+	protected GcimControlPanel gcimControlPanel;
 
 	protected ArrayList<ControlPanel> controlPanels;
+
+	// flag to check for the gcim functionality
+	protected boolean gcimFlag = false;
 
 	/**
 	 * List of ArbitrarilyDiscretized functions and Weighted funstions
@@ -224,15 +235,10 @@ ActionListener, ScalarIMRChangeListener {
 	// PEER Test Cases
 	private static final String DEFAULT_TITLE = new String("Hazard Curves");
 
-
 	// accessible components
 	private JMenuItem saveMenuItem;
 	private JMenuItem printMenuItem;
 	private JMenuItem closeMenuItem;
-
-	//	private JButton saveButton; TODO clean
-	//	private JButton printButton;
-	//	private JButton closeButton;
 
 	protected JButton computeButton;
 	protected JButton cancelButton;
@@ -259,21 +265,19 @@ ActionListener, ScalarIMRChangeListener {
 	// instances of various calculators
 	protected HazardCurveCalculatorAPI calc;
 	protected DisaggregationCalculatorAPI disaggCalc;
+	protected GcimCalculator gcimCalc;
 	protected CalcProgressBar progressClass;
 	protected CalcProgressBar disaggProgressClass;
+	protected CalcProgressBar gcimProgressClass;
 	protected CalcProgressBar startAppProgressClass;
 	// timer threads to show the progress of calculations
 	protected Timer timer;
 	protected Timer disaggTimer;
+	protected Timer gcimTimer;
 	// checks to see if HazardCurveCalculations are done
 	protected boolean isHazardCalcDone = false;
 	protected CompletableFuture<Void> calcFuture = null;
 	protected volatile boolean cancelled = false;
-
-	//	private final static String POWERED_BY_IMAGE = TODO clean
-	//			"logos/PoweredByOpenSHA_Agua.jpg";
-	//	private JLabel imgLabel = new JLabel(new ImageIcon(
-	//			ImageUtils.loadImage(this.POWERED_BY_IMAGE)));
 
 	// maintains which ERFList was previously selected
 	protected String prevSelectedERF_List = null;
@@ -312,7 +316,7 @@ ActionListener, ScalarIMRChangeListener {
 			initSiteGuiBean();
 
 			initERF_GuiBean();
-			imrGuiBean.setTectonicRegions(this.erfGuiBean.getSelectedERF().getIncludedTectonicRegionTypes());
+			imrGuiBean.setTectonicRegions(getIncludedTectonicRegionTypes());
 
 			jbInit();
 
@@ -325,9 +329,6 @@ ActionListener, ScalarIMRChangeListener {
 			bugDialog.setVisible(true);
 		}
 		startAppProgressClass.dispose();
-
-		// TODO delete not sure why this is called; maybe other platforms need it
-		//((JPanel) getContentPane()).updateUI();
 	}
 	
 	protected String getGuideURL() {
@@ -822,11 +823,15 @@ ActionListener, ScalarIMRChangeListener {
 			if (calc == null) {
 				calc = new HazardCurveCalculator();
 				calc.setTrackProgress(true);
-			}
-			if (disaggregationFlag) {
-				if (disaggCalc == null) {
-					disaggCalc = new DisaggregationCalculator();
+				if (this.calcParamsControl != null) {
+					calc.setAdjustableParams(calcParamsControl.getAdjustableCalcParams());
 				}
+			}
+			if (disaggregationFlag && disaggCalc == null) {
+				disaggCalc = new DisaggregationCalculator();
+			}
+			if (gcimFlag && gcimCalc == null) {
+				gcimCalc = new GcimCalculator();
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -842,6 +847,7 @@ ActionListener, ScalarIMRChangeListener {
 	protected void initTimers() {
 		startPrimaryTimer();
 		startDisaggTimer();
+		startGcimTimer();
 	}
 	
 	/**
@@ -917,7 +923,37 @@ ActionListener, ScalarIMRChangeListener {
 			}
 		});
 	}
-	
+
+	/**
+	 * Timer for GCIM progress bar
+	 */
+	private void startGcimTimer() {
+		gcimTimer = new Timer(200, new ActionListener() {
+			public void actionPerformed(ActionEvent evt) {
+				try {
+					int totalIMi = gcimCalc.getTotIMi(); 
+					int currIMi = gcimCalc.getCurrIMi(); 
+					boolean calcDone = gcimCalc.done();
+					if (!calcDone)
+						gcimProgressClass.updateProgress(currIMi,  
+								totalIMi);
+					if (calcDone) {
+						gcimTimer.stop();
+						gcimProgressClass.dispose();
+					}
+				} catch (Exception e) {
+					gcimTimer.stop();
+					setButtonsEnable(true);
+					e.printStackTrace();
+					BugReport bug = new BugReport(e, getParametersInfoAsString(), APP_NAME,
+							getAppVersion(), getApplicationComponent());
+					BugReportDialog bugDialog = new BugReportDialog(getApplicationComponent(), bug, false);
+					bugDialog.setVisible(true);
+				}
+			}
+		});
+	}
+
 	/**
 	 * this function is called to draw the graph
 	 */
@@ -1065,12 +1101,7 @@ ActionListener, ScalarIMRChangeListener {
 				.setSelectedOption(PlottingOptionControl.PLOT_ON_TOP);
 				setButtonsEnable(true);
 			}
-			try {
-				imrGuiBean.setTectonicRegions(erfGuiBean.getSelectedERF_Instance().getIncludedTectonicRegionTypes());
-			} catch (InvocationTargetException e) {
-				e.printStackTrace();
-				imrGuiBean.setTectonicRegions(null);
-			}
+			imrGuiBean.setTectonicRegions(getIncludedTectonicRegionTypes());
 		}
 	}
 
@@ -1405,15 +1436,148 @@ ActionListener, ScalarIMRChangeListener {
 						+ "the given IML (or that interpolated from the chosen probability).",
 						"Disaggregation Message", JOptionPane.OK_OPTION);
 		}
+		// displays the disaggregation string in the pop-up window
+		disaggregationString = null;
+		
+		// checking the gcim flag and probability curve is being plotted
+		if (gcimFlag && isProbabilisticCurve) {
+			gcimCalc = new GcimCalculator();
+			if (this.progressCheckBox.isSelected()) {
+				gcimProgressClass = new CalcProgressBar(
+						"GCIM Calc Status",
+				"Beginning GCIM calculations ");
+				gcimTimer.start();
+			}
+			
+			int num = hazFunction.size();
+			// checks if successfully disaggregated.
+			boolean gcimSuccessFlag = false;
+			boolean gcimRealizationSuccessFlag = false;
+			boolean gcimAtIML = false;
+			Site gcimSite = gcimControlPanel.getGcimSite();
+			double gcimVal = gcimControlPanel
+			.getGcimVal();
+			String gcimParamVal = gcimControlPanel
+			.getGcimParamValue();
+			int gcimNumIMi = gcimControlPanel.getNumIMi();
+			double minApproxZVal = gcimControlPanel.getMinApproxZ();
+			double maxApproxZVal = gcimControlPanel.getMaxApproxZ();
+			double deltaApproxZVal = gcimControlPanel.getDeltaApproxZ();
+			int numGcimRealizations = gcimControlPanel.getNumGcimRealizations();
+			ArrayList<String> imiTypes = gcimControlPanel.getImiTypes(); 
+			ArrayList<? extends Map<TectonicRegionType, ScalarIMR>> imiMapAttenRels = 
+					gcimControlPanel.getImris();
+			
+			ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> imijCorrRels = 
+					gcimControlPanel.getImCorrRels();
+			ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> imikCorrRels = 
+				gcimControlPanel.getImikCorrRels();
+			
+			gcimCalc.setApproxCDFvalues(minApproxZVal, maxApproxZVal, deltaApproxZVal);
+			
+			double imlVal = 0, probVal = 0;
+			try {
+
+				if (gcimParamVal
+						.equals(GcimControlPanel.GCIM_USING_PROB)) {
+					gcimAtIML = false;
+					// if selected Prob is not within the range of the Exceed.
+					// prob of Hazard Curve function
+					if (gcimVal > hazFunction.getY(0)
+							|| gcimVal < hazFunction.getY(num - 1))
+						JOptionPane
+						.showMessageDialog(
+								this,
+								new String(
+										"Chosen Probability is not"
+										+ " within the range of the min and max prob."
+										+ " in the Hazard Curve"),
+										"GCIM error message",
+										JOptionPane.ERROR_MESSAGE);
+					else {
+						// gets the GCIM data
+						imlVal = hazFunction
+						.getFirstInterpolatedX_inLogXLogYDomain(gcimVal);
+						probVal = gcimVal;
+					}
+				} else if (gcimParamVal
+						.equals(GcimControlPanel.GCIM_USING_IML)) {
+					gcimAtIML = true;
+					// if selected IML is not within the range of the IML values
+					// chosen for Hazard Curve function
+					if (gcimVal < hazFunction.getX(0)
+							|| gcimVal > hazFunction.getX(num - 1))
+						JOptionPane
+						.showMessageDialog(
+								this,
+								new String(
+										"Chosen IML is not"
+										+ " within the range of the min and max IML values"
+										+ " in the Hazard Curve"),
+										"GCIM error message",
+										JOptionPane.ERROR_MESSAGE);
+					else {
+						imlVal = gcimVal;
+						probVal = hazFunction
+						.getInterpolatedY_inLogXLogYDomain(gcimVal);
+					}
+				}
+				gcimCalc.getRuptureContributions(Math.log(imlVal), gcimSite, imrMap,
+							 	(ERF) forecast, this.calc.getSourceFilters(),
+							 	calc.getAdjustableParams());
+				
+				gcimSuccessFlag = gcimCalc.getMultipleGcims(gcimNumIMi, imiMapAttenRels, imiTypes,
+										imijCorrRels, this.calc.getMaxSourceDistance(),
+										calc.getMagDistCutoffFunc());
+				
+				if (numGcimRealizations>0) {
+					gcimRealizationSuccessFlag = gcimCalc.getGcimRealizations(numGcimRealizations, gcimNumIMi, imiMapAttenRels, imiTypes,
+										imijCorrRels, imikCorrRels, this.calc.getMaxSourceDistance(),
+										calc.getMagDistCutoffFunc());
+				} else {
+					gcimRealizationSuccessFlag = true;
+				}
+				
+
+			} catch (WarningException warningException) {
+				setButtonsEnable(true);
+				JOptionPane.showMessageDialog(this, warningException
+						.getMessage());
+			} catch (Exception e) {
+				e.printStackTrace();
+				setButtonsEnable(true);
+				BugReport bug = new BugReport(e, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+				BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+				bugDialog.setVisible(true);
+			}
+			if (gcimSuccessFlag&gcimRealizationSuccessFlag) {
+				String imjName;
+				if (firstIMRFromMap.getIntensityMeasure().getName()==SA_Param.NAME) {
+					imjName= "SA (" + ((SA_Param) firstIMRFromMap.getIntensityMeasure()).getPeriodParam().getValue() + "s)";
+				}
+				else if (firstIMRFromMap.getIntensityMeasure().getName()==SA_InterpolatedParam.NAME) {
+					imjName= "SA (" + ((SA_InterpolatedParam) firstIMRFromMap.getIntensityMeasure()).getPeriodInterpolatedParam().getValue() + "s)";
+				}
+				else {
+					imjName = firstIMRFromMap.getIntensityMeasure().getName();
+				}
+				showGcimResults(imjName,gcimAtIML, imlVal, probVal);
+			}
+			else
+				JOptionPane
+				.showMessageDialog(
+						this,
+						"GCIM calculations failed because there is "
+						+ "no exceedance above \n "
+						+ "the given IML (or that interpolated from the chosen probability).",
+						"GCIM Message", JOptionPane.OK_OPTION);
+		}
 		runInEDT(new Runnable() {
 			@Override
 			public void run() {
 				setButtonsEnable(true);
 			}
 		});
-		// displays the disaggregation string in the pop-up window
-
-		disaggregationString = null;
 	}
 	
 	protected static void runInEDT(Runnable run) {
@@ -1442,7 +1606,6 @@ ActionListener, ScalarIMRChangeListener {
 	 * @param probVal
 	 *            double if disaggregation is done based on prob. then its value
 	 */
-	// TODO: Make this private after disaggCalc migration
 	protected void showDisaggregationResults(int numSourceToShow,
 			boolean imlBasedDisaggr, double imlVal, double probVal) {
 		boolean binDataToShow = disaggregationControlPanel.isShowDisaggrBinDataSelected();
@@ -1838,12 +2001,18 @@ ActionListener, ScalarIMRChangeListener {
 		controlComboBox.addItem(RunAll_PEER_TestCasesControlPanel.NAME);
 		controlPanels.add(new RunAll_PEER_TestCasesControlPanel(this));
 
+		/*		GCIM Control					*/
+		controlComboBox.addItem(GcimControlPanel.NAME);
+		gcimControlPanel = new GcimControlPanel(this, this);
+		controlPanels.add(gcimControlPanel);
 	}
 
 	protected void selectControlPanel() {
 		if (controlComboBox.getItemCount() <= 0)
 			return;
 		String selectedControl = controlComboBox.getSelectedItem().toString();
+		if (selectedControl == GcimControlPanel.NAME)
+			gcimControlPanel.updateWithParentDetails();
 		showControlPanel(selectedControl);
 
 		controlComboBox.setSelectedItem(CONTROL_PANELS);
@@ -2260,6 +2429,9 @@ ActionListener, ScalarIMRChangeListener {
 			if (disaggCalc != null) {
 				disaggCalc.stopCalc();
 			}
+			if (gcimCalc != null) {
+				gcimCalc.stopCalc();
+			}
 		} catch (RuntimeException ee) {
 			ee.printStackTrace();
 			BugReport bug = new BugReport(ee, getParametersInfoAsString(), appShortName, getAppVersion(), this);
@@ -2281,6 +2453,11 @@ ActionListener, ScalarIMRChangeListener {
 				disaggTimer.stop();
 				disaggTimer = null;
 				disaggProgressClass.dispose();
+			}
+			if (gcimTimer != null && gcimProgressClass != null) {
+				gcimTimer.stop();
+				gcimTimer = null;
+				gcimProgressClass.dispose();
 			}
 			this.isHazardCalcDone = false;
 			// making the buttons to be visible
@@ -2459,6 +2636,80 @@ ActionListener, ScalarIMRChangeListener {
 	@Override
 	public void imrChange(ScalarIMRChangeEvent event) {
 		updateSiteParams();
+	}
+
+	/**
+	 * Specify whether gcim is selected or not
+	 * @param isSelected
+	 */
+	public void setGcimSelected(boolean isSelected) {
+		gcimFlag = isSelected;
+	}
+
+	/**
+	 * 
+	 * This function allows showing the GCIM results
+	 * @param imjName 
+	 * 			  The name of the IMT for which the GCIM results are conditioned on
+	 * @param imlBasedDisaggr
+	 *            boolean Disaggregation is done based on chosen IML
+	 * @param imlVal
+	 *            double iml value for the disaggregation
+	 * @param probVal
+	 *            double if disaggregation is done based on prob. then its value
+	 */
+	private void showGcimResults(String imjName, boolean imlBasedGcim, double imlVal, double probVal) {
+		
+		String headerString = "";
+		if (imlBasedGcim)
+			headerString = "GCIM Results: \n" +
+						   "Conditioning IM: " + imjName + "\n" +
+						   "IML  = " + imlVal + "\n" +
+						   "(Prob= " + (float) probVal + ")";
+		else
+			headerString = "GCIM Results: \n" +
+			   "Conditioning IM: " + imjName + "\n" +
+			   "Prob = " + probVal + "\n" +
+			   "(IML = " + (float) imlVal + ")";
+
+
+		String gcimResultsString = gcimCalc.getGcimResultsString();
+		
+		gcimResultsString = headerString + "\n\n" + gcimResultsString;
+
+		new GcimPlotViewerWindow(gcimResultsString);
+	}
+
+	/**
+	 * Returns the Gcim Results List
+	 * 
+	 * @return String
+	 */
+	public String getGcimResults() {
+		try {
+			return gcimCalc.getGcimResultsString();
+		} catch (Exception ex) {
+			ex.printStackTrace();
+			setButtonsEnable(true);
+			BugReport bug = new BugReport(ex, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+			bugDialog.setVisible(true);
+		}
+		return null;
+	}
+
+	/** 
+	 * This method gets the included tectonic region types, which is needed by some control panels
+	 */
+	public ArrayList<TectonicRegionType> getIncludedTectonicRegionTypes() {
+		try {
+			ArrayList<TectonicRegionType> includedTectonicRegionTypes =  erfGuiBean.getSelectedERF_Instance().getIncludedTectonicRegionTypes();
+			return includedTectonicRegionTypes;
+		} catch (InvocationTargetException e) {
+			e.printStackTrace();
+			imrGuiBean.setTectonicRegions(null);
+			return null;
+		}
 	}
 }
 

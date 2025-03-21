@@ -117,7 +117,7 @@ dependencies {
     testImplementation 'org.mockito:mockito-core:3.5.13'
 }
 
-// TODO: application build tasks
+// application build tasks
 ext {
     appSuffix = '-'+getDate()+'-'+getGitHash()
 }
@@ -128,7 +128,6 @@ createAppTask("appJarSM", "ShakeMapGUI"+appSuffix, "org.opensha.sha.gui.Scenario
 createAppTask("appJarSD", "SiteDataGUI"+appSuffix, "org.opensha.commons.data.siteData.gui.SiteDataCombinedApp")
 createAppTask("appJarGMT", "GMTMapApp"+appSuffix, "org.opensha.commons.mapping.gmt.gui.GMT_MapGeneratorApplet")
 createAppTask("appJarIM", "IMEventSetAppV3"+appSuffix, "org.opensha.sha.calc.IM_EventSet.v03.IM_EventSetCalc_v3_0_ASCII")
-createAppTask("appJarGCIM", "GCIM_HazardCurveGUI"+appSuffix, "org.opensha.sha.gcim.ui.GCIM_HazardCurveApp")
 
 task appZipIM(type: Zip) {
     dependsOn 'appJarIM'
@@ -146,5 +145,5 @@ task appZipIM(type: Zip) {
 }
 
 task appJars(type: GradleBuild) {
-     tasks = ['appJarHC', 'appJarHS', 'appJarAR', 'appJarSM', 'appJarSD', 'appJarGMT', 'appJarGCIM']
+     tasks = ['appJarHC', 'appJarHS', 'appJarAR', 'appJarSM', 'appJarSD', 'appJarGMT']
 }
