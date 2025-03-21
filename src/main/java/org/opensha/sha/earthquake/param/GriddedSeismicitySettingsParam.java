@@ -12,6 +12,7 @@ import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.impl.DoubleParameter;
+import org.opensha.sha.earthquake.util.GriddedFiniteRuptureSettings;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 
@@ -94,6 +95,7 @@ public class GriddedSeismicitySettingsParam extends AbstractParameter<GriddedSei
 		private DoubleParameter minMagParam;
 		private DoubleParameter pointSourceCutoffMagParam;
 		private PointSourceDistanceCorrectionParam distCorrParam;
+		private GriddedFiniteRuptureSettingsParam finiteSettingsParam;
 		private GridCellSupersamplingParam supersamplingParam;
 		
 		public Editor(GriddedSeismicitySettingsParam param) {
@@ -120,6 +122,7 @@ public class GriddedSeismicitySettingsParam extends AbstractParameter<GriddedSei
 			
 			if (param instanceof GriddedSeismicitySettingsParam && ((GriddedSeismicitySettingsParam)param).surfTypeParam != null) {
 				// use the passed in surface type parameter, and don't add it to the displayed list
+//				System.out.println("GriddedSeismicitySettingsParam: using passed in surfTypeParam");
 				surfTypeParam = ((GriddedSeismicitySettingsParam)param).surfTypeParam;
 				Preconditions.checkState(surfTypeParam.getValue() == settings.surfaceType);
 			} else {
@@ -138,13 +141,17 @@ public class GriddedSeismicitySettingsParam extends AbstractParameter<GriddedSei
 			pointSourceCutoffMagParam = new DoubleParameter("Minimum Finite Magnitude", 0d, 10d);
 			minMagParam.getConstraint().setNullAllowed(false);
 			pointSourceCutoffMagParam.setInfo("Minimum magnitude for finite ruptures; all ruptures below this magnitude "
-					+ "will be treated as point sources regardless of the surface type setting.");
+					+ "will be treated as true point sources regardless of the surface type or distance correction settings.");
 			pointSourceCutoffMagParam.addParameterChangeListener(this);
 			paramList.addParameter(pointSourceCutoffMagParam);
 			
 			distCorrParam = new PointSourceDistanceCorrectionParam();
 			distCorrParam.addParameterChangeListener(this);
 			paramList.addParameter(distCorrParam);
+			
+			finiteSettingsParam = new GriddedFiniteRuptureSettingsParam(null);
+			finiteSettingsParam.addParameterChangeListener(this);
+			paramList.addParameter(finiteSettingsParam);
 			
 			supersamplingParam = new GridCellSupersamplingParam();
 			supersamplingParam.addParameterChangeListener(this);
@@ -159,6 +166,8 @@ public class GriddedSeismicitySettingsParam extends AbstractParameter<GriddedSei
 		protected synchronized JComponent updateWidget() {
 			GriddedSeismicitySettings value = getValue();
 			
+//			System.out.println("GriddedSeismicitySettingsParam: updateWidget for value="+value);
+			
 			updating = true;
 			surfTypeParam.setValue(value.surfaceType);
 			minMagParam.setValue(value.minimumMagnitude);
@@ -166,6 +175,9 @@ public class GriddedSeismicitySettingsParam extends AbstractParameter<GriddedSei
 			PointSourceDistanceCorrections corrType = PointSourceDistanceCorrections.forCorrections(value.distanceCorrections);
 			Preconditions.checkNotNull(corrType, "Passed in corrections are not of a standard type; editor not supported.");
 			distCorrParam.setValue(corrType);
+			distCorrParam.getEditor().setVisible(value.surfaceType == BackgroundRupType.POINT);
+			finiteSettingsParam.setValue(value.finiteRuptureSettings);
+			finiteSettingsParam.getEditor().setVisible(value.surfaceType == BackgroundRupType.FINITE);
 			supersamplingParam.setValue(value.supersamplingSettings);
 			updating = false;
 			
@@ -185,14 +197,27 @@ public class GriddedSeismicitySettingsParam extends AbstractParameter<GriddedSei
 			Parameter<GriddedSeismicitySettings> param = getParameter();
 //			System.out.println("GriddedSeismicitySettingsParam: param change, updating parent: "+source.getName()+" to "+source.getValue());
 			GriddedSeismicitySettings value = getValue();
-			if (source == surfTypeParam)
-				param.setValue(value.forSurfaceType(surfTypeParam.getValue()));
+			if (source == surfTypeParam) {
+				// this can change the finite rupture settings
+				value = value.forSurfaceType(surfTypeParam.getValue());
+				param.setValue(value);
+				
+				if (value.finiteRuptureSettings != finiteSettingsParam.getValue()) {
+//					System.out.println("New finite settings, updating finiteSettingsParam");
+					finiteSettingsParam.setValue(value.finiteRuptureSettings);
+				}
+				distCorrParam.getEditor().setVisible(value.surfaceType == BackgroundRupType.POINT);
+				finiteSettingsParam.getEditor().setVisible(value.surfaceType == BackgroundRupType.FINITE);
+				finiteSettingsParam.refreshEditor();
+			}
 			else if (source == minMagParam)
 				param.setValue(value.forMinimumMagnitude(minMagParam.getValue()));
 			else if (source == pointSourceCutoffMagParam)
 				param.setValue(value.forPointSourceMagCutoff(pointSourceCutoffMagParam.getValue()));
 			else if (source == distCorrParam)
 				param.setValue(value.forDistanceCorrections(distCorrParam.getValue()));
+			else if (source == finiteSettingsParam)
+				param.setValue(value.forFiniteRuptureSettings(finiteSettingsParam.getValue()));
 			else if (source == supersamplingParam)
 				param.setValue(value.forSupersamplingSettings(supersamplingParam.getValue()));
 		}
