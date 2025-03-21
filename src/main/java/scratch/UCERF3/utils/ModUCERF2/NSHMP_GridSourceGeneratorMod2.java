@@ -17,7 +17,7 @@ import org.opensha.sha.magdist.SummedMagFreqDist;
  */
 public class NSHMP_GridSourceGeneratorMod2 extends NSHMP_GridSourceGenerator {
 
-	public NSHMP_GridSourceGeneratorMod2(WeightedList<PointSourceDistanceCorrection> distCorrs) {
+	public NSHMP_GridSourceGeneratorMod2(WeightedList<? extends PointSourceDistanceCorrection> distCorrs) {
 		super(distCorrs);
 	}
 

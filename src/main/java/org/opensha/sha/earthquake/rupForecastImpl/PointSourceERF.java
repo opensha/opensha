@@ -183,7 +183,7 @@ public class PointSourceERF extends AbstractERF{
     		   .truePointSources(srcDepthParam.getValue())
     		   .forMagProbAndFocalMech(magParam.getValue(), probParam.getValue(),
     				   new FocalMechanism(Double.NaN, dipParam.getValue(), rakeParam.getValue()))
-    		   .distCorrs(distCorrParam.getValue())
+    		   .distCorrs(distCorrParam.getValue(), Double.NEGATIVE_INFINITY)
     		   .build();
        parameterChangeFlag = false;
      }

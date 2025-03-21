@@ -1196,7 +1196,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		PointSource.PoissonBuilder builder = PointSource.poissonBuilder(gridLoc, tectonicRegionType);
 		
 		builder.data(new GriddedRuptureSourceData(gridLoc, gridRups, aftershockFilter, gridSourceSettings));
-		builder.distCorrs(gridSourceSettings.distanceCorrections);
+		builder.distCorrs(gridSourceSettings.distanceCorrections, gridSourceSettings.pointSourceMagnitudeCutoff);
 		builder.duration(duration);
 		
 		if (gridSourceSettings.supersamplingSettings != null) {

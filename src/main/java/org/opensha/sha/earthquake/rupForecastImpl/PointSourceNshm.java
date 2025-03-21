@@ -103,8 +103,9 @@ public class PointSourceNshm extends PoissonPointSource {
 			IncrementalMagFreqDist mfd,
 			double duration,
 			Map<FocalMech, Double> mechWtMap,
-			WeightedList<PointSourceDistanceCorrection> distCorrs) {
-		this(loc, mfd, duration, mechWtMap, SURF_BUILDER_DEFAULT, distCorrs, null);
+			WeightedList<? extends PointSourceDistanceCorrection> distCorrs,
+			double minMagForDistCorr) {
+		this(loc, mfd, duration, mechWtMap, SURF_BUILDER_DEFAULT, distCorrs, minMagForDistCorr, null);
 	}
 	
 	public PointSourceNshm(Location loc,
@@ -114,8 +115,9 @@ public class PointSourceNshm extends PoissonPointSource {
 			double magCut,
 			double depthBelowMagCut,
 			double depthAboveMagCut,
-			WeightedList<PointSourceDistanceCorrection> distCorrs) {
-		this(loc, mfd, duration, mechWtMap, new SurfaceBuilder(magCut, depthBelowMagCut, depthAboveMagCut), distCorrs, null);
+			WeightedList<? extends PointSourceDistanceCorrection> distCorrs,
+			double minMagForDistCorr) {
+		this(loc, mfd, duration, mechWtMap, new SurfaceBuilder(magCut, depthBelowMagCut, depthAboveMagCut), distCorrs, minMagForDistCorr, null);
 	}
 	
 	private PointSourceNshm(Location loc,
@@ -123,10 +125,11 @@ public class PointSourceNshm extends PoissonPointSource {
 			double duration, 
 			Map<FocalMech, Double> mechWtMap,
 			SurfaceBuilder surfaceBuilder,
-			WeightedList<PointSourceDistanceCorrection> distCorrs,
+			WeightedList<? extends PointSourceDistanceCorrection> distCorrs,
+			double minMagForDistCorr,
 			GridCellSupersamplingSettings supersamplingSettings) {
 		super(loc, TectonicRegionType.ACTIVE_SHALLOW, duration,
-				buildData(loc, mfd, mechWtMap, surfaceBuilder, supersamplingSettings), distCorrs);
+				buildData(loc, mfd, mechWtMap, surfaceBuilder, supersamplingSettings), distCorrs, minMagForDistCorr);
 		this.name = NAME;
 	}
 	
@@ -140,9 +143,10 @@ public class PointSourceNshm extends PoissonPointSource {
 				IncrementalMagFreqDist mfd,
 				double duration,
 				Map<FocalMech, Double> mechWtMap,
-				WeightedList<PointSourceDistanceCorrection> distCorrs,
+				WeightedList<? extends PointSourceDistanceCorrection> distCorrs,
+				double minMagForDistCorr,
 				GridCellSupersamplingSettings supersamplingSettings) {
-			super(loc, mfd, duration, mechWtMap, SURF_BUILDER_DEFAULT, distCorrs, supersamplingSettings);
+			super(loc, mfd, duration, mechWtMap, SURF_BUILDER_DEFAULT, distCorrs, minMagForDistCorr, supersamplingSettings);
 			initAdaptive();
 		}
 		
@@ -153,9 +157,10 @@ public class PointSourceNshm extends PoissonPointSource {
 				double magCut,
 				double depthBelowMagCut,
 				double depthAboveMagCut,
-				WeightedList<PointSourceDistanceCorrection> distCorrs,
+				WeightedList<? extends PointSourceDistanceCorrection> distCorrs,
+				double minMagForDistCorr,
 				GridCellSupersamplingSettings supersamplingSettings) {
-			super(loc, mfd, duration, mechWtMap, new SurfaceBuilder(magCut, depthBelowMagCut, depthAboveMagCut), distCorrs, supersamplingSettings);
+			super(loc, mfd, duration, mechWtMap, new SurfaceBuilder(magCut, depthBelowMagCut, depthAboveMagCut), distCorrs, minMagForDistCorr, supersamplingSettings);
 			initAdaptive();
 		}
 		
@@ -176,7 +181,7 @@ public class PointSourceNshm extends PoissonPointSource {
 			if (ret != null)
 				return ret;
 			ret = new PoissonPointSource(getLocation(), getTectonicRegionType(),
-					getDuration(), dataForSite, getDistCorrs());
+					getDuration(), dataForSite, getDistCorrs(), minMagForDistCorr);
 			sourceCache.putIfAbsent(dataForSite, ret);
 			return ret;
 		}

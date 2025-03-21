@@ -96,9 +96,8 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 	public Point2Vert_FaultPoisSource(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
 			double strike, double duration, double magCutOff,
-			double fracStrikeSlip, double fracNormal, double fracReverse,
-			WeightedList<PointSourceDistanceCorrection> distCorrs) {
-		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null, distCorrs); // TODO: dist corrs
+			double fracStrikeSlip, double fracNormal, double fracReverse) {
+		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null);
 		this.magCutOff = magCutOff;
 
 		if(D) {
@@ -129,9 +128,8 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 	public Point2Vert_FaultPoisSource(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
 			double duration, double magCutOff,double fracStrikeSlip,
-			double fracNormal, double fracReverse, boolean isCrossHair,
-			WeightedList<PointSourceDistanceCorrection> distCorrs) {
-		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null, distCorrs); // TODO: dist corrs
+			double fracNormal, double fracReverse, boolean isCrossHair) {
+		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null);
 		this.magCutOff = magCutOff;
 		// whether to simulate it as 2 perpendicular faults
 		this.isCrossHair = isCrossHair;
@@ -433,7 +431,7 @@ public class Point2Vert_FaultPoisSource extends PoissonPointSource implements ja
 		//    Point2Vert_SS_FaultPoisSource src = new Point2Vert_SS_FaultPoisSource(loc, dist,
 		//                                       wc_rel,45, 1.0, 6.0, 5.0);
 		Point2Vert_FaultPoisSource src = new Point2Vert_FaultPoisSource(loc, dist,
-				wc_rel, duration, 6.0,fracStrikeSlip,fracNormal,fracReverse, false, null);
+				wc_rel, duration, 6.0,fracStrikeSlip,fracNormal,fracReverse, false);
 
 		System.out.println("num rups ="+src.getNumRuptures()+"\ttotProb="+src.computeTotalProb());
 		ProbEqkRupture rup;

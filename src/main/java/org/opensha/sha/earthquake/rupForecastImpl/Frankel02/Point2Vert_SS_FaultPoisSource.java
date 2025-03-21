@@ -71,7 +71,7 @@ public class Point2Vert_SS_FaultPoisSource extends PoissonPointSource implements
 	public Point2Vert_SS_FaultPoisSource(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
 			double strike, double duration, double magCutOff){
-		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null, null); // TODO: dist corrs
+		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null);
 		this.magCutOff = magCutOff;
 
 		if(D) {
@@ -95,7 +95,7 @@ public class Point2Vert_SS_FaultPoisSource extends PoissonPointSource implements
 	public Point2Vert_SS_FaultPoisSource(Location loc, IncrementalMagFreqDist magFreqDist,
 			MagLengthRelationship magLengthRelationship,
 			double duration, double magCutOff){
-		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null, null); // TODO: dist corrs
+		super(loc, TECTONIC_REGION_TYPE_DEFAULT, duration, null);
 		this.magCutOff = magCutOff;
 
 		// set the mags, rates, and rupture surfaces

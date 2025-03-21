@@ -722,7 +722,7 @@ public class PointSurfaceBuilder {
 	 * @return
 	 */
 	public WeightedList<PointSurface> buildTruePointSurfaces(PointSourceDistanceCorrections distCorrType) {
-		WeightedList<PointSourceDistanceCorrection> distCorrs;
+		WeightedList<? extends PointSourceDistanceCorrection> distCorrs;
 		if (distCorrType == null || distCorrType == PointSourceDistanceCorrections.NONE)
 			distCorrs = null;
 		else
@@ -735,7 +735,7 @@ public class PointSurfaceBuilder {
 	 * {@link WeightedList} of {@link PointSourceDistanceCorrection}s.
 	 * @return
 	 */
-	public WeightedList<PointSurface> buildTruePointSurfaces(WeightedList<PointSourceDistanceCorrection> distCorrs) {
+	public WeightedList<PointSurface> buildTruePointSurfaces(WeightedList<? extends PointSourceDistanceCorrection> distCorrs) {
 		if (distCorrs == null)
 			return WeightedList.evenlyWeighted(buildTruePointSurface(null));
 		else if (distCorrs.size() == 1)
@@ -791,7 +791,7 @@ public class PointSurfaceBuilder {
 	 */
 	public WeightedList<FiniteApproxPointSurface> buildFiniteApproxPointSurfaces(
 			PointSourceDistanceCorrections distCorrType) {
-		WeightedList<PointSourceDistanceCorrection> distCorrs;
+		WeightedList<? extends PointSourceDistanceCorrection> distCorrs;
 		if (distCorrType == null || distCorrType == PointSourceDistanceCorrections.NONE)
 			distCorrs = null;
 		else
@@ -805,7 +805,7 @@ public class PointSurfaceBuilder {
 	 * @return
 	 */
 	public WeightedList<FiniteApproxPointSurface> buildFiniteApproxPointSurfaces(
-			WeightedList<PointSourceDistanceCorrection> distCorrs) {
+			WeightedList<? extends PointSourceDistanceCorrection> distCorrs) {
 		PointSourceDistanceCorrection singleCorr = distCorrs != null && distCorrs.size() == 1 ? distCorrs.getValue(0) : null;
 		FiniteApproxPointSurface[] surfs;
 		if (dip == 90d || footwall != null)

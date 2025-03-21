@@ -62,7 +62,7 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 		case FINITE:
 			return new Point2Vert_FaultPoisSource(loc, mfd, magLenRel, duration,
 					gridSourceSettings.pointSourceMagnitudeCutoff, fracStrikeSlip, fracNormal,
-					fracReverse, gridSourceSettings.finiteRuptureSettings.numSurfaces > 1, gridSourceSettings.distanceCorrections);
+					fracReverse, gridSourceSettings.finiteRuptureSettings.numSurfaces > 1);
 		case POINT:
 			Map<FocalMech, Double> mechMap = Maps.newHashMap();
 			mechMap.put(FocalMech.STRIKE_SLIP, fracStrikeSlip);
@@ -70,8 +70,10 @@ public abstract class AbstractGridSourceProvider extends MFDGridSourceProvider.A
 			mechMap.put(FocalMech.NORMAL, fracNormal);
 			if (gridSourceSettings.supersamplingSettings != null)
 				return new PointSourceNshm.Supersampled(loc, mfd, duration, mechMap,
-						gridSourceSettings.distanceCorrections, gridSourceSettings.supersamplingSettings);
-			return new PointSourceNshm(loc, mfd, duration, mechMap, gridSourceSettings.distanceCorrections);
+						gridSourceSettings.distanceCorrections, gridSourceSettings.pointSourceMagnitudeCutoff,
+						gridSourceSettings.supersamplingSettings);
+			return new PointSourceNshm(loc, mfd, duration, mechMap, gridSourceSettings.distanceCorrections,
+					gridSourceSettings.pointSourceMagnitudeCutoff);
 
 		default:
 			throw new IllegalStateException("Unknown Background Rup Type: "+gridSourceSettings.surfaceType);

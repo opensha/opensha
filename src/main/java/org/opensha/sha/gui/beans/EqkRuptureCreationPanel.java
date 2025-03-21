@@ -237,7 +237,7 @@ extends JPanel implements EqkRupSelectorGuiBeanAPI, ParameterChangeListener {
 			ruptureSurface = new PointSurface( (Location) locationParam.getValue());
 			double aveDip = ( (Double) dipParam.getValue()).doubleValue();
 			((PointSurface)ruptureSurface).setAveDip(aveDip);
-			WeightedList<PointSourceDistanceCorrection> corrs = distCorrParam.getValue().get();
+			WeightedList<? extends PointSourceDistanceCorrection> corrs = distCorrParam.getValue().get();
 			PointSourceDistanceCorrection corr;
 			if (corrs == null) {
 				corr = null;

@@ -14,13 +14,20 @@ import com.google.common.base.Preconditions;
 public class GriddedSeismicitySettings {
 	
 	public static GriddedSeismicitySettings DEFAULT = new GriddedSeismicitySettings(
+			// minimum magnitude
 			5d, // M>5
+			// rupture surface type
 			BackgroundRupType.POINT, // point sources
-			6d, // always finite >6 (if set to a finite option, or point sources have strikes)
+			// minimum magnitude for finite (if FINITE selected, below this will still be POINT)
+			// also applies with POINT selected if finite ruptures have strikes
+			6d, // always finite >6
 //			5d,
+			// distance corrections
 			PointSourceDistanceCorrections.DEFAULT, // NSHM 2013 distance correction
-			null, // no supersampling
-			null); // no finite settings (point-only)
+			// supersampling
+			null, // none
+			// finite rupture settings
+			null); // none (note neded with POINT selected above)
 
 	/**
 	 * Minimum magnitude; ruptures below this magnitude will be ignored
@@ -32,6 +39,7 @@ public class GriddedSeismicitySettings {
 	public final BackgroundRupType surfaceType;
 	/**
 	 * Magnitude below which point surfaces should always be generated regardless of {@link #surfaceType} choice.
+	 * No distance corrections will be applied below this magnitude.
 	 */
 	public final double pointSourceMagnitudeCutoff;
 	/**
@@ -39,7 +47,7 @@ public class GriddedSeismicitySettings {
 	 * {@link BackgroundRupType#POINT} and no strike information is provided, or ruptures below
 	 * {@link #pointSourceMagnitudeCutoff}). Can be null;
 	 */
-	public final WeightedList<PointSourceDistanceCorrection> distanceCorrections;
+	public final WeightedList<? extends PointSourceDistanceCorrection> distanceCorrections;
 	/**
 	 * Supersampling settings to further subdivide each grid cell into many sources when calculating hazard for
 	 * nearby sites.
@@ -65,7 +73,7 @@ public class GriddedSeismicitySettings {
 			double minimumMagnitude,
 			BackgroundRupType surfaceType,
 			double pointSourceMagnitudeCutoff,
-			WeightedList<PointSourceDistanceCorrection> distanceCorrs,
+			WeightedList<? extends PointSourceDistanceCorrection> distanceCorrs,
 			GridCellSupersamplingSettings supersamplingSettings,
 			GriddedFiniteRuptureSettings finiteRuptureSettings) {
 		super();

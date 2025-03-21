@@ -62,7 +62,8 @@ public class GridERF extends NSHMP_ERF {
 	private double weight;
 	private double maxR, dR;
 	
-	private static WeightedList<PointSourceDistanceCorrection> distCorrs = PointSourceDistanceCorrections.NSHM_2008.get();
+	private static WeightedList<? extends PointSourceDistanceCorrection> distCorrs = PointSourceDistanceCorrections.NSHM_2008.get();
+	private static double minMagForDistCorr = 6d;
 
 	private final static MagLengthRelationship MLR = new WC1994_MagLengthRelationship();
 
@@ -243,7 +244,8 @@ public class GridERF extends NSHMP_ERF {
 				? new FixedStrikeSource(locs.get(idx), mfds.get(idx), MLR,
 					timeSpan.getDuration(), depths, mechWtMap, strike)
 				: new PointSourceNshm(locs.get(idx), mfds.get(idx),
-					timeSpan.getDuration(), mechWtMap, PointSourceNshm.M_DEPTH_CUT_DEFAULT, depths[0], depths[1], distCorrs);
+					timeSpan.getDuration(), mechWtMap, PointSourceNshm.M_DEPTH_CUT_DEFAULT, depths[0], depths[1],
+					distCorrs, minMagForDistCorr);
 		// @formatter:on
 	}
 
