@@ -18,7 +18,7 @@ import com.google.common.base.Preconditions;
  * then a rupture should be split into multiple realizations with the given weight. Weights will always be normalized
  * to sum to 1.
  */
-public enum PointSourceDistanceCorrections implements Supplier<WeightedList<PointSourceDistanceCorrection>> {
+public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? extends PointSourceDistanceCorrection>> {
 	
 	NONE("None"),
 //	NONE("None", new PointSourceDistanceCorrection() {
@@ -97,7 +97,13 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<Poin
 		}
 		
 	}),
-	NSHM_2013("USGS NSHM (2013)", new DistanceCorrection2013());
+	NSHM_2013("USGS NSHM (2013)", new DistanceCorrection2013()),
+	ANALYTICAL_MEDIAN("Analytical Median (centered)",
+			// NaN here indicates to use mean and not a fractile
+			new AnalyticalPointSourceDistanceCorrection(Double.NaN, false, false)),
+	ANALYTICAL_FIVE_POINT("Analytical 5-Point (centered)",
+//			AnalyticalPointSourceDistanceCorrection.getEvenlyWeightedFractiles(5, false, false)),
+			AnalyticalPointSourceDistanceCorrection.getImportanceSampledFractiles(new double[] {0d, 0.05, 0.2, 0.5, 0.8, 1d}, false, false));
 	
 	// TODO: decide on default
 	public static final PointSourceDistanceCorrections DEFAULT = NSHM_2013;
@@ -115,7 +121,7 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<Poin
 	}
 	
 	private String name;
-	private WeightedList<PointSourceDistanceCorrection> corrs;
+	private WeightedList<? extends PointSourceDistanceCorrection> corrs;
 
 	private PointSourceDistanceCorrections(String name) {
 		this.name = name;
@@ -126,7 +132,7 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<Poin
 		this(name, WeightedList.evenlyWeighted(corr));
 	}
 
-	private PointSourceDistanceCorrections(String name, WeightedList<PointSourceDistanceCorrection> corrs) {
+	private PointSourceDistanceCorrections(String name, WeightedList<? extends PointSourceDistanceCorrection> corrs) {
 		this.name = name;
 		Preconditions.checkState(corrs.isNormalized(), "Weights not normalized for %s", name);
 		if (!(corrs instanceof WeightedList.Unmodifiable<?>))
@@ -140,7 +146,7 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<Poin
 	}
 
 	@Override
-	public WeightedList<PointSourceDistanceCorrection> get() {
+	public WeightedList<? extends PointSourceDistanceCorrection> get() {
 		return corrs;
 	}
 	
@@ -149,7 +155,7 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<Poin
 	 * @param corrs
 	 * @return
 	 */
-	public static PointSourceDistanceCorrections forCorrections(WeightedList<PointSourceDistanceCorrection> corrs) {
+	public static PointSourceDistanceCorrections forCorrections(WeightedList<? extends PointSourceDistanceCorrection> corrs) {
 		if (corrs == null || corrs.isEmpty())
 			return NONE;
 		for (PointSourceDistanceCorrections corr : values()) {
