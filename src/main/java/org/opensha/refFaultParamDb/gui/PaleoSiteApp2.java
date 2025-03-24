@@ -33,7 +33,7 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ApplicationVersion;
-import org.opensha.commons.util.bugReports.DefaultExceptoinHandler;
+import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.refFaultParamDb.dao.db.CombinedEventsInfoDB_DAO;
 import org.opensha.refFaultParamDb.dao.db.DB_AccessAPI;
 import org.opensha.refFaultParamDb.dao.db.DB_ConnectionPool;
@@ -87,7 +87,7 @@ public class PaleoSiteApp2 extends JFrame implements SiteSelectionAPI, Parameter
 	
 	private static ApplicationVersion version;
 	
-	private static DefaultExceptoinHandler eh;
+	private static DefaultExceptionHandler eh;
 	
 	/**
 	 * Returns the Application version
@@ -657,7 +657,7 @@ public class PaleoSiteApp2 extends JFrame implements SiteSelectionAPI, Parameter
 	}
 
 	public static void main(String args[]) {
-		eh = new DefaultExceptoinHandler(APP_SHORT_NAME, getAppVersion(), null, null);
+		eh = new DefaultExceptionHandler(APP_SHORT_NAME, getAppVersion(), null, null);
 		new LoginWindow(dbConnection, PaleoSiteApp2.class.getName());
 	}
 }
