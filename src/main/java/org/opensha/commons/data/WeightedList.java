@@ -379,13 +379,6 @@ public class WeightedList<E> extends AbstractList<WeightedValue<E>> implements X
 		double sum = getWeightSum();
 		if (sum == 1f)
 			return; // already normalized
-		if (sum == 0f) {
-			// can't normalize if all weights sum to 0, would divide by 0.
-			// set all weights to 1 and then normalize.
-			setWeightsToConstant(1d);
-			normalize();
-			return;
-		}
 		
 		List<WeightedValue<E>> normalized = new ArrayList<>(list.size());
 		for (int i=0; i<list.size(); i++) {
