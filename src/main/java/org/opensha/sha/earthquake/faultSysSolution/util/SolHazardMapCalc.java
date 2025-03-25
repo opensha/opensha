@@ -1499,6 +1499,7 @@ public class SolHazardMapCalc {
 		ops.addOption(null, "gmm-sigma-trunc-two-sided", true, "Enables two-sided GMM sigma truncation; default is disabled.");
 		ops.addOption(null, "supersample", false, "Flag to enable grid cell supersampling (default is disabled)");
 		ops.addOption(null, "supersample-quick", false, "Flag to enable grid cell supersampling with faster parameters (default is disabled)");
+		ops.addOption(null, "supersample-finite", false, "Flag to also super-sample finite ruptures; implies --supersample (unless --supersample-quick is selected).");
 		ops.addOption(null, "dist-corr", true, "Set the point-source distance correction method. Default is "
 				+BaseFaultSystemSolutionERF.DIST_CORR_TYPE_DEFAULT.name()+"; options are: "+FaultSysTools.enumOptions(PointSourceDistanceCorrections.class));
 		ops.addOption(null, "point-source-type", true, "Sets the point source surface type. Default is "
@@ -1509,6 +1510,9 @@ public class SolHazardMapCalc {
 				+ "to enable random sampling of the position of the grid cell along-strike of the rupture.");
 		ops.addOption(null, "point-finite-sample-down-dip", false, "If --point-source-type FINITE is supplied, this can be used "
 				+ "to enable random sampling of the position of the grid cell down-dip of the rupture.");
+		ops.addOption(null, "point-finite-min-mag", true, "Minimum magnitude for finite (or distance-corrected point) sources; "
+				+ "all ruptures below this magnitude will be treated as pure point sources. Default: "
+				+(float)GriddedSeismicitySettings.DEFAULT.pointSourceMagnitudeCutoff);
 		if (includeSiteSkip)
 			ops.addOption("smd", "skip-max-distance", true, "Skip sites with no source-site distances below this value, in km. "
 					+ "Default is "+(int)(SITE_SKIP_FRACT*100d)+"% of the TectonicRegionType-specific default maximum distance.");
@@ -1523,12 +1527,23 @@ public class SolHazardMapCalc {
 			settings = settings.forSupersamplingSettings(GridCellSupersamplingSettings.QUICK);
 		else
 			settings = settings.forSupersamplingSettings(null);
+		if (cmd.hasOption("supersample-finite")) {
+			GridCellSupersamplingSettings ssSettings = settings.supersamplingSettings;
+			if (ssSettings == null)
+				ssSettings = GridCellSupersamplingSettings.DEFAULT;
+			ssSettings = new GridCellSupersamplingSettings(ssSettings.targetSpacingKM, ssSettings.fullDist,
+					ssSettings.borderDist, ssSettings.cornerDist, true);
+			settings = settings.forSupersamplingSettings(ssSettings);
+		}
 		
 		if (cmd.hasOption("dist-corr"))
 			settings = settings.forDistanceCorrections(PointSourceDistanceCorrections.valueOf(cmd.getOptionValue("dist-corr")));
 		
 		if (cmd.hasOption("point-source-type"))
 			settings = settings.forSurfaceType(BackgroundRupType.valueOf(cmd.getOptionValue("point-source-type")));
+		
+		if (cmd.hasOption("point-finite-min-mag"))
+			settings = settings.forPointSourceMagCutoff(Double.parseDouble(cmd.getOptionValue("point-finite-min-mag")));
 		
 		if (settings.surfaceType == BackgroundRupType.FINITE) {
 			GriddedFiniteRuptureSettings finiteSettings = settings.finiteRuptureSettings;
