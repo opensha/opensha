@@ -295,9 +295,9 @@ implements ParameterChangeListener, ScalarIMRChangeListener {
 	}
 	
 	private void fireIMTChangeEvent() {
-		System.out.println("firing change event!");
+		 System.out.println("IMT_NewGuiBean.fireIMTChangeEvent()");
 		IMTChangeEvent event = new IMTChangeEvent(this, getSelectedIM());
-		
+		System.out.println(listeners);
 		for (IMTChangeListener listener : listeners) {
 			listener.imtChange(event);
 		}

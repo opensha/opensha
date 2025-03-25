@@ -32,6 +32,8 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.IntegerParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.sha.gui.HazardCurveApplication;
+import org.opensha.sha.gui.beans.event.IMTChangeEvent;
+import org.opensha.sha.gui.beans.event.IMTChangeListener;
 import org.opensha.sha.gcim.ui.infoTools.AttenuationRelationshipsInstance;
 import org.opensha.sha.gcim.imCorrRel.ImCorrelationRelationship;
 import org.opensha.sha.gcim.ui.infoTools.ImCorrelationRelationshipsInstance;
@@ -54,7 +56,8 @@ import org.opensha.sha.util.TectonicRegionType;
  */
 
 public class GcimControlPanel extends ControlPanel
-	implements ParameterChangeFailListener, ParameterChangeListener, ActionListener{
+implements ParameterChangeFailListener, ParameterChangeListener,
+	ActionListener, IMTChangeListener {
 
 	public static final String NAME = "GCIM distributions";
 	private static final boolean D = false;
@@ -126,7 +129,6 @@ public class GcimControlPanel extends ControlPanel
 
 	// applet which called this control panel
 	HazardCurveApplication parent;
-	private GridBagLayout gridBagLayout1 = new GridBagLayout();
 	
 	private JFrame frame;
 	
@@ -146,18 +148,15 @@ public class GcimControlPanel extends ControlPanel
 	}
 	
 	public void doinit() {
-		
 		frame = new JFrame();
 
 		// set info strings for parameters
-		
 		minApproxZParam.setInfo("The approx. min Z value to construct the GCIM CDF");
 		maxApproxZParam.setInfo("The approx. max Z value to construct the GCIM CDF");
 		deltaApproxZParam.setInfo("The increment in approx. min Z values to construct the GCIM CDF");
 		numGcimRealizationsParam.setInfo("The number of realizations from the GCIM distributions");
 		
 		try {
-
 			ArrayList<String> gcimSupportList = new ArrayList<String>();
 			gcimSupportList.add(GCIM_NOT_SUPPORTED_IMJ);
 			gcimSupportParameter = new StringParameter(GCIM_SUPPORTED_NAME,gcimSupportList,
@@ -198,13 +197,13 @@ public class GcimControlPanel extends ControlPanel
 			else
 				setParamsVisible((String)gcimSupportParameter.getValue());
 				
+			// Listen to changes in IMT panel to show/hide GcimControlPanel
+			parent.getIMTGuiBeanInstance().addIMTChangeListener(this);
 
 			jbInit();
 			// show the window at center of the parent component
 			frame.setLocation(parentComponent.getX()+parentComponent.getWidth()/2,0);
 			parent.setGcimSelected(isGcimSelected);
-
-
 		}
 		catch(Exception e) {
 			e.printStackTrace();
@@ -214,7 +213,6 @@ public class GcimControlPanel extends ControlPanel
 
 	// initialize the gui components
 	private void jbInit() throws Exception {
-
 		frame.getContentPane().setLayout(new BorderLayout());
 		frame.getContentPane().add(paramListEditor, BorderLayout.CENTER);
 		
@@ -242,18 +240,17 @@ public class GcimControlPanel extends ControlPanel
 
 	/**
 	 *  Shown when a Constraint error is thrown on GCIM ParameterEditor
-	 * @param  e  Description of the Parameter
+	 * @param e  Description of the Parameter
 	 */
-	public void parameterChangeFailed( ParameterChangeFailEvent e ) {
-
+	@Override
+	public void parameterChangeFailed(ParameterChangeFailEvent e) {
 		StringBuffer b = new StringBuffer();
-		Parameter param = ( Parameter ) e.getSource();
+		Parameter param = (Parameter)e.getSource();
 
 		ParameterConstraint constraint = param.getConstraint();
 		String oldValueStr = e.getOldValue().toString();
 		String badValueStr = e.getBadValue().toString();
 		String name = param.getName();
-
 
 		b.append( "The value ");
 		b.append( badValueStr );
@@ -269,14 +266,15 @@ public class GcimControlPanel extends ControlPanel
 				frame, b.toString(),
 				"Cannot Change Value", JOptionPane.INFORMATION_MESSAGE
 		);
-
 	}
 
 
 	/**
-	 *
+	 * This method is invoked everytime a new parameter is selected inside the
+	 * GcimControlPanel.
 	 * @param e ParameterChangeEvent
 	 */
+	@Override
 	public void parameterChange(ParameterChangeEvent e){
 		String paramName = e.getParameterName();
 		if(paramName.equals(GCIM_PARAM_NAME))
@@ -575,6 +573,12 @@ public class GcimControlPanel extends ControlPanel
 		}
 	}
 
+	/**
+	 * An action took place inside the GcimControlPanel,
+	 * such as adding, removing, or editing an IMi. This is done through their
+	 * respective buttons.
+	 * @param ActionEvent event that occured inside the GcimControlPanel
+	 */
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		StringConstraint stringConst = (StringConstraint) gcimImisParameter.getConstraint();
@@ -585,7 +589,7 @@ public class GcimControlPanel extends ControlPanel
 			
 			String newIMIName = "IMi " + (getNumIMi()+1);
 			stringConst.addString(newIMIName); 
-			//now that we've added one, we need to remove the place holder if it was there.
+			// now that we've added one, we need to remove the place holder if it was there.
 			if (stringConst.getAllowedStrings().get(0).equals(IMI_LIST_DEFAULT))
 				stringConst.removeString(IMI_LIST_DEFAULT);
 			gcimImisParameter.setValue(newIMIName);
@@ -853,6 +857,8 @@ public class GcimControlPanel extends ControlPanel
 		//Get the old and new IMj's
 		Parameter<Double> oldParentIMj = this.parentIMj;
 		Parameter<Double> newParentIMj = parent.getIMTGuiBeanInstance().getSelectedIM();
+		System.out.println("oldParentImj: " + oldParentIMj.getName());
+		System.out.println("newParentImj: " + newParentIMj.getName());
 		//Now compare
 		boolean oldNewIMjSame = true;
 		
@@ -952,10 +958,10 @@ public class GcimControlPanel extends ControlPanel
 	}
 	
 	/**
-	 * This methods intiates the GCIM panel inline with the main hazard calc details
+	 * This method intiates the GCIM panel inline with the main hazard calc details
 	 */
 	public void initWithParentDetails() {
-		//update parent site params and IMj
+		// update parent site params and IMj
 		getParentSite();
 		initGcimSite();
 		getParentIMj();
@@ -965,7 +971,7 @@ public class GcimControlPanel extends ControlPanel
 	}
 	
 	/**
-	 * This methods updates the GCIM panel inline with the main hazard calc details
+	 * This method updates the GCIM panel inline with the main hazard calc details
 	 */
 	public void updateWithParentDetails() {
 		//update parent site params and IMj
@@ -985,8 +991,23 @@ public class GcimControlPanel extends ControlPanel
 		String blank = "blank";
 		setParamsVisible(blank);
 	}
-	
-	
-	
 
+	/**
+	 * This method is invoked whenever a new IMT is selected.
+	 * Only certain IMTs are eligible for use in GCIM. See `isParentIMjGcimSupported`.
+	 * The params are hidden or shown accordingly.
+	 */
+	@Override
+	public void imtChange(IMTChangeEvent e) {
+		System.out.println("GcimControlPanel.imtChange() newIMT: " + e.getNewIMT());
+		// TODO: Fix this. `updateWithParentDetails` isn't hiding/showing correctly
+		gcimSupportedIMj = isParentIMjGcimSupported(); 
+		System.out.println("Is supported: " + gcimSupportedIMj);
+//		setParamsVisible(GCIM_NOT_SUPPORTED_IMJ);
+		if (gcimSupportedIMj && isGUIInitialized)
+			setParamsVisible((String)gcimParameter.getValue()); 
+		else
+			setParamsVisible((String)gcimSupportParameter.getValue());
+
+	}
 }
