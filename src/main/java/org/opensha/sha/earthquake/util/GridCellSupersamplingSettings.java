@@ -43,4 +43,8 @@ public class GridCellSupersamplingSettings {
 				+ ", borderDist="+(float)borderDist+", cornerDist="+(float)cornerDist+", applyToFinite="+applyToFinite+"]";
 	}
 	
+	public GridCellSupersamplingSettings forApplyToFinite(boolean applyToFinite) {
+		return new GridCellSupersamplingSettings(targetSpacingKM, fullDist, borderDist, cornerDist, applyToFinite);
+	}
+	
 }
