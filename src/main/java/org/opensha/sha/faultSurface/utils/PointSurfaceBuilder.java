@@ -926,6 +926,8 @@ public class PointSurfaceBuilder {
 	 * @return
 	 */
 	public QuadSurface[] buildRandQuadSurfaces(int num) {
+		if (rand == null)
+			randomGlobalSeed(num);
 		return buildRandQuadSurfaces(num, strikeRange);
 	}
 	

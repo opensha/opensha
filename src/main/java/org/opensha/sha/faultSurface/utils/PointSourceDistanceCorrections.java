@@ -21,7 +21,13 @@ import com.google.common.base.Preconditions;
  */
 public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? extends PointSourceDistanceCorrection>> {
 	
-	NONE("None"),
+	NONE("None") {
+		@Override
+		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+			// none
+			return null;
+		}
+	},
 //	NONE("None", new PointSourceDistanceCorrection() {
 //
 //		@Override
@@ -35,36 +41,70 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 //		}
 //		
 //	}),
-	FIELD("Field", new PointSourceDistanceCorrection() {
-		// TODO is there a reference? more specific name?
+	FIELD("Field") {
+		@Override
+		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+			return WeightedList.evenlyWeighted(new PointSourceDistanceCorrection() {
+				// TODO is there a reference? more specific name?
 
-		@Override
-		public double getCorrectedDistanceJB(double mag, PointSurface surf, double horzDist) {
-			// Wells and Coppersmith L(M) for "all" focal mechanisms
-			// this correction comes from work by Ned Field and Bruce Worden
-			// it assumes a vertically dipping straight fault with random
-			// hypocenter and strike
-			double rupLen =  Math.pow(10.0,-3.22+0.69*mag);
-			double corrFactor = 0.7071 + (1.0-0.7071)/(1 + Math.pow(rupLen/(horzDist*0.87),1.1));
-			return horzDist*corrFactor;
+				@Override
+				public double getCorrectedDistanceJB(double mag, PointSurface surf, double horzDist) {
+					// Wells and Coppersmith L(M) for "all" focal mechanisms
+					// this correction comes from work by Ned Field and Bruce Worden
+					// it assumes a vertically dipping straight fault with random
+					// hypocenter and strike
+					double rupLen =  Math.pow(10.0,-3.22+0.69*mag);
+					double corrFactor = 0.7071 + (1.0-0.7071)/(1 + Math.pow(rupLen/(horzDist*0.87),1.1));
+					return horzDist*corrFactor;
+				}
+				
+				@Override
+				public String toString() {
+					return PointSourceDistanceCorrections.FIELD.name;
+				}
+				
+			});
 		}
-		
+	},
+	NSHM_2008("USGS NSHM (2008)") {
 		@Override
-		public String toString() {
-			return PointSourceDistanceCorrections.FIELD.name;
+		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+			return WeightedList.evenlyWeighted(new DistanceCorrection2008());
 		}
-		
-	}),
-	NSHM_2008("USGS NSHM (2008)", new DistanceCorrection2008()),
-	NSHM_2013("USGS NSHM (2013)", new DistanceCorrection2013()),
-	ANALYTICAL_MEDIAN("Analytical Median (centered)",
-			// NaN here indicates to use mean and not a fractile
-			new AnalyticalPointSourceDistanceCorrection(Double.NaN, false, false)),
-	ANALYTICAL_FIVE_POINT("Analytical 5-Point (centered)",
-//			AnalyticalPointSourceDistanceCorrection.getEvenlyWeightedFractiles(5, false, false)),
-			AnalyticalPointSourceDistanceCorrection.getImportanceSampledFractiles(new double[] {0d, 0.05, 0.2, 0.5, 0.8, 1d}, false, false)),
-	ANALYTICAL_TWENTY_POINT("Analytical 20-Point (centered)",
-			AnalyticalPointSourceDistanceCorrection.getEvenlyWeightedFractiles(20, false, false));
+	},
+	NSHM_2013("USGS NSHM (2013)") {
+		@Override
+		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+			return WeightedList.evenlyWeighted(new DistanceCorrection2013());
+		}
+	},
+	MEDIAN_RJB("Median rJB (centered)") {
+		@Override
+		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+			return WeightedList.evenlyWeighted(new RjbDistributionDistanceCorrection(0.5, false, false));
+		}
+	},
+	FIVE_POINT_RJB_DIST("5-Point rJB Distribution (centered)") {
+		@Override
+		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+//			return AnalyticalPointSourceDistanceCorrection.getEvenlyWeightedFractiles(5, false, false));
+			return RjbDistributionDistanceCorrection.getImportanceSampledFractiles(
+					new double[] {0d, 0.05, 0.2, 0.5, 0.8, 1d}, false, false);
+		}
+	},
+	TWENTY_POINT_RJB_DIST("20-Point rJB Distribution (centered)") {
+		@Override
+		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+			return RjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(20, false, false);
+		}
+	},
+	SUPERSAMPLING_0p1_FIVE_POINT_RJB_DIST("Super-sampling 5-Point rJB (centered, 0.1 deg)") {
+		@Override
+		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+			return SupersamplingRjbDistributionDistanceCorrection.getImportanceSampledFractiles(
+					new double[] {0d, 0.05, 0.2, 0.5, 0.8, 1d}, 0.1, 10, false, false);
+		}
+	};
 	
 	// TODO: decide on default
 	public static final PointSourceDistanceCorrections DEFAULT = NSHM_2013;
@@ -82,6 +122,7 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 	}
 	
 	private String name;
+	private volatile boolean intialized;
 	private WeightedList<? extends PointSourceDistanceCorrection> corrs;
 
 	private PointSourceDistanceCorrections(String name) {
@@ -101,6 +142,25 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 		this.corrs = corrs;
 	}
 	
+	protected abstract WeightedList<? extends PointSourceDistanceCorrection> initCorrs();
+	
+	private void checkInitCorrs() {
+		if (!intialized) {
+			synchronized (this) {
+				if (!intialized) {
+					WeightedList<? extends PointSourceDistanceCorrection> corrs = initCorrs();
+					if (corrs != null) {
+						Preconditions.checkState(corrs.isNormalized(), "Weights not normalized for %s", name);
+						if (!(corrs instanceof WeightedList.Unmodifiable<?>))
+							corrs = new WeightedList.Unmodifiable<>(corrs);
+					}
+					this.corrs = corrs;
+					intialized = true;
+				}
+			}
+		}
+	}
+	
 	@Override
 	public String toString() {
 		return name;
@@ -108,6 +168,7 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 
 	@Override
 	public WeightedList<? extends PointSourceDistanceCorrection> get() {
+		checkInitCorrs();
 		return corrs;
 	}
 	
@@ -120,6 +181,7 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 		if (corrs == null || corrs.isEmpty())
 			return NONE;
 		for (PointSourceDistanceCorrections corr : values()) {
+			corr.checkInitCorrs();
 			if (corr.corrs == corrs)
 				return corr;
 		}
