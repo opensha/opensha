@@ -164,7 +164,7 @@ implements ParameterChangeFailListener, ParameterChangeListener{
 
 		try {
 
-			this.parent= parent;
+			this.parent = parent;
 
 			ArrayList disaggregateList = new ArrayList();
 			disaggregateList.add(NO_DISAGGREGATION);

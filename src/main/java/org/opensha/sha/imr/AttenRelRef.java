@@ -1,5 +1,17 @@
 package org.opensha.sha.imr;
 
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.ASK_14;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.ASK_14_BASIN;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.ASK_14_CYBERSHAKE;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.BSSA_14;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.BSSA_14_BASIN;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.BSSA_14_CYBERSHAKE;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.CB_14;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.CB_14_BASIN;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.CB_14_CYBERSHAKE;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.CY_14;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.CY_14_BASIN;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.CY_14_CYBERSHAKE;
 import static org.opensha.commons.util.DevStatus.*;
 
 import java.lang.reflect.Constructor;
@@ -10,11 +22,15 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.opensha.commons.data.Named;
+import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.WeightedList.Unmodifiable;
+import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.util.DevStatus;
 import org.opensha.commons.util.ServerPrefs;
@@ -182,7 +198,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.ASK_14_BASE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.ASK_14_BASE, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -193,7 +209,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.AG_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.AG_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -204,7 +220,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.PSBAH_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.PSBAH_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -215,7 +231,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.PSBAH_20_GLOBAL_SLAB, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.PSBAH_20_GLOBAL_SLAB, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -226,7 +242,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.USGS_PRVI_ACTIVE_CRUST_COMBINED_TREE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.USGS_PRVI_ACTIVE_CRUST_COMBINED_TREE, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -237,7 +253,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.USGS_PRVI_INTERFACE_COMBINED_TREE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.USGS_PRVI_INTERFACE_COMBINED_TREE, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -248,7 +264,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.USGS_PRVI_INTRASLAB_COMBINED_TREE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.USGS_PRVI_INTRASLAB_COMBINED_TREE, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -259,7 +275,9 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023, getName(), getShortName(), false, null);
+			Unmodifiable<Gmm> gmms = WeightedList.evenlyWeighted(
+					Gmm.ASK_14_BASIN, Gmm.BSSA_14_BASIN, Gmm.CB_14_BASIN, Gmm.CY_14_BASIN);
+			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -270,7 +288,20 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023_LOS_ANGELES, getName(), getShortName(), false, null);
+			WeightedList<Gmm> gmms = WeightedList.of(
+					new WeightedValue<>(Gmm.ASK_14, 0.125),
+					new WeightedValue<>(Gmm.BSSA_14, 0.125),
+					new WeightedValue<>(Gmm.CB_14, 0.125),
+					new WeightedValue<>(Gmm.CY_14, 0.125),
+					new WeightedValue<>(Gmm.ASK_14_BASIN, 0.0625),
+					new WeightedValue<>(Gmm.BSSA_14_BASIN, 0.0625),
+					new WeightedValue<>(Gmm.CB_14_BASIN, 0.0625),
+					new WeightedValue<>(Gmm.CY_14_BASIN, 0.0625),
+					new WeightedValue<>(Gmm.ASK_14_CYBERSHAKE, 0.0625),
+					new WeightedValue<>(Gmm.BSSA_14_CYBERSHAKE, 0.0625),
+					new WeightedValue<>(Gmm.CB_14_CYBERSHAKE, 0.0625),
+					new WeightedValue<>(Gmm.CY_14_CYBERSHAKE, 0.0625));
+			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -281,7 +312,16 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023_SAN_FRANCISCO, getName(), getShortName(), false, null);
+			WeightedList<Gmm> gmms = WeightedList.of(
+					new WeightedValue<>(Gmm.ASK_14, 0.125),
+					new WeightedValue<>(Gmm.BSSA_14, 0.125),
+					new WeightedValue<>(Gmm.CB_14, 0.125),
+					new WeightedValue<>(Gmm.CY_14, 0.125),
+					new WeightedValue<>(Gmm.ASK_14_BASIN, 0.125),
+					new WeightedValue<>(Gmm.BSSA_14_BASIN, 0.125),
+					new WeightedValue<>(Gmm.CB_14_BASIN, 0.125),
+					new WeightedValue<>(Gmm.CY_14_BASIN, 0.125));
+			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
 		}
 		
 	},

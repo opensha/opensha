@@ -9,4 +9,15 @@ public class WeightedValue<E> {
 		this.value = value;
 		this.weight = weight;
 	}
+	
+	@Override
+	public String toString() {
+		if (value instanceof ShortNamed) {
+			return ((ShortNamed) value).getShortName();
+		}
+		if (value instanceof Named) {
+			return ((Named) value).getName();
+		}
+		return value.toString();
+	}
 }

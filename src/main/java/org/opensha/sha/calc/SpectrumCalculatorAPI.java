@@ -10,7 +10,7 @@ import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.imr.ScalarIMR;
 
-public interface SpectrumCalculatorAPI {
+public interface SpectrumCalculatorAPI extends CalculatorAPI {
 	/**
 	 *
 	 * @return the current rupture being traversed

@@ -1,10 +1,13 @@
 package org.opensha.sha.imr.attenRelImpl.nshmp.util;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.opensha.commons.param.Parameter;
+import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.attenRelImpl.nshmp.GroundMotionLogicTreeFilter;
 import org.opensha.sha.imr.attenRelImpl.nshmp.NSHMP_GMM_Wrapper;
 
@@ -56,10 +59,29 @@ class InitialTests {
 //		GroundMotionModel gmm = Gmm.ASK_14.instance(Imt.PGA);
 //		GroundMotionModel gmm = Gmm.ASK_14_BASE.instance(Imt.PGA);
 		
+		List<NSHMP_GMM_Wrapper> wrappers = new ArrayList<>();
+		for (Gmm gmm : gmms) {
+			try {
+				wrappers.add(new NSHMP_GMM_Wrapper.Single(gmm));
+			} catch (Exception e) {
+				System.out.flush();
+				System.err.println("FAILED for "+gmm+": "+e.getMessage());
+				System.err.flush();
+				System.out.println();
+				try {
+					Thread.sleep(100);
+				} catch (InterruptedException e1) {}
+				continue;
+			}
+		}
+		
+		wrappers.add((NSHMP_GMM_Wrapper)AttenRelRef.USGS_NSHM23_ACTIVE.get());
+		
 		GmmInput input = GmmInput.builder().withDefaults().build();
 		
-		for (Gmm gmmRef : gmms) {
-			System.out.println("GMM: "+gmmRef.name()+": "+gmmRef);
+		for (NSHMP_GMM_Wrapper wrapper : wrappers) {
+			System.out.println("GMM: "+wrapper.getName());
+			wrapper.setParamDefaults();
 			
 			LogicTree<GroundMotion> result;
 			
@@ -89,36 +111,37 @@ class InitialTests {
 //				String id = gmBranch.id();
 //				System.out.println("\t\t"+id+" (weight="+(float)weight+"): "+value);
 //			}
-			
-			System.out.print("\tBuilding wrapped instance...");
-			NSHMP_GMM_Wrapper wrapper;
-			try {
-				wrapper = new NSHMP_GMM_Wrapper(gmmRef);
-				wrapper.setParamDefaults();
-				System.out.println("Success!");
-			} catch (Exception e) {
-				System.out.flush();
-				System.err.println("FAILED: "+e.getMessage());
-				System.err.flush();
-				System.out.println();
-				try {
-					Thread.sleep(100);
-				} catch (InterruptedException e1) {}
-				continue;
-			}
+//			
+//			System.out.print("\tBuilding wrapped instance...");
+//			NSHMP_GMM_Wrapper.Single wrapper;
+//			try {
+//				wrapper = new NSHMP_GMM_Wrapper.Single(gmmRef);
+//				System.out.println("Success!");
+//			} catch (Exception e) {
+//				System.out.flush();
+//				System.err.println("FAILED: "+e.getMessage());
+//				System.err.flush();
+//				System.out.println();
+//				try {
+//					Thread.sleep(100);
+//				} catch (InterruptedException e1) {}
+//				continue;
+//			}
 			
 			if (filter != null)
-				wrapper.setGroundMotionTreeFilter(filter);;
+				wrapper.setGroundMotionTreeFilter(filter);
 			
-			GroundMotionModel instance = wrapper.getCurrentGMM_Instance();
-			System.out.println("\tInstance class: "+instance.getClass().getName());
-			Class<?> superclass = instance.getClass().getSuperclass();
-			while (getAllInterfaces(superclass).contains(GroundMotionModel.class)) {
-//			while (true) {
-				System.out.println("\t\tSuperclass:\t"+superclass.getName());
-				superclass = superclass.getSuperclass();
-				if (superclass == null)
-					break;
+			if (wrapper instanceof NSHMP_GMM_Wrapper.Single) {
+				GroundMotionModel instance = ((NSHMP_GMM_Wrapper.Single)wrapper).getCurrentGMM_Instance();
+				System.out.println("\tInstance class: "+instance.getClass().getName());
+				Class<?> superclass = instance.getClass().getSuperclass();
+				while (getAllInterfaces(superclass).contains(GroundMotionModel.class)) {
+//				while (true) {
+					System.out.println("\t\tSuperclass:\t"+superclass.getName());
+					superclass = superclass.getSuperclass();
+					if (superclass == null)
+						break;
+				}
 			}
 //			while (GroundMotionModel.class.instan)
 //			instance.getClass().super
@@ -162,6 +185,18 @@ class InitialTests {
 			}
 			
 			System.out.println();
+		}
+		
+		NSHMP_GMM_Wrapper listGMM = (NSHMP_GMM_Wrapper)AttenRelRef.USGS_NSHM23_ACTIVE.get();
+		listGMM.setParamDefaults();
+		System.out.println("Testing list GMM: "+listGMM.getName());
+		LogicTree<GroundMotion> result = listGMM.getGroundMotionTree();
+		System.out.println("\tReturned LogicTree:");
+		for (Branch<GroundMotion> gmBranch : result) {
+			double weight = gmBranch.weight();
+			GroundMotion value = gmBranch.value();
+			String id = gmBranch.id();
+			System.out.println("\t\t"+id+" (weight="+(float)weight+"): "+value);
 		}
 	}
 	
