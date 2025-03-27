@@ -32,8 +32,6 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.IntegerParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.sha.gui.HazardCurveApplication;
-import org.opensha.sha.gui.beans.event.IMTChangeEvent;
-import org.opensha.sha.gui.beans.event.IMTChangeListener;
 import org.opensha.sha.gcim.ui.infoTools.AttenuationRelationshipsInstance;
 import org.opensha.sha.gcim.imCorrRel.ImCorrelationRelationship;
 import org.opensha.sha.gcim.ui.infoTools.ImCorrelationRelationshipsInstance;
@@ -57,7 +55,7 @@ import org.opensha.sha.util.TectonicRegionType;
 
 public class GcimControlPanel extends ControlPanel
 implements ParameterChangeFailListener, ParameterChangeListener,
-	ActionListener, IMTChangeListener {
+	ActionListener {
 
 	public static final String NAME = "GCIM distributions";
 	private static final boolean D = false;
@@ -197,9 +195,6 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 			else
 				setParamsVisible((String)gcimSupportParameter.getValue());
 				
-			// Listen to changes in IMT panel to show/hide GcimControlPanel
-			parent.getIMTGuiBeanInstance().addIMTChangeListener(this);
-
 			jbInit();
 			// show the window at center of the parent component
 			frame.setLocation(parentComponent.getX()+parentComponent.getWidth()/2,0);
@@ -990,24 +985,5 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 		gcimImisParameter.getEditor().setParameter(gcimImisParameter); // little hack to make sure the GUI updates
 		String blank = "blank";
 		setParamsVisible(blank);
-	}
-
-	/**
-	 * This method is invoked whenever a new IMT is selected.
-	 * Only certain IMTs are eligible for use in GCIM. See `isParentIMjGcimSupported`.
-	 * The params are hidden or shown accordingly.
-	 */
-	@Override
-	public void imtChange(IMTChangeEvent e) {
-		System.out.println("GcimControlPanel.imtChange() newIMT: " + e.getNewIMT());
-		// TODO: Fix this. `updateWithParentDetails` isn't hiding/showing correctly
-		gcimSupportedIMj = isParentIMjGcimSupported(); 
-		System.out.println("Is supported: " + gcimSupportedIMj);
-//		setParamsVisible(GCIM_NOT_SUPPORTED_IMJ);
-		if (gcimSupportedIMj && isGUIInitialized)
-			setParamsVisible((String)gcimParameter.getValue()); 
-		else
-			setParamsVisible((String)gcimSupportParameter.getValue());
-
 	}
 }

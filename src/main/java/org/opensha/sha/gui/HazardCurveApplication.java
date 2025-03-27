@@ -90,6 +90,8 @@ import org.opensha.sha.gui.beans.IMR_GuiBean;
 import org.opensha.sha.gui.beans.IMR_MultiGuiBean;
 import org.opensha.sha.gui.beans.IMT_NewGuiBean;
 import org.opensha.sha.gui.beans.Site_GuiBean;
+import org.opensha.sha.gui.beans.event.IMTChangeEvent;
+import org.opensha.sha.gui.beans.event.IMTChangeListener;
 import org.opensha.sha.gui.controls.CalculationSettingsControlPanel;
 import org.opensha.sha.gui.controls.CalculationSettingsControlPanelAPI;
 import org.opensha.sha.gui.controls.CurveDisplayAppAPI;
@@ -143,7 +145,7 @@ import com.google.common.collect.Lists;
 
 public class HazardCurveApplication extends JFrame implements
 ParameterChangeListener, CurveDisplayAppAPI, CalculationSettingsControlPanelAPI,
-ActionListener, ScalarIMRChangeListener {
+ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 	private static final long serialVersionUID = 1L;
 	
 	private static ApplicationVersion version;
@@ -1867,6 +1869,7 @@ ActionListener, ScalarIMRChangeListener {
 		imtGuiBean.setSelectedIMT(SA_Param.NAME);
 		imtGuiBean.setMinimumSize(new Dimension(200, 90));
 		imtGuiBean.setPreferredSize(new Dimension(290, 220));
+		imtGuiBean.addIMTChangeListener(this);
 		//		imtGuiBean = new IMT_GuiBean(imrGuiBean.getIMRs());
 	}
 
@@ -2632,6 +2635,15 @@ ActionListener, ScalarIMRChangeListener {
 	@Override
 	public void imrChange(ScalarIMRChangeEvent event) {
 		updateSiteParams();
+	}
+	
+
+	@Override
+	public void imtChange(IMTChangeEvent e) {
+		System.out.println("GcimControlPanel.imtChange() newIMT: " + e.getNewIMT());
+		controlPanels.remove(gcimControlPanel);
+		gcimControlPanel = new GcimControlPanel(this, this);
+		controlPanels.add(gcimControlPanel);
 	}
 
 	/**
