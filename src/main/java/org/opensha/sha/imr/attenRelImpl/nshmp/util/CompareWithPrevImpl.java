@@ -58,7 +58,7 @@ class CompareWithPrevImpl {
 //		ScalarIMR gmpePrevImpl = AttenRelRef.CY_2008.get();
 //		NSHMP_GMM_WrapperFullParam gmpeNewWrapper = new NSHMP_GMM_WrapperFullParam(Gmm.CY_08_BASE, fullParams);
 		ScalarIMR gmpePrevImpl = AttenRelRef.CB_2008.get();
-		NSHMP_GMM_Wrapper gmpeNewWrapper = new NSHMP_GMM_Wrapper(Gmm.CB_08_BASE, fullParams);
+		NSHMP_GMM_Wrapper gmpeNewWrapper = new NSHMP_GMM_Wrapper.Single(Gmm.CB_08_BASE, fullParams);
 		
 		double period = 0.2d;
 
