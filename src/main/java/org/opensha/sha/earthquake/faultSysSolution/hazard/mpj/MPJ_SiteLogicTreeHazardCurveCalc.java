@@ -35,6 +35,7 @@ import org.opensha.commons.param.impl.BooleanParameter;
 import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.StringParameter;
 import org.opensha.commons.util.ExecutorUtils;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.FileUtils;
 import org.opensha.sha.calc.params.filters.SourceFilterManager;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
@@ -168,7 +169,7 @@ public class MPJ_SiteLogicTreeHazardCurveCalc extends MPJTaskCalculator {
 				for (Parameter<?> param : site)
 					debug(param.getName()+": "+param.getValue());
 			}
-			sitePrefixes.add(site.getName().replaceAll("\\W+", "_"));
+			sitePrefixes.add(FileNameUtils.simplify(site.getName()));
 			siteCSVs.add(null);
 		}
 		

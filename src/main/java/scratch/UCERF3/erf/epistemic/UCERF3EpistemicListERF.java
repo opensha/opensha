@@ -42,6 +42,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.modules.SolutionLogicTree;
 import org.opensha.sha.earthquake.param.IncludeBackgroundOption;
 import org.opensha.sha.earthquake.param.IncludeBackgroundParam;
+import org.opensha.sha.gui.HazardCurveApplication;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenRelRef;
 import org.opensha.sha.imr.ScalarIMR;
@@ -275,13 +276,7 @@ public class UCERF3EpistemicListERF implements EpistemicListERF, ParameterChange
 	@Override
 	public ERF getERF(int index) {
 		updateBranches();
-		try {
-			fetchFuture.get();
-		} catch (InterruptedException | ExecutionException e) {
-			e.printStackTrace();
-			System.err.println("Could not get SolutionLogicTree");
-			return null;
-		}
+		fetchFuture.join();
 		LogicTreeBranch<?> branch = branches.get(index);
 		// EpistemicListERF	interface requires evaluation here. As lazy as it gets.
 		try {

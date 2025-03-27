@@ -20,6 +20,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.gui.plot.PlotUtils;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.modules.OpenSHA_Module;
@@ -97,7 +98,7 @@ public class InversionMisfitsPlot extends AbstractSolutionPlot {
 		
 		for (int r=0; r<ranges.size(); r++) {
 			ConstraintRange range = ranges.get(r);
-			String prefix = "misfits_"+range.shortName.replaceAll("\\W+", "_");
+			String prefix = "misfits_"+FileNameUtils.simplify(range.shortName);
 			
 			double[] misfitVals = rangeMisfitVals == null ? null : rangeMisfitVals.get(r);
 			MisfitStats stats = rangeStats.get(r);

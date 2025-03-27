@@ -60,6 +60,7 @@ import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.commons.param.impl.WarningDoubleParameter;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.ExecutorUtils;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.ReturnPeriodUtils;
@@ -1006,7 +1007,7 @@ public class SolSiteHazardCalc {
 		for (int s=0; s<sites.size(); s++) {
 			Site site = sites.get(s);
 			
-			String prefix = site.getName().replaceAll("\\W+", "_");
+			String prefix = FileNameUtils.simplify(site.getName());
 			while (prefix.contains("__"))
 				prefix = prefix.replace("__", "_");
 			
@@ -2502,7 +2503,7 @@ public class SolSiteHazardCalc {
 		if (sites.size() > 1) {
 			if (!sitePrefix.isBlank())
 				sitePrefix += "_";
-			sitePrefix += site.getName().replaceAll("\\W+", "_");
+			sitePrefix += FileNameUtils.simplify(site.getName());
 			while (sitePrefix.contains("__"))
 				sitePrefix = sitePrefix.replace("__", "_");
 		}
@@ -2519,7 +2520,7 @@ public class SolSiteHazardCalc {
 			if (sites.size() > 1) {
 				if (!sitePrefix.isBlank())
 					sitePrefix += "_";
-				sitePrefix += site.getName().replaceAll("\\W+", "_");
+				sitePrefix += FileNameUtils.simplify(site.getName());
 				while (sitePrefix.contains("__"))
 					sitePrefix = sitePrefix.replace("__", "_");
 			}

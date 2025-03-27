@@ -4,9 +4,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.IOException;
 import java.rmi.RemoteException;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.ListIterator;
 
 import javax.swing.JOptionPane;
 import javax.swing.JPanel;
@@ -24,7 +22,7 @@ import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.impl.DoubleDiscreteParameter;
 import org.opensha.commons.util.bugReports.BugReport;
 import org.opensha.commons.util.bugReports.BugReportDialog;
-import org.opensha.commons.util.bugReports.DefaultExceptoinHandler;
+import org.opensha.commons.util.bugReports.DefaultExceptionHandler;
 import org.opensha.sha.calc.SpectrumCalculator;
 import org.opensha.sha.calc.SpectrumCalculatorAPI;
 import org.opensha.sha.earthquake.ERF;
@@ -45,9 +43,9 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
  * @author nitingupta
  *
  */
-public class HazardSpectrumApplication
-extends HazardCurveApplication {
+public class HazardSpectrumApplication extends HazardCurveApplication {
 
+	private static final long serialVersionUID = 1L;
 	public static final String APP_NAME = "Hazard Spectrum Application";
 	public static final String APP_SHORT_NAME = "HazardSpectrumLocal";
 
@@ -157,20 +155,17 @@ extends HazardCurveApplication {
 	 * is required for it.
 	 */
 	protected void createCalcInstance(){
-		try{
-			if(calc == null) {
+		try {
+			if (calc == null) {
 				calc = new SpectrumCalculator();
 			}
-
 			/*if(disaggregationFlag)
         if(disaggCalc == null)
           disaggCalc = new DisaggregationCalculator();*/
-		}catch(Exception e){
-
+		} catch (Exception e) {
 			BugReport bug = new BugReport(e, getParametersInfoAsString(), appShortName, getAppVersion(), this);
 			BugReportDialog bugDialog = new BugReportDialog(this, bug, true);
 			bugDialog.setVisible(true);
-			//     e.printStackTrace();
 		}
 	}
 
@@ -187,6 +182,10 @@ extends HazardCurveApplication {
 		numERFsInEpistemicList = 0;
 		BaseERF forecast = null;
 		EqkRupture rupture = null;
+
+		// Check for interrupts before updating the forecast
+		if (isCancelled()) return;
+
 		if (!this.isProbabilisticCurve)
 			rupture = this.erfRupSelectorGuiBean.getRupture();
 
@@ -201,17 +200,22 @@ extends HazardCurveApplication {
 		}
 		catch (Exception e) {
 			e.printStackTrace();
-			JOptionPane.showMessageDialog(this, e.getMessage(), "Incorrect Values",
-					JOptionPane.ERROR_MESSAGE);
+			String message = (e.getMessage() != null)
+					? e.getMessage()
+					: e.toString();
+			JOptionPane.showMessageDialog(this, message,
+					"Incorrect Values", JOptionPane.ERROR_MESSAGE);
 			setButtonsEnable(true);
 			return;
 		}
 		if (this.progressCheckBox.isSelected()) {
 			progressClass = new CalcProgressBar("Response-Spectrum Calc Status",
 			"Beginning Calculation ");
-			progressClass.displayProgressBar();
 			timer.start();
 		}
+
+		// Check for interrupts after updating the forecast
+		if (isCancelled()) return;
 
 		// get the selected IMR
 		ScalarIMR imr = imrGuiBean.getSelectedIMR();
@@ -296,9 +300,11 @@ extends HazardCurveApplication {
 						}
 						catch (RuntimeException e) {
 							e.printStackTrace();
-							JOptionPane.showMessageDialog(this, e.getMessage(),
-									"Parameters Invalid",
-									JOptionPane.INFORMATION_MESSAGE);
+							if (!isCancelled()) {
+								JOptionPane.showMessageDialog(this, e.getMessage(),
+										"Parameters Invalid",
+										JOptionPane.INFORMATION_MESSAGE);
+							}
 							return;
 						}
 					}
@@ -338,9 +344,11 @@ extends HazardCurveApplication {
 			((ArbitrarilyDiscretizedFunc)hazFunction).setInfo(getParametersInfoAsString());
 		}
 		catch (RuntimeException e) {
-			JOptionPane.showMessageDialog(this, e.getMessage(),
-					"Parameters Invalid",
-					JOptionPane.INFORMATION_MESSAGE);
+			if (!isCancelled()) {
+				JOptionPane.showMessageDialog(this, e.getMessage(),
+						"Parameters Invalid",
+						JOptionPane.INFORMATION_MESSAGE);
+			}
 			e.printStackTrace();
 			setButtonsEnable(true);
 			return;
@@ -361,6 +369,7 @@ extends HazardCurveApplication {
 	/**
 	 * Initialize the items to be added to the control list
 	 */
+	@Override
 	protected void initControlList() {
 		initCommonControlList();
 	}
@@ -428,73 +437,50 @@ extends HazardCurveApplication {
 		}
 	}
 
-
 	/**
-	 * this function is called to draw the graph
+	 * Must override the timer to read progress from SpectrumCalculatorAPI
+	 * instead of HazardCurveCalculatorAPI.
 	 */
-	protected void calculate() {
-		setButtonsEnable(false);
-		// do not show warning messages in IMR gui bean. this is needed
-		// so that warning messages for site parameters are not shown when Add graph is clicked
-		//		imrGuiBean.showWarningMessages(false); // TODO need to add this back in
-		if(plotOptionControl !=null){
-			if(this.plotOptionControl.getSelectedOption().equals(PlottingOptionControl.PLOT_ON_TOP))
-				addData = true;
-			else
-				addData = false;
-		}
-		try{
-			createCalcInstance();
-		}catch(Exception e){
-			setButtonsEnable(true);
-			BugReport bug = new BugReport(e, getParametersInfoAsString(), appShortName, getAppVersion(), this);
-			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
-			bugDialog.setVisible(true);
-		}
-
-		// check if progress bar is desired and set it up if so
-		if(this.progressCheckBox.isSelected())  {
-
-			timer = new Timer(500, new ActionListener() {
-				public void actionPerformed(ActionEvent evt) {
-					try{
-						if(!isEqkList){
-
-							int totRupture = calc.getTotRuptures();
-							int currRupture = calc.getCurrRuptures();
-							if (currRupture != -1)
-								progressClass.updateProgress(currRupture, totRupture);
-
+	@Override
+	protected void startPrimaryTimer() {
+		timer = new Timer(200, new ActionListener() {
+			public void actionPerformed(ActionEvent evt) {
+				try {
+					if (!isEqkList) {
+						int totRupture = calc.getTotRuptures();
+						int currRupture = calc.getCurrRuptures();
+						boolean totCurCalculated = true;
+						if (currRupture == -1) {
+							progressClass
+							.setProgressMessage("Calculating total ruptures\u2026");
+							totCurCalculated = false;
 						}
-						else{
-							if((numERFsInEpistemicList+1) !=0 && !isHazardCalcDone)
-								progressClass.updateProgress(currentERFInEpistemicListForHazardCurve,numERFsInEpistemicList);
-						}
-						if (isHazardCalcDone) {
-							timer.stop();
-							progressClass.dispose();
-							drawGraph();
-						}
-					}catch(Exception e){
-						//e.printStackTrace();
-						timer.stop();
-						setButtonsEnable(true);
-						e.printStackTrace();
-						BugReport bug = new BugReport(e, getParametersInfoAsString(), APP_NAME,
-								getAppVersion(), getApplicationComponent());
-						BugReportDialog bugDialog = new BugReportDialog(getApplicationComponent(), bug, false);
-						bugDialog.setVisible(true);
+						if (!isHazardCalcDone && totCurCalculated)
+							progressClass.updateProgress(currRupture,
+									totRupture);
+					} else {
+						if ((numERFsInEpistemicList) != 0)
+							progressClass
+							.updateProgress(
+									currentERFInEpistemicListForHazardCurve,
+									numERFsInEpistemicList);
 					}
+					if (isHazardCalcDone) {
+						timer.stop();
+						progressClass.dispose();
+						drawGraph();
+					}
+				} catch (Exception e) {
+					timer.stop();
+					setButtonsEnable(true);
+					e.printStackTrace();
+					BugReport bug = new BugReport(e, getParametersInfoAsString(), APP_NAME,
+							getAppVersion(), getApplicationComponent());
+					BugReportDialog bugDialog = new BugReportDialog(getApplicationComponent(), bug, false);
+					bugDialog.setVisible(true);
 				}
-			});
-
-			calcThread = new Thread(this);
-			calcThread.start();
-		}
-		else {
-			this.computeHazardCurve();
-			this.drawGraph();
-		}
+			}
+		});
 	}
 
 	/**
@@ -512,6 +498,21 @@ extends HazardCurveApplication {
 					}
 				}
 			}
+		}
+	}
+	
+	@Override
+	protected void cancelCalculation() {
+		super.cancelCalculation();
+		try {
+			if (calc != null) {
+				calc.stopCalc();
+			}
+		} catch (RuntimeException ee) {
+			ee.printStackTrace();
+			BugReport bug = new BugReport(ee, getParametersInfoAsString(), appShortName, getAppVersion(), this);
+			BugReportDialog bugDialog = new BugReportDialog(this, bug, false);
+			bugDialog.setVisible(true);
 		}
 	}
 
@@ -543,7 +544,8 @@ extends HazardCurveApplication {
 
 		XY_DataSetList hazardFuncList = new XY_DataSetList();
 		for (int i = 0; i < numERFsInEpistemicList; ++i) {
-			//current ERF's being used to calculated Hazard Curve
+			if (isCancelled()) return;
+			// current ERF's being used to calculated Hazard Curve
 			currentERFInEpistemicListForHazardCurve = i;
 			DiscretizedFunc hazFunction = null;
 
@@ -559,19 +561,19 @@ extends HazardCurveApplication {
 					// initialize the values in condProbfunc with log values as passed in hazFunction
 					initX_Values(hazFunction);
 
-
 					hazFunction = calc.getIML_SpectrumCurve(hazFunction, site, imr,
 							erfList.getERF(i),
 							imlProbValue, saPeriodVector);
-
-
 				}
 			} catch (RuntimeException e) {
 				//e.printStackTrace();
 				setButtonsEnable(true);
-				JOptionPane.showMessageDialog(this, e.getMessage(),
-						"Parameters Invalid",
-						JOptionPane.INFORMATION_MESSAGE);
+
+				if (!isCancelled()) {
+					JOptionPane.showMessageDialog(this, e.getMessage(),
+							"Parameters Invalid",
+							JOptionPane.INFORMATION_MESSAGE);
+				}
 				return;
 			}
 			//System.out.println("Num points:" +hazFunction.toString());
@@ -625,7 +627,8 @@ extends HazardCurveApplication {
 	 *
 	 * @param originalFunc :  this is the function with X values set
 	 */
-	private void initX_Values(DiscretizedFunc arb){
+	@Override
+	protected void initX_Values(DiscretizedFunc arb){
 
 		//iml@Prob then we have to interpolate over a range of X-Values
 		if (!useCustomX_Values)
@@ -678,13 +681,13 @@ extends HazardCurveApplication {
 	//Main method
 	public static void main(String[] args) throws IOException {
 		new DisclaimerDialog(APP_NAME, APP_SHORT_NAME, getAppVersion());
-		DefaultExceptoinHandler exp = new DefaultExceptoinHandler(
+		DefaultExceptionHandler exp = new DefaultExceptionHandler(
 				APP_SHORT_NAME, getAppVersion(), null, null);
 		Thread.setDefaultUncaughtExceptionHandler(exp);
 		launch(exp);
 	}
 	
-	public static HazardSpectrumApplication launch(DefaultExceptoinHandler handler) {
+	public static HazardSpectrumApplication launch(DefaultExceptionHandler handler) {
 		HazardSpectrumApplication applet = new
 				HazardSpectrumApplication(APP_SHORT_NAME);
 		if (handler != null) {

@@ -6,14 +6,14 @@ import java.lang.Thread.UncaughtExceptionHandler;
 import org.opensha.commons.util.ApplicationVersion;
 import org.opensha.commons.util.ClassUtils;
 
-public class DefaultExceptoinHandler implements UncaughtExceptionHandler {
+public class DefaultExceptionHandler implements UncaughtExceptionHandler {
 	
 	private String appName;
 	private ApplicationVersion appVersion;
 	private Object app;
 	private Component parent;
 	
-	public DefaultExceptoinHandler(String appName, ApplicationVersion appVersion, Object app, Component parent) {
+	public DefaultExceptionHandler(String appName, ApplicationVersion appVersion, Object app, Component parent) {
 		this.appName = appName;
 		this.appVersion = appVersion;
 		this.app = app;

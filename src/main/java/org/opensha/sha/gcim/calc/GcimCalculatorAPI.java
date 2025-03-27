@@ -4,12 +4,16 @@ import java.io.IOException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
-import org.opensha.sha.earthquake.AbstractERF;
+import org.opensha.commons.param.ParameterList;
+import org.opensha.sha.calc.CalculatorAPI;
+import org.opensha.sha.calc.params.filters.SourceFilter;
+import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.gcim.imCorrRel.ImCorrelationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
 import org.opensha.sha.util.TectonicRegionType;
@@ -25,7 +29,7 @@ import org.opensha.sha.util.TectonicRegionType;
  * @created July 3 2010
  * @version 1.0
  */
-public interface GcimCalculatorAPI extends Remote{
+public interface GcimCalculatorAPI extends Remote, CalculatorAPI {
 
 	/**
 	 * This method gets the contribution of each rupture in the ERF toward the probability of IML=iml
@@ -34,8 +38,8 @@ public interface GcimCalculatorAPI extends Remote{
 	 * @throws IOException
 	 */
 	public void getRuptureContributions(double iml, Site site,
-			HashMap<TectonicRegionType, ScalarIMR> imrjMap, AbstractERF eqkRupForecast,
-			double maxDist, ArbitrarilyDiscretizedFunc magDistFilter) throws java.rmi.RemoteException;
+			Map<TectonicRegionType, ScalarIMR> imrjMap, ERF eqkRupForecast,
+			Collection<SourceFilter> sourceFilters, ParameterList calcParams) throws java.rmi.RemoteException;
 			
 	/**
 	 * this function obtains the GCIM distributions for multiple IMs by successively calling
@@ -49,8 +53,8 @@ public interface GcimCalculatorAPI extends Remote{
 	 * @return boolean
 	 */
 	public boolean getMultipleGcims(int numIMi,	
-			ArrayList<HashMap<TectonicRegionType, ScalarIMR>> imiAttenRels,
-			ArrayList<String> imiTypes, ArrayList<HashMap<TectonicRegionType, ImCorrelationRelationship>> imijCorrRels,
+			ArrayList<? extends Map<TectonicRegionType, ScalarIMR>> imiAttenRels,
+			ArrayList<String> imiTypes, ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> imijCorrRels,
 			double maxDist, ArbitrarilyDiscretizedFunc magDistFilter);
 
 	/**
@@ -65,8 +69,8 @@ public interface GcimCalculatorAPI extends Remote{
 	 * @param magDistFilter: Magnitude-Distance filter for sources
 	 * @return boolean
 	 */
-	public boolean getSingleGcim(int imiNumber, HashMap<TectonicRegionType, ScalarIMR> imriMap,
-			HashMap<TectonicRegionType, ImCorrelationRelationship> imijCorrRelMap,
+	public boolean getSingleGcim(int imiNumber, Map<TectonicRegionType, ScalarIMR> imriMap,
+			Map<TectonicRegionType, ImCorrelationRelationship> imijCorrRelMap,
 			double maxDist, ArbitrarilyDiscretizedFunc magDistFilter);
 	
 	/**

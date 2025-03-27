@@ -1,6 +1,5 @@
 package org.opensha.sha.calc;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
 
@@ -8,13 +7,11 @@ import org.opensha.commons.data.Site;
 import org.opensha.commons.data.function.ArbitrarilyDiscretizedFunc;
 import org.opensha.commons.data.function.DiscretizedFunc;
 import org.opensha.commons.param.ParameterList;
-import org.opensha.commons.param.impl.DoubleParameter;
 import org.opensha.sha.calc.params.MaxDistanceParam;
 import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.EqkRupture;
 import org.opensha.sha.earthquake.ProbEqkRupture;
 import org.opensha.sha.earthquake.ProbEqkSource;
-import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.gui.infoTools.IMT_Info;
 import org.opensha.sha.imr.AttenuationRelationship;
 import org.opensha.sha.imr.ScalarIMR;
@@ -30,12 +27,12 @@ import org.opensha.sha.imr.param.IntensityMeasureParams.SA_Param;
  * @author Nitin Gupta
  * @version 1.0
  */
-public class SpectrumCalculator
+public class SpectrumCalculator extends AbstractCalculator
 implements SpectrumCalculatorAPI {
 
 
-	protected final static String C = "SpectrumCalculator";
-	protected final static boolean D = false;
+	private final static String C = "SpectrumCalculator";
+	private final static boolean D = false;
 
 	//Info for parameter that sets the maximum distance considered
 	private MaxDistanceParam maxDistanceParam;
@@ -43,13 +40,13 @@ implements SpectrumCalculatorAPI {
 	private ParameterList adjustableParams;
 
 
-	protected int currRuptures = -1;
-	protected int totRuptures = 0;
+	private int currRuptures = -1;
+	private int totRuptures = 0;
 
 	//index to keep track how many sources have been traversed
-	protected int sourceIndex;
+	private int sourceIndex;
 	// get total number of sources
-	protected int numSources;
+	private int numSources;
 
 
 	/**
@@ -131,6 +128,7 @@ implements SpectrumCalculatorAPI {
 			ERF eqkRupForecast,
 			double probVal,
 			List supportedSA_Periods) {
+		signalReset();
 
 		this.currRuptures = -1;
 
@@ -204,7 +202,8 @@ implements SpectrumCalculatorAPI {
 
 		// loop over sources
 		for (sourceIndex = 0; sourceIndex < numSources; sourceIndex++) {
-
+			if (isCancelled()) return null;
+			
 			// get the ith source
 			ProbEqkSource source = eqkRupForecast.getSource(sourceIndex);
 
@@ -367,6 +366,7 @@ implements SpectrumCalculatorAPI {
 			ERF eqkRupForecast,
 			double imlVal,
 			List supportedSA_Periods) {
+		signalReset();
 
 		//creating the Master function that initializes the Function with supported SA Periods Vals
 		DiscretizedFunc hazFunction = new ArbitrarilyDiscretizedFunc();
@@ -432,6 +432,8 @@ implements SpectrumCalculatorAPI {
 
 		// loop over sources
 		for(sourceIndex=0;sourceIndex < numSources ;sourceIndex++) {
+			// quit if user cancelled the calculation
+			if (isCancelled()) return null;
 
 			// get the ith source
 			ProbEqkSource source = eqkRupForecast.getSource(sourceIndex);
@@ -593,5 +595,12 @@ implements SpectrumCalculatorAPI {
 		}
 		if (D) System.out.println(C + "hazFunction.toString" + hazFunction.toString());
 		return hazFunction;
+	}
+
+	@Override
+	protected boolean isCancelled() {
+		boolean cancelled = super.isCancelled();
+		if (D && cancelled) System.out.println("Signal caught in " + C);
+		return cancelled;
 	}
 }

@@ -34,6 +34,7 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ExceptionUtils;
+import org.opensha.commons.util.FileNameUtils;
 import org.opensha.commons.util.MarkdownUtils;
 import org.opensha.commons.util.MarkdownUtils.TableBuilder;
 import org.opensha.commons.util.modules.OpenSHA_Module;
@@ -697,7 +698,7 @@ public class PlausibilityFilterPlot extends AbstractRupSetPlot {
 			lines.add(heading+" "+filter.getName());
 			lines.add(topLink); lines.add("");
 			
-			String filterPrefix = filter.getShortName().replaceAll("\\W+", "");
+			String filterPrefix = FileNameUtils.simplify(filter.getShortName());
 			if (compRups)
 				filterPrefix += "_compRups";
 			Color color = compRups ? COMP_COLOR : MAIN_COLOR;

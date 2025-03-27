@@ -260,23 +260,12 @@ public class LogicTreeCurveAverager {
 		return ret;
 	}
 	
-	public static String levelPrefix(LogicTreeLevel<?> level) {
-		String prefix = level.getShortName().replaceAll("\\W+", "_");
-		while (prefix.contains("__"))
-			prefix = prefix.replace("__", "_");
-		while (prefix.startsWith("_"))
-			prefix = prefix.substring(1);
-		while (prefix.endsWith("_"))
-			prefix = prefix.substring(0, prefix.length()-1);
-		return prefix;
-	}
-	
 	public static String choicePrefix(LogicTreeLevel<?> level, LogicTreeNode node) {
-		return levelPrefix(level)+"_"+node.getFilePrefix();
+		return level.getFilePrefix()+"_"+node.getFilePrefix();
 	}
 	
 	public static String choiceWithoutPrefix(LogicTreeLevel<?> level, LogicTreeNode node) {
-		return levelPrefix(level)+"_without_"+node.getFilePrefix();
+		return level.getFilePrefix()+"_without_"+node.getFilePrefix();
 	}
 	
 	private List<String> getMeanCurveKeys(LogicTreeBranch<?> branch) {
