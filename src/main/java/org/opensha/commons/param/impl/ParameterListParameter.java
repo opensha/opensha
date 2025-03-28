@@ -21,7 +21,6 @@ import org.opensha.commons.param.editor.impl.ParameterListParameterEditor;
 
 public class ParameterListParameter extends AbstractParameter<ParameterList> {
 
-
 	/**
 	 * 
 	 */
@@ -51,50 +50,11 @@ public class ParameterListParameter extends AbstractParameter<ParameterList> {
 	 * @param  name   Name of the parameter
 	 * @param  paramList  ParameterList  object
 	 */
-	public ParameterListParameter(String name, ParameterList paramList){
+	public ParameterListParameter(String name, ParameterList paramList) {
 		super(name,null,null,paramList);
-		//setting the independent Param List for this parameter
+		// setting the independent Param List for this parameter
 		setIndependentParameters(paramList);
 	}
-
-
-
-	/**
-	 *  Compares the values to if this is less than, equal to, or greater than
-	 *  the comparing objects.
-	 *
-	 * @param  obj                     The object to compare this to
-	 * @return                         -1 if this value < obj value, 0 if equal,
-	 *      +1 if this value > obj value
-	 * @exception  ClassCastException  Is thrown if the comparing object is not
-	 *      a ParameterListParameter.
-	 */
-//	@Override
-//	public int compareTo(Parameter<ParameterList> param) {
-//		String S = C + ":compareTo(): ";
-//
-//		if ( !( obj instanceof ParameterListParameter ) ) {
-//			throw new ClassCastException( S + "Object not a ParameterListParameter, unable to compare" );
-//		}
-//
-//		ParameterListParameter param = ( ParameterListParameter ) obj;
-//
-//		if( ( this.value == null ) && ( param.value == null ) ) return 0;
-//		int result = 0;
-//
-//		ParameterList n1 = ( ParameterList) this.getValue();
-//		ParameterList n2 = ( ParameterList) param.getValue();
-//
-//		return n1.compareTo( n2 );
-//		
-//		if (param == null) return 1;
-//		if (value == null && param.getValue() == null) return 0;
-//		if (value == null) return -1;
-//		if (param.getValue() == null) return 1;
-//		return  value.compareTo(param.getValue());
-//
-//	}
-
 
 	/**
 	 * Set's the parameter's value, which is basically a parameterList.
@@ -103,58 +63,30 @@ public class ParameterListParameter extends AbstractParameter<ParameterList> {
 	 * @throws  ParameterException   Thrown if the object is currenlty not
 	 *      editable
 	 */
-	public void setValue( ParameterList value ) throws ParameterException {
-
-		ListIterator it  = value.getParametersIterator();
-		super.setValue(value );
-		//setting the independent Param List for this parameter
+	public void setValue(ParameterList value) throws ParameterException {
+		// ListIterator it = value.getParametersIterator();
+		super.setValue(value);
+		// Setting the independent Param List for this parameter
 		this.setIndependentParameters(value);
 	}
-
-	/**
-	 * Compares value to see if equal.
-	 *
-	 * @param  obj                     The object to compare this to
-	 * @return                         True if the values are identical
-	 * @exception  ClassCastException  Is thrown if the comparing object is not
-	 *      a ParameterListParameter.
-	 */
-//	@Override
-//	public boolean equals(Object obj) {
-//		String S = C + ":equals(): ";
-//
-//		if (! (obj instanceof ParameterListParameter)) {
-//			throw new ClassCastException(S +
-//			"Object not a ParameterListParameter, unable to compare");
-//		}
-//
-//		String otherName = ( (ParameterListParameter) obj).getName();
-//		if ( (compareTo(obj) == 0) && getName().equals(otherName)) {
-//			return true;
-//		}
-//		else {
-//			return false;
-//		}
-		
-//		if (this == obj) return true;
-//		if (!(obj instanceof ParameterListParameter)) return false;
-//		ParameterListParameter plp = (ParameterListParameter) obj;
-//		return (value.equals(plp.getValue()) && getName().equals(plp.getName()));
-//
-//	}
 
 	/**
 	 *  Returns a copy so you can't edit or damage the origial.
 	 *
 	 * @return    Exact copy of this object's state
 	 */
-	public Object clone(){
-
+	public Object clone() {
 		ParameterListParameter param = null;
-		if( value == null ) param = new ParameterListParameter( name);
-		else param = new ParameterListParameter(name,(ParameterList)value);
-		if( param == null ) return null;
-		param.editable = true;
+		try {
+			if (value == null)
+				param = new ParameterListParameter(name);
+			else
+				param = new ParameterListParameter(name,(ParameterList)value);
+			param.editable = true;
+		} catch(Exception e) {
+			e.printStackTrace();
+			param.editable = false;
+		}
 		return param;
 	}
 
@@ -162,7 +94,7 @@ public class ParameterListParameter extends AbstractParameter<ParameterList> {
 	 * Returns the ListIterator of the parameters included within this parameter
 	 * @return
 	 */
-	public ListIterator getParametersIterator(){
+	public ListIterator getParametersIterator() {
 		return ((ParameterList)this.getValue()).getParametersIterator();
 	}
 
@@ -178,8 +110,7 @@ public class ParameterListParameter extends AbstractParameter<ParameterList> {
 	 * Returns the name of the parameter class
 	 */
 	public String getType() {
-		String type = this.PARAM_TYPE;
-		return type;
+		return PARAM_TYPE;
 	}
 
 	/**
@@ -207,8 +138,5 @@ public class ParameterListParameter extends AbstractParameter<ParameterList> {
 	public boolean isEditorBuilt() {
 		return paramEdit != null;
 	}
-
-
 }
-
 

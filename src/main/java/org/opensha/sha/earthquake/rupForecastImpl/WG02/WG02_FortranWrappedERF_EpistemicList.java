@@ -1,5 +1,6 @@
 package org.opensha.sha.earthquake.rupForecastImpl.WG02;
 
+import java.nio.file.Files;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -29,7 +30,6 @@ import org.opensha.sha.earthquake.ERF;
 import org.opensha.sha.earthquake.rupForecastImpl.WG02.servlet.WG02Servlet;
 
 import com.google.common.base.Preconditions;
-import com.google.common.io.Files;
 
 /**
  * <p>Title: WG02_FortranWrappedERF_EpistemicList</p>
@@ -44,9 +44,11 @@ import com.google.common.io.Files;
  * @version 1.0
  */
 
-public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListERF{
+public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListERF {
 
-	//for Debug purposes
+	private static final long serialVersionUID = 1L;
+
+	// Debugging
 	private static final String  C = new String("WG02_FortranWrappedERF_EpistemicList");
 	private static boolean D = false;
 	
@@ -58,12 +60,11 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 	 * Static variable for input file name
 	 */
 //	private final static String WG02_CODE_PATH ="/usr/local/tomcat/default/webapps/OpenSHA/wg99/wg99_src_v27/";
-//	private final static String WG02_CODE_PATH ="/usr/local/tomcat/default/webapps/OpenSHA/wg99/wg99_src_v27/";
 	private final static String WG02_CODE_PATH ="/usr/share/tomcat/webapps/OpenSHA/wg99/wg99_src_v27/";
 	// this is the old path on gravity
 	//  private final static String WG02_CODE_PATH ="/opt/install/apache-tomcat-5.5.20/webapps/OpenSHA/wg99/wg99_src_v27/";
-	private final static String WG02_INPUT_FILE ="base_OpenSHA.inp";   // the templet WG02-code input file modified for OpenSHA purposes
-	private final static String WG02_LOCAL_INPUT_FILE ="/data/erf/wgcep_2002/base_OpenSHA.txt";   // the templet WG02-code input file modified for OpenSHA purposes
+	private final static String WG02_INPUT_FILE ="base_OpenSHA.inp";   // the template WG02-code input file modified for OpenSHA purposes
+	private final static String WG02_LOCAL_INPUT_FILE ="/data/erf/wgcep_2002/base_OpenSHA.txt";   // the template WG02-code input file modified for OpenSHA purposes
 	private final static String WG02_OPENSHA_INPUT_FILE = "OpenSHA.inp";     // the WG02-code input file that we create on the fly
 	public final static String INPUT_FILE_NAME_1 = "WG02_WRAPPER_INPUT.DAT"; // the WG02-code output file that we read
 	// output file from WG-02 code that contains substanial info., not used anywhere in OpenSHA just created for info purposes
@@ -78,7 +79,7 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 
 
 	// vector to hold the line numbers where each iteration starts
-	protected ArrayList iterationLineNumbers;
+	protected ArrayList<Integer> iterationLineNumbers;
 
 	// adjustable parameter primitives
 	protected int numIterations;
@@ -96,8 +97,8 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 	public final static String GR_TAIL_NAME = new String ("GR Tail Seismicity");
 	public final static String SEIS_INCLUDE = new String ("Include");
 	public final static String SEIS_EXCLUDE = new String ("Exclude");
-	ArrayList backSeisOptionsStrings = new ArrayList();
-	ArrayList grTailOptionsStrings = new ArrayList();
+	ArrayList<String> backSeisOptionsStrings = new ArrayList<String>();
+	ArrayList<String> grTailOptionsStrings = new ArrayList<String>();
 	StringParameter backSeisParam;
 	StringParameter grTailParam;
 
@@ -158,11 +159,10 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 	 * No argument constructor
 	 */
 	public WG02_FortranWrappedERF_EpistemicList() {
-
 		// create the timespan object with start time and duration in years
 		timeSpan = new TimeSpan(TimeSpan.YEARS,TimeSpan.YEARS);
 		// set the duration constraint as a list of Doubles
-		ArrayList durationOptions = new ArrayList();
+		ArrayList<Double> durationOptions = new ArrayList<Double>();
 		durationOptions.add(Double.valueOf(1));
 		durationOptions.add(Double.valueOf(5));
 		durationOptions.add(Double.valueOf(10));
@@ -221,26 +221,26 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 			FileReader fr = new FileReader(WG02_CODE_PATH+WG02_INPUT_FILE);
 			BufferedReader  br = new BufferedReader(fr);
 			String lineFromInputFile = br.readLine();
-			ArrayList fileLines = new ArrayList();
+			ArrayList<String> fileLines = new ArrayList<String>();
 
 			//number of Faults
 			int numFaults=7;   // hard coded with known value
 			int faultsRead = 0;
 
 			//reading each line of file until the end of file
-			while(lineFromInputFile != null){
+			while (lineFromInputFile != null) {
 
 				// looking for number-of-years duration line
-				if(lineFromInputFile.endsWith(N_YEAR_STRING))
+				if (lineFromInputFile.endsWith(N_YEAR_STRING))
 					lineFromInputFile = ((int) duration) +"  "+N_YEAR_STRING;
 
 				// looking for number of realizations value line
-				if(lineFromInputFile.endsWith(NUMBER_OF_ITERATIONS))
+				if (lineFromInputFile.endsWith(NUMBER_OF_ITERATIONS))
 					lineFromInputFile = numRealization +"  "+NUMBER_OF_ITERATIONS;
 
 				// If it's a fault, set the probability model weights
-				if(lineFromInputFile.startsWith(FAULT_READ+(faultsRead+1))){
-					if(D) System.out.println("Reading Fault: "+lineFromInputFile);
+				if (lineFromInputFile.startsWith(FAULT_READ+(faultsRead+1))) {
+					if (D) System.out.println("Reading Fault: "+lineFromInputFile);
 					fileLines.add(lineFromInputFile);
 					++faultsRead;
 					//reading the fault Name
@@ -249,16 +249,16 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 					//reading the file further below till num of prob models for that fault
 					lineFromInputFile =br.readLine();
 					fileLines.add(lineFromInputFile);
-					while(!lineFromInputFile.startsWith(PROB_NUM_STRING)){
+					while (!lineFromInputFile.startsWith(PROB_NUM_STRING)) {
 						lineFromInputFile=br.readLine();
 						fileLines.add(lineFromInputFile);
 					}
-					if(D) System.out.println("After while to iterate till the Prob String");
-					lineFromInputFile =br.readLine();
+					if (D) System.out.println("After while to iterate till the Prob String");
+					lineFromInputFile = br.readLine();
 					fileLines.add(lineFromInputFile);
 					StringTokenizer st = new StringTokenizer(lineFromInputFile);
 					//extracting the number fo prob model for that fault from the file
-					int numberOfProbModels =Integer.parseInt(st.nextToken());
+					int numberOfProbModels = Integer.parseInt(st.nextToken());
 					fileLines.add(br.readLine());
 
 					//reading the line from the file that tells wts for different prob. model for that fault
@@ -279,7 +279,7 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 					lineFromInputFile = probModelWts;
 
 					// add the time predictable file-name if necessary
-					if(numberOfProbModels ==5){
+					if (numberOfProbModels ==5) {
 						// add the previous weights line
 						fileLines.add(lineFromInputFile);
 						// get & set the time-predictable model filename line
@@ -294,15 +294,15 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 
 			//generates the new input file and run the WG-02 fortran code only if
 			//number of realizations have changed.
-			if(D)System.out.println("Creating the input files");
+			if (D)System.out.println("Creating the input files");
 			
-			File tmpDir = Files.createTempDir();
+			File tmpDir = Files.createTempDirectory(null).toFile();
 			
 			//overwriting the WG-02 input file with the changes in the file
 			File inputFile = new File(tmpDir, WG02_OPENSHA_INPUT_FILE);
 			FileWriter fw = new FileWriter(inputFile);
 			BufferedWriter bw = new BufferedWriter(fw);
-			ListIterator it= fileLines.listIterator();
+			ListIterator<String> it = fileLines.listIterator();
 			while(it.hasNext())
 				bw.write((String)it.next()+"\n");
 			bw.close();
@@ -389,10 +389,9 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 		adjustableParams.addParameter(numRealizationsParam);
 
 		// make & set initial parameter values based on what's in the default WG02-input file
-		createParamsFromDefaultWG02_InputFIle();
+		createParamsFromDefaultWG02_InputFile();
 
-		if(D)
-			System.out.print("After putting all the params in the Param List");
+		if (D) System.out.print("After putting all the params in the Param List");
 	}
 
 	/**
@@ -400,37 +399,36 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 	 * input file for the fortran.
 	 *
 	 */
-	private void createParamsFromDefaultWG02_InputFIle(){
+	private void createParamsFromDefaultWG02_InputFile() {
 
-		if(D)System.out.print("Inside the create function to get the params for the fortran code");
+		if(D) System.out.print("Inside the create function to get the params for the fortran code");
 
 		try{
 			BufferedReader br = new BufferedReader(
 					new InputStreamReader(this.getClass().getResourceAsStream(WG02_LOCAL_INPUT_FILE)));
-//			BufferedReader  br = new BufferedReader(fr);
 			String lineFromInputFile = br.readLine();
 
-			//number of Faults
+			// number of Faults
 			int numFaults=7;   // hard coded for now
 			int faultsRead = 0;
 			//reading each line of file until the end of file
-			while(lineFromInputFile != null){
+			while(lineFromInputFile != null) {
 
 				// set the number of years in the timeSpan if it's the appropriate line
-				if(lineFromInputFile.endsWith(N_YEAR_STRING)) {
+				if (lineFromInputFile.endsWith(N_YEAR_STRING)) {
 					StringTokenizer st = new StringTokenizer(lineFromInputFile);
 					double nYrs = (Double.valueOf(st.nextToken())).doubleValue();
 					timeSpan.setDuration(nYrs);
 				}
 
-				//reading the probablity model wts for each faults
-				if(lineFromInputFile.startsWith(this.FAULT_READ+(faultsRead+1))){
+				// reading the probablity model wts for each faults
+				if (lineFromInputFile.startsWith(FAULT_READ+(faultsRead+1))){
 					++faultsRead;
 					//reading the fault Name
 					String faultName =br.readLine();
 					if(D)System.out.println("Fault Name:"+faultName);
 					//reading the file further below till num of prob models for that fault
-					while(!br.readLine().startsWith(this.PROB_NUM_STRING));
+					while(!br.readLine().startsWith(PROB_NUM_STRING));
 					StringTokenizer st = new StringTokenizer(br.readLine());
 					//extracting the number fo prob model for that fault from the file
 					int numberOfProbModels =Integer.parseInt(st.nextToken());
@@ -440,13 +438,13 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 					String probModels = br.readLine();
 					st = new StringTokenizer(probModels);
 					//creating the double parameters for the prob. models based on what we info is given in the file
-					DoubleParameter empiricalParam = new DoubleParameter(this.EMPIRICAL,0,1,
+					DoubleParameter empiricalParam = new DoubleParameter(EMPIRICAL,0,1,
 							Double.valueOf(Double.parseDouble(st.nextToken())));
-					DoubleParameter poisParam = new DoubleParameter(this.POISSON,0,1,
+					DoubleParameter poisParam = new DoubleParameter(POISSON,0,1,
 							Double.valueOf(Double.parseDouble(st.nextToken())));
-					DoubleParameter bptStepParam = new DoubleParameter(this.BPT_STEP,0,1,
+					DoubleParameter bptStepParam = new DoubleParameter(BPT_STEP,0,1,
 							Double.valueOf(Double.parseDouble(st.nextToken())));
-					DoubleParameter bptParam = new DoubleParameter(this.BPT,0,1,
+					DoubleParameter bptParam = new DoubleParameter(BPT,0,1,
 							Double.valueOf(Double.parseDouble(st.nextToken())));
 
 					ParameterList paramList = new ParameterList();
@@ -457,21 +455,21 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 					paramList.addParameter(empiricalParam);
 					//checking if there are 4 or 5 prob. models
 					if(numberOfProbModels ==5){
-						DoubleParameter timeParam = new DoubleParameter(this.TIME_PRED,0,1,
+						DoubleParameter timeParam = new DoubleParameter(TIME_PRED,0,1,
 								Double.valueOf(Double.parseDouble(st.nextToken())));
 						paramList.addParameter(timeParam);
 					}
 					//creating the instance of the TreeBranchWeightsParameter with name being the name of the fault
 					//and adding the parameterList to it.
 					TreeBranchWeightsParameter param =
-						new TreeBranchWeightsParameter(faultName+this.PROB_MODEL_WTS,paramList);
+						new TreeBranchWeightsParameter(faultName+PROB_MODEL_WTS,paramList);
 					//adding the parameter to the adjustable parameterList
 					this.adjustableParams.addParameter(param);
 				}
 				lineFromInputFile = br.readLine();
 			}
 			br.close();
-		}catch(Exception e){
+		} catch(Exception e){
 			e.printStackTrace();
 		}
 	}
@@ -482,7 +480,7 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 	 *
 	 * @return : return the name for this class
 	 */
-	public String getName(){
+	public String getName() {
 		return NAME;
 	}
 
@@ -505,7 +503,7 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 
 			//gets the current time in milliseconds to be the new director for each user
 
-			try{
+			try {
 				//Name of the directory in which we are storing all the gmt data for the user
 				String newDir= null;
 				//all the users wg02 input files will be stored in this directory
@@ -526,24 +524,24 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 				FaultException(C + "No data loaded from "+INPUT_FILE_NAME_1+". File may be empty or doesn't exist.");
 
 				// find the line numbers for the beginning of each iteration
-				iterationLineNumbers = new ArrayList();
+				iterationLineNumbers = new ArrayList<Integer>();
 				StringTokenizer st;
 				String test=null;
-				for(int lineNum=0; lineNum < inputFileLines.size(); lineNum++) {
+				for (int lineNum=0; lineNum < inputFileLines.size(); lineNum++) {
 					st = new StringTokenizer((String) inputFileLines.get(lineNum));
 					st.nextToken(); // skip the first token
-					if(st.hasMoreTokens()) {
+					if (st.hasMoreTokens()) {
 						test = st.nextToken();
-						if(test.equals("ITERATIONS"))
+						if (test.equals("ITERATIONS"))
 							iterationLineNumbers.add(Integer.valueOf(lineNum));
 					}
 				}
-			}catch(Exception e){
+			} catch(Exception e) {
 				e.printStackTrace();
 			}
 
-			if(D) System.out.println(C+": number of iterations read = "+iterationLineNumbers.size());
-			if(D)
+			if (D) System.out.println(C+": number of iterations read = "+iterationLineNumbers.size());
+			if (D)
 				for(int i=0;i<iterationLineNumbers.size();i++)
 					System.out.print("   "+ (Integer)iterationLineNumbers.get(i));
 
@@ -552,8 +550,6 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 		}
 
 	}
-
-
 
 
 	/**
@@ -571,8 +567,7 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 	 * @return
 	 */
 	public ERF getERF(int index) {
-
-		ArrayList inputFileStrings = getDataForERF(index);
+		ArrayList<String> inputFileStrings = getDataForERF(index);
 
 		return new WG02_EqkRupForecast(inputFileStrings, rupOffset, gridSpacing,
 				deltaMag, backSeis, grTail, "no name", timeSpan);
@@ -583,7 +578,7 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 	 * @param index : index of the data that needs to be read from the file
 	 * @return
 	 */
-	protected ArrayList getDataForERF(int index){
+	protected ArrayList<String> getDataForERF(int index){
 		// get the sublist from the inputFileLines
 		int firstLine = ((Integer) iterationLineNumbers.get(index)).intValue();
 		int lastLine =0;
@@ -592,9 +587,9 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 		else
 			lastLine = inputFileLines.size();
 
-		ArrayList inputFileStrings = new ArrayList();
+		ArrayList<String> inputFileStrings = new ArrayList<String>();
 		for(int i=firstLine;i<lastLine;++i)
-			inputFileStrings.add(inputFileLines.get(i));
+			inputFileStrings.add((String)inputFileLines.get(i));
 
 		return inputFileStrings;
 	}
@@ -613,8 +608,8 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 	 * relative weights for each ERF
 	 * @return : ArrayList of Double values
 	 */
-	public ArrayList getRelativeWeightsList() {
-		ArrayList relativeWeight  = new ArrayList();
+	public ArrayList<Double> getRelativeWeightsList() {
+		ArrayList<Double> relativeWeight  = new ArrayList<Double>();
 		for(int i=0; i<numIterations; i++)
 			relativeWeight.add(Double.valueOf(1.0));
 		return relativeWeight;
