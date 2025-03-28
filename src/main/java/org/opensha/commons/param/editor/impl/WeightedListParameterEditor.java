@@ -114,7 +114,6 @@ public class WeightedListParameterEditor extends AbstractParameterEditor<Weighte
 
 	@Override
 	protected JComponent updateWidget() {
-		System.out.println("updating!");
 		gui.setList(getList());
 		if (shouldGuiBeVisible()) {
 //			System.out.println("gui mode now!");

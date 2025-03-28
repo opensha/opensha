@@ -184,8 +184,8 @@ public abstract class AbstractParameter<E> implements Parameter<E> {
 		// do not fire the event if new value is same as current value
 		if (this.value != null && this.value.equals(value)) return;
 
-		org.opensha.commons.param.event.ParameterChangeEvent event = new org.opensha.commons.param.event.ParameterChangeEvent(
-			this, getName(), getValue(), value);
+		ParameterChangeEvent event =
+				new ParameterChangeEvent(this, getName(), getValue(), value);
 
 		this.value = value;
 
