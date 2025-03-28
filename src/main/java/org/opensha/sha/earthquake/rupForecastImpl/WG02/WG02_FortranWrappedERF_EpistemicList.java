@@ -520,8 +520,10 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 				inputFileLines = runFortranCode();
 
 				// Exit if no data found in list
-				if( inputFileLines == null) throw new
-				FaultException(C + "No data loaded from "+INPUT_FILE_NAME_1+". File may be empty or doesn't exist.");
+				if (inputFileLines == null)
+					throw new FaultException(C
+							  + "No data loaded from "+INPUT_FILE_NAME_1
+							  + ". File may be empty or doesn't exist.");
 
 				// find the line numbers for the beginning of each iteration
 				iterationLineNumbers = new ArrayList<Integer>();
