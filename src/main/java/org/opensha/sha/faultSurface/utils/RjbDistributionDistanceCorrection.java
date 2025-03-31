@@ -1,6 +1,8 @@
 package org.opensha.sha.faultSurface.utils;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
@@ -16,7 +18,9 @@ import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
+import org.opensha.commons.util.Interpolate;
 import org.opensha.sha.faultSurface.PointSurface;
+import org.opensha.sha.faultSurface.utils.RjbDistributionDistanceCorrection.InvCDFCache;
 
 import com.google.common.base.Preconditions;
 
@@ -25,7 +29,7 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 	static final double MIN_NONZERO_DIST_DEFAULT = 0.1;
 	static final double INITIAL_MAX_DIST_DEFAULT = 300d;
 	static final double LOG_DIST_SAMPLE_DISCR_DEFAULT = 0.05d;
-	static final int NUM_ALPHA_SAMPLES_DEFAULT = 20;
+	static final int NUM_ALPHA_SAMPLES_DEFAULT = 40;
 	static final int NUM_SAMPLES_ALONG_DEFAULT = 10;
 	static final int NUM_SAMPLES_DOWN_DIP_DEFAULT = 5;
 	
@@ -39,10 +43,25 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 		double cellWidth = LocationUtils.horzDistanceFast(new Location(latitude, 0d), new Location(latitude, gridSpacingDegrees));
 		double cellHeight = LocationUtils.horzDistanceFast(new Location(latitude-0.5*gridSpacingDegrees, 0d),
 				new Location(latitude+0.5*gridSpacingDegrees, 0d));
-		return new InvCDFCache(sampleAlong, sampleDownDip, MIN_NONZERO_DIST_DEFAULT, INITIAL_MAX_DIST_DEFAULT,
+		InvCDFCache ret = new InvCDFCache(sampleAlong, sampleDownDip, MIN_NONZERO_DIST_DEFAULT, INITIAL_MAX_DIST_DEFAULT,
 				LOG_DIST_SAMPLE_DISCR_DEFAULT, NUM_ALPHA_SAMPLES_DEFAULT,
 				numCellSamples, cellWidth, cellHeight,
 				NUM_SAMPLES_ALONG_DEFAULT, NUM_SAMPLES_DOWN_DIP_DEFAULT, fractiles);
+		
+//		System.out.println("Initiated supersampling cache for lat="+(float)latitude);
+//		System.out.println("\tx samples: "+getSampleStr(ret.cellSamplesX));
+//		System.out.println("\ty samples: "+getSampleStr(ret.cellSamplesY));
+//		System.out.println("\talpha samples: "+getSampleStr(ret.alphaSamples));
+		
+		return ret;
+	}
+	
+	private static final DecimalFormat sampleDF = new DecimalFormat("0.##");
+	private static String getSampleStr(double[] samples) {
+		return Arrays.stream(samples)
+	    		.mapToObj(sampleDF::format)
+	    		.reduce((a, b) -> a + ", " + b)
+	    		.orElse("");
 	}
 	
 	public static WeightedList<RjbDistributionDistanceCorrection> getEvenlyWeightedFractiles(
@@ -118,8 +137,20 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 
 	@Override
 	public double getCorrectedDistanceJB(double mag, PointSurface surf, double horzDist) {
-		if (horzDist < cache.minNonzeroDist)
-			return 0d;
+		return getCachedDist(surf, horzDist, cache, indexInCache);
+	}
+	
+	static double getCachedDist(PointSurface surf, double horzDist, InvCDFCache cache, int indexInCache) {
+		if (horzDist < cache.minNonzeroDist) {
+			double zeroVal = cache.getZeroDistVals(surf.getAveLength(), surf.getAveWidth(), surf.getAveDip())[indexInCache];
+			if (horzDist < 1e-10)
+				// zero
+				return zeroVal;
+			// nonzero, interpolate
+			double firstNonzeroVal = cache.getFractileFuncs(surf.getAveLength(), surf.getAveWidth(), surf.getAveDip(),
+					horzDist)[indexInCache].getY(0);
+			return Interpolate.findY(0d, zeroVal, cache.minNonzeroDist, firstNonzeroVal, horzDist);
+		}
 		EvenlyDiscretizedFunc logDistFunc = cache.getFractileFuncs(
 				surf.getAveLength(), surf.getAveWidth(), surf.getAveDip(), horzDist)[indexInCache];
 		double logDist = Math.log10(horzDist);
@@ -202,10 +233,11 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 	}
 	
 	static double[] buildSpacedSamples(double min, double max, int num) {
-		double delta = (max-min)/(double)(num+1d);
+		double delta = (max-min)/(double)(num);
+		double ret0 = min + 0.5*delta;
 		double[] ret = new double[num];
 		for (int i=0; i<num; i++)
-			ret[i] = (i+1)*delta;
+			ret[i] = ret0 + i*delta;
 		return ret;
 	}
 
@@ -251,12 +283,12 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 			Preconditions.checkState(logDistSampleDiscr > 0d);
 			this.logDistSampleDiscr = logDistSampleDiscr;
 			Preconditions.checkState(numAlphaSamples > 1);
-			if (numSamplesAlong == 1 && numSamplesDownDip == 1)
+			if (!sampleAlongStrike && !sampleDownDip && numCellSamples == 1)
 				// no sampling along-strike nor down-dip, can just sample over 0-90
-				alphaSamples = buildSpacedSamples(0d, 90d, numSamplesAlong);
+				alphaSamples = buildSpacedSamples(0d, 90d, numAlphaSamples);
 			else
 				// need to do the full circle
-				alphaSamples = buildSpacedSamples(0d, 360d, numSamplesAlong);
+				alphaSamples = buildSpacedSamples(0d, 360d, numAlphaSamples);
 			if (numCellSamples > 1) {
 				Preconditions.checkState(cellWidth > 0 || cellHeight > 0);
 				if (cellWidth > 0)
@@ -339,6 +371,9 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 					if (logDist > ret[0].getMaxX()) {
 						// we need to expand it
 						
+						// do it with a local variable because there could be thread contention
+						EvenlyDiscretizedFunc[] expandedArray = new EvenlyDiscretizedFunc[ret.length];
+						
 						// grow them
 						// first copy into larger functions
 						int origNum = ret[0].size();
@@ -348,7 +383,7 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 								Preconditions.checkState(i > 0 || Precision.equals(expanded.getX(r), ret[i].getX(r), 0.0001));
 								expanded.set(r, ret[i].getY(r));
 							}
-							ret[i] = expanded;
+							expandedArray[i] = expanded;
 						}
 						// now calculate for the new distances
 						List<CompletableFuture<double[]>> futures = new ArrayList<>(logDistBins.size()-origNum);
@@ -362,7 +397,11 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 							double[] values = futures.get(f).join();
 							int r = origNum+f;
 							for (int i=0; i<ret.length; i++)
-								ret[i].set(r, values[i]);
+								expandedArray[i].set(r, values[i]);
+						}
+						ret = expandedArray;
+						synchronized (valueFuncs) {
+							valueFuncs.put(key, ret);
 						}
 					}
 				}
@@ -509,7 +548,7 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 			Preconditions.checkState(samples.length > 1);
 			int index = 0;
 			double rupHorzWidth = rupWidth * Math.cos(Math.toRadians(dip));
-			// split these cases up to avoid unecessary loops if we can
+			// split these cases up to avoid unnecessary loops if we can
 			for (double alpha : alphaSamples) {
 				double sinA = Math.sin(alpha);
 				double cosA = Math.cos(alpha);

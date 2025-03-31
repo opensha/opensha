@@ -3,6 +3,7 @@ package org.opensha.sha.faultSurface.utils;
 import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.util.Interpolate;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.utils.RjbDistributionDistanceCorrection.InvCDFCache;
 
@@ -80,20 +81,25 @@ public class SupersamplingRjbDistributionDistanceCorrection implements PointSour
 
 	@Override
 	public double getCorrectedDistanceJB(double mag, PointSurface surf, double horzDist) {
-		// round latitude to nearest degree
-		double latitude = Math.round(surf.getLocation().lat);
+		double latitude = surf.getLocation().lat;
+		// if negative, mirror across the equator
 		if (latitude < 0d)
 			latitude = -latitude;
-		latitude = Math.min(89, latitude); // cap at 89 degrees, things get weird at 0 degrees
-		int latIndex = (int)latitude;
-		Preconditions.checkState(latIndex < latCaches.length);
+		// cap at 89 degrees, things get weird at 90 degrees
+		latitude = Math.min(89, latitude);
+		int latIndexAbove = (int)Math.ceil(latitude);
+		int latIndexBelow = (int)Math.floor(latitude);
+		Preconditions.checkState(latIndexAbove < latCaches.length);
+		Preconditions.checkState(latIndexBelow >= 0);
 		
-		if (horzDist < latCaches[latIndex].minNonzeroDist)
-			return latCaches[latIndex].getZeroDistVals(surf.getAveLength(), surf.getAveWidth(), surf.getAveDip())[indexInCache];
-		EvenlyDiscretizedFunc logDistFunc = latCaches[latIndex].getFractileFuncs(
-				surf.getAveLength(), surf.getAveWidth(), surf.getAveDip(), horzDist)[indexInCache];
-		double logDist = Math.log10(horzDist);
-		return logDistFunc.getInterpolatedY(logDist);
+		if (latIndexAbove == latIndexBelow) {
+			// no lat interpolation needed
+			return RjbDistributionDistanceCorrection.getCachedDist(surf, horzDist, latCaches[latIndexAbove], indexInCache);
+		}
+		
+		double valAbove = RjbDistributionDistanceCorrection.getCachedDist(surf, horzDist, latCaches[latIndexAbove], indexInCache);
+		double valBelow = RjbDistributionDistanceCorrection.getCachedDist(surf, horzDist, latCaches[latIndexBelow], indexInCache);
+		return Interpolate.findY(latIndexBelow, valBelow, latIndexAbove, valAbove, latitude);
 	}
 	
 	@Override

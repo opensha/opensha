@@ -87,7 +87,7 @@ public class TreeBranchWeightsParameter extends ParameterListParameter {
 			if(!(param instanceof DoubleParameter))
 				throw new RuntimeException(C+" Only DoubleParameter allowed in this Parameter");
 		}
-		setValue(value );
+		super.setValue(value );
 	}
 
 	/**
