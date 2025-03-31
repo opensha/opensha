@@ -71,10 +71,10 @@ public class WG02_FortranWrappedERF_EpistemicList extends AbstractEpistemicListE
 	public final static String INPUT_FILE_NAME_2 ="OpenSHA.out3";
 	public final static String WG02_DIRS = "wg02_dirs/";
 
-	private final static String TIME_PRED_FILE_01YRS = "time_pred_2002_1yr_n1000_rand.txt";
-	private final static String TIME_PRED_FILE_05YRS = "time_pred_2002_5yr_n1000_rand.txt";
-	private final static String TIME_PRED_FILE_10YRS = "time_pred_2002_10yr_n1000_rand.txt";
-	private final static String TIME_PRED_FILE_20YRS = "time_pred_2002_20yr_n1000_rand.txt";
+	private final static String TIME_PRED_FILE_01YRS = "time_pred_2002_1yr_rand.txt";
+	private final static String TIME_PRED_FILE_05YRS = "time_pred_2002_5yr_rand.txt";
+	private final static String TIME_PRED_FILE_10YRS = "time_pred_2002_10yr_rand.txt";
+	private final static String TIME_PRED_FILE_20YRS = "time_pred_2002_20yr_rand.txt";
 	private final static String TIME_PRED_FILE_30YRS = "time_pred_2002_30yr_rand.dat";
 
 
