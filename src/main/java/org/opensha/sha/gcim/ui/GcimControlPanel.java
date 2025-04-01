@@ -9,8 +9,11 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.stream.Collectors;
+
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -58,7 +61,7 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	ActionListener {
 
 	public static final String NAME = "GCIM distributions";
-	private static final boolean D = false;
+	private static final boolean D = true;
 
 	private final static String GCIM_SUPPORTED_PARAM_NAME = "Gcim Support";
 	private final static String GCIM_PROB_PARAM_NAME = "Gcim Prob";
@@ -105,8 +108,8 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	private ArrayList<Map<TectonicRegionType, ImCorrelationRelationship>> imijMapCorrRels = 
 		new ArrayList<Map<TectonicRegionType, ImCorrelationRelationship>>();
 	//Correlation relations for off-diagonal terms i.e. IMi,IMk|Rup=rup,IMj=imj
-	private ArrayList<Map<TectonicRegionType, ImCorrelationRelationship>> imikjMapCorrRels = 
-		new ArrayList<Map<TectonicRegionType, ImCorrelationRelationship>>();
+	private ArrayList< ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> > imikjMapCorrRels = 
+		new ArrayList< ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> >();
 
 	//The Site object that the main hazard calc uses
 	private Site parentSite;
@@ -280,25 +283,26 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	 * Returns the number of IMi's to compute GCIM distributions for
 	 * @return double
 	 */
-	public int getNumIMi(){
+	public int getNumIMi() {
 		StringConstraint stringConst = (StringConstraint) gcimImisParameter.getConstraint();
 		int imiListSize = stringConst.size();
+		System.out.println("imiListSize="+imiListSize);
+		System.out.println("stringConst.getAllowedValues().get(0)="+stringConst.getAllowedValues().get(0));
 		if (imiListSize == 0) {
 			throw new RuntimeException("gcimImisParameter is empty!");
-		} else if (imiListSize == 1) {
-			if (stringConst.getAllowedValues().get(0) == IMI_LIST_DEFAULT)
-				return 0;
-			else
-				return 1;
-		} else
-			return imiListSize;
-//		return imiTypes.size();
+		}
+		if (imiListSize == 1 && stringConst.getAllowedValues().get(0) == IMI_LIST_DEFAULT) {
+			System.out.println(0);
+			return 0;
+		}
+		System.out.println(imiListSize);
+		return imiListSize;
 	}
 	
 	/**
 	 * Returns the array list of the IMi types 
 	 */
-	public ArrayList<String> getImiTypes(){
+	public ArrayList<String> getImiTypes() {
 		if (D) {
 			System.out.println("Getting the IMiTypes");
 			for (int i=0; i<imiTypes.size(); i++) {
@@ -312,7 +316,7 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	/**
 	 * Returns the array list of the IMRi's corresponding to the IMi's 
 	 */
-	public ArrayList<? extends Map<TectonicRegionType, ScalarIMR>> getImris(){
+	public ArrayList<? extends Map<TectonicRegionType, ScalarIMR>> getImris() {
 		if (D) {
 			System.out.println("Getting the IMiAttenRels");
 			for (int i=0; i<getNumIMi(); i++) {
@@ -326,37 +330,43 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	/**
 	 * Returns the array list of the ImCorrRel's corresponding to the IMi's 
 	 */
-	public ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> getImCorrRels(){
+	public ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> getImCorrRels() {
 		if (D) {
 			System.out.println("Getting the IMiCorrRels");
 			for (int i=0; i<getNumIMi(); i++) {
 				System.out.println(imijMapCorrRels.get(i));
 			}
 		}
+
 		return imijMapCorrRels;
 	}
 	
 	/**
-	 * Returns the array list of the ImCorrRel's corresponding to the IMik's (i.e. off-diagonal terms)
+	 * Returns the flattened array list of the ImCorrRel's corresponding to the IMik's (i.e. off-diagonal terms)
 	 */
-	public ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> getImikCorrRels(){
+	public ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> getImikCorrRels() {
+		ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> flattened =
+				(ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>>)
+				imikjMapCorrRels.stream()
+					.flatMap(List::stream)
+					.collect(Collectors.toList());
 		if (D) {
 			System.out.println("Getting the IMikCorrRels");
 			for (int i=0; i<imiTypes.size(); i++) {
 				for (int j=0; j<i; j++) {
 					int index = (i)*(i-1)/2+j;
-					System.out.println(imikjMapCorrRels.get(index));
+					System.out.println(flattened.get(index));
 				}
 			}
 		}
-		return imikjMapCorrRels;
+		return flattened;
 	}
 	
 	/**
 	 * Returns the mininum Approx. Z value used to get the GCIM CDFs
 	 * @return double
 	 */
-	public double getMinApproxZ(){
+	public double getMinApproxZ() {
 		return ((Double)minApproxZParam.getValue()).doubleValue();
 	}
 	
@@ -364,7 +374,7 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	 * Returns the maximum Approx. Z value used to get the GCIM CDFs
 	 * @return double
 	 */
-	public double getMaxApproxZ(){
+	public double getMaxApproxZ() {
 		return ((Double)maxApproxZParam.getValue()).doubleValue();
 	}
 	
@@ -372,7 +382,7 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	 * Returns the increment in Approx. Z values used to get the GCIM CDFs
 	 * @return double
 	 */
-	public double getDeltaApproxZ(){
+	public double getDeltaApproxZ() {
 		return ((Double)deltaApproxZParam.getValue()).doubleValue();
 	}
 	
@@ -380,15 +390,15 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	 * Returns the number of GCIM distribution realizations
 	 * @return int
 	 */
-	public int getNumGcimRealizations(){
+	public int getNumGcimRealizations() {
 		return (int)numGcimRealizationsParam.getValue();
 	}
 	
 	/**
 	 * Makes the parameters visible based on the choice of the user for Disaggregation
 	 */
-	public void setParamsVisible(String paramValue){
-		if(paramValue.equals(GCIM_NOT_SUPPORTED_IMJ)){
+	public void setParamsVisible(String paramValue) {
+		if(paramValue.equals(GCIM_NOT_SUPPORTED_IMJ)) {
 			paramListEditor.getParameterEditor(GCIM_SUPPORTED_NAME).setVisible(true);
 			paramListEditor.getParameterEditor(GCIM_PARAM_NAME).setVisible(false);
 			paramListEditor.getParameterEditor(GCIM_PROB_PARAM_NAME).setVisible(false);
@@ -408,7 +418,7 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 			
 			frame.setSize(300,200);
 			
-		} else if(paramValue.equals(NO_GCIM)){
+		} else if(paramValue.equals(NO_GCIM)) {
 			paramListEditor.getParameterEditor(GCIM_PARAM_NAME).setVisible(true);
 			paramListEditor.getParameterEditor(GCIM_SUPPORTED_NAME).setVisible(false);
 			paramListEditor.getParameterEditor(GCIM_PROB_PARAM_NAME).setVisible(false);
@@ -427,7 +437,7 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 			removeButton.setEnabled(false);
 			
 			frame.setSize(300,200);
-		} else{
+		} else {
 			if (paramValue.equals(GCIM_USING_PROB)) {
 				paramListEditor.getParameterEditor(GCIM_PROB_PARAM_NAME).
 				setVisible(true);
@@ -489,7 +499,7 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	 * @return String : Returns on what basis GCIM is being done either
 	 * using Probability or IML.
 	 */
-	public String getGcimParamValue(){
+	public String getGcimParamValue() {
 		return (String)gcimParameter.getValue();
 	}
 
@@ -500,8 +510,7 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	 * based on IML. If not gcim to be done , return -1.
 	 */
 	public double getGcimVal() {
-
-		if(isGcimSelected){
+		if(isGcimSelected) {
 			String paramValue = getGcimParamValue();
 			if(paramValue.equals(GCIM_USING_PROB))
 				return ( (Double) gcimProbParam.getValue()).doubleValue();
@@ -578,7 +587,7 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	public void actionPerformed(ActionEvent e) {
 		StringConstraint stringConst = (StringConstraint) gcimImisParameter.getConstraint();
 		if (e.getSource().equals(addButton)) {
-			if(D) System.out.println("Adding IMi");
+			if (D) System.out.println("Adding IMi");
 			this.imiIndex = getNumIMi();
 			if (D) System.out.println("imiIndex increased to " + this.imiIndex);
 			
@@ -593,25 +602,24 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 			this.gcimEditIMiControlPanel = new GcimEditIMiControlPanel(this, this.frame, this.imiIndex);
 			gcimEditIMiControlPanel.init();
 			gcimEditIMiControlPanel.setVisible(true);
+
 			updateIMiNames();
 			
 		} else if (e.getSource().equals(removeButton)) {
-			
 			String selectedIMI = gcimImisParameter.getValue();
 			this.imiIndex = stringConst.getAllowedStrings().indexOf(gcimImisParameter.getValue());
-			if(D) System.out.println("Removing IMi, index " + imiIndex);
+			if (D) System.out.println("Removing IMi, index " + imiIndex);
 			if (getNumIMi() == 1) {
 				// we need to add the place holder back in here since there won't be any
 				stringConst.addString(IMI_LIST_DEFAULT);
 				removeButton.setEnabled(false);
 				editButton.setEnabled(false);
 			}
+			removeIMiDetailsInArrayLists(imiIndex);
 			stringConst.removeString(selectedIMI);
 			ArrayList<String> strings = stringConst.getAllowedStrings();
 			gcimImisParameter.setValue(strings.get(0));
 			updateIMiListGuiDisplay();
-			
-			removeIMiDetailsInArrayLists(imiIndex);
 			
 			updateIMiNames();
 			
@@ -637,22 +645,11 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	 * ImiMapAttenRels, and ImijMapCorrRels, and IMikMapCorrRels array lists
 	 */
 	public void addIMiDetailsInArrayLists() {
-		int numIMi=getNumIMi();
-		
 		imiTypes.add(gcimEditIMiControlPanel.getSelectedIMT());
 		imiMapAttenRels.add(gcimEditIMiControlPanel.getSelectedIMRMap());
 		imijMapCorrRels.add(gcimEditIMiControlPanel.getSelectedIMCorrRelMap());		
-		//set the off-diagonal ImikjCorrRel terms in the array list
-		//Get the number of IMik|j CorrRels that SHOULD be in the HashMap
-		int numIMikCorrRels = (numIMi)*(numIMi-1)/2 - (numIMi-1)*(numIMi-2)/2;
-		ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> IMikCorrRels = null;
-		if (numIMikCorrRels>0) {
-			IMikCorrRels = gcimEditIMiControlPanel.getSelectedIMikjCorrRelMap();
-		}
-		for (int m=0; m<numIMikCorrRels; m++) {
-//			int indexIMikCorrRel = (numIMi-1)*(numIMi-2)/2+1+m;
-			imikjMapCorrRels.add(IMikCorrRels.get(m));
-		}
+		// Set the off-diagonal ImikjCorrRel terms in the array list
+		imikjMapCorrRels.add(gcimEditIMiControlPanel.getSelectedIMikjCorrRelMap());
 	}
 	
 	/** 
@@ -660,26 +657,11 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	 * array lists
 	 */
 	public void removeIMiDetailsInArrayLists(int i) {
-		int numIMi=getNumIMi();
-		
 		imiTypes.remove(i);
 		imiMapAttenRels.remove(i);
 		imijMapCorrRels.remove(i);
-		//Remove the off-diagonal correlation terms from imikjMapCorrRels
-		//Need to move from largest to smallest to prevent deleting incorrect ones as indexes change
-		//as values are deleted 
-		for (int m=0; m<i; m++) {
-			int indexi=(numIMi-1)-m;
-			int indexj = i;
-			int index_imikjlist = (indexi)*(indexi-1)/2+indexj;
-			imikjMapCorrRels.remove(index_imikjlist);
-		}
-		for (int m=0; m<i; m++) {
-			int indexi = i;
-			int indexj=(i-1)-m;
-			int index_imikjlist = (indexi)*(indexi-1)/2+indexj;
-			imikjMapCorrRels.remove(index_imikjlist);
-		}
+		// Remove the off-diagonal correlation terms from imikjMapCorrRels
+		imikjMapCorrRels.remove(i);
 	}
 	
 	/** 
@@ -709,10 +691,7 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 			if (numIMikCorrRels>0) {
 				IMikCorrRels = gcimEditIMiControlPanel.getSelectedIMikjCorrRelMap();
 			}
-			for (int m=0; m<numIMikCorrRels; m++) {
-				int indexIMikCorrRel = (i)*(i-1)/2+m;
-				imikjMapCorrRels.set(indexIMikCorrRel, IMikCorrRels.get(m));
-			}
+			imikjMapCorrRels.set(i, IMikCorrRels);
 			
 		}
 
@@ -757,7 +736,7 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	 * This method returns the imikjCorrRel from the imikjMapCorrRels array list for a given index
 	 */
 	public Map<TectonicRegionType, ImCorrelationRelationship> getImikjCorrRel(int index) {
-		return imikjMapCorrRels.get(index);
+		return getImikCorrRels().get(index);
 	}
 	
 	/** 
@@ -849,12 +828,10 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	 * This method checks the IMjName from the main hazard calcs, to see if it has changed
 	 */
 	public void checkParentIMj() {
-		//Get the old and new IMj's
+		// Get the old and new IMj's
 		Parameter<Double> oldParentIMj = this.parentIMj;
 		Parameter<Double> newParentIMj = parent.getIMTGuiBeanInstance().getSelectedIM();
-		System.out.println("oldParentImj: " + oldParentIMj.getName());
-		System.out.println("newParentImj: " + newParentIMj.getName());
-		//Now compare
+		// Now compare
 		boolean oldNewIMjSame = true;
 		
 		if (!oldParentIMj.getName().equalsIgnoreCase(newParentIMj.getName())) {
@@ -903,7 +880,7 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 		imiTypes = new ArrayList<String>();
 		imiMapAttenRels = new ArrayList<Map<TectonicRegionType, ScalarIMR>>();
 		imijMapCorrRels = new ArrayList<Map<TectonicRegionType, ImCorrelationRelationship>>();
-		imikjMapCorrRels = new ArrayList<Map<TectonicRegionType, ImCorrelationRelationship>>();
+		imikjMapCorrRels = new ArrayList< ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> >();
 		
 		ArrayList<String> gcimImisList = new ArrayList<String>();
 		gcimImisList.add(IMI_LIST_DEFAULT);
