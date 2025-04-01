@@ -3,7 +3,6 @@ package org.opensha.sha.gcim.ui;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.GridBagLayout;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -61,7 +60,7 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	ActionListener {
 
 	public static final String NAME = "GCIM distributions";
-	private static final boolean D = true;
+	private static final boolean D = false;
 
 	private final static String GCIM_SUPPORTED_PARAM_NAME = "Gcim Support";
 	private final static String GCIM_PROB_PARAM_NAME = "Gcim Prob";
@@ -286,8 +285,6 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	public int getNumIMi() {
 		StringConstraint stringConst = (StringConstraint) gcimImisParameter.getConstraint();
 		int imiListSize = stringConst.size();
-		System.out.println("imiListSize="+imiListSize);
-		System.out.println("stringConst.getAllowedValues().get(0)="+stringConst.getAllowedValues().get(0));
 		if (imiListSize == 0) {
 			throw new RuntimeException("gcimImisParameter is empty!");
 		}
@@ -295,7 +292,6 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 			System.out.println(0);
 			return 0;
 		}
-		System.out.println(imiListSize);
 		return imiListSize;
 	}
 	
@@ -345,22 +341,22 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	 * Returns the flattened array list of the ImCorrRel's corresponding to the IMik's (i.e. off-diagonal terms)
 	 */
 	public ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> getImikCorrRels() {
-		ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> flattened =
-				(ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>>)
-				imikjMapCorrRels.stream()
-					.flatMap(List::stream)
-					.collect(Collectors.toList());
-		if (D) {
-			System.out.println("Getting the IMikCorrRels");
-			for (int i=0; i<imiTypes.size(); i++) {
-				for (int j=0; j<i; j++) {
-					int index = (i)*(i-1)/2+j;
-					System.out.println(flattened.get(index));
-				}
-			}
-		}
-		return flattened;
-	}
+ 		ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> flattened =
+ 				(ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>>)
+ 				imikjMapCorrRels.stream()
+ 					.flatMap(List::stream)
+ 					.collect(Collectors.toList());
+ 		if (D) {
+ 			System.out.println("Getting the IMikCorrRels");
+ 			for (int i=0; i<imiTypes.size(); i++) {
+ 				for (int j=0; j<i; j++) {
+ 					int index = (i)*(i-1)/2+j;
+ 					System.out.println(flattened.get(index));
+ 				}
+ 			}
+ 		}
+ 		return flattened;
+ 	}
 	
 	/**
 	 * Returns the mininum Approx. Z value used to get the GCIM CDFs
@@ -735,8 +731,8 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 	/**
 	 * This method returns the imikjCorrRel from the imikjMapCorrRels array list for a given index
 	 */
-	public Map<TectonicRegionType, ImCorrelationRelationship> getImikjCorrRel(int index) {
-		return getImikCorrRels().get(index);
+	public ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship> > getImikjCorrRel(int index) {
+		return imikjMapCorrRels.get(index);
 	}
 	
 	/** 

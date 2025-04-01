@@ -2640,7 +2640,6 @@ ActionListener, ScalarIMRChangeListener, IMTChangeListener {
 
 	@Override
 	public void imtChange(IMTChangeEvent e) {
-		System.out.println("GcimControlPanel.imtChange() newIMT: " + e.getNewIMT());
 		controlPanels.remove(gcimControlPanel);
 		gcimControlPanel = new GcimControlPanel(this, this);
 		controlPanels.add(gcimControlPanel);
