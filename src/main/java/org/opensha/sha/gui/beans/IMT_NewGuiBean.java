@@ -296,7 +296,6 @@ implements ParameterChangeListener, ScalarIMRChangeListener {
 	
 	private void fireIMTChangeEvent() {
 		IMTChangeEvent event = new IMTChangeEvent(this, getSelectedIM());
-		System.out.println(listeners);
 		for (IMTChangeListener listener : listeners) {
 			listener.imtChange(event);
 		}
