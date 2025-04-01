@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Random;
 
+import org.apache.commons.math3.util.Precision;
 import org.dom4j.Element;
 import org.opensha.commons.data.function.IntegerPDF_FunctionSampler;
 import org.opensha.commons.metadata.XMLSaveable;
@@ -204,7 +205,7 @@ public class WeightedList<E> extends AbstractList<WeightedValue<E>> implements X
 		
 		if (forceNormalization && list.size() > 0) {
 			if (!isNormalized(list))
-				throw new IllegalStateException("wights must sum to 1 (current sum: "+getWeightSum()+")");
+				throw new IllegalStateException("weights must sum to 1 (current sum: "+getWeightSum()+")");
 		}
 		
 		for (WeightedValue<?> value : list) {
@@ -377,8 +378,10 @@ public class WeightedList<E> extends AbstractList<WeightedValue<E>> implements X
 	
 	public void normalize() {
 		double sum = getWeightSum();
-		if (sum == 1f)
+		if (Precision.equals(sum, 1d, 0.0001))
 			return; // already normalized
+		Preconditions.checkState(sum > 0d && Double.isFinite(sum),
+				"Cannot normalize, weight sum must be finite and positive: %s", sum);
 		
 		List<WeightedValue<E>> normalized = new ArrayList<>(list.size());
 		for (int i=0; i<list.size(); i++) {
