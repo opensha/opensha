@@ -12,7 +12,7 @@ import org.opensha.commons.param.editor.impl.ParameterListEditor;
 import org.opensha.commons.param.event.ParameterChangeEvent;
 import org.opensha.commons.param.event.ParameterChangeListener;
 import org.opensha.commons.param.impl.DoubleParameter;
-import org.opensha.sha.earthquake.util.GriddedFiniteRuptureSettings;
+import org.opensha.commons.util.ServerPrefUtils;
 import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
 
@@ -145,7 +145,8 @@ public class GriddedSeismicitySettingsParam extends AbstractParameter<GriddedSei
 			pointSourceCutoffMagParam.addParameterChangeListener(this);
 			paramList.addParameter(pointSourceCutoffMagParam);
 			
-			distCorrParam = new PointSourceDistanceCorrectionParam();
+			distCorrParam = new PointSourceDistanceCorrectionParam(PointSourceDistanceCorrections.forServerPrefs(
+					ServerPrefUtils.SERVER_PREFS), PointSourceDistanceCorrections.DEFAULT);
 			distCorrParam.addParameterChangeListener(this);
 			paramList.addParameter(distCorrParam);
 			

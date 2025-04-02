@@ -3,8 +3,11 @@ package org.opensha.sha.faultSurface.utils;
 import java.util.EnumSet;
 import java.util.function.Supplier;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.opensha.commons.data.WeightedList;
 import org.opensha.commons.geo.Location;
+import org.opensha.commons.util.DevStatus;
+import org.opensha.commons.util.ServerPrefs;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm.DistanceCorrection2013;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.util.NSHMP_Util.DistanceCorrection2008;
@@ -20,7 +23,7 @@ import com.google.common.base.Preconditions;
  */
 public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? extends PointSourceDistanceCorrection>> {
 	
-	NONE("None") {
+	NONE("None", DevStatus.PRODUCTION) {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
 			// none
@@ -40,7 +43,7 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 //		}
 //		
 //	}),
-	FIELD("Field") {
+	FIELD("Field", DevStatus.PRODUCTION) {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
 			return WeightedList.evenlyWeighted(new PointSourceDistanceCorrection() {
@@ -65,25 +68,25 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 			});
 		}
 	},
-	NSHM_2008("USGS NSHM (2008)") {
+	NSHM_2008("USGS NSHM (2008)", DevStatus.PRODUCTION) {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
 			return WeightedList.evenlyWeighted(new DistanceCorrection2008());
 		}
 	},
-	NSHM_2013("USGS NSHM (2013)") {
+	NSHM_2013("USGS NSHM (2013)", DevStatus.PRODUCTION) {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
 			return WeightedList.evenlyWeighted(new DistanceCorrection2013());
 		}
 	},
-	MEDIAN_RJB("Median rJB (centered)") {
+	MEDIAN_RJB("Median rJB (centered)", DevStatus.DEVELOPMENT) {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
 			return WeightedList.evenlyWeighted(new RjbDistributionDistanceCorrection(0.5, false, false));
 		}
 	},
-	FIVE_POINT_RJB_DIST("5-Point rJB Distribution (centered)") {
+	FIVE_POINT_RJB_DIST("5-Point rJB Distribution (centered)", DevStatus.DEVELOPMENT) {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
 			return RjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(5, false, false);
@@ -93,7 +96,7 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 //					new double[] {0d, 0.05, 0.30, 0.60, 0.95, 1d}, false, false);
 		}
 	},
-	FIVE_POINT_RJB_DIST_ALONG("5-Point rJB Distribution (sample along)") {
+	FIVE_POINT_RJB_DIST_ALONG("5-Point rJB Distribution (sample along)", DevStatus.DEVELOPMENT) {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
 //			return RjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(5, true, true);
@@ -104,19 +107,19 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 //					new double[] {0d, 0.02, 0.10, 0.35, 0.65, 1d}, true, true);
 		}
 	},
-	TWENTY_POINT_RJB_DIST_ALONG("20-Point rJB Distribution (sample along)") {
+	TWENTY_POINT_RJB_DIST_ALONG("20-Point rJB Distribution (sample along)", DevStatus.EXPERIMENTAL) {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
 			return RjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(20, true, true);
 		}
 	},
-	TWENTY_POINT_RJB_DIST("20-Point rJB Distribution (centered)") {
+	TWENTY_POINT_RJB_DIST("20-Point rJB Distribution (centered)", DevStatus.EXPERIMENTAL) {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
 			return RjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(20, false, false);
 		}
 	},
-	SUPERSAMPLING_0p1_FIVE_POINT_RJB_DIST("Super-sampling 5-Point rJB (centered, 0.1 deg)") {
+	SUPERSAMPLING_0p1_FIVE_POINT_RJB_DIST("Super-sampling 5-Point rJB (centered, 0.1 deg)", DevStatus.DEVELOPMENT) {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
 			// for this one, importance sampling does better because the closest distance can really be at a corner
@@ -130,7 +133,7 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 //					5, 0.1, 11, 3, false, false);
 		}
 	},
-	SUPERSAMPLING_0p1_FIVE_POINT_RJB_DIST_ALONG("Super-sampling 5-Point rJB (centered, 0.1 deg, sample along)") {
+	SUPERSAMPLING_0p1_FIVE_POINT_RJB_DIST_ALONG("Super-sampling 5-Point rJB (centered, 0.1 deg, sample along)", DevStatus.DEVELOPMENT) {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
 			// for this one, importance sampling does better because the closest distance can really be at a corner
@@ -139,7 +142,7 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 					new double[] {0d, 0.05, 0.15, 0.4, 0.6, 1d}, 0.1, 11, 5, true, true);
 		}
 	},
-	SUPERSAMPLING_0p1_TWENTY_POINT_RJB_DIST("Super-sampling 20-Point rJB (centered, 0.1 deg)") {
+	SUPERSAMPLING_0p1_TWENTY_POINT_RJB_DIST("Super-sampling 20-Point rJB (centered, 0.1 deg)", DevStatus.EXPERIMENTAL) {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
 			return SupersamplingRjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(
@@ -162,25 +165,32 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 		}
 	}
 	
+	public static final EnumSet<PointSourceDistanceCorrections> forDevStatus(DevStatus... stati) {
+		EnumSet<PointSourceDistanceCorrections> set = EnumSet.allOf(PointSourceDistanceCorrections.class);
+		for (PointSourceDistanceCorrections corr : set) {
+			if (!ArrayUtils.contains(stati, corr.devStatus)) set.remove(corr);
+		}
+		return set;
+	}
+	
+	public static EnumSet<PointSourceDistanceCorrections> forServerPrefs(ServerPrefs prefs) {
+		if (prefs == ServerPrefs.DEV_PREFS)
+			return forDevStatus(DevStatus.PRODUCTION, DevStatus.DEVELOPMENT, DevStatus.EXPERIMENTAL);
+		else if (prefs == ServerPrefs.PRODUCTION_PREFS)
+			return forDevStatus(DevStatus.PRODUCTION);
+		else
+			throw new IllegalArgumentException(
+				"Unknown ServerPrefs instance: " + prefs);
+	}
+	
 	private String name;
+	private DevStatus devStatus;
 	private volatile boolean intialized;
 	private WeightedList<? extends PointSourceDistanceCorrection> corrs;
 
-	private PointSourceDistanceCorrections(String name) {
+	private PointSourceDistanceCorrections(String name, DevStatus devStatus) {
 		this.name = name;
-	}
-
-	private PointSourceDistanceCorrections(String name, PointSourceDistanceCorrection corr) {
-//		this(name, new WeightedList<>(List.of(corr), List.of(1d)));
-		this(name, WeightedList.evenlyWeighted(corr));
-	}
-
-	private PointSourceDistanceCorrections(String name, WeightedList<? extends PointSourceDistanceCorrection> corrs) {
-		this.name = name;
-		Preconditions.checkState(corrs.isNormalized(), "Weights not normalized for %s", name);
-		if (!(corrs instanceof WeightedList.Unmodifiable<?>))
-			corrs = new WeightedList.Unmodifiable<>(corrs);
-		this.corrs = corrs;
+		this.devStatus = devStatus;
 	}
 	
 	protected abstract WeightedList<? extends PointSourceDistanceCorrection> initCorrs();
