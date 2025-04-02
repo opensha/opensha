@@ -112,6 +112,9 @@ public class FiniteApproxPointSurface extends PointSurface {
 	@Override
 	public double getDistanceX(Location loc) {
 		double rJB = getDistanceJB(loc);
+		if (Precision.equals(rJB,  0d, 0.0001))
+			// rJB == 0: inside the surface projection, assume halfway away from trace
+			return 0.5*horzWidth;
 		return footwall ? -rJB : rJB + horzWidth;
 	}
 
