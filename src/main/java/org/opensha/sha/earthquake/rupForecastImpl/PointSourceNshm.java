@@ -91,7 +91,7 @@ public class PointSourceNshm extends PoissonPointSource {
 	public static final double DEPTH_BELOW_M_CUT_DEFAULT = 5d;
 	public static final double DEPTH_ABOVE_M_CUT_DEFAULT = 1d;
 	
-	private static final SurfaceBuilder SURF_BUILDER_DEFAULT = new SurfaceBuilder(
+	public static final SurfaceBuilder SURF_BUILDER_DEFAULT = new SurfaceBuilder(
 			M_DEPTH_CUT_DEFAULT, DEPTH_BELOW_M_CUT_DEFAULT, DEPTH_ABOVE_M_CUT_DEFAULT);
 
 	/** Minimum magnitude for finite fault representation. */
@@ -216,7 +216,7 @@ public class PointSourceNshm extends PoissonPointSource {
 		return ret;
 	}
 	
-	private static class SurfaceBuilder implements FocalMechRuptureSurfaceBuilder {
+	public static class SurfaceBuilder implements FocalMechRuptureSurfaceBuilder {
 
 		private double depthBelowMagCut;
 		private double depthAboveMagCut;
@@ -247,6 +247,7 @@ public class PointSourceNshm extends PoissonPointSource {
 			builder.upperDepthWidthAndDip(zTop, widthDD, mech.dip());
 			builder.footwall(surfaceIndex == 0); // always true for SS, true for one rup for N & R
 			builder.magnitude(magnitude);
+			builder.length(calcLength(magnitude));
 			
 			return builder.buildFiniteApproxPointSurface();
 		}
@@ -275,8 +276,12 @@ public class PointSourceNshm extends PoissonPointSource {
 		 * @param mag of interest
 		 * @return the associated depth of rupture
 		 */
-		private double depthForMag(double mag) {
+		public double depthForMag(double mag) {
 			return (mag >= magCut) ? depthAboveMagCut : depthBelowMagCut;
+		}
+		
+		public double calcLength(double mag) {
+			return WC94.getMedianLength(mag);
 		}
 
 		/**
@@ -288,8 +293,8 @@ public class PointSourceNshm extends PoissonPointSource {
 		 * @param dipRad (in radians)
 		 * @return
 		 */
-		private static double calcWidth(double mag, double depth, double dipRad) {
-			double length = WC94.getMedianLength(mag);
+		public double calcWidth(double mag, double depth, double dipRad) {
+			double length = calcLength(mag);
 			double aspectWidth = length / 1.5;
 			double ddWidth = (14.0 - depth) / sin(dipRad);
 			return min(aspectWidth, ddWidth);
@@ -356,7 +361,7 @@ public class PointSourceNshm extends PoissonPointSource {
 	public static class DistanceCorrection2013 implements PointSourceDistanceCorrection {
 
 		@Override
-		public double getCorrectedDistanceJB(double mag, PointSurface surf, double horzDist) {
+		public double getCorrectedDistanceJB(Location siteLoc, double mag, PointSurface surf, double horzDist) {
 			if (mag < RJB_M_CUTOFF) {
 				return horzDist;
 			}
