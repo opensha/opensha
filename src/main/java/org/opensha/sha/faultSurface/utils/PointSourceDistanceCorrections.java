@@ -4,10 +4,9 @@ import java.util.EnumSet;
 import java.util.function.Supplier;
 
 import org.opensha.commons.data.WeightedList;
-import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.geo.Location;
 import org.opensha.sha.earthquake.rupForecastImpl.PointSourceNshm.DistanceCorrection2013;
 import org.opensha.sha.faultSurface.PointSurface;
-import org.opensha.sha.util.NSHMP_Util;
 import org.opensha.sha.util.NSHMP_Util.DistanceCorrection2008;
 
 import com.google.common.base.Preconditions;
@@ -48,7 +47,7 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 				// TODO is there a reference? more specific name?
 
 				@Override
-				public double getCorrectedDistanceJB(double mag, PointSurface surf, double horzDist) {
+				public double getCorrectedDistanceJB(Location siteLoc, double mag, PointSurface surf, double horzDist) {
 					// Wells and Coppersmith L(M) for "all" focal mechanisms
 					// this correction comes from work by Ned Field and Bruce Worden
 					// it assumes a vertically dipping straight fault with random
@@ -87,26 +86,30 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 	FIVE_POINT_RJB_DIST("5-Point rJB Distribution (centered)") {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
-//			return AnalyticalPointSourceDistanceCorrection.getEvenlyWeightedFractiles(5, false, false));
-			return RjbDistributionDistanceCorrection.getImportanceSampledFractiles(
-					new double[] {0d, 0.05, 0.2, 0.5, 0.8, 1d}, false, false);
+			return RjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(5, false, false);
+//			return RjbDistributionDistanceCorrection.getImportanceSampledFractiles(
+////					new double[] {0d, 0.05, 0.2, 0.5, 0.8, 1d}, false, false);
+////					new double[] {0d, 0.02, 0.10, 0.35, 0.65, 1d}, false, false);
+//					new double[] {0d, 0.05, 0.30, 0.60, 0.95, 1d}, false, false);
 		}
 	},
 	FIVE_POINT_RJB_DIST_ALONG("5-Point rJB Distribution (sample along)") {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
-//			return AnalyticalPointSourceDistanceCorrection.getEvenlyWeightedFractiles(5, false, false));
+//			return RjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(5, true, true);
 			return RjbDistributionDistanceCorrection.getImportanceSampledFractiles(
-					new double[] {0d, 0.05, 0.2, 0.5, 0.8, 1d}, true, true);
+//					new double[] {0d, 0.05, 0.2, 0.5, 0.8, 1d}, true, true);
+					new double[] {0d, 0.05, 0.15, 0.4, 0.6, 1d}, true, true);
+//					new double[] {0d, 0.05, 0.30, 0.60, 0.95, 1d}, true, true);
+//					new double[] {0d, 0.02, 0.10, 0.35, 0.65, 1d}, true, true);
 		}
 	},
-//	THREE_POINT_RJB_DIST("3-Point rJB Distribution (centered)") {
-//		@Override
-//		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
-//			return RjbDistributionDistanceCorrection.getImportanceSampledFractiles(
-//					new double[] {0d, 0.2, 0.8, 1d}, false, false);
-//		}
-//	},
+	TWENTY_POINT_RJB_DIST_ALONG("20-Point rJB Distribution (sample along)") {
+		@Override
+		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+			return RjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(20, true, true);
+		}
+	},
 	TWENTY_POINT_RJB_DIST("20-Point rJB Distribution (centered)") {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
@@ -116,17 +119,31 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 	SUPERSAMPLING_0p1_FIVE_POINT_RJB_DIST("Super-sampling 5-Point rJB (centered, 0.1 deg)") {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+			// for this one, importance sampling does better because the closest distance can really be at a corner
+			// that isn't captured by the wide evenly spaced bins
 			return SupersamplingRjbDistributionDistanceCorrection.getImportanceSampledFractiles(
-					new double[] {0d, 0.05, 0.2, 0.5, 0.8, 1d}, 0.1, 11, false, false);
+//					new double[] {0d, 0.05, 0.2, 0.5, 0.8, 1d}, 0.1, 11, 5, false, false);
+					new double[] {0d, 0.05, 0.15, 0.4, 0.6, 1d}, 0.1, 11, 5, false, false);
+//					new double[] {0d, 0.02, 0.10, 0.35, 0.65, 1d}, 0.1, 11, 5, false, false);
+//					new double[] {0d, 0.05, 0.30, 0.60, 0.95, 1d}, 0.1, 11, 5, false, false);
 //			return SupersamplingRjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(
-//					20, 0.1, 21, false, false);
+//					5, 0.1, 11, 3, false, false);
+		}
+	},
+	SUPERSAMPLING_0p1_FIVE_POINT_RJB_DIST_ALONG("Super-sampling 5-Point rJB (centered, 0.1 deg, sample along)") {
+		@Override
+		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+			// for this one, importance sampling does better because the closest distance can really be at a corner
+			// that isn't captured by the wide evenly spaced bins
+			return SupersamplingRjbDistributionDistanceCorrection.getImportanceSampledFractiles(
+					new double[] {0d, 0.05, 0.15, 0.4, 0.6, 1d}, 0.1, 11, 5, true, true);
 		}
 	},
 	SUPERSAMPLING_0p1_TWENTY_POINT_RJB_DIST("Super-sampling 20-Point rJB (centered, 0.1 deg)") {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
 			return SupersamplingRjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(
-					20, 0.1, 21, false, false);
+					20, 0.1, 11, 3, false, false);
 		}
 	};
 	
