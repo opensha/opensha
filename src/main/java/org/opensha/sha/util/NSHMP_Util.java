@@ -9,6 +9,7 @@ import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
+import org.opensha.commons.geo.Location;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrection;
 import org.opensha.sha.faultSurface.utils.PointSourceDistanceCorrections;
@@ -136,7 +137,7 @@ public class NSHMP_Util {
 		private EvenlyDiscretizedFunc magBinFunc = new EvenlyDiscretizedFunc(6.05, 26, 0.1);
 
 		@Override
-		public double getCorrectedDistanceJB(double mag, PointSurface surf, double horzDist) {
+		public double getCorrectedDistanceJB(Location siteLoc, double mag, PointSurface surf, double horzDist) {
 			if(mag<=6) {
 				return horzDist;
 			} else if (horzDist == 0d) {
