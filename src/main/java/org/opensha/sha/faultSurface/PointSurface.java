@@ -291,7 +291,7 @@ public class PointSurface implements RuptureSurface, java.io.Serializable{
 		double horzDist = LocationUtils.horzDistanceFast(pointLocation, siteLoc);
 		if (distCorr == null)
 			return horzDist;
-		return distCorr.getCorrectedDistanceJB(magForDistCorr, this, horzDist);
+		return distCorr.getCorrectedDistanceJB(siteLoc, magForDistCorr, this, horzDist);
 	}
 
 	@Override
