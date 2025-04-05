@@ -64,56 +64,56 @@ class Benchmark {
 		List<ScalarIMR> gmms = new ArrayList<>();
 		List<String> gmmNames = new ArrayList<>();
 		
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.ASK_14_BASE, true));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.ASK_14_BASE, true));
 		gmmNames.add("NSHMP ASK 2014 Base, Parameterized");
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.ASK_14_BASE, false));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.ASK_14_BASE, false));
 		gmmNames.add("NSHMP ASK 2014 Base");
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.ASK_14, false));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.ASK_14, false));
 		gmmNames.add("NSHMP ASK 2014 USGS");
 		gmms.add(AttenRelRef.ASK_2014.get());
 		gmmNames.add("Original ASK 2014");
 		
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.BSSA_14_BASE, true));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.BSSA_14_BASE, true));
 		gmmNames.add("NSHMP BSSA 2014 Base, Parameterized");
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.BSSA_14_BASE, false));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.BSSA_14_BASE, false));
 		gmmNames.add("NSHMP BSSA 2014 Base");
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.BSSA_14, false));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.BSSA_14, false));
 		gmmNames.add("NSHMP BSSA 2014 USGS");
 		gmms.add(AttenRelRef.BSSA_2014.get());
 		gmmNames.add("Original BSSA 2014");
 		
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.CB_14_BASE, true));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.CB_14_BASE, true));
 		gmmNames.add("NSHMP CB 2014 Base, Parameterized");
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.CB_14_BASE, false));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.CB_14_BASE, false));
 		gmmNames.add("NSHMP CB 2014 Base");
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.CB_14, false));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.CB_14, false));
 		gmmNames.add("NSHMP CB 2014 USGS");
 		gmms.add(AttenRelRef.CB_2014.get());
 		gmmNames.add("Original CB 2014");
 		
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.CY_14_BASE, true));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.CY_14_BASE, true));
 		gmmNames.add("NSHMP CY 2014 Base, Parameterized");
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.CY_14_BASE, false));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.CY_14_BASE, false));
 		gmmNames.add("NSHMP CY 2014 Base");
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.CY_14, false));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.CY_14, false));
 		gmmNames.add("NSHMP CY 2014 USGS");
 		gmms.add(AttenRelRef.CY_2014.get());
 		gmmNames.add("Original CY 2014");
 		
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2014_42, true));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.COMBINED_ACTIVE_CRUST_2014_42, true));
 		gmmNames.add("NSHMP 2014 Combined, Parameterized");
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2014_42, false));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.COMBINED_ACTIVE_CRUST_2014_42, false));
 		gmmNames.add("NSHMP 2014 Combined");
 		gmms.add(AttenRelRef.NGAWest_2014_AVG_NOIDRISS.get());
 		gmmNames.add("Original NGA-West2 (No Idriss)");
 		
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023, true));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.COMBINED_ACTIVE_CRUST_2023, true));
 		gmmNames.add("NSHMP 2023 Combined, Parameterized");
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023, false));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.COMBINED_ACTIVE_CRUST_2023, false));
 		gmmNames.add("NSHMP 2023 Combined");
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023_LOS_ANGELES, false));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.COMBINED_ACTIVE_CRUST_2023_LOS_ANGELES, false));
 		gmmNames.add("NSHMP 2023 Combined, LA");
-		gmms.add(new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023_SAN_FRANCISCO, false));
+		gmms.add(new NSHMP_GMM_Wrapper.Single(Gmm.COMBINED_ACTIVE_CRUST_2023_SAN_FRANCISCO, false));
 		gmmNames.add("NSHMP 2023 Combined, SF");
 		
 		Random rand = new Random(totNumSites*fss.getRupSet().getNumRuptures());

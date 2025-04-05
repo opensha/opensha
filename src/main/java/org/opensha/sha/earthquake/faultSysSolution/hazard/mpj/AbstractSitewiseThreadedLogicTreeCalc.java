@@ -294,7 +294,7 @@ public abstract class AbstractSitewiseThreadedLogicTreeCalc {
 		public NSHMP_GMM_Wrapper call() throws Exception {
 			DistCachedERFWrapper erf = checkOutERF(fssERF, erfDeque);
 			
-			NSHMP_GMM_Wrapper cache = new NSHMP_GMM_Wrapper(null, false);
+			NSHMP_GMM_Wrapper cache = new NSHMP_GMM_Wrapper.InputCacheGen();
 			
 			Collection<SourceFilter> filters = sourceFilters.getEnabledFilters();
 			
