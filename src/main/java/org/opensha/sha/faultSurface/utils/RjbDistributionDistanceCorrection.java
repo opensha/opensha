@@ -5,19 +5,14 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
 
-import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.math3.stat.StatUtils;
 import org.apache.commons.math3.util.Precision;
 import org.opensha.commons.data.WeightedList;
-import org.opensha.commons.data.function.ArbDiscrEmpiricalDistFunc;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
-import org.opensha.commons.data.function.LightFixedXFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
 import org.opensha.commons.util.Interpolate;
@@ -27,18 +22,26 @@ import com.google.common.base.Preconditions;
 
 public class RjbDistributionDistanceCorrection implements PointSourceDistanceCorrection {
 	
+	// for rEpi below this, we'll just interpolate linearly between the value at this value and the value at rEpi=0 
 	static final double MIN_NONZERO_DIST_DEFAULT = 0.1;
+	// initial max rEpi to calculate for; will go out further if/as needed
 	static final double INITIAL_MAX_DIST_DEFAULT = 300d;
+	// we cache at fixed rEpis, spaced with this discretization (in log10 units)
 	static final double LOG_DIST_SAMPLE_DISCR_DEFAULT = 0.05d;
 	// true means there's always a sample exactly pointing at the site
 	// with a good nAlpha choice (e.g., 180), there will also be one perfectly perpendicular
 	static final boolean ALPHA_ALIGN_EDGES = true;
-	static final int NUM_ALPHA_SAMPLES_DEFAULT = 60; // span is 0-180, 60 means one every 3 degrees
+	// number of angle samples
+	static final int NUM_ALPHA_SAMPLES_DEFAULT = 180; // span is 0-180, 90 means one every 2 degrees
 	// better performance is achieved by further interpolating distances between alpha values before calculating the CDF
-	static final int NUM_ALPHA_INTERP_SAMPLES = 20;
-	static final int NUM_SS_ALPHA_SAMPLES_DEFAULT = 60; // alpha samples when also supersampling
-	static final int NUM_SS_AND_ALONG_ALPHA_SAMPLES_DEFAULT = 18; // alpha samples when supersampling and sampling along
+	static final int NUM_ALPHA_INTERP_SAMPLES = 3;
+	static final int NUM_SS_ALPHA_SAMPLES_DEFAULT = 90; // alpha samples when also supersampling
+	static final int NUM_SS_AND_ALONG_ALPHA_SAMPLES_DEFAULT = 90; // alpha samples when supersampling and sampling along
+	// if we're sampling along-strike, the number of said samples
 	static final int NUM_SAMPLES_ALONG_DEFAULT = 21;
+	// interpolate between discrete DAS samples
+	static final int NUM_ALONG_INTERP_SAMPLES = 10;
+	// if we're sampling down-dip, the number of said samples
 	static final int NUM_SAMPLES_DOWN_DIP_DEFAULT = 5;
 	
 	public static InvCDFCache initDefaultCache(double[] fractiles, boolean sampleAlong, boolean sampleDownDip) {
@@ -66,6 +69,9 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 		// sub-sampling in this mode
 		int numAlpha = sampleAlong ? NUM_SS_AND_ALONG_ALPHA_SAMPLES_DEFAULT : NUM_SS_ALPHA_SAMPLES_DEFAULT;
 		int numAlong = NUM_SAMPLES_ALONG_DEFAULT/2;
+		if (numAlong % 2 == 0)
+			// keep it odd;
+			numAlong++;
 		InvCDFCache ret = new InvCDFCache(sampleAlong, sampleDownDip, MIN_NONZERO_DIST_DEFAULT, INITIAL_MAX_DIST_DEFAULT,
 				LOG_DIST_SAMPLE_DISCR_DEFAULT, numAlpha,
 				numCellSamples, beta, cellWidth, cellHeight,
@@ -81,7 +87,12 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 	
 	private static final DecimalFormat sampleDF = new DecimalFormat("0.##");
 	static String getSampleStr(double[] samples) {
+		return getSampleStr(samples, false);
+	}
+	
+	static String getSampleStr(double[] samples, boolean radToDeb) {
 		return Arrays.stream(samples)
+				.map(d->radToDeb ? Math.toDegrees(d) : d)
 	    		.mapToObj(sampleDF::format)
 //				.mapToObj(v->Double.valueOf(v).floatValue()+"")
 	    		.reduce((a, b) -> a + ", " + b)
@@ -287,7 +298,7 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 	
 	static double[] buildSpacedSamples(double min, double max, int num, boolean sampleEdges) {
 		double delta = (max-min)/(double)(sampleEdges ? num-1 : num);
-		double ret0 = sampleEdges ? 0d : min + 0.5*delta;
+		double ret0 = sampleEdges ? min : min + 0.5*delta;
 		double[] ret = new double[num];
 		for (int i=0; i<num; i++)
 			ret[i] = ret0 + i*delta;
@@ -323,8 +334,6 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 					numAlphaSamples, 1, 0d, 0d, 0d,
 					numSamplesAlong, numSamplesDownDip, fractiles);
 		}
-		
-
 
 		public InvCDFCache(boolean sampleAlongStrike, boolean sampleDownDip, double minNonzeroDist,
 				double initialMaxDist, double logDistSampleDiscr,
@@ -338,19 +347,22 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 			this.logDistSampleDiscr = logDistSampleDiscr;
 			Preconditions.checkState(numAlphaSamples > 1); 
 			// can just do 0->PI because we're doing rJB and the surface projection is symmetrical across the axis
+			double maxAlpha = Math.PI;
 			if (ALPHA_ALIGN_EDGES)
-				// start at 0 and end one bin before the end
-				alphaRadSamples = Arrays.copyOf(buildSpacedSamples(0d, Math.PI, numAlphaSamples+1, true), numAlphaSamples);
+				// start at 0 and end one bin before the end (to avoid double counting)
+				alphaRadSamples = Arrays.copyOf(buildSpacedSamples(0d, maxAlpha, numAlphaSamples+1, true), numAlphaSamples);
 			else
-				alphaRadSamples = buildSpacedSamples(0d, Math.PI, numAlphaSamples, false);
+				// bin centers, can put edges right at 0 and 180 without double counting.
+				alphaRadSamples = buildSpacedSamples(0d, maxAlpha, numAlphaSamples, false);
 			if (numCellSamples > 1) {
+				boolean cellSamplesAtEdges = false; // we don't want to colocate with the next cell over
 				Preconditions.checkState(cellWidth > 0 || cellHeight > 0);
 				if (cellWidth > 0)
-					cellSamplesX = buildSpacedSamples(-0.5*cellWidth, 0.5*cellWidth, numCellSamples);
+					cellSamplesX = buildSpacedSamples(-0.5*cellWidth, 0.5*cellWidth, numCellSamples, cellSamplesAtEdges);
 				else
 					cellSamplesX = single_sample_0;
 				if (cellHeight > 0)
-					cellSamplesY = buildSpacedSamples(-0.5*cellHeight, 0.5*cellHeight, numCellSamples);
+					cellSamplesY = buildSpacedSamples(-0.5*cellHeight, 0.5*cellHeight, numCellSamples, cellSamplesAtEdges);
 				else
 					cellSamplesY = single_sample_0;
 				betaRad = Math.toRadians(beta);
@@ -360,9 +372,7 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 				betaRad = 0d;
 			}
 //			System.out.println("Cache for beta="+(float)beta+" (rad="+(float)betaRad+"), cellW="+(float)cellWidth+", cellH="+(float)cellHeight);
-			// if we're supersampling, then we'll also randomly resample DAS and DD and want the samples to be at bin centers
-			// if we're not, then we want samples at bin edges
-			boolean geomSamplesAtEdges = numCellSamples <= 1;
+			boolean geomSamplesAtEdges = true;
 			if (sampleAlongStrike) {
 				Preconditions.checkState(numSamplesAlong > 1);
 				alongSamples = buildSpacedSamples(0d, 1d, numSamplesAlong, geomSamplesAtEdges);
@@ -555,6 +565,8 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 		}
 	}
 	
+	private static boolean FIRST_D = true;
+	
 	private static class SampleFractileCalculator implements Supplier<double[]> {
 
 		private final double rEpi;
@@ -610,11 +622,45 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 
 		@Override
 		public double[] get() {
-			double[] samples = new double[alphaRadSamples.length*cellSamplesX.length*cellSamplesY.length
-			                              *alongSamples.length*downDipSamples.length];
-			Preconditions.checkState(samples.length > 1);
-			int index = 0;
 			double rupHorzWidth = rupWidth * Math.cos(Math.toRadians(dip));
+			
+			// figure out the closest and farthest it could possibly be
+			// we'll then discretize between closest and furthest and map samples to those discrete values; this will
+			// allow us to quickly create a CDF, and also avoid storing all samples in memory at once
+			double farthest = rEpi;
+			// diagonal of the surface projection of the rupture
+			double horzDiag = Math.sqrt(rupLength*rupLength + rupHorzWidth*rupHorzWidth);
+			double closest;
+			if (haveGeomSamples) {
+				// full thing could be in our direction
+				closest = Math.max(0d, rEpi-horzDiag);
+			} else {
+				// only half can be in our direction
+				closest = Math.max(0d, rEpi-0.5*horzDiag);
+			}
+			if (haveCellSamples) {
+				// even if perfectly aligned, can be at the corner of the cell
+				double maxX = 0d;
+				for (double x : cellSamplesX)
+					maxX = Math.max(maxX, Math.abs(x));
+				double maxY = 0d;
+				for (double y : cellSamplesY)
+					maxY = Math.max(maxY, Math.abs(y));
+				double cornerDist = Math.sqrt(maxX*maxX + maxY*maxY);
+				// could be even further than rEpi
+				farthest += cornerDist;
+				// or could be even closer
+				closest = Math.max(0, closest-cornerDist);
+			}
+			
+			if (Precision.equals(farthest, closest, 1e-4)) {
+				// happns if rEpi=0 and no cell sampling
+				Preconditions.checkState(Precision.equals(0d, rEpi, 1e-3));
+				double[] ret = new double[fractiles.length];
+				for (int i=0; i<ret.length; i++)
+					ret[i] = closest;
+				return ret;
+			}
 			
 			double rEpiSinB, rEpiCosB;
 			if (haveCellSamples) {
@@ -625,166 +671,247 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 				rEpiCosB = Double.NaN;
 			}
 			
+			final boolean D;
+			if (FIRST_D) {
+				synchronized (SampleFractileCalculator.class) {
+					D = FIRST_D;
+					FIRST_D = false;
+				}
+			} else {
+				D = false;
+			}
+			
 			// alpha is the direction of the fault relative to the direction to the site
 			// alpha=0 means the site is perfectly in the along-strike direction
 			
-			// split these cases up to avoid unnecessary loops if we can
-			if (haveCellSamples || haveGeomSamples) {
-				// sample different intermediate alpha values in the inner loops to get denser sampling (i.e., don't use
-				// the same alpha value for all the inner loop values, samples within the cell)
-				int numPerAlpha = samples.length / alphaRadSamples.length;
-				double deltaAlpha = alphaRadSamples[1]-alphaRadSamples[0];
-				double[] alphaRadOffsets = ALPHA_ALIGN_EDGES ?
-						// edge aligned, so each alpha is at the start of the bin
-						// we'll sample over the bin to the right
-						buildSpacedSamples(0d, deltaAlpha, numPerAlpha+1, true)
-						// center aligned, so each alpha is at the center of the bin
-						// we'll sample starting at the left
-						: buildSpacedSamples(-0.5*deltaAlpha, 0.5*deltaAlpha, numPerAlpha+1, true);
-				Preconditions.checkState(Precision.equals(0d, alphaRadOffsets[0]+alphaRadSamples[0], 1e-4));
-				// randomize in a repeatable fashion
-				Random random = new Random(numPerAlpha);
-				ArrayUtils.shuffle(alphaRadOffsets, random);
-				int alphaRadOffsetStartIndex = 0;
-				double[] sinAs = new double[numPerAlpha];
-				double[] cosAs = new double[numPerAlpha];
-
-				double[] alongRandOffsets = null;
-				double[] downRandOffsets = null;
-				int geomRandOffsetStartIndex = 0;
-				if (haveGeomSamples && haveCellSamples) {
-					// also sample different intermediate geometry samples
-					// this gives us better coverage of the full distribution despite reduced alpha samples
-					if (alongSamples.length > 1) {
-						double delta = alongSamples[1]-alongSamples[0];
-						alongRandOffsets = buildSpacedSamples(-0.5*delta, 0.5*delta, numPerAlpha+1);
-						Preconditions.checkState(Precision.equals(alongSamples[0]+alongRandOffsets[0], 0d, 1e-4));
-						ArrayUtils.shuffle(alongRandOffsets, random);
-					}
-					if (downDipSamples.length > 1) {
-						double delta = downDipSamples[1]-downDipSamples[0];
-						downRandOffsets = buildSpacedSamples(-0.5*delta, 0.5*delta, numPerAlpha+1);
-						Preconditions.checkState(Precision.equals(downDipSamples[0]+downRandOffsets[0], 0d, 1e-4));
-						ArrayUtils.shuffle(downRandOffsets, random);
-					}
+			if (D) System.out.println("haveCellSamples="+haveCellSamples+", haveGeomSamples="+haveGeomSamples
+					+", nAlpha="+alphaRadSamples.length+", nAlphaInterp="+NUM_ALPHA_INTERP_SAMPLES
+					+"\n\talpha: "+getSampleStr(alphaRadSamples, true));
+			
+			if (D) {
+				if (haveGeomSamples) {
+					System.out.println("nAlong="+alongSamples.length+", along: "+getSampleStr(alongSamples));
+					System.out.println("nDD="+downDipSamples.length+", DD: "+getSampleStr(downDipSamples));
 				}
-				for (double alphaRad : alphaRadSamples) {
-					for (int i=0; i<numPerAlpha; i++) {
-						double offsetAlphaRad = alphaRad + alphaRadOffsets[(i+alphaRadOffsetStartIndex) % numPerAlpha];
-						sinAs[i] = Math.sin(offsetAlphaRad);
-						cosAs[i] = Math.cos(offsetAlphaRad);
-					}
-					// rotate the offsets so that the inner loops don't always have the same offset
-					alphaRadOffsetStartIndex++;
-					
-					int i = 0;
-					
-					if (haveCellSamples) {
-						// we have cell sqmples
-						for (double cellSampleX : cellSamplesX) {
-							for (double cellSampleY : cellSamplesY) {
-								// calculate revised rEpi based on the sample location within the cell
-								// beta is 0 in the y direction
-								double dx = rEpiSinB - cellSampleX;
-							    double dy = rEpiCosB - cellSampleY;
+				if (haveCellSamples) {
+					System.out.println("nCellX="+cellSamplesX.length+", x: "+getSampleStr(cellSamplesX));
+					System.out.println("nCellY="+cellSamplesY.length+", y: "+getSampleStr(cellSamplesY));
+				}
+			}
+			
+			SampleDistributionTracker sampleDist = new SampleDistributionTracker(closest, farthest, 1000); 
+			
+			int numSamples = alphaRadSamples.length*cellSamplesX.length*cellSamplesY.length;
+			double[] alongSubSampleFracts = null;
+			double[] alongOneMinusSubSampleFracts = null;
+			if (haveGeomSamples) {
+				int numAlongSamples = alongSamples.length;
+				if (alongSamples.length > 1 && NUM_ALONG_INTERP_SAMPLES > 1) {
+					alongSubSampleFracts = Arrays.copyOf(buildSpacedSamples(0d, 1d, NUM_ALONG_INTERP_SAMPLES+1), NUM_ALONG_INTERP_SAMPLES);
+					alongOneMinusSubSampleFracts = new double[alongSubSampleFracts.length];
+					for (int i=0; i<alongOneMinusSubSampleFracts.length; i++)
+						alongOneMinusSubSampleFracts[i] = 1d-alongSubSampleFracts[i];
+					numAlongSamples = (numAlongSamples-1)*NUM_ALONG_INTERP_SAMPLES+1;
+				}
+				numSamples *= numAlongSamples*downDipSamples.length;
+			}
+			Preconditions.checkState(numSamples>1);
+			int numPerAlpha = numSamples/alphaRadSamples.length;
+			Preconditions.checkState(alphaRadSamples.length > 1);
+			
+			double[] firstAlphaVals = null;
+			double[] prevAlphaVals = new double[numPerAlpha];
+			double[] tempArray = new double[numPerAlpha];
+			
+			double[] subSampleFracts = null;
+			double[] oneMinusFracts = null;
+			if (NUM_ALPHA_INTERP_SAMPLES > 1) {
+				subSampleFracts = Arrays.copyOf(buildSpacedSamples(0d, 1d, NUM_ALPHA_INTERP_SAMPLES+1, true), NUM_ALPHA_INTERP_SAMPLES);
+				if (D) System.out.println("alpha subSampleFracts: "+getSampleStr(subSampleFracts));
+				oneMinusFracts = new double[subSampleFracts.length];
+				for (int i=0; i<oneMinusFracts.length; i++)
+					oneMinusFracts[i] = 1d - subSampleFracts[i];
+			}
+			
+			for (int a=0; a<alphaRadSamples.length; a++) {
+				double alphaRad = alphaRadSamples[a];
+				double sinA = Math.sin(alphaRad);
+				double cosA = Math.cos(alphaRad);
+				
+				Preconditions.checkState(tempArray != prevAlphaVals); // check to make sure the array rolling worked
+				double[] innerSamples = tempArray;
+				int index = 0;
+				
+				if (haveCellSamples) {
+					// we have cell sqmples
+					for (double cellSampleX : cellSamplesX) {
+						for (double cellSampleY : cellSamplesY) {
+							// calculate revised rEpi based on the sample location within the cell
+							// beta is 0 in the y direction
+							double dx = rEpiSinB - cellSampleX;
+						    double dy = rEpiCosB - cellSampleY;
 
-							    double rEpiSample = Math.sqrt(dx*dx + dy*dy);
-							    if (haveGeomSamples) {
-							    	// we also have geometry samples
-							    	for (double fractDAS : alongSamples) {
-										for (double fractDD : downDipSamples) {
-											int geomI = (i+geomRandOffsetStartIndex) % numPerAlpha;
-											double myFractDAS = alongRandOffsets == null ? fractDAS : fractDAS+alongRandOffsets[geomI];
-											double myFractDD = downRandOffsets == null ? fractDD : fractDD+downRandOffsets[geomI];
-											samples[index++] = doCalcRJB(rEpiSample, rupLength, rupHorzWidth,
-													myFractDAS, myFractDD, sinAs[i], cosAs[i]);
-											i++;
-										}
-							    	}
-							    } else {
-							    	// no geometry samples, just 1 for this cell sample
-							    	samples[index++] = doCalcRJB(rEpiSample, rupLength, rupHorzWidth, 0.5d, 0.5d, sinAs[i], cosAs[i]);
-							    	i++;
-							    }
-							}
+						    double rEpiSample = Math.sqrt(dx*dx + dy*dy);
+						    if (haveGeomSamples) {
+						    	// we also have geometry samples
+						    	if (NUM_ALONG_INTERP_SAMPLES > 1) {
+						    		index = calcQuickGeomSamples(alongSamples, downDipSamples, alongSubSampleFracts,
+						    				alongOneMinusSubSampleFracts, innerSamples, index, rEpiSample, rupLength, rupHorzWidth, sinA, cosA);
+						    	} else {
+						    		for (double fractDAS : alongSamples) {
+						    			for (double fractDD : downDipSamples) {
+						    				innerSamples[index++] = doCalcRJB(rEpiSample, rupLength, rupHorzWidth,
+						    						fractDAS, fractDD, sinA, cosA);
+						    			}
+						    		}
+						    	}
+						    } else {
+						    	// no geometry samples, just 1 for this cell sample
+						    	innerSamples[index++] = doCalcRJB(rEpiSample, rupLength, rupHorzWidth, 0.5d, 0.5d, sinA, cosA);
+						    }
 						}
-						geomRandOffsetStartIndex++;
+					}
+				} else if (haveGeomSamples) {
+					// we have geometry samples (but no cell samples)
+					if (NUM_ALONG_INTERP_SAMPLES > 1) {
+						index = calcQuickGeomSamples(alongSamples, downDipSamples, alongSubSampleFracts,
+								alongOneMinusSubSampleFracts, innerSamples, index, rEpi, rupLength, rupHorzWidth, sinA, cosA);
 					} else {
-						// we have geometry samples (but no cell samples)
 						for (double fractDAS : alongSamples) {
 							for (double fractDD : downDipSamples) {
-								samples[index++] = doCalcRJB(rEpi, rupLength, rupHorzWidth, fractDAS, fractDD, sinAs[i], cosAs[i]);
-								i++;
+								innerSamples[index++] = doCalcRJB(rEpi, rupLength, rupHorzWidth, fractDAS, fractDD, sinA, cosA);
 							}
 						}
 					}
+				} else {
+					// neither geom nor cell samples
+					innerSamples[index++] = doCalcRJB(rEpi, rupLength, rupHorzWidth, 0.5d, 0.5d, sinA, cosA);
 				}
-			} else {
-				// simple (and most common?) case, avoid any nested loops
-				for (double alphaRad : alphaRadSamples) {
-					double sinA = Math.sin(alphaRad);
-					double cosA = Math.cos(alphaRad);
-					samples[index++] = doCalcRJB(rEpi, rupLength, rupHorzWidth, 0.5d, 0.5d, sinA, cosA);
+				
+				Preconditions.checkState(innerSamples.length == index);
+				
+				if (a == 0)
+					// stash values at first alpha for wraparound interpolation
+					firstAlphaVals = Arrays.copyOf(innerSamples, numPerAlpha);
+				
+				if (NUM_ALPHA_INTERP_SAMPLES > 1 && a > 0) {
+					// interpolate from the previous alpha value
+					addInterpolateSamplesBetween(sampleDist, prevAlphaVals, innerSamples, subSampleFracts, oneMinusFracts);
 				}
+				
+				// add them
+				for (double sample : innerSamples)
+					sampleDist.addValue(sample);
+				
+				// no longer need the previous, but reuse the array
+				tempArray = prevAlphaVals;
+				// set ours as previous
+				prevAlphaVals = innerSamples;
 			}
-			Preconditions.checkState(index == samples.length);
 			
-			boolean allSame = true;
-			for (int i=1; allSame && i<samples.length; i++)
-				allSame = samples[i-1] == samples[i];
-			if (allSame) {
-				double[] ret = new double[fractiles.length];
-				for (int i=0; i<ret.length; i++)
-					ret[i] = samples[0];
-				return ret;
-			}
+			if (NUM_ALPHA_INTERP_SAMPLES > 1)
+				// wrap around interpolation
+				addInterpolateSamplesBetween(sampleDist, prevAlphaVals, firstAlphaVals, subSampleFracts, oneMinusFracts);
 			
 			if (fractiles.length == 1 && Double.isNaN(fractiles[0])) {
 				// special case for mean only, don't need inv CDF
-				return new double[] {StatUtils.mean(samples)};
+				return new double[] {sampleDist.sum/(double)sampleDist.count};
 			}
 			
-			if (NUM_ALPHA_INTERP_SAMPLES > 1 && !haveCellSamples && !haveGeomSamples) {
-				// interpolate into more samples before doing the CDF calculation
-				// this greatly improves accuracy over just interpolating the CDF itself
-				// but only bother if we don't have cell nor geom samples; in those cases, we'll be sub-sampling alpha anyways
-				double[] samples2 = new double[samples.length*NUM_ALPHA_INTERP_SAMPLES];
-				int index2 = 0;
-				double[] subSamples = buildSpacedSamples(0d, 1d, NUM_ALPHA_INTERP_SAMPLES+1, true);
-				for (int i=0; i<samples.length; i++) {
-					double sample0 = samples[i];
-					// wrap around
-					double sample1 = i == samples.length-1 ? samples[0] : samples[i+1];
-					samples2[index2++] = sample0;
-					for (int j=1; j<NUM_ALPHA_INTERP_SAMPLES; j++)
-						// simple linear interpolation; I tried cubic and saw no improvement
-						samples2[index2++] = (1d-subSamples[j])*sample0 + subSamples[j]*sample1;
-				}
-				Preconditions.checkState(index2 == samples2.length);
-				samples = samples2;
+			// convert to normCDF
+			double invSum = 1d/(double)sampleDist.count;
+			double runningSumY = 0d;
+			EvenlyDiscretizedFunc dist = sampleDist.dist;
+			for (int i=0; i<dist.size(); i++) {
+				runningSumY += dist.getY(i);
+				dist.set(i, runningSumY*invSum);
 			}
 			
 			// calc normCDF
-			LightFixedXFunc normCDF = ArbDiscrEmpiricalDistFunc.calcQuickNormCDF(samples, null);
-			double minY = normCDF.getMinY();
-			double maxY = normCDF.getMaxY();
+//			LightFixedXFunc normCDF = ArbDiscrEmpiricalDistFunc.calcQuickNormCDF(samples, null);
+			double minY = dist.getMinY();
+			double maxY = dist.getMaxY();
 			double[] ret = new double[fractiles.length];
 			for (int i=0; i<fractiles.length; i++) {
 				if (Double.isNaN(fractiles[i])) {
 					// special case for mean
-					ret[i] = StatUtils.mean(samples);
+					ret[i] = sampleDist.sum/(double)sampleDist.count;
 				} else {
 					if (fractiles[i] <= minY)
-						ret[i] = normCDF.getX(0);
+						ret[i] = dist.getX(0);
 					else if (fractiles[i] >= maxY)
-						ret[i] = normCDF.getX(normCDF.size()-1);
+						ret[i] = dist.getX(dist.size()-1);
 					else
-						ret[i] = normCDF.getFirstInterpolatedX(fractiles[i]);
+						ret[i] = dist.getFirstInterpolatedX(fractiles[i]);
 				}
 			}
 			return ret;
 		}
 		
+	}
+	
+	private static int calcQuickGeomSamples(double[] alongSamples, double[] downDipSamples,
+			double[] subSampleFracts, double[] oneMinusFracts, double[] destArray, int index,
+			double rEpi, double rupLength, double rupHorzWidth, double sinA, double cosA) {
+		double[] prevVals = new double[downDipSamples.length];
+		for (int i=0; i<alongSamples.length; i++) {
+			double fractDAS = alongSamples[i];
+			for (int j=0; j<downDipSamples.length; j++) {
+				double fractDD = downDipSamples[j];
+				double val = doCalcRJB(rEpi, rupLength, rupHorzWidth, fractDAS, fractDD, sinA, cosA);
+				if (i > 0) {
+					// interpolate from prior val
+					for (int k=1; k<subSampleFracts.length; k++)
+						destArray[index++] = oneMinusFracts[k]*prevVals[j] + subSampleFracts[k]*val;
+				}
+				prevVals[j] = val;
+				destArray[index++] = val;
+			}
+		}
+		return index;
+	}
+	
+	private static class SampleDistributionTracker {
+		
+		private EvenlyDiscretizedFunc dist;
+		private int count;
+		private double sum;
+		
+		private double minVal, maxVal;
+		private double minCheck, maxCheck;
+		
+		public SampleDistributionTracker(double minVal, double maxVal, int numDiscretizations) {
+			dist = new EvenlyDiscretizedFunc(minVal, maxVal, numDiscretizations);
+			count = 0;
+			sum = 0d;
+			this.minVal = minVal;
+			this.maxVal = maxVal;
+			minCheck = minVal-1e-2;
+			maxCheck = maxVal+1e-2;
+		}
+		
+		public void addValue(double sample) {
+			Preconditions.checkState(sample >= minCheck && sample <= maxCheck,
+					"sample=%s out of bounds [%s, %s]", sample, minVal, maxVal);
+			addValueRaw(sample);
+		}
+		
+		private void addValueRaw(double sample) {
+			dist.add(dist.getClosestXIndex(sample), 1d);
+			count++;
+			sum += sample;
+		}
+	}
+	
+	private static void addInterpolateSamplesBetween(SampleDistributionTracker sampleDist, double[] samples0, double[] samples1,
+			double[] subSampleFracts, double[] oneMinusFracts) {
+		for (int i=0; i<samples0.length; i++) {
+			// j=1 because we're just doing the samples between
+			for (int j=1; j<subSampleFracts.length; j++) {
+				// simple linear interpolation; I tried cubic and saw no improvement
+				sampleDist.addValueRaw(oneMinusFracts[j]*samples0[i] + subSampleFracts[j]*samples1[i]);
+			}
+		}
 	}
 
 }

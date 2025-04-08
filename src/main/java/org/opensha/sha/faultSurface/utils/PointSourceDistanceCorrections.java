@@ -89,6 +89,7 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 	FIVE_POINT_RJB_DIST("5-Point rJB Distribution (centered)", DevStatus.DEVELOPMENT) {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+			// for the simple case I found that evenly weighted fractiles performs better than importance sampled
 			return RjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(5, false, false);
 //			return RjbDistributionDistanceCorrection.getImportanceSampledFractiles(
 ////					new double[] {0d, 0.05, 0.2, 0.5, 0.8, 1d}, false, false);
@@ -99,12 +100,15 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 	FIVE_POINT_RJB_DIST_ALONG("5-Point rJB Distribution (sample along)", DevStatus.DEVELOPMENT) {
 		@Override
 		protected WeightedList<? extends PointSourceDistanceCorrection> initCorrs() {
+			// when sampling along-strike I found that importance sampling performs best
 //			return RjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(5, true, true);
 			return RjbDistributionDistanceCorrection.getImportanceSampledFractiles(
-//					new double[] {0d, 0.05, 0.2, 0.5, 0.8, 1d}, true, true);
-					new double[] {0d, 0.05, 0.15, 0.4, 0.6, 1d}, true, true);
+//					new double[] {0d, 0.05, 0.20, 0.5, 0.8, 1d}, true, true);
+					new double[] {0d, 0.05, 0.15, 0.4, 0.6, 1d}, true, true); // best
+//					new double[] {0d, 0.05, 0.20, 0.4, 0.6, 1d}, true, true);
 //					new double[] {0d, 0.05, 0.30, 0.60, 0.95, 1d}, true, true);
 //					new double[] {0d, 0.02, 0.10, 0.35, 0.65, 1d}, true, true);
+//					new double[] {0d, 0.02, 0.10, 0.2, 0.5, 1d}, true, true);
 		}
 	},
 	TWENTY_POINT_RJB_DIST_ALONG("20-Point rJB Distribution (sample along)", DevStatus.EXPERIMENTAL) {
@@ -125,10 +129,10 @@ public enum PointSourceDistanceCorrections implements Supplier<WeightedList<? ex
 			// for this one, importance sampling does better because the closest distance can really be at a corner
 			// that isn't captured by the wide evenly spaced bins
 			return SupersamplingRjbDistributionDistanceCorrection.getImportanceSampledFractiles(
-//					new double[] {0d, 0.05, 0.2, 0.5, 0.8, 1d}, 0.1, 11, 5, false, false);
-					new double[] {0d, 0.05, 0.15, 0.4, 0.6, 1d}, 0.1, 11, 5, false, false);
-//					new double[] {0d, 0.02, 0.10, 0.35, 0.65, 1d}, 0.1, 11, 5, false, false);
-//					new double[] {0d, 0.05, 0.30, 0.60, 0.95, 1d}, 0.1, 11, 5, false, false);
+//					new double[] {0d, 0.05, 0.2, 0.5, 0.8, 1d}, 0.1, 21, 5, false, false);
+					new double[] {0d, 0.05, 0.15, 0.4, 0.6, 1d}, 0.1, 21, 5, false, false);
+//					new double[] {0d, 0.02, 0.10, 0.35, 0.65, 1d}, 0.1, 21, 5, false, false);
+//					new double[] {0d, 0.05, 0.30, 0.60, 0.95, 1d}, 0.1, 21, 5, false, false);
 //			return SupersamplingRjbDistributionDistanceCorrection.getEvenlyWeightedFractiles(
 //					5, 0.1, 11, 3, false, false);
 		}
