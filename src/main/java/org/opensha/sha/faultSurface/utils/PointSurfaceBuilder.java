@@ -24,6 +24,7 @@ import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.FrankelGriddedSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.QuadSurface;
+import org.opensha.sha.faultSurface.RectangleSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy.CacheTypes;
 
@@ -910,6 +911,33 @@ public class PointSurfaceBuilder {
 		// a single cache is appropriate for point sources, they're not reused by multiple sources
 		// and not worth the memory and caching overhead of storing distances for multiple sites
 		return new QuadSurface(trace, dip, getCalcWidth(), CacheTypes.DISABLED);
+	}
+	
+	/**
+	 * Builds a {@link RectangleSurface} representation of this point surface. The strike direction must be set. This
+	 * representation is very efficient with distance calculations, regardless of fault size. Even for very small
+	 * surfaces (e.g., M5), it still performs slightly better than a 1km gridded surface (and it is much faster for larger
+	 * surfaces).
+	 * @return
+	 */
+	public RectangleSurface buildRectSurface()  {
+		return buildRectSurface(strike);
+	}
+	
+	/**
+	 * Builds a {@link QuadSurface} representation of this point surface using the passed in strike direction. This
+	 * representation is very efficient with distance calculations, regardless of fault size. Even for very small
+	 * surfaces (e.g., M5), it still performs slightly better than a 1km gridded surface (and it is much faster for larger
+	 * surfaces).
+	 * @param strike
+	 * @return
+	 */
+	public RectangleSurface buildRectSurface(double strike)  {
+		FaultTrace trace = buildTrace(strike);
+		
+		// a single cache is appropriate for point sources, they're not reused by multiple sources
+		// and not worth the memory and caching overhead of storing distances for multiple sites
+		return new RectangleSurface(trace.first(), trace.last(), dip, zBot);
 	}
 	
 	/**
