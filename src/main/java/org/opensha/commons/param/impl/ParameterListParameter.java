@@ -77,16 +77,11 @@ public class ParameterListParameter extends AbstractParameter<ParameterList> {
 	 */
 	public Object clone() {
 		ParameterListParameter param = null;
-		try {
-			if (value == null)
-				param = new ParameterListParameter(name);
-			else
-				param = new ParameterListParameter(name,(ParameterList)value);
-			param.editable = true;
-		} catch(Exception e) {
-			e.printStackTrace();
-			param.editable = false;
-		}
+		if (value == null)
+			param = new ParameterListParameter(name);
+		else
+			param = new ParameterListParameter(name, (ParameterList)value);
+		param.editable = true;
 		return param;
 	}
 
