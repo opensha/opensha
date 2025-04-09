@@ -41,25 +41,28 @@ public class DistanceXDiagnosticMap {
 	private enum TraceType {
 		RANDOM,
 		STAIRSTEP,
-		SINGLE
+		SINGLE,
+		S_CURVE
 	}
 
 	public static void main(String[] args) throws IOException {
 		double[] strikes = {0d, 30d, 45d, 60d, 90d, 135, 225, 270};
 //		double[] strikes = {270};
+//		double[] strikes = {0d};
 		TraceType[] types = TraceType.values();
 //		TraceType[] types = { TraceType.SINGLE };
+//		TraceType[] types = { TraceType.S_CURVE };
 		double[] lats = {0d, 30d, 60d};
 		int numSegs = 10;
 		double maxDeviation = 60d;
 		File outputDir = new File("/tmp/dist_x_tests");
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 		
-		boolean useOld = false;
-		String title = "Updated DistanceX Calculation Example";
+//		boolean useOld = false;
+//		String title = "Updated DistanceX Calculation Example";
 		
-//		boolean useOld = true;
-//		String title = "Previous DistanceX Calculation Example";
+		boolean useOld = true;
+		String title = "Previous DistanceX Calculation Example";
 		
 		DecimalFormat oDF = new DecimalFormat("0.##");
 		
@@ -96,6 +99,40 @@ public class DistanceXDiagnosticMap {
 					strikePrefix += "_single";
 					segDists.add(100d);
 					segAzimuths.add(strike);
+				} else if (type == TraceType.S_CURVE) {
+					strikePrefix += "_s_curve";
+					segDists.add(20d);
+					segAzimuths.add(strike - 45d);
+					segDists.add(40d);
+					segAzimuths.add(strike + 45d);
+					segDists.add(20d);
+					segAzimuths.add(strike + 135d);
+					segDists.add(10d);
+					segAzimuths.add(strike + 225d);
+					segDists.add(10d);
+					segAzimuths.add(strike - 45d);
+					segDists.add(10d);
+					segAzimuths.add(strike + 225d);
+					segDists.add(30d);
+					segAzimuths.add(strike + 135d);
+					segDists.add(30d);
+					segAzimuths.add(strike + 45d);
+					segDists.add(60d);
+					segAzimuths.add(strike - 45d);
+					
+					Location startLoc = new Location(0d, 0d);
+					Location runningLoc = startLoc;
+					for (int i=0; i<segDists.size(); i++) {
+						double dist = segDists.get(i);
+						double az = segAzimuths.get(i);
+						runningLoc = LocationUtils.location(runningLoc, Math.toRadians(az), dist);
+					}
+					// now now make it follow the given strike in total
+					double distToRunning = LocationUtils.horzDistanceFast(startLoc, runningLoc);
+					double distToLast = distToRunning + 20d;
+					Location finalLoc = LocationUtils.location(startLoc, Math.toRadians(strike), distToLast);
+					segDists.add(LocationUtils.horzDistanceFast(runningLoc, finalLoc));
+					segAzimuths.add(LocationUtils.azimuth(runningLoc, finalLoc));
 				} else {
 					strikePrefix += "_random";
 					long seed = Double.doubleToLongBits(strike+1d);
