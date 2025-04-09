@@ -144,15 +144,16 @@ public enum ERF_Ref {
 	/** Yucca Mountain ERF List */
 	YUCCA_MOUNTAIN_LIST(YuccaMountainERF_List.class, YuccaMountainERF_List.NAME, PRODUCTION, true),
 	
-	// DEVELOPMENT
-	
 	/** WGCEP UCERF3 Epistemic List */
-	UCERF3_EPISTEMIC(UCERF3EpistemicListERF.class, UCERF3EpistemicListERF.NAME, DEVELOPMENT, true),
+	UCERF3_EPISTEMIC(UCERF3EpistemicListERF.class, UCERF3EpistemicListERF.NAME, PRODUCTION, true),
+	
+	/** National Seismic Hazard Model 2023 Western US ERF */
+	NSHM23_WUS_BRANCH_AVG(NSHM23_WUS_BranchAveragedERF.class, NSHM23_WUS_BranchAveragedERF.NAME, PRODUCTION, false),
+
+	// DEVELOPMENT
 	
 	/** STEP Alaska Forecast */
 	STEP_ALASKA(STEP_AlaskanPipeForecast.class, STEP_AlaskanPipeForecast.NAME, DEVELOPMENT, false),
-	
-	NSHM23_WUS_BRANCH_AVG(NSHM23_WUS_BranchAveragedERF.class, NSHM23_WUS_BranchAveragedERF.NAME, DEVELOPMENT, false),
 		
 	// EXPERIMENTAL
 	
