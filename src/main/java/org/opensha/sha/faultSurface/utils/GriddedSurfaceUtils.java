@@ -1,6 +1,7 @@
 package org.opensha.sha.faultSurface.utils;
 
 import static org.opensha.commons.geo.GeoTools.EARTH_RADIUS_MEAN;
+import static org.opensha.commons.geo.GeoTools.TWOPI;
 
 import java.awt.geom.Area;
 import java.awt.geom.Line2D;
@@ -323,7 +324,7 @@ public class GriddedSurfaceUtils {
 				}
 			}
 			
-			// we're within the bounds
+			// we're within the bounds, now we just need to figure out the sign
 			boolean leftOfClosest = cross2D(
 					traceX[minSegDistIndex+1] - traceX[minSegDistIndex],
 					traceY[minSegDistIndex+1] - traceY[minSegDistIndex],
@@ -459,7 +460,23 @@ public class GriddedSurfaceUtils {
 	 */
 	private static double calcExtendedDistanceX(Location startLoc, Location siteLoc,
 			double azimuthRad, double distToEnd, double angularDistToEndSq, boolean backwards) {
-		double siteAz = LocationUtils.azimuthRad(startLoc, siteLoc);
+		double lat1 = startLoc.getLatRad();
+		double lon1 = startLoc.getLonRad();
+		double sinLat1 = Math.sin(lat1);
+		double cosLat1 = Math.cos(lat1);
+		
+		double siteLat = siteLoc.getLatRad();
+		double siteLon = siteLoc.getLonRad();
+
+		// figure out azimuth from start to site
+		// modifed from LocationUtils.azimuthRad to remove duplicate sin & cos calculations
+		double dSiteLon = siteLon - lon1;
+		double sinSiteLat = Math.sin(siteLat);
+		double cosSiteLat = Math.cos(siteLat);
+		double siteAz = Math.atan2(Math.sin(dSiteLon) * cosSiteLat, cosLat1 *
+			sinSiteLat - Math.sin(lat1) * cosSiteLat * Math.cos(dSiteLon));
+
+		siteAz = (siteAz + TWOPI) % TWOPI;
 
 		// make a straight line approximation of how far away the closest point on this line will be
 		double diff = siteAz - azimuthRad;
@@ -472,10 +489,6 @@ public class GriddedSurfaceUtils {
 		double destDist = Math.max(10d, distToEnd * Math.cos(diff));
 		
 		// now move that distance in the chosen direction
-		double lat1 = startLoc.getLatRad();
-		double lon1 = startLoc.getLonRad();
-		double sinLat1 = Math.sin(lat1);
-		double cosLat1 = Math.cos(lat1);
 		double ad = destDist / EARTH_RADIUS_MEAN; // angular distance
 		double sinD = Math.sin(ad);
 		double cosD = Math.cos(ad);
@@ -487,8 +500,8 @@ public class GriddedSurfaceUtils {
 				cosD - sinLat1 * Math.sin(lat2));
 
 		// set reference frame, use the average of the site and our guess of the closest location on the line
-		double latRefRad = 0.5*(lat2 + siteLoc.getLatRad());
-		double lonRefRad = 0.5*(lon2 + siteLoc.getLonRad());
+		double latRefRad = 0.5*(lat2 + siteLat);
+		double lonRefRad = 0.5*(lon2 + siteLon);
 		double lonScale = Math.cos(latRefRad);
 
 		// project into that reference frame
@@ -498,16 +511,16 @@ public class GriddedSurfaceUtils {
 		double x2 = (lon2 - lonRefRad) * lonScale;
 		double y2 = lat2 - latRefRad;
 
-		double siteX = (siteLoc.getLonRad() - lonRefRad) * lonScale;
-		double siteY = siteLoc.getLatRad() - latRefRad;
+		double siteX = (siteLon - lonRefRad) * lonScale;
+		double siteY = siteLat - latRefRad;
 
 		// squared distance to that infinite line
-		double distSq = Line2D.ptLineDistSq(x1, y1, x2, y2, siteX, siteY);
+		double angularDistSq = Line2D.ptLineDistSq(x1, y1, x2, y2, siteX, siteY);
 		// the nearest segment could still be closer
 		double dist;
-		if (distSq < angularDistToEndSq) {
+		if (angularDistSq < angularDistToEndSq) {
 			// this is closest
-			dist = Math.sqrt(distSq) * EARTH_RADIUS_MEAN;
+			dist = Math.sqrt(angularDistSq) * EARTH_RADIUS_MEAN;
 		} else {
 			// segment is still closer
 			dist = distToEnd;

@@ -55,11 +55,11 @@ public class DistanceXDiagnosticMap {
 		File outputDir = new File("/tmp/dist_x_tests");
 		Preconditions.checkState(outputDir.exists() || outputDir.mkdir());
 		
-//		boolean useOld = false;
-//		String title = "Updated DistanceX Calculation Example";
+		boolean useOld = false;
+		String title = "Updated DistanceX Calculation Example";
 		
-		boolean useOld = true;
-		String title = "Previous DistanceX Calculation Example";
+//		boolean useOld = true;
+//		String title = "Previous DistanceX Calculation Example";
 		
 		DecimalFormat oDF = new DecimalFormat("0.##");
 		
