@@ -49,7 +49,7 @@ public class TreeBranchWeightsParameter extends ParameterListParameter {
 	 * @param  name   Name of the parameter
 	 * @param  paramList  ParameterList  object
 	 */
-	public TreeBranchWeightsParameter(String name, ParameterList paramList){
+	public TreeBranchWeightsParameter(String name, ParameterList paramList) {
 		super(name,paramList);
 	}
 
@@ -58,7 +58,7 @@ public class TreeBranchWeightsParameter extends ParameterListParameter {
 	 * sets the tolerance for the sums of the weights
 	 * @param tolerance
 	 */
-	public void setTolerence(double tolerance){
+	public void setTolerence(double tolerance) {
 		this.tolerance = tolerance;
 	}
 
@@ -71,7 +71,7 @@ public class TreeBranchWeightsParameter extends ParameterListParameter {
 	}
 
 	/**
-	 * Set's the parameter's value. It checks that all the weights Parameter in this parameterList
+	 * Sets the parameter value. It checks that all the weights Parameter in this parameterList
 	 * should be DoubleParameter.
 	 *
 	 * @param  value                 The new value for this Parameter
@@ -79,15 +79,14 @@ public class TreeBranchWeightsParameter extends ParameterListParameter {
 	 *      editable
 	 * @throws  ConstraintException  Thrown if the object value is not allowed
 	 */
-	public void setValue( ParameterList value ) throws ParameterException {
-
-		ListIterator it  = value.getParametersIterator();
-		while(it.hasNext()){
+	public void setValue(ParameterList value) throws ParameterException {
+		ListIterator it = value.getParametersIterator();
+		while(it.hasNext()) {
 			Parameter param = (Parameter)it.next();
 			if(!(param instanceof DoubleParameter))
 				throw new RuntimeException(C+" Only DoubleParameter allowed in this Parameter");
 		}
-		setValue(value );
+		super.setValue(value);
 	}
 
 	/**
@@ -120,7 +119,7 @@ public class TreeBranchWeightsParameter extends ParameterListParameter {
 	 * Returns the name of the parameter class
 	 */
 	public String getType() {
-		String type = this.PARAM_TYPE;
+		String type = PARAM_TYPE;
 		return type;
 	}
 	
