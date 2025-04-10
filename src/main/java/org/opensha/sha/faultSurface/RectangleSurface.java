@@ -20,11 +20,12 @@ import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 import com.google.common.base.Preconditions;
 
 /**
- * Simple 
+ * Simple surface for a single rectangle fault. Distance calculations are analytical and very fast
  */
 public class RectangleSurface implements CacheEnabledSurface {
 
 	// inputs
+	private final FaultTrace trace;
 	private final Location startLoc;
 	private final Location endLoc;
 	private final double length;
@@ -58,6 +59,9 @@ public class RectangleSurface implements CacheEnabledSurface {
 				"Start and end location must have same depth");
 		this.startLoc = startLoc;
 		this.endLoc = endLoc;
+		this.trace = new FaultTrace(null, 2);
+		this.trace.add(startLoc);
+		this.trace.add(endLoc);
 		this.length =  LocationUtils.horzDistanceFast(startLoc, endLoc);
 		Preconditions.checkState(length > 0d, "length=%s must be > 0", (float)length);
 		this.dip = dip;
@@ -180,19 +184,8 @@ public class RectangleSurface implements CacheEnabledSurface {
 		return getEvenlyDiscretizedHorizontalSpan(getNumDiscrDownDip()-1);
 	}
 
-	private FaultTrace trace;
-
 	@Override
 	public FaultTrace getUpperEdge() {
-		if (trace == null) {
-			synchronized (this) {
-				if (trace == null) {
-					trace = new FaultTrace(null, 2);
-					trace.add(startLoc);
-					trace.add(endLoc);
-				}
-			}
-		}
 		return trace;
 	}
 
@@ -475,13 +468,7 @@ public class RectangleSurface implements CacheEnabledSurface {
 
 	@Override
 	public double calcDistanceX(Location loc) {
-		return LocationUtils.distanceToLineFast(startLoc, endLoc, loc);
-//		double dist  = LocationUtils.horzDistanceFast(startLoc, loc); // km
-//        double az    = LocationUtils.azimuthRad(startLoc, loc);      // rad
-//        double delta = az - strikeRad;
-//        
-//        double y = dist * Math.sin(delta); // +ve down‑dip (km)
-//        return y;                    // hanging‑wall positive
+		return GriddedSurfaceUtils.getDistanceX(trace, loc);
 	}
 
 	@Override

@@ -1,13 +1,13 @@
 package org.opensha.sha.faultSurface;
 
-import static org.opensha.commons.geo.GeoTools.*;
-import static org.apache.commons.math3.geometry.euclidean.threed.RotationOrder.*;
+import static org.apache.commons.math3.geometry.euclidean.threed.RotationOrder.XYZ;
+import static org.opensha.commons.geo.GeoTools.PI_BY_2;
+import static org.opensha.commons.geo.GeoTools.TO_RAD;
 
 import java.awt.Color;
 import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
 import java.awt.geom.PathIterator;
-import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,17 +32,16 @@ import org.opensha.commons.gui.plot.PlotLineType;
 import org.opensha.commons.gui.plot.PlotSpec;
 import org.opensha.commons.gui.plot.PlotSymbol;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
+import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
-import org.opensha.commons.util.DataUtils.MinMaxAveTracker;
 import org.opensha.commons.util.cpt.CPT;
 import org.opensha.refFaultParamDb.vo.FaultSectionPrefData;
-import org.opensha.sha.faultSurface.FaultTrace;
 import org.opensha.sha.faultSurface.cache.CacheEnabledSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy;
+import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy.CacheTypes;
 import org.opensha.sha.faultSurface.cache.SurfaceDistanceCache;
 import org.opensha.sha.faultSurface.cache.SurfaceDistances;
-import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy.CacheTypes;
 import org.opensha.sha.faultSurface.utils.GriddedSurfaceUtils;
 
 import com.google.common.base.Preconditions;
@@ -97,12 +96,6 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	private FaultTrace seis_trace;
 	private List<Rotation> seis_rots;
 	private List<Path2D> seis_surfs;
-
-	/* for distance X calcs */
-	private FaultTrace x_trace;
-	private List<Rotation> x_rots;
-	private List<Path2D> x_surfs;
-	private List<Vector3D> x_trace_vects;
 	
 	/*
 	 * discretization to use for evenly discretized methods
@@ -114,12 +107,6 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	
 	// create cache using default caching policy
 	private final SurfaceDistanceCache cache;
-	
-	/**
-	 * If true, distance X will use the average strike to extend the trace infinitely, as opposed
-	 * to extending the last trace segment itself indfinitely.
-	 */
-	private boolean distX_useAvgStrike = true;
 	
 	private static double calcWidth(FaultSection sect, boolean aseisReducesArea) {
 		double upperDepth;
@@ -614,107 +601,7 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	
 	@Override
 	public synchronized double calcDistanceX(Location siteLoc) {
-		// this is Peter's implementation, but it doesn't perform as well in tests
-//		if (1d < 2d) {
-//			if (trace.size() == 1) return 0.0;
-//			int minIdx = trace.minDistIndex(siteLoc);
-//			double rSeg = LocationUtils.distanceToLineSegmentFast(trace.get(minIdx),
-//			trace.get(minIdx + 1), siteLoc);
-//			double rFirst = LocationUtils.horzDistanceFast(trace.get(0), siteLoc);
-//			double rLast = LocationUtils.horzDistanceFast(trace.last(), siteLoc);
-//
-//			return (rSeg < Math.min(rFirst, rLast)) ? LocationUtils.distanceToLineFast(
-//			trace.get(minIdx), trace.get(minIdx + 1), siteLoc)
-//				: LocationUtils.distanceToLineFast(trace.first(), trace.last(), siteLoc);
-//		}
-		if (x_trace_vects == null) {
-			// we recalculate the rotations because don't want to consider dip
-			x_rots = Lists.newArrayList();
-			x_surfs = Lists.newArrayList();
-			if (distX_useAvgStrike) {
-				// add tiny traces spans to the ends in the direction of getAvgStrike
-				x_trace = new FaultTrace("dist x");
-				Location startPt = trace.first();
-				Location endPt = trace.last();
-				double strikeDirRad = LocationUtils.azimuthRad(startPt, endPt);
-				double reverseStrikeDirRad = LocationUtils.azimuthRad(endPt, startPt);
-				double dist_x_pad_dist = 1e-6;
-//				double dist_x_pad_dist = 1000;
-				x_trace.add(LocationUtils.location(startPt, reverseStrikeDirRad, dist_x_pad_dist));
-				x_trace.addAll(trace);
-				x_trace.add(LocationUtils.location(endPt, strikeDirRad, dist_x_pad_dist));
-			} else {
-				x_trace = trace;
-			}
-			initSegments(PI_BY_2, avgDipDirRad, width, x_trace, x_rots, x_surfs);
-			// this is a list of vectors from the origin in the trace pt local coordinate system
-			x_trace_vects = Lists.newArrayList();
-			for (int i = 0; i < x_trace.size() - 1; i++) {
-				Path2D surf = x_surfs.get(i);
-				PathIterator pit = surf.getPathIterator(null);
-				double[] c = new double[6]; // coordinate array
-				// load in origin, ensuring that it's indeed the origin
-				Preconditions.checkState(pit.currentSegment(c) == PathIterator.SEG_MOVETO);
-				pit.next();
-				Preconditions.checkState((float)c[0] == (float)0);
-				Preconditions.checkState((float)c[1] == (float)0);
-				// load in second trace point, ensuring that it's along the x axis
-				Preconditions.checkState(pit.currentSegment(c) == PathIterator.SEG_LINETO);
-				Preconditions.checkState(Math.abs(c[1]) < 1e-10);
-				x_trace_vects.add(new Vector3D(c[0], c[1], 0));
-			}
-		}
-		// TODO do it right
-//		distanceX =  GriddedSurfaceUtils.getDistanceX(getEvenlyDiscritizedUpperEdge(), siteLoc);
-//		return distanceX;
-//		return distanceX + distanceX*(0.5 - Math.random());
-		double distanceSq = Double.MAX_VALUE;
-		double distance = Double.MAX_VALUE;
-		for (int i = 0; i < x_trace.size() - 1; i++) {
-			// compute geographic vector to point
-			LocationVector vec = LocationUtils.vector(x_trace.get(i), siteLoc);
-			// convert to cartesian
-			Vector3D vp = new Vector3D(vec.getHorzDistance(), new Vector3D(
-				vec.getAzimuthRad(), 0), vec.getVertDistance(), Vector3D.PLUS_K);
-			// rotate
-			vp = x_rots.get(i).applyTo(vp);
-			double siteX = vp.getX();
-			double siteY = vp.getY();
-			double siteZ = vp.getZ();
-			// now get the trace vector
-			Vector3D traceVect = x_trace_vects.get(i);
-			double traceX = traceVect.getX();
-			double traceY = traceVect.getY();
-			// since traceVect is along the X axis, the distance to the segment can be calculated easily
-			boolean trueDist; // if true, we do an actual 3d distance to segment. otherwise just y/z dist
-			if (siteX < 0) {
-				// it's to the left in our projected trace
-				// do true distance if this isn't the leftmost trace point
-				trueDist = i > 0;
-			} else if (siteX > traceX) {
-				// it's to the right in our projected trace
-				// do true distance if this isn't the leftmost trace point
-				trueDist = i < x_trace.size()-2;
-			} else {
-				// this is directly above/below the trace
-				trueDist = false;
-			}
-			double myDistSq;
-			if (trueDist)
-				myDistSq = Line2D.ptSegDistSq(0d, 0d, traceX, 0,
-						siteX, siteZ);
-			else
-				myDistSq = siteZ * siteZ;
-			
-			if (myDistSq < distanceSq) {
-				distanceSq = myDistSq;
-				distance = Math.sqrt(myDistSq);
-				// faults dip in the positive y direction, so neg y is on foot wall
-				if (siteZ > 0)
-					distance = -distance;
-			}
-		}
-		return distance;
+		return GriddedSurfaceUtils.getDistanceX(trace, siteLoc);
 	}
 	
 	public double getDistanceX(Location siteLoc) {
@@ -1046,7 +933,7 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 //		QuadSurface q = new QuadSurface(ft, dip, width);
 		QuadSurface q = prefData.getQuadSurface(false);
 		q.getDistanceX(distXDebug);
-		showDebugGraph(q.x_surfs.get(0), getProjectedPoint(q.trace, q.x_rots, 0, distXDebug), true, null);
+//		showDebugGraph(q.x_surfs.get(0), getProjectedPoint(q.trace, q.x_rots, 0, distXDebug), true, null);
 		EvenlyGriddedSurface gridded = prefData.getStirlingGriddedSurface(1d, false, false);
 		
 		// now plot outline
