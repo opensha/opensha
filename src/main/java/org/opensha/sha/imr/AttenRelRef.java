@@ -189,6 +189,63 @@ public enum AttenRelRef implements AttenRelSupplier {
 			DahleEtAl_1995_AttenRel.SHORT_NAME, PRODUCTION),
 	
 	NON_ERGODIC_2016(StewartAfshariGoulet2017NonergodicGMPE.class, StewartAfshariGoulet2017NonergodicGMPE.NAME, StewartAfshariGoulet2017NonergodicGMPE.SHORT_NAME, PRODUCTION),
+	
+	USGS_NSHM23_ACTIVE(null, "USGS NSHM23 Active Crustal",
+			"NSHM23-Active", PRODUCTION) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			Unmodifiable<Gmm> gmms = WeightedList.evenlyWeighted(
+					Gmm.ASK_14_BASIN, Gmm.BSSA_14_BASIN, Gmm.CB_14_BASIN, Gmm.CY_14_BASIN);
+			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_NSHM23_ACTIVE_LA(null, "USGS NSHM23 Los Angeles Basin",
+			"NSHM23-Active-LA", PRODUCTION) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			WeightedList<Gmm> gmms = WeightedList.of(
+					new WeightedValue<>(Gmm.ASK_14, 0.125),
+					new WeightedValue<>(Gmm.BSSA_14, 0.125),
+					new WeightedValue<>(Gmm.CB_14, 0.125),
+					new WeightedValue<>(Gmm.CY_14, 0.125),
+					new WeightedValue<>(Gmm.ASK_14_BASIN, 0.0625),
+					new WeightedValue<>(Gmm.BSSA_14_BASIN, 0.0625),
+					new WeightedValue<>(Gmm.CB_14_BASIN, 0.0625),
+					new WeightedValue<>(Gmm.CY_14_BASIN, 0.0625),
+					new WeightedValue<>(Gmm.ASK_14_CYBERSHAKE, 0.0625),
+					new WeightedValue<>(Gmm.BSSA_14_CYBERSHAKE, 0.0625),
+					new WeightedValue<>(Gmm.CB_14_CYBERSHAKE, 0.0625),
+					new WeightedValue<>(Gmm.CY_14_CYBERSHAKE, 0.0625));
+			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_NSHM23_ACTIVE_SF(null, "USGS NSHM23 San Francisco",
+			"NSHM23-Active-SF", PRODUCTION) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			WeightedList<Gmm> gmms = WeightedList.of(
+					new WeightedValue<>(Gmm.ASK_14, 0.125),
+					new WeightedValue<>(Gmm.BSSA_14, 0.125),
+					new WeightedValue<>(Gmm.CB_14, 0.125),
+					new WeightedValue<>(Gmm.CY_14, 0.125),
+					new WeightedValue<>(Gmm.ASK_14_BASIN, 0.125),
+					new WeightedValue<>(Gmm.BSSA_14_BASIN, 0.125),
+					new WeightedValue<>(Gmm.CB_14_BASIN, 0.125),
+					new WeightedValue<>(Gmm.CY_14_BASIN, 0.125));
+			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
+		}
+		
+	},
 
 	// DEVELOPMENT
 	
@@ -236,7 +293,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		
 	},
 	
-	USGS_PRVI_ACTIVE(null, "USGS PRVI25 Active Crustal",
+	USGS_PRVI_ACTIVE(null, "USGS PRVI25 Active Crustal (beta)",
 			"PRVI25-Active", DEVELOPMENT) {
 		
 		@Override
@@ -247,7 +304,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		
 	},
 	
-	USGS_PRVI_INTERFACE(null, "USGS PRVI25 Interface",
+	USGS_PRVI_INTERFACE(null, "USGS PRVI25 Interface (beta)",
 			"PRVI25-Interface", DEVELOPMENT) {
 		
 		@Override
@@ -258,70 +315,13 @@ public enum AttenRelRef implements AttenRelSupplier {
 		
 	},
 	
-	USGS_PRVI_SLAB(null, "USGS PRVI25 Slab",
+	USGS_PRVI_SLAB(null, "USGS PRVI25 Slab (beta)",
 			"PRVI25-Slab", DEVELOPMENT) {
 		
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
 			return new NSHMP_GMM_Wrapper.Single(Gmm.USGS_PRVI_INTRASLAB_COMBINED_TREE, getName(), getShortName(), false, null);
-		}
-		
-	},
-	
-	USGS_NSHM23_ACTIVE(null, "USGS NSHM23 Active Crustal",
-			"NSHM23-Active", DEVELOPMENT) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			Unmodifiable<Gmm> gmms = WeightedList.evenlyWeighted(
-					Gmm.ASK_14_BASIN, Gmm.BSSA_14_BASIN, Gmm.CB_14_BASIN, Gmm.CY_14_BASIN);
-			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
-		}
-		
-	},
-	
-	USGS_NSHM23_ACTIVE_LA(null, "USGS NSHM23 Active Crustal (Los Angeles)",
-			"NSHM23-Active-LA", DEVELOPMENT) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			WeightedList<Gmm> gmms = WeightedList.of(
-					new WeightedValue<>(Gmm.ASK_14, 0.125),
-					new WeightedValue<>(Gmm.BSSA_14, 0.125),
-					new WeightedValue<>(Gmm.CB_14, 0.125),
-					new WeightedValue<>(Gmm.CY_14, 0.125),
-					new WeightedValue<>(Gmm.ASK_14_BASIN, 0.0625),
-					new WeightedValue<>(Gmm.BSSA_14_BASIN, 0.0625),
-					new WeightedValue<>(Gmm.CB_14_BASIN, 0.0625),
-					new WeightedValue<>(Gmm.CY_14_BASIN, 0.0625),
-					new WeightedValue<>(Gmm.ASK_14_CYBERSHAKE, 0.0625),
-					new WeightedValue<>(Gmm.BSSA_14_CYBERSHAKE, 0.0625),
-					new WeightedValue<>(Gmm.CB_14_CYBERSHAKE, 0.0625),
-					new WeightedValue<>(Gmm.CY_14_CYBERSHAKE, 0.0625));
-			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
-		}
-		
-	},
-	
-	USGS_NSHM23_ACTIVE_SF(null, "USGS NSHM23 Active Crustal (San Francisco)",
-			"NSHM23-Active-SF", DEVELOPMENT) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			WeightedList<Gmm> gmms = WeightedList.of(
-					new WeightedValue<>(Gmm.ASK_14, 0.125),
-					new WeightedValue<>(Gmm.BSSA_14, 0.125),
-					new WeightedValue<>(Gmm.CB_14, 0.125),
-					new WeightedValue<>(Gmm.CY_14, 0.125),
-					new WeightedValue<>(Gmm.ASK_14_BASIN, 0.125),
-					new WeightedValue<>(Gmm.BSSA_14_BASIN, 0.125),
-					new WeightedValue<>(Gmm.CB_14_BASIN, 0.125),
-					new WeightedValue<>(Gmm.CY_14_BASIN, 0.125));
-			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
 		}
 		
 	},
