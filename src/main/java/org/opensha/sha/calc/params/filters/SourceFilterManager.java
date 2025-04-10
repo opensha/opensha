@@ -64,6 +64,18 @@ public class SourceFilterManager {
 		return filterInstances[filter.ordinal()];
 	}
 	
+	public double getMaxDistance() {
+		double maxDist = Double.POSITIVE_INFINITY;
+		if (isEnabled(SourceFilters.FIXED_DIST_CUTOFF))
+//			maxDist = fixedDistanceFilter.getMaxDistance();
+			maxDist = getFilterInstance(FixedDistanceCutoffFilter.class).getMaxDistance();
+		if (isEnabled(SourceFilters.MAG_DIST_CUTOFFS))
+			maxDist = Math.min(maxDist, getFilterInstance(MagDependentDistCutoffFilter.class).getMagDistFunc().getMaxX());
+		if (isEnabled(SourceFilters.TRT_DIST_CUTOFFS))
+			maxDist = Math.min(maxDist, getFilterInstance(TectonicRegionDistCutoffFilter.class).getCutoffs().getLargestCutoffDist());
+		return maxDist;
+	}
+	
 	public String toString() {
 		StringBuilder str = new StringBuilder();
 		str.append("[");
