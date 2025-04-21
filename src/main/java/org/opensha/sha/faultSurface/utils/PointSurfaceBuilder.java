@@ -888,9 +888,7 @@ public class PointSurfaceBuilder {
 	
 	/**
 	 * Builds a {@link QuadSurface} representation of this point surface. The strike direction must be set. This
-	 * representation is very efficient with distance calculations, regardless of fault size. Even for very small
-	 * surfaces (e.g., M5), it still performs slightly better than a 1km gridded surface (and it is much faster for larger
-	 * surfaces).
+	 * representation is decently efficient, but a {@link RectangleSurface} is better.
 	 * @return
 	 */
 	public QuadSurface buildQuadSurface()  {
@@ -899,18 +897,13 @@ public class PointSurfaceBuilder {
 	
 	/**
 	 * Builds a {@link QuadSurface} representation of this point surface using the passed in strike direction. This
-	 * representation is very efficient with distance calculations, regardless of fault size. Even for very small
-	 * surfaces (e.g., M5), it still performs slightly better than a 1km gridded surface (and it is much faster for larger
-	 * surfaces).
+	 * representation is decently efficient, but a {@link RectangleSurface} is better.
 	 * @param strike
 	 * @return
 	 */
 	public QuadSurface buildQuadSurface(double strike)  {
 		FaultTrace trace = buildTrace(strike);
-		
-		// a single cache is appropriate for point sources, they're not reused by multiple sources
-		// and not worth the memory and caching overhead of storing distances for multiple sites
-		return new QuadSurface(trace, dip, getCalcWidth(), CacheTypes.DISABLED);
+		return new QuadSurface(trace, dip, getCalcWidth(), CacheTypes.SINGLE);
 	}
 	
 	/**
@@ -925,7 +918,7 @@ public class PointSurfaceBuilder {
 	}
 	
 	/**
-	 * Builds a {@link QuadSurface} representation of this point surface using the passed in strike direction. This
+	 * Builds a {@link RectangleSurface} representation of this point surface using the passed in strike direction. This
 	 * representation is very efficient with distance calculations, regardless of fault size. Even for very small
 	 * surfaces (e.g., M5), it still performs slightly better than a 1km gridded surface (and it is much faster for larger
 	 * surfaces).
@@ -934,14 +927,11 @@ public class PointSurfaceBuilder {
 	 */
 	public RectangleSurface buildRectSurface(double strike)  {
 		FaultTrace trace = buildTrace(strike);
-		
-		// a single cache is appropriate for point sources, they're not reused by multiple sources
-		// and not worth the memory and caching overhead of storing distances for multiple sites
 		return new RectangleSurface(trace.first(), trace.last(), dip, zBot);
 	}
 	
 	/**
-	 * Builds the given number of random strike quad surfaces.
+	 * Builds the given number of random strike rectangular surfaces.
 	 * 
 	 * If a fixed strike angle has previously been set, then that strike angle will be used for the first surface
 	 * and any additional surfaces will be evenly distributed.
@@ -953,33 +943,33 @@ public class PointSurfaceBuilder {
 	 * @param num
 	 * @return
 	 */
-	public QuadSurface[] buildRandQuadSurfaces(int num) {
+	public RectangleSurface[] buildRandRectSurfaces(int num) {
 		if (rand == null)
 			randomGlobalSeed(num);
-		return buildRandQuadSurfaces(num, strikeRange);
+		return buildRandRectSurfaces(num, strikeRange);
 	}
 	
 	/**
-	 * Builds the given number of random strike quad surfaces. If strikeRange is non null, orientations will be randomly
+	 * Builds the given number of random strike rectangular surfaces. If strikeRange is non null, orientations will be randomly
 	 * sampled from the given range.
 	 * @param num
 	 * @param strikeRange
 	 * @return
 	 */
-	public QuadSurface[] buildRandQuadSurfaces(int num, Range<Double> strikeRange) {
-		return buildRandQuadSurfaces(getRandStrikes(num, strikeRange));
+	public RectangleSurface[] buildRandRectSurfaces(int num, Range<Double> strikeRange) {
+		return buildRandRectSurfaces(getRandStrikes(num, strikeRange));
 	}
 	
-	private QuadSurface[] buildRandQuadSurfaces(double[] strikes) {
-		QuadSurface[] ret = new QuadSurface[strikes.length];
+	private RectangleSurface[] buildRandRectSurfaces(double[] strikes) {
+		RectangleSurface[] ret = new RectangleSurface[strikes.length];
 		for (int i=0; i<strikes.length; i++)
-			ret[i] = buildQuadSurface(strikes[i]);
+			ret[i] = buildRectSurface(strikes[i]);
 		return ret;
 	}
 	
 	/**
 	 * Builds a gridded surface representation with only one row (at the upper depth). Distance calculations will
-	 * always performs worse (both in accuracy and speed) than {@link #buildQuadSurface()}, so use this only if you
+	 * always performs worse (both in accuracy and speed) than {@link #buildRectSurface()}, so use this only if you
 	 * actually need a gridded line surface.
 	 * @return
 	 */
@@ -989,7 +979,7 @@ public class PointSurfaceBuilder {
 	
 	/**
 	 * Builds a gridded surface representation with only one row (at the upper depth). Distance calculations will
-	 * always performs worse (both in accuracy and speed) than {@link #buildQuadSurface()}, so use this only if you
+	 * always performs worse (both in accuracy and speed) than {@link #buildRectSurface()}, so use this only if you
 	 * actually need a gridded line surface.
 	 * @return
 	 */
@@ -1033,7 +1023,7 @@ public class PointSurfaceBuilder {
 	
 	/**
 	 * Builds a gridded surface representation. Distance calculations will always performs worse (both in accuracy and
-	 * speed) than {@link #buildQuadSurface()}, so use this only if you actually need a gridded surface.
+	 * speed) than {@link #buildRectSurface()}, so use this only if you actually need a gridded surface.
 	 * @return
 	 */
 	public EvenlyGriddedSurface buildGriddedSurface() {
@@ -1042,7 +1032,7 @@ public class PointSurfaceBuilder {
 	
 	/**
 	 * Builds a gridded surface representation. Distance calculations will always performs worse (both in accuracy and speed) than
-	 * {@link #buildQuadSurface()}, so use this only if you actually need a gridded surface.
+	 * {@link #buildRectSurface()}, so use this only if you actually need a gridded surface.
 	 * @return
 	 */
 	public EvenlyGriddedSurface buildGriddedSurface(double strike) {
@@ -1127,16 +1117,16 @@ public class PointSurfaceBuilder {
 					fractionalHypocentralDepth(0.5);
 			}
 			
-			QuadSurface[] surfs;
+			RectangleSurface[] surfs;
 			if (Double.isFinite(strike)) {
 				// we have a strike that's specific to this source, use it (even if a global default strike was passed in)
-				surfs = new QuadSurface[] { buildQuadSurface(strike) };
+				surfs = new RectangleSurface[] { buildRectSurface(strike) };
 			} else if (finiteSettings.strike != null) {
 				// a default strike was passed in, use that
-				surfs = buildRandQuadSurfaces(getEvenlySpanningStrikes(finiteSettings.numSurfaces, finiteSettings.strike));
+				surfs = buildRandRectSurfaces(getEvenlySpanningStrikes(finiteSettings.numSurfaces, finiteSettings.strike));
 			} else {
 				// random
-				surfs = buildRandQuadSurfaces(finiteSettings.numSurfaces);
+				surfs = buildRandRectSurfaces(finiteSettings.numSurfaces);
 			}
 			return WeightedList.evenlyWeighted(surfs);
 		default:
@@ -1152,7 +1142,7 @@ public class PointSurfaceBuilder {
 		builder.lowerDepth(14d);
 		builder.dip(90d);
 		builder.strike(0d);
-		QuadSurface surf = builder.buildQuadSurface();
+		RectangleSurface surf = builder.buildRectSurface();
 		
 		System.out.println("Quad rJB at colocated point: "+surf.getDistanceJB(center));
 		System.out.println("Trace:\t"+surf.getUpperEdge());
