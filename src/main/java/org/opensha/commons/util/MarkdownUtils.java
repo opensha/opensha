@@ -294,6 +294,10 @@ public class MarkdownUtils {
 			}
 			return csv;
 		}
+		
+		public int getNumLines() {
+			return lines.size();
+		}
 	}
 	
 	/**
