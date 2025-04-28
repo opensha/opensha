@@ -158,6 +158,7 @@ public interface ArchiveInput extends Named, Closeable {
 		@Override
 		public InputStream getInputStream(String name) throws IOException {
 			java.util.zip.ZipEntry entry = getEntry(name);
+			Preconditions.checkNotNull(entry, "Couldn't locate entry: %s", name);
 			return zip.getInputStream(entry);
 		}
 
@@ -220,7 +221,9 @@ public interface ArchiveInput extends Named, Closeable {
 
 		@Override
 		public InputStream getInputStream(String name) throws IOException {
-			return zip.getInputStream(getEntry(name));
+			org.apache.commons.compress.archivers.zip.ZipArchiveEntry entry = getEntry(name);
+			Preconditions.checkNotNull(entry, "Couldn't locate entry: %s", name);
+			return zip.getInputStream(entry);
 		}
 		
 		private Spliterator<String> entryNameSpliterator() {
