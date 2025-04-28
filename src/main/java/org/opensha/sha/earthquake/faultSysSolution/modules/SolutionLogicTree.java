@@ -1378,7 +1378,7 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		String locsFile = getBranchFileName(branch, GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, false);
 
 		ArchiveInput input = getArchiveInput();
-		if (locsFile != null) {
+		if (locsFile != null && input.hasEntry(locsFile)) {
 			// GridSourceList
 			GriddedRegion region;
 			synchronized (SolutionLogicTree.this) {
