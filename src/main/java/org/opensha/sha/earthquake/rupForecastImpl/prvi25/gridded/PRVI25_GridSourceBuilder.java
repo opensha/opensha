@@ -366,9 +366,6 @@ public class PRVI25_GridSourceBuilder {
 		
 		double maxMagOff = SLAB_MMAX;
 		
-		PRVI25_DeclusteringAlgorithms declusteringAlg = branch.requireValue(PRVI25_DeclusteringAlgorithms.class);
-		PRVI25_SeisSmoothingAlgorithms seisSmooth = branch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
-		
 		// total G-R up to Mmax
 		IncrementalMagFreqDist totalGR;
 		if (seisRegion == PRVI25_SeismicityRegions.MUE_INTRASLAB) {
@@ -380,6 +377,17 @@ public class PRVI25_GridSourceBuilder {
 		} else {
 			throw new IllegalStateException("Not a slab region: "+seisRegion);
 		}
+		
+		return buildSlabGridSourceList(branch, seisRegion, totalGR);
+	}
+	
+	public static GridSourceList buildSlabGridSourceList(LogicTreeBranch<?> branch, PRVI25_SeismicityRegions seisRegion,
+			IncrementalMagFreqDist totalGR) throws IOException {
+		Preconditions.checkState(seisRegion == PRVI25_SeismicityRegions.CAR_INTRASLAB
+				|| seisRegion == PRVI25_SeismicityRegions.MUE_INTRASLAB);
+		
+		PRVI25_DeclusteringAlgorithms declusteringAlg = branch.requireValue(PRVI25_DeclusteringAlgorithms.class);
+		PRVI25_SeisSmoothingAlgorithms seisSmooth = branch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
 		
 		GriddedGeoDataSet pdf = seisSmooth.loadXYZ(seisRegion, declusteringAlg);
 		
