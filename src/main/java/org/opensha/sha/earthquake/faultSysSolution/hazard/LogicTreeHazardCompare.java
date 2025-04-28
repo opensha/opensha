@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -51,6 +52,7 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Options;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.commons.math3.util.MathArrays;
+import org.apache.commons.math3.util.Precision;
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.ChartRenderingInfo;
 import org.jfree.chart.title.PaintScaleLegend;
@@ -76,6 +78,8 @@ import org.opensha.commons.logicTree.BranchWeightProvider;
 import org.opensha.commons.logicTree.LogicTree;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.FileBackedLevel;
+import org.opensha.commons.logicTree.LogicTreeLevel.RandomlySampledLevel;
 import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.mapping.gmt.elements.GMT_CPT_Files;
 import org.opensha.commons.util.DataUtils;
@@ -120,258 +124,20 @@ public class LogicTreeHazardCompare {
 	
 	public static void main(String[] args) throws IOException {
 		System.setProperty("java.awt.headless", "true");
-		File invDir = new File("/home/kevin/OpenSHA/UCERF4/batch_inversions");
 		
 		boolean currentWeights = false;
 		boolean compCurrentWeights = false;
 		
-//		File mainDir = new File(invDir, "2021_11_24-nshm23_draft_branches-FM3_1");
-//		String mainName = "NSHM23 Draft";
-//		LogicTreeNode[] subsetNodes = null;
-//		File compDir = new File(invDir, "2021_11_23-u3_branches-FM3_1-5h");
-//		String compName = "UCERF3 Redo";
-//		LogicTreeNode[] compSubsetNodes = null;
-//		File outputDir = new File(mainDir, "hazard_maps_vs_ucerf3_redo");
-////		File compDir = new File(invDir, "2021_11_30-u3_branches-orig_calcs-5h");
-////		String compName = "UCERF3 As Published";
-////		LogicTreeNode[] compSubsetNodes = null;
-////		File outputDir = new File(mainDir, "hazard_maps_vs_ucerf3_as_published");
-
-////		File mainDir = new File(invDir, "2022_02_15-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-JumpProb-2000ip");
-////		String mainName = "Draft-Model-Coulomb-Shaw-Seg-Jump-Prob";
-//		File mainDir = new File(invDir, "2022_02_22-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-StrictEquivJumpProb-2000ip");
-//		String mainName = "Seg-Strict-Equiv-Jump-Prob";
-////		File mainDir = new File(invDir, "2022_02_15-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-CappedRdst-2000ip");
-////		String mainName = "Draft-Model-Coulomb-Shaw-Seg-Capped-Redist";
-////		String mainName = "Max-Dist-Seg";
-////		File mainDir = new File(invDir, "2022_02_08-nshm23_u3_hybrid_branches-seg_bin_dist_capped_distr-FM3_1-CoulombRupSet-DsrUni-SubB1-2000ip");
-////		String mainName = "Draft-Model-Coulomb-Shaw-Seg";
-//		LogicTreeNode[] subsetNodes = null;
-////		LogicTreeNode[] subsetNodes = { SubSectConstraintModels.TOT_NUCL_RATE };
-////		File compDir = null;
-////		String compName = null;
-////		File outputDir = new File(mainDir, "hazard_maps");
-////		File compDir = new File(invDir, "2022_02_10-nshm23_u3_hybrid_branches-seg-no_adj-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-////		String compName = "No-Seg";
-////		File outputDir = new File(mainDir, "hazard_maps_comp_no_seg");
-//////		File compDir = new File(invDir, "2022_02_10-nshm23_u3_hybrid_branches-seg-capped_self_contained-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-////		File compDir = new File(invDir, "2022_02_10-nshm23_u3_hybrid_branches-seg-greedy_self_contained-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-////		String compName = "Self-Contained";
-////		File outputDir = new File(mainDir, "hazard_maps_comp_self_contained");
-//		File compDir = new File(invDir, "2022_02_11-nshm23_u3_hybrid_branches-max_dist-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-//		String compName = "Strict-Cutoff-Seg";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_strict_cutoff");
-////		File compDir = new File(invDir, "2022_02_15-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-CappedRdst-2000ip");
-////		String compName = "Seg-Capped-Redist";
-////		File outputDir = new File(mainDir, "hazard_maps_comp_capped_redist");
-////		File compDir = new File(invDir, "2022_02_08-nshm23_u3_hybrid_branches-seg_bin_dist_capped_distr-FM3_1-CoulombRupSet-DsrUni-SubB1-2000ip");
-////		String compName = "Capped-Distribution-Seg";
-////		File outputDir = new File(mainDir, "hazard_maps_comp_capped_distr_tot_rate");
-////		File compDir = new File(invDir, "2022_01_28-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-SubB1-5000ip");
-////		String compName = "5000 Iters/Rup";
-////		File outputDir = new File(mainDir, "hazard_maps_comp_5000ip");
-//		LogicTreeNode[] compSubsetNodes = null;
-////		LogicTreeNode[] compSubsetNodes = { SubSectConstraintModels.TOT_NUCL_RATE };
-		
-		/*
-		 * Sweep of draft models, late Feb 2022
-		 */
-//		File mainDir = new File(invDir, "2022_02_16-u3_branches-orig_calc_params-FM3_1");
-//		String mainName = "UCERF3 2022 Reproduction";
-		
-//		File mainDir = new File(invDir, "2022_02_17-u3_branches-orig_calc_params-new_avg-converged-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Avg Converged";
-		
-//		File mainDir = new File(invDir, "2022_02_20-u3_branches-orig_calc_params-new_avg-converged-noWL-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Avg Converged No-WL";
-		
-//		File mainDir = new File(invDir, "2022_02_20-u3_branches-orig_calc_params-new_avg-converged-new_perturb-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Avg Converged New-Perturb";
-		
-//		File mainDir = new File(invDir, "2022_02_22-u3_branches-orig_calc_params-new_avg-converged-noWL-new_perturb-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Avg Converged No-WL New-Perturb";
-		
-//		File mainDir = new File(invDir, "2022_02_21-u3_branches-orig_calc_params-new_avg-converged-noWL-new_perturb-try_zero_often-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Avg Converged New-Perturb No-WL Try-Zero";
-		
-//		File mainDir = new File(invDir, "2022_02_22-u3_branches-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Anneal Params";
-		
-//		File mainDir = new File(invDir, "2022_02_22-u3_branches-thinned_0.1-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Anneal Params, Reduced RS";
-		
-//		File mainDir = new File(invDir, "2022_03_25-u3_branches-coulomb-FM3_1-2000ip");
-//		String mainName = "UCERF3 New-Anneal Params, Coulomb RS";
-		
-//		File mainDir = new File(invDir, "2022_02_23-nshm23_u3_hybrid_branches-no_seg-FM3_1-U3RupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-//		String mainName = "NSHM23 Draft, U3 RS, No Seg";
-		
-//		File mainDir = new File(invDir, "2022_02_23-nshm23_u3_hybrid_branches-no_seg-FM3_1-U3RedRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-//		String mainName = "NSHM23 Draft, U3 Reduced RS, No Seg";
-		
-//		File mainDir = new File(invDir, "2022_02_23-nshm23_u3_hybrid_branches-no_seg-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-//		String mainName = "NSHM23 Draft, Coulomb RS, No Seg";
-		
-//		File mainDir = new File(invDir, "2022_02_27-nshm23_u3_hybrid_branches-strict_cutoff_seg-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Strict Seg";
-//		currentWeights = true;
-		
-//		File mainDir = new File(invDir, "2022_02_27-nshm23_u3_hybrid_branches-strict_cutoff_seg-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip-branch-translated");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Strict Seg Translated";
-		
-//		File mainDir = new File(invDir, "2022_02_27-nshm23_u3_hybrid_branches-strict_cutoff_seg-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip-branch-translated-min3km");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Strict Seg Translated >=3km";
-		
-//		File mainDir = new File(invDir, "2022_02_23-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-NoAdj-2000ip");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Seg No-Adj";
-		
-//		File mainDir = new File(invDir, "2022_02_15-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-JumpProb-2000ip");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Seg Thresh-Avg";
-		
-//		File mainDir = new File(invDir, "2022_02_22-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-StrictEquivJumpProb-2000ip");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Seg Thresh-Avg @ Strict Bins";
-		
-//		File mainDir = new File(invDir, "2022_05_09-nshm23_u3_hybrid_branches-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvg");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Seg Thresh-Avg 1km-Shift";
-		
-//		File mainDir = new File(invDir, "2022_02_15-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-CappedRdst-2000ip");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Seg Capped-Redist";
-		
-//		File mainDir = new File(invDir, "2022_03_03-nshm23_u3_hybrid_branches-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-NuclMFD-SubB1-JumpProb-2000ip");
-//		String mainName = "NSHM23 Draft, Coulomb RS, Seg Thresh-Avg 1km-Shift, Nucl-MFD";
-		
-//		File compDir = new File(invDir, "2022_03_24-nshm23_u3_hybrid_branches-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-JumpProb-2000ip");
-//		String compName = "Previous Step";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_prev");
-
-//		File mainDir = new File(invDir, "2022_04_27-u3_branches-scaleLowerDepth1.3-FM3_1-2000ip");
-//		String mainName = "UCERF3, 1.3x Lower-Seis Depth";
-		
-//		File mainDir = new File(invDir, "2022_05_09-nshm23_u3_hybrid_branches-cluster_specific_inversion-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvg");
-//		String mainName = "NSHM23 Draft, Cluster-Specific Inversions";
-		
-//		File mainDir = new File(invDir, "2022_05_20-nshm23_u3_hybrid_branches-scaleLowerDepth1.3-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvg");
-//		String mainName = "NSHM23 Draft, 1.3x Lower-Seis Depth";
-		
-//		File mainDir = new File(invDir, "2022_05_20-nshm23_u3_hybrid_branches-test_scale_rels-scaleLowerDepth1.3-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvg");
-//		String mainName = "NSHM23 Draft, Test Scale Rels, 1.3x Lower-Seis Depth";
-		
-//		File mainDir = new File(invDir, "2022_05_20-nshm23_u3_hybrid_branches-test_scale_rels-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvg");
-//		String mainName = "NSHM23 Draft, Test Scale Rels";
-		
-////		File mainDir = new File(invDir, "2022_07_23-nshm23_branches-NSHM23_v1p4-CoulombRupSet-DsrUni-TotNuclRate-SubB1-Shift2km-ThreshAvgIterRelGR-IncludeThruCreep");
-//		File mainDir = new File(invDir, "2022_08_12-nshm23_branches-NSHM23_v2-CoulombRupSet-NSHM23_Avg-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-////		File mainDir = new File(invDir, "2022_08_08-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String mainName = "NSHM23 Draft";
-		
-//		File mainDir = new File(invDir, "2022_08_09-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String mainName = "NSHM23/U3 Draft";
-		
-//		File mainDir = new File(invDir, "2022_08_09-nshm23_u3_hybrid_branches-wide_seg_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String mainName = "NSHM23/U3 Draft, Wide-Seg";
-		
-//		File mainDir = new File(invDir, "2022_08_05-nshm23_branches-NSHM23_v2-CoulombRupSet-NSHM23_Avg-TotNuclRate-SubB1-ThreshAvg");
-//		String mainName = "Thresh-Avg";
-		
-//		File mainDir = new File(invDir, "2022_07_29-nshm23_branches-NSHM23_v1p4-CoulombRupSet-DsrUni-TotNuclRate-SubB1-NoAdj");
-//		String mainName = "No-Adj";
-		
-//		File mainDir = new File(invDir, "2022_08_11-nshm23_branches-wide_seg_branches-NSHM23_v2-CoulombRupSet-NSHM23_Avg-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String mainName = "Wide-Seg-Branches";
-		
-//		File mainDir = new File(invDir, "2022_08_12-nshm23_branches-paleo_uncerts-NSHM23_v2-CoulombRupSet-NSHM23_Avg-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String mainName = "Paleo-Branches";
-		
-//		File mainDir = new File(invDir, "2022_08_11-u3_branches-new_seg-FM3_1");
-//		String mainName = "U3-Plus-Seg";
-		
-//		File mainDir = new File(invDir, "2022_08_22-nshm18_branches-NSHM18_WUS_NoCA-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR");
-//		String mainName = "NSHM23/18 Draft";
-		
-//		File mainDir = new File(invDir, "2022_08_18-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-NoRed-ThreshAvgIterRelGR");
-//		String mainName = "NSHM23/U3 Draft";
-		
-//		File mainDir = new File(invDir, "2022_08_17-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-SubB1-ThreshAvgIterRelGR-360_samples");
-//		String mainName = "NSHM23 Draft";
-		
-		File mainDir = new File(invDir, "2022_08_22-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR");
-		String mainName = "NSHM23 Draft";
-		
-//		File mainDir = new File(invDir, "2022_08_15-nshm23_branches-paleo_uncerts-NSHM23_v2-CoulombRupSet-AVERAGE-TotNuclRate-SubB1-SupraB0.5-MidSeg-ThreshAvgIterRelGR");
-//		String mainName = "NSHM23 Draft, Mini-Scaling-Sweep";
+		File mainDir = null;
+		String mainName = null;
 		
 		LogicTreeNode[] subsetNodes = null;
 		LogicTreeNode[] compSubsetNodes = null;
 //		LogicTreeNode[] compSubsetNodes = { FaultModels.FM3_1 };
 		
-//		File compDir = null;
-//		String compName = null;
-//		File outputDir = new File(mainDir, "hazard_maps");
-//		File compDir = new File(invDir, "2022_07_23-nshm23_branches-no_seg-NSHM23_v1p4-CoulombRupSet-DsrUni-TotNuclRate-SubB1-IncludeThruCreep");
-//		String compName = "No Segmentation";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_no_seg");
-//		File compDir = new File(invDir, "2022_08_05-nshm23_branches-NSHM23_v2-CoulombRupSet-NSHM23_Avg-TotNuclRate-SubB1-ThreshAvg");
-//		String compName = "No Segmentation";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_thresh_avg");
-//		File compDir = new File(invDir, "2022_08_10-nshm23_branches-no_ghost_trans-NSHM23_v2-CoulombRupSet-NSHM23_Avg-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String compName = "No Segmentation";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_no_ghost_trans");
-//		File compDir = new File(invDir, "2022_08_09-nshm23_u3_hybrid_branches-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String compName = "NSHM23/U3 Draft";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_nshm23_draft");
-//		File compDir = new File(invDir, "2022_07_29-nshm23_branches-NSHM23_v1p4-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvgIterRelGR");
-//		String compName = "NSHM23 Draft";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_nshm23_draft");
-		File compDir = new File(invDir, "2022_08_22-nshm23_branches-NSHM23_v2-CoulombRupSet-TotNuclRate-NoRed-ThreshAvgIterRelGR");
-		String compName = "Draft Subset";
-		File outputDir = new File(mainDir, "hazard_maps_comp_draft_subset");
-//		File compDir = new File(invDir, "2021_11_30-u3_branches-orig_calcs-5h");
-//		String compName = "UCERF3 As Published";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_ucerf3_as_published");
-//		String compName = "UCERF3 As Published, Uniform";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_ucerf3_as_published_uniform");
-//		LogicTreeNode[] compSubsetNodes = { FaultModels.FM3_1, SlipAlongRuptureModels.UNIFORM };
-//		File compDir = new File(invDir, "2022_03_24-u3_branches-FM3_1-2000ip");
-//		String compName = "UCERF3 New Anneal";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_ucerf3_new_anneal");
-//		File compDir = new File(invDir, "2022_03_13-u3_branches-coulomb-bilateral-FM3_1-2000ip");
-//		String compName = "UCERF3 Coulomb Bilateral";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_ucerf3_coulomb_bilateral");
-//		String compName = "UCERF3 New Anneal, Uniform";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_ucerf3_new_anneal_uniform");
-//		LogicTreeNode[] compSubsetNodes = { FaultModels.FM3_1, SlipAlongRuptureModels.UNIFORM };
-//		File compDir = new File(invDir, "2022_02_27-nshm23_u3_hybrid_branches-strict_cutoff_seg-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-2000ip");
-//		String compName = "Strict Segmentation";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_strict_seg");
-//		File compDir = new File(invDir, "");
-//		String compName = "Threshold Avg Shift-1km";
-//		String compName = "NSHM23 Draft";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_thresh_avg_shift_1km");
-//		File compDir = new File(invDir, "2022_05_09-nshm23_u3_hybrid_branches-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvg");
-//		String compName = "NSHM23 Draft, Test Scale Rels";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_test_scale_rels");
-//		File compDir = new File(invDir, "2022_05_20-nshm23_u3_hybrid_branches-test_scale_rels-shift_seg_1km-FM3_1-CoulombRupSet-DsrUni-TotNuclRate-SubB1-ThreshAvg");
-//		String compName = "UCERF3 Full Segmented";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_fully_segmented");
-		
-		/**
-		 * NSHM18 ingredients
-		 */
-//		File mainDir = new File(invDir, "2022_04_08-nshm18_branches-shift_seg_1km-NSHM18_WUS_NoCA-CoulombRupSet-DsrUni-TotNuclRate-NoRed-JumpProb-10000ip");
-//		String mainName = "NSHM18 Ingred, Coulomb RS, Seg Thresh-Avg 1km-Shift";
-////		File mainDir = new File(invDir, "2022_04_08-nshm18_branches-no_seg-NSHM18_WUS_NoCA-AzimuthalRupSet-DsrUni-TotNuclRate-NoRed-10000ip");
-////		String mainName = "NSHM18 Ingred, Azimuthal RS, No Seg";
-////		File mainDir = new File(invDir, "2022_04_08-nshm18_branches-no_seg-NSHM18_WUS_NoCA-FullSegRupSet-DsrUni-TotNuclRate-NoRed-10000ip");
-////		String mainName = "NSHM18 Ingred, Full Segmented RS";
-//		
-//		LogicTreeNode[] subsetNodes = null;
-//		File compDir = new File(invDir, "2022_04_08-nshm18_branches-no_seg-NSHM18_WUS_NoCA-FullSegRupSet-DsrUni-TotNuclRate-NoRed-10000ip");
-//		String compName = "Fully Segmented RS";
-//		File outputDir = new File(mainDir, "hazard_maps_comp_full_segmented");
-////		File compDir = new File(invDir, "2022_04_08-nshm18_branches-shift_seg_1km-NSHM18_WUS_NoCA-CoulombRupSet-DsrUni-TotNuclRate-NoRed-JumpProb-10000ip");
-////		String compName = "Coulomb RS w/ Seg";
-////		File outputDir = new File(mainDir, "hazard_maps_comp_coulomb");
-//		LogicTreeNode[] compSubsetNodes = null;
+		File compDir = null;
+		String compName = null;
+		File outputDir = null;
 		
 		CommandLine cmd = FaultSysTools.parseOptions(createOptions(), args, LogicTreeHazardCompare.class);
 		args = cmd.getArgs();
@@ -1623,6 +1389,81 @@ public class LogicTreeHazardCompare {
 		return ret;
 	}
 	
+	private GriddedGeoDataSet[] averageAcrossLevel(LogicTree<?> tree, GriddedGeoDataSet[] allMaps, List<Double> allWeights,
+			LogicTreeLevel<?> level, int levelIndex, List<Double> weightsToFillIn, List<LogicTreeLevel<?>> uniqueSamplingLevels) {
+		Preconditions.checkState(allMaps.length == tree.size());
+		Preconditions.checkState(allMaps.length == allWeights.size());
+		Preconditions.checkState(weightsToFillIn.isEmpty());
+		
+		Map<LogicTreeBranch<?>, List<Integer>> otherBranchIndexes = new HashMap<>();
+		List<LogicTreeBranch<?>> uniqueOtherBranches = new ArrayList<>();
+		
+		if (level == null) {
+			System.out.println("Averaging out any sampling levels");
+		} else {
+			System.out.println("Averaging out level '"+level.getName()+"' by finding all unique branches excluding that level");
+		}
+		
+		List<Integer> clearIndexes = new ArrayList<>();
+		if (levelIndex >= 0)
+			clearIndexes.add(levelIndex);
+		// now see if there are any random sampling branches where there are unique samples for every branch in the
+		// tree (as opposed to N samples at that lavel). In that case, we need to clear them as well.
+		int numLevels = tree.getLevels().size();
+		for (int l=0; l<numLevels; l++) {
+			if (l != levelIndex) {
+				LogicTreeLevel<?> testLevel = tree.getLevels().get(l);
+				if (uniqueSamplingLevels.contains(testLevel)) {
+					System.out.println("\tWill also clear out sampling values from level '"+testLevel.getName()+"'");
+					clearIndexes.add(l);
+				}
+			}
+		}
+		if (clearIndexes.isEmpty())
+			return null;
+		
+		for (int b=0; b<tree.size(); b++) {
+			// copy it so we can clear the value
+			LogicTreeBranch<?> branch = tree.getBranch(b).copy();
+			for (int l : clearIndexes)
+				branch.clearValue(l);
+			
+			List<Integer> indexes = otherBranchIndexes.get(branch);
+			if (indexes == null) {
+				// first time
+				indexes = new ArrayList<>();
+				otherBranchIndexes.put(branch, indexes);
+				uniqueOtherBranches.add(branch);
+			}
+			indexes.add(b);
+		}
+		
+		System.out.println("\treduced from "+tree.size()+" to "+uniqueOtherBranches.size()+" branches");
+		if (tree.size() == uniqueOtherBranches.size() || uniqueOtherBranches.size() == 1)
+			return null;
+		
+		GriddedGeoDataSet[] ret = new GriddedGeoDataSet[uniqueOtherBranches.size()];
+		
+		for (int b=0; b<ret.length; b++) {
+			LogicTreeBranch<?> branch = uniqueOtherBranches.get(b);
+			List<Integer> indexes = otherBranchIndexes.get(branch);
+			double weightSum = 0d;
+			GriddedGeoDataSet map = new GriddedGeoDataSet(allMaps[0].getRegion());
+			for (int index : indexes) {
+				double subWeight = tree.getBranchWeight(index);
+				weightSum += subWeight;
+				GriddedGeoDataSet subMap = allMaps[index];
+				for (int i=0; i<map.size(); i++)
+					map.add(i, subMap.get(i)*subWeight);
+			}
+			map.scale(1d/weightSum);
+			ret[b] = map;
+			weightsToFillIn.add(weightSum);
+		}
+		
+		return ret;
+	}
+	
 	private void calcSD_COV(GriddedGeoDataSet[] maps, List<Double> weights,
 			GriddedGeoDataSet meanMap, GriddedGeoDataSet sd, GriddedGeoDataSet cov) {
 		double[] weightsArray = MathArrays.normalizeArray(Doubles.toArray(weights), weights.size());
@@ -1671,7 +1512,9 @@ public class LogicTreeHazardCompare {
 			sd = 0d;
 			cov = Double.NaN;
 		} else {
-			Variance var = new Variance();
+			// false here means to use the population formula, which does better for small N and is appropriate because
+			// our logic trees are the full population
+			Variance var = new Variance(false);
 			double[] cellVals = new double[maps.length];
 			for (int j=0; j<cellVals.length; j++)
 				cellVals[j] = maps[j].get(gridIndex);
@@ -1767,6 +1610,9 @@ public class LogicTreeHazardCompare {
 		
 		int cptWidth = 800;
 		
+		List<LogicTreeLevel<?>> uniqueSamplingLevels = null;
+		Boolean canDecomposeVariance = null;
+		
 		for (double period : periods) {
 			String perLabel, perPrefix, unitlessPerLabel;
 			if (period == 0d) {
@@ -1813,10 +1659,12 @@ public class LogicTreeHazardCompare {
 				// see if we've precomputed mean
 				GriddedGeoDataSet mean = ignorePrecomputed ? null :
 					loadPrecomputedMeanMap(LogicTreeCurveAverager.MEAN_PREFIX, rp, period);
+				GriddedGeoDataSet mapMean = null; // mean from the maps directly, not from curves
 				boolean meanIsFromCurves = mean != null;
 				if (mean == null) {
 					// need to calculate mean from branch maps
-					mean = buildMean(maps);
+					mapMean = buildMean(maps);
+					mean = mapMean;
 				}
 				GriddedGeoDataSet median = calcMapAtPercentile(mapNCDFs, region, 50d);
 				GriddedGeoDataSet max = buildMax(maps, weights);
@@ -2228,6 +2076,148 @@ public class LogicTreeHazardCompare {
 				
 				int combinedMapIndex = lines.size();
 				
+				int numLevels = tree.getLevels().size();
+				
+				if (canDecomposeVariance == null) {
+					System.out.println("Seeing if the logic tree is structured in a way that supports variance decomposition");
+					// track the levels where there are a unique sample for each branch in the tree, i.e., a value
+					// is never repeated across any upstream branches
+					// if there are multiple of these, we can't separate out the variance individually
+					uniqueSamplingLevels = new ArrayList<>();
+					System.out.println("Looking for unique random sampling levels (those where samples are not reused "
+							+ "across upstream branches) for exclusion in variance calculations");
+					for (int l=0; l<numLevels; l++) {
+						LogicTreeLevel<?> level = tree.getLevels().get(l);
+						if (level instanceof RandomlySampledLevel<?> || level instanceof FileBackedLevel) {
+							// either a random sampling level, or could have been (maybe deserialization failed is now is file backed)
+							// we want to detect the case where the random sampling is across the whole tree, i.e., values
+							// are never reused
+							
+							if (level.getNodes().size() == tree.size()) {
+								// full tree random sampling
+								System.out.println("\tDetected that "+level.getName()+" is a randomly sampled level "
+										+ "because it has a unique value for each tree branch");
+								uniqueSamplingLevels.add(level);
+							} else if (l > 1) {
+								// there's not a one-to-one correspondence, but it still could be tree-wide random sampling
+								// if the tree was later downsampled and/or combined with another tree
+								// 
+								// we'll detect this by checking to see if there are any values shared amongst upstream
+								// branches; if there are not (meaning that nodes from this level were never reused, at
+								// least looking at upstream branches), then we'll treat this as a random sampling level
+								
+								List<LogicTreeLevel<? extends LogicTreeNode>> levelsAbove = new ArrayList<>(tree.getLevels().subList(0, l));
+								Map<LogicTreeNode, LogicTreeBranch<?>> prevBranchesAbove = new HashMap<>();
+								boolean match = true;
+								for (LogicTreeBranch<?> branch : tree) {
+									LogicTreeNode node = branch.getValue(l);
+									LogicTreeBranch<LogicTreeNode> branchAbove = new LogicTreeBranch<>(levelsAbove);
+									for (int i=0; i<l; i++)
+										branchAbove.setValue(i, branch.getValue(i));
+									LogicTreeBranch<?> prevBranchAbove = prevBranchesAbove.get(node);
+									if (prevBranchAbove == null) {
+										prevBranchesAbove.put(node, branchAbove);
+									} else if (!prevBranchAbove.equals(branchAbove)) {
+										// multiple upstream branches use this level
+										match = false;
+										break;
+									}
+								}
+								if (match) {
+									System.out.println("\tDetected that "+level.getName()+" is a randomly sampled level "
+											+ "because no unique upstream branches re-use it, even though it only has "
+											+level.getNodes().size()+" nodes for "+tree.size()+" total branches");
+									uniqueSamplingLevels.add(level);
+								}
+							}
+						}
+					}
+					
+					if (uniqueSamplingLevels.isEmpty()) {
+						System.out.println("\tNo such sampling levels found");
+						canDecomposeVariance = true;
+					} else {
+						// we have randomly sampled levels and can only decompose the variance if the logic tree is 
+						// otherwise complete; this doesn't work for downsampled logic trees
+						HashSet<LogicTreeBranch<?>> concreteBranches = new HashSet<>();
+						List<LogicTreeLevel<? extends LogicTreeNode>> concreteLevels = new ArrayList<>();
+						List<Integer> levelMappings = new ArrayList<>();
+						List<HashSet<LogicTreeNode>> encounteredConcreteNodes = new ArrayList<>();
+						for (int l=0; l<numLevels; l++) {
+							LogicTreeLevel<?> level = tree.getLevels().get(l);
+							if (!uniqueSamplingLevels.contains(level)) {
+								concreteLevels.add(level);
+								levelMappings.add(l);
+								encounteredConcreteNodes.add(new HashSet<>());
+							}
+						}
+						for (LogicTreeBranch<?> branch : tree) {
+							LogicTreeBranch<LogicTreeNode> concreteBranch = new LogicTreeBranch<>(concreteLevels);
+							for (int i=0; i<concreteLevels.size(); i++) {
+								LogicTreeNode node = branch.getValue(levelMappings.get(i));
+								concreteBranch.setValue(i, node);
+								encounteredConcreteNodes.get(i).add(node);
+							}
+							concreteBranches.add(concreteBranch);
+						};
+						int completeTreeCount = 1;
+						for (HashSet<LogicTreeNode> nodes : encounteredConcreteNodes)
+							completeTreeCount *= nodes.size();
+						if (completeTreeCount != concreteBranches.size()) {
+							System.out.println("Can't do variance decomposition because this tree contains random "
+									+ "sampling levels and is downsampled. Complete count of concrete branches "
+									+ "(excluding sampling levels) would be "+completeTreeCount+", we have "+concreteBranches.size());
+							canDecomposeVariance = false;
+						} else {
+							canDecomposeVariance = true;
+						}
+					}
+				}
+				TableBuilder ltCOVtable = null;
+				boolean anyNegativeLTCOVs = false;
+				GriddedGeoDataSet covOfMapMean = null;
+				GriddedGeoDataSet varOfMapMean = null;
+				AvgMaxCalc origCOVs = null;
+				
+				GriddedGeoDataSet covAveragingOverSampling = null;
+				GriddedGeoDataSet varAveragingOverSampling = null;
+				
+				if (canDecomposeVariance) {
+					ltCOVtable = MarkdownUtils.tableBuilder();
+					if (meanIsFromCurves) {
+						// need to calculate the raw mean of the maps because that's how we're going to calculate level COVs
+						mapMean = buildMean(maps);
+						covOfMapMean = new GriddedGeoDataSet(region);
+						for (int i=0; i<mapMean.size(); i++)
+							covOfMapMean.set(i, sd.get(i)/mapMean.get(i));
+					} else {
+						Preconditions.checkNotNull(mapMean);
+						covOfMapMean = cov;
+					}
+					varOfMapMean = new GriddedGeoDataSet(region);
+					origCOVs = new AvgMaxCalc();
+					for (int i=0; i<cov.size(); i++) {
+						origCOVs.addValue(cov.get(i));
+						varOfMapMean.set(i, sd.get(i)*sd.get(i));
+					}
+					ltCOVtable.addLine("Branch Level", "Average Variance Contribution", "Average COV Contribution",
+							"Maximum Variance Contribution", "Maximum COV Contribution");
+					ltCOVtable.addLine("Full model", "100%", twoDigits.format(origCOVs.getAverage()), "100%", twoDigits.format(origCOVs.getMax()));
+					
+					if (!uniqueSamplingLevels.isEmpty()) {
+						List<Double> weightsWithoutSampling = new ArrayList<>();
+						GriddedGeoDataSet[] mapsAveragingOverSampling = averageAcrossLevel(tree, maps, weights, null, -1, weightsWithoutSampling, uniqueSamplingLevels);
+						Preconditions.checkNotNull(mapsAveragingOverSampling);
+						GriddedGeoDataSet sdAveragingOverSampling = new GriddedGeoDataSet(region);
+						covAveragingOverSampling = new GriddedGeoDataSet(region);
+						calcSD_COV(mapsAveragingOverSampling, weightsWithoutSampling, mapMean, sdAveragingOverSampling, covAveragingOverSampling);
+						varAveragingOverSampling = new GriddedGeoDataSet(region);
+						for (int i=0; i<region.getNodeCount(); i++)
+							varAveragingOverSampling.set(i, sdAveragingOverSampling.get(i)*sdAveragingOverSampling.get(i));
+					}
+				}
+				
+				
 				System.out.println("Building logic tree plots");
 				
 				List<LogicTreeLevel<?>> branchLevels = new ArrayList<>();
@@ -2243,9 +2233,8 @@ public class LogicTreeHazardCompare {
 				List<HashMap<LogicTreeNode, GriddedGeoDataSet>> choiceMeanPercentilesList = new ArrayList<>();
 				
 				// do mean map calculations first so that we can clear out the full NormCDFs from memory
-				int numLevels = tree.getLevels().size();
+				
 				for (int l=0; l<numLevels; l++) {
-//				for (LogicTreeLevel<?> level : tree.getLevels()) {
 					LogicTreeLevel<?> level = tree.getLevels().get(l);
 					HashMap<LogicTreeNode, List<GriddedGeoDataSet>> choiceMaps = new HashMap<>();
 					HashMap<LogicTreeNode, List<Double>> choiceWeights = new HashMap<>();
@@ -2263,6 +2252,91 @@ public class LogicTreeHazardCompare {
 					}
 //					System.out.println("Processing level "+level.getName()+" with "+choiceMaps.size()+" choices");
 					boolean include = choiceMaps.size() > 1;
+					if (canDecomposeVariance && include) {
+						if (uniqueSamplingLevels.size() > 1 && uniqueSamplingLevels.get(0) != level &&
+								uniqueSamplingLevels.contains(level))
+							// this is a secondary unique sampling level, skip as already bundled previously
+							continue;
+						List<Double> weightsExcludingLevel = new ArrayList<>();
+						GriddedGeoDataSet[] mapsExcludingLevel = averageAcrossLevel(tree, maps, weights, level, l, weightsExcludingLevel, uniqueSamplingLevels);
+						if (mapsExcludingLevel != null) {
+							// verification step
+							GriddedGeoDataSet excludingMean = buildMean(List.of(mapsExcludingLevel), weightsExcludingLevel);
+							for (int i=0; i<excludingMean.size(); i++) {
+								Preconditions.checkState(!Double.isFinite(mapMean.get(i))
+										|| Precision.equals(mapMean.get(i), excludingMean.get(i), 1e-4),
+										"Mean map doesn't match mean when averaged across level for location %s: %s != %s",
+										i, mapMean.get(i), excludingMean.get(i));
+							}
+							
+							GriddedGeoDataSet covExcluding = new GriddedGeoDataSet(region);
+							GriddedGeoDataSet sdExcluding = new GriddedGeoDataSet(region);
+							System.out.println("\tCalculating COV excluding");
+							calcSD_COV(mapsExcludingLevel, weightsExcludingLevel, mapMean, sdExcluding, covExcluding);
+//							AvgMaxCalc fullCOVs = new AvgMaxCalc();
+							
+							GriddedGeoDataSet refCOVMap, refVarMap;
+							if (uniqueSamplingLevels.isEmpty() || uniqueSamplingLevels.contains(level)) {
+								// no sampling levels, or this is a sampling level
+								// in which case, we're comparing to the full distribution
+								refCOVMap = covOfMapMean;
+								refVarMap = varOfMapMean;
+							} else {
+								// this is not a sampling level, but they exist; we should compare to the distribution
+								// after having averaged out the sampling levels
+								refCOVMap = covAveragingOverSampling;
+								refVarMap = varAveragingOverSampling;
+							}
+							
+							// orig here is the full original, used for ratios
+							// ref here is the reference value we're comparing to, used for differences
+							AvgMaxCalc refCOVs = new AvgMaxCalc();
+							AvgMaxCalc withoutCOVs = new AvgMaxCalc();
+							AvgMaxCalc deltaCOVs = new AvgMaxCalc();
+							AvgMaxCalc fDiffCOVs = new AvgMaxCalc();
+							AvgMaxCalc fractVars = new AvgMaxCalc();
+							for (int i=0; i<covExcluding.size(); i++) {
+								double refCOV = refCOVMap.get(i);
+								double origCOV = covOfMapMean.get(i);
+								double withoutCOV = covExcluding.get(i);
+								double refVar = refVarMap.get(i);
+								double origVar = varOfMapMean.get(i);
+								double withoutVar = sdExcluding.get(i)*sdExcluding.get(i);
+								double varDiff = refVar - withoutVar;
+								double deltaCOV = refCOV - withoutCOV;
+								refCOVs.addValue(refCOV);
+								withoutCOVs.addValue(withoutCOV);
+								deltaCOVs.addValue(deltaCOV);
+								fDiffCOVs.addValue(deltaCOV/origCOV);
+								fractVars.addValue(varDiff/origVar);
+							}
+							
+							System.out.println("\tOrigCOV="+(float)origCOVs.getAverage());
+							System.out.println("\tRefCOV="+(float)refCOVs.getAverage());
+							System.out.println("\tWithoutCOV="+(float)withoutCOVs.getAverage());
+							System.out.println("\tdeltaCOV="+deltaCOVs.getAverage()+" ("+pDF.format(fDiffCOVs.getAverage())+")");
+							System.out.println("\tdeltaVar="+fractVars.getAverage()+" ("+pDF.format(fractVars.getAverage())+")");
+							
+							String levelName = level.getName();
+							if (uniqueSamplingLevels.size() > 1 && uniqueSamplingLevels.get(0) == level) {
+								// this is a bundle across multiple sampling levels
+								levelName = uniqueSamplingLevels.size()+" sampling levels: ";
+								for (int i=0; i<uniqueSamplingLevels.size(); i++) {
+									if (i > 0)
+										levelName += ", ";
+									levelName += uniqueSamplingLevels.get(i).getShortName();
+								}
+							}
+							
+							anyNegativeLTCOVs |= fractVars.getAverage() < 0d || deltaCOVs.getAverage() < 0d;
+							
+							ltCOVtable.addLine(levelName,
+									pDF.format(fractVars.getAverage()),
+									twoDigits.format(deltaCOVs.getAverage())+" ("+pDF.format(fDiffCOVs.getAverage())+")",
+									pDF.format(fractVars.getMax()),
+									twoDigits.format(deltaCOVs.getMax())+" ("+pDF.format(fDiffCOVs.getMax())+")");
+						}
+					}
 					if (LogicTreeCurveAverager.shouldSkipLevel(level, choiceMaps.size())) {
 						System.out.println("Skipping randomly sampled level ("+level.getName()
 							+") with "+choiceMaps.size()+" choices");
@@ -2649,6 +2723,8 @@ public class LogicTreeHazardCompare {
 					}
 				}
 				
+				List<String> addInLines = new ArrayList<>();
+				
 				if (!branchLevels.isEmpty()) {
 					String combPrefix = prefix+"_branches_combined";
 					if (branchLevels.size() < 5)
@@ -2668,11 +2744,48 @@ public class LogicTreeHazardCompare {
 							meanMapPlot, branchLevels, branchLevelValues, branchLevelDiffPlots,
 							"Branch Choice - Mean (g)");
 					table.addLine("![Combined Map]("+resourcesDir.getName()+"/"+combPrefix+".png)");
-					lines.addAll(combinedMapIndex, table.build());
+					addInLines.addAll(table.build());
 					
 					choiceMeanSummaryCSV.writeToFile(new File(resourcesDir, prefix+"_branch_mean_summary.csv"));
 					choiceMeanAbsSummaryCSV.writeToFile(new File(resourcesDir, prefix+"_branch_mean_abs_summary.csv"));
 				}
+				
+				if (canDecomposeVariance) {
+					if (ltCOVtable.getNumLines() > 2) {
+						if (!addInLines.isEmpty())
+							addInLines.add("");
+						addInLines.add("#### Logic Tree Variance and COV Contributions, "+unitlessLabel);
+						addInLines.add(topLink); addInLines.add("");
+						addInLines.add("This table summarizes how each logic tree branching level contributes to the overall "
+								+ "variance and coefficient of variation (COV) in the model.");
+						addInLines.add("");
+						addInLines.add("For each level, its contribution is estimated by collapsing the logic tree across "
+								+ "that level; i.e., by averaging values across all branches that differ only in thier "
+								+ "choice at that level.");
+						addInLines.add("");
+						if (uniqueSamplingLevels.size() > 1) {
+							addInLines.add("This logic tree contains multiple random sampling levels and variance cannot "
+									+ "be decomposed between them. They are bundled into a single line of the table.");
+							addInLines.add("");
+						}
+						if (anyNegativeLTCOVs) {
+							addInLines.add("In some cases, the variance (and therefore COV) may slightly increase after removing "
+									+ "a level. This is due to the behavior of weighted averaging and is interpreted as "
+									+ "statistical noise, indicating that the level does not significantly contribute to model "
+									+ "variability.");
+							addInLines.add("");
+						}
+						addInLines.add("Both spatially averaged and maximum contributions are reported for each level.");
+						addInLines.add("");
+						addInLines.addAll(ltCOVtable.build());
+						addInLines.add("");
+					} else {
+						canDecomposeVariance = false;
+					}
+				}
+				
+				if (!addInLines.isEmpty())
+					lines.addAll(combinedMapIndex, addInLines);
 				
 				if (intermediateWrite)
 					writeIntermediate(outputDir, lines, tocIndex);
@@ -2695,6 +2808,31 @@ public class LogicTreeHazardCompare {
 		
 		// write markdown
 		MarkdownUtils.writeReadmeAndHTML(lines, outputDir);
+	}
+	
+	private static class AvgMaxCalc {
+		private double sum;
+		private double max = Double.NEGATIVE_INFINITY;
+		private int numUsed;
+		private int numSkipped;
+		
+		public void addValue(double value) {
+			if (Double.isFinite(value)) {
+				sum += value;
+				max = Math.max(value, max);
+				numUsed++;
+			} else {
+				numSkipped++;
+			}
+		}
+		
+		public double getAverage() {
+			return sum/numUsed;
+		}
+		
+		public double getMax() {
+			return max;
+		}
 	}
 	
 	private static void writeIntermediate(File outputDir, List<String> lines, int tocIndex) throws IOException {
@@ -2862,8 +3000,9 @@ public class LogicTreeHazardCompare {
 		
 		return "Mean: "+twoDigits.format(mean)+"%, Mean Abs: "+twoDigits.format(meanAbs)+"%";
 	}
-	
+
 	private static final DecimalFormat twoDigits = new DecimalFormat("0.00");
+	private static final DecimalFormat pDF = new DecimalFormat("0.0%");
 	
 	private static final Comparator<LogicTreeNode> nodeNameCompare = new Comparator<LogicTreeNode>() {
 

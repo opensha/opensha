@@ -97,7 +97,7 @@ public class LogicTreeCurveAverager {
 	public static boolean shouldSkipLevel(LogicTreeLevel<?> level, int nodeCount) {
 		if (nodeCount <= 1)
 			return false;
-		return level instanceof RandomlySampledLevel<?> && nodeCount > 6;
+		return level instanceof RandomlySampledLevel<?> && nodeCount > 6 || nodeCount > 30;
 	}
 	
 	public synchronized void processBranchCurves(LogicTreeBranch<?> branch, double weight, DiscretizedFunc[] curves) {
