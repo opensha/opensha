@@ -88,14 +88,6 @@ public class RectangleSurface implements CacheEnabledSurface {
 			vertWidth = zBot - zTop;
 			horzWidth = vertWidth / Math.tan(dipRad);
 			ddw = vertWidth/sinDip;
-			double dipDirRad = strikeRad + Math.PI*0.5;
-			Location botStartLoc = LocationUtils.location(startLoc, dipDirRad, horzWidth);
-			botStartLoc = new Location(botStartLoc.lat, botStartLoc.lon, zBot);
-			Location botEndLoc = LocationUtils.location(endLoc, dipDirRad, horzWidth);
-			botEndLoc = new Location(botEndLoc.lat, botEndLoc.lon, zBot);
-			Location topMiddle = LocationUtils.location(startLoc, strikeRad, 0.5*length);
-			Location middle = LocationUtils.location(topMiddle, dipDirRad, 0.5*horzWidth);
-			middle = new Location(middle.lat, middle.lon, zTop + 0.5*vertWidth);
 		}
 
 		this.cache = SurfaceCachingPolicy.build(this, CacheTypes.SINGLE); // always single for this simple representation
