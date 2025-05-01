@@ -36,6 +36,7 @@ public class RectangleSurface implements CacheEnabledSurface {
 	// calculated
 	private final double strike;
 	private final double strikeRad;
+	private final double dipDirRad;
 	private final double dipRad;
 	private final double ddw;
 	private final double horzWidth;
@@ -69,6 +70,7 @@ public class RectangleSurface implements CacheEnabledSurface {
 		this.zBot = zBot;
 
 		this.strikeRad = LocationUtils.azimuthRad(startLoc, endLoc);
+		this.dipDirRad = strikeRad + 0.5*Math.PI;
 		this.strike = strikeRad * GeoTools.TO_DEG;
 
 		Preconditions.checkState(zTop < zBot, "zTop=%s must be < zBot=%s", (float)zTop, (float)zBot);
@@ -215,7 +217,7 @@ public class RectangleSurface implements CacheEnabledSurface {
 
 	private synchronized FaultTrace getHorizontalSpan(int index) {
 		if (horzSpans != null) {
-			Preconditions.checkState(index <= horzSpans.length);
+			Preconditions.checkState(index < horzSpans.length);
 			if (horzSpans[index] != null)
 				return horzSpans[index];
 		} else {
@@ -228,7 +230,7 @@ public class RectangleSurface implements CacheEnabledSurface {
 			double widthDownDip = index*ddw/(horzSpans.length-1d);
 			double hDistance = widthDownDip * Math.cos( dipRad );
 			double vDistance = widthDownDip * Math.sin(dipRad);
-			LocationVector dir = new LocationVector(dip, hDistance, vDistance);
+			LocationVector dir = new LocationVector(dipDirRad, hDistance, vDistance);
 			for (Location traceLoc : trace)
 				locs.add(LocationUtils.location(traceLoc, dir));
 			horzSpans[index] = locs;
@@ -238,7 +240,7 @@ public class RectangleSurface implements CacheEnabledSurface {
 
 	private synchronized FaultTrace getEvenlyDiscretizedHorizontalSpan(int index) {
 		if (horzSpansDiscr != null) {
-			Preconditions.checkState(index <= horzSpansDiscr.length);
+			Preconditions.checkState(index < horzSpansDiscr.length);
 			if (horzSpansDiscr[index] != null)
 				return horzSpansDiscr[index];
 		} else {
@@ -261,7 +263,7 @@ public class RectangleSurface implements CacheEnabledSurface {
 		LocationList locs = new LocationList();
 		double hDistance = widthDownDip * Math.cos( dipRad );
 		double vDistance = widthDownDip * Math.sin(dipRad);
-		LocationVector dir = new LocationVector(dip, hDistance, vDistance);
+		LocationVector dir = new LocationVector(dipDirRad, hDistance, vDistance);
 		for (Location traceLoc : trace) {
 			locs.add(LocationUtils.location(traceLoc, dir));
 		}
@@ -359,12 +361,12 @@ public class RectangleSurface implements CacheEnabledSurface {
 	public RuptureSurface getMoved(LocationVector v) {
 		Location startLoc = LocationUtils.location(this.startLoc, v);
 		Location endLoc = LocationUtils.location(this.endLoc, v);
-		return new RectangleSurface(startLoc, endLoc, cosDip, zBot);
+		return new RectangleSurface(startLoc, endLoc, dip, zBot);
 	}
 
 	@Override
 	public RuptureSurface copyShallow() {
-		return new RectangleSurface(startLoc, endLoc, cosDip, zBot);
+		return new RectangleSurface(startLoc, endLoc, dip, zBot);
 	}
 
 	@Override
