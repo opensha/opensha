@@ -27,7 +27,7 @@ import org.opensha.sha.faultSurface.FiniteApproxPointSurface;
 import org.opensha.sha.faultSurface.FrankelGriddedSurface;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.QuadSurface;
-import org.opensha.sha.faultSurface.RectangleSurface;
+import org.opensha.sha.faultSurface.RectangularSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.cache.SurfaceCachingPolicy.CacheTypes;
 
@@ -37,7 +37,7 @@ import com.google.common.collect.Range;
 /**
  * Utility class for building rupture surfaces for point sources based on all available finite surface information.
  * <p>
- * This can be used to build truly finite sources (using the {@link RectangleSurface} representation) if the strike
+ * This can be used to build truly finite sources (using the {@link RectangularSurface} representation) if the strike
  * direction has been set (or is randomly sampled), otherwise it returns {@link FiniteApproxPointSurface} instances.
  * <p>
  * Random seeds are a deterministic function of all input variables, meaning that the same inputs will result in the
@@ -1023,7 +1023,7 @@ public class PointSurfaceBuilder {
 	
 	/**
 	 * Builds a {@link QuadSurface} representation of this point surface. The strike direction must be set. This
-	 * representation is decently efficient, but a {@link RectangleSurface} is better.
+	 * representation is decently efficient, but a {@link RectangularSurface} is better.
 	 * @return
 	 */
 	public QuadSurface buildQuadSurface()  {
@@ -1032,7 +1032,7 @@ public class PointSurfaceBuilder {
 	
 	/**
 	 * Builds a {@link QuadSurface} representation of this point surface using the passed in strike direction. This
-	 * representation is decently efficient, but a {@link RectangleSurface} is better.
+	 * representation is decently efficient, but a {@link RectangularSurface} is better.
 	 * @param strike
 	 * @return
 	 */
@@ -1042,38 +1042,38 @@ public class PointSurfaceBuilder {
 	}
 	
 	/**
-	 * Builds a {@link RectangleSurface} representation of this point surface. The strike direction must be set. This
+	 * Builds a {@link RectangularSurface} representation of this point surface. The strike direction must be set. This
 	 * representation is very efficient with distance calculations, regardless of fault size. Even for very small
 	 * surfaces (e.g., M5), it still performs slightly better than a 1km gridded surface (and it is much faster for larger
 	 * surfaces).
 	 * @return
 	 */
-	public RectangleSurface buildRectSurface()  {
+	public RectangularSurface buildRectSurface()  {
 		return buildRectSurface(strike);
 	}
 	
 	/**
-	 * Builds a {@link RectangleSurface} representation of this point surface using the passed in strike direction. This
+	 * Builds a {@link RectangularSurface} representation of this point surface using the passed in strike direction. This
 	 * representation is very efficient with distance calculations, regardless of fault size. Even for very small
 	 * surfaces (e.g., M5), it still performs slightly better than a 1km gridded surface (and it is much faster for larger
 	 * surfaces).
 	 * @param strike
 	 * @return
 	 */
-	public RectangleSurface buildRectSurface(double strike)  {
+	public RectangularSurface buildRectSurface(double strike)  {
 		FaultTrace trace = buildTrace(strike);
-		return new RectangleSurface(trace.first(), trace.last(), dip, zBot);
+		return new RectangularSurface(trace.first(), trace.last(), dip, zBot);
 	}
 	
 	/**
-	 * Supplies a {@link RectangleSurface} representation of this point surface using the passed in strike direction. This
+	 * Supplies a {@link RectangularSurface} representation of this point surface using the passed in strike direction. This
 	 * representation is very efficient with distance calculations, regardless of fault size. Even for very small
 	 * surfaces (e.g., M5), it still performs slightly better than a 1km gridded surface (and it is much faster for larger
 	 * surfaces).
 	 * @param strike
 	 * @return
 	 */
-	public RuptureSurfaceSupplier<RectangleSurface> supplyRectSurface(double strike)  {
+	public RuptureSurfaceSupplier<RectangularSurface> supplyRectSurface(double strike)  {
 		double length = getCalcLength();
 		double dasFract = getFractionalValue(0d, length, this.dasFract, das, dasSample, dasFractCDF, dasCDF);
 		double horzWidth = getCalcHorzWidth();
@@ -1082,12 +1082,12 @@ public class PointSurfaceBuilder {
 		double zTop = this.zTop;
 		double dip = this.dip;
 		double zBot = this.zBot;
-		return new RuptureSurfaceSupplier<RectangleSurface>() {
+		return new RuptureSurfaceSupplier<RectangularSurface>() {
 			
 			@Override
-			public RectangleSurface get() {
+			public RectangularSurface get() {
 				FaultTrace trace = buildTrace(getLoc(), strike, length, horzWidth, zTop, dasFract, horzFract);
-				return new RectangleSurface(trace.first(), trace.last(), dip, zBot);
+				return new RectangularSurface(trace.first(), trace.last(), dip, zBot);
 			}
 
 			@Override
@@ -1110,7 +1110,7 @@ public class PointSurfaceBuilder {
 	 * @param num
 	 * @return
 	 */
-	public RectangleSurface[] buildRandRectSurfaces(int num) {
+	public RectangularSurface[] buildRandRectSurfaces(int num) {
 		if (rand == null)
 			randomGlobalSeed(num);
 		return buildRandRectSurfaces(num, strikeRange);
@@ -1123,18 +1123,18 @@ public class PointSurfaceBuilder {
 	 * @param strikeRange
 	 * @return
 	 */
-	public RectangleSurface[] buildRandRectSurfaces(int num, Range<Double> strikeRange) {
+	public RectangularSurface[] buildRandRectSurfaces(int num, Range<Double> strikeRange) {
 		return buildRandRectSurfaces(getRandStrikes(num, strikeRange));
 	}
 	
-	private RectangleSurface[] buildRandRectSurfaces(double[] strikes) {
-		RectangleSurface[] ret = new RectangleSurface[strikes.length];
+	private RectangularSurface[] buildRandRectSurfaces(double[] strikes) {
+		RectangularSurface[] ret = new RectangularSurface[strikes.length];
 		for (int i=0; i<strikes.length; i++)
 			ret[i] = buildRectSurface(strikes[i]);
 		return ret;
 	}
 	
-	private List<RuptureSurfaceSupplier<RectangleSurface>> supplyRandRectSurfaces(double[] strikes) {
+	private List<RuptureSurfaceSupplier<RectangularSurface>> supplyRandRectSurfaces(double[] strikes) {
 		switch (strikes.length) {
 		// more memory-efficient common special cases
 		case 0:
@@ -1147,7 +1147,7 @@ public class PointSurfaceBuilder {
 
 		// default case when size > 2
 		default:
-			List<RuptureSurfaceSupplier<RectangleSurface>> list = new ArrayList<>(strikes.length);
+			List<RuptureSurfaceSupplier<RectangularSurface>> list = new ArrayList<>(strikes.length);
 			for (double strike : strikes)
 				list.add(supplyRectSurface(strike));
 			return list;
@@ -1416,7 +1416,7 @@ public class PointSurfaceBuilder {
 		builder.lowerDepth(14d);
 		builder.dip(90d);
 		builder.strike(0d);
-		RectangleSurface surf = builder.buildRectSurface();
+		RectangularSurface surf = builder.buildRectSurface();
 		
 		System.out.println("Quad rJB at colocated point: "+surf.getDistanceJB(center));
 		System.out.println("Trace:\t"+surf.getUpperEdge());

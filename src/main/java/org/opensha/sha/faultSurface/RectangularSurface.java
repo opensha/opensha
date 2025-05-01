@@ -22,7 +22,7 @@ import com.google.common.base.Preconditions;
 /**
  * Simple surface for a single rectangle fault. Distance calculations are analytical and very fast
  */
-public class RectangleSurface implements CacheEnabledSurface {
+public class RectangularSurface implements CacheEnabledSurface {
 
 	// inputs
 	private final FaultTrace trace;
@@ -55,7 +55,7 @@ public class RectangleSurface implements CacheEnabledSurface {
 	// create cache using default caching policy
 	private final SurfaceDistanceCache cache;
 
-	public RectangleSurface(Location startLoc, Location endLoc, double dip, double zBot) {
+	public RectangularSurface(Location startLoc, Location endLoc, double dip, double zBot) {
 		Preconditions.checkState(Precision.equals(startLoc.depth, endLoc.depth, 1e-3),
 				"Start and end location must have same depth");
 		this.startLoc = startLoc;
@@ -361,12 +361,12 @@ public class RectangleSurface implements CacheEnabledSurface {
 	public RuptureSurface getMoved(LocationVector v) {
 		Location startLoc = LocationUtils.location(this.startLoc, v);
 		Location endLoc = LocationUtils.location(this.endLoc, v);
-		return new RectangleSurface(startLoc, endLoc, dip, zBot);
+		return new RectangularSurface(startLoc, endLoc, dip, zBot);
 	}
 
 	@Override
 	public RuptureSurface copyShallow() {
-		return new RectangleSurface(startLoc, endLoc, dip, zBot);
+		return new RectangularSurface(startLoc, endLoc, dip, zBot);
 	}
 
 	@Override
