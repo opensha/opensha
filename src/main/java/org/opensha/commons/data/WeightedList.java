@@ -154,6 +154,42 @@ public class WeightedList<E> extends AbstractList<WeightedValue<E>> implements X
 		
 		return new Unmodifiable<>(list, false);
 	}
+
+	/**
+	 * Convenience method for pre-specified evenly-weighted values. Note that, when using this method,
+	 * the returned list is unmodifiable.
+	 * 
+	 * @param evenlyWeighted varargs of evenly-weighted values
+	 */
+	public static <E> Unmodifiable<E> evenlyWeighted(List<E> values) {
+		List<WeightedValue<E>> list;
+		switch (values.size()) {
+		// more memory-efficient common special cases
+		case 0:
+			list = List.of();
+			break;
+		case 1:
+			list = List.of(
+					new WeightedValue<>(values.get(0), 1d));
+			break;
+		case 2:
+			list = List.of(
+					new WeightedValue<>(values.get(0), 0.5d),
+					new WeightedValue<>(values.get(1), 0.5d));
+			break;
+
+		// default case when size > 2
+		default:
+			list = new ArrayList<>(values.size());
+			double weightEach = 1d/(double)values.size();
+			for (E val : values)
+				list.add(new WeightedValue<>(val, weightEach));
+			list = Collections.unmodifiableList(list);
+			break;
+		}
+		
+		return new Unmodifiable<>(list, false);
+	}
 	
 	/**
 	 * Convenience method for pre-specified varags values. Note that, when using this method,
