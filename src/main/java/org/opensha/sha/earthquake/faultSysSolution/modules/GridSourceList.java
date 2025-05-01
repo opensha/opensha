@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.Supplier;
 
 import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.data.CSVReader;
@@ -45,6 +46,8 @@ import org.opensha.sha.earthquake.util.GriddedSeismicitySettings;
 import org.opensha.sha.faultSurface.PointSurface;
 import org.opensha.sha.faultSurface.RuptureSurface;
 import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder;
+import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder.LazyRuptureSurfaceSupplier;
+import org.opensha.sha.faultSurface.utils.PointSurfaceBuilder.RuptureSurfaceSupplier;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 import org.opensha.sha.util.FocalMech;
 import org.opensha.sha.util.TectonicRegionType;
@@ -1100,7 +1103,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		
 		private List<GriddedRupture> rups;
 		private List<Double> rates;
-		private final List<RuptureSurface> surfs;
+		private final List<RuptureSurfaceSupplier<? extends RuptureSurface>> surfSuppliers;
 		
 		public GriddedRuptureSourceData(Location gridLoc, List<GriddedRupture> gridRups,
 				MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
@@ -1119,12 +1122,12 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 					expectedSize *= gridSourceSettings.finiteRuptureSettings.numSurfaces;
 				rups = new ArrayList<>(expectedSize);
 				rates = new ArrayList<>(expectedSize);
-				surfs = new ArrayList<>(expectedSize);
+				surfSuppliers = new ArrayList<>(expectedSize);
 			} else {
 				// mag-filtering, don't use initial capacity
 				rups = new ArrayList<>();
 				rates = new ArrayList<>();
-				surfs = new ArrayList<>();
+				surfSuppliers = new ArrayList<>();
 			}
 			PointSurfaceBuilder surfBuilder = new PointSurfaceBuilder(gridLoc);
 			for (GriddedRupture rup : gridRups) {
@@ -1137,16 +1140,19 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 				if (rate == 0d)
 					continue;
 				updateSurfBuilderForLoc(surfBuilder, rup, forcePointSurf);
-				WeightedList<? extends RuptureSurface> rupSurfs = surfBuilder.build(
+				WeightedList<? extends RuptureSurfaceSupplier<? extends RuptureSurface>> rupSurfSuppliers = surfBuilder.supply(
 						forcePointSurf ? BackgroundRupType.POINT : gridSourceSettings.surfaceType,
 								null, // null here is the point-source distance correction, which gets set downstream
 								gridSourceSettings.finiteRuptureSettings);
-				for (int i=0; i<rupSurfs.size(); i++) {
-					RuptureSurface surf = rupSurfs.getValue(i);
-					double weight = rupSurfs.getWeight(i);
+				for (int i=0; i<rupSurfSuppliers.size(); i++) {
+					RuptureSurfaceSupplier<? extends RuptureSurface> supplier = rupSurfSuppliers.getValue(i);
+					if (!(supplier instanceof LazyRuptureSurfaceSupplier<?>))
+						// make it lazy init
+						supplier = new LazyRuptureSurfaceSupplier<>(supplier);
+					double weight = rupSurfSuppliers.getWeight(i);
 					rups.add(rup);
 					rates.add(rate*weight);
-					surfs.add(surf);
+					surfSuppliers.add(supplier);
 				}
 			}
 		}
@@ -1173,12 +1179,12 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 
 		@Override
 		public RuptureSurface getSurface(int rupIndex) {
-			return surfs.get(rupIndex);
+			return surfSuppliers.get(rupIndex).get();
 		}
 
 		@Override
 		public boolean isFinite(int rupIndex) {
-			return !(surfs.get(rupIndex) instanceof PointSurface);
+			return surfSuppliers.get(rupIndex).isFinite();
 		}
 
 		@Override

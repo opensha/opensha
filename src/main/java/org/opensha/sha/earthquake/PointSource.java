@@ -275,6 +275,122 @@ public abstract class PointSource extends ProbEqkSource {
 	 */
 	
 	/**
+	 * Interface for resampled indexing of a value where each original value does not necessarily each have the same
+	 * number or subsamples. Useful for tracking indexing of distance correction when multiple are present, or when
+	 * supersampling a source.
+	 */
+	public static interface DataSubsamplingIndexTracker {
+		public void set(int index, int origDataIndex, int subsampleIndex);
+		public int getOriginalDataIndex(int rupIndex);
+		public int getSubsampleIndex(int rupIndex);
+	}
+	
+	/**
+	 * Builds a {@link DataSubsamplingIndexTracker} instance for tracking data resampling indexes. If the original indexes
+	 * are all less than Short.MAX_VALUE, a more memory efficient version that uses short[] arrays will be returned.
+	 * 
+	 * @param totalNumCombinations the total number of resamples, should be at most originalDataCount x subsampleCount
+	 * @param originalDataCount the number or original data values
+	 * @param subsampleCount the number of subsamples (not all data values need use the same number of samples, in 
+	 * which case this is the maximum)
+	 * @return
+	 */
+	public static DataSubsamplingIndexTracker getDataCorrIndexTracker(long totalNumCombinations, int originalDataCount, int subsampleCount) {
+		if (originalDataCount < Short.MAX_VALUE && subsampleCount < Short.MAX_VALUE)
+			// most common
+			return new ShortDataCorrIndexTracker(totalNumCombinations, originalDataCount, subsampleCount);
+		else
+			// could happen with extreme combinations of super-sampling applied to finite ruptures with many finite
+			return new IntDataCorrIndexTracker(totalNumCombinations, originalDataCount, subsampleCount);
+	}
+	
+	private static class ShortDataCorrIndexTracker implements DataSubsamplingIndexTracker {
+		
+		private short[] origDataIndexes;
+		private short[] subsampleIndexes;
+		private int originalDataCount;
+		private int subsampleCount;
+		
+		private ShortDataCorrIndexTracker(long totalNumCombinations, int originalDataCount, int subsampleCount) {
+			this.originalDataCount = originalDataCount;
+			this.subsampleCount = subsampleCount;
+			Preconditions.checkState(totalNumCombinations < Integer.MAX_VALUE,
+					"Have more than Integer.MAX_VALUE=%s original data and sub-sample combinations: %s; origCount=%s, subsampleCount=%s",
+					Integer.MAX_VALUE, totalNumCombinations, originalDataCount, subsampleCount); // should never be the case, but good to check
+			Preconditions.checkState(originalDataCount < Short.MAX_VALUE, // should never be the case, but good to check
+					"Original data count %s greater than Short.MAX_VALUE=%s",
+					originalDataCount, Short.MAX_VALUE);
+			Preconditions.checkState(subsampleCount < Short.MAX_VALUE); // should never be the case, but good to check
+			this.origDataIndexes = new short[(int)totalNumCombinations];
+			this.subsampleIndexes = new short[(int)totalNumCombinations];
+		}
+
+		@Override
+		public void set(int index, int origDataIndex, int subsampleIndex) {
+			Preconditions.checkState(origDataIndex >= -1 && origDataIndex < originalDataCount,
+					"Bad origDataIndex=%s for index=%s, subsampleIndex=%s, and originalDataCount=%s",
+					origDataIndex, index, subsampleIndex, originalDataCount);
+			Preconditions.checkState(subsampleIndex >= -1 && subsampleIndex < subsampleCount,
+					"Bad subsampleIndex=%s for index=%s, origDataIndex=%s, and subsampleCount=%s",
+					subsampleIndex, index, origDataIndex, subsampleCount);
+			origDataIndexes[index] = (short)origDataIndex;
+			subsampleIndexes[index] = (short)subsampleIndex;
+		}
+
+		@Override
+		public int getOriginalDataIndex(int index) {
+			return origDataIndexes[index];
+		}
+
+		@Override
+		public int getSubsampleIndex(int index) {
+			return subsampleIndexes[index];
+		}
+		
+	}
+	
+	private static class IntDataCorrIndexTracker implements DataSubsamplingIndexTracker {
+		
+		private int[] origDataIndexes;
+		private int[] subsampleIndexes;
+		private int originalDataCount;
+		private int subsampleCount;
+		
+		private IntDataCorrIndexTracker(long totalNumCombinations, int originalDataCount, int subsampleCount) {
+			this.originalDataCount = originalDataCount;
+			this.subsampleCount = subsampleCount;
+			Preconditions.checkState(totalNumCombinations < Integer.MAX_VALUE,
+					"Have more than Integer.MAX_VALUE=%s original data and sub-sample combinations: %s; origCount=%s, subsampleCount=%s",
+					Integer.MAX_VALUE, totalNumCombinations, originalDataCount, subsampleCount); // should never be the case, but good to check
+			this.origDataIndexes = new int[(int)totalNumCombinations];
+			this.subsampleIndexes = new int[(int)totalNumCombinations];
+		}
+
+		@Override
+		public void set(int index, int origDataIndex, int subsampleIndex) {
+			Preconditions.checkState(origDataIndex >= -1 && origDataIndex < originalDataCount,
+					"Bad origDataIndex=%s for index=%s, subsampleIndex=%s, and originalDataCount=%s",
+					origDataIndex, index, subsampleIndex, originalDataCount);
+			Preconditions.checkState(subsampleIndex >= -1 && subsampleIndex < subsampleCount,
+					"Bad subsampleIndex=%s for index=%s, origDataIndex=%s, and subsampleCount=%s",
+					subsampleIndex, index, origDataIndex, subsampleCount);
+			origDataIndexes[index] = origDataIndex;
+			subsampleIndexes[index] = subsampleIndex;
+		}
+
+		@Override
+		public int getOriginalDataIndex(int index) {
+			return origDataIndexes[index];
+		}
+
+		@Override
+		public int getSubsampleIndex(int index) {
+			return subsampleIndexes[index];
+		}
+		
+	}
+	
+	/**
 	 * This is a basic implementation that takes a {@link PointSourceData} implementation and build ruptures for the
 	 * given distance correction(s).
 	 * 
@@ -288,8 +404,7 @@ public abstract class PointSource extends ProbEqkSource {
 		protected E data;
 		
 		private int numRuptures;
-		private short[] dataIndexes;
-		private short[] corrIndexes;
+		private DataSubsamplingIndexTracker indexes;
 		
 		public BaseImplementation(Location loc, TectonicRegionType tectonicRegionType,
 				E data, WeightedList<? extends PointSourceDistanceCorrection> distCorrs, double minMagForDistCorr) {
@@ -315,41 +430,35 @@ public abstract class PointSource extends ProbEqkSource {
 			int dataRupCount = data.getNumRuptures();
 			if (distCorrs == null || distCorrs.size() == 1) {
 				this.numRuptures = dataRupCount;
-				this.dataIndexes = null;
-				this.corrIndexes = null;
+				this.indexes = null;
 			} else {
 				// we have multiple distance corrections per rupture and need to pre-store the indexes
 				// we can't just calculate indexes because some ruptures may be finite and not use the distance corrections
-				Preconditions.checkState(dataRupCount < Short.MAX_VALUE); // should never be the case, but good to check
 				int numCorrs = distCorrs.size();
-				Preconditions.checkState(numCorrs > 1); // mostly to make sure it's not zero
-				Preconditions.checkState(numCorrs < Short.MAX_VALUE); // should never be the case, but good to check
 				// rupture count if there are no finite ruptures; finite ruptures don't have distance corrections
-				int numIfNoFinite = dataRupCount * numCorrs;
 				// this might be larger than we need, but that's ok (we'll only read up to numRuptures)
-				dataIndexes = new short[numIfNoFinite];
-				corrIndexes = new short[numIfNoFinite];
+				long numIfNoFinite = (long)dataRupCount * (long)numCorrs;
+				Preconditions.checkState(numIfNoFinite < Integer.MAX_VALUE,
+						"Have more than Integer.MAX_VALUE ruptures: %s", numIfNoFinite);
+				indexes = getDataCorrIndexTracker(numIfNoFinite, dataRupCount, numCorrs);
+				Preconditions.checkState(numCorrs > 1); // mostly to make sure it's not zero
+				
 				int index = 0;
-				for (short d=0; d<dataRupCount; d++) {
+				for (int d=0; d<dataRupCount; d++) {
 					if (data.isFinite(d) || data.getMagnitude(d) < minMagForDistCorr) {
 						// finite surface or below distance correction threshold: just 1 rupture instance (no distance correction)
-						dataIndexes[index] = d;
-						corrIndexes[index] = -1;
-						index++;
+						indexes.set(index++, d, -1);
 					} else {
 						// point surface: 1 rupture instance for each distance correction
 						for (short i=0; i<numCorrs; i++) {
-							dataIndexes[index] = d;
-							corrIndexes[index] = i;
-							index++;
+							indexes.set(index++, d, i);
 						}
 					}
 				}
 				this.numRuptures = index;
 				// fill in any extra room in the arrays with no data flags
 				for (int i=index; i<numIfNoFinite; i++) {
-					dataIndexes[i] = -1;
-					corrIndexes[i] = -1;
+					indexes.set(i, -1, -1);
 				}
 			}
 		}
@@ -377,7 +486,7 @@ public abstract class PointSource extends ProbEqkSource {
 			int dataIndex;
 			PointSourceDistanceCorrection distCorr;
 			double distCorrWeight;
-			if (dataIndexes == null) {
+			if (indexes == null) {
 				// simple case: no distance corrections, or 1 per rupture
 				dataIndex = nRupture;
 				if (distCorrs == null || data.isFinite(dataIndex) || data.getMagnitude(dataIndex) < minMagForDistCorr) {
@@ -388,8 +497,8 @@ public abstract class PointSource extends ProbEqkSource {
 				}
 				distCorrWeight = 1d;
 			} else {
-				dataIndex = dataIndexes[nRupture];
-				int corrIndex = corrIndexes[nRupture];
+				dataIndex = indexes.getOriginalDataIndex(nRupture);
+				int corrIndex = indexes.getSubsampleIndex(nRupture);
 				if (corrIndex < 0) {
 					// finite rupture or below minMagForDistCorr, no correction
 					distCorr = null;
@@ -550,6 +659,16 @@ public abstract class PointSource extends ProbEqkSource {
 		protected double getProbability(int nRupture, int dataIndex, double distCorrWeight) {
 			double rate = data.getRate(dataIndex) * distCorrWeight;
 			return rateToProb(rate, duration);
+		}
+
+		@Override
+		public double computeTotalEquivMeanAnnualRate(double duration) {
+			// shortcut to just do it over rate (and not instantiate ruptures)
+			double rate = 0d;
+			int numRups = data.getNumRuptures();
+			for (int i=0; i<numRups; i++)
+				rate += data.getRate(i);
+			return rate;
 		}
 		
 	}
