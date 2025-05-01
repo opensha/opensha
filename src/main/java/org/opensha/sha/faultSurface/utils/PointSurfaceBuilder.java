@@ -2,14 +2,17 @@ package org.opensha.sha.faultSurface.utils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.function.Supplier;
 
 import org.opensha.commons.calc.magScalingRelations.MagAreaRelationship;
 import org.opensha.commons.calc.magScalingRelations.MagLengthRelationship;
 import org.opensha.commons.calc.magScalingRelations.MagScalingRelationship;
 import org.opensha.commons.calc.magScalingRelations.magScalingRelImpl.WC1994_MagLengthRelationship;
 import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.data.function.EvenlyDiscretizedFunc;
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationUtils;
@@ -34,8 +37,19 @@ import com.google.common.collect.Range;
 /**
  * Utility class for building rupture surfaces for point sources based on all available finite surface information.
  * <p>
- * This can be used to build truly finite sources (using the {@link QuadSurface} representation) if the strike
+ * This can be used to build truly finite sources (using the {@link RectangleSurface} representation) if the strike
  * direction has been set (or is randomly sampled), otherwise it returns {@link FiniteApproxPointSurface} instances.
+ * <p>
+ * Random seeds are a deterministic function of all input variables, meaning that the same inputs will result in the
+ * same random outputs. This is to make hazard calculations reproducible. If you want truly random seeds, call the
+ * {@link #random(long)} or {@link #random(Random)} methods. You can also set a custom global random seed in order
+ * to get a new (but still deterministic for that global seed) random via {@link #randomGlobalSeed(long)}.
+ * <p>
+ * You can also control randomness with these java properties:
+ * <ul>
+ *   <li><b>point.surface.true.random</b> – if set to "true" or "1", enables truly random sampling</li>
+ *   <li><b>point.surface.global.seed</b> – if set, uses the given long value as a global seed</li>
+ * </ul>
  */
 public class PointSurfaceBuilder {
 	
@@ -72,6 +86,10 @@ public class PointSurfaceBuilder {
 	
 	// calculated on the fly
 	private double width = Double.NaN;
+	private double horzWidth = Double.NaN;
+
+	public static final String TRUE_RANDOM_PROP_NAME = "point.surface.true.random";
+	public static final String GLOBAL_SEED_PROP_NAME = "point.surface.global.seed";
 	
 	private static final WC1994_MagLengthRelationship WC94 = new WC1994_MagLengthRelationship();
 
@@ -85,6 +103,40 @@ public class PointSurfaceBuilder {
 		zTop = loc.getDepth();
 		zBot = loc.getDepth();
 	}
+	
+	private static boolean useTrueRandom() {
+		String prop = System.getProperty(TRUE_RANDOM_PROP_NAME);
+		if (prop == null)
+			return false; // default behavior if unset
+		prop = prop.trim().toLowerCase();
+		switch (prop) {
+		case "true":
+			return true;
+		case "1":
+			return true;
+		case "false":
+			return false;
+		case "0":
+			return false;
+		default:
+			throw new IllegalArgumentException("Invalid value for '"+TRUE_RANDOM_PROP_NAME+"': " + prop
+					+ ". Expected 'true', 'false', '1', or '0'.");
+		}
+	}
+	
+	private static Long getGlobalSeed() {
+		String prop = System.getProperty(GLOBAL_SEED_PROP_NAME);
+		if (prop == null)
+			return null;
+		prop = prop.trim();
+		try {
+			return Long.parseLong(prop);
+		} catch (NumberFormatException e) {
+			throw new IllegalArgumentException("Invalid value for '"+GLOBAL_SEED_PROP_NAME+"': '" + prop +
+					"'. Must be a valid long integer.", e);
+		}
+	}
+
 	
 	/**
 	 * If cell is non-null, locations will be be sampled from within the given region rather than always a single
@@ -171,8 +223,15 @@ public class PointSurfaceBuilder {
 	
 	private Random getRand() {
 		if (rand == null) {
-			List<Long> seeds = getRandSeedElements();
-			rand = new Random(uniqueSeedCombination(seeds));
+			if (useTrueRandom()) {
+				rand = new Random();
+			} else {
+				List<Long> seeds = getRandSeedElements();
+				Long globalSeed = getGlobalSeed();
+				if (globalSeed != null)
+					seeds.add(globalSeed);
+				rand = new Random(uniqueSeedCombination(seeds));
+			}
 		}
 		return rand;
 	}
@@ -210,7 +269,7 @@ public class PointSurfaceBuilder {
 			int tries = 0;
 			while (true) {
 				double lat = minLat + rand.nextDouble()*latSpan;
-				double lon = minLon + rand.nextDouble()*latSpan;
+				double lon = minLon + rand.nextDouble()*lonSpan;
 				Location randLoc = new Location(lat, lon, loc.depth);
 				if (rectangular || sampleFromCell.contains(randLoc))
 					return randLoc;
@@ -227,6 +286,7 @@ public class PointSurfaceBuilder {
 		FaultUtils.assertValidDip(dip);
 		this.dip = dip;
 		this.width = Double.NaN;
+		this.horzWidth = Double.NaN;
 		return this;
 	}
 	
@@ -240,6 +300,7 @@ public class PointSurfaceBuilder {
 		this.zTop = depth;
 		this.zBot = depth;
 		this.width = Double.NaN;
+		this.horzWidth = Double.NaN;
 		return this;
 	}
 	
@@ -252,6 +313,7 @@ public class PointSurfaceBuilder {
 		FaultUtils.assertValidDepth(zTop);
 		this.zTop = zTop;
 		this.width = Double.NaN;
+		this.horzWidth = Double.NaN;
 		return this;
 	}
 	
@@ -264,6 +326,7 @@ public class PointSurfaceBuilder {
 		FaultUtils.assertValidDepth(zBot);
 		this.zBot = zBot;
 		this.width = Double.NaN;
+		this.horzWidth = Double.NaN;
 		return this;
 	}
 	
@@ -289,6 +352,7 @@ public class PointSurfaceBuilder {
 		this.zTop = zTop;
 		this.zBot = zBot;
 		this.width = width;
+		this.horzWidth = Double.NaN;
 		this.dip = dip;
 		return this;
 	}
@@ -453,11 +517,11 @@ public class PointSurfaceBuilder {
 		Preconditions.checkState((float)dasFractDistribution.getMinX() >= 0f && (float)dasFractDistribution.getMaxX() <= 1f,
 				"Distribution sum of x values must be in the range [0,1]: [%s,%s]",
 				(float)dasFractDistribution.getMinX(), (float)dasFractDistribution.getMaxX());
-		this.zHypFract = Double.NaN;
-		this.zHyp = Double.NaN;
-		this.zHypSample = true;
-		this.zHypCDF = null;
-		this.zHypFractCDF = toCDF(dasFractDistribution);
+		this.dasFract = Double.NaN;
+		this.das = Double.NaN;
+		this.dasSample = true;
+		this.dasCDF = null;
+		this.dasFractCDF = toCDF(dasFractDistribution);
 		return this;
 	}
 	
@@ -466,7 +530,7 @@ public class PointSurfaceBuilder {
 	 * outside the range of the [0, length], an exception will be thrown when finite ruptures are built.
 	 * 
 	 * Setting this will clear any already-set fractional or absolute DAS values or distributions.
-	 * @param dasDistribution distribution of fractional DAS values; y values must sum to 1.
+	 * @param dasDistribution distribution of DAS values; y values must sum to 1.
 	 * @return
 	 */
 	public PointSurfaceBuilder sampleDASs(EvenlyDiscretizedFunc dasDistribution) {
@@ -512,7 +576,7 @@ public class PointSurfaceBuilder {
 		Preconditions.checkState(Double.isFinite(fractValue) || Double.isFinite(absValue) || sample,
 				"Must specify exactly 1 of absolute, fractional, or sampled values");
 		Preconditions.checkState(sample || (absDist == null && fractDist == null),
-				"Samplign is disabled, but a distribution was provided");
+				"Sampling is disabled, but a distribution was provided");
 		if (Double.isFinite(fractValue)) {
 			Preconditions.checkState(!Double.isFinite(absValue) && !sample,
 					"Must specify exactly 1 of absolute, fractional, or sampled values");
@@ -694,6 +758,17 @@ public class PointSurfaceBuilder {
 		return width;
 	}
 	
+	private double getCalcHorzWidth() {
+		Preconditions.checkState(zBot >= zTop, "zBOT must be >= zTOR");
+		if (Double.isNaN(horzWidth)) {
+			if (dip == 90d || zBot == zTop)
+				horzWidth = 0d;
+			else
+				horzWidth = (zBot-zTop)/Math.tan(Math.toRadians(dip));
+		}
+		return horzWidth;
+	}
+	
 	/**
 	 * Builds a true point surface representation without any finite rupture parameters
 	 * @return
@@ -776,13 +851,38 @@ public class PointSurfaceBuilder {
 	 * @return
 	 */
 	public FiniteApproxPointSurface buildFiniteApproxPointSurface(PointSourceDistanceCorrection corr, boolean footwall) {
+		return supplyFiniteApproxPointSurface(corr, footwall).get();
+	}
+	
+	/**
+	 * Supplies a point surface representation where rJB is calculated according to the given {@link PointSourceDistanceCorrection},
+	 * and other distances are calculated using the (possibly corrected) rJB, the footwall setting, and zTop/zBot/dip. 
+	 * @return
+	 */
+	public RuptureSurfaceSupplier<FiniteApproxPointSurface> supplyFiniteApproxPointSurface(PointSourceDistanceCorrection corr, boolean footwall) {
+		final double zBot = this.zBot;
+		final double zTop = this.zTop;
+		final double dip = this.dip;
+		final Location loc = this.loc;
+		final double mag = this.mag;
 		Preconditions.checkState(zBot >= zTop, "zBOT must be >= zTOR"); 
+		final double length = getCalcLength();
 		
-		double length = getCalcLength();
-		
-		FiniteApproxPointSurface surf = new FiniteApproxPointSurface(getLoc(), dip, zTop, zBot, footwall, length);
-		surf.setDistanceCorrection(corr, mag);
-		return surf;
+		return new RuptureSurfaceSupplier<FiniteApproxPointSurface>() {
+
+			@Override
+			public FiniteApproxPointSurface get() {
+				FiniteApproxPointSurface surf = new FiniteApproxPointSurface(loc, dip, zTop, zBot, footwall, length);
+				surf.setDistanceCorrection(corr, mag);
+				return surf;
+			}
+
+			@Override
+			public boolean isFinite() {
+				// finite here means actually finite, not distance corrected
+				return false;
+			}
+		};
 	}
 	
 	/**
@@ -807,46 +907,81 @@ public class PointSurfaceBuilder {
 	 */
 	public WeightedList<FiniteApproxPointSurface> buildFiniteApproxPointSurfaces(
 			WeightedList<? extends PointSourceDistanceCorrection> distCorrs) {
-		PointSourceDistanceCorrection singleCorr = distCorrs != null && distCorrs.size() == 1 ? distCorrs.getValue(0) : null;
-		FiniteApproxPointSurface[] surfs;
-		if (dip == 90d || footwall != null)
-			surfs = new FiniteApproxPointSurface[] {
-					buildFiniteApproxPointSurface(singleCorr, footwall == null ? true : footwall) };
+		return buildConcreteWeightedList(supplyFiniteApproxPointSurfaces(distCorrs));
+	}
+	
+	public WeightedList<RuptureSurfaceSupplier<FiniteApproxPointSurface>> supplyFiniteApproxPointSurfaces(
+			PointSourceDistanceCorrections distCorrType) {
+		WeightedList<? extends PointSourceDistanceCorrection> distCorrs;
+		if (distCorrType == null || distCorrType == PointSourceDistanceCorrections.NONE)
+			distCorrs = null;
 		else
-			surfs = new FiniteApproxPointSurface[] {
-					buildFiniteApproxPointSurface(singleCorr, true),
-					buildFiniteApproxPointSurface(singleCorr, false) };
+			distCorrs = distCorrType.get();
+		return supplyFiniteApproxPointSurfaces(distCorrs);
+	}
+	
+	public WeightedList<RuptureSurfaceSupplier<FiniteApproxPointSurface>> supplyFiniteApproxPointSurfaces(
+			WeightedList<? extends PointSourceDistanceCorrection> distCorrs) {
+		PointSourceDistanceCorrection singleCorr = distCorrs != null && distCorrs.size() == 1 ? distCorrs.getValue(0) : null;
+		List<RuptureSurfaceSupplier<FiniteApproxPointSurface>> surfCalls;
+		if (dip == 90d || footwall != null)
+			surfCalls = List.of(supplyFiniteApproxPointSurface(singleCorr, footwall == null ? true : footwall));
+		else
+			surfCalls = List.of(
+					supplyFiniteApproxPointSurface(singleCorr, true),
+					supplyFiniteApproxPointSurface(singleCorr, false));
 		if (distCorrs != null && distCorrs.size() > 1) {
 			// need multiple copies
-			double weightEach = 1d/(double)surfs.length;
-			WeightedList<FiniteApproxPointSurface> ret = new WeightedList<>(distCorrs.size()*surfs.length);
-			for (FiniteApproxPointSurface surf : surfs) {
+			double weightEach = 1d/(double)surfCalls.size();
+			WeightedList<RuptureSurfaceSupplier<FiniteApproxPointSurface>> ret = new WeightedList<>(distCorrs.size()*surfCalls.size());
+			for (RuptureSurfaceSupplier<FiniteApproxPointSurface> surfCall : surfCalls) {
+				// make it lazy init so that the top level surface won't be regenerated
+				LazyRuptureSurfaceSupplier<FiniteApproxPointSurface> lazyCall = new LazyRuptureSurfaceSupplier<>(surfCall);
 				for (int i=0; i<distCorrs.size(); i++) {
-					FiniteApproxPointSurface surfCopy = surf.copyShallow();
-					surfCopy.setDistanceCorrection(singleCorr, mag);
-					ret.add(surfCopy, distCorrs.getWeight(i)*weightEach);
+					PointSourceDistanceCorrection corr = distCorrs.getValue(i);
+					ret.add(new RuptureSurfaceSupplier<FiniteApproxPointSurface>() {
+
+						@Override
+						public FiniteApproxPointSurface get() {
+							FiniteApproxPointSurface surfCopy = lazyCall.get().copyShallow();
+							surfCopy.setDistanceCorrection(corr, mag);
+							return surfCopy;
+						}
+
+						@Override
+						public boolean isFinite() {
+							// finite here means actually finite, not distance corrected
+							return false;
+						}
+					}, distCorrs.getWeight(i)*weightEach);
 				}
 			}
 			return ret;
 		} else {
-			return WeightedList.evenlyWeighted(surfs);
+			return WeightedList.evenlyWeighted(surfCalls);
 		}
 	}
 	
 	private FaultTrace buildTrace(double strike) {
-		Preconditions.checkState(Double.isFinite(strike), "Can't build finite surface because strike=%s", strike);
 		double length = getCalcLength();
+		double dasFract = getFractionalValue(0d, length, this.dasFract, das, dasSample, dasFractCDF, dasCDF);
+		double horzWidth = getCalcHorzWidth();
+		double horzFract = horzWidth == 0d ?
+				Double.NaN : getFractionalValue(zTop, zBot, zHypFract, zHyp, zHypSample, zHypFractCDF, zHypCDF);
+		
+		return buildTrace(getLoc(), strike, length, horzWidth, zTop, dasFract, horzFract);
+	}
+	
+	private static FaultTrace buildTrace(Location loc, double strike, double length, double horzWidth,
+			double zTop, double dasFract, double horzFract) {
+		Preconditions.checkState(Double.isFinite(strike), "Can't build finite surface because strike=%s", strike);
 		Preconditions.checkState(length > 0, "Can't build finite surface because length=%s; "
 				+ "set magnitude to infer length from scaling relationship", length);
-		double dasFract = getFractionalValue(0d, length, this.dasFract, das, dasSample, dasFractCDF, dasCDF);
 		double strikeRad = Math.toRadians(strike);
-		Location loc = getLoc();
 		Location l0 = LocationUtils.location(loc, strikeRad-Math.PI, length*dasFract);
 		Location l1 = LocationUtils.location(loc, strikeRad, length*(1d-dasFract));
-		if (zBot > zTop && dip < 90) {
+		if (horzWidth > 0d) {
 			// translate it for the given zHyp
-			double horzFract = getFractionalValue(zTop, zBot, zHypFract, zHyp, zHypSample, zHypFractCDF, zHypCDF);
-			double horzWidth = (zBot-zTop)/Math.tan(Math.toRadians(dip));
 			// move to the left (so that it follows the RHR and dips to the right)
 			double transAz = strikeRad - 0.5*Math.PI;
 			l0 = LocationUtils.location(l0, transAz, horzFract*horzWidth);
@@ -931,6 +1066,38 @@ public class PointSurfaceBuilder {
 	}
 	
 	/**
+	 * Supplies a {@link RectangleSurface} representation of this point surface using the passed in strike direction. This
+	 * representation is very efficient with distance calculations, regardless of fault size. Even for very small
+	 * surfaces (e.g., M5), it still performs slightly better than a 1km gridded surface (and it is much faster for larger
+	 * surfaces).
+	 * @param strike
+	 * @return
+	 */
+	public RuptureSurfaceSupplier<RectangleSurface> supplyRectSurface(double strike)  {
+		double length = getCalcLength();
+		double dasFract = getFractionalValue(0d, length, this.dasFract, das, dasSample, dasFractCDF, dasCDF);
+		double horzWidth = getCalcHorzWidth();
+		double horzFract = horzWidth == 0d ?
+				Double.NaN : getFractionalValue(zTop, zBot, zHypFract, zHyp, zHypSample, zHypFractCDF, zHypCDF);
+		double zTop = this.zTop;
+		double dip = this.dip;
+		double zBot = this.zBot;
+		return new RuptureSurfaceSupplier<RectangleSurface>() {
+			
+			@Override
+			public RectangleSurface get() {
+				FaultTrace trace = buildTrace(getLoc(), strike, length, horzWidth, zTop, dasFract, horzFract);
+				return new RectangleSurface(trace.first(), trace.last(), dip, zBot);
+			}
+
+			@Override
+			public boolean isFinite() {
+				return true;
+			}
+		};
+	}
+	
+	/**
 	 * Builds the given number of random strike rectangular surfaces.
 	 * 
 	 * If a fixed strike angle has previously been set, then that strike angle will be used for the first surface
@@ -965,6 +1132,26 @@ public class PointSurfaceBuilder {
 		for (int i=0; i<strikes.length; i++)
 			ret[i] = buildRectSurface(strikes[i]);
 		return ret;
+	}
+	
+	private List<RuptureSurfaceSupplier<RectangleSurface>> supplyRandRectSurfaces(double[] strikes) {
+		switch (strikes.length) {
+		// more memory-efficient common special cases
+		case 0:
+			return List.of();
+		case 1:
+			return List.of(supplyRectSurface(strikes[0]));
+		case 2:
+			return List.of(supplyRectSurface(strikes[0]),
+					supplyRectSurface(strikes[1]));
+
+		// default case when size > 2
+		default:
+			List<RuptureSurfaceSupplier<RectangleSurface>> list = new ArrayList<>(strikes.length);
+			for (double strike : strikes)
+				list.add(supplyRectSurface(strike));
+			return list;
+		}
 	}
 	
 	/**
@@ -1090,6 +1277,11 @@ public class PointSurfaceBuilder {
 	 */
 	public WeightedList<? extends RuptureSurface> build(BackgroundRupType bgRupType,
 			PointSourceDistanceCorrections distCorrType, GriddedFiniteRuptureSettings finiteSettings) {
+		return buildConcreteWeightedList(supply(bgRupType, distCorrType, finiteSettings));
+	}
+	
+	public WeightedList<? extends RuptureSurfaceSupplier<? extends RuptureSurface>> supply(BackgroundRupType bgRupType,
+			PointSourceDistanceCorrections distCorrType, GriddedFiniteRuptureSettings finiteSettings) {
 		// special cases
 		if ((float)length == 0f) {
 			// zero length; still return a finite approx because we want to make sure to bypass any distance corrections,
@@ -1103,7 +1295,7 @@ public class PointSurfaceBuilder {
 		}
 		switch (bgRupType) {
 		case POINT:
-			return buildFiniteApproxPointSurfaces(distCorrType);
+			return supplyFiniteApproxPointSurfaces(distCorrType);
 		case FINITE:
 			// this will use the given strike or strikeRange if previously supplied
 			if (finiteSettings != null) {
@@ -1117,21 +1309,103 @@ public class PointSurfaceBuilder {
 					fractionalHypocentralDepth(0.5);
 			}
 			
-			RectangleSurface[] surfs;
+			double[] strikes;
 			if (Double.isFinite(strike)) {
 				// we have a strike that's specific to this source, use it (even if a global default strike was passed in)
-				surfs = new RectangleSurface[] { buildRectSurface(strike) };
+				strikes = new double[] {strike};
 			} else if (finiteSettings.strike != null) {
 				// a default strike was passed in, use that
-				surfs = buildRandRectSurfaces(getEvenlySpanningStrikes(finiteSettings.numSurfaces, finiteSettings.strike));
+				strikes = getEvenlySpanningStrikes(finiteSettings.numSurfaces, finiteSettings.strike);
 			} else {
 				// random
-				surfs = buildRandRectSurfaces(finiteSettings.numSurfaces);
+				strikes = getRandStrikes(finiteSettings.numSurfaces, strikeRange);
 			}
-			return WeightedList.evenlyWeighted(surfs);
+			return WeightedList.evenlyWeighted(supplyRandRectSurfaces(strikes));
 		default:
 			throw new IllegalStateException("Unsupported BackgroundRupType: "+bgRupType);
 		}
+	}
+	
+	private static <E extends RuptureSurface> WeightedList<E> buildConcreteWeightedList(WeightedList<? extends Supplier<E>> callList) {
+		List<WeightedValue<E>> list;
+		switch (callList.size()) {
+		// more memory-efficient common special cases
+		case 0:
+			list = List.of();
+			break;
+		case 1:
+			WeightedValue<? extends Supplier<E>> singleCall = callList.get(0);
+			list = List.of(
+					new WeightedValue<>(singleCall.value.get(), singleCall.weight));
+			break;
+		case 2:
+			WeightedValue<? extends Supplier<E>> call0 = callList.get(0);
+			WeightedValue<? extends Supplier<E>> call1 = callList.get(1);
+			list = List.of(
+					new WeightedValue<>(call0.value.get(), call0.weight),
+					new WeightedValue<>(call1.value.get(), call1.weight));
+			break;
+
+		// default case when size > 2
+		default:
+			list = new ArrayList<>(callList.size());
+			for (WeightedValue<? extends Supplier<E>> val : callList)
+				list.add(new WeightedValue<>(val.value.get(), val.weight));
+			list = Collections.unmodifiableList(list);
+			break;
+		}
+		
+		return new WeightedList.Unmodifiable<>(list, false);
+	}
+	
+	/**
+	 * Interface for a {@link Supplier} of {@link RuptureSurface}s. It adds the capability to determine if the
+	 * returned surface will be finite or a point source.
+	 * 
+	 * @param <E>
+	 */
+	public static interface RuptureSurfaceSupplier<E extends RuptureSurface> extends Supplier<E> {
+		
+		/**
+		 * 
+		 * @return true if this is a finite surface, false if a {@link PointSurface} (including {@link FiniteApproxPointSurface})
+		 */
+		public boolean isFinite();
+	}
+	
+	/**
+	 * Lazy initialization wrapper of a {@link RuptureSurfaceSupplier}. Repeated calls to the {@link #get()} method will
+	 * only build the surface once, which will be retained in memory after it is built.
+	 * @param <E>
+	 */
+	public static class LazyRuptureSurfaceSupplier<E extends RuptureSurface> implements RuptureSurfaceSupplier<E> {
+		
+		private final RuptureSurfaceSupplier<? extends E> supplier;
+		private volatile E value;
+
+		public LazyRuptureSurfaceSupplier(RuptureSurfaceSupplier<? extends E> call) {
+			this.supplier = call;
+		}
+
+		@Override
+		public E get() {
+			E result = value;
+	        if (result == null) {
+	            synchronized (this) {
+	                if (value == null) {
+	                	value = supplier.get();
+	                }
+	                result = value;
+	            }
+	        }
+			return result;
+		}
+
+		@Override
+		public boolean isFinite() {
+			return supplier.isFinite();
+		}
+		
 	}
 	
 	public static void main(String[] args) {
