@@ -1099,6 +1099,11 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		return surfBuilder;
 	}
 	
+	public static PoissonPointSourceData buildPointSourceData(Location gridLoc, List<GriddedRupture> gridRups,
+				MagnitudeDependentAftershockFilter aftershockFilter, GriddedSeismicitySettings gridSourceSettings) {
+		return new GriddedRuptureSourceData(gridLoc, gridRups, aftershockFilter, gridSourceSettings);
+	}
+	
 	private static class GriddedRuptureSourceData implements PoissonPointSourceData {
 		
 		private List<GriddedRupture> rups;
