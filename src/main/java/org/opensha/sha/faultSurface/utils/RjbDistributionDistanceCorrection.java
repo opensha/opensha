@@ -27,7 +27,8 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 	// initial max rEpi to calculate for; will go out further if/as needed
 	static final double INITIAL_MAX_DIST_DEFAULT = 300d;
 	// we cache at fixed rEpis, spaced with this discretization (in log10 units)
-	static final double LOG_DIST_SAMPLE_DISCR_DEFAULT = 0.05d;
+//	static final double LOG_DIST_SAMPLE_DISCR_DEFAULT = 0.05d;
+	static final double LOG_DIST_SAMPLE_DISCR_DEFAULT = 0.02d;
 	// true means there's always a sample exactly pointing at the site
 	// with a good nAlpha choice (e.g., 180), there will also be one perfectly perpendicular
 	static final boolean ALPHA_ALIGN_EDGES = true;
@@ -488,7 +489,7 @@ public class RjbDistributionDistanceCorrection implements PointSourceDistanceCor
 				ret = new SampleFractileCalculator(
 						0d, rupLen, rupWidth, dip, alphaRadSamples, betaRad, cellSamplesX, cellSamplesY,
 						alongSamples, downDipSamples, fractiles).get();
-				synchronized (valueFuncs) {
+				synchronized (zeroDistValues) {
 					zeroDistValues.put(key, ret);
 				}
 			}
