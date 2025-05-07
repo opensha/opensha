@@ -181,7 +181,27 @@ public class FiniteApproxPointSurface extends PointSurface {
 	// when a dipping rupture is wide and the site is nearby, more than 50% of all possible azimuths should be on the
 	// hanging wall, but we hardcode it to 50%. Enabling this will mix in some hanging wall in the rRup calculation for
 	// the footwall case to help mitigate this and get more accurate average rRup calculations.
-	private static final boolean R_RUP_ACCOUNT_FOR_FW_MICLASSIFICATION = true;
+	private static final boolean R_RUP_ACCOUNT_FOR_FW_MICLASSIFICATION = false;
+	
+	/*
+	 * Notes/thoughts on future improvements in order to better approximate dipping faults:
+	 * 
+	 * Distance corrections should really return a WeightedList<SurfaceDistances>. Surface distances should also include
+	 * distance X, which would allow the corrections to correctly weight HW vs FW terms. This could be implemented by
+	 * moving corrections to being applied at the source level, with a corrected point source implementing SiteAdaptiveSource
+	 * and shielding against users accidentally using the raw point sources. When a user gets the site-specific version,
+	 * all distances would be precomputed.
+	 * 
+	 * That change would effectively delete this class. The old NSHM08/13 rRup calculation would be folded directly
+	 * into their point source calculations, and the new distribution methods would calculate rRup better. It would allow
+	 * for reproducibility of old models and ultimately simpler implementations.
+	 * 
+	 * This could all still be done in rJB -> rRup space, but calculations could be further improved by sampling from a
+	 * distribution of SurfaceDistances rather than from rJB. The challenge becomes how to do that sampling at fixed
+	 * percentiles from a multidimensional sapce. Simplest version would be to regress (see LoessInterpolator in apache)
+	 * for mean rRup as a function of rJB; this would mean that we would have to key on zTop as well as the existing
+	 * rupture parameters. 
+	 */
 
 	public static double getCorrDistRup(double rJB, double zTop, double zBot, double dipRad, double length, double horzWidth, boolean footwall) {
 		// special cases
@@ -256,17 +276,19 @@ public class FiniteApproxPointSurface extends PointSurface {
 		 * .: lower front corner of the rupture
 		 * 
 		 * 
-		 *             D !  A !     
-		 *               !    !    B
-		 *               !    !
-		 *          *_________.-------C
-		 *         ||         |
-		 *         ||         |
-		 *         ||         |
-		 *         ||    G    |--------
-		 *         ||         |
-		 *         ||         |
-		 *         ||_________|
+		 *     D !  A !     
+		 *       !    !    B
+		 *       !    !
+		 *  *_________.-------C
+		 * ||         |
+		 * ||         |
+		 * ||         |
+		 * ||         |
+		 * ||    G    |--------
+		 * ||         |
+		 * ||         |
+		 * ||         |
+		 * ||_________|
 		 * 
 		 */
 		
@@ -282,6 +304,23 @@ public class FiniteApproxPointSurface extends PointSurface {
 		// front edge is along the x axis between:
 		//	(-halfWidth, 0, zTop) and (halfWidth, 0, zBot)
 		double distA = distanceToLineSegment3D(R_RUP_ACCOUNT_FOR_FW_MICLASSIFICATION ? 0.75*horzWidth : 0.5*horzWidth, rJB, line);
+//		// average distA over a few values down dip
+//		double distA;
+//		if (R_RUP_ACCOUNT_FOR_FW_MICLASSIFICATION) {
+//			distA = (distanceToLineSegment3D(0.55*horzWidth, rJB, line)
+//					+ distanceToLineSegment3D(0.65*horzWidth, rJB, line)
+//					+ distanceToLineSegment3D(0.75*horzWidth, rJB, line)
+//					+ distanceToLineSegment3D(0.85*horzWidth, rJB, line)
+//					+ distanceToLineSegment3D(0.95*horzWidth, rJB, line)
+//					)/5d;
+//		} else {
+//			distA = (distanceToLineSegment3D(0.1*horzWidth, rJB, line)
+//					+ distanceToLineSegment3D(0.3*horzWidth, rJB, line)
+//					+ distanceToLineSegment3D(0.5*horzWidth, rJB, line)
+//					+ distanceToLineSegment3D(0.7*horzWidth, rJB, line)
+//					+ distanceToLineSegment3D(0.9*horzWidth, rJB, line)
+//					)/5d;
+//		}
 		
 		// now calculate for site B where we're off the end and past the bottom
 		// define rJB' = rJB*sqrt(2)/2
@@ -312,16 +351,28 @@ public class FiniteApproxPointSurface extends PointSurface {
 		// range from theta2 to PI/2 belongs to side C
 		// sum of the weights is PI/2
 
-		double weightA =  theta1;
-		double weightB = theta2 - theta1;
-		double weightC = PI_HALF - theta2;
+		if (R_RUP_ACCOUNT_FOR_FW_MICLASSIFICATION) {
+			double weightA =  theta1;
+			double weightB = theta2 - theta1;
+			double weightC = PI_HALF - theta2;
 
-		Preconditions.checkState(Precision.equals(PI_HALF, weightA+weightB+weightC, 1e-4));
-		Preconditions.checkState(weightA >= 0);
-		Preconditions.checkState(weightB >= 0);
-		Preconditions.checkState(weightC >= 0);
+			Preconditions.checkState(Precision.equals(PI_HALF, weightA+weightB+weightC, 1e-4));
+			Preconditions.checkState(weightA >= 0);
+			Preconditions.checkState(weightB >= 0);
+			Preconditions.checkState(weightC >= 0);
 
-		return (weightA*distA + weightB*distB + weightC*distC)/PI_HALF;
+			return (weightA*distA + weightB*distB + weightC*distC)/PI_HALF;
+		} else {
+			double weightA =  2*theta1;
+			double weightB = theta2 - theta1;
+			double weightC = PI_HALF - theta2;
+
+			Preconditions.checkState(weightA >= 0);
+			Preconditions.checkState(weightB >= 0);
+			Preconditions.checkState(weightC >= 0);
+
+			return (weightA*distA + weightB*distB + weightC*distC)/(weightA + weightB + weightC);
+		}
 	}
 	
 	public static class LineSegment3D {

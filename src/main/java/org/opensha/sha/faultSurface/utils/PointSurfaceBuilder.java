@@ -923,20 +923,57 @@ public class PointSurfaceBuilder {
 	public WeightedList<RuptureSurfaceSupplier<FiniteApproxPointSurface>> supplyFiniteApproxPointSurfaces(
 			WeightedList<? extends PointSourceDistanceCorrection> distCorrs) {
 		PointSourceDistanceCorrection singleCorr = distCorrs != null && distCorrs.size() == 1 ? distCorrs.getValue(0) : null;
-		List<RuptureSurfaceSupplier<FiniteApproxPointSurface>> surfCalls;
-		if (dip == 90d || footwall != null)
-			surfCalls = List.of(supplyFiniteApproxPointSurface(singleCorr, footwall == null ? true : footwall));
-		else
-			surfCalls = List.of(
-					supplyFiniteApproxPointSurface(singleCorr, true),
+		WeightedList<RuptureSurfaceSupplier<FiniteApproxPointSurface>> surfCalls;
+		if (dip == 90d || footwall != null) {
+			surfCalls = WeightedList.evenlyWeighted(supplyFiniteApproxPointSurface(singleCorr, footwall == null ? true : footwall));
+		} else {
+			surfCalls = WeightedList.evenlyWeighted(supplyFiniteApproxPointSurface(singleCorr, true),
 					supplyFiniteApproxPointSurface(singleCorr, false));
+		}
+//		} else { // TODO disabled for now, pending further PointSourceDistanceCorrection refactor. see note at org.opensha.sha.faultSurface.FiniteApproxPointSurface.getCorrDistRup
+//			// dipping, include versions with and without the hanging wall term enabled
+//			// hanging wall only matters close in for NGA-W2 GMMs (<30 km), and at those distances, it's not actually
+//			// an even weighting. determine the fraction of azimuths expected to be on the hanging wall at a reference
+//			// distance, rJBref.
+////			double rJBref = 15; // halfway through the taper
+//			double rJBref = 1;
+//			/* 
+//			 * schematic:
+//			 * 
+//			 * A is rJBref away from the fault surface
+//			 * and theta is the angle to A from the '!' line
+//			 *  
+//			 * A-----!
+//			 *       !
+//			 *       !
+//			 *   _________.
+//			 * ||    !    |
+//			 * ||    !    |
+//			 * ||    !    |
+//			 * ||    !    |
+//			 * ||    *    |
+//			 * ||         |
+//			 * ||         |
+//			 * ||         |
+//			 * ||_________|
+//			 */
+//			double theta = Math.atan((0.5*getCalcHorzWidth())/(0.5*getCalcLength() + rJBref));
+//			// the fraction on the hanging wall will be PI + 2*theta
+//			// we'll simplify for a half circle because it's symmetrical
+//			double weightHW = (Math.PI*0.5 + theta)/Math.PI;
+//			System.out.println("len="+(float)length+" horzWidth="+(float)horzWidth
+//					+", theta="+(float)Math.toDegrees(theta)+", weightHW="+(float)weightHW);
+//			List<WeightedValue<RuptureSurfaceSupplier<FiniteApproxPointSurface>>> values = List.of(
+//					new WeightedValue<>(supplyFiniteApproxPointSurface(singleCorr, true), 1d - weightHW), // true means footwall
+//					new WeightedValue<>(supplyFiniteApproxPointSurface(singleCorr, false), weightHW)); // false means hanging wall
+//			surfCalls = new WeightedList.Unmodifiable<>(values, false);
+//		}
 		if (distCorrs != null && distCorrs.size() > 1) {
 			// need multiple copies
-			double weightEach = 1d/(double)surfCalls.size();
 			WeightedList<RuptureSurfaceSupplier<FiniteApproxPointSurface>> ret = new WeightedList<>(distCorrs.size()*surfCalls.size());
-			for (RuptureSurfaceSupplier<FiniteApproxPointSurface> surfCall : surfCalls) {
+			for (WeightedValue<RuptureSurfaceSupplier<FiniteApproxPointSurface>> weightedSurfCall : surfCalls) {
 				// make it lazy init so that the top level surface won't be regenerated
-				LazyRuptureSurfaceSupplier<FiniteApproxPointSurface> lazyCall = new LazyRuptureSurfaceSupplier<>(surfCall);
+				LazyRuptureSurfaceSupplier<FiniteApproxPointSurface> lazyCall = new LazyRuptureSurfaceSupplier<>(weightedSurfCall.value);
 				for (int i=0; i<distCorrs.size(); i++) {
 					PointSourceDistanceCorrection corr = distCorrs.getValue(i);
 					ret.add(new RuptureSurfaceSupplier<FiniteApproxPointSurface>() {
@@ -953,12 +990,12 @@ public class PointSurfaceBuilder {
 							// finite here means actually finite, not distance corrected
 							return false;
 						}
-					}, distCorrs.getWeight(i)*weightEach);
+					}, distCorrs.getWeight(i)*weightedSurfCall.weight);
 				}
 			}
 			return ret;
 		} else {
-			return WeightedList.evenlyWeighted(surfCalls);
+			return surfCalls;
 		}
 	}
 	
