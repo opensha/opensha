@@ -26,6 +26,7 @@ import org.opensha.commons.geo.json.FeatureCollection;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.DataUtils;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.FaultUtils;
@@ -135,7 +136,9 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	},
 	AVERAGE("NSHM23 Averaged Deformation Model", "AvgDM") {
 		@Override
-		public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
+		public List<? extends FaultSection> apply(
+				RupSetFaultModel faultModel, LogicTreeBranch<? extends LogicTreeNode> branch,
+				List<? extends FaultSection> fullSects, List<? extends FaultSection> subSects) throws IOException {
 			double totWeight = 0d;
 			List<GeoJSONFaultSection> ret = null;
 			double[] origSlipRates = null;
@@ -148,7 +151,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			for (NSHM23_DeformationModels dm : values()) {
 				if (dm != this && dm.getWeight() > 0d) {
 					totWeight += dm.getWeight();
-					List<? extends FaultSection> dmSects = dm.build(faultModel);
+					List<? extends FaultSection> dmSects = dm.apply(faultModel, branch, fullSects, subSects);
 					if (ret == null) {
 						ret = new ArrayList<>();
 						for (FaultSection sect : dmSects) {
@@ -406,38 +409,12 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 	}
 	
 	public abstract Map<Integer, List<MinisectionSlipRecord>> getMinisections(RupSetFaultModel faultModel) throws IOException;
-	
-	static final double DOWN_DIP_FRACT_DEFAULT = 0.5;
-	static final double MAX_LEN_DEFAULT = Double.NaN;
-	static final int MIN_SUB_SECTS_PER_FAULT_DEFAULT = 2;
-	
+
 	@Override
-	public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
-		return build(faultModel, MIN_SUB_SECTS_PER_FAULT_DEFAULT, DOWN_DIP_FRACT_DEFAULT, MAX_LEN_DEFAULT);
-	}
-	
-	@Override
-	public List<? extends FaultSection> build(RupSetFaultModel faultModel, int minPerFault, double ddwFract,
-			double fixedLen) throws IOException {
+	public List<? extends FaultSection> apply(
+			RupSetFaultModel faultModel, LogicTreeBranch<? extends LogicTreeNode> branch,
+			List<? extends FaultSection> fullSects, List<? extends FaultSection> subSects) throws IOException {
 		Map<Integer, List<MinisectionSlipRecord>> minis = getMinisections(faultModel);
-		
-		// fetch full sections
-		List<? extends FaultSection> fullSects = faultModel.getFaultSections();
-
-		// no subsections passed in, build them
-		List<? extends FaultSection> subSects = SubSectionBuilder.buildSubSects(
-				fullSects, minPerFault, ddwFract, fixedLen);
-
-		return buildDeformationModel(faultModel, minis, fullSects, subSects);
-	}
-
-	@Override
-	public List<? extends FaultSection> buildForSubsects(
-			RupSetFaultModel faultModel, List<? extends FaultSection> subSects) throws IOException {
-		Map<Integer, List<MinisectionSlipRecord>> minis = getMinisections(faultModel);
-		
-		// fetch full sections
-		List<? extends FaultSection> fullSects = faultModel.getFaultSections();
 		
 		return buildDeformationModel(faultModel, minis, fullSects, subSects);
 	}
@@ -450,7 +427,8 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			throws IOException {
 		synchronized (geologicSectsCache) {
 			if (!geologicSectsCache.containsKey(faultModel))
-				GEOLOGIC.build(faultModel);
+				// this triggers a build
+				GEOLOGIC.getMinisections(faultModel);
 			return geologicSectsCache.get(faultModel);
 		}
 	}
@@ -1299,7 +1277,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 		
 		NSHM23_DeformationModels[] models = { GEOLOGIC, EVANS, POLLITZ, SHEN_BIRD, ZENG };
 		
-		MinisectionMappings mappings = new MinisectionMappings(geoSects, GEOLOGIC.build(fm));
+		MinisectionMappings mappings = new MinisectionMappings(geoSects, GEOLOGIC.build(fm, null));
 		
 		for (NSHM23_DeformationModels model : models) {
 			if (model != GEOLOGIC) {
@@ -1454,7 +1432,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			if (dm.getWeight() == 0d && dm != AVERAGE)
 				continue;
 			
-			List<? extends FaultSection> sects = dm.build(fm);
+			List<? extends FaultSection> sects = dm.build(fm, null);
 			
 			dms.add(dm);
 			dmSects.add(sects);
@@ -1552,7 +1530,7 @@ public enum NSHM23_DeformationModels implements RupSetDeformationModel {
 			if (dm.isApplicableTo(fm)) {
 				System.out.println("************************");
 				System.out.println("Building "+dm.name);
-				List<? extends FaultSection> subSects = dm.build(fm);
+				List<? extends FaultSection> subSects = dm.build(fm, null);
 				GeoJSONFaultReader.writeFaultSections(new File("/tmp/"+dm.getFilePrefix()+"_sub_sects.geojson"), subSects);
 				System.err.flush();
 				System.out.flush();

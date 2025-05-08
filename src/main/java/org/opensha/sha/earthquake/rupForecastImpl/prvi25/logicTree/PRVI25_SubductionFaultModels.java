@@ -17,6 +17,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceList;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
@@ -25,6 +26,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
@@ -41,7 +43,7 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceProvider.ARCHIVE_GRID_REGION_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
-public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
+public enum PRVI25_SubductionFaultModels implements RupSetFaultModel, RupSetSubsectioningModel {
 	PRVI_SUB_FM_LARGE("Subduction FM, Large", "Large",
 			"/data/erf/prvi25/fault_models/subduction/PRVI_sub_v1_fault_model_large.geojson", 0.5d),
 	PRVI_SUB_FM_SMALL("Subduction FM, Small", "Small",
@@ -205,6 +207,12 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel {
 	@Override
 	public RupSetDeformationModel getDefaultDeformationModel() {
 		return PRVI25_SubductionDeformationModels.FULL;
+	}
+
+	@Override
+	public List<? extends FaultSection> buildSubSects(RupSetFaultModel faultModel,
+			List<? extends FaultSection> fullSections) {
+		return SubSectionBuilder.buildSubSects(fullSections, 2, 0.5, 30d);
 	}
 
 }

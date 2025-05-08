@@ -8,10 +8,12 @@ import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
 import org.opensha.commons.logicTree.LogicTreeNode;
+import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.faultSurface.FaultSection;
 
@@ -32,7 +34,7 @@ import scratch.UCERF3.utils.DeformationModelFetcher;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum U3_UncertAddDeformationModels implements LogicTreeNode, RupSetDeformationModel {
+public enum U3_UncertAddDeformationModels implements LogicTreeNode, RupSetDeformationModel, RupSetSubsectioningModel {
 	U3_ABM("UCERF3 Average Block Deformation Model", "U3 ABM", DeformationModels.ABM),
 	U3_GEOL("UCERF3 Geologic Deformation Model", "U3 Geol", DeformationModels.GEOLOGIC),
 	U3_NEOK("UCERF3 Neokinema Deformation Model", "U3 Neok", DeformationModels.NEOKINEMA),
@@ -75,8 +77,10 @@ public enum U3_UncertAddDeformationModels implements LogicTreeNode, RupSetDeform
 	}
 
 	@Override
-	public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
+	public List<? extends FaultSection> build(RupSetFaultModel faultModel, RupSetSubsectioningModel subSectionModel,
+			LogicTreeBranch<? extends LogicTreeNode> branch) throws IOException {
 		Preconditions.checkState(faultModel instanceof FaultModels, "%s is not a UCERF3 fault model", faultModel.getName());
+		Preconditions.checkState(subSectionModel == null || subSectionModel == this, "UCERF3 DMs build their own subsections");
 		FaultModels fm = (FaultModels)faultModel;
 		DeformationModelFetcher dmFetch = new DeformationModelFetcher(fm, u3dm, null, 0.1);
 		List<? extends FaultSection> subSects = dmFetch.getSubSectionList();
@@ -103,18 +107,26 @@ public enum U3_UncertAddDeformationModels implements LogicTreeNode, RupSetDeform
 	}
 
 	@Override
-	public List<? extends FaultSection> build(RupSetFaultModel faultModel, int minPerFault, double ddwFract,
-			double fixedLen) throws IOException {
-		Preconditions.checkState(minPerFault == 2, "minPerFault must be 2 for UCERF3");
-		Preconditions.checkState(ddwFract == 0.5, "ddwFract must be 0.5 for UCERF3");
-		Preconditions.checkState(!(fixedLen > 0d), "fixedLen must be NaN for UCERF3");
-		return build(faultModel);
+	public List<? extends FaultSection> apply(RupSetFaultModel faultModel,
+			LogicTreeBranch<? extends LogicTreeNode> branch, List<? extends FaultSection> subSects) throws IOException {
+		throw new UnsupportedOperationException("Not supported, UCERF3 must build the subsections");
 	}
 
 	@Override
-	public List<? extends FaultSection> buildForSubsects(RupSetFaultModel faultModel,
+	public List<? extends FaultSection> apply(RupSetFaultModel faultModel,
+			LogicTreeBranch<? extends LogicTreeNode> branch, List<? extends FaultSection> fullSects,
 			List<? extends FaultSection> subSects) throws IOException {
 		throw new UnsupportedOperationException("Not supported, UCERF3 must build the subsections");
+	}
+
+	@Override
+	public List<? extends FaultSection> buildSubSects(RupSetFaultModel faultModel,
+			List<? extends FaultSection> fullSections) {
+		try {
+			return build(faultModel, this, null);
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
 	}
 	
 	public static void main(String[] args) throws IOException {
@@ -123,7 +135,7 @@ public enum U3_UncertAddDeformationModels implements LogicTreeNode, RupSetDeform
 		for (U3_UncertAddDeformationModels dm : values()) {
 			String fileName = fm.getFilePrefix()+"-"+dm.getFilePrefix()+"-sub_sects.geojson";
 			
-			List<? extends FaultSection> subSects = dm.build(fm);
+			List<? extends FaultSection> subSects = dm.build(fm, null, null);
 			GeoJSONFaultReader.writeFaultSections(new File(outputDir, fileName), subSects);
 		}
 	}

@@ -21,6 +21,8 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
+import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.CoulombRupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
@@ -60,6 +62,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistance
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
+import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SlipAlongRuptureModels;
@@ -97,7 +100,7 @@ import com.google.common.collect.Table;
 
 public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory {
 	
-	protected transient Table<RupSetFaultModel, RupturePlausibilityModels, FaultSystemRupSet> rupSetCache = HashBasedTable.create();
+	protected transient RuptureSets.Cache rupSetCache = new RuptureSets.Cache();
 	protected transient Map<RupSetFaultModel, SectionDistanceAzimuthCalculator> distAzCache = new HashMap<>();
 	protected transient File cacheDir;
 	private boolean autoCache = true;
@@ -148,16 +151,21 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 	protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
+		RupSetSubsectioningModel ssm;
+		if (Double.isFinite(SUB_SECT_DDW_FRACT))
+			ssm = SubSectionBuilder.getModel(2, SUB_SECT_DDW_FRACT, Double.NaN);
+		else 
+			ssm = branch.requireValue(RupSetSubsectioningModel.class);
 		RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
 		if (model == null) {
 			if (fm instanceof PRVI25_SubductionFaultModels) // Subduction
-				model = RupturePlausibilityModels.SIMPLE_SUBDUCTION; // for now
+				model = RupturePlausibilityModels.SIMPLE_SUBDUCTION;
 			else
 				model = RupturePlausibilityModels.COULOMB;
 		}
 		
 		// check cache
-		FaultSystemRupSet rupSet = rupSetCache.get(fm, model);
+		FaultSystemRupSet rupSet = rupSetCache.get(fm, ssm, model);
 		if (rupSet != null)
 			return rupSet;
 		
@@ -166,10 +174,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetDeformationModel dm = fm.getDefaultDeformationModel();
 		List<? extends FaultSection> subSects;
 		try {
-			if (Double.isFinite(SUB_SECT_DDW_FRACT))
-				subSects = dm.build(fm, 2, SUB_SECT_DDW_FRACT, Double.NaN);
-			else
-				subSects = dm.build(fm);
+			subSects = dm.build(fm, ssm, branch);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -237,7 +242,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		if (rupSet == null)
 			rupSet = config.build(threads);
-		rupSetCache.put(fm, model, rupSet);
+		rupSetCache.put(rupSet, fm, ssm, model);
 		
 		if (cachedRupSetFile != null && !cachedRupSetFile.exists()) {
 			// see if we should write it
@@ -297,9 +302,12 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetDeformationModel dm = branch.requireValue(RupSetDeformationModel.class);
 		Preconditions.checkState(dm.isApplicableTo(fm),
 				"Fault and deformation models are not compatible: %s, %s", fm.getName(), dm.getName());
+		RupSetSubsectioningModel ssm;
 		if (Double.isFinite(SUB_SECT_DDW_FRACT))
-			return dm.build(fm, 2, SUB_SECT_DDW_FRACT, Double.NaN);
-		return dm.build(fm);
+			ssm = SubSectionBuilder.getModel(2, SUB_SECT_DDW_FRACT, Double.NaN);
+		else 
+			ssm = branch.requireValue(RupSetSubsectioningModel.class);
+		return dm.build(fm, ssm, branch);
 	}
 
 	@Override
