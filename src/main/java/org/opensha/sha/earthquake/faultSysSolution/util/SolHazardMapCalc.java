@@ -69,6 +69,8 @@ import org.opensha.sha.earthquake.ProbEqkSource;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.erf.BaseFaultSystemSolutionERF;
 import org.opensha.sha.earthquake.faultSysSolution.modules.GridSourceProvider;
+import org.opensha.sha.earthquake.faultSysSolution.modules.ProxyFaultSectionInstances;
+import org.opensha.sha.earthquake.faultSysSolution.modules.RupMFDsModule;
 import org.opensha.sha.earthquake.faultSysSolution.reports.ReportMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.RupSetMetadata;
 import org.opensha.sha.earthquake.faultSysSolution.reports.plots.HazardMapPlot;
@@ -486,8 +488,10 @@ public class SolHazardMapCalc {
 		if (fssERF == null) {
 			System.out.println("Building ERF");
 			fssERF = new FaultSystemSolutionERF(sol);
-			fssERF.setParameter(UseRupMFDsParam.NAME, !noMFDs);
-			fssERF.setParameter(UseProxySectionsParam.NAME, useProxyRuptures);
+			if (sol.hasAvailableModule(RupMFDsModule.class))
+				fssERF.setParameter(UseRupMFDsParam.NAME, !noMFDs);
+			if (sol.hasAvailableModule(ProxyFaultSectionInstances.class))
+				fssERF.setParameter(UseProxySectionsParam.NAME, useProxyRuptures);
 			fssERF.setParameter(ProbabilityModelParam.NAME, ProbabilityModelOptions.POISSON);
 			fssERF.setParameter(IncludeBackgroundParam.NAME, backSeisOption);
 			if (backSeisOption != IncludeBackgroundOption.EXCLUDE) {
