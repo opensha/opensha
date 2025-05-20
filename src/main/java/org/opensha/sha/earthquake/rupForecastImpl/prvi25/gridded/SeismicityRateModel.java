@@ -63,6 +63,30 @@ public class SeismicityRateModel {
 		upperRecord = SeismicityRateFileLoader.locateQuantile(rates, upperQuantile);
 	}
 	
+	public UncertaintyBoundType getBoundType() {
+		return boundType;
+	}
+
+	public double getLowerQuantile() {
+		return lowerQuantile;
+	}
+
+	public double getUpperQuantile() {
+		return upperQuantile;
+	}
+
+	public RateRecord getMeanRecord() {
+		return meanRecord;
+	}
+
+	public RateRecord getLowerRecord() {
+		return lowerRecord;
+	}
+
+	public RateRecord getUpperRecord() {
+		return upperRecord;
+	}
+
 	/**
 	 * If b various on outlier branches, they can cross over such that that low > pref and high < pref for really small
 	 * magnitudes. This sets low/high to the pref values in that case.
