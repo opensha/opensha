@@ -1010,6 +1010,8 @@ public class SolHazardMapCalc {
 			
 			int numFinite = 0;
 			for (int i=0; i<xyz.size(); i++) {
+				if (mapPlotRegion != null && !mapPlotRegion.contains(xyz.getLocation(i)))
+					continue;
 				double val = xyz.get(i);
 				if (Double.isFinite(val)) {
 					min = Math.min(min, val);
