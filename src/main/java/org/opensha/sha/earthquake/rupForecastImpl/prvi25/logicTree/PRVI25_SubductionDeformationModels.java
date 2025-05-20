@@ -34,14 +34,11 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum PRVI25_SubductionDeformationModels implements RupSetDeformationModel {
-	FULL("Full Rate", "Full", 0.5,
-			Map.of(PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE, "PRVI_sub_v1_large_full_rate_minisections.txt",
-					PRVI25_SubductionFaultModels.PRVI_SUB_FM_SMALL, "PRVI_sub_v1_small_full_rate_minisections.txt")),
-	PARTIAL("Partial Rate", "Partial", 0.5,
-			Map.of(PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE, "PRVI_sub_v1_large_part_rate_minisections.txt",
-					PRVI25_SubductionFaultModels.PRVI_SUB_FM_SMALL, "PRVI_sub_v1_small_part_rate_minisections.txt"));
+	FULL("Full Rate", "Full", 0.5),
+	PARTIAL("Partial Rate", "Partial", 0.5);
 
-	private static final String PREFIX = "/data/erf/prvi25/def_models/subduction/";
+	private static final String VERSION = "v4";
+	private static final String PREFIX = "/data/erf/prvi25/def_models/subduction/"+VERSION+"/";
 	
 	/**
 	 * if standard deviation is zero, default to this fraction of the slip rate. if DEFAULT_STD_DEV_USE_GEOLOGIC is
@@ -67,17 +64,14 @@ public enum PRVI25_SubductionDeformationModels implements RupSetDeformationModel
 	
 	private String name;
 	private String shortName;
-	private Map<RupSetFaultModel, String> fNameMap;
 	private double weight;
 	
 	private Map<String, Map<Integer, List<MinisectionSlipRecord>>> dmMinisMap;
 
-	private PRVI25_SubductionDeformationModels(String name, String shortName, double weight,
-			Map<RupSetFaultModel, String> fNameMap) {
+	private PRVI25_SubductionDeformationModels(String name, String shortName, double weight) {
 		this.name = name;
 		this.shortName = shortName;
 		this.weight = weight;
-		this.fNameMap = fNameMap;
 	}
 
 	@Override
@@ -109,7 +103,14 @@ public enum PRVI25_SubductionDeformationModels implements RupSetDeformationModel
 	public List<? extends FaultSection> apply(RupSetFaultModel faultModel,
 			LogicTreeBranch<? extends LogicTreeNode> branch, List<? extends FaultSection> fullSects,
 			List<? extends FaultSection> subSects) throws IOException {
-		String minisectsFileName = fNameMap.get(faultModel);
+		
+		String minisectsFileName = "PRVI_sub_"+VERSION+"_"+faultModel.getFilePrefix()+"_"+this.getFilePrefix();
+		PRVI25_SubductionCouplingModels coupling;
+		if (branch == null || !branch.hasValue(PRVI25_SubductionCouplingModels.class))
+			coupling = PRVI25_SubductionCouplingModels.PREFERRED;
+		else
+			coupling = branch.getValue(PRVI25_SubductionCouplingModels.class);
+		minisectsFileName += "_"+coupling.getFilePrefix()+"_rate_minisections.txt";
 		Preconditions.checkNotNull(minisectsFileName, "No minisection file mapping for fm=%s", faultModel);
 		return buildDefModel(subSects, fullSects, minisectsFileName);
 	}

@@ -44,20 +44,21 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @Affects(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum PRVI25_SubductionFaultModels implements RupSetFaultModel, RupSetSubsectioningModel {
-	PRVI_SUB_FM_LARGE("Subduction FM, Large", "Large",
-			"/data/erf/prvi25/fault_models/subduction/PRVI_sub_v1_fault_model_large.geojson", 0.5d),
-	PRVI_SUB_FM_SMALL("Subduction FM, Small", "Small",
-			"/data/erf/prvi25/fault_models/subduction/PRVI_sub_v1_fault_model_small.geojson", 0.5d);
+	PRVI_SUB_FM_LARGE("Subduction FM, Large", "Large", 0.5d),
+	PRVI_SUB_FM_SMALL("Subduction FM, Small", "Small", 0.5d);
+	
+	private static final String VERSION = "v4";
+	private static final String PREFIX = "/data/erf/prvi25/fault_models/subduction/"+VERSION+"/";
 	
 	private String name;
 	private String shortName;
 	private String jsonPath;
 	private double weight;
 
-	private PRVI25_SubductionFaultModels(String name, String shortName, String jsonPath, double weight) {
+	private PRVI25_SubductionFaultModels(String name, String shortName,  double weight) {
 		this.name = name;
 		this.shortName = shortName;
-		this.jsonPath = jsonPath;
+		this.jsonPath = PREFIX+"PRVI_sub_"+VERSION+"_fault_model_"+name()+".geojson";
 		this.weight = weight;
 		
 	}
