@@ -83,6 +83,7 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.AnalyticalSingleFa
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.ClassicModelInversionSolver;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader.RateType;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTreeBranch;
@@ -514,6 +515,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			bVals = SupraSeisBValues.values();
 		else if (branch.hasValue(PRVI25_SubductionBValues.AVERAGE))
 			bVals = PRVI25_SubductionBValues.values();
+		else if (branch.hasValue(PRVI25_SubductionBValues.AVERAGE))
+			bVals = PRVI25_SubductionBValues.values();
 		else
 			bVals = new SectionSupraSeisBValues[] { branch.requireValue(SectionSupraSeisBValues.class) };
 		
@@ -586,7 +589,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	}
 	
 	private static NSHM23_ConstraintBuilder getConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE) || branch.hasValue(SupraSeisBValues.AVERAGE) || branch.hasValue(PRVI25_SubductionBValues.AVERAGE))
+		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE) || branch.hasValue(SupraSeisBValues.AVERAGE)
+				|| branch.hasValue(PRVI25_CrustalBValues.AVERAGE) || branch.hasValue(PRVI25_SubductionBValues.AVERAGE))
 			// return averaged instance, looping over b-values and/or segmentation branches
 			return getAveragedConstraintBuilder(rupSet, branch);
 		return doGetConstraintBuilder(rupSet, branch);
