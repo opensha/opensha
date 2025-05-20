@@ -213,33 +213,37 @@ public class PRVI25_GridSourceBuilder {
 	
 	public static NSHM23_SingleRegionGridSourceProvider buildCrustalGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch,
 			FaultCubeAssociations cubeAssociations)  throws IOException {
-		GriddedRegion gridReg = cubeAssociations.getRegion();
-		
 		double maxMagOff = branch.requireValue(MaxMagOffFaultBranchNode.class).getMaxMagOffFault();
 		
 		EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(
 				OVERALL_MMIN, Math.max(maxMagOff, sol.getRupSet().getMaxMag()));
 		
+		// total G-R up to Mmax
 		PRVI25_CrustalSeismicityRate seisBranch = branch.requireValue(PRVI25_CrustalSeismicityRate.class);
+		IncrementalMagFreqDist totalGR = seisBranch.build(refMFD, maxMagOff);
+		
+		return buildCrustalGridSourceProv(sol, branch, cubeAssociations, totalGR);
+	}
+	
+	public static NSHM23_SingleRegionGridSourceProvider buildCrustalGridSourceProv(FaultSystemSolution sol, LogicTreeBranch<?> branch,
+			FaultCubeAssociations cubeAssociations, IncrementalMagFreqDist totalGR)  throws IOException {
 		PRVI25_DeclusteringAlgorithms declusteringAlg = branch.requireValue(PRVI25_DeclusteringAlgorithms.class);
 		PRVI25_SeisSmoothingAlgorithms seisSmooth = branch.requireValue(PRVI25_SeisSmoothingAlgorithms.class);
-		
-		// total G-R up to Mmax
-		IncrementalMagFreqDist totalGR = seisBranch.build(refMFD, maxMagOff);
+		GriddedRegion gridReg = cubeAssociations.getRegion();
 
 		// figure out what's left for gridded seismicity
 		IncrementalMagFreqDist totalGridded = new IncrementalMagFreqDist(
-				refMFD.getMinX(), refMFD.size(), refMFD.getDelta());
+				totalGR.getMinX(), totalGR.size(), totalGR.getDelta());
 
 		IncrementalMagFreqDist solNuclMFD = sol.calcNucleationMFD_forRegion(
-				gridReg, refMFD.getMinX(), refMFD.getMaxX(), refMFD.size(), false);
+				gridReg, totalGR.getMinX(), totalGR.getMaxX(), totalGR.size(), false);
 		for (int i=0; i<totalGR.size(); i++) {
 			double totalRate = totalGR.getY(i);
 			if (totalRate > 0) {
 				if (RATE_BALANCE_CRUSTAL_GRIDDED) {
 					double solRate = solNuclMFD.getY(i);
 					if (solRate > totalRate) {
-						System.err.println("WARNING: MFD bulge at M="+(float)refMFD.getX(i)
+						System.err.println("WARNING: MFD bulge at M="+(float)totalGR.getX(i)
 						+"\tGR="+(float)totalRate+"\tsol="+(float)solRate);
 					} else {
 						totalGridded.set(i, totalRate - solRate);
@@ -470,6 +474,11 @@ public class PRVI25_GridSourceBuilder {
 	
 	public static GridSourceList buildInterfaceGridSourceList(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch,
 			PRVI25_SeismicityRegions seisRegion) throws IOException {
+		return buildInterfaceGridSourceList(sol, fullBranch, seisRegion, null);
+	}
+	
+	public static GridSourceList buildInterfaceGridSourceList(FaultSystemSolution sol, LogicTreeBranch<?> fullBranch,
+			PRVI25_SeismicityRegions seisRegion, Function<Double, IncrementalMagFreqDist> mfdBuilderFunc) throws IOException {
 		int[] parentIDs;
 		switch (seisRegion) {
 		case CAR_INTERFACE:
@@ -506,36 +515,37 @@ public class PRVI25_GridSourceBuilder {
 		}
 
 		IncrementalMagFreqDist refMFD = FaultSysTools.initEmptyMFD(OVERALL_MMIN, 9d);
-		Function<Double, IncrementalMagFreqDist> mfdBuilderFunc;
 		Map<Double, IncrementalMagFreqDist> mMaxMFDCache = new HashMap<>();
-		if (seisRegion == PRVI25_SeismicityRegions.MUE_INTERFACE) {
-			PRVI25_SubductionMuertosSeismicityRate seisBranch = fullBranch.requireValue(PRVI25_SubductionMuertosSeismicityRate.class);
-			mfdBuilderFunc = new Function<Double, IncrementalMagFreqDist>() {
-				
-				@Override
-				public IncrementalMagFreqDist apply(Double mMax) {
-					try {
-						return seisBranch.build(refMFD, mMax, false);
-					} catch (IOException e) {
-						throw ExceptionUtils.asRuntimeException(e);
+		if (mfdBuilderFunc == null) {
+			if (seisRegion == PRVI25_SeismicityRegions.MUE_INTERFACE) {
+				PRVI25_SubductionMuertosSeismicityRate seisBranch = fullBranch.requireValue(PRVI25_SubductionMuertosSeismicityRate.class);
+				mfdBuilderFunc = new Function<Double, IncrementalMagFreqDist>() {
+					
+					@Override
+					public IncrementalMagFreqDist apply(Double mMax) {
+						try {
+							return seisBranch.build(refMFD, mMax, false);
+						} catch (IOException e) {
+							throw ExceptionUtils.asRuntimeException(e);
+						}
 					}
-				}
-			};
-		} else if (seisRegion == PRVI25_SeismicityRegions.CAR_INTERFACE) {
-			PRVI25_SubductionCaribbeanSeismicityRate seisBranch = fullBranch.requireValue(PRVI25_SubductionCaribbeanSeismicityRate.class);
-			mfdBuilderFunc = new Function<Double, IncrementalMagFreqDist>() {
-				
-				@Override
-				public IncrementalMagFreqDist apply(Double mMax) {
-					try {
-						return seisBranch.build(refMFD, mMax, false);
-					} catch (IOException e) {
-						throw ExceptionUtils.asRuntimeException(e);
+				};
+			} else if (seisRegion == PRVI25_SeismicityRegions.CAR_INTERFACE) {
+				PRVI25_SubductionCaribbeanSeismicityRate seisBranch = fullBranch.requireValue(PRVI25_SubductionCaribbeanSeismicityRate.class);
+				mfdBuilderFunc = new Function<Double, IncrementalMagFreqDist>() {
+					
+					@Override
+					public IncrementalMagFreqDist apply(Double mMax) {
+						try {
+							return seisBranch.build(refMFD, mMax, false);
+						} catch (IOException e) {
+							throw ExceptionUtils.asRuntimeException(e);
+						}
 					}
-				}
-			};
-		} else {
-			throw new IllegalStateException("Not an interface region: "+seisRegion);
+				};
+			} else {
+				throw new IllegalStateException("Not an interface region: "+seisRegion);
+			}
 		}
 //		PRVI25_RegionalSeismicity seisBranch = fullBranch.requireValue(PRVI25_RegionalSeismicity.class);
 		PRVI25_DeclusteringAlgorithms declusteringAlg = fullBranch.requireValue(PRVI25_DeclusteringAlgorithms.class);
