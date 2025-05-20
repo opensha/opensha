@@ -1074,8 +1074,8 @@ public class SupraSeisBValInversionTargetMFDs extends InversionTargetMFDs.Precom
 					double targetMoRateTest = supraMoRate + subMoRate;
 
 					Preconditions.checkState((float)targetMoRateTest == (float)targetMoRate,
-							"Partitioned moment rate doesn't equal input: %s != %s",
-							(float)targetMoRate, (float)targetMoRateTest);
+							"Partitioned moment rate doesn't equal input for sect %s. %s: %s != %s",
+							s, sect.getSectionName(), (float)targetMoRate, (float)targetMoRateTest);
 
 					targetMoRates[s] = targetMoRate;
 					targetSupraMoRates[s] = supraMoRate;
