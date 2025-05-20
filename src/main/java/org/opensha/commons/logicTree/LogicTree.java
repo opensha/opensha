@@ -428,7 +428,12 @@ public class LogicTree<E extends LogicTreeNode> implements Iterable<LogicTreeBra
 				Integer sampleCount = sampledNodeCounts.get(node);
 				if (sampleCount == null)
 					sampleCount = 0;
-				double sampledWeight = sampledNodeWeights.get(node);
+				Double sampledWeight = sampledNodeWeights.get(node);
+				if (sampledWeight == null) {
+					System.out.println("\t\t"+node.getShortName()+":\tORIG count="+countDF.format(origCount)
+						+" weight="+weightDF.format(origWeight)+";\tNO SAMPLES");
+					continue;
+				}
 				System.out.println("\t\t"+node.getShortName()+":\tORIG count="+countDF.format(origCount)
 							+" weight="+weightDF.format(origWeight)+";\tSAMPLED count="+countDF.format(sampleCount)
 							+" weight="+weightDF.format(sampledWeight));
