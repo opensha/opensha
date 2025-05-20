@@ -1385,12 +1385,16 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 				if (prevGridReg != null && gridRegFile.equals(prevGridRegFile)) {
 					region = prevGridReg;
 				} else {
-					BufferedInputStream regionIS = FileBackedModule.getInputStream(input, null, gridRegFile);
-					InputStreamReader regionReader = new InputStreamReader(regionIS);
-					Feature regFeature = Feature.read(regionReader);
-					region = GriddedRegion.fromFeature(regFeature);
-					prevGridReg = region;
-					prevGridRegFile = gridRegFile;
+					if (input.hasEntry(gridRegFile)) {
+						BufferedInputStream regionIS = FileBackedModule.getInputStream(input, null, gridRegFile);
+						InputStreamReader regionReader = new InputStreamReader(regionIS);
+						Feature regFeature = Feature.read(regionReader);
+						region = GriddedRegion.fromFeature(regFeature);
+						prevGridReg = region;
+						prevGridRegFile = gridRegFile;
+					} else {
+						region = null;
+					}
 				}
 			}
 			
