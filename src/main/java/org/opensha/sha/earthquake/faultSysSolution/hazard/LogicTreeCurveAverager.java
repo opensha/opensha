@@ -148,8 +148,17 @@ public class LogicTreeCurveAverager {
 	}
 	
 	public static LogicTreeCurveAverager readRawCacheDir(File cacheDir, double period, ExecutorService exec) throws IOException {
-		CSVFile<String> weightsCSV = CSVFile.readFile(
-				new File(cacheDir, SolHazardMapCalc.getCSV_FileName("weights", period)), true);
+		File csvFile = new File(cacheDir, SolHazardMapCalc.getCSV_FileName("weights", period));
+		for (int i=0; !csvFile.exists() && i<5; i++) {
+			// wait a few seconds
+			System.err.println("WARNING, csv doesn't exist, will sleep 1 second: "+csvFile.getAbsolutePath());
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		CSVFile<String> weightsCSV = CSVFile.readFile(csvFile, true);
 		LogicTreeCurveAverager ret = new LogicTreeCurveAverager(null, null);
 		
 		Map<String, Future<DiscretizedFunc[]>> loadFutures = new HashMap<>();
