@@ -683,7 +683,7 @@ implements ParameterChangeFailListener, ParameterChangeListener,
 			//update the off-diagonal ImikjCorrRel terms in the array list
 			//Get the number of IMik|j CorrRels that SHOULD be in the HashMap
 			int numIMikCorrRels = (i+1)*(i+1-1)/2 - (i)*(i-1)/2;
-			ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> IMikCorrRels = null;
+			ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> IMikCorrRels = new ArrayList<>();
 			if (numIMikCorrRels>0) {
 				IMikCorrRels = gcimEditIMiControlPanel.getSelectedIMikjCorrRelMap();
 			}
