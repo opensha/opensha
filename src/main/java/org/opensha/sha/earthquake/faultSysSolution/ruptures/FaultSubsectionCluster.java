@@ -189,18 +189,27 @@ public class FaultSubsectionCluster implements Comparable<FaultSubsectionCluster
 	}
 	@Override
 	public String toString() {
+		return toString(false);
+	}
+	
+	public String toString(boolean verbose) {
 		int jumpToID = -1;
 		if (startSect != subSects.get(0))
 			jumpToID = startSect.getSectionId();
-		return toString(jumpToID);
+		return toString(verbose, jumpToID);
 	}
-	public String toString(int jumpToID) {
+	
+	public String toString(boolean verbose, int jumpToID) {
 		StringBuilder str = null;
 		for (FaultSection sect : subSects) {
-			if (str == null)
-				str = new StringBuilder("[").append(parentSectionID).append(":");
-			else
+			if (str == null) {
+				if (verbose && parentSectionName != null && !parentSectionName.isBlank())
+					str = new StringBuilder("[").append(parentSectionID).append(". ").append(parentSectionName).append(": ");
+				else
+					str = new StringBuilder("[").append(parentSectionID).append(":");
+			} else {
 				str.append(",");
+			}
 			if (sect.getSectionId() == jumpToID)
 				str.append("->");
 			str.append(sect.getSectionId());
