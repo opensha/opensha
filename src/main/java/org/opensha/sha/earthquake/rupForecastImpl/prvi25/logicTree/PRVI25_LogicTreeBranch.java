@@ -10,7 +10,6 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_LogicT
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_MaxMagOffFault;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
-import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.SupraSeisBValues;
 
 import com.google.common.base.Preconditions;
 
@@ -18,8 +17,10 @@ public class PRVI25_LogicTreeBranch {
 
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsOnFault;
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsCrustalOffFault;
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsCrustalCombined;
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsSubduction;
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsSubductionGridded;
+	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsSubductionCombined;
 
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsCrustalGMM;
 	public static List<LogicTreeLevel<? extends LogicTreeNode>> levelsInterfaceGMM;
@@ -100,8 +101,16 @@ public class PRVI25_LogicTreeBranch {
 		// exhaustive for now, can trim down later
 		levelsOnFault = List.of(CRUSTAL_FM, CRUSTAL_DM, CRUSTAL_SCALE, SUPRA_B, SEG);
 		levelsCrustalOffFault = List.of(CRUSTAL_SEIS_RATE, SEIS_DECLUSTER, SEIS_SMOOTH, MMAX_OFF);
+		levelsCrustalCombined = new ArrayList<>();
+		levelsCrustalCombined.addAll(levelsOnFault);
+		levelsCrustalCombined.addAll(levelsCrustalOffFault);
+		
 		levelsSubduction = List.of(SUB_FM, SUB_COUPLING, SUB_DM, SUB_SCALE, SUB_SUPRA_B);
 		levelsSubductionGridded = List.of(CAR_SEIS_RATE, MUE_SEIS_RATE, SEIS_DECLUSTER, SEIS_SMOOTH);
+		levelsSubductionCombined = new ArrayList<>();
+		levelsSubductionCombined.addAll(levelsSubduction);
+		levelsSubductionCombined.addAll(levelsSubductionGridded);
+		
 		levelsCrustalGMM = List.of(CRUSTAL_GMM, CRUSTAL_GMM_EPISTEMIC, CRUSTAL_GMM_SIGMA);
 		levelsInterfaceGMM = List.of(INTERFACE_GMM, INTERFACE_GMM_EPISTEMIC, INTERFACE_GMM_SIGMA);
 		levelsSlabGMM = List.of(SLAB_GMM, SLAB_GMM_EPISTEMIC, SLAB_GMM_SIGMA);
@@ -122,6 +131,15 @@ public class PRVI25_LogicTreeBranch {
 			NSHM23_SegmentationModels.MID);
 	
 	/**
+	 * This is the default crustal off-fault reference branch
+	 */
+	public static final LogicTreeBranch<LogicTreeNode> DEFAULT_CRUSTAL_GRIDDED = fromValues(levelsCrustalOffFault,
+			PRVI25_CrustalSeismicityRate.PREFFERRED,
+			PRVI25_DeclusteringAlgorithms.AVERAGE,
+			PRVI25_SeisSmoothingAlgorithms.AVERAGE,
+			NSHM23_MaxMagOffFault.MAG_7p6);
+	
+	/**
 	 * This is the default subduction interface reference branch
 	 */
 	public static final LogicTreeBranch<LogicTreeNode> DEFAULT_SUBDUCTION_INTERFACE = fromValues(levelsSubduction,
@@ -130,6 +148,15 @@ public class PRVI25_LogicTreeBranch {
 			PRVI25_SubductionDeformationModels.FULL,
 			PRVI25_SubductionScalingRelationships.LOGA_C4p0,
 			PRVI25_SubductionBValues.B_0p5);
+	
+	/**
+	 * This is the default subduction gridded reference branch
+	 */
+	public static final LogicTreeBranch<LogicTreeNode> DEFAULT_SUBDUCTION_GRIDDED = fromValues(levelsSubductionGridded,
+			PRVI25_SubductionCaribbeanSeismicityRate.PREFFERRED,
+			PRVI25_SubductionMuertosSeismicityRate.PREFFERRED,
+			PRVI25_DeclusteringAlgorithms.AVERAGE,
+			PRVI25_SeisSmoothingAlgorithms.AVERAGE);
 	
 	public static LogicTreeBranch<LogicTreeNode> fromValues(List<LogicTreeLevel<? extends LogicTreeNode>> levels, LogicTreeNode... vals) {
 		Preconditions.checkState(levels.size() == vals.length);
