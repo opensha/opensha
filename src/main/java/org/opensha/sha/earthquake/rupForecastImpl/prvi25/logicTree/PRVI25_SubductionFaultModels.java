@@ -149,6 +149,8 @@ public enum PRVI25_SubductionFaultModels implements RupSetFaultModel, RupSetSubs
 					mMax = Math.max(mMax, rupSet.getMaxMagForSection(s));
 				IncrementalMagFreqDist interfaceRefMFD = FaultSysTools.initEmptyMFD(PRVI25_GridSourceBuilder.OVERALL_MMIN, mMax+0.1);
 				for (PRVI25_SeismicityRegions seisReg : interfaceRegions) {
+					if (seisReg == PRVI25_SeismicityRegions.MUE_INTERFACE && PRVI25_GridSourceBuilder.MUERTOS_AS_CRUSTAL)
+						continue;
 					List<Double> minMags = new ArrayList<>();
 					List<Double> maxMags = new ArrayList<>();
 					Region reg = seisReg.load();
