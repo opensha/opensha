@@ -1590,8 +1590,12 @@ public abstract class AbstractLogicTreeHazardCombiner {
 			if (!csvFile.exists())
 				csvFile = new File(hazardDir, fileName+".gz");
 			Preconditions.checkState(csvFile.exists(), "Curves CSV file not found: %s", csvFile.getAbsolutePath());
-			CSVFile<String> csv = CSVFile.readFile(csvFile, true);
-			curves[p] = SolHazardMapCalc.loadCurvesCSV(csv, region);
+			try {
+				CSVFile<String> csv = CSVFile.readFile(csvFile, true);
+				curves[p] = SolHazardMapCalc.loadCurvesCSV(csv, region);
+			} catch (Exception e) {
+				throw new RuntimeException("Failed to load curves from "+csvFile.getAbsolutePath(), e);
+			}
 		}
 		return curves;
 	}
