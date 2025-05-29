@@ -58,7 +58,7 @@ import com.google.common.base.Preconditions;
  *  * Evans: 10%
  *  * Pollitz: 20%
  *  * Shen-Bird: 25%
- *  * Shen-Bird: 25%
+ *  * Zeng: 25%
  * 
  * We revised those weights on 12/7/2022 to the following to minimize the impact of outlier slip rates on the final
  * mean model, most notably from the Evans model but also from Pollitz:
@@ -66,7 +66,7 @@ import com.google.common.base.Preconditions;
  *  * Evans: 2%
  *  * Pollitz: 8%
  *  * Shen-Bird: 32%
- *  * Shen-Bird: 32%
+ *  * Zeng: 32%
  * 
  * @author kevin
  *
