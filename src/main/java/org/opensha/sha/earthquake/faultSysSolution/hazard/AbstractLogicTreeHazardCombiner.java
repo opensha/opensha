@@ -722,9 +722,9 @@ public abstract class AbstractLogicTreeHazardCombiner {
 							avgCurves[j][k] = new LightFixedXFunc(xVals, new double[xVals.length]);
 						} else {
 							Preconditions.checkState(avgCurves[j][k].size() == curves[j][k].size());
-							for (int l=0; l<avgCurves[j][k].size(); l++)
-								avgCurves[j][k].set(l, avgCurves[j][k].getY(l) + weight*curves[j][k].getY(l));
 						}
+						for (int l=0; l<avgCurves[j][k].size(); l++)
+							avgCurves[j][k].set(l, avgCurves[j][k].getY(l) + weight*curves[j][k].getY(l));
 					}
 				}
 			}
@@ -1682,15 +1682,15 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		});
 	}
 	
-	public static FaultSystemSolution combineSols(FaultSystemSolution innerlSol, FaultSystemSolution outerSol) {
-		return combineSols(innerlSol, outerSol, false);
+	public static FaultSystemSolution combineSols(FaultSystemSolution innerSol, FaultSystemSolution outerSol) {
+		return combineSols(innerSol, outerSol, false);
 	}
 	
-	public static FaultSystemSolution combineSols(FaultSystemSolution innerlSol, FaultSystemSolution outerSol, boolean clusterRups) {
+	public static FaultSystemSolution combineSols(FaultSystemSolution innerSol, FaultSystemSolution outerSol, boolean clusterRups) {
 		int totNumSects = 0;
 		int totNumRups = 0;
 		for (boolean outer : new boolean[] {false, true}) {
-			FaultSystemSolution sol = outer ? outerSol : innerlSol;
+			FaultSystemSolution sol = outer ? outerSol : innerSol;
 			FaultSystemRupSet rupSet = sol.getRupSet();
 //			System.out.println("RupSet "+i+" has "+rupSet.getNumSections()+" sects, "+rupSet.getNumRuptures()+" rups");
 			totNumSects += rupSet.getNumSections();
@@ -1718,7 +1718,7 @@ public abstract class AbstractLogicTreeHazardCombiner {
 		Map<Integer, Integer> innerRupMappings = new HashMap<>();
 		
 		for (boolean outer : new boolean[] {false, true}) {
-			FaultSystemSolution sol = outer ? outerSol : innerlSol;
+			FaultSystemSolution sol = outer ? outerSol : innerSol;
 			FaultSystemRupSet rupSet = sol.getRupSet();
 			int[] sectMappings = new int[rupSet.getNumSections()];
 //			System.out.println("Merging sol with "+rupSet.getNumSections()+" sects and "+rupSet.getNumRuptures()+" rups");
