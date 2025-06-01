@@ -89,7 +89,7 @@ public enum PRVI25_CrustalSeismicityRate implements LogicTreeNode {
 		
 	};
 	
-	public static String RATE_DATE = "2024_12_11";
+	public static String RATE_DATE = "2025_03_26";
 	private static final String RATES_PATH_PREFIX = "/data/erf/prvi25/seismicity/rates/";
 	public static RateType TYPE = RateType.M1_TO_MMAX;
 	

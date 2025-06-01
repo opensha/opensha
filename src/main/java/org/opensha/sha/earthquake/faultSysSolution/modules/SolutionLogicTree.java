@@ -1378,19 +1378,23 @@ public class SolutionLogicTree extends AbstractLogicTreeModule {
 		String locsFile = getBranchFileName(branch, GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME, false);
 
 		ArchiveInput input = getArchiveInput();
-		if (locsFile != null) {
+		if (locsFile != null && input.hasEntry(locsFile)) {
 			// GridSourceList
 			GriddedRegion region;
 			synchronized (SolutionLogicTree.this) {
 				if (prevGridReg != null && gridRegFile.equals(prevGridRegFile)) {
 					region = prevGridReg;
 				} else {
-					BufferedInputStream regionIS = FileBackedModule.getInputStream(input, null, gridRegFile);
-					InputStreamReader regionReader = new InputStreamReader(regionIS);
-					Feature regFeature = Feature.read(regionReader);
-					region = GriddedRegion.fromFeature(regFeature);
-					prevGridReg = region;
-					prevGridRegFile = gridRegFile;
+					if (input.hasEntry(gridRegFile)) {
+						BufferedInputStream regionIS = FileBackedModule.getInputStream(input, null, gridRegFile);
+						InputStreamReader regionReader = new InputStreamReader(regionIS);
+						Feature regFeature = Feature.read(regionReader);
+						region = GriddedRegion.fromFeature(regFeature);
+						prevGridReg = region;
+						prevGridRegFile = gridRegFile;
+					} else {
+						region = null;
+					}
 				}
 			}
 			

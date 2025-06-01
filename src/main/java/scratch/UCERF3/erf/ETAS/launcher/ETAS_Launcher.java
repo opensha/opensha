@@ -415,7 +415,7 @@ public class ETAS_Launcher {
 		return histQkList;
 	}
 	
-	public Region getRegion() {
+	public GriddedRegion getRegion() {
 		return griddedRegion;
 	}
 	

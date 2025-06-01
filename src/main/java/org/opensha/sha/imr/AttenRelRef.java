@@ -1,5 +1,17 @@
 package org.opensha.sha.imr;
 
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.ASK_14;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.ASK_14_BASIN;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.ASK_14_CYBERSHAKE;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.BSSA_14;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.BSSA_14_BASIN;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.BSSA_14_CYBERSHAKE;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.CB_14;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.CB_14_BASIN;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.CB_14_CYBERSHAKE;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.CY_14;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.CY_14_BASIN;
+import static gov.usgs.earthquake.nshmp.gmm.Gmm.CY_14_CYBERSHAKE;
 import static org.opensha.commons.util.DevStatus.*;
 
 import java.lang.reflect.Constructor;
@@ -10,11 +22,15 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.opensha.commons.data.Named;
+import org.opensha.commons.data.WeightedList;
+import org.opensha.commons.data.WeightedList.Unmodifiable;
+import org.opensha.commons.data.WeightedValue;
 import org.opensha.commons.param.event.ParameterChangeWarningListener;
 import org.opensha.commons.util.DevStatus;
 import org.opensha.commons.util.ServerPrefs;
@@ -173,6 +189,63 @@ public enum AttenRelRef implements AttenRelSupplier {
 			DahleEtAl_1995_AttenRel.SHORT_NAME, PRODUCTION),
 	
 	NON_ERGODIC_2016(StewartAfshariGoulet2017NonergodicGMPE.class, StewartAfshariGoulet2017NonergodicGMPE.NAME, StewartAfshariGoulet2017NonergodicGMPE.SHORT_NAME, PRODUCTION),
+	
+	USGS_NSHM23_ACTIVE(null, "USGS NSHM23 Active Crustal",
+			"NSHM23-Active", PRODUCTION) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			Unmodifiable<Gmm> gmms = WeightedList.evenlyWeighted(
+					Gmm.ASK_14_BASIN, Gmm.BSSA_14_BASIN, Gmm.CB_14_BASIN, Gmm.CY_14_BASIN);
+			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_NSHM23_ACTIVE_LA(null, "USGS NSHM23 Los Angeles Basin",
+			"NSHM23-Active-LA", PRODUCTION) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			WeightedList<Gmm> gmms = WeightedList.of(
+					new WeightedValue<>(Gmm.ASK_14, 0.125),
+					new WeightedValue<>(Gmm.BSSA_14, 0.125),
+					new WeightedValue<>(Gmm.CB_14, 0.125),
+					new WeightedValue<>(Gmm.CY_14, 0.125),
+					new WeightedValue<>(Gmm.ASK_14_BASIN, 0.0625),
+					new WeightedValue<>(Gmm.BSSA_14_BASIN, 0.0625),
+					new WeightedValue<>(Gmm.CB_14_BASIN, 0.0625),
+					new WeightedValue<>(Gmm.CY_14_BASIN, 0.0625),
+					new WeightedValue<>(Gmm.ASK_14_CYBERSHAKE, 0.0625),
+					new WeightedValue<>(Gmm.BSSA_14_CYBERSHAKE, 0.0625),
+					new WeightedValue<>(Gmm.CB_14_CYBERSHAKE, 0.0625),
+					new WeightedValue<>(Gmm.CY_14_CYBERSHAKE, 0.0625));
+			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
+		}
+		
+	},
+	
+	USGS_NSHM23_ACTIVE_SF(null, "USGS NSHM23 San Francisco",
+			"NSHM23-Active-SF", PRODUCTION) {
+		
+		@Override
+		public AttenuationRelationship instance(
+				ParameterChangeWarningListener listener) {
+			WeightedList<Gmm> gmms = WeightedList.of(
+					new WeightedValue<>(Gmm.ASK_14, 0.125),
+					new WeightedValue<>(Gmm.BSSA_14, 0.125),
+					new WeightedValue<>(Gmm.CB_14, 0.125),
+					new WeightedValue<>(Gmm.CY_14, 0.125),
+					new WeightedValue<>(Gmm.ASK_14_BASIN, 0.125),
+					new WeightedValue<>(Gmm.BSSA_14_BASIN, 0.125),
+					new WeightedValue<>(Gmm.CB_14_BASIN, 0.125),
+					new WeightedValue<>(Gmm.CY_14_BASIN, 0.125));
+			return new NSHMP_GMM_Wrapper.WeightedCombination(gmms, getName(), getShortName(), false, null);
+		}
+		
+	},
 
 	// DEVELOPMENT
 	
@@ -182,7 +255,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.ASK_14_BASE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.ASK_14_BASE, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -193,7 +266,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.AG_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.AG_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -204,7 +277,7 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.PSBAH_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.PSBAH_20_GLOBAL_INTERFACE, getName(), getShortName(), false, null);
 		}
 		
 	},
@@ -215,73 +288,40 @@ public enum AttenRelRef implements AttenRelSupplier {
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.PSBAH_20_GLOBAL_SLAB, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.PSBAH_20_GLOBAL_SLAB, getName(), getShortName(), false, null);
 		}
 		
 	},
 	
-	USGS_PRVI_ACTIVE(null, "USGS PRVI25 Active Crustal",
+	USGS_PRVI_ACTIVE(null, "USGS PRVI25 Active Crustal (beta)",
 			"PRVI25-Active", DEVELOPMENT) {
 		
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.USGS_PRVI_ACTIVE_CRUST_COMBINED_TREE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.USGS_PRVI_ACTIVE_CRUST_COMBINED_TREE, getName(), getShortName(), false, null);
 		}
 		
 	},
 	
-	USGS_PRVI_INTERFACE(null, "USGS PRVI25 Interface",
+	USGS_PRVI_INTERFACE(null, "USGS PRVI25 Interface (beta)",
 			"PRVI25-Interface", DEVELOPMENT) {
 		
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.USGS_PRVI_INTERFACE_COMBINED_TREE, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.USGS_PRVI_INTERFACE_COMBINED_TREE, getName(), getShortName(), false, null);
 		}
 		
 	},
 	
-	USGS_PRVI_SLAB(null, "USGS PRVI25 Slab",
+	USGS_PRVI_SLAB(null, "USGS PRVI25 Slab (beta)",
 			"PRVI25-Slab", DEVELOPMENT) {
 		
 		@Override
 		public AttenuationRelationship instance(
 				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.USGS_PRVI_INTRASLAB_COMBINED_TREE, getName(), getShortName(), false, null);
-		}
-		
-	},
-	
-	USGS_NSHM23_ACTIVE(null, "USGS NSHM23 Active Crustal",
-			"NSHM23-Active", DEVELOPMENT) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023, getName(), getShortName(), false, null);
-		}
-		
-	},
-	
-	USGS_NSHM23_ACTIVE_LA(null, "USGS NSHM23 Active Crustal (Los Angeles)",
-			"NSHM23-Active-LA", DEVELOPMENT) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023_LOS_ANGELES, getName(), getShortName(), false, null);
-		}
-		
-	},
-	
-	USGS_NSHM23_ACTIVE_SF(null, "USGS NSHM23 Active Crustal (San Francisco)",
-			"NSHM23-Active-SF", DEVELOPMENT) {
-		
-		@Override
-		public AttenuationRelationship instance(
-				ParameterChangeWarningListener listener) {
-			return new NSHMP_GMM_Wrapper(Gmm.COMBINED_ACTIVE_CRUST_2023_SAN_FRANCISCO, getName(), getShortName(), false, null);
+			return new NSHMP_GMM_Wrapper.Single(Gmm.USGS_PRVI_INTRASLAB_COMBINED_TREE, getName(), getShortName(), false, null);
 		}
 		
 	},

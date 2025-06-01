@@ -373,5 +373,75 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 	public void clearCache() {
 		cache.clearCache();
 	}
+
+	/**
+	 * Interpolates the surface to find the point at the given distance along strike and distance down dip
+	 * 
+	 * @param das
+	 * @param ddw
+	 * @return
+	 */
+	public Location getInterpolatedLocation(double das, double ddw) {
+		Preconditions.checkState(numRows > 1 && numCols > 1);
+		double spacingAS = getGridSpacingAlongStrike();
+		double spacingDD = getGridSpacingDownDip();
+		double indexAS = das/spacingAS;
+		int asIndexBefore = (int)indexAS;
+		Preconditions.checkState(asIndexBefore >= 0 && asIndexBefore < numCols);
+		double indexDD = ddw/spacingDD;
+		int ddIndexBefore = (int)indexDD;
+		Preconditions.checkState(ddIndexBefore >= 0 && ddIndexBefore < numRows);
+		
+		Location topLeftLoc = get(ddIndexBefore, asIndexBefore);
+		double horzDist, horzAz;
+		if (asIndexBefore == numCols-1) {
+			// we're at the last column
+			horzDist = 0;
+			horzAz = 0;
+		} else {
+			Location topRightLoc = get(ddIndexBefore, asIndexBefore+1);
+			horzDist = LocationUtils.horzDistance(topLeftLoc, topRightLoc);
+			horzAz = LocationUtils.azimuthRad(topLeftLoc, topRightLoc);
+		}
+		
+		double vertDist, vertAz, depthDelta;
+		if (ddIndexBefore == numRows-1) {
+			// we're at the last row
+			vertDist = 0;
+			vertAz = 0;
+			depthDelta = 0;
+		} else {
+			Location botLeftLoc = get(ddIndexBefore+1, asIndexBefore);
+			vertDist = LocationUtils.horzDistance(topLeftLoc, botLeftLoc);
+			vertAz = LocationUtils.azimuthRad(topLeftLoc, botLeftLoc);
+			depthDelta = botLeftLoc.getDepth()-topLeftLoc.getDepth();
+		}
+		
+		double relativeVertPos = indexDD - ddIndexBefore;
+		double relativeHorzPos = indexAS - asIndexBefore;
+		
+		// start top left
+		Location loc = topLeftLoc;
+		// move to the right
+		loc = LocationUtils.location(loc, horzAz, horzDist*relativeHorzPos);
+		// move down dip
+		if ((float)vertDist > 0f)
+			loc = LocationUtils.location(loc, vertAz, vertDist*relativeVertPos);
+		// now actually move down
+		return new Location(loc.getLatitude(), loc.getLongitude(), loc.getDepth()+depthDelta*relativeVertPos);
+	}
+	
+	public double getStrikeAtDAS(double das) {
+		Preconditions.checkState(numCols > 1);
+		double spacingAS = getGridSpacingAlongStrike();
+		double indexAS = das/spacingAS;
+		int asIndexBefore = (int)indexAS;
+		Preconditions.checkState(asIndexBefore >= 0 && asIndexBefore < numCols);
+		
+		if (asIndexBefore == numCols-1)
+			// we're at the last column
+			asIndexBefore--;
+		return LocationUtils.azimuth(get(0, asIndexBefore-1), get(0, asIndexBefore));
+	}
 	
 }

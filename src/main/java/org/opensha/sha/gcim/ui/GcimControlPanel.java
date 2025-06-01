@@ -3,14 +3,16 @@ package org.opensha.sha.gcim.ui;
 import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.GridBagLayout;
 import java.awt.Window;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.stream.Collectors;
+
 import javax.swing.BoxLayout;
 import javax.swing.JButton;
 import javax.swing.JFrame;
@@ -54,7 +56,8 @@ import org.opensha.sha.util.TectonicRegionType;
  */
 
 public class GcimControlPanel extends ControlPanel
-	implements ParameterChangeFailListener, ParameterChangeListener, ActionListener{
+implements ParameterChangeFailListener, ParameterChangeListener,
+	ActionListener {
 
 	public static final String NAME = "GCIM distributions";
 	private static final boolean D = false;
@@ -104,8 +107,8 @@ public class GcimControlPanel extends ControlPanel
 	private ArrayList<Map<TectonicRegionType, ImCorrelationRelationship>> imijMapCorrRels = 
 		new ArrayList<Map<TectonicRegionType, ImCorrelationRelationship>>();
 	//Correlation relations for off-diagonal terms i.e. IMi,IMk|Rup=rup,IMj=imj
-	private ArrayList<Map<TectonicRegionType, ImCorrelationRelationship>> imikjMapCorrRels = 
-		new ArrayList<Map<TectonicRegionType, ImCorrelationRelationship>>();
+	private ArrayList< ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> > imikjMapCorrRels = 
+		new ArrayList< ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> >();
 
 	//The Site object that the main hazard calc uses
 	private Site parentSite;
@@ -126,7 +129,6 @@ public class GcimControlPanel extends ControlPanel
 
 	// applet which called this control panel
 	HazardCurveApplication parent;
-	private GridBagLayout gridBagLayout1 = new GridBagLayout();
 	
 	private JFrame frame;
 	
@@ -146,18 +148,15 @@ public class GcimControlPanel extends ControlPanel
 	}
 	
 	public void doinit() {
-		
 		frame = new JFrame();
 
 		// set info strings for parameters
-		
 		minApproxZParam.setInfo("The approx. min Z value to construct the GCIM CDF");
 		maxApproxZParam.setInfo("The approx. max Z value to construct the GCIM CDF");
 		deltaApproxZParam.setInfo("The increment in approx. min Z values to construct the GCIM CDF");
 		numGcimRealizationsParam.setInfo("The number of realizations from the GCIM distributions");
 		
 		try {
-
 			ArrayList<String> gcimSupportList = new ArrayList<String>();
 			gcimSupportList.add(GCIM_NOT_SUPPORTED_IMJ);
 			gcimSupportParameter = new StringParameter(GCIM_SUPPORTED_NAME,gcimSupportList,
@@ -198,13 +197,10 @@ public class GcimControlPanel extends ControlPanel
 			else
 				setParamsVisible((String)gcimSupportParameter.getValue());
 				
-
 			jbInit();
 			// show the window at center of the parent component
 			frame.setLocation(parentComponent.getX()+parentComponent.getWidth()/2,0);
 			parent.setGcimSelected(isGcimSelected);
-
-
 		}
 		catch(Exception e) {
 			e.printStackTrace();
@@ -214,7 +210,6 @@ public class GcimControlPanel extends ControlPanel
 
 	// initialize the gui components
 	private void jbInit() throws Exception {
-
 		frame.getContentPane().setLayout(new BorderLayout());
 		frame.getContentPane().add(paramListEditor, BorderLayout.CENTER);
 		
@@ -242,18 +237,17 @@ public class GcimControlPanel extends ControlPanel
 
 	/**
 	 *  Shown when a Constraint error is thrown on GCIM ParameterEditor
-	 * @param  e  Description of the Parameter
+	 * @param e  Description of the Parameter
 	 */
-	public void parameterChangeFailed( ParameterChangeFailEvent e ) {
-
+	@Override
+	public void parameterChangeFailed(ParameterChangeFailEvent e) {
 		StringBuffer b = new StringBuffer();
-		Parameter param = ( Parameter ) e.getSource();
+		Parameter param = (Parameter)e.getSource();
 
 		ParameterConstraint constraint = param.getConstraint();
 		String oldValueStr = e.getOldValue().toString();
 		String badValueStr = e.getBadValue().toString();
 		String name = param.getName();
-
 
 		b.append( "The value ");
 		b.append( badValueStr );
@@ -269,14 +263,15 @@ public class GcimControlPanel extends ControlPanel
 				frame, b.toString(),
 				"Cannot Change Value", JOptionPane.INFORMATION_MESSAGE
 		);
-
 	}
 
 
 	/**
-	 *
+	 * This method is invoked everytime a new parameter is selected inside the
+	 * GcimControlPanel.
 	 * @param e ParameterChangeEvent
 	 */
+	@Override
 	public void parameterChange(ParameterChangeEvent e){
 		String paramName = e.getParameterName();
 		if(paramName.equals(GCIM_PARAM_NAME))
@@ -287,25 +282,23 @@ public class GcimControlPanel extends ControlPanel
 	 * Returns the number of IMi's to compute GCIM distributions for
 	 * @return double
 	 */
-	public int getNumIMi(){
+	public int getNumIMi() {
 		StringConstraint stringConst = (StringConstraint) gcimImisParameter.getConstraint();
 		int imiListSize = stringConst.size();
 		if (imiListSize == 0) {
 			throw new RuntimeException("gcimImisParameter is empty!");
-		} else if (imiListSize == 1) {
-			if (stringConst.getAllowedValues().get(0) == IMI_LIST_DEFAULT)
-				return 0;
-			else
-				return 1;
-		} else
-			return imiListSize;
-//		return imiTypes.size();
+		}
+		if (imiListSize == 1 && stringConst.getAllowedValues().get(0) == IMI_LIST_DEFAULT) {
+			System.out.println(0);
+			return 0;
+		}
+		return imiListSize;
 	}
 	
 	/**
 	 * Returns the array list of the IMi types 
 	 */
-	public ArrayList<String> getImiTypes(){
+	public ArrayList<String> getImiTypes() {
 		if (D) {
 			System.out.println("Getting the IMiTypes");
 			for (int i=0; i<imiTypes.size(); i++) {
@@ -319,7 +312,7 @@ public class GcimControlPanel extends ControlPanel
 	/**
 	 * Returns the array list of the IMRi's corresponding to the IMi's 
 	 */
-	public ArrayList<? extends Map<TectonicRegionType, ScalarIMR>> getImris(){
+	public ArrayList<? extends Map<TectonicRegionType, ScalarIMR>> getImris() {
 		if (D) {
 			System.out.println("Getting the IMiAttenRels");
 			for (int i=0; i<getNumIMi(); i++) {
@@ -333,37 +326,43 @@ public class GcimControlPanel extends ControlPanel
 	/**
 	 * Returns the array list of the ImCorrRel's corresponding to the IMi's 
 	 */
-	public ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> getImCorrRels(){
+	public ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> getImCorrRels() {
 		if (D) {
 			System.out.println("Getting the IMiCorrRels");
 			for (int i=0; i<getNumIMi(); i++) {
 				System.out.println(imijMapCorrRels.get(i));
 			}
 		}
+
 		return imijMapCorrRels;
 	}
 	
 	/**
-	 * Returns the array list of the ImCorrRel's corresponding to the IMik's (i.e. off-diagonal terms)
+	 * Returns the flattened array list of the ImCorrRel's corresponding to the IMik's (i.e. off-diagonal terms)
 	 */
-	public ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> getImikCorrRels(){
-		if (D) {
-			System.out.println("Getting the IMikCorrRels");
-			for (int i=0; i<imiTypes.size(); i++) {
-				for (int j=0; j<i; j++) {
-					int index = (i)*(i-1)/2+j;
-					System.out.println(imikjMapCorrRels.get(index));
-				}
-			}
-		}
-		return imikjMapCorrRels;
-	}
+	public ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> getImikCorrRels() {
+ 		ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> flattened =
+ 				(ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>>)
+ 				imikjMapCorrRels.stream()
+ 					.flatMap(List::stream)
+ 					.collect(Collectors.toList());
+ 		if (D) {
+ 			System.out.println("Getting the IMikCorrRels");
+ 			for (int i=0; i<imiTypes.size(); i++) {
+ 				for (int j=0; j<i; j++) {
+ 					int index = (i)*(i-1)/2+j;
+ 					System.out.println(flattened.get(index));
+ 				}
+ 			}
+ 		}
+ 		return flattened;
+ 	}
 	
 	/**
 	 * Returns the mininum Approx. Z value used to get the GCIM CDFs
 	 * @return double
 	 */
-	public double getMinApproxZ(){
+	public double getMinApproxZ() {
 		return ((Double)minApproxZParam.getValue()).doubleValue();
 	}
 	
@@ -371,7 +370,7 @@ public class GcimControlPanel extends ControlPanel
 	 * Returns the maximum Approx. Z value used to get the GCIM CDFs
 	 * @return double
 	 */
-	public double getMaxApproxZ(){
+	public double getMaxApproxZ() {
 		return ((Double)maxApproxZParam.getValue()).doubleValue();
 	}
 	
@@ -379,7 +378,7 @@ public class GcimControlPanel extends ControlPanel
 	 * Returns the increment in Approx. Z values used to get the GCIM CDFs
 	 * @return double
 	 */
-	public double getDeltaApproxZ(){
+	public double getDeltaApproxZ() {
 		return ((Double)deltaApproxZParam.getValue()).doubleValue();
 	}
 	
@@ -387,15 +386,15 @@ public class GcimControlPanel extends ControlPanel
 	 * Returns the number of GCIM distribution realizations
 	 * @return int
 	 */
-	public int getNumGcimRealizations(){
+	public int getNumGcimRealizations() {
 		return (int)numGcimRealizationsParam.getValue();
 	}
 	
 	/**
 	 * Makes the parameters visible based on the choice of the user for Disaggregation
 	 */
-	public void setParamsVisible(String paramValue){
-		if(paramValue.equals(GCIM_NOT_SUPPORTED_IMJ)){
+	public void setParamsVisible(String paramValue) {
+		if(paramValue.equals(GCIM_NOT_SUPPORTED_IMJ)) {
 			paramListEditor.getParameterEditor(GCIM_SUPPORTED_NAME).setVisible(true);
 			paramListEditor.getParameterEditor(GCIM_PARAM_NAME).setVisible(false);
 			paramListEditor.getParameterEditor(GCIM_PROB_PARAM_NAME).setVisible(false);
@@ -415,7 +414,7 @@ public class GcimControlPanel extends ControlPanel
 			
 			frame.setSize(300,200);
 			
-		} else if(paramValue.equals(NO_GCIM)){
+		} else if(paramValue.equals(NO_GCIM)) {
 			paramListEditor.getParameterEditor(GCIM_PARAM_NAME).setVisible(true);
 			paramListEditor.getParameterEditor(GCIM_SUPPORTED_NAME).setVisible(false);
 			paramListEditor.getParameterEditor(GCIM_PROB_PARAM_NAME).setVisible(false);
@@ -434,7 +433,7 @@ public class GcimControlPanel extends ControlPanel
 			removeButton.setEnabled(false);
 			
 			frame.setSize(300,200);
-		} else{
+		} else {
 			if (paramValue.equals(GCIM_USING_PROB)) {
 				paramListEditor.getParameterEditor(GCIM_PROB_PARAM_NAME).
 				setVisible(true);
@@ -496,7 +495,7 @@ public class GcimControlPanel extends ControlPanel
 	 * @return String : Returns on what basis GCIM is being done either
 	 * using Probability or IML.
 	 */
-	public String getGcimParamValue(){
+	public String getGcimParamValue() {
 		return (String)gcimParameter.getValue();
 	}
 
@@ -507,8 +506,7 @@ public class GcimControlPanel extends ControlPanel
 	 * based on IML. If not gcim to be done , return -1.
 	 */
 	public double getGcimVal() {
-
-		if(isGcimSelected){
+		if(isGcimSelected) {
 			String paramValue = getGcimParamValue();
 			if(paramValue.equals(GCIM_USING_PROB))
 				return ( (Double) gcimProbParam.getValue()).doubleValue();
@@ -575,17 +573,23 @@ public class GcimControlPanel extends ControlPanel
 		}
 	}
 
+	/**
+	 * An action took place inside the GcimControlPanel,
+	 * such as adding, removing, or editing an IMi. This is done through their
+	 * respective buttons.
+	 * @param ActionEvent event that occured inside the GcimControlPanel
+	 */
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		StringConstraint stringConst = (StringConstraint) gcimImisParameter.getConstraint();
 		if (e.getSource().equals(addButton)) {
-			if(D) System.out.println("Adding IMi");
+			if (D) System.out.println("Adding IMi");
 			this.imiIndex = getNumIMi();
 			if (D) System.out.println("imiIndex increased to " + this.imiIndex);
 			
 			String newIMIName = "IMi " + (getNumIMi()+1);
 			stringConst.addString(newIMIName); 
-			//now that we've added one, we need to remove the place holder if it was there.
+			// now that we've added one, we need to remove the place holder if it was there.
 			if (stringConst.getAllowedStrings().get(0).equals(IMI_LIST_DEFAULT))
 				stringConst.removeString(IMI_LIST_DEFAULT);
 			gcimImisParameter.setValue(newIMIName);
@@ -594,25 +598,24 @@ public class GcimControlPanel extends ControlPanel
 			this.gcimEditIMiControlPanel = new GcimEditIMiControlPanel(this, this.frame, this.imiIndex);
 			gcimEditIMiControlPanel.init();
 			gcimEditIMiControlPanel.setVisible(true);
+
 			updateIMiNames();
 			
 		} else if (e.getSource().equals(removeButton)) {
-			
 			String selectedIMI = gcimImisParameter.getValue();
 			this.imiIndex = stringConst.getAllowedStrings().indexOf(gcimImisParameter.getValue());
-			if(D) System.out.println("Removing IMi, index " + imiIndex);
+			if (D) System.out.println("Removing IMi, index " + imiIndex);
 			if (getNumIMi() == 1) {
 				// we need to add the place holder back in here since there won't be any
 				stringConst.addString(IMI_LIST_DEFAULT);
 				removeButton.setEnabled(false);
 				editButton.setEnabled(false);
 			}
+			removeIMiDetailsInArrayLists(imiIndex);
 			stringConst.removeString(selectedIMI);
 			ArrayList<String> strings = stringConst.getAllowedStrings();
 			gcimImisParameter.setValue(strings.get(0));
 			updateIMiListGuiDisplay();
-			
-			removeIMiDetailsInArrayLists(imiIndex);
 			
 			updateIMiNames();
 			
@@ -638,22 +641,11 @@ public class GcimControlPanel extends ControlPanel
 	 * ImiMapAttenRels, and ImijMapCorrRels, and IMikMapCorrRels array lists
 	 */
 	public void addIMiDetailsInArrayLists() {
-		int numIMi=getNumIMi();
-		
 		imiTypes.add(gcimEditIMiControlPanel.getSelectedIMT());
 		imiMapAttenRels.add(gcimEditIMiControlPanel.getSelectedIMRMap());
 		imijMapCorrRels.add(gcimEditIMiControlPanel.getSelectedIMCorrRelMap());		
-		//set the off-diagonal ImikjCorrRel terms in the array list
-		//Get the number of IMik|j CorrRels that SHOULD be in the HashMap
-		int numIMikCorrRels = (numIMi)*(numIMi-1)/2 - (numIMi-1)*(numIMi-2)/2;
-		ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> IMikCorrRels = null;
-		if (numIMikCorrRels>0) {
-			IMikCorrRels = gcimEditIMiControlPanel.getSelectedIMikjCorrRelMap();
-		}
-		for (int m=0; m<numIMikCorrRels; m++) {
-//			int indexIMikCorrRel = (numIMi-1)*(numIMi-2)/2+1+m;
-			imikjMapCorrRels.add(IMikCorrRels.get(m));
-		}
+		// Set the off-diagonal ImikjCorrRel terms in the array list
+		imikjMapCorrRels.add(gcimEditIMiControlPanel.getSelectedIMikjCorrRelMap());
 	}
 	
 	/** 
@@ -661,26 +653,11 @@ public class GcimControlPanel extends ControlPanel
 	 * array lists
 	 */
 	public void removeIMiDetailsInArrayLists(int i) {
-		int numIMi=getNumIMi();
-		
 		imiTypes.remove(i);
 		imiMapAttenRels.remove(i);
 		imijMapCorrRels.remove(i);
-		//Remove the off-diagonal correlation terms from imikjMapCorrRels
-		//Need to move from largest to smallest to prevent deleting incorrect ones as indexes change
-		//as values are deleted 
-		for (int m=0; m<i; m++) {
-			int indexi=(numIMi-1)-m;
-			int indexj = i;
-			int index_imikjlist = (indexi)*(indexi-1)/2+indexj;
-			imikjMapCorrRels.remove(index_imikjlist);
-		}
-		for (int m=0; m<i; m++) {
-			int indexi = i;
-			int indexj=(i-1)-m;
-			int index_imikjlist = (indexi)*(indexi-1)/2+indexj;
-			imikjMapCorrRels.remove(index_imikjlist);
-		}
+		// Remove the off-diagonal correlation terms from imikjMapCorrRels
+		imikjMapCorrRels.remove(i);
 	}
 	
 	/** 
@@ -706,14 +683,11 @@ public class GcimControlPanel extends ControlPanel
 			//update the off-diagonal ImikjCorrRel terms in the array list
 			//Get the number of IMik|j CorrRels that SHOULD be in the HashMap
 			int numIMikCorrRels = (i+1)*(i+1-1)/2 - (i)*(i-1)/2;
-			ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> IMikCorrRels = null;
+			ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> IMikCorrRels = new ArrayList<>();
 			if (numIMikCorrRels>0) {
 				IMikCorrRels = gcimEditIMiControlPanel.getSelectedIMikjCorrRelMap();
 			}
-			for (int m=0; m<numIMikCorrRels; m++) {
-				int indexIMikCorrRel = (i)*(i-1)/2+m;
-				imikjMapCorrRels.set(indexIMikCorrRel, IMikCorrRels.get(m));
-			}
+			imikjMapCorrRels.set(i, IMikCorrRels);
 			
 		}
 
@@ -757,7 +731,7 @@ public class GcimControlPanel extends ControlPanel
 	/**
 	 * This method returns the imikjCorrRel from the imikjMapCorrRels array list for a given index
 	 */
-	public Map<TectonicRegionType, ImCorrelationRelationship> getImikjCorrRel(int index) {
+	public ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship> > getImikjCorrRel(int index) {
 		return imikjMapCorrRels.get(index);
 	}
 	
@@ -850,10 +824,10 @@ public class GcimControlPanel extends ControlPanel
 	 * This method checks the IMjName from the main hazard calcs, to see if it has changed
 	 */
 	public void checkParentIMj() {
-		//Get the old and new IMj's
+		// Get the old and new IMj's
 		Parameter<Double> oldParentIMj = this.parentIMj;
 		Parameter<Double> newParentIMj = parent.getIMTGuiBeanInstance().getSelectedIM();
-		//Now compare
+		// Now compare
 		boolean oldNewIMjSame = true;
 		
 		if (!oldParentIMj.getName().equalsIgnoreCase(newParentIMj.getName())) {
@@ -902,7 +876,7 @@ public class GcimControlPanel extends ControlPanel
 		imiTypes = new ArrayList<String>();
 		imiMapAttenRels = new ArrayList<Map<TectonicRegionType, ScalarIMR>>();
 		imijMapCorrRels = new ArrayList<Map<TectonicRegionType, ImCorrelationRelationship>>();
-		imikjMapCorrRels = new ArrayList<Map<TectonicRegionType, ImCorrelationRelationship>>();
+		imikjMapCorrRels = new ArrayList< ArrayList<? extends Map<TectonicRegionType, ImCorrelationRelationship>> >();
 		
 		ArrayList<String> gcimImisList = new ArrayList<String>();
 		gcimImisList.add(IMI_LIST_DEFAULT);
@@ -952,10 +926,10 @@ public class GcimControlPanel extends ControlPanel
 	}
 	
 	/**
-	 * This methods intiates the GCIM panel inline with the main hazard calc details
+	 * This method intiates the GCIM panel inline with the main hazard calc details
 	 */
 	public void initWithParentDetails() {
-		//update parent site params and IMj
+		// update parent site params and IMj
 		getParentSite();
 		initGcimSite();
 		getParentIMj();
@@ -965,7 +939,7 @@ public class GcimControlPanel extends ControlPanel
 	}
 	
 	/**
-	 * This methods updates the GCIM panel inline with the main hazard calc details
+	 * This method updates the GCIM panel inline with the main hazard calc details
 	 */
 	public void updateWithParentDetails() {
 		//update parent site params and IMj
@@ -985,8 +959,4 @@ public class GcimControlPanel extends ControlPanel
 		String blank = "blank";
 		setParamsVisible(blank);
 	}
-	
-	
-	
-
 }

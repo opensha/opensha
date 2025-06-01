@@ -12,6 +12,7 @@ import org.opensha.commons.data.CSVFile;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
@@ -172,26 +173,14 @@ public enum PRVI25_CrustalDeformationModels implements RupSetDeformationModel {
 	public boolean isApplicableTo(RupSetFaultModel faultModel) {
 		return faultModel instanceof PRVI25_CrustalFaultModels;
 	}
-
+	
 	@Override
-	public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
-		return build(faultModel, 2, 0.5, Double.NaN);
-	}
-
-	@Override
-	public List<? extends FaultSection> build(RupSetFaultModel faultModel, int minPerFault, double ddwFract,
-			double fixedLen) throws IOException {
-		List<? extends FaultSection> fullSects = faultModel.getFaultSections();
-		return buildDefModel(SubSectionBuilder.buildSubSects(faultModel.getFaultSections(), minPerFault, ddwFract, fixedLen), fullSects);
-	}
-
-	@Override
-	public List<? extends FaultSection> buildForSubsects(RupSetFaultModel faultModel,
+	public List<? extends FaultSection> apply(RupSetFaultModel faultModel,
+			LogicTreeBranch<? extends LogicTreeNode> branch, List<? extends FaultSection> fullSects,
 			List<? extends FaultSection> subSects) throws IOException {
-		List<? extends FaultSection> fullSects = faultModel.getFaultSections();
 		return buildDefModel(subSects, fullSects);
 	}
-	
+
 	private List<? extends FaultSection> buildDefModel(List<? extends FaultSection> subSects, List<? extends FaultSection> fullSects) throws IOException {
 		applySlipRates(subSects, fullSects);
 		applyStdDevDefaults(subSects);

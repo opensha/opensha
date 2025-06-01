@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 
@@ -170,14 +171,36 @@ public abstract class AbstractAsyncLogicTreeWriter extends AsyncPostBatchHook {
 		return baPrefix;
 	}
 	
-	public static List<File> getBranchAverageSolutionFiles(File resultsDir, LogicTree<?> tree) {
-		HashSet<String> commonPrefixes = new HashSet<>();
+	public static Map<String, List<LogicTreeBranch<?>>> getBranchAveragePrefixes(LogicTree<?> tree) {
+		HashMap<String, List<LogicTreeBranch<?>>> commonPrefixes = new HashMap<>();
 		
 		for (LogicTreeBranch<?> branch : tree) {
 			String prefix = getBA_prefix(branch);
-			if (prefix != null)
-				commonPrefixes.add(prefix);
+			if (prefix != null) {
+				List<LogicTreeBranch<?>> branches = commonPrefixes.get(prefix);
+				if (branches == null) {
+					branches = new ArrayList<>();
+					commonPrefixes.put(prefix, branches);
+				}
+				commonPrefixes.get(prefix).add(branch);
+			}
 		}
+		
+		return commonPrefixes;
+	}
+	
+	public static Map<String, File> getBranchAverageSolutionFileMap(File resultsDir, LogicTree<?> tree) {
+		Set<String> commonPrefixes = getBranchAveragePrefixes(tree).keySet();
+		
+		Map<String, File> ret = new HashMap<>();
+		for (String prefix : commonPrefixes)
+			ret.put(prefix, baFile(resultsDir, prefix));
+		
+		return ret;
+	}
+	
+	public static List<File> getBranchAverageSolutionFiles(File resultsDir, LogicTree<?> tree) {
+		Set<String> commonPrefixes = getBranchAveragePrefixes(tree).keySet();
 		
 		List<File> ret = new ArrayList<>();
 		for (String prefix : commonPrefixes)

@@ -779,8 +779,23 @@ SubModule<ModuleArchive<OpenSHA_Module>> {
 	 * @return IncrementalMagFreqDist
 	 */
 	public  IncrementalMagFreqDist calcNucleationMFD_forSect(int sectIndex, double minMag, double maxMag, int numMag) {
+		return calcNucleationMFD_forSect(sectIndex, rupSet.getRupturesForSection(sectIndex), minMag, maxMag, numMag);
+	}
+
+	/**
+	 * This give a Nucleation Mag Freq Dist (MFD) for the specified section and rupture list; it is assumed (but not checked)
+	 * that every given rupture involves the given section..  Nucleation probability 
+	 * is defined as the area of the section divided by the area of the rupture.  
+	 * This preserves rates rather than moRates (can't have both)
+	 * @param sectIndex
+	 * @param rups
+	 * @param minMag - lowest mag in MFD
+	 * @param maxMag - highest mag in MFD
+	 * @param numMag - number of mags in MFD
+	 * @return IncrementalMagFreqDist
+	 */
+	public  IncrementalMagFreqDist calcNucleationMFD_forSect(int sectIndex, Collection<Integer> rups, double minMag, double maxMag, int numMag) {
 		ArbIncrementalMagFreqDist mfd = new ArbIncrementalMagFreqDist(minMag, maxMag, numMag);
-		List<Integer> rups = rupSet.getRupturesForSection(sectIndex);
 		RupMFDsModule mfds = getModule(RupMFDsModule.class);
 		if (rups != null) {
 			double sectArea = rupSet.getAreaForSection(sectIndex);

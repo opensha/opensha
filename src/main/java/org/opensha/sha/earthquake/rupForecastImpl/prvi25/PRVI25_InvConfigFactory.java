@@ -21,6 +21,8 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
+import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.CoulombRupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
@@ -60,6 +62,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistance
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.UniqueRupture;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
 import org.opensha.sha.earthquake.faultSysSolution.util.SlipAlongRuptureModelBranchNode;
+import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.NSHM23_ConstraintBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SegmentationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_SlipAlongRuptureModels;
@@ -80,14 +83,17 @@ import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.AnalyticalSingleFa
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.util.ClassicModelInversionSolver;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.SeismicityRateFileLoader.RateType;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalBValues;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_CrustalSeismicityRate;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_LogicTreeBranch;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionBValues;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionCaribbeanSeismicityRate;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionCouplingModels;
+import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionDeformationModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionFaultModels;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.logicTree.PRVI25_SubductionMuertosSeismicityRate;
-import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.magdist.IncrementalMagFreqDist;
 
@@ -97,7 +103,7 @@ import com.google.common.collect.Table;
 
 public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory {
 	
-	protected transient Table<RupSetFaultModel, RupturePlausibilityModels, FaultSystemRupSet> rupSetCache = HashBasedTable.create();
+	protected transient RuptureSets.Cache rupSetCache = new RuptureSets.Cache();
 	protected transient Map<RupSetFaultModel, SectionDistanceAzimuthCalculator> distAzCache = new HashMap<>();
 	protected transient File cacheDir;
 	private boolean autoCache = true;
@@ -148,16 +154,21 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 	protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
+		RupSetSubsectioningModel ssm;
+		if (Double.isFinite(SUB_SECT_DDW_FRACT))
+			ssm = SubSectionBuilder.getModel(2, SUB_SECT_DDW_FRACT, Double.NaN);
+		else 
+			ssm = branch.requireValue(RupSetSubsectioningModel.class);
 		RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
 		if (model == null) {
 			if (fm instanceof PRVI25_SubductionFaultModels) // Subduction
-				model = RupturePlausibilityModels.SIMPLE_SUBDUCTION; // for now
+				model = RupturePlausibilityModels.SIMPLE_SUBDUCTION;
 			else
 				model = RupturePlausibilityModels.COULOMB;
 		}
 		
 		// check cache
-		FaultSystemRupSet rupSet = rupSetCache.get(fm, model);
+		FaultSystemRupSet rupSet = rupSetCache.get(fm, ssm, model);
 		if (rupSet != null)
 			return rupSet;
 		
@@ -166,10 +177,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetDeformationModel dm = fm.getDefaultDeformationModel();
 		List<? extends FaultSection> subSects;
 		try {
-			if (Double.isFinite(SUB_SECT_DDW_FRACT))
-				subSects = dm.build(fm, 2, SUB_SECT_DDW_FRACT, Double.NaN);
-			else
-				subSects = dm.build(fm);
+			subSects = buildSubSects(rupSet, fm, dm, ssm, branch);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -237,7 +245,7 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		if (rupSet == null)
 			rupSet = config.build(threads);
-		rupSetCache.put(fm, model, rupSet);
+		rupSetCache.put(rupSet, fm, ssm, model);
 		
 		if (cachedRupSetFile != null && !cachedRupSetFile.exists()) {
 			// see if we should write it
@@ -297,9 +305,17 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetDeformationModel dm = branch.requireValue(RupSetDeformationModel.class);
 		Preconditions.checkState(dm.isApplicableTo(fm),
 				"Fault and deformation models are not compatible: %s, %s", fm.getName(), dm.getName());
+		RupSetSubsectioningModel ssm;
 		if (Double.isFinite(SUB_SECT_DDW_FRACT))
-			return dm.build(fm, 2, SUB_SECT_DDW_FRACT, Double.NaN);
-		return dm.build(fm);
+			ssm = SubSectionBuilder.getModel(2, SUB_SECT_DDW_FRACT, Double.NaN);
+		else 
+			ssm = branch.requireValue(RupSetSubsectioningModel.class);
+		return buildSubSects(rupSet, fm, dm, ssm, branch);
+	}
+	
+	protected List<? extends FaultSection> buildSubSects(FaultSystemRupSet rupSet, RupSetFaultModel fm,
+			RupSetDeformationModel dm, RupSetSubsectioningModel ssm, LogicTreeBranch<?> branch) throws IOException {
+		return dm.build(fm, ssm, branch);
 	}
 
 	@Override
@@ -307,7 +323,6 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			throws IOException {
 		// we don't trust any modules attached to this rupture set as it could have been used for another calculation
 		// that could have attached anything. Instead, lets only keep the ruptures themselves
-		
 		
 		// override slip rates for the given deformation model
 		List<? extends FaultSection> subSects;
@@ -506,6 +521,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			bVals = SupraSeisBValues.values();
 		else if (branch.hasValue(PRVI25_SubductionBValues.AVERAGE))
 			bVals = PRVI25_SubductionBValues.values();
+		else if (branch.hasValue(PRVI25_SubductionBValues.AVERAGE))
+			bVals = PRVI25_SubductionBValues.values();
 		else
 			bVals = new SectionSupraSeisBValues[] { branch.requireValue(SectionSupraSeisBValues.class) };
 		
@@ -578,7 +595,8 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 	}
 	
 	private static NSHM23_ConstraintBuilder getConstraintBuilder(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) {
-		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE) || branch.hasValue(SupraSeisBValues.AVERAGE) || branch.hasValue(PRVI25_SubductionBValues.AVERAGE))
+		if (branch.hasValue(NSHM23_SegmentationModels.AVERAGE) || branch.hasValue(SupraSeisBValues.AVERAGE)
+				|| branch.hasValue(PRVI25_CrustalBValues.AVERAGE) || branch.hasValue(PRVI25_SubductionBValues.AVERAGE))
 			// return averaged instance, looping over b-values and/or segmentation branches
 			return getAveragedConstraintBuilder(rupSet, branch);
 		return doGetConstraintBuilder(rupSet, branch);
@@ -1192,6 +1210,84 @@ public class PRVI25_InvConfigFactory implements ClusterSpecificInversionConfigur
 			MAX_PROXY_FAULT_RUP_LEN = 0d;
 		}
 		
+	}
+
+	
+	public static class MueAsCrustal extends PRVI25_InvConfigFactory {
+		
+		public MueAsCrustal() {
+			MAX_PROXY_FAULT_RUP_LEN = 0d;
+			PRVI25_GridSourceBuilder.MUERTOS_AS_CRUSTAL = true;
+		}
+		
+		public static List<? extends FaultSection> removeMuertosFromInterface(List<? extends FaultSection> origSubSects) {
+			List<FaultSection> modSubSects = new ArrayList<>();
+			// remove muertos
+			for (FaultSection sect : origSubSects) {
+				if (!sect.getSectionName().contains("Muertos")) {
+					if (sect.getSectionId() != modSubSects.size()) {
+						sect = sect.clone();
+						sect.setSectionId(modSubSects.size());
+					}
+					modSubSects.add(sect);
+				}
+			}
+			Preconditions.checkState(modSubSects.size() < origSubSects.size());
+			return modSubSects;
+		}
+		
+		public static List<? extends FaultSection> addMuertosToCrustal(List<? extends FaultSection> origSubSects,
+				RupSetFaultModel fm, RupSetDeformationModel dm, LogicTreeBranch<?> branch) throws IOException {
+			List<FaultSection> modSubSects = new ArrayList<>();
+			
+			modSubSects.addAll(origSubSects);
+			LogicTreeBranch<LogicTreeNode> interfaceBranch = PRVI25_LogicTreeBranch.DEFAULT_SUBDUCTION_INTERFACE.copy();
+			if (dm == PRVI25_CrustalDeformationModels.GEOLOGIC_DIST_AVG) {
+				// just use prefferred coupling
+				interfaceBranch.setValue(PRVI25_SubductionCouplingModels.PREFERRED);
+			} else {
+				// use randomly sampled coupling
+				double rand = Math.random();
+				double sumWeight = 0d;
+				for (PRVI25_SubductionCouplingModels coupling : PRVI25_SubductionCouplingModels.values()) {
+					double weight = coupling.getNodeWeight(branch);
+					if (weight > 0) {
+						sumWeight += weight;
+						if (rand <= sumWeight) {
+							interfaceBranch.setValue(coupling);
+							break;
+						}
+					}
+				}
+			}
+			List<? extends FaultSection> interfaceSects = PRVI25_SubductionDeformationModels.FULL.build(
+					PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE, interfaceBranch);
+			for (FaultSection sect : interfaceSects) {
+				if (sect.getSectionName().contains("Muertos")) {
+					sect = sect.clone();
+					sect.setSectionId(modSubSects.size());
+					modSubSects.add(sect);
+				}
+			}
+			Preconditions.checkState(modSubSects.size() > origSubSects.size());
+			return modSubSects;
+		}
+
+		@Override
+		protected List<? extends FaultSection> buildSubSects(FaultSystemRupSet rupSet, RupSetFaultModel fm,
+				RupSetDeformationModel dm, RupSetSubsectioningModel ssm, LogicTreeBranch<?> branch) throws IOException {
+			this.cacheDir = null; // we don't want to cache these tests
+			List<? extends FaultSection> origSubSects = super.buildSubSects(rupSet, fm, dm, ssm, branch);
+			List<? extends FaultSection> modSubSects;
+			if (fm instanceof PRVI25_CrustalFaultModels) {
+				modSubSects = addMuertosToCrustal(origSubSects, fm, dm, branch);
+			} else {
+				Preconditions.checkState(fm instanceof PRVI25_SubductionFaultModels);
+				modSubSects = removeMuertosFromInterface(origSubSects);
+			}
+			Preconditions.checkState(!modSubSects.isEmpty());
+			return modSubSects;
+		}
 	}
 
 }

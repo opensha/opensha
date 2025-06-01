@@ -156,8 +156,14 @@ implements ParameterChangeWarningListener {
 //		imNames.add(SEA_1999_AttenRel.NAME);
 //		attenRelClasses.add(SEA_1999_AttenRel.class.getName());
 		for (AttenRelRef ref : AttenRelRef.get(ServerPrefUtils.SERVER_PREFS)) {
-			imNames.add(ref.getName());
-			attenRelClasses.add(ref.getAttenRelClass().getName());
+			try {
+				String name = ref.getName();
+				String className = ref.getAttenRelClass().getName();
+				imNames.add(name);
+				attenRelClasses.add(className);
+			} catch (Exception e) {
+				// skip that IMR
+			}
 		}
 	}
 

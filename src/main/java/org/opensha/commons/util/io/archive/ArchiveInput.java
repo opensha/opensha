@@ -1,6 +1,8 @@
 package org.opensha.commons.util.io.archive;
 
 import java.io.BufferedInputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
@@ -114,7 +116,7 @@ public interface ArchiveInput extends Named, Closeable {
 	public static class ZipFileInput implements FileBacked {
 		
 		private File inputFile;
-		private java.util.zip.ZipFile zip;
+		java.util.zip.ZipFile zip;
 		
 		private java.util.zip.ZipEntry prevEntry;
 
@@ -145,7 +147,7 @@ public interface ArchiveInput extends Named, Closeable {
 			return getEntry(name) != null;
 		}
 		
-		private java.util.zip.ZipEntry getEntry(String name) {
+		protected java.util.zip.ZipEntry getEntry(String name) {
 			java.util.zip.ZipEntry cached = prevEntry;
 			if (cached != null && cached.getName().equals(name))
 				return cached;
@@ -158,6 +160,7 @@ public interface ArchiveInput extends Named, Closeable {
 		@Override
 		public InputStream getInputStream(String name) throws IOException {
 			java.util.zip.ZipEntry entry = getEntry(name);
+			Preconditions.checkNotNull(entry, "Couldn't locate entry: %s", name);
 			return zip.getInputStream(entry);
 		}
 
@@ -185,6 +188,58 @@ public interface ArchiveInput extends Named, Closeable {
 		@Override
 		public File getInputFile() {
 			return inputFile;
+		}
+		
+	}
+	
+	/**
+	 * Version of {@link ZipFileInput} that preloads entries fully into memory on {@link #getInputStream(String)},
+	 * allowing for data parsing to happen in parallel without read contention. The {@link #getInputStream(String)}
+	 * is synchronized, meaning that only one entry will every be read at a time.
+	 */
+	public static class PreloadingZipFileInput extends ZipFileInput {
+
+		public PreloadingZipFileInput(File file) throws IOException {
+			super(file);
+		}
+
+		public PreloadingZipFileInput(java.util.zip.ZipFile zip) throws IOException {
+			super(zip);
+		}
+
+		@Override
+		public synchronized InputStream getInputStream(String name) throws IOException {
+			java.util.zip.ZipEntry entry = getEntry(name);
+			long size = entry.getSize();
+			if (size < 0) {
+				// Size unknown, fallback to ByteArrayOutputStream
+				try (InputStream is = zip.getInputStream(entry);
+						ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+					byte[] buffer = new byte[8192];
+					int len;
+					while ((len = is.read(buffer)) != -1) {
+						baos.write(buffer, 0, len);
+					}
+					return new ByteArrayInputStream(baos.toByteArray());
+				}
+			} else {
+				// Size known, efficient pre-allocation
+				if (size > Integer.MAX_VALUE) {
+					throw new IOException("Entry too large to fit in memory: " + size + " bytes");
+				}
+				byte[] data = new byte[(int) size];
+				try (InputStream is = zip.getInputStream(entry)) {
+					int offset = 0;
+					while (offset < data.length) {
+						int read = is.read(data, offset, data.length - offset);
+						if (read == -1) {
+							throw new IOException("Unexpected end of stream for entry: " + entry.getName());
+						}
+						offset += read;
+					}
+				}
+				return new ByteArrayInputStream(data);
+			}
 		}
 		
 	}
@@ -220,7 +275,9 @@ public interface ArchiveInput extends Named, Closeable {
 
 		@Override
 		public InputStream getInputStream(String name) throws IOException {
-			return zip.getInputStream(getEntry(name));
+			org.apache.commons.compress.archivers.zip.ZipArchiveEntry entry = getEntry(name);
+			Preconditions.checkNotNull(entry, "Couldn't locate entry: %s", name);
+			return zip.getInputStream(entry);
 		}
 		
 		private Spliterator<String> entryNameSpliterator() {

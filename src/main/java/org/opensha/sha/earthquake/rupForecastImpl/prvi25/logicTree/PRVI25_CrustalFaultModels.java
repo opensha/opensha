@@ -19,6 +19,7 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ModelRegion;
 import org.opensha.sha.earthquake.faultSysSolution.modules.ProxyFaultSectionInstances;
 import org.opensha.sha.earthquake.faultSysSolution.modules.RegionsOfInterest;
@@ -26,6 +27,7 @@ import org.opensha.sha.earthquake.faultSysSolution.modules.RupSetTectonicRegimes
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSectionUtils;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.gridded.PRVI25_GridSourceBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader;
 import org.opensha.sha.earthquake.rupForecastImpl.prvi25.util.PRVI25_RegionLoader.PRVI25_SeismicityRegions;
@@ -40,7 +42,7 @@ import com.google.common.base.Preconditions;
 @Affects(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
+public enum PRVI25_CrustalFaultModels implements RupSetFaultModel, RupSetSubsectioningModel {
 	PRVI_CRUSTAL_FM_V1p1("PRVI25 Crustal FM v1.1", "Crustal FM v1.1",
 			"/data/erf/prvi25/fault_models/crustal/NSHM2025_GeoDefModel_PRVI_v1-1_mod.geojson", 1d),
 	PRVI_CRUSTAL_FM_V1p2("PRVI25 Crustal FM v1.2", "Crustal FM v1.2",
@@ -261,6 +263,17 @@ public enum PRVI25_CrustalFaultModels implements RupSetFaultModel {
 	@Override
 	public RupSetDeformationModel getDefaultDeformationModel() {
 		return PRVI25_CrustalDeformationModels.GEOLOGIC;
+	}
+	
+	static final double DOWN_DIP_FRACT_DEFAULT = 0.5;
+	static final double MAX_LEN_DEFAULT = Double.NaN;
+	static final int MIN_SUB_SECTS_PER_FAULT_DEFAULT = 2;
+
+	@Override
+	public List<? extends FaultSection> buildSubSects(RupSetFaultModel faultModel,
+			List<? extends FaultSection> fullSections) {
+		return SubSectionBuilder.buildSubSects(fullSections,
+				MIN_SUB_SECTS_PER_FAULT_DEFAULT, DOWN_DIP_FRACT_DEFAULT, MAX_LEN_DEFAULT);
 	}
 
 }

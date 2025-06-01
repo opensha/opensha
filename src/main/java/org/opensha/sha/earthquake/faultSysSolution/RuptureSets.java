@@ -10,9 +10,12 @@ import java.io.Reader;
 import java.io.Writer;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -20,8 +23,10 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.dom4j.Document;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.XMLUtils;
+import org.opensha.sha.earthquake.faultSysSolution.reports.plots.PlausibilityFilterPlot.RupSetPlausibilityResult;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRuptureBuilder;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.plausibility.PlausibilityConfiguration;
@@ -55,6 +60,7 @@ import org.opensha.sha.earthquake.faultSysSolution.ruptures.strategies.SectCount
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.GeoJSONFaultReader;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.util.SectionDistanceAzimuthCalculator;
 import org.opensha.sha.earthquake.faultSysSolution.util.FaultSysTools;
+import org.opensha.sha.earthquake.faultSysSolution.util.SubSectionBuilder;
 import org.opensha.sha.earthquake.rupForecastImpl.nshm23.logicTree.NSHM23_ScalingRelationships;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.simulators.stiffness.AggregatedStiffnessCache;
@@ -80,6 +86,52 @@ import scratch.UCERF3.utils.DeformationModelFetcher;
 import scratch.UCERF3.utils.U3FaultSystemIO;
 
 public class RuptureSets {
+	
+	/**
+	 * Cache manager for rupture sets, keyed on an arbitrary set of {@link LogicTreeNode}s
+	 */
+	public static class Cache {
+		private Map<CacheKey, FaultSystemRupSet> cache;
+		
+		public Cache() {
+			cache = new HashMap<>();
+		}
+		
+		public FaultSystemRupSet get(LogicTreeNode... cacheNodes) {
+			return cache.get(new CacheKey(cacheNodes));
+		}
+		
+		public void put(FaultSystemRupSet rupSet, LogicTreeNode... cacheNodes) {
+			cache.put(new CacheKey(cacheNodes), rupSet);
+		}
+	}
+	
+	private static class CacheKey {
+		private final LogicTreeNode[] cacheNodes;
+		private CacheKey(LogicTreeNode[] cacheNodes) {
+			super();
+			Preconditions.checkState(cacheNodes.length > 0);
+			this.cacheNodes = cacheNodes;
+		}
+		@Override
+		public int hashCode() {
+			final int prime = 31;
+			int result = 1;
+			result = prime * result + Arrays.hashCode(cacheNodes);
+			return result;
+		}
+		@Override
+		public boolean equals(Object obj) {
+			if (this == obj)
+				return true;
+			if (obj == null)
+				return false;
+			if (getClass() != obj.getClass())
+				return false;
+			CacheKey other = (CacheKey) obj;
+			return Arrays.equals(cacheNodes, other.cacheNodes);
+		}
+	}
 	
 	public static List<? extends FaultSection> getNSHM23SubSects(String state) throws IOException {
 		return GeoJSONFaultReader.buildNSHM23SubSects(state);
@@ -112,7 +164,7 @@ public class RuptureSets {
 
 		public U3RupSetConfig(FaultModels fm, RupSetScalingRelationship scale) throws IOException {
 			this.fm = fm;
-			this.subSects = fm.getDefaultDeformationModel().build(fm);
+			this.subSects = fm.getDefaultDeformationModel().build(fm, null, null);
 			this.scale = scale;
 		}
 
@@ -177,6 +229,15 @@ public class RuptureSets {
 		
 	}
 	
+	public static RupSetSubsectioningModel getDefaultSubSectModel(RupSetFaultModel fm) {
+		if (fm instanceof RupSetSubsectioningModel)
+			return (RupSetSubsectioningModel)fm;
+		RupSetDeformationModel defaultDM = fm.getDefaultDeformationModel();
+		if (defaultDM instanceof RupSetSubsectioningModel)
+			return (RupSetSubsectioningModel)defaultDM;
+		return SubSectionBuilder.DEAFULT_BUILDER;
+	}
+	
 	public static class SimpleAzimuthalRupSetConfig extends RupSetConfig {
 		
 		private List<? extends FaultSection> subSects;
@@ -194,7 +255,7 @@ public class RuptureSets {
 		@Expose	private float adaptiveSectFract = 0f;
 
 		public SimpleAzimuthalRupSetConfig(RupSetFaultModel fm, RupSetScalingRelationship scale) throws IOException {
-			this(fm.getDefaultDeformationModel().build(fm), scale);
+			this(fm.getDefaultDeformationModel().build(fm, getDefaultSubSectModel(fm), null), scale);
 		}
 
 		public SimpleAzimuthalRupSetConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
@@ -298,7 +359,7 @@ public class RuptureSets {
 		@Expose	private float adaptiveSectFract = 0f;
 
 		public SimpleSubductionRupSetConfig(RupSetFaultModel fm, RupSetScalingRelationship scale) throws IOException {
-			this(fm.getDefaultDeformationModel().build(fm), scale);
+			this(fm.getDefaultDeformationModel().build(fm, getDefaultSubSectModel(fm), null), scale);
 		}
 
 		public SimpleSubductionRupSetConfig(List<? extends FaultSection> subSects, RupSetScalingRelationship scale) {
@@ -436,7 +497,7 @@ public class RuptureSets {
 		@Expose private boolean connectProxyFaults = true;
 
 		public CoulombRupSetConfig(RupSetFaultModel fm, RupSetScalingRelationship scale) throws IOException {
-			this(fm.getDefaultDeformationModel().build(fm), fm.getFilePrefix().toLowerCase(), scale);
+			this(fm.getDefaultDeformationModel().build(fm, getDefaultSubSectModel(fm), null), fm.getFilePrefix().toLowerCase(), scale);
 		}
 
 		public CoulombRupSetConfig(List<? extends FaultSection> subSects, String fmPrefix, RupSetScalingRelationship scale) {
@@ -1348,7 +1409,7 @@ public class RuptureSets {
 				String fmStr = cmd.getOptionValue("fault-model");
 				FaultModels fm = FaultModels.valueOf(fmStr.trim().toUpperCase());
 				Preconditions.checkNotNull(fm, "Unknown fault model: %s", fmStr);
-				sects = fm.getDefaultDeformationModel().build(fm);
+				sects = fm.getDefaultDeformationModel().build(fm, getDefaultSubSectModel(fm), null);
 			}
 			System.out.println("Loaded "+sects.size()+" sub-sections");
 			for (int i=0; i<sects.size(); i++) {
