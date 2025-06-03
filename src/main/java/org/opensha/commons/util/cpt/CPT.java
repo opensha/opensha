@@ -44,7 +44,10 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 	private static final long serialVersionUID = 1l;
 	public static final String XML_METADATA_NAME = "CPT";
 	private Color nanColor, belowMinColor, aboveMaxColor, gapColor;
-	public Blender blender;
+	private Blender blender;
+	
+	// if true, this CPT is in Log10 space and should be plotted using a logarithmic axis
+	private boolean isLog10;
 	
 	private double preferredTickInterval = Double.NaN;
 	
@@ -97,6 +100,22 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		
 		setBelowMinColor(colors[0]);
 		setAboveMaxColor(colors[colors.length-1]);
+	}
+
+	/**
+	 * @return true if this CPT is in log10 space
+	 */
+	public boolean isLog10() {
+		return isLog10;
+	}
+
+	/**
+	 * Set log10 flag, indicating that this CPT is in log10 space and should be plotted using logarithmic axes. This
+	 * does not change the data itself.
+	 * @param isLog10
+	 */
+	public void setLog10(boolean isLog10) {
+		this.isLog10 = isLog10;
 	}
 
 	/**

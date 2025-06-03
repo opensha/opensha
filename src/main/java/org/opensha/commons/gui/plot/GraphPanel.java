@@ -1760,16 +1760,30 @@ public class GraphPanel extends JSplitPane {
 	
 	private static PaintScaleLegend getLegendForCPT(PaintScaleWrapper scale, String zAxisLabel,
 			int axisFontSize, int tickFontSize, double tickUnit, RectangleEdge position) {
-		NumberAxis fakeZAxis = new NumberAxis();
-		fakeZAxis.setLowerBound(scale.getLowerBound());
-		fakeZAxis.setUpperBound(scale.getUpperBound());
-		fakeZAxis.setLabel(zAxisLabel);
+		CPT cpt = scale.getCPT();
+		ValueAxis fakeZAxis;
+		if (cpt.isLog10()) {
+			JFreeLogarithmicAxis logAxis = new JFreeLogarithmicAxis(zAxisLabel);
+			// this fixes the overlap issue with the bottom of the plot (not sure if needed here, used for regular plots)
+			logAxis.setVerticalAnchorShift(4);
+			logAxis.setLowerBound(scale.getLowerBound());
+			logAxis.setLowerBound(scale.getUpperBound());
+			
+			fakeZAxis = logAxis;
+		} else {
+			NumberAxis linearAxis = new NumberAxis();
+			linearAxis.setLowerBound(scale.getLowerBound());
+			linearAxis.setUpperBound(scale.getUpperBound());
+			linearAxis.setLabel(zAxisLabel);
+			if (tickUnit > 0)
+				linearAxis.setTickUnit(new NumberTickUnit(tickUnit));
+			
+			fakeZAxis = linearAxis;
+		}
 		Font axisLabelFont = fakeZAxis.getLabelFont();
 		fakeZAxis.setLabelFont(new Font(axisLabelFont.getFontName(),axisLabelFont.getStyle(),axisFontSize));
 		Font axisTickFont = fakeZAxis.getTickLabelFont();
 		fakeZAxis.setTickLabelFont(new Font(axisTickFont.getFontName(),axisTickFont.getStyle(),tickFontSize));
-		if (tickUnit > 0)
-			fakeZAxis.setTickUnit(new NumberTickUnit(tickUnit));
 		PaintScaleLegend legend = new PaintScaleLegend(scale, fakeZAxis);
 		legend.setSubdivisionCount(500);
 		if (position != null)
