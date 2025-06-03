@@ -67,6 +67,7 @@ import org.opensha.commons.data.xyz.XYZ_DataSet;
 import org.opensha.commons.gui.plot.jfreechart.CustomOffsetNumberAxis;
 import org.opensha.commons.gui.plot.jfreechart.DiscretizedFunctionXYDataSet;
 import org.opensha.commons.gui.plot.jfreechart.JFreeLogarithmicAxis;
+import org.opensha.commons.gui.plot.jfreechart.LogPaintScaleLegend;
 import org.opensha.commons.gui.plot.jfreechart.MyTickUnits;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.PaintScaleWrapper;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYIntervalBlockRenderer;
@@ -1784,7 +1785,12 @@ public class GraphPanel extends JSplitPane {
 		fakeZAxis.setLabelFont(new Font(axisLabelFont.getFontName(),axisLabelFont.getStyle(),axisFontSize));
 		Font axisTickFont = fakeZAxis.getTickLabelFont();
 		fakeZAxis.setTickLabelFont(new Font(axisTickFont.getFontName(),axisTickFont.getStyle(),tickFontSize));
-		PaintScaleLegend legend = new PaintScaleLegend(scale, fakeZAxis);
+		PaintScaleLegend legend;
+		if (cpt.isLog10())
+			// this will do the subdivisions correctly in log-space, rather than getting bigger for smaller values
+			legend = new LogPaintScaleLegend(scale, (JFreeLogarithmicAxis)fakeZAxis);
+		else
+			legend = new PaintScaleLegend(scale, fakeZAxis);
 		legend.setSubdivisionCount(500);
 		if (position != null)
 			legend.setPosition(position);

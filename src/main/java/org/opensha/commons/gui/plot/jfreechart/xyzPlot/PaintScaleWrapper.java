@@ -19,22 +19,16 @@ public class PaintScaleWrapper implements PaintScale {
 
 	@Override
 	public double getLowerBound() {
-		if (cpt.isLog10())
-			return Math.pow(10, cpt.getMinValue());
 		return cpt.getMinValue();
 	}
 
 	@Override
 	public Paint getPaint(double value) {
-		if (cpt.isLog10())
-			value = Math.log10(value);
 		return cpt.getColor((float)value);
 	}
 
 	@Override
 	public double getUpperBound() {
-		if (cpt.isLog10())
-			return Math.pow(10, cpt.getMaxValue());
 		return cpt.getMaxValue();
 	}
 	

@@ -143,9 +143,9 @@ public class SubSectionPolygonBuilder {
 					} else {
 						angle = 0d;
 					}
-					System.out.println(sect.getSectionName()+" shear iter "+iter+"; leftFractWidth="
-							+(float)(leftWidth/sectLen)+", rightFractWidth="+(float)(rightWidth/sectLen)
-							+", shearAngle="+(float)angle);
+//					System.out.println(sect.getSectionName()+" shear iter "+iter+"; leftFractWidth="
+//							+(float)(leftWidth/sectLen)+", rightFractWidth="+(float)(rightWidth/sectLen)
+//							+", shearAngle="+(float)angle);
 					if (first)
 						firstAngle = angle;
 					else
@@ -159,7 +159,7 @@ public class SubSectionPolygonBuilder {
 					if (sect instanceof GeoJSONFaultSection)
 						((GeoJSONFaultSection) sect).getProperties().set(SECT_POLY_DIRECTION_PROP_NAME, sect.getDipDirection()+shearAngles[i]);
 				}
-				System.out.println("Shear angles for "+subSects.get(0).getParentSectionName()+": "+Doubles.asList(shearAngles));
+//				System.out.println("Shear angles for "+subSects.get(0).getParentSectionName()+": "+Doubles.asList(shearAngles));
 			}
 			
 			for (int i=0; i<subSects.size(); i++) {
