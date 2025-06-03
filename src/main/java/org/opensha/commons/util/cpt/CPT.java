@@ -111,7 +111,11 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 
 	/**
 	 * Set log10 flag, indicating that this CPT is in log10 space and should be plotted using logarithmic axes. This
-	 * does not change the data itself.
+	 * does not change the underlying data itself.
+	 * <br>
+	 * If log10 is set, calls to {{@link #getColor(float)} assume the passed in value is in linear space and will be
+	 * converted internally; similarly, {{@link #getMinValue()} and {{@link #getMaxValue()} will return the bounds in
+	 * linear space. Original values cane accessed via  
 	 * @param isLog10
 	 */
 	public void setLog10(boolean isLog10) {
@@ -254,12 +258,29 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 
 	/**
 	 * This returns a color given a value for this specific CPT file or null if
-	 * the color is undefined
+	 * the color is undefined.
+	 * <br>
+	 * If {@link #isLog10()} is true, the passed in value will be converted to it's log10 equivalent internally;
+	 * use {@link #getColorRaw(float)} to access the color with a value already in log100 space.
 	 *
 	 * @param value
 	 * @return Color corresponding to value
 	 */
 	public Color getColor(float value) {
+		if (isLog10)
+			value = (float)Math.log10(value);
+		return getColorRaw(value);
+	}
+	
+	/**
+	 * This returns a color given a value for this specific CPT file or null if
+	 * the color is undefined. Unlike {@link #getColor(float)}, this ignores the
+	 * {@link #isLog10()} setting.
+	 *
+	 * @param value
+	 * @return Color corresponding to value
+	 */
+	public Color getColorRaw(float value) {
 		CPTVal cpt_val = getCPTVal(value);
 
 		if (cpt_val != null) {
@@ -695,6 +716,20 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 	}
 	
 	public float getMinValue() {
+		float min = getMinValueRaw();
+		if (isLog10)
+			min = (float)Math.pow(10, min);
+		return min;
+	}
+	
+	public float getMaxValue() {
+		float max = getMaxValueRaw();
+		if (isLog10)
+			max = (float)Math.pow(10, max);
+		return max;
+	}
+	
+	public float getMinValueRaw() {
 		float min = Float.POSITIVE_INFINITY;
 		for (CPTVal cptVal : this) {
 			if (cptVal.start < min)
@@ -705,7 +740,7 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		return min;
 	}
 	
-	public float getMaxValue() {
+	public float getMaxValueRaw() {
 		float max = Float.NEGATIVE_INFINITY;
 		for (CPTVal cptVal : this) {
 			if (cptVal.start > max)
