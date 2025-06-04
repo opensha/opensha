@@ -101,6 +101,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.commons.math3.util.Precision;
 import org.jfree.chart.axis.AxisState;
 import org.jfree.chart.axis.LogAxis;
 import org.jfree.chart.axis.NumberTick;
@@ -345,7 +346,8 @@ public class JFreeLogarithmicAxis extends LogAxis {
 
 //				System.out.println("\t\tj="+j+", tickVal="+tickVal+", tickLabel="+tickLabel);
 
-				if (tickVal > upperBoundVal) {
+				if (tickVal > upperBoundVal && !Precision.equals(tickVal, upperBoundVal, upperBoundVal*1e-6)) {
+//					System.out.println("We're past it: "+tickVal+" > "+upperBoundVal);
 					return ticks;     //if past highest data value then exit method
 				}
 
@@ -646,7 +648,6 @@ public class JFreeLogarithmicAxis extends LogAxis {
 	protected AxisState drawTickMarksAndLabels(Graphics2D g2, double cursor,
 			Rectangle2D plotArea,
 			Rectangle2D dataArea, RectangleEdge edge) {
-
 		AxisState state = new AxisState(cursor);
 
 		//calls the super class function if user wants to use the "1e#" style of labelling of ticks.
@@ -661,6 +662,12 @@ public class JFreeLogarithmicAxis extends LogAxis {
 
 		List ticks = refreshTicks(g2, state, dataArea, edge);
 		state.setTicks(ticks);
+		
+		Font tickFont = this.getTickLabelFont();
+
+		Font majorTickFont = new Font(tickFont.getName(), tickFont.getStyle(), tickFont.getSize() + (int)(tickFont.getSize() * 0.2));
+		Font minorTickFont = new Font(tickFont.getName(), tickFont.getStyle(), tickFont.getSize() - (int)(tickFont.getSize() * 0.2));
+		Font powerTickFont = new Font(tickFont.getName(), tickFont.getStyle(), tickFont.getSize() - (int)(tickFont.getSize() * 0.2));
 
 		g2.setFont(getTickLabelFont());
 		Iterator iterator = ticks.iterator();
@@ -673,9 +680,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 				eIndex =tick.getText().indexOf("E");
 			boolean majorAxis = eIndex >= 0;
 
-			Font tickFont = this.getTickLabelFont();
-			if (majorAxis)
-				g2.setFont(new Font(tickFont.getName(), tickFont.getStyle(), tickFont.getSize()+(int)(tickFont.getSize()*(0.2))));
+			g2.setFont(majorAxis ? majorTickFont : minorTickFont);
 
 			if (isTickLabelsVisible()) {
 				g2.setPaint(getTickLabelPaint());
@@ -718,7 +723,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 								tick.getRotationAnchor()
 						);
 						// setting the font properties to show the power of 10
-						g2.setFont(new Font(tickFont.getName(), tickFont.getStyle(), tickFont.getSize()-(int)(tickFont.getSize()*(0.2))));
+						g2.setFont(powerTickFont);
 
 						float horzOffset = (int)(0.3*getTickLabelFont().getSize());
 						if (!tick.getText().startsWith("-") && edge == RectangleEdge.BOTTOM)
