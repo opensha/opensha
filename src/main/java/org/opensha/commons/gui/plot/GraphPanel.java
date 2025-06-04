@@ -1768,7 +1768,7 @@ public class GraphPanel extends JSplitPane {
 			// this fixes the overlap issue with the bottom of the plot (not sure if needed here, used for regular plots)
 			logAxis.setVerticalAnchorShift(4);
 			logAxis.setLowerBound(scale.getLowerBound());
-			logAxis.setLowerBound(scale.getUpperBound());
+			logAxis.setUpperBound(scale.getUpperBound());
 			
 			fakeZAxis = logAxis;
 		} else {
