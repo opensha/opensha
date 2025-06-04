@@ -118,6 +118,12 @@ import org.jfree.chart.ui.TextAnchor;
 
 /**
  * A numerical axis that uses a logarithmic scale.
+ * 
+ * Note from Kevin in 2025: I don't know where this came from or why we have our own in OpenSHA, it seems to be based
+ * on an ancient JreeChart implementation and is similar to (but differs from) the log axis supplied directly in
+ * JFreeChart. I remember hearing that we contributed some code related to this back to JFreeChart (before I arrived
+ * in 2008), so maybe this is part of that? I also don't know who Michael Duffy is, but the JFreeChart LogAxis
+ * class claims to have been originally contributed by him.
  *
  * @author Michael Duffy
  */
