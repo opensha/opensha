@@ -67,6 +67,7 @@ import org.opensha.commons.data.xyz.XYZ_DataSet;
 import org.opensha.commons.gui.plot.jfreechart.CustomOffsetNumberAxis;
 import org.opensha.commons.gui.plot.jfreechart.DiscretizedFunctionXYDataSet;
 import org.opensha.commons.gui.plot.jfreechart.JFreeLogarithmicAxis;
+import org.opensha.commons.gui.plot.jfreechart.LogPaintScaleLegend;
 import org.opensha.commons.gui.plot.jfreechart.MyTickUnits;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.PaintScaleWrapper;
 import org.opensha.commons.gui.plot.jfreechart.xyzPlot.XYIntervalBlockRenderer;
@@ -1760,17 +1761,36 @@ public class GraphPanel extends JSplitPane {
 	
 	private static PaintScaleLegend getLegendForCPT(PaintScaleWrapper scale, String zAxisLabel,
 			int axisFontSize, int tickFontSize, double tickUnit, RectangleEdge position) {
-		NumberAxis fakeZAxis = new NumberAxis();
-		fakeZAxis.setLowerBound(scale.getLowerBound());
-		fakeZAxis.setUpperBound(scale.getUpperBound());
-		fakeZAxis.setLabel(zAxisLabel);
+		CPT cpt = scale.getCPT();
+		ValueAxis fakeZAxis;
+		if (cpt.isLog10()) {
+			JFreeLogarithmicAxis logAxis = new JFreeLogarithmicAxis(zAxisLabel);
+			// this fixes the overlap issue with the bottom of the plot (not sure if needed here, used for regular plots)
+			logAxis.setVerticalAnchorShift(4);
+			logAxis.setLowerBound(scale.getLowerBound());
+			logAxis.setUpperBound(scale.getUpperBound());
+			
+			fakeZAxis = logAxis;
+		} else {
+			NumberAxis linearAxis = new NumberAxis();
+			linearAxis.setLowerBound(scale.getLowerBound());
+			linearAxis.setUpperBound(scale.getUpperBound());
+			linearAxis.setLabel(zAxisLabel);
+			if (tickUnit > 0)
+				linearAxis.setTickUnit(new NumberTickUnit(tickUnit));
+			
+			fakeZAxis = linearAxis;
+		}
 		Font axisLabelFont = fakeZAxis.getLabelFont();
 		fakeZAxis.setLabelFont(new Font(axisLabelFont.getFontName(),axisLabelFont.getStyle(),axisFontSize));
 		Font axisTickFont = fakeZAxis.getTickLabelFont();
 		fakeZAxis.setTickLabelFont(new Font(axisTickFont.getFontName(),axisTickFont.getStyle(),tickFontSize));
-		if (tickUnit > 0)
-			fakeZAxis.setTickUnit(new NumberTickUnit(tickUnit));
-		PaintScaleLegend legend = new PaintScaleLegend(scale, fakeZAxis);
+		PaintScaleLegend legend;
+		if (cpt.isLog10())
+			// this will do the subdivisions correctly in log-space, rather than getting bigger for smaller values
+			legend = new LogPaintScaleLegend(scale, (JFreeLogarithmicAxis)fakeZAxis);
+		else
+			legend = new PaintScaleLegend(scale, fakeZAxis);
 		legend.setSubdivisionCount(500);
 		if (position != null)
 			legend.setPosition(position);

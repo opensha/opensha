@@ -1254,7 +1254,7 @@ public class SegmentationCalculator {
 				fakeXY.set(0d, -1d);
 				fakeXY.setName("Connection");
 				funcs.add(fakeXY);
-				float half = rateCPT.getMinValue() + 0.5f*(rateCPT.getMaxValue()-rateCPT.getMinValue());
+				double half = rateCPT.getMinValue() + 0.5f*(rateCPT.getMaxValue()-rateCPT.getMinValue());
 				chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, rateCPT.getColor(half)));
 				
 				DefaultXY_DataSet zerosScatter = new DefaultXY_DataSet();
@@ -1733,7 +1733,7 @@ public class SegmentationCalculator {
 				fakeXY.set(0d, -1d);
 				fakeXY.setName("Connection");
 				funcs.add(fakeXY);
-				float half = rateCPT.getMinValue() + 0.5f*(rateCPT.getMaxValue()-rateCPT.getMinValue());
+				double half = rateCPT.getMinValue() + 0.5*(rateCPT.getMaxValue()-rateCPT.getMinValue());
 				chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, rateCPT.getColor(half)));
 				
 				DefaultXY_DataSet zerosScatter = new DefaultXY_DataSet();
@@ -1962,7 +1962,7 @@ public class SegmentationCalculator {
 			fakeXY.set(0d, -1d);
 			fakeXY.setName("Connection");
 			funcs.add(fakeXY);
-			float half = rateCPT.getMinValue() + 0.5f*(rateCPT.getMaxValue()-rateCPT.getMinValue());
+			double half = rateCPT.getMinValue() + 0.5*(rateCPT.getMaxValue()-rateCPT.getMinValue());
 			chars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, rateCPT.getColor(half)));
 			targetRatioFuncs.add(fakeXY);
 			targetRatioChars.add(new PlotCurveCharacterstics(PlotSymbol.FILLED_CIRCLE, scatterWidth, rateCPT.getMaxColor()));
