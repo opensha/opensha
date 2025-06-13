@@ -34,8 +34,8 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum PRVI25_SubductionDeformationModels implements RupSetDeformationModel {
-	FULL("Full Rate", "Full", 0.5),
-	PARTIAL("Partial Rate", "Partial", 0.5);
+	FULL("Full Partitioning", "Full", 0.5),
+	PARTIAL("Trench-Normal Partitioning", "Trench-Normal", 0.5);
 
 	private static final String VERSION = "v4";
 	private static final String PREFIX = "/data/erf/prvi25/def_models/subduction/"+VERSION+"/";

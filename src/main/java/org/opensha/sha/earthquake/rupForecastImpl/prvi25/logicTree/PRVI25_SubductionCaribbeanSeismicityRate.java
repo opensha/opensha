@@ -48,33 +48,33 @@ import com.google.common.collect.Table;
 public enum PRVI25_SubductionCaribbeanSeismicityRate implements LogicTreeNode {
 	LOW("Lower Seismicity Bound (p2.5)", "Low", 0.13d) {
 		@Override
-		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax, boolean slab) throws IOException {
-			return loadRateModel(TYPE, slab).buildLower(refMFD, mMax);
+		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner, boolean slab) throws IOException {
+			return loadRateModel(TYPE, slab).buildLower(refMFD, mMax, magCorner);
 		}
 	},
 	PREFFERRED("Preffered Seismicity Rate", "Preferred", 0.74d) {
 		@Override
-		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax, boolean slab) throws IOException {
-			return loadRateModel(TYPE, slab).buildPreferred(refMFD, mMax);
+		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner, boolean slab) throws IOException {
+			return loadRateModel(TYPE, slab).buildPreferred(refMFD, mMax, magCorner);
 		}
 	},
 	HIGH("Upper Seismicity Bound (p97.5)", "High", 0.13d) {
 		@Override
-		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax, boolean slab) throws IOException {
-			return loadRateModel(TYPE, slab).buildUpper(refMFD, mMax);
+		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner, boolean slab) throws IOException {
+			return loadRateModel(TYPE, slab).buildUpper(refMFD, mMax, magCorner);
 		}
 	},
 	AVERAGE("Average Seismicity Rate", "Average", 0d) {
 
 		@Override
-		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax, boolean slab) throws IOException {
+		public IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner, boolean slab) throws IOException {
 			IncrementalMagFreqDist ret = null;
 			double weightSum = 0d;
 			for (PRVI25_SubductionCaribbeanSeismicityRate seis : values()) {
 				if (seis == this || seis.weight == 0d)
 					continue;
 				weightSum += seis.weight;
-				IncrementalMagFreqDist mfd = seis.build(refMFD, mMax, slab);
+				IncrementalMagFreqDist mfd = seis.build(refMFD, mMax, magCorner, slab);
 				if (ret == null)
 					ret = new IncrementalMagFreqDist(mfd.getMinX(), mfd.getMaxX(), mfd.size());
 				else
@@ -108,10 +108,15 @@ public enum PRVI25_SubductionCaribbeanSeismicityRate implements LogicTreeNode {
 		rateModels = null;
 	}
 	
-	public abstract IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax, boolean slab) throws IOException;
+	public abstract IncrementalMagFreqDist build(EvenlyDiscretizedFunc refMFD, double mMax, double magCorner, boolean slab) throws IOException;
 	
 	public static SeismicityRateModel loadRateModel(boolean slab) throws IOException {
 		return loadRateModel(TYPE, slab);
+	}
+	
+	public static List<? extends RateRecord> loadRates(RateType type, boolean slab) throws IOException {
+		CSVFile<String> csv = loadCSV(slab);
+		return SeismicityRateFileLoader.loadRecords(csv, type);
 	}
 	
 	public synchronized static SeismicityRateModel loadRateModel(RateType type, boolean slab) throws IOException {
@@ -178,21 +183,34 @@ public enum PRVI25_SubductionCaribbeanSeismicityRate implements LogicTreeNode {
 	}
 	
 	public static void main(String[] args) throws IOException {
+		boolean cumulative = true;
 		for (boolean slab : new boolean[] {false,true}) {
 			if (slab)
 				System.out.println("SLAB");
 			else
 				System.out.println("INTERFACE");
 			double mMax = 7.95;
+//			double magCorner = Double.NaN;
+			double magCorner = slab ? 7.4 : Double.NaN;
 			EvenlyDiscretizedFunc refMFD = FaultSysTools.initEmptyMFD(5.01, mMax);
-			IncrementalMagFreqDist pref = PREFFERRED.build(refMFD, mMax, true);
-			IncrementalMagFreqDist low = LOW.build(refMFD, mMax, true);
-			IncrementalMagFreqDist high = HIGH.build(refMFD, mMax, true);
+			
+			EvenlyDiscretizedFunc pref, low, high, avg;
+			if (cumulative) {
+				pref = PREFFERRED.build(refMFD, mMax, magCorner, slab).getCumRateDistWithOffset();
+				low = LOW.build(refMFD, mMax, magCorner, slab).getCumRateDistWithOffset();
+				high = HIGH.build(refMFD, mMax, magCorner, slab).getCumRateDistWithOffset();
+				avg = AVERAGE.build(refMFD, mMax, magCorner, slab).getCumRateDistWithOffset();
+			} else {
+				pref = PREFFERRED.build(refMFD, mMax, magCorner, slab);
+				low = LOW.build(refMFD, mMax, magCorner, slab);
+				high = HIGH.build(refMFD, mMax, magCorner, slab);
+				avg = AVERAGE.build(refMFD, mMax, magCorner, slab);
+			}
 			
 			for (int i=0; i<refMFD.size(); i++) {
 				if (refMFD.getX(i) > refMFD.getClosestXIndex(mMax))
 					break;
-				System.out.println((float)refMFD.getX(i)+"\t"+(float)pref.getY(i)+"\t["+(float)low.getY(i)+","+(float)high.getY(i)+"]");
+				System.out.println((float)pref.getX(i)+"\t"+(float)pref.getY(i)+"\t["+(float)low.getY(i)+","+(float)high.getY(i)+"]\tavg="+(float)avg.getY(i));
 			}
 			System.out.println();
 		}
