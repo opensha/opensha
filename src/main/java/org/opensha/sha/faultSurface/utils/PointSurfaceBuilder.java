@@ -1363,7 +1363,7 @@ public class PointSurfaceBuilder {
 		}
 	}
 	
-	private static <E extends RuptureSurface> WeightedList<E> buildConcreteWeightedList(WeightedList<? extends Supplier<E>> callList) {
+	private static <E extends RuptureSurface> WeightedList<E> buildConcreteWeightedList(WeightedList<? extends Supplier<? extends E>> callList) {
 		List<WeightedValue<E>> list;
 		switch (callList.size()) {
 		// more memory-efficient common special cases
@@ -1371,13 +1371,13 @@ public class PointSurfaceBuilder {
 			list = List.of();
 			break;
 		case 1:
-			WeightedValue<? extends Supplier<E>> singleCall = callList.get(0);
+			WeightedValue<? extends Supplier<? extends E>> singleCall = callList.get(0);
 			list = List.of(
 					new WeightedValue<>(singleCall.value.get(), singleCall.weight));
 			break;
 		case 2:
-			WeightedValue<? extends Supplier<E>> call0 = callList.get(0);
-			WeightedValue<? extends Supplier<E>> call1 = callList.get(1);
+			WeightedValue<? extends Supplier<? extends E>> call0 = callList.get(0);
+			WeightedValue<? extends Supplier<? extends E>> call1 = callList.get(1);
 			list = List.of(
 					new WeightedValue<>(call0.value.get(), call0.weight),
 					new WeightedValue<>(call1.value.get(), call1.weight));
@@ -1386,7 +1386,7 @@ public class PointSurfaceBuilder {
 		// default case when size > 2
 		default:
 			list = new ArrayList<>(callList.size());
-			for (WeightedValue<? extends Supplier<E>> val : callList)
+			for (WeightedValue<? extends Supplier<? extends E>> val : callList)
 				list.add(new WeightedValue<>(val.value.get(), val.weight));
 			list = Collections.unmodifiableList(list);
 			break;
