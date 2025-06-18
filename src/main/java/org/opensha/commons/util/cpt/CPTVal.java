@@ -11,18 +11,18 @@ import org.opensha.commons.util.XMLUtils;
 public class CPTVal implements Comparable<CPTVal>, Serializable, Cloneable, XMLSaveable {
 	public static final String XML_METADATA_NAME = "CPTVal";
 	
-	/**
+	/*
 	 * In general this information determines the indicator color associated
 	 * with a value with a certain range.
 	 *
 	 * This class correspond to a row in a CPT file
+	 * 
+	 * TODO: make these final
 	 */
 	public Color minColor;
 	public Color maxColor;
-	public float start;
-	public float end;
-
-	public CPTVal() {}
+	public double start;
+	public double end;
 	
 	/**
 	 *
@@ -38,7 +38,7 @@ public class CPTVal implements Comparable<CPTVal>, Serializable, Cloneable, XMLS
 	 *            end
 	 *
 	 */
-	public CPTVal(float start, int minR, int minG, int minB, float end,
+	public CPTVal(double start, int minR, int minG, int minB, double end,
 			int maxR, int maxG, int maxB) {
 		minColor = new Color(minR, minG, minB);
 		maxColor = new Color(maxR, maxG, maxB);
@@ -52,7 +52,7 @@ public class CPTVal implements Comparable<CPTVal>, Serializable, Cloneable, XMLS
 		// System.out.println("Max: " + maxColor);
 	}
 	
-	public CPTVal(float start, Color minColor, float end, Color maxColor) {
+	public CPTVal(double start, Color minColor, double end, Color maxColor) {
 		this.minColor = minColor;
 		this.maxColor = maxColor;
 		this.start = start;
@@ -83,11 +83,11 @@ public class CPTVal implements Comparable<CPTVal>, Serializable, Cloneable, XMLS
 	public static CPTVal fromXMLMetadata(Element valElem) {
 		Element startEl = valElem.element("Start");
 		Color startColor = XMLUtils.colorFromXML(startEl.element("Color"));
-		float minVal = Float.parseFloat(startEl.attributeValue("value"));
+		double minVal = Double.parseDouble(startEl.attributeValue("value"));
 		
 		Element endEl = valElem.element("End");
 		Color endColor = XMLUtils.colorFromXML(endEl.element("Color"));
-		float maxVal = Float.parseFloat(endEl.attributeValue("value"));
+		double maxVal = Double.parseDouble(endEl.attributeValue("value"));
 		
 		return new CPTVal(minVal, startColor, maxVal, endColor);
 	}
@@ -99,11 +99,11 @@ public class CPTVal implements Comparable<CPTVal>, Serializable, Cloneable, XMLS
 	public int compareTo(CPTVal other) {
 		// If this range is less than other range or only contains the start
 		// point of the other range
-		if (this.end <= other.start) {
+		if ((float)this.end <= (float)other.start) {
 			return -1;// (Float.valueOf(this.end - other.start )).intValue();
 		}// If this range is greater than other range or only contains the
 			// end point of the other range
-		else if (this.start >= other.end) {
+		else if ((float)this.start >= (float)other.end) {
 			return +1;// (Float.valueOf(this.start - other.end)).intValue();
 		} else {
 			// There is overlap
@@ -115,10 +115,10 @@ public class CPTVal implements Comparable<CPTVal>, Serializable, Cloneable, XMLS
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
-		result = prime * result + Float.floatToIntBits(end);
+		result = prime * result + Float.floatToIntBits((float)end);
 		result = prime * result + ((maxColor == null) ? 0 : maxColor.hashCode());
 		result = prime * result + ((minColor == null) ? 0 : minColor.hashCode());
-		result = prime * result + Float.floatToIntBits(start);
+		result = prime * result + Float.floatToIntBits((float)start);
 		return result;
 	}
 
@@ -131,7 +131,7 @@ public class CPTVal implements Comparable<CPTVal>, Serializable, Cloneable, XMLS
 		if (getClass() != obj.getClass())
 			return false;
 		CPTVal other = (CPTVal) obj;
-		if (Float.floatToIntBits(end) != Float.floatToIntBits(other.end))
+		if (Double.doubleToLongBits(end) != Double.doubleToLongBits(other.end))
 			return false;
 		if (maxColor == null) {
 			if (other.maxColor != null)
@@ -143,7 +143,7 @@ public class CPTVal implements Comparable<CPTVal>, Serializable, Cloneable, XMLS
 				return false;
 		} else if (!minColor.equals(other.minColor))
 			return false;
-		if (Float.floatToIntBits(start) != Float.floatToIntBits(other.start))
+		if (Double.doubleToLongBits(start) != Double.doubleToLongBits(other.start))
 			return false;
 		return true;
 	}
@@ -154,7 +154,7 @@ public class CPTVal implements Comparable<CPTVal>, Serializable, Cloneable, XMLS
 	 * @return true if value is greater than or equal to the start value and less than the end value
 	 */
 	public boolean contains(float value) {
-		return this.start <= value && value < this.end;
+		return (float)this.start <= value && value < (float)this.end;
 	}
 
 

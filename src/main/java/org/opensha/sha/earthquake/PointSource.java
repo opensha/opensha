@@ -470,6 +470,13 @@ public abstract class PointSource extends ProbEqkSource {
 		}
 		
 		/**
+		 * @return point source data for this source
+		 */
+		public E getData() {
+			return data;
+		}
+		
+		/**
 		 * 
 		 * @param sourceRuptureIndex rupture index in the source
 		 * @param dataRuptureIndex rupture index in the {@link PointSourceData} data object

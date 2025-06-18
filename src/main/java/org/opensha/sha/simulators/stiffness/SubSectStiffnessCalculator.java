@@ -50,6 +50,7 @@ import org.opensha.sha.earthquake.FocalMechanism;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.ClusterRupture;
 import org.opensha.sha.earthquake.faultSysSolution.ruptures.FaultSubsectionCluster;
+import org.opensha.sha.faultSurface.AbstractEvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.EvenlyGriddedSurface;
 import org.opensha.sha.faultSurface.FaultSection;
 import org.opensha.sha.faultSurface.RuptureSurface;
@@ -260,8 +261,14 @@ public class SubSectStiffnessCalculator {
 		// super sample the surface
 		double hiResSpacing = gridSpacing/10d;
 		RuptureSurface surf = sect.getFaultSurface(hiResSpacing, false, false);
-		Preconditions.checkState(surf instanceof StirlingGriddedSurface, "Currently only support Coulomb calculations for "
-				+ "StirlingGriddedSurface instances, have %s for %s", ClassUtils.getClassNameWithoutPackage(surf.getClass()), sect.getSectionName());
+		if (!(surf instanceof StirlingGriddedSurface)) {
+			System.err.println("WARNING: "+sect.getSectionName()+" provides a "
+					+ClassUtils.getClassNameWithoutPackage(surf.getClass())+" rather than a StirlingGriddedSurface; "
+					+ "Coulomb calculations may be innacurate.");
+		}
+		Preconditions.checkState(surf instanceof AbstractEvenlyGriddedSurface, "Currently only support Coulomb calculations for "
+				+ "AbstractEvenlyGriddedSurface instances, have %s for %s",
+				ClassUtils.getClassNameWithoutPackage(surf.getClass()), sect.getSectionName());
 //		StirlingGriddedSurface surf = new StirlingGriddedSurface(
 //				sect.getSimpleFaultData(false), hiResSpacing, hiResSpacing);
 		
@@ -284,7 +291,7 @@ public class SubSectStiffnessCalculator {
 		
 		for (double das : dasCenters) {
 			for (double ddw : dasWidths) {
-				PatchLocation patchLoc = buildPatch((StirlingGriddedSurface)surf, aveDip, aveRake, halfSpacingKM, dipRad, das, ddw);
+				PatchLocation patchLoc = buildPatch((AbstractEvenlyGriddedSurface)surf, aveDip, aveRake, halfSpacingKM, dipRad, das, ddw);
 				myPatches.add(patchLoc);
 			}
 		}
@@ -349,7 +356,7 @@ public class SubSectStiffnessCalculator {
 		return centers;
 	}
 
-	private PatchLocation buildPatch(StirlingGriddedSurface surf, double aveDip, double aveRake,
+	private PatchLocation buildPatch(AbstractEvenlyGriddedSurface surf, double aveDip, double aveRake,
 			double halfSpacingKM, double dipRad, double das, double ddw) {
 		Location center = surf.getInterpolatedLocation(das, ddw);
 		double strike = surf.getStrikeAtDAS(das);

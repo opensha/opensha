@@ -38,6 +38,8 @@ import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetScalingRelationship;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
+import org.opensha.sha.earthquake.faultSysSolution.RuptureSets;
 import org.opensha.sha.earthquake.faultSysSolution.RuptureSets.RupSetConfig;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionConfigurationFactory;
 import org.opensha.sha.earthquake.faultSysSolution.inversion.ClusterSpecificInversionSolver;
@@ -153,7 +155,7 @@ import scratch.UCERF3.inversion.U3InversionTargetMFDs;
 
 public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigurationFactory, GridSourceProviderFactory {
 
-	protected transient Table<RupSetFaultModel, RupturePlausibilityModels, FaultSystemRupSet> rupSetCache = HashBasedTable.create();
+	protected transient RuptureSets.Cache rupSetCache = new RuptureSets.Cache();
 	protected transient Map<RupSetFaultModel, SectionDistanceAzimuthCalculator> distAzCache = new HashMap<>();
 	protected transient File cacheDir;
 	private boolean autoCache = true;
@@ -222,6 +224,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 
 	protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
 		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
+		RupSetSubsectioningModel ssm = branch.requireValue(RupSetSubsectioningModel.class);
 		RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
 		if (model == null) {
 			if (fm instanceof FaultModels) // UCERF3 FM
@@ -233,7 +236,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		NSHM23_SingleStates state = branch.getValue(NSHM23_SingleStates.class);
 		
 		// check cache
-		FaultSystemRupSet rupSet = rupSetCache.get(fm, model);
+		FaultSystemRupSet rupSet = rupSetCache.get(fm, ssm, model);
 		if (rupSet != null) {
 			if (state != null)
 				rupSet = state.getRuptureSubSet(rupSet);
@@ -245,7 +248,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		RupSetDeformationModel dm = fm.getDefaultDeformationModel();
 		List<? extends FaultSection> subSects;
 		try {
-			subSects = dm.build(fm);
+			subSects = dm.build(fm, ssm, branch);
 		} catch (IOException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -293,7 +296,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		if (rupSet == null)
 			rupSet = config.build(threads);
-		rupSetCache.put(fm, model, rupSet);
+		rupSetCache.put(rupSet, fm, ssm, model);
 		
 		if (cachedRupSetFile != null && !cachedRupSetFile.exists()) {
 			// see if we should write it
@@ -351,11 +354,8 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 	}
 	
 	protected List<? extends FaultSection> buildSubSectsForBranch(FaultSystemRupSet rupSet, LogicTreeBranch<?> branch) throws IOException {
-		RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
 		RupSetDeformationModel dm = branch.requireValue(RupSetDeformationModel.class);
-		Preconditions.checkState(dm.isApplicableTo(fm),
-				"Fault and deformation models are not compatible: %s, %s", fm.getName(), dm.getName());
-		return dm.build(fm);
+		return dm.build(branch);
 	}
 
 	@Override
@@ -2373,6 +2373,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
 			RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
+			RupSetSubsectioningModel ssm = branch.requireValue(RupSetSubsectioningModel.class);
 			RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
 			if (model == null) {
 				if (fm instanceof FaultModels) // UCERF3 FM
@@ -2382,7 +2383,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			}
 			
 			// check cache
-			FaultSystemRupSet rupSet = rupSetCache.get(fm, model);
+			FaultSystemRupSet rupSet = rupSetCache.get(fm, ssm, model);
 			if (rupSet != null) {
 				return rupSet;
 			}
@@ -2392,7 +2393,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			RupSetDeformationModel dm = fm.getDefaultDeformationModel();
 			List<? extends FaultSection> origSubSects;
 			try {
-				origSubSects = dm.build(fm);
+				origSubSects = dm.build(fm, ssm, branch);
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
@@ -2426,7 +2427,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			
 			if (rupSet == null)
 				rupSet = config.build(threads);
-			rupSetCache.put(fm, model, rupSet);
+			rupSetCache.put(rupSet, fm, ssm, model);
 			
 			return rupSet;
 		}
@@ -2513,6 +2514,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 		
 		protected synchronized FaultSystemRupSet buildGenericRupSet(LogicTreeBranch<?> branch, int threads) {
 			RupSetFaultModel fm = branch.requireValue(RupSetFaultModel.class);
+			RupSetSubsectioningModel ssm = branch.requireValue(RupSetSubsectioningModel.class);
 			RupturePlausibilityModels model = branch.getValue(RupturePlausibilityModels.class);
 			if (model == null) {
 				if (fm instanceof FaultModels) // UCERF3 FM
@@ -2522,7 +2524,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			}
 			
 			// check cache
-			FaultSystemRupSet rupSet = rupSetCache.get(fm, model);
+			FaultSystemRupSet rupSet = rupSetCache.get(fm, ssm, model);
 			if (rupSet != null) {
 				return rupSet;
 			}
@@ -2532,7 +2534,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			RupSetDeformationModel dm = fm.getDefaultDeformationModel();
 			List<? extends FaultSection> subSects;
 			try {
-				subSects = dm.build(modFM(fm));
+				subSects = dm.build(modFM(fm), (RupSetSubsectioningModel)fm , branch);
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}
@@ -2541,7 +2543,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			
 			if (rupSet == null)
 				rupSet = config.build(threads);
-			rupSetCache.put(fm, model, rupSet);
+			rupSetCache.put(rupSet, fm, ssm, model);
 			
 			return rupSet;
 		}
@@ -2559,7 +2561,7 @@ public class NSHM23_InvConfigFactory implements ClusterSpecificInversionConfigur
 			// override slip rates for the given deformation model
 			List<? extends FaultSection> subSects;
 			try {
-				subSects = dm.build(modFM(fm));
+				subSects = dm.build(modFM(fm), (RupSetSubsectioningModel)fm, branch);
 			} catch (IOException e) {
 				throw ExceptionUtils.asRuntimeException(e);
 			}

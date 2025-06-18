@@ -503,15 +503,22 @@ public class MeanUCERF3 extends FaultSystemSolutionERF {
 		// Otherwise, download mean sol to build locally.
 		// As such, it won't update client meta.
 		if (!ignoreCache) {
-			CompletableFuture<File> solFileDownloader = checkDownload(solFile.getName());
-			File solutionFile = solFileDownloader.join();
+			File solutionFile;
+			try {
+				CompletableFuture<File> solFileDownloader = checkDownload(solFile.getName());
+				solutionFile = solFileDownloader.join();
+			} catch (NullPointerException e) {
+				if (D) System.err.println(solFile.getName() + " solution doesn't exist on server. Trying cache...");
+				e.printStackTrace();
+				solutionFile = solFile;
+			}
 			try {
 				FaultSystemSolution sol = FaultSystemSolution.load(solutionFile);
 				checkCombineMags(sol);
 				setSolution(sol);
 				return;
 			} catch (Exception e) {
-				ExceptionUtils.throwAsRuntimeException(e);
+				if (D) System.err.println(solutionFile + " not found. Loading mean solution.");
 			}
 		}
 		

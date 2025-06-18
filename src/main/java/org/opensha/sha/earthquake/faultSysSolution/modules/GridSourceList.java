@@ -436,7 +436,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 		header.add("Tectonic Regime");
 		int maxNumAssoc = 0;
 		for (TectonicRegionType trt : getTectonicRegionTypes())
-			for (int i=0; i<gridReg.getNodeCount(); i++)
+			for (int i=0; i<getNumLocations(); i++)
 				for (GriddedRupture rup : getRuptures(trt, i))
 					if (rup.associatedSections != null)
 						maxNumAssoc = Integer.max(maxNumAssoc, rup.associatedSections.length);
@@ -452,7 +452,7 @@ public abstract class GridSourceList implements GridSourceProvider, ArchivableMo
 			}
 		}
 		rupCSV.write(header);
-		for (int i=0; i<gridReg.getNodeCount(); i++) { 
+		for (int i=0; i<getNumLocations(); i++) {
 			for (TectonicRegionType trt : getTectonicRegionTypes()) {
 				for (GriddedRupture rup : getRuptures(trt, i)) {
 					List<String> line = new ArrayList<>();

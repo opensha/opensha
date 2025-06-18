@@ -93,6 +93,9 @@ package org.opensha.commons.gui.plot.jfreechart;
 
 import java.awt.Font;
 import java.awt.Graphics2D;
+import java.awt.font.FontRenderContext;
+import java.awt.font.GlyphVector;
+import java.awt.font.TextLayout;
 import java.awt.geom.Line2D;
 import java.awt.geom.Rectangle2D;
 import java.text.DecimalFormat;
@@ -101,6 +104,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import org.apache.commons.math3.util.Precision;
 import org.jfree.chart.axis.AxisState;
 import org.jfree.chart.axis.LogAxis;
 import org.jfree.chart.axis.NumberTick;
@@ -110,6 +114,9 @@ import org.jfree.chart.plot.Plot;
 import org.jfree.chart.plot.ValueAxisPlot;
 import org.jfree.chart.text.TextUtils;
 import org.jfree.data.Range;
+
+import com.google.common.base.Preconditions;
+
 import org.jfree.chart.ui.RectangleEdge;
 import org.jfree.chart.ui.RectangleInsets;
 import org.jfree.chart.ui.TextAnchor;
@@ -117,6 +124,11 @@ import org.jfree.chart.ui.TextAnchor;
 
 /**
  * A numerical axis that uses a logarithmic scale.
+ * 
+ * Note from Kevin in 2025: JFreeChart comes with log axis implementations (including LogAxis which this extends), but
+ * they don't have the major-minor notation we support here. I remember hearing that we contributed some code related
+ * to this back to JFreeChart (before I arrived in 2008), so maybe this is part of that? I also don't know who Michael
+ * Duffy is, but the JFreeChart LogAxis class claims to have been originally contributed by him.
  *
  * @author Michael Duffy
  */
@@ -150,13 +162,13 @@ public class JFreeLogarithmicAxis extends LogAxis {
 
 	/** Flag set true to show the  tick labels for minor axis */
 	protected boolean minorAxisTickLabelFlag = true;
-	
+
 	private float verticalAnchorShift = 0f;
 
 	public JFreeLogarithmicAxis(String label) {
 		super(label);
 	}
-	
+
 	/**
 	 * Sets the 'strictValuesFlag' flag; if true;
 	 * then this axis will throw a runtime exception if any of its
@@ -191,7 +203,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 		log10TickLabelsInPowerFlag = false;
 		setupNumberFmtObj();             //setup number formatter obj
 	}
-	
+
 	/**
 	 * Sets up the number formatter object according to the
 	 * 'expTickLabelsFlag' flag.
@@ -257,7 +269,169 @@ public class JFreeLogarithmicAxis extends LogAxis {
 	public boolean getMinorAxisTickLabelFlag() {
 		return minorAxisTickLabelFlag;
 	}
+
+	/**
+	 * Tick label bounds. The full bounds will be in index 0. For major ticks in power mode, the major and minor
+	 * bounds will be included in indexes 1 and 2, respectively.
+	 * 
+	 * The bound coordinates will be relative to the given anchor 
+	 * 
+	 * @param g2
+	 * @param label
+	 * @param majorAxis
+	 * @param majorTickFont
+	 * @param minorTickFont
+	 * @param anchor
+	 * @return
+	 */
+	private Rectangle2D[] getTickLabelBounds(Graphics2D g2, String label, boolean majorAxis, boolean verticalAxis,
+			Font majorTickFont, Font minorTickFont, TextAnchor anchor) {
+		return getTickLabelBounds(g2, label, majorAxis, verticalAxis, majorTickFont, minorTickFont, anchor, 0d, 0d);
+	}
+
+
+
+	/**
+	 * Tick label bounds. The full bounds will be in index 0. For major ticks in power mode, the major and minor
+	 * bounds will be included in indexes 1 and 2, respectively.
+	 * 
+	 * The bound coordinates will be relative to the given anchor and the given offsets
+	 * 
+	 * @param g2
+	 * @param label
+	 * @param majorAxis
+	 * @param majorTickFont
+	 * @param minorTickFont
+	 * @param anchor
+	 * @param xOffset
+	 * @param yOffset
+	 * @return
+	 */
+	private Rectangle2D[] getTickLabelBounds(Graphics2D g2, String label, boolean majorAxis, boolean verticalAxis,
+			Font majorTickFont, Font minorTickFont, TextAnchor anchor, double xOffset, double yOffset) {
+		// this part will be aligned to (0, 0)
+		Rectangle2D[] ret;
+		if (label.isEmpty()) {
+			// easy
+			ret = new Rectangle2D[] {getStringBounds(label, minorTickFont, g2)};
+			// re-align to (0, 0)
+			ret[0] = new Rectangle2D.Double(0, 0, ret[0].getWidth(), ret[0].getHeight());
+		} else if (!majorAxis) {
+			// minor axis
+			ret = new Rectangle2D[] {getStringBounds(label, minorTickFont, g2)};
+			double x;
+			if (verticalAxis) {
+				// shift to the leftso that it doesn't line up with the exponent
+				x = -ret[0].getWidth();
+			} else {
+				// re-align to (0, 0)
+				x = 0;
+			}
+			ret[0] = new Rectangle2D.Double(x, 0, ret[0].getWidth(), ret[0].getHeight());
+		} else if (!log10TickLabelsInPowerFlag) {
+			// major axis, but keeping the 1EN notation, also easy
+			ret = new Rectangle2D[] {getStringBounds(label, majorTickFont, g2)};
+			// re-align to (0, 0)
+			ret[0] = new Rectangle2D.Double(0, 0, ret[0].getWidth(), ret[0].getHeight());
+		} else {
+			// we're a major tick, and we're using the 10^n notation, more complicated
+			int eIndex = label.toLowerCase().indexOf("e");
+			Preconditions.checkState(eIndex > 0, "Passed in tick label ('%s') doesn't use E notation?", label);
+			Rectangle2D largeBounds = getStringBounds(label.substring(0, eIndex), majorTickFont, g2);
+			Rectangle2D smallBounds = getStringBounds(label.substring(eIndex+1), minorTickFont, g2);
+			// small bounds here are for the actual string, but we want to make sure everything lines up the same
+			// no matter how many digits in the exponent; we also don't want to consider the negative sign
+			Range range = getRange();
+			int maxExp = (int)Math.max(Math.abs(Math.floor(switchedLog10(range.getLowerBound()))),
+					Math.abs(Math.ceil(switchedLog10(range.getUpperBound()))));
+			Rectangle2D refSmallBounds = getStringBounds(maxExp+"", minorTickFont, g2);
+//			double smallMaxX = Math.max(largeBounds.getWidth()*0.8, largeBounds.getWidth()-2d) + refSmallBounds.getWidth();
+			double smallMaxX = largeBounds.getWidth() + refSmallBounds.getWidth();
+			double smallX = smallMaxX - smallBounds.getWidth();
+//			double smallY = -3-(int)(0.4*this.getTickLabelFont().getSize());
+			double smallY = -(int)(0.4*majorTickFont.getSize());
+			double largeX = 0;
+			double largeY = 0; // small will actually go above the anchor, which is ok
+			largeBounds = new Rectangle2D.Double(largeX, largeY, largeBounds.getWidth(), largeBounds.getHeight());
+			smallBounds = new Rectangle2D.Double(smallX, smallY, smallBounds.getWidth(), smallBounds.getHeight());
+			Rectangle2D combBounds = new Rectangle2D.Double(0d, 0d,
+					Math.max(largeBounds.getWidth(), smallX+smallBounds.getWidth()),
+					largeY+largeBounds.getHeight());
+			ret = new Rectangle2D[] {combBounds, largeBounds, smallBounds};
+		}
+		double totalWidth = ret[0].getWidth();
+		double totalHeight = ret[0].getHeight();
+		//		System.out.println("Plotting label '"+label+"'; original offset was: "+xOffset+", "+yOffset+", anchor is "+anchor);
+		if (anchor.isHorizontalCenter())
+			xOffset -= totalWidth*0.5;
+		else if (anchor.isRight())
+			xOffset -= totalWidth;
+		if (anchor.isVerticalCenter())
+			yOffset -= totalHeight*0.5;
+		else if (anchor.isBottom())
+			yOffset -= totalHeight;
+		if (verticalAxis && ret.length == 1) {
+			// correct for the slight vertical offset of using getStringBounds rather than the actual glyph bounds
+			double offset = calcVerticalStringOffset(label, majorAxis ? majorTickFont : minorTickFont, g2);
+			yOffset -= offset;
+		}
+		// re-align everything
+		for (int i=0; i<ret.length; i++)
+			ret[i] = new Rectangle2D.Double(ret[i].getX()+xOffset, ret[i].getY()+yOffset, ret[i].getWidth(), ret[i].getHeight());
+		//		System.out.print("Returned bounds:");
+		//		for (Rectangle2D rect : ret)
+		//			System.out.println("\t"+rect);
+		return ret;
+	}
+
+	private static Rectangle2D getStringBounds(String text, Font font, Graphics2D g2) {
+		return font.getStringBounds(text, g2.getFontRenderContext());
+		// this can be used to get the actual visual bounds, but that's not very useful because printing it will put it
+		// in the string bounds above anyway
+		//		String origStr = text;
+		//		if (origStr.isEmpty())
+		//			text = " ";
+		//		TextLayout tl = new TextLayout(text, font, g2.getFontRenderContext());
+		//		Rectangle2D visual = tl.getBounds();
+		//		double tightWidth  = visual.getWidth();
+		//		double tightHeight = visual.getHeight();
+		//		if (origStr.isEmpty())
+		//			tightWidth = 0;
+		//		return new Rectangle2D.Double(0d, 0d, tightWidth, tightHeight);
+	}
 	
+	/**
+	 * {@link Font#getStringBounds(String, java.awt.font.FontRenderContext)} returns padded boundaries that usually
+	 * extend above (and, less so, below) the actual visual bounds for a string. This returns how far below the center
+	 * of those regular string bounds the actual printed center lies, in pixels.
+	 * 
+	 * @param text the string to measure
+	 * @param font the font used to draw the string
+	 * @param g2   the Graphics2D (providing the FontRenderContext)
+	 * @return the vertical offset (in pixels) by which the visual center of the text is below the logical center
+	 */
+	private static double calcVerticalStringOffset(String text, Font font, Graphics2D g2) {
+		if (text == null || text.isEmpty()) {
+			return 0d;
+		}
+		FontRenderContext frc = g2.getFontRenderContext();
+
+		// 1) Compute the logical bounds (ascent + descent + leading)
+		Rectangle2D logical = font.getStringBounds(text, frc);
+		double logicalCenter = logical.getY() + logical.getHeight() / 2.0;
+
+		// 2) Compute the visual (pixel‐tight) bounds using a GlyphVector
+		GlyphVector gv = font.createGlyphVector(frc, text);
+		Rectangle2D visual = gv.getVisualBounds();
+		double visualCenter = visual.getY() + visual.getHeight() / 2.0;
+
+		// 3) The offset is how far the actual printed center lies below
+		//    the logical center. Positive → visual center is lower on screen.
+		return visualCenter - logicalCenter;
+	}
+
+	private static double TICK_OVERLAP_BUFFER = 6; // in pixels
+
 	/**
 	 * Calculates the positions of the tick labels for the axis, storing the results in the
 	 * tick label list (ready for drawing).
@@ -271,9 +445,8 @@ public class JFreeLogarithmicAxis extends LogAxis {
 			Rectangle2D dataArea,
 			RectangleEdge edge) {
 
-		List ticks = new ArrayList();
-		double x0 =  0;
-		List ticksXVals = new ArrayList();
+		List<NumberTick> ticks = new ArrayList<>();
+		List<Double> tickEndVals = new ArrayList<>();
 		//get lower bound value:
 		double lowerBoundVal = getRange().getLowerBound();
 		//if small log values and lower bound value too small
@@ -289,8 +462,10 @@ public class JFreeLogarithmicAxis extends LogAxis {
 		//get log10 version of upper bound and round to integer:
 		int iEndCount = (int) StrictMath.ceil(switchedLog10(upperBoundVal));
 		
-//		System.out.println("refreshTicksHoriz: lower="+lowerBoundVal+", upper="+upperBoundVal);
-//		System.out.println("\tiBegCount="+iBegCount+", iEndCount="+iEndCount);
+		boolean showMinor = shouldShowMinor(dataArea, edge);
+
+		//		System.out.println("refreshTicksHoriz: lower="+lowerBoundVal+", upper="+upperBoundVal);
+		//		System.out.println("\tiBegCount="+iBegCount+", iEndCount="+iEndCount);
 
 		double tickVal;
 		String tickLabel="";
@@ -300,13 +475,14 @@ public class JFreeLogarithmicAxis extends LogAxis {
 		if(iBegCount == iEndCount)
 			--iBegCount;
 
-		//Add one major Axis in ther range if there is none in the range.
+		//Add one major Axis in the range if there is none in the range.
 		//The one major Axis added is the one below the lowerBoundVal.
 		//And checks if the upperBound is not a major Axis, then no need to include one major axis
 		if(iEndCount - iBegCount ==1 && (upperBoundVal!=Double.parseDouble("1e"+iEndCount)))
 			setRange(Double.parseDouble("1e"+iBegCount),upperBoundVal);
 
-
+		Font majorTickFont = getMajorTickFont();
+		Font minorTickFont = getMinorTickFont();
 
 		for (int i = iBegCount; i <= iEndCount; i++) {
 			//for each tick with a label to be displayed
@@ -320,6 +496,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 
 				//small log values in use
 				tickVal = Double.parseDouble("1e"+i) * (1 + j);
+				boolean majorAxis = j == 0;
 				//j=0 means that it is the major Axis with absolute power of 10.
 				if (j == 0) {
 					//checks to if tick Labels to be represented in the form of superscript of 10.
@@ -343,91 +520,107 @@ public class JFreeLogarithmicAxis extends LogAxis {
 						tickLabel = "";
 				}
 
-//				System.out.println("\t\tj="+j+", tickVal="+tickVal+", tickLabel="+tickLabel);
+				//				System.out.println("\t\tj="+j+", tickVal="+tickVal+", tickLabel="+tickLabel);
 
-				if (tickVal > upperBoundVal) {
+				if (tickVal > upperBoundVal && !Precision.equals(tickVal, upperBoundVal, upperBoundVal*1e-6)) {
+					//					System.out.println("We're past it: "+tickVal+" > "+upperBoundVal);
 					return ticks;     //if past highest data value then exit method
 				}
 
 				if (tickVal >= lowerBoundVal - SMALL_LOG_VALUE) {
-					TextAnchor anchor = null;
-					TextAnchor rotationAnchor = null;
-					double angle = 0.0;	
-					//tick value not below lowest data value
-					double xx = valueToJava2D(tickVal, dataArea, edge);
-					Rectangle2D tickLabelBounds = getTickLabelFont().getStringBounds(
-							tickLabel, g2.getFontRenderContext());
-					float x = 0.0f;
-					float y = 0.0f;
-					RectangleInsets tickLabelInsets = getTickLabelInsets();
+					TextAnchor anchor;
+					TextAnchor rotationAnchor;
 					if (isVerticalTickLabels()) {
 						anchor = TextAnchor.CENTER_RIGHT;
 						rotationAnchor = TextAnchor.CENTER_RIGHT;
-						x = (float) (xx + tickLabelBounds.getHeight() / 2);
+					} else if (edge == RectangleEdge.TOP) {
+						anchor = TextAnchor.BOTTOM_CENTER;
+						rotationAnchor = TextAnchor.BOTTOM_CENTER;
+					} else {
+						anchor = TextAnchor.TOP_CENTER;
+						rotationAnchor = TextAnchor.TOP_CENTER;
+					}
+					double angle = 0.0;	
+					Rectangle2D tickLabelBounds = getTickLabelBounds(g2, tickLabel, majorAxis, false,
+							majorTickFont, minorTickFont, TextAnchor.TOP_LEFT)[0];
+					Preconditions.checkState(tickLabelBounds.getX() == 0d);
+					Preconditions.checkState(tickLabelBounds.getY() == 0d);
+					double tickCenter = valueToJava2D(tickVal, dataArea, edge);
+					double tickLabelStart, tickLabelEnd;
+					if (isVerticalTickLabels()) {
+						tickLabelStart = tickCenter - 0.5*tickLabelBounds.getHeight();
+						tickLabelEnd = tickCenter + 0.5*tickLabelBounds.getHeight();
 						if (edge == RectangleEdge.TOP) {
 							angle = Math.PI / 2.0;
-							y = (float) (dataArea.getMinY() - tickLabelInsets.getBottom()
-									- tickLabelBounds.getWidth());
 						}
 						else {
 							angle = -Math.PI / 2.0;
-							y = (float) (dataArea.getMaxY() + tickLabelInsets.getTop()
-									+ tickLabelBounds.getWidth());
 						}
-					}
-					else {
-						x = (float) (xx - tickLabelBounds.getWidth() / 2);
-						if (edge == RectangleEdge.TOP) {
-							anchor = TextAnchor.BOTTOM_CENTER;
-							rotationAnchor = TextAnchor.BOTTOM_CENTER;
-							y = (float) (dataArea.getMinY() - tickLabelInsets.getBottom());
-						}
-						else {
-							anchor = TextAnchor.TOP_CENTER;
-							rotationAnchor = TextAnchor.TOP_CENTER;
-							y = (float) (dataArea.getMaxY() + tickLabelInsets.getTop()
-									+ tickLabelBounds.getHeight());
-						}
+					} else {
+						tickLabelStart = tickCenter - 0.5*tickLabelBounds.getWidth();
+						tickLabelEnd = tickCenter + 0.5*tickLabelBounds.getWidth();
 					}
 					if(this.log10TickLabelsInPowerFlag){
 						//removing the minor labelling, if the ticks overlap.
 						/* also if the difference in the powers of the smallest major axis
 						 * and largest major axis is larger than 3 then don't label the minor axis
 						 **/
-						 if((x<x0 || (iEndCount-iBegCount>3)) && j!=0 && minorAxisTickLabelFlag)
-							 tickLabel="";
-						 else{
-							 //removing the previous minor tickLabels if the major axis overlaps any tickLabels
-							 if(j==0){
-								 int size = ticks.size();
-								 --size;
-								 while(x<=x0 && size>0){
-									 //only remove the previous ticklabel if that has been labelled.
-									 Tick tempTick = ((Tick)ticks.get(size));
-									 if(!tempTick.getText().equals("") && !tempTick.getText().contains("E"))
-										 removePreviousTick(ticks);
-									 x0 =  ((Double)ticksXVals.get(size)).doubleValue()+3;
-									 --size;
-								 }
-							 }
-							 x0 = x + tickLabelBounds.getWidth() +3;
-						 }
+						//						 if((x<x0 || (iEndCount-iBegCount>3)) && j!=0 && minorAxisTickLabelFlag)
+						double prevBufferedEnd = 0d;
+						for (int k=ticks.size(); --k>=0;) {
+							if (!ticks.get(k).getText().isEmpty()) {
+								prevBufferedEnd = tickEndVals.get(k) + TICK_OVERLAP_BUFFER;
+								break;
+							}
+						}
+						if (minorAxisTickLabelFlag) {
+							if (j == 0) {
+								// this is major
+								if (!ticks.isEmpty()) {
+									// remove any previous minor tick labels overlap this major
+									for (int k=tickEndVals.size(); --k>=0;) {
+										double testBufferedEnd = tickEndVals.get(k) + TICK_OVERLAP_BUFFER;
+										if (tickLabelStart < testBufferedEnd) {
+											// we overlap, but see if it has actually been labeled
+											NumberTick tempTick = ticks.get(k);
+											if(!tempTick.getText().equals("") && !tempTick.getText().contains("E")) {
+												// it has a label, clear it
+												double value = tempTick.getValue();
+												ticks.set(k, new NumberTick(value, "",
+														tempTick.getTextAnchor(), tempTick.getRotationAnchor(), tempTick.getAngle()));
+												tickEndVals.set(k, value);
+											}
+										} else {
+											break;
+										}
+									}
+								}
+							} else {
+								// this is minor, see if we overlap the previous one (or have more than max decades)
+								if (tickLabelStart < prevBufferedEnd || !showMinor) {
+									// we do
+									tickLabel = "";
+									tickLabelStart = tickCenter;
+									tickLabelEnd = tickCenter;
+								}
+							}
+						}
 					}
-//					System.out.println("adding tick with val="+tickVal+", label="+tickLabel);
-					Tick tick = new NumberTick(tickVal, tickLabel, anchor, rotationAnchor,angle);
+					//					System.out.println("adding tick with val="+tickVal+", label="+tickLabel);
+					NumberTick tick = new NumberTick(tickVal, tickLabel, anchor, rotationAnchor,angle);
 					ticks.add(tick);
-					ticksXVals.add(Double.valueOf(x));
+					tickEndVals.add(tickLabelEnd);
 				}
 			}
 		}
-//		System.out.println("Returning this tick list:");
-//		for (int i=0; i<ticks.size(); i++) {
-//			ValueTick tick = (ValueTick)ticks.get(i);
-//			System.out.println("\t"+i+". val="+tick.getValue()+", label="+tick.getText());
-//		}
+		//		System.out.println("Returning this tick list:");
+		//		for (int i=0; i<ticks.size(); i++) {
+		//			ValueTick tick = (ValueTick)ticks.get(i);
+		//			System.out.println("\t"+i+". val="+tick.getValue()+", label="+tick.getText());
+		//		}
 		return ticks;
 	}
-	
+
 	/**
 	 * Returns the log10 value, depending on if values between 0 and
 	 * 1 are being plotted.  If negative values are not allowed and
@@ -441,6 +634,23 @@ public class JFreeLogarithmicAxis extends LogAxis {
 	 */
 	protected double switchedLog10(double val) {
 		return StrictMath.log(val) / LOG10_VALUE ;
+	}
+	
+	private static final double MIN_PIXELS_PER_DECADE_FOR_MINOR = 100d;
+	
+	private boolean shouldShowMinor(Rectangle2D dataArea, RectangleEdge edge) {
+		Range range = getRange();
+		double lowerPixel = valueToJava2D(range.getLowerBound(), dataArea, edge);
+		double upperPixel = valueToJava2D(range.getUpperBound(), dataArea, edge);
+		double totPixels = Math.abs(upperPixel - lowerPixel); // abs here because for vertical, upperPixel < lowerPixel
+		if (totPixels < 100)
+			// way too small
+			return false;
+		double decades = switchedLog10(range.getUpperBound()) - switchedLog10(range.getLowerBound());
+
+		// show minor only if we have at least MIN_PIXELS_PER_DECADE_FOR_MINOR for each decade
+		double pixelsPerDecade = totPixels / decades;
+		return pixelsPerDecade >= MIN_PIXELS_PER_DECADE_FOR_MINOR;
 	}
 
 	/**
@@ -456,9 +666,8 @@ public class JFreeLogarithmicAxis extends LogAxis {
 			Rectangle2D dataArea,
 			RectangleEdge edge) {
 
-		List ticks = new ArrayList();
-		List ticksYVals = new ArrayList();
-		double y0 =9999;
+		List<NumberTick> ticks = new ArrayList<>();
+		List<Double> tickEndVals = new ArrayList<>();
 		//get lower bound value:
 		double lowerBoundVal = getRange().getLowerBound();
 		//if small log values and lower bound value too small
@@ -474,7 +683,8 @@ public class JFreeLogarithmicAxis extends LogAxis {
 		int iBegCount = (int) StrictMath.floor(switchedLog10(lowerBoundVal));
 		//get log10 version of upper bound and round to integer:
 		int iEndCount = (int) StrictMath.ceil(switchedLog10(upperBoundVal));
-
+		
+		boolean showMinor = shouldShowMinor(dataArea, edge);
 
 		//if both iBegCount and iEndCount are absolute power of 10 and are equal
 		//reduce the lowerdBound to one major Axis below
@@ -486,6 +696,14 @@ public class JFreeLogarithmicAxis extends LogAxis {
 		//And checks if the upperBound is not a major Axis, then no need to include one major axis
 		if(iEndCount - iBegCount ==1 && (upperBoundVal!=Double.parseDouble("1e"+iEndCount)))
 			setRange(Double.parseDouble("1e"+iBegCount),upperBoundVal);
+
+		Font majorTickFont = getMajorTickFont();
+		Font minorTickFont = getMinorTickFont();
+		
+		// vertical has some extra buffer in the bounding boxes already, subtract that
+//		double TICK_OVERLAP_BUFFER = Math.max(0d, JFreeLogarithmicAxis.TICK_OVERLAP_BUFFER
+//				-calcVerticalStringOffset("1", minorTickFont, g2));
+//		System.out.println("UPDATED TICK_OVERLAP_BUFFER="+(float)JFreeLogarithmicAxis.TICK_OVERLAP_BUFFER+" to "+(float)TICK_OVERLAP_BUFFER);
 
 		double tickVal;
 		String tickLabel="";
@@ -501,6 +719,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 				//for each tick to be displayed
 				tickVal = Double.parseDouble("1e"+i) * (1 + j);
 				//j=0 means that it is the major Axis with absolute power of 10.
+				boolean majorAxis = j == 0;
 				if (j == 0) {
 					//checks to if tick Labels to be represented in the form of superscript of 10.
 					if(log10TickLabelsInPowerFlag){
@@ -518,7 +737,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 				else {   //not first tick to be displayed and it is the minor Axis tick label processing
 					if(log10TickLabelsInPowerFlag && minorAxisTickLabelFlag)
 						tickLabel = ""+(j+1);     //no tick label
-					else
+					else 
 						tickLabel = "";
 				}
 
@@ -528,32 +747,17 @@ public class JFreeLogarithmicAxis extends LogAxis {
 
 				if (tickVal >= lowerBoundVal - SMALL_LOG_VALUE) {
 					//tick value not below lowest data value
-					TextAnchor anchor = null;
-					TextAnchor rotationAnchor = null;
-					double angle = 0.0;	
-					//get Y-position for tick:
-					double yy = valueToJava2D(tickVal, dataArea, edge);
-					//get bounds for tick label:
-					Rectangle2D tickLabelBounds
-					= getTickLabelFont().getStringBounds(tickLabel, g2.getFontRenderContext());
-					//get X-position for tick label:
-					float x;
+					TextAnchor anchor;
+					TextAnchor rotationAnchor;
 					if (isVerticalTickLabels()) {
-						x = (float) (dataArea.getX()
-								- tickLabelBounds.getWidth() - getTickLabelInsets().getRight());
 						if (edge == RectangleEdge.LEFT) {
 							anchor = TextAnchor.BOTTOM_CENTER;
 							rotationAnchor = TextAnchor.BOTTOM_CENTER;
-							angle = -Math.PI / 2.0;
-						}
-						else {
+						} else {
 							anchor = TextAnchor.BOTTOM_CENTER;
 							rotationAnchor = TextAnchor.BOTTOM_CENTER;
-							angle = Math.PI / 2.0;
 						}
-					}
-					else {
-						x = (float) (dataArea.getMaxX() + getTickLabelInsets().getLeft());
+					} else {
 						if (edge == RectangleEdge.LEFT) {
 							anchor = TextAnchor.CENTER_RIGHT;
 							rotationAnchor = TextAnchor.CENTER_RIGHT;
@@ -563,37 +767,76 @@ public class JFreeLogarithmicAxis extends LogAxis {
 							rotationAnchor = TextAnchor.CENTER_LEFT;
 						}
 					}
-
-					//get Y-position for tick label:
-						float y = (float) (yy + (tickLabelBounds.getHeight() / 3));
-					if(this.log10TickLabelsInPowerFlag){
-						//removing the minor labelling, if the ticks overlap.
-						/* also if the difference in the powers of the smallest major axis
-						 * and largest major axis is larger than 3 then don't label the minor axis
-						 **/
-						if((y>y0 || (iEndCount-iBegCount>3)) && j!=0 && minorAxisTickLabelFlag)
-							tickLabel="";
-						else{
-							//removing the previous minor axis tickLabels if the major axis overlaps any tickLabels
-							if(j==0){
-								int size = ticks.size();
-								--size;
-								while(y>=y0 && size>0){
-									//only remove the previous ticklabel if that has been labelled.
-									Tick tempTick = ((Tick)ticks.get(size));
-									if(!tempTick.getText().equals("") && !tempTick.getText().contains("E"))
-										//calling the function to remove the previous ticklLabel
-										removePreviousTick(ticks);
-									y0 =  ((Double)ticksYVals.get(size)).doubleValue()-3;
-									--size;
+					double angle = 0.0;	
+					//get bounds for tick label:
+					Rectangle2D tickLabelBounds = getTickLabelBounds(g2, tickLabel, majorAxis, true,
+							majorTickFont, minorTickFont, TextAnchor.TOP_LEFT)[0];
+					// x and y can be non-zero for vertical
+					// y will be non-zero because we're correcting for glyph placing
+					//get X-position for tick label:
+					double tickCenter = valueToJava2D(tickVal, dataArea, edge);
+					double tickLabelStart, tickLabelEnd;
+					if (isVerticalTickLabels()) {
+						// start is at the bottom of the label, which means greater y (y=0 is top)
+						tickLabelStart = tickCenter + 0.5*tickLabelBounds.getWidth();
+						// end is at the top of the label, which means smaller y (y=0 is top)
+						tickLabelEnd = tickCenter - 0.5*tickLabelBounds.getWidth();
+						if (edge == RectangleEdge.LEFT)
+							angle = -Math.PI / 2.0;
+						else
+							angle = Math.PI / 2.0;
+					} else {
+						// tick is padded at the top and we correct for this by offsetting the location in the y direction
+						// but only do the start (bottom), indicating that we're moving the tick up; leave the end (top)
+						// at the original (non-offset) location.
+						double yOffset = tickLabelBounds.getY();
+						tickLabelStart = tickCenter + 0.5*tickLabelBounds.getHeight() - yOffset;
+						tickLabelEnd = tickCenter - 0.5*tickLabelBounds.getHeight();
+					}
+					Preconditions.checkState(tickLabelEnd <= tickLabelStart);
+					double prevBufferedEnd = Double.MAX_VALUE;
+					for (int k=ticks.size(); --k>=0;) {
+						if (!ticks.get(k).getText().isEmpty()) {
+							prevBufferedEnd = tickEndVals.get(k) - TICK_OVERLAP_BUFFER;
+							break;
+						}
+					}
+					if (minorAxisTickLabelFlag) {
+						if (j == 0) {
+							// this is major
+							if (!ticks.isEmpty()) {
+								// remove any previous minor tick labels overlap this major
+								for (int k=tickEndVals.size(); --k>=0;) {
+									double testBufferedEnd = tickEndVals.get(k) - TICK_OVERLAP_BUFFER;
+									if (tickLabelStart > testBufferedEnd) {
+										// we overlap, but see if it has actually been labeled
+										NumberTick tempTick = ticks.get(k);
+										if(!tempTick.getText().equals("") && !tempTick.getText().contains("E")) {
+											// it has a label, clear it
+											double value = tempTick.getValue();
+											ticks.set(k, new NumberTick(value, "",
+													tempTick.getTextAnchor(), tempTick.getRotationAnchor(), tempTick.getAngle()));
+											tickEndVals.set(k, value);
+										}
+									} else {
+										break;
+									}
 								}
 							}
-							y0 = y - tickLabelBounds.getHeight() -3;
+						} else {
+							// this is minor, see if we overlap the previous one (or have more than max decades)
+							if (tickLabelStart > prevBufferedEnd || !showMinor) {
+								// we do
+								tickLabel = "";
+								tickLabelStart = tickCenter;
+								tickLabelEnd = tickCenter;
+							}
 						}
 					}
 					//create tick object and add to list:
 					ticks.add(new NumberTick(tickVal, tickLabel, anchor,rotationAnchor,angle));
-					ticksYVals.add(Double.valueOf(y));
+					//					ticksYVals.add(Double.valueOf(y));
+					tickEndVals.add(tickLabelEnd);
 				}
 			}
 		}
@@ -620,7 +863,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 			return;
 		}
 	}
-	
+
 	/**
 	 * This allows you to shift the tick labels vertically to fix some overlap issues (specifically with X axis).
 	 * 
@@ -630,6 +873,22 @@ public class JFreeLogarithmicAxis extends LogAxis {
 		this.verticalAnchorShift = verticalAnchorShift;
 	}
 
+	private Font getMajorTickFont() {
+		Font tickFont = this.getTickLabelFont();
+		return new Font(tickFont.getName(), tickFont.getStyle(), tickFont.getSize() + (int)(tickFont.getSize() * 0.2));
+	}
+
+	private Font getMinorTickFont() {
+		Font tickFont = this.getTickLabelFont();
+		return new Font(tickFont.getName(), tickFont.getStyle(), tickFont.getSize() - (int)(tickFont.getSize() * 0.2));
+	}
+
+	private Font getPowerTickFont() {
+		Font tickFont = this.getTickLabelFont();
+		return new Font(tickFont.getName(), tickFont.getStyle(), tickFont.getSize() - (int)(tickFont.getSize() * 0.2));
+	}
+	
+	private static final boolean DEBUG_PRINT_BOUNDS = false;
 
 	/**
 	 * Draws the axis line, tick marks and tick mark labels.
@@ -646,7 +905,6 @@ public class JFreeLogarithmicAxis extends LogAxis {
 	protected AxisState drawTickMarksAndLabels(Graphics2D g2, double cursor,
 			Rectangle2D plotArea,
 			Rectangle2D dataArea, RectangleEdge edge) {
-
 		AxisState state = new AxisState(cursor);
 
 		//calls the super class function if user wants to use the "1e#" style of labelling of ticks.
@@ -656,15 +914,26 @@ public class JFreeLogarithmicAxis extends LogAxis {
 		if (isAxisLineVisible()) {
 			drawAxisLine(g2, cursor, dataArea, edge);
 		}
-		double ol = getTickMarkOutsideLength();
-		double il = getTickMarkInsideLength();
+		//		double ol = getTickMarkOutsideLength();
+		//		double il = getTickMarkInsideLength();
+		float minorOutside = (float) getTickMarkOutsideLength();
+		float minorInside  = (float) getTickMarkInsideLength();
+		// make major tick marks longer
+		float majorOutside = minorOutside * 2.5f;
+		float majorInside  = minorInside  * 2.5f;
+		
+		boolean verticalAxis = edge == RectangleEdge.LEFT || edge == RectangleEdge.RIGHT;
 
 		List ticks = refreshTicks(g2, state, dataArea, edge);
 		state.setTicks(ticks);
 
+		Font majorTickFont = getMajorTickFont();
+		Font minorTickFont = getMinorTickFont();
+		Font powerTickFont = getPowerTickFont();
+
 		g2.setFont(getTickLabelFont());
 		Iterator iterator = ticks.iterator();
-//		System.out.println("Plotting log axis labels");
+		//		System.out.println("Plotting log axis labels");
 		while (iterator.hasNext()) {
 			ValueTick tick = (ValueTick)iterator.next();
 
@@ -673,20 +942,19 @@ public class JFreeLogarithmicAxis extends LogAxis {
 				eIndex =tick.getText().indexOf("E");
 			boolean majorAxis = eIndex >= 0;
 
-			Font tickFont = this.getTickLabelFont();
-			if (majorAxis)
-				g2.setFont(new Font(tickFont.getName(), tickFont.getStyle(), tickFont.getSize()+(int)(tickFont.getSize()*(0.2))));
+			g2.setFont(majorAxis ? majorTickFont : minorTickFont);
+			float ol = majorAxis ? majorOutside : minorOutside;
+			float il = majorAxis ? majorInside  : minorInside;
 
 			if (isTickLabelsVisible()) {
 				g2.setPaint(getTickLabelPaint());
 				float[] anchorPoint = calculateAnchorPoint(
-						tick, cursor, dataArea, edge
-				);
-//				if (!tick.getText().isEmpty()) {
-//					System.out.println("tick: value="+tick.getValue()+", label="+tick.getText()+", vertical="+isVerticalTickLabels()+", edge="+edge);
-//					System.out.println("\tcursor="+cursor+", anchor="+anchorPoint[0]+","+anchorPoint[1]);
-//				}
+						tick, cursor, dataArea, edge);
 				anchorPoint[1] += verticalAnchorShift;
+				//				if (!tick.getText().isEmpty()) {
+				//					System.out.println("tick: value="+tick.getValue()+", label="+tick.getText()+", vertical="+isVerticalTickLabels()+", edge="+edge);
+				//					System.out.println("\tcursor="+cursor+", anchor="+anchorPoint[0]+","+anchorPoint[1]);
+				//				}
 
 				if (isVerticalTickLabels()) {
 					TextUtils.drawRotatedString(
@@ -695,49 +963,61 @@ public class JFreeLogarithmicAxis extends LogAxis {
 							tick.getTextAnchor(), 
 							tick.getAngle(),
 							tick.getRotationAnchor()
-					);
+							);
 				}
 				else{
-
+					Rectangle2D[] bounds = getTickLabelBounds(g2, tick.getText(), majorAxis, verticalAxis,
+							majorTickFont, minorTickFont, tick.getTextAnchor(), anchorPoint[0], anchorPoint[1]);
+					// we use bounds x and y below, which is always the top left of the box. the original text anchor
+					// has already been used when determining that location, so don't use tick.getTextAnchor()
+					TextAnchor boundsAnchor = TextAnchor.TOP_LEFT;
+					if (DEBUG_PRINT_BOUNDS) {
+						// debug: draw the anchor point
+						g2.drawRect((int)anchorPoint[0]-1, (int)anchorPoint[1]-1, 2, 2);
+						// draw the bounds
+						for (Rectangle2D b : bounds)
+							g2.drawRect((int)b.getX(), (int)b.getY(), (int)b.getWidth(), (int)b.getHeight());
+					}
 					if (!majorAxis) {
 						// minor axis (smaller font)
 						TextUtils.drawRotatedString(
 								tick.getText(), g2, 
-								anchorPoint[0], anchorPoint[1],
-								tick.getTextAnchor(), 
+								(float)bounds[0].getX(), (float)bounds[0].getY(),
+								boundsAnchor,
 								tick.getAngle(),
 								tick.getRotationAnchor()
-						);
+								);
 					} else {
 						// major axis (10)
 						TextUtils.drawRotatedString(
 								"10", g2, 
-								anchorPoint[0]-7, anchorPoint[1],
-								tick.getTextAnchor(), 
+								(float)bounds[1].getX(), (float)bounds[1].getY(),
+								boundsAnchor,
 								tick.getAngle(),
 								tick.getRotationAnchor()
-						);
+								);
 						// setting the font properties to show the power of 10
-						g2.setFont(new Font(tickFont.getName(), tickFont.getStyle(), tickFont.getSize()-(int)(tickFont.getSize()*(0.2))));
+						g2.setFont(powerTickFont);
 
-						float horzOffset = (int)(0.3*getTickLabelFont().getSize());
-						if (!tick.getText().startsWith("-") && edge == RectangleEdge.BOTTOM)
-							horzOffset *= 2;
+						//						float horzOffset = (int)(0.3*getTickLabelFont().getSize());
+						//						if (!tick.getText().startsWith("-") && edge == RectangleEdge.BOTTOM)
+						//							horzOffset *= 2;
 						TextUtils.drawRotatedString(
 								tick.getText().substring(eIndex+1), g2, 
-								anchorPoint[0]+horzOffset,
-								anchorPoint[1]-3-(int)(0.4*this.getTickLabelFont().getSize()),
-								tick.getTextAnchor(), 
+								//								anchorPoint[0]+horzOffset,
+								//								anchorPoint[1]-3-(int)(0.4*this.getTickLabelFont().getSize()),
+								(float)bounds[2].getX(), (float)bounds[2].getY(),
+								boundsAnchor,
 								tick.getAngle(),
 								tick.getRotationAnchor()
-						);
+								);
 					}
 				}
 			}
 			if (isTickMarksVisible()) {
 				float xx = (float) valueToJava2D(
 						tick.getValue(), dataArea, edge
-				);
+						);
 				Line2D mark = null;
 				g2.setStroke(getTickMarkStroke());
 				g2.setPaint(getTickMarkPaint());
@@ -763,25 +1043,25 @@ public class JFreeLogarithmicAxis extends LogAxis {
 			if (edge == RectangleEdge.LEFT) {
 				used += findMaximumTickLabelWidth(
 						ticks, g2, plotArea, isVerticalTickLabels()
-				);  
+						);  
 				state.cursorLeft(used);      
 			}
 			else if (edge == RectangleEdge.RIGHT) {
 				used = findMaximumTickLabelWidth(
 						ticks, g2, plotArea, isVerticalTickLabels()
-				);
+						);
 				state.cursorRight(used);      
 			}
 			else if (edge == RectangleEdge.TOP) {
 				used = findMaximumTickLabelHeight(
 						ticks, g2, plotArea, isVerticalTickLabels()
-				);
+						);
 				state.cursorUp(used);
 			}
 			else if (edge == RectangleEdge.BOTTOM) {
 				used = findMaximumTickLabelHeight(
 						ticks, g2, plotArea, isVerticalTickLabels()
-				);
+						);
 				state.cursorDown(used);
 			}
 		}
@@ -821,7 +1101,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 	protected String makeTickLabel(double val) {
 		return makeTickLabel(val, false);
 	}
-	
+
 	/**
 	 * Returns the largest (closest to positive infinity) double value that is
 	 * not greater than the argument, is equal to a mathematical integer and
@@ -866,7 +1146,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 
 		return logCeil;
 	}
-	
+
 	/**
 	 * Rescales the axis to ensure that all data is visible.
 	 */
@@ -885,7 +1165,7 @@ public class JFreeLogarithmicAxis extends LogAxis {
 			Range r = vap.getDataRange(this);
 			if (r == null) {
 				//no real data present
-//				r = new Range(DEFAULT_LOWER_BOUND, DEFAULT_UPPER_BOUND);
+				//				r = new Range(DEFAULT_LOWER_BOUND, DEFAULT_UPPER_BOUND);
 				r = new Range(0.01, 1.0);
 				lower = r.getLowerBound();    //get lower bound value
 			}

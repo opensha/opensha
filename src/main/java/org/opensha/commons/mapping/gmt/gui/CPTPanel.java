@@ -77,8 +77,8 @@ public class CPTPanel extends JPanel
 		} else {
 			labelTable = new HashMap<Float, JLabel>();
 
-			minVal = cpt.getMinValue();
-			maxVal = cpt.getMaxValue();
+			minVal = (float)cpt.getMinValueRaw();
+			maxVal = (float)cpt.getMaxValueRaw();
 
 			cpt.paintGrid(bi);
 
@@ -97,12 +97,12 @@ public class CPTPanel extends JPanel
 				for (int i=0; i<num; i++) {
 					if (i % mod != 0)
 						continue;
-					float tickVal = cpt.get(i).start;
+					float tickVal = (float)cpt.get(i).start;
 					JLabel label = new JLabel(getTickLabel(tickVal));
 					labelTable.put(tickVal, label);
 				}
 				if (num > 0) {
-					float tickVal = cpt.get(num-1).end;
+					float tickVal = (float)cpt.get(num-1).end;
 					JLabel label = new JLabel(getTickLabel(tickVal));
 					labelTable.put(tickVal, label);
 				}

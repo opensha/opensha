@@ -74,20 +74,33 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 	private List<LogicTreeNode[]> combinations;
 	
 	private boolean replot;
+	private boolean process;
 	private boolean rebuild;
 
 	public MPJ_LogicTreeBranchAverageBuilder(CommandLine cmd) throws IOException {
 		super(cmd);
 		
 		this.shuffle = false;
-		
-		tree = LogicTree.read(new File(cmd.getOptionValue("logic-tree")));
-		if (rank == 0)
-			debug("Loaded "+tree.size()+" tree nodes");
 
 		File inputDir = new File(cmd.getOptionValue("input-dir"));
 		Preconditions.checkState(inputDir.exists());
-		slt = new SolutionLogicTree.ResultsDirReader(inputDir, tree);
+		if (inputDir.isFile()) {
+			if (cmd.hasOption("logic-tree")) {
+				tree = LogicTree.read(new File(cmd.getOptionValue("logic-tree")));
+				slt = SolutionLogicTree.load(inputDir, tree);
+			} else {
+				slt = SolutionLogicTree.load(inputDir);
+				tree = (LogicTree<LogicTreeNode>) slt.getLogicTree();
+			}
+		} else {
+			Preconditions.checkArgument(cmd.hasOption("logic-tree"), "must supply logic tree if input is a directory");
+			tree = LogicTree.read(new File(cmd.getOptionValue("logic-tree")));
+			if (rank == 0)
+				debug("Loaded "+tree.size()+" tree nodes");
+			slt = new SolutionLogicTree.ResultsDirReader(inputDir, tree);
+		}
+		
+		process = !cmd.hasOption("no-process");
 		
 		outputDir = new File(cmd.getOptionValue("output-dir"));
 		
@@ -199,7 +212,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 					count++;
 					debug("Loading branch "+(myCount)+"/"+subTree.size()+" for "+prefix+": "+branch);
 					loadWatch.start();
-					FaultSystemSolution sol = slt.forBranch(branch);
+					FaultSystemSolution sol = slt.forBranch(branch, process);
 					// pre-load all averageable modules
 					sol.getModulesAssignableTo(BranchAverageableModule.class, true);
 					sol.getRupSet().getModulesAssignableTo(BranchAverageableModule.class, true);
@@ -461,7 +474,7 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 	public static Options createOptions() {
 		Options ops = MPJTaskCalculator.createOptions();
 		
-		ops.addRequiredOption("lt", "logic-tree", true, "Path to logic tree JSON file");
+		ops.addOption("lt", "logic-tree", true, "Path to logic tree JSON file");
 		ops.addRequiredOption("id", "input-dir", true, "Path to input (results) directory");
 		ops.addRequiredOption("od", "output-dir", true, "Path to output directory");
 		ops.addOption("pl", "plot-level", true, "This enables reports and sets the plot level, one of: "
@@ -475,6 +488,8 @@ public class MPJ_LogicTreeBranchAverageBuilder extends MPJTaskCalculator {
 				"If supplied, existing plots will be re-generated when re-running a report");
 		ops.addOption("rb", "rebuild", false,
 				"If supplied, existing branch averages will be rebuilt, otherwise they will be skipped");
+		ops.addOption(null, "no-process", false,
+				"If supplied, solution logic tree processor will be skipped when loading solutions");
 		
 		return ops;
 	}

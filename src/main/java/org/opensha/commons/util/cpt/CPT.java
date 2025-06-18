@@ -44,7 +44,10 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 	private static final long serialVersionUID = 1l;
 	public static final String XML_METADATA_NAME = "CPT";
 	private Color nanColor, belowMinColor, aboveMaxColor, gapColor;
-	public Blender blender;
+	private Blender blender;
+	
+	// if true, this CPT is in Log10 space and should be plotted using a logarithmic axis
+	private boolean isLog10;
 	
 	private double preferredTickInterval = Double.NaN;
 	
@@ -90,13 +93,33 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		
 		double delta = (maxVal - minVal)/(colors.length - 1);
 		for (int i=0; i<colors.length-1; i++) {
-			float start = (float)(minVal + delta*i);
-			float end = (float)(minVal + delta*(i+1));
+			double start = (minVal + delta*i);
+			double end = (minVal + delta*(i+1));
 			add(new CPTVal(start, colors[i], end, colors[i+1]));
 		}
 		
 		setBelowMinColor(colors[0]);
 		setAboveMaxColor(colors[colors.length-1]);
+	}
+
+	/**
+	 * @return true if this CPT is in log10 space
+	 */
+	public boolean isLog10() {
+		return isLog10;
+	}
+
+	/**
+	 * Set log10 flag, indicating that this CPT is in log10 space and should be plotted using logarithmic axes. This
+	 * does not change the underlying data itself.
+	 * <br>
+	 * If log10 is set, calls to {{@link #getColor(float)} assume the passed in value is in linear space and will be
+	 * converted internally; similarly, {{@link #getMinValue()} and {{@link #getMaxValue()} will return the bounds in
+	 * linear space. Original values cane accessed via  
+	 * @param isLog10
+	 */
+	public void setLog10(boolean isLog10) {
+		this.isLog10 = isLog10;
 	}
 
 	/**
@@ -235,22 +258,53 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 
 	/**
 	 * This returns a color given a value for this specific CPT file or null if
-	 * the color is undefined
+	 * the color is undefined.
+	 * <br>
+	 * If {@link #isLog10()} is true, the passed in value will be converted to it's log10 equivalent internally;
+	 * use {@link #getColorRaw(float)} to access the color with a value already in log100 space.
+	 *
+	 * @param value
+	 * @return Color corresponding to value
+	 */
+	public Color getColor(double value) {
+		return getColor((float)value);
+	}
+
+	/**
+	 * This returns a color given a value for this specific CPT file or null if
+	 * the color is undefined.
+	 * <br>
+	 * If {@link #isLog10()} is true, the passed in value will be converted to it's log10 equivalent internally;
+	 * use {@link #getColorRaw(float)} to access the color with a value already in log100 space.
 	 *
 	 * @param value
 	 * @return Color corresponding to value
 	 */
 	public Color getColor(float value) {
+		if (isLog10)
+			value = (float)Math.log10(value);
+		return getColorRaw(value);
+	}
+	
+	/**
+	 * This returns a color given a value for this specific CPT file or null if
+	 * the color is undefined. Unlike {@link #getColor(float)}, this ignores the
+	 * {@link #isLog10()} setting.
+	 *
+	 * @param value
+	 * @return Color corresponding to value
+	 */
+	public Color getColorRaw(float value) {
 		CPTVal cpt_val = getCPTVal(value);
 
 		if (cpt_val != null) {
-			if (value == cpt_val.start) {
+			if (value == (float)cpt_val.start) {
 				return cpt_val.minColor;
-			} else if (value == cpt_val.end) {
+			} else if (value == (float)cpt_val.end) {
 				return cpt_val.maxColor;
-			} else if (value > cpt_val.start && value < cpt_val.end) {
-				float adjVal = (value - cpt_val.start)
-						/ (cpt_val.end - cpt_val.start);
+			} else if (value > (float)cpt_val.start && value < (float)cpt_val.end) {
+				float adjVal = (value - (float)cpt_val.start)
+						/ ((float)cpt_val.end - (float)cpt_val.start);
 				return blendColors(cpt_val.minColor, cpt_val.maxColor, adjVal);
 			}
 		}
@@ -331,6 +385,11 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 				switch (firstChar) {
 				case '#':
 					// comment
+					line = line.substring(1).trim();
+					line = line.replace(" ", "");
+					line = line.toLowerCase();
+					if (line.startsWith("log10=true"))
+						cpt.setLog10(true);
 					continue;
 				case 'N':
 					tok.nextToken();
@@ -398,6 +457,7 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		
 		if (name != null && !name.isEmpty())
 			xml.addAttribute("name", name);
+		xml.addAttribute("log10", isLog10+"");
 		
 		return root;
 	}
@@ -409,6 +469,9 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 			cpt = new CPT(nameAtt.getStringValue());
 		else
 			cpt = new CPT();
+		Attribute logAtt = cptElem.attribute("log10");
+		if (logAtt != null)
+			cpt.setLog10(Boolean.valueOf(logAtt.getStringValue()));
 		
 		Iterator<Element> it = cptElem.elementIterator(CPTVal.XML_METADATA_NAME);
 		while (it.hasNext())
@@ -598,19 +661,19 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		if (size() > 0) {
 
 			// Establish the increase in value for each change in pixel
-			float minStart = this.get(0).start;
-			float maxEnd = this.get(size() - 1).end;
-			float valsPerPixel = (maxEnd - minStart) / width; //To ensure that the last value is included
+			double minStart = this.get(0).start;
+			double maxEnd = this.get(size() - 1).end;
+			double valsPerPixel = (maxEnd - minStart) / width; //To ensure that the last value is included
 
 			// If we've lit pixel +1 pixels the next pixel is lit with the color
 			// from valsPerPixel*x + minStart
 			int pixel = 0;
-			float val = 0;
+			double val = 0;
 
 			for( CPTVal cptval: this ) {
 				// Get the CPTVals in order and get then paint the associated lines with colors corresponding to the range of values of that CPTVal
-				float start = cptval.start;
-				float end = cptval.end;
+				double start = cptval.start;
+				double end = cptval.end;
 				Color startC = cptval.minColor;
 				Color endC = cptval.maxColor;
 
@@ -635,8 +698,8 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 				//Start filling in the gradient
 				while (pixel < width && start <= val && val <= end ) {
 					//Calculate color of line
-					float bias = (val - start) / (end - start);
-					Color blend = blender.blend(startC, endC, bias);
+					double bias = (val - start) / (end - start);
+					Color blend = blender.blend(startC, endC, (float)bias);
 
 					//Draw line and go to next pixel
 					g.setColor(blend);
@@ -661,7 +724,9 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		} catch (IOException e) {}
 		out += "http://www.opensha.org)";
 		out += ": " + this.getClass().getName() + "\n";
-		out += 			"# Date: " + (new Date()) + "\n";
+		out += "# Date: " + (new Date()) + "\n";
+		if (isLog10)
+			out += "# LOG10 = true\n";
 		for(CPTVal v: this){
 			out += v.toString() + "\n";
 		}
@@ -675,8 +740,22 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		return out;
 	}
 	
-	public float getMinValue() {
-		float min = Float.POSITIVE_INFINITY;
+	public double getMinValue() {
+		double min = getMinValueRaw();
+		if (isLog10)
+			min = Math.pow(10, min);
+		return min;
+	}
+	
+	public double getMaxValue() {
+		double max = getMaxValueRaw();
+		if (isLog10)
+			max = Math.pow(10, max);
+		return max;
+	}
+	
+	public double getMinValueRaw() {
+		double min = Float.POSITIVE_INFINITY;
 		for (CPTVal cptVal : this) {
 			if (cptVal.start < min)
 				min = cptVal.start;
@@ -686,8 +765,8 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		return min;
 	}
 	
-	public float getMaxValue() {
-		float max = Float.NEGATIVE_INFINITY;
+	public double getMaxValueRaw() {
+		double max = Float.NEGATIVE_INFINITY;
 		for (CPTVal cptVal : this) {
 			if (cptVal.start > max)
 				max = cptVal.start;
@@ -720,6 +799,7 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		cpt.setGapColor(getGapColor());
 		cpt.setNanColor(getNanColor());
 		cpt.setBlender(getBlender());
+		cpt.setLog10(isLog10());
 		
 		for (CPTVal val : this)
 			cpt.add((CPTVal)val.clone());
@@ -730,19 +810,23 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 	}
 
 	public CPT asLog10() {
-		Preconditions.checkState(getMinValue() > 0, "can only get log10 representation when min > 0");
-		return rescale(Math.log10(getMinValue()), Math.log10(getMaxValue()));
+		Preconditions.checkState(getMinValueRaw() > 0, "can only get log10 representation when min > 0");
+		CPT cpt = rescale(Math.log10(getMinValueRaw()), Math.log10(getMaxValueRaw()));
+		cpt.setLog10(true);
+		return cpt;
 	}
 	
 	public CPT asPow10() {
-		return rescale(Math.pow(10, getMinValue()), Math.pow(10, getMaxValue()));
+		CPT cpt = rescale(Math.pow(10, getMinValueRaw()), Math.pow(10, getMaxValueRaw()));
+		cpt.setLog10(false);
+		return cpt;
 	}
 	
 	public CPT asDiscrete(int num, boolean preserveEdges) {
 		CPT cpt = (CPT)clone();
 		CPT orig = this;
-		double min = this.getMinValue();
-		double max = this.getMaxValue();
+		double min = this.getMinValueRaw();
+		double max = this.getMaxValueRaw();
 		double delta = (max - min)/num;
 		if (preserveEdges) {
 			orig = (CPT)clone();
@@ -751,8 +835,8 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 		cpt.clear();
 		
 		for (int i=0; i<num; i++) {
-			float start = (float)(min + i*delta);
-			float end = (float)(min + (i+1)*delta);
+			double start = (min + i*delta);
+			double end = (min + (i+1)*delta);
 			Color color;
 			if (preserveEdges && i == 0)
 				color = getMinColor();
@@ -769,8 +853,8 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 	public CPT asDiscrete(double delta, boolean preserveEdges) {
 		CPT cpt = (CPT)clone();
 		CPT orig = this;
-		double min = this.getMinValue();
-		double max = this.getMaxValue();
+		double min = this.getMinValueRaw();
+		double max = this.getMaxValueRaw();
 		if (preserveEdges) {
 			orig = (CPT)clone();
 			double lastBinStart = 0d;
@@ -789,7 +873,7 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 				color = getMaxColor();
 			else
 				color = orig.getColor((float)(0.5*(end + start)));
-			cpt.add(new CPTVal((float)start, color, (float)end, color));
+			cpt.add(new CPTVal(start, color, end, color));
 		}
 		
 		return cpt;
@@ -799,14 +883,14 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 	 * @return rescaled version of this CPT
 	 */
 	public CPT rescale(double min, double max) {
-		Preconditions.checkState(getMaxValue() > getMinValue(), "in order to rescale, current max must be > min");
+		Preconditions.checkState(getMaxValueRaw() > getMinValueRaw(), "in order to rescale, current max must be > min");
 		Preconditions.checkArgument(max > min, "new max must be > min: %s !> %s", max, min);
 		CPT cpt = (CPT)clone();
 		cpt.clear();
 		
 		for (CPTVal val : this) {
-			float start = (float)rescaleValue(val.start, min, max);
-			float end = (float)rescaleValue(val.end, min, max);
+			double start = rescaleValue(val.start, min, max);
+			double end = rescaleValue(val.end, min, max);
 			CPTVal newVal = new CPTVal(start, val.minColor, end, val.maxColor);
 			cpt.add(newVal);
 		}
@@ -815,37 +899,37 @@ public class CPT extends ArrayList<CPTVal> implements Named, Serializable, Clone
 	}
 	
 	private double rescaleValue(double oldVal, double newMin, double newMax) {
-		double oldDelta = getMaxValue() - getMinValue();
+		double oldDelta = getMaxValueRaw() - getMinValueRaw();
 		double newDelta = newMax - newMin;
 		
-		return newMin + ((oldVal - getMinValue()) / oldDelta) * newDelta;
+		return newMin + ((oldVal - getMinValueRaw()) / oldDelta) * newDelta;
 	}
 	
 	public CPT trim(double newMin, double newMax) {
-		Preconditions.checkState(newMin >= getMinValue(), "new minimum is lower than original minimum");
-		Preconditions.checkState(newMax <= getMaxValue(), "new maximum is greater than original maximum");
+		Preconditions.checkState(newMin >= getMinValueRaw(), "new minimum is lower than original minimum");
+		Preconditions.checkState(newMax <= getMaxValueRaw(), "new maximum is greater than original maximum");
 		Preconditions.checkState(newMax > newMin, "new max must be greater than new max");
 		CPT cpt = (CPT)clone();
 		cpt.clear();
 		
 		for (CPTVal val : this) {
-			if (val.end < (float)newMin)
+			if ((float)val.end < (float)newMin)
 				// completely before the start
 				continue;
-			if (val.start > (float)newMax)
+			if ((float)val.start > (float)newMax)
 				// completely after the end
 				break;
 			// if we're here, we are inside or at least overlap a new bound
 			CPTVal newVal = val;
-			if (val.start < (float)newMin) {
+			if ((float)val.start < (float)newMin) {
 				// we started before the new minimum, truncate the lower bound
-				Color minColor = getColor((float)newMin);
-				newVal = new CPTVal((float)newMin, minColor, newVal.end, newVal.maxColor);
+				Color minColor = getColor(newMin);
+				newVal = new CPTVal(newMin, minColor, newVal.end, newVal.maxColor);
 			}
-			if (val.end > (float)newMax) {
+			if ((float)val.end > (float)newMax) {
 				// we end after the new maximum, truncate the upper bound
-				Color maxColor = getColor((float)newMax);
-				newVal = new CPTVal(newVal.start, newVal.minColor, (float)newMax, maxColor);
+				Color maxColor = getColor(newMax);
+				newVal = new CPTVal(newVal.start, newVal.minColor, newMax, maxColor);
 			}
 			cpt.add(newVal);
 		}

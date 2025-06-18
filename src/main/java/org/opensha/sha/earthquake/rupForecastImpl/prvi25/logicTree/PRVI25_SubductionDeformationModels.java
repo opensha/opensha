@@ -10,6 +10,7 @@ import java.util.Map;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
 import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
@@ -33,14 +34,11 @@ import com.google.common.base.Preconditions;
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_LOCS_FILE_NAME)
 @DoesNotAffect(GridSourceList.ARCHIVE_GRID_SOURCES_FILE_NAME)
 public enum PRVI25_SubductionDeformationModels implements RupSetDeformationModel {
-	FULL("Full Rate", "Full", 0.5,
-			Map.of(PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE, "PRVI_sub_v1_large_full_rate_minisections.txt",
-					PRVI25_SubductionFaultModels.PRVI_SUB_FM_SMALL, "PRVI_sub_v1_small_full_rate_minisections.txt")),
-	PARTIAL("Partial Rate", "Partial", 0.5,
-			Map.of(PRVI25_SubductionFaultModels.PRVI_SUB_FM_LARGE, "PRVI_sub_v1_large_part_rate_minisections.txt",
-					PRVI25_SubductionFaultModels.PRVI_SUB_FM_SMALL, "PRVI_sub_v1_small_part_rate_minisections.txt"));
+	FULL("Full Partitioning", "Full", 0.5),
+	PARTIAL("Trench-Normal Partitioning", "Trench-Normal", 0.5);
 
-	private static final String PREFIX = "/data/erf/prvi25/def_models/subduction/";
+	private static final String VERSION = "v4";
+	private static final String PREFIX = "/data/erf/prvi25/def_models/subduction/"+VERSION+"/";
 	
 	/**
 	 * if standard deviation is zero, default to this fraction of the slip rate. if DEFAULT_STD_DEV_USE_GEOLOGIC is
@@ -66,17 +64,14 @@ public enum PRVI25_SubductionDeformationModels implements RupSetDeformationModel
 	
 	private String name;
 	private String shortName;
-	private Map<RupSetFaultModel, String> fNameMap;
 	private double weight;
 	
 	private Map<String, Map<Integer, List<MinisectionSlipRecord>>> dmMinisMap;
 
-	private PRVI25_SubductionDeformationModels(String name, String shortName, double weight,
-			Map<RupSetFaultModel, String> fNameMap) {
+	private PRVI25_SubductionDeformationModels(String name, String shortName, double weight) {
 		this.name = name;
 		this.shortName = shortName;
 		this.weight = weight;
-		this.fNameMap = fNameMap;
 	}
 
 	@Override
@@ -103,32 +98,23 @@ public enum PRVI25_SubductionDeformationModels implements RupSetDeformationModel
 	public boolean isApplicableTo(RupSetFaultModel faultModel) {
 		return faultModel instanceof PRVI25_SubductionFaultModels;
 	}
-
+	
 	@Override
-	public List<? extends FaultSection> build(RupSetFaultModel faultModel) throws IOException {
-		return build(faultModel, 2, 0.5, 30d);
-	}
-
-	@Override
-	public List<? extends FaultSection> build(RupSetFaultModel faultModel, int minPerFault, double ddwFract,
-			double fixedLen) throws IOException {
-		String minisectsFileName = fNameMap.get(faultModel);
-		System.out.println("Mapping slip rates for "+faultModel.getShortName()+", "+this.getShortName()+": "+minisectsFileName);
-		Preconditions.checkNotNull(minisectsFileName, "No minisection file mapping for fm=%s", faultModel);
-		List<? extends FaultSection> fullSects = faultModel.getFaultSections();
-		return buildDefModel(SubSectionBuilder.buildSubSects(
-				faultModel.getFaultSections(), minPerFault, ddwFract, fixedLen), fullSects, minisectsFileName);
-	}
-
-	@Override
-	public List<? extends FaultSection> buildForSubsects(RupSetFaultModel faultModel,
+	public List<? extends FaultSection> apply(RupSetFaultModel faultModel,
+			LogicTreeBranch<? extends LogicTreeNode> branch, List<? extends FaultSection> fullSects,
 			List<? extends FaultSection> subSects) throws IOException {
-		String minisectsFileName = fNameMap.get(faultModel);
+		
+		String minisectsFileName = "PRVI_sub_"+VERSION+"_"+faultModel.getFilePrefix()+"_"+this.getFilePrefix();
+		PRVI25_SubductionCouplingModels coupling;
+		if (branch == null || !branch.hasValue(PRVI25_SubductionCouplingModels.class))
+			coupling = PRVI25_SubductionCouplingModels.PREFERRED;
+		else
+			coupling = branch.getValue(PRVI25_SubductionCouplingModels.class);
+		minisectsFileName += "_"+coupling.getFilePrefix()+"_rate_minisections.txt";
 		Preconditions.checkNotNull(minisectsFileName, "No minisection file mapping for fm=%s", faultModel);
-		List<? extends FaultSection> fullSects = faultModel.getFaultSections();
 		return buildDefModel(subSects, fullSects, minisectsFileName);
 	}
-	
+
 	private List<? extends FaultSection> buildDefModel(List<? extends FaultSection> subSects,
 			List<? extends FaultSection> fullSects, String minisectsFileName) throws IOException {
 		applySlipRates(subSects, fullSects, minisectsFileName);

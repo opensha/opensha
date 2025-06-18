@@ -10,12 +10,15 @@ import java.util.List;
 import org.dom4j.Document;
 import org.opensha.commons.logicTree.Affects;
 import org.opensha.commons.logicTree.DoesNotAffect;
+import org.opensha.commons.logicTree.LogicTreeBranch;
+import org.opensha.commons.logicTree.LogicTreeNode;
 import org.opensha.commons.util.ExceptionUtils;
 import org.opensha.commons.util.XMLUtils;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemRupSet;
 import org.opensha.sha.earthquake.faultSysSolution.FaultSystemSolution;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetDeformationModel;
 import org.opensha.sha.earthquake.faultSysSolution.RupSetFaultModel;
+import org.opensha.sha.earthquake.faultSysSolution.RupSetSubsectioningModel;
 import org.opensha.sha.faultSurface.FaultSection;
 
 import com.google.common.base.Preconditions;
@@ -30,7 +33,7 @@ import scratch.UCERF3.utils.UCERF3_DataUtils;
 @DoesNotAffect(FaultSystemRupSet.RUP_SECTS_FILE_NAME)
 @Affects(FaultSystemRupSet.RUP_PROPS_FILE_NAME)
 @Affects(FaultSystemSolution.RATES_FILE_NAME)
-public enum DeformationModels implements U3LogicTreeBranchNode<DeformationModels>, RupSetDeformationModel {
+public enum DeformationModels implements U3LogicTreeBranchNode<DeformationModels>, RupSetDeformationModel, RupSetSubsectioningModel {
 	
 	//						Name					ShortName	Weight	FaultModel			File
 	// UCERF2
@@ -214,23 +217,33 @@ public enum DeformationModels implements U3LogicTreeBranchNode<DeformationModels
 	}
 
 	@Override
-	public List<? extends FaultSection> build(RupSetFaultModel faultModel) {
+	public List<? extends FaultSection> build(RupSetFaultModel faultModel, RupSetSubsectioningModel subSectionModel,
+			LogicTreeBranch<? extends LogicTreeNode> branch) throws IOException {
 		Preconditions.checkState(faultModel instanceof FaultModels, "Given fault model is not a UCERF3 fault model");
+		Preconditions.checkState(subSectionModel == null || subSectionModel == this, "UCERF3 DMs build their own subsections");
 		return new DeformationModelFetcher((FaultModels)faultModel, this, null, 0.1).getSubSectionList();
 	}
 
 	@Override
-	public List<? extends FaultSection> build(RupSetFaultModel faultModel, int minPerFault, double ddwFract,
-			double fixedLen) throws IOException {
-		Preconditions.checkState(minPerFault == 2, "minPerFault must be 2 for UCERF3");
-		Preconditions.checkState(ddwFract == 0.5, "ddwFract must be 0.5 for UCERF3");
-		Preconditions.checkState(!(fixedLen > 0d), "fixedLen must be NaN for UCERF3");
-		return build(faultModel);
+	public List<? extends FaultSection> apply(RupSetFaultModel faultModel,
+			LogicTreeBranch<? extends LogicTreeNode> branch, List<? extends FaultSection> subSects) throws IOException {
+		throw new UnsupportedOperationException("Not supported, UCERF3 must build the subsections");
 	}
 
 	@Override
-	public List<? extends FaultSection> buildForSubsects(RupSetFaultModel faultModel,
+	public List<? extends FaultSection> apply(RupSetFaultModel faultModel,
+			LogicTreeBranch<? extends LogicTreeNode> branch, List<? extends FaultSection> fullSects,
 			List<? extends FaultSection> subSects) throws IOException {
 		throw new UnsupportedOperationException("Not supported, UCERF3 must build the subsections");
+	}
+
+	@Override
+	public List<? extends FaultSection> buildSubSects(RupSetFaultModel faultModel,
+			List<? extends FaultSection> fullSections) {
+		try {
+			return build(faultModel, this, null);
+		} catch (IOException e) {
+			throw ExceptionUtils.asRuntimeException(e);
+		}
 	}
 }

@@ -92,6 +92,10 @@ public class SiteDistanceDependentPoissonPointSourceData implements SiteAdaptive
 	@Override
 	public PoissonPointSourceData getForSite(Site site) {
 		double dist = LocationUtils.horzDistanceFast(centerLoc, site.getLocation());
+		return getForDistance(dist);
+	}
+	
+	public PoissonPointSourceData getForDistance(double dist) {
 		if ((float)dist > (float)maxCutoffDist)
 			return this;
 		for (int i=0; i<datas.size(); i++)

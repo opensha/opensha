@@ -97,7 +97,7 @@ public class LogicTreeCurveAverager {
 	public static boolean shouldSkipLevel(LogicTreeLevel<?> level, int nodeCount) {
 		if (nodeCount <= 1)
 			return false;
-		return level instanceof RandomlySampledLevel<?> && nodeCount > 6;
+		return level instanceof RandomlySampledLevel<?> && nodeCount > 6 || nodeCount > 30;
 	}
 	
 	public synchronized void processBranchCurves(LogicTreeBranch<?> branch, double weight, DiscretizedFunc[] curves) {
@@ -148,8 +148,17 @@ public class LogicTreeCurveAverager {
 	}
 	
 	public static LogicTreeCurveAverager readRawCacheDir(File cacheDir, double period, ExecutorService exec) throws IOException {
-		CSVFile<String> weightsCSV = CSVFile.readFile(
-				new File(cacheDir, SolHazardMapCalc.getCSV_FileName("weights", period)), true);
+		File csvFile = new File(cacheDir, SolHazardMapCalc.getCSV_FileName("weights", period));
+		for (int i=0; !csvFile.exists() && i<5; i++) {
+			// wait a few seconds
+			System.err.println("WARNING, csv doesn't exist, will sleep 1 second: "+csvFile.getAbsolutePath());
+			try {
+				Thread.sleep(1000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		CSVFile<String> weightsCSV = CSVFile.readFile(csvFile, true);
 		LogicTreeCurveAverager ret = new LogicTreeCurveAverager(null, null);
 		
 		Map<String, Future<DiscretizedFunc[]>> loadFutures = new HashMap<>();

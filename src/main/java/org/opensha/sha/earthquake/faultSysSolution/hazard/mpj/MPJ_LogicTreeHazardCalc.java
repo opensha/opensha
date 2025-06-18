@@ -130,6 +130,9 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 	private GridSourceProvider externalGridProv;
 	private SolHazardMapCalc externalGriddedCurveCalc;
 	
+	private FaultSystemSolution externalSol;
+	private SolHazardMapCalc externalSolCurveCalc;
+	
 	private QuickGriddedHazardMapCalc[] quickGridCalcs;
 	private ExecutorService quickGridExec;
 
@@ -258,9 +261,18 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 				externalGridProv = avgArchive.requireModule(GridSourceProvider.class);
 			}
 			Preconditions.checkArgument(gridSeisOp != IncludeBackgroundOption.EXCLUDE,
-					"External grid provider was supplied, but background seismicity is disabled?");
+					"External single grid provider was supplied, but background seismicity is disabled?");
 			
 			resultsInput.close();
+		}
+		
+		if (cmd.hasOption("external-fss")) {
+			File solFile = new File(cmd.getOptionValue("external-fss"));
+			Preconditions.checkState(solFile.exists());
+			externalSol = FaultSystemSolution.load(solFile);
+			
+			Preconditions.checkArgument(gridSeisOp != IncludeBackgroundOption.ONLY,
+					"External single solution was supplied, but only calculating for background seismicity?");
 		}
 		
 		if (gridSeisOp != IncludeBackgroundOption.EXCLUDE) {
@@ -868,6 +880,27 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 					combineWithOnlyCurves = externalGriddedCurveCalc;
 				}
 				
+				if (externalSol != null && gridSeisOp != IncludeBackgroundOption.ONLY && combineWithExcludeCurves == null) {
+					// we're combining with exclude curves from an external solution file
+					if (externalSolCurveCalc == null) {
+						if (sol == null)
+							sol = solTree.forBranch(branch);
+						// first time, calculate them
+						debug("Calculating external solution curves (will only do this once)");
+						
+						externalSolCurveCalc = new SolHazardMapCalc(externalSol, getGMM_Suppliers(branch, gmmRefs), gridRegion,
+								IncludeBackgroundOption.EXCLUDE, applyAftershockFilter, periods);
+						
+						externalSolCurveCalc.setSourceFilter(sourceFilter);
+						externalSolCurveCalc.setSiteSkipSourceFilter(siteSkipSourceFilter);
+						externalSolCurveCalc.setCacheGridSources(false);
+						
+						externalSolCurveCalc.calcHazardCurves(getNumThreads());
+					}
+					
+					combineWithExcludeCurves = externalSolCurveCalc;
+				}
+				
 				if (quickGridCalcs != null && combineWithOnlyCurves == null) {
 					Preconditions.checkState(!combineOnly, "Combine-only flag is set, but we need to calculate gridded only for "+branch);
 					if (sol == null)
@@ -1064,6 +1097,8 @@ public class MPJ_LogicTreeHazardCalc extends MPJTaskCalculator {
 		ops.addOption("egp", "external-grid-prov", true, "Path to external grid source provider to use for hazard "
 				+ "calculations. Can be either a fault system solution, or a zip file containing just a grid source "
 				+ "provider.");
+		ops.addOption(null, "external-fss", true, "Path to external fault-system solution to use for hazard "
+				+ "calculations; the regular input-file will only be used for gridded-seismicity.");
 		ops.addOption("qgc", "quick-grid-calc", false, "Flag to enable quick gridded seismicity calculation.");
 		ops.addOption("cwd", "combine-with-dir", true, "Path to a different directory to serach for pre-computed curves "
 				+ "to draw from. Can supply multiple times to specify multiple directories.");

@@ -974,7 +974,10 @@ public class ProxyFaultSectionInstances implements ArchivableModule, BranchAvera
 				List<Integer> sectsForRups = new ArrayList<>();
 				for (int sectID : origSectsForRups) {
 					List<Integer> newSectIDs = sectIDs_oldToNew.get(sectID);
-					Preconditions.checkState(newSectIDs.size() == 1);
+					Preconditions.checkState(newSectIDs.size() == 1, "Rupture not identified as proxy rup but uses proxy"
+							+ " sects; we do not yet support ruptures on proxy and non-proxy faults. Could add support "
+							+ "in the future by keeping proxy surfaces around in this case and just using those for "
+							+ "these ruptures.");
 					sectsForRups.add(newSectIDs.get(0));
 				}
 				modSectionForRups.add(sectsForRups);
