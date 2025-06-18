@@ -3,6 +3,7 @@ package org.opensha.sha.faultSurface;
 import java.io.Serializable;
 import java.util.Iterator;
 import java.util.ListIterator;
+import java.util.function.Function;
 
 import org.opensha.commons.data.ContainerSubset2D;
 import org.opensha.commons.data.Window2D;
@@ -249,10 +250,18 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 		return getEvenlyDiscritizedUpperEdge();
 	}
 	
+	private Function<Location, Double> distXCalcFunc = new Function<Location, Double>() {
+		
+		@Override
+		public Double apply(Location t) {
+			return GriddedSurfaceUtils.getDistanceX(getEvenlyDiscritizedUpperEdge(), t);
+		}
+	};
+	
 	@Override
 	public SurfaceDistances calcDistances(Location loc) {
 		double[] dCalc = GriddedSurfaceUtils.getPropagationDistances(this, loc);
-		return new SurfaceDistances(dCalc[0], dCalc[1], dCalc[2]);
+		return new SurfaceDistances.PrecomputedLazyX(loc, dCalc[0], dCalc[1], dCalc[2], distXCalcFunc);
 	}
 	
 	@Override
@@ -263,11 +272,6 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 	@Override
 	public double calcQuickDistance(Location siteLoc) {
 		return GriddedSurfaceUtils.getCornerMidpointDistance(this, siteLoc);
-	}
-
-	@Override
-	public double calcDistanceX(Location loc) {
-		return GriddedSurfaceUtils.getDistanceX(getEvenlyDiscritizedUpperEdge(), loc);
 	}
 	
 	/**
@@ -308,7 +312,7 @@ public class GriddedSubsetSurface extends ContainerSubset2D<Location>  implement
 	 * @return
 	 */
 	public double getDistanceX(Location siteLoc){
-		return cache.getDistanceX(siteLoc);
+		return cache.getSurfaceDistances(siteLoc).getDistanceX();
 	}
 	
 

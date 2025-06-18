@@ -3,6 +3,7 @@ package org.opensha.sha.faultSurface;
 import java.io.Serializable;
 import java.util.Iterator;
 import java.util.ListIterator;
+import java.util.function.Function;
 
 import org.opensha.commons.data.Container2DImpl;
 import org.opensha.commons.geo.Location;
@@ -196,9 +197,18 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 		return GriddedSurfaceUtils.getMinDistanceBetweenSurfaces(surface, this);
 	}
 	
+	private Function<Location, Double> distXCalcFunc = new Function<Location, Double>() {
+		
+		@Override
+		public Double apply(Location t) {
+			return GriddedSurfaceUtils.getDistanceX(getEvenlyDiscritizedUpperEdge(), t);
+		}
+	};
+	
+	@Override
 	public SurfaceDistances calcDistances(Location loc) {
 		double[] dCalc = GriddedSurfaceUtils.getPropagationDistances(this, loc);
-		return new SurfaceDistances(dCalc[0], dCalc[1], dCalc[2]);
+		return new SurfaceDistances.PrecomputedLazyX(loc, dCalc[0], dCalc[1], dCalc[2], distXCalcFunc);
 	}
 	
 	/**
@@ -241,11 +251,6 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 		return GriddedSurfaceUtils.getCornerMidpointDistance(this, siteLoc);
 	}
 
-	@Override
-	public double calcDistanceX(Location siteLoc) {
-		return GriddedSurfaceUtils.getDistanceX(getEvenlyDiscritizedUpperEdge(), siteLoc);
-	}
-
 	/**
 	 * This returns distance X (the shortest distance in km to the rupture 
 	 * trace extended to infinity), where values >= 0 are on the hanging wall
@@ -254,7 +259,7 @@ implements EvenlyGriddedSurface, CacheEnabledSurface, Serializable {
 	 * @return
 	 */
 	public double getDistanceX(Location siteLoc){
-		return cache.getDistanceX(siteLoc);
+		return cache.getSurfaceDistances(siteLoc).getDistanceX();
 	}
 	
 	

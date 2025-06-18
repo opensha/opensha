@@ -33,11 +33,6 @@ public class CustomCacheWrappedSurface extends WrappedRuptureSurface implements 
 	}
 
 	@Override
-	public double calcDistanceX(Location loc) {
-		return surf.calcDistanceX(loc);
-	}
-
-	@Override
 	public void clearCache() {
 		cache.clearCache();
 	}
@@ -64,7 +59,7 @@ public class CustomCacheWrappedSurface extends WrappedRuptureSurface implements 
 
 	@Override
 	public double getDistanceX(Location siteLoc) {
-		return cache.getDistanceX(siteLoc);
+		return cache.getSurfaceDistances(siteLoc).getDistanceX();
 	}
 
 }

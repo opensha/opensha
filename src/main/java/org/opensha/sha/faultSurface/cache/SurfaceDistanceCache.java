@@ -31,14 +31,6 @@ public interface SurfaceDistanceCache {
 	public double getQuickDistance(Location loc);
 	
 	/**
-	 * Returns the distance X value for the given location, either from the cache or via calculation.
-	 * 
-	 * @param loc
-	 * @return
-	 */
-	public double getDistanceX(Location loc);
-	
-	/**
 	 * Clears any cached site distances.
 	 */
 	public void clearCache();

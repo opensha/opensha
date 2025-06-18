@@ -297,7 +297,7 @@ public class RectangularSurface implements CacheEnabledSurface {
 
 	@Override
 	public double getDistanceX(Location siteLoc) {
-		return cache.getDistanceX(siteLoc);
+		return cache.getSurfaceDistances(siteLoc).getDistanceX();
 	}
 
 	@Override
@@ -376,68 +376,114 @@ public class RectangularSurface implements CacheEnabledSurface {
 
 	@Override
 	public SurfaceDistances calcDistances(Location loc) {
-		// ---- horizontal position relative to trace start -------------------
-		double dist = LocationUtils.horzDistanceFast(startLoc, loc);  // km
-		double az   = LocationUtils.azimuthRad(startLoc, loc);        // rad
-		double delta = az - strikeRad;                                 // rad
+		return new LazySurfaceDistances(loc);
+	}
+	
+	private class LazySurfaceDistances implements SurfaceDistances {
+		
+		private final Location siteLoc;
+		
+		private volatile Double distRup, distJB, distSeis, distX;
 
-		double x = dist * Math.cos(delta); // along‑strike (km)
-		double y = dist * Math.sin(delta); // +ve down‑dip (km)
+		private final double dist; // distance from the start of the trace to the site
+		private final double az; // azimuth (radians) from the start of the trace to the site
+		private final double delta; // difference (radians) between the azimuth and the strike
+		
+		private final double x; // along-strike component of dist (km)
+		private final double y; // down-dip component of dist (km)
+		
+		private final double zRel; // vertical component, site is zero and depth is positive, so this will be negative 
 
-		// ---- vertical coordinate ------------------------------------------
-		double zRel = -zTop; // site depth is 0
+		private LazySurfaceDistances(Location siteLoc) {
+			this.siteLoc = siteLoc;
+			
+			dist = LocationUtils.horzDistanceFast(startLoc, siteLoc);
+			az   = LocationUtils.azimuthRad(startLoc, siteLoc);        // rad
+			delta = az - strikeRad;                                 // rad
 
-		// ---- rJB -----------------------------------------------------------
-		double xClamped = clamp(x, 0.0, length);
-		double yClamped = clamp(y, 0.0, horzWidth);
-		double rJB = hypot(x - xClamped, y - yClamped);
+			x = dist * Math.cos(delta); // along‑strike (km)
+			y = dist * Math.sin(delta); // +ve down‑dip (km)
 
-		// ---- rRup ----------------------------------------------------------
-		double rRup;
-		if (vertical) {
-			if (zTop == 0d)
-				rRup = rJB;
-			else
-				rRup = hypot(rJB, zTop);
-		} else {
-			double dot = y * sinDip - zRel * cosDip; // signed dist to plane
-			double yProj = y - dot * sinDip;
-			double xProj = x;
-
-			double xPlane = clamp(xProj, 0.0, length);
-			double yPlane = clamp(yProj, 0.0, horzWidth);
-			double zPlane = yPlane * Math.tan(dipRad);
-
-			rRup = hypot3(x - xPlane, y - yPlane, zRel - zPlane);
+			// ---- vertical coordinate ------------------------------------------
+			zRel = -zTop; // site depth is 0
 		}
 
-		// ---- rSeis ---------------------------------------------------------
-		double seisDepth = GriddedSurfaceUtils.SEIS_DEPTH;
-		double rSeis;
-		if (zTop > seisDepth) {
-			rSeis = rRup;
-		} else {
-			if (vertical) {
-				double distToPlane = Math.abs(y);
-				double zClamped = clamp(0.0, Math.max(seisDepth, zTop), zBot);
-				rSeis = hypot(distToPlane, -zClamped);
-			} else {
-				double yStart = (seisDepth - zTop) / Math.tan(dipRad);
-				double yEnd   = horzWidth;
-				if (yStart > yEnd) yEnd = yStart; // rectangle collapses to line
+		@Override
+		public Location getSiteLocation() {
+			return siteLoc;
+		}
 
-				double dot = y * sinDip - zRel * cosDip;
-				double yProj = y - dot * sinDip;
-				double xProj = x;
+		@Override
+		public double getDistanceRup() {
+			if (distRup == null) {
+				if (vertical) {
+					double rJB = getDistanceJB();
+					if (zTop == 0d)
+						distRup = rJB;
+					else
+						distRup = hypot(rJB, zTop);
+				} else {
+					double dot = y * sinDip - zRel * cosDip; // signed dist to plane
+					double yProj = y - dot * sinDip;
+					double xProj = x;
 
-				double xPlane = clamp(xProj, 0.0, length);
-				double yPlane = clamp(yProj, yStart, yEnd);
-				double zPlane = yPlane * Math.tan(dipRad);
+					double xPlane = clamp(xProj, 0.0, length);
+					double yPlane = clamp(yProj, 0.0, horzWidth);
+					double zPlane = yPlane * Math.tan(dipRad);
 
-				rSeis = hypot3(x - xPlane, y - yPlane, zRel - zPlane);
+					distRup = hypot3(x - xPlane, y - yPlane, zRel - zPlane);
+				}
 			}
+			return distRup;
 		}
-		return new SurfaceDistances(rRup, rJB, rSeis);
+
+		@Override
+		public double getDistanceJB() {
+			if (distJB == null) {
+				double xClamped = clamp(x, 0.0, length);
+				double yClamped = clamp(y, 0.0, horzWidth);
+				distJB = hypot(x - xClamped, y - yClamped);
+			}
+			return distJB;
+		}
+
+		@Override
+		public double getDistanceSeis() {
+			if (distSeis == null) {
+				if (zTop > GriddedSurfaceUtils.SEIS_DEPTH) {
+					distSeis = getDistanceRup();
+				} else {
+					if (vertical) {
+						double distToPlane = Math.abs(y);
+						double zClamped = clamp(0.0, Math.max(GriddedSurfaceUtils.SEIS_DEPTH, zTop), zBot);
+						distSeis = hypot(distToPlane, -zClamped);
+					} else {
+						double yStart = (GriddedSurfaceUtils.SEIS_DEPTH - zTop) / Math.tan(dipRad);
+						double yEnd   = horzWidth;
+						if (yStart > yEnd) yEnd = yStart; // rectangle collapses to line
+
+						double dot = y * sinDip - zRel * cosDip;
+						double yProj = y - dot * sinDip;
+						double xProj = x;
+
+						double xPlane = clamp(xProj, 0.0, length);
+						double yPlane = clamp(yProj, yStart, yEnd);
+						double zPlane = yPlane * Math.tan(dipRad);
+
+						distSeis = hypot3(x - xPlane, y - yPlane, zRel - zPlane);
+					}
+				}
+			}
+			return distSeis;
+		}
+
+		@Override
+		public double getDistanceX() {
+			if (distX == null)
+				distX = GriddedSurfaceUtils.getDistanceX(trace, siteLoc);
+			return distX;
+		}
+		
 	}
 
 	private double calcDistanceJB(Location loc) {
@@ -458,11 +504,6 @@ public class RectangularSurface implements CacheEnabledSurface {
 	@Override
 	public double calcQuickDistance(Location loc) {
 		return calcDistanceJB(loc);
-	}
-
-	@Override
-	public double calcDistanceX(Location loc) {
-		return GriddedSurfaceUtils.getDistanceX(trace, loc);
 	}
 
 	@Override

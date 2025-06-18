@@ -180,7 +180,7 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 		boolean footwall = (float)wtFootwall >= (float)wtHangingwall;
 		
 		FootwallAwareSurfaceDistances dists = new FootwallAwareSurfaceDistances(
-				distanceRup, distanceJB, distanceSeis, footwall);
+				loc, distanceRup, distanceJB, distanceSeis, footwall);
 		
 		return dists;
 	}
@@ -238,11 +238,6 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 			}
 		}
 		return LocationUtils.horzDistanceFast(loc, closest);
-	}
-
-	@Override
-	public double calcDistanceX(Location loc) {
-		return getDistanceX(loc);
 	}
 
 	@Override
@@ -325,8 +320,7 @@ public class SimEventCumDistFuncSurface implements CacheEnabledSurface {
 
 	@Override
 	public double getDistanceX(Location siteLoc) {
-		FootwallAwareSurfaceDistances dists = (FootwallAwareSurfaceDistances)cache.getSurfaceDistances(siteLoc);
-		return dists.isOnFootfall() ? -dists.getDistanceJB() : dists.getDistanceJB();
+		return cache.getSurfaceDistances(siteLoc).getDistanceX();
 	}
 
 	@Override

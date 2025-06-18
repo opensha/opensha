@@ -3,6 +3,7 @@ package org.opensha.sha.faultSurface;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.function.Function;
 
 import org.opensha.commons.geo.Location;
 import org.opensha.commons.geo.LocationList;
@@ -236,25 +237,14 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 		}
 		return aveWidth;
 	}
-	
-	protected static class CompoundSurfaceDistances extends SurfaceDistances {
-
-		public final int distXIndex;
-		public CompoundSurfaceDistances(double distanceRup, double distanceJB,
-				double distanceSeis, int distXIndex) {
-			super(distanceRup, distanceJB, distanceSeis);
-			this.distXIndex = distXIndex;
-		}
-		
-	}
 
 	@Override
-	public CompoundSurfaceDistances calcDistances(Location loc) {
+	public SurfaceDistances calcDistances(Location loc) {
 		double distanceJB = Double.MAX_VALUE;
 		double distanceSeis = Double.MAX_VALUE;
 		double distanceRup = Double.MAX_VALUE;
 		double dist;
-		int distXidx = -1;
+		RuptureSurface surfForX = null;
 		for (int i=0; i<surfaces.size(); i++) {
 			RuptureSurface surf = surfaces.get(i);
 			dist = surf.getDistanceJB(loc);
@@ -262,24 +252,20 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 			dist = surf.getDistanceRup(loc);
 			if (dist<distanceRup) {
 				distanceRup=dist;
-				distXidx = i;
+				surfForX = surf;
 			}
 			dist = surf.getDistanceSeis(loc);
 			if (dist<distanceSeis) distanceSeis=dist;
 		}
-		return new CompoundSurfaceDistances(distanceRup, distanceJB, distanceSeis, distXidx);
-	}
-
-
-	@Override
-	public double calcDistanceX(Location loc) {
-		// new implementation relies on knowing the index of the surface of the
-		// smallest rRup; first ensure that rRup calc has been done for
-		// supplied Location; in all likelihood another distance metric will
-		// have already been queried with the supplied site and this call will
-		// be skipped.
-		CompoundSurfaceDistances distances = (CompoundSurfaceDistances)cache.getSurfaceDistances(loc);
-		return surfaces.get(distances.distXIndex).getDistanceX(loc);
+		// use the closest sub-surface (determined via rRup) for distanceX
+		final RuptureSurface theSurfForX = surfForX;
+		return new SurfaceDistances.PrecomputedLazyX(loc, distanceRup, distanceJB, distanceSeis, new Function<Location, Double>() {
+			
+			@Override
+			public Double apply(Location t) {
+				return theSurfForX.getDistanceX(loc);
+			}
+		});
 	}
 
 	@Override
@@ -313,7 +299,7 @@ public class CompoundSurface implements RuptureSurface, CacheEnabledSurface {
 
 	@Override
 	public double getDistanceX(Location siteLoc) {
-		return cache.getDistanceX(siteLoc);
+		return cache.getSurfaceDistances(siteLoc).getDistanceX();
 	}
 	
 	@Override

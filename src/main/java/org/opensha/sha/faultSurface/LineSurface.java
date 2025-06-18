@@ -90,15 +90,58 @@ public class LineSurface implements RuptureSurface, CacheEnabledSurface {
 	
 	@Override
 	public SurfaceDistances calcDistances(Location loc) {
-		double[] segHorzDists = calcSegHorzDists(trace, loc);
-		double distRup = distance(trace, loc, true, segHorzDists);
-		double distJB = distance(trace, loc, false, segHorzDists);
-		double distSeis;
-		if (trace == traceBelowSeis)
-			distSeis = distRup;
-		else
-			distSeis = distance(traceBelowSeis, loc, true, segHorzDists);
-		return new SurfaceDistances(distRup, distJB, distSeis);
+		return new LazySurfaceDistances(loc);
+	}
+	
+	private class LazySurfaceDistances implements SurfaceDistances {
+		
+		private Location siteLoc;
+		private double[] segHorzDists;
+		
+		private volatile Double distRup, distJB, distSeis, distX;
+
+		private LazySurfaceDistances(Location siteLoc) {
+			this.siteLoc = siteLoc;
+			this.segHorzDists = calcSegHorzDists(trace, siteLoc);
+		}
+
+		@Override
+		public Location getSiteLocation() {
+			return siteLoc;
+		}
+
+		@Override
+		public double getDistanceRup() {
+			if (distRup == null)
+				distRup = distance(trace, siteLoc, true, segHorzDists);
+			return distRup;
+		}
+
+		@Override
+		public double getDistanceJB() {
+			if (distJB == null)
+				distJB = distance(trace, siteLoc, false, segHorzDists);
+			return distJB;
+		}
+
+		@Override
+		public double getDistanceSeis() {
+			if (distSeis == null) {
+				if (trace == traceBelowSeis)
+					distSeis = getDistanceRup();
+				else
+					distSeis = distance(traceBelowSeis, siteLoc, true, segHorzDists);
+			}
+			return distSeis;
+		}
+
+		@Override
+		public double getDistanceX() {
+			if (distX == null)
+				distX = distanceX(trace, siteLoc, segHorzDists);
+			return distX;
+		}
+		
 	}
 
 	public double getDistanceRup(Location loc) {
@@ -221,6 +264,27 @@ public class LineSurface implements RuptureSurface, CacheEnabledSurface {
 		return distance;
 	}
 	
+	private double distanceX(FaultTrace trace, Location loc) {
+		return distanceX(trace, loc, calcSegHorzDists(trace, loc));
+	}
+	
+	private double distanceX(FaultTrace trace, Location loc, double[] segHorzDists) {
+		int minIndex = -1;
+		double minDist = Double.POSITIVE_INFINITY;
+		for (int i=0; i<segHorzDists.length; i++) {
+			if (segHorzDists[i] < minDist) {
+				minDist = segHorzDists[i];
+				minIndex = i;
+			}
+		}
+		double rFirst = LocationUtils.horzDistanceFast(trace.get(0), loc);
+		double rLast = LocationUtils.horzDistanceFast(trace.last(), loc);
+
+		return (minDist < Math.min(rFirst, rLast)) ? LocationUtils.distanceToLineFast(
+				trace.get(minIndex), trace.get(minIndex + 1), loc)
+				: LocationUtils.distanceToLineFast(trace.first(), trace.last(), loc);
+	}
+	
 	@Override
 	public double getQuickDistance(Location siteLoc) {
 		return cache.getQuickDistance(siteLoc);
@@ -232,27 +296,8 @@ public class LineSurface implements RuptureSurface, CacheEnabledSurface {
 		return cache.getSurfaceDistances(siteLoc).getDistanceRup();
 	}
 	
-	@Override
-	public synchronized double calcDistanceX(Location siteLoc) {
-		double[] horzDists = calcSegHorzDists(trace, siteLoc);
-		int minIndex = -1;
-		double minDist = Double.POSITIVE_INFINITY;
-		for (int i=0; i<horzDists.length; i++) {
-			if (horzDists[i] < minDist) {
-				minDist = horzDists[i];
-				minIndex = i;
-			}
-		}
-		double rFirst = LocationUtils.horzDistanceFast(trace.get(0), siteLoc);
-		double rLast = LocationUtils.horzDistanceFast(trace.last(), siteLoc);
-
-		return (minDist < Math.min(rFirst, rLast)) ? LocationUtils.distanceToLineFast(
-				trace.get(minIndex), trace.get(minIndex + 1), siteLoc)
-				: LocationUtils.distanceToLineFast(trace.first(), trace.last(), siteLoc);
-	}
-	
 	public double getDistanceX(Location siteLoc) {
-		return cache.getDistanceX(siteLoc);
+		return cache.getSurfaceDistances(siteLoc).getDistanceX();
 	}
 	
 //	private EvenlyGriddedSurface getGridded() {

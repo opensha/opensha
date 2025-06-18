@@ -25,7 +25,6 @@ public class MultiDistanceCache implements SurfaceDistanceCache {
 	private CacheEnabledSurface surf;
 	private LoadingCache<Location, SurfaceDistances> distCache;
 	private LoadingCache<Location, Double> quickDistCache;
-	private LoadingCache<Location, Double> distXCache;
 	
 	// this code is just used for collecting statistics
 	private static final boolean ENABLE_DEBUG = false;
@@ -65,7 +64,6 @@ public class MultiDistanceCache implements SurfaceDistanceCache {
 		this.surf = surf;
 		distCache = buildCache(new DistCacheLoader(), maxSize, expirationTime, expirationUnit);
 		quickDistCache = buildCache(new QuickDistCacheLoader(), maxSize, expirationTime, expirationUnit);
-		distXCache = buildCache(new DistXCacheLoader(), maxSize, expirationTime, expirationUnit);
 		
 		if (ENABLE_DEBUG) cachesForDebug.add(this);
 	}
@@ -84,15 +82,6 @@ public class MultiDistanceCache implements SurfaceDistanceCache {
 		@Override
 		public Double load(Location loc) throws Exception {
 			return surf.calcQuickDistance(loc);
-		}
-		
-	}
-	
-	private final class DistXCacheLoader extends CacheLoader<Location, Double> {
-
-		@Override
-		public Double load(Location loc) throws Exception {
-			return surf.calcDistanceX(loc);
 		}
 		
 	}
@@ -116,15 +105,6 @@ public class MultiDistanceCache implements SurfaceDistanceCache {
 	public SurfaceDistances getSurfaceDistances(Location loc) {
 		try {
 			return distCache.get(loc);
-		} catch (ExecutionException e) {
-			throw ExceptionUtils.asRuntimeException(e);
-		}
-	}
-
-	@Override
-	public double getDistanceX(Location loc) {
-		try {
-			return distXCache.get(loc);
 		} catch (ExecutionException e) {
 			throw ExceptionUtils.asRuntimeException(e);
 		}
@@ -153,7 +133,6 @@ public class MultiDistanceCache implements SurfaceDistanceCache {
 	public void clearCache() {
 		distCache.invalidateAll();
 		quickDistCache.invalidateAll();
-		distXCache.invalidateAll();
 	}
 
 }

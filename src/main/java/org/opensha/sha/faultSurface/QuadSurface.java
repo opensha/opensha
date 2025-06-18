@@ -339,14 +339,56 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 	
 	@Override
 	public SurfaceDistances calcDistances(Location loc) {
-		double distRup = calcDistanceRup(loc);
-		double distJB = calcDistanceJB(loc);
-		double distSeis;
-		if (traceBelowSeis)
-			distSeis = distRup;
-		else
-			distSeis = calcDistanceSeis(loc);
-		return new SurfaceDistances(distRup, distJB, distSeis);
+		return new LazySurfaceDistances(loc);
+	}
+	
+	private class LazySurfaceDistances implements SurfaceDistances {
+		
+		private Location siteLoc;
+		
+		private volatile Double distRup, distJB, distSeis, distX;
+
+		private LazySurfaceDistances(Location siteLoc) {
+			this.siteLoc = siteLoc;
+		}
+
+		@Override
+		public Location getSiteLocation() {
+			return siteLoc;
+		}
+
+		@Override
+		public double getDistanceRup() {
+			if (distRup == null)
+				distRup = calcDistanceRup(siteLoc);
+			return distRup;
+		}
+
+		@Override
+		public double getDistanceJB() {
+			if (distJB == null)
+				distJB = calcDistanceJB(siteLoc);
+			return distJB;
+		}
+
+		@Override
+		public double getDistanceSeis() {
+			if (distSeis == null) {
+				if (traceBelowSeis)
+					distSeis = getDistanceRup();
+				else
+					distSeis = calcDistanceSeis(siteLoc);
+			}
+			return distSeis;
+		}
+
+		@Override
+		public double getDistanceX() {
+			if (distX == null)
+				distX = GriddedSurfaceUtils.getDistanceX(trace, siteLoc);
+			return distX;
+		}
+		
 	}
 	
 	private double calcDistanceRup(Location loc) {
@@ -599,13 +641,9 @@ public class QuadSurface implements RuptureSurface, CacheEnabledSurface {
 		return cache.getSurfaceDistances(siteLoc).getDistanceRup();
 	}
 	
-	@Override
-	public synchronized double calcDistanceX(Location siteLoc) {
-		return GriddedSurfaceUtils.getDistanceX(trace, siteLoc);
-	}
 	
 	public double getDistanceX(Location siteLoc) {
-		return cache.getDistanceX(siteLoc);
+		return cache.getSurfaceDistances(siteLoc).getDistanceX();
 	}
 	
 //	private EvenlyGriddedSurface getGridded() {

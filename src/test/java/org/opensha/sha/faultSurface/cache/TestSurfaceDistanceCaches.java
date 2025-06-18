@@ -3,9 +3,7 @@ package org.opensha.sha.faultSurface.cache;
 import static org.junit.Assert.*;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 
@@ -208,14 +206,13 @@ public class TestSurfaceDistanceCaches {
 			try {
 				// calculate manually
 				SurfaceDistances dists = surf.calcDistances(loc);
-				double distX = surf.calcDistanceX(loc);
 				
 				// now verify with cached
 				for (int i=0; i<numGetsPerTest; i++) {
 					assertEquals(dists.getDistanceRup(), surf.getDistanceRup(loc), delta);
 					assertEquals(dists.getDistanceJB(), surf.getDistanceJB(loc), delta);
 					assertEquals(dists.getDistanceSeis(), surf.getDistanceSeis(loc), delta);
-					assertEquals(distX, surf.getDistanceX(loc), delta);
+					assertEquals(dists.getDistanceX(), surf.getDistanceX(loc), delta);
 				}
 			} catch (Throwable e) {
 				exception = e;

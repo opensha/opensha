@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.function.Function;
 
 import org.apache.commons.math3.stat.StatUtils;
 import org.dom4j.Attribute;
@@ -389,26 +390,24 @@ class ArbitrarilyDiscretizedSurface implements RuptureSurface, CacheEnabledSurfa
 		return aveDist;
 	}
 
+	@Override
 	public double getDistanceRup(Location siteLoc){
 		return cache.getSurfaceDistances(siteLoc).getDistanceRup();
 	}
 
+	@Override
 	public double getDistanceJB(Location siteLoc){
 		return cache.getSurfaceDistances(siteLoc).getDistanceJB();
 	}
 
+	@Override
 	public double getDistanceSeis(Location siteLoc){
 		return cache.getSurfaceDistances(siteLoc).getDistanceSeis();
 	}
 
 	@Override
 	public double getDistanceX(Location siteLoc) {
-		return cache.getDistanceX(siteLoc);
-	}
-	
-	@Override
-	public double calcDistanceX(Location siteLoc) {
-		return GriddedSurfaceUtils.getDistanceX(getEvenlyDiscritizedUpperEdge(), siteLoc);
+		return cache.getSurfaceDistances(siteLoc).getDistanceX();
 	}
 
 	@Override
@@ -483,6 +482,14 @@ class ArbitrarilyDiscretizedSurface implements RuptureSurface, CacheEnabledSurfa
 		locs2.addAll(locs);
 		return new ArbitrarilyDiscretizedSurface(locs2, isGridCentered());
 	}
+	
+	private Function<Location, Double> distXCalcFunc = new Function<Location, Double>() {
+		
+		@Override
+		public Double apply(Location t) {
+			return GriddedSurfaceUtils.getDistanceX(getEvenlyDiscritizedUpperEdge(), t);
+		}
+	};
 
 	@Override
 	public SurfaceDistances calcDistances(Location loc) {
@@ -521,7 +528,7 @@ class ArbitrarilyDiscretizedSurface implements RuptureSurface, CacheEnabledSurfa
 		distRup = Math.pow(distRup,0.5);
 		distSeis = Math.pow(distSeis,0.5);
 
-		return new SurfaceDistances(distRup, distJB, distSeis);
+		return new SurfaceDistances.PrecomputedLazyX(loc, distRup, distJB, distSeis, distXCalcFunc);
 	}
 	
 	@Override

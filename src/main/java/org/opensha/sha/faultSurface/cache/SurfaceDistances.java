@@ -1,5 +1,9 @@
 package org.opensha.sha.faultSurface.cache;
 
+import java.util.function.Function;
+
+import org.opensha.commons.geo.Location;
+
 /**
  * Container for 2D/3D surface distances, usually all calculated at the same time. Used for caching.
  * <br><br>
@@ -8,26 +12,115 @@ package org.opensha.sha.faultSurface.cache;
  * @author kevin
  *
  */
-public class SurfaceDistances {
-	private final double distanceRup, distanceJB, distanceSeis;
+public interface SurfaceDistances {
+//	private final double distanceRup, distanceJB, distanceSeis;
+//
+//	public SurfaceDistances(double distanceRup, double distanceJB,
+//			double distanceSeis) {
+//		super();
+//		this.distanceRup = distanceRup;
+//		this.distanceJB = distanceJB;
+//		this.distanceSeis = distanceSeis;
+//	}
+	
+	public Location getSiteLocation();
 
-	public SurfaceDistances(double distanceRup, double distanceJB,
-			double distanceSeis) {
-		super();
-		this.distanceRup = distanceRup;
-		this.distanceJB = distanceJB;
-		this.distanceSeis = distanceSeis;
+	public double getDistanceRup();
+
+	public double getDistanceJB();
+
+	public double getDistanceSeis();
+	
+	public double getDistanceX();
+	
+	/**
+	 * {@link SurfaceDistances} implementation where all values are precomputed
+	 */
+	public static class Precomputed implements SurfaceDistances {
+		private final Location siteLoc;
+		private final double distanceRup, distanceJB, distanceSeis, distanceX;
+		
+		public Precomputed(Location siteLoc, double distanceRup, double distanceJB,
+				double distanceSeis, double distanceX) {
+			super();
+			this.siteLoc = siteLoc;
+			this.distanceRup = distanceRup;
+			this.distanceJB = distanceJB;
+			this.distanceSeis = distanceSeis;
+			this.distanceX = distanceX;
+		}
+
+		@Override
+		public Location getSiteLocation() {
+			return siteLoc;
+		}
+
+		@Override
+		public double getDistanceRup() {
+			return distanceRup;
+		}
+
+		@Override
+		public double getDistanceJB() {
+			return distanceJB;
+		}
+
+		@Override
+		public double getDistanceSeis() {
+			return distanceSeis;
+		}
+
+		@Override
+		public double getDistanceX() {
+			return distanceX;
+		}
 	}
+	
+	/**
+	 * {@link SurfaceDistances} implementation where all values are precomputed except for DistanceX, which is lazily
+	 * initialized on first request.
+	 */
+	public static class PrecomputedLazyX implements SurfaceDistances {
+		private final Location siteLoc;
+		private final double distanceRup, distanceJB, distanceSeis;
+		private volatile Double distanceX;
+		private final Function<Location, Double> distanceXCalc;
+		
+		public PrecomputedLazyX(Location siteLoc, double distanceRup, double distanceJB,
+				double distanceSeis, Function<Location, Double> distanceXCalc) {
+			super();
+			this.siteLoc = siteLoc;
+			this.distanceRup = distanceRup;
+			this.distanceJB = distanceJB;
+			this.distanceSeis = distanceSeis;
+			this.distanceXCalc = distanceXCalc;
+		}
 
-	public double getDistanceRup() {
-		return distanceRup;
-	}
+		@Override
+		public Location getSiteLocation() {
+			return siteLoc;
+		}
 
-	public double getDistanceJB() {
-		return distanceJB;
-	}
+		@Override
+		public double getDistanceRup() {
+			return distanceRup;
+		}
 
-	public double getDistanceSeis() {
-		return distanceSeis;
+		@Override
+		public double getDistanceJB() {
+			return distanceJB;
+		}
+
+		@Override
+		public double getDistanceSeis() {
+			return distanceSeis;
+		}
+
+		@Override
+		public double getDistanceX() {
+			if (distanceX == null)
+				distanceX = distanceXCalc.apply(siteLoc);
+			return distanceX;
+		}
 	}
 }
