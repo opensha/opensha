@@ -84,6 +84,13 @@ public class BranchAverageSolutionCreator {
 	private Map<LogicTreeNode, Integer> nodeCounts = new HashMap<>();
 	private Map<LogicTreeNode, Double> nodeWeights = new HashMap<>();
 	
+	/**
+	 * If true and branch solutions have a ModSectMinMags module, then ruptures will be skipped (i.e., their rate ignored)
+	 * if ModSectMinMags.isRupBelowSectMinMag(rupIndex) == true.
+	 * 
+	 * That is, the mod sect min mags will be baked into the branch-averaged solution file. As such, the module will not
+	 * be attached to the returned branch-averaged soultion
+	 */
 	private boolean skipRupturesBelowSectMin = true;
 	
 	private boolean accumulatingSlipRates = true;
@@ -255,6 +262,11 @@ public class BranchAverageSolutionCreator {
 			ModuleContainer<OpenSHA_Module> container) {
 		List<TypedAccumulator<?>> accumulators = new ArrayList<>();
 		for (OpenSHA_Module module : container.getModulesAssignableTo(BranchAverageableModule.class, true, skipModules)) {
+			if (skipRupturesBelowSectMin && module instanceof ModSectMinMags) {
+				System.out.println("Won't accumulate branch-averaged ModSectMinMags, we're skipping ruptures below "
+						+ "those magnitudes in the rate calculations");
+				continue;
+			}
 			Preconditions.checkState(module instanceof BranchAverageableModule<?>);
 			System.out.println("Building branch-averaging accumulator for: "+module.getName());
 			TypedAccumulator<?> accumulator = getTypedAccumulator((BranchAverageableModule<?>)module);
